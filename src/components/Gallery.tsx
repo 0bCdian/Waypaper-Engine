@@ -7,13 +7,11 @@ interface GalleryProps {
 
 export const Gallery: FC<GalleryProps> = ({ filePathList }) => {
   if (filePathList.length> 1){
-    console.log('llegamos al return')
-return (
+  return (
     <>
-      {filePathList.map((path) => {
-        console.log('map')
-        return   <ImageCard filePath={path} />
-      })}
+      {
+      filePathList.map((path) => <ImageCard filePath={path} />
+      )}
     </>
   )
   }
