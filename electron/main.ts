@@ -3,8 +3,9 @@ import path from 'node:path'
 import url from 'url'
 import {
   getImageFilenames,
-  getSingleImageFileName,
+  getSingleImageFileName
 } from './functions/getImageFilenames'
+import { checkCacheAndCreateItIfNotExists } from './functions/waypaperModules'
 
 // The built directory structure
 //
@@ -28,8 +29,8 @@ function createWindow() {
   win = new BrowserWindow({
     icon: path.join(process.env.PUBLIC, 'electron-vite.svg'),
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js'),
-    },
+      preload: path.join(__dirname, 'preload.js')
+    }
   })
 
   // Test active push message to Renderer-process.
@@ -58,6 +59,10 @@ app.whenReady().then(() => {
     )
     callback(filePath)
   })
+})
+
+app.whenReady().then(() => {
+  checkCacheAndCreateItIfNotExists()
 })
 
 ipcMain.handle('openFiles', getImageFilenames)

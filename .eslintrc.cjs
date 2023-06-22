@@ -29,5 +29,15 @@ module.exports = {
     project: ['tsconfig.json']
   },
   plugins: ['react', 'react-refresh'],
-  rules: { 'react-refresh/only-export-components': 'warn' }
+  rules: {
+    'react-refresh/only-export-components': 'warn',
+    'react/react-in-jsx-scope': 'off',
+    'react/jsx-uses-react': 'off',
+    '@typescript-eslint/no-misused-promises': [
+      'error',
+      {
+        checksVoidReturn: false
+      }
+    ]
+  }
 }
