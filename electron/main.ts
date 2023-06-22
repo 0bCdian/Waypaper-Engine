@@ -5,7 +5,7 @@ import {
   getImageFilenames,
   getSingleImageFileName
 } from './functions/getImageFilenames'
-import { checkCacheAndCreateItIfNotExists } from './functions/waypaperModules'
+import { checkCacheOrCreateItIfNotExists } from './functions/waypaperModules'
 
 // The built directory structure
 //
@@ -62,7 +62,7 @@ app.whenReady().then(() => {
 })
 
 app.whenReady().then(() => {
-  checkCacheAndCreateItIfNotExists()
+  checkCacheOrCreateItIfNotExists()
 })
 
 ipcMain.handle('openFiles', getImageFilenames)

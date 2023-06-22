@@ -1,7 +1,7 @@
 import fs from 'fs'
 import os from 'os'
 
-export function checkCacheAndCreateItIfNotExists() {
+export function checkCacheOrCreateItIfNotExists() {
   const cacheDirectoryPath = os.homedir() + '/.cache/waypaper'
   const cacheThumbnailDirectory = cacheDirectoryPath + '/thumbnails'
   const cacheImageDirectory = cacheDirectoryPath + '/images'
