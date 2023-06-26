@@ -16,7 +16,7 @@ export const Gallery: FC<GalleryProps> = ({ filePathList, skeletonsToShow }) => 
     })
 
     return (
-    <div className='grid grid-cols-5 gap-0 '>
+    <div className='grid grid-cols-[repeat(auto-fit,minmax(320px,1fr))] gap-2 '>
    {skeletons.length > 0 ? skeletons : undefined}
     {imagesToShow}
     </div>
