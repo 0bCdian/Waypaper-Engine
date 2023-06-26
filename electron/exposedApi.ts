@@ -1,14 +1,13 @@
 import { ipcRenderer } from 'electron'
+import { cacheDirectory } from './globals/globals'
 
 export const ELECTRON_API = {
-  openFiles: async () => {
-    const files = await ipcRenderer.invoke('openFiles')
-    return files
+  // This method is for getting the names of the images selected to generate skeletons
+  addNewImages: async () => await ipcRenderer.invoke('addNewImages'),
+  getImagesFromCache: async () => {
+    const imagesFromCache = await ipcRenderer.invoke('getImagesFromCache')
+    return imagesFromCache
   },
-  openSingleFile: async () => {
-    const file = await ipcRenderer.invoke('openSingleFile')
-    console.log(file)
-    return file
-  },
+  cacheThumbnailDirectory: cacheDirectory.thumbnails
 }
 export type ELECTRON_API_TYPE = typeof ELECTRON_API

@@ -1,10 +1,7 @@
 import { app, BrowserWindow, ipcMain, protocol } from 'electron'
 import path from 'node:path'
 import url from 'url'
-import {
-  getImageFilenames,
-  getSingleImageFileName
-} from './functions/getImageFilenames'
+import { addNewImages, getImagesFromCache } from './functions/getImageFilenames'
 import { checkCacheOrCreateItIfNotExists } from './functions/waypaperModules'
 
 // The built directory structure
@@ -16,20 +13,21 @@ import { checkCacheOrCreateItIfNotExists } from './functions/waypaperModules'
 // │ │ ├── main.js
 // │ │ └── preload.js
 // │
-process.env.DIST = path.join(__dirname, '../dist')
+process.env.DIST = path.join(__dirname, '../dist-electron')
 process.env.PUBLIC = app.isPackaged
   ? process.env.DIST
   : path.join(process.env.DIST, '../public')
 
 let win: BrowserWindow | null
 // 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
-const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
+const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL
 
+// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 function createWindow() {
   win = new BrowserWindow({
-    icon: path.join(process.env.PUBLIC, 'electron-vite.svg'),
     webPreferences: {
-      preload: path.join(__dirname, 'preload.js')
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: true
     }
   })
 
@@ -65,5 +63,8 @@ app.whenReady().then(() => {
   checkCacheOrCreateItIfNotExists()
 })
 
-ipcMain.handle('openFiles', getImageFilenames)
-ipcMain.handle('openSingleFile', getSingleImageFileName)
+ipcMain.handle('addNewImages', addNewImages)
+ipcMain.handle('getImagesFromCache', getImagesFromCache)
+ipcMain.handle('consoleLog', () => {
+  return 'consoleLog!'
+})

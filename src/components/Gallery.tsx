@@ -1,22 +1,26 @@
-import { ImageCard } from "./ImageCard"
-import { FC } from "react"
-
+import { ImageCard } from './ImageCard'
+import { type FC } from 'react'
+import { Skeleton } from './Skeleton'
 interface GalleryProps {
   filePathList: string[]
+  skeletonsToShow: string[]
 }
 
-export const Gallery: FC<GalleryProps> = ({ filePathList }) => {
-  if (filePathList.length> 1){
-  return (
-    <>
-      {
-      filePathList.map((path) => <ImageCard filePath={path} />
-      )}
-    </>
-  )
+export const Gallery: FC<GalleryProps> = ({ filePathList, skeletonsToShow }) => {
+  if (filePathList !== undefined) {
+    const imagesToShow = filePathList.map((image) => {
+      return <ImageCard key={image} ImageName={image}></ImageCard>
+    })
+    const skeletons = skeletonsToShow.map((skeletonFileName) => {
+      return <Skeleton ImageName={skeletonFileName} key={skeletonFileName}></Skeleton>
+    })
+
+    return (
+    <div className='grid grid-cols-5 gap-0 '>
+   {skeletons.length > 0 ? skeletons : undefined}
+    {imagesToShow}
+    </div>
+    )
   }
-  else{
-    return <h2>No hay imagenes cargadas aun</h2>
-  }
-  
+  return <h1>oh oh</h1>
 }
