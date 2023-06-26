@@ -5,10 +5,10 @@ module.exports = {
     extend: {
       colors: {
         transparent: 'transparent',
-        bg_main: '#606C5D',
-        fg_main: '#FFF4F4',
-        accent_main: '#F1C376',
-        secondary_main: '#F7E6C4'
+        bg_main: '#222831',
+        fg_main: '#EEEEEE',
+        accent_main: '#00ADB5',
+        secondary_main: '#393E46'
       }
     }
   },
