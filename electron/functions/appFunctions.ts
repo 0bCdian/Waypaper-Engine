@@ -2,7 +2,7 @@
 import { dialog } from 'electron'
 import fs, { type PathLike } from 'fs'
 import { copyFile } from 'fs/promises'
-import { cacheDirectory } from '../globals/globals'
+import { appDirectories } from '../globals/globals'
 const sharp = require('sharp')
 
 type fileList = string[] | undefined
@@ -45,19 +45,19 @@ function getValidImages(imagePaths: string[]) {
   })
 }
 
-async function CopyImagesToCacheAndProcessThumbnails(
+async function copyImagesToCacheAndProcessThumbnails(
   imagePaths: string[],
   fileNames: string[]
 ) {
   const numberOfItems = imagePaths.length
   if (numberOfItems > 0) {
     const destinationFullPath = fileNames.map(
-      (fileName) => cacheDirectory.Images + fileName
+      (fileName) => appDirectories.imagesDir + fileName
     )
     for (let currentImage = 0; currentImage < numberOfItems; currentImage++) {
       copyFile(imagePaths[currentImage], destinationFullPath[currentImage])
         .then(() => {
-          CreateCacheThumbnail(imagePaths[currentImage])
+          createCacheThumbnail(imagePaths[currentImage])
         })
         .catch((error) => console.error('Could not copy file', error))
     }
@@ -71,10 +71,9 @@ function returnFilenamesFromCache(path: PathLike) {
   return fileListWithPath
 }
 
-async function CreateCacheThumbnail(filePath: string) {
-  //? I am supposed to be guaranteed that returnFilenamesFromCache always returns something valid, because on each start of the program I am validating if the cache exists, I'll leave it like this for now but could break.
+async function createCacheThumbnail(filePath: string) {
   const fileName = filePath.split('/').at(-1)
-  const fileDestination = cacheDirectory.thumbnails + fileName
+  const fileDestination = appDirectories.thumbnails + fileName
   if (fileName) {
     if (fileName.endsWith('.gif')) {
       try {
@@ -115,15 +114,41 @@ export function addNewImages() {
   const fileNames = filteredImagePaths
     .map((image) => image.split('/').at(-1) || '')
     .filter((item) => item !== '')
-  //copyImagesToCacheAndProcessThumbnails(filteredImagePaths, fileNames)
-  CopyImagesToCacheAndProcessThumbnails(filteredImagePaths, fileNames)
+  copyImagesToCacheAndProcessThumbnails(filteredImagePaths, fileNames)
   return fileNames
 }
 
 export function getImagesFromCache() {
-  const imagesInCache = returnFilenamesFromCache(cacheDirectory.thumbnails)
+  const imagesInCache = returnFilenamesFromCache(appDirectories.thumbnails)
   const imagesInCacheWithFileProtocol = imagesInCache.map(
     (imagePath) => 'atom://' + imagePath
   )
   return imagesInCacheWithFileProtocol
+}
+
+export function checkCacheOrCreateItIfNotExists() {
+  if (!fs.existsSync(appDirectories.rootCache)) {
+    createFolders(appDirectories.rootCache, appDirectories.thumbnails)
+  } else {
+    if (!fs.existsSync(appDirectories.thumbnails)) {
+      createFolders(appDirectories.thumbnails)
+    }
+  }
+  if (!fs.existsSync(appDirectories.mainDir)) {
+    createFolders(appDirectories.mainDir, appDirectories.imagesDir)
+  } else {
+    if (!fs.existsSync(appDirectories.imagesDir)) {
+      createFolders(appDirectories.imagesDir)
+    }
+  }
+}
+
+export function createFolders(...args: string[]) {
+  try {
+    args.forEach((path) => {
+      fs.mkdirSync(path)
+    })
+  } catch (error) {
+    console.error(error)
+  }
 }

@@ -1,11 +1,13 @@
 import os from 'node:os'
 
-const cacheDirectoryPath = os.homedir() + '/.cache/waypaper'
-const cacheThumbnailDirectory = cacheDirectoryPath + '/thumbnails'
-const cacheImageDirectory = cacheDirectoryPath + '/images'
+const cacheDirectoryRoot = os.homedir() + '/.cache/waypaper/'
+const cacheThumbnailsDirectory = cacheDirectoryRoot + 'thumbnails/'
+const mainDirectory = os.homedir() + '/.waypaper/'
+const imagesDir = mainDirectory + 'images'
 
-export const cacheDirectory = {
-  root: cacheDirectoryPath + '/',
-  thumbnails: cacheThumbnailDirectory + '/',
-  Images: cacheImageDirectory + '/'
+export const appDirectories = {
+  rootCache: cacheDirectoryRoot,
+  thumbnails: cacheThumbnailsDirectory,
+  mainDir: mainDirectory,
+  imagesDir: imagesDir
 }

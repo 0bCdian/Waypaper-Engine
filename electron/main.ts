@@ -1,8 +1,8 @@
 import { app, BrowserWindow, ipcMain, protocol } from 'electron'
 import path from 'node:path'
 import url from 'url'
-import { addNewImages, getImagesFromCache } from './functions/getImageFilenames'
-import { checkCacheOrCreateItIfNotExists } from './functions/waypaperModules'
+import { addNewImages, getImagesFromCache } from './functions/appFunctions'
+import { checkCacheOrCreateItIfNotExists } from './functions/appFunctions'
 
 // The built directory structure
 //
