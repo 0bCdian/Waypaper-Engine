@@ -135,18 +135,34 @@ export function checkCacheOrCreateItIfNotExists() {
     }
   }
   if (!fs.existsSync(appDirectories.mainDir)) {
-    createFolders(appDirectories.mainDir, appDirectories.imagesDir)
+    deleteFolders(appDirectories.thumbnails)
+    createFolders(
+      appDirectories.mainDir,
+      appDirectories.imagesDir,
+      appDirectories.thumbnails
+    )
   } else {
     if (!fs.existsSync(appDirectories.imagesDir)) {
-      createFolders(appDirectories.imagesDir)
+      deleteFolders(appDirectories.thumbnails)
+      createFolders(appDirectories.imagesDir, appDirectories.thumbnails)
     }
   }
 }
 
-export function createFolders(...args: string[]) {
+function createFolders(...args: string[]) {
   try {
     args.forEach((path) => {
       fs.mkdirSync(path)
+    })
+  } catch (error) {
+    console.error(error)
+  }
+}
+
+function deleteFolders(...args: string[]) {
+  try {
+    args.forEach((path) => {
+      fs.rmSync(path, { recursive: true, force: true })
     })
   } catch (error) {
     console.error(error)

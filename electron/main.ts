@@ -3,6 +3,7 @@ import path from 'node:path'
 import url from 'url'
 import { addNewImages, getImagesFromCache } from './functions/appFunctions'
 import { checkCacheOrCreateItIfNotExists } from './functions/appFunctions'
+import { testDB } from './functions/dataBase'
 
 // The built directory structure
 //
@@ -61,6 +62,7 @@ app.whenReady().then(() => {
 
 app.whenReady().then(() => {
   checkCacheOrCreateItIfNotExists()
+  testDB()
 })
 
 ipcMain.handle('addNewImages', addNewImages)

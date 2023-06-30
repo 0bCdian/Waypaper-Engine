@@ -9,9 +9,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "pg": "^8.11.1",
+    "pg-hstore": "^2.3.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "sharp": "^0.32.1"
+    "sequelize": "^6.32.1",
+    "sharp": "^0.32.1",
+    "sqlite3": "^5.1.6"
   },
   "devDependencies": {
     "@types/node": "^20.3.1",
