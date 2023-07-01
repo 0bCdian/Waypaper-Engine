@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { dialog } from 'electron'
-import fs, { type PathLike } from 'fs'
+import fs from 'fs'
 import { copyFile } from 'fs/promises'
 import { appDirectories } from './globals/globals'
 const sharp = require('sharp')
 import Image from './database/models'
 import { fileList, imagesObject } from './types/types'
-
+import { storeImagesInDB } from './database/dbOperations'
 // for some reason imports are nuts and so I have to declare this array here otherwise everything breaks
 //TODO debug why the hell I need to have the array here and not import it from somewhere else.
 const validImageExtensions = [
@@ -29,26 +29,6 @@ function openImagesFromFilePicker() {
   }) ?? ['/']
   return file
 }
-
-//* TODO: implement a more robust way of detecting filetypes, ie: reading the magic number from binary data.
-/* function getValidImages(imagePaths: string[]) {
-  const validImageExtensions = [
-    'jpeg',
-    'png',
-    'gif',
-    'bmp',
-    'webp',
-    'pnm',
-    'tga',
-    'tiff',
-    'farbfeld'
-  ]
-  return imagePaths.filter((imagePath) => {
-    //? if the image has many dots it will not pass, Im assuming the file is blablabla.ext
-    const [, imageExtension] = imagePath.split('.')
-    return validImageExtensions.includes(imageExtension)
-  })
-} */
 
 export async function copyImagesToCacheAndProcessThumbnails(
   _event: Electron.IpcMainInvokeEvent,
@@ -83,14 +63,6 @@ export async function copyImagesToCacheAndProcessThumbnails(
     return value !== ''
   })
   await storeImagesInDB(filteredResolvedPromises)
-  console.log('finished execution', Date.now())
-}
-
-function returnFilenamesFromCache(path: PathLike) {
-  const fileList = fs.readdirSync(path)
-  const pathToImage = path
-  const fileListWithPath = fileList.map((file) => pathToImage + file)
-  return fileListWithPath
 }
 
 async function createCacheThumbnail(filePath: string) {
@@ -145,14 +117,6 @@ export function openAndValidateImages() {
   return { imagePaths: imagePathsFromFilePicker, fileNames }
 }
 
-export function getImagesFromCache() {
-  const imagesInCache = returnFilenamesFromCache(appDirectories.thumbnails)
-  const imagesInCacheWithFileProtocol = imagesInCache.map(
-    (imagePath) => 'atom://' + imagePath
-  )
-  return imagesInCacheWithFileProtocol
-}
-
 export async function checkCacheOrCreateItIfNotExists() {
   if (!fs.existsSync(appDirectories.rootCache)) {
     createFolders(appDirectories.rootCache, appDirectories.thumbnails)
@@ -197,16 +161,4 @@ function deleteFolders(...args: string[]) {
   } catch (error) {
     console.error(error)
   }
-}
-
-async function storeImagesInDB(images: string[]) {
-  const imagesToStore = images.map((image) => {
-    const imageInstance = {
-      imageName: image,
-      tags: '[]'
-    }
-    return imageInstance
-  })
-  await Image.bulkCreate(imagesToStore)
-  console.log('finished loading to DB', Date.now())
 }
