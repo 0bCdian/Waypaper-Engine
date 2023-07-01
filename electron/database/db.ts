@@ -1,8 +1,8 @@
 const Sequelize = require('sequelize')
-
 import { appDirectories } from '../globals/globals'
+import Image from './models'
 
-const sequelize = new Sequelize({
+export const sequelize = new Sequelize({
   dialect: 'sqlite',
   storage: appDirectories.mainDir + 'imagesDB.sqlite3'
 })
@@ -10,8 +10,9 @@ const sequelize = new Sequelize({
 export async function testDB() {
   try {
     await sequelize.authenticate()
+    await Image.sync()
     console.log('Connection has been established successfully.')
   } catch (error) {
-    console.error('Unable to connect to the database:', error)
+    throw new Error(`Unable to connect to the database: ${error}`)
   }
 }

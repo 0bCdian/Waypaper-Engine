@@ -2,10 +2,13 @@
 import { dialog } from 'electron'
 import fs, { type PathLike } from 'fs'
 import { copyFile } from 'fs/promises'
-import { appDirectories } from '../globals/globals'
+import { appDirectories } from './globals/globals'
 const sharp = require('sharp')
+import Image from './database/models'
+import { fileList, imagesObject } from './types/types'
 
-type fileList = string[] | undefined
+// for some reason imports are nuts and so I have to declare this array here otherwise everything breaks
+//TODO debug why the hell I need to have the array here and not import it from somewhere else.
 const validImageExtensions = [
   'jpeg',
   'png',
@@ -17,6 +20,7 @@ const validImageExtensions = [
   'tiff',
   'farbfeld'
 ]
+
 function openImagesFromFilePicker() {
   const file: fileList = dialog.showOpenDialogSync({
     properties: ['openFile', 'multiSelections'],
@@ -25,8 +29,9 @@ function openImagesFromFilePicker() {
   }) ?? ['/']
   return file
 }
+
 //* TODO: implement a more robust way of detecting filetypes, ie: reading the magic number from binary data.
-function getValidImages(imagePaths: string[]) {
+/* function getValidImages(imagePaths: string[]) {
   const validImageExtensions = [
     'jpeg',
     'png',
@@ -43,25 +48,42 @@ function getValidImages(imagePaths: string[]) {
     const [, imageExtension] = imagePath.split('.')
     return validImageExtensions.includes(imageExtension)
   })
-}
+} */
 
-async function copyImagesToCacheAndProcessThumbnails(
-  imagePaths: string[],
-  fileNames: string[]
+export async function copyImagesToCacheAndProcessThumbnails(
+  _event: Electron.IpcMainInvokeEvent,
+  { imagePaths, fileNames }: imagesObject
 ) {
   const numberOfItems = imagePaths.length
-  if (numberOfItems > 0) {
-    const destinationFullPath = fileNames.map(
-      (fileName) => appDirectories.imagesDir + fileName
-    )
-    for (let currentImage = 0; currentImage < numberOfItems; currentImage++) {
-      copyFile(imagePaths[currentImage], destinationFullPath[currentImage])
-        .then(() => {
-          createCacheThumbnail(imagePaths[currentImage])
-        })
-        .catch((error) => console.error('Could not copy file', error))
-    }
+  const storeInDB = []
+  const destinationFullPath = fileNames.map(
+    (fileName) => appDirectories.imagesDir + fileName
+  )
+  for (let currentImage = 0; currentImage < numberOfItems; currentImage++) {
+    const currentOperation: Promise<string> = new Promise(async (resolve) => {
+      await copyFile(
+        imagePaths[currentImage],
+        destinationFullPath[currentImage]
+      ).then(async () => {
+        await createCacheThumbnail(imagePaths[currentImage])
+        resolve(fileNames[currentImage])
+      })
+    })
+    storeInDB.push(currentOperation)
   }
+  const resolvedObjectsArray = await Promise.allSettled(storeInDB)
+  const resolvedPromises = resolvedObjectsArray.map((resolvedObject) => {
+    if (resolvedObject.status === 'fulfilled') {
+      return resolvedObject.value
+    } else {
+      return ''
+    }
+  })
+  const filteredResolvedPromises = resolvedPromises.filter((value) => {
+    return value !== ''
+  })
+  await storeImagesInDB(filteredResolvedPromises)
+  console.log('finished execution', Date.now())
 }
 
 function returnFilenamesFromCache(path: PathLike) {
@@ -108,14 +130,19 @@ async function createCacheThumbnail(filePath: string) {
   }
 }
 
-export function addNewImages() {
+/**
+ *
+ * [Description]
+ * Opens images from filepicker dialog, validates if they're the correct type and return their filenames
+ * @returns object with two properties of type string[] containing the names and filepaths of the valid images
+ */
+export function openAndValidateImages() {
   const imagePathsFromFilePicker = openImagesFromFilePicker()
-  const filteredImagePaths = getValidImages(imagePathsFromFilePicker)
-  const fileNames = filteredImagePaths
+  /*  const filteredImagePaths = getValidImages(imagePathsFromFilePicker) */
+  const fileNames = imagePathsFromFilePicker
     .map((image) => image.split('/').at(-1) || '')
     .filter((item) => item !== '')
-  copyImagesToCacheAndProcessThumbnails(filteredImagePaths, fileNames)
-  return fileNames
+  return { imagePaths: imagePathsFromFilePicker, fileNames }
 }
 
 export function getImagesFromCache() {
@@ -126,7 +153,7 @@ export function getImagesFromCache() {
   return imagesInCacheWithFileProtocol
 }
 
-export function checkCacheOrCreateItIfNotExists() {
+export async function checkCacheOrCreateItIfNotExists() {
   if (!fs.existsSync(appDirectories.rootCache)) {
     createFolders(appDirectories.rootCache, appDirectories.thumbnails)
   } else {
@@ -135,6 +162,7 @@ export function checkCacheOrCreateItIfNotExists() {
     }
   }
   if (!fs.existsSync(appDirectories.mainDir)) {
+    // if images dont exist, remove old cache thumbnail
     deleteFolders(appDirectories.thumbnails)
     createFolders(
       appDirectories.mainDir,
@@ -144,6 +172,8 @@ export function checkCacheOrCreateItIfNotExists() {
   } else {
     if (!fs.existsSync(appDirectories.imagesDir)) {
       deleteFolders(appDirectories.thumbnails)
+      //
+      await Image.sync({ force: true })
       createFolders(appDirectories.imagesDir, appDirectories.thumbnails)
     }
   }
@@ -167,4 +197,16 @@ function deleteFolders(...args: string[]) {
   } catch (error) {
     console.error(error)
   }
+}
+
+async function storeImagesInDB(images: string[]) {
+  const imagesToStore = images.map((image) => {
+    const imageInstance = {
+      imageName: image,
+      tags: '[]'
+    }
+    return imageInstance
+  })
+  await Image.bulkCreate(imagesToStore)
+  console.log('finished loading to DB', Date.now())
 }

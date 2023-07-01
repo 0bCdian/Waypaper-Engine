@@ -1,4 +1,4 @@
 .eslintrc.cjs
 tailwind.config.js
 postcss.config.js
-electron
+

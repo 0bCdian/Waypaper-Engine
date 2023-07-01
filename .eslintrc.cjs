@@ -38,6 +38,9 @@ module.exports = {
       {
         checksVoidReturn: false
       }
-    ]
+    ],
+    '@typescript-eslint/explicit-function-return-type': {
+      allowExpressions: true
+    }
   }
 }

@@ -1,19 +1,14 @@
 import { app, BrowserWindow, ipcMain, protocol } from 'electron'
 import path from 'node:path'
 import url from 'url'
-import { addNewImages, getImagesFromCache } from './functions/appFunctions'
-import { checkCacheOrCreateItIfNotExists } from './functions/appFunctions'
-import { testDB } from './functions/dataBase'
+import {
+  openAndValidateImages,
+  copyImagesToCacheAndProcessThumbnails
+} from './appFunctions'
+import { checkCacheOrCreateItIfNotExists } from './appFunctions'
+import { testDB } from './database/db'
 
-// The built directory structure
-//
-// ├─┬─┬ dist
-// │ │ └── index.html
-// │ │
-// │ ├─┬ dist-electron
-// │ │ ├── main.js
-// │ │ └── preload.js
-// │
+
 process.env.DIST = path.join(__dirname, '../dist-electron')
 process.env.PUBLIC = app.isPackaged
   ? process.env.DIST
@@ -65,8 +60,5 @@ app.whenReady().then(() => {
   testDB()
 })
 
-ipcMain.handle('addNewImages', addNewImages)
-ipcMain.handle('getImagesFromCache', getImagesFromCache)
-ipcMain.handle('consoleLog', () => {
-  return 'consoleLog!'
-})
+ipcMain.handle('openFiles', openAndValidateImages)
+ipcMain.handle('handleOpenImages', copyImagesToCacheAndProcessThumbnails)

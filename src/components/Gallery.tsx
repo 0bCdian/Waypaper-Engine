@@ -1,18 +1,19 @@
 import { ImageCard } from './ImageCard'
 import { type FC } from 'react'
 import { Skeleton } from './Skeleton'
+import { type ImagesArray } from '../types/rendererTypes'
 interface GalleryProps {
-  filePathList: string[]
+  filePathList: ImagesArray
   skeletonsToShow: string[]
 }
 
 export const Gallery: FC<GalleryProps> = ({ filePathList, skeletonsToShow }) => {
   if (filePathList !== undefined) {
     const imagesToShow = filePathList.map((image) => {
-      return <ImageCard key={image} ImageName={image}></ImageCard>
+      return <ImageCard key={image.id} imageName={image.name}></ImageCard>
     })
     const skeletons = skeletonsToShow.map((skeletonFileName) => {
-      return <Skeleton ImageName={skeletonFileName} key={skeletonFileName}></Skeleton>
+      return <Skeleton imageName={skeletonFileName} key={skeletonFileName}></Skeleton>
     })
 
     return (
@@ -22,5 +23,5 @@ export const Gallery: FC<GalleryProps> = ({ filePathList, skeletonsToShow }) => 
     </div>
     )
   }
-  return <h1>oh oh</h1>
+  return <h1>No Images Loaded Yet</h1>
 }
