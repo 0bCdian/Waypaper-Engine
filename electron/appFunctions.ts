@@ -36,7 +36,8 @@ export async function copyImagesToCacheAndProcessThumbnails(
 ) {
   const numberOfItems = imagePaths.length
   const storeInDB = []
-  const destinationFullPath = fileNames.map(
+  const uniqueFileNames = checkAndRenameDuplicates(fileNames)
+  const destinationFullPath = uniqueFileNames.map(
     (fileName) => appDirectories.imagesDir + fileName
   )
   for (let currentImage = 0; currentImage < numberOfItems; currentImage++) {
@@ -45,8 +46,11 @@ export async function copyImagesToCacheAndProcessThumbnails(
         imagePaths[currentImage],
         destinationFullPath[currentImage]
       ).then(async () => {
-        await createCacheThumbnail(imagePaths[currentImage])
-        resolve(fileNames[currentImage])
+        await createCacheThumbnail(
+          imagePaths[currentImage],
+          uniqueFileNames[currentImage]
+        )
+        resolve(uniqueFileNames[currentImage])
       })
     })
     storeInDB.push(currentOperation)
@@ -65,13 +69,15 @@ export async function copyImagesToCacheAndProcessThumbnails(
   await storeImagesInDB(filteredResolvedPromises)
 }
 
-async function createCacheThumbnail(filePath: string) {
-  const fileName = filePath.split('/').at(-1)
-  const fileDestination = appDirectories.thumbnails + fileName
-  if (fileName) {
-    if (fileName.endsWith('.gif')) {
+async function createCacheThumbnail(
+  filePathSource: string,
+  destinationFilename: string
+) {
+  const fileDestination = appDirectories.thumbnails + destinationFilename
+  if (destinationFilename) {
+    if (destinationFilename.endsWith('.gif')) {
       try {
-        await sharp(filePath, { animated: true })
+        await sharp(filePathSource, { animated: true })
           .resize(300, 200, {
             kernel: sharp.kernel.nearest,
             fit: 'cover'
@@ -86,7 +92,7 @@ async function createCacheThumbnail(filePath: string) {
       }
     } else {
       try {
-        await sharp(filePath)
+        await sharp(filePathSource)
           .resize(300, 200, {
             kernel: sharp.kernel.nearest,
             fit: 'cover'
@@ -109,8 +115,8 @@ async function createCacheThumbnail(filePath: string) {
  * @returns object with two properties of type string[] containing the names and filepaths of the valid images
  */
 export function openAndValidateImages() {
+  //Todo actually validate lmao
   const imagePathsFromFilePicker = openImagesFromFilePicker()
-  /*  const filteredImagePaths = getValidImages(imagePathsFromFilePicker) */
   const fileNames = imagePathsFromFilePicker
     .map((image) => image.split('/').at(-1) || '')
     .filter((item) => item !== '')
@@ -161,4 +167,36 @@ function deleteFolders(...args: string[]) {
   } catch (error) {
     console.error(error)
   }
+}
+
+function checkAndRenameDuplicates(filenamesToCopy: string[]) {
+  const currentImagesStored = fs.readdirSync(appDirectories.imagesDir)
+  const correctFilenamesToCopy = getUniqueFileNames(
+    currentImagesStored,
+    filenamesToCopy
+  )
+  return correctFilenamesToCopy
+}
+
+function getUniqueFileNames(existingFiles: string[], filesToCopy: string[]) {
+  const filesToCopyWithoutConflicts = []
+  for (let i = 0; i < filesToCopy.length; i++) {
+    const file = filesToCopy[i]
+    let uniqueFileName = file
+    let count = 1
+    while (existingFiles.includes(uniqueFileName)) {
+      const extensionIndex = file.lastIndexOf('.')
+      if (extensionIndex !== -1) {
+        uniqueFileName = `${file.substring(
+          0,
+          extensionIndex
+        )}(${count})${file.substring(extensionIndex)}`
+      } else {
+        uniqueFileName = `${file}(${count})`
+      }
+      count++
+    }
+    filesToCopyWithoutConflicts.push(uniqueFileName)
+  }
+  return filesToCopyWithoutConflicts
 }
