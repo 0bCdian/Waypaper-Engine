@@ -1,7 +1,7 @@
 interface Image {
   id: number
-  name: string
-  tags?: string[]
+  imageName: string
+  tags: string[]
 }
 
 export type ImagesArray = Image[]

@@ -7,7 +7,7 @@ import {
 } from './appFunctions'
 import { checkCacheOrCreateItIfNotExists } from './appFunctions'
 import { testDB } from './database/db'
-
+import { readImagesFromDB } from './database/dbOperations'
 
 process.env.DIST = path.join(__dirname, '../dist-electron')
 process.env.PUBLIC = app.isPackaged
@@ -62,3 +62,4 @@ app.whenReady().then(() => {
 
 ipcMain.handle('openFiles', openAndValidateImages)
 ipcMain.handle('handleOpenImages', copyImagesToCacheAndProcessThumbnails)
+ipcMain.handle('queryImages', readImagesFromDB)

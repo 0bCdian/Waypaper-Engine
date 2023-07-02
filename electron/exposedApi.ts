@@ -7,6 +7,9 @@ export const ELECTRON_API = {
   handleOpenImages: async (imagesObject: imagesObject) => {
     return await ipcRenderer.invoke('handleOpenImages', imagesObject)
   },
-  cacheThumbnailDirectory: appDirectories.thumbnails
+  queryImages: async () => {
+    return await ipcRenderer.invoke('queryImages')
+  },
+  thumbnailDirectory: appDirectories.thumbnails
 }
 export type ELECTRON_API_TYPE = typeof ELECTRON_API
