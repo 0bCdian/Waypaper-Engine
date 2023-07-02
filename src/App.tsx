@@ -22,8 +22,9 @@ const App: FC = () => {
   useEffect(()=>{
     window.API_RENDERER.queryImages().then((data)=>{
           setImages(data)
+          setSkeletonsToShow(['placeholder.png'])
         })
-  })
+  },[])
   return (
     <>
     <h1 className='text-center font-extrabold font-sans '>Hola mundo</h1>
