@@ -180,7 +180,8 @@ function checkAndRenameDuplicates(filenamesToCopy: string[]) {
 
 function getUniqueFileNames(existingFiles: string[], filesToCopy: string[]) {
   const filesToCopyWithoutConflicts = []
-  for (let i = 0; i < filesToCopy.length; i++) {
+  const filesToCopyLength = filesToCopy.length
+  for (let i = 0; i < filesToCopyLength; i++) {
     const file = filesToCopy[i]
     let uniqueFileName = file
     let count = 1
