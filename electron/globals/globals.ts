@@ -6,6 +6,7 @@ const mainDirectory = os.homedir() + '/.waypaper/'
 const imagesDir = mainDirectory + 'images/'
 
 export const appDirectories = {
+  systemHome: os.homedir(),
   rootCache: cacheDirectoryRoot,
   thumbnails: cacheThumbnailsDirectory,
   mainDir: mainDirectory,

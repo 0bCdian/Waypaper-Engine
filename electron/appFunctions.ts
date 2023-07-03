@@ -7,6 +7,7 @@ const sharp = require('sharp')
 import Image from './database/models'
 import { fileList, imagesObject } from './types/types'
 import { storeImagesInDB } from './database/dbOperations'
+
 // for some reason imports are nuts and so I have to declare this array here otherwise everything breaks
 //TODO debug why the hell I need to have the array here and not import it from somewhere else.
 const validImageExtensions = [
@@ -25,8 +26,8 @@ function openImagesFromFilePicker() {
   const file: fileList = dialog.showOpenDialogSync({
     properties: ['openFile', 'multiSelections'],
     filters: [{ name: 'Images', extensions: validImageExtensions }],
-    defaultPath: '/'
-  }) ?? ['/']
+    defaultPath: appDirectories.systemHome
+  }) ?? ['']
   return file
 }
 

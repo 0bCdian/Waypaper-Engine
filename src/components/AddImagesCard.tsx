@@ -15,7 +15,7 @@ export const AddImagesCard: FC<AddImagesCardProps> = ({ onClick, alone }) => {
       <div className=' flex justify-center  rounded-lg min-w-[300px] min-h-[200px]'>
         <SvgComponent />
       </div>
-      <p className='absolute top-[65%] left-[35%] font-bold text-stone-400 '>
+      <p className='absolute top-[65%] left-[35%] font-bold text-[#ebdbb2] '>
         Add images
       </p>
     </div>

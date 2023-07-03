@@ -2,13 +2,13 @@ import { Gallery } from './components/Gallery'
 import { useState, type FC, useEffect } from 'react'
 import { type ImagesArray, imagesObject } from './types/rendererTypes'
 import './index.css'
+
 /* import NavBar from './components/NavBar'
 import CustomFrame from './components/CustomFrame' */
 
 const App: FC = () => {
   const [skeletonsToShow, setSkeletonsToShow] = useState<string[]>([])
   const [images, setImages] = useState<ImagesArray>([])
-
   const openFiles = (): void => {
     window.API_RENDERER.openFiles()
       .then((imagesObject: imagesObject) => {
@@ -24,28 +24,22 @@ const App: FC = () => {
         console.error(error)
       })
   }
+
   useEffect(() => {
     window.API_RENDERER.queryImages().then((data) => {
       setImages(data)
       setSkeletonsToShow([])
     })
   }, [])
+
   return (
-    <>
-      {/*   <NavBar /> */}
-      {/* <NavBar /> */}
-     {/*  <button
-        onClick={openFiles}
-        className='bg-black relative left-1/2 p-4 mb-1'
-      >
-        Add images
-      </button> */}
+    <div className='relative '>
       <Gallery
         filePathList={images}
         skeletonsToShow={skeletonsToShow}
         onClick={openFiles}
       />
-    </>
+    </div>
   )
 }
 

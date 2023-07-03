@@ -10,7 +10,7 @@ export const ImageCard: FC<ImageCardProps> = ({ imageName }) => {
     imageName.split('.').at(0) +
     '.webp'
   return (
-    <div className='relative rounded-lg bg-transparent drop-shadow max-w-fit mb-4 '>
+    <div className='relative rounded-lg bg-transparent shadow-2xl  max-w-fit mb-4 '>
       <img
         className='rounded-lg min-w-full bg-blend-hard-light '
         src={imageNameFilePath}

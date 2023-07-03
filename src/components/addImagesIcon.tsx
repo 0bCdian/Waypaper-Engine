@@ -9,7 +9,7 @@ const SvgComponent: FC = () => (
     viewBox='0 0 24 24'
   >
     <g
-      stroke='#000'
+      stroke='#ebdbb2'
       strokeLinecap='round'
       strokeLinejoin='round'
       strokeWidth={0.792}
