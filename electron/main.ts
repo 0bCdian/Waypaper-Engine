@@ -21,6 +21,11 @@ const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 function createWindow() {
   win = new BrowserWindow({
+    width: 1200,
+    height: 600,
+    minWidth: 940,
+    minHeight: 560,
+    frame: false,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: true

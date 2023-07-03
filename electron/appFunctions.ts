@@ -73,37 +73,22 @@ async function createCacheThumbnail(
   filePathSource: string,
   destinationFilename: string
 ) {
-  const fileDestination = appDirectories.thumbnails + destinationFilename
+  const [name] = destinationFilename.split('.')
+  const fileDestination = appDirectories.thumbnails + name + '.webp'
   if (destinationFilename) {
-    if (destinationFilename.endsWith('.gif')) {
-      try {
-        await sharp(filePathSource, { animated: true })
-          .resize(300, 200, {
-            kernel: sharp.kernel.nearest,
-            fit: 'cover'
-          })
-          .gif({ dither: 0 })
-          .toFile(fileDestination)
-          .then((info: any) => {
-            console.log(info)
-          })
-      } catch (error) {
-        console.log(error)
-      }
-    } else {
-      try {
-        await sharp(filePathSource)
-          .resize(300, 200, {
-            kernel: sharp.kernel.nearest,
-            fit: 'cover'
-          })
-          .toFile(fileDestination)
-          .then((info: any) => {
-            console.log(info)
-          })
-      } catch (error) {
-        console.log(error)
-      }
+    try {
+      await sharp(filePathSource, { animated: true })
+        .resize(300, 200, {
+          kernel: sharp.kernel.nearest,
+          fit: 'cover'
+        })
+        .webp({ quality: 80, force: true })
+        .toFile(fileDestination)
+        .then((info: any) => {
+          console.log(info)
+        })
+    } catch (error) {
+      console.log(error)
     }
   }
 }
