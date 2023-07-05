@@ -4,7 +4,21 @@ interface FiltersProps {
   onSearch: (event: ChangeEvent<HTMLInputElement>) => void
 }
 
+const debounceFilterSearch = (
+  callBack: (text: string) => void,
+  delay = 100
+) => {
+  let timer: any
+  return (text: string) => {
+    if (timer) clearTimeout(timer)
+    timer = setTimeout(() => {
+      callBack(text)
+    }, delay)
+  }
+}
+
 const Filters: FC<FiltersProps> = ({ onSearch }) => {
+  
   return (
     <div className='m-auto flex'>
       <div className='relative left-52 top-10'>
@@ -18,7 +32,6 @@ const Filters: FC<FiltersProps> = ({ onSearch }) => {
             xmlns='http://www.w3.org/2000/svg'
           >
             <path
-              strokeLinecap='round'
               strokeLinejoin='round'
               strokeWidth='2'
               d='M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z'

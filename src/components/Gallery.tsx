@@ -11,6 +11,16 @@ interface GalleryProps {
   onClick: () => void
 }
 
+function debounce(callback: (text: string) => void, delay: number) {
+  let timer: NodeJS.Timeout
+  return (text: string) => {
+    if (timer) clearTimeout(timer)
+    timer = setTimeout(() => {
+      callback(text)
+    }, delay)
+  }
+}
+
 export const Gallery: FC<GalleryProps> = ({
   filePathList,
   skeletonsToShow,
@@ -18,11 +28,14 @@ export const Gallery: FC<GalleryProps> = ({
 }) => {
   const [searchFilter, setSearchFilter] = useState<string>('')
   const [parent] = useAutoAnimate()
+  const debounceSetSearch = debounce((text: string) => {
+    setSearchFilter(text)
+  }, 200)
   const onSearch = (event: ChangeEvent<HTMLInputElement>): void => {
     const target = event.target
     if (target !== null) {
       const text = target.value
-      setSearchFilter(text)
+      debounceSetSearch(text)
     }
   }
   if (filePathList.length > 0 || skeletonsToShow.length > 0) {
