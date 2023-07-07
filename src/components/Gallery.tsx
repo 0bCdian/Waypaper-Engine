@@ -5,6 +5,7 @@ import { type ImagesArray } from '../types/rendererTypes'
 import { AddImagesCard } from './AddImagesCard'
 import Filters from './Filters'
 import { useAutoAnimate } from '@formkit/auto-animate/react'
+import Invisible from './invisible'
 interface GalleryProps {
   filePathList: ImagesArray
   skeletonsToShow: string[]
@@ -66,11 +67,12 @@ export const Gallery: FC<GalleryProps> = ({
       <>
         <Filters onSearch={onSearch} />
         <div className='overflow-y-scroll h-[90vh] scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-track-[#202020] scrollbar-thumb-stone-100 w-[85%] m-auto max-[639px]:flex shadow-2xl absolute top-24 left-40'>
+          <AddImagesCard onClick={onClick} alone={false} />
           <div
             className='m-auto sm:grid sm:auto-cols-auto grid-cols-[repeat(auto-fill,minmax(300px,1fr))]'
             ref={parent}
           >
-            <AddImagesCard onClick={onClick} alone={false} />
+            <Invisible />
             {skeletons.length > 0 ? skeletons : ''}
             {imagesToShow}
           </div>

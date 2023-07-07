@@ -9,7 +9,7 @@ interface AddImagesCardProps {
 export const AddImagesCard: FC<AddImagesCardProps> = ({ onClick, alone }) => {
   const styles = alone
     ? 'relative rounded-lg max-w-fit mb-4 hover:bg-[#323232] active:scale-95 transition-all ease-in-out '
-    : 'relative rounded-lg bg-[#323232] hover:bg-[#424242] active:scale-95 transition-all max-w-fit mb-4'
+    : 'absolute z-10 rounded-lg bg-[#323232] hover:bg-[#424242] active:scale-95 transition-all max-w-fit mb-4'
   return (
     <div className={styles} onClick={onClick}>
       <div className=' flex justify-center  rounded-lg min-w-[300px] min-h-[200px]'>

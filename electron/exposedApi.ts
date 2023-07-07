@@ -10,6 +10,7 @@ export const ELECTRON_API = {
   queryImages: async () => {
     return await ipcRenderer.invoke('queryImages')
   },
-  thumbnailDirectory: appDirectories.thumbnails
+  thumbnailDirectory: appDirectories.thumbnails,
+  imagesDirectory: appDirectories.imagesDir
 }
 export type ELECTRON_API_TYPE = typeof ELECTRON_API
