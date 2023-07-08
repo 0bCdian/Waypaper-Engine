@@ -9,9 +9,14 @@ export const ImageCard: FC<ImageCardProps> = ({ imageName }) => {
     window.API_RENDERER.thumbnailDirectory +
     imageName.split('.').at(0) +
     '.webp'
-
+  const setImage = () => {
+    window.API_RENDERER.setImage(imageName)
+  }
   return (
-    <div className='relative rounded-lg bg-transparent shadow-2xl  max-w-fit mb-4 '>
+    <div
+      onDoubleClick={setImage}
+      className='relative rounded-lg bg-transparent shadow-2xl  max-w-fit mb-4'
+    >
       <img
         className='rounded-lg min-w-full'
         src={imageNameFilePath}

@@ -10,6 +10,9 @@ export const ELECTRON_API = {
   queryImages: async () => {
     return await ipcRenderer.invoke('queryImages')
   },
+  setImage: (image: string) => {
+    ipcRenderer.send('setImage', image)
+  },
   thumbnailDirectory: appDirectories.thumbnails,
   imagesDirectory: appDirectories.imagesDir
 }

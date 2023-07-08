@@ -1,9 +1,6 @@
-/**
- * @see https://www.electron.build/configuration/configuration
- */
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "YourAppID",
+  "appId": "WaypaperEngine",
   "asar": true,
   "directories": {
     "output": "release/${version}"
@@ -28,6 +25,9 @@
       }
     ],
     "artifactName": "${productName}_${version}.${ext}"
+  },
+  "linux":{
+
   },
   "nsis": {
     "oneClick": false,

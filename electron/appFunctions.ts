@@ -7,6 +7,8 @@ const sharp = require('sharp')
 import Image from './database/models'
 import { fileList, imagesObject } from './types/types'
 import { storeImagesInDB } from './database/dbOperations'
+import { exec } from 'child_process'
+import os from 'node:os'
 
 // for some reason imports are nuts and so I have to declare this array here otherwise everything breaks
 //TODO debug why the hell I need to have the array here and not import it from somewhere else.
@@ -186,4 +188,20 @@ function getUniqueFileNames(existingFiles: string[], filesToCopy: string[]) {
     filesToCopyWithoutConflicts.push(uniqueFileName)
   }
   return filesToCopyWithoutConflicts
+}
+
+export function setImage(
+  _event: Electron.IpcMainInvokeEvent,
+  imageName: string
+) {
+  exec(
+    `${os.homedir()}/.local/bin/set_background.sh ${
+      appDirectories.imagesDir
+    }${imageName}`,
+    (error) => {
+      if (error) {
+        console.error(error)
+      }
+    }
+  )
 }

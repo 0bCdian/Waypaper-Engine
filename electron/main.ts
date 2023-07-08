@@ -1,26 +1,30 @@
-import { app, BrowserWindow, ipcMain, protocol } from 'electron'
+import { app, BrowserWindow, ipcMain, protocol, Tray } from 'electron'
 import path from 'node:path'
 import url from 'url'
 import {
   openAndValidateImages,
-  copyImagesToCacheAndProcessThumbnails
+  copyImagesToCacheAndProcessThumbnails,
+  setImage
 } from './appFunctions'
 import { checkCacheOrCreateItIfNotExists } from './appFunctions'
 import { testDB } from './database/db'
 import { readImagesFromDB } from './database/dbOperations'
+import { appDirectories } from './globals/globals'
 
-process.env.DIST = path.join(__dirname, '../dist-electron')
+process.env.DIST = path.join(__dirname, '../dist')
 process.env.PUBLIC = app.isPackaged
   ? process.env.DIST
   : path.join(process.env.DIST, '../public')
 
+let tray = null
 let win: BrowserWindow | null
 // 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
-const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL
+const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
 
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 function createWindow() {
   win = new BrowserWindow({
+    icon: path.join(process.env.PUBLIC, 'electron-vite.svg'),
     width: 1200,
     height: 600,
     minWidth: 940,
@@ -65,6 +69,18 @@ app.whenReady().then(() => {
   testDB()
 })
 
+app
+  .whenReady()
+  .then(() => {
+    tray = new Tray(`${appDirectories.systemHome}/Pictures/wallpaper.png`)
+    tray.setToolTip('Waypaper Manager')
+    tray.on('click', () => {
+      win?.isVisible() ? win.hide() : win?.show()
+    })
+  })
+  .catch((e) => console.error(e))
+
 ipcMain.handle('openFiles', openAndValidateImages)
 ipcMain.handle('handleOpenImages', copyImagesToCacheAndProcessThumbnails)
 ipcMain.handle('queryImages', readImagesFromDB)
+ipcMain.on('setImage', setImage)

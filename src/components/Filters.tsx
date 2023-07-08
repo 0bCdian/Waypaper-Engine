@@ -4,7 +4,7 @@ interface FiltersProps {
   onSearch: (event: ChangeEvent<HTMLInputElement>) => void
 }
 
-const debounceFilterSearch = (
+/* const debounceFilterSearch = (
   callBack: (text: string) => void,
   delay = 100
 ) => {
@@ -15,7 +15,7 @@ const debounceFilterSearch = (
       callBack(text)
     }, delay)
   }
-}
+} */
 
 const Filters: FC<FiltersProps> = ({ onSearch }) => {
   
