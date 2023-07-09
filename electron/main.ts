@@ -4,7 +4,8 @@ import url from 'url'
 import {
   openAndValidateImages,
   copyImagesToCacheAndProcessThumbnails,
-  setImage
+  setImage,
+  isDaemonRunning
 } from './appFunctions'
 import { checkCacheOrCreateItIfNotExists } from './appFunctions'
 import { testDB } from './database/db'
@@ -67,6 +68,7 @@ app.whenReady().then(() => {
 app.whenReady().then(() => {
   checkCacheOrCreateItIfNotExists()
   testDB()
+  isDaemonRunning()
 })
 
 app

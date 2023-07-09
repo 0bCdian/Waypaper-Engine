@@ -7,8 +7,7 @@ const sharp = require('sharp')
 import Image from './database/models'
 import { fileList, imagesObject } from './types/types'
 import { storeImagesInDB } from './database/dbOperations'
-import { exec } from 'child_process'
-import os from 'node:os'
+import { execSync, exec, execFile } from 'child_process'
 
 // for some reason imports are nuts and so I have to declare this array here otherwise everything breaks
 //TODO debug why the hell I need to have the array here and not import it from somewhere else.
@@ -194,14 +193,29 @@ export function setImage(
   _event: Electron.IpcMainInvokeEvent,
   imageName: string
 ) {
-  exec(
-    `${os.homedir()}/.local/bin/set_background.sh ${
-      appDirectories.imagesDir
-    }${imageName}`,
-    (error) => {
-      if (error) {
-        console.error(error)
+  try {
+    execSync(
+      `${__dirname}/bin/swww img ${appDirectories.imagesDir}${imageName}`
+    )
+  } catch (error) {
+    console.log(error)
+  }
+}
+
+export function isDaemonRunning() {
+  try {
+    exec(`ps -A | grep "swww-daemon"`, (_error, stdout, _stderr) => {
+      if (!(stdout.toLowerCase().indexOf('swww-daemon'.toLowerCase()) > -1)) {
+        try {
+          execFile(`${__dirname}/bin/swww-daemon`, ['&','disown'])
+        } catch (error) {
+          console.log(error)
+        }
+      } else {
+        console.log('Daemon already running')
       }
-    }
-  )
+    })
+  } catch (error) {
+    console.log(error)
+  }
 }
