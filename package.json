@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@formkit/auto-animate": "^0.7.0",
+    "electron-root-path": "^1.1.0",
     "pg": "^8.11.1",
     "pg-hstore": "^2.3.4",
     "react": "^18.2.0",
@@ -45,4 +46,5 @@
     "vite-plugin-electron-renderer": "^0.14.5"
   },
   "main": "dist-electron/main.js"
+  
 }

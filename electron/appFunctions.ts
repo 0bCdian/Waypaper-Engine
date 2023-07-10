@@ -1,13 +1,14 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { dialog } from 'electron'
-import fs from 'fs'
+import fs, { rmSync } from 'fs'
 import { copyFile } from 'fs/promises'
-import { appDirectories } from './globals/globals'
+import { appDirectories, swwwDefaults } from './globals/globals'
 const sharp = require('sharp')
 import Image from './database/models'
 import { fileList, imagesObject } from './types/types'
 import { storeImagesInDB } from './database/dbOperations'
-import { execSync, exec, execFile } from 'child_process'
+import { exec, execFile } from 'child_process'
+import { execPath } from './binaries'
 
 // for some reason imports are nuts and so I have to declare this array here otherwise everything breaks
 //TODO debug why the hell I need to have the array here and not import it from somewhere else.
@@ -193,29 +194,34 @@ export function setImage(
   _event: Electron.IpcMainInvokeEvent,
   imageName: string
 ) {
-  try {
-    execSync(
-      `${__dirname}/bin/swww img ${appDirectories.imagesDir}${imageName}`
-    )
-  } catch (error) {
-    console.log(error)
-  }
+  exec(
+    `${execPath}/swww img ${appDirectories.imagesDir}${imageName} ${swwwDefaults}`,
+    (error, _stdout, stderr) => {
+      if (error) console.log(error, stderr)
+    }
+  )
 }
 
 export function isDaemonRunning() {
-  try {
-    exec(`ps -A | grep "swww-daemon"`, (_error, stdout, _stderr) => {
-      if (!(stdout.toLowerCase().indexOf('swww-daemon'.toLowerCase()) > -1)) {
-        try {
-          execFile(`${__dirname}/bin/swww-daemon`, ['&','disown'])
-        } catch (error) {
-          console.log(error)
+  exec(`ps -A | grep "swww-daemon"`, (_error, stdout, _stderr) => {
+    if (!(stdout.toLowerCase().indexOf('swww-daemon'.toLowerCase()) > -1)) {
+      isSocketClean()
+      execFile(
+        `${execPath}/swww-daemon`,
+        ['&', 'disown'],
+        (error, stdout, stderr) => {
+          console.log(error, stdout, stderr)
         }
-      } else {
-        console.log('Daemon already running')
-      }
-    })
-  } catch (error) {
-    console.log(error)
+      )
+    } else {
+      console.log('Daemon already running')
+    }
+  })
+}
+
+function isSocketClean() {
+  const socketPath = '/run/user/1000/swww.socket'
+  if (fs.existsSync(socketPath)) {
+    rmSync(socketPath)
   }
 }

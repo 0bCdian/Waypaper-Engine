@@ -12,3 +12,6 @@ export const appDirectories = {
   mainDir: mainDirectory,
   imagesDir: imagesDir
 }
+
+export const swwwDefaults =
+  '--transition-bezier .43,1.19,1,.4 --transition-type grow --transition-fps 60 --transition-duration 1 --transition-pos top-right'

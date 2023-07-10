@@ -1,11 +1,11 @@
-import { app, BrowserWindow, ipcMain, protocol, Tray } from 'electron'
+import { app, BrowserWindow, ipcMain, protocol, Tray, Menu } from 'electron'
 import path from 'node:path'
 import url from 'url'
 import {
   openAndValidateImages,
   copyImagesToCacheAndProcessThumbnails,
   setImage,
-  isDaemonRunning
+  isDaemonRunning,
 } from './appFunctions'
 import { checkCacheOrCreateItIfNotExists } from './appFunctions'
 import { testDB } from './database/db'
@@ -48,13 +48,30 @@ function createWindow() {
     // win.loadFile('dist/index.html')
     win.loadFile(path.join(process.env.DIST, 'index.html'))
   }
+
+  win.on('close', (event) => {
+    event.preventDefault()
+    win?.hide()
+  })
 }
+const menu = [
+  {
+    label: 'File',
+    submenu: [
+      {
+        label: 'Quit',
+        click: () => app.exit()
+      }
+    ]
+  }
+]
 
-app.on('window-all-closed', () => {
-  win = null
+const mainMenu = Menu.buildFromTemplate(menu)
+
+app.whenReady().then(() => {
+  createWindow()
+  Menu.setApplicationMenu(mainMenu)
 })
-
-app.whenReady().then(createWindow)
 
 app.whenReady().then(() => {
   protocol.registerFileProtocol('atom', (request, callback) => {

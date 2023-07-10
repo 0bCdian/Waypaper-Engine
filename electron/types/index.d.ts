@@ -5,3 +5,4 @@ declare global {
     API_RENDERER: ELECTRON_API_TYPE
   }
 }
+
