@@ -3,11 +3,10 @@ import { dialog } from 'electron'
 import fs, { rmSync } from 'fs'
 import { copyFile } from 'fs/promises'
 import { appDirectories, swwwDefaults } from './globals/globals'
-const sharp = require('sharp')
 import Image from './database/models'
-import { fileList, imagesObject } from './types/types'
+import { fileList, imagesObject, playlist } from './types/types'
 import { storeImagesInDB } from './database/dbOperations'
-import { exec, execFile } from 'child_process'
+import { exec, execFile, fork } from 'child_process'
 import { execPath } from './binaries'
 
 // for some reason imports are nuts and so I have to declare this array here otherwise everything breaks
@@ -76,6 +75,7 @@ async function createCacheThumbnail(
   filePathSource: string,
   destinationFilename: string
 ) {
+  const sharp = require('sharp')
   const [name] = destinationFilename.split('.')
   const fileDestination = appDirectories.thumbnails + name + '.webp'
   if (destinationFilename) {
@@ -125,14 +125,19 @@ export async function checkCacheOrCreateItIfNotExists() {
     createFolders(
       appDirectories.mainDir,
       appDirectories.imagesDir,
-      appDirectories.thumbnails
+      appDirectories.thumbnails,
+      appDirectories.playlistsDir
     )
   } else {
     if (!fs.existsSync(appDirectories.imagesDir)) {
-      deleteFolders(appDirectories.thumbnails)
+      deleteFolders(appDirectories.thumbnails, appDirectories.playlistsDir)
       //
       await Image.sync({ force: true })
-      createFolders(appDirectories.imagesDir, appDirectories.thumbnails)
+      createFolders(
+        appDirectories.imagesDir,
+        appDirectories.thumbnails,
+        appDirectories.playlistsDir
+      )
     }
   }
 }
@@ -194,12 +199,14 @@ export function setImage(
   _event: Electron.IpcMainInvokeEvent,
   imageName: string
 ) {
-  exec(
-    `${execPath}/swww img ${appDirectories.imagesDir}${imageName} ${swwwDefaults}`,
-    (error, _stdout, stderr) => {
-      if (error) console.log(error, stderr)
+  const options = [...swwwDefaults]
+  console.log(options)
+  options.push(`${appDirectories.imagesDir}${imageName}`)
+  execFile(`${execPath}/swww`, options, (error, stdout, stderr) => {
+    if (error) {
+      console.log(error, stderr, stdout)
     }
-  )
+  })
 }
 
 export function isDaemonRunning() {
@@ -224,4 +231,21 @@ function isSocketClean() {
   if (fs.existsSync(socketPath)) {
     rmSync(socketPath)
   }
+}
+
+function initPlaylist(
+  playlistObject: playlist,
+  swwwConfig = swwwDefaults,
+  swwwBin: string,
+  childPathFile: string
+) {
+  const messageForChild = {
+    playlistObject,
+    swwwBin,
+    swwwConfig,
+    appDirectories
+  }
+  const child = fork(childPathFile)
+  child.send(messageForChild)
+  return child
 }

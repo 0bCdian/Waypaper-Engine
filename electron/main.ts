@@ -5,7 +5,7 @@ import {
   openAndValidateImages,
   copyImagesToCacheAndProcessThumbnails,
   setImage,
-  isDaemonRunning,
+  isDaemonRunning
 } from './appFunctions'
 import { checkCacheOrCreateItIfNotExists } from './appFunctions'
 import { testDB } from './database/db'
@@ -31,9 +31,12 @@ function createWindow() {
     minWidth: 940,
     minHeight: 560,
     frame: true,
+    autoHideMenuBar: true,
+    show: false,
+    backgroundColor: '#202020',
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
-      nodeIntegration: true
+      sandbox: false
     }
   })
 
@@ -48,7 +51,9 @@ function createWindow() {
     // win.loadFile('dist/index.html')
     win.loadFile(path.join(process.env.DIST, 'index.html'))
   }
-
+  win.once('ready-to-show', () => {
+    win?.show()
+  })
   win.on('close', (event) => {
     event.preventDefault()
     win?.hide()
@@ -63,6 +68,16 @@ const menu = [
         click: () => app.exit()
       }
     ]
+  },
+  {
+    label: 'Toggle Developer Tools',
+    accelerator: (function () {
+      if (process.platform == 'darwin') return 'Alt+Command+I'
+      else return 'Ctrl+Shift+I'
+    })(),
+    click: function () {
+      if (win?.isFocused()) win.webContents.toggleDevTools()
+    }
   }
 ]
 
@@ -91,7 +106,7 @@ app.whenReady().then(() => {
 app
   .whenReady()
   .then(() => {
-    tray = new Tray(`${appDirectories.systemHome}/Pictures/wallpaper.png`)
+    tray = new Tray(`/home/obsy/Pictures/wallpaper.png`)
     tray.setToolTip('Waypaper Manager')
     tray.on('click', () => {
       win?.isVisible() ? win.hide() : win?.show()

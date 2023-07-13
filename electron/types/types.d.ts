@@ -7,5 +7,10 @@ export interface imagesObject {
 export interface imageModel {
   id: number
   imageName: string
-  tags: string | string[]
+}
+export interface playlist {
+  name: string
+  imagesList: string[]
+  currentImageIndex: number
+  interval: number
 }

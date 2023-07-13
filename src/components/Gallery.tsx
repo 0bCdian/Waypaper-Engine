@@ -9,7 +9,8 @@ import Invisible from './invisible'
 interface GalleryProps {
   filePathList: ImagesArray
   skeletonsToShow: string[]
-  onClick: () => void
+  setSkeletonsToShow: React.Dispatch<React.SetStateAction<string[]>>
+  setImages: React.Dispatch<React.SetStateAction<ImagesArray>>
 }
 
 function debounce(callback: (text: string) => void, delay: number) {
@@ -25,7 +26,8 @@ function debounce(callback: (text: string) => void, delay: number) {
 export const Gallery: FC<GalleryProps> = ({
   filePathList,
   skeletonsToShow,
-  onClick
+  setSkeletonsToShow,
+  setImages
 }) => {
   const [searchFilter, setSearchFilter] = useState<string>('')
   const [parent] = useAutoAnimate()
@@ -64,10 +66,14 @@ export const Gallery: FC<GalleryProps> = ({
       )
     })
     return (
-      <>
+      <div>
         <Filters onSearch={onSearch} />
-        <div className='overflow-y-scroll h-[90vh] scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-track-[#202020] scrollbar-thumb-stone-100 w-[85%] m-auto max-[639px]:flex shadow-2xl absolute top-24 left-40'>
-          <AddImagesCard onClick={onClick} alone={false} />
+        <div className='overflow-y-auto h-[90vh] scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-track-transparent scrollbar-thumb-stone-100 w-[85%] m-auto  absolute top-24 left-40'>
+          <AddImagesCard
+            setImages={setImages}
+            setSkeletonsToShow={setSkeletonsToShow}
+            alone={false}
+          />
           <div
             className='m-auto sm:grid sm:auto-cols-auto grid-cols-[repeat(auto-fill,minmax(300px,1fr))]'
             ref={parent}
@@ -77,13 +83,17 @@ export const Gallery: FC<GalleryProps> = ({
             {imagesToShow}
           </div>
         </div>
-      </>
+      </div>
     )
   }
   return (
     <div className='flex justify-center h-screen'>
       <div className='m-auto'>
-        <AddImagesCard onClick={onClick} alone={true} />
+        <AddImagesCard
+          setImages={setImages}
+          setSkeletonsToShow={setSkeletonsToShow}
+          alone={true}
+        />
       </div>
     </div>
   )

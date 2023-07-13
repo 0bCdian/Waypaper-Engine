@@ -11,6 +11,11 @@
       "from": "dist-electron/bin",
       "to": "resources/bin",
       "filter": ["**/*"]
+    },
+    {
+      "from": "daemon",
+      "to": "resources/bin",
+      "filter": ["**/*"]
     }
   ],
   "mac": {

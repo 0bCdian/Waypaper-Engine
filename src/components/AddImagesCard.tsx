@@ -1,17 +1,41 @@
-import { type FC } from 'react'
+import { useState, type FC } from 'react'
 import SvgComponent from './addImagesIcon'
+import { ImagesArray, imagesObject } from '../types/rendererTypes'
 
 interface AddImagesCardProps {
-  onClick: () => void
   alone: boolean
+  setSkeletonsToShow: React.Dispatch<React.SetStateAction<string[]>>
+  setImages: React.Dispatch<React.SetStateAction<ImagesArray>>
 }
 
-export const AddImagesCard: FC<AddImagesCardProps> = ({ onClick, alone }) => {
+export const AddImagesCard: FC<AddImagesCardProps> = ({
+  alone,
+  setSkeletonsToShow,
+  setImages
+}) => {
+  const [isActive, setActiveState] = useState<boolean>(true)
+  const openFiles = (): void => {
+    setActiveState(false)
+    window.API_RENDERER.openFiles()
+      .then((imagesObject: imagesObject) => {
+        setActiveState(true)
+        setSkeletonsToShow(imagesObject.fileNames)
+        window.API_RENDERER.handleOpenImages(imagesObject).then(() => {
+          window.API_RENDERER.queryImages().then((data) => {
+            setImages(data)
+            setSkeletonsToShow([])
+          })
+        })
+      })
+      .catch((error) => {
+        console.error(error)
+      })
+  }
   const styles = alone
     ? 'relative rounded-lg max-w-fit mb-4 hover:bg-[#323232] active:scale-95 transition-all ease-in-out '
     : 'absolute z-10 rounded-lg bg-[#323232] hover:bg-[#424242] active:scale-95 transition-all max-w-fit mb-4'
   return (
-    <div className={styles} onClick={onClick}>
+    <div className={styles} onClick={isActive ? openFiles : undefined}>
       <div className=' flex justify-center  rounded-lg min-w-[300px] min-h-[200px]'>
         <SvgComponent />
       </div>

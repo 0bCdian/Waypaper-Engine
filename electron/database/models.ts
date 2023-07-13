@@ -12,9 +12,6 @@ Image.init(
     imageName: {
       type: DataTypes.STRING,
       allowNull: false
-    },
-    tags: {
-      type: DataTypes.BLOB
     }
   },
   {

@@ -18,10 +18,9 @@ interface FiltersProps {
 } */
 
 const Filters: FC<FiltersProps> = ({ onSearch }) => {
-  
   return (
-    <div className='m-auto flex'>
-      <div className='relative left-52 top-10'>
+    <div className='m-auto relative top-8 left-40'>
+      <div className=''>
         <div className='absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none'>
           <svg
             aria-hidden='true'
@@ -42,7 +41,7 @@ const Filters: FC<FiltersProps> = ({ onSearch }) => {
           onChange={onSearch}
           type='text'
           id='default-search'
-          className='w-[30%] pl-10 h-12 px-4 text-sm text-gray-800 bg-gray-100 border border-gray-200 focus:ring-teal-700 rounded-full transition-all duration-300 xl: focus:w-[50%] focus:outline-none focus:ring-2 focus:ring-opacity-100'
+          className='w-[10%] pl-10 h-12 px-4 text-sm text-gray-800 bg-gray-100 border border-gray-200 focus:ring-teal-700 rounded-full transition-all duration-300 xl: focus:w-[15%] focus:outline-none focus:ring-2 focus:ring-opacity-100'
           placeholder='Search'
           required
         />
