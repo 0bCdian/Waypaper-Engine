@@ -1,23 +1,23 @@
-import { ChangeEvent, type FC } from 'react'
-
+import { ChangeEvent, useState, type FC, useEffect } from 'react'
+import useDebounce from '../hooks/useDebounce'
 interface FiltersProps {
-  onSearch: (event: ChangeEvent<HTMLInputElement>) => void
+  setSearchFilter: (value: React.SetStateAction<string>) => void
 }
 
-/* const debounceFilterSearch = (
-  callBack: (text: string) => void,
-  delay = 100
-) => {
-  let timer: any
-  return (text: string) => {
-    if (timer) clearTimeout(timer)
-    timer = setTimeout(() => {
-      callBack(text)
-    }, delay)
+const Filters: FC<FiltersProps> = ({ setSearchFilter }) => {
+  const [inputSearch, setInputSearch] = useState('')
+  const onTextChange = (event: ChangeEvent<HTMLInputElement>) => {
+    const target = event.target
+    if (target !== null) {
+      const text = target.value
+      setInputSearch(text)
+    }
   }
-} */
+  const debouncedSearch = useDebounce(inputSearch, 500)
+  useEffect(() => {
+    setSearchFilter(debouncedSearch)
+  }, [debouncedSearch])
 
-const Filters: FC<FiltersProps> = ({ onSearch }) => {
   return (
     <div className='m-auto relative top-8 left-40'>
       <div className=''>
@@ -38,7 +38,7 @@ const Filters: FC<FiltersProps> = ({ onSearch }) => {
           </svg>
         </div>
         <input
-          onChange={onSearch}
+          onChange={onTextChange}
           type='text'
           id='default-search'
           className='w-[10%] pl-10 h-12 px-4 text-sm text-gray-800 bg-gray-100 border border-gray-200 focus:ring-teal-700 rounded-full transition-all duration-300 xl: focus:w-[15%] focus:outline-none focus:ring-2 focus:ring-opacity-100'

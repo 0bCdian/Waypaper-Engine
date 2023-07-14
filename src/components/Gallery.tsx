@@ -1,27 +1,16 @@
 import { ImageCard } from './ImageCard'
-import { type FC, ChangeEvent, useState } from 'react'
+import { type FC, useState } from 'react'
 import { Skeleton } from './Skeleton'
 import { type ImagesArray } from '../types/rendererTypes'
 import { AddImagesCard } from './AddImagesCard'
 import Filters from './Filters'
-import { useAutoAnimate } from '@formkit/auto-animate/react'
-import Invisible from './invisible'
+
 import PlayListTrack from './PlaylistTrack'
 interface GalleryProps {
   filePathList: ImagesArray
   skeletonsToShow: string[]
   setSkeletonsToShow: React.Dispatch<React.SetStateAction<string[]>>
   setImages: React.Dispatch<React.SetStateAction<ImagesArray>>
-}
-
-function debounce(callback: (text: string) => void, delay: number) {
-  let timer: NodeJS.Timeout
-  return (text: string) => {
-    if (timer) clearTimeout(timer)
-    timer = setTimeout(() => {
-      callback(text)
-    }, delay)
-  }
 }
 
 export const Gallery: FC<GalleryProps> = ({
@@ -31,16 +20,7 @@ export const Gallery: FC<GalleryProps> = ({
   setImages
 }) => {
   const [searchFilter, setSearchFilter] = useState<string>('')
-  const debounceSetSearch = debounce((text: string) => {
-    setSearchFilter(text)
-  }, 200)
-  const onSearch = (event: ChangeEvent<HTMLInputElement>): void => {
-    const target = event.target
-    if (target !== null) {
-      const text = target.value
-      debounceSetSearch(text)
-    }
-  }
+
   if (filePathList.length > 0 || skeletonsToShow.length > 0) {
     const imagesToShow = filePathList
       .filter((image) =>
@@ -67,7 +47,7 @@ export const Gallery: FC<GalleryProps> = ({
     })
     return (
       <div>
-        <Filters onSearch={onSearch} />
+        <Filters setSearchFilter={setSearchFilter} />
         <div className='overflow-y-auto scroll-smooth h-[84vh] scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-track-transparent scrollbar-thumb-stone-100 w-[85%] m-auto  absolute top-24 left-40'>
           <div className='m-auto sm:grid sm:auto-cols-auto grid-cols-[repeat(auto-fill,minmax(300px,1fr))]'>
             <AddImagesCard
