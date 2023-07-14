@@ -9,7 +9,6 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@formkit/auto-animate": "^0.7.0",
     "electron-root-path": "^1.1.0",
     "pg": "^8.11.1",
     "pg-hstore": "^2.3.4",

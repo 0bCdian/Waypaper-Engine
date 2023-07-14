@@ -80,11 +80,11 @@ async function createCacheThumbnail(
   const fileDestination = appDirectories.thumbnails + name + '.webp'
   if (destinationFilename) {
     try {
-      await sharp(filePathSource, { animated: true })
+      await sharp(filePathSource, { animated: true, limitInputPixels: false })
         .resize(300, 200, {
           fit: 'cover'
         })
-        .webp({ quality: 40, force: true, lossless: false, effort: 6 })
+        .webp({ quality: 60, force: true, effort: 6 })
         .toFile(fileDestination)
         .then((info: any) => {
           console.log(info)

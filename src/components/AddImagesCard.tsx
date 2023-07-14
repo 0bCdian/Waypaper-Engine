@@ -33,13 +33,13 @@ export const AddImagesCard: FC<AddImagesCardProps> = ({
   }
   const styles = alone
     ? 'relative rounded-lg max-w-fit mb-4 hover:bg-[#323232] active:scale-95 transition-all ease-in-out '
-    : 'absolute z-10 rounded-lg bg-[#323232] hover:bg-[#424242] active:scale-95 transition-all max-w-fit mb-4'
+    : 'relative rounded-lg bg-[#323232] hover:bg-[#424242] active:scale-95 transition-all max-w-fit mb-4'
   return (
     <div className={styles} onClick={isActive ? openFiles : undefined}>
       <div className=' flex justify-center  rounded-lg min-w-[300px] min-h-[200px]'>
         <SvgComponent />
       </div>
-      <p className='absolute top-[65%] left-[35%] font-bold text-[#ebdbb2] '>
+      <p className=' absolute top-[65%] left-[35%] font-bold text-[#ebdbb2] '>
         Add images
       </p>
     </div>

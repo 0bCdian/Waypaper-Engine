@@ -31,7 +31,6 @@ export const Gallery: FC<GalleryProps> = ({
   setImages
 }) => {
   const [searchFilter, setSearchFilter] = useState<string>('')
-  const [parent] = useAutoAnimate()
   const debounceSetSearch = debounce((text: string) => {
     setSearchFilter(text)
   }, 200)
@@ -70,16 +69,12 @@ export const Gallery: FC<GalleryProps> = ({
       <div>
         <Filters onSearch={onSearch} />
         <div className='overflow-y-auto scroll-smooth h-[84vh] scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-track-transparent scrollbar-thumb-stone-100 w-[85%] m-auto  absolute top-24 left-40'>
-          <AddImagesCard
-            setImages={setImages}
-            setSkeletonsToShow={setSkeletonsToShow}
-            alone={false}
-          />
-          <div
-            className='m-auto sm:grid sm:auto-cols-auto grid-cols-[repeat(auto-fill,minmax(300px,1fr))]'
-            ref={parent}
-          >
-            <Invisible />
+          <div className='m-auto sm:grid sm:auto-cols-auto grid-cols-[repeat(auto-fill,minmax(300px,1fr))]'>
+            <AddImagesCard
+              setImages={setImages}
+              setSkeletonsToShow={setSkeletonsToShow}
+              alone={false}
+            />
             {skeletons.length > 0 ? skeletons : ''}
             {imagesToShow}
           </div>
