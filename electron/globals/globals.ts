@@ -23,6 +23,5 @@ export const swwwDefaults = [
   '1',
   '--transition-type',
   'wipe',
-  '--no-resize'
 ]
 //.43,1.19,1,.4

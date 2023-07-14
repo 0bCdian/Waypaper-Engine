@@ -23,7 +23,6 @@ const validImageExtensions = [
   'farbfeld'
 ]
 
-
 function openImagesFromFilePicker() {
   const file: fileList = dialog.showOpenDialogSync({
     properties: ['openFile', 'multiSelections'],
@@ -32,8 +31,6 @@ function openImagesFromFilePicker() {
   }) ?? ['']
   return file
 }
-
-
 
 export async function copyImagesToCacheAndProcessThumbnails(
   _event: Electron.IpcMainInvokeEvent,
@@ -87,7 +84,7 @@ async function createCacheThumbnail(
         .resize(300, 200, {
           fit: 'cover'
         })
-        .webp({ quality: 50, force: true, lossless: true, effort: 6 })
+        .webp({ quality: 40, force: true, lossless: false, effort: 6 })
         .toFile(fileDestination)
         .then((info: any) => {
           console.log(info)
