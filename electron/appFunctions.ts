@@ -1,18 +1,17 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { dialog } from 'electron'
-import fs, { rmSync } from 'fs'
-import { copyFile } from 'fs/promises'
+import fs, { copyFileSync, rmSync } from 'fs'
 import { appDirectories, swwwDefaults } from './globals/globals'
 import Image from './database/models'
 import { fileList, imagesObject, playlist } from './types/types'
 import { storeImagesInDB } from './database/dbOperations'
 import { exec, execFile, fork } from 'child_process'
 import { execPath } from './binaries'
-
 // for some reason imports are nuts and so I have to declare this array here otherwise everything breaks
 //TODO debug why the hell I need to have the array here and not import it from somewhere else.
 const validImageExtensions = [
   'jpeg',
+  'jpg',
   'png',
   'gif',
   'bmp',
@@ -23,6 +22,11 @@ const validImageExtensions = [
   'farbfeld'
 ]
 
+const resolutionTarget = {
+  x: 1920,
+  y: 1080
+}
+
 function openImagesFromFilePicker() {
   const file: fileList = dialog.showOpenDialogSync({
     properties: ['openFile', 'multiSelections'],
@@ -30,6 +34,38 @@ function openImagesFromFilePicker() {
     defaultPath: appDirectories.systemHome
   }) ?? ['']
   return file
+}
+
+async function copyAndOptimizeFiles(
+  imageSource: string,
+  imageDestinationName: string
+) {
+  const name = imageDestinationName.split('/').at(-1)
+  if (name) {
+    const [imageWithoutExtension, extension] = name.split('.')
+    if (imageWithoutExtension && !(extension === 'gif')) {
+      const sharp = require('sharp')
+      try {
+        await sharp(imageSource)
+          .resize(resolutionTarget.x, resolutionTarget.y)
+          .webp({ quality: 70, force: true, lossless: true })
+          .toFile(appDirectories.imagesDir + imageWithoutExtension + '.webp')
+          .then((info: any) => {
+            console.log(info)
+          })
+      } catch (error) {
+        console.log(error)
+        throw error
+      }
+    } else if (imageWithoutExtension && extension === 'gif') {
+      try {
+        copyFileSync(imageSource, appDirectories.imagesDir + name)
+      } catch (error) {
+        console.log(error)
+        throw error
+      }
+    }
+  }
 }
 
 export async function copyImagesToCacheAndProcessThumbnails(
@@ -44,7 +80,7 @@ export async function copyImagesToCacheAndProcessThumbnails(
   )
   for (let currentImage = 0; currentImage < numberOfItems; currentImage++) {
     const currentOperation: Promise<string> = new Promise(async (resolve) => {
-      await copyFile(
+      await copyAndOptimizeFiles(
         imagePaths[currentImage],
         destinationFullPath[currentImage]
       ).then(async () => {
@@ -82,10 +118,9 @@ async function createCacheThumbnail(
     try {
       await sharp(filePathSource, { animated: true })
         .resize(300, 200, {
-          kernel: sharp.kernel.nearest,
           fit: 'cover'
         })
-        .webp({ quality: 80, force: true })
+        .webp({ quality: 50, force: true, lossless: true, effort: 6 })
         .toFile(fileDestination)
         .then((info: any) => {
           console.log(info)
@@ -199,12 +234,19 @@ export function setImage(
   _event: Electron.IpcMainInvokeEvent,
   imageName: string
 ) {
-  const options = [...swwwDefaults]
-  console.log(options)
-  options.push(`${appDirectories.imagesDir}${imageName}`)
-  execFile(`${execPath}/swww`, options, (error, stdout, stderr) => {
-    if (error) {
-      console.log(error, stderr, stdout)
+  exec(`pgrep '^swww$'`, (_error, stdout, _stderr) => {
+    if (!parseInt(stdout)) {
+      const options = [...swwwDefaults]
+      options.push(`${appDirectories.imagesDir}${imageName}`)
+      execFile(`${execPath}/swww`, options, (error, stdout, stderr) => {
+        if (error) {
+          console.log(error, stderr, stdout)
+        }
+      })
+    } else {
+      setTimeout(() => {
+        setImage(_event, imageName)
+      }, 3000)
     }
   })
 }

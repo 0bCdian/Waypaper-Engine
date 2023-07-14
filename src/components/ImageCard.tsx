@@ -15,10 +15,11 @@ export const ImageCard: FC<ImageCardProps> = ({ imageName }) => {
   return (
     <div
       onDoubleClick={setImage}
-      className='relative rounded-lg bg-transparent shadow-2xl  max-w-fit mb-4'
+      className=' group relative rounded-lg bg-transparent shadow-2xl  max-w-fit mb-4 overflow-hidden'
     >
+      <input type="checkbox" className='absolute ' />
       <img
-        className='rounded-lg min-w-full'
+        className='rounded-lg min-w-full transform-gpu group-hover:scale-110 group-hover:object-center transition-all'
         src={imageNameFilePath}
         alt={imageName}
         onError={({ currentTarget }) => {

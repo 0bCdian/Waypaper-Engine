@@ -46,5 +46,4 @@
     "vite-plugin-electron-renderer": "^0.14.5"
   },
   "main": "dist-electron/main.js"
-  
 }

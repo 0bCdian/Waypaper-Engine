@@ -68,7 +68,7 @@ export const Gallery: FC<GalleryProps> = ({
     return (
       <div>
         <Filters onSearch={onSearch} />
-        <div className='overflow-y-auto h-[90vh] scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-track-transparent scrollbar-thumb-stone-100 w-[85%] m-auto  absolute top-24 left-40'>
+        <div className='overflow-y-auto scroll-smooth h-[90vh] scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-track-transparent scrollbar-thumb-stone-100 w-[85%] m-auto  absolute top-24 left-40'>
           <AddImagesCard
             setImages={setImages}
             setSkeletonsToShow={setSkeletonsToShow}
