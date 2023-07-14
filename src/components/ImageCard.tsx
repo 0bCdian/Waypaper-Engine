@@ -14,10 +14,17 @@ export const ImageCard: FC<ImageCardProps> = ({ imageName }) => {
   }
   return (
     <div
+      draggable
       onDoubleClick={setImage}
       className=' group relative rounded-lg bg-transparent shadow-2xl  max-w-fit mb-4 overflow-hidden'
     >
-      <input type="checkbox" className='absolute ' />
+      <input
+        type='checkbox'
+        className='absolute z-10 right-2 top-1 rounded-2xl'
+        onChange={() => {
+          console.log('clicked')
+        }}
+      />
       <img
         className='rounded-lg min-w-full transform-gpu group-hover:scale-110 group-hover:object-center transition-all'
         src={imageNameFilePath}

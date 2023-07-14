@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { dialog } from 'electron'
-import fs, { copyFileSync, rmSync } from 'fs'
+import fs, { rmSync } from 'fs'
+import { copyFile } from 'fs/promises'
 import { appDirectories, swwwDefaults } from './globals/globals'
 import Image from './database/models'
 import { fileList, imagesObject, playlist } from './types/types'
@@ -22,10 +23,6 @@ const validImageExtensions = [
   'farbfeld'
 ]
 
-const resolutionTarget = {
-  x: 1920,
-  y: 1080
-}
 
 function openImagesFromFilePicker() {
   const file: fileList = dialog.showOpenDialogSync({
@@ -36,37 +33,7 @@ function openImagesFromFilePicker() {
   return file
 }
 
-async function copyAndOptimizeFiles(
-  imageSource: string,
-  imageDestinationName: string
-) {
-  const name = imageDestinationName.split('/').at(-1)
-  if (name) {
-    const [imageWithoutExtension, extension] = name.split('.')
-    if (imageWithoutExtension && !(extension === 'gif')) {
-      const sharp = require('sharp')
-      try {
-        await sharp(imageSource)
-          .resize(resolutionTarget.x, resolutionTarget.y)
-          .webp({ quality: 70, force: true, lossless: true })
-          .toFile(appDirectories.imagesDir + imageWithoutExtension + '.webp')
-          .then((info: any) => {
-            console.log(info)
-          })
-      } catch (error) {
-        console.log(error)
-        throw error
-      }
-    } else if (imageWithoutExtension && extension === 'gif') {
-      try {
-        copyFileSync(imageSource, appDirectories.imagesDir + name)
-      } catch (error) {
-        console.log(error)
-        throw error
-      }
-    }
-  }
-}
+
 
 export async function copyImagesToCacheAndProcessThumbnails(
   _event: Electron.IpcMainInvokeEvent,
@@ -80,7 +47,7 @@ export async function copyImagesToCacheAndProcessThumbnails(
   )
   for (let currentImage = 0; currentImage < numberOfItems; currentImage++) {
     const currentOperation: Promise<string> = new Promise(async (resolve) => {
-      await copyAndOptimizeFiles(
+      await copyFile(
         imagePaths[currentImage],
         destinationFullPath[currentImage]
       ).then(async () => {

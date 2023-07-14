@@ -17,14 +17,12 @@ export const appDirectories = {
 
 export const swwwDefaults = [
   'img',
-  '--transition-bezier',
-  '.43,1.19,1,.4',
-  '--transition-type',
-  'grow',
   '--transition-fps',
   '60',
   '--transition-duration',
   '1',
-  '--transition-pos',
-  'top-right'
+  '--transition-type',
+  'wipe',
+  '--no-resize'
 ]
+//.43,1.19,1,.4

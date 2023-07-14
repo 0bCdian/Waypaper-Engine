@@ -18,7 +18,7 @@ const App: FC = () => {
   }, [])
 
   return (
-    <div className='relative '>
+    <div className=''>
       <Gallery
         filePathList={images}
         skeletonsToShow={skeletonsToShow}

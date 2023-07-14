@@ -2,9 +2,8 @@ import { imageModel } from '../types/types'
 import Image from './models'
 export async function storeImagesInDB(images: string[]) {
   const imagesToStore = images.map((image) => {
-    const [newName, extension] = image.split('.')
     const imageInstance = {
-      imageName: extension === 'gif' ? image : newName + '.webp'
+      imageName: image
     }
     return imageInstance
   })
