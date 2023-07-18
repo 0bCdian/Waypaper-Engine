@@ -1,36 +1,24 @@
-import { type FC, useState } from 'react'
+import { type FC } from 'react'
 
-interface miniImageProps {
-  src: string
-  id: number
+interface MiniImageCardProps {
+  imageName: string
 }
 
-const miniImage: FC<miniImageProps> = ({ src, id }) => {
+ 
+const MiniImageCard: FC<MiniImageCardProps> = ({ imageName }) => {
+  const imageSource =
+    'atom://' + window.API_RENDERER.thumbnailDirectory + imageName + '.webp'
   return (
-    <div draggable key={id} className='w-max cursor-move'>
-      <p></p>
-      <img src={src} alt={src} className='w-[50px] h-[50px]' />
+    <div>
+      <img src={imageSource} alt='' />
     </div>
   )
 }
 
 const PlayListTrack = () => {
-  const [isHovered, setHover] = useState<boolean>(false)
-  const [playlistItems, setPlaylistItems] = useState<string[]>([])
-
   return (
-    <div
-      className='bg-white absolute top-[95vh] text-stone-950 w-[100%] transition-all hover:p-8'
-      onMouseOver={() => {
-        setHover(true)
-        console.log('setTrue')
-      }}
-      onMouseOut={() => {
-        setHover(false)
-        console.log('setFalse')
-      }}
-    >
-      <div>box</div>
+    <div className='bg-white absolute top-[95vh] text-stone-950 w-[100%] transition-all h-[15%]'>
+      <MiniImageCard imageName='arch' />
     </div>
   )
 }

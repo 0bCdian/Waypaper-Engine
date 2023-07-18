@@ -4,8 +4,6 @@ import { Skeleton } from './Skeleton'
 import { type ImagesArray } from '../types/rendererTypes'
 import { AddImagesCard } from './AddImagesCard'
 import Filters from './Filters'
-
-import PlayListTrack from './PlaylistTrack'
 interface GalleryProps {
   filePathList: ImagesArray
   skeletonsToShow: string[]
@@ -59,7 +57,7 @@ export const Gallery: FC<GalleryProps> = ({
             {imagesToShow}
           </div>
         </div>
-        <PlayListTrack />
+       
       </div>
     )
   }

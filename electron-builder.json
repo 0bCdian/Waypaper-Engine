@@ -8,7 +8,7 @@
   "files": ["dist-electron", "dist"],
   "extraFiles": [
     {
-      "from": "dist-electron/bin",
+      "from": "electron/bin",
       "to": "resources/bin",
       "filter": ["**/*"]
     },

@@ -4,9 +4,9 @@ import fs, { rmSync } from 'fs'
 import { copyFile } from 'fs/promises'
 import { appDirectories, swwwDefaults } from './globals/globals'
 import Image from './database/models'
-import { fileList, imagesObject, playlist } from './types/types'
+import { fileList, imagesObject } from './types/types'
 import { storeImagesInDB } from './database/dbOperations'
-import { exec, execFile, fork } from 'child_process'
+import { exec, execFile } from 'child_process'
 import { execPath } from './binaries'
 // for some reason imports are nuts and so I have to declare this array here otherwise everything breaks
 //TODO debug why the hell I need to have the array here and not import it from somewhere else.
@@ -239,7 +239,7 @@ function isSocketClean() {
   }
 }
 
-function initPlaylist(
+/* function initPlaylist(
   playlistObject: playlist,
   swwwConfig = swwwDefaults,
   swwwBin: string,
@@ -254,4 +254,4 @@ function initPlaylist(
   const child = fork(childPathFile)
   child.send(messageForChild)
   return child
-}
+} */

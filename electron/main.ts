@@ -10,7 +10,6 @@ import {
 import { checkCacheOrCreateItIfNotExists } from './appFunctions'
 import { testDB } from './database/db'
 import { readImagesFromDB } from './database/dbOperations'
-import { appDirectories } from './globals/globals'
 
 process.env.DIST = path.join(__dirname, '../dist')
 process.env.PUBLIC = app.isPackaged
