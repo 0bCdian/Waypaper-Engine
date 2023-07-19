@@ -5,13 +5,15 @@ import { ImagesArray, imagesObject } from '../types/rendererTypes'
 interface AddImagesCardProps {
   alone: boolean
   setSkeletonsToShow: React.Dispatch<React.SetStateAction<string[]>>
-  setImages: React.Dispatch<React.SetStateAction<ImagesArray>>
+  setImagesArray: React.Dispatch<React.SetStateAction<ImagesArray>>
+  imagesArrayRef: React.MutableRefObject<ImagesArray>
 }
 
 export const AddImagesCard: FC<AddImagesCardProps> = ({
   alone,
   setSkeletonsToShow,
-  setImages
+  setImagesArray,
+  imagesArrayRef
 }) => {
   const [isActive, setActiveState] = useState<boolean>(true)
   const openFiles = (): void => {
@@ -22,7 +24,8 @@ export const AddImagesCard: FC<AddImagesCardProps> = ({
         setSkeletonsToShow(imagesObject.fileNames)
         window.API_RENDERER.handleOpenImages(imagesObject).then(() => {
           window.API_RENDERER.queryImages().then((data) => {
-            setImages(data)
+            setImagesArray(data)
+            imagesArrayRef.current = data
             setSkeletonsToShow([])
           })
         })
@@ -39,7 +42,7 @@ export const AddImagesCard: FC<AddImagesCardProps> = ({
       <div className=' flex justify-center  rounded-lg min-w-[300px] min-h-[200px]'>
         <SvgComponent />
       </div>
-      <p className=' absolute top-[65%] left-[35%] font-bold text-[#ebdbb2] '>
+      <p className='absolute top-[65%] left-[35%] font-bold text-[#ebdbb2]'>
         Add images
       </p>
     </div>

@@ -1,26 +1,26 @@
-import { type FC } from 'react'
+import { DndContext, closestCenter } from '@dnd-kit/core'
+import { SortableContext } from '@dnd-kit/sortable'
+import { useState, useRef } from 'react'
 
-interface MiniImageCardProps {
-  imageName: string
+interface PlaylistTrackProps {
+  imagesInPlaylist: string[]
 }
 
- 
-const MiniImageCard: FC<MiniImageCardProps> = ({ imageName }) => {
-  const imageSource =
-    'atom://' + window.API_RENDERER.thumbnailDirectory + imageName + '.webp'
+function PlaylistTrack({ imagesInPlaylist }: PlaylistTrackProps) {
+  const [imagesInPlaylist, setImagesInPlaylist] =
+    useState<string[]>(imagesInPlaylist)
+  const handleDragEnd = (event) => {}
+
   return (
-    <div>
-      <img src={imageSource} alt='' />
+    <div className='absolute bottom-0 left-52'>
+      <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={}>
+          <ul>
+            <li>1</li>
+          </ul>
+        </SortableContext>
+      </DndContext>
     </div>
   )
 }
-
-const PlayListTrack = () => {
-  return (
-    <div className='bg-white absolute top-[95vh] text-stone-950 w-[100%] transition-all h-[15%]'>
-      <MiniImageCard imageName='arch' />
-    </div>
-  )
-}
-
-export default PlayListTrack
+export default PlaylistTrack
