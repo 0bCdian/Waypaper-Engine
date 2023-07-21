@@ -8,6 +8,7 @@ import { fileList, imagesObject } from './types/types'
 import { storeImagesInDB } from './database/dbOperations'
 import { exec, execFile } from 'child_process'
 import { execPath } from './binaries'
+import { join, extname , basename} from 'path'
 // for some reason imports are nuts and so I have to declare this array here otherwise everything breaks
 //TODO debug why the hell I need to have the array here and not import it from somewhere else.
 const validImageExtensions = [
@@ -36,77 +37,55 @@ export async function copyImagesToCacheAndProcessThumbnails(
   _event: Electron.IpcMainInvokeEvent,
   { imagePaths, fileNames }: imagesObject
 ) {
-  const numberOfItems = imagePaths.length
-  const storeInDB = []
   const uniqueFileNames = checkAndRenameDuplicates(fileNames)
-  const destinationFullPath = uniqueFileNames.map(
-    (fileName) => appDirectories.imagesDir + fileName
-  )
-  for (let currentImage = 0; currentImage < numberOfItems; currentImage++) {
-    const currentOperation: Promise<string> = new Promise(async (resolve) => {
+  const imagesToStore = uniqueFileNames.map((imageName, currentImage) => {
+    return new Promise<string>(async (resolve) => {
       await copyFile(
         imagePaths[currentImage],
-        destinationFullPath[currentImage]
+        join(appDirectories.imagesDir, imageName)
       ).then(async () => {
-        await createCacheThumbnail(
-          imagePaths[currentImage],
-          uniqueFileNames[currentImage]
-        )
-        resolve(uniqueFileNames[currentImage])
+        await createCacheThumbnail(imagePaths[currentImage], imageName)
+        resolve(imageName)
       })
     })
-    storeInDB.push(currentOperation)
-  }
-  const resolvedObjectsArray = await Promise.allSettled(storeInDB)
-  const resolvedPromises = resolvedObjectsArray.map((resolvedObject) => {
-    if (resolvedObject.status === 'fulfilled') {
-      return resolvedObject.value
-    } else {
-      return ''
+  })
+  const resolvedObjectsArray = await Promise.allSettled(imagesToStore)
+  const imagesToStoreinDB: string[] = []
+  resolvedObjectsArray.forEach((imagePromise) => {
+    if (imagePromise.status === 'fulfilled') {
+      imagesToStoreinDB.push(imagePromise.value)
     }
   })
-  const filteredResolvedPromises = resolvedPromises.filter((value) => {
-    return value !== ''
-  })
-  await storeImagesInDB(filteredResolvedPromises)
+  await storeImagesInDB(imagesToStoreinDB)
 }
 
-async function createCacheThumbnail(
-  filePathSource: string,
-  destinationFilename: string
-) {
+async function createCacheThumbnail(filePathSource: string, imageName: string) {
   const sharp = require('sharp')
-  const [name] = destinationFilename.split('.')
-  const fileDestination = appDirectories.thumbnails + name + '.webp'
-  if (destinationFilename) {
+  const [name] = imageName.split('.')
+  const fileDestinationPath = join(appDirectories.thumbnails, name + '.webp')
+  if (imageName) {
     try {
       await sharp(filePathSource, { animated: true, limitInputPixels: false })
         .resize(300, 200, {
           fit: 'cover'
         })
         .webp({ quality: 60, force: true, effort: 6 })
-        .toFile(fileDestination)
+        .toFile(fileDestinationPath)
         .then((info: any) => {
           console.log(info)
         })
     } catch (error) {
-      console.log(error)
+      console.error(error)
+      console.log('failed to create thumbnail for:', imageName)
     }
   }
 }
 
-/**
- *
- * [Description]
- * Opens images from filepicker dialog, validates if they're the correct type and return their filenames
- * @returns object with two properties of type string[] containing the names and filepaths of the valid images
- */
-export function openAndValidateImages() {
-  //Todo actually validate lmao
+
+export function openAndReturnImagesObject() {
   const imagePathsFromFilePicker = openImagesFromFilePicker()
   const fileNames = imagePathsFromFilePicker
-    .map((image) => image.split('/').at(-1) || '')
-    .filter((item) => item !== '')
+    .map((image) => basename(image))
   return { imagePaths: imagePathsFromFilePicker, fileNames }
 }
 
@@ -201,8 +180,8 @@ export function setImage(
   exec(`pgrep '^swww$'`, (_error, stdout, _stderr) => {
     if (!parseInt(stdout)) {
       const options = [...swwwDefaults]
-      options.push(`${appDirectories.imagesDir}${imageName}`)
-      execFile(`${execPath}/swww`, options, (error, stdout, stderr) => {
+      options.push(join(appDirectories.imagesDir, imageName))
+      execFile(join(execPath, 'swww'), options, (error, stdout, stderr) => {
         if (error) {
           console.log(error, stderr, stdout)
         }
@@ -220,7 +199,7 @@ export function isDaemonRunning() {
     if (!(stdout.toLowerCase().indexOf('swww-daemon'.toLowerCase()) > -1)) {
       isSocketClean()
       execFile(
-        `${execPath}/swww-daemon`,
+        join(execPath, 'swww-daemon'),
         ['&', 'disown'],
         (error, stdout, stderr) => {
           console.log(error, stdout, stderr)
@@ -233,6 +212,7 @@ export function isDaemonRunning() {
 }
 
 function isSocketClean() {
+  //TODO check if I can get around hardcoding the socket path
   const socketPath = '/run/user/1000/swww.socket'
   if (fs.existsSync(socketPath)) {
     rmSync(socketPath)

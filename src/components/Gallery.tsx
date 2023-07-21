@@ -5,19 +5,28 @@ import { type ImagesArray } from '../types/rendererTypes'
 import { AddImagesCard } from './AddImagesCard'
 import Filters from './Filters'
 import PlaylistTrack from './PlaylistTrack'
-
+import usePlaylist from '../hooks/usePlaylist'
 export const Gallery: FC = () => {
   const [searchFilter, setSearchFilter] = useState<string>('')
   const [skeletonsToShow, setSkeletonsToShow] = useState<string[]>([])
   const [imagesArray, setImagesArray] = useState<ImagesArray>([])
   const imagesArrayRef = useRef<ImagesArray>(imagesArray)
+  const {
+    imagesInPlaylist,
+    addImageToPlaylist,
+    removeImageFromPlaylist,
+    clearPlaylist,
+    movePlaylistArrayOrder
+  } = usePlaylist()
   useEffect(() => {
     window.API_RENDERER.queryImages().then((data) => {
       setImagesArray(data)
       setSkeletonsToShow([])
       imagesArrayRef.current = data
+      clearPlaylist()
     })
   }, [])
+
   useEffect(() => {
     const newImagesArray = imagesArrayRef.current.filter((image) =>
       image.imageName
@@ -34,7 +43,12 @@ export const Gallery: FC = () => {
       })
       .map((image) => {
         return (
-          <ImageCard key={image.id} imageName={image.imageName}></ImageCard>
+          <ImageCard
+            key={image.id}
+            addImageToPlaylist={addImageToPlaylist}
+            removeImageFromPlaylist={removeImageFromPlaylist}
+            Image={image}
+          ></ImageCard>
         )
       })
 
@@ -61,6 +75,11 @@ export const Gallery: FC = () => {
             {imagesToShow}
           </div>
         </div>
+        <PlaylistTrack
+          imagesInPlaylist={imagesInPlaylist}
+          clearPlaylist={clearPlaylist}
+          movePlaylistArrayOrder={movePlaylistArrayOrder}
+        />
       </div>
     )
   }

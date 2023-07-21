@@ -2,10 +2,10 @@ import { app, BrowserWindow, ipcMain, protocol, Tray, Menu } from 'electron'
 import path from 'node:path'
 import url from 'url'
 import {
-  openAndValidateImages,
   copyImagesToCacheAndProcessThumbnails,
   setImage,
-  isDaemonRunning
+  isDaemonRunning,
+  openAndReturnImagesObject
 } from './appFunctions'
 import { checkCacheOrCreateItIfNotExists } from './appFunctions'
 import { testDB } from './database/db'
@@ -113,7 +113,7 @@ app
   })
   .catch((e) => console.error(e))
 
-ipcMain.handle('openFiles', openAndValidateImages)
+ipcMain.handle('openFiles', openAndReturnImagesObject)
 ipcMain.handle('handleOpenImages', copyImagesToCacheAndProcessThumbnails)
 ipcMain.handle('queryImages', readImagesFromDB)
 ipcMain.on('setImage', setImage)

@@ -1,6 +1,7 @@
 import { ipcRenderer } from 'electron'
 import { appDirectories } from './globals/globals'
 import { imagesObject } from './types/types'
+import { join } from 'node:path'
 
 export const ELECTRON_API = {
   openFiles: async () => await ipcRenderer.invoke('openFiles'),
@@ -13,6 +14,7 @@ export const ELECTRON_API = {
   setImage: (image: string) => {
     ipcRenderer.send('setImage', image)
   },
+  join: join,
   thumbnailDirectory: appDirectories.thumbnails,
   imagesDirectory: appDirectories.imagesDir
 }

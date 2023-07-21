@@ -1,10 +1,11 @@
 const Sequelize = require('sequelize')
 import { appDirectories } from '../globals/globals'
 import Image from './models'
+import { join } from 'node:path'
 
 export const sequelize = new Sequelize({
   dialect: 'sqlite',
-  storage: appDirectories.mainDir + 'imagesDB.sqlite3'
+  storage: join(appDirectories.mainDir, 'imagesDB.sqlite3')
 })
 
 export async function testDB() {
