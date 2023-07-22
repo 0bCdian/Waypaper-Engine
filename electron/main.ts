@@ -112,7 +112,6 @@ app
     })
   })
   .catch((e) => console.error(e))
-
 ipcMain.handle('openFiles', openAndReturnImagesObject)
 ipcMain.handle('handleOpenImages', copyImagesToCacheAndProcessThumbnails)
 ipcMain.handle('queryImages', readImagesFromDB)

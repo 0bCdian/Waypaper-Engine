@@ -5,7 +5,6 @@ interface ImageCardProps {
   addImageToPlaylist: (Image: Image) => void
   removeImageFromPlaylist: (Image: Image) => void
 }
-
 const { join, thumbnailDirectory, setImage, imagesDirectory } =
   window.API_RENDERER
 export const ImageCard: FC<ImageCardProps> = ({

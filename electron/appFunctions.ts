@@ -8,7 +8,7 @@ import { fileList, imagesObject } from './types/types'
 import { storeImagesInDB } from './database/dbOperations'
 import { exec, execFile } from 'child_process'
 import { execPath } from './binaries'
-import { join, extname , basename} from 'path'
+import { join , basename} from 'path'
 // for some reason imports are nuts and so I have to declare this array here otherwise everything breaks
 //TODO debug why the hell I need to have the array here and not import it from somewhere else.
 const validImageExtensions = [

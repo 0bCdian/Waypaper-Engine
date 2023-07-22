@@ -4,7 +4,7 @@ import {
   horizontalListSortingStrategy,
   arrayMove
 } from '@dnd-kit/sortable'
-import { FC, useState } from 'react'
+import { FC } from 'react'
 import { ImagesArray } from '../types/rendererTypes'
 import MiniPlaylistCard from './MiniPlaylistCard'
 
@@ -38,6 +38,13 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
           items={imagesInPlaylist}
         >
           <div className='flex'>
+            <button
+              onClick={() => {
+                clearPlaylist()
+              }}
+            >
+              clearPlaylist
+            </button>
             {imagesInPlaylist?.map((image) => {
               return (
                 <MiniPlaylistCard

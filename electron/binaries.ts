@@ -1,8 +1,8 @@
 import path from 'path'
 import { app } from 'electron'
+import process from 'node:process'
 
-const { rootPath } = require('electron-root-path')
 const binariesPath = app.isPackaged
   ? path.join(path.dirname(app.getAppPath()), '..', './resources', './bin')
-  : path.join(rootPath, '/electron/bin')
+  : path.join(process.cwd(), '/electron/bin')
 export const execPath = path.resolve(path.join(binariesPath))
