@@ -147,29 +147,6 @@ function checkAndRenameDuplicates(filenamesToCopy: string[]) {
   return correctFilenamesToCopy
 }
 
-/* function getUniqueFileNames(existingFiles: string[], filesToCopy: string[]) {
-  const filesToCopyWithoutConflicts = []
-  const filesToCopyLength = filesToCopy.length
-  for (let i = 0; i < filesToCopyLength; i++) {
-    const file = filesToCopy[i]
-    let uniqueFileName = file
-    let count = 1
-    while (existingFiles.includes(uniqueFileName)) {
-      const extensionIndex = file.lastIndexOf('.')
-      if (extensionIndex !== -1) {
-        uniqueFileName = `${file.substring(
-          0,
-          extensionIndex
-        )}(${count})${file.substring(extensionIndex)}`
-      } else {
-        uniqueFileName = `${file}(${count})`
-      }
-      count++
-    }
-    filesToCopyWithoutConflicts.push(uniqueFileName)
-  }
-  return filesToCopyWithoutConflicts
-} */
 function getUniqueFileNames(existingFiles: string[], filesToCopy: string[]) {
   const filesToCopyWithoutConflicts: string[] = []
   const filesToCopyLength = filesToCopy.length
