@@ -26,4 +26,16 @@ export const swwwDefaults = [
   '--transition-type',
   'wipe'
 ]
-//.43,1.19,1,.4
+export const validImageExtensions = [
+  'jpeg',
+  'jpg',
+  'png',
+  'gif',
+  'bmp',
+  'webp',
+  'pnm',
+  'tga',
+  'tiff',
+  'farbfeld'
+]
+

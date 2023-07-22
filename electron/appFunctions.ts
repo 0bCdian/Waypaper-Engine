@@ -2,27 +2,13 @@
 import { dialog } from 'electron'
 import fs, { rmSync } from 'fs'
 import { copyFile } from 'fs/promises'
-import { appDirectories, swwwDefaults } from './globals/globals'
+import { appDirectories, swwwDefaults,validImageExtensions } from './globals/globals'
 import Image from './database/models'
 import { fileList, imagesObject } from './types/types'
 import { storeImagesInDB } from './database/dbOperations'
 import { exec, execFile } from 'child_process'
 import { execPath } from './binaries'
 import { join, basename } from 'path'
-// for some reason imports are nuts and so I have to declare this array here otherwise everything breaks
-//TODO debug why the hell I need to have the array here and not import it from somewhere else.
-const validImageExtensions = [
-  'jpeg',
-  'jpg',
-  'png',
-  'gif',
-  'bmp',
-  'webp',
-  'pnm',
-  'tga',
-  'tiff',
-  'farbfeld'
-]
 
 function openImagesFromFilePicker() {
   const file: fileList = dialog.showOpenDialogSync({
