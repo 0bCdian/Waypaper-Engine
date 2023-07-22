@@ -3,11 +3,22 @@ import Image from './models'
 export async function storeImagesInDB(images: string[]) {
   const imagesToStore = images.map((image) => {
     const imageInstance = {
-      imageName: image
+      imageName: image,
+      isChecked: false
     }
     return imageInstance
   })
   await Image.bulkCreate(imagesToStore)
+  const queriedImages = await Image.findAll({
+    where: {
+      imageName: images
+    }
+  })
+  const imagesAdded: imageModel[] = queriedImages.map((image) => {
+    const imageData = image.dataValues
+    return imageData
+  })
+  return imagesAdded
 }
 
 export async function readImagesFromDB() {

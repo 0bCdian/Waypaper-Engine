@@ -1,6 +1,7 @@
 export interface Image {
   id: number
   imageName: string
+  isChecked: boolean
 }
 
 export type ImagesArray = Image[]

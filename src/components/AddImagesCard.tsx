@@ -9,6 +9,7 @@ interface AddImagesCardProps {
   imagesArrayRef: React.MutableRefObject<ImagesArray>
 }
 
+const { openFiles, handleOpenImages } = window.API_RENDERER
 export const AddImagesCard: FC<AddImagesCardProps> = ({
   alone,
   setSkeletonsToShow,
@@ -16,17 +17,19 @@ export const AddImagesCard: FC<AddImagesCardProps> = ({
   imagesArrayRef
 }) => {
   const [isActive, setActiveState] = useState<boolean>(true)
-  const openFiles = (): void => {
+  const handleClick = (): void => {
     setActiveState(false)
-    window.API_RENDERER.openFiles()
+    openFiles()
       .then((imagesObject: imagesObject) => {
         setActiveState(true)
-        setSkeletonsToShow(imagesObject.fileNames)
-        window.API_RENDERER.handleOpenImages(imagesObject).then(() => {
-          window.API_RENDERER.queryImages().then((data) => {
-            setImagesArray(data)
-            imagesArrayRef.current = data
+        //@ts-ignore
+        setSkeletonsToShow(imagesObject.fileNames.toReversed())
+        handleOpenImages(imagesObject).then((data) => {
+          setImagesArray((prev) => {
+            const newData = [...prev, ...data]
+            imagesArrayRef.current = newData
             setSkeletonsToShow([])
+            return newData
           })
         })
       })
@@ -34,11 +37,12 @@ export const AddImagesCard: FC<AddImagesCardProps> = ({
         console.error(error)
       })
   }
+
   const styles = alone
     ? 'cursor-pointer relative rounded-lg max-w-fit mb-4 hover:bg-[#323232] active:scale-95 transition-all ease-in-out '
     : 'cursor-pointer relative rounded-lg bg-[#323232] hover:bg-[#424242] active:scale-95 transition-all max-w-fit mb-4'
   return (
-    <div className={styles} onClick={isActive ? openFiles : undefined}>
+    <div className={styles} onClick={isActive ? handleClick : undefined}>
       <div className=' flex justify-center  rounded-lg min-w-[300px] min-h-[200px]'>
         <SvgComponent />
       </div>

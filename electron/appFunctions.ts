@@ -8,7 +8,7 @@ import { fileList, imagesObject } from './types/types'
 import { storeImagesInDB } from './database/dbOperations'
 import { exec, execFile } from 'child_process'
 import { execPath } from './binaries'
-import { join , basename} from 'path'
+import { join, basename } from 'path'
 // for some reason imports are nuts and so I have to declare this array here otherwise everything breaks
 //TODO debug why the hell I need to have the array here and not import it from somewhere else.
 const validImageExtensions = [
@@ -56,7 +56,7 @@ export async function copyImagesToCacheAndProcessThumbnails(
       imagesToStoreinDB.push(imagePromise.value)
     }
   })
-  await storeImagesInDB(imagesToStoreinDB)
+  return await storeImagesInDB(imagesToStoreinDB)
 }
 
 async function createCacheThumbnail(filePathSource: string, imageName: string) {
@@ -81,11 +81,9 @@ async function createCacheThumbnail(filePathSource: string, imageName: string) {
   }
 }
 
-
 export function openAndReturnImagesObject() {
   const imagePathsFromFilePicker = openImagesFromFilePicker()
-  const fileNames = imagePathsFromFilePicker
-    .map((image) => basename(image))
+  const fileNames = imagePathsFromFilePicker.map((image) => basename(image))
   return { imagePaths: imagePathsFromFilePicker, fileNames }
 }
 
@@ -149,7 +147,7 @@ function checkAndRenameDuplicates(filenamesToCopy: string[]) {
   return correctFilenamesToCopy
 }
 
-function getUniqueFileNames(existingFiles: string[], filesToCopy: string[]) {
+/* function getUniqueFileNames(existingFiles: string[], filesToCopy: string[]) {
   const filesToCopyWithoutConflicts = []
   const filesToCopyLength = filesToCopy.length
   for (let i = 0; i < filesToCopyLength; i++) {
@@ -169,6 +167,27 @@ function getUniqueFileNames(existingFiles: string[], filesToCopy: string[]) {
       count++
     }
     filesToCopyWithoutConflicts.push(uniqueFileName)
+  }
+  return filesToCopyWithoutConflicts
+} */
+function getUniqueFileNames(existingFiles: string[], filesToCopy: string[]) {
+  const filesToCopyWithoutConflicts: string[] = []
+  const filesToCopyLength = filesToCopy.length
+  for (let i = 0; i < filesToCopyLength; i++) {
+    const file = filesToCopy[i]
+    const extensionIndex = file.lastIndexOf('.')
+    const fileNameWithoutExtension =
+      extensionIndex !== -1 ? file.substring(0, extensionIndex) : file
+    const fileExtension =
+      extensionIndex !== -1 ? file.substring(extensionIndex) : ''
+
+    let uniqueFileName = fileNameWithoutExtension
+    let count = 1
+    while (existingFiles.includes(uniqueFileName + fileExtension)) {
+      uniqueFileName = `${fileNameWithoutExtension}(${count})`
+      count++
+    }
+    filesToCopyWithoutConflicts.push(uniqueFileName + fileExtension)
   }
   return filesToCopyWithoutConflicts
 }

@@ -4,7 +4,7 @@ import {
   horizontalListSortingStrategy,
   arrayMove
 } from '@dnd-kit/sortable'
-import { FC } from 'react'
+import { FC, useEffect } from 'react'
 import { ImagesArray } from '../types/rendererTypes'
 import MiniPlaylistCard from './MiniPlaylistCard'
 
@@ -12,12 +12,14 @@ interface PlaylistTrackProps {
   imagesInPlaylist: ImagesArray
   movePlaylistArrayOrder: (newlyOrderedArray: ImagesArray) => void
   clearPlaylist: () => void
+  resetRef: () => void
 }
 
 const PlaylistTrack: FC<PlaylistTrackProps> = ({
   imagesInPlaylist,
   movePlaylistArrayOrder,
-  clearPlaylist
+  clearPlaylist,
+  resetRef
 }) => {
   const handleDragEnd = (event: DragEndEvent) => {
     const { over, active } = event
@@ -30,6 +32,11 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
     const newArrayOrder = arrayMove(imagesInPlaylist, oldindex, newIndex)
     movePlaylistArrayOrder(newArrayOrder)
   }
+  useEffect(() => {
+    if (imagesInPlaylist.length === 0) {
+      resetRef()
+    }
+  }, [imagesInPlaylist])
   return (
     <div className='absolute bottom-0 bg-black'>
       <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
@@ -41,6 +48,7 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
             <button
               onClick={() => {
                 clearPlaylist()
+                resetRef()
               }}
             >
               clearPlaylist

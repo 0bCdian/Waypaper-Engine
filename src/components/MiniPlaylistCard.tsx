@@ -2,12 +2,17 @@ import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { Image } from '../types/rendererTypes'
 
-const MiniPlaylistCard = ({ imageName, id }: Image) => {
+const { join, thumbnailDirectory } = window.API_RENDERER
+
+const MiniPlaylistCard = ({
+  imageName,
+  id
+}: {
+  imageName: string
+  id: number
+}) => {
   const imageSrc =
-    'atom://' +
-    window.API_RENDERER.thumbnailDirectory +
-    imageName.split('.').at(0) +
-    '.webp'
+    'atom://' + join(thumbnailDirectory, imageName.split('.').at(0) + '.webp')
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({ id: id })
   const style = {
@@ -15,8 +20,14 @@ const MiniPlaylistCard = ({ imageName, id }: Image) => {
     transition
   }
   return (
-    <div {...attributes} {...listeners} ref={setNodeRef} style={style} className='w-20 m-2'>
-      <img src={imageSrc} alt={imageName} className=''/>
+    <div
+      {...attributes}
+      {...listeners}
+      ref={setNodeRef}
+      style={style}
+      className='w-20 m-2'
+    >
+      <img src={imageSrc} alt={imageName} className='' />
     </div>
   )
 }

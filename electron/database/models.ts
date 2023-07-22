@@ -12,6 +12,11 @@ Image.init(
     imageName: {
       type: DataTypes.STRING,
       allowNull: false
+    },
+    isChecked: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+      allowNull: false
     }
   },
   {
