@@ -4,7 +4,7 @@ import {
   horizontalListSortingStrategy,
   arrayMove
 } from '@dnd-kit/sortable'
-import { FC, useEffect } from 'react'
+import { FC, useEffect, useMemo } from 'react'
 import { ImagesArray } from '../types/rendererTypes'
 import MiniPlaylistCard from './MiniPlaylistCard'
 
@@ -32,13 +32,29 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
     const newArrayOrder = arrayMove(imagesInPlaylist, oldindex, newIndex)
     movePlaylistArrayOrder(newArrayOrder)
   }
+  const playlistArray = useMemo(() => {
+    return imagesInPlaylist.map((image) => {
+      return (
+        <MiniPlaylistCard
+          id={image.id}
+          key={image.id}
+          imageName={image.imageName}
+        />
+      )
+    })
+  }, [imagesInPlaylist])
   useEffect(() => {
     if (imagesInPlaylist.length === 0) {
       resetRef()
     }
   }, [imagesInPlaylist])
+  if (imagesInPlaylist.length === 0) {
+    return (
+      null
+    )
+  }
   return (
-    <div className='absolute bottom-0 bg-black'>
+    <div className='overflow-y-hidden mt-3 scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-track-transparent scrollbar-thumb-stone-100'>
       <DndContext collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
         <SortableContext
           strategy={horizontalListSortingStrategy}
@@ -53,15 +69,7 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
             >
               clearPlaylist
             </button>
-            {imagesInPlaylist?.map((image) => {
-              return (
-                <MiniPlaylistCard
-                  key={image.id}
-                  imageName={image.imageName}
-                  id={image.id}
-                />
-              )
-            })}
+            {playlistArray}
           </div>
         </SortableContext>
       </DndContext>

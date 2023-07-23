@@ -25,9 +25,7 @@ export const ImageCard: FC<ImageCardProps> = ({
     setImage(Image.imageName)
   }
   useEffect(() => {
-    console.log('useEffect')
     if (shouldClear) {
-      console.log('shouldClear')
       setIsChecked(false)
       modifyInputElement(Image.id, false)
     }
@@ -63,6 +61,7 @@ export const ImageCard: FC<ImageCardProps> = ({
         />
       </div>
       <img
+       
         className='rounded-lg min-w-full transform-gpu group-hover:scale-110 group-hover:object-center : transition-all'
         src={imageNameFilePath}
         alt={Image.imageName}

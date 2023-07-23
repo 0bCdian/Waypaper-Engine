@@ -74,9 +74,12 @@ export const Gallery: FC = () => {
   }, [skeletonsToShow])
   if (imagesArrayRef.current.length > 0 || skeletonsToShow.length > 0) {
     return (
-      <div>
+      <div className='flex flex-col  m-auto mt-12 w-[85%] h-[94vh]  select-none'>
         <Filters setSearchFilter={setSearchFilter} />
-        <div className='overflow-y-auto scroll-smooth h-[84vh] scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-track-transparent scrollbar-thumb-stone-100 w-[85%] m-auto  absolute top-24 left-40'>
+        <div
+          className='overflow-y-scroll shrink basis-11/12 scroll-smooth w-full scrollbar-track-rounded-sm 
+        scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-track-transparent scrollbar-thumb-stone-100  m-auto'
+        >
           <div className='m-auto sm:grid sm:auto-cols-auto grid-cols-[repeat(auto-fill,minmax(300px,1fr))]'>
             <AddImagesCard
               imagesArrayRef={imagesArrayRef}

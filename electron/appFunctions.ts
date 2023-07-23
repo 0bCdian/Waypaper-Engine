@@ -1,21 +1,25 @@
 /* eslint-disable @typescript-eslint/no-var-requires */
 import { dialog } from 'electron'
-import fs, { rmSync } from 'fs'
-import { copyFile } from 'fs/promises'
-import { appDirectories, swwwDefaults,validImageExtensions } from './globals/globals'
+import fs, { rmSync } from 'node:fs'
+import { copyFile } from 'node:fs/promises'
+import {
+  appDirectories,
+  swwwDefaults,
+  validImageExtensions
+} from './globals/globals'
 import Image from './database/models'
 import { fileList, imagesObject } from './types/types'
 import { storeImagesInDB } from './database/dbOperations'
-import { exec, execFile } from 'child_process'
+import { exec, execFile } from 'node:child_process'
 import { execPath } from './binaries'
-import { join, basename } from 'path'
+import { join, basename } from 'node:path'
 
 function openImagesFromFilePicker() {
   const file: fileList = dialog.showOpenDialogSync({
     properties: ['openFile', 'multiSelections'],
     filters: [{ name: 'Images', extensions: validImageExtensions }],
     defaultPath: appDirectories.systemHome
-  }) ?? ['']
+  })
   return file
 }
 
@@ -69,6 +73,9 @@ async function createCacheThumbnail(filePathSource: string, imageName: string) {
 
 export function openAndReturnImagesObject() {
   const imagePathsFromFilePicker = openImagesFromFilePicker()
+  if (!imagePathsFromFilePicker) {
+    return
+  }
   const fileNames = imagePathsFromFilePicker.map((image) => basename(image))
   return { imagePaths: imagePathsFromFilePicker, fileNames }
 }
@@ -217,3 +224,27 @@ function isSocketClean() {
   child.send(messageForChild)
   return child
 } */
+
+export function setBinInPath() {
+  exec(`export PATH=${execPath}`, (error, _stdout, _stderr) => {
+    if (error) {
+      console.error(error)
+    } else {
+      console.log('PATH set')
+    }
+  })
+}
+
+function checkIfSwwwIsInstalled() {
+  exec(`swww --version`, (error, _stdout, _stderr) => {
+    if (error) {
+      console.error(error)
+      console.log(error)
+      return false
+    } else {
+      console.log('swww is installed')
+      return true
+    }
+  })
+}
+checkIfSwwwIsInstalled()

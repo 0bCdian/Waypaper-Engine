@@ -22,6 +22,7 @@ export const AddImagesCard: FC<AddImagesCardProps> = ({
     openFiles()
       .then((imagesObject: imagesObject) => {
         setActiveState(true)
+        if (!imagesObject) return
         //@ts-ignore
         setSkeletonsToShow(imagesObject.fileNames.toReversed())
         handleOpenImages(imagesObject).then((data) => {

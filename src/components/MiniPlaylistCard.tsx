@@ -1,6 +1,5 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
-import { Image } from '../types/rendererTypes'
 
 const { join, thumbnailDirectory } = window.API_RENDERER
 
@@ -25,7 +24,7 @@ const MiniPlaylistCard = ({
       {...listeners}
       ref={setNodeRef}
       style={style}
-      className='w-20 m-2'
+      className='w-32 m-2'
     >
       <img src={imageSrc} alt={imageName} className='' />
     </div>

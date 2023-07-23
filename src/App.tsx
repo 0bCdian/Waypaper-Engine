@@ -5,7 +5,7 @@ import './index.css'
 const App: FC = () => {
   console.log('rendered app')
   return (
-    <div className=''>
+    <div className=' h-[100vh] relative'>
       <Gallery />
     </div>
   )

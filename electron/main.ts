@@ -5,17 +5,21 @@ import {
   copyImagesToCacheAndProcessThumbnails,
   setImage,
   isDaemonRunning,
-  openAndReturnImagesObject
+  openAndReturnImagesObject,
+  setBinInPath
 } from './appFunctions'
 import { checkCacheOrCreateItIfNotExists } from './appFunctions'
 import { testDB } from './database/db'
 import { readImagesFromDB } from './database/dbOperations'
-
 process.env.DIST = path.join(__dirname, '../dist')
 process.env.PUBLIC = app.isPackaged
   ? process.env.DIST
   : path.join(process.env.DIST, '../public')
-
+if(process.argv[1] === '--daemon') {
+  console.log('daemon')
+  isDaemonRunning()
+  app.exit()
+}
 let tray = null
 let win: BrowserWindow | null
 // 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
@@ -99,6 +103,7 @@ app.whenReady().then(() => {
 app.whenReady().then(() => {
   checkCacheOrCreateItIfNotExists()
   testDB()
+  setBinInPath()
   isDaemonRunning()
 })
 
