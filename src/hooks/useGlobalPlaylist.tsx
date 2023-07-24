@@ -3,6 +3,7 @@ import { ImagesArray, Image } from '../types/rendererTypes'
 
 interface State {
   imagesInPlaylist: ImagesArray
+  isEmpty: boolean
 }
 
 const initialState: ImagesArray = []
@@ -15,16 +16,19 @@ interface Actions {
 
 export const playlistStore = create<State & Actions>((set) => ({
   imagesInPlaylist: initialState,
+  isEmpty: true,
   addImageToPlaylist: (Image: Image) => {
     set((state) => ({
-      imagesInPlaylist: [...state.imagesInPlaylist, Image]
+      imagesInPlaylist: [...state.imagesInPlaylist, Image],
+      isEmpty: state.imagesInPlaylist.length === 0
     }))
   },
   removeImageFromPlaylist: (Image: Image) => {
     set((state) => ({
       imagesInPlaylist: state.imagesInPlaylist.filter(
         (imageInPlaylist) => imageInPlaylist.id !== Image.id
-      )
+      ),
+      isEmpty: state.imagesInPlaylist.length === 0
     }))
   },
   movePlaylistArrayOrder: (newlyOrderedArray: ImagesArray) => {
@@ -34,7 +38,8 @@ export const playlistStore = create<State & Actions>((set) => ({
   },
   clearPlaylist: () => {
     set(() => ({
-      imagesInPlaylist: initialState
+      imagesInPlaylist: initialState,
+      isEmpty: true
     }))
   }
 }))

@@ -20,7 +20,7 @@ export const Gallery: FC = () => {
     )
     imagesArrayRef.current[index].isChecked = currentState
   }
-  const { clearPlaylist, imagesInPlaylist } = playlistStore()
+  const { clearPlaylist, isEmpty } = playlistStore()
   const resetRef = () => {
     imagesArrayRef.current = structuredClone(imagesArray)
   }
@@ -32,11 +32,8 @@ export const Gallery: FC = () => {
       clearPlaylist()
     })
   }, [])
-  const shouldRecalculateFilteredImages = useMemo(() => {
-    return imagesInPlaylist.length === 0
-  }, [imagesInPlaylist])
+
   const filteredImages = useMemo(() => {
-    console.log(imagesArrayRef.current)
     return imagesArrayRef.current
       .filter((image) =>
         image.imageName
@@ -55,7 +52,7 @@ export const Gallery: FC = () => {
           ></ImageCard>
         )
       })
-  }, [searchFilter, imagesArray, shouldRecalculateFilteredImages])
+  }, [searchFilter, imagesArray, isEmpty])
   const skeletons = useMemo(() => {
     return skeletonsToShow.map((skeletonFileName) => {
       return (
