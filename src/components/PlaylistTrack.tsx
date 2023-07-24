@@ -7,13 +7,24 @@ import {
 import { FC, useMemo } from 'react'
 import MiniPlaylistCard from './MiniPlaylistCard'
 import { playlistStore } from '../hooks/useGlobalPlaylist'
+import { ImagesArray } from '../types/rendererTypes'
+import openImagesStore from '../hooks/useOpenImages'
 
 interface PlaylistTrackProps {
   clearPlaylist: () => void
   resetRef: () => void
+  setSkeletonsToShow: React.Dispatch<React.SetStateAction<string[]>>
+  setImagesArray: React.Dispatch<React.SetStateAction<ImagesArray>>
+  imagesArrayRef: React.MutableRefObject<ImagesArray>
 }
 
-const PlaylistTrack: FC<PlaylistTrackProps> = ({ clearPlaylist, resetRef }) => {
+const PlaylistTrack: FC<PlaylistTrackProps> = ({
+  clearPlaylist,
+  resetRef,
+  setSkeletonsToShow,
+  setImagesArray,
+  imagesArrayRef
+}) => {
   const { imagesInPlaylist, movePlaylistArrayOrder } = playlistStore()
   const handleDragEnd = (event: DragEndEvent) => {
     const { over, active } = event
@@ -26,7 +37,14 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({ clearPlaylist, resetRef }) => {
     const newArrayOrder = arrayMove(imagesInPlaylist, oldindex, newIndex)
     movePlaylistArrayOrder(newArrayOrder)
   }
-
+  const { openImages, isActive } = openImagesStore()
+  const handleClick = () => {
+    openImages({
+      setSkeletonsToShow,
+      setImagesArray,
+      imagesArrayRef
+    })
+  }
   const playlistArray = useMemo(() => {
     return imagesInPlaylist.map((image) => {
       return (
@@ -48,7 +66,10 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({ clearPlaylist, resetRef }) => {
         <button className='bg-[#007ACD] text-white font-medium px-2 py-1  rounded-md'>
           Configure playlist
         </button>
-        <button className='bg-[#007ACD] text-white font-medium px-2 py-1  rounded-md'>
+        <button
+          onClick={isActive ? undefined : handleClick}
+          className='bg-[#007ACD] text-white font-medium px-2 py-1  rounded-md'
+        >
           Add images
         </button>
       </div>

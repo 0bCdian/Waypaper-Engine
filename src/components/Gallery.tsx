@@ -82,7 +82,13 @@ export const Gallery: FC = () => {
             {filteredImages}
           </div>
         </div>
-        <PlaylistTrack clearPlaylist={clearPlaylist} resetRef={resetRef} />
+        <PlaylistTrack
+          clearPlaylist={clearPlaylist}
+          resetRef={resetRef}
+          setSkeletonsToShow={setSkeletonsToShow}
+          setImagesArray={setImagesArray}
+          imagesArrayRef={imagesArrayRef}
+        />
       </div>
     )
   }

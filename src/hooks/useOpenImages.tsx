@@ -1,24 +1,26 @@
-import { useState } from 'react'
-import { imagesObject, ImagesArray } from '../types/rendererTypes'
+import { create } from 'zustand'
+import { ImagesArray, imagesObject } from '../types/rendererTypes'
 const { openFiles, handleOpenImages } = window.API_RENDERER
-
-interface useOpenImagesProps {
+interface State {
+  isActive: boolean
+}
+interface openImagesProps {
   setSkeletonsToShow: React.Dispatch<React.SetStateAction<string[]>>
   setImagesArray: React.Dispatch<React.SetStateAction<ImagesArray>>
   imagesArrayRef: React.MutableRefObject<ImagesArray>
 }
 
-function useOpenImages({
-  setImagesArray,
-  setSkeletonsToShow,
-  imagesArrayRef
-}: useOpenImagesProps) {
-  const [isActive, setActiveState] = useState<boolean>(true)
-  const handleClick = (): void => {
-    setActiveState(false)
+interface Actions {
+  openImages: ({}: openImagesProps) => void
+}
+
+const openImagesStore = create<State & Actions>((set) => ({
+  isActive: false,
+  openImages: ({ setSkeletonsToShow, setImagesArray, imagesArrayRef }) => {
+    set(() => ({ isActive: true }))
     openFiles()
       .then((imagesObject: imagesObject) => {
-        setActiveState(true)
+        set(() => ({ isActive: false }))
         if (!imagesObject) return
         //@ts-ignore
         setSkeletonsToShow(imagesObject.fileNames.toReversed())
@@ -36,7 +38,6 @@ function useOpenImages({
         console.error(error)
       })
   }
-  return { handleClick, isActive }
-}
+}))
 
-export default useOpenImages
+export default openImagesStore

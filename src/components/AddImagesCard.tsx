@@ -1,7 +1,7 @@
-import { useState, type FC } from 'react'
+import { type FC } from 'react'
 import SvgComponent from './addImagesIcon'
-import { ImagesArray, imagesObject } from '../types/rendererTypes'
-const { openFiles, handleOpenImages } = window.API_RENDERER
+import { ImagesArray } from '../types/rendererTypes'
+import openImagesStore from '../hooks/useOpenImages'
 
 interface AddImagesCardProps {
   alone: boolean
@@ -16,35 +16,19 @@ export const AddImagesCard: FC<AddImagesCardProps> = ({
   setImagesArray,
   imagesArrayRef
 }) => {
-  const [isActive, setActiveState] = useState<boolean>(true)
-  const handleClick = (): void => {
-    setActiveState(false)
-    openFiles()
-      .then((imagesObject: imagesObject) => {
-        setActiveState(true)
-        if (!imagesObject) return
-        //@ts-ignore
-        setSkeletonsToShow(imagesObject.fileNames.toReversed())
-        handleOpenImages(imagesObject).then((data) => {
-          setImagesArray((prev) => {
-            const newData = [...prev, ...data]
-            const copyData = structuredClone(data)
-            imagesArrayRef.current.push(...copyData)
-            setSkeletonsToShow([])
-            return newData
-          })
-        })
-      })
-      .catch((error) => {
-        console.error(error)
-      })
+  const { openImages, isActive } = openImagesStore()
+  const handleClick = () => {
+    openImages({
+      setSkeletonsToShow,
+      setImagesArray,
+      imagesArrayRef
+    })
   }
-
   const styles = alone
     ? 'cursor-pointer relative rounded-lg max-w-fit mb-4 hover:bg-[#323232] active:scale-95 transition-all ease-in-out '
     : 'cursor-pointer relative rounded-lg bg-[#323232] hover:bg-[#424242] active:scale-95 transition-all max-w-fit mb-4'
   return (
-    <div className={styles} onClick={isActive ? handleClick : undefined}>
+    <div className={styles} onClick={isActive ? undefined : handleClick}>
       <div className=' flex justify-center  rounded-lg min-w-[300px] min-h-[200px]'>
         <SvgComponent />
       </div>
