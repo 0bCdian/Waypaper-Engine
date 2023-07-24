@@ -99,6 +99,12 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
             <button className='bg-[#007ACD] text-white font-medium px-2 py-1  rounded-md'>
               Configure playlist
             </button>
+            <button
+              onClick={isActive ? undefined : handleClick}
+              className='bg-[#007ACD] text-white font-medium px-2 py-1  rounded-md'
+            >
+              Add images
+            </button>
           </div>
 
           <div className='flex overflow-y-hidden overflow-x-scroll scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-thumb-stone-100 scrollbar-track-[#202020] '>
