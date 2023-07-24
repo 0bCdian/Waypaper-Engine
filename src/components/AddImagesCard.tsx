@@ -1,6 +1,7 @@
 import { useState, type FC } from 'react'
 import SvgComponent from './addImagesIcon'
 import { ImagesArray, imagesObject } from '../types/rendererTypes'
+const { openFiles, handleOpenImages } = window.API_RENDERER
 
 interface AddImagesCardProps {
   alone: boolean
@@ -9,7 +10,6 @@ interface AddImagesCardProps {
   imagesArrayRef: React.MutableRefObject<ImagesArray>
 }
 
-const { openFiles, handleOpenImages } = window.API_RENDERER
 export const AddImagesCard: FC<AddImagesCardProps> = ({
   alone,
   setSkeletonsToShow,

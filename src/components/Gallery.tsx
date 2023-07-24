@@ -74,7 +74,7 @@ export const Gallery: FC = () => {
   }, [skeletonsToShow])
   if (imagesArrayRef.current.length > 0 || skeletonsToShow.length > 0) {
     return (
-      <div className='flex flex-col  m-auto mt-12 w-[85%] h-[94vh]  select-none'>
+      <div className='flex flex-col justify-center mt-10  m-auto  w-[85%] h-[94vh]  select-none'>
         <Filters setSearchFilter={setSearchFilter} />
         <div
           className='overflow-y-scroll shrink basis-11/12 scroll-smooth w-full scrollbar-track-rounded-sm 

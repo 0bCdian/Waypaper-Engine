@@ -24,9 +24,9 @@ const MiniPlaylistCard = ({
       {...listeners}
       ref={setNodeRef}
       style={style}
-      className='w-32 m-2'
+      className='w-32 m-2 overflow-clip'
     >
-      <img src={imageSrc} alt={imageName} className='' />
+      <img src={imageSrc} alt={imageName} />
     </div>
   )
 }

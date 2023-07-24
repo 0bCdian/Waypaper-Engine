@@ -12,13 +12,15 @@
     "@dnd-kit/core": "^6.0.8",
     "@dnd-kit/sortable": "^7.0.2",
     "@dnd-kit/utilities": "^3.2.1",
+    "@react-spring/web": "^9.7.3",
     "pg": "^8.11.1",
     "pg-hstore": "^2.3.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "sequelize": "^6.32.1",
     "sharp": "^0.32.1",
-    "sqlite3": "^5.1.6"
+    "sqlite3": "^5.1.6",
+    "zustand": "^4.3.9"
   },
   "devDependencies": {
     "@types/node": "^20.3.1",

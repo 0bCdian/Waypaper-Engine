@@ -3,9 +3,8 @@ import { type FC } from 'react'
 import './index.css'
 
 const App: FC = () => {
-  console.log('rendered app')
   return (
-    <div className=' h-[100vh] relative'>
+    <div className=' h-[100vh] relative overflow-hidden'>
       <Gallery />
     </div>
   )
