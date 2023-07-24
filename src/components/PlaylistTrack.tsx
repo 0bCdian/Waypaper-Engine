@@ -38,24 +38,49 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({ clearPlaylist, resetRef }) => {
       )
     })
   }, [imagesInPlaylist])
-  if (imagesInPlaylist.length === 0) return null
+  if (imagesInPlaylist.length === 0) {
+    return (
+      <div className='flex justify-start align-middle gap-3 my-4'>
+        <span className=' text-3xl'>Playlist</span>
+        <button className='bg-[#007ACD] text-white font-medium px-2 py-1  rounded-md'>
+          Load Playlist
+        </button>
+        <button className='bg-[#007ACD] text-white font-medium px-2 py-1  rounded-md'>
+          Configure playlist
+        </button>
+        <button className='bg-[#007ACD] text-white font-medium px-2 py-1  rounded-md'>
+          Add images
+        </button>
+      </div>
+    )
+  }
   return (
-    <div className=' overflow-y-clip h-[12%] my-3 scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-track-transparent bg-black scrollbar-thumb-stone-100 touch-none'>
+    <div className='mt-5'>
       <DndContext collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
         <SortableContext
           strategy={horizontalListSortingStrategy}
           items={imagesInPlaylist}
         >
-          <div className='flex'>
+          <div className='flex  justify-start align-middle gap-3 mb-4'>
+            <span className=' text-3xl'>Playlist ({playlistArray.length})</span>
             <button
+              className='bg-[#007ACD] text-white font-medium rounded-md px-2 py-1'
               onClick={() => {
-                console.log('clearing playlist')
                 resetRef()
                 clearPlaylist()
               }}
             >
-              clearPlaylist
+              Clear playlist
             </button>
+            <button className='bg-[#007ACD] text-white font-medium px-2 py-1  rounded-md'>
+              Save playlist
+            </button>
+            <button className='bg-[#007ACD] text-white font-medium px-2 py-1  rounded-md'>
+              Configure playlist
+            </button>
+          </div>
+
+          <div className='flex overflow-y-hidden overflow-x-scroll scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-thumb-stone-100 scrollbar-track-[#202020] '>
             {playlistArray}
           </div>
         </SortableContext>
