@@ -1,4 +1,4 @@
-import { useState, type FC } from 'react'
+import { useState } from 'react'
 import { imagesObject, ImagesArray } from '../types/rendererTypes'
 const { openFiles, handleOpenImages } = window.API_RENDERER
 
