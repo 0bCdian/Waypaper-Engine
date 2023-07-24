@@ -4,26 +4,17 @@ import {
   horizontalListSortingStrategy,
   arrayMove
 } from '@dnd-kit/sortable'
-import { FC, useEffect, useMemo } from 'react'
-
-import { ImagesArray } from '../types/rendererTypes'
+import { FC, useMemo } from 'react'
 import MiniPlaylistCard from './MiniPlaylistCard'
+import { playlistStore } from '../hooks/useGlobalPlaylist'
 
 interface PlaylistTrackProps {
-  imagesInPlaylist: ImagesArray
-  movePlaylistArrayOrder: (newlyOrderedArray: ImagesArray) => void
   clearPlaylist: () => void
   resetRef: () => void
 }
 
-const PlaylistTrack: FC<PlaylistTrackProps> = ({
-  imagesInPlaylist,
-  movePlaylistArrayOrder,
-  clearPlaylist,
-  resetRef
-}) => {
-  if (imagesInPlaylist.length === 0) return null
-
+const PlaylistTrack: FC<PlaylistTrackProps> = ({ clearPlaylist, resetRef }) => {
+  const { imagesInPlaylist, movePlaylistArrayOrder } = playlistStore()
   const handleDragEnd = (event: DragEndEvent) => {
     const { over, active } = event
     const oldindex = imagesInPlaylist.findIndex(
@@ -47,11 +38,7 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
       )
     })
   }, [imagesInPlaylist])
-  useEffect(() => {
-    if (imagesInPlaylist.length === 0) {
-      resetRef()
-    }
-  }, [imagesInPlaylist])
+  if (imagesInPlaylist.length === 0) return null
   return (
     <div className=' overflow-y-clip h-[12%] my-3 scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-track-transparent bg-black scrollbar-thumb-stone-100 touch-none'>
       <DndContext collisionDetection={closestCorners} onDragEnd={handleDragEnd}>
@@ -62,8 +49,9 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
           <div className='flex'>
             <button
               onClick={() => {
-                clearPlaylist()
+                console.log('clearing playlist')
                 resetRef()
+                clearPlaylist()
               }}
             >
               clearPlaylist

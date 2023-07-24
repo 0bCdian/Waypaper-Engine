@@ -28,7 +28,8 @@ export const AddImagesCard: FC<AddImagesCardProps> = ({
         handleOpenImages(imagesObject).then((data) => {
           setImagesArray((prev) => {
             const newData = [...prev, ...data]
-            imagesArrayRef.current = newData
+            const copyData = structuredClone(data)
+            imagesArrayRef.current.push(...copyData)
             setSkeletonsToShow([])
             return newData
           })

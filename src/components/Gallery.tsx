@@ -5,7 +5,7 @@ import { type ImagesArray } from '../types/rendererTypes'
 import { AddImagesCard } from './AddImagesCard'
 import Filters from './Filters'
 import PlaylistTrack from './PlaylistTrack'
-import usePlaylist from '../hooks/usePlaylist'
+import { playlistStore } from '../hooks/useGlobalPlaylist'
 
 const { queryImages } = window.API_RENDERER
 
@@ -13,33 +13,30 @@ export const Gallery: FC = () => {
   const [searchFilter, setSearchFilter] = useState<string>('')
   const [skeletonsToShow, setSkeletonsToShow] = useState<string[]>([])
   const [imagesArray, setImagesArray] = useState<ImagesArray>([])
-  const imagesArrayRef = useRef<ImagesArray>(imagesArray)
+  const imagesArrayRef = useRef<ImagesArray>([])
   const modifyInputElement = (elementId: number, currentState: boolean) => {
     const index = imagesArrayRef.current.findIndex(
       (element) => element.id === elementId
     )
     imagesArrayRef.current[index].isChecked = currentState
   }
-  const {
-    imagesInPlaylist,
-    addImageToPlaylist,
-    removeImageFromPlaylist,
-    clearPlaylist,
-    movePlaylistArrayOrder,
-    shouldClear
-  } = usePlaylist()
+  const { clearPlaylist, imagesInPlaylist } = playlistStore()
   const resetRef = () => {
-    imagesArrayRef.current = imagesArray
+    imagesArrayRef.current = structuredClone(imagesArray)
   }
   useEffect(() => {
     queryImages().then((data: ImagesArray) => {
       setImagesArray(data)
+      imagesArrayRef.current = structuredClone(data)
       setSkeletonsToShow([])
-      imagesArrayRef.current = data
       clearPlaylist()
     })
   }, [])
+  const shouldRecalculateFilteredImages = useMemo(() => {
+    return imagesInPlaylist.length === 0
+  }, [imagesInPlaylist])
   const filteredImages = useMemo(() => {
+    console.log(imagesArrayRef.current)
     return imagesArrayRef.current
       .filter((image) =>
         image.imageName
@@ -54,14 +51,11 @@ export const Gallery: FC = () => {
           <ImageCard
             key={image.id}
             Image={image}
-            shouldClear={shouldClear}
-            addImageToPlaylist={addImageToPlaylist}
-            removeImageFromPlaylist={removeImageFromPlaylist}
             modifyInputElement={modifyInputElement}
           ></ImageCard>
         )
       })
-  }, [searchFilter, imagesArray, shouldClear])
+  }, [searchFilter, imagesArray, shouldRecalculateFilteredImages])
   const skeletons = useMemo(() => {
     return skeletonsToShow.map((skeletonFileName) => {
       return (
@@ -91,12 +85,7 @@ export const Gallery: FC = () => {
             {filteredImages}
           </div>
         </div>
-        <PlaylistTrack
-          imagesInPlaylist={imagesInPlaylist}
-          clearPlaylist={clearPlaylist}
-          resetRef={resetRef}
-          movePlaylistArrayOrder={movePlaylistArrayOrder}
-        />
+        <PlaylistTrack clearPlaylist={clearPlaylist} resetRef={resetRef} />
       </div>
     )
   }
