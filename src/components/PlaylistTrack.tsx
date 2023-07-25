@@ -37,7 +37,7 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
   setImagesArray,
   imagesArrayRef
 }) => {
-  const { imagesInPlaylist, movePlaylistArrayOrder } = playlistStore()
+  const { imagesInPlaylist, movePlaylistArrayOrder , addImageToPlaylist} = playlistStore()
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } })
   )
@@ -60,7 +60,8 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
     openImages({
       setSkeletonsToShow,
       setImagesArray,
-      imagesArrayRef
+      imagesArrayRef,
+      addImageToPlaylist
     })
   }
   const playlistArray = useMemo(() => {
@@ -128,7 +129,7 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
                 initial={{ opacity: 0.5, scale: 0.2 }}
                 transition={{ duration: 0.25, ease: 'easeInOut' }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0.2, scale: 0.5 }}
+                exit={{ y:300, opacity:0 }}
                 className='flex rounded-lg overflow-y-clip  overflow-x-scroll  scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-thumb-stone-400 scrollbar-track-[#202020]'
               >
                 <AnimatePresence initial={false}> {playlistArray}</AnimatePresence>

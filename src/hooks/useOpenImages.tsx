@@ -1,6 +1,7 @@
 import { create } from 'zustand'
-import { ImagesArray, imagesObject } from '../types/rendererTypes'
+import { Image, ImagesArray, imagesObject } from '../types/rendererTypes'
 const { openFiles, handleOpenImages } = window.API_RENDERER
+
 interface State {
   isActive: boolean
 }
@@ -8,15 +9,21 @@ interface openImagesProps {
   setSkeletonsToShow: React.Dispatch<React.SetStateAction<string[]>>
   setImagesArray: React.Dispatch<React.SetStateAction<ImagesArray>>
   imagesArrayRef: React.MutableRefObject<ImagesArray>
+  addImageToPlaylist: (Image: Image) => void
 }
 
 interface Actions {
-  openImages: ({}: openImagesProps) => void
+  openImages: ({}: openImagesProps) => Promise<void>
 }
 
 const openImagesStore = create<State & Actions>((set) => ({
   isActive: false,
-  openImages: ({ setSkeletonsToShow, setImagesArray, imagesArrayRef }) => {
+  openImages: async ({
+    setSkeletonsToShow,
+    setImagesArray,
+    imagesArrayRef,
+    addImageToPlaylist
+  }) => {
     set(() => ({ isActive: true }))
     openFiles()
       .then((imagesObject: imagesObject) => {
@@ -24,11 +31,17 @@ const openImagesStore = create<State & Actions>((set) => ({
         if (!imagesObject) return
         //@ts-ignore
         setSkeletonsToShow(imagesObject.fileNames.toReversed())
-        handleOpenImages(imagesObject).then((data) => {
-          setImagesArray((prev) => {
+        handleOpenImages(imagesObject).then((data: ImagesArray) => {
+          setImagesArray((prev: ImagesArray) => {
             const newData = [...prev, ...data]
             const copyData = structuredClone(data)
-            imagesArrayRef.current.push(...copyData)
+            const newImagesAdded = copyData.map((image) => {
+              return { ...image, isChecked: true }
+            })
+            imagesArrayRef.current.push(...newImagesAdded)
+            for (let i = newImagesAdded.length - 1; i >= 0; i--) {
+              addImageToPlaylist(newImagesAdded[i])
+            }
             setSkeletonsToShow([])
             return newData
           })

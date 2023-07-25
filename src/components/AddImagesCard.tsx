@@ -2,6 +2,7 @@ import { type FC } from 'react'
 import SvgComponent from './addImagesIcon'
 import { ImagesArray } from '../types/rendererTypes'
 import openImagesStore from '../hooks/useOpenImages'
+import { playlistStore } from '../hooks/useGlobalPlaylist'
 
 interface AddImagesCardProps {
   alone: boolean
@@ -17,11 +18,13 @@ export const AddImagesCard: FC<AddImagesCardProps> = ({
   imagesArrayRef
 }) => {
   const { openImages, isActive } = openImagesStore()
+  const { addImageToPlaylist } = playlistStore()
   const handleClick = () => {
     openImages({
       setSkeletonsToShow,
       setImagesArray,
-      imagesArrayRef
+      imagesArrayRef,
+      addImageToPlaylist
     })
   }
   const styles = alone
