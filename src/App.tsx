@@ -4,7 +4,7 @@ import './index.css'
 
 const App: FC = () => {
   return (
-    <div className=' h-[100vh] relative overflow-hidden'>
+    <div className='h-[100vh] relative overflow-hidden'>
       <Gallery />
     </div>
   )

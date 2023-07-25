@@ -65,20 +65,14 @@ export const Gallery: FC = () => {
   }, [skeletonsToShow])
   if (imagesArrayRef.current.length > 0 || skeletonsToShow.length > 0) {
     return (
-      <div className='flex flex-col mt-10 m-auto w-[85%] max-h-[100%] select-none'>
-        <div className='flex flex-col overflow-y-auto flex-initial'>
+      <div className='flex flex-col content-start justify-between m-auto w-[85%] h-[100%] select-none'>
+        <div className='flex basis-[85%] flex-col overflow-y-auto my-4'>
           <Filters setSearchFilter={setSearchFilter} />
           <div
             className='overflow-y-scroll scroll-smooth w-full scrollbar-track-rounded-sm
           scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-track-transparent scrollbar-thumb-stone-100  m-auto'
           >
             <div className='m-auto sm:grid sm:auto-cols-auto grid-cols-[repeat(auto-fill,minmax(300px,1fr))]'>
-              <AddImagesCard
-                imagesArrayRef={imagesArrayRef}
-                setImagesArray={setImagesArray}
-                setSkeletonsToShow={setSkeletonsToShow}
-                alone={false}
-              />
               {skeletons.length > 0 ? skeletons : undefined}
               {filteredImages}
             </div>

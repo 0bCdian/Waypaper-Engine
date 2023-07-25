@@ -32,7 +32,7 @@ export const ImageCard: FC<ImageCardProps> = ({
   return (
     <div
       onDoubleClick={handleDoubleClick}
-      className='cursor-pointer transition-all border-[3px] border-transparent group hover:border-cyan-300 relative rounded-lg bg-transparent shadow-2xl  max-w-fit mb-4 overflow-hidden'
+      className='cursor-pointer transition-all duration-500 border-[3px] border-transparent group hover:border-cyan-300 relative rounded-lg bg-transparent shadow-2xl  max-w-fit mb-4 overflow-hidden'
     >
       <div className='relative'>
         <label
@@ -44,7 +44,7 @@ export const ImageCard: FC<ImageCardProps> = ({
           checked={Image.isChecked}
           onChange={handleCheckboxChange}
           type='checkbox'
-          className='absolute opacity-0 top-2 right-2 w-4 h-4 rounded-sm outline-none  group-hover:opacity-100 checked:opacity-100 checked:border-0 z-20'
+          className='absolute opacity-0 top-2 right-2 w-4 h-4 rounded-sm outline-none  group-hover:opacity-100 checked:opacity-100 checked:border-0 z-20 transition-all'
         />
       </div>
       <img

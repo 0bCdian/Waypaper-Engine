@@ -74,10 +74,10 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
     })
   }, [imagesInPlaylist])
   return (
-    <div className='flex flex-col my-10'>
-      <div className='flex justify-between align-middle gap-3'>
+    <div className='flex flex-col basis-[10%] my-4'>
+      <div className='flex justify-between align-middle gap-3 my-3'>
         <div className='flex gap-3'>
-          <span className='text-3xl'>Playlist ({playlistArray.length})</span>
+          <span className='text-3xl'>Playlist {playlistArray.length>0?`(${playlistArray.length})`:undefined}</span>
           <button className='bg-[#007ACD] text-white font-medium px-2 py-1  rounded-md active:scale-90 transition-all'>
             Save playlist
           </button>
@@ -117,7 +117,7 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
           strategy={horizontalListSortingStrategy}
           items={imagesInPlaylist}
         >
-          <div className='flex rounded-lg mt-5 overflow-x-scroll  scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-thumb-stone-400 scrollbar-track-[#202020]'>
+          <div className='flex rounded-lg  overflow-x-scroll  scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-thumb-stone-400 scrollbar-track-[#202020]'>
             {playlistArray}
           </div>
         </SortableContext>
