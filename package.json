@@ -13,7 +13,6 @@
     "@dnd-kit/modifiers": "^6.0.1",
     "@dnd-kit/sortable": "^7.0.2",
     "@dnd-kit/utilities": "^3.2.1",
-    "@react-spring/web": "^9.7.3",
     "pg": "^8.11.1",
     "pg-hstore": "^2.3.4",
     "react": "^18.2.0",
