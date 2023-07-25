@@ -1,7 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable'
-import { useDndMonitor } from '@dnd-kit/core'
+import { motion } from 'framer-motion'
 import { CSS } from '@dnd-kit/utilities'
-import { useEffect, useRef, MouseEvent } from 'react'
+import { useEffect, useRef } from 'react'
 
 const { join, thumbnailDirectory } = window.API_RENDERER
 
@@ -29,24 +29,32 @@ const MiniPlaylistCard = ({
   }
   useEffect(() => {
     if (imageRef.current) {
-      imageRef.current.scrollIntoView({ behavior: 'smooth' })
+      setTimeout(() => {
+        if (imageRef.current) {
+          imageRef.current.scrollIntoView({ behavior: 'smooth' })
+        }
+      }, 200)
     }
   }, [])
 
   return (
-    <div
-      {...attributes}
-      {...listeners}
-      ref={setNodeRef}
-      style={style}
-      className='w-32 m-1 shrink-0 rounded-lg shadow-xl'
-    >
-      <img
-        src={imageSrc}
-        alt={imageName}
-        className='rounded-lg'
-        ref={imageRef}
-      />
+    <div ref={setNodeRef} style={style}>
+        <motion.div
+          initial={{ scale: 0.5 }}
+          animate={{ scale: 1 }}
+          transition={{ duration: 0.2 }}
+          exit={{ scale: 0 }}
+          className='w-32 m-1 shrink-0 rounded-lg shadow-xl'
+        >
+          <img
+            {...attributes}
+            {...listeners}
+            src={imageSrc}
+            alt={imageName}
+            className='rounded-lg'
+            ref={imageRef}
+          />
+        </motion.div>
     </div>
   )
 }

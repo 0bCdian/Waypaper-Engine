@@ -20,6 +20,7 @@ import MiniPlaylistCard from './MiniPlaylistCard'
 import { playlistStore } from '../hooks/useGlobalPlaylist'
 import { ImagesArray } from '../types/rendererTypes'
 import openImagesStore from '../hooks/useOpenImages'
+import { motion, AnimatePresence } from 'framer-motion'
 
 interface PlaylistTrackProps {
   clearPlaylist: () => void
@@ -74,10 +75,14 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
     })
   }, [imagesInPlaylist])
   return (
-    <div className='flex flex-col basis-[10%] my-4'>
+    <div className='flex flex-col  my-4'>
       <div className='flex justify-between align-middle gap-3 my-3'>
         <div className='flex gap-3'>
-          <span className='text-3xl'>Playlist {playlistArray.length>0?`(${playlistArray.length})`:undefined}</span>
+          <span className='text-3xl'>
+            {playlistArray.length > 0
+              ? `Playlist (${playlistArray.length})`
+              : 'Playlist'}
+          </span>
           <button className='bg-[#007ACD] text-white font-medium px-2 py-1  rounded-md active:scale-90 transition-all'>
             Save playlist
           </button>
@@ -117,9 +122,19 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
           strategy={horizontalListSortingStrategy}
           items={imagesInPlaylist}
         >
-          <div className='flex rounded-lg  overflow-x-scroll  scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-thumb-stone-400 scrollbar-track-[#202020]'>
-            {playlistArray}
-          </div>
+          <AnimatePresence initial={false}>
+            {playlistArray.length > 0 ? (
+              <motion.div
+                initial={{ opacity: 0.5, scale: 0.2 }}
+                transition={{ duration: 0.25, ease: 'easeInOut' }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0.2, scale: 0.5 }}
+                className='flex rounded-lg overflow-y-clip  overflow-x-scroll  scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-thumb-stone-400 scrollbar-track-[#202020]'
+              >
+                <AnimatePresence initial={false}> {playlistArray}</AnimatePresence>
+              </motion.div>
+            ) : undefined}
+          </AnimatePresence>
         </SortableContext>
       </DndContext>
     </div>

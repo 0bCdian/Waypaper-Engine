@@ -14,6 +14,7 @@ export const Gallery: FC = () => {
   const [skeletonsToShow, setSkeletonsToShow] = useState<string[]>([])
   const [imagesArray, setImagesArray] = useState<ImagesArray>([])
   const imagesArrayRef = useRef<ImagesArray>([])
+  const gridRef = useRef<HTMLDivElement>(null)
   const modifyInputElement = (elementId: number, currentState: boolean) => {
     const index = imagesArrayRef.current.findIndex(
       (element) => element.id === elementId
@@ -32,7 +33,6 @@ export const Gallery: FC = () => {
       clearPlaylist()
     })
   }, [])
-
   const filteredImages = useMemo(() => {
     return imagesArrayRef.current
       .filter((image) =>
@@ -65,14 +65,23 @@ export const Gallery: FC = () => {
   }, [skeletonsToShow])
   if (imagesArrayRef.current.length > 0 || skeletonsToShow.length > 0) {
     return (
-      <div className='flex flex-col content-start justify-between m-auto w-[85%] h-[100%] select-none'>
-        <div className='flex basis-[85%] flex-col overflow-y-auto my-4'>
+      <div className='flex flex-col justify-between m-auto w-[85%] h-[100%] select-none'>
+        <div className='flex flex-col grow-0 overflow-y-auto mt-5'>
           <Filters setSearchFilter={setSearchFilter} />
           <div
             className='overflow-y-scroll scroll-smooth w-full scrollbar-track-rounded-sm
-          scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-track-transparent scrollbar-thumb-stone-100  m-auto'
+          scrollbar-thumb-rounded-sm scrollbar scrollbar-track-transparent scrollbar-thumb-stone-100  m-auto'
           >
-            <div className='m-auto sm:grid sm:auto-cols-auto grid-cols-[repeat(auto-fill,minmax(300px,1fr))]'>
+            <div
+              ref={gridRef}
+              className='m-auto sm:grid sm:auto-cols-auto grid-cols-[repeat(auto-fill,minmax(300px,1fr))]'
+            >
+              <AddImagesCard
+                imagesArrayRef={imagesArrayRef}
+                setImagesArray={setImagesArray}
+                setSkeletonsToShow={setSkeletonsToShow}
+                alone={false}
+              />
               {skeletons.length > 0 ? skeletons : undefined}
               {filteredImages}
             </div>
