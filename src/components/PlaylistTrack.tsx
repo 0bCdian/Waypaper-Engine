@@ -15,12 +15,13 @@ import {
   restrictToFirstScrollableAncestor,
   restrictToHorizontalAxis
 } from '@dnd-kit/modifiers'
-import { FC, useMemo } from 'react'
+import { FC, useMemo, useState } from 'react'
 import MiniPlaylistCard from './MiniPlaylistCard'
 import { playlistStore } from '../hooks/useGlobalPlaylist'
 import { ImagesArray } from '../types/rendererTypes'
 import openImagesStore from '../hooks/useOpenImages'
 import { motion, AnimatePresence } from 'framer-motion'
+import PlaylistConfigurationModal from './PlaylistConfigurationModal'
 
 interface PlaylistTrackProps {
   clearPlaylist: () => void
@@ -37,7 +38,9 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
   setImagesArray,
   imagesArrayRef
 }) => {
-  const { imagesInPlaylist, movePlaylistArrayOrder , addImageToPlaylist} = playlistStore()
+  const [showConfigurationModal, setShowConfigurationModal] = useState(false)
+  const { imagesInPlaylist, movePlaylistArrayOrder, addImageToPlaylist } =
+    playlistStore()
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } })
   )
@@ -56,13 +59,19 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
     }
   }
   const { openImages, isActive } = openImagesStore()
-  const handleClick = () => {
+  const handleClickAddImages = () => {
     openImages({
       setSkeletonsToShow,
       setImagesArray,
       imagesArrayRef,
       addImageToPlaylist
     })
+  }
+  const handleClickConfigurePlaylist = () => {
+    setShowConfigurationModal(true)
+    setTimeout(() => {
+      setShowConfigurationModal(false)
+    }, 100)
   }
   const playlistArray = useMemo(() => {
     return imagesInPlaylist.map((image) => {
@@ -87,17 +96,20 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
           <button className='bg-[#007ACD] text-white font-medium px-2 py-1  rounded-md active:scale-90 transition-all'>
             Save playlist
           </button>
-          <button className='bg-[#007ACD] text-white font-medium px-2 py-1  rounded-md active:scale-90 transition-all'>
+          <button
+            onClick={handleClickConfigurePlaylist}
+            className='bg-[#007ACD] text-white font-medium px-2 py-1  rounded-md active:scale-90 transition-all'
+          >
             Configure playlist
           </button>
           <button
-            onClick={isActive ? undefined : handleClick}
+            onClick={isActive ? undefined : handleClickAddImages}
             className='bg-[#007ACD] text-white font-medium px-2 py-1   rounded-md active:scale-90 transition-all'
           >
             Add images
           </button>
         </div>
-        {imagesInPlaylist.length > 0 ? (
+        {imagesInPlaylist.length > 0 && (
           <button
             className='bg-[#DB5453] text-white font-medium rounded-md px-2 py-1 active:scale-90 transition-all'
             onClick={() => {
@@ -107,7 +119,7 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
           >
             Clear playlist
           </button>
-        ) : undefined}
+        )}
       </div>
 
       <DndContext
@@ -124,20 +136,23 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
           items={imagesInPlaylist}
         >
           <AnimatePresence initial={false}>
-            {playlistArray.length > 0 ? (
+            {playlistArray.length > 0 && (
               <motion.div
                 initial={{ opacity: 0.5, scale: 0.2 }}
                 transition={{ duration: 0.25, ease: 'easeInOut' }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={{ y:300, opacity:0 }}
+                exit={{ y: 300, opacity: 0 }}
                 className='flex rounded-lg overflow-y-clip  overflow-x-scroll  scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-thumb-stone-400 scrollbar-track-[#202020]'
               >
-                <AnimatePresence initial={false}> {playlistArray}</AnimatePresence>
+                <AnimatePresence initial={false}>
+                  {playlistArray}
+                </AnimatePresence>
               </motion.div>
-            ) : undefined}
+            )}
           </AnimatePresence>
         </SortableContext>
       </DndContext>
+      <PlaylistConfigurationModal visible={showConfigurationModal} />
     </div>
   )
 }

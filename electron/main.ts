@@ -1,6 +1,6 @@
 import { app, BrowserWindow, ipcMain, protocol, Tray, Menu } from 'electron'
 import path from 'node:path'
-import url from 'url'
+import url from 'node:url'
 import {
   copyImagesToCacheAndProcessThumbnails,
   setImage,
@@ -11,11 +11,14 @@ import {
 import { checkCacheOrCreateItIfNotExists } from './appFunctions'
 import { testDB } from './database/db'
 import { readImagesFromDB } from './database/dbOperations'
+import { devMenu , prodMenu} from './globals/globals'
+import { iconPath } from './binaries'
+
 process.env.DIST = path.join(__dirname, '../dist')
 process.env.PUBLIC = app.isPackaged
   ? process.env.DIST
   : path.join(process.env.DIST, '../public')
-if(process.argv[1] === '--daemon') {
+if (process.argv[1] === '--daemon') {
   console.log('daemon')
   isDaemonRunning()
   app.exit()
@@ -28,7 +31,7 @@ const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
 // eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 function createWindow() {
   win = new BrowserWindow({
-    icon: path.join(process.env.PUBLIC, 'electron-vite.svg'),
+    icon: path.join(iconPath, 'tray.png'),
     width: 1200,
     height: 600,
     minWidth: 940,
@@ -62,32 +65,11 @@ function createWindow() {
     win?.hide()
   })
 }
-const menu = [
-  {
-    label: 'File',
-    submenu: [
-      {
-        label: 'Quit',
-        click: () => app.exit()
-      }
-    ]
-  },
-  {
-    label: 'Toggle Developer Tools',
-    accelerator: (function () {
-      if (process.platform == 'darwin') return 'Alt+Command+I'
-      else return 'Ctrl+Shift+I'
-    })(),
-    click: function () {
-      if (win?.isFocused()) win.webContents.toggleDevTools()
-    }
-  }
-]
-
-const mainMenu = Menu.buildFromTemplate(menu)
 
 app.whenReady().then(() => {
   createWindow()
+  const menu = app.isPackaged ? prodMenu({ app }) : devMenu({ app, win })
+  const mainMenu = Menu.buildFromTemplate(menu)
   Menu.setApplicationMenu(mainMenu)
 })
 
@@ -110,7 +92,7 @@ app.whenReady().then(() => {
 app
   .whenReady()
   .then(() => {
-    tray = new Tray(`/home/obsy/Pictures/wallpaper.png`)
+    tray = new Tray(path.join(iconPath, 'tray.png'))
     tray.setToolTip('Waypaper Manager')
     tray.on('click', () => {
       win?.isVisible() ? win.hide() : win?.show()

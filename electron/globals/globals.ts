@@ -1,5 +1,6 @@
 import os from 'node:os'
 import { join } from 'node:path'
+import { type BrowserWindow, type App } from 'electron'
 const systemHome = os.homedir()
 const cacheDirectoryRoot = join(systemHome, '.cache', 'waypaper')
 const cacheThumbnailsDirectory = join(cacheDirectoryRoot, 'thumbnails')
@@ -15,7 +16,6 @@ export const appDirectories = {
   imagesDir: imagesDir,
   playlistsDir: playlistsDir
 }
-
 
 export const swwwDefaults = [
   'img',
@@ -39,3 +39,58 @@ export const validImageExtensions = [
   'farbfeld'
 ]
 
+export const devMenu = ({
+  win,
+  app
+}: {
+  win: BrowserWindow | null
+  app: App
+}) => {
+  const devMenu = [
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'Quit',
+          click: () => app.exit()
+        }
+      ]
+    },
+    {
+      label: 'Toggle Developer Tools',
+      accelerator: (function () {
+        if (process.platform == 'darwin') return 'Alt+Command+I'
+        else return 'Ctrl+Shift+I'
+      })(),
+      click: function () {
+        if (win?.isFocused()) win.webContents.toggleDevTools()
+      }
+    },
+    {
+      label: 'Reload',
+      accelerator: (function () {
+        if (process.platform == 'darwin') return 'Command+R'
+        else return 'Ctrl+R'
+      })(),
+      click: function () {
+        if (win?.isFocused()) win.reload()
+      }
+    }
+  ]
+  return devMenu
+}
+
+export const prodMenu = ({ app }: { app: App }) => {
+  const devMenu = [
+    {
+      label: 'File',
+      submenu: [
+        {
+          label: 'Quit',
+          click: () => app.exit()
+        }
+      ]
+    }
+  ]
+  return devMenu
+}

@@ -16,6 +16,11 @@
       "from": "daemon/playlist.js",
       "to": "resources/bin/daemon.js",
       "filter": ["**/*"]
+    },
+    {
+      "from": "electron/icons",
+      "to": "resources/icons",
+      "filter": ["**/*"]
     }
   ],
   "mac": {
