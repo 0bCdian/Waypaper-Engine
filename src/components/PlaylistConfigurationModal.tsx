@@ -1,4 +1,4 @@
-import { useForm, SubmitHandler } from 'react-hook-form'
+import { useForm, SubmitHandler, set } from 'react-hook-form'
 import { useRef, useEffect } from 'react'
 
 type Inputs = {
@@ -31,6 +31,9 @@ const PlaylistConfigurationModal = ({
     if (minutes === 60) {
       setValue('hours', (hours + 1).toString())
       setValue('minutes', '0')
+    }
+    if (minutes === 0  && hours === 0){
+      setValue('minutes', '1')
     }
   }, [hours, minutes])
   useEffect(() => {
@@ -146,9 +149,9 @@ const PlaylistConfigurationModal = ({
             </div>
             <button
               type='submit'
-              className='bg-blue-400 hover:bg-blue-500 text-white font-bold py-2 rounded w-1/5 m-auto'
+              className='bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 rounded w-1/5 m-auto'
             >
-              Submit
+              Save changes
             </button>
           </form>
         </div>
