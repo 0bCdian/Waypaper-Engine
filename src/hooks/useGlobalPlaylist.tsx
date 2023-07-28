@@ -1,45 +1,95 @@
 import { create } from 'zustand'
 import { ImagesArray, Image } from '../types/rendererTypes'
 
+const imagesInitial: ImagesArray = []
+const configurationInitial = {
+  playlistType: 'timer',
+  hours: 1,
+  minutes: 0,
+  order: 'ordered',
+  showTransition: true
+}
+
+const initialPlaylistState = {
+  images: imagesInitial,
+  configuration: configurationInitial,
+  name: ''
+}
+
+interface playlist {
+  images: ImagesArray
+  configuration: configuration
+  name: string
+}
+type configuration = typeof configurationInitial
+
 interface State {
-  imagesInPlaylist: ImagesArray
+  playlist: playlist
   isEmpty: boolean
 }
 
-const initialState: ImagesArray = []
 interface Actions {
   addImageToPlaylist: (Image: Image) => void
+  setConfiguration: (newConfiguration: configuration) => void
+  setName: (newName: string) => void
+  movePlaylistArrayOrder: (newlyOrderedArray: ImagesArray) => void
   removeImageFromPlaylist: (Image: Image) => void
   clearPlaylist: () => void
-  movePlaylistArrayOrder: (newlyOrderedArray: ImagesArray) => void
 }
 
-export const playlistStore = create<State & Actions>((set) => ({
-  imagesInPlaylist: initialState,
+export const playlistStore = create<State & Actions>()((set) => ({
+  playlist: initialPlaylistState,
   isEmpty: true,
   addImageToPlaylist: (Image: Image) => {
-    set((state) => ({
-      imagesInPlaylist: [...state.imagesInPlaylist, Image],
-      isEmpty: state.imagesInPlaylist.length === 0
-    }))
+    set((state) => {
+      const newImages = [...state.playlist.images, Image]
+      const newState = {
+        ...state,
+        playlist: { ...state.playlist, images: newImages },
+        isEmpty: false
+      }
+      return newState
+    })
   },
-  removeImageFromPlaylist: (Image: Image) => {
-    set((state) => ({
-      imagesInPlaylist: state.imagesInPlaylist.filter(
-        (imageInPlaylist) => imageInPlaylist.id !== Image.id
-      ),
-      isEmpty: state.imagesInPlaylist.length === 0
-    }))
+  setConfiguration: (newConfiguration: configuration) => {
+    set((state) => {
+      return {
+        ...state,
+        playlist: { ...state.playlist, configuration: newConfiguration }
+      }
+    })
+  },
+  setName: (newName: string) => {
+    set((state) => {
+      return { ...state, playlist: { ...state.playlist, name: newName } }
+    })
   },
   movePlaylistArrayOrder: (newlyOrderedArray: ImagesArray) => {
-    set(() => ({
-      imagesInPlaylist: newlyOrderedArray
-    }))
+    set((state) => {
+      return {
+        ...state,
+        playlist: { ...state.playlist, images: newlyOrderedArray }
+      }
+    })
+  },
+  removeImageFromPlaylist: (Image: Image) => {
+    set((state) => {
+      const newImages = state.playlist.images.filter(
+        (element) => element.id !== Image.id
+      )
+      return {
+        ...state,
+        playlist: { ...state.playlist, images: newImages }
+      }
+    })
   },
   clearPlaylist: () => {
-    set(() => ({
-      imagesInPlaylist: initialState,
-      isEmpty: true
-    }))
+    set((state) => {
+      return {
+        ...state,
+        playlist: initialPlaylistState,
+        isEmpty: true
+      }
+    })
   }
 }))

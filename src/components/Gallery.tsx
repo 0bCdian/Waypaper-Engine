@@ -70,25 +70,19 @@ export const Gallery: FC = () => {
           <Filters setSearchFilter={setSearchFilter} />
           <div
             className='overflow-y-scroll scroll-smooth w-full scrollbar-track-rounded-sm
-          scrollbar-thumb-rounded-sm scrollbar scrollbar-track-transparent scrollbar-thumb-stone-100  m-auto'
+          scrollbar-thumb-rounded-sm  scrollbar-thin scrollbar-thumb-neutral-300 m-auto'
           >
             <div
               ref={gridRef}
               className='m-auto sm:grid sm:auto-cols-auto grid-cols-[repeat(auto-fill,minmax(300px,1fr))]'
             >
-              <AddImagesCard
-                imagesArrayRef={imagesArrayRef}
-                setImagesArray={setImagesArray}
-                setSkeletonsToShow={setSkeletonsToShow}
-                alone={false}
-              />
+             
               {skeletons.length > 0 ? skeletons : undefined}
               {filteredImages}
             </div>
           </div>
         </div>
         <PlaylistTrack
-          clearPlaylist={clearPlaylist}
           resetRef={resetRef}
           setSkeletonsToShow={setSkeletonsToShow}
           setImagesArray={setImagesArray}

@@ -15,16 +15,16 @@ import {
   restrictToFirstScrollableAncestor,
   restrictToHorizontalAxis
 } from '@dnd-kit/modifiers'
-import { FC, useMemo, useState } from 'react'
+import { FC, useMemo, useEffect } from 'react'
 import MiniPlaylistCard from './MiniPlaylistCard'
 import { playlistStore } from '../hooks/useGlobalPlaylist'
 import { ImagesArray } from '../types/rendererTypes'
 import openImagesStore from '../hooks/useOpenImages'
 import { motion, AnimatePresence } from 'framer-motion'
 import PlaylistConfigurationModal from './PlaylistConfigurationModal'
+import SavePlaylistModal from './savePlaylistModal'
 
 interface PlaylistTrackProps {
-  clearPlaylist: () => void
   resetRef: () => void
   setSkeletonsToShow: React.Dispatch<React.SetStateAction<string[]>>
   setImagesArray: React.Dispatch<React.SetStateAction<ImagesArray>>
@@ -32,15 +32,18 @@ interface PlaylistTrackProps {
 }
 
 const PlaylistTrack: FC<PlaylistTrackProps> = ({
-  clearPlaylist,
   resetRef,
   setSkeletonsToShow,
   setImagesArray,
   imagesArrayRef
 }) => {
-  const [showConfigurationModal, setShowConfigurationModal] = useState(false)
-  const { imagesInPlaylist, movePlaylistArrayOrder, addImageToPlaylist } =
-    playlistStore()
+  const {
+    playlist,
+    movePlaylistArrayOrder,
+    addImageToPlaylist,
+    clearPlaylist
+  } = playlistStore()
+
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } })
   )
@@ -48,13 +51,13 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
     const { over, active } = event
     if (!over) return
     if (over.id !== active.id) {
-      const oldindex = imagesInPlaylist.findIndex(
+      const oldindex = playlist.images.findIndex(
         (element) => element.id === active.id
       )
-      const newIndex = imagesInPlaylist.findIndex(
+      const newIndex = playlist.images.findIndex(
         (element) => element.id === over?.id
       )
-      const newArrayOrder = arrayMove(imagesInPlaylist, oldindex, newIndex)
+      const newArrayOrder = arrayMove(playlist.images, oldindex, newIndex)
       movePlaylistArrayOrder(newArrayOrder)
     }
   }
@@ -67,14 +70,9 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
       addImageToPlaylist
     })
   }
-  const handleClickConfigurePlaylist = () => {
-    setShowConfigurationModal(true)
-    setTimeout(() => {
-      setShowConfigurationModal(false)
-    }, 100)
-  }
+
   const playlistArray = useMemo(() => {
-    return imagesInPlaylist.map((image) => {
+    return playlist.images.map((image) => {
       return (
         <MiniPlaylistCard
           id={image.id}
@@ -83,45 +81,79 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
         />
       )
     })
-  }, [imagesInPlaylist])
+  }, [playlist.images])
+
+  useEffect(() => {
+    if (playlist.images.length === 0) {
+      clearPlaylist()
+    }
+  }, [playlist.images])
   return (
-    <div className='flex flex-col  my-4'>
-      <div className='flex justify-between align-middle gap-3 my-3'>
-        <div className='flex gap-3'>
-          <span className='text-3xl'>
+    <div className='flex flex-col my-4'>
+      <div className='flex justify-between gap-3 my-2'>
+        <div className='flex gap-5 items-center'>
+          <span className='text-4xl font-bold'>
             {playlistArray.length > 0
               ? `Playlist (${playlistArray.length})`
               : 'Playlist'}
           </span>
-          <button className='bg-[#007ACD] text-white font-medium px-2 py-1  rounded-md active:scale-90 transition-all'>
-            Save playlist
-          </button>
-          <button
-            onClick={handleClickConfigurePlaylist}
-            className='bg-[#007ACD] text-white font-medium px-2 py-1  rounded-md active:scale-90 transition-all'
-          >
-            Configure playlist
-          </button>
           <button
             onClick={isActive ? undefined : handleClickAddImages}
-            className='bg-[#007ACD] text-white font-medium px-2 py-1   rounded-md active:scale-90 transition-all'
+            className='btn btn-primary rounded-lg'
           >
             Add images
           </button>
+          <AnimatePresence mode='sync'>
+            {playlist.images.length > 1 && (
+              <>
+                <motion.button
+                  initial={{ y: 100}}
+                  transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: 100, opacity: 0 }}
+                  onClick={() => {
+                    // @ts-ignore
+                    window.savePlaylistModal.showModal()
+                  }}
+                  className='btn btn-primary rounded-lg'
+                >
+                  Save playlist
+                </motion.button>
+                <motion.button
+                  initial={{ y: 100 }}
+                  transition={{ duration: 0.25, ease: 'easeInOut' }}
+                  animate={{ y: 0, opacity: 1 }}
+                  exit={{ y: 100, opacity: 0 }}
+                  onClick={() => {
+                    // @ts-ignore
+                    window.playlistConfigurationModal.showModal()
+                  }}
+                  className='btn btn-primary rounded-lg'
+                >
+                  Configure playlist
+                </motion.button>
+              </>
+            )}
+          </AnimatePresence>
         </div>
-        {imagesInPlaylist.length > 0 && (
-          <button
-            className='bg-[#DB5453] text-white font-medium rounded-md px-2 py-1 active:scale-90 transition-all'
-            onClick={() => {
-              resetRef()
-              clearPlaylist()
-            }}
-          >
-            Clear playlist
-          </button>
-        )}
+        <AnimatePresence>
+          {playlist.images.length > 1 && (
+            <motion.button
+              initial={{ y: 100, opacity: 0 }}
+              transition={{ duration: 0.25, ease: 'easeInOut' }}
+              animate={{ y: 0, opacity: 1 }}
+              exit={{ y: 100, opacity: 0 }}
+              className='btn btn-error rounded-lg'
+              onClick={() => {
+                resetRef()
+                clearPlaylist()
+              }}
+            >
+              Clear playlist
+            </motion.button>
+          )}
+        </AnimatePresence>
       </div>
-
       <DndContext
         modifiers={[
           restrictToHorizontalAxis,
@@ -133,7 +165,7 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
       >
         <SortableContext
           strategy={horizontalListSortingStrategy}
-          items={imagesInPlaylist}
+          items={playlist.images}
         >
           <AnimatePresence initial={false}>
             {playlistArray.length > 0 && (
@@ -142,7 +174,7 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
                 transition={{ duration: 0.25, ease: 'easeInOut' }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ y: 300, opacity: 0 }}
-                className='flex rounded-lg overflow-y-clip  overflow-x-scroll  scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-thumb-stone-400 scrollbar-track-[#202020]'
+                className='flex rounded-lg overflow-y-clip  overflow-x-scroll  scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-thumb-neutral-300'
               >
                 <AnimatePresence initial={false}>
                   {playlistArray}
@@ -152,7 +184,8 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
           </AnimatePresence>
         </SortableContext>
       </DndContext>
-      <PlaylistConfigurationModal visible={showConfigurationModal} />
+      <PlaylistConfigurationModal />
+      <SavePlaylistModal />
     </div>
   )
 }

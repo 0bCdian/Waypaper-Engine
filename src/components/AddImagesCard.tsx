@@ -29,7 +29,7 @@ export const AddImagesCard: FC<AddImagesCardProps> = ({
   }
   const styles = alone
     ? 'cursor-pointer relative rounded-lg max-w-fit mb-4 hover:bg-[#323232] active:scale-95 transition-all ease-in-out '
-    : 'cursor-pointer relative rounded-lg bg-[#323232] hover:bg-[#424242] active:scale-95 transition-all max-w-fit mb-4'
+    : 'cursor-pointer relative rounded-lg bg-base hover:bg-neutral active:scale-95 transition-all max-w-fit mb-4'
   return (
     <div className={styles} onClick={isActive ? undefined : handleClick}>
       <div className=' flex justify-center  rounded-lg min-w-[300px] min-h-[200px]'>

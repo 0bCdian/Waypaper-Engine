@@ -1,33 +1,45 @@
 /** @type {import('tailwindcss').Config} */
 module.exports = {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
-  theme: {
-    extend: {
-      colors: {
-        transparent: 'transparent',
-        bg_main: '#222831',
-        fg_main: '#EEEEEE',
-        accent_main: '#00ADB5',
-        secondary_main: '#393E46'
-      },
-      keyframes: {
-        'pop-in': {
-          '0%': { scale: 0 },
-          '100%': { scale: 1 }
-        },
-        'fade-in': {
-          '0%': { opacity: 0 },
-          '100%': { opacity: 1 }
-        }
-      },
-      animation: {
-        'fade-in': 'fade-in 0.45s ease-in-out',
-        'pop-in': 'pop-in 0.15s ease-in'
-      }
-    }
-  },
   plugins: [
     require('tailwind-scrollbar')({ nocompatible: true }),
-    require('@tailwindcss/forms')
-  ]
+    require('daisyui')
+  ],
+
+  daisyui: {
+    darkTheme: 'business', // name of one of the included themes for dark mode
+    base: true, // applies background color and foreground color for root element by default
+    styled: true, // include daisyUI colors and design decisions for all components
+    utils: true, // adds responsive and modifier utility classes
+    rtl: false, // rotate style direction from left-to-right to right-to-left. You also need to add dir="rtl" to your html tag and install `tailwindcss-flip` plugin for Tailwind CSS.
+    prefix: '', // prefix for daisyUI classnames (components, modifiers and responsive class names. Not colors)
+    logs: true, // S
+    themes: [
+      'light',
+      'dark',
+      'retro',
+      'business',
+      {
+        gruv: {
+          primary: '#bbf7d0',
+
+          secondary: '#dda044',
+
+          accent: '#8ad83c',
+
+          neutral: '#1b1d22',
+
+          'base-100': '#292828',
+
+          info: '#5c99f0',
+
+          success: '#159947',
+
+          warning: '#f4bf1f',
+
+          error: '#f44125'
+        }
+      }
+    ]
+  }
 }
