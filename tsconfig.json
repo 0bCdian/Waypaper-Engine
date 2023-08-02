@@ -20,6 +20,6 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "electron"],
+  "include": ["src", "electron", "src/components/PaginatedGallery.tsx"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

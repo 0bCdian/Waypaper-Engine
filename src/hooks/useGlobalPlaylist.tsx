@@ -30,6 +30,7 @@ interface State {
 
 interface Actions {
   addImageToPlaylist: (Image: Image) => void
+  addMultipleImagesToPlaylist: (Images: ImagesArray) => void
   setConfiguration: (newConfiguration: configuration) => void
   setName: (newName: string) => void
   movePlaylistArrayOrder: (newlyOrderedArray: ImagesArray) => void
@@ -51,6 +52,18 @@ export const playlistStore = create<State & Actions>()((set) => ({
       return newState
     })
   },
+  addMultipleImagesToPlaylist: (Images: ImagesArray) => {
+    set((state) => {
+      const newImages = [...state.playlist.images, ...Images]
+      const newState = {
+        ...state,
+        playlist: { ...state.playlist, images: newImages },
+        isEmpty: false
+      }
+      return newState
+    })
+  }
+  ,
   setConfiguration: (newConfiguration: configuration) => {
     set((state) => {
       return {

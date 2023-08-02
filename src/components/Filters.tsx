@@ -19,13 +19,13 @@ const Filters: FC<FiltersProps> = ({ setSearchFilter }) => {
   }, [debouncedSearch])
 
   return (
-    <div className='container w-2/5 my-3'>
+    <div className='my-3'>
       <input
         data-theme='retro'
         onChange={onTextChange}
         type='text'
         id='default-search'
-        className='input input-bordered input-md placeholder:text-neutral rounded-xl focus:w-1/2 w-1/5 transition-all text-md font-medium'
+        className='input input-bordered input-md placeholder:text-neutral rounded-xl transition-all text-md font-medium'
         placeholder='Search'
         required
       />

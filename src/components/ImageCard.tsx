@@ -32,7 +32,7 @@ export const ImageCard: FC<ImageCardProps> = ({
   return (
     <div
       onDoubleClick={handleDoubleClick}
-      className='duration-500 border-[2px] border-transparent group hover:border-info relative rounded-lg bg-transparent shadow-2xl  max-w-fit mb-4 overflow-hidden '
+      className='duration-500 border-[2px] border-transparent group hover:border-info relative rounded-lg bg-transparent max-w-fit mb-4 overflow-hidden '
     >
       <div className='relative'>
         <label
@@ -44,11 +44,11 @@ export const ImageCard: FC<ImageCardProps> = ({
           checked={Image.isChecked}
           onChange={handleCheckboxChange}
           type='checkbox'
-          className='absolute opacity-0 top-2 right-2 rounded-sm group-hover:opacity-50 checked:opacity-100  z-20 checkbox checkbox-sm checkbox-secondary group-hover:bg-info '
+          className='absolute opacity-0 top-2 right-2 rounded-sm group-hover:opacity-100 checked:opacity-100  z-20 checkbox checkbox-sm checkbox-success group-hover:bg-success'
         />
       </div>
       <img
-        className='rounded-lg min-w-full transform-gpu group-hover:scale-110 group-hover:object-center transition-all '
+        className='rounded-lg transform-gpu group-hover:scale-110 group-hover:object-center transition-all duration-300'
         src={imageNameFilePath}
         alt={Image.imageName}
         draggable={false}
@@ -59,7 +59,7 @@ export const ImageCard: FC<ImageCardProps> = ({
           currentTarget.src = 'atom://' + join(imagesDirectory, Image.imageName)
         }}
       />
-      <p className='absolute rounded-b-lg bottom-0 pl-2 p-1 w-full text-lg text-justify text-ellipsis overflow-hidden bg-gradient-to-t from-black from-10% text-stone-100 font-medium '>
+      <p className='absolute rounded-b-lg bottom-0 pl-2 p-2 w-full text-lg text-justify text-ellipsis overflow-hidden bg-black bg-opacity-75 font-medium truncate '>
         {Image.imageName}
       </p>
     </div>

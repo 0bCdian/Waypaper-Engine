@@ -23,7 +23,7 @@ const PlaylistConfigurationModal = () => {
       hours: parseInt(data.hours),
       minutes: parseInt(data.minutes)
     }
-    console.log(parsedData)
+
     setConfiguration(parsedData)
     closeModal()
   }
@@ -38,7 +38,7 @@ const PlaylistConfigurationModal = () => {
       setValue('minutes', '1')
     }
   }, [hours, minutes])
-  console.log(parseInt(watch('hours')))
+
   return (
     <dialog
       id='playlistConfigurationModal'

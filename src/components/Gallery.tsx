@@ -6,6 +6,7 @@ import { AddImagesCard } from './AddImagesCard'
 import Filters from './Filters'
 import PlaylistTrack from './PlaylistTrack'
 import { playlistStore } from '../hooks/useGlobalPlaylist'
+import PaginatedGallery from './PaginatedGallery'
 
 const { queryImages } = window.API_RENDERER
 
@@ -13,15 +14,14 @@ export const Gallery: FC = () => {
   const [searchFilter, setSearchFilter] = useState<string>('')
   const [skeletonsToShow, setSkeletonsToShow] = useState<string[]>([])
   const [imagesArray, setImagesArray] = useState<ImagesArray>([])
+  const { clearPlaylist, isEmpty } = playlistStore()
   const imagesArrayRef = useRef<ImagesArray>([])
-  const gridRef = useRef<HTMLDivElement>(null)
   const modifyInputElement = (elementId: number, currentState: boolean) => {
     const index = imagesArrayRef.current.findIndex(
       (element) => element.id === elementId
     )
     imagesArrayRef.current[index].isChecked = currentState
   }
-  const { clearPlaylist, isEmpty } = playlistStore()
   const resetRef = () => {
     imagesArrayRef.current = structuredClone(imagesArray)
   }
@@ -33,6 +33,7 @@ export const Gallery: FC = () => {
       clearPlaylist()
     })
   }, [])
+  useEffect(() => {}, [imagesArray])
   const filteredImages = useMemo(() => {
     return imagesArrayRef.current
       .filter((image) =>
@@ -63,24 +64,16 @@ export const Gallery: FC = () => {
       )
     })
   }, [skeletonsToShow])
+
   if (imagesArrayRef.current.length > 0 || skeletonsToShow.length > 0) {
     return (
-      <div className='flex flex-col justify-between m-auto w-[85%] h-[100%] select-none'>
-        <div className='flex flex-col grow-0 overflow-y-auto mt-5'>
+      <div className='flex flex-col justify-between m-auto w-full sm:w-[85%] h-[100%] select-none'>
+        <div className='flex flex-col items-center md:items-start overflow-y-auto mt-5'>
           <Filters setSearchFilter={setSearchFilter} />
-          <div
-            className='overflow-y-scroll scroll-smooth w-full scrollbar-track-rounded-sm
-          scrollbar-thumb-rounded-sm  scrollbar-thin scrollbar-thumb-neutral-300 m-auto'
-          >
-            <div
-              ref={gridRef}
-              className='m-auto sm:grid sm:auto-cols-auto grid-cols-[repeat(auto-fill,minmax(300px,1fr))]'
-            >
-             
-              {skeletons.length > 0 ? skeletons : undefined}
-              {filteredImages}
-            </div>
-          </div>
+          <PaginatedGallery
+            imagesArray={filteredImages}
+            SkeletonsArray={skeletons}
+          />
         </div>
         <PlaylistTrack
           resetRef={resetRef}

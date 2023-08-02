@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { Image, ImagesArray, imagesObject } from '../types/rendererTypes'
+import { ImagesArray, imagesObject } from '../types/rendererTypes'
 const { openFiles, handleOpenImages } = window.API_RENDERER
 
 interface State {
@@ -9,7 +9,7 @@ interface openImagesProps {
   setSkeletonsToShow: React.Dispatch<React.SetStateAction<string[]>>
   setImagesArray: React.Dispatch<React.SetStateAction<ImagesArray>>
   imagesArrayRef: React.MutableRefObject<ImagesArray>
-  addImageToPlaylist: (Image: Image) => void
+  addMultipleImagesToPlaylist: (Images: ImagesArray) => void
 }
 
 interface Actions {
@@ -22,34 +22,26 @@ const openImagesStore = create<State & Actions>((set) => ({
     setSkeletonsToShow,
     setImagesArray,
     imagesArrayRef,
-    addImageToPlaylist
+    addMultipleImagesToPlaylist
   }) => {
     set(() => ({ isActive: true }))
-    openFiles()
-      .then((imagesObject: imagesObject) => {
-        set(() => ({ isActive: false }))
-        if (!imagesObject) return
-        //@ts-ignore
-        setSkeletonsToShow(imagesObject.fileNames.toReversed())
-        handleOpenImages(imagesObject).then((data: ImagesArray) => {
-          setImagesArray((prev: ImagesArray) => {
-            const newData = [...prev, ...data]
-            const copyData = structuredClone(data)
-            const newImagesAdded = copyData.map((image) => {
-              return { ...image, isChecked: true }
-            })
-            imagesArrayRef.current.push(...newImagesAdded)
-            for (let i = newImagesAdded.length - 1; i >= 0; i--) {
-              addImageToPlaylist(newImagesAdded[i])
-            }
-            setSkeletonsToShow([])
-            return newData
-          })
-        })
-      })
-      .catch((error) => {
-        console.error(error)
-      })
+    const imagesObject: imagesObject = await openFiles()
+    if (!imagesObject) return
+    //@ts-ignore
+    setSkeletonsToShow(imagesObject.fileNames.toReversed())
+    set(() => ({ isActive: false }))
+    const imagesArray: ImagesArray = await handleOpenImages(imagesObject)
+    setImagesArray((previousData: ImagesArray) => {
+      const newData = [...previousData, ...imagesArray]
+      return newData
+    })
+    setSkeletonsToShow([])
+    const copyData = structuredClone(imagesArray)
+    const newImagesAdded = copyData.map((image) => {
+      return { ...image, isChecked: true }
+    })
+    imagesArrayRef.current.push(...newImagesAdded)
+    addMultipleImagesToPlaylist(newImagesAdded)
   }
 }))
 

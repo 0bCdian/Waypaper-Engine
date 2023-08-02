@@ -40,9 +40,10 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
   const {
     playlist,
     movePlaylistArrayOrder,
-    addImageToPlaylist,
+    addMultipleImagesToPlaylist,
     clearPlaylist
   } = playlistStore()
+  const { openImages, isActive } = openImagesStore()
 
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } })
@@ -61,13 +62,12 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
       movePlaylistArrayOrder(newArrayOrder)
     }
   }
-  const { openImages, isActive } = openImagesStore()
   const handleClickAddImages = () => {
     openImages({
       setSkeletonsToShow,
       setImagesArray,
       imagesArrayRef,
-      addImageToPlaylist
+      addMultipleImagesToPlaylist
     })
   }
 
@@ -107,7 +107,7 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
             {playlist.images.length > 1 && (
               <>
                 <motion.button
-                  initial={{ y: 100}}
+                  initial={{ y: 100 }}
                   transition={{ duration: 0.25, ease: 'easeInOut' }}
                   animate={{ y: 0, opacity: 1 }}
                   exit={{ y: 100, opacity: 0 }}
