@@ -26,10 +26,10 @@ const openImagesStore = create<State & Actions>((set) => ({
   }) => {
     set(() => ({ isActive: true }))
     const imagesObject: imagesObject = await openFiles()
+    set(() => ({ isActive: false }))
     if (!imagesObject) return
     //@ts-ignore
     setSkeletonsToShow(imagesObject.fileNames.toReversed())
-    set(() => ({ isActive: false }))
     const imagesArray: ImagesArray = await handleOpenImages(imagesObject)
     setImagesArray((previousData: ImagesArray) => {
       const newData = [...previousData, ...imagesArray]

@@ -75,6 +75,7 @@ export const Gallery: FC = () => {
             SkeletonsArray={skeletons}
           />
         </div>
+
         <PlaylistTrack
           resetRef={resetRef}
           setSkeletonsToShow={setSkeletonsToShow}

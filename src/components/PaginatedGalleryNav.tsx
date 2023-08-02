@@ -5,7 +5,7 @@ interface PaginatedGalleryNavProps {
   totalPages: number
   setCurrentPage: (value: React.SetStateAction<number>) => void
 }
-const BUTTONS_PER_PAGE = 5
+const MAX_BUTTONS_PER_PAGE = 5
 const PaginatedGalleryNav: FC<PaginatedGalleryNavProps> = ({
   currentPage,
   totalPages,
@@ -27,11 +27,15 @@ const PaginatedGalleryNav: FC<PaginatedGalleryNavProps> = ({
       return prevCurrentPage - 1
     })
   }
-  const currentButtonPage = Math.ceil(currentPage / BUTTONS_PER_PAGE)
-  const lastButtonIndex = currentButtonPage * BUTTONS_PER_PAGE
-  const firstButtonIndex = lastButtonIndex - BUTTONS_PER_PAGE
-
   if (totalPages <= 1) return <></>
+  const buttonsPerPage =
+    totalPages > MAX_BUTTONS_PER_PAGE ? MAX_BUTTONS_PER_PAGE : totalPages
+  const currentButtonPage = Math.ceil(currentPage / buttonsPerPage)
+  const lastButtonIndex =
+    currentButtonPage * buttonsPerPage > totalPages
+      ? totalPages
+      : currentButtonPage * buttonsPerPage
+  const firstButtonIndex = lastButtonIndex - buttonsPerPage
   const buttons: JSX.Element[] = []
   for (let i = firstButtonIndex + 1; i <= lastButtonIndex; i++) {
     buttons.push(
@@ -47,14 +51,14 @@ const PaginatedGalleryNav: FC<PaginatedGalleryNavProps> = ({
     )
   }
   return (
-    <div className='join self-center my-3'>
+    <div className='join no-animation self-center my-3' style={{ width: 'fit-content' }}>
       <button
         onClick={previousPage}
         className='join-item btn btn-neutral btn-lg rounded-lg'
       >
         «
       </button>
-      <div className=' '>{buttons}</div>
+      <div>{buttons}</div>
       <button
         onClick={nextPage}
         className='join-item btn btn-lg btn-neutral rounded-lg'
