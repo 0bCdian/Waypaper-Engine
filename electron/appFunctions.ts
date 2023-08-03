@@ -7,13 +7,15 @@ import {
   validImageExtensions
 } from './globals/globals'
 import { Image, Playlist } from './database/models'
-import { fileList, imagesObject } from './types/types'
+import { fileList, imagesObject, SWWW_VERSION,PlaylistType } from './types/types'
 import { playlist } from '../src/types/rendererTypes'
 import { storeImagesInDB, storePlaylistInDB } from './database/dbOperations'
-import { exec, execFile } from 'node:child_process'
-import { execPath } from './binaries'
+import { exec, execFile, fork } from 'node:child_process'
+import { promisify } from 'node:util'
+import { execPath,childPath } from './binaries'
 import { join, basename } from 'node:path'
-
+const execPomisified = promisify(exec)
+const execFilePromisified = promisify(execFile)
 function openImagesFromFilePicker() {
   const file: fileList = dialog.showOpenDialogSync({
     properties: ['openFile', 'multiSelections'],
@@ -163,38 +165,42 @@ function getUniqueFileNames(existingFiles: string[], filesToCopy: string[]) {
   return filesToCopyWithoutConflicts
 }
 
-export function setImage(
+export async function setImage(
   _event: Electron.IpcMainInvokeEvent,
   imageName: string
 ) {
-  exec(`pgrep '^swww$'`, (_error, stdout, _stderr) => {
-    if (!parseInt(stdout)) {
-      const options = [...swwwDefaults]
-      options.push(join(appDirectories.imagesDir, imageName))
-      execFile(join(execPath, 'swww'), options, (error, stdout, stderr) => {
-        if (error) {
-          console.log(error, stderr, stdout)
-        }
-      })
-    } else {
-      setTimeout(() => {
-        setImage(_event, imageName)
-      }, 3000)
+  const options = [...swwwDefaults]
+  options.push(join(appDirectories.imagesDir, imageName))
+  if (process.env.SWWW_VERSION === SWWW_VERSION.SYSTEM_INSTALLED) {
+    try {
+      await execPomisified('swww' + ' ' + options.join(' '))
+    } catch (error) {
+      console.error(error)
     }
-  })
+  } else {
+    try {
+      await execFilePromisified(join(execPath, 'swww') + ' ' + options)
+    } catch (error) {
+      console.error(error)
+    }
+  }
 }
-
-export function isDaemonRunning() {
+export async function isDaemonRunning() {
+  await checkIfSwwwIsInstalled()
   exec(`ps -A | grep "swww-daemon"`, (_error, stdout, _stderr) => {
     if (!(stdout.toLowerCase().indexOf('swww-daemon'.toLowerCase()) > -1)) {
       isSocketClean()
-      execFile(
-        join(execPath, 'swww-daemon'),
-        ['&', 'disown'],
-        (error, stdout, stderr) => {
-          console.log(error, stdout, stderr)
-        }
-      )
+      if (process.env.SWWW_VERSION === SWWW_VERSION.SYSTEM_INSTALLED) {
+        execPomisified('swww init')
+      } else {
+        execFile(
+          join(execPath, 'swww-daemon'),
+          ['&', 'disown'],
+          (error, stdout, stderr) => {
+            console.log(error, stdout, stderr)
+          }
+        )
+      }
     } else {
       console.log('Daemon already running')
     }
@@ -209,51 +215,43 @@ function isSocketClean() {
   }
 }
 
-/* function initPlaylist(
-  playlistObject: playlist,
-  swwwConfig = swwwDefaults,
-  swwwBin: string,
-  childPathFile: string
+function initPlaylist(
+  playlistObject: PlaylistType,
+  swwwUserOverrides?: string[],
 ) {
+  const swwwOptions = swwwUserOverrides !== undefined ? swwwUserOverrides : swwwDefaults
+  const swwwBin = process.env.SWWW_VERSION === SWWW_VERSION.SYSTEM_INSTALLED ? 'swww' : join(execPath, 'swww')
   const messageForChild = {
     playlistObject,
+    swwwOptions, 
+    SWWW_VERSION: process.env.SWWW_VERSION,
     swwwBin,
-    swwwConfig,
     appDirectories
   }
-  const child = fork(childPathFile)
+  const child = fork(childPath)
   child.send(messageForChild)
   return child
-} */
-
-export function setBinInPath() {
-  exec(`export PATH=${execPath}`, (error, _stdout, _stderr) => {
-    if (error) {
-      console.error(error)
-    } else {
-      console.log('PATH set')
-    }
-  })
 }
 
-function checkIfSwwwIsInstalled() {
-  exec(`swww --version`, (error, _stdout, _stderr) => {
-    if (error) {
-      console.error(error)
-      console.log(error)
-      return false
-    } else {
-      console.log('swww is installed')
-      return true
-    }
-  })
+export async function checkIfSwwwIsInstalled() {
+  const { stdout } = await execPomisified(`swww --version`)
+  if (stdout) {
+    console.log('swww is installed in the system')
+    process.env.SWWW_VERSION = SWWW_VERSION.SYSTEM_INSTALLED
+  } else {
+    console.log('swww is not installed, please find instructions in the README.md on how to install it')
+    process.env.SWWW_VERSION = SWWW_VERSION.NOT_INSTALLED
+  }
 }
-checkIfSwwwIsInstalled()
-
 export async function saveAndInitPlaylist(
   _event: Electron.IpcMainInvokeEvent,
   playlistObject: playlist
 ) {
-  const playlistAdded = await storePlaylistInDB(playlistObject)
-  console.log('playlistAdded', playlistAdded)
+  try {
+    const playlistAdded = await storePlaylistInDB(playlistObject)
+    initPlaylist(playlistAdded)
+  } catch (error) {
+    console.error(error)
+    throw Error('Failed to set playlist in DB')
+  }
 }

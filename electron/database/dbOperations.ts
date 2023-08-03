@@ -56,7 +56,10 @@ export async function storePlaylistInDB(playlistObject: playlist) {
           name: playlistObject.name
         }
       })
-      return queriedPlaylist?.dataValues
+      if (!queriedPlaylist) {
+        throw new Error('Error saving playlist')
+      }
+      return queriedPlaylist?.dataValues as typeof playlistInstance
     } else {
       await Playlist.create(playlistInstance)
       const queriedPlaylist = await Playlist.findOne({
@@ -64,7 +67,7 @@ export async function storePlaylistInDB(playlistObject: playlist) {
           name: playlistObject.name
         }
       })
-      const playlistAdded = queriedPlaylist?.dataValues
+      const playlistAdded: typeof playlistInstance = queriedPlaylist?.dataValues
       if (!playlistAdded) {
         throw new Error('Error saving playlist')
       }
@@ -87,4 +90,8 @@ export async function readImagesFromDB() {
   } catch (error) {
     console.error(error)
   }
+}
+
+export async function readPlaylistsFromDB() {
+  
 }

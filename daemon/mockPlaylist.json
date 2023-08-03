@@ -1,6 +1,0 @@
-{
-  "name": "testTimer",
-  "type": "timer",
-  "imagesList": ["1.png", "2.png", "3.png"],
-  "currentImageIndex": "0"
-}

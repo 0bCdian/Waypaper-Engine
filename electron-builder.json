@@ -13,7 +13,7 @@
       "filter": ["**/*"]
     },
     {
-      "from": "daemon/playlist.js",
+      "from": "daemon/daemon.js",
       "to": "resources/bin/daemon.js",
       "filter": ["**/*"]
     },

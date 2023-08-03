@@ -6,7 +6,6 @@ import {
   setImage,
   isDaemonRunning,
   openAndReturnImagesObject,
-  setBinInPath,
   saveAndInitPlaylist
 } from './appFunctions'
 import { checkCacheOrCreateItIfNotExists } from './appFunctions'
@@ -47,11 +46,14 @@ function createWindow() {
     }
   })
 
-  if (VITE_DEV_SERVER_URL) {
+  if (VITE_DEV_SERVER_URL !== undefined) {
     win.loadURL(VITE_DEV_SERVER_URL)
   } else {
-    // win.loadFile('dist/index.html')
-    win.loadFile(path.join(process.env.DIST, 'index.html'))
+    if (process.env.DIST) {
+      win.loadFile(path.join(process.env.DIST, 'index.html'))
+    } else {
+      app.exit()
+    }
   }
   win.once('ready-to-show', () => {
     win?.show()
@@ -81,7 +83,6 @@ app.whenReady().then(() => {
 app.whenReady().then(() => {
   checkCacheOrCreateItIfNotExists()
   testDB()
-  setBinInPath()
   isDaemonRunning()
 })
 

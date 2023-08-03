@@ -1,7 +1,7 @@
-import os from 'node:os'
+import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { type BrowserWindow, type App } from 'electron'
-const systemHome = os.homedir()
+const systemHome = homedir()
 const cacheDirectoryRoot = join(systemHome, '.cache', 'waypaper')
 const cacheThumbnailsDirectory = join(cacheDirectoryRoot, 'thumbnails')
 const mainDirectory = join(systemHome, '.waypaper')
