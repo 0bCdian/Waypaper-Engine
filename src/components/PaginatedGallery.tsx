@@ -34,7 +34,7 @@ const PaginatedGallery: FC<PaginatedGalleryProps> = ({
     <div className='flex flex-col w-full overflow-hidden justify-between h-[100vh]'>
       <div
         className='overflow-y-scroll min-h-fit scroll-smooth w-full scrollbar-track-rounded-sm
-          scrollbar-thumb-rounded-sm  scrollbar-thin scrollbar-thumb-transparent m-auto my-3'
+          scrollbar-thumb-rounded-sm  scrollbar-thin scrollbar-thumb-stone-400 m-auto my-3'
       >
         <div className='md:grid flex flex-col items-center w-full m-auto md:auto-cols-auto md:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]'>
           {imagesToShow.map((image, index) => (

@@ -18,13 +18,13 @@ export const AddImagesCard: FC<AddImagesCardProps> = ({
   imagesArrayRef
 }) => {
   const { openImages, isActive } = openImagesStore()
-  const { addImageToPlaylist } = playlistStore()
+  const { addMultipleImagesToPlaylist } = playlistStore()
   const handleClick = () => {
     openImages({
       setSkeletonsToShow,
       setImagesArray,
       imagesArrayRef,
-      addImageToPlaylist
+      addMultipleImagesToPlaylist
     })
   }
   const styles = alone

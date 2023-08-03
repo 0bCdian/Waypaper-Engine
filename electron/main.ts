@@ -6,12 +6,13 @@ import {
   setImage,
   isDaemonRunning,
   openAndReturnImagesObject,
-  setBinInPath
+  setBinInPath,
+  saveAndInitPlaylist
 } from './appFunctions'
 import { checkCacheOrCreateItIfNotExists } from './appFunctions'
 import { testDB } from './database/db'
 import { readImagesFromDB } from './database/dbOperations'
-import { devMenu , prodMenu} from './globals/globals'
+import { devMenu, prodMenu } from './globals/globals'
 import { iconPath } from './binaries'
 
 process.env.DIST = path.join(__dirname, '../dist')
@@ -44,11 +45,6 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.js'),
       sandbox: false
     }
-  })
-
-  // Test active push message to Renderer-process.
-  win.webContents.on('did-finish-load', () => {
-    win?.webContents.send('main-process-message', new Date().toLocaleString())
   })
 
   if (VITE_DEV_SERVER_URL) {
@@ -103,3 +99,4 @@ ipcMain.handle('openFiles', openAndReturnImagesObject)
 ipcMain.handle('handleOpenImages', copyImagesToCacheAndProcessThumbnails)
 ipcMain.handle('queryImages', readImagesFromDB)
 ipcMain.on('setImage', setImage)
+ipcMain.on('savePlaylist', saveAndInitPlaylist)

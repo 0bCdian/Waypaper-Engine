@@ -1,5 +1,6 @@
 import { imageModel } from '../types/types'
-import Image from './models'
+import { playlist, ORDER_TYPES } from '../../src/types/rendererTypes'
+import { Image, Playlist } from './models'
 export async function storeImagesInDB(images: string[]) {
   const imagesToStore = images.map((image) => {
     const imageInstance = {
@@ -19,6 +20,60 @@ export async function storeImagesInDB(images: string[]) {
     return imageData
   })
   return imagesAdded
+}
+
+export async function storePlaylistInDB(playlistObject: playlist) {
+  let imagesInPlaylist = playlistObject.images.map((image) => image.imageName)
+  imagesInPlaylist =
+    playlistObject.configuration.order === ORDER_TYPES.ORDERED
+      ? imagesInPlaylist
+      : // @ts-ignore
+        imagesInPlaylist.toSorted(() => 0.5 - Math.random())
+  const playlistInstance = {
+    name: playlistObject.name,
+    images: JSON.stringify(imagesInPlaylist),
+    type: playlistObject.configuration.playlistType,
+    hours: playlistObject.configuration.hours,
+    minutes: playlistObject.configuration.minutes,
+    order: playlistObject.configuration.order,
+    showTransition: playlistObject.configuration.showTransition,
+    currenImageIndex: 0
+  }
+  try {
+    const playlistInDB = await Playlist.findOne({
+      where: {
+        name: playlistObject.name
+      }
+    })
+    if (playlistInDB !== null) {
+      await Playlist.update(playlistInstance, {
+        where: {
+          name: playlistObject.name
+        }
+      })
+      const queriedPlaylist = await Playlist.findOne({
+        where: {
+          name: playlistObject.name
+        }
+      })
+      return queriedPlaylist?.dataValues
+    } else {
+      await Playlist.create(playlistInstance)
+      const queriedPlaylist = await Playlist.findOne({
+        where: {
+          name: playlistObject.name
+        }
+      })
+      const playlistAdded = queriedPlaylist?.dataValues
+      if (!playlistAdded) {
+        throw new Error('Error saving playlist')
+      }
+      return playlistAdded
+    }
+  } catch (error) {
+    console.log('error', error)
+    throw error
+  }
 }
 
 export async function readImagesFromDB() {

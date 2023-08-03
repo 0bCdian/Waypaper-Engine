@@ -2,15 +2,19 @@ import { useRef } from 'react'
 import { useForm, SubmitHandler, FieldValues } from 'react-hook-form'
 import { playlistStore } from '../hooks/useGlobalPlaylist'
 
+const { savePlaylist } = window.API_RENDERER
+
 const SavePlaylistModal = () => {
-  const { playlist } = playlistStore()
+  const { setName, readPlaylist } = playlistStore()
   const modalRef = useRef<HTMLDialogElement>(null)
   const { register, handleSubmit } = useForm()
   const closeModal = () => {
     modalRef.current?.close()
   }
   const onSubmit: SubmitHandler<FieldValues> = (data) => {
-    console.log(data)
+    setName(data.playlistName)
+    const playlist = readPlaylist()
+    savePlaylist(playlist)
     closeModal()
   }
 
@@ -29,10 +33,7 @@ const SavePlaylistModal = () => {
       >
         <h2 className='font-bold text-4xl text-center py-3 '>Save Playlist</h2>
         <div className='divider'></div>
-        <label
-          htmlFor='playlistName'
-          className='label text-lg text-warning'
-        >
+        <label htmlFor='playlistName' className='label text-lg text-warning'>
           Playlists with the same name will be overwritten.
         </label>
 

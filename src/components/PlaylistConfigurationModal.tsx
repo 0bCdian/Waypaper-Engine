@@ -1,10 +1,12 @@
 import { useForm, SubmitHandler } from 'react-hook-form'
 import { useRef, useEffect } from 'react'
 import { playlistStore } from '../hooks/useGlobalPlaylist'
+import { ORDER_TYPES } from '../types/rendererTypes'
+import { read } from 'fs'
 
 type Inputs = {
   playlistType: string
-  order: string
+  order: ORDER_TYPES
   hours: string
   minutes: string
   showTransition: boolean
@@ -23,7 +25,6 @@ const PlaylistConfigurationModal = () => {
       hours: parseInt(data.hours),
       minutes: parseInt(data.minutes)
     }
-
     setConfiguration(parsedData)
     closeModal()
   }
@@ -114,11 +115,11 @@ const PlaylistConfigurationModal = () => {
           <select
             className='select select-info text-lg w-2/5 rounded-lg'
             {...register('order', { required: true })}
-            defaultValue={'ordered'}
+            defaultValue={ORDER_TYPES.ORDERED}
             id='order'
           >
-            <option value='random'>Random</option>
-            <option value='ordered'>Ordered</option>
+            <option value={ORDER_TYPES.RANDOM}>Random</option>
+            <option value={ORDER_TYPES.ORDERED}>Ordered</option>
           </select>
         </div>
         <div className='divider'></div>

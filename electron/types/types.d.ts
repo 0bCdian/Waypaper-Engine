@@ -8,9 +8,4 @@ export interface imageModel {
   id: number
   imageName: string
 }
-export interface playlist {
-  name: string
-  imagesList: string[]
-  currentImageIndex: number
-  interval: number
-}
+

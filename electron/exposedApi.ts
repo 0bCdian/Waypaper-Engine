@@ -1,6 +1,7 @@
 import { ipcRenderer } from 'electron'
 import { appDirectories } from './globals/globals'
 import { imagesObject } from './types/types'
+import { playlist } from '../src/types/rendererTypes'
 import { join } from 'node:path'
 
 export const ELECTRON_API = {
@@ -13,6 +14,9 @@ export const ELECTRON_API = {
   },
   setImage: (image: string) => {
     ipcRenderer.send('setImage', image)
+  },
+  savePlaylist: (playlistObject: playlist) => {
+    ipcRenderer.send('savePlaylist', playlistObject)
   },
   join: join,
   thumbnailDirectory: appDirectories.thumbnails,

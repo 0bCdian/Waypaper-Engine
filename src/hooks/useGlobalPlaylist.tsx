@@ -1,12 +1,18 @@
 import { create } from 'zustand'
-import { ImagesArray, Image } from '../types/rendererTypes'
+import {
+  ImagesArray,
+  Image,
+  playlist,
+  configuration,
+  ORDER_TYPES
+} from '../types/rendererTypes'
 
 const imagesInitial: ImagesArray = []
 const configurationInitial = {
   playlistType: 'timer',
   hours: 1,
   minutes: 0,
-  order: 'ordered',
+  order: ORDER_TYPES.ORDERED,
   showTransition: true
 }
 
@@ -15,13 +21,6 @@ const initialPlaylistState = {
   configuration: configurationInitial,
   name: ''
 }
-
-interface playlist {
-  images: ImagesArray
-  configuration: configuration
-  name: string
-}
-type configuration = typeof configurationInitial
 
 interface State {
   playlist: playlist
@@ -36,9 +35,10 @@ interface Actions {
   movePlaylistArrayOrder: (newlyOrderedArray: ImagesArray) => void
   removeImageFromPlaylist: (Image: Image) => void
   clearPlaylist: () => void
+  readPlaylist: () => playlist
 }
 
-export const playlistStore = create<State & Actions>()((set) => ({
+export const playlistStore = create<State & Actions>()((set, get) => ({
   playlist: initialPlaylistState,
   isEmpty: true,
   addImageToPlaylist: (Image: Image) => {
@@ -62,8 +62,7 @@ export const playlistStore = create<State & Actions>()((set) => ({
       }
       return newState
     })
-  }
-  ,
+  },
   setConfiguration: (newConfiguration: configuration) => {
     set((state) => {
       return {
@@ -104,5 +103,8 @@ export const playlistStore = create<State & Actions>()((set) => ({
         isEmpty: true
       }
     })
+  },
+  readPlaylist: () => {
+    return get().playlist
   }
 }))

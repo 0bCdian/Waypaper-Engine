@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-var-requires */
 import { dialog } from 'electron'
 import fs, { rmSync } from 'node:fs'
 import { copyFile } from 'node:fs/promises'
@@ -7,9 +6,10 @@ import {
   swwwDefaults,
   validImageExtensions
 } from './globals/globals'
-import Image from './database/models'
+import { Image, Playlist } from './database/models'
 import { fileList, imagesObject } from './types/types'
-import { storeImagesInDB } from './database/dbOperations'
+import { playlist } from '../src/types/rendererTypes'
+import { storeImagesInDB, storePlaylistInDB } from './database/dbOperations'
 import { exec, execFile } from 'node:child_process'
 import { execPath } from './binaries'
 import { join, basename } from 'node:path'
@@ -101,6 +101,7 @@ export async function checkCacheOrCreateItIfNotExists() {
     if (!fs.existsSync(appDirectories.imagesDir)) {
       deleteFolders(appDirectories.thumbnails, appDirectories.playlistsDir)
       //
+      await Playlist.sync({ force: true })
       await Image.sync({ force: true })
       createFolders(
         appDirectories.imagesDir,
@@ -248,3 +249,11 @@ function checkIfSwwwIsInstalled() {
   })
 }
 checkIfSwwwIsInstalled()
+
+export async function saveAndInitPlaylist(
+  _event: Electron.IpcMainInvokeEvent,
+  playlistObject: playlist
+) {
+  const playlistAdded = await storePlaylistInDB(playlistObject)
+  console.log('playlistAdded', playlistAdded)
+}

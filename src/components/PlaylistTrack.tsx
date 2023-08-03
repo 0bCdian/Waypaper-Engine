@@ -90,8 +90,8 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
   }, [playlist.images])
   return (
     <div className='flex flex-col my-4'>
-      <div className='flex justify-between gap-3 my-2'>
-        <div className='flex gap-5 items-center'>
+      <div className='flex justify-between gap-3 items-center my-2'>
+        <div className='flex gap-5 items-center '>
           <span className='text-4xl font-bold'>
             {playlistArray.length > 0
               ? `Playlist (${playlistArray.length})`
