@@ -4,16 +4,25 @@ import { copyFile } from 'node:fs/promises'
 import {
   appDirectories,
   swwwDefaults,
-  validImageExtensions
+  validImageExtensions,
+  WAYPAPER_SOCKET_PATH
 } from './globals/globals'
 import { Image, Playlist } from './database/models'
-import { fileList, imagesObject, SWWW_VERSION } from './types/types'
+import {
+  fileList,
+  imagesObject,
+  SWWW_VERSION,
+  ACTIONS,
+  message
+} from './types/types'
 import { playlist } from '../src/types/rendererTypes'
 import { storeImagesInDB, storePlaylistInDB } from './database/dbOperations'
 import { exec, execFile, fork } from 'node:child_process'
 import { promisify } from 'node:util'
-import { execPath, childPath } from './binaries'
+import { execPath, waypaperDaemonPath } from './binaries'
 import { join, basename } from 'node:path'
+import { createConnection } from 'node:net'
+
 const execPomisified = promisify(exec)
 const execFilePromisified = promisify(execFile)
 function openImagesFromFilePicker() {
@@ -185,11 +194,11 @@ export async function setImage(
     }
   }
 }
-export async function isDaemonRunning() {
+export async function isSwwwDaemonRunning() {
   await checkIfSwwwIsInstalled()
   exec(`ps -A | grep "swww-daemon"`, (_error, stdout, _stderr) => {
     if (!(stdout.toLowerCase().indexOf('swww-daemon'.toLowerCase()) > -1)) {
-      isSocketClean()
+      isSwwwSocketClean()
       if (process.env.SWWW_VERSION === SWWW_VERSION.SYSTEM_INSTALLED) {
         execPomisified('swww init')
       } else {
@@ -207,7 +216,7 @@ export async function isDaemonRunning() {
   })
 }
 
-function isSocketClean() {
+function isSwwwSocketClean() {
   //TODO check if I can get around hardcoding the socket path
   const socketPath = '/run/user/1000/swww.socket'
   if (fs.existsSync(socketPath)) {
@@ -216,21 +225,30 @@ function isSocketClean() {
 }
 
 function initPlaylist(playlistName: string, swwwUserOverrides?: string[]) {
-  const swwwOptions =
-    swwwUserOverrides !== undefined ? swwwUserOverrides : swwwDefaults
-  const swwwBin =
-    process.env.SWWW_VERSION === SWWW_VERSION.SYSTEM_INSTALLED
-      ? 'swww'
-      : join(execPath, 'swww')
-  const messageForChild = {
-    playlistName,
-    swwwOptions,
-    SWWW_VERSION: process.env.SWWW_VERSION,
-    swwwBin
+  if (process.env.SWWW_VERSION) {
+    const swwwOptions =
+      swwwUserOverrides !== undefined ? swwwUserOverrides : swwwDefaults
+    const swwwBin =
+      process.env.SWWW_VERSION === SWWW_VERSION.SYSTEM_INSTALLED
+        ? 'swww'
+        : join(execPath, 'swww')
+    const swwwVersion =
+      process.env.SWWW_VERSION === SWWW_VERSION.SYSTEM_INSTALLED
+        ? SWWW_VERSION.SYSTEM_INSTALLED
+        : SWWW_VERSION.NOT_INSTALLED
+    const message: message = {
+      action: ACTIONS.START_PLAYLIST,
+      payload: {
+        playlistName,
+        swwwOptions,
+        SWWW_VERSION: swwwVersion,
+        swwwBin
+      }
+    }
+    playlistController(message)
+  } else {
+    throw new Error('Check first if swww is installed')
   }
-  const child = fork(childPath)
-  child.send(messageForChild)
-  return child
 }
 
 export async function checkIfSwwwIsInstalled() {
@@ -256,4 +274,28 @@ export async function saveAndInitPlaylist(
     console.error(error)
     throw Error('Failed to set playlist in DB')
   }
+}
+async function isWaypaperDaemonRunning() {
+  try {
+    const { stdout } = await execPomisified('pidof waypaperdaemon')
+    console.log('Waypaper daemon already running', stdout)
+    return true
+  } catch (_err) {
+    console.log('Waypaper daemon not running')
+    return false
+  }
+}
+export async function initWaypaperDaemon() {
+  if (!(await isWaypaperDaemonRunning())) {
+    try {
+      fork(waypaperDaemonPath)
+    } catch (error) {
+      console.error(error)
+    }
+  }
+}
+
+export async function playlistController(message: message) {
+  const connection = createConnection(WAYPAPER_SOCKET_PATH)
+  connection.write(JSON.stringify(message))
 }

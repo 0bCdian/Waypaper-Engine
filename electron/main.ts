@@ -4,9 +4,10 @@ import url from 'node:url'
 import {
   copyImagesToCacheAndProcessThumbnails,
   setImage,
-  isDaemonRunning,
+  isSwwwDaemonRunning,
   openAndReturnImagesObject,
-  saveAndInitPlaylist
+  saveAndInitPlaylist,
+  initWaypaperDaemon
 } from './appFunctions'
 import { checkCacheOrCreateItIfNotExists } from './appFunctions'
 import { testDB } from './database/db'
@@ -19,9 +20,11 @@ process.env.PUBLIC = app.isPackaged
   ? process.env.DIST
   : path.join(process.env.DIST, '../public')
 if (process.argv[1] === '--daemon') {
-  console.log('daemon')
-  isDaemonRunning()
-  app.exit()
+  isSwwwDaemonRunning().then(() => {
+    initWaypaperDaemon().then(() => {
+      app.exit()
+    })
+  })
 }
 let tray = null
 let win: BrowserWindow | null
@@ -80,10 +83,11 @@ app.whenReady().then(() => {
   })
 })
 
-app.whenReady().then(() => {
-  checkCacheOrCreateItIfNotExists()
-  testDB()
-  isDaemonRunning()
+app.whenReady().then(async () => {
+  await checkCacheOrCreateItIfNotExists()
+  await testDB()
+  await isSwwwDaemonRunning()
+  await initWaypaperDaemon()
 })
 
 app

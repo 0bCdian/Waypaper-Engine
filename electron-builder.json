@@ -5,7 +5,7 @@
   "directories": {
     "output": "release/${version}"
   },
-  "files": ["dist-electron", "dist"],
+  "files": ["dist-electron", "dist", "daemon"],
   "extraFiles": [
     {
       "from": "electron/bin",

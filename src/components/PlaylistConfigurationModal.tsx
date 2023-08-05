@@ -1,10 +1,10 @@
 import { useForm, SubmitHandler } from 'react-hook-form'
 import { useRef, useEffect } from 'react'
 import { playlistStore } from '../hooks/useGlobalPlaylist'
-import { ORDER_TYPES } from '../types/rendererTypes'
+import { ORDER_TYPES, PLAYLIST_TYPES } from '../types/rendererTypes'
 
 type Inputs = {
-  playlistType: string
+  playlistType: PLAYLIST_TYPES
   order: ORDER_TYPES
   hours: string
   minutes: string
@@ -67,8 +67,8 @@ const PlaylistConfigurationModal = () => {
             defaultValue={'timer'}
             {...register('playlistType', { required: true })}
           >
-            <option value='timer'>On a timer</option>
-            <option value='never'>Never</option>
+            <option value={PLAYLIST_TYPES.TIMER}>On a timer</option>
+            <option value={PLAYLIST_TYPES.NEVER}>Never</option>
           </select>
         </div>
         <div className='flex justify-end items-baseline gap-1'>

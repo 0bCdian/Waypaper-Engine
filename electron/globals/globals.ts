@@ -16,7 +16,7 @@ export const appDirectories = {
   imagesDir: imagesDir,
   playlistsDir: playlistsDir
 }
-
+export const WAYPAPER_SOCKET_PATH = '/tmp/waypaper_daemon.sock'
 export const swwwDefaults = [
   '--transition-fps',
   '60',

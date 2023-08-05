@@ -1,4 +1,4 @@
-import { ORDER_TYPES } from '../../src/types/rendererTypes'
+import { ORDER_TYPES, PLAYLIST_TYPES } from '../../src/types/rendererTypes'
 export type fileList = string[] | undefined
 export interface imagesObject {
   imagePaths: string[]
@@ -19,10 +19,28 @@ export type PlaylistType = {
   id: number
   name: string
   images: string
-  type: string
+  type: PLAYLIST_TYPES
   hours: number
   minutes: number
   order: ORDER_TYPES
   showTransition: boolean
   currentImageIndex: number
+}
+
+export enum ACTIONS {
+  NEXT_IMAGE = 'next-image',
+  PREVIOUS_IMAGE = 'previous-image',
+  START_PLAYLIST = 'start-playlist',
+  STOP_DAEMON = 'stop-daemon',
+  PAUSE_PLAYLIST = 'pause-playlist'
+}
+
+export interface message {
+  action: ACTIONS
+  payload?: {
+    playlistName: string
+    swwwOptions: string[]
+    SWWW_VERSION: SWWW_VERSION
+    swwwBin: string
+  }
 }

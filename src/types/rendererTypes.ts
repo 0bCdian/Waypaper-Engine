@@ -16,8 +16,15 @@ export enum ORDER_TYPES {
   RANDOM = 'random'
 }
 
+export enum PLAYLIST_TYPES {
+  TIMER= 'timer',
+  NEVER= 'never',
+  TIME_OF_DAY= 'timeofday',
+  DAY_OF_WEEK= 'dayofweek'
+}
+
 export type configuration = {
-  playlistType: string
+  playlistType: PLAYLIST_TYPES
   hours: number
   minutes: number
   order: ORDER_TYPES
