@@ -18,7 +18,6 @@ export const appDirectories = {
 }
 
 export const swwwDefaults = [
-  'img',
   '--transition-fps',
   '60',
   '--transition-duration',

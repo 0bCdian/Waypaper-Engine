@@ -7,12 +7,12 @@ import {
   validImageExtensions
 } from './globals/globals'
 import { Image, Playlist } from './database/models'
-import { fileList, imagesObject, SWWW_VERSION,PlaylistType } from './types/types'
+import { fileList, imagesObject, SWWW_VERSION } from './types/types'
 import { playlist } from '../src/types/rendererTypes'
 import { storeImagesInDB, storePlaylistInDB } from './database/dbOperations'
 import { exec, execFile, fork } from 'node:child_process'
 import { promisify } from 'node:util'
-import { execPath,childPath } from './binaries'
+import { execPath, childPath } from './binaries'
 import { join, basename } from 'node:path'
 const execPomisified = promisify(exec)
 const execFilePromisified = promisify(execFile)
@@ -173,13 +173,13 @@ export async function setImage(
   options.push(join(appDirectories.imagesDir, imageName))
   if (process.env.SWWW_VERSION === SWWW_VERSION.SYSTEM_INSTALLED) {
     try {
-      await execPomisified('swww' + ' ' + options.join(' '))
+      await execPomisified(`swww img ${options.join(' ')}`)
     } catch (error) {
       console.error(error)
     }
   } else {
     try {
-      await execFilePromisified(join(execPath, 'swww') + ' ' + options)
+      await execFilePromisified(`${join(execPath, 'swww')} img  ${options}`)
     } catch (error) {
       console.error(error)
     }
@@ -215,18 +215,18 @@ function isSocketClean() {
   }
 }
 
-function initPlaylist(
-  playlistObject: PlaylistType,
-  swwwUserOverrides?: string[],
-) {
-  const swwwOptions = swwwUserOverrides !== undefined ? swwwUserOverrides : swwwDefaults
-  const swwwBin = process.env.SWWW_VERSION === SWWW_VERSION.SYSTEM_INSTALLED ? 'swww' : join(execPath, 'swww')
+function initPlaylist(playlistName: string, swwwUserOverrides?: string[]) {
+  const swwwOptions =
+    swwwUserOverrides !== undefined ? swwwUserOverrides : swwwDefaults
+  const swwwBin =
+    process.env.SWWW_VERSION === SWWW_VERSION.SYSTEM_INSTALLED
+      ? 'swww'
+      : join(execPath, 'swww')
   const messageForChild = {
-    playlistObject,
-    swwwOptions, 
+    playlistName,
+    swwwOptions,
     SWWW_VERSION: process.env.SWWW_VERSION,
-    swwwBin,
-    appDirectories
+    swwwBin
   }
   const child = fork(childPath)
   child.send(messageForChild)
@@ -239,7 +239,9 @@ export async function checkIfSwwwIsInstalled() {
     console.log('swww is installed in the system')
     process.env.SWWW_VERSION = SWWW_VERSION.SYSTEM_INSTALLED
   } else {
-    console.log('swww is not installed, please find instructions in the README.md on how to install it')
+    console.log(
+      'swww is not installed, please find instructions in the README.md on how to install it'
+    )
     process.env.SWWW_VERSION = SWWW_VERSION.NOT_INSTALLED
   }
 }
@@ -249,7 +251,7 @@ export async function saveAndInitPlaylist(
 ) {
   try {
     const playlistAdded = await storePlaylistInDB(playlistObject)
-    initPlaylist(playlistAdded)
+    initPlaylist(playlistAdded.name)
   } catch (error) {
     console.error(error)
     throw Error('Failed to set playlist in DB')

@@ -1,4 +1,4 @@
-import { imageModel } from '../types/types'
+import { PlaylistType, imageModel } from '../types/types'
 import { playlist, ORDER_TYPES } from '../../src/types/rendererTypes'
 import { Image, Playlist } from './models'
 export async function storeImagesInDB(images: string[]) {
@@ -59,7 +59,7 @@ export async function storePlaylistInDB(playlistObject: playlist) {
       if (!queriedPlaylist) {
         throw new Error('Error saving playlist')
       }
-      return queriedPlaylist?.dataValues as typeof playlistInstance
+      return queriedPlaylist?.dataValues as PlaylistType
     } else {
       await Playlist.create(playlistInstance)
       const queriedPlaylist = await Playlist.findOne({
@@ -67,7 +67,7 @@ export async function storePlaylistInDB(playlistObject: playlist) {
           name: playlistObject.name
         }
       })
-      const playlistAdded: typeof playlistInstance = queriedPlaylist?.dataValues
+      const playlistAdded: PlaylistType = queriedPlaylist?.dataValues
       if (!playlistAdded) {
         throw new Error('Error saving playlist')
       }

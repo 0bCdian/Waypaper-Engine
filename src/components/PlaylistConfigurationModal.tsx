@@ -2,7 +2,6 @@ import { useForm, SubmitHandler } from 'react-hook-form'
 import { useRef, useEffect } from 'react'
 import { playlistStore } from '../hooks/useGlobalPlaylist'
 import { ORDER_TYPES } from '../types/rendererTypes'
-import { read } from 'fs'
 
 type Inputs = {
   playlistType: string
