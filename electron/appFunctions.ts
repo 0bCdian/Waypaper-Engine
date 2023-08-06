@@ -77,7 +77,7 @@ async function createCacheThumbnail(filePathSource: string, imageName: string) {
         })
     } catch (error) {
       console.error(error)
-      console.log('failed to create thumbnail for:', imageName)
+      console.error('failed to create thumbnail for:', imageName)
     }
   }
 }
@@ -206,7 +206,7 @@ export async function isSwwwDaemonRunning() {
           join(execPath, 'swww-daemon'),
           ['&', 'disown'],
           (error, stdout, stderr) => {
-            console.log(error, stdout, stderr)
+            console.error(error, stdout, stderr)
           }
         )
       }
@@ -224,7 +224,7 @@ function isSwwwSocketClean() {
   }
 }
 
-function initPlaylist(playlistName: string, swwwUserOverrides?: string[]) {
+function startPlaylist(playlistName: string, swwwUserOverrides?: string[]) {
   if (process.env.SWWW_VERSION) {
     const swwwOptions =
       swwwUserOverrides !== undefined ? swwwUserOverrides : swwwDefaults
@@ -245,7 +245,8 @@ function initPlaylist(playlistName: string, swwwUserOverrides?: string[]) {
         swwwBin
       }
     }
-    playlistController(message)
+    playlistConnectionBridge(message)
+    PlaylistController.isPlaying = true
   } else {
     throw new Error('Check first if swww is installed')
   }
@@ -269,7 +270,7 @@ export async function saveAndInitPlaylist(
 ) {
   try {
     const playlistAdded = await storePlaylistInDB(playlistObject)
-    initPlaylist(playlistAdded.name)
+    startPlaylist(playlistAdded.name)
   } catch (error) {
     console.error(error)
     throw Error('Failed to set playlist in DB')
@@ -288,14 +289,52 @@ async function isWaypaperDaemonRunning() {
 export async function initWaypaperDaemon() {
   if (!(await isWaypaperDaemonRunning())) {
     try {
-      fork(waypaperDaemonPath)
+      fork(waypaperDaemonPath, [], { detached: true, stdio: 'ignore' })
     } catch (error) {
       console.error(error)
     }
   }
 }
 
-export async function playlistController(message: message) {
+async function playlistConnectionBridge(message: message) {
   const connection = createConnection(WAYPAPER_SOCKET_PATH)
   connection.write(JSON.stringify(message))
+}
+
+export const PlaylistController = {
+  startPlaylist,
+  isPlaying: false,
+  pausePlaylist: () => {
+    playlistConnectionBridge({
+      action: ACTIONS.PAUSE_PLAYLIST
+    })
+    PlaylistController.isPlaying = false
+  },
+  resumePlaylist: () => {
+    playlistConnectionBridge({
+      action: ACTIONS.RESUME_PLAYLIST
+    })
+    PlaylistController.isPlaying = true
+  },
+  stopPlaylist: () => {
+    playlistConnectionBridge({
+      action: ACTIONS.STOP_PLAYLIST
+    })
+    PlaylistController.isPlaying = false
+  },
+  nextImage: () => {
+    playlistConnectionBridge({
+      action: ACTIONS.NEXT_IMAGE
+    })
+  },
+  previousImage: () => {
+    playlistConnectionBridge({
+      action: ACTIONS.PREVIOUS_IMAGE
+    })
+  },
+  killDaemon: () => {
+    playlistConnectionBridge({
+      action: ACTIONS.STOP_DAEMON
+    })
+  }
 }

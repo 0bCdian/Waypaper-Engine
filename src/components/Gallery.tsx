@@ -16,11 +16,24 @@ export const Gallery: FC = () => {
   const [imagesArray, setImagesArray] = useState<ImagesArray>([])
   const { clearPlaylist, isEmpty } = playlistStore()
   const imagesArrayRef = useRef<ImagesArray>([])
-  const modifyInputElement = (elementId: number, currentState: boolean) => {
-    const index = imagesArrayRef.current.findIndex(
-      (element) => element.id === elementId
-    )
-    imagesArrayRef.current[index].isChecked = currentState
+  const modifyInputElement = (
+    currentState: boolean,
+    elementId?: number,
+    elementName?: string
+  ) => {
+    if (elementId) {
+      const index = imagesArrayRef.current.findIndex(
+        (element) => element.id === elementId
+      )
+      imagesArrayRef.current[index].isChecked = currentState
+    } else if (elementName) {
+      const index = imagesArrayRef.current.findIndex(
+        (element) => element.imageName === elementName
+      )
+      imagesArrayRef.current[index].isChecked = currentState
+    } else {
+      console.error('No elementId or elementName provided')
+    }
   }
   const resetRef = () => {
     imagesArrayRef.current = structuredClone(imagesArray)
@@ -77,6 +90,7 @@ export const Gallery: FC = () => {
         </div>
 
         <PlaylistTrack
+          modifyInputElement={modifyInputElement}
           resetRef={resetRef}
           setSkeletonsToShow={setSkeletonsToShow}
           setImagesArray={setImagesArray}

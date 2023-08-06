@@ -94,6 +94,8 @@ var ACTIONS;
     ACTIONS["START_PLAYLIST"] = "start-playlist";
     ACTIONS["STOP_DAEMON"] = "stop-daemon";
     ACTIONS["PAUSE_PLAYLIST"] = "pause-playlist";
+    ACTIONS["RESUME_PLAYLIST"] = "resume-playlist";
+    ACTIONS["STOP_PLAYLIST"] = "stop-playlist";
 })(ACTIONS || (ACTIONS = {}));
 var sequelize = new sequelize_1.Sequelize({
     dialect: 'sqlite',
@@ -304,6 +306,12 @@ function daemonManager(data) {
                 case 2:
                     if (message.action === ACTIONS.PAUSE_PLAYLIST) {
                         Playlist.pause();
+                    }
+                    if (message.action === ACTIONS.RESUME_PLAYLIST) {
+                        Playlist.resume();
+                    }
+                    if (message.action === ACTIONS.STOP_PLAYLIST) {
+                        Playlist.stop();
                     }
                     if (message.action === ACTIONS.NEXT_IMAGE) {
                         Playlist.nextImage();

@@ -32,7 +32,9 @@ export enum ACTIONS {
   PREVIOUS_IMAGE = 'previous-image',
   START_PLAYLIST = 'start-playlist',
   STOP_DAEMON = 'stop-daemon',
-  PAUSE_PLAYLIST = 'pause-playlist'
+  PAUSE_PLAYLIST = 'pause-playlist',
+  RESUME_PLAYLIST = 'resume-playlist',
+  STOP_PLAYLIST = 'stop-playlist'
 }
 
 export interface message {
@@ -43,4 +45,18 @@ export interface message {
     SWWW_VERSION: SWWW_VERSION
     swwwBin: string
   }
+}
+
+export type PlaylistControllerType = {
+  startPlaylist: (
+    playlistName: string,
+    swwwUserOverrides?: string[] | undefined
+  ) => void
+  isPlaying: boolean
+  pausePlaylist: () => void
+  resumePlaylist: () => void
+  stopPlaylist: () => void
+  nextImage: () => void
+  previousImage: () => void
+  killDaemon: () => void
 }

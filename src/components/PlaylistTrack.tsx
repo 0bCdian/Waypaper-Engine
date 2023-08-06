@@ -21,11 +21,15 @@ import { playlistStore } from '../hooks/useGlobalPlaylist'
 import { ImagesArray } from '../types/rendererTypes'
 import openImagesStore from '../hooks/useOpenImages'
 import { motion, AnimatePresence } from 'framer-motion'
-import PlaylistConfigurationModal from './PlaylistConfigurationModal'
-import SavePlaylistModal from './savePlaylistModal'
+import Modals from './Modals'
 
 interface PlaylistTrackProps {
   resetRef: () => void
+  modifyInputElement: (
+    currentState: boolean,
+    elementId?: number,
+    elementName?: string
+  ) => void
   setSkeletonsToShow: React.Dispatch<React.SetStateAction<string[]>>
   setImagesArray: React.Dispatch<React.SetStateAction<ImagesArray>>
   imagesArrayRef: React.MutableRefObject<ImagesArray>
@@ -33,6 +37,7 @@ interface PlaylistTrackProps {
 
 const PlaylistTrack: FC<PlaylistTrackProps> = ({
   resetRef,
+  modifyInputElement,
   setSkeletonsToShow,
   setImagesArray,
   imagesArrayRef
@@ -102,6 +107,15 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
             className='btn btn-primary rounded-lg'
           >
             Add images
+          </button>
+          <button
+            onClick={() => {
+              // @ts-ignore
+              window.LoadPlaylistModal.showModal()
+            }}
+            className='btn btn-primary rounded-lg'
+          >
+            Load playlist
           </button>
           <AnimatePresence mode='sync'>
             {playlist.images.length > 1 && (
@@ -184,8 +198,11 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
           </AnimatePresence>
         </SortableContext>
       </DndContext>
-      <PlaylistConfigurationModal />
-      <SavePlaylistModal />
+      <Modals
+        resetRef={resetRef}
+        modifyInputElement={modifyInputElement}
+        imagesArrayRef={imagesArrayRef}
+      />
     </div>
   )
 }

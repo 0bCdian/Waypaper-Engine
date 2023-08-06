@@ -7,26 +7,40 @@ import {
   isSwwwDaemonRunning,
   openAndReturnImagesObject,
   saveAndInitPlaylist,
-  initWaypaperDaemon
+  initWaypaperDaemon,
+  PlaylistController
 } from './appFunctions'
 import { checkCacheOrCreateItIfNotExists } from './appFunctions'
 import { testDB } from './database/db'
-import { readImagesFromDB } from './database/dbOperations'
-import { devMenu, prodMenu } from './globals/globals'
+import { readImagesFromDB, readPlaylistsFromDB } from './database/dbOperations'
+import { devMenu, prodMenu, trayMenu } from './globals/globals'
 import { iconPath } from './binaries'
 
-process.env.DIST = path.join(__dirname, '../dist')
-process.env.PUBLIC = app.isPackaged
-  ? process.env.DIST
-  : path.join(process.env.DIST, '../public')
-if (process.argv[1] === '--daemon') {
+if (process.argv[1] === '--daemon-init') {
   isSwwwDaemonRunning().then(() => {
     initWaypaperDaemon().then(() => {
       app.exit()
     })
   })
 }
-let tray = null
+const gotTheLock = app.requestSingleInstanceLock()
+if (!gotTheLock) {
+  app.exit()
+} else {
+  app.on('second-instance', () => {
+    if (win) {
+      if (win.isMinimized()) win.restore()
+      win.focus()
+    }
+  })
+}
+
+process.env.DIST = path.join(__dirname, '../dist')
+process.env.PUBLIC = app.isPackaged
+  ? process.env.DIST
+  : path.join(process.env.DIST, '../public')
+
+let tray: Tray | null = null
 let win: BrowserWindow | null
 // 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
 const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
@@ -94,14 +108,21 @@ app
   .whenReady()
   .then(() => {
     tray = new Tray(path.join(iconPath, 'tray.png'))
+    const trayContextMenu = trayMenu({ win, app, PlaylistController })
+    tray.setContextMenu(Menu.buildFromTemplate(trayContextMenu))
     tray.setToolTip('Waypaper Manager')
     tray.on('click', () => {
       win?.isVisible() ? win.hide() : win?.show()
     })
   })
   .catch((e) => console.error(e))
+
 ipcMain.handle('openFiles', openAndReturnImagesObject)
 ipcMain.handle('handleOpenImages', copyImagesToCacheAndProcessThumbnails)
 ipcMain.handle('queryImages', readImagesFromDB)
+ipcMain.handle('queryPlaylists', readPlaylistsFromDB)
 ipcMain.on('setImage', setImage)
-ipcMain.on('savePlaylist', saveAndInitPlaylist)
+ipcMain.on('saveAndStartPlaylist', saveAndInitPlaylist)
+ipcMain.on('startPlaylist', (_event, playlistName: string) => {
+  PlaylistController.startPlaylist(playlistName)
+})

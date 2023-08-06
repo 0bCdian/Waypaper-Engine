@@ -60,7 +60,9 @@ enum ACTIONS {
   PREVIOUS_IMAGE = 'previous-image',
   START_PLAYLIST = 'start-playlist',
   STOP_DAEMON = 'stop-daemon',
-  PAUSE_PLAYLIST = 'pause-playlist'
+  PAUSE_PLAYLIST = 'pause-playlist',
+  RESUME_PLAYLIST = 'resume-playlist',
+  STOP_PLAYLIST = 'stop-playlist'
 }
 
 const sequelize = new Sequelize({
@@ -258,6 +260,12 @@ async function daemonManager(data: Buffer) {
   }
   if (message.action === ACTIONS.PAUSE_PLAYLIST) {
     Playlist.pause()
+  }
+  if (message.action === ACTIONS.RESUME_PLAYLIST) {
+    Playlist.resume()
+  }
+  if (message.action === ACTIONS.STOP_PLAYLIST) {
+    Playlist.stop()
   }
   if (message.action === ACTIONS.NEXT_IMAGE) {
     Playlist.nextImage()

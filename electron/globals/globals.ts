@@ -1,6 +1,7 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { type BrowserWindow, type App } from 'electron'
+import { PlaylistControllerType } from '../types/types'
 const systemHome = homedir()
 const cacheDirectoryRoot = join(systemHome, '.cache', 'waypaper')
 const cacheThumbnailsDirectory = join(cacheDirectoryRoot, 'thumbnails')
@@ -92,4 +93,57 @@ export const prodMenu = ({ app }: { app: App }) => {
     }
   ]
   return devMenu
+}
+
+export const trayMenu = ({
+  win,
+  app,
+  PlaylistController
+}: {
+  win: BrowserWindow | null
+  app: App
+  PlaylistController: PlaylistControllerType
+}) => {
+  console.log(win)
+  const trayMenu = [
+    {
+      label: 'Next Wallpaper',
+      click: () => {
+        PlaylistController.nextImage()
+      }
+    },
+    {
+      label: 'Previous Wallpaper',
+      click: () => {
+        PlaylistController.previousImage()
+      }
+    },
+    {
+      label: 'Toggle Playlist',
+      click: () => {
+        if (PlaylistController.isPlaying) {
+          PlaylistController.pausePlaylist()
+        } else {
+          PlaylistController.resumePlaylist()
+        }
+      }
+    },
+    {
+      label: 'Stop Playlist',
+      click: () => {
+        PlaylistController.stopPlaylist()
+      }
+    },
+    {
+      label: 'Kill Playlist Daemon',
+      click: () => {
+        PlaylistController.killDaemon()
+      }
+    },
+    {
+      label: 'Quit',
+      click: () => app.exit()
+    }
+  ]
+  return trayMenu
 }

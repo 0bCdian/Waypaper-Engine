@@ -37,12 +37,12 @@ const PaginatedGallery: FC<PaginatedGalleryProps> = ({
           scrollbar-thumb-rounded-sm  scrollbar-thin scrollbar-thumb-stone-400 m-auto my-3'
       >
         <div className='md:grid flex flex-col items-center w-full m-auto md:auto-cols-auto md:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]'>
+          {SkeletonsArray}
           {imagesToShow.map((image, index) => (
             <div key={index} className='image-container'>
               {image}
             </div>
           ))}
-          {SkeletonsArray}
         </div>
       </div>
       <PaginatedGalleryNav

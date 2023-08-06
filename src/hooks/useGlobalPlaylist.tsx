@@ -4,12 +4,13 @@ import {
   Image,
   playlist,
   configuration,
+  PLAYLIST_TYPES,
   ORDER_TYPES
 } from '../types/rendererTypes'
 
 const imagesInitial: ImagesArray = []
 const configurationInitial = {
-  playlistType: 'timer',
+  playlistType: PLAYLIST_TYPES.TIMER,
   hours: 1,
   minutes: 0,
   order: ORDER_TYPES.ORDERED,
@@ -36,6 +37,7 @@ interface Actions {
   removeImageFromPlaylist: (Image: Image) => void
   clearPlaylist: () => void
   readPlaylist: () => playlist
+  setPlaylist: (newPlaylist: playlist) => void
 }
 
 export const playlistStore = create<State & Actions>()((set, get) => ({
@@ -106,5 +108,14 @@ export const playlistStore = create<State & Actions>()((set, get) => ({
   },
   readPlaylist: () => {
     return get().playlist
+  },
+  setPlaylist:(newPlaylist:playlist)=>{
+    set((state) => {
+      return {
+        ...state,
+        playlist: newPlaylist,
+        isEmpty: false
+      }
+    })
   }
 }))

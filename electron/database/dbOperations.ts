@@ -93,5 +93,16 @@ export async function readImagesFromDB() {
 }
 
 export async function readPlaylistsFromDB() {
-  
+  try{
+    const playlistInstancesArray = await Playlist.findAll()
+    const playlistsArray: PlaylistType[] = playlistInstancesArray.map((playlist) => {
+      const playlistData = playlist.dataValues
+      return playlistData
+    })
+    return playlistsArray
+  }
+  catch(error){
+    console.error(error)
+    throw new Error('Error reading playlists from DB')
+  }
 }

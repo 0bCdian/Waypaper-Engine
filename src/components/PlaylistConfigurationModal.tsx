@@ -1,7 +1,11 @@
 import { useForm, SubmitHandler } from 'react-hook-form'
 import { useRef, useEffect } from 'react'
 import { playlistStore } from '../hooks/useGlobalPlaylist'
-import { ORDER_TYPES, PLAYLIST_TYPES } from '../types/rendererTypes'
+import {
+  ORDER_TYPES,
+  PLAYLIST_TYPES,
+  configuration
+} from '../types/rendererTypes'
 
 type Inputs = {
   playlistType: PLAYLIST_TYPES
@@ -10,8 +14,12 @@ type Inputs = {
   minutes: string
   showTransition: boolean
 }
-
-const PlaylistConfigurationModal = () => {
+type Props = {
+  currentPlaylistConfiguration: configuration
+}
+const PlaylistConfigurationModal = ({
+  currentPlaylistConfiguration
+}: Props) => {
   const { setConfiguration } = playlistStore()
   const { register, handleSubmit, watch, setValue } = useForm<Inputs>()
   const containerRef = useRef<HTMLDialogElement>(null)
@@ -38,18 +46,21 @@ const PlaylistConfigurationModal = () => {
       setValue('minutes', '1')
     }
   }, [hours, minutes])
-
+  useEffect(() => {
+    setValue('playlistType', currentPlaylistConfiguration.playlistType)
+    setValue('order', currentPlaylistConfiguration.order)
+    setValue('hours', currentPlaylistConfiguration.hours.toString())
+    setValue('minutes', currentPlaylistConfiguration.minutes.toString())
+    setValue('showTransition', currentPlaylistConfiguration.showTransition)
+  }, [currentPlaylistConfiguration])
   return (
     <dialog
       id='playlistConfigurationModal'
       ref={containerRef}
       className='modal '
-      onCancel={(e) => {
-        e.preventDefault()
-      }}
     >
       <form
-        className='modal-box form-control rounded-xl'
+        className='modal-box form-control rounded-xl '
         onSubmit={handleSubmit(onSubmit)}
       >
         <h2 className='font-bold text-3xl text-center'>Playlist Settings</h2>
@@ -64,7 +75,7 @@ const PlaylistConfigurationModal = () => {
           <select
             id='playlistType'
             className='select select-info text-lg w-2/5 rounded-lg'
-            defaultValue={'timer'}
+            defaultValue={PLAYLIST_TYPES.TIMER}
             {...register('playlistType', { required: true })}
           >
             <option value={PLAYLIST_TYPES.TIMER}>On a timer</option>
@@ -79,7 +90,7 @@ const PlaylistConfigurationModal = () => {
             <input
               id='hours'
               min='0'
-              defaultValue='1'
+              defaultValue={1}
               type='number'
               {...register('hours', { required: true, min: 0 })}
               className='input input-info input-sm focus:outline-none text-lg font-medium rounded-lg'
@@ -94,7 +105,7 @@ const PlaylistConfigurationModal = () => {
             </label>
             <input
               id='minutes'
-              defaultValue='0'
+              defaultValue={0}
               min='0'
               max='60'
               type='number'

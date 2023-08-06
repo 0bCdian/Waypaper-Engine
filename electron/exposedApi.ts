@@ -15,8 +15,14 @@ export const ELECTRON_API = {
   setImage: (image: string) => {
     ipcRenderer.send('setImage', image)
   },
-  savePlaylist: (playlistObject: playlist) => {
-    ipcRenderer.send('savePlaylist', playlistObject)
+  saveAndStartPlaylist: (playlistObject: playlist) => {
+    ipcRenderer.send('saveAndStartPlaylist', playlistObject)
+  },
+  startPlaylist: (playlistName: string) => {
+    ipcRenderer.send('startPlaylist', playlistName)
+  },
+  queryPlaylists: async () => {
+    return await ipcRenderer.invoke('queryPlaylists')
   },
   join: join,
   thumbnailDirectory: appDirectories.thumbnails,

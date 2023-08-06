@@ -20,6 +20,11 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "electron","daemon"],
+  "include": [
+    "src",
+    "electron",
+    "daemon",
+    "src/components/PlaylistConfigurationModal.tsx"
+  ],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

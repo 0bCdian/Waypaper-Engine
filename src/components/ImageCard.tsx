@@ -3,7 +3,11 @@ import { Image } from '../types/rendererTypes'
 import { playlistStore } from '../hooks/useGlobalPlaylist'
 interface ImageCardProps {
   Image: Image
-  modifyInputElement: (elementId: number, currentState: boolean) => void
+  modifyInputElement: (
+    currentState: boolean,
+    elementId?: number,
+    elementName?: string
+  ) => void
 }
 const { join, thumbnailDirectory, setImage, imagesDirectory } =
   window.API_RENDERER
@@ -22,10 +26,10 @@ export const ImageCard: FC<ImageCardProps> = ({
   const handleCheckboxChange = (event: ChangeEvent) => {
     const element = event.target as HTMLInputElement
     if (element.checked) {
-      modifyInputElement(Image.id, true)
+      modifyInputElement(true, Image.id)
       addImageToPlaylist(Image)
     } else {
-      modifyInputElement(Image.id, false)
+      modifyInputElement(false, Image.id)
       removeImageFromPlaylist(Image)
     }
   }
