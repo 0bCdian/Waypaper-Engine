@@ -10,7 +10,7 @@ const daemonPath = app.isPackaged
       path.dirname(app.getAppPath()),
       '..',
       './resources',
-      './bin/daemon.js'
+      './daemon/daemon.js'
     )
   : path.join(process.cwd(), '/daemon/daemon.js')
 const iconsPath = app.isPackaged

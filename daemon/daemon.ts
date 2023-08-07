@@ -1,7 +1,7 @@
 import { Sequelize } from 'sequelize'
 import * as net from 'node:net'
 import * as fs from 'node:fs'
-import { execSync } from 'node:child_process'
+import { execSync, exec } from 'node:child_process'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
 import process from 'node:process'
@@ -33,6 +33,40 @@ type PlaylistType = {
   showTransition: boolean
   currentImageIndex: number
 }
+interface PlaylistInterface {
+  images: string[]
+  currentName: string
+  currentType: PLAYLIST_TYPES
+  intervalID: NodeJS.Timeout | null
+  currentImageIndex: number
+  interval: number
+  swwwBin: string
+  swwwOptions: string[]
+  pause: () => void
+  resume: () => void
+  stop: () => void
+  resetInterval: () => void
+  nextImage: () => void
+  previousImage: () => void
+  calculateInterval: (hours: number, minutes: number) => number
+  start: (
+    playlistName: string,
+    swwwBin: string,
+    swwwOptions: string[]
+  ) => Promise<void>
+  sleep: (ms: number) => Promise<void>
+  updateInDB: (imageIndex: number, playlistName: string) => Promise<void>
+  getFromDB: (playlistName: string) => Promise<PlaylistParsed>
+  setPlaylist: (
+    playlistName: string,
+    swwwBin: string,
+    swwwOptions: string[]
+  ) => Promise<void>
+  timedPlaylist: () => Promise<void>
+  neverPlaylist: () => Promise<void>
+  timeOfDayPlaylist: () => Promise<void>
+  dayOfWeekPlaylist: () => Promise<void>
+}
 
 type PlaylistParsed = {
   id: number
@@ -55,6 +89,12 @@ interface message {
     swwwBin: string
   }
 }
+enum PlaylistStates {
+  PLAYING = 'playing',
+  PAUSED = 'paused',
+  STOPPED = 'stopped'
+}
+
 enum ACTIONS {
   NEXT_IMAGE = 'next-image',
   PREVIOUS_IMAGE = 'previous-image',
@@ -76,30 +116,73 @@ const setImage = (
   swwwOptions: string[],
   imageName: string
 ) => {
-  console.log('Setting image: ', imageName)
-  console.log('swwwBin: ', swwwBin)
-  console.log('swwwOptions: ', swwwOptions)
+  notifyImageSet(imageName, join(IMAGES_DIR, imageName))
   execSync(
     `${swwwBin} img ${swwwOptions.join(' ')} "${join(IMAGES_DIR, imageName)}"`
   )
 }
-const Playlist = {
-  state: false,
+function notifyImageSet(imageName: string, imagePath: string) {
+  const notifySend = `notify-send -u low -t 2000 -i "${imagePath}" -a "Waypaper" "Waypaper" "Setting image: ${imageName}"`
+  exec(notifySend, (err, _stdout, _stderr) => {
+    if (err) {
+      console.error(err)
+    }
+  })
+}
+
+function notifyPlaylistState(
+  playlistName: string,
+  playlistState: PlaylistStates
+) {
+  let message = ''
+  switch (playlistState) {
+    case PlaylistStates.PLAYING:
+      message = `Playing playlist: ${playlistName}`
+      break
+    case PlaylistStates.PAUSED:
+      message = `Paused playlist: ${playlistName}`
+      break
+    case PlaylistStates.STOPPED:
+      message = `Stopping playlist: ${playlistName}`
+  }
+  const notifySend = `notify-send -u low -t 2000 -i "waypaper" -a "Waypaper" "Waypaper" "${message}"`
+  exec(notifySend, (err, _stdout, _stderr) => {
+    if (err) {
+      console.error(err)
+    }
+  })
+}
+
+const Playlist: PlaylistInterface = {
   images: [''],
   currentName: '',
   currentType: PLAYLIST_TYPES.NEVER,
   currentImageIndex: 0,
   interval: 0,
+  intervalID: null,
   swwwBin: '',
   swwwOptions: [''],
   pause: () => {
-    Playlist.state = false
+    if (
+      Playlist.intervalID !== null &&
+      Playlist.currentType !== PLAYLIST_TYPES.NEVER
+    ) {
+      clearInterval(Playlist.intervalID)
+      Playlist.intervalID = null
+    }
   },
   resume: () => {
-    Playlist.start(Playlist.currentName, Playlist.swwwBin, Playlist.swwwOptions)
+    if (
+      Playlist.intervalID === null &&
+      Playlist.currentType !== PLAYLIST_TYPES.NEVER
+    ) {
+      // Switch statement to determine which interval playlist type to use, rn only timed playist is implemented
+      Playlist.timedPlaylist()
+    }
   },
   stop: () => {
-    Playlist.state = false
+    Playlist.intervalID = null
+    Playlist.pause()
     Playlist.currentImageIndex = 0
     Playlist.currentName = ''
     Playlist.currentType = PLAYLIST_TYPES.NEVER
@@ -108,7 +191,15 @@ const Playlist = {
     Playlist.swwwBin = ''
     Playlist.swwwOptions = ['']
   },
+  resetInterval: () => {
+    if (Playlist.intervalID) {
+      clearInterval(Playlist.intervalID)
+      Playlist.intervalID = null
+      Playlist.timedPlaylist()
+    }
+  },
   nextImage: () => {
+    Playlist.resetInterval()
     Playlist.currentImageIndex++
     if (Playlist.currentImageIndex === Playlist.images.length) {
       Playlist.currentImageIndex = 0
@@ -118,8 +209,10 @@ const Playlist = {
       Playlist.swwwOptions,
       Playlist.images[Playlist.currentImageIndex]
     )
+    Playlist.updateInDB(Playlist.currentImageIndex, Playlist.currentName)
   },
   previousImage: () => {
+    Playlist.resetInterval()
     Playlist.currentImageIndex--
     if (Playlist.currentImageIndex < 0) {
       Playlist.currentImageIndex = Playlist.images.length - 1
@@ -129,6 +222,7 @@ const Playlist = {
       Playlist.swwwOptions,
       Playlist.images[Playlist.currentImageIndex]
     )
+    Playlist.updateInDB(Playlist.currentImageIndex, Playlist.currentName)
   },
   calculateInterval: (hours: number, minutes: number) => {
     return hours * 60 * 60 * 1000 + minutes * 60 * 1000
@@ -189,7 +283,6 @@ const Playlist = {
   ) => {
     try {
       const currentPlaylist = await Playlist.getFromDB(playlistName)
-      Playlist.state = true
       Playlist.images = currentPlaylist.images
       Playlist.currentName = playlistName
       Playlist.swwwBin = swwwBin
@@ -200,8 +293,6 @@ const Playlist = {
         currentPlaylist.hours,
         currentPlaylist.minutes
       )
-      console.log('Playlist set')
-      console.log(Playlist.images, Playlist.currentImageIndex)
     } catch (error) {
       console.error(error)
       // implement notify function
@@ -209,19 +300,7 @@ const Playlist = {
     }
   },
   timedPlaylist: async () => {
-    console.log(
-      'timedPlaylist',
-      Playlist.currentImageIndex,
-      Playlist.images,
-      Playlist.currentName
-    )
-    setImage(
-      Playlist.swwwBin,
-      Playlist.swwwOptions,
-      Playlist.images[Playlist.currentImageIndex]
-    )
-    while (Playlist.state) {
-      await Playlist.sleep(Playlist.interval)
+    Playlist.intervalID = setInterval(async () => {
       Playlist.currentImageIndex++
       if (Playlist.currentImageIndex === Playlist.images.length) {
         Playlist.currentImageIndex = 0
@@ -235,7 +314,7 @@ const Playlist = {
         Playlist.currentImageIndex,
         Playlist.currentName
       )
-    }
+    }, Playlist.interval)
   },
   neverPlaylist: async () => {
     setImage(
@@ -257,15 +336,19 @@ async function daemonManager(data: Buffer) {
       message.payload.swwwBin,
       message.payload.swwwOptions
     )
+    notifyPlaylistState(Playlist.currentName, PlaylistStates.PLAYING)
   }
   if (message.action === ACTIONS.PAUSE_PLAYLIST) {
     Playlist.pause()
+    notifyPlaylistState(Playlist.currentName, PlaylistStates.PAUSED)
   }
   if (message.action === ACTIONS.RESUME_PLAYLIST) {
     Playlist.resume()
+    notifyPlaylistState(Playlist.currentName, PlaylistStates.PLAYING)
   }
   if (message.action === ACTIONS.STOP_PLAYLIST) {
     Playlist.stop()
+    notifyPlaylistState(Playlist.currentName, PlaylistStates.STOPPED)
   }
   if (message.action === ACTIONS.NEXT_IMAGE) {
     Playlist.nextImage()
@@ -275,6 +358,7 @@ async function daemonManager(data: Buffer) {
   }
   if (message.action === ACTIONS.STOP_DAEMON) {
     Playlist.stop()
+    notifyPlaylistState(Playlist.currentName, PlaylistStates.STOPPED)
     sequelize.close()
     daemonServer.close()
   }

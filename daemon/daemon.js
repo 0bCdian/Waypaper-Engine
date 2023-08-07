@@ -87,6 +87,12 @@ var ORDER_TYPES;
     ORDER_TYPES["ORDERED"] = "ordered";
     ORDER_TYPES["RANDOM"] = "random";
 })(ORDER_TYPES || (ORDER_TYPES = {}));
+var PlaylistStates;
+(function (PlaylistStates) {
+    PlaylistStates["PLAYING"] = "playing";
+    PlaylistStates["PAUSED"] = "paused";
+    PlaylistStates["STOPPED"] = "stopped";
+})(PlaylistStates || (PlaylistStates = {}));
 var ACTIONS;
 (function (ACTIONS) {
     ACTIONS["NEXT_IMAGE"] = "next-image";
@@ -104,28 +110,62 @@ var sequelize = new sequelize_1.Sequelize({
 var IMAGES_DIR = (0, node_path_1.join)((0, node_os_1.homedir)(), '.waypaper', 'images');
 var SOCKET_PATH = '/tmp/waypaper_daemon.sock';
 var setImage = function (swwwBin, swwwOptions, imageName) {
-    console.log('Setting image: ', imageName);
-    console.log('swwwBin: ', swwwBin);
-    console.log('swwwOptions: ', swwwOptions);
+    notifyImageSet(imageName, (0, node_path_1.join)(IMAGES_DIR, imageName));
     (0, node_child_process_1.execSync)("".concat(swwwBin, " img ").concat(swwwOptions.join(' '), " \"").concat((0, node_path_1.join)(IMAGES_DIR, imageName), "\""));
 };
+function notifyImageSet(imageName, imagePath) {
+    var notifySend = "notify-send -u low -t 2000 -i \"".concat(imagePath, "\" -a \"Waypaper\" \"Waypaper\" \"Setting image: ").concat(imageName, "\"");
+    (0, node_child_process_1.exec)(notifySend, function (err, _stdout, _stderr) {
+        if (err) {
+            console.error(err);
+        }
+    });
+}
+function notifyPlaylistState(playlistName, playlistState) {
+    var message = '';
+    switch (playlistState) {
+        case PlaylistStates.PLAYING:
+            message = "Playing playlist: ".concat(playlistName);
+            break;
+        case PlaylistStates.PAUSED:
+            message = "Paused playlist: ".concat(playlistName);
+            break;
+        case PlaylistStates.STOPPED:
+            message = "Stopping playlist: ".concat(playlistName);
+    }
+    var notifySend = "notify-send -u low -t 2000 -i \"waypaper\" -a \"Waypaper\" \"Waypaper\" \"".concat(message, "\"");
+    (0, node_child_process_1.exec)(notifySend, function (err, _stdout, _stderr) {
+        if (err) {
+            console.error(err);
+        }
+    });
+}
 var Playlist = {
-    state: false,
     images: [''],
     currentName: '',
     currentType: PLAYLIST_TYPES.NEVER,
     currentImageIndex: 0,
     interval: 0,
+    intervalID: null,
     swwwBin: '',
     swwwOptions: [''],
     pause: function () {
-        Playlist.state = false;
+        if (Playlist.intervalID !== null &&
+            Playlist.currentType !== PLAYLIST_TYPES.NEVER) {
+            clearInterval(Playlist.intervalID);
+            Playlist.intervalID = null;
+        }
     },
     resume: function () {
-        Playlist.start(Playlist.currentName, Playlist.swwwBin, Playlist.swwwOptions);
+        if (Playlist.intervalID === null &&
+            Playlist.currentType !== PLAYLIST_TYPES.NEVER) {
+            // Switch statement to determine which interval playlist type to use, rn only timed playist is implemented
+            Playlist.timedPlaylist();
+        }
     },
     stop: function () {
-        Playlist.state = false;
+        Playlist.intervalID = null;
+        Playlist.pause();
         Playlist.currentImageIndex = 0;
         Playlist.currentName = '';
         Playlist.currentType = PLAYLIST_TYPES.NEVER;
@@ -134,19 +174,30 @@ var Playlist = {
         Playlist.swwwBin = '';
         Playlist.swwwOptions = [''];
     },
+    resetInterval: function () {
+        if (Playlist.intervalID) {
+            clearInterval(Playlist.intervalID);
+            Playlist.intervalID = null;
+            Playlist.timedPlaylist();
+        }
+    },
     nextImage: function () {
+        Playlist.resetInterval();
         Playlist.currentImageIndex++;
         if (Playlist.currentImageIndex === Playlist.images.length) {
             Playlist.currentImageIndex = 0;
         }
         setImage(Playlist.swwwBin, Playlist.swwwOptions, Playlist.images[Playlist.currentImageIndex]);
+        Playlist.updateInDB(Playlist.currentImageIndex, Playlist.currentName);
     },
     previousImage: function () {
+        Playlist.resetInterval();
         Playlist.currentImageIndex--;
         if (Playlist.currentImageIndex < 0) {
             Playlist.currentImageIndex = Playlist.images.length - 1;
         }
         setImage(Playlist.swwwBin, Playlist.swwwOptions, Playlist.images[Playlist.currentImageIndex]);
+        Playlist.updateInDB(Playlist.currentImageIndex, Playlist.currentName);
     },
     calculateInterval: function (hours, minutes) {
         return hours * 60 * 60 * 1000 + minutes * 60 * 1000;
@@ -232,7 +283,6 @@ var Playlist = {
                     return [4 /*yield*/, Playlist.getFromDB(playlistName)];
                 case 1:
                     currentPlaylist = _a.sent();
-                    Playlist.state = true;
                     Playlist.images = currentPlaylist.images;
                     Playlist.currentName = playlistName;
                     Playlist.swwwBin = swwwBin;
@@ -240,8 +290,6 @@ var Playlist = {
                     Playlist.currentType = currentPlaylist.type;
                     Playlist.currentImageIndex = currentPlaylist.currentImageIndex;
                     Playlist.interval = Playlist.calculateInterval(currentPlaylist.hours, currentPlaylist.minutes);
-                    console.log('Playlist set');
-                    console.log(Playlist.images, Playlist.currentImageIndex);
                     return [3 /*break*/, 3];
                 case 2:
                     error_3 = _a.sent();
@@ -254,27 +302,23 @@ var Playlist = {
     }); },
     timedPlaylist: function () { return __awaiter(void 0, void 0, void 0, function () {
         return __generator(this, function (_a) {
-            switch (_a.label) {
-                case 0:
-                    console.log('timedPlaylist', Playlist.currentImageIndex, Playlist.images, Playlist.currentName);
-                    setImage(Playlist.swwwBin, Playlist.swwwOptions, Playlist.images[Playlist.currentImageIndex]);
-                    _a.label = 1;
-                case 1:
-                    if (!Playlist.state) return [3 /*break*/, 4];
-                    return [4 /*yield*/, Playlist.sleep(Playlist.interval)];
-                case 2:
-                    _a.sent();
-                    Playlist.currentImageIndex++;
-                    if (Playlist.currentImageIndex === Playlist.images.length) {
-                        Playlist.currentImageIndex = 0;
+            Playlist.intervalID = setInterval(function () { return __awaiter(void 0, void 0, void 0, function () {
+                return __generator(this, function (_a) {
+                    switch (_a.label) {
+                        case 0:
+                            Playlist.currentImageIndex++;
+                            if (Playlist.currentImageIndex === Playlist.images.length) {
+                                Playlist.currentImageIndex = 0;
+                            }
+                            setImage(Playlist.swwwBin, Playlist.swwwOptions, Playlist.images[Playlist.currentImageIndex]);
+                            return [4 /*yield*/, Playlist.updateInDB(Playlist.currentImageIndex, Playlist.currentName)];
+                        case 1:
+                            _a.sent();
+                            return [2 /*return*/];
                     }
-                    setImage(Playlist.swwwBin, Playlist.swwwOptions, Playlist.images[Playlist.currentImageIndex]);
-                    return [4 /*yield*/, Playlist.updateInDB(Playlist.currentImageIndex, Playlist.currentName)];
-                case 3:
-                    _a.sent();
-                    return [3 /*break*/, 1];
-                case 4: return [2 /*return*/];
-            }
+                });
+            }); }, Playlist.interval);
+            return [2 /*return*/];
         });
     }); },
     neverPlaylist: function () { return __awaiter(void 0, void 0, void 0, function () {
@@ -302,16 +346,20 @@ function daemonManager(data) {
                     return [4 /*yield*/, Playlist.start(message.payload.playlistName, message.payload.swwwBin, message.payload.swwwOptions)];
                 case 1:
                     _a.sent();
+                    notifyPlaylistState(Playlist.currentName, PlaylistStates.PLAYING);
                     _a.label = 2;
                 case 2:
                     if (message.action === ACTIONS.PAUSE_PLAYLIST) {
                         Playlist.pause();
+                        notifyPlaylistState(Playlist.currentName, PlaylistStates.PAUSED);
                     }
                     if (message.action === ACTIONS.RESUME_PLAYLIST) {
                         Playlist.resume();
+                        notifyPlaylistState(Playlist.currentName, PlaylistStates.PLAYING);
                     }
                     if (message.action === ACTIONS.STOP_PLAYLIST) {
                         Playlist.stop();
+                        notifyPlaylistState(Playlist.currentName, PlaylistStates.STOPPED);
                     }
                     if (message.action === ACTIONS.NEXT_IMAGE) {
                         Playlist.nextImage();
@@ -321,6 +369,7 @@ function daemonManager(data) {
                     }
                     if (message.action === ACTIONS.STOP_DAEMON) {
                         Playlist.stop();
+                        notifyPlaylistState(Playlist.currentName, PlaylistStates.STOPPED);
                         sequelize.close();
                         daemonServer.close();
                     }

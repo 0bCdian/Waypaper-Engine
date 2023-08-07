@@ -5,7 +5,7 @@
   "directories": {
     "output": "release/${version}"
   },
-  "files": ["dist-electron", "dist", "daemon"],
+  "files": ["dist-electron", "dist"],
   "extraFiles": [
     {
       "from": "electron/bin",
@@ -14,7 +14,7 @@
     },
     {
       "from": "daemon/daemon.js",
-      "to": "resources/bin/daemon.js",
+      "to": "resources/daemon/daemon.js",
       "filter": ["**/*"]
     },
     {

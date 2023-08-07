@@ -289,7 +289,7 @@ async function isWaypaperDaemonRunning() {
 export async function initWaypaperDaemon() {
   if (!(await isWaypaperDaemonRunning())) {
     try {
-      fork(waypaperDaemonPath, [], { detached: true, stdio: 'ignore' })
+      fork(waypaperDaemonPath)
     } catch (error) {
       console.error(error)
     }
