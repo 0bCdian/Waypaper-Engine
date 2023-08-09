@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { PlaylistType } from '../../electron/types/types'
+import { PlaylistTypeDB } from '../../electron/types/types'
 import { playlistStore } from '../hooks/useGlobalPlaylist'
 import { useForm, SubmitHandler } from 'react-hook-form'
 import { Image, ImagesArray } from '../types/rendererTypes'
@@ -11,7 +11,7 @@ type Input = {
 type Props = {
   resetRef: () => void
   shouldReload: React.MutableRefObject<boolean>
-  playlistInDB: PlaylistType[]
+  playlistInDB: PlaylistTypeDB[]
   imagesArrayRef: React.MutableRefObject<ImagesArray>
   modifyInputElement: (
     currentState: boolean,

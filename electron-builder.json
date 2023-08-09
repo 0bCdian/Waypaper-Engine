@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "waypaper.manager",
+  "appId": "WaypaperManager",
   "asar": true,
   "directories": {
     "output": "release/${version}"
@@ -8,39 +8,21 @@
   "files": ["dist-electron", "dist"],
   "extraFiles": [
     {
-      "from": "electron/bin",
-      "to": "resources/bin",
-      "filter": ["**/*"]
-    },
-    {
-      "from": "daemon/daemon.js",
-      "to": "resources/daemon/daemon.js",
-      "filter": ["**/*"]
-    },
-    {
       "from": "electron/icons",
       "to": "resources/icons",
       "filter": ["**/*"]
     }
   ],
-  "mac": {
-    "artifactName": "${productName}_${version}.${ext}",
-    "target": ["dmg"]
-  },
-  "win": {
-    "target": [
-      {
-        "target": "nsis",
-        "arch": ["x64"]
-      }
-    ],
-    "artifactName": "${productName}_${version}.${ext}"
-  },
-  "linux": {},
-  "nsis": {
-    "oneClick": false,
-    "perMachine": false,
-    "allowToChangeInstallationDirectory": true,
-    "deleteAppDataOnUninstall": false
+  "linux": {
+    "artifactName": "${productName}.${ext}",
+    "category": "Utility",
+    "executableName": "waypaper-manager",
+    "desktop": {
+      "Name": "Waypaper Manager",
+      "Comment": "Waypaper Manager",
+      "Terminal": "false",
+      "Type": "Application",
+      "Icon": "resources/icons/app.png"
+    }
   }
 }

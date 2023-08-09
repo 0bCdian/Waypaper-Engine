@@ -4,7 +4,7 @@ import SavePlaylistModal from './SavePlaylistModal'
 import PlaylistConfigurationModal from './PlaylistConfigurationModal'
 import { ImagesArray } from '../types/rendererTypes'
 import { playlistStore } from '../hooks/useGlobalPlaylist'
-import { PlaylistType } from '../../electron/types/types'
+import { PlaylistTypeDB } from '../../electron/types/types'
 
 type Props = {
   resetRef: () => void
@@ -19,7 +19,7 @@ const { queryPlaylists } = window.API_RENDERER
 const Modals = ({ resetRef, imagesArrayRef, modifyInputElement }: Props) => {
   const { readPlaylist } = playlistStore()
   const shouldReload = useRef(false)
-  const [playlistsInDB, setPlaylistsInDB] = useState<PlaylistType[]>([])
+  const [playlistsInDB, setPlaylistsInDB] = useState<PlaylistTypeDB[]>([])
   const currentPlaylist = useMemo(() => {
     return readPlaylist()
   }, [shouldReload.current])

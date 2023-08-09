@@ -96,16 +96,13 @@ export const prodMenu = ({ app }: { app: App }) => {
 }
 
 export const trayMenu = ({
-  win,
   app,
   PlaylistController
 }: {
-  win: BrowserWindow | null
   app: App
   PlaylistController: PlaylistControllerType
 }) => {
-  console.log(win)
-  const trayMenu = [
+  const controls = [
     {
       label: 'Next Wallpaper',
       click: () => {
@@ -135,15 +132,9 @@ export const trayMenu = ({
       }
     },
     {
-      label: 'Kill Playlist Daemon',
-      click: () => {
-        PlaylistController.killDaemon()
-      }
-    },
-    {
       label: 'Quit',
       click: () => app.exit()
     }
   ]
-  return trayMenu
+  return controls
 }

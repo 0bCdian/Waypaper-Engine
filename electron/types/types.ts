@@ -10,12 +10,7 @@ export interface imageModel {
   imageName: string
 }
 
-export enum SWWW_VERSION {
-  SYSTEM_INSTALLED = 'system-installed',
-  NOT_INSTALLED = 'not-installed'
-}
-
-export type PlaylistType = {
+export type PlaylistTypeDB = {
   id: number
   name: string
   images: string
@@ -42,8 +37,6 @@ export interface message {
   payload?: {
     playlistName: string
     swwwOptions: string[]
-    SWWW_VERSION: SWWW_VERSION
-    swwwBin: string
   }
 }
 

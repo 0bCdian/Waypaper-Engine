@@ -1,4 +1,4 @@
-import { PlaylistType, imageModel } from '../types/types'
+import { PlaylistTypeDB, imageModel } from '../types/types'
 import { playlist, ORDER_TYPES } from '../../src/types/rendererTypes'
 import { Image, Playlist } from './models'
 export async function storeImagesInDB(images: string[]) {
@@ -59,7 +59,7 @@ export async function storePlaylistInDB(playlistObject: playlist) {
       if (!queriedPlaylist) {
         throw new Error('Error saving playlist')
       }
-      return queriedPlaylist?.dataValues as PlaylistType
+      return queriedPlaylist?.dataValues as PlaylistTypeDB
     } else {
       await Playlist.create(playlistInstance)
       const queriedPlaylist = await Playlist.findOne({
@@ -67,7 +67,7 @@ export async function storePlaylistInDB(playlistObject: playlist) {
           name: playlistObject.name
         }
       })
-      const playlistAdded: PlaylistType = queriedPlaylist?.dataValues
+      const playlistAdded: PlaylistTypeDB = queriedPlaylist?.dataValues
       if (!playlistAdded) {
         throw new Error('Error saving playlist')
       }
@@ -93,15 +93,16 @@ export async function readImagesFromDB() {
 }
 
 export async function readPlaylistsFromDB() {
-  try{
+  try {
     const playlistInstancesArray = await Playlist.findAll()
-    const playlistsArray: PlaylistType[] = playlistInstancesArray.map((playlist) => {
-      const playlistData = playlist.dataValues
-      return playlistData
-    })
+    const playlistsArray: PlaylistTypeDB[] = playlistInstancesArray.map(
+      (playlist) => {
+        const playlistData = playlist.dataValues
+        return playlistData
+      }
+    )
     return playlistsArray
-  }
-  catch(error){
+  } catch (error) {
     console.error(error)
     throw new Error('Error reading playlists from DB')
   }

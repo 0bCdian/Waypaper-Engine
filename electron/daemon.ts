@@ -1,38 +1,11 @@
-import { Sequelize } from 'sequelize'
-import * as net from 'node:net'
-import * as fs from 'node:fs'
+import { createServer } from 'node:net'
+import { sequelize,testDB } from './database/db'
+import { unlinkSync } from 'node:fs'
 import { execSync, exec } from 'node:child_process'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
-import process from 'node:process'
-
-process.title = 'waypaperdaemon'
-
-enum SWWW_VERSION {
-  SYSTEM_INSTALLED = 'system-installed',
-  NOT_INSTALLED = 'not-installed'
-}
-enum PLAYLIST_TYPES {
-  TIMER = 'timer',
-  NEVER = 'never',
-  TIME_OF_DAY = 'timeofday',
-  DAY_OF_WEEK = 'dayofweek'
-}
-enum ORDER_TYPES {
-  ORDERED = 'ordered',
-  RANDOM = 'random'
-}
-type PlaylistType = {
-  id: number
-  name: string
-  images: string
-  type: PLAYLIST_TYPES
-  hours: number
-  minutes: number
-  order: ORDER_TYPES
-  showTransition: boolean
-  currentImageIndex: number
-}
+import { PlaylistTypeDB, message } from './types/types'
+import { ORDER_TYPES, PLAYLIST_TYPES } from '../src/types/rendererTypes'
 interface PlaylistInterface {
   images: string[]
   currentName: string
@@ -40,7 +13,6 @@ interface PlaylistInterface {
   intervalID: NodeJS.Timeout | null
   currentImageIndex: number
   interval: number
-  swwwBin: string
   swwwOptions: string[]
   pause: () => void
   resume: () => void
@@ -49,25 +21,17 @@ interface PlaylistInterface {
   nextImage: () => void
   previousImage: () => void
   calculateInterval: (hours: number, minutes: number) => number
-  start: (
-    playlistName: string,
-    swwwBin: string,
-    swwwOptions: string[]
-  ) => Promise<void>
+  start: (playlistName: string, swwwOptions: string[]) => Promise<void>
   sleep: (ms: number) => Promise<void>
   updateInDB: (imageIndex: number, playlistName: string) => Promise<void>
   getFromDB: (playlistName: string) => Promise<PlaylistParsed>
-  setPlaylist: (
-    playlistName: string,
-    swwwBin: string,
-    swwwOptions: string[]
-  ) => Promise<void>
+  setPlaylist: (playlistName: string, swwwOptions: string[]) => Promise<void>
   timedPlaylist: () => Promise<void>
   neverPlaylist: () => Promise<void>
   timeOfDayPlaylist: () => Promise<void>
   dayOfWeekPlaylist: () => Promise<void>
 }
-
+testDB()
 type PlaylistParsed = {
   id: number
   name: string
@@ -80,15 +44,6 @@ type PlaylistParsed = {
   currentImageIndex: number
 }
 
-interface message {
-  action: ACTIONS
-  payload?: {
-    playlistName: string
-    swwwOptions: string[]
-    SWWW_VERSION: SWWW_VERSION
-    swwwBin: string
-  }
-}
 enum PlaylistStates {
   PLAYING = 'playing',
   PAUSED = 'paused',
@@ -104,22 +59,11 @@ enum ACTIONS {
   RESUME_PLAYLIST = 'resume-playlist',
   STOP_PLAYLIST = 'stop-playlist'
 }
-
-const sequelize = new Sequelize({
-  dialect: 'sqlite',
-  storage: join(homedir(), '.waypaper', 'imagesDB.sqlite3')
-})
 const IMAGES_DIR = join(homedir(), '.waypaper', 'images')
 const SOCKET_PATH = '/tmp/waypaper_daemon.sock'
-const setImage = (
-  swwwBin: string,
-  swwwOptions: string[],
-  imageName: string
-) => {
+const setImage = (swwwOptions: string[], imageName: string) => {
   notifyImageSet(imageName, join(IMAGES_DIR, imageName))
-  execSync(
-    `${swwwBin} img ${swwwOptions.join(' ')} "${join(IMAGES_DIR, imageName)}"`
-  )
+  execSync(`swww img ${swwwOptions.join(' ')} "${join(IMAGES_DIR, imageName)}"`)
 }
 function notifyImageSet(imageName: string, imagePath: string) {
   const notifySend = `notify-send -u low -t 2000 -i "${imagePath}" -a "Waypaper" "Waypaper" "Setting image: ${imageName}"`
@@ -160,7 +104,6 @@ const Playlist: PlaylistInterface = {
   currentImageIndex: 0,
   interval: 0,
   intervalID: null,
-  swwwBin: '',
   swwwOptions: [''],
   pause: () => {
     if (
@@ -181,6 +124,7 @@ const Playlist: PlaylistInterface = {
     }
   },
   stop: () => {
+    clearInterval(Playlist.intervalID as NodeJS.Timeout)
     Playlist.intervalID = null
     Playlist.pause()
     Playlist.currentImageIndex = 0
@@ -188,7 +132,6 @@ const Playlist: PlaylistInterface = {
     Playlist.currentType = PLAYLIST_TYPES.NEVER
     Playlist.interval = 0
     Playlist.images = ['']
-    Playlist.swwwBin = ''
     Playlist.swwwOptions = ['']
   },
   resetInterval: () => {
@@ -204,11 +147,7 @@ const Playlist: PlaylistInterface = {
     if (Playlist.currentImageIndex === Playlist.images.length) {
       Playlist.currentImageIndex = 0
     }
-    setImage(
-      Playlist.swwwBin,
-      Playlist.swwwOptions,
-      Playlist.images[Playlist.currentImageIndex]
-    )
+    setImage(Playlist.swwwOptions, Playlist.images[Playlist.currentImageIndex])
     Playlist.updateInDB(Playlist.currentImageIndex, Playlist.currentName)
   },
   previousImage: () => {
@@ -217,22 +156,14 @@ const Playlist: PlaylistInterface = {
     if (Playlist.currentImageIndex < 0) {
       Playlist.currentImageIndex = Playlist.images.length - 1
     }
-    setImage(
-      Playlist.swwwBin,
-      Playlist.swwwOptions,
-      Playlist.images[Playlist.currentImageIndex]
-    )
+    setImage(Playlist.swwwOptions, Playlist.images[Playlist.currentImageIndex])
     Playlist.updateInDB(Playlist.currentImageIndex, Playlist.currentName)
   },
   calculateInterval: (hours: number, minutes: number) => {
     return hours * 60 * 60 * 1000 + minutes * 60 * 1000
   },
-  start: async (
-    playlistName: string,
-    swwwBin: string,
-    swwwOptions: string[]
-  ) => {
-    await Playlist.setPlaylist(playlistName, swwwBin, swwwOptions)
+  start: async (playlistName: string, swwwOptions: string[]) => {
+    await Playlist.setPlaylist(playlistName, swwwOptions)
     switch (Playlist.currentType) {
       case PLAYLIST_TYPES.TIMER:
         Playlist.timedPlaylist()
@@ -253,7 +184,6 @@ const Playlist: PlaylistInterface = {
   sleep: (ms: number) => new Promise((r) => setTimeout(r, ms)),
   updateInDB: async (imageIndex: number, playlistName: string) => {
     try {
-      await sequelize.authenticate()
       await sequelize.query(
         `UPDATE Playlists SET currentImageIndex = ${imageIndex} WHERE name = '${playlistName}'`
       )
@@ -264,10 +194,9 @@ const Playlist: PlaylistInterface = {
   },
   getFromDB: async (playlistName: string) => {
     try {
-      await sequelize.authenticate()
       const [playlistArray] = (await sequelize.query(
         `SELECT * FROM Playlists WHERE name = '${playlistName}'`
-      )) as PlaylistType[][]
+      )) as PlaylistTypeDB[][]
       if (!playlistArray.length) throw new Error('Playlist not found')
       playlistArray[0].images = JSON.parse(playlistArray[0].images)
       return playlistArray[0] as unknown as PlaylistParsed
@@ -278,14 +207,13 @@ const Playlist: PlaylistInterface = {
   },
   setPlaylist: async (
     playlistName: string,
-    swwwBin: string,
+
     swwwOptions: string[]
   ) => {
     try {
       const currentPlaylist = await Playlist.getFromDB(playlistName)
       Playlist.images = currentPlaylist.images
       Playlist.currentName = playlistName
-      Playlist.swwwBin = swwwBin
       Playlist.swwwOptions = swwwOptions
       Playlist.currentType = currentPlaylist.type
       Playlist.currentImageIndex = currentPlaylist.currentImageIndex
@@ -306,7 +234,6 @@ const Playlist: PlaylistInterface = {
         Playlist.currentImageIndex = 0
       }
       setImage(
-        Playlist.swwwBin,
         Playlist.swwwOptions,
         Playlist.images[Playlist.currentImageIndex]
       )
@@ -317,70 +244,76 @@ const Playlist: PlaylistInterface = {
     }, Playlist.interval)
   },
   neverPlaylist: async () => {
-    setImage(
-      Playlist.swwwBin,
-      Playlist.swwwOptions,
-      Playlist.images[Playlist.currentImageIndex]
-    )
+    setImage(Playlist.swwwOptions, Playlist.images[Playlist.currentImageIndex])
   },
   timeOfDayPlaylist: async () => {},
   dayOfWeekPlaylist: async () => {}
 }
 
-async function daemonManager(data: Buffer) {
-  const message: message = JSON.parse(data.toString())
-  if (message.action === ACTIONS.START_PLAYLIST && message.payload) {
-    Playlist.stop()
-    await Playlist.start(
-      message.payload.playlistName,
-      message.payload.swwwBin,
-      message.payload.swwwOptions
-    )
-    notifyPlaylistState(Playlist.currentName, PlaylistStates.PLAYING)
+export async function daemonInit() {
+  await sequelize.authenticate()
+  async function daemonManager(data: Buffer) {
+    const message: message = JSON.parse(data.toString())
+    if (message.action === ACTIONS.START_PLAYLIST && message.payload) {
+      Playlist.stop()
+      await Playlist.start(
+        message.payload.playlistName,
+        message.payload.swwwOptions
+      )
+      notifyPlaylistState(Playlist.currentName, PlaylistStates.PLAYING)
+    }
+    if (message.action === ACTIONS.PAUSE_PLAYLIST) {
+      Playlist.pause()
+      notifyPlaylistState(Playlist.currentName, PlaylistStates.PAUSED)
+    }
+    if (message.action === ACTIONS.RESUME_PLAYLIST) {
+      Playlist.resume()
+      notifyPlaylistState(Playlist.currentName, PlaylistStates.PLAYING)
+    }
+    if (message.action === ACTIONS.STOP_PLAYLIST) {
+      Playlist.stop()
+      notifyPlaylistState(Playlist.currentName, PlaylistStates.STOPPED)
+    }
+    if (message.action === ACTIONS.NEXT_IMAGE) {
+      Playlist.nextImage()
+    }
+    if (message.action === ACTIONS.PREVIOUS_IMAGE) {
+      Playlist.previousImage()
+    }
+    if (message.action === ACTIONS.STOP_DAEMON) {
+      Playlist.stop()
+      notifyPlaylistState(Playlist.currentName, PlaylistStates.STOPPED)
+      sequelize.close()
+      daemonServer.close()
+      process.exit(0)
+    }
   }
-  if (message.action === ACTIONS.PAUSE_PLAYLIST) {
-    Playlist.pause()
-    notifyPlaylistState(Playlist.currentName, PlaylistStates.PAUSED)
-  }
-  if (message.action === ACTIONS.RESUME_PLAYLIST) {
-    Playlist.resume()
-    notifyPlaylistState(Playlist.currentName, PlaylistStates.PLAYING)
-  }
-  if (message.action === ACTIONS.STOP_PLAYLIST) {
-    Playlist.stop()
-    notifyPlaylistState(Playlist.currentName, PlaylistStates.STOPPED)
-  }
-  if (message.action === ACTIONS.NEXT_IMAGE) {
-    Playlist.nextImage()
-  }
-  if (message.action === ACTIONS.PREVIOUS_IMAGE) {
-    Playlist.previousImage()
-  }
-  if (message.action === ACTIONS.STOP_DAEMON) {
+  const daemonServer = createServer((socket) => {
+    socket.on('data', daemonManager)
+  })
+
+  daemonServer.on('error', (err) => {
+    if (err.message.includes('EADDRINUSE')) {
+      unlinkSync(SOCKET_PATH)
+      daemonServer.listen(SOCKET_PATH)
+    } else {
+      console.error(err)
+    }
+  })
+
+  daemonServer.listen(SOCKET_PATH)
+  process.on('SIGTERM', function () {
     Playlist.stop()
     notifyPlaylistState(Playlist.currentName, PlaylistStates.STOPPED)
     sequelize.close()
     daemonServer.close()
-  }
+    process.exit(0)
+  })
+  process.on('SIGINT', () => {
+    Playlist.stop()
+    notifyPlaylistState(Playlist.currentName, PlaylistStates.STOPPED)
+    sequelize.close()
+    daemonServer.close()
+    process.exit(0)
+  })
 }
-
-const daemonServer = net.createServer((socket) => {
-  socket.on('data', daemonManager)
-})
-
-daemonServer.on('error', (err) => {
-  if (err.message.includes('EADDRINUSE')) {
-    fs.unlinkSync(SOCKET_PATH)
-    daemonServer.listen(SOCKET_PATH)
-  } else {
-    console.error(err)
-  }
-})
-
-daemonServer.listen(SOCKET_PATH)
-process.on('SIGTERM', function () {
-  daemonServer.close()
-})
-process.on('SIGINT', () => {
-  daemonServer.close()
-})

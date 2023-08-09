@@ -1,5 +1,5 @@
-import { dialog } from 'electron'
-import fs, { rmSync } from 'node:fs'
+import { app, dialog } from 'electron'
+import { rmSync, mkdirSync, existsSync, readdirSync } from 'node:fs'
 import { copyFile } from 'node:fs/promises'
 import {
   appDirectories,
@@ -8,23 +8,17 @@ import {
   WAYPAPER_SOCKET_PATH
 } from './globals/globals'
 import { Image, Playlist } from './database/models'
-import {
-  fileList,
-  imagesObject,
-  SWWW_VERSION,
-  ACTIONS,
-  message
-} from './types/types'
+import { fileList, imagesObject, ACTIONS, message } from './types/types'
 import { playlist } from '../src/types/rendererTypes'
 import { storeImagesInDB, storePlaylistInDB } from './database/dbOperations'
-import { exec, execFile, fork } from 'node:child_process'
+import { exec, spawn } from 'node:child_process'
 import { promisify } from 'node:util'
-import { execPath, waypaperDaemonPath } from './binaries'
+import { appPath } from './binaries'
 import { join, basename } from 'node:path'
 import { createConnection } from 'node:net'
+import { daemonInit } from './daemon'
 
 const execPomisified = promisify(exec)
-const execFilePromisified = promisify(execFile)
 function openImagesFromFilePicker() {
   const file: fileList = dialog.showOpenDialogSync({
     properties: ['openFile', 'multiSelections'],
@@ -92,14 +86,14 @@ export function openAndReturnImagesObject() {
 }
 
 export async function checkCacheOrCreateItIfNotExists() {
-  if (!fs.existsSync(appDirectories.rootCache)) {
+  if (!existsSync(appDirectories.rootCache)) {
     createFolders(appDirectories.rootCache, appDirectories.thumbnails)
   } else {
-    if (!fs.existsSync(appDirectories.thumbnails)) {
+    if (!existsSync(appDirectories.thumbnails)) {
       createFolders(appDirectories.thumbnails)
     }
   }
-  if (!fs.existsSync(appDirectories.mainDir)) {
+  if (!existsSync(appDirectories.mainDir)) {
     // if images dont exist, remove old cache thumbnail
     deleteFolders(appDirectories.thumbnails)
     createFolders(
@@ -109,7 +103,7 @@ export async function checkCacheOrCreateItIfNotExists() {
       appDirectories.playlistsDir
     )
   } else {
-    if (!fs.existsSync(appDirectories.imagesDir)) {
+    if (!existsSync(appDirectories.imagesDir)) {
       deleteFolders(appDirectories.thumbnails, appDirectories.playlistsDir)
       //
       await Playlist.sync({ force: true })
@@ -126,7 +120,7 @@ export async function checkCacheOrCreateItIfNotExists() {
 function createFolders(...args: string[]) {
   try {
     args.forEach((path) => {
-      fs.mkdirSync(path)
+      mkdirSync(path)
     })
   } catch (error) {
     console.error(error)
@@ -136,7 +130,7 @@ function createFolders(...args: string[]) {
 function deleteFolders(...args: string[]) {
   try {
     args.forEach((path) => {
-      fs.rmSync(path, { recursive: true, force: true })
+      rmSync(path, { recursive: true, force: true })
     })
   } catch (error) {
     console.error(error)
@@ -144,7 +138,7 @@ function deleteFolders(...args: string[]) {
 }
 
 function checkAndRenameDuplicates(filenamesToCopy: string[]) {
-  const currentImagesStored = fs.readdirSync(appDirectories.imagesDir)
+  const currentImagesStored = readdirSync(appDirectories.imagesDir)
   const correctFilenamesToCopy = getUniqueFileNames(
     currentImagesStored,
     filenamesToCopy
@@ -179,37 +173,20 @@ export async function setImage(
   imageName: string
 ) {
   const options = [...swwwDefaults]
-  options.push(join(appDirectories.imagesDir, imageName))
-  if (process.env.SWWW_VERSION === SWWW_VERSION.SYSTEM_INSTALLED) {
-    try {
-      await execPomisified(`swww img ${options.join(' ')}`)
-    } catch (error) {
-      console.error(error)
-    }
-  } else {
-    try {
-      await execFilePromisified(`${join(execPath, 'swww')} img  ${options}`)
-    } catch (error) {
-      console.error(error)
-    }
+  options.push(join(appDirectories.imagesDir, `"${imageName}"`))
+  try {
+    await execPomisified(`swww img ${options.join(' ')}`)
+  } catch (error) {
+    console.error(error)
   }
 }
+
 export async function isSwwwDaemonRunning() {
   await checkIfSwwwIsInstalled()
   exec(`ps -A | grep "swww-daemon"`, (_error, stdout, _stderr) => {
     if (!(stdout.toLowerCase().indexOf('swww-daemon'.toLowerCase()) > -1)) {
       isSwwwSocketClean()
-      if (process.env.SWWW_VERSION === SWWW_VERSION.SYSTEM_INSTALLED) {
-        execPomisified('swww init')
-      } else {
-        execFile(
-          join(execPath, 'swww-daemon'),
-          ['&', 'disown'],
-          (error, stdout, stderr) => {
-            console.error(error, stdout, stderr)
-          }
-        )
-      }
+      execPomisified('swww init')
     } else {
       console.log('Daemon already running')
     }
@@ -219,49 +196,34 @@ export async function isSwwwDaemonRunning() {
 function isSwwwSocketClean() {
   //TODO check if I can get around hardcoding the socket path
   const socketPath = '/run/user/1000/swww.socket'
-  if (fs.existsSync(socketPath)) {
+  if (existsSync(socketPath)) {
     rmSync(socketPath)
   }
 }
 
 function startPlaylist(playlistName: string, swwwUserOverrides?: string[]) {
-  if (process.env.SWWW_VERSION) {
-    const swwwOptions =
-      swwwUserOverrides !== undefined ? swwwUserOverrides : swwwDefaults
-    const swwwBin =
-      process.env.SWWW_VERSION === SWWW_VERSION.SYSTEM_INSTALLED
-        ? 'swww'
-        : join(execPath, 'swww')
-    const swwwVersion =
-      process.env.SWWW_VERSION === SWWW_VERSION.SYSTEM_INSTALLED
-        ? SWWW_VERSION.SYSTEM_INSTALLED
-        : SWWW_VERSION.NOT_INSTALLED
-    const message: message = {
-      action: ACTIONS.START_PLAYLIST,
-      payload: {
-        playlistName,
-        swwwOptions,
-        SWWW_VERSION: swwwVersion,
-        swwwBin
-      }
+  const swwwOptions =
+    swwwUserOverrides !== undefined ? swwwUserOverrides : swwwDefaults
+  const message: message = {
+    action: ACTIONS.START_PLAYLIST,
+    payload: {
+      playlistName,
+      swwwOptions
     }
-    playlistConnectionBridge(message)
-    PlaylistController.isPlaying = true
-  } else {
-    throw new Error('Check first if swww is installed')
   }
+  playlistConnectionBridge(message)
+  PlaylistController.isPlaying = true
 }
 
 export async function checkIfSwwwIsInstalled() {
   const { stdout } = await execPomisified(`swww --version`)
   if (stdout) {
     console.log('swww is installed in the system')
-    process.env.SWWW_VERSION = SWWW_VERSION.SYSTEM_INSTALLED
   } else {
     console.log(
       'swww is not installed, please find instructions in the README.md on how to install it'
     )
-    process.env.SWWW_VERSION = SWWW_VERSION.NOT_INSTALLED
+    throw new Error('swww is not installed')
   }
 }
 export async function saveAndInitPlaylist(
@@ -276,9 +238,10 @@ export async function saveAndInitPlaylist(
     throw Error('Failed to set playlist in DB')
   }
 }
-async function isWaypaperDaemonRunning() {
+async function 
+isWaypaperDaemonRunning() {
   try {
-    const { stdout } = await execPomisified('pidof waypaperdaemon')
+    const { stdout } = await execPomisified('pidof wp-daemon')
     console.log('Waypaper daemon already running', stdout)
     return true
   } catch (_err) {
@@ -289,10 +252,27 @@ async function isWaypaperDaemonRunning() {
 export async function initWaypaperDaemon() {
   if (!(await isWaypaperDaemonRunning())) {
     try {
-      fork(waypaperDaemonPath)
+      PlaylistController.killDaemon()
+      daemonInit()
     } catch (error) {
       console.error(error)
     }
+  }
+}
+
+export async function callWaypaperAsDaemon() {
+  try {
+    if (app.isPackaged) {
+      if (!(await isWaypaperDaemonRunning())) {
+        spawn(appPath, ['--init-daemon'], {detached: true, stdio: 'ignore'}).unref()
+      }
+    } else {
+       if (!(await isWaypaperDaemonRunning())) {
+        spawn(appPath, ['.', '--no-sandbox', '--init-daemon'] ,{detached: true, stdio: 'ignore'}).unref()
+      }
+    }
+  } catch (error) {
+    console.error(error)
   }
 }
 
