@@ -1,13 +1,16 @@
 import { join, resolve } from 'node:path'
 import { app } from 'electron'
-import { cwd, resourcesPath } from 'node:process'
+import { resourcesPath } from 'node:process'
 
 const iconsPath = app.isPackaged
   ? join(resourcesPath, './icons')
-  : join(cwd(), '/electron/icons')
-const appLocation = app.isPackaged
-  ? app.getPath('exe')
-  : cwd() + '/node_modules/electron/dist/electron'
+  : join(app.getAppPath(), '/electron/icons')
+const daemon = app.isPackaged
+  ? join(app.getAppPath(), '../', '/daemon')
+  : join(app.getAppPath(), 'daemon')
 
 export const iconPath = resolve(join(iconsPath))
-export const appPath = resolve(join(appLocation))
+export const daemonLocation = resolve(join(daemon))
+
+console.log('daeemon', daemonLocation)
+

@@ -11,6 +11,11 @@
       "from": "electron/icons",
       "to": "resources/icons",
       "filter": ["**/*"]
+    },
+    {
+      "from": "daemon",
+      "to": "resources/daemon",
+      "filter": ["**/*", "!**/*.ts"]
     }
   ],
   "linux": {

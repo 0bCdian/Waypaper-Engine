@@ -1,4 +1,4 @@
-import { app, dialog } from 'electron'
+import { dialog } from 'electron'
 import { rmSync, mkdirSync, existsSync, readdirSync } from 'node:fs'
 import { copyFile } from 'node:fs/promises'
 import {
@@ -13,10 +13,9 @@ import { playlist } from '../src/types/rendererTypes'
 import { storeImagesInDB, storePlaylistInDB } from './database/dbOperations'
 import { exec, spawn } from 'node:child_process'
 import { promisify } from 'node:util'
-import { appPath } from './binaries'
+import { daemonLocation } from './binaries'
 import { join, basename } from 'node:path'
 import { createConnection } from 'node:net'
-import { daemonInit } from './daemon'
 
 const execPomisified = promisify(exec)
 function openImagesFromFilePicker() {
@@ -201,20 +200,6 @@ function isSwwwSocketClean() {
   }
 }
 
-function startPlaylist(playlistName: string, swwwUserOverrides?: string[]) {
-  const swwwOptions =
-    swwwUserOverrides !== undefined ? swwwUserOverrides : swwwDefaults
-  const message: message = {
-    action: ACTIONS.START_PLAYLIST,
-    payload: {
-      playlistName,
-      swwwOptions
-    }
-  }
-  playlistConnectionBridge(message)
-  PlaylistController.isPlaying = true
-}
-
 export async function checkIfSwwwIsInstalled() {
   const { stdout } = await execPomisified(`swww --version`)
   if (stdout) {
@@ -232,14 +217,13 @@ export async function saveAndInitPlaylist(
 ) {
   try {
     const playlistAdded = await storePlaylistInDB(playlistObject)
-    startPlaylist(playlistAdded.name)
+    await PlaylistController.startPlaylist(playlistAdded.name)
   } catch (error) {
     console.error(error)
     throw Error('Failed to set playlist in DB')
   }
 }
-async function 
-isWaypaperDaemonRunning() {
+async function isWaypaperDaemonRunning() {
   try {
     const { stdout } = await execPomisified('pidof wp-daemon')
     console.log('Waypaper daemon already running', stdout)
@@ -252,27 +236,10 @@ isWaypaperDaemonRunning() {
 export async function initWaypaperDaemon() {
   if (!(await isWaypaperDaemonRunning())) {
     try {
-      PlaylistController.killDaemon()
-      daemonInit()
+      spawn('node', [`${daemonLocation}/daemon.js`])
     } catch (error) {
       console.error(error)
     }
-  }
-}
-
-export async function callWaypaperAsDaemon() {
-  try {
-    if (app.isPackaged) {
-      if (!(await isWaypaperDaemonRunning())) {
-        spawn(appPath, ['--init-daemon'], {detached: true, stdio: 'ignore'}).unref()
-      }
-    } else {
-       if (!(await isWaypaperDaemonRunning())) {
-        spawn(appPath, ['.', '--no-sandbox', '--init-daemon'] ,{detached: true, stdio: 'ignore'}).unref()
-      }
-    }
-  } catch (error) {
-    console.error(error)
   }
 }
 
@@ -282,7 +249,22 @@ async function playlistConnectionBridge(message: message) {
 }
 
 export const PlaylistController = {
-  startPlaylist,
+  startPlaylist: async function (
+    playlistName: string,
+    swwwUserOverrides?: string[]
+  ) {
+    const swwwOptions =
+      swwwUserOverrides !== undefined ? swwwUserOverrides : swwwDefaults
+    const message: message = {
+      action: ACTIONS.START_PLAYLIST,
+      payload: {
+        playlistName,
+        swwwOptions
+      }
+    }
+    playlistConnectionBridge(message)
+    PlaylistController.isPlaying = true
+  },
   isPlaying: false,
   pausePlaylist: () => {
     playlistConnectionBridge({

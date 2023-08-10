@@ -24,4 +24,5 @@ release
 *.njsproj
 *.sln
 *.sw?
-el_almendruco.png
+daemon/node_modules
+daemon/*.js

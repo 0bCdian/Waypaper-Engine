@@ -1,13 +1,15 @@
 import { createServer } from 'node:net'
-const Sequelize = require('sequelize')
-//@ts-ignore
-const sqlite3 = require('sqlite3').verbose()
+import { Sequelize } from 'sequelize'
 import { unlinkSync } from 'node:fs'
 import { execSync, exec } from 'node:child_process'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
-import { PlaylistTypeDB, message } from './types/types'
-import { ORDER_TYPES, PLAYLIST_TYPES } from '../src/types/rendererTypes'
+import {
+  PlaylistTypeDB,
+  message,
+  ORDER_TYPES,
+  PLAYLIST_TYPES
+} from './typesDaemon'
 interface PlaylistInterface {
   images: string[]
   currentName: string
@@ -254,69 +256,74 @@ const Playlist: PlaylistInterface = {
   timeOfDayPlaylist: async () => {},
   dayOfWeekPlaylist: async () => {}
 }
-process.title = 'wp-daemon'
-async function daemonManager(data: Buffer) {
-  const message: message = JSON.parse(data.toString())
-  if (message.action === ACTIONS.START_PLAYLIST && message.payload) {
-    Playlist.stop()
-    await Playlist.start(
-      message.payload.playlistName,
-      message.payload.swwwOptions
-    )
-    notifyPlaylistState(Playlist.currentName, PlaylistStates.PLAYING)
+
+async function daemonInit() {
+  process.title = 'wp-daemon'
+  await sequelize.authenticate()
+  async function daemonManager(data: Buffer) {
+    const message: message = JSON.parse(data.toString())
+    if (message.action === ACTIONS.START_PLAYLIST && message.payload) {
+      Playlist.stop()
+      await Playlist.start(
+        message.payload.playlistName,
+        message.payload.swwwOptions
+      )
+      notifyPlaylistState(Playlist.currentName, PlaylistStates.PLAYING)
+    }
+    if (message.action === ACTIONS.PAUSE_PLAYLIST) {
+      Playlist.pause()
+      notifyPlaylistState(Playlist.currentName, PlaylistStates.PAUSED)
+    }
+    if (message.action === ACTIONS.RESUME_PLAYLIST) {
+      Playlist.resume()
+      notifyPlaylistState(Playlist.currentName, PlaylistStates.PLAYING)
+    }
+    if (message.action === ACTIONS.STOP_PLAYLIST) {
+      Playlist.stop()
+      notifyPlaylistState(Playlist.currentName, PlaylistStates.STOPPED)
+    }
+    if (message.action === ACTIONS.NEXT_IMAGE) {
+      Playlist.nextImage()
+    }
+    if (message.action === ACTIONS.PREVIOUS_IMAGE) {
+      Playlist.previousImage()
+    }
+    if (message.action === ACTIONS.STOP_DAEMON) {
+      Playlist.stop()
+      notifyPlaylistState(Playlist.currentName, PlaylistStates.STOPPED)
+      sequelize.close()
+      daemonServer.close()
+      process.exit(0)
+    }
   }
-  if (message.action === ACTIONS.PAUSE_PLAYLIST) {
-    Playlist.pause()
-    notifyPlaylistState(Playlist.currentName, PlaylistStates.PAUSED)
-  }
-  if (message.action === ACTIONS.RESUME_PLAYLIST) {
-    Playlist.resume()
-    notifyPlaylistState(Playlist.currentName, PlaylistStates.PLAYING)
-  }
-  if (message.action === ACTIONS.STOP_PLAYLIST) {
-    Playlist.stop()
-    notifyPlaylistState(Playlist.currentName, PlaylistStates.STOPPED)
-  }
-  if (message.action === ACTIONS.NEXT_IMAGE) {
-    Playlist.nextImage()
-  }
-  if (message.action === ACTIONS.PREVIOUS_IMAGE) {
-    Playlist.previousImage()
-  }
-  if (message.action === ACTIONS.STOP_DAEMON) {
+  const daemonServer = createServer((socket) => {
+    socket.on('data', daemonManager)
+  })
+
+  daemonServer.on('error', (err) => {
+    if (err.message.includes('EADDRINUSE')) {
+      unlinkSync(SOCKET_PATH)
+      daemonServer.listen(SOCKET_PATH)
+    } else {
+      console.error(err)
+    }
+  })
+
+  daemonServer.listen(SOCKET_PATH)
+  process.on('SIGTERM', function () {
     Playlist.stop()
     notifyPlaylistState(Playlist.currentName, PlaylistStates.STOPPED)
     sequelize.close()
     daemonServer.close()
     process.exit(0)
-  }
+  })
+  process.on('SIGINT', () => {
+    Playlist.stop()
+    notifyPlaylistState(Playlist.currentName, PlaylistStates.STOPPED)
+    sequelize.close()
+    daemonServer.close()
+    process.exit(0)
+  })
 }
-const daemonServer = createServer(async (socket) => {
-  await sequelize.authenticate()
-  socket.on('data', daemonManager)
-})
 
-daemonServer.on('error', (err) => {
-  if (err.message.includes('EADDRINUSE')) {
-    unlinkSync(SOCKET_PATH)
-    daemonServer.listen(SOCKET_PATH)
-  } else {
-    console.error(err)
-  }
-})
-
-daemonServer.listen(SOCKET_PATH)
-process.on('SIGTERM', function () {
-  Playlist.stop()
-  notifyPlaylistState(Playlist.currentName, PlaylistStates.STOPPED)
-  sequelize.close()
-  daemonServer.close()
-  process.exit(0)
-})
-process.on('SIGINT', () => {
-  Playlist.stop()
-  notifyPlaylistState(Playlist.currentName, PlaylistStates.STOPPED)
-  sequelize.close()
-  daemonServer.close()
-  process.exit(0)
-})
+daemonInit()
