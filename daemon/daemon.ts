@@ -64,7 +64,8 @@ enum ACTIONS {
   STOP_DAEMON = 'stop-daemon',
   PAUSE_PLAYLIST = 'pause-playlist',
   RESUME_PLAYLIST = 'resume-playlist',
-  STOP_PLAYLIST = 'stop-playlist'
+  STOP_PLAYLIST = 'stop-playlist',
+  
 }
 const IMAGES_DIR = join(homedir(), '.waypaper', 'images')
 const SOCKET_PATH = '/tmp/waypaper_daemon.sock'

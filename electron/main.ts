@@ -15,7 +15,10 @@ import { testDB } from './database/db'
 import { readImagesFromDB, readPlaylistsFromDB } from './database/dbOperations'
 import { devMenu, prodMenu, trayMenu } from './globals/globals'
 import { iconPath } from './binaries'
-
+import { store } from './database/configStorage'
+import installExtension, {
+  REACT_DEVELOPER_TOOLS
+} from 'electron-devtools-assembler'
 if (process.argv[1] === '--daemon' || process.argv[3] === '--daemon') {
   initWaypaperDaemon()
   app.exit()
@@ -41,7 +44,6 @@ let win: BrowserWindow | null
 // 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
 const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
 
-// eslint-disable-next-line @typescript-eslint/explicit-function-return-type
 function createWindow() {
   win = new BrowserWindow({
     icon: join(iconPath, 'tray.png'),
@@ -49,10 +51,8 @@ function createWindow() {
     height: 600,
     minWidth: 940,
     minHeight: 560,
-    frame: true,
     autoHideMenuBar: true,
     show: false,
-    backgroundColor: '#202020',
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
       sandbox: false
@@ -69,47 +69,60 @@ function createWindow() {
     }
   }
   win.once('ready-to-show', () => {
-    win?.show()
+    if (store.get('startMinimized')) win?.show()
+    else {
+      win?.hide()
+    }
   })
   win.on('close', (event) => {
     event.preventDefault()
     win?.hide()
   })
+  win.webContents.once('dom-ready', () => {
+    if (!app.isPackaged) loadDeveloperTools()
+  })
 }
-
-app.whenReady().then(() => {
-  createWindow()
+function createMenu() {
   const menu = app.isPackaged ? prodMenu({ app }) : devMenu({ app, win })
   const mainMenu = Menu.buildFromTemplate(menu)
   Menu.setApplicationMenu(mainMenu)
-})
-
-app.whenReady().then(() => {
+}
+function registerFileProtocol() {
   protocol.registerFileProtocol('atom', (request, callback) => {
     const filePath = fileURLToPath(
       'file://' + request.url.slice('atom://'.length)
     )
     callback(filePath)
   })
-})
-
-app.whenReady().then(async () => {
-  await checkCacheOrCreateItIfNotExists()
-  await testDB()
-  await isSwwwDaemonRunning()
-  await initWaypaperDaemon()
-})
-
+}
+function createTray() {
+  tray = new Tray(join(iconPath, 'tray.png'))
+  const trayContextMenu = trayMenu({ app, PlaylistController })
+  tray.setContextMenu(Menu.buildFromTemplate(trayContextMenu))
+  tray.setToolTip('Waypaper Manager')
+  tray.on('click', () => {
+    win?.isVisible() ? win.hide() : win?.show()
+  })
+}
+function loadDeveloperTools() {
+  const options = {
+    loadExtensionOptions: { allowFileAccess: true }
+  }
+  installExtension(REACT_DEVELOPER_TOOLS, options)
+    .then((name) => console.log(`Added Extension:  ${name}`))
+    .catch((err) => console.log('An error occurred: ', err))
+}
 app
   .whenReady()
-  .then(() => {
-    tray = new Tray(join(iconPath, 'tray.png'))
-    const trayContextMenu = trayMenu({ app, PlaylistController })
-    tray.setContextMenu(Menu.buildFromTemplate(trayContextMenu))
-    tray.setToolTip('Waypaper Manager')
-    tray.on('click', () => {
-      win?.isVisible() ? win.hide() : win?.show()
-    })
+  .then(async () => {
+    createWindow()
+    createMenu()
+    createTray()
+    registerFileProtocol()
+    await checkCacheOrCreateItIfNotExists()
+    await testDB()
+    await isSwwwDaemonRunning()
+    await initWaypaperDaemon()
   })
   .catch((e) => console.error(e))
 
