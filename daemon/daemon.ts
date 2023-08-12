@@ -251,45 +251,53 @@ async function daemonInit() {
   await sequelize.authenticate()
   async function daemonManager(data: Buffer) {
     const message: message = JSON.parse(data.toString())
-    if (message.action === ACTIONS.STOP_DAEMON) {
-      notify('Exiting daemon')
-      Playlist.stop()
-      sequelize.close()
-      daemonServer.close()
-      process.exit(0)
+    switch (message.action) {
+      case ACTIONS.STOP_DAEMON:
+        notify('Exiting daemon')
+        Playlist.stop()
+        sequelize.close()
+        daemonServer.close()
+        process.exit(0)
+      case ACTIONS.START_PLAYLIST:
+        if (message.payload) {
+          Playlist.stop()
+          await Playlist.start(
+            message.payload.playlistName,
+            message.payload.swwwOptions
+          )
+          notifyPlaylistState(Playlist.currentName, PlaylistStates.PLAYING)
+        } else {
+          notify('Something went wrong, no playlist payload received')
+        }
+        break
+    }
+    if (Playlist.currentName === '') {
+      notify('No playlist active, try setting one first')
+      return
     } else {
-      if (Playlist.currentName === '') {
-        notify('No active playlist')
-        return
-      }
-      if (message.action === ACTIONS.START_PLAYLIST && message.payload) {
-        Playlist.stop()
-        await Playlist.start(
-          message.payload.playlistName,
-          message.payload.swwwOptions
-        )
-        notifyPlaylistState(Playlist.currentName, PlaylistStates.PLAYING)
-      }
-      if (message.action === ACTIONS.PAUSE_PLAYLIST) {
-        Playlist.pause()
-        notifyPlaylistState(Playlist.currentName, PlaylistStates.PAUSED)
-      }
-      if (message.action === ACTIONS.RESUME_PLAYLIST) {
-        Playlist.resume()
-        notifyPlaylistState(Playlist.currentName, PlaylistStates.PLAYING)
-      }
-      if (message.action === ACTIONS.STOP_PLAYLIST) {
-        Playlist.stop()
-        notifyPlaylistState(Playlist.currentName, PlaylistStates.STOPPED)
-      }
-      if (message.action === ACTIONS.NEXT_IMAGE) {
-        Playlist.nextImage()
-      }
-      if (message.action === ACTIONS.PREVIOUS_IMAGE) {
-        Playlist.previousImage()
+      switch (message.action) {
+        case ACTIONS.PAUSE_PLAYLIST:
+          Playlist.pause()
+          notifyPlaylistState(Playlist.currentName, PlaylistStates.PAUSED)
+          break
+        case ACTIONS.RESUME_PLAYLIST:
+          Playlist.resume()
+          notifyPlaylistState(Playlist.currentName, PlaylistStates.PLAYING)
+          break
+        case ACTIONS.STOP_PLAYLIST:
+          Playlist.stop()
+          notifyPlaylistState(Playlist.currentName, PlaylistStates.STOPPED)
+          break
+        case ACTIONS.NEXT_IMAGE:
+          Playlist.nextImage()
+          break
+        case ACTIONS.PREVIOUS_IMAGE:
+          Playlist.previousImage()
+          break
       }
     }
   }
+
   const daemonServer = createServer((socket) => {
     socket.on('data', daemonManager)
   })
