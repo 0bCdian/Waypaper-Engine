@@ -1,9 +1,8 @@
-import { type FC } from 'react'
 interface SkeletonProps {
   imageName: string
 }
 
-export const Skeleton: FC<SkeletonProps> = ({ imageName }) => {
+function Skeleton({ imageName }: SkeletonProps) {
   return (
     <div className='relative rounded-lg bg-neutral min-h-[199.00px] max-w-[300px] mb-4'>
       <span className='loading loading-spinner absolute loading-lg  top-20 right-[8.5rem] '></span>
@@ -13,3 +12,5 @@ export const Skeleton: FC<SkeletonProps> = ({ imageName }) => {
     </div>
   )
 }
+
+export default Skeleton

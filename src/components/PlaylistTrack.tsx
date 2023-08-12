@@ -15,33 +15,14 @@ import {
   restrictToFirstScrollableAncestor,
   restrictToHorizontalAxis
 } from '@dnd-kit/modifiers'
-import { FC, useMemo, useEffect } from 'react'
+import { useMemo, useEffect } from 'react'
 import MiniPlaylistCard from './MiniPlaylistCard'
 import { playlistStore } from '../hooks/useGlobalPlaylist'
-import { ImagesArray } from '../types/rendererTypes'
 import openImagesStore from '../hooks/useOpenImages'
 import { motion, AnimatePresence } from 'framer-motion'
-import Modals from './Modals'
+import { useImages } from '../hooks/imagesStore'
 
-interface PlaylistTrackProps {
-  resetRef: () => void
-  modifyInputElement: (
-    currentState: boolean,
-    elementId?: number,
-    elementName?: string
-  ) => void
-  setSkeletonsToShow: React.Dispatch<React.SetStateAction<string[]>>
-  setImagesArray: React.Dispatch<React.SetStateAction<ImagesArray>>
-  imagesArrayRef: React.MutableRefObject<ImagesArray>
-}
-
-const PlaylistTrack: FC<PlaylistTrackProps> = ({
-  resetRef,
-  modifyInputElement,
-  setSkeletonsToShow,
-  setImagesArray,
-  imagesArrayRef
-}) => {
+function PlaylistTrack() {
   const {
     playlist,
     movePlaylistArrayOrder,
@@ -49,7 +30,7 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
     clearPlaylist
   } = playlistStore()
   const { openImages, isActive } = openImagesStore()
-
+  const { setSkeletons, setImagesArray, resetImageCheckboxes } = useImages()
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } })
   )
@@ -69,17 +50,18 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
   }
   const handleClickAddImages = () => {
     openImages({
-      setSkeletonsToShow,
+      setSkeletons,
       setImagesArray,
-      imagesArrayRef,
       addMultipleImagesToPlaylist
     })
   }
 
   const playlistArray = useMemo(() => {
-    return playlist.images.map((image) => {
+    const lastIndex = playlist.images.length - 1
+    return playlist.images.map((image, index) => {
       return (
         <MiniPlaylistCard
+          isLast={lastIndex === index}
           id={image.id}
           key={image.id}
           imageName={image.imageName}
@@ -87,9 +69,14 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
       )
     })
   }, [playlist.images])
-
+  let firstRender = true
   useEffect(() => {
+    if (firstRender) {
+      firstRender = false
+      return
+    }
     if (playlist.images.length === 0) {
+      resetImageCheckboxes()
       clearPlaylist()
     }
   }, [playlist.images])
@@ -159,7 +146,7 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
               exit={{ y: 100, opacity: 0 }}
               className='btn btn-error rounded-lg'
               onClick={() => {
-                resetRef()
+                resetImageCheckboxes()
                 clearPlaylist()
               }}
             >
@@ -198,11 +185,6 @@ const PlaylistTrack: FC<PlaylistTrackProps> = ({
           </AnimatePresence>
         </SortableContext>
       </DndContext>
-      <Modals
-        resetRef={resetRef}
-        modifyInputElement={modifyInputElement}
-        imagesArrayRef={imagesArrayRef}
-      />
     </div>
   )
 }

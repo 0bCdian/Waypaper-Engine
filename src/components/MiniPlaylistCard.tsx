@@ -5,13 +5,15 @@ import { useEffect, useRef } from 'react'
 
 const { join, thumbnailDirectory } = window.API_RENDERER
 
-const MiniPlaylistCard = ({
+function MiniPlaylistCard({
   imageName,
-  id
+  id,
+  isLast
 }: {
   imageName: string
   id: number
-}) => {
+  isLast: boolean | undefined
+}) {
   const imageRef = useRef<HTMLImageElement>(null)
   const imageSrc =
     'atom://' + join(thumbnailDirectory, imageName.split('.').at(0) + '.webp')
@@ -28,33 +30,29 @@ const MiniPlaylistCard = ({
     transition
   }
   useEffect(() => {
-    if (imageRef.current) {
-      setTimeout(() => {
-        if (imageRef.current) {
-          imageRef.current.scrollIntoView({ behavior: 'smooth' })
-        }
-      }, 200)
+    if (isLast) {
+      imageRef.current?.scrollIntoView({ behavior: 'smooth' })
     }
   }, [])
 
   return (
     <div ref={setNodeRef} style={style}>
-        <motion.div
-          initial={{ scale: 0.5 }}
-          animate={{ scale: 1 }}
-          transition={{ duration: 0.2 }}
-          exit={{ scale: 0 }}
-          className='w-32 m-1 shrink-0 rounded-lg shadow-xl'
-        >
-          <img
-            {...attributes}
-            {...listeners}
-            src={imageSrc}
-            alt={imageName}
-            className='rounded-lg'
-            ref={imageRef}
-          />
-        </motion.div>
+      <motion.div
+        initial={{ scale: 0.5 }}
+        animate={{ scale: 1 }}
+        transition={{ duration: 0.2 }}
+        exit={{ scale: 0 }}
+        className='w-32 m-1 shrink-0 rounded-lg shadow-xl'
+      >
+        <img
+          {...attributes}
+          {...listeners}
+          src={imageSrc}
+          alt={imageName}
+          className='rounded-lg'
+          ref={imageRef}
+        />
+      </motion.div>
     </div>
   )
 }

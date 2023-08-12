@@ -1,24 +1,17 @@
-import { type FC, useId, ChangeEvent } from 'react'
+import { useId, ChangeEvent } from 'react'
 import { Image } from '../types/rendererTypes'
 import { playlistStore } from '../hooks/useGlobalPlaylist'
 interface ImageCardProps {
   Image: Image
-  modifyInputElement: (
-    currentState: boolean,
-    elementId?: number,
-    elementName?: string
-  ) => void
 }
 const { join, thumbnailDirectory, setImage, imagesDirectory } =
   window.API_RENDERER
-export const ImageCard: FC<ImageCardProps> = ({
-  Image,
-  modifyInputElement
-}) => {
+function ImageCard({ Image }: ImageCardProps) {
   const id = useId()
-  const imageNameFilePath =
-    'atom://' +
-    join(thumbnailDirectory, Image.imageName.split('.').at(0) + '.webp')
+  const imageNameFilePath = `atom://${join(
+    thumbnailDirectory,
+    `${Image.imageName.split('.').at(0)}.webp`
+  )}`
   const handleDoubleClick = () => {
     setImage(Image.imageName)
   }
@@ -26,10 +19,10 @@ export const ImageCard: FC<ImageCardProps> = ({
   const handleCheckboxChange = (event: ChangeEvent) => {
     const element = event.target as HTMLInputElement
     if (element.checked) {
-      modifyInputElement(true, Image.id)
+      Image.isChecked = true
       addImageToPlaylist(Image)
     } else {
-      modifyInputElement(false, Image.id)
+      Image.isChecked = false
       removeImageFromPlaylist(Image)
     }
   }
@@ -69,3 +62,5 @@ export const ImageCard: FC<ImageCardProps> = ({
     </div>
   )
 }
+
+export default ImageCard

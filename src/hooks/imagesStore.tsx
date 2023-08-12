@@ -3,7 +3,6 @@ import {
   useCallback,
   useMemo,
   useContext,
-  useRef,
   createContext,
   useEffect
 } from 'react'
@@ -20,17 +19,21 @@ type action =
   | { type: STORE_ACTIONS.SET_IMAGES_ARRAY; payload: ImagesArray }
   | { type: STORE_ACTIONS.SET_SKELETONS_TO_SHOW; payload: string[] }
   | { type: STORE_ACTIONS.SET_SEARCH_FILTER; payload: string }
+  | { type: STORE_ACTIONS.RESET_IMAGES_ARRAY; payload: ImagesArray }
 
 function reducer(state: state, action: action) {
   switch (action.type) {
-    case 'SET_IMAGES_ARRAY':
-      return { ...state, imagesArray: action.payload }
-    case 'SET_SKELETONS_TO_SHOW':
+    case STORE_ACTIONS.SET_IMAGES_ARRAY:
+      return {
+        ...state,
+        imagesArray: [...action.payload, ...state.imagesArray]
+      }
+    case STORE_ACTIONS.SET_SKELETONS_TO_SHOW:
       return { ...state, skeletonsToShow: action.payload }
-    case 'SET_SEARCH_FILTER':
+    case STORE_ACTIONS.SET_SEARCH_FILTER:
       return { ...state, searchFilter: action.payload }
-    default:
-      return state
+    case STORE_ACTIONS.RESET_IMAGES_ARRAY:
+      return { ...state, imagesArray: action.payload }
   }
 }
 
@@ -43,11 +46,9 @@ function imagesSource() {
       searchFilter: ''
     }
   )
-  const originalImagesArrayRef = useRef<ImagesArray>([])
   useEffect(() => {
     queryImages().then((data: ImagesArray) => {
       dispatch({ type: STORE_ACTIONS.SET_IMAGES_ARRAY, payload: data })
-      originalImagesArrayRef.current = structuredClone(data)
     })
   }, [])
   const setSearchFilter = useCallback((searchFilter: string) => {
@@ -57,30 +58,60 @@ function imagesSource() {
     })
   }, [])
   const resetImageCheckboxes = useCallback(() => {
-    originalImagesArrayRef.current.forEach((image) => {
+    const resetImagesArray = imagesArray.map((image) => {
       image.isChecked = false
+      return image
+    })
+    dispatch({
+      type: STORE_ACTIONS.RESET_IMAGES_ARRAY,
+      payload: resetImagesArray
+    })
+  }, [imagesArray])
+  const clearSkeletons = useCallback(() => {
+    dispatch({
+      type: STORE_ACTIONS.SET_SKELETONS_TO_SHOW,
+      payload: []
+    })
+  }, [])
+  const setSkeletons = useCallback((skeletons: string[]) => {
+    dispatch({
+      type: STORE_ACTIONS.SET_SKELETONS_TO_SHOW,
+      payload: skeletons
+    })
+  }, [])
+  const setImagesArray = useCallback((newImages: ImagesArray) => {
+    dispatch({
+      type: STORE_ACTIONS.SET_IMAGES_ARRAY,
+      payload: newImages
     })
   }, [])
   const sortedImages = useMemo(() => {
-    return originalImagesArrayRef.current.sort((a, b) => {
-      return a.id > b.id ? -1 : 1
-    })
+    const shallowCopy = [...imagesArray]
+    return shallowCopy.sort((a, b) => (a.id > b.id ? -1 : 1))
   }, [imagesArray])
 
   const filteredImages = useMemo(() => {
-    return sortedImages.filter((image) =>
+    const shallowCopy = [...sortedImages]
+    return shallowCopy.filter((image) =>
       image.imageName
         .toLocaleLowerCase()
         .includes(searchFilter.toLocaleLowerCase())
     )
-  }, [searchFilter])
-
+  }, [searchFilter, sortedImages])
+  const isEmpty = useMemo(
+    () => !(imagesArray.length > 0 || skeletonsToShow.length > 0),
+    [skeletonsToShow, imagesArray]
+  )
   return {
     imagesArray,
     skeletonsToShow,
-    setSearchFilter,
     filteredImages,
-    resetImageCheckboxes
+    isEmpty,
+    setSearchFilter,
+    setImagesArray,
+    setSkeletons,
+    resetImageCheckboxes,
+    clearSkeletons
   }
 }
 

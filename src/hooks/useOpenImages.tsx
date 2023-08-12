@@ -6,9 +6,8 @@ interface State {
   isActive: boolean
 }
 interface openImagesProps {
-  setSkeletonsToShow: React.Dispatch<React.SetStateAction<string[]>>
-  setImagesArray: React.Dispatch<React.SetStateAction<ImagesArray>>
-  imagesArrayRef: React.MutableRefObject<ImagesArray>
+  setSkeletons: (skeletons: string[]) => void
+  setImagesArray: (imagesArray: ImagesArray) => void
   addMultipleImagesToPlaylist: (Images: ImagesArray) => void
 }
 
@@ -19,28 +18,24 @@ interface Actions {
 const openImagesStore = create<State & Actions>((set) => ({
   isActive: false,
   openImages: async ({
-    setSkeletonsToShow,
+    setSkeletons,
     setImagesArray,
-    imagesArrayRef,
     addMultipleImagesToPlaylist
   }) => {
     set(() => ({ isActive: true }))
     const imagesObject: imagesObject = await openFiles()
+    imagesObject.fileNames.reverse()
+    imagesObject.imagePaths.reverse()
     set(() => ({ isActive: false }))
     if (!imagesObject) return
     //@ts-ignore
-    setSkeletonsToShow(imagesObject.fileNames.toReversed())
+    setSkeletons(imagesObject.fileNames)
     const imagesArray: ImagesArray = await handleOpenImages(imagesObject)
-    setImagesArray((previousData: ImagesArray) => {
-      const newData = [...previousData, ...imagesArray]
-      return newData
-    })
-    setSkeletonsToShow([])
-    const copyData = structuredClone(imagesArray)
-    const newImagesAdded = copyData.map((image) => {
+    const newImagesAdded = imagesArray.map((image) => {
       return { ...image, isChecked: true }
     })
-    imagesArrayRef.current.push(...newImagesAdded)
+    setSkeletons([])
+    setImagesArray(newImagesAdded)
     addMultipleImagesToPlaylist(newImagesAdded)
   }
 }))

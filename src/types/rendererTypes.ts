@@ -19,14 +19,15 @@ export enum ORDER_TYPES {
 export enum STORE_ACTIONS {
   SET_IMAGES_ARRAY = 'SET_IMAGES_ARRAY',
   SET_SKELETONS_TO_SHOW = 'SET_SKELETONS_TO_SHOW',
-  SET_SEARCH_FILTER = 'SET_SEARCH_FILTER'
+  SET_SEARCH_FILTER = 'SET_SEARCH_FILTER',
+  RESET_IMAGES_ARRAY = 'RESET_IMAGES_ARRAY'
 }
 
 export enum PLAYLIST_TYPES {
-  TIMER= 'timer',
-  NEVER= 'never',
-  TIME_OF_DAY= 'timeofday',
-  DAY_OF_WEEK= 'dayofweek'
+  TIMER = 'timer',
+  NEVER = 'never',
+  TIME_OF_DAY = 'timeofday',
+  DAY_OF_WEEK = 'dayofweek'
 }
 
 export type configuration = {

@@ -1,35 +1,31 @@
-import { type FC, useState, useMemo, useEffect, useRef } from 'react'
+import { useState, useMemo } from 'react'
 import PaginatedGalleryNav from './PaginatedGalleryNav'
+import { useImages } from '../hooks/imagesStore'
+import Skeleton from './Skeleton'
+import ImageCard from './ImageCard'
 
 const IMAGES_PER_PAGE = 20
-interface PaginatedGalleryProps {
-  imagesArray: JSX.Element[]
-  SkeletonsArray: JSX.Element[]
-}
 
-const PaginatedGallery: FC<PaginatedGalleryProps> = ({
-  imagesArray,
-  SkeletonsArray
-}) => {
+function PaginatedGallery() {
+  const { filteredImages, skeletonsToShow } = useImages()
   const [currentPage, setCurrentPage] = useState<number>(1)
   const lastImageIndex = currentPage * IMAGES_PER_PAGE
   const firstImageIndex = lastImageIndex - IMAGES_PER_PAGE
   const totalPages = useMemo(() => {
-    return Math.ceil(imagesArray.length / IMAGES_PER_PAGE)
-  }, [imagesArray])
-  const imagesToShow = imagesArray.slice(firstImageIndex, lastImageIndex)
+    return Math.ceil(filteredImages.length / IMAGES_PER_PAGE)
+  }, [filteredImages, skeletonsToShow])
 
-  const prevImagesArray = useRef<JSX.Element[]>([])
-  const prevImagesToShow = useRef<JSX.Element[]>([])
-
-  useEffect(() => {
-    setCurrentPage(1)
-    prevImagesArray.current = imagesArray
-  }, [imagesArray])
-  useEffect(() => {
-    prevImagesToShow.current = imagesToShow
-  }, [currentPage])
-
+  const SkeletonsArray = useMemo(() => {
+    return skeletonsToShow.map((imageName, index) => (
+      <Skeleton key={index} imageName={imageName} />
+    ))
+  }, [skeletonsToShow])
+  const imagesCardArray = useMemo(() => {
+    return filteredImages.map((image) => {
+      return <ImageCard key={image.id} Image={image} />
+    })
+  }, [filteredImages])
+  const imagesToShow = imagesCardArray.slice(firstImageIndex, lastImageIndex)
   return (
     <div className='flex flex-col w-full overflow-hidden justify-between h-[100vh]'>
       <div

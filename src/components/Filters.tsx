@@ -1,10 +1,9 @@
-import { ChangeEvent, useState, type FC } from 'react'
+import { ChangeEvent, useState } from 'react'
 import useDebounce from '../hooks/useDebounce'
-interface FiltersProps {
-  setSearchFilter: (value: React.SetStateAction<string>) => void
-}
+import { useImages } from '../hooks/imagesStore'
 
-const Filters: FC<FiltersProps> = ({ setSearchFilter }) => {
+function Filters() {
+  const { setSearchFilter } = useImages()
   const [inputSearch, setInputSearch] = useState('')
   const onTextChange = (event: ChangeEvent<HTMLInputElement>) => {
     const target = event.target
@@ -14,15 +13,14 @@ const Filters: FC<FiltersProps> = ({ setSearchFilter }) => {
     }
   }
   useDebounce(() => setSearchFilter(inputSearch), 500, [inputSearch])
-
   return (
-    <div className='my-3'>
+    <div className='container w-[100%] md:w-[15%] my-2 mt-5'>
       <input
         data-theme='retro'
         onChange={onTextChange}
         type='text'
         id='default-search'
-        className='input input-bordered input-md placeholder:text-neutral rounded-xl transition-all text-md font-medium'
+        className='input w-[100%] input-bordered input-md placeholder:text-neutral rounded-xl transition-all text-md font-medium'
         placeholder='Search'
         required
       />
