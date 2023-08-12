@@ -60,13 +60,12 @@ function PlaylistTrack() {
 
   const playlistArray = useMemo(() => {
     const lastIndex = playlist.images.length - 1
-    return playlist.images.map((image, index) => {
+    return playlist.images.map((Image, index) => {
       return (
         <MiniPlaylistCard
           isLast={lastIndex === index}
-          id={image.id}
-          key={image.id}
-          imageName={image.imageName}
+          Image={Image}
+          key={Image.id}
         />
       )
     })
@@ -151,6 +150,7 @@ function PlaylistTrack() {
               onClick={() => {
                 resetImageCheckboxes()
                 clearPlaylist()
+                stopPlaylist()
               }}
             >
               Clear playlist

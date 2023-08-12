@@ -2,24 +2,24 @@ import { useSortable } from '@dnd-kit/sortable'
 import { motion } from 'framer-motion'
 import { CSS } from '@dnd-kit/utilities'
 import { useEffect, useRef } from 'react'
+import { Image } from '../types/rendererTypes'
 
 const { join, thumbnailDirectory } = window.API_RENDERER
 
 function MiniPlaylistCard({
-  imageName,
-  id,
+  Image,
   isLast
 }: {
-  imageName: string
-  id: number
+  Image: Image
   isLast: boolean | undefined
 }) {
   const imageRef = useRef<HTMLImageElement>(null)
   const imageSrc =
-    'atom://' + join(thumbnailDirectory, imageName.split('.').at(0) + '.webp')
+    'atom://' +
+    join(thumbnailDirectory, Image.imageName.split('.').at(0) + '.webp')
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({
-      id: id,
+      id: Image.id,
       transition: {
         duration: 250,
         easing: 'cubic-bezier(0.65, 1, 0, 1)'
@@ -43,12 +43,12 @@ function MiniPlaylistCard({
         transition={{ duration: 0.2 }}
         exit={{ scale: 0 }}
         className='w-32 m-1 shrink-0 rounded-lg shadow-xl'
-      >
+      > 
         <img
           {...attributes}
           {...listeners}
           src={imageSrc}
-          alt={imageName}
+          alt={Image.imageName}
           className='rounded-lg'
           ref={imageRef}
         />
