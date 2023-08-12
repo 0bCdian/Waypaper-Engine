@@ -15,14 +15,12 @@ import {
   restrictToFirstScrollableAncestor,
   restrictToHorizontalAxis
 } from '@dnd-kit/modifiers'
-import { useMemo, useEffect } from 'react'
+import { useMemo, useEffect, useRef } from 'react'
 import MiniPlaylistCard from './MiniPlaylistCard'
 import playlistStore from '../hooks/useGlobalPlaylist'
 import openImagesStore from '../hooks/useOpenImages'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useImages } from '../hooks/imagesStore'
-
-const { stopPlaylist } = window.API_RENDERER
 
 function PlaylistTrack() {
   const {
@@ -70,16 +68,16 @@ function PlaylistTrack() {
       )
     })
   }, [playlist.images])
-  let firstRender = true
+  const firstRender = useRef(true)
   useEffect(() => {
-    if (firstRender) {
-      firstRender = false
+    if (firstRender.current) {
+      console.log('first render')
+      firstRender.current = false
       return
     }
     if (playlist.images.length === 0) {
       resetImageCheckboxes()
       clearPlaylist()
-      stopPlaylist()
     }
   }, [playlist.images])
   return (
@@ -150,10 +148,9 @@ function PlaylistTrack() {
               onClick={() => {
                 resetImageCheckboxes()
                 clearPlaylist()
-                stopPlaylist()
               }}
             >
-              Clear playlist
+              Discard playlist
             </motion.button>
           )}
         </AnimatePresence>
