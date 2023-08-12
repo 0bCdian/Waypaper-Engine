@@ -24,6 +24,9 @@ export const ELECTRON_API = {
   queryPlaylists: async () => {
     return await ipcRenderer.invoke('queryPlaylists')
   },
+  stopPlaylist: async () => {
+    ipcRenderer.send('stopPlaylist')
+  },
   join: join,
   thumbnailDirectory: appDirectories.thumbnails,
   imagesDirectory: appDirectories.imagesDir

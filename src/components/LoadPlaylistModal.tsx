@@ -1,54 +1,39 @@
 import { useRef } from 'react'
 import { PlaylistTypeDB } from '../../electron/types/types'
-import { playlistStore } from '../hooks/useGlobalPlaylist'
+import playlistStore from '../hooks/useGlobalPlaylist'
 import { useForm, SubmitHandler } from 'react-hook-form'
-import { Image, ImagesArray } from '../types/rendererTypes'
-
+import { Image } from '../types/rendererTypes'
+import { useImages } from '../hooks/imagesStore'
 const { startPlaylist } = window.API_RENDERER
 type Input = {
   selectPlaylist: string
 }
 type Props = {
-  resetRef: () => void
   shouldReload: React.MutableRefObject<boolean>
   playlistInDB: PlaylistTypeDB[]
-  imagesArrayRef: React.MutableRefObject<ImagesArray>
-  modifyInputElement: (
-    currentState: boolean,
-    elementId?: number,
-    elementName?: string
-  ) => void
 }
 
-const LoadPlaylistModal = ({
-  resetRef,
-  playlistInDB,
-  shouldReload,
-  modifyInputElement,
-  imagesArrayRef
-}: Props) => {
+const LoadPlaylistModal = ({ playlistInDB, shouldReload }: Props) => {
   const { clearPlaylist, setPlaylist } = playlistStore()
+  const { resetImageCheckboxes, imagesArray } = useImages()
   const { register, handleSubmit } = useForm<Input>()
   const modalRef = useRef<HTMLDialogElement>(null)
-
   const closeModal = () => {
     modalRef.current?.close()
   }
   const onSubmit: SubmitHandler<Input> = (data) => {
+    resetImageCheckboxes()
     clearPlaylist()
-    resetRef()
     const selectedPlaylist = playlistInDB.find((playlist) => {
       return playlist.name === data.selectPlaylist
     })
     if (selectedPlaylist) {
       const imagesFromDB = JSON.parse(selectedPlaylist.images) as string[]
-      const imagesArrayFromPlaylist = imagesArrayRef.current.filter(
-        (image: Image) => {
-          return imagesFromDB.includes(image.imageName)
-        }
-      ) as Image[]
+      const imagesArrayFromPlaylist = imagesArray.filter((image: Image) => {
+        return imagesFromDB.includes(image.imageName)
+      }) as Image[]
       imagesArrayFromPlaylist.forEach((image) => {
-        modifyInputElement(true, image.id)
+        image.isChecked = true
       })
       const currentPlaylist = {
         name: selectedPlaylist.name,

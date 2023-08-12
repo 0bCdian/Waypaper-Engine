@@ -135,3 +135,6 @@ ipcMain.on('saveAndStartPlaylist', saveAndInitPlaylist)
 ipcMain.on('startPlaylist', (_event, playlistName: string) => {
   PlaylistController.startPlaylist(playlistName)
 })
+ipcMain.on('stopPlaylist', (_) => {
+  PlaylistController.stopPlaylist()
+})

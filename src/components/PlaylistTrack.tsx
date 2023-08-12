@@ -17,10 +17,12 @@ import {
 } from '@dnd-kit/modifiers'
 import { useMemo, useEffect } from 'react'
 import MiniPlaylistCard from './MiniPlaylistCard'
-import { playlistStore } from '../hooks/useGlobalPlaylist'
+import playlistStore from '../hooks/useGlobalPlaylist'
 import openImagesStore from '../hooks/useOpenImages'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useImages } from '../hooks/imagesStore'
+
+const { stopPlaylist } = window.API_RENDERER
 
 function PlaylistTrack() {
   const {
@@ -78,6 +80,7 @@ function PlaylistTrack() {
     if (playlist.images.length === 0) {
       resetImageCheckboxes()
       clearPlaylist()
+      stopPlaylist()
     }
   }, [playlist.images])
   return (

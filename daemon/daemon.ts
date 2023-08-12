@@ -7,66 +7,33 @@ import { homedir } from 'node:os'
 import {
   PlaylistTypeDB,
   message,
-  ORDER_TYPES,
-  PLAYLIST_TYPES
+  PlaylistParsed,
+  PLAYLIST_TYPES,
+  PlaylistInterface,
+  ACTIONS,
+  PlaylistStates
 } from './typesDaemon'
-interface PlaylistInterface {
-  images: string[]
-  currentName: string
-  currentType: PLAYLIST_TYPES
-  intervalID: NodeJS.Timeout | null
-  currentImageIndex: number
-  interval: number
-  swwwOptions: string[]
-  pause: () => void
-  resume: () => void
-  stop: () => void
-  resetInterval: () => void
-  nextImage: () => void
-  previousImage: () => void
-  calculateInterval: (hours: number, minutes: number) => number
-  start: (playlistName: string, swwwOptions: string[]) => Promise<void>
-  sleep: (ms: number) => Promise<void>
-  updateInDB: (imageIndex: number, playlistName: string) => Promise<void>
-  getFromDB: (playlistName: string) => Promise<PlaylistParsed>
-  setPlaylist: (playlistName: string, swwwOptions: string[]) => Promise<void>
-  timedPlaylist: () => Promise<void>
-  neverPlaylist: () => Promise<void>
-  timeOfDayPlaylist: () => Promise<void>
-  dayOfWeekPlaylist: () => Promise<void>
+
+function isWaypaperDaemonRunning() {
+  try {
+    const stdout = execSync('pidof wp-daemon', { encoding: 'utf-8' })
+    console.log('Waypaper daemon already running', stdout)
+    return true
+  } catch (_err) {
+    console.log('Waypaper daemon not running')
+    return false
+  }
+}
+
+if (isWaypaperDaemonRunning()) {
+  notify('Another instance of the daemon is already running, exiting...')
+  process.exit(1)
 }
 const sequelize = new Sequelize({
   dialect: 'sqlite',
   storage: join(homedir(), '.waypaper', 'imagesDB.sqlite3')
 })
-type PlaylistParsed = {
-  id: number
-  name: string
-  images: string[]
-  type: PLAYLIST_TYPES
-  hours: number
-  minutes: number
-  order: ORDER_TYPES
-  showTransition: boolean
-  currentImageIndex: number
-}
 
-enum PlaylistStates {
-  PLAYING = 'playing',
-  PAUSED = 'paused',
-  STOPPED = 'stopped'
-}
-
-enum ACTIONS {
-  NEXT_IMAGE = 'next-image',
-  PREVIOUS_IMAGE = 'previous-image',
-  START_PLAYLIST = 'start-playlist',
-  STOP_DAEMON = 'stop-daemon',
-  PAUSE_PLAYLIST = 'pause-playlist',
-  RESUME_PLAYLIST = 'resume-playlist',
-  STOP_PLAYLIST = 'stop-playlist',
-  
-}
 const IMAGES_DIR = join(homedir(), '.waypaper', 'images')
 const SOCKET_PATH = '/tmp/waypaper_daemon.sock'
 const setImage = (swwwOptions: string[], imageName: string) => {
@@ -98,6 +65,14 @@ function notifyPlaylistState(
       message = `Stopping playlist: ${playlistName}`
   }
   const notifySend = `notify-send -u low -t 2000 -i "waypaper" -a "Waypaper" "Waypaper" "${message}"`
+  exec(notifySend, (err, _stdout, _stderr) => {
+    if (err) {
+      console.error(err)
+    }
+  })
+}
+function notify(message: string) {
+  const notifySend = `notify-send -u normal -t 2000 -i "waypaper" -a "Waypaper" "Waypaper" "${message}"`
   exec(notifySend, (err, _stdout, _stderr) => {
     if (err) {
       console.error(err)
@@ -186,7 +161,10 @@ const Playlist: PlaylistInterface = {
         Playlist.dayOfWeekPlaylist()
         break
       default:
-        throw new Error('Invalid playlist type')
+        console.error('Invalid playlist type')
+        notify('Invalid playlist type')
+        Playlist.stop()
+        return
     }
   },
   sleep: (ms: number) => new Promise((r) => setTimeout(r, ms)),
@@ -197,6 +175,10 @@ const Playlist: PlaylistInterface = {
       )
     } catch (error) {
       console.error(error)
+      notify(
+        'Could not update playlist in DB, restart the app to restore the database'
+      )
+      notify('Exiting daemon')
       throw new Error('Could not update playlist in DB')
     }
   },
@@ -205,11 +187,17 @@ const Playlist: PlaylistInterface = {
       const [playlistArray] = (await sequelize.query(
         `SELECT * FROM Playlists WHERE name = '${playlistName}'`
       )) as PlaylistTypeDB[][]
-      if (!playlistArray.length) throw new Error('Playlist not found')
+      if (!playlistArray.length) {
+        console.error('Playlist not found')
+        notify('Playlist not found, maybe it was deleted?')
+        notify('Exiting daemon')
+        throw new Error('Playlist not found')
+      }
       playlistArray[0].images = JSON.parse(playlistArray[0].images)
       return playlistArray[0] as unknown as PlaylistParsed
     } catch (error) {
       console.error(error)
+      notify('Exiting daemon')
       throw new Error('Could not get playlist from DB')
     }
   },
@@ -263,38 +251,43 @@ async function daemonInit() {
   await sequelize.authenticate()
   async function daemonManager(data: Buffer) {
     const message: message = JSON.parse(data.toString())
-    if (message.action === ACTIONS.START_PLAYLIST && message.payload) {
-      Playlist.stop()
-      await Playlist.start(
-        message.payload.playlistName,
-        message.payload.swwwOptions
-      )
-      notifyPlaylistState(Playlist.currentName, PlaylistStates.PLAYING)
-    }
-    if (message.action === ACTIONS.PAUSE_PLAYLIST) {
-      Playlist.pause()
-      notifyPlaylistState(Playlist.currentName, PlaylistStates.PAUSED)
-    }
-    if (message.action === ACTIONS.RESUME_PLAYLIST) {
-      Playlist.resume()
-      notifyPlaylistState(Playlist.currentName, PlaylistStates.PLAYING)
-    }
-    if (message.action === ACTIONS.STOP_PLAYLIST) {
-      Playlist.stop()
-      notifyPlaylistState(Playlist.currentName, PlaylistStates.STOPPED)
-    }
-    if (message.action === ACTIONS.NEXT_IMAGE) {
-      Playlist.nextImage()
-    }
-    if (message.action === ACTIONS.PREVIOUS_IMAGE) {
-      Playlist.previousImage()
-    }
     if (message.action === ACTIONS.STOP_DAEMON) {
+      notify('Exiting daemon')
       Playlist.stop()
-      notifyPlaylistState(Playlist.currentName, PlaylistStates.STOPPED)
       sequelize.close()
       daemonServer.close()
       process.exit(0)
+    } else {
+      if (Playlist.currentName === '') {
+        notify('No active playlist')
+        return
+      }
+      if (message.action === ACTIONS.START_PLAYLIST && message.payload) {
+        Playlist.stop()
+        await Playlist.start(
+          message.payload.playlistName,
+          message.payload.swwwOptions
+        )
+        notifyPlaylistState(Playlist.currentName, PlaylistStates.PLAYING)
+      }
+      if (message.action === ACTIONS.PAUSE_PLAYLIST) {
+        Playlist.pause()
+        notifyPlaylistState(Playlist.currentName, PlaylistStates.PAUSED)
+      }
+      if (message.action === ACTIONS.RESUME_PLAYLIST) {
+        Playlist.resume()
+        notifyPlaylistState(Playlist.currentName, PlaylistStates.PLAYING)
+      }
+      if (message.action === ACTIONS.STOP_PLAYLIST) {
+        Playlist.stop()
+        notifyPlaylistState(Playlist.currentName, PlaylistStates.STOPPED)
+      }
+      if (message.action === ACTIONS.NEXT_IMAGE) {
+        Playlist.nextImage()
+      }
+      if (message.action === ACTIONS.PREVIOUS_IMAGE) {
+        Playlist.previousImage()
+      }
     }
   }
   const daemonServer = createServer((socket) => {
@@ -312,15 +305,15 @@ async function daemonInit() {
 
   daemonServer.listen(SOCKET_PATH)
   process.on('SIGTERM', function () {
+    notify('Exiting daemon')
     Playlist.stop()
-    notifyPlaylistState(Playlist.currentName, PlaylistStates.STOPPED)
     sequelize.close()
     daemonServer.close()
     process.exit(0)
   })
   process.on('SIGINT', () => {
+    notify('Exiting daemon')
     Playlist.stop()
-    notifyPlaylistState(Playlist.currentName, PlaylistStates.STOPPED)
     sequelize.close()
     daemonServer.close()
     process.exit(0)

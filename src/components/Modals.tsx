@@ -2,21 +2,11 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import LoadPlaylistModal from './LoadPlaylistModal'
 import SavePlaylistModal from './SavePlaylistModal'
 import PlaylistConfigurationModal from './PlaylistConfigurationModal'
-import { ImagesArray } from '../types/rendererTypes'
-import { playlistStore } from '../hooks/useGlobalPlaylist'
+import playlistStore from '../hooks/useGlobalPlaylist'
 import { PlaylistTypeDB } from '../../electron/types/types'
 
-type Props = {
-  resetRef: () => void
-  imagesArrayRef: React.MutableRefObject<ImagesArray>
-  modifyInputElement: (
-    currentState: boolean,
-    elementId?: number,
-    elementName?: string
-  ) => void
-}
 const { queryPlaylists } = window.API_RENDERER
-const Modals = ({ resetRef, imagesArrayRef, modifyInputElement }: Props) => {
+function Modals() {
   const { readPlaylist } = playlistStore()
   const shouldReload = useRef(false)
   const [playlistsInDB, setPlaylistsInDB] = useState<PlaylistTypeDB[]>([])
@@ -35,9 +25,6 @@ const Modals = ({ resetRef, imagesArrayRef, modifyInputElement }: Props) => {
       <LoadPlaylistModal
         playlistInDB={playlistsInDB}
         shouldReload={shouldReload}
-        resetRef={resetRef}
-        imagesArrayRef={imagesArrayRef}
-        modifyInputElement={modifyInputElement}
       />
       <SavePlaylistModal
         shouldReload={shouldReload}

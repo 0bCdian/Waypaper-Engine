@@ -8,8 +8,8 @@ const App = () => {
     <div className='h-[100vh] relative overflow-hidden'>
       <ImagesProvider>
         <Gallery />
+        <Modals />
       </ImagesProvider>
-
     </div>
   )
 }

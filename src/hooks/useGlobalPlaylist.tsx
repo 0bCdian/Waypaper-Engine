@@ -40,7 +40,7 @@ interface Actions {
   setPlaylist: (newPlaylist: playlist) => void
 }
 
-export const playlistStore = create<State & Actions>()((set, get) => ({
+const playlistStore = create<State & Actions>()((set, get) => ({
   playlist: initialPlaylistState,
   isEmpty: true,
   addImageToPlaylist: (Image: Image) => {
@@ -109,7 +109,7 @@ export const playlistStore = create<State & Actions>()((set, get) => ({
   readPlaylist: () => {
     return get().playlist
   },
-  setPlaylist:(newPlaylist:playlist)=>{
+  setPlaylist: (newPlaylist: playlist) => {
     set((state) => {
       return {
         ...state,
@@ -119,3 +119,5 @@ export const playlistStore = create<State & Actions>()((set, get) => ({
     })
   }
 }))
+
+export default playlistStore

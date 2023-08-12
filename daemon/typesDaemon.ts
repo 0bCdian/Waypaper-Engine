@@ -63,3 +63,46 @@ export type PlaylistControllerType = {
   previousImage: () => void
   killDaemon: () => void
 }
+
+export type PlaylistParsed = {
+  id: number
+  name: string
+  images: string[]
+  type: PLAYLIST_TYPES
+  hours: number
+  minutes: number
+  order: ORDER_TYPES
+  showTransition: boolean
+  currentImageIndex: number
+}
+export interface PlaylistInterface {
+  images: string[]
+  currentName: string
+  currentType: PLAYLIST_TYPES
+  intervalID: NodeJS.Timeout | null
+  currentImageIndex: number
+  interval: number
+  swwwOptions: string[]
+  pause: () => void
+  resume: () => void
+  stop: () => void
+  resetInterval: () => void
+  nextImage: () => void
+  previousImage: () => void
+  calculateInterval: (hours: number, minutes: number) => number
+  start: (playlistName: string, swwwOptions: string[]) => Promise<void>
+  sleep: (ms: number) => Promise<void>
+  updateInDB: (imageIndex: number, playlistName: string) => Promise<void>
+  getFromDB: (playlistName: string) => Promise<PlaylistParsed>
+  setPlaylist: (playlistName: string, swwwOptions: string[]) => Promise<void>
+  timedPlaylist: () => Promise<void>
+  neverPlaylist: () => Promise<void>
+  timeOfDayPlaylist: () => Promise<void>
+  dayOfWeekPlaylist: () => Promise<void>
+}
+
+export enum PlaylistStates {
+  PLAYING = 'playing',
+  PAUSED = 'paused',
+  STOPPED = 'stopped'
+}

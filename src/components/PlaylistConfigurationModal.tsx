@@ -1,6 +1,6 @@
 import { useForm, SubmitHandler } from 'react-hook-form'
 import { useRef, useEffect } from 'react'
-import { playlistStore } from '../hooks/useGlobalPlaylist'
+import playlistStore from '../hooks/useGlobalPlaylist'
 import {
   ORDER_TYPES,
   PLAYLIST_TYPES,

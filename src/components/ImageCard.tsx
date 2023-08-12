@@ -1,6 +1,6 @@
 import { useId, ChangeEvent } from 'react'
 import { Image } from '../types/rendererTypes'
-import { playlistStore } from '../hooks/useGlobalPlaylist'
+import playlistStore from '../hooks/useGlobalPlaylist'
 interface ImageCardProps {
   Image: Image
 }
