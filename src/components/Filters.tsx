@@ -13,10 +13,7 @@ const Filters: FC<FiltersProps> = ({ setSearchFilter }) => {
       setInputSearch(text)
     }
   }
-  const debouncedSearch = useDebounce(inputSearch, 500)
-  useEffect(() => {
-    setSearchFilter(debouncedSearch)
-  }, [debouncedSearch])
+  useDebounce(() => setSearchFilter(inputSearch), 500, [inputSearch])
 
   return (
     <div className='my-3'>

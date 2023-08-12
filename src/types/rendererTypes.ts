@@ -16,6 +16,12 @@ export enum ORDER_TYPES {
   RANDOM = 'random'
 }
 
+export enum STORE_ACTIONS {
+  SET_IMAGES_ARRAY = 'SET_IMAGES_ARRAY',
+  SET_SKELETONS_TO_SHOW = 'SET_SKELETONS_TO_SHOW',
+  SET_SEARCH_FILTER = 'SET_SEARCH_FILTER'
+}
+
 export enum PLAYLIST_TYPES {
   TIMER= 'timer',
   NEVER= 'never',

@@ -1,16 +1,15 @@
-import { useEffect, useState } from 'react'
+import { useEffect, DependencyList } from 'react'
+import useTimeout from './useTimeout'
 
-function useDebounce<T>(value: T, delay = 500) {
-  const [debouncedValue, setDebouncedValue] = useState<T>(value)
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedValue(value)
-    }, delay)
-    return () => {
-      clearTimeout(timer)
-    }
-  }, [value, delay])
-  return debouncedValue
+type Callback = () => void
+
+export default function useDebounce(
+  callback: Callback,
+  delay: number,
+  dependencies: DependencyList
+): void {
+  const { reset, clear } = useTimeout({ callback, delay })
+
+  useEffect(reset, [...dependencies, reset])
+  useEffect(clear, [])
 }
-
-export default useDebounce

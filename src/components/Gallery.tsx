@@ -46,7 +46,7 @@ export const Gallery: FC = () => {
       clearPlaylist()
     })
   }, [])
-  useEffect(() => {}, [imagesArray])
+
   const filteredImages = useMemo(() => {
     return imagesArrayRef.current
       .filter((image) =>
