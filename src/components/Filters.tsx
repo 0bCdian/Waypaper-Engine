@@ -1,4 +1,4 @@
-import { ChangeEvent, useState, type FC, useEffect } from 'react'
+import { ChangeEvent, useState, type FC } from 'react'
 import useDebounce from '../hooks/useDebounce'
 interface FiltersProps {
   setSearchFilter: (value: React.SetStateAction<string>) => void
