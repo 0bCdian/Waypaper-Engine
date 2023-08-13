@@ -132,6 +132,9 @@ ipcMain.handle('queryImages', readImagesFromDB)
 ipcMain.handle('queryPlaylists', readPlaylistsFromDB)
 ipcMain.on('setImage', setImage)
 ipcMain.on('savePlaylist', savePlaylist)
+ipcMain.on('deleteImage',(_, imageId: number) => {
+  
+})
 ipcMain.on('startPlaylist', (_event, playlistName: string) => {
   PlaylistController.startPlaylist(playlistName)
 })
