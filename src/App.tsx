@@ -1,6 +1,7 @@
 import Gallery from './components/Gallery'
 import Modals from './components/Modals'
 import { ImagesProvider } from './hooks/imagesStore'
+import NavBar from './components/NavBar'
 import './index.css'
 
 const App = () => {
@@ -10,6 +11,7 @@ const App = () => {
         <Gallery />
         <Modals />
       </ImagesProvider>
+      <NavBar />
     </div>
   )
 }

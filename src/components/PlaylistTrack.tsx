@@ -21,7 +21,7 @@ import playlistStore from '../hooks/useGlobalPlaylist'
 import openImagesStore from '../hooks/useOpenImages'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useImages } from '../hooks/imagesStore'
-
+const { startPlaylist } = window.API_RENDERER
 function PlaylistTrack() {
   const {
     playlist,
@@ -71,7 +71,6 @@ function PlaylistTrack() {
   const firstRender = useRef(true)
   useEffect(() => {
     if (firstRender.current) {
-      console.log('first render')
       firstRender.current = false
       return
     }
@@ -147,6 +146,25 @@ function PlaylistTrack() {
                     󰒓
                   </motion.button>
                 </div>
+                {playlist.name !== '' && (
+                  <div
+                    className='tooltip tooltip-success'
+                    data-tip={`Play: ${playlist.name}`}
+                  >
+                    <motion.button
+                      initial={{ y: 100 }}
+                      transition={{ duration: 0.25, ease: 'easeInOut' }}
+                      animate={{ y: 0, opacity: 1 }}
+                      exit={{ y: 100, opacity: 0 }}
+                      onClick={() => {
+                        startPlaylist(playlist.name)
+                      }}
+                      className='btn btn-primary rounded-lg text-3xl'
+                    >
+                      
+                    </motion.button>
+                  </div>
+                )}
               </>
             )}
           </AnimatePresence>
