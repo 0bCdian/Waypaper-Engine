@@ -2,7 +2,6 @@ import { Model, DataTypes } from 'sequelize'
 import { sequelize } from './db'
 class Image extends Model {}
 class Playlist extends Model {}
-
 Image.init(
   {
     id: {
@@ -12,7 +11,8 @@ Image.init(
     },
     imageName: {
       type: DataTypes.STRING,
-      allowNull: false
+      allowNull: false,
+      unique: true
     },
     isChecked: {
       type: DataTypes.BOOLEAN,
@@ -36,7 +36,8 @@ Playlist.init(
     },
     name: {
       type: DataTypes.STRING,
-      allowNull: false
+      allowNull: false,
+      unique: true
     },
     images: {
       type: DataTypes.TEXT,
@@ -74,5 +75,8 @@ Playlist.init(
     timestamps: false
   }
 )
+
+
+
 
 export { Image, Playlist }

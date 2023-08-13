@@ -107,3 +107,29 @@ export async function readPlaylistsFromDB() {
     throw new Error('Error reading playlists from DB')
   }
 }
+
+export async function deletePlaylistFromDB(playlistName: string) {
+  try {
+    await Playlist.destroy({
+      where: {
+        name: playlistName
+      }
+    })
+  } catch (error) {
+    console.error(error)
+    throw new Error('Error deleting playlist from DB')
+  }
+}
+
+export async function deleteImageFromDB(imageID: number) {
+  try {
+    await Image.destroy({
+      where: {
+        id: imageID
+      }
+    })
+  } catch (error) {
+    console.error(error)
+    throw new Error('Error deleting image from DB')
+  }
+}

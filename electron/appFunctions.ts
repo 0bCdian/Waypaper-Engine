@@ -98,20 +98,15 @@ export async function checkCacheOrCreateItIfNotExists() {
     createFolders(
       appDirectories.mainDir,
       appDirectories.imagesDir,
-      appDirectories.thumbnails,
-      appDirectories.playlistsDir
+      appDirectories.thumbnails
     )
   } else {
     if (!existsSync(appDirectories.imagesDir)) {
-      deleteFolders(appDirectories.thumbnails, appDirectories.playlistsDir)
+      deleteFolders(appDirectories.thumbnails)
       //
       await Playlist.sync({ force: true })
       await Image.sync({ force: true })
-      createFolders(
-        appDirectories.imagesDir,
-        appDirectories.thumbnails,
-        appDirectories.playlistsDir
-      )
+      createFolders(appDirectories.imagesDir, appDirectories.thumbnails)
     }
   }
 }

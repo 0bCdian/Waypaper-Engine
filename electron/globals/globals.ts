@@ -7,15 +7,13 @@ const cacheDirectoryRoot = join(systemHome, '.cache', 'waypaper')
 const cacheThumbnailsDirectory = join(cacheDirectoryRoot, 'thumbnails')
 const mainDirectory = join(systemHome, '.waypaper')
 const imagesDir = join(mainDirectory, 'images')
-const playlistsDir = join(mainDirectory, 'playlists')
 
 export const appDirectories = {
   systemHome: systemHome,
   rootCache: cacheDirectoryRoot,
   thumbnails: cacheThumbnailsDirectory,
   mainDir: mainDirectory,
-  imagesDir: imagesDir,
-  playlistsDir: playlistsDir
+  imagesDir: imagesDir
 }
 export const WAYPAPER_SOCKET_PATH = '/tmp/waypaper_daemon.sock'
 export const swwwDefaults = [
