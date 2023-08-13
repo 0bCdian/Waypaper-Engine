@@ -27,10 +27,7 @@ function ImageCard({ Image }: ImageCardProps) {
     }
   }
   return (
-    <div
-      onDoubleClick={handleDoubleClick}
-      className='duration-500 border-[2px] border-transparent group hover:border-info relative rounded-lg bg-transparent max-w-fit mb-4 overflow-hidden '
-    >
+    <div className='duration-500 border-[2px] border-transparent group hover:border-info relative rounded-lg bg-transparent max-w-fit mb-4 overflow-hidden '>
       <div className='relative'>
         <label
           htmlFor={id}
@@ -44,21 +41,24 @@ function ImageCard({ Image }: ImageCardProps) {
           className='absolute opacity-0 top-2 right-2 rounded-sm group-hover:opacity-100 checked:opacity-100  z-20 checkbox checkbox-sm checkbox-success group-hover:bg-success'
         />
       </div>
-      <img
-        className='rounded-lg transform-gpu group-hover:scale-110 group-hover:object-center transition-all duration-300'
-        src={imageNameFilePath}
-        alt={Image.imageName}
-        draggable={false}
-        onError={({ currentTarget }) => {
-          currentTarget.onerror = null
-          currentTarget.className =
-            'rounded-lg min-w-full max-w-[300px] object-fill'
-          currentTarget.src = 'atom://' + join(imagesDirectory, Image.imageName)
-        }}
-      />
-      <p className='absolute rounded-b-lg bottom-0 pl-2 p-2 w-full text-lg text-justify text-ellipsis overflow-hidden bg-black bg-opacity-75 font-medium truncate '>
-        {Image.imageName}
-      </p>
+      <div onDoubleClick={handleDoubleClick}>
+        <img
+          className='rounded-lg transform-gpu group-hover:scale-110 group-hover:object-center transition-all duration-300'
+          src={imageNameFilePath}
+          alt={Image.imageName}
+          draggable={false}
+          onError={({ currentTarget }) => {
+            currentTarget.onerror = null
+            currentTarget.className =
+              'rounded-lg min-w-full max-w-[300px] object-fill'
+            currentTarget.src =
+              'atom://' + join(imagesDirectory, Image.imageName)
+          }}
+        />
+        <p className='absolute rounded-b-lg bottom-0 pl-2 p-2 w-full text-lg text-justify text-ellipsis overflow-hidden bg-black bg-opacity-75 font-medium truncate '>
+          {Image.imageName}
+        </p>
+      </div>
     </div>
   )
 }

@@ -5,7 +5,7 @@ import {
   copyImagesToCacheAndProcessThumbnails,
   setImage,
   openAndReturnImagesObject,
-  saveAndInitPlaylist,
+  savePlaylist,
   PlaylistController,
   isSwwwDaemonRunning,
   initWaypaperDaemon,
@@ -131,7 +131,7 @@ ipcMain.handle('handleOpenImages', copyImagesToCacheAndProcessThumbnails)
 ipcMain.handle('queryImages', readImagesFromDB)
 ipcMain.handle('queryPlaylists', readPlaylistsFromDB)
 ipcMain.on('setImage', setImage)
-ipcMain.on('saveAndStartPlaylist', saveAndInitPlaylist)
+ipcMain.on('savePlaylist', savePlaylist)
 ipcMain.on('startPlaylist', (_event, playlistName: string) => {
   PlaylistController.startPlaylist(playlistName)
 })

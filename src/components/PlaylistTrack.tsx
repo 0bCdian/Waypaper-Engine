@@ -91,18 +91,20 @@ function PlaylistTrack() {
           </span>
           <button
             onClick={isActive ? undefined : handleClickAddImages}
-            className='btn btn-primary rounded-lg'
+            className='btn btn-primary rounded-lg '
+            title='Add images'
           >
-            Add images
+            Add Images
           </button>
           <button
             onClick={() => {
               // @ts-ignore
               window.LoadPlaylistModal.showModal()
             }}
-            className='btn btn-primary rounded-lg'
+            className='btn btn-primary rounded-lg '
+            title='Load playlist'
           >
-            Load playlist
+            Load Playlist
           </button>
           <AnimatePresence mode='sync'>
             {playlist.images.length > 1 && (
@@ -116,9 +118,10 @@ function PlaylistTrack() {
                     // @ts-ignore
                     window.savePlaylistModal.showModal()
                   }}
+                  title='Save playlist'
                   className='btn btn-primary rounded-lg'
                 >
-                  Save playlist
+                  Save Playlist
                 </motion.button>
                 <motion.button
                   initial={{ y: 100 }}
@@ -129,9 +132,10 @@ function PlaylistTrack() {
                     // @ts-ignore
                     window.playlistConfigurationModal.showModal()
                   }}
+                  title='Configure playlist'
                   className='btn btn-primary rounded-lg'
                 >
-                  Configure playlist
+                  Configure Playlist
                 </motion.button>
               </>
             )}
@@ -145,12 +149,13 @@ function PlaylistTrack() {
               animate={{ y: 0, opacity: 1 }}
               exit={{ y: 100, opacity: 0 }}
               className='btn btn-error rounded-lg'
+              title='Discard playlist'
               onClick={() => {
                 resetImageCheckboxes()
                 clearPlaylist()
               }}
             >
-              Discard playlist
+              Discard Playlist
             </motion.button>
           )}
         </AnimatePresence>

@@ -15,8 +15,8 @@ export const ELECTRON_API = {
   setImage: (image: string) => {
     ipcRenderer.send('setImage', image)
   },
-  saveAndStartPlaylist: (playlistObject: playlist) => {
-    ipcRenderer.send('saveAndStartPlaylist', playlistObject)
+  savePlaylist: (playlistObject: playlist) => {
+    ipcRenderer.send('savePlaylist', playlistObject)
   },
   startPlaylist: (playlistName: string) => {
     ipcRenderer.send('startPlaylist', playlistName)

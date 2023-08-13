@@ -4,7 +4,7 @@ import playlistStore from '../hooks/useGlobalPlaylist'
 import { useForm, SubmitHandler } from 'react-hook-form'
 import { Image } from '../types/rendererTypes'
 import { useImages } from '../hooks/imagesStore'
-const { startPlaylist } = window.API_RENDERER
+
 type Input = {
   selectPlaylist: string
 }
@@ -47,7 +47,6 @@ const LoadPlaylistModal = ({ playlistInDB, shouldReload }: Props) => {
         images: imagesArrayFromPlaylist
       }
       setPlaylist(currentPlaylist)
-      startPlaylist(currentPlaylist.name)
       shouldReload.current = true
     }
     closeModal()

@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import { useForm, SubmitHandler, FieldValues } from 'react-hook-form'
 import playlistStore from '../hooks/useGlobalPlaylist'
 
-const { saveAndStartPlaylist } = window.API_RENDERER
+const { savePlaylist } = window.API_RENDERER
 
 type Props = {
   currentPlaylistName: string
@@ -19,7 +19,7 @@ const SavePlaylistModal = ({ currentPlaylistName, shouldReload }: Props) => {
   const onSubmit: SubmitHandler<FieldValues> = (data) => {
     setName(data.playlistName)
     const playlist = readPlaylist()
-    saveAndStartPlaylist(playlist)
+    savePlaylist(playlist)
     closeModal()
     shouldReload.current = true
   }

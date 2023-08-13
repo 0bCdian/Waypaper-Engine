@@ -32,6 +32,7 @@ const PlaylistConfigurationModal = ({
       hours: parseInt(data.hours),
       minutes: parseInt(data.minutes)
     }
+    console.log(parsedData)
     setConfiguration(parsedData)
     closeModal()
   }
@@ -60,7 +61,7 @@ const PlaylistConfigurationModal = ({
       className='modal '
     >
       <form
-        className='modal-box form-control rounded-xl '
+        className='modal-box form-control rounded-xl'
         onSubmit={handleSubmit(onSubmit)}
       >
         <h2 className='font-bold text-3xl text-center'>Playlist Settings</h2>
@@ -74,7 +75,7 @@ const PlaylistConfigurationModal = ({
           </label>
           <select
             id='playlistType'
-            className='select select-info text-lg w-2/5 rounded-lg'
+            className='select select-primary text-lg w-2/5 rounded-lg cursor-default'
             defaultValue={PLAYLIST_TYPES.TIMER}
             {...register('playlistType', { required: true })}
           >
@@ -82,48 +83,50 @@ const PlaylistConfigurationModal = ({
             <option value={PLAYLIST_TYPES.NEVER}>Never</option>
           </select>
         </div>
-        <div className='flex justify-end items-baseline gap-1'>
-          <div className='flex flex-col w-1/5 '>
-            <label htmlFor='hours' className='label text-xl font-medium'>
-              Hours
-            </label>
-            <input
-              id='hours'
-              min='0'
-              defaultValue={1}
-              type='number'
-              {...register('hours', { required: true, min: 0 })}
-              className='input input-info input-sm focus:outline-none text-lg font-medium rounded-lg'
-            />
+        {watch('playlistType') === PLAYLIST_TYPES.TIMER && (
+          <div className='flex justify-end items-baseline gap-1'>
+            <div className='flex flex-col w-1/5 '>
+              <label htmlFor='hours' className='label text-xl font-medium'>
+                Hours
+              </label>
+              <input
+                id='hours'
+                min='0'
+                defaultValue={1}
+                type='number'
+                {...register('hours', { required: true, min: 0 })}
+                className='input input-info input-sm focus:outline-none text-lg font-medium rounded-lg'
+              />
+            </div>
+            <div className='flex flex-col w-1/5'>
+              <label
+                className='label text-xl font-medium rounded-lg'
+                htmlFor='minutes'
+              >
+                Minutes
+              </label>
+              <input
+                id='minutes'
+                defaultValue={0}
+                min='0'
+                max='60'
+                type='number'
+                step={1}
+                {...register('minutes', {
+                  required: true
+                })}
+                className='input input-info input-sm  rounded-lg focus:outline-none text-lg font-medium'
+              />
+            </div>
           </div>
-          <div className='flex flex-col w-1/5'>
-            <label
-              className='label text-xl font-medium rounded-lg'
-              htmlFor='minutes'
-            >
-              Minutes
-            </label>
-            <input
-              id='minutes'
-              defaultValue={0}
-              min='0'
-              max='60'
-              type='number'
-              step={1}
-              {...register('minutes', {
-                required: true
-              })}
-              className='input input-info input-sm  rounded-lg focus:outline-none text-lg font-medium'
-            />
-          </div>
-        </div>
+        )}
         <div className='divider'></div>
         <div className='flex justify-between items-baseline '>
           <label htmlFor='order' className='label text-3xl font-semibold'>
             Order
           </label>
           <select
-            className='select select-info text-lg w-2/5 rounded-lg'
+            className='select select-primary text-lg w-2/5 rounded-lg cursor-default'
             {...register('order', { required: true })}
             defaultValue={ORDER_TYPES.ORDERED}
             id='order'
@@ -142,7 +145,7 @@ const PlaylistConfigurationModal = ({
           </label>
           <input
             type='checkbox'
-            className='toggle toggle-md toggle-success rounded-full'
+            className='toggle toggle-md toggle-success rounded-full cursor-default'
             id='showTransition'
             defaultChecked={true}
             {...register('showTransition')}

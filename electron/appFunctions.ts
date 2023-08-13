@@ -211,13 +211,12 @@ export async function checkIfSwwwIsInstalled() {
     throw new Error('swww is not installed')
   }
 }
-export async function saveAndInitPlaylist(
+export async function savePlaylist(
   _event: Electron.IpcMainInvokeEvent,
   playlistObject: playlist
 ) {
   try {
-    const playlistAdded = await storePlaylistInDB(playlistObject)
-    await PlaylistController.startPlaylist(playlistAdded.name)
+    await storePlaylistInDB(playlistObject)
   } catch (error) {
     console.error(error)
     throw Error('Failed to set playlist in DB')
