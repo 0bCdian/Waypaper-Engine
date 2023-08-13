@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import { CSS } from '@dnd-kit/utilities'
 import { useEffect, useRef } from 'react'
 import { Image } from '../types/rendererTypes'
+import playlistStore from '../hooks/useGlobalPlaylist'
 
 const { join, thumbnailDirectory } = window.API_RENDERER
 
@@ -13,6 +14,7 @@ function MiniPlaylistCard({
   Image: Image
   isLast: boolean | undefined
 }) {
+  const { removeImageFromPlaylist } = playlistStore()
   const imageRef = useRef<HTMLImageElement>(null)
   const imageSrc =
     'atom://' +
@@ -31,10 +33,13 @@ function MiniPlaylistCard({
   }
   useEffect(() => {
     if (isLast) {
-      imageRef.current?.scrollIntoView({ behavior: 'smooth' })
+      imageRef.current?.scrollIntoView({ inline: 'start', behavior: 'smooth' })
     }
   }, [])
-
+  const onRemove = () => {
+    Image.isChecked = false
+    removeImageFromPlaylist(Image)
+  }
   return (
     <div ref={setNodeRef} style={style}>
       <motion.div
@@ -42,14 +47,35 @@ function MiniPlaylistCard({
         animate={{ scale: 1 }}
         transition={{ duration: 0.2 }}
         exit={{ scale: 0 }}
-        className='w-32 m-1 shrink-0 rounded-lg shadow-xl'
-      > 
+        className='w-32 m-1 mb-7 shrink-0 rounded-lg shadow-xl '
+      >
+        <div className='relative '>
+          <button
+            onClick={onRemove}
+            className='absolute top-0 right-0 rounded-md transition-all opacity-0 hover:bg-error hover:opacity-100 cursor-default'
+          >
+            <svg
+              xmlns='http://www.w3.org/2000/svg'
+              className='h-5 w-5'
+              fill='none'
+              viewBox='0 0 24 24'
+              stroke='#F3D8D2'
+            >
+              <path
+                strokeLinecap='round'
+                strokeLinejoin='round'
+                strokeWidth='3'
+                d='M6 18L18 6M6 6l12 12'
+              />
+            </svg>
+          </button>
+        </div>
         <img
           {...attributes}
           {...listeners}
           src={imageSrc}
           alt={Image.imageName}
-          className='rounded-lg'
+          className='rounded-lg cursor-move'
           ref={imageRef}
         />
       </motion.div>

@@ -51,7 +51,7 @@ const PaginatedGalleryNav: FC<PaginatedGalleryNavProps> = ({
     )
   }
   return (
-    <div className='join no-animation self-center my-3' style={{ width: 'fit-content' }}>
+    <div className='join no-animation self-center' style={{ width: 'fit-content' }}>
       <button
         onClick={previousPage}
         className='join-item btn btn-neutral btn-lg rounded-lg'

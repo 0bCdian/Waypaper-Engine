@@ -81,7 +81,7 @@ function PlaylistTrack() {
     }
   }, [playlist.images])
   return (
-    <div className='flex flex-col my-4'>
+    <>
       <div className='flex justify-between gap-3 items-center my-2'>
         <div className='flex gap-5 items-center '>
           <span className='text-4xl font-bold'>
@@ -89,74 +89,85 @@ function PlaylistTrack() {
               ? `Playlist (${playlistArray.length})`
               : 'Playlist'}
           </span>
-          <button
-            onClick={isActive ? undefined : handleClickAddImages}
-            className='btn btn-primary rounded-lg '
-            title='Add images'
-          >
-            Add Images
-          </button>
-          <button
-            onClick={() => {
-              // @ts-ignore
-              window.LoadPlaylistModal.showModal()
-            }}
-            className='btn btn-primary rounded-lg '
-            title='Load playlist'
-          >
-            Load Playlist
-          </button>
+          <div className='tooltip tooltip-success' data-tip='Add Images'>
+            <button
+              onClick={isActive ? undefined : handleClickAddImages}
+              className='btn btn-primary rounded-lg text-3xl'
+            >
+              洛
+            </button>
+          </div>
+          <div className='tooltip tooltip-success' data-tip='Load Playlist'>
+            <button
+              onClick={() => {
+                // @ts-ignore
+                window.LoadPlaylistModal.showModal()
+              }}
+              className='btn btn-primary rounded-lg text-3xl'
+            >
+              
+            </button>
+          </div>
           <AnimatePresence mode='sync'>
             {playlist.images.length > 1 && (
               <>
-                <motion.button
-                  initial={{ y: 100 }}
-                  transition={{ duration: 0.25, ease: 'easeInOut' }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: 100, opacity: 0 }}
-                  onClick={() => {
-                    // @ts-ignore
-                    window.savePlaylistModal.showModal()
-                  }}
-                  title='Save playlist'
-                  className='btn btn-primary rounded-lg'
+                <div
+                  className='tooltip tooltip-success'
+                  data-tip='Save Playlist'
                 >
-                  Save Playlist
-                </motion.button>
-                <motion.button
-                  initial={{ y: 100 }}
-                  transition={{ duration: 0.25, ease: 'easeInOut' }}
-                  animate={{ y: 0, opacity: 1 }}
-                  exit={{ y: 100, opacity: 0 }}
-                  onClick={() => {
-                    // @ts-ignore
-                    window.playlistConfigurationModal.showModal()
-                  }}
-                  title='Configure playlist'
-                  className='btn btn-primary rounded-lg'
+                  <motion.button
+                    initial={{ y: 100 }}
+                    transition={{ duration: 0.25, ease: 'easeInOut' }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: 100, opacity: 0 }}
+                    onClick={() => {
+                      // @ts-ignore
+                      window.savePlaylistModal.showModal()
+                    }}
+                    className='btn btn-primary rounded-lg text-3xl'
+                  >
+                    󰆓
+                  </motion.button>
+                </div>
+                <div
+                  className='tooltip tooltip-success'
+                  data-tip='Configure Playlist'
                 >
-                  Configure Playlist
-                </motion.button>
+                  <motion.button
+                    initial={{ y: 100 }}
+                    transition={{ duration: 0.25, ease: 'easeInOut' }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: 100, opacity: 0 }}
+                    onClick={() => {
+                      // @ts-ignore
+                      window.playlistConfigurationModal.showModal()
+                    }}
+                    className='btn btn-primary rounded-lg text-3xl'
+                  >
+                    󰒓
+                  </motion.button>
+                </div>
               </>
             )}
           </AnimatePresence>
         </div>
         <AnimatePresence>
           {playlist.images.length > 1 && (
-            <motion.button
-              initial={{ y: 100, opacity: 0 }}
-              transition={{ duration: 0.25, ease: 'easeInOut' }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: 100, opacity: 0 }}
-              className='btn btn-error rounded-lg'
-              title='Discard playlist'
-              onClick={() => {
-                resetImageCheckboxes()
-                clearPlaylist()
-              }}
-            >
-              Discard Playlist
-            </motion.button>
+            <div className='tooltip tooltip-success' data-tip='Clear Playlist'>
+              <motion.button
+                initial={{ y: 100, opacity: 0 }}
+                transition={{ duration: 0.25, ease: 'easeInOut' }}
+                animate={{ y: 0, opacity: 1 }}
+                exit={{ y: 100, opacity: 0 }}
+                className='btn btn-error rounded-lg text-3xl'
+                onClick={() => {
+                  resetImageCheckboxes()
+                  clearPlaylist()
+                }}
+              >
+                
+              </motion.button>
+            </div>
           )}
         </AnimatePresence>
       </div>
@@ -180,7 +191,7 @@ function PlaylistTrack() {
                 transition={{ duration: 0.25, ease: 'easeInOut' }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ y: 300, opacity: 0 }}
-                className='flex rounded-lg overflow-y-clip  overflow-x-scroll  scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-thumb-neutral-300'
+                className='flex rounded-lg overflow-y-clip  overflow-x-scroll  scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-thumb-neutral-300 py-3 mb-1'
               >
                 <AnimatePresence initial={false}>
                   {playlistArray}
@@ -190,7 +201,7 @@ function PlaylistTrack() {
           </AnimatePresence>
         </SortableContext>
       </DndContext>
-    </div>
+    </>
   )
 }
 
