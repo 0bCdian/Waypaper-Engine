@@ -11,6 +11,3 @@ const daemon = app.isPackaged
 
 export const iconPath = resolve(join(iconsPath))
 export const daemonLocation = resolve(join(daemon))
-
-console.log('daeemon', daemonLocation)
-

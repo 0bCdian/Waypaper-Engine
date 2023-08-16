@@ -39,10 +39,10 @@ function PlaylistTrack() {
     if (!over) return
     if (over.id !== active.id) {
       const oldindex = playlist.images.findIndex(
-        (element) => element.id === active.id
+        (element) => element.imageID === active.id
       )
       const newIndex = playlist.images.findIndex(
-        (element) => element.id === over?.id
+        (element) => element.imageID === over?.id
       )
       const newArrayOrder = arrayMove(playlist.images, oldindex, newIndex)
       movePlaylistArrayOrder(newArrayOrder)
@@ -63,7 +63,7 @@ function PlaylistTrack() {
         <MiniPlaylistCard
           isLast={lastIndex === index}
           Image={Image}
-          key={Image.id}
+          key={Image.imageID}
         />
       )
     })
@@ -79,6 +79,7 @@ function PlaylistTrack() {
       clearPlaylist()
     }
   }, [playlist.images])
+
   return (
     <>
       <div className='flex justify-between gap-3 items-center my-2'>
@@ -200,7 +201,7 @@ function PlaylistTrack() {
       >
         <SortableContext
           strategy={horizontalListSortingStrategy}
-          items={playlist.images}
+          items={playlist.images.map((Image) => Image.imageID)}
         >
           <AnimatePresence initial={false}>
             {playlistArray.length > 0 && (

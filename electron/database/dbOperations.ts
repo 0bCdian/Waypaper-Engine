@@ -1,6 +1,18 @@
 import { PlaylistTypeDB, imageModel } from '../types/types'
 import { playlist, ORDER_TYPES } from '../../src/types/rendererTypes'
 import { Image, Playlist } from './models'
+import { sequelize } from './db'
+
+export async function testDB() {
+  try {
+    await sequelize.authenticate()
+    await sequelize.sync()
+    console.log('Connection has been established successfully.')
+  } catch (error) {
+    throw new Error(`Unable to connect to the database: ${error}`)
+  }
+}
+
 export async function storeImagesInDB(images: string[]) {
   const imagesToStore = images.map((image) => {
     const imageInstance = {

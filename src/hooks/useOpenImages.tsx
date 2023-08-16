@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { ImagesArray, imagesObject } from '../types/rendererTypes'
+import { Image, imagesObject } from '../types/rendererTypes'
 const { openFiles, handleOpenImages } = window.API_RENDERER
 
 interface State {
@@ -7,8 +7,8 @@ interface State {
 }
 interface openImagesProps {
   setSkeletons: (skeletons: string[]) => void
-  setImagesArray: (imagesArray: ImagesArray) => void
-  addMultipleImagesToPlaylist: (Images: ImagesArray) => void
+  setImagesArray: (imagesArray: Image[]) => void
+  addMultipleImagesToPlaylist: (Images: Image[]) => void
 }
 
 interface Actions {
@@ -24,13 +24,13 @@ const openImagesStore = create<State & Actions>((set) => ({
   }) => {
     set(() => ({ isActive: true }))
     const imagesObject: imagesObject = await openFiles()
-    imagesObject.fileNames.reverse()
-    imagesObject.imagePaths.reverse()
     set(() => ({ isActive: false }))
     if (!imagesObject) return
+    imagesObject.fileNames.reverse()
+    imagesObject.imagePaths.reverse()
     //@ts-ignore
     setSkeletons(imagesObject.fileNames)
-    const imagesArray: ImagesArray = await handleOpenImages(imagesObject)
+    const imagesArray: Image[] = await handleOpenImages(imagesObject)
     const newImagesAdded = imagesArray.map((image) => {
       return { ...image, isChecked: true }
     })

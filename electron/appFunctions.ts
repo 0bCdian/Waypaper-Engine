@@ -7,7 +7,7 @@ import {
   validImageExtensions,
   WAYPAPER_SOCKET_PATH
 } from './globals/globals'
-import { Image, Playlist } from './database/models'
+import { sequelize } from './database/db'
 import { fileList, imagesObject, ACTIONS, message } from './types/types'
 import { playlist } from '../src/types/rendererTypes'
 import { storeImagesInDB, storePlaylistInDB } from './database/dbOperations'
@@ -104,8 +104,7 @@ export async function checkCacheOrCreateItIfNotExists() {
     if (!existsSync(appDirectories.imagesDir)) {
       deleteFolders(appDirectories.thumbnails)
       //
-      await Playlist.sync({ force: true })
-      await Image.sync({ force: true })
+      await sequelize.sync({ force: true })
       createFolders(appDirectories.imagesDir, appDirectories.thumbnails)
     }
   }

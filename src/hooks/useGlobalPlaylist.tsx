@@ -1,6 +1,5 @@
 import { create } from 'zustand'
 import {
-  ImagesArray,
   Image,
   playlist,
   configuration,
@@ -8,11 +7,10 @@ import {
   ORDER_TYPES
 } from '../types/rendererTypes'
 
-const imagesInitial: ImagesArray = []
+const imagesInitial: Image[] = []
 const configurationInitial = {
   playlistType: PLAYLIST_TYPES.TIMER,
-  hours: 1,
-  minutes: 0,
+  interval: 3_600_000,
   order: ORDER_TYPES.ORDERED,
   showTransition: true
 }
@@ -30,10 +28,10 @@ interface State {
 
 interface Actions {
   addImageToPlaylist: (Image: Image) => void
-  addMultipleImagesToPlaylist: (Images: ImagesArray) => void
+  addMultipleImagesToPlaylist: (Images: Image[]) => void
   setConfiguration: (newConfiguration: configuration) => void
   setName: (newName: string) => void
-  movePlaylistArrayOrder: (newlyOrderedArray: ImagesArray) => void
+  movePlaylistArrayOrder: (newlyOrderedArray: Image[]) => void
   removeImageFromPlaylist: (Image: Image) => void
   clearPlaylist: () => void
   readPlaylist: () => playlist
@@ -54,7 +52,7 @@ const playlistStore = create<State & Actions>()((set, get) => ({
       return newState
     })
   },
-  addMultipleImagesToPlaylist: (Images: ImagesArray) => {
+  addMultipleImagesToPlaylist: (Images: Image[]) => {
     set((state) => {
       const newImages = [...state.playlist.images, ...Images]
       const newState = {
@@ -78,7 +76,7 @@ const playlistStore = create<State & Actions>()((set, get) => ({
       return { ...state, playlist: { ...state.playlist, name: newName } }
     })
   },
-  movePlaylistArrayOrder: (newlyOrderedArray: ImagesArray) => {
+  movePlaylistArrayOrder: (newlyOrderedArray: Image[]) => {
     set((state) => {
       return {
         ...state,
@@ -89,7 +87,7 @@ const playlistStore = create<State & Actions>()((set, get) => ({
   removeImageFromPlaylist: (Image: Image) => {
     set((state) => {
       const newImages = state.playlist.images.filter(
-        (element) => element.id !== Image.id
+        (element) => element.imageID !== Image.imageID
       )
       return {
         ...state,

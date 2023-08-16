@@ -22,7 +22,7 @@ function PaginatedGallery() {
   }, [skeletonsToShow])
   const imagesCardArray = useMemo(() => {
     return filteredImages.map((image) => {
-      return <ImageCard key={image.id} Image={image} />
+      return <ImageCard key={image.imageID} Image={image} />
     })
   }, [filteredImages])
   const imagesToShow = imagesCardArray.slice(firstImageIndex, lastImageIndex)

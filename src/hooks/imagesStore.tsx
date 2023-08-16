@@ -6,20 +6,20 @@ import {
   createContext,
   useEffect
 } from 'react'
-import { ImagesArray, STORE_ACTIONS } from '../types/rendererTypes'
+import { Image, STORE_ACTIONS } from '../types/rendererTypes'
 const { queryImages } = window.API_RENDERER
 
 type state = {
-  imagesArray: ImagesArray
+  imagesArray: Image[]
   skeletonsToShow: string[]
   searchFilter: string
 }
 
 type action =
-  | { type: STORE_ACTIONS.SET_IMAGES_ARRAY; payload: ImagesArray }
+  | { type: STORE_ACTIONS.SET_IMAGES_ARRAY; payload: Image[] }
   | { type: STORE_ACTIONS.SET_SKELETONS_TO_SHOW; payload: string[] }
   | { type: STORE_ACTIONS.SET_SEARCH_FILTER; payload: string }
-  | { type: STORE_ACTIONS.RESET_IMAGES_ARRAY; payload: ImagesArray }
+  | { type: STORE_ACTIONS.RESET_IMAGES_ARRAY; payload: Image[] }
 
 function reducer(state: state, action: action) {
   switch (action.type) {
@@ -47,7 +47,7 @@ function imagesSource() {
     }
   )
   useEffect(() => {
-    queryImages().then((data: ImagesArray) => {
+    queryImages().then((data: Image[]) => {
       dispatch({ type: STORE_ACTIONS.SET_IMAGES_ARRAY, payload: data })
     })
   }, [])
@@ -79,7 +79,7 @@ function imagesSource() {
       payload: skeletons
     })
   }, [])
-  const setImagesArray = useCallback((newImages: ImagesArray) => {
+  const setImagesArray = useCallback((newImages: Image[]) => {
     dispatch({
       type: STORE_ACTIONS.SET_IMAGES_ARRAY,
       payload: newImages
@@ -87,7 +87,7 @@ function imagesSource() {
   }, [])
   const sortedImages = useMemo(() => {
     const shallowCopy = [...imagesArray]
-    return shallowCopy.sort((a, b) => (a.id > b.id ? -1 : 1))
+    return shallowCopy.sort((a, b) => (a.imageID > b.imageID ? -1 : 1))
   }, [imagesArray])
 
   const filteredImages = useMemo(() => {

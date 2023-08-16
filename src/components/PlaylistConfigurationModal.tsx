@@ -6,12 +6,12 @@ import {
   PLAYLIST_TYPES,
   configuration
 } from '../types/rendererTypes'
-
+import { toMS, toHoursAndMinutes } from '../utils/utilities'
 type Inputs = {
   playlistType: PLAYLIST_TYPES
   order: ORDER_TYPES
-  hours: string
-  minutes: string
+  hours: string | null
+  minutes: string | null
   showTransition: boolean
 }
 type Props = {
@@ -27,31 +27,54 @@ const PlaylistConfigurationModal = ({
     containerRef.current?.close()
   }
   const onSubmit: SubmitHandler<Inputs> = (data) => {
-    const parsedData = {
-      ...data,
-      hours: parseInt(data.hours),
-      minutes: parseInt(data.minutes)
+    if (data.playlistType !== PLAYLIST_TYPES.TIMER) {
+      const configuration = {
+        playlistType: data.playlistType,
+        order: data.order,
+        showTransition: data.showTransition,
+        interval: null
+      }
+      setConfiguration(configuration)
+      closeModal()
     }
-    console.log(parsedData)
-    setConfiguration(parsedData)
-    closeModal()
+    if (data.hours && data.minutes) {
+      const interval = toMS(parseInt(data.hours), parseInt(data.minutes))
+      const configuration = {
+        playlistType: data.playlistType,
+        order: data.order,
+        showTransition: data.showTransition,
+        interval: interval
+      }
+      setConfiguration(configuration)
+      closeModal()
+    } else {
+      console.error('Hours and minutes are required')
+    }
   }
-  const hours = parseInt(watch('hours'))
-  const minutes = parseInt(watch('minutes'))
+  const hours = watch('hours')
+  const minutes = watch('minutes')
   useEffect(() => {
-    if (minutes === 60) {
-      setValue('hours', (hours + 1).toString())
-      setValue('minutes', '0')
-    }
-    if (minutes === 0 && hours === 0) {
-      setValue('minutes', '1')
+    if (hours && minutes) {
+      const parsedHours = parseInt(hours)
+      const parsedMinutes = parseInt(minutes)
+      if (parsedMinutes === 60) {
+        setValue('hours', (hours + 1).toString())
+        setValue('minutes', '0')
+      }
+      if (parsedMinutes === 0 && parsedHours === 0) {
+        setValue('minutes', '1')
+      }
     }
   }, [hours, minutes])
   useEffect(() => {
+    const interval = currentPlaylistConfiguration.interval
+    if (interval !== null) {
+      const { hours, minutes } = toHoursAndMinutes(interval)
+      setValue('hours', hours.toString())
+      setValue('minutes', minutes.toString())
+    }
     setValue('playlistType', currentPlaylistConfiguration.playlistType)
     setValue('order', currentPlaylistConfiguration.order)
-    setValue('hours', currentPlaylistConfiguration.hours.toString())
-    setValue('minutes', currentPlaylistConfiguration.minutes.toString())
     setValue('showTransition', currentPlaylistConfiguration.showTransition)
   }, [currentPlaylistConfiguration])
   return (
@@ -80,6 +103,8 @@ const PlaylistConfigurationModal = ({
             {...register('playlistType', { required: true })}
           >
             <option value={PLAYLIST_TYPES.TIMER}>On a timer</option>
+            <option value={PLAYLIST_TYPES.TIME_OF_DAY}>Time of day</option>
+            <option value={PLAYLIST_TYPES.DAY_OF_WEEK}>Day of week</option>
             <option value={PLAYLIST_TYPES.NEVER}>Never</option>
           </select>
         </div>

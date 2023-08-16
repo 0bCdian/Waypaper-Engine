@@ -1,10 +1,10 @@
-import { Model, DataTypes } from 'sequelize'
+import { DataTypes } from 'sequelize'
 import { sequelize } from './db'
-class Image extends Model {}
-class Playlist extends Model {}
-Image.init(
+
+const Image = sequelize.define(
+  'Image',
   {
-    id: {
+    imageID: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true
@@ -21,15 +21,15 @@ Image.init(
     }
   },
   {
-    sequelize,
-    modelName: 'Images',
+    tableName: 'Images',
     timestamps: false
   }
 )
 
-Playlist.init(
+const Playlist = sequelize.define(
+  'Playlist',
   {
-    id: {
+    playlistID: {
       type: DataTypes.INTEGER,
       autoIncrement: true,
       primaryKey: true
@@ -39,29 +39,21 @@ Playlist.init(
       allowNull: false,
       unique: true
     },
-    images: {
-      type: DataTypes.TEXT,
-      allowNull: false
-    },
     type: {
       type: DataTypes.STRING,
       allowNull: false
     },
-    hours: {
+    interval:{
       type: DataTypes.INTEGER,
-      allowNull: false
-    },
-    minutes: {
-      type: DataTypes.INTEGER,
-      allowNull: false
+      allowNull: true,
     },
     order: {
       type: DataTypes.STRING,
-      allowNull: false
+      allowNull: true
     },
     showTransition: {
       type: DataTypes.BOOLEAN,
-      allowNull: false
+      allowNull: false,
     },
     currentImageIndex: {
       type: DataTypes.INTEGER,
@@ -70,13 +62,52 @@ Playlist.init(
     }
   },
   {
-    sequelize,
-    modelName: 'Playlist',
+    tableName: 'Playlist',
     timestamps: false
   }
 )
 
+const ImageInPlaylist = sequelize.define(
+  'ImageInPlaylist',
+  {
+    playlistID: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Playlist',
+        key: 'playlistID'
+      }
+    },
+    imageID: {
+      type: DataTypes.INTEGER,
+      allowNull: false,
+      references: {
+        model: 'Images',
+        key: 'imageID'
+      }
+    },
+    index: {
+      type: DataTypes.INTEGER,
+      allowNull: false
+    },
+    beginTime:{
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null
+    },
+    endTime:{
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: null
+    }
+  },
+  {
+    tableName: 'ImagesInPlaylist',
+    timestamps: false
+  }
+)
 
+Image.belongsToMany(Playlist, { through: ImageInPlaylist })
+Playlist.belongsToMany(Image, { through: ImageInPlaylist })
 
-
-export { Image, Playlist }
+export { Image, Playlist, ImageInPlaylist }

@@ -21,7 +21,7 @@ function MiniPlaylistCard({
     join(thumbnailDirectory, Image.imageName.split('.').at(0) + '.webp')
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({
-      id: Image.id,
+      id: Image.imageID,
       transition: {
         duration: 250,
         easing: 'cubic-bezier(0.65, 1, 0, 1)'

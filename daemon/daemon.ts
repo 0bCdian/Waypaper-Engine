@@ -1,11 +1,9 @@
 import { createServer } from 'node:net'
-import { Sequelize } from 'sequelize'
 import { unlinkSync } from 'node:fs'
 import { execSync, exec } from 'node:child_process'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
 import {
-  PlaylistTypeDB,
   message,
   PlaylistParsed,
   PLAYLIST_TYPES,
@@ -13,11 +11,17 @@ import {
   ACTIONS,
   PlaylistStates
 } from './typesDaemon'
+import {
+  readPlaylistFromDB,
+  updatePlaylistCurrentIndex
+} from './daemonDB/dbOperations'
+import { sequelize } from './daemonDB/db'
 
 function isWaypaperDaemonRunning() {
   try {
     const stdout = execSync('pidof wp-daemon', { encoding: 'utf-8' })
     console.log('Waypaper daemon already running', stdout)
+
     return true
   } catch (_err) {
     console.log('Waypaper daemon not running')
@@ -29,10 +33,6 @@ if (isWaypaperDaemonRunning()) {
   notify('Another instance of the daemon is already running, exiting...')
   process.exit(1)
 }
-const sequelize = new Sequelize({
-  dialect: 'sqlite',
-  storage: join(homedir(), '.waypaper', 'imagesDB.sqlite3')
-})
 
 const IMAGES_DIR = join(homedir(), '.waypaper', 'images')
 const SOCKET_PATH = '/tmp/waypaper_daemon.sock'
@@ -170,9 +170,7 @@ const Playlist: PlaylistInterface = {
   sleep: (ms: number) => new Promise((r) => setTimeout(r, ms)),
   updateInDB: async (imageIndex: number, playlistName: string) => {
     try {
-      await sequelize.query(
-        `UPDATE Playlists SET currentImageIndex = ${imageIndex} WHERE name = '${playlistName}'`
-      )
+      await updatePlaylistCurrentIndex(imageIndex, playlistName)
     } catch (error) {
       console.error(error)
       notify(
@@ -184,17 +182,15 @@ const Playlist: PlaylistInterface = {
   },
   getFromDB: async (playlistName: string) => {
     try {
-      const [playlistArray] = (await sequelize.query(
-        `SELECT * FROM Playlists WHERE name = '${playlistName}'`
-      )) as PlaylistTypeDB[][]
-      if (!playlistArray.length) {
+      const playlist = await readPlaylistFromDB(playlistName)
+      if (playlist === null) {
         console.error('Playlist not found')
         notify('Playlist not found, maybe it was deleted?')
         notify('Exiting daemon')
         throw new Error('Playlist not found')
       }
-      playlistArray[0].images = JSON.parse(playlistArray[0].images)
-      return playlistArray[0] as unknown as PlaylistParsed
+      playlist.images = JSON.parse(playlist.images)
+      return playlist as unknown as PlaylistParsed
     } catch (error) {
       console.error(error)
       notify('Exiting daemon')

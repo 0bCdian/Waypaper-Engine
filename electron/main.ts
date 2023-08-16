@@ -11,8 +11,11 @@ import {
   initWaypaperDaemon,
   checkCacheOrCreateItIfNotExists
 } from './appFunctions'
-import { testDB } from './database/db'
-import { readImagesFromDB, readPlaylistsFromDB } from './database/dbOperations'
+import {
+  readImagesFromDB,
+  readPlaylistsFromDB,
+  testDB
+} from './database/dbOperations'
 import { devMenu, prodMenu, trayMenu } from './globals/globals'
 import { iconPath } from './binaries'
 import { store } from './database/configStorage'
@@ -115,12 +118,12 @@ function loadDeveloperTools() {
 app
   .whenReady()
   .then(async () => {
+    await checkCacheOrCreateItIfNotExists()
+    await testDB()
     createWindow()
     createMenu()
     createTray()
     registerFileProtocol()
-    await checkCacheOrCreateItIfNotExists()
-    await testDB()
     await isSwwwDaemonRunning()
     await initWaypaperDaemon()
   })
@@ -132,9 +135,6 @@ ipcMain.handle('queryImages', readImagesFromDB)
 ipcMain.handle('queryPlaylists', readPlaylistsFromDB)
 ipcMain.on('setImage', setImage)
 ipcMain.on('savePlaylist', savePlaylist)
-ipcMain.on('deleteImage',(_, imageId: number) => {
-  
-})
 ipcMain.on('startPlaylist', (_event, playlistName: string) => {
   PlaylistController.startPlaylist(playlistName)
 })
