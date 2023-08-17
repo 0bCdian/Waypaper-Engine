@@ -13,6 +13,8 @@ type Props = {
   playlistInDB: Playlist[]
 }
 
+const { getPlaylistImages } = window.API_RENDERER
+
 const LoadPlaylistModal = ({ playlistInDB, shouldReload }: Props) => {
   const { clearPlaylist, setPlaylist } = playlistStore()
   const { resetImageCheckboxes, imagesArray } = useImages()
@@ -21,31 +23,35 @@ const LoadPlaylistModal = ({ playlistInDB, shouldReload }: Props) => {
   const closeModal = () => {
     modalRef.current?.close()
   }
-  const onSubmit: SubmitHandler<Input> = (data) => {
+  const onSubmit: SubmitHandler<Input> = async (data) => {
     resetImageCheckboxes()
     clearPlaylist()
     const selectedPlaylist = playlistInDB.find((playlist) => {
       return playlist.name === data.selectPlaylist
     })
     if (selectedPlaylist) {
-      const imagesFromDB = JSON.parse(selectedPlaylist.images) as string[]
-      const imagesArrayFromPlaylist = imagesArray.filter((image: Image) => {
-        return imagesFromDB.includes(image.imageName)
-      }) as Image[]
-      imagesArrayFromPlaylist.forEach((image) => {
-        image.isChecked = true
+      const imagesArrayFromPlaylist = await getPlaylistImages(
+        selectedPlaylist.id
+      )
+      const imagesToStorePlaylist: Image[] = []
+      imagesArrayFromPlaylist.forEach((imageNameFromDB) => {
+        const imageToStore = imagesArray.find((imageInGallery) => {
+          return imageInGallery.name === imageNameFromDB
+        }) as Image
+        imageToStore.isChecked = true
+        imagesToStorePlaylist.push(imageToStore)
       })
       const currentPlaylist = {
         name: selectedPlaylist.name,
         configuration: {
           playlistType: selectedPlaylist.type,
-          hours: selectedPlaylist.hours,
-          minutes: selectedPlaylist.minutes,
           order: selectedPlaylist.order,
-          showTransition: selectedPlaylist.showTransition
+          interval: selectedPlaylist.interval,
+          showTransition: selectedPlaylist.showTransition === 1 ? true : false
         },
-        images: imagesArrayFromPlaylist
+        images: imagesToStorePlaylist
       }
+      console.log(currentPlaylist)
       setPlaylist(currentPlaylist)
       shouldReload.current = true
     }

@@ -1,7 +1,7 @@
 import { ipcRenderer } from 'electron'
 import { appDirectories } from './globals/globals'
 import { imagesObject, Playlist } from './types/types'
-import { rendererPlaylist } from '../src/types/rendererTypes'
+import { rendererPlaylist, Image } from '../src/types/rendererTypes'
 import { join } from 'node:path'
 
 export const ELECTRON_API = {
@@ -23,6 +23,9 @@ export const ELECTRON_API = {
   },
   queryPlaylists: async (): Promise<Playlist[]> => {
     return await ipcRenderer.invoke('queryPlaylists')
+  },
+  getPlaylistImages: async (playlistID: number): Promise<string[]> => {
+    return await ipcRenderer.invoke('getPlaylistImages', playlistID)
   },
   stopPlaylist: async () => {
     ipcRenderer.send('stopPlaylist')

@@ -34,7 +34,7 @@ export type configuration = {
   playlistType: PLAYLIST_TYPES
   interval: number | null
   order: ORDER_TYPES | null
-  showTransition: boolean
+  showTransition: boolean 
 }
 
 export type rendererPlaylist = {

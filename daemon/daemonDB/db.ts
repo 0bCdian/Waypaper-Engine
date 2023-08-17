@@ -1,10 +1,7 @@
-import { Sequelize } from 'sequelize'
-type SequelizeType = typeof Sequelize
-const Sequelizes: SequelizeType = require('sequelize')
-import { join } from 'node:path'
-import { homedir } from 'node:os'
+const Database = require('better-sqlite3')
+import { nativeBindingLocation, dbLocation } from '../binaries'
 
-export const sequelize = new Sequelizes({
-  dialect: 'sqlite',
-  storage: join(join(homedir(), '.waypaper'), 'imagesDB.sqlite3')
+const db = Database(dbLocation, {
+  nativeBinding: nativeBindingLocation,
+  verbose: console.log
 })

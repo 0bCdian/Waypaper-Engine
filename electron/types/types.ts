@@ -58,3 +58,11 @@ export enum dbTables {
   Playlists = 'Playlists',
   imagesInPlaylist = 'imagesInPlaylist'
 }
+
+export type imageInPlaylist = {
+  imageID: number
+  playlistID: number
+  indexInPlaylist: number
+  beginTime: number | null
+  endTime: number | null
+}
