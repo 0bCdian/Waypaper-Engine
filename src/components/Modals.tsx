@@ -2,14 +2,14 @@ import { useState, useEffect, useRef, useMemo } from 'react'
 import LoadPlaylistModal from './LoadPlaylistModal'
 import SavePlaylistModal from './SavePlaylistModal'
 import PlaylistConfigurationModal from './PlaylistConfigurationModal'
-import playlistStore from '../hooks/useGlobalPlaylist'
-import { PlaylistTypeDB } from '../../electron/types/types'
+import playlistStore from '../hooks/playlistStore'
+import { Playlist } from '../../electron/types/types'
 
 const { queryPlaylists } = window.API_RENDERER
 function Modals() {
   const { readPlaylist } = playlistStore()
   const shouldReload = useRef(false)
-  const [playlistsInDB, setPlaylistsInDB] = useState<PlaylistTypeDB[]>([])
+  const [playlistsInDB, setPlaylistsInDB] = useState<Playlist[]>([])
   const currentPlaylist = useMemo(() => {
     return readPlaylist()
   }, [shouldReload.current])

@@ -14,7 +14,6 @@ import {
 import {
   readImagesFromDB,
   readPlaylistsFromDB,
-  testDB
 } from './database/dbOperations'
 import { devMenu, prodMenu, trayMenu } from './globals/globals'
 import { iconPath } from './binaries'
@@ -118,8 +117,7 @@ function loadDeveloperTools() {
 app
   .whenReady()
   .then(async () => {
-    await checkCacheOrCreateItIfNotExists()
-    await testDB()
+    checkCacheOrCreateItIfNotExists()
     createWindow()
     createMenu()
     createTray()

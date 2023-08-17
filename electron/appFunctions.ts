@@ -7,15 +7,14 @@ import {
   validImageExtensions,
   WAYPAPER_SOCKET_PATH
 } from './globals/globals'
-import { sequelize } from './database/db'
 import { fileList, imagesObject, ACTIONS, message } from './types/types'
-import { playlist } from '../src/types/rendererTypes'
-import { storeImagesInDB, storePlaylistInDB } from './database/dbOperations'
+import { rendererPlaylist } from '../src/types/rendererTypes'
 import { exec, spawn } from 'node:child_process'
 import { promisify } from 'node:util'
 import { daemonLocation } from './binaries'
 import { join, basename } from 'node:path'
 import { createConnection } from 'node:net'
+import { storeImagesInDB, storePlaylistsInDB } from './database/dbOperations'
 
 const execPomisified = promisify(exec)
 function openImagesFromFilePicker() {
@@ -50,7 +49,7 @@ export async function copyImagesToCacheAndProcessThumbnails(
       imagesToStoreinDB.push(imagePromise.value)
     }
   })
-  return await storeImagesInDB(imagesToStoreinDB)
+  return storeImagesInDB(imagesToStoreinDB)
 }
 
 async function createCacheThumbnail(filePathSource: string, imageName: string) {
@@ -93,7 +92,6 @@ export async function checkCacheOrCreateItIfNotExists() {
     }
   }
   if (!existsSync(appDirectories.mainDir)) {
-    // if images dont exist, remove old cache thumbnail
     deleteFolders(appDirectories.thumbnails)
     createFolders(
       appDirectories.mainDir,
@@ -103,8 +101,6 @@ export async function checkCacheOrCreateItIfNotExists() {
   } else {
     if (!existsSync(appDirectories.imagesDir)) {
       deleteFolders(appDirectories.thumbnails)
-      //
-      await sequelize.sync({ force: true })
       createFolders(appDirectories.imagesDir, appDirectories.thumbnails)
     }
   }
@@ -207,10 +203,13 @@ export async function checkIfSwwwIsInstalled() {
 }
 export async function savePlaylist(
   _event: Electron.IpcMainInvokeEvent,
-  playlistObject: playlist
+  playlistObject: rendererPlaylist
 ) {
   try {
-    await storePlaylistInDB(playlistObject)
+    const playlistAdded = storePlaylistsInDB(playlistObject)
+    if (playlistAdded !== null) {
+      console.log('Playlist id:', playlistAdded)
+    }
   } catch (error) {
     console.error(error)
     throw Error('Failed to set playlist in DB')

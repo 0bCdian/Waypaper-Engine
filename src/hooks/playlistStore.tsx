@@ -1,7 +1,7 @@
 import { create } from 'zustand'
 import {
   Image,
-  playlist,
+  rendererPlaylist,
   configuration,
   PLAYLIST_TYPES,
   ORDER_TYPES
@@ -22,7 +22,7 @@ const initialPlaylistState = {
 }
 
 interface State {
-  playlist: playlist
+  playlist: rendererPlaylist
   isEmpty: boolean
 }
 
@@ -34,8 +34,13 @@ interface Actions {
   movePlaylistArrayOrder: (newlyOrderedArray: Image[]) => void
   removeImageFromPlaylist: (Image: Image) => void
   clearPlaylist: () => void
-  readPlaylist: () => playlist
-  setPlaylist: (newPlaylist: playlist) => void
+  readPlaylist: () => rendererPlaylist
+  setPlaylist: (newPlaylist: rendererPlaylist) => void
+  setImageBeginAndEndTime: (
+    Image: Image,
+    beginTime: number,
+    endTime: number
+  ) => void
 }
 
 const playlistStore = create<State & Actions>()((set, get) => ({
@@ -87,7 +92,7 @@ const playlistStore = create<State & Actions>()((set, get) => ({
   removeImageFromPlaylist: (Image: Image) => {
     set((state) => {
       const newImages = state.playlist.images.filter(
-        (element) => element.imageID !== Image.imageID
+        (element) => element.id !== Image.id
       )
       return {
         ...state,
@@ -107,7 +112,7 @@ const playlistStore = create<State & Actions>()((set, get) => ({
   readPlaylist: () => {
     return get().playlist
   },
-  setPlaylist: (newPlaylist: playlist) => {
+  setPlaylist: (newPlaylist: rendererPlaylist) => {
     set((state) => {
       return {
         ...state,
@@ -115,6 +120,10 @@ const playlistStore = create<State & Actions>()((set, get) => ({
         isEmpty: false
       }
     })
+  },
+  setImageBeginAndEndTime(Image: Image, beginTime: number, endTime: number) {
+    Image.beginTime = beginTime
+    Image.endTime = endTime
   }
 }))
 

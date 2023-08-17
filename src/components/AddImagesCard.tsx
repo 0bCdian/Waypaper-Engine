@@ -1,6 +1,6 @@
 import SvgComponent from './addImagesIcon'
 import openImagesStore from '../hooks/useOpenImages'
-import playlistStore from '../hooks/useGlobalPlaylist'
+import playlistStore from '../hooks/playlistStore'
 import { useImages } from '../hooks/imagesStore'
 
 function AddImagesCard() {

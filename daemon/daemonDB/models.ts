@@ -43,9 +43,9 @@ const Playlist = sequelize.define(
       type: DataTypes.STRING,
       allowNull: false
     },
-    interval:{
+    interval: {
       type: DataTypes.INTEGER,
-      allowNull: true,
+      allowNull: true
     },
     order: {
       type: DataTypes.STRING,
@@ -53,7 +53,7 @@ const Playlist = sequelize.define(
     },
     showTransition: {
       type: DataTypes.BOOLEAN,
-      allowNull: false,
+      allowNull: false
     },
     currentImageIndex: {
       type: DataTypes.INTEGER,
@@ -90,12 +90,12 @@ const ImageInPlaylist = sequelize.define(
       type: DataTypes.INTEGER,
       allowNull: false
     },
-    beginTime:{
+    beginTime: {
       type: DataTypes.INTEGER,
       allowNull: true,
       defaultValue: null
     },
-    endTime:{
+    endTime: {
       type: DataTypes.INTEGER,
       allowNull: true,
       defaultValue: null

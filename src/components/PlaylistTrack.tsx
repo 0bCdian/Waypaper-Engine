@@ -17,7 +17,7 @@ import {
 } from '@dnd-kit/modifiers'
 import { useMemo, useEffect, useRef } from 'react'
 import MiniPlaylistCard from './MiniPlaylistCard'
-import playlistStore from '../hooks/useGlobalPlaylist'
+import playlistStore from '../hooks/playlistStore'
 import openImagesStore from '../hooks/useOpenImages'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useImages } from '../hooks/imagesStore'
@@ -39,10 +39,10 @@ function PlaylistTrack() {
     if (!over) return
     if (over.id !== active.id) {
       const oldindex = playlist.images.findIndex(
-        (element) => element.imageID === active.id
+        (element) => element.id === active.id
       )
       const newIndex = playlist.images.findIndex(
-        (element) => element.imageID === over?.id
+        (element) => element.id === over?.id
       )
       const newArrayOrder = arrayMove(playlist.images, oldindex, newIndex)
       movePlaylistArrayOrder(newArrayOrder)
@@ -63,7 +63,7 @@ function PlaylistTrack() {
         <MiniPlaylistCard
           isLast={lastIndex === index}
           Image={Image}
-          key={Image.imageID}
+          key={Image.id}
         />
       )
     })
@@ -201,7 +201,7 @@ function PlaylistTrack() {
       >
         <SortableContext
           strategy={horizontalListSortingStrategy}
-          items={playlist.images.map((Image) => Image.imageID)}
+          items={playlist.images.map((Image) => Image.id)}
         >
           <AnimatePresence initial={false}>
             {playlistArray.length > 0 && (

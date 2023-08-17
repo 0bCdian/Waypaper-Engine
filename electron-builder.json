@@ -16,6 +16,10 @@
       "from": "daemon",
       "to": "resources/daemon",
       "filter": ["**/*", "!**/*.ts"]
+    },
+    {
+      "from": "node_modules/better-sqlite3/",
+      "to": "resources/better-sqlite3"
     }
   ],
   "linux": {

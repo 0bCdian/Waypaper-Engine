@@ -1,6 +1,6 @@
 import { useRef } from 'react'
-import { PlaylistTypeDB } from '../../electron/types/types'
-import playlistStore from '../hooks/useGlobalPlaylist'
+import { Playlist } from '../../electron/types/types'
+import playlistStore from '../hooks/playlistStore'
 import { useForm, SubmitHandler } from 'react-hook-form'
 import { Image } from '../types/rendererTypes'
 import { useImages } from '../hooks/imagesStore'
@@ -10,7 +10,7 @@ type Input = {
 }
 type Props = {
   shouldReload: React.MutableRefObject<boolean>
-  playlistInDB: PlaylistTypeDB[]
+  playlistInDB: Playlist[]
 }
 
 const LoadPlaylistModal = ({ playlistInDB, shouldReload }: Props) => {

@@ -1,6 +1,6 @@
 import { useId, ChangeEvent } from 'react'
 import { Image } from '../types/rendererTypes'
-import playlistStore from '../hooks/useGlobalPlaylist'
+import playlistStore from '../hooks/playlistStore'
 interface ImageCardProps {
   Image: Image
 }
@@ -10,10 +10,10 @@ function ImageCard({ Image }: ImageCardProps) {
   const id = useId()
   const imageNameFilePath = `atom://${join(
     thumbnailDirectory,
-    `${Image.imageName.split('.').at(0)}.webp`
+    `${Image.name.split('.').at(0)}.webp`
   )}`
   const handleDoubleClick = () => {
-    setImage(Image.imageName)
+    setImage(Image.name)
   }
   const { addImageToPlaylist, removeImageFromPlaylist } = playlistStore()
   const handleCheckboxChange = (event: ChangeEvent) => {
@@ -45,18 +45,18 @@ function ImageCard({ Image }: ImageCardProps) {
         <img
           className='rounded-lg transform-gpu group-hover:scale-110 group-hover:object-center transition-all duration-300'
           src={imageNameFilePath}
-          alt={Image.imageName}
+          alt={Image.name}
           draggable={false}
           onError={({ currentTarget }) => {
             currentTarget.onerror = null
             currentTarget.className =
               'rounded-lg min-w-full max-w-[300px] object-fill'
             currentTarget.src =
-              'atom://' + join(imagesDirectory, Image.imageName)
+              'atom://' + join(imagesDirectory, Image.name)
           }}
         />
         <p className='absolute rounded-b-lg bottom-0 pl-2 p-2 w-full text-lg text-justify text-ellipsis overflow-hidden bg-black bg-opacity-75 font-medium truncate '>
-          {Image.imageName}
+          {Image.name}
         </p>
       </div>
     </div>

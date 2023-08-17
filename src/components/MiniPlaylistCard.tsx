@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import { CSS } from '@dnd-kit/utilities'
 import { useEffect, useRef } from 'react'
 import { Image } from '../types/rendererTypes'
-import playlistStore from '../hooks/useGlobalPlaylist'
+import playlistStore from '../hooks/playlistStore'
 
 const { join, thumbnailDirectory } = window.API_RENDERER
 
@@ -18,10 +18,10 @@ function MiniPlaylistCard({
   const imageRef = useRef<HTMLImageElement>(null)
   const imageSrc =
     'atom://' +
-    join(thumbnailDirectory, Image.imageName.split('.').at(0) + '.webp')
+    join(thumbnailDirectory, Image.name.split('.').at(0) + '.webp')
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({
-      id: Image.imageID,
+      id: Image.id,
       transition: {
         duration: 250,
         easing: 'cubic-bezier(0.65, 1, 0, 1)'
@@ -74,7 +74,7 @@ function MiniPlaylistCard({
           {...attributes}
           {...listeners}
           src={imageSrc}
-          alt={Image.imageName}
+          alt={Image.name}
           className='rounded-lg cursor-move'
           ref={imageRef}
         />

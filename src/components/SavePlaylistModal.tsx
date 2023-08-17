@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useForm, SubmitHandler, FieldValues } from 'react-hook-form'
-import playlistStore from '../hooks/useGlobalPlaylist'
+import playlistStore from '../hooks/playlistStore'
 
 const { savePlaylist } = window.API_RENDERER
 

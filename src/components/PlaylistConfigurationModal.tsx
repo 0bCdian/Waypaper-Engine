@@ -1,6 +1,6 @@
 import { useForm, SubmitHandler } from 'react-hook-form'
 import { useRef, useEffect } from 'react'
-import playlistStore from '../hooks/useGlobalPlaylist'
+import playlistStore from '../hooks/playlistStore'
 import {
   ORDER_TYPES,
   PLAYLIST_TYPES,
@@ -9,7 +9,7 @@ import {
 import { toMS, toHoursAndMinutes } from '../utils/utilities'
 type Inputs = {
   playlistType: PLAYLIST_TYPES
-  order: ORDER_TYPES
+  order: ORDER_TYPES | null
   hours: string | null
   minutes: string | null
   showTransition: boolean
@@ -27,29 +27,49 @@ const PlaylistConfigurationModal = ({
     containerRef.current?.close()
   }
   const onSubmit: SubmitHandler<Inputs> = (data) => {
-    if (data.playlistType !== PLAYLIST_TYPES.TIMER) {
-      const configuration = {
-        playlistType: data.playlistType,
-        order: data.order,
-        showTransition: data.showTransition,
-        interval: null
-      }
-      setConfiguration(configuration)
-      closeModal()
+    switch (data.playlistType) {
+      case PLAYLIST_TYPES.TIMER:
+        if (data.hours && data.minutes) {
+          const interval = toMS(parseInt(data.hours), parseInt(data.minutes))
+          const configuration = {
+            playlistType: data.playlistType,
+            order: data.order,
+            showTransition: data.showTransition,
+            interval: interval
+          }
+          setConfiguration(configuration)
+        } else {
+          console.error('Hours and minutes are required')
+        }
+        break
+      case PLAYLIST_TYPES.TIME_OF_DAY:
+        setConfiguration({
+          playlistType: data.playlistType,
+          order: null,
+          showTransition: data.showTransition,
+          interval: null
+        })
+        break
+      case PLAYLIST_TYPES.DAY_OF_WEEK:
+        setConfiguration({
+          playlistType: data.playlistType,
+          order: null,
+          showTransition: data.showTransition,
+          interval: null
+        })
+        break
+      case PLAYLIST_TYPES.NEVER:
+        setConfiguration({
+          playlistType: data.playlistType,
+          order: data.order,
+          showTransition: data.showTransition,
+          interval: null
+        })
+        break
+      default:
+        console.error('Invalid playlist type')
     }
-    if (data.hours && data.minutes) {
-      const interval = toMS(parseInt(data.hours), parseInt(data.minutes))
-      const configuration = {
-        playlistType: data.playlistType,
-        order: data.order,
-        showTransition: data.showTransition,
-        interval: interval
-      }
-      setConfiguration(configuration)
-      closeModal()
-    } else {
-      console.error('Hours and minutes are required')
-    }
+    closeModal()
   }
   const hours = watch('hours')
   const minutes = watch('minutes')
@@ -58,7 +78,7 @@ const PlaylistConfigurationModal = ({
       const parsedHours = parseInt(hours)
       const parsedMinutes = parseInt(minutes)
       if (parsedMinutes === 60) {
-        setValue('hours', (hours + 1).toString())
+        setValue('hours', (parsedHours + 1).toString())
         setValue('minutes', '0')
       }
       if (parsedMinutes === 0 && parsedHours === 0) {
@@ -145,21 +165,26 @@ const PlaylistConfigurationModal = ({
             </div>
           </div>
         )}
-        <div className='divider'></div>
-        <div className='flex justify-between items-baseline '>
-          <label htmlFor='order' className='label text-3xl font-semibold'>
-            Order
-          </label>
-          <select
-            className='select select-primary text-lg w-2/5 rounded-lg cursor-default'
-            {...register('order', { required: true })}
-            defaultValue={ORDER_TYPES.ORDERED}
-            id='order'
-          >
-            <option value={ORDER_TYPES.RANDOM}>Random</option>
-            <option value={ORDER_TYPES.ORDERED}>Ordered</option>
-          </select>
-        </div>
+        {watch('playlistType') !== PLAYLIST_TYPES.TIME_OF_DAY &&
+          watch('playlistType') !== PLAYLIST_TYPES.DAY_OF_WEEK && (
+            <>
+              <div className='divider'></div>
+              <div className='flex justify-between items-baseline '>
+                <label htmlFor='order' className='label text-3xl font-semibold'>
+                  Order
+                </label>
+                <select
+                  className='select select-primary text-lg w-2/5 rounded-lg cursor-default'
+                  {...register('order', { required: true })}
+                  defaultValue={ORDER_TYPES.ORDERED}
+                  id='order'
+                >
+                  <option value={ORDER_TYPES.RANDOM}>Random</option>
+                  <option value={ORDER_TYPES.ORDERED}>Ordered</option>
+                </select>
+              </div>
+            </>
+          )}
         <div className='divider'></div>
         <div className='flex justify-between items-baseline'>
           <label

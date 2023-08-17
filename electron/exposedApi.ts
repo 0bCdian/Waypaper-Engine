@@ -1,7 +1,7 @@
 import { ipcRenderer } from 'electron'
 import { appDirectories } from './globals/globals'
-import { imagesObject } from './types/types'
-import { playlist } from '../src/types/rendererTypes'
+import { imagesObject, Playlist } from './types/types'
+import { rendererPlaylist } from '../src/types/rendererTypes'
 import { join } from 'node:path'
 
 export const ELECTRON_API = {
@@ -15,13 +15,13 @@ export const ELECTRON_API = {
   setImage: (image: string) => {
     ipcRenderer.send('setImage', image)
   },
-  savePlaylist: (playlistObject: playlist) => {
+  savePlaylist: (playlistObject: rendererPlaylist) => {
     ipcRenderer.send('savePlaylist', playlistObject)
   },
   startPlaylist: (playlistName: string) => {
     ipcRenderer.send('startPlaylist', playlistName)
   },
-  queryPlaylists: async () => {
+  queryPlaylists: async (): Promise<Playlist[]> => {
     return await ipcRenderer.invoke('queryPlaylists')
   },
   stopPlaylist: async () => {

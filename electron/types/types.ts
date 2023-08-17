@@ -5,20 +5,19 @@ export interface imagesObject {
   fileNames: string[]
 }
 
-export interface imageModel {
+export type Image = {
   id: number
   imageName: string
+  isChecked: boolean | 1 | 0
 }
 
-export type PlaylistTypeDB = {
+export type Playlist = {
   id: number
   name: string
-  images: string
   type: PLAYLIST_TYPES
-  hours: number
-  minutes: number
-  order: ORDER_TYPES
-  showTransition: boolean
+  interval: number | null
+  order: ORDER_TYPES | null
+  showTransition: boolean | 1 | 0
   currentImageIndex: number
 }
 
@@ -52,4 +51,10 @@ export type PlaylistControllerType = {
   nextImage: () => void
   previousImage: () => void
   killDaemon: () => void
+}
+
+export enum dbTables {
+  Images = 'Images',
+  Playlists = 'Playlists',
+  imagesInPlaylist = 'imagesInPlaylist'
 }

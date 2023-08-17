@@ -87,13 +87,13 @@ function imagesSource() {
   }, [])
   const sortedImages = useMemo(() => {
     const shallowCopy = [...imagesArray]
-    return shallowCopy.sort((a, b) => (a.imageID > b.imageID ? -1 : 1))
+    return shallowCopy.sort((a, b) => (a.id > b.id ? -1 : 1))
   }, [imagesArray])
 
   const filteredImages = useMemo(() => {
     const shallowCopy = [...sortedImages]
     return shallowCopy.filter((image) =>
-      image.imageName
+      image.name
         .toLocaleLowerCase()
         .includes(searchFilter.toLocaleLowerCase())
     )

@@ -1,7 +1,9 @@
 export interface Image {
-  imageID: number
-  imageName: string
+  id: number
+  name: string
   isChecked: boolean
+  beginTime?: number
+  endTime?: number
 }
 
 export interface imagesObject {
@@ -31,12 +33,11 @@ export enum PLAYLIST_TYPES {
 export type configuration = {
   playlistType: PLAYLIST_TYPES
   interval: number | null
-  order: ORDER_TYPES
+  order: ORDER_TYPES | null
   showTransition: boolean
 }
 
-
-export type playlist = {
+export type rendererPlaylist = {
   images: Image[]
   configuration: configuration
   name: string
