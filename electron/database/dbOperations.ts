@@ -2,7 +2,6 @@ import db from './db'
 import { dbTables, Image, Playlist, imageInPlaylist } from '../types/types'
 import {
   rendererPlaylist,
-  PLAYLIST_TYPES,
   Image as rendererImage
 } from '../../src/types/rendererTypes'
 
@@ -18,7 +17,7 @@ export function testDB() {
   }
 }
 
-export function readImagesFromDB() {
+export function readAllImagesInDB() {
   const selectImages = db.prepare(`SELECT * FROM ${dbTables.Images}`)
   try {
     const images = selectImages.all() as Image[]
@@ -29,7 +28,7 @@ export function readImagesFromDB() {
   }
 }
 
-export function readPlaylistsFromDB() {
+export function readAllPlaylistsInDB() {
   const selectPlaylists = db.prepare(`SELECT * FROM ${dbTables.Playlists}`)
   try {
     const playlists = selectPlaylists.all() as Playlist[]
@@ -59,107 +58,39 @@ export function storeImagesInDB(images: string[]) {
   }
 }
 
-export function storePlaylistsInDB(playlist: rendererPlaylist) {
-  switch (playlist.configuration.playlistType) {
-    case PLAYLIST_TYPES.NEVER:
-      try {
-        const insertPlaylist = db.prepare(
-          `INSERT INTO ${dbTables.Playlists} (name,type,showAnimations,"order") VALUES (?,?,?,?)`
-        )
-        insertPlaylist.run(
-          playlist.name,
-          playlist.configuration.playlistType,
-          playlist.configuration.showTransition === true ? 1 : 0,
-          playlist.configuration.order
-        )
-        const selectInsertedPlaylist = db.prepare(
-          `SELECT id FROM ${dbTables.Playlists} WHERE id >= last_insert_rowid();`
-        )
-        const insertedPlaylist = selectInsertedPlaylist.get().id as number
-        insertImagesInPlaylist(insertedPlaylist, playlist.images)
-        return insertedPlaylist
-      } catch (error) {
-        console.error(error)
-        return null
-      }
-    case PLAYLIST_TYPES.TIMER:
-      try {
-        const insertPlaylist = db.prepare(
-          `INSERT INTO Playlists (name, type, interval, showAnimations, "order") VALUES (?, ?, ?, ?, ?)`
-        )
-        if (!playlist.configuration.interval || !playlist.configuration.order) {
-          console.error('Interval is null, or order is null')
-          return null
-        }
-        insertPlaylist.run(
-          playlist.name,
-          playlist.configuration.playlistType,
-          playlist.configuration.interval,
-          playlist.configuration.showTransition === true ? 1 : 0,
-          playlist.configuration.order
-        )
-        const selectInsertedPlaylist = db.prepare(
-          `SELECT id FROM ${dbTables.Playlists} WHERE id >= last_insert_rowid();`
-        )
-        const insertedPlaylist = selectInsertedPlaylist.get().id as number
-        console.log('Inserted playlist: ', insertedPlaylist)
-        insertImagesInPlaylist(insertedPlaylist, playlist.images)
-        return insertedPlaylist
-      } catch (error) {
-        console.error(error)
-        return null
-      }
-    case PLAYLIST_TYPES.TIME_OF_DAY:
-      try {
-        const insertPlaylist = db.prepare(
-          `INSERT INTO ${dbTables.Playlists} (name,type,showAnimations) VALUES (?,?,?)`
-        )
-        insertPlaylist.run(
-          playlist.name,
-          playlist.configuration.playlistType,
-          playlist.configuration.showTransition
-        )
-        const selectInsertedPlaylist = db.prepare(
-          `SELECT id FROM ${dbTables.Playlists} WHERE id >= last_insert_rowid();`
-        )
-        const insertedPlaylist = selectInsertedPlaylist.get().id as number
-        insertImagesInPlaylist(insertedPlaylist, playlist.images)
-        return insertedPlaylist
-      } catch (error) {
-        console.error(error)
-        return null
-      }
-    case PLAYLIST_TYPES.DAY_OF_WEEK:
-      try {
-        const insertPlaylist = db.prepare(
-          `INSERT INTO ${dbTables.Playlists} (name,type,showAnimations) VALUES (?,?,?)`
-        )
-        insertPlaylist.run(
-          playlist.name,
-          playlist.configuration.playlistType,
-          playlist.configuration.showTransition
-        )
-        const selectInsertedPlaylist = db.prepare(
-          `SELECT id FROM ${dbTables.Playlists} WHERE id >= last_insert_rowid();`
-        )
-        const insertedPlaylist = selectInsertedPlaylist.get().id as number
-        insertImagesInPlaylist(insertedPlaylist, playlist.images)
-        return insertedPlaylist
-      } catch (error) {
-        console.error(error)
-        return null
-      }
+export function storePlaylistInDB(playlist: rendererPlaylist) {
+  try {
+    const insertPlaylist = db.prepare(
+      `INSERT INTO Playlists (name, type, interval, showAnimations, "order") VALUES (?, ?, ?, ?, ?)`
+    )
+    insertPlaylist.run(
+      playlist.name,
+      playlist.configuration.playlistType,
+      playlist.configuration.interval ?? null,
+      playlist.configuration.showTransition === true ? 1 : 0,
+      playlist.configuration.order ?? null
+    )
+    const selectInsertedPlaylist = db.prepare(
+      `SELECT id FROM ${dbTables.Playlists} WHERE id >= last_insert_rowid();`
+    )
+    const insertedPlaylist = selectInsertedPlaylist.get().id as number
+    insertImagesInPlaylistImagesTable(insertedPlaylist, playlist.images)
+    return insertedPlaylist
+  } catch (error) {
+    console.error(error)
+    return null
   }
 }
 
-function insertImagesInPlaylist(playlistID: number, images: rendererImage[]) {
+function insertImagesInPlaylistImagesTable(
+  playlistID: number,
+  images: rendererImage[]
+) {
   try {
     const insertImagesInPlaylist = db.prepare(
       `INSERT INTO ${dbTables.imagesInPlaylist} (playlistId, imageId, indexInPlaylist, beginTime, endTime) VALUES (?,?,?,?,?)`
     )
-    console.log('Images: ', images)
     images.forEach((image, index) => {
-      console.log('Image: ', image)
       insertImagesInPlaylist.run(
         playlistID,
         image.id,
@@ -183,10 +114,9 @@ export function getImagesInPlaylist(playlistID: number) {
     ) as imageInPlaylist[]
     const imagesArray = imagesInPlaylist
       .map((image) => {
-        return getImagesFromID(image.imageID)
+        return getImageNameFromID(image.imageID)
       })
       .filter((image) => image !== null) as string[]
-    console.log('Images array: ', imagesArray)
     return imagesArray
   } catch (error) {
     console.error(error)
@@ -194,7 +124,7 @@ export function getImagesInPlaylist(playlistID: number) {
   }
 }
 
-function getImagesFromID(imageID: number) {
+function getImageNameFromID(imageID: number) {
   try {
     const selectImage = db.prepare(
       `SELECT name FROM ${dbTables.Images} WHERE id = ?`
@@ -204,5 +134,71 @@ function getImagesFromID(imageID: number) {
   } catch (error) {
     console.error(error)
     return null
+  }
+}
+export function checkIfPlaylistExists(playlistName: string) {
+  try {
+    const selectPlaylist = db.prepare(
+      `SELECT * FROM ${dbTables.Playlists} WHERE name = ?`
+    )
+    const playlist = selectPlaylist.get(playlistName)
+    return playlist !== undefined
+  } catch (error) {
+    console.error(error)
+    return false
+  }
+}
+export function updatePlaylistInDB(playlist: rendererPlaylist) {
+  try {
+    const updatePlaylist = db.prepare(
+      `UPDATE ${dbTables.Playlists} SET type=? , interval=? , showAnimations=? ,"order"=? WHERE name=?`
+    )
+    updatePlaylist.run(
+      playlist.configuration.playlistType,
+      playlist.configuration.interval,
+      playlist.configuration.showTransition === true ? 1 : 0,
+      playlist.configuration.order,
+      playlist.name
+    )
+    const selectInsertedPlaylist = db.prepare(
+      `SELECT id FROM ${dbTables.Playlists} WHERE id >= last_insert_rowid();`
+    )
+    const insertedPlaylist = selectInsertedPlaylist.get().id as number
+    updateImagesInPlaylist(insertedPlaylist, playlist.images)
+    return insertedPlaylist
+  } catch (error) {
+    console.error(error)
+    return null
+  }
+}
+function updateImagesInPlaylist(playlistID: number, images: rendererImage[]) {
+  try {
+    const deleteAllImages = db.prepare(
+      `DELETE FROM ${dbTables.imagesInPlaylist} WHERE playlistID=?`
+    )
+    deleteAllImages.run(playlistID)
+    insertImagesInPlaylistImagesTable(playlistID, images)
+  } catch (error) {
+    console.error(error)
+  }
+}
+export function deletePlaylistInDB(playlistName: string) {
+  try {
+    const deletePlaylist = db.preprare(
+      `DELETE FROM ${dbTables.Playlists} WHERE name=?`
+    )
+    deletePlaylist.run(playlistName)
+  } catch (error) {
+    console.error(error)
+    console.error('Failed to delete playlist from DB')
+  }
+}
+export function deleteImageInDB(imageID: number) {
+  try {
+    const deleteImage = db.prepare(`DELETE FROM ${dbTables.Images} WHERE id=?`)
+    deleteImage.run(imageID)
+  } catch (error) {
+    console.error(error)
+    console.error('Failed to delete image from DB')
   }
 }

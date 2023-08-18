@@ -11,7 +11,11 @@ import {
   initWaypaperDaemon,
   checkCacheOrCreateItIfNotExists
 } from './appFunctions'
-import { getImagesInPlaylist, readImagesFromDB, readPlaylistsFromDB } from './database/dbOperations'
+import {
+  getImagesInPlaylist,
+  readAllImagesInDB,
+  readAllPlaylistsInDB
+} from './database/dbOperations'
 import { devMenu, prodMenu, trayMenu } from './globals/globals'
 import { iconPath } from './binaries'
 import { store } from './database/configStorage'
@@ -126,8 +130,8 @@ app
 
 ipcMain.handle('openFiles', openAndReturnImagesObject)
 ipcMain.handle('handleOpenImages', copyImagesToCacheAndProcessThumbnails)
-ipcMain.handle('queryImages', readImagesFromDB)
-ipcMain.handle('queryPlaylists', readPlaylistsFromDB)
+ipcMain.handle('queryImages', readAllImagesInDB)
+ipcMain.handle('queryPlaylists', readAllPlaylistsInDB)
 ipcMain.handle('getPlaylistImages', (_event, playlistID: number) => {
   return getImagesInPlaylist(playlistID)
 })

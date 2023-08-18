@@ -14,7 +14,12 @@ import { promisify } from 'node:util'
 import { daemonLocation } from './binaries'
 import { join, basename } from 'node:path'
 import { createConnection } from 'node:net'
-import { storeImagesInDB, storePlaylistsInDB } from './database/dbOperations'
+import {
+  storeImagesInDB,
+  storePlaylistInDB,
+  checkIfPlaylistExists,
+  updatePlaylistInDB
+} from './database/dbOperations'
 
 const execPomisified = promisify(exec)
 function openImagesFromFilePicker() {
@@ -206,9 +211,10 @@ export async function savePlaylist(
   playlistObject: rendererPlaylist
 ) {
   try {
-    const playlistAdded = storePlaylistsInDB(playlistObject)
-    if (playlistAdded !== null) {
-      console.log('Playlist id:', playlistAdded)
+    if (checkIfPlaylistExists(playlistObject.name)) {
+      updatePlaylistInDB(playlistObject)
+    } else {
+      storePlaylistInDB(playlistObject)
     }
   } catch (error) {
     console.error(error)
