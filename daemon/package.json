@@ -4,7 +4,7 @@
   "description": "",
   "main": "daemon.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "compile": "tsc ./daemon.ts"
   },
   "keywords": [],
   "author": "",
@@ -13,6 +13,7 @@
     "better-sqlite3": "^8.5.1"
   },
   "devDependencies": {
-    "@types/better-sqlite3": "^7.6.4"
+    "@types/better-sqlite3": "^7.6.4",
+    "typescript": "^5.1.6"
   }
 }
