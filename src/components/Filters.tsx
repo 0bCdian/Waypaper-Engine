@@ -13,8 +13,9 @@ function Filters() {
     }
   }
   useDebounce(() => setSearchFilter(inputSearch), 500, [inputSearch])
+
   return (
-    <div className='container w-[100%] md:w-[15%] my-2 mt-5'>
+    <div className='container w-[100%] md:w-[10%] hover:'>
       <input
         data-theme='retro'
         onChange={onTextChange}

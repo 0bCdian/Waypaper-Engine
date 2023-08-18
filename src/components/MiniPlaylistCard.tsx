@@ -47,7 +47,7 @@ function MiniPlaylistCard({
         animate={{ scale: 1 }}
         transition={{ duration: 0.2 }}
         exit={{ scale: 0 }}
-        className='w-32 m-1 mb-7 shrink-0 rounded-lg shadow-xl '
+        className='w-32 mx-1 shrink-0 rounded-lg shadow-xl '
       >
         <div className='relative '>
           <button

@@ -2,7 +2,8 @@ import db from './db'
 import { dbTables, Image, Playlist, imageInPlaylist } from '../types/types'
 import {
   rendererPlaylist,
-  Image as rendererImage
+  Image as rendererImage,
+  ORDER_TYPES
 } from '../../src/types/rendererTypes'
 
 export function testDB() {
@@ -59,6 +60,9 @@ export function storeImagesInDB(images: string[]) {
 }
 
 export function storePlaylistInDB(playlist: rendererPlaylist) {
+  if (playlist.configuration.order === ORDER_TYPES.RANDOM) {
+    playlist.images.sort(() => Math.random() - 0.5)
+  }
   try {
     const insertPlaylist = db.prepare(
       `INSERT INTO Playlists (name, type, interval, showAnimations, "order") VALUES (?, ?, ?, ?, ?)`

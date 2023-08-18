@@ -41,8 +41,8 @@ const PaginatedGalleryNav: FC<PaginatedGalleryNavProps> = ({
     buttons.push(
       <button
         key={i}
-        className={`join-item btn btn-lg rounded-lg ${
-          currentPage === i ? 'btn-active' : ''
+        className={`join-item font-bold btn-lg btn duration-500 ${
+          currentPage === i ? 'btn-active scale-110' : ''
         }`}
         onClick={() => setCurrentPage(i)}
       >
@@ -51,7 +51,7 @@ const PaginatedGalleryNav: FC<PaginatedGalleryNavProps> = ({
     )
   }
   return (
-    <div className='join no-animation self-center' style={{ width: 'fit-content' }}>
+    <div className='join self-center mt-5' style={{ width: 'fit-content' }}>
       <button
         onClick={previousPage}
         className='join-item btn btn-neutral btn-lg rounded-lg'

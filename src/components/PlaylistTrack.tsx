@@ -79,10 +79,9 @@ function PlaylistTrack() {
       clearPlaylist()
     }
   }, [playlist.images])
-
   return (
-    <>
-      <div className='flex justify-between gap-3 items-center my-2'>
+    <div className='flex flex-col gap-2'>
+      <div className='flex justify-between items-center'>
         <div className='flex gap-5 items-center '>
           <span className='text-4xl font-bold'>
             {playlistArray.length > 0
@@ -210,7 +209,7 @@ function PlaylistTrack() {
                 transition={{ duration: 0.25, ease: 'easeInOut' }}
                 animate={{ opacity: 1, scale: 1 }}
                 exit={{ y: 300, opacity: 0 }}
-                className='flex rounded-lg overflow-y-clip  overflow-x-scroll  scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-thumb-neutral-300 py-3 mb-1'
+                className='flex rounded-lg overflow-y-clip max-w-[85vw] overflow-x-scroll scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-thumb-neutral-300'
               >
                 <AnimatePresence initial={false}>
                   {playlistArray}
@@ -220,7 +219,7 @@ function PlaylistTrack() {
           </AnimatePresence>
         </SortableContext>
       </DndContext>
-    </>
+    </div>
   )
 }
 
