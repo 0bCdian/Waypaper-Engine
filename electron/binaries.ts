@@ -12,7 +12,7 @@ const daemon = app.isPackaged
 const nativeBinding = app.isPackaged
   ? join(
       resourcesPath,
-      '/node_modules/better-sqlite3/build/Release/better_sqlite3.node'
+      '/better-sqlite3/build/Release/better_sqlite3.node'
     )
   : join(
       app.getAppPath(),

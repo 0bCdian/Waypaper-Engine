@@ -14,7 +14,7 @@ import { getPlaylistFromDB, updatePlaylistCurrentIndex } from './dbOperations'
 
 function isWaypaperDaemonRunning() {
   try {
-    const stdout = execSync('pidof wpm-daemon', { encoding: 'utf-8' })
+    const stdout = execSync('pidof wpe-daemon', { encoding: 'utf-8' })
     console.log('Waypaper Engine daemon already running', stdout)
 
     return true

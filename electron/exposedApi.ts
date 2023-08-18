@@ -1,7 +1,7 @@
 import { ipcRenderer } from 'electron'
 import { appDirectories } from './globals/globals'
 import { imagesObject, Playlist } from './types/types'
-import { rendererPlaylist, Image } from '../src/types/rendererTypes'
+import { rendererPlaylist } from '../src/types/rendererTypes'
 import { join } from 'node:path'
 
 export const ELECTRON_API = {
