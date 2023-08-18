@@ -1,6 +1,7 @@
 import { join, resolve } from 'node:path'
 import { app } from 'electron'
 import { resourcesPath } from 'node:process'
+import { appDirectories } from './globals/globals'
 
 const iconsPath = app.isPackaged
   ? join(resourcesPath, './icons')
@@ -17,9 +18,7 @@ const nativeBinding = app.isPackaged
       app.getAppPath(),
       '/node_modules/better-sqlite3/build/Release/better_sqlite3.node'
     )
-const dbPath = app.isPackaged
-  ? join(app.getAppPath(), '../', '/waypaper.sqlite3')
-  : join(app.getAppPath(), 'waypaper.sqlite3')
+const dbPath = join(appDirectories.mainDir, 'images_database.sqlite3')
 
 export const iconPath = resolve(join(iconsPath))
 export const daemonLocation = resolve(join(daemon))

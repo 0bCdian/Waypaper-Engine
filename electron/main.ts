@@ -9,7 +9,6 @@ import {
   PlaylistController,
   isSwwwDaemonRunning,
   initWaypaperDaemon,
-  checkCacheOrCreateItIfNotExists
 } from './appFunctions'
 import {
   getImagesInPlaylist,
@@ -119,7 +118,6 @@ function loadDeveloperTools() {
 app
   .whenReady()
   .then(async () => {
-    checkCacheOrCreateItIfNotExists()
     createWindow()
     createMenu()
     createTray()

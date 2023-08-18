@@ -1,7 +1,8 @@
 //@ts-ignore
-const Database = require('better-sqlite3')
+import { checkCacheOrCreateItIfNotExists } from '../appFunctions'
 import { nativeBindingLocation, dbLocation } from '../binaries'
-
+const Database = require('better-sqlite3')
+checkCacheOrCreateItIfNotExists()
 const db = Database(dbLocation, {
   nativeBinding: nativeBindingLocation,
   verbose: console.log

@@ -1,8 +1,13 @@
 const Database = require('better-sqlite3')
 import { dbTables, PlaylistDB, imageInPlaylist } from './typesDaemon'
-const db = Database('/home/obsy/dev/electron-vite-project/waypaper.sqlite3', {
-  verbose: console.log
-})
+import { homedir } from 'node:os'
+import { join } from 'node:path'
+const db = Database(
+  join(homedir(), '.waypaper_engine', 'images_database.sqlite3'),
+  {
+    verbose: console.log
+  }
+)
 
 export function getPlaylistFromDB(playlistName: string) {
   try {
@@ -50,7 +55,10 @@ function getImageNameFromID(imageID: number) {
   }
 }
 
-export function updatePlaylistCurrentIndex(imageIndex: number, playlistName: string) {
+export function updatePlaylistCurrentIndex(
+  imageIndex: number,
+  playlistName: string
+) {
   try {
     const updatePlaylist = db.prepare(
       `UPDATE ${dbTables.Playlists} SET currentImageIndex = ? WHERE name = ?`
