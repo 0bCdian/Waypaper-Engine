@@ -26,3 +26,4 @@ release
 *.sw?
 daemon/node_modules
 daemon/*.js
+waypaper.sqlite3
