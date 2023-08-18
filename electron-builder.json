@@ -1,6 +1,6 @@
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
-  "appId": "WaypaperManager",
+  "appId": "waypaper.engine",
   "asar": true,
   "directories": {
     "output": "release/${version}"
@@ -25,10 +25,10 @@
   "linux": {
     "artifactName": "${productName}.${ext}",
     "category": "Utility",
-    "executableName": "waypaper-manager",
+    "executableName": "waypaper-engine",
     "desktop": {
-      "Name": "Waypaper Manager",
-      "Comment": "Waypaper Manager",
+      "Name": "Waypaper Engine",
+      "Comment": "Waypaper Engine",
       "Terminal": "false",
       "Type": "Application",
       "Icon": "resources/icons/app.png"

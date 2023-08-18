@@ -15,11 +15,11 @@ import { getPlaylistFromDB, updatePlaylistCurrentIndex } from './dbOperations'
 function isWaypaperDaemonRunning() {
   try {
     const stdout = execSync('pidof wpm-daemon', { encoding: 'utf-8' })
-    console.log('Waypaper daemon already running', stdout)
+    console.log('Waypaper Engine daemon already running', stdout)
 
     return true
   } catch (_err) {
-    console.log('Waypaper daemon not running')
+    console.log('Waypaper Engine daemon not running')
     return false
   }
 }
@@ -29,14 +29,14 @@ if (isWaypaperDaemonRunning()) {
   process.exit(1)
 }
 
-const IMAGES_DIR = join(homedir(), '.waypaper', 'images')
-const SOCKET_PATH = '/tmp/waypaper_daemon.sock'
+const IMAGES_DIR = join(homedir(), '.waypaper_engine', 'images')
+const SOCKET_PATH = '/tmp/waypaper_engine_daemon.sock'
 const setImage = (swwwOptions: string[], imageName: string) => {
   notifyImageSet(imageName, join(IMAGES_DIR, imageName))
   execSync(`swww img ${swwwOptions.join(' ')} "${join(IMAGES_DIR, imageName)}"`)
 }
 function notifyImageSet(imageName: string, imagePath: string) {
-  const notifySend = `notify-send -u low -t 2000 -i "${imagePath}" -a "Waypaper" "Waypaper" "Setting image: ${imageName}"`
+  const notifySend = `notify-send -u low -t 2000 -i "${imagePath}" -a "Waypaper Engine" "Waypaper Engine" "Setting image: ${imageName}"`
   exec(notifySend, (err, _stdout, _stderr) => {
     if (err) {
       console.error(err)
@@ -59,7 +59,7 @@ function notifyPlaylistState(
     case PlaylistStates.STOPPED:
       message = `Stopping playlist: ${playlistName}`
   }
-  const notifySend = `notify-send -u low -t 2000 -i "waypaper" -a "Waypaper" "Waypaper" "${message}"`
+  const notifySend = `notify-send -u low -t 2000 -a "Waypaper Engine" "Waypaper Engine" "${message}"`
   exec(notifySend, (err, _stdout, _stderr) => {
     if (err) {
       console.error(err)
@@ -67,7 +67,7 @@ function notifyPlaylistState(
   })
 }
 function notify(message: string) {
-  const notifySend = `notify-send -u normal -t 2000 -i "waypaper" -a "Waypaper" "Waypaper" "${message}"`
+  const notifySend = `notify-send -u normal -t 2000 -a "Waypaper Engine" "Waypaper Engine" "${message}"`
   exec(notifySend, (err, _stdout, _stderr) => {
     if (err) {
       console.error(err)
@@ -224,7 +224,7 @@ const Playlist: PlaylistInterface = {
 }
 
 async function daemonInit() {
-  process.title = 'wpm-daemon'
+  process.title = 'wpe-daemon'
   async function daemonManager(data: Buffer) {
     const message: message = JSON.parse(data.toString())
     switch (message.action) {

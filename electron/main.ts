@@ -24,11 +24,11 @@ import installExtension, {
 } from 'electron-devtools-assembler'
 if (process.argv[1] === '--daemon' || process.argv[3] === '--daemon') {
   initWaypaperDaemon()
-  app.exit()
+  app.exit(1)
 }
 const gotTheLock = app.requestSingleInstanceLock()
 if (!gotTheLock) {
-  app.exit()
+  app.exit(1)
 } else {
   app.on('second-instance', () => {
     if (win) {
@@ -56,6 +56,7 @@ function createWindow() {
     minHeight: 560,
     autoHideMenuBar: true,
     show: false,
+    backgroundColor: '#3C3836',
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
       sandbox: false
@@ -102,7 +103,7 @@ function createTray() {
   tray = new Tray(join(iconPath, 'tray.png'))
   const trayContextMenu = trayMenu({ app, PlaylistController })
   tray.setContextMenu(Menu.buildFromTemplate(trayContextMenu))
-  tray.setToolTip('Waypaper Manager')
+  tray.setToolTip('Waypaper Engine')
   tray.on('click', () => {
     win?.isVisible() ? win.hide() : win?.show()
   })

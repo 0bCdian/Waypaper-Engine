@@ -5,7 +5,7 @@ import {
   appDirectories,
   swwwDefaults,
   validImageExtensions,
-  WAYPAPER_SOCKET_PATH
+  WAYPAPER_ENGINE_SOCKET_PATH
 } from './globals/globals'
 import { fileList, imagesObject, ACTIONS, message } from './types/types'
 import { rendererPlaylist } from '../src/types/rendererTypes'
@@ -182,7 +182,7 @@ export async function isSwwwDaemonRunning() {
       isSwwwSocketClean()
       execPomisified('swww init')
     } else {
-      console.log('Daemon already running')
+      console.log('Swww Daemon already running')
     }
   })
 }
@@ -223,11 +223,11 @@ export async function savePlaylist(
 }
 async function isWaypaperDaemonRunning() {
   try {
-    const { stdout } = await execPomisified('pidof wpm-daemon')
-    console.log('Waypaper daemon already running', stdout)
+    const { stdout } = await execPomisified('pidof wpe-daemon')
+    console.log('Waypaper Engine daemon already running', stdout)
     return true
   } catch (_err) {
-    console.log('Waypaper daemon not running')
+    console.log('Waypaper Engine not running')
     return false
   }
 }
@@ -242,7 +242,7 @@ export async function initWaypaperDaemon() {
 }
 
 async function playlistConnectionBridge(message: message) {
-  const connection = createConnection(WAYPAPER_SOCKET_PATH)
+  const connection = createConnection(WAYPAPER_ENGINE_SOCKET_PATH)
   connection.write(JSON.stringify(message))
 }
 

@@ -3,9 +3,9 @@ import { join } from 'node:path'
 import { type BrowserWindow, type App } from 'electron'
 import { PlaylistControllerType } from '../types/types'
 const systemHome = homedir()
-const cacheDirectoryRoot = join(systemHome, '.cache', 'waypaper')
+const cacheDirectoryRoot = join(systemHome, '.cache', 'waypaper_engine')
 const cacheThumbnailsDirectory = join(cacheDirectoryRoot, 'thumbnails')
-const mainDirectory = join(systemHome, '.waypaper')
+const mainDirectory = join(systemHome, '.waypaper_engine')
 const imagesDir = join(mainDirectory, 'images')
 
 export const appDirectories = {
@@ -15,7 +15,7 @@ export const appDirectories = {
   mainDir: mainDirectory,
   imagesDir: imagesDir
 }
-export const WAYPAPER_SOCKET_PATH = '/tmp/waypaper_daemon.sock'
+export const WAYPAPER_ENGINE_SOCKET_PATH = '/tmp/waypaper_engine_daemon.sock'
 export const swwwDefaults = [
   '--transition-fps',
   '60',
