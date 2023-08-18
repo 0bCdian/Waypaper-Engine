@@ -223,7 +223,7 @@ export async function savePlaylist(
 }
 async function isWaypaperDaemonRunning() {
   try {
-    const { stdout } = await execPomisified('pidof wp-daemon')
+    const { stdout } = await execPomisified('pidof wpm-daemon')
     console.log('Waypaper daemon already running', stdout)
     return true
   } catch (_err) {

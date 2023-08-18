@@ -10,7 +10,9 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "sequelize": "^6.32.1",
-    "sqlite3": "^5.1.6"
+    "better-sqlite3": "^8.5.1"
+  },
+  "devDependencies": {
+    "@types/better-sqlite3": "^7.6.4"
   }
 }

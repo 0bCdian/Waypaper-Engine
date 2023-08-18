@@ -160,7 +160,9 @@ export function updatePlaylistInDB(playlist: rendererPlaylist) {
       playlist.configuration.order,
       playlist.name
     )
-    const selectPlaylist = db.prepare(`SELECT id FROM ${dbTables.Playlists} WHERE name=?`)
+    const selectPlaylist = db.prepare(
+      `SELECT id FROM ${dbTables.Playlists} WHERE name=?`
+    )
     const insertedPlaylist = selectPlaylist.get(playlist.name).id as number
     updateImagesInPlaylist(insertedPlaylist, playlist.images)
     return insertedPlaylist

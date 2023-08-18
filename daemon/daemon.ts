@@ -5,21 +5,16 @@ import { join } from 'node:path'
 import { homedir } from 'node:os'
 import {
   message,
-  PlaylistParsed,
   PLAYLIST_TYPES,
   PlaylistInterface,
   ACTIONS,
   PlaylistStates
 } from './typesDaemon'
-import {
-  readPlaylistFromDB,
-  updatePlaylistCurrentIndex
-} from './daemonDB/dbOperations'
-import { sequelize } from './daemonDB/db'
+import { getPlaylistFromDB, updatePlaylistCurrentIndex } from './dbOperations'
 
 function isWaypaperDaemonRunning() {
   try {
-    const stdout = execSync('pidof wp-daemon', { encoding: 'utf-8' })
+    const stdout = execSync('pidof wpm-daemon', { encoding: 'utf-8' })
     console.log('Waypaper daemon already running', stdout)
 
     return true
@@ -142,9 +137,6 @@ const Playlist: PlaylistInterface = {
     setImage(Playlist.swwwOptions, Playlist.images[Playlist.currentImageIndex])
     Playlist.updateInDB(Playlist.currentImageIndex, Playlist.currentName)
   },
-  calculateInterval: (hours: number, minutes: number) => {
-    return hours * 60 * 60 * 1000 + minutes * 60 * 1000
-  },
   start: async (playlistName: string, swwwOptions: string[]) => {
     await Playlist.setPlaylist(playlistName, swwwOptions)
     switch (Playlist.currentType) {
@@ -170,7 +162,7 @@ const Playlist: PlaylistInterface = {
   sleep: (ms: number) => new Promise((r) => setTimeout(r, ms)),
   updateInDB: async (imageIndex: number, playlistName: string) => {
     try {
-      await updatePlaylistCurrentIndex(imageIndex, playlistName)
+      updatePlaylistCurrentIndex(imageIndex, playlistName)
     } catch (error) {
       console.error(error)
       notify(
@@ -180,39 +172,23 @@ const Playlist: PlaylistInterface = {
       throw new Error('Could not update playlist in DB')
     }
   },
-  getFromDB: async (playlistName: string) => {
-    try {
-      const playlist = await readPlaylistFromDB(playlistName)
-      if (playlist === null) {
-        console.error('Playlist not found')
-        notify('Playlist not found, maybe it was deleted?')
-        notify('Exiting daemon')
-        throw new Error('Playlist not found')
-      }
-      playlist.images = JSON.parse(playlist.images)
-      return playlist as unknown as PlaylistParsed
-    } catch (error) {
-      console.error(error)
-      notify('Exiting daemon')
-      throw new Error('Could not get playlist from DB')
-    }
-  },
+
   setPlaylist: async (
     playlistName: string,
 
     swwwOptions: string[]
   ) => {
     try {
-      const currentPlaylist = await Playlist.getFromDB(playlistName)
+      const currentPlaylist = getPlaylistFromDB(playlistName)
+      if (currentPlaylist === null) {
+        throw new Error('Could not get playlist from DB')
+      }
       Playlist.images = currentPlaylist.images
       Playlist.currentName = playlistName
       Playlist.swwwOptions = swwwOptions
       Playlist.currentType = currentPlaylist.type
       Playlist.currentImageIndex = currentPlaylist.currentImageIndex
-      Playlist.interval = Playlist.calculateInterval(
-        currentPlaylist.hours,
-        currentPlaylist.minutes
-      )
+      Playlist.interval = currentPlaylist.interval
     } catch (error) {
       console.error(error)
       // implement notify function
@@ -220,20 +196,25 @@ const Playlist: PlaylistInterface = {
     }
   },
   timedPlaylist: async () => {
-    Playlist.intervalID = setInterval(async () => {
-      Playlist.currentImageIndex++
-      if (Playlist.currentImageIndex === Playlist.images.length) {
-        Playlist.currentImageIndex = 0
-      }
-      setImage(
-        Playlist.swwwOptions,
-        Playlist.images[Playlist.currentImageIndex]
-      )
-      await Playlist.updateInDB(
-        Playlist.currentImageIndex,
-        Playlist.currentName
-      )
-    }, Playlist.interval)
+    if (Playlist.interval !== null) {
+      Playlist.intervalID = setInterval(async () => {
+        Playlist.currentImageIndex++
+        if (Playlist.currentImageIndex === Playlist.images.length) {
+          Playlist.currentImageIndex = 0
+        }
+        setImage(
+          Playlist.swwwOptions,
+          Playlist.images[Playlist.currentImageIndex]
+        )
+        await Playlist.updateInDB(
+          Playlist.currentImageIndex,
+          Playlist.currentName
+        )
+      }, Playlist.interval)
+    } else {
+      console.error('Interval is null')
+      notify('Interval is null, something went wrong setting the playlist')
+    }
   },
   neverPlaylist: async () => {
     setImage(Playlist.swwwOptions, Playlist.images[Playlist.currentImageIndex])
@@ -243,15 +224,13 @@ const Playlist: PlaylistInterface = {
 }
 
 async function daemonInit() {
-  process.title = 'wp-daemon'
-  await sequelize.authenticate()
+  process.title = 'wpm-daemon'
   async function daemonManager(data: Buffer) {
     const message: message = JSON.parse(data.toString())
     switch (message.action) {
       case ACTIONS.STOP_DAEMON:
         notify('Exiting daemon')
         Playlist.stop()
-        sequelize.close()
         daemonServer.close()
         process.exit(0)
       case ACTIONS.START_PLAYLIST:
@@ -311,14 +290,12 @@ async function daemonInit() {
   process.on('SIGTERM', function () {
     notify('Exiting daemon')
     Playlist.stop()
-    sequelize.close()
     daemonServer.close()
     process.exit(0)
   })
   process.on('SIGINT', () => {
     notify('Exiting daemon')
     Playlist.stop()
-    sequelize.close()
     daemonServer.close()
     process.exit(0)
   })

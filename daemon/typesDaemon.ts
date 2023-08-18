@@ -20,15 +20,13 @@ export interface imageModel {
   imageName: string
 }
 
-export type PlaylistTypeDB = {
+export type PlaylistDB = {
   id: number
   name: string
-  images: string
   type: PLAYLIST_TYPES
-  hours: number
-  minutes: number
-  order: ORDER_TYPES
-  showTransition: boolean
+  interval: number | null
+  order: ORDER_TYPES | null
+  showTransition: boolean | 1 | 0
   currentImageIndex: number
 }
 
@@ -69,8 +67,7 @@ export type PlaylistParsed = {
   name: string
   images: string[]
   type: PLAYLIST_TYPES
-  hours: number
-  minutes: number
+  interval: number
   order: ORDER_TYPES
   showTransition: boolean
   currentImageIndex: number
@@ -81,7 +78,7 @@ export interface PlaylistInterface {
   currentType: PLAYLIST_TYPES
   intervalID: NodeJS.Timeout | null
   currentImageIndex: number
-  interval: number
+  interval: number | null
   swwwOptions: string[]
   pause: () => void
   resume: () => void
@@ -89,11 +86,9 @@ export interface PlaylistInterface {
   resetInterval: () => void
   nextImage: () => void
   previousImage: () => void
-  calculateInterval: (hours: number, minutes: number) => number
   start: (playlistName: string, swwwOptions: string[]) => Promise<void>
   sleep: (ms: number) => Promise<void>
   updateInDB: (imageIndex: number, playlistName: string) => Promise<void>
-  getFromDB: (playlistName: string) => Promise<PlaylistParsed>
   setPlaylist: (playlistName: string, swwwOptions: string[]) => Promise<void>
   timedPlaylist: () => Promise<void>
   neverPlaylist: () => Promise<void>
@@ -105,4 +100,17 @@ export enum PlaylistStates {
   PLAYING = 'playing',
   PAUSED = 'paused',
   STOPPED = 'stopped'
+}
+export enum dbTables {
+  Images = 'Images',
+  Playlists = 'Playlists',
+  imagesInPlaylist = 'imagesInPlaylist'
+}
+
+export type imageInPlaylist = {
+  imageID: number
+  playlistID: number
+  indexInPlaylist: number
+  beginTime: number | null
+  endTime: number | null
 }
