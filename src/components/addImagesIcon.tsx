@@ -1,7 +1,7 @@
 import { type FC } from 'react'
 const SvgComponent: FC = () => (
   <svg
-    className='justify-center m-auto text-purple-600'
+    className='m-auto text-purple-600'
     xmlns='http://www.w3.org/2000/svg'
     width={64}
     height={64}
