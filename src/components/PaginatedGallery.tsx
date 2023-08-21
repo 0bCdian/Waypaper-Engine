@@ -31,23 +31,24 @@ function PaginatedGallery() {
     lastImageIndex
   )
   return (
-    <div className='flex flex-col sm:w-[85%] m-auto h-[93vh] '>
-      <div className='flex flex-col h-[85%] w-full '>
-        <div
-          className='overflow-y-scroll w-full scrollbar-track-rounded-sm
-              scrollbar-thumb-rounded-sm grow-0 scrollbar-thin scrollbar-thumb-stone-400 m-auto'
-        >
-          <div className='md:grid flex flex-col items-center w-full m-auto md:auto-cols-auto md:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]'>
-            {imagesToShow}
-          </div>
+    <div className='flex flex-col sm:w-[85%] m-auto h-[93vh]  justify-between items-center'>
+      <div
+        className='overflow-y-scroll w-full scrollbar-track-rounded-sm
+              scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-thumb-stone-400 m-auto'
+      >
+        <div className='md:grid flex flex-col items-center w-full m-auto md:auto-cols-auto md:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]'>
+          {imagesToShow}
         </div>
+      </div>
+
+      <div className='flex flex-col w-full gap-3'>
         <PaginatedGalleryNav
           currentPage={currentPage}
           setCurrentPage={setCurrentPage}
           totalPages={totalPages}
         />
+        <PlaylistTrack />
       </div>
-      <PlaylistTrack />
     </div>
   )
 }

@@ -8,10 +8,8 @@ function Gallery() {
     return <PaginatedGallery />
   }
   return (
-    <div className='flex justify-center'>
-      <div className='m-auto'>
-        <AddImagesCard />
-      </div>
+    <div className='flex justify-center m-auto'>
+      <AddImagesCard />
     </div>
   )
 }
