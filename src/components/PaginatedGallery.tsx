@@ -40,7 +40,6 @@ function PaginatedGallery() {
           {imagesToShow}
         </div>
       </div>
-
       <div className='flex flex-col w-full gap-3'>
         <PaginatedGalleryNav
           currentPage={currentPage}

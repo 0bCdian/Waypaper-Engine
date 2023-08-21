@@ -3,7 +3,7 @@ import Filters from './Filters'
 
 const NavBar: FC = () => {
   return (
-    <div className='navbar bg-base-100'>
+    <div className='navbar bg-base-100 mb-2'>
       <div className='navbar-start'>
         <div className='dropdown'>
           <label

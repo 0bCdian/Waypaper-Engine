@@ -1,6 +1,7 @@
 import { ChangeEvent, useState } from 'react'
 import useDebounce from '../hooks/useDebounce'
 import { useImages } from '../hooks/imagesStore'
+import IconBxSearchAlt from '../svg/search'
 
 function Filters() {
   const { setSearchFilter } = useImages()
@@ -15,15 +16,16 @@ function Filters() {
   useDebounce(() => setSearchFilter(inputSearch), 500, [inputSearch])
 
   return (
-    <div className='container w-[100%] md:w-[10%] hover:'>
+    <div className='sm:w-1/2 flex justify-end group'>
+      <IconBxSearchAlt className='absolute right-2 top-4'></IconBxSearchAlt>
       <input
-        data-theme='retro'
         onChange={onTextChange}
         type='text'
         id='default-search'
-        className='input w-[100%] input-bordered input-md placeholder:text-neutral rounded-xl transition-all text-md font-medium'
-        placeholder='Search'
-        required
+        className='transition-[width] duration-200 input input-info w-0 border-0
+        group-hover:w-full focus:w-full
+        rounded-xl text-xl font-medium'
+        placeholder='Search image'
       />
     </div>
   )
