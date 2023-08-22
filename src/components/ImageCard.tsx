@@ -1,13 +1,20 @@
 import { useId, ChangeEvent } from 'react'
 import { Image } from '../types/rendererTypes'
 import playlistStore from '../hooks/playlistStore'
+import { useImages } from '../hooks/imagesStore'
 interface ImageCardProps {
   Image: Image
 }
-const { join, thumbnailDirectory, setImage, imagesDirectory } =
-  window.API_RENDERER
+const {
+  join,
+  thumbnailDirectory,
+  setImage,
+  imagesDirectory,
+  deleteImageFromGallery
+} = window.API_RENDERER
 function ImageCard({ Image }: ImageCardProps) {
   const id = useId()
+  const { removeImageFromStore } = useImages()
   const imageNameFilePath = `atom://${join(
     thumbnailDirectory,
     `${Image.name.split('.').at(0)}.webp`
@@ -26,13 +33,47 @@ function ImageCard({ Image }: ImageCardProps) {
       removeImageFromPlaylist(Image)
     }
   }
+  const handleDeleteFromGallery = (
+    e: React.MouseEvent<HTMLButtonElement, MouseEvent>
+  ) => {
+    e.preventDefault()
+    const confirmDeletion = window.confirm(
+      'Are you sure you want to delete from gallery?'
+    )
+    if (confirmDeletion) {
+      deleteImageFromGallery(Image.id, Image.name).then(
+        (isDeleted: boolean) => {
+          if (isDeleted) {
+            removeImageFromStore(Image.id)
+            removeImageFromPlaylist(Image)
+          }
+        }
+      )
+    }
+  }
+
   return (
     <div className='duration-500 border-[2px] border-transparent group hover:border-info relative rounded-lg bg-transparent max-w-fit mb-4 overflow-hidden '>
       <div className='relative'>
-        <label
-          htmlFor={id}
-          className='absolute z-10 w-full h-10 opacity-0 cursor-pointer'
-        ></label>
+        <button
+          onClick={handleDeleteFromGallery}
+          className='absolute z-10 top-1 left-1 rounded-md transition-all opacity-0 hover:bg-error hover:opacity-100 cursor-default'
+        >
+          <svg
+            xmlns='http://www.w3.org/2000/svg'
+            className='h-5 w-5'
+            fill='none'
+            viewBox='0 0 24 24'
+            stroke='#F3D8D2'
+          >
+            <path
+              strokeLinecap='round'
+              strokeLinejoin='round'
+              strokeWidth='3'
+              d='M6 18L18 6M6 6l12 12'
+            />
+          </svg>
+        </button>
         <input
           id={id}
           checked={Image.isChecked}
@@ -51,8 +92,7 @@ function ImageCard({ Image }: ImageCardProps) {
             currentTarget.onerror = null
             currentTarget.className =
               'rounded-lg min-w-full max-w-[300px] object-fill'
-            currentTarget.src =
-              'atom://' + join(imagesDirectory, Image.name)
+            currentTarget.src = 'atom://' + join(imagesDirectory, Image.name)
           }}
         />
         <p className='absolute rounded-b-lg bottom-0 pl-2 p-2 w-full text-lg text-justify text-ellipsis overflow-hidden bg-black bg-opacity-75 font-medium truncate '>

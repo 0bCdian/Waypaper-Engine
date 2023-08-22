@@ -67,6 +67,21 @@ function imagesSource() {
       payload: resetImagesArray
     })
   }, [imagesArray])
+  const reQueryImages = useCallback(() => {
+    queryImages().then((data: Image[]) => {
+      dispatch({ type: STORE_ACTIONS.RESET_IMAGES_ARRAY, payload: data })
+    })
+  }, [])
+  const removeImageFromStore = useCallback(
+    (imageID: number) => {
+      const newImagesArray = imagesArray.filter((image) => image.id !== imageID)
+      dispatch({
+        type: STORE_ACTIONS.RESET_IMAGES_ARRAY,
+        payload: newImagesArray
+      })
+    },
+    [imagesArray]
+  )
   const clearSkeletons = useCallback(() => {
     dispatch({
       type: STORE_ACTIONS.SET_SKELETONS_TO_SHOW,
@@ -93,9 +108,7 @@ function imagesSource() {
   const filteredImages = useMemo(() => {
     const shallowCopy = [...sortedImages]
     return shallowCopy.filter((image) =>
-      image.name
-        .toLocaleLowerCase()
-        .includes(searchFilter.toLocaleLowerCase())
+      image.name.toLocaleLowerCase().includes(searchFilter.toLocaleLowerCase())
     )
   }, [searchFilter, sortedImages])
   const isEmpty = useMemo(
@@ -111,7 +124,9 @@ function imagesSource() {
     setImagesArray,
     setSkeletons,
     resetImageCheckboxes,
-    clearSkeletons
+    clearSkeletons,
+    reQueryImages,
+    removeImageFromStore
   }
 }
 

@@ -9,8 +9,11 @@ import {
   PlaylistController,
   isSwwwDaemonRunning,
   initWaypaperDaemon,
+  deleteImageFromStorage
 } from './appFunctions'
 import {
+  deleteImageInDB,
+  deletePlaylistInDB,
   getImagesInPlaylist,
   readAllImagesInDB,
   readAllPlaylistsInDB
@@ -133,6 +136,22 @@ ipcMain.handle('queryImages', readAllImagesInDB)
 ipcMain.handle('queryPlaylists', readAllPlaylistsInDB)
 ipcMain.handle('getPlaylistImages', (_event, playlistID: number) => {
   return getImagesInPlaylist(playlistID)
+})
+ipcMain.handle(
+  'deleteImageFromGallery',
+  (_, imageID: number, imageName: string) => {
+    try {
+      deleteImageInDB(imageID)
+      deleteImageFromStorage(imageName)
+      return true
+    } catch (error) {
+      console.error(error)
+      return false
+    }
+  }
+)
+ipcMain.on('deletePlaylist', (_, playlistName) => {
+  deletePlaylistInDB(playlistName)
 })
 ipcMain.on('setImage', setImage)
 ipcMain.on('savePlaylist', savePlaylist)

@@ -298,3 +298,21 @@ export const PlaylistController = {
     })
   }
 }
+
+export function deleteImageFromStorage(imageName: string) {
+  try {
+    const [thumbnailName] = imageName.split('.')
+    rmSync(join(appDirectories.imagesDir, imageName))
+    rmSync(join(appDirectories.thumbnails, `${thumbnailName}.webp`), {
+      force: true
+    })
+    if (imageName.endsWith('.gif')) {
+      rmSync(join(appDirectories.thumbnails, `${thumbnailName}.gif`), {
+        force: true
+      })
+    }
+  } catch (error) {
+    console.error(error)
+    throw new Error('Could not delete images from storage')
+  }
+}

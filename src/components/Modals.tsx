@@ -4,10 +4,12 @@ import SavePlaylistModal from './SavePlaylistModal'
 import PlaylistConfigurationModal from './PlaylistConfigurationModal'
 import playlistStore from '../hooks/playlistStore'
 import { Playlist } from '../../electron/types/types'
+import { useImages } from '../hooks/imagesStore'
 
 const { queryPlaylists } = window.API_RENDERER
 function Modals() {
   const { readPlaylist } = playlistStore()
+  const { imagesArray } = useImages()
   const shouldReload = useRef(false)
   const [playlistsInDB, setPlaylistsInDB] = useState<Playlist[]>([])
   const currentPlaylist = useMemo(() => {
@@ -18,7 +20,7 @@ function Modals() {
     queryPlaylists().then((playlists) => {
       setPlaylistsInDB(playlists)
     })
-  }, [shouldReload.current])
+  }, [shouldReload.current, imagesArray])
 
   return (
     <>

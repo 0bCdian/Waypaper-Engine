@@ -30,6 +30,7 @@ export function readAllImagesInDB() {
 }
 
 export function readAllPlaylistsInDB() {
+  purgePlaylistsWithoutImages()
   const selectPlaylists = db.prepare(`SELECT * FROM ${dbTables.Playlists}`)
   try {
     const playlists = selectPlaylists.all() as Playlist[]
@@ -204,5 +205,18 @@ export function deleteImageInDB(imageID: number) {
   } catch (error) {
     console.error(error)
     console.error('Failed to delete image from DB')
+    throw new Error('Failed to delete image from DB')
+  }
+}
+
+function purgePlaylistsWithoutImages() {
+  try {
+    const purgeImages = db.prepare(
+      `DELETE FROM ${dbTables.Playlists} WHERE id NOT IN (SELECT DISTINCT playlistID FROM ${dbTables.imagesInPlaylist})`
+    )
+    purgeImages.run()
+  } catch (error) {
+    console.error(error)
+    throw error
   }
 }

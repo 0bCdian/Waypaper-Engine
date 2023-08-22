@@ -17,8 +17,7 @@ function MiniPlaylistCard({
   const { removeImageFromPlaylist } = playlistStore()
   const imageRef = useRef<HTMLImageElement>(null)
   const imageSrc =
-    'atom://' +
-    join(thumbnailDirectory, Image.name.split('.').at(0) + '.webp')
+    'atom://' + join(thumbnailDirectory, Image.name.split('.').at(0) + '.webp')
   const { attributes, listeners, setNodeRef, transform, transition } =
     useSortable({
       id: Image.id,

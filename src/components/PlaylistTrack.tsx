@@ -30,7 +30,8 @@ function PlaylistTrack() {
     clearPlaylist
   } = playlistStore()
   const { openImages, isActive } = openImagesStore()
-  const { setSkeletons, setImagesArray, resetImageCheckboxes } = useImages()
+  const { setSkeletons, setImagesArray, resetImageCheckboxes, reQueryImages } =
+    useImages()
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 5 } })
   )
@@ -76,6 +77,7 @@ function PlaylistTrack() {
     }
     if (playlist.images.length === 0) {
       resetImageCheckboxes()
+      reQueryImages()
       clearPlaylist()
     }
   }, [playlist.images])

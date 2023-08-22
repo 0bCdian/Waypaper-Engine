@@ -11,12 +11,21 @@ const Drawer: FC<Props> = ({ children }) => {
       <div className='drawer-content'>{children}</div>
       <div className='drawer-side'>
         <label htmlFor='my-drawer' className='drawer-overlay'></label>
-        <ul className='menu p-4 w-80 h-full bg-base-200 text-base-content'>
+        <ul className='menu rounded-box p-4 text-2xl h-full bg-base-200 text-base-content'>
           <li>
-            <a>Sidebar Item 1</a>
+            <a>Swww configuration</a>
           </li>
           <li>
-            <a>Sidebar Item 2</a>
+            <a>Bezier picker</a>
+          </li>
+          <li>
+            <a>Solid color as wallpaper</a>
+          </li>
+          <li>
+            <a>Monitor Configuration</a>
+          </li>
+          <li>
+            <a>Configuration</a>
           </li>
         </ul>
       </div>

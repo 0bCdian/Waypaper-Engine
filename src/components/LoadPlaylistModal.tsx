@@ -51,7 +51,6 @@ const LoadPlaylistModal = ({ playlistInDB, shouldReload }: Props) => {
         },
         images: imagesToStorePlaylist
       }
-      console.log(currentPlaylist)
       setPlaylist(currentPlaylist)
       shouldReload.current = true
     }

@@ -1,7 +1,9 @@
 import { type FC } from 'react'
 import Filters from './Filters'
+import { useImages } from '../hooks/imagesStore'
 
 const NavBar: FC = () => {
+  const {isEmpty} = useImages()
   return (
     <div className='navbar bg-base-100 mb-2'>
       <div className='navbar-start'>
@@ -32,7 +34,7 @@ const NavBar: FC = () => {
         <a className='btn btn-ghost normal-case text-3xl'>Waypaper Engine</a>
       </div>
       <div className='navbar-end'>
-        <Filters />
+        {!isEmpty && <Filters />}
       </div>
     </div>
   )
