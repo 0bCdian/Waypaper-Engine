@@ -4,15 +4,18 @@ import PaginatedGallery from './PaginatedGallery'
 
 function Gallery() {
   const { isEmpty } = useImages()
-  if (!isEmpty) {
-    return <PaginatedGallery />
-  }
   return (
-    <div className='flex justify-center items-center h-screen m-auto'>
-      <div>
-        <AddImagesCard />
-      </div>
-    </div>
+    <>
+      {!isEmpty ? (
+        <PaginatedGallery />
+      ) : (
+        <div className='flex justify-center items-center h-screen m-auto'>
+          <div>
+            <AddImagesCard />
+          </div>
+        </div>
+      )}
+    </>
   )
 }
 

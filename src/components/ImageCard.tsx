@@ -2,6 +2,7 @@ import { useId, ChangeEvent } from 'react'
 import { Image } from '../types/rendererTypes'
 import playlistStore from '../hooks/playlistStore'
 import { useImages } from '../hooks/imagesStore'
+import { motion } from 'framer-motion'
 interface ImageCardProps {
   Image: Image
 }
@@ -53,7 +54,12 @@ function ImageCard({ Image }: ImageCardProps) {
   }
 
   return (
-    <div className='duration-500 border-[2px] border-transparent group hover:border-info relative rounded-lg bg-transparent max-w-fit mb-4 overflow-hidden '>
+    <motion.div
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      className='duration-500 border-[2px] border-transparent group hover:border-info relative rounded-lg bg-transparent max-w-fit mb-4 overflow-hidden '
+    >
       <div className='relative'>
         <button
           onClick={handleDeleteFromGallery}
@@ -88,6 +94,7 @@ function ImageCard({ Image }: ImageCardProps) {
           src={imageNameFilePath}
           alt={Image.name}
           draggable={false}
+          loading='lazy'
           onError={({ currentTarget }) => {
             currentTarget.onerror = null
             currentTarget.className =
@@ -99,7 +106,7 @@ function ImageCard({ Image }: ImageCardProps) {
           {Image.name}
         </p>
       </div>
-    </div>
+    </motion.div>
   )
 }
 

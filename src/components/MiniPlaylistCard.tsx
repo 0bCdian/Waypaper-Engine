@@ -46,7 +46,7 @@ function MiniPlaylistCard({
         animate={{ scale: 1 }}
         transition={{ duration: 0.2 }}
         exit={{ scale: 0 }}
-        className='w-32 mx-1 shrink-0 rounded-lg shadow-xl '
+        className='w-32 mx-1 shrink-0 mb-2 rounded-lg shadow-xl '
       >
         <div className='relative '>
           <button
@@ -76,6 +76,7 @@ function MiniPlaylistCard({
           alt={Image.name}
           className='rounded-lg cursor-move'
           ref={imageRef}
+          loading='lazy'
         />
       </motion.div>
     </div>

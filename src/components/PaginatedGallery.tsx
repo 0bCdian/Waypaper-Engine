@@ -4,6 +4,7 @@ import { useImages } from '../hooks/imagesStore'
 import Skeleton from './Skeleton'
 import ImageCard from './ImageCard'
 import PlaylistTrack from './PlaylistTrack'
+import { motion } from 'framer-motion'
 
 const IMAGES_PER_PAGE = 20
 
@@ -33,12 +34,16 @@ function PaginatedGallery() {
   return (
     <div className='flex flex-col sm:w-[90%] m-auto h-[93vh]'>
       <div
-        className='overflow-y-scroll w-full scrollbar-track-rounded-sm
-              scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-thumb-stone-400 m-auto'
+        className='overflow-y-scroll w-full scrollbar-none m-auto'
       >
-        <div className='md:grid flex flex-col w-full m-auto md:auto-cols-auto md:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]'>
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className='md:grid flex flex-col w-full md:auto-cols-auto md:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]'
+        >
           {imagesToShow}
-        </div>
+        </motion.div>
       </div>
       <div className='flex flex-col w-full gap-3'>
         <PaginatedGalleryNav

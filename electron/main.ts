@@ -75,7 +75,7 @@ function createWindow() {
     }
   }
   win.once('ready-to-show', () => {
-    if (store.get('startMinimized')) win?.show()
+    if (!store.get('startMinimized')) win?.show()
     else {
       win?.hide()
     }
