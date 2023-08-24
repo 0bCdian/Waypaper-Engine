@@ -136,3 +136,12 @@ export const trayMenu = ({
   ]
   return controls
 }
+
+export const contextMenu = [
+  {
+    label: 'Set image',
+    click: (e: any) => {
+      console.log(e)
+    }
+  }
+]

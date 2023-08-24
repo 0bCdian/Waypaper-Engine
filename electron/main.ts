@@ -9,10 +9,9 @@ import {
   PlaylistController,
   isSwwwDaemonRunning,
   initWaypaperDaemon,
-  deleteImageFromStorage
+  deleteImageFromGallery
 } from './appFunctions'
 import {
-  deleteImageInDB,
   deletePlaylistInDB,
   getImagesInPlaylist,
   readAllImagesInDB,
@@ -137,19 +136,7 @@ ipcMain.handle('queryPlaylists', readAllPlaylistsInDB)
 ipcMain.handle('getPlaylistImages', (_event, playlistID: number) => {
   return getImagesInPlaylist(playlistID)
 })
-ipcMain.handle(
-  'deleteImageFromGallery',
-  (_, imageID: number, imageName: string) => {
-    try {
-      deleteImageInDB(imageID)
-      deleteImageFromStorage(imageName)
-      return true
-    } catch (error) {
-      console.error(error)
-      return false
-    }
-  }
-)
+ipcMain.handle('deleteImageFromGallery', deleteImageFromGallery)
 ipcMain.on('deletePlaylist', (_, playlistName) => {
   deletePlaylistInDB(playlistName)
 })
@@ -160,4 +147,15 @@ ipcMain.on('startPlaylist', (_event, playlistName: string) => {
 })
 ipcMain.on('stopPlaylist', (_) => {
   PlaylistController.stopPlaylist()
+})
+ipcMain.on('openContextMenuImage', (event, imageName: string) => {
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: `Set ${imageName}`,
+      click: () => {
+        setImage(event, imageName)
+      }
+    }
+  ])
+  contextMenu.popup()
 })

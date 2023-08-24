@@ -11,7 +11,8 @@ const {
   thumbnailDirectory,
   setImage,
   imagesDirectory,
-  deleteImageFromGallery
+  deleteImageFromGallery,
+  openContextMenu
 } = window.API_RENDERER
 function ImageCard({ Image }: ImageCardProps) {
   const id = useId()
@@ -52,12 +53,16 @@ function ImageCard({ Image }: ImageCardProps) {
       )
     }
   }
+  const handleRightClick = () => {
+    openContextMenu(Image.name)
+  }
 
   return (
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
+      onContextMenu={handleRightClick}
       className='duration-500 border-[2px] border-transparent group hover:border-info relative rounded-lg bg-transparent max-w-fit mb-4 overflow-hidden '
     >
       <div className='relative'>

@@ -18,7 +18,8 @@ import {
   storeImagesInDB,
   storePlaylistInDB,
   checkIfPlaylistExists,
-  updatePlaylistInDB
+  updatePlaylistInDB,
+  deleteImageInDB
 } from './database/dbOperations'
 
 const execPomisified = promisify(exec)
@@ -314,5 +315,20 @@ export function deleteImageFromStorage(imageName: string) {
   } catch (error) {
     console.error(error)
     throw new Error('Could not delete images from storage')
+  }
+}
+
+export function deleteImageFromGallery(
+  _: Electron.IpcMainInvokeEvent,
+  imageID: number,
+  imageName: string
+) {
+  try {
+    deleteImageInDB(imageID)
+    deleteImageFromStorage(imageName)
+    return true
+  } catch (error) {
+    console.error(error)
+    return false
   }
 }

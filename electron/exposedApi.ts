@@ -38,9 +38,12 @@ export const ELECTRON_API = {
     )
   },
   deletePlaylist: async (playlistName: string) => {
-     ipcRenderer.send('deletePlaylist', playlistName)
+    ipcRenderer.send('deletePlaylist', playlistName)
   },
   join: join,
+  openContextMenu: (imageName: string) => {
+    ipcRenderer.send('openContextMenuImage', imageName)
+  },
   thumbnailDirectory: appDirectories.thumbnails,
   imagesDirectory: appDirectories.imagesDir
 }
