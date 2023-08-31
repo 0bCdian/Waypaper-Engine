@@ -168,13 +168,14 @@ export async function setImage(
   _event: Electron.IpcMainInvokeEvent,
   imageName: string
 ) {
-  const options = [...swwwDefaults]
-  getSwwwCommandFromConfiguration(
+  const command = getSwwwCommandFromConfiguration(
     join(appDirectories.imagesDir, `"${imageName}"`)
   )
-  options.push(join(appDirectories.imagesDir, `"${imageName}"`))
+  console.log(command)
+  /*   const options = [...swwwDefaults]
+  options.push(join(appDirectories.imagesDir, `"${imageName}"`)) */
   try {
-    await execPomisified(`swww img ${options.join(' ')}`)
+    await execPomisified(`${command}`)
   } catch (error) {
     console.error(error)
   }
@@ -356,7 +357,6 @@ function getSwwwCommandFromConfiguration(
   }
   if (!monitors) {
     const command = `swww img ${imagePath} --resize ${swwwConfig.resizeType} --fill-color "${swwwConfig.fillColor}" --filter ${swwwConfig.filterType} --transition-type ${swwwConfig.transitionType} --transition-step ${swwwConfig.transitionStep} --transition-duration ${swwwConfig.transitionDuration} --transition-fps ${swwwConfig.transitionFPS} --transition-angle ${swwwConfig.transitionAngle} --transition-pos ${transitionPos} ${inverty} --transition-bezier ${swwwConfig.transitionBezier} --transition-wave "${swwwConfig.transitionWaveX},${swwwConfig.transitionWaveY}"`
-    console.log(command)
     return command
   }
 }
