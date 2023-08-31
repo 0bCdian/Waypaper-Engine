@@ -39,6 +39,28 @@ function createDB() {
 	FOREIGN KEY("playlistID") REFERENCES "Playlists"("id") ON UPDATE CASCADE ON DELETE CASCADE
 )`)
 
+    const createSwwwConfigTable =
+      db.prepare(`CREATE TABLE IF NOT EXISTS "swwwConfig" (
+	"resizeType"	TEXT NOT NULL UNIQUE,
+	"fillColor"	TEXT NOT NULL UNIQUE,
+	"filterType"	TEXT NOT NULL UNIQUE,
+	"transitionType"	TEXT NOT NULL UNIQUE,
+	"transitionStep"	INTEGER NOT NULL UNIQUE,
+	"transitionDuration"	INTEGER NOT NULL UNIQUE,
+	"transitionFPS"	INTEGER NOT NULL UNIQUE,
+	"transitionAngle"	INTEGER NOT NULL UNIQUE,
+	"transitionPositionType"	TEXT NOT NULL UNIQUE,
+	"transitionPosition"	TEXT NOT NULL UNIQUE,
+	"transitionPositionIntX"	INTEGER NOT NULL UNIQUE,
+	"transitionPositionIntY"	INTEGER NOT NULL UNIQUE,
+	"transitionPositionFloatX"	REAL NOT NULL UNIQUE,
+	"transitionPositionFloatY"	REAL NOT NULL UNIQUE,
+	"invertY"	INTEGER NOT NULL UNIQUE,
+	"transitionBezier"	TEXT NOT NULL UNIQUE,
+	"transitionWaveX"	INTEGER NOT NULL UNIQUE,
+	"transitionWaveY"	INTEGER NOT NULL UNIQUE
+)`)
+    createSwwwConfigTable.run()
     createImagesTable.run()
     createPlaylistsTable.run()
     createImagesInPlaylistTable.run()

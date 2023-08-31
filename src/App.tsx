@@ -1,21 +1,20 @@
-import Gallery from './components/Gallery'
-import Modals from './components/Modals'
-import { ImagesProvider } from './hooks/imagesStore'
+import { Routes, Route } from 'react-router-dom'
+import Home from './routes/Home'
+import SwwwConfig from './routes/SwwwConfig'
+import Drawer from './components/Drawer'
 import NavBar from './components/NavBar'
-import Drawer from './components/drawer'
-import IntroScreen from './components/IntroScreen'
-import './index.css'
-import './extra.css'
+import { ImagesProvider } from './hooks/imagesStore'
 
 const App = () => {
   return (
     <>
-      <IntroScreen></IntroScreen>
       <Drawer>
         <ImagesProvider>
           <NavBar />
-          <Gallery />
-          <Modals />
+          <Routes>
+            <Route path='/' element={<Home />} />
+            <Route path='/swwwConfig' element={<SwwwConfig />} />
+          </Routes>
         </ImagesProvider>
       </Drawer>
     </>

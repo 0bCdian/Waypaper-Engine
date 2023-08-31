@@ -56,7 +56,8 @@ export type PlaylistControllerType = {
 export enum dbTables {
   Images = 'Images',
   Playlists = 'Playlists',
-  imagesInPlaylist = 'imagesInPlaylist'
+  imagesInPlaylist = 'imagesInPlaylist',
+  swwwConfig = 'swwwConfig'
 }
 
 export type imageInPlaylist = {

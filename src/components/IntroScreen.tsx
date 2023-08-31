@@ -10,7 +10,7 @@ function IntroScreen() {
   }, [])
 
   return (
-    <AnimatePresence >
+    <AnimatePresence>
       {showIntro && (
         <motion.div
           exit={{ opacity: 0 }}

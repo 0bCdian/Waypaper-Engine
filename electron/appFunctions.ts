@@ -19,7 +19,8 @@ import {
   storePlaylistInDB,
   checkIfPlaylistExists,
   updatePlaylistInDB,
-  deleteImageInDB
+  deleteImageInDB,
+  readSwwwConfig
 } from './database/dbOperations'
 
 const execPomisified = promisify(exec)
@@ -168,6 +169,9 @@ export async function setImage(
   imageName: string
 ) {
   const options = [...swwwDefaults]
+  getSwwwCommandFromConfiguration(
+    join(appDirectories.imagesDir, `"${imageName}"`)
+  )
   options.push(join(appDirectories.imagesDir, `"${imageName}"`))
   try {
     await execPomisified(`swww img ${options.join(' ')}`)
@@ -330,5 +334,29 @@ export function deleteImageFromGallery(
   } catch (error) {
     console.error(error)
     return false
+  }
+}
+
+function getSwwwCommandFromConfiguration(
+  imagePath: string,
+  monitors?: string[]
+) {
+  const swwwConfig = readSwwwConfig()
+  let transitionPos = ''
+  let inverty = swwwConfig.invertY ? 'invert-y' : ''
+  switch (swwwConfig.transitionPositionType) {
+    case 'int':
+      transitionPos = `${swwwConfig.transitionPositionIntX},${swwwConfig.transitionPositionIntY}`
+      break
+    case 'float':
+      transitionPos = `${swwwConfig.transitionPositionFloatX},${swwwConfig.transitionPositionFloatY}`
+      break
+    case 'alias':
+      transitionPos = swwwConfig.transitionPosition
+  }
+  if (!monitors) {
+    const command = `swww img ${imagePath} --resize ${swwwConfig.resizeType} --fill-color "${swwwConfig.fillColor}" --filter ${swwwConfig.filterType} --transition-type ${swwwConfig.transitionType} --transition-step ${swwwConfig.transitionStep} --transition-duration ${swwwConfig.transitionDuration} --transition-fps ${swwwConfig.transitionFPS} --transition-angle ${swwwConfig.transitionAngle} --transition-pos ${transitionPos} ${inverty} --transition-bezier ${swwwConfig.transitionBezier} --transition-wave "${swwwConfig.transitionWaveX},${swwwConfig.transitionWaveY}"`
+    console.log(command)
+    return command
   }
 }

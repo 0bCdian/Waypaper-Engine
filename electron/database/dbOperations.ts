@@ -5,10 +5,11 @@ import {
   Image as rendererImage,
   ORDER_TYPES
 } from '../../src/types/rendererTypes'
+import { initialSwwwConfigDB, swwwConfig } from './swwwConfig'
 
 export function testDB() {
   const test = db.prepare(
-    `SELECT * FROM ${dbTables.Images},${dbTables.Playlists},${dbTables.imagesInPlaylist}`
+    `SELECT * FROM ${dbTables.Images},${dbTables.Playlists},${dbTables.imagesInPlaylist},${dbTables.swwwConfig}`
   )
   try {
     test.run()
@@ -17,6 +18,45 @@ export function testDB() {
     throw new Error('Could not comunicate with the database')
   }
 }
+function initializeSwwwConfig() {
+  const testIfConfigIsEmpty = db.prepare(`SELECT * FROM ${dbTables.swwwConfig}`)
+  const results = testIfConfigIsEmpty.all()
+  if (results.length > 0) {
+    return
+  }
+  try {
+    const initializeSwwwConfig = db.prepare(
+      `INSERT INTO swwwConfig (resizeType, fillColor, filterType, transitionType, transitionStep, transitionDuration, transitionFPS, transitionAngle, transitionPositionType, transitionPosition, transitionPositionIntX, transitionPositionIntY, transitionPositionFloatX, transitionPositionFloatY, invertY, transitionBezier, transitionWaveX, transitionWaveY)
+VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
+`
+    )
+    initializeSwwwConfig.run(
+      initialSwwwConfigDB.resizeType,
+      initialSwwwConfigDB.fillColor,
+      initialSwwwConfigDB.filterType,
+      initialSwwwConfigDB.transitionType,
+      initialSwwwConfigDB.transitionStep,
+      initialSwwwConfigDB.transitionDuration,
+      initialSwwwConfigDB.transitionFPS,
+      initialSwwwConfigDB.transitionAngle,
+      initialSwwwConfigDB.transitionPositionType,
+      initialSwwwConfigDB.transitionPosition,
+      initialSwwwConfigDB.transitionPositionIntX,
+      initialSwwwConfigDB.transitionPositionIntY,
+      initialSwwwConfigDB.transitionPositionFloatX,
+      initialSwwwConfigDB.transitionPositionFloatY,
+      initialSwwwConfigDB.invertY,
+      initialSwwwConfigDB.transitionBezier,
+      initialSwwwConfigDB.transitionWaveX,
+      initialSwwwConfigDB.transitionWaveY
+    )
+  } catch (error) {
+    console.error(error)
+    console.error('Could not initialize swwwConfig')
+  }
+}
+
+initializeSwwwConfig()
 
 export function readAllImagesInDB() {
   const selectImages = db.prepare(`SELECT * FROM ${dbTables.Images}`)
@@ -218,5 +258,17 @@ function purgePlaylistsWithoutImages() {
   } catch (error) {
     console.error(error)
     throw error
+  }
+}
+
+export function readSwwwConfig() {
+  try {
+    const [swwwConfigObject] = db
+      .prepare(`SELECT * FROM ${dbTables.swwwConfig}`)
+      .all() 
+    return swwwConfigObject as swwwConfig
+  } catch (error) {
+    console.error(error)
+    throw new Error('Could not read swwwConfig from the database')
   }
 }

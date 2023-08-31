@@ -1,9 +1,10 @@
 import { type FC } from 'react'
 import Filters from './Filters'
 import { useImages } from '../hooks/imagesStore'
+import { Link } from 'react-router-dom'
 
 const NavBar: FC = () => {
-  const {isEmpty} = useImages()
+  const { isEmpty } = useImages()
   return (
     <div className='navbar bg-base-100 mb-2'>
       <div className='navbar-start'>
@@ -31,11 +32,11 @@ const NavBar: FC = () => {
         </div>
       </div>
       <div className='navbar-center'>
-        <a className='btn btn-ghost normal-case text-3xl'>Waypaper Engine</a>
+        <Link className='btn btn-ghost normal-case text-3xl' to='/'>
+          Waypaper Engine
+        </Link>
       </div>
-      <div className='navbar-end'>
-        {!isEmpty && <Filters />}
-      </div>
+      <div className='navbar-end'>{!isEmpty && <Filters />}</div>
     </div>
   )
 }
