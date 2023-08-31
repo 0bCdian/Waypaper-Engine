@@ -1,5 +1,4 @@
 import { create } from 'zustand'
-
 export enum ResizeType {
   crop = 'crop',
   fit = 'fit',
@@ -56,7 +55,7 @@ export type SwwwFormData = {
   transitionPositionIntY: number
   transitionPositionFloatX: number
   transitionPositionFloatY: number
-  invertY: boolean
+  invertY: number
   transitionBezier: `${number},${number},${number},${number}`
   transitionWaveX: number
   transitionWaveY: number
@@ -76,7 +75,7 @@ const initialSwwwConfig: SwwwFormData = {
   transitionPositionIntY: 540,
   transitionPositionFloatX: 0.5,
   transitionPositionFloatY: 0.5,
-  invertY: false,
+  invertY: 0,
   transitionBezier: '.25,.1,.25,1',
   transitionWaveX: 20,
   transitionWaveY: 20
@@ -99,6 +98,9 @@ export const swwwConfigStore = create<State & Actions>()((set, get) => ({
         swwwConfig: data
       }
     })
+    const { updateSwwwConfig } = window.API_RENDERER
+    const newState = get().swwwConfig
+    updateSwwwConfig(newState)
   },
   getConfig: () => {
     return get().swwwConfig

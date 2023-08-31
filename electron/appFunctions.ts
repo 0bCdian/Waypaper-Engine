@@ -344,7 +344,7 @@ function getSwwwCommandFromConfiguration(
 ) {
   const swwwConfig = readSwwwConfig()
   let transitionPos = ''
-  let inverty = swwwConfig.invertY ? 'invert-y' : ''
+  let inverty = swwwConfig.invertY ? '--invert-y' : ''
   switch (swwwConfig.transitionPositionType) {
     case 'int':
       transitionPos = `${swwwConfig.transitionPositionIntX},${swwwConfig.transitionPositionIntY}`

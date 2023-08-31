@@ -20,7 +20,7 @@ export const initialSwwwConfigDB = {
   transitionPositionIntY: 540,
   transitionPositionFloatX: 0.5,
   transitionPositionFloatY: 0.5,
-  invertY: 0, // Same as false
+  invertY: 0 , // Same as false
   transitionBezier: '.25,.1,.25,1',
   transitionWaveX: 20,
   transitionWaveY: 20

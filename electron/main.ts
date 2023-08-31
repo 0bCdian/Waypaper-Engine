@@ -15,7 +15,9 @@ import {
   deletePlaylistInDB,
   getImagesInPlaylist,
   readAllImagesInDB,
-  readAllPlaylistsInDB
+  readAllPlaylistsInDB,
+  readSwwwConfig,
+  updateSwwwConfig
 } from './database/dbOperations'
 import { devMenu, prodMenu, trayMenu } from './globals/globals'
 import { iconPath } from './binaries'
@@ -23,6 +25,7 @@ import { store } from './database/configStorage'
 import installExtension, {
   REACT_DEVELOPER_TOOLS
 } from 'electron-devtools-assembler'
+import { swwwConfig } from './database/swwwConfig'
 if (process.argv[1] === '--daemon' || process.argv[3] === '--daemon') {
   initWaypaperDaemon()
   app.exit(1)
@@ -148,6 +151,9 @@ ipcMain.on('startPlaylist', (_event, playlistName: string) => {
 ipcMain.on('stopPlaylist', (_) => {
   PlaylistController.stopPlaylist()
 })
+ipcMain.on('updateSwwwConfig', (_, swwwConfig: swwwConfig) => {
+  updateSwwwConfig(swwwConfig)
+})
 ipcMain.on('openContextMenuImage', (event, imageName: string) => {
   const contextMenu = Menu.buildFromTemplate([
     {
@@ -159,3 +165,4 @@ ipcMain.on('openContextMenuImage', (event, imageName: string) => {
   ])
   contextMenu.popup()
 })
+ipcMain.handle('readSwwwConfig', readSwwwConfig)

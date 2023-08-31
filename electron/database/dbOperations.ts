@@ -265,10 +265,42 @@ export function readSwwwConfig() {
   try {
     const [swwwConfigObject] = db
       .prepare(`SELECT * FROM ${dbTables.swwwConfig}`)
-      .all() 
+      .all()
     return swwwConfigObject as swwwConfig
   } catch (error) {
     console.error(error)
     throw new Error('Could not read swwwConfig from the database')
+  }
+}
+
+export function updateSwwwConfig(newConfig: swwwConfig) {
+  try {
+    const updateStatement = db.prepare(
+      `UPDATE ${dbTables.swwwConfig} SET resizeType=? , fillColor=? , filterType=? , transitionType=? , transitionStep=? , transitionDuration=? ,transitionFPS=? , transitionAngle=?, transitionPositionType=?, transitionPosition=? , transitionPositionIntX=? , transitionPositionIntY=? , transitionPositionFloatX=? ,transitionPositionFloatY=? , invertY=? , transitionBezier=? , transitionWaveX=? , transitionWaveY=?`
+    )
+    const invertY = newConfig.invertY ? 1 : 0
+    updateStatement.run(
+      newConfig.resizeType,
+      newConfig.fillColor,
+      newConfig.filterType,
+      newConfig.transitionType,
+      newConfig.transitionStep,
+      newConfig.transitionDuration,
+      newConfig.transitionFPS,
+      newConfig.transitionAngle,
+      newConfig.transitionPositionType,
+      newConfig.transitionPosition,
+      newConfig.transitionPositionIntX,
+      newConfig.transitionPositionIntY,
+      newConfig.transitionPositionFloatX,
+      newConfig.transitionPositionFloatY,
+      invertY,
+      newConfig.transitionBezier,
+      newConfig.transitionWaveX,
+      newConfig.transitionWaveY
+    )
+  } catch (error) {
+    console.error(error)
+    throw new Error('Could not update the swwwConfig')
   }
 }

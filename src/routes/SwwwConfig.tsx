@@ -9,10 +9,14 @@ import {
   transitionPosition
 } from '../hooks/swwwConfigStore'
 let saveConfigTimeout: ReturnType<typeof setTimeout> | null = null
+const { readSwwwConfig } = window.API_RENDERER
 const SwwwConfig = () => {
   const { register, handleSubmit, watch, setValue } = useForm<SwwwFormData>()
-  const { saveConfig, getConfig } = swwwConfigStore()
+  const { saveConfig } = swwwConfigStore()
   const [transitionPositionType, setTransitionPositionType] = useState('alias')
+  const [bezier, setBezier] = useState<[number, number, number, number]>([
+    0.25, 1, 0.25, 1
+  ])
 
   const onSubmit = (data: SwwwFormData) => {
     if (saveConfigTimeout) {
@@ -23,7 +27,10 @@ const SwwwConfig = () => {
         data.transitionPositionFloatX = 0.5
         data.transitionPositionFloatY = 0.5
       }
-      console.log(data)
+      if (!data.transitionPositionIntY || data.transitionPositionIntY) {
+        data.transitionPositionIntX = 960
+        data.transitionPositionIntY = 540
+      }
       saveConfig(data)
     }, 300)
   }
@@ -38,36 +45,41 @@ const SwwwConfig = () => {
     setTransitionPositionType(watch('transitionPositionType'))
   }, [watch('transitionPositionType')])
   useEffect(() => {
-    const config = getConfig()
-    setValue('resizeType', config.resizeType)
-    setValue('fillColor', config.fillColor)
-    setValue('filterType', config.filterType)
-    setValue('transitionType', config.transitionType)
-    setValue('transitionStep', config.transitionStep)
-    setValue('transitionDuration', config.transitionDuration)
-    setValue('transitionFPS', config.transitionFPS)
-    setValue('transitionAngle', config.transitionAngle)
-    setValue('invertY', config.invertY)
-    setValue('transitionBezier', config.transitionBezier)
-    switch (config.transitionPositionType) {
-      case 'alias':
-        setValue('transitionPositionType', config.transitionPositionType)
-        setValue(
-          'transitionPosition',
-          config.transitionPosition as transitionPosition
-        )
-        break
-      case 'float':
-        setValue('transitionPositionType', config.transitionPositionType)
-        setValue('transitionPositionFloatX', config.transitionPositionFloatX)
-        setValue('transitionPositionFloatY', config.transitionPositionFloatY)
-        break
-      case 'int':
-        setValue('transitionPositionType', config.transitionPositionType)
-        setValue('transitionPositionIntX', config.transitionPositionIntX)
-        setValue('transitionPositionIntY', config.transitionPositionIntY)
-        break
-    }
+    readSwwwConfig().then((config: SwwwFormData) => {
+      const bezierArray = config.transitionBezier.split(',').map((item) => {
+        return parseFloat(item)
+      }) as [number, number, number, number]
+      setValue('resizeType', config.resizeType)
+      setValue('fillColor', config.fillColor)
+      setValue('filterType', config.filterType)
+      setValue('transitionType', config.transitionType)
+      setValue('transitionStep', config.transitionStep)
+      setValue('transitionDuration', config.transitionDuration)
+      setValue('transitionFPS', config.transitionFPS)
+      setValue('transitionAngle', config.transitionAngle)
+      setValue('invertY', config.invertY)
+      setValue('transitionBezier', config.transitionBezier)
+      setBezier(bezierArray)
+      switch (config.transitionPositionType) {
+        case 'alias':
+          setValue('transitionPositionType', config.transitionPositionType)
+          setValue(
+            'transitionPosition',
+            config.transitionPosition as transitionPosition
+          )
+          break
+        case 'float':
+          setValue('transitionPositionType', config.transitionPositionType)
+          setValue('transitionPositionFloatX', config.transitionPositionFloatX)
+          setValue('transitionPositionFloatY', config.transitionPositionFloatY)
+          break
+        case 'int':
+          setValue('transitionPositionType', config.transitionPositionType)
+          setValue('transitionPositionIntX', config.transitionPositionIntX)
+          setValue('transitionPositionIntY', config.transitionPositionIntY)
+          break
+      }
+    })
   }, [])
   return (
     <div className='mt-10 m-auto  cursor-default'>
@@ -406,8 +418,10 @@ const SwwwConfig = () => {
                 const value =
                   e.toString() as `${number},${number},${number},${number}`
                 setValue('transitionBezier', value)
+                setBezier(e)
               }}
               outerAreaSize={0}
+              value={bezier}
               size={300}
               innerAreaColor='#CCCCCC'
               rowColor='#fff'

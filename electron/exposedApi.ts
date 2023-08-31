@@ -3,6 +3,7 @@ import { appDirectories } from './globals/globals'
 import { imagesObject, Playlist } from './types/types'
 import { rendererPlaylist } from '../src/types/rendererTypes'
 import { join } from 'node:path'
+import { swwwConfig } from './database/swwwConfig'
 
 export const ELECTRON_API = {
   openFiles: async () => await ipcRenderer.invoke('openFiles'),
@@ -43,6 +44,12 @@ export const ELECTRON_API = {
   join: join,
   openContextMenu: (imageName: string) => {
     ipcRenderer.send('openContextMenuImage', imageName)
+  },
+  updateSwwwConfig: (newConfig: swwwConfig) => {
+    ipcRenderer.send('updateSwwwConfig', newConfig)
+  },
+  readSwwwConfig: async ()=>{
+    return await ipcRenderer.invoke('readSwwwConfig')
   },
   thumbnailDirectory: appDirectories.thumbnails,
   imagesDirectory: appDirectories.imagesDir
