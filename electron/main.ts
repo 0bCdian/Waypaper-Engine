@@ -17,15 +17,18 @@ import {
   readAllImagesInDB,
   readAllPlaylistsInDB,
   readSwwwConfig,
-  updateSwwwConfig
+  updateSwwwConfig,
+  readAppConfig,
+  updateAppConfig
 } from './database/dbOperations'
 import { devMenu, prodMenu, trayMenu } from './globals/globals'
 import { iconPath } from './binaries'
-import { store } from './database/configStorage'
 import installExtension, {
   REACT_DEVELOPER_TOOLS
 } from 'electron-devtools-assembler'
 import { swwwConfig } from './database/swwwConfig'
+import { AppConfigDB } from '../src/routes/AppConfiguration'
+import config from './database/globalConfig'
 if (process.argv[1] === '--daemon' || process.argv[3] === '--daemon') {
   initWaypaperDaemon()
   app.exit(1)
@@ -50,7 +53,6 @@ let tray: Tray | null = null
 let win: BrowserWindow | null
 // 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
 const VITE_DEV_SERVER_URL = process.env['VITE_DEV_SERVER_URL']
-
 function createWindow() {
   win = new BrowserWindow({
     icon: join(iconPath, 'tray.png'),
@@ -77,9 +79,10 @@ function createWindow() {
     }
   }
   win.once('ready-to-show', () => {
-    if (!store.get('startMinimized')) win?.show()
-    else {
+    if (config.app.config.startMinimized) {
       win?.hide()
+    } else {
+      win?.show()
     }
   })
   win.on('close', (event) => {
@@ -139,6 +142,8 @@ ipcMain.handle('queryPlaylists', readAllPlaylistsInDB)
 ipcMain.handle('getPlaylistImages', (_event, playlistID: number) => {
   return getImagesInPlaylist(playlistID)
 })
+ipcMain.handle('readSwwwConfig', readSwwwConfig)
+ipcMain.handle('readAppConfig', readAppConfig)
 ipcMain.handle('deleteImageFromGallery', deleteImageFromGallery)
 ipcMain.on('deletePlaylist', (_, playlistName) => {
   deletePlaylistInDB(playlistName)
@@ -151,8 +156,8 @@ ipcMain.on('startPlaylist', (_event, playlistName: string) => {
 ipcMain.on('stopPlaylist', (_) => {
   PlaylistController.stopPlaylist()
 })
-ipcMain.on('updateSwwwConfig', (_, swwwConfig: swwwConfig) => {
-  updateSwwwConfig(swwwConfig)
+ipcMain.on('updateSwwwConfig', (_, newSwwwConfig: swwwConfig) => {
+  updateSwwwConfig(newSwwwConfig)
 })
 ipcMain.on('openContextMenuImage', (event, imageName: string) => {
   const contextMenu = Menu.buildFromTemplate([
@@ -165,4 +170,6 @@ ipcMain.on('openContextMenuImage', (event, imageName: string) => {
   ])
   contextMenu.popup()
 })
-ipcMain.handle('readSwwwConfig', readSwwwConfig)
+ipcMain.on('updateAppConfig', (_, newAppConfig: AppConfigDB) => {
+  updateAppConfig(newAppConfig)
+})

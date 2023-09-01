@@ -24,11 +24,14 @@ const Drawer: FC<Props> = ({ children }) => {
         <label htmlFor='my-drawer' className='drawer-overlay'></label>
         <ul className='menu rounded-box p-4 text-2xl h-full bg-base-200 text-base-content'>
           <li>
-            <Link onClick={toggle} className='' to='/'>
+            <Link onClick={toggle} to='/'>
               Gallery
             </Link>
             <Link onClick={toggle} to='/swwwConfig'>
               Swww configuration
+            </Link>
+            <Link onClick={toggle} to='/appConfig'>
+              App configuration
             </Link>
           </li>
         </ul>

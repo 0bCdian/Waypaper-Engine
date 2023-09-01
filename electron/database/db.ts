@@ -60,7 +60,17 @@ function createDB() {
 	"transitionWaveX"	INTEGER NOT NULL UNIQUE,
 	"transitionWaveY"	INTEGER NOT NULL UNIQUE
 )`)
+    const createAppConfigTable =
+      db.prepare(`CREATE TABLE IF NOT EXISTS "appConfig" (
+	"killDaemon"	INTEGER NOT NULL UNIQUE,
+	"playlistStartOnFirstImage"	INTEGER NOT NULL UNIQUE,
+	"notifications"	INTEGER NOT NULL UNIQUE,
+	"swwwAnimations"	INTEGER NOT NULL UNIQUE,
+	"introAnimation"	INTEGER NOT NULL UNIQUE,
+	"startMinimized" INTEGER NOT NULL UNIQUE
+);`)
     createSwwwConfigTable.run()
+    createAppConfigTable.run()
     createImagesTable.run()
     createPlaylistsTable.run()
     createImagesInPlaylistTable.run()

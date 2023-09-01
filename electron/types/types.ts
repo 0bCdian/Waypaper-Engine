@@ -57,7 +57,8 @@ export enum dbTables {
   Images = 'Images',
   Playlists = 'Playlists',
   imagesInPlaylist = 'imagesInPlaylist',
-  swwwConfig = 'swwwConfig'
+  swwwConfig = 'swwwConfig',
+  appConfig = 'appConfig'
 }
 
 export type imageInPlaylist = {

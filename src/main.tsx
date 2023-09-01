@@ -5,11 +5,14 @@ import './index.css'
 import './extra.css'
 import { BrowserRouter } from 'react-router-dom'
 
-ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
-  <>
-    <IntroScreen />
-    <BrowserRouter>
-      <App />
-    </BrowserRouter>
-  </>
-)
+const { readAppConfig } = window.API_RENDERER
+readAppConfig().then((data) => {
+  ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+    <>
+      {data.introAnimation ? <IntroScreen /> : undefined}
+      <BrowserRouter>
+        <App />
+      </BrowserRouter>
+    </>
+  )
+})

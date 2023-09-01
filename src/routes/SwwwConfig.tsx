@@ -16,8 +16,7 @@ const SwwwConfig = () => {
   const [transitionPositionType, setTransitionPositionType] = useState('alias')
   const [bezier, setBezier] = useState<[number, number, number, number]>([
     0.25, 1, 0.25, 1
-  ])
-
+  ])  
   const onSubmit = (data: SwwwFormData) => {
     if (saveConfigTimeout) {
       clearTimeout(saveConfigTimeout)

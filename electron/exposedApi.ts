@@ -4,6 +4,7 @@ import { imagesObject, Playlist } from './types/types'
 import { rendererPlaylist } from '../src/types/rendererTypes'
 import { join } from 'node:path'
 import { swwwConfig } from './database/swwwConfig'
+import { AppConfigDB } from '../src/routes/AppConfiguration'
 
 export const ELECTRON_API = {
   openFiles: async () => await ipcRenderer.invoke('openFiles'),
@@ -48,8 +49,14 @@ export const ELECTRON_API = {
   updateSwwwConfig: (newConfig: swwwConfig) => {
     ipcRenderer.send('updateSwwwConfig', newConfig)
   },
-  readSwwwConfig: async ()=>{
+  readSwwwConfig: async () => {
     return await ipcRenderer.invoke('readSwwwConfig')
+  },
+  readAppConfig: async (): Promise<AppConfigDB> => {
+    return await ipcRenderer.invoke('readAppConfig')
+  },
+  updateAppConfig: (newAppConfig: AppConfigDB) => {
+    ipcRenderer.send('updateAppConfig', newAppConfig)
   },
   thumbnailDirectory: appDirectories.thumbnails,
   imagesDirectory: appDirectories.imagesDir

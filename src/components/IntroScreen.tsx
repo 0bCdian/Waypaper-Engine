@@ -2,11 +2,12 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useEffect, useState } from 'react'
 
 function IntroScreen() {
+
   const [showIntro, setShowIntro] = useState(true)
   useEffect(() => {
     setTimeout(() => {
       setShowIntro(false)
-    }, 4500)
+    }, 2600)
   }, [])
 
   return (

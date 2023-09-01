@@ -6,10 +6,11 @@ import {
   ORDER_TYPES
 } from '../../src/types/rendererTypes'
 import { initialSwwwConfigDB, swwwConfig } from './swwwConfig'
-
+import initialAppConfig from './appConfig'
+import { AppConfigDB } from '../../src/routes/AppConfiguration'
 export function testDB() {
   const test = db.prepare(
-    `SELECT * FROM ${dbTables.Images},${dbTables.Playlists},${dbTables.imagesInPlaylist},${dbTables.swwwConfig}`
+    `SELECT * FROM ${dbTables.Images},${dbTables.Playlists},${dbTables.imagesInPlaylist},${dbTables.swwwConfig},${dbTables.appConfig}`
   )
   try {
     test.run()
@@ -19,14 +20,16 @@ export function testDB() {
   }
 }
 function initializeSwwwConfig() {
-  const testIfConfigIsEmpty = db.prepare(`SELECT * FROM ${dbTables.swwwConfig}`)
-  const results = testIfConfigIsEmpty.all()
-  if (results.length > 0) {
-    return
-  }
   try {
+    const testIfConfigIsEmpty = db.prepare(
+      `SELECT * FROM ${dbTables.swwwConfig}`
+    )
+    const results = testIfConfigIsEmpty.all()
+    if (results.length > 0) {
+      return
+    }
     const initializeSwwwConfig = db.prepare(
-      `INSERT INTO swwwConfig (resizeType, fillColor, filterType, transitionType, transitionStep, transitionDuration, transitionFPS, transitionAngle, transitionPositionType, transitionPosition, transitionPositionIntX, transitionPositionIntY, transitionPositionFloatX, transitionPositionFloatY, invertY, transitionBezier, transitionWaveX, transitionWaveY)
+      `INSERT INTO ${dbTables.swwwConfig} (resizeType, fillColor, filterType, transitionType, transitionStep, transitionDuration, transitionFPS, transitionAngle, transitionPositionType, transitionPosition, transitionPositionIntX, transitionPositionIntY, transitionPositionFloatX, transitionPositionFloatY, invertY, transitionBezier, transitionWaveX, transitionWaveY)
 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
 `
     )
@@ -55,8 +58,35 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     console.error('Could not initialize swwwConfig')
   }
 }
+function initializeAppConfig() {
+  try {
+    const testIfConfigIsEmpty = db.prepare(
+      `SELECT * FROM ${dbTables.appConfig}`
+    )
+    const results = testIfConfigIsEmpty.all()
+    if (results.length > 0) {
+      return
+    }
+    const initializeAppConfig = db.prepare(
+      `INSERT INTO ${dbTables.appConfig} (killDaemon,playlistStartOnFirstImage,notifications,swwwAnimations,introAnimation,startMinimized) VALUES(?,?,?,?,?,?)`
+    )
+    initializeAppConfig.run(
+      initialAppConfig.killDaemon,
+      initialAppConfig.playlistStartOnFirstImage,
+      initialAppConfig.notifications,
+      initialAppConfig.swwwAnimations,
+      initialAppConfig.introAnimation,
+      initialAppConfig.startMinimized
+    )
+  } catch (error) {
+    throw new Error(`Could not initialize the appConfig table\n ${error}`)
+  }
+}
 
-initializeSwwwConfig()
+export function createInitialConfigIfNotExists() {
+  initializeSwwwConfig()
+  initializeAppConfig()
+}
 
 export function readAllImagesInDB() {
   const selectImages = db.prepare(`SELECT * FROM ${dbTables.Images}`)
@@ -302,5 +332,33 @@ export function updateSwwwConfig(newConfig: swwwConfig) {
   } catch (error) {
     console.error(error)
     throw new Error('Could not update the swwwConfig')
+  }
+}
+
+export function readAppConfig() {
+  try {
+    const [getConfig] = db.prepare(`SELECT * FROM ${dbTables.appConfig}`).all()
+    return getConfig as typeof initialAppConfig
+  } catch (error) {
+    console.error(error)
+    throw new Error('Could not read app configuration from the database')
+  }
+}
+
+export function updateAppConfig(newAppConfig: AppConfigDB) {
+  try {
+    const updateAppConfig = db.prepare(
+      `UPDATE ${dbTables.appConfig} SET killDaemon=?,playlistStartOnFirstImage=?,notifications=?,swwwAnimations=?,introAnimation=?,startMinimized=?`
+    )
+    updateAppConfig.run(
+      newAppConfig.killDaemon,
+      newAppConfig.playlistStartOnFirstImage,
+      newAppConfig.notifications,
+      newAppConfig.swwwAnimations,
+      newAppConfig.introAnimation,
+      newAppConfig.startMinimized
+    )
+  } catch (error) {
+    throw new Error(`Could not update appConfigTable in DB ${error}`)
   }
 }

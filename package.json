@@ -1,7 +1,7 @@
 {
   "name": "waypaper-engine",
   "private": true,
-  "version": "0.0.3",
+  "version": "0.0.4",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build && electron-builder",
@@ -14,7 +14,6 @@
     "@dnd-kit/sortable": "^7.0.2",
     "@dnd-kit/utilities": "^3.2.1",
     "better-sqlite3": "^8.5.0",
-    "electron-store": "^8.1.0",
     "framer-motion": "^10.13.1",
     "react": "^18.2.0",
     "react-bezier-curve-editor": "^1.1.2",
