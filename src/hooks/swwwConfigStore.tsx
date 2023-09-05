@@ -2,7 +2,7 @@ import { create } from 'zustand'
 export enum ResizeType {
   crop = 'crop',
   fit = 'fit',
-  none = 'none'
+  none = 'no'
 }
 export enum FilterType {
   Lanczos3 = 'Lanczos3',

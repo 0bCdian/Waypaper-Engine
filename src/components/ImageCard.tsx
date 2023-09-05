@@ -40,7 +40,7 @@ function ImageCard({ Image }: ImageCardProps) {
   ) => {
     e.preventDefault()
     const confirmDeletion = window.confirm(
-      'Are you sure you want to delete from gallery?'
+      `Are you sure you want to delete ${Image.name} from gallery?`
     )
     if (confirmDeletion) {
       deleteImageFromGallery(Image.id, Image.name).then(
@@ -107,7 +107,7 @@ function ImageCard({ Image }: ImageCardProps) {
             currentTarget.src = 'atom://' + join(imagesDirectory, Image.name)
           }}
         />
-        <p className='absolute rounded-b-lg bottom-0 pl-2 p-2 w-full text-lg text-justify text-ellipsis overflow-hidden bg-black bg-opacity-75 font-medium truncate '>
+        <p className='absolute rounded-b-lg opacity-0 group-hover:opacity-100 duration-300 transition-all bottom-0 pl-2 p-2 w-full text-lg text-justify text-ellipsis overflow-hidden bg-black bg-opacity-75 font-medium truncate '>
           {Image.name}
         </p>
       </div>

@@ -356,7 +356,7 @@ function getSwwwCommandFromConfiguration(
       transitionPos = swwwConfig.transitionPosition
   }
   if (!monitors) {
-    const command = `swww img ${imagePath} --resize ${swwwConfig.resizeType} --fill-color "${swwwConfig.fillColor}" --filter ${swwwConfig.filterType} --transition-type ${swwwConfig.transitionType} --transition-step ${swwwConfig.transitionStep} --transition-duration ${swwwConfig.transitionDuration} --transition-fps ${swwwConfig.transitionFPS} --transition-angle ${swwwConfig.transitionAngle} --transition-pos ${transitionPos} ${inverty} --transition-bezier ${swwwConfig.transitionBezier} --transition-wave "${swwwConfig.transitionWaveX},${swwwConfig.transitionWaveY}"`
+    const command = `swww img ${imagePath} --resize="${swwwConfig.resizeType}" --fill-color "${swwwConfig.fillColor}" --filter ${swwwConfig.filterType} --transition-type ${swwwConfig.transitionType} --transition-step ${swwwConfig.transitionStep} --transition-duration ${swwwConfig.transitionDuration} --transition-fps ${swwwConfig.transitionFPS} --transition-angle ${swwwConfig.transitionAngle} --transition-pos ${transitionPos} ${inverty} --transition-bezier ${swwwConfig.transitionBezier} --transition-wave "${swwwConfig.transitionWaveX},${swwwConfig.transitionWaveY}"`
     return command
   }
 }

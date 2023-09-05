@@ -37,7 +37,7 @@ const SwwwConfig = () => {
   //submit on change of inputs
   useEffect(() => {
     const { unsubscribe } = watch(() => handleSubmit(onSubmit)())
-    return () => unsubscribe()
+    return () => unsubscribe() 
   }, [handleSubmit, watch])
 
   useEffect(() => {
