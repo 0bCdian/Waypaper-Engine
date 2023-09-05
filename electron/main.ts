@@ -158,6 +158,7 @@ ipcMain.on('stopPlaylist', (_) => {
 })
 ipcMain.on('updateSwwwConfig', (_, newSwwwConfig: swwwConfig) => {
   updateSwwwConfig(newSwwwConfig)
+  config.swww.update()
 })
 ipcMain.on('openContextMenuImage', (event, imageName: string) => {
   const contextMenu = Menu.buildFromTemplate([
@@ -172,4 +173,5 @@ ipcMain.on('openContextMenuImage', (event, imageName: string) => {
 })
 ipcMain.on('updateAppConfig', (_, newAppConfig: AppConfigDB) => {
   updateAppConfig(newAppConfig)
+  config.app.update()
 })

@@ -22,6 +22,7 @@ import {
   deleteImageInDB,
   readSwwwConfig
 } from './database/dbOperations'
+import config from './database/globalConfig'
 
 const execPomisified = promisify(exec)
 function openImagesFromFilePicker() {
@@ -342,7 +343,8 @@ function getSwwwCommandFromConfiguration(
   imagePath: string,
   monitors?: string[]
 ) {
-  const swwwConfig = readSwwwConfig()
+  const swwwConfig = config.swww.config
+  console.log('calledGetCOmmand', swwwConfig)
   let transitionPos = ''
   let inverty = swwwConfig.invertY ? '--invert-y' : ''
   switch (swwwConfig.transitionPositionType) {
