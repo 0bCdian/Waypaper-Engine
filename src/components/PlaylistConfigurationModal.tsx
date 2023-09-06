@@ -34,7 +34,7 @@ const PlaylistConfigurationModal = ({
           const configuration = {
             playlistType: data.playlistType,
             order: data.order,
-            showTransition: data.showTransition,
+            showAnimations: data.showTransition,
             interval: interval
           }
           setConfiguration(configuration)
@@ -46,7 +46,7 @@ const PlaylistConfigurationModal = ({
         setConfiguration({
           playlistType: data.playlistType,
           order: null,
-          showTransition: data.showTransition,
+          showAnimations: data.showTransition,
           interval: null
         })
         break
@@ -54,7 +54,7 @@ const PlaylistConfigurationModal = ({
         setConfiguration({
           playlistType: data.playlistType,
           order: null,
-          showTransition: data.showTransition,
+          showAnimations: data.showTransition,
           interval: null
         })
         break
@@ -62,7 +62,7 @@ const PlaylistConfigurationModal = ({
         setConfiguration({
           playlistType: data.playlistType,
           order: data.order,
-          showTransition: data.showTransition,
+          showAnimations: data.showTransition,
           interval: null
         })
         break
@@ -95,7 +95,10 @@ const PlaylistConfigurationModal = ({
     }
     setValue('playlistType', currentPlaylistConfiguration.playlistType)
     setValue('order', currentPlaylistConfiguration.order)
-    setValue('showTransition', currentPlaylistConfiguration.showTransition)
+    setValue(
+      'showTransition',
+      Boolean(currentPlaylistConfiguration.showAnimations)
+    )
   }, [currentPlaylistConfiguration])
   return (
     <dialog

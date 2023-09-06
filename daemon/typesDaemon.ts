@@ -26,7 +26,7 @@ export type PlaylistDB = {
   type: PLAYLIST_TYPES
   interval: number | null
   order: ORDER_TYPES | null
-  showTransition: boolean | 1 | 0
+  showAnimations: boolean | 1 | 0
   currentImageIndex: number
 }
 
@@ -37,14 +37,14 @@ export enum ACTIONS {
   STOP_DAEMON = 'stop-daemon',
   PAUSE_PLAYLIST = 'pause-playlist',
   RESUME_PLAYLIST = 'resume-playlist',
-  STOP_PLAYLIST = 'stop-playlist'
+  STOP_PLAYLIST = 'stop-playlist',
+  UPDATE_CONFIG = 'update-config'
 }
 
 export interface message {
   action: ACTIONS
   payload?: {
     playlistName: string
-    swwwOptions: string[]
   }
 }
 
@@ -60,6 +60,7 @@ export type PlaylistControllerType = {
   nextImage: () => void
   previousImage: () => void
   killDaemon: () => void
+  updateConfig: () => void
 }
 
 export type PlaylistParsed = {
@@ -69,7 +70,7 @@ export type PlaylistParsed = {
   type: PLAYLIST_TYPES
   interval: number
   order: ORDER_TYPES
-  showTransition: boolean
+  showAnimations: boolean
   currentImageIndex: number
 }
 export interface PlaylistInterface {
@@ -79,17 +80,17 @@ export interface PlaylistInterface {
   intervalID: NodeJS.Timeout | null
   currentImageIndex: number
   interval: number | null
-  swwwOptions: string[]
+  showAnimations: boolean | 1 | 0
   pause: () => void
   resume: () => void
   stop: () => void
   resetInterval: () => void
   nextImage: () => void
   previousImage: () => void
-  start: (playlistName: string, swwwOptions: string[]) => Promise<void>
+  start: (playlistName: string) => Promise<void>
   sleep: (ms: number) => Promise<void>
   updateInDB: (imageIndex: number, playlistName: string) => Promise<void>
-  setPlaylist: (playlistName: string, swwwOptions: string[]) => Promise<void>
+  setPlaylist: (playlistName: string) => Promise<void>
   timedPlaylist: () => Promise<void>
   neverPlaylist: () => Promise<void>
   timeOfDayPlaylist: () => Promise<void>
@@ -104,7 +105,9 @@ export enum PlaylistStates {
 export enum dbTables {
   Images = 'Images',
   Playlists = 'Playlists',
-  imagesInPlaylist = 'imagesInPlaylist'
+  imagesInPlaylist = 'imagesInPlaylist',
+  swwwConfig = 'swwwConfig',
+  appConfig = 'appConfig'
 }
 
 export type imageInPlaylist = {
@@ -114,3 +117,74 @@ export type imageInPlaylist = {
   beginTime: number | null
   endTime: number | null
 }
+
+export type initialAppConfig = {
+  killDaemon: number
+  playlistStartOnFirstImage: number
+  notifications: number
+  swwwAnimations: number
+  introAnimation: number
+  startMinimized: number
+}
+export enum ResizeType {
+  crop = 'crop',
+  fit = 'fit',
+  none = 'no'
+}
+export enum FilterType {
+  Lanczos3 = 'Lanczos3',
+  Bilinear = 'Bilinear',
+  CatmullRom = 'CatmullRom',
+  Mitchell = 'Mitchell',
+  Nearest = 'Nearest'
+}
+export enum TransitionType {
+  none = 'none',
+  simple = 'simple',
+  fade = 'fade',
+  left = 'left',
+  right = 'right',
+  top = 'top',
+  bottom = 'bottom',
+  wipe = 'wipe',
+  wave = 'wave',
+  grow = 'grow',
+  center = 'center',
+  any = 'any',
+  outer = 'outer',
+  random = 'random'
+}
+
+export enum transitionPosition {
+  center = 'center',
+  top = 'top',
+  left = 'left',
+  right = 'right',
+  bottom = 'bottom',
+  topLeft = 'top-left',
+  topRight = 'top-right',
+  bottomLeft = 'bottom-left',
+  bottomRight = 'bottom-right'
+}
+
+const initialSwwwConfigDB = {
+  resizeType: ResizeType.crop,
+  fillColor: '#000000',
+  filterType: FilterType.Lanczos3,
+  transitionType: TransitionType.simple,
+  transitionStep: 90,
+  transitionDuration: 3,
+  transitionFPS: 60,
+  transitionAngle: 45,
+  transitionPositionType: 'alias',
+  transitionPosition: transitionPosition.center,
+  transitionPositionIntX: 960,
+  transitionPositionIntY: 540,
+  transitionPositionFloatX: 0.5,
+  transitionPositionFloatY: 0.5,
+  invertY: 0, // Same as false
+  transitionBezier: '.25,.1,.25,1',
+  transitionWaveX: 20,
+  transitionWaveY: 20
+}
+export type swwwConfig = typeof initialSwwwConfigDB

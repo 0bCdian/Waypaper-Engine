@@ -12,7 +12,7 @@ const configurationInitial = {
   playlistType: PLAYLIST_TYPES.TIMER,
   interval: 3_600_000,
   order: ORDER_TYPES.ORDERED,
-  showTransition: true
+  showAnimations: true
 }
 
 const initialPlaylistState = {

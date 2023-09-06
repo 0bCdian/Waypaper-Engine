@@ -47,10 +47,11 @@ const LoadPlaylistModal = ({ playlistInDB, shouldReload }: Props) => {
           playlistType: selectedPlaylist.type,
           order: selectedPlaylist.order,
           interval: selectedPlaylist.interval,
-          showTransition: selectedPlaylist.showTransition === 1 ? true : false
+          showAnimations: selectedPlaylist.showAnimations === 1 ? true : false
         },
         images: imagesToStorePlaylist
       }
+      console.log(currentPlaylist, selectedPlaylist.showAnimations)
       setPlaylist(currentPlaylist)
       shouldReload.current = true
     }

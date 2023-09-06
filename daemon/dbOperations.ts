@@ -1,7 +1,8 @@
 const Database = require('better-sqlite3')
-import { dbTables, PlaylistDB, imageInPlaylist } from './typesDaemon'
+import { dbTables, PlaylistDB, imageInPlaylist, initialAppConfig, swwwConfig } from './typesDaemon'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
+
 const db = Database(
   join(homedir(), '.waypaper_engine', 'images_database.sqlite3'),
   {
@@ -67,5 +68,26 @@ export function updatePlaylistCurrentIndex(
   } catch (error) {
     console.error(error)
     throw new Error('Could not update playlist in DB')
+  }
+}
+
+export function readAppConfig() {
+  try {
+    const [getConfig] = db.prepare(`SELECT * FROM ${dbTables.appConfig}`).all()
+    return getConfig as initialAppConfig
+  } catch (error) {
+    console.error(error)
+    throw new Error('Could not read app configuration from the database')
+  }
+}
+export function readSwwwConfig() {
+  try {
+    const [swwwConfigObject] = db
+      .prepare(`SELECT * FROM ${dbTables.swwwConfig}`)
+      .all()
+    return swwwConfigObject as swwwConfig
+  } catch (error) {
+    console.error(error)
+    throw new Error('Could not read swwwConfig from the database')
   }
 }

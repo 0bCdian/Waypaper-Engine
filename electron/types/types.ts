@@ -17,7 +17,7 @@ export type Playlist = {
   type: PLAYLIST_TYPES
   interval: number | null
   order: ORDER_TYPES | null
-  showTransition: boolean | 1 | 0
+  showAnimations: boolean | 1 | 0
   currentImageIndex: number
 }
 
@@ -28,14 +28,14 @@ export enum ACTIONS {
   STOP_DAEMON = 'stop-daemon',
   PAUSE_PLAYLIST = 'pause-playlist',
   RESUME_PLAYLIST = 'resume-playlist',
-  STOP_PLAYLIST = 'stop-playlist'
+  STOP_PLAYLIST = 'stop-playlist',
+  UPDATE_CONFIG = 'update-config'
 }
 
 export interface message {
   action: ACTIONS
   payload?: {
     playlistName: string
-    swwwOptions: string[]
   }
 }
 

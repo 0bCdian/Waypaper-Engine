@@ -16,14 +16,7 @@ export const appDirectories = {
   imagesDir: imagesDir
 }
 export const WAYPAPER_ENGINE_SOCKET_PATH = '/tmp/waypaper_engine_daemon.sock'
-export const swwwDefaults = [
-  '--transition-fps',
-  '60',
-  '--transition-duration',
-  '1',
-  '--transition-type',
-  'wipe'
-]
+
 export const validImageExtensions = [
   'jpeg',
   'jpg',

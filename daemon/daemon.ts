@@ -11,29 +11,70 @@ import {
   PlaylistStates
 } from './typesDaemon'
 import { getPlaylistFromDB, updatePlaylistCurrentIndex } from './dbOperations'
+import config from './config'
 
 function isWaypaperDaemonRunning() {
   try {
     const stdout = execSync('pidof wpe-daemon', { encoding: 'utf-8' })
-    console.log('Waypaper Engine daemon already running', stdout)
-
+    if (config.app.config.notifications) {
+      notify(`Waypaper Engine daemon already running, ${stdout}`)
+    }
     return true
   } catch (_err) {
-    console.log('Waypaper Engine daemon not running')
+    console.info(_err)
     return false
   }
 }
 
 if (isWaypaperDaemonRunning()) {
-  notify('Another instance of the daemon is already running, exiting...')
+  if (config.app.config.notifications) {
+    notify('Another instance of the daemon is already running, exiting...')
+  }
   process.exit(1)
 }
 
 const IMAGES_DIR = join(homedir(), '.waypaper_engine', 'images')
 const SOCKET_PATH = '/tmp/waypaper_engine_daemon.sock'
-const setImage = (swwwOptions: string[], imageName: string) => {
-  notifyImageSet(imageName, join(IMAGES_DIR, imageName))
-  execSync(`swww img ${swwwOptions.join(' ')} "${join(IMAGES_DIR, imageName)}"`)
+
+function getSwwwCommandFromConfiguration(
+  imagePath: string,
+  monitors?: string[]
+) {
+  const swwwConfig = config.swww.config
+  let transitionPos = ''
+  let inverty = swwwConfig.invertY ? '--invert-y' : ''
+  switch (swwwConfig.transitionPositionType) {
+    case 'int':
+      transitionPos = `${swwwConfig.transitionPositionIntX},${swwwConfig.transitionPositionIntY}`
+      break
+    case 'float':
+      transitionPos = `${swwwConfig.transitionPositionFloatX},${swwwConfig.transitionPositionFloatY}`
+      break
+    case 'alias':
+      transitionPos = swwwConfig.transitionPosition
+  }
+  if (!monitors) {
+    const baseCommand = `swww img ${imagePath} --resize="${swwwConfig.resizeType}" --fill-color "${swwwConfig.fillColor}" --filter ${swwwConfig.filterType} --transition-step ${swwwConfig.transitionStep} --transition-duration ${swwwConfig.transitionDuration} --transition-fps ${swwwConfig.transitionFPS} --transition-angle ${swwwConfig.transitionAngle} --transition-pos ${transitionPos} ${inverty} --transition-bezier ${swwwConfig.transitionBezier} --transition-wave "${swwwConfig.transitionWaveX},${swwwConfig.transitionWaveY}"`
+    if (!config.app.config.swwwAnimations || !Playlist.showAnimations) {
+      console.log(config.app.config.swwwAnimations, Playlist.showAnimations)
+      const command = baseCommand.concat(' --transition-type=none')
+      console.log(command)
+      return command
+    } else {
+      const command = baseCommand.concat(
+        ` --transition-type=${swwwConfig.transitionType}`
+      )
+      console.log(command)
+      return command
+    }
+  }
+}
+function setImage(imageName: string) {
+  const command = getSwwwCommandFromConfiguration(join(IMAGES_DIR, imageName))
+  if (command) {
+    notifyImageSet(imageName, join(IMAGES_DIR, imageName))
+    execSync(command)
+  }
 }
 function notifyImageSet(imageName: string, imagePath: string) {
   const notifySend = `notify-send -u low -t 2000 -i "${imagePath}" -a "Waypaper Engine" "Waypaper Engine" "Setting image: ${imageName}"`
@@ -74,15 +115,14 @@ function notify(message: string) {
     }
   })
 }
-
 const Playlist: PlaylistInterface = {
   images: [''],
   currentName: '',
   currentType: PLAYLIST_TYPES.NEVER,
   currentImageIndex: 0,
   interval: 0,
+  showAnimations: true,
   intervalID: null,
-  swwwOptions: [''],
   pause: () => {
     if (
       Playlist.intervalID !== null &&
@@ -110,7 +150,7 @@ const Playlist: PlaylistInterface = {
     Playlist.currentType = PLAYLIST_TYPES.NEVER
     Playlist.interval = 0
     Playlist.images = ['']
-    Playlist.swwwOptions = ['']
+    Playlist.showAnimations = true
   },
   resetInterval: () => {
     if (Playlist.intervalID) {
@@ -125,7 +165,8 @@ const Playlist: PlaylistInterface = {
     if (Playlist.currentImageIndex === Playlist.images.length) {
       Playlist.currentImageIndex = 0
     }
-    setImage(Playlist.swwwOptions, Playlist.images[Playlist.currentImageIndex])
+    console.log('before setting image, playlist =', Playlist)
+    setImage(Playlist.images[Playlist.currentImageIndex])
     Playlist.updateInDB(Playlist.currentImageIndex, Playlist.currentName)
   },
   previousImage: () => {
@@ -134,11 +175,11 @@ const Playlist: PlaylistInterface = {
     if (Playlist.currentImageIndex < 0) {
       Playlist.currentImageIndex = Playlist.images.length - 1
     }
-    setImage(Playlist.swwwOptions, Playlist.images[Playlist.currentImageIndex])
+    setImage(Playlist.images[Playlist.currentImageIndex])
     Playlist.updateInDB(Playlist.currentImageIndex, Playlist.currentName)
   },
-  start: async (playlistName: string, swwwOptions: string[]) => {
-    await Playlist.setPlaylist(playlistName, swwwOptions)
+  start: async (playlistName: string) => {
+    await Playlist.setPlaylist(playlistName)
     switch (Playlist.currentType) {
       case PLAYLIST_TYPES.TIMER:
         Playlist.timedPlaylist()
@@ -172,26 +213,21 @@ const Playlist: PlaylistInterface = {
       throw new Error('Could not update playlist in DB')
     }
   },
-
-  setPlaylist: async (
-    playlistName: string,
-
-    swwwOptions: string[]
-  ) => {
+  setPlaylist: async (playlistName: string) => {
     try {
       const currentPlaylist = getPlaylistFromDB(playlistName)
       if (currentPlaylist === null) {
         throw new Error('Could not get playlist from DB')
       }
+      console.log(currentPlaylist)
       Playlist.images = currentPlaylist.images
       Playlist.currentName = playlistName
-      Playlist.swwwOptions = swwwOptions
       Playlist.currentType = currentPlaylist.type
       Playlist.currentImageIndex = currentPlaylist.currentImageIndex
       Playlist.interval = currentPlaylist.interval
+      Playlist.showAnimations = currentPlaylist.showAnimations
     } catch (error) {
       console.error(error)
-      // implement notify function
       throw new Error('Could not set playlist')
     }
   },
@@ -202,10 +238,7 @@ const Playlist: PlaylistInterface = {
         if (Playlist.currentImageIndex === Playlist.images.length) {
           Playlist.currentImageIndex = 0
         }
-        setImage(
-          Playlist.swwwOptions,
-          Playlist.images[Playlist.currentImageIndex]
-        )
+        setImage(Playlist.images[Playlist.currentImageIndex])
         await Playlist.updateInDB(
           Playlist.currentImageIndex,
           Playlist.currentName
@@ -217,7 +250,7 @@ const Playlist: PlaylistInterface = {
     }
   },
   neverPlaylist: async () => {
-    setImage(Playlist.swwwOptions, Playlist.images[Playlist.currentImageIndex])
+    setImage(Playlist.images[Playlist.currentImageIndex])
   },
   timeOfDayPlaylist: async () => {},
   dayOfWeekPlaylist: async () => {}
@@ -233,23 +266,21 @@ async function daemonInit() {
         Playlist.stop()
         daemonServer.close()
         process.exit(0)
+      case ACTIONS.UPDATE_CONFIG:
+        config.app.update()
+        config.swww.update()
+        break
       case ACTIONS.START_PLAYLIST:
         if (message.payload) {
           Playlist.stop()
-          await Playlist.start(
-            message.payload.playlistName,
-            message.payload.swwwOptions
-          )
+          await Playlist.start(message.payload.playlistName)
           notifyPlaylistState(Playlist.currentName, PlaylistStates.PLAYING)
         } else {
           notify('Something went wrong, no playlist payload received')
         }
         break
     }
-    if (Playlist.currentName === '') {
-      notify('No playlist active, try setting one first')
-      return
-    } else {
+    if (Playlist.currentName !== '') {
       switch (message.action) {
         case ACTIONS.PAUSE_PLAYLIST:
           Playlist.pause()

@@ -3,7 +3,6 @@ import { rmSync, mkdirSync, existsSync, readdirSync } from 'node:fs'
 import { copyFile } from 'node:fs/promises'
 import {
   appDirectories,
-  swwwDefaults,
   validImageExtensions,
   WAYPAPER_ENGINE_SOCKET_PATH
 } from './globals/globals'
@@ -19,8 +18,7 @@ import {
   storePlaylistInDB,
   checkIfPlaylistExists,
   updatePlaylistInDB,
-  deleteImageInDB,
-  readSwwwConfig
+  deleteImageInDB
 } from './database/dbOperations'
 import config from './database/globalConfig'
 
@@ -173,8 +171,7 @@ export async function setImage(
     join(appDirectories.imagesDir, `"${imageName}"`)
   )
   console.log(command)
-  /*   const options = [...swwwDefaults]
-  options.push(join(appDirectories.imagesDir, `"${imageName}"`)) */
+
   try {
     await execPomisified(`${command}`)
   } catch (error) {
@@ -205,9 +202,9 @@ function isSwwwSocketClean() {
 export async function checkIfSwwwIsInstalled() {
   const { stdout } = await execPomisified(`swww --version`)
   if (stdout) {
-    console.log('swww is installed in the system')
+    console.info('swww is installed in the system')
   } else {
-    console.log(
+    console.warn(
       'swww is not installed, please find instructions in the README.md on how to install it'
     )
     throw new Error('swww is not installed')
@@ -254,23 +251,16 @@ async function playlistConnectionBridge(message: message) {
 }
 
 export const PlaylistController = {
-  startPlaylist: async function (
-    playlistName: string,
-    swwwUserOverrides?: string[]
-  ) {
-    const swwwOptions =
-      swwwUserOverrides !== undefined ? swwwUserOverrides : swwwDefaults
+  startPlaylist: async function (playlistName: string) {
     const message: message = {
       action: ACTIONS.START_PLAYLIST,
       payload: {
-        playlistName,
-        swwwOptions
+        playlistName
       }
     }
     playlistConnectionBridge(message)
     PlaylistController.isPlaying = true
   },
-  isPlaying: false,
   pausePlaylist: () => {
     playlistConnectionBridge({
       action: ACTIONS.PAUSE_PLAYLIST
@@ -303,7 +293,13 @@ export const PlaylistController = {
     playlistConnectionBridge({
       action: ACTIONS.STOP_DAEMON
     })
-  }
+  },
+  updateConfig: () => {
+    playlistConnectionBridge({
+      action: ACTIONS.UPDATE_CONFIG
+    })
+  },
+  isPlaying: false
 }
 
 export function deleteImageFromStorage(imageName: string) {
@@ -344,7 +340,6 @@ function getSwwwCommandFromConfiguration(
   monitors?: string[]
 ) {
   const swwwConfig = config.swww.config
-  console.log('calledGetCOmmand', swwwConfig)
   let transitionPos = ''
   let inverty = swwwConfig.invertY ? '--invert-y' : ''
   switch (swwwConfig.transitionPositionType) {
