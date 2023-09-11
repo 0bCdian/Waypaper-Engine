@@ -27,7 +27,9 @@ function PlaylistTrack() {
     playlist,
     movePlaylistArrayOrder,
     addMultipleImagesToPlaylist,
-    clearPlaylist
+    addImageToPlaylist,
+    clearPlaylist,
+    readPlaylist
   } = playlistStore()
   const { openImages, isActive } = openImagesStore()
   const { setSkeletons, setImagesArray, resetImageCheckboxes, reQueryImages } =
@@ -50,10 +52,13 @@ function PlaylistTrack() {
     }
   }
   const handleClickAddImages = () => {
+    const currentPlaylist = readPlaylist()
     openImages({
       setSkeletons,
       setImagesArray,
-      addMultipleImagesToPlaylist
+      addMultipleImagesToPlaylist,
+      addImageToPlaylist,
+      currentPlaylist
     })
   }
 

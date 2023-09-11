@@ -4,7 +4,6 @@ import IntroScreen from './components/IntroScreen'
 import './index.css'
 import './extra.css'
 import { BrowserRouter } from 'react-router-dom'
-
 const { readAppConfig } = window.API_RENDERER
 readAppConfig().then((data) => {
   ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(

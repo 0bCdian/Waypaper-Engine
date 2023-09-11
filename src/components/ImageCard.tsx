@@ -1,5 +1,5 @@
 import { useId, ChangeEvent } from 'react'
-import { Image } from '../types/rendererTypes'
+import { Image, PLAYLIST_TYPES } from '../types/rendererTypes'
 import playlistStore from '../hooks/playlistStore'
 import { useImages } from '../hooks/imagesStore'
 import { motion } from 'framer-motion'
@@ -24,10 +24,19 @@ function ImageCard({ Image }: ImageCardProps) {
   const handleDoubleClick = () => {
     setImage(Image.name)
   }
-  const { addImageToPlaylist, removeImageFromPlaylist } = playlistStore()
+  const { addImageToPlaylist, removeImageFromPlaylist, readPlaylist } =
+    playlistStore()
   const handleCheckboxChange = (event: ChangeEvent) => {
     const element = event.target as HTMLInputElement
     if (element.checked) {
+      const playlist = readPlaylist()
+      if (
+        playlist.configuration.playlistType === PLAYLIST_TYPES.DAY_OF_WEEK &&
+        playlist.images.length === 7
+      ) {
+        element.checked = false
+        return
+      }
       Image.isChecked = true
       addImageToPlaylist(Image)
     } else {
@@ -63,7 +72,7 @@ function ImageCard({ Image }: ImageCardProps) {
       animate={{ opacity: 1 }}
       exit={{ opacity: 0 }}
       onContextMenu={handleRightClick}
-      className='duration-500 border-[2px] border-transparent group hover:border-info relative rounded-lg bg-transparent max-w-fit mb-4 overflow-hidden '
+      className='duration-500 border-[2px] border-transparent group hover:border-info relative rounded-lg bg-transparent max-w-fit mb-4 overflow-hidden'
     >
       <div className='relative'>
         <button

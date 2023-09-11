@@ -1,5 +1,5 @@
 import { useForm, SubmitHandler } from 'react-hook-form'
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useState } from 'react'
 import playlistStore from '../hooks/playlistStore'
 import {
   ORDER_TYPES,
@@ -20,12 +20,16 @@ type Props = {
 const PlaylistConfigurationModal = ({
   currentPlaylistConfiguration
 }: Props) => {
-  const { setConfiguration } = playlistStore()
+  const [showError, setShowError] = useState(false)
+  const { setConfiguration, readPlaylist } = playlistStore()
   const { register, handleSubmit, watch, setValue } = useForm<Inputs>()
   const containerRef = useRef<HTMLDialogElement>(null)
   const closeModal = () => {
     containerRef.current?.close()
   }
+  const playlist = readPlaylist()
+  const classNameDisabled =
+    playlist.images.length > 7 ? 'bg-red-900 text-stone-100' : ''
   const onSubmit: SubmitHandler<Inputs> = (data) => {
     switch (data.playlistType) {
       case PLAYLIST_TYPES.TIMER:
@@ -51,6 +55,13 @@ const PlaylistConfigurationModal = ({
         })
         break
       case PLAYLIST_TYPES.DAY_OF_WEEK:
+        if (playlist.images.length > 7) {
+          setShowError((prevState) => !prevState)
+          setTimeout(() => {
+            setShowError((prevState) => !prevState)
+          }, 5000)
+          return
+        }
         setConfiguration({
           playlistType: data.playlistType,
           order: null,
@@ -111,6 +122,24 @@ const PlaylistConfigurationModal = ({
         onSubmit={handleSubmit(onSubmit)}
       >
         <h2 className='font-bold text-3xl text-center'>Playlist Settings</h2>
+        {showError && (
+          <div className='alert alert-error mt-5'>
+            <svg
+              xmlns='http://www.w3.org/2000/svg'
+              className='stroke-current shrink-0 h-6 w-6'
+              fill='none'
+              viewBox='0 0 24 24'
+            >
+              <path
+                strokeLinecap='round'
+                strokeLinejoin='round'
+                strokeWidth='2'
+                d='M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z'
+              />
+            </svg>
+            <span>Weekly playlists cannot have more than 7 images.</span>
+          </div>
+        )}
         <div className='divider'></div>
         <div className='flex justify-between items-baseline'>
           <label
@@ -127,7 +156,13 @@ const PlaylistConfigurationModal = ({
           >
             <option value={PLAYLIST_TYPES.TIMER}>On a timer</option>
             <option value={PLAYLIST_TYPES.TIME_OF_DAY}>Time of day</option>
-            <option value={PLAYLIST_TYPES.DAY_OF_WEEK}>Day of week</option>
+            <option
+              disabled={playlist.images.length > 7}
+              className={classNameDisabled}
+              value={PLAYLIST_TYPES.DAY_OF_WEEK}
+            >
+              Day of week
+            </option>
             <option value={PLAYLIST_TYPES.NEVER}>Never</option>
           </select>
         </div>
@@ -205,7 +240,7 @@ const PlaylistConfigurationModal = ({
           />
         </div>
         <div className='divider'></div>
-        <div className='modal-action self-center'>
+        <div className='modal-action self-center '>
           <button type='submit' className='btn btn-info rounded-lg'>
             Save changes
           </button>
