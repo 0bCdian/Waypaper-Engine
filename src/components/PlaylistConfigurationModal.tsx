@@ -98,19 +98,16 @@ const PlaylistConfigurationModal = ({
     }
   }, [hours, minutes])
   useEffect(() => {
-    const interval = currentPlaylistConfiguration.interval
+    const interval = playlist.configuration.interval
     if (interval !== null) {
       const { hours, minutes } = toHoursAndMinutes(interval)
       setValue('hours', hours.toString())
       setValue('minutes', minutes.toString())
     }
-    setValue('playlistType', currentPlaylistConfiguration.playlistType)
-    setValue('order', currentPlaylistConfiguration.order)
-    setValue(
-      'showTransition',
-      Boolean(currentPlaylistConfiguration.showAnimations)
-    )
-  }, [currentPlaylistConfiguration])
+    setValue('playlistType', playlist.configuration.playlistType)
+    setValue('order', playlist.configuration.order)
+    setValue('showTransition', Boolean(playlist.configuration.showAnimations))
+  }, [playlist])
   return (
     <dialog
       id='playlistConfigurationModal'

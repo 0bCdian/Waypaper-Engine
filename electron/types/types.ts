@@ -40,11 +40,7 @@ export interface message {
 }
 
 export type PlaylistControllerType = {
-  startPlaylist: (
-    playlistName: string,
-    swwwUserOverrides?: string[] | undefined
-  ) => void
-  isPlaying: boolean
+  startPlaylist: () => void
   pausePlaylist: () => void
   resumePlaylist: () => void
   stopPlaylist: () => void
@@ -58,7 +54,8 @@ export enum dbTables {
   Playlists = 'Playlists',
   imagesInPlaylist = 'imagesInPlaylist',
   swwwConfig = 'swwwConfig',
-  appConfig = 'appConfig'
+  appConfig = 'appConfig',
+  activePlaylist = 'activePlaylist'
 }
 
 export type imageInPlaylist = {

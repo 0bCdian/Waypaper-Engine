@@ -1,23 +1,17 @@
-import {
-  createInitialConfigIfNotExists,
-  readAppConfig,
-  readSwwwConfig,
-  testDB
-} from './dbOperations'
-
-createInitialConfigIfNotExists()
-testDB()
+import dbOperations from './dbOperations'
+dbOperations.createInitialConfigIfNotExists()
+dbOperations.testDB()
 const config = {
   swww: {
-    config: readSwwwConfig(),
+    config: dbOperations.readSwwwConfig(),
     update: () => {
-      config.swww.config = readSwwwConfig()
+      config.swww.config = dbOperations.readSwwwConfig()
     }
   },
   app: {
-    config: readAppConfig(),
+    config: dbOperations.readAppConfig(),
     update: () => {
-      config.app.config = readAppConfig()
+      config.app.config = dbOperations.readAppConfig()
     }
   }
 }

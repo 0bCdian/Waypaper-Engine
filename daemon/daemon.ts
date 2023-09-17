@@ -7,16 +7,15 @@ import {
   message,
   PLAYLIST_TYPES,
   PlaylistInterface,
-  ACTIONS,
-  PlaylistStates
+  ACTIONS
 } from './typesDaemon'
-import { getPlaylistFromDB, updatePlaylistCurrentIndex } from './dbOperations'
-import config from './config'
+import dbOperations from './dbOperationsDaemon'
+import configuration from './config'
 
 function isWaypaperDaemonRunning() {
   try {
     const stdout = execSync('pidof wpe-daemon', { encoding: 'utf-8' })
-    if (config.app.config.notifications) {
+    if (configuration.app.settings.notifications) {
       notify(`Waypaper Engine daemon already running, ${stdout}`)
     }
     return true
@@ -27,7 +26,7 @@ function isWaypaperDaemonRunning() {
 }
 
 if (isWaypaperDaemonRunning()) {
-  if (config.app.config.notifications) {
+  if (configuration.app.settings.notifications) {
     notify('Another instance of the daemon is already running, exiting...')
   }
   process.exit(1)
@@ -40,7 +39,7 @@ function getSwwwCommandFromConfiguration(
   imagePath: string,
   monitors?: string[]
 ) {
-  const swwwConfig = config.swww.config
+  const swwwConfig = configuration.swww.settings
   let transitionPos = ''
   let inverty = swwwConfig.invertY ? '--invert-y' : ''
   switch (swwwConfig.transitionPositionType) {
@@ -54,9 +53,9 @@ function getSwwwCommandFromConfiguration(
       transitionPos = swwwConfig.transitionPosition
   }
   if (!monitors) {
-    const baseCommand = `swww img ${imagePath} --resize="${swwwConfig.resizeType}" --fill-color "${swwwConfig.fillColor}" --filter ${swwwConfig.filterType} --transition-step ${swwwConfig.transitionStep} --transition-duration ${swwwConfig.transitionDuration} --transition-fps ${swwwConfig.transitionFPS} --transition-angle ${swwwConfig.transitionAngle} --transition-pos ${transitionPos} ${inverty} --transition-bezier ${swwwConfig.transitionBezier} --transition-wave "${swwwConfig.transitionWaveX},${swwwConfig.transitionWaveY}"`
-    if (!config.app.config.swwwAnimations || !Playlist.showAnimations) {
-      console.log(config.app.config.swwwAnimations, Playlist.showAnimations)
+    const baseCommand = `swww img "${imagePath}" --resize="${swwwConfig.resizeType}" --fill-color "${swwwConfig.fillColor}" --filter ${swwwConfig.filterType} --transition-step ${swwwConfig.transitionStep} --transition-duration ${swwwConfig.transitionDuration} --transition-fps ${swwwConfig.transitionFPS} --transition-angle ${swwwConfig.transitionAngle} --transition-pos ${transitionPos} ${inverty} --transition-bezier ${swwwConfig.transitionBezier} --transition-wave "${swwwConfig.transitionWaveX},${swwwConfig.transitionWaveY}"`
+    if (!configuration.app.settings.swwwAnimations || !Playlist.showAnimations) {
+      console.log(configuration.app.settings.swwwAnimations, Playlist.showAnimations)
       const command = baseCommand.concat(' --transition-type=none')
       console.log(command)
       return command
@@ -85,28 +84,6 @@ function notifyImageSet(imageName: string, imagePath: string) {
   })
 }
 
-function notifyPlaylistState(
-  playlistName: string,
-  playlistState: PlaylistStates
-) {
-  let message = ''
-  switch (playlistState) {
-    case PlaylistStates.PLAYING:
-      message = `Playing playlist: ${playlistName}`
-      break
-    case PlaylistStates.PAUSED:
-      message = `Paused playlist: ${playlistName}`
-      break
-    case PlaylistStates.STOPPED:
-      message = `Stopping playlist: ${playlistName}`
-  }
-  const notifySend = `notify-send -u low -t 2000 -a "Waypaper Engine" "Waypaper Engine" "${message}"`
-  exec(notifySend, (err, _stdout, _stderr) => {
-    if (err) {
-      console.error(err)
-    }
-  })
-}
 function notify(message: string) {
   const notifySend = `notify-send -u normal -t 2000 -a "Waypaper Engine" "Waypaper Engine" "${message}"`
   exec(notifySend, (err, _stdout, _stderr) => {
@@ -122,28 +99,33 @@ const Playlist: PlaylistInterface = {
   currentImageIndex: 0,
   interval: 0,
   showAnimations: true,
-  intervalID: null,
+  intervalID: undefined,
+  timeoutID: undefined,
   pause: () => {
-    if (
-      Playlist.intervalID !== null &&
-      Playlist.currentType !== PLAYLIST_TYPES.NEVER
-    ) {
-      clearInterval(Playlist.intervalID)
-      Playlist.intervalID = null
-    }
+    clearInterval(Playlist.intervalID)
+    clearTimeout(Playlist.timeoutID)
+    Playlist.intervalID = undefined
+    Playlist.timeoutID = undefined
   },
   resume: () => {
     if (
-      Playlist.intervalID === null &&
+      Playlist.intervalID === undefined &&
       Playlist.currentType !== PLAYLIST_TYPES.NEVER
     ) {
-      // Switch statement to determine which interval playlist type to use, rn only timed playist is implemented
-      Playlist.timedPlaylist()
+      switch (Playlist.currentType) {
+        case PLAYLIST_TYPES.TIMER:
+          Playlist.timedPlaylist()
+          break
+        case PLAYLIST_TYPES.DAY_OF_WEEK:
+          Playlist.dayOfWeekPlaylist()
+          break
+        case PLAYLIST_TYPES.TIME_OF_DAY:
+          Playlist.timeOfDayPlaylist()
+          break
+      }
     }
   },
   stop: () => {
-    clearInterval(Playlist.intervalID as NodeJS.Timeout)
-    Playlist.intervalID = null
     Playlist.pause()
     Playlist.currentImageIndex = 0
     Playlist.currentName = ''
@@ -155,7 +137,7 @@ const Playlist: PlaylistInterface = {
   resetInterval: () => {
     if (Playlist.intervalID) {
       clearInterval(Playlist.intervalID)
-      Playlist.intervalID = null
+      Playlist.intervalID = undefined
       Playlist.timedPlaylist()
     }
   },
@@ -165,7 +147,6 @@ const Playlist: PlaylistInterface = {
     if (Playlist.currentImageIndex === Playlist.images.length) {
       Playlist.currentImageIndex = 0
     }
-    console.log('before setting image, playlist =', Playlist)
     setImage(Playlist.images[Playlist.currentImageIndex])
     Playlist.updateInDB(Playlist.currentImageIndex, Playlist.currentName)
   },
@@ -178,8 +159,8 @@ const Playlist: PlaylistInterface = {
     setImage(Playlist.images[Playlist.currentImageIndex])
     Playlist.updateInDB(Playlist.currentImageIndex, Playlist.currentName)
   },
-  start: async (playlistName: string) => {
-    await Playlist.setPlaylist(playlistName)
+  start: async () => {
+    await Playlist.setPlaylist()
     switch (Playlist.currentType) {
       case PLAYLIST_TYPES.TIMER:
         Playlist.timedPlaylist()
@@ -203,7 +184,7 @@ const Playlist: PlaylistInterface = {
   sleep: (ms: number) => new Promise((r) => setTimeout(r, ms)),
   updateInDB: async (imageIndex: number, playlistName: string) => {
     try {
-      updatePlaylistCurrentIndex(imageIndex, playlistName)
+      dbOperations.updatePlaylistCurrentIndex(imageIndex, playlistName)
     } catch (error) {
       console.error(error)
       notify(
@@ -213,17 +194,18 @@ const Playlist: PlaylistInterface = {
       throw new Error('Could not update playlist in DB')
     }
   },
-  setPlaylist: async (playlistName: string) => {
+  setPlaylist: async () => {
     try {
-      const currentPlaylist = getPlaylistFromDB(playlistName)
+      const currentPlaylist = dbOperations.getCurrentPlaylist()
       if (currentPlaylist === null) {
-        throw new Error('Could not get playlist from DB')
+        return
       }
-      console.log(currentPlaylist)
       Playlist.images = currentPlaylist.images
-      Playlist.currentName = playlistName
+      Playlist.currentName = currentPlaylist.name
       Playlist.currentType = currentPlaylist.type
-      Playlist.currentImageIndex = currentPlaylist.currentImageIndex
+      Playlist.currentImageIndex = configuration.app.settings.playlistStartOnFirstImage
+        ? 0
+        : currentPlaylist.currentImageIndex
       Playlist.interval = currentPlaylist.interval
       Playlist.showAnimations = currentPlaylist.showAnimations
     } catch (error) {
@@ -253,7 +235,22 @@ const Playlist: PlaylistInterface = {
     setImage(Playlist.images[Playlist.currentImageIndex])
   },
   timeOfDayPlaylist: async () => {},
-  dayOfWeekPlaylist: async () => {}
+  dayOfWeekPlaylist: async () => {
+    const now = new Date()
+    const endOfDay = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1,
+      0,
+      0,
+      0
+    )
+    const millisecondsUntilEndOfDay = endOfDay.getTime() - now.getTime()
+    setImage(Playlist.images[now.getDay()])
+    Playlist.intervalID = setTimeout(() => {
+      Playlist.dayOfWeekPlaylist()
+    }, millisecondsUntilEndOfDay)
+  }
 }
 
 async function daemonInit() {
@@ -267,32 +264,28 @@ async function daemonInit() {
         daemonServer.close()
         process.exit(0)
       case ACTIONS.UPDATE_CONFIG:
-        config.app.update()
-        config.swww.update()
+        configuration.app.update()
+        configuration.swww.update()
         break
       case ACTIONS.START_PLAYLIST:
-        if (message.payload) {
-          Playlist.stop()
-          await Playlist.start(message.payload.playlistName)
-          notifyPlaylistState(Playlist.currentName, PlaylistStates.PLAYING)
-        } else {
-          notify('Something went wrong, no playlist payload received')
-        }
+        Playlist.stop()
+        await Playlist.start()
+        notify(`Starting ${Playlist.currentName}`)
         break
     }
     if (Playlist.currentName !== '') {
       switch (message.action) {
         case ACTIONS.PAUSE_PLAYLIST:
           Playlist.pause()
-          notifyPlaylistState(Playlist.currentName, PlaylistStates.PAUSED)
+          notify(`Pausing ${Playlist.currentName}`)
           break
         case ACTIONS.RESUME_PLAYLIST:
           Playlist.resume()
-          notifyPlaylistState(Playlist.currentName, PlaylistStates.PLAYING)
+          notify(`Resuming ${Playlist.currentName}`)
           break
         case ACTIONS.STOP_PLAYLIST:
           Playlist.stop()
-          notifyPlaylistState(Playlist.currentName, PlaylistStates.STOPPED)
+          notify(`Stopping ${Playlist.currentName}`)
           break
         case ACTIONS.NEXT_IMAGE:
           Playlist.nextImage()
@@ -318,6 +311,7 @@ async function daemonInit() {
   })
 
   daemonServer.listen(SOCKET_PATH)
+  Playlist.start()
   process.on('SIGTERM', function () {
     notify('Exiting daemon')
     Playlist.stop()

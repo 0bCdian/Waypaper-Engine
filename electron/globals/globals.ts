@@ -86,7 +86,7 @@ export const prodMenu = ({ app }: { app: App }) => {
   return devMenu
 }
 
-export const trayMenu = ({
+export const trayMenuWithControls = ({
   app,
   PlaylistController
 }: {
@@ -107,21 +107,21 @@ export const trayMenu = ({
       }
     },
     {
-      label: 'Toggle Playlist',
-      click: () => {
-        if (PlaylistController.isPlaying) {
-          PlaylistController.pausePlaylist()
-        } else {
-          PlaylistController.resumePlaylist()
-        }
-      }
-    },
-    {
       label: 'Stop Playlist',
       click: () => {
         PlaylistController.stopPlaylist()
       }
     },
+    {
+      label: 'Quit',
+      click: () => app.exit()
+    }
+  ]
+  return controls
+}
+
+export const trayMenu = ({ app }: { app: App }) => {
+  const controls = [
     {
       label: 'Quit',
       click: () => app.exit()

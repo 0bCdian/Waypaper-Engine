@@ -8,13 +8,13 @@ import { useImages } from '../hooks/imagesStore'
 
 const { queryPlaylists } = window.API_RENDERER
 function Modals() {
-  const { readPlaylist } = playlistStore()
+  const { readPlaylist, isEmpty } = playlistStore()
   const { imagesArray } = useImages()
   const shouldReload = useRef(false)
   const [playlistsInDB, setPlaylistsInDB] = useState<Playlist[]>([])
   const currentPlaylist = useMemo(() => {
     return readPlaylist()
-  }, [shouldReload.current])
+  }, [shouldReload.current, isEmpty])
   useEffect(() => {
     shouldReload.current = false
     queryPlaylists().then((playlists) => {

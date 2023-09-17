@@ -20,6 +20,6 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "electron"],
+  "include": ["src", "electron", "daemon/dbOperationsDaemon.ts"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

@@ -2,16 +2,29 @@ import { useSortable } from '@dnd-kit/sortable'
 import { motion } from 'framer-motion'
 import { CSS } from '@dnd-kit/utilities'
 import { useEffect, useRef } from 'react'
-import { Image } from '../types/rendererTypes'
+import { Image, PLAYLIST_TYPES } from '../types/rendererTypes'
 import playlistStore from '../hooks/playlistStore'
 
 const { join, thumbnailDirectory } = window.API_RENDERER
+const daysOfWeek = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday'
+]
 
 function MiniPlaylistCard({
   Image,
+  playlistType,
+  index,
   isLast
 }: {
   Image: Image
+  playlistType: PLAYLIST_TYPES
+  index: number
   isLast: boolean | undefined
 }) {
   const { removeImageFromPlaylist } = playlistStore()
@@ -29,6 +42,16 @@ function MiniPlaylistCard({
   const style = {
     transform: CSS.Transform.toString(transform),
     transition
+  }
+  let text: string
+  if (isLast) {
+    if (index < 6) {
+      text = `${daysOfWeek[index]}-Sunday`
+    } else {
+      text = daysOfWeek[index]
+    }
+  } else {
+    text = daysOfWeek[index]
   }
   useEffect(() => {
     if (isLast) {
@@ -48,6 +71,11 @@ function MiniPlaylistCard({
         exit={{ scale: 0 }}
         className='w-32 mx-1 shrink-0 mb-2 rounded-lg shadow-xl '
       >
+        {playlistType === PLAYLIST_TYPES.DAY_OF_WEEK && (
+          <span className='text-stone-100 shadow-xl font-bold text-clip whitespace-nowrap'>
+            {text}
+          </span>
+        )}
         <div className='relative '>
           <button
             onClick={onRemove}

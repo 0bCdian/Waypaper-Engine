@@ -2,10 +2,14 @@ import { type FC } from 'react'
 import Filters from './Filters'
 import { useImages } from '../hooks/imagesStore'
 import { Link } from 'react-router-dom'
-import Gallery from './Gallery'
 
-const NavBar: FC = () => {
+type NavBarProps = {
+  currentRoute: string
+}
+
+const NavBar: FC<NavBarProps> = ({ currentRoute }) => {
   const { isEmpty } = useImages()
+  const showFilters = !isEmpty && currentRoute === '/'
   return (
     <div className='navbar bg-base-100 mb-2'>
       <div className='navbar-start'>
@@ -33,13 +37,14 @@ const NavBar: FC = () => {
         </div>
       </div>
       <div className='navbar-center'>
-        <Link className='btn btn-ghost normal-case text-3xl' to='/'>
+        <Link
+          className='btn btn-ghost normal-case animate-none text-3xl'
+          to='/'
+        >
           Waypaper Engine
         </Link>
       </div>
-      <div className='navbar-end'>
-        {!isEmpty && <Filters />}
-      </div>
+      <div className='navbar-end'>{showFilters && <Filters />}</div>
     </div>
   )
 }

@@ -1,7 +1,7 @@
 import { ipcRenderer } from 'electron'
 import { appDirectories } from './globals/globals'
 import { imagesObject, Playlist } from './types/types'
-import { rendererPlaylist } from '../src/types/rendererTypes'
+import { Image, rendererPlaylist } from '../src/types/rendererTypes'
 import { join } from 'node:path'
 import { swwwConfig } from './database/swwwConfig'
 import { AppConfigDB } from '../src/routes/AppConfiguration'
@@ -43,8 +43,8 @@ export const ELECTRON_API = {
     ipcRenderer.send('deletePlaylist', playlistName)
   },
   join: join,
-  openContextMenu: (imageName: string) => {
-    ipcRenderer.send('openContextMenuImage', imageName)
+  openContextMenu: (Image: Image) => {
+    ipcRenderer.send('openContextMenuImage', Image)
   },
   updateSwwwConfig: (newConfig: swwwConfig) => {
     ipcRenderer.send('updateSwwwConfig', newConfig)

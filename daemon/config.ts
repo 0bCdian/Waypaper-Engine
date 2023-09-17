@@ -1,17 +1,17 @@
-import { readSwwwConfig, readAppConfig } from './dbOperations'
+import dbOperations from './dbOperationsDaemon'
 
-const config = {
+const configuration = {
   swww: {
-    config: readSwwwConfig(),
+    settings: dbOperations.readSwwwConfig(),
     update: () => {
-      config.swww.config = readSwwwConfig()
+      configuration.swww.settings = dbOperations.readSwwwConfig()
     }
   },
   app: {
-    config: readAppConfig(),
+    settings: dbOperations.readAppConfig(),
     update: () => {
-      config.app.config = readAppConfig()
+      configuration.app.settings = dbOperations.readAppConfig()
     }
   }
 }
-export default config
+export default configuration

@@ -1,5 +1,5 @@
 import { dialog } from 'electron'
-import { rmSync, mkdirSync, existsSync, readdirSync } from 'node:fs'
+import { rmSync, mkdirSync, existsSync, readdirSync, readdir } from 'node:fs'
 import { copyFile } from 'node:fs/promises'
 import {
   appDirectories,
@@ -13,13 +13,7 @@ import { promisify } from 'node:util'
 import { daemonLocation } from './binaries'
 import { join, basename } from 'node:path'
 import { createConnection } from 'node:net'
-import {
-  storeImagesInDB,
-  storePlaylistInDB,
-  checkIfPlaylistExists,
-  updatePlaylistInDB,
-  deleteImageInDB
-} from './database/dbOperations'
+import dbOperations from './database/dbOperations'
 import config from './database/globalConfig'
 
 const execPomisified = promisify(exec)
@@ -55,7 +49,7 @@ export async function copyImagesToCacheAndProcessThumbnails(
       imagesToStoreinDB.push(imagePromise.value)
     }
   })
-  return storeImagesInDB(imagesToStoreinDB)
+  return dbOperations.storeImagesInDB(imagesToStoreinDB)
 }
 
 async function createCacheThumbnail(filePathSource: string, imageName: string) {
@@ -89,6 +83,26 @@ export function openAndReturnImagesObject() {
   return { imagePaths: imagePathsFromFilePicker, fileNames }
 }
 
+export async function remakeThumbnailsIfImagesExist() {
+  readdir(appDirectories.thumbnails, (err, thumbnails) => {
+    if (err) {
+      throw new Error('Could not read thumbnails directory')
+    }
+    if (thumbnails.length < 1) {
+      readdir(appDirectories.imagesDir, (err, images) => {
+        if (err) {
+          throw new Error(`Could not read the images directory: ${err}`)
+        } else if (images.length < 1) {
+          return
+        }
+        for (let current = 0; current < images.length; current++) {
+          const filePathSource = join(appDirectories.imagesDir, images[current])
+          createCacheThumbnail(filePathSource, images[current])
+        }
+      })
+    }
+  })
+}
 export async function checkCacheOrCreateItIfNotExists() {
   if (!existsSync(appDirectories.rootCache)) {
     createFolders(appDirectories.rootCache, appDirectories.thumbnails)
@@ -215,10 +229,10 @@ export async function savePlaylist(
   playlistObject: rendererPlaylist
 ) {
   try {
-    if (checkIfPlaylistExists(playlistObject.name)) {
-      updatePlaylistInDB(playlistObject)
+    if (dbOperations.checkIfPlaylistExists(playlistObject.name)) {
+      dbOperations.updatePlaylistInDB(playlistObject)
     } else {
-      storePlaylistInDB(playlistObject)
+      dbOperations.storePlaylistInDB(playlistObject)
     }
   } catch (error) {
     console.error(error)
@@ -251,33 +265,26 @@ async function playlistConnectionBridge(message: message) {
 }
 
 export const PlaylistController = {
-  startPlaylist: async function (playlistName: string) {
+  startPlaylist: async function () {
     const message: message = {
-      action: ACTIONS.START_PLAYLIST,
-      payload: {
-        playlistName
-      }
+      action: ACTIONS.START_PLAYLIST
     }
     playlistConnectionBridge(message)
-    PlaylistController.isPlaying = true
   },
   pausePlaylist: () => {
     playlistConnectionBridge({
       action: ACTIONS.PAUSE_PLAYLIST
     })
-    PlaylistController.isPlaying = false
   },
   resumePlaylist: () => {
     playlistConnectionBridge({
       action: ACTIONS.RESUME_PLAYLIST
     })
-    PlaylistController.isPlaying = true
   },
   stopPlaylist: () => {
     playlistConnectionBridge({
       action: ACTIONS.STOP_PLAYLIST
     })
-    PlaylistController.isPlaying = false
   },
   nextImage: () => {
     playlistConnectionBridge({
@@ -298,8 +305,7 @@ export const PlaylistController = {
     playlistConnectionBridge({
       action: ACTIONS.UPDATE_CONFIG
     })
-  },
-  isPlaying: false
+  }
 }
 
 export function deleteImageFromStorage(imageName: string) {
@@ -326,7 +332,7 @@ export function deleteImageFromGallery(
   imageName: string
 ) {
   try {
-    deleteImageInDB(imageID)
+    dbOperations.deleteImageInDB(imageID)
     deleteImageFromStorage(imageName)
     return true
   } catch (error) {

@@ -2,7 +2,6 @@ import { Routes, Route } from 'react-router-dom'
 import Home from './routes/Home'
 import SwwwConfig from './routes/SwwwConfig'
 import Drawer from './components/Drawer'
-import NavBar from './components/NavBar'
 import { ImagesProvider } from './hooks/imagesStore'
 import AppConfig from './routes/AppConfiguration'
 
@@ -11,7 +10,6 @@ const App = () => {
     <>
       <Drawer>
         <ImagesProvider>
-          <NavBar />
           <Routes>
             <Route path='/' element={<Home />} />
             <Route path='/swwwConfig' element={<SwwwConfig />} />

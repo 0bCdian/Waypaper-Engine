@@ -69,13 +69,20 @@ function createDB() {
 	"introAnimation"	INTEGER NOT NULL UNIQUE,
 	"startMinimized" INTEGER NOT NULL UNIQUE
 );`)
+    const createActivePlaylist =
+      db.prepare(`CREATE TABLE IF NOT EXISTS "activePlaylist" (
+	"playlistID"	INTEGER UNIQUE,
+	PRIMARY KEY("playlistID")
+);`)
     createSwwwConfigTable.run()
     createAppConfigTable.run()
     createImagesTable.run()
     createPlaylistsTable.run()
     createImagesInPlaylistTable.run()
+    createActivePlaylist.run()
   } catch (error) {
     console.log(error)
+		throw new Error('Could not initialize the database tables')
   }
 }
 createDB()

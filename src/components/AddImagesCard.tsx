@@ -6,12 +6,15 @@ import { useImages } from '../hooks/imagesStore'
 function AddImagesCard() {
   const { openImages, isActive } = openImagesStore()
   const { setSkeletons, setImagesArray } = useImages()
-  const { addMultipleImagesToPlaylist } = playlistStore()
+  const { addMultipleImagesToPlaylist, addImageToPlaylist, readPlaylist } =
+    playlistStore()
   const handleOpenImages = () => {
     openImages({
       setSkeletons,
       setImagesArray,
-      addMultipleImagesToPlaylist
+      addMultipleImagesToPlaylist,
+      addImageToPlaylist,
+      currentPlaylist: readPlaylist()
     })
   }
 

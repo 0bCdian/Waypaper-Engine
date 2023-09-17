@@ -52,13 +52,12 @@ function PlaylistTrack() {
     }
   }
   const handleClickAddImages = () => {
-    const currentPlaylist = readPlaylist()
     openImages({
       setSkeletons,
       setImagesArray,
       addMultipleImagesToPlaylist,
       addImageToPlaylist,
-      currentPlaylist
+      currentPlaylist: readPlaylist()
     })
   }
 
@@ -68,12 +67,14 @@ function PlaylistTrack() {
       return (
         <MiniPlaylistCard
           isLast={lastIndex === index}
+          playlistType={playlist.configuration.playlistType}
+          index={index}
           Image={Image}
           key={Image.id}
         />
       )
     })
-  }, [playlist.images])
+  }, [playlist.images,playlist.configuration])
   const firstRender = useRef(true)
   useEffect(() => {
     if (firstRender.current) {

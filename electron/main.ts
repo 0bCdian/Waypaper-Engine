@@ -9,19 +9,16 @@ import {
   PlaylistController,
   isSwwwDaemonRunning,
   initWaypaperDaemon,
-  deleteImageFromGallery
+  deleteImageFromGallery,
+  remakeThumbnailsIfImagesExist
 } from './appFunctions'
+import dbOperations from './database/dbOperations'
 import {
-  deletePlaylistInDB,
-  getImagesInPlaylist,
-  readAllImagesInDB,
-  readAllPlaylistsInDB,
-  readSwwwConfig,
-  updateSwwwConfig,
-  readAppConfig,
-  updateAppConfig
-} from './database/dbOperations'
-import { devMenu, prodMenu, trayMenu } from './globals/globals'
+  devMenu,
+  prodMenu,
+  trayMenu,
+  trayMenuWithControls
+} from './globals/globals'
 import { iconPath } from './binaries'
 import installExtension, {
   REACT_DEVELOPER_TOOLS
@@ -29,6 +26,7 @@ import installExtension, {
 import { swwwConfig } from './database/swwwConfig'
 import { AppConfigDB } from '../src/routes/AppConfiguration'
 import config from './database/globalConfig'
+import { Image, PLAYLIST_TYPES } from '../src/types/rendererTypes'
 if (process.argv[1] === '--daemon' || process.argv[3] === '--daemon') {
   initWaypaperDaemon()
   app.exit(1)
@@ -106,15 +104,7 @@ function registerFileProtocol() {
     callback(filePath)
   })
 }
-function createTray() {
-  tray = new Tray(join(iconPath, 'tray.png'))
-  const trayContextMenu = trayMenu({ app, PlaylistController })
-  tray.setContextMenu(Menu.buildFromTemplate(trayContextMenu))
-  tray.setToolTip('Waypaper Engine')
-  tray.on('click', () => {
-    win?.isVisible() ? win.hide() : win?.show()
-  })
-}
+
 function loadDeveloperTools() {
   const options = {
     loadExtensionOptions: { allowFileAccess: true }
@@ -123,6 +113,46 @@ function loadDeveloperTools() {
     .then((name) => console.log(`Added Extension:  ${name}`))
     .catch((err) => console.log('An error occurred: ', err))
 }
+
+function createTray() {
+  tray = new Tray(join(iconPath, 'tray.png'))
+  const playlist = dbOperations.getCurrentPlaylist()
+  let trayContextMenu = trayMenu({ app })
+  if (playlist !== null) {
+    if (
+      playlist[0].type === PLAYLIST_TYPES.TIMER ||
+      playlist[0].type === PLAYLIST_TYPES.NEVER
+    ) {
+      trayContextMenu = trayMenuWithControls({ app, PlaylistController })
+    }
+  }
+  tray.setContextMenu(Menu.buildFromTemplate(trayContextMenu))
+  tray.setToolTip('Waypaper Engine')
+  tray.on('click', () => {
+    win?.isVisible() ? win.hide() : win?.show()
+  })
+}
+
+function updateTrayContextMenu() {
+  if (tray) {
+    const playlist = dbOperations.getCurrentPlaylist()
+    let trayContextMenu = trayMenu({ app })
+    if (playlist !== null) {
+      if (
+        playlist[0].type === PLAYLIST_TYPES.TIMER ||
+        playlist[0].type === PLAYLIST_TYPES.NEVER
+      ) {
+        trayContextMenu = trayMenuWithControls({ app, PlaylistController })
+      }
+    }
+    tray.setContextMenu(Menu.buildFromTemplate(trayContextMenu))
+    tray.setToolTip('Waypaper Engine')
+    tray.on('click', () => {
+      win?.isVisible() ? win.hide() : win?.show()
+    })
+  }
+}
+
 app
   .whenReady()
   .then(async () => {
@@ -130,6 +160,7 @@ app
     createMenu()
     createTray()
     registerFileProtocol()
+    remakeThumbnailsIfImagesExist()
     await isSwwwDaemonRunning()
     await initWaypaperDaemon()
   })
@@ -137,43 +168,66 @@ app
 
 ipcMain.handle('openFiles', openAndReturnImagesObject)
 ipcMain.handle('handleOpenImages', copyImagesToCacheAndProcessThumbnails)
-ipcMain.handle('queryImages', readAllImagesInDB)
-ipcMain.handle('queryPlaylists', readAllPlaylistsInDB)
-ipcMain.handle('getPlaylistImages', (_event, playlistID: number) => {
-  return getImagesInPlaylist(playlistID)
+ipcMain.handle('queryImages', () => {
+  return dbOperations.readAllImagesInDB()
 })
-ipcMain.handle('readSwwwConfig', readSwwwConfig)
-ipcMain.handle('readAppConfig', readAppConfig)
+ipcMain.handle('queryPlaylists', () => {
+  const playlists = dbOperations.readAllPlaylistsInDB()
+  return playlists
+})
+ipcMain.handle('getPlaylistImages', (_event, playlistID: number) => {
+  return dbOperations.getImagesInPlaylist(playlistID)
+})
+ipcMain.handle('readSwwwConfig', dbOperations.readSwwwConfig)
+ipcMain.handle('readAppConfig', dbOperations.readAppConfig)
 ipcMain.handle('deleteImageFromGallery', deleteImageFromGallery)
 ipcMain.on('deletePlaylist', (_, playlistName) => {
-  deletePlaylistInDB(playlistName)
+  dbOperations.deletePlaylistInDB(playlistName)
+  const current = dbOperations.getCurrentPlaylist()
+  if (current !== null && current[0].name === playlistName) {
+    PlaylistController.stopPlaylist()
+  }
 })
 ipcMain.on('setImage', setImage)
 ipcMain.on('savePlaylist', savePlaylist)
 ipcMain.on('startPlaylist', (_event, playlistName: string) => {
-  PlaylistController.startPlaylist(playlistName)
+  PlaylistController.startPlaylist()
+  dbOperations.setCurrentPlaylist(playlistName)
+  updateTrayContextMenu()
 })
 ipcMain.on('stopPlaylist', (_) => {
   PlaylistController.stopPlaylist()
+  dbOperations.setActivePlaylistToNull()
 })
 ipcMain.on('updateSwwwConfig', (_, newSwwwConfig: swwwConfig) => {
-  updateSwwwConfig(newSwwwConfig)
+  dbOperations.updateSwwwConfig(newSwwwConfig)
   config.swww.update()
   PlaylistController.updateConfig()
 })
-ipcMain.on('openContextMenuImage', (event, imageName: string) => {
+ipcMain.on('openContextMenuImage', (event, image: Image) => {
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: `Set ${imageName}`,
+      label: `Set ${image.name}`,
       click: () => {
-        setImage(event, imageName)
+        setImage(event, image.name)
+      }
+    },
+    {
+      label: `Delete ${image.name}`,
+      click: () => {
+        const deleteFromGallery = window.confirm(
+          `Are you sure you want to delete ${image.name} from the gallery?`
+        )
+        if (deleteFromGallery) {
+          deleteImageFromGallery(event, image.id, image.name)
+        }
       }
     }
   ])
   contextMenu.popup()
 })
 ipcMain.on('updateAppConfig', (_, newAppConfig: AppConfigDB) => {
-  updateAppConfig(newAppConfig)
+  dbOperations.updateAppConfig(newAppConfig)
   config.app.update()
   PlaylistController.updateConfig()
 })

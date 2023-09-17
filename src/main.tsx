@@ -8,7 +8,7 @@ const { readAppConfig } = window.API_RENDERER
 readAppConfig().then((data) => {
   ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
     <>
-      {data.introAnimation ? <IntroScreen /> : undefined}
+      {data.introAnimation && !data.startMinimized ? <IntroScreen /> : undefined}
       <BrowserRouter>
         <App />
       </BrowserRouter>

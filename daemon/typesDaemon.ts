@@ -43,9 +43,6 @@ export enum ACTIONS {
 
 export interface message {
   action: ACTIONS
-  payload?: {
-    playlistName: string
-  }
 }
 
 export type PlaylistControllerType = {
@@ -77,7 +74,8 @@ export interface PlaylistInterface {
   images: string[]
   currentName: string
   currentType: PLAYLIST_TYPES
-  intervalID: NodeJS.Timeout | null
+  intervalID: NodeJS.Timeout | undefined
+  timeoutID: NodeJS.Timeout | undefined
   currentImageIndex: number
   interval: number | null
   showAnimations: boolean | 1 | 0
@@ -87,10 +85,10 @@ export interface PlaylistInterface {
   resetInterval: () => void
   nextImage: () => void
   previousImage: () => void
-  start: (playlistName: string) => Promise<void>
+  start: () => Promise<void>
   sleep: (ms: number) => Promise<void>
   updateInDB: (imageIndex: number, playlistName: string) => Promise<void>
-  setPlaylist: (playlistName: string) => Promise<void>
+  setPlaylist: () => Promise<void>
   timedPlaylist: () => Promise<void>
   neverPlaylist: () => Promise<void>
   timeOfDayPlaylist: () => Promise<void>
@@ -107,7 +105,8 @@ export enum dbTables {
   Playlists = 'Playlists',
   imagesInPlaylist = 'imagesInPlaylist',
   swwwConfig = 'swwwConfig',
-  appConfig = 'appConfig'
+  appConfig = 'appConfig',
+  activePlaylist = 'activePlaylist'
 }
 
 export type imageInPlaylist = {
