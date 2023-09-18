@@ -234,6 +234,7 @@ export async function savePlaylist(
     } else {
       dbOperations.storePlaylistInDB(playlistObject)
     }
+    PlaylistController.startPlaylist()
   } catch (error) {
     console.error(error)
     throw Error('Failed to set playlist in DB')

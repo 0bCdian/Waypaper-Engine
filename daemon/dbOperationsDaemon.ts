@@ -4,17 +4,16 @@ import {
   PlaylistDB,
   imageInPlaylist,
   initialAppConfig,
-  swwwConfig
+  swwwConfig,
+  PLAYLIST_TYPES,
+  ORDER_TYPES
 } from './typesDaemon'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
 const dbOperations = {
   connection: Database(
-    join(homedir(), '.waypaper_engine', 'images_database.sqlite3'),
-    {
-      verbose: console.log
-    }
+    join(homedir(), '.waypaper_engine', 'images_database.sqlite3')
   ),
   getImagesInPlaylist: function (playlistID: number) {
     try {
@@ -88,13 +87,26 @@ const dbOperations = {
       .prepare(`SELECT * FROM ${dbTables.activePlaylist}`)
       .all() as [{ playlistID: number }] | []
   },
-  getCurrentPlaylist: function () {
+  getCurrentPlaylist: function (): {
+    images: string[]
+    id: number
+    name: string
+    type: PLAYLIST_TYPES
+    interval: number | null
+    order: ORDER_TYPES | null
+    showAnimations: boolean | 0 | 1
+    currentImageIndex: number
+  } | null {
     const [result] = this.readCurrentPlaylistID()
     if (result) {
       const [playlist] = this.connection
         .prepare(`SELECT * FROM ${dbTables.Playlists} WHERE id=?`)
-        .all(result.playlistID) as [PlaylistDB]
-      return { ...playlist, images: this.getImagesInPlaylist(playlist.id) }
+        .all(result.playlistID) as [PlaylistDB | undefined]
+      if (playlist) {
+        return { ...playlist, images: this.getImagesInPlaylist(playlist.id) }
+      } else {
+        return null
+      }
     } else {
       return null
     }

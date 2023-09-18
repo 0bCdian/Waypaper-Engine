@@ -4,7 +4,7 @@ import { Link } from 'react-router-dom'
 type Props = {
   children: React.ReactNode
 }
-
+const { exitApp } = window.API_RENDERER
 const Drawer: FC<Props> = ({ children }) => {
   const [show, setShow] = useState(false)
   const toggle = () => {
@@ -27,12 +27,28 @@ const Drawer: FC<Props> = ({ children }) => {
             <Link onClick={toggle} to='/'>
               Gallery
             </Link>
+          </li>
+          <li>
             <Link onClick={toggle} to='/swwwConfig'>
               Swww configuration
             </Link>
+          </li>
+          <li>
             <Link onClick={toggle} to='/appConfig'>
               App configuration
             </Link>
+          </li>
+          <li>
+            <a
+              onClick={() => {
+                const quit = window.confirm('Are you sure you want to quit')
+                if (quit) {
+                  exitApp()
+                }
+              }}
+            >
+              Quit Waypaper Engine
+            </a>
           </li>
         </ul>
       </div>

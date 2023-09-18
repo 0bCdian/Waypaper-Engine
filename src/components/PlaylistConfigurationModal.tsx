@@ -14,12 +14,8 @@ type Inputs = {
   minutes: string | null
   showTransition: boolean
 }
-type Props = {
-  currentPlaylistConfiguration: configuration
-}
-const PlaylistConfigurationModal = ({
-  currentPlaylistConfiguration
-}: Props) => {
+
+const PlaylistConfigurationModal = () => {
   const [showError, setShowError] = useState(false)
   const { setConfiguration, readPlaylist } = playlistStore()
   const { register, handleSubmit, watch, setValue } = useForm<Inputs>()

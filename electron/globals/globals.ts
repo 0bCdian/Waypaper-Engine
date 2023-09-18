@@ -1,6 +1,6 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { type BrowserWindow, type App } from 'electron'
+import { type BrowserWindow, type App, Menu, Tray } from 'electron'
 import { PlaylistControllerType } from '../types/types'
 const systemHome = homedir()
 const cacheDirectoryRoot = join(systemHome, '.cache', 'waypaper_engine')
@@ -88,10 +88,14 @@ export const prodMenu = ({ app }: { app: App }) => {
 
 export const trayMenuWithControls = ({
   app,
-  PlaylistController
+  PlaylistController,
+  win,
+  tray
 }: {
   app: App
   PlaylistController: PlaylistControllerType
+  win: BrowserWindow | null
+  tray: Tray | null
 }) => {
   const controls = [
     {
@@ -110,6 +114,14 @@ export const trayMenuWithControls = ({
       label: 'Stop Playlist',
       click: () => {
         PlaylistController.stopPlaylist()
+        win?.webContents.send('clearPlaylist')
+        const menu = Menu.buildFromTemplate([
+          {
+            label: 'Quit',
+            click: () => app.exit()
+          }
+        ])
+        tray?.setContextMenu(menu)
       }
     },
     {

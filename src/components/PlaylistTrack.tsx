@@ -21,7 +21,8 @@ import playlistStore from '../hooks/playlistStore'
 import openImagesStore from '../hooks/useOpenImages'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useImages } from '../hooks/imagesStore'
-const { startPlaylist } = window.API_RENDERER
+
+const { stopPlaylist, onClearPlaylist } = window.API_RENDERER
 function PlaylistTrack() {
   const {
     playlist,
@@ -74,7 +75,7 @@ function PlaylistTrack() {
         />
       )
     })
-  }, [playlist.images,playlist.configuration])
+  }, [playlist.images, playlist.configuration])
   const firstRender = useRef(true)
   useEffect(() => {
     if (firstRender.current) {
@@ -87,6 +88,11 @@ function PlaylistTrack() {
       clearPlaylist()
     }
   }, [playlist.images])
+  onClearPlaylist(() => {
+    resetImageCheckboxes()
+    clearPlaylist()
+    stopPlaylist()
+  })
   return (
     <div className='self-start w-full'>
       <div className='flex justify-between items-center mb-2'>
@@ -154,32 +160,16 @@ function PlaylistTrack() {
                     󰒓
                   </motion.button>
                 </div>
-                {playlist.name !== '' && (
-                  <div
-                    className='tooltip tooltip-success'
-                    data-tip={`Play: ${playlist.name}`}
-                  >
-                    <motion.button
-                      initial={{ y: 100 }}
-                      transition={{ duration: 0.25, ease: 'easeInOut' }}
-                      animate={{ y: 0, opacity: 1 }}
-                      exit={{ y: 100, opacity: 0 }}
-                      onClick={() => {
-                        startPlaylist(playlist.name)
-                      }}
-                      className='btn btn-primary rounded-lg text-3xl'
-                    >
-                      
-                    </motion.button>
-                  </div>
-                )}
               </>
             )}
           </AnimatePresence>
         </div>
         <AnimatePresence>
           {playlist.images.length > 1 && (
-            <div className='tooltip tooltip-success' data-tip='Clear Playlist'>
+            <div
+              className='tooltip tooltip-success'
+              data-tip={`Clears and stops ${playlist.name}`}
+            >
               <motion.button
                 initial={{ y: 100, opacity: 0 }}
                 transition={{ duration: 0.25, ease: 'easeInOut' }}
@@ -189,6 +179,7 @@ function PlaylistTrack() {
                 onClick={() => {
                   resetImageCheckboxes()
                   clearPlaylist()
+                  stopPlaylist()
                 }}
               >
                 

@@ -20,7 +20,7 @@ function isWaypaperDaemonRunning() {
     }
     return true
   } catch (_err) {
-    console.info(_err)
+    console.info('Starting waypaper engine daemon...')
     return false
   }
 }
@@ -54,8 +54,14 @@ function getSwwwCommandFromConfiguration(
   }
   if (!monitors) {
     const baseCommand = `swww img "${imagePath}" --resize="${swwwConfig.resizeType}" --fill-color "${swwwConfig.fillColor}" --filter ${swwwConfig.filterType} --transition-step ${swwwConfig.transitionStep} --transition-duration ${swwwConfig.transitionDuration} --transition-fps ${swwwConfig.transitionFPS} --transition-angle ${swwwConfig.transitionAngle} --transition-pos ${transitionPos} ${inverty} --transition-bezier ${swwwConfig.transitionBezier} --transition-wave "${swwwConfig.transitionWaveX},${swwwConfig.transitionWaveY}"`
-    if (!configuration.app.settings.swwwAnimations || !Playlist.showAnimations) {
-      console.log(configuration.app.settings.swwwAnimations, Playlist.showAnimations)
+    if (
+      !configuration.app.settings.swwwAnimations ||
+      !Playlist.showAnimations
+    ) {
+      console.log(
+        configuration.app.settings.swwwAnimations,
+        Playlist.showAnimations
+      )
       const command = baseCommand.concat(' --transition-type=none')
       console.log(command)
       return command
@@ -69,6 +75,7 @@ function getSwwwCommandFromConfiguration(
   }
 }
 function setImage(imageName: string) {
+  console.log(imageName)
   const command = getSwwwCommandFromConfiguration(join(IMAGES_DIR, imageName))
   if (command) {
     notifyImageSet(imageName, join(IMAGES_DIR, imageName))
@@ -76,6 +83,7 @@ function setImage(imageName: string) {
   }
 }
 function notifyImageSet(imageName: string, imagePath: string) {
+  if (!configuration.app.settings.notifications) return
   const notifySend = `notify-send -u low -t 2000 -i "${imagePath}" -a "Waypaper Engine" "Waypaper Engine" "Setting image: ${imageName}"`
   exec(notifySend, (err, _stdout, _stderr) => {
     if (err) {
@@ -85,6 +93,7 @@ function notifyImageSet(imageName: string, imagePath: string) {
 }
 
 function notify(message: string) {
+  if (!configuration.app.settings.notifications) return
   const notifySend = `notify-send -u normal -t 2000 -a "Waypaper Engine" "Waypaper Engine" "${message}"`
   exec(notifySend, (err, _stdout, _stderr) => {
     if (err) {
@@ -92,10 +101,23 @@ function notify(message: string) {
     }
   })
 }
+type newPlaylist = ReturnType<typeof dbOperations.getCurrentPlaylist>
+function comparePlaylists(newPlaylist: newPlaylist) {
+  if (!newPlaylist) {
+    return false
+  } else if (Playlist.currentName !== newPlaylist.name) {
+    return false
+  } else if (Playlist.currentType !== newPlaylist.type) {
+    return false
+  } else {
+    return true
+  }
+}
+
 const Playlist: PlaylistInterface = {
   images: [''],
   currentName: '',
-  currentType: PLAYLIST_TYPES.NEVER,
+  currentType: undefined,
   currentImageIndex: 0,
   interval: 0,
   showAnimations: true,
@@ -129,7 +151,7 @@ const Playlist: PlaylistInterface = {
     Playlist.pause()
     Playlist.currentImageIndex = 0
     Playlist.currentName = ''
-    Playlist.currentType = PLAYLIST_TYPES.NEVER
+    Playlist.currentType = undefined
     Playlist.interval = 0
     Playlist.images = ['']
     Playlist.showAnimations = true
@@ -160,25 +182,25 @@ const Playlist: PlaylistInterface = {
     Playlist.updateInDB(Playlist.currentImageIndex, Playlist.currentName)
   },
   start: async () => {
-    await Playlist.setPlaylist()
-    switch (Playlist.currentType) {
-      case PLAYLIST_TYPES.TIMER:
-        Playlist.timedPlaylist()
-        break
-      case PLAYLIST_TYPES.NEVER:
-        Playlist.neverPlaylist()
-        break
-      case PLAYLIST_TYPES.TIME_OF_DAY:
-        Playlist.timeOfDayPlaylist()
-        break
-      case PLAYLIST_TYPES.DAY_OF_WEEK:
-        Playlist.dayOfWeekPlaylist()
-        break
-      default:
-        console.error('Invalid playlist type')
-        notify('Invalid playlist type')
-        Playlist.stop()
-        return
+    const shouldNotStart = await Playlist.setPlaylist()
+    if (!shouldNotStart) {
+      switch (Playlist.currentType) {
+        case PLAYLIST_TYPES.TIMER:
+          Playlist.timedPlaylist()
+          break
+        case PLAYLIST_TYPES.NEVER:
+          Playlist.neverPlaylist()
+          break
+        case PLAYLIST_TYPES.TIME_OF_DAY:
+          Playlist.timeOfDayPlaylist()
+          break
+        case PLAYLIST_TYPES.DAY_OF_WEEK:
+          Playlist.dayOfWeekPlaylist()
+          break
+        default:
+          Playlist.stop()
+          return
+      }
     }
   },
   sleep: (ms: number) => new Promise((r) => setTimeout(r, ms)),
@@ -198,16 +220,22 @@ const Playlist: PlaylistInterface = {
     try {
       const currentPlaylist = dbOperations.getCurrentPlaylist()
       if (currentPlaylist === null) {
-        return
+        return false
+      }
+      const areTheSame = comparePlaylists(currentPlaylist)
+      if (!areTheSame) {
+        Playlist.stop()
       }
       Playlist.images = currentPlaylist.images
       Playlist.currentName = currentPlaylist.name
       Playlist.currentType = currentPlaylist.type
-      Playlist.currentImageIndex = configuration.app.settings.playlistStartOnFirstImage
+      Playlist.currentImageIndex = configuration.app.settings
+        .playlistStartOnFirstImage
         ? 0
         : currentPlaylist.currentImageIndex
       Playlist.interval = currentPlaylist.interval
       Playlist.showAnimations = currentPlaylist.showAnimations
+      return areTheSame
     } catch (error) {
       console.error(error)
       throw new Error('Could not set playlist')
@@ -268,7 +296,6 @@ async function daemonInit() {
         configuration.swww.update()
         break
       case ACTIONS.START_PLAYLIST:
-        Playlist.stop()
         await Playlist.start()
         notify(`Starting ${Playlist.currentName}`)
         break
@@ -288,6 +315,7 @@ async function daemonInit() {
           notify(`Stopping ${Playlist.currentName}`)
           break
         case ACTIONS.NEXT_IMAGE:
+          console.log('here')
           Playlist.nextImage()
           break
         case ACTIONS.PREVIOUS_IMAGE:
@@ -314,16 +342,17 @@ async function daemonInit() {
   Playlist.start()
   process.on('SIGTERM', function () {
     notify('Exiting daemon')
+    console.log('Exiting daemon...')
     Playlist.stop()
     daemonServer.close()
     process.exit(0)
   })
   process.on('SIGINT', () => {
     notify('Exiting daemon')
+    console.log('Exiting daemon...')
     Playlist.stop()
     daemonServer.close()
     process.exit(0)
   })
 }
-
 daemonInit()

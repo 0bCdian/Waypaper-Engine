@@ -84,9 +84,24 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       throw new Error(`Could not initialize the appConfig table\n ${error}`)
     }
   },
+  initializePlaylistActive() {
+    try {
+      const [results] = db
+        .prepare(`SELECT * FROM ${dbTables.activePlaylist}`)
+        .all() as [{ playlistID: number } | undefined]
+      if (results === undefined) {
+        db.prepare(
+          `INSERT INTO ${dbTables.activePlaylist} (playlistID) VALUES(?)`
+        ).run(0)
+      }
+    } catch (error) {
+      throw new Error(`Could not initialize playlistActive table`)
+    }
+  },
   createInitialConfigIfNotExists() {
     this.initializeSwwwConfig()
     this.initializeAppConfig()
+    this.initializePlaylistActive()
   },
   readAllImagesInDB() {
     const selectImages = db.prepare(`SELECT * FROM ${dbTables.Images}`)
@@ -233,6 +248,9 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         `SELECT id FROM ${dbTables.Playlists} WHERE name=?`
       )
       const insertedPlaylist = selectPlaylist.get(playlist.name).id as number
+      if (playlist.configuration.order === ORDER_TYPES.RANDOM) {
+        playlist.images.sort(() => Math.random() - 0.5)
+      }
       this.updateImagesInPlaylist(insertedPlaylist, playlist.images)
       return insertedPlaylist
     } catch (error) {
@@ -358,42 +376,53 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
   readCurrentPlaylistID() {
     return db.prepare(`SELECT * FROM ${dbTables.activePlaylist}`).all() as
       | [{ playlistID: number }]
-      | []
   },
   getCurrentPlaylist() {
     const [result] = this.readCurrentPlaylistID()
-    if (result) {
-      return db
-        .prepare(`SELECT * FROM ${dbTables.Playlists} WHERE id=?`)
-        .all(result.playlistID) as [Playlist]
+    const [playlist] = db
+      .prepare(`SELECT * FROM ${dbTables.Playlists} WHERE id=?`)
+      .all(result.playlistID) as [Playlist | undefined]
+    if (playlist) {
+      return playlist
     } else {
       return null
     }
   },
   setCurrentPlaylist(playlistName: string) {
     try {
-      const activePlaylist = this.readCurrentPlaylistID()
-      const [result] = db
-        .prepare(`SELECT id FROM ${dbTables.Playlists} WHERE name=?`)
-        .all(playlistName) as [{ id: number }] | []
-      if (!result) {
-        throw new Error(`${playlistName} does not exists in the database`)
+      const playlistID = this.getPlaylistIDFromName(playlistName)
+      if (playlistID === null) {
+        throw new Error(`Playlist does not exists in database`)
       }
-      if (activePlaylist.length < 1) {
-        db.prepare(
-          `INSERT INTO ${dbTables.activePlaylist} (playlistID) VALUES(?)`
-        ).run(result.id)
-      } else {
-        db.prepare(`UPDATE ${dbTables.activePlaylist} SET playlistID=?`).run(
-          result.id
-        )
-      }
+      db.prepare(`UPDATE ${dbTables.activePlaylist} SET playlistID=?`).run(
+        playlistID.id
+      )
     } catch (error) {
       throw new Error(`Could not read playlist from DB >> ${error}`)
     }
   },
   setActivePlaylistToNull() {
-    db.prepare(`UPDATE ${dbTables.activePlaylist} SET playlistID=?`).run(null)
+    try {
+      db.prepare(`UPDATE ${dbTables.activePlaylist} SET playlistID=0`).run()
+    } catch (error) {
+      console.error(error)
+    }
+  },
+  getPlaylistIDFromName(playlistName: string) {
+    try {
+      const [id] = db
+        .prepare(`SELECT id FROM ${dbTables.Playlists} WHERE name=?`)
+        .all(playlistName) as [{ id: number } | undefined]
+      if (id) {
+        return id
+      } else {
+        return null
+      }
+    } catch (error) {
+      throw new Error(
+        `Could not execute getPlaylistIDFromName,error: ${error} `
+      )
+    }
   }
 }
 

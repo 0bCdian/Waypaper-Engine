@@ -48,6 +48,7 @@ const playlistStore = create<State & Actions>()((set, get) => ({
   isEmpty: true,
   addImageToPlaylist: (Image: Image) => {
     set((state) => {
+      
       const newImages = [...state.playlist.images, Image]
       const newState = {
         ...state,
@@ -126,5 +127,4 @@ const playlistStore = create<State & Actions>()((set, get) => ({
     Image.endTime = endTime
   }
 }))
-
 export default playlistStore

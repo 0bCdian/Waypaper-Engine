@@ -13,7 +13,7 @@ type Props = {
   playlistInDB: Playlist[]
 }
 
-const { getPlaylistImages } = window.API_RENDERER
+const { getPlaylistImages, startPlaylist } = window.API_RENDERER
 
 const LoadPlaylistModal = ({ playlistInDB, shouldReload }: Props) => {
   const { clearPlaylist, setPlaylist } = playlistStore()
@@ -51,13 +51,13 @@ const LoadPlaylistModal = ({ playlistInDB, shouldReload }: Props) => {
         },
         images: imagesToStorePlaylist
       }
-      console.log(currentPlaylist, selectedPlaylist.showAnimations)
       setPlaylist(currentPlaylist)
+      startPlaylist(currentPlaylist.name)
       shouldReload.current = true
     }
     closeModal()
   }
-
+ 
   return (
     <dialog id='LoadPlaylistModal' className='modal' ref={modalRef}>
       <div className='modal-box container flex flex-col'>

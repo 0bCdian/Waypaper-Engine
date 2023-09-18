@@ -5,7 +5,9 @@ import { Image, rendererPlaylist } from '../src/types/rendererTypes'
 import { join } from 'node:path'
 import { swwwConfig } from './database/swwwConfig'
 import { AppConfigDB } from '../src/routes/AppConfiguration'
-
+interface ActivePlaylist extends Playlist {
+  images: string[]
+}
 export const ELECTRON_API = {
   openFiles: async () => await ipcRenderer.invoke('openFiles'),
   handleOpenImages: async (imagesObject: imagesObject) => {
@@ -57,6 +59,17 @@ export const ELECTRON_API = {
   },
   updateAppConfig: (newAppConfig: AppConfigDB) => {
     ipcRenderer.send('updateAppConfig', newAppConfig)
+  },
+  readActivePlaylist: () => {
+    return ipcRenderer.invoke('readActivePlaylist') as Promise<
+      ActivePlaylist | undefined
+    >
+  },
+  onClearPlaylist: (callback: () => void) => {
+    ipcRenderer.on('clearPlaylist', callback)
+  },
+  exitApp: () => {
+    ipcRenderer.send('exitApp')
   },
   thumbnailDirectory: appDirectories.thumbnails,
   imagesDirectory: appDirectories.imagesDir

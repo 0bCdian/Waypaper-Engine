@@ -73,7 +73,7 @@ export type PlaylistParsed = {
 export interface PlaylistInterface {
   images: string[]
   currentName: string
-  currentType: PLAYLIST_TYPES
+  currentType: PLAYLIST_TYPES | undefined
   intervalID: NodeJS.Timeout | undefined
   timeoutID: NodeJS.Timeout | undefined
   currentImageIndex: number
@@ -88,7 +88,7 @@ export interface PlaylistInterface {
   start: () => Promise<void>
   sleep: (ms: number) => Promise<void>
   updateInDB: (imageIndex: number, playlistName: string) => Promise<void>
-  setPlaylist: () => Promise<void>
+  setPlaylist: () => Promise<boolean>
   timedPlaylist: () => Promise<void>
   neverPlaylist: () => Promise<void>
   timeOfDayPlaylist: () => Promise<void>

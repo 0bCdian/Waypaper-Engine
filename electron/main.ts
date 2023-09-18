@@ -120,10 +120,15 @@ function createTray() {
   let trayContextMenu = trayMenu({ app })
   if (playlist !== null) {
     if (
-      playlist[0].type === PLAYLIST_TYPES.TIMER ||
-      playlist[0].type === PLAYLIST_TYPES.NEVER
+      playlist.type === PLAYLIST_TYPES.TIMER ||
+      playlist.type === PLAYLIST_TYPES.NEVER
     ) {
-      trayContextMenu = trayMenuWithControls({ app, PlaylistController })
+      trayContextMenu = trayMenuWithControls({
+        app,
+        PlaylistController,
+        win,
+        tray
+      })
     }
   }
   tray.setContextMenu(Menu.buildFromTemplate(trayContextMenu))
@@ -139,10 +144,15 @@ function updateTrayContextMenu() {
     let trayContextMenu = trayMenu({ app })
     if (playlist !== null) {
       if (
-        playlist[0].type === PLAYLIST_TYPES.TIMER ||
-        playlist[0].type === PLAYLIST_TYPES.NEVER
+        playlist.type === PLAYLIST_TYPES.TIMER ||
+        playlist.type === PLAYLIST_TYPES.NEVER
       ) {
-        trayContextMenu = trayMenuWithControls({ app, PlaylistController })
+        trayContextMenu = trayMenuWithControls({
+          app,
+          PlaylistController,
+          win,
+          tray
+        })
       }
     }
     tray.setContextMenu(Menu.buildFromTemplate(trayContextMenu))
@@ -166,6 +176,12 @@ app
   })
   .catch((e) => console.error(e))
 
+app.on('quit', () => {
+  if (config.app.config.killDaemon) {
+    PlaylistController.killDaemon()
+  }
+})
+
 ipcMain.handle('openFiles', openAndReturnImagesObject)
 ipcMain.handle('handleOpenImages', copyImagesToCacheAndProcessThumbnails)
 ipcMain.handle('queryImages', () => {
@@ -181,18 +197,27 @@ ipcMain.handle('getPlaylistImages', (_event, playlistID: number) => {
 ipcMain.handle('readSwwwConfig', dbOperations.readSwwwConfig)
 ipcMain.handle('readAppConfig', dbOperations.readAppConfig)
 ipcMain.handle('deleteImageFromGallery', deleteImageFromGallery)
-ipcMain.on('deletePlaylist', (_, playlistName) => {
+ipcMain.handle('readActivePlaylist', () => {
+  const activePlaylist = dbOperations.getCurrentPlaylist()
+  if (activePlaylist !== null) {
+    const playlistImages = dbOperations.getImagesInPlaylist(activePlaylist.id)
+    return { ...activePlaylist, images: playlistImages }
+  } else {
+    return undefined
+  }
+})
+ipcMain.on('deletePlaylist', (_, playlistName: string) => {
   dbOperations.deletePlaylistInDB(playlistName)
   const current = dbOperations.getCurrentPlaylist()
-  if (current !== null && current[0].name === playlistName) {
+  if (current !== null && current.name === playlistName) {
     PlaylistController.stopPlaylist()
   }
 })
 ipcMain.on('setImage', setImage)
 ipcMain.on('savePlaylist', savePlaylist)
 ipcMain.on('startPlaylist', (_event, playlistName: string) => {
-  PlaylistController.startPlaylist()
   dbOperations.setCurrentPlaylist(playlistName)
+  PlaylistController.startPlaylist()
   updateTrayContextMenu()
 })
 ipcMain.on('stopPlaylist', (_) => {
@@ -230,4 +255,10 @@ ipcMain.on('updateAppConfig', (_, newAppConfig: AppConfigDB) => {
   dbOperations.updateAppConfig(newAppConfig)
   config.app.update()
   PlaylistController.updateConfig()
+})
+ipcMain.on('updateTray', () => {
+  updateTrayContextMenu()
+})
+ipcMain.on('exitApp', () => {
+  app.exit()
 })

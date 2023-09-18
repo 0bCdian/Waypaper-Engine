@@ -55,7 +55,7 @@ function MiniPlaylistCard({
   }
   useEffect(() => {
     if (isLast) {
-      imageRef.current?.scrollIntoView({ inline: 'start', behavior: 'smooth' })
+      imageRef.current?.scrollIntoView({ inline: 'start' })
     }
   }, [])
   const onRemove = () => {
@@ -69,13 +69,12 @@ function MiniPlaylistCard({
         animate={{ scale: 1 }}
         transition={{ duration: 0.2 }}
         exit={{ scale: 0 }}
+        layout
         className='w-32 mx-1 shrink-0 mb-2 rounded-lg shadow-xl '
       >
-        {playlistType === PLAYLIST_TYPES.DAY_OF_WEEK && (
-          <span className='text-stone-100 shadow-xl font-bold text-clip whitespace-nowrap'>
-            {text}
-          </span>
-        )}
+        <span className='text-stone-100 h-full shadow-xl font-bold text-clip whitespace-nowrap'>
+          {playlistType === PLAYLIST_TYPES.DAY_OF_WEEK ? text : undefined}
+        </span>
         <div className='relative '>
           <button
             onClick={onRemove}
