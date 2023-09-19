@@ -13,7 +13,8 @@ import { join } from 'node:path'
 
 const dbOperations = {
   connection: Database(
-    join(homedir(), '.waypaper_engine', 'images_database.sqlite3')
+    join(homedir(), '.waypaper_engine', 'images_database.sqlite3'),
+    { fileMustExist: true, timeout: 10000 }
   ),
   getImagesInPlaylist: function (playlistID: number) {
     try {

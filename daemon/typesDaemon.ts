@@ -79,20 +79,20 @@ export interface PlaylistInterface {
   currentImageIndex: number
   interval: number | null
   showAnimations: boolean | 1 | 0
+  setImage: (imageName: string) => void
   pause: () => void
   resume: () => void
   stop: () => void
   resetInterval: () => void
   nextImage: () => void
   previousImage: () => void
-  start: () => Promise<void>
-  sleep: (ms: number) => Promise<void>
-  updateInDB: (imageIndex: number, playlistName: string) => Promise<void>
-  setPlaylist: () => Promise<boolean>
-  timedPlaylist: () => Promise<void>
-  neverPlaylist: () => Promise<void>
-  timeOfDayPlaylist: () => Promise<void>
-  dayOfWeekPlaylist: () => Promise<void>
+  start: () => void
+  updateInDB: (imageIndex: number, playlistName: string) => void
+  setPlaylist: () => boolean
+  timedPlaylist: (resume?: boolean) => void
+  neverPlaylist: () => void
+  timeOfDayPlaylist: () => void
+  dayOfWeekPlaylist: () => void
 }
 
 export enum PlaylistStates {

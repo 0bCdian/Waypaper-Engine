@@ -1,11 +1,7 @@
 import { useForm, SubmitHandler } from 'react-hook-form'
 import { useRef, useEffect, useState } from 'react'
 import playlistStore from '../hooks/playlistStore'
-import {
-  ORDER_TYPES,
-  PLAYLIST_TYPES,
-  configuration
-} from '../types/rendererTypes'
+import { ORDER_TYPES, PLAYLIST_TYPES } from '../types/rendererTypes'
 import { toMS, toHoursAndMinutes } from '../utils/utilities'
 type Inputs = {
   playlistType: PLAYLIST_TYPES

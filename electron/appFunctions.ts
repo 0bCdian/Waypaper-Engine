@@ -83,7 +83,7 @@ export function openAndReturnImagesObject() {
   return { imagePaths: imagePathsFromFilePicker, fileNames }
 }
 
-export async function remakeThumbnailsIfImagesExist() {
+export function remakeThumbnailsIfImagesExist() {
   readdir(appDirectories.thumbnails, (err, thumbnails) => {
     if (err) {
       throw new Error('Could not read thumbnails directory')
@@ -103,7 +103,7 @@ export async function remakeThumbnailsIfImagesExist() {
     }
   })
 }
-export async function checkCacheOrCreateItIfNotExists() {
+export function checkCacheOrCreateItIfNotExists() {
   if (!existsSync(appDirectories.rootCache)) {
     createFolders(appDirectories.rootCache, appDirectories.thumbnails)
   } else {
@@ -184,8 +184,6 @@ export async function setImage(
   const command = getSwwwCommandFromConfiguration(
     join(appDirectories.imagesDir, `"${imageName}"`)
   )
-  console.log(command)
-
   try {
     await execPomisified(`${command}`)
   } catch (error) {
@@ -224,10 +222,7 @@ export async function checkIfSwwwIsInstalled() {
     throw new Error('swww is not installed')
   }
 }
-export async function savePlaylist(
-  _event: Electron.IpcMainInvokeEvent,
-  playlistObject: rendererPlaylist
-) {
+export function savePlaylist(playlistObject: rendererPlaylist) {
   try {
     if (dbOperations.checkIfPlaylistExists(playlistObject.name)) {
       dbOperations.updatePlaylistInDB(playlistObject)
@@ -260,17 +255,16 @@ export async function initWaypaperDaemon() {
   }
 }
 
-async function playlistConnectionBridge(message: message) {
+function playlistConnectionBridge(message: message) {
   const connection = createConnection(WAYPAPER_ENGINE_SOCKET_PATH)
   connection.write(JSON.stringify(message))
 }
 
 export const PlaylistController = {
-  startPlaylist: async function () {
-    const message: message = {
+  startPlaylist: function () {
+    playlistConnectionBridge({
       action: ACTIONS.START_PLAYLIST
-    }
-    playlistConnectionBridge(message)
+    })
   },
   pausePlaylist: () => {
     playlistConnectionBridge({

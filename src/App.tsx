@@ -4,10 +4,11 @@ import SwwwConfig from './routes/SwwwConfig'
 import Drawer from './components/Drawer'
 import { ImagesProvider } from './hooks/imagesStore'
 import AppConfig from './routes/AppConfiguration'
+import { HashRouter } from 'react-router-dom'
 
 const App = () => {
   return (
-    <>
+    <HashRouter>
       <Drawer>
         <ImagesProvider>
           <Routes>
@@ -17,7 +18,7 @@ const App = () => {
           </Routes>
         </ImagesProvider>
       </Drawer>
-    </>
+    </HashRouter>
   )
 }
 

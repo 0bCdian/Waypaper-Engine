@@ -2,6 +2,7 @@ import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { type BrowserWindow, type App, Menu, Tray } from 'electron'
 import { PlaylistControllerType } from '../types/types'
+import { PLAYLIST_TYPES } from '../../src/types/rendererTypes'
 const systemHome = homedir()
 const cacheDirectoryRoot = join(systemHome, '.cache', 'waypaper_engine')
 const cacheThumbnailsDirectory = join(cacheDirectoryRoot, 'thumbnails')
@@ -90,12 +91,14 @@ export const trayMenuWithControls = ({
   app,
   PlaylistController,
   win,
-  tray
+  tray,
+  playlistType
 }: {
   app: App
   PlaylistController: PlaylistControllerType
   win: BrowserWindow | null
   tray: Tray | null
+  playlistType: PLAYLIST_TYPES
 }) => {
   const controls = [
     {
@@ -129,6 +132,19 @@ export const trayMenuWithControls = ({
       click: () => app.exit()
     }
   ]
+  if (playlistType === PLAYLIST_TYPES.TIMER) {
+    const timerControls = [
+      {
+        label: 'Pause Playlist',
+        click: () => {
+          PlaylistController.pausePlaylist()
+        }
+      },
+      ...controls
+    ]
+    return timerControls
+  }
+
   return controls
 }
 

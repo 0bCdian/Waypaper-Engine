@@ -26,7 +26,11 @@ import installExtension, {
 import { swwwConfig } from './database/swwwConfig'
 import { AppConfigDB } from '../src/routes/AppConfiguration'
 import config from './database/globalConfig'
-import { Image, PLAYLIST_TYPES } from '../src/types/rendererTypes'
+import {
+  Image,
+  PLAYLIST_TYPES,
+  rendererPlaylist
+} from '../src/types/rendererTypes'
 if (process.argv[1] === '--daemon' || process.argv[3] === '--daemon') {
   initWaypaperDaemon()
   app.exit(1)
@@ -66,11 +70,11 @@ function createWindow() {
       sandbox: false
     }
   })
-
   if (VITE_DEV_SERVER_URL !== undefined) {
     win.loadURL(VITE_DEV_SERVER_URL)
   } else {
     if (process.env.DIST) {
+      console.log(process.env.DIST)
       win.loadFile(join(process.env.DIST, 'index.html'))
     } else {
       app.exit()
@@ -127,7 +131,8 @@ function createTray() {
         app,
         PlaylistController,
         win,
-        tray
+        tray,
+        playlistType: playlist.type
       })
     }
   }
@@ -151,7 +156,8 @@ function updateTrayContextMenu() {
           app,
           PlaylistController,
           win,
-          tray
+          tray,
+          playlistType: playlist.type
         })
       }
     }
@@ -214,7 +220,11 @@ ipcMain.on('deletePlaylist', (_, playlistName: string) => {
   }
 })
 ipcMain.on('setImage', setImage)
-ipcMain.on('savePlaylist', savePlaylist)
+ipcMain.on('savePlaylist', (_, playlistObject: rendererPlaylist) => {
+  savePlaylist(playlistObject)
+  dbOperations.setCurrentPlaylist(playlistObject.name)
+  updateTrayContextMenu()
+})
 ipcMain.on('startPlaylist', (_event, playlistName: string) => {
   dbOperations.setCurrentPlaylist(playlistName)
   PlaylistController.startPlaylist()
@@ -223,6 +233,7 @@ ipcMain.on('startPlaylist', (_event, playlistName: string) => {
 ipcMain.on('stopPlaylist', (_) => {
   PlaylistController.stopPlaylist()
   dbOperations.setActivePlaylistToNull()
+  updateTrayContextMenu()
 })
 ipcMain.on('updateSwwwConfig', (_, newSwwwConfig: swwwConfig) => {
   dbOperations.updateSwwwConfig(newSwwwConfig)

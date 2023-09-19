@@ -32,9 +32,7 @@ function Modals() {
         shouldReload={shouldReload}
         currentPlaylistName={currentPlaylist.name}
       />
-      <PlaylistConfigurationModal
-        currentPlaylistConfiguration={currentPlaylist.configuration}
-      />
+      <PlaylistConfigurationModal />
     </>
   )
 }

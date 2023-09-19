@@ -82,7 +82,7 @@ function createDB() {
     createActivePlaylist.run()
   } catch (error) {
     console.log(error)
-		throw new Error('Could not initialize the database tables')
+    throw new Error('Could not initialize the database tables')
   }
 }
 createDB()

@@ -50,7 +50,6 @@ const AppConfig = () => {
     const { unsubscribe } = watch(() => handleSubmit(onSubmit)())
     return () => unsubscribe()
   }, [handleSubmit, watch])
-
   return (
     <>
       <NavBar currentRoute='/appConfig' />
