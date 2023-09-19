@@ -8,28 +8,33 @@ import { useImages } from '../hooks/imagesStore'
 
 const { queryPlaylists } = window.API_RENDERER
 function Modals() {
+  const [playlistsInDB, setPlaylistsInDB] = useState<Playlist[]>([])
+  const [shouldReload, setShouldReload] = useState<Boolean>(false)
   const { readPlaylist, isEmpty } = playlistStore()
   const { imagesArray } = useImages()
-  const shouldReload = useRef(false)
-  const [playlistsInDB, setPlaylistsInDB] = useState<Playlist[]>([])
   const currentPlaylist = useMemo(() => {
     return readPlaylist()
-  }, [shouldReload.current, isEmpty])
+  }, [shouldReload, isEmpty])
   useEffect(() => {
-    shouldReload.current = false
+    setShouldReload(false)
     queryPlaylists().then((playlists) => {
       setPlaylistsInDB(playlists)
     })
-  }, [shouldReload.current, imagesArray])
-
+  }, [shouldReload, imagesArray])
+  useEffect(() => {
+    queryPlaylists().then((newPlaylists) => {
+      setPlaylistsInDB(newPlaylists)
+    })
+  }, [])
   return (
     <>
       <LoadPlaylistModal
-        playlistInDB={playlistsInDB}
-        shouldReload={shouldReload}
+        playlistsInDB={playlistsInDB}
+        setShouldReload={setShouldReload}
+        currentPlaylistName={currentPlaylist.name}
       />
       <SavePlaylistModal
-        shouldReload={shouldReload}
+        setShouldReload={setShouldReload}
         currentPlaylistName={currentPlaylist.name}
       />
       <PlaylistConfigurationModal />

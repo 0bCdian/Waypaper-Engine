@@ -271,7 +271,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
   },
   deletePlaylistInDB(playlistName: string) {
     try {
-      const deletePlaylist = db.preprare(
+      const deletePlaylist = db.prepare(
         `DELETE FROM ${dbTables.Playlists} WHERE name=?`
       )
       deletePlaylist.run(playlistName)

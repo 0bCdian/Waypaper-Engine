@@ -8,17 +8,24 @@ import { useImages } from '../hooks/imagesStore'
 type Input = {
   selectPlaylist: string
 }
+
 type Props = {
-  shouldReload: React.MutableRefObject<boolean>
-  playlistInDB: Playlist[]
+  playlistsInDB: Playlist[]
+  currentPlaylistName: string
+  setShouldReload: React.Dispatch<React.SetStateAction<Boolean>>
 }
 
-const { getPlaylistImages, startPlaylist } = window.API_RENDERER
+const { getPlaylistImages, startPlaylist, deletePlaylist, stopPlaylist } =
+  window.API_RENDERER
 
-const LoadPlaylistModal = ({ playlistInDB, shouldReload }: Props) => {
+const LoadPlaylistModal = ({
+  playlistsInDB,
+  setShouldReload,
+  currentPlaylistName
+}: Props) => {
   const { clearPlaylist, setPlaylist } = playlistStore()
   const { resetImageCheckboxes, imagesArray } = useImages()
-  const { register, handleSubmit } = useForm<Input>()
+  const { register, handleSubmit, watch } = useForm<Input>()
   const modalRef = useRef<HTMLDialogElement>(null)
   const closeModal = () => {
     modalRef.current?.close()
@@ -26,7 +33,8 @@ const LoadPlaylistModal = ({ playlistInDB, shouldReload }: Props) => {
   const onSubmit: SubmitHandler<Input> = async (data) => {
     resetImageCheckboxes()
     clearPlaylist()
-    const selectedPlaylist = playlistInDB.find((playlist) => {
+    stopPlaylist()
+    const selectedPlaylist = playlistsInDB.find((playlist) => {
       return playlist.name === data.selectPlaylist
     })
     if (selectedPlaylist) {
@@ -53,17 +61,16 @@ const LoadPlaylistModal = ({ playlistInDB, shouldReload }: Props) => {
       }
       setPlaylist(currentPlaylist)
       startPlaylist(currentPlaylist.name)
-      shouldReload.current = true
     }
     closeModal()
   }
- 
+
   return (
     <dialog id='LoadPlaylistModal' className='modal' ref={modalRef}>
       <div className='modal-box container flex flex-col'>
         <h2 className='font-bold text-4xl text-center py-3 '>Load Playlist</h2>
         <div className='divider'></div>
-        {playlistInDB.length === 0 && (
+        {playlistsInDB.length === 0 && (
           <section className='flex flex-col gap-3'>
             <span className=' text-center font-medium text-xl italic'>
               No playlists found, refresh or create a new one
@@ -72,14 +79,14 @@ const LoadPlaylistModal = ({ playlistInDB, shouldReload }: Props) => {
               type='button'
               className='btn'
               onClick={() => {
-                shouldReload.current = true
+                setShouldReload(true)
               }}
             >
               Refresh playlists
             </button>
           </section>
         )}
-        {playlistInDB.length > 0 && (
+        {playlistsInDB.length > 0 && (
           <form
             onSubmit={handleSubmit(onSubmit)}
             className='form-control flex flex-col gap-5'
@@ -87,33 +94,49 @@ const LoadPlaylistModal = ({ playlistInDB, shouldReload }: Props) => {
             <label htmlFor='selectPlaylist' className='label text-lg '>
               Select Playlist
             </label>
-            <select
-              id='selectPlaylist'
-              className='select text-lg'
-              {...register('selectPlaylist', { required: true })}
-            >
-              {playlistInDB.map((playlist) => (
-                <option key={playlist.id} value={playlist.name}>
-                  {playlist.name}
-                </option>
-              ))}
-            </select>
-            <div className='flex gap-3 justify-end mt-3'>
+            <div className='flex align-baseline gap-10'>
+              <select
+                id='selectPlaylist'
+                className='select text-lg basis-[90%]'
+                defaultValue={playlistsInDB[0].name}
+                {...register('selectPlaylist', { required: true })}
+              >
+                {playlistsInDB.map((playlist) => (
+                  <option key={playlist.id} value={playlist.name}>
+                    {playlist.name}
+                  </option>
+                ))}
+              </select>
               <button
                 type='button'
                 className='btn btn-md btn-error rounded-md '
+                onClick={() => {
+                  const current = watch('selectPlaylist')
+                  const shouldDelete = window.confirm(
+                    `Are you sure to delete ${current}?`
+                  )
+                  if (shouldDelete) {
+                    deletePlaylist(current)
+                    setShouldReload(true)
+                    if (currentPlaylistName === current) {
+                      stopPlaylist()
+                      clearPlaylist()
+                      resetImageCheckboxes()
+                    }
+                  }
+                }}
+              >
+                Delete
+              </button>
+            </div>
+
+            <div className='flex gap-3 justify-center mt-3'>
+              <button
+                type='button'
+                className='btn btn-md btn-neutral rounded-md '
                 onClick={closeModal}
               >
                 Cancel
-              </button>
-              <button
-                type='button'
-                className='btn btn-md btn-primary rounded-md '
-                onClick={() => {
-                  shouldReload.current = true
-                }}
-              >
-                Refresh
               </button>
               <button
                 type='submit'

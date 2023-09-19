@@ -6,10 +6,10 @@ const { savePlaylist } = window.API_RENDERER
 
 type Props = {
   currentPlaylistName: string
-  shouldReload: React.MutableRefObject<boolean>
+  setShouldReload: React.Dispatch<React.SetStateAction<Boolean>>
 }
 
-const SavePlaylistModal = ({ currentPlaylistName, shouldReload }: Props) => {
+const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
   const { setName, readPlaylist } = playlistStore()
   const modalRef = useRef<HTMLDialogElement>(null)
   const { register, handleSubmit, setValue } = useForm()
@@ -20,8 +20,8 @@ const SavePlaylistModal = ({ currentPlaylistName, shouldReload }: Props) => {
     setName(data.playlistName)
     const playlist = readPlaylist()
     savePlaylist(playlist)
+    setShouldReload(true)
     closeModal()
-    shouldReload.current = true
   }
   useEffect(() => {
     setValue('playlistName', currentPlaylistName)

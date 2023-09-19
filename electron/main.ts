@@ -213,6 +213,8 @@ ipcMain.handle('readActivePlaylist', () => {
   }
 })
 ipcMain.on('deletePlaylist', (_, playlistName: string) => {
+  console.log('we in handler')
+  console.log(playlistName)
   dbOperations.deletePlaylistInDB(playlistName)
   const current = dbOperations.getCurrentPlaylist()
   if (current !== null && current.name === playlistName) {
