@@ -7,3 +7,15 @@ export function toHoursAndMinutes(ms: number) {
   const minutes = Math.floor((ms - hours * 60 * 60 * 1000) / (60 * 1000))
   return { hours, minutes }
 }
+
+export function debounce(callback: () => void, timer = 1000) {
+  let previous: ReturnType<typeof window.setTimeout> | undefined
+  return () => {
+    if (previous) {
+      clearTimeout(previous)
+    }
+    previous = setTimeout(() => {
+      callback()
+    }, timer)
+  }
+}

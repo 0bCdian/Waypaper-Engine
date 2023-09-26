@@ -1,21 +1,21 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect, useCallback } from 'react'
 import PaginatedGalleryNav from './PaginatedGalleryNav'
 import { useImages } from '../hooks/imagesStore'
 import Skeleton from './Skeleton'
 import ImageCard from './ImageCard'
 import PlaylistTrack from './PlaylistTrack'
 import { motion } from 'framer-motion'
-
-const IMAGES_PER_PAGE = 20
+import { debounce } from '../utils/utilities'
 
 function PaginatedGallery() {
   const { filteredImages, skeletonsToShow } = useImages()
+  const [imagesPerPage, setImagesPerPage] = useState(20)
   const [currentPage, setCurrentPage] = useState<number>(1)
-  const lastImageIndex = currentPage * IMAGES_PER_PAGE
-  const firstImageIndex = lastImageIndex - IMAGES_PER_PAGE
+  const lastImageIndex = currentPage * imagesPerPage
+  const firstImageIndex = lastImageIndex - imagesPerPage
   const totalPages = useMemo(() => {
-    return Math.ceil(filteredImages.length / IMAGES_PER_PAGE)
-  }, [filteredImages, skeletonsToShow])
+    return Math.ceil(filteredImages.length / imagesPerPage)
+  }, [filteredImages, skeletonsToShow, imagesPerPage])
 
   const SkeletonsArray = useMemo(() => {
     return skeletonsToShow.map((imageName, index) => (
@@ -27,12 +27,39 @@ function PaginatedGallery() {
       return <ImageCard key={image.id} Image={image} />
     })
   }, [filteredImages])
-  const imagesToShow = [...SkeletonsArray, ...imagesCardArray].slice(
-    firstImageIndex,
-    lastImageIndex
+
+  const imagesToShow = useMemo(
+    function () {
+      const imagesToShow = [...SkeletonsArray, ...imagesCardArray].slice(
+        firstImageIndex,
+        lastImageIndex
+      )
+      return imagesToShow
+    },
+    [imagesPerPage, currentPage, totalPages]
   )
+  const updateImagesPerPage = debounce(() => {
+    const coeficient = 0.000010113
+    const newDimensions = {
+      width: window.innerWidth,
+      height: window.innerHeight
+    }
+    const newImagesPerPage = Math.ceil(
+      coeficient * newDimensions.height * newDimensions.width
+    )
+    setImagesPerPage(newImagesPerPage)
+  }, 100)
+
+  useEffect(() => {
+    window.addEventListener('resize', updateImagesPerPage)
+  }, [])
+  useEffect(() => {
+    if (imagesToShow.length === 0) {
+      setCurrentPage(totalPages)
+    }
+  }, [imagesPerPage, totalPages])
   return (
-    <div className='flex flex-col sm:w-[90%] [max-height:92vh] [min-height:92vh] m-auto'>
+    <div className='flex flex-col sm:w-[90%] [max-height:93vh] [min-height:93vh] m-auto'>
       <div className='overflow-y-scroll w-full scrollbar-thin m-auto'>
         <motion.div
           initial={{ opacity: 0 }}
