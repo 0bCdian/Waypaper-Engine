@@ -1,7 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { motion } from 'framer-motion'
 import { CSS } from '@dnd-kit/utilities'
-import { useEffect, useRef } from 'react'
+import { useEffect, useMemo, useRef, useCallback } from 'react'
 import { Image, PLAYLIST_TYPES } from '../types/rendererTypes'
 import playlistStore from '../hooks/playlistStore'
 
@@ -29,19 +29,17 @@ function MiniPlaylistCard({
 }) {
   const { removeImageFromPlaylist } = playlistStore()
   const imageRef = useRef<HTMLImageElement>(null)
-  const imageSrc =
-    'atom://' + join(thumbnailDirectory, Image.name.split('.').at(0) + '.webp')
-  const { attributes, listeners, setNodeRef, transform, transition } =
-    useSortable({
-      id: Image.id,
-      transition: {
-        duration: 250,
-        easing: 'cubic-bezier(0.65, 1, 0, 1)'
-      }
-    })
+  const imageSrc = useMemo(() => {
+    return (
+      'atom://' +
+      join(thumbnailDirectory, Image.name.split('.').at(0) + '.webp')
+    )
+  }, [Image])
+  const { attributes, listeners, setNodeRef, transform } = useSortable({
+    id: Image.id
+  })
   const style = {
-    transform: CSS.Transform.toString(transform),
-    transition
+    transform: CSS.Transform.toString(transform)
   }
   let text: string
   if (isLast) {
@@ -58,10 +56,11 @@ function MiniPlaylistCard({
       imageRef.current?.scrollIntoView({ inline: 'start' })
     }
   }, [])
-  const onRemove = () => {
+
+  const onRemove = useCallback(() => {
     Image.isChecked = false
     removeImageFromPlaylist(Image)
-  }
+  }, [])
   return (
     <div ref={setNodeRef} style={style}>
       <motion.div
@@ -70,7 +69,7 @@ function MiniPlaylistCard({
         transition={{ duration: 0.2 }}
         exit={{ scale: 0 }}
         layout
-        className='w-32 mx-1 shrink-0 mb-2 rounded-lg shadow-xl '
+        className='w-32 mx-1 shrink-0 rounded-lg shadow-xl '
       >
         <span className='text-stone-100 h-full shadow-xl font-bold text-clip whitespace-nowrap'>
           {playlistType === PLAYLIST_TYPES.DAY_OF_WEEK ? text : undefined}
@@ -101,7 +100,7 @@ function MiniPlaylistCard({
           {...listeners}
           src={imageSrc}
           alt={Image.name}
-          className='rounded-lg cursor-move'
+          className='rounded-lg cursor-default shadow-2xl '
           ref={imageRef}
           loading='lazy'
         />

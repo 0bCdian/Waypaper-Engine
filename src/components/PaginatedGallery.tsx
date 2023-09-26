@@ -32,20 +32,18 @@ function PaginatedGallery() {
     lastImageIndex
   )
   return (
-    <div className='flex flex-col sm:w-[90%] m-auto h-[93vh]'>
-      <div
-        className='overflow-y-scroll w-full scrollbar-none m-auto'
-      >
+    <div className='flex flex-col sm:w-[90%] [max-height:92vh] [min-height:92vh] m-auto'>
+      <div className='overflow-y-scroll w-full scrollbar-thin m-auto'>
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className='md:grid flex flex-col w-full md:auto-cols-auto md:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]'
+          className='md:grid flex flex-col [min-height:full] w-full md:auto-cols-auto md:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]'
         >
           {imagesToShow}
         </motion.div>
       </div>
-      <div className='flex flex-col w-full gap-3'>
+      <div className='flex mb-5 flex-col w-full gap-5'>
         <PaginatedGalleryNav
           currentPage={currentPage}
           setCurrentPage={setCurrentPage}
