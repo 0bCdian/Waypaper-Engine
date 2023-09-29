@@ -48,6 +48,7 @@ function imagesSource() {
   )
   useEffect(() => {
     queryImages().then((data: Image[]) => {
+      console.log(data)
       dispatch({ type: STORE_ACTIONS.SET_IMAGES_ARRAY, payload: data })
     })
   }, [])

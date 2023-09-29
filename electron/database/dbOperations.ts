@@ -1,5 +1,11 @@
 import db from './db'
-import { dbTables, Image, Playlist, imageInPlaylist } from '../types/types'
+import {
+  dbTables,
+  Image,
+  Playlist,
+  imageInPlaylist,
+  imageMetadata
+} from '../types/types'
 import {
   rendererPlaylist,
   Image as rendererImage,
@@ -70,7 +76,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         return
       }
       const initializeAppConfig = db.prepare(
-        `INSERT INTO ${dbTables.appConfig} (killDaemon,playlistStartOnFirstImage,notifications,swwwAnimations,introAnimation,startMinimized) VALUES(?,?,?,?,?,?)`
+        `INSERT INTO ${dbTables.appConfig} (killDaemon,playlistStartOnFirstImage,notifications,swwwAnimations,introAnimation,startMinimized,minimizeInsteadOfClose) VALUES(?,?,?,?,?,?,?)`
       )
       initializeAppConfig.run(
         initialAppConfig.killDaemon,
@@ -78,7 +84,8 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         initialAppConfig.notifications,
         initialAppConfig.swwwAnimations,
         initialAppConfig.introAnimation,
-        initialAppConfig.startMinimized
+        initialAppConfig.startMinimized,
+        initialAppConfig.minimizeInsteadOfClose
       )
     } catch (error) {
       throw new Error(`Could not initialize the appConfig table\n ${error}`)
@@ -124,15 +131,19 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       return [] as Playlist[]
     }
   },
-  storeImagesInDB(images: string[]) {
+  storeImagesInDB(images: imageMetadata[]) {
     try {
-      const insertImage = db.prepare(`INSERT INTO Images (name) VALUES (?)`)
+      console.log(images)
+      const insertImage = db.prepare(
+        `INSERT INTO Images (name,width,height,format) VALUES (?,?,?,?)`
+      )
       const selectInsertedImage = db.prepare(
         `SELECT * FROM Images WHERE id >= last_insert_rowid();`
       )
       const imagesInserted: Image[] = []
-      images.forEach((image) => {
-        insertImage.run(image)
+      images.forEach(({ name, width, height, format }) => {
+        console.log(name, width, height, format)
+        insertImage.run(name, width, height, format)
         const insertedImage = selectInsertedImage.get() as Image
         imagesInserted.push(insertedImage)
       })
@@ -160,8 +171,11 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       const selectInsertedPlaylist = db.prepare(
         `SELECT id FROM ${dbTables.Playlists} WHERE id >= last_insert_rowid();`
       )
-      const insertedPlaylist = selectInsertedPlaylist.get().id as number
-      this.insertImagesInPlaylistImagesTable(insertedPlaylist, playlist.images)
+      const insertedPlaylist = selectInsertedPlaylist.get() as { id: number }
+      this.insertImagesInPlaylistImagesTable(
+        insertedPlaylist.id,
+        playlist.images
+      )
       return insertedPlaylist
     } catch (error) {
       console.error(error)
@@ -213,8 +227,8 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       const selectImage = db.prepare(
         `SELECT name FROM ${dbTables.Images} WHERE id = ?`
       )
-      const image = selectImage.get(imageID)
-      return image.name as string
+      const image = selectImage.get(imageID) as { name: string }
+      return image.name
     } catch (error) {
       console.error(error)
       return null
@@ -247,11 +261,13 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       const selectPlaylist = db.prepare(
         `SELECT id FROM ${dbTables.Playlists} WHERE name=?`
       )
-      const insertedPlaylist = selectPlaylist.get(playlist.name).id as number
+      const insertedPlaylist = selectPlaylist.get(playlist.name) as {
+        id: number
+      }
       if (playlist.configuration.order === ORDER_TYPES.RANDOM) {
         playlist.images.sort(() => Math.random() - 0.5)
       }
-      this.updateImagesInPlaylist(insertedPlaylist, playlist.images)
+      this.updateImagesInPlaylist(insertedPlaylist.id, playlist.images)
       return insertedPlaylist
     } catch (error) {
       console.error(error)
@@ -359,7 +375,7 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
   updateAppConfig(newAppConfig: AppConfigDB) {
     try {
       const updateAppConfig = db.prepare(
-        `UPDATE ${dbTables.appConfig} SET killDaemon=?,playlistStartOnFirstImage=?,notifications=?,swwwAnimations=?,introAnimation=?,startMinimized=?`
+        `UPDATE ${dbTables.appConfig} SET killDaemon=?,playlistStartOnFirstImage=?,notifications=?,swwwAnimations=?,introAnimation=?,startMinimized=?,minimizeInsteadOfClose=?`
       )
       updateAppConfig.run(
         newAppConfig.killDaemon,
@@ -367,7 +383,8 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
         newAppConfig.notifications,
         newAppConfig.swwwAnimations,
         newAppConfig.introAnimation,
-        newAppConfig.startMinimized
+        newAppConfig.startMinimized,
+        newAppConfig.minimizeInsteadOfClose
       )
     } catch (error) {
       throw new Error(`Could not update appConfigTable in DB ${error}`)

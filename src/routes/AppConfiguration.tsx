@@ -9,6 +9,7 @@ type AppConfig = {
   swwwAnimations: boolean
   introAnimation: boolean
   startMinimized: boolean
+  minimizeInsteadOfClose: boolean
 }
 
 export type AppConfigDB = {
@@ -18,6 +19,7 @@ export type AppConfigDB = {
   swwwAnimations: 0 | 1
   introAnimation: 0 | 1
   startMinimized: 0 | 1
+  minimizeInsteadOfClose: 0 | 1
 }
 const { readAppConfig, updateAppConfig } = window.API_RENDERER
 const AppConfig = () => {
@@ -29,7 +31,8 @@ const AppConfig = () => {
       notifications: data.notifications ? 1 : 0,
       swwwAnimations: data.swwwAnimations ? 1 : 0,
       introAnimation: data.introAnimation ? 1 : 0,
-      startMinimized: data.startMinimized ? 1 : 0
+      startMinimized: data.startMinimized ? 1 : 0,
+      minimizeInsteadOfClose: data.minimizeInsteadOfClose ? 1 : 0
     }
     updateAppConfig(newData as AppConfigDB)
   }
@@ -44,6 +47,7 @@ const AppConfig = () => {
       setValue('swwwAnimations', Boolean(data.swwwAnimations))
       setValue('introAnimation', Boolean(data.introAnimation))
       setValue('startMinimized', Boolean(data.startMinimized))
+      setValue('minimizeInsteadOfClose', Boolean(data.minimizeInsteadOfClose))
     })
   }, [])
   useEffect(() => {
@@ -143,6 +147,19 @@ const AppConfig = () => {
               <label htmlFor='startMinimized' className='label'>
                 <span className='label-text text-3xl'>
                   Start the app in the tray
+                </span>
+              </label>
+            </div>
+            <div className='my-6 flex gap-3'>
+              <input
+                type='checkbox'
+                id='minimizeInsteadOfClose'
+                className='checkbox mt-4'
+                {...register('minimizeInsteadOfClose')}
+              />
+              <label htmlFor='minimizeInsteadOfClose' className='label'>
+                <span className='label-text text-3xl'>
+                  Minimize app to tray instead of closing
                 </span>
               </label>
             </div>

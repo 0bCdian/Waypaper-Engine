@@ -21,7 +21,8 @@
     "react-hook-form": "^7.45.2",
     "react-router-dom": "^6.15.0",
     "reflect-metadata": "^0.1.13",
-    "sharp": "^0.32.1",
+    "sharp": "^0.32.6",
+    "vite-plugin-commonjs": "^0.9.0",
     "zustand": "^4.3.9"
   },
   "devDependencies": {
@@ -37,7 +38,6 @@
     "daisyui": "^3.5.0",
     "electron": "^24.4.0",
     "electron-builder": "^23.6.0",
-    "electron-devtools-assembler": "^1.2.0",
     "eslint": "^8.43.0",
     "eslint-config-standard-with-typescript": "^35.0.0",
     "eslint-plugin-import": "^2.27.5",

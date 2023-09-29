@@ -10,7 +10,8 @@ import {
   isSwwwDaemonRunning,
   initWaypaperDaemon,
   deleteImageFromGallery,
-  remakeThumbnailsIfImagesExist
+  remakeThumbnailsIfImagesExist,
+  getMonitors
 } from './appFunctions'
 import dbOperations from './database/dbOperations'
 import {
@@ -20,9 +21,6 @@ import {
   trayMenuWithControls
 } from './globals/globals'
 import { iconPath } from './binaries'
-import installExtension, {
-  REACT_DEVELOPER_TOOLS
-} from 'electron-devtools-assembler'
 import { swwwConfig } from './database/swwwConfig'
 import { AppConfigDB } from '../src/routes/AppConfiguration'
 import config from './database/globalConfig'
@@ -67,7 +65,8 @@ function createWindow() {
     backgroundColor: '#3C3836',
     webPreferences: {
       preload: join(__dirname, 'preload.js'),
-      sandbox: false
+      sandbox: false,
+      nodeIntegration: true
     }
   })
   if (VITE_DEV_SERVER_URL !== undefined) {
@@ -88,11 +87,10 @@ function createWindow() {
     }
   })
   win.on('close', (event) => {
-    event.preventDefault()
-    win?.hide()
-  })
-  win.webContents.once('dom-ready', () => {
-    if (!app.isPackaged) loadDeveloperTools()
+    if (config.app.config.minimizeInsteadOfClose) {
+      event.preventDefault()
+      win?.hide()
+    }
   })
 }
 function createMenu() {
@@ -107,15 +105,6 @@ function registerFileProtocol() {
     )
     callback(filePath)
   })
-}
-
-function loadDeveloperTools() {
-  const options = {
-    loadExtensionOptions: { allowFileAccess: true }
-  }
-  installExtension(REACT_DEVELOPER_TOOLS, options)
-    .then((name) => console.log(`Added Extension:  ${name}`))
-    .catch((err) => console.log('An error occurred: ', err))
 }
 
 function createTray() {
@@ -199,6 +188,9 @@ ipcMain.handle('queryPlaylists', () => {
 })
 ipcMain.handle('getPlaylistImages', (_event, playlistID: number) => {
   return dbOperations.getImagesInPlaylist(playlistID)
+})
+ipcMain.handle('getMonitors', () => {
+  return getMonitors()
 })
 ipcMain.handle('readSwwwConfig', dbOperations.readSwwwConfig)
 ipcMain.handle('readAppConfig', dbOperations.readAppConfig)

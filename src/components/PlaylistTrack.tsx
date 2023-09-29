@@ -182,6 +182,7 @@ function PlaylistTrack() {
           restrictToHorizontalAxis,
           restrictToFirstScrollableAncestor
         ]}
+        autoScroll={true}
         collisionDetection={closestCorners}
         onDragEnd={handleDragEnd}
       >

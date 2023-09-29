@@ -2,6 +2,9 @@ export interface Image {
   id: number
   name: string
   isChecked: boolean
+  width: number
+  height: number
+  format: string
   beginTime?: number
   endTime?: number
 }

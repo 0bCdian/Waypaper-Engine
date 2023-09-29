@@ -6,7 +6,8 @@ const initialAppConfig: AppConfigDB = {
   notifications: 1,
   swwwAnimations: 1,
   introAnimation: 1,
-  startMinimized: 0
+  startMinimized: 0,
+  minimizeInsteadOfClose: 0
 }
 
 export default initialAppConfig

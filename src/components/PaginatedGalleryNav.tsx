@@ -39,48 +39,58 @@ const PaginatedGalleryNav: FC<PaginatedGalleryNavProps> = ({
   const buttons: JSX.Element[] = []
   for (let i = firstButtonIndex + 1; i <= lastButtonIndex; i++) {
     buttons.push(
-      <button
-        key={i}
-        className={`join-item font-bold btn-lg btn ${
-          currentPage === i ? 'btn-active' : ''
-        }`}
-        onClick={() => setCurrentPage(i)}
-      >
-        {i}
-      </button>
+      <div className='tooltip' data-tip={`Go To Page: ${i}`}>
+        <button
+          key={i}
+          className={`join-item font-bold btn-lg btn ${
+            currentPage === i ? 'btn-active' : ''
+          }`}
+          onClick={() => setCurrentPage(i)}
+        >
+          {i}
+        </button>
+      </div>
     )
   }
   return (
     <div className='join self-center mt-5 '>
-      <button
-        onClick={() => {
-          setCurrentPage(1)
-        }}
-        className='join-item btn btn-neutral btn-lg rounded-lg'
-      >
-        First
-      </button>
-      <button
-        onClick={previousPage}
-        className='join-item btn-neutral btn-lg rounded-lg'
-      >
-        «
-      </button>
+      <div className='tooltip' data-tip='First Page'>
+        <button
+          onClick={() => {
+            setCurrentPage(1)
+          }}
+          className='join-item btn btn-neutral btn-lg rounded-lg'
+        >
+          |«
+        </button>
+      </div>
+      <div className='tooltip' data-tip='Previous Page'>
+        <button
+          onClick={previousPage}
+          className='join-item btn-neutral btn-lg rounded-lg'
+        >
+          «««
+        </button>
+      </div>
       <div className=' md:[display:flex] [display:none]'>{buttons}</div>
-      <button
-        onClick={nextPage}
-        className='join-item btn btn-lg btn-neutral rounded-lg'
-      >
-        »
-      </button>
-      <button
-        onClick={() => {
-          setCurrentPage(totalPages)
-        }}
-        className='join-item btn btn-lg btn-neutral rounded-lg'
-      >
-        Last
-      </button>
+      <div className='tooltip' data-tip='Next Page'>
+        <button
+          onClick={nextPage}
+          className='join-item btn btn-lg btn-neutral rounded-lg'
+        >
+          »»»
+        </button>
+      </div>
+      <div className='tooltip' data-tip='Last Page'>
+        <button
+          onClick={() => {
+            setCurrentPage(totalPages)
+          }}
+          className='join-item btn btn-lg btn-neutral rounded-lg'
+        >
+          »|
+        </button>
+      </div>
     </div>
   )
 }

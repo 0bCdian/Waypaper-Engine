@@ -2,11 +2,13 @@ import { defineConfig } from 'vite'
 import electron from 'vite-plugin-electron'
 import renderer from 'vite-plugin-electron-renderer'
 import react from '@vitejs/plugin-react'
+import commonjs from 'vite-plugin-commonjs'
 
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
     react(),
+    commonjs(),
     electron([
       {
         // Main-Process entry file of the Electron App.
@@ -22,5 +24,10 @@ export default defineConfig({
       }
     ]),
     renderer()
-  ]
+  ],
+  build: {
+    commonjsOptions: {
+      dynamicRequireTargets: ['node_modules/sharp']
+    }
+  }
 })

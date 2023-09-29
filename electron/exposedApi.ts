@@ -1,20 +1,18 @@
 import { ipcRenderer } from 'electron'
 import { appDirectories } from './globals/globals'
-import { imagesObject, Playlist } from './types/types'
+import { imagesObject, Monitor, Playlist, ActivePlaylist } from './types/types'
 import { Image, rendererPlaylist } from '../src/types/rendererTypes'
 import { join } from 'node:path'
 import { swwwConfig } from './database/swwwConfig'
 import { AppConfigDB } from '../src/routes/AppConfiguration'
-interface ActivePlaylist extends Playlist {
-  images: string[]
-}
+
 export const ELECTRON_API = {
-  openFiles: async () => await ipcRenderer.invoke('openFiles'),
-  handleOpenImages: async (imagesObject: imagesObject) => {
-    return await ipcRenderer.invoke('handleOpenImages', imagesObject)
+  openFiles: () => ipcRenderer.invoke('openFiles'),
+  handleOpenImages: (imagesObject: imagesObject): Promise<Image[]> => {
+    return ipcRenderer.invoke('handleOpenImages', imagesObject)
   },
-  queryImages: async () => {
-    return await ipcRenderer.invoke('queryImages')
+  queryImages: () => {
+    return ipcRenderer.invoke('queryImages')
   },
   setImage: (image: string) => {
     ipcRenderer.send('setImage', image)
@@ -25,37 +23,32 @@ export const ELECTRON_API = {
   startPlaylist: (playlistName: string) => {
     ipcRenderer.send('startPlaylist', playlistName)
   },
-  queryPlaylists: async (): Promise<Playlist[]> => {
-    return await ipcRenderer.invoke('queryPlaylists')
+  queryPlaylists: (): Promise<Playlist[]> => {
+    return ipcRenderer.invoke('queryPlaylists')
   },
-  getPlaylistImages: async (playlistID: number): Promise<string[]> => {
-    return await ipcRenderer.invoke('getPlaylistImages', playlistID)
+  getPlaylistImages: (playlistID: number): Promise<string[]> => {
+    return ipcRenderer.invoke('getPlaylistImages', playlistID)
   },
-  stopPlaylist: async () => {
+  stopPlaylist: () => {
     ipcRenderer.send('stopPlaylist')
   },
-  deleteImageFromGallery: async (imageID: number, imageName: string) => {
-    return await ipcRenderer.invoke(
-      'deleteImageFromGallery',
-      imageID,
-      imageName
-    )
+  deleteImageFromGallery: (imageID: number, imageName: string) => {
+    return ipcRenderer.invoke('deleteImageFromGallery', imageID, imageName)
   },
-  deletePlaylist: async (playlistName: string) => {
+  deletePlaylist: (playlistName: string) => {
     ipcRenderer.send('deletePlaylist', playlistName)
   },
-  join: join,
   openContextMenu: (Image: Image) => {
     ipcRenderer.send('openContextMenuImage', Image)
   },
   updateSwwwConfig: (newConfig: swwwConfig) => {
     ipcRenderer.send('updateSwwwConfig', newConfig)
   },
-  readSwwwConfig: async () => {
-    return await ipcRenderer.invoke('readSwwwConfig')
+  readSwwwConfig: () => {
+    return ipcRenderer.invoke('readSwwwConfig')
   },
-  readAppConfig: async (): Promise<AppConfigDB> => {
-    return await ipcRenderer.invoke('readAppConfig')
+  readAppConfig: (): Promise<AppConfigDB> => {
+    return ipcRenderer.invoke('readAppConfig')
   },
   updateAppConfig: (newAppConfig: AppConfigDB) => {
     ipcRenderer.send('updateAppConfig', newAppConfig)
@@ -71,6 +64,10 @@ export const ELECTRON_API = {
   exitApp: () => {
     ipcRenderer.send('exitApp')
   },
+  getMonitors: () => {
+    return ipcRenderer.invoke('getMonitors') as Promise<Monitor[]>
+  },
+  join: join,
   thumbnailDirectory: appDirectories.thumbnails,
   imagesDirectory: appDirectories.imagesDir
 }

@@ -6,7 +6,14 @@ import {
   validImageExtensions,
   WAYPAPER_ENGINE_SOCKET_PATH
 } from './globals/globals'
-import { fileList, imagesObject, ACTIONS, message } from './types/types'
+import {
+  fileList,
+  imagesObject,
+  ACTIONS,
+  message,
+  Monitor,
+  imageMetadata
+} from './types/types'
 import { rendererPlaylist } from '../src/types/rendererTypes'
 import { exec, spawn } from 'node:child_process'
 import { promisify } from 'node:util'
@@ -15,7 +22,7 @@ import { join, basename } from 'node:path'
 import { createConnection } from 'node:net'
 import dbOperations from './database/dbOperations'
 import config from './database/globalConfig'
-
+import Sharp = require('sharp')
 const execPomisified = promisify(exec)
 function openImagesFromFilePicker() {
   const file: fileList = dialog.showOpenDialogSync({
@@ -31,42 +38,60 @@ export async function copyImagesToCacheAndProcessThumbnails(
   { imagePaths, fileNames }: imagesObject
 ) {
   const uniqueFileNames = checkAndRenameDuplicates(fileNames)
+  console.log(uniqueFileNames, 'uniqueFilenames')
   const imagesToStore = uniqueFileNames.map((imageName, currentImage) => {
-    return new Promise<string>(async (resolve) => {
+    return new Promise<imageMetadata | undefined>(async (resolve) => {
       await copyFile(
         imagePaths[currentImage],
         join(appDirectories.imagesDir, imageName)
-      ).then(async () => {
-        await createCacheThumbnail(imagePaths[currentImage], imageName)
-        resolve(imageName)
-      })
+      )
+      const imageMetadata = await createCacheThumbnail(
+        imagePaths[currentImage],
+        imageName
+      )
+      resolve(imageMetadata)
     })
   })
   const resolvedObjectsArray = await Promise.allSettled(imagesToStore)
-  const imagesToStoreinDB: string[] = []
+  console.log(resolvedObjectsArray)
+  const imagesToStoreinDB: imageMetadata[] = []
   resolvedObjectsArray.forEach((imagePromise) => {
     if (imagePromise.status === 'fulfilled') {
-      imagesToStoreinDB.push(imagePromise.value)
+      const value = imagePromise.value
+      console.log(value)
+      if (value) {
+        imagesToStoreinDB.push(value)
+      }
     }
   })
+  console.log(imagesToStoreinDB,'imagesToStoreInDb')
   return dbOperations.storeImagesInDB(imagesToStoreinDB)
 }
 
 async function createCacheThumbnail(filePathSource: string, imageName: string) {
-  const sharp = require('sharp')
   const [name] = imageName.split('.')
   const fileDestinationPath = join(appDirectories.thumbnails, name + '.webp')
   if (imageName) {
     try {
-      await sharp(filePathSource, { animated: true, limitInputPixels: false })
+      const buffer = Sharp(filePathSource, {
+        animated: true,
+        limitInputPixels: false
+      })
+      const metadata = await buffer.metadata()
+      await buffer
         .resize(300, 200, {
           fit: 'cover'
         })
         .webp({ quality: 60, force: true, effort: 6 })
         .toFile(fileDestinationPath)
-        .then((info: any) => {
-          console.log(info)
-        })
+      const imageMetadata = {
+        name: imageName,
+        format: metadata.format,
+        width: metadata.width,
+        height: metadata.height
+      }
+      console.log(imageMetadata)
+      return imageMetadata as imageMetadata
     } catch (error) {
       console.error(error)
       console.error('failed to create thumbnail for:', imageName)
@@ -357,4 +382,29 @@ function getSwwwCommandFromConfiguration(
     const command = `swww img ${imagePath} --resize="${swwwConfig.resizeType}" --fill-color "${swwwConfig.fillColor}" --filter ${swwwConfig.filterType} --transition-type ${swwwConfig.transitionType} --transition-step ${swwwConfig.transitionStep} --transition-duration ${swwwConfig.transitionDuration} --transition-fps ${swwwConfig.transitionFPS} --transition-angle ${swwwConfig.transitionAngle} --transition-pos ${transitionPos} ${inverty} --transition-bezier ${swwwConfig.transitionBezier} --transition-wave "${swwwConfig.transitionWaveX},${swwwConfig.transitionWaveY}"`
     return command
   }
+}
+
+export async function getMonitors() {
+  const { stdout, stderr } = await execPomisified('swww query', {
+    encoding: 'utf-8'
+  })
+  if (stderr) throw new Error('Could not execute swww query')
+  return parseSwwwQuery(stdout)
+}
+
+function parseSwwwQuery(stdout: string) {
+  const monitorsInfoString = stdout.split('\n')
+  const monitorsObjectArray = monitorsInfoString
+    .filter((monitor) => {
+      return monitor !== ''
+    })
+    .map((monitor) => {
+      const splitInfo = monitor.split(':')
+      return {
+        name: splitInfo[0].trim(),
+        resolution: splitInfo[1].split(',')[0].trim(),
+        currentImage: splitInfo[4].trim()
+      }
+    })
+  return monitorsObjectArray as Monitor[]
 }

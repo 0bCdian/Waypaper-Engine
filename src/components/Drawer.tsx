@@ -19,15 +19,18 @@ const Drawer: FC<Props> = ({ children }) => {
         checked={show}
         onChange={toggle}
       />
-      <div className='drawer-content [max-height:100vh]'>
-        {children}
-      </div>
+      <div className='drawer-content [max-height:100vh]'>{children}</div>
       <div className='drawer-side z-10'>
         <label htmlFor='my-drawer' className='drawer-overlay'></label>
         <ul className='menu rounded-box p-4 text-2xl h-full bg-base-200 text-base-content'>
           <li>
             <Link onClick={toggle} to='/'>
               Gallery
+            </Link>
+          </li>
+          <li>
+            <Link onClick={toggle} to='/monitorsConfig'>
+              Monitors Configuration
             </Link>
           </li>
           <li>

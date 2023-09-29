@@ -9,6 +9,9 @@ export type Image = {
   id: number
   imageName: string
   isChecked: boolean | 1 | 0
+  width: number
+  height: number
+  format: string
 }
 
 export type Playlist = {
@@ -34,9 +37,6 @@ export enum ACTIONS {
 
 export interface message {
   action: ACTIONS
-  payload?: {
-    playlistName: string
-  }
 }
 
 export type PlaylistControllerType = {
@@ -64,4 +64,21 @@ export type imageInPlaylist = {
   indexInPlaylist: number
   beginTime: number | null
   endTime: number | null
+}
+
+export type Monitor = {
+  name: string
+  resolution: string
+  currentImage: string
+}
+
+export type imageMetadata = {
+  name: string
+  format: string
+  width: number
+  height: number
+}
+
+export interface ActivePlaylist extends Playlist {
+  images: string[]
 }

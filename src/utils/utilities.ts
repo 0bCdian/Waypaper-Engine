@@ -19,3 +19,8 @@ export function debounce(callback: () => void, timer = 1000) {
     }, timer)
   }
 }
+
+export function parseResolution(resolution: string) {
+  const [width, height] = resolution.split('x')
+  return { width: parseInt(width), height: parseInt(height) }
+}

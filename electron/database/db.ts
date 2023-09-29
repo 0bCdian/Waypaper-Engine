@@ -1,7 +1,7 @@
 //@ts-ignore
 import { checkCacheOrCreateItIfNotExists } from '../appFunctions'
 import { nativeBindingLocation, dbLocation } from '../binaries'
-const Database = require('better-sqlite3')
+import Database = require('better-sqlite3')
 checkCacheOrCreateItIfNotExists()
 const db = Database(dbLocation, {
   nativeBinding: nativeBindingLocation,
@@ -14,6 +14,9 @@ function createDB() {
 	"id"	INTEGER NOT NULL,
 	"name"	TEXT NOT NULL UNIQUE,
 	"isChecked"	INTEGER NOT NULL DEFAULT 0,
+	"width" INTEGER NOT NULL,
+	"height" INTEGER NOT NULL,
+	"format" TEXT NOT NULL,
 	PRIMARY KEY("id" AUTOINCREMENT)
 )`)
     const createPlaylistsTable =
@@ -67,7 +70,9 @@ function createDB() {
 	"notifications"	INTEGER NOT NULL UNIQUE,
 	"swwwAnimations"	INTEGER NOT NULL UNIQUE,
 	"introAnimation"	INTEGER NOT NULL UNIQUE,
-	"startMinimized" INTEGER NOT NULL UNIQUE
+	"startMinimized" INTEGER NOT NULL UNIQUE,
+	"minimizeInsteadOfClose" INTEGER NOT NULL UNIQUE
+
 );`)
     const createActivePlaylist =
       db.prepare(`CREATE TABLE IF NOT EXISTS "activePlaylist" (

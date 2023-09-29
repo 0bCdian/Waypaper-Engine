@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect, useCallback } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import PaginatedGalleryNav from './PaginatedGalleryNav'
 import { useImages } from '../hooks/imagesStore'
 import Skeleton from './Skeleton'
@@ -27,7 +27,6 @@ function PaginatedGallery() {
       return <ImageCard key={image.id} Image={image} />
     })
   }, [filteredImages])
-
   const imagesToShow = useMemo(
     function () {
       const imagesToShow = [...SkeletonsArray, ...imagesCardArray].slice(
@@ -36,7 +35,7 @@ function PaginatedGallery() {
       )
       return imagesToShow
     },
-    [imagesPerPage, currentPage, totalPages]
+    [imagesPerPage, currentPage, totalPages, filteredImages, skeletonsToShow]
   )
   const updateImagesPerPage = debounce(() => {
     const coeficient = 0.000010113
@@ -65,7 +64,11 @@ function PaginatedGallery() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          className='md:grid flex flex-col [min-height:full] w-full md:auto-cols-auto md:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]'
+          className={`md:grid flex flex-col [min-height:full] w-fit  m-auto md:auto-cols-auto ${
+            imagesToShow.length === 1
+              ? 'items-center'
+              : 'md:grid-cols-[repeat(auto-fill,minmax(300px,1fr))] md:w-full'
+          }`}
         >
           {imagesToShow}
         </motion.div>

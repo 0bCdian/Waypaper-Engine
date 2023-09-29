@@ -37,7 +37,7 @@ const openImagesStore = create<State & Actions>((set) => ({
     imagesObject.fileNames.reverse()
     imagesObject.imagePaths.reverse()
     setSkeletons(imagesObject.fileNames)
-    const imagesArray: Image[] = await handleOpenImages(imagesObject)
+    const imagesArray = await handleOpenImages(imagesObject)
     const newImagesAdded = imagesArray.map((image) => {
       let playlistImagesLength = currentPlaylist.images.length
       let shouldCheckImage
