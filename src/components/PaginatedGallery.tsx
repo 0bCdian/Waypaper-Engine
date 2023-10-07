@@ -7,12 +7,16 @@ import PlaylistTrack from './PlaylistTrack'
 import { motion } from 'framer-motion'
 import { debounce } from '../utils/utilities'
 
+
+
 function PaginatedGallery() {
   const { filteredImages, skeletonsToShow, filters } = useImages()
   const [imagesPerPage, setImagesPerPage] = useState(20)
   const [currentPage, setCurrentPage] = useState<number>(1)
   const lastImageIndex = currentPage * imagesPerPage
   const firstImageIndex = lastImageIndex - imagesPerPage
+  // this was calculated asuming a 300x200 thumbnail resolution
+  const coeficient = 0.000010113
   const totalPages = useMemo(() => {
     return Math.ceil(filteredImages.length / imagesPerPage)
   }, [filteredImages, skeletonsToShow, imagesPerPage])
@@ -38,8 +42,6 @@ function PaginatedGallery() {
     [imagesPerPage, currentPage, totalPages, filteredImages, skeletonsToShow]
   )
   const updateImagesPerPage = debounce(() => {
-    // this was calculated asuming a a 300x200 thumbnail resolution
-    const coeficient = 0.000010113
     const newDimensions = {
       width: window.innerWidth,
       height: window.innerHeight
@@ -63,7 +65,7 @@ function PaginatedGallery() {
   }, [imagesPerPage, totalPages, filters.searchString])
 
   return (
-    <div className='flex flex-col sm:w-[90%] [max-height:87vh] [min-height:87vh] m-auto'>
+    <div className='flex flex-col justify-between sm:w-[90%] [max-height:87dvh] [min-height:87dvh] m-auto'>
       <div className='overflow-y-scroll w-full scrollbar-thin m-auto'>
         <motion.div
           initial={{ opacity: 0 }}

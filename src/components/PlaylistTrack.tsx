@@ -84,7 +84,7 @@ function PlaylistTrack() {
   })
   return (
     <div className='w-full flex flex-col gap-2 '>
-      <div className='flex  justify-between items-center mb-2'>
+      <div className='flex justify-between items-center mb-2'>
         <div className='flex gap-5 items-center '>
           <span className='text-4xl font-bold'>
             {playlistArray.length > 0

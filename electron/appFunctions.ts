@@ -24,6 +24,10 @@ import { parseResolution } from '../src/utils/utilities'
 import dbOperations from './database/dbOperations'
 import config from './database/globalConfig'
 import Sharp = require('sharp')
+import {
+  splitImageHorizontalAxis,
+  splitImageVerticalAxis
+} from './imageOperations'
 const execPomisified = promisify(exec)
 function openImagesFromFilePicker() {
   const file: fileList = dialog.showOpenDialogSync({
@@ -219,20 +223,11 @@ export async function isSwwwDaemonRunning() {
   await checkIfSwwwIsInstalled()
   exec(`ps -A | grep "swww-daemon"`, (_error, stdout, _stderr) => {
     if (!(stdout.toLowerCase().indexOf('swww-daemon'.toLowerCase()) > -1)) {
-      isSwwwSocketClean()
       execPomisified('swww init')
     } else {
       console.log('Swww Daemon already running')
     }
   })
-}
-
-function isSwwwSocketClean() {
-  //TODO check if I can get around hardcoding the socket path
-  const socketPath = '/run/user/1000/swww.socket'
-  if (existsSync(socketPath)) {
-    rmSync(socketPath)
-  }
 }
 
 export async function checkIfSwwwIsInstalled() {
@@ -416,151 +411,39 @@ function parseSwwwQuery(stdout: string) {
     })
   return monitorsObjectArray as Monitor[]
 }
-//!TODO refactor this function, its too big
-async function splitImageForExtendingAcrossMonitors(
-  monitors: Monitor[],
-  Image: Image,
-  orientation: 'vertical' | 'horizontal'
-) {
-  const imageFilePath = join(appDirectories.imagesDir, Image.name)
-  let combinedMonitorHeight: number = 0
-  let combinedMonitorWidth: number = 0
-  const numberOfMonitors = monitors.length
-  monitors.forEach((monitor) => {
-    const { width, height } = parseResolution(monitor.resolution)
-    combinedMonitorHeight += height
-    combinedMonitorWidth += width
-  })
-  if (orientation === 'vertical') {
-    let lastWidth: number = 0
-    const monitorsToImagesPairsArray: { monitor: string; image: string }[] = []
-    for (let current = 0; current < monitors.length; current++) {
-      const finalImageName = join(
-        appDirectories.tempImages,
-        `${current}.${Image.format}`
-      )
-      const monitorResolution = parseResolution(monitors[current].resolution)
-      const widthDifferenceImageToMonitors = combinedMonitorWidth - Image.width
-      const heightDifferenceImageToCurrentMonitor =
-        monitorResolution.height - Image.height
-      let buffer = Sharp(imageFilePath, {
-        animated: true,
-        limitInputPixels: false
-      })
-      if (widthDifferenceImageToMonitors > 0) {
-        if (heightDifferenceImageToCurrentMonitor > 0) {
-          buffer = buffer.resize(
-            combinedMonitorWidth,
-            monitorResolution.height,
-            {
-              fit: 'contain',
-              background: hexToSharpRgb(config.swww.config.fillColor)
-            }
-          )
-        } else {
-          buffer = buffer.resize({
-            width: combinedMonitorWidth,
-            fit: 'contain',
-            background: hexToSharpRgb(config.swww.config.fillColor)
-          })
-        }
-        const padding = Math.abs(current * (lastWidth - 1))
-        await buffer
-          .extract({
-            left: padding,
-            top: 0,
-            width: monitorResolution.width,
-            height: monitorResolution.height
-          })
-          .toFile(finalImageName)
-        monitorsToImagesPairsArray.push({
-          monitor: monitors[current].name,
-          image: finalImageName
-        })
-        lastWidth = monitorResolution.width
-      } else {
-        const padding = Math.ceil(Image.width / numberOfMonitors) - 1
-        try {
-          await buffer
-            .extract({
-              left: current * padding,
-              top: 0,
-              width: padding + 1,
-              height: Image.height
-            })
-            .toFile(finalImageName)
-          monitorsToImagesPairsArray.push({
-            monitor: monitors[current].name,
-            image: finalImageName
-          })
-        } catch (error) {
-          console.log(error)
-        }
-      }
-    }
-
-    return monitorsToImagesPairsArray
-  } else if (orientation === 'horizontal') {
-    let lastHeight: number = 0
-    const monitorsToImagesPairsArray: { monitor: string; image: string }[] = []
-    for (let current = 0; current < monitors.length; current++) {
-      const monitorResolution = parseResolution(monitors[current].resolution)
-      const buffer = Sharp(imageFilePath)
-      const finalImageName = join(
-        appDirectories.tempImages,
-        `${current}.${Image.format}`
-      )
-      await buffer
-        .extract({
-          left: 0,
-          top: current * lastHeight,
-          width: monitorResolution.width,
-          height: monitorResolution.height
-        })
-        .toFile(finalImageName)
-      monitorsToImagesPairsArray.push({
-        monitor: monitors[current].name,
-        image: finalImageName
-      })
-      lastHeight = monitorResolution.width
-    }
-    return monitorsToImagesPairsArray
-  }
-}
 
 export async function setImageExtended(
   Image: Image,
   monitors: Monitor[],
   orientation: 'vertical' | 'horizontal'
 ) {
-  const monitorsToImagesPairsArray = await splitImageForExtendingAcrossMonitors(
-    monitors,
-    Image,
-    orientation
-  )
   const commands: Promise<any>[] = []
-  if (monitorsToImagesPairsArray) {
-    monitorsToImagesPairsArray.forEach((pair) => {
-      commands.push(
-        execPomisified(
-          getSwwwCommandFromConfiguration(pair.image, pair.monitor)
+  const imageFilePath = join(appDirectories.imagesDir, Image.name)
+  let combinedMonitorHeight: number = 0
+  let combinedMonitorWidth: number = 0
+  monitors.forEach((monitor) => {
+    const { width, height } = parseResolution(monitor.resolution)
+    combinedMonitorHeight += height
+    combinedMonitorWidth += width
+  })
+  const monitorsToImagesPair =
+    orientation === 'vertical'
+      ? await splitImageVerticalAxis(
+          monitors,
+          Image,
+          imageFilePath,
+          combinedMonitorWidth
         )
-      )
-    })
-    Promise.all(commands)
-  }
-}
-
-function hexToSharpRgb(hex: string) {
-  const parsedHex = hex.replace(/^#/, '').toLowerCase()
-  const r = parseInt(parsedHex.slice(0, 2), 16)
-  const g = parseInt(parsedHex.slice(2, 4), 16)
-  const b = parseInt(parsedHex.slice(4, 6), 16)
-  const rgbObject = {
-    r: r,
-    g: g,
-    b: b,
-    alpha: 1 // Assuming full opacity
-  }
-  return rgbObject
+      : await splitImageHorizontalAxis(
+          monitors,
+          Image,
+          imageFilePath,
+          combinedMonitorHeight
+        )
+  monitorsToImagesPair.forEach((pair) => {
+    commands.push(
+      execPomisified(getSwwwCommandFromConfiguration(pair.image, pair.monitor))
+    )
+  })
+  Promise.all(commands)
 }

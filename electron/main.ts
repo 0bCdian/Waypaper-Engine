@@ -58,7 +58,7 @@ function createWindow() {
   win = new BrowserWindow({
     icon: join(iconPath, 'tray.png'),
     width: 1200,
-    height: 600,
+    height: 1000,
     minWidth: 940,
     minHeight: 560,
     autoHideMenuBar: true,
@@ -251,9 +251,15 @@ ipcMain.on('openContextMenuImage', async (event, image: Image) => {
       }
     },
     {
-      label: `Extend across all monitors`,
+      label: `Extend across all monitors horizontally`,
       click: () => {
         setImageExtended(image, monitors, 'vertical')
+      }
+    },
+    {
+      label: `Extend across all monitors vertically`,
+      click: () => {
+        setImageExtended(image, monitors, 'horizontal')
       }
     }
   )
