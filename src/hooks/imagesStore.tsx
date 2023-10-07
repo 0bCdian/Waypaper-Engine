@@ -6,21 +6,38 @@ import {
   createContext,
   useEffect
 } from 'react'
-import { Image, STORE_ACTIONS } from '../types/rendererTypes'
+import {
+  Image,
+  STORE_ACTIONS,
+  Filters,
+  state,
+  action
+} from '../types/rendererTypes'
 const { queryImages } = window.API_RENDERER
-
-type state = {
-  imagesArray: Image[]
-  skeletonsToShow: string[]
-  searchFilter: string
+const initialFilters: Filters = {
+  order: 'desc',
+  type: 'id',
+  searchString: '',
+  advancedFilters: {
+    formats: [
+      'jpeg',
+      'jpg',
+      'webp',
+      'gif',
+      'png',
+      'bmp',
+      'tiff',
+      'tga',
+      'pnm',
+      'farbeld'
+    ],
+    resolution: {
+      constraint: 'all',
+      width: 0,
+      height: 0
+    }
+  }
 }
-
-type action =
-  | { type: STORE_ACTIONS.SET_IMAGES_ARRAY; payload: Image[] }
-  | { type: STORE_ACTIONS.SET_SKELETONS_TO_SHOW; payload: string[] }
-  | { type: STORE_ACTIONS.SET_SEARCH_FILTER; payload: string }
-  | { type: STORE_ACTIONS.RESET_IMAGES_ARRAY; payload: Image[] }
-
 function reducer(state: state, action: action) {
   switch (action.type) {
     case STORE_ACTIONS.SET_IMAGES_ARRAY:
@@ -30,32 +47,31 @@ function reducer(state: state, action: action) {
       }
     case STORE_ACTIONS.SET_SKELETONS_TO_SHOW:
       return { ...state, skeletonsToShow: action.payload }
-    case STORE_ACTIONS.SET_SEARCH_FILTER:
-      return { ...state, searchFilter: action.payload }
+    case STORE_ACTIONS.SET_FILTERS:
+      return { ...state, filters: action.payload }
     case STORE_ACTIONS.RESET_IMAGES_ARRAY:
       return { ...state, imagesArray: action.payload }
   }
 }
 
 function imagesSource() {
-  const [{ imagesArray, skeletonsToShow, searchFilter }, dispatch] = useReducer(
+  const [{ imagesArray, skeletonsToShow, filters }, dispatch] = useReducer(
     reducer,
     {
       imagesArray: [],
       skeletonsToShow: [],
-      searchFilter: ''
+      filters: initialFilters
     }
   )
   useEffect(() => {
     queryImages().then((data: Image[]) => {
-      console.log(data)
       dispatch({ type: STORE_ACTIONS.SET_IMAGES_ARRAY, payload: data })
     })
   }, [])
-  const setSearchFilter = useCallback((searchFilter: string) => {
+  const setFilters = useCallback((newFilters: Filters) => {
     dispatch({
-      type: STORE_ACTIONS.SET_SEARCH_FILTER,
-      payload: searchFilter
+      type: STORE_ACTIONS.SET_FILTERS,
+      payload: newFilters
     })
   }, [])
   const resetImageCheckboxes = useCallback(() => {
@@ -101,17 +117,68 @@ function imagesSource() {
       payload: newImages
     })
   }, [])
+
   const sortedImages = useMemo(() => {
     const shallowCopy = [...imagesArray]
-    return shallowCopy.sort((a, b) => (a.id > b.id ? -1 : 1))
-  }, [imagesArray])
+    if (filters.order === 'desc') {
+      return shallowCopy.sort((a, b) =>
+        a[filters.type] > b[filters.type] ? -1 : 1
+      )
+    } else {
+      return shallowCopy.sort((a, b) =>
+        a[filters.type] < b[filters.type] ? -1 : 1
+      )
+    }
+  }, [imagesArray, filters.order, filters.type])
 
   const filteredImages = useMemo(() => {
-    const shallowCopy = [...sortedImages]
-    return shallowCopy.filter((image) =>
-      image.name.toLocaleLowerCase().includes(searchFilter.toLocaleLowerCase())
-    )
-  }, [searchFilter, sortedImages])
+    // this is done on purpose to prevent as much iterations of sortedImages as possible
+    const dontFilterByResolution =
+      filters.advancedFilters.resolution.constraint === 'all' ||
+      filters.advancedFilters.resolution.width +
+        filters.advancedFilters.resolution.height ===
+        0
+    const dontFilterByFormat = filters.advancedFilters.formats.length === 10
+    const dontFilterByName = filters.searchString === ''
+    let imagesfilteredByResolution: Image[] = dontFilterByResolution
+      ? sortedImages
+      : sortedImages.filter((image) => {
+          const widthToFilter = filters.advancedFilters.resolution.width
+          const heightToFilter = filters.advancedFilters.resolution.height
+          switch (filters.advancedFilters.resolution.constraint) {
+            case 'exact':
+              return (
+                image.width === widthToFilter && image.height === heightToFilter
+              )
+            case 'lessThan':
+              return (
+                image.width < widthToFilter && image.height < heightToFilter
+              )
+            case 'moreThan':
+              return (
+                image.width > widthToFilter && image.height > heightToFilter
+              )
+          }
+        })
+    let imagesFilteredByFormat: Image[]
+    if (filters.advancedFilters.formats.length === 0) {
+      imagesFilteredByFormat = []
+    } else {
+      imagesFilteredByFormat = dontFilterByFormat
+        ? imagesfilteredByResolution
+        : imagesfilteredByResolution.filter((images) =>
+            filters.advancedFilters.formats.includes(images.format)
+          )
+    }
+    let imagesFilteredByName: Image[] = dontFilterByName
+      ? imagesFilteredByFormat
+      : imagesFilteredByFormat.filter((image) =>
+          image.name
+            .toLocaleLowerCase()
+            .includes(filters.searchString.toLocaleLowerCase())
+        )
+    return imagesFilteredByName
+  }, [filters, sortedImages])
   const isEmpty = useMemo(
     () => !(imagesArray.length > 0 || skeletonsToShow.length > 0),
     [skeletonsToShow, imagesArray]
@@ -121,7 +188,8 @@ function imagesSource() {
     skeletonsToShow,
     filteredImages,
     isEmpty,
-    setSearchFilter,
+    filters,
+    setFilters,
     setImagesArray,
     setSkeletons,
     resetImageCheckboxes,

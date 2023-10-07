@@ -11,7 +11,8 @@ import {
   initWaypaperDaemon,
   deleteImageFromGallery,
   remakeThumbnailsIfImagesExist,
-  getMonitors
+  getMonitors,
+  setImageExtended
 } from './appFunctions'
 import dbOperations from './database/dbOperations'
 import {
@@ -205,8 +206,6 @@ ipcMain.handle('readActivePlaylist', () => {
   }
 })
 ipcMain.on('deletePlaylist', (_, playlistName: string) => {
-  console.log('we in handler')
-  console.log(playlistName)
   dbOperations.deletePlaylistInDB(playlistName)
   const current = dbOperations.getCurrentPlaylist()
   if (current !== null && current.name === playlistName) {
@@ -234,13 +233,34 @@ ipcMain.on('updateSwwwConfig', (_, newSwwwConfig: swwwConfig) => {
   config.swww.update()
   PlaylistController.updateConfig()
 })
-ipcMain.on('openContextMenuImage', (event, image: Image) => {
-  const contextMenu = Menu.buildFromTemplate([
+ipcMain.on('openContextMenuImage', async (event, image: Image) => {
+  const monitors = await getMonitors()
+  const subLabelsMonitors = monitors.map((monitor) => {
+    return {
+      label: `In ${monitor.name}`,
+      click: () => {
+        setImage(event, image.name, monitor.name)
+      }
+    }
+  })
+  subLabelsMonitors.unshift(
     {
-      label: `Set ${image.name}`,
+      label: `Duplicate across all monitors`,
       click: () => {
         setImage(event, image.name)
       }
+    },
+    {
+      label: `Extend across all monitors`,
+      click: () => {
+        setImageExtended(image, monitors, 'vertical')
+      }
+    }
+  )
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: `Set ${image.name}`,
+      submenu: subLabelsMonitors
     },
     {
       label: `Delete ${image.name}`,

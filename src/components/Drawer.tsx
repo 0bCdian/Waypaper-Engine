@@ -24,27 +24,28 @@ const Drawer: FC<Props> = ({ children }) => {
         <label htmlFor='my-drawer' className='drawer-overlay'></label>
         <ul className='menu rounded-box p-4 text-2xl h-full bg-base-200 text-base-content'>
           <li>
-            <Link onClick={toggle} to='/'>
+            <Link draggable={false} onClick={toggle} to='/'>
               Gallery
             </Link>
           </li>
           <li>
-            <Link onClick={toggle} to='/monitorsConfig'>
+            <Link draggable={false} onClick={toggle} to='/monitorsConfig'>
               Monitors Configuration
             </Link>
           </li>
           <li>
-            <Link onClick={toggle} to='/swwwConfig'>
+            <Link draggable={false} onClick={toggle} to='/swwwConfig'>
               Swww configuration
             </Link>
           </li>
           <li>
-            <Link onClick={toggle} to='/appConfig'>
+            <Link draggable={false} onClick={toggle} to='/appConfig'>
               App configuration
             </Link>
           </li>
           <li>
             <a
+              draggable={false}
               onClick={() => {
                 const quit = window.confirm('Are you sure you want to quit')
                 if (quit) {

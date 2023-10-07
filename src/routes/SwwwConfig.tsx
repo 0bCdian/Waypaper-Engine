@@ -9,7 +9,6 @@ import {
   swwwConfigStore,
   transitionPosition
 } from '../hooks/swwwConfigStore'
-import NavBar from '../components/NavBar'
 let saveConfigTimeout: ReturnType<typeof setTimeout> | null = null
 const { readSwwwConfig } = window.API_RENDERER
 const SwwwConfig = () => {
@@ -84,7 +83,6 @@ const SwwwConfig = () => {
   }, [])
   return (
     <>
-      <NavBar currentRoute='/swwwConfig' />
       <AnimatePresence>
         <motion.div
           className='mt-10 m-auto  cursor-default'

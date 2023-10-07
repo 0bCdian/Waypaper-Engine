@@ -4,6 +4,7 @@ import AddImagesCard from './AddImagesCard'
 import PaginatedGallery from './PaginatedGallery'
 import playlistStore from '../hooks/playlistStore'
 import { Image } from '../types/rendererTypes'
+import Filters from './Filters'
 const { readActivePlaylist, readAppConfig } = window.API_RENDERER
 
 function Gallery() {
@@ -49,7 +50,10 @@ function Gallery() {
   return (
     <>
       {!isEmpty ? (
-        <PaginatedGallery />
+        <>
+          <Filters />
+          <PaginatedGallery />
+        </>
       ) : (
         <div className='flex justify-center items-center h-screen m-auto'>
           <div>

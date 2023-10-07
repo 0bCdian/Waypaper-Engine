@@ -5,6 +5,7 @@ import PlaylistConfigurationModal from './PlaylistConfigurationModal'
 import playlistStore from '../hooks/playlistStore'
 import { Playlist } from '../../electron/types/types'
 import { useImages } from '../hooks/imagesStore'
+import AdvancedFiltersModal from './AdvancedFiltersModal'
 
 const { queryPlaylists } = window.API_RENDERER
 function Modals() {
@@ -38,6 +39,7 @@ function Modals() {
         currentPlaylistName={currentPlaylist.name}
       />
       <PlaylistConfigurationModal />
+      <AdvancedFiltersModal />
     </>
   )
 }

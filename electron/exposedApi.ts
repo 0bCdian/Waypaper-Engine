@@ -17,6 +17,9 @@ export const ELECTRON_API = {
   setImage: (image: string) => {
     ipcRenderer.send('setImage', image)
   },
+  setImageExtended: (image: Image, monitors: Monitor[]) => {
+    ipcRenderer.send('setImageExtended', image, monitors)
+  },
   savePlaylist: (playlistObject: rendererPlaylist) => {
     ipcRenderer.send('savePlaylist', playlistObject)
   },

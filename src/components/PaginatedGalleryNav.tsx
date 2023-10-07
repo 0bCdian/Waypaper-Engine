@@ -39,9 +39,8 @@ const PaginatedGalleryNav: FC<PaginatedGalleryNavProps> = ({
   const buttons: JSX.Element[] = []
   for (let i = firstButtonIndex + 1; i <= lastButtonIndex; i++) {
     buttons.push(
-      <div className='tooltip' data-tip={`Go To Page: ${i}`}>
+      <div className='tooltip' key={i} data-tip={`Go To Page: ${i}`}>
         <button
-          key={i}
           className={`join-item font-bold btn-lg btn ${
             currentPage === i ? 'btn-active' : ''
           }`}

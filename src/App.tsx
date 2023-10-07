@@ -6,11 +6,13 @@ import MonitorsConfig from './routes/MonitorsConfig'
 import Drawer from './components/Drawer'
 import { ImagesProvider } from './hooks/imagesStore'
 import { HashRouter } from 'react-router-dom'
+import NavBar from './components/NavBar'
 
 const App = () => {
   return (
     <HashRouter>
       <Drawer>
+        <NavBar/>
         <ImagesProvider>
           <Routes>
             <Route path='/' element={<Home />} />

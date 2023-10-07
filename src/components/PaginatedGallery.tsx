@@ -8,7 +8,7 @@ import { motion } from 'framer-motion'
 import { debounce } from '../utils/utilities'
 
 function PaginatedGallery() {
-  const { filteredImages, skeletonsToShow } = useImages()
+  const { filteredImages, skeletonsToShow, filters } = useImages()
   const [imagesPerPage, setImagesPerPage] = useState(20)
   const [currentPage, setCurrentPage] = useState<number>(1)
   const lastImageIndex = currentPage * imagesPerPage
@@ -18,8 +18,8 @@ function PaginatedGallery() {
   }, [filteredImages, skeletonsToShow, imagesPerPage])
 
   const SkeletonsArray = useMemo(() => {
-    return skeletonsToShow.map((imageName, index) => (
-      <Skeleton key={index} imageName={imageName} />
+    return skeletonsToShow.map((imageName) => (
+      <Skeleton key={imageName} imageName={imageName} />
     ))
   }, [skeletonsToShow])
   const imagesCardArray = useMemo(() => {
@@ -38,6 +38,7 @@ function PaginatedGallery() {
     [imagesPerPage, currentPage, totalPages, filteredImages, skeletonsToShow]
   )
   const updateImagesPerPage = debounce(() => {
+    // this was calculated asuming a a 300x200 thumbnail resolution
     const coeficient = 0.000010113
     const newDimensions = {
       width: window.innerWidth,
@@ -56,9 +57,13 @@ function PaginatedGallery() {
     if (imagesToShow.length === 0) {
       setCurrentPage(totalPages)
     }
-  }, [imagesPerPage, totalPages])
+    if (filters.searchString === '') {
+      setCurrentPage(1)
+    }
+  }, [imagesPerPage, totalPages, filters.searchString])
+
   return (
-    <div className='flex flex-col sm:w-[90%] [max-height:93vh] [min-height:93vh] m-auto'>
+    <div className='flex flex-col sm:w-[90%] [max-height:87vh] [min-height:87vh] m-auto'>
       <div className='overflow-y-scroll w-full scrollbar-thin m-auto'>
         <motion.div
           initial={{ opacity: 0 }}

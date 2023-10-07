@@ -1,10 +1,10 @@
-import ReactDOM from 'react-dom/client'
+import { createRoot } from 'react-dom/client'
 import App from './App'
 import IntroScreen from './components/IntroScreen'
 import './index.css'
 const { readAppConfig } = window.API_RENDERER
 readAppConfig().then((data) => {
-  ReactDOM.createRoot(document.getElementById('root') as HTMLElement).render(
+  createRoot(document.getElementById('root') as HTMLElement).render(
     <>
       {data.introAnimation && !data.startMinimized ? (
         <IntroScreen />

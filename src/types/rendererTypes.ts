@@ -4,7 +4,7 @@ export interface Image {
   isChecked: boolean
   width: number
   height: number
-  format: string
+  format: Formats
   beginTime?: number
   endTime?: number
 }
@@ -22,7 +22,7 @@ export enum ORDER_TYPES {
 export enum STORE_ACTIONS {
   SET_IMAGES_ARRAY = 'SET_IMAGES_ARRAY',
   SET_SKELETONS_TO_SHOW = 'SET_SKELETONS_TO_SHOW',
-  SET_SEARCH_FILTER = 'SET_SEARCH_FILTER',
+  SET_FILTERS = 'SET_FILTERS',
   RESET_IMAGES_ARRAY = 'RESET_IMAGES_ARRAY'
 }
 
@@ -45,3 +45,44 @@ export type rendererPlaylist = {
   configuration: configuration
   name: string
 }
+
+export type Filters = {
+  order: 'asc' | 'desc'
+  type: 'name' | 'id'
+  searchString: string
+  advancedFilters: advancedFilters
+}
+
+export type advancedFilters = {
+  formats: Formats[] 
+  resolution: {
+    constraint: resolutionConstraints
+    width: number
+    height: number
+  }
+}
+
+export type Formats =
+  | 'jpg'
+  | 'jpeg'
+  | 'png'
+  | 'bmp'
+  | 'gif'
+  | 'webp'
+  | 'farbeld'
+  | 'pnm'
+  | 'tga'
+  | 'tiff'
+
+export type resolutionConstraints = 'all' | 'exact' | 'moreThan' | 'lessThan'
+export type state = {
+  imagesArray: Image[]
+  skeletonsToShow: string[]
+  filters: Filters
+}
+
+export type action =
+  | { type: STORE_ACTIONS.SET_IMAGES_ARRAY; payload: Image[] }
+  | { type: STORE_ACTIONS.SET_SKELETONS_TO_SHOW; payload: string[] }
+  | { type: STORE_ACTIONS.SET_FILTERS; payload: Filters }
+  | { type: STORE_ACTIONS.RESET_IMAGES_ARRAY; payload: Image[] }

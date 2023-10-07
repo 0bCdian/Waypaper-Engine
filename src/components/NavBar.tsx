@@ -1,15 +1,6 @@
-import { type FC } from 'react'
-import Filters from './Filters'
-import { useImages } from '../hooks/imagesStore'
 import { Link } from 'react-router-dom'
 
-type NavBarProps = {
-  currentRoute: string
-}
-
-const NavBar: FC<NavBarProps> = ({ currentRoute }) => {
-  const { isEmpty } = useImages()
-  const showFilters = !isEmpty && currentRoute === '/'
+const NavBar = () => {
   return (
     <div className='navbar bg-base-100 mb-2'>
       <div className='navbar-start'>
@@ -38,13 +29,14 @@ const NavBar: FC<NavBarProps> = ({ currentRoute }) => {
       </div>
       <div className='navbar-center'>
         <Link
+          draggable={false}
           className='btn btn-ghost normal-case animate-none text-3xl'
           to='/'
         >
           Waypaper Engine
         </Link>
       </div>
-      <div className='navbar-end'>{showFilters && <Filters />}</div>
+      <div className='navbar-end'>X</div>
     </div>
   )
 }

@@ -1,7 +1,6 @@
 import { useForm } from 'react-hook-form'
 import { useEffect } from 'react'
 import { AnimatePresence, motion } from 'framer-motion'
-import NavBar from '../components/NavBar'
 type AppConfig = {
   killDaemon: boolean
   playlistStartOnFirstImage: boolean
@@ -56,7 +55,6 @@ const AppConfig = () => {
   }, [handleSubmit, watch])
   return (
     <>
-      <NavBar currentRoute='/appConfig' />
       <AnimatePresence>
         <motion.div
           className='flex flex-col items-center mt-10 m-auto  cursor-default'
