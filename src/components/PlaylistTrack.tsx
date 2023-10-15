@@ -94,9 +94,9 @@ function PlaylistTrack() {
           <div className='tooltip tooltip-success' data-tip='Add Images'>
             <button
               onClick={isActive ? undefined : handleClickAddImages}
-              className='btn btn-primary rounded-lg text-3xl'
+              className='btn btn-primary rounded-lg'
             >
-              洛
+              Add
             </button>
           </div>
           <div className='tooltip tooltip-success' data-tip='Load Playlist'>
@@ -105,9 +105,9 @@ function PlaylistTrack() {
                 // @ts-ignore
                 window.LoadPlaylistModal.showModal()
               }}
-              className='btn btn-primary rounded-lg text-3xl'
+              className='btn btn-primary rounded-lg'
             >
-              
+              Load
             </button>
           </div>
           <AnimatePresence mode='sync'>
@@ -126,9 +126,9 @@ function PlaylistTrack() {
                       // @ts-ignore
                       window.savePlaylistModal.showModal()
                     }}
-                    className='btn btn-primary rounded-lg text-3xl'
+                    className='btn btn-primary rounded-lg'
                   >
-                    󰆓
+                    Save
                   </motion.button>
                 </div>
                 <div
@@ -144,9 +144,9 @@ function PlaylistTrack() {
                       // @ts-ignore
                       window.playlistConfigurationModal.showModal()
                     }}
-                    className='btn btn-primary rounded-lg text-3xl'
+                    className='btn btn-primary rounded-lg'
                   >
-                    󰒓
+                    Configure
                   </motion.button>
                 </div>
               </>
@@ -157,21 +157,21 @@ function PlaylistTrack() {
           {playlist.images.length > 1 && (
             <div
               className='tooltip tooltip-success'
-              data-tip={`Clears and stops ${playlist.name}`}
+              data-tip={`Clears and stops playlist ${playlist.name}`}
             >
               <motion.button
                 initial={{ y: 100, opacity: 0 }}
                 transition={{ duration: 0.25, ease: 'easeInOut' }}
                 animate={{ y: 0, opacity: 1 }}
                 exit={{ y: 100, opacity: 0 }}
-                className='btn btn-error rounded-lg text-3xl'
+                className='btn btn-error rounded-lg'
                 onClick={() => {
                   resetImageCheckboxes()
                   clearPlaylist()
                   stopPlaylist()
                 }}
               >
-                
+                Delete
               </motion.button>
             </div>
           )}

@@ -48,53 +48,59 @@ function Filters() {
 
   return (
     <div className='flex w-full gap-2 group justify-center mb-5'>
-      <button
-        className='btn btn-neutral-focus rounded-xl text-md'
-        onClick={() => {
-          //@ts-ignore
-          window.AdvancedFiltersModal.showModal()
-        }}
-      >
-        Filters
-      </button>
-      <div className='divider divider-horizontal mx-0' />
-      <select
-        name='orderBy'
-        id='orderBy'
-        className='select bg-[#0F0F0F] rounded-xl '
-        defaultValue={'id'}
-        onChange={(e) => {
-          const newType = e.currentTarget.value as 'name' | 'id'
-          if (newType) {
-            setPartialFilters((previous) => {
-              return { ...previous, type: newType }
-            })
-          }
-        }}
-      >
-        <option value='name'>NAME</option>
-        <option value='id'>DATE</option>
-      </select>
-      <label className='swap swap-rotate text-3xl '>
-        <input
-          type='checkbox'
-          onChange={() => {
-            setPartialFilters((previous) => {
-              const newOrder = previous.order === 'asc' ? 'desc' : 'asc'
-              return { ...previous, order: newOrder }
-            })
+      <div className='tooltip' data-tip='More filters'>
+        <button
+          className='btn btn-neutral-focus rounded-xl text-md'
+          onClick={() => {
+            //@ts-ignore
+            window.AdvancedFiltersModal.showModal()
           }}
-        />
-        <div className='swap-on'>🞁</div>
-        <div className='swap-off'>🞃</div>
-      </label>
+        >
+          Filters
+        </button>
+      </div>
+      <div className='divider divider-horizontal mx-0' />
+      <div className='tooltip' data-tip='Order by'>
+        <select
+          name='orderBy'
+          id='orderBy'
+          className='select bg-[#0F0F0F] rounded-xl '
+          defaultValue={'id'}
+          onChange={(e) => {
+            const newType = e.currentTarget.value as 'name' | 'id'
+            if (newType) {
+              setPartialFilters((previous) => {
+                return { ...previous, type: newType }
+              })
+            }
+          }}
+        >
+          <option value='name'>NAME</option>
+          <option value='id'>DATE</option>
+        </select>
+      </div>
+      <div className='tooltip' data-tip='Ascending or Descending'>
+        <label className='swap swap-rotate btn rounded-xl'>
+          <input
+            type='checkbox'
+            onChange={() => {
+              setPartialFilters((previous) => {
+                const newOrder = previous.order === 'asc' ? 'desc' : 'asc'
+                return { ...previous, order: newOrder }
+              })
+            }}
+          />
+          <div className='swap-on'>Asc</div>
+          <div className='swap-off'>Desc</div>
+        </label>
+      </div>
       <div className='divider divider-horizontal mx-0'></div>
       <input
         onChange={onTextChange}
         type='text'
         id='default-search'
         className='input w-[20%] input-primary bg-neutral-focus  border-0 rounded-xl text-xl font-medium'
-        placeholder='Search'
+        placeholder='Search by name'
       />
     </div>
   )
