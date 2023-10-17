@@ -12,6 +12,28 @@ import {
 import dbOperations from './dbOperationsDaemon'
 import configuration from './config'
 
+function checkIfSwwwIsInstalled() {
+  const stdout = execSync(`swww --version`, { encoding: 'utf-8' })
+  if (stdout) {
+    console.info('swww is installed in the system')
+  } else {
+    console.warn(
+      'swww is not installed, please find instructions in the README.md on how to install it'
+    )
+    throw new Error('swww is not installed')
+  }
+}
+function isSwwwDaemonRunning() {
+  checkIfSwwwIsInstalled()
+  try {
+    const stdout = execSync(`ps -A | grep "swww-daemon"`, { encoding: 'utf-8' })
+    console.log('Swww Daemon already running', stdout)
+  } catch (error) {
+    console.log('Starting swww...')
+    execSync('swww init', { shell: '/bin/sh' })
+  }
+}
+
 function isWaypaperDaemonRunning() {
   try {
     const stdout = execSync('pidof wpe-daemon', { encoding: 'utf-8' })
@@ -30,6 +52,8 @@ if (isWaypaperDaemonRunning()) {
     notify('Another instance of the daemon is already running, exiting...')
   }
   process.exit(1)
+} else {
+  isSwwwDaemonRunning()
 }
 
 const IMAGES_DIR = join(homedir(), '.waypaper_engine', 'images')
@@ -296,8 +320,8 @@ function daemonInit() {
           notify(`Resuming ${Playlist.currentName}`)
           break
         case ACTIONS.STOP_PLAYLIST:
-          Playlist.stop()
           notify(`Stopping ${Playlist.currentName}`)
+          Playlist.stop()
           break
         case ACTIONS.NEXT_IMAGE:
           Playlist.nextImage()

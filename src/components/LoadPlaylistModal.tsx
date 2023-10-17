@@ -15,8 +15,13 @@ type Props = {
   setShouldReload: React.Dispatch<React.SetStateAction<Boolean>>
 }
 
-const { getPlaylistImages, startPlaylist, deletePlaylist, stopPlaylist } =
-  window.API_RENDERER
+const {
+  getPlaylistImages,
+  startPlaylist,
+  deletePlaylist,
+  stopPlaylist,
+  onClearPlaylist
+} = window.API_RENDERER
 
 const LoadPlaylistModal = ({
   playlistsInDB,
@@ -27,6 +32,7 @@ const LoadPlaylistModal = ({
   const { resetImageCheckboxes, imagesArray } = useImages()
   const { register, handleSubmit, watch } = useForm<Input>()
   const modalRef = useRef<HTMLDialogElement>(null)
+
   const closeModal = () => {
     modalRef.current?.close()
   }
@@ -64,6 +70,11 @@ const LoadPlaylistModal = ({
     }
     closeModal()
   }
+  onClearPlaylist(() => {
+    resetImageCheckboxes()
+    clearPlaylist()
+    stopPlaylist()
+  })
 
   return (
     <dialog id='LoadPlaylistModal' className='modal' ref={modalRef}>

@@ -15,7 +15,7 @@ import {
   imageMetadata
 } from './types/types'
 import { rendererPlaylist, Image } from '../src/types/rendererTypes'
-import { exec, spawn } from 'node:child_process'
+import { exec, execSync, spawn } from 'node:child_process'
 import { promisify } from 'node:util'
 import { daemonLocation } from './binaries'
 import { join, basename } from 'node:path'
@@ -221,13 +221,13 @@ export async function setImage(
 
 export async function isSwwwDaemonRunning() {
   await checkIfSwwwIsInstalled()
-  exec(`ps -A | grep "swww-daemon"`, (_error, stdout, _stderr) => {
-    if (!(stdout.toLowerCase().indexOf('swww-daemon'.toLowerCase()) > -1)) {
-      execPomisified('swww init')
-    } else {
-      console.log('Swww Daemon already running')
-    }
-  })
+  try {
+    execSync('ps -A | grep "swww-daemon"')
+    console.log('Swww daemon already running')
+  } catch (error) {
+    console.log('daemon not running, initiating swww...')
+    await execPomisified('swww init')
+  }
 }
 
 export async function checkIfSwwwIsInstalled() {
@@ -268,8 +268,10 @@ export async function initWaypaperDaemon() {
   if (!(await isWaypaperDaemonRunning())) {
     try {
       spawn('node', [`${daemonLocation}/daemon.js`])
+      console.log('started waypaper daemon succesfully')
     } catch (error) {
       console.error(error)
+      console.warn('Could not start waypaper daemon')
     }
   }
 }

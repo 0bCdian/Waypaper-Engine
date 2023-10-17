@@ -14,8 +14,7 @@ import playlistStore from '../hooks/playlistStore'
 import openImagesStore from '../hooks/useOpenImages'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useImages } from '../hooks/imagesStore'
-
-const { stopPlaylist, onClearPlaylist } = window.API_RENDERER
+const { stopPlaylist } = window.API_RENDERER
 function PlaylistTrack() {
   const {
     playlist,
@@ -23,11 +22,15 @@ function PlaylistTrack() {
     addMultipleImagesToPlaylist,
     addImageToPlaylist,
     clearPlaylist,
-    readPlaylist
+    readPlaylist,
   } = playlistStore()
   const { openImages, isActive } = openImagesStore()
-  const { setSkeletons, setImagesArray, resetImageCheckboxes, reQueryImages } =
-    useImages()
+  const {
+    setSkeletons,
+    setImagesArray,
+    resetImageCheckboxes,
+    reQueryImages,
+  } = useImages()
   const handleDragEnd = (event: DragEndEvent) => {
     const { over, active } = event
     if (!over) return
@@ -77,11 +80,7 @@ function PlaylistTrack() {
       clearPlaylist()
     }
   }, [playlist.images])
-  onClearPlaylist(() => {
-    resetImageCheckboxes()
-    clearPlaylist()
-    stopPlaylist()
-  })
+
   return (
     <div className='w-full flex flex-col gap-2 '>
       <div className='flex justify-between items-center mb-2'>
@@ -99,7 +98,7 @@ function PlaylistTrack() {
               Add
             </button>
           </div>
-          <div className='tooltip tooltip-success' data-tip='Load Playlist'>
+          <div className='tooltip tooltip-success' data-tip='Load Playlist for configuration and plays it'>
             <button
               onClick={() => {
                 // @ts-ignore

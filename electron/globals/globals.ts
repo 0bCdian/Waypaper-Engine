@@ -1,7 +1,7 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 import { type BrowserWindow, type App, Menu, Tray } from 'electron'
-import { PlaylistControllerType } from '../types/types'
+import { PlaylistControllerType, Playlist } from '../types/types'
 import { PLAYLIST_TYPES } from '../../src/types/rendererTypes'
 const systemHome = homedir()
 const cacheDirectoryRoot = join(systemHome, '.cache', 'waypaper_engine')
@@ -89,25 +89,37 @@ export const prodMenu = ({ app }: { app: App }) => {
   return devMenu
 }
 
+export const trayMenu = () => {
+  const controlsMenu = Menu.buildFromTemplate([
+    {
+      label: 'Quit',
+      role: 'quit'
+    }
+  ])
+  return controlsMenu
+}
+
 export const trayMenuWithControls = ({
-  app,
   PlaylistController,
   win,
   tray,
-  playlistType
+  playlist
 }: {
-  app: App
   PlaylistController: PlaylistControllerType
   win: BrowserWindow | null
   tray: Tray | null
-  playlistType: PLAYLIST_TYPES
+  playlist: Playlist
+  playlistList: Playlist[]
 }) => {
-  const controls = [
+  const menuWithControls = Menu.buildFromTemplate([
     {
       label: 'Next Wallpaper',
       click: () => {
         PlaylistController.nextImage()
       }
+    },
+    {
+      type: 'separator'
     },
     {
       label: 'Previous Wallpaper',
@@ -116,48 +128,37 @@ export const trayMenuWithControls = ({
       }
     },
     {
+      type: 'separator'
+    },
+    {
+      label: 'Pause Playlist',
+      enabled: playlist.type === PLAYLIST_TYPES.TIMER,
+      click: () => {
+        PlaylistController.pausePlaylist()
+      }
+    },
+    {
+      type: 'separator'
+    },
+    {
       label: 'Stop Playlist',
       click: () => {
         PlaylistController.stopPlaylist()
         win?.webContents.send('clearPlaylist')
-        const menu = Menu.buildFromTemplate([
-          {
-            label: 'Quit',
-            click: () => app.exit()
-          }
-        ])
+        const menu = Menu.buildFromTemplate([{ label: 'Quit', role: 'quit' }])
         tray?.setContextMenu(menu)
       }
     },
     {
-      label: 'Quit',
-      click: () => app.exit()
-    }
-  ]
-  if (playlistType === PLAYLIST_TYPES.TIMER) {
-    const timerControls = [
-      {
-        label: 'Pause Playlist',
-        click: () => {
-          PlaylistController.pausePlaylist()
-        }
-      },
-      ...controls
-    ]
-    return timerControls
-  }
-
-  return controls
-}
-
-export const trayMenu = ({ app }: { app: App }) => {
-  const controls = [
+      type: 'separator'
+    },
     {
       label: 'Quit',
-      click: () => app.exit()
+      role: 'quit'
     }
-  ]
-  return controls
+  ])
+
+  return menuWithControls
 }
 
 export const contextMenu = [

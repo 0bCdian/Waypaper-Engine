@@ -1,7 +1,7 @@
 {
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
   "appId": "waypaper.engine",
-  "asar": true,
+  "asar": false,
   "directories": {
     "output": "release/${version}"
   },

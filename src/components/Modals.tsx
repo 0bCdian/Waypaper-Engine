@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useMemo } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import LoadPlaylistModal from './LoadPlaylistModal'
 import SavePlaylistModal from './SavePlaylistModal'
 import PlaylistConfigurationModal from './PlaylistConfigurationModal'

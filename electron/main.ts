@@ -109,66 +109,41 @@ function registerFileProtocol() {
 }
 
 function createTray() {
-  tray = new Tray(join(iconPath, 'tray.png'))
-  const playlist = dbOperations.getCurrentPlaylist()
-  let trayContextMenu = trayMenu({ app })
-  if (playlist !== null) {
-    if (
-      playlist.type === PLAYLIST_TYPES.TIMER ||
-      playlist.type === PLAYLIST_TYPES.NEVER
-    ) {
-      trayContextMenu = trayMenuWithControls({
-        app,
-        PlaylistController,
-        win,
-        tray,
-        playlistType: playlist.type
-      })
-    }
+  if (!tray) {
+    tray = new Tray(join(iconPath, 'tray.png'))
   }
-  tray.setContextMenu(Menu.buildFromTemplate(trayContextMenu))
+  const playlist = dbOperations.getCurrentPlaylist()
+  let trayContextMenu = trayMenu()
+  if (
+    playlist !== null &&
+    (playlist.type === PLAYLIST_TYPES.TIMER ||
+      playlist.type === PLAYLIST_TYPES.NEVER)
+  ) {
+    trayContextMenu = trayMenuWithControls({
+      PlaylistController,
+      win,
+      tray,
+      playlist,
+      playlistList: dbOperations.readAllPlaylistsInDB()
+    })
+  }
+  tray.setContextMenu(trayContextMenu)
   tray.setToolTip('Waypaper Engine')
   tray.on('click', () => {
     win?.isVisible() ? win.hide() : win?.show()
   })
 }
 
-function updateTrayContextMenu() {
-  if (tray) {
-    const playlist = dbOperations.getCurrentPlaylist()
-    let trayContextMenu = trayMenu({ app })
-    if (playlist !== null) {
-      if (
-        playlist.type === PLAYLIST_TYPES.TIMER ||
-        playlist.type === PLAYLIST_TYPES.NEVER
-      ) {
-        trayContextMenu = trayMenuWithControls({
-          app,
-          PlaylistController,
-          win,
-          tray,
-          playlistType: playlist.type
-        })
-      }
-    }
-    tray.setContextMenu(Menu.buildFromTemplate(trayContextMenu))
-    tray.setToolTip('Waypaper Engine')
-    tray.on('click', () => {
-      win?.isVisible() ? win.hide() : win?.show()
-    })
-  }
-}
-
 app
   .whenReady()
   .then(async () => {
+    await isSwwwDaemonRunning()
+    await initWaypaperDaemon()
     createWindow()
     createMenu()
     createTray()
     registerFileProtocol()
     remakeThumbnailsIfImagesExist()
-    await isSwwwDaemonRunning()
-    await initWaypaperDaemon()
   })
   .catch((e) => console.error(e))
 
@@ -216,17 +191,17 @@ ipcMain.on('setImage', setImage)
 ipcMain.on('savePlaylist', (_, playlistObject: rendererPlaylist) => {
   savePlaylist(playlistObject)
   dbOperations.setCurrentPlaylist(playlistObject.name)
-  updateTrayContextMenu()
+  createTray()
 })
 ipcMain.on('startPlaylist', (_event, playlistName: string) => {
   dbOperations.setCurrentPlaylist(playlistName)
   PlaylistController.startPlaylist()
-  updateTrayContextMenu()
+  createTray()
 })
 ipcMain.on('stopPlaylist', (_) => {
   PlaylistController.stopPlaylist()
   dbOperations.setActivePlaylistToNull()
-  updateTrayContextMenu()
+  createTray()
 })
 ipcMain.on('updateSwwwConfig', (_, newSwwwConfig: swwwConfig) => {
   dbOperations.updateSwwwConfig(newSwwwConfig)
@@ -288,7 +263,7 @@ ipcMain.on('updateAppConfig', (_, newAppConfig: AppConfigDB) => {
   PlaylistController.updateConfig()
 })
 ipcMain.on('updateTray', () => {
-  updateTrayContextMenu()
+  createTray()
 })
 ipcMain.on('exitApp', () => {
   app.exit()

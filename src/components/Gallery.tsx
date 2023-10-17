@@ -5,7 +5,10 @@ import PaginatedGallery from './PaginatedGallery'
 import playlistStore from '../hooks/playlistStore'
 import { Image } from '../types/rendererTypes'
 import Filters from './Filters'
-const { readActivePlaylist, readAppConfig } = window.API_RENDERER
+const {
+  readActivePlaylist,
+  readAppConfig
+} = window.API_RENDERER
 
 function Gallery() {
   const { isEmpty, imagesArray } = useImages()

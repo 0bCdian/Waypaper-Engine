@@ -64,6 +64,11 @@ export const ELECTRON_API = {
   onClearPlaylist: (callback: () => void) => {
     ipcRenderer.on('clearPlaylist', callback)
   },
+  onStartPlaylist: (
+    callback: (event: Electron.IpcRendererEvent, ...args: any[]) => void
+  ) => {
+    ipcRenderer.on('startPlaylist', callback)
+  },
   exitApp: () => {
     ipcRenderer.send('exitApp')
   },
