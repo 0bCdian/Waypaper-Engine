@@ -38,7 +38,8 @@ export enum ACTIONS {
   PAUSE_PLAYLIST = 'pause-playlist',
   RESUME_PLAYLIST = 'resume-playlist',
   STOP_PLAYLIST = 'stop-playlist',
-  UPDATE_CONFIG = 'update-config'
+  UPDATE_CONFIG = 'update-config',
+  UPDATE_PLAYLIST = 'update-playlist'
 }
 
 export interface message {
@@ -59,8 +60,8 @@ export type PlaylistControllerType = {
   killDaemon: () => void
   updateConfig: () => void
 }
-
-export type PlaylistParsed = {
+export type images = { name: string; time: number | null }[]
+/* export type PlaylistParsed = {
   id: number
   name: string
   images: string[]
@@ -69,9 +70,9 @@ export type PlaylistParsed = {
   order: ORDER_TYPES
   showAnimations: boolean
   currentImageIndex: number
-}
+} */
 export interface PlaylistInterface {
-  images: string[]
+  images: images
   currentName: string
   currentType: PLAYLIST_TYPES | undefined
   intervalID: NodeJS.Timeout | undefined
@@ -113,8 +114,7 @@ export type imageInPlaylist = {
   imageID: number
   playlistID: number
   indexInPlaylist: number
-  beginTime: number | null
-  endTime: number | null
+  time: number | null
 }
 
 export type initialAppConfig = {

@@ -2,6 +2,7 @@ const Database = require('better-sqlite3')
 import {
   dbTables,
   PlaylistDB,
+  images,
   imageInPlaylist,
   initialAppConfig,
   swwwConfig,
@@ -24,15 +25,22 @@ const dbOperations = {
       const imagesInPlaylist = selectImagesInPlaylist.all(
         playlistID
       ) as imageInPlaylist[]
-      const imagesArray = imagesInPlaylist
-        .map((image) => {
-          return this.getImageNameFromID(image.imageID)
-        })
-        .filter((image) => image !== null) as string[]
+      let imagesArray: { name: string; time: number | null }[] = []
+      for (let current = 0; current < imagesInPlaylist.length; current++) {
+        const currentName = dbOperations.getImageNameFromID(
+          imagesInPlaylist[current].imageID
+        )
+        if (currentName !== null) {
+          imagesArray.push({
+            name: currentName,
+            time: imagesInPlaylist[current].time
+          })
+        }
+      }
       return imagesArray
     } catch (error) {
       console.error(error)
-      return [] as string[]
+      return []
     }
   },
   getImageNameFromID: function (imageID: number) {
@@ -89,7 +97,7 @@ const dbOperations = {
       .all() as [{ playlistID: number }] | []
   },
   getCurrentPlaylist: function (): {
-    images: string[]
+    images: images
     id: number
     name: string
     type: PLAYLIST_TYPES
@@ -104,7 +112,10 @@ const dbOperations = {
         .prepare(`SELECT * FROM ${dbTables.Playlists} WHERE id=?`)
         .all(result.playlistID) as [PlaylistDB | undefined]
       if (playlist) {
-        return { ...playlist, images: this.getImagesInPlaylist(playlist.id) }
+        return {
+          ...playlist,
+          images: dbOperations.getImagesInPlaylist(playlist.id)
+        }
       } else {
         return null
       }

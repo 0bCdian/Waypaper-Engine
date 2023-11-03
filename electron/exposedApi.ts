@@ -1,6 +1,6 @@
 import { ipcRenderer } from 'electron'
 import { appDirectories } from './globals/globals'
-import { imagesObject, Monitor, Playlist, ActivePlaylist } from './types/types'
+import { imagesObject, Monitor, Playlist, ActivePlaylist, imageInPlaylist } from './types/types'
 import { Image, rendererPlaylist } from '../src/types/rendererTypes'
 import { join } from 'node:path'
 import { swwwConfig } from './database/swwwConfig'
@@ -29,7 +29,7 @@ export const ELECTRON_API = {
   queryPlaylists: (): Promise<Playlist[]> => {
     return ipcRenderer.invoke('queryPlaylists')
   },
-  getPlaylistImages: (playlistID: number): Promise<string[]> => {
+  getPlaylistImages: (playlistID: number): Promise<imageInPlaylist[]> => {
     return ipcRenderer.invoke('getPlaylistImages', playlistID)
   },
   stopPlaylist: () => {
@@ -56,6 +56,7 @@ export const ELECTRON_API = {
   updateAppConfig: (newAppConfig: AppConfigDB) => {
     ipcRenderer.send('updateAppConfig', newAppConfig)
   },
+  
   readActivePlaylist: () => {
     return ipcRenderer.invoke('readActivePlaylist') as Promise<
       ActivePlaylist | undefined

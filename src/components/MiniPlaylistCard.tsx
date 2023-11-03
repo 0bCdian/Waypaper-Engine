@@ -1,7 +1,7 @@
 import { useSortable } from '@dnd-kit/sortable'
 import { motion } from 'framer-motion'
 import { CSS } from '@dnd-kit/utilities'
-import { useEffect, useMemo, useRef, useCallback } from 'react'
+import { useEffect, useMemo, useRef, useCallback, useState } from 'react'
 import { Image, PLAYLIST_TYPES } from '../types/rendererTypes'
 import playlistStore from '../hooks/playlistStore'
 
@@ -20,15 +20,19 @@ function MiniPlaylistCard({
   Image,
   playlistType,
   index,
-  isLast
+  isLast,
+  reorderSortingCriteria
 }: {
   Image: Image
   playlistType: PLAYLIST_TYPES
   index: number
   isLast: boolean | undefined
+  reorderSortingCriteria: () => void
 }) {
-  const { removeImageFromPlaylist } = playlistStore()
+  const { removeImageFromPlaylist, playlist } = playlistStore()
+  const [isInvalid, setIsInvalid] = useState(false)
   const imageRef = useRef<HTMLImageElement>(null)
+  const timeRef = useRef<HTMLInputElement>(null)
   const imageSrc = useMemo(() => {
     return (
       'atom://' +
@@ -41,6 +45,7 @@ function MiniPlaylistCard({
   const style = {
     transform: CSS.Transform.toString(transform)
   }
+  const shouldBeDraggable = !(playlistType === PLAYLIST_TYPES.TIME_OF_DAY)
   let text: string
   if (isLast) {
     if (index < 6) {
@@ -61,8 +66,31 @@ function MiniPlaylistCard({
     Image.isChecked = false
     removeImageFromPlaylist(Image)
   }, [])
+  const checkIfTimeStampExists = (
+    timeStamp: number,
+    imageID: number
+  ): boolean => {
+    let exists = false
+    playlist.images.forEach((image) => {
+      if (image.id === imageID) return
+      if (image.time === timeStamp) {
+        exists = true
+      }
+    })
+    return exists
+  }
+  useEffect(() => {
+    if (timeRef.current) {
+      let minutes: string | number = Image.time % 60
+      let hours: string | number = (Image.time - minutes) / 60
+      minutes = minutes < 10 ? '0' + minutes : minutes
+      hours = hours < 10 ? '0' + hours : hours
+      timeRef.current.value = `${hours}:${minutes}`
+    }
+  }, [playlistType])
+
   return (
-    <div ref={setNodeRef} style={style}>
+    <div ref={shouldBeDraggable ? setNodeRef : undefined} style={style}>
       <motion.div
         initial={{ scale: 0.5 }}
         animate={{ scale: 1 }}
@@ -71,6 +99,38 @@ function MiniPlaylistCard({
         layout
         className='w-32 mx-1 shrink-0 rounded-lg shadow-xl '
       >
+        {playlistType === PLAYLIST_TYPES.TIME_OF_DAY && (
+          <div className='flex flex-col'>
+            <span
+              className={
+                isInvalid ? 'font-semibold italic rounded-md' : 'opacity-0'
+              }
+            >
+              Invalid time
+            </span>
+            <input
+              type='time'
+              ref={timeRef}
+              className='input input-sm mb-2 focus:outline-none  input-bordered rounded-md ml-1 invalid:bg-red-800'
+              onChange={(e) => {
+                const stringValue = e.currentTarget.value
+                const [hours, minutes] = stringValue.split(':')
+                const newTimeSum = Number(hours) * 60 + Number(minutes)
+                if (checkIfTimeStampExists(newTimeSum, Image.id)) {
+                  e.currentTarget.setCustomValidity(
+                    'invalid time, another image has the same time'
+                  )
+                  setIsInvalid(true)
+                } else {
+                  e.currentTarget.setCustomValidity('')
+                  Image.time = newTimeSum
+                  reorderSortingCriteria()
+                  setIsInvalid(false)
+                }
+              }}
+            />
+          </div>
+        )}
         <span className='text-stone-100 h-full shadow-xl font-bold text-clip whitespace-nowrap'>
           {playlistType === PLAYLIST_TYPES.DAY_OF_WEEK ? text : undefined}
         </span>

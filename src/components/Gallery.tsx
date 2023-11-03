@@ -3,12 +3,9 @@ import { useImages } from '../hooks/imagesStore'
 import AddImagesCard from './AddImagesCard'
 import PaginatedGallery from './PaginatedGallery'
 import playlistStore from '../hooks/playlistStore'
-import { Image } from '../types/rendererTypes'
+import { Image, PLAYLIST_TYPES } from '../types/rendererTypes'
 import Filters from './Filters'
-const {
-  readActivePlaylist,
-  readAppConfig
-} = window.API_RENDERER
+const { readActivePlaylist, readAppConfig } = window.API_RENDERER
 
 function Gallery() {
   const { isEmpty, imagesArray } = useImages()
@@ -19,10 +16,16 @@ function Gallery() {
         return
       }
       const imagesToStorePlaylist: Image[] = []
-      playlist.images.forEach((imageNameFromDB) => {
+      playlist.images.forEach((imageInActivePlaylist) => {
         const imageToCheck = imagesArray.find((imageInGallery) => {
-          return imageInGallery.name === imageNameFromDB
+          return imageInGallery.name === imageInActivePlaylist.name
         }) as Image
+        if (
+          playlist.type === PLAYLIST_TYPES.TIME_OF_DAY &&
+          imageInActivePlaylist.time !== null
+        ) {
+          imageToCheck.time = imageInActivePlaylist.time
+        }
         imageToCheck.isChecked = true
         imagesToStorePlaylist.push(imageToCheck)
       })

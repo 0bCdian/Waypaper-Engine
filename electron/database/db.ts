@@ -36,8 +36,7 @@ function createDB() {
 	"imageID"	INTEGER NOT NULL,
 	"playlistID" INTEGER NOT NULL,
 	"indexInPlaylist"	INTEGER NOT NULL,
-	"beginTime"	INTEGER DEFAULT null,
-	"endTime"	INTEGER DEFAULT null,
+	"time"	INTEGER DEFAULT null UNIQUE,
 	FOREIGN KEY("imageID") REFERENCES "Images"("id") ON UPDATE CASCADE ON DELETE CASCADE,
 	FOREIGN KEY("playlistID") REFERENCES "Playlists"("id") ON UPDATE CASCADE ON DELETE CASCADE
 )`)

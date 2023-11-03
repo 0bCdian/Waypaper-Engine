@@ -321,6 +321,9 @@ export const PlaylistController = {
     playlistConnectionBridge({
       action: ACTIONS.UPDATE_CONFIG
     })
+  },
+  updatePlaylist: () => {
+    playlistConnectionBridge({ action: ACTIONS.UPDATE_PLAYLIST })
   }
 }
 

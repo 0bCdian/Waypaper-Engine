@@ -6,6 +6,7 @@ import {
   PLAYLIST_TYPES,
   ORDER_TYPES
 } from '../types/rendererTypes'
+import { timeStamp } from 'console'
 
 const imagesInitial: Image[] = []
 const configurationInitial = {
@@ -20,7 +21,8 @@ const initialPlaylistState = {
   configuration: configurationInitial,
   name: ''
 }
-
+const date = new Date()
+let initialTimeStamp = date.getHours() * 60 + date.getMinutes()
 interface State {
   playlist: rendererPlaylist
   isEmpty: boolean
@@ -36,19 +38,19 @@ interface Actions {
   clearPlaylist: () => void
   readPlaylist: () => rendererPlaylist
   setPlaylist: (newPlaylist: rendererPlaylist) => void
-  setImageBeginAndEndTime: (
-    Image: Image,
-    beginTime: number,
-    endTime: number
-  ) => void
 }
 
 const playlistStore = create<State & Actions>()((set, get) => ({
   playlist: initialPlaylistState,
   isEmpty: true,
   addImageToPlaylist: (Image: Image) => {
+    if (initialTimeStamp >= 1440) {
+      // one minute offset every loop in the day, to avoid as much duplication of timestamps as possible
+      initialTimeStamp -= 1439
+    }
+    Image.time = initialTimeStamp
+    initialTimeStamp += 5
     set((state) => {
-      
       const newImages = [...state.playlist.images, Image]
       const newState = {
         ...state,
@@ -59,6 +61,14 @@ const playlistStore = create<State & Actions>()((set, get) => ({
     })
   },
   addMultipleImagesToPlaylist: (Images: Image[]) => {
+    for (let current = 0; current < Images.length; current++) {
+      if (initialTimeStamp >= 1440) {
+        // one minute offset every loop in the day, to avoid as much duplication of timestamps as possible
+        initialTimeStamp -= 1439
+      }
+      Images[current].time = initialTimeStamp
+      initialTimeStamp += 5
+    }
     set((state) => {
       const newImages = [...state.playlist.images, ...Images]
       const newState = {
@@ -121,10 +131,6 @@ const playlistStore = create<State & Actions>()((set, get) => ({
         isEmpty: false
       }
     })
-  },
-  setImageBeginAndEndTime(Image: Image, beginTime: number, endTime: number) {
-    Image.beginTime = beginTime
-    Image.endTime = endTime
   }
 }))
 export default playlistStore

@@ -32,7 +32,8 @@ export enum ACTIONS {
   PAUSE_PLAYLIST = 'pause-playlist',
   RESUME_PLAYLIST = 'resume-playlist',
   STOP_PLAYLIST = 'stop-playlist',
-  UPDATE_CONFIG = 'update-config'
+  UPDATE_CONFIG = 'update-config',
+  UPDATE_PLAYLIST = 'update-playlist'
 }
 
 export interface message {
@@ -59,11 +60,8 @@ export enum dbTables {
 }
 
 export type imageInPlaylist = {
-  imageID: number
-  playlistID: number
-  indexInPlaylist: number
-  beginTime: number | null
-  endTime: number | null
+  name: string
+  time: number | null
 }
 
 export type Monitor = {
@@ -80,5 +78,5 @@ export type imageMetadata = {
 }
 
 export interface ActivePlaylist extends Playlist {
-  images: string[]
+  images: imageInPlaylist[]
 }

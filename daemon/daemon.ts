@@ -118,16 +118,78 @@ function comparePlaylists(newPlaylist: newPlaylist) {
     !newPlaylist ||
     Playlist.currentName !== newPlaylist.name ||
     Playlist.currentType !== newPlaylist.type ||
-    Playlist.interval !== newPlaylist.interval
+    Playlist.interval !== newPlaylist.interval ||
+    newPlaylist.type === PLAYLIST_TYPES.TIME_OF_DAY
   ) {
     return false
   } else {
     return true
   }
 }
+function findImageIndexRelativeToNow() {
+  const date = new Date()
+  const nowTime = date.getHours() * 60 + date.getMinutes()
+  let lowestPoint = 0
+  let highestPoint = Playlist.images.length
+  let closestIndex: number = highestPoint - 1
+  do {
+    const midPoint = Math.floor(lowestPoint + (highestPoint - lowestPoint) / 2)
+    const currentTimeStamp = Playlist.images[midPoint].time
+    console.log(currentTimeStamp)
+    if (currentTimeStamp === null) return undefined
+    if (currentTimeStamp === nowTime) {
+      closestIndex = midPoint
+      break
+    } else if (currentTimeStamp > nowTime) {
+      highestPoint = midPoint
+      closestIndex = midPoint
+    } else {
+      lowestPoint = midPoint + 1
+      closestIndex = midPoint
+    }
+  } while (lowestPoint < highestPoint)
+  return closestIndex
+}
 
+function calculateMillisecondsUntilNextImage() {
+  let nextIndex =
+    Playlist.currentImageIndex + 1 === Playlist.images.length
+      ? 0
+      : Playlist.currentImageIndex + 1
+  const nextTime = Playlist.images[nextIndex].time
+  if (nextTime === null) throw new Error('Image doesnt have time')
+  const date = new Date()
+  const nowInMinutes = date.getHours() * 60 + date.getMinutes()
+  let time = nextTime - nowInMinutes
+  let shouldSetRightAway = false
+  if (time < 0) {
+    time += 1440
+    shouldSetRightAway = true
+  }
+  time = 60 * time
+  time = time - date.getSeconds()
+  time = time * 1000
+  return { time, shouldSetRightAway }
+}
+function timeOfDayPlayer() {
+  const { time: timeOut, shouldSetRightAway } =
+    calculateMillisecondsUntilNextImage()
+  if (shouldSetRightAway) {
+    Playlist.setImage(Playlist.images[Playlist.currentImageIndex].name)
+  }
+  console.log(timeOut, 'time until next image')
+  Playlist.timeoutID = setTimeout(() => {
+    Playlist.setImage(Playlist.images[Playlist.currentImageIndex].name)
+    let newIndex = Playlist.currentImageIndex + 1
+    if (newIndex === Playlist.images.length) {
+      newIndex = 0
+    }
+    Playlist.currentImageIndex = newIndex
+    timeOfDayPlayer()
+  }, timeOut)
+}
 const Playlist: PlaylistInterface = {
-  images: [''],
+  images: [],
   currentName: '',
   currentType: undefined,
   currentImageIndex: 0,
@@ -159,7 +221,7 @@ const Playlist: PlaylistInterface = {
     Playlist.currentName = ''
     Playlist.currentType = undefined
     Playlist.interval = 0
-    Playlist.images = ['']
+    Playlist.images = []
     Playlist.showAnimations = true
   },
   resetInterval: () => {
@@ -175,7 +237,7 @@ const Playlist: PlaylistInterface = {
     if (Playlist.currentType === PLAYLIST_TYPES.TIMER) {
       Playlist.resetInterval()
     } else {
-      Playlist.setImage(Playlist.images[Playlist.currentImageIndex])
+      Playlist.setImage(Playlist.images[Playlist.currentImageIndex].name)
     }
     Playlist.updateInDB(Playlist.currentImageIndex, Playlist.currentName)
   },
@@ -187,7 +249,7 @@ const Playlist: PlaylistInterface = {
     if (Playlist.currentType === PLAYLIST_TYPES.TIMER) {
       Playlist.resetInterval()
     } else {
-      Playlist.setImage(Playlist.images[Playlist.currentImageIndex])
+      Playlist.setImage(Playlist.images[Playlist.currentImageIndex].name)
     }
     Playlist.updateInDB(Playlist.currentImageIndex, Playlist.currentName)
   },
@@ -253,14 +315,14 @@ const Playlist: PlaylistInterface = {
   timedPlaylist: (resume) => {
     if (Playlist.interval !== null) {
       if (!resume) {
-        Playlist.setImage(Playlist.images[Playlist.currentImageIndex])
+        Playlist.setImage(Playlist.images[Playlist.currentImageIndex].name)
       }
       Playlist.intervalID = setInterval(() => {
         Playlist.currentImageIndex++
         if (Playlist.currentImageIndex === Playlist.images.length) {
           Playlist.currentImageIndex = 0
         }
-        Playlist.setImage(Playlist.images[Playlist.currentImageIndex])
+        Playlist.setImage(Playlist.images[Playlist.currentImageIndex].name)
         Playlist.updateInDB(Playlist.currentImageIndex, Playlist.currentName)
       }, Playlist.interval)
     } else {
@@ -269,9 +331,18 @@ const Playlist: PlaylistInterface = {
     }
   },
   neverPlaylist: () => {
-    Playlist.setImage(Playlist.images[Playlist.currentImageIndex])
+    Playlist.setImage(Playlist.images[Playlist.currentImageIndex].name)
   },
-  timeOfDayPlaylist: () => {},
+  timeOfDayPlaylist: () => {
+    const startingIndex = findImageIndexRelativeToNow()
+    console.log(startingIndex, 'closest index')
+    if (startingIndex === undefined) {
+      throw new Error('Images have no time, something went wrong')
+    } else {
+      Playlist.currentImageIndex = startingIndex
+      timeOfDayPlayer()
+    }
+  },
   dayOfWeekPlaylist: () => {
     const now = new Date()
     const endOfDay = new Date(
@@ -283,7 +354,7 @@ const Playlist: PlaylistInterface = {
       0
     )
     const millisecondsUntilEndOfDay = endOfDay.getTime() - now.getTime()
-    Playlist.setImage(Playlist.images[now.getDay()])
+    Playlist.setImage(Playlist.images[now.getDay()].name)
     Playlist.intervalID = setTimeout(() => {
       Playlist.dayOfWeekPlaylist()
     }, millisecondsUntilEndOfDay)
@@ -311,6 +382,8 @@ function daemonInit() {
     }
     if (Playlist.currentName !== '') {
       switch (message.action) {
+        case ACTIONS.UPDATE_PLAYLIST:
+
         case ACTIONS.PAUSE_PLAYLIST:
           Playlist.pause()
           notify(`Pausing ${Playlist.currentName}`)

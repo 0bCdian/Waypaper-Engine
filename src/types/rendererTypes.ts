@@ -5,8 +5,7 @@ export interface Image {
   width: number
   height: number
   format: Formats
-  beginTime?: number
-  endTime?: number
+  time: number
 }
 
 export interface imagesObject {
@@ -54,7 +53,7 @@ export type Filters = {
 }
 
 export type advancedFilters = {
-  formats: Formats[] 
+  formats: Formats[]
   resolution: {
     constraint: resolutionConstraints
     width: number

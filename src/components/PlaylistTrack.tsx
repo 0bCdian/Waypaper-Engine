@@ -14,6 +14,7 @@ import playlistStore from '../hooks/playlistStore'
 import openImagesStore from '../hooks/useOpenImages'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useImages } from '../hooks/imagesStore'
+import { Image } from '../types/rendererTypes'
 const { stopPlaylist } = window.API_RENDERER
 function PlaylistTrack() {
   const {
@@ -22,15 +23,11 @@ function PlaylistTrack() {
     addMultipleImagesToPlaylist,
     addImageToPlaylist,
     clearPlaylist,
-    readPlaylist,
+    readPlaylist
   } = playlistStore()
   const { openImages, isActive } = openImagesStore()
-  const {
-    setSkeletons,
-    setImagesArray,
-    resetImageCheckboxes,
-    reQueryImages,
-  } = useImages()
+  const { setSkeletons, setImagesArray, resetImageCheckboxes, reQueryImages } =
+    useImages()
   const handleDragEnd = (event: DragEndEvent) => {
     const { over, active } = event
     if (!over) return
@@ -54,12 +51,28 @@ function PlaylistTrack() {
       currentPlaylist: readPlaylist()
     })
   }
+  let sortingCriteria: number[] = []
+  const reorderSortingCriteria = () => {
+    //@ts-ignore
+    const newArray = playlist.images.toSorted((a: Image, b: Image) => {
+      if (a.time < b.time) {
+        return -1
+      }
+      if (a.time > b.time) {
+        return 1
+      }
+      return 0
+    })
+    movePlaylistArrayOrder(newArray)
+  }
   const playlistArray = useMemo(() => {
     const lastIndex = playlist.images.length - 1
-    return playlist.images.map((Image, index) => {
+    const elements = playlist.images.map((Image, index) => {
+      sortingCriteria.push(Image.id)
       return (
         <MiniPlaylistCard
           isLast={lastIndex === index}
+          reorderSortingCriteria={reorderSortingCriteria}
           playlistType={playlist.configuration.playlistType}
           index={index}
           Image={Image}
@@ -67,6 +80,7 @@ function PlaylistTrack() {
         />
       )
     })
+    return elements
   }, [playlist.images, playlist.configuration])
   const firstRender = useRef(true)
   useEffect(() => {
@@ -80,7 +94,6 @@ function PlaylistTrack() {
       clearPlaylist()
     }
   }, [playlist.images])
-
   return (
     <div className='w-full flex flex-col gap-2 '>
       <div className='flex justify-between items-center mb-2'>
@@ -98,7 +111,10 @@ function PlaylistTrack() {
               Add
             </button>
           </div>
-          <div className='tooltip tooltip-success' data-tip='Load Playlist for configuration and plays it'>
+          <div
+            className='tooltip tooltip-success'
+            data-tip='Load Playlist for configuration and plays it'
+          >
             <button
               onClick={() => {
                 // @ts-ignore
@@ -187,7 +203,7 @@ function PlaylistTrack() {
       >
         <SortableContext
           strategy={horizontalListSortingStrategy}
-          items={playlist.images.map((Image) => Image.id)}
+          items={sortingCriteria}
         >
           <AnimatePresence initial={false}>
             {playlistArray.length > 0 && (

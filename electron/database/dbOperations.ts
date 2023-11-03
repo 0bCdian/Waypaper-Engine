@@ -9,7 +9,8 @@ import {
 import {
   rendererPlaylist,
   Image as rendererImage,
-  ORDER_TYPES
+  ORDER_TYPES,
+  PLAYLIST_TYPES
 } from '../../src/types/rendererTypes'
 import { initialSwwwConfigDB, swwwConfig } from './swwwConfig'
 import initialAppConfig from './appConfig'
@@ -174,7 +175,8 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       const insertedPlaylist = selectInsertedPlaylist.get() as { id: number }
       this.insertImagesInPlaylistImagesTable(
         insertedPlaylist.id,
-        playlist.images
+        playlist.images,
+        playlist.configuration.playlistType
       )
       return insertedPlaylist
     } catch (error) {
@@ -184,19 +186,19 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
   },
   insertImagesInPlaylistImagesTable(
     playlistID: number,
-    images: rendererImage[]
+    images: rendererImage[],
+    playlistType: PLAYLIST_TYPES
   ) {
     try {
       const insertImagesInPlaylist = db.prepare(
-        `INSERT INTO ${dbTables.imagesInPlaylist} (playlistId, imageId, indexInPlaylist, beginTime, endTime) VALUES (?,?,?,?,?)`
+        `INSERT INTO ${dbTables.imagesInPlaylist} (playlistId, imageId, indexInPlaylist, time) VALUES (?,?,?,?)`
       )
       images.forEach((image, index) => {
         insertImagesInPlaylist.run(
           playlistID,
           image.id,
           index,
-          image.beginTime ?? null,
-          image.endTime ?? null
+          playlistType === PLAYLIST_TYPES.TIME_OF_DAY ? image.time : null
         )
       })
     } catch (error) {
@@ -206,32 +208,15 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
   getImagesInPlaylist(playlistID: number) {
     try {
       const selectImagesInPlaylist = db.prepare(
-        `SELECT * FROM ${dbTables.imagesInPlaylist} WHERE playlistId = ? ORDER BY indexInPlaylist ASC`
+        `SELECT name,time FROM imagesInPlaylist INNER JOIN Images ON imagesInPlaylist.imageID = Images.id AND imagesInPlaylist.playlistID = ? ORDER BY indexInPlaylist ASC`
       )
       const imagesInPlaylist = selectImagesInPlaylist.all(
         playlistID
       ) as imageInPlaylist[]
-      const imagesArray = imagesInPlaylist
-        .map((image) => {
-          return this.getImageNameFromID(image.imageID)
-        })
-        .filter((image) => image !== null) as string[]
-      return imagesArray
+      return imagesInPlaylist
     } catch (error) {
       console.error(error)
-      return [] as string[]
-    }
-  },
-  getImageNameFromID(imageID: number) {
-    try {
-      const selectImage = db.prepare(
-        `SELECT name FROM ${dbTables.Images} WHERE id = ?`
-      )
-      const image = selectImage.get(imageID) as { name: string }
-      return image.name
-    } catch (error) {
-      console.error(error)
-      return null
+      return [] as imageInPlaylist[]
     }
   },
   checkIfPlaylistExists(playlistName: string) {
@@ -267,20 +252,28 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       if (playlist.configuration.order === ORDER_TYPES.RANDOM) {
         playlist.images.sort(() => Math.random() - 0.5)
       }
-      this.updateImagesInPlaylist(insertedPlaylist.id, playlist.images)
+      this.updateImagesInPlaylist(
+        insertedPlaylist.id,
+        playlist.images,
+        playlist.configuration.playlistType
+      )
       return insertedPlaylist
     } catch (error) {
       console.error(error)
       return null
     }
   },
-  updateImagesInPlaylist(playlistID: number, images: rendererImage[]) {
+  updateImagesInPlaylist(
+    playlistID: number,
+    images: rendererImage[],
+    playlistType: PLAYLIST_TYPES
+  ) {
     try {
       const deleteAllImages = db.prepare(
         `DELETE FROM ${dbTables.imagesInPlaylist} WHERE playlistID=?`
       )
       deleteAllImages.run(playlistID)
-      this.insertImagesInPlaylistImagesTable(playlistID, images)
+      this.insertImagesInPlaylistImagesTable(playlistID, images, playlistType)
     } catch (error) {
       console.error(error)
     }

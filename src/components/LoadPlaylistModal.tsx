@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { Playlist } from '../../electron/types/types'
 import playlistStore from '../hooks/playlistStore'
 import { useForm, SubmitHandler } from 'react-hook-form'
-import { Image } from '../types/rendererTypes'
+import { Image, PLAYLIST_TYPES } from '../types/rendererTypes'
 import { useImages } from '../hooks/imagesStore'
 
 type Input = {
@@ -50,8 +50,14 @@ const LoadPlaylistModal = ({
       const imagesToStorePlaylist: Image[] = []
       imagesArrayFromPlaylist.forEach((imageNameFromDB) => {
         const imageToStore = imagesArray.find((imageInGallery) => {
-          return imageInGallery.name === imageNameFromDB
+          return imageInGallery.name === imageNameFromDB.name
         }) as Image
+        if (
+          selectedPlaylist.type === PLAYLIST_TYPES.TIME_OF_DAY &&
+          imageNameFromDB.time !== null
+        ) {
+          imageToStore.time = imageNameFromDB.time
+        }
         imageToStore.isChecked = true
         imagesToStorePlaylist.push(imageToStore)
       })
