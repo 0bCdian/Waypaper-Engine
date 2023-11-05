@@ -6,7 +6,6 @@ import {
   PLAYLIST_TYPES,
   ORDER_TYPES
 } from '../types/rendererTypes'
-import { timeStamp } from 'console'
 
 const imagesInitial: Image[] = []
 const configurationInitial = {
