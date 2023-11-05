@@ -114,6 +114,9 @@ export const trayMenuWithControls = ({
   const menuWithControls = Menu.buildFromTemplate([
     {
       label: 'Next Wallpaper',
+      enabled:
+        playlist.type === PLAYLIST_TYPES.TIMER ||
+        playlist.type === PLAYLIST_TYPES.NEVER,
       click: () => {
         PlaylistController.nextImage()
       }
@@ -123,6 +126,9 @@ export const trayMenuWithControls = ({
     },
     {
       label: 'Previous Wallpaper',
+      enabled:
+        playlist.type === PLAYLIST_TYPES.TIMER ||
+        playlist.type === PLAYLIST_TYPES.NEVER,
       click: () => {
         PlaylistController.previousImage()
       }

@@ -25,11 +25,7 @@ import { iconPath } from './binaries'
 import { swwwConfig } from './database/swwwConfig'
 import { AppConfigDB } from '../src/routes/AppConfiguration'
 import config from './database/globalConfig'
-import {
-  Image,
-  PLAYLIST_TYPES,
-  rendererPlaylist
-} from '../src/types/rendererTypes'
+import { Image, rendererPlaylist } from '../src/types/rendererTypes'
 if (process.argv[1] === '--daemon' || process.argv[3] === '--daemon') {
   initWaypaperDaemon()
   app.exit(1)
@@ -114,11 +110,7 @@ function createTray() {
   }
   const playlist = dbOperations.getCurrentPlaylist()
   let trayContextMenu = trayMenu()
-  if (
-    playlist !== null &&
-    (playlist.type === PLAYLIST_TYPES.TIMER ||
-      playlist.type === PLAYLIST_TYPES.NEVER)
-  ) {
+  if (playlist !== null) {
     trayContextMenu = trayMenuWithControls({
       PlaylistController,
       win,
