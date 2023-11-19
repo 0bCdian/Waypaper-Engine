@@ -34,6 +34,11 @@ const Drawer: FC<Props> = ({ children }) => {
             </Link>
           </li>
           <li>
+            <Link draggable={false} onClick={toggle} to='/monitors'>
+              Monitors configuration
+            </Link>
+          </li>
+          <li>
             <Link draggable={false} onClick={toggle} to='/appConfig'>
               App configuration
             </Link>

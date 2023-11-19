@@ -4,7 +4,8 @@ import {
   Image,
   Playlist,
   imageInPlaylist,
-  imageMetadata
+  imageMetadata,
+  Monitor
 } from '../types/types'
 import {
   rendererPlaylist,
@@ -134,7 +135,6 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
   },
   storeImagesInDB(images: imageMetadata[]) {
     try {
-      console.log(images)
       const insertImage = db.prepare(
         `INSERT INTO Images (name,width,height,format) VALUES (?,?,?,?)`
       )
@@ -143,7 +143,6 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       )
       const imagesInserted: Image[] = []
       images.forEach(({ name, width, height, format }) => {
-        console.log(name, width, height, format)
         insertImage.run(name, width, height, format)
         const insertedImage = selectInsertedImage.get() as Image
         imagesInserted.push(insertedImage)
@@ -432,6 +431,30 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       throw new Error(
         `Could not execute getPlaylistIDFromName,error: ${error} `
       )
+    }
+  },
+  getMonitorsFromDB() {
+    try {
+      const monitors = db
+        .prepare(`SELECT * FROM monitors ORDER BY position ASC`)
+        .all()
+      return monitors as Monitor[]
+    } catch (error) {
+      console.warn(error)
+      return [] as Monitor[]
+    }
+  },
+  saveMonitorsInDB(monitors: Monitor[]) {
+    try {
+      db.prepare(`DELETE FROM ${dbTables.monitors}`).run()
+      const insertMonitor = db.prepare(
+        `INSERT INTO ${dbTables.monitors} (name,position,width,height,currentImage) VALUES (?,?,?,?,?)`
+      )
+      monitors.forEach(({ name, position, width, height, currentImage }) => {
+        insertMonitor.run(name, position, width, height, currentImage)
+      })
+    } catch (error) {
+      console.error(error)
     }
   }
 }

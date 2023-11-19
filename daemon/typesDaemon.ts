@@ -61,40 +61,7 @@ export type PlaylistControllerType = {
   updateConfig: () => void
 }
 export type images = { name: string; time: number | null }[]
-/* export type PlaylistParsed = {
-  id: number
-  name: string
-  images: string[]
-  type: PLAYLIST_TYPES
-  interval: number
-  order: ORDER_TYPES
-  showAnimations: boolean
-  currentImageIndex: number
-} */
-export interface PlaylistInterface {
-  images: images
-  currentName: string
-  currentType: PLAYLIST_TYPES | undefined
-  intervalID: NodeJS.Timeout | undefined
-  timeoutID: NodeJS.Timeout | undefined
-  currentImageIndex: number
-  interval: number | null
-  showAnimations: boolean | 1 | 0
-  setImage: (imageName: string) => void
-  pause: () => void
-  resume: () => void
-  stop: () => void
-  resetInterval: () => void
-  nextImage: () => void
-  previousImage: () => void
-  start: () => void
-  updateInDB: (imageIndex: number, playlistName: string) => void
-  setPlaylist: () => boolean
-  timedPlaylist: (resume?: boolean) => void
-  neverPlaylist: () => void
-  timeOfDayPlaylist: () => void
-  dayOfWeekPlaylist: () => void
-}
+
 
 export enum PlaylistStates {
   PLAYING = 'playing',

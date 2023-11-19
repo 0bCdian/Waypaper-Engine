@@ -267,7 +267,10 @@ async function isWaypaperDaemonRunning() {
 export async function initWaypaperDaemon() {
   if (!(await isWaypaperDaemonRunning())) {
     try {
-      spawn('node', [`${daemonLocation}/daemon.js`])
+      spawn('node', [`${daemonLocation}/daemon.js`], {
+        detached: true,
+        stdio: 'ignore'
+      }).unref()
       console.log('started waypaper daemon succesfully')
     } catch (error) {
       console.error(error)
@@ -277,8 +280,12 @@ export async function initWaypaperDaemon() {
 }
 
 function playlistConnectionBridge(message: message) {
-  const connection = createConnection(WAYPAPER_ENGINE_SOCKET_PATH)
-  connection.write(JSON.stringify(message))
+  try {
+    const connection = createConnection(WAYPAPER_ENGINE_SOCKET_PATH)
+    connection.write(JSON.stringify(message))
+  } catch (error) {
+    throw new Error(`${error},could not send daemon message`)
+  }
 }
 
 export const PlaylistController = {
@@ -406,12 +413,16 @@ function parseSwwwQuery(stdout: string) {
     .filter((monitor) => {
       return monitor !== ''
     })
-    .map((monitor) => {
+    .map((monitor, index) => {
       const splitInfo = monitor.split(':')
+      const resolutionString = splitInfo[1].split(',')[0].trim()
+      const { width, height } = parseResolution(resolutionString)
       return {
         name: splitInfo[0].trim(),
-        resolution: splitInfo[1].split(',')[0].trim(),
-        currentImage: splitInfo[4].trim()
+        width,
+        height,
+        currentImage: splitInfo[4].trim(),
+        position: index
       }
     })
   return monitorsObjectArray as Monitor[]
@@ -427,9 +438,8 @@ export async function setImageExtended(
   let combinedMonitorHeight: number = 0
   let combinedMonitorWidth: number = 0
   monitors.forEach((monitor) => {
-    const { width, height } = parseResolution(monitor.resolution)
-    combinedMonitorHeight += height
-    combinedMonitorWidth += width
+    combinedMonitorHeight += monitor.height
+    combinedMonitorWidth += monitor.width
   })
   const monitorsToImagesPair =
     orientation === 'vertical'

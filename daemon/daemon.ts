@@ -3,12 +3,7 @@ import { unlinkSync } from 'node:fs'
 import { execSync, exec } from 'node:child_process'
 import { join } from 'node:path'
 import { homedir } from 'node:os'
-import {
-  message,
-  PLAYLIST_TYPES,
-  PlaylistInterface,
-  ACTIONS
-} from './typesDaemon'
+import { message, PLAYLIST_TYPES, images, ACTIONS } from './typesDaemon'
 import dbOperations from './dbOperationsDaemon'
 import configuration from './config'
 
@@ -53,45 +48,12 @@ if (isWaypaperDaemonRunning()) {
   }
   process.exit(1)
 } else {
+  process.title = 'wpe-daemon'
   isSwwwDaemonRunning()
 }
 
 const IMAGES_DIR = join(homedir(), '.waypaper_engine', 'images')
 const SOCKET_PATH = '/tmp/waypaper_engine_daemon.sock'
-
-function getSwwwCommandFromConfiguration(
-  imagePath: string,
-  monitors?: string[]
-) {
-  const swwwConfig = configuration.swww.settings
-  let transitionPos = ''
-  let inverty = swwwConfig.invertY ? '--invert-y' : ''
-  switch (swwwConfig.transitionPositionType) {
-    case 'int':
-      transitionPos = `${swwwConfig.transitionPositionIntX},${swwwConfig.transitionPositionIntY}`
-      break
-    case 'float':
-      transitionPos = `${swwwConfig.transitionPositionFloatX},${swwwConfig.transitionPositionFloatY}`
-      break
-    case 'alias':
-      transitionPos = swwwConfig.transitionPosition
-  }
-  if (!monitors) {
-    const baseCommand = `swww img "${imagePath}" --resize="${swwwConfig.resizeType}" --fill-color "${swwwConfig.fillColor}" --filter ${swwwConfig.filterType} --transition-step ${swwwConfig.transitionStep} --transition-duration ${swwwConfig.transitionDuration} --transition-fps ${swwwConfig.transitionFPS} --transition-angle ${swwwConfig.transitionAngle} --transition-pos ${transitionPos} ${inverty} --transition-bezier ${swwwConfig.transitionBezier} --transition-wave "${swwwConfig.transitionWaveX},${swwwConfig.transitionWaveY}"`
-    if (
-      !configuration.app.settings.swwwAnimations ||
-      !Playlist.showAnimations
-    ) {
-      const command = baseCommand.concat(' --transition-type=none')
-      return command
-    } else {
-      const command = baseCommand.concat(
-        ` --transition-type=${swwwConfig.transitionType}`
-      )
-      return command
-    }
-  }
-}
 
 function notifyImageSet(imageName: string, imagePath: string) {
   if (!configuration.app.settings.notifications) return
@@ -113,171 +75,114 @@ function notify(message: string) {
   })
 }
 type newPlaylist = ReturnType<typeof dbOperations.getCurrentPlaylist>
-function comparePlaylists(newPlaylist: newPlaylist) {
-  if (
-    !newPlaylist ||
-    Playlist.currentName !== newPlaylist.name ||
-    Playlist.currentType !== newPlaylist.type ||
-    Playlist.interval !== newPlaylist.interval ||
-    newPlaylist.type === PLAYLIST_TYPES.TIME_OF_DAY
-  ) {
-    return false
-  } else {
-    return true
-  }
-}
-function findImageIndexRelativeToNow() {
-  const date = new Date()
-  const nowTime = date.getHours() * 60 + date.getMinutes()
-  let lowestPoint = 0
-  let highestPoint = Playlist.images.length
-  let closestIndex: number = highestPoint - 1
-  do {
-    const midPoint = Math.floor(lowestPoint + (highestPoint - lowestPoint) / 2)
-    const currentTimeStamp = Playlist.images[midPoint].time
-    console.log(currentTimeStamp)
-    if (currentTimeStamp === null) return undefined
-    if (currentTimeStamp === nowTime) {
-      closestIndex = midPoint
-      break
-    } else if (currentTimeStamp > nowTime) {
-      highestPoint = midPoint
-      closestIndex = midPoint
-    } else {
-      lowestPoint = midPoint + 1
-      closestIndex = midPoint
-    }
-  } while (lowestPoint < highestPoint)
-  return closestIndex
-}
 
-function calculateMillisecondsUntilNextImage() {
-  let nextIndex =
-    Playlist.currentImageIndex + 1 === Playlist.images.length
-      ? 0
-      : Playlist.currentImageIndex + 1
-  const nextTime = Playlist.images[nextIndex].time
-  if (nextTime === null) throw new Error('Image doesnt have time')
-  const date = new Date()
-  const nowInMinutes = date.getHours() * 60 + date.getMinutes()
-  let time = nextTime - nowInMinutes
-  let shouldSetRightAway = false
-  if (time < 0) {
-    time += 1440
-    shouldSetRightAway = true
+
+class Playlist {
+  images: images
+  currentName: string
+  currentType: PLAYLIST_TYPES | undefined
+  intervalID: NodeJS.Timeout | undefined
+  timeoutID: NodeJS.Timeout | undefined
+  currentImageIndex: number
+  interval: number | null
+  showAnimations: boolean | 1 | 0
+  constructor() {
+    this.images = []
+    this.currentName = ''
+    this.currentType = undefined
+    this.currentType = undefined
+    this.currentImageIndex = 0
+    this.interval = 0
+    this.showAnimations = true
+    this.intervalID = undefined
+    this.timeoutID = undefined
   }
-  time = 60 * time
-  time = time - date.getSeconds()
-  time = time * 1000
-  return { time, shouldSetRightAway }
-}
-function timeOfDayPlayer() {
-  const { time: timeOut, shouldSetRightAway } =
-    calculateMillisecondsUntilNextImage()
-  if (shouldSetRightAway) {
-    Playlist.setImage(Playlist.images[Playlist.currentImageIndex].name)
-  }
-  console.log(timeOut, 'time until next image')
-  Playlist.timeoutID = setTimeout(() => {
-    Playlist.setImage(Playlist.images[Playlist.currentImageIndex].name)
-    let newIndex = Playlist.currentImageIndex + 1
-    if (newIndex === Playlist.images.length) {
-      newIndex = 0
-    }
-    Playlist.currentImageIndex = newIndex
-    timeOfDayPlayer()
-  }, timeOut)
-}
-const Playlist: PlaylistInterface = {
-  images: [],
-  currentName: '',
-  currentType: undefined,
-  currentImageIndex: 0,
-  interval: 0,
-  showAnimations: true,
-  intervalID: undefined,
-  timeoutID: undefined,
-  setImage: (imageName: string) => {
-    const command = getSwwwCommandFromConfiguration(join(IMAGES_DIR, imageName))
+  setImage(imageName: string) {
+    const command = this.getSwwwCommandFromConfiguration(
+      join(IMAGES_DIR, imageName)
+    )
     if (command) {
       notifyImageSet(imageName, join(IMAGES_DIR, imageName))
       execSync(command)
     }
-  },
-  pause: () => {
-    clearInterval(Playlist.intervalID)
-    clearTimeout(Playlist.timeoutID)
-    Playlist.intervalID = undefined
-    Playlist.timeoutID = undefined
-  },
-  resume: () => {
-    if (Playlist.currentType === PLAYLIST_TYPES.TIMER) {
-      Playlist.timedPlaylist(true)
+  }
+  pause() {
+    clearInterval(this.intervalID)
+    clearTimeout(this.timeoutID)
+    this.intervalID = undefined
+    this.timeoutID = undefined
+  }
+  resume() {
+    if (this.currentType === PLAYLIST_TYPES.TIMER) {
+      this.timedPlaylist(true)
     }
-  },
-  stop: () => {
-    Playlist.pause()
-    Playlist.currentImageIndex = 0
-    Playlist.currentName = ''
-    Playlist.currentType = undefined
-    Playlist.interval = 0
-    Playlist.images = []
-    Playlist.showAnimations = true
-  },
-  resetInterval: () => {
-    clearInterval(Playlist.intervalID)
-    Playlist.intervalID = undefined
-    Playlist.timedPlaylist()
-  },
-  nextImage: () => {
-    Playlist.currentImageIndex++
-    if (Playlist.currentImageIndex === Playlist.images.length) {
-      Playlist.currentImageIndex = 0
+  }
+  stop() {
+    this.pause()
+    this.currentImageIndex = 0
+    this.currentName = ''
+    this.currentType = undefined
+    this.interval = 0
+    this.images = []
+    this.showAnimations = true
+  }
+  resetInterval() {
+    clearInterval(this.intervalID)
+    this.intervalID = undefined
+    this.timedPlaylist()
+  }
+  nextImage() {
+    this.currentImageIndex++
+    if (this.currentImageIndex === this.images.length) {
+      this.currentImageIndex = 0
     }
-    if (Playlist.currentType === PLAYLIST_TYPES.TIMER) {
-      Playlist.resetInterval()
+    if (this.currentType === PLAYLIST_TYPES.TIMER) {
+      this.resetInterval()
     } else {
-      Playlist.setImage(Playlist.images[Playlist.currentImageIndex].name)
+      this.setImage(this.images[this.currentImageIndex].name)
     }
-    Playlist.updateInDB(Playlist.currentImageIndex, Playlist.currentName)
-  },
-  previousImage: () => {
-    Playlist.currentImageIndex--
-    if (Playlist.currentImageIndex < 0) {
-      Playlist.currentImageIndex = Playlist.images.length - 1
+    this.updateInDB()
+  }
+  previousImage() {
+    this.currentImageIndex--
+    if (this.currentImageIndex < 0) {
+      this.currentImageIndex = this.images.length - 1
     }
-    if (Playlist.currentType === PLAYLIST_TYPES.TIMER) {
-      Playlist.resetInterval()
+    if (this.currentType === PLAYLIST_TYPES.TIMER) {
+      this.resetInterval()
     } else {
-      Playlist.setImage(Playlist.images[Playlist.currentImageIndex].name)
+      this.setImage(this.images[this.currentImageIndex].name)
     }
-    Playlist.updateInDB(Playlist.currentImageIndex, Playlist.currentName)
-  },
-  start: () => {
-    const shouldNotStart = Playlist.setPlaylist()
+    this.updateInDB()
+  }
+  start() {
+    const shouldNotStart = this.setPlaylist()
     if (!shouldNotStart) {
-      switch (Playlist.currentType) {
+      switch (this.currentType) {
         case PLAYLIST_TYPES.TIMER:
-          Playlist.timedPlaylist()
+          this.timedPlaylist()
           break
         case PLAYLIST_TYPES.NEVER:
-          Playlist.neverPlaylist()
+          this.neverPlaylist()
           break
         case PLAYLIST_TYPES.TIME_OF_DAY:
-          Playlist.timeOfDayPlaylist()
+          this.timeOfDayPlaylist()
           break
         case PLAYLIST_TYPES.DAY_OF_WEEK:
-          Playlist.dayOfWeekPlaylist()
+          this.dayOfWeekPlaylist()
           break
         default:
-          Playlist.stop()
+          this.stop()
           return
       }
     }
-  },
-  updateInDB: (imageIndex: number, playlistName: string) => {
+  }
+  updateInDB() {
     try {
-      dbOperations.updatePlaylistCurrentIndex(imageIndex, playlistName)
+      dbOperations.updatePlaylistCurrentIndex(
+        this.currentImageIndex,
+        this.currentName
+      )
     } catch (error) {
       console.error(error)
       notify(
@@ -286,64 +191,63 @@ const Playlist: PlaylistInterface = {
       notify('Exiting daemon')
       throw new Error('Could not update playlist in DB')
     }
-  },
-  setPlaylist: () => {
+  }
+  setPlaylist() {
     try {
       const currentPlaylist = dbOperations.getCurrentPlaylist()
       if (currentPlaylist === null) {
         return false
       }
-      const areTheSame = comparePlaylists(currentPlaylist)
+      const areTheSame = this.comparePlaylists(currentPlaylist)
       if (!areTheSame) {
-        Playlist.stop()
+        this.stop()
       }
-      Playlist.images = currentPlaylist.images
-      Playlist.currentName = currentPlaylist.name
-      Playlist.currentType = currentPlaylist.type
-      Playlist.currentImageIndex = configuration.app.settings
+      this.images = currentPlaylist.images
+      this.currentName = currentPlaylist.name
+      this.currentType = currentPlaylist.type
+      this.currentImageIndex = configuration.app.settings
         .playlistStartOnFirstImage
         ? 0
         : currentPlaylist.currentImageIndex
-      Playlist.interval = currentPlaylist.interval
-      Playlist.showAnimations = currentPlaylist.showAnimations
+      this.interval = currentPlaylist.interval
+      this.showAnimations = currentPlaylist.showAnimations
       return areTheSame
     } catch (error) {
       console.error(error)
       throw new Error('Could not set playlist')
     }
-  },
-  timedPlaylist: (resume) => {
-    if (Playlist.interval !== null) {
+  }
+  timedPlaylist(resume?: boolean) {
+    if (this.interval !== null) {
       if (!resume) {
-        Playlist.setImage(Playlist.images[Playlist.currentImageIndex].name)
+        this.setImage(this.images[this.currentImageIndex].name)
       }
-      Playlist.intervalID = setInterval(() => {
-        Playlist.currentImageIndex++
-        if (Playlist.currentImageIndex === Playlist.images.length) {
-          Playlist.currentImageIndex = 0
+      this.intervalID = setInterval(() => {
+        this.currentImageIndex++
+        if (this.currentImageIndex === this.images.length) {
+          this.currentImageIndex = 0
         }
-        Playlist.setImage(Playlist.images[Playlist.currentImageIndex].name)
-        Playlist.updateInDB(Playlist.currentImageIndex, Playlist.currentName)
-      }, Playlist.interval)
+        this.setImage(this.images[this.currentImageIndex].name)
+        this.updateInDB()
+      }, this.interval)
     } else {
       console.error('Interval is null')
       notify('Interval is null, something went wrong setting the playlist')
     }
-  },
-  neverPlaylist: () => {
-    Playlist.setImage(Playlist.images[Playlist.currentImageIndex].name)
-  },
-  timeOfDayPlaylist: () => {
-    const startingIndex = findImageIndexRelativeToNow()
-    console.log(startingIndex, 'closest index')
+  }
+  neverPlaylist() {
+    this.setImage(this.images[this.currentImageIndex].name)
+  }
+  timeOfDayPlaylist() {
+    const startingIndex = this.findImageIndexRelativeToNow()
     if (startingIndex === undefined) {
       throw new Error('Images have no time, something went wrong')
     } else {
-      Playlist.currentImageIndex = startingIndex
-      timeOfDayPlayer()
+      this.currentImageIndex = startingIndex
+      this.timeOfDayPlayer()
     }
-  },
-  dayOfWeekPlaylist: () => {
+  }
+  dayOfWeekPlaylist() {
     const now = new Date()
     const endOfDay = new Date(
       now.getFullYear(),
@@ -354,21 +258,122 @@ const Playlist: PlaylistInterface = {
       0
     )
     const millisecondsUntilEndOfDay = endOfDay.getTime() - now.getTime()
-    Playlist.setImage(Playlist.images[now.getDay()].name)
-    Playlist.intervalID = setTimeout(() => {
-      Playlist.dayOfWeekPlaylist()
+    this.setImage(this.images[now.getDay()].name)
+    this.intervalID = setTimeout(() => {
+      this.dayOfWeekPlaylist()
     }, millisecondsUntilEndOfDay)
+  }
+  getSwwwCommandFromConfiguration(imagePath: string, monitors?: string[]) {
+    const swwwConfig = configuration.swww.settings
+    let transitionPos = ''
+    let inverty = swwwConfig.invertY ? '--invert-y' : ''
+    switch (swwwConfig.transitionPositionType) {
+      case 'int':
+        transitionPos = `${swwwConfig.transitionPositionIntX},${swwwConfig.transitionPositionIntY}`
+        break
+      case 'float':
+        transitionPos = `${swwwConfig.transitionPositionFloatX},${swwwConfig.transitionPositionFloatY}`
+        break
+      case 'alias':
+        transitionPos = swwwConfig.transitionPosition
+    }
+    if (!monitors) {
+      const baseCommand = `swww img "${imagePath}" --resize="${swwwConfig.resizeType}" --fill-color "${swwwConfig.fillColor}" --filter ${swwwConfig.filterType} --transition-step ${swwwConfig.transitionStep} --transition-duration ${swwwConfig.transitionDuration} --transition-fps ${swwwConfig.transitionFPS} --transition-angle ${swwwConfig.transitionAngle} --transition-pos ${transitionPos} ${inverty} --transition-bezier ${swwwConfig.transitionBezier} --transition-wave "${swwwConfig.transitionWaveX},${swwwConfig.transitionWaveY}"`
+      if (!configuration.app.settings.swwwAnimations || !this.showAnimations) {
+        const command = baseCommand.concat(' --transition-type=none')
+        return command
+      } else {
+        const command = baseCommand.concat(
+          ` --transition-type=${swwwConfig.transitionType}`
+        )
+        return command
+      }
+    }
+  }
+  comparePlaylists(newPlaylist: newPlaylist) {
+    if (
+      !newPlaylist ||
+      this.currentName !== newPlaylist.name ||
+      this.currentType !== newPlaylist.type ||
+      this.interval !== newPlaylist.interval ||
+      newPlaylist.type === PLAYLIST_TYPES.TIME_OF_DAY
+    ) {
+      return false
+    } else {
+      return true
+    }
+  }
+  timeOfDayPlayer() {
+    const { time: timeOut, shouldSetRightAway } =
+      this.calculateMillisecondsUntilNextImage()
+    if (shouldSetRightAway) {
+      this.setImage(this.images[this.currentImageIndex].name)
+    }
+    this.timeoutID = setTimeout(() => {
+      this.setImage(this.images[this.currentImageIndex].name)
+      let newIndex = this.currentImageIndex + 1
+      if (newIndex === this.images.length) {
+        newIndex = 0
+      }
+      this.currentImageIndex = newIndex
+      this.timeOfDayPlayer()
+    }, timeOut)
+  }
+  calculateMillisecondsUntilNextImage() {
+    let nextIndex =
+      this.currentImageIndex + 1 === this.images.length
+        ? 0
+        : this.currentImageIndex + 1
+    const nextTime = this.images[nextIndex].time
+    if (nextTime === null) throw new Error('Image doesnt have time')
+    const date = new Date()
+    const nowInMinutes = date.getHours() * 60 + date.getMinutes()
+    let time = nextTime - nowInMinutes
+    let shouldSetRightAway = false
+    if (time < 0) {
+      time += 1440
+      shouldSetRightAway = true
+    }
+    time = 60 * time
+    time = time - date.getSeconds()
+    time = time * 1000
+    return { time, shouldSetRightAway }
+  }
+  findImageIndexRelativeToNow() {
+    const date = new Date()
+    const nowTime = date.getHours() * 60 + date.getMinutes()
+    let lowestPoint = 0
+    let highestPoint = this.images.length
+    let closestIndex: number = highestPoint - 1
+    do {
+      const midPoint = Math.floor(
+        lowestPoint + (highestPoint - lowestPoint) / 2
+      )
+      const currentTimeStamp = this.images[midPoint].time
+      if (currentTimeStamp === null) return undefined
+      if (currentTimeStamp === nowTime) {
+        closestIndex = midPoint
+        break
+      } else if (currentTimeStamp > nowTime) {
+        highestPoint = midPoint
+        closestIndex = midPoint
+      } else {
+        lowestPoint = midPoint + 1
+        closestIndex = midPoint
+      }
+    } while (lowestPoint < highestPoint)
+    return closestIndex
   }
 }
 
 function daemonInit() {
-  process.title = 'wpe-daemon'
+  const playlistController = new Playlist()
   function daemonManager(data: Buffer) {
     const message: message = JSON.parse(data.toString())
     switch (message.action) {
       case ACTIONS.STOP_DAEMON:
         notify('Exiting daemon')
-        Playlist.stop()
+        playlistController.stop()
         daemonServer.close()
         process.exit(0)
       case ACTIONS.UPDATE_CONFIG:
@@ -376,31 +381,31 @@ function daemonInit() {
         configuration.swww.update()
         break
       case ACTIONS.START_PLAYLIST:
-        Playlist.start()
-        notify(`Starting ${Playlist.currentName}`)
+        playlistController.start()
+        notify(`Starting ${playlistController.currentName}`)
         break
     }
-    if (Playlist.currentName !== '') {
+    if (playlistController.currentName !== '') {
       switch (message.action) {
         case ACTIONS.UPDATE_PLAYLIST:
 
         case ACTIONS.PAUSE_PLAYLIST:
-          Playlist.pause()
-          notify(`Pausing ${Playlist.currentName}`)
+          playlistController.pause()
+          notify(`Pausing ${playlistController.currentName}`)
           break
         case ACTIONS.RESUME_PLAYLIST:
-          Playlist.resume()
-          notify(`Resuming ${Playlist.currentName}`)
+          playlistController.resume()
+          notify(`Resuming ${playlistController.currentName}`)
           break
         case ACTIONS.STOP_PLAYLIST:
-          notify(`Stopping ${Playlist.currentName}`)
-          Playlist.stop()
+          notify(`Stopping ${playlistController.currentName}`)
+          playlistController.stop()
           break
         case ACTIONS.NEXT_IMAGE:
-          Playlist.nextImage()
+          playlistController.nextImage()
           break
         case ACTIONS.PREVIOUS_IMAGE:
-          Playlist.previousImage()
+          playlistController.previousImage()
           break
       }
     }
@@ -423,17 +428,17 @@ function daemonInit() {
   process.on('SIGTERM', function () {
     notify('Exiting daemon')
     console.log('Exiting daemon...')
-    Playlist.stop()
+    playlistController.stop()
     daemonServer.close()
     process.exit(0)
   })
   process.on('SIGINT', () => {
     notify('Exiting daemon')
     console.log('Exiting daemon...')
-    Playlist.stop()
+    playlistController.stop()
     daemonServer.close()
     process.exit(0)
   })
-  Playlist.start()
+  playlistController.start()
 }
 daemonInit()

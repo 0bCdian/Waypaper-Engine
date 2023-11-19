@@ -1,6 +1,12 @@
 import { ipcRenderer } from 'electron'
 import { appDirectories } from './globals/globals'
-import { imagesObject, Monitor, Playlist, ActivePlaylist, imageInPlaylist } from './types/types'
+import {
+  imagesObject,
+  Monitor,
+  Playlist,
+  ActivePlaylist,
+  imageInPlaylist
+} from './types/types'
 import { Image, rendererPlaylist } from '../src/types/rendererTypes'
 import { join } from 'node:path'
 import { swwwConfig } from './database/swwwConfig'
@@ -56,7 +62,7 @@ export const ELECTRON_API = {
   updateAppConfig: (newAppConfig: AppConfigDB) => {
     ipcRenderer.send('updateAppConfig', newAppConfig)
   },
-  
+
   readActivePlaylist: () => {
     return ipcRenderer.invoke('readActivePlaylist') as Promise<
       ActivePlaylist | undefined
@@ -75,6 +81,15 @@ export const ELECTRON_API = {
   },
   getMonitors: () => {
     return ipcRenderer.invoke('getMonitors') as Promise<Monitor[]>
+  },
+  getMonitorsFromDB: () => {
+    return ipcRenderer.invoke('getMonitorsFromDB') as Promise<Monitor[]>
+  },
+  saveMonitorsInDB: (monitors: Monitor[]) => {
+    ipcRenderer.send('saveMonitors', monitors)
+  },
+  identifyMonitors: () => {
+    return ipcRenderer.send('identifyMonitors')
   },
   join: join,
   thumbnailDirectory: appDirectories.thumbnails,

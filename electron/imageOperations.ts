@@ -2,9 +2,12 @@ import Sharp = require('sharp')
 import { Image } from '../src/types/rendererTypes'
 import config from './database/globalConfig'
 import { appDirectories } from './globals/globals'
-import { parseResolution } from '../src/utils/utilities'
 import { Monitor } from './types/types'
 import { join } from 'node:path'
+import { getMonitors } from './appFunctions'
+import { exec } from 'node:child_process'
+import { promisify } from 'node:util'
+const execPomisified = promisify(exec)
 export async function resizeImageToFitMonitor(
   buffer: Sharp.Sharp,
   Image: Image,
@@ -71,7 +74,7 @@ export async function splitImageVerticalAxis(
       appDirectories.tempImages,
       `${current}.${Image.format}`
     )
-    const monitorResolution = parseResolution(monitors[current].resolution)
+    const { width, height } = monitors[current]
     const resizedImageFilePath = await resizeImageToFitMonitor(
       Sharp(imageFilePath, {
         animated: true,
@@ -79,7 +82,7 @@ export async function splitImageVerticalAxis(
       }),
       Image,
       combinedMonitorWidth,
-      monitorResolution.height
+      height
     )
     const buffer = Sharp(resizedImageFilePath, {
       animated: true,
@@ -97,7 +100,7 @@ export async function splitImageVerticalAxis(
         .extract({
           left: lastWidth,
           top: 0,
-          width: monitorResolution.width,
+          width: width,
           height: extractHeight
         })
         .toFile(finalImageName)
@@ -105,7 +108,7 @@ export async function splitImageVerticalAxis(
         monitor: monitors[current].name,
         image: finalImageName
       })
-      lastWidth += monitorResolution.width - 1
+      lastWidth += width - 1
     } catch (error) {
       console.log(error)
     }
@@ -127,14 +130,14 @@ export async function splitImageHorizontalAxis(
       appDirectories.tempImages,
       `${current}.${Image.format}`
     )
-    const monitorResolution = parseResolution(monitors[current].resolution)
+    const { width, height } = monitors[current]
     const resizedImageFilePath = await resizeImageToFitMonitor(
       Sharp(imageFilePath, {
         animated: true,
         limitInputPixels: false
       }),
       Image,
-      monitorResolution.width,
+      width,
       combinedMonitorHeight
     )
     const buffer = Sharp(resizedImageFilePath, {
@@ -152,17 +155,56 @@ export async function splitImageHorizontalAxis(
           left: 0,
           top: lastHeight,
           width: metadata.width,
-          height: monitorResolution.height
+          height: height
         })
         .toFile(finalImageName)
       monitorsToImagesPairsArray.push({
         monitor: monitors[current].name,
         image: finalImageName
       })
-      lastHeight += monitorResolution.height - 1
+      lastHeight += height - 1
     } catch (error) {
       console.log(error)
     }
   }
   return monitorsToImagesPairsArray
+}
+
+export async function createAndSetMonitorIdentifierImages() {
+  const monitors = await getMonitors()
+  monitors.forEach((monitor) => {
+    const { width, height } = monitor
+    const outputPath = join(appDirectories.tempImages, monitor.name + '.webp') // Output file path
+    const textSize = Math.floor(width / 12)
+    const svg = `<svg width="${width}" height="${height}">
+    <rect x="0" y="0" width="${width}" height="${height}" fill="#ffffff" />
+    <text x="50%" y="50%" text-anchor="middle" alignment-baseline="middle" font-family="Arial" font-size="${textSize}" fill="#000000">${monitor.name}</text>
+  </svg>`
+    Sharp({
+      create: {
+        width: width,
+        height: height,
+        channels: 4,
+        background: { r: 255, g: 255, b: 255, alpha: 1 }
+      }
+    })
+      .composite([{ input: Buffer.from(svg), gravity: 'center' }])
+      .toFile(outputPath, (err, info) => {
+        if (err) {
+          console.error(err)
+        } else {
+          console.log('Image created:', info)
+          try {
+            execPomisified(`swww img -t none -o ${monitor.name} ${outputPath} `)
+          } catch (error) {
+            console.warn(error)
+          }
+          setTimeout(() => {
+            execPomisified(
+              `swww img -o ${monitor.name} -t none ${monitor.currentImage}`
+            )
+          }, 3000)
+        }
+      })
+  })
 }

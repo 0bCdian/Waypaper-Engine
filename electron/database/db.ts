@@ -1,4 +1,3 @@
-//@ts-ignore
 import { checkCacheOrCreateItIfNotExists } from '../appFunctions'
 import { nativeBindingLocation, dbLocation } from '../binaries'
 import Database = require('better-sqlite3')
@@ -73,19 +72,29 @@ function createDB() {
 	"minimizeInsteadOfClose" INTEGER NOT NULL UNIQUE
 
 );`)
-    const createActivePlaylist =
+    const createActivePlaylistTable =
       db.prepare(`CREATE TABLE IF NOT EXISTS "activePlaylist" (
 	"playlistID"	INTEGER UNIQUE,
 	PRIMARY KEY("playlistID")
 );`)
+    const createMonitorsTable = db.prepare(
+      `CREATE TABLE IF NOT EXISTS "monitors" (
+	"name"	TEXT NOT NULL,
+	"position"	INTEGER NOT NULL UNIQUE,
+	"width" INTEGER NOT NULL,
+	"height" INTEGER NOT NULL,
+	"currentImage" TEXT NOT NULL
+);`
+    )
     createSwwwConfigTable.run()
     createAppConfigTable.run()
     createImagesTable.run()
     createPlaylistsTable.run()
     createImagesInPlaylistTable.run()
-    createActivePlaylist.run()
+    createActivePlaylistTable.run()
+    createMonitorsTable.run()
   } catch (error) {
-    console.log(error)
+    console.warn(error)
     throw new Error('Could not initialize the database tables')
   }
 }

@@ -1,4 +1,4 @@
-const Database = require('better-sqlite3')
+import Database from 'better-sqlite3'
 import {
   dbTables,
   PlaylistDB,
@@ -41,6 +41,20 @@ const dbOperations = {
     } catch (error) {
       console.error(error)
       return []
+    }
+  },
+  getNewImagesInPlaylist(playlistID: number) {
+    try {
+      const selectImagesInPlaylist = this.connection.prepare(
+        `SELECT name,time FROM imagesInPlaylist INNER JOIN Images ON imagesInPlaylist.imageID = Images.id AND imagesInPlaylist.playlistID = ? ORDER BY indexInPlaylist ASC`
+      )
+      const imagesInPlaylist = selectImagesInPlaylist.all(
+        playlistID
+      ) as imageInPlaylist[]
+      return imagesInPlaylist
+    } catch (error) {
+      console.error(error)
+      return [] as imageInPlaylist[]
     }
   },
   getImageNameFromID: function (imageID: number) {

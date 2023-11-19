@@ -56,7 +56,8 @@ export enum dbTables {
   imagesInPlaylist = 'imagesInPlaylist',
   swwwConfig = 'swwwConfig',
   appConfig = 'appConfig',
-  activePlaylist = 'activePlaylist'
+  activePlaylist = 'activePlaylist',
+  monitors = 'monitors'
 }
 
 export type imageInPlaylist = {
@@ -66,8 +67,10 @@ export type imageInPlaylist = {
 
 export type Monitor = {
   name: string
-  resolution: string
+  width: number
+  height: number
   currentImage: string
+  position: number
 }
 
 export type imageMetadata = {

@@ -1,4 +1,12 @@
-import { app, BrowserWindow, ipcMain, protocol, Tray, Menu } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  protocol,
+  Tray,
+  Menu,
+  screen
+} from 'electron'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -26,9 +34,13 @@ import { swwwConfig } from './database/swwwConfig'
 import { AppConfigDB } from '../src/routes/AppConfiguration'
 import config from './database/globalConfig'
 import { Image, rendererPlaylist } from '../src/types/rendererTypes'
+import { createAndSetMonitorIdentifierImages } from './imageOperations'
+import { Monitor } from './types/types'
+
 if (process.argv[1] === '--daemon' || process.argv[3] === '--daemon') {
-  initWaypaperDaemon()
-  app.exit(1)
+  initWaypaperDaemon().then(() => {
+    app.exit(1)
+  })
 }
 const gotTheLock = app.requestSingleInstanceLock()
 if (!gotTheLock) {
@@ -70,7 +82,6 @@ function createWindow() {
     win.loadURL(VITE_DEV_SERVER_URL)
   } else {
     if (process.env.DIST) {
-      console.log(process.env.DIST)
       win.loadFile(join(process.env.DIST, 'index.html'))
     } else {
       app.exit()
@@ -172,6 +183,9 @@ ipcMain.handle('readActivePlaylist', () => {
     return undefined
   }
 })
+ipcMain.handle('getMonitorsFromDB', () => {
+  return dbOperations.getMonitorsFromDB()
+})
 ipcMain.on('deletePlaylist', (_, playlistName: string) => {
   dbOperations.deletePlaylistInDB(playlistName)
   const current = dbOperations.getCurrentPlaylist()
@@ -201,7 +215,10 @@ ipcMain.on('updateSwwwConfig', (_, newSwwwConfig: swwwConfig) => {
   PlaylistController.updateConfig()
 })
 ipcMain.on('openContextMenuImage', async (event, image: Image) => {
-  const monitors = await getMonitors()
+  let monitors = dbOperations.getMonitorsFromDB()
+  if (monitors.length === 0) {
+    monitors = await getMonitors()
+  }
   const subLabelsMonitors = monitors.map((monitor) => {
     return {
       label: `In ${monitor.name}`,
@@ -259,4 +276,10 @@ ipcMain.on('updateTray', () => {
 })
 ipcMain.on('exitApp', () => {
   app.exit()
+})
+ipcMain.on('identifyMonitors', () => {
+  createAndSetMonitorIdentifierImages()
+})
+ipcMain.on('saveMonitors', (_, monitors: Monitor[]) => {
+  dbOperations.saveMonitorsInDB(monitors)
 })
