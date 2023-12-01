@@ -7,7 +7,8 @@ import {
   initialAppConfig,
   swwwConfig,
   PLAYLIST_TYPES,
-  ORDER_TYPES
+  ORDER_TYPES,
+  Image
 } from './typesDaemon'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
@@ -19,7 +20,7 @@ const dbOperations = {
   ),
   getImagesInPlaylist: function (playlistID: number) {
     try {
-      const selectImagesInPlaylist = this.connection.prepare(
+      const selectImagesInPlaylist = dbOperations.connection.prepare(
         `SELECT * FROM ${dbTables.imagesInPlaylist} WHERE playlistId = ? ORDER BY indexInPlaylist ASC`
       )
       const imagesInPlaylist = selectImagesInPlaylist.all(
@@ -45,7 +46,7 @@ const dbOperations = {
   },
   getNewImagesInPlaylist(playlistID: number) {
     try {
-      const selectImagesInPlaylist = this.connection.prepare(
+      const selectImagesInPlaylist = dbOperations.connection.prepare(
         `SELECT name,time FROM imagesInPlaylist INNER JOIN Images ON imagesInPlaylist.imageID = Images.id AND imagesInPlaylist.playlistID = ? ORDER BY indexInPlaylist ASC`
       )
       const imagesInPlaylist = selectImagesInPlaylist.all(
@@ -59,10 +60,10 @@ const dbOperations = {
   },
   getImageNameFromID: function (imageID: number) {
     try {
-      const selectImage = this.connection.prepare(
+      const selectImage = dbOperations.connection.prepare(
         `SELECT name FROM ${dbTables.Images} WHERE id = ?`
       )
-      const image = selectImage.get(imageID)
+      const image = selectImage.get(imageID) as { name: string }
       return image.name as string
     } catch (error) {
       console.error(error)
@@ -74,7 +75,7 @@ const dbOperations = {
     playlistName: string
   ) {
     try {
-      const updatePlaylist = this.connection.prepare(
+      const updatePlaylist = dbOperations.connection.prepare(
         `UPDATE ${dbTables.Playlists} SET currentImageIndex = ? WHERE name = ?`
       )
       updatePlaylist.run(imageIndex, playlistName)
@@ -85,7 +86,7 @@ const dbOperations = {
   },
   readAppConfig: function () {
     try {
-      const [getConfig] = this.connection
+      const [getConfig] = dbOperations.connection
         .prepare(`SELECT * FROM ${dbTables.appConfig}`)
         .all()
       return getConfig as initialAppConfig
@@ -96,7 +97,7 @@ const dbOperations = {
   },
   readSwwwConfig: function () {
     try {
-      const [swwwConfigObject] = this.connection
+      const [swwwConfigObject] = dbOperations.connection
         .prepare(`SELECT * FROM ${dbTables.swwwConfig}`)
         .all()
       return swwwConfigObject as swwwConfig
@@ -106,7 +107,7 @@ const dbOperations = {
     }
   },
   readCurrentPlaylistID: function () {
-    return this.connection
+    return dbOperations.connection
       .prepare(`SELECT * FROM ${dbTables.activePlaylist}`)
       .all() as [{ playlistID: number }] | []
   },
@@ -120,9 +121,9 @@ const dbOperations = {
     showAnimations: boolean | 0 | 1
     currentImageIndex: number
   } | null {
-    const [result] = this.readCurrentPlaylistID()
+    const [result] = dbOperations.readCurrentPlaylistID()
     if (result) {
-      const [playlist] = this.connection
+      const [playlist] = dbOperations.connection
         .prepare(`SELECT * FROM ${dbTables.Playlists} WHERE id=?`)
         .all(result.playlistID) as [PlaylistDB | undefined]
       if (playlist) {
@@ -135,6 +136,18 @@ const dbOperations = {
       }
     } else {
       return null
+    }
+  },
+  readAllImagesInDB() {
+    const selectImages = dbOperations.connection.prepare(
+      `SELECT * FROM ${dbTables.Images}`
+    )
+    try {
+      const images = selectImages.all() as Image[]
+      return images
+    } catch (error) {
+      console.error(error)
+      return [] as Image[]
     }
   }
 }

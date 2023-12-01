@@ -7,7 +7,7 @@ export interface imagesObject {
 
 export type Image = {
   id: number
-  imageName: string
+  name: string
   isChecked: boolean | 1 | 0
   width: number
   height: number
@@ -27,6 +27,7 @@ export type Playlist = {
 export enum ACTIONS {
   NEXT_IMAGE = 'next-image',
   PREVIOUS_IMAGE = 'previous-image',
+  RANDOM_IMAGE = 'random-image',
   START_PLAYLIST = 'start-playlist',
   STOP_DAEMON = 'stop-daemon',
   PAUSE_PLAYLIST = 'pause-playlist',
@@ -47,6 +48,7 @@ export type PlaylistControllerType = {
   stopPlaylist: () => void
   nextImage: () => void
   previousImage: () => void
+  randomImage: () => void
   killDaemon: () => void
 }
 
@@ -83,3 +85,31 @@ export type imageMetadata = {
 export interface ActivePlaylist extends Playlist {
   images: imageInPlaylist[]
 }
+
+type wlr_randr_monitor = {
+  name: string
+  description: string
+  make: string
+  model: string
+  serial: string
+  physical_size: {
+    width: number
+    height: number
+  }
+  enabled: boolean
+  modes: {
+    width: number
+    height: number
+    refresh: number
+    preferred: boolean
+    current: boolean
+  }[]
+  position: {
+    x: number
+    y: number
+  }
+  transform: string
+  scale: number
+  adaptive_sync: boolean
+}
+export type wlr_output = wlr_randr_monitor[]

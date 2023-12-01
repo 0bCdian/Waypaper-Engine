@@ -4,8 +4,7 @@ import {
   Image,
   Playlist,
   imageInPlaylist,
-  imageMetadata,
-  Monitor
+  imageMetadata
 } from '../types/types'
 import {
   rendererPlaylist,
@@ -431,30 +430,6 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       throw new Error(
         `Could not execute getPlaylistIDFromName,error: ${error} `
       )
-    }
-  },
-  getMonitorsFromDB() {
-    try {
-      const monitors = db
-        .prepare(`SELECT * FROM monitors ORDER BY position ASC`)
-        .all()
-      return monitors as Monitor[]
-    } catch (error) {
-      console.warn(error)
-      return [] as Monitor[]
-    }
-  },
-  saveMonitorsInDB(monitors: Monitor[]) {
-    try {
-      db.prepare(`DELETE FROM ${dbTables.monitors}`).run()
-      const insertMonitor = db.prepare(
-        `INSERT INTO ${dbTables.monitors} (name,position,width,height,currentImage) VALUES (?,?,?,?,?)`
-      )
-      monitors.forEach(({ name, position, width, height, currentImage }) => {
-        insertMonitor.run(name, position, width, height, currentImage)
-      })
-    } catch (error) {
-      console.error(error)
     }
   }
 }

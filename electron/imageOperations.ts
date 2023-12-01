@@ -2,9 +2,9 @@ import Sharp = require('sharp')
 import { Image } from '../src/types/rendererTypes'
 import config from './database/globalConfig'
 import { appDirectories } from './globals/globals'
-import { Monitor } from './types/types'
+import { Monitor, wlr_output } from './types/types'
 import { join } from 'node:path'
-import { getMonitors } from './appFunctions'
+import { getMonitors, getMonitorsInfo } from './appFunctions'
 import { exec } from 'node:child_process'
 import { promisify } from 'node:util'
 const execPomisified = promisify(exec)
@@ -207,4 +207,106 @@ export async function createAndSetMonitorIdentifierImages() {
         }
       })
   })
+}
+
+function getDesiredDimensionsToExtendImage(Monitors: wlr_output) {
+  const desiredDimensions = Monitors.reduce(
+    (previousValue, currentValue) => {
+      let current_max_x = currentValue.position.x + currentValue.modes[0].width
+      let current_max_y = currentValue.position.y + currentValue.modes[0].height
+      let new_x = previousValue.x
+      let new_y = previousValue.y
+      if (current_max_x > new_x) {
+        new_x = current_max_x
+      }
+      if (current_max_y > new_y) {
+        new_y = current_max_y
+      }
+      return { x: new_x, y: new_y }
+    },
+    { x: 0, y: 0 }
+  )
+  return desiredDimensions
+}
+export async function extendImageAcrossAllMonitors(
+  Image: Image,
+  imageFilePath: string
+) {
+  const monitorsToImagesPairsArray: { monitor: string; image: string }[] = []
+  const monitors = await getMonitorsInfo()
+  if (monitors === undefined) {
+    throw new Error('Something went wrong retrieving monitor information')
+  }
+  for (let index = 0; index < monitors.length; index++) {
+    const monitor = monitors[index]
+    const monitor_x =
+      monitor.position.x === 0 ? monitor.position.x : monitor.position.x - 1
+    const monitor_y =
+      monitor.position.y === 0 ? monitor.position.y : monitor.position.y - 1
+    const finalImageName = join(
+      appDirectories.tempImages,
+      `${index}.${Image.format}`
+    )
+
+    const desiredDimensions = getDesiredDimensionsToExtendImage(monitors)
+    const resized_image_filename = await resizeImageToDesiredResolution(
+      desiredDimensions,
+      Sharp(imageFilePath, {
+        animated: true,
+        limitInputPixels: false
+      })
+    )
+    const buffer = Sharp(resized_image_filename, {
+      animated: true,
+      limitInputPixels: false
+    })
+    try {
+      await buffer
+        .extract({
+          left: monitor_x,
+          top: monitor_y,
+          width: monitor.modes[0].width,
+          height: monitor.modes[0].height
+        })
+        .toFile(finalImageName)
+      monitorsToImagesPairsArray.push({
+        monitor: monitors[index].name,
+        image: finalImageName
+      })
+    } catch (error) {
+      throw error
+    }
+  }
+  return monitorsToImagesPairsArray
+}
+
+async function resizeImageToDesiredResolution(
+  desiredDimensions: {
+    x: number
+    y: number
+  },
+  buffer: Sharp.Sharp
+): Promise<string> {
+  const { width, height, format } = await buffer.metadata()
+  if (width === undefined || height === undefined) {
+    throw new Error('Image metadata is broken')
+  }
+  let final_width = width
+  let final_height = height
+  const resizedImageFileName = `${appDirectories.tempImages}/resized.${format}`
+  if (final_width < desiredDimensions.x) {
+    final_width = desiredDimensions.x
+  }
+  if (final_height < desiredDimensions.y) {
+    final_height = desiredDimensions.y
+  }
+  await buffer
+    .resize({
+      width: final_width,
+      height: final_height,
+      fit: 'cover',
+      background: hexToSharpRgb(config.swww.config.fillColor)
+    })
+    .toFile(resizedImageFileName)
+  return resizedImageFileName
 }

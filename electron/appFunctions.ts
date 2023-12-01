@@ -12,12 +12,13 @@ import {
   ACTIONS,
   message,
   Monitor,
-  imageMetadata
+  imageMetadata,
+  wlr_output
 } from './types/types'
 import { rendererPlaylist, Image } from '../src/types/rendererTypes'
-import { exec, execSync, spawn } from 'node:child_process'
+import { exec, execFile, execSync, spawn } from 'node:child_process'
 import { promisify } from 'node:util'
-import { daemonLocation } from './binaries'
+import { binDir, daemonLocation } from './binaries'
 import { join, basename } from 'node:path'
 import { createConnection } from 'node:net'
 import { parseResolution } from '../src/utils/utilities'
@@ -25,10 +26,13 @@ import dbOperations from './database/dbOperations'
 import config from './database/globalConfig'
 import Sharp = require('sharp')
 import {
+  extendImageAcrossAllMonitors,
   splitImageHorizontalAxis,
   splitImageVerticalAxis
 } from './imageOperations'
 const execPomisified = promisify(exec)
+const execFilePomisified = promisify(execFile)
+
 function openImagesFromFilePicker() {
   const file: fileList = dialog.showOpenDialogSync({
     properties: ['openFile', 'multiSelections'],
@@ -269,7 +273,8 @@ export async function initWaypaperDaemon() {
     try {
       spawn('node', [`${daemonLocation}/daemon.js`], {
         detached: true,
-        stdio: 'ignore'
+        stdio: 'ignore',
+        shell: true
       }).unref()
       console.log('started waypaper daemon succesfully')
     } catch (error) {
@@ -317,6 +322,11 @@ export const PlaylistController = {
   previousImage: () => {
     playlistConnectionBridge({
       action: ACTIONS.PREVIOUS_IMAGE
+    })
+  },
+  randomImage: () => {
+    playlistConnectionBridge({
+      action: ACTIONS.RANDOM_IMAGE
     })
   },
   killDaemon: () => {
@@ -461,4 +471,41 @@ export async function setImageExtended(
     )
   })
   Promise.all(commands)
+}
+
+export async function getMonitorsInfo() {
+  try {
+    const { stdout } = await execFilePomisified(join(binDir, 'wlr-randr'), [
+      '--json'
+    ])
+    const monitors: wlr_output = JSON.parse(stdout)
+    monitors.forEach((monitor) => {
+      monitor.modes = monitor.modes.filter((mode) => mode.current)
+    })
+    return monitors
+  } catch (error) {
+    console.log(error)
+    return undefined
+  }
+}
+
+export async function setImageAcrossAllMonitors(Image: Image) {
+  const imageFilePath = join(appDirectories.imagesDir, Image.name)
+  try {
+    const commands: Promise<any>[] = []
+    const monitorsToImagesPair = await extendImageAcrossAllMonitors(
+      Image,
+      imageFilePath
+    )
+    monitorsToImagesPair.forEach((pair) => {
+      commands.push(
+        execPomisified(
+          getSwwwCommandFromConfiguration(pair.image, pair.monitor)
+        )
+      )
+    })
+    Promise.all(commands)
+  } catch (error) {
+    console.error(error)
+  }
 }

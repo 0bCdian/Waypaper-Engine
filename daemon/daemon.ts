@@ -1,4 +1,4 @@
-import { createServer } from 'node:net'
+import { Socket, createServer } from 'node:net'
 import { unlinkSync } from 'node:fs'
 import { execSync, exec } from 'node:child_process'
 import { join } from 'node:path'
@@ -76,7 +76,6 @@ function notify(message: string) {
 }
 type newPlaylist = ReturnType<typeof dbOperations.getCurrentPlaylist>
 
-
 class Playlist {
   images: images
   currentName: string
@@ -107,17 +106,26 @@ class Playlist {
     }
   }
   pause() {
-    clearInterval(this.intervalID)
-    clearTimeout(this.timeoutID)
-    this.intervalID = undefined
-    this.timeoutID = undefined
+    if (this.currentType === PLAYLIST_TYPES.TIMER) {
+      clearInterval(this.intervalID)
+      clearTimeout(this.timeoutID)
+      this.intervalID = undefined
+      this.timeoutID = undefined
+      return `Paused ${this.currentName}`
+    } else {
+      return `Cannot pause ${this.currentName} because it's of type ${this.currentType}`
+    }
   }
   resume() {
     if (this.currentType === PLAYLIST_TYPES.TIMER) {
       this.timedPlaylist(true)
+      return `Resuming ${this.currentName}`
+    } else {
+      return `Cannot resume ${this.currentName} because it is of type ${this.currentType}`
     }
   }
   stop() {
+    const playlist_name = this.currentName
     this.pause()
     this.currentImageIndex = 0
     this.currentName = ''
@@ -125,35 +133,55 @@ class Playlist {
     this.interval = 0
     this.images = []
     this.showAnimations = true
+    if (playlist_name === '') {
+      return ''
+    }
+    return `Stopped ${playlist_name}`
   }
   resetInterval() {
     clearInterval(this.intervalID)
     this.intervalID = undefined
-    this.timedPlaylist()
+    this.timedPlaylist(true)
   }
   nextImage() {
+    if (
+      this.currentType === PLAYLIST_TYPES.DAY_OF_WEEK ||
+      this.currentType === PLAYLIST_TYPES.TIME_OF_DAY ||
+      undefined
+    ) {
+      notify('Cannot change image in this type of playlist')
+      return 'Cannot change image in this type of playlist'
+    }
     this.currentImageIndex++
     if (this.currentImageIndex === this.images.length) {
       this.currentImageIndex = 0
     }
     if (this.currentType === PLAYLIST_TYPES.TIMER) {
       this.resetInterval()
-    } else {
-      this.setImage(this.images[this.currentImageIndex].name)
     }
+    this.setImage(this.images[this.currentImageIndex].name)
     this.updateInDB()
+    return `Setting:${this.images[this.currentImageIndex].name}`
   }
   previousImage() {
+    if (
+      this.currentType === PLAYLIST_TYPES.DAY_OF_WEEK ||
+      this.currentType === PLAYLIST_TYPES.TIME_OF_DAY ||
+      undefined
+    ) {
+      notify('Cannot change image in this type of playlist')
+      return 'Cannot change image in this type of playlist'
+    }
     this.currentImageIndex--
     if (this.currentImageIndex < 0) {
       this.currentImageIndex = this.images.length - 1
     }
     if (this.currentType === PLAYLIST_TYPES.TIMER) {
       this.resetInterval()
-    } else {
-      this.setImage(this.images[this.currentImageIndex].name)
     }
+    this.setImage(this.images[this.currentImageIndex].name)
     this.updateInDB()
+    return `Setting:${this.images[this.currentImageIndex].name}`
   }
   start() {
     const shouldNotStart = this.setPlaylist()
@@ -364,16 +392,30 @@ class Playlist {
     } while (lowestPoint < highestPoint)
     return closestIndex
   }
+  setRandomImage() {
+    const images = dbOperations.readAllImagesInDB()
+    if (images.length === 0) {
+      return 'There are no images in the database'
+    }
+    const randomIndex = Math.floor(Math.random() * images.length)
+    const randomImage = images[randomIndex].name
+    this.setImage(randomImage)
+    return `Setting ${randomImage}`
+  }
 }
 
 function daemonInit() {
   const playlistController = new Playlist()
-  function daemonManager(data: Buffer) {
+  function daemonManager(data: Buffer, socket: Socket) {
     const message: message = JSON.parse(data.toString())
+    console.log(message)
     switch (message.action) {
       case ACTIONS.STOP_DAEMON:
+        const stopMessage = playlistController.stop()
         notify('Exiting daemon')
-        playlistController.stop()
+        notify(stopMessage)
+        socket.write('Exiting daemon')
+        socket.write(stopMessage)
         daemonServer.close()
         process.exit(0)
       case ACTIONS.UPDATE_CONFIG:
@@ -384,35 +426,51 @@ function daemonInit() {
         playlistController.start()
         notify(`Starting ${playlistController.currentName}`)
         break
+      case ACTIONS.RANDOM_IMAGE:
+        const setImageMessage = playlistController.setRandomImage()
+        socket.write(setImageMessage)
     }
     if (playlistController.currentName !== '') {
       switch (message.action) {
-        case ACTIONS.UPDATE_PLAYLIST:
-
         case ACTIONS.PAUSE_PLAYLIST:
-          playlistController.pause()
-          notify(`Pausing ${playlistController.currentName}`)
+          const pauseMessage = playlistController.pause()
+          notify(pauseMessage)
+          socket.write(pauseMessage)
           break
         case ACTIONS.RESUME_PLAYLIST:
-          playlistController.resume()
-          notify(`Resuming ${playlistController.currentName}`)
+          const resumeMessage = playlistController.resume()
+          notify(resumeMessage)
+          socket.write(resumeMessage)
           break
         case ACTIONS.STOP_PLAYLIST:
-          notify(`Stopping ${playlistController.currentName}`)
-          playlistController.stop()
+          const stopMessage = playlistController.stop()
+          if (stopMessage !== '') {
+            notify(stopMessage)
+            socket.write(stopMessage)
+          } else {
+            notify('There is no active playlist')
+            socket.write('There is no active playlist')
+          }
           break
         case ACTIONS.NEXT_IMAGE:
-          playlistController.nextImage()
+          const nextImageMessage = playlistController.nextImage()
+          socket.write(nextImageMessage)
           break
         case ACTIONS.PREVIOUS_IMAGE:
-          playlistController.previousImage()
+          const previousImageMessage = playlistController.previousImage()
+          socket.write(previousImageMessage)
           break
       }
     }
   }
 
   const daemonServer = createServer((socket) => {
-    socket.on('data', daemonManager)
+    socket.on('data', (buffer) => {
+      daemonManager(buffer, socket)
+    })
+    socket.on('error', (err) => {
+      console.error('Socket error:', err.message)
+    })
   })
 
   daemonServer.on('error', (err) => {

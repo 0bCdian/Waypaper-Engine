@@ -18,8 +18,12 @@
       "filter": ["**/*", "!**/*.ts"]
     },
     {
-      "from": "node_modules/better-sqlite3/",
-      "to": "resources/better-sqlite3"
+      "from": "node_modules/better-sqlite3/build/Release/better_sqlite3.node",
+      "to": "resources/bin/better_sqlite3.node"
+    },
+    {
+      "from": "bin",
+      "to": "resources/bin"
     }
   ],
   "linux": {

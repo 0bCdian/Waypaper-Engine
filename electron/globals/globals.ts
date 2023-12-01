@@ -137,6 +137,15 @@ export const trayMenuWithControls = ({
       type: 'separator'
     },
     {
+      label: 'Random Wallpaper',
+      click: () => {
+        PlaylistController.randomImage()
+      }
+    },
+    {
+      type: 'separator'
+    },
+    {
       label: 'Pause Playlist',
       enabled: playlist.type === PLAYLIST_TYPES.TIMER,
       click: () => {

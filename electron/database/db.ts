@@ -1,11 +1,17 @@
 import { checkCacheOrCreateItIfNotExists } from '../appFunctions'
 import { nativeBindingLocation, dbLocation } from '../binaries'
+import { app } from 'electron'
 import Database = require('better-sqlite3')
 checkCacheOrCreateItIfNotExists()
-const db = Database(dbLocation, {
-  nativeBinding: nativeBindingLocation,
-  verbose: console.log
-})
+
+const options = app.isPackaged
+  ? { nativeBinding: nativeBindingLocation }
+  : {
+      nativeBinding: nativeBindingLocation,
+      verbose: console.log
+    }
+
+const db = Database(dbLocation, options)
 
 function createDB() {
   try {
@@ -77,22 +83,12 @@ function createDB() {
 	"playlistID"	INTEGER UNIQUE,
 	PRIMARY KEY("playlistID")
 );`)
-    const createMonitorsTable = db.prepare(
-      `CREATE TABLE IF NOT EXISTS "monitors" (
-	"name"	TEXT NOT NULL,
-	"position"	INTEGER NOT NULL UNIQUE,
-	"width" INTEGER NOT NULL,
-	"height" INTEGER NOT NULL,
-	"currentImage" TEXT NOT NULL
-);`
-    )
     createSwwwConfigTable.run()
     createAppConfigTable.run()
     createImagesTable.run()
     createPlaylistsTable.run()
     createImagesInPlaylistTable.run()
     createActivePlaylistTable.run()
-    createMonitorsTable.run()
   } catch (error) {
     console.warn(error)
     throw new Error('Could not initialize the database tables')

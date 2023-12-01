@@ -1,0 +1,79 @@
+name: wpe-cli
+help: A helper tool to run waypaper engine from the command line
+version: 0.1.0
+
+commands:
+  - name: daemon
+    alias: d
+    help: Initialize the waypaper engine daemon
+
+    # args:
+    # - name: source
+    #   required: true
+    #   help: URL to download from
+    # - name: target
+    #   help: "Target filename (default: same as source)"
+    #
+    # flags:
+    # - long: --force
+    #   short: -f
+    #   help: Overwrite existing files
+    #
+    examples:
+      - wpe-cli daemon
+
+  - name: next-image
+    alias: ni
+    help: Send a request to the daemon to set the next image in the playlist
+
+    examples:
+      - wpe-cli next-image
+
+  - name: previous-image
+    alias: pi
+    help: Send a request to the daemon to set the previous image in the playlist
+
+    examples:
+      - wpe-cli previous-image
+
+  - name: stop-daemon
+    alias: sd
+    help: Send a request to the daemon to stop it
+
+    examples:
+      - wpe-cli stop-daemon
+
+  - name: pause-playlist
+    alias: pp
+    help: Send a request to the daemon to pause the current playlist
+
+    examples:
+      - wpe-cli pause-playlist
+
+  - name: resume-playlist
+    alias: rp
+    help: Send a request to the daemon to resume the current playlist
+
+    examples:
+      - wpe-cli resume-playlist
+
+  - name: stop-playlist
+    alias: sp
+    help: Send a request to the daemon to stop the current playlist
+
+    examples:
+      - wpe-cli stop-playlist
+
+  - name: run-app
+    alias: r
+    help: run the waypaper engine application
+
+    examples:
+      - wpe-cli run-app
+
+  - name: set-random-image
+    alias: sri
+    help: set a random image from the gallery
+
+    examples:
+      - wpe-cli set-random-image

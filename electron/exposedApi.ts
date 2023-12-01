@@ -82,15 +82,6 @@ export const ELECTRON_API = {
   getMonitors: () => {
     return ipcRenderer.invoke('getMonitors') as Promise<Monitor[]>
   },
-  getMonitorsFromDB: () => {
-    return ipcRenderer.invoke('getMonitorsFromDB') as Promise<Monitor[]>
-  },
-  saveMonitorsInDB: (monitors: Monitor[]) => {
-    ipcRenderer.send('saveMonitors', monitors)
-  },
-  identifyMonitors: () => {
-    return ipcRenderer.send('identifyMonitors')
-  },
   join: join,
   thumbnailDirectory: appDirectories.thumbnails,
   imagesDirectory: appDirectories.imagesDir

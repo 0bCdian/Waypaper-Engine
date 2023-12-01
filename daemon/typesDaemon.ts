@@ -34,6 +34,7 @@ export enum ACTIONS {
   NEXT_IMAGE = 'next-image',
   PREVIOUS_IMAGE = 'previous-image',
   START_PLAYLIST = 'start-playlist',
+  RANDOM_IMAGE = 'random-image',
   STOP_DAEMON = 'stop-daemon',
   PAUSE_PLAYLIST = 'pause-playlist',
   RESUME_PLAYLIST = 'resume-playlist',
@@ -62,7 +63,6 @@ export type PlaylistControllerType = {
 }
 export type images = { name: string; time: number | null }[]
 
-
 export enum PlaylistStates {
   PLAYING = 'playing',
   PAUSED = 'paused',
@@ -84,6 +84,14 @@ export type imageInPlaylist = {
   time: number | null
 }
 
+export type Image = {
+  id: number
+  name: string
+  isChecked: boolean | 1 | 0
+  width: number
+  height: number
+  format: string
+}
 export type initialAppConfig = {
   killDaemon: number
   playlistStartOnFirstImage: number
