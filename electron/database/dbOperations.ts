@@ -15,7 +15,6 @@ import {
 import { initialSwwwConfigDB, swwwConfig } from './swwwConfig'
 import initialAppConfig from './appConfig'
 import { AppConfigDB } from '../../src/routes/AppConfiguration'
-const { Integer } = require('better-sqlite3')
 const dbOperations = {
   testDB: function () {
     const test = db.prepare(

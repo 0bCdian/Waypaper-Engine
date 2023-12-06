@@ -1,6 +1,6 @@
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { type BrowserWindow, type App, Menu, Tray } from 'electron'
+import { type BrowserWindow, type App, Menu } from 'electron'
 import { PlaylistControllerType, Playlist } from '../types/types'
 import { PLAYLIST_TYPES } from '../../src/types/rendererTypes'
 const systemHome = homedir()

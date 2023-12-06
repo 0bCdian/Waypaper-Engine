@@ -22,7 +22,7 @@ export type AppConfigDB = {
 }
 const { readAppConfig, updateAppConfig } = window.API_RENDERER
 const AppConfig = () => {
-  const { register, handleSubmit, watch, setValue } = useForm<AppConfig>()
+  const { register, handleSubmit, setValue } = useForm<AppConfig>()
   const onSubmit = (data: AppConfig) => {
     const newData = {
       killDaemon: data.killDaemon ? 1 : 0,
@@ -33,7 +33,6 @@ const AppConfig = () => {
       startMinimized: data.startMinimized ? 1 : 0,
       minimizeInsteadOfClose: data.minimizeInsteadOfClose ? 1 : 0
     }
-    console.log('')
     updateAppConfig(newData as AppConfigDB)
   }
   useEffect(() => {
