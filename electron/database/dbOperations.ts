@@ -15,7 +15,7 @@ import {
 import { initialSwwwConfigDB, swwwConfig } from './swwwConfig'
 import initialAppConfig from './appConfig'
 import { AppConfigDB } from '../../src/routes/AppConfiguration'
-
+const { Integer } = require('better-sqlite3')
 const dbOperations = {
   testDB: function () {
     const test = db.prepare(
@@ -402,9 +402,9 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
       if (playlistID === null) {
         throw new Error(`Playlist does not exists in database`)
       }
-      db.prepare(`UPDATE ${dbTables.activePlaylist} SET playlistID=?`).run(
-        playlistID.id
-      )
+      db.prepare(
+        `UPDATE ${dbTables.activePlaylist} SET playlistID=CAST(? as INTEGER)`
+      ).run(playlistID.id)
     } catch (error) {
       throw new Error(`Could not read playlist from DB >> ${error}`)
     }

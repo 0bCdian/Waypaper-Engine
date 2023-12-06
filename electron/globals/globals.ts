@@ -75,7 +75,7 @@ export const devMenu = ({
 }
 
 export const prodMenu = ({ app }: { app: App }) => {
-  const devMenu = [
+  const prodMenu = [
     {
       label: 'File',
       submenu: [
@@ -86,14 +86,28 @@ export const prodMenu = ({ app }: { app: App }) => {
       ]
     }
   ]
-  return devMenu
+  return prodMenu
 }
 
-export const trayMenu = () => {
+export const trayMenu = (
+  app: App,
+  PlaylistController: PlaylistControllerType
+) => {
   const controlsMenu = Menu.buildFromTemplate([
     {
+      type: 'separator'
+    },
+    {
+      label: 'Random Wallpaper',
+      click: () => {
+        PlaylistController.randomImage()
+      }
+    },
+    {
       label: 'Quit',
-      role: 'quit'
+      click: () => {
+        app.exit()
+      }
     }
   ])
   return controlsMenu
@@ -102,12 +116,12 @@ export const trayMenu = () => {
 export const trayMenuWithControls = ({
   PlaylistController,
   win,
-  tray,
+  app,
   playlist
 }: {
   PlaylistController: PlaylistControllerType
   win: BrowserWindow | null
-  tray: Tray | null
+  app: App
   playlist: Playlist
   playlistList: Playlist[]
 }) => {
@@ -160,8 +174,6 @@ export const trayMenuWithControls = ({
       click: () => {
         PlaylistController.stopPlaylist()
         win?.webContents.send('clearPlaylist')
-        const menu = Menu.buildFromTemplate([{ label: 'Quit', role: 'quit' }])
-        tray?.setContextMenu(menu)
       }
     },
     {
@@ -169,7 +181,9 @@ export const trayMenuWithControls = ({
     },
     {
       label: 'Quit',
-      role: 'quit'
+      click: () => {
+        app.exit()
+      }
     }
   ])
 

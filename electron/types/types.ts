@@ -39,6 +39,7 @@ export enum ACTIONS {
 
 export interface message {
   action: ACTIONS
+  message?: string
 }
 
 export type PlaylistControllerType = {

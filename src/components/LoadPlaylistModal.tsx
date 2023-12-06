@@ -20,7 +20,8 @@ const {
   startPlaylist,
   deletePlaylist,
   stopPlaylist,
-  onClearPlaylist
+  onClearPlaylist,
+  updateTray
 } = window.API_RENDERER
 
 const LoadPlaylistModal = ({
@@ -39,7 +40,6 @@ const LoadPlaylistModal = ({
   const onSubmit: SubmitHandler<Input> = async (data) => {
     resetImageCheckboxes()
     clearPlaylist()
-    stopPlaylist()
     const selectedPlaylist = playlistsInDB.find((playlist) => {
       return playlist.name === data.selectPlaylist
     })
@@ -77,9 +77,9 @@ const LoadPlaylistModal = ({
     closeModal()
   }
   onClearPlaylist(() => {
+    updateTray()
     resetImageCheckboxes()
     clearPlaylist()
-    stopPlaylist()
   })
 
   return (

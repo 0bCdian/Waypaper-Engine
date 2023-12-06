@@ -33,6 +33,7 @@ const AppConfig = () => {
       startMinimized: data.startMinimized ? 1 : 0,
       minimizeInsteadOfClose: data.minimizeInsteadOfClose ? 1 : 0
     }
+    console.log('')
     updateAppConfig(newData as AppConfigDB)
   }
   useEffect(() => {
@@ -49,10 +50,7 @@ const AppConfig = () => {
       setValue('minimizeInsteadOfClose', Boolean(data.minimizeInsteadOfClose))
     })
   }, [])
-  useEffect(() => {
-    const { unsubscribe } = watch(() => handleSubmit(onSubmit)())
-    return () => unsubscribe()
-  }, [handleSubmit, watch])
+
   return (
     <>
       <AnimatePresence>
@@ -67,11 +65,7 @@ const AppConfig = () => {
             App Settings
           </h1>
           <div className='divider'></div>
-          <form
-            onSubmit={handleSubmit((data) => {
-              console.log(data)
-            })}
-          >
+          <form onSubmit={handleSubmit(onSubmit)}>
             <div className='my-6 flex gap-3'>
               <input
                 type='checkbox'
@@ -160,6 +154,15 @@ const AppConfig = () => {
                   Minimize app to tray instead of closing
                 </span>
               </label>
+            </div>
+            <div className='divider'></div>
+            <div className='my-6 flex justify-center gap-3'>
+              <button
+                className='btn btn-primary btn-lg rounded-md'
+                type='submit'
+              >
+                Save Changes
+              </button>
             </div>
           </form>
         </motion.div>

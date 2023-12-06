@@ -8,6 +8,16 @@ export enum ORDER_TYPES {
   RANDOM = 'random'
 }
 
+export type PlaylistType = {
+  images: images
+  id: number
+  name: string
+  type: PLAYLIST_TYPES
+  interval: number | null
+  order: ORDER_TYPES | null
+  showAnimations: boolean | 0 | 1
+  currentImageIndex: number
+}
 export enum PLAYLIST_TYPES {
   TIMER = 'timer',
   NEVER = 'never',
@@ -40,34 +50,17 @@ export enum ACTIONS {
   RESUME_PLAYLIST = 'resume-playlist',
   STOP_PLAYLIST = 'stop-playlist',
   UPDATE_CONFIG = 'update-config',
-  UPDATE_PLAYLIST = 'update-playlist'
+  UPDATE_PLAYLIST = 'update-playlist',
+  ERROR = 'error'
 }
 
 export interface message {
   action: ACTIONS
+  message?: string
 }
 
-export type PlaylistControllerType = {
-  startPlaylist: (
-    playlistName: string,
-    swwwUserOverrides?: string[] | undefined
-  ) => void
-  isPlaying: boolean
-  pausePlaylist: () => void
-  resumePlaylist: () => void
-  stopPlaylist: () => void
-  nextImage: () => void
-  previousImage: () => void
-  killDaemon: () => void
-  updateConfig: () => void
-}
 export type images = { name: string; time: number | null }[]
 
-export enum PlaylistStates {
-  PLAYING = 'playing',
-  PAUSED = 'paused',
-  STOPPED = 'stopped'
-}
 export enum dbTables {
   Images = 'Images',
   Playlists = 'Playlists',
@@ -162,3 +155,11 @@ const initialSwwwConfigDB = {
   transitionWaveY: 20
 }
 export type swwwConfig = typeof initialSwwwConfigDB
+
+export type Monitor = {
+  name: string
+  width: number
+  height: number
+  currentImage: string
+  position: number
+}

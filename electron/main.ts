@@ -111,12 +111,12 @@ function createTray() {
     tray = new Tray(join(iconPath, 'tray.png'))
   }
   const playlist = dbOperations.getCurrentPlaylist()
-  let trayContextMenu = trayMenu()
+  let trayContextMenu = trayMenu(app, PlaylistController)
   if (playlist !== null) {
     trayContextMenu = trayMenuWithControls({
       PlaylistController,
       win,
-      tray,
+      app,
       playlist,
       playlistList: dbOperations.readAllPlaylistsInDB()
     })

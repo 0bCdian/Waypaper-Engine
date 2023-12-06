@@ -82,6 +82,9 @@ export const ELECTRON_API = {
   getMonitors: () => {
     return ipcRenderer.invoke('getMonitors') as Promise<Monitor[]>
   },
+  updateTray: () => {
+    return ipcRenderer.send('updateTray')
+  },
   join: join,
   thumbnailDirectory: appDirectories.thumbnails,
   imagesDirectory: appDirectories.imagesDir

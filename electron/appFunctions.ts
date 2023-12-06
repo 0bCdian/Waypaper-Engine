@@ -252,7 +252,11 @@ export function savePlaylist(playlistObject: rendererPlaylist) {
     } else {
       dbOperations.storePlaylistInDB(playlistObject)
     }
-    PlaylistController.startPlaylist()
+    if (isSavedPlaylistActive(playlistObject)) {
+      PlaylistController.updatePlaylist()
+    } else {
+      PlaylistController.startPlaylist()
+    }
   } catch (error) {
     console.error(error)
     throw Error('Failed to set playlist in DB')
@@ -285,12 +289,22 @@ export async function initWaypaperDaemon() {
 }
 
 function playlistConnectionBridge(message: message) {
-  try {
-    const connection = createConnection(WAYPAPER_ENGINE_SOCKET_PATH)
+  const connection = createConnection(WAYPAPER_ENGINE_SOCKET_PATH)
+  connection.on('connect', () => {
     connection.write(JSON.stringify(message))
-  } catch (error) {
-    throw new Error(`${error},could not send daemon message`)
-  }
+  })
+  connection.on('data', (data) => {
+    const message = data.toString()
+    console.log(message)
+  })
+  connection.on('error', () => {
+    initWaypaperDaemon().then(() => {
+      connection.destroy()
+      setTimeout(() => {
+        playlistConnectionBridge(message)
+      }, 1000)
+    })
+  })
 }
 
 export const PlaylistController = {
@@ -508,4 +522,9 @@ export async function setImageAcrossAllMonitors(Image: Image) {
   } catch (error) {
     console.error(error)
   }
+}
+
+function isSavedPlaylistActive(playlist: rendererPlaylist) {
+  const activePlaylist = dbOperations.getCurrentPlaylist()
+  return activePlaylist?.name === playlist.name
 }

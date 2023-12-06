@@ -2,22 +2,30 @@ import Database from 'better-sqlite3'
 import {
   dbTables,
   PlaylistDB,
-  images,
   imageInPlaylist,
   initialAppConfig,
   swwwConfig,
-  PLAYLIST_TYPES,
-  ORDER_TYPES,
-  Image
-} from './typesDaemon'
+  Image,
+  PlaylistType
+} from '../types/daemonTypes'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
 
+function createConnection() {
+  try {
+    const db = Database(
+      join(homedir(), '.waypaper_engine', 'images_database.sqlite3'),
+      { fileMustExist: true, timeout: 10000 }
+    )
+    return db
+  } catch (error) {
+    console.error(error)
+    throw error
+  }
+}
+
 const dbOperations = {
-  connection: Database(
-    join(homedir(), '.waypaper_engine', 'images_database.sqlite3'),
-    { fileMustExist: true, timeout: 10000 }
-  ),
+  connection: createConnection(),
   getImagesInPlaylist: function (playlistID: number) {
     try {
       const selectImagesInPlaylist = dbOperations.connection.prepare(
@@ -26,6 +34,7 @@ const dbOperations = {
       const imagesInPlaylist = selectImagesInPlaylist.all(
         playlistID
       ) as imageInPlaylist[]
+      if (imagesInPlaylist.length === 0) return undefined
       let imagesArray: { name: string; time: number | null }[] = []
       for (let current = 0; current < imagesInPlaylist.length; current++) {
         const currentName = dbOperations.getImageNameFromID(
@@ -40,8 +49,7 @@ const dbOperations = {
       }
       return imagesArray
     } catch (error) {
-      console.error(error)
-      return []
+      throw new Error(`Could not connect to the database\n Error:\n${error}`)
     }
   },
   getNewImagesInPlaylist(playlistID: number) {
@@ -52,10 +60,9 @@ const dbOperations = {
       const imagesInPlaylist = selectImagesInPlaylist.all(
         playlistID
       ) as imageInPlaylist[]
-      return imagesInPlaylist
+      return imagesInPlaylist.length > 0 ? imagesInPlaylist : undefined
     } catch (error) {
-      console.error(error)
-      return [] as imageInPlaylist[]
+      throw new Error(`Could not connect to the database\n Error:\n${error}`)
     }
   },
   getImageNameFromID: function (imageID: number) {
@@ -66,8 +73,7 @@ const dbOperations = {
       const image = selectImage.get(imageID) as { name: string }
       return image.name as string
     } catch (error) {
-      console.error(error)
-      return null
+      throw new Error(`Could not connect to the database\n Error:\n${error}`)
     }
   },
   updatePlaylistCurrentIndex: function (
@@ -80,8 +86,7 @@ const dbOperations = {
       )
       updatePlaylist.run(imageIndex, playlistName)
     } catch (error) {
-      console.error(error)
-      throw new Error('Could not update playlist in DB')
+      throw new Error(`Could not connect to the database\n Error:\n${error}`)
     }
   },
   readAppConfig: function () {
@@ -91,8 +96,7 @@ const dbOperations = {
         .all()
       return getConfig as initialAppConfig
     } catch (error) {
-      console.error(error)
-      throw new Error('Could not read app configuration from the database')
+      throw new Error(`Could not connect to the database\n Error:\n${error}`)
     }
   },
   readSwwwConfig: function () {
@@ -102,40 +106,32 @@ const dbOperations = {
         .all()
       return swwwConfigObject as swwwConfig
     } catch (error) {
-      console.error(error)
-      throw new Error('Could not read swwwConfig from the database')
+      throw new Error(`Could not connect to the database\n Error:\n${error}`)
     }
   },
   readCurrentPlaylistID: function () {
-    return dbOperations.connection
+    const currentPlaylistID = dbOperations.connection
       .prepare(`SELECT * FROM ${dbTables.activePlaylist}`)
       .all() as [{ playlistID: number }] | []
+    return currentPlaylistID[0]
   },
-  getCurrentPlaylist: function (): {
-    images: images
-    id: number
-    name: string
-    type: PLAYLIST_TYPES
-    interval: number | null
-    order: ORDER_TYPES | null
-    showAnimations: boolean | 0 | 1
-    currentImageIndex: number
-  } | null {
-    const [result] = dbOperations.readCurrentPlaylistID()
-    if (result) {
+  getCurrentPlaylist: function (): PlaylistType | undefined {
+    try {
+      const result = dbOperations.readCurrentPlaylistID()
+      if (result === undefined) return
       const [playlist] = dbOperations.connection
         .prepare(`SELECT * FROM ${dbTables.Playlists} WHERE id=?`)
         .all(result.playlistID) as [PlaylistDB | undefined]
-      if (playlist) {
+      if (playlist === undefined) return
+      const imagesInPlaylist = dbOperations.getImagesInPlaylist(playlist.id)
+      if (imagesInPlaylist !== undefined) {
         return {
           ...playlist,
-          images: dbOperations.getImagesInPlaylist(playlist.id)
+          images: imagesInPlaylist
         }
-      } else {
-        return null
       }
-    } else {
-      return null
+    } catch (error) {
+      throw new Error(`Could not connect to the database\n Error:\n${error}`)
     }
   },
   readAllImagesInDB() {
@@ -144,10 +140,18 @@ const dbOperations = {
     )
     try {
       const images = selectImages.all() as Image[]
-      return images
+      return images.length > 0 ? images : undefined
     } catch (error) {
-      console.error(error)
-      return [] as Image[]
+      throw new Error(`Could not connect to the database\n Error:\n${error}`)
+    }
+  },
+  setActivePlaylistToNull() {
+    try {
+      dbOperations.connection
+        .prepare(`UPDATE ${dbTables.activePlaylist} SET playlistID=0`)
+        .run()
+    } catch (error) {
+      throw new Error(`Could not connect to the database\n Error:\n${error}`)
     }
   }
 }
