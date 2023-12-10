@@ -563,10 +563,10 @@ wpe_cli_stop_playlist_command() {
 wpe_cli_run_app_command() {
   # src/run_app_command.sh
   run_app(){
-    waypaper-engine.AppImage 2>/dev/null || echo "waypaper engine is not on the path, make sure to add it before running this command"
+    waypaper-engine.AppImage --ozone-platform=wayland --enable-features=UseOzonePlatform,WaylandWindowDecorations 2>/dev/null || echo "waypaper engine is not on the path, make sure to add it before running this command"
   }
 
-  run_app & > /dev/null
+  run_app >/dev/null &
 
 }
 

@@ -97,8 +97,7 @@ async function createCacheThumbnail(filePathSource: string, imageName: string) {
       }
       return imageMetadata as imageMetadata
     } catch (error) {
-      console.error(error)
-      console.error('failed to create thumbnail for:', imageName)
+      console.error('failed to create thumbnail for:', imageName, error)
     }
   }
 }
@@ -264,27 +263,27 @@ export function savePlaylist(playlistObject: rendererPlaylist) {
 }
 async function isWaypaperDaemonRunning() {
   try {
-    const { stdout } = await execPomisified('pidof wpe-daemon')
-    console.log('Waypaper Engine daemon already running', stdout)
+    await execPomisified('pidof wpe-daemon')
     return true
   } catch (_err) {
-    console.log('Waypaper Engine not running')
     return false
   }
 }
 export async function initWaypaperDaemon() {
   if (!(await isWaypaperDaemonRunning())) {
-    try {
-      spawn('node', [`${daemonLocation}/daemon.js`], {
-        detached: true,
-        stdio: 'ignore',
-        shell: true
-      }).unref()
-      console.log('started waypaper daemon succesfully')
-    } catch (error) {
-      console.error(error)
-      console.warn('Could not start waypaper daemon')
-    }
+    const promise = new Promise<void>((resolve, reject) => {
+      try {
+        spawn('node', [`${daemonLocation}/daemon.js`], {
+          detached: true,
+          stdio: 'ignore',
+          shell: true
+        })
+        resolve()
+      } catch (error) {
+        reject(error)
+      }
+    })
+    return promise
   }
 }
 
@@ -295,6 +294,7 @@ function playlistConnectionBridge(message: message) {
   })
   connection.on('data', (data) => {
     const message = data.toString()
+    //TODO do stuff based on the daemon's response, to sync with the cli tool actions.
     console.log(message)
   })
   connection.on('error', () => {
@@ -498,7 +498,7 @@ export async function getMonitorsInfo() {
     })
     return monitors
   } catch (error) {
-    console.log(error)
+    console.error(error)
     return undefined
   }
 }
