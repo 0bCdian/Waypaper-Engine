@@ -34,5 +34,3 @@
 ![screenshot](./readme_files/sidebar.png)
 ![screenshot](./readme_files/swww_settings.png)
 ![screenshot](./readme_files/app_settings.png)
-[![Watch the video](https://youtu.be/QSUqis2vJJI)](https://youtu.be/QSUqis2vJJI)
-
