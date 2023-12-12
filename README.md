@@ -34,4 +34,5 @@
 ![screenshot](./readme_files/sidebar.png)
 ![screenshot](./readme_files/swww_settings.png)
 ![screenshot](./readme_files/app_settings.png)
+
 [multimonitor_example.webm](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/3e502407-6f35-48ea-af7e-73d42b88c9ba)
