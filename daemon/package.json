@@ -4,6 +4,7 @@
   "description": "",
   "main": "daemon.js",
   "scripts": {
+    "build": "npm install && tsc ./daemon.ts --esModuleInterop",
     "compile": "tsc ./daemon.ts --esModuleInterop"
   },
   "keywords": [],

@@ -2,8 +2,9 @@
   "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
   "appId": "waypaper.engine",
   "asar": false,
+  "npmRebuild": true,
   "directories": {
-    "output": "release/${version}"
+    "output": "release"
   },
   "files": ["dist-electron", "dist"],
   "extraFiles": [
@@ -29,13 +30,19 @@
   "linux": {
     "artifactName": "${productName}.${ext}",
     "category": "Utility",
+    "target": ["pacman"],
     "executableName": "waypaper-engine",
+    "executableArgs": [
+      "--ozone-platform=wayland",
+      "--enable-features=UseOzonePlatform"
+    ],
+    "description": "A graphical frontend for setting wallpapers and playlists, using swww under the hood!",
     "desktop": {
       "Name": "Waypaper Engine",
       "Comment": "Waypaper Engine",
       "Terminal": "false",
       "Type": "Application",
-      "Icon": "resources/icons/app.png"
+      "Icon": "/resources/icons/app.png"
     }
   }
 }

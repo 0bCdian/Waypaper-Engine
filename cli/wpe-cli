@@ -450,7 +450,7 @@ inspect_args() {
 wpe_cli_daemon_command() {
   # src/daemon_command.sh
   run_daemon() {
-        waypaper-engine.AppImage --daemon 2>/dev/null || echo "waypaper engine is not on the path, make sure to add it before running this command"
+        waypaper-engine --daemon 2>/dev/null || echo "waypaper engine is not on the path, make sure to add it before running this command"
   }
 
   run_daemon & > /dev/null
@@ -563,7 +563,7 @@ wpe_cli_stop_playlist_command() {
 wpe_cli_run_app_command() {
   # src/run_app_command.sh
   run_app(){
-    waypaper-engine.AppImage --ozone-platform=wayland --enable-features=UseOzonePlatform,WaylandWindowDecorations 2>/dev/null || echo "waypaper engine is not on the path, make sure to add it before running this command"
+    waypaper-engine --ozone-platform=wayland --enable-features=UseOzonePlatform 2>/dev/null || echo "waypaper engine is not on the path, make sure to add it before running this command"
   }
 
   run_app >/dev/null &

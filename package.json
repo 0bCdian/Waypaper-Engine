@@ -2,9 +2,14 @@
   "name": "waypaper-engine",
   "private": true,
   "version": "1.0.1",
+  "author": {
+    "name": "0bCdian",
+    "email": "diegoparranava@protonmail.com",
+    "url": "https://github.com/0bCdian"
+  },
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build && electron-builder",
+    "build": "npm install && npx electron-rebuild && tsc && vite build && electron-builder",
     "lint": "eslint src --ext ts,tsx --report-unused-disable-directives --max-warnings 0",
     "preview": "vite preview"
   },
