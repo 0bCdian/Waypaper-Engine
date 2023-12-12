@@ -10,8 +10,12 @@
 
 ---
 
-[<kbd> <br> How to install <br> </kbd>](#Install)
-[<kbd> <br> Gallery <br> </kbd>](#Gallery)
+**[<kbd> <br> Why <br> </kbd>](#why)**
+**[<kbd> <br> How to install <br> </kbd>](#install)**
+**[<kbd> <br> Usage <br> </kbd>](#usage)**
+**[<kbd> <br> TODO <br> </kbd>](#todo)**
+**[<kbd> <br> Gallery <br> </kbd>](#gallery)**
+**[<kbd> <br> Special Thanks <br> </kbd>](#specialthanks)**
 
 ---
 
@@ -21,7 +25,7 @@
 
 - Multimonitor support.
 - Four different types of playlists (Time of day, weekly,interval based or static).
-- Easy configuration of all [swww]https://github.com/Horus645/swww options.
+- Easy configuration of all [swww]https://github.com/Horus645/swww options).
 - Tray controls.
 - CLI tool included that serves as a player for playlists, with the basic commands.
 - All of [swww](https://github.com/Horus645/swww) features such as wallpaper change animations and wallpaper persistance through reboots.
@@ -38,7 +42,7 @@
 [multimonitor_example.webm](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/3e502407-6f35-48ea-af7e-73d42b88c9ba)
 
 
-
+--- 
 # Why
 
 I started this project for two main reasons, one as a learning oportunity, and two because the available options for a tool like this didn't suit my needs fully. I really like [swww](https://github.com/Horus645/swww) but it lacks a lot of the features that I missed from wallpaper engine in windows, so this is my attempt to bridge that gap a little.
@@ -49,6 +53,7 @@ I started this project for two main reasons, one as a learning oportunity, and t
 
 # Install
 
+## App
 1) Install [swww](https://github.com/Horus645/swww) and nodejs if you haven't already from the arch linux repository.
 >[!IMPORTANT] 
 >>``yay -S nodejs swww``
@@ -56,10 +61,14 @@ I started this project for two main reasons, one as a learning oportunity, and t
 3) cd into the repo directory and execute the install.sh script.
 4) Done!
 
+## CLI (optional)
+1) Make sure you already installed the app with the steps above.
+2) Simply copy the wpe-cli script located inside the cli directory in your path, make sure to give it execution privileges with ``chmod +x ./wpe-cli``
+3) You're done! Run the cli like so: ``wpe-cli --help`` to see all the available commands. 
 
 # Usage
 
-Simply start the app and add wallpapers to the gallery, from there you can double click to set the wallpapers or right click for more options, to create playlists simply click on the checkboxes that appear when hover over the images, and configure it, and then save it to auto start it. I also included a little cli tool if you dont want to control the playlist with the gui, simply copy the wpe-cli script into the path and run ``wpe-cli`` to see the available commands.    
+Simply start the app and add wallpapers to the gallery, from there you can double click to set the wallpapers or right click for more options, to create playlists simply click on the checkboxes that appear when hover over the images, and configure it, and then save it to auto start it.   
 
 # TODO
 
