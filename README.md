@@ -11,7 +11,7 @@
 ---
 
 [<kbd> <br> How to install <br> </kbd>](#Install)
-[<kbd> <br> How to install <br> </kbd>](#Gallery)
+[<kbd> <br> Gallery <br> </kbd>](#Gallery)
 
 ---
 
