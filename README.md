@@ -10,7 +10,7 @@
 
 ---
 
-[<kbd> <br> How to build <br> </kbd>](#Build)
+[<kbd> <br> How to install <br> </kbd>](#Install)
 
 ---
 
@@ -30,30 +30,30 @@
 
 ---
 ![screenshot](./readme_files/gallery.png)
+
+---
+
+
+[multimonitor_example.webm](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/3e502407-6f35-48ea-af7e-73d42b88c9ba)
+
+
+
+# Install
+
+1) Install swww and nodejs if you haven't already from the arch linux repository.
+>[!IMPORTANT] 
+>``yay -S nodejs swww``
+2) Clone this repo or download this repo
+3) cd into the repo directory and execute the install.sh script.
+4) Done!
+
+
+# Gallery
+
 ---
 ![screenshot](./readme_files/sidebar.png)
 ---
 ![screenshot](./readme_files/swww_settings.png)
 ---
 ![screenshot](./readme_files/app_settings.png)
----
-[multimonitor_example.webm](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/3e502407-6f35-48ea-af7e-73d42b88c9ba)
-
-
----
-
-# Build
-
-1) Install swww and nodejs if you haven't already from the arch linux repository.
->[!IMPORTANT] 
->``yay -S nodejs swww``
-2) Clone this repo or download this repo
-3) Open a terminal inside the root of the repo and run ``npm install`` and ``npx electron rebuild``
-4) Go inside the daemon directory and run in a terminal ``npm install`` and ``npm run compile``
-5) Go back to the root and run ``npm run build``, after the command finishes there will be another directory called release, inside there is the appImage file executable of the app
-6) 
-
-
-
-
 
