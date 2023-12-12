@@ -92,4 +92,5 @@ Simply start the app and add wallpapers to the gallery, from there you can doubl
 # Special Thanks
 
 **[Horus645](https://github.com/Horus645)** - *for the amazing little tool that swww is*
+
 **[Simon Ser](https://git.sr.ht/~emersion/)** - *for wlr-randr, without it making this work across different wayland wm's would've been a nightmare*
