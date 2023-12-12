@@ -10,7 +10,7 @@
 
 ---
 
-**[<kbd> <br> Why <br> </kbd>](#why)**
+**[<kbd> <br> Why  <br> </kbd>](#why)**
 **[<kbd> <br> How to install <br> </kbd>](#install)**
 **[<kbd> <br> Usage <br> </kbd>](#usage)**
 **[<kbd> <br> TODO <br> </kbd>](#todo)**
