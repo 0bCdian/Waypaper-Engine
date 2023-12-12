@@ -15,7 +15,7 @@
 **[<kbd> <br> Usage <br> </kbd>](#usage)**
 **[<kbd> <br> TODO <br> </kbd>](#todo)**
 **[<kbd> <br> Gallery <br> </kbd>](#gallery)**
-**[<kbd> <br> Special Thanks <br> </kbd>](#specialthanks)**
+**[<kbd> <br> Special Thanks <br> </kbd>](#special-thanks)**
 
 ---
 
