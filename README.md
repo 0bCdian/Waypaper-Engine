@@ -54,9 +54,9 @@ I started this project for two main reasons, one as a learning oportunity, and t
 # Install
 
 ## App
-1) Install [swww](https://github.com/Horus645/swww) and nodejs if you haven't already from the arch linux repository.
+1) Install [swww](https://github.com/Horus645/swww) and nodejs if you haven't already from the arch linux repository, also we're going to need libxcrypt-compat as a build dependency for electron-builder.
 >[!IMPORTANT] 
->>``yay -S nodejs swww``
+>>``yay -S nodejs swww libxcrypt-compat``
 2) Clone this repo or download this repo
 3) cd into the repo directory and execute the install.sh script.
 4) Done!
