@@ -25,7 +25,7 @@
 
 - Multimonitor support.
 - Four different types of playlists (Time of day, weekly,interval based or static).
-- Easy configuration of all [swww]https://github.com/Horus645/swww options).
+- Easy configuration of all [swww](https://github.com/Horus645/swww) options.
 - Tray controls.
 - CLI tool included that serves as a player for playlists, with the basic commands.
 - All of [swww](https://github.com/Horus645/swww) features such as wallpaper change animations and wallpaper persistance through reboots.
@@ -77,6 +77,8 @@ Simply start the app and add wallpapers to the gallery, from there you can doubl
 - [ ] Implement a logger for errors.
 - [ ] Publish in the aur.
 - [ ] Find a good icon/logo for the app.
+- [ ] Add flatpak support.
+- [ ] Integrate with pywall.
 
 *If you encounter any problems or would like to make a suggestion, please feel free to open an issue*.
 
