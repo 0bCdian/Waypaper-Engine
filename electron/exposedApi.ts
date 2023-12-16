@@ -71,6 +71,11 @@ export const ELECTRON_API = {
   onClearPlaylist: (callback: () => void) => {
     ipcRenderer.on('clearPlaylist', callback)
   },
+  onDeleteImageFromGallery: (
+    callback: (_event: Electron.IpcRendererEvent, image: Image) => void
+  ) => {
+    ipcRenderer.on('deleteImageFromGallery', callback)
+  },
   onStartPlaylist: (
     callback: (event: Electron.IpcRendererEvent, ...args: any[]) => void
   ) => {

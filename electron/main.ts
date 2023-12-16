@@ -1,4 +1,12 @@
-import { app, BrowserWindow, ipcMain, protocol, Tray, Menu } from 'electron'
+import {
+  app,
+  BrowserWindow,
+  ipcMain,
+  protocol,
+  Tray,
+  Menu,
+  dialog
+} from 'electron'
 import { join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
@@ -127,7 +135,7 @@ function createTray() {
     win?.isVisible() ? win.hide() : win?.show()
   })
 }
-
+Menu.setApplicationMenu(null)
 app
   .whenReady()
   .then(async () => {
@@ -246,12 +254,20 @@ ipcMain.on('openContextMenuImage', async (event, image: Image) => {
     {
       label: `Delete ${image.name}`,
       click: () => {
-        const deleteFromGallery = window.confirm(
-          `Are you sure you want to delete ${image.name} from the gallery?`
-        )
-        if (deleteFromGallery) {
-          deleteImageFromGallery(event, image.id, image.name)
-        }
+        if (!win) return
+        dialog
+          .showMessageBox(win, {
+            message: `Are you sure you want to delete ${image.name}`,
+            type: 'question',
+            buttons: ['yes', 'no'],
+            title: 'Confirm delete'
+          })
+          .then((data) => {
+            if (data.response === 0) {
+              deleteImageFromGallery(event, image.id, image.name)
+              win?.webContents.send('deleteImageFromGallery', image)
+            }
+          })
       }
     }
   ])

@@ -5,11 +5,12 @@ import PaginatedGallery from './PaginatedGallery'
 import playlistStore from '../hooks/playlistStore'
 import { Image, PLAYLIST_TYPES } from '../types/rendererTypes'
 import Filters from './Filters'
-const { readActivePlaylist, readAppConfig } = window.API_RENDERER
+const { readActivePlaylist, readAppConfig, onDeleteImageFromGallery } =
+  window.API_RENDERER
 
 function Gallery() {
-  const { isEmpty, imagesArray } = useImages()
-  const { setPlaylist } = playlistStore()
+  const { isEmpty, imagesArray, removeImageFromStore } = useImages()
+  const { setPlaylist, removeImageFromPlaylist } = playlistStore()
   function setLastActivePlaylist() {
     readActivePlaylist().then((playlist) => {
       if (playlist === undefined) {
@@ -42,6 +43,10 @@ function Gallery() {
       setPlaylist(currentPlaylist)
     })
   }
+  onDeleteImageFromGallery((_event, image) => {
+    removeImageFromStore(image.id)
+    removeImageFromPlaylist(image)
+  })
   useEffect(() => {
     readAppConfig().then((appSettings) => {
       if (appSettings.introAnimation && !appSettings.startMinimized) {
