@@ -1,6 +1,7 @@
 
 # Maintainer: Diego Parra <diegoparranava@protonmail.com>
-pkgname='waypaper-engine-git'
+pkgbase='waypaper-engine-git'
+pkgname='waypaper-engine'
 pkgver=1
 pkgrel=1
 pkgdesc="An Electron-based graphical frontend for setting wallpapers and playlists"
