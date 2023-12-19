@@ -11,7 +11,6 @@ export function daemonManager(
   daemonServer: Server
 ) {
   const message: message = JSON.parse(data.toString())
-  console.log(message)
   switch (message.action) {
     case ACTIONS.STOP_DAEMON:
       const stopMessage = playlistController.stop(false)

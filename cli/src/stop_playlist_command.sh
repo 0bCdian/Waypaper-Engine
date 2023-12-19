@@ -5,7 +5,7 @@ send_message(){
 }
 
 stop_playlist(){
-  send_message '{"action":"stop-playlist"}' 2>/dev/null || echo "Seems like the daemon is not running, make sure to run 'wpe-cli daemon' first"
+  send_message '{"action":"stop-playlist"}' || echo "Seems like the daemon is not running, make sure to run 'waypaper-engine daemon' first"
 }
 
 stop_playlist

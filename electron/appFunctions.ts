@@ -7,7 +7,6 @@ import {
   WAYPAPER_ENGINE_SOCKET_PATH
 } from './globals/globals'
 import {
-  fileList,
   imagesObject,
   ACTIONS,
   message,
@@ -15,7 +14,11 @@ import {
   imageMetadata,
   wlr_output
 } from './types/types'
-import { rendererPlaylist, Image } from '../src/types/rendererTypes'
+import {
+  rendererPlaylist,
+  Image,
+  openFileAction
+} from '../src/types/rendererTypes'
 import { exec, execFile, execSync, spawn } from 'node:child_process'
 import { promisify } from 'node:util'
 import { binDir, daemonLocation } from './binaries'
@@ -34,12 +37,49 @@ const execPomisified = promisify(exec)
 const execFilePomisified = promisify(execFile)
 
 function openImagesFromFilePicker() {
-  const file: fileList = dialog.showOpenDialogSync({
-    properties: ['openFile', 'multiSelections'],
+  const file = dialog.showOpenDialogSync({
+    properties: ['openFile'],
     filters: [{ name: 'Images', extensions: validImageExtensions }],
     defaultPath: appDirectories.systemHome
   })
   return file
+}
+
+function openFolderFromFilePicker() {
+  const paths = dialog.showOpenDialogSync({
+    properties: ['openDirectory', 'multiSelections'],
+    defaultPath: appDirectories.systemHome
+  })
+  if (paths === undefined) return
+  const images: string[] = []
+  paths.forEach((path) => {
+    searchImagesRecursively(images, path)
+  })
+  return images
+}
+
+function searchImagesRecursively(images: string[], directory: string) {
+  const directoryContents = readdirSync(directory, {
+    recursive: true,
+    encoding: 'utf-8',
+    withFileTypes: true
+  })
+  directoryContents.forEach((filePathOrDir) => {
+    if (filePathOrDir.isDirectory()) {
+      return searchImagesRecursively(
+        images,
+        join(directory, filePathOrDir.name)
+      )
+    } else {
+      const fileExtension = filePathOrDir.name.split('.').at(-1)
+      if (
+        fileExtension !== undefined &&
+        validImageExtensions.includes(fileExtension)
+      ) {
+        images.push(join(directory, filePathOrDir.name))
+      }
+    }
+  })
 }
 
 export async function copyImagesToCacheAndProcessThumbnails(
@@ -102,8 +142,12 @@ async function createCacheThumbnail(filePathSource: string, imageName: string) {
   }
 }
 
-export function openAndReturnImagesObject() {
-  const imagePathsFromFilePicker = openImagesFromFilePicker()
+export function openAndReturnImagesObject(
+  _event: Electron.IpcMainInvokeEvent,
+  action: openFileAction
+) {
+  const imagePathsFromFilePicker =
+    action === 'file' ? openImagesFromFilePicker() : openFolderFromFilePicker()
   if (!imagePathsFromFilePicker) {
     return
   }
@@ -211,12 +255,13 @@ export async function setImage(
   imageName: string,
   monitor?: string
 ) {
-  const command = getSwwwCommandFromConfiguration(
-    join(appDirectories.imagesDir, `"${imageName}"`),
-    monitor
-  )
+  const imagePath = join(appDirectories.imagesDir, `"${imageName}"`)
+  const command = getSwwwCommandFromConfiguration(imagePath, monitor)
   try {
     await execPomisified(`${command}`)
+    if (config.script !== undefined) {
+      execSync(`${config.script} ${imagePath}`)
+    }
   } catch (error) {
     console.error(error)
   }
@@ -273,7 +318,9 @@ export async function initWaypaperDaemon() {
   if (!(await isWaypaperDaemonRunning())) {
     const promise = new Promise<void>((resolve, reject) => {
       try {
-        spawn('node', [`${daemonLocation}/daemon.js`], {
+        const args = [`${daemonLocation}/daemon.js`]
+        if (config.script) args.push(`--script=${config.script}`)
+        spawn('node', args, {
           detached: true,
           stdio: 'ignore',
           shell: true
@@ -457,34 +504,43 @@ export async function setImageExtended(
   monitors: Monitor[],
   orientation: 'vertical' | 'horizontal'
 ) {
-  const commands: Promise<any>[] = []
-  const imageFilePath = join(appDirectories.imagesDir, Image.name)
-  let combinedMonitorHeight: number = 0
-  let combinedMonitorWidth: number = 0
-  monitors.forEach((monitor) => {
-    combinedMonitorHeight += monitor.height
-    combinedMonitorWidth += monitor.width
-  })
-  const monitorsToImagesPair =
-    orientation === 'vertical'
-      ? await splitImageVerticalAxis(
-          monitors,
-          Image,
-          imageFilePath,
-          combinedMonitorWidth
+  try {
+    const commands: Promise<any>[] = []
+    const imageFilePath = join(appDirectories.imagesDir, Image.name)
+    let combinedMonitorHeight: number = 0
+    let combinedMonitorWidth: number = 0
+    monitors.forEach((monitor) => {
+      combinedMonitorHeight += monitor.height
+      combinedMonitorWidth += monitor.width
+    })
+    const monitorsToImagesPair =
+      orientation === 'vertical'
+        ? await splitImageVerticalAxis(
+            monitors,
+            Image,
+            imageFilePath,
+            combinedMonitorWidth
+          )
+        : await splitImageHorizontalAxis(
+            monitors,
+            Image,
+            imageFilePath,
+            combinedMonitorHeight
+          )
+    monitorsToImagesPair.forEach((pair) => {
+      commands.push(
+        execPomisified(
+          getSwwwCommandFromConfiguration(pair.image, pair.monitor)
         )
-      : await splitImageHorizontalAxis(
-          monitors,
-          Image,
-          imageFilePath,
-          combinedMonitorHeight
-        )
-  monitorsToImagesPair.forEach((pair) => {
-    commands.push(
-      execPomisified(getSwwwCommandFromConfiguration(pair.image, pair.monitor))
-    )
-  })
-  Promise.all(commands)
+      )
+    })
+    Promise.all(commands)
+    if (config.script !== undefined) {
+      execSync(`${config.script} ${imageFilePath}`)
+    }
+  } catch (error) {
+    console.error(error)
+  }
 }
 
 export async function getMonitorsInfo() {
@@ -519,6 +575,9 @@ export async function setImageAcrossAllMonitors(Image: Image) {
       )
     })
     Promise.all(commands)
+    if (config.script !== undefined) {
+      execSync(`${config.script} ${imageFilePath}`)
+    }
   } catch (error) {
     console.error(error)
   }

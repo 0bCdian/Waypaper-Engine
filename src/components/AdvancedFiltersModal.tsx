@@ -283,6 +283,9 @@ const AdvancedFiltersModal = () => {
           <button className='btn btn-lg rounded-xl'>Save Filters</button>
         </form>
       </div>
+      <form method='dialog' className='modal-backdrop'>
+        <button>close</button>
+      </form>
     </dialog>
   )
 }

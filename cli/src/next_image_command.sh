@@ -7,7 +7,7 @@ send_message(){
 }
 
 next_image(){
-  send_message '{"action":"next-image"}' 2>/dev/null || echo "Seems like the daemon is not running, make sure to run 'wpe-cli daemon' first"
+  send_message '{"action":"next-image"}' || echo "Seems like the daemon is not running, make sure to run 'waypaper-engine daemon' first"
 }
 
 next_image

@@ -3,6 +3,7 @@ import {
   Image,
   PLAYLIST_TYPES,
   imagesObject,
+  openFileAction,
   rendererPlaylist
 } from '../types/rendererTypes'
 const { openFiles, handleOpenImages } = window.API_RENDERER
@@ -15,6 +16,7 @@ interface openImagesProps {
   addMultipleImagesToPlaylist: (Images: Image[]) => void
   addImageToPlaylist: (Image: Image) => void
   currentPlaylist: rendererPlaylist
+  action: openFileAction
 }
 
 interface Actions {
@@ -28,10 +30,11 @@ const openImagesStore = create<State & Actions>((set) => ({
     setImagesArray,
     addMultipleImagesToPlaylist,
     addImageToPlaylist,
-    currentPlaylist
+    currentPlaylist,
+    action
   }) => {
     set(() => ({ isActive: true }))
-    const imagesObject: imagesObject = await openFiles()
+    const imagesObject: imagesObject = await openFiles(action)
     set(() => ({ isActive: false }))
     if (!imagesObject) return
     imagesObject.fileNames.reverse()

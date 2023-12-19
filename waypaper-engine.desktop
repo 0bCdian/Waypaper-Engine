@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Waypaper Engine
+GenericName=Wallpaper Management
+Comment=An Electron-based graphical frontend for setting wallpapers and playlists
+Exec=waypaper-engine
+Icon=waypaper-engine   # Specify the icon name (without extension) or full path
+Categories=Utility;Graphics;
+Terminal=false
+StartupNotify=true
+Keywords=wallpaper;playlist;electron;

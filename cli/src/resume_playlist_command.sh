@@ -5,7 +5,7 @@ send_message(){
 }
 
 resume_playlist(){
-  send_message '{"action":"resume-playlist"}' 2>/dev/null || echo "Seems like the daemon is not running, make sure to run 'wpe-cli daemon' first"
+  send_message '{"action":"resume-playlist"}' || echo "Seems like the daemon is not running, make sure to run 'waypaper-engine daemon' first"
 }
 
 resume_playlist

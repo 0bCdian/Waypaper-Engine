@@ -13,7 +13,8 @@ const config = {
     update: () => {
       config.app.config = dbOperations.readAppConfig()
     }
-  }
+  },
+  script: undefined as undefined | string
 }
 
 export default config

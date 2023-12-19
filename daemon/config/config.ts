@@ -15,6 +15,7 @@ const configuration = {
       configuration.app.settings = dbOperations.readAppConfig()
     }
   },
+  script: undefined as undefined | string,
   IMAGES_DIR: join(homedir(), '.waypaper_engine', 'images'),
   SOCKET_PATH: '/tmp/waypaper_engine_daemon.sock'
 }

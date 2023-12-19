@@ -16,33 +16,34 @@ version_command() {
 }
 
 # :command.usage
-wpe_cli_usage() {
+waypaper_engine_usage() {
   if [[ -n $long_usage ]]; then
-    printf "wpe-cli - A helper tool to run waypaper engine from the command line\n"
+    printf "waypaper-engine - A wallpaper setting tool with playlist functionality\n"
     echo
 
   else
-    printf "wpe-cli - A helper tool to run waypaper engine from the command line\n"
+    printf "waypaper-engine - A wallpaper setting tool with playlist functionality\n"
     echo
 
   fi
 
   printf "%s\n" "Usage:"
-  printf "  wpe-cli COMMAND\n"
-  printf "  wpe-cli [COMMAND] --help | -h\n"
-  printf "  wpe-cli --version | -v\n"
+  printf "  waypaper-engine COMMAND\n"
+  printf "  waypaper-engine [COMMAND] --help | -h\n"
+  printf "  waypaper-engine --version | -v\n"
   echo
   # :command.usage_commands
   printf "%s\n" "Commands:"
-  printf "  %s   Initialize the waypaper engine daemon\n" "daemon          "
-  printf "  %s   Send a request to the daemon to set the next image in the playlist\n" "next-image      "
-  printf "  %s   Send a request to the daemon to set the previous image in the playlist\n" "previous-image  "
-  printf "  %s   Send a request to the daemon to stop it\n" "stop-daemon     "
-  printf "  %s   Send a request to the daemon to pause the current playlist\n" "pause-playlist  "
-  printf "  %s   Send a request to the daemon to resume the current playlist\n" "resume-playlist "
-  printf "  %s   Send a request to the daemon to stop the current playlist\n" "stop-playlist   "
-  printf "  %s   run the waypaper engine application\n" "run-app         "
-  printf "  %s   set a random image from the gallery\n" "set-random-image"
+  printf "  %s   Run just the waypaper engine daemon\n" "daemon         "
+  printf "  %s   Send a request to the daemon to set the next image in the playlist\n" "next-image     "
+  printf "  %s   Send a request to the daemon to set the previous image in the playlist\n" "previous-image "
+  printf "  %s   Kill the waypaper daemon process\n" "kill-daemon    "
+  printf "  %s   Send stop command to daemon process\n" "stop-daemon    "
+  printf "  %s   Send a request to the daemon to pause the current playlist\n" "pause-playlist "
+  printf "  %s   Send a request to the daemon to resume the current playlist\n" "resume-playlist"
+  printf "  %s   Send a request to the daemon to stop the current playlist\n" "stop-playlist  "
+  printf "  %s   run the waypaper engine application (default)\n" "run            "
+  printf "  %s   set a random image from the gallery\n" "random         "
   echo
 
   # :command.long_usage
@@ -61,13 +62,13 @@ wpe_cli_usage() {
 }
 
 # :command.usage
-wpe_cli_daemon_usage() {
+waypaper_engine_daemon_usage() {
   if [[ -n $long_usage ]]; then
-    printf "wpe-cli daemon - Initialize the waypaper engine daemon\n"
+    printf "waypaper-engine daemon - Run just the waypaper engine daemon\n"
     echo
 
   else
-    printf "wpe-cli daemon - Initialize the waypaper engine daemon\n"
+    printf "waypaper-engine daemon - Run just the waypaper engine daemon\n"
     echo
 
   fi
@@ -76,8 +77,8 @@ wpe_cli_daemon_usage() {
   echo
 
   printf "%s\n" "Usage:"
-  printf "  wpe-cli daemon\n"
-  printf "  wpe-cli daemon --help | -h\n"
+  printf "  waypaper-engine daemon\n"
+  printf "  waypaper-engine daemon --help | -h\n"
   echo
 
   # :command.long_usage
@@ -91,20 +92,20 @@ wpe_cli_daemon_usage() {
 
     # :command.usage_examples
     printf "%s\n" "Examples:"
-    printf "  wpe-cli daemon\n"
+    printf "  waypaper-engine daemon\n"
     echo
 
   fi
 }
 
 # :command.usage
-wpe_cli_next_image_usage() {
+waypaper_engine_next_image_usage() {
   if [[ -n $long_usage ]]; then
-    printf "wpe-cli next-image - Send a request to the daemon to set the next image in the playlist\n"
+    printf "waypaper-engine next-image - Send a request to the daemon to set the next image in the playlist\n"
     echo
 
   else
-    printf "wpe-cli next-image - Send a request to the daemon to set the next image in the playlist\n"
+    printf "waypaper-engine next-image - Send a request to the daemon to set the next image in the playlist\n"
     echo
 
   fi
@@ -113,8 +114,8 @@ wpe_cli_next_image_usage() {
   echo
 
   printf "%s\n" "Usage:"
-  printf "  wpe-cli next-image\n"
-  printf "  wpe-cli next-image --help | -h\n"
+  printf "  waypaper-engine next-image\n"
+  printf "  waypaper-engine next-image --help | -h\n"
   echo
 
   # :command.long_usage
@@ -128,20 +129,20 @@ wpe_cli_next_image_usage() {
 
     # :command.usage_examples
     printf "%s\n" "Examples:"
-    printf "  wpe-cli next-image\n"
+    printf "  waypaper-engine next-image\n"
     echo
 
   fi
 }
 
 # :command.usage
-wpe_cli_previous_image_usage() {
+waypaper_engine_previous_image_usage() {
   if [[ -n $long_usage ]]; then
-    printf "wpe-cli previous-image - Send a request to the daemon to set the previous image in the playlist\n"
+    printf "waypaper-engine previous-image - Send a request to the daemon to set the previous image in the playlist\n"
     echo
 
   else
-    printf "wpe-cli previous-image - Send a request to the daemon to set the previous image in the playlist\n"
+    printf "waypaper-engine previous-image - Send a request to the daemon to set the previous image in the playlist\n"
     echo
 
   fi
@@ -150,8 +151,8 @@ wpe_cli_previous_image_usage() {
   echo
 
   printf "%s\n" "Usage:"
-  printf "  wpe-cli previous-image\n"
-  printf "  wpe-cli previous-image --help | -h\n"
+  printf "  waypaper-engine previous-image\n"
+  printf "  waypaper-engine previous-image --help | -h\n"
   echo
 
   # :command.long_usage
@@ -165,20 +166,58 @@ wpe_cli_previous_image_usage() {
 
     # :command.usage_examples
     printf "%s\n" "Examples:"
-    printf "  wpe-cli previous-image\n"
+    printf "  waypaper-engine previous-image\n"
     echo
 
   fi
 }
 
 # :command.usage
-wpe_cli_stop_daemon_usage() {
+waypaper_engine_kill_daemon_usage() {
   if [[ -n $long_usage ]]; then
-    printf "wpe-cli stop-daemon - Send a request to the daemon to stop it\n"
+    printf "waypaper-engine kill-daemon - Kill the waypaper daemon process\n"
     echo
 
   else
-    printf "wpe-cli stop-daemon - Send a request to the daemon to stop it\n"
+    printf "waypaper-engine kill-daemon - Kill the waypaper daemon process\n"
+    echo
+
+  fi
+
+  printf "Alias: kd\n"
+  echo
+
+  printf "%s\n" "Usage:"
+  printf "  waypaper-engine kill-daemon\n"
+  printf "  waypaper-engine kill-daemon --help | -h\n"
+  echo
+
+  # :command.long_usage
+  if [[ -n $long_usage ]]; then
+    printf "%s\n" "Options:"
+
+    # :command.usage_fixed_flags
+    printf "  %s\n" "--help, -h"
+    printf "    Show this help\n"
+    echo
+
+    # :command.usage_examples
+    printf "%s\n" "Examples:"
+    printf "  waypaper-engine kill-daemon\n"
+    printf "  waypaper-engine kd\n"
+    echo
+
+  fi
+}
+
+# :command.usage
+waypaper_engine_stop_daemon_usage() {
+  if [[ -n $long_usage ]]; then
+    printf "waypaper-engine stop-daemon - Send stop command to daemon process\n"
+    echo
+
+  else
+    printf "waypaper-engine stop-daemon - Send stop command to daemon process\n"
     echo
 
   fi
@@ -187,8 +226,8 @@ wpe_cli_stop_daemon_usage() {
   echo
 
   printf "%s\n" "Usage:"
-  printf "  wpe-cli stop-daemon\n"
-  printf "  wpe-cli stop-daemon --help | -h\n"
+  printf "  waypaper-engine stop-daemon\n"
+  printf "  waypaper-engine stop-daemon --help | -h\n"
   echo
 
   # :command.long_usage
@@ -202,20 +241,21 @@ wpe_cli_stop_daemon_usage() {
 
     # :command.usage_examples
     printf "%s\n" "Examples:"
-    printf "  wpe-cli stop-daemon\n"
+    printf "  waypaper-engine stop-daemon\n"
+    printf "  waypaper-engine sd\n"
     echo
 
   fi
 }
 
 # :command.usage
-wpe_cli_pause_playlist_usage() {
+waypaper_engine_pause_playlist_usage() {
   if [[ -n $long_usage ]]; then
-    printf "wpe-cli pause-playlist - Send a request to the daemon to pause the current playlist\n"
+    printf "waypaper-engine pause-playlist - Send a request to the daemon to pause the current playlist\n"
     echo
 
   else
-    printf "wpe-cli pause-playlist - Send a request to the daemon to pause the current playlist\n"
+    printf "waypaper-engine pause-playlist - Send a request to the daemon to pause the current playlist\n"
     echo
 
   fi
@@ -224,8 +264,8 @@ wpe_cli_pause_playlist_usage() {
   echo
 
   printf "%s\n" "Usage:"
-  printf "  wpe-cli pause-playlist\n"
-  printf "  wpe-cli pause-playlist --help | -h\n"
+  printf "  waypaper-engine pause-playlist\n"
+  printf "  waypaper-engine pause-playlist --help | -h\n"
   echo
 
   # :command.long_usage
@@ -239,20 +279,20 @@ wpe_cli_pause_playlist_usage() {
 
     # :command.usage_examples
     printf "%s\n" "Examples:"
-    printf "  wpe-cli pause-playlist\n"
+    printf "  waypaper-engine pause-playlist\n"
     echo
 
   fi
 }
 
 # :command.usage
-wpe_cli_resume_playlist_usage() {
+waypaper_engine_resume_playlist_usage() {
   if [[ -n $long_usage ]]; then
-    printf "wpe-cli resume-playlist - Send a request to the daemon to resume the current playlist\n"
+    printf "waypaper-engine resume-playlist - Send a request to the daemon to resume the current playlist\n"
     echo
 
   else
-    printf "wpe-cli resume-playlist - Send a request to the daemon to resume the current playlist\n"
+    printf "waypaper-engine resume-playlist - Send a request to the daemon to resume the current playlist\n"
     echo
 
   fi
@@ -261,8 +301,8 @@ wpe_cli_resume_playlist_usage() {
   echo
 
   printf "%s\n" "Usage:"
-  printf "  wpe-cli resume-playlist\n"
-  printf "  wpe-cli resume-playlist --help | -h\n"
+  printf "  waypaper-engine resume-playlist\n"
+  printf "  waypaper-engine resume-playlist --help | -h\n"
   echo
 
   # :command.long_usage
@@ -276,20 +316,20 @@ wpe_cli_resume_playlist_usage() {
 
     # :command.usage_examples
     printf "%s\n" "Examples:"
-    printf "  wpe-cli resume-playlist\n"
+    printf "  waypaper-engine resume-playlist\n"
     echo
 
   fi
 }
 
 # :command.usage
-wpe_cli_stop_playlist_usage() {
+waypaper_engine_stop_playlist_usage() {
   if [[ -n $long_usage ]]; then
-    printf "wpe-cli stop-playlist - Send a request to the daemon to stop the current playlist\n"
+    printf "waypaper-engine stop-playlist - Send a request to the daemon to stop the current playlist\n"
     echo
 
   else
-    printf "wpe-cli stop-playlist - Send a request to the daemon to stop the current playlist\n"
+    printf "waypaper-engine stop-playlist - Send a request to the daemon to stop the current playlist\n"
     echo
 
   fi
@@ -298,8 +338,8 @@ wpe_cli_stop_playlist_usage() {
   echo
 
   printf "%s\n" "Usage:"
-  printf "  wpe-cli stop-playlist\n"
-  printf "  wpe-cli stop-playlist --help | -h\n"
+  printf "  waypaper-engine stop-playlist\n"
+  printf "  waypaper-engine stop-playlist --help | -h\n"
   echo
 
   # :command.long_usage
@@ -313,20 +353,20 @@ wpe_cli_stop_playlist_usage() {
 
     # :command.usage_examples
     printf "%s\n" "Examples:"
-    printf "  wpe-cli stop-playlist\n"
+    printf "  waypaper-engine stop-playlist\n"
     echo
 
   fi
 }
 
 # :command.usage
-wpe_cli_run_app_usage() {
+waypaper_engine_run_usage() {
   if [[ -n $long_usage ]]; then
-    printf "wpe-cli run-app - run the waypaper engine application\n"
+    printf "waypaper-engine run - run the waypaper engine application\n"
     echo
 
   else
-    printf "wpe-cli run-app - run the waypaper engine application\n"
+    printf "waypaper-engine run - run the waypaper engine application\n"
     echo
 
   fi
@@ -335,13 +375,19 @@ wpe_cli_run_app_usage() {
   echo
 
   printf "%s\n" "Usage:"
-  printf "  wpe-cli run-app\n"
-  printf "  wpe-cli run-app --help | -h\n"
+  printf "  waypaper-engine run [OPTIONS]\n"
+  printf "  waypaper-engine run --help | -h\n"
   echo
 
   # :command.long_usage
   if [[ -n $long_usage ]]; then
     printf "%s\n" "Options:"
+
+    # :command.usage_flags
+    # :flag.usage
+    printf "  %s\n" "--script, -s SCRIPT"
+    printf "    Script to run on each image set, the image path will be passed as argument.\n"
+    echo
 
     # :command.usage_fixed_flags
     printf "  %s\n" "--help, -h"
@@ -350,30 +396,32 @@ wpe_cli_run_app_usage() {
 
     # :command.usage_examples
     printf "%s\n" "Examples:"
-    printf "  wpe-cli run-app\n"
+    printf "  waypaper-engine\n"
+    printf "  waypaper-engine run\n"
+    printf "  waypaper-engine r -s \"/path/to/your/script.sh\"\n"
     echo
 
   fi
 }
 
 # :command.usage
-wpe_cli_set_random_image_usage() {
+waypaper_engine_random_usage() {
   if [[ -n $long_usage ]]; then
-    printf "wpe-cli set-random-image - set a random image from the gallery\n"
+    printf "waypaper-engine random - set a random image from the gallery\n"
     echo
 
   else
-    printf "wpe-cli set-random-image - set a random image from the gallery\n"
+    printf "waypaper-engine random - set a random image from the gallery\n"
     echo
 
   fi
 
-  printf "Alias: sri\n"
+  printf "Alias: ri\n"
   echo
 
   printf "%s\n" "Usage:"
-  printf "  wpe-cli set-random-image\n"
-  printf "  wpe-cli set-random-image --help | -h\n"
+  printf "  waypaper-engine random\n"
+  printf "  waypaper-engine random --help | -h\n"
   echo
 
   # :command.long_usage
@@ -387,7 +435,8 @@ wpe_cli_set_random_image_usage() {
 
     # :command.usage_examples
     printf "%s\n" "Examples:"
-    printf "  wpe-cli set-random-image\n"
+    printf "  waypaper-engine random\n"
+    printf "  waypaper-engine ri\n"
     echo
 
   fi
@@ -447,18 +496,20 @@ inspect_args() {
 
 # :command.command_functions
 # :command.function
-wpe_cli_daemon_command() {
+waypaper_engine_daemon_command() {
   # src/daemon_command.sh
+  LOCATION="/opt/waypaper-engine/resources/daemon/daemon.js"
+
   run_daemon() {
-        waypaper-engine --daemon 2>/dev/null || echo "waypaper engine is not on the path, make sure to add it before running this command"
+        node "$LOCATION" || echo "Cannot start daemon, something went wrong in the installation"
   }
 
-  run_daemon & > /dev/null
+  run_daemon > /dev/null &
 
 }
 
 # :command.function
-wpe_cli_next_image_command() {
+waypaper_engine_next_image_command() {
   # src/next_image_command.sh
 
   SOCKET_CONNECTION='/tmp/waypaper_engine_daemon.sock'
@@ -468,7 +519,7 @@ wpe_cli_next_image_command() {
   }
 
   next_image(){
-    send_message '{"action":"next-image"}' 2>/dev/null || echo "Seems like the daemon is not running, make sure to run 'wpe-cli daemon' first"
+    send_message '{"action":"next-image"}' || echo "Seems like the daemon is not running, make sure to run 'waypaper-engine daemon' first"
   }
 
   next_image
@@ -476,7 +527,7 @@ wpe_cli_next_image_command() {
 }
 
 # :command.function
-wpe_cli_previous_image_command() {
+waypaper_engine_previous_image_command() {
   # src/previous_image_command.sh
   SOCKET_CONNECTION='/tmp/waypaper_engine_daemon.sock'
 
@@ -485,7 +536,7 @@ wpe_cli_previous_image_command() {
   }
 
   previous_image(){
-    send_message '{"action":"previous-image"}' 2>/dev/null || echo "Seems like the daemon is not running, make sure to run 'wpe-cli daemon' first"
+    send_message '{"action":"previous-image"}' || echo "Seems like the daemon is not running, make sure to run 'waypaper-engine daemon' first"
   }
 
   previous_image
@@ -493,7 +544,17 @@ wpe_cli_previous_image_command() {
 }
 
 # :command.function
-wpe_cli_stop_daemon_command() {
+waypaper_engine_kill_daemon_command() {
+  # src/kill_daemon_command.sh
+  kill_daemon() {
+    killall wpe-daemon || echo "Waypaper daemon not running"
+  }
+
+  kill_daemon > /dev/null &
+}
+
+# :command.function
+waypaper_engine_stop_daemon_command() {
   # src/stop_daemon_command.sh
   SOCKET_CONNECTION='/tmp/waypaper_engine_daemon.sock'
 
@@ -502,15 +563,15 @@ wpe_cli_stop_daemon_command() {
   }
 
   stop_daemon(){
-    send_message '{"action":"stop-daemon"}' 2>/dev/null || echo "Seems like the daemon is not running, make sure to run 'wpe-cli daemon' first"
+    send_message '{"action":"stop-daemon"}' || echo "Seems like the daemon is not running, make sure to run 'waypaper-engine daemon' first"
   }
 
-  stop_daemon
+  stop_daemon > /dev/null &
 
 }
 
 # :command.function
-wpe_cli_pause_playlist_command() {
+waypaper_engine_pause_playlist_command() {
   # src/pause_playlist_command.sh
   SOCKET_CONNECTION='/tmp/waypaper_engine_daemon.sock'
 
@@ -519,7 +580,7 @@ wpe_cli_pause_playlist_command() {
   }
 
   pause_playlist(){
-    send_message '{"action":"pause-playlist"}' 2>/dev/null || echo "Seems like the daemon is not running, make sure to run 'wpe-cli daemon' first"
+    send_message '{"action":"pause-playlist"}' || echo "Seems like the daemon is not running, make sure to run 'waypaper-engine daemon' first"
   }
 
   pause_playlist
@@ -527,7 +588,7 @@ wpe_cli_pause_playlist_command() {
 }
 
 # :command.function
-wpe_cli_resume_playlist_command() {
+waypaper_engine_resume_playlist_command() {
   # src/resume_playlist_command.sh
   SOCKET_CONNECTION='/tmp/waypaper_engine_daemon.sock'
 
@@ -536,7 +597,7 @@ wpe_cli_resume_playlist_command() {
   }
 
   resume_playlist(){
-    send_message '{"action":"resume-playlist"}' 2>/dev/null || echo "Seems like the daemon is not running, make sure to run 'wpe-cli daemon' first"
+    send_message '{"action":"resume-playlist"}' || echo "Seems like the daemon is not running, make sure to run 'waypaper-engine daemon' first"
   }
 
   resume_playlist
@@ -544,7 +605,7 @@ wpe_cli_resume_playlist_command() {
 }
 
 # :command.function
-wpe_cli_stop_playlist_command() {
+waypaper_engine_stop_playlist_command() {
   # src/stop_playlist_command.sh
   SOCKET_CONNECTION='/tmp/waypaper_engine_daemon.sock'
 
@@ -553,17 +614,26 @@ wpe_cli_stop_playlist_command() {
   }
 
   stop_playlist(){
-    send_message '{"action":"stop-playlist"}' 2>/dev/null || echo "Seems like the daemon is not running, make sure to run 'wpe-cli daemon' first"
+    send_message '{"action":"stop-playlist"}' || echo "Seems like the daemon is not running, make sure to run 'waypaper-engine daemon' first"
   }
 
   stop_playlist
 }
 
 # :command.function
-wpe_cli_run_app_command() {
-  # src/run_app_command.sh
+waypaper_engine_run_command() {
+  # src/run_command.sh
+  LOCATION="/usr/opt/waypaper-engine"
+  COMMAND="$LOCATION"/waypaper-engine-bin
+  COMMAND="$COMMAND --ozone-platform-hint=auto"
+
+  echo ${args[--script]}
+  if [ -n "${args[--script]}" ]; then
+      COMMAND="$COMMAND --script=${args[--script]}"
+  fi
+
   run_app(){
-    waypaper-engine --ozone-platform=wayland --enable-features=UseOzonePlatform 2>/dev/null || echo "waypaper engine is not on the path, make sure to add it before running this command"
+     $COMMAND || echo "Something went wrong, make sure waypaper engine is installed correctly"
   }
 
   run_app >/dev/null &
@@ -571,8 +641,8 @@ wpe_cli_run_app_command() {
 }
 
 # :command.function
-wpe_cli_set_random_image_command() {
-  # src/set_random_image_command.sh
+waypaper_engine_random_command() {
+  # src/random_command.sh
   SOCKET_CONNECTION='/tmp/waypaper_engine_daemon.sock'
 
   send_message(){
@@ -580,7 +650,7 @@ wpe_cli_set_random_image_command() {
   }
 
   random_image(){
-    send_message '{"action":"random-image"}' 2>/dev/null || echo "Seems like the daemon is not running, make sure to run 'wpe-cli daemon' first"
+    send_message '{"action":"random-image"}' || echo "Seems like the daemon is not running, make sure to run 'waypaper-engine daemon' first"
   }
 
   random_image
@@ -599,7 +669,7 @@ parse_requirements() {
 
       --help | -h)
         long_usage=yes
-        wpe_cli_usage
+        waypaper_engine_usage
         exit
         ;;
 
@@ -619,75 +689,78 @@ parse_requirements() {
     daemon | d)
       action="daemon"
       shift
-      wpe_cli_daemon_parse_requirements "$@"
+      waypaper_engine_daemon_parse_requirements "$@"
       shift $#
       ;;
 
     next-image | ni)
       action="next-image"
       shift
-      wpe_cli_next_image_parse_requirements "$@"
+      waypaper_engine_next_image_parse_requirements "$@"
       shift $#
       ;;
 
     previous-image | pi)
       action="previous-image"
       shift
-      wpe_cli_previous_image_parse_requirements "$@"
+      waypaper_engine_previous_image_parse_requirements "$@"
+      shift $#
+      ;;
+
+    kill-daemon | kd)
+      action="kill-daemon"
+      shift
+      waypaper_engine_kill_daemon_parse_requirements "$@"
       shift $#
       ;;
 
     stop-daemon | sd)
       action="stop-daemon"
       shift
-      wpe_cli_stop_daemon_parse_requirements "$@"
+      waypaper_engine_stop_daemon_parse_requirements "$@"
       shift $#
       ;;
 
     pause-playlist | pp)
       action="pause-playlist"
       shift
-      wpe_cli_pause_playlist_parse_requirements "$@"
+      waypaper_engine_pause_playlist_parse_requirements "$@"
       shift $#
       ;;
 
     resume-playlist | rp)
       action="resume-playlist"
       shift
-      wpe_cli_resume_playlist_parse_requirements "$@"
+      waypaper_engine_resume_playlist_parse_requirements "$@"
       shift $#
       ;;
 
     stop-playlist | sp)
       action="stop-playlist"
       shift
-      wpe_cli_stop_playlist_parse_requirements "$@"
+      waypaper_engine_stop_playlist_parse_requirements "$@"
       shift $#
       ;;
 
-    run-app | r)
-      action="run-app"
+    run | r)
+      action="run"
       shift
-      wpe_cli_run_app_parse_requirements "$@"
+      waypaper_engine_run_parse_requirements "$@"
       shift $#
       ;;
 
-    set-random-image | sri)
-      action="set-random-image"
+    random | ri)
+      action="random"
       shift
-      wpe_cli_set_random_image_parse_requirements "$@"
+      waypaper_engine_random_parse_requirements "$@"
       shift $#
       ;;
 
     # :command.command_fallback
-    "")
-      wpe_cli_usage >&2
-      exit 1
-      ;;
-
     *)
-      printf "invalid command: %s\n" "$action" >&2
-      exit 1
+      action="run"
+      waypaper_engine_run_parse_requirements "$@"
+      shift $#
       ;;
 
   esac
@@ -716,13 +789,13 @@ parse_requirements() {
 }
 
 # :command.parse_requirements
-wpe_cli_daemon_parse_requirements() {
+waypaper_engine_daemon_parse_requirements() {
   # :command.fixed_flags_filter
   while [[ $# -gt 0 ]]; do
     case "${1:-}" in
       --help | -h)
         long_usage=yes
-        wpe_cli_daemon_usage
+        waypaper_engine_daemon_usage
         exit
         ;;
 
@@ -760,13 +833,13 @@ wpe_cli_daemon_parse_requirements() {
 }
 
 # :command.parse_requirements
-wpe_cli_next_image_parse_requirements() {
+waypaper_engine_next_image_parse_requirements() {
   # :command.fixed_flags_filter
   while [[ $# -gt 0 ]]; do
     case "${1:-}" in
       --help | -h)
         long_usage=yes
-        wpe_cli_next_image_usage
+        waypaper_engine_next_image_usage
         exit
         ;;
 
@@ -804,13 +877,13 @@ wpe_cli_next_image_parse_requirements() {
 }
 
 # :command.parse_requirements
-wpe_cli_previous_image_parse_requirements() {
+waypaper_engine_previous_image_parse_requirements() {
   # :command.fixed_flags_filter
   while [[ $# -gt 0 ]]; do
     case "${1:-}" in
       --help | -h)
         long_usage=yes
-        wpe_cli_previous_image_usage
+        waypaper_engine_previous_image_usage
         exit
         ;;
 
@@ -848,13 +921,57 @@ wpe_cli_previous_image_parse_requirements() {
 }
 
 # :command.parse_requirements
-wpe_cli_stop_daemon_parse_requirements() {
+waypaper_engine_kill_daemon_parse_requirements() {
   # :command.fixed_flags_filter
   while [[ $# -gt 0 ]]; do
     case "${1:-}" in
       --help | -h)
         long_usage=yes
-        wpe_cli_stop_daemon_usage
+        waypaper_engine_kill_daemon_usage
+        exit
+        ;;
+
+      *)
+        break
+        ;;
+
+    esac
+  done
+
+  # :command.command_filter
+  action="kill-daemon"
+
+  # :command.parse_requirements_while
+  while [[ $# -gt 0 ]]; do
+    key="$1"
+    case "$key" in
+
+      -?*)
+        printf "invalid option: %s\n" "$key" >&2
+        exit 1
+        ;;
+
+      *)
+        # :command.parse_requirements_case
+        # :command.parse_requirements_case_simple
+        printf "invalid argument: %s\n" "$key" >&2
+        exit 1
+
+        ;;
+
+    esac
+  done
+
+}
+
+# :command.parse_requirements
+waypaper_engine_stop_daemon_parse_requirements() {
+  # :command.fixed_flags_filter
+  while [[ $# -gt 0 ]]; do
+    case "${1:-}" in
+      --help | -h)
+        long_usage=yes
+        waypaper_engine_stop_daemon_usage
         exit
         ;;
 
@@ -892,13 +1009,13 @@ wpe_cli_stop_daemon_parse_requirements() {
 }
 
 # :command.parse_requirements
-wpe_cli_pause_playlist_parse_requirements() {
+waypaper_engine_pause_playlist_parse_requirements() {
   # :command.fixed_flags_filter
   while [[ $# -gt 0 ]]; do
     case "${1:-}" in
       --help | -h)
         long_usage=yes
-        wpe_cli_pause_playlist_usage
+        waypaper_engine_pause_playlist_usage
         exit
         ;;
 
@@ -936,13 +1053,13 @@ wpe_cli_pause_playlist_parse_requirements() {
 }
 
 # :command.parse_requirements
-wpe_cli_resume_playlist_parse_requirements() {
+waypaper_engine_resume_playlist_parse_requirements() {
   # :command.fixed_flags_filter
   while [[ $# -gt 0 ]]; do
     case "${1:-}" in
       --help | -h)
         long_usage=yes
-        wpe_cli_resume_playlist_usage
+        waypaper_engine_resume_playlist_usage
         exit
         ;;
 
@@ -980,13 +1097,13 @@ wpe_cli_resume_playlist_parse_requirements() {
 }
 
 # :command.parse_requirements
-wpe_cli_stop_playlist_parse_requirements() {
+waypaper_engine_stop_playlist_parse_requirements() {
   # :command.fixed_flags_filter
   while [[ $# -gt 0 ]]; do
     case "${1:-}" in
       --help | -h)
         long_usage=yes
-        wpe_cli_stop_playlist_usage
+        waypaper_engine_stop_playlist_usage
         exit
         ;;
 
@@ -1024,13 +1141,13 @@ wpe_cli_stop_playlist_parse_requirements() {
 }
 
 # :command.parse_requirements
-wpe_cli_run_app_parse_requirements() {
+waypaper_engine_run_parse_requirements() {
   # :command.fixed_flags_filter
   while [[ $# -gt 0 ]]; do
     case "${1:-}" in
       --help | -h)
         long_usage=yes
-        wpe_cli_run_app_usage
+        waypaper_engine_run_usage
         exit
         ;;
 
@@ -1042,12 +1159,26 @@ wpe_cli_run_app_parse_requirements() {
   done
 
   # :command.command_filter
-  action="run-app"
+  action="run"
 
   # :command.parse_requirements_while
   while [[ $# -gt 0 ]]; do
     key="$1"
     case "$key" in
+      # :flag.case
+      --script | -s)
+
+        # :flag.case_arg
+        if [[ -n ${2+x} ]]; then
+
+          args['--script']="$2"
+          shift
+          shift
+        else
+          printf "%s\n" "--script requires an argument: --script, -s SCRIPT" >&2
+          exit 1
+        fi
+        ;;
 
       -?*)
         printf "invalid option: %s\n" "$key" >&2
@@ -1068,13 +1199,13 @@ wpe_cli_run_app_parse_requirements() {
 }
 
 # :command.parse_requirements
-wpe_cli_set_random_image_parse_requirements() {
+waypaper_engine_random_parse_requirements() {
   # :command.fixed_flags_filter
   while [[ $# -gt 0 ]]; do
     case "${1:-}" in
       --help | -h)
         long_usage=yes
-        wpe_cli_set_random_image_usage
+        waypaper_engine_random_usage
         exit
         ;;
 
@@ -1086,7 +1217,7 @@ wpe_cli_set_random_image_parse_requirements() {
   done
 
   # :command.command_filter
-  action="set-random-image"
+  action="random"
 
   # :command.parse_requirements_while
   while [[ $# -gt 0 ]]; do
@@ -1113,7 +1244,7 @@ wpe_cli_set_random_image_parse_requirements() {
 
 # :command.initialize
 initialize() {
-  version="0.1.0"
+  version="1.1.0"
   long_usage=''
   set -e
 
@@ -1129,15 +1260,16 @@ run() {
   parse_requirements "${input[@]}"
 
   case "$action" in
-    "daemon") wpe_cli_daemon_command ;;
-    "next-image") wpe_cli_next_image_command ;;
-    "previous-image") wpe_cli_previous_image_command ;;
-    "stop-daemon") wpe_cli_stop_daemon_command ;;
-    "pause-playlist") wpe_cli_pause_playlist_command ;;
-    "resume-playlist") wpe_cli_resume_playlist_command ;;
-    "stop-playlist") wpe_cli_stop_playlist_command ;;
-    "run-app") wpe_cli_run_app_command ;;
-    "set-random-image") wpe_cli_set_random_image_command ;;
+    "daemon") waypaper_engine_daemon_command ;;
+    "next-image") waypaper_engine_next_image_command ;;
+    "previous-image") waypaper_engine_previous_image_command ;;
+    "kill-daemon") waypaper_engine_kill_daemon_command ;;
+    "stop-daemon") waypaper_engine_stop_daemon_command ;;
+    "pause-playlist") waypaper_engine_pause_playlist_command ;;
+    "resume-playlist") waypaper_engine_resume_playlist_command ;;
+    "stop-playlist") waypaper_engine_stop_playlist_command ;;
+    "run") waypaper_engine_run_command ;;
+    "random") waypaper_engine_random_command ;;
   esac
 }
 

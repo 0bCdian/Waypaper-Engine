@@ -5,7 +5,7 @@ send_message(){
 }
 
 stop_daemon(){
-  send_message '{"action":"stop-daemon"}' 2>/dev/null || echo "Seems like the daemon is not running, make sure to run 'wpe-cli daemon' first"
+  send_message '{"action":"stop-daemon"}' || echo "Seems like the daemon is not running, make sure to run 'waypaper-engine daemon' first"
 }
 
-stop_daemon
+stop_daemon > /dev/null &

@@ -33,9 +33,14 @@ export class Playlist {
   setImage(imageName: string) {
     const imageLocation = join(configuration.IMAGES_DIR, imageName)
     const command = this.getSwwwCommandFromConfiguration(imageLocation)
-    if (command) {
-      notifyImageSet(imageName, imageLocation)
-      execSync(command)
+    notifyImageSet(imageName, imageLocation)
+    execSync(command)
+    if (configuration.script !== undefined) {
+      try {
+        execSync(`${configuration.script} ${imageLocation}`)
+      } catch (error) {
+        notify(error)
+      }
     }
   }
   pause() {
@@ -313,17 +318,16 @@ export class Playlist {
       case 'alias':
         transitionPos = swwwConfig.transitionPosition
     }
-    if (!monitors) {
-      const baseCommand = `swww img "${imagePath}" --resize="${swwwConfig.resizeType}" --fill-color "${swwwConfig.fillColor}" --filter ${swwwConfig.filterType} --transition-step ${swwwConfig.transitionStep} --transition-duration ${swwwConfig.transitionDuration} --transition-fps ${swwwConfig.transitionFPS} --transition-angle ${swwwConfig.transitionAngle} --transition-pos ${transitionPos} ${inverty} --transition-bezier ${swwwConfig.transitionBezier} --transition-wave "${swwwConfig.transitionWaveX},${swwwConfig.transitionWaveY}"`
-      if (!configuration.app.settings.swwwAnimations || !this.showAnimations) {
-        const command = baseCommand.concat(' --transition-type=none')
-        return command
-      } else {
-        const command = baseCommand.concat(
-          ` --transition-type=${swwwConfig.transitionType}`
-        )
-        return command
-      }
+
+    const baseCommand = `swww img "${imagePath}" --resize="${swwwConfig.resizeType}" --fill-color "${swwwConfig.fillColor}" --filter ${swwwConfig.filterType} --transition-step ${swwwConfig.transitionStep} --transition-duration ${swwwConfig.transitionDuration} --transition-fps ${swwwConfig.transitionFPS} --transition-angle ${swwwConfig.transitionAngle} --transition-pos ${transitionPos} ${inverty} --transition-bezier ${swwwConfig.transitionBezier} --transition-wave "${swwwConfig.transitionWaveX},${swwwConfig.transitionWaveY}"`
+    if (!configuration.app.settings.swwwAnimations || !this.showAnimations) {
+      const command = baseCommand.concat(' --transition-type=none')
+      return command
+    } else {
+      const command = baseCommand.concat(
+        ` --transition-type=${swwwConfig.transitionType}`
+      )
+      return command
     }
   }
   timeOfDayPlayer() {

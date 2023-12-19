@@ -85,3 +85,5 @@ export type action =
   | { type: STORE_ACTIONS.SET_SKELETONS_TO_SHOW; payload: string[] }
   | { type: STORE_ACTIONS.SET_FILTERS; payload: Filters }
   | { type: STORE_ACTIONS.RESET_IMAGES_ARRAY; payload: Image[] }
+
+export type openFileAction = 'file' | 'folder'

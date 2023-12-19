@@ -1,5 +1,7 @@
+LOCATION="/opt/waypaper-engine/resources/daemon/daemon.js"
+
 run_daemon() {
-      waypaper-engine --daemon 2>/dev/null || echo "waypaper engine is not on the path, make sure to add it before running this command"
+      node "$LOCATION" || echo "Cannot start daemon, something went wrong in the installation"
 }
 
-run_daemon & > /dev/null
+run_daemon > /dev/null &

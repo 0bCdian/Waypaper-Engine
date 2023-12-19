@@ -36,11 +36,6 @@ import { AppConfigDB } from '../src/routes/AppConfiguration'
 import config from './database/globalConfig'
 import { Image, rendererPlaylist } from '../src/types/rendererTypes'
 
-if (process.argv[1] === '--daemon' || process.argv[3] === '--daemon') {
-  initWaypaperDaemon().then(() => {
-    app.exit(0)
-  })
-}
 const gotTheLock = app.requestSingleInstanceLock()
 if (!gotTheLock) {
   app.exit(1)
@@ -51,6 +46,13 @@ if (!gotTheLock) {
       win.focus()
     }
   })
+}
+const scriptFlag = process.argv.find((arg) => {
+  return arg.includes('--script')
+})
+if (scriptFlag) {
+  const userScriptLocation = scriptFlag.split('=')[1]
+  config.script = userScriptLocation
 }
 process.env.DIST = join(__dirname, '../dist')
 process.env.PUBLIC = app.isPackaged

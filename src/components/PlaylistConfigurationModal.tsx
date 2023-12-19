@@ -235,6 +235,9 @@ const PlaylistConfigurationModal = () => {
           </button>
         </div>
       </form>
+      <form method='dialog' className='modal-backdrop'>
+        <button>close</button>
+      </form>
     </dialog>
   )
 }

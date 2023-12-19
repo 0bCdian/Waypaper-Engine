@@ -86,6 +86,7 @@ const LoadPlaylistModal = ({
     <dialog id='LoadPlaylistModal' className='modal' ref={modalRef}>
       <div className='modal-box container flex flex-col'>
         <h2 className='font-bold text-4xl text-center py-3 '>Load Playlist</h2>
+
         <div className='divider'></div>
         {playlistsInDB.length === 0 && (
           <section className='flex flex-col gap-3'>
@@ -165,6 +166,9 @@ const LoadPlaylistModal = ({
           </form>
         )}
       </div>
+      <form method='dialog' className='modal-backdrop'>
+        <button>close</button>
+      </form>
     </dialog>
   )
 }

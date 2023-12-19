@@ -7,13 +7,18 @@ import {
   ActivePlaylist,
   imageInPlaylist
 } from './types/types'
-import { Image, rendererPlaylist } from '../src/types/rendererTypes'
+import {
+  Image,
+  openFileAction,
+  rendererPlaylist
+} from '../src/types/rendererTypes'
 import { join } from 'node:path'
 import { swwwConfig } from './database/swwwConfig'
 import { AppConfigDB } from '../src/routes/AppConfiguration'
 
 export const ELECTRON_API = {
-  openFiles: () => ipcRenderer.invoke('openFiles'),
+  openFiles: (action: openFileAction) =>
+    ipcRenderer.invoke('openFiles', action),
   handleOpenImages: (imagesObject: imagesObject): Promise<Image[]> => {
     return ipcRenderer.invoke('handleOpenImages', imagesObject)
   },

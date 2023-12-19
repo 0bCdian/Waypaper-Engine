@@ -88,6 +88,9 @@ const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
           Save
         </button>
       </form>
+      <form method='dialog' className='modal-backdrop'>
+        <button>close</button>
+      </form>
     </dialog>
   )
 }

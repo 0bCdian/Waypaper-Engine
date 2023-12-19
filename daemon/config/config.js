@@ -19,6 +19,7 @@ var configuration = {
             configuration.app.settings = dbOperationsDaemon_1.default.readAppConfig();
         }
     },
+    script: undefined,
     IMAGES_DIR: (0, node_path_1.join)((0, node_os_1.homedir)(), '.waypaper_engine', 'images'),
     SOCKET_PATH: '/tmp/waypaper_engine_daemon.sock'
 };

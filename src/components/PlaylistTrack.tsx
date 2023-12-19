@@ -14,7 +14,7 @@ import playlistStore from '../hooks/playlistStore'
 import openImagesStore from '../hooks/useOpenImages'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useImages } from '../hooks/imagesStore'
-import { Image } from '../types/rendererTypes'
+import { Image, openFileAction } from '../types/rendererTypes'
 const { stopPlaylist } = window.API_RENDERER
 function PlaylistTrack() {
   const {
@@ -42,13 +42,14 @@ function PlaylistTrack() {
       movePlaylistArrayOrder(newArrayOrder)
     }
   }
-  const handleClickAddImages = () => {
+  const handleClickAddImages = (action: openFileAction) => {
     openImages({
       setSkeletons,
       setImagesArray,
       addMultipleImagesToPlaylist,
       addImageToPlaylist,
-      currentPlaylist: readPlaylist()
+      currentPlaylist: readPlaylist(),
+      action
     })
   }
   let sortingCriteria: number[] = []
@@ -94,6 +95,7 @@ function PlaylistTrack() {
       clearPlaylist()
     }
   }, [playlist.images])
+
   return (
     <div className='w-full flex flex-col gap-2 '>
       <div className='flex justify-between items-center mb-2'>
@@ -103,28 +105,58 @@ function PlaylistTrack() {
               ? `Playlist (${playlistArray.length})`
               : 'Playlist'}
           </span>
-          <div className='tooltip tooltip-success' data-tip='Add Images'>
-            <button
-              onClick={isActive ? undefined : handleClickAddImages}
-              className='btn btn-primary rounded-lg'
+          <div className='dropdown dropdown-top'>
+            <div
+              tabIndex={0}
+              role='button'
+              className='btn btn-primary rounded-lg m-1'
             >
-              Add
-            </button>
+              Add images
+            </div>
+            <ul
+              tabIndex={0}
+              className='dropdown-content mb-1 bg-base-100 z-[1] menu p-2 shadow  rounded-box w-52'
+            >
+              <li>
+                <a
+                  className='text-lg text-base-content'
+                  onClick={
+                    isActive
+                      ? undefined
+                      : () => {
+                          handleClickAddImages('file')
+                        }
+                  }
+                >
+                  Individual images
+                </a>
+              </li>
+              <li>
+                <a
+                  className='text-lg text-base-content'
+                  onClick={
+                    isActive
+                      ? undefined
+                      : () => {
+                          handleClickAddImages('folder')
+                        }
+                  }
+                >
+                  Image directory
+                </a>
+              </li>
+            </ul>
           </div>
-          <div
-            className='tooltip tooltip-success'
-            data-tip='Load Playlist for configuration and plays it'
+          <button
+            onClick={() => {
+              // @ts-ignore
+              window.LoadPlaylistModal.showModal()
+            }}
+            className='btn btn-primary rounded-lg'
           >
-            <button
-              onClick={() => {
-                // @ts-ignore
-                window.LoadPlaylistModal.showModal()
-              }}
-              className='btn btn-primary rounded-lg'
-            >
-              Load
-            </button>
-          </div>
+            Load Playlist
+          </button>
+
           <AnimatePresence mode='sync'>
             {playlist.images.length > 1 && (
               <>
@@ -172,7 +204,7 @@ function PlaylistTrack() {
           {playlist.images.length > 1 && (
             <div
               className='tooltip tooltip-success'
-              data-tip={`Clears and stops playlist ${playlist.name}`}
+              data-tip={`Clears and stops "${playlist.name}"`}
             >
               <motion.button
                 initial={{ y: 100, opacity: 0 }}
@@ -186,7 +218,7 @@ function PlaylistTrack() {
                   stopPlaylist()
                 }}
               >
-                Delete
+                Clear
               </motion.button>
             </div>
           )}

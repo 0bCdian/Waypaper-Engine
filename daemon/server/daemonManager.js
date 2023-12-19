@@ -9,7 +9,6 @@ var notifications_1 = require("../utils/notifications");
 var config_1 = __importDefault(require("../config/config"));
 function daemonManager(data, socket, playlistController, daemonServer) {
     var message = JSON.parse(data.toString());
-    console.log(message);
     switch (message.action) {
         case daemonTypes_1.ACTIONS.STOP_DAEMON:
             var stopMessage = playlistController.stop(false);

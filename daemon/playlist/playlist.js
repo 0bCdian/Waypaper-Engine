@@ -24,9 +24,15 @@ var Playlist = /** @class */ (function () {
     Playlist.prototype.setImage = function (imageName) {
         var imageLocation = (0, node_path_1.join)(config_1.default.IMAGES_DIR, imageName);
         var command = this.getSwwwCommandFromConfiguration(imageLocation);
-        if (command) {
-            (0, notifications_1.notifyImageSet)(imageName, imageLocation);
-            (0, node_child_process_1.execSync)(command);
+        (0, notifications_1.notifyImageSet)(imageName, imageLocation);
+        (0, node_child_process_1.execSync)(command);
+        if (config_1.default.script !== undefined) {
+            try {
+                (0, node_child_process_1.execSync)("".concat(config_1.default.script, " ").concat(imageLocation));
+            }
+            catch (error) {
+                (0, notifications_1.notify)(error);
+            }
         }
     };
     Playlist.prototype.pause = function () {
@@ -296,16 +302,14 @@ var Playlist = /** @class */ (function () {
             case 'alias':
                 transitionPos = swwwConfig.transitionPosition;
         }
-        if (!monitors) {
-            var baseCommand = "swww img \"".concat(imagePath, "\" --resize=\"").concat(swwwConfig.resizeType, "\" --fill-color \"").concat(swwwConfig.fillColor, "\" --filter ").concat(swwwConfig.filterType, " --transition-step ").concat(swwwConfig.transitionStep, " --transition-duration ").concat(swwwConfig.transitionDuration, " --transition-fps ").concat(swwwConfig.transitionFPS, " --transition-angle ").concat(swwwConfig.transitionAngle, " --transition-pos ").concat(transitionPos, " ").concat(inverty, " --transition-bezier ").concat(swwwConfig.transitionBezier, " --transition-wave \"").concat(swwwConfig.transitionWaveX, ",").concat(swwwConfig.transitionWaveY, "\"");
-            if (!config_1.default.app.settings.swwwAnimations || !this.showAnimations) {
-                var command = baseCommand.concat(' --transition-type=none');
-                return command;
-            }
-            else {
-                var command = baseCommand.concat(" --transition-type=".concat(swwwConfig.transitionType));
-                return command;
-            }
+        var baseCommand = "swww img \"".concat(imagePath, "\" --resize=\"").concat(swwwConfig.resizeType, "\" --fill-color \"").concat(swwwConfig.fillColor, "\" --filter ").concat(swwwConfig.filterType, " --transition-step ").concat(swwwConfig.transitionStep, " --transition-duration ").concat(swwwConfig.transitionDuration, " --transition-fps ").concat(swwwConfig.transitionFPS, " --transition-angle ").concat(swwwConfig.transitionAngle, " --transition-pos ").concat(transitionPos, " ").concat(inverty, " --transition-bezier ").concat(swwwConfig.transitionBezier, " --transition-wave \"").concat(swwwConfig.transitionWaveX, ",").concat(swwwConfig.transitionWaveY, "\"");
+        if (!config_1.default.app.settings.swwwAnimations || !this.showAnimations) {
+            var command = baseCommand.concat(' --transition-type=none');
+            return command;
+        }
+        else {
+            var command = baseCommand.concat(" --transition-type=".concat(swwwConfig.transitionType));
+            return command;
         }
     };
     Playlist.prototype.timeOfDayPlayer = function () {

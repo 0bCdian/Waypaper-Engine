@@ -58,22 +58,22 @@ function Gallery() {
       }
     })
   }, [isEmpty])
-  return (
-    <>
-      {!isEmpty ? (
-        <>
-          <Filters />
-          <PaginatedGallery />
-        </>
-      ) : (
-        <div className='flex justify-center items-center h-screen m-auto'>
-          <div>
-            <AddImagesCard />
-          </div>
+  if (isEmpty) {
+    return (
+      <div className='flex justify-center items-center h-screen m-auto'>
+        <div>
+          <AddImagesCard />
         </div>
-      )}
-    </>
-  )
+      </div>
+    )
+  } else {
+    return (
+      <>
+        <Filters />
+        <PaginatedGallery />
+      </>
+    )
+  }
 }
 
 export default Gallery
