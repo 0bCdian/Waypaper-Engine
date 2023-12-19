@@ -623,7 +623,7 @@ waypaper_engine_stop_playlist_command() {
 # :command.function
 waypaper_engine_run_command() {
   # src/run_command.sh
-  LOCATION="/usr/opt/waypaper-engine"
+  LOCATION="/opt/waypaper-engine"
   COMMAND="$LOCATION"/waypaper-engine-bin
   COMMAND="$COMMAND --ozone-platform-hint=auto"
 
