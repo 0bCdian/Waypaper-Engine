@@ -1,4 +1,4 @@
-LOCATION="/usr/opt/waypaper-engine"
+LOCATION="/opt/waypaper-engine"
 COMMAND="$LOCATION"/waypaper-engine-bin
 COMMAND="$COMMAND --ozone-platform-hint=auto"
 
