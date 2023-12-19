@@ -260,7 +260,7 @@ export async function setImage(
   try {
     await execPomisified(`${command}`)
     if (config.script !== undefined) {
-      execSync(`${config.script} ${imagePath}`)
+      await execPomisified(`${config.script} ${imagePath}`)
     }
   } catch (error) {
     console.error(error)
@@ -536,7 +536,7 @@ export async function setImageExtended(
     })
     Promise.all(commands)
     if (config.script !== undefined) {
-      execSync(`${config.script} ${imageFilePath}`)
+      await execPomisified(`${config.script} ${imageFilePath}`)
     }
   } catch (error) {
     console.error(error)
@@ -576,7 +576,7 @@ export async function setImageAcrossAllMonitors(Image: Image) {
     })
     Promise.all(commands)
     if (config.script !== undefined) {
-      execSync(`${config.script} ${imageFilePath}`)
+      await execPomisified(`${config.script} ${imageFilePath}`)
     }
   } catch (error) {
     console.error(error)

@@ -7,7 +7,7 @@ import {
 import configuration from '../config/config'
 import { notify, notifyImageSet } from '../utils/notifications'
 import { join } from 'node:path'
-import { execSync } from 'node:child_process'
+import { exec, execSync } from 'node:child_process'
 import dbOperations from '../database/dbOperationsDaemon'
 
 export class Playlist {
@@ -37,7 +37,9 @@ export class Playlist {
     execSync(command)
     if (configuration.script !== undefined) {
       try {
-        execSync(`${configuration.script} ${imageLocation}`)
+        exec(`${configuration.script} ${imageLocation}`, (error) => {
+          if (error) throw error
+        })
       } catch (error) {
         notify(error)
       }
