@@ -77,13 +77,19 @@ waypaper_engine_daemon_usage() {
   echo
 
   printf "%s\n" "Usage:"
-  printf "  waypaper-engine daemon\n"
+  printf "  waypaper-engine daemon [OPTIONS]\n"
   printf "  waypaper-engine daemon --help | -h\n"
   echo
 
   # :command.long_usage
   if [[ -n $long_usage ]]; then
     printf "%s\n" "Options:"
+
+    # :command.usage_flags
+    # :flag.usage
+    printf "  %s\n" "--script, -s SCRIPT"
+    printf "    Script to run on each image set, the image path will be passed as argument.\n"
+    echo
 
     # :command.usage_fixed_flags
     printf "  %s\n" "--help, -h"
@@ -93,6 +99,8 @@ waypaper_engine_daemon_usage() {
     # :command.usage_examples
     printf "%s\n" "Examples:"
     printf "  waypaper-engine daemon\n"
+    printf "  waypaper-engine daemon -s \"/path/to/your/script.sh\"\n"
+    printf "  waypaper-engine daemon --script \"/path/to/your/script.sh\"\n"
     echo
 
   fi
@@ -499,9 +507,14 @@ inspect_args() {
 waypaper_engine_daemon_command() {
   # src/daemon_command.sh
   LOCATION="/opt/waypaper-engine/resources/daemon/daemon.js"
+  COMMAND="node $LOCATION"
+
+  if [ -n "${args[--script]}" ]; then
+      COMMAND="$COMMAND --script=${args[--script]}"
+  fi
 
   run_daemon() {
-        node "$LOCATION" || echo "Cannot start daemon, something went wrong in the installation"
+       $COMMAND || echo "Cannot start daemon, something went wrong in the installation"
   }
 
   run_daemon > /dev/null &
@@ -627,7 +640,6 @@ waypaper_engine_run_command() {
   COMMAND="$LOCATION"/waypaper-engine-bin
   COMMAND="$COMMAND --ozone-platform-hint=auto"
 
-  echo ${args[--script]}
   if [ -n "${args[--script]}" ]; then
       COMMAND="$COMMAND --script=${args[--script]}"
   fi
@@ -813,6 +825,20 @@ waypaper_engine_daemon_parse_requirements() {
   while [[ $# -gt 0 ]]; do
     key="$1"
     case "$key" in
+      # :flag.case
+      --script | -s)
+
+        # :flag.case_arg
+        if [[ -n ${2+x} ]]; then
+
+          args['--script']="$2"
+          shift
+          shift
+        else
+          printf "%s\n" "--script requires an argument: --script, -s SCRIPT" >&2
+          exit 1
+        fi
+        ;;
 
       -?*)
         printf "invalid option: %s\n" "$key" >&2

@@ -7,8 +7,17 @@ commands:
     alias: d
     help: Run just the waypaper engine daemon
 
+    flags:
+    - long: --script
+      short: -s
+      arg: script
+      help: Script to run on each image set, the image path will be passed as argument.
+      required: false
+
     examples:
       - waypaper-engine daemon
+      - waypaper-engine daemon -s "/path/to/your/script.sh"
+      - waypaper-engine daemon --script "/path/to/your/script.sh"
 
   - name: next-image
     alias: ni
