@@ -53,7 +53,6 @@ I started this project for two main reasons, one as a learning oportunity, and t
 
 # Install
 
-## App
 Simply install from the aur like so:
 
 ``yay -S waypaper-engine``
@@ -74,6 +73,23 @@ Add to your hyprland.conf the following lines:
 >Make sure the script in question has execution permissions
 >
 > ``waypaper-engine r --script=/absolute/path/to/script``
+
+The scripts are always passsed as an argument the path of the image being set, so you can do stuff like this:
+
+![carbon](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/c594babf-198a-47a0-8dce-5fd8d64b862c)
+
+
+
+
+https://github.com/0bCdian/Waypaper-Engine/assets/101421807/4117b3b8-9a32-45bc-bba4-0c8baa30fe4d
+
+
+
+
+
+
+
+
 
 
 # TODO
