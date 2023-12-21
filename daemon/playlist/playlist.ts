@@ -291,6 +291,7 @@ export class Playlist {
     }
   }
   dayOfWeekPlaylist() {
+    console.log('dayOfWeek func start')
     const now = new Date()
     const endOfDay = new Date(
       now.getFullYear(),
@@ -301,7 +302,11 @@ export class Playlist {
       0
     )
     const millisecondsUntilEndOfDay = endOfDay.getTime() - now.getTime()
-    this.setImage(this.images[now.getDay()].name)
+    let imageIndexToSet = now.getDay()
+    if (imageIndexToSet > this.images.length) {
+      imageIndexToSet = this.images.length - 1
+    }
+    this.setImage(this.images[imageIndexToSet].name)
     this.intervalID = setTimeout(() => {
       this.dayOfWeekPlaylist()
     }, millisecondsUntilEndOfDay)

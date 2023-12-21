@@ -28,7 +28,10 @@ var Playlist = /** @class */ (function () {
         (0, node_child_process_1.execSync)(command);
         if (config_1.default.script !== undefined) {
             try {
-                (0, node_child_process_1.execSync)("".concat(config_1.default.script, " ").concat(imageLocation));
+                (0, node_child_process_1.exec)("".concat(config_1.default.script, " ").concat(imageLocation), function (error) {
+                    if (error)
+                        throw error;
+                });
             }
             catch (error) {
                 (0, notifications_1.notify)(error);
@@ -280,10 +283,15 @@ var Playlist = /** @class */ (function () {
     };
     Playlist.prototype.dayOfWeekPlaylist = function () {
         var _this = this;
+        console.log('dayOfWeek func start');
         var now = new Date();
         var endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
         var millisecondsUntilEndOfDay = endOfDay.getTime() - now.getTime();
-        this.setImage(this.images[now.getDay()].name);
+        var imageIndexToSet = now.getDay();
+        if (imageIndexToSet > this.images.length) {
+            imageIndexToSet = this.images.length - 1;
+        }
+        this.setImage(this.images[imageIndexToSet].name);
         this.intervalID = setTimeout(function () {
             _this.dayOfWeekPlaylist();
         }, millisecondsUntilEndOfDay);

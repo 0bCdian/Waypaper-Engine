@@ -24,6 +24,7 @@
     "react-bezier-curve-editor": "1.1.2",
     "react-dom": "18.2.0",
     "react-hook-form": "7.45.2",
+    "react-responsive-pagination": "^2.4.0",
     "react-router-dom": "6.15.0",
     "reflect-metadata": "0.1.13",
     "sharp": "0.32.6",

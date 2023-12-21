@@ -48,6 +48,7 @@ function Filters() {
 
   return (
     <div className='flex w-full gap-2 group justify-center mb-5'>
+    
       <div className='tooltip' data-tip='More filters'>
         <button
           className='btn btn-neutral-focus rounded-xl text-md'
