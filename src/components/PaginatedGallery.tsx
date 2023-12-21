@@ -1,13 +1,13 @@
 import { useState, useMemo, useEffect } from 'react'
-import PaginatedGalleryNav from './PaginatedGalleryNav'
 import { useImages } from '../hooks/imagesStore'
 import Skeleton from './Skeleton'
 import ImageCard from './ImageCard'
 import PlaylistTrack from './PlaylistTrack'
 import { motion } from 'framer-motion'
 import { debounce } from '../utils/utilities'
-
-
+import ResponsivePagination from 'react-responsive-pagination'
+import 'react-responsive-pagination/themes/minimal.css'
+import '../custom.css'
 
 function PaginatedGallery() {
   const { filteredImages, skeletonsToShow, filters } = useImages()
@@ -15,12 +15,21 @@ function PaginatedGallery() {
   const [currentPage, setCurrentPage] = useState<number>(1)
   const lastImageIndex = currentPage * imagesPerPage
   const firstImageIndex = lastImageIndex - imagesPerPage
-  // this was calculated asuming a 300x200 thumbnail resolution
-  const coeficient = 0.000010113
   const totalPages = useMemo(() => {
     return Math.ceil(filteredImages.length / imagesPerPage)
   }, [filteredImages, skeletonsToShow, imagesPerPage])
-
+  // this was calculated asuming a 300x200 thumbnail resolution
+  const coeficient = 0.000010113
+  const updateImagesPerPage = debounce(() => {
+    const newDimensions = {
+      width: window.innerWidth,
+      height: window.innerHeight
+    }
+    const newImagesPerPage = Math.ceil(
+      coeficient * newDimensions.height * newDimensions.width
+    )
+    setImagesPerPage(newImagesPerPage)
+  }, 100)
   const SkeletonsArray = useMemo(() => {
     return skeletonsToShow.map((imageName) => (
       <Skeleton key={imageName} imageName={imageName} />
@@ -41,17 +50,9 @@ function PaginatedGallery() {
     },
     [imagesPerPage, currentPage, totalPages, filteredImages, skeletonsToShow]
   )
-  const updateImagesPerPage = debounce(() => {
-    const newDimensions = {
-      width: window.innerWidth,
-      height: window.innerHeight
-    }
-    const newImagesPerPage = Math.ceil(
-      coeficient * newDimensions.height * newDimensions.width
-    )
-    setImagesPerPage(newImagesPerPage)
-  }, 100)
-
+  function handlePageChange(page: number) {
+    setCurrentPage(page)
+  }
   useEffect(() => {
     window.addEventListener('resize', updateImagesPerPage)
   }, [])
@@ -65,7 +66,7 @@ function PaginatedGallery() {
   }, [imagesPerPage, totalPages, filters.searchString])
 
   return (
-    <div className='flex flex-col justify-between sm:w-[90%] [max-height:87dvh] [min-height:87dvh] m-auto'>
+    <div className=' transition flex flex-col justify-between sm:w-[90%] [max-height:87dvh] [min-height:87dvh] m-auto'>
       <div className='overflow-y-scroll w-full scrollbar-thin m-auto'>
         <motion.div
           initial={{ opacity: 0 }}
@@ -80,12 +81,17 @@ function PaginatedGallery() {
           {imagesToShow}
         </motion.div>
       </div>
-      <div className='flex mb-5 flex-col w-full gap-5'>
-        <PaginatedGalleryNav
-          currentPage={currentPage}
-          setCurrentPage={setCurrentPage}
-          totalPages={totalPages}
-        />
+
+      <div className='flex pt-3 flex-col w-full gap-5 '>
+        <div className='w-[75%] self-center'>
+          <ResponsivePagination
+            total={totalPages}
+            previousClassName='rounded_button_previous'
+            nextClassName='rounded_button_next'
+            current={currentPage}
+            onPageChange={(page: number) => handlePageChange(page)}
+          />
+        </div>
         <PlaylistTrack />
       </div>
     </div>
