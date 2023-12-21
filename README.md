@@ -25,9 +25,10 @@
 - Four different types of playlists (Time of day, weekly,interval based or static).
 - Easy configuration of all [swww](https://github.com/Horus645/swww) options.
 - Tray controls.
-- CLI included that serves as a player for playlists, with the basic commands.
+- CLI Support.
 - All of [swww](https://github.com/Horus645/swww) features such as wallpaper change animations and wallpaper persistance through reboots.
-- Filter by format, resolution,name,etc.
+- Filter images by format, resolution,name,etc.
+- Run scripts on image set.
   <br>
   <br>
 
