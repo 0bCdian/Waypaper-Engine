@@ -6,9 +6,9 @@
 ![Badge Language](https://img.shields.io/github/languages/top/0bCdian/Waypaper-Engine?style=for-the-badge&logo=typescript)
 ![Badge License](https://img.shields.io/github/license/0bCdian/Waypaper-Engine?style=for-the-badge&logo=gnu)
 
-```ocaml
-🍚 A wallpaper setter gui, developed with ricing in mind! 🍚 
-```
+
+ ### _A wallpaper setter gui, developed with ricing in mind!_ 🍚 
+
 
 **[<kbd> <br> Why  <br>  </kbd>](#why)**
 **[<kbd> <br> How to install <br> </kbd>](#install)**
