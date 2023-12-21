@@ -1,14 +1,14 @@
 <div align="center">
   <img src="./readme_files/Waypaper_Engine.png" width="500px" alt="banner"/>
 
-![GitHub last commit (branch)](https://img.shields.io/github/last-commit/0bCdian/Waypaper-Engine/main)
-![GitHub Repo stars](https://img.shields.io/github/stars/0bCdian/Waypaper-Engine)
-![Badge Language](https://img.shields.io/github/languages/top/0bCdian/Waypaper-Engine)
-![Badge License](https://img.shields.io/github/license/0bCdian/Waypaper-Engine)
+![GitHub last commit (branch)](https://img.shields.io/github/last-commit/0bCdian/Waypaper-Engine/main?style=for-the-badge&logo=git)
+![GitHub Repo stars](https://img.shields.io/github/stars/0bCdian/Waypaper-Engine?style=for-the-badge&logo=github)
+![Badge Language](https://img.shields.io/github/languages/top/0bCdian/Waypaper-Engine?style=for-the-badge&logo=typescript)
+![Badge License](https://img.shields.io/github/license/0bCdian/Waypaper-Engine?style=for-the-badge&logo=gnu)
 
-  <p>A graphical frontend for setting wallpapers and playlists, using <a href="https://github.com/Horus645/swww">swww</a> under the hood!</p>
-
----
+```ocaml
+🍚 A wallpaper setter gui, developed with ricing in mind! 🍚 
+```
 
 **[<kbd> <br> Why  <br>  </kbd>](#why)**
 **[<kbd> <br> How to install <br> </kbd>](#install)**
