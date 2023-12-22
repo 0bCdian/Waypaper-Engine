@@ -24,7 +24,7 @@
 # Features
 
 - Multimonitor support.
-- Four different types of playlists (Time of day, weekly,interval based or static).
+- Four different types of playlists (Time of day, daily,interval based or static).
 - Easy configuration of all [swww](https://github.com/Horus645/swww) options.
 - Tray controls.
 - CLI Support.
