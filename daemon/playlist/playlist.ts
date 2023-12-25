@@ -8,8 +8,9 @@ import configuration from '../config/config'
 import { notify, notifyImageSet } from '../utils/notifications'
 import { join } from 'node:path'
 import { exec, execSync } from 'node:child_process'
+import { promisify } from 'node:util'
 import dbOperations from '../database/dbOperationsDaemon'
-
+const execPromisified = promisify(exec)
 export class Playlist {
   images: images
   currentName: string
@@ -30,21 +31,20 @@ export class Playlist {
     this.timeoutID = undefined
   }
 
-  setImage(imageName: string) {
-    const imageLocation = join(configuration.IMAGES_DIR, imageName)
-    const command = this.getSwwwCommandFromConfiguration(imageLocation)
-    notifyImageSet(imageName, imageLocation)
-    execSync(command)
-    if (configuration.script !== undefined) {
-      try {
-        exec(`${configuration.script} ${imageLocation}`, (error) => {
-          if (error) throw error
-        })
-      } catch (error) {
-        notify(error)
+  async setImage(imageName: string) {
+    try {
+      const imageLocation = join(configuration.IMAGES_DIR, imageName)
+      const command = this.getSwwwCommandFromConfiguration(imageLocation)
+      notifyImageSet(imageName, imageLocation)
+      await execPromisified(command)
+      if (configuration.script !== undefined) {
+        await execPromisified(`${configuration.script} ${imageLocation}`)
       }
+    } catch (error) {
+      notify(error)
     }
   }
+
   pause() {
     if (this.currentType === PLAYLIST_TYPES.TIMER) {
       clearInterval(this.intervalID)
@@ -93,7 +93,7 @@ export class Playlist {
     this.intervalID = undefined
     this.timedPlaylist(true)
   }
-  nextImage() {
+  async nextImage() {
     if (
       this.currentType === PLAYLIST_TYPES.DAY_OF_WEEK ||
       this.currentType === PLAYLIST_TYPES.TIME_OF_DAY ||
@@ -109,7 +109,7 @@ export class Playlist {
     if (this.currentType === PLAYLIST_TYPES.TIMER) {
       this.resetInterval()
     }
-    this.setImage(this.images[this.currentImageIndex].name)
+    await this.setImage(this.images[this.currentImageIndex].name)
     try {
       this.updateInDB()
     } catch (error) {
@@ -118,7 +118,7 @@ export class Playlist {
     }
     return `Setting:${this.images[this.currentImageIndex].name}`
   }
-  previousImage() {
+  async previousImage() {
     if (
       this.currentType === PLAYLIST_TYPES.DAY_OF_WEEK ||
       this.currentType === PLAYLIST_TYPES.TIME_OF_DAY ||
@@ -134,7 +134,7 @@ export class Playlist {
     if (this.currentType === PLAYLIST_TYPES.TIMER) {
       this.resetInterval()
     }
-    this.setImage(this.images[this.currentImageIndex].name)
+    await this.setImage(this.images[this.currentImageIndex].name)
     try {
       this.updateInDB()
     } catch (error) {
@@ -253,17 +253,17 @@ export class Playlist {
     this.interval = currentPlaylist.interval
     this.showAnimations = currentPlaylist.showAnimations
   }
-  timedPlaylist(resume?: boolean) {
+  async timedPlaylist(resume?: boolean) {
     if (this.interval !== null) {
       if (!resume) {
-        this.setImage(this.images[this.currentImageIndex].name)
+        await this.setImage(this.images[this.currentImageIndex].name)
       }
-      this.intervalID = setInterval(() => {
+      this.intervalID = setInterval(async () => {
         this.currentImageIndex++
         if (this.currentImageIndex === this.images.length) {
           this.currentImageIndex = 0
         }
-        this.setImage(this.images[this.currentImageIndex].name)
+        await this.setImage(this.images[this.currentImageIndex].name)
         this.updateInDB()
       }, this.interval)
     } else {
@@ -271,10 +271,10 @@ export class Playlist {
       notify('Interval is null, something went wrong setting the playlist')
     }
   }
-  neverPlaylist() {
-    this.setImage(this.images[this.currentImageIndex].name)
+  async neverPlaylist() {
+    await this.setImage(this.images[this.currentImageIndex].name)
   }
-  timeOfDayPlaylist() {
+  async timeOfDayPlaylist() {
     try {
       const startingIndex = this.findClosestImageIndex()
       if (startingIndex === undefined) {
@@ -283,15 +283,14 @@ export class Playlist {
         return
       }
       this.currentImageIndex = startingIndex
-      this.setImage(this.images[this.currentImageIndex].name)
+      await this.setImage(this.images[this.currentImageIndex].name)
       this.timeOfDayPlayer()
     } catch (error) {
       notify(`Could not connect to the database\n Error:\n${error}`)
       process.exit(1)
     }
   }
-  dayOfWeekPlaylist() {
-    console.log('dayOfWeek func start')
+  async dayOfWeekPlaylist() {
     const now = new Date()
     const endOfDay = new Date(
       now.getFullYear(),
@@ -306,7 +305,7 @@ export class Playlist {
     if (imageIndexToSet > this.images.length) {
       imageIndexToSet = this.images.length - 1
     }
-    this.setImage(this.images[imageIndexToSet].name)
+    await this.setImage(this.images[imageIndexToSet].name)
     this.intervalID = setTimeout(() => {
       this.dayOfWeekPlaylist()
     }, millisecondsUntilEndOfDay)
@@ -344,13 +343,13 @@ export class Playlist {
       this.stop(true)
       return
     }
-    this.timeoutID = setTimeout(() => {
+    this.timeoutID = setTimeout(async () => {
       let newIndex = this.currentImageIndex + 1
       if (newIndex === this.images.length) {
         newIndex = 0
       }
       this.currentImageIndex = newIndex
-      this.setImage(this.images[this.currentImageIndex].name)
+      await this.setImage(this.images[this.currentImageIndex].name)
       this.timeOfDayPlayer()
     }, timeOut)
   }
@@ -396,7 +395,7 @@ export class Playlist {
     return closestIndex
   }
 
-  setRandomImage() {
+  async setRandomImage() {
     try {
       const images = dbOperations.readAllImagesInDB()
       if (images === undefined) {
@@ -404,7 +403,7 @@ export class Playlist {
       }
       const randomIndex = Math.floor(Math.random() * images.length)
       const randomImage = images[randomIndex].name
-      this.setImage(randomImage)
+      await this.setImage(randomImage)
       return `Setting ${randomImage}`
     } catch (error) {
       notify(error)

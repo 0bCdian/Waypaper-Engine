@@ -4,7 +4,7 @@ import { PlaylistClass } from '../playlist/playlist'
 import { notify } from '../utils/notifications'
 import config from '../config/config'
 
-export function daemonManager(
+export async function daemonManager(
   data: Buffer,
   socket: Socket,
   playlistController: PlaylistClass,
@@ -29,7 +29,7 @@ export function daemonManager(
       socket.write(JSON.stringify(startMessage))
       break
     case ACTIONS.RANDOM_IMAGE:
-      const setImageMessage = playlistController.setRandomImage()
+      const setImageMessage = await playlistController.setRandomImage()
       socket.write(setImageMessage)
       break
   }
@@ -54,11 +54,11 @@ export function daemonManager(
         playlistController.updatePlaylist()
         break
       case ACTIONS.NEXT_IMAGE:
-        const nextImageMessage = playlistController.nextImage()
+        const nextImageMessage = await playlistController.nextImage()
         socket.write(nextImageMessage)
         break
       case ACTIONS.PREVIOUS_IMAGE:
-        const previousImageMessage = playlistController.previousImage()
+        const previousImageMessage = await playlistController.previousImage()
         socket.write(previousImageMessage)
         break
     }
