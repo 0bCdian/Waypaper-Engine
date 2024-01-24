@@ -106,6 +106,6 @@ https://github.com/0bCdian/Waypaper-Engine/assets/101421807/4117b3b8-9a32-45bc-b
 
 # Special Thanks
 
-**[Horus645](https://github.com/Horus645)** - *for the amazing little tool that swww is*
+**[LGFae](https://github.com/LGFae)** - *for the amazing little tool that swww is*
 
 **[Simon Ser](https://git.sr.ht/~emersion/)** - *for wlr-randr, without it making this work across different wayland wm's would've been a nightmare*
