@@ -249,7 +249,10 @@ const SwwwConfig = () => {
                   defaultValue={3}
                   min={1}
                   {...register('transitionDuration', {
-                    valueAsNumber: true
+                    valueAsNumber: true,
+                    validate: (value) => {
+                      return value > 0
+                    }
                   })}
                 />
               </div>
@@ -267,7 +270,10 @@ const SwwwConfig = () => {
                   defaultValue={60}
                   min={1}
                   {...register('transitionFPS', {
-                    valueAsNumber: true
+                    valueAsNumber: true,
+                    validate: (value) => {
+                      return value > 0
+                    }
                   })}
                 />
               </div>
@@ -285,7 +291,17 @@ const SwwwConfig = () => {
                   defaultValue={45}
                   min={0}
                   {...register('transitionAngle', {
-                    valueAsNumber: true
+                    valueAsNumber: true,
+                    validate: (value) => {
+                      if (value < 0) {
+                        return false
+                      } else if (value > 360) {
+                        return false
+                      } else if (Number.isNaN(value)) {
+                        return false
+                      }
+                      return true
+                    }
                   })}
                   className='input bg-[#323232] w-1/2 focus:outline-none text-lg font-medium rounded-lg'
                 />
@@ -340,7 +356,10 @@ const SwwwConfig = () => {
                       min={0}
                       defaultValue={960}
                       {...register('transitionPositionIntX', {
-                        valueAsNumber: true
+                        valueAsNumber: true,
+                        validate: (value) => {
+                          return value > 0
+                        }
                       })}
                     />
                     <input
@@ -349,9 +368,12 @@ const SwwwConfig = () => {
                       placeholder='Y axis'
                       defaultValue={540}
                       step={1}
-                      min={540}
+                      min={0}
                       {...register('transitionPositionIntY', {
-                        valueAsNumber: true
+                        valueAsNumber: true,
+                        validate: (value) => {
+                          return value > 0
+                        }
                       })}
                     />
                   </div>
@@ -368,7 +390,10 @@ const SwwwConfig = () => {
                       min={0}
                       defaultValue={0.5}
                       {...register('transitionPositionFloatX', {
-                        valueAsNumber: true
+                        valueAsNumber: true,
+                        validate: (value) => {
+                          return value > 1 || !(value < 0)
+                        }
                       })}
                     />
                     <input
@@ -381,7 +406,10 @@ const SwwwConfig = () => {
                       max={1}
                       min={0}
                       {...register('transitionPositionFloatY', {
-                        valueAsNumber: true
+                        valueAsNumber: true,
+                        validate: (value) => {
+                          return value > 1 || !(value < 0)
+                        }
                       })}
                     />
                   </div>
