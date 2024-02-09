@@ -9,8 +9,8 @@
   "files": ["dist-electron", "dist"],
   "extraFiles": [
     {
-      "from": "electron/icons",
-      "to": "resources/icons",
+      "from": "build/icons/",
+      "to": "resources/icons/",
       "filter": ["**/*"]
     },
     {
@@ -38,7 +38,7 @@
       "Comment": "Waypaper Engine",
       "Terminal": "false",
       "Type": "Application",
-      "Icon": "/resources/icons/app.png"
+      "Icon": "/build/icons/512x512.png"
     }
   }
 }
