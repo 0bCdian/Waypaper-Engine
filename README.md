@@ -86,7 +86,7 @@ https://github.com/0bCdian/Waypaper-Engine/assets/101421807/4117b3b8-9a32-45bc-b
 - [ ] Have a ci/cd pipeline.
 - [ ] Implement a logger for errors.
 - [x] Publish in the aur.
-- [x] Find a good icon/logo for the app (Thank you [Cristian Avendaño]("https://github.com/c-avendano")!).
+- [x] Find a good icon/logo for the app (Thank you [Cristian Avendaño](https://github.com/c-avendano)!).
 - [ ] Add flatpak support.
 - [x] Add --script flag.
 
@@ -102,8 +102,8 @@ _If you encounter any problems or would like to make a suggestion, please feel f
 
 # Special Thanks
 
-**[LGFae](https://github.com/LGFae)** - _for the amazing little tool that swww is ❤️ !_
+**[LGFae](https://github.com/LGFae)** - _for the amazing little tool that swww is !_ ❤️
 
 **[Simon Ser](https://git.sr.ht/~emersion/)** - _for wlr-randr, without it making this work across different wayland wm's would've been a nightmare_ 🥲
 
-**[Cristian Avendaño]("https://github.com/c-avendano")** - _for creating the amazing logo!_ 💪
+**[Cristian Avendaño](https://github.com/c-avendano)** - _for creating the amazing logo!_ 💪
