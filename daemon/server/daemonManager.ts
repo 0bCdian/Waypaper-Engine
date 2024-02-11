@@ -8,7 +8,7 @@ export async function daemonManager(
   data: Buffer,
   socket: Socket,
   playlistController: PlaylistClass,
-  daemonServer: Server
+  daemonServer: Server,
 ) {
   const message: message = JSON.parse(data.toString())
   switch (message.action) {
@@ -31,6 +31,10 @@ export async function daemonManager(
     case ACTIONS.RANDOM_IMAGE:
       const setImageMessage = await playlistController.setRandomImage()
       socket.write(setImageMessage)
+      break
+    case ACTIONS.GET_INFO:
+      const diagnostics = await playlistController.getPlaylistDiagnostics()
+      socket.write(JSON.stringify(diagnostics))
       break
   }
   if (playlistController.currentName !== '') {

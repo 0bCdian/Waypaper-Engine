@@ -8,11 +8,11 @@ commands:
     help: Run just the waypaper engine daemon
 
     flags:
-    - long: --script
-      short: -s
-      arg: script
-      help: Script to run on each image set, the image path will be passed as argument.
-      required: false
+      - long: --script
+        short: -s
+        arg: script
+        help: Script to run on each image set, the image path will be passed as argument.
+        required: false
 
     examples:
       - waypaper-engine daemon
@@ -40,11 +40,11 @@ commands:
     examples:
       - waypaper-engine kill-daemon
       - waypaper-engine kd
-  
+
   - name: stop-daemon
     alias: sd
     help: Send stop command to daemon process
-  
+
     examples:
       - waypaper-engine stop-daemon
       - waypaper-engine sd
@@ -76,11 +76,11 @@ commands:
     default: force
 
     flags:
-    - long: --script
-      short: -s
-      arg: script
-      help: Script to run on each image set, the image path will be passed as argument.
-      required: false   
+      - long: --script
+        short: -s
+        arg: script
+        help: Script to run on each image set, the image path will be passed as argument.
+        required: false
 
     examples:
       - waypaper-engine
@@ -95,3 +95,10 @@ commands:
       - waypaper-engine random
       - waypaper-engine ri
 
+  - name: info
+    alias: i
+    help: get playlist diagnostics
+
+    examples:
+      - waypaper-engine info
+      - waypaper-engine i

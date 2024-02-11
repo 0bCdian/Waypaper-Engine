@@ -45,7 +45,7 @@ var notifications_1 = require("../utils/notifications");
 var config_1 = __importDefault(require("../config/config"));
 function daemonManager(data, socket, playlistController, daemonServer) {
     return __awaiter(this, void 0, void 0, function () {
-        var message, _a, stopMessage, startMessage, setImageMessage, _b, pauseMessage, resumeMessage, stopMessage, nextImageMessage, previousImageMessage;
+        var message, _a, stopMessage, startMessage, setImageMessage, diagnostics, _b, pauseMessage, resumeMessage, stopMessage, nextImageMessage, previousImageMessage;
         return __generator(this, function (_c) {
             switch (_c.label) {
                 case 0:
@@ -56,8 +56,9 @@ function daemonManager(data, socket, playlistController, daemonServer) {
                         case daemonTypes_1.ACTIONS.UPDATE_CONFIG: return [3 /*break*/, 2];
                         case daemonTypes_1.ACTIONS.START_PLAYLIST: return [3 /*break*/, 3];
                         case daemonTypes_1.ACTIONS.RANDOM_IMAGE: return [3 /*break*/, 4];
+                        case daemonTypes_1.ACTIONS.GET_INFO: return [3 /*break*/, 6];
                     }
-                    return [3 /*break*/, 6];
+                    return [3 /*break*/, 8];
                 case 1:
                     stopMessage = playlistController.stop(false);
                     (0, notifications_1.notify)(stopMessage.message);
@@ -69,58 +70,63 @@ function daemonManager(data, socket, playlistController, daemonServer) {
                     config_1.default.app.update();
                     config_1.default.swww.update();
                     socket.write(JSON.stringify({ action: daemonTypes_1.ACTIONS.UPDATE_CONFIG }));
-                    return [3 /*break*/, 6];
+                    return [3 /*break*/, 8];
                 case 3:
                     startMessage = playlistController.start();
                     (0, notifications_1.notify)("Starting ".concat(playlistController.currentName));
                     socket.write(JSON.stringify(startMessage));
-                    return [3 /*break*/, 6];
+                    return [3 /*break*/, 8];
                 case 4: return [4 /*yield*/, playlistController.setRandomImage()];
                 case 5:
                     setImageMessage = _c.sent();
                     socket.write(setImageMessage);
-                    return [3 /*break*/, 6];
-                case 6:
-                    if (!(playlistController.currentName !== '')) return [3 /*break*/, 15];
+                    return [3 /*break*/, 8];
+                case 6: return [4 /*yield*/, playlistController.getPlaylistDiagnostics()];
+                case 7:
+                    diagnostics = _c.sent();
+                    socket.write(JSON.stringify(diagnostics));
+                    return [3 /*break*/, 8];
+                case 8:
+                    if (!(playlistController.currentName !== '')) return [3 /*break*/, 17];
                     _b = message.action;
                     switch (_b) {
-                        case daemonTypes_1.ACTIONS.PAUSE_PLAYLIST: return [3 /*break*/, 7];
-                        case daemonTypes_1.ACTIONS.RESUME_PLAYLIST: return [3 /*break*/, 8];
-                        case daemonTypes_1.ACTIONS.STOP_PLAYLIST: return [3 /*break*/, 9];
-                        case daemonTypes_1.ACTIONS.UPDATE_PLAYLIST: return [3 /*break*/, 10];
-                        case daemonTypes_1.ACTIONS.NEXT_IMAGE: return [3 /*break*/, 11];
-                        case daemonTypes_1.ACTIONS.PREVIOUS_IMAGE: return [3 /*break*/, 13];
+                        case daemonTypes_1.ACTIONS.PAUSE_PLAYLIST: return [3 /*break*/, 9];
+                        case daemonTypes_1.ACTIONS.RESUME_PLAYLIST: return [3 /*break*/, 10];
+                        case daemonTypes_1.ACTIONS.STOP_PLAYLIST: return [3 /*break*/, 11];
+                        case daemonTypes_1.ACTIONS.UPDATE_PLAYLIST: return [3 /*break*/, 12];
+                        case daemonTypes_1.ACTIONS.NEXT_IMAGE: return [3 /*break*/, 13];
+                        case daemonTypes_1.ACTIONS.PREVIOUS_IMAGE: return [3 /*break*/, 15];
                     }
-                    return [3 /*break*/, 15];
-                case 7:
+                    return [3 /*break*/, 17];
+                case 9:
                     pauseMessage = playlistController.pause();
                     (0, notifications_1.notify)(pauseMessage);
                     socket.write(pauseMessage);
-                    return [3 /*break*/, 15];
-                case 8:
+                    return [3 /*break*/, 17];
+                case 10:
                     resumeMessage = playlistController.resume();
                     (0, notifications_1.notify)(resumeMessage);
                     socket.write(resumeMessage);
-                    return [3 /*break*/, 15];
-                case 9:
+                    return [3 /*break*/, 17];
+                case 11:
                     stopMessage = playlistController.stop(true);
                     (0, notifications_1.notify)(JSON.stringify(stopMessage));
                     socket.write(JSON.stringify(stopMessage));
-                    return [3 /*break*/, 15];
-                case 10:
-                    playlistController.updatePlaylist();
-                    return [3 /*break*/, 15];
-                case 11: return [4 /*yield*/, playlistController.nextImage()];
+                    return [3 /*break*/, 17];
                 case 12:
+                    playlistController.updatePlaylist();
+                    return [3 /*break*/, 17];
+                case 13: return [4 /*yield*/, playlistController.nextImage()];
+                case 14:
                     nextImageMessage = _c.sent();
                     socket.write(nextImageMessage);
-                    return [3 /*break*/, 15];
-                case 13: return [4 /*yield*/, playlistController.previousImage()];
-                case 14:
+                    return [3 /*break*/, 17];
+                case 15: return [4 /*yield*/, playlistController.previousImage()];
+                case 16:
                     previousImageMessage = _c.sent();
                     socket.write(previousImageMessage);
-                    return [3 /*break*/, 15];
-                case 15: return [2 /*return*/];
+                    return [3 /*break*/, 17];
+                case 17: return [2 /*return*/];
             }
         });
     });

@@ -26,6 +26,7 @@ var ACTIONS;
     ACTIONS["UPDATE_CONFIG"] = "update-config";
     ACTIONS["UPDATE_PLAYLIST"] = "update-playlist";
     ACTIONS["ERROR"] = "error";
+    ACTIONS["GET_INFO"] = "get-info";
 })(ACTIONS || (exports.ACTIONS = ACTIONS = {}));
 var dbTables;
 (function (dbTables) {
@@ -97,5 +98,5 @@ var initialSwwwConfigDB = {
     invertY: 0,
     transitionBezier: '.25,.1,.25,1',
     transitionWaveX: 20,
-    transitionWaveY: 20
+    transitionWaveY: 20,
 };

@@ -56,8 +56,11 @@ var Playlist = /** @class */ (function () {
         this.currentImageIndex = 0;
         this.interval = 0;
         this.showAnimations = true;
-        this.intervalID = undefined;
-        this.timeoutID = undefined;
+        this.playlistTimer = {
+            timeoutID: undefined,
+            executionTimeStamp: undefined,
+        };
+        this.eventCheckerTimeout = undefined;
     }
     Playlist.prototype.setImage = function (imageName) {
         return __awaiter(this, void 0, void 0, function () {
@@ -89,10 +92,8 @@ var Playlist = /** @class */ (function () {
     };
     Playlist.prototype.pause = function () {
         if (this.currentType === daemonTypes_1.PLAYLIST_TYPES.TIMER) {
-            clearInterval(this.intervalID);
-            clearTimeout(this.timeoutID);
-            this.intervalID = undefined;
-            this.timeoutID = undefined;
+            clearTimeout(this.playlistTimer.timeoutID);
+            this.playlistTimer.timeoutID = undefined;
             return "Paused ".concat(this.currentName);
         }
         else {
@@ -120,20 +121,29 @@ var Playlist = /** @class */ (function () {
         this.interval = 0;
         this.images = [];
         this.showAnimations = true;
+        if (this.eventCheckerTimeout !== undefined) {
+            clearInterval(this.eventCheckerTimeout);
+        }
+        if (this.playlistTimer.timeoutID !== undefined) {
+            clearTimeout(this.playlistTimer.timeoutID);
+        }
+        this.playlistTimer.timeoutID = undefined;
+        this.playlistTimer.executionTimeStamp = undefined;
+        this.eventCheckerTimeout = undefined;
         if (playlist_name === '') {
             return {
                 action: daemonTypes_1.ACTIONS.STOP_PLAYLIST,
-                message: ''
+                message: '',
             };
         }
         return {
             action: daemonTypes_1.ACTIONS.STOP_PLAYLIST,
-            message: "Stopped ".concat(playlist_name)
+            message: "Stopped ".concat(playlist_name),
         };
     };
     Playlist.prototype.resetInterval = function () {
-        clearInterval(this.intervalID);
-        this.intervalID = undefined;
+        clearTimeout(this.playlistTimer.timeoutID);
+        this.playlistTimer.timeoutID = undefined;
         this.timedPlaylist(true);
     };
     Playlist.prototype.nextImage = function () {
@@ -162,7 +172,7 @@ var Playlist = /** @class */ (function () {
                         }
                         catch (error) {
                             (0, notifications_1.notify)("Could not connect to the database\n Error:\n".concat(error));
-                            process.exit(1);
+                            throw error;
                         }
                         return [2 /*return*/, "Setting:".concat(this.images[this.currentImageIndex].name)];
                 }
@@ -195,7 +205,7 @@ var Playlist = /** @class */ (function () {
                         }
                         catch (error) {
                             (0, notifications_1.notify)("Could not connect to the database\n Error:\n".concat(error));
-                            process.exit(1);
+                            throw error;
                         }
                         return [2 /*return*/, "Setting:".concat(this.images[this.currentImageIndex].name)];
                 }
@@ -203,12 +213,13 @@ var Playlist = /** @class */ (function () {
         });
     };
     Playlist.prototype.start = function () {
+        var _this = this;
         try {
             var currentPlaylist = dbOperationsDaemon_1.default.getCurrentPlaylist();
             if (currentPlaylist === undefined) {
                 return {
                     action: daemonTypes_1.ACTIONS.ERROR,
-                    message: 'Database returned undefined from currentPlaylist'
+                    message: 'Database returned undefined from currentPlaylist',
                 };
             }
             this.stop(false);
@@ -221,10 +232,12 @@ var Playlist = /** @class */ (function () {
                     this.neverPlaylist();
                     break;
                 case daemonTypes_1.PLAYLIST_TYPES.TIME_OF_DAY:
-                    this.timeOfDayPlaylist();
+                    this.timeOfDayPlaylist().then(function () {
+                        _this.checkMissedEvents();
+                    });
                     break;
                 case daemonTypes_1.PLAYLIST_TYPES.DAY_OF_WEEK:
-                    this.dayOfWeekPlaylist();
+                    this.dayOfWeekPlaylist().then(function () { return _this.checkMissedEvents(); });
                     break;
                 default:
                     this.stop(true);
@@ -232,15 +245,16 @@ var Playlist = /** @class */ (function () {
             }
             return {
                 action: daemonTypes_1.ACTIONS.START_PLAYLIST,
-                message: "Started playlist ".concat(currentPlaylist.name)
+                message: "Started playlist ".concat(currentPlaylist.name),
             };
         }
         catch (error) {
             (0, notifications_1.notify)("Could not connect to the database\n Error:\n".concat(error));
-            process.exit(1);
+            throw error;
         }
     };
     Playlist.prototype.updatePlaylist = function () {
+        var _this = this;
         try {
             var newPlaylistInfo = dbOperationsDaemon_1.default.getCurrentPlaylist();
             if (newPlaylistInfo !== undefined &&
@@ -259,12 +273,16 @@ var Playlist = /** @class */ (function () {
                     case daemonTypes_1.PLAYLIST_TYPES.TIME_OF_DAY:
                         this.stop(false);
                         this.setPlaylist(newPlaylistInfo);
-                        this.timeOfDayPlaylist();
+                        this.timeOfDayPlaylist().then(function () {
+                            _this.checkMissedEvents();
+                        });
                         break;
                     case daemonTypes_1.PLAYLIST_TYPES.DAY_OF_WEEK:
                         this.stop(false);
                         this.setPlaylist(newPlaylistInfo);
-                        this.dayOfWeekPlaylist();
+                        this.dayOfWeekPlaylist().then(function () {
+                            _this.checkMissedEvents();
+                        });
                         break;
                     default:
                         this.stop(true);
@@ -272,20 +290,20 @@ var Playlist = /** @class */ (function () {
                 }
                 return {
                     action: daemonTypes_1.ACTIONS.UPDATE_PLAYLIST,
-                    message: "Updated ".concat(newPlaylistInfo.name)
+                    message: "Updated ".concat(newPlaylistInfo.name),
                 };
             }
             else {
                 (0, notifications_1.notify)('There was a problem updating the playlist, either the names do not match, or the database returned null');
                 return {
                     action: daemonTypes_1.ACTIONS.ERROR,
-                    message: 'There was a problem updating the playlist, either the names do not match, or the database returned null'
+                    message: 'There was a problem updating the playlist, either the names do not match, or the database returned null',
                 };
             }
         }
         catch (error) {
             (0, notifications_1.notify)("Could not connect to the database\n Error:\n".concat(error));
-            process.exit(1);
+            throw error;
         }
     };
     Playlist.prototype.updateInDB = function () {
@@ -294,7 +312,7 @@ var Playlist = /** @class */ (function () {
         }
         catch (error) {
             (0, notifications_1.notify)("Could not connect to the database\n Error:\n".concat(error));
-            process.exit(1);
+            throw error;
         }
     };
     Playlist.prototype.setPlaylist = function (currentPlaylist) {
@@ -321,7 +339,7 @@ var Playlist = /** @class */ (function () {
                         _a.sent();
                         _a.label = 2;
                     case 2:
-                        this.intervalID = setInterval(function () { return __awaiter(_this, void 0, void 0, function () {
+                        this.playlistTimer.timeoutID = setInterval(function () { return __awaiter(_this, void 0, void 0, function () {
                             return __generator(this, function (_a) {
                                 switch (_a.label) {
                                     case 0:
@@ -372,7 +390,8 @@ var Playlist = /** @class */ (function () {
                             this.stop(true);
                             return [2 /*return*/];
                         }
-                        this.currentImageIndex = startingIndex;
+                        this.currentImageIndex =
+                            startingIndex < 0 ? this.images.length - 1 : startingIndex;
                         return [4 /*yield*/, this.setImage(this.images[this.currentImageIndex].name)];
                     case 1:
                         _a.sent();
@@ -381,8 +400,7 @@ var Playlist = /** @class */ (function () {
                     case 2:
                         error_2 = _a.sent();
                         (0, notifications_1.notify)("Could not connect to the database\n Error:\n".concat(error_2));
-                        process.exit(1);
-                        return [3 /*break*/, 3];
+                        throw error_2;
                     case 3: return [2 /*return*/];
                 }
             });
@@ -405,15 +423,18 @@ var Playlist = /** @class */ (function () {
                         return [4 /*yield*/, this.setImage(this.images[imageIndexToSet].name)];
                     case 1:
                         _a.sent();
-                        this.intervalID = setTimeout(function () {
+                        clearTimeout(this.playlistTimer.timeoutID);
+                        this.playlistTimer.timeoutID = setTimeout(function () {
                             _this.dayOfWeekPlaylist();
                         }, millisecondsUntilEndOfDay);
+                        this.playlistTimer.executionTimeStamp =
+                            millisecondsUntilEndOfDay + Date.now();
                         return [2 /*return*/];
                 }
             });
         });
     };
-    Playlist.prototype.getSwwwCommandFromConfiguration = function (imagePath, monitors) {
+    Playlist.prototype.getSwwwCommandFromConfiguration = function (imagePath) {
         var swwwConfig = config_1.default.swww.settings;
         var transitionPos = '';
         var inverty = swwwConfig.invertY ? '--invert-y' : '';
@@ -445,7 +466,8 @@ var Playlist = /** @class */ (function () {
             this.stop(true);
             return;
         }
-        this.timeoutID = setTimeout(function () { return __awaiter(_this, void 0, void 0, function () {
+        clearTimeout(this.playlistTimer.timeoutID);
+        this.playlistTimer.timeoutID = setTimeout(function () { return __awaiter(_this, void 0, void 0, function () {
             var newIndex;
             return __generator(this, function (_a) {
                 switch (_a.label) {
@@ -463,6 +485,7 @@ var Playlist = /** @class */ (function () {
                 }
             });
         }); }, timeOut);
+        this.playlistTimer.executionTimeStamp = timeOut + Date.now();
     };
     Playlist.prototype.calculateMillisecondsUntilNextImage = function () {
         var nextIndex = this.currentImageIndex + 1 === this.images.length
@@ -494,14 +517,14 @@ var Playlist = /** @class */ (function () {
             if (midTime === null)
                 return undefined;
             if (midTime === currentTime) {
-                return mid; // Found an exact match
+                return mid;
             }
             else if (midTime < currentTime) {
-                closestIndex = mid; // Update the closest index
-                low = mid + 1; // Move to the right half
+                closestIndex = mid;
+                low = mid + 1;
             }
             else {
-                high = mid - 1; // Move to the left half
+                high = mid - 1;
             }
         }
         return closestIndex;
@@ -526,10 +549,62 @@ var Playlist = /** @class */ (function () {
                     case 2:
                         error_3 = _a.sent();
                         (0, notifications_1.notify)(error_3);
-                        process.exit(1);
-                        return [3 /*break*/, 3];
+                        throw error_3;
                     case 3: return [2 /*return*/];
                 }
+            });
+        });
+    };
+    Playlist.prototype.checkMissedEvents = function () {
+        return __awaiter(this, void 0, void 0, function () {
+            var _this = this;
+            return __generator(this, function (_a) {
+                clearTimeout(this.eventCheckerTimeout);
+                this.eventCheckerTimeout = setInterval(function () {
+                    var now = Date.now();
+                    if (_this.playlistTimer.executionTimeStamp === undefined ||
+                        now < _this.playlistTimer.executionTimeStamp ||
+                        _this.playlistTimer.timeoutID === undefined ||
+                        _this.currentType === undefined) {
+                        return;
+                    }
+                    clearTimeout(_this.playlistTimer.timeoutID);
+                    switch (_this.currentType) {
+                        case daemonTypes_1.PLAYLIST_TYPES.TIME_OF_DAY:
+                            _this.timeOfDayPlaylist();
+                            break;
+                        case daemonTypes_1.PLAYLIST_TYPES.DAY_OF_WEEK:
+                            _this.dayOfWeekPlaylist();
+                            break;
+                    }
+                }, 10000);
+                return [2 /*return*/];
+            });
+        });
+    };
+    Playlist.prototype.getPlaylistDiagnostics = function () {
+        var _a;
+        return __awaiter(this, void 0, void 0, function () {
+            var diagostics;
+            return __generator(this, function (_b) {
+                diagostics = {
+                    playlistName: this.currentName,
+                    playlistType: this.currentType,
+                    playlistCurrentIndex: this.currentImageIndex,
+                    playlistEventCheckerTimeout: {
+                        id: String(this.eventCheckerTimeout),
+                    },
+                    playlistTimerObject: {
+                        timeoutID: String(this.playlistTimer.timeoutID),
+                        executionTimeStamp: new Date((_a = this.playlistTimer.executionTimeStamp) !== null && _a !== void 0 ? _a : 0),
+                    },
+                    playlistImages: this.images.map(function (image) {
+                        return JSON.stringify(image);
+                    }),
+                    playlistInterval: this.interval,
+                    daemonPID: process.pid,
+                };
+                return [2 /*return*/, diagostics];
             });
         });
     };

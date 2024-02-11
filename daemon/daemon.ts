@@ -5,6 +5,7 @@ import { notify } from './utils/notifications'
 import config from './config/config'
 
 if (isWaypaperDaemonRunning()) {
+  console.error('Another instance is already running')
   process.exit(2)
 }
 const scriptFlag = process.argv.find((arg) => {
@@ -16,17 +17,24 @@ if (scriptFlag) {
 }
 process.title = 'wpe-daemon'
 const playlist = new Playlist()
-const server = setupServer(playlist)
-process.on('SIGTERM', function () {
-  notify('Exiting daemon')
+try {
+  const server = setupServer(playlist)
+  process.on('SIGTERM', function () {
+    notify('Exiting daemon')
+    playlist.stop(false)
+    server.close()
+    process.exit(0)
+  })
+  process.on('SIGINT', () => {
+    notify('Exiting daemon')
+    playlist.stop(false)
+    server.close()
+    process.exit(0)
+  })
+
+  playlist.start()
+} catch (error) {
   playlist.stop(false)
-  server.close()
-  process.exit(0)
-})
-process.on('SIGINT', () => {
-  notify('Exiting daemon')
-  playlist.stop(false)
-  server.close()
-  process.exit(0)
-})
-playlist.start()
+  console.error(error)
+  process.exit(1)
+}

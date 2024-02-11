@@ -44,6 +44,7 @@ waypaper_engine_usage() {
   printf "  %s   Send a request to the daemon to stop the current playlist\n" "stop-playlist  "
   printf "  %s   run the waypaper engine application (default)\n" "run            "
   printf "  %s   set a random image from the gallery\n" "random         "
+  printf "  %s   get playlist diagnostics\n" "info           "
   echo
 
   # :command.long_usage
@@ -450,6 +451,44 @@ waypaper_engine_random_usage() {
   fi
 }
 
+# :command.usage
+waypaper_engine_info_usage() {
+  if [[ -n $long_usage ]]; then
+    printf "waypaper-engine info - get playlist diagnostics\n"
+    echo
+
+  else
+    printf "waypaper-engine info - get playlist diagnostics\n"
+    echo
+
+  fi
+
+  printf "Alias: i\n"
+  echo
+
+  printf "%s\n" "Usage:"
+  printf "  waypaper-engine info\n"
+  printf "  waypaper-engine info --help | -h\n"
+  echo
+
+  # :command.long_usage
+  if [[ -n $long_usage ]]; then
+    printf "%s\n" "Options:"
+
+    # :command.usage_fixed_flags
+    printf "  %s\n" "--help, -h"
+    printf "    Show this help\n"
+    echo
+
+    # :command.usage_examples
+    printf "%s\n" "Examples:"
+    printf "  waypaper-engine info\n"
+    printf "  waypaper-engine i\n"
+    echo
+
+  fi
+}
+
 # :command.normalize_input
 normalize_input() {
   local arg flags
@@ -669,6 +708,23 @@ waypaper_engine_random_command() {
 
 }
 
+# :command.function
+waypaper_engine_info_command() {
+  # src/info_command.sh
+  SOCKET_CONNECTION='/tmp/waypaper_engine_daemon.sock'
+
+  send_message() {
+  	echo -n "$1" | socat - UNIX-CONNECT:"$SOCKET_CONNECTION"
+  }
+
+  get_info() {
+  	send_message '{"action":"get-info"}' || echo "Seems like the daemon is not running, make sure to run 'waypaper-engine daemon' first"
+  }
+
+  get_info
+
+}
+
 # :command.parse_requirements
 parse_requirements() {
   # :command.fixed_flags_filter
@@ -765,6 +821,13 @@ parse_requirements() {
       action="random"
       shift
       waypaper_engine_random_parse_requirements "$@"
+      shift $#
+      ;;
+
+    info | i)
+      action="info"
+      shift
+      waypaper_engine_info_parse_requirements "$@"
       shift $#
       ;;
 
@@ -1268,6 +1331,50 @@ waypaper_engine_random_parse_requirements() {
 
 }
 
+# :command.parse_requirements
+waypaper_engine_info_parse_requirements() {
+  # :command.fixed_flags_filter
+  while [[ $# -gt 0 ]]; do
+    case "${1:-}" in
+      --help | -h)
+        long_usage=yes
+        waypaper_engine_info_usage
+        exit
+        ;;
+
+      *)
+        break
+        ;;
+
+    esac
+  done
+
+  # :command.command_filter
+  action="info"
+
+  # :command.parse_requirements_while
+  while [[ $# -gt 0 ]]; do
+    key="$1"
+    case "$key" in
+
+      -?*)
+        printf "invalid option: %s\n" "$key" >&2
+        exit 1
+        ;;
+
+      *)
+        # :command.parse_requirements_case
+        # :command.parse_requirements_case_simple
+        printf "invalid argument: %s\n" "$key" >&2
+        exit 1
+
+        ;;
+
+    esac
+  done
+
+}
+
 # :command.initialize
 initialize() {
   version="1.1.0"
@@ -1296,6 +1403,7 @@ run() {
     "stop-playlist") waypaper_engine_stop_playlist_command ;;
     "run") waypaper_engine_run_command ;;
     "random") waypaper_engine_random_command ;;
+    "info") waypaper_engine_info_command ;;
   esac
 }
 

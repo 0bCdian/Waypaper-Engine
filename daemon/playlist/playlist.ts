@@ -2,12 +2,12 @@ import {
   ACTIONS,
   images,
   PLAYLIST_TYPES,
-  PlaylistType
+  PlaylistType,
 } from '../types/daemonTypes'
 import configuration from '../config/config'
 import { notify, notifyImageSet } from '../utils/notifications'
 import { join } from 'node:path'
-import { exec, execSync } from 'node:child_process'
+import { exec } from 'node:child_process'
 import { promisify } from 'node:util'
 import dbOperations from '../database/dbOperationsDaemon'
 const execPromisified = promisify(exec)
@@ -15,8 +15,11 @@ export class Playlist {
   images: images
   currentName: string
   currentType: PLAYLIST_TYPES | undefined
-  intervalID: NodeJS.Timeout | undefined
-  timeoutID: NodeJS.Timeout | undefined
+  playlistTimer: {
+    timeoutID: NodeJS.Timeout | undefined
+    executionTimeStamp: number | undefined
+  }
+  eventCheckerTimeout: NodeJS.Timeout | undefined
   currentImageIndex: number
   interval: number | null
   showAnimations: boolean | 1 | 0
@@ -27,8 +30,11 @@ export class Playlist {
     this.currentImageIndex = 0
     this.interval = 0
     this.showAnimations = true
-    this.intervalID = undefined
-    this.timeoutID = undefined
+    this.playlistTimer = {
+      timeoutID: undefined,
+      executionTimeStamp: undefined,
+    }
+    this.eventCheckerTimeout = undefined
   }
 
   async setImage(imageName: string) {
@@ -47,10 +53,8 @@ export class Playlist {
 
   pause() {
     if (this.currentType === PLAYLIST_TYPES.TIMER) {
-      clearInterval(this.intervalID)
-      clearTimeout(this.timeoutID)
-      this.intervalID = undefined
-      this.timeoutID = undefined
+      clearTimeout(this.playlistTimer.timeoutID)
+      this.playlistTimer.timeoutID = undefined
       return `Paused ${this.currentName}`
     } else {
       return `Cannot pause ${this.currentName} because it's of type ${this.currentType}`
@@ -76,21 +80,30 @@ export class Playlist {
     this.interval = 0
     this.images = []
     this.showAnimations = true
+    if (this.eventCheckerTimeout !== undefined) {
+      clearInterval(this.eventCheckerTimeout)
+    }
+    if (this.playlistTimer.timeoutID !== undefined) {
+      clearTimeout(this.playlistTimer.timeoutID)
+    }
+    this.playlistTimer.timeoutID = undefined
+    this.playlistTimer.executionTimeStamp = undefined
+    this.eventCheckerTimeout = undefined
 
     if (playlist_name === '') {
       return {
         action: ACTIONS.STOP_PLAYLIST,
-        message: ''
+        message: '',
       }
     }
     return {
       action: ACTIONS.STOP_PLAYLIST,
-      message: `Stopped ${playlist_name}`
+      message: `Stopped ${playlist_name}`,
     }
   }
   resetInterval() {
-    clearInterval(this.intervalID)
-    this.intervalID = undefined
+    clearTimeout(this.playlistTimer.timeoutID)
+    this.playlistTimer.timeoutID = undefined
     this.timedPlaylist(true)
   }
   async nextImage() {
@@ -114,7 +127,7 @@ export class Playlist {
       this.updateInDB()
     } catch (error) {
       notify(`Could not connect to the database\n Error:\n${error}`)
-      process.exit(1)
+      throw error
     }
     return `Setting:${this.images[this.currentImageIndex].name}`
   }
@@ -139,7 +152,7 @@ export class Playlist {
       this.updateInDB()
     } catch (error) {
       notify(`Could not connect to the database\n Error:\n${error}`)
-      process.exit(1)
+      throw error
     }
     return `Setting:${this.images[this.currentImageIndex].name}`
   }
@@ -149,7 +162,7 @@ export class Playlist {
       if (currentPlaylist === undefined) {
         return {
           action: ACTIONS.ERROR,
-          message: 'Database returned undefined from currentPlaylist'
+          message: 'Database returned undefined from currentPlaylist',
         }
       }
       this.stop(false)
@@ -162,10 +175,12 @@ export class Playlist {
           this.neverPlaylist()
           break
         case PLAYLIST_TYPES.TIME_OF_DAY:
-          this.timeOfDayPlaylist()
+          this.timeOfDayPlaylist().then(() => {
+            this.checkMissedEvents()
+          })
           break
         case PLAYLIST_TYPES.DAY_OF_WEEK:
-          this.dayOfWeekPlaylist()
+          this.dayOfWeekPlaylist().then(() => this.checkMissedEvents())
           break
         default:
           this.stop(true)
@@ -173,11 +188,11 @@ export class Playlist {
       }
       return {
         action: ACTIONS.START_PLAYLIST,
-        message: `Started playlist ${currentPlaylist.name}`
+        message: `Started playlist ${currentPlaylist.name}`,
       }
     } catch (error) {
       notify(`Could not connect to the database\n Error:\n${error}`)
-      process.exit(1)
+      throw error
     }
   }
   updatePlaylist() {
@@ -201,12 +216,16 @@ export class Playlist {
           case PLAYLIST_TYPES.TIME_OF_DAY:
             this.stop(false)
             this.setPlaylist(newPlaylistInfo)
-            this.timeOfDayPlaylist()
+            this.timeOfDayPlaylist().then(() => {
+              this.checkMissedEvents()
+            })
             break
           case PLAYLIST_TYPES.DAY_OF_WEEK:
             this.stop(false)
             this.setPlaylist(newPlaylistInfo)
-            this.dayOfWeekPlaylist()
+            this.dayOfWeekPlaylist().then(() => {
+              this.checkMissedEvents()
+            })
             break
           default:
             this.stop(true)
@@ -214,32 +233,32 @@ export class Playlist {
         }
         return {
           action: ACTIONS.UPDATE_PLAYLIST,
-          message: `Updated ${newPlaylistInfo.name}`
+          message: `Updated ${newPlaylistInfo.name}`,
         }
       } else {
         notify(
-          'There was a problem updating the playlist, either the names do not match, or the database returned null'
+          'There was a problem updating the playlist, either the names do not match, or the database returned null',
         )
         return {
           action: ACTIONS.ERROR,
           message:
-            'There was a problem updating the playlist, either the names do not match, or the database returned null'
+            'There was a problem updating the playlist, either the names do not match, or the database returned null',
         }
       }
     } catch (error) {
       notify(`Could not connect to the database\n Error:\n${error}`)
-      process.exit(1)
+      throw error
     }
   }
   updateInDB() {
     try {
       dbOperations.updatePlaylistCurrentIndex(
         this.currentImageIndex,
-        this.currentName
+        this.currentName,
       )
     } catch (error) {
       notify(`Could not connect to the database\n Error:\n${error}`)
-      process.exit(1)
+      throw error
     }
   }
   setPlaylist(currentPlaylist: PlaylistType) {
@@ -258,7 +277,7 @@ export class Playlist {
       if (!resume) {
         await this.setImage(this.images[this.currentImageIndex].name)
       }
-      this.intervalID = setInterval(async () => {
+      this.playlistTimer.timeoutID = setInterval(async () => {
         this.currentImageIndex++
         if (this.currentImageIndex === this.images.length) {
           this.currentImageIndex = 0
@@ -282,12 +301,13 @@ export class Playlist {
         this.stop(true)
         return
       }
-      this.currentImageIndex = startingIndex
+      this.currentImageIndex =
+        startingIndex < 0 ? this.images.length - 1 : startingIndex
       await this.setImage(this.images[this.currentImageIndex].name)
       this.timeOfDayPlayer()
     } catch (error) {
       notify(`Could not connect to the database\n Error:\n${error}`)
-      process.exit(1)
+      throw error
     }
   }
   async dayOfWeekPlaylist() {
@@ -298,7 +318,7 @@ export class Playlist {
       now.getDate() + 1,
       0,
       0,
-      0
+      0,
     )
     const millisecondsUntilEndOfDay = endOfDay.getTime() - now.getTime()
     let imageIndexToSet = now.getDay()
@@ -306,11 +326,14 @@ export class Playlist {
       imageIndexToSet = this.images.length - 1
     }
     await this.setImage(this.images[imageIndexToSet].name)
-    this.intervalID = setTimeout(() => {
+    clearTimeout(this.playlistTimer.timeoutID)
+    this.playlistTimer.timeoutID = setTimeout(() => {
       this.dayOfWeekPlaylist()
     }, millisecondsUntilEndOfDay)
+    this.playlistTimer.executionTimeStamp =
+      millisecondsUntilEndOfDay + Date.now()
   }
-  getSwwwCommandFromConfiguration(imagePath: string, monitors?: string[]) {
+  getSwwwCommandFromConfiguration(imagePath: string) {
     const swwwConfig = configuration.swww.settings
     let transitionPos = ''
     let inverty = swwwConfig.invertY ? '--invert-y' : ''
@@ -331,7 +354,7 @@ export class Playlist {
       return command
     } else {
       const command = baseCommand.concat(
-        ` --transition-type=${swwwConfig.transitionType}`
+        ` --transition-type=${swwwConfig.transitionType}`,
       )
       return command
     }
@@ -343,7 +366,8 @@ export class Playlist {
       this.stop(true)
       return
     }
-    this.timeoutID = setTimeout(async () => {
+    clearTimeout(this.playlistTimer.timeoutID)
+    this.playlistTimer.timeoutID = setTimeout(async () => {
       let newIndex = this.currentImageIndex + 1
       if (newIndex === this.images.length) {
         newIndex = 0
@@ -352,6 +376,7 @@ export class Playlist {
       await this.setImage(this.images[this.currentImageIndex].name)
       this.timeOfDayPlayer()
     }, timeOut)
+    this.playlistTimer.executionTimeStamp = timeOut + Date.now()
   }
 
   calculateMillisecondsUntilNextImage() {
@@ -384,12 +409,12 @@ export class Playlist {
       const midTime = this.images[mid].time
       if (midTime === null) return undefined
       if (midTime === currentTime) {
-        return mid // Found an exact match
+        return mid
       } else if (midTime < currentTime) {
-        closestIndex = mid // Update the closest index
-        low = mid + 1 // Move to the right half
+        closestIndex = mid
+        low = mid + 1
       } else {
-        high = mid - 1 // Move to the left half
+        high = mid - 1
       }
     }
     return closestIndex
@@ -407,8 +432,55 @@ export class Playlist {
       return `Setting ${randomImage}`
     } catch (error) {
       notify(error)
-      process.exit(1)
+      throw error
     }
+  }
+
+  async checkMissedEvents() {
+    clearTimeout(this.eventCheckerTimeout)
+    this.eventCheckerTimeout = setInterval(() => {
+      const now = Date.now()
+      if (
+        this.playlistTimer.executionTimeStamp === undefined ||
+        now < this.playlistTimer.executionTimeStamp ||
+        this.playlistTimer.timeoutID === undefined ||
+        this.currentType === undefined
+      ) {
+        return
+      }
+      clearTimeout(this.playlistTimer.timeoutID)
+      switch (this.currentType) {
+        case PLAYLIST_TYPES.TIME_OF_DAY:
+          this.timeOfDayPlaylist()
+          break
+        case PLAYLIST_TYPES.DAY_OF_WEEK:
+          this.dayOfWeekPlaylist()
+          break
+      }
+    }, 10_000)
+  }
+
+  async getPlaylistDiagnostics() {
+    const diagostics = {
+      playlistName: this.currentName,
+      playlistType: this.currentType,
+      playlistCurrentIndex: this.currentImageIndex,
+      playlistEventCheckerTimeout: {
+        id: String(this.eventCheckerTimeout),
+      },
+      playlistTimerObject: {
+        timeoutID: String(this.playlistTimer.timeoutID),
+        executionTimeStamp: new Date(
+          this.playlistTimer.executionTimeStamp ?? 0,
+        ),
+      },
+      playlistImages: this.images.map((image) => {
+        return JSON.stringify(image)
+      }),
+      playlistInterval: this.interval,
+      daemonPID: process.pid,
+    }
+    return diagostics
   }
 }
 

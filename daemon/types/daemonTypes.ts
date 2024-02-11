@@ -5,7 +5,7 @@ export interface imagesObject {
 }
 export enum ORDER_TYPES {
   ORDERED = 'ordered',
-  RANDOM = 'random'
+  RANDOM = 'random',
 }
 
 export type PlaylistType = {
@@ -22,7 +22,7 @@ export enum PLAYLIST_TYPES {
   TIMER = 'timer',
   NEVER = 'never',
   TIME_OF_DAY = 'timeofday',
-  DAY_OF_WEEK = 'dayofweek'
+  DAY_OF_WEEK = 'dayofweek',
 }
 
 export interface imageModel {
@@ -51,7 +51,8 @@ export enum ACTIONS {
   STOP_PLAYLIST = 'stop-playlist',
   UPDATE_CONFIG = 'update-config',
   UPDATE_PLAYLIST = 'update-playlist',
-  ERROR = 'error'
+  ERROR = 'error',
+  GET_INFO = 'get-info',
 }
 
 export interface message {
@@ -67,7 +68,7 @@ export enum dbTables {
   imagesInPlaylist = 'imagesInPlaylist',
   swwwConfig = 'swwwConfig',
   appConfig = 'appConfig',
-  activePlaylist = 'activePlaylist'
+  activePlaylist = 'activePlaylist',
 }
 
 export type imageInPlaylist = {
@@ -96,14 +97,14 @@ export type initialAppConfig = {
 export enum ResizeType {
   crop = 'crop',
   fit = 'fit',
-  none = 'no'
+  none = 'no',
 }
 export enum FilterType {
   Lanczos3 = 'Lanczos3',
   Bilinear = 'Bilinear',
   CatmullRom = 'CatmullRom',
   Mitchell = 'Mitchell',
-  Nearest = 'Nearest'
+  Nearest = 'Nearest',
 }
 export enum TransitionType {
   none = 'none',
@@ -119,7 +120,7 @@ export enum TransitionType {
   center = 'center',
   any = 'any',
   outer = 'outer',
-  random = 'random'
+  random = 'random',
 }
 
 export enum transitionPosition {
@@ -131,7 +132,7 @@ export enum transitionPosition {
   topLeft = 'top-left',
   topRight = 'top-right',
   bottomLeft = 'bottom-left',
-  bottomRight = 'bottom-right'
+  bottomRight = 'bottom-right',
 }
 
 const initialSwwwConfigDB = {
@@ -152,7 +153,7 @@ const initialSwwwConfigDB = {
   invertY: 0, // Same as false
   transitionBezier: '.25,.1,.25,1',
   transitionWaveX: 20,
-  transitionWaveY: 20
+  transitionWaveY: 20,
 }
 export type swwwConfig = typeof initialSwwwConfigDB
 
