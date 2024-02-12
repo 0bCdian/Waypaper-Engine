@@ -398,6 +398,11 @@ waypaper_engine_run_usage() {
     printf "    Script to run on each image set, the image path will be passed as argument.\n"
     echo
 
+    # :flag.usage
+    printf "  %s\n" "--force-wayland"
+    printf "    force app to run under wayland instead of xwayland.\n"
+    echo
+
     # :command.usage_fixed_flags
     printf "  %s\n" "--help, -h"
     printf "    Show this help\n"
@@ -407,6 +412,7 @@ waypaper_engine_run_usage() {
     printf "%s\n" "Examples:"
     printf "  waypaper-engine\n"
     printf "  waypaper-engine run\n"
+    printf "  waypaper-engine run --force-wayland\n"
     printf "  waypaper-engine r -s \"/path/to/your/script.sh\"\n"
     echo
 
@@ -677,14 +683,18 @@ waypaper_engine_run_command() {
   # src/run_command.sh
   LOCATION="/opt/waypaper-engine"
   COMMAND="$LOCATION"/waypaper-engine-bin
-  COMMAND="$COMMAND --ozone-platform-hint=auto"
+  COMMAND="$COMMAND"
 
-  if [ -n "${args[--script]}" ]; then
-      COMMAND="$COMMAND --script=${args[--script]}"
+  if [ -n "${args["--force-wayland"]}" ]; then
+  	COMMAND="$COMMAND --ozone-platform-hint=auto"
   fi
 
-  run_app(){
-     $COMMAND || echo "Something went wrong, make sure waypaper engine is installed correctly"
+  if [ -n "${args[--script]}" ]; then
+  	COMMAND="$COMMAND --script=${args[--script]}"
+  fi
+
+  run_app() {
+  	$COMMAND || echo "Something went wrong, make sure waypaper engine is installed correctly"
   }
 
   run_app >/dev/null &
@@ -1267,6 +1277,14 @@ waypaper_engine_run_parse_requirements() {
           printf "%s\n" "--script requires an argument: --script, -s SCRIPT" >&2
           exit 1
         fi
+        ;;
+
+      # :flag.case
+      --force-wayland)
+
+        # :flag.case_no_arg
+        args['--force-wayland']=1
+        shift
         ;;
 
       -?*)

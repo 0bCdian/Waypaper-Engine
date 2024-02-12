@@ -82,9 +82,14 @@ commands:
         help: Script to run on each image set, the image path will be passed as argument.
         required: false
 
+      - long: --force-wayland
+        help: force app to run under wayland instead of xwayland.
+        required: false
+
     examples:
       - waypaper-engine
       - waypaper-engine run
+      - waypaper-engine run --force-wayland
       - waypaper-engine r -s "/path/to/your/script.sh"
 
   - name: random

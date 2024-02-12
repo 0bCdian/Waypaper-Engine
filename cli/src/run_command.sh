@@ -1,13 +1,17 @@
 LOCATION="/opt/waypaper-engine"
 COMMAND="$LOCATION"/waypaper-engine-bin
-COMMAND="$COMMAND --ozone-platform-hint=auto"
+COMMAND="$COMMAND"
 
-if [ -n "${args[--script]}" ]; then
-    COMMAND="$COMMAND --script=${args[--script]}"
+if [ -n "${args["--force-wayland"]}" ]; then
+	COMMAND="$COMMAND --ozone-platform-hint=auto"
 fi
 
-run_app(){
-   $COMMAND || echo "Something went wrong, make sure waypaper engine is installed correctly"
+if [ -n "${args[--script]}" ]; then
+	COMMAND="$COMMAND --script=${args[--script]}"
+fi
+
+run_app() {
+	$COMMAND || echo "Something went wrong, make sure waypaper engine is installed correctly"
 }
 
 run_app >/dev/null &

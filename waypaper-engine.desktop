@@ -2,7 +2,7 @@
 Type=Application
 Name=Waypaper Engine
 GenericName=Wallpaper Management
-Comment=An Electron-based graphical frontend for setting wallpapers and playlists
+Comment=An Electron-based graphical frontend for swww with batteries included! 
 Exec=waypaper-engine
 Icon=waypaper-engine
 Categories=Utility;Graphics;
