@@ -4,14 +4,14 @@ import {
   PLAYLIST_TYPES,
   imagesObject,
   openFileAction,
-  rendererPlaylist
+  rendererPlaylist,
 } from '../types/rendererTypes'
 const { openFiles, handleOpenImages } = window.API_RENDERER
 interface State {
   isActive: boolean
 }
 interface openImagesProps {
-  setSkeletons: (skeletons: string[]) => void
+  setSkeletons: (skeletons: imagesObject | undefined) => void
   setImagesArray: (imagesArray: Image[]) => void
   addMultipleImagesToPlaylist: (Images: Image[]) => void
   addImageToPlaylist: (Image: Image) => void
@@ -31,7 +31,7 @@ const openImagesStore = create<State & Actions>((set) => ({
     addMultipleImagesToPlaylist,
     addImageToPlaylist,
     currentPlaylist,
-    action
+    action,
   }) => {
     set(() => ({ isActive: true }))
     const imagesObject: imagesObject = await openFiles(action)
@@ -39,7 +39,7 @@ const openImagesStore = create<State & Actions>((set) => ({
     if (!imagesObject) return
     imagesObject.fileNames.reverse()
     imagesObject.imagePaths.reverse()
-    setSkeletons(imagesObject.fileNames)
+    setSkeletons(imagesObject)
     const imagesArray = await handleOpenImages(imagesObject)
     const newImagesAdded = imagesArray.map((image) => {
       let playlistImagesLength = currentPlaylist.images.length
@@ -60,7 +60,7 @@ const openImagesStore = create<State & Actions>((set) => ({
             shouldCheckImage = true
             addImageToPlaylist({
               ...image,
-              isChecked: shouldCheckImage
+              isChecked: shouldCheckImage,
             })
           } else {
             shouldCheckImage = false
@@ -69,10 +69,10 @@ const openImagesStore = create<State & Actions>((set) => ({
       }
       return {
         ...image,
-        isChecked: shouldCheckImage
+        isChecked: shouldCheckImage,
       }
     })
-    setSkeletons([])
+    setSkeletons(undefined)
     setImagesArray(newImagesAdded)
     if (
       currentPlaylist.configuration.playlistType === PLAYLIST_TYPES.DAY_OF_WEEK
@@ -80,7 +80,7 @@ const openImagesStore = create<State & Actions>((set) => ({
       return
     }
     addMultipleImagesToPlaylist(newImagesAdded)
-  }
+  },
 }))
 
 export default openImagesStore

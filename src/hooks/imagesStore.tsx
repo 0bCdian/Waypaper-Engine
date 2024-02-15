@@ -4,14 +4,15 @@ import {
   useMemo,
   useContext,
   createContext,
-  useEffect
+  useEffect,
 } from 'react'
 import {
   Image,
   STORE_ACTIONS,
   Filters,
   state,
-  action
+  action,
+  imagesObject,
 } from '../types/rendererTypes'
 const { queryImages } = window.API_RENDERER
 const initialFilters: Filters = {
@@ -29,21 +30,21 @@ const initialFilters: Filters = {
       'tiff',
       'tga',
       'pnm',
-      'farbeld'
+      'farbeld',
     ],
     resolution: {
       constraint: 'all',
       width: 0,
-      height: 0
-    }
-  }
+      height: 0,
+    },
+  },
 }
 function reducer(state: state, action: action) {
   switch (action.type) {
     case STORE_ACTIONS.SET_IMAGES_ARRAY:
       return {
         ...state,
-        imagesArray: [...action.payload, ...state.imagesArray]
+        imagesArray: [...action.payload, ...state.imagesArray],
       }
     case STORE_ACTIONS.SET_SKELETONS_TO_SHOW:
       return { ...state, skeletonsToShow: action.payload }
@@ -58,10 +59,10 @@ function imagesSource() {
   const [{ imagesArray, skeletonsToShow, filters }, dispatch] = useReducer(
     reducer,
     {
-      imagesArray: [],
-      skeletonsToShow: [],
-      filters: initialFilters
-    }
+      imagesArray: [] as Image[],
+      skeletonsToShow: undefined,
+      filters: initialFilters,
+    },
   )
   useEffect(() => {
     queryImages().then((data: Image[]) => {
@@ -71,7 +72,7 @@ function imagesSource() {
   const setFilters = useCallback((newFilters: Filters) => {
     dispatch({
       type: STORE_ACTIONS.SET_FILTERS,
-      payload: newFilters
+      payload: newFilters,
     })
   }, [])
   const resetImageCheckboxes = useCallback(() => {
@@ -81,7 +82,7 @@ function imagesSource() {
     })
     dispatch({
       type: STORE_ACTIONS.RESET_IMAGES_ARRAY,
-      payload: resetImagesArray
+      payload: resetImagesArray,
     })
   }, [imagesArray])
   const reQueryImages = useCallback(() => {
@@ -94,27 +95,27 @@ function imagesSource() {
       const newImagesArray = imagesArray.filter((image) => image.id !== imageID)
       dispatch({
         type: STORE_ACTIONS.RESET_IMAGES_ARRAY,
-        payload: newImagesArray
+        payload: newImagesArray,
       })
     },
-    [imagesArray]
+    [imagesArray],
   )
   const clearSkeletons = useCallback(() => {
     dispatch({
       type: STORE_ACTIONS.SET_SKELETONS_TO_SHOW,
-      payload: []
+      payload: undefined,
     })
   }, [])
-  const setSkeletons = useCallback((skeletons: string[]) => {
+  const setSkeletons = useCallback((skeletons: imagesObject | undefined) => {
     dispatch({
       type: STORE_ACTIONS.SET_SKELETONS_TO_SHOW,
-      payload: skeletons
+      payload: skeletons,
     })
   }, [])
   const setImagesArray = useCallback((newImages: Image[]) => {
     dispatch({
       type: STORE_ACTIONS.SET_IMAGES_ARRAY,
-      payload: newImages
+      payload: newImages,
     })
   }, [])
 
@@ -122,11 +123,11 @@ function imagesSource() {
     const shallowCopy = [...imagesArray]
     if (filters.order === 'desc') {
       return shallowCopy.sort((a, b) =>
-        a[filters.type] > b[filters.type] ? -1 : 1
+        a[filters.type] > b[filters.type] ? -1 : 1,
       )
     } else {
       return shallowCopy.sort((a, b) =>
-        a[filters.type] < b[filters.type] ? -1 : 1
+        a[filters.type] < b[filters.type] ? -1 : 1,
       )
     }
   }, [imagesArray, filters.order, filters.type])
@@ -167,7 +168,7 @@ function imagesSource() {
       imagesFilteredByFormat = dontFilterByFormat
         ? imagesfilteredByResolution
         : imagesfilteredByResolution.filter((images) =>
-            filters.advancedFilters.formats.includes(images.format)
+            filters.advancedFilters.formats.includes(images.format),
           )
     }
     let imagesFilteredByName: Image[] = dontFilterByName
@@ -175,13 +176,13 @@ function imagesSource() {
       : imagesFilteredByFormat.filter((image) =>
           image.name
             .toLocaleLowerCase()
-            .includes(filters.searchString.toLocaleLowerCase())
+            .includes(filters.searchString.toLocaleLowerCase()),
         )
     return imagesFilteredByName
   }, [filters, sortedImages])
   const isEmpty = useMemo(
-    () => !(imagesArray.length > 0 || skeletonsToShow.length > 0),
-    [skeletonsToShow, imagesArray]
+    () => !(imagesArray.length > 0 || skeletonsToShow !== undefined),
+    [skeletonsToShow, imagesArray],
   )
   return {
     imagesArray,
@@ -195,7 +196,7 @@ function imagesSource() {
     resetImageCheckboxes,
     clearSkeletons,
     reQueryImages,
-    removeImageFromStore
+    removeImageFromStore,
   }
 }
 

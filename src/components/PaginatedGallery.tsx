@@ -23,17 +23,21 @@ function PaginatedGallery() {
   const updateImagesPerPage = debounce(() => {
     const newDimensions = {
       width: window.innerWidth,
-      height: window.innerHeight
+      height: window.innerHeight,
     }
     const newImagesPerPage = Math.ceil(
-      coeficient * newDimensions.height * newDimensions.width
+      coeficient * newDimensions.height * newDimensions.width,
     )
     setImagesPerPage(newImagesPerPage)
   }, 100)
   const SkeletonsArray = useMemo(() => {
-    return skeletonsToShow.map((imageName) => (
-      <Skeleton key={imageName} imageName={imageName} />
-    ))
+    if (skeletonsToShow !== undefined) {
+      return skeletonsToShow.fileNames.map((imageName, index) => {
+        const imagePath = skeletonsToShow.imagePaths[index]
+        return <Skeleton key={imagePath} imageName={imageName} />
+      })
+    }
+    return []
   }, [skeletonsToShow])
   const imagesCardArray = useMemo(() => {
     return filteredImages.map((image) => {
@@ -44,11 +48,11 @@ function PaginatedGallery() {
     function () {
       const imagesToShow = [...SkeletonsArray, ...imagesCardArray].slice(
         firstImageIndex,
-        lastImageIndex
+        lastImageIndex,
       )
       return imagesToShow
     },
-    [imagesPerPage, currentPage, totalPages, filteredImages, skeletonsToShow]
+    [imagesPerPage, currentPage, totalPages, filteredImages, skeletonsToShow],
   )
   function handlePageChange(page: number) {
     setCurrentPage(page)
@@ -66,8 +70,8 @@ function PaginatedGallery() {
   }, [imagesPerPage, totalPages, filters.searchString])
 
   return (
-    <div className=' transition flex flex-col justify-between sm:w-[90%] [max-height:87dvh] [min-height:87dvh] m-auto'>
-      <div className='overflow-y-scroll w-full scrollbar-thin m-auto'>
+    <div className=" transition flex flex-col justify-between sm:w-[90%] [max-height:87dvh] [min-height:87dvh] m-auto">
+      <div className="overflow-y-scroll w-full scrollbar-thin m-auto">
         <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -82,12 +86,12 @@ function PaginatedGallery() {
         </motion.div>
       </div>
 
-      <div className='flex pt-3 flex-col w-full gap-5 '>
-        <div className='w-[75%] self-center'>
+      <div className="flex pt-3 flex-col w-full gap-5 ">
+        <div className="w-[75%] self-center">
           <ResponsivePagination
             total={totalPages}
-            previousClassName='rounded_button_previous'
-            nextClassName='rounded_button_next'
+            previousClassName="rounded_button_previous"
+            nextClassName="rounded_button_next"
             current={currentPage}
             onPageChange={(page: number) => handlePageChange(page)}
           />

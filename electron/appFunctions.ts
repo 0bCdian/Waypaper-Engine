@@ -1,10 +1,10 @@
-import { dialog } from 'electron'
-import { rmSync, mkdirSync, existsSync, readdirSync, readdir } from 'node:fs'
-import { copyFile } from 'node:fs/promises'
+import { BrowserWindow, dialog } from 'electron'
+import { rmSync, mkdirSync, existsSync } from 'node:fs'
+import { copyFile, readdir } from 'node:fs/promises'
 import {
   appDirectories,
   validImageExtensions,
-  WAYPAPER_ENGINE_SOCKET_PATH
+  WAYPAPER_ENGINE_SOCKET_PATH,
 } from './globals/globals'
 import {
   imagesObject,
@@ -12,12 +12,12 @@ import {
   message,
   Monitor,
   imageMetadata,
-  wlr_output
+  wlr_output,
 } from './types/types'
 import {
   rendererPlaylist,
   Image,
-  openFileAction
+  openFileAction,
 } from '../src/types/rendererTypes'
 import { exec, execFile, execSync, spawn } from 'node:child_process'
 import { promisify } from 'node:util'
@@ -31,71 +31,88 @@ import Sharp = require('sharp')
 import {
   extendImageAcrossAllMonitors,
   splitImageHorizontalAxis,
-  splitImageVerticalAxis
+  splitImageVerticalAxis,
 } from './imageOperations'
 const execPomisified = promisify(exec)
 const execFilePomisified = promisify(execFile)
 
-function openImagesFromFilePicker() {
-  const file = dialog.showOpenDialogSync({
-    properties: ['openFile'],
+function openImagesFromFilePicker(browserWindow: BrowserWindow | null) {
+  if (browserWindow !== null) {
+    return dialog.showOpenDialogSync(browserWindow, {
+      properties: ['openFile', 'multiSelections'],
+      filters: [{ name: 'Images', extensions: validImageExtensions }],
+      defaultPath: appDirectories.systemHome,
+    })
+  }
+  return dialog.showOpenDialogSync({
+    properties: ['openFile', 'multiSelections'],
     filters: [{ name: 'Images', extensions: validImageExtensions }],
-    defaultPath: appDirectories.systemHome
+    defaultPath: appDirectories.systemHome,
   })
-  return file
 }
 
-function openFolderFromFilePicker() {
-  const paths = dialog.showOpenDialogSync({
-    properties: ['openDirectory', 'multiSelections'],
-    defaultPath: appDirectories.systemHome
-  })
+async function openFolderFromFilePicker(browserWindow: BrowserWindow | null) {
+  let paths: string[] | undefined
+  if (browserWindow !== null) {
+    paths = dialog.showOpenDialogSync(browserWindow, {
+      properties: ['openDirectory', 'multiSelections'],
+      defaultPath: appDirectories.systemHome,
+    })
+  } else {
+    paths = dialog.showOpenDialogSync({
+      properties: ['openDirectory', 'multiSelections'],
+      defaultPath: appDirectories.systemHome,
+    })
+  }
   if (paths === undefined) return
-  const images: string[] = []
-  paths.forEach((path) => {
-    searchImagesRecursively(images, path)
-  })
-  return images
+  const imageFilePaths: string[] = []
+  for (let index = 0; index < paths.length; index++) {
+    const path = paths[index]
+    await searchImagesRecursively(imageFilePaths, path)
+  }
+  return imageFilePaths
 }
 
-function searchImagesRecursively(images: string[], directory: string) {
-  const directoryContents = readdirSync(directory, {
-    recursive: true,
+async function searchImagesRecursively(
+  imageFilePaths: string[],
+  directory: string,
+) {
+  const directoryContents = await readdir(directory, {
+    recursive: false,
     encoding: 'utf-8',
-    withFileTypes: true
+    withFileTypes: true,
   })
-  directoryContents.forEach((filePathOrDir) => {
+  for (let index = 0; index < directoryContents.length; index++) {
+    const filePathOrDir = directoryContents[index]
+    let fileName = filePathOrDir.name
     if (filePathOrDir.isDirectory()) {
-      return searchImagesRecursively(
-        images,
-        join(directory, filePathOrDir.name)
-      )
+      await searchImagesRecursively(imageFilePaths, join(directory, fileName))
     } else {
       const fileExtension = filePathOrDir.name.split('.').at(-1)
       if (
         fileExtension !== undefined &&
         validImageExtensions.includes(fileExtension)
       ) {
-        images.push(join(directory, filePathOrDir.name))
+        imageFilePaths.push(join(directory, fileName))
       }
     }
-  })
+  }
 }
 
 export async function copyImagesToCacheAndProcessThumbnails(
   _event: Electron.IpcMainInvokeEvent,
-  { imagePaths, fileNames }: imagesObject
+  { imagePaths, fileNames }: imagesObject,
 ) {
-  const uniqueFileNames = checkAndRenameDuplicates(fileNames)
+  const uniqueFileNames = await checkAndRenameDuplicates(fileNames)
   const imagesToStore = uniqueFileNames.map((imageName, currentImage) => {
     return new Promise<imageMetadata | undefined>(async (resolve) => {
       await copyFile(
         imagePaths[currentImage],
-        join(appDirectories.imagesDir, imageName)
+        join(appDirectories.imagesDir, imageName),
       )
       const imageMetadata = await createCacheThumbnail(
         imagePaths[currentImage],
-        imageName
+        imageName,
       )
       resolve(imageMetadata)
     })
@@ -120,12 +137,12 @@ async function createCacheThumbnail(filePathSource: string, imageName: string) {
     try {
       const buffer = Sharp(filePathSource, {
         animated: true,
-        limitInputPixels: false
+        limitInputPixels: false,
       })
       const metadata = await buffer.metadata()
       await buffer
         .resize(300, 200, {
-          fit: 'cover'
+          fit: 'cover',
         })
         .webp({ quality: 60, force: true, effort: 6 })
         .toFile(fileDestinationPath)
@@ -133,7 +150,7 @@ async function createCacheThumbnail(filePathSource: string, imageName: string) {
         name: imageName,
         format: metadata.format,
         width: metadata.width,
-        height: metadata.height
+        height: metadata.height,
       }
       return imageMetadata as imageMetadata
     } catch (error) {
@@ -142,12 +159,14 @@ async function createCacheThumbnail(filePathSource: string, imageName: string) {
   }
 }
 
-export function openAndReturnImagesObject(
-  _event: Electron.IpcMainInvokeEvent,
-  action: openFileAction
+export async function openAndReturnImagesObject(
+  action: openFileAction,
+  browserWindow: BrowserWindow | null,
 ) {
   const imagePathsFromFilePicker =
-    action === 'file' ? openImagesFromFilePicker() : openFolderFromFilePicker()
+    action === 'file'
+      ? openImagesFromFilePicker(browserWindow)
+      : await openFolderFromFilePicker(browserWindow)
   if (!imagePathsFromFilePicker) {
     return
   }
@@ -155,25 +174,21 @@ export function openAndReturnImagesObject(
   return { imagePaths: imagePathsFromFilePicker, fileNames }
 }
 
-export function remakeThumbnailsIfImagesExist() {
-  readdir(appDirectories.thumbnails, (err, thumbnails) => {
-    if (err) {
-      throw new Error('Could not read thumbnails directory')
+export async function remakeThumbnailsIfImagesExist() {
+  const thumbnails = await readdir(appDirectories.thumbnails)
+  if (thumbnails.length < 1) {
+    const imagesStored = await readdir(appDirectories.imagesDir)
+    if (imagesStored.length < 1) {
+      return
     }
-    if (thumbnails.length < 1) {
-      readdir(appDirectories.imagesDir, (err, images) => {
-        if (err) {
-          throw new Error(`Could not read the images directory: ${err}`)
-        } else if (images.length < 1) {
-          return
-        }
-        for (let current = 0; current < images.length; current++) {
-          const filePathSource = join(appDirectories.imagesDir, images[current])
-          createCacheThumbnail(filePathSource, images[current])
-        }
-      })
+    for (let current = 0; current < imagesStored.length; current++) {
+      const filePathSource = join(
+        appDirectories.imagesDir,
+        imagesStored[current],
+      )
+      createCacheThumbnail(filePathSource, imagesStored[current])
     }
-  })
+  }
 }
 export function checkCacheOrCreateItIfNotExists() {
   if (!existsSync(appDirectories.rootCache)) {
@@ -189,7 +204,7 @@ export function checkCacheOrCreateItIfNotExists() {
       appDirectories.mainDir,
       appDirectories.imagesDir,
       appDirectories.thumbnails,
-      appDirectories.tempImages
+      appDirectories.tempImages,
     )
   } else {
     if (!existsSync(appDirectories.imagesDir)) {
@@ -219,16 +234,16 @@ function deleteFolders(...args: string[]) {
   }
 }
 
-function checkAndRenameDuplicates(filenamesToCopy: string[]) {
-  const currentImagesStored = readdirSync(appDirectories.imagesDir)
+async function checkAndRenameDuplicates(filenamesToCopy: string[]) {
+  const currentImagesStored = new Set(await readdir(appDirectories.imagesDir))
   const correctFilenamesToCopy = getUniqueFileNames(
     currentImagesStored,
-    filenamesToCopy
+    filenamesToCopy,
   )
   return correctFilenamesToCopy
 }
 
-function getUniqueFileNames(existingFiles: string[], filesToCopy: string[]) {
+function getUniqueFileNames(existingFiles: Set<string>, filesToCopy: string[]) {
   const filesToCopyWithoutConflicts: string[] = []
   const filesToCopyLength = filesToCopy.length
   for (let i = 0; i < filesToCopyLength; i++) {
@@ -241,11 +256,12 @@ function getUniqueFileNames(existingFiles: string[], filesToCopy: string[]) {
 
     let uniqueFileName = fileNameWithoutExtension
     let count = 1
-    while (existingFiles.includes(uniqueFileName + fileExtension)) {
+    while (existingFiles.has(uniqueFileName + fileExtension)) {
       uniqueFileName = `${fileNameWithoutExtension}(${count})`
       count++
     }
     filesToCopyWithoutConflicts.push(uniqueFileName + fileExtension)
+    existingFiles.add(uniqueFileName + fileExtension)
   }
   return filesToCopyWithoutConflicts
 }
@@ -253,7 +269,7 @@ function getUniqueFileNames(existingFiles: string[], filesToCopy: string[]) {
 export async function setImage(
   _event: Electron.IpcMainInvokeEvent,
   imageName: string,
-  monitor?: string
+  monitor?: string,
 ) {
   const imagePath = join(appDirectories.imagesDir, `"${imageName}"`)
   const command = getSwwwCommandFromConfiguration(imagePath, monitor)
@@ -284,7 +300,7 @@ export async function checkIfSwwwIsInstalled() {
     console.info('swww is installed in the system')
   } else {
     console.warn(
-      'swww is not installed, please find instructions in the README.md on how to install it'
+      'swww is not installed, please find instructions in the README.md on how to install it',
     )
     throw new Error('swww is not installed')
   }
@@ -323,7 +339,7 @@ export async function initWaypaperDaemon() {
         spawn('node', args, {
           detached: true,
           stdio: 'ignore',
-          shell: true
+          shell: true,
         })
         resolve()
       } catch (error) {
@@ -357,64 +373,65 @@ function playlistConnectionBridge(message: message) {
 export const PlaylistController = {
   startPlaylist: function () {
     playlistConnectionBridge({
-      action: ACTIONS.START_PLAYLIST
+      action: ACTIONS.START_PLAYLIST,
     })
   },
   pausePlaylist: () => {
     playlistConnectionBridge({
-      action: ACTIONS.PAUSE_PLAYLIST
+      action: ACTIONS.PAUSE_PLAYLIST,
     })
   },
   resumePlaylist: () => {
     playlistConnectionBridge({
-      action: ACTIONS.RESUME_PLAYLIST
+      action: ACTIONS.RESUME_PLAYLIST,
     })
   },
   stopPlaylist: () => {
     playlistConnectionBridge({
-      action: ACTIONS.STOP_PLAYLIST
+      action: ACTIONS.STOP_PLAYLIST,
     })
   },
   nextImage: () => {
     playlistConnectionBridge({
-      action: ACTIONS.NEXT_IMAGE
+      action: ACTIONS.NEXT_IMAGE,
     })
   },
   previousImage: () => {
     playlistConnectionBridge({
-      action: ACTIONS.PREVIOUS_IMAGE
+      action: ACTIONS.PREVIOUS_IMAGE,
     })
   },
   randomImage: () => {
     playlistConnectionBridge({
-      action: ACTIONS.RANDOM_IMAGE
+      action: ACTIONS.RANDOM_IMAGE,
     })
   },
   killDaemon: () => {
     playlistConnectionBridge({
-      action: ACTIONS.STOP_DAEMON
+      action: ACTIONS.STOP_DAEMON,
     })
   },
   updateConfig: () => {
     playlistConnectionBridge({
-      action: ACTIONS.UPDATE_CONFIG
+      action: ACTIONS.UPDATE_CONFIG,
     })
   },
   updatePlaylist: () => {
     playlistConnectionBridge({ action: ACTIONS.UPDATE_PLAYLIST })
-  }
+  },
 }
 
 export function deleteImageFromStorage(imageName: string) {
   try {
     const [thumbnailName] = imageName.split('.')
+
     rmSync(join(appDirectories.imagesDir, imageName))
     rmSync(join(appDirectories.thumbnails, `${thumbnailName}.webp`), {
-      force: true
+      force: true,
     })
     if (imageName.endsWith('.gif')) {
       rmSync(join(appDirectories.thumbnails, `${thumbnailName}.gif`), {
-        force: true
+        force: true,
       })
     }
   } catch (error) {
@@ -426,7 +443,7 @@ export function deleteImageFromStorage(imageName: string) {
 export function deleteImageFromGallery(
   _: Electron.IpcMainInvokeEvent,
   imageID: number,
-  imageName: string
+  imageName: string,
 ) {
   try {
     dbOperations.deleteImageInDB(imageID)
@@ -472,7 +489,7 @@ function getSwwwCommandFromConfiguration(imagePath: string, monitor?: string) {
 
 export async function getMonitors() {
   const { stdout, stderr } = await execPomisified('swww query', {
-    encoding: 'utf-8'
+    encoding: 'utf-8',
   })
   if (stderr) throw new Error('Could not execute swww query')
   return parseSwwwQuery(stdout)
@@ -493,7 +510,7 @@ function parseSwwwQuery(stdout: string) {
         width,
         height,
         currentImage: splitInfo[4].trim(),
-        position: index
+        position: index,
       }
     })
   return monitorsObjectArray as Monitor[]
@@ -502,7 +519,7 @@ function parseSwwwQuery(stdout: string) {
 export async function setImageExtended(
   Image: Image,
   monitors: Monitor[],
-  orientation: 'vertical' | 'horizontal'
+  orientation: 'vertical' | 'horizontal',
 ) {
   try {
     const commands: Promise<any>[] = []
@@ -519,19 +536,19 @@ export async function setImageExtended(
             monitors,
             Image,
             imageFilePath,
-            combinedMonitorWidth
+            combinedMonitorWidth,
           )
         : await splitImageHorizontalAxis(
             monitors,
             Image,
             imageFilePath,
-            combinedMonitorHeight
+            combinedMonitorHeight,
           )
     monitorsToImagesPair.forEach((pair) => {
       commands.push(
         execPomisified(
-          getSwwwCommandFromConfiguration(pair.image, pair.monitor)
-        )
+          getSwwwCommandFromConfiguration(pair.image, pair.monitor),
+        ),
       )
     })
     Promise.all(commands)
@@ -546,7 +563,7 @@ export async function setImageExtended(
 export async function getMonitorsInfo() {
   try {
     const { stdout } = await execFilePomisified(join(binDir, 'wlr-randr'), [
-      '--json'
+      '--json',
     ])
     const monitors: wlr_output = JSON.parse(stdout)
     monitors.forEach((monitor) => {
@@ -565,13 +582,13 @@ export async function setImageAcrossAllMonitors(Image: Image) {
     const commands: Promise<any>[] = []
     const monitorsToImagesPair = await extendImageAcrossAllMonitors(
       Image,
-      imageFilePath
+      imageFilePath,
     )
     monitorsToImagesPair.forEach((pair) => {
       commands.push(
         execPomisified(
-          getSwwwCommandFromConfiguration(pair.image, pair.monitor)
-        )
+          getSwwwCommandFromConfiguration(pair.image, pair.monitor),
+        ),
       )
     })
     Promise.all(commands)

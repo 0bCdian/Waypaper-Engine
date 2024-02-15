@@ -15,21 +15,21 @@ export interface imagesObject {
 
 export enum ORDER_TYPES {
   ORDERED = 'ordered',
-  RANDOM = 'random'
+  RANDOM = 'random',
 }
 
 export enum STORE_ACTIONS {
   SET_IMAGES_ARRAY = 'SET_IMAGES_ARRAY',
   SET_SKELETONS_TO_SHOW = 'SET_SKELETONS_TO_SHOW',
   SET_FILTERS = 'SET_FILTERS',
-  RESET_IMAGES_ARRAY = 'RESET_IMAGES_ARRAY'
+  RESET_IMAGES_ARRAY = 'RESET_IMAGES_ARRAY',
 }
 
 export enum PLAYLIST_TYPES {
   TIMER = 'timer',
   NEVER = 'never',
   TIME_OF_DAY = 'timeofday',
-  DAY_OF_WEEK = 'dayofweek'
+  DAY_OF_WEEK = 'dayofweek',
 }
 
 export type configuration = {
@@ -76,13 +76,16 @@ export type Formats =
 export type resolutionConstraints = 'all' | 'exact' | 'moreThan' | 'lessThan'
 export type state = {
   imagesArray: Image[]
-  skeletonsToShow: string[]
+  skeletonsToShow: imagesObject | undefined
   filters: Filters
 }
 
 export type action =
   | { type: STORE_ACTIONS.SET_IMAGES_ARRAY; payload: Image[] }
-  | { type: STORE_ACTIONS.SET_SKELETONS_TO_SHOW; payload: string[] }
+  | {
+      type: STORE_ACTIONS.SET_SKELETONS_TO_SHOW
+      payload: imagesObject | undefined
+    }
   | { type: STORE_ACTIONS.SET_FILTERS; payload: Filters }
   | { type: STORE_ACTIONS.RESET_IMAGES_ARRAY; payload: Image[] }
 

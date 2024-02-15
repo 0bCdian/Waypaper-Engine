@@ -36,9 +36,9 @@ function Gallery() {
           playlistType: playlist.type,
           order: playlist.order,
           interval: playlist.interval,
-          showAnimations: playlist.showAnimations === 1 ? true : false
+          showAnimations: playlist.showAnimations === 1 ? true : false,
         },
-        images: imagesToStorePlaylist
+        images: imagesToStorePlaylist,
       }
       setPlaylist(currentPlaylist)
     })
@@ -60,7 +60,7 @@ function Gallery() {
   }, [isEmpty])
   if (isEmpty) {
     return (
-      <div className='flex justify-center items-center h-screen m-auto'>
+      <div className="flex justify-center items-center h-screen m-auto">
         <div>
           <AddImagesCard />
         </div>

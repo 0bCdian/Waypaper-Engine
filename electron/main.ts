@@ -34,7 +34,11 @@ import { iconPath } from './binaries'
 import { swwwConfig } from './database/swwwConfig'
 import { AppConfigDB } from '../src/routes/AppConfiguration'
 import config from './database/globalConfig'
-import { Image, rendererPlaylist } from '../src/types/rendererTypes'
+import {
+  Image,
+  openFileAction,
+  rendererPlaylist,
+} from '../src/types/rendererTypes'
 
 const gotTheLock = app.requestSingleInstanceLock()
 if (!gotTheLock) {
@@ -147,7 +151,11 @@ app
     createMenu()
     createTray()
     registerFileProtocol()
-    remakeThumbnailsIfImagesExist()
+    remakeThumbnailsIfImagesExist().then(() => {
+      if (win) {
+        win.reload()
+      }
+    })
   })
   .catch((e) => console.error(e))
 
@@ -157,7 +165,9 @@ app.on('quit', () => {
   }
 })
 
-ipcMain.handle('openFiles', openAndReturnImagesObject)
+ipcMain.handle('openFiles', (_event, action: openFileAction) => {
+  return openAndReturnImagesObject(action, win)
+})
 ipcMain.handle('handleOpenImages', copyImagesToCacheAndProcessThumbnails)
 ipcMain.handle('queryImages', () => {
   return dbOperations.readAllImagesInDB()
