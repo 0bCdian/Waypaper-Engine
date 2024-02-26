@@ -40,7 +40,7 @@ export enum transitionPosition {
   bottomRight = 'bottom-right'
 }
 
-export type SwwwFormData = {
+export interface SwwwFormData {
   resizeType: ResizeType
   fillColor: string
   filterType: FilterType

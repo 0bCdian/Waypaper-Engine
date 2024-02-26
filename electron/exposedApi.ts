@@ -1,29 +1,29 @@
 import { ipcRenderer } from 'electron'
 import { appDirectories } from './globals/globals'
 import {
-  imagesObject,
-  Monitor,
-  Playlist,
-  ActivePlaylist,
-  imageInPlaylist
+  type imagesObject,
+  type Monitor,
+  type Playlist,
+  type ActivePlaylist,
+  type imageInPlaylist
 } from './types/types'
 import {
-  Image,
-  openFileAction,
-  rendererPlaylist
+  type Image,
+  type openFileAction,
+  type rendererPlaylist
 } from '../src/types/rendererTypes'
 import { join } from 'node:path'
-import { swwwConfig } from './database/swwwConfig'
-import { AppConfigDB } from '../src/routes/AppConfiguration'
+import { type swwwConfig } from './database/swwwConfig'
+import { type AppConfigDB } from '../src/routes/AppConfiguration'
 
 export const ELECTRON_API = {
-  openFiles: (action: openFileAction) =>
-    ipcRenderer.invoke('openFiles', action),
-  handleOpenImages: (imagesObject: imagesObject): Promise<Image[]> => {
-    return ipcRenderer.invoke('handleOpenImages', imagesObject)
+  openFiles: async (action: openFileAction) =>
+    await ipcRenderer.invoke('openFiles', action),
+  handleOpenImages: async (imagesObject: imagesObject): Promise<Image[]> => {
+    return await ipcRenderer.invoke('handleOpenImages', imagesObject)
   },
-  queryImages: () => {
-    return ipcRenderer.invoke('queryImages')
+  queryImages: async () => {
+    return await ipcRenderer.invoke('queryImages')
   },
   setImage: (image: string) => {
     ipcRenderer.send('setImage', image)
@@ -37,17 +37,17 @@ export const ELECTRON_API = {
   startPlaylist: (playlistName: string) => {
     ipcRenderer.send('startPlaylist', playlistName)
   },
-  queryPlaylists: (): Promise<Playlist[]> => {
-    return ipcRenderer.invoke('queryPlaylists')
+  queryPlaylists: async (): Promise<Playlist[]> => {
+    return await ipcRenderer.invoke('queryPlaylists')
   },
-  getPlaylistImages: (playlistID: number): Promise<imageInPlaylist[]> => {
-    return ipcRenderer.invoke('getPlaylistImages', playlistID)
+  getPlaylistImages: async (playlistID: number): Promise<imageInPlaylist[]> => {
+    return await ipcRenderer.invoke('getPlaylistImages', playlistID)
   },
   stopPlaylist: () => {
     ipcRenderer.send('stopPlaylist')
   },
-  deleteImageFromGallery: (imageID: number, imageName: string) => {
-    return ipcRenderer.invoke('deleteImageFromGallery', imageID, imageName)
+  deleteImageFromGallery: async (imageID: number, imageName: string) => {
+    return await ipcRenderer.invoke('deleteImageFromGallery', imageID, imageName)
   },
   deletePlaylist: (playlistName: string) => {
     ipcRenderer.send('deletePlaylist', playlistName)
@@ -58,20 +58,20 @@ export const ELECTRON_API = {
   updateSwwwConfig: (newConfig: swwwConfig) => {
     ipcRenderer.send('updateSwwwConfig', newConfig)
   },
-  readSwwwConfig: () => {
-    return ipcRenderer.invoke('readSwwwConfig')
+  readSwwwConfig: async () => {
+    return await ipcRenderer.invoke('readSwwwConfig')
   },
-  readAppConfig: (): Promise<AppConfigDB> => {
-    return ipcRenderer.invoke('readAppConfig')
+  readAppConfig: async (): Promise<AppConfigDB> => {
+    return await ipcRenderer.invoke('readAppConfig')
   },
   updateAppConfig: (newAppConfig: AppConfigDB) => {
     ipcRenderer.send('updateAppConfig', newAppConfig)
   },
 
-  readActivePlaylist: () => {
-    return ipcRenderer.invoke('readActivePlaylist') as Promise<
+  readActivePlaylist: async () => {
+    return await (ipcRenderer.invoke('readActivePlaylist') as Promise<
       ActivePlaylist | undefined
-    >
+    >)
   },
   onClearPlaylist: (callback: () => void) => {
     ipcRenderer.on('clearPlaylist', callback)
@@ -89,13 +89,13 @@ export const ELECTRON_API = {
   exitApp: () => {
     ipcRenderer.send('exitApp')
   },
-  getMonitors: () => {
-    return ipcRenderer.invoke('getMonitors') as Promise<Monitor[]>
+  getMonitors: async () => {
+    return await (ipcRenderer.invoke('getMonitors') as Promise<Monitor[]>)
   },
   updateTray: () => {
-    return ipcRenderer.send('updateTray')
+    ipcRenderer.send('updateTray');
   },
-  join: join,
+  join,
   thumbnailDirectory: appDirectories.thumbnails,
   imagesDirectory: appDirectories.imagesDir
 }

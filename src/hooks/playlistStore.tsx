@@ -1,8 +1,8 @@
 import { create } from 'zustand'
 import {
-  Image,
-  rendererPlaylist,
-  configuration,
+  type Image,
+  type rendererPlaylist,
+  type configuration,
   PLAYLIST_TYPES,
   ORDER_TYPES
 } from '../types/rendererTypes'

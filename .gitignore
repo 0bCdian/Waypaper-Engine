@@ -27,3 +27,5 @@ release
 daemon/node_modules
 daemon/*.js
 waypaper.sqlite3
+electron/*.js
+src/*.js

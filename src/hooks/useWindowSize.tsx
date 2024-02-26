@@ -15,7 +15,7 @@ function useWindowSize() {
   })
   useEffect(() => {
     window.addEventListener('resize', setDimensionsThrottle)
-    return window.removeEventListener('resize', setDimensionsThrottle)
+    window.removeEventListener('resize', setDimensionsThrottle);
   }, [dimensions])
   return dimensions
 }

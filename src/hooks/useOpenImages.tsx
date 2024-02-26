@@ -1,86 +1,84 @@
-import { create } from 'zustand'
+import { create } from 'zustand';
 import {
-  Image,
-  PLAYLIST_TYPES,
-  imagesObject,
-  openFileAction,
-  rendererPlaylist,
-} from '../types/rendererTypes'
-const { openFiles, handleOpenImages } = window.API_RENDERER
+    type Image,
+    PLAYLIST_TYPES,
+    type imagesObject,
+    type openFileAction,
+    type rendererPlaylist
+} from '../types/rendererTypes';
+const { openFiles, handleOpenImages } = window.API_RENDERER;
 interface State {
-  isActive: boolean
+    isActive: boolean;
 }
 interface openImagesProps {
-  setSkeletons: (skeletons: imagesObject | undefined) => void
-  setImagesArray: (imagesArray: Image[]) => void
-  addMultipleImagesToPlaylist: (Images: Image[]) => void
-  addImageToPlaylist: (Image: Image) => void
-  currentPlaylist: rendererPlaylist
-  action: openFileAction
+    setSkeletons: (skeletons: imagesObject | undefined) => void;
+    setImagesArray: (imagesArray: Image[]) => void;
+    addMultipleImagesToPlaylist: (Images: Image[]) => void;
+    addImageToPlaylist: (Image: Image) => void;
+    currentPlaylist: rendererPlaylist;
+    action: openFileAction;
 }
 
 interface Actions {
-  openImages: ({}: openImagesProps) => Promise<void>
+    openImages: (openImagesProps: openImagesProps) => Promise<void>;
 }
 
-const openImagesStore = create<State & Actions>((set) => ({
-  isActive: false,
-  openImages: async ({
-    setSkeletons,
-    setImagesArray,
-    addMultipleImagesToPlaylist,
-    addImageToPlaylist,
-    currentPlaylist,
-    action,
-  }) => {
-    set(() => ({ isActive: true }))
-    const imagesObject: imagesObject = await openFiles(action)
-    set(() => ({ isActive: false }))
-    if (!imagesObject) return
-    imagesObject.fileNames.reverse()
-    imagesObject.imagePaths.reverse()
-    setSkeletons(imagesObject)
-    const imagesArray = await handleOpenImages(imagesObject)
-    const newImagesAdded = imagesArray.map((image) => {
-      let playlistImagesLength = currentPlaylist.images.length
-      let shouldCheckImage
-      switch (currentPlaylist.configuration.playlistType) {
-        case PLAYLIST_TYPES.NEVER:
-          shouldCheckImage = true
-          break
-        case PLAYLIST_TYPES.TIMER:
-          shouldCheckImage = true
-          break
-        case PLAYLIST_TYPES.TIME_OF_DAY:
-          //todo limit somehow when I implement this type of playlist
-          shouldCheckImage = true
-          break
-        case PLAYLIST_TYPES.DAY_OF_WEEK:
-          if (playlistImagesLength < 7) {
-            shouldCheckImage = true
-            addImageToPlaylist({
-              ...image,
-              isChecked: shouldCheckImage,
-            })
-          } else {
-            shouldCheckImage = false
-          }
-          playlistImagesLength++
-      }
-      return {
-        ...image,
-        isChecked: shouldCheckImage,
-      }
-    })
-    setSkeletons(undefined)
-    setImagesArray(newImagesAdded)
-    if (
-      currentPlaylist.configuration.playlistType === PLAYLIST_TYPES.DAY_OF_WEEK
-    ) {
-      return
+const openImagesStore = create<State & Actions>(set => ({
+    isActive: false,
+    openImages: async ({
+        setSkeletons,
+        setImagesArray,
+        addMultipleImagesToPlaylist,
+        addImageToPlaylist,
+        currentPlaylist,
+        action
+    }) => {
+        set(() => ({ isActive: true }));
+        const imagesObject: imagesObject | undefined = await openFiles(action);
+        set(() => ({ isActive: false }));
+        if (imagesObject === undefined) return;
+        imagesObject.fileNames.reverse();
+        imagesObject.imagePaths.reverse();
+        setSkeletons(imagesObject);
+        const imagesArray = await handleOpenImages(imagesObject);
+        const newImagesAdded = imagesArray.map(image => {
+            let playlistImagesLength = currentPlaylist.images.length;
+            let shouldCheckImage;
+            switch (currentPlaylist.configuration.playlistType) {
+                case PLAYLIST_TYPES.NEVER:
+                    shouldCheckImage = true;
+                    break;
+                case PLAYLIST_TYPES.TIMER:
+                    shouldCheckImage = true;
+                    break;
+                case PLAYLIST_TYPES.TIME_OF_DAY:
+                    // todo limit somehow when I implement this type of playlist
+                    shouldCheckImage = true;
+                    break;
+                case PLAYLIST_TYPES.DAY_OF_WEEK:
+                    if (playlistImagesLength < 7) {
+                        shouldCheckImage = true;
+                        addImageToPlaylist({
+                            ...image,
+                            isChecked: shouldCheckImage
+                        });
+                    } else {
+                        shouldCheckImage = false;
+                    }
+                    playlistImagesLength++;
+            }
+            return {
+                ...image,
+                isChecked: shouldCheckImage
+            };
+        });
+        setSkeletons(undefined);
+        setImagesArray(newImagesAdded);
+        if (currentPlaylist.configuration.playlistType === PLAYLIST_TYPES.DAY_OF_WEEK) {
+            return;
+        }
+        addMultipleImagesToPlaylist(newImagesAdded);
     }
-    addMultipleImagesToPlaylist(newImagesAdded)
-  },
-}))
+}));
 
-export default openImagesStore
+export default openImagesStore;

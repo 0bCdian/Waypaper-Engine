@@ -1,4 +1,4 @@
-import { useEffect, DependencyList } from 'react'
+import { useEffect, type DependencyList } from 'react'
 import useTimeout from './useTimeout'
 
 type Callback = () => void

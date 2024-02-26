@@ -1,5 +1,5 @@
 /// <reference types="vite-plugin-electron/electron-env" />
-import { SWWW_VERSION } from "./types/types"
+import { type SWWW_VERSION } from "./types/types"
 declare namespace NodeJS {
   interface ProcessEnv {
     /**

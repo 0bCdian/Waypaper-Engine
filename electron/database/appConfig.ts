@@ -1,4 +1,4 @@
-import { AppConfigDB } from '../../src/routes/AppConfiguration'
+import { type AppConfigDB } from '../../src/routes/AppConfiguration'
 
 const initialAppConfig: AppConfigDB = {
   killDaemon: 0,

@@ -1,10 +1,10 @@
-import { ORDER_TYPES, PLAYLIST_TYPES } from '../../src/types/rendererTypes'
+import { type ORDER_TYPES, type PLAYLIST_TYPES } from '../../src/types/rendererTypes'
 export interface imagesObject {
   imagePaths: string[]
   fileNames: string[]
 }
 
-export type Image = {
+export interface Image {
   id: number
   name: string
   isChecked: boolean | 1 | 0
@@ -13,7 +13,7 @@ export type Image = {
   format: string
 }
 
-export type Playlist = {
+export interface Playlist {
   id: number
   name: string
   type: PLAYLIST_TYPES
@@ -41,7 +41,7 @@ export interface message {
   message?: string
 }
 
-export type PlaylistControllerType = {
+export interface PlaylistControllerType {
   startPlaylist: () => void
   pausePlaylist: () => void
   resumePlaylist: () => void
@@ -62,12 +62,12 @@ export enum dbTables {
   monitors = 'monitors'
 }
 
-export type imageInPlaylist = {
+export interface imageInPlaylist {
   name: string
   time: number | null
 }
 
-export type Monitor = {
+export interface Monitor {
   name: string
   width: number
   height: number
@@ -75,7 +75,7 @@ export type Monitor = {
   position: number
 }
 
-export type imageMetadata = {
+export interface imageMetadata {
   name: string
   format: string
   width: number
@@ -86,7 +86,7 @@ export interface ActivePlaylist extends Playlist {
   images: imageInPlaylist[]
 }
 
-type wlr_randr_monitor = {
+interface wlr_randr_monitor {
   name: string
   description: string
   make: string
@@ -97,13 +97,13 @@ type wlr_randr_monitor = {
     height: number
   }
   enabled: boolean
-  modes: {
+  modes: Array<{
     width: number
     height: number
     refresh: number
     preferred: boolean
     current: boolean
-  }[]
+  }>
   position: {
     x: number
     y: number
