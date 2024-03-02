@@ -14,22 +14,22 @@ export interface imagesObject {
 }
 
 export enum ORDER_TYPES {
-    ORDERED = 'ordered',
-    RANDOM = 'random'
+    ORDERED = "ordered",
+    RANDOM = "random"
 }
 
 export enum STORE_ACTIONS {
-    SET_IMAGES_ARRAY = 'SET_IMAGES_ARRAY',
-    SET_SKELETONS_TO_SHOW = 'SET_SKELETONS_TO_SHOW',
-    SET_FILTERS = 'SET_FILTERS',
-    RESET_IMAGES_ARRAY = 'RESET_IMAGES_ARRAY'
+    SET_IMAGES_ARRAY = "SET_IMAGES_ARRAY",
+    SET_SKELETONS_TO_SHOW = "SET_SKELETONS_TO_SHOW",
+    SET_FILTERS = "SET_FILTERS",
+    RESET_IMAGES_ARRAY = "RESET_IMAGES_ARRAY"
 }
 
 export enum PLAYLIST_TYPES {
-    TIMER = 'timer',
-    NEVER = 'never',
-    TIME_OF_DAY = 'timeofday',
-    DAY_OF_WEEK = 'dayofweek'
+    TIMER = "timer",
+    NEVER = "never",
+    TIME_OF_DAY = "timeofday",
+    DAY_OF_WEEK = "dayofweek"
 }
 
 export interface configuration {
@@ -46,8 +46,8 @@ export interface rendererPlaylist {
 }
 
 export interface Filters {
-    order: 'asc' | 'desc';
-    type: 'name' | 'id';
+    order: "asc" | "desc";
+    type: "name" | "id";
     searchString: string;
     advancedFilters: advancedFilters;
 }
@@ -61,9 +61,19 @@ export interface advancedFilters {
     };
 }
 
-export type Formats = 'jpg' | 'jpeg' | 'png' | 'bmp' | 'gif' | 'webp' | 'farbeld' | 'pnm' | 'tga' | 'tiff';
+export type Formats =
+    | "jpg"
+    | "jpeg"
+    | "png"
+    | "bmp"
+    | "gif"
+    | "webp"
+    | "farbeld"
+    | "pnm"
+    | "tga"
+    | "tiff";
 
-export type resolutionConstraints = 'all' | 'exact' | 'moreThan' | 'lessThan';
+export type resolutionConstraints = "all" | "exact" | "moreThan" | "lessThan";
 export interface state {
     imagesArray: Image[];
     skeletonsToShow: imagesObject | undefined;
@@ -79,4 +89,4 @@ export type action =
     | { type: STORE_ACTIONS.SET_FILTERS; payload: Filters }
     | { type: STORE_ACTIONS.RESET_IMAGES_ARRAY; payload: Image[] };
 
-export type openFileAction = 'file' | 'folder';
+export type openFileAction = "file" | "folder";

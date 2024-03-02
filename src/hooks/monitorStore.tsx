@@ -1,11 +1,49 @@
-import { create } from 'zustand'
+import { create } from "zustand";
+import { type Monitor } from "../../electron/types/types";
 
-interface BearState {
-  bears: number
-  increase: (by: number) => void
+interface ActiveMonitor {
+    monitor?: Monitor;
+    duplicateAcrossMonitors: boolean;
+    extendAcrossMonitors: boolean;
 }
 
-const useBearStore = create<BearState>()((set) => ({
-  bears: 0,
-  increase: (by) => { set((state) => ({ bears: state.bears + by })); },
-}))
+interface MonitorStore {
+    activeMonitor: ActiveMonitor;
+    monitorsList: Monitor[];
+    setActiveMonitor: (value: ActiveMonitor) => void;
+    setMonitorsList: (monitorsList: Monitor[]) => void;
+    getActiveMonitor: () => ActiveMonitor;
+}
+
+const initialState = {
+    activeMonitor: {
+        monitor: undefined,
+        duplicateAcrossMonitors: false,
+        extendAcrossMonitors: false
+    },
+    monitorsList: []
+};
+
+export const useMonitorStore = create<MonitorStore>()((set, get) => ({
+    activeMonitor: initialState.activeMonitor,
+    monitorsList: initialState.monitorsList,
+    setActiveMonitor(value) {
+        set(state => {
+            return {
+                ...state,
+                activeMonitor: value
+            };
+        });
+    },
+    setMonitorsList(monitorsList) {
+        set(state => {
+            return {
+                ...state,
+                monitorsList
+            };
+        });
+    },
+    getActiveMonitor() {
+        return get().activeMonitor;
+    }
+}));

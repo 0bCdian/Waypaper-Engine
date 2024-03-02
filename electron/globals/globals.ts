@@ -20,9 +20,26 @@ export const appDirectories = {
 };
 export const WAYPAPER_ENGINE_SOCKET_PATH = '/tmp/waypaper_engine_daemon.sock';
 
-export const validImageExtensions = ['jpeg', 'jpg', 'png', 'gif', 'bmp', 'webp', 'pnm', 'tga', 'tiff', 'farbfeld'];
+export const validImageExtensions = [
+    'jpeg',
+    'jpg',
+    'png',
+    'gif',
+    'bmp',
+    'webp',
+    'pnm',
+    'tga',
+    'tiff',
+    'farbfeld'
+];
 
-export const devMenu = ({ win, app }: { win: BrowserWindow | null; app: App }) => {
+export const devMenu = ({
+    win,
+    app
+}: {
+    win: BrowserWindow | null;
+    app: App;
+}) => {
     const devMenu = [
         {
             label: 'File',
@@ -42,7 +59,8 @@ export const devMenu = ({ win, app }: { win: BrowserWindow | null; app: App }) =
                 else return 'Ctrl+Shift+I';
             })(),
             click: function () {
-                if (win?.isFocused() ?? false) win?.webContents.toggleDevTools();
+                if (win?.isFocused() ?? false)
+                    win?.webContents.toggleDevTools();
             }
         },
         {
@@ -76,7 +94,10 @@ export const prodMenu = ({ app }: { app: App }) => {
     return prodMenu;
 };
 
-export const trayMenu = (app: App, PlaylistController: PlaylistControllerType) => {
+export const trayMenu = (
+    app: App,
+    PlaylistController: PlaylistControllerType
+) => {
     const controlsMenu = Menu.buildFromTemplate([
         {
             type: 'separator'
@@ -112,7 +133,9 @@ export const trayMenuWithControls = ({
     const menuWithControls = Menu.buildFromTemplate([
         {
             label: 'Next Wallpaper',
-            enabled: playlist.type === PLAYLIST_TYPES.TIMER || playlist.type === PLAYLIST_TYPES.NEVER,
+            enabled:
+                playlist.type === PLAYLIST_TYPES.TIMER ||
+                playlist.type === PLAYLIST_TYPES.NEVER,
             click: () => {
                 PlaylistController.nextImage();
             }
@@ -122,7 +145,9 @@ export const trayMenuWithControls = ({
         },
         {
             label: 'Previous Wallpaper',
-            enabled: playlist.type === PLAYLIST_TYPES.TIMER || playlist.type === PLAYLIST_TYPES.NEVER,
+            enabled:
+                playlist.type === PLAYLIST_TYPES.TIMER ||
+                playlist.type === PLAYLIST_TYPES.NEVER,
             click: () => {
                 PlaylistController.previousImage();
             }
@@ -172,9 +197,56 @@ export const trayMenuWithControls = ({
 
 export const contextMenu = [
     {
-        label: 'Set image',
-        click: (e: any) => {
-            console.log(e);
+        label: 'Images per page',
+        submenu: [
+            {
+                label: '20',
+                click: () => {
+                    console.log('20');
+                }
+            },
+            {
+                label: '50',
+                click: () => {
+                    console.log('50');
+                }
+            },
+            {
+                label: '100',
+                click: () => {
+                    console.log('100');
+                }
+            },
+            {
+                label: '200',
+                click: () => {
+                    console.log('200');
+                }
+            }
+        ]
+    },
+    {
+        label: 'Select all images in current page',
+        click: () => {
+            console.log('select all images');
+        }
+    },
+    {
+        label: 'Unselect all images in current page',
+        click: () => {
+            console.log('unselect all images in current page');
+        }
+    },
+    {
+        label: 'Add all selected images to current playlist',
+        click: () => {
+            console.log('add all selected images to current playlist');
+        }
+    },
+    {
+        label: 'Delete all selected images',
+        click: () => {
+            console.log('delete all selected images');
         }
     }
 ];

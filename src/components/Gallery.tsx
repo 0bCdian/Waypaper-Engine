@@ -1,11 +1,12 @@
-import { useEffect } from 'react';
-import { useImages } from '../hooks/imagesStore';
-import AddImagesCard from './AddImagesCard';
-import PaginatedGallery from './PaginatedGallery';
-import playlistStore from '../hooks/playlistStore';
-import { type Image, PLAYLIST_TYPES } from '../types/rendererTypes';
-import Filters from './Filters';
-const { readActivePlaylist, readAppConfig, onDeleteImageFromGallery } = window.API_RENDERER;
+import { useEffect } from "react";
+import { useImages } from "../hooks/imagesStore";
+import AddImagesCard from "./AddImagesCard";
+import PaginatedGallery from "./PaginatedGallery";
+import playlistStore from "../hooks/playlistStore";
+import { type Image, PLAYLIST_TYPES } from "../types/rendererTypes";
+import Filters from "./Filters";
+const { readActivePlaylist, readAppConfig, onDeleteImageFromGallery } =
+    window.API_RENDERER;
 
 function Gallery() {
     const { isEmpty, imagesArray, removeImageFromStore } = useImages();
@@ -23,7 +24,10 @@ function Gallery() {
                 if (imageToCheck === undefined) {
                     return;
                 }
-                if (playlist.type === PLAYLIST_TYPES.TIME_OF_DAY && imageInActivePlaylist.time !== null) {
+                if (
+                    playlist.type === PLAYLIST_TYPES.TIME_OF_DAY &&
+                    imageInActivePlaylist.time !== null
+                ) {
                     imageToCheck.time = imageInActivePlaylist.time;
                 }
                 imageToCheck.isChecked = true;
@@ -48,7 +52,10 @@ function Gallery() {
     });
     useEffect(() => {
         void readAppConfig().then(appSettings => {
-            if (appSettings.introAnimation !== 0 && appSettings.startMinimized === 0) {
+            if (
+                appSettings.introAnimation !== 0 &&
+                appSettings.startMinimized === 0
+            ) {
                 setTimeout(() => {
                     setLastActivePlaylist();
                 }, 3700);

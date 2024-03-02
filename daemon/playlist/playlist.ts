@@ -1,10 +1,15 @@
-import { ACTIONS, type images, PLAYLIST_TYPES, type PlaylistType } from '../types/daemonTypes';
-import configuration from '../config/config';
-import { notify, notifyImageSet } from '../utils/notifications';
-import { join } from 'node:path';
-import { exec } from 'node:child_process';
-import { promisify } from 'node:util';
-import dbOperations from '../database/dbOperationsDaemon';
+import {
+    ACTIONS,
+    type images,
+    PLAYLIST_TYPES,
+    type PlaylistType
+} from "../types/daemonTypes";
+import configuration from "../config/config";
+import { notify, notifyImageSet } from "../utils/notifications";
+import { join } from "node:path";
+import { exec } from "node:child_process";
+import { promisify } from "node:util";
+import dbOperations from "../database/dbOperationsDaemon";
 const execPromisified = promisify(exec);
 export class Playlist {
     images: images;
@@ -21,7 +26,7 @@ export class Playlist {
     showAnimations: boolean | 1 | 0;
     constructor() {
         this.images = [];
-        this.currentName = '';
+        this.currentName = "";
         this.currentType = undefined;
         this.currentImageIndex = 0;
         this.interval = 0;
@@ -40,7 +45,9 @@ export class Playlist {
             notifyImageSet(imageName, imageLocation);
             await execPromisified(command);
             if (configuration.script !== undefined) {
-                await execPromisified(`${configuration.script} ${imageLocation}`);
+                await execPromisified(
+                    `${configuration.script} ${imageLocation}`
+                );
             }
         } catch (error) {
             notify(error as string);
@@ -73,7 +80,7 @@ export class Playlist {
         const playlistName = this.currentName;
         this.pause();
         this.currentImageIndex = 0;
-        this.currentName = '';
+        this.currentName = "";
         this.currentType = undefined;
         this.interval = 0;
         this.images = [];
@@ -88,10 +95,10 @@ export class Playlist {
         this.playlistTimer.executionTimeStamp = undefined;
         this.eventCheckerTimeout = undefined;
 
-        if (playlistName === '') {
+        if (playlistName === "") {
             return {
                 action: ACTIONS.STOP_PLAYLIST,
-                message: ''
+                message: ""
             };
         }
         return {
@@ -112,8 +119,8 @@ export class Playlist {
             this.currentType === PLAYLIST_TYPES.TIME_OF_DAY ||
             this.currentType === undefined
         ) {
-            notify('Cannot change image in this type of playlist');
-            return 'Cannot change image in this type of playlist';
+            notify("Cannot change image in this type of playlist");
+            return "Cannot change image in this type of playlist";
         }
         this.currentImageIndex++;
         if (this.currentImageIndex === this.images.length) {
@@ -127,7 +134,9 @@ export class Playlist {
             this.updateInDB();
         } catch (error) {
             const errorString = error as string;
-            notify(`Could not connect to the database\n Error:\n${errorString}`);
+            notify(
+                `Could not connect to the database\n Error:\n${errorString}`
+            );
             throw error;
         }
         return `Setting:${this.images[this.currentImageIndex].name}`;
@@ -139,8 +148,8 @@ export class Playlist {
             this.currentType === PLAYLIST_TYPES.TIME_OF_DAY ||
             this.currentType === undefined
         ) {
-            notify('Cannot change image in this type of playlist');
-            return 'Cannot change image in this type of playlist';
+            notify("Cannot change image in this type of playlist");
+            return "Cannot change image in this type of playlist";
         }
         this.currentImageIndex--;
         if (this.currentImageIndex < 0) {
@@ -154,7 +163,9 @@ export class Playlist {
             this.updateInDB();
         } catch (error) {
             const errorString = error as string;
-            notify(`Could not connect to the database\n Error:\n${errorString}`);
+            notify(
+                `Could not connect to the database\n Error:\n${errorString}`
+            );
             throw error;
         }
         return `Setting:${this.images[this.currentImageIndex].name}`;
@@ -166,7 +177,7 @@ export class Playlist {
             if (currentPlaylist === undefined) {
                 return {
                     action: ACTIONS.ERROR,
-                    message: 'Database returned undefined from currentPlaylist'
+                    message: "Database returned undefined from currentPlaylist"
                 };
             }
             this.stop(false);
@@ -198,7 +209,9 @@ export class Playlist {
             };
         } catch (error) {
             const errorString = error as string;
-            notify(`Could not connect to the database\n Error:\n${errorString}`);
+            notify(
+                `Could not connect to the database\n Error:\n${errorString}`
+            );
             throw error;
         }
     }
@@ -206,7 +219,10 @@ export class Playlist {
     updatePlaylist() {
         try {
             const newPlaylistInfo = dbOperations.getCurrentPlaylist();
-            if (newPlaylistInfo !== undefined && newPlaylistInfo.name === this.currentName) {
+            if (
+                newPlaylistInfo !== undefined &&
+                newPlaylistInfo.name === this.currentName
+            ) {
                 switch (this.currentType) {
                     case PLAYLIST_TYPES.TIMER:
                         if (newPlaylistInfo.interval !== this.interval) {
@@ -242,27 +258,34 @@ export class Playlist {
                 };
             } else {
                 notify(
-                    'There was a problem updating the playlist, either the names do not match, or the database returned null'
+                    "There was a problem updating the playlist, either the names do not match, or the database returned null"
                 );
                 return {
                     action: ACTIONS.ERROR,
                     message:
-                        'There was a problem updating the playlist, either the names do not match, or the database returned null'
+                        "There was a problem updating the playlist, either the names do not match, or the database returned null"
                 };
             }
         } catch (error) {
             const errorString = error as string;
-            notify(`Could not connect to the database\n Error:\n${errorString}`);
+            notify(
+                `Could not connect to the database\n Error:\n${errorString}`
+            );
             throw error;
         }
     }
 
     updateInDB() {
         try {
-            dbOperations.updatePlaylistCurrentIndex(this.currentImageIndex, this.currentName);
+            dbOperations.updatePlaylistCurrentIndex(
+                this.currentImageIndex,
+                this.currentName
+            );
         } catch (error) {
             const errorString = error as string;
-            notify(`Could not connect to the database\n Error:\n${errorString}`);
+            notify(
+                `Could not connect to the database\n Error:\n${errorString}`
+            );
             throw error;
         }
     }
@@ -271,7 +294,8 @@ export class Playlist {
         this.images = currentPlaylist.images;
         this.currentName = currentPlaylist.name;
         this.currentType = currentPlaylist.type;
-        this.currentImageIndex = configuration.app.settings.playlistStartOnFirstImage
+        this.currentImageIndex = configuration.app.settings
+            .playlistStartOnFirstImage
             ? 0
             : currentPlaylist.currentImageIndex;
         this.interval = currentPlaylist.interval;
@@ -292,8 +316,10 @@ export class Playlist {
                 this.updateInDB();
             }, this.interval);
         } else {
-            console.error('Interval is null');
-            notify('Interval is null, something went wrong setting the playlist');
+            console.error("Interval is null");
+            notify(
+                "Interval is null, something went wrong setting the playlist"
+            );
         }
     }
 
@@ -305,23 +331,33 @@ export class Playlist {
         try {
             const startingIndex = this.findClosestImageIndex();
             if (startingIndex === undefined) {
-                notify('Images have no time, something went wrong');
+                notify("Images have no time, something went wrong");
                 this.stop(true);
                 return;
             }
-            this.currentImageIndex = startingIndex < 0 ? this.images.length - 1 : startingIndex;
+            this.currentImageIndex =
+                startingIndex < 0 ? this.images.length - 1 : startingIndex;
             await this.setImage(this.images[this.currentImageIndex].name);
             this.timeOfDayPlayer();
         } catch (error) {
             const errorString = error as string;
-            notify(`Could not connect to the database\n Error:\n${errorString}`);
+            notify(
+                `Could not connect to the database\n Error:\n${errorString}`
+            );
             throw error;
         }
     }
 
     async dayOfWeekPlaylist() {
         const now = new Date();
-        const endOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0);
+        const endOfDay = new Date(
+            now.getFullYear(),
+            now.getMonth(),
+            now.getDate() + 1,
+            0,
+            0,
+            0
+        );
         const millisecondsUntilEndOfDay = endOfDay.getTime() - now.getTime();
         let imageIndexToSet = now.getDay();
         if (imageIndexToSet > this.images.length) {
@@ -332,30 +368,36 @@ export class Playlist {
         this.playlistTimer.timeoutID = setTimeout(() => {
             void this.dayOfWeekPlaylist();
         }, millisecondsUntilEndOfDay);
-        this.playlistTimer.executionTimeStamp = millisecondsUntilEndOfDay + Date.now();
+        this.playlistTimer.executionTimeStamp =
+            millisecondsUntilEndOfDay + Date.now();
     }
 
     getSwwwCommandFromConfiguration(imagePath: string) {
         const swwwConfig = configuration.swww.settings;
-        let transitionPos = '';
-        const inverty = swwwConfig.invertY !== 0 ? '--invert-y' : '';
+        let transitionPos = "";
+        const inverty = swwwConfig.invertY !== 0 ? "--invert-y" : "";
         switch (swwwConfig.transitionPositionType) {
-            case 'int':
+            case "int":
                 transitionPos = `${swwwConfig.transitionPositionIntX},${swwwConfig.transitionPositionIntY}`;
                 break;
-            case 'float':
+            case "float":
                 transitionPos = `${swwwConfig.transitionPositionFloatX},${swwwConfig.transitionPositionFloatY}`;
                 break;
-            case 'alias':
+            case "alias":
                 transitionPos = swwwConfig.transitionPosition;
         }
 
         const baseCommand = `swww img "${imagePath}" --resize="${swwwConfig.resizeType}" --fill-color "${swwwConfig.fillColor}" --filter ${swwwConfig.filterType} --transition-step ${swwwConfig.transitionStep} --transition-duration ${swwwConfig.transitionDuration} --transition-fps ${swwwConfig.transitionFPS} --transition-angle ${swwwConfig.transitionAngle} --transition-pos ${transitionPos} ${inverty} --transition-bezier ${swwwConfig.transitionBezier} --transition-wave "${swwwConfig.transitionWaveX},${swwwConfig.transitionWaveY}"`;
-        if (configuration.app.settings.swwwAnimations || this.showAnimations === true) {
-            const command = baseCommand.concat(' --transition-type=none');
+        if (
+            configuration.app.settings.swwwAnimations ||
+            this.showAnimations === true
+        ) {
+            const command = baseCommand.concat(" --transition-type=none");
             return command;
         } else {
-            const command = baseCommand.concat(` --transition-type=${swwwConfig.transitionType}`);
+            const command = baseCommand.concat(
+                ` --transition-type=${swwwConfig.transitionType}`
+            );
             return command;
         }
     }
@@ -381,7 +423,10 @@ export class Playlist {
     }
 
     calculateMillisecondsUntilNextImage() {
-        const nextIndex = this.currentImageIndex + 1 === this.images.length ? 0 : this.currentImageIndex + 1;
+        const nextIndex =
+            this.currentImageIndex + 1 === this.images.length
+                ? 0
+                : this.currentImageIndex + 1;
         const nextTime = this.images[nextIndex].time;
         if (nextTime === null) return undefined;
         const date = new Date();
@@ -423,7 +468,7 @@ export class Playlist {
         try {
             const images = dbOperations.readAllImagesInDB();
             if (images === undefined) {
-                return 'There are no images in the database';
+                return "There are no images in the database";
             }
             const randomIndex = Math.floor(Math.random() * images.length);
             const randomImage = images[randomIndex].name;
@@ -469,7 +514,9 @@ export class Playlist {
             },
             playlistTimerObject: {
                 timeoutID: String(this.playlistTimer.timeoutID),
-                executionTimeStamp: new Date(this.playlistTimer.executionTimeStamp ?? 0)
+                executionTimeStamp: new Date(
+                    this.playlistTimer.executionTimeStamp ?? 0
+                )
             },
             playlistImages: this.images.map(image => {
                 return JSON.stringify(image);

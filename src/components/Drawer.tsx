@@ -1,5 +1,5 @@
-import { type FC, useState } from 'react';
-import { Link } from 'react-router-dom';
+import { type FC, useState } from "react";
+import { Link } from "react-router-dom";
 
 interface Props {
     children: React.ReactNode;
@@ -11,10 +11,18 @@ const Drawer: FC<Props> = ({ children }) => {
         setShow(prev => !prev);
     };
     return (
-        <div className="drawer overflow-clip max-w-full select-none">
-            <input id="my-drawer" type="checkbox" className="drawer-toggle" checked={show} onChange={toggle} />
-            <div className="drawer-content [max-height:100vh]">{children}</div>
-            <div className="drawer-side z-10">
+        <div className="drawer select-none">
+            <input
+                id="my-drawer"
+                type="checkbox"
+                className="drawer-toggle"
+                checked={show}
+                onChange={toggle}
+            />
+            <div className="drawer-content max-h-[100vh] overflow-scroll scrollbar-none">
+                {children}
+            </div>
+            <div className="drawer-side">
                 <label htmlFor="my-drawer" className="drawer-overlay"></label>
                 <ul className="menu rounded-box p-4 text-2xl h-full bg-base-200 text-base-content">
                     <li>
@@ -23,12 +31,20 @@ const Drawer: FC<Props> = ({ children }) => {
                         </Link>
                     </li>
                     <li>
-                        <Link draggable={false} onClick={toggle} to="/swwwConfig">
+                        <Link
+                            draggable={false}
+                            onClick={toggle}
+                            to="/swwwConfig"
+                        >
                             Swww configuration
                         </Link>
                     </li>
                     <li>
-                        <Link draggable={false} onClick={toggle} to="/appConfig">
+                        <Link
+                            draggable={false}
+                            onClick={toggle}
+                            to="/appConfig"
+                        >
                             App configuration
                         </Link>
                     </li>
@@ -36,7 +52,9 @@ const Drawer: FC<Props> = ({ children }) => {
                         <a
                             draggable={false}
                             onClick={() => {
-                                const quit = window.confirm('Are you sure you want to quit');
+                                const quit = window.confirm(
+                                    "Are you sure you want to quit"
+                                );
                                 if (quit) {
                                     exitApp();
                                 }

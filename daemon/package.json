@@ -1,20 +1,20 @@
 {
-  "name": "daemon",
-  "version": "1.3.3",
-  "description": "",
-  "main": "daemon.js",
-  "scripts": {
-    "build": "npm install && tsc ./daemon.ts --esModuleInterop",
-    "compile": "tsc ./daemon.ts --esModuleInterop"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "dependencies": {
-    "better-sqlite3": "8.5.0"
-  },
-  "devDependencies": {
-    "@types/better-sqlite3": "7.6.4",
-    "typescript": "5.1.3"
-  }
+    "name": "daemon",
+    "version": "1.3.3",
+    "description": "",
+    "main": "daemon.js",
+    "scripts": {
+        "build": "npm install && tsc ./daemon.ts --esModuleInterop",
+        "compile": "tsc ./daemon.ts --esModuleInterop"
+    },
+    "keywords": [],
+    "author": "",
+    "license": "ISC",
+    "dependencies": {
+        "better-sqlite3": "8.5.0"
+    },
+    "devDependencies": {
+        "@types/better-sqlite3": "7.6.4",
+        "typescript": "5.1.3"
+    }
 }

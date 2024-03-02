@@ -1,6 +1,14 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.transitionPosition = exports.TransitionType = exports.FilterType = exports.ResizeType = exports.dbTables = exports.ACTIONS = exports.PLAYLIST_TYPES = exports.ORDER_TYPES = void 0;
+exports.transitionPosition =
+    exports.TransitionType =
+    exports.FilterType =
+    exports.ResizeType =
+    exports.dbTables =
+    exports.ACTIONS =
+    exports.PLAYLIST_TYPES =
+    exports.ORDER_TYPES =
+        void 0;
 var ORDER_TYPES;
 (function (ORDER_TYPES) {
     ORDER_TYPES["ORDERED"] = "ordered";
@@ -79,24 +87,26 @@ var transitionPosition;
     transitionPosition["topRight"] = "top-right";
     transitionPosition["bottomLeft"] = "bottom-left";
     transitionPosition["bottomRight"] = "bottom-right";
-})(transitionPosition || (exports.transitionPosition = transitionPosition = {}));
+})(
+    transitionPosition || (exports.transitionPosition = transitionPosition = {})
+);
 var initialSwwwConfigDB = {
     resizeType: ResizeType.crop,
-    fillColor: '#000000',
+    fillColor: "#000000",
     filterType: FilterType.Lanczos3,
     transitionType: TransitionType.simple,
     transitionStep: 90,
     transitionDuration: 3,
     transitionFPS: 60,
     transitionAngle: 45,
-    transitionPositionType: 'alias',
+    transitionPositionType: "alias",
     transitionPosition: transitionPosition.center,
     transitionPositionIntX: 960,
     transitionPositionIntY: 540,
     transitionPositionFloatX: 0.5,
     transitionPositionFloatY: 0.5,
     invertY: 0,
-    transitionBezier: '.25,.1,.25,1',
+    transitionBezier: ".25,.1,.25,1",
     transitionWaveX: 20,
-    transitionWaveY: 20,
+    transitionWaveY: 20
 };

@@ -1,12 +1,20 @@
-import { useSortable } from '@dnd-kit/sortable';
-import { motion } from 'framer-motion';
-import { CSS } from '@dnd-kit/utilities';
-import { useEffect, useMemo, useRef, useCallback, useState } from 'react';
-import { type Image, PLAYLIST_TYPES } from '../types/rendererTypes';
-import playlistStore from '../hooks/playlistStore';
+import { useSortable } from "@dnd-kit/sortable";
+import { motion } from "framer-motion";
+import { CSS } from "@dnd-kit/utilities";
+import { useEffect, useMemo, useRef, useCallback, useState } from "react";
+import { type Image, PLAYLIST_TYPES } from "../types/rendererTypes";
+import playlistStore from "../hooks/playlistStore";
 
 const { join, thumbnailDirectory } = window.API_RENDERER;
-const daysOfWeek = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+const daysOfWeek = [
+    "Sunday",
+    "Monday",
+    "Tuesday",
+    "Wednesday",
+    "Thursday",
+    "Friday",
+    "Saturday"
+];
 
 function MiniPlaylistCard({
     Image,
@@ -26,7 +34,10 @@ function MiniPlaylistCard({
     const imageRef = useRef<HTMLImageElement>(null);
     const timeRef = useRef<HTMLInputElement>(null);
     const imageSrc = useMemo(() => {
-        return 'atom://' + join(thumbnailDirectory, Image.name.split('.').at(0) + '.webp');
+        return (
+            "atom://" +
+            join(thumbnailDirectory, Image.name.split(".").at(0) + ".webp")
+        );
     }, [Image]);
     const { attributes, listeners, setNodeRef, transform } = useSortable({
         id: Image.id
@@ -46,8 +57,8 @@ function MiniPlaylistCard({
         text = daysOfWeek[index];
     }
     useEffect(() => {
-        if (isLast === undefined) {
-            imageRef.current?.scrollIntoView({ inline: 'start' });
+        if (isLast !== undefined && isLast) {
+            imageRef.current?.scrollIntoView({ inline: "start" });
         }
     }, []);
 
@@ -55,7 +66,10 @@ function MiniPlaylistCard({
         Image.isChecked = false;
         removeImageFromPlaylist(Image);
     }, []);
-    const checkIfTimeStampExists = (timeStamp: number, imageID: number): boolean => {
+    const checkIfTimeStampExists = (
+        timeStamp: number,
+        imageID: number
+    ): boolean => {
         let exists = false;
         playlist.images.forEach(image => {
             if (image.id === imageID) return;
@@ -69,8 +83,8 @@ function MiniPlaylistCard({
         if (timeRef.current != null) {
             let minutes: string | number = Image.time % 60;
             let hours: string | number = (Image.time - minutes) / 60;
-            minutes = minutes < 10 ? '0' + minutes : minutes;
-            hours = hours < 10 ? '0' + hours : hours;
+            minutes = minutes < 10 ? "0" + minutes : minutes;
+            hours = hours < 10 ? "0" + hours : hours;
             timeRef.current.value = `${hours}:${minutes}`;
         }
     }, [playlistType]);
@@ -83,26 +97,37 @@ function MiniPlaylistCard({
                 transition={{ duration: 0.2 }}
                 exit={{ scale: 0 }}
                 layout
-                className="w-32 mx-1 shrink-0 rounded-lg shadow-xl "
+                className="w-32 mx-1 shrink-0 rounded-lg shadow-xl mb-2 "
             >
                 {playlistType === PLAYLIST_TYPES.TIME_OF_DAY && (
                     <div className="flex flex-col">
-                        <span className={isInvalid ? 'font-semibold italic rounded-md' : 'opacity-0'}>
+                        <span
+                            className={
+                                isInvalid
+                                    ? "font-semibold italic rounded-md"
+                                    : "opacity-0"
+                            }
+                        >
                             Invalid time
                         </span>
                         <input
                             type="time"
                             ref={timeRef}
-                            className="input input-sm mb-2 focus:outline-none  input-bordered rounded-md ml-1 invalid:bg-red-800"
+                            className="input input-sm mb-6 focus:outline-none  input-bordered rounded-md ml-1 invalid:bg-red-800"
                             onChange={e => {
                                 const stringValue = e.currentTarget.value;
-                                const [hours, minutes] = stringValue.split(':');
-                                const newTimeSum = Number(hours) * 60 + Number(minutes);
-                                if (checkIfTimeStampExists(newTimeSum, Image.id)) {
-                                    e.currentTarget.setCustomValidity('invalid time, another image has the same time');
+                                const [hours, minutes] = stringValue.split(":");
+                                const newTimeSum =
+                                    Number(hours) * 60 + Number(minutes);
+                                if (
+                                    checkIfTimeStampExists(newTimeSum, Image.id)
+                                ) {
+                                    e.currentTarget.setCustomValidity(
+                                        "invalid time, another image has the same time"
+                                    );
                                     setIsInvalid(true);
                                 } else {
-                                    e.currentTarget.setCustomValidity('');
+                                    e.currentTarget.setCustomValidity("");
                                     Image.time = newTimeSum;
                                     reorderSortingCriteria();
                                     setIsInvalid(false);
@@ -112,7 +137,9 @@ function MiniPlaylistCard({
                     </div>
                 )}
                 <span className="text-stone-100 h-full shadow-xl font-bold text-clip whitespace-nowrap">
-                    {playlistType === PLAYLIST_TYPES.DAY_OF_WEEK ? text : undefined}
+                    {playlistType === PLAYLIST_TYPES.DAY_OF_WEEK
+                        ? text
+                        : undefined}
                 </span>
                 <div className="relative ">
                     <button

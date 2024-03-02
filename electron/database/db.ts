@@ -1,21 +1,22 @@
-import { checkCacheOrCreateItIfNotExists } from '../appFunctions'
-import { nativeBindingLocation, dbLocation } from '../binaries'
-import { app } from 'electron'
-import Database = require('better-sqlite3')
-checkCacheOrCreateItIfNotExists()
+import { checkCacheOrCreateItIfNotExists } from "../appFunctions";
+import { nativeBindingLocation, dbLocation } from "../binaries";
+import { app } from "electron";
+import Database = require("better-sqlite3");
+checkCacheOrCreateItIfNotExists();
 
 const options = app.isPackaged
-  ? { nativeBinding: nativeBindingLocation }
-  : {
-      nativeBinding: nativeBindingLocation,
-      verbose: console.log
-    }
+    ? { nativeBinding: nativeBindingLocation }
+    : {
+          nativeBinding: nativeBindingLocation,
+          verbose: console.log
+      };
 
-const db = Database(dbLocation, options)
+const db = Database(dbLocation, options);
 
 function createDB() {
-  try {
-    const createImagesTable = db.prepare(`CREATE TABLE IF NOT EXISTS "Images" (
+    try {
+        const createImagesTable =
+            db.prepare(`CREATE TABLE IF NOT EXISTS "Images" (
 	"id"	INTEGER NOT NULL,
 	"name"	TEXT NOT NULL UNIQUE,
 	"isChecked"	INTEGER NOT NULL DEFAULT 0,
@@ -23,9 +24,9 @@ function createDB() {
 	"height" INTEGER NOT NULL,
 	"format" TEXT NOT NULL,
 	PRIMARY KEY("id" AUTOINCREMENT)
-)`)
-    const createPlaylistsTable =
-      db.prepare(`CREATE TABLE IF NOT EXISTS "Playlists" (
+)`);
+        const createPlaylistsTable =
+            db.prepare(`CREATE TABLE IF NOT EXISTS "Playlists" (
 	"id"	INTEGER NOT NULL,
 	"name"	TEXT NOT NULL UNIQUE,
 	"type"	TEXT NOT NULL,
@@ -34,20 +35,20 @@ function createDB() {
 	"order"	TEXT DEFAULT null,
 	"currentImageIndex"	INTEGER NOT NULL DEFAULT 0,
 	PRIMARY KEY("id" AUTOINCREMENT)
-)`)
+)`);
 
-    const createImagesInPlaylistTable =
-      db.prepare(`CREATE TABLE IF NOT EXISTS "imagesInPlaylist" (
+        const createImagesInPlaylistTable =
+            db.prepare(`CREATE TABLE IF NOT EXISTS "imagesInPlaylist" (
 	"imageID"	INTEGER NOT NULL,
 	"playlistID" INTEGER NOT NULL,
 	"indexInPlaylist"	INTEGER NOT NULL,
 	"time"	INTEGER DEFAULT null UNIQUE,
 	FOREIGN KEY("imageID") REFERENCES "Images"("id") ON UPDATE CASCADE ON DELETE CASCADE,
 	FOREIGN KEY("playlistID") REFERENCES "Playlists"("id") ON UPDATE CASCADE ON DELETE CASCADE
-)`)
+)`);
 
-    const createSwwwConfigTable =
-      db.prepare(`CREATE TABLE IF NOT EXISTS "swwwConfig" (
+        const createSwwwConfigTable =
+            db.prepare(`CREATE TABLE IF NOT EXISTS "swwwConfig" (
 	"resizeType"	TEXT NOT NULL UNIQUE,
 	"fillColor"	TEXT NOT NULL UNIQUE,
 	"filterType"	TEXT NOT NULL UNIQUE,
@@ -66,9 +67,9 @@ function createDB() {
 	"transitionBezier"	TEXT NOT NULL UNIQUE,
 	"transitionWaveX"	INTEGER NOT NULL UNIQUE,
 	"transitionWaveY"	INTEGER NOT NULL UNIQUE
-)`)
-    const createAppConfigTable =
-      db.prepare(`CREATE TABLE IF NOT EXISTS "appConfig" (
+)`);
+        const createAppConfigTable =
+            db.prepare(`CREATE TABLE IF NOT EXISTS "appConfig" (
 	"killDaemon"	INTEGER NOT NULL UNIQUE,
 	"playlistStartOnFirstImage"	INTEGER NOT NULL UNIQUE,
 	"notifications"	INTEGER NOT NULL UNIQUE,
@@ -77,22 +78,22 @@ function createDB() {
 	"startMinimized" INTEGER NOT NULL UNIQUE,
 	"minimizeInsteadOfClose" INTEGER NOT NULL UNIQUE
 
-);`)
-    const createActivePlaylistTable =
-      db.prepare(`CREATE TABLE IF NOT EXISTS "activePlaylist" (
+);`);
+        const createActivePlaylistTable =
+            db.prepare(`CREATE TABLE IF NOT EXISTS "activePlaylist" (
 	"playlistID"	INTEGER UNIQUE,
 	PRIMARY KEY("playlistID")
-);`)
-    createSwwwConfigTable.run()
-    createAppConfigTable.run()
-    createImagesTable.run()
-    createPlaylistsTable.run()
-    createImagesInPlaylistTable.run()
-    createActivePlaylistTable.run()
-  } catch (error) {
-    console.warn(error)
-    throw new Error('Could not initialize the database tables')
-  }
+);`);
+        createSwwwConfigTable.run();
+        createAppConfigTable.run();
+        createImagesTable.run();
+        createPlaylistsTable.run();
+        createImagesInPlaylistTable.run();
+        createActivePlaylistTable.run();
+    } catch (error) {
+        console.warn(error);
+        throw new Error("Could not initialize the database tables");
+    }
 }
-createDB()
-export default db
+createDB();
+export default db;

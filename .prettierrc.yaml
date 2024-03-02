@@ -1,6 +1,6 @@
 tabWidth: 4
 semi: true
-printWidth: 120
+printWidth: 80
 trailingComma: none
 bracketSpacing: true
 arrowParens: avoid

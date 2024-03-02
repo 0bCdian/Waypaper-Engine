@@ -3,107 +3,107 @@ help: A wallpaper setting tool with playlist functionality
 version: 1.1.0
 
 commands:
-  - name: daemon
-    alias: d
-    help: Run just the waypaper engine daemon
+    - name: daemon
+      alias: d
+      help: Run just the waypaper engine daemon
 
-    flags:
-      - long: --script
-        short: -s
-        arg: script
-        help: Script to run on each image set, the image path will be passed as argument.
-        required: false
+      flags:
+          - long: --script
+            short: -s
+            arg: script
+            help: Script to run on each image set, the image path will be passed as argument.
+            required: false
 
-    examples:
-      - waypaper-engine daemon
-      - waypaper-engine daemon -s "/path/to/your/script.sh"
-      - waypaper-engine daemon --script "/path/to/your/script.sh"
+      examples:
+          - waypaper-engine daemon
+          - waypaper-engine daemon -s "/path/to/your/script.sh"
+          - waypaper-engine daemon --script "/path/to/your/script.sh"
 
-  - name: next-image
-    alias: ni
-    help: Send a request to the daemon to set the next image in the playlist
+    - name: next-image
+      alias: ni
+      help: Send a request to the daemon to set the next image in the playlist
 
-    examples:
-      - waypaper-engine next-image
+      examples:
+          - waypaper-engine next-image
 
-  - name: previous-image
-    alias: pi
-    help: Send a request to the daemon to set the previous image in the playlist
+    - name: previous-image
+      alias: pi
+      help: Send a request to the daemon to set the previous image in the playlist
 
-    examples:
-      - waypaper-engine previous-image
+      examples:
+          - waypaper-engine previous-image
 
-  - name: kill-daemon
-    alias: kd
-    help: Kill the waypaper daemon process
+    - name: kill-daemon
+      alias: kd
+      help: Kill the waypaper daemon process
 
-    examples:
-      - waypaper-engine kill-daemon
-      - waypaper-engine kd
+      examples:
+          - waypaper-engine kill-daemon
+          - waypaper-engine kd
 
-  - name: stop-daemon
-    alias: sd
-    help: Send stop command to daemon process
+    - name: stop-daemon
+      alias: sd
+      help: Send stop command to daemon process
 
-    examples:
-      - waypaper-engine stop-daemon
-      - waypaper-engine sd
+      examples:
+          - waypaper-engine stop-daemon
+          - waypaper-engine sd
 
-  - name: pause-playlist
-    alias: pp
-    help: Send a request to the daemon to pause the current playlist
+    - name: pause-playlist
+      alias: pp
+      help: Send a request to the daemon to pause the current playlist
 
-    examples:
-      - waypaper-engine pause-playlist
+      examples:
+          - waypaper-engine pause-playlist
 
-  - name: resume-playlist
-    alias: rp
-    help: Send a request to the daemon to resume the current playlist
+    - name: resume-playlist
+      alias: rp
+      help: Send a request to the daemon to resume the current playlist
 
-    examples:
-      - waypaper-engine resume-playlist
+      examples:
+          - waypaper-engine resume-playlist
 
-  - name: stop-playlist
-    alias: sp
-    help: Send a request to the daemon to stop the current playlist
+    - name: stop-playlist
+      alias: sp
+      help: Send a request to the daemon to stop the current playlist
 
-    examples:
-      - waypaper-engine stop-playlist
+      examples:
+          - waypaper-engine stop-playlist
 
-  - name: run
-    alias: r
-    help: run the waypaper engine application
-    default: force
+    - name: run
+      alias: r
+      help: run the waypaper engine application
+      default: force
 
-    flags:
-      - long: --script
-        short: -s
-        arg: script
-        help: Script to run on each image set, the image path will be passed as argument.
-        required: false
+      flags:
+          - long: --script
+            short: -s
+            arg: script
+            help: Script to run on each image set, the image path will be passed as argument.
+            required: false
 
-      - long: --force-wayland
-        help: force app to run under wayland instead of xwayland.
-        required: false
+          - long: --force-wayland
+            help: force app to run under wayland instead of xwayland.
+            required: false
 
-    examples:
-      - waypaper-engine
-      - waypaper-engine run
-      - waypaper-engine run --force-wayland
-      - waypaper-engine r -s "/path/to/your/script.sh"
+      examples:
+          - waypaper-engine
+          - waypaper-engine run
+          - waypaper-engine run --force-wayland
+          - waypaper-engine r -s "/path/to/your/script.sh"
 
-  - name: random
-    alias: ri
-    help: set a random image from the gallery
+    - name: random
+      alias: ri
+      help: set a random image from the gallery
 
-    examples:
-      - waypaper-engine random
-      - waypaper-engine ri
+      examples:
+          - waypaper-engine random
+          - waypaper-engine ri
 
-  - name: info
-    alias: i
-    help: get playlist diagnostics
+    - name: info
+      alias: i
+      help: get playlist diagnostics
 
-    examples:
-      - waypaper-engine info
-      - waypaper-engine i
+      examples:
+          - waypaper-engine info
+          - waypaper-engine i

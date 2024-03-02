@@ -1,6 +1,6 @@
-import { useForm } from 'react-hook-form';
-import { useEffect } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { useForm } from "react-hook-form";
+import { useEffect } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 interface AppConfig {
     killDaemon: boolean;
     playlistStartOnFirstImage: boolean;
@@ -9,6 +9,7 @@ interface AppConfig {
     introAnimation: boolean;
     startMinimized: boolean;
     minimizeInsteadOfClose: boolean;
+    imagesPerPage: number;
 }
 
 export interface AppConfigDB {
@@ -37,13 +38,19 @@ const AppConfiguration = () => {
     };
     useEffect(() => {
         void readAppConfig().then((data: AppConfigDB) => {
-            setValue('killDaemon', Boolean(data.killDaemon));
-            setValue('playlistStartOnFirstImage', Boolean(data.playlistStartOnFirstImage));
-            setValue('notifications', Boolean(data.notifications));
-            setValue('swwwAnimations', Boolean(data.swwwAnimations));
-            setValue('introAnimation', Boolean(data.introAnimation));
-            setValue('startMinimized', Boolean(data.startMinimized));
-            setValue('minimizeInsteadOfClose', Boolean(data.minimizeInsteadOfClose));
+            setValue("killDaemon", Boolean(data.killDaemon));
+            setValue(
+                "playlistStartOnFirstImage",
+                Boolean(data.playlistStartOnFirstImage)
+            );
+            setValue("notifications", Boolean(data.notifications));
+            setValue("swwwAnimations", Boolean(data.swwwAnimations));
+            setValue("introAnimation", Boolean(data.introAnimation));
+            setValue("startMinimized", Boolean(data.startMinimized));
+            setValue(
+                "minimizeInsteadOfClose",
+                Boolean(data.minimizeInsteadOfClose)
+            );
         });
     }, []);
 
@@ -57,7 +64,9 @@ const AppConfiguration = () => {
                     exit={{ opacity: 0 }}
                     transition={{ duration: 1 }}
                 >
-                    <h1 className="text-7xl font-semibold py-2 self-center text-center">App Settings</h1>
+                    <h1 className="text-7xl font-semibold py-2 self-center text-center">
+                        App Settings
+                    </h1>
                     <div className="divider"></div>
                     <form
                         onSubmit={e => {
@@ -69,10 +78,12 @@ const AppConfiguration = () => {
                                 type="checkbox"
                                 id="killDaemon"
                                 className="checkbox mt-4"
-                                {...register('killDaemon')}
+                                {...register("killDaemon")}
                             />
                             <label htmlFor="killDaemon" className="label">
-                                <span className="label-text   text-3xl">Kill daemon on app exit</span>
+                                <span className="label-text   text-3xl">
+                                    Kill daemon on app exit
+                                </span>
                             </label>
                         </div>
                         <div className="my-6 flex gap-3">
@@ -80,10 +91,12 @@ const AppConfiguration = () => {
                                 type="checkbox"
                                 id="playlistStart"
                                 className="checkbox mt-4"
-                                {...register('playlistStartOnFirstImage')}
+                                {...register("playlistStartOnFirstImage")}
                             />
                             <label htmlFor="playlistStart" className="label">
-                                <span className="label-text text-3xl">Always start playlists on the first image</span>
+                                <span className="label-text text-3xl">
+                                    Always start playlists on the first image
+                                </span>
                             </label>
                         </div>
                         <div className="my-6 flex gap-3">
@@ -91,10 +104,12 @@ const AppConfiguration = () => {
                                 type="checkbox"
                                 className="checkbox mt-4"
                                 id="notifications"
-                                {...register('notifications')}
+                                {...register("notifications")}
                             />
                             <label htmlFor="notifications" className="label">
-                                <span className="label-text text-3xl">Desktop Notifications</span>
+                                <span className="label-text text-3xl">
+                                    Desktop Notifications
+                                </span>
                             </label>
                         </div>
                         <div className="my-6 flex gap-3">
@@ -102,10 +117,12 @@ const AppConfiguration = () => {
                                 type="checkbox"
                                 id="swwwAnimations"
                                 className="checkbox mt-4"
-                                {...register('swwwAnimations')}
+                                {...register("swwwAnimations")}
                             />
                             <label htmlFor="swwwAnimations" className="label">
-                                <span className="label-text text-3xl">Swww animations</span>
+                                <span className="label-text text-3xl">
+                                    Swww animations
+                                </span>
                             </label>
                         </div>
                         <div className="my-6 flex gap-3">
@@ -113,10 +130,12 @@ const AppConfiguration = () => {
                                 type="checkbox"
                                 id="introAnimation"
                                 className="checkbox mt-4"
-                                {...register('introAnimation')}
+                                {...register("introAnimation")}
                             />
                             <label htmlFor="introAnimation" className="label">
-                                <span className="label-text text-3xl">App intro animation</span>
+                                <span className="label-text text-3xl">
+                                    App intro animation
+                                </span>
                             </label>
                         </div>
                         <div className="my-6 flex gap-3">
@@ -124,10 +143,12 @@ const AppConfiguration = () => {
                                 type="checkbox"
                                 id="startMinimized"
                                 className="checkbox mt-4"
-                                {...register('startMinimized')}
+                                {...register("startMinimized")}
                             />
                             <label htmlFor="startMinimized" className="label">
-                                <span className="label-text text-3xl">Start the app in the tray</span>
+                                <span className="label-text text-3xl">
+                                    Start the app in the tray
+                                </span>
                             </label>
                         </div>
                         <div className="my-6 flex gap-3">
@@ -135,15 +156,24 @@ const AppConfiguration = () => {
                                 type="checkbox"
                                 id="minimizeInsteadOfClose"
                                 className="checkbox mt-4"
-                                {...register('minimizeInsteadOfClose')}
+                                {...register("minimizeInsteadOfClose")}
                             />
-                            <label htmlFor="minimizeInsteadOfClose" className="label">
-                                <span className="label-text text-3xl">Minimize app to tray instead of closing</span>
+                            <label
+                                htmlFor="minimizeInsteadOfClose"
+                                className="label"
+                            >
+                                <span className="label-text text-3xl">
+                                    Minimize app to tray instead of closing
+                                </span>
                             </label>
                         </div>
+                        <div className="my-6 flex gap-3"></div>
                         <div className="divider"></div>
                         <div className="my-6 flex justify-center gap-3">
-                            <button className="btn btn-primary btn-lg rounded-md" type="submit">
+                            <button
+                                className="btn btn-primary btn-lg rounded-md"
+                                type="submit"
+                            >
                                 Save Changes
                             </button>
                         </div>

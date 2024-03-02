@@ -1,11 +1,11 @@
-import { create } from 'zustand';
+import { create } from "zustand";
 import {
     type Image,
     PLAYLIST_TYPES,
     type imagesObject,
     type openFileAction,
     type rendererPlaylist
-} from '../types/rendererTypes';
+} from "../types/rendererTypes";
 const { openFiles, handleOpenImages } = window.API_RENDERER;
 interface State {
     isActive: boolean;
@@ -74,7 +74,10 @@ const openImagesStore = create<State & Actions>(set => ({
         });
         setSkeletons(undefined);
         setImagesArray(newImagesAdded);
-        if (currentPlaylist.configuration.playlistType === PLAYLIST_TYPES.DAY_OF_WEEK) {
+        if (
+            currentPlaylist.configuration.playlistType ===
+            PLAYLIST_TYPES.DAY_OF_WEEK
+        ) {
             return;
         }
         addMultipleImagesToPlaylist(newImagesAdded);

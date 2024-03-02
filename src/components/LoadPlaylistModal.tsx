@@ -1,9 +1,9 @@
-import { useRef } from 'react';
-import { type Playlist } from '../../electron/types/types';
-import playlistStore from '../hooks/playlistStore';
-import { useForm, type SubmitHandler } from 'react-hook-form';
-import { type Image, PLAYLIST_TYPES } from '../types/rendererTypes';
-import { useImages } from '../hooks/imagesStore';
+import { useRef } from "react";
+import { type Playlist } from "../../electron/types/types";
+import playlistStore from "../hooks/playlistStore";
+import { useForm, type SubmitHandler } from "react-hook-form";
+import { type Image, PLAYLIST_TYPES } from "../types/rendererTypes";
+import { useImages } from "../hooks/imagesStore";
 
 interface Input {
     selectPlaylist: string;
@@ -15,10 +15,20 @@ interface Props {
     setShouldReload: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-const { getPlaylistImages, startPlaylist, deletePlaylist, stopPlaylist, onClearPlaylist, updateTray } =
-    window.API_RENDERER;
+const {
+    getPlaylistImages,
+    startPlaylist,
+    deletePlaylist,
+    stopPlaylist,
+    onClearPlaylist,
+    updateTray
+} = window.API_RENDERER;
 
-const LoadPlaylistModal = ({ playlistsInDB, setShouldReload, currentPlaylistName }: Props) => {
+const LoadPlaylistModal = ({
+    playlistsInDB,
+    setShouldReload,
+    currentPlaylistName
+}: Props) => {
     const { clearPlaylist, setPlaylist } = playlistStore();
     const { resetImageCheckboxes, imagesArray } = useImages();
     const { register, handleSubmit, watch } = useForm<Input>();
@@ -34,14 +44,19 @@ const LoadPlaylistModal = ({ playlistsInDB, setShouldReload, currentPlaylistName
             return playlist.name === data.selectPlaylist;
         });
         if (selectedPlaylist !== undefined) {
-            const imagesArrayFromPlaylist = await getPlaylistImages(selectedPlaylist.id);
+            const imagesArrayFromPlaylist = await getPlaylistImages(
+                selectedPlaylist.id
+            );
             const imagesToStorePlaylist: Image[] = [];
             imagesArrayFromPlaylist.forEach(imageNameFromDB => {
                 const imageToStore = imagesArray.find(imageInGallery => {
                     return imageInGallery.name === imageNameFromDB.name;
                 });
                 if (imageToStore === undefined) return;
-                if (selectedPlaylist.type === PLAYLIST_TYPES.TIME_OF_DAY && imageNameFromDB.time !== null) {
+                if (
+                    selectedPlaylist.type === PLAYLIST_TYPES.TIME_OF_DAY &&
+                    imageNameFromDB.time !== null
+                ) {
                     imageToStore.time = imageNameFromDB.time;
                 }
                 imageToStore.isChecked = true;
@@ -71,7 +86,9 @@ const LoadPlaylistModal = ({ playlistsInDB, setShouldReload, currentPlaylistName
     return (
         <dialog id="LoadPlaylistModal" className="modal" ref={modalRef}>
             <div className="modal-box container flex flex-col">
-                <h2 className="font-bold text-4xl text-center py-3 ">Load Playlist</h2>
+                <h2 className="font-bold text-4xl text-center py-3 ">
+                    Load Playlist
+                </h2>
 
                 <div className="divider"></div>
                 {playlistsInDB.length === 0 && (
@@ -81,7 +98,7 @@ const LoadPlaylistModal = ({ playlistsInDB, setShouldReload, currentPlaylistName
                         </span>
                         <button
                             type="button"
-                            className="btn"
+                            className="btn btn-block uppercase btn-active"
                             onClick={() => {
                                 setShouldReload(true);
                             }}
@@ -97,28 +114,38 @@ const LoadPlaylistModal = ({ playlistsInDB, setShouldReload, currentPlaylistName
                         }}
                         className="form-control flex flex-col gap-5"
                     >
-                        <label htmlFor="selectPlaylist" className="label text-lg ">
+                        <label
+                            htmlFor="selectPlaylist"
+                            className="label text-lg "
+                        >
                             Select Playlist
                         </label>
                         <div className="flex align-baseline gap-10">
                             <select
                                 id="selectPlaylist"
-                                className="select text-lg basis-[90%]"
+                                className="select select-bordered rounded-md text-lg basis-[90%]"
                                 defaultValue={playlistsInDB[0].name}
-                                {...register('selectPlaylist', { required: true })}
+                                {...register("selectPlaylist", {
+                                    required: true
+                                })}
                             >
                                 {playlistsInDB.map(playlist => (
-                                    <option key={playlist.id} value={playlist.name}>
+                                    <option
+                                        key={playlist.id}
+                                        value={playlist.name}
+                                    >
                                         {playlist.name}
                                     </option>
                                 ))}
                             </select>
                             <button
                                 type="button"
-                                className="btn btn-md btn-error rounded-md "
+                                className="btn btn-md uppercase btn-error rounded-md "
                                 onClick={() => {
-                                    const current = watch('selectPlaylist');
-                                    const shouldDelete = window.confirm(`Are you sure to delete ${current}?`);
+                                    const current = watch("selectPlaylist");
+                                    const shouldDelete = window.confirm(
+                                        `Are you sure to delete ${current}?`
+                                    );
                                     if (shouldDelete) {
                                         deletePlaylist(current);
                                         setShouldReload(true);
@@ -135,10 +162,17 @@ const LoadPlaylistModal = ({ playlistsInDB, setShouldReload, currentPlaylistName
                         </div>
 
                         <div className="flex gap-3 justify-center mt-3">
-                            <button type="button" className="btn btn-md btn-neutral rounded-md " onClick={closeModal}>
+                            <button
+                                type="button"
+                                className="btn uppercase btn-md rounded-md "
+                                onClick={closeModal}
+                            >
                                 Cancel
                             </button>
-                            <button type="submit" className="btn btn-success btn-md rounded-md ">
+                            <button
+                                type="submit"
+                                className="btn btn-active btn-md uppercase rounded-md "
+                            >
                                 Load
                             </button>
                         </div>

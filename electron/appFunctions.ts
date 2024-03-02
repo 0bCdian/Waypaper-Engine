@@ -1,7 +1,12 @@
 import { type BrowserWindow, dialog, Menu } from 'electron';
 import { rmSync, mkdirSync, existsSync } from 'node:fs';
 import { copyFile, readdir } from 'node:fs/promises';
-import { appDirectories, validImageExtensions, WAYPAPER_ENGINE_SOCKET_PATH } from './globals/globals';
+import {
+    appDirectories,
+    validImageExtensions,
+    WAYPAPER_ENGINE_SOCKET_PATH,
+    contextMenu
+} from './globals/globals';
 import {
     type imagesObject,
     ACTIONS,
@@ -10,7 +15,11 @@ import {
     type imageMetadata,
     type wlr_output
 } from './types/types';
-import { type rendererPlaylist, type Image, type openFileAction } from '../src/types/rendererTypes';
+import {
+    type rendererPlaylist,
+    type Image,
+    type openFileAction
+} from '../src/types/rendererTypes';
 import { exec, execFile, execSync, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { binDir, daemonLocation } from './binaries';
@@ -20,7 +29,11 @@ import { parseResolution } from '../src/utils/utilities';
 import dbOperations from './database/dbOperations';
 import config from './database/globalConfig';
 import Sharp = require('sharp');
-import { extendImageAcrossAllMonitors, splitImageHorizontalAxis, splitImageVerticalAxis } from './imageOperations';
+import {
+    extendImageAcrossAllMonitors,
+    splitImageHorizontalAxis,
+    splitImageVerticalAxis
+} from './imageOperations';
 const execPomisified = promisify(exec);
 const execFilePomisified = promisify(execFile);
 
@@ -61,7 +74,10 @@ async function openFolderFromFilePicker(browserWindow: BrowserWindow | null) {
     return imageFilePaths;
 }
 
-async function searchImagesRecursively(imageFilePaths: string[], directory: string) {
+async function searchImagesRecursively(
+    imageFilePaths: string[],
+    directory: string
+) {
     const directoryContents = await readdir(directory, {
         recursive: false,
         encoding: 'utf-8',
@@ -71,10 +87,16 @@ async function searchImagesRecursively(imageFilePaths: string[], directory: stri
         const filePathOrDir = directoryContents[index];
         const fileName = filePathOrDir.name;
         if (filePathOrDir.isDirectory()) {
-            await searchImagesRecursively(imageFilePaths, join(directory, fileName));
+            await searchImagesRecursively(
+                imageFilePaths,
+                join(directory, fileName)
+            );
         } else {
             const fileExtension = filePathOrDir.name.split('.').at(-1);
-            if (fileExtension !== undefined && validImageExtensions.includes(fileExtension)) {
+            if (
+                fileExtension !== undefined &&
+                validImageExtensions.includes(fileExtension)
+            ) {
                 imageFilePaths.push(join(directory, fileName));
             }
         }
@@ -86,20 +108,25 @@ export async function copyImagesToCacheAndProcessThumbnails(
     { imagePaths, fileNames }: imagesObject
 ) {
     const uniqueFileNames = await checkAndRenameDuplicates(fileNames);
-    const imagesToStore = uniqueFileNames.map(async (imageName, currentImage) => {
-        return await new Promise<imageMetadata | undefined>(resolve => {
-            void copyFile(imagePaths[currentImage], join(appDirectories.imagesDir, imageName)).then(() => {
-                createCacheThumbnail(imagePaths[currentImage], imageName)
-                    .then(imageMetadata => {
-                        resolve(imageMetadata);
-                    })
-                    .catch(e => {
-                        console.error(e);
-                    });
+    const imagesToStore = uniqueFileNames.map(
+        async (imageName, currentImage) => {
+            return await new Promise<imageMetadata | undefined>(resolve => {
+                void copyFile(
+                    imagePaths[currentImage],
+                    join(appDirectories.imagesDir, imageName)
+                ).then(() => {
+                    createCacheThumbnail(imagePaths[currentImage], imageName)
+                        .then(imageMetadata => {
+                            resolve(imageMetadata);
+                        })
+                        .catch(e => {
+                            console.error(e);
+                        });
+                });
+                return undefined;
             });
-            return undefined;
-        });
-    });
+        }
+    );
     const resolvedObjectsArray = await Promise.allSettled(imagesToStore);
     const imagesToStoreinDB: imageMetadata[] = [];
     resolvedObjectsArray.forEach(imagePromise => {
@@ -142,9 +169,14 @@ async function createCacheThumbnail(filePathSource: string, imageName: string) {
     }
 }
 
-export async function openAndReturnImagesObject(action: openFileAction, browserWindow: BrowserWindow | null) {
+export async function openAndReturnImagesObject(
+    action: openFileAction,
+    browserWindow: BrowserWindow | null
+) {
     const imagePathsFromFilePicker =
-        action === 'file' ? openImagesFromFilePicker(browserWindow) : await openFolderFromFilePicker(browserWindow);
+        action === 'file'
+            ? openImagesFromFilePicker(browserWindow)
+            : await openFolderFromFilePicker(browserWindow);
     if (imagePathsFromFilePicker === undefined) {
         return;
     }
@@ -160,7 +192,10 @@ export async function remakeThumbnailsIfImagesExist() {
             return;
         }
         for (let current = 0; current < imagesStored.length; current++) {
-            const filePathSource = join(appDirectories.imagesDir, imagesStored[current]);
+            const filePathSource = join(
+                appDirectories.imagesDir,
+                imagesStored[current]
+            );
             void createCacheThumbnail(filePathSource, imagesStored[current]);
         }
     }
@@ -210,8 +245,13 @@ function deleteFolders(...args: string[]) {
 }
 
 async function checkAndRenameDuplicates(filenamesToCopy: string[]) {
-    const currentImagesStored = new Set(await readdir(appDirectories.imagesDir));
-    const correctFilenamesToCopy = getUniqueFileNames(currentImagesStored, filenamesToCopy);
+    const currentImagesStored = new Set(
+        await readdir(appDirectories.imagesDir)
+    );
+    const correctFilenamesToCopy = getUniqueFileNames(
+        currentImagesStored,
+        filenamesToCopy
+    );
     return correctFilenamesToCopy;
 }
 
@@ -221,8 +261,10 @@ function getUniqueFileNames(existingFiles: Set<string>, filesToCopy: string[]) {
     for (let i = 0; i < filesToCopyLength; i++) {
         const file = filesToCopy[i];
         const extensionIndex = file.lastIndexOf('.');
-        const fileNameWithoutExtension = extensionIndex !== -1 ? file.substring(0, extensionIndex) : file;
-        const fileExtension = extensionIndex !== -1 ? file.substring(extensionIndex) : '';
+        const fileNameWithoutExtension =
+            extensionIndex !== -1 ? file.substring(0, extensionIndex) : file;
+        const fileExtension =
+            extensionIndex !== -1 ? file.substring(extensionIndex) : '';
 
         let uniqueFileName = fileNameWithoutExtension;
         let count = 1;
@@ -236,7 +278,11 @@ function getUniqueFileNames(existingFiles: Set<string>, filesToCopy: string[]) {
     return filesToCopyWithoutConflicts;
 }
 
-export function setImage(_event: Electron.IpcMainInvokeEvent, imageName: string, monitor?: string) {
+export function setImage(
+    _event: Electron.IpcMainInvokeEvent,
+    imageName: string,
+    monitor?: string
+) {
     const imagePath = join(appDirectories.imagesDir, `"${imageName}"`);
     const command = getSwwwCommandFromConfiguration(imagePath, monitor);
     void execPomisified(`${command}`).then(output => {
@@ -266,7 +312,9 @@ export async function checkIfSwwwIsInstalled() {
     if (stdout.length > 0) {
         console.info('swww is installed in the system');
     } else {
-        console.warn('swww is not installed, please find instructions in the README.md on how to install it');
+        console.warn(
+            'swww is not installed, please find instructions in the README.md on how to install it'
+        );
         throw new Error('swww is not installed');
     }
 }
@@ -300,7 +348,8 @@ export async function initWaypaperDaemon() {
         const promise = new Promise<void>((resolve, reject) => {
             try {
                 const args = [`${daemonLocation}/daemon.js`];
-                if (config.script !== undefined) args.push(`--script=${config.script}`);
+                if (config.script !== undefined)
+                    args.push(`--script=${config.script}`);
                 spawn('node', args, {
                     detached: true,
                     stdio: 'ignore',
@@ -405,7 +454,11 @@ export function deleteImageFromStorage(imageName: string) {
     }
 }
 
-export function deleteImageFromGallery(_: Electron.IpcMainInvokeEvent, imageID: number, imageName: string) {
+export function deleteImageFromGallery(
+    _: Electron.IpcMainInvokeEvent,
+    imageID: number,
+    imageName: string
+) {
     try {
         dbOperations.deleteImageInDB(imageID);
         deleteImageFromStorage(imageName);
@@ -475,7 +528,11 @@ function parseSwwwQuery(stdout: string) {
     return monitorsObjectArray as Monitor[];
 }
 
-export async function setImageExtended(Image: Image, monitors: Monitor[], orientation: 'vertical' | 'horizontal') {
+export async function setImageExtended(
+    Image: Image,
+    monitors: Monitor[],
+    orientation: 'vertical' | 'horizontal'
+) {
     try {
         const commands: Array<Promise<any>> = [];
         const imageFilePath = join(appDirectories.imagesDir, Image.name);
@@ -487,10 +544,24 @@ export async function setImageExtended(Image: Image, monitors: Monitor[], orient
         });
         const monitorsToImagesPair =
             orientation === 'vertical'
-                ? await splitImageVerticalAxis(monitors, Image, imageFilePath, combinedMonitorWidth)
-                : await splitImageHorizontalAxis(monitors, Image, imageFilePath, combinedMonitorHeight);
+                ? await splitImageVerticalAxis(
+                      monitors,
+                      Image,
+                      imageFilePath,
+                      combinedMonitorWidth
+                  )
+                : await splitImageHorizontalAxis(
+                      monitors,
+                      Image,
+                      imageFilePath,
+                      combinedMonitorHeight
+                  );
         monitorsToImagesPair.forEach(pair => {
-            commands.push(execPomisified(getSwwwCommandFromConfiguration(pair.image, pair.monitor)));
+            commands.push(
+                execPomisified(
+                    getSwwwCommandFromConfiguration(pair.image, pair.monitor)
+                )
+            );
         });
         void Promise.all(commands);
         if (config.script !== undefined) {
@@ -503,7 +574,9 @@ export async function setImageExtended(Image: Image, monitors: Monitor[], orient
 
 export async function getMonitorsInfo() {
     try {
-        const { stdout } = await execFilePomisified(join(binDir, 'wlr-randr'), ['--json']);
+        const { stdout } = await execFilePomisified(join(binDir, 'wlr-randr'), [
+            '--json'
+        ]);
         const monitors: wlr_output = JSON.parse(stdout);
         monitors.forEach(monitor => {
             monitor.modes = monitor.modes.filter(mode => mode.current);
@@ -519,9 +592,16 @@ export async function setImageAcrossAllMonitors(Image: Image) {
     const imageFilePath = join(appDirectories.imagesDir, Image.name);
     try {
         const commands: Array<Promise<any>> = [];
-        const monitorsToImagesPair = await extendImageAcrossAllMonitors(Image, imageFilePath);
+        const monitorsToImagesPair = await extendImageAcrossAllMonitors(
+            Image,
+            imageFilePath
+        );
         monitorsToImagesPair.forEach(pair => {
-            commands.push(execPomisified(getSwwwCommandFromConfiguration(pair.image, pair.monitor)));
+            commands.push(
+                execPomisified(
+                    getSwwwCommandFromConfiguration(pair.image, pair.monitor)
+                )
+            );
         });
         void Promise.all(commands);
         if (config.script !== undefined) {
@@ -537,7 +617,11 @@ function isSavedPlaylistActive(playlist: rendererPlaylist) {
     return activePlaylist?.name === playlist.name;
 }
 
-export async function openContextMenu(event: Electron.IpcMainInvokeEvent, image: Image, win: BrowserWindow) {
+export async function openContextMenu(
+    event: Electron.IpcMainInvokeEvent,
+    image: Image,
+    win: BrowserWindow
+) {
     const monitors = await getMonitors();
     const subLabelsMonitors = monitors.map(monitor => {
         return {
@@ -573,7 +657,7 @@ export async function openContextMenu(event: Electron.IpcMainInvokeEvent, image:
             }
         }
     );
-    const contextMenu = Menu.buildFromTemplate([
+    const imageContextMenu = Menu.buildFromTemplate([
         {
             label: `Set ${image.name}`,
             submenu: subLabelsMonitors
@@ -591,11 +675,20 @@ export async function openContextMenu(event: Electron.IpcMainInvokeEvent, image:
                     .then(data => {
                         if (data.response === 0) {
                             deleteImageFromGallery(event, image.id, image.name);
-                            win?.webContents.send('deleteImageFromGallery', image);
+                            win?.webContents.send(
+                                'deleteImageFromGallery',
+                                image
+                            );
                         }
                     });
             }
-        }
+        },
+        ...contextMenu
     ]);
-    contextMenu.popup();
+    imageContextMenu.popup();
+}
+
+export function openContextMenuGallery(win: BrowserWindow) {
+    const galleryContextMenu = Menu.buildFromTemplate(contextMenu);
+    galleryContextMenu.popup();
 }

@@ -1,14 +1,20 @@
-import db from './db';
-import { dbTables, type Image, type Playlist, type imageInPlaylist, type imageMetadata } from '../types/types';
+import db from "./db";
+import {
+    dbTables,
+    type Image,
+    type Playlist,
+    type imageInPlaylist,
+    type imageMetadata
+} from "../types/types";
 import {
     type rendererPlaylist,
     type Image as rendererImage,
     ORDER_TYPES,
     PLAYLIST_TYPES
-} from '../../src/types/rendererTypes';
-import { initialSwwwConfigDB, type swwwConfig } from './swwwConfig';
-import initialAppConfig from './appConfig';
-import { type AppConfigDB } from '../../src/routes/AppConfiguration';
+} from "../../src/types/rendererTypes";
+import { initialSwwwConfigDB, type swwwConfig } from "./swwwConfig";
+import initialAppConfig from "./appConfig";
+import { type AppConfigDB } from "../../src/routes/AppConfiguration";
 const dbOperations = {
     testDB: function () {
         const test = db.prepare(
@@ -18,12 +24,14 @@ const dbOperations = {
             test.run();
         } catch (error) {
             console.error(error);
-            throw new Error('Could not comunicate with the database');
+            throw new Error("Could not comunicate with the database");
         }
     },
     initializeSwwwConfig() {
         try {
-            const testIfConfigIsEmpty = db.prepare(`SELECT * FROM ${dbTables.swwwConfig}`);
+            const testIfConfigIsEmpty = db.prepare(
+                `SELECT * FROM ${dbTables.swwwConfig}`
+            );
             const results = testIfConfigIsEmpty.all();
             if (results.length > 0) {
                 return;
@@ -55,12 +63,14 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
             );
         } catch (error) {
             console.error(error);
-            console.error('Could not initialize swwwConfig');
+            console.error("Could not initialize swwwConfig");
         }
     },
     initializeAppConfig() {
         try {
-            const testIfConfigIsEmpty = db.prepare(`SELECT * FROM ${dbTables.appConfig}`);
+            const testIfConfigIsEmpty = db.prepare(
+                `SELECT * FROM ${dbTables.appConfig}`
+            );
             const results = testIfConfigIsEmpty.all();
             if (results.length > 0) {
                 return;
@@ -78,16 +88,20 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                 initialAppConfig.minimizeInsteadOfClose
             );
         } catch (error) {
-            throw new Error(`Could not initialize the appConfig table\n ${error as string}`);
+            throw new Error(
+                `Could not initialize the appConfig table\n ${error as string}`
+            );
         }
     },
     initializePlaylistActive() {
         try {
-            const [results] = db.prepare(`SELECT * FROM ${dbTables.activePlaylist}`).all() as [
-                { playlistID: number } | undefined
-            ];
+            const [results] = db
+                .prepare(`SELECT * FROM ${dbTables.activePlaylist}`)
+                .all() as [{ playlistID: number } | undefined];
             if (results === undefined) {
-                db.prepare(`INSERT INTO ${dbTables.activePlaylist} (playlistID) VALUES(?)`).run(0);
+                db.prepare(
+                    `INSERT INTO ${dbTables.activePlaylist} (playlistID) VALUES(?)`
+                ).run(0);
             }
         } catch (error) {
             throw new Error(`Could not initialize playlistActive table`);
@@ -110,7 +124,9 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     },
     readAllPlaylistsInDB() {
         this.purgePlaylistsWithoutImages();
-        const selectPlaylists = db.prepare(`SELECT * FROM ${dbTables.Playlists}`);
+        const selectPlaylists = db.prepare(
+            `SELECT * FROM ${dbTables.Playlists}`
+        );
         try {
             const playlists = selectPlaylists.all() as Playlist[];
             return playlists;
@@ -121,8 +137,12 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     },
     storeImagesInDB(images: imageMetadata[]) {
         try {
-            const insertImage = db.prepare(`INSERT INTO Images (name,width,height,format) VALUES (?,?,?,?)`);
-            const selectInsertedImage = db.prepare(`SELECT * FROM Images WHERE id >= last_insert_rowid();`);
+            const insertImage = db.prepare(
+                `INSERT INTO Images (name,width,height,format) VALUES (?,?,?,?)`
+            );
+            const selectInsertedImage = db.prepare(
+                `SELECT * FROM Images WHERE id >= last_insert_rowid();`
+            );
             const imagesInserted: Image[] = [];
             images.forEach(({ name, width, height, format }) => {
                 insertImage.run(name, width, height, format);
@@ -153,7 +173,9 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
             const selectInsertedPlaylist = db.prepare(
                 `SELECT id FROM ${dbTables.Playlists} WHERE id >= last_insert_rowid();`
             );
-            const insertedPlaylist = selectInsertedPlaylist.get() as { id: number };
+            const insertedPlaylist = selectInsertedPlaylist.get() as {
+                id: number;
+            };
             this.insertImagesInPlaylistImagesTable(
                 insertedPlaylist.id,
                 playlist.images,
@@ -165,7 +187,11 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
             return null;
         }
     },
-    insertImagesInPlaylistImagesTable(playlistID: number, images: rendererImage[], playlistType: PLAYLIST_TYPES) {
+    insertImagesInPlaylistImagesTable(
+        playlistID: number,
+        images: rendererImage[],
+        playlistType: PLAYLIST_TYPES
+    ) {
         try {
             const insertImagesInPlaylist = db.prepare(
                 `INSERT INTO ${dbTables.imagesInPlaylist} (playlistId, imageId, indexInPlaylist, time) VALUES (?,?,?,?)`
@@ -175,7 +201,9 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                     playlistID,
                     image.id,
                     index,
-                    playlistType === PLAYLIST_TYPES.TIME_OF_DAY ? image.time : null
+                    playlistType === PLAYLIST_TYPES.TIME_OF_DAY
+                        ? image.time
+                        : null
                 );
             });
         } catch (error) {
@@ -187,7 +215,9 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
             const selectImagesInPlaylist = db.prepare(
                 `SELECT name,time FROM imagesInPlaylist INNER JOIN Images ON imagesInPlaylist.imageID = Images.id AND imagesInPlaylist.playlistID = ? ORDER BY indexInPlaylist ASC`
             );
-            const imagesInPlaylist = selectImagesInPlaylist.all(playlistID) as imageInPlaylist[];
+            const imagesInPlaylist = selectImagesInPlaylist.all(
+                playlistID
+            ) as imageInPlaylist[];
             return imagesInPlaylist;
         } catch (error) {
             console.error(error);
@@ -196,7 +226,9 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     },
     checkIfPlaylistExists(playlistName: string) {
         try {
-            const selectPlaylist = db.prepare(`SELECT * FROM ${dbTables.Playlists} WHERE name = ?`);
+            const selectPlaylist = db.prepare(
+                `SELECT * FROM ${dbTables.Playlists} WHERE name = ?`
+            );
             const playlist = selectPlaylist.get(playlistName);
             return playlist !== undefined;
         } catch (error) {
@@ -216,46 +248,66 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                 playlist.configuration.order,
                 playlist.name
             );
-            const selectPlaylist = db.prepare(`SELECT id FROM ${dbTables.Playlists} WHERE name=?`);
+            const selectPlaylist = db.prepare(
+                `SELECT id FROM ${dbTables.Playlists} WHERE name=?`
+            );
             const insertedPlaylist = selectPlaylist.get(playlist.name) as {
                 id: number;
             };
             if (playlist.configuration.order === ORDER_TYPES.RANDOM) {
                 playlist.images.sort(() => Math.random() - 0.5);
             }
-            this.updateImagesInPlaylist(insertedPlaylist.id, playlist.images, playlist.configuration.playlistType);
+            this.updateImagesInPlaylist(
+                insertedPlaylist.id,
+                playlist.images,
+                playlist.configuration.playlistType
+            );
             return insertedPlaylist;
         } catch (error) {
             console.error(error);
             return null;
         }
     },
-    updateImagesInPlaylist(playlistID: number, images: rendererImage[], playlistType: PLAYLIST_TYPES) {
+    updateImagesInPlaylist(
+        playlistID: number,
+        images: rendererImage[],
+        playlistType: PLAYLIST_TYPES
+    ) {
         try {
-            const deleteAllImages = db.prepare(`DELETE FROM ${dbTables.imagesInPlaylist} WHERE playlistID=?`);
+            const deleteAllImages = db.prepare(
+                `DELETE FROM ${dbTables.imagesInPlaylist} WHERE playlistID=?`
+            );
             deleteAllImages.run(playlistID);
-            this.insertImagesInPlaylistImagesTable(playlistID, images, playlistType);
+            this.insertImagesInPlaylistImagesTable(
+                playlistID,
+                images,
+                playlistType
+            );
         } catch (error) {
             console.error(error);
         }
     },
     deletePlaylistInDB(playlistName: string) {
         try {
-            const deletePlaylist = db.prepare(`DELETE FROM ${dbTables.Playlists} WHERE name=?`);
+            const deletePlaylist = db.prepare(
+                `DELETE FROM ${dbTables.Playlists} WHERE name=?`
+            );
             deletePlaylist.run(playlistName);
         } catch (error) {
             console.error(error);
-            console.error('Failed to delete playlist from DB');
+            console.error("Failed to delete playlist from DB");
         }
     },
     deleteImageInDB(imageID: number) {
         try {
-            const deleteImage = db.prepare(`DELETE FROM ${dbTables.Images} WHERE id=?`);
+            const deleteImage = db.prepare(
+                `DELETE FROM ${dbTables.Images} WHERE id=?`
+            );
             deleteImage.run(imageID);
         } catch (error) {
             console.error(error);
-            console.error('Failed to delete image from DB');
-            throw new Error('Failed to delete image from DB');
+            console.error("Failed to delete image from DB");
+            throw new Error("Failed to delete image from DB");
         }
     },
     purgePlaylistsWithoutImages() {
@@ -271,11 +323,13 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
     },
     readSwwwConfig() {
         try {
-            const [swwwConfigObject] = db.prepare(`SELECT * FROM ${dbTables.swwwConfig}`).all();
+            const [swwwConfigObject] = db
+                .prepare(`SELECT * FROM ${dbTables.swwwConfig}`)
+                .all();
             return swwwConfigObject as swwwConfig;
         } catch (error) {
             console.error(error);
-            throw new Error('Could not read swwwConfig from the database');
+            throw new Error("Could not read swwwConfig from the database");
         }
     },
     updateSwwwConfig(newConfig: swwwConfig) {
@@ -306,16 +360,20 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
             );
         } catch (error) {
             console.error(error);
-            throw new Error('Could not update the swwwConfig');
+            throw new Error("Could not update the swwwConfig");
         }
     },
     readAppConfig() {
         try {
-            const [getConfig] = db.prepare(`SELECT * FROM ${dbTables.appConfig}`).all();
+            const [getConfig] = db
+                .prepare(`SELECT * FROM ${dbTables.appConfig}`)
+                .all();
             return getConfig as typeof initialAppConfig;
         } catch (error) {
             console.error(error);
-            throw new Error('Could not read app configuration from the database');
+            throw new Error(
+                "Could not read app configuration from the database"
+            );
         }
     },
     updateAppConfig(newAppConfig: AppConfigDB) {
@@ -333,17 +391,21 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                 newAppConfig.minimizeInsteadOfClose
             );
         } catch (error) {
-            throw new Error(`Could not update appConfigTable in DB ${error as string}`);
+            throw new Error(
+                `Could not update appConfigTable in DB ${error as string}`
+            );
         }
     },
     readCurrentPlaylistID() {
-        return db.prepare(`SELECT * FROM ${dbTables.activePlaylist}`).all() as [{ playlistID: number }];
+        return db.prepare(`SELECT * FROM ${dbTables.activePlaylist}`).all() as [
+            { playlistID: number }
+        ];
     },
     getCurrentPlaylist() {
         const [result] = this.readCurrentPlaylistID();
-        const [playlist] = db.prepare(`SELECT * FROM ${dbTables.Playlists} WHERE id=?`).all(result.playlistID) as [
-            Playlist | undefined
-        ];
+        const [playlist] = db
+            .prepare(`SELECT * FROM ${dbTables.Playlists} WHERE id=?`)
+            .all(result.playlistID) as [Playlist | undefined];
         if (playlist !== undefined) {
             return playlist;
         } else {
@@ -356,26 +418,34 @@ VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
             if (playlistID === null) {
                 throw new Error(`Playlist does not exists in database`);
             }
-            db.prepare(`UPDATE ${dbTables.activePlaylist} SET playlistID=CAST(? as INTEGER)`).run(playlistID.id);
+            db.prepare(
+                `UPDATE ${dbTables.activePlaylist} SET playlistID=CAST(? as INTEGER)`
+            ).run(playlistID.id);
         } catch (error) {
-            throw new Error(`Could not read playlist from DB >> ${error as string}`);
+            throw new Error(
+                `Could not read playlist from DB >> ${error as string}`
+            );
         }
     },
     setActivePlaylistToNull() {
         try {
-            db.prepare(`UPDATE ${dbTables.activePlaylist} SET playlistID=0`).run();
+            db.prepare(
+                `UPDATE ${dbTables.activePlaylist} SET playlistID=0`
+            ).run();
         } catch (error) {
             console.error(error);
         }
     },
     getPlaylistIDFromName(playlistName: string) {
         try {
-            const [id] = db.prepare(`SELECT id FROM ${dbTables.Playlists} WHERE name=?`).all(playlistName) as [
-                { id: number } | undefined
-            ];
+            const [id] = db
+                .prepare(`SELECT id FROM ${dbTables.Playlists} WHERE name=?`)
+                .all(playlistName) as [{ id: number } | undefined];
             return id ?? null;
         } catch (error) {
-            throw new Error(`Could not execute getPlaylistIDFromName,error: ${error as string} `);
+            throw new Error(
+                `Could not execute getPlaylistIDFromName,error: ${error as string} `
+            );
         }
     }
 };

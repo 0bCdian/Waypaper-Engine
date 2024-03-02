@@ -1,11 +1,11 @@
-import { useState, useEffect, useMemo } from 'react';
-import LoadPlaylistModal from './LoadPlaylistModal';
-import SavePlaylistModal from './SavePlaylistModal';
-import PlaylistConfigurationModal from './PlaylistConfigurationModal';
-import playlistStore from '../hooks/playlistStore';
-import { type Playlist } from '../../electron/types/types';
-import { useImages } from '../hooks/imagesStore';
-import AdvancedFiltersModal from './AdvancedFiltersModal';
+import { useState, useEffect, useMemo } from "react";
+import LoadPlaylistModal from "./LoadPlaylistModal";
+import SavePlaylistModal from "./SavePlaylistModal";
+import PlaylistConfigurationModal from "./PlaylistConfigurationModal";
+import playlistStore from "../hooks/playlistStore";
+import { type Playlist } from "../../electron/types/types";
+import { useImages } from "../hooks/imagesStore";
+import AdvancedFiltersModal from "./AdvancedFiltersModal";
 
 const { queryPlaylists } = window.API_RENDERER;
 function Modals() {
@@ -34,7 +34,10 @@ function Modals() {
                 setShouldReload={setShouldReload}
                 currentPlaylistName={currentPlaylist.name}
             />
-            <SavePlaylistModal setShouldReload={setShouldReload} currentPlaylistName={currentPlaylist.name} />
+            <SavePlaylistModal
+                setShouldReload={setShouldReload}
+                currentPlaylistName={currentPlaylist.name}
+            />
             <PlaylistConfigurationModal />
             <AdvancedFiltersModal />
         </>

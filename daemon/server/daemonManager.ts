@@ -1,8 +1,8 @@
-import { type Socket, type Server } from 'net';
-import { type message, ACTIONS } from '../types/daemonTypes';
-import { type PlaylistClass } from '../playlist/playlist';
-import { notify } from '../utils/notifications';
-import config from '../config/config';
+import { type Socket, type Server } from "net";
+import { type message, ACTIONS } from "../types/daemonTypes";
+import { type PlaylistClass } from "../playlist/playlist";
+import { notify } from "../utils/notifications";
+import config from "../config/config";
 
 export async function daemonManager(
     data: Buffer,
@@ -33,18 +33,20 @@ export async function daemonManager(
             break;
         case ACTIONS.RANDOM_IMAGE:
             {
-                const setImageMessage = await playlistController.setRandomImage();
+                const setImageMessage =
+                    await playlistController.setRandomImage();
                 socket.write(setImageMessage);
             }
             break;
         case ACTIONS.GET_INFO:
             {
-                const diagnostics = await playlistController.getPlaylistDiagnostics();
+                const diagnostics =
+                    await playlistController.getPlaylistDiagnostics();
                 socket.write(JSON.stringify(diagnostics));
             }
             break;
     }
-    if (playlistController.currentName !== '') {
+    if (playlistController.currentName !== "") {
         switch (message.action) {
             case ACTIONS.PAUSE_PLAYLIST:
                 {
@@ -72,13 +74,15 @@ export async function daemonManager(
                 break;
             case ACTIONS.NEXT_IMAGE:
                 {
-                    const nextImageMessage = await playlistController.nextImage();
+                    const nextImageMessage =
+                        await playlistController.nextImage();
                     socket.write(nextImageMessage);
                 }
                 break;
             case ACTIONS.PREVIOUS_IMAGE:
                 {
-                    const previousImageMessage = await playlistController.previousImage();
+                    const previousImageMessage =
+                        await playlistController.previousImage();
                     socket.write(previousImageMessage);
                 }
                 break;
