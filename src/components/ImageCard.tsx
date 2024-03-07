@@ -1,7 +1,7 @@
-import { useId, type ChangeEvent } from "react";
-import { type Image, PLAYLIST_TYPES } from "../types/rendererTypes";
-import playlistStore from "../hooks/playlistStore";
-import { motion } from "framer-motion";
+import { useState, useId, type ChangeEvent } from 'react';
+import playlistStore from '../hooks/playlistStore';
+import { type Image } from '../../shared/types/image';
+import { motion } from 'framer-motion';
 interface ImageCardProps {
     Image: Image;
 }
@@ -9,9 +9,11 @@ const { join, thumbnailDirectory, setImage, imagesDirectory, openContextMenu } =
     window.API_RENDERER;
 function ImageCard({ Image }: ImageCardProps) {
     const id = useId();
+    const [isSelected, setIsSelected] = useState(false);
+    const css = `duration-500 border-[2px] ${isSelected ? 'border-info' : 'border-transparent'}  group hover:border-info relative rounded-lg bg-transparent max-w-fit my-1 overflow-hidden`;
     const imageNameFilePath = `atom://${join(
         thumbnailDirectory,
-        `${Image.name.split(".").at(0)}.webp`
+        `${Image.name.split('.').at(0)}.webp`
     )}`;
     const handleDoubleClick = () => {
         setImage(Image.name);
@@ -23,8 +25,7 @@ function ImageCard({ Image }: ImageCardProps) {
         if (element.checked) {
             const playlist = readPlaylist();
             if (
-                playlist.configuration.playlistType ===
-                    PLAYLIST_TYPES.DAY_OF_WEEK &&
+                playlist.configuration.playlistType === 'dayofweek' &&
                 playlist.images.length === 7
             ) {
                 element.checked = false;
@@ -41,14 +42,18 @@ function ImageCard({ Image }: ImageCardProps) {
         e.stopPropagation();
         openContextMenu(Image);
     };
-
     return (
         <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onContextMenu={handleRightClick}
-            className="duration-500 border-[2px] border-transparent group hover:border-info relative rounded-lg bg-transparent max-w-fit my-1 overflow-hidden"
+            onClick={() => {
+                setIsSelected(prev => {
+                    return !prev;
+                });
+            }}
+            className={css}
         >
             <div className="relative">
                 <input
@@ -69,9 +74,9 @@ function ImageCard({ Image }: ImageCardProps) {
                     onError={({ currentTarget }) => {
                         currentTarget.onerror = null;
                         currentTarget.className =
-                            "rounded-lg min-w-full max-w-[300px] object-fill";
+                            'rounded-lg min-w-full max-w-[300px] object-fill';
                         currentTarget.src =
-                            "atom://" + join(imagesDirectory, Image.name);
+                            'atom://' + join(imagesDirectory, Image.name);
                     }}
                 />
                 <p className="absolute rounded-b-lg opacity-0 group-hover:opacity-100 duration-300 transition-all bottom-0 pl-2 p-2 w-full text-lg text-justify text-ellipsis overflow-hidden bg-black bg-opacity-75 font-medium truncate ">

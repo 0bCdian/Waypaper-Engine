@@ -1,12 +1,12 @@
-import { useImages } from "../hooks/imagesStore";
-import { useEffect, useRef } from "react";
-import { useForm, type SubmitHandler } from "react-hook-form";
-import { parseResolution } from "../utils/utilities";
+import { useImages } from '../hooks/imagesStore';
+import { useEffect, useRef } from 'react';
+import { useForm, type SubmitHandler } from 'react-hook-form';
+import { parseResolution } from '../utils/utilities';
 import {
     type advancedFilters,
-    type resolutionConstraints,
-    type Formats
-} from "../types/rendererTypes";
+    type resolutionConstraints
+} from '../types/rendererTypes';
+import { type Formats } from '../../shared/types/image';
 interface AdvancedFiltersForm {
     resolutionConstraint: resolutionConstraints;
     width: string;
@@ -52,16 +52,16 @@ const AdvancedFiltersModal = () => {
         setFilters({ ...filters, advancedFilters });
     };
     const setFormatsValues = (value: boolean) => {
-        setValue("jpeg", value);
-        setValue("png", value);
-        setValue("farbeld", value);
-        setValue("bmp", value);
-        setValue("webp", value);
-        setValue("gif", value);
-        setValue("tiff", value);
-        setValue("tga", value);
-        setValue("pnm", value);
-        setValue("jpg", value);
+        setValue('jpeg', value);
+        setValue('png', value);
+        setValue('farbeld', value);
+        setValue('bmp', value);
+        setValue('webp', value);
+        setValue('gif', value);
+        setValue('tiff', value);
+        setValue('tga', value);
+        setValue('pnm', value);
+        setValue('jpg', value);
     };
 
     useEffect(() => {
@@ -95,9 +95,9 @@ const AdvancedFiltersModal = () => {
                                 </span>
                                 <input
                                     defaultChecked
-                                    value={"all"}
+                                    value={'all'}
                                     type="radio"
-                                    {...register("resolutionConstraint")}
+                                    {...register('resolutionConstraint')}
                                     className="radio checked:bg-blue-500"
                                 />
                             </label>
@@ -109,8 +109,8 @@ const AdvancedFiltersModal = () => {
                                 </span>
                                 <input
                                     type="radio"
-                                    value={"exact"}
-                                    {...register("resolutionConstraint")}
+                                    value={'exact'}
+                                    {...register('resolutionConstraint')}
                                     className="radio"
                                 />
                             </label>
@@ -122,8 +122,8 @@ const AdvancedFiltersModal = () => {
                                 </span>
                                 <input
                                     type="radio"
-                                    value={"lessThan"}
-                                    {...register("resolutionConstraint")}
+                                    value={'lessThan'}
+                                    {...register('resolutionConstraint')}
                                     className="radio"
                                 />
                             </label>
@@ -135,8 +135,8 @@ const AdvancedFiltersModal = () => {
                                 </span>
                                 <input
                                     type="radio"
-                                    value={"moreThan"}
-                                    {...register("resolutionConstraint")}
+                                    value={'moreThan'}
+                                    {...register('resolutionConstraint')}
                                     className="radio"
                                 />
                             </label>
@@ -157,7 +157,7 @@ const AdvancedFiltersModal = () => {
                                 defaultValue={0}
                                 min={0}
                                 step={1}
-                                {...register("width")}
+                                {...register('width')}
                                 id="width"
                                 className="input input-info rounded-xl"
                             />
@@ -174,7 +174,7 @@ const AdvancedFiltersModal = () => {
                                 defaultValue={0}
                                 step={1}
                                 min={0}
-                                {...register("height")}
+                                {...register('height')}
                                 className="input input-info rounded-xl"
                             />
                         </div>
@@ -200,7 +200,7 @@ const AdvancedFiltersModal = () => {
                                 defaultChecked
                                 type="checkbox"
                                 className="checkbox"
-                                {...register("jpeg")}
+                                {...register('jpeg')}
                             />
                             <span className="label-text text-lg">JPEG</span>
                         </label>
@@ -209,7 +209,7 @@ const AdvancedFiltersModal = () => {
                                 defaultChecked
                                 type="checkbox"
                                 className="checkbox"
-                                {...register("jpg")}
+                                {...register('jpg')}
                             />
                             <span className="label-text text-lg">JPG</span>
                         </label>
@@ -218,7 +218,7 @@ const AdvancedFiltersModal = () => {
                                 defaultChecked
                                 type="checkbox"
                                 className="checkbox"
-                                {...register("webp")}
+                                {...register('webp')}
                             />
                             <span className="label-text text-lg">WEBP</span>
                         </label>
@@ -227,7 +227,7 @@ const AdvancedFiltersModal = () => {
                                 defaultChecked
                                 type="checkbox"
                                 className="checkbox"
-                                {...register("gif")}
+                                {...register('gif')}
                             />
                             <span className="label-text justify-start gap-5 text-lg">
                                 GIF
@@ -238,7 +238,7 @@ const AdvancedFiltersModal = () => {
                                 defaultChecked
                                 type="checkbox"
                                 className="checkbox"
-                                {...register("png")}
+                                {...register('png')}
                             />
                             <span className="label-text text-lg">PNG</span>
                         </label>
@@ -247,7 +247,7 @@ const AdvancedFiltersModal = () => {
                                 defaultChecked
                                 type="checkbox"
                                 className="checkbox"
-                                {...register("bmp")}
+                                {...register('bmp')}
                             />
                             <span className="label-text text-lg">BMP</span>
                         </label>
@@ -256,7 +256,7 @@ const AdvancedFiltersModal = () => {
                                 defaultChecked
                                 type="checkbox"
                                 className="checkbox"
-                                {...register("tiff")}
+                                {...register('tiff')}
                             />
                             <span className="label-text text-lg">TIFF</span>
                         </label>
@@ -265,7 +265,7 @@ const AdvancedFiltersModal = () => {
                                 defaultChecked
                                 type="checkbox"
                                 className="checkbox"
-                                {...register("tga")}
+                                {...register('tga')}
                             />
                             <span className="label-text text-lg">TGA</span>
                         </label>
@@ -274,7 +274,7 @@ const AdvancedFiltersModal = () => {
                                 defaultChecked
                                 type="checkbox"
                                 className="checkbox"
-                                {...register("pnm")}
+                                {...register('pnm')}
                             />
                             <span className="label-text text-lg">PNM</span>
                         </label>
@@ -283,7 +283,7 @@ const AdvancedFiltersModal = () => {
                                 defaultChecked
                                 type="checkbox"
                                 className="checkbox"
-                                {...register("farbeld")}
+                                {...register('farbeld')}
                             />
                             <span className="label-text text-lg">FARBELD</span>
                         </label>

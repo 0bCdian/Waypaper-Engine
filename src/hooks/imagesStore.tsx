@@ -5,35 +5,35 @@ import {
     useContext,
     createContext,
     useEffect
-} from "react";
+} from 'react';
 import {
-    type Image,
     STORE_ACTIONS,
     type Filters,
     type state,
-    type action,
-    type imagesObject
-} from "../types/rendererTypes";
+    type action
+} from '../types/rendererTypes';
+import { type Image } from '../../shared/types/image';
+import { type imagesObject } from '../../shared/types';
 const { queryImages } = window.API_RENDERER;
 const initialFilters: Filters = {
-    order: "desc",
-    type: "id",
-    searchString: "",
+    order: 'desc',
+    type: 'id',
+    searchString: '',
     advancedFilters: {
         formats: [
-            "jpeg",
-            "jpg",
-            "webp",
-            "gif",
-            "png",
-            "bmp",
-            "tiff",
-            "tga",
-            "pnm",
-            "farbeld"
+            'jpeg',
+            'jpg',
+            'webp',
+            'gif',
+            'png',
+            'bmp',
+            'tiff',
+            'tga',
+            'pnm',
+            'farbeld'
         ],
         resolution: {
-            constraint: "all",
+            constraint: 'all',
             width: 0,
             height: 0
         }
@@ -123,7 +123,7 @@ function imagesSource() {
 
     const sortedImages = useMemo(() => {
         const shallowCopy = [...imagesArray];
-        if (filters.order === "desc") {
+        if (filters.order === 'desc') {
             return shallowCopy.sort((a, b) =>
                 a[filters.type] > b[filters.type] ? -1 : 1
             );
@@ -137,13 +137,13 @@ function imagesSource() {
     const filteredImages = useMemo(() => {
         // this is done on purpose to prevent as much iterations of sortedImages as possible
         const dontFilterByResolution =
-            filters.advancedFilters.resolution.constraint === "all" ||
+            filters.advancedFilters.resolution.constraint === 'all' ||
             filters.advancedFilters.resolution.width +
                 filters.advancedFilters.resolution.height ===
                 0;
         const dontFilterByFormat =
             filters.advancedFilters.formats.length === 10;
-        const dontFilterByName = filters.searchString === "";
+        const dontFilterByName = filters.searchString === '';
         const imagesfilteredByResolution: Image[] = dontFilterByResolution
             ? sortedImages
             : sortedImages.filter(image => {
@@ -152,17 +152,17 @@ function imagesSource() {
                   const heightToFilter =
                       filters.advancedFilters.resolution.height;
                   switch (filters.advancedFilters.resolution.constraint) {
-                      case "exact":
+                      case 'exact':
                           return (
                               image.width === widthToFilter &&
                               image.height === heightToFilter
                           );
-                      case "lessThan":
+                      case 'lessThan':
                           return (
                               image.width < widthToFilter &&
                               image.height < heightToFilter
                           );
-                      case "moreThan":
+                      case 'moreThan':
                           return (
                               image.width > widthToFilter &&
                               image.height > heightToFilter

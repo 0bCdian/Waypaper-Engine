@@ -1,35 +1,15 @@
-export interface Image {
-    id: number;
-    name: string;
-    isChecked: boolean;
-    width: number;
-    height: number;
-    format: Formats;
-    time: number;
-}
-
-export interface imagesObject {
-    imagePaths: string[];
-    fileNames: string[];
-}
-
-export enum ORDER_TYPES {
-    ORDERED = "ordered",
-    RANDOM = "random"
-}
-
+import { type imagesObject } from '../../shared/types';
+import { type Formats } from '../../shared/types/image';
+import {
+    type PLAYLIST_TYPES,
+    type ORDER_TYPES
+} from '../../shared/types/playlist';
+import { type Image } from '../../shared/types/image.ts';
 export enum STORE_ACTIONS {
-    SET_IMAGES_ARRAY = "SET_IMAGES_ARRAY",
-    SET_SKELETONS_TO_SHOW = "SET_SKELETONS_TO_SHOW",
-    SET_FILTERS = "SET_FILTERS",
-    RESET_IMAGES_ARRAY = "RESET_IMAGES_ARRAY"
-}
-
-export enum PLAYLIST_TYPES {
-    TIMER = "timer",
-    NEVER = "never",
-    TIME_OF_DAY = "timeofday",
-    DAY_OF_WEEK = "dayofweek"
+    SET_IMAGES_ARRAY = 'SET_IMAGES_ARRAY',
+    SET_SKELETONS_TO_SHOW = 'SET_SKELETONS_TO_SHOW',
+    SET_FILTERS = 'SET_FILTERS',
+    RESET_IMAGES_ARRAY = 'RESET_IMAGES_ARRAY'
 }
 
 export interface configuration {
@@ -46,8 +26,8 @@ export interface rendererPlaylist {
 }
 
 export interface Filters {
-    order: "asc" | "desc";
-    type: "name" | "id";
+    order: 'asc' | 'desc';
+    type: 'name' | 'id';
     searchString: string;
     advancedFilters: advancedFilters;
 }
@@ -61,19 +41,7 @@ export interface advancedFilters {
     };
 }
 
-export type Formats =
-    | "jpg"
-    | "jpeg"
-    | "png"
-    | "bmp"
-    | "gif"
-    | "webp"
-    | "farbeld"
-    | "pnm"
-    | "tga"
-    | "tiff";
-
-export type resolutionConstraints = "all" | "exact" | "moreThan" | "lessThan";
+export type resolutionConstraints = 'all' | 'exact' | 'moreThan' | 'lessThan';
 export interface state {
     imagesArray: Image[];
     skeletonsToShow: imagesObject | undefined;
@@ -88,5 +56,3 @@ export type action =
       }
     | { type: STORE_ACTIONS.SET_FILTERS; payload: Filters }
     | { type: STORE_ACTIONS.RESET_IMAGES_ARRAY; payload: Image[] };
-
-export type openFileAction = "file" | "folder";

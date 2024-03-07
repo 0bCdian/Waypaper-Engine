@@ -1,11 +1,7 @@
-import { create } from "zustand";
-import {
-    type Image,
-    PLAYLIST_TYPES,
-    type imagesObject,
-    type openFileAction,
-    type rendererPlaylist
-} from "../types/rendererTypes";
+import { create } from 'zustand';
+import { type openFileAction, type imagesObject } from '../../shared/types';
+import { type Image } from '../../shared/types/image';
+import { type rendererPlaylist } from '../types/rendererTypes';
 const { openFiles, handleOpenImages } = window.API_RENDERER;
 interface State {
     isActive: boolean;
@@ -45,17 +41,17 @@ const openImagesStore = create<State & Actions>(set => ({
             let playlistImagesLength = currentPlaylist.images.length;
             let shouldCheckImage;
             switch (currentPlaylist.configuration.playlistType) {
-                case PLAYLIST_TYPES.NEVER:
+                case 'never':
                     shouldCheckImage = true;
                     break;
-                case PLAYLIST_TYPES.TIMER:
+                case 'timer':
                     shouldCheckImage = true;
                     break;
-                case PLAYLIST_TYPES.TIME_OF_DAY:
+                case 'timeofday':
                     // todo limit somehow when I implement this type of playlist
                     shouldCheckImage = true;
                     break;
-                case PLAYLIST_TYPES.DAY_OF_WEEK:
+                case 'dayofweek':
                     if (playlistImagesLength < 7) {
                         shouldCheckImage = true;
                         addImageToPlaylist({
@@ -74,10 +70,7 @@ const openImagesStore = create<State & Actions>(set => ({
         });
         setSkeletons(undefined);
         setImagesArray(newImagesAdded);
-        if (
-            currentPlaylist.configuration.playlistType ===
-            PLAYLIST_TYPES.DAY_OF_WEEK
-        ) {
+        if (currentPlaylist.configuration.playlistType === 'dayofweek') {
             return;
         }
         addMultipleImagesToPlaylist(newImagesAdded);

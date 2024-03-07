@@ -1,5 +1,4 @@
-// @ts-expect-error workaround for typescript better-sqlite3
-import Database from "better-sqlite3";
+import Database from 'better-sqlite3';
 import {
     dbTables,
     type PlaylistDB,
@@ -9,14 +8,14 @@ import {
     type Image,
     type PlaylistType,
     type initialAppConfigDB
-} from "../types/daemonTypes";
-import { homedir } from "node:os";
-import { join } from "node:path";
+} from '../types/daemonTypes';
+import { homedir } from 'node:os';
+import { join } from 'node:path';
 
 function createConnection() {
     try {
         const db = Database(
-            join(homedir(), ".waypaper_engine", "images_database.sqlite3"),
+            join(homedir(), '.waypaper_engine', 'images_database.sqlite3'),
             {
                 fileMustExist: true,
                 timeout: 10000

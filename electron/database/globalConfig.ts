@@ -1,9 +1,18 @@
-import dbOperations from "./dbOperations";
-dbOperations.createInitialConfigIfNotExists();
-dbOperations.testDB();
+import { db } from '../database/database';
+import { appConfig } from './schema';
+import { initialAppConfig } from '../../shared/constants';
+function createConfigIfNotExists() {
+    try {
+        const config = db.select().from(appConfig).get();
+        if (config === undefined) {
+            db.insert(appConfig).values(initialAppConfig);
+        }
+    } catch (error) {}
+}
+createConfigIfNotExists();
 const config = {
     swww: {
-        config: dbOperations.readSwwwConfig(),
+        config: db.select().from(appConfig).where(),
         update: () => {
             config.swww.config = dbOperations.readSwwwConfig();
         }

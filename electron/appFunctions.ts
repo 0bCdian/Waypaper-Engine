@@ -7,26 +7,14 @@ import {
     WAYPAPER_ENGINE_SOCKET_PATH,
     contextMenu
 } from './globals/globals';
-import {
-    type imagesObject,
-    ACTIONS,
-    type message,
-    type Monitor,
-    type imageMetadata,
-    type wlr_output
-} from './types/types';
-import {
-    type rendererPlaylist,
-    type Image,
-    type openFileAction
-} from '../src/types/rendererTypes';
+import { type rendererPlaylist } from '../src/types/rendererTypes';
 import { exec, execFile, execSync, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { binDir, daemonLocation } from './binaries';
 import { join, basename } from 'node:path';
 import { createConnection } from 'node:net';
 import { parseResolution } from '../src/utils/utilities';
-import dbOperations from './database/dbOperations';
+import { dbOperations } from './database/dbOperations';
 import config from './database/globalConfig';
 import Sharp = require('sharp');
 import {
@@ -34,6 +22,10 @@ import {
     splitImageHorizontalAxis,
     splitImageVerticalAxis
 } from './imageOperations';
+import { type openFileAction, type imagesObject } from '../shared/types';
+import { type message, type imageMetadata, ACTIONS } from './types/types';
+import { type wlr_output, type Monitor } from '../shared/types/monitor';
+import { type Image } from '../shared/types/image';
 const execPomisified = promisify(exec);
 const execFilePomisified = promisify(execFile);
 
@@ -364,10 +356,10 @@ export async function initWaypaperDaemon() {
     }
 }
 
-function playlistConnectionBridge(message: message) {
+function playlistConnectionBridge(messageToSend: message) {
     const connection = createConnection(WAYPAPER_ENGINE_SOCKET_PATH);
     connection.on('connect', () => {
-        connection.write(JSON.stringify(message));
+        connection.write(JSON.stringify(messageToSend));
     });
     connection.on('data', data => {
         const message = data.toString();
@@ -378,7 +370,7 @@ function playlistConnectionBridge(message: message) {
         void initWaypaperDaemon().then(() => {
             connection.destroy();
             setTimeout(() => {
-                playlistConnectionBridge(message);
+                playlistConnectionBridge(messageToSend);
             }, 1000);
         });
     });
@@ -529,13 +521,13 @@ function parseSwwwQuery(stdout: string) {
 }
 
 export async function setImageExtended(
-    Image: Image,
+    image: Image,
     monitors: Monitor[],
     orientation: 'vertical' | 'horizontal'
 ) {
     try {
         const commands: Array<Promise<any>> = [];
-        const imageFilePath = join(appDirectories.imagesDir, Image.name);
+        const imageFilePath = join(appDirectories.imagesDir, image.name);
         let combinedMonitorHeight: number = 0;
         let combinedMonitorWidth: number = 0;
         monitors.forEach(monitor => {
@@ -546,13 +538,13 @@ export async function setImageExtended(
             orientation === 'vertical'
                 ? await splitImageVerticalAxis(
                       monitors,
-                      Image,
+                      image,
                       imageFilePath,
                       combinedMonitorWidth
                   )
                 : await splitImageHorizontalAxis(
                       monitors,
-                      Image,
+                      image,
                       imageFilePath,
                       combinedMonitorHeight
                   );

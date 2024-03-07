@@ -1,12 +1,11 @@
-import Sharp = require("sharp");
-import { type Image } from "../src/types/rendererTypes";
-import config from "./database/globalConfig";
-import { appDirectories } from "./globals/globals";
-import { type Monitor, type wlr_output } from "./types/types";
-import { join } from "node:path";
-import { getMonitors, getMonitorsInfo } from "./appFunctions";
-import { exec } from "node:child_process";
-import { promisify } from "node:util";
+import Sharp = require('sharp');
+import config from './database/globalConfig';
+import { appDirectories } from './globals/globals';
+import { join } from 'node:path';
+import { getMonitors, getMonitorsInfo } from './appFunctions';
+import { exec } from 'node:child_process';
+import { promisify } from 'node:util';
+import { type Image } from '../shared/types/image';
 const execPomisified = promisify(exec);
 export async function resizeImageToFitMonitor(
     buffer: Sharp.Sharp,
@@ -25,7 +24,7 @@ export async function resizeImageToFitMonitor(
             .resize({
                 width: requiredWidth,
                 height: requiredHeight,
-                fit: "cover",
+                fit: 'cover',
                 background: hexToSharpRgb(config.swww.config.fillColor)
             })
             .toFile(resizedImageFileName);
@@ -39,7 +38,7 @@ export async function resizeImageToFitMonitor(
             .resize({
                 width: requiredWidth,
                 height: requiredHeight,
-                fit: "fill",
+                fit: 'fill',
                 background: hexToSharpRgb(config.swww.config.fillColor)
             })
             .toFile(resizedImageFileName);
@@ -48,7 +47,7 @@ export async function resizeImageToFitMonitor(
 }
 
 function hexToSharpRgb(hex: string) {
-    const parsedHex = hex.replace(/^#/, "").toLowerCase();
+    const parsedHex = hex.replace(/^#/, '').toLowerCase();
     const r = parseInt(parsedHex.slice(0, 2), 16);
     const g = parseInt(parsedHex.slice(2, 4), 16);
     const b = parseInt(parsedHex.slice(4, 6), 16);
@@ -93,10 +92,10 @@ export async function splitImageVerticalAxis(
         });
         const metadata = await buffer.metadata();
         const extractHeight =
-            metadata.format === "gif" ? metadata.pageHeight : metadata.height;
+            metadata.format === 'gif' ? metadata.pageHeight : metadata.height;
         if (extractHeight === undefined)
             throw new Error(
-                "Could not retrieve information from metadata something went wrong with the Sharp Buffer"
+                'Could not retrieve information from metadata something went wrong with the Sharp Buffer'
             );
         try {
             await buffer
@@ -153,7 +152,7 @@ export async function splitImageHorizontalAxis(
         const metadata = await buffer.metadata();
         if (metadata.width === undefined)
             throw new Error(
-                "Could not retrieve metadat.height something went wrong with the Sharp Buffer"
+                'Could not retrieve metadat.height something went wrong with the Sharp Buffer'
             );
         try {
             await buffer
@@ -182,7 +181,7 @@ export async function createAndSetMonitorIdentifierImages() {
         const { width, height } = monitor;
         const outputPath = join(
             appDirectories.tempImages,
-            monitor.name + ".webp"
+            monitor.name + '.webp'
         ); // Output file path
         const textSize = Math.floor(width / 12);
         const svg = `<svg width="${width}" height="${height}">
@@ -197,14 +196,14 @@ export async function createAndSetMonitorIdentifierImages() {
                 background: { r: 255, g: 255, b: 255, alpha: 1 }
             }
         })
-            .composite([{ input: Buffer.from(svg), gravity: "center" }])
+            .composite([{ input: Buffer.from(svg), gravity: 'center' }])
             .toFile(outputPath, (err, info) => {
                 // this is a workaround because sharp type of error should be undefined or error, but defaults to always being error.
                 // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
                 if (err) {
                     console.error(err);
                 } else {
-                    console.log("Image created:", info);
+                    console.log('Image created:', info);
                     try {
                         void execPomisified(
                             `swww img -t none -o ${monitor.name} ${outputPath} `
@@ -253,7 +252,7 @@ export async function extendImageAcrossAllMonitors(
     }> = [];
     const monitors = await getMonitorsInfo();
     if (monitors === undefined) {
-        throw new Error("Something went wrong retrieving monitor information");
+        throw new Error('Something went wrong retrieving monitor information');
     }
     for (let index = 0; index < monitors.length; index++) {
         const monitor = monitors[index];
@@ -307,7 +306,7 @@ async function resizeImageToDesiredResolution(
 ): Promise<string> {
     const { width, height, format } = await buffer.metadata();
     if (width === undefined || height === undefined) {
-        throw new Error("Image metadata is broken");
+        throw new Error('Image metadata is broken');
     }
     let finalWidth = width;
     let finalHeight = height;
@@ -322,7 +321,7 @@ async function resizeImageToDesiredResolution(
         .resize({
             width: finalWidth,
             height: finalHeight,
-            fit: "cover",
+            fit: 'cover',
             background: hexToSharpRgb(config.swww.config.fillColor)
         })
         .toFile(resizedImageFileName);

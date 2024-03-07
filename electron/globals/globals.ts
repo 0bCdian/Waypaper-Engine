@@ -1,8 +1,10 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { type BrowserWindow, type App, Menu } from 'electron';
-import { type PlaylistControllerType, type Playlist } from '../types/types';
-import { PLAYLIST_TYPES } from '../../src/types/rendererTypes';
+import { type PlaylistControllerType } from '../types/types';
+import { type Playlist } from '../../shared/types/playlist';
+import { getActivePlaylists, getImageHistory } from '../database/dbOperations';
+import { getMonitors } from '../appFunctions';
 const systemHome = homedir();
 const cacheDirectoryRoot = join(systemHome, '.cache', 'waypaper_engine');
 const cacheThumbnailsDirectory = join(cacheDirectoryRoot, 'thumbnails');
@@ -94,14 +96,28 @@ export const prodMenu = ({ app }: { app: App }) => {
     return prodMenu;
 };
 
-export const trayMenu = (
+export const trayMenu = async (
     app: App,
-    PlaylistController: PlaylistControllerType
+    PlaylistController: PlaylistControllerType,
+    win: BrowserWindow
 ) => {
-    const controlsMenu = Menu.buildFromTemplate([
-        {
-            type: 'separator'
-        },
+    const monitors = await getMonitors();
+    const playlists = getActivePlaylists();
+    const monitorMenu = monitors.map(monitor => {
+        const imageHistory = getImageHistory(10, monitor.name);
+        const playlistActive = playlists.find(
+            playlist => playlist.activePlaylists.monitor === monitor.name
+        );
+        return {
+            label: monitor.name,
+            subMenu: [
+                {
+                    label
+                }
+            ]
+        };
+    });
+    const baseMenu = [
         {
             label: 'Random Wallpaper',
             click: () => {
@@ -109,33 +125,30 @@ export const trayMenu = (
             }
         },
         {
+            type: 'separator'
+        },
+        {
             label: 'Quit',
             click: () => {
                 app.exit();
             }
         }
-    ]);
-    return controlsMenu;
+    ];
 };
 
 export const trayMenuWithControls = ({
     PlaylistController,
     win,
-    app,
-    playlist
+    app
 }: {
     PlaylistController: PlaylistControllerType;
     win: BrowserWindow | null;
     app: App;
-    playlist: Playlist;
-    playlistList: Playlist[];
 }) => {
     const menuWithControls = Menu.buildFromTemplate([
         {
             label: 'Next Wallpaper',
-            enabled:
-                playlist.type === PLAYLIST_TYPES.TIMER ||
-                playlist.type === PLAYLIST_TYPES.NEVER,
+            enabled: playlist.type === 'timer' || playlist.type === 'never',
             click: () => {
                 PlaylistController.nextImage();
             }
@@ -145,9 +158,7 @@ export const trayMenuWithControls = ({
         },
         {
             label: 'Previous Wallpaper',
-            enabled:
-                playlist.type === PLAYLIST_TYPES.TIMER ||
-                playlist.type === PLAYLIST_TYPES.NEVER,
+            enabled: playlist.type === 'timer' || playlist.type === 'never',
             click: () => {
                 PlaylistController.previousImage();
             }
@@ -166,7 +177,7 @@ export const trayMenuWithControls = ({
         },
         {
             label: 'Pause Playlist',
-            enabled: playlist.type === PLAYLIST_TYPES.TIMER,
+            enabled: playlist.type === 'timer',
             click: () => {
                 PlaylistController.pausePlaylist();
             }

@@ -1,9 +1,9 @@
-import { useRef } from "react";
-import { type Playlist } from "../../electron/types/types";
-import playlistStore from "../hooks/playlistStore";
-import { useForm, type SubmitHandler } from "react-hook-form";
-import { type Image, PLAYLIST_TYPES } from "../types/rendererTypes";
-import { useImages } from "../hooks/imagesStore";
+import { useRef } from 'react';
+import { type Playlist } from '../../shared/types/playlist';
+import { type Image } from '../../shared/types/image';
+import playlistStore from '../hooks/playlistStore';
+import { useForm, type SubmitHandler } from 'react-hook-form';
+import { useImages } from '../hooks/imagesStore';
 
 interface Input {
     selectPlaylist: string;
@@ -54,7 +54,7 @@ const LoadPlaylistModal = ({
                 });
                 if (imageToStore === undefined) return;
                 if (
-                    selectedPlaylist.type === PLAYLIST_TYPES.TIME_OF_DAY &&
+                    selectedPlaylist.type === 'timeofday' &&
                     imageNameFromDB.time !== null
                 ) {
                     imageToStore.time = imageNameFromDB.time;
@@ -68,7 +68,7 @@ const LoadPlaylistModal = ({
                     playlistType: selectedPlaylist.type,
                     order: selectedPlaylist.order,
                     interval: selectedPlaylist.interval,
-                    showAnimations: selectedPlaylist.showAnimations === 1
+                    showAnimations: selectedPlaylist.showAnimations
                 },
                 images: imagesToStorePlaylist
             };
@@ -125,7 +125,7 @@ const LoadPlaylistModal = ({
                                 id="selectPlaylist"
                                 className="select select-bordered rounded-md text-lg basis-[90%]"
                                 defaultValue={playlistsInDB[0].name}
-                                {...register("selectPlaylist", {
+                                {...register('selectPlaylist', {
                                     required: true
                                 })}
                             >
@@ -142,7 +142,7 @@ const LoadPlaylistModal = ({
                                 type="button"
                                 className="btn btn-md uppercase btn-error rounded-md "
                                 onClick={() => {
-                                    const current = watch("selectPlaylist");
+                                    const current = watch('selectPlaylist');
                                     const shouldDelete = window.confirm(
                                         `Are you sure to delete ${current}?`
                                     );

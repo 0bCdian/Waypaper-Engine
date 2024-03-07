@@ -1,43 +1,43 @@
-import { create } from "zustand";
+import { create } from 'zustand';
 export enum ResizeType {
-    crop = "crop",
-    fit = "fit",
-    none = "no"
+    crop = 'crop',
+    fit = 'fit',
+    none = 'no'
 }
 export enum FilterType {
-    Lanczos3 = "Lanczos3",
-    Bilinear = "Bilinear",
-    CatmullRom = "CatmullRom",
-    Mitchell = "Mitchell",
-    Nearest = "Nearest"
+    Lanczos3 = 'Lanczos3',
+    Bilinear = 'Bilinear',
+    CatmullRom = 'CatmullRom',
+    Mitchell = 'Mitchell',
+    Nearest = 'Nearest'
 }
 export enum TransitionType {
-    none = "none",
-    simple = "simple",
-    fade = "fade",
-    left = "left",
-    right = "right",
-    top = "top",
-    bottom = "bottom",
-    wipe = "wipe",
-    wave = "wave",
-    grow = "grow",
-    center = "center",
-    any = "any",
-    outer = "outer",
-    random = "random"
+    none = 'none',
+    simple = 'simple',
+    fade = 'fade',
+    left = 'left',
+    right = 'right',
+    top = 'top',
+    bottom = 'bottom',
+    wipe = 'wipe',
+    wave = 'wave',
+    grow = 'grow',
+    center = 'center',
+    any = 'any',
+    outer = 'outer',
+    random = 'random'
 }
 
 export enum transitionPosition {
-    center = "center",
-    top = "top",
-    left = "left",
-    right = "right",
-    bottom = "bottom",
-    topLeft = "top-left",
-    topRight = "top-right",
-    bottomLeft = "bottom-left",
-    bottomRight = "bottom-right"
+    center = 'center',
+    top = 'top',
+    left = 'left',
+    right = 'right',
+    bottom = 'bottom',
+    topLeft = 'top-left',
+    topRight = 'top-right',
+    bottomLeft = 'bottom-left',
+    bottomRight = 'bottom-right'
 }
 
 export interface SwwwFormData {
@@ -49,7 +49,7 @@ export interface SwwwFormData {
     transitionDuration: number;
     transitionFPS: number;
     transitionAngle: number;
-    transitionPositionType: "alias" | "int" | "float";
+    transitionPositionType: 'alias' | 'int' | 'float';
     transitionPosition: transitionPosition;
     transitionPositionIntX: number;
     transitionPositionIntY: number;
@@ -62,21 +62,21 @@ export interface SwwwFormData {
 }
 const initialSwwwConfig: SwwwFormData = {
     resizeType: ResizeType.crop,
-    fillColor: "#000000",
+    fillColor: '#000000',
     filterType: FilterType.Lanczos3,
     transitionType: TransitionType.simple,
     transitionStep: 90,
     transitionDuration: 3,
     transitionFPS: 60,
     transitionAngle: 45,
-    transitionPositionType: "alias",
+    transitionPositionType: 'alias',
     transitionPosition: transitionPosition.center,
     transitionPositionIntX: 960,
     transitionPositionIntY: 540,
     transitionPositionFloatX: 0.5,
     transitionPositionFloatY: 0.5,
     invertY: 0,
-    transitionBezier: ".25,.1,.25,1",
+    transitionBezier: '.25,.1,.25,1',
     transitionWaveX: 20,
     transitionWaveY: 20
 };
