@@ -1,25 +1,29 @@
-import { useEffect, useState } from "react";
-import { useForm } from "react-hook-form";
-import { BezierCurveEditor } from "react-bezier-curve-editor";
-import { motion, AnimatePresence } from "framer-motion";
+import { useEffect, useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { BezierCurveEditor } from 'react-bezier-curve-editor';
+import { motion, AnimatePresence } from 'framer-motion';
+import { swwwConfigStore } from '../hooks/swwwConfigStore';
 import {
-    type SwwwFormData,
-    ResizeType,
+    type swwwConfigSelectType,
+    type swwwConfigInsertType
+} from '../../electron/database/schema';
+import {
     FilterType,
-    swwwConfigStore,
+    ResizeType,
     type transitionPosition
-} from "../hooks/swwwConfigStore";
+} from '../../shared/types/swww';
 let saveConfigTimeout: ReturnType<typeof setTimeout> | null = null;
 const { readSwwwConfig } = window.API_RENDERER;
 const SwwwConfig = () => {
-    const { register, handleSubmit, watch, setValue } = useForm<SwwwFormData>();
+    const { register, handleSubmit, watch, setValue } =
+        useForm<swwwConfigInsertType['config']>();
     const { saveConfig } = swwwConfigStore();
     const [transitionPositionType, setTransitionPositionType] =
-        useState("alias");
+        useState('alias');
     const [bezier, setBezier] = useState<[number, number, number, number]>([
         0.25, 1, 0.25, 1
     ]);
-    const onSubmit = (data: SwwwFormData) => {
+    const onSubmit = (data: swwwConfigInsertType['config']) => {
         if (saveConfigTimeout !== null) {
             clearTimeout(saveConfigTimeout);
         }
@@ -38,6 +42,7 @@ const SwwwConfig = () => {
                 data.transitionPositionIntX = 960;
                 data.transitionPositionIntY = 540;
             }
+            console.log(data);
             saveConfig(data);
         }, 300);
     };
@@ -53,60 +58,61 @@ const SwwwConfig = () => {
     }, [handleSubmit, watch]);
 
     useEffect(() => {
-        setTransitionPositionType(watch("transitionPositionType"));
-    }, [watch("transitionPositionType")]);
+        setTransitionPositionType(watch('transitionPositionType'));
+    }, [watch('transitionPositionType')]);
     useEffect(() => {
-        void readSwwwConfig().then((config: SwwwFormData) => {
-            const bezierArray = config.transitionBezier.split(",").map(item => {
+        void readSwwwConfig().then((config: swwwConfigSelectType['config']) => {
+            console.log('configL:', config);
+            const bezierArray = config.transitionBezier.split(',').map(item => {
                 return parseFloat(item);
             }) as [number, number, number, number];
-            setValue("resizeType", config.resizeType);
-            setValue("fillColor", config.fillColor);
-            setValue("filterType", config.filterType);
-            setValue("transitionType", config.transitionType);
-            setValue("transitionStep", config.transitionStep);
-            setValue("transitionDuration", config.transitionDuration);
-            setValue("transitionFPS", config.transitionFPS);
-            setValue("transitionAngle", config.transitionAngle);
-            setValue("invertY", config.invertY);
-            setValue("transitionBezier", config.transitionBezier);
+            setValue('resizeType', config.resizeType);
+            setValue('fillColor', config.fillColor);
+            setValue('filterType', config.filterType);
+            setValue('transitionType', config.transitionType);
+            setValue('transitionStep', config.transitionStep);
+            setValue('transitionDuration', config.transitionDuration);
+            setValue('transitionFPS', config.transitionFPS);
+            setValue('transitionAngle', config.transitionAngle);
+            setValue('invertY', config.invertY);
+            setValue('transitionBezier', config.transitionBezier);
             setBezier(bezierArray);
             switch (config.transitionPositionType) {
-                case "alias":
+                case 'alias':
                     setValue(
-                        "transitionPositionType",
+                        'transitionPositionType',
                         config.transitionPositionType
                     );
                     setValue(
-                        "transitionPosition",
+                        'transitionPosition',
                         config.transitionPosition as transitionPosition
                     );
                     break;
-                case "float":
+                case 'float':
                     setValue(
-                        "transitionPositionType",
+                        'transitionPositionType',
                         config.transitionPositionType
                     );
                     setValue(
-                        "transitionPositionFloatX",
+                        'transitionPositionFloatX',
                         config.transitionPositionFloatX
                     );
                     setValue(
-                        "transitionPositionFloatY",
+                        'transitionPositionFloatY',
                         config.transitionPositionFloatY
                     );
                     break;
-                case "int":
+                case 'int':
                     setValue(
-                        "transitionPositionType",
+                        'transitionPositionType',
                         config.transitionPositionType
                     );
                     setValue(
-                        "transitionPositionIntX",
+                        'transitionPositionIntX',
                         config.transitionPositionIntX
                     );
                     setValue(
-                        "transitionPositionIntY",
+                        'transitionPositionIntY',
                         config.transitionPositionIntY
                     );
                     break;
@@ -146,7 +152,7 @@ const SwwwConfig = () => {
                                 <select
                                     id="resizeType"
                                     className="bg-[#323232] rounded-md select w-full text-xl max-w-xs cursor-default mt-3"
-                                    {...register("resizeType")}
+                                    {...register('resizeType')}
                                 >
                                     <option value={ResizeType.crop}>
                                         Crop
@@ -168,7 +174,7 @@ const SwwwConfig = () => {
                                     className="w-1/5 h-8 rounded-lg"
                                     type="color"
                                     id="fillColor"
-                                    {...register("fillColor")}
+                                    {...register('fillColor')}
                                 />
                             </div>
                             <div className="divider"></div>
@@ -183,7 +189,7 @@ const SwwwConfig = () => {
                                     id="filter"
                                     defaultValue={FilterType.Lanczos3}
                                     className="bg-[#323232] rounded-md select w-full text-xl max-w-xs cursor-default mt-3"
-                                    {...register("filterType")}
+                                    {...register('filterType')}
                                 >
                                     <option>Lanczos3</option>
                                     <option>Bilinear</option>
@@ -225,14 +231,14 @@ const SwwwConfig = () => {
                                             <br></br> wipe is similar to left
                                             but allows you to specify the angle
                                             for transition with the
-                                            `--transition-angle` flag.<br></br>{" "}
+                                            `--transition-angle` flag.<br></br>{' '}
                                             wave is similar to wipe sweeping
                                             line is wavy.
                                             <br></br> grow causes a growing
                                             circle to transition across the
                                             screen and allows changing the
                                             circle&aposs center position with
-                                            the `--transition-pos` flag.{" "}
+                                            the `--transition-pos` flag.{' '}
                                             <br></br>
                                             center is an alias to grow with
                                             position set to center of screen.
@@ -247,24 +253,24 @@ const SwwwConfig = () => {
                                 </details>
                                 <select
                                     id="transition"
-                                    defaultValue={"Simple"}
+                                    defaultValue={'Simple'}
                                     className="bg-[#323232] rounded-md select w-full text-xl max-w-xs cursor-default mt-3"
-                                    {...register("transitionType")}
+                                    {...register('transitionType')}
                                 >
-                                    <option value={"none"}>None</option>
-                                    <option value={"simple"}>Simple</option>
-                                    <option value={"fade"}>Fade</option>
-                                    <option value={"left"}>Left</option>
-                                    <option value={"right"}>Right</option>
-                                    <option value={"top"}>Top</option>
-                                    <option value={"bottom"}>Bottom</option>
-                                    <option value={"wipe"}>Wipe</option>
-                                    <option value={"wave"}>Wave</option>
-                                    <option value={"grow"}>Grow</option>
-                                    <option value={"center"}>Center</option>
-                                    <option value={"any"}>Any</option>
-                                    <option value={"outer"}>Outer</option>
-                                    <option value={"random"}>Random</option>
+                                    <option value={'none'}>None</option>
+                                    <option value={'simple'}>Simple</option>
+                                    <option value={'fade'}>Fade</option>
+                                    <option value={'left'}>Left</option>
+                                    <option value={'right'}>Right</option>
+                                    <option value={'top'}>Top</option>
+                                    <option value={'bottom'}>Bottom</option>
+                                    <option value={'wipe'}>Wipe</option>
+                                    <option value={'wave'}>Wave</option>
+                                    <option value={'grow'}>Grow</option>
+                                    <option value={'center'}>Center</option>
+                                    <option value={'any'}>Any</option>
+                                    <option value={'outer'}>Outer</option>
+                                    <option value={'random'}>Random</option>
                                 </select>
                             </div>
                             <div className="mt-3">
@@ -278,7 +284,7 @@ const SwwwConfig = () => {
                                         new image
                                     </span>
                                     <span className="label-text-alt text-lg">
-                                        {watch("transitionStep")}
+                                        {watch('transitionStep')}
                                     </span>
                                 </label>
                                 <input
@@ -289,7 +295,7 @@ const SwwwConfig = () => {
                                     defaultValue={90}
                                     min={1}
                                     max={255}
-                                    {...register("transitionStep", {
+                                    {...register('transitionStep', {
                                         valueAsNumber: true
                                     })}
                                 />
@@ -311,7 +317,7 @@ const SwwwConfig = () => {
                                     step={1}
                                     defaultValue={3}
                                     min={1}
-                                    {...register("transitionDuration", {
+                                    {...register('transitionDuration', {
                                         valueAsNumber: true,
                                         validate: value => {
                                             return value > 0;
@@ -335,7 +341,7 @@ const SwwwConfig = () => {
                                     step={1}
                                     defaultValue={60}
                                     min={1}
-                                    {...register("transitionFPS", {
+                                    {...register('transitionFPS', {
                                         valueAsNumber: true,
                                         validate: value => {
                                             return value > 0;
@@ -357,7 +363,7 @@ const SwwwConfig = () => {
                                     max={360}
                                     defaultValue={45}
                                     min={0}
-                                    {...register("transitionAngle", {
+                                    {...register('transitionAngle', {
                                         valueAsNumber: true,
                                         validate: value => {
                                             if (value < 0) {
@@ -398,17 +404,17 @@ const SwwwConfig = () => {
                                 <select
                                     id="transitionPositionType"
                                     className="bg-[#323232] rounded-md select w-full text-xl max-w-xs cursor-default mt-3"
-                                    {...register("transitionPositionType")}
+                                    {...register('transitionPositionType')}
                                 >
                                     <option value="int">Integer</option>
                                     <option value="float">Float</option>
                                     <option value="alias">Alias</option>
                                 </select>
-                                {transitionPositionType === "alias" && (
+                                {transitionPositionType === 'alias' && (
                                     <select
                                         id="transitionPosition"
-                                        {...register("transitionPosition")}
-                                        defaultValue={"center"}
+                                        {...register('transitionPosition')}
+                                        defaultValue={'center'}
                                         className="bg-[#323232] rounded-md select w-full text-xl max-w-xs cursor-default mt-3"
                                     >
                                         <option value="center">Center</option>
@@ -430,7 +436,7 @@ const SwwwConfig = () => {
                                         </option>
                                     </select>
                                 )}
-                                {transitionPositionType === "int" && (
+                                {transitionPositionType === 'int' && (
                                     <div className="mt-3 flex gap-3">
                                         <input
                                             className="input bg-[#323232] w-1/2 focus:outline-none text-lg font-medium rounded-lg"
@@ -440,7 +446,7 @@ const SwwwConfig = () => {
                                             min={0}
                                             defaultValue={960}
                                             {...register(
-                                                "transitionPositionIntX",
+                                                'transitionPositionIntX',
                                                 {
                                                     valueAsNumber: true,
                                                     validate: value => {
@@ -457,7 +463,7 @@ const SwwwConfig = () => {
                                             step={1}
                                             min={0}
                                             {...register(
-                                                "transitionPositionIntY",
+                                                'transitionPositionIntY',
                                                 {
                                                     valueAsNumber: true,
                                                     validate: value => {
@@ -468,7 +474,7 @@ const SwwwConfig = () => {
                                         />
                                     </div>
                                 )}
-                                {transitionPositionType === "float" && (
+                                {transitionPositionType === 'float' && (
                                     <div className="mt-3 flex gap-3">
                                         <input
                                             id="floatX"
@@ -480,7 +486,7 @@ const SwwwConfig = () => {
                                             min={0}
                                             defaultValue={0.5}
                                             {...register(
-                                                "transitionPositionFloatX",
+                                                'transitionPositionFloatX',
                                                 {
                                                     valueAsNumber: true,
                                                     validate: value => {
@@ -502,7 +508,7 @@ const SwwwConfig = () => {
                                             max={1}
                                             min={0}
                                             {...register(
-                                                "transitionPositionFloatY",
+                                                'transitionPositionFloatY',
                                                 {
                                                     valueAsNumber: true,
                                                     validate: value => {
@@ -534,7 +540,7 @@ const SwwwConfig = () => {
                                         type="checkbox"
                                         id="invertYTransitionPosition"
                                         className="checkbox checkbox-sm mt-3"
-                                        {...register("invertY")}
+                                        {...register('invertY')}
                                     />
                                 </div>
                             </div>
@@ -549,9 +555,9 @@ const SwwwConfig = () => {
                                         transition, insert a comma separated
                                     </span>
                                     <input
-                                        {...register("transitionBezier")}
+                                        {...register('transitionBezier')}
                                         type="text"
-                                        defaultValue={".25,.1,.25,1"}
+                                        defaultValue={'.25,.1,.25,1'}
                                         placeholder="bezier"
                                         className="input bg-[#323232] w-full focus:outline-none text-lg font-medium rounded-lg"
                                     />
@@ -560,7 +566,7 @@ const SwwwConfig = () => {
                                     onChange={e => {
                                         const value =
                                             e.toString() as `${number},${number},${number},${number}`;
-                                        setValue("transitionBezier", value);
+                                        setValue('transitionBezier', value);
                                         setBezier(e);
                                     }}
                                     outerAreaSize={0}
@@ -593,7 +599,7 @@ const SwwwConfig = () => {
                                         min={1}
                                         step={1}
                                         defaultValue={20}
-                                        {...register("transitionWaveX", {
+                                        {...register('transitionWaveX', {
                                             valueAsNumber: true
                                         })}
                                         className="input bg-[#323232] w-full focus:outline-none text-lg font-medium rounded-lg"
@@ -604,7 +610,7 @@ const SwwwConfig = () => {
                                         min={1}
                                         step={1}
                                         defaultValue={20}
-                                        {...register("transitionWaveY", {
+                                        {...register('transitionWaveY', {
                                             valueAsNumber: true
                                         })}
                                         className="input bg-[#323232] w-full focus:outline-none text-lg font-medium rounded-lg"

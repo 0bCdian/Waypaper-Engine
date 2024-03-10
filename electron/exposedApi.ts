@@ -70,9 +70,7 @@ export const ELECTRON_API = {
     updateSwwwConfig: (newConfig: swwwConfigInsertType['config']) => {
         ipcRenderer.send('updateSwwwConfig', newConfig);
     },
-    readSwwwConfig: async (): Promise<
-        swwwConfigSelectType['config'] | undefined
-    > => {
+    readSwwwConfig: async (): Promise<swwwConfigSelectType['config']> => {
         return await ipcRenderer.invoke('readSwwwConfig');
     },
     readAppConfig: async (): Promise<appConfigSelectType['config']> => {

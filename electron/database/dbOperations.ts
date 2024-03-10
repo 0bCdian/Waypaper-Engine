@@ -166,7 +166,12 @@ export class DBOperations extends EventEmitter {
     }
 
     getAppConfig() {
-        return db.select().from(tables.appConfig).get()?.config;
+        const appConfig = db.select().from(tables.appConfig).get();
+        if (appConfig === undefined) {
+            return this.createAppConfigIfNotExists();
+        } else {
+            return appConfig.config;
+        }
     }
 
     async updateAppConfig(newConfig: tables.appConfigInsertType) {
@@ -187,7 +192,12 @@ export class DBOperations extends EventEmitter {
     }
 
     getSwwwConfig() {
-        return db.select().from(tables.swwwConfig).get()?.config;
+        const swwwConfig = db.select().from(tables.swwwConfig).get();
+        if (swwwConfig === undefined) {
+            return this.createSwwwConfigIfNotExists();
+        } else {
+            return swwwConfig.config;
+        }
     }
 
     updateSwwwConfig(newConfig: tables.swwwConfigInsertType) {
