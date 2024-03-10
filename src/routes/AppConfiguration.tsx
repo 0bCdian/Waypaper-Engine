@@ -1,56 +1,30 @@
-import { useForm } from "react-hook-form";
-import { useEffect } from "react";
-import { AnimatePresence, motion } from "framer-motion";
-interface AppConfig {
-    killDaemon: boolean;
-    playlistStartOnFirstImage: boolean;
-    notifications: boolean;
-    swwwAnimations: boolean;
-    introAnimation: boolean;
-    startMinimized: boolean;
-    minimizeInsteadOfClose: boolean;
-    imagesPerPage: number;
-}
+import { useForm } from 'react-hook-form';
+import { useEffect } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
+import {
+    type appConfigSelectType,
+    type appConfigInsertType
+} from '../../electron/database/schema';
 
-export interface AppConfigDB {
-    killDaemon: 0 | 1;
-    playlistStartOnFirstImage: 0 | 1;
-    notifications: 0 | 1;
-    swwwAnimations: 0 | 1;
-    introAnimation: 0 | 1;
-    startMinimized: 0 | 1;
-    minimizeInsteadOfClose: 0 | 1;
-}
 const { readAppConfig, updateAppConfig } = window.API_RENDERER;
 const AppConfiguration = () => {
-    const { register, handleSubmit, setValue } = useForm<AppConfig>();
-    const onSubmit = (data: AppConfig) => {
-        const newData = {
-            killDaemon: data.killDaemon ? 1 : 0,
-            playlistStartOnFirstImage: data.playlistStartOnFirstImage ? 1 : 0,
-            notifications: data.notifications ? 1 : 0,
-            swwwAnimations: data.swwwAnimations ? 1 : 0,
-            introAnimation: data.introAnimation ? 1 : 0,
-            startMinimized: data.startMinimized ? 1 : 0,
-            minimizeInsteadOfClose: data.minimizeInsteadOfClose ? 1 : 0
-        };
-        updateAppConfig(newData as AppConfigDB);
+    const { register, handleSubmit, setValue } =
+        useForm<appConfigInsertType['config']>();
+    const onSubmit = (data: appConfigSelectType['config']) => {
+        updateAppConfig(data);
     };
     useEffect(() => {
-        void readAppConfig().then((data: AppConfigDB) => {
-            setValue("killDaemon", Boolean(data.killDaemon));
+        void readAppConfig().then((data: appConfigSelectType['config']) => {
+            setValue('killDaemon', data.killDaemon);
             setValue(
-                "playlistStartOnFirstImage",
-                Boolean(data.playlistStartOnFirstImage)
+                'playlistStartOnFirstImage',
+                data.playlistStartOnFirstImage
             );
-            setValue("notifications", Boolean(data.notifications));
-            setValue("swwwAnimations", Boolean(data.swwwAnimations));
-            setValue("introAnimation", Boolean(data.introAnimation));
-            setValue("startMinimized", Boolean(data.startMinimized));
-            setValue(
-                "minimizeInsteadOfClose",
-                Boolean(data.minimizeInsteadOfClose)
-            );
+            setValue('notifications', data.notifications);
+            setValue('swwwAnimations', data.swwwAnimations);
+            setValue('introAnimation', data.introAnimation);
+            setValue('startMinimized', data.startMinimized);
+            setValue('minimizeInsteadOfClose', data.minimizeInsteadOfClose);
         });
     }, []);
 
@@ -78,7 +52,7 @@ const AppConfiguration = () => {
                                 type="checkbox"
                                 id="killDaemon"
                                 className="checkbox mt-4"
-                                {...register("killDaemon")}
+                                {...register('killDaemon')}
                             />
                             <label htmlFor="killDaemon" className="label">
                                 <span className="label-text   text-3xl">
@@ -91,7 +65,7 @@ const AppConfiguration = () => {
                                 type="checkbox"
                                 id="playlistStart"
                                 className="checkbox mt-4"
-                                {...register("playlistStartOnFirstImage")}
+                                {...register('playlistStartOnFirstImage')}
                             />
                             <label htmlFor="playlistStart" className="label">
                                 <span className="label-text text-3xl">
@@ -104,7 +78,7 @@ const AppConfiguration = () => {
                                 type="checkbox"
                                 className="checkbox mt-4"
                                 id="notifications"
-                                {...register("notifications")}
+                                {...register('notifications')}
                             />
                             <label htmlFor="notifications" className="label">
                                 <span className="label-text text-3xl">
@@ -117,7 +91,7 @@ const AppConfiguration = () => {
                                 type="checkbox"
                                 id="swwwAnimations"
                                 className="checkbox mt-4"
-                                {...register("swwwAnimations")}
+                                {...register('swwwAnimations')}
                             />
                             <label htmlFor="swwwAnimations" className="label">
                                 <span className="label-text text-3xl">
@@ -130,7 +104,7 @@ const AppConfiguration = () => {
                                 type="checkbox"
                                 id="introAnimation"
                                 className="checkbox mt-4"
-                                {...register("introAnimation")}
+                                {...register('introAnimation')}
                             />
                             <label htmlFor="introAnimation" className="label">
                                 <span className="label-text text-3xl">
@@ -143,7 +117,7 @@ const AppConfiguration = () => {
                                 type="checkbox"
                                 id="startMinimized"
                                 className="checkbox mt-4"
-                                {...register("startMinimized")}
+                                {...register('startMinimized')}
                             />
                             <label htmlFor="startMinimized" className="label">
                                 <span className="label-text text-3xl">
@@ -156,7 +130,7 @@ const AppConfiguration = () => {
                                 type="checkbox"
                                 id="minimizeInsteadOfClose"
                                 className="checkbox mt-4"
-                                {...register("minimizeInsteadOfClose")}
+                                {...register('minimizeInsteadOfClose')}
                             />
                             <label
                                 htmlFor="minimizeInsteadOfClose"

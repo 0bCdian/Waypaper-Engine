@@ -13,7 +13,6 @@ const config = {
     },
     script: undefined as string | undefined
 };
-console.log(config);
 dbOperations.on('updateAppConfig', (newAppConfig: appConfigInsertType) => {
     config.app.config = newAppConfig.config;
 });

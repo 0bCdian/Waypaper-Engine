@@ -24,13 +24,13 @@ CREATE TABLE `activePlaylists` (
 --> statement-breakpoint
 INSERT INTO appConfig (config)
 SELECT json_object(
-    'killDaemon', CASE WHEN killDaemon = 1 THEN 'true' ELSE 'false' END,
-    'playlistStartOnFirstImage', CASE WHEN playlistStartOnFirstImage = 1 THEN 'true' ELSE 'false' END,
-    'notifications', CASE WHEN notifications = 1 THEN 'true' ELSE 'false' END,
-    'swwwAnimations', CASE WHEN swwwAnimations = 1 THEN 'true' ELSE 'false' END,
-    'introAnimation', CASE WHEN introAnimation = 1 THEN 'true' ELSE 'false' END,
-    'startMinimized', CASE WHEN startMinimized = 1 THEN 'true' ELSE 'false' END,
-    'minimizeInsteadOfClose', CASE WHEN minimizeInsteadOfClose = 1 THEN 'true' ELSE 'false' END,
+    'killDaemon', CASE WHEN killDaemon = 1 THEN json('true') ELSE json('false') END,
+    'playlistStartOnFirstImage', CASE WHEN playlistStartOnFirstImage = 1 THEN json('true') ELSE json('false') END,
+    'notifications', CASE WHEN notifications = 1 THEN json('true') ELSE json('false') END,
+    'swwwAnimations', CASE WHEN swwwAnimations = 1 THEN json('true') ELSE json('false') END,
+    'introAnimation', CASE WHEN introAnimation = 1 THEN json('true') ELSE json('false') END,
+    'startMinimized', CASE WHEN startMinimized = 1 THEN json('true') ELSE json('false') END,
+    'minimizeInsteadOfClose', CASE WHEN minimizeInsteadOfClose = 1 THEN json('true') ELSE json('false') END,
     'randomImageMonitor','clone'
 )
 FROM appConfigOld;
@@ -53,7 +53,7 @@ SELECT json_object(
     'transitionPositionIntY', transitionPositionIntY,
     'transitionPositionFloatX', transitionPositionFloatX,
     'transitionPositionFloatY', transitionPositionFloatY,
-    'invertY', CASE WHEN invertY = 1 THEN 'true' ELSE 'false' END,
+    'invertY', CASE WHEN invertY = 1 THEN json('true') ELSE json('false') END,
     'transitionBezier', transitionBezier,
     'transitionWaveX', transitionWaveX,
     'transitionWaveY', transitionWaveY
