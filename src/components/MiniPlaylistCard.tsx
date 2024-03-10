@@ -3,8 +3,8 @@ import { motion } from 'framer-motion';
 import { CSS } from '@dnd-kit/utilities';
 import { useEffect, useMemo, useRef, useCallback, useState } from 'react';
 import { type PLAYLIST_TYPES } from '../../shared/types/playlist';
-import { type Image } from '../../shared/types/image';
 import playlistStore from '../hooks/playlistStore';
+import { type rendererImage } from '../types/rendererTypes';
 
 const { join, thumbnailDirectory } = window.API_RENDERER;
 const daysOfWeek = [
@@ -24,7 +24,7 @@ function MiniPlaylistCard({
     isLast,
     reorderSortingCriteria
 }: {
-    Image: Image;
+    Image: rendererImage;
     playlistType: PLAYLIST_TYPES;
     index: number;
     isLast: boolean | undefined;

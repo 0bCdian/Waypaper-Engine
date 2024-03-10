@@ -1,11 +1,27 @@
 import {
+    type swwwConfig,
     FilterType,
     ResizeType,
     TransitionType,
     transitionPosition
 } from './types/swww';
+import { type appConfigType } from './types/app';
+import { type Formats } from './types/image';
 
-export const initialAppConfig = {
+export const validImageExtensions: Formats[] = [
+    'jpeg',
+    'jpg',
+    'png',
+    'gif',
+    'bmp',
+    'webp',
+    'pnm',
+    'tga',
+    'tiff',
+    'farbfeld'
+];
+
+export const initialAppConfig: appConfigType = {
     killDaemon: false,
     playlistStartOnFirstImage: false,
     notifications: true,
@@ -16,7 +32,7 @@ export const initialAppConfig = {
     randomImageMonitor: 'clone'
 };
 
-export const initialSwwwConfig = {
+export const initialSwwwConfig: swwwConfig = {
     resizeType: ResizeType.crop,
     fillColor: '#000000',
     filterType: FilterType.Lanczos3,

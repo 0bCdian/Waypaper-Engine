@@ -1,8 +1,11 @@
-import { useForm, type SubmitHandler } from "react-hook-form";
-import { useRef, useEffect, useState } from "react";
-import playlistStore from "../hooks/playlistStore";
-import { ORDER_TYPES, PLAYLIST_TYPES } from "../types/rendererTypes";
-import { toMS, toHoursAndMinutes } from "../utils/utilities";
+import { useForm, type SubmitHandler } from 'react-hook-form';
+import { useRef, useEffect, useState } from 'react';
+import playlistStore from '../hooks/playlistStore';
+import {
+    type ORDER_TYPES,
+    type PLAYLIST_TYPES
+} from '../../shared/types/playlist';
+import { toMS, toHoursAndMinutes } from '../utils/utilities';
 interface Inputs {
     playlistType: PLAYLIST_TYPES;
     order: ORDER_TYPES | null;
@@ -21,12 +24,12 @@ const PlaylistConfigurationModal = () => {
     };
     const playlist = readPlaylist();
     const classNameDisabled =
-        playlist.images.length > 7 ? "bg-red-900 text-stone-100" : "";
+        playlist.images.length > 7 ? 'bg-red-900 text-stone-100' : '';
     const onSubmit: SubmitHandler<Inputs> = data => {
         switch (data.playlistType) {
-            case PLAYLIST_TYPES.TIMER:
+            case 'timer':
                 if (data.hours === null || data.minutes === null) {
-                    console.error("Hours and minutes are required");
+                    console.error('Hours and minutes are required');
                 } else {
                     const interval = toMS(
                         parseInt(data.hours),
@@ -41,7 +44,7 @@ const PlaylistConfigurationModal = () => {
                     setConfiguration(configuration);
                 }
                 break;
-            case PLAYLIST_TYPES.TIME_OF_DAY:
+            case 'timeofday':
                 setConfiguration({
                     playlistType: data.playlistType,
                     order: null,
@@ -49,7 +52,7 @@ const PlaylistConfigurationModal = () => {
                     interval: null
                 });
                 break;
-            case PLAYLIST_TYPES.DAY_OF_WEEK:
+            case 'dayofweek':
                 if (playlist.images.length > 7) {
                     setShowError(prevState => !prevState);
                     setTimeout(() => {
@@ -64,7 +67,7 @@ const PlaylistConfigurationModal = () => {
                     interval: null
                 });
                 break;
-            case PLAYLIST_TYPES.NEVER:
+            case 'never':
                 setConfiguration({
                     playlistType: data.playlistType,
                     order: data.order,
@@ -73,35 +76,35 @@ const PlaylistConfigurationModal = () => {
                 });
                 break;
             default:
-                console.error("Invalid playlist type");
+                console.error('Invalid playlist type');
         }
         closeModal();
     };
-    const hours = watch("hours");
-    const minutes = watch("minutes");
+    const hours = watch('hours');
+    const minutes = watch('minutes');
     useEffect(() => {
         if (hours === null || minutes === null) return;
         const parsedHours = parseInt(hours);
         const parsedMinutes = parseInt(minutes);
         if (parsedMinutes === 60) {
-            setValue("hours", (parsedHours + 1).toString());
-            setValue("minutes", "0");
+            setValue('hours', (parsedHours + 1).toString());
+            setValue('minutes', '0');
         }
         if (parsedMinutes === 0 && parsedHours === 0) {
-            setValue("minutes", "1");
+            setValue('minutes', '1');
         }
     }, [hours, minutes]);
     useEffect(() => {
         const interval = playlist.configuration.interval;
         if (interval !== null) {
             const { hours, minutes } = toHoursAndMinutes(interval);
-            setValue("hours", hours.toString());
-            setValue("minutes", minutes.toString());
+            setValue('hours', hours.toString());
+            setValue('minutes', minutes.toString());
         }
-        setValue("playlistType", playlist.configuration.playlistType);
-        setValue("order", playlist.configuration.order);
+        setValue('playlistType', playlist.configuration.playlistType);
+        setValue('order', playlist.configuration.order);
         setValue(
-            "showTransition",
+            'showTransition',
             Boolean(playlist.configuration.showAnimations)
         );
     }, [playlist]);
@@ -151,24 +154,22 @@ const PlaylistConfigurationModal = () => {
                     <select
                         id="playlistType"
                         className="select select-bordered  text-lg w-2/5 rounded-lg cursor-default"
-                        defaultValue={PLAYLIST_TYPES.TIMER}
-                        {...register("playlistType", { required: true })}
+                        defaultValue={'timer'}
+                        {...register('playlistType', { required: true })}
                     >
-                        <option value={PLAYLIST_TYPES.TIMER}>On a timer</option>
-                        <option value={PLAYLIST_TYPES.TIME_OF_DAY}>
-                            Time of day
-                        </option>
+                        <option value={'timer'}>On a timer</option>
+                        <option value={'timeofday'}>Time of day</option>
                         <option
                             disabled={playlist.images.length > 7}
                             className={classNameDisabled}
-                            value={PLAYLIST_TYPES.DAY_OF_WEEK}
+                            value={'dayofweek'}
                         >
                             Day of week
                         </option>
-                        <option value={PLAYLIST_TYPES.NEVER}>Never</option>
+                        <option value={'never'}>Never</option>
                     </select>
                 </div>
-                {watch("playlistType") === PLAYLIST_TYPES.TIMER && (
+                {watch('playlistType') === 'timer' && (
                     <div className="flex justify-end items-baseline gap-1">
                         <div className="flex flex-col w-1/5 ">
                             <label
@@ -182,7 +183,7 @@ const PlaylistConfigurationModal = () => {
                                 min="0"
                                 defaultValue={1}
                                 type="number"
-                                {...register("hours", {
+                                {...register('hours', {
                                     required: true,
                                     min: 0
                                 })}
@@ -203,7 +204,7 @@ const PlaylistConfigurationModal = () => {
                                 max="60"
                                 type="number"
                                 step={1}
-                                {...register("minutes", {
+                                {...register('minutes', {
                                     required: true
                                 })}
                                 className="input input-bordered input-sm  rounded-lg focus:outline-none text-lg font-medium"
@@ -211,8 +212,8 @@ const PlaylistConfigurationModal = () => {
                         </div>
                     </div>
                 )}
-                {watch("playlistType") !== PLAYLIST_TYPES.TIME_OF_DAY &&
-                    watch("playlistType") !== PLAYLIST_TYPES.DAY_OF_WEEK && (
+                {watch('playlistType') !== 'timeofday' &&
+                    watch('playlistType') !== 'dayofweek' && (
                         <>
                             <div className="divider"></div>
                             <div className="flex justify-between items-baseline ">
@@ -224,16 +225,12 @@ const PlaylistConfigurationModal = () => {
                                 </label>
                                 <select
                                     className="select select-bordered text-lg w-2/5 rounded-lg cursor-default"
-                                    {...register("order", { required: true })}
-                                    defaultValue={ORDER_TYPES.ORDERED}
+                                    {...register('order', { required: true })}
+                                    defaultValue={'ordered'}
                                     id="order"
                                 >
-                                    <option value={ORDER_TYPES.RANDOM}>
-                                        Random
-                                    </option>
-                                    <option value={ORDER_TYPES.ORDERED}>
-                                        Ordered
-                                    </option>
+                                    <option value={'random'}>Random</option>
+                                    <option value={'ordered'}>Ordered</option>
                                 </select>
                             </div>
                         </>
@@ -251,7 +248,7 @@ const PlaylistConfigurationModal = () => {
                         className="toggle toggle-md rounded-full cursor-default"
                         id="showTransition"
                         defaultChecked={true}
-                        {...register("showTransition")}
+                        {...register('showTransition')}
                     />
                 </div>
                 <div className="divider mb-0"></div>

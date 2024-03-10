@@ -1,15 +1,16 @@
 import Sharp = require('sharp');
-import config from './database/globalConfig';
-import { appDirectories } from './globals/globals';
+import { config } from './database/globalConfig';
+import { appDirectories } from './globals/appPaths';
 import { join } from 'node:path';
 import { getMonitors, getMonitorsInfo } from './appFunctions';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
-import { type Image } from '../shared/types/image';
+import { type Monitor, type wlr_output } from '../shared/types/monitor';
+import { type imageSelectType } from './database/schema';
 const execPomisified = promisify(exec);
 export async function resizeImageToFitMonitor(
     buffer: Sharp.Sharp,
-    Image: Image,
+    Image: imageSelectType,
     requiredWidth: number,
     requiredHeight: number
 ) {
@@ -62,7 +63,7 @@ function hexToSharpRgb(hex: string) {
 
 export async function splitImageVerticalAxis(
     monitors: Monitor[],
-    Image: Image,
+    Image: imageSelectType,
     imageFilePath: string,
     combinedMonitorWidth: number
 ) {
@@ -120,7 +121,7 @@ export async function splitImageVerticalAxis(
 
 export async function splitImageHorizontalAxis(
     monitors: Monitor[],
-    Image: Image,
+    Image: imageSelectType,
     imageFilePath: string,
     combinedMonitorHeight: number
 ) {
@@ -243,7 +244,7 @@ function getDesiredDimensionsToExtendImage(Monitors: wlr_output) {
     return desiredDimensions;
 }
 export async function extendImageAcrossAllMonitors(
-    Image: Image,
+    Image: imageSelectType,
     imageFilePath: string
 ) {
     const monitorsToImagesPairsArray: Array<{

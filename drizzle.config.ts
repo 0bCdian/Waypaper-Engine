@@ -1,5 +1,7 @@
 import type { Config } from 'drizzle-kit';
-const dbLocation = '/home/obsy/.waypaper_engine/images_database.sqlite3';
+import { homedir } from 'os';
+import { join } from 'path';
+const dbLocation = join(homedir(), '.waypaper_engine/images_database.sqlite3');
 export default {
     schema: './electron/database/schema.ts',
     out: './electron/database/migrations/',

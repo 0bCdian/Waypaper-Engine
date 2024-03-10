@@ -4,7 +4,7 @@ import {
     type PLAYLIST_TYPES,
     type ORDER_TYPES
 } from '../../shared/types/playlist';
-import { type Image } from '../../shared/types/image.ts';
+import { type imageSelectType } from '../../electron/database/schema';
 export enum STORE_ACTIONS {
     SET_IMAGES_ARRAY = 'SET_IMAGES_ARRAY',
     SET_SKELETONS_TO_SHOW = 'SET_SKELETONS_TO_SHOW',
@@ -16,13 +16,17 @@ export interface configuration {
     playlistType: PLAYLIST_TYPES;
     interval: number | null;
     order: ORDER_TYPES | null;
-    showAnimations: boolean | 1 | 0;
+    showAnimations: boolean;
 }
 
+export interface rendererImage extends imageSelectType {
+    time: number | null;
+}
 export interface rendererPlaylist {
-    images: Image[];
+    images: rendererImage[];
     configuration: configuration;
     name: string;
+    monitor: string;
 }
 
 export interface Filters {
@@ -43,16 +47,16 @@ export interface advancedFilters {
 
 export type resolutionConstraints = 'all' | 'exact' | 'moreThan' | 'lessThan';
 export interface state {
-    imagesArray: Image[];
+    imagesArray: rendererImage[];
     skeletonsToShow: imagesObject | undefined;
     filters: Filters;
 }
 
 export type action =
-    | { type: STORE_ACTIONS.SET_IMAGES_ARRAY; payload: Image[] }
+    | { type: STORE_ACTIONS.SET_IMAGES_ARRAY; payload: rendererImage[] }
     | {
           type: STORE_ACTIONS.SET_SKELETONS_TO_SHOW;
           payload: imagesObject | undefined;
       }
     | { type: STORE_ACTIONS.SET_FILTERS; payload: Filters }
-    | { type: STORE_ACTIONS.RESET_IMAGES_ARRAY; payload: Image[] };
+    | { type: STORE_ACTIONS.RESET_IMAGES_ARRAY; payload: rendererImage[] };

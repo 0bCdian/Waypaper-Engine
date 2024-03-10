@@ -1,21 +1,14 @@
 import { type BrowserWindow, dialog, Menu } from 'electron';
 import { rmSync, mkdirSync, existsSync } from 'node:fs';
 import { copyFile, readdir } from 'node:fs/promises';
-import {
-    appDirectories,
-    validImageExtensions,
-    WAYPAPER_ENGINE_SOCKET_PATH,
-    contextMenu
-} from './globals/globals';
+import { contextMenu } from './globals/menus';
 import { type rendererPlaylist } from '../src/types/rendererTypes';
 import { exec, execFile, execSync, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { binDir, daemonLocation } from './binaries';
 import { join, basename } from 'node:path';
-import { createConnection } from 'node:net';
 import { parseResolution } from '../src/utils/utilities';
-import { dbOperations } from './database/dbOperations';
-import config from './database/globalConfig';
+import { config, dbOperations } from './database/globalConfig';
 import Sharp = require('sharp');
 import {
     extendImageAcrossAllMonitors,
@@ -23,12 +16,14 @@ import {
     splitImageVerticalAxis
 } from './imageOperations';
 import { type openFileAction, type imagesObject } from '../shared/types';
-import { type message, type imageMetadata, ACTIONS } from './types/types';
+import { type imageMetadata } from './types/types';
 import { type wlr_output, type Monitor } from '../shared/types/monitor';
-import { type Image } from '../shared/types/image';
+import { type imageSelectType } from './database/schema';
+import { validImageExtensions } from '../shared/constants';
+import { appDirectories } from './globals/appPaths';
+import { type Formats } from '../shared/types/image';
 const execPomisified = promisify(exec);
 const execFilePomisified = promisify(execFile);
-
 function openImagesFromFilePicker(browserWindow: BrowserWindow | null) {
     if (browserWindow !== null) {
         return dialog.showOpenDialogSync(browserWindow, {
@@ -84,7 +79,9 @@ async function searchImagesRecursively(
                 join(directory, fileName)
             );
         } else {
-            const fileExtension = filePathOrDir.name.split('.').at(-1);
+            const fileExtension = filePathOrDir.name
+                .split('.')
+                .at(-1) as Formats;
             if (
                 fileExtension !== undefined &&
                 validImageExtensions.includes(fileExtension)
@@ -129,7 +126,7 @@ export async function copyImagesToCacheAndProcessThumbnails(
             }
         }
     });
-    return dbOperations.storeImagesInDB(imagesToStoreinDB);
+    dbOperations.storeImages(imagesToStoreinDB);
 }
 
 async function createCacheThumbnail(filePathSource: string, imageName: string) {
@@ -312,16 +309,7 @@ export async function checkIfSwwwIsInstalled() {
 }
 export function savePlaylist(playlistObject: rendererPlaylist) {
     try {
-        if (dbOperations.checkIfPlaylistExists(playlistObject.name)) {
-            dbOperations.updatePlaylistInDB(playlistObject);
-        } else {
-            dbOperations.storePlaylistInDB(playlistObject);
-        }
-        if (isSavedPlaylistActive(playlistObject)) {
-            PlaylistController.updatePlaylist();
-        } else {
-            PlaylistController.startPlaylist();
-        }
+        void dbOperations.upsertPlaylist(playlistObject);
     } catch (error) {
         console.error(error);
         throw Error('Failed to set playlist in DB');
@@ -356,81 +344,9 @@ export async function initWaypaperDaemon() {
     }
 }
 
-function playlistConnectionBridge(messageToSend: message) {
-    const connection = createConnection(WAYPAPER_ENGINE_SOCKET_PATH);
-    connection.on('connect', () => {
-        connection.write(JSON.stringify(messageToSend));
-    });
-    connection.on('data', data => {
-        const message = data.toString();
-        // TODO do stuff based on the daemon's response, to sync with the cli tool actions.
-        console.log(message);
-    });
-    connection.on('error', () => {
-        void initWaypaperDaemon().then(() => {
-            connection.destroy();
-            setTimeout(() => {
-                playlistConnectionBridge(messageToSend);
-            }, 1000);
-        });
-    });
-}
-
-export const PlaylistController = {
-    startPlaylist: function () {
-        playlistConnectionBridge({
-            action: ACTIONS.START_PLAYLIST
-        });
-    },
-    pausePlaylist: () => {
-        playlistConnectionBridge({
-            action: ACTIONS.PAUSE_PLAYLIST
-        });
-    },
-    resumePlaylist: () => {
-        playlistConnectionBridge({
-            action: ACTIONS.RESUME_PLAYLIST
-        });
-    },
-    stopPlaylist: () => {
-        playlistConnectionBridge({
-            action: ACTIONS.STOP_PLAYLIST
-        });
-    },
-    nextImage: () => {
-        playlistConnectionBridge({
-            action: ACTIONS.NEXT_IMAGE
-        });
-    },
-    previousImage: () => {
-        playlistConnectionBridge({
-            action: ACTIONS.PREVIOUS_IMAGE
-        });
-    },
-    randomImage: () => {
-        playlistConnectionBridge({
-            action: ACTIONS.RANDOM_IMAGE
-        });
-    },
-    killDaemon: () => {
-        playlistConnectionBridge({
-            action: ACTIONS.STOP_DAEMON
-        });
-    },
-    updateConfig: () => {
-        playlistConnectionBridge({
-            action: ACTIONS.UPDATE_CONFIG
-        });
-    },
-    updatePlaylist: () => {
-        playlistConnectionBridge({ action: ACTIONS.UPDATE_PLAYLIST });
-    }
-};
-
 export function deleteImageFromStorage(imageName: string) {
     try {
         const [thumbnailName] = imageName.split('.');
-
         rmSync(join(appDirectories.imagesDir, imageName));
         rmSync(join(appDirectories.thumbnails, `${thumbnailName}.webp`), {
             force: true
@@ -452,7 +368,7 @@ export function deleteImageFromGallery(
     imageName: string
 ) {
     try {
-        dbOperations.deleteImageInDB(imageID);
+        dbOperations.deleteImage(imageID);
         deleteImageFromStorage(imageName);
         return true;
     } catch (error) {
@@ -464,7 +380,7 @@ export function deleteImageFromGallery(
 function getSwwwCommandFromConfiguration(imagePath: string, monitor?: string) {
     const swwwConfig = config.swww.config;
     let transitionPos = '';
-    const inverty = swwwConfig.invertY !== 0 ? '--invert-y' : '';
+    const inverty = swwwConfig.invertY ? '--invert-y' : '';
     switch (swwwConfig.transitionPositionType) {
         case 'int':
             transitionPos = `${swwwConfig.transitionPositionIntX},${swwwConfig.transitionPositionIntY}`;
@@ -521,7 +437,7 @@ function parseSwwwQuery(stdout: string) {
 }
 
 export async function setImageExtended(
-    image: Image,
+    image: imageSelectType,
     monitors: Monitor[],
     orientation: 'vertical' | 'horizontal'
 ) {
@@ -580,7 +496,7 @@ export async function getMonitorsInfo() {
     }
 }
 
-export async function setImageAcrossAllMonitors(Image: Image) {
+export async function setImageAcrossAllMonitors(Image: imageSelectType) {
     const imageFilePath = join(appDirectories.imagesDir, Image.name);
     try {
         const commands: Array<Promise<any>> = [];
@@ -604,14 +520,9 @@ export async function setImageAcrossAllMonitors(Image: Image) {
     }
 }
 
-function isSavedPlaylistActive(playlist: rendererPlaylist) {
-    const activePlaylist = dbOperations.getCurrentPlaylist();
-    return activePlaylist?.name === playlist.name;
-}
-
 export async function openContextMenu(
     event: Electron.IpcMainInvokeEvent,
-    image: Image,
+    image: imageSelectType,
     win: BrowserWindow
 ) {
     const monitors = await getMonitors();
@@ -680,7 +591,7 @@ export async function openContextMenu(
     imageContextMenu.popup();
 }
 
-export function openContextMenuGallery(win: BrowserWindow) {
+export function openContextMenuGallery() {
     const galleryContextMenu = Menu.buildFromTemplate(contextMenu);
     galleryContextMenu.popup();
 }

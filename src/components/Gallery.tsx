@@ -1,22 +1,22 @@
-import { useEffect } from "react";
-import { useImages } from "../hooks/imagesStore";
-import AddImagesCard from "./AddImagesCard";
-import PaginatedGallery from "./PaginatedGallery";
-import playlistStore from "../hooks/playlistStore";
-import { type Image, PLAYLIST_TYPES } from "../types/rendererTypes";
-import Filters from "./Filters";
+import { useEffect } from 'react';
+import { useImages } from '../hooks/imagesStore';
+import AddImagesCard from './AddImagesCard';
+import PaginatedGallery from './PaginatedGallery';
+import playlistStore from '../hooks/playlistStore';
+import { type rendererImage } from '../types/rendererTypes';
+import Filters from './Filters';
 const { readActivePlaylist, readAppConfig, onDeleteImageFromGallery } =
     window.API_RENDERER;
-
+const monitor = 'eDP1';
 function Gallery() {
     const { isEmpty, imagesArray, removeImageFromStore } = useImages();
     const { setPlaylist, removeImageFromPlaylist } = playlistStore();
     function setLastActivePlaylist() {
-        void readActivePlaylist().then(playlist => {
+        void readActivePlaylist(monitor).then(playlist => {
             if (playlist === undefined) {
                 return;
             }
-            const imagesToStorePlaylist: Image[] = [];
+            const imagesToStorePlaylist: rendererImage[] = [];
             playlist.images.forEach(imageInActivePlaylist => {
                 const imageToCheck = imagesArray.find(imageInGallery => {
                     return imageInGallery.name === imageInActivePlaylist.name;
@@ -25,7 +25,7 @@ function Gallery() {
                     return;
                 }
                 if (
-                    playlist.type === PLAYLIST_TYPES.TIME_OF_DAY &&
+                    playlist.type === 'timeofday' &&
                     imageInActivePlaylist.time !== null
                 ) {
                     imageToCheck.time = imageInActivePlaylist.time;
@@ -39,9 +39,10 @@ function Gallery() {
                     playlistType: playlist.type,
                     order: playlist.order,
                     interval: playlist.interval,
-                    showAnimations: playlist.showAnimations === 1
+                    showAnimations: playlist.showAnimations
                 },
-                images: imagesToStorePlaylist
+                images: imagesToStorePlaylist,
+                monitor
             };
             setPlaylist(currentPlaylist);
         });
@@ -52,10 +53,7 @@ function Gallery() {
     });
     useEffect(() => {
         void readAppConfig().then(appSettings => {
-            if (
-                appSettings.introAnimation !== 0 &&
-                appSettings.startMinimized === 0
-            ) {
+            if (appSettings.introAnimation && appSettings.startMinimized) {
                 setTimeout(() => {
                     setLastActivePlaylist();
                 }, 3700);

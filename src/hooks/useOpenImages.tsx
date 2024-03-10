@@ -1,16 +1,18 @@
 import { create } from 'zustand';
 import { type openFileAction, type imagesObject } from '../../shared/types';
-import { type Image } from '../../shared/types/image';
-import { type rendererPlaylist } from '../types/rendererTypes';
+import {
+    type rendererImage,
+    type rendererPlaylist
+} from '../types/rendererTypes';
 const { openFiles, handleOpenImages } = window.API_RENDERER;
 interface State {
     isActive: boolean;
 }
 interface openImagesProps {
     setSkeletons: (skeletons: imagesObject | undefined) => void;
-    setImagesArray: (imagesArray: Image[]) => void;
-    addMultipleImagesToPlaylist: (Images: Image[]) => void;
-    addImageToPlaylist: (Image: Image) => void;
+    setImagesArray: (imagesArray: rendererImage[]) => void;
+    addMultipleImagesToPlaylist: (Images: rendererImage[]) => void;
+    addImageToPlaylist: (Image: rendererImage) => void;
     currentPlaylist: rendererPlaylist;
     action: openFileAction;
 }
@@ -56,7 +58,8 @@ const openImagesStore = create<State & Actions>(set => ({
                         shouldCheckImage = true;
                         addImageToPlaylist({
                             ...image,
-                            isChecked: shouldCheckImage
+                            isChecked: shouldCheckImage,
+                            time: null
                         });
                     } else {
                         shouldCheckImage = false;
@@ -65,7 +68,8 @@ const openImagesStore = create<State & Actions>(set => ({
             }
             return {
                 ...image,
-                isChecked: shouldCheckImage
+                isChecked: shouldCheckImage,
+                time: null
             };
         });
         setSkeletons(undefined);

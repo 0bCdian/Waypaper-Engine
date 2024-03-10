@@ -1,4 +1,4 @@
-import { type Playlist } from '../../shared/types/playlist';
+import { type Formats } from '../../shared/types/image';
 
 export enum ACTIONS {
     NEXT_IMAGE = 'next-image',
@@ -15,18 +15,11 @@ export enum ACTIONS {
 
 export interface message {
     action: ACTIONS;
-    message?: string;
-}
-
-export interface PlaylistControllerType {
-    startPlaylist: () => void;
-    pausePlaylist: () => void;
-    resumePlaylist: () => void;
-    stopPlaylist: () => void;
-    nextImage: () => void;
-    previousImage: () => void;
-    randomImage: () => void;
-    killDaemon: () => void;
+    playlist?: {
+        id?: number;
+        monitor?: string;
+        name?: string;
+    };
 }
 
 export interface imageInPlaylist {
@@ -36,11 +29,7 @@ export interface imageInPlaylist {
 
 export interface imageMetadata {
     name: string;
-    format: string;
+    format: Formats;
     width: number;
     height: number;
-}
-
-export interface ActivePlaylist extends Playlist {
-    images: imageInPlaylist[];
 }

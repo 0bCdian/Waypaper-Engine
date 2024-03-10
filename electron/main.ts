@@ -6,7 +6,6 @@ import {
     setImage,
     openAndReturnImagesObject,
     savePlaylist,
-    PlaylistController,
     isSwwwDaemonRunning,
     initWaypaperDaemon,
     deleteImageFromGallery,
@@ -15,14 +14,20 @@ import {
     openContextMenu,
     openContextMenuGallery
 } from './appFunctions';
-import { devMenu, prodMenu, trayMenu } from './globals/globals';
+import { devMenu, prodMenu, trayMenu } from './globals/menus';
 import { iconPath } from './binaries';
-import { type AppConfigDB } from '../src/routes/AppConfiguration';
-import config from './database/globalConfig';
+import {
+    config,
+    dbOperations,
+    playlistControllerInstance
+} from './database/globalConfig';
 import { type rendererPlaylist } from '../src/types/rendererTypes';
 import { type openFileAction } from '../shared/types';
-import { type swwwConfig } from '../shared/types/swww';
-import { type Image } from '../shared/types/image';
+import {
+    type imageSelectType,
+    type appConfigInsertType,
+    type swwwConfigInsertType
+} from './database/schema';
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
     app.exit(1);
@@ -49,6 +54,7 @@ let tray: Tray | null = null;
 let win: BrowserWindow | null;
 // 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
 const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
+
 function createWindow() {
     win = new BrowserWindow({
         icon: join(iconPath, '512x512.png'),
@@ -75,14 +81,14 @@ function createWindow() {
         }
     }
     win.once('ready-to-show', () => {
-        if (config.app.config.startMinimized !== 0) {
+        if (config.app.config.startMinimized) {
             win?.hide();
         } else {
             win?.show();
         }
     });
     win.on('close', event => {
-        if (config.app.config.minimizeInsteadOfClose !== 0) {
+        if (config.app.config.minimizeInsteadOfClose) {
             event.preventDefault();
             win?.hide();
         }
@@ -102,11 +108,12 @@ function registerFileProtocol() {
     });
 }
 
-function createTray() {
+async function createTray() {
     if (tray === null) {
         tray = new Tray(join(iconPath, '512x512.png'));
     }
-    const trayContextMenu = trayMenu(app, PlaylistController);
+    if (win === null) return;
+    const trayContextMenu = await trayMenu(app, win);
     tray.setContextMenu(trayContextMenu);
     tray.setToolTip('Waypaper Engine');
     tray.on('click', () => {
@@ -120,7 +127,7 @@ app.whenReady()
         await initWaypaperDaemon();
         createWindow();
         createMenu();
-        createTray();
+        void createTray();
         registerFileProtocol();
         void remakeThumbnailsIfImagesExist().then(() => {
             if (win !== null) {
@@ -133,8 +140,8 @@ app.whenReady()
     });
 
 app.on('quit', () => {
-    if (config.app.config.killDaemon !== 0) {
-        PlaylistController.killDaemon();
+    if (config.app.config.killDaemon) {
+        playlistControllerInstance.killDaemon();
     }
 });
 
@@ -143,80 +150,73 @@ ipcMain.handle('openFiles', async (_event, action: openFileAction) => {
 });
 ipcMain.handle('handleOpenImages', copyImagesToCacheAndProcessThumbnails);
 ipcMain.handle('queryImages', () => {
-    return dbOperations.readAllImagesInDB();
+    return dbOperations.getAllImages();
 });
 ipcMain.handle('queryPlaylists', () => {
-    const playlists = dbOperations.readAllPlaylistsInDB();
-    return playlists;
+    return dbOperations.getPlaylists();
 });
-ipcMain.handle('getPlaylistImages', (_event, playlistID: number) => {
-    return dbOperations.getImagesInPlaylist(playlistID);
+ipcMain.handle('getPlaylistImages', async (_event, playlistID: number) => {
+    return dbOperations.getPlaylistImages(playlistID);
 });
 ipcMain.handle('getMonitors', async () => {
     return await getMonitors();
 });
-ipcMain.handle(
-    'readSwwwConfig',
-    dbOperations.readSwwwConfig.bind(dbOperations)
-);
-ipcMain.handle('readAppConfig', dbOperations.readAppConfig.bind(dbOperations));
+ipcMain.handle('readSwwwConfig', () => {
+    return dbOperations.getSwwwConfig();
+});
+ipcMain.handle('readAppConfig', () => {
+    return dbOperations.getAppConfig();
+});
 ipcMain.handle('deleteImageFromGallery', deleteImageFromGallery);
-ipcMain.handle('readActivePlaylist', () => {
-    const activePlaylist = dbOperations.getCurrentPlaylist();
-    if (activePlaylist !== null) {
-        const playlistImages = dbOperations.getImagesInPlaylist(
-            activePlaylist.id
-        );
-        return { ...activePlaylist, images: playlistImages };
-    } else {
-        return undefined;
-    }
+ipcMain.handle('readActivePlaylist', async (_, monitor: string) => {
+    return dbOperations.getActivePlaylistInfo(monitor);
 });
 ipcMain.on('deletePlaylist', (_, playlistName: string) => {
-    dbOperations.deletePlaylistInDB(playlistName);
-    const current = dbOperations.getCurrentPlaylist();
-    if (current !== null && current.name === playlistName) {
-        PlaylistController.stopPlaylist();
-    }
+    dbOperations.deletePlaylist(playlistName);
 });
 ipcMain.on('setImage', setImage);
 ipcMain.on('savePlaylist', (_, playlistObject: rendererPlaylist) => {
     savePlaylist(playlistObject);
-    dbOperations.setCurrentPlaylist(playlistObject.name);
-    createTray();
+    void createTray();
 });
-ipcMain.on('startPlaylist', (_event, playlistName: string) => {
-    dbOperations.setCurrentPlaylist(playlistName);
-    PlaylistController.startPlaylist();
-    createTray();
+ipcMain.on(
+    'startPlaylist',
+    (_event, playlist: { name: string; monitor: string }) => {
+        playlistControllerInstance.startPlaylist(playlist);
+        void createTray();
+    }
+);
+ipcMain.on('stopPlaylist', (_, playlist: { name: string; monitor: string }) => {
+    playlistControllerInstance.stopPlaylist(playlist);
+    void createTray();
 });
-ipcMain.on('stopPlaylist', _ => {
-    PlaylistController.stopPlaylist();
-    dbOperations.setActivePlaylistToNull();
-    createTray();
-});
-ipcMain.on('updateSwwwConfig', (_, newSwwwConfig: swwwConfig) => {
-    dbOperations.updateSwwwConfig(newSwwwConfig);
-    config.swww.update();
-    PlaylistController.updateConfig();
-});
-ipcMain.on('openContextMenuImage', (event, image: Image) => {
+ipcMain.on(
+    'updateSwwwConfig',
+    (_, newSwwwConfig: swwwConfigInsertType['config']) => {
+        dbOperations.updateSwwwConfig({ config: newSwwwConfig });
+        playlistControllerInstance.updateConfig();
+    }
+);
+ipcMain.on('openContextMenuImage', (event, image: imageSelectType) => {
     if (win !== null) {
         void openContextMenu(event, image, win);
     }
 });
 ipcMain.on('openContextMenuGallery', () => {
     if (win !== null) {
-        openContextMenuGallery(win);
+        openContextMenuGallery();
     }
 });
-ipcMain.on('updateAppConfig', (_, newAppConfig: AppConfigDB) => {
-    dbOperations.updateAppConfig(newAppConfig);
-    config.app.update();
-    PlaylistController.updateConfig();
-});
+ipcMain.on(
+    'updateAppConfig',
+    (_, newAppConfig: appConfigInsertType['config']) => {
+        void dbOperations.updateAppConfig({ config: newAppConfig }).then(() => {
+            playlistControllerInstance.updateConfig();
+        });
+    }
+);
 ipcMain.on('updateTray', () => {
-    createTray();
+    void createTray();
 });
 ipcMain.on('exitApp', () => {
     app.exit();

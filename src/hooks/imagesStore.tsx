@@ -10,11 +10,12 @@ import {
     STORE_ACTIONS,
     type Filters,
     type state,
-    type action
+    type action,
+    type rendererImage
 } from '../types/rendererTypes';
-import { type Image } from '../../shared/types/image';
 import { type imagesObject } from '../../shared/types';
 const { queryImages } = window.API_RENDERER;
+
 const initialFilters: Filters = {
     order: 'desc',
     type: 'id',
@@ -30,7 +31,7 @@ const initialFilters: Filters = {
             'tiff',
             'tga',
             'pnm',
-            'farbeld'
+            'farbfeld'
         ],
         resolution: {
             constraint: 'all',
@@ -59,13 +60,13 @@ function imagesSource() {
     const [{ imagesArray, skeletonsToShow, filters }, dispatch] = useReducer(
         reducer,
         {
-            imagesArray: [] as Image[],
+            imagesArray: [] as rendererImage[],
             skeletonsToShow: undefined,
             filters: initialFilters
         }
     );
     useEffect(() => {
-        void queryImages().then((data: Image[]) => {
+        void queryImages().then(data => {
             dispatch({ type: STORE_ACTIONS.SET_IMAGES_ARRAY, payload: data });
         });
     }, []);
@@ -86,7 +87,7 @@ function imagesSource() {
         });
     }, [imagesArray]);
     const reQueryImages = useCallback(() => {
-        void queryImages().then((data: Image[]) => {
+        void queryImages().then(data => {
             dispatch({ type: STORE_ACTIONS.RESET_IMAGES_ARRAY, payload: data });
         });
     }, []);
@@ -114,7 +115,7 @@ function imagesSource() {
             payload: skeletons
         });
     }, []);
-    const setImagesArray = useCallback((newImages: Image[]) => {
+    const setImagesArray = useCallback((newImages: rendererImage[]) => {
         dispatch({
             type: STORE_ACTIONS.SET_IMAGES_ARRAY,
             payload: newImages
@@ -144,33 +145,34 @@ function imagesSource() {
         const dontFilterByFormat =
             filters.advancedFilters.formats.length === 10;
         const dontFilterByName = filters.searchString === '';
-        const imagesfilteredByResolution: Image[] = dontFilterByResolution
-            ? sortedImages
-            : sortedImages.filter(image => {
-                  const widthToFilter =
-                      filters.advancedFilters.resolution.width;
-                  const heightToFilter =
-                      filters.advancedFilters.resolution.height;
-                  switch (filters.advancedFilters.resolution.constraint) {
-                      case 'exact':
-                          return (
-                              image.width === widthToFilter &&
-                              image.height === heightToFilter
-                          );
-                      case 'lessThan':
-                          return (
-                              image.width < widthToFilter &&
-                              image.height < heightToFilter
-                          );
-                      case 'moreThan':
-                          return (
-                              image.width > widthToFilter &&
-                              image.height > heightToFilter
-                          );
-                  }
-                  return undefined;
-              });
-        let imagesFilteredByFormat: Image[];
+        const imagesfilteredByResolution: rendererImage[] =
+            dontFilterByResolution
+                ? sortedImages
+                : sortedImages.filter(image => {
+                      const widthToFilter =
+                          filters.advancedFilters.resolution.width;
+                      const heightToFilter =
+                          filters.advancedFilters.resolution.height;
+                      switch (filters.advancedFilters.resolution.constraint) {
+                          case 'exact':
+                              return (
+                                  image.width === widthToFilter &&
+                                  image.height === heightToFilter
+                              );
+                          case 'lessThan':
+                              return (
+                                  image.width < widthToFilter &&
+                                  image.height < heightToFilter
+                              );
+                          case 'moreThan':
+                              return (
+                                  image.width > widthToFilter &&
+                                  image.height > heightToFilter
+                              );
+                      }
+                      return undefined;
+                  });
+        let imagesFilteredByFormat: rendererImage[];
         if (filters.advancedFilters.formats.length === 0) {
             imagesFilteredByFormat = [];
         } else {
@@ -180,7 +182,7 @@ function imagesSource() {
                       filters.advancedFilters.formats.includes(images.format)
                   );
         }
-        const imagesFilteredByName: Image[] = dontFilterByName
+        const imagesFilteredByName: rendererImage[] = dontFilterByName
             ? imagesFilteredByFormat
             : imagesFilteredByFormat.filter(image =>
                   image.name

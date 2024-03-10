@@ -1,9 +1,9 @@
 import { useState, useId, type ChangeEvent } from 'react';
 import playlistStore from '../hooks/playlistStore';
-import { type Image } from '../../shared/types/image';
+import { type imageSelectType } from '../../electron/database/schema';
 import { motion } from 'framer-motion';
 interface ImageCardProps {
-    Image: Image;
+    Image: imageSelectType;
 }
 const { join, thumbnailDirectory, setImage, imagesDirectory, openContextMenu } =
     window.API_RENDERER;

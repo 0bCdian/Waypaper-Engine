@@ -5,18 +5,7 @@ export type Formats =
     | 'bmp'
     | 'gif'
     | 'webp'
-    | 'farbeld'
+    | 'farbfeld'
     | 'pnm'
     | 'tga'
     | 'tiff';
-
-export interface Image {
-    id: number;
-    name: string;
-    isChecked: boolean;
-    isSelected: boolean;
-    width: number;
-    height: number;
-    format: Formats;
-    time: number;
-}

@@ -1,24 +1,23 @@
-import { create } from "zustand";
+import { create } from 'zustand';
 import {
-    type Image,
+    type rendererImage,
     type rendererPlaylist,
-    type configuration,
-    PLAYLIST_TYPES,
-    ORDER_TYPES
-} from "../types/rendererTypes";
+    type configuration
+} from '../types/rendererTypes';
+const imagesInitial: rendererImage[] = [];
 
-const imagesInitial: Image[] = [];
-const configurationInitial = {
-    playlistType: PLAYLIST_TYPES.TIMER,
+const configurationInitial: rendererPlaylist['configuration'] = {
+    playlistType: 'timer',
     interval: 3_600_000,
-    order: ORDER_TYPES.ORDERED,
+    order: 'ordered',
     showAnimations: true
 };
 
-const initialPlaylistState = {
+const initialPlaylistState: rendererPlaylist = {
     images: imagesInitial,
     configuration: configurationInitial,
-    name: ""
+    name: '',
+    monitor: ''
 };
 const date = new Date();
 let initialTimeStamp = date.getHours() * 60 + date.getMinutes();
@@ -28,12 +27,12 @@ interface State {
 }
 
 interface Actions {
-    addImageToPlaylist: (Image: Image) => void;
-    addMultipleImagesToPlaylist: (Images: Image[]) => void;
+    addImageToPlaylist: (Image: rendererImage) => void;
+    addMultipleImagesToPlaylist: (Images: rendererImage[]) => void;
     setConfiguration: (newConfiguration: configuration) => void;
     setName: (newName: string) => void;
-    movePlaylistArrayOrder: (newlyOrderedArray: Image[]) => void;
-    removeImageFromPlaylist: (Image: Image) => void;
+    movePlaylistArrayOrder: (newlyOrderedArray: rendererImage[]) => void;
+    removeImageFromPlaylist: (Image: rendererImage) => void;
     clearPlaylist: () => void;
     readPlaylist: () => rendererPlaylist;
     setPlaylist: (newPlaylist: rendererPlaylist) => void;
@@ -42,7 +41,7 @@ interface Actions {
 const playlistStore = create<State & Actions>()((set, get) => ({
     playlist: initialPlaylistState,
     isEmpty: true,
-    addImageToPlaylist: (Image: Image) => {
+    addImageToPlaylist: (Image: rendererImage) => {
         if (initialTimeStamp >= 1440) {
             // one minute offset every loop in the day, to avoid as much duplication of timestamps as possible
             initialTimeStamp -= 1439;
@@ -59,7 +58,7 @@ const playlistStore = create<State & Actions>()((set, get) => ({
             return newState;
         });
     },
-    addMultipleImagesToPlaylist: (Images: Image[]) => {
+    addMultipleImagesToPlaylist: (Images: rendererImage[]) => {
         for (let current = 0; current < Images.length; current++) {
             if (initialTimeStamp >= 1440) {
                 // one minute offset every loop in the day, to avoid as much duplication of timestamps as possible
@@ -91,7 +90,7 @@ const playlistStore = create<State & Actions>()((set, get) => ({
             return { ...state, playlist: { ...state.playlist, name: newName } };
         });
     },
-    movePlaylistArrayOrder: (newlyOrderedArray: Image[]) => {
+    movePlaylistArrayOrder: (newlyOrderedArray: rendererImage[]) => {
         set(state => {
             return {
                 ...state,
@@ -99,7 +98,7 @@ const playlistStore = create<State & Actions>()((set, get) => ({
             };
         });
     },
-    removeImageFromPlaylist: (Image: Image) => {
+    removeImageFromPlaylist: (Image: rendererImage) => {
         set(state => {
             const newImages = state.playlist.images.filter(
                 element => element.id !== Image.id

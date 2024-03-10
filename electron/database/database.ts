@@ -2,12 +2,18 @@ import {
     drizzle,
     type BetterSQLite3Database
 } from 'drizzle-orm/better-sqlite3';
-
+import { migrate } from 'drizzle-orm/better-sqlite3/migrator';
 import Database = require('better-sqlite3');
-import { dbLocation, nativeBindingLocation } from '../binaries';
-
+import { dbLocation, nativeBindingLocation, migrationPath } from '../binaries';
 const sqlite = Database(dbLocation, {
     nativeBinding: nativeBindingLocation
 });
-
-export const db: BetterSQLite3Database = drizzle(sqlite);
+const drizzleDB: BetterSQLite3Database = drizzle(sqlite);
+export function migrateDB() {
+    try {
+        migrate(drizzleDB, { migrationsFolder: migrationPath });
+    } catch (error) {
+        console.error(error);
+    }
+}
+export const db = drizzleDB;

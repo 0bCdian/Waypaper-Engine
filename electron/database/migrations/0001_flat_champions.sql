@@ -24,13 +24,13 @@ CREATE TABLE `activePlaylists` (
 --> statement-breakpoint
 INSERT INTO appConfig (config)
 SELECT json_object(
-    'killDaemon', killDaemon,
-    'playlistStartOnFirstImage', playlistStartOnFirstImage,
-    'notifications', notifications,
-    'swwwAnimations', swwwAnimations,
-    'introAnimation', introAnimation,
-    'startMinimized', startMinimized,
-    'minimizeInsteadOfClose', minimizeInsteadOfClose,
+    'killDaemon', CASE WHEN killDaemon = 1 THEN 'true' ELSE 'false' END,
+    'playlistStartOnFirstImage', CASE WHEN playlistStartOnFirstImage = 1 THEN 'true' ELSE 'false' END,
+    'notifications', CASE WHEN notifications = 1 THEN 'true' ELSE 'false' END,
+    'swwwAnimations', CASE WHEN swwwAnimations = 1 THEN 'true' ELSE 'false' END,
+    'introAnimation', CASE WHEN introAnimation = 1 THEN 'true' ELSE 'false' END,
+    'startMinimized', CASE WHEN startMinimized = 1 THEN 'true' ELSE 'false' END,
+    'minimizeInsteadOfClose', CASE WHEN minimizeInsteadOfClose = 1 THEN 'true' ELSE 'false' END,
     'randomImageMonitor','clone'
 )
 FROM appConfigOld;
@@ -53,7 +53,7 @@ SELECT json_object(
     'transitionPositionIntY', transitionPositionIntY,
     'transitionPositionFloatX', transitionPositionFloatX,
     'transitionPositionFloatY', transitionPositionFloatY,
-    'invertY', invertY,
+    'invertY', CASE WHEN invertY = 1 THEN 'true' ELSE 'false' END,
     'transitionBezier', transitionBezier,
     'transitionWaveX', transitionWaveX,
     'transitionWaveY', transitionWaveY
@@ -67,5 +67,16 @@ DROP TABLE activePlaylist;
 ALTER TABLE Images ADD `isSelected` integer DEFAULT false NOT NULL;--> statement-breakpoint
 CREATE UNIQUE INDEX `Images_name_unique` ON `Images` (`name`);--> statement-breakpoint
 CREATE UNIQUE INDEX `Playlists_name_unique` ON `Playlists` (`name`);--> statement-breakpoint
-CREATE UNIQUE INDEX `imagesInPlaylist_time_unique` ON `imagesInPlaylist` (`time`);
-
+CREATE UNIQUE INDEX `imagesInPlaylist_time_unique` ON `imagesInPlaylist` (`time`);--> statement-breakpoint
+CREATE TRIGGER delete_playlist_if_empty
+AFTER DELETE ON imagesInPlaylist
+BEGIN
+    DELETE FROM Playlists
+    WHERE id = OLD.playlistID
+    AND NOT EXISTS (
+        SELECT 1
+        FROM imagesInPlaylist
+        WHERE playlistID = OLD.playlistID
+        LIMIT 1
+    );
+END;
