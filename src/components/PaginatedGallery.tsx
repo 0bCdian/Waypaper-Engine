@@ -90,7 +90,7 @@ function PaginatedGallery() {
                 openContextMenuGallery();
             }}
         >
-            <div className="max-h-[0] min-h-[55vh] overflow-y-scroll scrollbar-thin scrollbar-track-transparent scrollbar-thumb-neutral-300 scrollbar-thumb-rounded items-center flex flex-col">
+            <div className="max-h-[0] min-h-[55vh] overflow-y-scroll scrollbar-thin scrollbar-track-transparent scrollbar-thumb-neutral-300 scrollbar-thumb-rounded-sm items-center flex flex-col">
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 2 }}
