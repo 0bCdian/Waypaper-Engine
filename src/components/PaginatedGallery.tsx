@@ -84,13 +84,13 @@ function PaginatedGallery() {
     }, [imagesPerPage, totalPages, filters]);
     return (
         <div
-            className="transition justify-normal sm:w-[90%] m-auto flex flex-col scrollbar-none overflow-clip [contain:paint] min-h-[85%] "
+            className="transition justify-normal sm:w-[90%] m-auto flex flex-col overflow-clip [contain:paint] min-h-[85%] "
             onContextMenu={e => {
                 e.stopPropagation();
                 openContextMenuGallery();
             }}
         >
-            <div className="max-h-[0] min-h-[60vh] overflow-y-scroll scrollbar-none items-center flex flex-col">
+            <div className="max-h-[0] min-h-[55vh] overflow-y-scroll scrollbar-thin scrollbar-track-transparent scrollbar-thumb-neutral-300 scrollbar-thumb-rounded items-center flex flex-col">
                 <motion.div
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 2 }}

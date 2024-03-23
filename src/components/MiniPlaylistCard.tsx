@@ -98,12 +98,12 @@ function MiniPlaylistCard({
                 className="w-32 mx-1 shrink-0 rounded-lg shadow-xl mb-2 "
             >
                 {playlistType === 'timeofday' && (
-                    <div className="flex flex-col">
+                    <div className="flex flex-col max-h-[fit]">
                         <span
                             className={
                                 isInvalid
                                     ? 'font-semibold italic rounded-md'
-                                    : 'opacity-0'
+                                    : 'opacity-0 [display:none] '
                             }
                         >
                             Invalid time
@@ -111,7 +111,7 @@ function MiniPlaylistCard({
                         <input
                             type="time"
                             ref={timeRef}
-                            className="input input-sm mb-6 focus:outline-none  input-bordered rounded-md ml-1 invalid:bg-red-800"
+                            className="input input-sm mb-2 focus:outline-none  input-bordered rounded-md ml-1 invalid:bg-red-800"
                             onChange={e => {
                                 const stringValue = e.currentTarget.value;
                                 const [hours, minutes] = stringValue.split(':');

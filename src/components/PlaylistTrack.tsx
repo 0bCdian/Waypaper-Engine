@@ -103,7 +103,7 @@ function PlaylistTrack() {
         }
     }, [playlist.images]);
     return (
-        <div className="w-full flex flex-col gap-2 mb-2 mt-4">
+        <div className="w-full flex flex-col gap-2 mb-2 mt-2">
             <div className="flex justify-between items-center mb-2">
                 <div className="flex gap-5 items-center ">
                     <span className="text-4xl font-bold">
@@ -263,7 +263,7 @@ function PlaylistTrack() {
                                     ease: 'easeInOut'
                                 }}
                                 exit={{ scale: 0, opacity: 0 }}
-                                className="flex rounded-lg  overflow-y-clip [max-height:fit] max-w-[90vw] overflow-x-scroll scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-thumb-neutral-300"
+                                className="flex rounded-lg  overflow-y-clip  max-w-[90vw] overflow-x-scroll scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar scrollbar-thumb-neutral-300"
                             >
                                 <AnimatePresence initial={false}>
                                     {playlistArray}
