@@ -1,14 +1,16 @@
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { useRef, useEffect, useState } from 'react';
-import playlistStore from '../hooks/playlistStore';
+import playlistStore from '../stores/playlist';
 import {
-    type ORDER_TYPES,
-    type PLAYLIST_TYPES
+    type PLAYLIST_TYPES_TYPE,
+    type PLAYLIST_ORDER_TYPES,
+    PLAYLIST_TYPES,
+    PLAYLIST_ORDER
 } from '../../shared/types/playlist';
 import { toMS, toHoursAndMinutes } from '../utils/utilities';
 interface Inputs {
-    playlistType: PLAYLIST_TYPES;
-    order: ORDER_TYPES | null;
+    playlistType: PLAYLIST_TYPES_TYPE;
+    order: PLAYLIST_ORDER_TYPES | null;
     hours: string | null;
     minutes: string | null;
     showTransition: boolean;
@@ -157,19 +159,21 @@ const PlaylistConfigurationModal = () => {
                         defaultValue={'timer'}
                         {...register('playlistType', { required: true })}
                     >
-                        <option value={'timer'}>On a timer</option>
-                        <option value={'timeofday'}>Time of day</option>
+                        <option value={PLAYLIST_TYPES.timer}>On a timer</option>
+                        <option value={PLAYLIST_TYPES.timeofday}>
+                            Time of day
+                        </option>
                         <option
                             disabled={playlist.images.length > 7}
                             className={classNameDisabled}
-                            value={'dayofweek'}
+                            value={PLAYLIST_TYPES.dayofweek}
                         >
                             Day of week
                         </option>
-                        <option value={'never'}>Never</option>
+                        <option value={PLAYLIST_TYPES.never}>Never</option>
                     </select>
                 </div>
-                {watch('playlistType') === 'timer' && (
+                {watch('playlistType') === PLAYLIST_TYPES.timer && (
                     <div className="flex justify-end items-baseline gap-1">
                         <div className="flex flex-col w-1/5 ">
                             <label
@@ -212,8 +216,8 @@ const PlaylistConfigurationModal = () => {
                         </div>
                     </div>
                 )}
-                {watch('playlistType') !== 'timeofday' &&
-                    watch('playlistType') !== 'dayofweek' && (
+                {watch('playlistType') !== PLAYLIST_TYPES.timeofday &&
+                    watch('playlistType') !== PLAYLIST_TYPES.dayofweek && (
                         <>
                             <div className="divider"></div>
                             <div className="flex justify-between items-baseline ">
@@ -226,11 +230,15 @@ const PlaylistConfigurationModal = () => {
                                 <select
                                     className="select select-bordered text-lg w-2/5 rounded-lg cursor-default"
                                     {...register('order', { required: true })}
-                                    defaultValue={'ordered'}
+                                    defaultValue={PLAYLIST_ORDER.ordered}
                                     id="order"
                                 >
-                                    <option value={'random'}>Random</option>
-                                    <option value={'ordered'}>Ordered</option>
+                                    <option value={PLAYLIST_ORDER.random}>
+                                        Random
+                                    </option>
+                                    <option value={PLAYLIST_ORDER.ordered}>
+                                        Ordered
+                                    </option>
                                 </select>
                             </div>
                         </>

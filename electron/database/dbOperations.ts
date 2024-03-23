@@ -1,4 +1,5 @@
 import { initialAppConfig, initialSwwwConfig } from '../../shared/constants';
+import { type ActiveMonitor } from '../../shared/types/monitor';
 import {
     type rendererImage,
     type rendererPlaylist
@@ -6,7 +7,7 @@ import {
 import { type imageMetadata } from '../types/types';
 import { db, migrateDB } from './database';
 import * as tables from './schema';
-import { eq } from 'drizzle-orm';
+import { asc, desc, eq } from 'drizzle-orm';
 import { EventEmitter } from 'node:events';
 
 export class DBOperations extends EventEmitter {
@@ -29,7 +30,10 @@ export class DBOperations extends EventEmitter {
             .returning({ id: tables.playlist.id })
             .onConflictDoUpdate({ target: tables.playlist.id, set: row });
         this.#insertPlaylistImages(playlistObject.images, playlist.id);
-        this.emit('upsertPlaylist', playlist.id, playlistObject.monitor);
+        this.emit('upsertPlaylist', {
+            name: playlistObject.name,
+            monitor: playlistObject.monitor
+        });
     }
 
     #insertPlaylistImages(images: rendererImage[], playlistID: number) {
@@ -70,41 +74,28 @@ export class DBOperations extends EventEmitter {
         return db.select().from(tables.playlist).all();
     }
 
-    getActivePlaylistInfo(monitor: string) {
-        const activePlaylist = db
+    getActivePlaylistInfo(monitor: ActiveMonitor) {
+        const activePlaylists = db
             .select()
             .from(tables.playlist)
             .innerJoin(
                 tables.activePlaylist,
                 eq(tables.playlist.id, tables.activePlaylist.playlistID)
             )
-            .where(eq(tables.activePlaylist.monitor, monitor))
-            .get();
-        if (activePlaylist === undefined) return;
-        const imagesInPlaylist = db
-            .select({
-                id: tables.image.id,
-                name: tables.image.name,
-                width: tables.image.width,
-                height: tables.image.height,
-                isChecked: tables.image.isChecked,
-                isSelected: tables.image.isSelected,
-                format: tables.image.format,
-                time: tables.imageInPlaylist.time
-            })
-            .from(tables.image)
-            .innerJoin(
-                tables.imageInPlaylist,
-                eq(tables.imageInPlaylist.imageID, tables.image.id)
-            )
-            .where(
-                eq(
-                    tables.imageInPlaylist.playlistID,
-                    activePlaylist.Playlists.id
-                )
-            )
-            .orderBy(tables.imageInPlaylist.indexInPlaylist)
             .all();
+        const activePlaylist = activePlaylists.find(playlist => {
+            console.log(
+                'activePlaylist:',
+                playlist,
+                monitor,
+                playlist.activePlaylists.monitor.name === monitor.name
+            );
+            return playlist.activePlaylists.monitor.name === monitor.name;
+        });
+        if (activePlaylist === undefined) return;
+        const imagesInPlaylist = this.getPlaylistImages(
+            activePlaylist.Playlists.id
+        );
         return {
             ...activePlaylist.Playlists,
             images: imagesInPlaylist
@@ -123,17 +114,22 @@ export class DBOperations extends EventEmitter {
                 format: tables.image.format,
                 time: tables.imageInPlaylist.time
             })
-            .from(tables.image)
+            .from(tables.imageInPlaylist)
             .innerJoin(
-                tables.imageInPlaylist,
-                eq(tables.imageInPlaylist.playlistID, playlistID)
+                tables.image,
+                eq(tables.imageInPlaylist.imageID, tables.image.id)
             )
-            .orderBy(tables.imageInPlaylist.indexInPlaylist)
+            .where(eq(tables.imageInPlaylist.playlistID, playlistID))
+            .orderBy(asc(tables.imageInPlaylist.indexInPlaylist))
             .all();
     }
 
     getAllImages() {
-        return db.select().from(tables.image).all();
+        return db
+            .select()
+            .from(tables.image)
+            .orderBy(desc(tables.image.id))
+            .all();
     }
 
     getImageHistory(limit: number) {
@@ -158,11 +154,11 @@ export class DBOperations extends EventEmitter {
             };
             return row;
         });
-        void db.insert(tables.image).values(rows);
+        return db.insert(tables.image).values(rows).returning();
     }
 
     deleteImage(id: number) {
-        void db.delete(tables.image).where(eq(tables.image.id, id));
+        db.delete(tables.image).where(eq(tables.image.id, id)).run();
     }
 
     getAppConfig() {
@@ -216,5 +212,17 @@ export class DBOperations extends EventEmitter {
             return initialSwwwConfig;
         }
         return { ...result.config };
+    }
+
+    setSelectedMonitor(selectedMonitor: ActiveMonitor) {
+        db.delete(tables.selectedMonitor).run();
+        db.insert(tables.selectedMonitor)
+            .values({ monitor: selectedMonitor })
+            .run();
+    }
+
+    getSelectedMonitor() {
+        const selectedMonitor = db.select().from(tables.selectedMonitor).get();
+        return selectedMonitor?.monitor;
     }
 }

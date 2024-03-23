@@ -1,12 +1,12 @@
 import { text, integer, sqliteTable } from 'drizzle-orm/sqlite-core';
 import { type swwwConfig as swwwConfigType } from '../../shared/types/swww';
 import {
-    type PLAYLIST_TYPES,
-    type ORDER_TYPES
+    type PLAYLIST_ORDER_TYPES,
+    type PLAYLIST_TYPES_TYPE
 } from '../../shared/types/playlist.ts';
 import { type appConfigType } from '../../shared/types/app';
 import { type Formats } from '../../shared/types/image.ts';
-
+import { type ActiveMonitor } from '../../shared/types/monitor.ts';
 export const image = sqliteTable('Images', {
     id: integer('id').notNull().primaryKey({ autoIncrement: true }),
     name: text('name').notNull().unique(),
@@ -24,12 +24,12 @@ export const image = sqliteTable('Images', {
 export const playlist = sqliteTable('Playlists', {
     id: integer('id').notNull().primaryKey(),
     name: text('name').notNull().unique(),
-    type: text('type').notNull().$type<PLAYLIST_TYPES>(),
+    type: text('type').notNull().$type<PLAYLIST_TYPES_TYPE>(),
     interval: integer('interval'),
     showAnimations: integer('showAnimations', { mode: 'boolean' })
         .notNull()
         .default(true),
-    order: text('order').$type<ORDER_TYPES>(),
+    order: text('order').$type<PLAYLIST_ORDER_TYPES>(),
     currentImageIndex: integer('currentImageIndex').notNull().default(0)
 });
 
@@ -62,7 +62,7 @@ export const activePlaylist = sqliteTable('activePlaylists', {
     playlistID: integer('playlistID')
         .notNull()
         .references(() => playlist.id),
-    monitor: text('monitor').notNull().default('clone')
+    monitor: text('monitor', { mode: 'json' }).notNull().$type<ActiveMonitor>()
 });
 
 export const imageHistory = sqliteTable('imageHistory', {
@@ -70,6 +70,10 @@ export const imageHistory = sqliteTable('imageHistory', {
         .notNull()
         .references(() => image.id, { onDelete: 'cascade' }),
     monitor: text('monitor').notNull().$type<'clone' | 'extend' | string>()
+});
+
+export const selectedMonitor = sqliteTable('selectedMonitor', {
+    monitor: text('monitor', { mode: 'json' }).notNull().$type<ActiveMonitor>()
 });
 
 export type imageSelectType = typeof image.$inferSelect;

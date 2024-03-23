@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { BezierCurveEditor } from 'react-bezier-curve-editor';
 import { motion, AnimatePresence } from 'framer-motion';
-import { swwwConfigStore } from '../hooks/swwwConfigStore';
+import { swwwConfigStore } from '../stores/swwwConfig';
 import {
     type swwwConfigSelectType,
     type swwwConfigInsertType
@@ -42,7 +42,6 @@ const SwwwConfig = () => {
                 data.transitionPositionIntX = 960;
                 data.transitionPositionIntY = 540;
             }
-            console.log(data);
             saveConfig(data);
         }, 300);
     };
@@ -62,7 +61,6 @@ const SwwwConfig = () => {
     }, [watch('transitionPositionType')]);
     useEffect(() => {
         void readSwwwConfig().then((config: swwwConfigSelectType['config']) => {
-            console.log('configL:', config);
             const bezierArray = config.transitionBezier.split(',').map(item => {
                 return parseFloat(item);
             }) as [number, number, number, number];
@@ -133,13 +131,11 @@ const SwwwConfig = () => {
                         Swww Settings
                     </h1>
                     <div className="divider"></div>
-                    <div className="overflow-y-scroll flex justify-between items-center flex-col scrollbar-thin scrollbar-track-base-100 scrollbar-thumb-stone-300 max-h-[75vh] w-full">
+                    <div className=" overflow- flex justify-between items-center flex-col scrollbar-thin scrollbar-track-base-100 scrollbar-thumb-stone-300 max-h-[0] min-h-[100vh] w-full">
                         <form
                             className="form-control w-1/3"
                             onSubmit={() => {
-                                void handleSubmit(data => {
-                                    console.log(data);
-                                });
+                                void handleSubmit(_data => {});
                             }}
                         >
                             <div className="my-4">

@@ -1,16 +1,19 @@
-import { useState, useMemo, useEffect } from "react";
-import { useImages } from "../hooks/imagesStore";
-import Skeleton from "./Skeleton";
-import ImageCard from "./ImageCard";
-import PlaylistTrack from "./PlaylistTrack";
-import { motion } from "framer-motion";
-import ResponsivePagination from "react-responsive-pagination";
-import "react-responsive-pagination/themes/minimal.css";
-import "../custom.css";
+import { useState, useMemo, useEffect } from 'react';
+import { imagesStore } from '../stores/images';
+import Skeleton from './Skeleton';
+import ImageCard from './ImageCard';
+import PlaylistTrack from './PlaylistTrack';
+import { motion } from 'framer-motion';
+import ResponsivePagination from 'react-responsive-pagination';
+import 'react-responsive-pagination/themes/minimal.css';
+import '../custom.css';
+import { useFilteredImages } from '../hooks/useFilteredImages';
 const { openContextMenuGallery } = window.API_RENDERER;
+
 function PaginatedGallery() {
-    const { filteredImages, skeletonsToShow, filters } = useImages();
+    const { skeletonsToShow, filters } = imagesStore();
     const [imagesPerPage] = useState(20);
+    const filteredImages = useFilteredImages();
     const [currentPage, setCurrentPage] = useState<number>(1);
     const lastImageIndex = currentPage * imagesPerPage;
     const firstImageIndex = lastImageIndex - imagesPerPage;
@@ -27,10 +30,30 @@ function PaginatedGallery() {
         return [];
     }, [skeletonsToShow]);
     const imagesCardArray = useMemo(() => {
-        return filteredImages.map(image => {
-            return <ImageCard key={image.id} Image={image} />;
-        });
-    }, [filteredImages]);
+        const imageCardJsxArray: JSX.Element[] = [];
+        if (filters.order === 'desc') {
+            for (let idx = 0; idx < filteredImages.length; idx++) {
+                const imageJsxElement = (
+                    <ImageCard
+                        key={filteredImages[idx].id}
+                        Image={filteredImages[idx]}
+                    />
+                );
+                imageCardJsxArray.push(imageJsxElement);
+            }
+        } else {
+            for (let idx = filteredImages.length - 1; idx >= 0; idx--) {
+                const imageJsxElement = (
+                    <ImageCard
+                        key={filteredImages[idx].id}
+                        Image={filteredImages[idx]}
+                    />
+                );
+                imageCardJsxArray.push(imageJsxElement);
+            }
+        }
+        return imageCardJsxArray;
+    }, [filteredImages, filters]);
     const imagesToShow = useMemo(
         function () {
             const imagesToShow = [...SkeletonsArray, ...imagesCardArray].slice(
@@ -44,7 +67,8 @@ function PaginatedGallery() {
             currentPage,
             totalPages,
             filteredImages,
-            skeletonsToShow
+            skeletonsToShow,
+            filters
         ]
     );
     function handlePageChange(page: number) {
@@ -54,34 +78,33 @@ function PaginatedGallery() {
         if (imagesToShow.length === 0) {
             setCurrentPage(totalPages);
         }
-        if (filters.searchString === "") {
+        if (filters.searchString === '') {
             setCurrentPage(1);
         }
-    }, [imagesPerPage, totalPages, filters.searchString]);
-
+    }, [imagesPerPage, totalPages, filters]);
     return (
         <div
-            className=" transition justify-between sm:w-[90%] m-auto flex flex-col max-h-[85%] scrollbar-none"
+            className="transition justify-normal sm:w-[90%] m-auto flex flex-col scrollbar-none overflow-clip [contain:paint] min-h-[85%] "
             onContextMenu={e => {
                 e.stopPropagation();
                 openContextMenuGallery();
             }}
         >
-            <div className=" max-h-[90%] min-h-0 overflow-y-scroll scrollbar-none items-center flex flex-col">
+            <div className="max-h-[0] min-h-[60vh] overflow-y-scroll scrollbar-none items-center flex flex-col">
                 <motion.div
                     initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
+                    animate={{ opacity: 2 }}
                     exit={{ opacity: 0 }}
                     className={`md:grid md:auto-cols-auto m-auto ${
                         imagesToShow.length === 1
-                            ? "items-center"
-                            : "md:grid-cols-[repeat(auto-fill,minmax(300px,1fr))] md:w-full"
+                            ? 'items-center'
+                            : 'md:grid-cols-[repeat(auto-fill,minmax(300px,1fr))] md:w-full'
                     }`}
                 >
                     {imagesToShow}
                 </motion.div>
             </div>
-            <div className="flex pt-3 flex-col w-full gap-5 flex-grow">
+            <div className="flex pt-3 flex-col w-full justify-between flex-grow">
                 <div className="w-[75%] self-center">
                     <ResponsivePagination
                         total={totalPages}

@@ -7,6 +7,7 @@ import {
 } from './types/swww';
 import { type appConfigType } from './types/app';
 import { type Formats } from './types/image';
+import { type objectValues } from './types';
 
 export const validImageExtensions: Formats[] = [
     'jpeg',
@@ -26,10 +27,10 @@ export const initialAppConfig: appConfigType = {
     playlistStartOnFirstImage: false,
     notifications: true,
     swwwAnimations: true,
-    introAnimation: true,
     startMinimized: false,
     minimizeInsteadOfClose: false,
-    randomImageMonitor: 'clone'
+    randomImageMonitor: 'clone',
+    showMonitorModalOnStart: true
 };
 
 export const initialSwwwConfig: swwwConfig = {
@@ -52,3 +53,12 @@ export const initialSwwwConfig: swwwConfig = {
     transitionWaveX: 20,
     transitionWaveY: 20
 };
+
+export const SHORTCUT_EVENTS = {
+    selectAllImagesInCurrentPage: 'selectAllImagesInCurrentPage',
+    clearSelection: 'clearSelection',
+    selectAllImagesInGallery: 'selectAllImagesInGallery'
+} as const;
+
+export type SHORTCUT_EVENTS_TYPE = objectValues<typeof SHORTCUT_EVENTS>;
+export const mainEventsList = {};

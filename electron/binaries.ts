@@ -2,6 +2,7 @@ import { join, resolve } from 'node:path';
 import { app } from 'electron';
 import { resourcesPath } from 'node:process';
 import { appDirectories } from './globals/appPaths';
+import { homedir } from 'node:os';
 
 const iconsPath = app.isPackaged
     ? join(resourcesPath, './icons')
@@ -22,7 +23,12 @@ const migrationsPath = app.isPackaged
 const binDirectory = app.isPackaged
     ? join(resourcesPath, 'bin')
     : join(app.getAppPath(), '/bin');
-
+export const reactDevTools = app.isPackaged
+    ? undefined
+    : join(
+          homedir(),
+          '.config/google-chrome/Default/Extensions/fmkadmapgofadopljbjfkapdkoienihi/5.0.2_0'
+      );
 export const migrationPath = resolve(join(migrationsPath));
 export const iconPath = resolve(join(iconsPath));
 export const daemonLocation = resolve(join(daemon));

@@ -1,4 +1,5 @@
 import { type Formats } from '../../shared/types/image';
+import { type ActiveMonitor } from '../../shared/types/monitor';
 
 export enum ACTIONS {
     NEXT_IMAGE = 'next-image',
@@ -13,12 +14,12 @@ export enum ACTIONS {
     UPDATE_PLAYLIST = 'update-playlist'
 }
 
+// refactor into using a discriminated type
 export interface message {
     action: ACTIONS;
     playlist?: {
-        id?: number;
-        monitor?: string;
-        name?: string;
+        name: string;
+        monitor?: ActiveMonitor;
     };
 }
 

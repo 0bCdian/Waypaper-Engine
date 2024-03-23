@@ -1,10 +1,11 @@
 import { type imagesObject } from '../../shared/types';
 import { type Formats } from '../../shared/types/image';
 import {
-    type PLAYLIST_TYPES,
-    type ORDER_TYPES
+    type PLAYLIST_TYPES_TYPE,
+    type PLAYLIST_ORDER_TYPES
 } from '../../shared/types/playlist';
 import { type imageSelectType } from '../../electron/database/schema';
+import { type ActiveMonitor } from '../../shared/types/monitor';
 export enum STORE_ACTIONS {
     SET_IMAGES_ARRAY = 'SET_IMAGES_ARRAY',
     SET_SKELETONS_TO_SHOW = 'SET_SKELETONS_TO_SHOW',
@@ -13,9 +14,9 @@ export enum STORE_ACTIONS {
 }
 
 export interface configuration {
-    playlistType: PLAYLIST_TYPES;
+    playlistType: PLAYLIST_TYPES_TYPE;
     interval: number | null;
-    order: ORDER_TYPES | null;
+    order: PLAYLIST_ORDER_TYPES | null;
     showAnimations: boolean;
 }
 
@@ -26,9 +27,9 @@ export interface rendererPlaylist {
     images: rendererImage[];
     configuration: configuration;
     name: string;
-    monitor: string;
+    monitor: ActiveMonitor;
 }
-
+export type monitorSelectType = 'individual' | 'clone' | 'extend';
 export interface Filters {
     order: 'asc' | 'desc';
     type: 'name' | 'id';

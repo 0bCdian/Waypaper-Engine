@@ -1,4 +1,4 @@
-import { useImages } from '../hooks/imagesStore';
+import { imagesStore } from '../stores/images';
 import { useEffect, useRef } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { parseResolution } from '../utils/utilities';
@@ -11,7 +11,6 @@ interface AdvancedFiltersForm {
     resolutionConstraint: resolutionConstraints;
     width: string;
     height: string;
-    allFormats: boolean;
     jpeg: boolean;
     jpg: boolean;
     webp: boolean;
@@ -21,17 +20,16 @@ interface AdvancedFiltersForm {
     tiff: boolean;
     tga: boolean;
     pnm: boolean;
-    farbeld: boolean;
+    farbfeld: boolean;
 }
 
 const AdvancedFiltersModal = () => {
     const { register, handleSubmit, setValue, reset } =
         useForm<AdvancedFiltersForm>();
     const containerRef = useRef<HTMLDialogElement>(null);
-    const { setFilters, filters } = useImages();
+    const { setFilters, filters } = imagesStore();
     const onSubmit: SubmitHandler<AdvancedFiltersForm> = data => {
-        const { width, height, allFormats, resolutionConstraint, ...formats } =
-            data;
+        const { width, height, resolutionConstraint, ...formats } = data;
         const formatsArray: Formats[] = [];
         const { width: parsedWidth, height: parsedHeight } = parseResolution(
             `${width}x${height}`
@@ -49,12 +47,13 @@ const AdvancedFiltersModal = () => {
                 constraint: resolutionConstraint
             }
         };
+        console.log(data, formatsArray, formats);
         setFilters({ ...filters, advancedFilters });
     };
     const setFormatsValues = (value: boolean) => {
         setValue('jpeg', value);
         setValue('png', value);
-        setValue('farbeld', value);
+        setValue('farbfeld', value);
         setValue('bmp', value);
         setValue('webp', value);
         setValue('gif', value);
@@ -283,7 +282,7 @@ const AdvancedFiltersModal = () => {
                                 defaultChecked
                                 type="checkbox"
                                 className="checkbox"
-                                {...register('farbeld')}
+                                {...register('farbfeld')}
                             />
                             <span className="label-text text-lg">FARBELD</span>
                         </label>

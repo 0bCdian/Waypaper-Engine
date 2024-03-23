@@ -1,16 +1,17 @@
 import { useRef } from 'react';
-import { type Playlist } from '../../shared/types/playlist';
-import { type Image } from '../../shared/types/image';
-import playlistStore from '../hooks/playlistStore';
+import playlistStore from '../stores/playlist';
 import { useForm, type SubmitHandler } from 'react-hook-form';
-import { useImages } from '../hooks/imagesStore';
-
+import { imagesStore } from '../stores/images';
+import { type playlistSelectType } from '../../electron/database/schema';
+import { PLAYLIST_TYPES } from '../../shared/types/playlist';
+import { type rendererImage } from '../types/rendererTypes';
+import { useMonitorStore } from '../stores/monitors';
 interface Input {
     selectPlaylist: string;
 }
 
 interface Props {
-    playlistsInDB: Playlist[];
+    playlistsInDB: playlistSelectType[];
     currentPlaylistName: string;
     setShouldReload: React.Dispatch<React.SetStateAction<boolean>>;
 }
@@ -30,8 +31,9 @@ const LoadPlaylistModal = ({
     currentPlaylistName
 }: Props) => {
     const { clearPlaylist, setPlaylist } = playlistStore();
-    const { resetImageCheckboxes, imagesArray } = useImages();
+    const { resetImageCheckboxes, imagesArray } = imagesStore();
     const { register, handleSubmit, watch } = useForm<Input>();
+    const { activeMonitor } = useMonitorStore();
     const modalRef = useRef<HTMLDialogElement>(null);
 
     const closeModal = () => {
@@ -47,14 +49,14 @@ const LoadPlaylistModal = ({
             const imagesArrayFromPlaylist = await getPlaylistImages(
                 selectedPlaylist.id
             );
-            const imagesToStorePlaylist: Image[] = [];
+            const imagesToStorePlaylist: rendererImage[] = [];
             imagesArrayFromPlaylist.forEach(imageNameFromDB => {
                 const imageToStore = imagesArray.find(imageInGallery => {
                     return imageInGallery.name === imageNameFromDB.name;
                 });
                 if (imageToStore === undefined) return;
                 if (
-                    selectedPlaylist.type === 'timeofday' &&
+                    selectedPlaylist.type === PLAYLIST_TYPES.timeofday &&
                     imageNameFromDB.time !== null
                 ) {
                     imageToStore.time = imageNameFromDB.time;
@@ -70,10 +72,14 @@ const LoadPlaylistModal = ({
                     interval: selectedPlaylist.interval,
                     showAnimations: selectedPlaylist.showAnimations
                 },
-                images: imagesToStorePlaylist
+                images: imagesToStorePlaylist,
+                monitor: activeMonitor
             };
             setPlaylist(currentPlaylist);
-            startPlaylist(currentPlaylist.name);
+            startPlaylist({
+                name: currentPlaylist.name,
+                monitor: activeMonitor
+            });
         }
         closeModal();
     };
@@ -150,7 +156,10 @@ const LoadPlaylistModal = ({
                                         deletePlaylist(current);
                                         setShouldReload(true);
                                         if (currentPlaylistName === current) {
-                                            stopPlaylist();
+                                            stopPlaylist({
+                                                name: currentPlaylistName,
+                                                monitor: activeMonitor
+                                            });
                                             clearPlaylist();
                                             resetImageCheckboxes();
                                         }

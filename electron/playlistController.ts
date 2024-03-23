@@ -2,6 +2,7 @@ import { EventEmitter } from 'events';
 import { type Socket, createConnection } from 'net';
 import { WAYPAPER_ENGINE_SOCKET_PATH } from './globals/appPaths';
 import { ACTIONS, type message } from './types/types';
+import { type ActiveMonitor } from '../shared/types/monitor';
 export class PlaylistController extends EventEmitter {
     connection: Socket;
     retries: number;
@@ -26,7 +27,7 @@ export class PlaylistController extends EventEmitter {
         this.connection.write(JSON.stringify(data));
     }
 
-    startPlaylist(playlist: { name: string; monitor: string }) {
+    startPlaylist(playlist: { name: string; monitor: ActiveMonitor }) {
         this.#sendData({
             action: ACTIONS.START_PLAYLIST,
             playlist
@@ -82,7 +83,7 @@ export class PlaylistController extends EventEmitter {
         });
     }
 
-    updatePlaylist(playlist: { id: number; monitor: string }) {
+    updatePlaylist(playlist: { name: string; monitor: ActiveMonitor }) {
         this.#sendData({
             action: ACTIONS.UPDATE_PLAYLIST,
             playlist

@@ -1,4 +1,12 @@
-import { app, BrowserWindow, ipcMain, protocol, Tray, Menu } from 'electron';
+import {
+    app,
+    BrowserWindow,
+    ipcMain,
+    protocol,
+    Tray,
+    Menu,
+    session
+} from 'electron';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -15,7 +23,7 @@ import {
     openContextMenuGallery
 } from './appFunctions';
 import { devMenu, prodMenu, trayMenu } from './globals/menus';
-import { iconPath } from './binaries';
+import { iconPath, reactDevTools } from './binaries';
 import {
     config,
     dbOperations,
@@ -28,6 +36,8 @@ import {
     type appConfigInsertType,
     type swwwConfigInsertType
 } from './database/schema';
+import { createShortcuts } from './shortcuts';
+import { type ActiveMonitor } from '../shared/types/monitor';
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
     app.exit(1);
@@ -55,7 +65,7 @@ let win: BrowserWindow | null;
 // 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
 const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
 
-function createWindow() {
+async function createWindow() {
     win = new BrowserWindow({
         icon: join(iconPath, '512x512.png'),
         width: 1200,
@@ -125,7 +135,16 @@ app.whenReady()
     .then(async () => {
         await isSwwwDaemonRunning();
         await initWaypaperDaemon();
-        createWindow();
+        if (reactDevTools !== undefined) {
+            await session.defaultSession.loadExtension(reactDevTools, {
+                allowFileAccess: true
+            });
+            await session.defaultSession.loadExtension(reactDevTools, {
+                allowFileAccess: true
+            });
+        }
+        await createWindow();
+
         createMenu();
         void createTray();
         registerFileProtocol();
@@ -134,6 +153,7 @@ app.whenReady()
                 win.reload();
             }
         });
+        if (win !== null) createShortcuts(win);
     })
     .catch(e => {
         console.error(e);
@@ -168,8 +188,18 @@ ipcMain.handle('readAppConfig', () => {
     return dbOperations.getAppConfig();
 });
 ipcMain.handle('deleteImageFromGallery', deleteImageFromGallery);
-ipcMain.handle('readActivePlaylist', async (_, monitor: string) => {
-    return dbOperations.getActivePlaylistInfo(monitor);
+ipcMain.handle('readActivePlaylist', async (_, monitor: ActiveMonitor) => {
+    console.log('readActivePlaylist');
+    const result = dbOperations.getActivePlaylistInfo(monitor);
+
+    console.log(result);
+    return result;
+});
+ipcMain.handle('querySelectedMonitor', () => {
+    return dbOperations.getSelectedMonitor();
+});
+ipcMain.on('setSelectedMonitor', (_, monitor: ActiveMonitor) => {
+    dbOperations.setSelectedMonitor(monitor);
 });
 ipcMain.on('deletePlaylist', (_, playlistName: string) => {
     dbOperations.deletePlaylist(playlistName);
@@ -181,15 +211,18 @@ ipcMain.on('savePlaylist', (_, playlistObject: rendererPlaylist) => {
 });
 ipcMain.on(
     'startPlaylist',
-    (_event, playlist: { name: string; monitor: string }) => {
+    (_event, playlist: { name: string; monitor: ActiveMonitor }) => {
         playlistControllerInstance.startPlaylist(playlist);
         void createTray();
     }
 );
-ipcMain.on('stopPlaylist', (_, playlist: { name: string; monitor: string }) => {
-    playlistControllerInstance.stopPlaylist(playlist);
-    void createTray();
-});
+ipcMain.on(
+    'stopPlaylist',
+    (_, playlist: { name: string; monitor: ActiveMonitor }) => {
+        playlistControllerInstance.stopPlaylist(playlist);
+        void createTray();
+    }
+);
 ipcMain.on(
     'updateSwwwConfig',
     (_, newSwwwConfig: swwwConfigInsertType['config']) => {

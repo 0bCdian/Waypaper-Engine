@@ -1,5 +1,5 @@
-import { type FC, useState } from "react";
-import { Link } from "react-router-dom";
+import { type FC, useState } from 'react';
+import { Link } from 'react-router-dom';
 
 interface Props {
     children: React.ReactNode;
@@ -19,7 +19,7 @@ const Drawer: FC<Props> = ({ children }) => {
                 checked={show}
                 onChange={toggle}
             />
-            <div className="drawer-content max-h-[100vh] overflow-scroll scrollbar-none">
+            <div className="drawer-content max-h-[0] min-h-[100dvh] [contain:paint] scrollbar-none">
                 {children}
             </div>
             <div className="drawer-side">
@@ -53,7 +53,7 @@ const Drawer: FC<Props> = ({ children }) => {
                             draggable={false}
                             onClick={() => {
                                 const quit = window.confirm(
-                                    "Are you sure you want to quit"
+                                    'Are you sure you want to quit'
                                 );
                                 if (quit) {
                                     exitApp();

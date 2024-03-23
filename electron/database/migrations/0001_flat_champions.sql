@@ -18,8 +18,12 @@ CREATE TABLE `imageHistory` (
 --> statement-breakpoint
 CREATE TABLE `activePlaylists` (
   `playlistID` integer NOT NULL,
-  `monitor` text NOT NULL DEFAULT 'clone',
+  `monitor` text NOT NULL,
 	FOREIGN KEY (`playlistID`) REFERENCES `Playlists`(`id`) 
+);
+--> statement-breakpoint
+CREATE TABLE `selectedMonitor`(
+  `monitor` text DEFAULT [object Object] NOT NULL
 );
 --> statement-breakpoint
 INSERT INTO appConfig (config)

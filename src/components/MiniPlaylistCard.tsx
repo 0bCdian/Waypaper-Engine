@@ -2,11 +2,11 @@ import { useSortable } from '@dnd-kit/sortable';
 import { motion } from 'framer-motion';
 import { CSS } from '@dnd-kit/utilities';
 import { useEffect, useMemo, useRef, useCallback, useState } from 'react';
-import { type PLAYLIST_TYPES } from '../../shared/types/playlist';
-import playlistStore from '../hooks/playlistStore';
+import { type PLAYLIST_TYPES_TYPE } from '../../shared/types/playlist';
+import playlistStore from '../stores/playlist';
 import { type rendererImage } from '../types/rendererTypes';
 
-const { join, thumbnailDirectory } = window.API_RENDERER;
+const { getThumbnailSrc } = window.API_RENDERER;
 const daysOfWeek = [
     'Sunday',
     'Monday',
@@ -25,7 +25,7 @@ function MiniPlaylistCard({
     reorderSortingCriteria
 }: {
     Image: rendererImage;
-    playlistType: PLAYLIST_TYPES;
+    playlistType: PLAYLIST_TYPES_TYPE;
     index: number;
     isLast: boolean | undefined;
     reorderSortingCriteria: () => void;
@@ -35,10 +35,7 @@ function MiniPlaylistCard({
     const imageRef = useRef<HTMLImageElement>(null);
     const timeRef = useRef<HTMLInputElement>(null);
     const imageSrc = useMemo(() => {
-        return (
-            'atom://' +
-            join(thumbnailDirectory, Image.name.split('.').at(0) + '.webp')
-        );
+        return getThumbnailSrc(Image.name);
     }, [Image]);
     const { attributes, listeners, setNodeRef, transform } = useSortable({
         id: Image.id
@@ -81,7 +78,7 @@ function MiniPlaylistCard({
         return exists;
     };
     useEffect(() => {
-        if (timeRef.current != null) {
+        if (timeRef.current !== null && Image.time !== null) {
             let minutes: string | number = Image.time % 60;
             let hours: string | number = (Image.time - minutes) / 60;
             minutes = minutes < 10 ? '0' + minutes : minutes;
@@ -166,7 +163,7 @@ function MiniPlaylistCard({
                     {...listeners}
                     src={imageSrc}
                     alt={Image.name}
-                    className="rounded-lg cursor-default shadow-2xl "
+                    className="rounded-lg cursor-default shadow-2xl active:scale-105 transition-all"
                     ref={imageRef}
                     loading="lazy"
                 />

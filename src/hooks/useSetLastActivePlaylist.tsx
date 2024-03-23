@@ -1,19 +1,21 @@
-import { useEffect } from 'react';
-import { imagesStore } from '../stores/images';
-import AddImagesCard from './AddImagesCard';
-import PaginatedGallery from './PaginatedGallery';
 import playlistStore from '../stores/playlist';
-import { type rendererImage } from '../types/rendererTypes';
-import Filters from './Filters';
-import { PLAYLIST_TYPES } from '../../shared/types/playlist';
 import { useMonitorStore } from '../stores/monitors';
+import { type rendererImage } from '../types/rendererTypes';
+import { imagesStore } from '../stores/images';
+import { PLAYLIST_TYPES } from '../../shared/types/playlist';
+import { useEffect, useState } from 'react';
 const { readActivePlaylist } = window.API_RENDERER;
-function Gallery() {
-    const { isEmpty, imagesArray, isQueried } = imagesStore();
-    const { activeMonitor } = useMonitorStore();
+
+export function setLastActivePlaylist() {
     const { setPlaylist } = playlistStore();
-    function setLastActivePlaylist() {
-        void readActivePlaylist(activeMonitor.name).then(playlist => {
+    const [firstCall, setFirstCall] = useState(true);
+    const { activeMonitor } = useMonitorStore();
+    const { imagesArray } = imagesStore();
+    useEffect(() => {
+        if (activeMonitor.name === '') return;
+        if (!firstCall) return;
+        setFirstCall(false);
+        void readActivePlaylist(activeMonitor).then(playlist => {
             if (playlist === undefined) {
                 return;
             }
@@ -46,26 +48,8 @@ function Gallery() {
                 images: imagesToStorePlaylist,
                 monitor: activeMonitor
             };
+            console.log(currentPlaylist);
             setPlaylist(currentPlaylist);
         });
-    }
-    useEffect(() => {
-        if (isEmpty) return;
-        setLastActivePlaylist();
-    }, [isEmpty]);
-    if (!isQueried) return <></>;
-    if (isEmpty)
-        return (
-            <div className="flex flex-col justify-center items-center h-[90dvh] m-auto overflow-hidden">
-                <AddImagesCard />
-            </div>
-        );
-    return (
-        <>
-            <Filters />
-            <PaginatedGallery />
-        </>
-    );
+    }, [activeMonitor]);
 }
-
-export default Gallery;

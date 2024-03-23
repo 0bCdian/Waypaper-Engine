@@ -112,7 +112,6 @@ export async function copyImagesToCacheAndProcessThumbnails(
                             console.error(e);
                         });
                 });
-                return undefined;
             });
         }
     );
@@ -126,7 +125,7 @@ export async function copyImagesToCacheAndProcessThumbnails(
             }
         }
     });
-    dbOperations.storeImages(imagesToStoreinDB);
+    return await dbOperations.storeImages(imagesToStoreinDB);
 }
 
 async function createCacheThumbnail(filePathSource: string, imageName: string) {
@@ -407,12 +406,25 @@ function getSwwwCommandFromConfiguration(imagePath: string, monitor?: string) {
     return command;
 }
 
-export async function getMonitors() {
+export async function getMonitors(): Promise<Monitor[]> {
     const { stdout, stderr } = await execPomisified('swww query', {
         encoding: 'utf-8'
     });
-    if (stderr.length > 0) throw new Error('Could not execute swww query');
-    return parseSwwwQuery(stdout);
+    const wlrOutput = await getMonitorsInfo();
+    const parsedSwwwQuery = parseSwwwQuery(stdout);
+    if (stderr.length > 0 || wlrOutput === undefined)
+        throw new Error('Could not execute swww query');
+    return parsedSwwwQuery.map(swwwMonitor => {
+        const matchingMonitor = wlrOutput.find(monitor => {
+            return monitor.name === swwwMonitor.name;
+        });
+        if (matchingMonitor === undefined)
+            throw new Error('Could not reconcile wlr_output and swww info');
+        return {
+            ...swwwMonitor,
+            position: matchingMonitor.position
+        };
+    });
 }
 
 function parseSwwwQuery(stdout: string) {
@@ -433,7 +445,7 @@ function parseSwwwQuery(stdout: string) {
                 position: index
             };
         });
-    return monitorsObjectArray as Monitor[];
+    return monitorsObjectArray;
 }
 
 export async function setImageExtended(

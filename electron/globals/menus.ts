@@ -194,7 +194,8 @@ export const contextMenu = [
         label: 'Select all images in current page',
         click: () => {
             console.log('select all images');
-        }
+        },
+        accelerator: 'Ctrl+A'
     },
     {
         label: 'Unselect all images in current page',

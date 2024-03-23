@@ -6,8 +6,7 @@ import {
 } from '../src/types/rendererTypes';
 import { join } from 'node:path';
 import { type openFileAction, type imagesObject } from '../shared/types';
-import { type Monitor } from '../shared/types/monitor';
-import { type imageInPlaylist } from './types/types';
+import { type ActiveMonitor, type Monitor } from '../shared/types/monitor';
 import {
     type playlistSelectType,
     type imageSelectType,
@@ -16,7 +15,7 @@ import {
     type swwwConfigSelectType,
     type swwwConfigInsertType
 } from './database/schema';
-
+import { type SHORTCUT_EVENTS_TYPE } from '../shared/constants';
 export const ELECTRON_API = {
     openFiles: async (action: openFileAction) =>
         await ipcRenderer.invoke('openFiles', action),
@@ -37,18 +36,22 @@ export const ELECTRON_API = {
     savePlaylist: (playlistObject: rendererPlaylist) => {
         ipcRenderer.send('savePlaylist', playlistObject);
     },
-    startPlaylist: (playlist: { name: string; monitor: string }) => {
+    startPlaylist: (playlist: { name: string; monitor: ActiveMonitor }) => {
         ipcRenderer.send('startPlaylist', playlist);
     },
     queryPlaylists: async (): Promise<playlistSelectType[]> => {
         return await ipcRenderer.invoke('queryPlaylists');
     },
-    getPlaylistImages: async (
-        playlistID: number
-    ): Promise<imageInPlaylist[]> => {
+    querySelectedMonitor: async (): Promise<ActiveMonitor | undefined> => {
+        return await ipcRenderer.invoke('querySelectedMonitor');
+    },
+    setSelectedMonitor: (selectedMonitor: ActiveMonitor) => {
+        ipcRenderer.send('setSelectedMonitor', selectedMonitor);
+    },
+    getPlaylistImages: async (playlistID: number): Promise<rendererImage[]> => {
         return await ipcRenderer.invoke('getPlaylistImages', playlistID);
     },
-    stopPlaylist: (playlist: { name: string; monitor: string }) => {
+    stopPlaylist: (playlist: { name: string; monitor: ActiveMonitor }) => {
         ipcRenderer.send('stopPlaylist', playlist);
     },
     deleteImageFromGallery: async (imageID: number, imageName: string) => {
@@ -81,7 +84,7 @@ export const ELECTRON_API = {
     },
 
     readActivePlaylist: async (
-        monitor: string
+        monitor: ActiveMonitor
     ): Promise<
         (playlistSelectType & { images: rendererImage[] }) | undefined
     > => {
@@ -112,8 +115,33 @@ export const ELECTRON_API = {
     updateTray: () => {
         ipcRenderer.send('updateTray');
     },
-    join,
-    thumbnailDirectory: appDirectories.thumbnails,
-    imagesDirectory: appDirectories.imagesDir
+    registerShortcutListener: (
+        listeners: Array<{
+            event: SHORTCUT_EVENTS_TYPE;
+            callback: (
+                event: Electron.IpcRendererEvent,
+                ...args: any[]
+            ) => void;
+        }>
+    ) => {
+        listeners.forEach(({ event, callback }) => {
+            ipcRenderer.on(event as string, callback);
+        });
+    },
+    deleteShortcutListener: (
+        event: SHORTCUT_EVENTS_TYPE,
+        listener: () => void
+    ) => {
+        ipcRenderer.removeListener(event as string, listener);
+    },
+    getThumbnailSrc: (imageName: string) => {
+        return (
+            'atom://' +
+            join(appDirectories.thumbnails, imageName.split('.')[0] + '.webp')
+        );
+    },
+    getImageSrc: (imageName: string) => {
+        return 'atom://' + join(appDirectories.imagesDir, imageName);
+    }
 };
 export type ELECTRON_API_TYPE = typeof ELECTRON_API;

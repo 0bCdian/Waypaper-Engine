@@ -1,5 +1,5 @@
-import Gallery from "../components/Gallery";
-import Modals from "../components/Modals";
+import Gallery from '../components/Gallery';
+import Modals from '../components/Modals';
 
 const Home = () => {
     return (

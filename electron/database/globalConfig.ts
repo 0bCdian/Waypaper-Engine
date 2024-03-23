@@ -1,6 +1,7 @@
 import { DBOperations } from '../database/dbOperations';
 import { type appConfigInsertType, type swwwConfigInsertType } from './schema';
 import { PlaylistController } from '../playlistController';
+import { type ActiveMonitor } from '../../shared/types/monitor';
 const playlistControllerInstance = new PlaylistController();
 const dbOperations = new DBOperations();
 dbOperations.migrateDB();
@@ -19,9 +20,12 @@ dbOperations.on('updateAppConfig', (newAppConfig: appConfigInsertType) => {
 dbOperations.on('updateSwwwConfig', (newAppConfig: swwwConfigInsertType) => {
     config.swww.config = newAppConfig.config;
 });
-dbOperations.on('upsertPlaylist', (id: number, monitor: string) => {
-    playlistControllerInstance.updatePlaylist({ id, monitor });
-});
+dbOperations.on(
+    'upsertPlaylist',
+    (playlist: { name: string; monitor: ActiveMonitor }) => {
+        playlistControllerInstance.updatePlaylist(playlist);
+    }
+);
 
 dbOperations.on('deletePlaylist', (playlistName: string) => {
     playlistControllerInstance.stopPlaylist({ name: playlistName });

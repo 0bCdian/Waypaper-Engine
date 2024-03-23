@@ -10,7 +10,7 @@ interface State {
 }
 interface openImagesProps {
     setSkeletons: (skeletons: imagesObject | undefined) => void;
-    setImagesArray: (imagesArray: rendererImage[]) => void;
+    addImages: (imagesArray: rendererImage[]) => void;
     addMultipleImagesToPlaylist: (Images: rendererImage[]) => void;
     addImageToPlaylist: (Image: rendererImage) => void;
     currentPlaylist: rendererPlaylist;
@@ -25,7 +25,7 @@ const openImagesStore = create<State & Actions>(set => ({
     isActive: false,
     openImages: async ({
         setSkeletons,
-        setImagesArray,
+        addImages,
         addMultipleImagesToPlaylist,
         addImageToPlaylist,
         currentPlaylist,
@@ -41,21 +41,11 @@ const openImagesStore = create<State & Actions>(set => ({
         const imagesArray = await handleOpenImages(imagesObject);
         const newImagesAdded = imagesArray.map(image => {
             let playlistImagesLength = currentPlaylist.images.length;
-            let shouldCheckImage;
+            let shouldCheckImage = true;
             switch (currentPlaylist.configuration.playlistType) {
-                case 'never':
-                    shouldCheckImage = true;
-                    break;
-                case 'timer':
-                    shouldCheckImage = true;
-                    break;
-                case 'timeofday':
-                    // todo limit somehow when I implement this type of playlist
-                    shouldCheckImage = true;
-                    break;
+                // todo limit somehow when I implement this type of playlist
                 case 'dayofweek':
                     if (playlistImagesLength < 7) {
-                        shouldCheckImage = true;
                         addImageToPlaylist({
                             ...image,
                             isChecked: shouldCheckImage,
@@ -73,7 +63,7 @@ const openImagesStore = create<State & Actions>(set => ({
             };
         });
         setSkeletons(undefined);
-        setImagesArray(newImagesAdded);
+        addImages(newImagesAdded);
         if (currentPlaylist.configuration.playlistType === 'dayofweek') {
             return;
         }

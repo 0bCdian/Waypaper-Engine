@@ -1,19 +1,19 @@
-import SvgComponent from "./addImagesIcon";
-import SvgComponentFolder from "./AddFoldersIcon";
-import openImagesStore from "../hooks/useOpenImages";
-import playlistStore from "../hooks/playlistStore";
-import { useImages } from "../hooks/imagesStore";
-import type { openFileAction } from "../types/rendererTypes";
+import SvgComponent from './addImagesIcon';
+import SvgComponentFolder from './AddFoldersIcon';
+import openImagesStore from '../hooks/useOpenImages';
+import playlistStore from '../stores/playlist';
+import { imagesStore } from '../stores/images';
+import { type openFileAction } from '../../shared/types';
 
 function AddImagesCard() {
     const { openImages, isActive } = openImagesStore();
-    const { setSkeletons, setImagesArray } = useImages();
+    const { setSkeletons, addImages } = imagesStore();
     const { addMultipleImagesToPlaylist, addImageToPlaylist, readPlaylist } =
         playlistStore();
     const handleOpenImages = (action: openFileAction) => {
         void openImages({
             setSkeletons,
-            setImagesArray,
+            addImages,
             addMultipleImagesToPlaylist,
             addImageToPlaylist,
             currentPlaylist: readPlaylist(),
@@ -29,7 +29,7 @@ function AddImagesCard() {
                     isActive
                         ? undefined
                         : () => {
-                              handleOpenImages("file");
+                              handleOpenImages('file');
                           }
                 }
             >
@@ -46,7 +46,7 @@ function AddImagesCard() {
                     isActive
                         ? undefined
                         : () => {
-                              handleOpenImages("folder");
+                              handleOpenImages('folder');
                           }
                 }
             >

@@ -1,26 +1,26 @@
 import { useState, useId, type ChangeEvent } from 'react';
-import playlistStore from '../hooks/playlistStore';
-import { type imageSelectType } from '../../electron/database/schema';
+import playlistStore from '../stores/playlist';
 import { motion } from 'framer-motion';
+import { type rendererImage } from '../types/rendererTypes';
+import { imagesStore } from '../stores/images';
 interface ImageCardProps {
-    Image: imageSelectType;
+    Image: rendererImage;
 }
-const { join, thumbnailDirectory, setImage, imagesDirectory, openContextMenu } =
+const { setImage, openContextMenu, getImageSrc, getThumbnailSrc } =
     window.API_RENDERER;
 function ImageCard({ Image }: ImageCardProps) {
     const id = useId();
     const [isSelected, setIsSelected] = useState(false);
-    const css = `duration-500 border-[2px] ${isSelected ? 'border-info' : 'border-transparent'}  group hover:border-info relative rounded-lg bg-transparent max-w-fit my-1 overflow-hidden`;
-    const imageNameFilePath = `atom://${join(
-        thumbnailDirectory,
-        `${Image.name.split('.').at(0)}.webp`
-    )}`;
+    const css = `duration-500 border-[2px] ${isSelected ? 'border-info' : 'border-transparent'}  group  relative rounded-lg bg-transparent max-w-fit my-1 overflow-hidden`;
+    const imageNameFilePath = getThumbnailSrc(Image.name);
     const handleDoubleClick = () => {
         setImage(Image.name);
     };
     const { addImageToPlaylist, removeImageFromPlaylist, readPlaylist } =
         playlistStore();
+    const { addSelectedImage, removeSelectedImage } = imagesStore();
     const handleCheckboxChange = (event: ChangeEvent) => {
+        event.stopPropagation();
         const element = event.target as HTMLInputElement;
         if (element.checked) {
             const playlist = readPlaylist();
@@ -48,17 +48,12 @@ function ImageCard({ Image }: ImageCardProps) {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onContextMenu={handleRightClick}
-            onClick={() => {
-                setIsSelected(prev => {
-                    return !prev;
-                });
-            }}
             className={css}
         >
             <div className="relative">
                 <input
-                    id={id}
                     checked={Image.isChecked}
+                    id={id}
                     onChange={handleCheckboxChange}
                     type="checkbox"
                     className="absolute opacity-0 top-2 right-2 rounded-sm group-hover:opacity-100 checked:opacity-100  z-20 checkbox checkbox-sm checkbox-success group-hover:bg-success"
@@ -66,7 +61,8 @@ function ImageCard({ Image }: ImageCardProps) {
             </div>
             <div onDoubleClick={handleDoubleClick}>
                 <img
-                    className="rounded-lg transform-gpu group-hover:scale-110 group-hover:object-center transition-all duration-300"
+                    data-selected={isSelected}
+                    className="rounded-lg data-[selected='true']:scale-110 transform-gpu group-hover:scale-110 group-hover:object-center transition-all duration-300"
                     src={imageNameFilePath}
                     alt={Image.name}
                     draggable={false}
@@ -75,11 +71,20 @@ function ImageCard({ Image }: ImageCardProps) {
                         currentTarget.onerror = null;
                         currentTarget.className =
                             'rounded-lg min-w-full max-w-[300px] object-fill';
-                        currentTarget.src =
-                            'atom://' + join(imagesDirectory, Image.name);
+                        currentTarget.src = getImageSrc(Image.name);
+                    }}
+                    onClick={e => {
+                        e.stopPropagation();
+                        const newIsSelected = !isSelected;
+                        if (newIsSelected) {
+                            addSelectedImage(Image);
+                        } else {
+                            removeSelectedImage(Image);
+                        }
+                        setIsSelected(newIsSelected);
                     }}
                 />
-                <p className="absolute rounded-b-lg opacity-0 group-hover:opacity-100 duration-300 transition-all bottom-0 pl-2 p-2 w-full text-lg text-justify text-ellipsis overflow-hidden bg-black bg-opacity-75 font-medium truncate ">
+                <p className="absolute opacity-0 group-hover:opacity-100 duration-300 transition-all bottom-0 pl-2 p-2 w-full text-lg text-justify text-ellipsis overflow-hidden bg-black bg-opacity-75 font-medium truncate ">
                     {Image.name}
                 </p>
             </div>

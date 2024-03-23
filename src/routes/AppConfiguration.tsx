@@ -22,9 +22,9 @@ const AppConfiguration = () => {
             );
             setValue('notifications', data.notifications);
             setValue('swwwAnimations', data.swwwAnimations);
-            setValue('introAnimation', data.introAnimation);
             setValue('startMinimized', data.startMinimized);
             setValue('minimizeInsteadOfClose', data.minimizeInsteadOfClose);
+            setValue('showMonitorModalOnStart', data.showMonitorModalOnStart);
         });
     }, []);
 
@@ -102,19 +102,6 @@ const AppConfiguration = () => {
                         <div className="my-6 flex gap-3">
                             <input
                                 type="checkbox"
-                                id="introAnimation"
-                                className="checkbox mt-4"
-                                {...register('introAnimation')}
-                            />
-                            <label htmlFor="introAnimation" className="label">
-                                <span className="label-text text-3xl">
-                                    App intro animation
-                                </span>
-                            </label>
-                        </div>
-                        <div className="my-6 flex gap-3">
-                            <input
-                                type="checkbox"
                                 id="startMinimized"
                                 className="checkbox mt-4"
                                 {...register('startMinimized')}
@@ -141,7 +128,22 @@ const AppConfiguration = () => {
                                 </span>
                             </label>
                         </div>
-                        <div className="my-6 flex gap-3"></div>
+                        <div className="my-6 flex gap-3">
+                            <input
+                                type="checkbox"
+                                id="showMonitorModalOnStart"
+                                className="checkbox mt-4"
+                                {...register('showMonitorModalOnStart')}
+                            />
+                            <label
+                                htmlFor="showMonitorModalOnStart"
+                                className="label"
+                            >
+                                <span className="label-text text-3xl">
+                                    Always show monitor modal on startup
+                                </span>
+                            </label>
+                        </div>
                         <div className="divider"></div>
                         <div className="my-6 flex justify-center gap-3">
                             <button

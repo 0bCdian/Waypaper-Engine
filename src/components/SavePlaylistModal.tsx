@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
-import playlistStore from '../hooks/playlistStore';
+import playlistStore from '../stores/playlist';
 import { type rendererImage } from '../types/rendererTypes';
 const { savePlaylist } = window.API_RENDERER;
 

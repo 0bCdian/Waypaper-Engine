@@ -1,21 +1,21 @@
-import { DndContext, type DragEndEvent, closestCorners } from "@dnd-kit/core";
+import { DndContext, type DragEndEvent, closestCorners } from '@dnd-kit/core';
 import {
     SortableContext,
     horizontalListSortingStrategy,
     arrayMove
-} from "@dnd-kit/sortable";
+} from '@dnd-kit/sortable';
 import {
     restrictToFirstScrollableAncestor,
     restrictToHorizontalAxis
-} from "@dnd-kit/modifiers";
-import { useMemo, useEffect, useRef } from "react";
-import MiniPlaylistCard from "./MiniPlaylistCard";
-import playlistStore from "../hooks/playlistStore";
-import openImagesStore from "../hooks/useOpenImages";
-import { motion, AnimatePresence } from "framer-motion";
-import { useImages } from "../hooks/imagesStore";
-import { type Image, type openFileAction } from "../types/rendererTypes";
-const { stopPlaylist } = window.API_RENDERER;
+} from '@dnd-kit/modifiers';
+import { useMemo, useEffect, useRef } from 'react';
+import MiniPlaylistCard from './MiniPlaylistCard';
+import playlistStore from '../stores/playlist';
+import openImagesStore from '../hooks/useOpenImages';
+import { motion, AnimatePresence } from 'framer-motion';
+import { imagesStore } from '../stores/images';
+import { type openFileAction } from '../../shared/types';
+import { type rendererImage } from '../types/rendererTypes';
 function PlaylistTrack() {
     const {
         playlist,
@@ -26,12 +26,8 @@ function PlaylistTrack() {
         readPlaylist
     } = playlistStore();
     const { openImages, isActive } = openImagesStore();
-    const {
-        setSkeletons,
-        setImagesArray,
-        resetImageCheckboxes,
-        reQueryImages
-    } = useImages();
+    const { setSkeletons, addImages, resetImageCheckboxes, reQueryImages } =
+        imagesStore();
     const handleDragEnd = (event: DragEndEvent) => {
         const { over, active } = event;
         if (over === null) return;
@@ -53,7 +49,7 @@ function PlaylistTrack() {
     const handleClickAddImages = (action: openFileAction) => {
         void openImages({
             setSkeletons,
-            setImagesArray,
+            addImages,
             addMultipleImagesToPlaylist,
             addImageToPlaylist,
             currentPlaylist: readPlaylist(),
@@ -63,15 +59,18 @@ function PlaylistTrack() {
     const sortingCriteria: number[] = [];
     const reorderSortingCriteria = () => {
         // @ts-expect-error typescript not recognizing toSorted yet
-        const newArray = playlist.images.toSorted((a: Image, b: Image) => {
-            if (a.time < b.time) {
-                return -1;
+        const newArray = playlist.images.toSorted(
+            (a: rendererImage, b: rendererImage) => {
+                if (a.time === null || b.time === null) return 0;
+                if (a.time < b.time) {
+                    return -1;
+                }
+                if (a.time > b.time) {
+                    return 1;
+                }
+                return 0;
             }
-            if (a.time > b.time) {
-                return 1;
-            }
-            return 0;
-        }) as Image[];
+        ) as rendererImage[];
         movePlaylistArrayOrder(newArray);
     };
     const playlistArray = useMemo(() => {
@@ -103,15 +102,14 @@ function PlaylistTrack() {
             clearPlaylist();
         }
     }, [playlist.images]);
-
     return (
-        <div className="w-full flex flex-col gap-2 mb-2">
+        <div className="w-full flex flex-col gap-2 mb-2 mt-4">
             <div className="flex justify-between items-center mb-2">
                 <div className="flex gap-5 items-center ">
                     <span className="text-4xl font-bold">
                         {playlistArray.length > 0
                             ? `Playlist (${playlistArray.length})`
-                            : "Playlist"}
+                            : 'Playlist'}
                     </span>
                     <div className="dropdown dropdown-top">
                         <div
@@ -132,7 +130,7 @@ function PlaylistTrack() {
                                         isActive
                                             ? undefined
                                             : () => {
-                                                  handleClickAddImages("file");
+                                                  handleClickAddImages('file');
                                               }
                                     }
                                 >
@@ -147,7 +145,7 @@ function PlaylistTrack() {
                                             ? undefined
                                             : () => {
                                                   handleClickAddImages(
-                                                      "folder"
+                                                      'folder'
                                                   );
                                               }
                                     }
@@ -178,7 +176,7 @@ function PlaylistTrack() {
                                         initial={{ y: 100 }}
                                         transition={{
                                             duration: 0.25,
-                                            ease: "easeInOut"
+                                            ease: 'easeInOut'
                                         }}
                                         animate={{ y: 0, opacity: 1 }}
                                         exit={{ y: 100, opacity: 0 }}
@@ -199,7 +197,7 @@ function PlaylistTrack() {
                                         initial={{ y: 100 }}
                                         transition={{
                                             duration: 0.25,
-                                            ease: "easeInOut"
+                                            ease: 'easeInOut'
                                         }}
                                         animate={{ y: 0, opacity: 1 }}
                                         exit={{ y: 100, opacity: 0 }}
@@ -226,7 +224,7 @@ function PlaylistTrack() {
                                 initial={{ y: 100, opacity: 0 }}
                                 transition={{
                                     duration: 0.25,
-                                    ease: "easeInOut"
+                                    ease: 'easeInOut'
                                 }}
                                 animate={{ y: 0, opacity: 1 }}
                                 exit={{ y: 100, opacity: 0 }}
@@ -234,7 +232,6 @@ function PlaylistTrack() {
                                 onClick={() => {
                                     resetImageCheckboxes();
                                     clearPlaylist();
-                                    stopPlaylist();
                                 }}
                             >
                                 Clear
@@ -263,7 +260,7 @@ function PlaylistTrack() {
                                 animate={{ opacity: 1, scale: 1 }}
                                 transition={{
                                     duration: 0.25,
-                                    ease: "easeInOut"
+                                    ease: 'easeInOut'
                                 }}
                                 exit={{ scale: 0, opacity: 0 }}
                                 className="flex rounded-lg  overflow-y-clip [max-height:fit] max-w-[90vw] overflow-x-scroll scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar-thin scrollbar-thumb-neutral-300"

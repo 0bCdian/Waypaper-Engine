@@ -1,14 +1,6 @@
-import { useEffect } from "react";
-import { useMonitorStore } from "../hooks/monitorStore";
-const { getMonitors } = window.API_RENDERER;
+import { useMonitorStore } from '../stores/monitors';
 const NavBar = () => {
-    const { setMonitorsList, getActiveMonitor } = useMonitorStore();
-    const activeMonitor = getActiveMonitor();
-    useEffect(() => {
-        void getMonitors().then(monitors => {
-            setMonitorsList(monitors);
-        });
-    }, []);
+    const { activeMonitor, reQueryMonitors } = useMonitorStore();
     return (
         <div className="navbar bg-base-100 mb-2">
             <div className="navbar-start">
@@ -35,7 +27,21 @@ const NavBar = () => {
                     </label>
                 </div>
             </div>
-            <div className="navbar-center">{activeMonitor.monitor?.name}</div>
+            <div className="navbar-center">
+                <button
+                    className="btn w-full text-ellipsis rounded-lg text-2xl"
+                    onClick={() => {
+                        void reQueryMonitors().then(() => {
+                            // @ts-expect-error daisyui
+                            window.monitors.showModal();
+                        });
+                    }}
+                >
+                    {activeMonitor.name.length > 0
+                        ? activeMonitor.name
+                        : 'Unknown'}
+                </button>
+            </div>
             <div className="navbar-end"></div>
         </div>
     );

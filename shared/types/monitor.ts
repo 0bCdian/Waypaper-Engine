@@ -32,5 +32,14 @@ export interface Monitor {
     width: number;
     height: number;
     currentImage: string;
-    position: number;
+    position: {
+        x: number;
+        y: number;
+    };
+}
+
+export interface ActiveMonitor {
+    name: string;
+    monitor: Monitor[];
+    extendAcrossMonitors: boolean;
 }

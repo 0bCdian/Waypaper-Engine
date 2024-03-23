@@ -1,21 +1,21 @@
-import { type ChangeEvent, useEffect, useState } from "react";
-import useDebounce from "../hooks/useDebounce";
-import { useImages } from "../hooks/imagesStore";
-import { type Filters as FiltersType } from "../types/rendererTypes";
+import { type ChangeEvent, useEffect, useState } from 'react';
+import useDebounce from '../hooks/useDebounce';
+import { type Filters as FiltersType } from '../types/rendererTypes';
+import { imagesStore } from '../stores/images';
 
 interface PartialFilters {
-    order: "asc" | "desc";
-    type: "name" | "id";
+    order: 'asc' | 'desc';
+    type: 'name' | 'id';
     searchString: string;
 }
 const initialFilters: PartialFilters = {
-    order: "desc",
-    type: "id",
-    searchString: ""
+    order: 'desc',
+    type: 'id',
+    searchString: ''
 };
 
 function Filters() {
-    const { setFilters, filters } = useImages();
+    const { setFilters, filters } = imagesStore();
     const [partialFilters, setPartialFilters] = useState(initialFilters);
 
     const onTextChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -45,7 +45,7 @@ function Filters() {
         };
         setFilters(resetFilters);
     }, []);
-
+    useEffect(() => {}, []);
     return (
         <section className="flex w-full gap-2 group justify-center mb-5 ">
             <div className="flex w-full justify-center gap-2">
@@ -66,11 +66,11 @@ function Filters() {
                         name="orderBy"
                         id="orderBy"
                         className="select uppercase btn-active rounded-xl font-bold"
-                        defaultValue={"id"}
+                        defaultValue={'id'}
                         onChange={e => {
                             const newType = e.currentTarget.value as
-                                | "name"
-                                | "id";
+                                | 'name'
+                                | 'id';
                             if (newType.length > 0) {
                                 setPartialFilters(previous => {
                                     return { ...previous, type: newType };
@@ -89,9 +89,9 @@ function Filters() {
                             onChange={() => {
                                 setPartialFilters(previous => {
                                     const newOrder =
-                                        previous.order === "asc"
-                                            ? "desc"
-                                            : "asc";
+                                        previous.order === 'asc'
+                                            ? 'desc'
+                                            : 'asc';
                                     return { ...previous, order: newOrder };
                                 });
                             }}
