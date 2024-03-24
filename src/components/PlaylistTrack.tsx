@@ -165,75 +165,60 @@ function PlaylistTrack() {
                     <AnimatePresence mode="sync">
                         {playlist.images.length > 1 && (
                             <>
-                                <div
-                                    className="tooltip tooltip-success"
-                                    data-tip="Save Playlist"
+                                <motion.button
+                                    initial={{ y: 100 }}
+                                    transition={{
+                                        duration: 0.25,
+                                        ease: 'easeInOut'
+                                    }}
+                                    animate={{ y: 0, opacity: 1 }}
+                                    exit={{ y: 100, opacity: 0 }}
+                                    onClick={() => {
+                                        // @ts-expect-error daisyui fix
+                                        window.savePlaylistModal.showModal();
+                                    }}
+                                    className="btn uppercase btn-primary rounded-lg"
                                 >
-                                    <motion.button
-                                        initial={{ y: 100 }}
-                                        transition={{
-                                            duration: 0.25,
-                                            ease: 'easeInOut'
-                                        }}
-                                        animate={{ y: 0, opacity: 1 }}
-                                        exit={{ y: 100, opacity: 0 }}
-                                        onClick={() => {
-                                            // @ts-expect-error daisyui fix
-                                            window.savePlaylistModal.showModal();
-                                        }}
-                                        className="btn uppercase btn-primary rounded-lg"
-                                    >
-                                        Save
-                                    </motion.button>
-                                </div>
-                                <div
-                                    className="tooltip tooltip-success"
-                                    data-tip="Configure Playlist"
+                                    Save
+                                </motion.button>
+                                <motion.button
+                                    initial={{ y: 100 }}
+                                    transition={{
+                                        duration: 0.25,
+                                        ease: 'easeInOut'
+                                    }}
+                                    animate={{ y: 0, opacity: 1 }}
+                                    exit={{ y: 100, opacity: 0 }}
+                                    onClick={() => {
+                                        // @ts-expect-error daisyui fix
+                                        window.playlistConfigurationModal.showModal();
+                                    }}
+                                    className="btn uppercase btn-primary rounded-lg"
                                 >
-                                    <motion.button
-                                        initial={{ y: 100 }}
-                                        transition={{
-                                            duration: 0.25,
-                                            ease: 'easeInOut'
-                                        }}
-                                        animate={{ y: 0, opacity: 1 }}
-                                        exit={{ y: 100, opacity: 0 }}
-                                        onClick={() => {
-                                            // @ts-expect-error daisyui fix
-                                            window.playlistConfigurationModal.showModal();
-                                        }}
-                                        className="btn uppercase btn-primary rounded-lg"
-                                    >
-                                        Configure
-                                    </motion.button>
-                                </div>
+                                    Configure
+                                </motion.button>
                             </>
                         )}
                     </AnimatePresence>
                 </div>
                 <AnimatePresence>
                     {playlist.images.length > 1 && (
-                        <div
-                            className="tooltip tooltip-success"
-                            data-tip={`Clears and stops "${playlist.name}"`}
+                        <motion.button
+                            initial={{ y: 100, opacity: 0 }}
+                            transition={{
+                                duration: 0.25,
+                                ease: 'easeInOut'
+                            }}
+                            animate={{ y: 0, opacity: 1 }}
+                            exit={{ y: 100, opacity: 0 }}
+                            className="btn uppercase btn-error rounded-lg"
+                            onClick={() => {
+                                resetImageCheckboxes();
+                                clearPlaylist();
+                            }}
                         >
-                            <motion.button
-                                initial={{ y: 100, opacity: 0 }}
-                                transition={{
-                                    duration: 0.25,
-                                    ease: 'easeInOut'
-                                }}
-                                animate={{ y: 0, opacity: 1 }}
-                                exit={{ y: 100, opacity: 0 }}
-                                className="btn uppercase btn-error rounded-lg"
-                                onClick={() => {
-                                    resetImageCheckboxes();
-                                    clearPlaylist();
-                                }}
-                            >
-                                Clear
-                            </motion.button>
-                        </div>
+                            Clear
+                        </motion.button>
                     )}
                 </AnimatePresence>
             </div>

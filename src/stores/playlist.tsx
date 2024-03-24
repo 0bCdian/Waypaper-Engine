@@ -41,6 +41,7 @@ interface Actions {
     clearPlaylist: () => void;
     readPlaylist: () => rendererPlaylist;
     setPlaylist: (newPlaylist: rendererPlaylist) => void;
+    setEmptyPlaylist: () => void;
 }
 
 const playlistStore = create<State & Actions>()((set, get) => ({
@@ -137,6 +138,15 @@ const playlistStore = create<State & Actions>()((set, get) => ({
                 ...state,
                 playlist: newPlaylist,
                 isEmpty: false
+            };
+        });
+    },
+    setEmptyPlaylist: () => {
+        set(state => {
+            return {
+                ...state,
+                playlist: initialPlaylistState,
+                isEmpty: true
             };
         });
     }

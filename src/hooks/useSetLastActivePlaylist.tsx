@@ -3,20 +3,19 @@ import { useMonitorStore } from '../stores/monitors';
 import { type rendererImage } from '../types/rendererTypes';
 import { imagesStore } from '../stores/images';
 import { PLAYLIST_TYPES } from '../../shared/types/playlist';
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 const { readActivePlaylist } = window.API_RENDERER;
 
 export function setLastActivePlaylist() {
-    const { setPlaylist } = playlistStore();
-    const [firstCall, setFirstCall] = useState(true);
+    const { setPlaylist, setEmptyPlaylist, playlist } = playlistStore();
     const { activeMonitor } = useMonitorStore();
     const { imagesArray } = imagesStore();
     useEffect(() => {
         if (activeMonitor.name === '') return;
-        if (!firstCall) return;
-        setFirstCall(false);
+        if (activeMonitor.name === playlist.monitor.name) return;
         void readActivePlaylist(activeMonitor).then(playlist => {
             if (playlist === undefined) {
+                setEmptyPlaylist();
                 return;
             }
             const imagesToStorePlaylist: rendererImage[] = [];
@@ -48,7 +47,6 @@ export function setLastActivePlaylist() {
                 images: imagesToStorePlaylist,
                 monitor: activeMonitor
             };
-            console.log(currentPlaylist);
             setPlaylist(currentPlaylist);
         });
     }, [activeMonitor]);
