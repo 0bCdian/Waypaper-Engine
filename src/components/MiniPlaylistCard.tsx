@@ -1,6 +1,6 @@
 import { useSortable } from '@dnd-kit/sortable';
+import { useDndMonitor } from '@dnd-kit/core';
 import { motion } from 'framer-motion';
-import { CSS } from '@dnd-kit/utilities';
 import { useEffect, useMemo, useRef, useCallback, useState } from 'react';
 import { type PLAYLIST_TYPES_TYPE } from '../../shared/types/playlist';
 import playlistStore from '../stores/playlist';
@@ -34,16 +34,33 @@ function MiniPlaylistCard({
     const [isInvalid, setIsInvalid] = useState(false);
     const imageRef = useRef<HTMLImageElement>(null);
     const timeRef = useRef<HTMLInputElement>(null);
+    const [isActive, setIsActive] = useState(false);
+    const [isOver, setIsOver] = useState(false);
     const imageSrc = useMemo(() => {
         return getThumbnailSrc(Image.name);
     }, [Image]);
-    const { attributes, listeners, setNodeRef, transform } = useSortable({
+    const { attributes, listeners, setNodeRef } = useSortable({
         id: Image.id
     });
-    const style = {
-        transform: CSS.Transform.toString(transform)
-    };
-    const shouldBeDraggable = !(playlistType === 'timeofday');
+    useDndMonitor({
+        onDragStart(event) {
+            if (isActive) return;
+            if (event.active.id === Image.id) setIsActive(true);
+            else setIsOver(true);
+        },
+        onDragEnd() {
+            setIsOver(false);
+            if (isActive) setIsActive(false);
+        },
+        onDragOver(event) {
+            const { over, active } = event;
+            if (Image.id === over?.id || active.id === Image.id) {
+                setIsOver(false);
+            } else {
+                setIsOver(true);
+            }
+        }
+    });
     let text: string;
     if (isLast === undefined) {
         if (index < 6) {
@@ -84,11 +101,16 @@ function MiniPlaylistCard({
             minutes = minutes < 10 ? '0' + minutes : minutes;
             hours = hours < 10 ? '0' + hours : hours;
             timeRef.current.value = `${hours}:${minutes}`;
+            reorderSortingCriteria();
         }
-    }, [playlistType]);
-
+    }, [playlistType, Image.time]);
     return (
-        <div ref={shouldBeDraggable ? setNodeRef : undefined} style={style}>
+        <div
+            data-active={isActive}
+            data-over={isOver}
+            ref={setNodeRef}
+            className="data-[over=true]:opacity-25 data-[over=true]:scale-90"
+        >
             <motion.div
                 initial={{ scale: 0.5 }}
                 animate={{ scale: 1 }}
@@ -137,7 +159,7 @@ function MiniPlaylistCard({
                 <span className="text-stone-100 h-full shadow-xl font-bold text-clip whitespace-nowrap">
                     {playlistType === 'dayofweek' ? text : undefined}
                 </span>
-                <div className="relative ">
+                <div className="relative">
                     <button
                         onClick={onRemove}
                         className="absolute top-0 right-0 rounded-md transition-all opacity-0 hover:bg-error hover:opacity-100 cursor-default"
@@ -163,7 +185,7 @@ function MiniPlaylistCard({
                     {...listeners}
                     src={imageSrc}
                     alt={Image.name}
-                    className="rounded-lg cursor-default shadow-2xl active:scale-105 transition-all"
+                    className="rounded-lg cursor-default shadow-2xl active:scale-105  transition-all"
                     ref={imageRef}
                     loading="lazy"
                 />

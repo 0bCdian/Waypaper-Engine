@@ -1,13 +1,5 @@
 import { DndContext, type DragEndEvent, closestCorners } from '@dnd-kit/core';
-import {
-    SortableContext,
-    horizontalListSortingStrategy,
-    arrayMove
-} from '@dnd-kit/sortable';
-import {
-    restrictToFirstScrollableAncestor,
-    restrictToHorizontalAxis
-} from '@dnd-kit/modifiers';
+import { SortableContext, arrayMove } from '@dnd-kit/sortable';
 import { useMemo, useEffect, useRef } from 'react';
 import MiniPlaylistCard from './MiniPlaylistCard';
 import playlistStore from '../stores/playlist';
@@ -38,6 +30,11 @@ function PlaylistTrack() {
             const newIndex = playlist.images.findIndex(
                 element => element.id === over?.id
             );
+            const oldImage = playlist.images[oldindex];
+            const newImage = playlist.images[newIndex];
+            const buffer = oldImage.time;
+            oldImage.time = newImage.time;
+            newImage.time = buffer;
             const newArrayOrder = arrayMove(
                 playlist.images,
                 oldindex,
@@ -241,36 +238,14 @@ function PlaylistTrack() {
                 </AnimatePresence>
             </div>
             <DndContext
-                modifiers={[
-                    restrictToHorizontalAxis,
-                    restrictToFirstScrollableAncestor
-                ]}
                 autoScroll={true}
-                collisionDetection={closestCorners}
                 onDragEnd={handleDragEnd}
+                collisionDetection={closestCorners}
             >
-                <SortableContext
-                    strategy={horizontalListSortingStrategy}
-                    items={sortingCriteria}
-                >
-                    <AnimatePresence initial={false}>
-                        {playlistArray.length > 0 && (
-                            <motion.div
-                                initial={{ opacity: 0.5, scale: 0 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                transition={{
-                                    duration: 0.25,
-                                    ease: 'easeInOut'
-                                }}
-                                exit={{ scale: 0, opacity: 0 }}
-                                className="flex rounded-lg  overflow-y-clip  max-w-[90vw] overflow-x-scroll scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar scrollbar-thumb-neutral-300"
-                            >
-                                <AnimatePresence initial={false}>
-                                    {playlistArray}
-                                </AnimatePresence>
-                            </motion.div>
-                        )}
-                    </AnimatePresence>
+                <SortableContext items={sortingCriteria}>
+                    <div className="flex rounded-lg  overflow-y-clip  max-w-[90vw] overflow-x-scroll scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar scrollbar-thumb-neutral-300">
+                        {...playlistArray}
+                    </div>
                 </SortableContext>
             </DndContext>
         </div>
