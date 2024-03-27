@@ -1,12 +1,4 @@
-import {
-    app,
-    BrowserWindow,
-    ipcMain,
-    protocol,
-    Tray,
-    Menu,
-    session
-} from 'electron';
+import { app, BrowserWindow, ipcMain, protocol, Tray, Menu } from 'electron';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -16,23 +8,25 @@ import {
     savePlaylist,
     isSwwwDaemonRunning,
     initWaypaperDaemon,
-    deleteImageFromGallery,
+    deleteImagesFromGallery,
     remakeThumbnailsIfImagesExist,
     getMonitors,
     openContextMenu,
     openContextMenuGallery
 } from './appFunctions';
 import { devMenu, prodMenu, trayMenu } from './globals/menus';
-import { iconPath, reactDevTools } from './binaries';
+import { iconPath } from './binaries';
 import {
     config,
     dbOperations,
     playlistControllerInstance
 } from './database/globalConfig';
-import { type rendererPlaylist } from '../src/types/rendererTypes';
+import {
+    type rendererImage,
+    type rendererPlaylist
+} from '../src/types/rendererTypes';
 import { type openFileAction } from '../shared/types';
 import {
-    type imageSelectType,
     type appConfigInsertType,
     type swwwConfigInsertType
 } from './database/schema';
@@ -135,16 +129,7 @@ app.whenReady()
     .then(async () => {
         await isSwwwDaemonRunning();
         await initWaypaperDaemon();
-        if (reactDevTools !== undefined) {
-            await session.defaultSession.loadExtension(reactDevTools, {
-                allowFileAccess: true
-            });
-            await session.defaultSession.loadExtension(reactDevTools, {
-                allowFileAccess: true
-            });
-        }
         await createWindow();
-
         createMenu();
         void createTray();
         registerFileProtocol();
@@ -153,7 +138,7 @@ app.whenReady()
                 win.reload();
             }
         });
-        if (win !== null) createShortcuts(win);
+        // if (win !== null) createShortcuts(win);
     })
     .catch(e => {
         console.error(e);
@@ -187,13 +172,9 @@ ipcMain.handle('readSwwwConfig', () => {
 ipcMain.handle('readAppConfig', () => {
     return dbOperations.getAppConfig();
 });
-ipcMain.handle('deleteImageFromGallery', deleteImageFromGallery);
+ipcMain.handle('deleteImageFromGallery', deleteImagesFromGallery);
 ipcMain.handle('readActivePlaylist', async (_, monitor: ActiveMonitor) => {
-    console.log('readActivePlaylist');
-    const result = dbOperations.getActivePlaylistInfo(monitor);
-
-    console.log(result);
-    return result;
+    return dbOperations.getActivePlaylistInfo(monitor);
 });
 ipcMain.handle('querySelectedMonitor', () => {
     return dbOperations.getSelectedMonitor();
@@ -230,7 +211,7 @@ ipcMain.on(
         playlistControllerInstance.updateConfig();
     }
 );
-ipcMain.on('openContextMenuImage', (event, image: imageSelectType) => {
+ipcMain.on('openContextMenuImage', (event, image: rendererImage) => {
     if (win !== null) {
         void openContextMenu(event, image, win);
     }

@@ -45,7 +45,6 @@ function Filters() {
         };
         setFilters(resetFilters);
     }, []);
-    useEffect(() => {}, []);
     return (
         <section className="flex w-full gap-2 group justify-center mb-5 ">
             <div className="flex w-full justify-center gap-2">

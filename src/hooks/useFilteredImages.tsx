@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { imagesStore } from '../stores/images';
 import { type rendererImage } from '../types/rendererTypes';
+import { useHotkeys } from 'react-hotkeys-hook';
 export function useFilteredImages() {
     // The default order is descending, the images come in sorted from the database by ID in descending order.
     // So we must respect that order in the ordering of names
@@ -8,7 +9,19 @@ export function useFilteredImages() {
     const { imagesArray, filters } = imagesStore();
     const [filteredImages, setFilteredImages] =
         useState<rendererImage[]>(imagesArray);
-
+    useHotkeys('ctrl+shift+a', () => {
+        for (let index = 0; index < filteredImages.length; index++) {
+            filteredImages[index].isSelected =
+                !filteredImages[index].isSelected;
+        }
+        setFilteredImages([...filteredImages]);
+    });
+    useHotkeys('escape', () => {
+        for (let index = 0; index < filteredImages.length; index++) {
+            filteredImages[index].isSelected = false;
+        }
+        setFilteredImages([...filteredImages]);
+    });
     const sortedImages = useMemo(() => {
         if (filters.type === 'id') return imagesArray;
         const shallowCopy = [...imagesArray];
@@ -73,5 +86,6 @@ export function useFilteredImages() {
               });
         setFilteredImages(imagesFilteredByName);
     }, [sortedImages, filters]);
+
     return filteredImages;
 }

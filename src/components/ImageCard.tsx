@@ -1,23 +1,31 @@
-import { useState, useId, type ChangeEvent } from 'react';
-import playlistStore from '../stores/playlist';
+import { type ChangeEvent, useState, useEffect } from 'react';
+import { playlistStore } from '../stores/playlist';
 import { motion } from 'framer-motion';
 import { type rendererImage } from '../types/rendererTypes';
 import { imagesStore } from '../stores/images';
+import { useShallow } from 'zustand/react/shallow';
 interface ImageCardProps {
     Image: rendererImage;
 }
 const { setImage, openContextMenu, getImageSrc, getThumbnailSrc } =
     window.API_RENDERER;
 function ImageCard({ Image }: ImageCardProps) {
-    const id = useId();
-    const [isSelected, setIsSelected] = useState(false);
-    const css = `duration-500 border-[2px] ${isSelected ? 'border-info' : 'border-transparent'}  group  relative rounded-lg bg-transparent max-w-fit my-1 overflow-hidden`;
+    const [selected, setSelected] = useState(Image.isSelected);
+    const [isChecked, setIsChecked] = useState(Image.isChecked);
+    const css = `duration-500 border-[2px] ${Image.isSelected ? 'border-info' : 'border-transparent'}  group  relative rounded-lg bg-transparent max-w-fit my-1 overflow-hidden`;
     const imageNameFilePath = getThumbnailSrc(Image.name);
     const handleDoubleClick = () => {
         setImage(Image.name);
     };
-    const { addImageToPlaylist, removeImageFromPlaylist, readPlaylist } =
-        playlistStore();
+    const addImageToPlaylist = playlistStore(
+        useShallow(state => state.addImageToPlaylist)
+    );
+    const readPlaylist = playlistStore(useShallow(state => state.readPlaylist));
+
+    const removeImageFromPlaylist = playlistStore(
+        useShallow(state => state.removeImageFromPlaylist)
+    );
+    const isEmpty = playlistStore(useShallow(state => state.isEmpty));
     const { addSelectedImage, removeSelectedImage } = imagesStore();
     const handleCheckboxChange = (event: ChangeEvent) => {
         event.stopPropagation();
@@ -28,13 +36,16 @@ function ImageCard({ Image }: ImageCardProps) {
                 playlist.configuration.playlistType === 'dayofweek' &&
                 playlist.images.length === 7
             ) {
+                setIsChecked(false);
                 element.checked = false;
                 return;
             }
+            setIsChecked(true);
             Image.isChecked = true;
             addImageToPlaylist(Image);
         } else {
             Image.isChecked = false;
+            setIsChecked(false);
             removeImageFromPlaylist(Image);
         }
     };
@@ -42,6 +53,15 @@ function ImageCard({ Image }: ImageCardProps) {
         e.stopPropagation();
         openContextMenu(Image);
     };
+    useEffect(() => {
+        if (selected) addSelectedImage(Image);
+        else removeSelectedImage(Image);
+    }, [selected]);
+    useEffect(() => {
+        if (!isEmpty) return;
+        setIsChecked(false);
+        Image.isChecked = false;
+    }, [isEmpty]);
     return (
         <motion.div
             initial={{ opacity: 0 }}
@@ -52,8 +72,8 @@ function ImageCard({ Image }: ImageCardProps) {
         >
             <div className="relative">
                 <input
-                    checked={Image.isChecked}
-                    id={id}
+                    checked={isChecked}
+                    id={Image.name}
                     onChange={handleCheckboxChange}
                     type="checkbox"
                     className="absolute opacity-0 top-2 right-2 rounded-sm group-hover:opacity-100 checked:opacity-100  z-20 checkbox checkbox-sm checkbox-success group-hover:bg-success"
@@ -61,8 +81,8 @@ function ImageCard({ Image }: ImageCardProps) {
             </div>
             <div onDoubleClick={handleDoubleClick}>
                 <img
-                    data-selected={isSelected}
-                    className="rounded-lg data-[selected='true']:scale-110 transform-gpu group-hover:scale-110 group-hover:object-center transition-all duration-300"
+                    data-selected={Image.isSelected}
+                    className="rounded-lg transform-gpu group-hover:scale-110 group-hover:object-center transition-all duration-300"
                     src={imageNameFilePath}
                     alt={Image.name}
                     draggable={false}
@@ -75,13 +95,10 @@ function ImageCard({ Image }: ImageCardProps) {
                     }}
                     onClick={e => {
                         e.stopPropagation();
-                        const newIsSelected = !isSelected;
-                        if (newIsSelected) {
-                            addSelectedImage(Image);
-                        } else {
-                            removeSelectedImage(Image);
-                        }
-                        setIsSelected(newIsSelected);
+                        setSelected(prev => {
+                            Image.isSelected = !prev;
+                            return !prev;
+                        });
                     }}
                 />
                 <p className="absolute opacity-0 group-hover:opacity-100 duration-300 transition-all bottom-0 pl-2 p-2 w-full text-lg text-justify text-ellipsis overflow-hidden bg-black bg-opacity-75 font-medium truncate ">

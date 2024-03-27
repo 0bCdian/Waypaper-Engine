@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { type Filters, type rendererImage } from '../types/rendererTypes';
 import { type imagesObject } from '../../shared/types';
 
-const { queryImages } = window.API_RENDERER;
+const { queryImages, deleteImagesFromGallery } = window.API_RENDERER;
 const initialFilters: Filters = {
     order: 'desc',
     type: 'id',
@@ -33,8 +33,8 @@ interface State {
     skeletonsToShow: imagesObject | undefined;
     filteredImages: rendererImage[];
     isEmpty: boolean;
-    filters: Filters;
     isQueried: boolean;
+    filters: Filters;
     selectedImages: Set<number>;
     addImages: (newImages: rendererImage[]) => void;
     setFilters: (newFilters: Filters) => void;
@@ -42,19 +42,20 @@ interface State {
     setFilteredImages: (filteredImages: rendererImage[]) => void;
     resetImageCheckboxes: () => void;
     clearSkeletons: () => void;
-    removeImageFromStore: (imageID: number) => void;
+    removeImagesFromStore: (images: rendererImage[]) => void;
     reQueryImages: () => void;
     addSelectedImage: (imageSelected: rendererImage) => void;
     removeSelectedImage: (imageSelected: rendererImage) => void;
+    deleteSelectedImages: () => void;
 }
 
 export const imagesStore = create<State>()((set, get) => ({
-    isQueried: false,
     imagesArray: [] as rendererImage[],
     imagesMap: new Map<number, rendererImage>(),
     skeletonsToShow: undefined,
     filteredImages: [] as rendererImage[],
     isEmpty: true,
+    isQueried: false,
     filters: initialFilters,
     selectedImages: new Set<number>(),
     setFilters: newFilters => {
@@ -64,7 +65,13 @@ export const imagesStore = create<State>()((set, get) => ({
         set(() => ({ filteredImages }));
     },
     addImages: newImages => {
-        const newImagesArray = [...get().imagesArray, ...newImages];
+        const filters = get().filters;
+        let newImagesArray: rendererImage[] = [];
+        if (filters.order === 'desc') {
+            newImagesArray = [...newImages, ...get().imagesArray];
+        } else {
+            newImagesArray = [...get().imagesArray, ...newImages];
+        }
         const oldImagesMap = get().imagesMap;
         newImages.forEach(image => {
             oldImagesMap.set(image.id, image);
@@ -89,17 +96,18 @@ export const imagesStore = create<State>()((set, get) => ({
     clearSkeletons: () => {
         set(() => ({ skeletonsToShow: undefined }));
     },
-    removeImageFromStore: imageID => {
+    removeImagesFromStore: images => {
         set(state => {
-            const newImages = state.imagesArray.filter(
-                image => image.id === imageID
-            );
             const imagesMap = get().imagesMap;
-            get().selectedImages.delete(imageID);
-            imagesMap.delete(imageID);
+            const selectedImages = get().selectedImages;
+            images.forEach(imageToDelete => {
+                imagesMap.delete(imageToDelete.id);
+                selectedImages.delete(imageToDelete.id);
+            });
+
             return {
                 ...state,
-                imagesArray: newImages,
+                imagesArray: Array.from(imagesMap.values()),
                 imagesMap: new Map(imagesMap)
             };
         });
@@ -113,8 +121,8 @@ export const imagesStore = create<State>()((set, get) => ({
             });
             set(() => ({
                 imagesArray: images,
-                isQueried: true,
                 isEmpty,
+                isQueried: true,
                 imagesMap: newImagesMap
             }));
         });
@@ -124,5 +132,18 @@ export const imagesStore = create<State>()((set, get) => ({
     },
     removeSelectedImage(imageSelected) {
         get().selectedImages.delete(imageSelected.id);
+    },
+    deleteSelectedImages() {
+        const selectedImages: rendererImage[] = [];
+        const imagesMap = get().imagesMap;
+        get().selectedImages.forEach(id => {
+            const image = imagesMap.get(id);
+            imagesMap.delete(id);
+            if (image === undefined) return;
+            selectedImages.push(image);
+        });
+        void deleteImagesFromGallery(selectedImages).then(() => {
+            get().removeImagesFromStore(selectedImages);
+        });
     }
 }));

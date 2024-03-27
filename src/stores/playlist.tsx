@@ -44,7 +44,7 @@ interface Actions {
     setEmptyPlaylist: () => void;
 }
 
-const playlistStore = create<State & Actions>()((set, get) => ({
+export const playlistStore = create<State & Actions>()((set, get) => ({
     playlist: initialPlaylistState,
     isEmpty: true,
     addImageToPlaylist: (Image: rendererImage) => {
@@ -97,12 +97,9 @@ const playlistStore = create<State & Actions>()((set, get) => ({
         });
     },
     movePlaylistArrayOrder: (newlyOrderedArray: rendererImage[]) => {
-        set(state => {
-            return {
-                ...state,
-                playlist: { ...state.playlist, images: newlyOrderedArray }
-            };
-        });
+        set(state => ({
+            playlist: { ...state.playlist, images: newlyOrderedArray }
+        }));
     },
     removeImageFromPlaylist: (Image: rendererImage) => {
         set(state => {
@@ -151,4 +148,3 @@ const playlistStore = create<State & Actions>()((set, get) => ({
         });
     }
 }));
-export default playlistStore;

@@ -1,5 +1,5 @@
 import { useRef } from 'react';
-import playlistStore from '../stores/playlist';
+import { playlistStore } from '../stores/playlist';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { imagesStore } from '../stores/images';
 import { type playlistSelectType } from '../../electron/database/schema';

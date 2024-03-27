@@ -32,11 +32,11 @@ const AppConfiguration = () => {
         <>
             <AnimatePresence>
                 <motion.div
-                    className="flex flex-col items-center mt-10 m-auto  cursor-default"
+                    className="flex flex-col items-center m-auto  cursor-default"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 1 }}
+                    transition={{ duration: 0.5 }}
                 >
                     <h1 className="text-7xl font-semibold py-2 self-center text-center">
                         App Settings

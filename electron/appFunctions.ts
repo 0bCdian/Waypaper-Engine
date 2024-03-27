@@ -2,7 +2,10 @@ import { type BrowserWindow, dialog, Menu } from 'electron';
 import { rmSync, mkdirSync, existsSync } from 'node:fs';
 import { copyFile, readdir } from 'node:fs/promises';
 import { contextMenu } from './globals/menus';
-import { type rendererPlaylist } from '../src/types/rendererTypes';
+import {
+    type rendererImage,
+    type rendererPlaylist
+} from '../src/types/rendererTypes';
 import { exec, execFile, execSync, spawn } from 'node:child_process';
 import { promisify } from 'node:util';
 import { binDir, daemonLocation } from './binaries';
@@ -343,32 +346,36 @@ export async function initWaypaperDaemon() {
     }
 }
 
-export function deleteImageFromStorage(imageName: string) {
+export function deleteImageFromStorage(images: rendererImage[]) {
     try {
-        const [thumbnailName] = imageName.split('.');
-        rmSync(join(appDirectories.imagesDir, imageName));
-        rmSync(join(appDirectories.thumbnails, `${thumbnailName}.webp`), {
-            force: true
-        });
-        if (imageName.endsWith('.gif')) {
-            rmSync(join(appDirectories.thumbnails, `${thumbnailName}.gif`), {
+        images.forEach(imageToDelete => {
+            const [thumbnailName] = imageToDelete.name.split('.');
+            rmSync(join(appDirectories.imagesDir, imageToDelete.name));
+            rmSync(join(appDirectories.thumbnails, `${thumbnailName}.webp`), {
                 force: true
             });
-        }
+            if (imageToDelete.name.endsWith('.gif')) {
+                rmSync(
+                    join(appDirectories.thumbnails, `${thumbnailName}.gif`),
+                    {
+                        force: true
+                    }
+                );
+            }
+        });
     } catch (error) {
         console.error(error);
         throw new Error('Could not delete images from storage');
     }
 }
 
-export function deleteImageFromGallery(
+export function deleteImagesFromGallery(
     _: Electron.IpcMainInvokeEvent,
-    imageID: number,
-    imageName: string
+    images: rendererImage[]
 ) {
     try {
-        dbOperations.deleteImage(imageID);
-        deleteImageFromStorage(imageName);
+        dbOperations.deleteImages(images);
+        deleteImageFromStorage(images);
         return true;
     } catch (error) {
         console.error(error);
@@ -534,7 +541,7 @@ export async function setImageAcrossAllMonitors(Image: imageSelectType) {
 
 export async function openContextMenu(
     event: Electron.IpcMainInvokeEvent,
-    image: imageSelectType,
+    image: rendererImage,
     win: BrowserWindow
 ) {
     const monitors = await getMonitors();
@@ -589,7 +596,7 @@ export async function openContextMenu(
                     })
                     .then(data => {
                         if (data.response === 0) {
-                            deleteImageFromGallery(event, image.id, image.name);
+                            deleteImagesFromGallery(event, [image]);
                             win?.webContents.send(
                                 'deleteImageFromGallery',
                                 image

@@ -1,13 +1,15 @@
 import { DndContext, type DragEndEvent, closestCorners } from '@dnd-kit/core';
 import { SortableContext, arrayMove } from '@dnd-kit/sortable';
-import { useMemo, useEffect, useRef } from 'react';
-import MiniPlaylistCard from './MiniPlaylistCard';
-import playlistStore from '../stores/playlist';
+import { useMemo, useEffect, useCallback, lazy, Suspense } from 'react';
+import { playlistStore } from '../stores/playlist';
 import openImagesStore from '../hooks/useOpenImages';
 import { motion, AnimatePresence } from 'framer-motion';
 import { imagesStore } from '../stores/images';
 import { type openFileAction } from '../../shared/types';
 import { type rendererImage } from '../types/rendererTypes';
+import { useSetLastActivePlaylist } from '../hooks/useSetLastActivePlaylist';
+let firstRender = true;
+const MiniPlaylistCard = lazy(async () => await import('./MiniPlaylistCard'));
 function PlaylistTrack() {
     const {
         playlist,
@@ -17,33 +19,37 @@ function PlaylistTrack() {
         clearPlaylist,
         readPlaylist
     } = playlistStore();
+    useSetLastActivePlaylist();
     const { openImages, isActive } = openImagesStore();
-    const { setSkeletons, addImages, resetImageCheckboxes, reQueryImages } =
-        imagesStore();
-    const handleDragEnd = (event: DragEndEvent) => {
-        const { over, active } = event;
-        if (over === null) return;
-        if (over.id !== active.id) {
-            const oldindex = playlist.images.findIndex(
-                element => element.id === active.id
-            );
-            const newIndex = playlist.images.findIndex(
-                element => element.id === over?.id
-            );
-            const oldImage = playlist.images[oldindex];
-            const newImage = playlist.images[newIndex];
-            const buffer = oldImage.time;
-            oldImage.time = newImage.time;
-            newImage.time = buffer;
-            const newArrayOrder = arrayMove(
-                playlist.images,
-                oldindex,
-                newIndex
-            );
-            movePlaylistArrayOrder(newArrayOrder);
-        }
-    };
-    const handleClickAddImages = (action: openFileAction) => {
+    const { setSkeletons, addImages, resetImageCheckboxes } = imagesStore();
+    const handleDragEnd = useCallback(
+        (event: DragEndEvent) => {
+            const { over, active } = event;
+            if (over === null) return;
+            if (over.id !== active.id) {
+                const oldindex = playlist.images.findIndex(
+                    element => element.id === active.id
+                );
+                const newIndex = playlist.images.findIndex(
+                    element => element.id === over?.id
+                );
+                const oldImage = playlist.images[oldindex];
+                const newImage = playlist.images[newIndex];
+                const buffer = oldImage.time;
+                oldImage.time = newImage.time;
+                newImage.time = buffer;
+                const newArrayOrder = arrayMove(
+                    playlist.images,
+                    oldindex,
+                    newIndex
+                );
+                movePlaylistArrayOrder(newArrayOrder);
+            }
+        },
+        [playlist]
+    );
+
+    const handleClickAddImages = useCallback((action: openFileAction) => {
         void openImages({
             setSkeletons,
             addImages,
@@ -52,9 +58,8 @@ function PlaylistTrack() {
             currentPlaylist: readPlaylist(),
             action
         });
-    };
-    const sortingCriteria: number[] = [];
-    const reorderSortingCriteria = () => {
+    }, []);
+    const reorderSortingCriteria = useCallback(() => {
         // @ts-expect-error typescript not recognizing toSorted yet
         const newArray = playlist.images.toSorted(
             (a: rendererImage, b: rendererImage) => {
@@ -69,33 +74,33 @@ function PlaylistTrack() {
             }
         ) as rendererImage[];
         movePlaylistArrayOrder(newArray);
-    };
-    const playlistArray = useMemo(() => {
+    }, [playlist]);
+    const [playlistArray, sortingCriteria] = useMemo(() => {
         const lastIndex = playlist.images.length - 1;
+        const sortingCriteria: number[] = [];
         const elements = playlist.images.map((Image, index) => {
             sortingCriteria.push(Image.id);
             return (
-                <MiniPlaylistCard
-                    isLast={lastIndex === index}
-                    reorderSortingCriteria={reorderSortingCriteria}
-                    playlistType={playlist.configuration.playlistType}
-                    index={index}
-                    Image={Image}
-                    key={Image.id}
-                />
+                <Suspense key={Image.id}>
+                    <MiniPlaylistCard
+                        isLast={lastIndex === index}
+                        reorderSortingCriteria={reorderSortingCriteria}
+                        playlistType={playlist.configuration.playlistType}
+                        index={index}
+                        Image={Image}
+                    />
+                </Suspense>
             );
         });
-        return elements;
+        return [elements, sortingCriteria];
     }, [playlist.images, playlist.configuration]);
-    const firstRender = useRef(true);
     useEffect(() => {
-        if (firstRender.current) {
-            firstRender.current = false;
+        if (firstRender) {
+            firstRender = false;
             return;
         }
         if (playlist.images.length === 0) {
             resetImageCheckboxes();
-            reQueryImages();
             clearPlaylist();
         }
     }, [playlist.images]);
@@ -229,7 +234,7 @@ function PlaylistTrack() {
             >
                 <SortableContext items={sortingCriteria}>
                     <div className="flex rounded-lg  overflow-y-clip  max-w-[90vw] overflow-x-scroll scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar scrollbar-thumb-neutral-300">
-                        {...playlistArray}
+                        <AnimatePresence>{...playlistArray}</AnimatePresence>
                     </div>
                 </SortableContext>
             </DndContext>

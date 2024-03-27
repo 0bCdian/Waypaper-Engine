@@ -28,19 +28,19 @@ const NavBar = () => {
                 </div>
             </div>
             <div className="navbar-center">
-                <button
-                    className="btn w-full text-ellipsis rounded-lg text-2xl"
-                    onClick={() => {
-                        void reQueryMonitors().then(() => {
-                            // @ts-expect-error daisyui
-                            window.monitors.showModal();
-                        });
-                    }}
-                >
-                    {activeMonitor.name.length > 0
-                        ? activeMonitor.name
-                        : 'Unknown'}
-                </button>
+                {activeMonitor.name.length > 0 ? (
+                    <button
+                        className="btn w-full text-ellipsis rounded-lg text-2xl"
+                        onClick={() => {
+                            void reQueryMonitors().then(() => {
+                                // @ts-expect-error daisyui
+                                window.monitors.showModal();
+                            });
+                        }}
+                    >
+                        {activeMonitor.name}
+                    </button>
+                ) : null}
             </div>
             <div className="navbar-end"></div>
         </div>

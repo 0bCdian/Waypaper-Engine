@@ -54,12 +54,8 @@ export const ELECTRON_API = {
     stopPlaylist: (playlist: { name: string; monitor: ActiveMonitor }) => {
         ipcRenderer.send('stopPlaylist', playlist);
     },
-    deleteImageFromGallery: async (imageID: number, imageName: string) => {
-        return await ipcRenderer.invoke(
-            'deleteImageFromGallery',
-            imageID,
-            imageName
-        );
+    deleteImagesFromGallery: async (images: rendererImage[]) => {
+        return await ipcRenderer.invoke('deleteImageFromGallery', images);
     },
     deletePlaylist: (playlistName: string) => {
         ipcRenderer.send('deletePlaylist', playlistName);

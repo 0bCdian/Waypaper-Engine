@@ -121,17 +121,17 @@ const SwwwConfig = () => {
         <>
             <AnimatePresence>
                 <motion.div
-                    className="mt-10 m-auto  cursor-default"
+                    className=" m-auto  cursor-default"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    transition={{ duration: 1 }}
+                    transition={{ duration: 0.5 }}
                 >
                     <h1 className="text-7xl font-semibold py-2 self-center text-center">
                         Swww Settings
                     </h1>
                     <div className="divider"></div>
-                    <div className=" overflow- flex justify-between items-center flex-col scrollbar-thin scrollbar-track-base-100 scrollbar-thumb-stone-300 max-h-[0] min-h-[100vh] w-full">
+                    <div className="flex min-h-0 max-h-[75vh] justify-between items-center flex-col scrollbar-thin scrollbar-track-base-100 scrollbar-thumb-stone-300   w-full overflow-y-scroll">
                         <form
                             className="form-control w-1/3"
                             onSubmit={() => {

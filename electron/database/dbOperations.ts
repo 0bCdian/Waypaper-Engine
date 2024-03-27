@@ -84,12 +84,6 @@ export class DBOperations extends EventEmitter {
             )
             .all();
         const activePlaylist = activePlaylists.find(playlist => {
-            console.log(
-                'activePlaylist:',
-                playlist,
-                monitor,
-                playlist.activePlaylists.monitor.name === monitor.name
-            );
             return playlist.activePlaylists.monitor.name === monitor.name;
         });
         if (activePlaylist === undefined) return;
@@ -157,8 +151,15 @@ export class DBOperations extends EventEmitter {
         return db.insert(tables.image).values(rows).returning();
     }
 
-    deleteImage(id: number) {
-        db.delete(tables.image).where(eq(tables.image.id, id)).run();
+    deleteImages(images: rendererImage[]) {
+        void db.transaction(async tx => {
+            for (let idx = 0; idx < images.length; idx++) {
+                const currentImage = images[idx];
+                await tx
+                    .delete(tables.image)
+                    .where(eq(tables.image.id, currentImage.id));
+            }
+        });
     }
 
     getAppConfig() {

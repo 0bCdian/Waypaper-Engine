@@ -1,11 +1,10 @@
 import { useSortable } from '@dnd-kit/sortable';
 import { useDndMonitor } from '@dnd-kit/core';
-import { motion } from 'framer-motion';
-import { useEffect, useMemo, useRef, useCallback, useState } from 'react';
+import { useEffect, useMemo, useRef, useCallback, useState, memo } from 'react';
 import { type PLAYLIST_TYPES_TYPE } from '../../shared/types/playlist';
-import playlistStore from '../stores/playlist';
+import { playlistStore } from '../stores/playlist';
 import { type rendererImage } from '../types/rendererTypes';
-
+import { motion } from 'framer-motion';
 const { getThumbnailSrc } = window.API_RENDERER;
 const daysOfWeek = [
     'Sunday',
@@ -16,8 +15,7 @@ const daysOfWeek = [
     'Friday',
     'Saturday'
 ];
-
-function MiniPlaylistCard({
+const MiniPlaylistCard = memo(function MiniPlaylistCard({
     Image,
     playlistType,
     index,
@@ -27,39 +25,18 @@ function MiniPlaylistCard({
     Image: rendererImage;
     playlistType: PLAYLIST_TYPES_TYPE;
     index: number;
-    isLast: boolean | undefined;
+    isLast: boolean;
     reorderSortingCriteria: () => void;
 }) {
     const { removeImageFromPlaylist, playlist } = playlistStore();
     const [isInvalid, setIsInvalid] = useState(false);
     const imageRef = useRef<HTMLImageElement>(null);
     const timeRef = useRef<HTMLInputElement>(null);
-    const [isActive, setIsActive] = useState(false);
-    const [isOver, setIsOver] = useState(false);
     const imageSrc = useMemo(() => {
         return getThumbnailSrc(Image.name);
     }, [Image]);
     const { attributes, listeners, setNodeRef } = useSortable({
         id: Image.id
-    });
-    useDndMonitor({
-        onDragStart(event) {
-            if (isActive) return;
-            if (event.active.id === Image.id) setIsActive(true);
-            else setIsOver(true);
-        },
-        onDragEnd() {
-            setIsOver(false);
-            if (isActive) setIsActive(false);
-        },
-        onDragOver(event) {
-            const { over, active } = event;
-            if (Image.id === over?.id || active.id === Image.id) {
-                setIsOver(false);
-            } else {
-                setIsOver(true);
-            }
-        }
     });
     let text: string;
     if (isLast === undefined) {
@@ -71,12 +48,6 @@ function MiniPlaylistCard({
     } else {
         text = daysOfWeek[index];
     }
-    useEffect(() => {
-        if (isLast !== undefined && isLast) {
-            imageRef.current?.scrollIntoView({ inline: 'start' });
-        }
-    }, []);
-
     const onRemove = useCallback(() => {
         Image.isChecked = false;
         removeImageFromPlaylist(Image);
@@ -104,21 +75,25 @@ function MiniPlaylistCard({
             reorderSortingCriteria();
         }
     }, [playlistType, Image.time]);
+    useEffect(() => {
+        if (isLast) {
+            imageRef.current?.scrollIntoView({
+                behavior: 'smooth',
+                inline: 'start'
+            });
+        }
+    }, []);
     return (
-        <div
-            data-active={isActive}
-            data-over={isOver}
+        <motion.div
+            layout
+            key={Image.id}
+            initial={{ scale: 0.5 }}
+            animate={{ scale: 1 }}
+            exit={{ scale: 0 }}
+            transition={{ duration: 0.2 }}
             ref={setNodeRef}
-            className="data-[over=true]:opacity-25 data-[over=true]:scale-90"
         >
-            <motion.div
-                initial={{ scale: 0.5 }}
-                animate={{ scale: 1 }}
-                transition={{ duration: 0.2 }}
-                exit={{ scale: 0 }}
-                layout
-                className="w-32 mx-1 shrink-0 rounded-lg shadow-xl mb-2 "
-            >
+            <div className="w-32 mx-1 shrink-0 rounded-lg shadow-xl mb-2 ">
                 {playlistType === 'timeofday' && (
                     <div className="flex flex-col max-h-[fit]">
                         <span
@@ -185,13 +160,13 @@ function MiniPlaylistCard({
                     {...listeners}
                     src={imageSrc}
                     alt={Image.name}
-                    className="rounded-lg cursor-default shadow-2xl active:scale-105  transition-all"
+                    className="rounded-lg cursor-default shadow-2xl active:scale-105 active:opacity-45  transition-all"
                     ref={imageRef}
                     loading="lazy"
                 />
-            </motion.div>
-        </div>
+            </div>
+        </motion.div>
     );
-}
+});
 
 export default MiniPlaylistCard;

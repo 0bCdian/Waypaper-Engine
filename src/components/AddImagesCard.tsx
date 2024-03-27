@@ -1,7 +1,7 @@
 import SvgComponent from './addImagesIcon';
 import SvgComponentFolder from './AddFoldersIcon';
 import openImagesStore from '../hooks/useOpenImages';
-import playlistStore from '../stores/playlist';
+import { playlistStore } from '../stores/playlist';
 import { imagesStore } from '../stores/images';
 import { type openFileAction } from '../../shared/types';
 

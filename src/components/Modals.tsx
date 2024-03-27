@@ -1,24 +1,37 @@
-import { useState, useEffect, useMemo, lazy, Suspense } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import LoadPlaylistModal from './LoadPlaylistModal';
 import SavePlaylistModal from './SavePlaylistModal';
 import PlaylistConfigurationModal from './PlaylistConfigurationModal';
-import playlistStore from '../stores/playlist';
+import { playlistStore } from '../stores/playlist';
 import { imagesStore } from '../stores/images';
 import AdvancedFiltersModal from './AdvancedFiltersModal';
 import { type playlistSelectType } from '../../electron/database/schema';
 import { useAppConfigStore } from '../stores/appConfig';
-const { queryPlaylists } = window.API_RENDERER;
-const Monitors = lazy(async () => await import('./monitorsModal'));
+import Monitors from './monitorsModal';
+import { useMonitorStore } from '../stores/monitors';
+const { queryPlaylists, querySelectedMonitor } = window.API_RENDERER;
+let alreadyShown = false;
 function Modals() {
     const [playlistsInDB, setPlaylistsInDB] = useState<playlistSelectType[]>(
         []
     );
-    const { appConfig, alreadyShown, setAlreadyShown } = useAppConfigStore();
+    const { appConfig, isSetup } = useAppConfigStore();
+    const { setActiveMonitor, reQueryMonitors } = useMonitorStore();
     useEffect(() => {
-        if (alreadyShown || !appConfig.showMonitorModalOnStart) return;
-        // @ts-expect-error daisy-ui
-        window.monitors.showModal();
-        setAlreadyShown(true);
+        if (!isSetup || !appConfig.showMonitorModalOnStart || alreadyShown)
+            return;
+        void querySelectedMonitor().then(lastSelectedMonitor => {
+            if (lastSelectedMonitor !== undefined) {
+                setActiveMonitor(lastSelectedMonitor);
+            }
+            void reQueryMonitors().then(() => {
+                setTimeout(() => {
+                    // @ts-expect-error daisy-ui
+                    window.monitors.showModal();
+                    alreadyShown = true;
+                }, 300);
+            });
+        });
     }, []);
 
     const [shouldReload, setShouldReload] = useState<boolean>(false);
@@ -51,9 +64,7 @@ function Modals() {
             />
             <PlaylistConfigurationModal />
             <AdvancedFiltersModal />
-            <Suspense>
-                <Monitors />
-            </Suspense>
+            <Monitors />
         </>
     );
 }
