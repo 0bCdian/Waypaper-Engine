@@ -1,70 +1,15 @@
-import { useState, useMemo, useEffect } from 'react';
-import { imagesStore } from '../stores/images';
-import Skeleton from './Skeleton';
-import ImageCard from './ImageCard';
 import ResponsivePagination from 'react-responsive-pagination';
 import 'react-responsive-pagination/themes/minimal.css';
 import '../custom.css';
-import { useFilteredImages } from '../hooks/useFilteredImages';
 import PlaylistTrack from './PlaylistTrack';
 import { motion, AnimatePresence } from 'framer-motion';
 import { registerOnDelete } from '../hooks/useOnDeleteImage';
+import { useImagePagination } from '../hooks/useImagePagination';
 const { openContextMenuGallery } = window.API_RENDERER;
 function PaginatedGallery() {
-    const { skeletonsToShow, filters } = imagesStore();
     registerOnDelete();
-    const [imagesPerPage] = useState(20);
-    const filteredImages = useFilteredImages();
-    const [currentPage, setCurrentPage] = useState<number>(1);
-    const lastImageIndex = currentPage * imagesPerPage;
-    const firstImageIndex = lastImageIndex - imagesPerPage;
-    const totalPages = useMemo(() => {
-        return Math.ceil(filteredImages.length / imagesPerPage);
-    }, [filteredImages, skeletonsToShow, imagesPerPage]);
-    const SkeletonsArray = useMemo(() => {
-        if (skeletonsToShow !== undefined) {
-            return skeletonsToShow.fileNames.map((imageName, index) => {
-                const imagePath = skeletonsToShow.imagePaths[index];
-                return <Skeleton key={imagePath} imageName={imageName} />;
-            });
-        }
-        return [];
-    }, [skeletonsToShow]);
-    const imagesToShow = useMemo(() => {
-        const imageCardJsxArray: JSX.Element[] = [];
-        if (filters.order === 'desc') {
-            for (let idx = firstImageIndex; idx < lastImageIndex; idx++) {
-                const currentImage = filteredImages[idx];
-                if (currentImage === undefined) break;
-                const imageJsxElement = (
-                    <ImageCard key={currentImage.id} Image={currentImage} />
-                );
-                imageCardJsxArray.push(imageJsxElement);
-            }
-        } else {
-            for (let idx = filteredImages.length - 1; idx >= 0; idx--) {
-                const imageJsxElement = (
-                    <ImageCard
-                        key={filteredImages[idx].id}
-                        Image={filteredImages[idx]}
-                    />
-                );
-                imageCardJsxArray.push(imageJsxElement);
-            }
-        }
-        return [...SkeletonsArray, ...imageCardJsxArray];
-    }, [filteredImages, filters, currentPage, totalPages]);
-    function handlePageChange(page: number) {
-        setCurrentPage(page);
-    }
-    useEffect(() => {
-        if (imagesToShow.length === 0) {
-            setCurrentPage(totalPages);
-        }
-        if (filters.searchString === '') {
-            setCurrentPage(1);
-        }
-    }, [imagesPerPage, totalPages, filters]);
+    const { handlePageChange, imagesToShow, currentPage, totalPages } =
+        useImagePagination();
     return (
         <AnimatePresence>
             <motion.div

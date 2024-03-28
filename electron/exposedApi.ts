@@ -60,8 +60,8 @@ export const ELECTRON_API = {
     deletePlaylist: (playlistName: string) => {
         ipcRenderer.send('deletePlaylist', playlistName);
     },
-    openContextMenu: (Image: rendererImage) => {
-        ipcRenderer.send('openContextMenuImage', Image);
+    openContextMenu: (Image: rendererImage, selectedImagesLength: number) => {
+        ipcRenderer.send('openContextMenuImage', Image, selectedImagesLength);
     },
     openContextMenuGallery: () => {
         ipcRenderer.send('openContextMenuGallery');

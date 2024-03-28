@@ -6,20 +6,26 @@ export function useFilteredImages() {
     // The default order is descending, the images come in sorted from the database by ID in descending order.
     // So we must respect that order in the ordering of names
     // And we "order" by ascending or descending
-    const { imagesArray, filters } = imagesStore();
+    const { imagesArray, filters, setSelectedImages } = imagesStore();
     const [filteredImages, setFilteredImages] =
         useState<rendererImage[]>(imagesArray);
     useHotkeys('ctrl+shift+a', () => {
+        const selectedImages = new Set<number>();
         for (let index = 0; index < filteredImages.length; index++) {
             filteredImages[index].isSelected =
                 !filteredImages[index].isSelected;
+            if (filteredImages[index].isSelected) {
+                selectedImages.add(filteredImages[index].id);
+            }
         }
+        setSelectedImages(selectedImages);
         setFilteredImages([...filteredImages]);
     });
     useHotkeys('escape', () => {
         for (let index = 0; index < filteredImages.length; index++) {
             filteredImages[index].isSelected = false;
         }
+        setSelectedImages(new Set<number>());
         setFilteredImages([...filteredImages]);
     });
     const sortedImages = useMemo(() => {
@@ -28,6 +34,7 @@ export function useFilteredImages() {
         shallowCopy.sort((a, b) => b.name.localeCompare(a.name));
         return shallowCopy;
     }, [imagesArray, filters]);
+
     useEffect(() => {
         // this is done on purpose to prevent as much iterations of sortedImages as possible
         const dontFilterByResolution =

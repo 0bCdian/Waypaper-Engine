@@ -30,7 +30,8 @@ export const initialAppConfig: appConfigType = {
     startMinimized: false,
     minimizeInsteadOfClose: false,
     randomImageMonitor: 'clone',
-    showMonitorModalOnStart: true
+    showMonitorModalOnStart: true,
+    imagesPerPage: 20
 };
 
 export const initialSwwwConfig: swwwConfig = {
@@ -61,4 +62,13 @@ export const SHORTCUT_EVENTS = {
 } as const;
 
 export type SHORTCUT_EVENTS_TYPE = objectValues<typeof SHORTCUT_EVENTS>;
-export const mainEventsList = {};
+export const MENU_EVENTS = {
+    selectAllImagesInGallery: 'selectAllImagesInGallery',
+    clearSelection: 'clearSelection',
+    selectAllImagesInCurrentPage: 'selectAllImagesInCurrentPage',
+    setImagesPerPage: 'setImagesPerPage',
+    addSelectedImagesToPlaylist: 'addSelectedImagesToPlaylist',
+    deleteAllSelectedImages: 'deleteAllSelectedImages'
+} as const;
+
+export type IPC_EVENTS_TYPE = objectValues<typeof MENU_EVENTS>;

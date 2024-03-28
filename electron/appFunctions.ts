@@ -542,6 +542,7 @@ export async function setImageAcrossAllMonitors(Image: imageSelectType) {
 export async function openContextMenu(
     event: Electron.IpcMainInvokeEvent,
     image: rendererImage,
+    selectedImagesLength: number,
     win: BrowserWindow
 ) {
     const monitors = await getMonitors();
@@ -605,12 +606,12 @@ export async function openContextMenu(
                     });
             }
         },
-        ...contextMenu
+        ...contextMenu(win, selectedImagesLength)
     ]);
     imageContextMenu.popup();
 }
 
-export function openContextMenuGallery() {
-    const galleryContextMenu = Menu.buildFromTemplate(contextMenu);
+export function openContextMenuGallery(win: BrowserWindow) {
+    const galleryContextMenu = Menu.buildFromTemplate(contextMenu(win));
     galleryContextMenu.popup();
 }

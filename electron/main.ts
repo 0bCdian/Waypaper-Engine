@@ -30,7 +30,6 @@ import {
     type appConfigInsertType,
     type swwwConfigInsertType
 } from './database/schema';
-import { createShortcuts } from './shortcuts';
 import { type ActiveMonitor } from '../shared/types/monitor';
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -211,14 +210,17 @@ ipcMain.on(
         playlistControllerInstance.updateConfig();
     }
 );
-ipcMain.on('openContextMenuImage', (event, image: rendererImage) => {
-    if (win !== null) {
-        void openContextMenu(event, image, win);
+ipcMain.on(
+    'openContextMenuImage',
+    (event, image: rendererImage, selectedImagesLength: number) => {
+        if (win !== null) {
+            void openContextMenu(event, image, selectedImagesLength, win);
+        }
     }
-});
+);
 ipcMain.on('openContextMenuGallery', () => {
     if (win !== null) {
-        openContextMenuGallery();
+        openContextMenuGallery(win);
     }
 });
 ipcMain.on(

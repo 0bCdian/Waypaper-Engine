@@ -7,4 +7,5 @@ export interface appConfigType {
     minimizeInsteadOfClose: boolean;
     randomImageMonitor: 'clone' | 'extend' | 'individual';
     showMonitorModalOnStart: boolean;
+    imagesPerPage: number;
 }

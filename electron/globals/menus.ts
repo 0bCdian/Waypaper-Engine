@@ -5,6 +5,7 @@ import {
 } from '../database/globalConfig';
 import { getMonitors } from '../appFunctions';
 import { screen } from 'electron';
+import { MENU_EVENTS } from '../../shared/constants';
 export const devMenu = ({
     win,
     app
@@ -74,6 +75,7 @@ export const trayMenu = async (app: App, win: BrowserWindow) => {
     console.log(screen.getAllDisplays());
     console.log(monitors, playlists, allPlaylists, imageHistory);
     console.log(win, app);
+
     const baseMenu = [
         {
             label: 'Random Wallpaper',
@@ -160,59 +162,80 @@ export const trayMenu = async (app: App, win: BrowserWindow) => {
 //     return menuWithControls;
 // };
 //
-export const contextMenu = [
-    {
-        label: 'Images per page',
-        submenu: [
+export function contextMenu(win: BrowserWindow, selectedImagesLength: number) {
+    let selectedImagesMenu: Array<{
+        label: string;
+        click: () => void;
+    }> = [];
+    if (selectedImagesLength > 0) {
+        selectedImagesMenu = [
             {
-                label: '20',
+                label: 'Select all images in current page',
                 click: () => {
-                    console.log('20');
+                    win.webContents.send(
+                        MENU_EVENTS.selectAllImagesInCurrentPage
+                    );
                 }
             },
             {
-                label: '50',
+                label: 'Select all images in gallery',
                 click: () => {
-                    console.log('50');
+                    win.webContents.send(MENU_EVENTS.selectAllImagesInGallery);
                 }
             },
             {
-                label: '100',
+                label: 'Unselect all images in current page',
                 click: () => {
-                    console.log('100');
+                    win.webContents.send(MENU_EVENTS.clearSelection);
                 }
             },
             {
-                label: '200',
+                label: 'Add all selected images to current playlist',
                 click: () => {
-                    console.log('200');
+                    win.webContents.send(
+                        MENU_EVENTS.addSelectedImagesToPlaylist
+                    );
+                }
+            },
+            {
+                label: 'Delete all selected images',
+                click: () => {
+                    win.webContents.send(MENU_EVENTS.deleteAllSelectedImages);
                 }
             }
-        ]
-    },
-    {
-        label: 'Select all images in current page',
-        click: () => {
-            console.log('select all images');
-        },
-        accelerator: 'Ctrl+A'
-    },
-    {
-        label: 'Unselect all images in current page',
-        click: () => {
-            console.log('unselect all images in current page');
-        }
-    },
-    {
-        label: 'Add all selected images to current playlist',
-        click: () => {
-            console.log('add all selected images to current playlist');
-        }
-    },
-    {
-        label: 'Delete all selected images',
-        click: () => {
-            console.log('delete all selected images');
-        }
+        ];
     }
-];
+    const menu = [
+        {
+            label: 'Images per page',
+            submenu: [
+                {
+                    label: '20',
+                    click: () => {
+                        win.webContents.send(MENU_EVENTS.setImagesPerPage, 20);
+                    }
+                },
+                {
+                    label: '50',
+                    click: () => {
+                        win.webContents.send(MENU_EVENTS.setImagesPerPage, 50);
+                    }
+                },
+                {
+                    label: '100',
+                    click: () => {
+                        win.webContents.send(MENU_EVENTS.setImagesPerPage, 100);
+                    }
+                },
+                {
+                    label: '200',
+                    click: () => {
+                        win.webContents.send(MENU_EVENTS.setImagesPerPage, 200);
+                    }
+                }
+            ],
+            ...selectedImagesMenu
+        }
+    ];
+    return menu;
+}

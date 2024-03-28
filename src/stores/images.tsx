@@ -40,6 +40,7 @@ interface State {
     setFilters: (newFilters: Filters) => void;
     setSkeletons: (skeletons: imagesObject | undefined) => void;
     setFilteredImages: (filteredImages: rendererImage[]) => void;
+    setSelectedImages: (newSelectedImages: Set<number>) => void;
     resetImageCheckboxes: () => void;
     clearSkeletons: () => void;
     removeImagesFromStore: (images: rendererImage[]) => void;
@@ -63,6 +64,9 @@ export const imagesStore = create<State>()((set, get) => ({
     },
     setFilteredImages: filteredImages => {
         set(() => ({ filteredImages }));
+    },
+    setSelectedImages: selectedImages => {
+        set(() => ({ selectedImages }));
     },
     addImages: newImages => {
         const filters = get().filters;
@@ -129,9 +133,11 @@ export const imagesStore = create<State>()((set, get) => ({
     },
     addSelectedImage(imageSelected) {
         get().selectedImages.add(imageSelected.id);
+        set(state => ({ selectedImages: new Set(state.selectedImages) }));
     },
     removeSelectedImage(imageSelected) {
         get().selectedImages.delete(imageSelected.id);
+        set(state => ({ selectedImages: new Set(state.selectedImages) }));
     },
     deleteSelectedImages() {
         const selectedImages: rendererImage[] = [];
