@@ -1,5 +1,4 @@
 import { useSortable } from '@dnd-kit/sortable';
-import { useDndMonitor } from '@dnd-kit/core';
 import { useEffect, useMemo, useRef, useCallback, useState, memo } from 'react';
 import { type PLAYLIST_TYPES_TYPE } from '../../shared/types/playlist';
 import { playlistStore } from '../stores/playlist';
@@ -100,7 +99,7 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
                             className={
                                 isInvalid
                                     ? 'font-semibold italic rounded-md'
-                                    : 'opacity-0 [display:none] '
+                                    : 'opacity-0'
                             }
                         >
                             Invalid time

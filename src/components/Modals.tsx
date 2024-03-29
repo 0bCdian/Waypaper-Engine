@@ -18,13 +18,17 @@ function Modals() {
     const { appConfig, isSetup } = useAppConfigStore();
     const { setActiveMonitor, reQueryMonitors } = useMonitorStore();
     useEffect(() => {
-        if (!isSetup || !appConfig.showMonitorModalOnStart || alreadyShown)
-            return;
         void querySelectedMonitor().then(lastSelectedMonitor => {
             if (lastSelectedMonitor !== undefined) {
                 setActiveMonitor(lastSelectedMonitor);
             }
             void reQueryMonitors().then(() => {
+                if (
+                    !isSetup ||
+                    !appConfig.showMonitorModalOnStart ||
+                    alreadyShown
+                )
+                    return;
                 setTimeout(() => {
                     // @ts-expect-error daisy-ui
                     window.monitors.showModal();
