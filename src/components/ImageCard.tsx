@@ -51,7 +51,7 @@ function ImageCard({ Image }: ImageCardProps) {
     };
     const handleRightClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        openContextMenu(Image, selectedImages.size);
+        openContextMenu({ Image, selectedImagesLength: selectedImages.size });
     };
     useEffect(() => {
         if (selected) addSelectedImage(Image);

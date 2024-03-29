@@ -541,77 +541,16 @@ export async function setImageAcrossAllMonitors(Image: imageSelectType) {
 
 export async function openContextMenu(
     event: Electron.IpcMainInvokeEvent,
-    image: rendererImage,
+    image: rendererImage | undefined,
     selectedImagesLength: number,
     win: BrowserWindow
 ) {
-    const monitors = await getMonitors();
-    const subLabelsMonitors = monitors.map(monitor => {
-        return {
-            label: `In ${monitor.name}`,
-            click: () => {
-                setImage(event, image.name, monitor.name);
-            }
-        };
+    const template = await contextMenu({
+        win,
+        selectedImagesLength,
+        event,
+        image
     });
-    subLabelsMonitors.unshift(
-        {
-            label: `Duplicate across all monitors`,
-            click: () => {
-                setImage(event, image.name);
-            }
-        },
-        {
-            label: `Extend across all monitors horizontally`,
-            click: () => {
-                void setImageExtended(image, monitors, 'vertical');
-            }
-        },
-        {
-            label: `Extend across all monitors vertically`,
-            click: () => {
-                void setImageExtended(image, monitors, 'horizontal');
-            }
-        },
-        {
-            label: `Extend across all monitors grouping them`,
-            click: () => {
-                void setImageAcrossAllMonitors(image);
-            }
-        }
-    );
-    const imageContextMenu = Menu.buildFromTemplate([
-        {
-            label: `Set ${image.name}`,
-            submenu: subLabelsMonitors
-        },
-        {
-            label: `Delete ${image.name}`,
-            click: () => {
-                void dialog
-                    .showMessageBox(win, {
-                        message: `Are you sure you want to delete ${image.name}`,
-                        type: 'question',
-                        buttons: ['yes', 'no'],
-                        title: 'Confirm delete'
-                    })
-                    .then(data => {
-                        if (data.response === 0) {
-                            deleteImagesFromGallery(event, [image]);
-                            win?.webContents.send(
-                                'deleteImageFromGallery',
-                                image
-                            );
-                        }
-                    });
-            }
-        },
-        ...contextMenu(win, selectedImagesLength)
-    ]);
-    imageContextMenu.popup();
-}
-
-export function openContextMenuGallery(win: BrowserWindow) {
-    const galleryContextMenu = Menu.buildFromTemplate(contextMenu(win));
-    galleryContextMenu.popup();
+    const contextMenuInstance = Menu.buildFromTemplate(template);
+    contextMenuInstance.popup();
 }

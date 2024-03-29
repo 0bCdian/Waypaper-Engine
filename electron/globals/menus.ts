@@ -1,11 +1,18 @@
-import { type BrowserWindow, type App, Menu } from 'electron';
+import { type BrowserWindow, type App, Menu, dialog } from 'electron';
 import {
     dbOperations,
     playlistControllerInstance
 } from '../database/globalConfig';
-import { getMonitors } from '../appFunctions';
+import {
+    deleteImagesFromGallery,
+    getMonitors,
+    setImage,
+    setImageAcrossAllMonitors,
+    setImageExtended
+} from '../appFunctions';
 import { screen } from 'electron';
 import { MENU_EVENTS } from '../../shared/constants';
+import { type rendererImage } from '../../src/types/rendererTypes';
 export const devMenu = ({
     win,
     app
@@ -162,33 +169,89 @@ export const trayMenu = async (app: App, win: BrowserWindow) => {
 //     return menuWithControls;
 // };
 //
-export function contextMenu(win: BrowserWindow, selectedImagesLength: number) {
-    let selectedImagesMenu: Array<{
-        label: string;
-        click: () => void;
-    }> = [];
+export async function contextMenu({
+    event,
+    win,
+    selectedImagesLength,
+    image
+}: {
+    event: Electron.IpcMainInvokeEvent;
+    win: BrowserWindow;
+    selectedImagesLength: number;
+    image: rendererImage | undefined;
+}) {
+    let imagesMenu: Array<
+        Electron.MenuItemConstructorOptions | Electron.MenuItem
+    > = [];
+    let selectedImagesMenu: Array<
+        Electron.MenuItemConstructorOptions | Electron.MenuItem
+    > = [];
+    if (image !== undefined) {
+        const monitors = await getMonitors();
+        const subLabelsMonitors = monitors.map(monitor => {
+            return {
+                label: `In ${monitor.name}`,
+                click: () => {
+                    setImage(event, image.name, monitor.name);
+                }
+            };
+        });
+        subLabelsMonitors.unshift(
+            {
+                label: `Duplicate across all monitors`,
+                click: () => {
+                    setImage(event, image.name);
+                }
+            },
+            {
+                label: `Extend across all monitors horizontally`,
+                click: () => {
+                    void setImageExtended(image, monitors, 'vertical');
+                }
+            },
+            {
+                label: `Extend across all monitors vertically`,
+                click: () => {
+                    void setImageExtended(image, monitors, 'horizontal');
+                }
+            },
+            {
+                label: `Extend across all monitors grouping them`,
+                click: () => {
+                    void setImageAcrossAllMonitors(image);
+                }
+            }
+        );
+        imagesMenu = [
+            {
+                label: `Set ${image.name}`,
+                submenu: subLabelsMonitors
+            },
+            {
+                label: `Delete ${image.name}`,
+                click: () => {
+                    void dialog
+                        .showMessageBox(win, {
+                            message: `Are you sure you want to delete ${image.name}`,
+                            type: 'question',
+                            buttons: ['yes', 'no'],
+                            title: 'Confirm delete'
+                        })
+                        .then(data => {
+                            if (data.response === 0) {
+                                deleteImagesFromGallery(event, [image]);
+                                win?.webContents.send(
+                                    'deleteImageFromGallery',
+                                    image
+                                );
+                            }
+                        });
+                }
+            }
+        ];
+    }
     if (selectedImagesLength > 0) {
         selectedImagesMenu = [
-            {
-                label: 'Select all images in current page',
-                click: () => {
-                    win.webContents.send(
-                        MENU_EVENTS.selectAllImagesInCurrentPage
-                    );
-                }
-            },
-            {
-                label: 'Select all images in gallery',
-                click: () => {
-                    win.webContents.send(MENU_EVENTS.selectAllImagesInGallery);
-                }
-            },
-            {
-                label: 'Unselect all images in current page',
-                click: () => {
-                    win.webContents.send(MENU_EVENTS.clearSelection);
-                }
-            },
             {
                 label: 'Add all selected images to current playlist',
                 click: () => {
@@ -206,6 +269,7 @@ export function contextMenu(win: BrowserWindow, selectedImagesLength: number) {
         ];
     }
     const menu = [
+        ...imagesMenu,
         {
             label: 'Images per page',
             submenu: [
@@ -233,9 +297,27 @@ export function contextMenu(win: BrowserWindow, selectedImagesLength: number) {
                         win.webContents.send(MENU_EVENTS.setImagesPerPage, 200);
                     }
                 }
-            ],
-            ...selectedImagesMenu
-        }
+            ]
+        },
+        {
+            label: 'Select all images in current page',
+            click: () => {
+                win.webContents.send(MENU_EVENTS.selectAllImagesInCurrentPage);
+            }
+        },
+        {
+            label: 'Select all images in gallery',
+            click: () => {
+                win.webContents.send(MENU_EVENTS.selectAllImagesInGallery);
+            }
+        },
+        {
+            label: 'Unselect all images in current page',
+            click: () => {
+                win.webContents.send(MENU_EVENTS.clearSelection);
+            }
+        },
+        ...selectedImagesMenu
     ];
     return menu;
 }

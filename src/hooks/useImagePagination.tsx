@@ -108,6 +108,7 @@ export function useImagePagination() {
         imagesToShow,
         handlePageChange,
         filteredImages,
-        imagesInCurrentPage
+        imagesInCurrentPage,
+        selectedImages
     };
 }

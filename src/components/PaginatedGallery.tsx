@@ -5,18 +5,22 @@ import PlaylistTrack from './PlaylistTrack';
 import { useImagePagination } from '../hooks/useImagePagination';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRef } from 'react';
-const { openContextMenuGallery } = window.API_RENDERER;
+const { openContextMenu } = window.API_RENDERER;
 
 function PaginatedGallery() {
-    const { imagesToShow, handlePageChange, currentPage, totalPages } =
-        useImagePagination();
+    const {
+        imagesToShow,
+        handlePageChange,
+        currentPage,
+        totalPages,
+        selectedImages
+    } = useImagePagination();
     const ref = useRef<HTMLDivElement>(null);
     return (
         <AnimatePresence>
             <motion.div
                 ref={ref}
                 onHoverStart={() => {
-                    console.log('hover');
                     ref.current?.focus();
                 }}
                 tabIndex={-1}
@@ -27,7 +31,10 @@ function PaginatedGallery() {
                 className="transition focus:outline-none justify-between gap-4 sm:w-[90%] m-auto flex flex-col overflow-clip min-h-[87%] max-h-[87%]"
                 onContextMenu={e => {
                     e.stopPropagation();
-                    openContextMenuGallery();
+                    openContextMenu({
+                        Image: undefined,
+                        selectedImagesLength: selectedImages.size
+                    });
                 }}
             >
                 <div className="overflow-y-scroll scrollbar-thin scrollbar-track-transparent scrollbar-thumb-neutral-300 scrollbar-thumb-rounded-sm items-center flex flex-col">

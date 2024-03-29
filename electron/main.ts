@@ -11,8 +11,7 @@ import {
     deleteImagesFromGallery,
     remakeThumbnailsIfImagesExist,
     getMonitors,
-    openContextMenu,
-    openContextMenuGallery
+    openContextMenu
 } from './appFunctions';
 import { devMenu, prodMenu, trayMenu } from './globals/menus';
 import { iconPath } from './binaries';
@@ -218,11 +217,7 @@ ipcMain.on(
         }
     }
 );
-ipcMain.on('openContextMenuGallery', () => {
-    if (win !== null) {
-        openContextMenuGallery(win);
-    }
-});
+
 ipcMain.on(
     'updateAppConfig',
     (_, newAppConfig: appConfigInsertType['config']) => {
