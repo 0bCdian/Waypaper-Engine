@@ -2,22 +2,29 @@ import ResponsivePagination from 'react-responsive-pagination';
 import 'react-responsive-pagination/themes/minimal.css';
 import '../custom.css';
 import PlaylistTrack from './PlaylistTrack';
-import { motion, AnimatePresence } from 'framer-motion';
-import { registerOnDelete } from '../hooks/useOnDeleteImage';
 import { useImagePagination } from '../hooks/useImagePagination';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useRef } from 'react';
 const { openContextMenuGallery } = window.API_RENDERER;
+
 function PaginatedGallery() {
-    registerOnDelete();
-    const { handlePageChange, imagesToShow, currentPage, totalPages } =
+    const { imagesToShow, handlePageChange, currentPage, totalPages } =
         useImagePagination();
+    const ref = useRef<HTMLDivElement>(null);
     return (
         <AnimatePresence>
             <motion.div
+                ref={ref}
+                onHoverStart={() => {
+                    console.log('hover');
+                    ref.current?.focus();
+                }}
+                tabIndex={-1}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.5 }}
-                className="transition justify-between gap-4 sm:w-[90%] m-auto flex flex-col overflow-clip min-h-[87%] max-h-[87%]"
+                className="transition focus:outline-none justify-between gap-4 sm:w-[90%] m-auto flex flex-col overflow-clip min-h-[87%] max-h-[87%]"
                 onContextMenu={e => {
                     e.stopPropagation();
                     openContextMenuGallery();

@@ -2,7 +2,7 @@
     "compilerOptions": {
         "target": "ES2020",
         "useDefineForClassFields": true,
-        "lib": ["ES2020", "DOM", "DOM.Iterable"],
+        "lib": ["ESNext.Array", "ES2020", "DOM", "DOM.Iterable"],
         "module": "CommonJS",
         "skipLibCheck": true,
         "esModuleInterop": true,
@@ -16,8 +16,17 @@
         "strict": true,
         "noUnusedLocals": true,
         "noUnusedParameters": true,
-        "noFallthroughCasesInSwitch": true
+        "noFallthroughCasesInSwitch": true,
+        "allowUmdGlobalAccess": true,
+        "declarationMap": true
     },
-    "include": ["src", "electron", "daemon", "drizzle.config.ts", "shared"],
+    "include": [
+        "electron/**/*.ts",
+        "src/**/*.ts",
+        "src/**/*.tsx",
+        "shared/**/*.ts",
+        "daemon/**/*.ts",
+        "drizzle.config.ts"
+    ],
     "references": [{ "path": "./tsconfig.node.json" }]
 }

@@ -65,7 +65,9 @@ function ImageCard({ Image }: ImageCardProps) {
     useEffect(() => {
         if (selectedImages.size === 0) {
             setSelected(false);
+            return;
         }
+        setSelected(selectedImages.has(Image.id));
     }, [selectedImages.size]);
     return (
         <motion.div

@@ -1,4 +1,4 @@
-import { type ELECTRON_API_TYPE } from "../exposedApi";
+import { type ELECTRON_API_TYPE } from '../exposedApi';
 
 declare global {
     interface Window {

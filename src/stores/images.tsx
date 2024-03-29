@@ -38,6 +38,7 @@ interface State {
     selectedImages: Set<number>;
     addImages: (newImages: rendererImage[]) => void;
     setFilters: (newFilters: Filters) => void;
+    getFilters: () => Filters;
     setSkeletons: (skeletons: imagesObject | undefined) => void;
     setFilteredImages: (filteredImages: rendererImage[]) => void;
     setSelectedImages: (newSelectedImages: Set<number>) => void;
@@ -151,5 +152,8 @@ export const imagesStore = create<State>()((set, get) => ({
         void deleteImagesFromGallery(selectedImages).then(() => {
             get().removeImagesFromStore(selectedImages);
         });
+    },
+    getFilters() {
+        return get().filters;
     }
 }));

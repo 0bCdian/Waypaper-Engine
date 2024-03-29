@@ -2,7 +2,6 @@ import { type ChangeEvent, useEffect, useState } from 'react';
 import useDebounce from '../hooks/useDebounce';
 import { type Filters as FiltersType } from '../types/rendererTypes';
 import { imagesStore } from '../stores/images';
-
 interface PartialFilters {
     order: 'asc' | 'desc';
     type: 'name' | 'id';
@@ -16,8 +15,8 @@ const initialFilters: PartialFilters = {
 
 function Filters() {
     const { setFilters, filters } = imagesStore();
-    const [partialFilters, setPartialFilters] = useState(initialFilters);
 
+    const [partialFilters, setPartialFilters] = useState(initialFilters);
     const onTextChange = (event: ChangeEvent<HTMLInputElement>) => {
         const target = event.target;
         if (target !== null) {
@@ -35,7 +34,7 @@ function Filters() {
             };
             setFilters(newFilters);
         },
-        500,
+        200,
         [partialFilters]
     );
     useEffect(() => {

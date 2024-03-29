@@ -4,6 +4,7 @@ import { imagesStore } from '../stores/images';
 import Skeleton from '../components/Skeleton';
 import ImageCard from '../components/ImageCard';
 import { useHotkeys } from 'react-hotkeys-hook';
+import { type rendererImage } from '../types/rendererTypes';
 
 export function useImagePagination() {
     const [imagesPerPage] = useState(20);
@@ -27,20 +28,9 @@ export function useImagePagination() {
         [currentPage, imagesPerPage, totalImages]
     );
     const firstImageIndexReversed = useMemo(
-        () => Math.max(0, lastImageIndexReversed - imagesPerPage),
+        () => lastImageIndexReversed - imagesPerPage,
         [lastImageIndexReversed, imagesPerPage]
     );
-    useHotkeys('ctrl+a', () => {
-        filteredImages.slice(firstImageIndex, lastImageIndex).forEach(image => {
-            image.isSelected = !image.isSelected;
-            if (image.isSelected) {
-                selectedImages.add(image.id);
-            } else {
-                selectedImages.delete(image.id);
-            }
-        });
-        setSelectedImages(new Set(selectedImages));
-    });
     const totalPages = useMemo(() => {
         const totalGalleryItems =
             filteredImages.length + (skeletonsToShow?.fileNames.length ?? 0);
@@ -55,12 +45,14 @@ export function useImagePagination() {
         }
         return [];
     }, [skeletonsToShow]);
-    const imagesToShow = useMemo(() => {
+    const [imagesToShow, imagesInCurrentPage] = useMemo(() => {
         const imageCardJsxArray: JSX.Element[] = [];
+        const imagesInCurrentPage: rendererImage[] = [];
         if (filters.order === 'desc') {
             for (let idx = firstImageIndex; idx < lastImageIndex; idx++) {
                 const currentImage = filteredImages[idx];
                 if (currentImage === undefined) break;
+                imagesInCurrentPage.push(currentImage);
                 const imageJsxElement = (
                     <ImageCard key={currentImage.id} Image={currentImage} />
                 );
@@ -69,22 +61,39 @@ export function useImagePagination() {
         } else {
             for (
                 let idx = lastImageIndexReversed;
-                idx >= firstImageIndexReversed;
+                idx > firstImageIndexReversed;
                 idx--
             ) {
                 const currentImage = filteredImages[idx];
                 if (currentImage === undefined) break;
+                imagesInCurrentPage.push(currentImage);
                 const imageJsxElement = (
                     <ImageCard key={currentImage.id} Image={currentImage} />
                 );
                 imageCardJsxArray.push(imageJsxElement);
             }
         }
-        return [...SkeletonsArray, ...imageCardJsxArray];
+        return [[...SkeletonsArray, ...imageCardJsxArray], imagesInCurrentPage];
     }, [filteredImages, filters, currentPage, totalPages]);
     const handlePageChange = useCallback((page: number) => {
         setCurrentPage(page);
     }, []);
+    useHotkeys(
+        'ctrl+a',
+        () => {
+            const newSet = new Set(selectedImages);
+            imagesInCurrentPage.forEach(image => {
+                image.isSelected = !image.isSelected;
+                if (image.isSelected) {
+                    newSet.add(image.id);
+                } else {
+                    newSet.delete(image.id);
+                }
+            });
+            setSelectedImages(newSet);
+        },
+        [imagesInCurrentPage, selectedImages]
+    );
     useEffect(() => {
         if (imagesToShow.length === 0) {
             setCurrentPage(totalPages);
@@ -97,6 +106,8 @@ export function useImagePagination() {
         currentPage,
         totalPages,
         imagesToShow,
-        handlePageChange
+        handlePageChange,
+        filteredImages,
+        imagesInCurrentPage
     };
 }

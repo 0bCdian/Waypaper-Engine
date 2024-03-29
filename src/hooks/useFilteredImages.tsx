@@ -9,27 +9,33 @@ export function useFilteredImages() {
     const { imagesArray, filters, setSelectedImages } = imagesStore();
     const [filteredImages, setFilteredImages] =
         useState<rendererImage[]>(imagesArray);
-    useHotkeys('ctrl+shift+a', () => {
-        const selectedImages = new Set<number>();
-        for (let index = 0; index < filteredImages.length; index++) {
-            filteredImages[index].isSelected =
-                !filteredImages[index].isSelected;
-            if (filteredImages[index].isSelected) {
-                selectedImages.add(filteredImages[index].id);
+    useHotkeys(
+        'ctrl+shift+a',
+        () => {
+            const selectedImages = new Set<number>();
+            for (let index = 0; index < filteredImages.length; index++) {
+                filteredImages[index].isSelected =
+                    !filteredImages[index].isSelected;
+                if (filteredImages[index].isSelected) {
+                    selectedImages.add(filteredImages[index].id);
+                }
             }
-        }
-        setSelectedImages(selectedImages);
-        setFilteredImages([...filteredImages]);
-    });
-    useHotkeys('escape', () => {
-        for (let index = 0; index < filteredImages.length; index++) {
-            filteredImages[index].isSelected = false;
-        }
-        setSelectedImages(new Set<number>());
-        setFilteredImages([...filteredImages]);
-    });
+            setSelectedImages(selectedImages);
+        },
+        [filteredImages]
+    );
+    useHotkeys(
+        'escape',
+        () => {
+            for (let index = 0; index < filteredImages.length; index++) {
+                filteredImages[index].isSelected = false;
+            }
+            setSelectedImages(new Set<number>());
+        },
+        [filteredImages]
+    );
     const sortedImages = useMemo(() => {
-        if (filters.type === 'id') return imagesArray;
+        if (filters.type === 'id') return [...imagesArray];
         const shallowCopy = [...imagesArray];
         shallowCopy.sort((a, b) => b.name.localeCompare(a.name));
         return shallowCopy;
