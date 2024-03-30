@@ -2,7 +2,7 @@
     "compilerOptions": {
         "target": "ES2020",
         "useDefineForClassFields": true,
-        "lib": ["ESNext.Array", "ES2020", "DOM", "DOM.Iterable"],
+        "lib": ["ESNext.Array", "ESNext", "ES2020", "DOM", "DOM.Iterable"],
         "module": "CommonJS",
         "skipLibCheck": true,
         "esModuleInterop": true,
@@ -18,7 +18,8 @@
         "noUnusedParameters": true,
         "noFallthroughCasesInSwitch": true,
         "allowUmdGlobalAccess": true,
-        "declarationMap": true
+        "declarationMap": true,
+        "composite": true
     },
     "include": [
         "electron/**/*.ts",

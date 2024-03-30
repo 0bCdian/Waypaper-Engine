@@ -277,24 +277,32 @@ export async function contextMenu({
                     label: '20',
                     click: () => {
                         win.webContents.send(MENU_EVENTS.setImagesPerPage, 20);
+                        dbOperations.updateImagesPerPage({ imagesPerPage: 20 });
                     }
                 },
                 {
                     label: '50',
                     click: () => {
                         win.webContents.send(MENU_EVENTS.setImagesPerPage, 50);
+                        dbOperations.updateImagesPerPage({ imagesPerPage: 50 });
                     }
                 },
                 {
                     label: '100',
                     click: () => {
                         win.webContents.send(MENU_EVENTS.setImagesPerPage, 100);
+                        dbOperations.updateImagesPerPage({
+                            imagesPerPage: 100
+                        });
                     }
                 },
                 {
                     label: '200',
                     click: () => {
                         win.webContents.send(MENU_EVENTS.setImagesPerPage, 200);
+                        dbOperations.updateImagesPerPage({
+                            imagesPerPage: 200
+                        });
                     }
                 }
             ]

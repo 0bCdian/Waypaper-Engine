@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { type appConfigType } from '../../shared/types/app';
 import { initialAppConfig } from '../../shared/constants';
-const { updateAppConfig } = window.API_RENDERER;
+const { updateAppConfig, readAppConfig } = window.API_RENDERER;
 interface State {
     appConfig: appConfigType;
     isSetup: boolean;
@@ -9,6 +9,7 @@ interface State {
 
 interface Actions {
     saveConfig: (data: appConfigType) => void;
+    requeryAppConfig: () => Promise<void>;
 }
 
 export const useAppConfigStore = create<State & Actions>()(set => ({
@@ -17,5 +18,9 @@ export const useAppConfigStore = create<State & Actions>()(set => ({
     saveConfig: newConfig => {
         updateAppConfig(newConfig);
         set(() => ({ appConfig: newConfig, isSetup: true }));
+    },
+    requeryAppConfig: async () => {
+        const newConfig = await readAppConfig();
+        set(() => ({ appConfig: newConfig }));
     }
 }));

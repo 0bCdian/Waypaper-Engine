@@ -15,7 +15,11 @@ import {
     type swwwConfigSelectType,
     type swwwConfigInsertType
 } from './database/schema';
-import { type SHORTCUT_EVENTS_TYPE } from '../shared/constants';
+import {
+    type IPC_MAIN_EVENTS_TYPE,
+    type IPC_RENDERER_EVENTS_TYPE,
+    type SHORTCUT_EVENTS_TYPE
+} from '../shared/constants';
 export const ELECTRON_API = {
     openFiles: async (action: openFileAction) =>
         await ipcRenderer.invoke('openFiles', action),
@@ -114,24 +118,21 @@ export const ELECTRON_API = {
     updateTray: () => {
         ipcRenderer.send('updateTray');
     },
-    registerShortcutListener: (
-        listeners: Array<{
-            event: SHORTCUT_EVENTS_TYPE;
-            callback: (
-                event: Electron.IpcRendererEvent,
-                ...args: any[]
-            ) => void;
-        }>
-    ) => {
-        listeners.forEach(({ event, callback }) => {
-            ipcRenderer.on(event as string, callback);
-        });
-    },
-    deleteShortcutListener: (
-        event: SHORTCUT_EVENTS_TYPE,
-        listener: () => void
-    ) => {
-        ipcRenderer.removeListener(event as string, listener);
+    registerListener: ({
+        listener,
+        channel
+    }: {
+        channel:
+            | IPC_RENDERER_EVENTS_TYPE
+            | SHORTCUT_EVENTS_TYPE
+            | IPC_MAIN_EVENTS_TYPE;
+        listener: (event: Electron.IpcRendererEvent, ...args: any[]) => void;
+    }) => {
+        const listeners = ipcRenderer.listeners(channel);
+        if (listeners.length > 0) {
+            ipcRenderer.removeAllListeners(channel);
+        }
+        ipcRenderer.addListener(channel, listener);
     },
     getThumbnailSrc: (imageName: string) => {
         return (

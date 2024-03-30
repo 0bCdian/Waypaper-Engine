@@ -60,7 +60,6 @@ function PlaylistTrack() {
         });
     }, []);
     const reorderSortingCriteria = useCallback(() => {
-        // @ts-expect-error typescript not recognizing toSorted yet
         const newArray = playlist.images.toSorted(
             (a: rendererImage, b: rendererImage) => {
                 if (a.time === null || b.time === null) return 0;
@@ -72,7 +71,7 @@ function PlaylistTrack() {
                 }
                 return 0;
             }
-        ) as rendererImage[];
+        );
         movePlaylistArrayOrder(newArray);
     }, [playlist]);
     const [playlistArray, sortingCriteria] = useMemo(() => {

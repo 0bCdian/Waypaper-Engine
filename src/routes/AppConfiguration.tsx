@@ -25,6 +25,7 @@ const AppConfiguration = () => {
             setValue('startMinimized', data.startMinimized);
             setValue('minimizeInsteadOfClose', data.minimizeInsteadOfClose);
             setValue('showMonitorModalOnStart', data.showMonitorModalOnStart);
+            setValue('imagesPerPage', data.imagesPerPage);
         });
     }, []);
 
@@ -141,6 +142,25 @@ const AppConfiguration = () => {
                             >
                                 <span className="label-text text-3xl">
                                     Always show monitor modal on startup
+                                </span>
+                            </label>
+                        </div>
+                        <div className="my-6 flex items-center gap-3">
+                            <select
+                                id="imagesPerPage"
+                                className=" select select-sm"
+                                {...register('imagesPerPage', {
+                                    valueAsNumber: true
+                                })}
+                            >
+                                <option value="20">20</option>
+                                <option value="50">50</option>
+                                <option value="100">100</option>
+                                <option value="200">200</option>
+                            </select>
+                            <label htmlFor="imagesPerPage" className="label">
+                                <span className="label-text text-3xl">
+                                    Images Per Page
                                 </span>
                             </label>
                         </div>

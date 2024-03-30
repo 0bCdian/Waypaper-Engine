@@ -188,6 +188,12 @@ export class DBOperations extends EventEmitter {
         return { ...result.config };
     }
 
+    updateImagesPerPage({ imagesPerPage }: { imagesPerPage: number }) {
+        const currentConfig = this.getAppConfig();
+        currentConfig.imagesPerPage = imagesPerPage;
+        void this.updateAppConfig({ config: currentConfig });
+    }
+
     getSwwwConfig() {
         const swwwConfig = db.select().from(tables.swwwConfig).get();
         if (swwwConfig === undefined) {

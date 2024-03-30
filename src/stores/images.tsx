@@ -49,6 +49,7 @@ interface State {
     addSelectedImage: (imageSelected: rendererImage) => void;
     removeSelectedImage: (imageSelected: rendererImage) => void;
     deleteSelectedImages: () => void;
+    getSelectedImages: () => Set<number>;
 }
 
 export const imagesStore = create<State>()((set, get) => ({
@@ -68,6 +69,9 @@ export const imagesStore = create<State>()((set, get) => ({
     },
     setSelectedImages: selectedImages => {
         set(() => ({ selectedImages }));
+    },
+    getSelectedImages: () => {
+        return get().selectedImages;
     },
     addImages: newImages => {
         const filters = get().filters;

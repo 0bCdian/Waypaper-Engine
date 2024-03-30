@@ -1,17 +1,28 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import {
+    useState,
+    useEffect,
+    useCallback,
+    useMemo,
+    lazy,
+    Suspense
+} from 'react';
 import { useFilteredImages } from './useFilteredImages';
 import { imagesStore } from '../stores/images';
 import Skeleton from '../components/Skeleton';
-import ImageCard from '../components/ImageCard';
 import { useHotkeys } from 'react-hotkeys-hook';
 import { type rendererImage } from '../types/rendererTypes';
-
+import { MENU_EVENTS } from '../../shared/constants';
+import { useAppConfigStore } from '../stores/appConfig';
+const ImageCard = lazy(async () => await import('../components/ImageCard'));
+const { registerListener } = window.API_RENDERER;
 export function useImagePagination() {
-    const [imagesPerPage] = useState(20);
+    const { appConfig } = useAppConfigStore();
+    const [imagesPerPage, setImagesPerPage] = useState(appConfig.imagesPerPage);
     const [currentPage, setCurrentPage] = useState<number>(1);
     const { skeletonsToShow, filters, selectedImages, setSelectedImages } =
         imagesStore();
-    const filteredImages = useFilteredImages();
+    const { filteredImages, selectAllImages, clearSelection } =
+        useFilteredImages();
     const lastImageIndex = useMemo(
         () => currentPage * imagesPerPage,
         [currentPage, imagesPerPage]
@@ -54,7 +65,9 @@ export function useImagePagination() {
                 if (currentImage === undefined) break;
                 imagesInCurrentPage.push(currentImage);
                 const imageJsxElement = (
-                    <ImageCard key={currentImage.id} Image={currentImage} />
+                    <Suspense key={currentImage.id}>
+                        <ImageCard Image={currentImage} />
+                    </Suspense>
                 );
                 imageCardJsxArray.push(imageJsxElement);
             }
@@ -68,7 +81,9 @@ export function useImagePagination() {
                 if (currentImage === undefined) break;
                 imagesInCurrentPage.push(currentImage);
                 const imageJsxElement = (
-                    <ImageCard key={currentImage.id} Image={currentImage} />
+                    <Suspense key={currentImage.id}>
+                        <ImageCard Image={currentImage} />
+                    </Suspense>
                 );
                 imageCardJsxArray.push(imageJsxElement);
             }
@@ -78,6 +93,18 @@ export function useImagePagination() {
     const handlePageChange = useCallback((page: number) => {
         setCurrentPage(page);
     }, []);
+    const selectImagesInCurrentPage = () => {
+        const newSet = new Set(selectedImages);
+        imagesInCurrentPage.forEach(image => {
+            image.isSelected = !image.isSelected;
+            if (image.isSelected) {
+                newSet.add(image.id);
+            } else {
+                newSet.delete(image.id);
+            }
+        });
+        setSelectedImages(newSet);
+    };
     useHotkeys(
         'ctrl+a',
         () => {
@@ -94,6 +121,40 @@ export function useImagePagination() {
         },
         [imagesInCurrentPage, selectedImages]
     );
+    type registerListenerArgs = Parameters<typeof registerListener>[0];
+
+    const eventsMap: registerListenerArgs[] = [
+        {
+            channel: MENU_EVENTS.clearSelection,
+            listener: _ => {
+                clearSelection();
+            }
+        },
+        {
+            channel: MENU_EVENTS.setImagesPerPage,
+            listener: (_, imagesPerPage: number) => {
+                setImagesPerPage(imagesPerPage);
+            }
+        },
+        {
+            channel: MENU_EVENTS.selectAllImagesInGallery,
+            listener: _ => {
+                selectAllImages();
+            }
+        },
+        {
+            channel: MENU_EVENTS.selectAllImagesInCurrentPage,
+            listener: _ => {
+                selectImagesInCurrentPage();
+            }
+        }
+    ];
+    useEffect(() => {
+        eventsMap.forEach(eventToRegister => {
+            registerListener(eventToRegister);
+        });
+    }, [eventsMap]);
+
     useEffect(() => {
         if (imagesToShow.length === 0) {
             setCurrentPage(totalPages);

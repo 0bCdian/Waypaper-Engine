@@ -111,7 +111,11 @@ function registerFileProtocol() {
 }
 
 async function createTray() {
+    console.log('createTray');
     if (tray === null) {
+        tray = new Tray(join(iconPath, '512x512.png'));
+    } else {
+        tray.destroy();
         tray = new Tray(join(iconPath, '512x512.png'));
     }
     if (win === null) return;
@@ -119,7 +123,9 @@ async function createTray() {
     tray.setContextMenu(trayContextMenu);
     tray.setToolTip('Waypaper Engine');
     tray.on('click', () => {
-        win?.isVisible() ?? false ? win?.hide() : win?.show();
+        if (win !== null) {
+            win.isVisible() ? win.hide() : win.show();
+        }
     });
 }
 Menu.setApplicationMenu(null);
@@ -136,7 +142,9 @@ app.whenReady()
                 win.reload();
             }
         });
-        // if (win !== null) createShortcuts(win);
+        dbOperations.on('updateAppConfig', () => {
+            win?.webContents.send('updateAppConfig');
+        });
     })
     .catch(e => {
         console.error(e);

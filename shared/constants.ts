@@ -64,11 +64,18 @@ export const SHORTCUT_EVENTS = {
 export type SHORTCUT_EVENTS_TYPE = objectValues<typeof SHORTCUT_EVENTS>;
 export const MENU_EVENTS = {
     selectAllImagesInGallery: 'selectAllImagesInGallery',
-    clearSelection: 'clearSelection',
     selectAllImagesInCurrentPage: 'selectAllImagesInCurrentPage',
+    clearSelectionOnCurrentPage: 'clearSelectionOnCurrentPage',
+    clearSelection: 'clearSelection',
     setImagesPerPage: 'setImagesPerPage',
     addSelectedImagesToPlaylist: 'addSelectedImagesToPlaylist',
     deleteAllSelectedImages: 'deleteAllSelectedImages'
 } as const;
 
-export type IPC_EVENTS_TYPE = objectValues<typeof MENU_EVENTS>;
+export type IPC_RENDERER_EVENTS_TYPE = objectValues<typeof MENU_EVENTS>;
+
+export const IPC_MAIN_EVENTS = {
+    updateAppConfig: 'updateAppConfig'
+} as const;
+
+export type IPC_MAIN_EVENTS_TYPE = objectValues<typeof IPC_MAIN_EVENTS>;

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { imagesStore } from '../stores/images';
 import { type rendererImage } from '../types/rendererTypes';
 import { useHotkeys } from 'react-hotkeys-hook';
@@ -9,31 +9,25 @@ export function useFilteredImages() {
     const { imagesArray, filters, setSelectedImages } = imagesStore();
     const [filteredImages, setFilteredImages] =
         useState<rendererImage[]>(imagesArray);
-    useHotkeys(
-        'ctrl+shift+a',
-        () => {
-            const selectedImages = new Set<number>();
-            for (let index = 0; index < filteredImages.length; index++) {
-                filteredImages[index].isSelected =
-                    !filteredImages[index].isSelected;
-                if (filteredImages[index].isSelected) {
-                    selectedImages.add(filteredImages[index].id);
-                }
+    const selectAllImages = useCallback(() => {
+        const selectedImages = new Set<number>();
+        for (let index = 0; index < filteredImages.length; index++) {
+            filteredImages[index].isSelected =
+                !filteredImages[index].isSelected;
+            if (filteredImages[index].isSelected) {
+                selectedImages.add(filteredImages[index].id);
             }
-            setSelectedImages(selectedImages);
-        },
-        [filteredImages]
-    );
-    useHotkeys(
-        'escape',
-        () => {
-            for (let index = 0; index < filteredImages.length; index++) {
-                filteredImages[index].isSelected = false;
-            }
-            setSelectedImages(new Set<number>());
-        },
-        [filteredImages]
-    );
+        }
+        setSelectedImages(selectedImages);
+    }, [filteredImages]);
+    const clearSelection = useCallback(() => {
+        for (let index = 0; index < filteredImages.length; index++) {
+            filteredImages[index].isSelected = false;
+        }
+        setSelectedImages(new Set<number>());
+    }, [filteredImages]);
+    useHotkeys('ctrl+shift+a', selectAllImages);
+    useHotkeys('escape', clearSelection);
     const sortedImages = useMemo(() => {
         if (filters.type === 'id') return [...imagesArray];
         const shallowCopy = [...imagesArray];
@@ -100,5 +94,9 @@ export function useFilteredImages() {
         setFilteredImages(imagesFilteredByName);
     }, [sortedImages, filters]);
 
-    return filteredImages;
+    return {
+        filteredImages,
+        selectAllImages,
+        clearSelection
+    };
 }
