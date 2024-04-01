@@ -27,7 +27,7 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
     isLast: boolean;
     reorderSortingCriteria: () => void;
 }) {
-    const { removeImageFromPlaylist, playlist } = playlistStore();
+    const { removeImagesFromPlaylist, playlist } = playlistStore();
     const [isInvalid, setIsInvalid] = useState(false);
     const imageRef = useRef<HTMLImageElement>(null);
     const timeRef = useRef<HTMLInputElement>(null);
@@ -49,7 +49,7 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
     }
     const onRemove = useCallback(() => {
         Image.isChecked = false;
-        removeImageFromPlaylist(Image);
+        removeImagesFromPlaylist(new Set<number>().add(Image.id));
     }, []);
     const checkIfTimeStampExists = (
         timeStamp: number,

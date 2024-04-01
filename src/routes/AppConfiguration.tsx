@@ -44,125 +44,144 @@ const AppConfiguration = () => {
                     </h1>
                     <div className="divider"></div>
                     <form
+                        className="w-1/2"
                         onSubmit={e => {
                             void handleSubmit(onSubmit)(e);
                         }}
                     >
-                        <div className="my-6 flex gap-3">
-                            <input
-                                type="checkbox"
-                                id="killDaemon"
-                                className="checkbox mt-4"
-                                {...register('killDaemon')}
-                            />
-                            <label htmlFor="killDaemon" className="label">
-                                <span className="label-text   text-3xl">
-                                    Kill daemon on app exit
-                                </span>
-                            </label>
-                        </div>
-                        <div className="my-6 flex gap-3">
-                            <input
-                                type="checkbox"
-                                id="playlistStart"
-                                className="checkbox mt-4"
-                                {...register('playlistStartOnFirstImage')}
-                            />
-                            <label htmlFor="playlistStart" className="label">
-                                <span className="label-text text-3xl">
-                                    Always start playlists on the first image
-                                </span>
-                            </label>
-                        </div>
-                        <div className="my-6 flex gap-3">
-                            <input
-                                type="checkbox"
-                                className="checkbox mt-4"
-                                id="notifications"
-                                {...register('notifications')}
-                            />
-                            <label htmlFor="notifications" className="label">
-                                <span className="label-text text-3xl">
-                                    Desktop Notifications
-                                </span>
-                            </label>
-                        </div>
-                        <div className="my-6 flex gap-3">
-                            <input
-                                type="checkbox"
-                                id="swwwAnimations"
-                                className="checkbox mt-4"
-                                {...register('swwwAnimations')}
-                            />
-                            <label htmlFor="swwwAnimations" className="label">
-                                <span className="label-text text-3xl">
-                                    Swww animations
-                                </span>
-                            </label>
-                        </div>
-                        <div className="my-6 flex gap-3">
-                            <input
-                                type="checkbox"
-                                id="startMinimized"
-                                className="checkbox mt-4"
-                                {...register('startMinimized')}
-                            />
-                            <label htmlFor="startMinimized" className="label">
-                                <span className="label-text text-3xl">
-                                    Start the app in the tray
-                                </span>
-                            </label>
-                        </div>
-                        <div className="my-6 flex gap-3">
-                            <input
-                                type="checkbox"
-                                id="minimizeInsteadOfClose"
-                                className="checkbox mt-4"
-                                {...register('minimizeInsteadOfClose')}
-                            />
-                            <label
-                                htmlFor="minimizeInsteadOfClose"
-                                className="label"
-                            >
-                                <span className="label-text text-3xl">
-                                    Minimize app to tray instead of closing
-                                </span>
-                            </label>
-                        </div>
-                        <div className="my-6 flex gap-3">
-                            <input
-                                type="checkbox"
-                                id="showMonitorModalOnStart"
-                                className="checkbox mt-4"
-                                {...register('showMonitorModalOnStart')}
-                            />
-                            <label
-                                htmlFor="showMonitorModalOnStart"
-                                className="label"
-                            >
-                                <span className="label-text text-3xl">
-                                    Always show monitor modal on startup
-                                </span>
-                            </label>
-                        </div>
-                        <div className="my-6 flex items-center gap-3">
-                            <select
-                                id="imagesPerPage"
-                                className=" select select-sm"
-                                {...register('imagesPerPage', {
-                                    valueAsNumber: true
-                                })}
-                            >
-                                <option value="20">20</option>
-                                <option value="50">50</option>
-                                <option value="100">100</option>
-                                <option value="200">200</option>
-                            </select>
-                            <label htmlFor="imagesPerPage" className="label">
-                                <span className="label-text text-3xl">
-                                    Images Per Page
-                                </span>
-                            </label>
+                        <div className="overflow-y-scroll max-h-[65dvh] min-h-0 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-neutral-300 scrollbar-thumb-rounded-sm">
+                            <div className="my-6 mx-10 flex gap-3 justify-between bg-red">
+                                <label htmlFor="killDaemon" className="label">
+                                    <span className="label-text   text-3xl">
+                                        Kill daemon on app exit
+                                    </span>
+                                </label>
+                                <input
+                                    type="checkbox"
+                                    id="killDaemon"
+                                    className="checkbox mt-4"
+                                    {...register('killDaemon')}
+                                />
+                            </div>
+                            <div className="my-6 mx-10 flex justify-between">
+                                <label
+                                    htmlFor="playlistStart"
+                                    className="label"
+                                >
+                                    <span className="label-text text-3xl">
+                                        Always start playlists on the first
+                                        image
+                                    </span>
+                                </label>
+                                <input
+                                    type="checkbox"
+                                    id="playlistStart"
+                                    className="checkbox mt-4"
+                                    {...register('playlistStartOnFirstImage')}
+                                />
+                            </div>
+                            <div className="mx-10 my-6 flex justify-between">
+                                <label
+                                    htmlFor="notifications"
+                                    className="label"
+                                >
+                                    <span className="label-text text-3xl">
+                                        Desktop Notifications
+                                    </span>
+                                </label>
+                                <input
+                                    type="checkbox"
+                                    className="checkbox mt-4"
+                                    id="notifications"
+                                    {...register('notifications')}
+                                />
+                            </div>
+                            <div className="mx-10 my-6 flex justify-between">
+                                <label
+                                    htmlFor="swwwAnimations"
+                                    className="label"
+                                >
+                                    <span className="label-text text-3xl">
+                                        Swww animations
+                                    </span>
+                                </label>
+                                <input
+                                    type="checkbox"
+                                    id="swwwAnimations"
+                                    className="checkbox mt-4"
+                                    {...register('swwwAnimations')}
+                                />
+                            </div>
+                            <div className="mx-10 my-6 flex justify-between">
+                                <label
+                                    htmlFor="startMinimized"
+                                    className="label"
+                                >
+                                    <span className="label-text text-3xl">
+                                        Start the app in the tray
+                                    </span>
+                                </label>
+                                <input
+                                    type="checkbox"
+                                    id="startMinimized"
+                                    className="checkbox mt-4"
+                                    {...register('startMinimized')}
+                                />
+                            </div>
+                            <div className="mx-10 my-6 flex justify-between">
+                                <label
+                                    htmlFor="minimizeInsteadOfClose"
+                                    className="label"
+                                >
+                                    <span className="label-text text-3xl">
+                                        Minimize app to tray instead of closing
+                                    </span>
+                                </label>
+                                <input
+                                    type="checkbox"
+                                    id="minimizeInsteadOfClose"
+                                    className="checkbox mt-4"
+                                    {...register('minimizeInsteadOfClose')}
+                                />
+                            </div>
+                            <div className="mx-10 my-6 flex justify-between">
+                                <label
+                                    htmlFor="showMonitorModalOnStart"
+                                    className="label"
+                                >
+                                    <span className="label-text text-3xl">
+                                        Always show monitor modal on startup
+                                    </span>
+                                </label>
+                                <input
+                                    type="checkbox"
+                                    id="showMonitorModalOnStart"
+                                    className="checkbox mt-4"
+                                    {...register('showMonitorModalOnStart')}
+                                />
+                            </div>
+                            <div className="mx-10 my-6 flex items-end justify-between ">
+                                <label
+                                    htmlFor="imagesPerPage"
+                                    className="label"
+                                >
+                                    <span className="label-text text-3xl">
+                                        Images Per Page
+                                    </span>
+                                </label>
+                                <select
+                                    id="imagesPerPage"
+                                    className=" select select-bordered shadow-inner  rounded-md text-2xl"
+                                    {...register('imagesPerPage', {
+                                        valueAsNumber: true
+                                    })}
+                                >
+                                    <option value="20">20</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                    <option value="200">200</option>
+                                </select>
+                            </div>
                         </div>
                         <div className="divider"></div>
                         <div className="my-6 flex justify-center gap-3">

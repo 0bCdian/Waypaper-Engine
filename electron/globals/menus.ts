@@ -7,8 +7,7 @@ import {
     deleteImagesFromGallery,
     getMonitors,
     setImage,
-    setImageAcrossAllMonitors,
-    setImageExtended
+    setImageAcrossAllMonitors
 } from '../appFunctions';
 import { screen } from 'electron';
 import { MENU_EVENTS } from '../../shared/constants';
@@ -204,18 +203,6 @@ export async function contextMenu({
                 }
             },
             {
-                label: `Extend across all monitors horizontally`,
-                click: () => {
-                    void setImageExtended(image, monitors, 'vertical');
-                }
-            },
-            {
-                label: `Extend across all monitors vertically`,
-                click: () => {
-                    void setImageExtended(image, monitors, 'horizontal');
-                }
-            },
-            {
                 label: `Extend across all monitors grouping them`,
                 click: () => {
                     void setImageAcrossAllMonitors(image);
@@ -253,7 +240,7 @@ export async function contextMenu({
     if (selectedImagesLength > 0) {
         selectedImagesMenu = [
             {
-                label: 'Add all selected images to current playlist',
+                label: 'Add selected images to playlist',
                 click: () => {
                     win.webContents.send(
                         MENU_EVENTS.addSelectedImagesToPlaylist
@@ -261,15 +248,63 @@ export async function contextMenu({
                 }
             },
             {
-                label: 'Delete all selected images',
+                label: 'Remove selected images from current playlist',
                 click: () => {
-                    win.webContents.send(MENU_EVENTS.deleteAllSelectedImages);
+                    win.webContents.send(
+                        MENU_EVENTS.removeSelectedImagesFromPlaylist
+                    );
+                }
+            },
+            {
+                label: 'Delete selected images from gallery',
+                click: () => {
+                    void dialog
+                        .showMessageBox(win, {
+                            message: `Are you sure you want to delete ${selectedImagesLength} images from the gallery?`,
+                            type: 'question',
+                            buttons: ['yes', 'no'],
+                            title: 'Confirm delete'
+                        })
+                        .then(data => {
+                            if (data.response === 0) {
+                                win.webContents.send(
+                                    MENU_EVENTS.deleteAllSelectedImages
+                                );
+                            }
+                        });
+                }
+            },
+            {
+                label: 'Unselect images in current page',
+                click: () => {
+                    win.webContents.send(
+                        MENU_EVENTS.clearSelectionOnCurrentPage
+                    );
+                }
+            },
+            {
+                label: 'Unselect all images',
+                click: () => {
+                    win.webContents.send(MENU_EVENTS.clearSelection);
                 }
             }
         ];
     }
     const menu = [
         ...imagesMenu,
+        ...selectedImagesMenu,
+        {
+            label: 'Select all images in current page',
+            click: () => {
+                win.webContents.send(MENU_EVENTS.selectAllImagesInCurrentPage);
+            }
+        },
+        {
+            label: 'Select all images in gallery',
+            click: () => {
+                win.webContents.send(MENU_EVENTS.selectAllImagesInGallery);
+            }
+        },
         {
             label: 'Images per page',
             submenu: [
@@ -306,26 +341,7 @@ export async function contextMenu({
                     }
                 }
             ]
-        },
-        {
-            label: 'Select all images in current page',
-            click: () => {
-                win.webContents.send(MENU_EVENTS.selectAllImagesInCurrentPage);
-            }
-        },
-        {
-            label: 'Select all images in gallery',
-            click: () => {
-                win.webContents.send(MENU_EVENTS.selectAllImagesInGallery);
-            }
-        },
-        {
-            label: 'Unselect all images in current page',
-            click: () => {
-                win.webContents.send(MENU_EVENTS.clearSelection);
-            }
-        },
-        ...selectedImagesMenu
+        }
     ];
     return menu;
 }

@@ -18,14 +18,17 @@ function ImageCard({ Image }: ImageCardProps) {
         setImage(Image.name);
     };
     const addImageToPlaylist = playlistStore(
-        useShallow(state => state.addImageToPlaylist)
+        useShallow(state => state.addImagesToPlaylist)
     );
     const readPlaylist = playlistStore(useShallow(state => state.readPlaylist));
     const removeImageFromPlaylist = playlistStore(
-        useShallow(state => state.removeImageFromPlaylist)
+        useShallow(state => state.removeImagesFromPlaylist)
     );
     const isEmpty = playlistStore(useShallow(state => state.isEmpty));
-    const { addSelectedImage, removeSelectedImage, selectedImages } =
+    const imagesInPlaylist = playlistStore(
+        useShallow(state => state.playlistImagesSet)
+    );
+    const { addToSelectedImages, removeFromSelectedImages, selectedImages } =
         imagesStore();
     const handleCheckboxChange = (event: ChangeEvent) => {
         event.stopPropagation();
@@ -42,11 +45,11 @@ function ImageCard({ Image }: ImageCardProps) {
             }
             setIsChecked(true);
             Image.isChecked = true;
-            addImageToPlaylist(Image);
+            addImageToPlaylist([Image]);
         } else {
             Image.isChecked = false;
             setIsChecked(false);
-            removeImageFromPlaylist(Image);
+            removeImageFromPlaylist(new Set<number>().add(Image.id));
         }
     };
     const handleRightClick = (e: React.MouseEvent) => {
@@ -54,14 +57,18 @@ function ImageCard({ Image }: ImageCardProps) {
         openContextMenu({ Image, selectedImagesLength: selectedImages.size });
     };
     useEffect(() => {
-        if (selected) addSelectedImage(Image);
-        else removeSelectedImage(Image);
+        if (selected) addToSelectedImages(Image);
+        else removeFromSelectedImages(Image);
     }, [selected]);
     useEffect(() => {
-        if (!isEmpty) return;
+        if (imagesInPlaylist.has(Image.id) && !isEmpty) {
+            setIsChecked(true);
+            Image.isChecked = true;
+            return;
+        }
         setIsChecked(false);
         Image.isChecked = false;
-    }, [isEmpty]);
+    }, [isEmpty, imagesInPlaylist]);
     useEffect(() => {
         if (selectedImages.size === 0) {
             setSelected(false);

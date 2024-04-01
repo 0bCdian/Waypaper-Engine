@@ -69,7 +69,9 @@ export const MENU_EVENTS = {
     clearSelection: 'clearSelection',
     setImagesPerPage: 'setImagesPerPage',
     addSelectedImagesToPlaylist: 'addSelectedImagesToPlaylist',
-    deleteAllSelectedImages: 'deleteAllSelectedImages'
+    deleteAllSelectedImages: 'deleteAllSelectedImages',
+    removeSelectedImagesFromPlaylist: 'removeSelectedImagesFromPlaylist',
+    deleteImageFromGallery: 'deleteImageFromGallery'
 } as const;
 
 export type IPC_RENDERER_EVENTS_TYPE = objectValues<typeof MENU_EVENTS>;

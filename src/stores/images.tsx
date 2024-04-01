@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { type Filters, type rendererImage } from '../types/rendererTypes';
 import { type imagesObject } from '../../shared/types';
-
+import { playlistStore } from './playlist';
 const { queryImages, deleteImagesFromGallery } = window.API_RENDERER;
 const initialFilters: Filters = {
     order: 'desc',
@@ -42,14 +42,13 @@ interface State {
     setSkeletons: (skeletons: imagesObject | undefined) => void;
     setFilteredImages: (filteredImages: rendererImage[]) => void;
     setSelectedImages: (newSelectedImages: Set<number>) => void;
-    resetImageCheckboxes: () => void;
     clearSkeletons: () => void;
     removeImagesFromStore: (images: rendererImage[]) => void;
     reQueryImages: () => void;
-    addSelectedImage: (imageSelected: rendererImage) => void;
-    removeSelectedImage: (imageSelected: rendererImage) => void;
+    addToSelectedImages: (imageSelected: rendererImage) => void;
+    removeFromSelectedImages: (imageSelected: rendererImage) => void;
     deleteSelectedImages: () => void;
-    getSelectedImages: () => Set<number>;
+    getSelectedImages: () => rendererImage[];
 }
 
 export const imagesStore = create<State>()((set, get) => ({
@@ -71,7 +70,16 @@ export const imagesStore = create<State>()((set, get) => ({
         set(() => ({ selectedImages }));
     },
     getSelectedImages: () => {
-        return get().selectedImages;
+        const selectedImages: rendererImage[] = [];
+        const imagesMap = get().imagesMap;
+        const selectedImagesSet = get().selectedImages;
+        selectedImagesSet.forEach(id => {
+            const currentImage = imagesMap.get(id);
+            if (currentImage !== undefined) {
+                selectedImages.push(currentImage);
+            }
+        });
+        return selectedImages;
     },
     addImages: newImages => {
         const filters = get().filters;
@@ -93,15 +101,6 @@ export const imagesStore = create<State>()((set, get) => ({
     setSkeletons: skeletons => {
         set(() => ({ skeletonsToShow: skeletons }));
     },
-    resetImageCheckboxes: () => {
-        set(state => {
-            const resetImages = state.imagesArray.map(image => {
-                image.isChecked = false;
-                return image;
-            });
-            return { ...state, imagesArray: resetImages };
-        });
-    },
     clearSkeletons: () => {
         set(() => ({ skeletonsToShow: undefined }));
     },
@@ -109,11 +108,15 @@ export const imagesStore = create<State>()((set, get) => ({
         set(state => {
             const imagesMap = get().imagesMap;
             const selectedImages = get().selectedImages;
+            const imagesSetToDelete = new Set<number>();
             images.forEach(imageToDelete => {
                 imagesMap.delete(imageToDelete.id);
                 selectedImages.delete(imageToDelete.id);
+                imagesSetToDelete.add(imageToDelete.id);
             });
-
+            playlistStore
+                .getState()
+                .removeImagesFromPlaylist(imagesSetToDelete);
             return {
                 ...state,
                 imagesArray: Array.from(imagesMap.values()),
@@ -136,25 +139,36 @@ export const imagesStore = create<State>()((set, get) => ({
             }));
         });
     },
-    addSelectedImage(imageSelected) {
+    addToSelectedImages(imageSelected) {
         get().selectedImages.add(imageSelected.id);
         set(state => ({ selectedImages: new Set(state.selectedImages) }));
     },
-    removeSelectedImage(imageSelected) {
+    removeFromSelectedImages(imageSelected) {
         get().selectedImages.delete(imageSelected.id);
         set(state => ({ selectedImages: new Set(state.selectedImages) }));
     },
     deleteSelectedImages() {
-        const selectedImages: rendererImage[] = [];
-        const imagesMap = get().imagesMap;
-        get().selectedImages.forEach(id => {
-            const image = imagesMap.get(id);
-            imagesMap.delete(id);
+        const imagesToDelete: rendererImage[] = [];
+        const imagesSetToDelete = new Set<number>();
+        const newImagesMap = new Map(get().imagesMap);
+        const newSelectedImages = new Set(get().selectedImages);
+        newSelectedImages.forEach(id => {
+            const image = newImagesMap.get(id);
             if (image === undefined) return;
-            selectedImages.push(image);
+            newImagesMap.delete(id);
+            newSelectedImages.delete(id);
+            imagesToDelete.push(image);
+            imagesSetToDelete.add(id);
         });
-        void deleteImagesFromGallery(selectedImages).then(() => {
-            get().removeImagesFromStore(selectedImages);
+        void deleteImagesFromGallery(imagesToDelete).then(() => {
+            set(() => ({
+                imagesMap: newImagesMap,
+                imagesArray: Array.from(newImagesMap.values()),
+                selectedImages: newSelectedImages
+            }));
+            playlistStore
+                .getState()
+                .removeImagesFromPlaylist(imagesSetToDelete);
         });
     },
     getFilters() {

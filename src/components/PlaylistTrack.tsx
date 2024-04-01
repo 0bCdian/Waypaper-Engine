@@ -14,14 +14,12 @@ function PlaylistTrack() {
     const {
         playlist,
         movePlaylistArrayOrder,
-        addMultipleImagesToPlaylist,
-        addImageToPlaylist,
-        clearPlaylist,
-        readPlaylist
+        addImagesToPlaylist,
+        clearPlaylist
     } = playlistStore();
-    useSetLastActivePlaylist();
     const { openImages, isActive } = openImagesStore();
-    const { setSkeletons, addImages, resetImageCheckboxes } = imagesStore();
+    const { setSkeletons, addImages } = imagesStore();
+    useSetLastActivePlaylist();
     const handleDragEnd = useCallback(
         (event: DragEndEvent) => {
             const { over, active } = event;
@@ -53,9 +51,7 @@ function PlaylistTrack() {
         void openImages({
             setSkeletons,
             addImages,
-            addMultipleImagesToPlaylist,
-            addImageToPlaylist,
-            currentPlaylist: readPlaylist(),
+            addImagesToPlaylist,
             action
         });
     }, []);
@@ -99,7 +95,6 @@ function PlaylistTrack() {
             return;
         }
         if (playlist.images.length === 0) {
-            resetImageCheckboxes();
             clearPlaylist();
         }
     }, [playlist.images]);
@@ -217,7 +212,6 @@ function PlaylistTrack() {
                             exit={{ y: 100, opacity: 0 }}
                             className="btn uppercase btn-error rounded-lg"
                             onClick={() => {
-                                resetImageCheckboxes();
                                 clearPlaylist();
                             }}
                         >

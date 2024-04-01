@@ -13,14 +13,23 @@ import { useHotkeys } from 'react-hotkeys-hook';
 import { type rendererImage } from '../types/rendererTypes';
 import { MENU_EVENTS } from '../../shared/constants';
 import { useAppConfigStore } from '../stores/appConfig';
+import { playlistStore } from '../stores/playlist';
 const ImageCard = lazy(async () => await import('../components/ImageCard'));
 const { registerListener } = window.API_RENDERER;
 export function useImagePagination() {
     const { appConfig } = useAppConfigStore();
+    const { removeImagesFromPlaylist, addImagesToPlaylist } = playlistStore();
     const [imagesPerPage, setImagesPerPage] = useState(appConfig.imagesPerPage);
     const [currentPage, setCurrentPage] = useState<number>(1);
-    const { skeletonsToShow, filters, selectedImages, setSelectedImages } =
-        imagesStore();
+    const {
+        skeletonsToShow,
+        filters,
+        selectedImages,
+        setSelectedImages,
+        deleteSelectedImages,
+        getSelectedImages,
+        removeImagesFromStore
+    } = imagesStore();
     const { filteredImages, selectAllImages, clearSelection } =
         useFilteredImages();
     const lastImageIndex = useMemo(
@@ -105,6 +114,14 @@ export function useImagePagination() {
         });
         setSelectedImages(newSet);
     };
+    const clearSelectedImagesInCurrentPage = () => {
+        const newSet = new Set(selectedImages);
+        imagesInCurrentPage.forEach(image => {
+            image.isSelected = false;
+            newSet.delete(image.id);
+        });
+        setSelectedImages(newSet);
+    };
     useHotkeys(
         'ctrl+a',
         () => {
@@ -147,13 +164,43 @@ export function useImagePagination() {
             listener: _ => {
                 selectImagesInCurrentPage();
             }
+        },
+        {
+            channel: MENU_EVENTS.clearSelectionOnCurrentPage,
+            listener: _ => {
+                clearSelectedImagesInCurrentPage();
+            }
+        },
+        {
+            channel: MENU_EVENTS.removeSelectedImagesFromPlaylist,
+            listener: _ => {
+                removeImagesFromPlaylist(selectedImages);
+            }
+        },
+        {
+            channel: MENU_EVENTS.deleteAllSelectedImages,
+            listener: _ => {
+                deleteSelectedImages();
+            }
+        },
+        {
+            channel: MENU_EVENTS.addSelectedImagesToPlaylist,
+            listener: _ => {
+                addImagesToPlaylist(getSelectedImages());
+            }
+        },
+        {
+            channel: MENU_EVENTS.deleteImageFromGallery,
+            listener: (_, image: rendererImage) => {
+                removeImagesFromStore([image]);
+            }
         }
     ];
     useEffect(() => {
         eventsMap.forEach(eventToRegister => {
             registerListener(eventToRegister);
         });
-    }, [eventsMap]);
+    }, [eventsMap, selectedImages]);
 
     useEffect(() => {
         if (imagesToShow.length === 0) {

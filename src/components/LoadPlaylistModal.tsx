@@ -31,7 +31,7 @@ const LoadPlaylistModal = ({
     currentPlaylistName
 }: Props) => {
     const { clearPlaylist, setPlaylist } = playlistStore();
-    const { resetImageCheckboxes, imagesArray } = imagesStore();
+    const { imagesMap } = imagesStore();
     const { register, handleSubmit, watch } = useForm<Input>();
     const { activeMonitor } = useMonitorStore();
     const modalRef = useRef<HTMLDialogElement>(null);
@@ -40,7 +40,6 @@ const LoadPlaylistModal = ({
         modalRef.current?.close();
     };
     const onSubmit: SubmitHandler<Input> = async data => {
-        resetImageCheckboxes();
         clearPlaylist();
         const selectedPlaylist = playlistsInDB.find(playlist => {
             return playlist.name === data.selectPlaylist;
@@ -50,16 +49,14 @@ const LoadPlaylistModal = ({
                 selectedPlaylist.id
             );
             const imagesToStorePlaylist: rendererImage[] = [];
-            imagesArrayFromPlaylist.forEach(imageNameFromDB => {
-                const imageToStore = imagesArray.find(imageInGallery => {
-                    return imageInGallery.name === imageNameFromDB.name;
-                });
+            imagesArrayFromPlaylist.forEach(image => {
+                const imageToStore = imagesMap.get(image.id);
                 if (imageToStore === undefined) return;
                 if (
                     selectedPlaylist.type === PLAYLIST_TYPES.timeofday &&
-                    imageNameFromDB.time !== null
+                    image.time !== null
                 ) {
-                    imageToStore.time = imageNameFromDB.time;
+                    imageToStore.time = image.time;
                 }
                 imageToStore.isChecked = true;
                 imagesToStorePlaylist.push(imageToStore);
@@ -85,7 +82,6 @@ const LoadPlaylistModal = ({
     };
     onClearPlaylist(() => {
         updateTray();
-        resetImageCheckboxes();
         clearPlaylist();
     });
 
@@ -161,7 +157,6 @@ const LoadPlaylistModal = ({
                                                 monitor: activeMonitor
                                             });
                                             clearPlaylist();
-                                            resetImageCheckboxes();
                                         }
                                     }
                                 }}
