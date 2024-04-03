@@ -25,6 +25,10 @@
         {
             "from": "bin",
             "to": "resources/bin"
+        },
+        {
+            "from": "electron/database/migrations",
+            "to": "resources/migrations"
         }
     ],
     "linux": {

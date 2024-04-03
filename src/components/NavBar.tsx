@@ -28,7 +28,7 @@ const NavBar = () => {
                 </div>
             </div>
             <div className="navbar-center">
-                {activeMonitor.name.length > 0 ? (
+                {
                     <button
                         className="btn w-full text-ellipsis rounded-lg text-2xl"
                         onClick={() => {
@@ -38,9 +38,11 @@ const NavBar = () => {
                             });
                         }}
                     >
-                        {activeMonitor.name}
+                        {activeMonitor.name.length > 0
+                            ? activeMonitor.name
+                            : 'select display'}
                     </button>
-                ) : null}
+                }
             </div>
             <div className="navbar-end"></div>
         </div>

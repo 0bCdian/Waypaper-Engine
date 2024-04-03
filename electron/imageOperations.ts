@@ -1,12 +1,13 @@
 import Sharp = require('sharp');
-import { config } from './database/globalConfig';
+import { configuration } from './database/globalConfig';
 import { appDirectories } from './globals/appPaths';
 import { join } from 'node:path';
-import { getMonitors, getMonitorsInfo } from './appFunctions';
+import { getMonitors } from './appFunctions';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
-import { type Monitor, type wlr_output } from '../shared/types/monitor';
+import { type Monitor } from '../shared/types/monitor';
 import { type imageSelectType } from './database/schema';
+import { type rendererImage } from '../src/types/rendererTypes';
 const execPomisified = promisify(exec);
 export async function resizeImageToFitMonitor(
     buffer: Sharp.Sharp,
@@ -26,7 +27,7 @@ export async function resizeImageToFitMonitor(
                 width: requiredWidth,
                 height: requiredHeight,
                 fit: 'cover',
-                background: hexToSharpRgb(config.swww.config.fillColor)
+                background: hexToSharpRgb(configuration.swww.config.fillColor)
             })
             .toFile(resizedImageFileName);
     } else if (
@@ -40,7 +41,7 @@ export async function resizeImageToFitMonitor(
                 width: requiredWidth,
                 height: requiredHeight,
                 fit: 'fill',
-                background: hexToSharpRgb(config.swww.config.fillColor)
+                background: hexToSharpRgb(configuration.swww.config.fillColor)
             })
             .toFile(resizedImageFileName);
     }
@@ -222,13 +223,11 @@ export async function createAndSetMonitorIdentifierImages() {
     });
 }
 
-function getDesiredDimensionsToExtendImage(Monitors: wlr_output) {
+function getDesiredDimensionsToExtendImage(Monitors: Monitor[]) {
     const desiredDimensions = Monitors.reduce(
         (previousValue, currentValue) => {
-            const maxCurrentX =
-                currentValue.position.x + currentValue.modes[0].width;
-            const maxCurrentY =
-                currentValue.position.y + currentValue.modes[0].height;
+            const maxCurrentX = currentValue.position.x + currentValue.width;
+            const maxCurrentY = currentValue.position.y + currentValue.height;
             let newX = previousValue.x;
             let newY = previousValue.y;
             if (maxCurrentX > newX) {
@@ -243,18 +242,15 @@ function getDesiredDimensionsToExtendImage(Monitors: wlr_output) {
     );
     return desiredDimensions;
 }
-export async function extendImageAcrossAllMonitors(
-    Image: imageSelectType,
-    imageFilePath: string
+export async function extendImageAcrossMonitors(
+    image: rendererImage | imageSelectType,
+    imageFilePath: string,
+    monitors: Monitor[]
 ) {
     const monitorsToImagesPairsArray: Array<{
         monitor: string;
         image: string;
     }> = [];
-    const monitors = await getMonitorsInfo();
-    if (monitors === undefined) {
-        throw new Error('Something went wrong retrieving monitor information');
-    }
     for (let index = 0; index < monitors.length; index++) {
         const monitor = monitors[index];
         const monitorX =
@@ -267,7 +263,7 @@ export async function extendImageAcrossAllMonitors(
                 : monitor.position.y - 1;
         const finalImageName = join(
             appDirectories.tempImages,
-            `${index}.${Image.format}`
+            `${index}.${image.format}`
         );
 
         const desiredDimensions = getDesiredDimensionsToExtendImage(monitors);
@@ -286,8 +282,8 @@ export async function extendImageAcrossAllMonitors(
             .extract({
                 left: monitorX,
                 top: monitorY,
-                width: monitor.modes[0].width,
-                height: monitor.modes[0].height
+                width: monitor.width,
+                height: monitor.height
             })
             .toFile(finalImageName);
         monitorsToImagesPairsArray.push({
@@ -323,8 +319,88 @@ async function resizeImageToDesiredResolution(
             width: finalWidth,
             height: finalHeight,
             fit: 'cover',
-            background: hexToSharpRgb(config.swww.config.fillColor)
+            background: hexToSharpRgb(configuration.swww.config.fillColor)
         })
         .toFile(resizedImageFileName);
     return resizedImageFileName;
+}
+function getSwwwCommandFromConfiguration(imagePath: string, monitor?: string) {
+    const swwwConfig = configuration.swww.config;
+    let transitionPos = '';
+    const inverty = swwwConfig.invertY ? '--invert-y' : '';
+    switch (swwwConfig.transitionPositionType) {
+        case 'int':
+            transitionPos = `${swwwConfig.transitionPositionIntX},${swwwConfig.transitionPositionIntY}`;
+            break;
+        case 'float':
+            transitionPos = `${swwwConfig.transitionPositionFloatX},${swwwConfig.transitionPositionFloatY}`;
+            break;
+        case 'alias':
+            transitionPos = swwwConfig.transitionPosition;
+    }
+    const command = `swww img ${imagePath} ${
+        monitor !== undefined ? `--outputs ${monitor}` : ''
+    } --resize="${swwwConfig.resizeType}" --fill-color "${
+        swwwConfig.fillColor
+    }" --filter ${swwwConfig.filterType} --transition-type ${
+        swwwConfig.transitionType
+    } --transition-step ${swwwConfig.transitionStep} --transition-duration ${
+        swwwConfig.transitionDuration
+    } --transition-fps ${swwwConfig.transitionFPS} --transition-angle ${
+        swwwConfig.transitionAngle
+    } --transition-pos ${transitionPos} ${inverty} --transition-bezier ${
+        swwwConfig.transitionBezier
+    } --transition-wave "${swwwConfig.transitionWaveX},${swwwConfig.transitionWaveY}"`;
+    return command;
+}
+
+export async function setImageAcrossMonitors(
+    image: rendererImage | imageSelectType,
+    monitors: Monitor[]
+) {
+    const imageFilePath = join(appDirectories.imagesDir, image.name);
+    try {
+        const commands: Array<Promise<any>> = [];
+        const monitorsToImagesPair = await extendImageAcrossMonitors(
+            image,
+            imageFilePath,
+            monitors
+        );
+        monitorsToImagesPair.forEach(pair => {
+            commands.push(
+                execPomisified(
+                    getSwwwCommandFromConfiguration(pair.image, pair.monitor)
+                )
+            );
+        });
+        void Promise.all(commands);
+        if (configuration.script !== undefined) {
+            await execPomisified(`${configuration.script} ${imageFilePath}`);
+        }
+    } catch (error) {
+        console.error(error);
+    }
+}
+
+export async function duplicateImageAcrossMonitors(
+    image: rendererImage | imageSelectType,
+    monitors: Monitor[]
+) {
+    const imageFilePath = join(appDirectories.imagesDir, image.name);
+    const monitorsString = monitors.reduce((prev, current) => {
+        prev = prev.concat(current.name, ',');
+        return prev;
+    }, '');
+    const command = getSwwwCommandFromConfiguration(
+        imageFilePath,
+        monitorsString
+    );
+    try {
+        void execPomisified(command);
+        if (configuration.script !== undefined) {
+            await execPomisified(`${configuration.script} ${imageFilePath}`);
+        }
+    } catch (error) {
+        console.error(error);
+    }
 }

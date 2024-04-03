@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useEffect } from 'react';
 import { playlistStore } from '../stores/playlist';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { imagesStore } from '../stores/images';
@@ -6,6 +6,7 @@ import { type playlistSelectType } from '../../electron/database/schema';
 import { PLAYLIST_TYPES } from '../../shared/types/playlist';
 import { type rendererImage } from '../types/rendererTypes';
 import { useMonitorStore } from '../stores/monitors';
+import { IPC_MAIN_EVENTS } from '../../shared/constants';
 interface Input {
     selectPlaylist: string;
 }
@@ -21,10 +22,10 @@ const {
     startPlaylist,
     deletePlaylist,
     stopPlaylist,
-    onClearPlaylist,
+    registerListener,
     updateTray
 } = window.API_RENDERER;
-
+let firstRender = true;
 const LoadPlaylistModal = ({
     playlistsInDB,
     setShouldReload,
@@ -80,11 +81,17 @@ const LoadPlaylistModal = ({
         }
         closeModal();
     };
-    onClearPlaylist(() => {
-        updateTray();
-        clearPlaylist();
-    });
-
+    useEffect(() => {
+        if (!firstRender) return;
+        firstRender = false;
+        registerListener({
+            channel: IPC_MAIN_EVENTS.clearPlaylist,
+            listener: _ => {
+                clearPlaylist();
+                updateTray();
+            }
+        });
+    }, []);
     return (
         <dialog id="LoadPlaylistModal" className="modal" ref={modalRef}>
             <div className="modal-box container flex flex-col">
@@ -151,11 +158,13 @@ const LoadPlaylistModal = ({
                                     if (shouldDelete) {
                                         deletePlaylist(current);
                                         setShouldReload(true);
-                                        if (currentPlaylistName === current) {
+                                        if (currentPlaylistName !== '') {
                                             stopPlaylist({
                                                 name: currentPlaylistName,
                                                 monitor: activeMonitor
                                             });
+                                        }
+                                        if (currentPlaylistName === current) {
                                             clearPlaylist();
                                         }
                                     }

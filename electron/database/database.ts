@@ -8,7 +8,7 @@ import { dbLocation, nativeBindingLocation, migrationPath } from '../binaries';
 const sqlite = Database(dbLocation, {
     nativeBinding: nativeBindingLocation
 });
-const drizzleDB: BetterSQLite3Database = drizzle(sqlite);
+const drizzleDB: BetterSQLite3Database = drizzle(sqlite, { logger: true });
 export function migrateDB() {
     try {
         migrate(drizzleDB, { migrationsFolder: migrationPath });

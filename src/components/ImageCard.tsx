@@ -5,6 +5,7 @@ import { type rendererImage } from '../types/rendererTypes';
 import { imagesStore } from '../stores/images';
 import { useShallow } from 'zustand/react/shallow';
 import { isHotkeyPressed } from 'react-hotkeys-hook';
+import { useMonitorStore } from '../stores/monitors';
 interface ImageCardProps {
     Image: rendererImage;
 }
@@ -14,8 +15,9 @@ function ImageCard({ Image }: ImageCardProps) {
     const [selected, setSelected] = useState(Image.isSelected);
     const [isChecked, setIsChecked] = useState(Image.isChecked);
     const imageNameFilePath = getThumbnailSrc(Image.name);
+    const { activeMonitor } = useMonitorStore();
     const handleDoubleClick = () => {
-        setImage(Image.name);
+        setImage(Image, activeMonitor);
     };
     const addImageToPlaylist = playlistStore(
         useShallow(state => state.addImagesToPlaylist)

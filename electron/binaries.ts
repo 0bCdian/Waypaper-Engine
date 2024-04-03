@@ -20,7 +20,7 @@ const nativeBinding = app.isPackaged
 
 const dbPath = join(appDirectories.mainDir, 'images_database.sqlite3');
 const migrationsPath = app.isPackaged
-    ? join(app.getAppPath(), '')
+    ? join(resourcesPath, 'migrations')
     : join(app.getAppPath(), '/electron/database/migrations');
 
 const binDirectory = app.isPackaged

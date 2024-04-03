@@ -6,7 +6,6 @@ import {
 } from '../types/rendererTypes';
 import { type Monitor } from '../../shared/types/monitor';
 const imagesInitial: rendererImage[] = [];
-const { stopPlaylist } = window.API_RENDERER;
 const configurationInitial: rendererPlaylist['configuration'] = {
     playlistType: 'timer',
     interval: 3_600_000,
@@ -122,11 +121,6 @@ export const playlistStore = create<State & Actions>()((set, get) => ({
         });
     },
     clearPlaylist: () => {
-        const currentPlaylist = get().playlist;
-        stopPlaylist({
-            name: currentPlaylist.name,
-            monitor: currentPlaylist.monitor
-        });
         set(() => {
             return {
                 playlist: initialPlaylistState,
@@ -154,7 +148,8 @@ export const playlistStore = create<State & Actions>()((set, get) => ({
             return {
                 ...state,
                 playlist: initialPlaylistState,
-                isEmpty: true
+                isEmpty: true,
+                playlistImagesSet: new Set<number>()
             };
         });
     }

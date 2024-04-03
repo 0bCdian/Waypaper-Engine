@@ -1,109 +1,124 @@
 import {
     ACTIONS,
-    type images,
     PLAYLIST_TYPES,
-    type PlaylistType
-} from "../types/daemonTypes";
-import configuration from "../config/config";
-import { notify, notifyImageSet } from "../utils/notifications";
-import { join } from "node:path";
-import { exec } from "node:child_process";
-import { promisify } from "node:util";
-import dbOperations from "../database/dbOperationsDaemon";
-const execPromisified = promisify(exec);
-export class Playlist {
-    images: images;
-    currentName: string;
-    currentType: PLAYLIST_TYPES | undefined;
+    type rendererImage,
+    type ActiveMonitor
+} from '../types/daemonTypes';
+import { configuration } from '../config/config';
+import { DBOperations } from '../database/dbOperations';
+import { notify } from '../utils/notifications';
+import {
+    setImageAcrossMonitors,
+    duplicateImageAcrossMonitors
+} from '../utils/imageOperations';
+import { type PLAYLIST_TYPES_TYPE } from '../types/playlist';
+import { EventEmitter } from 'node:stream';
+
+export class Playlist extends EventEmitter {
+    images: rendererImage[];
+    name: string;
+    activeMonitor: ActiveMonitor;
+    currentType: PLAYLIST_TYPES_TYPE;
     playlistTimer: {
         timeoutID: NodeJS.Timeout | undefined;
         executionTimeStamp: number | undefined;
     };
 
+    dbOperations: DBOperations;
     eventCheckerTimeout: NodeJS.Timeout | undefined;
     currentImageIndex: number;
     interval: number | null;
-    showAnimations: boolean | 1 | 0;
-    constructor() {
-        this.images = [];
-        this.currentName = "";
-        this.currentType = undefined;
-        this.currentImageIndex = 0;
-        this.interval = 0;
-        this.showAnimations = true;
+    showAnimations: boolean;
+    constructor({
+        playlistName,
+        activeMonitor
+    }: {
+        playlistName: string;
+        activeMonitor: ActiveMonitor;
+    }) {
+        super();
+        this.dbOperations = new DBOperations();
+        const currentPlaylist = this.dbOperations.getPlaylistInfo({
+            name: playlistName
+        });
+        if (currentPlaylist === undefined) {
+            this.emit('Error', activeMonitor.name);
+        }
+        this.images = currentPlaylist.images;
+        this.name = playlistName;
+        this.currentType = currentPlaylist.type;
+        this.currentImageIndex = configuration.app.settings
+            .playlistStartOnFirstImage
+            ? 0
+            : currentPlaylist.currentImageIndex;
+        this.interval = currentPlaylist.interval;
+        this.showAnimations = configuration.app.settings.swwwAnimations;
         this.playlistTimer = {
             timeoutID: undefined,
             executionTimeStamp: undefined
         };
         this.eventCheckerTimeout = undefined;
+        this.activeMonitor = activeMonitor;
+        this.dbOperations.insertIntoActivePlaylists({
+            playlistID: currentPlaylist.id,
+            monitor: activeMonitor
+        });
     }
 
-    async setImage(imageName: string) {
-        try {
-            const imageLocation = join(configuration.IMAGES_DIR, imageName);
-            const command = this.getSwwwCommandFromConfiguration(imageLocation);
-            notifyImageSet(imageName, imageLocation);
-            await execPromisified(command);
-            if (configuration.script !== undefined) {
-                await execPromisified(
-                    `${configuration.script} ${imageLocation}`
-                );
-            }
-        } catch (error) {
-            notify(error as string);
+    async setImage(image: rendererImage) {
+        if (this.activeMonitor.extendAcrossMonitors) {
+            await setImageAcrossMonitors(image, this.activeMonitor.monitor);
+        } else {
+            await duplicateImageAcrossMonitors(
+                image,
+                this.activeMonitor.monitor
+            );
         }
+        this.dbOperations.addImageToHistory({
+            image,
+            activeMonitor: this.activeMonitor
+        });
     }
 
     pause() {
         if (this.currentType === PLAYLIST_TYPES.TIMER) {
             clearTimeout(this.playlistTimer.timeoutID);
             this.playlistTimer.timeoutID = undefined;
-            return `Paused ${this.currentName}`;
+            return `Paused ${this.name}`;
         } else {
-            return `Cannot pause ${this.currentName} because it's of type ${this.currentType}`;
+            return `Cannot pause ${this.name} because it's of type ${this.currentType}`;
         }
     }
 
     resume() {
         if (this.currentType === PLAYLIST_TYPES.TIMER) {
             void this.timedPlaylist(true);
-            return `Resuming ${this.currentName}`;
+            return `Resuming ${this.name}`;
         } else {
-            return `Cannot resume ${this.currentName} because it is of type ${this.currentType}`;
+            return `Cannot resume ${this.name} because it is of type ${this.currentType}`;
         }
     }
 
-    stop(setToNull: boolean) {
-        if (setToNull) {
-            dbOperations.setActivePlaylistToNull();
-        }
-        const playlistName = this.currentName;
-        this.pause();
-        this.currentImageIndex = 0;
-        this.currentName = "";
-        this.currentType = undefined;
-        this.interval = 0;
-        this.images = [];
-        this.showAnimations = true;
+    stop() {
+        this.dbOperations.removeActivePlaylist({
+            playlistName: this.name
+        });
+        // Make sure we clean the timers to avoid memory leaks
         if (this.eventCheckerTimeout !== undefined) {
             clearInterval(this.eventCheckerTimeout);
         }
+
         if (this.playlistTimer.timeoutID !== undefined) {
             clearTimeout(this.playlistTimer.timeoutID);
         }
+
         this.playlistTimer.timeoutID = undefined;
         this.playlistTimer.executionTimeStamp = undefined;
         this.eventCheckerTimeout = undefined;
 
-        if (playlistName === "") {
-            return {
-                action: ACTIONS.STOP_PLAYLIST,
-                message: ""
-            };
-        }
         return {
             action: ACTIONS.STOP_PLAYLIST,
-            message: `Stopped ${playlistName}`
+            message: `Stopped ${this.name}`
         };
     }
 
@@ -116,11 +131,10 @@ export class Playlist {
     async nextImage() {
         if (
             this.currentType === PLAYLIST_TYPES.DAY_OF_WEEK ||
-            this.currentType === PLAYLIST_TYPES.TIME_OF_DAY ||
-            this.currentType === undefined
+            this.currentType === PLAYLIST_TYPES.TIME_OF_DAY
         ) {
-            notify("Cannot change image in this type of playlist");
-            return "Cannot change image in this type of playlist";
+            notify('Cannot change image in this type of playlist');
+            return 'Cannot change image in this type of playlist';
         }
         this.currentImageIndex++;
         if (this.currentImageIndex === this.images.length) {
@@ -129,7 +143,7 @@ export class Playlist {
         if (this.currentType === PLAYLIST_TYPES.TIMER) {
             this.resetInterval();
         }
-        await this.setImage(this.images[this.currentImageIndex].name);
+        await this.setImage(this.images[this.currentImageIndex]);
         try {
             this.updateInDB();
         } catch (error) {
@@ -145,11 +159,10 @@ export class Playlist {
     async previousImage() {
         if (
             this.currentType === PLAYLIST_TYPES.DAY_OF_WEEK ||
-            this.currentType === PLAYLIST_TYPES.TIME_OF_DAY ||
-            this.currentType === undefined
+            this.currentType === PLAYLIST_TYPES.TIME_OF_DAY
         ) {
-            notify("Cannot change image in this type of playlist");
-            return "Cannot change image in this type of playlist";
+            notify('Cannot change image in this type of playlist');
+            return 'Cannot change image in this type of playlist';
         }
         this.currentImageIndex--;
         if (this.currentImageIndex < 0) {
@@ -158,7 +171,7 @@ export class Playlist {
         if (this.currentType === PLAYLIST_TYPES.TIMER) {
             this.resetInterval();
         }
-        await this.setImage(this.images[this.currentImageIndex].name);
+        await this.setImage(this.images[this.currentImageIndex]);
         try {
             this.updateInDB();
         } catch (error) {
@@ -173,15 +186,6 @@ export class Playlist {
 
     start() {
         try {
-            const currentPlaylist = dbOperations.getCurrentPlaylist();
-            if (currentPlaylist === undefined) {
-                return {
-                    action: ACTIONS.ERROR,
-                    message: "Database returned undefined from currentPlaylist"
-                };
-            }
-            this.stop(false);
-            this.setPlaylist(currentPlaylist);
             switch (this.currentType) {
                 case PLAYLIST_TYPES.TIMER:
                     void this.timedPlaylist();
@@ -200,13 +204,9 @@ export class Playlist {
                     });
                     break;
                 default:
-                    this.stop(true);
+                    this.emit('Error', this.activeMonitor.name);
                     break;
             }
-            return {
-                action: ACTIONS.START_PLAYLIST,
-                message: `Started playlist ${currentPlaylist.name}`
-            };
         } catch (error) {
             const errorString = error as string;
             notify(
@@ -217,70 +217,45 @@ export class Playlist {
     }
 
     updatePlaylist() {
-        try {
-            const newPlaylistInfo = dbOperations.getCurrentPlaylist();
-            if (
-                newPlaylistInfo !== undefined &&
-                newPlaylistInfo.name === this.currentName
-            ) {
-                switch (this.currentType) {
-                    case PLAYLIST_TYPES.TIMER:
-                        if (newPlaylistInfo.interval !== this.interval) {
-                            this.stop(false);
-                        }
-                        this.setPlaylist(newPlaylistInfo);
-                        break;
-                    case PLAYLIST_TYPES.NEVER:
-                        this.images = newPlaylistInfo.images;
-                        this.showAnimations = newPlaylistInfo.showAnimations;
-                        break;
-                    case PLAYLIST_TYPES.TIME_OF_DAY:
-                        this.stop(false);
-                        this.setPlaylist(newPlaylistInfo);
-                        void this.timeOfDayPlaylist().then(() => {
-                            void this.checkMissedEvents();
-                        });
-                        break;
-                    case PLAYLIST_TYPES.DAY_OF_WEEK:
-                        this.stop(false);
-                        this.setPlaylist(newPlaylistInfo);
-                        void this.dayOfWeekPlaylist().then(() => {
-                            void this.checkMissedEvents();
-                        });
-                        break;
-                    default:
-                        this.stop(true);
-                        break;
-                }
-                return {
-                    action: ACTIONS.UPDATE_PLAYLIST,
-                    message: `Updated ${newPlaylistInfo.name}`
-                };
-            } else {
-                notify(
-                    "There was a problem updating the playlist, either the names do not match, or the database returned null"
-                );
-                return {
-                    action: ACTIONS.ERROR,
-                    message:
-                        "There was a problem updating the playlist, either the names do not match, or the database returned null"
-                };
-            }
-        } catch (error) {
-            const errorString = error as string;
-            notify(
-                `Could not connect to the database\n Error:\n${errorString}`
-            );
-            throw error;
+        const newPlaylistInfo = this.dbOperations.getActivePlaylistInfo(
+            this.activeMonitor
+        );
+        if (newPlaylistInfo === undefined) {
+            this.emit('Error', this.activeMonitor.name);
+            return;
         }
+        this.stop();
+        const {
+            name,
+            interval,
+            images,
+            showAnimations,
+            type,
+            currentImageIndex,
+            id
+        } = newPlaylistInfo;
+        this.images = images;
+        this.name = name;
+        this.currentType = type;
+        this.currentImageIndex = configuration.app.settings
+            .playlistStartOnFirstImage
+            ? 0
+            : currentImageIndex;
+        this.interval = interval;
+        this.showAnimations = showAnimations;
+        this.dbOperations.insertIntoActivePlaylists({
+            playlistID: id,
+            monitor: this.activeMonitor
+        });
+        this.start();
     }
 
     updateInDB() {
         try {
-            dbOperations.updatePlaylistCurrentIndex(
-                this.currentImageIndex,
-                this.currentName
-            );
+            this.dbOperations.updatePlaylistCurrentIndex({
+                newIndex: this.currentImageIndex,
+                name: this.name
+            });
         } catch (error) {
             const errorString = error as string;
             notify(
@@ -288,56 +263,44 @@ export class Playlist {
             );
             throw error;
         }
-    }
-
-    setPlaylist(currentPlaylist: PlaylistType) {
-        this.images = currentPlaylist.images;
-        this.currentName = currentPlaylist.name;
-        this.currentType = currentPlaylist.type;
-        this.currentImageIndex = configuration.app.settings
-            .playlistStartOnFirstImage
-            ? 0
-            : currentPlaylist.currentImageIndex;
-        this.interval = currentPlaylist.interval;
-        this.showAnimations = currentPlaylist.showAnimations;
     }
 
     async timedPlaylist(resume?: boolean) {
         if (this.interval !== null) {
             if (!(resume ?? false)) {
-                await this.setImage(this.images[this.currentImageIndex].name);
+                await this.setImage(this.images[this.currentImageIndex]);
             }
             this.playlistTimer.timeoutID = setInterval(() => {
                 this.currentImageIndex++;
                 if (this.currentImageIndex === this.images.length) {
                     this.currentImageIndex = 0;
                 }
-                void this.setImage(this.images[this.currentImageIndex].name);
+                void this.setImage(this.images[this.currentImageIndex]);
                 this.updateInDB();
             }, this.interval);
         } else {
-            console.error("Interval is null");
+            console.error('Interval is null');
             notify(
-                "Interval is null, something went wrong setting the playlist"
+                'Interval is null, something went wrong setting the playlist'
             );
         }
     }
 
     async neverPlaylist() {
-        await this.setImage(this.images[this.currentImageIndex].name);
+        await this.setImage(this.images[this.currentImageIndex]);
     }
 
     async timeOfDayPlaylist() {
         try {
             const startingIndex = this.findClosestImageIndex();
             if (startingIndex === undefined) {
-                notify("Images have no time, something went wrong");
-                this.stop(true);
+                notify('Images have no time, something went wrong');
+                this.emit('Error', this.activeMonitor.name);
                 return;
             }
             this.currentImageIndex =
                 startingIndex < 0 ? this.images.length - 1 : startingIndex;
-            await this.setImage(this.images[this.currentImageIndex].name);
+            await this.setImage(this.images[this.currentImageIndex]);
             this.timeOfDayPlayer();
         } catch (error) {
             const errorString = error as string;
@@ -363,7 +326,7 @@ export class Playlist {
         if (imageIndexToSet > this.images.length) {
             imageIndexToSet = this.images.length - 1;
         }
-        await this.setImage(this.images[imageIndexToSet].name);
+        await this.setImage(this.images[imageIndexToSet]);
         clearTimeout(this.playlistTimer.timeoutID);
         this.playlistTimer.timeoutID = setTimeout(() => {
             void this.dayOfWeekPlaylist();
@@ -372,41 +335,11 @@ export class Playlist {
             millisecondsUntilEndOfDay + Date.now();
     }
 
-    getSwwwCommandFromConfiguration(imagePath: string) {
-        const swwwConfig = configuration.swww.settings;
-        let transitionPos = "";
-        const inverty = swwwConfig.invertY !== 0 ? "--invert-y" : "";
-        switch (swwwConfig.transitionPositionType) {
-            case "int":
-                transitionPos = `${swwwConfig.transitionPositionIntX},${swwwConfig.transitionPositionIntY}`;
-                break;
-            case "float":
-                transitionPos = `${swwwConfig.transitionPositionFloatX},${swwwConfig.transitionPositionFloatY}`;
-                break;
-            case "alias":
-                transitionPos = swwwConfig.transitionPosition;
-        }
-
-        const baseCommand = `swww img "${imagePath}" --resize="${swwwConfig.resizeType}" --fill-color "${swwwConfig.fillColor}" --filter ${swwwConfig.filterType} --transition-step ${swwwConfig.transitionStep} --transition-duration ${swwwConfig.transitionDuration} --transition-fps ${swwwConfig.transitionFPS} --transition-angle ${swwwConfig.transitionAngle} --transition-pos ${transitionPos} ${inverty} --transition-bezier ${swwwConfig.transitionBezier} --transition-wave "${swwwConfig.transitionWaveX},${swwwConfig.transitionWaveY}"`;
-        if (
-            configuration.app.settings.swwwAnimations ||
-            this.showAnimations === true
-        ) {
-            const command = baseCommand.concat(" --transition-type=none");
-            return command;
-        } else {
-            const command = baseCommand.concat(
-                ` --transition-type=${swwwConfig.transitionType}`
-            );
-            return command;
-        }
-    }
-
     timeOfDayPlayer() {
         const timeOut = this.calculateMillisecondsUntilNextImage();
         if (timeOut === undefined) {
-            notify(`Stopping playlist ${this.currentName}`);
-            this.stop(true);
+            notify('Playlist internal error');
+            this.emit('Error', this.activeMonitor.name);
             return;
         }
         clearTimeout(this.playlistTimer.timeoutID);
@@ -416,7 +349,7 @@ export class Playlist {
                 newIndex = 0;
             }
             this.currentImageIndex = newIndex;
-            void this.setImage(this.images[this.currentImageIndex].name);
+            void this.setImage(this.images[this.currentImageIndex]);
             this.timeOfDayPlayer();
         }, timeOut);
         this.playlistTimer.executionTimeStamp = timeOut + Date.now();
@@ -464,22 +397,6 @@ export class Playlist {
         return closestIndex;
     }
 
-    async setRandomImage() {
-        try {
-            const images = dbOperations.readAllImagesInDB();
-            if (images === undefined) {
-                return "There are no images in the database";
-            }
-            const randomIndex = Math.floor(Math.random() * images.length);
-            const randomImage = images[randomIndex].name;
-            await this.setImage(randomImage);
-            return `Setting ${randomImage}`;
-        } catch (error) {
-            notify(error as string);
-            throw error;
-        }
-    }
-
     async checkMissedEvents() {
         clearTimeout(this.eventCheckerTimeout);
         this.eventCheckerTimeout = setInterval(() => {
@@ -506,7 +423,7 @@ export class Playlist {
 
     async getPlaylistDiagnostics() {
         const diagostics = {
-            playlistName: this.currentName,
+            playlistName: this.name,
             playlistType: this.currentType,
             playlistCurrentIndex: this.currentImageIndex,
             playlistEventCheckerTimeout: {

@@ -5,16 +5,18 @@
     "main": "daemon.js",
     "scripts": {
         "build": "npm install && tsc ./daemon.ts --esModuleInterop",
-        "compile": "tsc ./daemon.ts --esModuleInterop"
+        "compile": "tsc"
     },
     "keywords": [],
     "author": "",
     "license": "ISC",
     "dependencies": {
-        "better-sqlite3": "8.5.0"
+        "better-sqlite3": "8.5.0",
+        "drizzle-orm": "^0.30.6"
     },
     "devDependencies": {
         "@types/better-sqlite3": "7.6.4",
+        "drizzle-kit": "^0.20.14",
         "typescript": "5.1.3"
     }
 }

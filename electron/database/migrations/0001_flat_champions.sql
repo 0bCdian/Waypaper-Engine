@@ -35,7 +35,8 @@ SELECT json_object(
     'introAnimation', CASE WHEN introAnimation = 1 THEN json('true') ELSE json('false') END,
     'startMinimized', CASE WHEN startMinimized = 1 THEN json('true') ELSE json('false') END,
     'minimizeInsteadOfClose', CASE WHEN minimizeInsteadOfClose = 1 THEN json('true') ELSE json('false') END,
-    'randomImageMonitor','clone'
+    'randomImageMonitor','clone',
+    'imagesPerPage',20
 )
 FROM appConfigOld;
 --> statement-breakpoint

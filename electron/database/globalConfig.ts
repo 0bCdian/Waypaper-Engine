@@ -5,7 +5,7 @@ import { type ActiveMonitor } from '../../shared/types/monitor';
 const playlistControllerInstance = new PlaylistController();
 const dbOperations = new DBOperations();
 dbOperations.migrateDB();
-const config = {
+const configuration = {
     swww: {
         config: dbOperations.createSwwwConfigIfNotExists()
     },
@@ -15,20 +15,22 @@ const config = {
     script: undefined as string | undefined
 };
 dbOperations.on('updateAppConfig', (newAppConfig: appConfigInsertType) => {
-    config.app.config = newAppConfig.config;
+    configuration.app.config = newAppConfig.config;
+    playlistControllerInstance.updateConfig();
 });
 dbOperations.on('updateSwwwConfig', (newAppConfig: swwwConfigInsertType) => {
-    config.swww.config = newAppConfig.config;
+    configuration.swww.config = newAppConfig.config;
+    playlistControllerInstance.updateConfig();
 });
 dbOperations.on(
     'upsertPlaylist',
     (playlist: { name: string; monitor: ActiveMonitor }) => {
-        playlistControllerInstance.updatePlaylist(playlist);
+        playlistControllerInstance.startPlaylist(playlist);
     }
 );
 
 dbOperations.on('deletePlaylist', (playlistName: string) => {
-    playlistControllerInstance.stopPlaylist({ name: playlistName });
+    console.log('onDeletePlaylist', playlistName);
 });
 
-export { config, playlistControllerInstance, dbOperations };
+export { configuration, playlistControllerInstance, dbOperations };

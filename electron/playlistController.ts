@@ -24,7 +24,7 @@ export class PlaylistController extends EventEmitter {
     }
 
     #sendData(data: message) {
-        this.connection.write(JSON.stringify(data));
+        this.connection.write(JSON.stringify(data).concat('\n'));
     }
 
     startPlaylist(playlist: { name: string; monitor: ActiveMonitor }) {
@@ -34,15 +34,17 @@ export class PlaylistController extends EventEmitter {
         });
     }
 
-    pausePlaylist() {
+    pausePlaylist(playlist: message['playlist']) {
         this.#sendData({
-            action: ACTIONS.PAUSE_PLAYLIST
+            action: ACTIONS.PAUSE_PLAYLIST,
+            playlist
         });
     }
 
-    resumePlaylist() {
+    resumePlaylist(playlist: message['playlist']) {
         this.#sendData({
-            action: ACTIONS.RESUME_PLAYLIST
+            action: ACTIONS.RESUME_PLAYLIST,
+            playlist
         });
     }
 
@@ -53,15 +55,17 @@ export class PlaylistController extends EventEmitter {
         });
     }
 
-    nextImage() {
+    nextImage(playlist: message['playlist']) {
         this.#sendData({
-            action: ACTIONS.NEXT_IMAGE
+            action: ACTIONS.NEXT_IMAGE,
+            playlist
         });
     }
 
-    previousImage() {
+    previousImage(playlist: message['playlist']) {
         this.#sendData({
-            action: ACTIONS.PREVIOUS_IMAGE
+            action: ACTIONS.PREVIOUS_IMAGE,
+            playlist
         });
     }
 
@@ -80,13 +84,6 @@ export class PlaylistController extends EventEmitter {
     updateConfig() {
         this.#sendData({
             action: ACTIONS.UPDATE_CONFIG
-        });
-    }
-
-    updatePlaylist(playlist: { name: string; monitor: ActiveMonitor }) {
-        this.#sendData({
-            action: ACTIONS.UPDATE_PLAYLIST,
-            playlist
         });
     }
 }

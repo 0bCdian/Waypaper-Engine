@@ -1,5 +1,5 @@
-import { exec } from "node:child_process";
-import configuration from "../config/config";
+import { exec } from 'node:child_process';
+import { configuration } from '../config/config';
 
 export function notifyImageSet(imageName: string, imagePath: string) {
     if (!configuration.app.settings.notifications) return;

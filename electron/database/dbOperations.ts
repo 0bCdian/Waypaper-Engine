@@ -7,7 +7,7 @@ import {
 import { type imageMetadata } from '../types/types';
 import { db, migrateDB } from './database';
 import * as tables from './schema';
-import { asc, desc, eq } from 'drizzle-orm';
+import { asc, desc, eq, sql } from 'drizzle-orm';
 import { EventEmitter } from 'node:events';
 
 export class DBOperations extends EventEmitter {
@@ -231,5 +231,33 @@ export class DBOperations extends EventEmitter {
     getSelectedMonitor() {
         const selectedMonitor = db.select().from(tables.selectedMonitor).get();
         return selectedMonitor?.monitor;
+    }
+
+    addImageToHistory({
+        image,
+        activeMonitor
+    }: {
+        image: rendererImage;
+        activeMonitor: ActiveMonitor;
+    }) {
+        const row: tables.imageHistoryInsertType = {
+            monitor: activeMonitor,
+            imageID: image.id
+        };
+        db.insert(tables.imageHistory).values(row).run();
+    }
+
+    static getRandomImage() {
+        try {
+            const result = db
+                .select()
+                .from(tables.image)
+                .orderBy(sql`random()`)
+                .limit(1)
+                .get();
+            console.log('this is the result of getRandomImage', result);
+        } catch (error) {
+            console.error(error);
+        }
     }
 }

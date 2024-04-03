@@ -11,17 +11,19 @@ import { promisify } from 'node:util';
 import { binDir, daemonLocation } from './binaries';
 import { join, basename } from 'node:path';
 import { parseResolution } from '../src/utils/utilities';
-import { config, dbOperations } from './database/globalConfig';
+import { configuration, dbOperations } from './database/globalConfig';
 import Sharp = require('sharp');
 import {
-    extendImageAcrossAllMonitors,
-    splitImageHorizontalAxis,
-    splitImageVerticalAxis
+    duplicateImageAcrossMonitors,
+    setImageAcrossMonitors
 } from './imageOperations';
 import { type openFileAction, type imagesObject } from '../shared/types';
 import { type imageMetadata } from './types/types';
-import { type wlr_output, type Monitor } from '../shared/types/monitor';
-import { type imageSelectType } from './database/schema';
+import {
+    type wlr_output,
+    type Monitor,
+    type ActiveMonitor
+} from '../shared/types/monitor';
 import { validImageExtensions } from '../shared/constants';
 import { appDirectories } from './globals/appPaths';
 import { type Formats } from '../shared/types/image';
@@ -269,22 +271,21 @@ function getUniqueFileNames(existingFiles: Set<string>, filesToCopy: string[]) {
     return filesToCopyWithoutConflicts;
 }
 
-export function setImage(
-    _event: Electron.IpcMainInvokeEvent,
-    imageName: string,
-    monitor?: string
+export async function setImage(
+    image: rendererImage,
+    activeMonitor: ActiveMonitor
 ) {
-    const imagePath = join(appDirectories.imagesDir, `"${imageName}"`);
-    const command = getSwwwCommandFromConfiguration(imagePath, monitor);
-    void execPomisified(`${command}`).then(output => {
-        if (output.stderr.length > 0) {
-            console.error(output.stderr);
-            return;
+    try {
+        if (activeMonitor.extendAcrossMonitors) {
+            await setImageAcrossMonitors(image, activeMonitor.monitor);
+        } else {
+            await duplicateImageAcrossMonitors(image, activeMonitor.monitor);
         }
-        if (config.script !== undefined) {
-            void execPomisified(`${config.script} ${imagePath}`);
-        }
-    });
+        dbOperations.addImageToHistory({ image, activeMonitor });
+    } catch (error) {
+        console.error(error);
+        console.error('SetImageError', image);
+    }
 }
 
 export async function isSwwwDaemonRunning() {
@@ -311,6 +312,7 @@ export async function checkIfSwwwIsInstalled() {
 }
 export function savePlaylist(playlistObject: rendererPlaylist) {
     try {
+        console.log('SavePlaylist appfunctions ', playlistObject);
         void dbOperations.upsertPlaylist(playlistObject);
     } catch (error) {
         console.error(error);
@@ -330,8 +332,8 @@ export async function initWaypaperDaemon() {
         const promise = new Promise<void>((resolve, reject) => {
             try {
                 const args = [`${daemonLocation}/daemon.js`];
-                if (config.script !== undefined)
-                    args.push(`--script=${config.script}`);
+                if (configuration.script !== undefined)
+                    args.push(`--script=${configuration.script}`);
                 spawn('node', args, {
                     detached: true,
                     stdio: 'ignore',
@@ -383,36 +385,6 @@ export function deleteImagesFromGallery(
     }
 }
 
-function getSwwwCommandFromConfiguration(imagePath: string, monitor?: string) {
-    const swwwConfig = config.swww.config;
-    let transitionPos = '';
-    const inverty = swwwConfig.invertY ? '--invert-y' : '';
-    switch (swwwConfig.transitionPositionType) {
-        case 'int':
-            transitionPos = `${swwwConfig.transitionPositionIntX},${swwwConfig.transitionPositionIntY}`;
-            break;
-        case 'float':
-            transitionPos = `${swwwConfig.transitionPositionFloatX},${swwwConfig.transitionPositionFloatY}`;
-            break;
-        case 'alias':
-            transitionPos = swwwConfig.transitionPosition;
-    }
-    const command = `swww img ${imagePath} ${
-        monitor !== undefined ? `--outputs ${monitor}` : ''
-    } --resize="${swwwConfig.resizeType}" --fill-color "${
-        swwwConfig.fillColor
-    }" --filter ${swwwConfig.filterType} --transition-type ${
-        swwwConfig.transitionType
-    } --transition-step ${swwwConfig.transitionStep} --transition-duration ${
-        swwwConfig.transitionDuration
-    } --transition-fps ${swwwConfig.transitionFPS} --transition-angle ${
-        swwwConfig.transitionAngle
-    } --transition-pos ${transitionPos} ${inverty} --transition-bezier ${
-        swwwConfig.transitionBezier
-    } --transition-wave "${swwwConfig.transitionWaveX},${swwwConfig.transitionWaveY}"`;
-    return command;
-}
-
 export async function getMonitors(): Promise<Monitor[]> {
     const { stdout, stderr } = await execPomisified('swww query', {
         encoding: 'utf-8'
@@ -455,50 +427,6 @@ function parseSwwwQuery(stdout: string) {
     return monitorsObjectArray;
 }
 
-export async function setImageExtended(
-    image: imageSelectType,
-    monitors: Monitor[],
-    orientation: 'vertical' | 'horizontal'
-) {
-    try {
-        const commands: Array<Promise<any>> = [];
-        const imageFilePath = join(appDirectories.imagesDir, image.name);
-        let combinedMonitorHeight: number = 0;
-        let combinedMonitorWidth: number = 0;
-        monitors.forEach(monitor => {
-            combinedMonitorHeight += monitor.height;
-            combinedMonitorWidth += monitor.width;
-        });
-        const monitorsToImagesPair =
-            orientation === 'vertical'
-                ? await splitImageVerticalAxis(
-                      monitors,
-                      image,
-                      imageFilePath,
-                      combinedMonitorWidth
-                  )
-                : await splitImageHorizontalAxis(
-                      monitors,
-                      image,
-                      imageFilePath,
-                      combinedMonitorHeight
-                  );
-        monitorsToImagesPair.forEach(pair => {
-            commands.push(
-                execPomisified(
-                    getSwwwCommandFromConfiguration(pair.image, pair.monitor)
-                )
-            );
-        });
-        void Promise.all(commands);
-        if (config.script !== undefined) {
-            await execPomisified(`${config.script} ${imageFilePath}`);
-        }
-    } catch (error) {
-        console.error(error);
-    }
-}
-
 export async function getMonitorsInfo() {
     try {
         const { stdout } = await execFilePomisified(join(binDir, 'wlr-randr'), [
@@ -512,30 +440,6 @@ export async function getMonitorsInfo() {
     } catch (error) {
         console.error(error);
         return undefined;
-    }
-}
-
-export async function setImageAcrossAllMonitors(Image: imageSelectType) {
-    const imageFilePath = join(appDirectories.imagesDir, Image.name);
-    try {
-        const commands: Array<Promise<any>> = [];
-        const monitorsToImagesPair = await extendImageAcrossAllMonitors(
-            Image,
-            imageFilePath
-        );
-        monitorsToImagesPair.forEach(pair => {
-            commands.push(
-                execPomisified(
-                    getSwwwCommandFromConfiguration(pair.image, pair.monitor)
-                )
-            );
-        });
-        void Promise.all(commands);
-        if (config.script !== undefined) {
-            await execPomisified(`${config.script} ${imageFilePath}`);
-        }
-    } catch (error) {
-        console.error(error);
     }
 }
 

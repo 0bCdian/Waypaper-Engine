@@ -4,11 +4,19 @@ import { MonitorComponent } from './Monitor';
 import { calculateMinResolution } from '../utils/utilities';
 import { type monitorSelectType } from '../types/rendererTypes';
 import { type Monitor } from '../../shared/types/monitor';
-const { setSelectedMonitor } = window.API_RENDERER;
+import { IPC_MAIN_EVENTS } from '../../shared/constants';
+const { setSelectedMonitor, registerListener } = window.API_RENDERER;
+let firstRender = true;
 function Monitors() {
-    const { activeMonitor, monitorsList, setMonitorsList, setActiveMonitor } =
-        useMonitorStore();
-    let initialSelectState: monitorSelectType = 'clone';
+    const {
+        activeMonitor,
+        monitorsList,
+        setMonitorsList,
+        setActiveMonitor,
+        reQueryMonitors
+    } = useMonitorStore();
+    let initialSelectState: monitorSelectType =
+        monitorsList.length > 1 ? 'clone' : 'individual';
     if (activeMonitor.extendAcrossMonitors) {
         initialSelectState = 'extend';
     } else if (activeMonitor.monitor.length === 1) {
@@ -68,7 +76,7 @@ function Monitors() {
         setActiveMonitor(activeMonitor);
         closeModal();
     };
-    const scale = 1 / 3;
+    const scale = 1 / (monitorsList.length + 1);
     const modalRef = useRef<HTMLDialogElement>(null);
     const styles: React.CSSProperties = {
         width: resolution.x * scale,
@@ -91,6 +99,24 @@ function Monitors() {
             setMonitorsList([...monitorsList]);
         }
     }, [selectType]);
+
+    useEffect(() => {
+        if (!firstRender) return;
+        firstRender = false;
+        registerListener({
+            channel: IPC_MAIN_EVENTS.displaysChanged,
+            listener: _ => {
+                // this setTimeout is added to circumvent an swww limitation on querying recently inserted monitorsList
+                //  which sets currentImage to 00000 instead of the actual cached image
+                setTimeout(() => {
+                    void reQueryMonitors().then(() => {
+                        // @ts-expect-error daisy-ui
+                        window.monitors.showModal();
+                    });
+                }, 300);
+            }
+        });
+    }, []);
     return (
         <dialog id="monitors" className="modal w-full" ref={modalRef}>
             <div className="modal-box min-w-max">
@@ -111,10 +137,16 @@ function Monitors() {
                             <option value={'individual'}>
                                 Wallpaper per display
                             </option>
-                            <option value={'extend'}>
+                            <option
+                                value={'extend'}
+                                disabled={monitorsList.length < 2}
+                            >
                                 Stretch single wallpaper
                             </option>
-                            <option value={'clone'}>
+                            <option
+                                value={'clone'}
+                                disabled={monitorsList.length < 2}
+                            >
                                 Clone single wallpaper
                             </option>
                         </select>

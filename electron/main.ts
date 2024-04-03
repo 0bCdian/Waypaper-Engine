@@ -1,4 +1,12 @@
-import { app, BrowserWindow, ipcMain, protocol, Tray, Menu } from 'electron';
+import {
+    app,
+    BrowserWindow,
+    ipcMain,
+    protocol,
+    Tray,
+    Menu,
+    screen
+} from 'electron';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import {
@@ -16,7 +24,7 @@ import {
 import { devMenu, prodMenu, trayMenu } from './globals/menus';
 import { iconPath } from './binaries';
 import {
-    config,
+    configuration,
     dbOperations,
     playlistControllerInstance
 } from './database/globalConfig';
@@ -30,6 +38,7 @@ import {
     type swwwConfigInsertType
 } from './database/schema';
 import { type ActiveMonitor } from '../shared/types/monitor';
+import { IPC_MAIN_EVENTS } from '../shared/constants';
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
     app.exit(1);
@@ -46,7 +55,7 @@ const scriptFlag = process.argv.find(arg => {
 });
 if (scriptFlag !== undefined) {
     const userScriptLocation = scriptFlag.split('=')[1];
-    config.script = userScriptLocation;
+    configuration.script = userScriptLocation;
 }
 process.env.DIST = join(__dirname, '../dist');
 process.env.PUBLIC = app.isPackaged
@@ -83,14 +92,14 @@ async function createWindow() {
         }
     }
     win.once('ready-to-show', () => {
-        if (config.app.config.startMinimized) {
+        if (configuration.app.config.startMinimized) {
             win?.hide();
         } else {
             win?.show();
         }
     });
     win.on('close', event => {
-        if (config.app.config.minimizeInsteadOfClose) {
+        if (configuration.app.config.minimizeInsteadOfClose) {
             event.preventDefault();
             win?.hide();
         }
@@ -111,12 +120,10 @@ function registerFileProtocol() {
 }
 
 async function createTray() {
-    console.log('createTray');
     if (tray === null) {
         tray = new Tray(join(iconPath, '512x512.png'));
     } else {
-        tray.destroy();
-        tray = new Tray(join(iconPath, '512x512.png'));
+        tray.removeAllListeners();
     }
     if (win === null) return;
     const trayContextMenu = await trayMenu(app, win);
@@ -131,6 +138,18 @@ async function createTray() {
 Menu.setApplicationMenu(null);
 app.whenReady()
     .then(async () => {
+        screen.on('display-added', () => {
+            if (win === null) return;
+            win.webContents.send(IPC_MAIN_EVENTS.displaysChanged);
+        });
+        screen.on('display-removed', () => {
+            if (win === null) return;
+            win.webContents.send(IPC_MAIN_EVENTS.displaysChanged);
+        });
+        screen.on('display-metrics-changed', () => {
+            if (win === null) return;
+            win.webContents.send(IPC_MAIN_EVENTS.displaysChanged);
+        });
         await isSwwwDaemonRunning();
         await initWaypaperDaemon();
         await createWindow();
@@ -151,7 +170,7 @@ app.whenReady()
     });
 
 app.on('quit', () => {
-    if (config.app.config.killDaemon) {
+    if (configuration.app.config.killDaemon) {
         playlistControllerInstance.killDaemon();
     }
 });
@@ -191,7 +210,12 @@ ipcMain.on('setSelectedMonitor', (_, monitor: ActiveMonitor) => {
 ipcMain.on('deletePlaylist', (_, playlistName: string) => {
     dbOperations.deletePlaylist(playlistName);
 });
-ipcMain.on('setImage', setImage);
+ipcMain.on(
+    'setImage',
+    (_, image: rendererImage, activeMonitor: ActiveMonitor) => {
+        void setImage(image, activeMonitor);
+    }
+);
 ipcMain.on('savePlaylist', (_, playlistObject: rendererPlaylist) => {
     savePlaylist(playlistObject);
     void createTray();

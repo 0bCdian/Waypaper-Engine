@@ -1,93 +1,248 @@
-import { type Socket, type Server } from "net";
-import { type message, ACTIONS } from "../types/daemonTypes";
-import { type PlaylistClass } from "../playlist/playlist";
-import { notify } from "../utils/notifications";
-import config from "../config/config";
+import {
+    WAYPAPER_ENGINE_SOCKET_PATH,
+    appDirectories
+} from '../config/appPaths';
+import { type Socket, type Server, createServer } from 'net';
+import { type message, ACTIONS } from '../types/daemonTypes';
+import { type PlaylistClass, Playlist } from '../playlist/playlist';
+import { notify, notifyImageSet } from '../utils/notifications';
+import { configuration, dbOperations } from '../config/config';
+import {
+    setImageAcrossMonitors,
+    duplicateImageAcrossMonitors
+} from '../utils/imageOperations';
+import { getMonitors } from '../utils/monitorUtils';
+import { join } from 'node:path';
+import { unlinkSync } from 'node:fs';
+export class DaemonManager {
+    serverInstance: Server;
+    socket?: Socket;
+    readonly #playlistMap: Map<string, PlaylistClass>;
+    constructor() {
+        this.serverInstance = createServer(socket => {
+            this.socket = socket;
+            socket.on('data', buffer => {
+                buffer
+                    .toString()
+                    .split('\n')
+                    .forEach(message => {
+                        try {
+                            const parsedMessage: message = JSON.parse(message);
+                            console.log(parsedMessage);
+                            void this.processSocketMessage(parsedMessage);
+                        } catch (error) {
+                            socket.write('Error reading buffer');
+                        }
+                    });
+            });
+            socket.on('error', err => {
+                console.error('Socket error:', err.message);
+            });
+        });
+        this.#playlistMap = new Map<string, PlaylistClass>();
 
-export async function daemonManager(
-    data: Buffer,
-    socket: Socket,
-    playlistController: PlaylistClass,
-    daemonServer: Server
-) {
-    const message: message = JSON.parse(data.toString());
-    if (message.action === ACTIONS.STOP_DAEMON) {
-        const stopMessage = playlistController.stop(false);
-        notify(stopMessage.message);
-        socket.write(JSON.stringify(stopMessage));
-        daemonServer.close();
-        process.exit(0);
+        this.serverInstance.on('error', err => {
+            if (err.message.includes('EADDRINUSE')) {
+                unlinkSync(WAYPAPER_ENGINE_SOCKET_PATH);
+                this.serverInstance.listen(WAYPAPER_ENGINE_SOCKET_PATH);
+            } else {
+                console.error(err);
+            }
+        });
+        this.serverInstance.listen(WAYPAPER_ENGINE_SOCKET_PATH);
     }
-    switch (message.action) {
-        case ACTIONS.UPDATE_CONFIG:
-            config.app.update();
-            config.swww.update();
-            socket.write(JSON.stringify({ action: ACTIONS.UPDATE_CONFIG }));
-            break;
-        case ACTIONS.START_PLAYLIST:
-            {
-                const startMessage = playlistController.start();
-                notify(`Starting ${playlistController.currentName}`);
-                socket.write(JSON.stringify(startMessage));
-            }
-            break;
-        case ACTIONS.RANDOM_IMAGE:
-            {
-                const setImageMessage =
-                    await playlistController.setRandomImage();
-                socket.write(setImageMessage);
-            }
-            break;
-        case ACTIONS.GET_INFO:
-            {
-                const diagnostics =
-                    await playlistController.getPlaylistDiagnostics();
-                socket.write(JSON.stringify(diagnostics));
-            }
-            break;
-    }
-    if (playlistController.currentName !== "") {
+
+    async processSocketMessage(message: message) {
+        if (message.action === ACTIONS.STOP_DAEMON) {
+            const stoppedPlaylists: string[] = [];
+            this.#playlistMap.forEach(playlist => {
+                stoppedPlaylists.push(playlist.name);
+                playlist.stop();
+            });
+            const message = `Stopped all following playlists:${JSON.stringify(stoppedPlaylists)}`;
+            notify(message);
+            this.socket?.write(message);
+            this.serverInstance.close();
+            process.exit(0);
+        }
         switch (message.action) {
+            case ACTIONS.UPDATE_CONFIG:
+                configuration.app.update();
+                configuration.swww.update();
+                break;
+            case ACTIONS.RANDOM_IMAGE:
+                // TODO
+                break;
+            case ACTIONS.GET_INFO:
+                break;
+        }
+        if (message.playlist === undefined) return;
+        switch (message.action) {
+            case ACTIONS.START_PLAYLIST:
+                {
+                    const runningPlaylist = findActivePlaylistMatch({
+                        playlistMap: this.#playlistMap,
+                        newPlaylist: message.playlist
+                    });
+                    if (runningPlaylist !== undefined) {
+                        runningPlaylist.updatePlaylist();
+                        notify(`Updating ${message.playlist.name}`);
+                        this.socket?.write(
+                            JSON.stringify(`Updating ${message.playlist.name}`)
+                        );
+                        return;
+                    }
+                    findAndStopCollidingPlaylists({
+                        playlistMap: this.#playlistMap,
+                        newPlaylist: message.playlist
+                    });
+                    const newPlaylist = new Playlist({
+                        playlistName: message.playlist.name,
+                        activeMonitor: message.playlist.monitor
+                    });
+                    newPlaylist.start();
+                    this.#playlistMap.set(
+                        message.playlist.monitor.name,
+                        newPlaylist
+                    );
+                    newPlaylist.on('Error', (activeMonitorName: string) => {
+                        const playlistToDelete =
+                            this.#playlistMap.get(activeMonitorName);
+                        if (playlistToDelete === undefined) return;
+                        playlistToDelete.stop();
+                        this.#playlistMap.delete(activeMonitorName);
+                    });
+                    notify(
+                        `Starting ${message.playlist.name} on ${message.playlist.monitor.name}`
+                    );
+                    this.socket?.write(
+                        JSON.stringify(`Starting ${message.playlist.name}`)
+                    );
+                }
+                break;
+
             case ACTIONS.PAUSE_PLAYLIST:
                 {
-                    const pauseMessage = playlistController.pause();
+                    const playlistInstance = this.#playlistMap.get(
+                        message.playlist.name
+                    );
+                    if (playlistInstance === undefined) return;
+                    const pauseMessage = playlistInstance.pause();
                     notify(pauseMessage);
-                    socket.write(pauseMessage);
+                    this.socket?.write(pauseMessage);
                 }
                 break;
             case ACTIONS.RESUME_PLAYLIST:
                 {
-                    const resumeMessage = playlistController.resume();
+                    const playlistInstance = this.#playlistMap.get(
+                        message.playlist.name
+                    );
+                    if (playlistInstance === undefined) return;
+                    const resumeMessage = playlistInstance.resume();
                     notify(resumeMessage);
-                    socket.write(resumeMessage);
+                    this.socket?.write(resumeMessage);
                 }
                 break;
             case ACTIONS.STOP_PLAYLIST:
                 {
-                    const stopMessage = playlistController.stop(true);
-                    notify(JSON.stringify(stopMessage));
-                    socket.write(JSON.stringify(stopMessage));
+                    const playlistInstance = this.#playlistMap.get(
+                        message.playlist.monitor.name
+                    );
+                    if (playlistInstance === undefined) return;
+                    const stopMessage = playlistInstance.stop();
+                    notify(
+                        `${message.action} ${message.playlist.name} on ${message.playlist.monitor.name}`
+                    );
+                    this.socket?.write(JSON.stringify(stopMessage.message));
                 }
-                break;
-            case ACTIONS.UPDATE_PLAYLIST:
-                playlistController.updatePlaylist();
                 break;
             case ACTIONS.NEXT_IMAGE:
                 {
-                    const nextImageMessage =
-                        await playlistController.nextImage();
-                    socket.write(nextImageMessage);
+                    const playlistInstance = this.#playlistMap.get(
+                        message.playlist.name
+                    );
+                    if (playlistInstance === undefined) return;
+                    const nextImageMessage = await playlistInstance.nextImage();
+                    this.socket?.write(nextImageMessage);
                 }
                 break;
             case ACTIONS.PREVIOUS_IMAGE:
                 {
+                    const playlistInstance = this.#playlistMap.get(
+                        message.playlist.name
+                    );
+                    if (playlistInstance === undefined) return;
                     const previousImageMessage =
-                        await playlistController.previousImage();
-                    socket.write(previousImageMessage);
+                        await playlistInstance.previousImage();
+                    this.socket?.write(previousImageMessage);
                 }
                 break;
         }
     }
+
+    cleanUp() {
+        this.#playlistMap.clear();
+    }
+
+    async setRandomImage() {
+        const monitors = await getMonitors();
+        const randomImages = dbOperations.getRandomImage(monitors.length);
+        if (randomImages === undefined) {
+            this.socket?.write('No images found on database\n');
+            notify('No images found on database');
+            return;
+        }
+        switch (configuration.app.settings.randomImageMonitor) {
+            case 'clone': {
+                await duplicateImageAcrossMonitors(randomImages[0], monitors);
+                notifyImageSet(
+                    randomImages[0].name,
+                    join(appDirectories.imagesDir, randomImages[0].name)
+                );
+                // TODO write to socket about this
+                break;
+            }
+            case 'individual': {
+                monitors.forEach((monitor, index) => {
+                    // we pass a length 1 array so we set one image per monitor
+                    void duplicateImageAcrossMonitors(randomImages[index], [
+                        monitor
+                    ]);
+                    // TODO write to socket about this
+                });
+                break;
+            }
+            case 'extend': {
+                await setImageAcrossMonitors(randomImages[0], monitors);
+                break;
+                // TODO write to socket about this
+            }
+            default:
+                this.socket?.write('Wrong app configuration detected');
+            // TODO write to socket about this
+        }
+    }
 }
 
-export type daemonManagerType = typeof daemonManager;
+function findAndStopCollidingPlaylists({
+    playlistMap,
+    newPlaylist
+}: {
+    playlistMap: Map<string, PlaylistClass>;
+    newPlaylist: NonNullable<message['playlist']>;
+}) {
+    const playlistMatchByMonitor = playlistMap.get(newPlaylist.monitor.name);
+    if (playlistMatchByMonitor === undefined) return;
+    playlistMap.delete(playlistMatchByMonitor.activeMonitor.name);
+    playlistMatchByMonitor.stop();
+}
+
+function findActivePlaylistMatch({
+    playlistMap,
+    newPlaylist
+}: {
+    playlistMap: Map<string, PlaylistClass>;
+    newPlaylist: NonNullable<message['playlist']>;
+}) {
+    return playlistMap.get(newPlaylist.monitor.name);
+}

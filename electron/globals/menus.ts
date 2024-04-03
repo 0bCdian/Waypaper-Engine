@@ -6,12 +6,12 @@ import {
 import {
     deleteImagesFromGallery,
     getMonitors,
-    setImage,
-    setImageAcrossAllMonitors
+    setImage
 } from '../appFunctions';
 import { screen } from 'electron';
-import { MENU_EVENTS } from '../../shared/constants';
+import { MENU_EVENTS, IPC_MAIN_EVENTS } from '../../shared/constants';
 import { type rendererImage } from '../../src/types/rendererTypes';
+import { type ActiveMonitor } from '../../shared/types/monitor';
 export const devMenu = ({
     win,
     app
@@ -191,7 +191,12 @@ export async function contextMenu({
             return {
                 label: `In ${monitor.name}`,
                 click: () => {
-                    setImage(event, image.name, monitor.name);
+                    const activeMonitor: ActiveMonitor = {
+                        name: '',
+                        monitor: [monitor],
+                        extendAcrossMonitors: false
+                    };
+                    void setImage(image, activeMonitor);
                 }
             };
         });
@@ -199,13 +204,24 @@ export async function contextMenu({
             {
                 label: `Duplicate across all monitors`,
                 click: () => {
-                    setImage(event, image.name);
+                    const activeMonitor: ActiveMonitor = {
+                        name: '',
+                        monitor: monitors,
+                        extendAcrossMonitors: false
+                    };
+
+                    void setImage(image, activeMonitor);
                 }
             },
             {
                 label: `Extend across all monitors grouping them`,
                 click: () => {
-                    void setImageAcrossAllMonitors(image);
+                    const activeMonitor: ActiveMonitor = {
+                        name: '',
+                        monitor: monitors,
+                        extendAcrossMonitors: true
+                    };
+                    void setImage(image, activeMonitor);
                 }
             }
         );

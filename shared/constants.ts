@@ -77,7 +77,9 @@ export const MENU_EVENTS = {
 export type IPC_RENDERER_EVENTS_TYPE = objectValues<typeof MENU_EVENTS>;
 
 export const IPC_MAIN_EVENTS = {
-    updateAppConfig: 'updateAppConfig'
+    updateAppConfig: 'updateAppConfig',
+    displaysChanged: 'displaysChanged',
+    clearPlaylist: 'clearPlaylist'
 } as const;
 
 export type IPC_MAIN_EVENTS_TYPE = objectValues<typeof IPC_MAIN_EVENTS>;

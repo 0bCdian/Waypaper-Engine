@@ -11,7 +11,8 @@ export enum ACTIONS {
     RESUME_PLAYLIST = 'resume-playlist',
     STOP_PLAYLIST = 'stop-playlist',
     UPDATE_CONFIG = 'update-config',
-    UPDATE_PLAYLIST = 'update-playlist'
+    ERROR = 'error',
+    GET_INFO = 'get-info'
 }
 
 // refactor into using a discriminated type
@@ -19,7 +20,7 @@ export interface message {
     action: ACTIONS;
     playlist?: {
         name: string;
-        monitor?: ActiveMonitor;
+        monitor: ActiveMonitor;
     };
 }
 

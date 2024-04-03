@@ -69,7 +69,7 @@ export const imageHistory = sqliteTable('imageHistory', {
     imageID: integer('imageID')
         .notNull()
         .references(() => image.id, { onDelete: 'cascade' }),
-    monitor: text('monitor').notNull().$type<'clone' | 'extend' | string>()
+    monitor: text('monitor', { mode: 'json' }).notNull().$type<ActiveMonitor>()
 });
 
 export const selectedMonitor = sqliteTable('selectedMonitor', {
@@ -86,3 +86,7 @@ export type playlistSelectType = typeof playlist.$inferSelect;
 export type playlistInsertType = typeof playlist.$inferInsert;
 export type imageInPlaylistSelectType = typeof imageInPlaylist.$inferSelect;
 export type imageInPlaylistInsertType = typeof imageInPlaylist.$inferInsert;
+export type imageHistorySelectType = typeof imageHistory.$inferSelect;
+export type imageHistoryInsertType = typeof imageHistory.$inferInsert;
+export type activePlaylistSelectType = typeof activePlaylist.$inferSelect;
+export type activePlaylistInsertType = typeof activePlaylist.$inferInsert;

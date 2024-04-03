@@ -9,6 +9,7 @@ import { type openFileAction } from '../../shared/types';
 import { type rendererImage } from '../types/rendererTypes';
 import { useSetLastActivePlaylist } from '../hooks/useSetLastActivePlaylist';
 let firstRender = true;
+const { stopPlaylist } = window.API_RENDERER;
 const MiniPlaylistCard = lazy(async () => await import('./MiniPlaylistCard'));
 function PlaylistTrack() {
     const {
@@ -213,6 +214,10 @@ function PlaylistTrack() {
                             className="btn uppercase btn-error rounded-lg"
                             onClick={() => {
                                 clearPlaylist();
+                                stopPlaylist({
+                                    name: playlist.name,
+                                    monitor: playlist.monitor
+                                });
                             }}
                         >
                             Clear

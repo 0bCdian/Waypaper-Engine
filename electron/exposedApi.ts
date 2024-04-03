@@ -31,13 +31,11 @@ export const ELECTRON_API = {
     queryImages: async (): Promise<rendererImage[]> => {
         return await ipcRenderer.invoke('queryImages');
     },
-    setImage: (image: string) => {
-        ipcRenderer.send('setImage', image);
-    },
-    setImageExtended: (image: rendererImage, monitors: Monitor[]) => {
-        ipcRenderer.send('setImageExtended', image, monitors);
+    setImage: (image: rendererImage, activeMonitor: ActiveMonitor) => {
+        ipcRenderer.send('setImage', image, activeMonitor);
     },
     savePlaylist: (playlistObject: rendererPlaylist) => {
+        console.log('savePlaylistExposedApi', playlistObject);
         ipcRenderer.send('savePlaylist', playlistObject);
     },
     startPlaylist: (playlist: { name: string; monitor: ActiveMonitor }) => {

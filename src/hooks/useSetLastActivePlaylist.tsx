@@ -6,17 +6,18 @@ import { PLAYLIST_TYPES } from '../../shared/types/playlist';
 import { useEffect } from 'react';
 const { readActivePlaylist } = window.API_RENDERER;
 export function useSetLastActivePlaylist() {
-    const { setPlaylist, playlist } = playlistStore();
+    const { setPlaylist, playlist, setEmptyPlaylist } = playlistStore();
     const { activeMonitor } = useMonitorStore();
     const { imagesArray } = imagesStore();
     useEffect(() => {
         if (activeMonitor.name === '') return;
         if (activeMonitor.name === playlist.monitor.name) return;
         void readActivePlaylist(activeMonitor).then(playlistFromDB => {
-            if (
-                playlistFromDB === undefined ||
-                playlist.name === playlistFromDB.name
-            ) {
+            if (playlistFromDB === undefined) {
+                setEmptyPlaylist();
+                return;
+            }
+            if (playlist.name === playlistFromDB.name) {
                 return;
             }
             const imagesToStorePlaylist: rendererImage[] = [];
