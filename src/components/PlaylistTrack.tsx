@@ -81,7 +81,7 @@ function PlaylistTrack() {
                     <MiniPlaylistCard
                         isLast={lastIndex === index}
                         reorderSortingCriteria={reorderSortingCriteria}
-                        playlistType={playlist.configuration.playlistType}
+                        type={playlist.configuration.type}
                         index={index}
                         Image={Image}
                     />
@@ -216,7 +216,7 @@ function PlaylistTrack() {
                                 clearPlaylist();
                                 stopPlaylist({
                                     name: playlist.name,
-                                    monitor: playlist.monitor
+                                    activeMonitor: playlist.activeMonitor
                                 });
                             }}
                         >

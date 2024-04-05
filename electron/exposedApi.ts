@@ -38,7 +38,10 @@ export const ELECTRON_API = {
         console.log('savePlaylistExposedApi', playlistObject);
         ipcRenderer.send('savePlaylist', playlistObject);
     },
-    startPlaylist: (playlist: { name: string; monitor: ActiveMonitor }) => {
+    startPlaylist: (playlist: {
+        name: string;
+        activeMonitor: ActiveMonitor;
+    }) => {
         ipcRenderer.send('startPlaylist', playlist);
     },
     queryPlaylists: async (): Promise<playlistSelectType[]> => {
@@ -53,7 +56,10 @@ export const ELECTRON_API = {
     getPlaylistImages: async (playlistID: number): Promise<rendererImage[]> => {
         return await ipcRenderer.invoke('getPlaylistImages', playlistID);
     },
-    stopPlaylist: (playlist: { name: string; monitor: ActiveMonitor }) => {
+    stopPlaylist: (playlist: {
+        name: string;
+        activeMonitor: ActiveMonitor;
+    }) => {
         ipcRenderer.send('stopPlaylist', playlist);
     },
     deleteImagesFromGallery: async (images: rendererImage[]) => {

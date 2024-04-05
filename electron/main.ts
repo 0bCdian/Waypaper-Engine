@@ -14,8 +14,6 @@ import {
     setImage,
     openAndReturnImagesObject,
     savePlaylist,
-    isSwwwDaemonRunning,
-    initWaypaperDaemon,
     deleteImagesFromGallery,
     remakeThumbnailsIfImagesExist,
     getMonitors,
@@ -23,11 +21,7 @@ import {
 } from './appFunctions';
 import { devMenu, prodMenu, trayMenu } from './globals/menus';
 import { iconPath } from './binaries';
-import {
-    configuration,
-    dbOperations,
-    playlistControllerInstance
-} from './database/globalConfig';
+import { configuration, dbOperations } from './database/globalConfig';
 import {
     type rendererImage,
     type rendererPlaylist
@@ -38,6 +32,7 @@ import {
     type swwwConfigInsertType
 } from './database/schema';
 import { type ActiveMonitor } from '../shared/types/monitor';
+import { PlaylistController } from './playlistController';
 import { IPC_MAIN_EVENTS } from '../shared/constants';
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -65,7 +60,7 @@ let tray: Tray | null = null;
 let win: BrowserWindow | null;
 // 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
 const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
-
+const playlistControllerInstance = new PlaylistController();
 async function createWindow() {
     win = new BrowserWindow({
         icon: join(iconPath, '512x512.png'),
@@ -150,8 +145,6 @@ app.whenReady()
             if (win === null) return;
             win.webContents.send(IPC_MAIN_EVENTS.displaysChanged);
         });
-        await isSwwwDaemonRunning();
-        await initWaypaperDaemon();
         await createWindow();
         createMenu();
         void createTray();
@@ -163,6 +156,32 @@ app.whenReady()
         });
         dbOperations.on('updateAppConfig', () => {
             win?.webContents.send('updateAppConfig');
+        });
+        dbOperations.on(
+            'updateAppConfig',
+            (newAppConfig: appConfigInsertType) => {
+                configuration.app.config = newAppConfig.config;
+                playlistControllerInstance.updateConfig();
+            }
+        );
+        dbOperations.on(
+            'updateSwwwConfig',
+            (newAppConfig: swwwConfigInsertType) => {
+                configuration.swww.config = newAppConfig.config;
+                playlistControllerInstance.updateConfig();
+            }
+        );
+        dbOperations.on(
+            'upsertPlaylist',
+            (playlist: { name: string; activeMonitor: ActiveMonitor }) => {
+                playlistControllerInstance.startPlaylist(playlist);
+            }
+        );
+
+        dbOperations.on('deletePlaylist', (playlistName: string) => {
+            console.log('onDeletePlaylist', playlistName);
+            // TODO
+            // playlistControllerInstance.stopAllPlaylistNamed(playlistName);
         });
     })
     .catch(e => {
@@ -222,14 +241,15 @@ ipcMain.on('savePlaylist', (_, playlistObject: rendererPlaylist) => {
 });
 ipcMain.on(
     'startPlaylist',
-    (_event, playlist: { name: string; monitor: ActiveMonitor }) => {
+    (_event, playlist: { name: string; activeMonitor: ActiveMonitor }) => {
+        console.log('ipc start Playlist received on main.ts', playlist);
         playlistControllerInstance.startPlaylist(playlist);
         void createTray();
     }
 );
 ipcMain.on(
     'stopPlaylist',
-    (_, playlist: { name: string; monitor: ActiveMonitor }) => {
+    (_, playlist: { name: string; activeMonitor: ActiveMonitor }) => {
         playlistControllerInstance.stopPlaylist(playlist);
         void createTray();
     }

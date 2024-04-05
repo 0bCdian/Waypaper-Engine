@@ -24,7 +24,7 @@ export type Formats =
     | 'pnm'
     | 'tga'
     | 'tiff';
-export interface PlaylistType {
+export interface type {
     images: images;
     id: number;
     name: string;
@@ -71,14 +71,14 @@ export enum ACTIONS {
 }
 export interface ActiveMonitor {
     name: string;
-    monitor: Monitor[];
+    monitors: Monitor[];
     extendAcrossMonitors: boolean;
 }
 export interface message {
     action: ACTIONS;
     playlist?: {
         name: string;
-        monitor: ActiveMonitor;
+        activeMonitor: ActiveMonitor;
     };
 }
 
@@ -184,7 +184,7 @@ export interface imageMetadata {
     height: number;
 }
 export interface configuration {
-    playlistType: PLAYLIST_TYPES_TYPE;
+    type: PLAYLIST_TYPES_TYPE;
     interval: number | null;
     order: PLAYLIST_ORDER_TYPES | null;
     showAnimations: boolean;
@@ -193,7 +193,7 @@ export interface rendererPlaylist {
     images: rendererImage[];
     configuration: configuration;
     name: string;
-    monitor: ActiveMonitor;
+    activeMonitor: ActiveMonitor;
 }
 export interface rendererImage extends imageSelectType {
     time: number | null;

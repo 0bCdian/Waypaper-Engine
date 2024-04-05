@@ -20,7 +20,7 @@ export enum STORE_ACTIONS {
 }
 
 export interface configuration {
-    playlistType: PLAYLIST_TYPES_TYPE;
+    type: PLAYLIST_TYPES_TYPE;
     interval: number | null;
     order: PLAYLIST_ORDER_TYPES | null;
     showAnimations: boolean;
@@ -33,7 +33,7 @@ export interface rendererPlaylist {
     images: rendererImage[];
     configuration: configuration;
     name: string;
-    monitor: ActiveMonitor;
+    activeMonitor: ActiveMonitor;
 }
 export type monitorSelectType = 'individual' | 'clone' | 'extend';
 export interface Filters {

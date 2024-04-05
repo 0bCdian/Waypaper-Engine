@@ -20,7 +20,7 @@ export interface message {
     action: ACTIONS;
     playlist?: {
         name: string;
-        monitor: ActiveMonitor;
+        activeMonitor: ActiveMonitor;
     };
 }
 

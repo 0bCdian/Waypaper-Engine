@@ -4,19 +4,30 @@ import { type rendererImage } from '../types/rendererTypes';
 import { imagesStore } from '../stores/images';
 import { PLAYLIST_TYPES } from '../../shared/types/playlist';
 import { useEffect } from 'react';
-const { readActivePlaylist } = window.API_RENDERER;
+const { readActivePlaylist, deletePlaylist } = window.API_RENDERER;
 export function useSetLastActivePlaylist() {
-    const { setPlaylist, playlist, setEmptyPlaylist } = playlistStore();
+    const {
+        setPlaylist,
+        playlist,
+        setEmptyPlaylist,
+        setActiveMonitorPlaylist
+    } = playlistStore();
     const { activeMonitor } = useMonitorStore();
     const { imagesArray } = imagesStore();
     useEffect(() => {
         if (activeMonitor.name === '') return;
-        if (activeMonitor.name === playlist.monitor.name) return;
         void readActivePlaylist(activeMonitor).then(playlistFromDB => {
             if (playlistFromDB === undefined) {
                 setEmptyPlaylist();
+                setActiveMonitorPlaylist(activeMonitor);
                 return;
             }
+
+            if (playlistFromDB.images.length < 1) {
+                deletePlaylist(playlistFromDB.name);
+                return;
+            }
+
             if (playlist.name === playlistFromDB.name) {
                 return;
             }
@@ -40,7 +51,7 @@ export function useSetLastActivePlaylist() {
             const currentPlaylist = {
                 name: playlistFromDB.name,
                 configuration: {
-                    playlistType: playlistFromDB.type,
+                    type: playlistFromDB.type,
                     order: playlistFromDB.order,
                     interval: playlistFromDB.interval,
                     showAnimations: playlistFromDB.showAnimations

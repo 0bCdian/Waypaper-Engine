@@ -7,13 +7,6 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-dist-electron
-release
-*.local
-
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
@@ -24,8 +17,20 @@ release
 *.njsproj
 *.sln
 *.sw?
-daemon/node_modules
-daemon/*.js
+
+# project specific ignores
+*.js
+*.js.map
+node_modules
+dist
+dist-ssr
+dist-electron
+release
+*.local
 waypaper.sqlite3
-electron/*.js
-src/*.js
+daemon/daemon_build
+# exclude from gitignore
+
+!postcss.config.js
+!tailwind.config.js
+

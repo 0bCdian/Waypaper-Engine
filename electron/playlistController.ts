@@ -3,6 +3,8 @@ import { type Socket, createConnection } from 'net';
 import { WAYPAPER_ENGINE_SOCKET_PATH } from './globals/appPaths';
 import { ACTIONS, type message } from './types/types';
 import { type ActiveMonitor } from '../shared/types/monitor';
+import { initWaypaperDaemon } from './appFunctions';
+void initWaypaperDaemon();
 export class PlaylistController extends EventEmitter {
     connection: Socket;
     retries: number;
@@ -16,6 +18,11 @@ export class PlaylistController extends EventEmitter {
         this.connection.on('error', error => {
             console.error('Connection error:', error);
             this.emit('error', error);
+            this.retries++;
+            if (this.retries > 3) return;
+            setTimeout(() => {
+                void initWaypaperDaemon();
+            }, 1000);
         });
         this.connection.on('close', () => {
             console.log('Connection closed');
@@ -24,10 +31,11 @@ export class PlaylistController extends EventEmitter {
     }
 
     #sendData(data: message) {
+        console.log('sending data from PlaylistController', data);
         this.connection.write(JSON.stringify(data).concat('\n'));
     }
 
-    startPlaylist(playlist: { name: string; monitor: ActiveMonitor }) {
+    startPlaylist(playlist: { name: string; activeMonitor: ActiveMonitor }) {
         this.#sendData({
             action: ACTIONS.START_PLAYLIST,
             playlist

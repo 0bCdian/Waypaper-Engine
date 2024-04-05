@@ -1,17 +1,17 @@
 import { type BrowserWindow, type App, Menu, dialog } from 'electron';
-import {
-    dbOperations,
-    playlistControllerInstance
-} from '../database/globalConfig';
+import { dbOperations } from '../database/globalConfig';
 import {
     deleteImagesFromGallery,
     getMonitors,
     setImage
 } from '../appFunctions';
-import { screen } from 'electron';
-import { MENU_EVENTS, IPC_MAIN_EVENTS } from '../../shared/constants';
+// import { screen } from 'electron';
+import { MENU_EVENTS } from '../../shared/constants';
 import { type rendererImage } from '../../src/types/rendererTypes';
 import { type ActiveMonitor } from '../../shared/types/monitor';
+import { PlaylistController } from '../playlistController';
+
+const playlistControllerInstance = new PlaylistController();
 export const devMenu = ({
     win,
     app
@@ -73,14 +73,14 @@ export const prodMenu = ({ app }: { app: App }) => {
     return prodMenu;
 };
 
-export const trayMenu = async (app: App, win: BrowserWindow) => {
-    const monitors = await getMonitors();
-    const playlists = dbOperations.getActivePlaylists();
-    const allPlaylists = dbOperations.getPlaylists();
-    const imageHistory = dbOperations.getImageHistory(10);
-    console.log(screen.getAllDisplays());
-    console.log(monitors, playlists, allPlaylists, imageHistory);
-    console.log(win, app);
+export const trayMenu = async (app: App, _win: BrowserWindow) => {
+    // const monitors = await getMonitors();
+    // const playlists = dbOperations.getActivePlaylists();
+    // const allPlaylists = dbOperations.getPlaylists();
+    // const imageHistory = dbOperations.getImageHistory(10);
+    // console.log(screen.getAllDisplays());
+    // console.log(monitors, playlists, allPlaylists, imageHistory);
+    // console.log(win, app);
 
     const baseMenu = [
         {
@@ -193,7 +193,7 @@ export async function contextMenu({
                 click: () => {
                     const activeMonitor: ActiveMonitor = {
                         name: '',
-                        monitor: [monitor],
+                        monitors: [monitor],
                         extendAcrossMonitors: false
                     };
                     void setImage(image, activeMonitor);
@@ -206,7 +206,7 @@ export async function contextMenu({
                 click: () => {
                     const activeMonitor: ActiveMonitor = {
                         name: '',
-                        monitor: monitors,
+                        monitors,
                         extendAcrossMonitors: false
                     };
 
@@ -218,7 +218,7 @@ export async function contextMenu({
                 click: () => {
                     const activeMonitor: ActiveMonitor = {
                         name: '',
-                        monitor: monitors,
+                        monitors,
                         extendAcrossMonitors: true
                     };
                     void setImage(image, activeMonitor);

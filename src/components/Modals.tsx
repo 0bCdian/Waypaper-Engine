@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect } from 'react';
 import LoadPlaylistModal from './LoadPlaylistModal';
 import SavePlaylistModal from './SavePlaylistModal';
 import PlaylistConfigurationModal from './PlaylistConfigurationModal';
@@ -39,11 +39,8 @@ function Modals() {
     }, []);
 
     const [shouldReload, setShouldReload] = useState<boolean>(false);
-    const { readPlaylist, isEmpty } = playlistStore();
+    const { playlist } = playlistStore();
     const { imagesArray } = imagesStore();
-    const currentPlaylist = useMemo(() => {
-        return readPlaylist();
-    }, [shouldReload, isEmpty]);
     useEffect(() => {
         setShouldReload(false);
         void queryPlaylists().then(playlists => {
@@ -60,11 +57,11 @@ function Modals() {
             <LoadPlaylistModal
                 playlistsInDB={playlistsInDB}
                 setShouldReload={setShouldReload}
-                currentPlaylistName={currentPlaylist.name}
+                currentPlaylistName={playlist.name}
             />
             <SavePlaylistModal
                 setShouldReload={setShouldReload}
-                currentPlaylistName={currentPlaylist.name}
+                currentPlaylistName={playlist.name}
             />
             <PlaylistConfigurationModal />
             <AdvancedFiltersModal />

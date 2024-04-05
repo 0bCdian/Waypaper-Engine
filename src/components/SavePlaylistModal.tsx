@@ -38,7 +38,7 @@ const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
     const onSubmit: SubmitHandler<savePlaylistModalFields> = data => {
         setName(data.playlistName);
         const playlist = readPlaylist();
-        if (playlist.configuration.playlistType === 'timeofday') {
+        if (playlist.configuration.type === 'timeofday') {
             if (checkDuplicateTimes(playlist.images)) {
                 showError({
                     state: true,

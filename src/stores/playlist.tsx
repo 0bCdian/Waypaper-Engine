@@ -4,10 +4,11 @@ import {
     type rendererPlaylist,
     type configuration
 } from '../types/rendererTypes';
-import { type Monitor } from '../../shared/types/monitor';
+import { type ActiveMonitor, type Monitor } from '../../shared/types/monitor';
+import { useMonitorStore } from './monitors';
 const imagesInitial: rendererImage[] = [];
 const configurationInitial: rendererPlaylist['configuration'] = {
-    playlistType: 'timer',
+    type: 'timer',
     interval: 3_600_000,
     order: 'ordered',
     showAnimations: true
@@ -17,10 +18,10 @@ const initialPlaylistState: rendererPlaylist = {
     images: imagesInitial,
     configuration: configurationInitial,
     name: '',
-    monitor: {
+    activeMonitor: {
         name: '',
         extendAcrossMonitors: false,
-        monitor: [] as Monitor[]
+        monitors: [] as Monitor[]
     }
 };
 interface State {
@@ -39,6 +40,7 @@ interface Actions {
     readPlaylist: () => rendererPlaylist;
     setPlaylist: (newPlaylist: rendererPlaylist) => void;
     setEmptyPlaylist: () => void;
+    setActiveMonitorPlaylist: (activeMonitor: ActiveMonitor) => void;
 }
 
 export const playlistStore = create<State & Actions>()((set, get) => ({
@@ -46,7 +48,7 @@ export const playlistStore = create<State & Actions>()((set, get) => ({
     isEmpty: true,
     playlistImagesSet: new Set<number>(),
     addImagesToPlaylist: Images => {
-        if (get().playlist.configuration.playlistType === 'dayofweek') {
+        if (get().playlist.configuration.type === 'dayofweek') {
             const availableSpace = 7 - get().playlist.images.length;
             if (availableSpace <= 0) return;
             else {
@@ -98,6 +100,11 @@ export const playlistStore = create<State & Actions>()((set, get) => ({
             return { playlist: { ...state.playlist, name: newName } };
         });
     },
+    setActiveMonitorPlaylist: activeMonitor => {
+        set(state => ({
+            playlist: { ...state.playlist, activeMonitor }
+        }));
+    },
     movePlaylistArrayOrder: newlyOrderedArray => {
         set(state => ({
             playlist: { ...state.playlist, images: newlyOrderedArray }
@@ -121,9 +128,10 @@ export const playlistStore = create<State & Actions>()((set, get) => ({
         });
     },
     clearPlaylist: () => {
+        const activeMonitor = useMonitorStore.getState().activeMonitor;
         set(() => {
             return {
-                playlist: initialPlaylistState,
+                playlist: { ...initialPlaylistState, activeMonitor },
                 isEmpty: true,
                 playlistImagesSet: new Set<number>()
             };

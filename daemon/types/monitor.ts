@@ -40,6 +40,6 @@ export interface Monitor {
 
 export interface ActiveMonitor {
     name: string;
-    monitor: Monitor[];
+    monitors: Monitor[];
     extendAcrossMonitors: boolean;
 }

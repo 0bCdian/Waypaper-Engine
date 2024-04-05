@@ -9,7 +9,7 @@ const iconsPath = app.isPackaged
 
 const daemon = app.isPackaged
     ? join(app.getAppPath(), '../', '/daemon')
-    : join(app.getAppPath(), 'daemon');
+    : join(app.getAppPath(), 'daemon', 'daemon_build');
 
 const nativeBinding = app.isPackaged
     ? join(resourcesPath, '/bin/better_sqlite3.node')

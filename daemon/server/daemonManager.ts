@@ -28,7 +28,7 @@ export class DaemonManager {
                     .forEach(message => {
                         try {
                             const parsedMessage: message = JSON.parse(message);
-                            console.log(parsedMessage);
+                            console.log('incoming request:', parsedMessage);
                             void this.processSocketMessage(parsedMessage);
                         } catch (error) {
                             socket.write('Error reading buffer');
@@ -40,6 +40,18 @@ export class DaemonManager {
             });
         });
         this.#playlistMap = new Map<string, PlaylistClass>();
+        const activePlaylists = dbOperations.getActivePlaylists();
+        activePlaylists.forEach(playlist => {
+            const playlistInstance = new Playlist({
+                playlistName: playlist.Playlists.name,
+                activeMonitor: playlist.activePlaylists.monitor
+            });
+            playlistInstance.start();
+            this.#playlistMap.set(
+                playlist.activePlaylists.monitor.name,
+                playlistInstance
+            );
+        });
 
         this.serverInstance.on('error', err => {
             if (err.message.includes('EADDRINUSE')) {
@@ -98,11 +110,11 @@ export class DaemonManager {
                     });
                     const newPlaylist = new Playlist({
                         playlistName: message.playlist.name,
-                        activeMonitor: message.playlist.monitor
+                        activeMonitor: message.playlist.activeMonitor
                     });
                     newPlaylist.start();
                     this.#playlistMap.set(
-                        message.playlist.monitor.name,
+                        message.playlist.activeMonitor.name,
                         newPlaylist
                     );
                     newPlaylist.on('Error', (activeMonitorName: string) => {
@@ -113,7 +125,7 @@ export class DaemonManager {
                         this.#playlistMap.delete(activeMonitorName);
                     });
                     notify(
-                        `Starting ${message.playlist.name} on ${message.playlist.monitor.name}`
+                        `Starting ${message.playlist.name} on ${message.playlist.activeMonitor.name}`
                     );
                     this.socket?.write(
                         JSON.stringify(`Starting ${message.playlist.name}`)
@@ -146,12 +158,12 @@ export class DaemonManager {
             case ACTIONS.STOP_PLAYLIST:
                 {
                     const playlistInstance = this.#playlistMap.get(
-                        message.playlist.monitor.name
+                        message.playlist.activeMonitor.name
                     );
                     if (playlistInstance === undefined) return;
                     const stopMessage = playlistInstance.stop();
                     notify(
-                        `${message.action} ${message.playlist.name} on ${message.playlist.monitor.name}`
+                        `${message.action} ${message.playlist.name} on ${message.playlist.activeMonitor.name}`
                     );
                     this.socket?.write(JSON.stringify(stopMessage.message));
                 }
@@ -231,10 +243,27 @@ function findAndStopCollidingPlaylists({
     playlistMap: Map<string, PlaylistClass>;
     newPlaylist: NonNullable<message['playlist']>;
 }) {
-    const playlistMatchByMonitor = playlistMap.get(newPlaylist.monitor.name);
-    if (playlistMatchByMonitor === undefined) return;
-    playlistMap.delete(playlistMatchByMonitor.activeMonitor.name);
-    playlistMatchByMonitor.stop();
+    let message = 'Stopped playlists:';
+    let shouldSendMessage = false;
+    playlistMap.forEach(runningPlaylist => {
+        let shouldStopPlaylist = false;
+        runningPlaylist.activeMonitor.monitors.forEach(usedMonitor => {
+            newPlaylist.activeMonitor.monitors.forEach(newMonitorToUse => {
+                if (newMonitorToUse.name === usedMonitor.name) {
+                    shouldStopPlaylist = true;
+                }
+            });
+        });
+        if (shouldStopPlaylist) {
+            shouldSendMessage = true;
+            message = message.concat(`\n${runningPlaylist.name}`);
+            playlistMap.delete(runningPlaylist.activeMonitor.name);
+            runningPlaylist.stop();
+        }
+    });
+    if (shouldSendMessage) {
+        notify(message);
+    }
 }
 
 function findActivePlaylistMatch({
@@ -244,5 +273,5 @@ function findActivePlaylistMatch({
     playlistMap: Map<string, PlaylistClass>;
     newPlaylist: NonNullable<message['playlist']>;
 }) {
-    return playlistMap.get(newPlaylist.monitor.name);
+    return playlistMap.get(newPlaylist.activeMonitor.name);
 }

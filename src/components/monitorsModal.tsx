@@ -19,7 +19,7 @@ function Monitors() {
         monitorsList.length > 1 ? 'clone' : 'individual';
     if (activeMonitor.extendAcrossMonitors) {
         initialSelectState = 'extend';
-    } else if (activeMonitor.monitor.length === 1) {
+    } else if (activeMonitor.monitors.length === 1) {
         initialSelectState = 'individual';
     }
     const [selectType, setSelectType] =
@@ -69,7 +69,7 @@ function Monitors() {
         name = name.slice(0, name.length - 1);
         const activeMonitor = {
             name,
-            monitor: selectedMonitors,
+            monitors: selectedMonitors,
             extendAcrossMonitors: extend
         };
         setSelectedMonitor(activeMonitor);

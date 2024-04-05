@@ -16,13 +16,13 @@ const daysOfWeek = [
 ];
 const MiniPlaylistCard = memo(function MiniPlaylistCard({
     Image,
-    playlistType,
+    type,
     index,
     isLast,
     reorderSortingCriteria
 }: {
     Image: rendererImage;
-    playlistType: PLAYLIST_TYPES_TYPE;
+    type: PLAYLIST_TYPES_TYPE;
     index: number;
     isLast: boolean;
     reorderSortingCriteria: () => void;
@@ -73,7 +73,7 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
             timeRef.current.value = `${hours}:${minutes}`;
             reorderSortingCriteria();
         }
-    }, [playlistType, Image.time]);
+    }, [type, Image.time]);
     useEffect(() => {
         if (isLast) {
             imageRef.current?.scrollIntoView({
@@ -93,7 +93,7 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
             ref={setNodeRef}
         >
             <div className="w-32 mx-1 shrink-0 rounded-lg shadow-xl mb-2 ">
-                {playlistType === 'timeofday' && (
+                {type === 'timeofday' && (
                     <div className="flex flex-col max-h-[fit]">
                         <span
                             className={
@@ -131,7 +131,7 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
                     </div>
                 )}
                 <span className="text-stone-100 h-full shadow-xl font-bold text-clip whitespace-nowrap">
-                    {playlistType === 'dayofweek' ? text : undefined}
+                    {type === 'dayofweek' ? text : undefined}
                 </span>
                 <div className="relative">
                     <button

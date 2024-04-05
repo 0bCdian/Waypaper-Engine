@@ -38,7 +38,7 @@ function ImageCard({ Image }: ImageCardProps) {
         if (element.checked) {
             const playlist = readPlaylist();
             if (
-                playlist.configuration.playlistType === 'dayofweek' &&
+                playlist.configuration.type === 'dayofweek' &&
                 playlist.images.length === 7
             ) {
                 setIsChecked(false);

@@ -67,11 +67,11 @@ export class Playlist extends EventEmitter {
 
     async setImage(image: rendererImage) {
         if (this.activeMonitor.extendAcrossMonitors) {
-            await setImageAcrossMonitors(image, this.activeMonitor.monitor);
+            await setImageAcrossMonitors(image, this.activeMonitor.monitors);
         } else {
             await duplicateImageAcrossMonitors(
                 image,
-                this.activeMonitor.monitor
+                this.activeMonitor.monitors
             );
         }
         this.dbOperations.addImageToHistory({
@@ -424,7 +424,7 @@ export class Playlist extends EventEmitter {
     async getPlaylistDiagnostics() {
         const diagostics = {
             playlistName: this.name,
-            playlistType: this.currentType,
+            type: this.currentType,
             playlistCurrentIndex: this.currentImageIndex,
             playlistEventCheckerTimeout: {
                 id: String(this.eventCheckerTimeout)

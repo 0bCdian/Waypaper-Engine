@@ -277,9 +277,9 @@ export async function setImage(
 ) {
     try {
         if (activeMonitor.extendAcrossMonitors) {
-            await setImageAcrossMonitors(image, activeMonitor.monitor);
+            await setImageAcrossMonitors(image, activeMonitor.monitors);
         } else {
-            await duplicateImageAcrossMonitors(image, activeMonitor.monitor);
+            await duplicateImageAcrossMonitors(image, activeMonitor.monitors);
         }
         dbOperations.addImageToHistory({ image, activeMonitor });
     } catch (error) {
@@ -328,12 +328,14 @@ async function isWaypaperDaemonRunning() {
     }
 }
 export async function initWaypaperDaemon() {
+    console.log('initWaypaperDaemon');
     if (!(await isWaypaperDaemonRunning())) {
         const promise = new Promise<void>((resolve, reject) => {
             try {
                 const args = [`${daemonLocation}/daemon.js`];
                 if (configuration.script !== undefined)
                     args.push(`--script=${configuration.script}`);
+                console.log(args);
                 spawn('node', args, {
                     detached: true,
                     stdio: 'ignore',

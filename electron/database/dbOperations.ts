@@ -16,23 +16,25 @@ export class DBOperations extends EventEmitter {
     }
 
     async upsertPlaylist(playlistObject: rendererPlaylist) {
+        const { images, ...playlist } = playlistObject;
         const row: tables.playlistInsertType = {
-            name: playlistObject.name,
-            type: playlistObject.configuration.playlistType,
-            interval: playlistObject.configuration.interval,
-            order: playlistObject.configuration.order,
-            showAnimations: playlistObject.configuration.showAnimations
+            name: playlist.name,
+            ...playlist.configuration
         };
+        const { name, ...partialRow } = row;
         // We will only ever get a one item array, so we return the first and only item
-        const [playlist] = await db
+        const [insertedPlaylist] = await db
             .insert(tables.playlist)
             .values(row)
             .returning({ id: tables.playlist.id })
-            .onConflictDoUpdate({ target: tables.playlist.id, set: row });
-        this.#insertPlaylistImages(playlistObject.images, playlist.id);
+            .onConflictDoUpdate({
+                target: tables.playlist.id,
+                set: partialRow
+            });
+        this.#insertPlaylistImages(images, insertedPlaylist.id);
         this.emit('upsertPlaylist', {
             name: playlistObject.name,
-            monitor: playlistObject.monitor
+            activeMonitor: playlistObject.activeMonitor
         });
     }
 

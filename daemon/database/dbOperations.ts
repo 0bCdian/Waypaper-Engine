@@ -41,7 +41,7 @@ export class DBOperations {
     async upsertPlaylist(playlistObject: rendererPlaylist) {
         const row: tables.playlistInsertType = {
             name: playlistObject.name,
-            type: playlistObject.configuration.playlistType,
+            type: playlistObject.configuration.type,
             interval: playlistObject.configuration.interval,
             order: playlistObject.configuration.order,
             showAnimations: playlistObject.configuration.showAnimations
@@ -88,6 +88,23 @@ export class DBOperations {
                 eq(tables.playlist.id, tables.activePlaylist.playlistID)
             )
             .all();
+    }
+
+    getActivePlaylistsInfo() {
+        const activePlaylists = this.getActivePlaylists();
+        if (activePlaylists.length === 0) return undefined;
+        const playlistsInfo = activePlaylists.map(playlist => {
+            const images = this.getPlaylistImages(
+                playlist.activePlaylists.playlistID
+            );
+            const playlistInfo = {
+                ...playlist.Playlists,
+                images,
+                activeMonitor: playlist.activePlaylists.monitor
+            };
+            return playlistInfo;
+        });
+        return playlistsInfo;
     }
 
     getPlaylists() {

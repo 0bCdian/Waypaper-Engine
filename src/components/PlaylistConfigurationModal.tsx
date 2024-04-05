@@ -9,7 +9,7 @@ import {
 } from '../../shared/types/playlist';
 import { toMS, toHoursAndMinutes } from '../utils/utilities';
 interface Inputs {
-    playlistType: PLAYLIST_TYPES_TYPE;
+    type: PLAYLIST_TYPES_TYPE;
     order: PLAYLIST_ORDER_TYPES | null;
     hours: string | null;
     minutes: string | null;
@@ -18,17 +18,16 @@ interface Inputs {
 
 const PlaylistConfigurationModal = () => {
     const [showError, setShowError] = useState(false);
-    const { setConfiguration, readPlaylist } = playlistStore();
+    const { setConfiguration, playlist } = playlistStore();
     const { register, handleSubmit, watch, setValue } = useForm<Inputs>();
     const containerRef = useRef<HTMLDialogElement>(null);
     const closeModal = () => {
         containerRef.current?.close();
     };
-    const playlist = readPlaylist();
     const classNameDisabled =
         playlist.images.length > 7 ? 'bg-red-900 text-stone-100' : '';
     const onSubmit: SubmitHandler<Inputs> = data => {
-        switch (data.playlistType) {
+        switch (data.type) {
             case 'timer':
                 if (data.hours === null || data.minutes === null) {
                     console.error('Hours and minutes are required');
@@ -38,7 +37,7 @@ const PlaylistConfigurationModal = () => {
                         parseInt(data.minutes)
                     );
                     const configuration = {
-                        playlistType: data.playlistType,
+                        type: data.type,
                         order: data.order,
                         showAnimations: data.showTransition,
                         interval
@@ -48,7 +47,7 @@ const PlaylistConfigurationModal = () => {
                 break;
             case 'timeofday':
                 setConfiguration({
-                    playlistType: data.playlistType,
+                    type: data.type,
                     order: null,
                     showAnimations: data.showTransition,
                     interval: null
@@ -63,7 +62,7 @@ const PlaylistConfigurationModal = () => {
                     return;
                 }
                 setConfiguration({
-                    playlistType: data.playlistType,
+                    type: data.type,
                     order: null,
                     showAnimations: data.showTransition,
                     interval: null
@@ -71,7 +70,7 @@ const PlaylistConfigurationModal = () => {
                 break;
             case 'never':
                 setConfiguration({
-                    playlistType: data.playlistType,
+                    type: data.type,
                     order: data.order,
                     showAnimations: data.showTransition,
                     interval: null
@@ -103,7 +102,7 @@ const PlaylistConfigurationModal = () => {
             setValue('hours', hours.toString());
             setValue('minutes', minutes.toString());
         }
-        setValue('playlistType', playlist.configuration.playlistType);
+        setValue('type', playlist.configuration.type);
         setValue('order', playlist.configuration.order);
         setValue(
             'showTransition',
@@ -148,16 +147,16 @@ const PlaylistConfigurationModal = () => {
                 <div className="divider"></div>
                 <div className="flex justify-between items-baseline">
                     <label
-                        htmlFor="playlistType"
+                        htmlFor="type"
                         className="label text-3xl font-semibold shrink"
                     >
                         Change wallpaper
                     </label>
                     <select
-                        id="playlistType"
+                        id="type"
                         className="select select-bordered  text-lg w-2/5 rounded-lg cursor-default"
                         defaultValue={'timer'}
-                        {...register('playlistType', { required: true })}
+                        {...register('type', { required: true })}
                     >
                         <option value={PLAYLIST_TYPES.timer}>On a timer</option>
                         <option value={PLAYLIST_TYPES.timeofday}>
@@ -173,7 +172,7 @@ const PlaylistConfigurationModal = () => {
                         <option value={PLAYLIST_TYPES.never}>Never</option>
                     </select>
                 </div>
-                {watch('playlistType') === PLAYLIST_TYPES.timer && (
+                {watch('type') === PLAYLIST_TYPES.timer && (
                     <div className="flex justify-end items-baseline gap-1">
                         <div className="flex flex-col w-1/5 ">
                             <label
@@ -216,8 +215,8 @@ const PlaylistConfigurationModal = () => {
                         </div>
                     </div>
                 )}
-                {watch('playlistType') !== PLAYLIST_TYPES.timeofday &&
-                    watch('playlistType') !== PLAYLIST_TYPES.dayofweek && (
+                {watch('type') !== PLAYLIST_TYPES.timeofday &&
+                    watch('type') !== PLAYLIST_TYPES.dayofweek && (
                         <>
                             <div className="divider"></div>
                             <div className="flex justify-between items-baseline ">

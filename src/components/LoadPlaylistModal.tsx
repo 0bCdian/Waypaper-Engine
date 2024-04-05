@@ -65,18 +65,18 @@ const LoadPlaylistModal = ({
             const currentPlaylist = {
                 name: selectedPlaylist.name,
                 configuration: {
-                    playlistType: selectedPlaylist.type,
+                    type: selectedPlaylist.type,
                     order: selectedPlaylist.order,
                     interval: selectedPlaylist.interval,
                     showAnimations: selectedPlaylist.showAnimations
                 },
                 images: imagesToStorePlaylist,
-                monitor: activeMonitor
+                activeMonitor
             };
             setPlaylist(currentPlaylist);
             startPlaylist({
                 name: currentPlaylist.name,
-                monitor: activeMonitor
+                activeMonitor
             });
         }
         closeModal();
@@ -161,7 +161,7 @@ const LoadPlaylistModal = ({
                                         if (currentPlaylistName !== '') {
                                             stopPlaylist({
                                                 name: currentPlaylistName,
-                                                monitor: activeMonitor
+                                                activeMonitor
                                             });
                                         }
                                         if (currentPlaylistName === current) {

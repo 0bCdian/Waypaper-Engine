@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { type Monitor, type ActiveMonitor } from '../../shared/types/monitor';
-
+import { playlistStore } from './playlist';
 const { getMonitors, querySelectedMonitor } = window.API_RENDERER;
 
 export interface StoreMonitor extends Monitor {
@@ -19,7 +19,7 @@ interface MonitorStore {
 const initialState = {
     activeMonitor: {
         name: '',
-        monitor: [] as Monitor[],
+        monitors: [] as Monitor[],
         extendAcrossMonitors: false
     },
     monitorsList: [] as StoreMonitor[]
@@ -29,6 +29,7 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
     activeMonitor: initialState.activeMonitor,
     monitorsList: initialState.monitorsList,
     setActiveMonitor(value) {
+        playlistStore.getState().setActiveMonitorPlaylist(value);
         set(state => {
             return {
                 ...state,
@@ -48,7 +49,7 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
         const monitors = await getMonitors();
         const storeMonitors = monitors.map(monitor => {
             const activeMonitor = get().activeMonitor;
-            const match = activeMonitor.monitor.find(activeMonitor => {
+            const match = activeMonitor.monitors.find(activeMonitor => {
                 return activeMonitor.name === monitor.name;
             });
             const isSelected = match !== undefined;
