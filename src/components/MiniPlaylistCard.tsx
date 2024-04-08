@@ -4,7 +4,9 @@ import { type PLAYLIST_TYPES_TYPE } from '../../shared/types/playlist';
 import { playlistStore } from '../stores/playlist';
 import { type rendererImage } from '../types/rendererTypes';
 import { motion } from 'framer-motion';
+import useDebounceCallback from '../hooks/useDebounceCallback';
 const { getThumbnailSrc } = window.API_RENDERER;
+let firstRender = true;
 const daysOfWeek = [
     'Sunday',
     'Monday',
@@ -27,7 +29,7 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
     isLast: boolean;
     reorderSortingCriteria: () => void;
 }) {
-    const { removeImagesFromPlaylist, playlist } = playlistStore();
+    const { removeImagesFromPlaylist, playlistImagesTimeSet } = playlistStore();
     const [isInvalid, setIsInvalid] = useState(false);
     const imageRef = useRef<HTMLImageElement>(null);
     const timeRef = useRef<HTMLInputElement>(null);
@@ -51,37 +53,37 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
         Image.isChecked = false;
         removeImagesFromPlaylist(new Set<number>().add(Image.id));
     }, []);
-    const checkIfTimeStampExists = (
-        timeStamp: number,
-        imageID: number
-    ): boolean => {
-        let exists = false;
-        playlist.images.forEach(image => {
-            if (image.id === imageID) return;
-            if (image.time === timeStamp) {
-                exists = true;
-            }
-        });
-        return exists;
-    };
+
+    const reOrderDebounced = useDebounceCallback(() => {
+        reorderSortingCriteria();
+    }, 200);
     useEffect(() => {
-        if (timeRef.current !== null && Image.time !== null) {
+        if (
+            timeRef.current !== null &&
+            Image.time !== null &&
+            type === 'timeofday'
+        ) {
             let minutes: string | number = Image.time % 60;
             let hours: string | number = (Image.time - minutes) / 60;
             minutes = minutes < 10 ? '0' + minutes : minutes;
             hours = hours < 10 ? '0' + hours : hours;
             timeRef.current.value = `${hours}:${minutes}`;
-            reorderSortingCriteria();
         }
-    }, [type, Image.time]);
+    }, [type, Image.time, playlistImagesTimeSet]);
+
     useEffect(() => {
-        if (isLast) {
-            imageRef.current?.scrollIntoView({
-                behavior: 'smooth',
-                inline: 'start'
-            });
+        if (firstRender) {
+            firstRender = false;
+            return;
         }
-    }, []);
+        if (isLast) {
+            setTimeout(() => {
+                imageRef.current?.scrollIntoView({
+                    behavior: 'smooth'
+                });
+            }, 500);
+        }
+    }, [index]);
     return (
         <motion.div
             layout
@@ -113,18 +115,20 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
                                 const [hours, minutes] = stringValue.split(':');
                                 const newTimeSum =
                                     Number(hours) * 60 + Number(minutes);
-                                if (
-                                    checkIfTimeStampExists(newTimeSum, Image.id)
-                                ) {
+                                if (playlistImagesTimeSet.has(newTimeSum)) {
                                     e.currentTarget.setCustomValidity(
                                         'invalid time, another image has the same time'
                                     );
                                     setIsInvalid(true);
                                 } else {
                                     e.currentTarget.setCustomValidity('');
-                                    Image.time = newTimeSum;
-                                    reorderSortingCriteria();
                                     setIsInvalid(false);
+                                    playlistImagesTimeSet.delete(
+                                        Image.time ?? -1
+                                    );
+                                    Image.time = newTimeSum;
+                                    playlistImagesTimeSet.add(newTimeSum);
+                                    reOrderDebounced();
                                 }
                             }}
                         />

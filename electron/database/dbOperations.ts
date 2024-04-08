@@ -26,11 +26,12 @@ export class DBOperations extends EventEmitter {
         const [insertedPlaylist] = await db
             .insert(tables.playlist)
             .values(row)
-            .returning({ id: tables.playlist.id })
             .onConflictDoUpdate({
-                target: tables.playlist.id,
+                target: tables.playlist.name,
                 set: partialRow
-            });
+            })
+            .returning({ id: tables.playlist.id });
+
         this.#insertPlaylistImages(images, insertedPlaylist.id);
         this.emit('upsertPlaylist', {
             name: playlistObject.name,

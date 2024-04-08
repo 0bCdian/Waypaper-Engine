@@ -54,6 +54,18 @@ function Monitors() {
             }, 3000);
             return;
         }
+        if (selectType === 'individual' && selectedMonitors.length > 1) {
+            setError({
+                state: true,
+                message: 'Cannot select more than one display in this mode'
+            });
+            setTimeout(() => {
+                setError(prevError => {
+                    return { ...prevError, state: false };
+                });
+            }, 3000);
+            return;
+        }
         if (
             (selectType === 'clone' || selectType === 'extend') &&
             selectedMonitors.length < 2

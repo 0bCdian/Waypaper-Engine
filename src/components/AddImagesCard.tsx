@@ -8,15 +8,12 @@ import { type openFileAction } from '../../shared/types';
 function AddImagesCard() {
     const { openImages, isActive } = openImagesStore();
     const { setSkeletons, addImages } = imagesStore();
-    const { addMultipleImagesToPlaylist, addImageToPlaylist, readPlaylist } =
-        playlistStore();
+    const { addImagesToPlaylist } = playlistStore();
     const handleOpenImages = (action: openFileAction) => {
         void openImages({
             setSkeletons,
             addImages,
-            addMultipleImagesToPlaylist,
-            addImageToPlaylist,
-            currentPlaylist: readPlaylist(),
+            addImagesToPlaylist,
             action
         });
     };

@@ -28,6 +28,8 @@ interface State {
     playlist: rendererPlaylist;
     isEmpty: boolean;
     playlistImagesSet: Set<number>;
+    playlistImagesTimeSet: Set<number>;
+    lastAddedImageID: number;
 }
 
 interface Actions {
@@ -47,32 +49,41 @@ export const playlistStore = create<State & Actions>()((set, get) => ({
     playlist: initialPlaylistState,
     isEmpty: true,
     playlistImagesSet: new Set<number>(),
+    playlistImagesTimeSet: new Set<number>(),
+    lastAddedImageID: -1,
     addImagesToPlaylist: Images => {
-        if (get().playlist.configuration.type === 'dayofweek') {
-            const availableSpace = 7 - get().playlist.images.length;
+        const playlistImagesSet = get().playlistImagesSet;
+        const playlistImagesTimeSet = get().playlistImagesTimeSet;
+        const currentPlaylist = get().playlist;
+        if (currentPlaylist.configuration.type === 'dayofweek') {
+            const availableSpace = 7 - currentPlaylist.images.length;
             if (availableSpace <= 0) return;
             else {
                 Images = Images.slice(0, availableSpace);
             }
         }
         const imagesToAdd: rendererImage[] = [];
-        const newPlaylistImagesSet = new Set(get().playlistImagesSet);
-        const highestTimeStamp = get().playlist.images.at(-1)?.time;
+        const highestTimeStamp = Math.max(...playlistImagesTimeSet);
         const date = new Date();
-        let initialTimeStamp =
-            highestTimeStamp ?? date.getHours() * 60 + date.getMinutes();
+        let initialTimeStamp = Math.max(
+            highestTimeStamp,
+            date.getHours() * 60 + date.getMinutes()
+        );
         for (let current = 0; current < Images.length; current++) {
-            if (newPlaylistImagesSet.has(Images[current].id)) {
+            if (playlistImagesSet.has(Images[current].id)) {
                 continue;
             }
+            initialTimeStamp += 5;
             if (initialTimeStamp >= 1440) {
-                // one minute offset every loop in the day, to avoid as much duplication of timestamps as possible
                 initialTimeStamp -= 1439;
             }
-            initialTimeStamp += 5;
+            while (playlistImagesTimeSet.has(initialTimeStamp)) {
+                initialTimeStamp++;
+            }
             Images[current].time = initialTimeStamp;
             Images[current].isChecked = true;
-            newPlaylistImagesSet.add(Images[current].id);
+            playlistImagesSet.add(Images[current].id);
+            playlistImagesTimeSet.add(initialTimeStamp);
             imagesToAdd.push(Images[current]);
         }
         set(state => {
@@ -84,7 +95,9 @@ export const playlistStore = create<State & Actions>()((set, get) => ({
             return {
                 playlist: newPlaylist,
                 isEmpty: false,
-                playlistImagesSet: newPlaylistImagesSet
+                playlistImagesSet: new Set(playlistImagesSet),
+                playlistImagesTimeSet: new Set(playlistImagesTimeSet),
+                lastAddedImageID: newPlaylist.images.at(-1)?.id
             };
         });
     },
@@ -112,9 +125,13 @@ export const playlistStore = create<State & Actions>()((set, get) => ({
     },
     removeImagesFromPlaylist: Images => {
         set(state => {
-            const newImagesArray = state.playlist.images.filter(
-                image => !Images.has(image.id)
-            );
+            const newImagesArray = state.playlist.images.filter(image => {
+                const shouldNotFilter = !Images.has(image.id);
+                if (Images.has(image.id) && image.time !== null) {
+                    state.playlistImagesTimeSet.delete(image.time);
+                }
+                return shouldNotFilter;
+            });
             Images.forEach(id => {
                 state.playlistImagesSet.delete(id);
             });
@@ -123,17 +140,21 @@ export const playlistStore = create<State & Actions>()((set, get) => ({
                     ...state.playlist,
                     images: newImagesArray
                 },
-                playlistImagesSet: new Set(state.playlistImagesSet)
+                playlistImagesSet: new Set(state.playlistImagesSet),
+                playlistImagesTimeSet: new Set(state.playlistImagesTimeSet)
             };
         });
     },
     clearPlaylist: () => {
         const activeMonitor = useMonitorStore.getState().activeMonitor;
         set(() => {
+            const emptyPlaylist = { ...initialPlaylistState, activeMonitor };
             return {
-                playlist: { ...initialPlaylistState, activeMonitor },
+                playlist: emptyPlaylist,
                 isEmpty: true,
-                playlistImagesSet: new Set<number>()
+                playlistImagesSet: new Set<number>(),
+                playlistImagesTimeSet: new Set<number>(),
+                lastAddedImageID: -1
             };
         });
     },
@@ -141,24 +162,28 @@ export const playlistStore = create<State & Actions>()((set, get) => ({
         return get().playlist;
     },
     setPlaylist: (newPlaylist: rendererPlaylist) => {
-        const newPlaylistSet = new Set<number>();
+        const newPlaylistImagesSet = new Set<number>();
+        const newPlaylistImagesTimeSet = new Set<number>();
         newPlaylist.images.forEach(image => {
-            newPlaylistSet.add(image.id);
+            newPlaylistImagesSet.add(image.id);
+            if (image.time !== null) {
+                newPlaylistImagesTimeSet.add(image.time);
+            }
         });
         set(() => ({
             playlist: newPlaylist,
             isEmpty: false,
-            playlistImagesSet: newPlaylistSet
+            playlistImagesSet: newPlaylistImagesSet,
+            playlistImagesTimeSet: newPlaylistImagesTimeSet
         }));
     },
     setEmptyPlaylist: () => {
-        set(state => {
-            return {
-                ...state,
-                playlist: initialPlaylistState,
-                isEmpty: true,
-                playlistImagesSet: new Set<number>()
-            };
-        });
+        set(() => ({
+            playlist: initialPlaylistState,
+            isEmpty: true,
+            playlistImagesSet: new Set<number>(),
+            playlistImagesTimeSet: new Set<number>(),
+            lastAddedImageID: -1
+        }));
     }
 }));

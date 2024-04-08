@@ -1,5 +1,5 @@
-import { useEffect, type DependencyList } from "react";
-import useTimeout from "./useTimeout";
+import { useEffect, type DependencyList } from 'react';
+import useTimeout from './useTimeout';
 
 type Callback = () => void;
 

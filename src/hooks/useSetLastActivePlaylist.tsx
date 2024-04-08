@@ -57,7 +57,7 @@ export function useSetLastActivePlaylist() {
                     showAnimations: playlistFromDB.showAnimations
                 },
                 images: imagesToStorePlaylist,
-                monitor: activeMonitor
+                activeMonitor
             };
             setPlaylist(currentPlaylist);
         });

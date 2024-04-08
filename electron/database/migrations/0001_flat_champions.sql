@@ -2,6 +2,16 @@ ALTER TABLE `swwwConfig` RENAME TO `swwwConfigOld`;
 --> statement-breakpoint
 ALTER TABLE `appConfig` RENAME TO `appConfigOld`;
 --> statement-breakpoint
+ALTER TABLE `imagesInPlaylist` RENAME TO `oldImagesInPlaylist`;--> statement-breakpoint
+CREATE TABLE "imagesInPlaylist" (
+	"imageID" INTEGER NOT NULL,
+	"playlistID" INTEGER NOT NULL,
+	"indexInPlaylist" INTEGER NOT NULL,
+	"time" INTEGER DEFAULT null,
+	FOREIGN KEY("imageID") REFERENCES "Images"("id") ON UPDATE CASCADE ON DELETE CASCADE,
+	FOREIGN KEY("playlistID") REFERENCES "Playlists"("id") ON UPDATE CASCADE ON DELETE CASCADE
+);
+--> statement-breakpoint
 CREATE TABLE `swwwConfig` (
   `config` text DEFAULT [object Object] NOT NULL
 );
@@ -63,25 +73,22 @@ SELECT json_object(
     'transitionWaveX', transitionWaveX,
     'transitionWaveY', transitionWaveY
 )
-FROM swwwConfigOld;
---> statement-breakpoint
-DROP TABLE swwwConfigOld;
---> statement-breakpoint
-DROP TABLE activePlaylist;
---> statement-breakpoint
+FROM swwwConfigOld;--> statement-breakpoint
+DROP TABLE swwwConfigOld;--> statement-breakpoint
+INSERT INTO imagesInPlaylist SELECT * FROM oldImagesInPlaylist;--> statement-breakpoint
+DROP TABLE activePlaylist;--> statement-breakpoint
+DROP TABLE oldImagesInPlaylist;--> statement-breakpoint
 ALTER TABLE Images ADD `isSelected` integer DEFAULT false NOT NULL;--> statement-breakpoint
 CREATE UNIQUE INDEX `Images_name_unique` ON `Images` (`name`);--> statement-breakpoint
 CREATE UNIQUE INDEX `Playlists_name_unique` ON `Playlists` (`name`);--> statement-breakpoint
-CREATE UNIQUE INDEX `imagesInPlaylist_time_unique` ON `imagesInPlaylist` (`time`);--> statement-breakpoint
-CREATE TRIGGER delete_playlist_if_empty
-AFTER DELETE ON imagesInPlaylist
+CREATE TRIGGER keep_recent_images
+AFTER INSERT ON imageHistory
 BEGIN
-    DELETE FROM Playlists
-    WHERE id = OLD.playlistID
-    AND NOT EXISTS (
-        SELECT 1
-        FROM imagesInPlaylist
-        WHERE playlistID = OLD.playlistID
-        LIMIT 1
+    DELETE FROM imageHistory
+    WHERE rowid IN (
+        SELECT rowid
+        FROM imageHistory
+        ORDER BY rowid DESC
+        LIMIT -1 OFFSET 10
     );
 END;

@@ -295,7 +295,7 @@ export async function isSwwwDaemonRunning() {
         console.log('Swww daemon already running');
     } catch (error) {
         console.log('daemon not running, initiating swww...');
-        await execPomisified('swww init');
+        await execPomisified('swww-daemon &');
     }
 }
 

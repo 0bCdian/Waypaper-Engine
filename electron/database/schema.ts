@@ -47,7 +47,7 @@ export const imageInPlaylist = sqliteTable('imagesInPlaylist', {
             onDelete: 'cascade'
         }),
     indexInPlaylist: integer('indexInPlaylist').notNull(),
-    time: integer('time').unique()
+    time: integer('time')
 });
 
 export const swwwConfig = sqliteTable('swwwConfig', {

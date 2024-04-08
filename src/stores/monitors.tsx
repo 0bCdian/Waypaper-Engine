@@ -47,8 +47,8 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
     },
     async reQueryMonitors() {
         const monitors = await getMonitors();
+        const activeMonitor = get().activeMonitor;
         const storeMonitors = monitors.map(monitor => {
-            const activeMonitor = get().activeMonitor;
             const match = activeMonitor.monitors.find(activeMonitor => {
                 return activeMonitor.name === monitor.name;
             });

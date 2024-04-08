@@ -14,6 +14,7 @@ const MiniPlaylistCard = lazy(async () => await import('./MiniPlaylistCard'));
 function PlaylistTrack() {
     const {
         playlist,
+        lastAddedImageID,
         movePlaylistArrayOrder,
         addImagesToPlaylist,
         clearPlaylist
@@ -21,32 +22,6 @@ function PlaylistTrack() {
     const { openImages, isActive } = openImagesStore();
     const { setSkeletons, addImages } = imagesStore();
     useSetLastActivePlaylist();
-    const handleDragEnd = useCallback(
-        (event: DragEndEvent) => {
-            const { over, active } = event;
-            if (over === null) return;
-            if (over.id !== active.id) {
-                const oldindex = playlist.images.findIndex(
-                    element => element.id === active.id
-                );
-                const newIndex = playlist.images.findIndex(
-                    element => element.id === over?.id
-                );
-                const oldImage = playlist.images[oldindex];
-                const newImage = playlist.images[newIndex];
-                const buffer = oldImage.time;
-                oldImage.time = newImage.time;
-                newImage.time = buffer;
-                const newArrayOrder = arrayMove(
-                    playlist.images,
-                    oldindex,
-                    newIndex
-                );
-                movePlaylistArrayOrder(newArrayOrder);
-            }
-        },
-        [playlist]
-    );
 
     const handleClickAddImages = useCallback((action: openFileAction) => {
         void openImages({
@@ -71,15 +46,51 @@ function PlaylistTrack() {
         );
         movePlaylistArrayOrder(newArray);
     }, [playlist]);
+
+    const handleDragEnd = useCallback(
+        (event: DragEndEvent) => {
+            const { over, active } = event;
+            if (over === null) return;
+            if (over.id !== active.id) {
+                const oldindex = playlist.images.findIndex(
+                    element => element.id === active.id
+                );
+                const newIndex = playlist.images.findIndex(
+                    element => element.id === over?.id
+                );
+                const oldImage = playlist.images[oldindex];
+                const newImage = playlist.images[newIndex];
+                const buffer = oldImage.time;
+                oldImage.time = newImage.time;
+                newImage.time = buffer;
+                const newArrayOrder = arrayMove(
+                    playlist.images,
+                    oldindex,
+                    newIndex
+                );
+                if (playlist.configuration.type === 'timeofday') {
+                    reorderSortingCriteria();
+                    return;
+                }
+                movePlaylistArrayOrder(newArrayOrder);
+            }
+        },
+        [playlist]
+    );
+
     const [playlistArray, sortingCriteria] = useMemo(() => {
         const lastIndex = playlist.images.length - 1;
         const sortingCriteria: number[] = [];
         const elements = playlist.images.map((Image, index) => {
+            const isLast =
+                playlist.configuration.type === 'timeofday'
+                    ? lastAddedImageID === Image.id
+                    : index === lastIndex;
             sortingCriteria.push(Image.id);
             return (
                 <Suspense key={Image.id}>
                     <MiniPlaylistCard
-                        isLast={lastIndex === index}
+                        isLast={isLast}
                         reorderSortingCriteria={reorderSortingCriteria}
                         type={playlist.configuration.type}
                         index={index}
@@ -89,7 +100,7 @@ function PlaylistTrack() {
             );
         });
         return [elements, sortingCriteria];
-    }, [playlist.images, playlist.configuration]);
+    }, [playlist]);
     useEffect(() => {
         if (firstRender) {
             firstRender = false;
@@ -99,6 +110,12 @@ function PlaylistTrack() {
             clearPlaylist();
         }
     }, [playlist.images]);
+    useEffect(() => {
+        if (playlist.configuration.type === 'timeofday') {
+            reorderSortingCriteria();
+        }
+    }, [playlist.images.length, playlist.configuration.type]);
+
     return (
         <div className="w-full flex flex-col gap-2 mb-2 mt-2">
             <div className="flex justify-between items-center mb-2">
@@ -213,11 +230,11 @@ function PlaylistTrack() {
                             exit={{ y: 100, opacity: 0 }}
                             className="btn uppercase btn-error rounded-lg"
                             onClick={() => {
-                                clearPlaylist();
                                 stopPlaylist({
                                     name: playlist.name,
                                     activeMonitor: playlist.activeMonitor
                                 });
+                                clearPlaylist();
                             }}
                         >
                             Clear

@@ -9,14 +9,14 @@ export function registerOnDelete() {
         useShallow(state => state.removeImagesFromStore)
     );
     const removeImageFromPlaylist = playlistStore(
-        useShallow(state => state.removeImageFromPlaylist)
+        useShallow(state => state.removeImagesFromPlaylist)
     );
     useEffect(() => {
         if (!firstCall) return;
         firstCall = false;
         onDeleteImageFromGallery((_, image) => {
             removeImagesFromStore([image]);
-            removeImageFromPlaylist(image);
+            removeImageFromPlaylist(new Set([image.id]));
         });
     }, []);
 }
