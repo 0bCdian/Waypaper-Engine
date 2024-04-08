@@ -6,20 +6,14 @@ import { PLAYLIST_TYPES } from '../../shared/types/playlist';
 import { useEffect } from 'react';
 const { readActivePlaylist, deletePlaylist } = window.API_RENDERER;
 export function useSetLastActivePlaylist() {
-    const {
-        setPlaylist,
-        playlist,
-        setEmptyPlaylist,
-        setActiveMonitorPlaylist
-    } = playlistStore();
+    const { setPlaylist, playlist } = playlistStore();
     const { activeMonitor } = useMonitorStore();
     const { imagesArray } = imagesStore();
     useEffect(() => {
         if (activeMonitor.name === '') return;
         void readActivePlaylist(activeMonitor).then(playlistFromDB => {
             if (playlistFromDB === undefined) {
-                setEmptyPlaylist();
-                setActiveMonitorPlaylist(activeMonitor);
+                // setEmptyPlaylist();
                 return;
             }
 

@@ -18,21 +18,18 @@ function Modals() {
     const { appConfig, isSetup } = useAppConfigStore();
     const { setActiveMonitor, reQueryMonitors } = useMonitorStore();
     useEffect(() => {
+        if (alreadyShown) return;
+
+        alreadyShown = true;
         void querySelectedMonitor().then(lastSelectedMonitor => {
             if (lastSelectedMonitor !== undefined) {
                 setActiveMonitor(lastSelectedMonitor);
             }
             void reQueryMonitors().then(() => {
-                if (
-                    !isSetup ||
-                    !appConfig.showMonitorModalOnStart ||
-                    alreadyShown
-                )
-                    return;
+                if (!isSetup || !appConfig.showMonitorModalOnStart) return;
                 setTimeout(() => {
                     // @ts-expect-error daisy-ui
                     window.monitors.showModal();
-                    alreadyShown = true;
                 }, 300);
             });
         });

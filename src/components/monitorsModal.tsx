@@ -5,6 +5,7 @@ import { calculateMinResolution } from '../utils/utilities';
 import { type monitorSelectType } from '../types/rendererTypes';
 import { type Monitor } from '../../shared/types/monitor';
 import { IPC_MAIN_EVENTS } from '../../shared/constants';
+import { playlistStore } from '../stores/playlist';
 const { setSelectedMonitor, registerListener } = window.API_RENDERER;
 let firstRender = true;
 function Monitors() {
@@ -15,6 +16,7 @@ function Monitors() {
         setActiveMonitor,
         reQueryMonitors
     } = useMonitorStore();
+    const { clearPlaylist } = playlistStore();
     let initialSelectState: monitorSelectType =
         monitorsList.length > 1 ? 'clone' : 'individual';
     if (activeMonitor.extendAcrossMonitors) {
@@ -86,6 +88,7 @@ function Monitors() {
         };
         setSelectedMonitor(activeMonitor);
         setActiveMonitor(activeMonitor);
+        clearPlaylist();
         closeModal();
     };
     const scale = 1 / (monitorsList.length + 1);

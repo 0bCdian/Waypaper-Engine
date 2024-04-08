@@ -1,6 +1,5 @@
 import { create } from 'zustand';
 import { type Monitor, type ActiveMonitor } from '../../shared/types/monitor';
-import { playlistStore } from './playlist';
 const { getMonitors, querySelectedMonitor } = window.API_RENDERER;
 
 export interface StoreMonitor extends Monitor {
@@ -29,7 +28,7 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
     activeMonitor: initialState.activeMonitor,
     monitorsList: initialState.monitorsList,
     setActiveMonitor(value) {
-        playlistStore.getState().setActiveMonitorPlaylist(value);
+        console.log('setActiveMonitor');
         set(state => {
             return {
                 ...state,
