@@ -1,6 +1,9 @@
 import { playlistStore } from '../stores/playlist';
 import { useMonitorStore } from '../stores/monitors';
-import { type rendererImage } from '../types/rendererTypes';
+import {
+    type rendererPlaylist,
+    type rendererImage
+} from '../types/rendererTypes';
 import { imagesStore } from '../stores/images';
 import { PLAYLIST_TYPES } from '../../shared/types/playlist';
 import { useEffect } from 'react';
@@ -42,13 +45,15 @@ export function useSetLastActivePlaylist() {
                 imageToCheck.isChecked = true;
                 imagesToStorePlaylist.push(imageToCheck);
             });
-            const currentPlaylist = {
+            const currentPlaylist: rendererPlaylist = {
                 name: playlistFromDB.name,
                 configuration: {
                     type: playlistFromDB.type,
                     order: playlistFromDB.order,
                     interval: playlistFromDB.interval,
-                    showAnimations: playlistFromDB.showAnimations
+                    showAnimations: playlistFromDB.showAnimations,
+                    alwaysStartOnFirstImage:
+                        playlistFromDB.alwaysStartOnFirstImage
                 },
                 images: imagesToStorePlaylist,
                 activeMonitor
