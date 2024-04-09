@@ -56,11 +56,13 @@ process.env.DIST = join(__dirname, '../dist');
 process.env.PUBLIC = app.isPackaged
     ? process.env.DIST
     : join(process.env.DIST, '../public');
+process.env.NODE_ENV = app.isPackaged ? 'production' : 'development';
 let tray: Tray | null = null;
 let win: BrowserWindow | null;
 // 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
 const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
-const playlistControllerInstance = new PlaylistController();
+let playlistControllerInstance: PlaylistController;
+
 async function createWindow() {
     win = new BrowserWindow({
         icon: join(iconPath, '512x512.png'),
@@ -154,6 +156,7 @@ app.whenReady()
                 win.reload();
             }
         });
+        playlistControllerInstance = new PlaylistController();
         dbOperations.on('updateAppConfig', () => {
             win?.webContents.send('updateAppConfig');
         });
@@ -242,7 +245,6 @@ ipcMain.on('savePlaylist', (_, playlistObject: rendererPlaylist) => {
 ipcMain.on(
     'startPlaylist',
     (_event, playlist: { name: string; activeMonitor: ActiveMonitor }) => {
-        console.log('ipc start Playlist received on main.ts', playlist);
         playlistControllerInstance.startPlaylist(playlist);
         void createTray();
     }

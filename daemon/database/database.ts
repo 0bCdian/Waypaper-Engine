@@ -16,15 +16,21 @@ const MIGRATION_PATH_DEV = join(
     'database',
     'migrations'
 );
+
 const MIGRATION_PATH_PROD = join(process.cwd(), '..', '..', 'migrations');
+const MIGRATION_PATH =
+    process.env.NODE_ENV === 'production'
+        ? MIGRATION_PATH_PROD
+        : MIGRATION_PATH_DEV;
+console.log(process.env);
 const sqlite = Database(DB_LOCATION);
 const drizzleDB: BetterSQLite3Database = drizzle(sqlite);
 export function migrateDB() {
     try {
-        if (existsSync(MIGRATION_PATH_PROD)) {
+        if (existsSync(MIGRATION_PATH)) {
             migrate(drizzleDB, { migrationsFolder: MIGRATION_PATH_PROD });
         } else {
-            migrate(drizzleDB, { migrationsFolder: MIGRATION_PATH_DEV });
+            console.warn('The migrations directory is not found');
         }
     } catch (error) {
         console.error(error);

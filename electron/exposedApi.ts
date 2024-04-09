@@ -35,7 +35,6 @@ export const ELECTRON_API = {
         ipcRenderer.send('setImage', image, activeMonitor);
     },
     savePlaylist: (playlistObject: rendererPlaylist) => {
-        console.log('savePlaylistExposedApi', playlistObject);
         ipcRenderer.send('savePlaylist', playlistObject);
     },
     startPlaylist: (playlist: {

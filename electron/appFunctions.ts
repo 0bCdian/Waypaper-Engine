@@ -6,12 +6,12 @@ import {
     type rendererImage,
     type rendererPlaylist
 } from '../src/types/rendererTypes';
-import { exec, execFile, execSync, spawn } from 'node:child_process';
+import { exec, execFile } from 'node:child_process';
 import { promisify } from 'node:util';
-import { binDir, daemonLocation } from './binaries';
+import { binDir } from './binaries';
 import { join, basename } from 'node:path';
 import { parseResolution } from '../src/utils/utilities';
-import { configuration, dbOperations } from './database/globalConfig';
+import { dbOperations } from './database/globalConfig';
 import Sharp = require('sharp');
 import {
     duplicateImageAcrossMonitors,
@@ -288,65 +288,12 @@ export async function setImage(
     }
 }
 
-export async function isSwwwDaemonRunning() {
-    await checkIfSwwwIsInstalled();
-    try {
-        execSync('ps -A | grep "swww-daemon"');
-        console.log('Swww daemon already running');
-    } catch (error) {
-        console.log('daemon not running, initiating swww...');
-        await execPomisified('swww-daemon &');
-    }
-}
-
-export async function checkIfSwwwIsInstalled() {
-    const { stdout } = await execPomisified(`swww --version`);
-    if (stdout.length > 0) {
-        console.info('swww is installed in the system');
-    } else {
-        console.warn(
-            'swww is not installed, please find instructions in the README.md on how to install it'
-        );
-        throw new Error('swww is not installed');
-    }
-}
 export function savePlaylist(playlistObject: rendererPlaylist) {
     try {
-        console.log('SavePlaylist appfunctions ', playlistObject);
         void dbOperations.upsertPlaylist(playlistObject);
     } catch (error) {
         console.error(error);
         throw Error('Failed to set playlist in DB');
-    }
-}
-async function isWaypaperDaemonRunning() {
-    try {
-        await execPomisified('pidof wpe-daemon');
-        return true;
-    } catch (_err) {
-        return false;
-    }
-}
-export async function initWaypaperDaemon() {
-    console.log('initWaypaperDaemon');
-    if (!(await isWaypaperDaemonRunning())) {
-        const promise = new Promise<void>((resolve, reject) => {
-            try {
-                const args = [`${daemonLocation}/daemon.js`];
-                if (configuration.script !== undefined)
-                    args.push(`--script=${configuration.script}`);
-                console.log(args);
-                spawn('node', args, {
-                    detached: true,
-                    stdio: 'ignore',
-                    shell: true
-                });
-                resolve();
-            } catch (error) {
-                reject(error);
-            }
-        });
-        await promise;
     }
 }
 

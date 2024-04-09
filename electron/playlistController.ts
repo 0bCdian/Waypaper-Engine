@@ -3,8 +3,7 @@ import { type Socket, createConnection } from 'net';
 import { WAYPAPER_ENGINE_SOCKET_PATH } from './globals/appPaths';
 import { ACTIONS, type message } from './types/types';
 import { type ActiveMonitor } from '../shared/types/monitor';
-import { initWaypaperDaemon } from './appFunctions';
-void initWaypaperDaemon();
+import { initWaypaperDaemon } from './startDaemons';
 export class PlaylistController extends EventEmitter {
     connection: Socket;
     retries: number;
@@ -21,7 +20,7 @@ export class PlaylistController extends EventEmitter {
             this.retries++;
             if (this.retries > 3) return;
             setTimeout(() => {
-                void initWaypaperDaemon();
+                initWaypaperDaemon();
             }, 1000);
         });
         this.connection.on('close', () => {

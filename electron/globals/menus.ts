@@ -11,7 +11,6 @@ import { type rendererImage } from '../../src/types/rendererTypes';
 import { type ActiveMonitor } from '../../shared/types/monitor';
 import { PlaylistController } from '../playlistController';
 
-const playlistControllerInstance = new PlaylistController();
 export const devMenu = ({
     win,
     app
@@ -82,6 +81,7 @@ export const trayMenu = async (app: App, _win: BrowserWindow) => {
     // console.log(monitors, playlists, allPlaylists, imageHistory);
     // console.log(win, app);
 
+    const playlistControllerInstance = new PlaylistController();
     const baseMenu = [
         {
             label: 'Random Wallpaper',
