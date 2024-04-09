@@ -5,10 +5,10 @@ import {
     protocol,
     Tray,
     Menu,
-    screen
+    screen,
+    net
 } from 'electron';
 import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
 import {
     copyImagesToCacheAndProcessThumbnails,
     setImage,
@@ -34,6 +34,7 @@ import {
 import { type ActiveMonitor } from '../shared/types/monitor';
 import { PlaylistController } from './playlistController';
 import { IPC_MAIN_EVENTS } from '../shared/constants';
+import { initWaypaperDaemon, initSwwwDaemon } from './startDaemons';
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
     app.exit(1);
@@ -52,6 +53,7 @@ if (scriptFlag !== undefined) {
     const userScriptLocation = scriptFlag.split('=')[1];
     configuration.script = userScriptLocation;
 }
+
 process.env.DIST = join(__dirname, '../dist');
 process.env.PUBLIC = app.isPackaged
     ? process.env.DIST
@@ -61,7 +63,6 @@ let tray: Tray | null = null;
 let win: BrowserWindow | null;
 // 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
 const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
-let playlistControllerInstance: PlaylistController;
 
 async function createWindow() {
     win = new BrowserWindow({
@@ -108,12 +109,11 @@ function createMenu() {
     Menu.setApplicationMenu(mainMenu);
 }
 function registerFileProtocol() {
-    protocol.registerFileProtocol('atom', (request, callback) => {
-        const filePath = fileURLToPath(
-            'file://' + request.url.slice('atom://'.length)
-        );
-        callback(filePath);
-    });
+    protocol.handle(
+        'atom',
+        async request =>
+            await net.fetch('file://' + request.url.slice('atom://'.length))
+    );
 }
 
 async function createTray() {
@@ -135,6 +135,8 @@ async function createTray() {
 Menu.setApplicationMenu(null);
 app.whenReady()
     .then(async () => {
+        initSwwwDaemon();
+        initWaypaperDaemon();
         screen.on('display-added', () => {
             if (win === null) return;
             win.webContents.send(IPC_MAIN_EVENTS.displaysChanged);
@@ -147,16 +149,9 @@ app.whenReady()
             if (win === null) return;
             win.webContents.send(IPC_MAIN_EVENTS.displaysChanged);
         });
-        await createWindow();
+        const playlistControllerInstance = new PlaylistController();
         createMenu();
         void createTray();
-        registerFileProtocol();
-        void remakeThumbnailsIfImagesExist().then(() => {
-            if (win !== null) {
-                win.reload();
-            }
-        });
-        playlistControllerInstance = new PlaylistController();
         dbOperations.on('updateAppConfig', () => {
             win?.webContents.send('updateAppConfig');
         });
@@ -186,13 +181,22 @@ app.whenReady()
             // TODO
             // playlistControllerInstance.stopAllPlaylistNamed(playlistName);
         });
+
+        await createWindow();
+        registerFileProtocol();
+        void remakeThumbnailsIfImagesExist().then(() => {
+            if (win !== null) {
+                win.reload();
+            }
+        });
     })
     .catch(e => {
         console.error(e);
+        process.exit(1);
     });
-
 app.on('quit', () => {
     if (configuration.app.config.killDaemon) {
+        const playlistControllerInstance = new PlaylistController();
         playlistControllerInstance.killDaemon();
     }
 });
@@ -245,6 +249,7 @@ ipcMain.on('savePlaylist', (_, playlistObject: rendererPlaylist) => {
 ipcMain.on(
     'startPlaylist',
     (_event, playlist: { name: string; activeMonitor: ActiveMonitor }) => {
+        const playlistControllerInstance = new PlaylistController();
         playlistControllerInstance.startPlaylist(playlist);
         void createTray();
     }
@@ -252,6 +257,7 @@ ipcMain.on(
 ipcMain.on(
     'stopPlaylist',
     (_, playlist: { name: string; activeMonitor: ActiveMonitor }) => {
+        const playlistControllerInstance = new PlaylistController();
         playlistControllerInstance.stopPlaylist(playlist);
         void createTray();
     }
@@ -260,6 +266,8 @@ ipcMain.on(
     'updateSwwwConfig',
     (_, newSwwwConfig: swwwConfigInsertType['config']) => {
         dbOperations.updateSwwwConfig({ config: newSwwwConfig });
+
+        const playlistControllerInstance = new PlaylistController();
         playlistControllerInstance.updateConfig();
     }
 );
@@ -276,6 +284,7 @@ ipcMain.on(
     'updateAppConfig',
     (_, newAppConfig: appConfigInsertType['config']) => {
         void dbOperations.updateAppConfig({ config: newAppConfig }).then(() => {
+            const playlistControllerInstance = new PlaylistController();
             playlistControllerInstance.updateConfig();
         });
     }

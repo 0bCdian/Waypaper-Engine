@@ -80,7 +80,6 @@ export const trayMenu = async (app: App, _win: BrowserWindow) => {
     // console.log(screen.getAllDisplays());
     // console.log(monitors, playlists, allPlaylists, imageHistory);
     // console.log(win, app);
-
     const playlistControllerInstance = new PlaylistController();
     const baseMenu = [
         {

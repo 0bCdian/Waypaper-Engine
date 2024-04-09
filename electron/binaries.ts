@@ -8,7 +8,7 @@ const iconsPath = app.isPackaged
     : join(app.getAppPath(), 'build/icons');
 
 const daemon = app.isPackaged
-    ? join(app.getAppPath(), '../', '/daemon')
+    ? join(app.getAppPath(), '../', '/daemon', 'daemon_build')
     : join(app.getAppPath(), 'daemon', 'daemon_build');
 
 const nativeBinding = app.isPackaged

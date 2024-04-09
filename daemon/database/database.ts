@@ -17,12 +17,13 @@ const MIGRATION_PATH_DEV = join(
     'migrations'
 );
 
-const MIGRATION_PATH_PROD = join(process.cwd(), '..', '..', 'migrations');
+const MIGRATION_PATH_PROD = join(process.cwd(), 'resources', 'migrations');
+
 const MIGRATION_PATH =
     process.env.NODE_ENV === 'production'
         ? MIGRATION_PATH_PROD
         : MIGRATION_PATH_DEV;
-console.log(process.env);
+
 const sqlite = Database(DB_LOCATION);
 const drizzleDB: BetterSQLite3Database = drizzle(sqlite);
 export function migrateDB() {

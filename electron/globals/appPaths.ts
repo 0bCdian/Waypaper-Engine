@@ -1,6 +1,5 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
-
 const systemHome = homedir();
 const cacheDirectoryRoot = join(systemHome, '.cache', 'waypaper_engine');
 const cacheThumbnailsDirectory = join(cacheDirectoryRoot, 'thumbnails');

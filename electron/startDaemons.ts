@@ -14,17 +14,18 @@ function checkIfSwwwIsInstalled() {
         throw new Error('swww is not installed');
     }
 }
-function initSwwwDaemon() {
+export function initSwwwDaemon() {
     checkIfSwwwIsInstalled();
     try {
         execSync('ps -A | grep "swww-daemon"');
         console.log('Swww daemon already running');
     } catch (error) {
         console.log('daemon not running, initiating swww...');
-        spawn('swww-daemon', ['&'], {
+        const output = spawn('swww-daemon &', {
             stdio: 'ignore',
             shell: true
         });
+        output.unref();
     }
 }
 function isWaypaperDaemonRunning() {
@@ -38,7 +39,7 @@ function isWaypaperDaemonRunning() {
 export function initWaypaperDaemon() {
     if (!isWaypaperDaemonRunning()) {
         try {
-            const args = [`${daemonLocation}/daemon.js`];
+            const args = [`${daemonLocation}/daemon.js &`];
             if (configuration.script !== undefined)
                 args.push(`--script=${configuration.script}`);
             const output = spawn('node', args, {
@@ -47,12 +48,10 @@ export function initWaypaperDaemon() {
                 detached: true,
                 env: { ...process.env }
             });
-            console.log(output);
+            output.unref();
         } catch (error) {
             console.warn('Could not start wpe-daemon, shutting down app...');
             process.exit(1);
         }
     }
 }
-initSwwwDaemon();
-initWaypaperDaemon();

@@ -1,4 +1,4 @@
-import { execSync } from 'node:child_process';
+import { execSync, spawn } from 'node:child_process';
 import { notify } from './notifications';
 function checkIfSwwwIsInstalled() {
     try {
@@ -18,7 +18,7 @@ function isSwwwDaemonRunning() {
     try {
         execSync(`ps -A | grep "swww-daemon"`, { encoding: 'utf-8' });
     } catch (error) {
-        execSync('swww-daemon &', { shell: '/bin/sh' });
+        spawn('swww-daemon &', { shell: '/bin/sh', detached: true }).unref();
     }
 }
 

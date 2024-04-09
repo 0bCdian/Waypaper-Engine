@@ -2,7 +2,6 @@ import { DaemonManager } from './server/daemonManager';
 import { isWaypaperDaemonRunning } from './utils/checkDependencies';
 import { notify } from './utils/notifications';
 import { configuration } from './config/config';
-
 if (isWaypaperDaemonRunning()) {
     console.error('Another instance is already running');
     process.exit(2);
