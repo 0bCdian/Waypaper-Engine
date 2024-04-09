@@ -29,6 +29,11 @@ export const playlist = sqliteTable('Playlists', {
     showAnimations: integer('showAnimations', { mode: 'boolean' })
         .notNull()
         .default(true),
+    alwaysStartOnFirstImage: integer('alwaysStartOnFirstImage', {
+        mode: 'boolean'
+    })
+        .notNull()
+        .default(false),
     order: text('order').$type<PLAYLIST_ORDER_TYPES>(),
     currentImageIndex: integer('currentImageIndex').notNull().default(0)
 });

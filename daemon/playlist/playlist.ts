@@ -4,7 +4,6 @@ import {
     type rendererImage,
     type ActiveMonitor
 } from '../types/daemonTypes';
-import { configuration } from '../config/config';
 import { DBOperations } from '../database/dbOperations';
 import { notify } from '../utils/notifications';
 import {
@@ -47,12 +46,11 @@ export class Playlist extends EventEmitter {
         this.images = currentPlaylist.images;
         this.name = playlistName;
         this.currentType = currentPlaylist.type;
-        this.currentImageIndex = configuration.app.settings
-            .playlistStartOnFirstImage
+        this.currentImageIndex = currentPlaylist.alwaysStartOnFirstImage
             ? 0
             : currentPlaylist.currentImageIndex;
         this.interval = currentPlaylist.interval;
-        this.showAnimations = configuration.app.settings.swwwAnimations;
+        this.showAnimations = currentPlaylist.showAnimations;
         this.playlistTimer = {
             timeoutID: undefined,
             executionTimeStamp: undefined
@@ -67,11 +65,16 @@ export class Playlist extends EventEmitter {
 
     async setImage(image: rendererImage) {
         if (this.activeMonitor.extendAcrossMonitors) {
-            await setImageAcrossMonitors(image, this.activeMonitor.monitors);
+            await setImageAcrossMonitors(
+                image,
+                this.activeMonitor.monitors,
+                this.showAnimations
+            );
         } else {
             await duplicateImageAcrossMonitors(
                 image,
-                this.activeMonitor.monitors
+                this.activeMonitor.monitors,
+                this.showAnimations
             );
         }
         this.dbOperations.addImageToHistory({
@@ -232,13 +235,13 @@ export class Playlist extends EventEmitter {
             showAnimations,
             type,
             currentImageIndex,
-            id
+            id,
+            alwaysStartOnFirstImage
         } = newPlaylistInfo;
         this.images = images;
         this.name = name;
         this.currentType = type;
-        this.currentImageIndex = configuration.app.settings
-            .playlistStartOnFirstImage
+        this.currentImageIndex = alwaysStartOnFirstImage
             ? 0
             : currentImageIndex;
         this.interval = interval;

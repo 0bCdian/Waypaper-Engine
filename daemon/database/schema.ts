@@ -25,6 +25,11 @@ export const playlist = sqliteTable('Playlists', {
     id: integer('id').notNull().primaryKey(),
     name: text('name').notNull().unique(),
     type: text('type').notNull().$type<PLAYLIST_TYPES_TYPE>(),
+    alwaysStartOnFirstImage: integer('alwaysStartOnFirstImage', {
+        mode: 'boolean'
+    })
+        .notNull()
+        .default(false),
     interval: integer('interval'),
     showAnimations: integer('showAnimations', { mode: 'boolean' })
         .notNull()

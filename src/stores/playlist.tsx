@@ -11,7 +11,8 @@ const configurationInitial: rendererPlaylist['configuration'] = {
     type: 'timer',
     interval: 3_600_000,
     order: 'ordered',
-    showAnimations: true
+    showAnimations: true,
+    alwaysStartOnFirstImage: false
 };
 
 const initialPlaylistState: rendererPlaylist = {

@@ -68,10 +68,12 @@ function parseSwwwQuery(stdout: string) {
 
 export function getSwwwCommandFromConfiguration(
     imagePath: string,
-    monitor: string
+    monitor: string,
+    showAnimations: boolean
 ) {
     const swwwConfig = configuration.swww.settings;
     let transitionPos = '';
+    const transitionType = showAnimations ? swwwConfig.transitionType : 'none';
     const inverty = swwwConfig.invertY ? '--invert-y' : '';
     switch (swwwConfig.transitionPositionType) {
         case 'int':
@@ -87,9 +89,7 @@ export function getSwwwCommandFromConfiguration(
         monitor !== undefined ? `--outputs ${monitor}` : ''
     } --resize="${swwwConfig.resizeType}" --fill-color "${
         swwwConfig.fillColor
-    }" --filter ${swwwConfig.filterType} --transition-type ${
-        swwwConfig.transitionType
-    } --transition-step ${swwwConfig.transitionStep} --transition-duration ${
+    }" --filter ${swwwConfig.filterType} --transition-type ${transitionType} --transition-step ${swwwConfig.transitionStep} --transition-duration ${
         swwwConfig.transitionDuration
     } --transition-fps ${swwwConfig.transitionFPS} --transition-angle ${
         swwwConfig.transitionAngle

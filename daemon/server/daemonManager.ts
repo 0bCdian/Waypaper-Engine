@@ -83,7 +83,7 @@ export class DaemonManager {
                 configuration.swww.update();
                 break;
             case ACTIONS.RANDOM_IMAGE:
-                // TODO
+                void this.setRandomImage();
                 break;
             case ACTIONS.GET_INFO:
                 break;
@@ -92,10 +92,10 @@ export class DaemonManager {
         switch (message.action) {
             case ACTIONS.START_PLAYLIST:
                 {
-                    const runningPlaylist = findActivePlaylistMatch({
-                        playlistMap: this.#playlistMap,
-                        newPlaylist: message.playlist
-                    });
+                    console.log(this.#playlistMap.values(), 'Case Start');
+                    const runningPlaylist = this.#playlistMap.get(
+                        message.playlist.activeMonitor.name
+                    );
                     if (runningPlaylist !== undefined) {
                         runningPlaylist.updatePlaylist();
                         notify(`Updating ${message.playlist.name}`);
@@ -161,6 +161,9 @@ export class DaemonManager {
                         message.playlist.activeMonitor.name
                     );
                     if (playlistInstance === undefined) return;
+                    this.#playlistMap.delete(
+                        playlistInstance.activeMonitor.name
+                    );
                     const stopMessage = playlistInstance.stop();
                     notify(
                         `${message.action} ${message.playlist.name} on ${message.playlist.activeMonitor.name}`
@@ -206,7 +209,11 @@ export class DaemonManager {
         }
         switch (configuration.app.settings.randomImageMonitor) {
             case 'clone': {
-                await duplicateImageAcrossMonitors(randomImages[0], monitors);
+                await duplicateImageAcrossMonitors(
+                    randomImages[0],
+                    monitors,
+                    true
+                );
                 notifyImageSet(
                     randomImages[0].name,
                     join(appDirectories.imagesDir, randomImages[0].name)
@@ -217,15 +224,17 @@ export class DaemonManager {
             case 'individual': {
                 monitors.forEach((monitor, index) => {
                     // we pass a length 1 array so we set one image per monitor
-                    void duplicateImageAcrossMonitors(randomImages[index], [
-                        monitor
-                    ]);
+                    void duplicateImageAcrossMonitors(
+                        randomImages[index],
+                        [monitor],
+                        true
+                    );
                     // TODO write to socket about this
                 });
                 break;
             }
             case 'extend': {
-                await setImageAcrossMonitors(randomImages[0], monitors);
+                await setImageAcrossMonitors(randomImages[0], monitors, true);
                 break;
                 // TODO write to socket about this
             }
@@ -264,14 +273,4 @@ function findAndStopCollidingPlaylists({
     if (shouldSendMessage) {
         notify(message);
     }
-}
-
-function findActivePlaylistMatch({
-    playlistMap,
-    newPlaylist
-}: {
-    playlistMap: Map<string, PlaylistClass>;
-    newPlaylist: NonNullable<message['playlist']>;
-}) {
-    return playlistMap.get(newPlaylist.activeMonitor.name);
 }

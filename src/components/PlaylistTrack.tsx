@@ -230,10 +230,12 @@ function PlaylistTrack() {
                             exit={{ y: 100, opacity: 0 }}
                             className="btn uppercase btn-error rounded-lg"
                             onClick={() => {
-                                stopPlaylist({
-                                    name: playlist.name,
-                                    activeMonitor: playlist.activeMonitor
-                                });
+                                if (playlist.name !== '') {
+                                    stopPlaylist({
+                                        name: playlist.name,
+                                        activeMonitor: playlist.activeMonitor
+                                    });
+                                }
                                 clearPlaylist();
                             }}
                         >

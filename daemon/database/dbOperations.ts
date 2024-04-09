@@ -8,7 +8,8 @@ import {
 } from '../types/daemonTypes';
 import { createConnector } from './database';
 import * as tables from './schema';
-import { asc, desc, eq, sql } from 'drizzle-orm';
+import { type SQL, asc, desc, eq, sql } from 'drizzle-orm';
+import { type PLAYLIST_ORDER_TYPES } from '../types/playlist';
 
 export class DBOperations {
     db: BetterSQLite3Database;
@@ -95,7 +96,8 @@ export class DBOperations {
         if (activePlaylists.length === 0) return undefined;
         const playlistsInfo = activePlaylists.map(playlist => {
             const images = this.getPlaylistImages(
-                playlist.activePlaylists.playlistID
+                playlist.activePlaylists.playlistID,
+                playlist.Playlists.order
             );
             const playlistInfo = {
                 ...playlist.Playlists,
@@ -125,7 +127,8 @@ export class DBOperations {
         });
         if (activePlaylist === undefined) return;
         const imagesInPlaylist = this.getPlaylistImages(
-            activePlaylist.Playlists.id
+            activePlaylist.Playlists.id,
+            activePlaylist.Playlists.order
         );
         return {
             ...activePlaylist.Playlists,
@@ -140,14 +143,25 @@ export class DBOperations {
             .where(eq(tables.playlist.name, name))
             .get();
         if (playlist === undefined) throw new Error('Playlist not found');
-        const playlistImages = this.getPlaylistImages(playlist.id);
+        const playlistImages = this.getPlaylistImages(
+            playlist.id,
+            playlist.order
+        );
         return {
             ...playlist,
             images: playlistImages
         };
     }
 
-    getPlaylistImages(playlistID: number) {
+    getPlaylistImages(playlistID: number, order: PLAYLIST_ORDER_TYPES | null) {
+        const orderByID = asc(tables.imageInPlaylist.indexInPlaylist);
+        const orderByRandom = asc(sql`RANDOM()`);
+        let selectedOrder: SQL<unknown>;
+        if (order === null || order === 'ordered') {
+            selectedOrder = orderByID;
+        } else {
+            selectedOrder = orderByRandom;
+        }
         return this.db
             .select({
                 id: tables.image.id,
@@ -165,7 +179,7 @@ export class DBOperations {
                 eq(tables.imageInPlaylist.imageID, tables.image.id)
             )
             .where(eq(tables.imageInPlaylist.playlistID, playlistID))
-            .orderBy(asc(tables.imageInPlaylist.indexInPlaylist))
+            .orderBy(selectedOrder)
             .all();
     }
 

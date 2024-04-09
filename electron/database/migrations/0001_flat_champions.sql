@@ -39,9 +39,7 @@ CREATE TABLE `selectedMonitor`(
 INSERT INTO appConfig (config)
 SELECT json_object(
     'killDaemon', CASE WHEN killDaemon = 1 THEN json('true') ELSE json('false') END,
-    'playlistStartOnFirstImage', CASE WHEN playlistStartOnFirstImage = 1 THEN json('true') ELSE json('false') END,
     'notifications', CASE WHEN notifications = 1 THEN json('true') ELSE json('false') END,
-    'swwwAnimations', CASE WHEN swwwAnimations = 1 THEN json('true') ELSE json('false') END,
     'introAnimation', CASE WHEN introAnimation = 1 THEN json('true') ELSE json('false') END,
     'startMinimized', CASE WHEN startMinimized = 1 THEN json('true') ELSE json('false') END,
     'minimizeInsteadOfClose', CASE WHEN minimizeInsteadOfClose = 1 THEN json('true') ELSE json('false') END,
@@ -79,6 +77,7 @@ INSERT INTO imagesInPlaylist SELECT * FROM oldImagesInPlaylist;--> statement-bre
 DROP TABLE activePlaylist;--> statement-breakpoint
 DROP TABLE oldImagesInPlaylist;--> statement-breakpoint
 ALTER TABLE Images ADD `isSelected` integer DEFAULT false NOT NULL;--> statement-breakpoint
+ALTER TABLE Playlists ADD `alwaysStartOnFirstImage` integer DEFAULT false NOT NULL;--> statement-breakpoint
 CREATE UNIQUE INDEX `Images_name_unique` ON `Images` (`name`);--> statement-breakpoint
 CREATE UNIQUE INDEX `Playlists_name_unique` ON `Playlists` (`name`);--> statement-breakpoint
 CREATE TRIGGER keep_recent_images

@@ -13,7 +13,7 @@ export class PlaylistController extends EventEmitter {
         this.connection = createConnection(WAYPAPER_ENGINE_SOCKET_PATH);
         this.retries = 0;
         this.connection.on('data', data => {
-            console.log('Received data:', data);
+            console.log('Received data:', data.toString());
         });
         this.connection.on('error', error => {
             console.error('Connection error:', error);

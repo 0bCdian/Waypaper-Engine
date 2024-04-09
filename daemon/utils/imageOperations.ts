@@ -168,7 +168,8 @@ async function resizeImageToDesiredResolution(
 
 export async function setImageAcrossMonitors(
     image: rendererImage | imageSelectType,
-    monitors: Monitor[]
+    monitors: Monitor[],
+    showAnimations: boolean
 ) {
     const imageFilePath = join(appDirectories.imagesDir, image.name);
     try {
@@ -181,7 +182,11 @@ export async function setImageAcrossMonitors(
         monitorsToImagesPair.forEach(pair => {
             commands.push(
                 execPomisified(
-                    getSwwwCommandFromConfiguration(pair.image, pair.monitor)
+                    getSwwwCommandFromConfiguration(
+                        pair.image,
+                        pair.monitor,
+                        showAnimations
+                    )
                 )
             );
         });
@@ -197,7 +202,8 @@ export async function setImageAcrossMonitors(
 
 export async function duplicateImageAcrossMonitors(
     image: rendererImage | imageSelectType,
-    monitors: Monitor[]
+    monitors: Monitor[],
+    showAnimations: boolean
 ) {
     const imageFilePath = join(appDirectories.imagesDir, image.name);
     const monitorsString = monitors.reduce((prev, current) => {
@@ -206,7 +212,8 @@ export async function duplicateImageAcrossMonitors(
     }, '');
     const command = getSwwwCommandFromConfiguration(
         imageFilePath,
-        monitorsString
+        monitorsString,
+        showAnimations
     );
     try {
         void execPomisified(command);

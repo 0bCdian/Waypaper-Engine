@@ -1,10 +1,13 @@
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { playlistStore } from '../stores/playlist';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { imagesStore } from '../stores/images';
 import { type playlistSelectType } from '../../electron/database/schema';
 import { PLAYLIST_TYPES } from '../../shared/types/playlist';
-import { type rendererImage } from '../types/rendererTypes';
+import {
+    type rendererPlaylist,
+    type rendererImage
+} from '../types/rendererTypes';
 import { useMonitorStore } from '../stores/monitors';
 import { IPC_MAIN_EVENTS } from '../../shared/constants';
 interface Input {
@@ -33,6 +36,7 @@ const LoadPlaylistModal = ({
 }: Props) => {
     const { clearPlaylist, setPlaylist } = playlistStore();
     const { imagesMap } = imagesStore();
+    const [error, setError] = useState('');
     const { register, handleSubmit, watch } = useForm<Input>();
     const { activeMonitor } = useMonitorStore();
     const modalRef = useRef<HTMLDialogElement>(null);
@@ -62,17 +66,28 @@ const LoadPlaylistModal = ({
                 imageToStore.isChecked = true;
                 imagesToStorePlaylist.push(imageToStore);
             });
-            const currentPlaylist = {
+            const currentPlaylist: rendererPlaylist = {
                 name: selectedPlaylist.name,
                 configuration: {
                     type: selectedPlaylist.type,
                     order: selectedPlaylist.order,
                     interval: selectedPlaylist.interval,
-                    showAnimations: selectedPlaylist.showAnimations
+                    showAnimations: selectedPlaylist.showAnimations,
+                    alwaysStartOnFirstImage:
+                        selectedPlaylist.alwaysStartOnFirstImage
                 },
                 images: imagesToStorePlaylist,
                 activeMonitor
             };
+            if (activeMonitor.monitors.length < 1) {
+                setError(
+                    'Select at least one display before setting a playlist'
+                );
+                setTimeout(() => {
+                    setError('');
+                }, 3000);
+                return;
+            }
             setPlaylist(currentPlaylist);
             startPlaylist({
                 name: currentPlaylist.name,
@@ -98,6 +113,24 @@ const LoadPlaylistModal = ({
                 <h2 className="font-bold text-4xl text-center py-3 ">
                     Load Playlist
                 </h2>
+                {error.length > 0 && (
+                    <div role="alert" className="alert m-0 alert-error">
+                        <svg
+                            xmlns="http://www.w3.org/2000/svg"
+                            className="stroke-current shrink-0 h-6 w-6"
+                            fill="none"
+                            viewBox="0 0 24 24"
+                        >
+                            <path
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                strokeWidth="2"
+                                d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+                            />
+                        </svg>
+                        <span>{error}</span>
+                    </div>
+                )}
 
                 <div className="divider"></div>
                 {playlistsInDB.length === 0 && (
@@ -129,6 +162,7 @@ const LoadPlaylistModal = ({
                         >
                             Select Playlist
                         </label>
+
                         <div className="flex align-baseline gap-10">
                             <select
                                 id="selectPlaylist"
@@ -173,7 +207,6 @@ const LoadPlaylistModal = ({
                                 Delete
                             </button>
                         </div>
-
                         <div className="flex gap-3 justify-center mt-3">
                             <button
                                 type="button"

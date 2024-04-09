@@ -16,16 +16,12 @@ const AppConfiguration = () => {
     useEffect(() => {
         void readAppConfig().then((data: appConfigSelectType['config']) => {
             setValue('killDaemon', data.killDaemon);
-            setValue(
-                'playlistStartOnFirstImage',
-                data.playlistStartOnFirstImage
-            );
             setValue('notifications', data.notifications);
-            setValue('swwwAnimations', data.swwwAnimations);
             setValue('startMinimized', data.startMinimized);
             setValue('minimizeInsteadOfClose', data.minimizeInsteadOfClose);
             setValue('showMonitorModalOnStart', data.showMonitorModalOnStart);
             setValue('imagesPerPage', data.imagesPerPage);
+            setValue('randomImageMonitor', data.randomImageMonitor);
         });
     }, []);
 
@@ -63,23 +59,6 @@ const AppConfiguration = () => {
                                     {...register('killDaemon')}
                                 />
                             </div>
-                            <div className="my-6 mx-10 flex justify-between">
-                                <label
-                                    htmlFor="playlistStart"
-                                    className="label"
-                                >
-                                    <span className="label-text text-3xl">
-                                        Always start playlists on the first
-                                        image
-                                    </span>
-                                </label>
-                                <input
-                                    type="checkbox"
-                                    id="playlistStart"
-                                    className="checkbox mt-4"
-                                    {...register('playlistStartOnFirstImage')}
-                                />
-                            </div>
                             <div className="mx-10 my-6 flex justify-between">
                                 <label
                                     htmlFor="notifications"
@@ -94,22 +73,6 @@ const AppConfiguration = () => {
                                     className="checkbox mt-4"
                                     id="notifications"
                                     {...register('notifications')}
-                                />
-                            </div>
-                            <div className="mx-10 my-6 flex justify-between">
-                                <label
-                                    htmlFor="swwwAnimations"
-                                    className="label"
-                                >
-                                    <span className="label-text text-3xl">
-                                        Swww animations
-                                    </span>
-                                </label>
-                                <input
-                                    type="checkbox"
-                                    id="swwwAnimations"
-                                    className="checkbox mt-4"
-                                    {...register('swwwAnimations')}
                                 />
                             </div>
                             <div className="mx-10 my-6 flex justify-between">
@@ -180,6 +143,27 @@ const AppConfiguration = () => {
                                     <option value="50">50</option>
                                     <option value="100">100</option>
                                     <option value="200">200</option>
+                                </select>
+                            </div>{' '}
+                            <div className="mx-10 my-6 flex items-end justify-between ">
+                                <label
+                                    htmlFor="randomImageMonitor"
+                                    className="label"
+                                >
+                                    <span className="label-text text-3xl">
+                                        Random image monitor behavior
+                                    </span>
+                                </label>
+                                <select
+                                    id="randomImageMonitor"
+                                    className=" select select-bordered shadow-inner rounded-md text-2xl"
+                                    {...register('randomImageMonitor')}
+                                >
+                                    <option value="clone">clone</option>
+                                    <option value="individual">
+                                        individual
+                                    </option>
+                                    <option value="extend">extend</option>
                                 </select>
                             </div>
                         </div>

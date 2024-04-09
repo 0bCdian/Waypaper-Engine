@@ -188,6 +188,7 @@ export interface configuration {
     interval: number | null;
     order: PLAYLIST_ORDER_TYPES | null;
     showAnimations: boolean;
+    alwaysStartOnFirstImage: boolean;
 }
 export interface rendererPlaylist {
     images: rendererImage[];

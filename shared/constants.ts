@@ -24,9 +24,7 @@ export const validImageExtensions: Formats[] = [
 
 export const initialAppConfig: appConfigType = {
     killDaemon: false,
-    playlistStartOnFirstImage: false,
     notifications: true,
-    swwwAnimations: true,
     startMinimized: false,
     minimizeInsteadOfClose: false,
     randomImageMonitor: 'clone',

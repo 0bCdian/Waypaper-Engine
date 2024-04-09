@@ -14,6 +14,7 @@ interface Inputs {
     hours: string | null;
     minutes: string | null;
     showTransition: boolean;
+    alwaysStartOnFirstImage: boolean;
 }
 
 const PlaylistConfigurationModal = () => {
@@ -40,6 +41,7 @@ const PlaylistConfigurationModal = () => {
                         type: data.type,
                         order: data.order,
                         showAnimations: data.showTransition,
+                        alwaysStartOnFirstImage: data.alwaysStartOnFirstImage,
                         interval
                     };
                     setConfiguration(configuration);
@@ -50,7 +52,8 @@ const PlaylistConfigurationModal = () => {
                     type: data.type,
                     order: null,
                     showAnimations: data.showTransition,
-                    interval: null
+                    interval: null,
+                    alwaysStartOnFirstImage: false
                 });
                 break;
             case 'dayofweek':
@@ -65,7 +68,8 @@ const PlaylistConfigurationModal = () => {
                     type: data.type,
                     order: null,
                     showAnimations: data.showTransition,
-                    interval: null
+                    interval: null,
+                    alwaysStartOnFirstImage: false
                 });
                 break;
             case 'never':
@@ -73,7 +77,8 @@ const PlaylistConfigurationModal = () => {
                     type: data.type,
                     order: data.order,
                     showAnimations: data.showTransition,
-                    interval: null
+                    interval: null,
+                    alwaysStartOnFirstImage: data.alwaysStartOnFirstImage
                 });
                 break;
             default:
@@ -104,9 +109,10 @@ const PlaylistConfigurationModal = () => {
         }
         setValue('type', playlist.configuration.type);
         setValue('order', playlist.configuration.order);
+        setValue('showTransition', playlist.configuration.showAnimations);
         setValue(
-            'showTransition',
-            Boolean(playlist.configuration.showAnimations)
+            'alwaysStartOnFirstImage',
+            playlist.configuration.alwaysStartOnFirstImage
         );
     }, [playlist]);
     return (
@@ -258,6 +264,24 @@ const PlaylistConfigurationModal = () => {
                         {...register('showTransition')}
                     />
                 </div>
+                {watch('type') !== PLAYLIST_TYPES.timeofday &&
+                    watch('type') !== PLAYLIST_TYPES.dayofweek && (
+                        <div className="flex justify-between items-baseline">
+                            <label
+                                htmlFor="alwaysStartOnFirstImage"
+                                className="label text-2xl font-semibold"
+                            >
+                                Always start on the first image
+                            </label>
+                            <input
+                                type="checkbox"
+                                className="toggle toggle-md rounded-full cursor-default"
+                                id="alwaysStartOnFirstImage"
+                                defaultChecked={false}
+                                {...register('alwaysStartOnFirstImage')}
+                            />
+                        </div>
+                    )}
                 <div className="divider mb-0"></div>
                 <div className="modal-action">
                     <button
