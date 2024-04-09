@@ -78,6 +78,11 @@ export class DaemonManager {
             process.exit(0);
         }
         switch (message.action) {
+            case ACTIONS.STOP_PLAYLIST_ON_REMOVED_DISPLAYS:
+                void stopPlaylistOnRemovedDisplays({
+                    playlistMap: this.#playlistMap
+                });
+                break;
             case ACTIONS.UPDATE_CONFIG:
                 configuration.app.update();
                 configuration.swww.update();
@@ -87,6 +92,17 @@ export class DaemonManager {
                 break;
             case ACTIONS.GET_INFO:
                 break;
+        }
+        if (message.monitors !== undefined) {
+            switch (message.action) {
+                case ACTIONS.STOP_PLAYLIST_BY_MONITOR_NAME:
+                    stopPlaylistByMonitorName({
+                        playlistMap: this.#playlistMap,
+                        monitors: message.monitors
+                    });
+                    break;
+            }
+            return;
         }
         if (message.playlist === undefined) return;
         switch (message.action) {
@@ -170,6 +186,12 @@ export class DaemonManager {
                     );
                     this.socket?.write(JSON.stringify(stopMessage.message));
                 }
+                break;
+            case ACTIONS.STOP_PLAYLIST_BY_NAME:
+                stopPlaylistByName({
+                    playlistMap: this.#playlistMap,
+                    playlistName: message.playlist.name
+                });
                 break;
             case ACTIONS.NEXT_IMAGE:
                 {
@@ -273,4 +295,65 @@ function findAndStopCollidingPlaylists({
     if (shouldSendMessage) {
         notify(message);
     }
+}
+
+function stopPlaylistByMonitorName({
+    playlistMap,
+    monitors
+}: {
+    playlistMap: Map<string, PlaylistClass>;
+    monitors: string[];
+}) {
+    playlistMap.forEach(runningPlaylist => {
+        let shouldStopCurrentPlaylist = false;
+        runningPlaylist.activeMonitor.monitors.forEach(
+            monitorInRunningPlaylist => {
+                if (monitors.includes(monitorInRunningPlaylist.name)) {
+                    shouldStopCurrentPlaylist = true;
+                }
+            }
+        );
+        if (shouldStopCurrentPlaylist) {
+            playlistMap.delete(runningPlaylist.activeMonitor.name);
+            runningPlaylist.stop();
+        }
+    });
+}
+
+function stopPlaylistByName({
+    playlistMap,
+    playlistName
+}: {
+    playlistMap: Map<string, PlaylistClass>;
+    playlistName: string;
+}) {
+    playlistMap.forEach(runningPlaylist => {
+        if (runningPlaylist.name === playlistName) {
+            playlistMap.delete(runningPlaylist.activeMonitor.name);
+            runningPlaylist.stop();
+        }
+    });
+}
+
+async function stopPlaylistOnRemovedDisplays({
+    playlistMap
+}: {
+    playlistMap: Map<string, PlaylistClass>;
+}) {
+    const currentMonitors = await getMonitors();
+    const monitorNames = currentMonitors.map(
+        monitorAvailable => monitorAvailable.name
+    );
+    playlistMap.forEach(runningPlaylist => {
+        let shouldStopCurrentPlaylist = false;
+        runningPlaylist.activeMonitor.monitors.forEach(monitorInPlaylist => {
+            if (!monitorNames.includes(monitorInPlaylist.name)) {
+                shouldStopCurrentPlaylist = true;
+            }
+        });
+        if (shouldStopCurrentPlaylist) {
+            playlistMap.delete(runningPlaylist.activeMonitor.name);
+            runningPlaylist.stop();
+        }
+    });
 }

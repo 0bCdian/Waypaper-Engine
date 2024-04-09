@@ -137,6 +137,7 @@ app.whenReady()
     .then(async () => {
         initSwwwDaemon();
         initWaypaperDaemon();
+        const playlistControllerInstance = new PlaylistController();
         screen.on('display-added', () => {
             if (win === null) return;
             win.webContents.send(IPC_MAIN_EVENTS.displaysChanged);
@@ -144,12 +145,12 @@ app.whenReady()
         screen.on('display-removed', () => {
             if (win === null) return;
             win.webContents.send(IPC_MAIN_EVENTS.displaysChanged);
+            playlistControllerInstance.stopPlaylistOnRemovedMonitors();
         });
         screen.on('display-metrics-changed', () => {
             if (win === null) return;
             win.webContents.send(IPC_MAIN_EVENTS.displaysChanged);
         });
-        const playlistControllerInstance = new PlaylistController();
         createMenu();
         void createTray();
         dbOperations.on('updateAppConfig', () => {
@@ -177,9 +178,7 @@ app.whenReady()
         );
 
         dbOperations.on('deletePlaylist', (playlistName: string) => {
-            console.log('onDeletePlaylist', playlistName);
-            // TODO
-            // playlistControllerInstance.stopAllPlaylistNamed(playlistName);
+            playlistControllerInstance.stopPlaylistByName(playlistName);
         });
 
         await createWindow();

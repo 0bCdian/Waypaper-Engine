@@ -10,6 +10,9 @@ export enum ACTIONS {
     PAUSE_PLAYLIST = 'pause-playlist',
     RESUME_PLAYLIST = 'resume-playlist',
     STOP_PLAYLIST = 'stop-playlist',
+    STOP_PLAYLIST_BY_NAME = 'stop-playlist-by-name',
+    STOP_PLAYLIST_BY_MONITOR_NAME = 'stop-playlist-by-monitor-name',
+    STOP_PLAYLIST_ON_REMOVED_DISPLAYS = 'stop-playlist-on-removed-displays',
     UPDATE_CONFIG = 'update-config',
     ERROR = 'error',
     GET_INFO = 'get-info'
@@ -22,6 +25,7 @@ export interface message {
         name: string;
         activeMonitor: ActiveMonitor;
     };
+    monitors?: string[];
 }
 
 export interface imageInPlaylist {

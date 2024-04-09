@@ -66,6 +66,9 @@ export enum ACTIONS {
     RESUME_PLAYLIST = 'resume-playlist',
     STOP_PLAYLIST = 'stop-playlist',
     UPDATE_CONFIG = 'update-config',
+    STOP_PLAYLIST_BY_NAME = 'stop-playlist-by-name',
+    STOP_PLAYLIST_BY_MONITOR_NAME = 'stop-playlist-by-monitor-name',
+    STOP_PLAYLIST_ON_REMOVED_DISPLAYS = 'stop-playlist-on-removed-displays',
     ERROR = 'error',
     GET_INFO = 'get-info'
 }
@@ -80,6 +83,7 @@ export interface message {
         name: string;
         activeMonitor: ActiveMonitor;
     };
+    monitors?: string[];
 }
 
 export type images = Array<{ name: string; time: number | null }>;

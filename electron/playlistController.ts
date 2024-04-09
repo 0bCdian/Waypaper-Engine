@@ -2,10 +2,9 @@ import { EventEmitter } from 'events';
 import { createConnection } from 'net';
 import { WAYPAPER_ENGINE_SOCKET_PATH } from './globals/appPaths';
 import { ACTIONS, type message } from './types/types';
-import { type ActiveMonitor } from '../shared/types/monitor';
+import { type Monitor, type ActiveMonitor } from '../shared/types/monitor';
 export class PlaylistController extends EventEmitter {
     #sendData(data: message) {
-        console.log('sending data from PlaylistController', data);
         const connection = createConnection(WAYPAPER_ENGINE_SOCKET_PATH);
         connection.write(JSON.stringify(data).concat('\n'), () => {
             connection.destroy();
@@ -40,6 +39,33 @@ export class PlaylistController extends EventEmitter {
         this.#sendData({
             action: ACTIONS.STOP_PLAYLIST,
             playlist
+        });
+    }
+
+    stopPlaylistByName(playlistName: string) {
+        this.#sendData({
+            action: ACTIONS.STOP_PLAYLIST_BY_NAME,
+            playlist: {
+                name: playlistName,
+                activeMonitor: {
+                    name: '',
+                    monitors: [] as Monitor[],
+                    extendAcrossMonitors: false
+                }
+            }
+        });
+    }
+
+    stopPlaylistByMonitorName(monitors: string[]) {
+        this.#sendData({
+            action: ACTIONS.STOP_PLAYLIST_BY_MONITOR_NAME,
+            monitors
+        });
+    }
+
+    stopPlaylistOnRemovedMonitors() {
+        this.#sendData({
+            action: ACTIONS.STOP_PLAYLIST_ON_REMOVED_DISPLAYS
         });
     }
 
