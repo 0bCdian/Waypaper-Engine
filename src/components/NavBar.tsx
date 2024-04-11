@@ -36,7 +36,7 @@ const NavBar = () => {
                                 setTimeout(() => {
                                     // @ts-expect-error daisyui
                                     window.monitors.showModal();
-                                }, 150);
+                                }, 100);
                             });
                         }}
                     >
