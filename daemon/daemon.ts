@@ -30,8 +30,10 @@ try {
         daemonManager.cleanUp();
         process.exit(0);
     });
-    process.on('uncaughtException', () => {
+    process.on('uncaughtException', error => {
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         notify('Daemon crashed, look up the logs.');
+        console.error(error);
         daemonManager.cleanUp();
         process.exit(0);
     });

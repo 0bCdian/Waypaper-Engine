@@ -133,9 +133,17 @@ export class PlaylistController extends EventEmitter {
     }
 
     killDaemon() {
-        void this.#sendData({
-            action: ACTIONS.STOP_DAEMON
-        });
+        const daemonSocketConnection = createConnection(
+            WAYPAPER_ENGINE_SOCKET_PATH
+        );
+        daemonSocketConnection.write(
+            JSON.stringify({ action: ACTIONS.STOP_DAEMON }),
+            () => {
+                daemonSocketConnection.destroy();
+            }
+        );
+
+        this.connection.destroy();
     }
 
     updateConfig() {

@@ -31,10 +31,12 @@ export class Playlist extends EventEmitter {
     showAnimations: boolean;
     constructor({
         playlistName,
-        activeMonitor
+        activeMonitor,
+        wasActive
     }: {
         playlistName: string;
         activeMonitor: ActiveMonitor;
+        wasActive: boolean;
     }) {
         super();
         this.dbOperations = new DBOperations();
@@ -58,6 +60,7 @@ export class Playlist extends EventEmitter {
         };
         this.eventCheckerTimeout = undefined;
         this.activeMonitor = activeMonitor;
+        if (wasActive) return;
         this.dbOperations.insertIntoActivePlaylists({
             playlistID: currentPlaylist.id,
             monitor: activeMonitor
@@ -67,7 +70,7 @@ export class Playlist extends EventEmitter {
     async setImage(image: rendererImage) {
         let retries = 0;
         let success = false;
-        while (retries < 0) {
+        while (retries < 3) {
             try {
                 if (this.activeMonitor.extendAcrossMonitors) {
                     await setImageAcrossMonitors(
@@ -85,8 +88,8 @@ export class Playlist extends EventEmitter {
                 success = true;
                 break;
             } catch (error) {
-                retries++;
                 initSwwwDaemon();
+                retries++;
             }
         }
         if (success) {

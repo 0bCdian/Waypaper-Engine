@@ -67,6 +67,7 @@ export enum ACTIONS {
     STOP_PLAYLIST = 'stop-playlist',
     UPDATE_CONFIG = 'update-config',
     STOP_PLAYLIST_BY_NAME = 'stop-playlist-by-name',
+    STOP_ALL_PLAYLISTS = 'stop-all-playlists',
     STOP_PLAYLIST_BY_MONITOR_NAME = 'stop-playlist-by-monitor-name',
     STOP_PLAYLIST_ON_REMOVED_DISPLAYS = 'stop-playlist-on-removed-displays',
     SET_IMAGE = 'set-image',
@@ -107,6 +108,7 @@ export type message =
               | ACTIONS.RANDOM_IMAGE
               | ACTIONS.UPDATE_CONFIG
               | ACTIONS.STOP_PLAYLIST_ON_REMOVED_DISPLAYS
+              | ACTIONS.STOP_ALL_PLAYLISTS
               | ACTIONS.SET_IMAGE;
       }
     | {

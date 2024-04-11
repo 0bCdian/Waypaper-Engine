@@ -62,7 +62,8 @@ export class DaemonManager {
         activePlaylists.forEach(playlist => {
             const playlistInstance = new Playlist({
                 playlistName: playlist.Playlists.name,
-                activeMonitor: playlist.activePlaylists.monitor
+                activeMonitor: playlist.activePlaylists.monitor,
+                wasActive: true
             });
             playlistInstance.start();
             this.#playlistMap.set(
@@ -74,13 +75,6 @@ export class DaemonManager {
 
     async processSocketMessage(message: message) {
         if (message.action === ACTIONS.STOP_DAEMON) {
-            const stoppedPlaylists: string[] = [];
-            this.#playlistMap.forEach(playlist => {
-                stoppedPlaylists.push(playlist.name);
-                playlist.stop();
-            });
-            const message = `Stopped all following playlists:${JSON.stringify(stoppedPlaylists)}`;
-            notify(message);
             this.socket?.write(JSON.stringify({ action: ACTIONS.STOP_DAEMON }));
             this.serverInstance.close();
             process.exit(0);
@@ -106,6 +100,17 @@ export class DaemonManager {
                     monitors: message.monitors
                 });
                 break;
+            case ACTIONS.STOP_ALL_PLAYLISTS:
+                {
+                    const stoppedPlaylists: string[] = [];
+                    this.#playlistMap.forEach(playlist => {
+                        stoppedPlaylists.push(playlist.name);
+                        playlist.stop();
+                    });
+                    const message = `Stopped all following playlists:${JSON.stringify(stoppedPlaylists)}`;
+                    notify(message);
+                }
+                break;
             case ACTIONS.START_PLAYLIST:
                 {
                     const runningPlaylist = this.#playlistMap.get(
@@ -125,7 +130,8 @@ export class DaemonManager {
                     });
                     const newPlaylist = new Playlist({
                         playlistName: message.playlist.name,
-                        activeMonitor: message.playlist.activeMonitor
+                        activeMonitor: message.playlist.activeMonitor,
+                        wasActive: false
                     });
                     newPlaylist.start();
                     this.#playlistMap.set(

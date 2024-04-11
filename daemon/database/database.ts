@@ -38,9 +38,9 @@ export function migrateDB() {
     }
 }
 
+migrateDB();
 export function createConnector() {
     const sqlite = Database(DB_LOCATION);
-    migrateDB();
     const drizzleDB: BetterSQLite3Database = drizzle(sqlite);
     return drizzleDB;
 }

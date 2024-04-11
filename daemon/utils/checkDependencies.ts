@@ -2,23 +2,28 @@ import { execSync, spawn } from 'node:child_process';
 import { notify } from './notifications';
 function checkIfSwwwIsInstalled() {
     try {
-        execSync(`swww --version`, { encoding: 'utf-8' });
+        execSync(`swww --version`);
+        console.info('swww is installed in the system');
     } catch (error) {
-        notify(
-            `Swww is not installed or not in the path, please find instructions in the README.md on how to install it \n \n ${error as string}`
+        console.warn(
+            'swww is not installed, please find instructions in the README.md on how to install it'
         );
-        throw new Error(
-            `swww is not installed, please find instructions in the README.md on how to install it  \n \n ${error as string}`
-        );
+        console.error(error);
+        throw new Error('swww is not installed');
     }
 }
-
 export function initSwwwDaemon() {
     checkIfSwwwIsInstalled();
     try {
-        execSync(`ps -A | grep "swww-daemon"`, { encoding: 'utf-8' });
+        execSync('ps -A | grep "swww-daemon"');
+        console.log('Swww daemon already running');
     } catch (error) {
-        spawn('swww-daemon &', { shell: '/bin/sh', detached: true }).unref();
+        console.log('daemon not running, initiating swww...');
+        const output = spawn('swww-daemon &', {
+            stdio: 'ignore',
+            shell: true
+        });
+        output.unref();
     }
 }
 

@@ -172,32 +172,28 @@ export async function setImageAcrossMonitors(
     showAnimations: boolean
 ) {
     const imageFilePath = join(appDirectories.imagesDir, image.name);
-    try {
-        const commands: Array<Promise<any>> = [];
-        const monitorsToImagesPair = await extendImageAcrossMonitors(
-            image,
-            imageFilePath,
-            monitors
-        );
-        monitorsToImagesPair.forEach(pair => {
-            commands.push(
-                execPomisified(
-                    getSwwwCommandFromConfiguration(
-                        pair.image,
-                        pair.monitor,
-                        showAnimations
-                    )
+    const commands: Array<Promise<any>> = [];
+    const monitorsToImagesPair = await extendImageAcrossMonitors(
+        image,
+        imageFilePath,
+        monitors
+    );
+    monitorsToImagesPair.forEach(pair => {
+        commands.push(
+            execPomisified(
+                getSwwwCommandFromConfiguration(
+                    pair.image,
+                    pair.monitor,
+                    showAnimations
                 )
-            );
-        });
-        await Promise.all(commands);
-        if (configuration.script !== undefined) {
-            await execPomisified(`${configuration.script} ${imageFilePath}`);
-        }
-        notifyImageSet(image.name, imageFilePath);
-    } catch (error) {
-        console.error(error);
+            )
+        );
+    });
+    await Promise.all(commands);
+    if (configuration.script !== undefined) {
+        await execPomisified(`${configuration.script} ${imageFilePath}`);
     }
+    notifyImageSet(image.name, imageFilePath);
 }
 
 export async function duplicateImageAcrossMonitors(
@@ -215,13 +211,9 @@ export async function duplicateImageAcrossMonitors(
         monitorsString,
         showAnimations
     );
-    try {
-        await execPomisified(command);
-        if (configuration.script !== undefined) {
-            await execPomisified(`${configuration.script} ${imageFilePath}`);
-        }
-        notifyImageSet(image.name, imageFilePath);
-    } catch (error) {
-        console.error(error);
+    await execPomisified(command);
+    if (configuration.script !== undefined) {
+        await execPomisified(`${configuration.script} ${imageFilePath}`);
     }
+    notifyImageSet(image.name, imageFilePath);
 }

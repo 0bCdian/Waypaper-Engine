@@ -16,6 +16,7 @@ export enum ACTIONS {
     STOP_PLAYLIST_BY_NAME = 'stop-playlist-by-name',
     STOP_PLAYLIST_BY_MONITOR_NAME = 'stop-playlist-by-monitor-name',
     STOP_PLAYLIST_ON_REMOVED_DISPLAYS = 'stop-playlist-on-removed-displays',
+    STOP_ALL_PLAYLISTS = 'stop-all-playlists',
     SET_IMAGE = 'set-image',
     ERROR = 'error',
     GET_INFO = 'get-info'
@@ -50,7 +51,8 @@ export type message =
               | ACTIONS.STOP_DAEMON
               | ACTIONS.RANDOM_IMAGE
               | ACTIONS.UPDATE_CONFIG
-              | ACTIONS.STOP_PLAYLIST_ON_REMOVED_DISPLAYS;
+              | ACTIONS.STOP_PLAYLIST_ON_REMOVED_DISPLAYS
+              | ACTIONS.STOP_ALL_PLAYLISTS;
       }
     | {
           action: ACTIONS.STOP_PLAYLIST_BY_NAME;
