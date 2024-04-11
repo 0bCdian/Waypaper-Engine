@@ -17,7 +17,8 @@ import {
     deleteImagesFromGallery,
     remakeThumbnailsIfImagesExist,
     getMonitors,
-    openContextMenu
+    openContextMenu,
+    createAppDirsIfNotExist
 } from './appFunctions';
 import { devMenu, prodMenu, trayMenu } from './globals/menus';
 import { iconPath } from './binaries';
@@ -135,6 +136,8 @@ app.whenReady()
     .then(async () => {
         initSwwwDaemon();
         await initWaypaperDaemon();
+        createAppDirsIfNotExist();
+        await remakeThumbnailsIfImagesExist();
         const playlistControllerInstance = new PlaylistController();
         screen.on('display-added', () => {
             if (win === null) return;
@@ -184,14 +187,8 @@ app.whenReady()
         dbOperations.on('updateTray', () => {
             void createTray();
         });
-
-        await createWindow();
         registerFileProtocol();
-        void remakeThumbnailsIfImagesExist().then(() => {
-            if (win !== null) {
-                win.reload();
-            }
-        });
+        await createWindow();
     })
     .catch(e => {
         console.error(e);

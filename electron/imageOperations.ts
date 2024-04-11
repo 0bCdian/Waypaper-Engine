@@ -7,6 +7,14 @@ import { promisify } from 'node:util';
 import { type Monitor } from '../shared/types/monitor';
 import { type imageSelectType } from './database/schema';
 import { type rendererImage } from '../src/types/rendererTypes';
+import {
+    existsSync,
+    mkdirSync,
+    readFileSync,
+    rmSync,
+    writeFileSync
+} from 'node:fs';
+import { type cacheJson } from '../daemon/types/monitor';
 const execPomisified = promisify(exec);
 export async function resizeImageToFitMonitor(
     buffer: Sharp.Sharp,
@@ -16,7 +24,7 @@ export async function resizeImageToFitMonitor(
 ) {
     const widthDifferenceImageToMonitors = requiredWidth - Image.width;
     const heightDifferenceImageToCurrentMonitor = requiredHeight - Image.height;
-    const resizedImageFileName = `${appDirectories.tempImages}/resized.${Image.format}`;
+    const resizedImageFileName = `${appDirectories.extendedImages}/resized.${Image.format}`;
     if (
         widthDifferenceImageToMonitors < 0 ||
         heightDifferenceImageToCurrentMonitor < 0
@@ -74,7 +82,7 @@ export async function splitImageVerticalAxis(
     let lastWidth: number = 0;
     for (let current = 0; current < monitors.length; current++) {
         const finalImageName = join(
-            appDirectories.tempImages,
+            appDirectories.extendedImages,
             `${current}.${Image.format}`
         );
         const { width, height } = monitors[current];
@@ -133,7 +141,7 @@ export async function splitImageHorizontalAxis(
 
     for (let current = 0; current < monitors.length; current++) {
         const finalImageName = join(
-            appDirectories.tempImages,
+            appDirectories.extendedImages,
             `${current}.${Image.format}`
         );
         const { width, height } = monitors[current];
@@ -195,15 +203,22 @@ function getDesiredDimensionsToExtendImage(Monitors: Monitor[]) {
     );
     return desiredDimensions;
 }
-export async function extendImageAcrossMonitors(
+export async function createSplitImages(
     image: rendererImage | imageSelectType,
     imageFilePath: string,
-    monitors: Monitor[]
+    monitors: Monitor[],
+    imageNameWithoutExtension: string
 ) {
-    const monitorsToImagesPairsArray: Array<{
-        monitor: string;
+    const monitorImagePairs: Array<{
+        monitor: Monitor;
         image: string;
     }> = [];
+    const dirFilePath = join(
+        appDirectories.extendedImages,
+        imageNameWithoutExtension
+    );
+
+    createOrEmptyDirectory(dirFilePath);
     for (let index = 0; index < monitors.length; index++) {
         const monitor = monitors[index];
         const monitorX =
@@ -214,18 +229,19 @@ export async function extendImageAcrossMonitors(
             monitor.position.y === 0
                 ? monitor.position.y
                 : monitor.position.y - 1;
-        const finalImageName = join(
-            appDirectories.tempImages,
-            `${index}.${image.format}`
-        );
 
+        const finalImageName = join(
+            dirFilePath,
+            `${monitor.name}_${index}_${image.name}`
+        );
         const desiredDimensions = getDesiredDimensionsToExtendImage(monitors);
         const resizedImageFilename = await resizeImageToDesiredResolution(
             desiredDimensions,
             Sharp(imageFilePath, {
                 animated: true,
                 limitInputPixels: false
-            })
+            }),
+            dirFilePath
         );
         const buffer = Sharp(resizedImageFilename, {
             animated: true,
@@ -239,12 +255,105 @@ export async function extendImageAcrossMonitors(
                 height: monitor.height
             })
             .toFile(finalImageName);
-        monitorsToImagesPairsArray.push({
-            monitor: monitors[index].name,
+        monitorImagePairs.push({
+            monitor: monitors[index],
             image: finalImageName
         });
     }
-    return monitorsToImagesPairsArray;
+    createSplitImagesJson({
+        Image: image,
+        imageNameWithoutExtension,
+        monitorImagePairs
+    });
+    return monitorImagePairs;
+}
+
+function createOrEmptyDirectory(path: string) {
+    if (existsSync(path)) {
+        rmSync(path);
+        mkdirSync(path);
+    } else {
+        mkdirSync(path);
+    }
+}
+
+function createSplitImagesJson({
+    Image,
+    imageNameWithoutExtension,
+    monitorImagePairs
+}: {
+    Image: rendererImage | imageSelectType;
+    imageNameWithoutExtension: string;
+    monitorImagePairs: Array<{ image: string; monitor: Monitor }>;
+}) {
+    const cacheJson: cacheJson = {
+        imageName: Image.name,
+        monitors: monitorImagePairs.map(pair => {
+            return {
+                ...pair.monitor,
+                currentImage: pair.image
+            };
+        })
+    };
+    writeFileSync(
+        join(
+            appDirectories.extendedImages,
+            imageNameWithoutExtension,
+            'info.json'
+        ),
+        JSON.stringify(cacheJson)
+    );
+}
+
+function getCacheIfExists({
+    imageNameWithoutExtension,
+    monitors
+}: {
+    imageNameWithoutExtension: string;
+    monitors: Monitor[];
+}):
+    | Array<{
+          monitor: Monitor;
+          image: string;
+      }>
+    | undefined {
+    const dirLocation = join(
+        appDirectories.extendedImages,
+        imageNameWithoutExtension
+    );
+
+    if (!existsSync(dirLocation)) return;
+    let areCompatible = false;
+    const cacheJson: cacheJson = JSON.parse(
+        readFileSync(join(dirLocation, 'info.json'), { encoding: 'utf8' })
+    );
+    for (let idx = 0; idx < monitors.length; idx++) {
+        const monitorNew = monitors[idx];
+        let matches = false;
+        cacheJson.monitors.forEach(monitorCached => {
+            if (
+                monitorCached.name === monitorNew.name &&
+                monitorCached.width === monitorNew.width &&
+                monitorCached.height === monitorNew.height &&
+                monitorCached.position.x === monitorNew.position.x
+            ) {
+                matches = true;
+                areCompatible = true;
+            }
+        });
+        if (!matches) {
+            areCompatible = false;
+            break;
+        }
+    }
+    if (areCompatible) {
+        return cacheJson.monitors.map(monitor => {
+            return {
+                image: monitor.currentImage,
+                monitor
+            };
+        });
+    }
 }
 
 async function resizeImageToDesiredResolution(
@@ -252,7 +361,8 @@ async function resizeImageToDesiredResolution(
         x: number;
         y: number;
     },
-    buffer: Sharp.Sharp
+    buffer: Sharp.Sharp,
+    directoryPath: string
 ): Promise<string> {
     const { width, height, format } = await buffer.metadata();
     if (width === undefined || height === undefined) {
@@ -260,7 +370,7 @@ async function resizeImageToDesiredResolution(
     }
     let finalWidth = width;
     let finalHeight = height;
-    const resizedImageFileName = `${appDirectories.tempImages}/resized.${format}`;
+    const resizedImageFileName = `${directoryPath}/resized.${format}`;
     if (finalWidth < desiredDimensions.x) {
         finalWidth = desiredDimensions.x;
     }
@@ -311,17 +421,42 @@ export async function setImageAcrossMonitors(
     image: rendererImage | imageSelectType,
     monitors: Monitor[]
 ) {
+    const imageNameWithoutExtension = image.name.split('.').at(0);
+    if (imageNameWithoutExtension === undefined) {
+        console.error(
+            `Could not extract image name without extension ${image.name}`
+        );
+        throw new Error(
+            `Could not extract image name without extension ${image.name}`
+        );
+    }
+
     const imageFilePath = join(appDirectories.imagesDir, image.name);
-    const monitorsToImagesPair = await extendImageAcrossMonitors(
-        image,
-        imageFilePath,
+    let monitorImagePairs: Array<{
+        monitor: Monitor;
+        image: string;
+    }> = [];
+
+    const cachedPairs = getCacheIfExists({
+        imageNameWithoutExtension,
         monitors
-    );
+    });
+    if (cachedPairs !== undefined) {
+        monitorImagePairs = cachedPairs;
+    } else {
+        monitorImagePairs = await createSplitImages(
+            image,
+            imageFilePath,
+            monitors,
+            imageNameWithoutExtension
+        );
+    }
+
     const commands: Array<Promise<any>> = [];
-    monitorsToImagesPair.forEach(pair => {
+    monitorImagePairs.forEach(pair => {
         commands.push(
             execPomisified(
-                getSwwwCommandFromConfiguration(pair.image, pair.monitor)
+                getSwwwCommandFromConfiguration(pair.image, pair.monitor.name)
             )
         );
     });

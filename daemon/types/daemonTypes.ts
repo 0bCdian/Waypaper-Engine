@@ -239,3 +239,16 @@ export interface rendererPlaylist {
 export interface rendererImage extends imageSelectType {
     time: number | null;
 }
+export interface cacheJson {
+    imageName: string;
+    monitors: Array<{
+        currentImage: string;
+        name: string;
+        width: number;
+        height: number;
+        position: {
+            x: number;
+            y: number;
+        };
+    }>;
+}

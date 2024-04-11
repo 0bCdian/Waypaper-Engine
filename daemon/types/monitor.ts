@@ -43,3 +43,17 @@ export interface ActiveMonitor {
     monitors: Monitor[];
     extendAcrossMonitors: boolean;
 }
+
+export interface cacheJson {
+    imageName: string;
+    monitors: Array<{
+        currentImage: string;
+        name: string;
+        width: number;
+        height: number;
+        position: {
+            x: number;
+            y: number;
+        };
+    }>;
+}

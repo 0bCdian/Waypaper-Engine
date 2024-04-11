@@ -61,13 +61,13 @@ export function useFilteredImages() {
                               );
                           case 'lessThan':
                               return (
-                                  image.width < widthToFilter &&
-                                  image.height < heightToFilter
+                                  image.width <= widthToFilter &&
+                                  image.height <= heightToFilter
                               );
                           case 'moreThan':
                               return (
-                                  image.width > widthToFilter &&
-                                  image.height > heightToFilter
+                                  image.width >= widthToFilter &&
+                                  image.height >= heightToFilter
                               );
                       }
                       return undefined;

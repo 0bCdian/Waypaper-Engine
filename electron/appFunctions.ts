@@ -178,7 +178,31 @@ export async function openAndReturnImagesObject(
     const fileNames = imagePathsFromFilePicker.map(image => basename(image));
     return { imagePaths: imagePathsFromFilePicker, fileNames };
 }
-
+async function remakeThumbnailImages(files: string[]) {
+    for (let current = 0; current < files.length; current++) {
+        const imageName = files[current];
+        const filePathSource = join(appDirectories.imagesDir, imageName);
+        const [name] = imageName.split('.');
+        const fileDestinationPath = join(
+            appDirectories.thumbnails,
+            name + '.webp'
+        );
+        try {
+            const buffer = Sharp(filePathSource, {
+                animated: true,
+                limitInputPixels: false
+            });
+            await buffer
+                .resize(300, 200, {
+                    fit: 'cover'
+                })
+                .webp({ quality: 60, force: true, effort: 6 })
+                .toFile(fileDestinationPath);
+        } catch (error) {
+            console.error('failed to create thumbnail for:', imageName, error);
+        }
+    }
+}
 export async function remakeThumbnailsIfImagesExist() {
     const thumbnails = await readdir(appDirectories.thumbnails);
     if (thumbnails.length < 1) {
@@ -186,35 +210,21 @@ export async function remakeThumbnailsIfImagesExist() {
         if (imagesStored.length < 1) {
             return;
         }
-        for (let current = 0; current < imagesStored.length; current++) {
-            const filePathSource = join(
-                appDirectories.imagesDir,
-                imagesStored[current]
-            );
-            void createCacheThumbnail(filePathSource, imagesStored[current]);
-        }
+        await remakeThumbnailImages(imagesStored);
     }
 }
-export function checkCacheOrCreateItIfNotExists() {
-    if (!existsSync(appDirectories.rootCache)) {
-        createFolders(appDirectories.rootCache, appDirectories.thumbnails);
-    } else {
-        if (!existsSync(appDirectories.thumbnails)) {
-            createFolders(appDirectories.thumbnails);
-        }
-    }
-    if (!existsSync(appDirectories.mainDir)) {
-        deleteFolders(appDirectories.thumbnails);
-        createFolders(
-            appDirectories.mainDir,
-            appDirectories.imagesDir,
-            appDirectories.thumbnails,
-            appDirectories.tempImages
-        );
-    } else {
-        if (!existsSync(appDirectories.imagesDir)) {
-            deleteFolders(appDirectories.thumbnails);
-            createFolders(appDirectories.imagesDir, appDirectories.thumbnails);
+export function createAppDirsIfNotExist() {
+    const directoriesToCreate: string[] = [
+        appDirectories.rootCache,
+        appDirectories.thumbnails,
+        appDirectories.extendedImages,
+        appDirectories.mainDir,
+        appDirectories.imagesDir
+    ];
+
+    for (const directory of directoriesToCreate) {
+        if (!existsSync(directory)) {
+            createFolders(directory);
         }
     }
 }
@@ -229,15 +239,15 @@ function createFolders(...args: string[]) {
     }
 }
 
-function deleteFolders(...args: string[]) {
-    try {
-        args.forEach(path => {
-            rmSync(path, { recursive: true, force: true });
-        });
-    } catch (error) {
-        console.error(error);
-    }
-}
+// function deleteFolders(...args: string[]) {
+//     try {
+//         args.forEach(path => {
+//             rmSync(path, { recursive: true, force: true });
+//         });
+//     } catch (error) {
+//         console.error(error);
+//     }
+// }
 
 async function checkAndRenameDuplicates(filenamesToCopy: string[]) {
     const currentImagesStored = new Set(
@@ -292,6 +302,7 @@ export async function setImage(
             success = true;
             break;
         } catch (error) {
+            console.error(error);
             initSwwwDaemon();
             retries++;
         }
