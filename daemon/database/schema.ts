@@ -7,6 +7,7 @@ import {
 import { type appConfigType } from '../types/app';
 import { type Formats } from '../types/image';
 import { type ActiveMonitor } from '../types/monitor';
+import { sql } from 'drizzle-orm';
 export const image = sqliteTable('Images', {
     id: integer('id').notNull().primaryKey({ autoIncrement: true }),
     name: text('name').notNull().unique(),
@@ -74,7 +75,8 @@ export const imageHistory = sqliteTable('imageHistory', {
     imageID: integer('imageID')
         .notNull()
         .references(() => image.id, { onDelete: 'cascade' }),
-    monitor: text('monitor', { mode: 'json' }).notNull().$type<ActiveMonitor>()
+    monitor: text('monitor', { mode: 'json' }).notNull().$type<ActiveMonitor>(),
+    time: text('time').default(sql`(CURRENT_TIME)`)
 });
 
 export const selectedMonitor = sqliteTable('selectedMonitor', {

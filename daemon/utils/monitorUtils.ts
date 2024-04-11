@@ -2,6 +2,7 @@ import { type wlr_output, type Monitor } from '../types/monitor';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import { configuration } from '../config/config';
+import { initSwwwDaemon } from './checkDependencies';
 const execPomisified = promisify(exec);
 
 export function parseResolution(resolution: string) {
@@ -25,13 +26,29 @@ export async function getMonitorsInfo() {
     }
 }
 export async function getMonitors(): Promise<Monitor[]> {
-    const { stdout, stderr } = await execPomisified('swww query', {
-        encoding: 'utf-8'
-    });
+    let stdout: string | undefined;
+    let stderr: string | undefined;
+    let tries = 0;
+    while (tries < 3) {
+        try {
+            const result = await execPomisified('swww query', {
+                encoding: 'utf-8'
+            });
+            stdout = result.stdout;
+            stderr = result.stderr;
+            break;
+        } catch (error) {
+            initSwwwDaemon();
+            tries++;
+        }
+    }
+    if (stdout === undefined || stderr === undefined) {
+        throw new Error('Could not query swww');
+    }
     const wlrOutput = await getMonitorsInfo();
     const parsedSwwwQuery = parseSwwwQuery(stdout);
     if (stderr.length > 0 || wlrOutput === undefined)
-        throw new Error('Could not execute swww query');
+        throw new Error('either wlrOutput is undefined or swww query failed');
     return parsedSwwwQuery.map(swwwMonitor => {
         const matchingMonitor = wlrOutput.find(monitor => {
             return monitor.name === swwwMonitor.name;
@@ -85,7 +102,7 @@ export function getSwwwCommandFromConfiguration(
         case 'alias':
             transitionPos = swwwConfig.transitionPosition;
     }
-    const command = `swww img ${imagePath} ${
+    const command = `swww img "${imagePath}" ${
         monitor !== undefined ? `--outputs ${monitor}` : ''
     } --resize="${swwwConfig.resizeType}" --fill-color "${
         swwwConfig.fillColor

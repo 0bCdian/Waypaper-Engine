@@ -12,6 +12,7 @@ import {
 } from '../utils/imageOperations';
 import { type PLAYLIST_TYPES_TYPE } from '../types/playlist';
 import { EventEmitter } from 'node:stream';
+import { initSwwwDaemon } from '../utils/checkDependencies';
 
 export class Playlist extends EventEmitter {
     images: rendererImage[];
@@ -41,7 +42,7 @@ export class Playlist extends EventEmitter {
             name: playlistName
         });
         if (currentPlaylist === undefined) {
-            this.emit('Error', activeMonitor.name);
+            this.emit(ACTIONS.ERROR, { error: 'Playlist missing in database' });
         }
         this.images = currentPlaylist.images;
         this.name = playlistName;
@@ -64,23 +65,39 @@ export class Playlist extends EventEmitter {
     }
 
     async setImage(image: rendererImage) {
-        if (this.activeMonitor.extendAcrossMonitors) {
-            await setImageAcrossMonitors(
-                image,
-                this.activeMonitor.monitors,
-                this.showAnimations
-            );
-        } else {
-            await duplicateImageAcrossMonitors(
-                image,
-                this.activeMonitor.monitors,
-                this.showAnimations
-            );
+        let retries = 0;
+        let success = false;
+        while (retries < 0) {
+            try {
+                if (this.activeMonitor.extendAcrossMonitors) {
+                    await setImageAcrossMonitors(
+                        image,
+                        this.activeMonitor.monitors,
+                        this.showAnimations
+                    );
+                } else {
+                    await duplicateImageAcrossMonitors(
+                        image,
+                        this.activeMonitor.monitors,
+                        this.showAnimations
+                    );
+                }
+                success = true;
+                break;
+            } catch (error) {
+                retries++;
+                initSwwwDaemon();
+            }
         }
-        this.dbOperations.addImageToHistory({
-            image,
-            activeMonitor: this.activeMonitor
-        });
+        if (success) {
+            this.dbOperations.addImageToHistory({
+                image,
+                activeMonitor: this.activeMonitor
+            });
+            this.emit(ACTIONS.SET_IMAGE, image);
+        } else {
+            throw new Error('Could not set image,check the logs');
+        }
     }
 
     pause() {
@@ -106,6 +123,11 @@ export class Playlist extends EventEmitter {
         this.dbOperations.removeActivePlaylist({
             playlistName: this.name
         });
+        const currentPlaylist: { name: string; activeMonitor: ActiveMonitor } =
+            {
+                name: this.name,
+                activeMonitor: this.activeMonitor
+            };
         // Make sure we clean the timers to avoid memory leaks
         if (this.eventCheckerTimeout !== undefined) {
             clearInterval(this.eventCheckerTimeout);
@@ -118,11 +140,7 @@ export class Playlist extends EventEmitter {
         this.playlistTimer.timeoutID = undefined;
         this.playlistTimer.executionTimeStamp = undefined;
         this.eventCheckerTimeout = undefined;
-
-        return {
-            action: ACTIONS.STOP_PLAYLIST,
-            message: `Stopped ${this.name}`
-        };
+        this.emit(ACTIONS.STOP_PLAYLIST, currentPlaylist);
     }
 
     resetInterval() {
@@ -210,6 +228,7 @@ export class Playlist extends EventEmitter {
                     this.emit('Error', this.activeMonitor.name);
                     break;
             }
+            this.emit(ACTIONS.START_PLAYLIST, { name: this.name });
         } catch (error) {
             const errorString = error as string;
             notify(

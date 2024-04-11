@@ -8,7 +8,7 @@ import {
 } from '../types/daemonTypes';
 import { createConnector } from './database';
 import * as tables from './schema';
-import { type SQL, asc, desc, eq, sql } from 'drizzle-orm';
+import { type SQL, asc, desc, eq, sql, notInArray } from 'drizzle-orm';
 import { type PLAYLIST_ORDER_TYPES } from '../types/playlist';
 
 export class DBOperations {
@@ -191,7 +191,7 @@ export class DBOperations {
             .all();
     }
 
-    getImageHistory(limit: number) {
+    getImageHistory() {
         return this.db
             .select()
             .from(tables.image)
@@ -199,7 +199,7 @@ export class DBOperations {
                 tables.imageHistory,
                 eq(tables.imageHistory.imageID, tables.image.id)
             )
-            .limit(limit)
+            .orderBy(desc(tables.imageHistory.time))
             .all();
     }
 
@@ -271,15 +271,32 @@ export class DBOperations {
         image,
         activeMonitor
     }: {
-        image: rendererImage;
+        image: rendererImage | tables.imageSelectType;
         activeMonitor: ActiveMonitor;
     }) {
+        const currentImageHistory = this.db
+            .select()
+            .from(tables.imageHistory)
+            .all();
         const row: tables.imageHistoryInsertType = {
             monitor: activeMonitor,
             imageID: image.id
         };
-
-        this.db.insert(tables.imageHistory).values(row).run();
+        let shouldUpdate = false;
+        currentImageHistory.forEach(existingRow => {
+            if (
+                existingRow.imageID === row.imageID &&
+                existingRow.monitor.name === row.monitor.name
+            ) {
+                shouldUpdate = true;
+            }
+        });
+        if (shouldUpdate) {
+            const query = sql`UPDATE imageHistory SET time=CURRENT_TIME WHERE imageID=${row.imageID}`;
+            this.db.run(query);
+        } else {
+            this.db.insert(tables.imageHistory).values(row).run();
+        }
     }
 
     updateImagesPerPage({ imagesPerPage }: { imagesPerPage: number }) {
@@ -331,13 +348,20 @@ export class DBOperations {
         return selectedMonitor?.monitor;
     }
 
-    getRandomImage(number = 1) {
+    getRandomImage({
+        limit,
+        alreadySetImages
+    }: {
+        limit: number;
+        alreadySetImages: string[];
+    }) {
         try {
             const result = this.db
                 .select()
                 .from(tables.image)
+                .where(notInArray(tables.image.name, alreadySetImages))
                 .orderBy(sql`random()`)
-                .limit(number)
+                .limit(limit)
                 .all();
             return result;
         } catch (error) {

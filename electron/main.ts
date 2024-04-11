@@ -116,27 +116,25 @@ function registerFileProtocol() {
     );
 }
 
-async function createTray() {
+export async function createTray() {
     if (tray === null) {
         tray = new Tray(join(iconPath, '512x512.png'));
-    } else {
-        tray.removeAllListeners();
+        tray.setToolTip('Waypaper Engine');
+        tray.on('click', () => {
+            if (win !== null) {
+                win.isVisible() ? win.hide() : win.show();
+            }
+        });
     }
     if (win === null) return;
-    const trayContextMenu = await trayMenu(app, win);
+    const trayContextMenu = await trayMenu(app, tray);
     tray.setContextMenu(trayContextMenu);
-    tray.setToolTip('Waypaper Engine');
-    tray.on('click', () => {
-        if (win !== null) {
-            win.isVisible() ? win.hide() : win.show();
-        }
-    });
 }
 Menu.setApplicationMenu(null);
 app.whenReady()
     .then(async () => {
         initSwwwDaemon();
-        initWaypaperDaemon();
+        await initWaypaperDaemon();
         const playlistControllerInstance = new PlaylistController();
         screen.on('display-added', () => {
             if (win === null) return;
@@ -174,11 +172,17 @@ app.whenReady()
             'upsertPlaylist',
             (playlist: { name: string; activeMonitor: ActiveMonitor }) => {
                 playlistControllerInstance.startPlaylist(playlist);
+                void createTray();
             }
         );
 
         dbOperations.on('deletePlaylist', (playlistName: string) => {
             playlistControllerInstance.stopPlaylistByName(playlistName);
+            void createTray();
+        });
+
+        dbOperations.on('updateTray', () => {
+            void createTray();
         });
 
         await createWindow();
@@ -241,6 +245,11 @@ ipcMain.on(
         void setImage(image, activeMonitor);
     }
 );
+ipcMain.on('setRandomImage', () => {
+    const playlistControllerInstance = new PlaylistController();
+    playlistControllerInstance.randomImage();
+});
+
 ipcMain.on('savePlaylist', (_, playlistObject: rendererPlaylist) => {
     savePlaylist(playlistObject);
     void createTray();
@@ -273,9 +282,7 @@ ipcMain.on(
 ipcMain.on(
     'openContextMenuImage',
     (event, image: rendererImage, selectedImagesLength: number) => {
-        if (win !== null) {
-            void openContextMenu(event, image, selectedImagesLength, win);
-        }
+        void openContextMenu(event, image, selectedImagesLength);
     }
 );
 

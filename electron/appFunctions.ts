@@ -27,6 +27,8 @@ import {
 import { validImageExtensions } from '../shared/constants';
 import { appDirectories } from './globals/appPaths';
 import { type Formats } from '../shared/types/image';
+import { type imageSelectType } from './database/schema';
+import { initSwwwDaemon } from './startDaemons';
 const execPomisified = promisify(exec);
 const execFilePomisified = promisify(execFile);
 function openImagesFromFilePicker(browserWindow: BrowserWindow | null) {
@@ -272,19 +274,32 @@ function getUniqueFileNames(existingFiles: Set<string>, filesToCopy: string[]) {
 }
 
 export async function setImage(
-    image: rendererImage,
+    image: rendererImage | imageSelectType,
     activeMonitor: ActiveMonitor
 ) {
-    try {
-        if (activeMonitor.extendAcrossMonitors) {
-            await setImageAcrossMonitors(image, activeMonitor.monitors);
-        } else {
-            await duplicateImageAcrossMonitors(image, activeMonitor.monitors);
+    let retries = 0;
+    let success = false;
+    while (retries < 3) {
+        try {
+            if (activeMonitor.extendAcrossMonitors) {
+                await setImageAcrossMonitors(image, activeMonitor.monitors);
+            } else {
+                await duplicateImageAcrossMonitors(
+                    image,
+                    activeMonitor.monitors
+                );
+            }
+            success = true;
+            break;
+        } catch (error) {
+            initSwwwDaemon();
+            retries++;
         }
+    }
+    if (success) {
         dbOperations.addImageToHistory({ image, activeMonitor });
-    } catch (error) {
-        console.error(error);
-        console.error('SetImageError', image);
+    } else {
+        throw new Error('Could not set image, check logs');
     }
 }
 
@@ -335,13 +350,29 @@ export function deleteImagesFromGallery(
 }
 
 export async function getMonitors(): Promise<Monitor[]> {
-    const { stdout, stderr } = await execPomisified('swww query', {
-        encoding: 'utf-8'
-    });
+    let stdout: string | undefined;
+    let stderr: string | undefined;
+    let tries = 0;
+    while (tries < 3) {
+        try {
+            const result = await execPomisified('swww query', {
+                encoding: 'utf-8'
+            });
+            stdout = result.stdout;
+            stderr = result.stderr;
+            break;
+        } catch (error) {
+            initSwwwDaemon();
+            tries++;
+        }
+    }
+    if (stdout === undefined || stderr === undefined) {
+        throw new Error('Could not query swww');
+    }
     const wlrOutput = await getMonitorsInfo();
     const parsedSwwwQuery = parseSwwwQuery(stdout);
     if (stderr.length > 0 || wlrOutput === undefined)
-        throw new Error('Could not execute swww query');
+        throw new Error('either wlrOutput is undefined or swww query failed');
     return parsedSwwwQuery.map(swwwMonitor => {
         const matchingMonitor = wlrOutput.find(monitor => {
             return monitor.name === swwwMonitor.name;
@@ -395,11 +426,9 @@ export async function getMonitorsInfo() {
 export async function openContextMenu(
     event: Electron.IpcMainInvokeEvent,
     image: rendererImage | undefined,
-    selectedImagesLength: number,
-    win: BrowserWindow
+    selectedImagesLength: number
 ) {
     const template = await contextMenu({
-        win,
         selectedImagesLength,
         event,
         image

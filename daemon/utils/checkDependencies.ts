@@ -13,7 +13,7 @@ function checkIfSwwwIsInstalled() {
     }
 }
 
-function isSwwwDaemonRunning() {
+export function initSwwwDaemon() {
     checkIfSwwwIsInstalled();
     try {
         execSync(`ps -A | grep "swww-daemon"`, { encoding: 'utf-8' });
@@ -23,7 +23,6 @@ function isSwwwDaemonRunning() {
 }
 
 export function isWaypaperDaemonRunning() {
-    isSwwwDaemonRunning();
     try {
         const stdout = execSync('pidof wpe-daemon', { encoding: 'utf-8' });
         notify(`Waypaper Engine daemon already running,process pid: ${stdout}`);

@@ -129,7 +129,7 @@ export class DBOperations extends EventEmitter {
             .all();
     }
 
-    getImageHistory(limit: number) {
+    getImageHistory() {
         return db
             .select()
             .from(tables.image)
@@ -137,7 +137,7 @@ export class DBOperations extends EventEmitter {
                 tables.imageHistory,
                 eq(tables.imageHistory.imageID, tables.image.id)
             )
-            .limit(limit)
+            .orderBy(desc(tables.imageHistory.time))
             .all();
     }
 
@@ -240,27 +240,29 @@ export class DBOperations extends EventEmitter {
         image,
         activeMonitor
     }: {
-        image: rendererImage;
+        image: rendererImage | tables.imageSelectType;
         activeMonitor: ActiveMonitor;
     }) {
+        const currentImageHistory = db.select().from(tables.imageHistory).all();
         const row: tables.imageHistoryInsertType = {
             monitor: activeMonitor,
             imageID: image.id
         };
-        db.insert(tables.imageHistory).values(row).run();
-    }
-
-    static getRandomImage() {
-        try {
-            const result = db
-                .select()
-                .from(tables.image)
-                .orderBy(sql`random()`)
-                .limit(1)
-                .get();
-            console.log('this is the result of getRandomImage', result);
-        } catch (error) {
-            console.error(error);
+        let shouldUpdate = false;
+        currentImageHistory.forEach(existingRow => {
+            if (
+                existingRow.imageID === row.imageID &&
+                existingRow.monitor.name === row.monitor.name
+            ) {
+                shouldUpdate = true;
+            }
+        });
+        if (shouldUpdate) {
+            const query = sql`UPDATE imageHistory SET time=CURRENT_TIME WHERE imageID=${row.imageID}`;
+            db.run(query);
+        } else {
+            db.insert(tables.imageHistory).values(row).run();
         }
+        this.emit('updateTray');
     }
 }

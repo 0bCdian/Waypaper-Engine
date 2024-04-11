@@ -1,11 +1,15 @@
 import { DaemonManager } from './server/daemonManager';
-import { isWaypaperDaemonRunning } from './utils/checkDependencies';
+import {
+    isWaypaperDaemonRunning,
+    initSwwwDaemon
+} from './utils/checkDependencies';
 import { notify } from './utils/notifications';
 import { configuration } from './config/config';
 if (isWaypaperDaemonRunning()) {
     console.error('Another instance is already running');
     process.exit(2);
 }
+initSwwwDaemon();
 const scriptFlag = process.argv.find(arg => {
     return arg.includes('--script');
 });
@@ -18,13 +22,16 @@ try {
     const daemonManager = new DaemonManager();
     process.on('SIGTERM', function () {
         notify('Exiting daemon');
-        daemonManager.serverInstance.close();
         daemonManager.cleanUp();
         process.exit(0);
     });
     process.on('SIGINT', () => {
         notify('Exiting daemon');
-        daemonManager.serverInstance.close();
+        daemonManager.cleanUp();
+        process.exit(0);
+    });
+    process.on('uncaughtException', () => {
+        notify('Daemon crashed, look up the logs.');
         daemonManager.cleanUp();
         process.exit(0);
     });

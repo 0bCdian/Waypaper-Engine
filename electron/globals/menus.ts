@@ -1,4 +1,10 @@
-import { type BrowserWindow, type App, Menu, dialog } from 'electron';
+import {
+    type BrowserWindow,
+    type App,
+    Menu,
+    dialog,
+    type Tray
+} from 'electron';
 import { dbOperations } from '../database/globalConfig';
 import {
     deleteImagesFromGallery,
@@ -72,16 +78,44 @@ export const prodMenu = ({ app }: { app: App }) => {
     return prodMenu;
 };
 
-export const trayMenu = async (app: App, _win: BrowserWindow) => {
+export const trayMenu = async (app: App, trayInstance: Tray) => {
     // const monitors = await getMonitors();
-    // const playlists = dbOperations.getActivePlaylists();
-    // const allPlaylists = dbOperations.getPlaylists();
-    // const imageHistory = dbOperations.getImageHistory(10);
-    // console.log(screen.getAllDisplays());
-    // console.log(monitors, playlists, allPlaylists, imageHistory);
-    // console.log(win, app);
+    //    const playlists = dbOperations.getActivePlaylists();
+    //  const allPlaylists = dbOperations.getPlaylists();
+    const imageHistory = dbOperations.getImageHistory();
+
     const playlistControllerInstance = new PlaylistController();
+    /* const playlistMenu: Array<
+        Electron.MenuItemConstructorOptions | Electron.MenuItem
+    > = []; */
+    /* const monitorsMenu: Array<
+        Electron.MenuItemConstructorOptions | Electron.MenuItem
+    > = []; */
+    const imageHistoryMenu: Array<
+        Electron.MenuItemConstructorOptions | Electron.MenuItem
+    > = [
+        {
+            label: 'Recent wallpapers',
+            submenu: imageHistory.map((image, index) => {
+                return {
+                    label: `${index + 1}.${image.Images.name}`,
+                    click: () => {
+                        void setImage(
+                            image.Images,
+                            image.imageHistory.monitor
+                        ).then(() => {
+                            void trayMenu(app, trayInstance).then(menu => {
+                                trayInstance.setContextMenu(menu);
+                            });
+                        });
+                    }
+                };
+            })
+        }
+    ];
+
     const baseMenu = [
+        ...imageHistoryMenu,
         {
             label: 'Random Wallpaper',
             click: () => {
@@ -169,12 +203,10 @@ export const trayMenu = async (app: App, _win: BrowserWindow) => {
 //
 export async function contextMenu({
     event,
-    win,
     selectedImagesLength,
     image
 }: {
     event: Electron.IpcMainInvokeEvent;
-    win: BrowserWindow;
     selectedImagesLength: number;
     image: rendererImage | undefined;
 }) {
@@ -231,7 +263,8 @@ export async function contextMenu({
             },
             {
                 label: `Delete ${image.name}`,
-                click: () => {
+                click: (_, win) => {
+                    if (win === undefined) return;
                     void dialog
                         .showMessageBox(win, {
                             message: `Are you sure you want to delete ${image.name}`,
@@ -256,7 +289,8 @@ export async function contextMenu({
         selectedImagesMenu = [
             {
                 label: 'Add selected images to playlist',
-                click: () => {
+                click: (_, win) => {
+                    if (win === undefined) return;
                     win.webContents.send(
                         MENU_EVENTS.addSelectedImagesToPlaylist
                     );
@@ -264,7 +298,8 @@ export async function contextMenu({
             },
             {
                 label: 'Remove selected images from current playlist',
-                click: () => {
+                click: (_, win) => {
+                    if (win === undefined) return;
                     win.webContents.send(
                         MENU_EVENTS.removeSelectedImagesFromPlaylist
                     );
@@ -272,7 +307,8 @@ export async function contextMenu({
             },
             {
                 label: 'Delete selected images from gallery',
-                click: () => {
+                click: (_, win) => {
+                    if (win === undefined) return;
                     void dialog
                         .showMessageBox(win, {
                             message: `Are you sure you want to delete ${selectedImagesLength} images from the gallery?`,
@@ -291,7 +327,8 @@ export async function contextMenu({
             },
             {
                 label: 'Unselect images in current page',
-                click: () => {
+                click: (_, win) => {
+                    if (win === undefined) return;
                     win.webContents.send(
                         MENU_EVENTS.clearSelectionOnCurrentPage
                     );
@@ -299,7 +336,8 @@ export async function contextMenu({
             },
             {
                 label: 'Unselect all images',
-                click: () => {
+                click: (_, win) => {
+                    if (win === undefined) return;
                     win.webContents.send(MENU_EVENTS.clearSelection);
                 }
             }
@@ -310,13 +348,15 @@ export async function contextMenu({
         ...selectedImagesMenu,
         {
             label: 'Select all images in current page',
-            click: () => {
+            click: (_: Electron.MenuItem, win: BrowserWindow | undefined) => {
+                if (win === undefined) return;
                 win.webContents.send(MENU_EVENTS.selectAllImagesInCurrentPage);
             }
         },
         {
             label: 'Select all images in gallery',
-            click: () => {
+            click: (_: Electron.MenuItem, win: BrowserWindow | undefined) => {
+                if (win === undefined) return;
                 win.webContents.send(MENU_EVENTS.selectAllImagesInGallery);
             }
         },
@@ -325,21 +365,34 @@ export async function contextMenu({
             submenu: [
                 {
                     label: '20',
-                    click: () => {
+                    click: (
+                        _: Electron.MenuItem,
+                        win: BrowserWindow | undefined
+                    ) => {
+                        if (win === undefined) return;
                         win.webContents.send(MENU_EVENTS.setImagesPerPage, 20);
                         dbOperations.updateImagesPerPage({ imagesPerPage: 20 });
                     }
                 },
                 {
                     label: '50',
-                    click: () => {
+                    click: (
+                        _: Electron.MenuItem,
+                        win: BrowserWindow | undefined
+                    ) => {
+                        if (win === undefined) return;
+
                         win.webContents.send(MENU_EVENTS.setImagesPerPage, 50);
                         dbOperations.updateImagesPerPage({ imagesPerPage: 50 });
                     }
                 },
                 {
                     label: '100',
-                    click: () => {
+                    click: (
+                        _: Electron.MenuItem,
+                        win: BrowserWindow | undefined
+                    ) => {
+                        if (win === undefined) return;
                         win.webContents.send(MENU_EVENTS.setImagesPerPage, 100);
                         dbOperations.updateImagesPerPage({
                             imagesPerPage: 100
@@ -348,7 +401,11 @@ export async function contextMenu({
                 },
                 {
                     label: '200',
-                    click: () => {
+                    click: (
+                        _: Electron.MenuItem,
+                        win: BrowserWindow | undefined
+                    ) => {
+                        if (win === undefined) return;
                         win.webContents.send(MENU_EVENTS.setImagesPerPage, 200);
                         dbOperations.updateImagesPerPage({
                             imagesPerPage: 200

@@ -34,6 +34,9 @@ export const ELECTRON_API = {
     setImage: (image: rendererImage, activeMonitor: ActiveMonitor) => {
         ipcRenderer.send('setImage', image, activeMonitor);
     },
+    setRandomImage: () => {
+        ipcRenderer.send('setRandomImage');
+    },
     savePlaylist: (playlistObject: rendererPlaylist) => {
         ipcRenderer.send('savePlaylist', playlistObject);
     },

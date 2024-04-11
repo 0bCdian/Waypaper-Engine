@@ -23,6 +23,7 @@ CREATE TABLE `appConfig` (
 CREATE TABLE `imageHistory` (
 	`imageID` integer NOT NULL,
 	`monitor` text NOT NULL,
+  `time` text DEFAULT (CURRENT_TIME),
 	FOREIGN KEY (`imageID`) REFERENCES `Images`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint

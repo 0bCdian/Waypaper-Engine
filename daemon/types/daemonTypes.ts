@@ -69,6 +69,7 @@ export enum ACTIONS {
     STOP_PLAYLIST_BY_NAME = 'stop-playlist-by-name',
     STOP_PLAYLIST_BY_MONITOR_NAME = 'stop-playlist-by-monitor-name',
     STOP_PLAYLIST_ON_REMOVED_DISPLAYS = 'stop-playlist-on-removed-displays',
+    SET_IMAGE = 'set-image',
     ERROR = 'error',
     GET_INFO = 'get-info'
 }
@@ -77,14 +78,47 @@ export interface ActiveMonitor {
     monitors: Monitor[];
     extendAcrossMonitors: boolean;
 }
-export interface message {
-    action: ACTIONS;
-    playlist?: {
-        name: string;
-        activeMonitor: ActiveMonitor;
-    };
-    monitors?: string[];
-}
+export type message =
+    | {
+          action:
+              | ACTIONS.START_PLAYLIST
+              | ACTIONS.STOP_PLAYLIST
+              | ACTIONS.NEXT_IMAGE
+              | ACTIONS.PREVIOUS_IMAGE
+              | ACTIONS.GET_INFO
+              | ACTIONS.PAUSE_PLAYLIST
+              | ACTIONS.RESUME_PLAYLIST;
+          playlist: {
+              name: string;
+              activeMonitor: ActiveMonitor;
+          };
+      }
+    | {
+          action: ACTIONS.ERROR;
+          error: { error: string };
+      }
+    | {
+          action: ACTIONS.SET_IMAGE;
+          image: imageSelectType | rendererImage;
+      }
+    | {
+          action:
+              | ACTIONS.STOP_DAEMON
+              | ACTIONS.RANDOM_IMAGE
+              | ACTIONS.UPDATE_CONFIG
+              | ACTIONS.STOP_PLAYLIST_ON_REMOVED_DISPLAYS
+              | ACTIONS.SET_IMAGE;
+      }
+    | {
+          action: ACTIONS.STOP_PLAYLIST_BY_NAME;
+          playlist: {
+              name: string;
+          };
+      }
+    | {
+          action: ACTIONS.STOP_PLAYLIST_BY_MONITOR_NAME;
+          monitors: string[];
+      };
 
 export type images = Array<{ name: string; time: number | null }>;
 

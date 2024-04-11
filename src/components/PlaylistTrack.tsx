@@ -9,7 +9,7 @@ import { type openFileAction } from '../../shared/types';
 import { type rendererImage } from '../types/rendererTypes';
 import { useSetLastActivePlaylist } from '../hooks/useSetLastActivePlaylist';
 let firstRender = true;
-const { stopPlaylist } = window.API_RENDERER;
+const { stopPlaylist, setRandomImage } = window.API_RENDERER;
 const MiniPlaylistCard = lazy(async () => await import('./MiniPlaylistCard'));
 function PlaylistTrack() {
     const {
@@ -177,6 +177,14 @@ function PlaylistTrack() {
                         className="btn uppercase btn-primary rounded-lg"
                     >
                         Load Playlist
+                    </button>
+                    <button
+                        onClick={() => {
+                            setRandomImage();
+                        }}
+                        className="btn uppercase btn-primary rounded-lg"
+                    >
+                        Random Image
                     </button>
 
                     <AnimatePresence mode="sync">

@@ -2,7 +2,6 @@ import Sharp = require('sharp');
 import { configuration } from './database/globalConfig';
 import { appDirectories } from './globals/appPaths';
 import { join } from 'node:path';
-import { getMonitors } from './appFunctions';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import { type Monitor } from '../shared/types/monitor';
@@ -177,52 +176,6 @@ export async function splitImageHorizontalAxis(
     return monitorsToImagesPairsArray;
 }
 
-export async function createAndSetMonitorIdentifierImages() {
-    const monitors = await getMonitors();
-    monitors.forEach(monitor => {
-        const { width, height } = monitor;
-        const outputPath = join(
-            appDirectories.tempImages,
-            monitor.name + '.webp'
-        ); // Output file path
-        const textSize = Math.floor(width / 12);
-        const svg = `<svg width="${width}" height="${height}">
-    <rect x="0" y="0" width="${width}" height="${height}" fill="#ffffff" />
-    <text x="50%" y="50%" text-anchor="middle" alignment-baseline="middle" font-family="Arial" font-size="${textSize}" fill="#000000">${monitor.name}</text>
-  </svg>`;
-        Sharp({
-            create: {
-                width,
-                height,
-                channels: 4,
-                background: { r: 255, g: 255, b: 255, alpha: 1 }
-            }
-        })
-            .composite([{ input: Buffer.from(svg), gravity: 'center' }])
-            .toFile(outputPath, (err, info) => {
-                // this is a workaround because sharp type of error should be undefined or error, but defaults to always being error.
-                // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-                if (err) {
-                    console.error(err);
-                } else {
-                    console.log('Image created:', info);
-                    try {
-                        void execPomisified(
-                            `swww img -t none -o ${monitor.name} ${outputPath} `
-                        );
-                    } catch (error) {
-                        console.warn(error);
-                    }
-                    setTimeout(() => {
-                        void execPomisified(
-                            `swww img -o ${monitor.name} -t none ${monitor.currentImage}`
-                        );
-                    }, 3000);
-                }
-            });
-    });
-}
-
 function getDesiredDimensionsToExtendImage(Monitors: Monitor[]) {
     const desiredDimensions = Monitors.reduce(
         (previousValue, currentValue) => {
@@ -338,7 +291,7 @@ function getSwwwCommandFromConfiguration(imagePath: string, monitor?: string) {
         case 'alias':
             transitionPos = swwwConfig.transitionPosition;
     }
-    const command = `swww img ${imagePath} ${
+    const command = `swww img "${imagePath}" ${
         monitor !== undefined ? `--outputs ${monitor}` : ''
     } --resize="${swwwConfig.resizeType}" --fill-color "${
         swwwConfig.fillColor
@@ -359,26 +312,22 @@ export async function setImageAcrossMonitors(
     monitors: Monitor[]
 ) {
     const imageFilePath = join(appDirectories.imagesDir, image.name);
-    try {
-        const commands: Array<Promise<any>> = [];
-        const monitorsToImagesPair = await extendImageAcrossMonitors(
-            image,
-            imageFilePath,
-            monitors
+    const monitorsToImagesPair = await extendImageAcrossMonitors(
+        image,
+        imageFilePath,
+        monitors
+    );
+    const commands: Array<Promise<any>> = [];
+    monitorsToImagesPair.forEach(pair => {
+        commands.push(
+            execPomisified(
+                getSwwwCommandFromConfiguration(pair.image, pair.monitor)
+            )
         );
-        monitorsToImagesPair.forEach(pair => {
-            commands.push(
-                execPomisified(
-                    getSwwwCommandFromConfiguration(pair.image, pair.monitor)
-                )
-            );
-        });
-        void Promise.all(commands);
-        if (configuration.script !== undefined) {
-            await execPomisified(`${configuration.script} ${imageFilePath}`);
-        }
-    } catch (error) {
-        console.error(error);
+    });
+    await Promise.all(commands);
+    if (configuration.script !== undefined) {
+        await execPomisified(`${configuration.script} ${imageFilePath}`);
     }
 }
 
@@ -395,12 +344,8 @@ export async function duplicateImageAcrossMonitors(
         imageFilePath,
         monitorsString
     );
-    try {
-        void execPomisified(command);
-        if (configuration.script !== undefined) {
-            await execPomisified(`${configuration.script} ${imageFilePath}`);
-        }
-    } catch (error) {
-        console.error(error);
+    await execPomisified(command);
+    if (configuration.script !== undefined) {
+        await execPomisified(`${configuration.script} ${imageFilePath}`);
     }
 }

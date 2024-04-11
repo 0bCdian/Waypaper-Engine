@@ -1,32 +1,67 @@
 import { type Formats } from '../../shared/types/image';
 import { type ActiveMonitor } from '../../shared/types/monitor';
+import { type rendererImage } from '../../src/types/rendererTypes';
+import { type imageSelectType } from '../database/schema';
 
 export enum ACTIONS {
     NEXT_IMAGE = 'next-image',
     PREVIOUS_IMAGE = 'previous-image',
-    RANDOM_IMAGE = 'random-image',
     START_PLAYLIST = 'start-playlist',
+    RANDOM_IMAGE = 'random-image',
     STOP_DAEMON = 'stop-daemon',
     PAUSE_PLAYLIST = 'pause-playlist',
     RESUME_PLAYLIST = 'resume-playlist',
     STOP_PLAYLIST = 'stop-playlist',
+    UPDATE_CONFIG = 'update-config',
     STOP_PLAYLIST_BY_NAME = 'stop-playlist-by-name',
     STOP_PLAYLIST_BY_MONITOR_NAME = 'stop-playlist-by-monitor-name',
     STOP_PLAYLIST_ON_REMOVED_DISPLAYS = 'stop-playlist-on-removed-displays',
-    UPDATE_CONFIG = 'update-config',
+    SET_IMAGE = 'set-image',
     ERROR = 'error',
     GET_INFO = 'get-info'
 }
 
 // refactor into using a discriminated type
-export interface message {
-    action: ACTIONS;
-    playlist?: {
-        name: string;
-        activeMonitor: ActiveMonitor;
-    };
-    monitors?: string[];
-}
+export type message =
+    | {
+          action:
+              | ACTIONS.START_PLAYLIST
+              | ACTIONS.STOP_PLAYLIST
+              | ACTIONS.NEXT_IMAGE
+              | ACTIONS.PREVIOUS_IMAGE
+              | ACTIONS.GET_INFO
+              | ACTIONS.PAUSE_PLAYLIST
+              | ACTIONS.RESUME_PLAYLIST;
+          playlist: {
+              name: string;
+              activeMonitor: ActiveMonitor;
+          };
+      }
+    | {
+          action: ACTIONS.ERROR;
+          error: { error: string };
+      }
+    | {
+          action: ACTIONS.SET_IMAGE;
+          image: imageSelectType | rendererImage;
+      }
+    | {
+          action:
+              | ACTIONS.STOP_DAEMON
+              | ACTIONS.RANDOM_IMAGE
+              | ACTIONS.UPDATE_CONFIG
+              | ACTIONS.STOP_PLAYLIST_ON_REMOVED_DISPLAYS;
+      }
+    | {
+          action: ACTIONS.STOP_PLAYLIST_BY_NAME;
+          playlist: {
+              name: string;
+          };
+      }
+    | {
+          action: ACTIONS.STOP_PLAYLIST_BY_MONITOR_NAME;
+          monitors: string[];
+      };
 
 export interface imageInPlaylist {
     name: string;
