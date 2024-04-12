@@ -12,27 +12,22 @@ import {
     setImage
 } from '../appFunctions';
 // import { screen } from 'electron';
-import { MENU_EVENTS } from '../../shared/constants';
+import { IPC_MAIN_EVENTS, MENU_EVENTS } from '../../shared/constants';
 import { type rendererImage } from '../../src/types/rendererTypes';
 import { type ActiveMonitor } from '../../shared/types/monitor';
 import { PlaylistController } from '../playlistController';
+import { createTray } from '../main';
 
-export const devMenu = ({
-    win,
-    app
-}: {
-    win: BrowserWindow | null;
-    app: App;
-}) => {
-    const devMenu = [
+export const devMenu = () => {
+    const devMenuTemplate: Array<
+        Electron.MenuItemConstructorOptions | Electron.MenuItem
+    > = [
         {
             label: 'File',
             submenu: [
                 {
                     label: 'Quit',
-                    click: () => {
-                        app.exit();
-                    }
+                    role: 'quit'
                 }
             ]
         },
@@ -42,9 +37,8 @@ export const devMenu = ({
                 if (process.platform === 'darwin') return 'Alt+Command+I';
                 else return 'Ctrl+Shift+I';
             })(),
-            click: function () {
-                if (win?.isFocused() ?? false)
-                    win?.webContents.toggleDevTools();
+            click: (_, win) => {
+                win?.webContents.toggleDevTools();
             }
         },
         {
@@ -53,44 +47,104 @@ export const devMenu = ({
                 if (process.platform === 'darwin') return 'Command+R';
                 else return 'Ctrl+R';
             })(),
-            click: function () {
+            click: function (_, win) {
                 if (win?.isFocused() ?? false) win?.reload();
             }
         }
     ];
+
+    const devMenu = Menu.buildFromTemplate(devMenuTemplate);
     return devMenu;
 };
 
-export const prodMenu = ({ app }: { app: App }) => {
-    const prodMenu = [
-        {
-            label: 'File',
-            submenu: [
-                {
-                    label: 'Quit',
-                    click: () => {
-                        app.exit();
-                    }
-                }
-            ]
-        }
-    ];
-    return prodMenu;
-};
-
 export const trayMenu = async (app: App, trayInstance: Tray) => {
-    // const monitors = await getMonitors();
-    //    const playlists = dbOperations.getActivePlaylists();
-    //  const allPlaylists = dbOperations.getPlaylists();
+    const activePlaylists = dbOperations.getActivePlaylists();
     const imageHistory = dbOperations.getImageHistory();
 
     const playlistControllerInstance = new PlaylistController();
-    /* const playlistMenu: Array<
+    const playlistMenu: Array<
         Electron.MenuItemConstructorOptions | Electron.MenuItem
-    > = []; */
-    /* const monitorsMenu: Array<
-        Electron.MenuItemConstructorOptions | Electron.MenuItem
-    > = []; */
+    > = [
+        {
+            label: 'Active playlists',
+            submenu: activePlaylists.map(playlist => {
+                return {
+                    label: `${playlist.Playlists.name} on: ${playlist.activePlaylists.monitor.name}`,
+                    submenu: [
+                        {
+                            label: 'Next image',
+                            click: () => {
+                                playlistControllerInstance.nextImage({
+                                    name: playlist.Playlists.name,
+                                    activeMonitor:
+                                        playlist.activePlaylists.monitor
+                                });
+                            },
+                            enabled:
+                                playlist.Playlists.type === 'timer' ||
+                                playlist.Playlists.type === 'never'
+                        },
+
+                        {
+                            label: 'Previous image',
+                            click: () => {
+                                playlistControllerInstance.previousImage({
+                                    name: playlist.Playlists.name,
+                                    activeMonitor:
+                                        playlist.activePlaylists.monitor
+                                });
+                            },
+                            enabled:
+                                playlist.Playlists.type === 'timer' ||
+                                playlist.Playlists.type === 'never'
+                        },
+
+                        {
+                            label: 'Pause',
+                            click: () => {
+                                playlistControllerInstance.pausePlaylist({
+                                    name: playlist.Playlists.name,
+                                    activeMonitor:
+                                        playlist.activePlaylists.monitor
+                                });
+                            },
+                            enabled: playlist.Playlists.type === 'timer'
+                        },
+                        {
+                            label: 'Resume',
+                            click: () => {
+                                playlistControllerInstance.resumePlaylist({
+                                    name: playlist.Playlists.name,
+                                    activeMonitor:
+                                        playlist.activePlaylists.monitor
+                                });
+                            },
+                            enabled: playlist.Playlists.type === 'timer'
+                        },
+                        {
+                            label: 'Stop',
+                            click: (_, win) => {
+                                playlistControllerInstance.stopPlaylist({
+                                    name: playlist.Playlists.name,
+                                    activeMonitor:
+                                        playlist.activePlaylists.monitor
+                                });
+                                void createTray;
+                                win?.webContents.send(
+                                    IPC_MAIN_EVENTS.clearPlaylist,
+                                    {
+                                        name: playlist.Playlists.name,
+                                        activeMonitor:
+                                            playlist.activePlaylists.monitor
+                                    }
+                                );
+                            }
+                        }
+                    ]
+                };
+            })
+        }
+    ];
     const imageHistoryMenu: Array<
         Electron.MenuItemConstructorOptions | Electron.MenuItem
     > = [
@@ -114,8 +168,9 @@ export const trayMenu = async (app: App, trayInstance: Tray) => {
         }
     ];
 
-    const baseMenu = [
-        ...imageHistoryMenu,
+    const baseMenu: Array<
+        Electron.MenuItemConstructorOptions | Electron.MenuItem
+    > = [
         {
             label: 'Random Wallpaper',
             click: () => {
@@ -129,78 +184,17 @@ export const trayMenu = async (app: App, trayInstance: Tray) => {
             }
         }
     ];
+
+    if (imageHistory.length > 0) {
+        baseMenu.unshift(...imageHistoryMenu);
+    }
+
+    if (activePlaylists.length > 0) {
+        baseMenu.unshift(...playlistMenu);
+    }
     return Menu.buildFromTemplate(baseMenu);
 };
 
-// export const trayMenuWithControls = ({
-//     PlaylistController,
-//     win,
-//     app
-// }: {
-//     win: BrowserWindow | null;
-//     app: App;
-// }) => {
-//     const menuWithControls = Menu.buildFromTemplate([
-//         {
-//             label: 'Next Wallpaper',
-//             enabled: playlist.type === 'timer' || playlist.type === 'never',
-//             click: () => {
-//                 PlaylistController.nextImage();
-//             }
-//         },
-//         {
-//             type: 'separator'
-//         },
-//         {
-//             label: 'Previous Wallpaper',
-//             enabled: playlist.type === 'timer' || playlist.type === 'never',
-//             click: () => {
-//                 PlaylistController.previousImage();
-//             }
-//         },
-//         {
-//             type: 'separator'
-//         },
-//         {
-//             label: 'Random Wallpaper',
-//             click: () => {
-//                 PlaylistController.randomImage();
-//             }
-//         },
-//         {
-//             type: 'separator'
-//         },
-//         {
-//             label: 'Pause Playlist',
-//             enabled: playlist.type === 'timer',
-//             click: () => {
-//                 PlaylistController.pausePlaylist();
-//             }
-//         },
-//         {
-//             type: 'separator'
-//         },
-//         {
-//             label: 'Stop Playlist',
-//             click: () => {
-//                 PlaylistController.stopPlaylist();
-//                 win?.webContents.send('clearPlaylist');
-//             }
-//         },
-//         {
-//             type: 'separator'
-//         },
-//         {
-//             label: 'Quit',
-//             click: () => {
-//                 app.exit();
-//             }
-//         }
-//     ]);
-//
-//     return menuWithControls;
-// };
-//
 export async function contextMenu({
     event,
     selectedImagesLength,

@@ -20,7 +20,7 @@ import {
     openContextMenu,
     createAppDirsIfNotExist
 } from './appFunctions';
-import { devMenu, prodMenu, trayMenu } from './globals/menus';
+import { devMenu, trayMenu } from './globals/menus';
 import { iconPath } from './binaries';
 import { configuration, dbOperations } from './database/globalConfig';
 import {
@@ -105,9 +105,10 @@ async function createWindow() {
     });
 }
 function createMenu() {
-    const menu = app.isPackaged ? prodMenu({ app }) : devMenu({ app, win });
-    const mainMenu = Menu.buildFromTemplate(menu);
-    Menu.setApplicationMenu(mainMenu);
+    if (!app.isPackaged) {
+        const mainMenu = devMenu();
+        Menu.setApplicationMenu(mainMenu);
+    }
 }
 function registerFileProtocol() {
     protocol.handle(

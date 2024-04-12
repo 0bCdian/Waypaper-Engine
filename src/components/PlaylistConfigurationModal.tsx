@@ -119,7 +119,8 @@ const PlaylistConfigurationModal = () => {
         <dialog
             id="playlistConfigurationModal"
             ref={containerRef}
-            className="modal "
+            className="modal select-none"
+            draggable={false}
         >
             <form
                 className="modal-box form-control rounded-xl"
@@ -127,7 +128,7 @@ const PlaylistConfigurationModal = () => {
                     void handleSubmit(onSubmit)(e);
                 }}
             >
-                <h2 className="font-bold text-4xl text-center">
+                <h2 className="font-bold text-4xl text-center select-none">
                     Playlist Settings
                 </h2>
                 {showError && (
@@ -196,7 +197,7 @@ const PlaylistConfigurationModal = () => {
                                     required: true,
                                     min: 0
                                 })}
-                                className="input input-bordered input-sm focus:outline-none text-lg font-medium rounded-lg"
+                                className="input input-bordered input-sm focus:outline-none text-lg font-medium rounded-lg select-none"
                             />
                         </div>
                         <div className="flex flex-col w-1/5">
@@ -216,7 +217,7 @@ const PlaylistConfigurationModal = () => {
                                 {...register('minutes', {
                                     required: true
                                 })}
-                                className="input input-bordered input-sm  rounded-lg focus:outline-none text-lg font-medium"
+                                className="input input-bordered input-sm  rounded-lg focus:outline-none text-lg font-medium select-none"
                             />
                         </div>
                     </div>

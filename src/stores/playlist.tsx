@@ -39,7 +39,10 @@ interface Actions {
     setName: (newName: string) => void;
     movePlaylistArrayOrder: (newlyOrderedArray: rendererImage[]) => void;
     removeImagesFromPlaylist: (Images: Set<number>) => void;
-    clearPlaylist: () => void;
+    clearPlaylist: (playlistToDelete?: {
+        name: string;
+        activeMonitor: ActiveMonitor;
+    }) => void;
     readPlaylist: () => rendererPlaylist;
     setPlaylist: (newPlaylist: rendererPlaylist) => void;
     setEmptyPlaylist: () => void;
@@ -79,6 +82,7 @@ export const playlistStore = create<State & Actions>()((set, get) => ({
                 initialTimeStamp -= 1439;
             }
             while (playlistImagesTimeSet.has(initialTimeStamp)) {
+                console.log('while loop');
                 initialTimeStamp++;
             }
             Images[current].time = initialTimeStamp;
@@ -146,18 +150,29 @@ export const playlistStore = create<State & Actions>()((set, get) => ({
             };
         });
     },
-    clearPlaylist: () => {
+    clearPlaylist: playlistToDelete => {
         const activeMonitor = useMonitorStore.getState().activeMonitor;
-        set(() => {
-            const emptyPlaylist = { ...initialPlaylistState, activeMonitor };
-            return {
-                playlist: emptyPlaylist,
-                isEmpty: true,
-                playlistImagesSet: new Set<number>(),
-                playlistImagesTimeSet: new Set<number>(),
-                lastAddedImageID: -1
-            };
-        });
+        const currentPlaylist = get().playlist;
+        if (
+            playlistToDelete === undefined ||
+            (currentPlaylist.name === playlistToDelete.name &&
+                currentPlaylist.activeMonitor.name ===
+                    playlistToDelete.activeMonitor.name)
+        ) {
+            set(() => {
+                const emptyPlaylist = {
+                    ...initialPlaylistState,
+                    activeMonitor
+                };
+                return {
+                    playlist: emptyPlaylist,
+                    isEmpty: true,
+                    playlistImagesSet: new Set<number>(),
+                    playlistImagesTimeSet: new Set<number>(),
+                    lastAddedImageID: -1
+                };
+            });
+        }
     },
     readPlaylist: () => {
         return get().playlist;
@@ -165,11 +180,21 @@ export const playlistStore = create<State & Actions>()((set, get) => ({
     setPlaylist: (newPlaylist: rendererPlaylist) => {
         const newPlaylistImagesSet = new Set<number>();
         const newPlaylistImagesTimeSet = new Set<number>();
+        const date = new Date();
+        let initialTimeStamp = date.getHours() * 60 + date.getMinutes();
         newPlaylist.images.forEach(image => {
             newPlaylistImagesSet.add(image.id);
-            if (image.time !== null) {
-                newPlaylistImagesTimeSet.add(image.time);
+            if (image.time === null || image.time === undefined) {
+                initialTimeStamp += 5;
+                if (initialTimeStamp >= 1440) {
+                    initialTimeStamp -= 1439;
+                }
+                while (newPlaylistImagesTimeSet.has(initialTimeStamp)) {
+                    initialTimeStamp++;
+                }
+                image.time = initialTimeStamp;
             }
+            newPlaylistImagesTimeSet.add(image.time);
         });
         set(() => ({
             playlist: newPlaylist,

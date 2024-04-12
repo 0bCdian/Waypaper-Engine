@@ -28,7 +28,6 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
     activeMonitor: initialState.activeMonitor,
     monitorsList: initialState.monitorsList,
     setActiveMonitor(value) {
-        console.log('setActiveMonitor');
         set(state => {
             return {
                 ...state,

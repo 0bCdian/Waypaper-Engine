@@ -99,10 +99,6 @@ export type message =
           error: { error: string };
       }
     | {
-          action: ACTIONS.SET_IMAGE;
-          image: imageSelectType | rendererImage;
-      }
-    | {
           action:
               | ACTIONS.STOP_DAEMON
               | ACTIONS.RANDOM_IMAGE

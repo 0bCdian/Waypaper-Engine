@@ -41,21 +41,27 @@ export function MonitorComponent({
                 }
                 setMonitorsList([...monitorsList]);
             }}
-            className="relative"
+            className="relative select-none rounded-lg"
             draggable={false}
         >
             <div
+                draggable={false}
                 data-selected={monitor.isSelected}
                 style={rectangleStyle}
-                className="border-[0.2rem] data-[selected=true]:border-primary border-foreground"
+                className="border-[0.2rem] data-[selected=true]:border-info border-transparent transition-all"
             >
                 <img
+                    data-selected={monitor.isSelected}
+                    draggable={false}
                     src={`atom://${monitor.currentImage}`}
                     alt="Monitor"
                     style={imageStyle}
-                    draggable={false}
+                    className="data-[selected=true]: transition-all cursor-pointer"
                 />
-                <div className="absolute top-0 left-0 bg-black bg-opacity-35 px-2 py-1 md:text-lg xl:text-3xl">
+                <div
+                    draggable={false}
+                    className="absolute top-0 left-0 bg-black bg-opacity-70 px-2 py-1 md:text-lg xl:text-3xl "
+                >
                     {monitor.name}
                 </div>
             </div>

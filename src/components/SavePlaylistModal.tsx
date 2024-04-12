@@ -58,7 +58,12 @@ const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
         setValue('playlistName', currentPlaylistName);
     }, [currentPlaylistName]);
     return (
-        <dialog id="savePlaylistModal" className="modal" ref={modalRef}>
+        <dialog
+            id="savePlaylistModal"
+            className="modal select-none"
+            draggable={false}
+            ref={modalRef}
+        >
             <form
                 onSubmit={e => {
                     void handleSubmit(onSubmit)(e);
@@ -81,6 +86,7 @@ const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
                     {...register('playlistName', { required: true })}
                     id="playlistName"
                     required
+                    draggable={false}
                     className="input input-md rounded-md input-bordered mb-3 text-lg "
                     placeholder="Playlist Name"
                 />

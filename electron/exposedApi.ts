@@ -99,7 +99,15 @@ export const ELECTRON_API = {
     > => {
         return await ipcRenderer.invoke('readActivePlaylist', monitor);
     },
-    onClearPlaylist: (callback: () => void) => {
+    onClearPlaylist: (
+        callback: (
+            _: Electron.IpcRendererEvent,
+            playlist: {
+                name: string;
+                activeMonitor: ActiveMonitor;
+            }
+        ) => void
+    ) => {
         ipcRenderer.on('clearPlaylist', callback);
     },
     onDeleteImageFromGallery: (

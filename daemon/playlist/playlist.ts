@@ -2,7 +2,8 @@ import {
     ACTIONS,
     PLAYLIST_TYPES,
     type rendererImage,
-    type ActiveMonitor
+    type ActiveMonitor,
+    type message
 } from '../types/daemonTypes';
 import { DBOperations } from '../database/dbOperations';
 import { notify } from '../utils/notifications';
@@ -11,7 +12,7 @@ import {
     duplicateImageAcrossMonitors
 } from '../utils/imageOperations';
 import { type PLAYLIST_TYPES_TYPE } from '../types/playlist';
-import { EventEmitter } from 'node:stream';
+import { EventEmitter } from 'node:events';
 import { initSwwwDaemon } from '../utils/checkDependencies';
 
 export class Playlist extends EventEmitter {
@@ -43,9 +44,6 @@ export class Playlist extends EventEmitter {
         const currentPlaylist = this.dbOperations.getPlaylistInfo({
             name: playlistName
         });
-        if (currentPlaylist === undefined) {
-            this.emit(ACTIONS.ERROR, { error: 'Playlist missing in database' });
-        }
         this.images = currentPlaylist.images;
         this.name = playlistName;
         this.currentType = currentPlaylist.type;
@@ -97,7 +95,7 @@ export class Playlist extends EventEmitter {
                 image,
                 activeMonitor: this.activeMonitor
             });
-            this.emit(ACTIONS.SET_IMAGE, image);
+            this.emit(ACTIONS.SET_IMAGE);
         } else {
             throw new Error('Could not set image,check the logs');
         }
@@ -106,8 +104,22 @@ export class Playlist extends EventEmitter {
     pause() {
         if (this.currentType === PLAYLIST_TYPES.TIMER) {
             clearTimeout(this.playlistTimer.timeoutID);
+            clearTimeout(this.eventCheckerTimeout);
             this.playlistTimer.timeoutID = undefined;
-            return `Paused ${this.name}`;
+            this.eventCheckerTimeout = undefined;
+            const currentPlaylist: {
+                name: string;
+                activeMonitor: ActiveMonitor;
+            } = {
+                name: this.name,
+                activeMonitor: this.activeMonitor
+            };
+            const message: message = {
+                action: ACTIONS.PAUSE_PLAYLIST,
+                playlist: currentPlaylist
+            };
+
+            this.emit(ACTIONS.PAUSE_PLAYLIST, message);
         } else {
             return `Cannot pause ${this.name} because it's of type ${this.currentType}`;
         }
@@ -116,7 +128,18 @@ export class Playlist extends EventEmitter {
     resume() {
         if (this.currentType === PLAYLIST_TYPES.TIMER) {
             void this.timedPlaylist(true);
-            return `Resuming ${this.name}`;
+            const currentPlaylist: {
+                name: string;
+                activeMonitor: ActiveMonitor;
+            } = {
+                name: this.name,
+                activeMonitor: this.activeMonitor
+            };
+            const message: message = {
+                action: ACTIONS.RESUME_PLAYLIST,
+                playlist: currentPlaylist
+            };
+            this.emit(ACTIONS.RESUME_PLAYLIST, message);
         } else {
             return `Cannot resume ${this.name} because it is of type ${this.currentType}`;
         }
@@ -139,11 +162,14 @@ export class Playlist extends EventEmitter {
         if (this.playlistTimer.timeoutID !== undefined) {
             clearTimeout(this.playlistTimer.timeoutID);
         }
-
+        const message: message = {
+            action: ACTIONS.STOP_PLAYLIST,
+            playlist: currentPlaylist
+        };
         this.playlistTimer.timeoutID = undefined;
         this.playlistTimer.executionTimeStamp = undefined;
         this.eventCheckerTimeout = undefined;
-        this.emit(ACTIONS.STOP_PLAYLIST, currentPlaylist);
+        this.emit(ACTIONS.STOP_PLAYLIST, message);
     }
 
     resetInterval() {
@@ -228,7 +254,7 @@ export class Playlist extends EventEmitter {
                     });
                     break;
                 default:
-                    this.emit('Error', this.activeMonitor.name);
+                    this.emit(ACTIONS.ERROR, this.activeMonitor.name);
                     break;
             }
             this.emit(ACTIONS.START_PLAYLIST, { name: this.name });
@@ -246,7 +272,7 @@ export class Playlist extends EventEmitter {
             this.activeMonitor
         );
         if (newPlaylistInfo === undefined) {
-            this.emit('Error', this.activeMonitor.name);
+            this.emit(ACTIONS.ERROR, this.activeMonitor.name);
             return;
         }
         this.stop();
@@ -320,7 +346,7 @@ export class Playlist extends EventEmitter {
             const startingIndex = this.findClosestImageIndex();
             if (startingIndex === undefined) {
                 notify('Images have no time, something went wrong');
-                this.emit('Error', this.activeMonitor.name);
+                this.emit(ACTIONS.ERROR, this.activeMonitor.name);
                 return;
             }
             this.currentImageIndex =
@@ -364,7 +390,7 @@ export class Playlist extends EventEmitter {
         const timeOut = this.calculateMillisecondsUntilNextImage();
         if (timeOut === undefined) {
             notify('Playlist internal error');
-            this.emit('Error', this.activeMonitor.name);
+            this.emit(ACTIONS.ERROR, this.activeMonitor.name);
             return;
         }
         clearTimeout(this.playlistTimer.timeoutID);

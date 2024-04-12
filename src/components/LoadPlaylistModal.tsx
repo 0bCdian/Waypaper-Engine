@@ -10,6 +10,7 @@ import {
 } from '../types/rendererTypes';
 import { useMonitorStore } from '../stores/monitors';
 import { IPC_MAIN_EVENTS } from '../../shared/constants';
+import { type ActiveMonitor } from '../../shared/types/monitor';
 interface Input {
     selectPlaylist: string;
 }
@@ -101,8 +102,11 @@ const LoadPlaylistModal = ({
         firstRender = false;
         registerListener({
             channel: IPC_MAIN_EVENTS.clearPlaylist,
-            listener: _ => {
-                clearPlaylist();
+            listener: (
+                _,
+                playlist: { name: string; activeMonitor: ActiveMonitor }
+            ) => {
+                clearPlaylist(playlist);
                 updateTray();
             }
         });
@@ -110,7 +114,7 @@ const LoadPlaylistModal = ({
     return (
         <dialog id="LoadPlaylistModal" className="modal" ref={modalRef}>
             <div className="modal-box container flex flex-col">
-                <h2 className="font-bold text-4xl text-center py-3 ">
+                <h2 className="font-bold text-4xl text-center py-3 select-none">
                     Load Playlist
                 </h2>
                 {error.length > 0 && (

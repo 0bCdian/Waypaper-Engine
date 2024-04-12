@@ -43,9 +43,10 @@ function isWaypaperDaemonRunning() {
 export async function initWaypaperDaemon() {
     if (!isWaypaperDaemonRunning()) {
         try {
-            const args = [`${daemonLocation}/daemon.js &`];
+            const args = ['--trace-warnings', `${daemonLocation}/daemon.js`];
             if (configuration.script !== undefined)
                 args.push(`--script=${configuration.script}`);
+            args.push('&');
             const output = spawn('node', args, {
                 stdio: 'ignore',
                 shell: true,

@@ -66,6 +66,7 @@ export class DaemonManager {
                 wasActive: true
             });
             playlistInstance.start();
+            this.setListeners(playlistInstance);
             this.#playlistMap.set(
                 playlist.activePlaylists.monitor.name,
                 playlistInstance
@@ -119,9 +120,11 @@ export class DaemonManager {
                     if (runningPlaylist !== undefined) {
                         runningPlaylist.updatePlaylist();
                         notify(`Updating ${message.playlist.name}`);
-                        this.socket?.write(
-                            JSON.stringify(`Updating ${message.playlist.name}`)
-                        );
+                        const response: message = {
+                            action: ACTIONS.START_PLAYLIST,
+                            playlist: message.playlist
+                        };
+                        this.socket?.write(JSON.stringify(response));
                         return;
                     }
                     findAndStopCollidingPlaylists({
@@ -134,31 +137,19 @@ export class DaemonManager {
                         wasActive: false
                     });
                     newPlaylist.start();
+                    this.setListeners(newPlaylist);
                     this.#playlistMap.set(
                         message.playlist.activeMonitor.name,
                         newPlaylist
                     );
-                    newPlaylist.on(
-                        ACTIONS.ERROR,
-                        (activeMonitorName: string) => {
-                            const playlistToDelete =
-                                this.#playlistMap.get(activeMonitorName);
-                            if (playlistToDelete === undefined) return;
-                            playlistToDelete.stop();
-                            this.#playlistMap.delete(activeMonitorName);
-                        }
-                    );
-                    newPlaylist.on(ACTIONS.SET_IMAGE, () => {
-                        const message: message = {
-                            action: ACTIONS.SET_IMAGE
-                        };
-                        this.socket?.write(JSON.stringify(message));
-                    });
                     notify(
                         `Starting ${message.playlist.name} on ${message.playlist.activeMonitor.name}`
                     );
                     this.socket?.write(
-                        JSON.stringify(`Starting ${message.playlist.name}`)
+                        JSON.stringify({
+                            action: ACTIONS.START_PLAYLIST,
+                            playlist: message.playlist
+                        })
                     );
                 }
                 break;
@@ -166,23 +157,19 @@ export class DaemonManager {
             case ACTIONS.PAUSE_PLAYLIST:
                 {
                     const playlistInstance = this.#playlistMap.get(
-                        message.playlist.name
+                        message.playlist.activeMonitor.name
                     );
                     if (playlistInstance === undefined) return;
-                    const pauseMessage = playlistInstance.pause();
-                    notify(pauseMessage);
-                    this.socket?.write(pauseMessage);
+                    playlistInstance.pause();
                 }
                 break;
             case ACTIONS.RESUME_PLAYLIST:
                 {
                     const playlistInstance = this.#playlistMap.get(
-                        message.playlist.name
+                        message.playlist.activeMonitor.name
                     );
                     if (playlistInstance === undefined) return;
-                    const resumeMessage = playlistInstance.resume();
-                    notify(resumeMessage);
-                    this.socket?.write(resumeMessage);
+                    playlistInstance.resume();
                 }
                 break;
             case ACTIONS.STOP_PLAYLIST:
@@ -206,27 +193,85 @@ export class DaemonManager {
             case ACTIONS.NEXT_IMAGE:
                 {
                     const playlistInstance = this.#playlistMap.get(
-                        message.playlist.name
+                        message.playlist.activeMonitor.name
                     );
                     if (playlistInstance === undefined) return;
-                    const nextImageMessage = await playlistInstance.nextImage();
-                    this.socket?.write(nextImageMessage);
+                    await playlistInstance.nextImage();
                 }
                 break;
             case ACTIONS.PREVIOUS_IMAGE:
                 {
                     const playlistInstance = this.#playlistMap.get(
-                        message.playlist.name
+                        message.playlist.activeMonitor.name
                     );
                     if (playlistInstance === undefined) return;
-                    const previousImageMessage =
-                        await playlistInstance.previousImage();
-                    this.socket?.write(previousImageMessage);
+                    await playlistInstance.previousImage();
                 }
                 break;
             default:
                 break;
         }
+    }
+
+    setListeners(newPlaylist: Playlist) {
+        newPlaylist.on(ACTIONS.ERROR, (activeMonitorName: string) => {
+            const playlistToDelete = this.#playlistMap.get(activeMonitorName);
+            if (playlistToDelete === undefined) return;
+            playlistToDelete.stop();
+            this.#playlistMap.delete(activeMonitorName);
+        });
+        newPlaylist.on(ACTIONS.SET_IMAGE, () => {
+            try {
+                this.socket?.write(
+                    JSON.stringify({ action: ACTIONS.SET_IMAGE })
+                );
+            } catch (error) {
+                console.error(error);
+            }
+        });
+        newPlaylist.on(
+            ACTIONS.PAUSE_PLAYLIST,
+            (receivedMessage: message & { action: ACTIONS.PAUSE_PLAYLIST }) => {
+                try {
+                    notify(
+                        `Pausing ${receivedMessage.playlist.name}\n monitors:${receivedMessage.playlist.activeMonitor.name}`
+                    );
+
+                    this.socket?.write(JSON.stringify(receivedMessage));
+                } catch (error) {
+                    console.error(error);
+                }
+            }
+        );
+        newPlaylist.on(
+            ACTIONS.RESUME_PLAYLIST,
+            (
+                receivedMessage: message & { action: ACTIONS.RESUME_PLAYLIST }
+            ) => {
+                try {
+                    notify(
+                        `Resuming ${receivedMessage.playlist.name}\n monitors:${receivedMessage.playlist.activeMonitor.name}`
+                    );
+
+                    this.socket?.write(JSON.stringify(receivedMessage));
+                } catch (error) {
+                    console.error(error);
+                }
+            }
+        );
+        newPlaylist.on(
+            ACTIONS.STOP_PLAYLIST,
+            (receivedMessage: message & { action: ACTIONS.STOP_PLAYLIST }) => {
+                try {
+                    notify(
+                        `Stopped ${receivedMessage.playlist.name}\n monitors:${receivedMessage.playlist.activeMonitor.name}`
+                    );
+                    this.socket?.write(JSON.stringify(receivedMessage));
+                } catch (error) {
+                    console.error(error);
+                }
+            }
+        );
     }
 
     cleanUp() {

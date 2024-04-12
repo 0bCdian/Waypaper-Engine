@@ -171,29 +171,28 @@ export class PlaylistController extends EventEmitter {
                 console.log(message);
                 break;
             case ACTIONS.START_PLAYLIST:
-                // TODO
+                void createTray();
                 break;
             case ACTIONS.STOP_DAEMON:
                 void this.connectToDaemon();
                 break;
             case ACTIONS.PAUSE_PLAYLIST:
-                // TODO
+                void createTray();
                 break;
             case ACTIONS.RESUME_PLAYLIST:
-                // TODO
+                void createTray();
                 break;
             case ACTIONS.STOP_PLAYLIST:
                 void createTray();
                 break;
             case ACTIONS.STOP_PLAYLIST_BY_NAME:
-                // TODO
                 void createTray();
                 break;
             case ACTIONS.NEXT_IMAGE:
-                // TODO
+                void createTray();
                 break;
             case ACTIONS.PREVIOUS_IMAGE:
-                // TODO
+                void createTray();
                 break;
             case ACTIONS.SET_IMAGE:
                 void createTray();

@@ -133,10 +133,15 @@ function Monitors() {
         });
     }, []);
     return (
-        <dialog id="monitors" className="modal w-full" ref={modalRef}>
+        <dialog
+            id="monitors"
+            className="modal w-full select-none"
+            ref={modalRef}
+            draggable={false}
+        >
             <div className="modal-box min-w-max">
                 <div className="max-w-fit m-auto flex flex-col justify-center">
-                    <h2 className="font-bold text-4xl text-center py-3">
+                    <h2 className="select-none font-bold text-4xl text-center py-3">
                         Choose Display
                     </h2>
                     <div className="form-control">
@@ -170,6 +175,7 @@ function Monitors() {
                             {monitorsList.map(monitor => {
                                 return (
                                     <div
+                                        draggable={false}
                                         style={{
                                             position: 'absolute',
                                             left: monitor.position.x * scale,
@@ -190,7 +196,7 @@ function Monitors() {
                         <div className="divider "></div>
                         <span
                             data-error={error.state}
-                            className="m-auto text-2xl text-center mb-4 text-error transition-all duration-300 italic opcacity-0 invisible data-[error=true]:visible data-[error=true]:opacity-100"
+                            className="select-none m-auto text-2xl text-center mb-4 text-error transition-all duration-300 italic opcacity-0 invisible data-[error=true]:visible data-[error=true]:opacity-100"
                         >
                             {error.message}
                         </span>

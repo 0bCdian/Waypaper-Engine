@@ -5,6 +5,7 @@ import {
 } from './utils/checkDependencies';
 import { notify } from './utils/notifications';
 import { configuration } from './config/config';
+import { writeFileSync } from 'node:fs';
 if (isWaypaperDaemonRunning()) {
     console.error('Another instance is already running');
     process.exit(2);
@@ -30,9 +31,14 @@ try {
         daemonManager.cleanUp();
         process.exit(0);
     });
-    process.on('uncaughtException', error => {
+    process.on('uncaughtException', (error, s) => {
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        notify('Daemon crashed, look up the logs.');
+        notify(`Daemon crashed, look up the logs. ${error}`);
+        const stuff = {
+            error,
+            s
+        };
+        writeFileSync('/home/obsy/logs.txt', JSON.stringify(stuff));
         console.error(error);
         daemonManager.cleanUp();
         process.exit(0);
