@@ -14,5 +14,6 @@ export const configuration = {
             configuration.app.settings = dbOperations.getAppConfig();
         }
     },
-    script: undefined as undefined | string
+    script: undefined as undefined | string,
+    swwwFormat: undefined as undefined | string
 };

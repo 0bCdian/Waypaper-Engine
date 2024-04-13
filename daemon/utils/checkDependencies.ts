@@ -1,5 +1,6 @@
 import { execSync, spawn } from 'node:child_process';
 import { notify } from './notifications';
+import { configuration } from '../config/config';
 function checkIfSwwwIsInstalled() {
     try {
         execSync(`swww --version`);
@@ -19,9 +20,12 @@ export function initSwwwDaemon() {
         console.log('Swww daemon already running');
     } catch (error) {
         console.log('daemon not running, initiating swww...');
-        const output = spawn('swww-daemon &', {
+        console.log(configuration);
+        const command = `swww-daemon --format ${configuration.swwwFormat} &`;
+        const output = spawn(command, {
             stdio: 'ignore',
-            shell: true
+            shell: true,
+            detached: true
         });
         output.unref();
     }
@@ -34,5 +38,23 @@ export function isWaypaperDaemonRunning() {
         return true;
     } catch (_err) {
         return false;
+    }
+}
+
+export function parseArgs<
+    T extends { swwwFormat: string | undefined; script: string | undefined }
+>(args: string[], configuration: T) {
+    for (let idx = 0; idx < args.length; idx++) {
+        const currentArg = args[idx];
+        switch (currentArg) {
+            case '--script':
+                configuration.script = args[idx + 1];
+                break;
+            case '--format':
+                configuration.swwwFormat = args[idx + 1];
+                break;
+            default:
+                break;
+        }
     }
 }

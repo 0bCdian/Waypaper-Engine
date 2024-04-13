@@ -8,7 +8,8 @@ const configuration = {
     app: {
         config: dbOperations.createAppConfigIfNotExists()
     },
-    script: undefined as string | undefined
+    script: undefined as string | undefined,
+    swwwFormat: undefined as string | undefined
 };
 
 export { configuration, dbOperations };

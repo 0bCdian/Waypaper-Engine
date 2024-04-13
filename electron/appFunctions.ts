@@ -447,3 +447,21 @@ export async function openContextMenu(
     const contextMenuInstance = Menu.buildFromTemplate(template);
     contextMenuInstance.popup();
 }
+
+export function parseArgs<
+    T extends { swwwFormat: string | undefined; script: string | undefined }
+>(args: string[], configuration: T) {
+    for (let idx = 0; idx < args.length; idx++) {
+        const currentArg = args[idx];
+        switch (currentArg) {
+            case '--script':
+                configuration.script = args[idx + 1];
+                break;
+            case '--format':
+                configuration.swwwFormat = args[idx + 1];
+                break;
+            default:
+                break;
+        }
+    }
+}

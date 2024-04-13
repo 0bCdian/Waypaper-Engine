@@ -25,9 +25,12 @@ export function initSwwwDaemon() {
         console.log('Swww daemon already running');
     } catch (error) {
         console.log('daemon not running, initiating swww...');
-        const output = spawn('swww-daemon &', {
+        console.log(configuration);
+        const command = `swww-daemon --format ${configuration.swwwFormat} &`;
+        const output = spawn(command, {
             stdio: 'ignore',
-            shell: true
+            shell: true,
+            detached: true
         });
         output.unref();
     }
@@ -45,7 +48,9 @@ export async function initWaypaperDaemon() {
         try {
             const args = ['--trace-warnings', `${daemonLocation}/daemon.js`];
             if (configuration.script !== undefined)
-                args.push(`--script=${configuration.script}`);
+                args.push(`--script ${configuration.script}`);
+            if (configuration.swwwFormat !== undefined)
+                args.push(`--format ${configuration.swwwFormat}`);
             args.push('&');
             const output = spawn('node', args, {
                 stdio: 'ignore',

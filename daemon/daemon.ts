@@ -1,7 +1,8 @@
 import { DaemonManager } from './server/daemonManager';
 import {
     isWaypaperDaemonRunning,
-    initSwwwDaemon
+    initSwwwDaemon,
+    parseArgs
 } from './utils/checkDependencies';
 import { notify } from './utils/notifications';
 import { configuration } from './config/config';
@@ -10,14 +11,9 @@ if (isWaypaperDaemonRunning()) {
     console.error('Another instance is already running');
     process.exit(2);
 }
+parseArgs(process.argv, configuration);
 initSwwwDaemon();
-const scriptFlag = process.argv.find(arg => {
-    return arg.includes('--script');
-});
-if (scriptFlag !== undefined) {
-    const userScriptLocation = scriptFlag.split('=')[1];
-    configuration.script = userScriptLocation;
-}
+console.log(configuration);
 process.title = 'wpe-daemon';
 try {
     const daemonManager = new DaemonManager();

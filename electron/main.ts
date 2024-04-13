@@ -18,7 +18,8 @@ import {
     remakeThumbnailsIfImagesExist,
     getMonitors,
     openContextMenu,
-    createAppDirsIfNotExist
+    createAppDirsIfNotExist,
+    parseArgs
 } from './appFunctions';
 import { devMenu, trayMenu } from './globals/menus';
 import { iconPath } from './binaries';
@@ -47,14 +48,7 @@ if (!gotTheLock) {
         }
     });
 }
-const scriptFlag = process.argv.find(arg => {
-    return arg.includes('--script');
-});
-if (scriptFlag !== undefined) {
-    const userScriptLocation = scriptFlag.split('=')[1];
-    configuration.script = userScriptLocation;
-}
-
+parseArgs(process.argv, configuration);
 process.env.DIST = join(__dirname, '../dist');
 process.env.PUBLIC = app.isPackaged
     ? process.env.DIST
