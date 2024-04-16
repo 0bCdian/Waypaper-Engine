@@ -6,6 +6,7 @@
         "module": "CommonJS",
         "skipLibCheck": true,
         "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
         /* Bundler mode */
         "allowImportingTsExtensions": true,
         "resolveJsonModule": true,
@@ -19,15 +20,10 @@
         "noFallthroughCasesInSwitch": true,
         "allowUmdGlobalAccess": true,
         "declarationMap": true,
-        "composite": true
+        "composite": true,
+        "outDir": "dist"
     },
-    "include": [
-        "electron/**/*.ts",
-        "src/**/*.ts",
-        "src/**/*.tsx",
-        "shared/**/*.ts",
-        "daemon/**/*.ts",
-        "drizzle.config.ts"
-    ],
+    "skipLibCheck": true,
+    "include": ["**/*.ts", "**/*.tsx", "drizzle.config.ts"],
     "references": [{ "path": "./tsconfig.node.json" }]
 }

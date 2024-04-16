@@ -1,19 +1,21 @@
 import { type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import { initialAppConfig, initialSwwwConfig } from '../types/constants';
+import { initialAppConfig, initialSwwwConfig } from '../shared/constants';
+import { type ActiveMonitor } from '../shared/types/monitor';
 import {
     type rendererImage,
-    type rendererPlaylist,
-    type imageMetadata,
-    type ActiveMonitor
-} from '../types/daemonTypes';
+    type rendererPlaylist
+} from '../src/types/rendererTypes';
+import { type imageMetadata } from '../types/types';
 import { createConnector } from './database';
 import * as tables from './schema';
 import { type SQL, asc, desc, eq, sql, notInArray } from 'drizzle-orm';
-import { type PLAYLIST_ORDER_TYPES } from '../types/playlist';
+import { EventEmitter } from 'node:events';
+import { type PLAYLIST_ORDER_TYPES } from '../shared/types/playlist';
 
-export class DBOperations {
+export class DBOperations extends EventEmitter {
     db: BetterSQLite3Database;
     constructor() {
+        super();
         this.db = createConnector();
     }
 
@@ -40,20 +42,27 @@ export class DBOperations {
     }
 
     async upsertPlaylist(playlistObject: rendererPlaylist) {
+        const { images, ...playlist } = playlistObject;
         const row: tables.playlistInsertType = {
-            name: playlistObject.name,
-            type: playlistObject.configuration.type,
-            interval: playlistObject.configuration.interval,
-            order: playlistObject.configuration.order,
-            showAnimations: playlistObject.configuration.showAnimations
+            name: playlist.name,
+            ...playlist.configuration
         };
+        const { name, ...partialRow } = row;
         // We will only ever get a one item array, so we return the first and only item
-        const [playlist] = await this.db
+        const [insertedPlaylist] = await this.db
             .insert(tables.playlist)
             .values(row)
-            .returning({ id: tables.playlist.id })
-            .onConflictDoUpdate({ target: tables.playlist.id, set: row });
-        this.#insertPlaylistImages(playlistObject.images, playlist.id);
+            .onConflictDoUpdate({
+                target: tables.playlist.name,
+                set: partialRow
+            })
+            .returning({ id: tables.playlist.id });
+
+        this.#insertPlaylistImages(images, insertedPlaylist.id);
+        this.emit('upsertPlaylist', {
+            name: playlistObject.name,
+            activeMonitor: playlistObject.activeMonitor
+        });
     }
 
     #insertPlaylistImages(images: rendererImage[], playlistID: number) {
@@ -78,6 +87,7 @@ export class DBOperations {
             .delete(tables.playlist)
             .where(eq(tables.playlist.name, playlistName))
             .run();
+        this.emit('deletePlaylist', playlistName);
     }
 
     getActivePlaylists() {
@@ -89,6 +99,10 @@ export class DBOperations {
                 eq(tables.playlist.id, tables.activePlaylist.playlistID)
             )
             .all();
+    }
+
+    getPlaylists() {
+        return this.db.select().from(tables.playlist).all();
     }
 
     getActivePlaylistsInfo() {
@@ -109,10 +123,6 @@ export class DBOperations {
         return playlistsInfo;
     }
 
-    getPlaylists() {
-        return this.db.select().from(tables.playlist).all();
-    }
-
     getActivePlaylistInfo(monitor: ActiveMonitor) {
         const activePlaylists = this.db
             .select()
@@ -128,7 +138,7 @@ export class DBOperations {
         if (activePlaylist === undefined) return;
         const imagesInPlaylist = this.getPlaylistImages(
             activePlaylist.Playlists.id,
-            activePlaylist.Playlists.order
+            null
         );
         return {
             ...activePlaylist.Playlists,
@@ -239,6 +249,7 @@ export class DBOperations {
     async updateAppConfig(newConfig: tables.appConfigInsertType) {
         this.db.delete(tables.appConfig).run();
         this.db.insert(tables.appConfig).values(newConfig).run();
+        this.emit('updateAppConfig', newConfig);
     }
 
     createAppConfigIfNotExists() {
@@ -250,7 +261,7 @@ export class DBOperations {
                 .run();
             return initialAppConfig;
         }
-        return result.config;
+        return { ...result.config };
     }
 
     updatePlaylistCurrentIndex({
@@ -265,38 +276,6 @@ export class DBOperations {
             .set({ currentImageIndex: newIndex })
             .where(eq(tables.playlist.name, name))
             .run();
-    }
-
-    addImageToHistory({
-        image,
-        activeMonitor
-    }: {
-        image: rendererImage | tables.imageSelectType;
-        activeMonitor: ActiveMonitor;
-    }) {
-        const currentImageHistory = this.db
-            .select()
-            .from(tables.imageHistory)
-            .all();
-        const row: tables.imageHistoryInsertType = {
-            monitor: activeMonitor,
-            imageID: image.id
-        };
-        let shouldUpdate = false;
-        currentImageHistory.forEach(existingRow => {
-            if (
-                existingRow.imageID === row.imageID &&
-                existingRow.monitor.name === row.monitor.name
-            ) {
-                shouldUpdate = true;
-            }
-        });
-        if (shouldUpdate) {
-            const query = sql`UPDATE imageHistory SET time=CURRENT_TIME WHERE imageID=${row.imageID}`;
-            this.db.run(query);
-        } else {
-            this.db.insert(tables.imageHistory).values(row).run();
-        }
     }
 
     updateImagesPerPage({ imagesPerPage }: { imagesPerPage: number }) {
@@ -317,6 +296,7 @@ export class DBOperations {
     updateSwwwConfig(newConfig: tables.swwwConfigInsertType) {
         this.db.delete(tables.swwwConfig).run();
         this.db.insert(tables.swwwConfig).values(newConfig).run();
+        this.emit('updateSwwwConfig', newConfig);
     }
 
     createSwwwConfigIfNotExists() {
@@ -329,7 +309,7 @@ export class DBOperations {
                 .run();
             return initialSwwwConfig;
         }
-        return result.config;
+        return { ...result.config };
     }
 
     setSelectedMonitor(selectedMonitor: ActiveMonitor) {
@@ -368,5 +348,38 @@ export class DBOperations {
             console.error(error);
             return undefined;
         }
+    }
+
+    addImageToHistory({
+        image,
+        activeMonitor
+    }: {
+        image: rendererImage | tables.imageSelectType;
+        activeMonitor: ActiveMonitor;
+    }) {
+        const currentImageHistory = this.db
+            .select()
+            .from(tables.imageHistory)
+            .all();
+        const row: tables.imageHistoryInsertType = {
+            monitor: activeMonitor,
+            imageID: image.id
+        };
+        let shouldUpdate = false;
+        currentImageHistory.forEach(existingRow => {
+            if (
+                existingRow.imageID === row.imageID &&
+                existingRow.monitor.name === row.monitor.name
+            ) {
+                shouldUpdate = true;
+            }
+        });
+        if (shouldUpdate) {
+            const query = sql`UPDATE imageHistory SET time=CURRENT_TIME WHERE imageID=${row.imageID}`;
+            this.db.run(query);
+        } else {
+            this.db.insert(tables.imageHistory).values(row).run();
+        }
+        this.emit('updateTray');
     }
 }

@@ -1,6 +1,6 @@
-import { type Formats } from '../../shared/types/image';
-import { type ActiveMonitor } from '../../shared/types/monitor';
-import { type rendererImage } from '../../src/types/rendererTypes';
+import { type Formats } from '../shared/types/image';
+import { type ActiveMonitor } from '../shared/types/monitor';
+import { type rendererImage } from '../src/types/rendererTypes';
 import { type imageSelectType } from '../database/schema';
 
 export enum ACTIONS {

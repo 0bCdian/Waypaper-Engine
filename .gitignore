@@ -28,7 +28,6 @@ dist-electron
 release
 *.local
 waypaper.sqlite3
-daemon/daemon_build
 # exclude from gitignore
 
 !postcss.config.js

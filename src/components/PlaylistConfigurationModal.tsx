@@ -165,21 +165,21 @@ const PlaylistConfigurationModal = () => {
                         defaultValue={'timer'}
                         {...register('type', { required: true })}
                     >
-                        <option value={PLAYLIST_TYPES.timer}>On a timer</option>
-                        <option value={PLAYLIST_TYPES.timeofday}>
+                        <option value={PLAYLIST_TYPES.TIMER}>On a timer</option>
+                        <option value={PLAYLIST_TYPES.TIME_OF_DAY}>
                             Time of day
                         </option>
                         <option
                             disabled={playlist.images.length > 7}
                             className={classNameDisabled}
-                            value={PLAYLIST_TYPES.dayofweek}
+                            value={PLAYLIST_TYPES.DAY_OF_WEEK}
                         >
                             Day of week
                         </option>
-                        <option value={PLAYLIST_TYPES.never}>Never</option>
+                        <option value={PLAYLIST_TYPES.NEVER}>Never</option>
                     </select>
                 </div>
-                {watch('type') === PLAYLIST_TYPES.timer && (
+                {watch('type') === PLAYLIST_TYPES.TIMER && (
                     <div className="flex justify-end items-baseline gap-1">
                         <div className="flex flex-col w-1/5 ">
                             <label
@@ -222,8 +222,8 @@ const PlaylistConfigurationModal = () => {
                         </div>
                     </div>
                 )}
-                {watch('type') !== PLAYLIST_TYPES.timeofday &&
-                    watch('type') !== PLAYLIST_TYPES.dayofweek && (
+                {watch('type') !== PLAYLIST_TYPES.TIME_OF_DAY &&
+                    watch('type') !== PLAYLIST_TYPES.DAY_OF_WEEK && (
                         <>
                             <div className="divider"></div>
                             <div className="flex justify-between items-baseline ">
@@ -265,8 +265,8 @@ const PlaylistConfigurationModal = () => {
                         {...register('showTransition')}
                     />
                 </div>
-                {watch('type') !== PLAYLIST_TYPES.timeofday &&
-                    watch('type') !== PLAYLIST_TYPES.dayofweek && (
+                {watch('type') !== PLAYLIST_TYPES.TIME_OF_DAY &&
+                    watch('type') !== PLAYLIST_TYPES.DAY_OF_WEEK && (
                         <div className="flex justify-between items-baseline">
                             <label
                                 htmlFor="alwaysStartOnFirstImage"

@@ -1,3 +1,5 @@
+import { type Monitor } from './types/monitor';
+
 export type openFileAction = 'file' | 'folder';
 
 export interface imagesObject {
@@ -6,3 +8,8 @@ export interface imagesObject {
 }
 
 export type objectValues<T> = T[keyof T];
+
+export interface CacheJSON {
+    imageName: string;
+    monitors: Monitor[];
+}

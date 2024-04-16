@@ -5,7 +5,7 @@ import PlaylistConfigurationModal from './PlaylistConfigurationModal';
 import { playlistStore } from '../stores/playlist';
 import { imagesStore } from '../stores/images';
 import AdvancedFiltersModal from './AdvancedFiltersModal';
-import { type playlistSelectType } from '../../electron/database/schema';
+import { type playlistSelectType } from '../../database/schema';
 import { useAppConfigStore } from '../stores/appConfig';
 import Monitors from './monitorsModal';
 import { useMonitorStore } from '../stores/monitors';

@@ -6,10 +6,10 @@ export const PLAYLIST_ORDER = {
 } as const;
 
 export const PLAYLIST_TYPES = {
-    timer: 'timer',
-    never: 'never',
-    timeofday: 'timeofday',
-    dayofweek: 'dayofweek'
+    TIMER: 'timer',
+    NEVER: 'never',
+    TIME_OF_DAY: 'timeofday',
+    DAY_OF_WEEK: 'dayofweek'
 } as const;
 
 export type PLAYLIST_ORDER_TYPES = objectValues<typeof PLAYLIST_ORDER>;

@@ -5,18 +5,14 @@ import {
     dialog,
     type Tray
 } from 'electron';
-import { dbOperations } from '../database/globalConfig';
-import {
-    deleteImagesFromGallery,
-    getMonitors,
-    setImage
-} from '../appFunctions';
+import { dbOperations } from '../globals/config';
+import { deleteImagesFromGallery, setImage } from '../electron/appFunctions';
 // import { screen } from 'electron';
-import { IPC_MAIN_EVENTS, MENU_EVENTS } from '../../shared/constants';
-import { type rendererImage } from '../../src/types/rendererTypes';
-import { type ActiveMonitor } from '../../shared/types/monitor';
-import { PlaylistController } from '../playlistController';
-import { createTray } from '../main';
+import { IPC_MAIN_EVENTS, MENU_EVENTS } from '../shared/constants';
+import { type rendererImage } from '../src/types/rendererTypes';
+import { type ActiveMonitor } from '../shared/types/monitor';
+import { PlaylistController } from '../electron/playlistController';
+import { getMonitors } from '../utils/monitorUtils';
 
 export const devMenu = () => {
     const devMenuTemplate: Array<
@@ -57,7 +53,11 @@ export const devMenu = () => {
     return devMenu;
 };
 
-export const trayMenu = async (app: App, trayInstance: Tray) => {
+export const trayMenu = async (
+    app: App,
+    trayInstance: Tray,
+    createTray?: () => Promise<void>
+) => {
     const activePlaylists = dbOperations.getActivePlaylists();
     const imageHistory = dbOperations.getImageHistory();
 
@@ -129,7 +129,7 @@ export const trayMenu = async (app: App, trayInstance: Tray) => {
                                     activeMonitor:
                                         playlist.activePlaylists.monitor
                                 });
-                                void createTray;
+                                if (createTray !== undefined) void createTray();
                                 win?.webContents.send(
                                     IPC_MAIN_EVENTS.clearPlaylist,
                                     {
@@ -156,7 +156,8 @@ export const trayMenu = async (app: App, trayInstance: Tray) => {
                     click: () => {
                         void setImage(
                             image.Images,
-                            image.imageHistory.monitor
+                            image.imageHistory.monitor,
+                            true
                         ).then(() => {
                             void trayMenu(app, trayInstance).then(menu => {
                                 trayInstance.setContextMenu(menu);
@@ -221,7 +222,7 @@ export async function contextMenu({
                         monitors: [monitor],
                         extendAcrossMonitors: false
                     };
-                    void setImage(image, activeMonitor);
+                    void setImage(image, activeMonitor, true);
                 }
             };
         });
@@ -235,7 +236,7 @@ export async function contextMenu({
                         extendAcrossMonitors: false
                     };
 
-                    void setImage(image, activeMonitor);
+                    void setImage(image, activeMonitor, true);
                 }
             },
             {
@@ -246,7 +247,7 @@ export async function contextMenu({
                         monitors,
                         extendAcrossMonitors: true
                     };
-                    void setImage(image, activeMonitor);
+                    void setImage(image, activeMonitor, true);
                 }
             }
         );

@@ -1,5 +1,5 @@
 import { ipcRenderer } from 'electron';
-import { appDirectories } from './globals/appPaths';
+import { configuration } from '../globals/config';
 import {
     type rendererImage,
     type rendererPlaylist
@@ -14,7 +14,7 @@ import {
     type appConfigInsertType,
     type swwwConfigSelectType,
     type swwwConfigInsertType
-} from './database/schema';
+} from '../database/schema';
 import {
     type IPC_MAIN_EVENTS_TYPE,
     type IPC_RENDERER_EVENTS_TYPE,
@@ -151,11 +151,14 @@ export const ELECTRON_API = {
     getThumbnailSrc: (imageName: string) => {
         return (
             'atom://' +
-            join(appDirectories.thumbnails, imageName.split('.')[0] + '.webp')
+            join(
+                configuration.directories.thumbnails,
+                imageName.split('.')[0] + '.webp'
+            )
         );
     },
     getImageSrc: (imageName: string) => {
-        return 'atom://' + join(appDirectories.imagesDir, imageName);
+        return 'atom://' + join(configuration.directories.imagesDir, imageName);
     }
 };
 export type ELECTRON_API_TYPE = typeof ELECTRON_API;

@@ -1,13 +1,7 @@
-import { WAYPAPER_ENGINE_SOCKET_PATH } from '../config/appPaths';
 import { type Socket, type Server, createServer } from 'net';
-import {
-    type message,
-    ACTIONS,
-    type ActiveMonitor
-} from '../types/daemonTypes';
-import { type PlaylistClass, Playlist } from '../playlist/playlist';
+import { type PlaylistClass, Playlist } from './playlist';
 import { notify } from '../utils/notifications';
-import { configuration, dbOperations } from '../config/config';
+import { configuration, dbOperations } from '../globals/config';
 import {
     setImageAcrossMonitors,
     duplicateImageAcrossMonitors
@@ -15,9 +9,13 @@ import {
 import { getMonitors } from '../utils/monitorUtils';
 import { unlinkSync } from 'node:fs';
 import { type imageSelectType } from '../database/schema';
+import { type message } from '../types/types';
+import { ACTIONS } from '../types/types';
+import { type ActiveMonitor } from '../shared/types/monitor';
 export class DaemonManager {
     serverInstance: Server;
     socket?: Socket;
+
     readonly #playlistMap: Map<string, PlaylistClass>;
     constructor() {
         this.serverInstance = createServer(socket => {
@@ -49,13 +47,19 @@ export class DaemonManager {
         });
         this.serverInstance.on('error', err => {
             if (err.message.includes('EADDRINUSE')) {
-                unlinkSync(WAYPAPER_ENGINE_SOCKET_PATH);
-                this.serverInstance.listen(WAYPAPER_ENGINE_SOCKET_PATH);
+                unlinkSync(
+                    configuration.directories.WAYPAPER_ENGINE_SOCKET_PATH
+                );
+                this.serverInstance.listen(
+                    configuration.directories.WAYPAPER_ENGINE_SOCKET_PATH
+                );
             } else {
                 console.error(err);
             }
         });
-        this.serverInstance.listen(WAYPAPER_ENGINE_SOCKET_PATH);
+        this.serverInstance.listen(
+            configuration.directories.WAYPAPER_ENGINE_SOCKET_PATH
+        );
 
         this.#playlistMap = new Map<string, PlaylistClass>();
         const activePlaylists = dbOperations.getActivePlaylists();
@@ -220,58 +224,34 @@ export class DaemonManager {
             playlistToDelete.stop();
             this.#playlistMap.delete(activeMonitorName);
         });
-        newPlaylist.on(ACTIONS.SET_IMAGE, () => {
+        newPlaylist.on(ACTIONS.SET_IMAGE, (receivedMessage: message) => {
             try {
-                this.socket?.write(
-                    JSON.stringify({ action: ACTIONS.SET_IMAGE })
-                );
+                this.socket?.write(JSON.stringify(receivedMessage));
             } catch (error) {
                 console.error(error);
             }
         });
-        newPlaylist.on(
-            ACTIONS.PAUSE_PLAYLIST,
-            (receivedMessage: message & { action: ACTIONS.PAUSE_PLAYLIST }) => {
-                try {
-                    notify(
-                        `Pausing ${receivedMessage.playlist.name}\n monitors:${receivedMessage.playlist.activeMonitor.name}`
-                    );
-
-                    this.socket?.write(JSON.stringify(receivedMessage));
-                } catch (error) {
-                    console.error(error);
-                }
+        newPlaylist.on(ACTIONS.PAUSE_PLAYLIST, (receivedMessage: message) => {
+            try {
+                this.socket?.write(JSON.stringify(receivedMessage));
+            } catch (error) {
+                console.error(error);
             }
-        );
-        newPlaylist.on(
-            ACTIONS.RESUME_PLAYLIST,
-            (
-                receivedMessage: message & { action: ACTIONS.RESUME_PLAYLIST }
-            ) => {
-                try {
-                    notify(
-                        `Resuming ${receivedMessage.playlist.name}\n monitors:${receivedMessage.playlist.activeMonitor.name}`
-                    );
-
-                    this.socket?.write(JSON.stringify(receivedMessage));
-                } catch (error) {
-                    console.error(error);
-                }
+        });
+        newPlaylist.on(ACTIONS.RESUME_PLAYLIST, (receivedMessage: message) => {
+            try {
+                this.socket?.write(JSON.stringify(receivedMessage));
+            } catch (error) {
+                console.error(error);
             }
-        );
-        newPlaylist.on(
-            ACTIONS.STOP_PLAYLIST,
-            (receivedMessage: message & { action: ACTIONS.STOP_PLAYLIST }) => {
-                try {
-                    notify(
-                        `Stopped ${receivedMessage.playlist.name}\n monitors:${receivedMessage.playlist.activeMonitor.name}`
-                    );
-                    this.socket?.write(JSON.stringify(receivedMessage));
-                } catch (error) {
-                    console.error(error);
-                }
+        });
+        newPlaylist.on(ACTIONS.STOP_PLAYLIST, (receivedMessage: message) => {
+            try {
+                this.socket?.write(JSON.stringify(receivedMessage));
+            } catch (error) {
+                console.error(error);
             }
-        );
+        });
     }
 
     cleanUp() {
@@ -308,7 +288,7 @@ export class DaemonManager {
             image: imageSelectType;
             activeMonitor: ActiveMonitor;
         }> = [];
-        switch (configuration.app.settings.randomImageMonitor) {
+        switch (configuration.app.config.randomImageMonitor) {
             case 'clone': {
                 imagesSet.push({
                     image: randomImages[0],

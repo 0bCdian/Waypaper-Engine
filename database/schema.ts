@@ -1,12 +1,12 @@
 import { text, integer, sqliteTable } from 'drizzle-orm/sqlite-core';
-import { type swwwConfig as swwwConfigType } from '../../shared/types/swww';
+import { type swwwConfig as swwwConfigType } from '../shared/types/swww';
 import {
     type PLAYLIST_ORDER_TYPES,
     type PLAYLIST_TYPES_TYPE
-} from '../../shared/types/playlist.ts';
-import { type appConfigType } from '../../shared/types/app';
-import { type Formats } from '../../shared/types/image.ts';
-import { type ActiveMonitor } from '../../shared/types/monitor.ts';
+} from '../shared/types/playlist';
+import { type appConfigType } from '../shared/types/app';
+import { type Formats } from '../shared/types/image';
+import { type ActiveMonitor } from '../shared/types/monitor';
 import { sql } from 'drizzle-orm';
 export const image = sqliteTable('Images', {
     id: integer('id').notNull().primaryKey({ autoIncrement: true }),

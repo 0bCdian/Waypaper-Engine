@@ -1,20 +1,18 @@
-import {
-    ACTIONS,
-    PLAYLIST_TYPES,
-    type rendererImage,
-    type ActiveMonitor,
-    type message
-} from '../types/daemonTypes';
 import { DBOperations } from '../database/dbOperations';
 import { notify } from '../utils/notifications';
 import {
     setImageAcrossMonitors,
     duplicateImageAcrossMonitors
 } from '../utils/imageOperations';
-import { type PLAYLIST_TYPES_TYPE } from '../types/playlist';
+import {
+    PLAYLIST_TYPES,
+    type PLAYLIST_TYPES_TYPE
+} from '../shared/types/playlist';
 import { EventEmitter } from 'node:events';
-import { initSwwwDaemon } from '../utils/checkDependencies';
-
+import { initSwwwDaemon } from '../globals/startDaemons';
+import { type rendererImage } from '../src/types/rendererTypes';
+import { type ActiveMonitor } from '../shared/types/monitor';
+import { ACTIONS, type message } from '../types/types';
 export class Playlist extends EventEmitter {
     images: rendererImage[];
     name: string;

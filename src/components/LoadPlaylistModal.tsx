@@ -2,7 +2,7 @@ import { useRef, useEffect, useState } from 'react';
 import { playlistStore } from '../stores/playlist';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { imagesStore } from '../stores/images';
-import { type playlistSelectType } from '../../electron/database/schema';
+import { type playlistSelectType } from '../../database/schema';
 import { PLAYLIST_TYPES } from '../../shared/types/playlist';
 import {
     type rendererPlaylist,
@@ -59,7 +59,7 @@ const LoadPlaylistModal = ({
                 const imageToStore = imagesMap.get(image.id);
                 if (imageToStore === undefined) return;
                 if (
-                    selectedPlaylist.type === PLAYLIST_TYPES.timeofday &&
+                    selectedPlaylist.type === PLAYLIST_TYPES.TIME_OF_DAY &&
                     image.time !== null
                 ) {
                     imageToStore.time = image.time;

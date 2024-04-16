@@ -4,7 +4,7 @@ import {
     type PLAYLIST_TYPES_TYPE,
     type PLAYLIST_ORDER_TYPES
 } from '../../shared/types/playlist';
-import { type imageSelectType } from '../../electron/database/schema';
+import { type imageSelectType } from '../../database/schema';
 import { type ActiveMonitor } from '../../shared/types/monitor';
 import { type ELECTRON_API_TYPE } from '../../electron/exposedApi';
 declare global {

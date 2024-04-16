@@ -1,22 +1,15 @@
 {
     "name": "daemon",
-    "version": "1.3.3",
+    "version": "1.0.0",
     "description": "",
-    "main": "daemon.js",
+    "main": "daemon.ts",
     "scripts": {
-        "build": "npm install && tsc ./daemon.ts --esModuleInterop",
-        "compile": "tsc"
+        "test": "echo \"Error: no test specified\" && exit 1"
     },
     "keywords": [],
     "author": "",
     "license": "ISC",
     "dependencies": {
-        "better-sqlite3": "8.5.0",
-        "drizzle-orm": "^0.30.6"
-    },
-    "devDependencies": {
-        "@types/better-sqlite3": "7.6.4",
-        "drizzle-kit": "^0.20.14",
-        "typescript": "5.1.3"
+        "better-sqlite3": "9.5.0"
     }
 }

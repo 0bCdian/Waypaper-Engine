@@ -4,7 +4,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
     type appConfigSelectType,
     type appConfigInsertType
-} from '../../electron/database/schema';
+} from '../../database/schema';
 
 const { readAppConfig, updateAppConfig } = window.API_RENDERER;
 const AppConfiguration = () => {

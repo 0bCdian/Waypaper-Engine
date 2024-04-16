@@ -1,36 +1,26 @@
 import { type BrowserWindow, dialog, Menu } from 'electron';
 import { rmSync, mkdirSync, existsSync } from 'node:fs';
 import { copyFile, readdir } from 'node:fs/promises';
-import { contextMenu } from './globals/menus';
+import { contextMenu } from '../globals/menus';
 import {
     type rendererImage,
     type rendererPlaylist
 } from '../src/types/rendererTypes';
-import { exec, execFile } from 'node:child_process';
-import { promisify } from 'node:util';
-import { binDir } from './binaries';
 import { join, basename } from 'node:path';
-import { parseResolution } from '../src/utils/utilities';
-import { dbOperations } from './database/globalConfig';
+import { dbOperations, configuration } from '../globals/config';
 import Sharp = require('sharp');
 import {
     duplicateImageAcrossMonitors,
     setImageAcrossMonitors
-} from './imageOperations';
+} from '../utils/imageOperations';
 import { type openFileAction, type imagesObject } from '../shared/types';
-import { type imageMetadata } from './types/types';
-import {
-    type wlr_output,
-    type Monitor,
-    type ActiveMonitor
-} from '../shared/types/monitor';
+import { type imageMetadata } from '../types/types';
+import { type ActiveMonitor } from '../shared/types/monitor';
 import { validImageExtensions } from '../shared/constants';
-import { appDirectories } from './globals/appPaths';
 import { type Formats } from '../shared/types/image';
-import { type imageSelectType } from './database/schema';
-import { initSwwwDaemon } from './startDaemons';
-const execPomisified = promisify(exec);
-const execFilePomisified = promisify(execFile);
+import { type imageSelectType } from '../database/schema';
+import { initSwwwDaemon } from '../globals/startDaemons';
+const appDirectories = configuration.directories;
 function openImagesFromFilePicker(browserWindow: BrowserWindow | null) {
     if (browserWindow !== null) {
         return dialog.showOpenDialogSync(browserWindow, {
@@ -285,18 +275,24 @@ function getUniqueFileNames(existingFiles: Set<string>, filesToCopy: string[]) {
 
 export async function setImage(
     image: rendererImage | imageSelectType,
-    activeMonitor: ActiveMonitor
+    activeMonitor: ActiveMonitor,
+    showAnimations: boolean
 ) {
     let retries = 0;
     let success = false;
     while (retries < 3) {
         try {
             if (activeMonitor.extendAcrossMonitors) {
-                await setImageAcrossMonitors(image, activeMonitor.monitors);
+                await setImageAcrossMonitors(
+                    image,
+                    activeMonitor.monitors,
+                    showAnimations
+                );
             } else {
                 await duplicateImageAcrossMonitors(
                     image,
-                    activeMonitor.monitors
+                    activeMonitor.monitors,
+                    showAnimations
                 );
             }
             success = true;
@@ -360,80 +356,6 @@ export function deleteImagesFromGallery(
     }
 }
 
-export async function getMonitors(): Promise<Monitor[]> {
-    let stdout: string | undefined;
-    let stderr: string | undefined;
-    let tries = 0;
-    while (tries < 3) {
-        try {
-            const result = await execPomisified('swww query', {
-                encoding: 'utf-8'
-            });
-            stdout = result.stdout;
-            stderr = result.stderr;
-            break;
-        } catch (error) {
-            initSwwwDaemon();
-            tries++;
-        }
-    }
-    if (stdout === undefined || stderr === undefined) {
-        throw new Error('Could not query swww');
-    }
-    const wlrOutput = await getMonitorsInfo();
-    const parsedSwwwQuery = parseSwwwQuery(stdout);
-    if (stderr.length > 0 || wlrOutput === undefined)
-        throw new Error('either wlrOutput is undefined or swww query failed');
-    return parsedSwwwQuery.map(swwwMonitor => {
-        const matchingMonitor = wlrOutput.find(monitor => {
-            return monitor.name === swwwMonitor.name;
-        });
-        if (matchingMonitor === undefined)
-            throw new Error('Could not reconcile wlr_output and swww info');
-        return {
-            ...swwwMonitor,
-            position: matchingMonitor.position
-        };
-    });
-}
-
-function parseSwwwQuery(stdout: string) {
-    const monitorsInfoString = stdout.split('\n');
-    const monitorsObjectArray = monitorsInfoString
-        .filter(monitor => {
-            return monitor !== '';
-        })
-        .map((monitor, index) => {
-            const splitInfo = monitor.split(':');
-            const resolutionString = splitInfo[1].split(',')[0].trim();
-            const { width, height } = parseResolution(resolutionString);
-            return {
-                name: splitInfo[0].trim(),
-                width,
-                height,
-                currentImage: splitInfo[4].trim(),
-                position: index
-            };
-        });
-    return monitorsObjectArray;
-}
-
-export async function getMonitorsInfo() {
-    try {
-        const { stdout } = await execFilePomisified(join(binDir, 'wlr-randr'), [
-            '--json'
-        ]);
-        const monitors: wlr_output = JSON.parse(stdout);
-        monitors.forEach(monitor => {
-            monitor.modes = monitor.modes.filter(mode => mode.current);
-        });
-        return monitors;
-    } catch (error) {
-        console.error(error);
-        return undefined;
-    }
-}
-
 export async function openContextMenu(
     event: Electron.IpcMainInvokeEvent,
     image: rendererImage | undefined,
@@ -446,22 +368,4 @@ export async function openContextMenu(
     });
     const contextMenuInstance = Menu.buildFromTemplate(template);
     contextMenuInstance.popup();
-}
-
-export function parseArgs<
-    T extends { swwwFormat: string | undefined; script: string | undefined }
->(args: string[], configuration: T) {
-    for (let idx = 0; idx < args.length; idx++) {
-        const currentArg = args[idx];
-        switch (currentArg) {
-            case '--script':
-                configuration.script = args[idx + 1];
-                break;
-            case '--format':
-                configuration.swwwFormat = args[idx + 1];
-                break;
-            default:
-                break;
-        }
-    }
 }

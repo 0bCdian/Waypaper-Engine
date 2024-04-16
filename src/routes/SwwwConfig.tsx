@@ -6,7 +6,7 @@ import { swwwConfigStore } from '../stores/swwwConfig';
 import {
     type swwwConfigSelectType,
     type swwwConfigInsertType
-} from '../../electron/database/schema';
+} from '../../database/schema';
 import {
     FilterType,
     ResizeType,

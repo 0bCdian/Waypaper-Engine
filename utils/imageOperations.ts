@@ -1,11 +1,9 @@
-import Sharp = require('sharp');
-import { configuration } from './database/globalConfig';
-import { appDirectories } from './globals/appPaths';
+import { configuration } from '../globals/config';
 import { join } from 'node:path';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import { type Monitor } from '../shared/types/monitor';
-import { type imageSelectType } from './database/schema';
+import { type imageSelectType } from '../database/schema';
 import { type rendererImage } from '../src/types/rendererTypes';
 import {
     existsSync,
@@ -14,8 +12,11 @@ import {
     rmSync,
     writeFileSync
 } from 'node:fs';
-import { type cacheJson } from '../daemon/types/monitor';
+import { type CacheJSON } from '../shared/types';
+import { notifyImageSet } from './notifications';
+import Sharp = require('sharp');
 const execPomisified = promisify(exec);
+const appDirectories = configuration.directories;
 export async function resizeImageToFitMonitor(
     buffer: Sharp.Sharp,
     Image: imageSelectType,
@@ -286,7 +287,7 @@ function createSplitImagesJson({
     imageNameWithoutExtension: string;
     monitorImagePairs: Array<{ image: string; monitor: Monitor }>;
 }) {
-    const cacheJson: cacheJson = {
+    const cacheJson: CacheJSON = {
         imageName: Image.name,
         monitors: monitorImagePairs.map(pair => {
             return {
@@ -324,7 +325,7 @@ function getCacheIfExists({
 
     if (!existsSync(dirLocation)) return;
     let areCompatible = false;
-    const cacheJson: cacheJson = JSON.parse(
+    const cacheJson: CacheJSON = JSON.parse(
         readFileSync(join(dirLocation, 'info.json'), { encoding: 'utf8' })
     );
     for (let idx = 0; idx < monitors.length; idx++) {
@@ -387,9 +388,14 @@ async function resizeImageToDesiredResolution(
         .toFile(resizedImageFileName);
     return resizedImageFileName;
 }
-function getSwwwCommandFromConfiguration(imagePath: string, monitor?: string) {
+export function getSwwwCommandFromConfiguration(
+    imagePath: string,
+    monitor: string,
+    showAnimations: boolean
+) {
     const swwwConfig = configuration.swww.config;
     let transitionPos = '';
+    const transitionType = showAnimations ? swwwConfig.transitionType : 'none';
     const inverty = swwwConfig.invertY ? '--invert-y' : '';
     switch (swwwConfig.transitionPositionType) {
         case 'int':
@@ -405,9 +411,7 @@ function getSwwwCommandFromConfiguration(imagePath: string, monitor?: string) {
         monitor !== undefined ? `--outputs ${monitor}` : ''
     } --resize="${swwwConfig.resizeType}" --fill-color "${
         swwwConfig.fillColor
-    }" --filter ${swwwConfig.filterType} --transition-type ${
-        swwwConfig.transitionType
-    } --transition-step ${swwwConfig.transitionStep} --transition-duration ${
+    }" --filter ${swwwConfig.filterType} --transition-type ${transitionType} --transition-step ${swwwConfig.transitionStep} --transition-duration ${
         swwwConfig.transitionDuration
     } --transition-fps ${swwwConfig.transitionFPS} --transition-angle ${
         swwwConfig.transitionAngle
@@ -416,10 +420,10 @@ function getSwwwCommandFromConfiguration(imagePath: string, monitor?: string) {
     } --transition-wave "${swwwConfig.transitionWaveX},${swwwConfig.transitionWaveY}"`;
     return command;
 }
-
 export async function setImageAcrossMonitors(
     image: rendererImage | imageSelectType,
-    monitors: Monitor[]
+    monitors: Monitor[],
+    showAnimations: boolean
 ) {
     const imageNameWithoutExtension = image.name.split('.').at(0);
     if (imageNameWithoutExtension === undefined) {
@@ -456,7 +460,11 @@ export async function setImageAcrossMonitors(
     monitorImagePairs.forEach(pair => {
         commands.push(
             execPomisified(
-                getSwwwCommandFromConfiguration(pair.image, pair.monitor.name)
+                getSwwwCommandFromConfiguration(
+                    pair.image,
+                    pair.monitor.name,
+                    showAnimations
+                )
             )
         );
     });
@@ -465,10 +473,10 @@ export async function setImageAcrossMonitors(
         await execPomisified(`${configuration.script} ${imageFilePath}`);
     }
 }
-
 export async function duplicateImageAcrossMonitors(
     image: rendererImage | imageSelectType,
-    monitors: Monitor[]
+    monitors: Monitor[],
+    showAnimations: boolean
 ) {
     const imageFilePath = join(appDirectories.imagesDir, image.name);
     const monitorsString = monitors.reduce((prev, current) => {
@@ -477,10 +485,12 @@ export async function duplicateImageAcrossMonitors(
     }, '');
     const command = getSwwwCommandFromConfiguration(
         imageFilePath,
-        monitorsString
+        monitorsString,
+        showAnimations
     );
     await execPomisified(command);
     if (configuration.script !== undefined) {
         await execPomisified(`${configuration.script} ${imageFilePath}`);
     }
+    notifyImageSet(image.name, imageFilePath);
 }

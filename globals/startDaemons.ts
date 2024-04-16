@@ -1,8 +1,7 @@
 import { execSync, spawn } from 'child_process';
 import { promisify } from 'util';
-import { daemonLocation } from './binaries';
-import { configuration } from './database/globalConfig';
-import { WAYPAPER_ENGINE_SOCKET_PATH } from './globals/appPaths';
+import { daemonPath } from './setup';
+import { configuration } from '../globals/config';
 import { createConnection } from 'node:net';
 
 const setTimeoutPromise = promisify(setTimeout);
@@ -18,15 +17,16 @@ function checkIfSwwwIsInstalled() {
         throw new Error('swww is not installed');
     }
 }
+
 export function initSwwwDaemon() {
     checkIfSwwwIsInstalled();
     try {
+        if (configuration.format) {
+            execSync('killall swww-daemon');
+        }
         execSync('ps -A | grep "swww-daemon"');
-        console.log('Swww daemon already running');
     } catch (error) {
-        console.log('daemon not running, initiating swww...');
-        console.log(configuration);
-        const command = `swww-daemon --format ${configuration.swwwFormat} &`;
+        const command = `swww-daemon ${configuration.format ? '--format xrgb' : ''} &`;
         const output = spawn(command, {
             stdio: 'ignore',
             shell: true,
@@ -35,7 +35,7 @@ export function initSwwwDaemon() {
         output.unref();
     }
 }
-function isWaypaperDaemonRunning() {
+export function isWaypaperDaemonRunning() {
     try {
         execSync('pidof wpe-daemon');
         return true;
@@ -46,13 +46,15 @@ function isWaypaperDaemonRunning() {
 export async function initWaypaperDaemon() {
     if (!isWaypaperDaemonRunning()) {
         try {
-            const args = ['--trace-warnings', `${daemonLocation}/daemon.js`];
-            if (configuration.script !== undefined)
+            const args = [`${daemonPath}/daemon.js`];
+            if (configuration.format) {
+                args.push(`--format`);
+            }
+
+            if (configuration.script !== undefined) {
                 args.push(`--script ${configuration.script}`);
-            if (configuration.swwwFormat !== undefined)
-                args.push(`--format ${configuration.swwwFormat}`);
-            args.push('&');
-            const output = spawn('node', args, {
+            }
+            const output = spawn('PROCESS=daemon node', args, {
                 stdio: 'ignore',
                 shell: true,
                 detached: true,
@@ -61,6 +63,7 @@ export async function initWaypaperDaemon() {
             output.unref();
             await testConnection();
         } catch (error) {
+            console.error(error);
             console.warn('Could not start wpe-daemon, shutting down app...');
             process.exit(1);
         }
@@ -68,7 +71,7 @@ export async function initWaypaperDaemon() {
 }
 
 async function testConnection() {
-    const SOCKET_PATH = WAYPAPER_ENGINE_SOCKET_PATH;
+    const SOCKET_PATH = configuration.directories.WAYPAPER_ENGINE_SOCKET_PATH;
     const MAX_ATTEMPTS = 10;
     const RETRY_INTERVAL = 200; // 200 milliseconds
 

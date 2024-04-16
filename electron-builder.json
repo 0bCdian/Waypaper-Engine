@@ -15,19 +15,14 @@
         },
         {
             "from": "daemon",
-            "to": "resources/daemon",
-            "filter": ["**/*", "!**/*.ts"]
+            "to": "resources/daemon"
         },
         {
             "from": "node_modules/better-sqlite3/build/Release/better_sqlite3.node",
-            "to": "resources/bin/better_sqlite3.node"
+            "to": "resources/better_sqlite3.node"
         },
         {
-            "from": "bin",
-            "to": "resources/bin"
-        },
-        {
-            "from": "electron/database/migrations",
+            "from": "database/migrations",
             "to": "resources/migrations"
         }
     ],

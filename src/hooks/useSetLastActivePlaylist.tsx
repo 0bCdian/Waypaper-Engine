@@ -37,7 +37,7 @@ export function useSetLastActivePlaylist() {
                     return;
                 }
                 if (
-                    playlistFromDB.type === PLAYLIST_TYPES.timeofday &&
+                    playlistFromDB.type === PLAYLIST_TYPES.TIME_OF_DAY &&
                     imageInActivePlaylist.time !== null
                 ) {
                     imageToCheck.time = imageInActivePlaylist.time;

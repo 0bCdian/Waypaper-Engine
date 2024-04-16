@@ -1,14 +1,17 @@
 import { EventEmitter } from 'events';
 import { type Socket, createConnection } from 'net';
-import { WAYPAPER_ENGINE_SOCKET_PATH } from './globals/appPaths';
-import { ACTIONS, type message } from './types/types';
+import { configuration } from '../globals/config';
+import { ACTIONS, type message } from '../types/types';
 import { type ActiveMonitor } from '../shared/types/monitor';
-import { createTray } from './main';
-import { initWaypaperDaemon } from './startDaemons';
+import { initWaypaperDaemon } from '../globals/startDaemons';
+const WAYPAPER_ENGINE_SOCKET_PATH =
+    configuration.directories.WAYPAPER_ENGINE_SOCKET_PATH;
 export class PlaylistController extends EventEmitter {
     connection: Socket;
-    constructor() {
+    createTray: (() => Promise<void>) | undefined;
+    constructor(trayReference?: () => Promise<void>) {
         super();
+        this.createTray = trayReference;
         this.connection = createConnection(WAYPAPER_ENGINE_SOCKET_PATH);
         this.connection.on('data', data => {
             try {
@@ -26,7 +29,7 @@ export class PlaylistController extends EventEmitter {
     async connectToDaemon() {
         try {
             await initWaypaperDaemon();
-            await createTray();
+            if (this.createTray !== undefined) await this.createTray();
             const daemonSocketConnection = createConnection(
                 WAYPAPER_ENGINE_SOCKET_PATH
             );
@@ -162,7 +165,7 @@ export class PlaylistController extends EventEmitter {
                 break;
             case ACTIONS.RANDOM_IMAGE:
                 console.log(message);
-                void createTray();
+                if (this.createTray !== undefined) await this.createTray();
                 break;
             case ACTIONS.GET_INFO:
                 console.log(message);
@@ -171,31 +174,31 @@ export class PlaylistController extends EventEmitter {
                 console.log(message);
                 break;
             case ACTIONS.START_PLAYLIST:
-                void createTray();
+                if (this.createTray !== undefined) await this.createTray();
                 break;
             case ACTIONS.STOP_DAEMON:
                 void this.connectToDaemon();
                 break;
             case ACTIONS.PAUSE_PLAYLIST:
-                void createTray();
+                if (this.createTray !== undefined) await this.createTray();
                 break;
             case ACTIONS.RESUME_PLAYLIST:
-                void createTray();
+                if (this.createTray !== undefined) await this.createTray();
                 break;
             case ACTIONS.STOP_PLAYLIST:
-                void createTray();
+                if (this.createTray !== undefined) await this.createTray();
                 break;
             case ACTIONS.STOP_PLAYLIST_BY_NAME:
-                void createTray();
+                if (this.createTray !== undefined) await this.createTray();
                 break;
             case ACTIONS.NEXT_IMAGE:
-                void createTray();
+                if (this.createTray !== undefined) await this.createTray();
                 break;
             case ACTIONS.PREVIOUS_IMAGE:
-                void createTray();
+                if (this.createTray !== undefined) await this.createTray();
                 break;
             case ACTIONS.SET_IMAGE:
-                void createTray();
+                if (this.createTray !== undefined) await this.createTray();
                 break;
             default:
                 break;
