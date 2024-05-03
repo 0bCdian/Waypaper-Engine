@@ -14,6 +14,7 @@ import { type ActiveMonitor } from '../shared/types/monitor';
 import { PlaylistController } from '../electron/playlistController';
 import { getMonitors } from '../utils/monitorUtils';
 
+const playlistControllerInstance = new PlaylistController();
 export const devMenu = () => {
     const devMenuTemplate: Array<
         Electron.MenuItemConstructorOptions | Electron.MenuItem
@@ -61,7 +62,6 @@ export const trayMenu = async (
     const activePlaylists = dbOperations.getActivePlaylists();
     const imageHistory = dbOperations.getImageHistory();
 
-    const playlistControllerInstance = new PlaylistController();
     const playlistMenu: Array<
         Electron.MenuItemConstructorOptions | Electron.MenuItem
     > = [
@@ -79,6 +79,7 @@ export const trayMenu = async (
                                     activeMonitor:
                                         playlist.activePlaylists.monitor
                                 });
+                                if (createTray !== undefined) void createTray();
                             },
                             enabled:
                                 playlist.Playlists.type === 'timer' ||
@@ -93,6 +94,7 @@ export const trayMenu = async (
                                     activeMonitor:
                                         playlist.activePlaylists.monitor
                                 });
+                                if (createTray !== undefined) void createTray();
                             },
                             enabled:
                                 playlist.Playlists.type === 'timer' ||
@@ -118,6 +120,7 @@ export const trayMenu = async (
                                     activeMonitor:
                                         playlist.activePlaylists.monitor
                                 });
+                                if (createTray !== undefined) void createTray();
                             },
                             enabled: playlist.Playlists.type === 'timer'
                         },
@@ -163,6 +166,7 @@ export const trayMenu = async (
                                 trayInstance.setContextMenu(menu);
                             });
                         });
+                        if (createTray !== undefined) void createTray();
                     }
                 };
             })
@@ -176,6 +180,7 @@ export const trayMenu = async (
             label: 'Random Wallpaper',
             click: () => {
                 playlistControllerInstance.randomImage();
+                if (createTray !== undefined) void createTray();
             }
         },
         {

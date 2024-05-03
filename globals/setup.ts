@@ -1,7 +1,7 @@
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 const isPackaged = !(process.env.NODE_ENV === 'development');
-const resourcesPath = join(process.cwd(), 'resources');
+const resourcesPath = join(__dirname, '..', '..');
 export const iconsPath = resolve(
     isPackaged
         ? join(resourcesPath, './icons')
@@ -30,7 +30,7 @@ export const migrationsPath = resolve(
 
 export const migrationsPathDaemon = resolve(
     isPackaged
-        ? join(resourcesPath, 'migrations')
+        ? join(resourcesPath, '..', 'migrations')
         : join(process.cwd(), '..', '..', '..', '/database/migrations')
 );
 export const { values } = parseArgs({

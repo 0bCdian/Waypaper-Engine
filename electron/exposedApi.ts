@@ -161,4 +161,10 @@ export const ELECTRON_API = {
         return 'atom://' + join(configuration.directories.imagesDir, imageName);
     }
 };
-export type ELECTRON_API_TYPE = typeof ELECTRON_API;
+type ELECTRON_API_TYPE = typeof ELECTRON_API;
+
+declare global {
+    interface Window {
+        API_RENDERER: ELECTRON_API_TYPE;
+    }
+}

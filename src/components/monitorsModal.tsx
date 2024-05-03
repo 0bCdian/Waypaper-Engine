@@ -39,11 +39,11 @@ function Monitors() {
     });
     const onSubmit = () => {
         const extend = selectType === 'extend';
-        let name: string = selectType + ':';
+        let name: string = '';
         const selectedMonitors: Monitor[] = [];
         monitorsList.forEach(monitor => {
             if (!monitor.isSelected) return;
-            name = name.concat(' ', monitor.name, ',');
+            name = name.concat(monitor.name, ',');
             const { isSelected, ...selectedMonitor } = monitor;
             selectedMonitors.push(selectedMonitor);
         });

@@ -93,7 +93,11 @@ export class Playlist extends EventEmitter {
                 image,
                 activeMonitor: this.activeMonitor
             });
-            this.emit(ACTIONS.SET_IMAGE);
+            const message: message = {
+                action: ACTIONS.SET_IMAGE,
+                image
+            };
+            this.emit(ACTIONS.SET_IMAGE, message);
         } else {
             throw new Error('Could not set image,check the logs');
         }
@@ -255,7 +259,14 @@ export class Playlist extends EventEmitter {
                     this.emit(ACTIONS.ERROR, this.activeMonitor.name);
                     break;
             }
-            this.emit(ACTIONS.START_PLAYLIST, { name: this.name });
+            const message: message = {
+                action: ACTIONS.START_PLAYLIST,
+                playlist: {
+                    name: this.name,
+                    activeMonitor: this.activeMonitor
+                }
+            };
+            this.emit(ACTIONS.START_PLAYLIST, message);
         } catch (error) {
             const errorString = error as string;
             notify(
@@ -319,6 +330,7 @@ export class Playlist extends EventEmitter {
             if (!(resume ?? false)) {
                 await this.setImage(this.images[this.currentImageIndex]);
             }
+            this.playlistTimer.executionTimeStamp = this.interval + Date.now();
             this.playlistTimer.timeoutID = setInterval(() => {
                 this.currentImageIndex++;
                 if (this.currentImageIndex === this.images.length) {
@@ -471,24 +483,26 @@ export class Playlist extends EventEmitter {
     }
 
     async getPlaylistDiagnostics() {
+        const previousIndex =
+            this.currentImageIndex - 1 > 0 ? this.currentImageIndex - 1 : 0;
+        const nextIndex =
+            this.currentImageIndex + 1 === this.images.length
+                ? 0
+                : this.currentImageIndex + 1;
         const diagostics = {
             playlistName: this.name,
+            playlistActiveMonitor: this.activeMonitor,
+            showAnimations: this.showAnimations,
             type: this.currentType,
             playlistCurrentIndex: this.currentImageIndex,
-            playlistEventCheckerTimeout: {
-                id: String(this.eventCheckerTimeout)
-            },
-            playlistTimerObject: {
-                timeoutID: String(this.playlistTimer.timeoutID),
-                executionTimeStamp: new Date(
-                    this.playlistTimer.executionTimeStamp ?? 0
-                )
-            },
-            playlistImages: this.images.map(image => {
-                return JSON.stringify(image);
-            }),
-            playlistInterval: this.interval,
-            daemonPID: process.pid
+            imagesNumber: this.images.length,
+            currentImage: this.images[this.currentImageIndex],
+            previousImage: this.images[previousIndex],
+            nextImage: this.images[nextIndex],
+            nextImageDueTime: new Date(
+                this.playlistTimer.executionTimeStamp ?? 0
+            ),
+            playlistInterval: this.interval
         };
         return diagostics;
     }

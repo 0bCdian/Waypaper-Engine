@@ -34,8 +34,14 @@ import {
 import { type ActiveMonitor } from '../shared/types/monitor';
 import { PlaylistController } from './playlistController';
 import { IPC_MAIN_EVENTS } from '../shared/constants';
-import { initWaypaperDaemon, initSwwwDaemon } from '../globals/startDaemons';
+import {
+    initWaypaperDaemon,
+    initSwwwDaemon,
+    createMainServer
+} from '../globals/startDaemons';
 import { getMonitors } from '../utils/monitorUtils';
+import { ACTIONS } from '../types/types';
+import type EventEmitter from 'node:events';
 if (values.daemon !== undefined && (values.daemon as boolean)) {
     void initWaypaperDaemon();
     console.log('forking daemon');
@@ -60,6 +66,7 @@ process.env.PUBLIC = app.isPackaged
 process.env.NODE_ENV = app.isPackaged ? 'production' : 'development';
 let tray: Tray | null = null;
 let win: BrowserWindow | null;
+let playlistControllerInstance: PlaylistController;
 // 🚧 Use ['ENV_NAME'] avoid vite:define plugin - Vite@2.x
 const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
 async function createWindow() {
@@ -129,14 +136,38 @@ async function createTray() {
     const trayContextMenu = await trayMenu(app, tray, createTray);
     tray.setContextMenu(trayContextMenu);
 }
+function registerAppServerListeners(emitter: EventEmitter) {
+    emitter.on(ACTIONS.START_PLAYLIST, () => {
+        void createTray();
+        console.log(ACTIONS.START_PLAYLIST);
+    });
+    emitter.on(ACTIONS.SET_IMAGE, () => {
+        void createTray();
+        console.log(ACTIONS.SET_IMAGE);
+    });
+    emitter.on(ACTIONS.STOP_PLAYLIST, () => {
+        void createTray();
+        console.log(ACTIONS.STOP_PLAYLIST);
+    });
+    emitter.on(ACTIONS.RESUME_PLAYLIST, () => {
+        void createTray();
+        console.log(ACTIONS.RESUME_PLAYLIST);
+    });
+    emitter.on(ACTIONS.PAUSE_PLAYLIST, () => {
+        void createTray();
+        console.log(ACTIONS.PAUSE_PLAYLIST);
+    });
+}
 Menu.setApplicationMenu(null);
 app.whenReady()
     .then(async () => {
+        const server = createMainServer();
+        registerAppServerListeners(server);
         initSwwwDaemon();
         await initWaypaperDaemon();
         createAppDirsIfNotExist();
         await remakeThumbnailsIfImagesExist();
-        const playlistControllerInstance = new PlaylistController(createTray);
+        playlistControllerInstance = new PlaylistController(createTray);
         screen.on('display-added', () => {
             if (win === null) return;
             win.webContents.send(IPC_MAIN_EVENTS.displaysChanged);
@@ -194,7 +225,6 @@ app.whenReady()
     });
 app.on('quit', () => {
     if (configuration.app.config.killDaemon) {
-        const playlistControllerInstance = new PlaylistController();
         playlistControllerInstance.killDaemon();
     }
 });
@@ -238,10 +268,10 @@ ipcMain.on(
     'setImage',
     (_, image: rendererImage, activeMonitor: ActiveMonitor) => {
         void setImage(image, activeMonitor, true);
+        void createTray();
     }
 );
 ipcMain.on('setRandomImage', () => {
-    const playlistControllerInstance = new PlaylistController();
     playlistControllerInstance.randomImage();
     void createTray();
 });
@@ -253,7 +283,6 @@ ipcMain.on('savePlaylist', (_, playlistObject: rendererPlaylist) => {
 ipcMain.on(
     'startPlaylist',
     (_event, playlist: { name: string; activeMonitor: ActiveMonitor }) => {
-        const playlistControllerInstance = new PlaylistController();
         playlistControllerInstance.startPlaylist(playlist);
         void createTray();
     }
@@ -261,7 +290,6 @@ ipcMain.on(
 ipcMain.on(
     'stopPlaylist',
     (_, playlist: { name: string; activeMonitor: ActiveMonitor }) => {
-        const playlistControllerInstance = new PlaylistController();
         playlistControllerInstance.stopPlaylist(playlist);
         void createTray();
     }
@@ -270,7 +298,6 @@ ipcMain.on(
     'updateSwwwConfig',
     (_, newSwwwConfig: swwwConfigInsertType['config']) => {
         dbOperations.updateSwwwConfig({ config: newSwwwConfig });
-        const playlistControllerInstance = new PlaylistController();
         playlistControllerInstance.updateConfig();
     }
 );
@@ -285,7 +312,6 @@ ipcMain.on(
     'updateAppConfig',
     (_, newAppConfig: appConfigInsertType['config']) => {
         void dbOperations.updateAppConfig({ config: newAppConfig }).then(() => {
-            const playlistControllerInstance = new PlaylistController();
             playlistControllerInstance.updateConfig();
         });
     }

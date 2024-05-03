@@ -494,3 +494,5 @@ export async function duplicateImageAcrossMonitors(
     }
     notifyImageSet(image.name, imageFilePath);
 }
+
+export async function setMonitorInfoCache() {}

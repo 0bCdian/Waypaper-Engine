@@ -14,6 +14,7 @@ import { join } from 'node:path';
 const dbPath = join(homedir(), '.waypaper_engine', 'images_database.sqlite3');
 const isDaemon = process.env.PROCESS === 'daemon';
 const migrations = isDaemon ? migrationsPathDaemon : migrationsPath;
+
 export function createConnector() {
     if (isDaemon) {
         try {
@@ -22,7 +23,9 @@ export function createConnector() {
             return drizzleDB;
         } catch (error) {
             console.error(error);
-            throw new Error('Could not create better-sqlite3 connector daemon');
+            throw new Error(
+                `Could not create better-sqlite3 connector deamon ${__dirname} dirname`
+            );
         }
     }
     try {
@@ -31,7 +34,9 @@ export function createConnector() {
         return drizzleDB;
     } catch (error) {
         console.error(error);
-        throw new Error('Could not create better-sqlite3 connector electron');
+        throw new Error(
+            `Could not create better-sqlite3 connector electron ${__dirname} dirname`
+        );
     }
 }
 

@@ -2,7 +2,10 @@ import { execSync, spawn } from 'child_process';
 import { promisify } from 'util';
 import { daemonPath } from './setup';
 import { configuration } from '../globals/config';
-import { createConnection } from 'node:net';
+import { createConnection, createServer } from 'node:net';
+import { type message } from '../types/types';
+import { unlinkSync } from 'node:fs';
+import EventEmitter from 'node:events';
 
 const setTimeoutPromise = promisify(setTimeout);
 function checkIfSwwwIsInstalled() {
@@ -71,7 +74,8 @@ export async function initWaypaperDaemon() {
 }
 
 async function testConnection() {
-    const SOCKET_PATH = configuration.directories.WAYPAPER_ENGINE_SOCKET_PATH;
+    const SOCKET_PATH =
+        configuration.directories.WAYPAPER_ENGINE_DAEMON_SOCKET_PATH;
     const MAX_ATTEMPTS = 10;
     const RETRY_INTERVAL = 200; // 200 milliseconds
 
@@ -104,8 +108,47 @@ async function connectToDaemon(socketPath: string) {
             });
         } catch (error) {
             console.error(
-                'failed to test connection, this is because createConnection trhowed'
+                'failed to test connection, this is because createConnection trhew'
             );
         }
     });
+}
+
+export function createMainServer() {
+    const emitter = new EventEmitter();
+    const serverInstance = createServer(socket => {
+        socket.on('data', buffer => {
+            buffer
+                .toString()
+                .split('\n')
+                .filter(message => message !== '')
+                .forEach(message => {
+                    try {
+                        const parsedMessage: message = JSON.parse(message);
+                        emitter.emit(parsedMessage.action);
+                        console.log(parsedMessage);
+                    } catch (error) {
+                        console.error(error);
+                    }
+                });
+        });
+        socket.on('error', err => {
+            console.error('Socket error:', err.message);
+        });
+    });
+    serverInstance.on('error', err => {
+        if (err.message.includes('EADDRINUSE')) {
+            unlinkSync(configuration.directories.WAYPAPER_ENGINE_SOCKET_PATH);
+            serverInstance.listen(
+                configuration.directories.WAYPAPER_ENGINE_SOCKET_PATH
+            );
+        } else {
+            console.error(err);
+            throw err;
+        }
+    });
+    serverInstance.listen(
+        configuration.directories.WAYPAPER_ENGINE_SOCKET_PATH
+    );
+    return emitter;
 }

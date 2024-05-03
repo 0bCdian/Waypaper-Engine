@@ -138,7 +138,7 @@ export class DBOperations extends EventEmitter {
         if (activePlaylist === undefined) return;
         const imagesInPlaylist = this.getPlaylistImages(
             activePlaylist.Playlists.id,
-            null
+            activePlaylist.Playlists.order
         );
         return {
             ...activePlaylist.Playlists,

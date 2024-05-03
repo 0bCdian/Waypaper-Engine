@@ -1,11 +1,21 @@
-SOCKET_CONNECTION='/tmp/waypaper_engine_daemon.sock'
-
-send_message(){
-  echo -n "$1" | socat - UNIX-CONNECT:"$SOCKET_CONNECTION"
+WAYPAPER_ENGINE_DAEMON_SOCKET_PATH="/tmp/waypaper_engine_daemon.sock"
+PLAYLIST="${args[playlist]}"
+ACTIVE_MONITOR="${args[active_monitor]}"
+COMMAND="resume-playlist"
+COMMAND_ALL="resume-playlist-all"
+execute_command() {
+	local argument="$1"
+	echo "$argument" | jq
+	echo -n "$argument" | socat - UNIX-CONNECT:$WAYPAPER_ENGINE_DAEMON_SOCKET_PATH | jq || {
+		echo "Something went wrong"
+		exit 1
+	}
 }
 
-resume_playlist(){
-  send_message '{"action":"resume-playlist"}' || echo "Seems like the daemon is not running, make sure to run 'waypaper-engine daemon' first"
-}
-
-resume_playlist
+if [[ -z "$PLAYLIST" ]]; then
+	execute_command "{\"action\": \"$COMMAND_ALL\"}"
+elif [[ -z "$ACTIVE_MONITOR" ]]; then
+	execute_command "{\"action\": \"$COMMAND\", \"playlist\": {\"name\": \"$PLAYLIST\"}}"
+else
+	execute_command "{\"action\": \"$COMMAND\", \"playlist\": {\"name\": \"$PLAYLIST\", \"activeMonitor\":{\"name\":\"$ACTIVE_MONITOR\"}}}"
+fi

@@ -1,8 +1,33 @@
 name: waypaper-engine
-help: A wallpaper setting tool with playlist functionality
-version: 1.1.0
+help: A wallpaper setting tool with batteries included!
+version: 2.0.0
 
 commands:
+    - name: run
+      alias: r
+      help: Run the waypaper engine application
+
+      flags:
+          - long: --script
+            short: -s
+            arg: script
+            help: Script to run on each image set, the image path will be passed as argument.
+            required: false
+
+          - long: --wayland
+            help: force app to run under wayland instead of xwayland.
+            required: false
+
+          - long: --format
+            short: -f
+            help: Starts swww in xrgb mode.
+            required: false
+      examples:
+          - waypaper-engine
+          - waypaper-engine run
+          - waypaper-engine run --wayland
+          - waypaper-engine r -s "/path/to/your/script.sh"
+
     - name: daemon
       alias: d
       help: Run just the waypaper engine daemon
@@ -14,29 +39,47 @@ commands:
             help: Script to run on each image set, the image path will be passed as argument.
             required: false
 
+          - long: --format
+            short: -f
+            help: Starts swww in xrgb mode.
+            required: false
+
       examples:
           - waypaper-engine daemon
           - waypaper-engine daemon -s "/path/to/your/script.sh"
-          - waypaper-engine daemon --script "/path/to/your/script.sh"
+          - waypaper-engine daemon --script "/path/to/your/script.sh" --format
 
     - name: next-image
       alias: ni
       help: Send a request to the daemon to set the next image in the playlist
+      args:
+          - name: playlist
+            help: Send next image command to a specific playlist, if left empty will send the command to all active playlists.
 
+          - name: active_monitor
+            help: If not specified, will send the next command to all active playlist with the name provided.
       examples:
           - waypaper-engine next-image
+          - waypaper-engine next-image playlist_name
+          - waypaper-engine next-image playlist_name active_monitor
 
     - name: previous-image
       alias: pi
       help: Send a request to the daemon to set the previous image in the playlist
+      args:
+          - name: playlist
+            help: Send previous image command to a specific playlist, if left empty will send the command to all active playlists.
 
+          - name: active_monitor
+            help: If not specified, will send the previous command to all active playlist with the name provided.
       examples:
           - waypaper-engine previous-image
+          - waypaper-engine previous-image playlist_name
+          - waypaper-engine previous-image playlist_name active_monitor
 
     - name: kill-daemon
       alias: kd
       help: Kill the waypaper daemon process
-
       examples:
           - waypaper-engine kill-daemon
           - waypaper-engine kd
@@ -44,7 +87,6 @@ commands:
     - name: stop-daemon
       alias: sd
       help: Send stop command to daemon process
-
       examples:
           - waypaper-engine stop-daemon
           - waypaper-engine sd
@@ -52,58 +94,84 @@ commands:
     - name: pause-playlist
       alias: pp
       help: Send a request to the daemon to pause the current playlist
+      args:
+          - name: playlist
+            help: Send pause command to a specific playlist, if left empty will send the command to all active playlists.
 
+          - name: active_monitor
+            help: If not specified, will send the pause command to all active playlist with the name provided.
       examples:
           - waypaper-engine pause-playlist
+          - waypaper-engine pause-playlist playlist_name
+          - waypaper-engine pause-playlist_name playlist active_monitor
 
     - name: resume-playlist
       alias: rp
       help: Send a request to the daemon to resume the current playlist
+      args:
+          - name: playlist
+            help: Send resume command to a specific playlist, if left empty will send the command to all active playlists.
 
+          - name: active_monitor
+            help: If not specified, will send the resume command to all active playlist with the name provided.
       examples:
           - waypaper-engine resume-playlist
+          - waypaper-engine resume-playlist playlist_name
+          - waypaper-engine resume-playlist playlist_name active_monitor
+
+    - name: start-playlist
+      help: Start a playlist from the interactive selection
+
+      examples:
+          - waypaper-engine start-playlist
 
     - name: stop-playlist
       alias: sp
       help: Send a request to the daemon to stop the current playlist
+      args:
+          - name: playlist
+            help: Send stop command to a specific playlist, if left empty will send the command to all active playlists.
+
+          - name: active_monitor
+            help: If not specified, will send the stop command to all active playlist with the name provided.
 
       examples:
           - waypaper-engine stop-playlist
-
-    - name: run
-      alias: r
-      help: run the waypaper engine application
-      default: force
-
-      flags:
-          - long: --script
-            short: -s
-            arg: script
-            help: Script to run on each image set, the image path will be passed as argument.
-            required: false
-
-          - long: --force-wayland
-            help: force app to run under wayland instead of xwayland.
-            required: false
-
-      examples:
-          - waypaper-engine
-          - waypaper-engine run
-          - waypaper-engine run --force-wayland
-          - waypaper-engine r -s "/path/to/your/script.sh"
+          - waypaper-engine stop-playlist playlist_name
+          - waypaper-engine stop-playlist playlist_name active_monitor
 
     - name: random
       alias: ri
-      help: set a random image from the gallery
+      help: Set a random image from the gallery
 
       examples:
           - waypaper-engine random
           - waypaper-engine ri
 
+    - name: info-playlist
+      alias: ip
+      help: Get active playlists diagnostics
+
+      examples:
+          - waypaper-engine info-playlist
+          - waypaper-engine ip
+
     - name: info
       alias: i
-      help: get playlist diagnostics
-
+      help: Get monitors info and it's currently displayed images.
       examples:
           - waypaper-engine info
           - waypaper-engine i
+
+    - name: playlist
+      help: Launch interactive playlist controller
+      examples:
+          - waypaper-engine playlist
+          - waypaper-engine p
+
+    - name: history
+      alias: h
+      help: Launch interactive image history
+      examples:
+          - waypaper-engine history
+          - waypaper-engine h

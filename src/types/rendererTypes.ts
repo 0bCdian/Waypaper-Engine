@@ -6,12 +6,7 @@ import {
 } from '../../shared/types/playlist';
 import { type imageSelectType } from '../../database/schema';
 import { type ActiveMonitor } from '../../shared/types/monitor';
-import { type ELECTRON_API_TYPE } from '../../electron/exposedApi';
-declare global {
-    interface Window {
-        API_RENDERER: ELECTRON_API_TYPE;
-    }
-}
+
 export enum STORE_ACTIONS {
     SET_IMAGES_ARRAY = 'SET_IMAGES_ARRAY',
     SET_SKELETONS_TO_SHOW = 'SET_SKELETONS_TO_SHOW',

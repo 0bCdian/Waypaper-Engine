@@ -10,6 +10,8 @@
     "author": "",
     "license": "ISC",
     "dependencies": {
-        "better-sqlite3": "9.5.0"
+        "better-sqlite3": "9.5.0",
+        "drizzle-orm": "^0.30.8",
+        "sharp": "^0.33.3"
     }
 }

@@ -8,7 +8,7 @@
         "url": "https://github.com/0bCdian"
     },
     "scripts": {
-        "dev": "vite",
+        "dev": "npm run compile_daemon && vite",
         "rebuild": "electron-rebuild --w node_modules/better-sqlite3",
         "compile_daemon": "tsc daemon/daemon.ts  --outDir ./daemon/dist --target ES2020 --moduleResolution node --esModuleInterop --skipLibCheck --module CommonJs",
         "build": "npm install && npm run rebuild && npm run compile_daemon && vite build && electron-builder",

@@ -28,7 +28,7 @@ try {
         notify(`Daemon crashed, ${error}`);
         console.error(error);
         daemonManager.cleanUp();
-        process.exit(0);
+        process.exit(1);
     });
 } catch (error) {
     console.error(error);

@@ -1,68 +1,59 @@
 import { EventEmitter } from 'events';
-import { type Socket, createConnection } from 'net';
+import { createConnection } from 'net';
 import { configuration } from '../globals/config';
 import { ACTIONS, type message } from '../types/types';
 import { type ActiveMonitor } from '../shared/types/monitor';
 import { initWaypaperDaemon } from '../globals/startDaemons';
-const WAYPAPER_ENGINE_SOCKET_PATH =
-    configuration.directories.WAYPAPER_ENGINE_SOCKET_PATH;
+const WAYPAPER_ENGINE_DAEMON_SOCKET_PATH =
+    configuration.directories.WAYPAPER_ENGINE_DAEMON_SOCKET_PATH;
 export class PlaylistController extends EventEmitter {
-    connection: Socket;
     createTray: (() => Promise<void>) | undefined;
+    retries: number;
     constructor(trayReference?: () => Promise<void>) {
         super();
         this.createTray = trayReference;
-        this.connection = createConnection(WAYPAPER_ENGINE_SOCKET_PATH);
-        this.connection.on('data', data => {
+        this.retries = 0;
+    }
+
+    async #sendData(data: message) {
+        const connection = createConnection(WAYPAPER_ENGINE_DAEMON_SOCKET_PATH);
+        connection.on('connect', () => {
+            try {
+                connection.write(JSON.stringify(data) + '\n', e => {
+                    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
+                    if (e) {
+                        console.error(e);
+                        return;
+                    }
+                    console.log(
+                        'data sent succesfully:',
+                        `${JSON.stringify(data)}\n`
+                    );
+                    this.retries = 0;
+                    if (this.createTray !== undefined) void this.createTray();
+                });
+            } catch (error) {
+                console.error(error);
+            }
+        });
+        connection.on('data', data => {
             try {
                 const parsedDaemonMessage: message = JSON.parse(
                     data.toString()
                 );
-                void this.processSocketMessage(parsedDaemonMessage);
                 console.log('Data from daemon:', parsedDaemonMessage);
+                if (this.createTray !== undefined) void this.createTray();
             } catch (e) {
                 console.error(e);
             }
         });
-    }
-
-    async connectToDaemon() {
-        try {
-            await initWaypaperDaemon();
-            if (this.createTray !== undefined) await this.createTray();
-            const daemonSocketConnection = createConnection(
-                WAYPAPER_ENGINE_SOCKET_PATH
-            );
-            daemonSocketConnection.on('data', data => {
-                try {
-                    const parsedDaemonMessage: message = JSON.parse(
-                        data.toString()
-                    );
-                    void this.processSocketMessage(parsedDaemonMessage);
-                    console.log('Data from daemon:', parsedDaemonMessage);
-                } catch (e) {
-                    console.error(e);
-                }
+        connection.on('error', () => {
+            if (this.retries > 3) throw new Error('Could not restart daemon');
+            this.retries++;
+            void initWaypaperDaemon().then(() => {
+                void this.#sendData(data);
             });
-            this.connection = daemonSocketConnection;
-        } catch (e) {
-            console.error(e);
-            console.error(
-                'Something went wrong trying to reconnect daemon in playlistController'
-            );
-            process.exit(1);
-        }
-    }
-
-    async #sendData(data: message) {
-        try {
-            this.connection.write(JSON.stringify(data), () => {
-                console.log('data sent succesfully', data);
-            });
-        } catch (error) {
-            await initWaypaperDaemon();
-            await this.connectToDaemon();
-        }
+        });
     }
 
     startPlaylist(playlist: { name: string; activeMonitor: ActiveMonitor }) {
@@ -102,6 +93,12 @@ export class PlaylistController extends EventEmitter {
         });
     }
 
+    getInfo() {
+        void this.#sendData({
+            action: ACTIONS.GET_INFO
+        });
+    }
+
     stopPlaylistByMonitorName(monitors: string[]) {
         void this.#sendData({
             action: ACTIONS.STOP_PLAYLIST_BY_MONITOR_NAME,
@@ -137,7 +134,7 @@ export class PlaylistController extends EventEmitter {
 
     killDaemon() {
         const daemonSocketConnection = createConnection(
-            WAYPAPER_ENGINE_SOCKET_PATH
+            WAYPAPER_ENGINE_DAEMON_SOCKET_PATH
         );
         daemonSocketConnection.write(
             JSON.stringify({ action: ACTIONS.STOP_DAEMON }),
@@ -145,63 +142,11 @@ export class PlaylistController extends EventEmitter {
                 daemonSocketConnection.destroy();
             }
         );
-
-        this.connection.destroy();
     }
 
     updateConfig() {
         void this.#sendData({
             action: ACTIONS.UPDATE_CONFIG
         });
-    }
-
-    async processSocketMessage(message: message) {
-        switch (message.action) {
-            case ACTIONS.STOP_PLAYLIST_ON_REMOVED_DISPLAYS:
-                console.log(message);
-                break;
-            case ACTIONS.UPDATE_CONFIG:
-                console.log(message);
-                break;
-            case ACTIONS.RANDOM_IMAGE:
-                console.log(message);
-                if (this.createTray !== undefined) await this.createTray();
-                break;
-            case ACTIONS.GET_INFO:
-                console.log(message);
-                break;
-            case ACTIONS.STOP_PLAYLIST_BY_MONITOR_NAME:
-                console.log(message);
-                break;
-            case ACTIONS.START_PLAYLIST:
-                if (this.createTray !== undefined) await this.createTray();
-                break;
-            case ACTIONS.STOP_DAEMON:
-                void this.connectToDaemon();
-                break;
-            case ACTIONS.PAUSE_PLAYLIST:
-                if (this.createTray !== undefined) await this.createTray();
-                break;
-            case ACTIONS.RESUME_PLAYLIST:
-                if (this.createTray !== undefined) await this.createTray();
-                break;
-            case ACTIONS.STOP_PLAYLIST:
-                if (this.createTray !== undefined) await this.createTray();
-                break;
-            case ACTIONS.STOP_PLAYLIST_BY_NAME:
-                if (this.createTray !== undefined) await this.createTray();
-                break;
-            case ACTIONS.NEXT_IMAGE:
-                if (this.createTray !== undefined) await this.createTray();
-                break;
-            case ACTIONS.PREVIOUS_IMAGE:
-                if (this.createTray !== undefined) await this.createTray();
-                break;
-            case ACTIONS.SET_IMAGE:
-                if (this.createTray !== undefined) await this.createTray();
-                break;
-            default:
-                break;
-        }
     }
 }
