@@ -264,7 +264,7 @@ export class DaemonManager {
                                     playlistActive.name ===
                                     message.playlist.name
                                 ) {
-                                    void playlistActive.pause();
+                                    playlistActive.pause();
                                 }
                             });
                             return;
@@ -288,7 +288,7 @@ export class DaemonManager {
                                     playlistActive.name ===
                                     message.playlist.name
                                 ) {
-                                    void playlistActive.resume();
+                                    playlistActive.resume();
                                 }
                             });
                             return;
