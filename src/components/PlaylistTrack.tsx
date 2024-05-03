@@ -2,14 +2,26 @@ import { DndContext, type DragEndEvent, closestCorners } from '@dnd-kit/core';
 import { SortableContext, arrayMove } from '@dnd-kit/sortable';
 import { useMemo, useEffect, useCallback, lazy, Suspense } from 'react';
 import { playlistStore } from '../stores/playlist';
+import { IPC_MAIN_EVENTS } from '../../shared/constants';
 import openImagesStore from '../hooks/useOpenImages';
 import { motion, AnimatePresence } from 'framer-motion';
 import { imagesStore } from '../stores/images';
+import { useMonitorStore } from '../stores/monitors';
 import { type openFileAction } from '../../shared/types';
-import { type rendererImage } from '../types/rendererTypes';
+import {
+    type rendererPlaylist,
+    type rendererImage
+} from '../types/rendererTypes';
 import { useSetLastActivePlaylist } from '../hooks/useSetLastActivePlaylist';
+import { PLAYLIST_TYPES } from '../../shared/types/playlist';
 let firstRender = true;
-const { stopPlaylist, setRandomImage } = window.API_RENDERER;
+const {
+    stopPlaylist,
+    setRandomImage,
+    registerListener,
+    deletePlaylist,
+    readActivePlaylist
+} = window.API_RENDERER;
 const MiniPlaylistCard = lazy(async () => await import('./MiniPlaylistCard'));
 function PlaylistTrack() {
     const {
@@ -17,10 +29,13 @@ function PlaylistTrack() {
         lastAddedImageID,
         movePlaylistArrayOrder,
         addImagesToPlaylist,
-        clearPlaylist
+        clearPlaylist,
+        setPlaylist,
+        setEmptyPlaylist
     } = playlistStore();
+    const { activeMonitor } = useMonitorStore();
     const { openImages, isActive } = openImagesStore();
-    const { setSkeletons, addImages } = imagesStore();
+    const { setSkeletons, addImages, imagesArray } = imagesStore();
     useSetLastActivePlaylist();
 
     const handleClickAddImages = useCallback((action: openFileAction) => {
@@ -101,6 +116,51 @@ function PlaylistTrack() {
         });
         return [elements, sortingCriteria];
     }, [playlist]);
+    const updatePlaylist = () => {
+        void readActivePlaylist(activeMonitor).then(playlistFromDB => {
+            if (playlistFromDB === undefined) {
+                setEmptyPlaylist();
+                return;
+            }
+
+            if (playlistFromDB.images.length < 1) {
+                deletePlaylist(playlistFromDB.name);
+                return;
+            }
+
+            const imagesToStorePlaylist: rendererImage[] = [];
+            playlistFromDB.images.forEach(imageInActivePlaylist => {
+                const imageToCheck = imagesArray.find(imageInGallery => {
+                    return imageInGallery.name === imageInActivePlaylist.name;
+                });
+                if (imageToCheck === undefined) {
+                    return;
+                }
+                if (
+                    playlistFromDB.type === PLAYLIST_TYPES.TIME_OF_DAY &&
+                    imageInActivePlaylist.time !== null
+                ) {
+                    imageToCheck.time = imageInActivePlaylist.time;
+                }
+                imageToCheck.isChecked = true;
+                imagesToStorePlaylist.push(imageToCheck);
+            });
+            const currentPlaylist: rendererPlaylist = {
+                name: playlistFromDB.name,
+                configuration: {
+                    type: playlistFromDB.type,
+                    order: playlistFromDB.order,
+                    interval: playlistFromDB.interval,
+                    showAnimations: playlistFromDB.showAnimations,
+                    alwaysStartOnFirstImage:
+                        playlistFromDB.alwaysStartOnFirstImage
+                },
+                images: imagesToStorePlaylist,
+                activeMonitor
+            };
+            setPlaylist(currentPlaylist);
+        });
+    };
     useEffect(() => {
         if (firstRender) {
             firstRender = false;
@@ -110,6 +170,14 @@ function PlaylistTrack() {
             clearPlaylist();
         }
     }, [playlist.images]);
+    useEffect(() => {
+        registerListener({
+            channel: IPC_MAIN_EVENTS.requeryPlaylist,
+            listener: _ => {
+                updatePlaylist();
+            }
+        });
+    }, [activeMonitor, imagesArray]);
     useEffect(() => {
         if (playlist.configuration.type === 'timeofday') {
             reorderSortingCriteria();

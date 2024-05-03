@@ -3,6 +3,7 @@ PLAYLIST="${args[playlist]}"
 ACTIVE_MONITOR="${args[active_monitor]}"
 COMMAND="stop-playlist"
 COMMAND_ALL="stop-playlist-all"
+COMMAND_NAME="stop-playlist-by-name"
 execute_command() {
 	local argument="$1"
 	echo "$argument" | jq
@@ -15,7 +16,7 @@ execute_command() {
 if [[ -z "$PLAYLIST" ]]; then
 	execute_command "{\"action\": \"$COMMAND_ALL\"}"
 elif [[ -z "$ACTIVE_MONITOR" ]]; then
-	execute_command "{\"action\": \"$COMMAND\", \"playlist\": {\"name\": \"$PLAYLIST\"}}"
+	execute_command "{\"action\": \"$COMMAND_NAME\", \"playlist\": {\"name\": \"$PLAYLIST\"}}"
 else
 	execute_command "{\"action\": \"$COMMAND\", \"playlist\": {\"name\": \"$PLAYLIST\", \"activeMonitor\":{\"name\":\"$ACTIVE_MONITOR\"}}}"
 fi

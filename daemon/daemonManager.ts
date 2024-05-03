@@ -255,10 +255,7 @@ export class DaemonManager {
 
                 case ACTIONS.PAUSE_PLAYLIST:
                     {
-                        const playlistInstance = this.#playlistMap.get(
-                            message.playlist.activeMonitor.name
-                        );
-                        if (playlistInstance === undefined) {
+                        if (message.playlist.activeMonitor === undefined) {
                             if (message.playlist.name === undefined) {
                                 return;
                             }
@@ -267,22 +264,22 @@ export class DaemonManager {
                                     playlistActive.name ===
                                     message.playlist.name
                                 ) {
-                                    playlistActive.pause();
+                                    void playlistActive.pause();
                                 }
                             });
                             return;
                         }
-                        playlistInstance.pause();
+                        const playlistInstance = this.#playlistMap.get(
+                            message.playlist.activeMonitor.name
+                        );
+                        playlistInstance?.pause();
                         socket.end();
                     }
                     break;
 
                 case ACTIONS.RESUME_PLAYLIST:
                     {
-                        const playlistInstance = this.#playlistMap.get(
-                            message.playlist.activeMonitor.name
-                        );
-                        if (playlistInstance === undefined) {
+                        if (message.playlist.activeMonitor === undefined) {
                             if (message.playlist.name === undefined) {
                                 return;
                             }
@@ -291,23 +288,22 @@ export class DaemonManager {
                                     playlistActive.name ===
                                     message.playlist.name
                                 ) {
-                                    playlistActive.resume();
+                                    void playlistActive.resume();
                                 }
                             });
                             return;
                         }
-                        playlistInstance.resume();
+                        const playlistInstance = this.#playlistMap.get(
+                            message.playlist.activeMonitor.name
+                        );
+                        playlistInstance?.resume();
                         socket.end();
                     }
                     break;
 
                 case ACTIONS.STOP_PLAYLIST:
                     {
-                        socket.end();
-                        const playlistInstance = this.#playlistMap.get(
-                            message.playlist.activeMonitor.name
-                        );
-                        if (playlistInstance === undefined) {
+                        if (message.playlist.activeMonitor === undefined) {
                             if (message.playlist.name === undefined) {
                                 return;
                             }
@@ -317,17 +313,19 @@ export class DaemonManager {
                                     message.playlist.name
                                 ) {
                                     playlistActive.stop();
-                                    this.#playlistMap.delete(
-                                        playlistActive.activeMonitor.name
-                                    );
                                 }
                             });
                             return;
                         }
-                        playlistInstance.stop();
+                        const playlistInstance = this.#playlistMap.get(
+                            message.playlist.activeMonitor.name
+                        );
+                        if (playlistInstance === undefined) return;
                         this.#playlistMap.delete(
                             playlistInstance.activeMonitor.name
                         );
+                        playlistInstance.stop();
+                        socket.end();
                     }
                     break;
 

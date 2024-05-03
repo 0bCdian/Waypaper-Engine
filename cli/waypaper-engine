@@ -36,12 +36,12 @@ waypaper_engine_usage() {
   printf "%s\n" "Commands:"
   printf "  %s   Run the waypaper engine application\n" "run            "
   printf "  %s   Run just the waypaper engine daemon\n" "daemon         "
-  printf "  %s   Send a request to the daemon to set the next image in the playlist\n" "next-image     "
-  printf "  %s   Send a request to the daemon to set the previous image in the playlist\n" "previous-image "
+  printf "  %s   Send a request to the daemon to set the next image in the specified playlist\n" "next-image     "
+  printf "  %s   Send a request to the daemon to set the previous image in the specified playlist\n" "previous-image "
   printf "  %s   Kill the waypaper daemon process\n" "kill-daemon    "
   printf "  %s   Send stop command to daemon process\n" "stop-daemon    "
-  printf "  %s   Send a request to the daemon to pause the current playlist\n" "pause-playlist "
-  printf "  %s   Send a request to the daemon to resume the current playlist\n" "resume-playlist"
+  printf "  %s   Send a request to the daemon to pause the specified playlist\n" "pause-playlist "
+  printf "  %s   Send a request to the daemon to resume the specified playlist\n" "resume-playlist"
   printf "  %s   Start a playlist from the interactive selection\n" "start-playlist "
   printf "  %s   Send a request to the daemon to stop the current playlist\n" "stop-playlist  "
   printf "  %s   Set a random image from the gallery\n" "random         "
@@ -175,11 +175,11 @@ waypaper_engine_daemon_usage() {
 # :command.usage
 waypaper_engine_next_image_usage() {
   if [[ -n $long_usage ]]; then
-    printf "waypaper-engine next-image - Send a request to the daemon to set the next image in the playlist\n"
+    printf "waypaper-engine next-image - Send a request to the daemon to set the next image in the specified playlist\n"
     echo
 
   else
-    printf "waypaper-engine next-image - Send a request to the daemon to set the next image in the playlist\n"
+    printf "waypaper-engine next-image - Send a request to the daemon to set the next image in the specified playlist\n"
     echo
 
   fi
@@ -227,11 +227,11 @@ waypaper_engine_next_image_usage() {
 # :command.usage
 waypaper_engine_previous_image_usage() {
   if [[ -n $long_usage ]]; then
-    printf "waypaper-engine previous-image - Send a request to the daemon to set the previous image in the playlist\n"
+    printf "waypaper-engine previous-image - Send a request to the daemon to set the previous image in the specified playlist\n"
     echo
 
   else
-    printf "waypaper-engine previous-image - Send a request to the daemon to set the previous image in the playlist\n"
+    printf "waypaper-engine previous-image - Send a request to the daemon to set the previous image in the specified playlist\n"
     echo
 
   fi
@@ -355,11 +355,11 @@ waypaper_engine_stop_daemon_usage() {
 # :command.usage
 waypaper_engine_pause_playlist_usage() {
   if [[ -n $long_usage ]]; then
-    printf "waypaper-engine pause-playlist - Send a request to the daemon to pause the current playlist\n"
+    printf "waypaper-engine pause-playlist - Send a request to the daemon to pause the specified playlist\n"
     echo
 
   else
-    printf "waypaper-engine pause-playlist - Send a request to the daemon to pause the current playlist\n"
+    printf "waypaper-engine pause-playlist - Send a request to the daemon to pause the specified playlist\n"
     echo
 
   fi
@@ -407,11 +407,11 @@ waypaper_engine_pause_playlist_usage() {
 # :command.usage
 waypaper_engine_resume_playlist_usage() {
   if [[ -n $long_usage ]]; then
-    printf "waypaper-engine resume-playlist - Send a request to the daemon to resume the current playlist\n"
+    printf "waypaper-engine resume-playlist - Send a request to the daemon to resume the specified playlist\n"
     echo
 
   else
-    printf "waypaper-engine resume-playlist - Send a request to the daemon to resume the current playlist\n"
+    printf "waypaper-engine resume-playlist - Send a request to the daemon to resume the specified playlist\n"
     echo
 
   fi
@@ -981,6 +981,7 @@ waypaper_engine_stop_playlist_command() {
   ACTIVE_MONITOR="${args[active_monitor]}"
   COMMAND="stop-playlist"
   COMMAND_ALL="stop-playlist-all"
+  COMMAND_NAME="stop-playlist-by-name"
   execute_command() {
   	local argument="$1"
   	echo "$argument" | jq
@@ -993,7 +994,7 @@ waypaper_engine_stop_playlist_command() {
   if [[ -z "$PLAYLIST" ]]; then
   	execute_command "{\"action\": \"$COMMAND_ALL\"}"
   elif [[ -z "$ACTIVE_MONITOR" ]]; then
-  	execute_command "{\"action\": \"$COMMAND\", \"playlist\": {\"name\": \"$PLAYLIST\"}}"
+  	execute_command "{\"action\": \"$COMMAND_NAME\", \"playlist\": {\"name\": \"$PLAYLIST\"}}"
   else
   	execute_command "{\"action\": \"$COMMAND\", \"playlist\": {\"name\": \"$PLAYLIST\", \"activeMonitor\":{\"name\":\"$ACTIVE_MONITOR\"}}}"
   fi

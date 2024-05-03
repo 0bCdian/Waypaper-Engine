@@ -140,6 +140,7 @@ function registerAppServerListeners(emitter: EventEmitter) {
     emitter.on(ACTIONS.START_PLAYLIST, () => {
         void createTray();
         console.log(ACTIONS.START_PLAYLIST);
+        win?.webContents.send(IPC_MAIN_EVENTS.requeryPlaylist);
     });
     emitter.on(ACTIONS.SET_IMAGE, () => {
         void createTray();
@@ -147,6 +148,7 @@ function registerAppServerListeners(emitter: EventEmitter) {
     });
     emitter.on(ACTIONS.STOP_PLAYLIST, () => {
         void createTray();
+        win?.webContents.send(IPC_MAIN_EVENTS.requeryPlaylist);
         console.log(ACTIONS.STOP_PLAYLIST);
     });
     emitter.on(ACTIONS.RESUME_PLAYLIST, () => {

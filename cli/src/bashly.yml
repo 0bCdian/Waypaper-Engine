@@ -51,7 +51,7 @@ commands:
 
     - name: next-image
       alias: ni
-      help: Send a request to the daemon to set the next image in the playlist
+      help: Send a request to the daemon to set the next image in the specified playlist
       args:
           - name: playlist
             help: Send next image command to a specific playlist, if left empty will send the command to all active playlists.
@@ -65,7 +65,7 @@ commands:
 
     - name: previous-image
       alias: pi
-      help: Send a request to the daemon to set the previous image in the playlist
+      help: Send a request to the daemon to set the previous image in the specified playlist
       args:
           - name: playlist
             help: Send previous image command to a specific playlist, if left empty will send the command to all active playlists.
@@ -93,7 +93,7 @@ commands:
 
     - name: pause-playlist
       alias: pp
-      help: Send a request to the daemon to pause the current playlist
+      help: Send a request to the daemon to pause the specified playlist
       args:
           - name: playlist
             help: Send pause command to a specific playlist, if left empty will send the command to all active playlists.
@@ -107,7 +107,7 @@ commands:
 
     - name: resume-playlist
       alias: rp
-      help: Send a request to the daemon to resume the current playlist
+      help: Send a request to the daemon to resume the specified playlist
       args:
           - name: playlist
             help: Send resume command to a specific playlist, if left empty will send the command to all active playlists.

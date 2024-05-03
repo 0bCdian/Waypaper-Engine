@@ -14,7 +14,6 @@ const configurationInitial: rendererPlaylist['configuration'] = {
     showAnimations: true,
     alwaysStartOnFirstImage: false
 };
-
 const initialPlaylistState: rendererPlaylist = {
     images: imagesInitial,
     configuration: configurationInitial,
@@ -177,6 +176,7 @@ export const playlistStore = create<State & Actions>()((set, get) => ({
     readPlaylist: () => {
         return get().playlist;
     },
+
     setPlaylist: (newPlaylist: rendererPlaylist) => {
         const newPlaylistImagesSet = new Set<number>();
         const newPlaylistImagesTimeSet = new Set<number>();
