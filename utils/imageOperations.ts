@@ -15,6 +15,7 @@ import {
 import { type CacheJSON } from '../shared/types';
 import { notifyImageSet } from './notifications';
 import Sharp = require('sharp');
+import { getMonitors } from './monitorUtils';
 const execPomisified = promisify(exec);
 const appDirectories = configuration.directories;
 export async function resizeImageToFitMonitor(
@@ -472,6 +473,8 @@ export async function setImageAcrossMonitors(
     if (configuration.script !== undefined) {
         await execPomisified(`${configuration.script} ${imageFilePath}`);
     }
+    await setMonitorInfoCache();
+    notifyImageSet(image.name, imageFilePath);
 }
 export async function duplicateImageAcrossMonitors(
     image: rendererImage | imageSelectType,
@@ -492,7 +495,18 @@ export async function duplicateImageAcrossMonitors(
     if (configuration.script !== undefined) {
         await execPomisified(`${configuration.script} ${imageFilePath}`);
     }
+    await setMonitorInfoCache();
     notifyImageSet(image.name, imageFilePath);
 }
 
-export async function setMonitorInfoCache() {}
+export async function setMonitorInfoCache() {
+    try {
+        const monitors = await getMonitors();
+        writeFileSync(
+            join(configuration.directories.rootCache, 'monitors.json'),
+            JSON.stringify(monitors)
+        );
+    } catch (error) {
+        console.error(error);
+    }
+}

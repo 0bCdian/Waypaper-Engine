@@ -451,7 +451,7 @@ export class DaemonManager {
         });
         newPlaylist.on(ACTIONS.RESUME_PLAYLIST, (receivedMessage: message) => {
             if (receivedMessage.action === ACTIONS.RESUME_PLAYLIST) {
-                notify(`Paused ${receivedMessage.playlist.name}`);
+                notify(`Resumed ${receivedMessage.playlist.name}`);
                 this.sendMessageToMainApp(receivedMessage);
             }
         });

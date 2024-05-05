@@ -205,7 +205,6 @@ export class Playlist extends EventEmitter {
             );
             throw error;
         }
-        return `Setting:${this.images[this.currentImageIndex].name}`;
     }
 
     async previousImage() {
@@ -233,7 +232,6 @@ export class Playlist extends EventEmitter {
             );
             throw error;
         }
-        return `Setting:${this.images[this.currentImageIndex].name}`;
     }
 
     start() {
