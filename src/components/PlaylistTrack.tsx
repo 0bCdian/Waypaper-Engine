@@ -185,115 +185,111 @@ function PlaylistTrack() {
     }, [playlist.images.length, playlist.configuration.type]);
 
     return (
-        <div className="w-full flex flex-col gap-2 mb-2 mt-2">
-            <div className="flex justify-between items-center mb-2">
-                <div className="flex gap-5 items-center ">
-                    <span className="text-4xl font-bold">
-                        {playlistArray.length > 0
-                            ? `Playlist (${playlistArray.length})`
-                            : 'Playlist'}
-                    </span>
-                    <div className="dropdown dropdown-top">
-                        <div
-                            tabIndex={0}
-                            role="button"
-                            className="btn btn-primary uppercase rounded-lg m-1"
-                        >
-                            Add images
-                        </div>
-                        <ul
-                            tabIndex={0}
-                            className="dropdown-content mb-1 bg-base-100 z-[10] menu p-2 shadow  rounded-box w-52"
-                        >
-                            <li>
-                                <a
-                                    className="text-lg text-base-content"
-                                    onClick={
-                                        isActive
-                                            ? undefined
-                                            : () => {
-                                                  handleClickAddImages('file');
-                                              }
-                                    }
-                                >
-                                    Individual images
-                                </a>
-                            </li>
-                            <li>
-                                <a
-                                    className="text-lg text-base-content"
-                                    onClick={
-                                        isActive
-                                            ? undefined
-                                            : () => {
-                                                  handleClickAddImages(
-                                                      'folder'
-                                                  );
-                                              }
-                                    }
-                                >
-                                    Image directory
-                                </a>
-                            </li>
-                        </ul>
-                    </div>
+        <div className="w-full flex flex-col gap-5 mb-2">
+            <div className="xl:flex grid grid-cols-3 sm:flex-row gap-5 items-center">
+                <span className="text-4xl font-bold col-span-3">
+                    {playlistArray.length > 0
+                        ? `Playlist (${playlistArray.length})`
+                        : 'Playlist'}
+                </span>
+                <div className="dropdown dropdown-top">
                     <button
-                        onClick={() => {
-                            // @ts-expect-error daisyui fix
-                            window.LoadPlaylistModal.showModal();
-                        }}
-                        className="btn uppercase btn-primary rounded-lg"
+                        tabIndex={0}
+                        role="button"
+                        className="btn btn-primary uppercase rounded-lg w-full"
                     >
-                        Load Playlist
+                        Add images
                     </button>
-                    <button
-                        onClick={() => {
-                            setRandomImage();
-                        }}
-                        className="btn uppercase btn-primary rounded-lg"
+                    <ul
+                        tabIndex={0}
+                        className="dropdown-content mb-1 bg-base-100 z-[10] menu p-2 shadow  rounded-box w-52"
                     >
-                        Random Image
-                    </button>
-
-                    <AnimatePresence mode="sync">
-                        {playlist.images.length > 1 && (
-                            <>
-                                <motion.button
-                                    initial={{ y: 100 }}
-                                    transition={{
-                                        duration: 0.25,
-                                        ease: 'easeInOut'
-                                    }}
-                                    animate={{ y: 0, opacity: 1 }}
-                                    exit={{ y: 100, opacity: 0 }}
-                                    onClick={() => {
-                                        // @ts-expect-error daisyui fix
-                                        window.savePlaylistModal.showModal();
-                                    }}
-                                    className="btn uppercase btn-primary rounded-lg"
-                                >
-                                    Save
-                                </motion.button>
-                                <motion.button
-                                    initial={{ y: 100 }}
-                                    transition={{
-                                        duration: 0.25,
-                                        ease: 'easeInOut'
-                                    }}
-                                    animate={{ y: 0, opacity: 1 }}
-                                    exit={{ y: 100, opacity: 0 }}
-                                    onClick={() => {
-                                        // @ts-expect-error daisyui fix
-                                        window.playlistConfigurationModal.showModal();
-                                    }}
-                                    className="btn uppercase btn-primary rounded-lg"
-                                >
-                                    Configure
-                                </motion.button>
-                            </>
-                        )}
-                    </AnimatePresence>
+                        <li>
+                            <a
+                                className="text-lg text-base-content"
+                                onClick={
+                                    isActive
+                                        ? undefined
+                                        : () => {
+                                              handleClickAddImages('file');
+                                          }
+                                }
+                            >
+                                Individual images
+                            </a>
+                        </li>
+                        <li>
+                            <a
+                                className="text-lg text-base-content"
+                                onClick={
+                                    isActive
+                                        ? undefined
+                                        : () => {
+                                              handleClickAddImages('folder');
+                                          }
+                                }
+                            >
+                                Image directory
+                            </a>
+                        </li>
+                    </ul>
                 </div>
+                <button
+                    onClick={() => {
+                        // @ts-expect-error daisyui fix
+                        window.LoadPlaylistModal.showModal();
+                    }}
+                    className="btn uppercase btn-primary rounded-lg"
+                >
+                    Load Playlist
+                </button>
+                <button
+                    onClick={() => {
+                        setRandomImage();
+                    }}
+                    className="btn uppercase btn-primary rounded-lg"
+                >
+                    Random Image
+                </button>
+
+                <AnimatePresence mode="sync">
+                    {playlist.images.length > 1 && (
+                        <>
+                            <motion.button
+                                initial={{ y: 100 }}
+                                transition={{
+                                    duration: 0.25,
+                                    ease: 'easeInOut'
+                                }}
+                                animate={{ y: 0, opacity: 1 }}
+                                exit={{ y: 100, opacity: 0 }}
+                                onClick={() => {
+                                    // @ts-expect-error daisyui fix
+                                    window.savePlaylistModal.showModal();
+                                }}
+                                className="btn uppercase btn-primary rounded-lg"
+                            >
+                                Save
+                            </motion.button>
+                            <motion.button
+                                initial={{ y: 100 }}
+                                transition={{
+                                    duration: 0.25,
+                                    ease: 'easeInOut'
+                                }}
+                                animate={{ y: 0, opacity: 1 }}
+                                exit={{ y: 100, opacity: 0 }}
+                                onClick={() => {
+                                    // @ts-expect-error daisyui fix
+                                    window.playlistConfigurationModal.showModal();
+                                }}
+                                className="btn uppercase btn-primary rounded-lg"
+                            >
+                                Configure
+                            </motion.button>
+                        </>
+                    )}
+                </AnimatePresence>
                 <AnimatePresence>
                     {playlist.images.length > 1 && (
                         <motion.button
@@ -326,7 +322,7 @@ function PlaylistTrack() {
                 collisionDetection={closestCorners}
             >
                 <SortableContext items={sortingCriteria}>
-                    <div className="flex rounded-lg  overflow-y-clip  max-w-[90vw] overflow-x-scroll scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar scrollbar-thumb-neutral-300">
+                    <div className="flex rounded-lg overflow-y-hidden  sm:max-w-[90vw] overflow-x-scroll scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm scrollbar scrollbar-thumb-neutral-300">
                         <AnimatePresence>{...playlistArray}</AnimatePresence>
                     </div>
                 </SortableContext>

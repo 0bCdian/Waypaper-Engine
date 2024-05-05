@@ -12,10 +12,8 @@ const initialFilters: PartialFilters = {
     type: 'id',
     searchString: ''
 };
-
 function Filters() {
     const { setFilters, filters } = imagesStore();
-
     const [partialFilters, setPartialFilters] = useState(initialFilters);
     const onTextChange = (event: ChangeEvent<HTMLInputElement>) => {
         const target = event.target;
@@ -45,68 +43,57 @@ function Filters() {
         setFilters(resetFilters);
     }, []);
     return (
-        <section className="flex w-full gap-2 group justify-center mb-5 ">
-            <div className="flex w-full justify-center gap-2">
-                <div className="tooltip" data-tip="More filters">
-                    <button
-                        className="btn btn-active uppercase rounded-xl text-md"
-                        onClick={() => {
-                            // @ts-expect-error workaround for daisyui
-                            window.AdvancedFiltersModal.showModal();
-                        }}
-                    >
-                        Filters
-                    </button>
-                </div>
-                <div className="divider divider-horizontal mx-0" />
-                <div className="tooltip" data-tip="Order by">
-                    <select
-                        name="orderBy"
-                        id="orderBy"
-                        className="select uppercase btn-active rounded-xl font-bold"
-                        defaultValue={'id'}
-                        onChange={e => {
-                            const newType = e.currentTarget.value as
-                                | 'name'
-                                | 'id';
-                            if (newType.length > 0) {
-                                setPartialFilters(previous => {
-                                    return { ...previous, type: newType };
-                                });
-                            }
-                        }}
-                    >
-                        <option value="name">Name</option>
-                        <option value="id">Date</option>
-                    </select>
-                </div>
-                <div className="tooltip" data-tip="Ascending or Descending">
-                    <label className="swap swap-rotate btn btn-active uppercase rounded-xl">
-                        <input
-                            type="checkbox"
-                            onChange={() => {
-                                setPartialFilters(previous => {
-                                    const newOrder =
-                                        previous.order === 'asc'
-                                            ? 'desc'
-                                            : 'asc';
-                                    return { ...previous, order: newOrder };
-                                });
-                            }}
-                        />
-                        <div className="swap-on">Asc</div>
-                        <div className="swap-off">Desc</div>
-                    </label>
-                </div>
-                <div className="divider divider-horizontal mx-0"></div>
-                <input
-                    onChange={onTextChange}
-                    type="text"
-                    id="default-search"
-                    className="input w-[20%] input-primary bg-base-300 border-0 rounded-xl text-xl font-medium"
-                    placeholder="Search by name"
-                />
+        <section className="flex gap-2 group justify-center mb-5">
+            <div className="tooltip" data-tip="more filters">
+                <button
+                    className="btn-active uppercase rounded-xl btn "
+                    onClick={() => {
+                        // @ts-expect-error workaround for daisyui
+                        window.AdvancedFiltersModal.showModal();
+                    }}
+                >
+                    Filters
+                </button>
             </div>
+            <div className="tooltip" data-tip="Order by Name or ID">
+                <label className="swap swap-rotate btn btn-active uppercase rounded-xl text-xs">
+                    <input
+                        type="checkbox"
+                        onChange={() => {
+                            setPartialFilters(previous => {
+                                const newType =
+                                    previous.type === 'name' ? 'id' : 'name';
+                                return { ...previous, type: newType };
+                            });
+                        }}
+                    />
+                    <div className="swap-on">Name</div>
+                    <div className="swap-off">ID</div>
+                </label>
+            </div>
+            <div className="tooltip" data-tip="Ascending or Descending">
+                <label className="swap swap-rotate btn btn-active uppercase rounded-xl">
+                    <input
+                        type="checkbox"
+                        onChange={() => {
+                            setPartialFilters(previous => {
+                                const newOrder =
+                                    previous.order === 'asc' ? 'desc' : 'asc';
+                                return { ...previous, order: newOrder };
+                            });
+                        }}
+                    />
+                    <div className="swap-on">Asc</div>
+                    <div className="swap-off">Desc</div>
+                </label>
+            </div>
+            <input
+                onChange={onTextChange}
+                type="text"
+                id="default-search"
+                className="input text-center w-1/6 sm:w-1/4 input-primary bg-base-300 border-0 rounded-xl text-xl font-medium"
+                placeholder="Search"
+            />
         </section>
     );
 }

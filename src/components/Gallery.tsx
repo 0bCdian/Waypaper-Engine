@@ -10,7 +10,7 @@ function Gallery() {
     useLoadImages()();
     if (isEmpty && isQueried)
         return (
-            <div className="flex flex-col justify-center items-center h-[90dvh] m-auto overflow-hidden">
+            <div className="flex flex-col justify-center items-center sm:h-[90dvh] m-auto">
                 <AddImagesCard />
             </div>
         );

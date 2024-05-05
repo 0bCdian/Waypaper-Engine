@@ -19,7 +19,7 @@ const Drawer: FC<Props> = ({ children }) => {
                 checked={show}
                 onChange={toggle}
             />
-            <div className="drawer-content max-h-[0] min-h-[100dvh] [contain:paint] scrollbar-none">
+            <div className="drawer-content [contain:paint] sm:scrollbar-none sm:max-h-[100dvh] overflow-y-scroll overflow-x-hidden ">
                 {children}
             </div>
             <div className="drawer-side">

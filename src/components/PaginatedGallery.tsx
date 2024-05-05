@@ -28,7 +28,7 @@ function PaginatedGallery() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.5 }}
-                className="transition focus:outline-none justify-between gap-4 sm:w-[90%] m-auto flex flex-col overflow-clip min-h-[87%] max-h-[87%]"
+                className="transition focus:outline-none justify-between gap-4 sm:w-[90%] m-auto flex flex-col overflow-y-hidden min-h-[86vh] max-h-[84vh]"
                 onContextMenu={e => {
                     e.stopPropagation();
                     openContextMenu({

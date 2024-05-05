@@ -74,8 +74,6 @@ async function createWindow() {
         icon: join(iconsPath, '512x512.png'),
         width: 1200,
         height: 1000,
-        minWidth: 940,
-        minHeight: 560,
         autoHideMenuBar: true,
         show: false,
         backgroundColor: '#3C3836',
