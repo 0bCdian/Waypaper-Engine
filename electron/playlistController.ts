@@ -25,10 +25,6 @@ export class PlaylistController extends EventEmitter {
                         console.error(e);
                         return;
                     }
-                    console.log(
-                        'data sent succesfully:',
-                        `${JSON.stringify(data)}\n`
-                    );
                     this.retries = 0;
                     if (this.createTray !== undefined) void this.createTray();
                 });
@@ -36,12 +32,8 @@ export class PlaylistController extends EventEmitter {
                 console.error(error);
             }
         });
-        connection.on('data', data => {
+        connection.on('data', _ => {
             try {
-                const parsedDaemonMessage: message = JSON.parse(
-                    data.toString()
-                );
-                console.log('Data from daemon:', parsedDaemonMessage);
                 if (this.createTray !== undefined) void this.createTray();
             } catch (e) {
                 console.error(e);

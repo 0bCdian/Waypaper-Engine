@@ -44,7 +44,7 @@ import { ACTIONS } from '../types/types';
 import type EventEmitter from 'node:events';
 if (values.daemon !== undefined && (values.daemon as boolean)) {
     void initWaypaperDaemon();
-    console.log('forking daemon');
+    console.log('starting daemon...');
     process.exit(0);
 }
 
@@ -137,25 +137,20 @@ async function createTray() {
 function registerAppServerListeners(emitter: EventEmitter) {
     emitter.on(ACTIONS.START_PLAYLIST, () => {
         void createTray();
-        console.log(ACTIONS.START_PLAYLIST);
         win?.webContents.send(IPC_MAIN_EVENTS.requeryPlaylist);
     });
     emitter.on(ACTIONS.SET_IMAGE, () => {
         void createTray();
-        console.log(ACTIONS.SET_IMAGE);
     });
     emitter.on(ACTIONS.STOP_PLAYLIST, () => {
         void createTray();
         win?.webContents.send(IPC_MAIN_EVENTS.requeryPlaylist);
-        console.log(ACTIONS.STOP_PLAYLIST);
     });
     emitter.on(ACTIONS.RESUME_PLAYLIST, () => {
         void createTray();
-        console.log(ACTIONS.RESUME_PLAYLIST);
     });
     emitter.on(ACTIONS.PAUSE_PLAYLIST, () => {
         void createTray();
-        console.log(ACTIONS.PAUSE_PLAYLIST);
     });
 }
 Menu.setApplicationMenu(null);

@@ -77,7 +77,7 @@ async function testConnection() {
     const SOCKET_PATH =
         configuration.directories.WAYPAPER_ENGINE_DAEMON_SOCKET_PATH;
     const MAX_ATTEMPTS = 10;
-    const RETRY_INTERVAL = 200; // 200 milliseconds
+    const RETRY_INTERVAL = 300; // 300 milliseconds
 
     let attempt = 1;
     while (attempt <= MAX_ATTEMPTS) {
@@ -86,7 +86,7 @@ async function testConnection() {
             console.log('Connection to waypaper daemon established.');
             return; // Connection successful, exit loop
         } catch (error) {
-            console.error(`Connection attempt ${attempt} failed:`, error);
+            // console.error(`Connection attempt ${attempt} failed:`, error);
             await setTimeoutPromise(RETRY_INTERVAL);
             attempt++;
         }
@@ -126,7 +126,6 @@ export function createMainServer() {
                     try {
                         const parsedMessage: message = JSON.parse(message);
                         emitter.emit(parsedMessage.action);
-                        console.log(parsedMessage);
                     } catch (error) {
                         console.error(error);
                     }

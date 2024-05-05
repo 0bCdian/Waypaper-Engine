@@ -29,18 +29,14 @@ export class DaemonManager {
                         .filter(message => message !== '')
                         .forEach(message => {
                             try {
-                                console.log(
-                                    'incoming request without parsing:',
-                                    message
-                                );
                                 const parsedMessage: message =
                                     JSON.parse(message);
-                                console.log('incoming request:', parsedMessage);
                                 void this.processSocketMessage(
                                     parsedMessage,
                                     socket
                                 );
                             } catch (error) {
+                                console.log(message);
                                 console.error(error);
                             }
                         });
@@ -257,6 +253,7 @@ export class DaemonManager {
                     {
                         if (message.playlist.activeMonitor === undefined) {
                             if (message.playlist.name === undefined) {
+                                socket.end();
                                 return;
                             }
                             this.#playlistMap.forEach(playlistActive => {
@@ -267,6 +264,7 @@ export class DaemonManager {
                                     playlistActive.pause();
                                 }
                             });
+                            socket.end();
                             return;
                         }
                         const playlistInstance = this.#playlistMap.get(
@@ -281,6 +279,7 @@ export class DaemonManager {
                     {
                         if (message.playlist.activeMonitor === undefined) {
                             if (message.playlist.name === undefined) {
+                                socket.end();
                                 return;
                             }
                             this.#playlistMap.forEach(playlistActive => {
@@ -291,6 +290,7 @@ export class DaemonManager {
                                     playlistActive.resume();
                                 }
                             });
+                            socket.end();
                             return;
                         }
                         const playlistInstance = this.#playlistMap.get(
@@ -305,6 +305,7 @@ export class DaemonManager {
                     {
                         if (message.playlist.activeMonitor === undefined) {
                             if (message.playlist.name === undefined) {
+                                socket.end();
                                 return;
                             }
                             this.#playlistMap.forEach(playlistActive => {
@@ -315,12 +316,17 @@ export class DaemonManager {
                                     playlistActive.stop();
                                 }
                             });
+                            socket.end();
                             return;
                         }
                         const playlistInstance = this.#playlistMap.get(
                             message.playlist.activeMonitor.name
                         );
-                        if (playlistInstance === undefined) return;
+
+                        if (playlistInstance === undefined) {
+                            socket.end();
+                            return;
+                        }
                         this.#playlistMap.delete(
                             playlistInstance.activeMonitor.name
                         );
@@ -409,6 +415,7 @@ export class DaemonManager {
                     break;
 
                 default:
+                    socket.end();
                     break;
             }
         } catch (error) {
@@ -417,10 +424,12 @@ export class DaemonManager {
                 socket.write(
                     JSON.stringify({ action: ACTIONS.ERROR, error: { error } })
                 );
+                socket.end();
             } catch (error) {
                 console.error(error);
             }
         }
+        socket.end();
     }
 
     setListeners(newPlaylist: Playlist) {
@@ -472,7 +481,6 @@ export class DaemonManager {
                     if (error !== undefined) {
                         return;
                     }
-                    console.log('Message sent successfully:', message);
                     connection.end();
                 });
             } catch (error) {
