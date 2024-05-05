@@ -209,7 +209,8 @@ export function createAppDirsIfNotExist() {
         appDirectories.thumbnails,
         appDirectories.extendedImages,
         appDirectories.mainDir,
-        appDirectories.imagesDir
+        appDirectories.imagesDir,
+        appDirectories.scriptsDir
     ];
 
     for (const directory of directoriesToCreate) {

@@ -8,12 +8,6 @@ commands:
       help: Run the waypaper engine application
 
       flags:
-          - long: --script
-            short: -s
-            arg: script
-            help: Script to run on each image set, the image path will be passed as argument.
-            required: false
-
           - long: --wayland
             help: force app to run under wayland instead of xwayland.
             required: false
@@ -26,19 +20,12 @@ commands:
           - waypaper-engine
           - waypaper-engine run
           - waypaper-engine run --wayland
-          - waypaper-engine r -s "/path/to/your/script.sh"
 
     - name: daemon
       alias: d
       help: Run just the waypaper engine daemon
 
       flags:
-          - long: --script
-            short: -s
-            arg: script
-            help: Script to run on each image set, the image path will be passed as argument.
-            required: false
-
           - long: --format
             short: -f
             help: Starts swww in xrgb mode.
@@ -46,8 +33,7 @@ commands:
 
       examples:
           - waypaper-engine daemon
-          - waypaper-engine daemon -s "/path/to/your/script.sh"
-          - waypaper-engine daemon --script "/path/to/your/script.sh" --format
+          - waypaper-engine daemon --format
 
     - name: next-image
       alias: ni

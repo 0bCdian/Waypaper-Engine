@@ -45,11 +45,6 @@ export const { values } = parseArgs({
             type: 'boolean',
             short: 'f',
             default: false
-        },
-        script: {
-            short: 's',
-            type: 'string',
-            default: undefined
         }
     },
     strict: false

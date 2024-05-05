@@ -470,9 +470,9 @@ export async function setImageAcrossMonitors(
         );
     });
     await Promise.all(commands);
-    if (configuration.script !== undefined) {
-        await execPomisified(`${configuration.script} ${imageFilePath}`);
-    }
+    configuration.scripts.forEach(script => {
+        void execPomisified(`"${script}" ${imageFilePath}`);
+    });
     await setMonitorInfoCache();
     notifyImageSet(image.name, imageFilePath);
 }
@@ -492,9 +492,9 @@ export async function duplicateImageAcrossMonitors(
         showAnimations
     );
     await execPomisified(command);
-    if (configuration.script !== undefined) {
-        await execPomisified(`${configuration.script} ${imageFilePath}`);
-    }
+    configuration.scripts.forEach(script => {
+        void execPomisified(`"${script}" ${imageFilePath}`);
+    });
     await setMonitorInfoCache();
     notifyImageSet(image.name, imageFilePath);
 }

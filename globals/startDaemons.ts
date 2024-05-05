@@ -53,10 +53,6 @@ export async function initWaypaperDaemon() {
             if (configuration.format) {
                 args.push(`--format`);
             }
-
-            if (configuration.script !== undefined) {
-                args.push(`--script ${configuration.script}`);
-            }
             const output = spawn('PROCESS=daemon node', args, {
                 stdio: 'ignore',
                 shell: true,

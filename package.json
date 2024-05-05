@@ -26,6 +26,7 @@
         "@dnd-kit/sortable": "7.0.2",
         "@dnd-kit/utilities": "3.2.1",
         "better-sqlite3": "9.5.0",
+        "chokidar": "^3.6.0",
         "drizzle-orm": "0.30.8",
         "eslint-config-love": "^43.1.0",
         "framer-motion": "10.13.1",

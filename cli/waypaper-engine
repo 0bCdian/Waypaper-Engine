@@ -92,11 +92,6 @@ waypaper_engine_run_usage() {
 
     # :command.usage_flags
     # :flag.usage
-    printf "  %s\n" "--script, -s SCRIPT"
-    printf "    Script to run on each image set, the image path will be passed as argument.\n"
-    echo
-
-    # :flag.usage
     printf "  %s\n" "--wayland"
     printf "    force app to run under wayland instead of xwayland.\n"
     echo
@@ -116,7 +111,6 @@ waypaper_engine_run_usage() {
     printf "  waypaper-engine\n"
     printf "  waypaper-engine run\n"
     printf "  waypaper-engine run --wayland\n"
-    printf "  waypaper-engine r -s \"/path/to/your/script.sh\"\n"
     echo
 
   fi
@@ -148,11 +142,6 @@ waypaper_engine_daemon_usage() {
 
     # :command.usage_flags
     # :flag.usage
-    printf "  %s\n" "--script, -s SCRIPT"
-    printf "    Script to run on each image set, the image path will be passed as argument.\n"
-    echo
-
-    # :flag.usage
     printf "  %s\n" "--format, -f"
     printf "    Starts swww in xrgb mode.\n"
     echo
@@ -165,8 +154,7 @@ waypaper_engine_daemon_usage() {
     # :command.usage_examples
     printf "%s\n" "Examples:"
     printf "  waypaper-engine daemon\n"
-    printf "  waypaper-engine daemon -s \"/path/to/your/script.sh\"\n"
-    printf "  waypaper-engine daemon --script \"/path/to/your/script.sh\" --format\n"
+    printf "  waypaper-engine daemon --format\n"
     echo
 
   fi
@@ -786,8 +774,7 @@ inspect_args() {
 waypaper_engine_run_command() {
   # src/run_command.sh
   WAYPAPER_LOCATION="/opt/waypaper-engine/waypaper-engine-bin"
-
-  SCRIPT="${args[--script]}"
+  WAYPAPER_FLAGS="$HOME/.waypaper_engine/flags.conf"
   FORMAT="${args[--format]}"
   WAYLAND="${args[--wayland]}"
   COMMAND="$WAYPAPER_LOCATION"
@@ -797,9 +784,6 @@ waypaper_engine_run_command() {
   fi
   if [[ $FORMAT -eq 1 ]]; then
   	COMMAND="$COMMAND --format"
-  fi
-  if [[ -n $SCRIPT ]]; then
-  	COMMAND="$COMMAND --script=$SCRIPT"
   fi
 
   $COMMAND || "Something went wrong"
@@ -811,15 +795,11 @@ waypaper_engine_daemon_command() {
   # src/daemon_command.sh
   WAYPAPER_LOCATION="/opt/waypaper-engine/waypaper-engine-bin --daemon"
 
-  SCRIPT="${args[--script]}"
   FORMAT="${args[--format]}"
   COMMAND="$WAYPAPER_LOCATION"
 
   if [[ $FORMAT -eq 1 ]]; then
   	COMMAND="$COMMAND --format"
-  fi
-  if [[ -n $SCRIPT ]]; then
-  	COMMAND="$COMMAND --script=$SCRIPT"
   fi
 
   $COMMAND || "Something went wrong"
@@ -1268,21 +1248,6 @@ waypaper_engine_run_parse_requirements() {
     key="$1"
     case "$key" in
       # :flag.case
-      --script | -s)
-
-        # :flag.case_arg
-        if [[ -n ${2+x} ]]; then
-
-          args['--script']="$2"
-          shift
-          shift
-        else
-          printf "%s\n" "--script requires an argument: --script, -s SCRIPT" >&2
-          exit 1
-        fi
-        ;;
-
-      # :flag.case
       --wayland)
 
         # :flag.case_no_arg
@@ -1341,21 +1306,6 @@ waypaper_engine_daemon_parse_requirements() {
   while [[ $# -gt 0 ]]; do
     key="$1"
     case "$key" in
-      # :flag.case
-      --script | -s)
-
-        # :flag.case_arg
-        if [[ -n ${2+x} ]]; then
-
-          args['--script']="$2"
-          shift
-          shift
-        else
-          printf "%s\n" "--script requires an argument: --script, -s SCRIPT" >&2
-          exit 1
-        fi
-        ;;
-
       # :flag.case
       --format | -f)
 
