@@ -1,92 +1,65 @@
-export interface Image {
-  id: number
-  name: string
-  isChecked: boolean
-  width: number
-  height: number
-  format: Formats
-  time: number
-}
-
-export interface imagesObject {
-  imagePaths: string[]
-  fileNames: string[]
-}
-
-export enum ORDER_TYPES {
-  ORDERED = 'ordered',
-  RANDOM = 'random',
-}
+import { type imagesObject } from '../../shared/types';
+import { type Formats } from '../../shared/types/image';
+import {
+    type PLAYLIST_TYPES_TYPE,
+    type PLAYLIST_ORDER_TYPES
+} from '../../shared/types/playlist';
+import { type imageSelectType } from '../../database/schema';
+import { type ActiveMonitor } from '../../shared/types/monitor';
 
 export enum STORE_ACTIONS {
-  SET_IMAGES_ARRAY = 'SET_IMAGES_ARRAY',
-  SET_SKELETONS_TO_SHOW = 'SET_SKELETONS_TO_SHOW',
-  SET_FILTERS = 'SET_FILTERS',
-  RESET_IMAGES_ARRAY = 'RESET_IMAGES_ARRAY',
+    SET_IMAGES_ARRAY = 'SET_IMAGES_ARRAY',
+    SET_SKELETONS_TO_SHOW = 'SET_SKELETONS_TO_SHOW',
+    SET_FILTERS = 'SET_FILTERS',
+    RESET_IMAGES_ARRAY = 'RESET_IMAGES_ARRAY'
 }
 
-export enum PLAYLIST_TYPES {
-  TIMER = 'timer',
-  NEVER = 'never',
-  TIME_OF_DAY = 'timeofday',
-  DAY_OF_WEEK = 'dayofweek',
+export interface configuration {
+    type: PLAYLIST_TYPES_TYPE;
+    interval: number | null;
+    order: PLAYLIST_ORDER_TYPES | null;
+    showAnimations: boolean;
+    alwaysStartOnFirstImage: boolean;
 }
 
-export type configuration = {
-  playlistType: PLAYLIST_TYPES
-  interval: number | null
-  order: ORDER_TYPES | null
-  showAnimations: boolean | 1 | 0
+export interface rendererImage extends imageSelectType {
+    time: number | null;
+}
+export interface rendererPlaylist {
+    images: rendererImage[];
+    configuration: configuration;
+    name: string;
+    activeMonitor: ActiveMonitor;
+}
+export type monitorSelectType = 'individual' | 'clone' | 'extend';
+export interface Filters {
+    order: 'asc' | 'desc';
+    type: 'name' | 'id';
+    searchString: string;
+    advancedFilters: advancedFilters;
 }
 
-export type rendererPlaylist = {
-  images: Image[]
-  configuration: configuration
-  name: string
+export interface advancedFilters {
+    formats: Formats[];
+    resolution: {
+        constraint: resolutionConstraints;
+        width: number;
+        height: number;
+    };
 }
 
-export type Filters = {
-  order: 'asc' | 'desc'
-  type: 'name' | 'id'
-  searchString: string
-  advancedFilters: advancedFilters
-}
-
-export type advancedFilters = {
-  formats: Formats[]
-  resolution: {
-    constraint: resolutionConstraints
-    width: number
-    height: number
-  }
-}
-
-export type Formats =
-  | 'jpg'
-  | 'jpeg'
-  | 'png'
-  | 'bmp'
-  | 'gif'
-  | 'webp'
-  | 'farbeld'
-  | 'pnm'
-  | 'tga'
-  | 'tiff'
-
-export type resolutionConstraints = 'all' | 'exact' | 'moreThan' | 'lessThan'
-export type state = {
-  imagesArray: Image[]
-  skeletonsToShow: imagesObject | undefined
-  filters: Filters
+export type resolutionConstraints = 'all' | 'exact' | 'moreThan' | 'lessThan';
+export interface state {
+    imagesArray: rendererImage[];
+    skeletonsToShow: imagesObject | undefined;
+    filters: Filters;
 }
 
 export type action =
-  | { type: STORE_ACTIONS.SET_IMAGES_ARRAY; payload: Image[] }
-  | {
-      type: STORE_ACTIONS.SET_SKELETONS_TO_SHOW
-      payload: imagesObject | undefined
-    }
-  | { type: STORE_ACTIONS.SET_FILTERS; payload: Filters }
-  | { type: STORE_ACTIONS.RESET_IMAGES_ARRAY; payload: Image[] }
-
-export type openFileAction = 'file' | 'folder'
+    | { type: STORE_ACTIONS.SET_IMAGES_ARRAY; payload: rendererImage[] }
+    | {
+          type: STORE_ACTIONS.SET_SKELETONS_TO_SHOW;
+          payload: imagesObject | undefined;
+      }
+    | { type: STORE_ACTIONS.SET_FILTERS; payload: Filters }
+    | { type: STORE_ACTIONS.RESET_IMAGES_ARRAY; payload: rendererImage[] };

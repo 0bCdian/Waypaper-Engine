@@ -20,16 +20,16 @@
 
 # Features
 
-- Multi monitor support.
-- Four different types of playlists (Time of day, daily,interval based or static).
-- Easy configuration of all [swww](https://github.com/Horus645/swww) options.
-- Tray controls.
-- CLI Support.
-- All of [swww](https://github.com/Horus645/swww) features such as wallpaper change animations and wallpaper persistance through reboots.
-- Filter images by format, resolution,name,etc.
-- Run scripts on image set.
-  <br>
-  <br>
+-   Multi monitor support.
+-   Four different types of playlists (Time of day, daily,interval based or static).
+-   Easy configuration of all [swww](https://github.com/Horus645/swww) options.
+-   Tray controls.
+-   CLI Support.
+-   All of [swww](https://github.com/Horus645/swww) features such as wallpaper change animations and wallpaper persistance through reboots.
+-   Filter images by format, resolution,name,etc.
+-   Run scripts on image set.
+    <br>
+    <br>
 
 ---
 
@@ -82,13 +82,13 @@ https://github.com/0bCdian/Waypaper-Engine/assets/101421807/4117b3b8-9a32-45bc-b
 
 # TODO
 
-- [ ] Add testing.
-- [ ] Have a ci/cd pipeline.
-- [ ] Implement a logger for errors.
-- [x] Publish in the aur.
-- [x] Find a good icon/logo for the app (Thank you [Cristian Avendaño](https://github.com/c-avendano)!).
-- [ ] Add flatpak support.
-- [x] Add --script flag.
+-   [ ] Add testing.
+-   [ ] Have a ci/cd pipeline.
+-   [ ] Implement a logger for errors.
+-   [x] Publish in the aur.
+-   [x] Find a good icon/logo for the app (Thank you [Cristian Avendaño](https://github.com/c-avendano)!).
+-   [ ] Add flatpak support.
+-   [x] Add --script flag.
 
 _If you encounter any problems or would like to make a suggestion, please feel free to open an issue_.
 

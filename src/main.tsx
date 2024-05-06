@@ -1,15 +1,13 @@
-import { createRoot } from 'react-dom/client'
-import App from './App'
-import IntroScreen from './components/IntroScreen'
-import './index.css'
-const { readAppConfig } = window.API_RENDERER
-readAppConfig().then((data) => {
-  createRoot(document.getElementById('root') as HTMLElement).render(
-    <>
-      {data.introAnimation && !data.startMinimized ? (
-        <IntroScreen />
-      ) : undefined}
-      <App />
-    </>
-  )
-})
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import App from './App';
+import './index.css';
+const root = document.getElementById('root');
+if (root === null) {
+    throw new Error('Could not find root div element');
+}
+createRoot(root).render(
+    <StrictMode>
+        <App />
+    </StrictMode>
+);

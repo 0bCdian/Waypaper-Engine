@@ -1,23 +1,29 @@
 {
-  "compilerOptions": {
-    "target": "ES2020",
-    "useDefineForClassFields": true,
-    "lib": ["ES2020", "DOM", "DOM.Iterable"],
-    "module": "CommonJS",
+    "compilerOptions": {
+        "target": "ES2020",
+        "useDefineForClassFields": true,
+        "lib": ["ESNext.Array", "ESNext", "ES2020", "DOM", "DOM.Iterable"],
+        "module": "CommonJS",
+        "skipLibCheck": true,
+        "esModuleInterop": true,
+        "allowSyntheticDefaultImports": true,
+        /* Bundler mode */
+        "allowImportingTsExtensions": true,
+        "resolveJsonModule": true,
+        "isolatedModules": true,
+        "noEmit": true,
+        "jsx": "react-jsx",
+        /* Linting */
+        "strict": true,
+        "noUnusedLocals": true,
+        "noUnusedParameters": true,
+        "noFallthroughCasesInSwitch": true,
+        "allowUmdGlobalAccess": true,
+        "declarationMap": true,
+        "composite": true,
+        "outDir": "dist"
+    },
     "skipLibCheck": true,
-
-    /* Bundler mode */
-    "allowImportingTsExtensions": true,
-    "resolveJsonModule": true,
-    "isolatedModules": true,
-    "noEmit": true,
-    "jsx": "react-jsx",
-    /* Linting */
-    "strict": true,
-    "noUnusedLocals": true,
-    "noUnusedParameters": true,
-    "noFallthroughCasesInSwitch": true
-  },
-  "include": ["src", "electron"],
-  "references": [{ "path": "./tsconfig.node.json" }]
+    "include": ["**/*.ts", "**/*.tsx", "drizzle.config.ts"],
+    "references": [{ "path": "./tsconfig.node.json" }]
 }

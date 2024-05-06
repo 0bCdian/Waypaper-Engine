@@ -1,40 +1,36 @@
-import setupServer from './server/server'
-import isWaypaperDaemonRunning from './utils/checkDependencies'
-import { Playlist } from './playlist/playlist'
-import { notify } from './utils/notifications'
-import config from './config/config'
+import { DaemonManager } from './daemonManager';
+import {
+    isWaypaperDaemonRunning,
+    initSwwwDaemon
+} from '../globals/startDaemons';
+import { notify } from '../utils/notifications';
 
 if (isWaypaperDaemonRunning()) {
-  console.error('Another instance is already running')
-  process.exit(2)
+    console.warn('Another instance is already running');
+    process.exit(2);
 }
-const scriptFlag = process.argv.find((arg) => {
-  return arg.includes('--script')
-})
-if (scriptFlag) {
-  const userScriptLocation = scriptFlag.split('=')[1]
-  config.script = userScriptLocation
-}
-process.title = 'wpe-daemon'
-const playlist = new Playlist()
+initSwwwDaemon();
+process.title = 'wpe-daemon';
 try {
-  const server = setupServer(playlist)
-  process.on('SIGTERM', function () {
-    notify('Exiting daemon')
-    playlist.stop(false)
-    server.close()
-    process.exit(0)
-  })
-  process.on('SIGINT', () => {
-    notify('Exiting daemon')
-    playlist.stop(false)
-    server.close()
-    process.exit(0)
-  })
-
-  playlist.start()
+    const daemonManager = new DaemonManager();
+    process.on('SIGTERM', function () {
+        notify('Exiting daemon');
+        daemonManager.cleanUp();
+        process.exit(0);
+    });
+    process.on('SIGINT', () => {
+        notify('Exiting daemon');
+        daemonManager.cleanUp();
+        process.exit(0);
+    });
+    process.on('uncaughtException', error => {
+        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
+        notify(`Daemon crashed, ${error}`);
+        console.error(error);
+        daemonManager.cleanUp();
+        process.exit(1);
+    });
 } catch (error) {
-  playlist.stop(false)
-  console.error(error)
-  process.exit(1)
+    console.error(error);
+    process.exit(1);
 }

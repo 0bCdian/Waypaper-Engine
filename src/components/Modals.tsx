@@ -1,47 +1,70 @@
-import { useState, useEffect, useMemo } from 'react'
-import LoadPlaylistModal from './LoadPlaylistModal'
-import SavePlaylistModal from './SavePlaylistModal'
-import PlaylistConfigurationModal from './PlaylistConfigurationModal'
-import playlistStore from '../hooks/playlistStore'
-import { Playlist } from '../../electron/types/types'
-import { useImages } from '../hooks/imagesStore'
-import AdvancedFiltersModal from './AdvancedFiltersModal'
-
-const { queryPlaylists } = window.API_RENDERER
+import { useState, useEffect } from 'react';
+import LoadPlaylistModal from './LoadPlaylistModal';
+import SavePlaylistModal from './SavePlaylistModal';
+import PlaylistConfigurationModal from './PlaylistConfigurationModal';
+import { playlistStore } from '../stores/playlist';
+import { imagesStore } from '../stores/images';
+import AdvancedFiltersModal from './AdvancedFiltersModal';
+import { type playlistSelectType } from '../../database/schema';
+import { useAppConfigStore } from '../stores/appConfig';
+import Monitors from './monitorsModal';
+import { useMonitorStore } from '../stores/monitors';
+const { queryPlaylists, querySelectedMonitor } = window.API_RENDERER;
+let alreadyShown = false;
 function Modals() {
-  const [playlistsInDB, setPlaylistsInDB] = useState<Playlist[]>([])
-  const [shouldReload, setShouldReload] = useState<Boolean>(false)
-  const { readPlaylist, isEmpty } = playlistStore()
-  const { imagesArray } = useImages()
-  const currentPlaylist = useMemo(() => {
-    return readPlaylist()
-  }, [shouldReload, isEmpty])
-  useEffect(() => {
-    setShouldReload(false)
-    queryPlaylists().then((playlists) => {
-      setPlaylistsInDB(playlists)
-    })
-  }, [shouldReload, imagesArray])
-  useEffect(() => {
-    queryPlaylists().then((newPlaylists) => {
-      setPlaylistsInDB(newPlaylists)
-    })
-  }, [])
-  return (
-    <>
-      <LoadPlaylistModal
-        playlistsInDB={playlistsInDB}
-        setShouldReload={setShouldReload}
-        currentPlaylistName={currentPlaylist.name}
-      />
-      <SavePlaylistModal
-        setShouldReload={setShouldReload}
-        currentPlaylistName={currentPlaylist.name}
-      />
-      <PlaylistConfigurationModal />
-      <AdvancedFiltersModal />
-    </>
-  )
+    const [playlistsInDB, setPlaylistsInDB] = useState<playlistSelectType[]>(
+        []
+    );
+    const { appConfig, isSetup } = useAppConfigStore();
+    const { setActiveMonitor, reQueryMonitors } = useMonitorStore();
+    useEffect(() => {
+        if (alreadyShown) return;
+
+        alreadyShown = true;
+        void querySelectedMonitor().then(lastSelectedMonitor => {
+            if (lastSelectedMonitor !== undefined) {
+                setActiveMonitor(lastSelectedMonitor);
+            }
+            void reQueryMonitors().then(() => {
+                if (!isSetup || !appConfig.showMonitorModalOnStart) return;
+                setTimeout(() => {
+                    // @ts-expect-error daisy-ui
+                    window.monitors.showModal();
+                }, 300);
+            });
+        });
+    }, []);
+
+    const [shouldReload, setShouldReload] = useState<boolean>(false);
+    const { playlist } = playlistStore();
+    const { imagesArray } = imagesStore();
+    useEffect(() => {
+        setShouldReload(false);
+        void queryPlaylists().then(playlists => {
+            setPlaylistsInDB(playlists);
+        });
+    }, [shouldReload, imagesArray]);
+    useEffect(() => {
+        void queryPlaylists().then(newPlaylists => {
+            setPlaylistsInDB(newPlaylists);
+        });
+    }, []);
+    return (
+        <>
+            <LoadPlaylistModal
+                playlistsInDB={playlistsInDB}
+                setShouldReload={setShouldReload}
+                currentPlaylistName={playlist.name}
+            />
+            <SavePlaylistModal
+                setShouldReload={setShouldReload}
+                currentPlaylistName={playlist.name}
+            />
+            <PlaylistConfigurationModal />
+            <AdvancedFiltersModal />
+            <Monitors />
+        </>
+    );
 }
 
-export default Modals
+export default Modals;

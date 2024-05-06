@@ -18,11 +18,11 @@ version_command() {
 # :command.usage
 waypaper_engine_usage() {
   if [[ -n $long_usage ]]; then
-    printf "waypaper-engine - A wallpaper setting tool with playlist functionality\n"
+    printf "waypaper-engine - A wallpaper setting tool with batteries included!\n"
     echo
 
   else
-    printf "waypaper-engine - A wallpaper setting tool with playlist functionality\n"
+    printf "waypaper-engine - A wallpaper setting tool with batteries included!\n"
     echo
 
   fi
@@ -34,17 +34,21 @@ waypaper_engine_usage() {
   echo
   # :command.usage_commands
   printf "%s\n" "Commands:"
+  printf "  %s   Run the waypaper engine application\n" "run            "
   printf "  %s   Run just the waypaper engine daemon\n" "daemon         "
-  printf "  %s   Send a request to the daemon to set the next image in the playlist\n" "next-image     "
-  printf "  %s   Send a request to the daemon to set the previous image in the playlist\n" "previous-image "
+  printf "  %s   Send a request to the daemon to set the next image in the specified playlist\n" "next-image     "
+  printf "  %s   Send a request to the daemon to set the previous image in the specified playlist\n" "previous-image "
   printf "  %s   Kill the waypaper daemon process\n" "kill-daemon    "
   printf "  %s   Send stop command to daemon process\n" "stop-daemon    "
-  printf "  %s   Send a request to the daemon to pause the current playlist\n" "pause-playlist "
-  printf "  %s   Send a request to the daemon to resume the current playlist\n" "resume-playlist"
+  printf "  %s   Send a request to the daemon to pause the specified playlist\n" "pause-playlist "
+  printf "  %s   Send a request to the daemon to resume the specified playlist\n" "resume-playlist"
+  printf "  %s   Start a playlist from the interactive selection\n" "start-playlist "
   printf "  %s   Send a request to the daemon to stop the current playlist\n" "stop-playlist  "
-  printf "  %s   run the waypaper engine application (default)\n" "run            "
-  printf "  %s   set a random image from the gallery\n" "random         "
-  printf "  %s   get playlist diagnostics\n" "info           "
+  printf "  %s   Set a random image from the gallery\n" "random         "
+  printf "  %s   Get active playlists diagnostics\n" "info-playlist  "
+  printf "  %s   Get monitors info and it's currently displayed images.\n" "info           "
+  printf "  %s   Launch interactive playlist controller\n" "playlist       "
+  printf "  %s   Launch interactive image history\n" "history        "
   echo
 
   # :command.long_usage
@@ -57,6 +61,56 @@ waypaper_engine_usage() {
     echo
     printf "  %s\n" "--version, -v"
     printf "    Show version number\n"
+    echo
+
+  fi
+}
+
+# :command.usage
+waypaper_engine_run_usage() {
+  if [[ -n $long_usage ]]; then
+    printf "waypaper-engine run - Run the waypaper engine application\n"
+    echo
+
+  else
+    printf "waypaper-engine run - Run the waypaper engine application\n"
+    echo
+
+  fi
+
+  printf "Alias: r\n"
+  echo
+
+  printf "%s\n" "Usage:"
+  printf "  waypaper-engine run [OPTIONS]\n"
+  printf "  waypaper-engine run --help | -h\n"
+  echo
+
+  # :command.long_usage
+  if [[ -n $long_usage ]]; then
+    printf "%s\n" "Options:"
+
+    # :command.usage_flags
+    # :flag.usage
+    printf "  %s\n" "--wayland"
+    printf "    force app to run under wayland instead of xwayland.\n"
+    echo
+
+    # :flag.usage
+    printf "  %s\n" "--format, -f"
+    printf "    Starts swww in xrgb mode.\n"
+    echo
+
+    # :command.usage_fixed_flags
+    printf "  %s\n" "--help, -h"
+    printf "    Show this help\n"
+    echo
+
+    # :command.usage_examples
+    printf "%s\n" "Examples:"
+    printf "  waypaper-engine\n"
+    printf "  waypaper-engine run\n"
+    printf "  waypaper-engine run --wayland\n"
     echo
 
   fi
@@ -88,8 +142,8 @@ waypaper_engine_daemon_usage() {
 
     # :command.usage_flags
     # :flag.usage
-    printf "  %s\n" "--script, -s SCRIPT"
-    printf "    Script to run on each image set, the image path will be passed as argument.\n"
+    printf "  %s\n" "--format, -f"
+    printf "    Starts swww in xrgb mode.\n"
     echo
 
     # :command.usage_fixed_flags
@@ -100,8 +154,7 @@ waypaper_engine_daemon_usage() {
     # :command.usage_examples
     printf "%s\n" "Examples:"
     printf "  waypaper-engine daemon\n"
-    printf "  waypaper-engine daemon -s \"/path/to/your/script.sh\"\n"
-    printf "  waypaper-engine daemon --script \"/path/to/your/script.sh\"\n"
+    printf "  waypaper-engine daemon --format\n"
     echo
 
   fi
@@ -110,11 +163,11 @@ waypaper_engine_daemon_usage() {
 # :command.usage
 waypaper_engine_next_image_usage() {
   if [[ -n $long_usage ]]; then
-    printf "waypaper-engine next-image - Send a request to the daemon to set the next image in the playlist\n"
+    printf "waypaper-engine next-image - Send a request to the daemon to set the next image in the specified playlist\n"
     echo
 
   else
-    printf "waypaper-engine next-image - Send a request to the daemon to set the next image in the playlist\n"
+    printf "waypaper-engine next-image - Send a request to the daemon to set the next image in the specified playlist\n"
     echo
 
   fi
@@ -123,7 +176,7 @@ waypaper_engine_next_image_usage() {
   echo
 
   printf "%s\n" "Usage:"
-  printf "  waypaper-engine next-image\n"
+  printf "  waypaper-engine next-image [PLAYLIST] [ACTIVE_MONITOR]\n"
   printf "  waypaper-engine next-image --help | -h\n"
   echo
 
@@ -136,9 +189,24 @@ waypaper_engine_next_image_usage() {
     printf "    Show this help\n"
     echo
 
+    # :command.usage_args
+    printf "%s\n" "Arguments:"
+
+    # :argument.usage
+    printf "  %s\n" "PLAYLIST"
+    printf "    Send next image command to a specific playlist, if left empty will send the\n    command to all active playlists.\n"
+    echo
+
+    # :argument.usage
+    printf "  %s\n" "ACTIVE_MONITOR"
+    printf "    If not specified, will send the next command to all active playlist with the\n    name provided.\n"
+    echo
+
     # :command.usage_examples
     printf "%s\n" "Examples:"
     printf "  waypaper-engine next-image\n"
+    printf "  waypaper-engine next-image playlist_name\n"
+    printf "  waypaper-engine next-image playlist_name active_monitor\n"
     echo
 
   fi
@@ -147,11 +215,11 @@ waypaper_engine_next_image_usage() {
 # :command.usage
 waypaper_engine_previous_image_usage() {
   if [[ -n $long_usage ]]; then
-    printf "waypaper-engine previous-image - Send a request to the daemon to set the previous image in the playlist\n"
+    printf "waypaper-engine previous-image - Send a request to the daemon to set the previous image in the specified playlist\n"
     echo
 
   else
-    printf "waypaper-engine previous-image - Send a request to the daemon to set the previous image in the playlist\n"
+    printf "waypaper-engine previous-image - Send a request to the daemon to set the previous image in the specified playlist\n"
     echo
 
   fi
@@ -160,7 +228,7 @@ waypaper_engine_previous_image_usage() {
   echo
 
   printf "%s\n" "Usage:"
-  printf "  waypaper-engine previous-image\n"
+  printf "  waypaper-engine previous-image [PLAYLIST] [ACTIVE_MONITOR]\n"
   printf "  waypaper-engine previous-image --help | -h\n"
   echo
 
@@ -173,9 +241,24 @@ waypaper_engine_previous_image_usage() {
     printf "    Show this help\n"
     echo
 
+    # :command.usage_args
+    printf "%s\n" "Arguments:"
+
+    # :argument.usage
+    printf "  %s\n" "PLAYLIST"
+    printf "    Send previous image command to a specific playlist, if left empty will send\n    the command to all active playlists.\n"
+    echo
+
+    # :argument.usage
+    printf "  %s\n" "ACTIVE_MONITOR"
+    printf "    If not specified, will send the previous command to all active playlist with\n    the name provided.\n"
+    echo
+
     # :command.usage_examples
     printf "%s\n" "Examples:"
     printf "  waypaper-engine previous-image\n"
+    printf "  waypaper-engine previous-image playlist_name\n"
+    printf "  waypaper-engine previous-image playlist_name active_monitor\n"
     echo
 
   fi
@@ -260,11 +343,11 @@ waypaper_engine_stop_daemon_usage() {
 # :command.usage
 waypaper_engine_pause_playlist_usage() {
   if [[ -n $long_usage ]]; then
-    printf "waypaper-engine pause-playlist - Send a request to the daemon to pause the current playlist\n"
+    printf "waypaper-engine pause-playlist - Send a request to the daemon to pause the specified playlist\n"
     echo
 
   else
-    printf "waypaper-engine pause-playlist - Send a request to the daemon to pause the current playlist\n"
+    printf "waypaper-engine pause-playlist - Send a request to the daemon to pause the specified playlist\n"
     echo
 
   fi
@@ -273,7 +356,7 @@ waypaper_engine_pause_playlist_usage() {
   echo
 
   printf "%s\n" "Usage:"
-  printf "  waypaper-engine pause-playlist\n"
+  printf "  waypaper-engine pause-playlist [PLAYLIST] [ACTIVE_MONITOR]\n"
   printf "  waypaper-engine pause-playlist --help | -h\n"
   echo
 
@@ -286,9 +369,24 @@ waypaper_engine_pause_playlist_usage() {
     printf "    Show this help\n"
     echo
 
+    # :command.usage_args
+    printf "%s\n" "Arguments:"
+
+    # :argument.usage
+    printf "  %s\n" "PLAYLIST"
+    printf "    Send pause command to a specific playlist, if left empty will send the\n    command to all active playlists.\n"
+    echo
+
+    # :argument.usage
+    printf "  %s\n" "ACTIVE_MONITOR"
+    printf "    If not specified, will send the pause command to all active playlist with\n    the name provided.\n"
+    echo
+
     # :command.usage_examples
     printf "%s\n" "Examples:"
     printf "  waypaper-engine pause-playlist\n"
+    printf "  waypaper-engine pause-playlist playlist_name\n"
+    printf "  waypaper-engine pause-playlist_name playlist active_monitor\n"
     echo
 
   fi
@@ -297,11 +395,11 @@ waypaper_engine_pause_playlist_usage() {
 # :command.usage
 waypaper_engine_resume_playlist_usage() {
   if [[ -n $long_usage ]]; then
-    printf "waypaper-engine resume-playlist - Send a request to the daemon to resume the current playlist\n"
+    printf "waypaper-engine resume-playlist - Send a request to the daemon to resume the specified playlist\n"
     echo
 
   else
-    printf "waypaper-engine resume-playlist - Send a request to the daemon to resume the current playlist\n"
+    printf "waypaper-engine resume-playlist - Send a request to the daemon to resume the specified playlist\n"
     echo
 
   fi
@@ -310,8 +408,57 @@ waypaper_engine_resume_playlist_usage() {
   echo
 
   printf "%s\n" "Usage:"
-  printf "  waypaper-engine resume-playlist\n"
+  printf "  waypaper-engine resume-playlist [PLAYLIST] [ACTIVE_MONITOR]\n"
   printf "  waypaper-engine resume-playlist --help | -h\n"
+  echo
+
+  # :command.long_usage
+  if [[ -n $long_usage ]]; then
+    printf "%s\n" "Options:"
+
+    # :command.usage_fixed_flags
+    printf "  %s\n" "--help, -h"
+    printf "    Show this help\n"
+    echo
+
+    # :command.usage_args
+    printf "%s\n" "Arguments:"
+
+    # :argument.usage
+    printf "  %s\n" "PLAYLIST"
+    printf "    Send resume command to a specific playlist, if left empty will send the\n    command to all active playlists.\n"
+    echo
+
+    # :argument.usage
+    printf "  %s\n" "ACTIVE_MONITOR"
+    printf "    If not specified, will send the resume command to all active playlist with\n    the name provided.\n"
+    echo
+
+    # :command.usage_examples
+    printf "%s\n" "Examples:"
+    printf "  waypaper-engine resume-playlist\n"
+    printf "  waypaper-engine resume-playlist playlist_name\n"
+    printf "  waypaper-engine resume-playlist playlist_name active_monitor\n"
+    echo
+
+  fi
+}
+
+# :command.usage
+waypaper_engine_start_playlist_usage() {
+  if [[ -n $long_usage ]]; then
+    printf "waypaper-engine start-playlist - Start a playlist from the interactive selection\n"
+    echo
+
+  else
+    printf "waypaper-engine start-playlist - Start a playlist from the interactive selection\n"
+    echo
+
+  fi
+
+  printf "%s\n" "Usage:"
+  printf "  waypaper-engine start-playlist\n"
+  printf "  waypaper-engine start-playlist --help | -h\n"
   echo
 
   # :command.long_usage
@@ -325,7 +472,7 @@ waypaper_engine_resume_playlist_usage() {
 
     # :command.usage_examples
     printf "%s\n" "Examples:"
-    printf "  waypaper-engine resume-playlist\n"
+    printf "  waypaper-engine start-playlist\n"
     echo
 
   fi
@@ -347,7 +494,7 @@ waypaper_engine_stop_playlist_usage() {
   echo
 
   printf "%s\n" "Usage:"
-  printf "  waypaper-engine stop-playlist\n"
+  printf "  waypaper-engine stop-playlist [PLAYLIST] [ACTIVE_MONITOR]\n"
   printf "  waypaper-engine stop-playlist --help | -h\n"
   echo
 
@@ -360,60 +507,24 @@ waypaper_engine_stop_playlist_usage() {
     printf "    Show this help\n"
     echo
 
+    # :command.usage_args
+    printf "%s\n" "Arguments:"
+
+    # :argument.usage
+    printf "  %s\n" "PLAYLIST"
+    printf "    Send stop command to a specific playlist, if left empty will send the\n    command to all active playlists.\n"
+    echo
+
+    # :argument.usage
+    printf "  %s\n" "ACTIVE_MONITOR"
+    printf "    If not specified, will send the stop command to all active playlist with the\n    name provided.\n"
+    echo
+
     # :command.usage_examples
     printf "%s\n" "Examples:"
     printf "  waypaper-engine stop-playlist\n"
-    echo
-
-  fi
-}
-
-# :command.usage
-waypaper_engine_run_usage() {
-  if [[ -n $long_usage ]]; then
-    printf "waypaper-engine run - run the waypaper engine application\n"
-    echo
-
-  else
-    printf "waypaper-engine run - run the waypaper engine application\n"
-    echo
-
-  fi
-
-  printf "Alias: r\n"
-  echo
-
-  printf "%s\n" "Usage:"
-  printf "  waypaper-engine run [OPTIONS]\n"
-  printf "  waypaper-engine run --help | -h\n"
-  echo
-
-  # :command.long_usage
-  if [[ -n $long_usage ]]; then
-    printf "%s\n" "Options:"
-
-    # :command.usage_flags
-    # :flag.usage
-    printf "  %s\n" "--script, -s SCRIPT"
-    printf "    Script to run on each image set, the image path will be passed as argument.\n"
-    echo
-
-    # :flag.usage
-    printf "  %s\n" "--force-wayland"
-    printf "    force app to run under wayland instead of xwayland.\n"
-    echo
-
-    # :command.usage_fixed_flags
-    printf "  %s\n" "--help, -h"
-    printf "    Show this help\n"
-    echo
-
-    # :command.usage_examples
-    printf "%s\n" "Examples:"
-    printf "  waypaper-engine\n"
-    printf "  waypaper-engine run\n"
-    printf "  waypaper-engine run --force-wayland\n"
-    printf "  waypaper-engine r -s \"/path/to/your/script.sh\"\n"
+    printf "  waypaper-engine stop-playlist playlist_name\n"
+    printf "  waypaper-engine stop-playlist playlist_name active_monitor\n"
     echo
 
   fi
@@ -422,11 +533,11 @@ waypaper_engine_run_usage() {
 # :command.usage
 waypaper_engine_random_usage() {
   if [[ -n $long_usage ]]; then
-    printf "waypaper-engine random - set a random image from the gallery\n"
+    printf "waypaper-engine random - Set a random image from the gallery\n"
     echo
 
   else
-    printf "waypaper-engine random - set a random image from the gallery\n"
+    printf "waypaper-engine random - Set a random image from the gallery\n"
     echo
 
   fi
@@ -458,13 +569,51 @@ waypaper_engine_random_usage() {
 }
 
 # :command.usage
-waypaper_engine_info_usage() {
+waypaper_engine_info_playlist_usage() {
   if [[ -n $long_usage ]]; then
-    printf "waypaper-engine info - get playlist diagnostics\n"
+    printf "waypaper-engine info-playlist - Get active playlists diagnostics\n"
     echo
 
   else
-    printf "waypaper-engine info - get playlist diagnostics\n"
+    printf "waypaper-engine info-playlist - Get active playlists diagnostics\n"
+    echo
+
+  fi
+
+  printf "Alias: ip\n"
+  echo
+
+  printf "%s\n" "Usage:"
+  printf "  waypaper-engine info-playlist\n"
+  printf "  waypaper-engine info-playlist --help | -h\n"
+  echo
+
+  # :command.long_usage
+  if [[ -n $long_usage ]]; then
+    printf "%s\n" "Options:"
+
+    # :command.usage_fixed_flags
+    printf "  %s\n" "--help, -h"
+    printf "    Show this help\n"
+    echo
+
+    # :command.usage_examples
+    printf "%s\n" "Examples:"
+    printf "  waypaper-engine info-playlist\n"
+    printf "  waypaper-engine ip\n"
+    echo
+
+  fi
+}
+
+# :command.usage
+waypaper_engine_info_usage() {
+  if [[ -n $long_usage ]]; then
+    printf "waypaper-engine info - Get monitors info and it's currently displayed images.\n"
+    echo
+
+  else
+    printf "waypaper-engine info - Get monitors info and it's currently displayed images.\n"
     echo
 
   fi
@@ -490,6 +639,79 @@ waypaper_engine_info_usage() {
     printf "%s\n" "Examples:"
     printf "  waypaper-engine info\n"
     printf "  waypaper-engine i\n"
+    echo
+
+  fi
+}
+
+# :command.usage
+waypaper_engine_playlist_usage() {
+  if [[ -n $long_usage ]]; then
+    printf "waypaper-engine playlist - Launch interactive playlist controller\n"
+    echo
+
+  else
+    printf "waypaper-engine playlist - Launch interactive playlist controller\n"
+    echo
+
+  fi
+
+  printf "%s\n" "Usage:"
+  printf "  waypaper-engine playlist\n"
+  printf "  waypaper-engine playlist --help | -h\n"
+  echo
+
+  # :command.long_usage
+  if [[ -n $long_usage ]]; then
+    printf "%s\n" "Options:"
+
+    # :command.usage_fixed_flags
+    printf "  %s\n" "--help, -h"
+    printf "    Show this help\n"
+    echo
+
+    # :command.usage_examples
+    printf "%s\n" "Examples:"
+    printf "  waypaper-engine playlist\n"
+    printf "  waypaper-engine p\n"
+    echo
+
+  fi
+}
+
+# :command.usage
+waypaper_engine_history_usage() {
+  if [[ -n $long_usage ]]; then
+    printf "waypaper-engine history - Launch interactive image history\n"
+    echo
+
+  else
+    printf "waypaper-engine history - Launch interactive image history\n"
+    echo
+
+  fi
+
+  printf "Alias: h\n"
+  echo
+
+  printf "%s\n" "Usage:"
+  printf "  waypaper-engine history\n"
+  printf "  waypaper-engine history --help | -h\n"
+  echo
+
+  # :command.long_usage
+  if [[ -n $long_usage ]]; then
+    printf "%s\n" "Options:"
+
+    # :command.usage_fixed_flags
+    printf "  %s\n" "--help, -h"
+    printf "    Show this help\n"
+    echo
+
+    # :command.usage_examples
+    printf "%s\n" "Examples:"
+    printf "  waypaper-engine history\n"
+    printf "  waypaper-engine h\n"
     echo
 
   fi
@@ -549,189 +771,284 @@ inspect_args() {
 
 # :command.command_functions
 # :command.function
-waypaper_engine_daemon_command() {
-  # src/daemon_command.sh
-  LOCATION="/opt/waypaper-engine/resources/daemon/daemon.js"
-  COMMAND="node $LOCATION"
+waypaper_engine_run_command() {
+  # src/run_command.sh
+  WAYPAPER_LOCATION="/opt/waypaper-engine/waypaper-engine-bin"
+  WAYPAPER_FLAGS="$HOME/.waypaper_engine/flags.conf"
+  FORMAT="${args[--format]}"
+  WAYLAND="${args[--wayland]}"
+  COMMAND="$WAYPAPER_LOCATION"
 
-  if [ -n "${args[--script]}" ]; then
-      COMMAND="$COMMAND --script=${args[--script]}"
+  if [[ $WAYLAND -eq 1 ]]; then
+  	COMMAND="$COMMAND --ozone-platform-hint=wayland"
+  fi
+  if [[ $FORMAT -eq 1 ]]; then
+  	COMMAND="$COMMAND --format"
   fi
 
-  run_daemon() {
-       $COMMAND || echo "Cannot start daemon, something went wrong in the installation"
-  }
+  $COMMAND || "Something went wrong"
 
-  run_daemon > /dev/null &
+}
+
+# :command.function
+waypaper_engine_daemon_command() {
+  # src/daemon_command.sh
+  WAYPAPER_LOCATION="/opt/waypaper-engine/waypaper-engine-bin --daemon"
+
+  FORMAT="${args[--format]}"
+  COMMAND="$WAYPAPER_LOCATION"
+
+  if [[ $FORMAT -eq 1 ]]; then
+  	COMMAND="$COMMAND --format"
+  fi
+
+  $COMMAND || "Something went wrong"
 
 }
 
 # :command.function
 waypaper_engine_next_image_command() {
   # src/next_image_command.sh
-
-  SOCKET_CONNECTION='/tmp/waypaper_engine_daemon.sock'
-
-  send_message(){
-    echo -n $1 | socat - UNIX-CONNECT:"$SOCKET_CONNECTION"
+  WAYPAPER_ENGINE_DAEMON_SOCKET_PATH="/tmp/waypaper_engine_daemon.sock"
+  PLAYLIST="${args[playlist]}"
+  ACTIVE_MONITOR="${args[active_monitor]}"
+  COMMAND="next-image"
+  COMMAND_ALL="next-image-all"
+  execute_command() {
+  	local argument="$1"
+  	echo "$argument" | jq
+  	echo -n "$argument" | socat - UNIX-CONNECT:$WAYPAPER_ENGINE_DAEMON_SOCKET_PATH | jq || {
+  		echo "Something went wrong"
+  		exit 1
+  	}
   }
 
-  next_image(){
-    send_message '{"action":"next-image"}' || echo "Seems like the daemon is not running, make sure to run 'waypaper-engine daemon' first"
-  }
-
-  next_image
+  if [[ -z "$PLAYLIST" ]]; then
+  	execute_command "{\"action\": \"$COMMAND_ALL\"}"
+  elif [[ -z "$ACTIVE_MONITOR" ]]; then
+  	execute_command "{\"action\": \"$COMMAND\", \"playlist\": {\"name\": \"$PLAYLIST\"}}"
+  else
+  	execute_command "{\"action\": \"$COMMAND\", \"playlist\": {\"name\": \"$PLAYLIST\", \"activeMonitor\":{\"name\":\"$ACTIVE_MONITOR\"}}}"
+  fi
 
 }
 
 # :command.function
 waypaper_engine_previous_image_command() {
   # src/previous_image_command.sh
-  SOCKET_CONNECTION='/tmp/waypaper_engine_daemon.sock'
-
-  send_message(){
-    echo -n "$1" | socat - UNIX-CONNECT:"$SOCKET_CONNECTION"
+  WAYPAPER_ENGINE_DAEMON_SOCKET_PATH="/tmp/waypaper_engine_daemon.sock"
+  PLAYLIST="${args[playlist]}"
+  ACTIVE_MONITOR="${args[active_monitor]}"
+  COMMAND="previous-image"
+  COMMAND_ALL="previous-image-all"
+  execute_command() {
+  	local argument="$1"
+  	echo "$argument" | jq
+  	echo -n "$argument" | socat - UNIX-CONNECT:$WAYPAPER_ENGINE_DAEMON_SOCKET_PATH | jq || {
+  		echo "Something went wrong"
+  		exit 1
+  	}
   }
 
-  previous_image(){
-    send_message '{"action":"previous-image"}' || echo "Seems like the daemon is not running, make sure to run 'waypaper-engine daemon' first"
-  }
-
-  previous_image
+  if [[ -z "$PLAYLIST" ]]; then
+  	execute_command "{\"action\": \"$COMMAND_ALL\"}"
+  elif [[ -z "$ACTIVE_MONITOR" ]]; then
+  	execute_command "{\"action\": \"$COMMAND\", \"playlist\": {\"name\": \"$PLAYLIST\"}}"
+  else
+  	execute_command "{\"action\": \"$COMMAND\", \"playlist\": {\"name\": \"$PLAYLIST\", \"activeMonitor\":{\"name\":\"$ACTIVE_MONITOR\"}}}"
+  fi
 
 }
 
 # :command.function
 waypaper_engine_kill_daemon_command() {
   # src/kill_daemon_command.sh
-  kill_daemon() {
-    killall wpe-daemon || echo "Waypaper daemon not running"
-  }
+  echo "# this file is located in 'src/kill_daemon_command.sh'"
+  echo "# code for 'waypaper-engine kill-daemon' goes here"
+  echo "# you can edit it freely and regenerate (it will not be overwritten)"
+  inspect_args
 
-  kill_daemon > /dev/null &
 }
 
 # :command.function
 waypaper_engine_stop_daemon_command() {
   # src/stop_daemon_command.sh
-  SOCKET_CONNECTION='/tmp/waypaper_engine_daemon.sock'
+  WAYPAPER_ENGINE_DAEMON_SOCKET_PATH="/tmp/waypaper_engine_daemon.sock"
 
-  send_message(){
-    echo -n "$1" | socat - UNIX-CONNECT:"$SOCKET_CONNECTION"
-  }
-
-  stop_daemon(){
-    send_message '{"action":"stop-daemon"}' || echo "Seems like the daemon is not running, make sure to run 'waypaper-engine daemon' first"
-  }
-
-  stop_daemon > /dev/null &
+  echo -n '{"action":"stop-daemon"}' | socat - UNIX-CONNECT:$WAYPAPER_ENGINE_DAEMON_SOCKET_PATH >/dev/null || "Something went wrong"
 
 }
 
 # :command.function
 waypaper_engine_pause_playlist_command() {
   # src/pause_playlist_command.sh
-  SOCKET_CONNECTION='/tmp/waypaper_engine_daemon.sock'
-
-  send_message(){
-    echo -n "$1" | socat - UNIX-CONNECT:"$SOCKET_CONNECTION"
-  }
-
-  pause_playlist(){
-    send_message '{"action":"pause-playlist"}' || echo "Seems like the daemon is not running, make sure to run 'waypaper-engine daemon' first"
-  }
-
-  pause_playlist
+  echo "# this file is located in 'src/pause_playlist_command.sh'"
+  echo "# code for 'waypaper-engine pause-playlist' goes here"
+  echo "# you can edit it freely and regenerate (it will not be overwritten)"
+  inspect_args
 
 }
 
 # :command.function
 waypaper_engine_resume_playlist_command() {
   # src/resume_playlist_command.sh
-  SOCKET_CONNECTION='/tmp/waypaper_engine_daemon.sock'
-
-  send_message(){
-    echo -n "$1" | socat - UNIX-CONNECT:"$SOCKET_CONNECTION"
+  WAYPAPER_ENGINE_DAEMON_SOCKET_PATH="/tmp/waypaper_engine_daemon.sock"
+  PLAYLIST="${args[playlist]}"
+  ACTIVE_MONITOR="${args[active_monitor]}"
+  COMMAND="resume-playlist"
+  COMMAND_ALL="resume-playlist-all"
+  execute_command() {
+  	local argument="$1"
+  	echo "$argument" | jq
+  	echo -n "$argument" | socat - UNIX-CONNECT:$WAYPAPER_ENGINE_DAEMON_SOCKET_PATH | jq || {
+  		echo "Something went wrong"
+  		exit 1
+  	}
   }
 
-  resume_playlist(){
-    send_message '{"action":"resume-playlist"}' || echo "Seems like the daemon is not running, make sure to run 'waypaper-engine daemon' first"
+  if [[ -z "$PLAYLIST" ]]; then
+  	execute_command "{\"action\": \"$COMMAND_ALL\"}"
+  elif [[ -z "$ACTIVE_MONITOR" ]]; then
+  	execute_command "{\"action\": \"$COMMAND\", \"playlist\": {\"name\": \"$PLAYLIST\"}}"
+  else
+  	execute_command "{\"action\": \"$COMMAND\", \"playlist\": {\"name\": \"$PLAYLIST\", \"activeMonitor\":{\"name\":\"$ACTIVE_MONITOR\"}}}"
+  fi
+
+}
+
+# :command.function
+waypaper_engine_start_playlist_command() {
+  # src/start_playlist_command.sh
+  WAYPAPER_ENGINE_DAEMON_SOCKET_PATH="/tmp/waypaper_engine_daemon.sock"
+
+  execute_command() {
+  	local argument="$1"
+  	echo -n "$argument" | socat - UNIX-CONNECT:$WAYPAPER_ENGINE_DAEMON_SOCKET_PATH | jq || {
+  		echo "Something went wrong"
+  		exit 1
+  	}
   }
 
-  resume_playlist
+  PLAYLISTS=$(echo -n '{"action":"get-info-playlist"}' | socat - UNIX-CONNECT:$WAYPAPER_ENGINE_DAEMON_SOCKET_PATH | jq)
+  SELECTED_PLAYLIST=$(echo "$PLAYLISTS" | jq ".[]" -c | fzf --border sharp --reverse --no-height --header "Select a playlists" --preview "printf %s {} | jq" -e)
+  MONITORS=$(echo -n '{"action":"get-info"}' | socat - UNIX-CONNECT:$WAYPAPER_ENGINE_DAEMON_SOCKET_PATH | jq)
+  SELECTED_MONITORS=$(echo "$MONITORS" | jq ".[]" -c | fzf --border sharp --reverse --no-height --multi --header "Select a monitor" --preview "printf %s {} | jq" -e | jq -s "sort_by(.position.x)")
+  NAMES=$(echo "$SELECTED_MONITORS" | jq -r 'map(.name) | join(",")')
+  MODES=("extend" "clone")
+  if [ "$(echo "$SELECTED_MONITORS" | jq length)" -gt 1 ]; then
+  	SELECTED_MODE=$(printf "%s\n" "${MODES[@]}" | fzf --border sharp --reverse --no-height --header "Select monitor mode" --preview "printf %s {}" -e)
+  	if [ "$SELECTED_MODE" == "extend" ]; then
+  		# If it is, set the boolean variable to true
+  		EXTEND=true
+  	else
+  		# Otherwise, set it to false
+  		EXTEND=false
+  	fi
+  else
+  	EXTEND=false
+  fi
+  COMMAND=$(echo "$SELECTED_PLAYLIST" | jq -rc "{action:\"start-playlist\",playlist:{name:.playlist.name,activeMonitor:{name:\"$NAMES\",monitors:$SELECTED_MONITORS,extendAcrossMonitors:$EXTEND}}}")
+
+  execute_command "$COMMAND"
 
 }
 
 # :command.function
 waypaper_engine_stop_playlist_command() {
   # src/stop_playlist_command.sh
-  SOCKET_CONNECTION='/tmp/waypaper_engine_daemon.sock'
-
-  send_message(){
-    echo -n "$1" | socat - UNIX-CONNECT:"$SOCKET_CONNECTION"
+  WAYPAPER_ENGINE_DAEMON_SOCKET_PATH="/tmp/waypaper_engine_daemon.sock"
+  PLAYLIST="${args[playlist]}"
+  ACTIVE_MONITOR="${args[active_monitor]}"
+  COMMAND="stop-playlist"
+  COMMAND_ALL="stop-playlist-all"
+  COMMAND_NAME="stop-playlist-by-name"
+  execute_command() {
+  	local argument="$1"
+  	echo "$argument" | jq
+  	echo -n "$argument" | socat - UNIX-CONNECT:$WAYPAPER_ENGINE_DAEMON_SOCKET_PATH | jq || {
+  		echo "Something went wrong"
+  		exit 1
+  	}
   }
 
-  stop_playlist(){
-    send_message '{"action":"stop-playlist"}' || echo "Seems like the daemon is not running, make sure to run 'waypaper-engine daemon' first"
-  }
-
-  stop_playlist
-}
-
-# :command.function
-waypaper_engine_run_command() {
-  # src/run_command.sh
-  LOCATION="/opt/waypaper-engine"
-  COMMAND="$LOCATION"/waypaper-engine-bin
-  COMMAND="$COMMAND"
-
-  if [ -n "${args["--force-wayland"]}" ]; then
-  	COMMAND="$COMMAND --ozone-platform-hint=auto"
+  if [[ -z "$PLAYLIST" ]]; then
+  	execute_command "{\"action\": \"$COMMAND_ALL\"}"
+  elif [[ -z "$ACTIVE_MONITOR" ]]; then
+  	execute_command "{\"action\": \"$COMMAND_NAME\", \"playlist\": {\"name\": \"$PLAYLIST\"}}"
+  else
+  	execute_command "{\"action\": \"$COMMAND\", \"playlist\": {\"name\": \"$PLAYLIST\", \"activeMonitor\":{\"name\":\"$ACTIVE_MONITOR\"}}}"
   fi
-
-  if [ -n "${args[--script]}" ]; then
-  	COMMAND="$COMMAND --script=${args[--script]}"
-  fi
-
-  run_app() {
-  	$COMMAND || echo "Something went wrong, make sure waypaper engine is installed correctly"
-  }
-
-  run_app >/dev/null &
 
 }
 
 # :command.function
 waypaper_engine_random_command() {
   # src/random_command.sh
-  SOCKET_CONNECTION='/tmp/waypaper_engine_daemon.sock'
+  WAYPAPER_ENGINE_DAEMON_SOCKET_PATH="/tmp/waypaper_engine_daemon.sock"
 
-  send_message(){
-    echo -n "$1" | socat - UNIX-CONNECT:"$SOCKET_CONNECTION"
-  }
+  echo -n '{"action":"random-image"}' | socat - UNIX-CONNECT:$WAYPAPER_ENGINE_DAEMON_SOCKET_PATH >/dev/null || "Something went wrong"
 
-  random_image(){
-    send_message '{"action":"random-image"}' || echo "Seems like the daemon is not running, make sure to run 'waypaper-engine daemon' first"
-  }
+}
 
-  random_image
+# :command.function
+waypaper_engine_info_playlist_command() {
+  # src/info_playlist_command.sh
+  WAYPAPER_ENGINE_DAEMON_SOCKET_PATH="/tmp/waypaper_engine_daemon.sock"
+
+  echo -n '{"action":"get-info-active-playlist"}' | socat - UNIX-CONNECT:$WAYPAPER_ENGINE_DAEMON_SOCKET_PATH | jq || "Something went wrong"
 
 }
 
 # :command.function
 waypaper_engine_info_command() {
   # src/info_command.sh
-  SOCKET_CONNECTION='/tmp/waypaper_engine_daemon.sock'
+  WAYPAPER_ENGINE_DAEMON_SOCKET_PATH="/tmp/waypaper_engine_daemon.sock"
 
-  send_message() {
-  	echo -n "$1" | socat - UNIX-CONNECT:"$SOCKET_CONNECTION"
+  echo -n '{"action":"get-info"}' | socat - UNIX-CONNECT:$WAYPAPER_ENGINE_DAEMON_SOCKET_PATH | jq || "Something went wrong"
+
+}
+
+# :command.function
+waypaper_engine_playlist_command() {
+  # src/playlist_command.sh
+  WAYPAPER_ENGINE_DAEMON_SOCKET_PATH="/tmp/waypaper_engine_daemon.sock"
+
+  execute_command() {
+  	local argument="$1"
+  	echo "$argument"
+  	echo -n "$argument" | socat - UNIX-CONNECT:$WAYPAPER_ENGINE_DAEMON_SOCKET_PATH | jq || {
+  		echo "Something went wrong"
+  		exit 1
+  	}
   }
 
-  get_info() {
-  	send_message '{"action":"get-info"}' || echo "Seems like the daemon is not running, make sure to run 'waypaper-engine daemon' first"
+  ACTIVE_PLAYLISTS=$(echo -n '{"action":"get-info-active-playlist"}' | socat - UNIX-CONNECT:$WAYPAPER_ENGINE_DAEMON_SOCKET_PATH | jq)
+  SELECTED_PLAYLIST=$(echo "$ACTIVE_PLAYLISTS" | jq ".[]" -c | fzf --border sharp --reverse --no-height --header "Active Playlists" --preview "printf %s {} | jq" -e)
+  COMMANDS=("next-image" "previous-image" "stop-playlist" "resume-playlist" "pause-playlist")
+  SELECTED_COMMAND=$(printf "%s\n" "${COMMANDS[@]}" | fzf --border sharp --reverse --no-height --header "Select command" --preview "printf %s {}" -e)
+  COMMAND=$(echo "$SELECTED_PLAYLIST" | jq "{action:\"$SELECTED_COMMAND\",playlist:{name:.playlistName,activeMonitor:.playlistActiveMonitor}}" -rc)
+  execute_command "$COMMAND"
+
+}
+
+# :command.function
+waypaper_engine_history_command() {
+  # src/history_command.sh
+  WAYPAPER_ENGINE_DAEMON_SOCKET_PATH="/tmp/waypaper_engine_daemon.sock"
+
+  execute_command() {
+  	local argument="$1"
+  	echo -n "$argument" | socat - UNIX-CONNECT:$WAYPAPER_ENGINE_DAEMON_SOCKET_PATH | jq || {
+  		echo "Something went wrong"
+  		exit 1
+  	}
   }
 
-  get_info
+  HISTORY=$(echo -n '{"action":"get-image-history"}' | socat - UNIX-CONNECT:$WAYPAPER_ENGINE_DAEMON_SOCKET_PATH | jq || "Something went wrong")
+  SELECTED_OBJECT=$(echo "$HISTORY" | jq ".[]" -c | fzf --border sharp --reverse --no-height --header "Select image to set" --preview "printf %s {} | jq" -e)
+  COMMAND=$(echo "$SELECTED_OBJECT" | jq "{action:\"set-image\",image:.Images,activeMonitor:.imageHistory.monitor}" -rc)
+
+  execute_command "$COMMAND"
 
 }
 
@@ -763,6 +1080,13 @@ parse_requirements() {
 
   case $action in
     -*) ;;
+
+    run | r)
+      action="run"
+      shift
+      waypaper_engine_run_parse_requirements "$@"
+      shift $#
+      ;;
 
     daemon | d)
       action="daemon"
@@ -813,17 +1137,17 @@ parse_requirements() {
       shift $#
       ;;
 
+    start-playlist)
+      action="start-playlist"
+      shift
+      waypaper_engine_start_playlist_parse_requirements "$@"
+      shift $#
+      ;;
+
     stop-playlist | sp)
       action="stop-playlist"
       shift
       waypaper_engine_stop_playlist_parse_requirements "$@"
-      shift $#
-      ;;
-
-    run | r)
-      action="run"
-      shift
-      waypaper_engine_run_parse_requirements "$@"
       shift $#
       ;;
 
@@ -834,6 +1158,13 @@ parse_requirements() {
       shift $#
       ;;
 
+    info-playlist | ip)
+      action="info-playlist"
+      shift
+      waypaper_engine_info_playlist_parse_requirements "$@"
+      shift $#
+      ;;
+
     info | i)
       action="info"
       shift
@@ -841,11 +1172,29 @@ parse_requirements() {
       shift $#
       ;;
 
-    # :command.command_fallback
-    *)
-      action="run"
-      waypaper_engine_run_parse_requirements "$@"
+    playlist)
+      action="playlist"
+      shift
+      waypaper_engine_playlist_parse_requirements "$@"
       shift $#
+      ;;
+
+    history | h)
+      action="history"
+      shift
+      waypaper_engine_history_parse_requirements "$@"
+      shift $#
+      ;;
+
+    # :command.command_fallback
+    "")
+      waypaper_engine_usage >&2
+      exit 1
+      ;;
+
+    *)
+      printf "invalid command: %s\n" "$action" >&2
+      exit 1
       ;;
 
   esac
@@ -854,6 +1203,65 @@ parse_requirements() {
   while [[ $# -gt 0 ]]; do
     key="$1"
     case "$key" in
+
+      -?*)
+        printf "invalid option: %s\n" "$key" >&2
+        exit 1
+        ;;
+
+      *)
+        # :command.parse_requirements_case
+        # :command.parse_requirements_case_simple
+        printf "invalid argument: %s\n" "$key" >&2
+        exit 1
+
+        ;;
+
+    esac
+  done
+
+}
+
+# :command.parse_requirements
+waypaper_engine_run_parse_requirements() {
+  # :command.fixed_flags_filter
+  while [[ $# -gt 0 ]]; do
+    case "${1:-}" in
+      --help | -h)
+        long_usage=yes
+        waypaper_engine_run_usage
+        exit
+        ;;
+
+      *)
+        break
+        ;;
+
+    esac
+  done
+
+  # :command.command_filter
+  action="run"
+
+  # :command.parse_requirements_while
+  while [[ $# -gt 0 ]]; do
+    key="$1"
+    case "$key" in
+      # :flag.case
+      --wayland)
+
+        # :flag.case_no_arg
+        args['--wayland']=1
+        shift
+        ;;
+
+      # :flag.case
+      --format | -f)
+
+        # :flag.case_no_arg
+        args['--format']=1
+        shift
+        ;;
 
       -?*)
         printf "invalid option: %s\n" "$key" >&2
@@ -899,18 +1307,11 @@ waypaper_engine_daemon_parse_requirements() {
     key="$1"
     case "$key" in
       # :flag.case
-      --script | -s)
+      --format | -f)
 
-        # :flag.case_arg
-        if [[ -n ${2+x} ]]; then
-
-          args['--script']="$2"
-          shift
-          shift
-        else
-          printf "%s\n" "--script requires an argument: --script, -s SCRIPT" >&2
-          exit 1
-        fi
+        # :flag.case_no_arg
+        args['--format']=1
+        shift
         ;;
 
       -?*)
@@ -965,8 +1366,18 @@ waypaper_engine_next_image_parse_requirements() {
       *)
         # :command.parse_requirements_case
         # :command.parse_requirements_case_simple
-        printf "invalid argument: %s\n" "$key" >&2
-        exit 1
+        if [[ -z ${args['playlist']+x} ]]; then
+
+          args['playlist']=$1
+          shift
+        elif [[ -z ${args['active_monitor']+x} ]]; then
+
+          args['active_monitor']=$1
+          shift
+        else
+          printf "invalid argument: %s\n" "$key" >&2
+          exit 1
+        fi
 
         ;;
 
@@ -1009,8 +1420,18 @@ waypaper_engine_previous_image_parse_requirements() {
       *)
         # :command.parse_requirements_case
         # :command.parse_requirements_case_simple
-        printf "invalid argument: %s\n" "$key" >&2
-        exit 1
+        if [[ -z ${args['playlist']+x} ]]; then
+
+          args['playlist']=$1
+          shift
+        elif [[ -z ${args['active_monitor']+x} ]]; then
+
+          args['active_monitor']=$1
+          shift
+        else
+          printf "invalid argument: %s\n" "$key" >&2
+          exit 1
+        fi
 
         ;;
 
@@ -1141,8 +1562,18 @@ waypaper_engine_pause_playlist_parse_requirements() {
       *)
         # :command.parse_requirements_case
         # :command.parse_requirements_case_simple
-        printf "invalid argument: %s\n" "$key" >&2
-        exit 1
+        if [[ -z ${args['playlist']+x} ]]; then
+
+          args['playlist']=$1
+          shift
+        elif [[ -z ${args['active_monitor']+x} ]]; then
+
+          args['active_monitor']=$1
+          shift
+        else
+          printf "invalid argument: %s\n" "$key" >&2
+          exit 1
+        fi
 
         ;;
 
@@ -1171,6 +1602,60 @@ waypaper_engine_resume_playlist_parse_requirements() {
 
   # :command.command_filter
   action="resume-playlist"
+
+  # :command.parse_requirements_while
+  while [[ $# -gt 0 ]]; do
+    key="$1"
+    case "$key" in
+
+      -?*)
+        printf "invalid option: %s\n" "$key" >&2
+        exit 1
+        ;;
+
+      *)
+        # :command.parse_requirements_case
+        # :command.parse_requirements_case_simple
+        if [[ -z ${args['playlist']+x} ]]; then
+
+          args['playlist']=$1
+          shift
+        elif [[ -z ${args['active_monitor']+x} ]]; then
+
+          args['active_monitor']=$1
+          shift
+        else
+          printf "invalid argument: %s\n" "$key" >&2
+          exit 1
+        fi
+
+        ;;
+
+    esac
+  done
+
+}
+
+# :command.parse_requirements
+waypaper_engine_start_playlist_parse_requirements() {
+  # :command.fixed_flags_filter
+  while [[ $# -gt 0 ]]; do
+    case "${1:-}" in
+      --help | -h)
+        long_usage=yes
+        waypaper_engine_start_playlist_usage
+        exit
+        ;;
+
+      *)
+        break
+        ;;
+
+    esac
+  done
+
+  # :command.command_filter
+  action="start-playlist"
 
   # :command.parse_requirements_while
   while [[ $# -gt 0 ]]; do
@@ -1229,74 +1714,18 @@ waypaper_engine_stop_playlist_parse_requirements() {
       *)
         # :command.parse_requirements_case
         # :command.parse_requirements_case_simple
-        printf "invalid argument: %s\n" "$key" >&2
-        exit 1
+        if [[ -z ${args['playlist']+x} ]]; then
 
-        ;;
-
-    esac
-  done
-
-}
-
-# :command.parse_requirements
-waypaper_engine_run_parse_requirements() {
-  # :command.fixed_flags_filter
-  while [[ $# -gt 0 ]]; do
-    case "${1:-}" in
-      --help | -h)
-        long_usage=yes
-        waypaper_engine_run_usage
-        exit
-        ;;
-
-      *)
-        break
-        ;;
-
-    esac
-  done
-
-  # :command.command_filter
-  action="run"
-
-  # :command.parse_requirements_while
-  while [[ $# -gt 0 ]]; do
-    key="$1"
-    case "$key" in
-      # :flag.case
-      --script | -s)
-
-        # :flag.case_arg
-        if [[ -n ${2+x} ]]; then
-
-          args['--script']="$2"
+          args['playlist']=$1
           shift
+        elif [[ -z ${args['active_monitor']+x} ]]; then
+
+          args['active_monitor']=$1
           shift
         else
-          printf "%s\n" "--script requires an argument: --script, -s SCRIPT" >&2
+          printf "invalid argument: %s\n" "$key" >&2
           exit 1
         fi
-        ;;
-
-      # :flag.case
-      --force-wayland)
-
-        # :flag.case_no_arg
-        args['--force-wayland']=1
-        shift
-        ;;
-
-      -?*)
-        printf "invalid option: %s\n" "$key" >&2
-        exit 1
-        ;;
-
-      *)
-        # :command.parse_requirements_case
-        # :command.parse_requirements_case_simple
-        printf "invalid argument: %s\n" "$key" >&2
-        exit 1
 
         ;;
 
@@ -1325,6 +1754,50 @@ waypaper_engine_random_parse_requirements() {
 
   # :command.command_filter
   action="random"
+
+  # :command.parse_requirements_while
+  while [[ $# -gt 0 ]]; do
+    key="$1"
+    case "$key" in
+
+      -?*)
+        printf "invalid option: %s\n" "$key" >&2
+        exit 1
+        ;;
+
+      *)
+        # :command.parse_requirements_case
+        # :command.parse_requirements_case_simple
+        printf "invalid argument: %s\n" "$key" >&2
+        exit 1
+
+        ;;
+
+    esac
+  done
+
+}
+
+# :command.parse_requirements
+waypaper_engine_info_playlist_parse_requirements() {
+  # :command.fixed_flags_filter
+  while [[ $# -gt 0 ]]; do
+    case "${1:-}" in
+      --help | -h)
+        long_usage=yes
+        waypaper_engine_info_playlist_usage
+        exit
+        ;;
+
+      *)
+        break
+        ;;
+
+    esac
+  done
+
+  # :command.command_filter
+  action="info-playlist"
 
   # :command.parse_requirements_while
   while [[ $# -gt 0 ]]; do
@@ -1393,9 +1866,97 @@ waypaper_engine_info_parse_requirements() {
 
 }
 
+# :command.parse_requirements
+waypaper_engine_playlist_parse_requirements() {
+  # :command.fixed_flags_filter
+  while [[ $# -gt 0 ]]; do
+    case "${1:-}" in
+      --help | -h)
+        long_usage=yes
+        waypaper_engine_playlist_usage
+        exit
+        ;;
+
+      *)
+        break
+        ;;
+
+    esac
+  done
+
+  # :command.command_filter
+  action="playlist"
+
+  # :command.parse_requirements_while
+  while [[ $# -gt 0 ]]; do
+    key="$1"
+    case "$key" in
+
+      -?*)
+        printf "invalid option: %s\n" "$key" >&2
+        exit 1
+        ;;
+
+      *)
+        # :command.parse_requirements_case
+        # :command.parse_requirements_case_simple
+        printf "invalid argument: %s\n" "$key" >&2
+        exit 1
+
+        ;;
+
+    esac
+  done
+
+}
+
+# :command.parse_requirements
+waypaper_engine_history_parse_requirements() {
+  # :command.fixed_flags_filter
+  while [[ $# -gt 0 ]]; do
+    case "${1:-}" in
+      --help | -h)
+        long_usage=yes
+        waypaper_engine_history_usage
+        exit
+        ;;
+
+      *)
+        break
+        ;;
+
+    esac
+  done
+
+  # :command.command_filter
+  action="history"
+
+  # :command.parse_requirements_while
+  while [[ $# -gt 0 ]]; do
+    key="$1"
+    case "$key" in
+
+      -?*)
+        printf "invalid option: %s\n" "$key" >&2
+        exit 1
+        ;;
+
+      *)
+        # :command.parse_requirements_case
+        # :command.parse_requirements_case_simple
+        printf "invalid argument: %s\n" "$key" >&2
+        exit 1
+
+        ;;
+
+    esac
+  done
+
+}
+
 # :command.initialize
 initialize() {
-  version="1.1.0"
+  version="2.0.0"
   long_usage=''
   set -e
 
@@ -1411,6 +1972,7 @@ run() {
   parse_requirements "${input[@]}"
 
   case "$action" in
+    "run") waypaper_engine_run_command ;;
     "daemon") waypaper_engine_daemon_command ;;
     "next-image") waypaper_engine_next_image_command ;;
     "previous-image") waypaper_engine_previous_image_command ;;
@@ -1418,10 +1980,13 @@ run() {
     "stop-daemon") waypaper_engine_stop_daemon_command ;;
     "pause-playlist") waypaper_engine_pause_playlist_command ;;
     "resume-playlist") waypaper_engine_resume_playlist_command ;;
+    "start-playlist") waypaper_engine_start_playlist_command ;;
     "stop-playlist") waypaper_engine_stop_playlist_command ;;
-    "run") waypaper_engine_run_command ;;
     "random") waypaper_engine_random_command ;;
+    "info-playlist") waypaper_engine_info_playlist_command ;;
     "info") waypaper_engine_info_command ;;
+    "playlist") waypaper_engine_playlist_command ;;
+    "history") waypaper_engine_history_command ;;
   esac
 }
 

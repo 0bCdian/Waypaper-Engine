@@ -1,12 +1,10 @@
-LOCATION="/opt/waypaper-engine/resources/daemon/daemon.js"
-COMMAND="node $LOCATION"
+WAYPAPER_LOCATION="/opt/waypaper-engine/waypaper-engine-bin --daemon"
 
-if [ -n "${args[--script]}" ]; then
-    COMMAND="$COMMAND --script=${args[--script]}"
+FORMAT="${args[--format]}"
+COMMAND="$WAYPAPER_LOCATION"
+
+if [[ $FORMAT -eq 1 ]]; then
+	COMMAND="$COMMAND --format"
 fi
 
-run_daemon() {
-     $COMMAND || echo "Cannot start daemon, something went wrong in the installation"
-}
-
-run_daemon > /dev/null &
+$COMMAND || "Something went wrong"

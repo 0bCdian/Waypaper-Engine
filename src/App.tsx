@@ -1,27 +1,24 @@
-import { Routes, Route } from 'react-router-dom'
-import Home from './routes/Home'
-import SwwwConfig from './routes/SwwwConfig'
-import AppConfig from './routes/AppConfiguration'
-import Drawer from './components/Drawer'
-import { ImagesProvider } from './hooks/imagesStore'
-import { HashRouter } from 'react-router-dom'
-import NavBar from './components/NavBar'
-
+import { Routes, Route, HashRouter } from 'react-router-dom';
+import SwwwConfig from './routes/SwwwConfig';
+import AppConfiguration from './routes/AppConfiguration';
+import Drawer from './components/Drawer';
+import NavBar from './components/NavBar';
+import Home from './routes/Home';
+import { useLoadAppConfig } from './hooks/useLoadAppConfig';
 const App = () => {
-  return (
-    <HashRouter>
-      <Drawer>
-        <NavBar />
-        <ImagesProvider>
-          <Routes>
-            <Route path='/' element={<Home />} />
-            <Route path='/swwwConfig' element={<SwwwConfig />} />
-            <Route path='/appConfig' element={<AppConfig />} />
-          </Routes>
-        </ImagesProvider>
-      </Drawer>
-    </HashRouter>
-  )
-}
+    useLoadAppConfig()();
+    return (
+        <HashRouter>
+            <Drawer>
+                <NavBar />
+                <Routes>
+                    <Route path="/" element={<Home />} />
+                    <Route path="/swwwConfig" element={<SwwwConfig />} />
+                    <Route path="/appConfig" element={<AppConfiguration />} />
+                </Routes>
+            </Drawer>
+        </HashRouter>
+    );
+};
 
-export default App
+export default App;

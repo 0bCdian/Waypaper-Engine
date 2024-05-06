@@ -1,0 +1,11 @@
+tabWidth: 4
+semi: true
+printWidth: 80
+trailingComma: none
+bracketSpacing: true
+arrowParens: avoid
+useTabs: false
+endOfLine: lf
+prettier:
+    plugins:
+        - prettier-plugin-tailwindcss

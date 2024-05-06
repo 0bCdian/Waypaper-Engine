@@ -1,79 +1,25 @@
-import { useEffect } from 'react'
-import { useImages } from '../hooks/imagesStore'
-import AddImagesCard from './AddImagesCard'
-import PaginatedGallery from './PaginatedGallery'
-import playlistStore from '../hooks/playlistStore'
-import { Image, PLAYLIST_TYPES } from '../types/rendererTypes'
-import Filters from './Filters'
-const { readActivePlaylist, readAppConfig, onDeleteImageFromGallery } =
-  window.API_RENDERER
-
+import { useShallow } from 'zustand/react/shallow';
+import { useLoadImages } from '../hooks/useLoadImages';
+import { imagesStore } from '../stores/images';
+import AddImagesCard from './AddImagesCard';
+import PaginatedGallery from './PaginatedGallery';
+import Filters from './Filters';
 function Gallery() {
-  const { isEmpty, imagesArray, removeImageFromStore } = useImages()
-  const { setPlaylist, removeImageFromPlaylist } = playlistStore()
-  function setLastActivePlaylist() {
-    readActivePlaylist().then((playlist) => {
-      if (playlist === undefined) {
-        return
-      }
-      const imagesToStorePlaylist: Image[] = []
-      playlist.images.forEach((imageInActivePlaylist) => {
-        const imageToCheck = imagesArray.find((imageInGallery) => {
-          return imageInGallery.name === imageInActivePlaylist.name
-        }) as Image
-        if (
-          playlist.type === PLAYLIST_TYPES.TIME_OF_DAY &&
-          imageInActivePlaylist.time !== null
-        ) {
-          imageToCheck.time = imageInActivePlaylist.time
-        }
-        imageToCheck.isChecked = true
-        imagesToStorePlaylist.push(imageToCheck)
-      })
-      const currentPlaylist = {
-        name: playlist.name,
-        configuration: {
-          playlistType: playlist.type,
-          order: playlist.order,
-          interval: playlist.interval,
-          showAnimations: playlist.showAnimations === 1 ? true : false,
-        },
-        images: imagesToStorePlaylist,
-      }
-      setPlaylist(currentPlaylist)
-    })
-  }
-  onDeleteImageFromGallery((_event, image) => {
-    removeImageFromStore(image.id)
-    removeImageFromPlaylist(image)
-  })
-  useEffect(() => {
-    readAppConfig().then((appSettings) => {
-      if (appSettings.introAnimation && !appSettings.startMinimized) {
-        setTimeout(() => {
-          setLastActivePlaylist()
-        }, 3700)
-      } else {
-        setLastActivePlaylist()
-      }
-    })
-  }, [isEmpty])
-  if (isEmpty) {
+    const isEmpty = imagesStore(useShallow(state => state.isEmpty));
+    const isQueried = imagesStore(useShallow(state => state.isQueried));
+    useLoadImages()();
+    if (isEmpty && isQueried)
+        return (
+            <div className="flex flex-col justify-center items-center sm:h-[90dvh] m-auto">
+                <AddImagesCard />
+            </div>
+        );
     return (
-      <div className="flex justify-center items-center h-screen m-auto">
-        <div>
-          <AddImagesCard />
-        </div>
-      </div>
-    )
-  } else {
-    return (
-      <>
-        <Filters />
-        <PaginatedGallery />
-      </>
-    )
-  }
+        <>
+            <Filters />
+            <PaginatedGallery />
+        </>
+    );
 }
 
-export default Gallery
+export default Gallery;
