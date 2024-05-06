@@ -52,6 +52,26 @@ Simply install from the aur like so:
 ```bash
 yay -S waypaper-engine
 ```
+## Manual installation
+Be advised you will need to run some of the commands with sudo privileges as you will be copying files to protected paths.
+
+1) Clone this repo `git clone git@github.com:0bCdian/Waypaper-Engine.git` or download and extract the zip file
+2) inside the repo cd into daemon directory `cd daemon`
+3) run `npm install`
+4) go back to the root directory `cd ..`
+5) run `npm install` again
+6) run `npm run build`
+7) cd into release `cd release`
+8) Optional: if you want to change the tray icon, change the 512x512.png image inside linux-unpacked/resources/icons
+9) Optional: copy the 512x512.png file to the icons system directory `cp linux-unpacked/resources/icons/512x512.png /usr/share/icons/hicolor/512x512/apps/waypaper-engine.png`
+10) copy the whole directory to it's final destination `sudo cp ./linux-unpacked -rt /opt/waypaper-engine`
+11) go back to root dir `cd ..`
+12) cd into cli `cd cli`
+13) copy waypaper-engine file to your $PATH or /usr/bin `sudo cp ./waypaper-engine /usr/bin` or `cp ./waypaper/engine $HOME/.local/bin` be advised, if you do not copy the cli file to /usr/bin, the path you're copying it into must be in your $PATH, read [this](https://askubuntu.com/questions/551990/what-does-path-mean) for more info
+14) go back to root `cd ..`
+15) copy the .desktop file to /usr/share/applications `sudo cp ./waypaper-engine.desktop /usr/share/applications/`
+
+and you're done!
 
 # Usage
 
@@ -98,11 +118,15 @@ _If you encounter any problems or would like to make a suggestion, please feel f
 
 # Gallery
 
-## ![screenshot](./readme_files/sidebar.png)
+![image](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/d78b9373-daf8-401a-8e85-cd1e286b31ce)
+![image](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/aceae307-7a2a-430e-a357-c710bb660eb7)
+![image](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/c78b7fc9-48a6-4ffa-b07f-a58f73ca91b6)
+![image](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/cb6afa04-b577-46a6-ba53-70fdf304c1b6)
+![image](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/51e2e981-8916-475e-92cd-b33e4a9bbaa5)
+![image](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/495d6702-7ce9-4d5b-9870-5cf0d2aa56bb)
+![image](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/ba5993ff-ea36-4594-bc77-671c082f09c2)
 
-## ![screenshot](./readme_files/swww_settings.png)
 
-![screenshot](./readme_files/app_settings.png)
 
 # Special Thanks
 
