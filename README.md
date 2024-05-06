@@ -33,9 +33,11 @@
 
 ---
 
-![screenshot](./readme_files/gallery.png)
+![image](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/40318ad6-aa5a-42c2-98c8-63d988069407)
 
-[multimonitor_example.webm](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/3e502407-6f35-48ea-af7e-73d42b88c9ba)
+
+https://github.com/0bCdian/Waypaper-Engine/assets/101421807/4d49225a-cbdc-42a0-af67-aac823c47f98
+
 
 ---
 
@@ -69,16 +71,17 @@ exec-once=waypaper-engine daemon
 
 > [!WARNING]
 > Make sure the script in question has execution permissions
-
+Put you bash scripts in this path:
 ```bash
-waypaper-engine r --script=/absolute/path/to/script
+$HOME/.waypaper_engine/scripts
 ```
 
 The scripts are always passsed as an argument the path of the image being set, so you can do stuff like this:
 
 ![carbon](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/c594babf-198a-47a0-8dce-5fd8d64b862c)
 
-https://github.com/0bCdian/Waypaper-Engine/assets/101421807/4117b3b8-9a32-45bc-bba4-0c8baa30fe4d
+
+https://github.com/0bCdian/Waypaper-Engine/assets/101421807/f454a904-7fa7-4ce9-86e9-f8fbc86e8c2b
 
 # TODO
 
@@ -88,7 +91,8 @@ https://github.com/0bCdian/Waypaper-Engine/assets/101421807/4117b3b8-9a32-45bc-b
 -   [x] Publish in the aur.
 -   [x] Find a good icon/logo for the app (Thank you [Cristian Avendaño](https://github.com/c-avendano)!).
 -   [ ] Add flatpak support.
--   [x] Add --script flag.
+-   [x] Add scripts feature.
+-   [x] Add playlists per monitor.
 
 _If you encounter any problems or would like to make a suggestion, please feel free to open an issue_.
 
