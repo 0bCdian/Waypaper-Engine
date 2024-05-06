@@ -64,12 +64,12 @@ export class DaemonManager {
         activePlaylists.forEach(playlist => {
             const playlistInstance = new Playlist({
                 playlistName: playlist.Playlists.name,
-                activeMonitor: playlist.activePlaylists.monitor,
+                activeMonitor: playlist.activePlaylists.activeMonitor,
                 wasActive: true
             });
             playlistInstance.start();
             this.#playlistMap.set(
-                playlist.activePlaylists.monitor.name,
+                playlist.activePlaylists.activeMonitor.name,
                 playlistInstance
             );
             this.setListeners(playlistInstance);
@@ -118,19 +118,11 @@ export class DaemonManager {
                     socket.end();
                     break;
                 case ACTIONS.STOP_PLAYLIST_ALL:
-                    {
-                        const stoppedPlaylists: string[] = [];
-                        this.#playlistMap.forEach(playlist => {
-                            stoppedPlaylists.push(playlist.name);
-                            this.#playlistMap.delete(
-                                playlist.activeMonitor.name
-                            );
-                            playlist.stop();
-                        });
-                        const message = `Stopped all following playlists:"${JSON.stringify(stoppedPlaylists)}"`;
-                        notify(message);
-                        socket.end();
-                    }
+                    this.#playlistMap.forEach(playlist => {
+                        this.#playlistMap.delete(playlist.activeMonitor.name);
+                        playlist.stop();
+                    });
+                    socket.end();
                     break;
                 case ACTIONS.NEXT_IMAGE_ALL:
                     this.#playlistMap.forEach(activePlaylist => {
@@ -236,9 +228,6 @@ export class DaemonManager {
                             message.playlist.activeMonitor.name,
                             newPlaylist
                         );
-                        notify(
-                            `Starting ${message.playlist.name} on ${message.playlist.activeMonitor.name}`
-                        );
                         socket.write(
                             JSON.stringify({
                                 action: ACTIONS.START_PLAYLIST,
@@ -313,6 +302,9 @@ export class DaemonManager {
                                     playlistActive.name ===
                                     message.playlist.name
                                 ) {
+                                    this.#playlistMap.delete(
+                                        playlistActive.activeMonitor.name
+                                    );
                                     playlistActive.stop();
                                 }
                             });
@@ -445,20 +437,37 @@ export class DaemonManager {
         newPlaylist.on(ACTIONS.PAUSE_PLAYLIST, (receivedMessage: message) => {
             // typescript shenannigans
             if (receivedMessage.action === ACTIONS.PAUSE_PLAYLIST) {
-                notify(`Paused ${receivedMessage.playlist.name}`);
+                notify(
+                    `Paused ${receivedMessage.playlist.name} on ${receivedMessage.playlist.activeMonitor.name}`
+                );
                 this.sendMessageToMainApp(receivedMessage);
             }
         });
         newPlaylist.on(ACTIONS.RESUME_PLAYLIST, (receivedMessage: message) => {
             if (receivedMessage.action === ACTIONS.RESUME_PLAYLIST) {
-                notify(`Resumed ${receivedMessage.playlist.name}`);
+                notify(
+                    `Resumed ${receivedMessage.playlist.name} on ${receivedMessage.playlist.activeMonitor.name}`
+                );
                 this.sendMessageToMainApp(receivedMessage);
             }
         });
         newPlaylist.on(ACTIONS.STOP_PLAYLIST, (receivedMessage: message) => {
+            if (receivedMessage.action === ACTIONS.STOP_PLAYLIST) {
+                notify(
+                    `Stopped ${receivedMessage.playlist.name} on ${receivedMessage.playlist.activeMonitor.name}`
+                );
+                this.sendMessageToMainApp(receivedMessage);
+            }
             this.sendMessageToMainApp(receivedMessage);
         });
         newPlaylist.on(ACTIONS.START_PLAYLIST, (receivedMessage: message) => {
+            if (receivedMessage.action === ACTIONS.START_PLAYLIST) {
+                notify(
+                    `Starting ${receivedMessage.playlist.name} on ${receivedMessage.playlist.activeMonitor.name}`
+                );
+                this.sendMessageToMainApp(receivedMessage);
+            }
+
             this.sendMessageToMainApp(receivedMessage);
         });
     }
@@ -644,7 +653,6 @@ function findAndStopCollidingPlaylists({
     newPlaylist: { name: string; activeMonitor: ActiveMonitor };
 }) {
     let message = 'Stopped playlists:';
-    let shouldSendMessage = false;
     playlistMap.forEach(runningPlaylist => {
         let shouldStopPlaylist = false;
         runningPlaylist.activeMonitor.monitors.forEach(usedMonitor => {
@@ -655,15 +663,11 @@ function findAndStopCollidingPlaylists({
             });
         });
         if (shouldStopPlaylist) {
-            shouldSendMessage = true;
             message = message.concat(`\n${runningPlaylist.name}`);
             playlistMap.delete(runningPlaylist.activeMonitor.name);
             runningPlaylist.stop();
         }
     });
-    if (shouldSendMessage) {
-        notify(message);
-    }
 }
 
 function stopPlaylistByMonitorName({

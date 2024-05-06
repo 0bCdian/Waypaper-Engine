@@ -19,7 +19,6 @@ export function useSetLastActivePlaylist() {
                 // setEmptyPlaylist();
                 return;
             }
-
             if (playlistFromDB.images.length < 1) {
                 deletePlaylist(playlistFromDB.name);
                 return;

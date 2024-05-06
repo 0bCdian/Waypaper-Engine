@@ -59,7 +59,7 @@ export class Playlist extends EventEmitter {
         if (wasActive) return;
         this.dbOperations.insertIntoActivePlaylists({
             playlistID: currentPlaylist.id,
-            monitor: activeMonitor
+            activeMonitor
         });
     }
 
@@ -149,7 +149,7 @@ export class Playlist extends EventEmitter {
 
     stop() {
         this.dbOperations.removeActivePlaylist({
-            playlistName: this.name
+            activeMonitorName: this.activeMonitor.name
         });
         const currentPlaylist: { name: string; activeMonitor: ActiveMonitor } =
             {
@@ -303,7 +303,7 @@ export class Playlist extends EventEmitter {
         this.showAnimations = showAnimations;
         this.dbOperations.insertIntoActivePlaylists({
             playlistID: id,
-            monitor: this.activeMonitor
+            activeMonitor: this.activeMonitor
         });
         this.start();
     }

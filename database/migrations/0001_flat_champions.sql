@@ -29,7 +29,8 @@ CREATE TABLE `imageHistory` (
 --> statement-breakpoint
 CREATE TABLE `activePlaylists` (
   `playlistID` integer NOT NULL,
-  `monitor` text NOT NULL,
+  `activeMonitor` text NOT NULL,
+  `activeMonitorName` text NOT NULL UNIQUE,
 	FOREIGN KEY (`playlistID`) REFERENCES `Playlists`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint

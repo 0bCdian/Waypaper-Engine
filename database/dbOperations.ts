@@ -19,26 +19,21 @@ export class DBOperations extends EventEmitter {
         this.db = createConnector();
     }
 
-    removeActivePlaylist({ playlistName }: { playlistName: string }) {
-        const playlist = this.db
-            .select()
-            .from(tables.playlist)
-            .where(eq(tables.playlist.name, playlistName))
-            .get();
-        if (playlist === undefined) {
-            return;
-        }
+    removeActivePlaylist({ activeMonitorName }: { activeMonitorName: string }) {
         this.db
             .delete(tables.activePlaylist)
-            .where(eq(tables.activePlaylist.playlistID, playlist.id))
+            .where(
+                eq(tables.activePlaylist.activeMonitorName, activeMonitorName)
+            )
             .run();
     }
 
     insertIntoActivePlaylists(row: {
         playlistID: number;
-        monitor: ActiveMonitor;
+        activeMonitor: ActiveMonitor;
     }) {
-        this.db.insert(tables.activePlaylist).values(row).run();
+        const newRow = { ...row, activeMonitorName: row.activeMonitor.name };
+        this.db.insert(tables.activePlaylist).values(newRow).run();
     }
 
     async upsertPlaylist(playlistObject: rendererPlaylist) {
@@ -116,7 +111,7 @@ export class DBOperations extends EventEmitter {
             const playlistInfo = {
                 ...playlist.Playlists,
                 images,
-                activeMonitor: playlist.activePlaylists.monitor
+                activeMonitor: playlist.activePlaylists.activeMonitor
             };
             return playlistInfo;
         });
@@ -133,7 +128,7 @@ export class DBOperations extends EventEmitter {
             )
             .all();
         const activePlaylist = activePlaylists.find(playlist => {
-            return playlist.activePlaylists.monitor.name === monitor.name;
+            return playlist.activePlaylists.activeMonitor.name === monitor.name;
         });
         if (activePlaylist === undefined) return;
         const imagesInPlaylist = this.getPlaylistImages(

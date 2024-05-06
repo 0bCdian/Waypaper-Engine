@@ -19,7 +19,9 @@ export function createConnector() {
     if (isDaemon) {
         try {
             const sqlite = Database(dbPath);
-            const drizzleDB: BetterSQLite3Database = drizzle(sqlite);
+            const drizzleDB: BetterSQLite3Database = drizzle(sqlite, {
+                logger: true
+            });
             return drizzleDB;
         } catch (error) {
             console.error(error);

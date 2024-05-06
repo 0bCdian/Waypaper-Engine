@@ -69,7 +69,7 @@ export const trayMenu = async (
             label: 'Active playlists',
             submenu: activePlaylists.map(playlist => {
                 return {
-                    label: `${playlist.Playlists.name} on: ${playlist.activePlaylists.monitor.name}`,
+                    label: `${playlist.Playlists.name} on: ${playlist.activePlaylists.activeMonitor.name}`,
                     submenu: [
                         {
                             label: 'Next image',
@@ -77,7 +77,7 @@ export const trayMenu = async (
                                 playlistControllerInstance.nextImage({
                                     name: playlist.Playlists.name,
                                     activeMonitor:
-                                        playlist.activePlaylists.monitor
+                                        playlist.activePlaylists.activeMonitor
                                 });
                                 if (createTray !== undefined) void createTray();
                             },
@@ -92,7 +92,7 @@ export const trayMenu = async (
                                 playlistControllerInstance.previousImage({
                                     name: playlist.Playlists.name,
                                     activeMonitor:
-                                        playlist.activePlaylists.monitor
+                                        playlist.activePlaylists.activeMonitor
                                 });
                                 if (createTray !== undefined) void createTray();
                             },
@@ -107,7 +107,7 @@ export const trayMenu = async (
                                 playlistControllerInstance.pausePlaylist({
                                     name: playlist.Playlists.name,
                                     activeMonitor:
-                                        playlist.activePlaylists.monitor
+                                        playlist.activePlaylists.activeMonitor
                                 });
                             },
                             enabled: playlist.Playlists.type === 'timer'
@@ -118,7 +118,7 @@ export const trayMenu = async (
                                 playlistControllerInstance.resumePlaylist({
                                     name: playlist.Playlists.name,
                                     activeMonitor:
-                                        playlist.activePlaylists.monitor
+                                        playlist.activePlaylists.activeMonitor
                                 });
                                 if (createTray !== undefined) void createTray();
                             },
@@ -127,10 +127,11 @@ export const trayMenu = async (
                         {
                             label: 'Stop',
                             click: (_, win) => {
+                                console.log('stopping playlist');
                                 playlistControllerInstance.stopPlaylist({
                                     name: playlist.Playlists.name,
                                     activeMonitor:
-                                        playlist.activePlaylists.monitor
+                                        playlist.activePlaylists.activeMonitor
                                 });
                                 if (createTray !== undefined) void createTray();
                                 win?.webContents.send(
@@ -138,7 +139,8 @@ export const trayMenu = async (
                                     {
                                         name: playlist.Playlists.name,
                                         activeMonitor:
-                                            playlist.activePlaylists.monitor
+                                            playlist.activePlaylists
+                                                .activeMonitor
                                     }
                                 );
                             }

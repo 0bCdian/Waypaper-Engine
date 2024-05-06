@@ -68,7 +68,10 @@ export const activePlaylist = sqliteTable('activePlaylists', {
     playlistID: integer('playlistID')
         .notNull()
         .references(() => playlist.id),
-    monitor: text('monitor', { mode: 'json' }).notNull().$type<ActiveMonitor>()
+    activeMonitor: text('activeMonitor', { mode: 'json' })
+        .notNull()
+        .$type<ActiveMonitor>(),
+    activeMonitorName: text('activeMonitorName').notNull().unique()
 });
 
 export const imageHistory = sqliteTable('imageHistory', {
