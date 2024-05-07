@@ -56,7 +56,7 @@ export function MonitorComponent({
                     src={`atom://${monitor.currentImage}`}
                     alt="Monitor"
                     style={imageStyle}
-                    className="data-[selected=true]: transition-all cursor-pointer"
+                    className=" cursor-pointer transform-gpu"
                 />
                 <div
                     draggable={false}

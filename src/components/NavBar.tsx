@@ -33,10 +33,8 @@ const NavBar = () => {
                         className="btn w-full text-ellipsis rounded-lg text-2xl"
                         onClick={() => {
                             void reQueryMonitors().then(() => {
-                                setTimeout(() => {
-                                    // @ts-expect-error daisyui
-                                    window.monitors.showModal();
-                                }, 100);
+                                // @ts-expect-error daisyui
+                                window.monitors.showModal();
                             });
                         }}
                     >
