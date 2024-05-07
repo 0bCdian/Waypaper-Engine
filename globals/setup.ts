@@ -1,7 +1,13 @@
+import { existsSync, mkdirSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { parseArgs } from 'node:util';
 const isPackaged = !(process.env.NODE_ENV === 'development');
 const resourcesPath = join(__dirname, '..', '..');
+const mainDir = join(homedir(), '.waypaper_engine');
+if (!existsSync(mainDir)) {
+    mkdirSync(mainDir);
+}
 export const iconsPath = resolve(
     isPackaged
         ? join(resourcesPath, './icons')

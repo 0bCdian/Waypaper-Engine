@@ -91,7 +91,9 @@ function Monitors() {
         clearPlaylist();
         closeModal();
     };
-    const scale = 1 / (monitorsList.length + 1);
+    const scale =
+        1 /
+        ((monitorsList.length + 1) * (screen.availWidth / window.innerWidth));
     const modalRef = useRef<HTMLDialogElement>(null);
     const styles: React.CSSProperties = {
         width: resolution.x * scale,
@@ -100,7 +102,7 @@ function Monitors() {
     useEffect(() => {
         const res = calculateMinResolution(monitorsList);
         setResolution(res);
-    }, [monitorsList]);
+    }, [monitorsList, screen.availWidth]);
     useEffect(() => {
         if (monitorsList.length < 1) return;
         if (selectType === 'individual') {

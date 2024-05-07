@@ -99,7 +99,7 @@ export const imagesStore = create<State>()((set, get) => ({
         }));
     },
     setSkeletons: skeletons => {
-        set(() => ({ skeletonsToShow: skeletons }));
+        set(() => ({ skeletonsToShow: skeletons, isEmpty: false }));
     },
     clearSkeletons: () => {
         set(() => ({ skeletonsToShow: undefined }));
