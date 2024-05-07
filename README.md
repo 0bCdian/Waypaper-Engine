@@ -64,16 +64,17 @@ Both the normal and -git version conflict with each other, so make sure to delet
 Be advised you will need to run some of the commands with sudo privileges as you will be copying files to protected paths.
 
 1) Clone this repo `git clone git@github.com:0bCdian/Waypaper-Engine.git` or download and extract the zip file
-2) run `npm run build`
-3) cd into release `cd release`
-4) Optional: if you want to change the tray icon, change the 512x512.png image inside linux-unpacked/resources/icons
-5) Optional: copy the 512x512.png file to the icons system directory `cp linux-unpacked/resources/icons/512x512.png /usr/share/icons/hicolor/512x512/apps/waypaper-engine.png`
-6) copy the whole directory to it's final destination `sudo cp ./linux-unpacked -rt /opt/waypaper-engine`
-7) go back to root dir `cd ..`
-8) cd into cli `cd cli`
-9) copy waypaper-engine file to your $PATH or /usr/bin `sudo cp ./waypaper-engine /usr/bin` or `cp ./waypaper/engine $HOME/.local/bin` be advised, if you do not copy the cli file to /usr/bin, the path you're copying it into must be in your $PATH, read [this](https://askubuntu.com/questions/551990/what-does-path-mean) for more info
-10) go back to root `cd ..`
-11) copy the .desktop file to /usr/share/applications `sudo cp ./waypaper-engine.desktop /usr/share/applications/`
+2) cd into Waypaper-Engine
+3) run `npm run build`
+4) cd into release `cd release`
+5) Optional: if you want to change the tray icon, change the 512x512.png image inside linux-unpacked/resources/icons
+6) Optional: copy the 512x512.png file to the icons system directory `cp linux-unpacked/resources/icons/512x512.png /usr/share/icons/hicolor/512x512/apps/waypaper-engine.png`
+7) copy the whole directory to it's final destination `sudo cp ./linux-unpacked -rt /opt/waypaper-engine`
+8) go back to root dir `cd ..`
+9) cd into cli `cd cli`
+10) copy waypaper-engine file to your $PATH or /usr/bin `sudo cp ./waypaper-engine /usr/bin` or `cp ./waypaper/engine $HOME/.local/bin` be advised, if you do not copy the cli file to /usr/bin, the path you're copying it into must be in your $PATH, read [this](https://askubuntu.com/questions/551990/what-does-path-mean) for more info
+11) go back to root `cd ..`
+12) copy the .desktop file to /usr/share/applications `sudo cp ./waypaper-engine.desktop /usr/share/applications/`
 
 and you're done!
 
