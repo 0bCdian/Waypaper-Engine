@@ -52,6 +52,14 @@ Simply install from the aur like so:
 ```bash
 yay -S waypaper-engine
 ```
+or 
+
+```bash
+yay -S waypaper-engine-git
+```
+
+Both the normal and -git version conflict with each other, so make sure to delete the other with `yay -Rns package_name package_name-debug` before installing either.
+
 ## Manual installation
 Be advised you will need to run some of the commands with sudo privileges as you will be copying files to protected paths.
 
