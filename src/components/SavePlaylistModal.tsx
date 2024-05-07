@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useForm, type SubmitHandler } from 'react-hook-form';
 import { playlistStore } from '../stores/playlist';
 import { type rendererImage } from '../types/rendererTypes';
+import { useMonitorStore } from '../stores/monitors';
 const { savePlaylist } = window.API_RENDERER;
 
 interface Props {
@@ -14,6 +15,7 @@ interface savePlaylistModalFields {
 const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
     const { setName, readPlaylist } = playlistStore();
     const [error, showError] = useState({ state: false, message: '' });
+    const { activeMonitor } = useMonitorStore();
     const modalRef = useRef<HTMLDialogElement>(null);
     const { register, handleSubmit, setValue } =
         useForm<savePlaylistModalFields>();
@@ -49,6 +51,16 @@ const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
             } else {
                 showError({ state: false, message: '' });
             }
+        }
+        if (activeMonitor.monitors.length < 1 || activeMonitor.name === '') {
+            showError({
+                state: true,
+                message: 'Select at least one monitor to save playlist.'
+            });
+            setTimeout(() => {
+                showError({ state: false, message: '' });
+            }, 3000);
+            return;
         }
         savePlaylist(playlist);
         setShouldReload(true);
