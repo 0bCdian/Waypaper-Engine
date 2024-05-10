@@ -4,6 +4,7 @@ import {
     initSwwwDaemon
 } from '../globals/startDaemons';
 import { notify } from '../utils/notifications';
+import { logger } from '../globals/setup';
 
 if (isWaypaperDaemonRunning()) {
     console.warn('Another instance is already running');
@@ -26,11 +27,11 @@ try {
     process.on('uncaughtException', error => {
         // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
         notify(`Daemon crashed, ${error}`);
-        console.error(error);
+        logger.error(error);
         daemonManager.cleanUp();
         process.exit(1);
     });
 } catch (error) {
-    console.error(error);
+    logger.error(error);
     process.exit(1);
 }

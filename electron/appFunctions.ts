@@ -20,6 +20,7 @@ import { validImageExtensions } from '../shared/constants';
 import { type Formats } from '../shared/types/image';
 import { type imageSelectType } from '../database/schema';
 import { initSwwwDaemon } from '../globals/startDaemons';
+import { logger } from '../globals/setup';
 const appDirectories = configuration.directories;
 function openImagesFromFilePicker(browserWindow: BrowserWindow | null) {
     if (browserWindow !== null) {
@@ -106,7 +107,7 @@ export async function copyImagesToCacheAndProcessThumbnails(
                             resolve(imageMetadata);
                         })
                         .catch(e => {
-                            console.error(e);
+                            logger.error(e);
                         });
                 });
             });
@@ -139,7 +140,7 @@ async function createCacheThumbnail(filePathSource: string, imageName: string) {
                 .resize(300, 200, {
                     fit: 'cover'
                 })
-                .webp({ quality: 60, force: true, effort: 6 })
+                .webp({ quality: 60, force: true, effort: 3 })
                 .toFile(fileDestinationPath);
             const imageMetadata = {
                 name: imageName,
@@ -149,7 +150,7 @@ async function createCacheThumbnail(filePathSource: string, imageName: string) {
             };
             return imageMetadata as imageMetadata;
         } catch (error) {
-            console.error('failed to create thumbnail for:', imageName, error);
+            logger.error('failed to create thumbnail for:', imageName, error);
         }
     }
 }
@@ -189,7 +190,7 @@ async function remakeThumbnailImages(files: string[]) {
                 .webp({ quality: 60, force: true, effort: 6 })
                 .toFile(fileDestinationPath);
         } catch (error) {
-            console.error('failed to create thumbnail for:', imageName, error);
+            logger.error('failed to create thumbnail for:', imageName, error);
         }
     }
 }
@@ -208,7 +209,6 @@ export function createAppDirsIfNotExist() {
         appDirectories.rootCache,
         appDirectories.thumbnails,
         appDirectories.extendedImages,
-        appDirectories.mainDir,
         appDirectories.imagesDir,
         appDirectories.scriptsDir
     ];
@@ -226,19 +226,9 @@ function createFolders(...args: string[]) {
             mkdirSync(path);
         });
     } catch (error) {
-        console.error(error);
+        logger.error(error);
     }
 }
-
-// function deleteFolders(...args: string[]) {
-//     try {
-//         args.forEach(path => {
-//             rmSync(path, { recursive: true, force: true });
-//         });
-//     } catch (error) {
-//         console.error(error);
-//     }
-// }
 
 async function checkAndRenameDuplicates(filenamesToCopy: string[]) {
     const currentImagesStored = new Set(
@@ -299,7 +289,7 @@ export async function setImage(
             success = true;
             break;
         } catch (error) {
-            console.error(error);
+            logger.error(error);
             initSwwwDaemon();
             retries++;
         }
@@ -307,7 +297,9 @@ export async function setImage(
     if (success) {
         dbOperations.addImageToHistory({ image, activeMonitor });
     } else {
-        throw new Error('Could not set image, check logs');
+        throw new Error(
+            'Could not set image, check logs in $HOME/.waypaper_engine'
+        );
     }
 }
 
@@ -315,7 +307,7 @@ export function savePlaylist(playlistObject: rendererPlaylist) {
     try {
         void dbOperations.upsertPlaylist(playlistObject);
     } catch (error) {
-        console.error(error);
+        logger.error(error);
         throw Error('Failed to set playlist in DB');
     }
 }
@@ -338,7 +330,7 @@ export function deleteImageFromStorage(images: rendererImage[]) {
             }
         });
     } catch (error) {
-        console.error(error);
+        logger.error(error);
         throw new Error('Could not delete images from storage');
     }
 }
@@ -352,7 +344,7 @@ export function deleteImagesFromGallery(
         deleteImageFromStorage(images);
         return true;
     } catch (error) {
-        console.error(error);
+        logger.error(error);
         return false;
     }
 }

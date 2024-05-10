@@ -20,7 +20,7 @@ import {
     createAppDirsIfNotExist
 } from './appFunctions';
 import { devMenu, trayMenu } from '../globals/menus';
-import { iconsPath, values } from '../globals/setup';
+import { iconsPath, logger, values } from '../globals/setup';
 import { configuration, dbOperations } from '../globals/config';
 import {
     type rendererImage,
@@ -47,9 +47,9 @@ if (values.daemon !== undefined && (values.daemon as boolean)) {
     console.log('starting daemon...');
     process.exit(0);
 }
-
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
+    logger.error('more than one instance running');
     app.exit(1);
 } else {
     app.on('second-instance', () => {
@@ -59,6 +59,9 @@ if (!gotTheLock) {
         }
     });
 }
+process.on('uncaughtException', error => {
+    logger.error(error);
+});
 process.env.DIST = join(__dirname, '../dist');
 process.env.PUBLIC = app.isPackaged
     ? process.env.DIST
@@ -215,7 +218,7 @@ app.whenReady()
         await createWindow();
     })
     .catch(e => {
-        console.error(e);
+        logger.error(e);
         process.exit(1);
     });
 app.on('quit', () => {

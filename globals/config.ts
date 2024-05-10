@@ -49,7 +49,8 @@ const configuration = {
     },
     directories: appDirectories,
     scripts,
-    format: (values.format ?? false) as boolean
+    format: (values.format ?? false) as boolean,
+    logs: (values.logs ?? false) as boolean
 };
 const watcher = chokidar.watch(scriptsPath, { persistent: true });
 watcher

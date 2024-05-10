@@ -31,7 +31,7 @@ const PlaylistConfigurationModal = () => {
         switch (data.type) {
             case 'timer':
                 if (data.hours === null || data.minutes === null) {
-                    console.error('Hours and minutes are required');
+                    logger.error('Hours and minutes are required');
                 } else {
                     const interval = toMS(
                         parseInt(data.hours),
@@ -82,7 +82,7 @@ const PlaylistConfigurationModal = () => {
                 });
                 break;
             default:
-                console.error('Invalid playlist type');
+                logger.error('Invalid playlist type');
         }
         closeModal();
     };

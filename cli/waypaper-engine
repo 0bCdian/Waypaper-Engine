@@ -101,6 +101,11 @@ waypaper_engine_run_usage() {
     printf "    Starts swww in xrgb mode.\n"
     echo
 
+    # :flag.usage
+    printf "  %s\n" "--logs, -l"
+    printf "    Enable file logging.\n"
+    echo
+
     # :command.usage_fixed_flags
     printf "  %s\n" "--help, -h"
     printf "    Show this help\n"
@@ -111,6 +116,7 @@ waypaper_engine_run_usage() {
     printf "  waypaper-engine\n"
     printf "  waypaper-engine run\n"
     printf "  waypaper-engine run --wayland\n"
+    printf "  waypaper-engine run --logs\n"
     echo
 
   fi
@@ -146,6 +152,11 @@ waypaper_engine_daemon_usage() {
     printf "    Starts swww in xrgb mode.\n"
     echo
 
+    # :flag.usage
+    printf "  %s\n" "--logs, -l"
+    printf "    Enable file logging.\n"
+    echo
+
     # :command.usage_fixed_flags
     printf "  %s\n" "--help, -h"
     printf "    Show this help\n"
@@ -155,6 +166,7 @@ waypaper_engine_daemon_usage() {
     printf "%s\n" "Examples:"
     printf "  waypaper-engine daemon\n"
     printf "  waypaper-engine daemon --format\n"
+    printf "  waypaper-engine daemon --logs\n"
     echo
 
   fi
@@ -777,6 +789,7 @@ waypaper_engine_run_command() {
   WAYPAPER_FLAGS="$HOME/.waypaper_engine/flags.conf"
   FORMAT="${args[--format]}"
   WAYLAND="${args[--wayland]}"
+  LOG="${args[--logs]}"
   COMMAND="$WAYPAPER_LOCATION"
 
   if [[ $WAYLAND -eq 1 ]]; then
@@ -784,6 +797,9 @@ waypaper_engine_run_command() {
   fi
   if [[ $FORMAT -eq 1 ]]; then
   	COMMAND="$COMMAND --format"
+  fi
+  if [[ $LOG -eq 1 ]]; then
+  	COMMAND="$COMMAND --logs --enable-logging=$HOME/.waypaper_engine/chromium-logs.log"
   fi
 
   $COMMAND || "Something went wrong"
@@ -796,12 +812,15 @@ waypaper_engine_daemon_command() {
   WAYPAPER_LOCATION="/opt/waypaper-engine/waypaper-engine-bin --daemon"
 
   FORMAT="${args[--format]}"
+  LOG="${args[--logs]}"
   COMMAND="$WAYPAPER_LOCATION"
 
   if [[ $FORMAT -eq 1 ]]; then
   	COMMAND="$COMMAND --format"
   fi
-
+  if [[ $LOG -eq 1 ]]; then
+  	COMMAND="$COMMAND --logs"
+  fi
   $COMMAND || "Something went wrong"
 
 }
@@ -1263,6 +1282,14 @@ waypaper_engine_run_parse_requirements() {
         shift
         ;;
 
+      # :flag.case
+      --logs | -l)
+
+        # :flag.case_no_arg
+        args['--logs']=1
+        shift
+        ;;
+
       -?*)
         printf "invalid option: %s\n" "$key" >&2
         exit 1
@@ -1311,6 +1338,14 @@ waypaper_engine_daemon_parse_requirements() {
 
         # :flag.case_no_arg
         args['--format']=1
+        shift
+        ;;
+
+      # :flag.case
+      --logs | -l)
+
+        # :flag.case_no_arg
+        args['--logs']=1
         shift
         ;;
 

@@ -1,6 +1,6 @@
 import { execSync, spawn } from 'child_process';
 import { promisify } from 'util';
-import { daemonPath } from './setup';
+import { daemonPath, logger } from './setup';
 import { configuration } from '../globals/config';
 import { createConnection, createServer } from 'node:net';
 import { type message } from '../types/types';
@@ -16,7 +16,7 @@ function checkIfSwwwIsInstalled() {
         console.warn(
             'swww is not installed, please find instructions in the README.md on how to install it'
         );
-        console.error(error);
+        logger.error(error);
         throw new Error('swww is not installed');
     }
 }
@@ -53,6 +53,9 @@ export async function initWaypaperDaemon() {
             if (configuration.format) {
                 args.push(`--format`);
             }
+            if (configuration.logs) {
+                args.push(`--logs`);
+            }
             const output = spawn('PROCESS=daemon node', args, {
                 stdio: 'ignore',
                 shell: true,
@@ -62,7 +65,7 @@ export async function initWaypaperDaemon() {
             output.unref();
             await testConnection();
         } catch (error) {
-            console.error(error);
+            logger.error(error);
             console.warn('Could not start wpe-daemon, shutting down app...');
             process.exit(1);
         }
@@ -80,9 +83,8 @@ async function testConnection() {
         try {
             await connectToDaemon(SOCKET_PATH);
             console.log('Connection to waypaper daemon established.');
-            return; // Connection successful, exit loop
+            return;
         } catch (error) {
-            // console.error(`Connection attempt ${attempt} failed:`, error);
             await setTimeoutPromise(RETRY_INTERVAL);
             attempt++;
         }
@@ -103,7 +105,8 @@ async function connectToDaemon(socketPath: string) {
                 reject(err);
             });
         } catch (error) {
-            console.error(
+            logger.error(error);
+            logger.error(
                 'failed to test connection, this is because createConnection trhew'
             );
         }
@@ -123,12 +126,12 @@ export function createMainServer() {
                         const parsedMessage: message = JSON.parse(message);
                         emitter.emit(parsedMessage.action);
                     } catch (error) {
-                        console.error(error);
+                        logger.error(error);
                     }
                 });
         });
         socket.on('error', err => {
-            console.error('Socket error:', err.message);
+            logger.error('Socket error:', err.message);
         });
     });
     serverInstance.on('error', err => {
@@ -138,7 +141,7 @@ export function createMainServer() {
                 configuration.directories.WAYPAPER_ENGINE_SOCKET_PATH
             );
         } else {
-            console.error(err);
+            logger.error(err);
             throw err;
         }
     });

@@ -3,6 +3,7 @@ import { type wlr_output, type Monitor } from '../shared/types/monitor';
 import { exec } from 'node:child_process';
 import { promisify } from 'node:util';
 import { parseResolution } from '../src/utils/utilities';
+import { logger } from '../globals/setup';
 const execPomisified = promisify(exec);
 
 function parseSwwwQuery(stdout: string) {
@@ -36,7 +37,7 @@ export async function getMonitorsInfo() {
         });
         return monitors;
     } catch (error) {
-        console.error(error);
+        logger.error(error);
         return undefined;
     }
 }

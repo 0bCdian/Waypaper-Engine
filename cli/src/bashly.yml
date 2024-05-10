@@ -16,10 +16,17 @@ commands:
             short: -f
             help: Starts swww in xrgb mode.
             required: false
+
+          - long: --logs
+            short: -l
+            help: Enable file logging.
+            required: false
+
       examples:
           - waypaper-engine
           - waypaper-engine run
           - waypaper-engine run --wayland
+          - waypaper-engine run --logs
 
     - name: daemon
       alias: d
@@ -31,9 +38,15 @@ commands:
             help: Starts swww in xrgb mode.
             required: false
 
+          - long: --logs
+            short: -l
+            help: Enable file logging.
+            required: false
+
       examples:
           - waypaper-engine daemon
           - waypaper-engine daemon --format
+          - waypaper-engine daemon --logs
 
     - name: next-image
       alias: ni

@@ -7,7 +7,6 @@ import {
 } from 'electron';
 import { dbOperations } from '../globals/config';
 import { deleteImagesFromGallery, setImage } from '../electron/appFunctions';
-// import { screen } from 'electron';
 import { IPC_MAIN_EVENTS, MENU_EVENTS } from '../shared/constants';
 import { type rendererImage } from '../src/types/rendererTypes';
 import { type ActiveMonitor } from '../shared/types/monitor';

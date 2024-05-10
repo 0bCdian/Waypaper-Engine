@@ -14,6 +14,7 @@ import { ACTIONS } from '../types/types';
 import { type ActiveMonitor } from '../shared/types/monitor';
 import { type rendererImage } from '../src/types/rendererTypes';
 import { initSwwwDaemon } from '../globals/startDaemons';
+import { logger } from '../globals/setup';
 export class DaemonManager {
     serverInstance: Server;
 
@@ -37,12 +38,12 @@ export class DaemonManager {
                                 );
                             } catch (error) {
                                 console.log(message);
-                                console.error(error);
+                                logger.error(error);
                             }
                         });
                 });
                 socket.on('error', err => {
-                    console.error('Socket error:', err.message);
+                    logger.error('Socket error:', err.message);
                 });
             }
         );
@@ -55,7 +56,7 @@ export class DaemonManager {
                     configuration.directories.WAYPAPER_ENGINE_DAEMON_SOCKET_PATH
                 );
             } else {
-                console.error(err);
+                logger.error(err);
                 throw err;
             }
         });
@@ -412,13 +413,13 @@ export class DaemonManager {
             }
         } catch (error) {
             try {
-                console.error(error);
+                logger.error(error);
                 socket.write(
                     JSON.stringify({ action: ACTIONS.ERROR, error: { error } })
                 );
                 socket.end();
             } catch (error) {
-                console.error(error);
+                logger.error(error);
             }
         }
         socket.end();
@@ -493,12 +494,12 @@ export class DaemonManager {
                     connection.end();
                 });
             } catch (error) {
-                console.error('Could not send message to main', error);
+                logger.error('Could not send message to main', error);
             }
         });
 
         connection.on('error', error => {
-            console.error('Socket connection error:', error);
+            logger.error('Socket connection error:', error);
         });
     }
 

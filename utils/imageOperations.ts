@@ -16,6 +16,7 @@ import { type CacheJSON } from '../shared/types';
 import { notifyImageSet } from './notifications';
 import Sharp = require('sharp');
 import { getMonitors } from './monitorUtils';
+import { logger } from '../globals/setup';
 const execPomisified = promisify(exec);
 const appDirectories = configuration.directories;
 export async function resizeImageToFitMonitor(
@@ -409,7 +410,7 @@ export function getSwwwCommandFromConfiguration(
             transitionPos = swwwConfig.transitionPosition;
     }
     const command = `swww img "${imagePath}" ${
-        monitor !== undefined ? `--outputs ${monitor}` : ''
+        monitor.length > 0 ? `--outputs ${monitor}` : ''
     } --resize="${swwwConfig.resizeType}" --fill-color "${
         swwwConfig.fillColor
     }" --filter ${swwwConfig.filterType} --transition-type ${transitionType} --transition-step ${swwwConfig.transitionStep} --transition-duration ${
@@ -428,12 +429,11 @@ export async function setImageAcrossMonitors(
 ) {
     const imageNameWithoutExtension = image.name.split('.').at(0);
     if (imageNameWithoutExtension === undefined) {
-        console.error(
+        const error = new Error(
             `Could not extract image name without extension ${image.name}`
         );
-        throw new Error(
-            `Could not extract image name without extension ${image.name}`
-        );
+        logger.error(error);
+        throw error;
     }
 
     const imageFilePath = join(appDirectories.imagesDir, image.name);
@@ -507,6 +507,6 @@ export async function setMonitorInfoCache() {
             JSON.stringify(monitors)
         );
     } catch (error) {
-        console.error(error);
+        logger.error(error);
     }
 }

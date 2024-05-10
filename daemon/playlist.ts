@@ -13,6 +13,7 @@ import { initSwwwDaemon } from '../globals/startDaemons';
 import { type rendererImage } from '../src/types/rendererTypes';
 import { type ActiveMonitor } from '../shared/types/monitor';
 import { ACTIONS, type message } from '../types/types';
+import { logger } from '../globals/setup';
 export class Playlist extends EventEmitter {
     images: rendererImage[];
     name: string;
@@ -84,6 +85,7 @@ export class Playlist extends EventEmitter {
                 success = true;
                 break;
             } catch (error) {
+                logger.error(error);
                 initSwwwDaemon();
                 retries++;
             }
@@ -99,7 +101,9 @@ export class Playlist extends EventEmitter {
             };
             this.emit(ACTIONS.SET_IMAGE, message);
         } else {
-            throw new Error('Could not set image,check the logs');
+            throw new Error(
+                'Could not set image,check the logs in $HOME/.waypaper_engine/'
+            );
         }
     }
 
@@ -338,7 +342,7 @@ export class Playlist extends EventEmitter {
                 this.updateInDB();
             }, this.interval);
         } else {
-            console.error('Interval is null');
+            logger.error('Interval is null');
             notify(
                 'Interval is null, something went wrong setting the playlist'
             );

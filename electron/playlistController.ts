@@ -22,21 +22,21 @@ export class PlaylistController extends EventEmitter {
                 connection.write(JSON.stringify(data) + '\n', e => {
                     // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
                     if (e) {
-                        console.error(e);
+                        logger.error(e);
                         return;
                     }
                     this.retries = 0;
                     if (this.createTray !== undefined) void this.createTray();
                 });
             } catch (error) {
-                console.error(error);
+                logger.error(error);
             }
         });
         connection.on('data', _ => {
             try {
                 if (this.createTray !== undefined) void this.createTray();
             } catch (e) {
-                console.error(e);
+                logger.error(e);
             }
         });
         connection.on('error', () => {

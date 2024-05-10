@@ -11,6 +11,7 @@ import * as tables from './schema';
 import { type SQL, asc, desc, eq, sql, notInArray } from 'drizzle-orm';
 import { EventEmitter } from 'node:events';
 import { type PLAYLIST_ORDER_TYPES } from '../shared/types/playlist';
+import { logger } from '../globals/setup';
 
 export class DBOperations extends EventEmitter {
     db: BetterSQLite3Database;
@@ -340,7 +341,7 @@ export class DBOperations extends EventEmitter {
                 .all();
             return result;
         } catch (error) {
-            console.error(error);
+            logger.error(error);
             return undefined;
         }
     }
