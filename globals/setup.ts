@@ -12,10 +12,6 @@ if (!existsSync(mainDirectory)) {
 const logPath = isDaemon
     ? join(mainDirectory, 'daemon.log')
     : join(mainDirectory, 'electron.log');
-const parentLogger = pino(pino.destination(logPath));
-const pinoLogger = parentLogger.child({
-    module: isDaemon ? 'daemon' : 'electron'
-});
 
 const resourcesPath = join(__dirname, '..', '..');
 export const iconsPath = resolve(
@@ -76,6 +72,10 @@ type customLogger = Console | Logger<never>;
 export let logger: customLogger;
 
 if (values.logs === true) {
+    const parentLogger = pino(pino.destination(logPath));
+    const pinoLogger = parentLogger.child({
+        module: isDaemon ? 'daemon' : 'electron'
+    });
     logger = pinoLogger;
 } else {
     logger = console;
