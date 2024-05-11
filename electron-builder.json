@@ -29,7 +29,7 @@
     "linux": {
         "artifactName": "${productName}.${ext}",
         "category": "Utility",
-        "target": ["dir"],
+        "target": ["dir", "appimage"],
         "executableName": "waypaper-engine-bin",
         "description": "A graphical frontend for setting wallpapers and playlists, using swww under the hood!",
         "desktop": {
