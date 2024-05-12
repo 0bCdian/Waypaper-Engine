@@ -7,27 +7,34 @@ import { notify } from '../utils/notifications';
 import { logger } from '../globals/setup';
 
 if (isWaypaperDaemonRunning()) {
-    console.warn('Another instance is already running');
-    process.exit(2);
+    logger.warn('Another instance is already running');
+    process.exit(1);
 }
 initSwwwDaemon();
 process.title = 'wpe-daemon';
 try {
     const daemonManager = new DaemonManager();
     process.on('SIGTERM', function () {
-        notify('Exiting daemon');
+        notify('Exiting daemon...');
         daemonManager.cleanUp();
         process.exit(0);
     });
     process.on('SIGINT', () => {
-        notify('Exiting daemon');
+        notify('Exiting daemon...');
         daemonManager.cleanUp();
         process.exit(0);
     });
-    process.on('uncaughtException', error => {
-        // eslint-disable-next-line @typescript-eslint/restrict-template-expressions
-        notify(`Daemon crashed, ${error}`);
-        logger.error(error);
+    process.on('uncaughtException', _ => {
+        notify(
+            `Daemon crashed, run with --logs to generate flags in $HOME/.waypaper_engine/`
+        );
+        daemonManager.cleanUp();
+        process.exit(1);
+    });
+    process.on('unhandledRejection', _ => {
+        notify(
+            `Daemon crashed, run with --logs to generate flags in $HOME/.waypaper_engine/`
+        );
         daemonManager.cleanUp();
         process.exit(1);
     });

@@ -66,7 +66,7 @@ export async function initWaypaperDaemon() {
             await testConnection();
         } catch (error) {
             logger.error(error);
-            console.warn('Could not start wpe-daemon, shutting down app...');
+            logger.warn('Could not start wpe-daemon, shutting down app...');
             process.exit(1);
         }
     }
@@ -82,7 +82,7 @@ async function testConnection() {
     while (attempt <= MAX_ATTEMPTS) {
         try {
             await connectToDaemon(SOCKET_PATH);
-            console.log('Connection to waypaper daemon established.');
+            logger.info('Connection to waypaper daemon established.');
             return;
         } catch (error) {
             await setTimeoutPromise(RETRY_INTERVAL);

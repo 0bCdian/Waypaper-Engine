@@ -26,12 +26,11 @@ const appDirectories = {
 };
 const dbOperations = new DBOperations();
 let scripts: string[] = [];
-const scriptsPath = join(homedir(), '.waypaper_engine', 'scripts');
-if (!existsSync(scriptsPath)) {
-    mkdirSync(scriptsPath);
+if (!existsSync(scriptsDir)) {
+    mkdirSync(scriptsDir);
 }
-scripts = readdirSync(scriptsPath).map(fileName => {
-    return join(scriptsPath, fileName);
+scripts = readdirSync(scriptsDir).map(fileName => {
+    return join(scriptsDir, fileName);
 });
 
 const configuration = {
@@ -52,16 +51,16 @@ const configuration = {
     format: (values.format ?? false) as boolean,
     logs: (values.logs ?? false) as boolean
 };
-const watcher = chokidar.watch(scriptsPath, { persistent: true });
+const watcher = chokidar.watch(scriptsDir, { persistent: true });
 watcher
     .on('add', () => {
-        configuration.scripts = readdirSync(scriptsPath).map(fileName => {
-            return join(scriptsPath, fileName);
+        configuration.scripts = readdirSync(scriptsDir).map(fileName => {
+            return join(scriptsDir, fileName);
         });
     })
     .on('remove', () => {
-        configuration.scripts = readdirSync(scriptsPath).map(fileName => {
-            return join(scriptsPath, fileName);
+        configuration.scripts = readdirSync(scriptsDir).map(fileName => {
+            return join(scriptsDir, fileName);
         });
     });
 export { configuration, dbOperations };

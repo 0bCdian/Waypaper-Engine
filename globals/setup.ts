@@ -80,3 +80,10 @@ if (values.logs === true) {
 } else {
     logger = console;
 }
+
+process.on('uncaughtException', error => {
+    logger.error(error);
+});
+process.on('unhandledRejection', error => {
+    logger.error(error);
+});

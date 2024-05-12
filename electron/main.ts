@@ -43,9 +43,15 @@ import { getMonitors } from '../utils/monitorUtils';
 import { ACTIONS } from '../types/types';
 import type EventEmitter from 'node:events';
 if (values.daemon !== undefined && (values.daemon as boolean)) {
-    void initWaypaperDaemon();
-    console.log('starting daemon...');
-    process.exit(0);
+    logger.info('starting daemon...');
+    try {
+        void initWaypaperDaemon().then(() => {
+            process.exit(0);
+        });
+    } catch (error) {
+        logger.error(error);
+        process.exit(1);
+    }
 }
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -59,9 +65,6 @@ if (!gotTheLock) {
         }
     });
 }
-process.on('uncaughtException', error => {
-    logger.error(error);
-});
 process.env.DIST = join(__dirname, '../dist');
 process.env.PUBLIC = app.isPackaged
     ? process.env.DIST
