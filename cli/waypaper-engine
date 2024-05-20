@@ -799,7 +799,7 @@ waypaper_engine_run_command() {
   	COMMAND="$COMMAND --format"
   fi
   if [[ $LOG -eq 1 ]]; then
-  	COMMAND="$COMMAND --logs --enable-logging=$HOME/.waypaper_engine/chromium-logs.log"
+  	COMMAND="$COMMAND --logs"
   fi
 
   $COMMAND || "Something went wrong"
@@ -1991,7 +1991,7 @@ waypaper_engine_history_parse_requirements() {
 
 # :command.initialize
 initialize() {
-  version="2.0.0"
+  version="2.0.2"
   long_usage=''
   set -e
 

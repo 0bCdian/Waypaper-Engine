@@ -1,6 +1,6 @@
 name: waypaper-engine
 help: A wallpaper setting tool with batteries included!
-version: 2.0.0
+version: 2.0.2
 
 commands:
     - name: run
