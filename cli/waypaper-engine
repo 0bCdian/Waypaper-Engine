@@ -1991,7 +1991,7 @@ waypaper_engine_history_parse_requirements() {
 
 # :command.initialize
 initialize() {
-  version="2.0.2"
+  version="2.0.3"
   long_usage=''
   set -e
 
