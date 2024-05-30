@@ -112,7 +112,7 @@ https://github.com/0bCdian/Waypaper-Engine/assets/101421807/f454a904-7fa7-4ce9-8
 
 -   [ ] Add testing.
 -   [ ] Have a ci/cd pipeline.
--   [ ] Implement a logger for errors.
+-   [x] Implement a logger for errors.
 -   [x] Publish in the aur.
 -   [x] Find a good icon/logo for the app (Thank you [Cristian Avendaño](https://github.com/c-avendano)!).
 -   [ ] Add flatpak support.
