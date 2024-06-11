@@ -1,19 +1,19 @@
-import { DBOperations } from '../database/dbOperations';
-import { notify } from '../utils/notifications';
+import { DBOperations } from "../database/dbOperations";
+import { notify } from "../utils/notifications";
 import {
     setImageAcrossMonitors,
     duplicateImageAcrossMonitors
-} from '../utils/imageOperations';
+} from "../utils/imageOperations";
 import {
     PLAYLIST_TYPES,
     type PLAYLIST_TYPES_TYPE
-} from '../shared/types/playlist';
-import { EventEmitter } from 'node:events';
-import { initSwwwDaemon } from '../globals/startDaemons';
-import { type rendererImage } from '../src/types/rendererTypes';
-import { type ActiveMonitor } from '../shared/types/monitor';
-import { ACTIONS, type message } from '../types/types';
-import { logger } from '../globals/setup';
+} from "../shared/types/playlist";
+import { EventEmitter } from "node:events";
+import { initSwwwDaemon } from "../globals/startDaemons";
+import { type rendererImage } from "../src/types/rendererTypes";
+import { type ActiveMonitor } from "../shared/types/monitor";
+import { ACTIONS, type message } from "../types/types";
+import { logger } from "../globals/setup";
 export class Playlist extends EventEmitter {
     images: rendererImage[];
     name: string;
@@ -101,9 +101,13 @@ export class Playlist extends EventEmitter {
             };
             this.emit(ACTIONS.SET_IMAGE, message);
         } else {
-            throw new Error(
-                'Could not set image,check the logs in $HOME/.waypaper_engine/'
+            logger.error(
+                "Could not set image, run with --logs to see the problem"
             );
+            notify(
+                `Something went wrong on ${this.name} on ${this.activeMonitor.name}, run with --logs for more info`
+            );
+            this.stop();
         }
     }
 
@@ -189,8 +193,8 @@ export class Playlist extends EventEmitter {
             this.currentType === PLAYLIST_TYPES.DAY_OF_WEEK ||
             this.currentType === PLAYLIST_TYPES.TIME_OF_DAY
         ) {
-            notify('Cannot change image in this type of playlist');
-            return 'Cannot change image in this type of playlist';
+            notify("Cannot change image in this type of playlist");
+            return "Cannot change image in this type of playlist";
         }
         this.currentImageIndex++;
         if (this.currentImageIndex === this.images.length) {
@@ -216,8 +220,8 @@ export class Playlist extends EventEmitter {
             this.currentType === PLAYLIST_TYPES.DAY_OF_WEEK ||
             this.currentType === PLAYLIST_TYPES.TIME_OF_DAY
         ) {
-            notify('Cannot change image in this type of playlist');
-            return 'Cannot change image in this type of playlist';
+            notify("Cannot change image in this type of playlist");
+            return "Cannot change image in this type of playlist";
         }
         this.currentImageIndex--;
         if (this.currentImageIndex < 0) {
@@ -342,9 +346,9 @@ export class Playlist extends EventEmitter {
                 this.updateInDB();
             }, this.interval);
         } else {
-            logger.error('Interval is null');
+            logger.error("Interval is null");
             notify(
-                'Interval is null, something went wrong setting the playlist'
+                "Interval is null, something went wrong setting the playlist"
             );
         }
     }
@@ -357,7 +361,7 @@ export class Playlist extends EventEmitter {
         try {
             const startingIndex = this.findClosestImageIndex();
             if (startingIndex === undefined) {
-                notify('Images have no time, something went wrong');
+                notify("Images have no time, something went wrong");
                 this.emit(ACTIONS.ERROR, this.activeMonitor.name);
                 return;
             }
@@ -401,7 +405,7 @@ export class Playlist extends EventEmitter {
     timeOfDayPlayer() {
         const timeOut = this.calculateMillisecondsUntilNextImage();
         if (timeOut === undefined) {
-            notify('Playlist internal error');
+            notify("Playlist internal error");
             this.emit(ACTIONS.ERROR, this.activeMonitor.name);
             return;
         }

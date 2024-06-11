@@ -1,20 +1,20 @@
-import { type Socket, type Server, createServer, createConnection } from 'net';
-import { type PlaylistClass, Playlist } from './playlist';
-import { notify } from '../utils/notifications';
-import { configuration, dbOperations } from '../globals/config';
+import { type Socket, type Server, createServer, createConnection } from "net";
+import { type PlaylistClass, Playlist } from "./playlist";
+import { notify } from "../utils/notifications";
+import { configuration, dbOperations } from "../globals/config";
 import {
     setImageAcrossMonitors,
     duplicateImageAcrossMonitors
-} from '../utils/imageOperations';
-import { getMonitors } from '../utils/monitorUtils';
-import { unlinkSync } from 'node:fs';
-import { type imageSelectType } from '../database/schema';
-import { type message } from '../types/types';
-import { ACTIONS } from '../types/types';
-import { type ActiveMonitor } from '../shared/types/monitor';
-import { type rendererImage } from '../src/types/rendererTypes';
-import { initSwwwDaemon } from '../globals/startDaemons';
-import { logger } from '../globals/setup';
+} from "../utils/imageOperations";
+import { getMonitors } from "../utils/monitorUtils";
+import { unlinkSync } from "node:fs";
+import { type imageSelectType } from "../database/schema";
+import { type message } from "../types/types";
+import { ACTIONS } from "../types/types";
+import { type ActiveMonitor } from "../shared/types/monitor";
+import { type rendererImage } from "../src/types/rendererTypes";
+import { initSwwwDaemon } from "../globals/startDaemons";
+import { logger } from "../globals/setup";
 export class DaemonManager {
     serverInstance: Server;
 
@@ -23,11 +23,11 @@ export class DaemonManager {
         this.serverInstance = createServer(
             { keepAlive: true, allowHalfOpen: true },
             socket => {
-                socket.on('data', buffer => {
+                socket.on("data", buffer => {
                     buffer
                         .toString()
-                        .split('\n')
-                        .filter(message => message !== '')
+                        .split("\n")
+                        .filter(message => message !== "")
                         .forEach(message => {
                             try {
                                 const parsedMessage: message =
@@ -42,13 +42,13 @@ export class DaemonManager {
                             }
                         });
                 });
-                socket.on('error', err => {
-                    logger.error('Socket error:', err.message);
+                socket.on("error", err => {
+                    logger.error("Socket error:", err.message);
                 });
             }
         );
-        this.serverInstance.on('error', err => {
-            if (err.message.includes('EADDRINUSE')) {
+        this.serverInstance.on("error", err => {
+            if (err.message.includes("EADDRINUSE")) {
                 unlinkSync(
                     configuration.directories.WAYPAPER_ENGINE_DAEMON_SOCKET_PATH
                 );
@@ -148,7 +148,7 @@ export class DaemonManager {
                 case ACTIONS.GET_INFO_ACTIVE_PLAYLIST:
                     {
                         type Diagnostics = ReturnType<
-                            PlaylistClass['getPlaylistDiagnostics']
+                            PlaylistClass["getPlaylistDiagnostics"]
                         >;
                         const infoArray: Diagnostics[] = [];
                         this.#playlistMap.forEach(playlist => {
@@ -156,7 +156,7 @@ export class DaemonManager {
                         });
                         const results = await Promise.allSettled(infoArray);
                         const resultsArray = results.map(result =>
-                            result.status === 'fulfilled' ? result.value : null
+                            result.status === "fulfilled" ? result.value : null
                         );
                         const extractedValues = resultsArray.filter(
                             result => result !== null
@@ -459,6 +459,8 @@ export class DaemonManager {
                 );
                 this.sendMessageToMainApp(receivedMessage);
             }
+            this.#playlistMap.delete(newPlaylist.activeMonitor.name);
+            newPlaylist.removeAllListeners();
             this.sendMessageToMainApp(receivedMessage);
         });
         newPlaylist.on(ACTIONS.START_PLAYLIST, (receivedMessage: message) => {
@@ -483,23 +485,23 @@ export class DaemonManager {
             configuration.directories.WAYPAPER_ENGINE_SOCKET_PATH
         );
 
-        connection.on('connect', () => {
+        connection.on("connect", () => {
             try {
                 const messageString = JSON.stringify(message);
 
-                connection.write(messageString + '\n', error => {
+                connection.write(messageString + "\n", error => {
                     if (error !== undefined) {
                         return;
                     }
                     connection.end();
                 });
             } catch (error) {
-                logger.error('Could not send message to main', error);
+                logger.error("Could not send message to main", error);
             }
         });
 
-        connection.on('error', error => {
-            logger.error('Socket connection error:', error);
+        connection.on("error", error => {
+            logger.error("Socket connection error:", error);
         });
     }
 
@@ -545,14 +547,14 @@ export class DaemonManager {
             };
             return message;
         } else {
-            throw new Error('Could not set image,check the logs');
+            throw new Error("Could not set image,check the logs");
         }
     }
 
     async setRandomImage(socket: Socket) {
         const monitors = await getMonitors();
         const monitorImages = monitors
-            .map(monitor => monitor.currentImage.split('/').at(-1))
+            .map(monitor => monitor.currentImage.split("/").at(-1))
             .filter(
                 (imageName): imageName is string => imageName !== undefined
             );
@@ -564,11 +566,11 @@ export class DaemonManager {
             socket.write(
                 JSON.stringify({
                     action: ACTIONS.ERROR,
-                    error: { error: 'No images in database' }
+                    error: { error: "No images in database" }
                 })
             );
             socket.end();
-            notify('No images found on database');
+            notify("No images found on database");
             return;
         }
         const imagesSet: Array<{
@@ -576,11 +578,11 @@ export class DaemonManager {
             activeMonitor: ActiveMonitor;
         }> = [];
         switch (configuration.app.config.randomImageMonitor) {
-            case 'clone': {
+            case "clone": {
                 imagesSet.push({
                     image: randomImages[0],
                     activeMonitor: {
-                        name: 'random',
+                        name: "random",
                         monitors,
                         extendAcrossMonitors: false
                     }
@@ -592,7 +594,7 @@ export class DaemonManager {
                 );
                 break;
             }
-            case 'individual': {
+            case "individual": {
                 monitors.forEach((monitor, index) => {
                     // we pass a length 1 array so we set one image per monitor
                     //        const selectedImage =
@@ -600,7 +602,7 @@ export class DaemonManager {
                     imagesSet.push({
                         image: selectedImage,
                         activeMonitor: {
-                            name: 'random',
+                            name: "random",
                             monitors: [monitor],
                             extendAcrossMonitors: false
                         }
@@ -613,12 +615,12 @@ export class DaemonManager {
                 });
                 break;
             }
-            case 'extend': {
+            case "extend": {
                 await setImageAcrossMonitors(randomImages[0], monitors, true);
                 imagesSet.push({
                     image: randomImages[0],
                     activeMonitor: {
-                        name: 'random',
+                        name: "random",
                         monitors,
                         extendAcrossMonitors: true
                     }
@@ -629,7 +631,7 @@ export class DaemonManager {
                 socket.write(
                     JSON.stringify({
                         action: ACTIONS.ERROR,
-                        error: { error: 'Wrong app configuration detected' }
+                        error: { error: "Wrong app configuration detected" }
                     })
                 );
                 socket.end();
@@ -653,7 +655,7 @@ function findAndStopCollidingPlaylists({
     playlistMap: Map<string, PlaylistClass>;
     newPlaylist: { name: string; activeMonitor: ActiveMonitor };
 }) {
-    let message = 'Stopped playlists:';
+    let message = "Stopped playlists:";
     playlistMap.forEach(runningPlaylist => {
         let shouldStopPlaylist = false;
         runningPlaylist.activeMonitor.monitors.forEach(usedMonitor => {
