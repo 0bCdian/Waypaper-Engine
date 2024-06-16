@@ -7,8 +7,8 @@ import {
     Menu,
     screen,
     net
-} from 'electron';
-import { join } from 'node:path';
+} from "electron";
+import { join } from "node:path";
 import {
     copyImagesToCacheAndProcessThumbnails,
     setImage,
@@ -18,32 +18,32 @@ import {
     remakeThumbnailsIfImagesExist,
     openContextMenu,
     createAppDirsIfNotExist
-} from './appFunctions';
-import { devMenu, trayMenu } from '../globals/menus';
-import { iconsPath, logger, values } from '../globals/setup';
-import { configuration, dbOperations } from '../globals/config';
+} from "./appFunctions";
+import { devMenu, trayMenu } from "../globals/menus";
+import { iconsPath, logger, values } from "../globals/setup";
+import { configuration, dbOperations } from "../globals/config";
 import {
     type rendererImage,
     type rendererPlaylist
-} from '../src/types/rendererTypes';
-import { type openFileAction } from '../shared/types';
+} from "../src/types/rendererTypes";
+import { type openFileAction } from "../shared/types";
 import {
     type appConfigInsertType,
     type swwwConfigInsertType
-} from '../database/schema';
-import { type ActiveMonitor } from '../shared/types/monitor';
-import { PlaylistController } from './playlistController';
-import { IPC_MAIN_EVENTS } from '../shared/constants';
+} from "../database/schema";
+import { type ActiveMonitor } from "../shared/types/monitor";
+import { PlaylistController } from "./playlistController";
+import { IPC_MAIN_EVENTS } from "../shared/constants";
 import {
     initWaypaperDaemon,
     initSwwwDaemon,
     createMainServer
-} from '../globals/startDaemons';
-import { getMonitors } from '../utils/monitorUtils';
-import { ACTIONS } from '../types/types';
-import type EventEmitter from 'node:events';
+} from "../globals/startDaemons";
+import { getMonitors } from "../utils/monitorUtils";
+import { ACTIONS } from "../types/types";
+import type EventEmitter from "node:events";
 if (values.daemon !== undefined && (values.daemon as boolean)) {
-    logger.info('starting daemon...');
+    logger.info("starting daemon...");
     try {
         void initWaypaperDaemon().then(() => {
             process.exit(0);
@@ -55,21 +55,21 @@ if (values.daemon !== undefined && (values.daemon as boolean)) {
 }
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
-    logger.error('more than one instance running');
+    logger.error("more than one instance running");
     app.exit(1);
 } else {
-    app.on('second-instance', () => {
+    app.on("second-instance", () => {
         if (win !== null) {
             if (win.isMinimized()) win.restore();
             win.focus();
         }
     });
 }
-process.env.DIST = join(__dirname, '../dist');
+process.env.DIST = join(__dirname, "../dist");
 process.env.PUBLIC = app.isPackaged
     ? process.env.DIST
-    : join(process.env.DIST, '../public');
-process.env.NODE_ENV = app.isPackaged ? 'production' : 'development';
+    : join(process.env.DIST, "../public");
+process.env.NODE_ENV = app.isPackaged ? "production" : "development";
 let tray: Tray | null = null;
 let win: BrowserWindow | null;
 let playlistControllerInstance: PlaylistController;
@@ -77,14 +77,14 @@ let playlistControllerInstance: PlaylistController;
 const VITE_DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL;
 async function createWindow() {
     win = new BrowserWindow({
-        icon: join(iconsPath, '512x512.png'),
+        icon: join(iconsPath, "512x512.png"),
         width: 1200,
         height: 1000,
         autoHideMenuBar: true,
         show: false,
-        backgroundColor: '#3C3836',
+        backgroundColor: "#3C3836",
         webPreferences: {
-            preload: join(__dirname, 'preload.js'),
+            preload: join(__dirname, "preload.js"),
             sandbox: false,
             nodeIntegration: true
         }
@@ -93,19 +93,19 @@ async function createWindow() {
         void win.loadURL(VITE_DEV_SERVER_URL);
     } else {
         if (process.env.DIST !== undefined) {
-            void win.loadFile(join(process.env.DIST, 'index.html'));
+            void win.loadFile(join(process.env.DIST, "index.html"));
         } else {
             app.exit();
         }
     }
-    win.once('ready-to-show', () => {
+    win.once("ready-to-show", () => {
         if (configuration.app.config.startMinimized) {
             win?.hide();
         } else {
             win?.show();
         }
     });
-    win.on('close', event => {
+    win.on("close", event => {
         if (configuration.app.config.minimizeInsteadOfClose) {
             event.preventDefault();
             win?.hide();
@@ -120,17 +120,17 @@ function createMenu() {
 }
 function registerFileProtocol() {
     protocol.handle(
-        'atom',
+        "atom",
         async request =>
-            await net.fetch('file://' + request.url.slice('atom://'.length))
+            await net.fetch("file://" + request.url.slice("atom://".length))
     );
 }
 
 async function createTray() {
     if (tray === null) {
-        tray = new Tray(join(iconsPath, '512x512.png'));
-        tray.setToolTip('Waypaper Engine');
-        tray.on('click', () => {
+        tray = new Tray(join(iconsPath, "512x512.png"));
+        tray.setToolTip("Waypaper Engine");
+        tray.on("click", () => {
             if (win !== null) {
                 win.isVisible() ? win.hide() : win.show();
             }
@@ -169,52 +169,52 @@ app.whenReady()
         createAppDirsIfNotExist();
         await remakeThumbnailsIfImagesExist();
         playlistControllerInstance = new PlaylistController(createTray);
-        screen.on('display-added', () => {
+        screen.on("display-added", () => {
             if (win === null) return;
             win.webContents.send(IPC_MAIN_EVENTS.displaysChanged);
         });
-        screen.on('display-removed', () => {
+        screen.on("display-removed", () => {
             if (win === null) return;
             win.webContents.send(IPC_MAIN_EVENTS.displaysChanged);
             playlistControllerInstance.stopPlaylistOnRemovedMonitors();
         });
-        screen.on('display-metrics-changed', () => {
+        screen.on("display-metrics-changed", () => {
             if (win === null) return;
             win.webContents.send(IPC_MAIN_EVENTS.displaysChanged);
         });
         createMenu();
         void createTray();
-        dbOperations.on('updateAppConfig', () => {
-            win?.webContents.send('updateAppConfig');
+        dbOperations.on("updateAppConfig", () => {
+            win?.webContents.send("updateAppConfig");
         });
         dbOperations.on(
-            'updateAppConfig',
+            "updateAppConfig",
             (newAppConfig: appConfigInsertType) => {
                 configuration.app.config = newAppConfig.config;
                 playlistControllerInstance.updateConfig();
             }
         );
         dbOperations.on(
-            'updateSwwwConfig',
+            "updateSwwwConfig",
             (newAppConfig: swwwConfigInsertType) => {
                 configuration.swww.config = newAppConfig.config;
                 playlistControllerInstance.updateConfig();
             }
         );
         dbOperations.on(
-            'upsertPlaylist',
+            "upsertPlaylist",
             (playlist: { name: string; activeMonitor: ActiveMonitor }) => {
                 playlistControllerInstance.startPlaylist(playlist);
                 void createTray();
             }
         );
 
-        dbOperations.on('deletePlaylist', (playlistName: string) => {
+        dbOperations.on("deletePlaylist", (playlistName: string) => {
             playlistControllerInstance.stopPlaylistByName(playlistName);
             void createTray();
         });
 
-        dbOperations.on('updateTray', () => {
+        dbOperations.on("updateTray", () => {
             void createTray();
         });
         registerFileProtocol();
@@ -224,102 +224,102 @@ app.whenReady()
         logger.error(e);
         process.exit(1);
     });
-app.on('quit', () => {
+app.on("quit", () => {
     if (configuration.app.config.killDaemon) {
         playlistControllerInstance.killDaemon();
     }
 });
 
-ipcMain.handle('openFiles', async (_event, action: openFileAction) => {
+ipcMain.handle("openFiles", async (_event, action: openFileAction) => {
     return await openAndReturnImagesObject(action, win);
 });
-ipcMain.handle('handleOpenImages', copyImagesToCacheAndProcessThumbnails);
-ipcMain.handle('queryImages', () => {
+ipcMain.handle("handleOpenImages", copyImagesToCacheAndProcessThumbnails);
+ipcMain.handle("queryImages", () => {
     return dbOperations.getAllImages();
 });
-ipcMain.handle('queryPlaylists', () => {
+ipcMain.handle("queryPlaylists", () => {
     return dbOperations.getPlaylists();
 });
-ipcMain.handle('getPlaylistImages', async (_event, playlistID: number) => {
+ipcMain.handle("getPlaylistImages", async (_event, playlistID: number) => {
     return dbOperations.getPlaylistImages(playlistID, null);
 });
-ipcMain.handle('getMonitors', async () => {
+ipcMain.handle("getMonitors", async () => {
     return await getMonitors();
 });
-ipcMain.handle('readSwwwConfig', () => {
+ipcMain.handle("readSwwwConfig", () => {
     return dbOperations.getSwwwConfig();
 });
-ipcMain.handle('readAppConfig', () => {
+ipcMain.handle("readAppConfig", () => {
     return dbOperations.getAppConfig();
 });
-ipcMain.handle('deleteImageFromGallery', deleteImagesFromGallery);
-ipcMain.handle('readActivePlaylist', async (_, monitor: ActiveMonitor) => {
+ipcMain.handle("deleteImageFromGallery", deleteImagesFromGallery);
+ipcMain.handle("readActivePlaylist", async (_, monitor: ActiveMonitor) => {
     return dbOperations.getActivePlaylistInfo(monitor);
 });
-ipcMain.handle('querySelectedMonitor', () => {
+ipcMain.handle("querySelectedMonitor", () => {
     return dbOperations.getSelectedMonitor();
 });
-ipcMain.on('setSelectedMonitor', (_, monitor: ActiveMonitor) => {
+ipcMain.on("setSelectedMonitor", (_, monitor: ActiveMonitor) => {
     dbOperations.setSelectedMonitor(monitor);
 });
-ipcMain.on('deletePlaylist', (_, playlistName: string) => {
+ipcMain.on("deletePlaylist", (_, playlistName: string) => {
     dbOperations.deletePlaylist(playlistName);
 });
 ipcMain.on(
-    'setImage',
+    "setImage",
     (_, image: rendererImage, activeMonitor: ActiveMonitor) => {
         void setImage(image, activeMonitor, true);
         void createTray();
     }
 );
-ipcMain.on('setRandomImage', () => {
+ipcMain.on("setRandomImage", () => {
     playlistControllerInstance.randomImage();
     void createTray();
 });
 
-ipcMain.on('savePlaylist', (_, playlistObject: rendererPlaylist) => {
+ipcMain.on("savePlaylist", (_, playlistObject: rendererPlaylist) => {
     savePlaylist(playlistObject);
     void createTray();
 });
 ipcMain.on(
-    'startPlaylist',
+    "startPlaylist",
     (_event, playlist: { name: string; activeMonitor: ActiveMonitor }) => {
         playlistControllerInstance.startPlaylist(playlist);
         void createTray();
     }
 );
 ipcMain.on(
-    'stopPlaylist',
+    "stopPlaylist",
     (_, playlist: { name: string; activeMonitor: ActiveMonitor }) => {
         playlistControllerInstance.stopPlaylist(playlist);
         void createTray();
     }
 );
 ipcMain.on(
-    'updateSwwwConfig',
-    (_, newSwwwConfig: swwwConfigInsertType['config']) => {
+    "updateSwwwConfig",
+    (_, newSwwwConfig: swwwConfigInsertType["config"]) => {
         dbOperations.updateSwwwConfig({ config: newSwwwConfig });
         playlistControllerInstance.updateConfig();
     }
 );
 ipcMain.on(
-    'openContextMenuImage',
+    "openContextMenuImage",
     (event, image: rendererImage, selectedImagesLength: number) => {
         void openContextMenu(event, image, selectedImagesLength);
     }
 );
 
 ipcMain.on(
-    'updateAppConfig',
-    (_, newAppConfig: appConfigInsertType['config']) => {
+    "updateAppConfig",
+    (_, newAppConfig: appConfigInsertType["config"]) => {
         void dbOperations.updateAppConfig({ config: newAppConfig }).then(() => {
             playlistControllerInstance.updateConfig();
         });
     }
 );
-ipcMain.on('updateTray', () => {
+ipcMain.on("updateTray", () => {
     void createTray();
 });
-ipcMain.on('exitApp', () => {
+ipcMain.on("exitApp", () => {
     app.exit();
 });

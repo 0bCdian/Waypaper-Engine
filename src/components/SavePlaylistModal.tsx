@@ -1,8 +1,8 @@
-import { useEffect, useRef, useState } from 'react';
-import { useForm, type SubmitHandler } from 'react-hook-form';
-import { playlistStore } from '../stores/playlist';
-import { type rendererImage } from '../types/rendererTypes';
-import { useMonitorStore } from '../stores/monitors';
+import { useEffect, useRef, useState } from "react";
+import { useForm, type SubmitHandler } from "react-hook-form";
+import { playlistStore } from "../stores/playlist";
+import { type rendererImage } from "../types/rendererTypes";
+import { useMonitorStore } from "../stores/monitors";
 const { savePlaylist } = window.API_RENDERER;
 
 interface Props {
@@ -14,7 +14,7 @@ interface savePlaylistModalFields {
 }
 const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
     const { setName, readPlaylist } = playlistStore();
-    const [error, showError] = useState({ state: false, message: '' });
+    const [error, showError] = useState({ state: false, message: "" });
     const { activeMonitor } = useMonitorStore();
     const modalRef = useRef<HTMLDialogElement>(null);
     const { register, handleSubmit, setValue } =
@@ -40,25 +40,30 @@ const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
     const onSubmit: SubmitHandler<savePlaylistModalFields> = data => {
         setName(data.playlistName);
         const playlist = readPlaylist();
-        if (playlist.configuration.type === 'timeofday') {
+        if (playlist.configuration.type === "timeofday") {
             if (checkDuplicateTimes(playlist.images)) {
                 showError({
                     state: true,
                     message:
-                        'There are duplicate times in images, check them before resubmitting.'
+                        "There are duplicate times in images, check them before resubmitting."
                 });
                 return;
             } else {
-                showError({ state: false, message: '' });
+                showError({ state: false, message: "" });
             }
         }
-        if (activeMonitor.monitors.length < 1 || activeMonitor.name === '') {
+        if (
+            activeMonitor.monitors.length < 1 ||
+            activeMonitor.name === "" ||
+            playlist.activeMonitor.monitors.length < 1 ||
+            playlist.activeMonitor.name === ""
+        ) {
             showError({
                 state: true,
-                message: 'Select at least one monitor to save playlist.'
+                message: "Select at least one monitor to save playlist."
             });
             setTimeout(() => {
-                showError({ state: false, message: '' });
+                showError({ state: false, message: "" });
             }, 3000);
             return;
         }
@@ -67,7 +72,7 @@ const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
         closeModal();
     };
     useEffect(() => {
-        setValue('playlistName', currentPlaylistName);
+        setValue("playlistName", currentPlaylistName);
     }, [currentPlaylistName]);
     return (
         <dialog
@@ -95,7 +100,7 @@ const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
 
                 <input
                     type="text"
-                    {...register('playlistName', { required: true })}
+                    {...register("playlistName", { required: true })}
                     id="playlistName"
                     required
                     draggable={false}
