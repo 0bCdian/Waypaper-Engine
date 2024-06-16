@@ -1,6 +1,6 @@
-import { create } from 'zustand';
-import { type Monitor, type ActiveMonitor } from '../../shared/types/monitor';
-const { getMonitors, querySelectedMonitor } = window.API_RENDERER;
+import { create } from "zustand";
+import { type Monitor, type ActiveMonitor } from "../../shared/types/monitor";
+const { getMonitors } = window.API_RENDERER;
 
 export interface StoreMonitor extends Monitor {
     isSelected: boolean;
@@ -12,12 +12,11 @@ interface MonitorStore {
     setActiveMonitor: (value: ActiveMonitor) => void;
     setMonitorsList: (monitorsList: StoreMonitor[]) => void;
     reQueryMonitors: () => Promise<void>;
-    reQuerySelectedMonitor: () => void;
 }
 
 const initialState = {
     activeMonitor: {
-        name: '',
+        name: "",
         monitors: [] as Monitor[],
         extendAcrossMonitors: false
     },
@@ -61,15 +60,6 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
                 ...state,
                 monitorsList: storeMonitors
             };
-        });
-    },
-    reQuerySelectedMonitor() {
-        void querySelectedMonitor().then(selectedMonitor => {
-            if (selectedMonitor === undefined) {
-                set(() => ({ activeMonitor: initialState.activeMonitor }));
-                return;
-            }
-            set(() => ({ activeMonitor: selectedMonitor }));
         });
     }
 }));
