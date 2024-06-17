@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { type Monitor, type ActiveMonitor } from "../../shared/types/monitor";
-const { getMonitors } = window.API_RENDERER;
+import { verifyOldMonitorConfigValidity } from "../utils/utilities";
+const { getMonitors, querySelectedMonitor } = window.API_RENDERER;
 
 export interface StoreMonitor extends Monitor {
     isSelected: boolean;
@@ -12,6 +13,7 @@ interface MonitorStore {
     setActiveMonitor: (value: ActiveMonitor) => void;
     setMonitorsList: (monitorsList: StoreMonitor[]) => void;
     reQueryMonitors: () => Promise<void>;
+    setLastSavedMonitorConfig: () => Promise<void>;
 }
 
 const initialState = {
@@ -61,5 +63,18 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
                 monitorsList: storeMonitors
             };
         });
+    },
+    async setLastSavedMonitorConfig() {
+        const oldConfig = await querySelectedMonitor();
+        const monitorsList = await getMonitors();
+        if (
+            oldConfig !== undefined &&
+            verifyOldMonitorConfigValidity({
+                oldConfig,
+                monitorsList
+            })
+        ) {
+            get().setActiveMonitor(oldConfig);
+        }
     }
 }));
