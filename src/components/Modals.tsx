@@ -16,15 +16,17 @@ function Modals() {
         []
     );
     const { appConfig, isSetup } = useAppConfigStore();
-    const { setLastSavedMonitorConfig } = useMonitorStore();
+    const { setLastSavedMonitorConfig, reQueryMonitors } = useMonitorStore();
     useEffect(() => {
         if (alreadyShown) return;
         alreadyShown = true;
         void setLastSavedMonitorConfig().then(() => {
             if (!isSetup || !appConfig.showMonitorModalOnStart) return;
             setTimeout(() => {
-                // @ts-expect-error daisy-ui
-                window.monitors.showModal();
+                void reQueryMonitors().then(() => {
+                    // @ts-expect-error daisy-ui
+                    window.monitors.showModal();
+                });
             }, 300);
         });
     }, []);

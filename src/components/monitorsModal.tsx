@@ -1,11 +1,11 @@
-import { useEffect, useRef, useState } from 'react';
-import { useMonitorStore } from '../stores/monitors';
-import { MonitorComponent } from './Monitor';
-import { calculateMinResolution } from '../utils/utilities';
-import { type monitorSelectType } from '../types/rendererTypes';
-import { type Monitor } from '../../shared/types/monitor';
-import { IPC_MAIN_EVENTS } from '../../shared/constants';
-import { playlistStore } from '../stores/playlist';
+import { useEffect, useRef, useState } from "react";
+import { useMonitorStore } from "../stores/monitors";
+import { MonitorComponent } from "./Monitor";
+import { calculateMinResolution } from "../utils/utilities";
+import { type monitorSelectType } from "../types/rendererTypes";
+import { type Monitor } from "../../shared/types/monitor";
+import { IPC_MAIN_EVENTS } from "../../shared/constants";
+import { playlistStore } from "../stores/playlist";
 const { setSelectedMonitor, registerListener } = window.API_RENDERER;
 let firstRender = true;
 function Monitors() {
@@ -18,17 +18,17 @@ function Monitors() {
     } = useMonitorStore();
     const { clearPlaylist } = playlistStore();
     let initialSelectState: monitorSelectType =
-        monitorsList.length > 1 ? 'clone' : 'individual';
+        monitorsList.length > 1 ? "clone" : "individual";
     if (activeMonitor.extendAcrossMonitors) {
-        initialSelectState = 'extend';
+        initialSelectState = "extend";
     } else if (activeMonitor.monitors.length === 1) {
-        initialSelectState = 'individual';
+        initialSelectState = "individual";
     }
     const [selectType, setSelectType] =
         useState<monitorSelectType>(initialSelectState);
     const [error, setError] = useState<{ state: boolean; message: string }>({
         state: false,
-        message: 'error'
+        message: "error"
     });
     const closeModal = () => {
         modalRef.current?.close();
@@ -37,18 +37,19 @@ function Monitors() {
         x: 0,
         y: 0
     });
+    console.log(monitorsList);
     const onSubmit = () => {
-        const extend = selectType === 'extend';
-        let name: string = '';
+        const extend = selectType === "extend";
+        let name: string = "";
         const selectedMonitors: Monitor[] = [];
         monitorsList.forEach(monitor => {
             if (!monitor.isSelected) return;
-            name = name.concat(monitor.name, ',');
+            name = name.concat(monitor.name, ",");
             const { isSelected, ...selectedMonitor } = monitor;
             selectedMonitors.push(selectedMonitor);
         });
         if (selectedMonitors.length === 0) {
-            setError({ state: true, message: 'Select at least one display' });
+            setError({ state: true, message: "Select at least one display" });
             setTimeout(() => {
                 setError(prevError => {
                     return { ...prevError, state: false };
@@ -56,10 +57,10 @@ function Monitors() {
             }, 3000);
             return;
         }
-        if (selectType === 'individual' && selectedMonitors.length > 1) {
+        if (selectType === "individual" && selectedMonitors.length > 1) {
             setError({
                 state: true,
-                message: 'Cannot select more than one display in this mode'
+                message: "Cannot select more than one display in this mode"
             });
             setTimeout(() => {
                 setError(prevError => {
@@ -69,10 +70,10 @@ function Monitors() {
             return;
         }
         if (
-            (selectType === 'clone' || selectType === 'extend') &&
+            (selectType === "clone" || selectType === "extend") &&
             selectedMonitors.length < 2
         ) {
-            setError({ state: true, message: 'Select at least two displays' });
+            setError({ state: true, message: "Select at least two displays" });
             setTimeout(() => {
                 setError(prevError => {
                     return { ...prevError, state: false };
@@ -105,7 +106,7 @@ function Monitors() {
     }, [monitorsList, screen.availWidth]);
     useEffect(() => {
         if (monitorsList.length < 1) return;
-        if (selectType === 'individual') {
+        if (selectType === "individual") {
             const resetMonitors = monitorsList.map((monitor, index) => {
                 monitor.isSelected = index === 0;
                 return monitor;
@@ -156,17 +157,17 @@ function Monitors() {
                             }}
                             className="select w-full max-w-full text-center text-xl"
                         >
-                            <option value={'individual'}>
+                            <option value={"individual"}>
                                 Wallpaper per display
                             </option>
                             <option
-                                value={'extend'}
+                                value={"extend"}
                                 disabled={monitorsList.length < 2}
                             >
                                 Stretch single wallpaper
                             </option>
                             <option
-                                value={'clone'}
+                                value={"clone"}
                                 disabled={monitorsList.length < 2}
                             >
                                 Clone single wallpaper
@@ -179,7 +180,7 @@ function Monitors() {
                                     <div
                                         draggable={false}
                                         style={{
-                                            position: 'absolute',
+                                            position: "absolute",
                                             left: monitor.position.x * scale,
                                             top: monitor.position.y * scale
                                         }}
