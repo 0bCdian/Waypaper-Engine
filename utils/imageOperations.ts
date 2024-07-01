@@ -13,6 +13,7 @@ import {
     writeFileSync
 } from "node:fs";
 import { type CacheJSON } from "../shared/types";
+import { type Image } from "../shared/types/image";
 import { notify, notifyImageSet } from "./notifications";
 import Sharp = require("sharp");
 import { getMonitors } from "./monitorUtils";
@@ -21,7 +22,7 @@ const execPomisified = promisify(exec);
 const appDirectories = configuration.directories;
 export async function resizeImageToFitMonitor(
     buffer: Sharp.Sharp,
-    Image: imageSelectType,
+    Image: Image,
     requiredWidth: number,
     requiredHeight: number
 ) {
@@ -74,7 +75,7 @@ function hexToSharpRgb(hex: string) {
 
 export async function splitImageVerticalAxis(
     monitors: Monitor[],
-    Image: imageSelectType,
+    Image: Image,
     imageFilePath: string,
     combinedMonitorWidth: number
 ) {
@@ -132,7 +133,7 @@ export async function splitImageVerticalAxis(
 
 export async function splitImageHorizontalAxis(
     monitors: Monitor[],
-    Image: imageSelectType,
+    Image: Image,
     imageFilePath: string,
     combinedMonitorHeight: number
 ) {
@@ -207,7 +208,7 @@ function getDesiredDimensionsToExtendImage(Monitors: Monitor[]) {
     return desiredDimensions;
 }
 export async function createSplitImages(
-    image: rendererImage | imageSelectType,
+    image: Image,
     imageFilePath: string,
     monitors: Monitor[],
     imageNameWithoutExtension: string
@@ -285,7 +286,7 @@ function createSplitImagesJson({
     imageNameWithoutExtension,
     monitorImagePairs
 }: {
-    Image: rendererImage | imageSelectType;
+    Image: Image;
     imageNameWithoutExtension: string;
     monitorImagePairs: Array<{ image: string; monitor: Monitor }>;
 }) {
@@ -423,7 +424,7 @@ export function getSwwwCommandFromConfiguration(
     return command;
 }
 export async function setImageAcrossMonitors(
-    image: rendererImage | imageSelectType,
+    image: Image,
     monitors: Monitor[],
     showAnimations: boolean
 ) {
