@@ -1,23 +1,23 @@
-import { execSync, spawn } from 'child_process';
-import { promisify } from 'util';
-import { daemonPath, logger } from './setup';
-import { configuration } from '../globals/config';
-import { createConnection, createServer } from 'node:net';
-import { type message } from '../types/types';
-import { unlinkSync } from 'node:fs';
-import EventEmitter from 'node:events';
+import { execSync, spawn } from "child_process";
+import { promisify } from "util";
+import { daemonPath, logger } from "./setup";
+import { configuration } from "../globals/config";
+import { createConnection, createServer } from "node:net";
+import { type message } from "../types/types";
+import { unlinkSync, writeFileSync } from "node:fs";
+import EventEmitter from "node:events";
 
 const setTimeoutPromise = promisify(setTimeout);
 function checkIfSwwwIsInstalled() {
     try {
         execSync(`swww --version`);
-        console.info('swww is installed in the system');
+        console.info("swww is installed in the system");
     } catch (error) {
         console.warn(
-            'swww is not installed, please find instructions in the README.md on how to install it'
+            "swww is not installed, please find instructions in the README.md on how to install it"
         );
         logger.error(error);
-        throw new Error('swww is not installed');
+        throw new Error("swww is not installed");
     }
 }
 
@@ -25,13 +25,13 @@ export function initSwwwDaemon() {
     checkIfSwwwIsInstalled();
     try {
         if (configuration.format) {
-            execSync('killall swww-daemon');
+            execSync("killall swww-daemon");
         }
         execSync('ps -A | grep "swww-daemon"');
     } catch (error) {
-        const command = `swww-daemon ${configuration.format ? '--format xrgb' : ''} &`;
+        const command = `swww-daemon ${configuration.format ? "--format xrgb" : ""} &`;
         const output = spawn(command, {
-            stdio: 'ignore',
+            stdio: "ignore",
             shell: true,
             detached: true
         });
@@ -40,12 +40,38 @@ export function initSwwwDaemon() {
 }
 export function isWaypaperDaemonRunning() {
     try {
-        execSync('pidof wpe-daemon');
+        execSync("pidof wpe-daemon");
         return true;
     } catch (_err) {
         return false;
     }
 }
+export function acquireLock() {
+    const lockFile = configuration.directories.DAEMON_LOCK_FILE;
+    try {
+        writeFileSync(lockFile, process.pid.toString(), { flag: "wx" });
+        return true;
+    } catch (err) {
+        // @ts-expect-error .code does exists
+        if (err instanceof Error && err.code === "EEXIST") {
+            return false;
+        }
+        throw err;
+    }
+}
+
+export function releaseLock() {
+    const lockFile = configuration.directories.DAEMON_LOCK_FILE;
+    try {
+        unlinkSync(lockFile);
+    } catch (err) {
+        // @ts-expect-error .code does exists
+        if (err instanceof Error && err.code !== "ENOENT") {
+            console.error("Error releasing lock:", err);
+        }
+    }
+}
+
 export async function initWaypaperDaemon() {
     if (!isWaypaperDaemonRunning()) {
         try {
@@ -56,8 +82,8 @@ export async function initWaypaperDaemon() {
             if (configuration.logs) {
                 args.push(`--logs`);
             }
-            const output = spawn('PROCESS=daemon node', args, {
-                stdio: 'ignore',
+            const output = spawn("PROCESS=daemon node", args, {
+                stdio: "ignore",
                 shell: true,
                 detached: true,
                 env: { ...process.env }
@@ -66,7 +92,7 @@ export async function initWaypaperDaemon() {
             await testConnection();
         } catch (error) {
             logger.error(error);
-            logger.warn('Could not start wpe-daemon, shutting down app...');
+            logger.warn("Could not start wpe-daemon, shutting down app...");
             process.exit(1);
         }
     }
@@ -82,14 +108,14 @@ async function testConnection() {
     while (attempt <= MAX_ATTEMPTS) {
         try {
             await connectToDaemon(SOCKET_PATH);
-            logger.info('Connection to waypaper daemon established.');
+            logger.info("Connection to waypaper daemon established.");
             return;
         } catch (error) {
             await setTimeoutPromise(RETRY_INTERVAL);
             attempt++;
         }
     }
-    throw new Error('Failed to establish connection to waypaper daemon.');
+    throw new Error("Failed to establish connection to waypaper daemon.");
 }
 
 async function connectToDaemon(socketPath: string) {
@@ -98,16 +124,16 @@ async function connectToDaemon(socketPath: string) {
             const client = createConnection(socketPath, () => {
                 // Connection successful
                 client.end(); // Close the connection
-                resolve('');
+                resolve("");
             });
-            client.on('error', err => {
+            client.on("error", err => {
                 // Connection failed
                 reject(err);
             });
         } catch (error) {
             logger.error(error);
             logger.error(
-                'failed to test connection, this is because createConnection trhew'
+                "failed to test connection, this is because createConnection trhew"
             );
         }
     });
@@ -116,11 +142,11 @@ async function connectToDaemon(socketPath: string) {
 export function createMainServer() {
     const emitter = new EventEmitter();
     const serverInstance = createServer(socket => {
-        socket.on('data', buffer => {
+        socket.on("data", buffer => {
             buffer
                 .toString()
-                .split('\n')
-                .filter(message => message !== '')
+                .split("\n")
+                .filter(message => message !== "")
                 .forEach(message => {
                     try {
                         const parsedMessage: message = JSON.parse(message);
@@ -130,12 +156,12 @@ export function createMainServer() {
                     }
                 });
         });
-        socket.on('error', err => {
-            logger.error('Socket error:', err.message);
+        socket.on("error", err => {
+            logger.error("Socket error:", err.message);
         });
     });
-    serverInstance.on('error', err => {
-        if (err.message.includes('EADDRINUSE')) {
+    serverInstance.on("error", err => {
+        if (err.message.includes("EADDRINUSE")) {
             unlinkSync(configuration.directories.WAYPAPER_ENGINE_SOCKET_PATH);
             serverInstance.listen(
                 configuration.directories.WAYPAPER_ENGINE_SOCKET_PATH
