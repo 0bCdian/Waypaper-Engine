@@ -75,6 +75,15 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
             })
         ) {
             get().setActiveMonitor(oldConfig);
+            const monitorList: StoreMonitor[] = oldConfig.monitors.map(
+                monitor => {
+                    return {
+                        ...monitor,
+                        isSelected: true
+                    };
+                }
+            );
+            get().setMonitorsList(monitorList);
         }
     }
 }));

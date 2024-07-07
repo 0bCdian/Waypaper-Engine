@@ -68,7 +68,7 @@ export class DaemonManager {
                 activeMonitor: playlist.activePlaylists.activeMonitor,
                 wasActive: true
             });
-            playlistInstance.start();
+            playlistInstance.start(false);
             this.#playlistMap.set(
                 playlist.activePlaylists.activeMonitor.name,
                 playlistInstance

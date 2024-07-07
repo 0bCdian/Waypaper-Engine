@@ -1,25 +1,25 @@
-import { create } from 'zustand';
+import { create } from "zustand";
 import {
     type rendererImage,
     type rendererPlaylist,
     type configuration
-} from '../types/rendererTypes';
-import { type ActiveMonitor, type Monitor } from '../../shared/types/monitor';
-import { useMonitorStore } from './monitors';
+} from "../types/rendererTypes";
+import { type ActiveMonitor, type Monitor } from "../../shared/types/monitor";
+import { useMonitorStore } from "./monitors";
 const imagesInitial: rendererImage[] = [];
-const configurationInitial: rendererPlaylist['configuration'] = {
-    type: 'timer',
+const configurationInitial: rendererPlaylist["configuration"] = {
+    type: "timer",
     interval: 3_600_000,
-    order: 'ordered',
+    order: "ordered",
     showAnimations: true,
     alwaysStartOnFirstImage: false
 };
 const initialPlaylistState: rendererPlaylist = {
     images: imagesInitial,
     configuration: configurationInitial,
-    name: '',
+    name: "",
     activeMonitor: {
-        name: '',
+        name: "",
         extendAcrossMonitors: false,
         monitors: [] as Monitor[]
     }
@@ -58,7 +58,7 @@ export const playlistStore = create<State & Actions>()((set, get) => ({
         const playlistImagesSet = get().playlistImagesSet;
         const playlistImagesTimeSet = get().playlistImagesTimeSet;
         const currentPlaylist = get().playlist;
-        if (currentPlaylist.configuration.type === 'dayofweek') {
+        if (currentPlaylist.configuration.type === "dayofweek") {
             const availableSpace = 7 - currentPlaylist.images.length;
             if (availableSpace <= 0) return;
             else {
@@ -81,7 +81,6 @@ export const playlistStore = create<State & Actions>()((set, get) => ({
                 initialTimeStamp -= 1439;
             }
             while (playlistImagesTimeSet.has(initialTimeStamp)) {
-                console.log('while loop');
                 initialTimeStamp++;
             }
             Images[current].time = initialTimeStamp;

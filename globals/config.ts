@@ -13,7 +13,8 @@ const scriptsDir = join(mainDirectory, "scripts");
 const extendedImages = join(cacheDirectoryRoot, "extended_images_cache");
 const WAYPAPER_ENGINE_DAEMON_SOCKET_PATH = "/tmp/waypaper_engine_daemon.sock";
 const WAYPAPER_ENGINE_SOCKET_PATH = "/tmp/waypaper_engine.sock";
-const DAEMON_LOCK_FILE = "/tmp/wpe-daemon.lock";
+const DAEMON_LOCK_FILE = "/tmp/waypaper-daemon.lock";
+const DAEMON_PID = "waypaper-daemon";
 const appDirectories = {
     systemHome,
     rootCache: cacheDirectoryRoot,
@@ -48,8 +49,10 @@ const configuration = {
             configuration.app.config = dbOperations.getAppConfig();
         }
     },
+    DAEMON_PID,
     directories: appDirectories,
     scripts,
+
     format: (values.format ?? false) as boolean,
     logs: (values.logs ?? false) as boolean
 };

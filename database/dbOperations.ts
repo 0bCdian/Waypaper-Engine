@@ -1,17 +1,17 @@
-import { type BetterSQLite3Database } from 'drizzle-orm/better-sqlite3';
-import { initialAppConfig, initialSwwwConfig } from '../shared/constants';
-import { type ActiveMonitor } from '../shared/types/monitor';
+import { type BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import { initialAppConfig, initialSwwwConfig } from "../shared/constants";
+import { type ActiveMonitor } from "../shared/types/monitor";
 import {
     type rendererImage,
     type rendererPlaylist
-} from '../src/types/rendererTypes';
-import { type imageMetadata } from '../types/types';
-import { createConnector } from './database';
-import * as tables from './schema';
-import { type SQL, asc, desc, eq, sql, notInArray } from 'drizzle-orm';
-import { EventEmitter } from 'node:events';
-import { type PLAYLIST_ORDER_TYPES } from '../shared/types/playlist';
-import { logger } from '../globals/setup';
+} from "../src/types/rendererTypes";
+import { type imageMetadata } from "../types/types";
+import { createConnector } from "./database";
+import * as tables from "./schema";
+import { type SQL, asc, desc, eq, sql, notInArray } from "drizzle-orm";
+import { EventEmitter } from "node:events";
+import { type PLAYLIST_ORDER_TYPES } from "../shared/types/playlist";
+import { logger } from "../globals/setup";
 
 export class DBOperations extends EventEmitter {
     db: BetterSQLite3Database;
@@ -55,7 +55,7 @@ export class DBOperations extends EventEmitter {
             .returning({ id: tables.playlist.id });
 
         this.#insertPlaylistImages(images, insertedPlaylist.id);
-        this.emit('upsertPlaylist', {
+        this.emit("upsertPlaylist", {
             name: playlistObject.name,
             activeMonitor: playlistObject.activeMonitor
         });
@@ -83,7 +83,7 @@ export class DBOperations extends EventEmitter {
             .delete(tables.playlist)
             .where(eq(tables.playlist.name, playlistName))
             .run();
-        this.emit('deletePlaylist', playlistName);
+        this.emit("deletePlaylist", playlistName);
     }
 
     getActivePlaylists() {
@@ -148,7 +148,7 @@ export class DBOperations extends EventEmitter {
             .from(tables.playlist)
             .where(eq(tables.playlist.name, name))
             .get();
-        if (playlist === undefined) throw new Error('Playlist not found');
+        if (playlist === undefined) throw new Error("Playlist not found");
         const playlistImages = this.getPlaylistImages(
             playlist.id,
             playlist.order
@@ -163,7 +163,7 @@ export class DBOperations extends EventEmitter {
         const orderByID = asc(tables.imageInPlaylist.indexInPlaylist);
         const orderByRandom = asc(sql`RANDOM()`);
         let selectedOrder: SQL<unknown>;
-        if (order === null || order === 'ordered') {
+        if (order === null || order === "ordered") {
             selectedOrder = orderByID;
         } else {
             selectedOrder = orderByRandom;
@@ -245,7 +245,7 @@ export class DBOperations extends EventEmitter {
     async updateAppConfig(newConfig: tables.appConfigInsertType) {
         this.db.delete(tables.appConfig).run();
         this.db.insert(tables.appConfig).values(newConfig).run();
-        this.emit('updateAppConfig', newConfig);
+        this.emit("updateAppConfig", newConfig);
     }
 
     createAppConfigIfNotExists() {
@@ -292,7 +292,7 @@ export class DBOperations extends EventEmitter {
     updateSwwwConfig(newConfig: tables.swwwConfigInsertType) {
         this.db.delete(tables.swwwConfig).run();
         this.db.insert(tables.swwwConfig).values(newConfig).run();
-        this.emit('updateSwwwConfig', newConfig);
+        this.emit("updateSwwwConfig", newConfig);
     }
 
     createSwwwConfigIfNotExists() {
@@ -371,11 +371,11 @@ export class DBOperations extends EventEmitter {
             }
         });
         if (shouldUpdate) {
-            const query = sql`UPDATE imageHistory SET time=CURRENT_TIME WHERE imageID=${row.imageID}`;
+            const query = sql`UPDATE imageHistory SET time=strftime('%s', 'now') WHERE imageID=${row.imageID}`;
             this.db.run(query);
         } else {
             this.db.insert(tables.imageHistory).values(row).run();
         }
-        this.emit('updateTray');
+        this.emit("updateTray");
     }
 }

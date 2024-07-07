@@ -4,14 +4,15 @@ import {
     Menu,
     dialog,
     type Tray
-} from 'electron';
-import { dbOperations } from '../globals/config';
-import { deleteImagesFromGallery, setImage } from '../electron/appFunctions';
-import { IPC_MAIN_EVENTS, MENU_EVENTS } from '../shared/constants';
-import { type rendererImage } from '../src/types/rendererTypes';
-import { type ActiveMonitor } from '../shared/types/monitor';
-import { PlaylistController } from '../electron/playlistController';
-import { getMonitors } from '../utils/monitorUtils';
+} from "electron";
+import { dbOperations } from "../globals/config";
+import { deleteImagesFromGallery } from "../electron/appFunctions";
+import { IPC_MAIN_EVENTS, MENU_EVENTS } from "../shared/constants";
+import { type rendererImage } from "../src/types/rendererTypes";
+import { type ActiveMonitor } from "../shared/types/monitor";
+import { PlaylistController } from "../electron/playlistController";
+import { getMonitors } from "../utils/monitorUtils";
+import { tryToSetImage } from "../utils/imageOperations";
 
 const playlistControllerInstance = new PlaylistController();
 export const devMenu = () => {
@@ -19,29 +20,29 @@ export const devMenu = () => {
         Electron.MenuItemConstructorOptions | Electron.MenuItem
     > = [
         {
-            label: 'File',
+            label: "File",
             submenu: [
                 {
-                    label: 'Quit',
-                    role: 'quit'
+                    label: "Quit",
+                    role: "quit"
                 }
             ]
         },
         {
-            label: 'Toggle Developer Tools',
+            label: "Toggle Developer Tools",
             accelerator: (function () {
-                if (process.platform === 'darwin') return 'Alt+Command+I';
-                else return 'Ctrl+Shift+I';
+                if (process.platform === "darwin") return "Alt+Command+I";
+                else return "Ctrl+Shift+I";
             })(),
             click: (_, win) => {
                 win?.webContents.toggleDevTools();
             }
         },
         {
-            label: 'Reload',
+            label: "Reload",
             accelerator: (function () {
-                if (process.platform === 'darwin') return 'Command+R';
-                else return 'Ctrl+R';
+                if (process.platform === "darwin") return "Command+R";
+                else return "Ctrl+R";
             })(),
             click: function (_, win) {
                 if (win?.isFocused() ?? false) win?.reload();
@@ -65,13 +66,13 @@ export const trayMenu = async (
         Electron.MenuItemConstructorOptions | Electron.MenuItem
     > = [
         {
-            label: 'Active playlists',
+            label: "Active playlists",
             submenu: activePlaylists.map(playlist => {
                 return {
                     label: `${playlist.Playlists.name} on: ${playlist.activePlaylists.activeMonitor.name}`,
                     submenu: [
                         {
-                            label: 'Next image',
+                            label: "Next image",
                             click: () => {
                                 playlistControllerInstance.nextImage({
                                     name: playlist.Playlists.name,
@@ -81,12 +82,12 @@ export const trayMenu = async (
                                 if (createTray !== undefined) void createTray();
                             },
                             enabled:
-                                playlist.Playlists.type === 'timer' ||
-                                playlist.Playlists.type === 'never'
+                                playlist.Playlists.type === "timer" ||
+                                playlist.Playlists.type === "never"
                         },
 
                         {
-                            label: 'Previous image',
+                            label: "Previous image",
                             click: () => {
                                 playlistControllerInstance.previousImage({
                                     name: playlist.Playlists.name,
@@ -96,12 +97,12 @@ export const trayMenu = async (
                                 if (createTray !== undefined) void createTray();
                             },
                             enabled:
-                                playlist.Playlists.type === 'timer' ||
-                                playlist.Playlists.type === 'never'
+                                playlist.Playlists.type === "timer" ||
+                                playlist.Playlists.type === "never"
                         },
 
                         {
-                            label: 'Pause',
+                            label: "Pause",
                             click: () => {
                                 playlistControllerInstance.pausePlaylist({
                                     name: playlist.Playlists.name,
@@ -109,10 +110,10 @@ export const trayMenu = async (
                                         playlist.activePlaylists.activeMonitor
                                 });
                             },
-                            enabled: playlist.Playlists.type === 'timer'
+                            enabled: playlist.Playlists.type === "timer"
                         },
                         {
-                            label: 'Resume',
+                            label: "Resume",
                             click: () => {
                                 playlistControllerInstance.resumePlaylist({
                                     name: playlist.Playlists.name,
@@ -121,12 +122,12 @@ export const trayMenu = async (
                                 });
                                 if (createTray !== undefined) void createTray();
                             },
-                            enabled: playlist.Playlists.type === 'timer'
+                            enabled: playlist.Playlists.type === "timer"
                         },
                         {
-                            label: 'Stop',
+                            label: "Stop",
                             click: (_, win) => {
-                                console.log('stopping playlist');
+                                console.log("stopping playlist");
                                 playlistControllerInstance.stopPlaylist({
                                     name: playlist.Playlists.name,
                                     activeMonitor:
@@ -153,12 +154,12 @@ export const trayMenu = async (
         Electron.MenuItemConstructorOptions | Electron.MenuItem
     > = [
         {
-            label: 'Recent wallpapers',
+            label: "Recent wallpapers",
             submenu: imageHistory.map((image, index) => {
                 return {
                     label: `${index + 1}.${image.Images.name}`,
                     click: () => {
-                        void setImage(
+                        void tryToSetImage(
                             image.Images,
                             image.imageHistory.monitor,
                             true
@@ -178,14 +179,14 @@ export const trayMenu = async (
         Electron.MenuItemConstructorOptions | Electron.MenuItem
     > = [
         {
-            label: 'Random Wallpaper',
+            label: "Random Wallpaper",
             click: () => {
                 playlistControllerInstance.randomImage();
                 if (createTray !== undefined) void createTray();
             }
         },
         {
-            label: 'Quit',
+            label: "Quit",
             click: () => {
                 app.exit();
             }
@@ -224,11 +225,11 @@ export async function contextMenu({
                 label: `In ${monitor.name}`,
                 click: () => {
                     const activeMonitor: ActiveMonitor = {
-                        name: '',
+                        name: "",
                         monitors: [monitor],
                         extendAcrossMonitors: false
                     };
-                    void setImage(image, activeMonitor, true);
+                    void tryToSetImage(image, activeMonitor, true);
                 }
             };
         });
@@ -237,23 +238,23 @@ export async function contextMenu({
                 label: `Duplicate across all monitors`,
                 click: () => {
                     const activeMonitor: ActiveMonitor = {
-                        name: '',
+                        name: "",
                         monitors,
                         extendAcrossMonitors: false
                     };
 
-                    void setImage(image, activeMonitor, true);
+                    void tryToSetImage(image, activeMonitor, true);
                 }
             },
             {
                 label: `Extend across all monitors grouping them`,
                 click: () => {
                     const activeMonitor: ActiveMonitor = {
-                        name: '',
+                        name: "",
                         monitors,
                         extendAcrossMonitors: true
                     };
-                    void setImage(image, activeMonitor, true);
+                    void tryToSetImage(image, activeMonitor, true);
                 }
             }
         );
@@ -269,15 +270,15 @@ export async function contextMenu({
                     void dialog
                         .showMessageBox(win, {
                             message: `Are you sure you want to delete ${image.name}`,
-                            type: 'question',
-                            buttons: ['yes', 'no'],
-                            title: 'Confirm delete'
+                            type: "question",
+                            buttons: ["yes", "no"],
+                            title: "Confirm delete"
                         })
                         .then(data => {
                             if (data.response === 0) {
                                 deleteImagesFromGallery(event, [image]);
                                 win?.webContents.send(
-                                    'deleteImageFromGallery',
+                                    "deleteImageFromGallery",
                                     image
                                 );
                             }
@@ -289,7 +290,7 @@ export async function contextMenu({
     if (selectedImagesLength > 0) {
         selectedImagesMenu = [
             {
-                label: 'Add selected images to playlist',
+                label: "Add selected images to playlist",
                 click: (_, win) => {
                     if (win === undefined) return;
                     win.webContents.send(
@@ -298,7 +299,7 @@ export async function contextMenu({
                 }
             },
             {
-                label: 'Remove selected images from current playlist',
+                label: "Remove selected images from current playlist",
                 click: (_, win) => {
                     if (win === undefined) return;
                     win.webContents.send(
@@ -307,15 +308,15 @@ export async function contextMenu({
                 }
             },
             {
-                label: 'Delete selected images from gallery',
+                label: "Delete selected images from gallery",
                 click: (_, win) => {
                     if (win === undefined) return;
                     void dialog
                         .showMessageBox(win, {
                             message: `Are you sure you want to delete ${selectedImagesLength} images from the gallery?`,
-                            type: 'question',
-                            buttons: ['yes', 'no'],
-                            title: 'Confirm delete'
+                            type: "question",
+                            buttons: ["yes", "no"],
+                            title: "Confirm delete"
                         })
                         .then(data => {
                             if (data.response === 0) {
@@ -327,7 +328,7 @@ export async function contextMenu({
                 }
             },
             {
-                label: 'Unselect images in current page',
+                label: "Unselect images in current page",
                 click: (_, win) => {
                     if (win === undefined) return;
                     win.webContents.send(
@@ -336,7 +337,7 @@ export async function contextMenu({
                 }
             },
             {
-                label: 'Unselect all images',
+                label: "Unselect all images",
                 click: (_, win) => {
                     if (win === undefined) return;
                     win.webContents.send(MENU_EVENTS.clearSelection);
@@ -348,24 +349,24 @@ export async function contextMenu({
         ...imagesMenu,
         ...selectedImagesMenu,
         {
-            label: 'Select all images in current page',
+            label: "Select all images in current page",
             click: (_: Electron.MenuItem, win: BrowserWindow | undefined) => {
                 if (win === undefined) return;
                 win.webContents.send(MENU_EVENTS.selectAllImagesInCurrentPage);
             }
         },
         {
-            label: 'Select all images in gallery',
+            label: "Select all images in gallery",
             click: (_: Electron.MenuItem, win: BrowserWindow | undefined) => {
                 if (win === undefined) return;
                 win.webContents.send(MENU_EVENTS.selectAllImagesInGallery);
             }
         },
         {
-            label: 'Images per page',
+            label: "Images per page",
             submenu: [
                 {
-                    label: '20',
+                    label: "20",
                     click: (
                         _: Electron.MenuItem,
                         win: BrowserWindow | undefined
@@ -376,7 +377,7 @@ export async function contextMenu({
                     }
                 },
                 {
-                    label: '50',
+                    label: "50",
                     click: (
                         _: Electron.MenuItem,
                         win: BrowserWindow | undefined
@@ -388,7 +389,7 @@ export async function contextMenu({
                     }
                 },
                 {
-                    label: '100',
+                    label: "100",
                     click: (
                         _: Electron.MenuItem,
                         win: BrowserWindow | undefined
@@ -401,7 +402,7 @@ export async function contextMenu({
                     }
                 },
                 {
-                    label: '200',
+                    label: "200",
                     click: (
                         _: Electron.MenuItem,
                         win: BrowserWindow | undefined

@@ -52,12 +52,7 @@ const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
                 showError({ state: false, message: "" });
             }
         }
-        if (
-            activeMonitor.monitors.length < 1 ||
-            activeMonitor.name === "" ||
-            playlist.activeMonitor.monitors.length < 1 ||
-            playlist.activeMonitor.name === ""
-        ) {
+        if (activeMonitor.monitors.length < 1 || activeMonitor.name === "") {
             showError({
                 state: true,
                 message: "Select at least one monitor to save playlist."
@@ -67,6 +62,7 @@ const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
             }, 3000);
             return;
         }
+        playlist.activeMonitor = activeMonitor;
         savePlaylist(playlist);
         setShouldReload(true);
         closeModal();

@@ -11,7 +11,6 @@ import {
 import { join } from "node:path";
 import {
     copyImagesToCacheAndProcessThumbnails,
-    setImage,
     openAndReturnImagesObject,
     savePlaylist,
     deleteImagesFromGallery,
@@ -34,19 +33,18 @@ import {
 import { type ActiveMonitor } from "../shared/types/monitor";
 import { PlaylistController } from "./playlistController";
 import { IPC_MAIN_EVENTS } from "../shared/constants";
-import {
-    initWaypaperDaemon,
-    initSwwwDaemon,
-    createMainServer
-} from "../globals/startDaemons";
+import { initWaypaperDaemon, createMainServer } from "../globals/startDaemons";
 import { getMonitors } from "../utils/monitorUtils";
+import { tryToSetImage, restoreLastWallpaper } from "../utils/imageOperations";
 import { ACTIONS } from "../types/types";
 import type EventEmitter from "node:events";
 if (values.daemon !== undefined && (values.daemon as boolean)) {
     logger.info("starting daemon...");
     try {
-        void initWaypaperDaemon().then(() => {
-            process.exit(0);
+        void restoreLastWallpaper().then(() => {
+            void initWaypaperDaemon().then(() => {
+                process.exit(0);
+            });
         });
     } catch (error) {
         logger.error(error);
@@ -164,7 +162,6 @@ app.whenReady()
     .then(async () => {
         const server = createMainServer();
         registerAppServerListeners(server);
-        initSwwwDaemon();
         await initWaypaperDaemon();
         createAppDirsIfNotExist();
         await remakeThumbnailsIfImagesExist();
@@ -268,7 +265,7 @@ ipcMain.on("deletePlaylist", (_, playlistName: string) => {
 ipcMain.on(
     "setImage",
     (_, image: rendererImage, activeMonitor: ActiveMonitor) => {
-        void setImage(image, activeMonitor, true);
+        void tryToSetImage(image, activeMonitor, true);
         void createTray();
     }
 );

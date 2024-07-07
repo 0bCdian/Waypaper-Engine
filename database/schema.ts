@@ -1,89 +1,89 @@
-import { text, integer, sqliteTable } from 'drizzle-orm/sqlite-core';
-import { type swwwConfig as swwwConfigType } from '../shared/types/swww';
+import { text, integer, sqliteTable } from "drizzle-orm/sqlite-core";
+import { type swwwConfig as swwwConfigType } from "../shared/types/swww";
 import {
     type PLAYLIST_ORDER_TYPES,
     type PLAYLIST_TYPES_TYPE
-} from '../shared/types/playlist';
-import { type appConfigType } from '../shared/types/app';
-import { type Formats } from '../shared/types/image';
-import { type ActiveMonitor } from '../shared/types/monitor';
-import { sql } from 'drizzle-orm';
-export const image = sqliteTable('Images', {
-    id: integer('id').notNull().primaryKey({ autoIncrement: true }),
-    name: text('name').notNull().unique(),
-    isChecked: integer('isChecked', { mode: 'boolean' })
+} from "../shared/types/playlist";
+import { type appConfigType } from "../shared/types/app";
+import { type Formats } from "../shared/types/image";
+import { type ActiveMonitor } from "../shared/types/monitor";
+import { sql } from "drizzle-orm";
+export const image = sqliteTable("Images", {
+    id: integer("id").notNull().primaryKey({ autoIncrement: true }),
+    name: text("name").notNull().unique(),
+    isChecked: integer("isChecked", { mode: "boolean" })
         .notNull()
         .default(false),
-    isSelected: integer('isSelected', { mode: 'boolean' })
+    isSelected: integer("isSelected", { mode: "boolean" })
         .notNull()
         .default(false),
-    width: integer('width').notNull(),
-    height: integer('height').notNull(),
-    format: text('format').notNull().$type<Formats>()
+    width: integer("width").notNull(),
+    height: integer("height").notNull(),
+    format: text("format").notNull().$type<Formats>()
 });
 
-export const playlist = sqliteTable('Playlists', {
-    id: integer('id').notNull().primaryKey(),
-    name: text('name').notNull().unique(),
-    type: text('type').notNull().$type<PLAYLIST_TYPES_TYPE>(),
-    interval: integer('interval'),
-    showAnimations: integer('showAnimations', { mode: 'boolean' })
+export const playlist = sqliteTable("Playlists", {
+    id: integer("id").notNull().primaryKey(),
+    name: text("name").notNull().unique(),
+    type: text("type").notNull().$type<PLAYLIST_TYPES_TYPE>(),
+    interval: integer("interval"),
+    showAnimations: integer("showAnimations", { mode: "boolean" })
         .notNull()
         .default(true),
-    alwaysStartOnFirstImage: integer('alwaysStartOnFirstImage', {
-        mode: 'boolean'
+    alwaysStartOnFirstImage: integer("alwaysStartOnFirstImage", {
+        mode: "boolean"
     })
         .notNull()
         .default(false),
-    order: text('order').$type<PLAYLIST_ORDER_TYPES>(),
-    currentImageIndex: integer('currentImageIndex').notNull().default(0)
+    order: text("order").$type<PLAYLIST_ORDER_TYPES>(),
+    currentImageIndex: integer("currentImageIndex").notNull().default(0)
 });
 
-export const imageInPlaylist = sqliteTable('imagesInPlaylist', {
-    imageID: integer('imageID')
+export const imageInPlaylist = sqliteTable("imagesInPlaylist", {
+    imageID: integer("imageID")
         .notNull()
         .references(() => image.id, {
-            onUpdate: 'cascade',
-            onDelete: 'cascade'
+            onUpdate: "cascade",
+            onDelete: "cascade"
         }),
-    playlistID: integer('playlistID')
+    playlistID: integer("playlistID")
         .notNull()
         .references(() => playlist.id, {
-            onUpdate: 'cascade',
-            onDelete: 'cascade'
+            onUpdate: "cascade",
+            onDelete: "cascade"
         }),
-    indexInPlaylist: integer('indexInPlaylist').notNull(),
-    time: integer('time')
+    indexInPlaylist: integer("indexInPlaylist").notNull(),
+    time: integer("time")
 });
 
-export const swwwConfig = sqliteTable('swwwConfig', {
-    config: text('config', { mode: 'json' }).notNull().$type<swwwConfigType>()
+export const swwwConfig = sqliteTable("swwwConfig", {
+    config: text("config", { mode: "json" }).notNull().$type<swwwConfigType>()
 });
 
-export const appConfig = sqliteTable('appConfig', {
-    config: text('config', { mode: 'json' }).notNull().$type<appConfigType>()
+export const appConfig = sqliteTable("appConfig", {
+    config: text("config", { mode: "json" }).notNull().$type<appConfigType>()
 });
 
-export const activePlaylist = sqliteTable('activePlaylists', {
-    playlistID: integer('playlistID')
+export const activePlaylist = sqliteTable("activePlaylists", {
+    playlistID: integer("playlistID")
         .notNull()
         .references(() => playlist.id),
-    activeMonitor: text('activeMonitor', { mode: 'json' })
+    activeMonitor: text("activeMonitor", { mode: "json" })
         .notNull()
         .$type<ActiveMonitor>(),
-    activeMonitorName: text('activeMonitorName').notNull().unique()
+    activeMonitorName: text("activeMonitorName").notNull().unique()
 });
 
-export const imageHistory = sqliteTable('imageHistory', {
-    imageID: integer('imageID')
+export const imageHistory = sqliteTable("imageHistory", {
+    imageID: integer("imageID")
         .notNull()
-        .references(() => image.id, { onDelete: 'cascade' }),
-    monitor: text('monitor', { mode: 'json' }).notNull().$type<ActiveMonitor>(),
-    time: text('time').default(sql`(CURRENT_TIME)`)
+        .references(() => image.id, { onDelete: "cascade" }),
+    monitor: text("monitor", { mode: "json" }).notNull().$type<ActiveMonitor>(),
+    time: text("time").default(sql`strftime('%s', 'now')`)
 });
 
-export const selectedMonitor = sqliteTable('selectedMonitor', {
-    monitor: text('monitor', { mode: 'json' }).notNull().$type<ActiveMonitor>()
+export const selectedMonitor = sqliteTable("selectedMonitor", {
+    monitor: text("monitor", { mode: "json" }).notNull().$type<ActiveMonitor>()
 });
 
 export type imageSelectType = typeof image.$inferSelect;

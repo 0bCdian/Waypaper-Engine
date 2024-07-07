@@ -1,8 +1,8 @@
-import { configuration } from "../globals/config";
+import { configuration, dbOperations } from "../globals/config";
 import { join } from "node:path";
 import { exec } from "node:child_process";
 import { promisify } from "node:util";
-import { type Monitor } from "../shared/types/monitor";
+import { type ActiveMonitor, type Monitor } from "../shared/types/monitor";
 import { type imageSelectType } from "../database/schema";
 import { type rendererImage } from "../src/types/rendererTypes";
 import {
@@ -18,6 +18,10 @@ import { notify, notifyImageSet } from "./notifications";
 import Sharp = require("sharp");
 import { getMonitors } from "./monitorUtils";
 import { logger } from "../globals/setup";
+import {
+    initSwwwDaemon,
+    isWaypaperDaemonRunning
+} from "../globals/startDaemons";
 const execPomisified = promisify(exec);
 const appDirectories = configuration.directories;
 export async function resizeImageToFitMonitor(
@@ -125,7 +129,7 @@ export async function splitImageVerticalAxis(
             });
             lastWidth += width - 1;
         } catch (error) {
-            console.log(error);
+            logger.error(error);
         }
     }
     return monitorsToImagesPairsArray;
@@ -182,7 +186,7 @@ export async function splitImageHorizontalAxis(
             });
             lastHeight += height - 1;
         } catch (error) {
-            console.log(error);
+            logger.error(error);
         }
     }
     return monitorsToImagesPairsArray;
@@ -476,7 +480,7 @@ export async function setImageAcrossMonitors(
     notifyImageSet(image.name, imageFilePath);
 }
 export async function duplicateImageAcrossMonitors(
-    image: rendererImage | imageSelectType,
+    image: Image,
     monitors: Monitor[],
     showAnimations: boolean
 ) {
@@ -519,5 +523,69 @@ async function runExternalScripts(imageFilePath: string) {
                 "There was an error running your script, run with --logs flag to debug"
             );
         }
+    }
+}
+async function setImage(
+    image: imageSelectType | rendererImage,
+    activeMonitor: ActiveMonitor,
+    showAnimations: boolean
+) {
+    if (activeMonitor.extendAcrossMonitors) {
+        await setImageAcrossMonitors(
+            image,
+            activeMonitor.monitors,
+            showAnimations
+        );
+    } else {
+        await duplicateImageAcrossMonitors(
+            image,
+            activeMonitor.monitors,
+            showAnimations
+        );
+    }
+    dbOperations.addImageToHistory({ image, activeMonitor });
+}
+
+export async function tryToSetImage(
+    image: imageSelectType | rendererImage,
+    activeMonitor: ActiveMonitor,
+    showAnimations: boolean
+) {
+    let retries = 0;
+    let isLogged = false;
+    while (retries < 3) {
+        try {
+            await setImage(image, activeMonitor, showAnimations);
+            break;
+        } catch (error) {
+            retries++;
+            if (isLogged) return;
+            isLogged = true;
+            logger.error(error);
+            initSwwwDaemon();
+        }
+    }
+}
+
+export async function restoreLastWallpaper() {
+    try {
+        const history = dbOperations.getImageHistory();
+        if (history.length <= 0) return;
+        const activePlaylists = dbOperations.getActivePlaylists();
+        const isDaemonRunning = isWaypaperDaemonRunning();
+        for (let i = 0; i < activePlaylists.length; i++) {
+            const currentPlaylist = activePlaylists[i];
+            if (
+                !isDaemonRunning &&
+                (currentPlaylist.Playlists.type === "timeofday" ||
+                    currentPlaylist.Playlists.type === "dayofweek")
+            )
+                return;
+        }
+        const image = history[0];
+        initSwwwDaemon();
+        await tryToSetImage(image.Images, image.imageHistory.monitor, true);
+    } catch (error) {
+        logger.error(error);
     }
 }

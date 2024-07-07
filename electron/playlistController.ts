@@ -1,9 +1,10 @@
-import { EventEmitter } from 'events';
-import { createConnection } from 'net';
-import { configuration } from '../globals/config';
-import { ACTIONS, type message } from '../types/types';
-import { type ActiveMonitor } from '../shared/types/monitor';
-import { initWaypaperDaemon } from '../globals/startDaemons';
+import { EventEmitter } from "events";
+import { createConnection } from "net";
+import { configuration } from "../globals/config";
+import { ACTIONS, type message } from "../types/types";
+import { type ActiveMonitor } from "../shared/types/monitor";
+import { initWaypaperDaemon } from "../globals/startDaemons";
+import { logger } from "../globals/setup";
 const WAYPAPER_ENGINE_DAEMON_SOCKET_PATH =
     configuration.directories.WAYPAPER_ENGINE_DAEMON_SOCKET_PATH;
 export class PlaylistController extends EventEmitter {
@@ -17,9 +18,9 @@ export class PlaylistController extends EventEmitter {
 
     async #sendData(data: message) {
         const connection = createConnection(WAYPAPER_ENGINE_DAEMON_SOCKET_PATH);
-        connection.on('connect', () => {
+        connection.on("connect", () => {
             try {
-                connection.write(JSON.stringify(data) + '\n', e => {
+                connection.write(JSON.stringify(data) + "\n", e => {
                     // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
                     if (e) {
                         logger.error(e);
@@ -32,15 +33,15 @@ export class PlaylistController extends EventEmitter {
                 logger.error(error);
             }
         });
-        connection.on('data', _ => {
+        connection.on("data", _ => {
             try {
                 if (this.createTray !== undefined) void this.createTray();
             } catch (e) {
                 logger.error(e);
             }
         });
-        connection.on('error', () => {
-            if (this.retries > 3) throw new Error('Could not restart daemon');
+        connection.on("error", () => {
+            if (this.retries > 3) throw new Error("Could not restart daemon");
             this.retries++;
             void initWaypaperDaemon().then(() => {
                 void this.#sendData(data);

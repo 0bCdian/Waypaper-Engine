@@ -1,15 +1,11 @@
 import { DBOperations } from "../database/dbOperations";
 import { notify } from "../utils/notifications";
-import {
-    setImageAcrossMonitors,
-    duplicateImageAcrossMonitors
-} from "../utils/imageOperations";
+import { tryToSetImage } from "../utils/imageOperations";
 import {
     PLAYLIST_TYPES,
     type PLAYLIST_TYPES_TYPE
 } from "../shared/types/playlist";
 import { EventEmitter } from "node:events";
-import { initSwwwDaemon } from "../globals/startDaemons";
 import { type rendererImage } from "../src/types/rendererTypes";
 import { type ActiveMonitor } from "../shared/types/monitor";
 import { ACTIONS, type message } from "../types/types";
@@ -65,42 +61,14 @@ export class Playlist extends EventEmitter {
     }
 
     async setImage(image: rendererImage) {
-        let retries = 0;
-        let success = false;
-        while (retries < 3) {
-            try {
-                if (this.activeMonitor.extendAcrossMonitors) {
-                    await setImageAcrossMonitors(
-                        image,
-                        this.activeMonitor.monitors,
-                        this.showAnimations
-                    );
-                } else {
-                    await duplicateImageAcrossMonitors(
-                        image,
-                        this.activeMonitor.monitors,
-                        this.showAnimations
-                    );
-                }
-                success = true;
-                break;
-            } catch (error) {
-                logger.error(error);
-                initSwwwDaemon();
-                retries++;
-            }
-        }
-        if (success) {
-            this.dbOperations.addImageToHistory({
-                image,
-                activeMonitor: this.activeMonitor
-            });
+        try {
+            await tryToSetImage(image, this.activeMonitor, this.showAnimations);
             const message: message = {
                 action: ACTIONS.SET_IMAGE,
                 image
             };
             this.emit(ACTIONS.SET_IMAGE, message);
-        } else {
+        } catch (error) {
             logger.error(
                 "Could not set image, run with --logs to see the problem"
             );
@@ -155,10 +123,7 @@ export class Playlist extends EventEmitter {
         }
     }
 
-    stop() {
-        this.dbOperations.removeActivePlaylist({
-            activeMonitorName: this.activeMonitor.name
-        });
+    stop(sendMessage = true) {
         const currentPlaylist: { name: string; activeMonitor: ActiveMonitor } =
             {
                 name: this.name,
@@ -176,16 +141,20 @@ export class Playlist extends EventEmitter {
             action: ACTIONS.STOP_PLAYLIST,
             playlist: currentPlaylist
         };
+        this.dbOperations.removeActivePlaylist({
+            activeMonitorName: this.activeMonitor.name
+        });
         this.playlistTimer.timeoutID = undefined;
         this.playlistTimer.executionTimeStamp = undefined;
         this.eventCheckerTimeout = undefined;
+        if (!sendMessage) return;
         this.emit(ACTIONS.STOP_PLAYLIST, message);
     }
 
     resetInterval() {
         clearTimeout(this.playlistTimer.timeoutID);
         this.playlistTimer.timeoutID = undefined;
-        void this.timedPlaylist(true);
+        void this.timedPlaylist();
     }
 
     async nextImage() {
@@ -242,14 +211,14 @@ export class Playlist extends EventEmitter {
         }
     }
 
-    start() {
+    start(firstPlay = true) {
         try {
             switch (this.currentType) {
                 case PLAYLIST_TYPES.TIMER:
-                    void this.timedPlaylist();
+                    void this.timedPlaylist(firstPlay);
                     break;
                 case PLAYLIST_TYPES.NEVER:
-                    void this.neverPlaylist();
+                    void this.neverPlaylist(firstPlay);
                     break;
                 case PLAYLIST_TYPES.TIME_OF_DAY:
                     void this.timeOfDayPlaylist().then(() => {
@@ -290,7 +259,7 @@ export class Playlist extends EventEmitter {
             this.emit(ACTIONS.ERROR, this.activeMonitor.name);
             return;
         }
-        this.stop();
+        this.stop(false);
         const {
             name,
             interval,
@@ -331,9 +300,9 @@ export class Playlist extends EventEmitter {
         }
     }
 
-    async timedPlaylist(resume?: boolean) {
+    async timedPlaylist(firstPlay = false) {
         if (this.interval !== null) {
-            if (!(resume ?? false)) {
+            if (firstPlay) {
                 await this.setImage(this.images[this.currentImageIndex]);
             }
             this.playlistTimer.executionTimeStamp = this.interval + Date.now();
@@ -353,7 +322,8 @@ export class Playlist extends EventEmitter {
         }
     }
 
-    async neverPlaylist() {
+    async neverPlaylist(firstPlay = false) {
+        if (!firstPlay) return;
         await this.setImage(this.images[this.currentImageIndex]);
     }
 

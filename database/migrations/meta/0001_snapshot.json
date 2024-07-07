@@ -1,359 +1,337 @@
 {
-  "version": "5",
-  "dialect": "sqlite",
-  "id": "dcc04f51-6328-442b-a8d6-b1cb877f4c90",
-  "prevId": "00000000-0000-0000-0000-000000000000",
-  "tables": {
-    "activePlaylists": {
-      "name": "activePlaylists",
-      "columns": {
-        "playlistID": {
-          "name": "playlistID",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
+    "version": "5",
+    "dialect": "sqlite",
+    "id": "dcc04f51-6328-442b-a8d6-b1cb877f4c90",
+    "prevId": "00000000-0000-0000-0000-000000000000",
+    "tables": {
+        "activePlaylists": {
+            "name": "activePlaylists",
+            "columns": {
+                "playlistID": {
+                    "name": "playlistID",
+                    "type": "integer",
+                    "primaryKey": false,
+                    "notNull": true,
+                    "autoincrement": false
+                },
+                "monitor": {
+                    "name": "monitor",
+                    "type": "text",
+                    "primaryKey": false,
+                    "notNull": true,
+                    "autoincrement": false,
+                    "default": "'clone'"
+                }
+            },
+            "indexes": {},
+            "foreignKeys": {
+                "activePlaylists_playlistID_Playlists_id_fk": {
+                    "name": "activePlaylists_playlistID_Playlists_id_fk",
+                    "tableFrom": "activePlaylists",
+                    "tableTo": "Playlists",
+                    "columnsFrom": ["playlistID"],
+                    "columnsTo": ["id"],
+                    "onDelete": "no action",
+                    "onUpdate": "no action"
+                }
+            },
+            "compositePrimaryKeys": {},
+            "uniqueConstraints": {}
         },
-        "monitor": {
-          "name": "monitor",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": "'clone'"
+        "appConfig": {
+            "name": "appConfig",
+            "columns": {
+                "config": {
+                    "name": "config",
+                    "type": "text",
+                    "primaryKey": false,
+                    "notNull": true,
+                    "autoincrement": false,
+                    "default": {
+                        "killDaemon": false,
+                        "playlistStartOnFirstImage": false,
+                        "notifications": true,
+                        "swwwAnimations": true,
+                        "introAnimation": true,
+                        "startMinimized": false,
+                        "minimizeInsteadOfClose": false,
+                        "randomImageMonitor": "clone"
+                    }
+                }
+            },
+            "indexes": {},
+            "foreignKeys": {},
+            "compositePrimaryKeys": {},
+            "uniqueConstraints": {}
+        },
+        "Images": {
+            "name": "Images",
+            "columns": {
+                "id": {
+                    "name": "id",
+                    "type": "integer",
+                    "primaryKey": true,
+                    "notNull": true,
+                    "autoincrement": true
+                },
+                "name": {
+                    "name": "name",
+                    "type": "text",
+                    "primaryKey": false,
+                    "notNull": true,
+                    "autoincrement": false
+                },
+                "isChecked": {
+                    "name": "isChecked",
+                    "type": "integer",
+                    "primaryKey": false,
+                    "notNull": true,
+                    "autoincrement": false,
+                    "default": false
+                },
+                "isSelected": {
+                    "name": "isSelected",
+                    "type": "integer",
+                    "primaryKey": false,
+                    "notNull": true,
+                    "autoincrement": false,
+                    "default": false
+                },
+                "width": {
+                    "name": "width",
+                    "type": "integer",
+                    "primaryKey": false,
+                    "notNull": true,
+                    "autoincrement": false
+                },
+                "height": {
+                    "name": "height",
+                    "type": "integer",
+                    "primaryKey": false,
+                    "notNull": true,
+                    "autoincrement": false
+                },
+                "format": {
+                    "name": "format",
+                    "type": "text",
+                    "primaryKey": false,
+                    "notNull": true,
+                    "autoincrement": false
+                }
+            },
+            "indexes": {
+                "Images_name_unique": {
+                    "name": "Images_name_unique",
+                    "columns": ["name"],
+                    "isUnique": true
+                }
+            },
+            "foreignKeys": {},
+            "compositePrimaryKeys": {},
+            "uniqueConstraints": {}
+        },
+        "imageHistory": {
+            "name": "imageHistory",
+            "columns": {
+                "imageID": {
+                    "name": "imageID",
+                    "type": "integer",
+                    "primaryKey": false,
+                    "notNull": true,
+                    "autoincrement": false
+                },
+                "monitor": {
+                    "name": "monitor",
+                    "type": "text",
+                    "primaryKey": false,
+                    "notNull": true,
+                    "autoincrement": false
+                }
+            },
+            "indexes": {},
+            "foreignKeys": {
+                "imageHistory_imageID_Images_id_fk": {
+                    "name": "imageHistory_imageID_Images_id_fk",
+                    "tableFrom": "imageHistory",
+                    "tableTo": "Images",
+                    "columnsFrom": ["imageID"],
+                    "columnsTo": ["id"],
+                    "onDelete": "cascade",
+                    "onUpdate": "no action"
+                }
+            },
+            "compositePrimaryKeys": {},
+            "uniqueConstraints": {}
+        },
+        "imagesInPlaylist": {
+            "name": "imagesInPlaylist",
+            "columns": {
+                "imageID": {
+                    "name": "imageID",
+                    "type": "integer",
+                    "primaryKey": false,
+                    "notNull": true,
+                    "autoincrement": false
+                },
+                "playlistID": {
+                    "name": "playlistID",
+                    "type": "integer",
+                    "primaryKey": false,
+                    "notNull": true,
+                    "autoincrement": false
+                },
+                "indexInPlaylist": {
+                    "name": "indexInPlaylist",
+                    "type": "integer",
+                    "primaryKey": false,
+                    "notNull": true,
+                    "autoincrement": false
+                },
+                "time": {
+                    "name": "time",
+                    "type": "integer",
+                    "primaryKey": false,
+                    "notNull": false,
+                    "autoincrement": false
+                }
+            },
+            "indexes": {
+                "imagesInPlaylist_time_unique": {
+                    "name": "imagesInPlaylist_time_unique",
+                    "columns": ["time"],
+                    "isUnique": true
+                }
+            },
+            "foreignKeys": {
+                "imagesInPlaylist_imageID_Images_id_fk": {
+                    "name": "imagesInPlaylist_imageID_Images_id_fk",
+                    "tableFrom": "imagesInPlaylist",
+                    "tableTo": "Images",
+                    "columnsFrom": ["imageID"],
+                    "columnsTo": ["id"],
+                    "onDelete": "cascade",
+                    "onUpdate": "cascade"
+                },
+                "imagesInPlaylist_playlistID_Playlists_id_fk": {
+                    "name": "imagesInPlaylist_playlistID_Playlists_id_fk",
+                    "tableFrom": "imagesInPlaylist",
+                    "tableTo": "Playlists",
+                    "columnsFrom": ["playlistID"],
+                    "columnsTo": ["id"],
+                    "onDelete": "cascade",
+                    "onUpdate": "cascade"
+                }
+            },
+            "compositePrimaryKeys": {},
+            "uniqueConstraints": {}
+        },
+        "Playlists": {
+            "name": "Playlists",
+            "columns": {
+                "id": {
+                    "name": "id",
+                    "type": "integer",
+                    "primaryKey": true,
+                    "notNull": true,
+                    "autoincrement": false
+                },
+                "name": {
+                    "name": "name",
+                    "type": "text",
+                    "primaryKey": false,
+                    "notNull": true,
+                    "autoincrement": false
+                },
+                "type": {
+                    "name": "type",
+                    "type": "text",
+                    "primaryKey": false,
+                    "notNull": true,
+                    "autoincrement": false
+                },
+                "interval": {
+                    "name": "interval",
+                    "type": "integer",
+                    "primaryKey": false,
+                    "notNull": false,
+                    "autoincrement": false
+                },
+                "showAnimations": {
+                    "name": "showAnimations",
+                    "type": "integer",
+                    "primaryKey": false,
+                    "notNull": true,
+                    "autoincrement": false,
+                    "default": true
+                },
+                "order": {
+                    "name": "order",
+                    "type": "text",
+                    "primaryKey": false,
+                    "notNull": false,
+                    "autoincrement": false
+                },
+                "currentImageIndex": {
+                    "name": "currentImageIndex",
+                    "type": "integer",
+                    "primaryKey": false,
+                    "notNull": true,
+                    "autoincrement": false,
+                    "default": 0
+                }
+            },
+            "indexes": {
+                "Playlists_name_unique": {
+                    "name": "Playlists_name_unique",
+                    "columns": ["name"],
+                    "isUnique": true
+                }
+            },
+            "foreignKeys": {},
+            "compositePrimaryKeys": {},
+            "uniqueConstraints": {}
+        },
+        "swwwConfig": {
+            "name": "swwwConfig",
+            "columns": {
+                "config": {
+                    "name": "config",
+                    "type": "text",
+                    "primaryKey": false,
+                    "notNull": true,
+                    "autoincrement": false,
+                    "default": {
+                        "resizeType": "crop",
+                        "fillColor": "#000000",
+                        "filterType": "Lanczos3",
+                        "transitionType": "simple",
+                        "transitionStep": 90,
+                        "transitionDuration": 3,
+                        "transitionFPS": 60,
+                        "transitionAngle": 45,
+                        "transitionPositionType": "alias",
+                        "transitionPosition": "center",
+                        "transitionPositionIntX": 960,
+                        "transitionPositionIntY": 540,
+                        "transitionPositionFloatX": 0.5,
+                        "transitionPositionFloatY": 0.5,
+                        "invertY": false,
+                        "transitionBezier": ".25,.1,.25,1",
+                        "transitionWaveX": 20,
+                        "transitionWaveY": 20
+                    }
+                }
+            },
+            "indexes": {},
+            "foreignKeys": {},
+            "compositePrimaryKeys": {},
+            "uniqueConstraints": {}
         }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "activePlaylists_playlistID_Playlists_id_fk": {
-          "name": "activePlaylists_playlistID_Playlists_id_fk",
-          "tableFrom": "activePlaylists",
-          "tableTo": "Playlists",
-          "columnsFrom": [
-            "playlistID"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
     },
-    "appConfig": {
-      "name": "appConfig",
-      "columns": {
-        "config": {
-          "name": "config",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": {
-            "killDaemon": false,
-            "playlistStartOnFirstImage": false,
-            "notifications": true,
-            "swwwAnimations": true,
-            "introAnimation": true,
-            "startMinimized": false,
-            "minimizeInsteadOfClose": false,
-            "randomImageMonitor": "clone"
-          }
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
-    "Images": {
-      "name": "Images",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "isChecked": {
-          "name": "isChecked",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": false
-        },
-        "isSelected": {
-          "name": "isSelected",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": false
-        },
-        "width": {
-          "name": "width",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "height": {
-          "name": "height",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "format": {
-          "name": "format",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "Images_name_unique": {
-          "name": "Images_name_unique",
-          "columns": [
-            "name"
-          ],
-          "isUnique": true
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
-    "imageHistory": {
-      "name": "imageHistory",
-      "columns": {
-        "imageID": {
-          "name": "imageID",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "monitor": {
-          "name": "monitor",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "imageHistory_imageID_Images_id_fk": {
-          "name": "imageHistory_imageID_Images_id_fk",
-          "tableFrom": "imageHistory",
-          "tableTo": "Images",
-          "columnsFrom": [
-            "imageID"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
-    "imagesInPlaylist": {
-      "name": "imagesInPlaylist",
-      "columns": {
-        "imageID": {
-          "name": "imageID",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "playlistID": {
-          "name": "playlistID",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "indexInPlaylist": {
-          "name": "indexInPlaylist",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "time": {
-          "name": "time",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        }
-      },
-      "indexes": {
-        "imagesInPlaylist_time_unique": {
-          "name": "imagesInPlaylist_time_unique",
-          "columns": [
-            "time"
-          ],
-          "isUnique": true
-        }
-      },
-      "foreignKeys": {
-        "imagesInPlaylist_imageID_Images_id_fk": {
-          "name": "imagesInPlaylist_imageID_Images_id_fk",
-          "tableFrom": "imagesInPlaylist",
-          "tableTo": "Images",
-          "columnsFrom": [
-            "imageID"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "cascade"
-        },
-        "imagesInPlaylist_playlistID_Playlists_id_fk": {
-          "name": "imagesInPlaylist_playlistID_Playlists_id_fk",
-          "tableFrom": "imagesInPlaylist",
-          "tableTo": "Playlists",
-          "columnsFrom": [
-            "playlistID"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "cascade",
-          "onUpdate": "cascade"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
-    "Playlists": {
-      "name": "Playlists",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "integer",
-          "primaryKey": true,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "type": {
-          "name": "type",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false
-        },
-        "interval": {
-          "name": "interval",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "showAnimations": {
-          "name": "showAnimations",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": true
-        },
-        "order": {
-          "name": "order",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false,
-          "autoincrement": false
-        },
-        "currentImageIndex": {
-          "name": "currentImageIndex",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": 0
-        }
-      },
-      "indexes": {
-        "Playlists_name_unique": {
-          "name": "Playlists_name_unique",
-          "columns": [
-            "name"
-          ],
-          "isUnique": true
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
-    },
-    "swwwConfig": {
-      "name": "swwwConfig",
-      "columns": {
-        "config": {
-          "name": "config",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "autoincrement": false,
-          "default": {
-            "resizeType": "crop",
-            "fillColor": "#000000",
-            "filterType": "Lanczos3",
-            "transitionType": "simple",
-            "transitionStep": 90,
-            "transitionDuration": 3,
-            "transitionFPS": 60,
-            "transitionAngle": 45,
-            "transitionPositionType": "alias",
-            "transitionPosition": "center",
-            "transitionPositionIntX": 960,
-            "transitionPositionIntY": 540,
-            "transitionPositionFloatX": 0.5,
-            "transitionPositionFloatY": 0.5,
-            "invertY": false,
-            "transitionBezier": ".25,.1,.25,1",
-            "transitionWaveX": 20,
-            "transitionWaveY": 20
-          }
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {}
+    "enums": {},
+    "_meta": {
+        "schemas": {},
+        "tables": {},
+        "columns": {}
     }
-  },
-  "enums": {},
-  "_meta": {
-    "schemas": {},
-    "tables": {},
-    "columns": {}
-  }
 }

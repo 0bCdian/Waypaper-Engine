@@ -1,11 +1,12 @@
 import { execSync, spawn } from "child_process";
-import { promisify } from "util";
 import { daemonPath, logger } from "./setup";
 import { configuration } from "../globals/config";
 import { createConnection, createServer } from "node:net";
 import { type message } from "../types/types";
 import { unlinkSync, writeFileSync } from "node:fs";
 import EventEmitter from "node:events";
+import { existsSync } from "fs";
+import { promisify } from "node:util";
 
 const setTimeoutPromise = promisify(setTimeout);
 function checkIfSwwwIsInstalled() {
@@ -20,28 +21,36 @@ function checkIfSwwwIsInstalled() {
         throw new Error("swww is not installed");
     }
 }
+export function isSwwwRunning() {
+    try {
+        execSync('ps -A | grep "swww-daemon"');
+        return true;
+    } catch (e) {
+        return false;
+    }
+}
 
 export function initSwwwDaemon() {
     checkIfSwwwIsInstalled();
     try {
-        if (configuration.format) {
-            execSync("killall swww-daemon");
+        if (configuration.format && isSwwwRunning()) {
+            execSync("swww kill");
         }
-        execSync('ps -A | grep "swww-daemon"');
-    } catch (error) {
-        const command = `swww-daemon ${configuration.format ? "--format xrgb" : ""} &`;
+        const command = `swww-daemon --no-cache ${configuration.format ? "--format xrgb" : ""} &`;
         const output = spawn(command, {
             stdio: "ignore",
             shell: true,
             detached: true
         });
         output.unref();
+    } catch (error) {
+        logger.error(error);
     }
 }
 export function isWaypaperDaemonRunning() {
     try {
-        execSync("pidof wpe-daemon");
-        return true;
+        execSync(`pidof ${configuration.DAEMON_PID}`);
+        return existsSync(configuration.directories.DAEMON_LOCK_FILE);
     } catch (_err) {
         return false;
     }
@@ -67,43 +76,39 @@ export function releaseLock() {
     } catch (err) {
         // @ts-expect-error .code does exists
         if (err instanceof Error && err.code !== "ENOENT") {
-            console.error("Error releasing lock:", err);
+            logger.error("Error releasing lock:", err);
         }
     }
 }
 
 export async function initWaypaperDaemon() {
-    if (!isWaypaperDaemonRunning()) {
-        try {
-            const args = [`${daemonPath}/daemon.js`];
-            if (configuration.format) {
-                args.push(`--format`);
-            }
-            if (configuration.logs) {
-                args.push(`--logs`);
-            }
-            const output = spawn("PROCESS=daemon node", args, {
-                stdio: "ignore",
-                shell: true,
-                detached: true,
-                env: { ...process.env }
-            });
-            output.unref();
-            await testConnection();
-        } catch (error) {
-            logger.error(error);
-            logger.warn("Could not start wpe-daemon, shutting down app...");
-            process.exit(1);
+    try {
+        const args = [`${daemonPath}/daemon.js`];
+        if (configuration.format) {
+            args.push(`--format`);
         }
+        if (configuration.logs) {
+            args.push(`--logs`);
+        }
+        const output = spawn("PROCESS=daemon node", args, {
+            stdio: "ignore",
+            shell: true,
+            detached: true,
+            env: { ...process.env }
+        });
+        output.unref();
+        await testConnection();
+    } catch (error) {
+        logger.error(error);
+        logger.warn("Could not start waypaper-daemon, shutting down app...");
+        process.exit(1);
     }
 }
-
 async function testConnection() {
     const SOCKET_PATH =
         configuration.directories.WAYPAPER_ENGINE_DAEMON_SOCKET_PATH;
     const MAX_ATTEMPTS = 10;
-    const RETRY_INTERVAL = 300; // 300 milliseconds
-
+    const RETRY_INTERVAL = 300;
     let attempt = 1;
     while (attempt <= MAX_ATTEMPTS) {
         try {
@@ -122,12 +127,10 @@ async function connectToDaemon(socketPath: string) {
     return await new Promise((resolve, reject) => {
         try {
             const client = createConnection(socketPath, () => {
-                // Connection successful
-                client.end(); // Close the connection
+                client.end();
                 resolve("");
             });
             client.on("error", err => {
-                // Connection failed
                 reject(err);
             });
         } catch (error) {
