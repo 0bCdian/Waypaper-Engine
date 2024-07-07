@@ -163,6 +163,7 @@ app.whenReady()
         const server = createMainServer();
         registerAppServerListeners(server);
         await initWaypaperDaemon();
+        await restoreLastWallpaper();
         createAppDirsIfNotExist();
         await remakeThumbnailsIfImagesExist();
         playlistControllerInstance = new PlaylistController(createTray);
