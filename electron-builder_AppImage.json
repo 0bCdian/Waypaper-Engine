@@ -1,0 +1,43 @@
+{
+    "$schema": "https://raw.githubusercontent.com/electron-userland/electron-builder/master/packages/app-builder-lib/scheme.json",
+    "appId": "waypaper.engine",
+    "asar": false,
+    "npmRebuild": true,
+    "directories": {
+        "output": "release"
+    },
+    "files": ["dist-electron", "dist"],
+    "extraFiles": [
+        {
+            "from": "build/icons/",
+            "to": "resources/icons/",
+            "filter": ["**/*"]
+        },
+        {
+            "from": "daemon",
+            "to": "resources/daemon"
+        },
+        {
+            "from": "node_modules/better-sqlite3/build/Release/better_sqlite3.node",
+            "to": "resources/better_sqlite3.node"
+        },
+        {
+            "from": "database/migrations",
+            "to": "resources/migrations"
+        }
+    ],
+    "linux": {
+        "artifactName": "${productName}.${ext}",
+        "category": "Utility",
+        "target": ["appImage"],
+        "executableName": "waypaper-engine-bin",
+        "description": "A graphical frontend for setting wallpapers and playlists, using swww under the hood!",
+        "desktop": {
+            "Name": "Waypaper Engine",
+            "Comment": "Waypaper Engine",
+            "Terminal": "false",
+            "Type": "Application",
+            "Icon": "/build/icons/512x512.png"
+        }
+    }
+}

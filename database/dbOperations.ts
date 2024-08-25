@@ -206,6 +206,7 @@ export class DBOperations extends EventEmitter {
                 eq(tables.imageHistory.imageID, tables.image.id)
             )
             .orderBy(desc(tables.imageHistory.time))
+            .limit(10)
             .all();
     }
 
