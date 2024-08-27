@@ -1,8 +1,8 @@
-import Gallery from '../components/Gallery';
-import { useAppConfigStore } from '../stores/appConfig';
-import Modals from '../components/Modals';
-import { useEffect } from 'react';
-import { IPC_MAIN_EVENTS } from '../../shared/constants';
+import Gallery from "../components/Gallery";
+import { useAppConfigStore } from "../stores/appConfig";
+import Modals from "../components/Modals";
+import { useEffect } from "react";
+import { IPC_MAIN_EVENTS } from "../../shared/constants";
 let firstRender = true;
 const { registerListener } = window.API_RENDERER;
 const Home = () => {

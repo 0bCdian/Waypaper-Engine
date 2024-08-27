@@ -1,6 +1,6 @@
-import { type Monitor } from './types/monitor';
+import { type Monitor } from "./types/monitor";
 
-export type openFileAction = 'file' | 'folder';
+export type openFileAction = "file" | "folder";
 
 export interface imagesObject {
     imagePaths: string[];

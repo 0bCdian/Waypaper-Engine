@@ -1,5 +1,5 @@
-import { useCallback } from 'react';
-import { useAppConfigStore } from '../stores/appConfig';
+import { useCallback } from "react";
+import { useAppConfigStore } from "../stores/appConfig";
 const { readAppConfig } = window.API_RENDERER;
 
 export function useLoadAppConfig() {

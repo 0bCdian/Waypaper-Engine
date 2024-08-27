@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { imagesStore } from '../stores/images';
-import { type rendererImage } from '../types/rendererTypes';
-import { useHotkeys } from 'react-hotkeys-hook';
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { imagesStore } from "../stores/images";
+import { type rendererImage } from "../types/rendererTypes";
+import { useHotkeys } from "react-hotkeys-hook";
 export function useFilteredImages() {
     // The default order is descending, the images come in sorted from the database by ID in descending order.
     // So we must respect that order in the ordering of names
@@ -26,10 +26,10 @@ export function useFilteredImages() {
         }
         setSelectedImages(new Set<number>());
     }, [filteredImages]);
-    useHotkeys('ctrl+shift+a', selectAllImages);
-    useHotkeys('escape', clearSelection);
+    useHotkeys("ctrl+shift+a", selectAllImages);
+    useHotkeys("escape", clearSelection);
     const sortedImages = useMemo(() => {
-        if (filters.type === 'id') return [...imagesArray];
+        if (filters.type === "id") return [...imagesArray];
         const shallowCopy = [...imagesArray];
         shallowCopy.sort((a, b) => b.name.localeCompare(a.name));
         return shallowCopy;
@@ -38,13 +38,13 @@ export function useFilteredImages() {
     useEffect(() => {
         // this is done on purpose to prevent as much iterations of sortedImages as possible
         const dontFilterByResolution =
-            filters.advancedFilters.resolution.constraint === 'all' ||
+            filters.advancedFilters.resolution.constraint === "all" ||
             filters.advancedFilters.resolution.width +
                 filters.advancedFilters.resolution.height ===
                 0;
         const dontFilterByFormat =
             filters.advancedFilters.formats.length === 10;
-        const dontFilterByName = filters.searchString === '';
+        const dontFilterByName = filters.searchString === "";
         const imagesfilteredByResolution: rendererImage[] =
             dontFilterByResolution
                 ? sortedImages
@@ -54,17 +54,17 @@ export function useFilteredImages() {
                       const heightToFilter =
                           filters.advancedFilters.resolution.height;
                       switch (filters.advancedFilters.resolution.constraint) {
-                          case 'exact':
+                          case "exact":
                               return (
                                   image.width === widthToFilter &&
                                   image.height === heightToFilter
                               );
-                          case 'lessThan':
+                          case "lessThan":
                               return (
                                   image.width <= widthToFilter &&
                                   image.height <= heightToFilter
                               );
-                          case 'moreThan':
+                          case "moreThan":
                               return (
                                   image.width >= widthToFilter &&
                                   image.height >= heightToFilter

@@ -1,13 +1,13 @@
-import { useForm, type SubmitHandler } from 'react-hook-form';
-import { useRef, useEffect, useState } from 'react';
-import { playlistStore } from '../stores/playlist';
+import { useForm, type SubmitHandler } from "react-hook-form";
+import { useRef, useEffect, useState } from "react";
+import { playlistStore } from "../stores/playlist";
 import {
     type PLAYLIST_TYPES_TYPE,
     type PLAYLIST_ORDER_TYPES,
     PLAYLIST_TYPES,
     PLAYLIST_ORDER
-} from '../../shared/types/playlist';
-import { toMS, toHoursAndMinutes } from '../utils/utilities';
+} from "../../shared/types/playlist";
+import { toMS, toHoursAndMinutes } from "../utils/utilities";
 interface Inputs {
     type: PLAYLIST_TYPES_TYPE;
     order: PLAYLIST_ORDER_TYPES | null;
@@ -26,12 +26,12 @@ const PlaylistConfigurationModal = () => {
         containerRef.current?.close();
     };
     const classNameDisabled =
-        playlist.images.length > 7 ? 'bg-red-900 text-stone-100' : '';
+        playlist.images.length > 7 ? "bg-red-900 text-stone-100" : "";
     const onSubmit: SubmitHandler<Inputs> = data => {
         switch (data.type) {
-            case 'timer':
+            case "timer":
                 if (data.hours === null || data.minutes === null) {
-                    logger.error('Hours and minutes are required');
+                    logger.error("Hours and minutes are required");
                 } else {
                     const interval = toMS(
                         parseInt(data.hours),
@@ -47,7 +47,7 @@ const PlaylistConfigurationModal = () => {
                     setConfiguration(configuration);
                 }
                 break;
-            case 'timeofday':
+            case "timeofday":
                 setConfiguration({
                     type: data.type,
                     order: null,
@@ -56,7 +56,7 @@ const PlaylistConfigurationModal = () => {
                     alwaysStartOnFirstImage: false
                 });
                 break;
-            case 'dayofweek':
+            case "dayofweek":
                 if (playlist.images.length > 7) {
                     setShowError(prevState => !prevState);
                     setTimeout(() => {
@@ -72,7 +72,7 @@ const PlaylistConfigurationModal = () => {
                     alwaysStartOnFirstImage: false
                 });
                 break;
-            case 'never':
+            case "never":
                 setConfiguration({
                     type: data.type,
                     order: data.order,
@@ -82,36 +82,36 @@ const PlaylistConfigurationModal = () => {
                 });
                 break;
             default:
-                logger.error('Invalid playlist type');
+                logger.error("Invalid playlist type");
         }
         closeModal();
     };
-    const hours = watch('hours');
-    const minutes = watch('minutes');
+    const hours = watch("hours");
+    const minutes = watch("minutes");
     useEffect(() => {
         if (hours === null || minutes === null) return;
         const parsedHours = parseInt(hours);
         const parsedMinutes = parseInt(minutes);
         if (parsedMinutes === 60) {
-            setValue('hours', (parsedHours + 1).toString());
-            setValue('minutes', '0');
+            setValue("hours", (parsedHours + 1).toString());
+            setValue("minutes", "0");
         }
         if (parsedMinutes === 0 && parsedHours === 0) {
-            setValue('minutes', '1');
+            setValue("minutes", "1");
         }
     }, [hours, minutes]);
     useEffect(() => {
         const interval = playlist.configuration.interval;
         if (interval !== null) {
             const { hours, minutes } = toHoursAndMinutes(interval);
-            setValue('hours', hours.toString());
-            setValue('minutes', minutes.toString());
+            setValue("hours", hours.toString());
+            setValue("minutes", minutes.toString());
         }
-        setValue('type', playlist.configuration.type);
-        setValue('order', playlist.configuration.order);
-        setValue('showTransition', playlist.configuration.showAnimations);
+        setValue("type", playlist.configuration.type);
+        setValue("order", playlist.configuration.order);
+        setValue("showTransition", playlist.configuration.showAnimations);
         setValue(
-            'alwaysStartOnFirstImage',
+            "alwaysStartOnFirstImage",
             playlist.configuration.alwaysStartOnFirstImage
         );
     }, [playlist]);
@@ -123,19 +123,19 @@ const PlaylistConfigurationModal = () => {
             draggable={false}
         >
             <form
-                className="modal-box form-control rounded-xl"
+                className="form-control modal-box rounded-xl"
                 onSubmit={e => {
                     void handleSubmit(onSubmit)(e);
                 }}
             >
-                <h2 className="font-bold text-4xl text-center select-none">
+                <h2 className="select-none text-center text-4xl font-bold">
                     Playlist Settings
                 </h2>
                 {showError && (
                     <div className="alert alert-error mt-5">
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            className="stroke-current shrink-0 h-6 w-6"
+                            className="h-6 w-6 shrink-0 stroke-current"
                             fill="none"
                             viewBox="0 0 24 24"
                         >
@@ -152,18 +152,18 @@ const PlaylistConfigurationModal = () => {
                     </div>
                 )}
                 <div className="divider"></div>
-                <div className="flex justify-between items-baseline">
+                <div className="flex items-baseline justify-between">
                     <label
                         htmlFor="type"
-                        className="label text-3xl font-semibold shrink"
+                        className="label shrink text-3xl font-semibold"
                     >
                         Change wallpaper
                     </label>
                     <select
                         id="type"
-                        className="select select-bordered  text-lg w-2/5 rounded-lg cursor-default"
-                        defaultValue={'timer'}
-                        {...register('type', { required: true })}
+                        className="select select-bordered w-2/5 cursor-default rounded-lg text-lg"
+                        defaultValue={"timer"}
+                        {...register("type", { required: true })}
                     >
                         <option value={PLAYLIST_TYPES.TIMER}>On a timer</option>
                         <option value={PLAYLIST_TYPES.TIME_OF_DAY}>
@@ -179,9 +179,9 @@ const PlaylistConfigurationModal = () => {
                         <option value={PLAYLIST_TYPES.NEVER}>Never</option>
                     </select>
                 </div>
-                {watch('type') === PLAYLIST_TYPES.TIMER && (
-                    <div className="flex justify-end items-baseline gap-1">
-                        <div className="flex flex-col w-1/5 ">
+                {watch("type") === PLAYLIST_TYPES.TIMER && (
+                    <div className="flex items-baseline justify-end gap-1">
+                        <div className="flex w-1/5 flex-col">
                             <label
                                 htmlFor="hours"
                                 className="label text-lg font-medium"
@@ -193,16 +193,16 @@ const PlaylistConfigurationModal = () => {
                                 min="0"
                                 defaultValue={1}
                                 type="number"
-                                {...register('hours', {
+                                {...register("hours", {
                                     required: true,
                                     min: 0
                                 })}
-                                className="input input-bordered input-sm focus:outline-none text-lg font-medium rounded-lg select-none"
+                                className="input input-sm input-bordered select-none rounded-lg text-lg font-medium focus:outline-none"
                             />
                         </div>
-                        <div className="flex flex-col w-1/5">
+                        <div className="flex w-1/5 flex-col">
                             <label
-                                className="label text-lg font-medium rounded-lg"
+                                className="label rounded-lg text-lg font-medium"
                                 htmlFor="minutes"
                             >
                                 Minutes
@@ -214,19 +214,19 @@ const PlaylistConfigurationModal = () => {
                                 max="60"
                                 type="number"
                                 step={1}
-                                {...register('minutes', {
+                                {...register("minutes", {
                                     required: true
                                 })}
-                                className="input input-bordered input-sm  rounded-lg focus:outline-none text-lg font-medium select-none"
+                                className="input input-sm input-bordered select-none rounded-lg text-lg font-medium focus:outline-none"
                             />
                         </div>
                     </div>
                 )}
-                {watch('type') !== PLAYLIST_TYPES.TIME_OF_DAY &&
-                    watch('type') !== PLAYLIST_TYPES.DAY_OF_WEEK && (
+                {watch("type") !== PLAYLIST_TYPES.TIME_OF_DAY &&
+                    watch("type") !== PLAYLIST_TYPES.DAY_OF_WEEK && (
                         <>
                             <div className="divider"></div>
-                            <div className="flex justify-between items-baseline ">
+                            <div className="flex items-baseline justify-between">
                                 <label
                                     htmlFor="order"
                                     className="label text-3xl font-semibold"
@@ -234,8 +234,8 @@ const PlaylistConfigurationModal = () => {
                                     Order
                                 </label>
                                 <select
-                                    className="select select-bordered text-lg w-2/5 rounded-lg cursor-default"
-                                    {...register('order', { required: true })}
+                                    className="select select-bordered w-2/5 cursor-default rounded-lg text-lg"
+                                    {...register("order", { required: true })}
                                     defaultValue={PLAYLIST_ORDER.ordered}
                                     id="order"
                                 >
@@ -250,7 +250,7 @@ const PlaylistConfigurationModal = () => {
                         </>
                     )}
                 <div className="divider"></div>
-                <div className="flex justify-between items-baseline">
+                <div className="flex items-baseline justify-between">
                     <label
                         htmlFor="showTransition"
                         className="label text-2xl font-semibold"
@@ -259,15 +259,15 @@ const PlaylistConfigurationModal = () => {
                     </label>
                     <input
                         type="checkbox"
-                        className="toggle toggle-md rounded-full cursor-default"
+                        className="toggle toggle-md cursor-default rounded-full"
                         id="showTransition"
                         defaultChecked={true}
-                        {...register('showTransition')}
+                        {...register("showTransition")}
                     />
                 </div>
-                {watch('type') !== PLAYLIST_TYPES.TIME_OF_DAY &&
-                    watch('type') !== PLAYLIST_TYPES.DAY_OF_WEEK && (
-                        <div className="flex justify-between items-baseline">
+                {watch("type") !== PLAYLIST_TYPES.TIME_OF_DAY &&
+                    watch("type") !== PLAYLIST_TYPES.DAY_OF_WEEK && (
+                        <div className="flex items-baseline justify-between">
                             <label
                                 htmlFor="alwaysStartOnFirstImage"
                                 className="label text-2xl font-semibold"
@@ -276,10 +276,10 @@ const PlaylistConfigurationModal = () => {
                             </label>
                             <input
                                 type="checkbox"
-                                className="toggle toggle-md rounded-full cursor-default"
+                                className="toggle toggle-md cursor-default rounded-full"
                                 id="alwaysStartOnFirstImage"
                                 defaultChecked={false}
-                                {...register('alwaysStartOnFirstImage')}
+                                {...register("alwaysStartOnFirstImage")}
                             />
                         </div>
                     )}
@@ -287,7 +287,7 @@ const PlaylistConfigurationModal = () => {
                 <div className="modal-action">
                     <button
                         type="submit"
-                        className="btn btn-active btn-block uppercase rounded-lg"
+                        className="btn btn-active btn-block rounded-lg uppercase"
                     >
                         Save
                     </button>

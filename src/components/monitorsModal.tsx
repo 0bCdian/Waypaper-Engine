@@ -143,8 +143,8 @@ function Monitors() {
             draggable={false}
         >
             <div className="modal-box min-w-max">
-                <div className="max-w-fit m-auto flex flex-col justify-center">
-                    <h2 className="select-none font-bold text-4xl text-center py-3">
+                <div className="m-auto flex max-w-fit flex-col justify-center">
+                    <h2 className="select-none py-3 text-center text-4xl font-bold">
                         Choose Display
                     </h2>
                     <div className="form-control">
@@ -174,7 +174,7 @@ function Monitors() {
                             </option>
                         </select>
                         <div className="divider"></div>
-                        <div style={styles} className="relative m-auto ">
+                        <div style={styles} className="relative m-auto">
                             {monitorsList.map(monitor => {
                                 return (
                                     <div
@@ -196,17 +196,17 @@ function Monitors() {
                                 );
                             })}
                         </div>
-                        <div className="divider "></div>
+                        <div className="divider"></div>
                         <span
                             data-error={error.state}
-                            className="select-none m-auto text-2xl text-center mb-4 text-error transition-all duration-300 italic opcacity-0 invisible data-[error=true]:visible data-[error=true]:opacity-100"
+                            className="opcacity-0 invisible m-auto mb-4 select-none text-center text-2xl italic text-error transition-all duration-300 data-[error=true]:visible data-[error=true]:opacity-100"
                         >
                             {error.message}
                         </span>
 
                         <button
                             onClick={onSubmit}
-                            className="btn m-auto btn-wide btn-primary rounded-md text-xl"
+                            className="btn btn-primary btn-wide m-auto rounded-md text-xl"
                         >
                             Save
                         </button>

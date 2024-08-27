@@ -1,7 +1,7 @@
-import { imagesStore } from '../stores/images';
-import { playlistStore } from '../stores/playlist';
-import { useEffect } from 'react';
-import { useShallow } from 'zustand/react/shallow';
+import { imagesStore } from "../stores/images";
+import { playlistStore } from "../stores/playlist";
+import { useEffect } from "react";
+import { useShallow } from "zustand/react/shallow";
 const { onDeleteImageFromGallery } = window.API_RENDERER;
 let firstCall = true;
 export function registerOnDelete() {

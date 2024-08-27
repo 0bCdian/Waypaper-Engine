@@ -5,16 +5,16 @@ import {
     useMemo,
     lazy,
     Suspense
-} from 'react';
-import { useFilteredImages } from './useFilteredImages';
-import { imagesStore } from '../stores/images';
-import Skeleton from '../components/Skeleton';
-import { useHotkeys } from 'react-hotkeys-hook';
-import { type rendererImage } from '../types/rendererTypes';
-import { MENU_EVENTS } from '../../shared/constants';
-import { useAppConfigStore } from '../stores/appConfig';
-import { playlistStore } from '../stores/playlist';
-const ImageCard = lazy(async () => await import('../components/ImageCard'));
+} from "react";
+import { useFilteredImages } from "./useFilteredImages";
+import { imagesStore } from "../stores/images";
+import Skeleton from "../components/Skeleton";
+import { useHotkeys } from "react-hotkeys-hook";
+import { type rendererImage } from "../types/rendererTypes";
+import { MENU_EVENTS } from "../../shared/constants";
+import { useAppConfigStore } from "../stores/appConfig";
+import { playlistStore } from "../stores/playlist";
+const ImageCard = lazy(async () => await import("../components/ImageCard"));
 const { registerListener } = window.API_RENDERER;
 export function useImagePagination() {
     const { appConfig } = useAppConfigStore();
@@ -68,7 +68,7 @@ export function useImagePagination() {
     const [imagesToShow, imagesInCurrentPage] = useMemo(() => {
         const imageCardJsxArray: JSX.Element[] = [];
         const imagesInCurrentPage: rendererImage[] = [];
-        if (filters.order === 'desc') {
+        if (filters.order === "desc") {
             for (let idx = firstImageIndex; idx < lastImageIndex; idx++) {
                 const currentImage = filteredImages[idx];
                 if (currentImage === undefined) break;
@@ -123,7 +123,7 @@ export function useImagePagination() {
         setSelectedImages(newSet);
     };
     useHotkeys(
-        'ctrl+a',
+        "ctrl+a",
         () => {
             const newSet = new Set(selectedImages);
             imagesInCurrentPage.forEach(image => {
@@ -206,7 +206,7 @@ export function useImagePagination() {
         if (imagesToShow.length === 0) {
             setCurrentPage(totalPages);
         }
-        if (filters.searchString === '') {
+        if (filters.searchString === "") {
             setCurrentPage(1);
         }
     }, [imagesPerPage, totalPages, filters]);

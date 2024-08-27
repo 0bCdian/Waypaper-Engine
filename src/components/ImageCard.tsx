@@ -1,11 +1,11 @@
-import { type ChangeEvent, useState, useEffect } from 'react';
-import { playlistStore } from '../stores/playlist';
-import { motion } from 'framer-motion';
-import { type rendererImage } from '../types/rendererTypes';
-import { imagesStore } from '../stores/images';
-import { useShallow } from 'zustand/react/shallow';
-import { isHotkeyPressed } from 'react-hotkeys-hook';
-import { useMonitorStore } from '../stores/monitors';
+import { type ChangeEvent, useState, useEffect } from "react";
+import { playlistStore } from "../stores/playlist";
+import { motion } from "framer-motion";
+import { type rendererImage } from "../types/rendererTypes";
+import { imagesStore } from "../stores/images";
+import { useShallow } from "zustand/react/shallow";
+import { isHotkeyPressed } from "react-hotkeys-hook";
+import { useMonitorStore } from "../stores/monitors";
 interface ImageCardProps {
     Image: rendererImage;
 }
@@ -38,7 +38,7 @@ function ImageCard({ Image }: ImageCardProps) {
         if (element.checked) {
             const playlist = readPlaylist();
             if (
-                playlist.configuration.type === 'dayofweek' &&
+                playlist.configuration.type === "dayofweek" &&
                 playlist.images.length === 7
             ) {
                 setIsChecked(false);
@@ -83,10 +83,10 @@ function ImageCard({ Image }: ImageCardProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             onContextMenu={handleRightClick}
-            className="duration-200 group relative rounded-lg max-w-fit my-1 overflow-hidden"
+            className="group relative my-1 max-w-fit overflow-hidden rounded-lg duration-200"
             onClick={e => {
                 e.stopPropagation();
-                if (!isHotkeyPressed('ctrl')) return;
+                if (!isHotkeyPressed("ctrl")) return;
                 setSelected(prev => {
                     Image.isSelected = !prev;
                     return !prev;
@@ -99,12 +99,12 @@ function ImageCard({ Image }: ImageCardProps) {
                     id={Image.name}
                     onChange={handleCheckboxChange}
                     type="checkbox"
-                    className="absolute opacity-0 top-2 right-2 rounded-sm group-hover:opacity-100 checked:opacity-100  z-20 checkbox checkbox-sm checkbox-success group-hover:bg-success"
+                    className="checkbox-success checkbox checkbox-sm absolute right-2 top-2 z-20 rounded-sm opacity-0 checked:opacity-100 group-hover:bg-success group-hover:opacity-100"
                 />
             </div>
             <div onDoubleClick={handleDoubleClick}>
                 <img
-                    className="rounded-lg  transform-gpu group-hover:scale-110 group-hover:object-center transition-all duration-300"
+                    className="transform-gpu rounded-lg transition-all duration-300 group-hover:scale-110 group-hover:object-center"
                     src={imageNameFilePath}
                     alt={Image.name}
                     draggable={false}
@@ -112,17 +112,17 @@ function ImageCard({ Image }: ImageCardProps) {
                     onError={({ currentTarget }) => {
                         currentTarget.onerror = null;
                         currentTarget.className =
-                            'rounded-lg min-w-full max-w-[300px] object-fill';
+                            "rounded-lg min-w-full max-w-[300px] object-fill";
                         currentTarget.src = getImageSrc(Image.name);
                     }}
                 />
-                <p className="absolute opacity-0 group-hover:opacity-100 duration-300 transition-all bottom-0 pl-2 p-2 w-full text-lg text-justify text-ellipsis overflow-hidden bg-black bg-opacity-75 font-medium truncate ">
+                <p className="absolute bottom-0 w-full overflow-hidden truncate text-ellipsis bg-black bg-opacity-75 p-2 pl-2 text-justify text-lg font-medium opacity-0 transition-all duration-300 group-hover:opacity-100">
                     {Image.name}
                 </p>
                 <div
                     data-selected={Image.isSelected}
                     id="overlay"
-                    className="absolute h-full top-0 w-full bg-blue-600 z-10 opacity-0 data-[selected=true]:opacity-45 transition-all "
+                    className="absolute top-0 z-10 h-full w-full bg-blue-600 opacity-0 transition-all data-[selected=true]:opacity-45"
                 ></div>
             </div>
         </motion.div>

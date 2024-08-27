@@ -1,6 +1,6 @@
-import { create } from 'zustand';
-import { type appConfigType } from '../../shared/types/app';
-import { initialAppConfig } from '../../shared/constants';
+import { create } from "zustand";
+import { type appConfigType } from "../../shared/types/app";
+import { initialAppConfig } from "../../shared/constants";
 const { updateAppConfig, readAppConfig } = window.API_RENDERER;
 interface State {
     appConfig: appConfigType;

@@ -35,9 +35,7 @@
 
 ![image](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/40318ad6-aa5a-42c2-98c8-63d988069407)
 
-
 https://github.com/0bCdian/Waypaper-Engine/assets/101421807/4d49225a-cbdc-42a0-af67-aac823c47f98
-
 
 ---
 
@@ -52,7 +50,8 @@ Simply install from the aur like so:
 ```bash
 yay -S waypaper-engine
 ```
-or 
+
+or
 
 ```bash
 yay -S waypaper-engine-git
@@ -61,20 +60,21 @@ yay -S waypaper-engine-git
 Both the normal and -git version conflict with each other, so make sure to delete the other with `yay -Rns package_name package_name-debug` before installing either.
 
 ## Manual installation
+
 Be advised you will need to run some of the commands with sudo privileges as you will be copying files to protected paths.
 
-1) Clone this repo `git clone git@github.com:0bCdian/Waypaper-Engine.git` or download and extract the zip file
-2) cd into Waypaper-Engine
-3) run `npm run build`
-4) cd into release `cd release`
-5) Optional: if you want to change the tray icon, change the 512x512.png image inside linux-unpacked/resources/icons
-6) Optional: copy the 512x512.png file to the icons system directory `cp linux-unpacked/resources/icons/512x512.png /usr/share/icons/hicolor/512x512/apps/waypaper-engine.png`
-7) copy the whole directory to it's final destination `sudo cp ./linux-unpacked -rt /opt/waypaper-engine`
-8) go back to root dir `cd ..`
-9) cd into cli `cd cli`
-10) copy waypaper-engine file to your $PATH or /usr/bin `sudo cp ./waypaper-engine /usr/bin` or `cp ./waypaper/engine $HOME/.local/bin` be advised, if you do not copy the cli file to /usr/bin, the path you're copying it into must be in your $PATH, read [this](https://askubuntu.com/questions/551990/what-does-path-mean) for more info
-11) go back to root `cd ..`
-12) copy the .desktop file to /usr/share/applications `sudo cp ./waypaper-engine.desktop /usr/share/applications/`
+1. Clone this repo `git clone git@github.com:0bCdian/Waypaper-Engine.git` or download and extract the zip file
+2. cd into Waypaper-Engine
+3. run `npm run build`
+4. cd into release `cd release`
+5. Optional: if you want to change the tray icon, change the 512x512.png image inside linux-unpacked/resources/icons
+6. Optional: copy the 512x512.png file to the icons system directory `cp linux-unpacked/resources/icons/512x512.png /usr/share/icons/hicolor/512x512/apps/waypaper-engine.png`
+7. copy the whole directory to it's final destination `sudo cp ./linux-unpacked -rt /opt/waypaper-engine`
+8. go back to root dir `cd ..`
+9. cd into cli `cd cli`
+10. copy waypaper-engine file to your $PATH or /usr/bin `sudo cp ./waypaper-engine /usr/bin` or `cp ./waypaper/engine $HOME/.local/bin` be advised, if you do not copy the cli file to /usr/bin, the path you're copying it into must be in your $PATH, read [this](https://askubuntu.com/questions/551990/what-does-path-mean) for more info
+11. go back to root `cd ..`
+12. copy the .desktop file to /usr/share/applications `sudo cp ./waypaper-engine.desktop /usr/share/applications/`
 
 and you're done!
 
@@ -96,7 +96,8 @@ exec-once=waypaper-engine daemon
 
 > [!WARNING]
 > Make sure the script in question has execution permissions
-Put you bash scripts in this path:
+> Put you bash scripts in this path:
+
 ```bash
 $HOME/.waypaper_engine/scripts
 ```
@@ -104,7 +105,6 @@ $HOME/.waypaper_engine/scripts
 The scripts are always passsed as an argument the path of the image being set, so you can do stuff like this:
 
 ![carbon](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/c594babf-198a-47a0-8dce-5fd8d64b862c)
-
 
 https://github.com/0bCdian/Waypaper-Engine/assets/101421807/f454a904-7fa7-4ce9-86e9-f8fbc86e8c2b
 
@@ -130,8 +130,6 @@ _If you encounter any problems or would like to make a suggestion, please feel f
 ![image](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/51e2e981-8916-475e-92cd-b33e4a9bbaa5)
 ![image](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/495d6702-7ce9-4d5b-9870-5cf0d2aa56bb)
 ![image](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/ba5993ff-ea36-4594-bc77-671c082f09c2)
-
-
 
 # Special Thanks
 

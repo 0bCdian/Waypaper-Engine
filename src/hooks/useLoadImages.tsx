@@ -1,6 +1,6 @@
-import { useCallback } from 'react';
-import { imagesStore } from '../stores/images';
-import { useShallow } from 'zustand/react/shallow';
+import { useCallback } from "react";
+import { imagesStore } from "../stores/images";
+import { useShallow } from "zustand/react/shallow";
 let firstRender = true;
 
 export function useLoadImages() {
