@@ -1,17 +1,17 @@
-import { type imagesObject } from '../../shared/types';
-import { type Formats } from '../../shared/types/image';
+import { type imagesObject } from "../../shared/types";
+import { type Formats } from "../../shared/types/image";
 import {
     type PLAYLIST_TYPES_TYPE,
     type PLAYLIST_ORDER_TYPES
-} from '../../shared/types/playlist';
-import { type imageSelectType } from '../../database/schema';
-import { type ActiveMonitor } from '../../shared/types/monitor';
+} from "../../shared/types/playlist";
+import { type imageSelectType } from "../../database/schema";
+import { type ActiveMonitor } from "../../shared/types/monitor";
 
 export enum STORE_ACTIONS {
-    SET_IMAGES_ARRAY = 'SET_IMAGES_ARRAY',
-    SET_SKELETONS_TO_SHOW = 'SET_SKELETONS_TO_SHOW',
-    SET_FILTERS = 'SET_FILTERS',
-    RESET_IMAGES_ARRAY = 'RESET_IMAGES_ARRAY'
+    SET_IMAGES_ARRAY = "SET_IMAGES_ARRAY",
+    SET_SKELETONS_TO_SHOW = "SET_SKELETONS_TO_SHOW",
+    SET_FILTERS = "SET_FILTERS",
+    RESET_IMAGES_ARRAY = "RESET_IMAGES_ARRAY"
 }
 
 export interface configuration {
@@ -31,10 +31,10 @@ export interface rendererPlaylist {
     name: string;
     activeMonitor: ActiveMonitor;
 }
-export type monitorSelectType = 'individual' | 'clone' | 'extend';
+export type monitorSelectType = "individual" | "clone" | "extend";
 export interface Filters {
-    order: 'asc' | 'desc';
-    type: 'name' | 'id';
+    order: "asc" | "desc";
+    type: "name" | "id";
     searchString: string;
     advancedFilters: advancedFilters;
 }
@@ -48,7 +48,7 @@ export interface advancedFilters {
     };
 }
 
-export type resolutionConstraints = 'all' | 'exact' | 'moreThan' | 'lessThan';
+export type resolutionConstraints = "all" | "exact" | "moreThan" | "lessThan";
 export interface state {
     imagesArray: rendererImage[];
     skeletonsToShow: imagesObject | undefined;

@@ -1,27 +1,27 @@
-import { create } from 'zustand';
-import { type Filters, type rendererImage } from '../types/rendererTypes';
-import { type imagesObject } from '../../shared/types';
-import { playlistStore } from './playlist';
+import { create } from "zustand";
+import { type Filters, type rendererImage } from "../types/rendererTypes";
+import { type imagesObject } from "../../shared/types";
+import { playlistStore } from "./playlist";
 const { queryImages, deleteImagesFromGallery } = window.API_RENDERER;
 const initialFilters: Filters = {
-    order: 'desc',
-    type: 'id',
-    searchString: '',
+    order: "desc",
+    type: "id",
+    searchString: "",
     advancedFilters: {
         formats: [
-            'jpeg',
-            'jpg',
-            'webp',
-            'gif',
-            'png',
-            'bmp',
-            'tiff',
-            'tga',
-            'pnm',
-            'farbfeld'
+            "jpeg",
+            "jpg",
+            "webp",
+            "gif",
+            "png",
+            "bmp",
+            "tiff",
+            "tga",
+            "pnm",
+            "farbfeld"
         ],
         resolution: {
-            constraint: 'all',
+            constraint: "all",
             width: 0,
             height: 0
         }
@@ -84,7 +84,7 @@ export const imagesStore = create<State>()((set, get) => ({
     addImages: newImages => {
         const filters = get().filters;
         let newImagesArray: rendererImage[] = [];
-        if (filters.order === 'desc') {
+        if (filters.order === "desc") {
             newImagesArray = [...newImages, ...get().imagesArray];
         } else {
             newImagesArray = [...get().imagesArray, ...newImages];

@@ -1,5 +1,5 @@
-import { useMonitorStore, type StoreMonitor } from '../stores/monitors';
-import { type monitorSelectType } from '../types/rendererTypes';
+import { useMonitorStore, type StoreMonitor } from "../stores/monitors";
+import { type monitorSelectType } from "../types/rendererTypes";
 
 interface props {
     monitor: StoreMonitor;
@@ -20,19 +20,19 @@ export function MonitorComponent({
     const rectangleStyle: React.CSSProperties = {
         width: scaledWidth,
         height: scaledHeight,
-        position: 'relative'
+        position: "relative"
     };
     const imageStyle: React.CSSProperties = {
-        width: '100%',
-        height: '100%',
-        objectFit: 'cover'
+        width: "100%",
+        height: "100%",
+        objectFit: "cover"
     };
     return (
         <div
             onClick={() => {
                 if (monitorsList.length < 1) return;
                 monitor.isSelected = !monitor.isSelected;
-                if (selectType === 'individual') {
+                if (selectType === "individual") {
                     monitorsList.forEach(otherMonitor => {
                         if (otherMonitor.name !== monitor.name) {
                             otherMonitor.isSelected = false;
@@ -48,7 +48,7 @@ export function MonitorComponent({
                 draggable={false}
                 data-selected={monitor.isSelected}
                 style={rectangleStyle}
-                className="border-[0.2rem] data-[selected=true]:border-info border-transparent transition-all"
+                className="border-[0.2rem] border-transparent transition-all data-[selected=true]:border-info"
             >
                 <img
                     data-selected={monitor.isSelected}
@@ -56,11 +56,11 @@ export function MonitorComponent({
                     src={`atom://${monitor.currentImage}`}
                     alt="Monitor"
                     style={imageStyle}
-                    className=" cursor-pointer transform-gpu"
+                    className="transform-gpu cursor-pointer"
                 />
                 <div
                     draggable={false}
-                    className="absolute top-0 left-0 bg-black bg-opacity-70 px-2 py-1 md:text-lg xl:text-3xl "
+                    className="absolute left-0 top-0 bg-black bg-opacity-70 px-2 py-1 md:text-lg xl:text-3xl"
                 >
                     {monitor.name}
                 </div>

@@ -1,27 +1,27 @@
-import { useForm } from 'react-hook-form';
-import { useEffect } from 'react';
-import { AnimatePresence, motion } from 'framer-motion';
+import { useForm } from "react-hook-form";
+import { useEffect } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import {
     type appConfigSelectType,
     type appConfigInsertType
-} from '../../database/schema';
+} from "../../database/schema";
 
 const { readAppConfig, updateAppConfig } = window.API_RENDERER;
 const AppConfiguration = () => {
     const { register, handleSubmit, setValue } =
-        useForm<appConfigInsertType['config']>();
-    const onSubmit = (data: appConfigSelectType['config']) => {
+        useForm<appConfigInsertType["config"]>();
+    const onSubmit = (data: appConfigSelectType["config"]) => {
         updateAppConfig(data);
     };
     useEffect(() => {
-        void readAppConfig().then((data: appConfigSelectType['config']) => {
-            setValue('killDaemon', data.killDaemon);
-            setValue('notifications', data.notifications);
-            setValue('startMinimized', data.startMinimized);
-            setValue('minimizeInsteadOfClose', data.minimizeInsteadOfClose);
-            setValue('showMonitorModalOnStart', data.showMonitorModalOnStart);
-            setValue('imagesPerPage', data.imagesPerPage);
-            setValue('randomImageMonitor', data.randomImageMonitor);
+        void readAppConfig().then((data: appConfigSelectType["config"]) => {
+            setValue("killDaemon", data.killDaemon);
+            setValue("notifications", data.notifications);
+            setValue("startMinimized", data.startMinimized);
+            setValue("minimizeInsteadOfClose", data.minimizeInsteadOfClose);
+            setValue("showMonitorModalOnStart", data.showMonitorModalOnStart);
+            setValue("imagesPerPage", data.imagesPerPage);
+            setValue("randomImageMonitor", data.randomImageMonitor);
         });
     }, []);
 
@@ -29,13 +29,13 @@ const AppConfiguration = () => {
         <>
             <AnimatePresence>
                 <motion.div
-                    className="flex flex-col items-center m-auto  cursor-default"
+                    className="m-auto flex cursor-default flex-col items-center"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                     transition={{ duration: 0.5 }}
                 >
-                    <h1 className="text-7xl font-semibold py-2 self-center text-center">
+                    <h1 className="self-center py-2 text-center text-7xl font-semibold">
                         App Settings
                     </h1>
                     <div className="divider"></div>
@@ -45,10 +45,10 @@ const AppConfiguration = () => {
                             void handleSubmit(onSubmit)(e);
                         }}
                     >
-                        <div className="overflow-y-scroll max-h-[65dvh] min-h-0 scrollbar-thin scrollbar-track-transparent scrollbar-thumb-neutral-300 scrollbar-thumb-rounded-sm">
-                            <div className="my-6 mx-10 flex gap-3 justify-between bg-red">
+                        <div className="max-h-[65dvh] min-h-0 overflow-y-scroll scrollbar-thin scrollbar-track-transparent scrollbar-thumb-neutral-300 scrollbar-thumb-rounded-sm">
+                            <div className="bg-red mx-10 my-6 flex justify-between gap-3">
                                 <label htmlFor="killDaemon" className="label">
-                                    <span className="label-text   text-3xl">
+                                    <span className="label-text text-3xl">
                                         Kill daemon on app exit
                                     </span>
                                 </label>
@@ -56,7 +56,7 @@ const AppConfiguration = () => {
                                     type="checkbox"
                                     id="killDaemon"
                                     className="checkbox mt-4"
-                                    {...register('killDaemon')}
+                                    {...register("killDaemon")}
                                 />
                             </div>
                             <div className="mx-10 my-6 flex justify-between">
@@ -72,7 +72,7 @@ const AppConfiguration = () => {
                                     type="checkbox"
                                     className="checkbox mt-4"
                                     id="notifications"
-                                    {...register('notifications')}
+                                    {...register("notifications")}
                                 />
                             </div>
                             <div className="mx-10 my-6 flex justify-between">
@@ -88,7 +88,7 @@ const AppConfiguration = () => {
                                     type="checkbox"
                                     id="startMinimized"
                                     className="checkbox mt-4"
-                                    {...register('startMinimized')}
+                                    {...register("startMinimized")}
                                 />
                             </div>
                             <div className="mx-10 my-6 flex justify-between">
@@ -104,7 +104,7 @@ const AppConfiguration = () => {
                                     type="checkbox"
                                     id="minimizeInsteadOfClose"
                                     className="checkbox mt-4"
-                                    {...register('minimizeInsteadOfClose')}
+                                    {...register("minimizeInsteadOfClose")}
                                 />
                             </div>
                             <div className="mx-10 my-6 flex justify-between">
@@ -120,10 +120,10 @@ const AppConfiguration = () => {
                                     type="checkbox"
                                     id="showMonitorModalOnStart"
                                     className="checkbox mt-4"
-                                    {...register('showMonitorModalOnStart')}
+                                    {...register("showMonitorModalOnStart")}
                                 />
                             </div>
-                            <div className="mx-10 my-6 flex items-end justify-between ">
+                            <div className="mx-10 my-6 flex items-end justify-between">
                                 <label
                                     htmlFor="imagesPerPage"
                                     className="label"
@@ -134,8 +134,8 @@ const AppConfiguration = () => {
                                 </label>
                                 <select
                                     id="imagesPerPage"
-                                    className=" select select-bordered shadow-inner  rounded-md text-2xl"
-                                    {...register('imagesPerPage', {
+                                    className="select select-bordered rounded-md text-2xl shadow-inner"
+                                    {...register("imagesPerPage", {
                                         valueAsNumber: true
                                     })}
                                 >
@@ -144,8 +144,8 @@ const AppConfiguration = () => {
                                     <option value="100">100</option>
                                     <option value="200">200</option>
                                 </select>
-                            </div>{' '}
-                            <div className="mx-10 my-6 flex items-end justify-between ">
+                            </div>{" "}
+                            <div className="mx-10 my-6 flex items-end justify-between">
                                 <label
                                     htmlFor="randomImageMonitor"
                                     className="label"
@@ -156,8 +156,8 @@ const AppConfiguration = () => {
                                 </label>
                                 <select
                                     id="randomImageMonitor"
-                                    className=" select select-bordered shadow-inner rounded-md text-2xl"
-                                    {...register('randomImageMonitor')}
+                                    className="select select-bordered rounded-md text-2xl shadow-inner"
+                                    {...register("randomImageMonitor")}
                                 >
                                     <option value="clone">clone</option>
                                     <option value="individual">

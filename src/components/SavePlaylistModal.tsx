@@ -81,15 +81,15 @@ const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
                 onSubmit={e => {
                     void handleSubmit(onSubmit)(e);
                 }}
-                className="modal-box form-control rounded-xl"
+                className="form-control modal-box rounded-xl"
             >
-                <h2 className="font-bold text-4xl text-center py-3 ">
+                <h2 className="py-3 text-center text-4xl font-bold">
                     Save Playlist
                 </h2>
                 <div className="divider"></div>
                 <label
                     htmlFor="playlistName"
-                    className="label text-warning italic"
+                    className="label italic text-warning"
                 >
                     Playlists with the same name will be overwritten.
                 </label>
@@ -100,21 +100,21 @@ const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
                     id="playlistName"
                     required
                     draggable={false}
-                    className="input input-md rounded-md input-bordered mb-3 text-lg "
+                    className="input input-md input-bordered mb-3 rounded-md text-lg"
                     placeholder="Playlist Name"
                 />
                 <div className="divider"></div>
                 {error.state && (
                     <label
                         htmlFor="playlistName"
-                        className="label text-lg text-error italic"
+                        className="label text-lg italic text-error"
                     >
                         {error.message}
                     </label>
                 )}
                 <button
                     type="submit"
-                    className="btn btn-active uppercase rounded-lg"
+                    className="btn btn-active rounded-lg uppercase"
                 >
                     Save
                 </button>

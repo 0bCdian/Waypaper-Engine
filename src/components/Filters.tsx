@@ -1,16 +1,16 @@
-import { type ChangeEvent, useEffect, useState } from 'react';
-import useDebounce from '../hooks/useDebounce';
-import { type Filters as FiltersType } from '../types/rendererTypes';
-import { imagesStore } from '../stores/images';
+import { type ChangeEvent, useEffect, useState } from "react";
+import useDebounce from "../hooks/useDebounce";
+import { type Filters as FiltersType } from "../types/rendererTypes";
+import { imagesStore } from "../stores/images";
 interface PartialFilters {
-    order: 'asc' | 'desc';
-    type: 'name' | 'id';
+    order: "asc" | "desc";
+    type: "name" | "id";
     searchString: string;
 }
 const initialFilters: PartialFilters = {
-    order: 'desc',
-    type: 'id',
-    searchString: ''
+    order: "desc",
+    type: "id",
+    searchString: ""
 };
 function Filters() {
     const { setFilters, filters } = imagesStore();
@@ -43,10 +43,10 @@ function Filters() {
         setFilters(resetFilters);
     }, []);
     return (
-        <section className="flex gap-2 group justify-center mb-5">
+        <section className="group mb-5 flex justify-center gap-2">
             <div className="tooltip" data-tip="more filters">
                 <button
-                    className="btn-active uppercase rounded-xl btn "
+                    className="btn btn-active rounded-xl uppercase"
                     onClick={() => {
                         // @ts-expect-error workaround for daisyui
                         window.AdvancedFiltersModal.showModal();
@@ -56,13 +56,13 @@ function Filters() {
                 </button>
             </div>
             <div className="tooltip" data-tip="Order by Name or ID">
-                <label className="swap swap-rotate btn btn-active uppercase rounded-xl text-xs">
+                <label className="btn swap btn-active swap-rotate rounded-xl text-xs uppercase">
                     <input
                         type="checkbox"
                         onChange={() => {
                             setPartialFilters(previous => {
                                 const newType =
-                                    previous.type === 'name' ? 'id' : 'name';
+                                    previous.type === "name" ? "id" : "name";
                                 return { ...previous, type: newType };
                             });
                         }}
@@ -72,13 +72,13 @@ function Filters() {
                 </label>
             </div>
             <div className="tooltip" data-tip="Ascending or Descending">
-                <label className="swap swap-rotate btn btn-active uppercase rounded-xl">
+                <label className="btn swap btn-active swap-rotate rounded-xl uppercase">
                     <input
                         type="checkbox"
                         onChange={() => {
                             setPartialFilters(previous => {
                                 const newOrder =
-                                    previous.order === 'asc' ? 'desc' : 'asc';
+                                    previous.order === "asc" ? "desc" : "asc";
                                 return { ...previous, order: newOrder };
                             });
                         }}
@@ -91,7 +91,7 @@ function Filters() {
                 onChange={onTextChange}
                 type="text"
                 id="default-search"
-                className="input text-center w-1/6 sm:w-1/4 input-primary bg-base-300 border-0 rounded-xl text-xl font-medium"
+                className="input input-primary w-1/6 rounded-xl border-0 bg-base-300 text-center text-xl font-medium sm:w-1/4"
                 placeholder="Search"
             />
         </section>

@@ -1,14 +1,14 @@
-import { useMonitorStore } from '../stores/monitors';
+import { useMonitorStore } from "../stores/monitors";
 const NavBar = () => {
     const { activeMonitor, reQueryMonitors } = useMonitorStore();
     return (
-        <div className="navbar bg-base-100 mb-2">
+        <div className="navbar mb-2 bg-base-100">
             <div className="navbar-start">
                 <div className="dropdown">
                     <label
                         htmlFor="my-drawer"
                         tabIndex={0}
-                        className="btn btn-ghost btn-circle"
+                        className="btn btn-circle btn-ghost"
                     >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
@@ -40,7 +40,7 @@ const NavBar = () => {
                     >
                         {activeMonitor.name.length > 0
                             ? activeMonitor.name
-                            : 'select display'}
+                            : "select display"}
                     </button>
                 }
             </div>

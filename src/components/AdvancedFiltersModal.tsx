@@ -1,12 +1,12 @@
-import { imagesStore } from '../stores/images';
-import { useEffect, useRef } from 'react';
-import { useForm, type SubmitHandler } from 'react-hook-form';
-import { parseResolution } from '../utils/utilities';
+import { imagesStore } from "../stores/images";
+import { useEffect, useRef } from "react";
+import { useForm, type SubmitHandler } from "react-hook-form";
+import { parseResolution } from "../utils/utilities";
 import {
     type advancedFilters,
     type resolutionConstraints
-} from '../types/rendererTypes';
-import { type Formats } from '../../shared/types/image';
+} from "../types/rendererTypes";
+import { type Formats } from "../../shared/types/image";
 interface AdvancedFiltersForm {
     resolutionConstraint: resolutionConstraints;
     width: string;
@@ -51,16 +51,16 @@ const AdvancedFiltersModal = () => {
         setFilters({ ...filters, advancedFilters });
     };
     const setFormatsValues = (value: boolean) => {
-        setValue('jpeg', value);
-        setValue('png', value);
-        setValue('farbfeld', value);
-        setValue('bmp', value);
-        setValue('webp', value);
-        setValue('gif', value);
-        setValue('tiff', value);
-        setValue('tga', value);
-        setValue('pnm', value);
-        setValue('jpg', value);
+        setValue("jpeg", value);
+        setValue("png", value);
+        setValue("farbfeld", value);
+        setValue("bmp", value);
+        setValue("webp", value);
+        setValue("gif", value);
+        setValue("tiff", value);
+        setValue("tga", value);
+        setValue("pnm", value);
+        setValue("jpg", value);
     };
 
     useEffect(() => {
@@ -84,7 +84,7 @@ const AdvancedFiltersModal = () => {
                         void handleSubmit(onSubmit)(e);
                     }}
                 >
-                    <h2 className="text-3xl ">Resolution</h2>
+                    <h2 className="text-3xl">Resolution</h2>
                     <div className="divider my-2"></div>
                     <div>
                         <div className="form-control">
@@ -94,9 +94,9 @@ const AdvancedFiltersModal = () => {
                                 </span>
                                 <input
                                     defaultChecked
-                                    value={'all'}
+                                    value={"all"}
                                     type="radio"
-                                    {...register('resolutionConstraint')}
+                                    {...register("resolutionConstraint")}
                                     className="radio checked:bg-blue-500"
                                 />
                             </label>
@@ -108,8 +108,8 @@ const AdvancedFiltersModal = () => {
                                 </span>
                                 <input
                                     type="radio"
-                                    value={'exact'}
-                                    {...register('resolutionConstraint')}
+                                    value={"exact"}
+                                    {...register("resolutionConstraint")}
                                     className="radio"
                                 />
                             </label>
@@ -121,8 +121,8 @@ const AdvancedFiltersModal = () => {
                                 </span>
                                 <input
                                     type="radio"
-                                    value={'lessThan'}
-                                    {...register('resolutionConstraint')}
+                                    value={"lessThan"}
+                                    {...register("resolutionConstraint")}
                                     className="radio"
                                 />
                             </label>
@@ -134,8 +134,8 @@ const AdvancedFiltersModal = () => {
                                 </span>
                                 <input
                                     type="radio"
-                                    value={'moreThan'}
-                                    {...register('resolutionConstraint')}
+                                    value={"moreThan"}
+                                    {...register("resolutionConstraint")}
                                     className="radio"
                                 />
                             </label>
@@ -147,7 +147,7 @@ const AdvancedFiltersModal = () => {
                         </label>
                         <div className="flex flex-col">
                             <label htmlFor="width" className="label">
-                                <span className="label-text text-lg ">
+                                <span className="label-text text-lg">
                                     Width
                                 </span>
                             </label>
@@ -156,7 +156,7 @@ const AdvancedFiltersModal = () => {
                                 defaultValue={0}
                                 min={0}
                                 step={1}
-                                {...register('width')}
+                                {...register("width")}
                                 id="width"
                                 className="input input-info rounded-xl"
                             />
@@ -173,14 +173,14 @@ const AdvancedFiltersModal = () => {
                                 defaultValue={0}
                                 step={1}
                                 min={0}
-                                {...register('height')}
+                                {...register("height")}
                                 className="input input-info rounded-xl"
                             />
                         </div>
                     </div>
                     <div className="divider my-3"></div>
-                    <h2 className="text-3xl mb-3">Image formats</h2>
-                    <label className="label cursor-pointer ">
+                    <h2 className="mb-3 text-3xl">Image formats</h2>
+                    <label className="label cursor-pointer">
                         <span className="label-text text-2xl">
                             Select/Unselect All Formats
                         </span>
@@ -190,99 +190,99 @@ const AdvancedFiltersModal = () => {
                                 setFormatsValues(e.target.checked);
                             }}
                             type="checkbox"
-                            className="appearance-none w-9 focus:outline-none h-5 checked:bg-gray-300 rounded-full before:inline-block before:rounded-full before:bg-blue-500 before:h-4 before:w-4 checked:before:translate-x-full bg-neutral-focus shadow-inner transition-all duration-300 before:ml-0.5"
+                            className="bg-neutral-focus h-5 w-9 appearance-none rounded-full shadow-inner transition-all duration-300 before:ml-0.5 before:inline-block before:h-4 before:w-4 before:rounded-full before:bg-blue-500 checked:bg-gray-300 checked:before:translate-x-full focus:outline-none"
                         />
                     </label>
-                    <div className="form-control ml-10 flex-wrap max-h-[20vh]">
-                        <label className="label justify-start gap-5 cursor-pointer">
+                    <div className="form-control ml-10 max-h-[20vh] flex-wrap">
+                        <label className="label cursor-pointer justify-start gap-5">
                             <input
                                 defaultChecked
                                 type="checkbox"
                                 className="checkbox"
-                                {...register('jpeg')}
+                                {...register("jpeg")}
                             />
                             <span className="label-text text-lg">JPEG</span>
                         </label>
-                        <label className="label justify-start gap-5 cursor-pointer">
+                        <label className="label cursor-pointer justify-start gap-5">
                             <input
                                 defaultChecked
                                 type="checkbox"
                                 className="checkbox"
-                                {...register('jpg')}
+                                {...register("jpg")}
                             />
                             <span className="label-text text-lg">JPG</span>
                         </label>
-                        <label className="label justify-start gap-5 cursor-pointer">
+                        <label className="label cursor-pointer justify-start gap-5">
                             <input
                                 defaultChecked
                                 type="checkbox"
                                 className="checkbox"
-                                {...register('webp')}
+                                {...register("webp")}
                             />
                             <span className="label-text text-lg">WEBP</span>
                         </label>
-                        <label className="label justify-start gap-5 cursor-pointer">
+                        <label className="label cursor-pointer justify-start gap-5">
                             <input
                                 defaultChecked
                                 type="checkbox"
                                 className="checkbox"
-                                {...register('gif')}
+                                {...register("gif")}
                             />
                             <span className="label-text justify-start gap-5 text-lg">
                                 GIF
                             </span>
                         </label>
-                        <label className="label justify-start gap-5 cursor-pointer">
+                        <label className="label cursor-pointer justify-start gap-5">
                             <input
                                 defaultChecked
                                 type="checkbox"
                                 className="checkbox"
-                                {...register('png')}
+                                {...register("png")}
                             />
                             <span className="label-text text-lg">PNG</span>
                         </label>
-                        <label className="label justify-start gap-5 cursor-pointer">
+                        <label className="label cursor-pointer justify-start gap-5">
                             <input
                                 defaultChecked
                                 type="checkbox"
                                 className="checkbox"
-                                {...register('bmp')}
+                                {...register("bmp")}
                             />
                             <span className="label-text text-lg">BMP</span>
                         </label>
-                        <label className="label justify-start gap-5 cursor-pointer">
+                        <label className="label cursor-pointer justify-start gap-5">
                             <input
                                 defaultChecked
                                 type="checkbox"
                                 className="checkbox"
-                                {...register('tiff')}
+                                {...register("tiff")}
                             />
                             <span className="label-text text-lg">TIFF</span>
                         </label>
-                        <label className="label justify-start gap-5 cursor-pointer">
+                        <label className="label cursor-pointer justify-start gap-5">
                             <input
                                 defaultChecked
                                 type="checkbox"
                                 className="checkbox"
-                                {...register('tga')}
+                                {...register("tga")}
                             />
                             <span className="label-text text-lg">TGA</span>
                         </label>
-                        <label className="label justify-start gap-5 cursor-pointer">
+                        <label className="label cursor-pointer justify-start gap-5">
                             <input
                                 defaultChecked
                                 type="checkbox"
                                 className="checkbox"
-                                {...register('pnm')}
+                                {...register("pnm")}
                             />
                             <span className="label-text text-lg">PNM</span>
                         </label>
-                        <label className="label justify-start gap-5 cursor-pointer">
+                        <label className="label cursor-pointer justify-start gap-5">
                             <input
                                 defaultChecked
                                 type="checkbox"
                                 className="checkbox"
-                                {...register('farbfeld')}
+                                {...register("farbfeld")}
                             />
                             <span className="label-text text-lg">FARBELD</span>
                         </label>

@@ -1,6 +1,6 @@
-import { exec } from 'node:child_process';
-import { configuration } from '../globals/config';
-import { logger } from '../globals/setup';
+import { exec } from "node:child_process";
+import { configuration } from "../globals/config";
+import { logger } from "../globals/setup";
 
 export function notifyImageSet(imageName: string, imagePath: string) {
     if (!configuration.app.config.notifications) return;

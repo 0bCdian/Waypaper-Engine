@@ -1,16 +1,16 @@
-import { useRef, useEffect, useState } from 'react';
-import { playlistStore } from '../stores/playlist';
-import { useForm, type SubmitHandler } from 'react-hook-form';
-import { imagesStore } from '../stores/images';
-import { type playlistSelectType } from '../../database/schema';
-import { PLAYLIST_TYPES } from '../../shared/types/playlist';
+import { useRef, useEffect, useState } from "react";
+import { playlistStore } from "../stores/playlist";
+import { useForm, type SubmitHandler } from "react-hook-form";
+import { imagesStore } from "../stores/images";
+import { type playlistSelectType } from "../../database/schema";
+import { PLAYLIST_TYPES } from "../../shared/types/playlist";
 import {
     type rendererPlaylist,
     type rendererImage
-} from '../types/rendererTypes';
-import { useMonitorStore } from '../stores/monitors';
-import { IPC_MAIN_EVENTS } from '../../shared/constants';
-import { type ActiveMonitor } from '../../shared/types/monitor';
+} from "../types/rendererTypes";
+import { useMonitorStore } from "../stores/monitors";
+import { IPC_MAIN_EVENTS } from "../../shared/constants";
+import { type ActiveMonitor } from "../../shared/types/monitor";
 interface Input {
     selectPlaylist: string;
 }
@@ -37,7 +37,7 @@ const LoadPlaylistModal = ({
 }: Props) => {
     const { clearPlaylist, setPlaylist } = playlistStore();
     const { imagesMap } = imagesStore();
-    const [error, setError] = useState('');
+    const [error, setError] = useState("");
     const { register, handleSubmit, watch } = useForm<Input>();
     const { activeMonitor } = useMonitorStore();
     const modalRef = useRef<HTMLDialogElement>(null);
@@ -82,10 +82,10 @@ const LoadPlaylistModal = ({
             };
             if (activeMonitor.monitors.length < 1) {
                 setError(
-                    'Select at least one display before setting a playlist'
+                    "Select at least one display before setting a playlist"
                 );
                 setTimeout(() => {
-                    setError('');
+                    setError("");
                 }, 3000);
                 return;
             }
@@ -113,15 +113,15 @@ const LoadPlaylistModal = ({
     }, []);
     return (
         <dialog id="LoadPlaylistModal" className="modal" ref={modalRef}>
-            <div className="modal-box container flex flex-col">
-                <h2 className="font-bold text-4xl text-center py-3 select-none">
+            <div className="container modal-box flex flex-col">
+                <h2 className="select-none py-3 text-center text-4xl font-bold">
                     Load Playlist
                 </h2>
                 {error.length > 0 && (
-                    <div role="alert" className="alert m-0 alert-error">
+                    <div role="alert" className="alert alert-error m-0">
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            className="stroke-current shrink-0 h-6 w-6"
+                            className="h-6 w-6 shrink-0 stroke-current"
                             fill="none"
                             viewBox="0 0 24 24"
                         >
@@ -139,12 +139,12 @@ const LoadPlaylistModal = ({
                 <div className="divider"></div>
                 {playlistsInDB.length === 0 && (
                     <section className="flex flex-col gap-3">
-                        <span className=" text-center font-medium text-xl italic">
+                        <span className="text-center text-xl font-medium italic">
                             No playlists found, refresh or create a new one
                         </span>
                         <button
                             type="button"
-                            className="btn btn-block uppercase btn-active"
+                            className="btn btn-active btn-block uppercase"
                             onClick={() => {
                                 setShouldReload(true);
                             }}
@@ -162,17 +162,17 @@ const LoadPlaylistModal = ({
                     >
                         <label
                             htmlFor="selectPlaylist"
-                            className="label text-lg "
+                            className="label text-lg"
                         >
                             Select Playlist
                         </label>
 
-                        <div className="flex align-baseline gap-10">
+                        <div className="flex gap-10 align-baseline">
                             <select
                                 id="selectPlaylist"
-                                className="select select-bordered rounded-md text-lg basis-[90%]"
+                                className="select select-bordered basis-[90%] rounded-md text-lg"
                                 defaultValue={playlistsInDB[0].name}
-                                {...register('selectPlaylist', {
+                                {...register("selectPlaylist", {
                                     required: true
                                 })}
                             >
@@ -187,16 +187,16 @@ const LoadPlaylistModal = ({
                             </select>
                             <button
                                 type="button"
-                                className="btn btn-md uppercase btn-error rounded-md "
+                                className="btn btn-error btn-md rounded-md uppercase"
                                 onClick={() => {
-                                    const current = watch('selectPlaylist');
+                                    const current = watch("selectPlaylist");
                                     const shouldDelete = window.confirm(
                                         `Are you sure to delete ${current}?`
                                     );
                                     if (shouldDelete) {
                                         deletePlaylist(current);
                                         setShouldReload(true);
-                                        if (currentPlaylistName !== '') {
+                                        if (currentPlaylistName !== "") {
                                             stopPlaylist({
                                                 name: currentPlaylistName,
                                                 activeMonitor
@@ -211,17 +211,17 @@ const LoadPlaylistModal = ({
                                 Delete
                             </button>
                         </div>
-                        <div className="flex gap-3 justify-center mt-3">
+                        <div className="mt-3 flex justify-center gap-3">
                             <button
                                 type="button"
-                                className="btn uppercase btn-md rounded-md "
+                                className="btn btn-md rounded-md uppercase"
                                 onClick={closeModal}
                             >
                                 Cancel
                             </button>
                             <button
                                 type="submit"
-                                className="btn btn-active btn-md uppercase rounded-md "
+                                className="btn btn-active btn-md rounded-md uppercase"
                             >
                                 Load
                             </button>

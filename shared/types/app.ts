@@ -3,7 +3,7 @@ export interface appConfigType {
     notifications: boolean;
     startMinimized: boolean;
     minimizeInsteadOfClose: boolean;
-    randomImageMonitor: 'clone' | 'extend' | 'individual';
+    randomImageMonitor: "clone" | "extend" | "individual";
     showMonitorModalOnStart: boolean;
     imagesPerPage: number;
 }

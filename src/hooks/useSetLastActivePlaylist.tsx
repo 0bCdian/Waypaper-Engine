@@ -1,19 +1,19 @@
-import { playlistStore } from '../stores/playlist';
-import { useMonitorStore } from '../stores/monitors';
+import { playlistStore } from "../stores/playlist";
+import { useMonitorStore } from "../stores/monitors";
 import {
     type rendererPlaylist,
     type rendererImage
-} from '../types/rendererTypes';
-import { imagesStore } from '../stores/images';
-import { PLAYLIST_TYPES } from '../../shared/types/playlist';
-import { useEffect } from 'react';
+} from "../types/rendererTypes";
+import { imagesStore } from "../stores/images";
+import { PLAYLIST_TYPES } from "../../shared/types/playlist";
+import { useEffect } from "react";
 const { readActivePlaylist, deletePlaylist } = window.API_RENDERER;
 export function useSetLastActivePlaylist() {
     const { setPlaylist, playlist } = playlistStore();
     const { activeMonitor } = useMonitorStore();
     const { imagesArray } = imagesStore();
     useEffect(() => {
-        if (activeMonitor.name === '') return;
+        if (activeMonitor.name === "") return;
         void readActivePlaylist(activeMonitor).then(playlistFromDB => {
             if (playlistFromDB === undefined) {
                 // setEmptyPlaylist();
