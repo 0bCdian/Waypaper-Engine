@@ -3,8 +3,7 @@
 
 name: Test build
 
-on:
-  workflow_dispatch:
+on: ["push"]
 
 jobs:
   build:
