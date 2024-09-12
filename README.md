@@ -95,7 +95,7 @@ exec-once=waypaper-engine daemon
 ### Add scripts to run on each image set
 
 > [!WARNING]
-> Make sure the script in question has execution permissions
+> Make sure the script in question has execution permissions by using `chmod +x scriptname.sh`
 > Put you bash scripts in this path:
 
 ```bash
