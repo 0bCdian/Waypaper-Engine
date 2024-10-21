@@ -13,7 +13,7 @@
         "better-sqlite3": "11.3.0",
         "chokidar": "4.0.1",
         "drizzle-orm": "0.34.1",
-        "pino": "9.4.0",
+        "pino": "9.5.0",
         "sharp": "0.33.5"
     }
 }
