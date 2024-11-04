@@ -43,7 +43,7 @@
     },
     "devDependencies": {
         "@electron/rebuild": "3.6.0",
-        "@eslint/js": "9.9.1",
+        "@eslint/js": "9.14.0",
         "@originjs/vite-plugin-commonjs": "1.0.3",
         "@types/better-sqlite3": "7.6.9",
         "@types/node": "20.8.0",
