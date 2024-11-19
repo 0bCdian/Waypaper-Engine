@@ -37,7 +37,7 @@
         "react-hotkeys-hook": "4.5.0",
         "react-responsive-pagination": "2.9.0",
         "react-router-dom": "6.15.0",
-        "reflect-metadata": "0.1.13",
+        "reflect-metadata": "0.2.2",
         "sharp": "0.33.5",
         "zustand": "4.5.5"
     },
