@@ -10,7 +10,7 @@
     "author": "",
     "license": "ISC",
     "dependencies": {
-        "better-sqlite3": "11.5.0",
+        "better-sqlite3": "11.6.0",
         "chokidar": "4.0.1",
         "drizzle-orm": "0.36.3",
         "pino": "9.5.0",
