@@ -1,19 +1,19 @@
 {
-    "name": "daemon",
-    "version": "2.0.2",
-    "description": "",
-    "main": "daemon.ts",
-    "scripts": {
-        "test": "echo \"Error: no test specified\" && exit 1"
-    },
-    "keywords": [],
-    "author": "",
-    "license": "ISC",
-    "dependencies": {
-        "better-sqlite3": "11.8.1",
-        "chokidar": "4.0.3",
-        "drizzle-orm": "0.39.1",
-        "pino": "9.6.0",
-        "sharp": "0.33.5"
-    }
+	"name": "daemon",
+	"version": "2.0.4",
+	"description": "",
+	"main": "daemon.ts",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "ISC",
+	"dependencies": {
+		"better-sqlite3": "11.8.1",
+		"chokidar": "4.0.3",
+		"drizzle-orm": "0.39.1",
+		"pino": "9.6.0",
+		"sharp": "0.33.5"
+	}
 }
