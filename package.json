@@ -57,7 +57,7 @@
         "electron": "31.0.0",
         "electron-builder": "25.1.8",
         "eslint": "9.9.1",
-        "eslint-plugin-react": "7.35.0",
+        "eslint-plugin-react": "7.37.4",
         "globals": "15.9.0",
         "postcss": "8.4.41",
         "prettier": "3.3.3",
