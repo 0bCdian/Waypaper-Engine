@@ -11,7 +11,7 @@
     "license": "ISC",
     "dependencies": {
         "better-sqlite3": "11.8.1",
-        "chokidar": "4.0.1",
+        "chokidar": "4.0.3",
         "drizzle-orm": "0.39.0",
         "pino": "9.5.0",
         "sharp": "0.33.5"
