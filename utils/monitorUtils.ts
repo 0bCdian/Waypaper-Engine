@@ -14,13 +14,13 @@ function parseSwwwQuery(stdout: string) {
         })
         .map((monitor, index) => {
             const splitInfo = monitor.split(":");
-            const resolutionString = splitInfo[1].split(",")[0].trim();
+            const resolutionString = splitInfo[2].split(",")[0].trim();
             const { width, height } = parseResolution(resolutionString);
             return {
-                name: splitInfo[0].trim(),
+                name: splitInfo[1].trim(),
                 width,
                 height,
-                currentImage: splitInfo[4].trim(),
+                currentImage: splitInfo[5].trim(),
                 position: index
             };
         });
@@ -65,15 +65,21 @@ export async function getMonitors(): Promise<Monitor[]> {
     const parsedSwwwQuery = parseSwwwQuery(stdout);
     if (stderr.length > 0 || wlrOutput === undefined)
         throw new Error("either wlrOutput is undefined or swww query failed");
-    return parsedSwwwQuery.map(swwwMonitor => {
-        const matchingMonitor = wlrOutput.find(monitor => {
-            return monitor.name === swwwMonitor.name;
-        });
-        if (matchingMonitor === undefined)
-            throw new Error("Could not reconcile wlr_output and swww info");
-        return {
-            ...swwwMonitor,
-            position: matchingMonitor.position
-        };
-    });
+    return parsedSwwwQuery
+        .map(swwwMonitor => {
+            const matchingMonitor = wlrOutput.find(monitor => {
+                return monitor.name === swwwMonitor.name;
+            });
+
+            if (matchingMonitor === undefined) {
+                logger.warn(`Could not find a matching monitor for ${swwwMonitor.name}`);
+                return undefined;
+            }
+
+            return {
+                ...swwwMonitor,
+                position: matchingMonitor.position
+            };
+        })
+        .filter((monitor): monitor is Monitor => monitor !== undefined);
 }
