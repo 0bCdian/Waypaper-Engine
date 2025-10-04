@@ -1,0 +1,45 @@
+# Waypaper Engine Configuration
+# This file is shared between the daemon and the Electron app
+
+[app]
+# Application-specific settings
+kill_daemon_on_exit = true
+notifications = true
+start_minimized = false
+minimize_instead_of_close = true
+random_image_monitor = "individual"  # "clone" | "extend" | "individual"
+show_monitor_modal_on_start = false
+images_per_page = 20
+theme = "dark"
+sidebar_collapsed = false
+sort_by = "name"  # "name" | "date" | "size"
+sort_order = "asc"  # "asc" | "desc"
+image_history_limit = 50  # Maximum number of images to keep in history
+
+[daemon]
+# Daemon-specific settings
+database_path = "~/.config/waypaper-engine/waypaper.db"
+images_dir = "~/.waypaper-engine/images"
+thumbnails_dir = "~/.cache/waypaper-engine/thumbnails"
+monitors_state_file = "~/.cache/waypaper-engine/monitors.json"
+socket_path = "/tmp/waypaper_engine.sock"
+log_level = "info"  # "debug" | "info" | "warn" | "error"
+
+[backend]
+# Backend configuration
+type = "swww"  # "swww" | "feh" | "nitrogen" | "custom"
+
+[backend.swww]
+# swww-specific configuration
+transition_type = "simple"  # "simple" | "wipe" | "grow" | "outer" | "wave"
+transition_step = 90
+transition_duration = 200
+transition_angle = 45
+transition_pos = "center"  # "center" | "top" | "bottom" | "left" | "right"
+transition_bezier = "0.4,0.0,0.2,1"
+transition_wave = "0,0,0,0"
+
+[monitors]
+# Monitor configuration
+selected_monitors = []
+image_set_type = "individual"  # "individual" | "extend" | "clone"
