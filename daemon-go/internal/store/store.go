@@ -18,12 +18,16 @@ type Store struct {
 	cache      map[string]interface{}
 	cacheMutex sync.RWMutex
 	logger     *slog.Logger
+	config     *StoreConfig
 
 	// Transactional safety
 	writeMutex sync.Mutex
 
 	// Media detector for enhanced backend selection
 	mediaDetector *media.Detector
+
+	// Sequential ID manager for consistent image ordering
+	sequentialIDManager *SequentialIDManager
 
 	// Store components
 	imageStore *ImageStore
@@ -39,6 +43,7 @@ type StoreConfig struct {
 	BackupDirectory       string `toml:"backup_directory"`
 	MaxBackups            int    `toml:"max_backups"`
 	AutoCreateDirectories bool   `toml:"auto_create_directories"`
+	ThumbnailsDir         string `toml:"thumbnails_dir"`
 }
 
 // DefaultStoreConfig returns a default store configuration
@@ -52,6 +57,7 @@ func DefaultStoreConfig() StoreConfig {
 		BackupDirectory:       "~/.waypaper-engine/backups",
 		MaxBackups:            5,
 		AutoCreateDirectories: true,
+		ThumbnailsDir:         "~/.waypaper-engine/data/cache/thumbnails",
 	}
 }
 
@@ -67,10 +73,14 @@ func NewStore(config StoreConfig, logger *slog.Logger) (*Store, error) {
 		basePath: basePath,
 		cache:    make(map[string]interface{}),
 		logger:   logger,
+		config:   &config,
 	}
 
 	// Create media detector for enhanced backend selection
 	store.mediaDetector = media.NewDetector()
+
+	// Initialize sequential ID manager
+	store.sequentialIDManager = NewSequentialIDManager(store)
 
 	// Initialize store components
 	store.imageStore = NewImageStore(store)
@@ -80,6 +90,12 @@ func NewStore(config StoreConfig, logger *slog.Logger) (*Store, error) {
 		if err := store.createDirectoryStructure(); err != nil {
 			return nil, fmt.Errorf("failed to create directory structure: %w", err)
 		}
+	}
+
+	// Initialize sequential ID manager from existing images
+	if err := store.sequentialIDManager.InitializeFromRegistry(); err != nil {
+		logger.Warn("Failed to initialize sequential ID manager from registry", "error", err)
+		// Don't fail store creation for this
 	}
 
 	return store, nil

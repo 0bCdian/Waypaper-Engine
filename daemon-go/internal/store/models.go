@@ -17,6 +17,16 @@ type Image struct {
 	Selection    ImageSelection  `json:"selection"`
 	ImportInfo   ImageImportInfo `json:"importInfo"`
 	BackendHints BackendHints    `json:"backendHints,omitempty"`
+	Thumbnails   ImageThumbnails `json:"thumbnails"`
+}
+
+// ImageThumbnails contains paths to different resolution thumbnails
+type ImageThumbnails struct {
+	Resolution720p  string `json:"720p"`
+	Resolution1080p string `json:"1080p"`
+	Resolution1440p string `json:"1440p"`
+	Resolution4k    string `json:"4k"`
+	Fallback        string `json:"fallback"`
 }
 
 // ImageDimensions represents image dimensions

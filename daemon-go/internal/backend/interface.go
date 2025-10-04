@@ -100,7 +100,7 @@ type BackendConfig struct {
 
 	// Transition options (if supported)
 	TransitionType     string  `json:"transitionType,omitempty"`     // "none", "fade", "slide", etc.
-	TransitionDuration int     `json:"transitionDuration,omitempty"` // Duration in milliseconds
+	TransitionDuration float64 `json:"transitionDuration,omitempty"` // Duration in seconds
 	TransitionStep     int     `json:"transitionStep,omitempty"`     // Steps for animation
 	TransitionFPS      int     `json:"transitionFPS,omitempty"`      // Frames per second
 	TransitionAngle    float64 `json:"transitionAngle,omitempty"`    // Angle for slide transitions

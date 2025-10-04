@@ -26,7 +26,10 @@ export class GoDaemonClient extends EventEmitter {
     private maxReconnectAttempts: number = 10;
     private reconnectInterval: number = 1000;
     private messageId: number = 0;
-    private pendingMessages: Map<number, { resolve: (value: any) => void; reject: (error: any) => void }> = new Map();
+    private pendingMessages: Map<
+        number,
+        { resolve: (value: any) => void; reject: (error: any) => void }
+    > = new Map();
     private messageBuffer: string = "";
 
     constructor(socketPath: string = "/tmp/waypaper_engine.sock") {
@@ -45,11 +48,11 @@ export class GoDaemonClient extends EventEmitter {
                     resolve();
                 });
 
-                this.socket.on("data", (data) => {
+                this.socket.on("data", data => {
                     this.handleMessage(data);
                 });
 
-                this.socket.on("error", (error) => {
+                this.socket.on("error", error => {
                     logger.error("Socket error:", error);
                     this.isConnected = false;
                     this.emit("error", error);
@@ -69,7 +72,6 @@ export class GoDaemonClient extends EventEmitter {
                     this.emit("disconnected");
                     this.handleReconnect();
                 });
-
             } catch (error) {
                 logger.error("Failed to connect to Go daemon:", error);
                 reject(error);
@@ -78,11 +80,17 @@ export class GoDaemonClient extends EventEmitter {
     }
 
     private handleMessage(data: Buffer): void {
-        console.log("🔴 GoDaemonClient: Received data from daemon:", data.toString());
+        console.log(
+            "🔴 GoDaemonClient: Received data from daemon:",
+            data.toString()
+        );
         // Add the new data to our buffer
         this.messageBuffer += data.toString();
-        console.log("🔴 GoDaemonClient: Current message buffer:", this.messageBuffer);
-        
+        console.log(
+            "🔴 GoDaemonClient: Current message buffer:",
+            this.messageBuffer
+        );
+
         // Try to parse complete JSON messages
         let startIndex = 0;
         while (startIndex < this.messageBuffer.length) {
@@ -91,29 +99,29 @@ export class GoDaemonClient extends EventEmitter {
             let endIndex = startIndex;
             let inString = false;
             let escaped = false;
-            
+
             for (let i = startIndex; i < this.messageBuffer.length; i++) {
                 const char = this.messageBuffer[i];
-                
+
                 if (escaped) {
                     escaped = false;
                     continue;
                 }
-                
-                if (char === '\\') {
+
+                if (char === "\\") {
                     escaped = true;
                     continue;
                 }
-                
+
                 if (char === '"') {
                     inString = !inString;
                     continue;
                 }
-                
+
                 if (!inString) {
-                    if (char === '{') {
+                    if (char === "{") {
                         braceCount++;
-                    } else if (char === '}') {
+                    } else if (char === "}") {
                         braceCount--;
                         if (braceCount === 0) {
                             endIndex = i + 1;
@@ -122,15 +130,18 @@ export class GoDaemonClient extends EventEmitter {
                     }
                 }
             }
-            
+
             // If we found a complete JSON object, parse it
             if (braceCount === 0 && endIndex > startIndex) {
-                const message = this.messageBuffer.substring(startIndex, endIndex);
+                const message = this.messageBuffer.substring(
+                    startIndex,
+                    endIndex
+                );
                 console.log("🔴 GoDaemonClient: Parsing message:", message);
                 try {
                     const parsed: GoDaemonResponse = JSON.parse(message);
                     console.log("🔴 GoDaemonClient: Parsed response:", parsed);
-                    
+
                     // Handle ping/pong
                     if (parsed.action === "pong") {
                         this.emit("pong");
@@ -142,16 +153,18 @@ export class GoDaemonClient extends EventEmitter {
                     // Check for both action-based and type-based events
                     const eventType = parsed.action || parsed.type;
                     const eventData = parsed.data || parsed.payload;
-                    
-                    if (eventType && (
-                        eventType.startsWith("playlist_") || 
-                        eventType.startsWith("wallpaper_") || 
-                        eventType.startsWith("images_") ||
-                        eventType.startsWith("config_") ||
-                        eventType === "image_processed" ||
-                        eventType === "image_error" ||
-                        eventType === "processing_complete"
-                    )) {
+
+                    if (
+                        eventType &&
+                        (eventType.startsWith("playlist_") ||
+                            eventType.startsWith("wallpaper_") ||
+                            eventType.startsWith("images_") ||
+                            eventType.startsWith("config_") ||
+                            eventType === "image_processed" ||
+                            eventType === "image_error" ||
+                            eventType === "processing_complete" ||
+                            eventType === "thumbnail_created")
+                    ) {
                         this.emit(eventType, eventData);
                         startIndex = endIndex;
                         continue;
@@ -160,9 +173,10 @@ export class GoDaemonClient extends EventEmitter {
                     // Handle responses to pending messages
                     const messageId = this.extractMessageId(parsed);
                     if (messageId && this.pendingMessages.has(messageId)) {
-                        const { resolve, reject } = this.pendingMessages.get(messageId)!;
+                        const { resolve, reject } =
+                            this.pendingMessages.get(messageId)!;
                         this.pendingMessages.delete(messageId);
-                        
+
                         if (parsed.error) {
                             reject(new Error(parsed.error));
                         } else {
@@ -170,7 +184,10 @@ export class GoDaemonClient extends EventEmitter {
                         }
                     }
                 } catch (error) {
-                    logger.error("Failed to parse message from Go daemon:", error);
+                    logger.error(
+                        "Failed to parse message from Go daemon:",
+                        error
+                    );
                 }
                 startIndex = endIndex;
             } else {
@@ -178,14 +195,18 @@ export class GoDaemonClient extends EventEmitter {
                 break;
             }
         }
-        
+
         // Remove processed messages from buffer
         this.messageBuffer = this.messageBuffer.substring(startIndex);
     }
 
     private extractMessageId(response: GoDaemonResponse): number | null {
         // Extract messageId from the response
-        if (response && typeof response === 'object' && 'messageId' in response) {
+        if (
+            response &&
+            typeof response === "object" &&
+            "messageId" in response
+        ) {
             return response.messageId as number;
         }
         return null;
@@ -199,8 +220,10 @@ export class GoDaemonClient extends EventEmitter {
         }
 
         this.reconnectAttempts++;
-        logger.info(`Attempting to reconnect to Go daemon (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-        
+        logger.info(
+            `Attempting to reconnect to Go daemon (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`
+        );
+
         setTimeout(async () => {
             try {
                 await this.connect();
@@ -211,7 +234,12 @@ export class GoDaemonClient extends EventEmitter {
     }
 
     async sendCommand(action: string, payload?: any): Promise<any> {
-        console.log("🔴 GoDaemonClient: sendCommand called with action:", action, "payload:", payload);
+        console.log(
+            "🔴 GoDaemonClient: sendCommand called with action:",
+            action,
+            "payload:",
+            payload
+        );
         if (!this.isConnected || !this.socket) {
             console.log("🔴 GoDaemonClient: Not connected to Go daemon");
             throw new Error("Not connected to Go daemon");
@@ -225,24 +253,45 @@ export class GoDaemonClient extends EventEmitter {
                 ...payload
             };
 
-            console.log("🔴 GoDaemonClient: Sending message with ID:", messageId, "message:", message);
-            this.pendingMessages.set(messageId, { 
-                resolve: (value) => {
-                    console.log("🔴 GoDaemonClient: Message", messageId, "resolved with:", value);
+            console.log(
+                "🔴 GoDaemonClient: Sending message with ID:",
+                messageId,
+                "message:",
+                message
+            );
+            this.pendingMessages.set(messageId, {
+                resolve: value => {
+                    console.log(
+                        "🔴 GoDaemonClient: Message",
+                        messageId,
+                        "resolved with:",
+                        value
+                    );
                     resolve(value);
-                }, 
-                reject: (error) => {
-                    console.log("🔴 GoDaemonClient: Message", messageId, "rejected with:", error);
+                },
+                reject: error => {
+                    console.log(
+                        "🔴 GoDaemonClient: Message",
+                        messageId,
+                        "rejected with:",
+                        error
+                    );
                     reject(error);
                 }
             });
 
             try {
-                const messageStr = JSON.stringify(message) + '\n';
-                console.log("🔴 GoDaemonClient: Writing to socket:", messageStr.trim());
+                const messageStr = JSON.stringify(message) + "\n";
+                console.log(
+                    "🔴 GoDaemonClient: Writing to socket:",
+                    messageStr.trim()
+                );
                 this.socket!.write(messageStr);
             } catch (error) {
-                console.log("🔴 GoDaemonClient: Error writing to socket:", error);
+                console.log(
+                    "🔴 GoDaemonClient: Error writing to socket:",
+                    error
+                );
                 this.pendingMessages.delete(messageId);
                 reject(error);
             }
@@ -252,7 +301,12 @@ export class GoDaemonClient extends EventEmitter {
     // Image navigation commands
 
     async setImage(imageId: number, monitorName: string): Promise<any> {
-        console.log("🔵 GoDaemonClient: setImage called with imageId:", imageId, "monitorName:", monitorName);
+        console.log(
+            "🔵 GoDaemonClient: setImage called with imageId:",
+            imageId,
+            "monitorName:",
+            monitorName
+        );
         const payload = {
             image: { id: imageId },
             activeMonitor: { name: monitorName }
@@ -262,28 +316,58 @@ export class GoDaemonClient extends EventEmitter {
     }
 
     // Multi-monitor operations
-    async setImageAcrossMonitors(imageId: number, activeMonitor: any): Promise<any> {
-        console.log("🔵 GoDaemonClient: setImageAcrossMonitors called with imageId:", imageId, "activeMonitor:", activeMonitor);
+    async setImageAcrossMonitors(
+        imageId: number,
+        activeMonitor: any
+    ): Promise<any> {
+        console.log(
+            "🔵 GoDaemonClient: setImageAcrossMonitors called with imageId:",
+            imageId,
+            "activeMonitor:",
+            activeMonitor
+        );
         const payload = {
             image: { id: imageId },
             activeMonitor
         };
-        console.log("🔵 GoDaemonClient: setImageAcrossMonitors payload:", payload);
+        console.log(
+            "🔵 GoDaemonClient: setImageAcrossMonitors payload:",
+            payload
+        );
         return this.sendCommand("set_image_across_monitors", payload);
     }
 
-    async duplicateImageAcrossMonitors(imageId: number, activeMonitor: any): Promise<any> {
-        console.log("🔵 GoDaemonClient: duplicateImageAcrossMonitors called with imageId:", imageId, "activeMonitor:", activeMonitor);
+    async duplicateImageAcrossMonitors(
+        imageId: number,
+        activeMonitor: any
+    ): Promise<any> {
+        console.log(
+            "🔵 GoDaemonClient: duplicateImageAcrossMonitors called with imageId:",
+            imageId,
+            "activeMonitor:",
+            activeMonitor
+        );
         const payload = {
             image: { id: imageId },
             activeMonitor
         };
-        console.log("🔵 GoDaemonClient: duplicateImageAcrossMonitors payload:", payload);
+        console.log(
+            "🔵 GoDaemonClient: duplicateImageAcrossMonitors payload:",
+            payload
+        );
         return this.sendCommand("duplicate_image_across_monitors", payload);
     }
 
-    async processForMonitors(imageId: number, activeMonitor: any): Promise<any> {
-        console.log("🔵 GoDaemonClient: processForMonitors called with imageId:", imageId, "activeMonitor:", activeMonitor);
+    async processForMonitors(
+        imageId: number,
+        activeMonitor: any
+    ): Promise<any> {
+        console.log(
+            "🔵 GoDaemonClient: processForMonitors called with imageId:",
+            imageId,
+            "activeMonitor:",
+            activeMonitor
+        );
         const payload = {
             image: { id: imageId },
             activeMonitor
@@ -293,7 +377,10 @@ export class GoDaemonClient extends EventEmitter {
     }
 
     async getMonitorImage(monitorName: string): Promise<string> {
-        console.log("🔵 GoDaemonClient: getMonitorImage called with monitorName:", monitorName);
+        console.log(
+            "🔵 GoDaemonClient: getMonitorImage called with monitorName:",
+            monitorName
+        );
         return this.sendCommand("get_monitor_image", { monitorName });
     }
 
@@ -323,7 +410,9 @@ export class GoDaemonClient extends EventEmitter {
     }
 
     async deleteImagesFromGallery(imageIds: number[]): Promise<any> {
-        return await this.sendCommand("delete_image_from_gallery", { imageIds });
+        return await this.sendCommand("delete_image_from_gallery", {
+            imageIds
+        });
     }
 
     async getDiagnostics(monitorName?: string): Promise<any> {
@@ -331,28 +420,53 @@ export class GoDaemonClient extends EventEmitter {
     }
 
     // Playlist control methods
-    async startPlaylist(playlistName: string, activeMonitor: any): Promise<any> {
-        return await this.sendCommand("start_playlist", { playlistName, activeMonitor });
+    async startPlaylist(
+        playlistName: string,
+        activeMonitor: any
+    ): Promise<any> {
+        return await this.sendCommand("start_playlist", {
+            playlistName,
+            activeMonitor
+        });
     }
 
-    async pausePlaylist(playlistName: string, activeMonitor: any): Promise<any> {
-        return await this.sendCommand("pause_playlist", { playlistName, activeMonitor });
+    async pausePlaylist(
+        playlistName: string,
+        activeMonitor: any
+    ): Promise<any> {
+        return await this.sendCommand("pause_playlist", {
+            playlistName,
+            activeMonitor
+        });
     }
 
-    async resumePlaylist(playlistName: string, activeMonitor: any): Promise<any> {
-        return await this.sendCommand("resume_playlist", { playlistName, activeMonitor });
+    async resumePlaylist(
+        playlistName: string,
+        activeMonitor: any
+    ): Promise<any> {
+        return await this.sendCommand("resume_playlist", {
+            playlistName,
+            activeMonitor
+        });
     }
 
     async stopPlaylist(playlistName: string, activeMonitor: any): Promise<any> {
-        return await this.sendCommand("stop_playlist", { playlistName, activeMonitor });
+        return await this.sendCommand("stop_playlist", {
+            playlistName,
+            activeMonitor
+        });
     }
 
     async stopPlaylistByName(playlistName: string): Promise<any> {
-        return await this.sendCommand("stop_playlist_by_name", { playlistName });
+        return await this.sendCommand("stop_playlist_by_name", {
+            playlistName
+        });
     }
 
     async stopPlaylistByMonitorName(monitors: string[]): Promise<any> {
-        return await this.sendCommand("stop_playlist_by_monitor_name", { monitors });
+        return await this.sendCommand("stop_playlist_by_monitor_name", {
+            monitors
+        });
     }
 
     async stopPlaylistOnRemovedMonitors(): Promise<any> {
@@ -360,11 +474,20 @@ export class GoDaemonClient extends EventEmitter {
     }
 
     async nextImage(playlistName: string, activeMonitor: any): Promise<any> {
-        return await this.sendCommand("next_image", { playlistName, activeMonitor });
+        return await this.sendCommand("next_image", {
+            playlistName,
+            activeMonitor
+        });
     }
 
-    async previousImage(playlistName: string, activeMonitor: any): Promise<any> {
-        return await this.sendCommand("previous_image", { playlistName, activeMonitor });
+    async previousImage(
+        playlistName: string,
+        activeMonitor: any
+    ): Promise<any> {
+        return await this.sendCommand("previous_image", {
+            playlistName,
+            activeMonitor
+        });
     }
 
     async randomImage(): Promise<any> {
@@ -447,7 +570,9 @@ export class GoDaemonClient extends EventEmitter {
     }
 
     async setSelectedMonitor(activeMonitor: any): Promise<any> {
-        return await this.sendCommand("set_selected_monitor", { activeMonitor });
+        return await this.sendCommand("set_selected_monitor", {
+            activeMonitor
+        });
     }
 
     async getSelectedMonitor(): Promise<any> {
@@ -462,7 +587,10 @@ export class GoDaemonClient extends EventEmitter {
     }
 
     async getThumbnailSrc(fileName: string): Promise<any> {
-        console.log("🔵 GoDaemonClient: getThumbnailSrc called with fileName:", fileName);
+        console.log(
+            "🔵 GoDaemonClient: getThumbnailSrc called with fileName:",
+            fileName
+        );
         const result = await this.sendCommand("get_thumbnail_src", {
             fileNames: [fileName]
         });

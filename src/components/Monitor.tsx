@@ -17,9 +17,11 @@ export function MonitorComponent({
     monitorsList
 }: props) {
     const { setMonitorsList, activeMonitor } = useMonitorStore();
-    const [monitorImagePath, setMonitorImagePath] = useState<string | null>(null);
+    const [monitorImagePath, setMonitorImagePath] = useState<string | null>(
+        null
+    );
     const [isLoading, setIsLoading] = useState(false);
-    
+
     const scaledWidth = monitor.width * scale;
     const scaledHeight = monitor.height * scale;
     const rectangleStyle: React.CSSProperties = {
@@ -42,26 +44,53 @@ export function MonitorComponent({
             }
 
             // In extend mode, get the monitor-specific image
-            if (activeMonitor.extendAcrossMonitors && activeMonitor.monitors.length > 1) {
+            if (
+                activeMonitor.extendAcrossMonitors &&
+                activeMonitor.monitors.length > 1
+            ) {
                 setIsLoading(true);
                 try {
-                    const imagePath = await window.API_RENDERER.goDaemon.getMonitorImage(monitor.name);
+                    const imagePath =
+                        await window.API_RENDERER.goDaemon.getMonitorImage(
+                            monitor.name
+                        );
                     setMonitorImagePath(imagePath);
                 } catch (error) {
-                    console.error("Failed to load monitor-specific image:", error);
-                    // Fall back to the full image
-                    setMonitorImagePath(`atom://${monitor.currentImage}`);
+                    console.error(
+                        "Failed to load monitor-specific image:",
+                        error
+                    );
+                    // Fall back to empty path - let the image src handle the fallback
+                    setMonitorImagePath(null);
                 } finally {
                     setIsLoading(false);
                 }
             } else {
-                // In individual mode, use the full image
-                setMonitorImagePath(`atom://${monitor.currentImage}`);
+                // In individual mode, get the image path from Electron (which handles atom:// protocol)
+                try {
+                    const imagePath =
+                        await window.API_RENDERER.goDaemon.getImageSrc(
+                            monitor.currentImage
+                        );
+                    setMonitorImagePath(imagePath);
+                } catch (error) {
+                    console.error(
+                        "Failed to get image path from Electron:",
+                        error
+                    );
+                    // Fall back to empty path - let the image src handle the fallback
+                    setMonitorImagePath(null);
+                }
             }
         };
 
         loadMonitorImage();
-    }, [monitor.currentImage, monitor.name, activeMonitor.extendAcrossMonitors, activeMonitor.monitors.length]);
+    }, [
+        monitor.currentImage,
+        monitor.name,
+        activeMonitor.extendAcrossMonitors,
+        activeMonitor.monitors.length
+    ]);
     return (
         <div
             onClick={() => {
@@ -87,36 +116,42 @@ export function MonitorComponent({
             >
                 {monitor.currentImage ? (
                     isLoading ? (
-                        <div 
-                            className="w-full h-full bg-base-200/50 flex items-center justify-center cursor-pointer"
+                        <div
+                            className="flex h-full w-full cursor-pointer items-center justify-center bg-base-200/50"
                             style={imageStyle}
                         >
                             <div className="text-center text-base-content/70">
                                 <div className="loading loading-spinner loading-md"></div>
-                                <p className="text-sm font-medium mt-2">Loading...</p>
+                                <p className="mt-2 text-sm font-medium">
+                                    Loading...
+                                </p>
                             </div>
                         </div>
                     ) : (
                         <img
                             data-selected={monitor.isSelected}
                             draggable={false}
-                            src={monitorImagePath ? `atom://${monitorImagePath.split('/').pop()}` : `atom://${monitor.currentImage}`}
+                            src={monitorImagePath || ""}
                             alt="Monitor"
                             style={imageStyle}
                             className="transform-gpu cursor-pointer"
                         />
                     )
                 ) : (
-                    <div 
-                        className="w-full h-full bg-base-200/50 flex items-center justify-center cursor-pointer border-2 border-dashed border-base-300"
+                    <div
+                        className="flex h-full w-full cursor-pointer items-center justify-center border-2 border-dashed border-base-300 bg-base-200/50"
                         style={imageStyle}
                     >
                         <div className="text-center text-base-content/70">
-                            <div className="w-12 h-12 mx-auto mb-2 opacity-50">
+                            <div className="mx-auto mb-2 h-12 w-12 opacity-50">
                                 <SvgComponent />
                             </div>
-                            <p className="text-sm font-medium">No wallpaper set</p>
-                            <p className="text-xs opacity-75">Click to set one</p>
+                            <p className="text-sm font-medium">
+                                No wallpaper set
+                            </p>
+                            <p className="text-xs opacity-75">
+                                Click to set one
+                            </p>
                         </div>
                     </div>
                 )}

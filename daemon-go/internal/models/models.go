@@ -206,7 +206,7 @@ type SwwwConfig struct {
 	FilterType               FilterType             `json:"filterType"`
 	TransitionType           TransitionType         `json:"transitionType"`
 	TransitionStep           int                    `json:"transitionStep"`
-	TransitionDuration       int                    `json:"transitionDuration"`
+	TransitionDuration       float64                `json:"transitionDuration"`
 	TransitionFPS            int                    `json:"transitionFPS"`
 	TransitionAngle          int                    `json:"transitionAngle"`
 	TransitionPositionType   TransitionPositionType `json:"transitionPositionType"`

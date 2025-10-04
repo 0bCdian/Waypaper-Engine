@@ -5,6 +5,7 @@ import (
 	"encoding/hex"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -71,7 +72,12 @@ func (is *ImageStore) SaveImageRegistry(registry *ImageRegistry) error {
 // AddImage adds a new image to the registry
 func (is *ImageStore) AddImage(image *Image) error {
 	if image.ID == "" {
-		image.ID = generateUUID()
+		// Use sequential ID instead of UUID for consistency with SQLite
+		nextID, err := is.store.sequentialIDManager.GetNextID()
+		if err != nil {
+			return fmt.Errorf("failed to get next ID: %w", err)
+		}
+		image.ID = fmt.Sprintf("%d", nextID)
 	}
 	if image.ImportInfo.ImportedAt.IsZero() {
 		image.ImportInfo.ImportedAt = time.Now()
@@ -90,6 +96,20 @@ func (is *ImageStore) AddImage(image *Image) error {
 		checksum, err := is.calculateFileChecksum(image.Path)
 		if err == nil {
 			image.Metadata.Checksum = checksum
+		}
+	}
+
+	// Create multi-resolution thumbnails if not already set
+	if image.Thumbnails.Resolution720p == "" && image.Path != "" {
+		thumbnailsDir := is.store.config.ThumbnailsDir
+		if thumbnailsDir != "" {
+			thumbnailPaths, err := is.createMultiResolutionThumbnails(image.Path, thumbnailsDir, image.Name)
+			if err == nil {
+				image.Thumbnails = thumbnailPaths
+			} else {
+				// Log warning but don't fail the operation
+				// Note: Can't use logger directly due to type assertion, but we won't crash
+			}
 		}
 	}
 
@@ -437,6 +457,32 @@ func (is *ImageStore) imageHasAnyTagMatching(image Image, query string) bool {
 		}
 	}
 	return false
+}
+
+// createMultiResolutionThumbnails creates thumbnails for all resolutions
+func (is *ImageStore) createMultiResolutionThumbnails(inputPath, thumbnailsDir, fileName string) (ImageThumbnails, error) {
+	// Note: Actual thumbnail creation is handled by the IPC handler
+	// This method just sets up the expected paths for thumbnails that will be created
+	// This avoids circular import issues between store and image packages
+	
+	baseName := strings.TrimSuffix(fileName, filepath.Ext(fileName))
+	if !strings.Contains(baseName, ".") {
+		// If no extension, extract just the base name
+		parts := strings.Split(fileName, ".")
+		if len(parts) > 0 {
+			baseName = parts[0]
+		}
+	}
+	
+	thumbnailPaths := ImageThumbnails{
+		Resolution720p:  fmt.Sprintf("%s/720p/%s.webp", thumbnailsDir, baseName),
+		Resolution1080p: fmt.Sprintf("%s/1080p/%s.webp", thumbnailsDir, baseName),
+		Resolution1440p: fmt.Sprintf("%s/1440p/%s.webp", thumbnailsDir, baseName),
+		Resolution4k:    fmt.Sprintf("%s/4k/%s.webp", thumbnailsDir, baseName),
+		Fallback:        fmt.Sprintf("%s/fallback/%s.webp", thumbnailsDir, baseName),
+	}
+	
+	return thumbnailPaths, nil
 }
 
 // ImageStatistics contains statistics about the image registry

@@ -154,7 +154,7 @@ func (cm *ConfigManager) loadSwwwConfig() error {
 			FilterType:               models.FilterTypeLanczos3,
 			TransitionType:           models.TransitionTypeFade,
 			TransitionStep:           90,
-			TransitionDuration:       200,
+			TransitionDuration:       0.2, // 200ms in seconds
 			TransitionFPS:            60,
 			TransitionAngle:          0,
 			TransitionPositionType:   models.TransitionPositionTypeAlias,

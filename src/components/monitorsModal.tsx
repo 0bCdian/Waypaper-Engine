@@ -31,16 +31,25 @@ const Monitors = memo(function Monitors() {
         message: "error"
     });
     const closeModal = () => {
-        console.log("🟢 MonitorsModal: closeModal called, modalRef.current =", modalRef.current);
-        
+        console.log(
+            "🟢 MonitorsModal: closeModal called, modalRef.current =",
+            modalRef.current
+        );
+
         if (modalRef.current) {
-            console.log("🟢 MonitorsModal: closeModal - calling modalRef.current.close()");
+            console.log(
+                "🟢 MonitorsModal: closeModal - calling modalRef.current.close()"
+            );
             modalRef.current.close();
-            console.log("🟢 MonitorsModal: closeModal - modalRef.current.close() completed");
+            console.log(
+                "🟢 MonitorsModal: closeModal - modalRef.current.close() completed"
+            );
         } else {
-            console.log("🟢 MonitorsModal: closeModal - modalRef.current is null");
+            console.log(
+                "🟢 MonitorsModal: closeModal - modalRef.current is null"
+            );
         }
-        
+
         console.log("🟢 MonitorsModal: closeModal completed");
     };
     const [resolution, setResolution] = useState<{ x: number; y: number }>({
@@ -99,18 +108,20 @@ const Monitors = memo(function Monitors() {
         };
         console.log("🟢 MonitorsModal: onSubmit - calling setSelectedMonitor");
         await goDaemon.setSelectedMonitor(activeMonitorConfig);
-        console.log("🟢 MonitorsModal: onSubmit - setSelectedMonitor completed");
-        
+        console.log(
+            "🟢 MonitorsModal: onSubmit - setSelectedMonitor completed"
+        );
+
         // Close modal FIRST before updating state to prevent re-render issues
         console.log("🟢 MonitorsModal: onSubmit - calling closeModal");
         closeModal();
         console.log("🟢 MonitorsModal: onSubmit - closeModal completed");
-        
+
         // Update state after closing modal
         console.log("🟢 MonitorsModal: onSubmit - calling setActiveMonitor");
         setActiveMonitor(activeMonitorConfig);
         console.log("🟢 MonitorsModal: onSubmit - setActiveMonitor completed");
-        
+
         console.log("🟢 MonitorsModal: onSubmit - calling clearPlaylist");
         clearPlaylist();
         console.log("🟢 MonitorsModal: onSubmit - clearPlaylist completed");
@@ -119,14 +130,19 @@ const Monitors = memo(function Monitors() {
         1 /
         ((monitorsList.length + 1) * (screen.availWidth / window.innerWidth));
     const modalRef = useRef<HTMLDialogElement>(null);
-    
+
     // Callback ref to ensure the modal is exposed as soon as it's available
     const setModalRef = (element: HTMLDialogElement | null) => {
-        console.log("🟢 MonitorsModal: setModalRef called with element:", element);
+        console.log(
+            "🟢 MonitorsModal: setModalRef called with element:",
+            element
+        );
         // Use Object.assign to update the ref
         Object.assign(modalRef, { current: element });
         if (element) {
-            console.log("🟢 MonitorsModal: Modal element set, exposing to window.monitors");
+            console.log(
+                "🟢 MonitorsModal: Modal element set, exposing to window.monitors"
+            );
             // Expose the modal with showModal method
             window.monitors = {
                 showModal: () => {
@@ -138,7 +154,10 @@ const Monitors = memo(function Monitors() {
                     element.close();
                 }
             };
-            console.log("🟢 MonitorsModal: window.monitors exposed:", window.monitors);
+            console.log(
+                "🟢 MonitorsModal: window.monitors exposed:",
+                window.monitors
+            );
         } else {
             console.log("🟢 MonitorsModal: Modal element is null");
             // Clear the window.monitors reference when element is null
@@ -150,33 +169,48 @@ const Monitors = memo(function Monitors() {
 
     // Debug useEffect to track component lifecycle
     useEffect(() => {
-        console.log("🟢 MonitorsModal: Component mounted, window.monitors =", window.monitors);
-        console.log("🟢 MonitorsModal: monitorsList length =", monitorsList.length);
+        console.log(
+            "🟢 MonitorsModal: Component mounted, window.monitors =",
+            window.monitors
+        );
+        console.log(
+            "🟢 MonitorsModal: monitorsList length =",
+            monitorsList.length
+        );
         return () => {
             console.log("🟢 MonitorsModal: Component unmounting");
         };
     }, []); // Remove dependency to prevent unnecessary re-renders
 
+    // For single monitor, center it by adjusting the container size and positioning
+    const isSingleMonitor = monitorsList.length === 1;
     const styles: React.CSSProperties = {
-        width: resolution.x * scale,
-        height: resolution.y * scale
+        width: isSingleMonitor
+            ? monitorsList[0].width * scale
+            : resolution.x * scale,
+        height: isSingleMonitor
+            ? monitorsList[0].height * scale
+            : resolution.y * scale
     };
     useEffect(() => {
         const res = calculateMinResolution(monitorsList);
         setResolution(res);
     }, [monitorsList, screen.availWidth]);
-    
+
     // Load monitors on mount
     useEffect(() => {
         void reQueryMonitors();
     }, []);
-    
+
     // Debug: Check if modal element exists
     useEffect(() => {
-        console.log("Monitors component mounted, monitorsList length:", monitorsList.length);
+        console.log(
+            "Monitors component mounted, monitorsList length:",
+            monitorsList.length
+        );
         console.log("Modal ref:", modalRef.current);
     }, []); // Remove dependency to prevent re-renders
-    
+
     useEffect(() => {
         if (monitorsList.length < 1) return;
         if (selectType === "individual") {
@@ -197,7 +231,7 @@ const Monitors = memo(function Monitors() {
     useEffect(() => {
         if (!firstRender) return;
         firstRender = false;
-        
+
         // Listen for display changes via Go daemon events
         goDaemon.on("displays_changed", () => {
             // this setTimeout is added to circumvent an swww limitation on querying recently inserted monitorsList
@@ -251,13 +285,21 @@ const Monitors = memo(function Monitors() {
                         <div className="divider"></div>
                         <div style={styles} className="relative m-auto">
                             {monitorsList.map(monitor => {
+                                // For single monitor, center it at (0,0) regardless of its actual position
+                                const left = isSingleMonitor
+                                    ? 0
+                                    : monitor.position.x * scale;
+                                const top = isSingleMonitor
+                                    ? 0
+                                    : monitor.position.y * scale;
+
                                 return (
                                     <div
                                         draggable={false}
                                         style={{
                                             position: "absolute",
-                                            left: monitor.position.x * scale,
-                                            top: monitor.position.y * scale
+                                            left: left,
+                                            top: top
                                         }}
                                         key={monitor.name}
                                     >

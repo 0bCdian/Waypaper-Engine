@@ -6,29 +6,34 @@ export interface GoDaemonRendererClient {
     stopPlaylist(monitorName: string): Promise<any>;
     pausePlaylist(monitorName: string): Promise<any>;
     resumePlaylist(monitorName: string): Promise<any>;
-    
+
     // Image navigation
     nextImage(monitorName: string): Promise<any>;
     previousImage(monitorName: string): Promise<any>;
     randomImage(monitorName: string): Promise<any>;
     setImage(imageId: number, monitorName: string): Promise<any>;
-    
+
     // Data queries
     getImages(filters?: any): Promise<any>;
     getPlaylists(): Promise<any>;
     getInfo(): Promise<any>;
-    
+
+    // Image operations
+    getImageSrc(imageNames?: string[]): Promise<any>;
+    getThumbnailSrc(imageNames?: string[]): Promise<any>;
+    createThumbnail(imagePaths: string[], fileNames: string[]): Promise<any>;
+
     // Configuration
     getAppConfig(): Promise<any>;
     setAppConfig(key: string, value: any): Promise<any>;
     getSwwwConfig(): Promise<any>;
     setSwwwConfig(config: any): Promise<any>;
-    
+
     // System
     ping(): Promise<any>;
     getDaemonStatus(): Promise<any>;
     stopDaemon(): Promise<any>;
-    
+
     // Bulk operations
     nextImageAll(monitors?: string[]): Promise<any>;
     previousImageAll(monitors?: string[]): Promise<any>;
@@ -36,7 +41,7 @@ export interface GoDaemonRendererClient {
     stopPlaylistAll(): Promise<any>;
     pausePlaylistAll(): Promise<any>;
     resumePlaylistAll(): Promise<any>;
-    
+
     // Event listeners
     on(event: string, callback: (data: any) => void): void;
     off(event: string, callback: (data: any) => void): void;
@@ -45,44 +50,92 @@ export interface GoDaemonRendererClient {
 class GoDaemonRendererClientImpl implements GoDaemonRendererClient {
     // Playlist operations
     async startPlaylist(playlistId: number, activeMonitor: any): Promise<any> {
-        return ipcRenderer.invoke("go-daemon-command", "start_playlist", { playlistId, activeMonitor });
+        return ipcRenderer.invoke("go-daemon-command", "start_playlist", {
+            playlistId,
+            activeMonitor
+        });
     }
 
     async stopPlaylist(monitorName: string): Promise<any> {
-        return ipcRenderer.invoke("go-daemon-command", "stop_playlist", { activeMonitor: { name: monitorName } });
+        return ipcRenderer.invoke("go-daemon-command", "stop_playlist", {
+            activeMonitor: { name: monitorName }
+        });
     }
 
     async pausePlaylist(monitorName: string): Promise<any> {
-        return ipcRenderer.invoke("go-daemon-command", "pause_playlist", { activeMonitor: { name: monitorName } });
+        return ipcRenderer.invoke("go-daemon-command", "pause_playlist", {
+            activeMonitor: { name: monitorName }
+        });
     }
 
     async resumePlaylist(monitorName: string): Promise<any> {
-        return ipcRenderer.invoke("go-daemon-command", "resume_playlist", { activeMonitor: { name: monitorName } });
+        return ipcRenderer.invoke("go-daemon-command", "resume_playlist", {
+            activeMonitor: { name: monitorName }
+        });
     }
 
     // Image navigation
     async nextImage(monitorName: string): Promise<any> {
-        return ipcRenderer.invoke("go-daemon-command", "next_image", { activeMonitor: { name: monitorName } });
+        return ipcRenderer.invoke("go-daemon-command", "next_image", {
+            activeMonitor: { name: monitorName }
+        });
     }
 
     async previousImage(monitorName: string): Promise<any> {
-        return ipcRenderer.invoke("go-daemon-command", "previous_image", { activeMonitor: { name: monitorName } });
+        return ipcRenderer.invoke("go-daemon-command", "previous_image", {
+            activeMonitor: { name: monitorName }
+        });
     }
 
     async randomImage(monitorName: string): Promise<any> {
-        return ipcRenderer.invoke("go-daemon-command", "random_image", { activeMonitor: { name: monitorName } });
+        return ipcRenderer.invoke("go-daemon-command", "random_image", {
+            activeMonitor: { name: monitorName }
+        });
     }
 
     async setImage(imageId: number, monitorName: string): Promise<any> {
-        const payload = { image: { id: imageId }, activeMonitor: { name: monitorName } };
-        console.log("🔵 RendererClient: setImage called with imageId:", imageId, "monitorName:", monitorName);
+        const payload = {
+            image: { id: imageId },
+            activeMonitor: { name: monitorName }
+        };
+        console.log(
+            "🔵 RendererClient: setImage called with imageId:",
+            imageId,
+            "monitorName:",
+            monitorName
+        );
         console.log("🔵 RendererClient: setImage payload:", payload);
         return ipcRenderer.invoke("go-daemon-command", "set_image", payload);
     }
 
     // Data queries
     async getImages(filters?: any): Promise<any> {
-        return ipcRenderer.invoke("go-daemon-command", "get_images", { filters });
+        return ipcRenderer.invoke("go-daemon-command", "get_images", {
+            filters
+        });
+    }
+
+    // Image operations
+    async getImageSrc(imageNames?: string[]): Promise<any> {
+        return ipcRenderer.invoke("go-daemon-command", "get_image_src", {
+            imageNames
+        });
+    }
+
+    async getThumbnailSrc(imageNames?: string[]): Promise<any> {
+        return ipcRenderer.invoke("go-daemon-command", "get_thumbnail_src", {
+            imageNames
+        });
+    }
+
+    async createThumbnail(
+        imagePaths: string[],
+        fileNames: string[]
+    ): Promise<any> {
+        return ipcRenderer.invoke("go-daemon-command", "create_thumbnail", {
+            imagePaths,
+            fileNames
+        });
     }
 
     async getPlaylists(): Promise<any> {
@@ -99,7 +152,10 @@ class GoDaemonRendererClientImpl implements GoDaemonRendererClient {
     }
 
     async setAppConfig(key: string, value: any): Promise<any> {
-        return ipcRenderer.invoke("go-daemon-command", "set_app_config", { key, value });
+        return ipcRenderer.invoke("go-daemon-command", "set_app_config", {
+            key,
+            value
+        });
     }
 
     async getSwwwConfig(): Promise<any> {
@@ -107,7 +163,11 @@ class GoDaemonRendererClientImpl implements GoDaemonRendererClient {
     }
 
     async setSwwwConfig(config: any): Promise<any> {
-        return ipcRenderer.invoke("go-daemon-command", "set_swww_config", config);
+        return ipcRenderer.invoke(
+            "go-daemon-command",
+            "set_swww_config",
+            config
+        );
     }
 
     // System
@@ -125,15 +185,21 @@ class GoDaemonRendererClientImpl implements GoDaemonRendererClient {
 
     // Bulk operations
     async nextImageAll(monitors?: string[]): Promise<any> {
-        return ipcRenderer.invoke("go-daemon-command", "next_image_all", { monitors });
+        return ipcRenderer.invoke("go-daemon-command", "next_image_all", {
+            monitors
+        });
     }
 
     async previousImageAll(monitors?: string[]): Promise<any> {
-        return ipcRenderer.invoke("go-daemon-command", "previous_image_all", { monitors });
+        return ipcRenderer.invoke("go-daemon-command", "previous_image_all", {
+            monitors
+        });
     }
 
     async randomImageAll(monitors?: string[]): Promise<any> {
-        return ipcRenderer.invoke("go-daemon-command", "random_image_all", { monitors });
+        return ipcRenderer.invoke("go-daemon-command", "random_image_all", {
+            monitors
+        });
     }
 
     async stopPlaylistAll(): Promise<any> {

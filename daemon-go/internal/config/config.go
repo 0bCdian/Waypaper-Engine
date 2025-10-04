@@ -201,7 +201,7 @@ func (cm *ConfigManager) GetSwwwConfig() *models.SwwwConfig {
 			FilterType:               models.FilterTypeLanczos3,
 			TransitionType:           models.TransitionTypeFade,
 			TransitionStep:           90,
-			TransitionDuration:       200,
+			TransitionDuration:       0.2, // 200ms in seconds
 			TransitionFPS:            60,
 			TransitionAngle:          0,
 			TransitionPositionType:   models.TransitionPositionTypeAlias,
@@ -223,7 +223,7 @@ func (cm *ConfigManager) GetSwwwConfig() *models.SwwwConfig {
 		FilterType:               models.FilterTypeLanczos3, // Default since TOML doesn't have this field
 		TransitionType:           models.TransitionType(config.Backend.Swww.TransitionType),
 		TransitionStep:           config.Backend.Swww.TransitionStep,
-		TransitionDuration:       config.Backend.Swww.TransitionDuration,
+		TransitionDuration:       float64(config.Backend.Swww.TransitionDuration) / 1000, // Convert milliseconds to seconds
 		TransitionFPS:            60, // Default since TOML doesn't have this field
 		TransitionAngle:          int(config.Backend.Swww.TransitionAngle),
 		TransitionPositionType:   models.TransitionPositionTypeAlias, // Default since TOML doesn't have this field
@@ -322,7 +322,7 @@ func (cm *ConfigManager) getDefaultConfig() *WaypaperConfig {
 		Daemon: DaemonConfig{
 			DatabasePath:      filepath.Join(baseDir, ".waypaper-engine", "data"),
 			ImagesDir:         filepath.Join(baseDir, ".waypaper-engine", "images"),
-			ThumbnailsDir:     filepath.Join(baseDir, ".cache", "waypaper-engine", "thumbnails"),
+			ThumbnailsDir:     filepath.Join(baseDir, ".waypaper-engine", "data", "cache", "thumbnails"),
 			MonitorsStateFile: filepath.Join(baseDir, ".cache", "waypaper-engine", "monitors.json"),
 			SocketPath:        "/tmp/waypaper-engine.sock",
 			LogLevel:          "info",
@@ -337,7 +337,7 @@ func (cm *ConfigManager) getDefaultConfig() *WaypaperConfig {
 			Swww: SwwwConfig{
 				TransitionType:     "simple",
 				TransitionStep:     90,
-				TransitionDuration: 200,
+				TransitionDuration: 200, // Keep as milliseconds in TOML config
 				TransitionAngle:    45,
 				TransitionPos:      "center",
 				TransitionBezier:   "0.4,0.0,0.2,1",

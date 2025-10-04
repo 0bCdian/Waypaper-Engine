@@ -163,7 +163,7 @@ func createTestSQLiteDB(dbPath string, logger *slog.Logger) error {
 		FilterType:               models.FilterTypeLanczos3,
 		TransitionType:           models.TransitionTypeFade,
 		TransitionStep:           90,
-		TransitionDuration:       300,
+		TransitionDuration:       0.3, // 300ms in seconds
 		TransitionFPS:            60,
 		TransitionAngle:          45,
 		TransitionPositionType:   models.TransitionPositionTypeAlias,
@@ -277,9 +277,10 @@ func testSwwwConfigMigration(sqlitePath, tomlPath string, logger *slog.Logger) e
 			tomlConfig.Backend.Swww.TransitionStep, swwwConfig.TransitionStep)
 	}
 
-	if tomlConfig.Backend.Swww.TransitionDuration != swwwConfig.TransitionDuration {
-		return fmt.Errorf("transition duration mismatch: TOML=%d, SQLite=%d",
-			tomlConfig.Backend.Swww.TransitionDuration, swwwConfig.TransitionDuration)
+	expectedDuration := int(swwwConfig.TransitionDuration * 1000) // Convert seconds to milliseconds
+	if tomlConfig.Backend.Swww.TransitionDuration != expectedDuration {
+		return fmt.Errorf("transition duration mismatch: TOML=%d, SQLite=%d (expected %d)",
+			tomlConfig.Backend.Swww.TransitionDuration, swwwConfig.TransitionDuration, expectedDuration)
 	}
 
 	if tomlConfig.Backend.Swww.TransitionAngle != swwwConfig.TransitionAngle {
@@ -307,7 +308,7 @@ func migrateSwwwConfigToToml(configManager *config.ConfigManager, swwwConfig *mo
 	tomlConfig.Backend.Type = "swww" // Ensure backend type is swww
 	tomlConfig.Backend.Swww.TransitionType = convertTransitionType(swwwConfig.TransitionType)
 	tomlConfig.Backend.Swww.TransitionStep = swwwConfig.TransitionStep
-	tomlConfig.Backend.Swww.TransitionDuration = swwwConfig.TransitionDuration
+	tomlConfig.Backend.Swww.TransitionDuration = int(swwwConfig.TransitionDuration * 1000) // Convert seconds to milliseconds
 	tomlConfig.Backend.Swww.TransitionAngle = swwwConfig.TransitionAngle
 	tomlConfig.Backend.Swww.TransitionPos = convertTransitionPosition(swwwConfig.TransitionPosition)
 	tomlConfig.Backend.Swww.TransitionBezier = swwwConfig.TransitionBezier

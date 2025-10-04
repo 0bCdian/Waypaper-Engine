@@ -6,11 +6,13 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
 	"waypaper-engine/daemon-go/internal/config"
 	"waypaper-engine/daemon-go/internal/db"
+	"waypaper-engine/daemon-go/internal/image"
 	"waypaper-engine/daemon-go/internal/media"
 	"waypaper-engine/daemon-go/internal/models"
 	"waypaper-engine/daemon-go/internal/store"
@@ -23,6 +25,13 @@ type SQLiteToJSONMigrator struct {
 	logger    *slog.Logger
 	dryRun    bool
 	tomlPath  string
+	options   MigrationOptions
+}
+
+// getConfig loads the configuration from TOML file
+func (migrator *SQLiteToJSONMigrator) getConfig() (*config.WaypaperConfig, error) {
+	configManager := config.NewConfigManager(migrator.tomlPath)
+	return configManager.GetConfig()
 }
 
 // migrateSwwwConfigToToml migrates swww configuration from SQLite to TOML
@@ -86,7 +95,7 @@ func (migrator *SQLiteToJSONMigrator) migrateSwwwConfigToToml(tomlPath string) e
 	tomlConfig.Backend.Type = "swww" // Ensure backend type is swww
 	tomlConfig.Backend.Swww.TransitionType = migrator.convertTransitionType(swwwConfig.TransitionType)
 	tomlConfig.Backend.Swww.TransitionStep = swwwConfig.TransitionStep
-	tomlConfig.Backend.Swww.TransitionDuration = swwwConfig.TransitionDuration
+	tomlConfig.Backend.Swww.TransitionDuration = int(swwwConfig.TransitionDuration * 1000) // Convert seconds to milliseconds
 	tomlConfig.Backend.Swww.TransitionAngle = swwwConfig.TransitionAngle
 	tomlConfig.Backend.Swww.TransitionPos = migrator.convertTransitionPosition(swwwConfig.TransitionPosition)
 	tomlConfig.Backend.Swww.TransitionBezier = swwwConfig.TransitionBezier
@@ -152,10 +161,70 @@ func (migrator *SQLiteToJSONMigrator) migrateImages() error {
 		detector := media.NewDetector()
 		mediaType := detector.DetectMediaType(dbImg.Format)
 
+		// Construct full path to original image location
+		// The original SQLite system stored images in ~/.waypaper_engine/images/
+		homeDir, _ := os.UserHomeDir()
+		originalImagePath := filepath.Join(homeDir, ".waypaper_engine", "images", dbImg.Name)
+
+		// Validate path exists if requested
+		if migrator.options.ValidatePaths {
+			if _, err := os.Stat(originalImagePath); os.IsNotExist(err) {
+				migrator.logger.Warn("Image file not found, skipping", "path", originalImagePath, "name", dbImg.Name)
+				continue
+			}
+		}
+
+		// Determine final path based on consolidation option
+		finalPath := originalImagePath
+		if migrator.options.ConsolidateImages {
+			// Move image to consolidated directory
+			consolidatedDir := filepath.Join(migrator.options.JSONPath, "images")
+			if err := os.MkdirAll(consolidatedDir, 0755); err != nil {
+				migrator.logger.Error("Failed to create consolidated images directory", "error", err)
+				continue
+			}
+			
+			consolidatedPath := filepath.Join(consolidatedDir, dbImg.Name)
+			if err := os.Rename(originalImagePath, consolidatedPath); err != nil {
+				migrator.logger.Error("Failed to move image to consolidated directory", "error", err, "from", originalImagePath, "to", consolidatedPath)
+				continue
+			}
+			finalPath = consolidatedPath
+			migrator.logger.Debug("Moved image to consolidated directory", "from", originalImagePath, "to", consolidatedPath)
+		}
+
+		// Generate multi-resolution thumbnails for the image
+		var thumbnailPaths map[string]string
+		if !migrator.dryRun {
+			// Get thumbnails directory from configuration
+			config, err := migrator.getConfig()
+			if err == nil {
+				// Create multi-resolution thumbnails (migration creates all resolutions for compatibility)
+				thumbnailPaths, err = image.CreateMultiResolutionThumbnails(finalPath, config.Daemon.ThumbnailsDir, dbImg.Name)
+				if err != nil {
+					migrator.logger.Warn("Failed to create multi-resolution thumbnails", "image", dbImg.Name, "error", err)
+				} else {
+					migrator.logger.Debug("Created multi-resolution thumbnails", "image", dbImg.Name, "thumbnails", len(thumbnailPaths))
+				}
+			}
+		}
+
+		// Convert thumbnail paths to store format
+		var storeThumbnails store.ImageThumbnails
+		if thumbnailPaths != nil {
+			storeThumbnails = store.ImageThumbnails{
+				Resolution720p:  thumbnailPaths["720p"],
+				Resolution1080p: thumbnailPaths["1080p"],
+				Resolution1440p: thumbnailPaths["1440p"],
+				Resolution4k:    thumbnailPaths["4k"],
+				Fallback:        thumbnailPaths["fallback"],
+			}
+		}
+
 		jsonImg := store.Image{
 			ID:        fmt.Sprintf("%d", dbImg.ID),
 			Name:      dbImg.Name,
-			Path:      dbImg.Name, // Use name as path for now
+			Path:      finalPath, // Use final path (original or consolidated)
 			MediaType: mediaType,
 			Metadata: store.ImageMetadata{
 				Format: dbImg.Format,
@@ -173,6 +242,7 @@ func (migrator *SQLiteToJSONMigrator) migrateImages() error {
 				ImportedAt: time.Now(),
 				Importer:   "sqlite-migration",
 			},
+			Thumbnails: storeThumbnails,
 		}
 		jsonImages = append(jsonImages, jsonImg)
 	}

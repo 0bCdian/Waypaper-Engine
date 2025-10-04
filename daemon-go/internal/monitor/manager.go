@@ -161,6 +161,12 @@ func (m *Manager) GetActiveMonitor() *models.ActiveMonitor {
 
 // loadActiveMonitorFromDB loads the active monitor configuration from the database
 func (m *Manager) loadActiveMonitorFromDB() error {
+	// Skip database loading if using JSON store mode
+	if m.db == nil {
+		m.logger.Info("Using JSON store mode, skipping database monitor loading")
+		return nil
+	}
+
 	ctx := context.Background()
 
 	// Try to get the selected monitor from database
@@ -198,11 +204,15 @@ func (m *Manager) SetActiveMonitor(activeMonitor *models.ActiveMonitor) error {
 		return fmt.Errorf("failed to serialize active monitor config: %w", err)
 	}
 
-	// Store in database
-	ctx := context.Background()
-	err = m.db.SetSelectedMonitor(ctx, string(configJSON))
-	if err != nil {
-		return fmt.Errorf("failed to persist active monitor config: %w", err)
+	// Store in database (skip if using JSON store mode)
+	if m.db != nil {
+		ctx := context.Background()
+		err = m.db.SetSelectedMonitor(ctx, string(configJSON))
+		if err != nil {
+			return fmt.Errorf("failed to persist active monitor config: %w", err)
+		}
+	} else {
+		m.logger.Info("Using JSON store mode, skipping database monitor persistence")
 	}
 
 	// Update in-memory state

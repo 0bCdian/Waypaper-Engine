@@ -20,7 +20,7 @@ image_history_limit = 50  # Maximum number of images to keep in history
 # Daemon-specific settings
 database_path = "~/.config/waypaper-engine/waypaper.db"
 images_dir = "~/.waypaper-engine/images"
-thumbnails_dir = "~/.cache/waypaper-engine/thumbnails"
+thumbnails_dir = "~/.waypaper-engine/data/cache/thumbnails"
 monitors_state_file = "~/.cache/waypaper-engine/monitors.json"
 socket_path = "/tmp/waypaper_engine.sock"
 log_level = "info"  # "debug" | "info" | "warn" | "error"

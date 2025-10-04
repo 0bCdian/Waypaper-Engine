@@ -6,20 +6,22 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
-	"path/filepath"
 	"time"
 )
 
 func main() {
 	var (
-		sqlitePath = flag.String("sqlite", "", "Path to existing SQLite database")
-		jsonPath   = flag.String("json", "", "Path to new JSON store directory")
-		tomlPath   = flag.String("toml", "", "Path to TOML config file for swww config migration")
-		dryRun     = flag.Bool("dry-run", false, "Preview migration without making changes")
-		backup     = flag.Bool("backup", true, "Create backup of SQLite database before migration")
-		force      = flag.Bool("force", false, "Overwrite existing JSON store if it exists")
-		verbose    = flag.Bool("verbose", false, "Enable verbose logging")
-		help       = flag.Bool("help", false, "Show help information")
+		sqlitePath     = flag.String("sqlite", "", "Path to existing SQLite database")
+		jsonPath       = flag.String("json", "", "Path to new JSON store directory")
+		tomlPath       = flag.String("toml", "", "Path to TOML config file for swww config migration")
+		dryRun         = flag.Bool("dry-run", false, "Preview migration without making changes")
+		backup         = flag.Bool("backup", true, "Create backup of SQLite database before migration")
+		force          = flag.Bool("force", false, "Overwrite existing JSON store if it exists")
+		verbose        = flag.Bool("verbose", false, "Enable verbose logging")
+		help           = flag.Bool("help", false, "Show help information")
+		consolidateImages = flag.Bool("consolidate-images", false, "Move images to consolidated directory (saves space but risks broken paths)")
+		validatePaths  = flag.Bool("validate-paths", true, "Validate image paths exist before migration")
+		regenerateThumbnails = flag.Bool("regenerate-thumbnails", false, "Regenerate thumbnails for existing migrated images")
 	)
 
 	flag.Parse()
@@ -29,33 +31,19 @@ func main() {
 		return
 	}
 
-	// Get default paths from configuration
-	if *sqlitePath == "" || *jsonPath == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: Failed to get home directory: %v\n", err)
-			os.Exit(1)
-		}
-
-		if *sqlitePath == "" {
-			sqlitePath = &homeDir
-			*sqlitePath = filepath.Join(*sqlitePath, ".config", "waypaper-engine", "waypaper.db")
-		}
-
-		if *jsonPath == "" {
-			jsonPath = &homeDir
-			*jsonPath = filepath.Join(*jsonPath, ".waypaper-engine", "data")
-		}
+	// Get default paths from configuration (respects DEV environment variable)
+	defaultOptions := DefaultMigrationOptions()
+	
+	if *sqlitePath == "" {
+		*sqlitePath = defaultOptions.SQLitePath
 	}
 
-	// Set default TOML path if not provided
+	if *jsonPath == "" {
+		*jsonPath = defaultOptions.JSONPath
+	}
+
 	if *tomlPath == "" {
-		homeDir, err := os.UserHomeDir()
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error: Failed to get home directory: %v\n", err)
-			os.Exit(1)
-		}
-		*tomlPath = filepath.Join(homeDir, ".config", "waypaper-engine", "config.toml")
+		*tomlPath = defaultOptions.TOMLPath
 	}
 
 	// Set up logging
@@ -70,13 +58,16 @@ func main() {
 
 	// Create migration options
 	options := MigrationOptions{
-		SQLitePath: *sqlitePath,
-		JSONPath:   *jsonPath,
-		TOMLPath:   *tomlPath,
-		DryRun:     *dryRun,
-		Backup:     *backup,
-		Force:      *force,
-		Verbose:    *verbose,
+		SQLitePath:       *sqlitePath,
+		JSONPath:         *jsonPath,
+		TOMLPath:         *tomlPath,
+		DryRun:           *dryRun,
+		Backup:           *backup,
+		Force:            *force,
+		Verbose:          *verbose,
+		ConsolidateImages: *consolidateImages,
+		ValidatePaths:    *validatePaths,
+		RegenerateThumbnails: *regenerateThumbnails,
 	}
 
 	logger.Info("Waypaper Engine Migration Tool",
@@ -120,6 +111,11 @@ func main() {
 }
 
 func validateOptions(options MigrationOptions) error {
+	// Skip SQLite validation if only regenerating thumbnails
+	if options.RegenerateThumbnails {
+		return nil
+	}
+
 	// Check SQLite database exists
 	if _, err := os.Stat(options.SQLitePath); os.IsNotExist(err) {
 		return fmt.Errorf("SQLite database not found: %s", options.SQLitePath)
@@ -144,12 +140,15 @@ USAGE:
 OPTIONS:
     -sqlite PATH    Path to existing SQLite database
                     Default: ~/.config/waypaper-engine/waypaper.db
+                    (or /tmp/waypaper-engine/waypaper.db if DEV=true)
 
     -json PATH      Path to new JSON store directory  
                     Default: ~/.waypaper-engine/data
+                    (or /tmp/waypaper-engine/data if DEV=true)
 
     -toml PATH      Path to TOML config file for swww config migration
                     Default: ~/.config/waypaper-engine/config.toml
+                    (or /tmp/waypaper-engine/config.toml if DEV=true)
 
     -dry-run        Preview migration without making changes
                     Use this to see what would be migrated
@@ -165,6 +164,11 @@ OPTIONS:
 
     -help           Show this help message
 
+ENVIRONMENT VARIABLES:
+    DEV=true         Use /tmp/waypaper-engine/ paths for development
+                    This makes the migration tool use temporary paths
+                    instead of user home directory paths
+
 EXAMPLES:
     # Basic migration using default paths
     %s
@@ -177,6 +181,9 @@ EXAMPLES:
 
     # Force overwrite existing JSON store
     %s -force -verbose
+
+    # Development mode (uses /tmp paths)
+    DEV=true %s -dry-run
 
 MIGRATION PROCESS:
    1. Validates SQLite database is accessible

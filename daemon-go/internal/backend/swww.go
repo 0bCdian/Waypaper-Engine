@@ -135,7 +135,7 @@ func (s *SwwwBackend) GetDefaultConfig() *BackendConfig {
 		ResizeType:         "fit",
 		FillColor:          "#000000",
 		TransitionType:     "fade",
-		TransitionDuration: 200,
+		TransitionDuration: 0.2, // 200ms in seconds
 		TransitionStep:     90,
 		TransitionFPS:      60,
 		TransitionAngle:    0,
@@ -178,7 +178,9 @@ func (s *SwwwBackend) addConfigArgs(args []string, config *BackendConfig) []stri
 		args = append(args, "--transition-type", config.TransitionType)
 
 		if config.TransitionDuration > 0 {
-			args = append(args, "--transition-duration", fmt.Sprintf("%d", config.TransitionDuration))
+			// Convert seconds to milliseconds for swww command
+			durationMs := int(config.TransitionDuration * 1000)
+			args = append(args, "--transition-duration", fmt.Sprintf("%d", durationMs))
 		}
 
 		if config.TransitionStep > 0 {

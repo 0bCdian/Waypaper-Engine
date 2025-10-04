@@ -11,6 +11,7 @@ import (
 
 	"waypaper-engine/daemon-go/internal/db"
 	"waypaper-engine/daemon-go/internal/store"
+	"waypaper-engine/daemon-go/internal/utils"
 )
 
 // MigrationTool handles one-time migration from SQLite to JSON storage
@@ -26,25 +27,44 @@ type MigrationTool struct {
 
 // MigrationOptions configures the migration process
 type MigrationOptions struct {
-	SQLitePath string `help:"Path to existing SQLite database"`
-	JSONPath   string `help:"Path to new JSON store directory"`
-	TOMLPath   string `help:"Path to TOML config file for swww config migration"`
-	DryRun     bool   `help:"Preview migration without making changes"`
-	Backup     bool   `help:"Create backup of SQLite database before migration"`
-	Force      bool   `help:"Overwrite existing JSON store if it exists"`
-	Verbose    bool   `help:"Enable verbose logging"`
+	SQLitePath       string `help:"Path to existing SQLite database"`
+	JSONPath         string `help:"Path to new JSON store directory"`
+	TOMLPath         string `help:"Path to TOML config file for swww config migration"`
+	DryRun           bool   `help:"Preview migration without making changes"`
+	Backup           bool   `help:"Create backup of SQLite database before migration"`
+	Force            bool   `help:"Overwrite existing JSON store if it exists"`
+	Verbose          bool   `help:"Enable verbose logging"`
+	ConsolidateImages bool   `help:"Move images to consolidated directory (saves space but risks broken paths)"`
+	ValidatePaths    bool   `help:"Validate image paths exist before migration"`
+	RegenerateThumbnails bool `help:"Regenerate thumbnails for existing migrated images"`
 }
 
 // DefaultMigrationOptions returns default migration options
 func DefaultMigrationOptions() MigrationOptions {
 	homeDir, _ := os.UserHomeDir()
-	defaultJSONPath := filepath.Join(homeDir, ".waypaper-engine", "data")
-	defaultTOMLPath := filepath.Join(homeDir, ".config", "waypaper-engine", "config.toml")
+	
+	// Check for DEV environment variable to use /tmp paths for development
+	devEnv := os.Getenv("DEV")
+	
+	var sqlitePath, jsonPath, tomlPath string
+	
+	if devEnv == "true" {
+		// Development mode: use /tmp/waypaper-engine/ for all paths
+		tmpDir := "/tmp/waypaper-engine"
+		sqlitePath = filepath.Join(tmpDir, "waypaper.db")
+		jsonPath = filepath.Join(tmpDir, "data")
+		tomlPath = filepath.Join(tmpDir, "config.toml")
+	} else {
+		// Production mode: use user config directory
+		sqlitePath = filepath.Join(homeDir, ".config", "waypaper-engine", "waypaper.db")
+		jsonPath = filepath.Join(homeDir, ".waypaper-engine", "data")
+		tomlPath = filepath.Join(homeDir, ".config", "waypaper-engine", "config.toml")
+	}
 
 	return MigrationOptions{
-		SQLitePath: filepath.Join(homeDir, ".config", "waypaper-engine", "waypaper.db"),
-		JSONPath:   defaultJSONPath,
-		TOMLPath:   defaultTOMLPath,
+		SQLitePath: sqlitePath,
+		JSONPath:   jsonPath,
+		TOMLPath:   tomlPath,
 		DryRun:     false,
 		Backup:     true,
 		Force:      false,
@@ -54,9 +74,12 @@ func DefaultMigrationOptions() MigrationOptions {
 
 // NewMigrationTool creates a new migration tool
 func NewMigrationTool(options MigrationOptions, logger *slog.Logger) (*MigrationTool, error) {
-	// Verify SQLite database exists
-	if _, err := os.Stat(options.SQLitePath); os.IsNotExist(err) {
-		return nil, fmt.Errorf("SQLite database not found at %s", options.SQLitePath)
+	// Skip SQLite validation if only regenerating thumbnails
+	if !options.RegenerateThumbnails {
+		// Verify SQLite database exists
+		if _, err := os.Stat(options.SQLitePath); os.IsNotExist(err) {
+			return nil, fmt.Errorf("SQLite database not found at %s", options.SQLitePath)
+		}
 	}
 
 	return &MigrationTool{
@@ -72,6 +95,11 @@ func (mt *MigrationTool) Run(ctx context.Context, options MigrationOptions) erro
 		"sqlite", options.SQLitePath,
 		"json", options.JSONPath,
 		"dry_run", options.DryRun)
+
+	// Handle thumbnail regeneration only
+	if options.RegenerateThumbnails {
+		return utils.RegenerateThumbnails(options.JSONPath, options.TOMLPath, mt.logger)
+	}
 
 	// Step 1: Initialize connections
 	if err := mt.initializeConnections(); err != nil {
@@ -109,6 +137,13 @@ func (mt *MigrationTool) Run(ctx context.Context, options MigrationOptions) erro
 	}
 
 	mt.logger.Info("Migration completed successfully")
+	
+	// Create migration marker
+	if err := mt.createMigrationMarker(options.TOMLPath); err != nil {
+		mt.logger.Warn("Failed to create migration marker", "error", err)
+		// Don't fail the migration for this
+	}
+	
 	return nil
 }
 
@@ -207,6 +242,7 @@ func (mt *MigrationTool) migrateAllData(ctx context.Context, options MigrationOp
 		jsonStore: mt.jsonStore,
 		logger:    mt.logger,
 		dryRun:    options.DryRun,
+		options:   options,
 	}
 
 	// Migrate each component
@@ -264,5 +300,42 @@ func (mt *MigrationTool) verifyMigration() error {
 		"playlists", stats.Playlists,
 		"history", stats.History)
 
+	return nil
+}
+
+// createMigrationMarker creates a marker file indicating successful migration
+func (mt *MigrationTool) createMigrationMarker(tomlPath string) error {
+	markerContent := fmt.Sprintf(`# Waypaper Engine Migration Marker
+# This file indicates that migration from SQLite to JSON was completed successfully
+# Created at: %s
+# SQLite source: %s
+# JSON target: %s
+# TOML config: %s
+
+completed=true
+created_at=%s
+migration_source=%s
+migration_target=%s
+`,
+		time.Now().Format(time.RFC3339),
+		mt.sqlitePath,
+		mt.jsonPath,
+		tomlPath,
+		time.Now().Format(time.RFC3339),
+		mt.sqlitePath,
+		mt.jsonPath,
+	)
+
+	migrationMarkerPath := filepath.Join(filepath.Dir(tomlPath), ".migration_completed")
+
+	if err := os.MkdirAll(filepath.Dir(migrationMarkerPath), 0755); err != nil {
+		return fmt.Errorf("failed to create migration marker directory: %w", err)
+	}
+
+	if err := os.WriteFile(migrationMarkerPath, []byte(markerContent), 0644); err != nil {
+		return fmt.Errorf("failed to create migration marker: %w", err)
+	}
+
+	mt.logger.Info("Migration marker created", "marker_file", migrationMarkerPath)
 	return nil
 }

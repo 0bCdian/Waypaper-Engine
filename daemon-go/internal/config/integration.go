@@ -55,7 +55,9 @@ func (ci *ConfigIntegration) UpdateBackendSetting(setting string, value interfac
 			tomlConfig.Backend.Type = str
 		}
 	case "transition_duration":
-		if intVal, ok := value.(int); ok {
+		if floatVal, ok := value.(float64); ok {
+			tomlConfig.Backend.Swww.TransitionDuration = int(floatVal)
+		} else if intVal, ok := value.(int); ok {
 			tomlConfig.Backend.Swww.TransitionDuration = intVal
 		}
 	case "transition_type":
@@ -81,7 +83,7 @@ func (ci *ConfigIntegration) GetEffectiveBackendConfig(playlistConfig *store.Bac
 	// Initialize result with TOML defaults
 	result := &backend.BackendConfig{
 		BackendType:        backend.BackendType(tomlConfig.Backend.Type),
-		TransitionDuration: tomlConfig.Backend.Swww.TransitionDuration,
+		TransitionDuration: float64(tomlConfig.Backend.Swww.TransitionDuration) / 1000, // Convert milliseconds to seconds
 		TransitionType:     tomlConfig.Backend.Swww.TransitionType,
 		PositionType:       "center", // Default center position
 		ResizeType:         "fit",    // Default
@@ -127,7 +129,9 @@ func (ci *ConfigIntegration) GetEffectiveBackendConfig(playlistConfig *store.Bac
 				switch key {
 				case "transitionDuration":
 					if duration, ok := value.(int); ok {
-						result.TransitionDuration = duration
+						result.TransitionDuration = float64(duration) / 1000 // Convert milliseconds to seconds
+					} else if duration, ok := value.(float64); ok {
+						result.TransitionDuration = duration // Already in seconds
 					}
 				case "transitionType":
 					if transType, ok := value.(string); ok {
@@ -153,7 +157,7 @@ func (ci *ConfigIntegration) getBackendDefaults(mediaType media.MediaType) *back
 	case media.MediaTypeImage:
 		return &backend.BackendConfig{
 			BackendType:        backend.BackendSwww,
-			TransitionDuration: 200,
+			TransitionDuration: 200, // Keep as milliseconds in TOML config
 			TransitionType:     "simple",
 			PositionType:       "center",
 			ResizeType:         "fit",
@@ -197,7 +201,7 @@ func (ci *ConfigIntegration) getBackendDefaults(mediaType media.MediaType) *back
 	default:
 		return &backend.BackendConfig{
 			BackendType:        backend.BackendSwww,
-			TransitionDuration: 200,
+			TransitionDuration: 200, // Keep as milliseconds in TOML config
 			TransitionType:     "simple",
 			PositionType:       "center",
 			ResizeType:         "fit",

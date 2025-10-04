@@ -62,6 +62,9 @@ export const ELECTRON_API = {
         getThumbnailSrc: async (imageName: string) => {
             return await ipcRenderer.invoke("go-daemon-command", "get_thumbnail_src", { fileName: imageName });
         },
+        createThumbnail: async (imagePaths: string[], fileNames: string[]) => {
+            return await ipcRenderer.invoke("go-daemon-command", "create_thumbnail", { imagePaths, fileNames });
+        },
         getMonitorImage: async (monitorName: string) => {
             return await ipcRenderer.invoke("go-daemon-command", "get_monitor_image", { monitorName });
         },

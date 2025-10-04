@@ -22,7 +22,47 @@ export interface configuration {
     alwaysStartOnFirstImage: boolean;
 }
 
-export interface rendererImage extends imageSelectType {
+// Thumbnail paths for different resolutions
+export interface ImageThumbnails {
+    "720p": string;
+    "1080p": string;
+    "1440p": string;
+    "4k": string;
+    fallback: string;
+}
+
+// New JSON-based image type (replaces SQLite-based imageSelectType)
+export interface JSONImage {
+    id: string;
+    name: string;
+    path: string;
+    mediaType: string;
+    dimensions: {
+        width: number;
+        height: number;
+    };
+    metadata: {
+        format: string;
+        fileSize: number;
+        checksum: string;
+        tags: string[];
+        properties?: Record<string, any>;
+    };
+    selection: {
+        isChecked: boolean;
+        isSelected: boolean;
+        selectedAt?: string;
+        selectedPlaylists: string[];
+    };
+    importInfo: {
+        importedAt: string;
+        sourcePath?: string;
+        importer: string;
+    };
+    thumbnails: ImageThumbnails;
+}
+
+export interface rendererImage extends JSONImage {
     time: number | null;
 }
 export interface rendererPlaylist {

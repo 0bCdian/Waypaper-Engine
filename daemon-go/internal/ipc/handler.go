@@ -7,15 +7,20 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	"waypaper-engine/daemon-go/internal/config"
 	"waypaper-engine/daemon-go/internal/db"
 	"waypaper-engine/daemon-go/internal/errors"
 	"waypaper-engine/daemon-go/internal/image"
+	"waypaper-engine/daemon-go/internal/media"
 	"waypaper-engine/daemon-go/internal/monitor"
 	"waypaper-engine/daemon-go/internal/playlist"
+	"waypaper-engine/daemon-go/internal/store"
 	"waypaper-engine/daemon-go/internal/system"
+	"waypaper-engine/daemon-go/internal/types"
 )
 
 // Handler is the implementation of the MessageHandler interface.
@@ -28,6 +33,7 @@ type Handler struct {
 	monitorManager  *monitor.Manager
 	logger          *slog.Logger
 	server          *Server
+	store           *store.Store
 }
 
 // NewHandler creates a new message handler.
@@ -39,8 +45,14 @@ func NewHandler(playlistManager *playlist.Manager, dbOps *db.DatabaseOperations,
 		configManager:   configManager,
 		imageProcessor:  imageProcessor,
 		monitorManager:  monitorManager,
+		store:           nil, // Will be set later if JSON store is available
 		logger:          logger,
 	}
+}
+
+// SetStore sets the JSON store for the handler
+func (h *Handler) SetStore(store *store.Store) {
+	h.store = store
 }
 
 // SetServer sets the server reference for event broadcasting.
@@ -349,18 +361,64 @@ func (h *Handler) handleGetInfo(msg *Message) *Response {
 
 func (h *Handler) handleGetImages(msg *Message) *Response {
 	// For now, return all images. In the future, this could support filtering
-	h.logger.Info("handleGetImages: starting to get images from database")
+	h.logger.Info("handleGetImages: starting to get images")
+	
+	// Try to get images from JSON store first (migrated images)
+	if h.store != nil {
+		registry, err := h.store.LoadImageRegistry()
+		if err == nil && registry != nil && len(registry.Images) > 0 {
+			h.logger.Info("handleGetImages: found images in JSON store", "count", len(registry.Images))
+			
+			// Log the first few images for debugging
+			for i, img := range registry.Images {
+				if i < 3 { // Only log first 3 images
+					h.logger.Info("handleGetImages: JSON image", "index", i, "id", img.ID, "name", img.Name, "path", img.Path)
+				}else{
+					break
+				}
+			}
+
+			// Convert JSON images to frontend-compatible format
+			// Frontend expects only the database schema fields: id, name, isChecked, isSelected, width, height, format
+			var frontendImages []map[string]interface{}
+			for _, jsonImg := range registry.Images {
+				// Parse ID as integer for compatibility with frontend
+				id, err := strconv.Atoi(jsonImg.ID)
+				if err != nil {
+					h.logger.Warn("Invalid image ID in JSON store", "id", jsonImg.ID, "error", err)
+					continue
+				}
+				
+				frontendImg := map[string]interface{}{
+					"id":         id,
+					"name":       jsonImg.Name,
+					"isChecked":  jsonImg.Selection.IsChecked,
+					"isSelected": jsonImg.Selection.IsSelected,
+					"width":      jsonImg.Dimensions.Width,
+					"height":     jsonImg.Dimensions.Height,
+					"format":     jsonImg.Metadata.Format,
+				}
+				frontendImages = append(frontendImages, frontendImg)
+			}
+
+			h.logger.Info("handleGetImages: returning images from JSON store", "count", len(frontendImages))
+			return &Response{Action: msg.Action, Data: frontendImages}
+		}
+	}
+	
+	// Fallback to SQLite database
+	h.logger.Info("handleGetImages: falling back to SQLite database")
 	dbImages, err := h.dbOps.GetAllImages(context.Background())
 	if err != nil {
 		h.logger.Error("failed to get images", "error", err)
 		return &Response{Action: msg.Action, Error: err.Error()}
 	}
-	h.logger.Info("handleGetImages: got images from database", "count", len(dbImages))
+	h.logger.Info("handleGetImages: got images from SQLite database", "count", len(dbImages))
 
 	// Log the first few images for debugging
 	for i, img := range dbImages {
 		if i < 3 { // Only log first 3 images
-			h.logger.Info("handleGetImages: image", "index", i, "id", img.ID, "name", img.Name)
+			h.logger.Info("handleGetImages: SQLite image", "index", i, "id", img.ID, "name", img.Name)
 		}
 	}
 
@@ -378,6 +436,11 @@ func (h *Handler) handleGetImages(msg *Message) *Response {
 			"format":     dbImg.Format,
 		}
 		frontendImages = append(frontendImages, frontendImg)
+	}
+
+	if len(frontendImages) == 0 {
+		h.logger.Info("handleGetImages: no images found, returning null")
+		return &Response{Action: msg.Action, Data: nil}
 	}
 
 	return &Response{Action: msg.Action, Data: frontendImages}
@@ -870,7 +933,6 @@ func (h *Handler) handleProcessImages(msg *Message) *Response {
 
 	// Process images one by one and emit events for each
 	var metadataList []*image.Metadata
-	var imagesToStore []db.Image
 
 	for i, imagePath := range msg.ImagePaths {
 		originalFileName := msg.FileNames[i]
@@ -895,43 +957,158 @@ func (h *Handler) handleProcessImages(msg *Message) *Response {
 			continue
 		}
 
-		metadataList = append(metadataList, metadata)
-
-		// Store image in database with unique filename
-		img := db.Image{
-			Name:       uniqueFileName,
-			Width:      int64(metadata.Width),
-			Height:     int64(metadata.Height),
-			Format:     metadata.Format,
-			Ischecked:  1,
-			Isselected: 0,
-		}
-
-		imageID, err := h.dbQueries.CreateImage(ctx, db.CreateImageParams{
-			Name:       img.Name,
-			Ischecked:  img.Ischecked,
-			Isselected: img.Isselected,
-			Width:      img.Width,
-			Height:     img.Height,
-			Format:     img.Format,
-		})
-		if err != nil {
-			h.logger.Error("failed to store image in database", "originalFileName", originalFileName, "uniqueFileName", uniqueFileName, "error", err)
-			// Emit error event
-			if h.server != nil {
-				h.server.BroadcastEvent(&Event{
-					Type: EventImageError,
-					Payload: map[string]interface{}{
-						"originalFileName": originalFileName,
-						"uniqueFileName":   uniqueFileName,
-						"error":            "failed to store in database: " + err.Error(),
-					},
+		// Create smart multi-resolution thumbnails based on connected monitors
+		var thumbnailPaths map[string]string
+		if h.monitorManager != nil {
+			// Get connected monitors
+			monitors := h.monitorManager.GetMonitors()
+			
+			// Convert to MonitorResolution format
+			var monitorResolutions []image.MonitorResolution
+			for _, monitor := range monitors {
+				monitorResolutions = append(monitorResolutions, image.MonitorResolution{
+					Width:  monitor.Width,
+					Height: monitor.Height,
+					Name:   monitor.Name,
 				})
 			}
-			continue
+			
+			// Get required resolutions based on monitors
+			requiredResolutions := image.GetRequiredResolutions(monitorResolutions)
+			h.logger.Debug("Creating thumbnails for resolutions", "resolutions", requiredResolutions, "monitors", len(monitors))
+			
+			// Create smart thumbnails
+			thumbnailPaths, err = image.CreateSmartMultiResolutionThumbnails(
+				filepath.Join(cacheDir, uniqueFileName),
+				thumbnailsDir,
+				uniqueFileName,
+				requiredResolutions,
+			)
+			if err != nil {
+				h.logger.Warn("failed to create smart multi-resolution thumbnails", "uniqueFileName", uniqueFileName, "error", err)
+				// Fallback to creating all resolutions if smart creation fails
+				thumbnailPaths, err = image.CreateMultiResolutionThumbnails(
+					filepath.Join(cacheDir, uniqueFileName),
+					thumbnailsDir,
+					uniqueFileName,
+				)
+				if err != nil {
+					h.logger.Warn("failed to create fallback multi-resolution thumbnails", "uniqueFileName", uniqueFileName, "error", err)
+				}
+			}
+		} else {
+			// Fallback to creating all resolutions if no monitor manager
+			thumbnailPaths, err = image.CreateMultiResolutionThumbnails(
+				filepath.Join(cacheDir, uniqueFileName),
+				thumbnailsDir,
+				uniqueFileName,
+			)
+			if err != nil {
+				h.logger.Warn("failed to create multi-resolution thumbnails", "uniqueFileName", uniqueFileName, "error", err)
+			}
 		}
 
-		imagesToStore = append(imagesToStore, img)
+		metadataList = append(metadataList, metadata)
+
+		// Store image in JSON store with sequential ID
+		var imageID string
+		if h.store != nil {
+			// Use JSON store with sequential IDs
+			// Convert thumbnail paths to store format
+			var storeThumbnails store.ImageThumbnails
+			if thumbnailPaths != nil {
+				storeThumbnails = store.ImageThumbnails{
+					Resolution720p:  thumbnailPaths["720p"],
+					Resolution1080p: thumbnailPaths["1080p"],
+					Resolution1440p: thumbnailPaths["1440p"],
+					Resolution4k:    thumbnailPaths["4k"],
+					Fallback:        thumbnailPaths["fallback"],
+				}
+			}
+
+			storeImage := &store.Image{
+				Name:      uniqueFileName,
+				Path:      filepath.Join(cacheDir, uniqueFileName),
+				MediaType: media.MediaTypeImage, // Default to image type
+				Metadata: store.ImageMetadata{
+					Format:   metadata.Format,
+					FileSize: 0, // Will be calculated by AddImage
+					Checksum: "", // Will be calculated by AddImage
+				},
+				Dimensions: store.ImageDimensions{
+					Width:  int64(metadata.Width),
+					Height: int64(metadata.Height),
+				},
+				Selection: store.ImageSelection{
+					IsChecked:  true,
+					IsSelected: false,
+				},
+				ImportInfo: store.ImageImportInfo{
+					ImportedAt: time.Now(),
+					Importer:   "manual",
+				},
+				Thumbnails: storeThumbnails,
+			}
+
+			imageStore := store.NewImageStore(h.store)
+			if err := imageStore.AddImage(storeImage); err != nil {
+				h.logger.Error("failed to store image in JSON store", "originalFileName", originalFileName, "uniqueFileName", uniqueFileName, "error", err)
+				// Emit error event
+				if h.server != nil {
+					h.server.BroadcastEvent(&Event{
+						Type: EventImageError,
+						Payload: map[string]interface{}{
+							"originalFileName": originalFileName,
+							"uniqueFileName":   uniqueFileName,
+							"error":            "failed to store in JSON store: " + err.Error(),
+						},
+					})
+				}
+				continue
+			}
+
+			imageID = storeImage.ID
+			h.logger.Info("stored image in JSON store", "originalFileName", originalFileName, "uniqueFileName", uniqueFileName, "id", imageID)
+		} else {
+			// Fallback to SQLite if JSON store not available
+			img := db.Image{
+				Name:       uniqueFileName,
+				Width:      int64(metadata.Width),
+				Height:     int64(metadata.Height),
+				Format:     metadata.Format,
+				Ischecked:  1,
+				Isselected: 0,
+			}
+
+			sqliteImageID, err := h.dbQueries.CreateImage(ctx, db.CreateImageParams{
+				Name:       img.Name,
+				Ischecked:  img.Ischecked,
+				Isselected: img.Isselected,
+				Width:      img.Width,
+				Height:     img.Height,
+				Format:     img.Format,
+			})
+			if err != nil {
+				h.logger.Error("failed to store image in SQLite database", "originalFileName", originalFileName, "uniqueFileName", uniqueFileName, "error", err)
+				// Emit error event
+				if h.server != nil {
+					h.server.BroadcastEvent(&Event{
+						Type: EventImageError,
+						Payload: map[string]interface{}{
+							"originalFileName": originalFileName,
+							"uniqueFileName":   uniqueFileName,
+							"error":            "failed to store in SQLite: " + err.Error(),
+						},
+					})
+				}
+				continue
+			}
+
+			imageID = fmt.Sprintf("%d", sqliteImageID.ID)
+			h.logger.Info("stored image in SQLite", "originalFileName", originalFileName, "uniqueFileName", uniqueFileName, "id", imageID)
+		}
+
+		// Note: imagesToStore is no longer used since we're storing directly in JSON store
 
 		// Emit success event
 		if h.server != nil {
@@ -981,29 +1158,87 @@ func (h *Handler) handleCreateThumbnail(msg *Message) *Response {
 		return response
 	}
 
-	if msg.ThumbnailsDir == "" {
-		response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "thumbnails directory is required").Error()}
-		return response
-	}
-
 	inputPath := msg.ImagePaths[0]
 	fileName := msg.FileNames[0]
 	if fileName == "" {
 		fileName = filepath.Base(inputPath)
 	}
 
-	thumbnailName := strings.TrimSuffix(fileName, filepath.Ext(fileName)) + ".webp"
-	thumbnailPath := filepath.Join(msg.ThumbnailsDir, thumbnailName)
-
-	opts := image.DefaultThumbnailOptions()
-	metadata, err := image.CreateThumbnail(inputPath, thumbnailPath, opts)
-	if err != nil {
-		h.logger.Error("failed to create thumbnail", "error", err)
-		response := &Response{Action: msg.Action, Error: err.Error()}
-		return response
+	// Use smart resolution selection based on connected monitors
+	var thumbnailPaths map[string]string
+	if h.monitorManager != nil {
+		// Get connected monitors
+		monitors := h.monitorManager.GetMonitors()
+		
+		// Convert to MonitorResolution format
+		var monitorResolutions []image.MonitorResolution
+		for _, monitor := range monitors {
+			monitorResolutions = append(monitorResolutions, image.MonitorResolution{
+				Width:  monitor.Width,
+				Height: monitor.Height,
+				Name:   monitor.Name,
+			})
+		}
+		
+		// Get required resolutions based on monitors
+		requiredResolutions := image.GetRequiredResolutions(monitorResolutions)
+		h.logger.Debug("Creating thumbnails for resolutions", "resolutions", requiredResolutions, "image", fileName)
+		
+		// Create smart thumbnails
+		cfg, err := h.configManager.GetConfig()
+		if err != nil {
+			h.logger.Error("failed to get config for thumbnail creation", "error", err)
+			response := &Response{Action: msg.Action, Error: err.Error()}
+			return response
+		}
+		
+		thumbnailPaths, err = image.CreateSmartMultiResolutionThumbnails(
+			inputPath,
+			cfg.Daemon.ThumbnailsDir,
+			fileName,
+			requiredResolutions,
+		)
+		if err != nil {
+			h.logger.Error("failed to create smart multi-resolution thumbnails", "error", err, "image", fileName)
+			response := &Response{Action: msg.Action, Error: err.Error()}
+			return response
+		}
+	} else {
+		// Fallback to creating all resolutions if no monitor manager
+		cfg, err := h.configManager.GetConfig()
+		if err != nil {
+			h.logger.Error("failed to get config for thumbnail creation", "error", err)
+			response := &Response{Action: msg.Action, Error: err.Error()}
+			return response
+		}
+		
+		thumbnailPaths, err = image.CreateMultiResolutionThumbnails(
+			inputPath,
+			cfg.Daemon.ThumbnailsDir,
+			fileName,
+		)
+		if err != nil {
+			h.logger.Error("failed to create multi-resolution thumbnails", "error", err, "image", fileName)
+			response := &Response{Action: msg.Action, Error: err.Error()}
+			return response
+		}
 	}
 
-	response := &Response{Action: msg.Action, Data: metadata}
+	// Send thumbnail_created event to frontend
+	if h.server != nil {
+		h.server.BroadcastEvent(&types.Event{
+			Type: "thumbnail_created",
+			Payload: map[string]interface{}{
+				"imageName": fileName,
+				"thumbnails": thumbnailPaths,
+				"timestamp": time.Now().Unix(),
+			},
+		})
+	}
+
+	h.logger.Info("Successfully created thumbnails", "image", fileName, "resolutions", len(thumbnailPaths))
+
+	response := &Response{Action: msg.Action, Data: thumbnailPaths}
 	return response
 }
 
@@ -1180,15 +1415,49 @@ func (h *Handler) handleGetImageSrc(msg *Message) *Response {
 		return response
 	}
 
-	// Get the images directory from configuration
+	fileName := msg.FileNames[0]
+	
+	// Try to get image from JSON store first (new system with full paths)
+	if h.store != nil {
+		registry, err := h.store.LoadImageRegistry()
+		if err == nil && registry != nil {
+			// Extract basename in case fileName is a full path
+			fileNameBase := filepath.Base(fileName)
+			
+			// Search for image by name (both trying original fileName and basename)
+			// This handles cases where frontend passes full paths from monitor.currentImage
+			for _, image := range registry.Images {
+				if image.Name == fileName || image.Name == fileNameBase {
+					// Validate that the file actually exists
+					if _, err := os.Stat(image.Path); err == nil {
+						// Return clean file path (electron will add atom:// protocol)
+						response := &Response{Action: msg.Action, Data: image.Path}
+						return response
+					} else {
+						h.logger.Warn("Image file not found, skipping", "path", image.Path, "name", fileName, "searched_name", image.Name)
+					}
+				}
+			}
+		}
+	}
+	
+	// Fallback to old system: construct path from images directory
 	config, err := h.configManager.GetConfig()
 	if err != nil {
 		response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "failed to get configuration").Error()}
 		return response
 	}
 
-	fileName := msg.FileNames[0]
 	imagePath := filepath.Join(config.Daemon.ImagesDir, fileName)
+	
+	// Validate that the file exists
+	if _, err := os.Stat(imagePath); err != nil {
+		h.logger.Warn("Image file not found in fallback path", "path", imagePath, "name", fileName)
+		response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "image file not found").Error()}
+		return response
+	}
+	
+	// Return clean file path (electron will add atom:// protocol)
 	response := &Response{Action: msg.Action, Data: imagePath}
 	return response
 }
@@ -1199,16 +1468,108 @@ func (h *Handler) handleGetThumbnailSrc(msg *Message) *Response {
 		return response
 	}
 
-	// Get the thumbnails directory from configuration
+	fileName := msg.FileNames[0]
+	
+	// Try to get image from JSON store first (new system with full paths)
+	if h.store != nil {
+		registry, err := h.store.LoadImageRegistry()
+		if err == nil && registry != nil {
+			// Extract basename in case fileName is a full path
+			fileNameBase := filepath.Base(fileName)
+			
+			// Search for image by name (both trying original fileName and basename)
+			// This handles cases where frontend passes full paths from monitor.currentImage
+			for _, img := range registry.Images {
+				if img.Name == fileName || img.Name == fileNameBase {
+					// Generate thumbnail path based on the full image path
+					thumbnailName := strings.TrimSuffix(filepath.Base(img.Path), filepath.Ext(img.Path)) + ".webp"
+					
+					// Get thumbnails directory from configuration
+					config, err := h.configManager.GetConfig()
+					if err != nil {
+						response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "failed to get configuration").Error()}
+						return response
+					}
+					
+					thumbnailPath := filepath.Join(config.Daemon.ThumbnailsDir, thumbnailName)
+					
+					// Validate that the thumbnail exists
+					if _, err := os.Stat(thumbnailPath); err == nil {
+						// Return clean file path (electron will add atom:// protocol)
+						response := &Response{Action: msg.Action, Data: thumbnailPath}
+						return response
+					} else {
+						h.logger.Warn("Thumbnail file not found, attempting to generate", "path", thumbnailPath, "name", fileName, "searched_name", img.Name)
+						
+						// Try to generate thumbnail on-demand
+						if _, err := os.Stat(img.Path); err == nil {
+							// Ensure thumbnails directory exists
+							if err := os.MkdirAll(filepath.Dir(thumbnailPath), 0755); err != nil {
+								h.logger.Error("Failed to create thumbnails directory", "error", err)
+							} else {
+								// Generate thumbnail
+								opts := image.DefaultThumbnailOptions()
+								_, err := image.CreateThumbnail(img.Path, thumbnailPath, opts)
+								if err != nil {
+									h.logger.Error("Failed to generate thumbnail", "error", err, "image", img.Path, "thumbnail", thumbnailPath)
+								} else {
+									h.logger.Info("Generated thumbnail on-demand", "image", img.Path, "thumbnail", thumbnailPath)
+									// Return the newly created thumbnail path
+									response := &Response{Action: msg.Action, Data: thumbnailPath}
+									return response
+								}
+							}
+						} else {
+							h.logger.Warn("Source image file not found, cannot generate thumbnail", "path", img.Path)
+						}
+					}
+				}
+			}
+		}
+	}
+	
+	// Fallback to old system: construct thumbnail path from images directory
 	config, err := h.configManager.GetConfig()
 	if err != nil {
 		response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "failed to get configuration").Error()}
 		return response
 	}
 
-	fileName := msg.FileNames[0]
 	thumbnailName := strings.TrimSuffix(fileName, filepath.Ext(fileName)) + ".webp"
 	thumbnailPath := filepath.Join(config.Daemon.ThumbnailsDir, thumbnailName)
+	
+	// Validate that the thumbnail exists
+	if _, err := os.Stat(thumbnailPath); err != nil {
+		h.logger.Warn("Thumbnail file not found in fallback path, attempting to generate", "path", thumbnailPath, "name", fileName)
+		
+		// Try to generate thumbnail on-demand
+		imagePath := filepath.Join(config.Daemon.ImagesDir, fileName)
+		if _, err := os.Stat(imagePath); err == nil {
+			// Ensure thumbnails directory exists
+			if err := os.MkdirAll(filepath.Dir(thumbnailPath), 0755); err != nil {
+				h.logger.Error("Failed to create thumbnails directory", "error", err)
+				response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "failed to create thumbnails directory").Error()}
+				return response
+			}
+			
+			// Generate thumbnail
+			opts := image.DefaultThumbnailOptions()
+			_, err := image.CreateThumbnail(imagePath, thumbnailPath, opts)
+			if err != nil {
+				h.logger.Error("Failed to generate thumbnail", "error", err, "image", imagePath, "thumbnail", thumbnailPath)
+				response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "failed to generate thumbnail").Error()}
+				return response
+			}
+			
+			h.logger.Info("Generated thumbnail on-demand", "image", imagePath, "thumbnail", thumbnailPath)
+		} else {
+			h.logger.Warn("Source image file not found, cannot generate thumbnail", "path", imagePath)
+			response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "thumbnail file not found").Error()}
+			return response
+		}
+	}
+	
+	// Return clean file path (electron will add atom:// protocol)
 	response := &Response{Action: msg.Action, Data: thumbnailPath}
 	return response
 }
@@ -1227,6 +1588,14 @@ func (h *Handler) handleGetMonitorImage(msg *Message) *Response {
 		return response
 	}
 
+	// Validate that the file exists
+	if _, err := os.Stat(imagePath); err != nil {
+		h.logger.Warn("Monitor image file not found", "path", imagePath, "monitor", msg.MonitorName)
+		response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "monitor image file not found").Error()}
+		return response
+	}
+
+	// Return clean file path (electron will add atom:// protocol)
 	response := &Response{Action: msg.Action, Data: imagePath}
 	return response
 }

@@ -1,4 +1,3 @@
-
 package monitor
 
 // SwwwConfig holds the configuration for the swww daemon.
@@ -8,7 +7,7 @@ type SwwwConfig struct {
 	FilterType             string  `json:"filterType"`
 	TransitionType         string  `json:"transitionType"`
 	TransitionStep         int     `json:"transitionStep"`
-	TransitionDuration     int     `json:"transitionDuration"`
+	TransitionDuration     float64 `json:"transitionDuration"`
 	TransitionFPS          int     `json:"transitionFPS"`
 	TransitionAngle        float64 `json:"transitionAngle"`
 	TransitionPositionType string  `json:"transitionPositionType"`

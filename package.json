@@ -11,7 +11,7 @@
 		"dev": "npm run build_go_daemon && npm run compile_daemon && DEV=true vite",
 		"rebuild": "electron-rebuild",
 		"compile_daemon": "tsc daemon/daemon.ts  --outDir ./daemon/dist --target ES2020 --moduleResolution node --esModuleInterop --skipLibCheck --module CommonJs",
-		"build_go_daemon": "cd daemon-go && go build -o waypaper-daemon cmd/daemon/main.go",
+		"build_go_daemon": "cd daemon-go && go build -o waypaper-daemon ./cmd/daemon",
 		"build": "npm run build_go_daemon && npm install && npm run rebuild && npm run compile_daemon && vite build && electron-builder",
 		"lint": "eslint . --ext ts,tsx --report-unused-disable-directives --max-warnings 0 --fix",
 		"db:extract_schema": "drizzle-kit introspect:sqlite",
