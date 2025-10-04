@@ -2,7 +2,7 @@ import { create } from "zustand";
 import { type Filters, type rendererImage } from "../types/rendererTypes";
 import { type imagesObject } from "../../shared/types";
 import { playlistStore } from "./playlist";
-const { queryImages, deleteImagesFromGallery } = window.API_RENDERER;
+const { goDaemon } = window.API_RENDERER;
 const initialFilters: Filters = {
     order: "desc",
     type: "id",
@@ -37,6 +37,7 @@ interface State {
     filters: Filters;
     selectedImages: Set<number>;
     addImages: (newImages: rendererImage[]) => void;
+    addImage: (newImage: rendererImage) => void;
     setFilters: (newFilters: Filters) => void;
     getFilters: () => Filters;
     setSkeletons: (skeletons: imagesObject | undefined) => void;
@@ -49,6 +50,10 @@ interface State {
     removeFromSelectedImages: (imageSelected: rendererImage) => void;
     deleteSelectedImages: () => void;
     getSelectedImages: () => rendererImage[];
+    clearSelection: () => void;
+    clearSelectionOnCurrentPage: () => void;
+    selectAllImagesInCurrentPage: () => void;
+    selectAllImagesInGallery: () => void;
 }
 
 export const imagesStore = create<State>()((set, get) => ({
@@ -98,11 +103,37 @@ export const imagesStore = create<State>()((set, get) => ({
             imagesMap: new Map(oldImagesMap)
         }));
     },
+    addImage: newImage => {
+        const filters = get().filters;
+        let newImagesArray: rendererImage[] = [];
+        if (filters.order === "desc") {
+            newImagesArray = [newImage, ...get().imagesArray];
+        } else {
+            newImagesArray = [...get().imagesArray, newImage];
+        }
+        const oldImagesMap = get().imagesMap;
+        oldImagesMap.set(newImage.id, newImage);
+        set(() => ({
+            imagesArray: newImagesArray,
+            imagesMap: new Map(oldImagesMap),
+            isEmpty: false
+        }));
+    },
     setSkeletons: skeletons => {
+        console.log("🟣 ImagesStore: setSkeletons called with:", skeletons);
+        if (skeletons) {
+            console.log("🟣 ImagesStore: Setting", skeletons.fileNames.length, "skeletons");
+        }
         set(() => ({ skeletonsToShow: skeletons, isEmpty: false }));
     },
     clearSkeletons: () => {
+        console.log("🟣 ImagesStore: clearSkeletons called");
         set(() => ({ skeletonsToShow: undefined }));
+        // Check if skeletons were actually cleared
+        setTimeout(() => {
+            const currentState = get();
+            console.log("🟣 ImagesStore: After clearSkeletons, skeletonsToShow:", currentState.skeletonsToShow);
+        }, 100);
     },
     removeImagesFromStore: images => {
         set(state => {
@@ -125,10 +156,30 @@ export const imagesStore = create<State>()((set, get) => ({
         });
     },
     reQueryImages: () => {
-        void queryImages().then(images => {
+        // Use Go daemon instead of direct database query
+        void goDaemon.getImages().then(images => {
+            console.log("🔵 ImagesStore: Received images from Go daemon:", images);
+            
+            // Handle null or undefined response
+            if (!images || !Array.isArray(images)) {
+                console.warn("🔴 ImagesStore: Received null or invalid images response:", images);
+                set(() => ({
+                    imagesArray: [],
+                    isEmpty: true,
+                    isQueried: true,
+                    imagesMap: new Map<number, rendererImage>()
+                }));
+                return;
+            }
+            
             const isEmpty = images.length <= 0;
             const newImagesMap = new Map<number, rendererImage>();
             images.forEach(image => {
+                console.log("🔵 ImagesStore: Processing image:", image);
+                console.log("🔵 ImagesStore: Image name:", image.name, "Type:", typeof image.name);
+                if (!image.name) {
+                    console.error("🔴 ImagesStore: Image has no name!", image);
+                }
                 newImagesMap.set(image.id, image);
             });
             set(() => ({
@@ -136,6 +187,16 @@ export const imagesStore = create<State>()((set, get) => ({
                 isEmpty,
                 isQueried: true,
                 imagesMap: newImagesMap
+            }));
+            console.log("🔵 ImagesStore: Set images in store, count:", images.length);
+        }).catch(error => {
+            console.error("🔴 ImagesStore: Error loading images:", error);
+            // Set empty state on error
+            set(() => ({
+                imagesArray: [],
+                isEmpty: true,
+                isQueried: true,
+                imagesMap: new Map<number, rendererImage>()
             }));
         });
     },
@@ -160,7 +221,7 @@ export const imagesStore = create<State>()((set, get) => ({
             imagesToDelete.push(image);
             imagesSetToDelete.add(id);
         });
-        void deleteImagesFromGallery(imagesToDelete).then(() => {
+        void goDaemon.deleteImagesFromGallery(imagesToDelete.map(img => img.id)).then(() => {
             set(() => ({
                 imagesMap: newImagesMap,
                 imagesArray: Array.from(newImagesMap.values()),
@@ -173,5 +234,23 @@ export const imagesStore = create<State>()((set, get) => ({
     },
     getFilters() {
         return get().filters;
+    },
+    clearSelection() {
+        set(() => ({ selectedImages: new Set<number>() }));
+    },
+    clearSelectionOnCurrentPage() {
+        // This would need to be implemented with pagination context
+        // For now, just clear all selection
+        set(() => ({ selectedImages: new Set<number>() }));
+    },
+    selectAllImagesInCurrentPage() {
+        // This would need to be implemented with pagination context
+        // For now, select all images
+        const allImageIds = new Set(get().imagesArray.map(img => img.id));
+        set(() => ({ selectedImages: allImageIds }));
+    },
+    selectAllImagesInGallery() {
+        const allImageIds = new Set(get().imagesArray.map(img => img.id));
+        set(() => ({ selectedImages: allImageIds }));
     }
 }));

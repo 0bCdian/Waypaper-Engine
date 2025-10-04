@@ -15,7 +15,7 @@ import { MENU_EVENTS } from "../../shared/constants";
 import { useAppConfigStore } from "../stores/appConfig";
 import { playlistStore } from "../stores/playlist";
 const ImageCard = lazy(async () => await import("../components/ImageCard"));
-const { registerListener } = window.API_RENDERER;
+const { goDaemon } = window.API_RENDERER;
 export function useImagePagination() {
     const { appConfig } = useAppConfigStore();
     const { removeImagesFromPlaylist, addImagesToPlaylist } = playlistStore();
@@ -57,12 +57,16 @@ export function useImagePagination() {
         return Math.ceil(totalGalleryItems / imagesPerPage);
     }, [filteredImages, skeletonsToShow, imagesPerPage]);
     const SkeletonsArray = useMemo(() => {
+        console.log("🟡 useImagePagination: SkeletonsArray useMemo called, skeletonsToShow:", skeletonsToShow);
         if (skeletonsToShow !== undefined) {
-            return skeletonsToShow.fileNames.map((imageName, index) => {
+            const skeletons = skeletonsToShow.fileNames.map((imageName, index) => {
                 const imagePath = skeletonsToShow.imagePaths[index];
                 return <Skeleton key={imagePath} imageName={imageName} />;
             });
+            console.log("🟡 useImagePagination: Created", skeletons.length, "skeletons");
+            return skeletons;
         }
+        console.log("🟡 useImagePagination: No skeletons to show");
         return [];
     }, [skeletonsToShow]);
     const [imagesToShow, imagesInCurrentPage] = useMemo(() => {
@@ -74,7 +78,7 @@ export function useImagePagination() {
                 if (currentImage === undefined) break;
                 imagesInCurrentPage.push(currentImage);
                 const imageJsxElement = (
-                    <Suspense key={currentImage.id}>
+                    <Suspense key={currentImage.id || `image-${idx}`}>
                         <ImageCard Image={currentImage} />
                     </Suspense>
                 );
@@ -90,14 +94,16 @@ export function useImagePagination() {
                 if (currentImage === undefined) break;
                 imagesInCurrentPage.push(currentImage);
                 const imageJsxElement = (
-                    <Suspense key={currentImage.id}>
+                    <Suspense key={currentImage.id || `image-${idx}`}>
                         <ImageCard Image={currentImage} />
                     </Suspense>
                 );
                 imageCardJsxArray.push(imageJsxElement);
             }
         }
-        return [[...SkeletonsArray, ...imageCardJsxArray], imagesInCurrentPage];
+        const result = [[...SkeletonsArray, ...imageCardJsxArray], imagesInCurrentPage];
+        console.log("🟡 useImagePagination: Created imagesToShow with", result[0].length, "total items (", SkeletonsArray.length, "skeletons +", imageCardJsxArray.length, "images)");
+        return result;
     }, [filteredImages, filters, currentPage, totalPages]);
     const handlePageChange = useCallback((page: number) => {
         setCurrentPage(page);
@@ -138,69 +144,36 @@ export function useImagePagination() {
         },
         [imagesInCurrentPage, selectedImages]
     );
-    type registerListenerArgs = Parameters<typeof registerListener>[0];
-
-    const eventsMap: registerListenerArgs[] = [
-        {
-            channel: MENU_EVENTS.clearSelection,
-            listener: _ => {
-                clearSelection();
-            }
-        },
-        {
-            channel: MENU_EVENTS.setImagesPerPage,
-            listener: (_, imagesPerPage: number) => {
-                setImagesPerPage(imagesPerPage);
-            }
-        },
-        {
-            channel: MENU_EVENTS.selectAllImagesInGallery,
-            listener: _ => {
-                selectAllImages();
-            }
-        },
-        {
-            channel: MENU_EVENTS.selectAllImagesInCurrentPage,
-            listener: _ => {
-                selectImagesInCurrentPage();
-            }
-        },
-        {
-            channel: MENU_EVENTS.clearSelectionOnCurrentPage,
-            listener: _ => {
-                clearSelectedImagesInCurrentPage();
-            }
-        },
-        {
-            channel: MENU_EVENTS.removeSelectedImagesFromPlaylist,
-            listener: _ => {
-                removeImagesFromPlaylist(selectedImages);
-            }
-        },
-        {
-            channel: MENU_EVENTS.deleteAllSelectedImages,
-            listener: _ => {
-                deleteSelectedImages();
-            }
-        },
-        {
-            channel: MENU_EVENTS.addSelectedImagesToPlaylist,
-            listener: _ => {
-                addImagesToPlaylist(getSelectedImages());
-            }
-        },
-        {
-            channel: MENU_EVENTS.deleteImageFromGallery,
-            listener: (_, image: rendererImage) => {
-                removeImagesFromStore([image]);
-            }
-        }
-    ];
     useEffect(() => {
-        eventsMap.forEach(eventToRegister => {
-            registerListener(eventToRegister);
+        // Listen for menu events via Go daemon
+        goDaemon.on("clear_selection", () => {
+            clearSelection();
         });
-    }, [eventsMap, selectedImages]);
+        goDaemon.on("set_images_per_page", (imagesPerPage: number) => {
+            setImagesPerPage(imagesPerPage);
+        });
+        goDaemon.on("select_all_images_in_gallery", () => {
+            selectAllImages();
+        });
+        goDaemon.on("select_all_images_in_current_page", () => {
+            selectImagesInCurrentPage();
+        });
+        goDaemon.on("clear_selection_on_current_page", () => {
+            clearSelectedImagesInCurrentPage();
+        });
+        goDaemon.on("remove_selected_images_from_playlist", () => {
+            removeImagesFromPlaylist(selectedImages);
+        });
+        goDaemon.on("delete_all_selected_images", () => {
+            deleteSelectedImages();
+        });
+        goDaemon.on("add_selected_images_to_playlist", () => {
+            addImagesToPlaylist(getSelectedImages());
+        });
+        goDaemon.on("delete_image_from_gallery", (image: rendererImage) => {
+            removeImagesFromStore([image]);
+        });
+    }, [selectedImages]);
 
     useEffect(() => {
         if (imagesToShow.length === 0) {

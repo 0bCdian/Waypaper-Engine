@@ -15,13 +15,7 @@ import {
 import { useSetLastActivePlaylist } from "../hooks/useSetLastActivePlaylist";
 import { PLAYLIST_TYPES } from "../../shared/types/playlist";
 let firstRender = true;
-const {
-    stopPlaylist,
-    setRandomImage,
-    registerListener,
-    deletePlaylist,
-    readActivePlaylist
-} = window.API_RENDERER;
+const { goDaemon } = window.API_RENDERER;
 const MiniPlaylistCard = lazy(async () => await import("./MiniPlaylistCard"));
 function PlaylistTrack() {
     const {
@@ -117,14 +111,14 @@ function PlaylistTrack() {
         return [elements, sortingCriteria];
     }, [playlist]);
     const updatePlaylist = () => {
-        void readActivePlaylist(activeMonitor).then(playlistFromDB => {
+        void goDaemon.getActivePlaylist(activeMonitor).then(playlistFromDB => {
             if (playlistFromDB === undefined) {
                 setEmptyPlaylist();
                 return;
             }
 
             if (playlistFromDB.images.length < 1) {
-                deletePlaylist(playlistFromDB.name);
+                goDaemon.deletePlaylist(playlistFromDB.name);
                 return;
             }
 
@@ -171,11 +165,9 @@ function PlaylistTrack() {
         }
     }, [playlist.images]);
     useEffect(() => {
-        registerListener({
-            channel: IPC_MAIN_EVENTS.requeryPlaylist,
-            listener: _ => {
-                updatePlaylist();
-            }
+        // Listen for playlist updates via Go daemon events
+        goDaemon.on("playlist_updated", () => {
+            updatePlaylist();
         });
     }, [activeMonitor, imagesArray]);
     useEffect(() => {
@@ -245,7 +237,11 @@ function PlaylistTrack() {
                 </button>
                 <button
                     onClick={() => {
-                        setRandomImage();
+                        if (!activeMonitor?.name) {
+                            console.error("🔴 PlaylistTrack: Cannot set random image - activeMonitor.name is undefined", activeMonitor);
+                            return;
+                        }
+                        goDaemon.randomImage(activeMonitor.name);
                     }}
                     className="btn btn-primary rounded-lg uppercase"
                 >
@@ -303,10 +299,11 @@ function PlaylistTrack() {
                             className="btn btn-error rounded-lg uppercase"
                             onClick={() => {
                                 if (playlist.name !== "") {
-                                    stopPlaylist({
-                                        name: playlist.name,
-                                        activeMonitor: playlist.activeMonitor
-                                    });
+                                    if (!playlist.activeMonitor?.name) {
+                                        console.error("🔴 PlaylistTrack: Cannot stop playlist - playlist.activeMonitor.name is undefined", playlist.activeMonitor);
+                                        return;
+                                    }
+                                    goDaemon.stopPlaylist(playlist.activeMonitor.name);
                                 }
                                 clearPlaylist();
                             }}

@@ -1,4 +1,13 @@
 import { useMonitorStore } from "../stores/monitors";
+
+declare global {
+    interface Window {
+        monitors?: {
+            showModal: () => void;
+            close: () => void;
+        };
+    }
+}
 const NavBar = () => {
     const { activeMonitor, reQueryMonitors } = useMonitorStore();
     return (
@@ -31,11 +40,27 @@ const NavBar = () => {
                 {
                     <button
                         className="btn w-full text-ellipsis rounded-lg text-2xl"
-                        onClick={() => {
-                            void reQueryMonitors().then(() => {
-                                // @ts-expect-error daisyui
-                                window.monitors.showModal();
-                            });
+                        onClick={async () => {
+                            console.log("🔵 NavBar: Button clicked");
+                            console.log("🔵 NavBar: window.monitors =", window.monitors);
+                            
+                            // Always try to refresh monitors first to ensure we have the latest state
+                            try {
+                                await reQueryMonitors();
+                                console.log("🔵 NavBar: reQueryMonitors completed, window.monitors =", window.monitors);
+                                
+                                // Wait a bit for the modal ref to be set
+                                await new Promise(resolve => setTimeout(resolve, 100));
+                                
+                                if (window.monitors) {
+                                    console.log("🔵 NavBar: Calling window.monitors.showModal()");
+                                    window.monitors.showModal();
+                                } else {
+                                    console.log("🔵 NavBar: window.monitors still undefined after reQueryMonitors");
+                                }
+                            } catch (error) {
+                                console.error("🔵 NavBar: Error loading monitors:", error);
+                            }
                         }}
                     >
                         {activeMonitor.name.length > 0

@@ -13,7 +13,7 @@ import {
     type transitionPosition
 } from "../../shared/types/swww";
 let saveConfigTimeout: ReturnType<typeof setTimeout> | null = null;
-const { readSwwwConfig } = window.API_RENDERER;
+const { goDaemon } = window.API_RENDERER;
 const SwwwConfig = () => {
     const { register, handleSubmit, watch, setValue } =
         useForm<swwwConfigInsertType["config"]>();
@@ -60,7 +60,7 @@ const SwwwConfig = () => {
         setTransitionPositionType(watch("transitionPositionType"));
     }, [watch("transitionPositionType")]);
     useEffect(() => {
-        void readSwwwConfig().then((config: swwwConfigSelectType["config"]) => {
+        void goDaemon.getSwwwConfig().then((config: swwwConfigSelectType["config"]) => {
             const bezierArray = config.transitionBezier.split(",").map(item => {
                 return parseFloat(item);
             }) as [number, number, number, number];

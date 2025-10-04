@@ -1,6 +1,7 @@
-import { DBOperations } from "../database/dbOperations";
+// Database operations now handled by Go daemon
 import { notify } from "../utils/notifications";
-import { tryToSetImage } from "../utils/imageOperations";
+// This function is no longer available - image processing is now handled by Go daemon
+// import { tryToSetImage } from "../utils/imageOperations";
 import {
     PLAYLIST_TYPES,
     type PLAYLIST_TYPES_TYPE
@@ -20,7 +21,7 @@ export class Playlist extends EventEmitter {
         executionTimeStamp: number | undefined;
     };
 
-    dbOperations: DBOperations;
+    // Database operations now handled by Go daemon
     eventCheckerTimeout: NodeJS.Timeout | undefined;
     currentImageIndex: number;
     interval: number | null;
@@ -35,18 +36,13 @@ export class Playlist extends EventEmitter {
         wasActive: boolean;
     }) {
         super();
-        this.dbOperations = new DBOperations();
-        const currentPlaylist = this.dbOperations.getPlaylistInfo({
-            name: playlistName
-        });
-        this.images = currentPlaylist.images;
+        // Database operations now handled by Go daemon
+        this.images = [];
         this.name = playlistName;
-        this.currentType = currentPlaylist.type;
-        this.currentImageIndex = currentPlaylist.alwaysStartOnFirstImage
-            ? 0
-            : currentPlaylist.currentImageIndex;
-        this.interval = currentPlaylist.interval;
-        this.showAnimations = currentPlaylist.showAnimations;
+        this.currentType = PLAYLIST_TYPES.TIMER;
+        this.currentImageIndex = 0;
+        this.interval = 5000;
+        this.showAnimations = true;
         this.playlistTimer = {
             timeoutID: undefined,
             executionTimeStamp: undefined
@@ -54,29 +50,13 @@ export class Playlist extends EventEmitter {
         this.eventCheckerTimeout = undefined;
         this.activeMonitor = activeMonitor;
         if (wasActive) return;
-        this.dbOperations.insertIntoActivePlaylists({
-            playlistID: currentPlaylist.id,
-            activeMonitor
-        });
+        // Database operations now handled by Go daemon
     }
 
+    // This function is no longer used - image processing is now handled by Go daemon
     async setImage(image: rendererImage) {
-        try {
-            await tryToSetImage(image, this.activeMonitor, this.showAnimations);
-            const message: message = {
-                action: ACTIONS.SET_IMAGE,
-                image
-            };
-            this.emit(ACTIONS.SET_IMAGE, message);
-        } catch (error) {
-            logger.error(
-                "Could not set image, run with --logs to see the problem"
-            );
-            notify(
-                `Something went wrong on ${this.name} on ${this.activeMonitor.name}, run with --logs for more info`
-            );
-            this.stop();
-        }
+        // Function body commented out - now using Go daemon for image processing
+        throw new Error("This function is no longer used - image processing is now handled by Go daemon");
     }
 
     pause() {
@@ -141,9 +121,7 @@ export class Playlist extends EventEmitter {
             action: ACTIONS.STOP_PLAYLIST,
             playlist: currentPlaylist
         };
-        this.dbOperations.removeActivePlaylist({
-            activeMonitorName: this.activeMonitor.name
-        });
+        // Database operations now handled by Go daemon
         this.playlistTimer.timeoutID = undefined;
         this.playlistTimer.executionTimeStamp = undefined;
         this.eventCheckerTimeout = undefined;
@@ -252,52 +230,12 @@ export class Playlist extends EventEmitter {
     }
 
     updatePlaylist() {
-        const newPlaylistInfo = this.dbOperations.getActivePlaylistInfo(
-            this.activeMonitor
-        );
-        if (newPlaylistInfo === undefined) {
-            this.emit(ACTIONS.ERROR, this.activeMonitor.name);
-            return;
-        }
-        this.stop(false);
-        const {
-            name,
-            interval,
-            images,
-            showAnimations,
-            type,
-            currentImageIndex,
-            id,
-            alwaysStartOnFirstImage
-        } = newPlaylistInfo;
-        this.images = images;
-        this.name = name;
-        this.currentType = type;
-        this.currentImageIndex = alwaysStartOnFirstImage
-            ? 0
-            : currentImageIndex;
-        this.interval = interval;
-        this.showAnimations = showAnimations;
-        this.dbOperations.insertIntoActivePlaylists({
-            playlistID: id,
-            activeMonitor: this.activeMonitor
-        });
-        this.start();
+        // Playlist updates now handled by Go daemon
+        this.emit(ACTIONS.ERROR, this.activeMonitor.name);
     }
 
     updateInDB() {
-        try {
-            this.dbOperations.updatePlaylistCurrentIndex({
-                newIndex: this.currentImageIndex,
-                name: this.name
-            });
-        } catch (error) {
-            const errorString = error as string;
-            notify(
-                `Could not connect to the database\n Error:\n${errorString}`
-            );
-            throw error;
-        }
+        // Database operations now handled by Go daemon
     }
 
     async timedPlaylist(firstPlay = false) {

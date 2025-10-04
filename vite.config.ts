@@ -20,6 +20,9 @@ export default defineConfig({
                     build: {
                         minify: false,
                         sourcemap: true
+                    },
+                    define: {
+                        'process.env.DEV': JSON.stringify(process.env.DEV || 'false')
                     }
                 }
             },

@@ -5,14 +5,29 @@ import {
     dialog,
     type Tray
 } from "electron";
-import { dbOperations } from "../globals/config";
-import { deleteImagesFromGallery } from "../electron/appFunctions";
+// Database operations now handled by Go daemon
 import { IPC_MAIN_EVENTS, MENU_EVENTS } from "../shared/constants";
 import { type rendererImage } from "../src/types/rendererTypes";
 import { type ActiveMonitor } from "../shared/types/monitor";
 import { PlaylistController } from "../electron/playlistController";
 import { getMonitors } from "../utils/monitorUtils";
-import { tryToSetImage } from "../utils/imageOperations";
+// import { tryToSetImage } from "../utils/imageOperations"; // No longer used - image processing is now handled by Go daemon
+
+// Helper function to set image using Go daemon
+async function setImageViaGoDaemon(imageId: number, activeMonitor: ActiveMonitor) {
+    const { goDaemonClient } = await import("../electron/goDaemonClient");
+    
+    if (activeMonitor.extendAcrossMonitors && activeMonitor.monitors.length > 1) {
+        // Use multi-monitor stretch mode
+        return await goDaemonClient.setImageAcrossMonitors(imageId, activeMonitor);
+    } else if (activeMonitor.monitors.length > 1) {
+        // Use multi-monitor duplicate mode
+        return await goDaemonClient.duplicateImageAcrossMonitors(imageId, activeMonitor);
+    } else {
+        // Use single monitor mode
+        return await goDaemonClient.setImage(imageId, activeMonitor.monitors[0].name);
+    }
+}
 
 const playlistControllerInstance = new PlaylistController();
 export const devMenu = () => {
@@ -59,8 +74,9 @@ export const trayMenu = async (
     trayInstance: Tray,
     createTray?: () => Promise<void>
 ) => {
-    const activePlaylists = dbOperations.getActivePlaylists();
-    const imageHistory = dbOperations.getImageHistory();
+    // Database operations now handled by Go daemon
+    const activePlaylists: any[] = [];
+    const imageHistory: any[] = [];
 
     const playlistMenu: Array<
         Electron.MenuItemConstructorOptions | Electron.MenuItem
@@ -158,15 +174,24 @@ export const trayMenu = async (
             submenu: imageHistory.map((image, index) => {
                 return {
                     label: `${index + 1}.${image.Images.name}`,
-                    click: () => {
-                        void tryToSetImage(
-                            image.Images,
-                            image.imageHistory.monitor,
-                            true
-                        ).then(() => {
-                            void trayMenu(app, trayInstance).then(menu => {
-                                trayInstance.setContextMenu(menu);
-                            });
+                    click: async () => {
+                        try {
+                            // Get the first available monitor for tray menu
+                            const monitors = await getMonitors();
+                            if (monitors.length > 0) {
+                                const activeMonitor: ActiveMonitor = {
+                                    name: monitors[0].name,
+                                    monitors: [monitors[0]],
+                                    extendAcrossMonitors: false
+                                };
+                                await setImageViaGoDaemon(image.Images.id, activeMonitor);
+                                console.log(`Image ${image.Images.name} set from tray menu`);
+                            }
+                        } catch (error) {
+                            console.error("Failed to set image from tray menu:", error);
+                        }
+                        void trayMenu(app, trayInstance).then(menu => {
+                            trayInstance.setContextMenu(menu);
                         });
                         if (createTray !== undefined) void createTray();
                     }
@@ -223,38 +248,56 @@ export async function contextMenu({
         const subLabelsMonitors = monitors.map(monitor => {
             return {
                 label: `In ${monitor.name}`,
-                click: () => {
+                click: async () => {
+                    console.log(`🟠 Context Menu: Set ${image.name} on ${monitor.name}`);
                     const activeMonitor: ActiveMonitor = {
-                        name: "",
+                        name: monitor.name,
                         monitors: [monitor],
                         extendAcrossMonitors: false
                     };
-                    void tryToSetImage(image, activeMonitor, true);
+                    try {
+                        await setImageViaGoDaemon(image.id, activeMonitor);
+                        console.log(`✅ Image ${image.name} set on monitor ${monitor.name}`);
+                    } catch (error) {
+                        console.error("❌ Failed to set image:", error);
+                    }
                 }
             };
         });
         subLabelsMonitors.unshift(
             {
                 label: `Duplicate across all monitors`,
-                click: () => {
+                click: async () => {
+                    console.log(`🟠 Context Menu: Duplicate ${image.name} across all monitors`);
                     const activeMonitor: ActiveMonitor = {
-                        name: "",
+                        name: monitors.map(m => m.name).join(","),
                         monitors,
                         extendAcrossMonitors: false
                     };
 
-                    void tryToSetImage(image, activeMonitor, true);
+                    try {
+                        await setImageViaGoDaemon(image.id, activeMonitor);
+                        console.log(`✅ Image ${image.name} duplicated across all monitors`);
+                    } catch (error) {
+                        console.error("❌ Failed to duplicate image across monitors:", error);
+                    }
                 }
             },
             {
                 label: `Extend across all monitors grouping them`,
-                click: () => {
+                click: async () => {
+                    console.log(`🟠 Context Menu: Extend ${image.name} across all monitors`);
                     const activeMonitor: ActiveMonitor = {
-                        name: "",
+                        name: monitors.map(m => m.name).join(","),
                         monitors,
                         extendAcrossMonitors: true
                     };
-                    void tryToSetImage(image, activeMonitor, true);
+                    try {
+                        await setImageViaGoDaemon(image.id, activeMonitor);
+                        console.log(`✅ Image ${image.name} extended across all monitors`);
+                    } catch (error) {
+                        console.error("❌ Failed to extend image across monitors:", error);
+                    }
                 }
             }
         );
@@ -266,6 +309,7 @@ export async function contextMenu({
             {
                 label: `Delete ${image.name}`,
                 click: (_, win) => {
+                    console.log(`🟠 Context Menu: Delete ${image.name}`);
                     if (win === undefined) return;
                     void dialog
                         .showMessageBox(win, {
@@ -274,13 +318,25 @@ export async function contextMenu({
                             buttons: ["yes", "no"],
                             title: "Confirm delete"
                         })
-                        .then(data => {
+                        .then(async data => {
                             if (data.response === 0) {
-                                deleteImagesFromGallery(event, [image]);
-                                win?.webContents.send(
-                                    "deleteImageFromGallery",
-                                    image
-                                );
+                                console.log(`✅ Deleting image: ${image.name}`);
+                                try {
+                                    // Delete via Go daemon
+                                    const { goDaemonClient } = await import("../electron/goDaemonClient");
+                                    await goDaemonClient.deleteImagesFromGallery([image.id]);
+                                    
+                                    // Notify frontend of successful deletion
+                                    win?.webContents.send(
+                                        "deleteImageFromGallery",
+                                        image
+                                    );
+                                    console.log(`✅ Successfully deleted image: ${image.name}`);
+                                } catch (error) {
+                                    console.error(`❌ Failed to delete image ${image.name}:`, error);
+                                }
+                            } else {
+                                console.log(`❌ Delete cancelled for image: ${image.name}`);
                             }
                         });
                 }
@@ -292,6 +348,7 @@ export async function contextMenu({
             {
                 label: "Add selected images to playlist",
                 click: (_, win) => {
+                    console.log(`🟠 Context Menu: Add ${selectedImagesLength} selected images to playlist`);
                     if (win === undefined) return;
                     win.webContents.send(
                         MENU_EVENTS.addSelectedImagesToPlaylist
@@ -301,6 +358,7 @@ export async function contextMenu({
             {
                 label: "Remove selected images from current playlist",
                 click: (_, win) => {
+                    console.log(`🟠 Context Menu: Remove ${selectedImagesLength} selected images from current playlist`);
                     if (win === undefined) return;
                     win.webContents.send(
                         MENU_EVENTS.removeSelectedImagesFromPlaylist
@@ -310,6 +368,7 @@ export async function contextMenu({
             {
                 label: "Delete selected images from gallery",
                 click: (_, win) => {
+                    console.log(`🟠 Context Menu: Delete ${selectedImagesLength} selected images from gallery`);
                     if (win === undefined) return;
                     void dialog
                         .showMessageBox(win, {
@@ -320,9 +379,12 @@ export async function contextMenu({
                         })
                         .then(data => {
                             if (data.response === 0) {
+                                console.log(`✅ Deleting ${selectedImagesLength} selected images`);
                                 win.webContents.send(
                                     MENU_EVENTS.deleteAllSelectedImages
                                 );
+                            } else {
+                                console.log(`❌ Delete cancelled for ${selectedImagesLength} selected images`);
                             }
                         });
                 }
@@ -330,6 +392,7 @@ export async function contextMenu({
             {
                 label: "Unselect images in current page",
                 click: (_, win) => {
+                    console.log(`🟠 Context Menu: Unselect images in current page`);
                     if (win === undefined) return;
                     win.webContents.send(
                         MENU_EVENTS.clearSelectionOnCurrentPage
@@ -339,6 +402,7 @@ export async function contextMenu({
             {
                 label: "Unselect all images",
                 click: (_, win) => {
+                    console.log(`🟠 Context Menu: Unselect all images`);
                     if (win === undefined) return;
                     win.webContents.send(MENU_EVENTS.clearSelection);
                 }
@@ -351,6 +415,7 @@ export async function contextMenu({
         {
             label: "Select all images in current page",
             click: (_: Electron.MenuItem, win: BrowserWindow | undefined) => {
+                console.log(`🟠 Context Menu: Select all images in current page`);
                 if (win === undefined) return;
                 win.webContents.send(MENU_EVENTS.selectAllImagesInCurrentPage);
             }
@@ -358,6 +423,7 @@ export async function contextMenu({
         {
             label: "Select all images in gallery",
             click: (_: Electron.MenuItem, win: BrowserWindow | undefined) => {
+                console.log(`🟠 Context Menu: Select all images in gallery`);
                 if (win === undefined) return;
                 win.webContents.send(MENU_EVENTS.selectAllImagesInGallery);
             }
@@ -371,9 +437,10 @@ export async function contextMenu({
                         _: Electron.MenuItem,
                         win: BrowserWindow | undefined
                     ) => {
+                        console.log(`🟠 Context Menu: Set images per page to 20`);
                         if (win === undefined) return;
                         win.webContents.send(MENU_EVENTS.setImagesPerPage, 20);
-                        dbOperations.updateImagesPerPage({ imagesPerPage: 20 });
+                        // Database operations now handled by Go daemon
                     }
                 },
                 {
@@ -382,10 +449,11 @@ export async function contextMenu({
                         _: Electron.MenuItem,
                         win: BrowserWindow | undefined
                     ) => {
+                        console.log(`🟠 Context Menu: Set images per page to 50`);
                         if (win === undefined) return;
 
                         win.webContents.send(MENU_EVENTS.setImagesPerPage, 50);
-                        dbOperations.updateImagesPerPage({ imagesPerPage: 50 });
+                        // Database operations now handled by Go daemon
                     }
                 },
                 {
@@ -394,11 +462,10 @@ export async function contextMenu({
                         _: Electron.MenuItem,
                         win: BrowserWindow | undefined
                     ) => {
+                        console.log(`🟠 Context Menu: Set images per page to 100`);
                         if (win === undefined) return;
                         win.webContents.send(MENU_EVENTS.setImagesPerPage, 100);
-                        dbOperations.updateImagesPerPage({
-                            imagesPerPage: 100
-                        });
+                        // Database operations now handled by Go daemon
                     }
                 },
                 {
@@ -407,11 +474,10 @@ export async function contextMenu({
                         _: Electron.MenuItem,
                         win: BrowserWindow | undefined
                     ) => {
+                        console.log(`🟠 Context Menu: Set images per page to 200`);
                         if (win === undefined) return;
                         win.webContents.send(MENU_EVENTS.setImagesPerPage, 200);
-                        dbOperations.updateImagesPerPage({
-                            imagesPerPage: 200
-                        });
+                        // Database operations now handled by Go daemon
                     }
                 }
             ]

@@ -48,9 +48,9 @@ export const swwwConfigStore = create<State & Actions>()((set, get) => ({
                 swwwConfig: data
             };
         });
-        const { updateSwwwConfig } = window.API_RENDERER;
+        const { goDaemon } = window.API_RENDERER;
         const newState = get().swwwConfig;
-        updateSwwwConfig(newState);
+        goDaemon.setSwwwConfig(newState);
     },
     getConfig: () => {
         return get().swwwConfig;

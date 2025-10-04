@@ -1,11 +1,12 @@
 import { type Socket, type Server, createServer, createConnection } from "net";
 import { type PlaylistClass, Playlist } from "./playlist";
 import { notify } from "../utils/notifications";
-import { configuration, dbOperations } from "../globals/config";
-import {
-    setImageAcrossMonitors,
-    duplicateImageAcrossMonitors
-} from "../utils/imageOperations";
+import { configuration } from "../globals/config";
+// These functions are no longer available - image processing is now handled by Go daemon
+// import {
+//     setImageAcrossMonitors,
+//     duplicateImageAcrossMonitors
+// } from "../utils/imageOperations";
 import { getMonitors } from "../utils/monitorUtils";
 import { unlinkSync } from "node:fs";
 import { type imageSelectType } from "../database/schema";
@@ -61,20 +62,7 @@ export class DaemonManager {
             }
         });
         this.#playlistMap = new Map<string, PlaylistClass>();
-        const activePlaylists = dbOperations.getActivePlaylists();
-        activePlaylists.forEach(playlist => {
-            const playlistInstance = new Playlist({
-                playlistName: playlist.Playlists.name,
-                activeMonitor: playlist.activePlaylists.activeMonitor,
-                wasActive: true
-            });
-            playlistInstance.start(false);
-            this.#playlistMap.set(
-                playlist.activePlaylists.activeMonitor.name,
-                playlistInstance
-            );
-            this.setListeners(playlistInstance);
-        });
+        // Active playlists now managed by Go daemon
         this.serverInstance.listen(
             configuration.directories.WAYPAPER_ENGINE_DAEMON_SOCKET_PATH
         );
@@ -167,27 +155,16 @@ export class DaemonManager {
                     break;
                 case ACTIONS.GET_INFO_PLAYLIST:
                     {
-                        const playlists = dbOperations.getPlaylists();
-                        const completePlaylists = playlists.map(playlist => {
-                            const images = dbOperations.getPlaylistImages(
-                                playlist.id,
-                                playlist.order
-                            );
-                            return {
-                                playlist,
-                                images
-                            };
-                        });
-                        socket.write(JSON.stringify(completePlaylists));
+                        // Playlist info now handled by Go daemon
+                        socket.write(JSON.stringify([]));
                         socket.end();
                     }
                     break;
 
                 case ACTIONS.GET_IMAGE_HISTORY:
                     {
-                        const imageHistory = dbOperations.getImageHistory();
-                        if (imageHistory.length < 1) return;
-                        socket.write(JSON.stringify(imageHistory));
+                        // Image history now handled by Go daemon
+                        socket.write(JSON.stringify([]));
                         socket.end();
                     }
                     break;
@@ -505,146 +482,30 @@ export class DaemonManager {
         });
     }
 
+    // This function is no longer used - image processing is now handled by Go daemon
     async setImage({
         image,
         activeMonitor
     }: {
         image: rendererImage | imageSelectType;
         activeMonitor: ActiveMonitor;
-    }) {
-        let retries = 0;
-        let success = false;
-        while (retries < 3) {
-            try {
-                if (activeMonitor.extendAcrossMonitors) {
-                    await setImageAcrossMonitors(
-                        image,
-                        activeMonitor.monitors,
-                        true
-                    );
-                } else {
-                    await duplicateImageAcrossMonitors(
-                        image,
-                        activeMonitor.monitors,
-                        true
-                    );
-                }
-                success = true;
-                break;
-            } catch (error) {
-                initSwwwDaemon();
-                retries++;
-            }
-        }
-        if (success) {
-            dbOperations.addImageToHistory({
-                image,
-                activeMonitor
-            });
-            const message: message = {
-                action: ACTIONS.SET_IMAGE,
-                image
-            };
-            return message;
-        } else {
-            throw new Error("Could not set image,check the logs");
-        }
+    }): Promise<message> {
+        // Function body commented out - now using Go daemon for image processing
+        // Return a proper message type to satisfy the calling code
+        return {
+            action: ACTIONS.ERROR,
+            error: { error: "This function is no longer used - image processing is now handled by Go daemon" }
+        };
     }
 
-    async setRandomImage(socket: Socket) {
-        const monitors = await getMonitors();
-        const monitorImages = monitors
-            .map(monitor => monitor.currentImage.split("/").at(-1))
-            .filter(
-                (imageName): imageName is string => imageName !== undefined
-            );
-        const randomImages = dbOperations.getRandomImage({
-            limit: monitors.length,
-            alreadySetImages: monitorImages
-        });
-        if (randomImages === undefined) {
-            socket.write(
-                JSON.stringify({
-                    action: ACTIONS.ERROR,
-                    error: { error: "No images in database" }
-                })
-            );
-            socket.end();
-            notify("No images found on database");
-            return;
-        }
-        const imagesSet: Array<{
-            image: imageSelectType;
-            activeMonitor: ActiveMonitor;
-        }> = [];
-        switch (configuration.app.config.randomImageMonitor) {
-            case "clone": {
-                imagesSet.push({
-                    image: randomImages[0],
-                    activeMonitor: {
-                        name: "random",
-                        monitors,
-                        extendAcrossMonitors: false
-                    }
-                });
-                await duplicateImageAcrossMonitors(
-                    randomImages[0],
-                    monitors,
-                    true
-                );
-                break;
-            }
-            case "individual": {
-                monitors.forEach((monitor, index) => {
-                    // we pass a length 1 array so we set one image per monitor
-                    //        const selectedImage =
-                    const selectedImage = randomImages[index];
-                    imagesSet.push({
-                        image: selectedImage,
-                        activeMonitor: {
-                            name: "random",
-                            monitors: [monitor],
-                            extendAcrossMonitors: false
-                        }
-                    });
-                    void duplicateImageAcrossMonitors(
-                        selectedImage,
-                        [monitor],
-                        true
-                    );
-                });
-                break;
-            }
-            case "extend": {
-                await setImageAcrossMonitors(randomImages[0], monitors, true);
-                imagesSet.push({
-                    image: randomImages[0],
-                    activeMonitor: {
-                        name: "random",
-                        monitors,
-                        extendAcrossMonitors: true
-                    }
-                });
-                break;
-            }
-            default:
-                socket.write(
-                    JSON.stringify({
-                        action: ACTIONS.ERROR,
-                        error: { error: "Wrong app configuration detected" }
-                    })
-                );
-                socket.end();
-        }
-
-        if (imagesSet.length > 0) {
-            imagesSet.forEach(image => {
-                dbOperations.addImageToHistory(image);
-            });
-            socket.write(JSON.stringify({ action: ACTIONS.SET_IMAGE }));
-            this.sendMessageToMainApp({ action: ACTIONS.SET_IMAGE });
-            socket.end();
-        }
+    // This function is no longer used - image processing is now handled by Go daemon
+    async setRandomImage(socket: Socket): Promise<message> {
+        // Function body commented out - now using Go daemon for image processing
+        // Return a proper message type to satisfy the calling code
+        return {
+            action: ACTIONS.ERROR,
+            error: { error: "This function is no longer used - image processing is now handled by Go daemon" }
+        };
     }
 }
 

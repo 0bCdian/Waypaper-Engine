@@ -10,46 +10,46 @@ import {
 } from "electron";
 import { join } from "node:path";
 import {
-    copyImagesToCacheAndProcessThumbnails,
     openAndReturnImagesObject,
-    savePlaylist,
-    deleteImagesFromGallery,
-    remakeThumbnailsIfImagesExist,
     openContextMenu,
     createAppDirsIfNotExist
 } from "./appFunctions";
 import { devMenu, trayMenu } from "../globals/menus";
 import { iconsPath, logger, values } from "../globals/setup";
-import { configuration, dbOperations } from "../globals/config";
+import { configuration } from "../globals/config";
 import {
     type rendererImage,
     type rendererPlaylist
 } from "../src/types/rendererTypes";
 import { type openFileAction } from "../shared/types";
-import {
-    type appConfigInsertType,
-    type swwwConfigInsertType
-} from "../database/schema";
 import { type ActiveMonitor } from "../shared/types/monitor";
 import { PlaylistController } from "./playlistController";
 import { IPC_MAIN_EVENTS } from "../shared/constants";
-import { initWaypaperDaemon, createMainServer } from "../globals/startDaemons";
+import { initWaypaperDaemon } from "../globals/startDaemons";
+
 import { getMonitors } from "../utils/monitorUtils";
-import { tryToSetImage, restoreLastWallpaper } from "../utils/imageOperations";
 import { ACTIONS } from "../types/types";
 import type EventEmitter from "node:events";
 if (values.daemon !== undefined && (values.daemon as boolean)) {
     logger.info("starting daemon...");
-    try {
-        void restoreLastWallpaper().then(() => {
-            void initWaypaperDaemon().then(() => {
+    (async () => {
+        try {
+            // Restore last wallpaper using Go daemon
+            try {
+                const { goDaemonClient } = await import("./goDaemonClient");
+                await goDaemonClient.connect();
+                // TODO: Implement restore last wallpaper in Go daemon
+                await initWaypaperDaemon();
                 process.exit(0);
-            });
-        });
-    } catch (error) {
-        logger.error(error);
-        process.exit(1);
-    }
+            } catch (error) {
+                logger.error("Failed to restore last wallpaper:", error);
+                process.exit(1);
+            }
+        } catch (error) {
+            logger.error(error);
+            process.exit(1);
+        }
+    })();
 }
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -119,8 +119,18 @@ function createMenu() {
 function registerFileProtocol() {
     protocol.handle(
         "atom",
-        async request =>
-            await net.fetch("file://" + request.url.slice("atom://".length))
+        async request => {
+            const filePath = request.url.slice("atom://".length);
+            console.log("🔵 Protocol handler: Converting atom:// URL:", request.url, "to file://", filePath);
+            try {
+                const response = await net.fetch("file://" + filePath);
+                console.log("🔵 Protocol handler: Successfully loaded file:", filePath);
+                return response;
+            } catch (error) {
+                console.error("🔴 Protocol handler: Failed to load file:", filePath, "Error:", error);
+                throw error;
+            }
+        }
     );
 }
 
@@ -138,34 +148,142 @@ async function createTray() {
     const trayContextMenu = await trayMenu(app, tray, createTray);
     tray.setContextMenu(trayContextMenu);
 }
-function registerAppServerListeners(emitter: EventEmitter) {
-    emitter.on(ACTIONS.START_PLAYLIST, () => {
-        void createTray();
-        win?.webContents.send(IPC_MAIN_EVENTS.requeryPlaylist);
-    });
-    emitter.on(ACTIONS.SET_IMAGE, () => {
-        void createTray();
-    });
-    emitter.on(ACTIONS.STOP_PLAYLIST, () => {
-        void createTray();
-        win?.webContents.send(IPC_MAIN_EVENTS.requeryPlaylist);
-    });
-    emitter.on(ACTIONS.RESUME_PLAYLIST, () => {
-        void createTray();
-    });
-    emitter.on(ACTIONS.PAUSE_PLAYLIST, () => {
-        void createTray();
-    });
-}
+// Old socket listeners removed - now handled by Go daemon events
 Menu.setApplicationMenu(null);
 app.whenReady()
     .then(async () => {
-        const server = createMainServer();
-        registerAppServerListeners(server);
+        // Old socket server removed - now using Go daemon for all operations
+        
+        logger.info("About to start Go daemon...");
         await initWaypaperDaemon();
-        await restoreLastWallpaper();
+        logger.info("Go daemon started successfully");
+        
+        // Give the daemon a moment to be fully ready
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        // Set up Go daemon event forwarding after daemon is started
+        const { goDaemonClient } = await import("./goDaemonClient");
+        
+        // Try to connect with retries
+        let connected = false;
+        let attempts = 0;
+        const maxAttempts = 5;
+        
+        while (!connected && attempts < maxAttempts) {
+            try {
+                await goDaemonClient.connect();
+                connected = true;
+                logger.info("Successfully connected to Go daemon");
+            } catch (error) {
+                attempts++;
+                logger.warn(`Failed to connect to Go daemon (attempt ${attempts}/${maxAttempts}):`, error);
+                if (attempts < maxAttempts) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                }
+            }
+        }
+        
+        if (!connected) {
+            logger.error("Failed to connect to Go daemon after maximum attempts");
+            process.exit(1);
+        }
+        
+        // Forward Go daemon events to renderer and update tray
+        goDaemonClient.on("playlist_started", (data) => {
+            win?.webContents.send("go-daemon-event-playlist_started", data);
+            void createTray();
+            win?.webContents.send(IPC_MAIN_EVENTS.requeryPlaylist);
+        });
+        goDaemonClient.on("playlist_stopped", (data) => {
+            win?.webContents.send("go-daemon-event-playlist_stopped", data);
+            void createTray();
+            win?.webContents.send(IPC_MAIN_EVENTS.requeryPlaylist);
+        });
+        goDaemonClient.on("playlist_paused", (data) => {
+            win?.webContents.send("go-daemon-event-playlist_paused", data);
+            void createTray();
+        });
+        goDaemonClient.on("playlist_resumed", (data) => {
+            win?.webContents.send("go-daemon-event-playlist_resumed", data);
+            void createTray();
+        });
+        goDaemonClient.on("image_changed", (data) => {
+            win?.webContents.send("go-daemon-event-image_changed", data);
+            void createTray();
+        });
+        
+        // Additional events that should trigger tray updates
+        goDaemonClient.on("wallpaper_changed", (data) => {
+            win?.webContents.send("go-daemon-event-wallpaper_changed", data);
+            void createTray();
+        });
+        goDaemonClient.on("images_updated", (data) => {
+            win?.webContents.send("go-daemon-event-images_updated", data);
+            void createTray();
+            win?.webContents.send(IPC_MAIN_EVENTS.requeryPlaylist);
+        });
+        goDaemonClient.on("playlists_updated", (data) => {
+            win?.webContents.send("go-daemon-event-playlists_updated", data);
+            void createTray();
+            win?.webContents.send(IPC_MAIN_EVENTS.requeryPlaylist);
+        });
+        goDaemonClient.on("config_changed", (data) => {
+            win?.webContents.send("go-daemon-event-config_changed", data);
+            void createTray();
+        });
+        
+        // Forward real-time image processing events
+        goDaemonClient.on("image_processed", (data) => {
+            win?.webContents.send("go-daemon-event-image_processed", data);
+        });
+        goDaemonClient.on("image_error", (data) => {
+            win?.webContents.send("go-daemon-event-image_error", data);
+        });
+        goDaemonClient.on("processing_complete", (data) => {
+            win?.webContents.send("go-daemon-event-processing_complete", data);
+        });
+        goDaemonClient.on("wallpaper_changed", (data) => {
+            win?.webContents.send("go-daemon-event-wallpaper_changed", data);
+        });
+        goDaemonClient.on("images_updated", (data) => {
+            win?.webContents.send("go-daemon-event-images_updated", data);
+        });
+        goDaemonClient.on("config_changed", (data) => {
+            win?.webContents.send("go-daemon-event-config_changed", data);
+        });
+        // Restore last wallpaper using Go daemon
+        try {
+            // TODO: Implement restore last wallpaper in Go daemon
+            logger.info("Last wallpaper restoration not yet implemented in Go daemon");
+        } catch (error) {
+            logger.error("Failed to restore last wallpaper:", error);
+        }
         createAppDirsIfNotExist();
-        await remakeThumbnailsIfImagesExist();
+        
+        // Remake thumbnails using Go daemon if needed
+        try {
+            const { goDaemonClient } = await import("./goDaemonClient");
+            const cacheDir = configuration.directories.imagesDir;
+            const thumbnailsDir = configuration.directories.thumbnails;
+            
+            // Check if thumbnails exist, if not, recreate them
+            const { readdir } = await import("node:fs/promises");
+            const thumbnails = await readdir(thumbnailsDir);
+            if (thumbnails.length < 1) {
+                const imagesStored = await readdir(cacheDir);
+                if (imagesStored.length > 0) {
+                    // Process all existing images to create thumbnails
+                    await goDaemonClient.sendCommand("process_images", {
+                        imagePaths: imagesStored.map(img => join(cacheDir, img)),
+                        fileNames: imagesStored,
+                        cacheDir,
+                        thumbnailsDir
+                    });
+                }
+            }
+        } catch (error) {
+            logger.error("Failed to remake thumbnails:", error);
+        }
         playlistControllerInstance = new PlaylistController(createTray);
         screen.on("display-added", () => {
             if (win === null) return;
@@ -182,39 +300,7 @@ app.whenReady()
         });
         createMenu();
         void createTray();
-        dbOperations.on("updateAppConfig", () => {
-            win?.webContents.send("updateAppConfig");
-        });
-        dbOperations.on(
-            "updateAppConfig",
-            (newAppConfig: appConfigInsertType) => {
-                configuration.app.config = newAppConfig.config;
-                playlistControllerInstance.updateConfig();
-            }
-        );
-        dbOperations.on(
-            "updateSwwwConfig",
-            (newAppConfig: swwwConfigInsertType) => {
-                configuration.swww.config = newAppConfig.config;
-                playlistControllerInstance.updateConfig();
-            }
-        );
-        dbOperations.on(
-            "upsertPlaylist",
-            (playlist: { name: string; activeMonitor: ActiveMonitor }) => {
-                playlistControllerInstance.startPlaylist(playlist);
-                void createTray();
-            }
-        );
-
-        dbOperations.on("deletePlaylist", (playlistName: string) => {
-            playlistControllerInstance.stopPlaylistByName(playlistName);
-            void createTray();
-        });
-
-        dbOperations.on("updateTray", () => {
-            void createTray();
-        });
+        // Database event listeners removed - now handled by Go daemon
         registerFileProtocol();
         await createWindow();
     })
@@ -231,42 +317,32 @@ app.on("quit", () => {
 ipcMain.handle("openFiles", async (_event, action: openFileAction) => {
     return await openAndReturnImagesObject(action, win);
 });
-ipcMain.handle("handleOpenImages", copyImagesToCacheAndProcessThumbnails);
-ipcMain.handle("queryImages", () => {
-    return dbOperations.getAllImages();
+ipcMain.handle("handleOpenImages", async (_, { imagePaths, fileNames }) => {
+    const { goDaemonClient } = await import("./goDaemonClient");
+    
+    // Process images using Go daemon (cache directories are handled by Go daemon)
+    return await goDaemonClient.sendCommand("process_images", {
+        imagePaths,
+        fileNames
+    });
 });
-ipcMain.handle("queryPlaylists", () => {
-    return dbOperations.getPlaylists();
-});
-ipcMain.handle("getPlaylistImages", async (_event, playlistID: number) => {
-    return dbOperations.getPlaylistImages(playlistID, null);
-});
+// These handlers are now handled by the Go daemon via go-daemon-command
 ipcMain.handle("getMonitors", async () => {
     return await getMonitors();
 });
-ipcMain.handle("readSwwwConfig", () => {
-    return dbOperations.getSwwwConfig();
-});
-ipcMain.handle("readAppConfig", () => {
-    return dbOperations.getAppConfig();
-});
-ipcMain.handle("deleteImageFromGallery", deleteImagesFromGallery);
-ipcMain.handle("readActivePlaylist", async (_, monitor: ActiveMonitor) => {
-    return dbOperations.getActivePlaylistInfo(monitor);
-});
-ipcMain.handle("querySelectedMonitor", () => {
-    return dbOperations.getSelectedMonitor();
-});
-ipcMain.on("setSelectedMonitor", (_, monitor: ActiveMonitor) => {
-    dbOperations.setSelectedMonitor(monitor);
-});
-ipcMain.on("deletePlaylist", (_, playlistName: string) => {
-    dbOperations.deletePlaylist(playlistName);
-});
-ipcMain.on(
+// These handlers are now handled by the Go daemon via go-daemon-command
+// This handler is now handled by the Go daemon via go-daemon-command
+// These handlers are now handled by the Go daemon via go-daemon-command
+ipcMain.handle(
     "setImage",
-    (_, image: rendererImage, activeMonitor: ActiveMonitor) => {
-        void tryToSetImage(image, activeMonitor, true);
+    async (_, image: rendererImage, activeMonitor: ActiveMonitor) => {
+        // Set image using Go daemon
+        try {
+            const { goDaemonClient } = await import("./goDaemonClient");
+            await goDaemonClient.setImage(image.id, activeMonitor.name);
+        } catch (error) {
+            logger.error("Failed to set image:", error);
+        }
         void createTray();
     }
 );
@@ -275,8 +351,10 @@ ipcMain.on("setRandomImage", () => {
     void createTray();
 });
 
-ipcMain.on("savePlaylist", (_, playlistObject: rendererPlaylist) => {
-    savePlaylist(playlistObject);
+ipcMain.on("savePlaylist", async (_, playlistObject: rendererPlaylist) => {
+    // Save playlist using Go daemon
+    const { goDaemonClient } = await import("./goDaemonClient");
+    await goDaemonClient.savePlaylist(playlistObject);
     void createTray();
 });
 ipcMain.on(
@@ -293,31 +371,119 @@ ipcMain.on(
         void createTray();
     }
 );
-ipcMain.on(
-    "updateSwwwConfig",
-    (_, newSwwwConfig: swwwConfigInsertType["config"]) => {
-        dbOperations.updateSwwwConfig({ config: newSwwwConfig });
-        playlistControllerInstance.updateConfig();
-    }
-);
-ipcMain.on(
+// Context menu handler for right-click on images
+ipcMain.handle(
     "openContextMenuImage",
     (event, image: rendererImage, selectedImagesLength: number) => {
-        void openContextMenu(event, image, selectedImagesLength);
+        return openContextMenu(event, image, selectedImagesLength);
     }
 );
 
-ipcMain.on(
-    "updateAppConfig",
-    (_, newAppConfig: appConfigInsertType["config"]) => {
-        void dbOperations.updateAppConfig({ config: newAppConfig }).then(() => {
-            playlistControllerInstance.updateConfig();
-        });
+// Go daemon IPC handlers
+ipcMain.handle("go-daemon-command", async (_event, action: string, payload?: any) => {
+    console.log("🟠 Main: go-daemon-command received with action:", action, "payload:", payload);
+    const { goDaemonClient } = await import("./goDaemonClient");
+    
+    try {
+        switch (action) {
+            case "start_playlist":
+                return await goDaemonClient.startPlaylist(payload.playlistId, payload.activeMonitor);
+            case "stop_playlist":
+                return await goDaemonClient.stopPlaylist(payload.playlistName, payload.activeMonitor);
+            case "pause_playlist":
+                return await goDaemonClient.pausePlaylist(payload.playlistName, payload.activeMonitor);
+            case "resume_playlist":
+                return await goDaemonClient.resumePlaylist(payload.playlistName, payload.activeMonitor);
+            case "next_image":
+                return await goDaemonClient.nextImage(payload.activeMonitor.name, payload.activeMonitor);
+            case "previous_image":
+                return await goDaemonClient.previousImage(payload.activeMonitor.name, payload.activeMonitor);
+            case "random_image":
+                return await goDaemonClient.randomImage();
+            case "set_image":
+                if (!payload.image) {
+                    throw new Error("payload.image is undefined");
+                }
+                if (!payload.activeMonitor) {
+                    throw new Error("payload.activeMonitor is undefined");
+                }
+                return await goDaemonClient.setImage(payload.image.id, payload.activeMonitor.name);
+            case "get_images":
+                return await goDaemonClient.getImages(payload.filters);
+            case "get_playlists":
+                return await goDaemonClient.getPlaylists();
+            case "get_active_playlist":
+                return await goDaemonClient.getActivePlaylist(payload.activeMonitor);
+            case "get_info":
+                return await goDaemonClient.getInfo();
+            case "get_app_config":
+                return await goDaemonClient.getAppConfig();
+            case "set_app_config":
+                return await goDaemonClient.setAppConfig(payload.key, payload.value);
+            case "get_swww_config":
+                return await goDaemonClient.getSwwwConfig();
+            case "set_swww_config":
+                return await goDaemonClient.setSwwwConfig(payload);
+            case "ping":
+                return await goDaemonClient.ping();
+            case "get_daemon_status":
+                return await goDaemonClient.getDaemonStatus();
+            case "stop_daemon":
+                return await goDaemonClient.stopDaemon();
+            case "get_monitors":
+                const monitors = await goDaemonClient.getMonitors();
+                return monitors;
+            case "set_selected_monitor":
+                return await goDaemonClient.setSelectedMonitor(payload.activeMonitor);
+            case "get_selected_monitor":
+                return await goDaemonClient.getSelectedMonitor();
+            case "next_image_all":
+                return await goDaemonClient.nextImageAll(payload.monitors);
+            case "previous_image_all":
+                return await goDaemonClient.previousImageAll(payload.monitors);
+            case "random_image_all":
+                return await goDaemonClient.randomImageAll(payload.monitors);
+            case "stop_playlist_all":
+                return await goDaemonClient.stopPlaylistAll();
+            case "pause_playlist_all":
+                return await goDaemonClient.pausePlaylistAll();
+            case "resume_playlist_all":
+                return await goDaemonClient.resumePlaylistAll();
+            case "get_image_src":
+                return await goDaemonClient.getImageSrc(payload.fileName);
+            case "get_thumbnail_src":
+                return await goDaemonClient.getThumbnailSrc(payload.fileName);
+            case "set_image_across_monitors":
+                return await goDaemonClient.setImageAcrossMonitors(payload.image.id, payload.activeMonitor);
+            case "duplicate_image_across_monitors":
+                return await goDaemonClient.duplicateImageAcrossMonitors(payload.image.id, payload.activeMonitor);
+            case "process_for_monitors":
+                return await goDaemonClient.processForMonitors(payload.image.id, payload.activeMonitor);
+            case "get_monitor_image":
+                return await goDaemonClient.getMonitorImage(payload.monitorName);
+            case "save_playlist":
+                return await goDaemonClient.savePlaylist(payload);
+            case "delete_playlist":
+                return await goDaemonClient.deletePlaylist(payload.playlistName);
+            case "get_playlist_images":
+                return await goDaemonClient.getPlaylistImages(payload.playlistId);
+            case "delete_images_from_gallery":
+                return await goDaemonClient.deleteImagesFromGallery(payload.imageIds);
+            case "get_diagnostics":
+                return await goDaemonClient.getDiagnostics(payload.monitorName);
+            default:
+                throw new Error(`Unknown action: ${action}`);
+        }
+    } catch (error) {
+        logger.error(`Go daemon command failed: ${action}`, error);
+        throw error;
     }
-);
+});
+
+// This handler is now handled by the Go daemon via go-daemon-command
 ipcMain.on("updateTray", () => {
     void createTray();
 });
-ipcMain.on("exitApp", () => {
+ipcMain.handle("exitApp", () => {
     app.exit();
 });

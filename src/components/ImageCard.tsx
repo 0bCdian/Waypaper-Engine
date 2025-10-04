@@ -9,15 +9,75 @@ import { useMonitorStore } from "../stores/monitors";
 interface ImageCardProps {
     Image: rendererImage;
 }
-const { setImage, openContextMenu, getImageSrc, getThumbnailSrc } =
-    window.API_RENDERER;
+const { goDaemon } = window.API_RENDERER;
 function ImageCard({ Image }: ImageCardProps) {
     const [selected, setSelected] = useState(Image.isSelected);
-    const [isChecked, setIsChecked] = useState(Image.isChecked);
-    const imageNameFilePath = getThumbnailSrc(Image.name);
+    const [isChecked, setIsChecked] = useState(Image.isChecked ?? false);
+    const [imageNameFilePath, setImageNameFilePath] = useState<string>("");
+    const [imageSrc, setImageSrc] = useState<string>("");
     const { activeMonitor } = useMonitorStore();
+
+    // Load thumbnail and image paths asynchronously
+    useEffect(() => {
+        const loadPaths = async () => {
+            try {
+                console.log("🟢 ImageCard: Loading paths for image:", Image.name, "Type:", typeof Image.name);
+                console.log("🟢 ImageCard: Full Image object:", Image);
+                if (!Image.name) {
+                    console.error("🔴 ImageCard: Image has no name!", Image);
+                    return;
+                }
+                const thumbnailPath = await goDaemon.getThumbnailSrc(Image.name);
+                const imagePath = await goDaemon.getImageSrc(Image.name);
+                console.log("🟢 ImageCard: Thumbnail path:", thumbnailPath, "Image path:", imagePath);
+                console.log("🟢 ImageCard: Image name:", Image.name);
+                
+                // Check if paths are valid before converting to atom://
+                if (thumbnailPath && typeof thumbnailPath === 'string') {
+                    console.log("🟢 ImageCard: Setting thumbnail path:", `atom://${thumbnailPath}`);
+                    setImageNameFilePath(`atom://${thumbnailPath}`);
+                } else {
+                    console.error("🔴 ImageCard: Invalid thumbnail path:", thumbnailPath);
+                    setImageNameFilePath("");
+                }
+                
+                if (imagePath && typeof imagePath === 'string') {
+                    console.log("🟢 ImageCard: Setting image path:", `atom://${imagePath}`);
+                    setImageSrc(`atom://${imagePath}`);
+                } else {
+                    console.error("🔴 ImageCard: Invalid image path:", imagePath);
+                    setImageSrc("");
+                }
+            } catch (error) {
+                console.error("Failed to load image paths:", error);
+            }
+        };
+        loadPaths();
+    }, [Image.name]);
     const handleDoubleClick = () => {
-        setImage(Image, activeMonitor);
+        console.log("🟢 ImageCard: handleDoubleClick called with Image:", Image);
+        console.log("🟢 ImageCard: Image.id:", Image.id, "Type:", typeof Image.id);
+        console.log("🟢 ImageCard: activeMonitor:", activeMonitor);
+        
+        if (!Image.id) {
+            console.error("🔴 ImageCard: Cannot set image - Image.id is undefined", Image);
+            return;
+        }
+        if (!activeMonitor?.name) {
+            console.error("🔴 ImageCard: Cannot set image - activeMonitor.name is undefined", activeMonitor);
+            return;
+        }
+        
+        // Check if we should use multi-monitor functionality
+        if (activeMonitor.extendAcrossMonitors && activeMonitor.monitors && activeMonitor.monitors.length > 1) {
+            console.log("🟢 ImageCard: Using multi-monitor stretch mode with monitors:", activeMonitor.monitors.length);
+            console.log("🟢 ImageCard: Calling goDaemon.setImageAcrossMonitors with:", Image.id, activeMonitor);
+            goDaemon.setImageAcrossMonitors(Image.id, activeMonitor);
+        } else {
+            console.log("🟢 ImageCard: Using single monitor mode");
+            console.log("🟢 ImageCard: Calling goDaemon.setImage with:", Image.id, activeMonitor.name);
+            goDaemon.setImage(Image.id, activeMonitor.name);
+        }
     };
     const addImageToPlaylist = playlistStore(
         useShallow(state => state.addImagesToPlaylist)
@@ -56,7 +116,7 @@ function ImageCard({ Image }: ImageCardProps) {
     };
     const handleRightClick = (e: React.MouseEvent) => {
         e.stopPropagation();
-        openContextMenu({ Image, selectedImagesLength: selectedImages.size });
+        goDaemon.openContextMenu({ Image, selectedImagesLength: selectedImages.size });
     };
     useEffect(() => {
         if (selected) addToSelectedImages(Image);
@@ -113,7 +173,7 @@ function ImageCard({ Image }: ImageCardProps) {
                         currentTarget.onerror = null;
                         currentTarget.className =
                             "rounded-lg min-w-full max-w-[300px] object-fill";
-                        currentTarget.src = getImageSrc(Image.name);
+                        currentTarget.src = imageSrc;
                     }}
                 />
                 <p className="absolute bottom-0 w-full overflow-hidden truncate text-ellipsis bg-black bg-opacity-75 p-2 pl-2 text-justify text-lg font-medium opacity-0 transition-all duration-300 group-hover:opacity-100">

@@ -1,16 +1,13 @@
 import { type BrowserWindow, dialog, Menu } from "electron";
 import { rmSync, mkdirSync, existsSync } from "node:fs";
-import { copyFile, readdir } from "node:fs/promises";
+import { readdir } from "node:fs/promises";
 import { contextMenu } from "../globals/menus";
 import {
     type rendererImage,
-    type rendererPlaylist
 } from "../src/types/rendererTypes";
 import { join, basename } from "node:path";
-import { dbOperations, configuration } from "../globals/config";
-import Sharp = require("sharp");
-import { type openFileAction, type imagesObject } from "../shared/types";
-import { type imageMetadata } from "../types/types";
+import { configuration } from "../globals/config";
+import { type openFileAction } from "../shared/types";
 import { validImageExtensions } from "../shared/constants";
 import { type Formats } from "../shared/types/image";
 import { logger } from "../globals/setup";
@@ -83,70 +80,7 @@ async function searchImagesRecursively(
     }
 }
 
-export async function copyImagesToCacheAndProcessThumbnails(
-    _event: Electron.IpcMainInvokeEvent,
-    { imagePaths, fileNames }: imagesObject
-) {
-    const uniqueFileNames = await checkAndRenameDuplicates(fileNames);
-    const imagesToStore = uniqueFileNames.map(
-        async (imageName, currentImage) => {
-            return await new Promise<imageMetadata | undefined>(resolve => {
-                void copyFile(
-                    imagePaths[currentImage],
-                    join(appDirectories.imagesDir, imageName)
-                ).then(() => {
-                    createCacheThumbnail(imagePaths[currentImage], imageName)
-                        .then(imageMetadata => {
-                            resolve(imageMetadata);
-                        })
-                        .catch(e => {
-                            logger.error(e);
-                        });
-                });
-            });
-        }
-    );
-    const resolvedObjectsArray = await Promise.allSettled(imagesToStore);
-    const imagesToStoreinDB: imageMetadata[] = [];
-    resolvedObjectsArray.forEach(imagePromise => {
-        if (imagePromise.status === "fulfilled") {
-            const value = imagePromise.value;
-            if (value !== undefined) {
-                imagesToStoreinDB.push(value);
-            }
-        }
-    });
-    return await dbOperations.storeImages(imagesToStoreinDB);
-}
 
-async function createCacheThumbnail(filePathSource: string, imageName: string) {
-    const [name] = imageName.split(".");
-    const fileDestinationPath = join(appDirectories.thumbnails, name + ".webp");
-    if (imageName.length > 0) {
-        try {
-            const buffer = Sharp(filePathSource, {
-                animated: true,
-                limitInputPixels: false
-            });
-            const metadata = await buffer.metadata();
-            await buffer
-                .resize(300, 200, {
-                    fit: "cover"
-                })
-                .webp({ quality: 60, force: true, effort: 3 })
-                .toFile(fileDestinationPath);
-            const imageMetadata = {
-                name: imageName,
-                format: metadata.format,
-                width: metadata.width,
-                height: metadata.height
-            };
-            return imageMetadata as imageMetadata;
-        } catch (error) {
-            logger.error("failed to create thumbnail for:", imageName, error);
-        }
-    }
-}
 
 export async function openAndReturnImagesObject(
     action: openFileAction,
@@ -161,41 +95,6 @@ export async function openAndReturnImagesObject(
     }
     const fileNames = imagePathsFromFilePicker.map(image => basename(image));
     return { imagePaths: imagePathsFromFilePicker, fileNames };
-}
-async function remakeThumbnailImages(files: string[]) {
-    for (let current = 0; current < files.length; current++) {
-        const imageName = files[current];
-        const filePathSource = join(appDirectories.imagesDir, imageName);
-        const [name] = imageName.split(".");
-        const fileDestinationPath = join(
-            appDirectories.thumbnails,
-            name + ".webp"
-        );
-        try {
-            const buffer = Sharp(filePathSource, {
-                animated: true,
-                limitInputPixels: false
-            });
-            await buffer
-                .resize(300, 200, {
-                    fit: "cover"
-                })
-                .webp({ quality: 60, force: true, effort: 6 })
-                .toFile(fileDestinationPath);
-        } catch (error) {
-            logger.error("failed to create thumbnail for:", imageName, error);
-        }
-    }
-}
-export async function remakeThumbnailsIfImagesExist() {
-    const thumbnails = await readdir(appDirectories.thumbnails);
-    if (thumbnails.length < 1) {
-        const imagesStored = await readdir(appDirectories.imagesDir);
-        if (imagesStored.length < 1) {
-            return;
-        }
-        await remakeThumbnailImages(imagesStored);
-    }
 }
 export function createAppDirsIfNotExist() {
     const directoriesToCreate: string[] = [
@@ -223,49 +122,6 @@ function createFolders(...args: string[]) {
     }
 }
 
-async function checkAndRenameDuplicates(filenamesToCopy: string[]) {
-    const currentImagesStored = new Set(
-        await readdir(appDirectories.imagesDir)
-    );
-    const correctFilenamesToCopy = getUniqueFileNames(
-        currentImagesStored,
-        filenamesToCopy
-    );
-    return correctFilenamesToCopy;
-}
-
-function getUniqueFileNames(existingFiles: Set<string>, filesToCopy: string[]) {
-    const filesToCopyWithoutConflicts: string[] = [];
-    const filesToCopyLength = filesToCopy.length;
-    for (let i = 0; i < filesToCopyLength; i++) {
-        const file = filesToCopy[i];
-        const extensionIndex = file.lastIndexOf(".");
-        const fileNameWithoutExtension =
-            extensionIndex !== -1 ? file.substring(0, extensionIndex) : file;
-        const fileExtension =
-            extensionIndex !== -1 ? file.substring(extensionIndex) : "";
-
-        let uniqueFileName = fileNameWithoutExtension;
-        let count = 1;
-        while (existingFiles.has(uniqueFileName + fileExtension)) {
-            uniqueFileName = `${fileNameWithoutExtension}(${count})`;
-            count++;
-        }
-        filesToCopyWithoutConflicts.push(uniqueFileName + fileExtension);
-        existingFiles.add(uniqueFileName + fileExtension);
-    }
-    return filesToCopyWithoutConflicts;
-}
-
-export function savePlaylist(playlistObject: rendererPlaylist) {
-    try {
-        void dbOperations.upsertPlaylist(playlistObject);
-    } catch (error) {
-        logger.error(error);
-        throw Error("Failed to set playlist in DB");
-    }
-}
-
 export function deleteImageFromStorage(images: rendererImage[]) {
     try {
         images.forEach(imageToDelete => {
@@ -286,20 +142,6 @@ export function deleteImageFromStorage(images: rendererImage[]) {
     } catch (error) {
         logger.error(error);
         throw new Error("Could not delete images from storage");
-    }
-}
-
-export function deleteImagesFromGallery(
-    _: Electron.IpcMainInvokeEvent,
-    images: rendererImage[]
-) {
-    try {
-        dbOperations.deleteImages(images);
-        deleteImageFromStorage(images);
-        return true;
-    } catch (error) {
-        logger.error(error);
-        return false;
     }
 }
 

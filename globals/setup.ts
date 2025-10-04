@@ -21,8 +21,8 @@ export const iconsPath = resolve(
 );
 export const daemonPath = resolve(
     isPackaged
-        ? join(resourcesPath, "daemon", "dist", "daemon")
-        : join(process.cwd(), "daemon", "dist", "daemon")
+        ? join(resourcesPath, "waypaper-daemon")
+        : join(process.cwd(), "daemon-go", "waypaper-daemon")
 );
 
 export const nativeBindingPath = resolve(

@@ -5,7 +5,7 @@ import PlaylistTrack from "./PlaylistTrack";
 import { useImagePagination } from "../hooks/useImagePagination";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRef } from "react";
-const { openContextMenu } = window.API_RENDERER;
+const { goDaemon } = window.API_RENDERER;
 
 function PaginatedGallery() {
     const {
@@ -31,7 +31,7 @@ function PaginatedGallery() {
                 className="m-auto flex max-h-[84vh] min-h-[86vh] flex-col justify-between gap-4 overflow-y-hidden transition focus:outline-none sm:w-[90%]"
                 onContextMenu={e => {
                     e.stopPropagation();
-                    openContextMenu({
+                    goDaemon.openContextMenu({
                         Image: undefined,
                         selectedImagesLength: selectedImages.size
                     });

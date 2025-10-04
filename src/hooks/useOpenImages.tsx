@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import { type openFileAction, type imagesObject } from "../../shared/types";
 import { type rendererImage } from "../types/rendererTypes";
+import { imagesStore } from "../stores/images";
 const { openFiles, handleOpenImages } = window.API_RENDERER;
 interface State {
     isActive: boolean;
@@ -31,18 +32,11 @@ const openImagesStore = create<State & Actions>(set => ({
         imagesObject.fileNames.reverse();
         imagesObject.imagePaths.reverse();
         setSkeletons(imagesObject);
-        const imagesArray = await handleOpenImages(imagesObject);
-        const newImagesAdded = imagesArray.map(image => {
-            const shouldCheckImage = true;
-            return {
-                ...image,
-                isChecked: shouldCheckImage,
-                time: null
-            };
-        });
-        setSkeletons(undefined);
-        addImages(newImagesAdded);
-        addImagesToPlaylist(newImagesAdded);
+        await handleOpenImages(imagesObject);
+        // Skeletons will be cleared by the real-time processing hook when processing_complete event fires
+        // Refresh images from database after processing
+        const { reQueryImages } = imagesStore.getState();
+        reQueryImages();
     }
 }));
 

@@ -1,145 +1,144 @@
 import { EventEmitter } from "events";
-import { createConnection } from "net";
-import { configuration } from "../globals/config";
-import { ACTIONS, type message } from "../types/types";
 import { type ActiveMonitor } from "../shared/types/monitor";
-import { initWaypaperDaemon } from "../globals/startDaemons";
 import { logger } from "../globals/setup";
-const WAYPAPER_ENGINE_DAEMON_SOCKET_PATH =
-    configuration.directories.WAYPAPER_ENGINE_DAEMON_SOCKET_PATH;
 export class PlaylistController extends EventEmitter {
     createTray: (() => Promise<void>) | undefined;
-    retries: number;
     constructor(trayReference?: () => Promise<void>) {
         super();
         this.createTray = trayReference;
-        this.retries = 0;
     }
 
-    async #sendData(data: message) {
-        const connection = createConnection(WAYPAPER_ENGINE_DAEMON_SOCKET_PATH);
-        connection.on("connect", () => {
-            try {
-                connection.write(JSON.stringify(data) + "\n", e => {
-                    // eslint-disable-next-line @typescript-eslint/strict-boolean-expressions
-                    if (e) {
-                        logger.error(e);
-                        return;
-                    }
-                    this.retries = 0;
-                    if (this.createTray !== undefined) void this.createTray();
-                });
-            } catch (error) {
-                logger.error(error);
-            }
-        });
-        connection.on("data", _ => {
-            try {
-                if (this.createTray !== undefined) void this.createTray();
-            } catch (e) {
-                logger.error(e);
-            }
-        });
-        connection.on("error", () => {
-            if (this.retries > 3) throw new Error("Could not restart daemon");
-            this.retries++;
-            void initWaypaperDaemon().then(() => {
-                void this.#sendData(data);
-            });
-        });
+    async #getGoDaemonClient() {
+        const { goDaemonClient } = await import("./goDaemonClient");
+        return goDaemonClient;
     }
 
-    startPlaylist(playlist: { name: string; activeMonitor: ActiveMonitor }) {
-        void this.#sendData({
-            action: ACTIONS.START_PLAYLIST,
-            playlist
-        });
+    async startPlaylist(playlist: { name: string; activeMonitor: ActiveMonitor }) {
+        try {
+            const client = await this.#getGoDaemonClient();
+            await client.startPlaylist(playlist.name, playlist.activeMonitor);
+            if (this.createTray !== undefined) void this.createTray();
+        } catch (error) {
+            logger.error("Failed to start playlist:", error);
+        }
     }
 
-    pausePlaylist(playlist: { name: string; activeMonitor: ActiveMonitor }) {
-        void this.#sendData({
-            action: ACTIONS.PAUSE_PLAYLIST,
-            playlist
-        });
+    async pausePlaylist(playlist: { name: string; activeMonitor: ActiveMonitor }) {
+        try {
+            const client = await this.#getGoDaemonClient();
+            await client.pausePlaylist(playlist.name, playlist.activeMonitor);
+            if (this.createTray !== undefined) void this.createTray();
+        } catch (error) {
+            logger.error("Failed to pause playlist:", error);
+        }
     }
 
-    resumePlaylist(playlist: { name: string; activeMonitor: ActiveMonitor }) {
-        void this.#sendData({
-            action: ACTIONS.RESUME_PLAYLIST,
-            playlist
-        });
+    async resumePlaylist(playlist: { name: string; activeMonitor: ActiveMonitor }) {
+        try {
+            const client = await this.#getGoDaemonClient();
+            await client.resumePlaylist(playlist.name, playlist.activeMonitor);
+            if (this.createTray !== undefined) void this.createTray();
+        } catch (error) {
+            logger.error("Failed to resume playlist:", error);
+        }
     }
 
-    stopPlaylist(playlist: { name: string; activeMonitor: ActiveMonitor }) {
-        void this.#sendData({
-            action: ACTIONS.STOP_PLAYLIST,
-            playlist
-        });
+    async stopPlaylist(playlist: { name: string; activeMonitor: ActiveMonitor }) {
+        try {
+            const client = await this.#getGoDaemonClient();
+            await client.stopPlaylist(playlist.name, playlist.activeMonitor);
+            if (this.createTray !== undefined) void this.createTray();
+        } catch (error) {
+            logger.error("Failed to stop playlist:", error);
+        }
     }
 
-    stopPlaylistByName(playlistName: string) {
-        void this.#sendData({
-            action: ACTIONS.STOP_PLAYLIST_BY_NAME,
-            playlist: {
-                name: playlistName
-            }
-        });
+    async stopPlaylistByName(playlistName: string) {
+        try {
+            const client = await this.#getGoDaemonClient();
+            await client.stopPlaylistByName(playlistName);
+            if (this.createTray !== undefined) void this.createTray();
+        } catch (error) {
+            logger.error("Failed to stop playlist by name:", error);
+        }
     }
 
-    getInfo() {
-        void this.#sendData({
-            action: ACTIONS.GET_INFO
-        });
+    async getInfo() {
+        try {
+            const client = await this.#getGoDaemonClient();
+            return await client.getInfo();
+        } catch (error) {
+            logger.error("Failed to get info:", error);
+            return null;
+        }
     }
 
-    stopPlaylistByMonitorName(monitors: string[]) {
-        void this.#sendData({
-            action: ACTIONS.STOP_PLAYLIST_BY_MONITOR_NAME,
-            monitors
-        });
+    async stopPlaylistByMonitorName(monitors: string[]) {
+        try {
+            const client = await this.#getGoDaemonClient();
+            await client.stopPlaylistByMonitorName(monitors);
+            if (this.createTray !== undefined) void this.createTray();
+        } catch (error) {
+            logger.error("Failed to stop playlist by monitor name:", error);
+        }
     }
 
-    stopPlaylistOnRemovedMonitors() {
-        void this.#sendData({
-            action: ACTIONS.STOP_PLAYLIST_ON_REMOVED_DISPLAYS
-        });
+    async stopPlaylistOnRemovedMonitors() {
+        try {
+            const client = await this.#getGoDaemonClient();
+            await client.stopPlaylistOnRemovedMonitors();
+            if (this.createTray !== undefined) void this.createTray();
+        } catch (error) {
+            logger.error("Failed to stop playlist on removed monitors:", error);
+        }
     }
 
-    nextImage(playlist: { name: string; activeMonitor: ActiveMonitor }) {
-        void this.#sendData({
-            action: ACTIONS.NEXT_IMAGE,
-            playlist
-        });
+    async nextImage(playlist: { name: string; activeMonitor: ActiveMonitor }) {
+        try {
+            const client = await this.#getGoDaemonClient();
+            await client.nextImage(playlist.name, playlist.activeMonitor);
+            if (this.createTray !== undefined) void this.createTray();
+        } catch (error) {
+            logger.error("Failed to get next image:", error);
+        }
     }
 
-    previousImage(playlist: { name: string; activeMonitor: ActiveMonitor }) {
-        void this.#sendData({
-            action: ACTIONS.PREVIOUS_IMAGE,
-            playlist
-        });
+    async previousImage(playlist: { name: string; activeMonitor: ActiveMonitor }) {
+        try {
+            const client = await this.#getGoDaemonClient();
+            await client.previousImage(playlist.name, playlist.activeMonitor);
+            if (this.createTray !== undefined) void this.createTray();
+        } catch (error) {
+            logger.error("Failed to get previous image:", error);
+        }
     }
 
-    randomImage() {
-        void this.#sendData({
-            action: ACTIONS.RANDOM_IMAGE
-        });
+    async randomImage() {
+        try {
+            const client = await this.#getGoDaemonClient();
+            await client.randomImage();
+            if (this.createTray !== undefined) void this.createTray();
+        } catch (error) {
+            logger.error("Failed to set random image:", error);
+        }
     }
 
-    killDaemon() {
-        const daemonSocketConnection = createConnection(
-            WAYPAPER_ENGINE_DAEMON_SOCKET_PATH
-        );
-        daemonSocketConnection.write(
-            JSON.stringify({ action: ACTIONS.STOP_DAEMON }),
-            () => {
-                daemonSocketConnection.destroy();
-            }
-        );
+    async killDaemon() {
+        try {
+            const client = await this.#getGoDaemonClient();
+            await client.killDaemon();
+        } catch (error) {
+            logger.error("Failed to kill daemon:", error);
+        }
     }
 
-    updateConfig() {
-        void this.#sendData({
-            action: ACTIONS.UPDATE_CONFIG
-        });
+    async updateConfig() {
+        try {
+            const client = await this.#getGoDaemonClient();
+            await client.updateConfig();
+            if (this.createTray !== undefined) void this.createTray();
+        } catch (error) {
+            logger.error("Failed to update config:", error);
+        }
     }
 }

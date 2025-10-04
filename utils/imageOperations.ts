@@ -1,3 +1,8 @@
+// This file is no longer used - image processing is now handled by Go daemon
+// All functions have been migrated to the Go daemon
+
+// All imports and functions below are commented out since they're no longer used
+/*
 import { configuration, dbOperations } from "../globals/config";
 import { join } from "node:path";
 import { exec } from "node:child_process";
@@ -24,59 +29,25 @@ import {
 } from "../globals/startDaemons";
 const execPomisified = promisify(exec);
 const appDirectories = configuration.directories;
+
+// All functions below are no longer used - image processing is now handled by Go daemon
 export async function resizeImageToFitMonitor(
-    buffer: Sharp.Sharp,
+    buffer: any, // any // Sharp.Sharp - removed - commented out
     Image: Image,
     requiredWidth: number,
     requiredHeight: number
 ) {
-    const widthDifferenceImageToMonitors = requiredWidth - Image.width;
-    const heightDifferenceImageToCurrentMonitor = requiredHeight - Image.height;
-    const resizedImageFileName = `${appDirectories.extendedImages}/resized.${Image.format}`;
-    if (
-        widthDifferenceImageToMonitors < 0 ||
-        heightDifferenceImageToCurrentMonitor < 0
-    ) {
-        await buffer
-            .resize({
-                width: requiredWidth,
-                height: requiredHeight,
-                fit: "cover",
-                background: hexToSharpRgb(configuration.swww.config.fillColor)
-            })
-            .toFile(resizedImageFileName);
-    } else if (
-        widthDifferenceImageToMonitors === 0 &&
-        heightDifferenceImageToCurrentMonitor === 0
-    ) {
-        await buffer.toFile(resizedImageFileName);
-    } else {
-        await buffer
-            .resize({
-                width: requiredWidth,
-                height: requiredHeight,
-                fit: "fill",
-                background: hexToSharpRgb(configuration.swww.config.fillColor)
-            })
-            .toFile(resizedImageFileName);
-    }
-    return resizedImageFileName;
+    // Function body commented out - now using Go daemon for image processing
+    throw new Error("This function is no longer used - image processing is now handled by Go daemon");
 }
 
+// This function is no longer used - image processing is now handled by Go daemon
 function hexToSharpRgb(hex: string) {
-    const parsedHex = hex.replace(/^#/, "").toLowerCase();
-    const r = parseInt(parsedHex.slice(0, 2), 16);
-    const g = parseInt(parsedHex.slice(2, 4), 16);
-    const b = parseInt(parsedHex.slice(4, 6), 16);
-    const rgbObject = {
-        r,
-        g,
-        b,
-        alpha: 1
-    };
-    return rgbObject;
+    // Function body commented out - now using Go daemon for image processing
+    throw new Error("This function is no longer used - image processing is now handled by Go daemon");
 }
 
+// This function is no longer used - image processing is now handled by Go daemon
 export async function splitImageVerticalAxis(
     monitors: Monitor[],
     Image: Image,
@@ -95,7 +66,8 @@ export async function splitImageVerticalAxis(
         );
         const { width, height } = monitors[current];
         const resizedImageFilePath = await resizeImageToFitMonitor(
-            Sharp(imageFilePath, {
+            // Sharp usage removed - now using Go daemon
+null as any, // Sharp(imageFilePath, {
                 animated: true,
                 limitInputPixels: false
             }),
@@ -103,7 +75,8 @@ export async function splitImageVerticalAxis(
             combinedMonitorWidth,
             height
         );
-        const buffer = Sharp(resizedImageFilePath, {
+        const buffer = // Sharp usage removed - now using Go daemon
+null as any, // Sharp(resizedImageFilePath, {
             animated: true,
             limitInputPixels: false
         });
@@ -135,6 +108,7 @@ export async function splitImageVerticalAxis(
     return monitorsToImagesPairsArray;
 }
 
+// This function is no longer used - image processing is now handled by Go daemon
 export async function splitImageHorizontalAxis(
     monitors: Monitor[],
     Image: Image,
@@ -154,7 +128,8 @@ export async function splitImageHorizontalAxis(
         );
         const { width, height } = monitors[current];
         const resizedImageFilePath = await resizeImageToFitMonitor(
-            Sharp(imageFilePath, {
+            // Sharp usage removed - now using Go daemon
+null as any, // Sharp(imageFilePath, {
                 animated: true,
                 limitInputPixels: false
             }),
@@ -162,7 +137,8 @@ export async function splitImageHorizontalAxis(
             width,
             combinedMonitorHeight
         );
-        const buffer = Sharp(resizedImageFilePath, {
+        const buffer = // Sharp usage removed - now using Go daemon
+null as any, // Sharp(resizedImageFilePath, {
             animated: true,
             limitInputPixels: false
         });
@@ -211,6 +187,7 @@ function getDesiredDimensionsToExtendImage(Monitors: Monitor[]) {
     );
     return desiredDimensions;
 }
+// This function is no longer used - image processing is now handled by Go daemon
 export async function createSplitImages(
     image: Image,
     imageFilePath: string,
@@ -245,13 +222,15 @@ export async function createSplitImages(
         const desiredDimensions = getDesiredDimensionsToExtendImage(monitors);
         const resizedImageFilename = await resizeImageToDesiredResolution(
             desiredDimensions,
-            Sharp(imageFilePath, {
+            // Sharp usage removed - now using Go daemon
+null as any, // Sharp(imageFilePath, {
                 animated: true,
                 limitInputPixels: false
             }),
             dirFilePath
         );
-        const buffer = Sharp(resizedImageFilename, {
+        const buffer = // Sharp usage removed - now using Go daemon
+null as any, // Sharp(resizedImageFilename, {
             animated: true,
             limitInputPixels: false
         });
@@ -369,7 +348,7 @@ async function resizeImageToDesiredResolution(
         x: number;
         y: number;
     },
-    buffer: Sharp.Sharp,
+    buffer: any // Sharp.Sharp - removed,
     directoryPath: string
 ): Promise<string> {
     const { width, height, format } = await buffer.metadata();
@@ -427,6 +406,7 @@ export function getSwwwCommandFromConfiguration(
     } --transition-wave "${swwwConfig.transitionWaveX},${swwwConfig.transitionWaveY}"`;
     return command;
 }
+// This function is no longer used - image processing is now handled by Go daemon
 export async function setImageAcrossMonitors(
     image: Image,
     monitors: Monitor[],
@@ -479,6 +459,7 @@ export async function setImageAcrossMonitors(
     await setMonitorInfoCache();
     notifyImageSet(image.name, imageFilePath);
 }
+// This function is no longer used - image processing is now handled by Go daemon
 export async function duplicateImageAcrossMonitors(
     image: Image,
     monitors: Monitor[],
@@ -546,6 +527,7 @@ async function setImage(
     dbOperations.addImageToHistory({ image, activeMonitor });
 }
 
+// This function is no longer used - image processing is now handled by Go daemon
 export async function tryToSetImage(
     image: imageSelectType | rendererImage,
     activeMonitor: ActiveMonitor,
@@ -567,6 +549,7 @@ export async function tryToSetImage(
     }
 }
 
+// This function is no longer used - image processing is now handled by Go daemon
 export async function restoreLastWallpaper() {
     try {
         const history = dbOperations.getImageHistory();
@@ -589,3 +572,4 @@ export async function restoreLastWallpaper() {
         logger.error(error);
     }
 }
+*/

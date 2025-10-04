@@ -4,7 +4,7 @@ import { Link } from "react-router-dom";
 interface Props {
     children: React.ReactNode;
 }
-const { exitApp } = window.API_RENDERER;
+const { goDaemon } = window.API_RENDERER;
 const Drawer: FC<Props> = ({ children }) => {
     const [show, setShow] = useState(false);
     const toggle = () => {
@@ -56,7 +56,7 @@ const Drawer: FC<Props> = ({ children }) => {
                                     "Are you sure you want to quit"
                                 );
                                 if (quit) {
-                                    exitApp();
+                                    goDaemon.exitApp();
                                 }
                             }}
                         >

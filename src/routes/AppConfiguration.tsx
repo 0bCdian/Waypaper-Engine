@@ -6,15 +6,15 @@ import {
     type appConfigInsertType
 } from "../../database/schema";
 
-const { readAppConfig, updateAppConfig } = window.API_RENDERER;
+const { goDaemon } = window.API_RENDERER;
 const AppConfiguration = () => {
     const { register, handleSubmit, setValue } =
         useForm<appConfigInsertType["config"]>();
     const onSubmit = (data: appConfigSelectType["config"]) => {
-        updateAppConfig(data);
+        goDaemon.setAppConfig("config", data);
     };
     useEffect(() => {
-        void readAppConfig().then((data: appConfigSelectType["config"]) => {
+        void goDaemon.getAppConfig().then((data: appConfigSelectType["config"]) => {
             setValue("killDaemon", data.killDaemon);
             setValue("notifications", data.notifications);
             setValue("startMinimized", data.startMinimized);

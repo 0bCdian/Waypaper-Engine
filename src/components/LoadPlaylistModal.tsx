@@ -21,14 +21,7 @@ interface Props {
     setShouldReload: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
-const {
-    getPlaylistImages,
-    startPlaylist,
-    deletePlaylist,
-    stopPlaylist,
-    registerListener,
-    updateTray
-} = window.API_RENDERER;
+const { goDaemon } = window.API_RENDERER;
 let firstRender = true;
 const LoadPlaylistModal = ({
     playlistsInDB,
@@ -51,7 +44,7 @@ const LoadPlaylistModal = ({
             return playlist.name === data.selectPlaylist;
         });
         if (selectedPlaylist !== undefined) {
-            const imagesArrayFromPlaylist = await getPlaylistImages(
+            const imagesArrayFromPlaylist = await goDaemon.getPlaylistImages(
                 selectedPlaylist.id
             );
             const imagesToStorePlaylist: rendererImage[] = [];
@@ -90,25 +83,17 @@ const LoadPlaylistModal = ({
                 return;
             }
             setPlaylist(currentPlaylist);
-            startPlaylist({
-                name: currentPlaylist.name,
-                activeMonitor
-            });
+            goDaemon.startPlaylist(currentPlaylist.name, activeMonitor);
         }
         closeModal();
     };
     useEffect(() => {
         if (!firstRender) return;
         firstRender = false;
-        registerListener({
-            channel: IPC_MAIN_EVENTS.clearPlaylist,
-            listener: (
-                _,
-                playlist: { name: string; activeMonitor: ActiveMonitor }
-            ) => {
-                clearPlaylist(playlist);
-                updateTray();
-            }
+        // Listen for clear playlist events via Go daemon
+        goDaemon.on("clear_playlist", (playlist: { name: string; activeMonitor: ActiveMonitor }) => {
+            clearPlaylist(playlist);
+            goDaemon.updateTray();
         });
     }, []);
     return (
@@ -137,7 +122,7 @@ const LoadPlaylistModal = ({
                 )}
 
                 <div className="divider"></div>
-                {playlistsInDB.length === 0 && (
+                {playlistsInDB && playlistsInDB.length === 0 && (
                     <section className="flex flex-col gap-3">
                         <span className="text-center text-xl font-medium italic">
                             No playlists found, refresh or create a new one
@@ -153,7 +138,7 @@ const LoadPlaylistModal = ({
                         </button>
                     </section>
                 )}
-                {playlistsInDB.length > 0 && (
+                {playlistsInDB && playlistsInDB.length > 0 && (
                     <form
                         onSubmit={e => {
                             void handleSubmit(onSubmit)(e);
@@ -171,12 +156,12 @@ const LoadPlaylistModal = ({
                             <select
                                 id="selectPlaylist"
                                 className="select select-bordered basis-[90%] rounded-md text-lg"
-                                defaultValue={playlistsInDB[0].name}
+                                defaultValue={playlistsInDB && playlistsInDB.length > 0 ? playlistsInDB[0].name : ""}
                                 {...register("selectPlaylist", {
                                     required: true
                                 })}
                             >
-                                {playlistsInDB.map(playlist => (
+                                {playlistsInDB && playlistsInDB.map(playlist => (
                                     <option
                                         key={playlist.id}
                                         value={playlist.name}
@@ -194,13 +179,14 @@ const LoadPlaylistModal = ({
                                         `Are you sure to delete ${current}?`
                                     );
                                     if (shouldDelete) {
-                                        deletePlaylist(current);
+                                        goDaemon.deletePlaylist(current);
                                         setShouldReload(true);
                                         if (currentPlaylistName !== "") {
-                                            stopPlaylist({
-                                                name: currentPlaylistName,
-                                                activeMonitor
-                                            });
+                                            if (!activeMonitor?.name) {
+                                                console.error("🔴 LoadPlaylistModal: Cannot stop playlist - activeMonitor.name is undefined", activeMonitor);
+                                                return;
+                                            }
+                                            goDaemon.stopPlaylist(activeMonitor.name);
                                         }
                                         if (currentPlaylistName === current) {
                                             clearPlaylist();

@@ -5,7 +5,7 @@ import { playlistStore } from "../stores/playlist";
 import { type rendererImage } from "../types/rendererTypes";
 import { motion } from "framer-motion";
 import useDebounceCallback from "../hooks/useDebounceCallback";
-const { getThumbnailSrc } = window.API_RENDERER;
+const { goDaemon } = window.API_RENDERER;
 let firstRender = true;
 const daysOfWeek = [
     "Sunday",
@@ -33,9 +33,19 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
     const [isInvalid, setIsInvalid] = useState(false);
     const imageRef = useRef<HTMLImageElement>(null);
     const timeRef = useRef<HTMLInputElement>(null);
-    const imageSrc = useMemo(() => {
-        return getThumbnailSrc(Image.name);
-    }, [Image]);
+    const [imageSrc, setImageSrc] = useState<string>("");
+    
+    useEffect(() => {
+        const loadThumbnail = async () => {
+            try {
+                const thumbnailPath = await goDaemon.getThumbnailSrc(Image.name);
+                setImageSrc(thumbnailPath);
+            } catch (error) {
+                console.error("Failed to load thumbnail:", error);
+            }
+        };
+        loadThumbnail();
+    }, [Image.name]);
     const { attributes, listeners, setNodeRef } = useSortable({
         id: Image.id
     });

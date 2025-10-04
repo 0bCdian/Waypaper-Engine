@@ -26,6 +26,6 @@
         "outDir": "dist"
     },
     "skipLibCheck": true,
-    "include": ["**/*.ts", "**/*.tsx", "drizzle.config.ts"],
+    "include": ["src/**/*.ts", "src/**/*.tsx", "electron/**/*.ts", "shared/**/*.ts", "types/**/*.ts", "utils/**/*.ts", "database/**/*.ts", "daemon/**/*.ts", "globals/**/*.ts", "drizzle.config.ts"],
     "references": [{ "path": "./tsconfig.node.json" }]
 }

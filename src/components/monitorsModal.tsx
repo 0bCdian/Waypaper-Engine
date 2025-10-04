@@ -1,14 +1,14 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, memo } from "react";
 import { useMonitorStore } from "../stores/monitors";
 import { MonitorComponent } from "./Monitor";
 import { calculateMinResolution } from "../utils/utilities";
 import { type monitorSelectType } from "../types/rendererTypes";
 import { type Monitor } from "../../shared/types/monitor";
-import { IPC_MAIN_EVENTS } from "../../shared/constants";
 import { playlistStore } from "../stores/playlist";
-const { setSelectedMonitor, registerListener } = window.API_RENDERER;
+const { goDaemon } = window.API_RENDERER;
 let firstRender = true;
-function Monitors() {
+const Monitors = memo(function Monitors() {
+    console.log("🟢 MonitorsModal: Component rendering");
     const {
         activeMonitor,
         monitorsList,
@@ -31,14 +31,24 @@ function Monitors() {
         message: "error"
     });
     const closeModal = () => {
-        modalRef.current?.close();
+        console.log("🟢 MonitorsModal: closeModal called, modalRef.current =", modalRef.current);
+        
+        if (modalRef.current) {
+            console.log("🟢 MonitorsModal: closeModal - calling modalRef.current.close()");
+            modalRef.current.close();
+            console.log("🟢 MonitorsModal: closeModal - modalRef.current.close() completed");
+        } else {
+            console.log("🟢 MonitorsModal: closeModal - modalRef.current is null");
+        }
+        
+        console.log("🟢 MonitorsModal: closeModal completed");
     };
     const [resolution, setResolution] = useState<{ x: number; y: number }>({
         x: 0,
         y: 0
     });
     console.log(monitorsList);
-    const onSubmit = () => {
+    const onSubmit = async () => {
         const extend = selectType === "extend";
         let name: string = "";
         const selectedMonitors: Monitor[] = [];
@@ -82,20 +92,71 @@ function Monitors() {
             return;
         }
         name = name.slice(0, name.length - 1);
-        const activeMonitor = {
+        const activeMonitorConfig = {
             name,
             monitors: selectedMonitors,
             extendAcrossMonitors: extend
         };
-        setSelectedMonitor(activeMonitor);
-        setActiveMonitor(activeMonitor);
-        clearPlaylist();
+        console.log("🟢 MonitorsModal: onSubmit - calling setSelectedMonitor");
+        await goDaemon.setSelectedMonitor(activeMonitorConfig);
+        console.log("🟢 MonitorsModal: onSubmit - setSelectedMonitor completed");
+        
+        // Close modal FIRST before updating state to prevent re-render issues
+        console.log("🟢 MonitorsModal: onSubmit - calling closeModal");
         closeModal();
+        console.log("🟢 MonitorsModal: onSubmit - closeModal completed");
+        
+        // Update state after closing modal
+        console.log("🟢 MonitorsModal: onSubmit - calling setActiveMonitor");
+        setActiveMonitor(activeMonitorConfig);
+        console.log("🟢 MonitorsModal: onSubmit - setActiveMonitor completed");
+        
+        console.log("🟢 MonitorsModal: onSubmit - calling clearPlaylist");
+        clearPlaylist();
+        console.log("🟢 MonitorsModal: onSubmit - clearPlaylist completed");
     };
     const scale =
         1 /
         ((monitorsList.length + 1) * (screen.availWidth / window.innerWidth));
     const modalRef = useRef<HTMLDialogElement>(null);
+    
+    // Callback ref to ensure the modal is exposed as soon as it's available
+    const setModalRef = (element: HTMLDialogElement | null) => {
+        console.log("🟢 MonitorsModal: setModalRef called with element:", element);
+        // Use Object.assign to update the ref
+        Object.assign(modalRef, { current: element });
+        if (element) {
+            console.log("🟢 MonitorsModal: Modal element set, exposing to window.monitors");
+            // Expose the modal with showModal method
+            window.monitors = {
+                showModal: () => {
+                    console.log("🟢 MonitorsModal: showModal() called");
+                    element.showModal();
+                },
+                close: () => {
+                    console.log("🟢 MonitorsModal: close() called");
+                    element.close();
+                }
+            };
+            console.log("🟢 MonitorsModal: window.monitors exposed:", window.monitors);
+        } else {
+            console.log("🟢 MonitorsModal: Modal element is null");
+            // Clear the window.monitors reference when element is null
+            if (window.monitors) {
+                window.monitors = undefined;
+            }
+        }
+    };
+
+    // Debug useEffect to track component lifecycle
+    useEffect(() => {
+        console.log("🟢 MonitorsModal: Component mounted, window.monitors =", window.monitors);
+        console.log("🟢 MonitorsModal: monitorsList length =", monitorsList.length);
+        return () => {
+            console.log("🟢 MonitorsModal: Component unmounting");
+        };
+    }, []); // Remove dependency to prevent unnecessary re-renders
+
     const styles: React.CSSProperties = {
         width: resolution.x * scale,
         height: resolution.y * scale
@@ -104,42 +165,56 @@ function Monitors() {
         const res = calculateMinResolution(monitorsList);
         setResolution(res);
     }, [monitorsList, screen.availWidth]);
+    
+    // Load monitors on mount
+    useEffect(() => {
+        void reQueryMonitors();
+    }, []);
+    
+    // Debug: Check if modal element exists
+    useEffect(() => {
+        console.log("Monitors component mounted, monitorsList length:", monitorsList.length);
+        console.log("Modal ref:", modalRef.current);
+    }, []); // Remove dependency to prevent re-renders
+    
     useEffect(() => {
         if (monitorsList.length < 1) return;
         if (selectType === "individual") {
-            const resetMonitors = monitorsList.map((monitor, index) => {
-                monitor.isSelected = index === 0;
-                return monitor;
-            });
+            const resetMonitors = monitorsList.map((monitor, index) => ({
+                ...monitor,
+                isSelected: index === 0
+            }));
             setMonitorsList(resetMonitors);
         } else {
-            monitorsList[0].isSelected = true;
-            setMonitorsList([...monitorsList]);
+            const updatedMonitors = monitorsList.map((monitor, index) => ({
+                ...monitor,
+                isSelected: index === 0
+            }));
+            setMonitorsList(updatedMonitors);
         }
-    }, [selectType]);
+    }, [selectType]); // Only trigger when selectType changes
 
     useEffect(() => {
         if (!firstRender) return;
         firstRender = false;
-        registerListener({
-            channel: IPC_MAIN_EVENTS.displaysChanged,
-            listener: _ => {
-                // this setTimeout is added to circumvent an swww limitation on querying recently inserted monitorsList
-                //  which sets currentImage to 00000 instead of the actual cached image
-                setTimeout(() => {
-                    void reQueryMonitors().then(() => {
-                        // @ts-expect-error daisy-ui
-                        window.monitors.showModal();
-                    });
-                }, 300);
-            }
+        
+        // Listen for display changes via Go daemon events
+        goDaemon.on("displays_changed", () => {
+            // this setTimeout is added to circumvent an swww limitation on querying recently inserted monitorsList
+            //  which sets currentImage to 00000 instead of the actual cached image
+            setTimeout(() => {
+                void reQueryMonitors().then(() => {
+                    // @ts-expect-error daisy-ui
+                    window.monitors.showModal();
+                });
+            }, 300);
         });
     }, []);
     return (
         <dialog
             id="monitors"
             className="modal w-full select-none"
-            ref={modalRef}
+            ref={setModalRef}
             draggable={false}
         >
             <div className="modal-box min-w-max">
@@ -215,5 +290,6 @@ function Monitors() {
             </div>
         </dialog>
     );
-}
+});
+
 export default Monitors;

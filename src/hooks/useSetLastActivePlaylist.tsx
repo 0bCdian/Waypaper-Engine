@@ -7,20 +7,20 @@ import {
 import { imagesStore } from "../stores/images";
 import { PLAYLIST_TYPES } from "../../shared/types/playlist";
 import { useEffect } from "react";
-const { readActivePlaylist, deletePlaylist } = window.API_RENDERER;
+const { goDaemon } = window.API_RENDERER;
 export function useSetLastActivePlaylist() {
     const { setPlaylist, playlist } = playlistStore();
     const { activeMonitor } = useMonitorStore();
     const { imagesArray } = imagesStore();
     useEffect(() => {
         if (activeMonitor.name === "") return;
-        void readActivePlaylist(activeMonitor).then(playlistFromDB => {
-            if (playlistFromDB === undefined) {
+        void goDaemon.getActivePlaylist(activeMonitor).then(playlistFromDB => {
+            if (playlistFromDB === undefined || typeof playlistFromDB === 'string') {
                 // setEmptyPlaylist();
                 return;
             }
-            if (playlistFromDB.images.length < 1) {
-                deletePlaylist(playlistFromDB.name);
+            if (!playlistFromDB.images || playlistFromDB.images.length < 1) {
+                goDaemon.deletePlaylist(playlistFromDB.name);
                 return;
             }
 

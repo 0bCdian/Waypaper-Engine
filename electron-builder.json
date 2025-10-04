@@ -14,8 +14,8 @@
             "filter": ["**/*"]
         },
         {
-            "from": "daemon",
-            "to": "resources/daemon"
+            "from": "daemon-go/waypaper-daemon",
+            "to": "resources/waypaper-daemon"
         },
         {
             "from": "node_modules/better-sqlite3/build/Release/better_sqlite3.node",
