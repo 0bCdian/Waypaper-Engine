@@ -35,12 +35,7 @@ func main() {
 	// Parse command line flags
 	var (
 		migrate     = flag.Bool("migrate", false, "Run database migration from SQLite to JSON")
-		sqlitePath  = flag.String("sqlite", "", "Path to existing SQLite database (for migration)")
-		jsonPath    = flag.String("json", "", "Path to new JSON store directory (for migration)")
-		tomlPath    = flag.String("toml", "", "Path to TOML config file (for migration)")
 		dryRun      = flag.Bool("dry-run", false, "Preview migration without making changes")
-		forceMig    = flag.Bool("force", false, "Overwrite existing JSON store if it exists")
-		noBackup    = flag.Bool("no-backup", false, "Skip creating backup of SQLite database")
 		verbose     = flag.Bool("verbose", false, "Enable verbose logging")
 		showHelp    = flag.Bool("help", false, "Show help message")
 		showVersion = flag.Bool("version", false, "Show version information")
@@ -74,7 +69,7 @@ func main() {
 	if *migrate {
 		mustForce := *forceMig || *dryRun // Skip marker check for dry-run or forced runs
 		devEnv := os.Getenv("DEV")
-		if err := runMigration(log, *sqlitePath, *jsonPath, *tomlPath, *dryRun, *forceMig, !*noBackup, mustForce, devEnv == "true"); err != nil {
+		if err := runMigration(log, *dryRun, mustForce, devEnv == "true"); err != nil {
 			log.Error("Migration failed", "error", err)
 			os.Exit(1)
 		}
@@ -454,49 +449,31 @@ type MigrationOptions struct {
 }
 
 // runMigration handles the migration from SQLite to JSON
-func runMigration(logger *slog.Logger, sqlitePath, jsonPath, tomlPath string, dryRun, force, backup, mustForce, isDev bool) error {
+func runMigration(logger *slog.Logger, dryRun, isDev bool) error {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("failed to get home directory: %w", err)
 	}
 
-	// Set default paths if not provided
-	if sqlitePath == "" {
-		sqlitePath = filepath.Join(homeDir, ".waypaper_engine", "images_database.sqlite3")
-	}
+	var sqlitePath = filepath.Join(homeDir, ".waypaper_engine", "images_database.sqlite3")
+	var jsonPath string
 	if jsonPath == "" {
 		if isDev {
 			jsonPath = "/tmp/waypaper-engine/data"
 		} else {
+			// We should be using the .toml configuration set path here
 			jsonPath = filepath.Join(homeDir, ".waypaper-engine", "data")
-		}
-	}
-	if tomlPath == "" {
-		if isDev {
-			tomlPath = "/tmp/waypaper-engine/config.toml"
-		} else {
-			tomlPath = filepath.Join(homeDir, ".config", "waypaper-engine", "config.toml")
 		}
 	}
 
 	logger.Info("Starting migration",
 		"sqlite", sqlitePath,
 		"json", jsonPath,
-		"toml", tomlPath,
-		"dry_run", dryRun,
-		"force", force,
-		"backup", backup)
+		"dry_run", dryRun)
 	logger.Info("Migration is idempotent - existing configurations will be preserved")
 
 	// Check if migration has already been completed
-	migrationMarkerFile := filepath.Join(filepath.Dir(tomlPath), ".migration_completed")
-	if !mustForce {
-		if _, err := os.Stat(migrationMarkerFile); err == nil {
-			logger.Info("Migration already completed - skipping", "marker_file", migrationMarkerFile)
-			logger.Info("Use --force flag to re-run migration")
-			return nil
-		}
-	}
+	var migrationMarkerFile = filepath.Join(filepath.Dir(tomlPath), ".migration_completed")
 
 	// Check if SQLite database exists
 	if _, err := os.Stat(sqlitePath); os.IsNotExist(err) {
@@ -506,10 +483,7 @@ func runMigration(logger *slog.Logger, sqlitePath, jsonPath, tomlPath string, dr
 	options := MigrationOptions{
 		SQLitePath: sqlitePath,
 		JSONPath:   jsonPath,
-		TOMLPath:   tomlPath,
 		DryRun:     dryRun,
-		Force:      force,
-		Backup:     backup,
 		Verbose:    true,
 	}
 
@@ -687,20 +661,14 @@ DAEMON OPTIONS:
 
 MIGRATION OPTIONS (use with --migrate):
   -migrate        Run database migration from SQLite to JSON
-  -sqlite PATH    Path to existing SQLite database (default: ~/.waypaper_engine/images_database.sqlite3)
-  -json PATH      Path to new JSON store directory (default: ~/.waypaper-engine/data)
-  -toml PATH      Path to TOML config file (default: ~/.config/waypaper-engine/config.toml)
   -dry-run        Preview migration without making changes
-  -force          Overwrite existing JSON store if it exists
-  -no-backup      Skip creating backup of SQLite database
 
 MIGRATION PROCESS:
   1. Validates SQLite database is accessible
-  2. Creates backup of SQLite database (unless --no-backup)
+  2. Creates backup of SQLite database
   3. Migrates swww configuration from SQLite to TOML config file
   4. Migrates images, playlists, image history, and runtime state
-  5. Verifies migration completed successfully
-  6. Provides next steps for full migration
+  5. Migrates app configuration from SQLite to TOML config file
 
 EXAMPLES:
   # Run daemon normally
@@ -708,9 +676,6 @@ EXAMPLES:
 
   # Preview migration with verbose output
   %s -migrate -dry-run -verbose
-
-  # Perform full migration
-  %s -migrate -force
 
   # Show version
   %s -version
@@ -927,12 +892,6 @@ func (migrator *SQLiteToJSONMigrator) migrateImages() error {
 		return nil
 	}
 
-	if len(images) == 0 {
-		migrator.logger.Info("No images found in SQLite database")
-		// Even if no database records, try to copy image files from legacy directory
-		return migrator.copyLegacyImageFiles()
-	}
-
 	// Convert to store format
 	imageRegistry := store.ImageRegistry{
 		Metadata: store.ImageRegistryMetadata{
@@ -967,16 +926,10 @@ func (migrator *SQLiteToJSONMigrator) migrateImages() error {
 
 			// Try to find the original image file
 			var sourceImagePath string
-			legacyImagesDir := filepath.Join(filepath.Dir(migrator.options.SQLitePath), "images")
-			if _, err := os.Stat(filepath.Join(legacyImagesDir, img.Name)); err == nil {
-				sourceImagePath = filepath.Join(legacyImagesDir, img.Name)
-			} else {
-				// Try home directory legacy location
-				homeDir, _ := os.UserHomeDir()
-				homeImagesDir := filepath.Join(homeDir, ".waypaper_engine", "images")
-				if _, err := os.Stat(filepath.Join(homeImagesDir, img.Name)); err == nil {
-					sourceImagePath = filepath.Join(homeImagesDir, img.Name)
-				}
+			homeDir, _ := os.UserHomeDir()
+			homeImagesDir := filepath.Join(homeDir, ".waypaper_engine", "images")
+			if _, err := os.Stat(filepath.Join(homeImagesDir, img.Name)); err == nil {
+				sourceImagePath = filepath.Join(homeImagesDir, img.Name)
 			}
 
 			if sourceImagePath != "" {
@@ -994,8 +947,14 @@ func (migrator *SQLiteToJSONMigrator) migrateImages() error {
 			}
 		} else {
 			// Production mode: use original path
-			imagesPath := filepath.Join(filepath.Dir(migrator.options.SQLitePath), "images")
-			imagePath = filepath.Join(imagesPath, img.Name)
+			if homeDir, err := os.UserHomeDir(); homeDir != "" && err != nil {
+				imagesPath := filepath.Join(homeDir, ".waypaper_engine", "images")
+				imagePath = filepath.Join(imagesPath, img.Name)
+			} else {
+				migrator.logger.Warn("Could not get home directory", "error", err)
+				continue
+			}
+
 		}
 
 		storeImage := store.Image{
