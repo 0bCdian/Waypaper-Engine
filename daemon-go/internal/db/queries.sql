@@ -128,8 +128,8 @@ WHERE imageID = ? AND monitor = ?;
 
 -- name: CleanupImageHistory :exec
 DELETE FROM imageHistory
-WHERE id NOT IN (
-    SELECT id FROM imageHistory
+WHERE (imageID, monitor, time) NOT IN (
+    SELECT imageID, monitor, time FROM imageHistory
     ORDER BY time DESC
     LIMIT ?
 );

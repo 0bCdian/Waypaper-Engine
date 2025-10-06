@@ -10,10 +10,10 @@ import (
 
 // SequentialIDManager manages sequential integer IDs for images
 type SequentialIDManager struct {
-	mu       sync.Mutex
-	nextID   int64
-	store    *Store
-	idFile   string
+	mu     sync.Mutex
+	nextID int64
+	store  *Store
+	idFile string
 }
 
 // NewSequentialIDManager creates a new sequential ID manager
@@ -55,11 +55,8 @@ func (sim *SequentialIDManager) InitializeFromRegistry() error {
 
 	maxID := int64(0)
 	for _, img := range registry.Images {
-		var id int64
-		if _, err := fmt.Sscanf(img.ID, "%d", &id); err == nil {
-			if id > maxID {
-				maxID = id
-			}
+		if img.ID > maxID {
+			maxID = img.ID
 		}
 	}
 

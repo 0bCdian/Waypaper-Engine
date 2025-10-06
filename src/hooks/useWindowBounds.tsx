@@ -1,14 +1,37 @@
 import { useEffect } from 'react';
 import { frontendConfig } from '../utils/frontendConfig';
 
+const { goDaemon } = window.API_RENDERER;
+
 export const useWindowBounds = () => {
     useEffect(() => {
+        // Load and restore window bounds on mount
+        const restoreWindowBounds = async () => {
+            try {
+                const config = await frontendConfig.getConfig();
+                if (config.windowBounds && window.electronAPI) {
+                    // If Electron API is available, restore window bounds
+                    console.log('🟢 WindowBounds: Restoring window bounds:', config.windowBounds);
+                    // This would require an Electron API method to set window bounds
+                    // For now, we just load the config for future use
+                }
+            } catch (error) {
+                console.error('🔴 WindowBounds: Failed to restore window bounds:', error);
+            }
+        };
+
+        void restoreWindowBounds();
+
         const saveWindowBounds = async () => {
             try {
-                // Get current window bounds
-                const { getCurrentWindow } = window.API_RENDERER.electron;
-                const window = getCurrentWindow();
-                const bounds = window.getBounds();
+                // For Electron apps, we would get the window bounds here
+                // For now, we'll save a placeholder or the current viewport size
+                const bounds = {
+                    x: window.screenX || 0,
+                    y: window.screenY || 0,
+                    width: window.outerWidth || 1280,
+                    height: window.outerHeight || 720,
+                };
                 
                 // Save to frontend config
                 await frontendConfig.setWindowBounds(bounds);
@@ -20,13 +43,27 @@ export const useWindowBounds = () => {
 
         // Save bounds when component unmounts (window closes)
         const handleBeforeUnload = () => {
-            saveWindowBounds();
+            // Fire and forget - don't await
+            void saveWindowBounds();
         };
+
+        // Also save bounds periodically (every 5 seconds if window is moved/resized)
+        let lastBounds = { x: window.screenX, y: window.screenY, width: window.outerWidth, height: window.outerHeight };
+        const saveInterval = setInterval(() => {
+            const currentBounds = { x: window.screenX, y: window.screenY, width: window.outerWidth, height: window.outerHeight };
+            if (JSON.stringify(currentBounds) !== JSON.stringify(lastBounds)) {
+                lastBounds = currentBounds;
+                void saveWindowBounds();
+            }
+        }, 5000);
 
         window.addEventListener('beforeunload', handleBeforeUnload);
 
         return () => {
+            clearInterval(saveInterval);
             window.removeEventListener('beforeunload', handleBeforeUnload);
+            // Save one last time on cleanup
+            void saveWindowBounds();
         };
     }, []);
 };

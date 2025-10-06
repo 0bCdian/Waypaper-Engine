@@ -5,12 +5,30 @@ import {
     TransitionType,
     transitionPosition
 } from "../../shared/types/swww";
-import {
-    type swwwConfigSelectType,
-    type swwwConfigInsertType
-} from "../../database/schema";
 
-const initialSwwwConfig: swwwConfigInsertType["config"] = {
+// Define config types locally since database schema is no longer used
+interface SwwwConfig {
+    resizeType: ResizeType;
+    fillColor: string;
+    filterType: FilterType;
+    transitionType: TransitionType;
+    transitionStep: number;
+    transitionDuration: number;
+    transitionFPS: number;
+    transitionAngle: number;
+    transitionPositionType: string;
+    transitionPosition: transitionPosition;
+    transitionPositionIntX: number;
+    transitionPositionIntY: number;
+    transitionPositionFloatX: number;
+    transitionPositionFloatY: number;
+    invertY: boolean;
+    transitionBezier: string;
+    transitionWaveX: number;
+    transitionWaveY: number;
+}
+
+const initialSwwwConfig: SwwwConfig = {
     resizeType: ResizeType.crop,
     fillColor: "#000000",
     filterType: FilterType.Lanczos3,
@@ -32,16 +50,16 @@ const initialSwwwConfig: swwwConfigInsertType["config"] = {
 };
 
 interface State {
-    swwwConfig: swwwConfigInsertType["config"];
+    swwwConfig: SwwwConfig;
 }
 
 interface Actions {
-    saveConfig: (data: swwwConfigInsertType["config"]) => void;
-    getConfig: () => swwwConfigSelectType["config"];
+    saveConfig: (data: SwwwConfig) => void;
+    getConfig: () => SwwwConfig;
 }
 export const swwwConfigStore = create<State & Actions>()((set, get) => ({
     swwwConfig: initialSwwwConfig,
-    saveConfig: (data: swwwConfigInsertType["config"]) => {
+    saveConfig: (data: SwwwConfig) => {
         set(state => {
             return {
                 ...state,
@@ -50,7 +68,7 @@ export const swwwConfigStore = create<State & Actions>()((set, get) => ({
         });
         const { goDaemon } = window.API_RENDERER;
         const newState = get().swwwConfig;
-        goDaemon.setSwwwConfig(newState);
+        goDaemon.setSwwwConfig({ config: JSON.stringify(newState) });
     },
     getConfig: () => {
         return get().swwwConfig;

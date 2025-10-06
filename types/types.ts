@@ -1,7 +1,7 @@
 import { type Formats } from "../shared/types/image";
 import { type ActiveMonitor } from "../shared/types/monitor";
 import { type rendererImage } from "../src/types/rendererTypes";
-import { type imageSelectType } from "../database/schema";
+// Database types no longer needed - using Go daemon
 
 export enum ACTIONS {
     NEXT_IMAGE = "next-image",
@@ -51,7 +51,7 @@ export type message =
       }
     | {
           action: ACTIONS.SET_IMAGE;
-          image?: imageSelectType | rendererImage;
+          image?: rendererImage;
           activeMonitor?: ActiveMonitor;
       }
     | {

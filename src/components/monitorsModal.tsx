@@ -64,6 +64,7 @@ const Monitors = memo(function Monitors() {
         monitorsList.forEach(monitor => {
             if (!monitor.isSelected) return;
             name = name.concat(monitor.name, ",");
+            // eslint-disable-next-line no-unused-vars
             const { isSelected, ...selectedMonitor } = monitor;
             selectedMonitors.push(selectedMonitor);
         });

@@ -1,5 +1,5 @@
 import { useSortable } from "@dnd-kit/sortable";
-import { useEffect, useMemo, useRef, useCallback, useState, memo } from "react";
+import { useEffect, useRef, useCallback, useState, memo } from "react";
 import { type PLAYLIST_TYPES_TYPE } from "../../shared/types/playlist";
 import { playlistStore } from "../stores/playlist";
 import { type rendererImage } from "../types/rendererTypes";
@@ -60,7 +60,7 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
         text = daysOfWeek[index];
     }
     const onRemove = useCallback(() => {
-        Image.isChecked = false;
+        Image.selection.isChecked = false;
         removeImagesFromPlaylist(new Set<number>().add(Image.id));
     }, []);
 

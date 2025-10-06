@@ -1,4 +1,4 @@
-import { type ChangeEvent, useState, useEffect, useMemo } from "react";
+import { type ChangeEvent, useState, useEffect, useMemo, useRef } from "react";
 import { playlistStore } from "../stores/playlist";
 import { motion } from "framer-motion";
 import { type rendererImage } from "../types/rendererTypes";
@@ -14,168 +14,67 @@ function ImageCard({ Image }: ImageCardProps) {
     // Memoize the image object to prevent unnecessary re-renders
     const memoizedImage = useMemo(
         () => Image,
-        [Image.id, Image.name, Image.selection.isSelected, Image.selection.isChecked]
+        [Image.id, Image.name, Image.selection?.isSelected, Image.selection?.isChecked]
     );
 
-    const [selected, setSelected] = useState(memoizedImage.selection.isSelected);
+    const [selected, setSelected] = useState(memoizedImage.selection?.isSelected ?? false);
     const [isChecked, setIsChecked] = useState(
-        memoizedImage.selection.isChecked ?? false
+        memoizedImage.selection?.isChecked ?? false
     );
-    const [imageNameFilePath, setImageNameFilePath] = useState<string>("");
     const [imageSrc, setImageSrc] = useState<string>("");
-    const [isThumbnailLoading, setIsThumbnailLoading] = useState<boolean>(false);
     const { activeMonitor } = useMonitorStore();
+    
+    const imgRef = useRef<HTMLImageElement>(null);
 
-    // Load thumbnail and image paths asynchronously
-    useEffect(() => {
-        // Only load paths if we don't already have them
-        if (imageNameFilePath && imageSrc) {
-            return;
+    // Helper function to ensure selection property exists
+    const ensureSelection = (image: rendererImage) => {
+        if (!image.selection) {
+            image.selection = {
+                isChecked: false,
+                isSelected: false,
+                selectedAt: undefined,
+                selectedPlaylists: []
+            };
         }
+        return image.selection;
+    };
 
-        const loadPaths = async () => {
+    // Load image path
+    useEffect(() => {
+        const loadImagePath = async () => {
             try {
-                console.log(
-                    "🟢 ImageCard: Loading paths for image:",
-                    memoizedImage.name,
-                    "Type:",
-                    typeof memoizedImage.name
-                );
-                if (!memoizedImage.name) {
-                    console.error(
-                        "🔴 ImageCard: Image has no name!",
-                        memoizedImage
-                    );
+                if (!memoizedImage.name || !memoizedImage.path) {
                     return;
                 }
-                // Check if thumbnail exists in image data first
-                let thumbnailPath = "";
-                const screenWidth = window.innerWidth;
-
-                if (memoizedImage.thumbnails) {
-                    // Use thumbnail paths from the image if available
-                    if (screenWidth >= 3840) {
-                        thumbnailPath =
-                            memoizedImage.thumbnails["4k"] ||
-                            memoizedImage.thumbnails.fallback;
-                    } else if (screenWidth >= 2560) {
-                        thumbnailPath =
-                            memoizedImage.thumbnails["1440p"] ||
-                            memoizedImage.thumbnails.fallback;
-                    } else if (screenWidth >= 1920) {
-                        thumbnailPath =
-                            memoizedImage.thumbnails["1080p"] ||
-                            memoizedImage.thumbnails.fallback;
-                    } else if (screenWidth >= 1280) {
-                        thumbnailPath =
-                            memoizedImage.thumbnails["720p"] ||
-                            memoizedImage.thumbnails.fallback;
-                    } else {
-                        thumbnailPath = memoizedImage.thumbnails.fallback;
-                    }
-
-                    if (thumbnailPath) {
-                        thumbnailPath = `atom://${thumbnailPath}`;
-                    }
-                }
-
-                // If no thumbnail path from image data, request thumbnail creation
-                if (!thumbnailPath || thumbnailPath === "atom://") {
-                    console.log(
-                        "🔵 ImageCard: Requesting thumbnail creation for:",
-                        memoizedImage.name
-                    );
-                    setIsThumbnailLoading(true);
-                    await goDaemon.createThumbnail(
-                        [memoizedImage.path],
-                        [memoizedImage.name]
-                    );
-                    // Thumbnail will be created in background, event will update the UI
-                }
-                const imagePath = await goDaemon.getImageSrc(
-                    memoizedImage.name
-                );
-                console.log(
-                    "🟢 ImageCard: Thumbnail path:",
-                    thumbnailPath,
-                    "Image path:",
-                    imagePath
-                );
-
-                // Electron now provides ready-to-use atom:// URLs
-                if (thumbnailPath && typeof thumbnailPath === "string") {
-                    setImageNameFilePath(thumbnailPath);
-                } else {
-                    console.error(
-                        "🔴 ImageCard: Invalid thumbnail path:",
-                        thumbnailPath
-                    );
-                    setImageNameFilePath("");
-                }
-
-                if (imagePath && typeof imagePath === "string") {
-                    setImageSrc(imagePath);
-                } else {
-                    console.error(
-                        "🔴 ImageCard: Invalid image path:",
-                        imagePath
-                    );
-                    setImageSrc("");
-                }
+                // Use atom:// protocol for local file access
+                setImageSrc(`atom://${memoizedImage.path}`);
             } catch (error) {
-                console.error("Failed to load image paths:", error);
-            }
-        };
-        loadPaths();
-
-        // Listen for thumbnail_created events
-        const handleThumbnailCreated = (eventData: any) => {
-            if (eventData.imageName === memoizedImage.name) {
-                console.log(
-                    "🎉 ImageCard: Thumbnail created for:",
-                    memoizedImage.name,
-                    eventData
-                );
-                // Get the appropriate thumbnail path based on screen size
-                const screenWidth = window.innerWidth;
-                let thumbnailPath = "";
-
-                if (screenWidth >= 3840) {
-                    thumbnailPath =
-                        eventData.thumbnails["4k"] ||
-                        eventData.thumbnails.fallback;
-                } else if (screenWidth >= 2560) {
-                    thumbnailPath =
-                        eventData.thumbnails["1440p"] ||
-                        eventData.thumbnails.fallback;
-                } else if (screenWidth >= 1920) {
-                    thumbnailPath =
-                        eventData.thumbnails["1080p"] ||
-                        eventData.thumbnails.fallback;
-                } else if (screenWidth >= 1280) {
-                    thumbnailPath =
-                        eventData.thumbnails["720p"] ||
-                        eventData.thumbnails.fallback;
-                } else {
-                    thumbnailPath = eventData.thumbnails.fallback;
-                }
-
-                if (thumbnailPath) {
-                    setImageNameFilePath(`atom://${thumbnailPath}`);
-                    setIsThumbnailLoading(false);
-                    // Force a re-render by updating the image state
-                    console.log("🎉 ImageCard: Updated thumbnail path:", `atom://${thumbnailPath}`);
-                }
+                console.error("Failed to load image path:", error);
             }
         };
 
-        goDaemon.on("thumbnail_created", handleThumbnailCreated);
+        loadImagePath();
+    }, [memoizedImage.name, memoizedImage.path]);
 
-        // Cleanup listener on unmount
-        return () => {
-            goDaemon.off("thumbnail_created", handleThumbnailCreated);
-        };
-    }, [memoizedImage.name, imageNameFilePath, imageSrc]);
+    // Get thumbnail path from image data
+    const getThumbnailSrc = () => {
+        if (!memoizedImage.thumbnails) return "";
+        
+        const screenWidth = window.innerWidth;
+        let thumbnailPath = "";
+        
+        if (screenWidth >= 2560) {
+            thumbnailPath = memoizedImage.thumbnails["1440p"] || memoizedImage.thumbnails["1080p"] || memoizedImage.thumbnails["720p"];
+        } else if (screenWidth >= 1920) {
+            thumbnailPath = memoizedImage.thumbnails["1080p"] || memoizedImage.thumbnails["720p"];
+        } else {
+            thumbnailPath = memoizedImage.thumbnails["720p"];
+        }
+        
+        return thumbnailPath ? `atom://${thumbnailPath}` : "";
+    };
+
+    const thumbnailSrc = getThumbnailSrc();
     const handleDoubleClick = () => {
         console.log(
             "🟢 ImageCard: handleDoubleClick called with Image:",
@@ -219,7 +118,7 @@ function ImageCard({ Image }: ImageCardProps) {
                 memoizedImage.id,
                 activeMonitor
             );
-            goDaemon.setImageAcrossMonitors(parseInt(memoizedImage.id), activeMonitor);
+            goDaemon.setImageAcrossMonitors(memoizedImage.id, activeMonitor);
         } else {
             console.log("🟢 ImageCard: Using single monitor mode");
             console.log(
@@ -227,7 +126,7 @@ function ImageCard({ Image }: ImageCardProps) {
                 memoizedImage.id,
                 activeMonitor.name
             );
-            goDaemon.setImage(parseInt(memoizedImage.id), activeMonitor.name);
+            goDaemon.setImage(memoizedImage.id, activeMonitor.name);
         }
     };
     const addImageToPlaylist = playlistStore(
@@ -257,12 +156,12 @@ function ImageCard({ Image }: ImageCardProps) {
                 return;
             }
             setIsChecked(true);
-            memoizedImage.selection.isChecked = true;
+            ensureSelection(memoizedImage).isChecked = true;
             addImageToPlaylist([memoizedImage]);
         } else {
-            memoizedImage.selection.isChecked = false;
+            ensureSelection(memoizedImage).isChecked = false;
             setIsChecked(false);
-            removeImageFromPlaylist(new Set<number>().add(parseInt(memoizedImage.id)));
+            removeImageFromPlaylist(new Set<number>().add(memoizedImage.id));
         }
     };
     const handleRightClick = (e: React.MouseEvent) => {
@@ -277,9 +176,9 @@ function ImageCard({ Image }: ImageCardProps) {
         else removeFromSelectedImages(memoizedImage);
     }, [selected]);
     useEffect(() => {
-        if (imagesInPlaylist.has(parseInt(memoizedImage.id)) && !isEmpty) {
+        if (imagesInPlaylist.has(memoizedImage.id) && !isEmpty) {
             setIsChecked(true);
-            memoizedImage.selection.isChecked = true;
+            ensureSelection(memoizedImage).isChecked = true;
             return;
         }
         setIsChecked(false);
@@ -290,7 +189,7 @@ function ImageCard({ Image }: ImageCardProps) {
             setSelected(false);
             return;
         }
-        setSelected(selectedImages.has(parseInt(memoizedImage.id)));
+        setSelected(selectedImages.has(memoizedImage.id));
     }, [selectedImages.size]);
     return (
         <motion.div
@@ -302,7 +201,7 @@ function ImageCard({ Image }: ImageCardProps) {
                 e.stopPropagation();
                 if (!isHotkeyPressed("ctrl")) return;
                 setSelected((prev: boolean) => {
-                    memoizedImage.selection.isSelected = !prev;
+                    ensureSelection(memoizedImage).isSelected = !prev;
                     return !prev;
                 });
             }}
@@ -318,8 +217,9 @@ function ImageCard({ Image }: ImageCardProps) {
             </div>
             <div onDoubleClick={handleDoubleClick}>
                 <img
+                    ref={imgRef}
                     className="transform-gpu rounded-lg transition-all duration-300 group-hover:scale-110 group-hover:object-center"
-                    src={imageNameFilePath}
+                    src={thumbnailSrc || imageSrc}
                     alt={memoizedImage.name}
                     draggable={false}
                     loading="lazy"
@@ -328,33 +228,16 @@ function ImageCard({ Image }: ImageCardProps) {
                         currentTarget.className =
                             "rounded-lg min-w-full max-w-[300px] object-fill";
                         currentTarget.src = imageSrc;
-                        
-                        // Trigger thumbnail recreation for broken thumbnail
-                        console.log("🔴 ImageCard: Thumbnail failed to load, requesting recreation for:", memoizedImage.name);
-                        setIsThumbnailLoading(true);
-                        goDaemon.createThumbnail([memoizedImage.path], [memoizedImage.name])
-                            .catch((err: any) => {
-                                console.error("Failed to request thumbnail recreation:", err);
-                                setIsThumbnailLoading(false);
-                            });
                     }}
                 />
                 <p className="absolute bottom-0 w-full overflow-hidden truncate text-ellipsis bg-black bg-opacity-75 p-2 pl-2 text-justify text-lg font-medium opacity-0 transition-all duration-300 group-hover:opacity-100">
                     {memoizedImage.name}
                 </p>
                 <div
-                    data-selected={memoizedImage.selection.isSelected}
+                    data-selected={memoizedImage.selection?.isSelected ?? false}
                     id="overlay"
                     className="absolute top-0 z-10 h-full w-full bg-blue-600 opacity-0 transition-all data-[selected=true]:opacity-45"
                 ></div>
-                {isThumbnailLoading && (
-                    <div className="absolute inset-0 z-20 flex items-center justify-center bg-black bg-opacity-50 rounded-lg">
-                        <div className="flex flex-col items-center space-y-2">
-                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
-                            <span className="text-white text-sm">Creating thumbnail...</span>
-                        </div>
-                    </div>
-                )}
             </div>
         </motion.div>
     );

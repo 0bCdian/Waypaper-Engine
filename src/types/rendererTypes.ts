@@ -4,7 +4,7 @@ import {
     type PLAYLIST_TYPES_TYPE,
     type PLAYLIST_ORDER_TYPES
 } from "../../shared/types/playlist";
-import { type imageSelectType } from "../../database/schema";
+// Database types no longer needed - using Go daemon
 import { type ActiveMonitor } from "../../shared/types/monitor";
 
 export enum STORE_ACTIONS {
@@ -33,7 +33,7 @@ export interface ImageThumbnails {
 
 // New JSON-based image type (replaces SQLite-based imageSelectType)
 export interface JSONImage {
-    id: string;
+    id: number;
     name: string;
     path: string;
     mediaType: string;
@@ -91,7 +91,6 @@ export interface advancedFilters {
 export type resolutionConstraints = "all" | "exact" | "moreThan" | "lessThan";
 export interface state {
     imagesArray: rendererImage[];
-    skeletonsToShow: imagesObject | undefined;
     filters: Filters;
 }
 

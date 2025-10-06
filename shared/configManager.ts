@@ -1,7 +1,7 @@
-import { promises as fs } from 'fs';
+import { promises as fs, FSWatcher } from 'fs';
 import { join, dirname } from 'path';
 import { homedir } from 'os';
-import toml from '@iarna/toml';
+import { parse, stringify } from 'smol-toml';
 
 export interface AppConfig {
     kill_daemon_on_exit: boolean;
@@ -24,6 +24,11 @@ export interface DaemonConfig {
     monitors_state_file: string;
     socket_path: string;
     log_level: 'debug' | 'info' | 'warn' | 'error';
+    log_file: string;
+    log_max_size: number;
+    log_max_age: number;
+    log_max_backups: number;
+    compositor: string;
 }
 
 export interface SwwwConfig {
@@ -46,9 +51,18 @@ export interface MonitorsConfig {
     image_set_type: 'individual' | 'extend' | 'clone';
 }
 
+export interface ElectronConfig {
+    log_level: 'debug' | 'info' | 'warn' | 'error';
+    log_file: string;
+    log_max_size: number;
+    log_max_age: number;
+    log_max_backups: number;
+}
+
 export interface WaypaperConfig {
     app: AppConfig;
     daemon: DaemonConfig;
+    electron: ElectronConfig;
     backend: BackendConfig;
     monitors: MonitorsConfig;
 }
@@ -57,7 +71,7 @@ export class ConfigManager {
     private configPath: string;
     private config: WaypaperConfig | null = null;
     private watchers: Set<(config: WaypaperConfig) => void> = new Set();
-    private fileWatcher: any = null;
+    private fileWatcher: FSWatcher | null = null;
 
     constructor(configPath?: string) {
         if (configPath) {
@@ -81,15 +95,15 @@ export class ConfigManager {
 
             // Try to read the config file
             const data = await fs.readFile(this.configPath, 'utf-8');
-            this.config = toml.parse(data) as WaypaperConfig;
+            this.config = parse(data) as unknown as WaypaperConfig;
             
             // Expand tilde paths
             this.config = this.expandPaths(this.config);
             
-            console.log('🟢 ConfigManager: Loaded config from', this.configPath);
+            // Config loaded successfully - no need to log every time
         } catch (error) {
             // If file doesn't exist or is invalid, use defaults
-            console.log('🟡 ConfigManager: Using default config, file not found or invalid');
+            // Using default config - this is normal on first run
             this.config = this.getDefaultConfig();
             await this.saveConfig();
         }
@@ -99,7 +113,7 @@ export class ConfigManager {
 
     async saveConfig(): Promise<void> {
         if (!this.config) {
-            console.warn('🟡 ConfigManager: No config to save');
+            // No config to save - this shouldn't happen
             return;
         }
 
@@ -112,18 +126,18 @@ export class ConfigManager {
             const configToSave = this.contractPaths(this.config);
 
             // Write the config file
-            const tomlContent = toml.stringify(configToSave);
+            const tomlContent = stringify(configToSave);
             await fs.writeFile(this.configPath, tomlContent, 'utf-8');
-            console.log('🟢 ConfigManager: Saved config to', this.configPath);
+            // Config saved successfully
         } catch (error) {
-            console.error('🔴 ConfigManager: Failed to save config:', error);
+            throw error;
             throw error;
         }
     }
 
     async updateConfig(updates: Partial<WaypaperConfig>): Promise<void> {
         const currentConfig = await this.loadConfig();
-        this.config = this.deepMerge(currentConfig, updates);
+        this.config = this.deepMerge(currentConfig, updates) as WaypaperConfig;
         await this.saveConfig();
         
         // Notify watchers
@@ -146,17 +160,17 @@ export class ConfigManager {
                 if (eventType === 'change') {
                     try {
                         const data = await fs.readFile(this.configPath, 'utf-8');
-                        this.config = this.expandPaths(toml.parse(data) as WaypaperConfig);
+                        this.config = this.expandPaths(parse(data) as unknown as WaypaperConfig);
                         this.notifyWatchers();
-                        console.log('🟢 ConfigManager: Config file changed, reloaded');
+                        // Config file changed and reloaded
                     } catch (error) {
-                        console.error('🔴 ConfigManager: Failed to reload config:', error);
+                        // Failed to reload config - will retry on next change
                     }
                 }
             });
-            console.log('🟢 ConfigManager: Started watching config file');
+            // Started watching config file
         } catch (error) {
-            console.error('🔴 ConfigManager: Failed to start watching:', error);
+            // Failed to start watching - config changes won't be detected
         }
     }
 
@@ -164,7 +178,7 @@ export class ConfigManager {
         if (this.fileWatcher) {
             this.fileWatcher.close();
             this.fileWatcher = null;
-            console.log('🟢 ConfigManager: Stopped watching config file');
+            // Stopped watching config file
         }
     }
 
@@ -182,7 +196,7 @@ export class ConfigManager {
                 try {
                     callback(this.config!);
                 } catch (error) {
-                    console.error('🔴 ConfigManager: Error in config watcher:', error);
+                    // Error in config watcher - continuing
                 }
             });
         }
@@ -229,14 +243,19 @@ export class ConfigManager {
         };
     }
 
-    private deepMerge(target: any, source: any): any {
-        const result = { ...target };
+    private deepMerge(target: unknown, source: unknown): unknown {
+        if (!target || typeof target !== 'object' || !source || typeof source !== 'object') {
+            return source;
+        }
         
-        for (const key in source) {
-            if (source[key] && typeof source[key] === 'object' && !Array.isArray(source[key])) {
-                result[key] = this.deepMerge(target[key] || {}, source[key]);
+        const result = { ...target as Record<string, unknown> };
+        const sourceObj = source as Record<string, unknown>;
+        
+        for (const key in sourceObj) {
+            if (sourceObj[key] && typeof sourceObj[key] === 'object' && !Array.isArray(sourceObj[key])) {
+                result[key] = this.deepMerge(result[key] || {}, sourceObj[key]);
             } else {
-                result[key] = source[key];
+                result[key] = sourceObj[key];
             }
         }
         
@@ -259,12 +278,24 @@ export class ConfigManager {
                 sort_order: 'asc'
             },
             daemon: {
-                database_path: '~/.config/waypaper-engine/waypaper.db',
+                database_path: '~/.waypaper-engine/data',
                 images_dir: '~/.waypaper-engine/images',
-                thumbnails_dir: '~/.cache/waypaper-engine/thumbnails',
+                thumbnails_dir: '~/.waypaper-engine/data/cache/thumbnails',
                 monitors_state_file: '~/.cache/waypaper-engine/monitors.json',
                 socket_path: '/tmp/waypaper-engine.sock',
-                log_level: 'info'
+                log_level: 'info',
+                log_file: '~/.config/waypaper-engine/daemon.log',
+                log_max_size: 10,
+                log_max_age: 7,
+                log_max_backups: 3,
+                compositor: 'auto'
+            },
+            electron: {
+                log_level: 'info',
+                log_file: '~/.config/waypaper-engine/electron.log',
+                log_max_size: 10,
+                log_max_age: 7,
+                log_max_backups: 3
             },
             backend: {
                 type: 'swww',
@@ -283,6 +314,28 @@ export class ConfigManager {
                 image_set_type: 'individual'
             }
         };
+    }
+
+    getElectronConfig(): ElectronConfig {
+        return this.config?.electron || {
+            log_level: 'info',
+            log_file: '~/.config/waypaper-engine/electron.log',
+            log_max_size: 10,
+            log_max_age: 7,
+            log_max_backups: 3
+        };
+    }
+
+    getElectronLogLevel(): string {
+        return this.getElectronConfig().log_level;
+    }
+
+    getElectronLogFile(): string {
+        const electronConfig = this.getElectronConfig();
+        if (electronConfig.log_file.startsWith('~/')) {
+            return join(homedir(), electronConfig.log_file.slice(2));
+        }
+        return electronConfig.log_file;
     }
 }
 

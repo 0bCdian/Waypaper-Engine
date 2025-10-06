@@ -1,7 +1,6 @@
 import Gallery from "../components/Gallery";
 import { useAppConfigStore } from "../stores/appConfig";
 import { useEffect } from "react";
-import { IPC_MAIN_EVENTS } from "../../shared/constants";
 let firstRender = true;
 const { goDaemon } = window.API_RENDERER;
 const Home = () => {

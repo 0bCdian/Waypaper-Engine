@@ -1,10 +1,16 @@
 import { ipcRenderer } from "electron";
+import type { 
+    DaemonSwwwConfig
+} from "../shared/types/daemon";
+import type { ActiveMonitor } from "../shared/types/monitor";
+import type { openFileAction } from "../shared/types";
+import type { rendererPlaylist } from "../src/types/rendererTypes";
 
 export const ELECTRON_API = {
     // Go daemon API
     goDaemon: {
         // Playlist operations
-        startPlaylist: async (playlistName: string, activeMonitor: any) => {
+        startPlaylist: async (playlistName: string, activeMonitor: ActiveMonitor) => {
             return await ipcRenderer.invoke("go-daemon-command", "start_playlist", { playlistName, activeMonitor });
         },
         stopPlaylist: async (monitorName: string) => {
@@ -30,40 +36,31 @@ export const ELECTRON_API = {
         },
         
         // Multi-monitor operations
-        setImageAcrossMonitors: async (imageId: number, activeMonitor: any) => {
+        setImageAcrossMonitors: async (imageId: number, activeMonitor: ActiveMonitor) => {
             return await ipcRenderer.invoke("go-daemon-command", "set_image_across_monitors", { image: { id: imageId }, activeMonitor });
         },
-        duplicateImageAcrossMonitors: async (imageId: number, activeMonitor: any) => {
+        duplicateImageAcrossMonitors: async (imageId: number, activeMonitor: ActiveMonitor) => {
             return await ipcRenderer.invoke("go-daemon-command", "duplicate_image_across_monitors", { image: { id: imageId }, activeMonitor });
         },
-        processForMonitors: async (imageId: number, activeMonitor: any) => {
+        processForMonitors: async (imageId: number, activeMonitor: ActiveMonitor) => {
             return await ipcRenderer.invoke("go-daemon-command", "process_for_monitors", { image: { id: imageId }, activeMonitor });
         },
         
         // Data queries
-        getImages: async (filters?: any) => {
+        getImages: async (filters?: unknown) => {
             return await ipcRenderer.invoke("go-daemon-command", "get_images", { filters });
         },
         getPlaylists: async () => {
             return await ipcRenderer.invoke("go-daemon-command", "get_playlists");
         },
-        getActivePlaylist: async (activeMonitor: any) => {
+        getActivePlaylist: async (activeMonitor: ActiveMonitor) => {
             return await ipcRenderer.invoke("go-daemon-command", "get_active_playlist", { activeMonitor });
         },
-        savePlaylist: async (playlist: any) => {
+        savePlaylist: async (playlist: rendererPlaylist) => {
             return await ipcRenderer.invoke("go-daemon-command", "save_playlist", playlist);
         },
         deletePlaylist: async (playlistName: string) => {
             return await ipcRenderer.invoke("go-daemon-command", "delete_playlist", { playlistName });
-        },
-        getImageSrc: async (imageName: string) => {
-            return await ipcRenderer.invoke("go-daemon-command", "get_image_src", { fileName: imageName });
-        },
-        getThumbnailSrc: async (imageName: string) => {
-            return await ipcRenderer.invoke("go-daemon-command", "get_thumbnail_src", { fileName: imageName });
-        },
-        createThumbnail: async (imagePaths: string[], fileNames: string[]) => {
-            return await ipcRenderer.invoke("go-daemon-command", "create_thumbnail", { imagePaths, fileNames });
         },
         getMonitorImage: async (monitorName: string) => {
             return await ipcRenderer.invoke("go-daemon-command", "get_monitor_image", { monitorName });
@@ -74,7 +71,7 @@ export const ELECTRON_API = {
         deleteImagesFromGallery: async (imageIds: number[]) => {
             return await ipcRenderer.invoke("go-daemon-command", "delete_image_from_gallery", { imageIds });
         },
-        openContextMenu: async (data: any) => {
+        openContextMenu: async (data: { Image: unknown; selectedImagesLength: number }) => {
             return await ipcRenderer.invoke("openContextMenuImage", data.Image, data.selectedImagesLength);
         },
         exitApp: async () => {
@@ -94,18 +91,28 @@ export const ELECTRON_API = {
         getAppConfig: async () => {
             return await ipcRenderer.invoke("go-daemon-command", "get_app_config");
         },
-        setAppConfig: async (key: string, value: any) => {
+        setAppConfig: async (key: string, value: unknown) => {
             return await ipcRenderer.invoke("go-daemon-command", "set_app_config", { key, value });
         },
         getSwwwConfig: async () => {
             return await ipcRenderer.invoke("go-daemon-command", "get_swww_config");
         },
-        setSwwwConfig: async (config: any) => {
+        setSwwwConfig: async (config: DaemonSwwwConfig) => {
             return await ipcRenderer.invoke("go-daemon-command", "set_swww_config", config);
         },
         
+        // Frontend config operations
+        getFrontendConfig: async () => {
+            return await ipcRenderer.invoke("go-daemon-command", "get_frontend_config");
+        },
+        setFrontendConfig: async (config: unknown) => {
+            return await ipcRenderer.invoke("go-daemon-command", "set_frontend_config", { 
+                config: { frontendConfig: config } 
+            });
+        },
+        
         // Monitor operations
-        setSelectedMonitor: async (activeMonitor: any) => {
+        setSelectedMonitor: async (activeMonitor: ActiveMonitor) => {
             return await ipcRenderer.invoke("go-daemon-command", "set_selected_monitor", { activeMonitor });
         },
         getMonitors: async () => {
@@ -125,26 +132,29 @@ export const ELECTRON_API = {
         ping: async () => {
             return await ipcRenderer.invoke("go-daemon-command", "ping");
         },
+        restoreLastWallpapers: async () => {
+            return await ipcRenderer.invoke("go-daemon-command", "restore_last_wallpapers");
+        },
         
         // Event listeners
-        on: (event: string, callback: (...args: any[]) => void) => {
+        on: (event: string, callback: (...args: unknown[]) => void) => {
             ipcRenderer.on(`go-daemon-event-${event}`, (_, ...args) => callback(...args));
         },
-        off: (event: string, callback: (...args: any[]) => void) => {
+        off: (event: string, callback: (...args: unknown[]) => void) => {
             ipcRenderer.off(`go-daemon-event-${event}`, callback);
         }
     },
     
     // Legacy API functions that are still needed
-    openFiles: async (action: any) => {
+    openFiles: async (action: openFileAction) => {
         return await ipcRenderer.invoke("openFiles", action);
     },
-    handleOpenImages: async (imagesObject: any) => {
+    handleOpenImages: async (imagesObject: unknown) => {
         return await ipcRenderer.invoke("handleOpenImages", imagesObject);
     },
     
     // Backward compatibility: top-level savePlaylist for existing components
-    savePlaylist: (playlist: any) => {
+    savePlaylist: (playlist: rendererPlaylist) => {
         ipcRenderer.send("savePlaylist", playlist);
     }
 };

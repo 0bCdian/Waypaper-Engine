@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 
-type callback = (...args: any[]) => void;
+type callback = (...args: unknown[]) => void;
 
 function useDebounceCallback(callback: callback, delay = 500) {
     const timeoutRef = useRef<{ id: null | NodeJS.Timeout }>({ id: null });
@@ -13,7 +13,7 @@ function useDebounceCallback(callback: callback, delay = 500) {
             }
         };
     }, []);
-    return function debouncedCallback(...args: any[]) {
+    return function debouncedCallback(...args: unknown[]) {
         // Clear the previous timeout if it exists
         if (timeoutRef.current.id !== null) {
             clearTimeout(timeoutRef.current.id);

@@ -2,7 +2,6 @@ import { DndContext, type DragEndEvent, closestCorners } from "@dnd-kit/core";
 import { SortableContext, arrayMove } from "@dnd-kit/sortable";
 import { useMemo, useEffect, useCallback, lazy, Suspense } from "react";
 import { playlistStore } from "../stores/playlist";
-import { IPC_MAIN_EVENTS } from "../../shared/constants";
 import openImagesStore from "../hooks/useOpenImages";
 import { motion, AnimatePresence } from "framer-motion";
 import { imagesStore } from "../stores/images";
@@ -14,6 +13,7 @@ import {
 } from "../types/rendererTypes";
 import { useSetLastActivePlaylist } from "../hooks/useSetLastActivePlaylist";
 import { PLAYLIST_TYPES } from "../../shared/types/playlist";
+import { type DaemonPlaylistImage } from "../../shared/types/daemonEvents";
 let firstRender = true;
 const { goDaemon } = window.API_RENDERER;
 const MiniPlaylistCard = lazy(async () => await import("./MiniPlaylistCard"));
@@ -29,14 +29,11 @@ function PlaylistTrack() {
     } = playlistStore();
     const { activeMonitor } = useMonitorStore();
     const { openImages, isActive } = openImagesStore();
-    const { setSkeletons, addImages, imagesArray } = imagesStore();
+    const { imagesArray } = imagesStore();
     useSetLastActivePlaylist();
 
     const handleClickAddImages = useCallback((action: openFileAction) => {
         void openImages({
-            setSkeletons,
-            addImages,
-            addImagesToPlaylist,
             action
         });
     }, []);
@@ -123,7 +120,7 @@ function PlaylistTrack() {
             }
 
             const imagesToStorePlaylist: rendererImage[] = [];
-            playlistFromDB.images.forEach(imageInActivePlaylist => {
+            playlistFromDB.images.forEach((imageInActivePlaylist: DaemonPlaylistImage) => {
                 const imageToCheck = imagesArray.find(imageInGallery => {
                     return imageInGallery.name === imageInActivePlaylist.name;
                 });
@@ -132,11 +129,11 @@ function PlaylistTrack() {
                 }
                 if (
                     playlistFromDB.type === PLAYLIST_TYPES.TIME_OF_DAY &&
-                    imageInActivePlaylist.time !== null
+                    imageInActivePlaylist.time !== undefined
                 ) {
                     imageToCheck.time = imageInActivePlaylist.time;
                 }
-                imageToCheck.isChecked = true;
+                imageToCheck.selection.isChecked = true;
                 imagesToStorePlaylist.push(imageToCheck);
             });
             const currentPlaylist: rendererPlaylist = {

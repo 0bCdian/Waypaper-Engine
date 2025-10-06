@@ -4,26 +4,50 @@ import { BezierCurveEditor } from "react-bezier-curve-editor";
 import { motion, AnimatePresence } from "framer-motion";
 import { swwwConfigStore } from "../stores/swwwConfig";
 import {
-    type swwwConfigSelectType,
-    type swwwConfigInsertType
-} from "../../database/schema";
-import {
     FilterType,
     ResizeType,
-    type transitionPosition
+    TransitionType,
+    transitionPosition
 } from "../../shared/types/swww";
+import { type DaemonSwwwConfigPayload } from "../../shared/types/daemonEvents";
+
+// Helper function to convert daemon config to local config
+function convertDaemonToLocalConfig(daemonConfig: DaemonSwwwConfigPayload): any {
+    return {
+        resizeType: daemonConfig.resizeType as ResizeType,
+        fillColor: daemonConfig.fillColor,
+        filterType: daemonConfig.filterType as FilterType,
+        transitionType: daemonConfig.transitionType as TransitionType,
+        transitionStep: daemonConfig.transitionStep,
+        transitionDuration: daemonConfig.transitionDuration,
+        transitionFPS: daemonConfig.transitionFPS,
+        transitionAngle: daemonConfig.transitionAngle,
+        transitionPositionType: daemonConfig.transitionPositionType,
+        transitionPosition: daemonConfig.transitionPositionType === "alias" 
+            ? daemonConfig.transitionPosition as unknown as transitionPosition
+            : transitionPosition.center, // Default fallback
+        transitionPositionIntX: daemonConfig.transitionPositionIntX,
+        transitionPositionIntY: daemonConfig.transitionPositionIntY,
+        transitionPositionFloatX: daemonConfig.transitionPositionFloatX,
+        transitionPositionFloatY: daemonConfig.transitionPositionFloatY,
+        invertY: daemonConfig.invertY,
+        transitionBezier: daemonConfig.transitionBezier,
+        transitionWaveX: daemonConfig.transitionWaveX,
+        transitionWaveY: daemonConfig.transitionWaveY
+    };
+}
 let saveConfigTimeout: ReturnType<typeof setTimeout> | null = null;
 const { goDaemon } = window.API_RENDERER;
 const SwwwConfig = () => {
     const { register, handleSubmit, watch, setValue } =
-        useForm<swwwConfigInsertType["config"]>();
+        useForm<DaemonSwwwConfigPayload>();
     const { saveConfig } = swwwConfigStore();
     const [transitionPositionType, setTransitionPositionType] =
         useState("alias");
     const [bezier, setBezier] = useState<[number, number, number, number]>([
         0.25, 1, 0.25, 1
     ]);
-    const onSubmit = (data: swwwConfigInsertType["config"]) => {
+    const onSubmit = (data: DaemonSwwwConfigPayload) => {
         if (saveConfigTimeout !== null) {
             clearTimeout(saveConfigTimeout);
         }
@@ -36,13 +60,13 @@ const SwwwConfig = () => {
                 data.transitionPositionFloatY = 0.5;
             }
             if (
-                data.transitionPositionIntY === undefined ||
+                data.transitionPositionIntX === undefined ||
                 data.transitionPositionIntY === undefined
             ) {
                 data.transitionPositionIntX = 960;
                 data.transitionPositionIntY = 540;
             }
-            saveConfig(data);
+            saveConfig(convertDaemonToLocalConfig(data));
         }, 300);
     };
 
@@ -57,11 +81,16 @@ const SwwwConfig = () => {
     }, [handleSubmit, watch]);
 
     useEffect(() => {
-        setTransitionPositionType(watch("transitionPositionType"));
-    }, [watch("transitionPositionType")]);
+        const subscription = watch((value) => {
+            setTransitionPositionType(value.transitionPositionType || "alias");
+        });
+        return () => {
+            subscription.unsubscribe();
+        };
+    }, [watch]);
     useEffect(() => {
-        void goDaemon.getSwwwConfig().then((config: swwwConfigSelectType["config"]) => {
-            const bezierArray = config.transitionBezier.split(",").map(item => {
+        void goDaemon.getSwwwConfig().then((config: DaemonSwwwConfigPayload) => {
+            const bezierArray = config.transitionBezier.split(",").map((item: string) => {
                 return parseFloat(item);
             }) as [number, number, number, number];
             setValue("resizeType", config.resizeType);
@@ -83,7 +112,7 @@ const SwwwConfig = () => {
                     );
                     setValue(
                         "transitionPosition",
-                        config.transitionPosition as transitionPosition
+                        config.transitionPosition
                     );
                     break;
                 case "float":

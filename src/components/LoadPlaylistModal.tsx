@@ -2,21 +2,19 @@ import { useRef, useEffect, useState } from "react";
 import { playlistStore } from "../stores/playlist";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { imagesStore } from "../stores/images";
-import { type playlistSelectType } from "../../database/schema";
-import { PLAYLIST_TYPES } from "../../shared/types/playlist";
+import { PLAYLIST_TYPES, type PLAYLIST_TYPES_TYPE, type PLAYLIST_ORDER_TYPES } from "../../shared/types/playlist";
 import {
     type rendererPlaylist,
     type rendererImage
 } from "../types/rendererTypes";
 import { useMonitorStore } from "../stores/monitors";
-import { IPC_MAIN_EVENTS } from "../../shared/constants";
-import { type ActiveMonitor } from "../../shared/types/monitor";
+import { type DaemonPlaylistFromDB, type DaemonClearPlaylistPayload, type DaemonPlaylistImage } from "../../shared/types/daemonEvents";
 interface Input {
     selectPlaylist: string;
 }
 
 interface Props {
-    playlistsInDB: playlistSelectType[];
+    playlistsInDB: DaemonPlaylistFromDB[];
     currentPlaylistName: string;
     setShouldReload: React.Dispatch<React.SetStateAction<boolean>>;
 }
@@ -48,27 +46,26 @@ const LoadPlaylistModal = ({
                 selectedPlaylist.id
             );
             const imagesToStorePlaylist: rendererImage[] = [];
-            imagesArrayFromPlaylist.forEach(image => {
+            imagesArrayFromPlaylist.forEach((image: DaemonPlaylistImage) => {
                 const imageToStore = imagesMap.get(image.id);
                 if (imageToStore === undefined) return;
                 if (
                     selectedPlaylist.type === PLAYLIST_TYPES.TIME_OF_DAY &&
-                    image.time !== null
+                    image.time !== undefined
                 ) {
                     imageToStore.time = image.time;
                 }
-                imageToStore.isChecked = true;
+                imageToStore.selection.isChecked = true;
                 imagesToStorePlaylist.push(imageToStore);
             });
             const currentPlaylist: rendererPlaylist = {
                 name: selectedPlaylist.name,
                 configuration: {
-                    type: selectedPlaylist.type,
-                    order: selectedPlaylist.order,
-                    interval: selectedPlaylist.interval,
-                    showAnimations: selectedPlaylist.showAnimations,
-                    alwaysStartOnFirstImage:
-                        selectedPlaylist.alwaysStartOnFirstImage
+                    type: selectedPlaylist.type as PLAYLIST_TYPES_TYPE,
+                    order: selectedPlaylist.order as PLAYLIST_ORDER_TYPES | null,
+                    interval: selectedPlaylist.interval ?? null,
+                    showAnimations: Boolean(selectedPlaylist.showAnimations),
+                    alwaysStartOnFirstImage: Boolean(selectedPlaylist.alwaysStartOnFirstImage)
                 },
                 images: imagesToStorePlaylist,
                 activeMonitor
@@ -91,7 +88,8 @@ const LoadPlaylistModal = ({
         if (!firstRender) return;
         firstRender = false;
         // Listen for clear playlist events via Go daemon
-        goDaemon.on("clear_playlist", (playlist: { name: string; activeMonitor: ActiveMonitor }) => {
+        goDaemon.on("clear_playlist", (...args: unknown[]) => {
+            const playlist = args[0] as DaemonClearPlaylistPayload;
             clearPlaylist(playlist);
             goDaemon.updateTray();
         });

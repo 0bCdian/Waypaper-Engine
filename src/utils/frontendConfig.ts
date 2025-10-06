@@ -15,6 +15,8 @@ export interface FrontendConfig {
   sortOrder?: 'asc' | 'desc';
 }
 
+const { goDaemon } = window.API_RENDERER;
+
 class FrontendConfigManager {
   private config: FrontendConfig | null = null;
 
@@ -23,11 +25,23 @@ class FrontendConfigManager {
       return this.config;
     }
 
-    // For now, use in-memory config only
-    // TODO: Implement proper IPC-based config persistence
-    console.log('🟡 FrontendConfig: Using in-memory config (fs not available in renderer)');
-    this.config = this.getDefaultConfig();
-    return this.config;
+    try {
+      // Try to load config from Go daemon via IPC
+      const savedConfig = await goDaemon.getFrontendConfig();
+      if (savedConfig && typeof savedConfig === 'object') {
+        console.log('🟢 FrontendConfig: Loaded config from Go daemon:', savedConfig);
+        this.config = { ...this.getDefaultConfig(), ...savedConfig };
+      } else {
+        console.log('🟡 FrontendConfig: No saved config found, using defaults');
+        this.config = this.getDefaultConfig();
+      }
+    } catch (error) {
+      console.warn('🟡 FrontendConfig: Failed to load config from Go daemon, using defaults:', error);
+      this.config = this.getDefaultConfig();
+    }
+    
+    // Ensure config is never null - return default if somehow still null
+    return this.config ?? this.getDefaultConfig();
   }
 
   async saveConfig(): Promise<void> {
@@ -36,9 +50,13 @@ class FrontendConfigManager {
       return;
     }
 
-    // For now, just log that we would save
-    // TODO: Implement proper IPC-based config persistence
-    console.log('🟡 FrontendConfig: Would save config (fs not available in renderer):', this.config);
+    try {
+      // Save config to Go daemon via IPC
+      await goDaemon.setFrontendConfig(this.config);
+      console.log('🟢 FrontendConfig: Saved config to Go daemon:', this.config);
+    } catch (error) {
+      console.error('🔴 FrontendConfig: Failed to save config to Go daemon:', error);
+    }
   }
 
   async updateConfig(updates: Partial<FrontendConfig>): Promise<void> {

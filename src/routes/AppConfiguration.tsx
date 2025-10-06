@@ -1,20 +1,17 @@
 import { useForm } from "react-hook-form";
 import { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import {
-    type appConfigSelectType,
-    type appConfigInsertType
-} from "../../database/schema";
+import { type DaemonAppConfigPayload } from "../../shared/types/daemonEvents";
 
 const { goDaemon } = window.API_RENDERER;
 const AppConfiguration = () => {
     const { register, handleSubmit, setValue } =
-        useForm<appConfigInsertType["config"]>();
-    const onSubmit = (data: appConfigSelectType["config"]) => {
+        useForm<DaemonAppConfigPayload>();
+    const onSubmit = (data: DaemonAppConfigPayload) => {
         goDaemon.setAppConfig("config", data);
     };
     useEffect(() => {
-        void goDaemon.getAppConfig().then((data: appConfigSelectType["config"]) => {
+        void goDaemon.getAppConfig().then((data: DaemonAppConfigPayload) => {
             setValue("killDaemon", data.killDaemon);
             setValue("notifications", data.notifications);
             setValue("startMinimized", data.startMinimized);

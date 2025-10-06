@@ -1,0 +1,60 @@
+{
+  "rules": {
+    "react/react-in-jsx-scope": "off",
+    "react/jsx-uses-react": "off",    
+    "@typescript-eslint/no-require-imports": "off",
+    "no-unused-vars": ["warn", { "argsIgnorePattern": "^_" }],
+    "react-hooks/exhaustive-deps": "warn",
+    "no-empty-pattern": "off",
+    "oxc/no-var": "warn",
+    "oxc/prefer-const": "warn",
+    "oxc/no-duplicate-imports": "warn",
+    "oxc/no-useless-return": "warn",
+    "oxc/no-useless-concat": "warn",
+    "oxc/no-useless-template": "warn",
+    "oxc/no-useless-escape": "warn",
+    "oxc/no-useless-rename": "warn",
+    "oxc/no-useless-spread": "warn",
+    "oxc/no-useless-undefined": "warn",
+    "oxc/no-useless-void": "warn",
+    "oxc/no-useless-await": "warn",
+    "oxc/no-useless-catch": "warn",
+    "oxc/no-useless-constructor": "warn",
+    "oxc/no-useless-empty-export": "warn",
+    "oxc/no-useless-fallback-in-spread": "warn",
+    "oxc/no-useless-fragment": "warn",
+    "oxc/no-useless-label": "warn",
+    "oxc/no-useless-literal": "warn",
+    "oxc/no-useless-optional-chain": "warn",
+    "oxc/no-useless-parameter-properties": "warn",
+    "oxc/no-useless-path-segments": "warn",
+    "oxc/no-useless-promise-resolve-reject": "warn",
+    "oxc/no-useless-this-alias": "warn",
+    "oxc/no-useless-type-assertion": "warn",
+    "oxc/no-useless-type-constraint": "warn",
+    "oxc/no-useless-type-parameters": "warn"
+  },
+  
+  "ignorePatterns": [
+    "**/dist/*",
+    "*.js",
+    "cli/*",
+    "dist-electron/*",
+    "**/node_modules/*",
+    "release/*"
+  ],
+  
+  "env": {
+    "browser": true,
+    "node": true,
+    "es2022": true
+  },
+  
+  "parserOptions": {
+    "ecmaVersion": "latest",
+    "sourceType": "module",
+    "ecmaFeatures": {
+      "jsx": true
+    }
+  }
+}

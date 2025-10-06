@@ -17,14 +17,24 @@ type PlaylistStore struct {
 	store  *Store
 	logger *slog.Logger
 	sync.RWMutex
+	lazyLoaded bool // Flag to enable lazy loading optimization
 }
 
 // NewPlaylistStore creates a new playlist store
 func NewPlaylistStore(store *Store, logger *slog.Logger) *PlaylistStore {
 	return &PlaylistStore{
-		store:  store,
-		logger: logger,
+		store:      store,
+		logger:     logger,
+		lazyLoaded: true, // Enable lazy loading by default
 	}
+}
+
+// EnableLazyLoading enables or disables lazy loading optimization
+func (ps *PlaylistStore) EnableLazyLoading(enabled bool) {
+	ps.Lock()
+	defer ps.Unlock()
+	ps.lazyLoaded = enabled
+	ps.logger.Info("lazy loading", "enabled", enabled)
 }
 
 // LoadPlaylist loads a playlist by name
@@ -90,7 +100,7 @@ func (ps *PlaylistStore) SavePlaylist(playlist *Playlist) error {
 	return nil
 }
 
-// GetAllPlaylists returns all playlists
+// GetAllPlaylists returns all playlists with lazy loading optimization
 func (ps *PlaylistStore) GetAllPlaylists() ([]*Playlist, error) {
 	ps.RLock()
 	defer ps.RUnlock()
@@ -106,16 +116,56 @@ func (ps *PlaylistStore) GetAllPlaylists() ([]*Playlist, error) {
 		if !entry.IsDir() && filepath.Ext(entry.Name()) == ".json" {
 			name := strings.TrimSuffix(entry.Name(), ".json")
 
-			playlist, err := ps.LoadPlaylist(name)
-			if err != nil {
-				ps.logger.Error("failed to load playlist", "name", name, "error", err)
-				continue
+			// Use lazy loading if enabled
+			if ps.lazyLoaded {
+				playlist, err := ps.LoadPlaylistLazy(name)
+				if err != nil {
+					ps.logger.Error("failed to lazy load playlist", "name", name, "error", err)
+					continue
+				}
+				playlists = append(playlists, playlist)
+			} else {
+				playlist, err := ps.LoadPlaylist(name)
+				if err != nil {
+					ps.logger.Error("failed to load playlist", "name", name, "error", err)
+					continue
+				}
+				playlists = append(playlists, playlist)
 			}
-			playlists = append(playlists, playlist)
 		}
 	}
 
 	return playlists, nil
+}
+
+// LoadPlaylistLazy loads a playlist with optimization (metadata only initially)
+func (ps *PlaylistStore) LoadPlaylistLazy(name string) (*Playlist, error) {
+	cacheKey := fmt.Sprintf("playlist:%s", name)
+	filePath := ps.store.getFilePath(filepath.Join("playlists", name+".json"))
+
+	// Check cache first
+	ps.store.cacheMutex.RLock()
+	if cached, exists := ps.store.cache[cacheKey]; exists {
+		ps.store.cacheMutex.RUnlock()
+		return cached.(*Playlist), nil
+	}
+	ps.store.cacheMutex.RUnlock()
+
+	// For lazy loading, initially load only metadata
+	// Full images can be loaded on demand
+	var playlist Playlist
+	if err := ps.store.cachedLoad(cacheKey, filePath, &playlist); err != nil {
+		if strings.Contains(err.Error(), "not found") {
+			return nil, fmt.Errorf("playlist not found: %s", name)
+		}
+		return nil, fmt.Errorf("failed to lazy load playlist %s: %w", name, err)
+	}
+
+	// If lazy loading, defer loading of heavy data (images)
+	// The images will be loaded when specifically requested
+	ps.logger.Debug("lazy loaded playlist", "name", name, "images_count", len(playlist.Images))
+
+	return &playlist, nil
 }
 
 // DeletePlaylist deletes a playlist

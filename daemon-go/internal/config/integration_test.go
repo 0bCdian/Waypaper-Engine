@@ -167,8 +167,8 @@ type = "swww"
 			}
 
 			// Verify transition duration
-			if tt.expectedDuration > 0 && backendConfig.TransitionDuration != tt.expectedDuration {
-				t.Errorf("Expected transition duration %d, got %d", tt.expectedDuration, backendConfig.TransitionDuration)
+			if tt.expectedDuration > 0 && int(backendConfig.TransitionDuration) != tt.expectedDuration {
+				t.Errorf("Expected transition duration %d, got %d", tt.expectedDuration, int(backendConfig.TransitionDuration))
 			}
 
 			// Verify transition type
@@ -490,7 +490,7 @@ transition_pos = "center"
 				}
 
 				if backendConfig.TransitionDuration != 1000 {
-					t.Errorf("Expected TransitionDuration to be 1000, got %d", backendConfig.TransitionDuration)
+					t.Errorf("Expected TransitionDuration to be 1000, got %g", backendConfig.TransitionDuration)
 				}
 				if backendConfig.ResizeType != "crop" {
 					t.Errorf("Expected ResizeType to be 'crop', got %s", backendConfig.ResizeType)
@@ -632,7 +632,7 @@ transition_wave = "0.5,0.5,0,0"
 		t.Errorf("Expected backend 'swww' (from playlist), got %s", backendConfig.BackendType)
 	}
 	if backendConfig.TransitionDuration != 500 {
-		t.Errorf("Expected transition duration 500 (from playlist), got %d", backendConfig.TransitionDuration)
+		t.Errorf("Expected transition duration 500 (from playlist), got %g", backendConfig.TransitionDuration)
 	}
 	if backendConfig.TransitionType != "fade" {
 		t.Errorf("Expected transition type 'fade' (from playlist), got %s", backendConfig.TransitionType)
@@ -662,7 +662,7 @@ transition_wave = "0.5,0.5,0,0"
 		t.Errorf("Expected default backend 'feh' (from env), got %s", defaultBackendConfig.BackendType)
 	}
 	if defaultBackendConfig.TransitionDuration != 200 {
-		t.Errorf("Expected default transition duration 200 (from env), got %d", defaultBackendConfig.TransitionDuration)
+		t.Errorf("Expected default transition duration 200 (from env), got %g", defaultBackendConfig.TransitionDuration)
 	}
 	if defaultBackendConfig.TransitionType != "slide" {
 		t.Errorf("Expected default transition type 'slide' (from env), got %s", defaultBackendConfig.TransitionType)
@@ -685,7 +685,7 @@ func TestBackendDefaults(t *testing.T) {
 			expectedBackend: "swww",
 			validateFunc: func(t *testing.T, config *backend.BackendConfig) {
 				if config.TransitionDuration != 200 {
-					t.Errorf("Expected default transition duration 200, got %d", config.TransitionDuration)
+					t.Errorf("Expected default transition duration 200, got %g", config.TransitionDuration)
 				}
 				if config.TransitionType != "simple" {
 					t.Errorf("Expected default transition type 'simple', got %s", config.TransitionType)
@@ -752,7 +752,7 @@ func TestBackendDefaults(t *testing.T) {
 			validateFunc: func(t *testing.T, config *backend.BackendConfig) {
 				// Should fall back to image defaults
 				if config.TransitionDuration != 200 {
-					t.Errorf("Expected fallback transition duration 200, got %d", config.TransitionDuration)
+					t.Errorf("Expected fallback transition duration 200, got %g", config.TransitionDuration)
 				}
 			},
 		},
@@ -1019,8 +1019,7 @@ func TestMissingConfigurationHandling(t *testing.T) {
 		t.Fatalf("Expected no error with default config, got %v", err)
 	}
 
-	// Should use backend defaults
 	if backendConfig.TransitionDuration != 200 {
-		t.Errorf("Expected default transition duration 200, got %d", backendConfig.TransitionDuration)
+		t.Errorf("Expected default transition duration 200, got %g", backendConfig.TransitionDuration)
 	}
 }

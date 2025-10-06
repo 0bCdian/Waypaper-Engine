@@ -12,9 +12,9 @@ export function useFilteredImages() {
     const selectAllImages = useCallback(() => {
         const selectedImages = new Set<number>();
         for (let index = 0; index < filteredImages.length; index++) {
-            filteredImages[index].isSelected =
-                !filteredImages[index].isSelected;
-            if (filteredImages[index].isSelected) {
+            filteredImages[index].selection.isSelected =
+                !filteredImages[index].selection.isSelected;
+            if (filteredImages[index].selection.isSelected) {
                 selectedImages.add(filteredImages[index].id);
             }
         }
@@ -22,7 +22,7 @@ export function useFilteredImages() {
     }, [filteredImages]);
     const clearSelection = useCallback(() => {
         for (let index = 0; index < filteredImages.length; index++) {
-            filteredImages[index].isSelected = false;
+            filteredImages[index].selection.isSelected = false;
         }
         setSelectedImages(new Set<number>());
     }, [filteredImages]);
@@ -56,18 +56,18 @@ export function useFilteredImages() {
                       switch (filters.advancedFilters.resolution.constraint) {
                           case "exact":
                               return (
-                                  image.width === widthToFilter &&
-                                  image.height === heightToFilter
+                                  image.dimensions.width === widthToFilter &&
+                                  image.dimensions.height === heightToFilter
                               );
                           case "lessThan":
                               return (
-                                  image.width <= widthToFilter &&
-                                  image.height <= heightToFilter
+                                  image.dimensions.width <= widthToFilter &&
+                                  image.dimensions.height <= heightToFilter
                               );
                           case "moreThan":
                               return (
-                                  image.width >= widthToFilter &&
-                                  image.height >= heightToFilter
+                                  image.dimensions.width >= widthToFilter &&
+                                  image.dimensions.height >= heightToFilter
                               );
                       }
                       return undefined;
@@ -80,7 +80,7 @@ export function useFilteredImages() {
                 ? imagesfilteredByResolution
                 : imagesfilteredByResolution.filter(images => {
                       return filters.advancedFilters.formats.includes(
-                          images.format
+                          images.metadata.format as any
                       );
                   });
         }

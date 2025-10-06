@@ -30,7 +30,6 @@ const initialFilters: Filters = {
 interface State {
     imagesArray: rendererImage[];
     imagesMap: Map<number, rendererImage>;
-    skeletonsToShow: imagesObject | undefined;
     filteredImages: rendererImage[];
     isEmpty: boolean;
     isQueried: boolean;
@@ -40,10 +39,8 @@ interface State {
     addImage: (newImage: rendererImage) => void;
     setFilters: (newFilters: Filters) => void;
     getFilters: () => Filters;
-    setSkeletons: (skeletons: imagesObject | undefined) => void;
     setFilteredImages: (filteredImages: rendererImage[]) => void;
     setSelectedImages: (newSelectedImages: Set<number>) => void;
-    clearSkeletons: () => void;
     removeImagesFromStore: (images: rendererImage[]) => void;
     reQueryImages: () => void;
     addToSelectedImages: (imageSelected: rendererImage) => void;
@@ -59,7 +56,6 @@ interface State {
 export const imagesStore = create<State>()((set, get) => ({
     imagesArray: [] as rendererImage[],
     imagesMap: new Map<number, rendererImage>(),
-    skeletonsToShow: undefined,
     filteredImages: [] as rendererImage[],
     isEmpty: true,
     isQueried: false,
@@ -104,36 +100,31 @@ export const imagesStore = create<State>()((set, get) => ({
         }));
     },
     addImage: newImage => {
+        console.log("🟣 ImagesStore.addImage: Called with image:", newImage.name, "ID:", newImage.id);
         const filters = get().filters;
+        const currentArray = get().imagesArray;
+        console.log("🟣 ImagesStore.addImage: Current array length:", currentArray.length);
+        
         let newImagesArray: rendererImage[] = [];
         if (filters.order === "desc") {
-            newImagesArray = [newImage, ...get().imagesArray];
+            newImagesArray = [newImage, ...currentArray];
+            console.log("🟣 ImagesStore.addImage: Adding to beginning (desc order)");
         } else {
-            newImagesArray = [...get().imagesArray, newImage];
+            newImagesArray = [...currentArray, newImage];
+            console.log("🟣 ImagesStore.addImage: Adding to end (asc order)");
         }
+        
         const oldImagesMap = get().imagesMap;
         oldImagesMap.set(newImage.id, newImage);
+        console.log("🟣 ImagesStore.addImage: New array length:", newImagesArray.length, "Map size:", oldImagesMap.size);
+        
         set(() => ({
             imagesArray: newImagesArray,
             imagesMap: new Map(oldImagesMap),
             isEmpty: false
         }));
-    },
-    setSkeletons: skeletons => {
-        console.log("🟣 ImagesStore: setSkeletons called with:", skeletons);
-        if (skeletons) {
-            console.log("🟣 ImagesStore: Setting", skeletons.fileNames.length, "skeletons");
-        }
-        set(() => ({ skeletonsToShow: skeletons, isEmpty: false }));
-    },
-    clearSkeletons: () => {
-        console.log("🟣 ImagesStore: clearSkeletons called");
-        set(() => ({ skeletonsToShow: undefined }));
-        // Check if skeletons were actually cleared
-        setTimeout(() => {
-            const currentState = get();
-            console.log("🟣 ImagesStore: After clearSkeletons, skeletonsToShow:", currentState.skeletonsToShow);
-        }, 100);
+        
+        console.log("🟣 ImagesStore.addImage: State updated successfully");
     },
     removeImagesFromStore: images => {
         set(state => {
@@ -180,6 +171,17 @@ export const imagesStore = create<State>()((set, get) => ({
                 if (!image.name) {
                     console.error("🔴 ImagesStore: Image has no name!", image);
                 }
+                
+                // Ensure image has selection property with default values
+                if (!image.selection) {
+                    image.selection = {
+                        isChecked: false,
+                        isSelected: false,
+                        selectedAt: undefined,
+                        selectedPlaylists: []
+                    };
+                }
+                
                 newImagesMap.set(image.id, image);
             });
             set(() => ({

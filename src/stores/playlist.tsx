@@ -84,7 +84,7 @@ export const playlistStore = create<State & Actions>()((set, get) => ({
                 initialTimeStamp++;
             }
             Images[current].time = initialTimeStamp;
-            Images[current].isChecked = true;
+            Images[current].selection.isChecked = true;
             playlistImagesSet.add(Images[current].id);
             playlistImagesTimeSet.add(initialTimeStamp);
             imagesToAdd.push(Images[current]);
@@ -100,7 +100,7 @@ export const playlistStore = create<State & Actions>()((set, get) => ({
                 isEmpty: false,
                 playlistImagesSet: new Set(playlistImagesSet),
                 playlistImagesTimeSet: new Set(playlistImagesTimeSet),
-                lastAddedImageID: newPlaylist.images.at(-1)?.id
+                lastAddedImageID: newPlaylist.images.at(-1)?.id || -1
             };
         });
     },

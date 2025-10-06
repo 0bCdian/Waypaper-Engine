@@ -11,7 +11,7 @@ import (
 )
 
 const (
-	SocketPath = "/tmp/waypaper_engine.sock"
+	SocketPath = "/tmp/waypaper-engine.sock"
 )
 
 // Server is the IPC server.
@@ -84,7 +84,7 @@ func (s *Server) BroadcastEvent(event *Event) {
 	}
 
 	for conn := range s.clients {
-		if _, err := conn.Write(eventBytes); err != nil {
+		if _, err := conn.Write(append(eventBytes, '\n')); err != nil {
 			s.logger.Error("failed to send event to client", "error", err)
 			// Remove the client from the map
 			delete(s.clients, conn)
@@ -125,7 +125,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 			continue
 		}
 
-		if _, err := conn.Write(respBytes); err != nil {
+		if _, err := conn.Write(append(respBytes, '\n')); err != nil {
 			s.logger.Error("failed to write response", "error", err)
 			continue
 		}

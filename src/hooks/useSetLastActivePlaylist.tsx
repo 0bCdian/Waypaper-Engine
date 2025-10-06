@@ -7,6 +7,7 @@ import {
 import { imagesStore } from "../stores/images";
 import { PLAYLIST_TYPES } from "../../shared/types/playlist";
 import { useEffect } from "react";
+import { type DaemonPlaylistImage } from "../../shared/types/daemonEvents";
 const { goDaemon } = window.API_RENDERER;
 export function useSetLastActivePlaylist() {
     const { setPlaylist, playlist } = playlistStore();
@@ -28,7 +29,7 @@ export function useSetLastActivePlaylist() {
                 return;
             }
             const imagesToStorePlaylist: rendererImage[] = [];
-            playlistFromDB.images.forEach(imageInActivePlaylist => {
+            playlistFromDB.images.forEach((imageInActivePlaylist: DaemonPlaylistImage) => {
                 const imageToCheck = imagesArray.find(imageInGallery => {
                     return imageInGallery.name === imageInActivePlaylist.name;
                 });
@@ -37,11 +38,11 @@ export function useSetLastActivePlaylist() {
                 }
                 if (
                     playlistFromDB.type === PLAYLIST_TYPES.TIME_OF_DAY &&
-                    imageInActivePlaylist.time !== null
+                    imageInActivePlaylist.time !== undefined
                 ) {
                     imageToCheck.time = imageInActivePlaylist.time;
                 }
-                imageToCheck.isChecked = true;
+                imageToCheck.selection.isChecked = true;
                 imagesToStorePlaylist.push(imageToCheck);
             });
             const currentPlaylist: rendererPlaylist = {

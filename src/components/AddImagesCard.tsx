@@ -1,20 +1,13 @@
 import SvgComponent from "./addImagesIcon";
 import SvgComponentFolder from "./AddFoldersIcon";
 import openImagesStore from "../hooks/useOpenImages";
-import { playlistStore } from "../stores/playlist";
-import { imagesStore } from "../stores/images";
 import { type openFileAction } from "../../shared/types";
 import { useCallback } from "react";
 
 function AddImagesCard() {
     const { openImages, isActive } = openImagesStore();
-    const { setSkeletons, addImages } = imagesStore();
-    const { addImagesToPlaylist } = playlistStore();
     const handleClickAddImages = useCallback((action: openFileAction) => {
         void openImages({
-            setSkeletons,
-            addImages,
-            addImagesToPlaylist,
             action
         });
     }, []);

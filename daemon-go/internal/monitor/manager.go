@@ -15,7 +15,6 @@ import (
 	"time"
 
 	"waypaper-engine/daemon-go/internal/backend"
-	"waypaper-engine/daemon-go/internal/db"
 	"waypaper-engine/daemon-go/internal/models"
 )
 
@@ -30,7 +29,6 @@ type Manager struct {
 	activeMonitor  *models.ActiveMonitor
 	mutex          sync.RWMutex
 	logger         *slog.Logger
-	db             *db.Queries
 
 	// Monitor change detection
 	lastKnownMonitors map[string]*models.Monitor
@@ -43,13 +41,12 @@ type Manager struct {
 }
 
 // NewManager creates a new monitor manager
-func NewManager(backendManager *backend.BackendManager, db *db.Queries, logger *slog.Logger) *Manager {
+func NewManager(backendManager *backend.BackendManager, logger *slog.Logger) *Manager {
 	return &Manager{
 		backendManager:    backendManager,
 		monitors:          make(map[string]*models.Monitor),
 		lastKnownMonitors: make(map[string]*models.Monitor),
 		logger:            logger,
-		db:                db,
 	}
 }
 
@@ -159,37 +156,15 @@ func (m *Manager) GetActiveMonitor() *models.ActiveMonitor {
 	return &activeMonitorCopy
 }
 
-// loadActiveMonitorFromDB loads the active monitor configuration from the database
+// loadActiveMonitorFromDB is deprecated - we only use JSON store now
 func (m *Manager) loadActiveMonitorFromDB() error {
-	// Skip database loading if using JSON store mode
-	if m.db == nil {
-		m.logger.Info("Using JSON store mode, skipping database monitor loading")
-		return nil
-	}
+	// Database mode removed - using JSON store/file persistence only
+	return nil
+}
 
-	ctx := context.Background()
-
-	// Try to get the selected monitor from database
-	monitorConfig, err := m.db.GetSelectedMonitor(ctx)
-	if err != nil {
-		// No active monitor configured yet - this is normal on first run
-		return nil
-	}
-
-	// Deserialize the active monitor configuration
-	var activeMonitor models.ActiveMonitor
-	err = json.Unmarshal([]byte(monitorConfig), &activeMonitor)
-	if err != nil {
-		return fmt.Errorf("failed to deserialize active monitor config: %w", err)
-	}
-
-	// Set the active monitor in memory
-	m.activeMonitor = &activeMonitor
-	m.logger.Info("Loaded active monitor configuration from database",
-		"name", activeMonitor.Name,
-		"monitors", len(activeMonitor.Monitors),
-		"extend", activeMonitor.ExtendAcrossMonitors)
-
+// saveActiveMonitorToDB is deprecated - we only use JSON store now
+func (m *Manager) saveActiveMonitorToDB() error {
+	// Database mode removed - using JSON store/file persistence only
 	return nil
 }
 
@@ -197,23 +172,6 @@ func (m *Manager) loadActiveMonitorFromDB() error {
 func (m *Manager) SetActiveMonitor(activeMonitor *models.ActiveMonitor) error {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
-
-	// Serialize the active monitor configuration to JSON
-	configJSON, err := json.Marshal(activeMonitor)
-	if err != nil {
-		return fmt.Errorf("failed to serialize active monitor config: %w", err)
-	}
-
-	// Store in database (skip if using JSON store mode)
-	if m.db != nil {
-		ctx := context.Background()
-		err = m.db.SetSelectedMonitor(ctx, string(configJSON))
-		if err != nil {
-			return fmt.Errorf("failed to persist active monitor config: %w", err)
-		}
-	} else {
-		m.logger.Info("Using JSON store mode, skipping database monitor persistence")
-	}
 
 	// Update in-memory state
 	m.activeMonitor = activeMonitor
@@ -501,6 +459,11 @@ func (m *Manager) persistMonitorState() error {
 	return nil
 }
 
+// LoadMonitorState loads the monitor state from the JSON file (public method)
+func (m *Manager) LoadMonitorState() error {
+	return m.loadMonitorStateFromFile()
+}
+
 // loadMonitorStateFromFile loads the monitor state from the JSON file
 func (m *Manager) loadMonitorStateFromFile() error {
 	homeDir, err := os.UserHomeDir()
@@ -543,6 +506,63 @@ func (m *Manager) loadMonitorStateFromFile() error {
 	}
 
 	m.logger.Info("Monitor state loaded from file", "file", monitorsFile)
+	return nil
+}
+
+// RestoreLastWallpapers restores the last wallpaper for each monitor
+// This should be called on daemon startup after monitor state is loaded
+func (m *Manager) RestoreLastWallpapers(ctx context.Context, imagesDir string) error {
+	m.mutex.RLock()
+	defer m.mutex.RUnlock()
+
+	// Check if we have any monitors with saved images
+	hasImages := false
+	for _, monitor := range m.monitors {
+		if monitor.CurrentImage != "" {
+			hasImages = true
+			break
+		}
+	}
+
+	if !hasImages {
+		m.logger.Info("No saved wallpapers to restore")
+		return nil
+	}
+
+	// Restore wallpaper for each monitor
+	for _, monitor := range m.monitors {
+		if monitor.CurrentImage == "" {
+			m.logger.Debug("Skipping monitor with no saved wallpaper", "monitor", monitor.Name)
+			continue
+		}
+
+		// Construct the full image path
+		imagePath := filepath.Join(imagesDir, monitor.CurrentImage)
+
+		// Check if the image file still exists
+		if _, err := os.Stat(imagePath); os.IsNotExist(err) {
+			m.logger.Warn("Saved wallpaper image not found, skipping restoration",
+				"monitor", monitor.Name,
+				"image", monitor.CurrentImage,
+				"path", imagePath)
+			continue
+		}
+
+		// Restore the wallpaper using the backend
+		err := m.backendManager.SetWallpaper(ctx, imagePath, monitor.Name)
+		if err != nil {
+			m.logger.Error("Failed to restore wallpaper for monitor",
+				"monitor", monitor.Name,
+				"image", monitor.CurrentImage,
+				"error", err)
+			continue
+		}
+
+		m.logger.Info("Restored wallpaper for monitor",
+			"monitor", monitor.Name,
+			"image", monitor.CurrentImage)
+	}
+
 	return nil
 }
 

@@ -6,10 +6,12 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log/slog"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -71,7 +73,8 @@ func main() {
 	// Handle migration mode
 	if *migrate {
 		mustForce := *forceMig || *dryRun // Skip marker check for dry-run or forced runs
-		if err := runMigration(log, *sqlitePath, *jsonPath, *tomlPath, *dryRun, *forceMig, !*noBackup, mustForce); err != nil {
+		devEnv := os.Getenv("DEV")
+		if err := runMigration(log, *sqlitePath, *jsonPath, *tomlPath, *dryRun, *forceMig, !*noBackup, mustForce, devEnv == "true"); err != nil {
 			log.Error("Migration failed", "error", err)
 			os.Exit(1)
 		}
@@ -119,19 +122,44 @@ func main() {
 
 	log.Info("Configuration loaded successfully", "databasePath", cfg.Daemon.DatabasePath)
 
-	// Check for and run migration if needed (non-blocking)
-	go func() {
-		if err := checkAndRunMigration(log, homeDir, devEnv == "true"); err != nil {
+	// Check for and run migration if needed
+	// Only run migration in development mode if explicitly requested via --migrate flag
+	// In production, migration should be run manually
+	if devEnv == "true" {
+		// In development mode, check if migration is needed
+		if err := checkAndRunMigration(log, homeDir, true); err != nil {
 			log.Error("Migration check failed", "error", err)
-			// Don't exit the daemon for migration failures
+			// Don't exit the daemon for migration failures in dev mode
 		}
-	}()
+	}
 
 	// Initialize daemon lock
-	lockManager := system.NewLockManager(
-		filepath.Join(homeDir, ".waypaper-engine", "daemon.lock"),
-		filepath.Join(homeDir, ".waypaper-engine", "daemon.pid"),
-	)
+	var lockFile, pidFile string
+	if devEnv == "true" {
+		// Development mode: use /tmp paths
+		lockFile = "/tmp/waypaper-daemon.lock"
+		pidFile = "/tmp/waypaper-daemon.pid"
+	} else {
+		// Production mode: use user directory
+		lockFile = filepath.Join(homeDir, ".waypaper-engine", "daemon.lock")
+		pidFile = filepath.Join(homeDir, ".waypaper-engine", "daemon.pid")
+	}
+	lockManager := system.NewLockManager(lockFile, pidFile)
+
+	// Clean up any stale lock files from previous crashes
+	log.Info("checking for stale lock files")
+	if lockInfo, err := lockManager.GetLockInfo(); err == nil {
+		// Check if the PID is still running
+		if !isProcessRunning(lockInfo.PID) {
+			log.Warn("found stale lock file, cleaning up", "pid", lockInfo.PID)
+			if err := lockManager.ReleaseLock(); err != nil {
+				log.Error("failed to clean up stale lock", "error", err)
+			}
+		} else {
+			log.Error("daemon is already running", "pid", lockInfo.PID)
+			os.Exit(1)
+		}
+	}
 
 	// Try to acquire lock
 	if err := lockManager.AcquireLock("1.0.0", cfg.Daemon.SocketPath); err != nil {
@@ -139,38 +167,6 @@ func main() {
 		os.Exit(1)
 	}
 	defer lockManager.ReleaseLock()
-
-	// Initialize database using config (only if not using JSON store)
-	dbPath := cfg.Daemon.DatabasePath
-	var dbManager *db.DatabaseManager
-	
-	// Check if we should use SQLite (only if JSON store doesn't exist)
-	jsonStorePath := cfg.Daemon.DatabasePath
-	if _, err := os.Stat(jsonStorePath); os.IsNotExist(err) {
-		// JSON store doesn't exist, use SQLite
-		log.Info("Using SQLite database", "path", dbPath)
-		
-		// Ensure database directory exists
-		dbDir := filepath.Dir(dbPath)
-		if err := os.MkdirAll(dbDir, 0755); err != nil {
-			log.Error("failed to create database directory", "error", err, "path", dbDir)
-			os.Exit(1)
-		}
-
-		dbManager, err = db.NewDatabaseManager(dbPath, db.DefaultPoolConfig())
-		if err != nil {
-			log.Error("failed to initialize database", "error", err)
-			os.Exit(1)
-		}
-		defer dbManager.Close()
-
-		if err := dbManager.Initialize(context.Background()); err != nil {
-			log.Error("failed to run migrations", "error", err)
-			os.Exit(1)
-		}
-	} else {
-		log.Info("JSON store detected, skipping SQLite initialization", "path", jsonStorePath)
-	}
 
 	// Initialize backend system
 	backendFactory := backend.NewBackendFactory(&backend.SwwwCommandRunner{}, log)
@@ -204,59 +200,41 @@ func main() {
 
 	log.Info("using backend", "type", backendType)
 
-	// Initialize components
-	var dbOps *db.DatabaseOperations
-	var dbQueries *db.Queries
-	
-	if dbManager != nil {
-		dbOps = db.NewDatabaseOperations(dbManager)
-		dbQueries = dbManager.GetQueries()
-	} else {
-		log.Info("Using JSON store mode, database operations will be handled by store")
-	}
-	
-	monitorManager := monitor.NewManager(backendManager, dbQueries, log)
-	playlistManager := playlist.NewManager(dbOps, backendManager, log)
-
-	// Initialize JSON store for image path validation
-	var jsonStore *store.Store
-	
-	// Use the same path resolution logic as migration (jsonStorePath already declared above)
+	// Initialize JSON store
+	var jsonStorePath string
 	if devEnv == "true" {
 		jsonStorePath = "/tmp/waypaper-engine/data"
 	} else {
 		jsonStorePath = filepath.Join(homeDir, ".waypaper-engine", "data")
 	}
-	
-	if _, err := os.Stat(jsonStorePath); err == nil {
-		// JSON store exists, initialize it
-		storeConfig := store.DefaultStoreConfig()
-		storeConfig.BasePath = jsonStorePath
-		storeConfig.ThumbnailsDir = cfg.Daemon.ThumbnailsDir
-		jsonStore, err = store.NewStore(storeConfig, log)
-		if err != nil {
-			log.Warn("Failed to initialize JSON store, continuing without path validation", "error", err)
-		} else {
-			log.Info("JSON store initialized for path validation", "path", jsonStorePath)
-			// Validate image paths at startup
-			if err := validateImagePaths(jsonStore, log); err != nil {
-				log.Warn("Image path validation failed, continuing anyway", "error", err)
-			}
-		}
-	} else {
-		log.Info("No JSON store found, using SQLite-only mode", "path", jsonStorePath)
+
+	storeConfig := store.DefaultStoreConfig()
+	storeConfig.BasePath = jsonStorePath
+	storeConfig.ThumbnailsDir = cfg.Daemon.ThumbnailsDir
+	jsonStore, err := store.NewStore(storeConfig, log)
+	if err != nil {
+		log.Error("failed to initialize JSON store", "error", err)
+		os.Exit(1)
+	}
+	log.Info("JSON store initialized", "path", jsonStorePath)
+
+	// Validate image paths at startup
+	if err := validateImagePaths(jsonStore, log); err != nil {
+		log.Warn("Image path validation failed, continuing anyway", "error", err)
 	}
 
-	// Set configurable history limit
+	// Initialize components
+	monitorManager := monitor.NewManager(backendManager, log)
+	playlistManager := playlist.NewManager(jsonStore, backendManager, log, cfg)
 	playlistManager.SetHistoryLimit(cfg.App.ImageHistoryLimit)
-
 	imageProcessor := image.NewProcessor(4, 100, log) // 4 workers, 100 cache size
-	ipcHandler := ipc.NewHandler(playlistManager, dbOps, dbQueries, configManager, imageProcessor, monitorManager, log)
-	
-	// Set JSON store in IPC handler if available
-	if jsonStore != nil {
-		ipcHandler.SetStore(jsonStore)
-	}
+
+	// Set up signal handler for cleanup
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
+
+	// Create IPC handler with shutdown channel
+	ipcHandler := ipc.NewHandler(playlistManager, nil, nil, configManager, imageProcessor, monitorManager, log)
 	ipcServer, err := ipc.NewServer(ipcHandler, log)
 	if err != nil {
 		log.Error("failed to create IPC server", "error", err)
@@ -290,9 +268,21 @@ func main() {
 
 	log.Info("all components started")
 
-	// Handle signals for graceful shutdown
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
+	// Start cleanup handler in background
+	go func() {
+		for sig := range sigChan {
+			log.Info("received signal, initiating cleanup", "signal", sig)
+			// Ensure lock is released even if main goroutine is blocked
+			if err := lockManager.ReleaseLock(); err != nil {
+				log.Error("error releasing lock during signal handler", "error", err)
+			} else {
+				log.Info("lock released by signal handler")
+			}
+			break
+		}
+	}()
+
+	// Wait for first signal
 	<-sigChan
 
 	log.Info("shutting down daemon gracefully")
@@ -307,7 +297,7 @@ func main() {
 	}()
 
 	// Perform graceful shutdown
-	if err := gracefulShutdown(shutdownCtx, playlistManager, monitorManager, backendManager, log); err != nil {
+	if err := gracefulShutdown(shutdownCtx, playlistManager, monitorManager, backendManager, lockManager, log); err != nil {
 		log.Error("graceful shutdown error", "error", err)
 	} else {
 		log.Info("graceful shutdown completed")
@@ -315,13 +305,26 @@ func main() {
 }
 
 // gracefulShutdown performs graceful shutdown of all components
-func gracefulShutdown(ctx context.Context, playlistManager *playlist.Manager, monitorManager *monitor.Manager, backendManager *backend.BackendManager, logger *slog.Logger) error {
+// isProcessRunning checks if a process with the given PID is still running
+func isProcessRunning(pid int) bool {
+	process, err := os.FindProcess(pid)
+	if err != nil {
+		return false
+	}
+
+	// Send signal 0 to check if process exists
+	// This doesn't actually send a signal, just checks if the process exists
+	err = process.Signal(syscall.Signal(0))
+	return err == nil
+}
+
+func gracefulShutdown(ctx context.Context, playlistManager *playlist.Manager, monitorManager *monitor.Manager, backendManager *backend.BackendManager, lockManager *system.LockManager, logger *slog.Logger) error {
 	var wg sync.WaitGroup
 	errChan := make(chan error, 5)
 
 	logger.Info("starting graceful shutdown sequence")
 
-	// 1. Stop all active playlists
+	// 1. Stop all playlists
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -361,6 +364,24 @@ func gracefulShutdown(ctx context.Context, playlistManager *playlist.Manager, mo
 				errChan <- err
 			} else {
 				logger.Info("state persisted successfully")
+			}
+		}
+	}()
+
+	// 4. Release daemon lock
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		select {
+		case <-ctx.Done():
+			logger.Info("context cancelled, skipping lock release")
+		default:
+			logger.Info("releasing daemon lock")
+			if err := lockManager.ReleaseLock(); err != nil {
+				logger.Error("error releasing lock", "error", err)
+				errChan <- err
+			} else {
+				logger.Info("daemon lock released successfully")
 			}
 		}
 	}()
@@ -433,7 +454,7 @@ type MigrationOptions struct {
 }
 
 // runMigration handles the migration from SQLite to JSON
-func runMigration(logger *slog.Logger, sqlitePath, jsonPath, tomlPath string, dryRun, force, backup, mustForce bool) error {
+func runMigration(logger *slog.Logger, sqlitePath, jsonPath, tomlPath string, dryRun, force, backup, mustForce, isDev bool) error {
 	homeDir, err := os.UserHomeDir()
 	if err != nil {
 		return fmt.Errorf("failed to get home directory: %w", err)
@@ -444,10 +465,18 @@ func runMigration(logger *slog.Logger, sqlitePath, jsonPath, tomlPath string, dr
 		sqlitePath = filepath.Join(homeDir, ".waypaper_engine", "images_database.sqlite3")
 	}
 	if jsonPath == "" {
-		jsonPath = filepath.Join(homeDir, ".waypaper-engine", "data")
+		if isDev {
+			jsonPath = "/tmp/waypaper-engine/data"
+		} else {
+			jsonPath = filepath.Join(homeDir, ".waypaper-engine", "data")
+		}
 	}
 	if tomlPath == "" {
-		tomlPath = filepath.Join(homeDir, ".config", "waypaper-engine", "config.toml")
+		if isDev {
+			tomlPath = "/tmp/waypaper-engine/config.toml"
+		} else {
+			tomlPath = filepath.Join(homeDir, ".config", "waypaper-engine", "config.toml")
+		}
 	}
 
 	logger.Info("Starting migration",
@@ -515,6 +544,7 @@ func runMigration(logger *slog.Logger, sqlitePath, jsonPath, tomlPath string, dr
 		options:             options,
 		config:              configManager,
 		migrationMarkerPath: migrationMarkerPath,
+		isDev:               isDev,
 	}
 
 	return migrator.RunMigration()
@@ -528,6 +558,7 @@ type MigrationTool struct {
 	options             MigrationOptions
 	config              *config.ConfigManager
 	migrationMarkerPath string
+	isDev               bool
 }
 
 // RunMigration performs the complete migration process
@@ -603,6 +634,7 @@ func (mt *MigrationTool) migrateAllData() error {
 		dryRun:    mt.options.DryRun,
 		tomlPath:  mt.options.TOMLPath,
 		options:   mt.options,
+		isDev:     mt.isDev,
 	}
 
 	// Migrate each component
@@ -697,6 +729,7 @@ type SQLiteToJSONMigrator struct {
 	dryRun    bool
 	tomlPath  string
 	options   MigrationOptions
+	isDev     bool
 }
 
 // migrateSwwwConfigToToml migrates swww configuration from SQLite to TOML
@@ -896,7 +929,8 @@ func (migrator *SQLiteToJSONMigrator) migrateImages() error {
 
 	if len(images) == 0 {
 		migrator.logger.Info("No images found in SQLite database")
-		return nil
+		// Even if no database records, try to copy image files from legacy directory
+		return migrator.copyLegacyImageFiles()
 	}
 
 	// Convert to store format
@@ -919,11 +953,50 @@ func (migrator *SQLiteToJSONMigrator) migrateImages() error {
 
 	for i, img := range images {
 		// Preserve original SQLite ID instead of generating new UUID
-		imageID := fmt.Sprintf("%d", img.ID)
+		imageID := img.ID
 
-		// Construct image path - assuming it's relative to the Node.js images dir
-		imagesPath := filepath.Join(filepath.Dir(migrator.options.SQLitePath), "images")
-		imagePath := filepath.Join(imagesPath, img.Name)
+		// Construct image path - in dev mode, copy to dev images dir
+		var imagePath string
+		if migrator.isDev {
+			// Development mode: copy images to dev directory
+			devImagesDir := filepath.Join(filepath.Dir(migrator.options.JSONPath), "images")
+			if err := os.MkdirAll(devImagesDir, 0755); err != nil {
+				migrator.logger.Error("Failed to create dev images directory", "error", err, "path", devImagesDir)
+				continue
+			}
+
+			// Try to find the original image file
+			var sourceImagePath string
+			legacyImagesDir := filepath.Join(filepath.Dir(migrator.options.SQLitePath), "images")
+			if _, err := os.Stat(filepath.Join(legacyImagesDir, img.Name)); err == nil {
+				sourceImagePath = filepath.Join(legacyImagesDir, img.Name)
+			} else {
+				// Try home directory legacy location
+				homeDir, _ := os.UserHomeDir()
+				homeImagesDir := filepath.Join(homeDir, ".waypaper_engine", "images")
+				if _, err := os.Stat(filepath.Join(homeImagesDir, img.Name)); err == nil {
+					sourceImagePath = filepath.Join(homeImagesDir, img.Name)
+				}
+			}
+
+			if sourceImagePath != "" {
+				// Copy image to dev directory
+				destPath := filepath.Join(devImagesDir, img.Name)
+				if err := copyFile(sourceImagePath, destPath); err != nil {
+					migrator.logger.Error("Failed to copy image to dev directory", "error", err, "source", sourceImagePath, "dest", destPath)
+					continue
+				}
+				imagePath = destPath
+				migrator.logger.Info("Copied image to dev directory", "source", sourceImagePath, "dest", destPath)
+			} else {
+				migrator.logger.Warn("Could not find source image file", "image", img.Name)
+				continue
+			}
+		} else {
+			// Production mode: use original path
+			imagesPath := filepath.Join(filepath.Dir(migrator.options.SQLitePath), "images")
+			imagePath = filepath.Join(imagesPath, img.Name)
+		}
 
 		storeImage := store.Image{
 			ID:        imageID,
@@ -955,18 +1028,19 @@ func (migrator *SQLiteToJSONMigrator) migrateImages() error {
 		imageRegistry.Images[i] = storeImage
 
 		// Update indices
-		imageRegistry.Indices.ByName[img.Name] = imageID
-		imageRegistry.Indices.ByFormat[img.Format] = append(imageRegistry.Indices.ByFormat[img.Format], imageID)
+		imageIDStr := fmt.Sprintf("%d", imageID)
+		imageRegistry.Indices.ByName[img.Name] = imageIDStr
+		imageRegistry.Indices.ByFormat[img.Format] = append(imageRegistry.Indices.ByFormat[img.Format], imageIDStr)
 		dimKey := fmt.Sprintf("%dx%d", img.Width, img.Height)
-		imageRegistry.Indices.ByDimensions[dimKey] = append(imageRegistry.Indices.ByDimensions[dimKey], imageID)
-		imageRegistry.Indices.ByMediaType[media.MediaTypeImage] = append(imageRegistry.Indices.ByMediaType[media.MediaTypeImage], imageID)
+		imageRegistry.Indices.ByDimensions[dimKey] = append(imageRegistry.Indices.ByDimensions[dimKey], imageIDStr)
+		imageRegistry.Indices.ByMediaType[media.MediaTypeImage] = append(imageRegistry.Indices.ByMediaType[media.MediaTypeImage], imageIDStr)
 
 		// Update selection index
 		if img.Ischecked == 1 {
-			imageRegistry.Indices.BySelected["checked"] = append(imageRegistry.Indices.BySelected["checked"], imageID)
+			imageRegistry.Indices.BySelected["checked"] = append(imageRegistry.Indices.BySelected["checked"], imageIDStr)
 		}
 		if img.Isselected == 1 {
-			imageRegistry.Indices.BySelected["selected"] = append(imageRegistry.Indices.BySelected["selected"], imageID)
+			imageRegistry.Indices.BySelected["selected"] = append(imageRegistry.Indices.BySelected["selected"], imageIDStr)
 		}
 	}
 
@@ -980,14 +1054,152 @@ func (migrator *SQLiteToJSONMigrator) migrateImages() error {
 	return nil
 }
 
+// copyLegacyImageFiles copies image files from legacy directory even when no database records exist
+func (migrator *SQLiteToJSONMigrator) copyLegacyImageFiles() error {
+	migrator.logger.Info("Copying legacy image files...")
+
+	// Get home directory
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	// Legacy images directory
+	legacyImagesDir := filepath.Join(homeDir, ".waypaper_engine", "images")
+
+	// Check if legacy directory exists
+	if _, err := os.Stat(legacyImagesDir); os.IsNotExist(err) {
+		migrator.logger.Info("No legacy images directory found", "path", legacyImagesDir)
+		return nil
+	}
+
+	// Read all files in legacy directory
+	files, err := os.ReadDir(legacyImagesDir)
+	if err != nil {
+		return fmt.Errorf("failed to read legacy images directory: %w", err)
+	}
+
+	if len(files) == 0 {
+		migrator.logger.Info("No image files found in legacy directory")
+		return nil
+	}
+
+	// Create destination directory
+	var destImagesDir string
+	if migrator.isDev {
+		destImagesDir = filepath.Join(filepath.Dir(migrator.options.JSONPath), "images")
+	} else {
+		destImagesDir = filepath.Join(homeDir, ".waypaper-engine", "images")
+	}
+
+	if err := os.MkdirAll(destImagesDir, 0755); err != nil {
+		return fmt.Errorf("failed to create destination images directory: %w", err)
+	}
+
+	// Copy each image file
+	var copiedCount int
+	var imageRegistry store.ImageRegistry
+	imageRegistry.Images = make([]store.Image, 0)
+
+	for _, file := range files {
+		if file.IsDir() {
+			continue
+		}
+
+		fileName := file.Name()
+
+		// Skip non-image files
+		if !isImageFile(fileName) {
+			continue
+		}
+
+		sourcePath := filepath.Join(legacyImagesDir, fileName)
+		destPath := filepath.Join(destImagesDir, fileName)
+
+		// Copy file
+		if err := copyFile(sourcePath, destPath); err != nil {
+			migrator.logger.Error("Failed to copy image file", "error", err, "source", sourcePath, "dest", destPath)
+			continue
+		}
+
+		// Create image record
+		imageID := int64(copiedCount + 1) // Simple ID generation
+		image := store.Image{
+			ID:        imageID,
+			Name:      fileName,
+			Path:      destPath,
+			MediaType: "image",
+			Dimensions: store.ImageDimensions{
+				Width:  0, // Will be filled later when image is processed
+				Height: 0,
+			},
+			ImportInfo: store.ImageImportInfo{
+				ImportedAt: time.Now(),
+				Importer:   "legacy_migration",
+			},
+		}
+
+		imageRegistry.Images = append(imageRegistry.Images, image)
+		copiedCount++
+
+		migrator.logger.Info("Copied legacy image file", "source", sourcePath, "dest", destPath)
+	}
+
+	if copiedCount == 0 {
+		migrator.logger.Info("No image files copied from legacy directory")
+		return nil
+	}
+
+	// Save image registry
+	imageStore := store.NewImageStore(migrator.jsonStore)
+	if err := imageStore.SaveImageRegistry(&imageRegistry); err != nil {
+		return fmt.Errorf("failed to save image registry: %w", err)
+	}
+
+	migrator.logger.Info("Successfully copied legacy image files", "count", copiedCount)
+	return nil
+}
+
+// isImageFile checks if a file is an image based on its extension
+func isImageFile(fileName string) bool {
+	ext := strings.ToLower(filepath.Ext(fileName))
+	imageExts := []string{".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg", ".tiff", ".tif"}
+	for _, imgExt := range imageExts {
+		if ext == imgExt {
+			return true
+		}
+	}
+	return false
+}
+
 // migratePlaylists migrates playlists from SQLite to JSON
 func (migrator *SQLiteToJSONMigrator) migratePlaylists() error {
 	migrator.logger.Info("Migrating playlists...")
-	migrator.logger.Warn("Playlist migration is placeholder - need to map SQLite schema to JSON fields")
+	migrator.logger.Warn("Playlist migration placeholder - full implementation requires complex db schema mapping")
+
+	ctx := context.Background()
+	dbManager := migrator.dbOps.GetManager()
+
+	// Get playlist count for reporting
+	var playlistCount int
+	err := dbManager.Transaction(ctx, func(q *db.Queries) error {
+		dbPlaylists, err := q.GetAllPlaylists(ctx)
+		if err != nil {
+			return err
+		}
+		playlistCount = len(dbPlaylists)
+		return nil
+	})
+	if err != nil {
+		migrator.logger.Warn("Failed to count playlists", "error", err)
+		playlistCount = 0
+	}
+
 	if migrator.dryRun {
-		migrator.logger.Info("DRY RUN: Would migrate playlists from SQLite")
+		migrator.logger.Info("DRY RUN: Would migrate playlists from SQLite", "count", playlistCount)
 	} else {
-		migrator.logger.Info("Migrated playlists", "count", "TODO - implement after understanding SQLite schema")
+		migrator.logger.Info("Playlist migration placeholder", "count", playlistCount,
+			"note", "playlist data structure mapping requires additional schema analysis")
 	}
 	return nil
 }
@@ -995,11 +1207,27 @@ func (migrator *SQLiteToJSONMigrator) migratePlaylists() error {
 // migrateImageHistory migrates image history from SQLite to JSON
 func (migrator *SQLiteToJSONMigrator) migrateImageHistory() error {
 	migrator.logger.Info("Migrating image history...")
-	migrator.logger.Warn("Image history migration is placeholder - need to map SQLite schema to JSON fields")
+
+	ctx := context.Background()
+
+	// Get image history count for reporting
+	imageHistory, err := migrator.dbOps.GetImageHistory(ctx, 1000) // Get large sample
+	if err != nil {
+		migrator.logger.Warn("Failed to get image history", "error", err)
+		if migrator.dryRun {
+			migrator.logger.Info("DRY RUN: Would migrate image history from SQLite")
+		} else {
+			migrator.logger.Info("Image history migration placeholder", "count", 0,
+				"note", "image history data structure mapping requires analysis")
+		}
+		return nil
+	}
+
 	if migrator.dryRun {
-		migrator.logger.Info("DRY RUN: Would migrate image history from SQLite")
+		migrator.logger.Info("DRY RUN: Would migrate image history from SQLite", "count", len(imageHistory))
 	} else {
-		migrator.logger.Info("Migrated image history", "count", "TODO - implement after understanding SQLite schema")
+		migrator.logger.Info("Image history migration placeholder", "count", len(imageHistory),
+			"note", "image history persistence and runtime state integration needed")
 	}
 	return nil
 }
@@ -1028,7 +1256,8 @@ func (migrator *SQLiteToJSONMigrator) migrateRuntimeState() error {
 	})
 	if err != nil {
 		migrator.logger.Warn("Failed to get selected monitor", "error", err)
-		return err
+		// This is non-fatal - continue migration without runtime state
+		return nil
 	}
 
 	// Parse the JSON monitor data
@@ -1121,7 +1350,38 @@ func (migrator *SQLiteToJSONMigrator) migrateRuntimeState() error {
 
 func (migrator *SQLiteToJSONMigrator) migrateMonitorState() error {
 	migrator.logger.Info("Migrating monitor state...")
-	migrator.logger.Info("Monitor state migration completed (deferred to runtime state)")
+
+	// Clear monitor state to avoid references to non-existent images
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		return fmt.Errorf("failed to get home directory: %w", err)
+	}
+
+	// Clear old monitor state file
+	oldMonitorStateFile := filepath.Join(homeDir, ".cache", "waypaper_engine", "monitors.json")
+	if _, err := os.Stat(oldMonitorStateFile); err == nil {
+		migrator.logger.Info("Clearing old monitor state file", "file", oldMonitorStateFile)
+		if err := os.Remove(oldMonitorStateFile); err != nil {
+			migrator.logger.Warn("Failed to remove old monitor state file", "error", err)
+		}
+	}
+
+	// Clear new monitor state file if it exists
+	var newMonitorStateFile string
+	if migrator.isDev {
+		newMonitorStateFile = filepath.Join(filepath.Dir(migrator.options.JSONPath), ".cache", "waypaper-engine", "monitors.json")
+	} else {
+		newMonitorStateFile = filepath.Join(homeDir, ".cache", "waypaper-engine", "monitors.json")
+	}
+
+	if _, err := os.Stat(newMonitorStateFile); err == nil {
+		migrator.logger.Info("Clearing new monitor state file", "file", newMonitorStateFile)
+		if err := os.Remove(newMonitorStateFile); err != nil {
+			migrator.logger.Warn("Failed to remove new monitor state file", "error", err)
+		}
+	}
+
+	migrator.logger.Info("Monitor state migration completed - cleared old references")
 	return nil
 }
 
@@ -1136,11 +1396,33 @@ func generateUUID() string {
 	return fmt.Sprintf("%x-%x-%x-%x-%x", b[0:4], b[4:6], b[6:8], b[8:10], b[10:])
 }
 
+// copyFile copies a file from src to dst
+func copyFile(src, dst string) error {
+	sourceFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer sourceFile.Close()
+
+	destFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer destFile.Close()
+
+	_, err = io.Copy(destFile, sourceFile)
+	if err != nil {
+		return err
+	}
+
+	return destFile.Sync()
+}
+
 // checkAndRunMigration checks if migration is needed and runs it automatically
 func checkAndRunMigration(log *slog.Logger, homeDir string, isDev bool) error {
 	// Determine paths based on environment
 	var sqlitePath, jsonPath, tomlPath, migrationMarkerPath string
-	
+
 	if isDev {
 		// Development mode: use /tmp paths
 		tmpDir := "/tmp/waypaper-engine"
@@ -1155,13 +1437,13 @@ func checkAndRunMigration(log *slog.Logger, homeDir string, isDev bool) error {
 		tomlPath = filepath.Join(homeDir, ".config", "waypaper-engine", "config.toml")
 		migrationMarkerPath = filepath.Join(homeDir, ".config", "waypaper-engine", ".migration_completed")
 	}
-	
+
 	// Check if migration marker exists
 	if _, err := os.Stat(migrationMarkerPath); err == nil {
 		log.Info("Migration already completed, skipping", "marker_file", migrationMarkerPath)
 		return nil
 	}
-	
+
 	// Check if JSON store already exists and has data
 	if _, err := os.Stat(jsonPath); err == nil {
 		// Check if JSON store has any data
@@ -1175,42 +1457,59 @@ func checkAndRunMigration(log *slog.Logger, homeDir string, isDev bool) error {
 			}
 		}
 	}
-	
+
 	// Look for SQLite database to migrate from
 	var sourceSQLitePath string
-	
-	// Try production SQLite locations
-	if _, err := os.Stat(sqlitePath); err == nil {
-		sourceSQLitePath = sqlitePath
-		log.Info("Found SQLite database at expected location", "path", sourceSQLitePath)
-	} else {
-		// Try legacy location
+
+	if isDev {
+		// In development mode, always look for production SQLite database
+		// Try legacy location first (most common)
 		legacySQLitePath := filepath.Join(homeDir, ".waypaper_engine", "images_database.sqlite3")
 		if _, err := os.Stat(legacySQLitePath); err == nil {
 			sourceSQLitePath = legacySQLitePath
-			log.Info("Found legacy SQLite database", "path", sourceSQLitePath)
+			log.Info("Found legacy SQLite database for dev migration", "path", sourceSQLitePath)
+		} else {
+			// Try production location
+			prodSQLitePath := filepath.Join(homeDir, ".config", "waypaper-engine", "waypaper.db")
+			if _, err := os.Stat(prodSQLitePath); err == nil {
+				sourceSQLitePath = prodSQLitePath
+				log.Info("Found production SQLite database for dev migration", "path", sourceSQLitePath)
+			}
+		}
+	} else {
+		// In production mode, try expected locations
+		if _, err := os.Stat(sqlitePath); err == nil {
+			sourceSQLitePath = sqlitePath
+			log.Info("Found SQLite database at expected location", "path", sourceSQLitePath)
+		} else {
+			// Try legacy location
+			legacySQLitePath := filepath.Join(homeDir, ".waypaper_engine", "images_database.sqlite3")
+			if _, err := os.Stat(legacySQLitePath); err == nil {
+				sourceSQLitePath = legacySQLitePath
+				log.Info("Found legacy SQLite database", "path", sourceSQLitePath)
+			}
 		}
 	}
-	
+
 	if sourceSQLitePath == "" {
 		log.Info("No SQLite database found, migration not needed")
 		return nil
 	}
-	
-	log.Info("Migration needed", 
+
+	log.Info("Migration needed",
 		"source_sqlite", sourceSQLitePath,
 		"target_json", jsonPath,
 		"target_toml", tomlPath)
-	
+
 	// Run migration
-	if err := runMigration(log, sourceSQLitePath, jsonPath, tomlPath, false, true, true, true); err != nil {
+	if err := runMigration(log, sourceSQLitePath, jsonPath, tomlPath, false, true, true, true, isDev); err != nil {
 		return err
 	}
-	
+
 	// Thumbnail regeneration is now handled on-demand via events
 	// No longer blocking startup for thumbnail creation
 	log.Info("Migration completed - thumbnails will be generated on-demand")
-	
+
 	return nil
 }
 
@@ -1311,21 +1610,21 @@ migration_target=%s
 // validateImagePaths validates all image paths in the JSON store and removes invalid ones
 func validateImagePaths(jsonStore *store.Store, log *slog.Logger) error {
 	log.Info("Starting image path validation...")
-	
+
 	// Load image registry
 	registry, err := jsonStore.LoadImageRegistry()
 	if err != nil {
 		return fmt.Errorf("failed to load image registry: %w", err)
 	}
-	
+
 	if registry == nil {
 		log.Info("No image registry found, skipping validation")
 		return nil
 	}
-	
+
 	var validImages []store.Image
 	var removedCount int
-	
+
 	for _, image := range registry.Images {
 		// Check if file exists
 		if _, err := os.Stat(image.Path); err != nil {
@@ -1333,18 +1632,18 @@ func validateImagePaths(jsonStore *store.Store, log *slog.Logger) error {
 			removedCount++
 			continue
 		}
-		
+
 		validImages = append(validImages, image)
 	}
-	
+
 	if removedCount > 0 {
 		log.Info("Image path validation completed", "valid_images", len(validImages), "removed_images", removedCount)
-		
+
 		// Update registry with only valid images
 		registry.Images = validImages
 		registry.Metadata.TotalImages = len(validImages)
 		registry.Metadata.LastUpdated = time.Now()
-		
+
 		// Rebuild indices
 		registry.Indices = store.ImageRegistryIndices{
 			ByName:       make(map[string]string),
@@ -1354,32 +1653,33 @@ func validateImagePaths(jsonStore *store.Store, log *slog.Logger) error {
 			ByTags:       make(map[string][]string),
 			BySelected:   make(map[string][]string),
 		}
-		
+
 		for _, image := range validImages {
-			registry.Indices.ByName[image.Name] = image.ID
-			registry.Indices.ByFormat[image.Metadata.Format] = append(registry.Indices.ByFormat[image.Metadata.Format], image.ID)
+			imageIDStr := fmt.Sprintf("%d", image.ID)
+			registry.Indices.ByName[image.Name] = imageIDStr
+			registry.Indices.ByFormat[image.Metadata.Format] = append(registry.Indices.ByFormat[image.Metadata.Format], imageIDStr)
 			dimKey := fmt.Sprintf("%dx%d", image.Dimensions.Width, image.Dimensions.Height)
-			registry.Indices.ByDimensions[dimKey] = append(registry.Indices.ByDimensions[dimKey], image.ID)
-			registry.Indices.ByMediaType[image.MediaType] = append(registry.Indices.ByMediaType[image.MediaType], image.ID)
-			
+			registry.Indices.ByDimensions[dimKey] = append(registry.Indices.ByDimensions[dimKey], imageIDStr)
+			registry.Indices.ByMediaType[image.MediaType] = append(registry.Indices.ByMediaType[image.MediaType], imageIDStr)
+
 			if image.Selection.IsChecked {
-				registry.Indices.BySelected["checked"] = append(registry.Indices.BySelected["checked"], image.ID)
+				registry.Indices.BySelected["checked"] = append(registry.Indices.BySelected["checked"], imageIDStr)
 			}
 			if image.Selection.IsSelected {
-				registry.Indices.BySelected["selected"] = append(registry.Indices.BySelected["selected"], image.ID)
+				registry.Indices.BySelected["selected"] = append(registry.Indices.BySelected["selected"], imageIDStr)
 			}
 		}
-		
+
 		// Save updated registry
 		imageStore := store.NewImageStore(jsonStore)
 		if err := imageStore.SaveImageRegistry(registry); err != nil {
 			return fmt.Errorf("failed to save updated image registry: %w", err)
 		}
-		
+
 		log.Info("Updated image registry saved successfully")
 	} else {
 		log.Info("Image path validation completed", "valid_images", len(validImages), "removed_images", 0)
 	}
-	
+
 	return nil
 }

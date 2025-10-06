@@ -6,12 +6,22 @@ import {
     type rendererImage,
 } from "../src/types/rendererTypes";
 import { join, basename } from "node:path";
-import { configuration } from "../globals/config";
+import { configReader } from "../globals/configReader";
 import { type openFileAction } from "../shared/types";
 import { validImageExtensions } from "../shared/constants";
 import { type Formats } from "../shared/types/image";
 import { logger } from "../globals/setup";
-const appDirectories = configuration.directories;
+// Get directories from TOML configuration
+const appDirectories = {
+    imagesDir: configReader.getImagesDir(),
+    thumbnailsDir: configReader.getThumbnailsDir(),
+    thumbnails: configReader.getThumbnailsDir(), // Alias for thumbnailsDir
+    mainDir: configReader.getDatabasePath(), // Using database path as main dir
+    rootCache: configReader.getThumbnailsDir(), // Using thumbnails dir as cache
+    extendedImages: configReader.getImagesDir(), // Using images dir for extended images
+    scriptsDir: configReader.getDatabasePath(), // Using database path for scripts
+    systemHome: configReader.getDatabasePath(), // Using database path as system home
+};
 function openImagesFromFilePicker(browserWindow: BrowserWindow | null) {
     if (browserWindow !== null) {
         return dialog.showOpenDialogSync(browserWindow, {
@@ -146,13 +156,12 @@ export function deleteImageFromStorage(images: rendererImage[]) {
 }
 
 export async function openContextMenu(
-    event: Electron.IpcMainInvokeEvent,
+    _event: Electron.IpcMainInvokeEvent,
     image: rendererImage | undefined,
     selectedImagesLength: number
 ) {
     const template = await contextMenu({
         selectedImagesLength,
-        event,
         image
     });
     const contextMenuInstance = Menu.buildFromTemplate(template);

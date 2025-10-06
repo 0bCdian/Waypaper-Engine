@@ -113,6 +113,9 @@ func (cm *ConfigManager) loadAllConfigs() error {
 		return fmt.Errorf("failed to load monitors config: %w", err)
 	}
 
+	// Load frontend config (non-fatal if it fails)
+	_ = cm.loadFrontendConfig()
+
 	return nil
 }
 
@@ -227,6 +230,31 @@ func (cm *ConfigManager) saveMonitorsConfig() error {
 		Monitors: cm.monitors,
 	}
 	return cm.saveConfigFile(cm.monitorsConfigPath, config)
+}
+
+func (cm *ConfigManager) loadFrontendConfig() error {
+	if _, err := os.Stat(cm.frontendConfigPath); os.IsNotExist(err) {
+		// Create default frontend config
+		cm.frontendConfig = make(map[string]interface{})
+		return cm.saveFrontendConfig()
+	}
+
+	data, err := os.ReadFile(cm.frontendConfigPath)
+	if err != nil {
+		return err
+	}
+
+	var config map[string]interface{}
+	if err := json.Unmarshal(data, &config); err != nil {
+		return err
+	}
+
+	cm.frontendConfig = config
+	return nil
+}
+
+func (cm *ConfigManager) saveFrontendConfig() error {
+	return cm.saveConfigFile(cm.frontendConfigPath, cm.frontendConfig)
 }
 
 func (cm *ConfigManager) saveConfigFile(path string, data interface{}) error {

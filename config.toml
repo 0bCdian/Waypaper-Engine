@@ -22,8 +22,20 @@ database_path = "~/.config/waypaper-engine/waypaper.db"
 images_dir = "~/.waypaper-engine/images"
 thumbnails_dir = "~/.waypaper-engine/data/cache/thumbnails"
 monitors_state_file = "~/.cache/waypaper-engine/monitors.json"
-socket_path = "/tmp/waypaper_engine.sock"
+socket_path = "/tmp/waypaper-engine.sock"
 log_level = "info"  # "debug" | "info" | "warn" | "error"
+log_file = "~/.config/waypaper-engine/daemon.log"
+log_max_size = 10  # MB
+log_max_age = 7    # days
+log_max_backups = 3
+
+[electron]
+# Electron-specific settings
+log_level = "info"  # "debug" | "info" | "warn" | "error"
+log_file = "~/.config/waypaper-engine/electron.log"
+log_max_size = 10  # MB
+log_max_age = 7    # days
+log_max_backups = 3
 
 [backend]
 # Backend configuration

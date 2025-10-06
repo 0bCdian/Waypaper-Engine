@@ -53,10 +53,6 @@ func TestConfigManagerCreation(t *testing.T) {
 			}
 
 			if configManager == nil {
-				t.Fatalf("Unexpected error creating config manager")
-			}
-
-			if configManager == nil {
 				t.Fatal("Expected config manager but got nil")
 			}
 

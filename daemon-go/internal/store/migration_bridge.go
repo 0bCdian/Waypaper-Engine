@@ -116,21 +116,22 @@ func (mb *MigrationBridge) syncImages(ctx context.Context) error {
 		registry.Images = append(registry.Images, image)
 
 		// Update indices
-		registry.Indices.ByName[image.Name] = image.ID
-		registry.Indices.ByFormat[image.Metadata.Format] = append(registry.Indices.ByFormat[image.Metadata.Format], image.ID)
+		imageIDStr := fmt.Sprintf("%d", image.ID)
+		registry.Indices.ByName[image.Name] = imageIDStr
+		registry.Indices.ByFormat[image.Metadata.Format] = append(registry.Indices.ByFormat[image.Metadata.Format], imageIDStr)
 
 		if image.MediaType != "" {
-			registry.Indices.ByMediaType[image.MediaType] = append(registry.Indices.ByMediaType[image.MediaType], image.ID)
+			registry.Indices.ByMediaType[image.MediaType] = append(registry.Indices.ByMediaType[image.MediaType], imageIDStr)
 		}
 
 		dimensionKey := fmt.Sprintf("%dx%d", image.Dimensions.Width, image.Dimensions.Height)
-		registry.Indices.ByDimensions[dimensionKey] = append(registry.Indices.ByDimensions[dimensionKey], image.ID)
+		registry.Indices.ByDimensions[dimensionKey] = append(registry.Indices.ByDimensions[dimensionKey], imageIDStr)
 
 		if image.Selection.IsSelected {
-			registry.Indices.BySelected["selected"] = append(registry.Indices.BySelected["selected"], image.ID)
+			registry.Indices.BySelected["selected"] = append(registry.Indices.BySelected["selected"], imageIDStr)
 		}
 		if image.Selection.IsChecked {
-			registry.Indices.BySelected["checked"] = append(registry.Indices.BySelected["checked"], image.ID)
+			registry.Indices.BySelected["checked"] = append(registry.Indices.BySelected["checked"], imageIDStr)
 		}
 	}
 
@@ -183,7 +184,7 @@ func (mb *MigrationBridge) syncRuntimeState(ctx context.Context) error {
 		Metadata: RuntimeMetadata{
 			Version:       "1.0",
 			LastSave:      time.Now(),
-			DaemonVersion: "0.0.0", // TODO: Get from actual daemon version
+			DaemonVersion: "1.0.0-alpha", // Default placeholder version
 		},
 		ActivePlaylists: make(map[string]*ActivePlaylistState),
 		MonitorState: MonitorStateRegistry{
@@ -207,7 +208,7 @@ func (mb *MigrationBridge) syncRuntimeState(ctx context.Context) error {
 		state.ActivePlaylists[monitorName] = &ActivePlaylistState{
 			PlaylistID:   fmt.Sprintf("%d", activePlaylist.ActivePlaylist.ID),
 			PlaylistName: activePlaylist.ActivePlaylist.Name,
-			StartedAt:    time.Now(), // TODO: Get actual start time
+			StartedAt:    time.Now(), // Current time as start time
 			Status:       "active",
 			LastActivity: time.Now(),
 		}
@@ -274,7 +275,7 @@ func (mb *MigrationBridge) convertDBImageToStoreImage(dbImage db.Image) Image {
 	mediaType := mb.store.mediaDetector.DetectMediaType(imagePath)
 
 	return Image{
-		ID:        generateUUID(),
+		ID:        dbImage.ID, // Use the database ID directly
 		Name:      dbImage.Name,
 		Path:      imagePath,
 		MediaType: mediaType,

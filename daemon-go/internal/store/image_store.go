@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -71,13 +72,13 @@ func (is *ImageStore) SaveImageRegistry(registry *ImageRegistry) error {
 
 // AddImage adds a new image to the registry
 func (is *ImageStore) AddImage(image *Image) error {
-	if image.ID == "" {
+	if image.ID == 0 {
 		// Use sequential ID instead of UUID for consistency with SQLite
 		nextID, err := is.store.sequentialIDManager.GetNextID()
 		if err != nil {
 			return fmt.Errorf("failed to get next ID: %w", err)
 		}
-		image.ID = fmt.Sprintf("%d", nextID)
+		image.ID = nextID
 	}
 	if image.ImportInfo.ImportedAt.IsZero() {
 		image.ImportInfo.ImportedAt = time.Now()
@@ -138,8 +139,14 @@ func (is *ImageStore) UpdateImage(id string, updates func(*Image)) error {
 		return err
 	}
 
+	// Convert string ID to int64 for comparison
+	idInt, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		return fmt.Errorf("invalid image ID: %w", err)
+	}
+
 	for i := range registry.Images {
-		if registry.Images[i].ID == id {
+		if registry.Images[i].ID == idInt {
 			image := &registry.Images[i]
 			updates(image)
 
@@ -159,8 +166,14 @@ func (is *ImageStore) GetImageByID(id string) (*Image, error) {
 		return nil, err
 	}
 
+	// Convert string ID to int64 for comparison
+	idInt, err := strconv.ParseInt(id, 10, 64)
+	if err != nil {
+		return nil, fmt.Errorf("invalid image ID: %w", err)
+	}
+
 	for _, img := range registry.Images {
-		if img.ID == id {
+		if img.ID == idInt {
 			return &img, nil
 		}
 	}
@@ -264,10 +277,18 @@ func (is *ImageStore) DeleteImages(imageIDs []string) error {
 	var newImages []Image
 	deletedCount := 0
 
+	// Convert string IDs to int64 for comparison
+	var idInts []int64
+	for _, id := range imageIDs {
+		if idInt, err := strconv.ParseInt(id, 10, 64); err == nil {
+			idInts = append(idInts, idInt)
+		}
+	}
+
 	for _, img := range registry.Images {
 		shouldDelete := false
-		for _, id := range imageIDs {
-			if img.ID == id {
+		for _, idInt := range idInts {
+			if img.ID == idInt {
 				shouldDelete = true
 				break
 			}
@@ -375,7 +396,7 @@ func (is *ImageStore) GetImageStatistics() (*ImageStatistics, error) {
 		}
 
 		// Estimate registry size (rough calculation)
-		stats.RegistrySize += len(img.Path) + len(img.Name) + len(img.ID)
+		stats.RegistrySize += len(img.Path) + len(img.Name) + len(fmt.Sprintf("%d", img.ID))
 	}
 
 	return stats, nil
@@ -401,30 +422,33 @@ func (is *ImageStore) rebuildIndices(registry *ImageRegistry) {
 
 // updateIndicesFromImage updates indices with a single image
 func (is *ImageStore) updateIndicesFromImage(registry *ImageRegistry, image *Image) {
+	// Convert numeric ID to string for indices
+	imageIDStr := fmt.Sprintf("%d", image.ID)
+
 	// By name
-	registry.Indices.ByName[image.Name] = image.ID
+	registry.Indices.ByName[image.Name] = imageIDStr
 
 	// By media type
-	registry.Indices.ByMediaType[image.MediaType] = append(registry.Indices.ByMediaType[image.MediaType], image.ID)
+	registry.Indices.ByMediaType[image.MediaType] = append(registry.Indices.ByMediaType[image.MediaType], imageIDStr)
 
 	// By format
-	registry.Indices.ByFormat[image.Metadata.Format] = append(registry.Indices.ByFormat[image.Metadata.Format], image.ID)
+	registry.Indices.ByFormat[image.Metadata.Format] = append(registry.Indices.ByFormat[image.Metadata.Format], imageIDStr)
 
 	// By dimensions
 	dimensionKey := fmt.Sprintf("%dx%d", image.Dimensions.Width, image.Dimensions.Height)
-	registry.Indices.ByDimensions[dimensionKey] = append(registry.Indices.ByDimensions[dimensionKey], image.ID)
+	registry.Indices.ByDimensions[dimensionKey] = append(registry.Indices.ByDimensions[dimensionKey], imageIDStr)
 
 	// By tags
 	for _, tag := range image.Metadata.Tags {
-		registry.Indices.ByTags[tag] = append(registry.Indices.ByTags[tag], image.ID)
+		registry.Indices.ByTags[tag] = append(registry.Indices.ByTags[tag], imageIDStr)
 	}
 
 	// By selection status
 	if image.Selection.IsSelected {
-		registry.Indices.BySelected["selected"] = append(registry.Indices.BySelected["selected"], image.ID)
+		registry.Indices.BySelected["selected"] = append(registry.Indices.BySelected["selected"], imageIDStr)
 	}
 	if image.Selection.IsChecked {
-		registry.Indices.BySelected["checked"] = append(registry.Indices.BySelected["checked"], image.ID)
+		registry.Indices.BySelected["checked"] = append(registry.Indices.BySelected["checked"], imageIDStr)
 	}
 }
 
@@ -464,7 +488,7 @@ func (is *ImageStore) createMultiResolutionThumbnails(inputPath, thumbnailsDir, 
 	// Note: Actual thumbnail creation is handled by the IPC handler
 	// This method just sets up the expected paths for thumbnails that will be created
 	// This avoids circular import issues between store and image packages
-	
+
 	baseName := strings.TrimSuffix(fileName, filepath.Ext(fileName))
 	if !strings.Contains(baseName, ".") {
 		// If no extension, extract just the base name
@@ -473,7 +497,7 @@ func (is *ImageStore) createMultiResolutionThumbnails(inputPath, thumbnailsDir, 
 			baseName = parts[0]
 		}
 	}
-	
+
 	thumbnailPaths := ImageThumbnails{
 		Resolution720p:  fmt.Sprintf("%s/720p/%s.webp", thumbnailsDir, baseName),
 		Resolution1080p: fmt.Sprintf("%s/1080p/%s.webp", thumbnailsDir, baseName),
@@ -481,7 +505,7 @@ func (is *ImageStore) createMultiResolutionThumbnails(inputPath, thumbnailsDir, 
 		Resolution4k:    fmt.Sprintf("%s/4k/%s.webp", thumbnailsDir, baseName),
 		Fallback:        fmt.Sprintf("%s/fallback/%s.webp", thumbnailsDir, baseName),
 	}
-	
+
 	return thumbnailPaths, nil
 }
 

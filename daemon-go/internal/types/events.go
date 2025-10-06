@@ -78,7 +78,9 @@ type EventType string
 
 const (
 	// Image processing events
+	EventProcessingStarted  EventType = "processing_started"
 	EventImageProcessed     EventType = "image_processed"
+	EventImageProgress      EventType = "image_progress"
 	EventImageError         EventType = "image_error"
 	EventProcessingComplete EventType = "processing_complete"
 

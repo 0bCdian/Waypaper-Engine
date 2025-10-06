@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"time"
 
@@ -362,18 +361,18 @@ func (h *Handler) handleGetInfo(msg *Message) *Response {
 func (h *Handler) handleGetImages(msg *Message) *Response {
 	// For now, return all images. In the future, this could support filtering
 	h.logger.Info("handleGetImages: starting to get images")
-	
+
 	// Try to get images from JSON store first (migrated images)
 	if h.store != nil {
 		registry, err := h.store.LoadImageRegistry()
 		if err == nil && registry != nil && len(registry.Images) > 0 {
 			h.logger.Info("handleGetImages: found images in JSON store", "count", len(registry.Images))
-			
+
 			// Log the first few images for debugging
 			for i, img := range registry.Images {
 				if i < 3 { // Only log first 3 images
 					h.logger.Info("handleGetImages: JSON image", "index", i, "id", img.ID, "name", img.Name, "path", img.Path)
-				}else{
+				} else {
 					break
 				}
 			}
@@ -382,15 +381,8 @@ func (h *Handler) handleGetImages(msg *Message) *Response {
 			// Frontend expects only the database schema fields: id, name, isChecked, isSelected, width, height, format
 			var frontendImages []map[string]interface{}
 			for _, jsonImg := range registry.Images {
-				// Parse ID as integer for compatibility with frontend
-				id, err := strconv.Atoi(jsonImg.ID)
-				if err != nil {
-					h.logger.Warn("Invalid image ID in JSON store", "id", jsonImg.ID, "error", err)
-					continue
-				}
-				
 				frontendImg := map[string]interface{}{
-					"id":         id,
+					"id":         jsonImg.ID,
 					"name":       jsonImg.Name,
 					"isChecked":  jsonImg.Selection.IsChecked,
 					"isSelected": jsonImg.Selection.IsSelected,
@@ -405,7 +397,7 @@ func (h *Handler) handleGetImages(msg *Message) *Response {
 			return &Response{Action: msg.Action, Data: frontendImages}
 		}
 	}
-	
+
 	// Fallback to SQLite database
 	h.logger.Info("handleGetImages: falling back to SQLite database")
 	dbImages, err := h.dbOps.GetAllImages(context.Background())
@@ -962,7 +954,7 @@ func (h *Handler) handleProcessImages(msg *Message) *Response {
 		if h.monitorManager != nil {
 			// Get connected monitors
 			monitors := h.monitorManager.GetMonitors()
-			
+
 			// Convert to MonitorResolution format
 			var monitorResolutions []image.MonitorResolution
 			for _, monitor := range monitors {
@@ -972,11 +964,11 @@ func (h *Handler) handleProcessImages(msg *Message) *Response {
 					Name:   monitor.Name,
 				})
 			}
-			
+
 			// Get required resolutions based on monitors
 			requiredResolutions := image.GetRequiredResolutions(monitorResolutions)
 			h.logger.Debug("Creating thumbnails for resolutions", "resolutions", requiredResolutions, "monitors", len(monitors))
-			
+
 			// Create smart thumbnails
 			thumbnailPaths, err = image.CreateSmartMultiResolutionThumbnails(
 				filepath.Join(cacheDir, uniqueFileName),
@@ -1032,7 +1024,7 @@ func (h *Handler) handleProcessImages(msg *Message) *Response {
 				MediaType: media.MediaTypeImage, // Default to image type
 				Metadata: store.ImageMetadata{
 					Format:   metadata.Format,
-					FileSize: 0, // Will be calculated by AddImage
+					FileSize: 0,  // Will be calculated by AddImage
 					Checksum: "", // Will be calculated by AddImage
 				},
 				Dimensions: store.ImageDimensions{
@@ -1067,7 +1059,7 @@ func (h *Handler) handleProcessImages(msg *Message) *Response {
 				continue
 			}
 
-			imageID = storeImage.ID
+			imageID = fmt.Sprintf("%d", storeImage.ID)
 			h.logger.Info("stored image in JSON store", "originalFileName", originalFileName, "uniqueFileName", uniqueFileName, "id", imageID)
 		} else {
 			// Fallback to SQLite if JSON store not available
@@ -1169,7 +1161,7 @@ func (h *Handler) handleCreateThumbnail(msg *Message) *Response {
 	if h.monitorManager != nil {
 		// Get connected monitors
 		monitors := h.monitorManager.GetMonitors()
-		
+
 		// Convert to MonitorResolution format
 		var monitorResolutions []image.MonitorResolution
 		for _, monitor := range monitors {
@@ -1179,11 +1171,11 @@ func (h *Handler) handleCreateThumbnail(msg *Message) *Response {
 				Name:   monitor.Name,
 			})
 		}
-		
+
 		// Get required resolutions based on monitors
 		requiredResolutions := image.GetRequiredResolutions(monitorResolutions)
 		h.logger.Debug("Creating thumbnails for resolutions", "resolutions", requiredResolutions, "image", fileName)
-		
+
 		// Create smart thumbnails
 		cfg, err := h.configManager.GetConfig()
 		if err != nil {
@@ -1191,7 +1183,7 @@ func (h *Handler) handleCreateThumbnail(msg *Message) *Response {
 			response := &Response{Action: msg.Action, Error: err.Error()}
 			return response
 		}
-		
+
 		thumbnailPaths, err = image.CreateSmartMultiResolutionThumbnails(
 			inputPath,
 			cfg.Daemon.ThumbnailsDir,
@@ -1211,7 +1203,7 @@ func (h *Handler) handleCreateThumbnail(msg *Message) *Response {
 			response := &Response{Action: msg.Action, Error: err.Error()}
 			return response
 		}
-		
+
 		thumbnailPaths, err = image.CreateMultiResolutionThumbnails(
 			inputPath,
 			cfg.Daemon.ThumbnailsDir,
@@ -1229,9 +1221,9 @@ func (h *Handler) handleCreateThumbnail(msg *Message) *Response {
 		h.server.BroadcastEvent(&types.Event{
 			Type: "thumbnail_created",
 			Payload: map[string]interface{}{
-				"imageName": fileName,
+				"imageName":  fileName,
 				"thumbnails": thumbnailPaths,
-				"timestamp": time.Now().Unix(),
+				"timestamp":  time.Now().Unix(),
 			},
 		})
 	}
@@ -1416,14 +1408,14 @@ func (h *Handler) handleGetImageSrc(msg *Message) *Response {
 	}
 
 	fileName := msg.FileNames[0]
-	
+
 	// Try to get image from JSON store first (new system with full paths)
 	if h.store != nil {
 		registry, err := h.store.LoadImageRegistry()
 		if err == nil && registry != nil {
 			// Extract basename in case fileName is a full path
 			fileNameBase := filepath.Base(fileName)
-			
+
 			// Search for image by name (both trying original fileName and basename)
 			// This handles cases where frontend passes full paths from monitor.currentImage
 			for _, image := range registry.Images {
@@ -1440,7 +1432,7 @@ func (h *Handler) handleGetImageSrc(msg *Message) *Response {
 			}
 		}
 	}
-	
+
 	// Fallback to old system: construct path from images directory
 	config, err := h.configManager.GetConfig()
 	if err != nil {
@@ -1449,14 +1441,14 @@ func (h *Handler) handleGetImageSrc(msg *Message) *Response {
 	}
 
 	imagePath := filepath.Join(config.Daemon.ImagesDir, fileName)
-	
+
 	// Validate that the file exists
 	if _, err := os.Stat(imagePath); err != nil {
 		h.logger.Warn("Image file not found in fallback path", "path", imagePath, "name", fileName)
 		response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "image file not found").Error()}
 		return response
 	}
-	
+
 	// Return clean file path (electron will add atom:// protocol)
 	response := &Response{Action: msg.Action, Data: imagePath}
 	return response
@@ -1469,30 +1461,30 @@ func (h *Handler) handleGetThumbnailSrc(msg *Message) *Response {
 	}
 
 	fileName := msg.FileNames[0]
-	
+
 	// Try to get image from JSON store first (new system with full paths)
 	if h.store != nil {
 		registry, err := h.store.LoadImageRegistry()
 		if err == nil && registry != nil {
 			// Extract basename in case fileName is a full path
 			fileNameBase := filepath.Base(fileName)
-			
+
 			// Search for image by name (both trying original fileName and basename)
 			// This handles cases where frontend passes full paths from monitor.currentImage
 			for _, img := range registry.Images {
 				if img.Name == fileName || img.Name == fileNameBase {
 					// Generate thumbnail path based on the full image path
 					thumbnailName := strings.TrimSuffix(filepath.Base(img.Path), filepath.Ext(img.Path)) + ".webp"
-					
+
 					// Get thumbnails directory from configuration
 					config, err := h.configManager.GetConfig()
 					if err != nil {
 						response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "failed to get configuration").Error()}
 						return response
 					}
-					
+
 					thumbnailPath := filepath.Join(config.Daemon.ThumbnailsDir, thumbnailName)
-					
+
 					// Validate that the thumbnail exists
 					if _, err := os.Stat(thumbnailPath); err == nil {
 						// Return clean file path (electron will add atom:// protocol)
@@ -1500,7 +1492,7 @@ func (h *Handler) handleGetThumbnailSrc(msg *Message) *Response {
 						return response
 					} else {
 						h.logger.Warn("Thumbnail file not found, attempting to generate", "path", thumbnailPath, "name", fileName, "searched_name", img.Name)
-						
+
 						// Try to generate thumbnail on-demand
 						if _, err := os.Stat(img.Path); err == nil {
 							// Ensure thumbnails directory exists
@@ -1527,7 +1519,7 @@ func (h *Handler) handleGetThumbnailSrc(msg *Message) *Response {
 			}
 		}
 	}
-	
+
 	// Fallback to old system: construct thumbnail path from images directory
 	config, err := h.configManager.GetConfig()
 	if err != nil {
@@ -1537,11 +1529,11 @@ func (h *Handler) handleGetThumbnailSrc(msg *Message) *Response {
 
 	thumbnailName := strings.TrimSuffix(fileName, filepath.Ext(fileName)) + ".webp"
 	thumbnailPath := filepath.Join(config.Daemon.ThumbnailsDir, thumbnailName)
-	
+
 	// Validate that the thumbnail exists
 	if _, err := os.Stat(thumbnailPath); err != nil {
 		h.logger.Warn("Thumbnail file not found in fallback path, attempting to generate", "path", thumbnailPath, "name", fileName)
-		
+
 		// Try to generate thumbnail on-demand
 		imagePath := filepath.Join(config.Daemon.ImagesDir, fileName)
 		if _, err := os.Stat(imagePath); err == nil {
@@ -1551,7 +1543,7 @@ func (h *Handler) handleGetThumbnailSrc(msg *Message) *Response {
 				response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "failed to create thumbnails directory").Error()}
 				return response
 			}
-			
+
 			// Generate thumbnail
 			opts := image.DefaultThumbnailOptions()
 			_, err := image.CreateThumbnail(imagePath, thumbnailPath, opts)
@@ -1560,7 +1552,7 @@ func (h *Handler) handleGetThumbnailSrc(msg *Message) *Response {
 				response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "failed to generate thumbnail").Error()}
 				return response
 			}
-			
+
 			h.logger.Info("Generated thumbnail on-demand", "image", imagePath, "thumbnail", thumbnailPath)
 		} else {
 			h.logger.Warn("Source image file not found, cannot generate thumbnail", "path", imagePath)
@@ -1568,7 +1560,7 @@ func (h *Handler) handleGetThumbnailSrc(msg *Message) *Response {
 			return response
 		}
 	}
-	
+
 	// Return clean file path (electron will add atom:// protocol)
 	response := &Response{Action: msg.Action, Data: thumbnailPath}
 	return response
@@ -1612,21 +1604,11 @@ func (h *Handler) handleOpenContextMenu(msg *Message) *Response {
 
 // listenToPlaylistEvents listens to playlist manager events and broadcasts them to clients
 func (h *Handler) listenToPlaylistEvents() {
-	h.logger.Info("starting playlist event listener")
-
-	for event := range h.playlistManager.GetEventChan() {
-		if h.server != nil {
-			// Convert playlist event to IPC event and broadcast
-			ipcEvent := &Event{
-				Type:    EventType(event.Type),
-				Payload: event.Payload,
-			}
-			h.server.BroadcastEvent(ipcEvent)
-			h.logger.Debug("broadcasted playlist event", "type", event.Type, "payload", event.Payload)
-		}
+	h.logger.Info("playlist event listener disabled (stub implementation)")
+	// Event channel is closed immediately, so this function does nothing
+	for range h.playlistManager.GetEventChan() {
+		// No-op: channel is already closed
 	}
-
-	h.logger.Info("playlist event listener stopped")
 }
 
 // handleKillDaemon handles the kill daemon command
@@ -1666,11 +1648,12 @@ func (h *Handler) handleStopPlaylistByMonitorName(msg *Message) *Response {
 	}
 
 	h.logger.Info("stopping playlists by monitor name", "monitors", monitors)
-	err := h.playlistManager.StopPlaylistByMonitorName(monitors)
-	if err != nil {
-		h.logger.Error("failed to stop playlists by monitor name", "monitors", monitors, "error", err)
-		response := &Response{Action: msg.Action, Error: err.Error()}
-		return response
+	// Stop playlist for each monitor
+	for _, monitorName := range monitors {
+		err := h.playlistManager.StopPlaylistByMonitorName(monitorName)
+		if err != nil {
+			h.logger.Error("failed to stop playlist for monitor", "monitor", monitorName, "error", err)
+		}
 	}
 
 	response := &Response{Action: msg.Action, Data: "playlists stopped by monitor name"}
@@ -1680,7 +1663,11 @@ func (h *Handler) handleStopPlaylistByMonitorName(msg *Message) *Response {
 // handleStopPlaylistOnRemovedMonitors handles stopping playlists on removed monitors
 func (h *Handler) handleStopPlaylistOnRemovedMonitors(msg *Message) *Response {
 	h.logger.Info("stopping playlists on removed monitors")
-	err := h.playlistManager.StopPlaylistOnRemovedMonitors()
+	monitors := msg.Monitors
+	if monitors == nil {
+		monitors = []string{}
+	}
+	err := h.playlistManager.StopPlaylistOnRemovedMonitors(monitors)
 	if err != nil {
 		h.logger.Error("failed to stop playlists on removed monitors", "error", err)
 		response := &Response{Action: msg.Action, Error: err.Error()}

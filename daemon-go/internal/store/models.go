@@ -1,6 +1,9 @@
 package store
 
 import (
+	"encoding/json"
+	"fmt"
+	"strconv"
 	"time"
 
 	"waypaper-engine/daemon-go/internal/media"
@@ -8,7 +11,7 @@ import (
 
 // Image represents an image in the JSON store
 type Image struct {
-	ID           string          `json:"id"`
+	ID           int64           `json:"id"`
 	Name         string          `json:"name"`
 	Path         string          `json:"path"`
 	MediaType    media.MediaType `json:"mediaType"`
@@ -18,6 +21,63 @@ type Image struct {
 	ImportInfo   ImageImportInfo `json:"importInfo"`
 	BackendHints BackendHints    `json:"backendHints,omitempty"`
 	Thumbnails   ImageThumbnails `json:"thumbnails"`
+}
+
+// UnmarshalJSON custom unmarshaling to handle both string and int64 IDs
+func (i *Image) UnmarshalJSON(data []byte) error {
+	// Create a temporary struct with string ID for unmarshaling
+	type TempImage struct {
+		ID           interface{}     `json:"id"`
+		Name         string          `json:"name"`
+		Path         string          `json:"path"`
+		MediaType    media.MediaType `json:"mediaType"`
+		Dimensions   ImageDimensions `json:"dimensions"`
+		Metadata     ImageMetadata   `json:"metadata"`
+		Selection    ImageSelection  `json:"selection"`
+		ImportInfo   ImageImportInfo `json:"importInfo"`
+		BackendHints BackendHints    `json:"backendHints,omitempty"`
+		Thumbnails   ImageThumbnails `json:"thumbnails"`
+	}
+
+	var temp TempImage
+	if err := json.Unmarshal(data, &temp); err != nil {
+		return err
+	}
+
+	// Convert ID to int64
+	switch v := temp.ID.(type) {
+	case string:
+		if v == "" {
+			i.ID = 0
+		} else {
+			id, err := strconv.ParseInt(v, 10, 64)
+			if err != nil {
+				return fmt.Errorf("invalid ID format: %v", v)
+			}
+			i.ID = id
+		}
+	case float64:
+		i.ID = int64(v)
+	case int64:
+		i.ID = v
+	case int:
+		i.ID = int64(v)
+	default:
+		return fmt.Errorf("unsupported ID type: %T", v)
+	}
+
+	// Copy other fields
+	i.Name = temp.Name
+	i.Path = temp.Path
+	i.MediaType = temp.MediaType
+	i.Dimensions = temp.Dimensions
+	i.Metadata = temp.Metadata
+	i.Selection = temp.Selection
+	i.ImportInfo = temp.ImportInfo
+	i.BackendHints = temp.BackendHints
+	i.Thumbnails = temp.Thumbnails
+
+	return nil
 }
 
 // ImageThumbnails contains paths to different resolution thumbnails

@@ -1,7 +1,7 @@
 import { create } from "zustand";
 import { type Monitor, type ActiveMonitor } from "../../shared/types/monitor";
-import { verifyOldMonitorConfigValidity } from "../utils/utilities";
 import { frontendConfig } from "../utils/frontendConfig";
+import { type DaemonMonitorInfo } from "../../shared/types/daemonEvents";
 const { goDaemon } = window.API_RENDERER;
 
 export interface StoreMonitor extends Monitor {
@@ -109,7 +109,7 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
                 if (selectedMonitorObjects.length > 0) {
                     // Create active monitor configuration
                     const activeMonitor: ActiveMonitor = {
-                        name: selectedMonitorObjects.map(m => m.name).join(','),
+                        name: selectedMonitorObjects.map((m: DaemonMonitorInfo) => m.name).join(','),
                         monitors: selectedMonitorObjects,
                         extendAcrossMonitors: imageSetType === 'extend'
                     };

@@ -1,19 +1,16 @@
 import { type ChangeEvent, useState, useEffect, useMemo } from "react";
-import { playlistStore } from "../stores/playlist";
 import { motion } from "framer-motion";
 import {
-    type rendererImage,
-    type ImageThumbnails
+    type rendererImage
 } from "../types/rendererTypes";
 import { imagesStore } from "../stores/images";
-import { useShallow } from "zustand/react/shallow";
 import { isHotkeyPressed } from "react-hotkeys-hook";
 import { useMonitorStore } from "../stores/monitors";
 import { useImageState } from "../hooks/useImageState";
 
 interface EnhancedImageCardProps {
     image?: rendererImage;
-    imageId?: string; // For processing images
+    imageId?: number; // For processing images
     isProcessing?: boolean;
 }
 
@@ -44,9 +41,22 @@ function EnhancedImageCard({
     const [isChecked, setIsChecked] = useState(
         image?.selection?.isChecked ?? false
     );
+
+    // Helper function to ensure selection property exists
+    const ensureSelection = (image: rendererImage) => {
+        if (!image.selection) {
+            image.selection = {
+                isChecked: false,
+                isSelected: false,
+                selectedAt: undefined,
+                selectedPlaylists: []
+            };
+        }
+        return image.selection;
+    };
     const [imageSrc, setImageSrc] = useState<string>("");
     const [thumbnailSrc, setThumbnailSrc] = useState<string>("");
-    const { activeMonitor } = useMonitorStore();
+    const { } = useMonitorStore();
 
     // Determine if this card is processing
     const isCurrentlyProcessing =
@@ -107,8 +117,7 @@ function EnhancedImageCard({
 
                 // Load image path
                 const imagePath = await goDaemon.getImageSrc(
-                    [],
-                    [memoizedImage.name]
+                    memoizedImage.name
                 );
                 if (imagePath) {
                     setImageSrc(`atom://${imagePath}`);
@@ -121,8 +130,7 @@ function EnhancedImageCard({
                 // If no thumbnail path from image data, try to get it from daemon
                 if (!thumbnailSrc && memoizedImage.name) {
                     const thumbnailPath = await goDaemon.getThumbnailSrc(
-                        [],
-                        [memoizedImage.name]
+                        memoizedImage.name
                     );
                     if (thumbnailPath) {
                         setThumbnailSrc(`atom://${thumbnailPath}`);
@@ -149,7 +157,7 @@ function EnhancedImageCard({
         setSelected(newSelected);
 
         if (memoizedImage) {
-            memoizedImage.selection.isSelected = newSelected;
+            ensureSelection(memoizedImage).isSelected = newSelected;
             imagesStore.getState().addToSelectedImages(memoizedImage);
         }
     };
@@ -159,7 +167,7 @@ function EnhancedImageCard({
         setIsChecked(newChecked);
 
         if (memoizedImage) {
-            memoizedImage.selection.isChecked = newChecked;
+            ensureSelection(memoizedImage).isChecked = newChecked;
         }
     };
 
@@ -177,7 +185,7 @@ function EnhancedImageCard({
     };
 
     // Handle click events
-    const handleClick = (e: React.MouseEvent) => {
+    const handleClick = (_e: React.MouseEvent) => {
         if (isHotkeyPressed("ctrl") || isHotkeyPressed("meta")) {
             handleSelectionChange({
                 target: { checked: !selected }

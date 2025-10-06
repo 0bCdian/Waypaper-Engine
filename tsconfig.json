@@ -4,6 +4,7 @@
         "useDefineForClassFields": true,
         "lib": ["ESNext.Array", "ESNext", "ES2020", "DOM", "DOM.Iterable"],
         "module": "CommonJS",
+        "moduleResolution": "bundler",
         "skipLibCheck": true,
         "esModuleInterop": true,
         "allowSyntheticDefaultImports": true,
@@ -26,6 +27,6 @@
         "outDir": "dist"
     },
     "skipLibCheck": true,
-    "include": ["src/**/*.ts", "src/**/*.tsx", "electron/**/*.ts", "shared/**/*.ts", "types/**/*.ts", "utils/**/*.ts", "database/**/*.ts", "daemon/**/*.ts", "globals/**/*.ts", "drizzle.config.ts"],
+    "include": ["src/**/*.ts", "src/**/*.tsx", "electron/**/*.ts", "shared/**/*.ts", "types/**/*.ts", "utils/**/*.ts", "database/**/*.ts", "globals/**/*.ts", "drizzle.config.ts"],
     "references": [{ "path": "./tsconfig.node.json" }]
 }

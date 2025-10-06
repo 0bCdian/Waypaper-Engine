@@ -19,9 +19,19 @@ type Message struct {
 	ThumbnailsDir        string                `json:"thumbnailsDir,omitempty"`
 	Image                *ImageInfo            `json:"image,omitempty"`
 	ActiveMonitor        *models.ActiveMonitor `json:"activeMonitor,omitempty"`
-	Monitors             []string              `json:"monitors,omitempty"`
+	Monitors             []string              `json:"monitors"`
 	SelectedImagesLength int                   `json:"selectedImagesLength,omitempty"`
 	MonitorName          string                `json:"monitorName,omitempty"`
+	Config               *ConfigData           `json:"config,omitempty"`
+}
+
+// ConfigData holds configuration data for IPC operations
+type ConfigData struct {
+	AppConfig      *models.AppConfig  `json:"appConfig,omitempty"`
+	SwwwConfig     *models.SwwwConfig `json:"swwwConfig,omitempty"`
+	FrontendConfig any                `json:"frontendConfig,omitempty"`
+	ConfigKey      string             `json:"configKey,omitempty"`
+	ConfigValue    any                `json:"configValue,omitempty"`
 }
 
 // ImageInfo is a subset of the db.Image struct for IPC.
@@ -85,7 +95,9 @@ type EventType = types.EventType
 
 const (
 	// Image processing events
+	EventProcessingStarted  types.EventType = "processing_started"
 	EventImageProcessed     types.EventType = "image_processed"
+	EventImageProgress      types.EventType = "image_progress"
 	EventImageError         types.EventType = "image_error"
 	EventProcessingComplete types.EventType = "processing_complete"
 

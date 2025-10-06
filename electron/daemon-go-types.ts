@@ -1,9 +1,9 @@
 export interface Command {
   type: string;
-  payload?: any;
+  payload?: unknown;
 }
 
 export interface Event {
   type: string;
-  payload?: any;
+  payload?: unknown;
 }

@@ -1,18 +1,19 @@
 import { useState, useEffect } from "react";
 import LoadPlaylistModal from "./LoadPlaylistModal";
 import SavePlaylistModal from "./SavePlaylistModal";
+import AddToPlaylistModal from "./AddToPlaylistModal";
 import PlaylistConfigurationModal from "./PlaylistConfigurationModal";
 import { playlistStore } from "../stores/playlist";
 import { imagesStore } from "../stores/images";
 import AdvancedFiltersModal from "./AdvancedFiltersModal";
-import { type playlistSelectType } from "../../database/schema";
 import { useAppConfigStore } from "../stores/appConfig";
 import Monitors from "./monitorsModal";
 import { useMonitorStore } from "../stores/monitors";
+import { type DaemonPlaylistFromDB } from "../../shared/types/daemonEvents";
 const { goDaemon } = window.API_RENDERER;
 let alreadyShown = false;
 function Modals() {
-    const [playlistsInDB, setPlaylistsInDB] = useState<playlistSelectType[]>(
+    const [playlistsInDB, setPlaylistsInDB] = useState<DaemonPlaylistFromDB[]>(
         []
     );
     const { appConfig, isSetup } = useAppConfigStore();
@@ -55,6 +56,10 @@ function Modals() {
             <SavePlaylistModal
                 setShouldReload={setShouldReload}
                 currentPlaylistName={playlist.name}
+            />
+            <AddToPlaylistModal
+                playlistsInDB={playlistsInDB}
+                setShouldReload={setShouldReload}
             />
             <PlaylistConfigurationModal />
             <AdvancedFiltersModal />

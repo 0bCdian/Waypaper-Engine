@@ -74,14 +74,16 @@ type ConfigManager struct {
 	mu         sync.RWMutex
 
 	// Configuration data
-	appConfig  *models.AppConfig
-	swwwConfig *models.SwwwConfig
-	monitors   []models.Monitor
+	appConfig      *models.AppConfig
+	swwwConfig     *models.SwwwConfig
+	monitors       []models.Monitor
+	frontendConfig map[string]interface{}
 
 	// File paths
 	appConfigPath      string
 	swwwConfigPath     string
 	monitorsConfigPath string
+	frontendConfigPath string
 }
 
 func NewConfigManager(configPath string) *ConfigManager {
@@ -91,6 +93,8 @@ func NewConfigManager(configPath string) *ConfigManager {
 		appConfigPath:      filepath.Join(configDir, "app.json"),
 		swwwConfigPath:     filepath.Join(configDir, "swww.json"),
 		monitorsConfigPath: filepath.Join(configDir, "monitors.json"),
+		frontendConfigPath: filepath.Join(configDir, "frontend.json"),
+		frontendConfig:     make(map[string]interface{}),
 	}
 }
 
@@ -224,7 +228,7 @@ func (cm *ConfigManager) GetSwwwConfig() *models.SwwwConfig {
 		TransitionType:           models.TransitionType(config.Backend.Swww.TransitionType),
 		TransitionStep:           config.Backend.Swww.TransitionStep,
 		TransitionDuration:       float64(config.Backend.Swww.TransitionDuration) / 1000, // Convert milliseconds to seconds
-		TransitionFPS:            60, // Default since TOML doesn't have this field
+		TransitionFPS:            60,                                                     // Default since TOML doesn't have this field
 		TransitionAngle:          int(config.Backend.Swww.TransitionAngle),
 		TransitionPositionType:   models.TransitionPositionTypeAlias, // Default since TOML doesn't have this field
 		TransitionPosition:       models.TransitionPositionCenter,    // Default since TOML doesn't have this field
@@ -237,6 +241,41 @@ func (cm *ConfigManager) GetSwwwConfig() *models.SwwwConfig {
 		TransitionWaveX:          20, // Default since TOML doesn't have this field
 		TransitionWaveY:          20, // Default since TOML doesn't have this field
 	}
+}
+
+// GetFrontendConfig returns the frontend configuration
+func (cm *ConfigManager) GetFrontendConfig() map[string]interface{} {
+	cm.mu.RLock()
+	defer cm.mu.RUnlock()
+
+	if len(cm.frontendConfig) == 0 {
+		// Try to load from file
+		cm.mu.RUnlock()
+		cm.mu.Lock()
+		_ = cm.loadFrontendConfig()
+		cm.mu.Unlock()
+		cm.mu.RLock()
+	}
+
+	return cm.frontendConfig
+}
+
+// SetFrontendConfig sets the frontend configuration
+func (cm *ConfigManager) SetFrontendConfig(config interface{}) error {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	// Convert to map if it's not already
+	if configMap, ok := config.(map[string]interface{}); ok {
+		cm.frontendConfig = configMap
+	} else {
+		// Try to convert JSON to map
+		cm.frontendConfig = map[string]interface{}{}
+		// Store whatever we received as-is
+		cm.frontendConfig["data"] = config
+	}
+
+	return cm.saveFrontendConfig()
 }
 
 func (cm *ConfigManager) expandPaths(config *WaypaperConfig) *WaypaperConfig {
@@ -320,9 +359,9 @@ func (cm *ConfigManager) getDefaultConfig() *WaypaperConfig {
 			ImageHistoryLimit:       50,
 		},
 		Daemon: DaemonConfig{
-			DatabasePath:      filepath.Join(baseDir, ".waypaper-engine", "data"),
-			ImagesDir:         filepath.Join(baseDir, ".waypaper-engine", "images"),
-			ThumbnailsDir:     filepath.Join(baseDir, ".waypaper-engine", "data", "cache", "thumbnails"),
+			DatabasePath:      filepath.Join(baseDir, "data"),
+			ImagesDir:         filepath.Join(baseDir, "images"),
+			ThumbnailsDir:     filepath.Join(baseDir, "data", "cache", "thumbnails"),
 			MonitorsStateFile: filepath.Join(baseDir, ".cache", "waypaper-engine", "monitors.json"),
 			SocketPath:        "/tmp/waypaper-engine.sock",
 			LogLevel:          "info",

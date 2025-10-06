@@ -1,21 +1,21 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useCallback } from "react";
 import {
     type rendererImage,
     type ImageThumbnails
 } from "../types/rendererTypes";
 
 interface ImageProcessingState {
-    processingImages: Set<string>; // Set of image IDs being processed
-    completedImages: Map<string, rendererImage>; // Map of completed images
+    processingImages: Set<number>; // Set of image IDs being processed
+    completedImages: Map<number, rendererImage>; // Map of completed images
 }
 
 interface ImageProcessedEvent {
-    imageId: string;
+    imageId: number;
     image: rendererImage;
 }
 
 interface ImageErrorEvent {
-    imageId: string;
+    imageId: number;
     originalFileName: string;
     uniqueFileName: string;
     error: string;
@@ -61,7 +61,7 @@ export function useImageState() {
     }, []);
 
     const handleProcessingComplete = useCallback(
-        (event: ProcessingCompleteEvent) => {
+        (_event: ProcessingCompleteEvent) => {
             // Clear all processing images when processing is complete
             setState(prev => ({
                 ...prev,
@@ -72,7 +72,7 @@ export function useImageState() {
     );
 
     // Add images to processing state
-    const addProcessingImages = useCallback((imageIds: string[]) => {
+    const addProcessingImages = useCallback((imageIds: number[]) => {
         setState(prev => {
             const newProcessingImages = new Set(prev.processingImages);
             imageIds.forEach(id => newProcessingImages.add(id));
@@ -105,7 +105,7 @@ export function useImageState() {
 
     // Check if image is being processed
     const isImageProcessing = useCallback(
-        (imageId: string): boolean => {
+        (imageId: number): boolean => {
             return state.processingImages.has(imageId);
         },
         [state.processingImages]
@@ -113,7 +113,7 @@ export function useImageState() {
 
     // Get completed image
     const getCompletedImage = useCallback(
-        (imageId: string): rendererImage | undefined => {
+        (imageId: number): rendererImage | undefined => {
             return state.completedImages.get(imageId);
         },
         [state.completedImages]

@@ -10,14 +10,20 @@ import { useLoadMonitors } from "./hooks/useLoadMonitors";
 import { useRealTimeImageProcessing } from "./hooks/useRealTimeImageProcessing";
 import { useWindowBounds } from "./hooks/useWindowBounds";
 import useContextMenuEvents from "./hooks/useContextMenuEvents";
+import { ImageProcessingProgress } from "./components/ImageProcessingProgress";
+import ToastContainer from "./components/ToastContainer";
+
 const App = () => {
     useLoadAppConfig()();
     useLoadMonitors();
     useRealTimeImageProcessing();
     useWindowBounds();
     useContextMenuEvents();
+    
     return (
         <HashRouter>
+            <ImageProcessingProgress />
+            <ToastContainer />
             <Drawer>
                 <NavBar />
                 <Routes>

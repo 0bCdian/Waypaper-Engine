@@ -2,16 +2,20 @@ import { join, resolve } from "node:path";
 import { parseArgs } from "node:util";
 import { homedir } from "node:os";
 import { mkdirSync, existsSync } from "node:fs";
-import pino, { type Logger } from "pino";
+import pino from "pino";
+import { configReader } from "./configReader";
+import { configManager } from "../shared/configManager";
 const isPackaged = !(process.env.NODE_ENV === "development");
 export const isDaemon = process.env.PROCESS === "daemon";
 export const mainDirectory = join(homedir(), ".waypaper_engine");
 if (!existsSync(mainDirectory)) {
     mkdirSync(mainDirectory);
 }
+// Get logging configuration from TOML
+const electronConfig = configManager.getElectronConfig();
 const logPath = isDaemon
     ? join(mainDirectory, "daemon.log")
-    : join(mainDirectory, "electron.log");
+    : configManager.getElectronLogFile();
 
 const resourcesPath = join(__dirname, "..", "..");
 export const iconsPath = resolve(
@@ -19,11 +23,8 @@ export const iconsPath = resolve(
         ? join(resourcesPath, "./icons")
         : join(process.cwd(), "build/icons")
 );
-export const daemonPath = resolve(
-    isPackaged
-        ? join(resourcesPath, "waypaper-daemon")
-        : join(process.cwd(), "daemon-go", "waypaper-daemon")
-);
+// Get daemon path from TOML configuration
+export const daemonPath = configReader.getDaemonPath();
 
 export const nativeBindingPath = resolve(
     isPackaged
@@ -67,12 +68,26 @@ export const { values } = parseArgs({
     strict: false
 });
 
-type customLogger = Console | Logger<never>;
+type customLogger = {
+    error: (message: unknown, ...args: unknown[]) => void;
+    info: (message: unknown, ...args: unknown[]) => void;
+    warn: (message: unknown, ...args: unknown[]) => void;
+    debug: (message: unknown, ...args: unknown[]) => void;
+};
 
 export let logger: customLogger;
 
 if (values.logs === true) {
-    const parentLogger = pino(pino.destination(logPath));
+    const parentLogger = pino({
+        level: electronConfig.log_level,
+        transport: {
+            target: 'pino/file',
+            options: {
+                destination: logPath,
+                mkdir: true
+            }
+        }
+    });
     const pinoLogger = parentLogger.child({
         module: isDaemon ? "daemon" : "electron"
     });
