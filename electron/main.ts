@@ -157,6 +157,10 @@ app.whenReady()
         logger.info("About to start Go daemon...");
         await initWaypaperDaemon();
         logger.info("Go daemon started successfully");
+        
+        // Check if daemon is still running
+        const { isDaemonRunning } = await import("../globals/startDaemons");
+        logger.info("Daemon running status:", isDaemonRunning());
 
         // Give the daemon a moment to be fully ready
         await new Promise(resolve => setTimeout(resolve, 2000));

@@ -67,9 +67,8 @@ func main() {
 
 	// Handle migration mode
 	if *migrate {
-		mustForce := *forceMig || *dryRun // Skip marker check for dry-run or forced runs
 		devEnv := os.Getenv("DEV")
-		if err := runMigration(log, *dryRun, mustForce, devEnv == "true"); err != nil {
+		if err := runMigration(log, *dryRun, devEnv == "true"); err != nil {
 			log.Error("Migration failed", "error", err)
 			os.Exit(1)
 		}
@@ -129,16 +128,11 @@ func main() {
 	}
 
 	// Initialize daemon lock
-	var lockFile, pidFile string
-	if devEnv == "true" {
-		// Development mode: use /tmp paths
-		lockFile = "/tmp/waypaper-daemon.lock"
-		pidFile = "/tmp/waypaper-daemon.pid"
-	} else {
-		// Production mode: use user directory
-		lockFile = filepath.Join(homeDir, ".waypaper-engine", "daemon.lock")
-		pidFile = filepath.Join(homeDir, ".waypaper-engine", "daemon.pid")
-	}
+	// Set up lock manager for daemon process management
+	// Use config-driven paths for lock files
+	configDir := filepath.Dir(configPath)
+	lockFile := filepath.Join(configDir, "daemon.lock")
+	pidFile := filepath.Join(configDir, "daemon.pid")
 	lockManager := system.NewLockManager(lockFile, pidFile)
 
 	// Clean up any stale lock files from previous crashes
@@ -195,17 +189,22 @@ func main() {
 
 	log.Info("using backend", "type", backendType)
 
-	// Initialize JSON store
-	var jsonStorePath string
-	if devEnv == "true" {
-		jsonStorePath = "/tmp/waypaper-engine/data"
-	} else {
-		jsonStorePath = filepath.Join(homeDir, ".waypaper-engine", "data")
+	// Initialize JSON store using config-driven paths
+	jsonStorePath, err := configManager.GetDatabasePath()
+	if err != nil {
+		log.Error("failed to get database path from config", "error", err)
+		os.Exit(1)
+	}
+
+	thumbnailsDir, err := configManager.GetThumbnailsDir()
+	if err != nil {
+		log.Error("failed to get thumbnails directory from config", "error", err)
+		os.Exit(1)
 	}
 
 	storeConfig := store.DefaultStoreConfig()
 	storeConfig.BasePath = jsonStorePath
-	storeConfig.ThumbnailsDir = cfg.Daemon.ThumbnailsDir
+	storeConfig.ThumbnailsDir = thumbnailsDir
 	jsonStore, err := store.NewStore(storeConfig, log)
 	if err != nil {
 		log.Error("failed to initialize JSON store", "error", err)
@@ -220,6 +219,26 @@ func main() {
 
 	// Initialize components
 	monitorManager := monitor.NewManager(backendManager, log)
+
+	// Get paths from config for monitor manager
+	imagesDir, err := configManager.GetImagesDir()
+	if err != nil {
+		log.Error("failed to get images directory from config", "error", err)
+		os.Exit(1)
+	}
+
+	monitorsStateFile, err := configManager.GetMonitorsStateFile()
+	if err != nil {
+		log.Error("failed to get monitors state file from config", "error", err)
+		os.Exit(1)
+	}
+
+	// Start monitor manager with config-driven paths
+	if err := monitorManager.StartWithConfig(context.Background(), imagesDir, thumbnailsDir, monitorsStateFile); err != nil {
+		log.Error("failed to start monitor manager", "error", err)
+		os.Exit(1)
+	}
+
 	playlistManager := playlist.NewManager(jsonStore, backendManager, log, cfg)
 	playlistManager.SetHistoryLimit(cfg.App.ImageHistoryLimit)
 	imageProcessor := image.NewProcessor(4, 100, log) // 4 workers, 100 cache size
@@ -230,18 +249,20 @@ func main() {
 
 	// Create IPC handler with shutdown channel
 	ipcHandler := ipc.NewHandler(playlistManager, nil, nil, configManager, imageProcessor, monitorManager, log)
-	ipcServer, err := ipc.NewServer(ipcHandler, log)
+
+	// Get socket path from config
+	socketPath, err := configManager.GetSocketPath()
+	if err != nil {
+		log.Error("failed to get socket path from config", "error", err)
+		os.Exit(1)
+	}
+
+	ipcServer, err := ipc.NewServerWithSocket(ipcHandler, socketPath, log)
 	if err != nil {
 		log.Error("failed to create IPC server", "error", err)
 		os.Exit(1)
 	}
 	defer ipcServer.Close()
-
-	// Start monitor manager with config paths
-	if err := monitorManager.StartWithConfig(context.Background(), cfg.Daemon.ImagesDir, cfg.Daemon.ThumbnailsDir, cfg.Daemon.MonitorsStateFile); err != nil {
-		log.Error("failed to start monitor manager", "error", err)
-		os.Exit(1)
-	}
 
 	// Start IPC server
 	go ipcServer.Listen()
@@ -455,16 +476,30 @@ func runMigration(logger *slog.Logger, dryRun, isDev bool) error {
 		return fmt.Errorf("failed to get home directory: %w", err)
 	}
 
-	var sqlitePath = filepath.Join(homeDir, ".waypaper_engine", "images_database.sqlite3")
-	var jsonPath string
-	if jsonPath == "" {
-		if isDev {
-			jsonPath = "/tmp/waypaper-engine/data"
-		} else {
-			// We should be using the .toml configuration set path here
-			jsonPath = filepath.Join(homeDir, ".waypaper-engine", "data")
-		}
+	// Legacy paths (constants as requested)
+	const (
+		legacySQLitePath = "~/.waypaper_engine/images_database.sqlite3"
+		legacyImagesDir  = "~/.waypaper_engine/images"
+	)
+
+	// Expand legacy paths
+	sqlitePath := filepath.Join(homeDir, ".waypaper_engine", "images_database.sqlite3")
+
+	// Get new paths from config
+	var configPath string
+	if isDev {
+		configPath = "/tmp/waypaper-engine/config.toml"
+	} else {
+		configPath = filepath.Join(homeDir, ".config", "waypaper-engine", "config.toml")
 	}
+
+	configManager := config.NewConfigManager(configPath)
+	cfg, err := configManager.LoadConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	jsonPath := cfg.Daemon.DatabasePath
 
 	logger.Info("Starting migration",
 		"sqlite", sqlitePath,
@@ -473,7 +508,7 @@ func runMigration(logger *slog.Logger, dryRun, isDev bool) error {
 	logger.Info("Migration is idempotent - existing configurations will be preserved")
 
 	// Check if migration has already been completed
-	var migrationMarkerFile = filepath.Join(filepath.Dir(tomlPath), ".migration_completed")
+	_ = filepath.Join(filepath.Dir(configPath), ".migration_completed")
 
 	// Check if SQLite database exists
 	if _, err := os.Stat(sqlitePath); os.IsNotExist(err) {
@@ -495,20 +530,18 @@ func runMigration(logger *slog.Logger, dryRun, isDev bool) error {
 	defer dbManager.Close()
 
 	dbOps := db.NewDatabaseOperations(dbManager)
-	configManager := config.NewConfigManager(tomlPath)
 
 	// Initialize JSON store
 	storeConfig := store.DefaultStoreConfig()
-	if jsonPath != "" {
-		storeConfig.BasePath = jsonPath
-	}
+	storeConfig.BasePath = jsonPath
+	storeConfig.ThumbnailsDir = cfg.Daemon.ThumbnailsDir
 	jsonStore, err := store.NewStore(storeConfig, logger)
 	if err != nil {
 		return fmt.Errorf("failed to initialize JSON store: %w", err)
 	}
 
 	// Determine migration marker location
-	migrationMarkerPath := filepath.Join(filepath.Dir(tomlPath), ".migration_completed")
+	migrationMarkerPath := filepath.Join(filepath.Dir(configPath), ".migration_completed")
 
 	// Create migration tool
 	migrator := &MigrationTool{
@@ -609,6 +642,7 @@ func (mt *MigrationTool) migrateAllData() error {
 		tomlPath:  mt.options.TOMLPath,
 		options:   mt.options,
 		isDev:     mt.isDev,
+		config:    mt.config,
 	}
 
 	// Migrate each component
@@ -695,6 +729,7 @@ type SQLiteToJSONMigrator struct {
 	tomlPath  string
 	options   MigrationOptions
 	isDev     bool
+	config    *config.ConfigManager
 }
 
 // migrateSwwwConfigToToml migrates swww configuration from SQLite to TOML
@@ -954,7 +989,6 @@ func (migrator *SQLiteToJSONMigrator) migrateImages() error {
 				migrator.logger.Warn("Could not get home directory", "error", err)
 				continue
 			}
-
 		}
 
 		storeImage := store.Image{
@@ -1043,12 +1077,10 @@ func (migrator *SQLiteToJSONMigrator) copyLegacyImageFiles() error {
 		return nil
 	}
 
-	// Create destination directory
-	var destImagesDir string
-	if migrator.isDev {
-		destImagesDir = filepath.Join(filepath.Dir(migrator.options.JSONPath), "images")
-	} else {
-		destImagesDir = filepath.Join(homeDir, ".waypaper-engine", "images")
+	// Create destination directory using config-driven path
+	destImagesDir, err := migrator.config.GetImagesDir()
+	if err != nil {
+		return fmt.Errorf("failed to get images directory from config: %w", err)
 	}
 
 	if err := os.MkdirAll(destImagesDir, 0755); err != nil {
@@ -1325,12 +1357,10 @@ func (migrator *SQLiteToJSONMigrator) migrateMonitorState() error {
 		}
 	}
 
-	// Clear new monitor state file if it exists
-	var newMonitorStateFile string
-	if migrator.isDev {
-		newMonitorStateFile = filepath.Join(filepath.Dir(migrator.options.JSONPath), ".cache", "waypaper-engine", "monitors.json")
-	} else {
-		newMonitorStateFile = filepath.Join(homeDir, ".cache", "waypaper-engine", "monitors.json")
+	// Clear new monitor state file if it exists (using config-driven path)
+	newMonitorStateFile, err := migrator.config.GetMonitorsStateFile()
+	if err != nil {
+		return fmt.Errorf("failed to get monitors state file from config: %w", err)
 	}
 
 	if _, err := os.Stat(newMonitorStateFile); err == nil {
@@ -1461,7 +1491,7 @@ func checkAndRunMigration(log *slog.Logger, homeDir string, isDev bool) error {
 		"target_toml", tomlPath)
 
 	// Run migration
-	if err := runMigration(log, sourceSQLitePath, jsonPath, tomlPath, false, true, true, true, isDev); err != nil {
+	if err := runMigration(log, false, isDev); err != nil {
 		return err
 	}
 

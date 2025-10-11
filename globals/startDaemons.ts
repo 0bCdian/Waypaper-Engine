@@ -10,17 +10,46 @@ const fsAccess = promisify(access);
 // Get socket paths from TOML configuration
 const WAYPAPER_ENGINE_SOCKET_PATH = configReader.getSocketPath();
 
+// Keep reference to daemon process
+let daemonProcess: any = null;
+
 export async function initWaypaperDaemon() {
     try {
-        // Check if daemon is already running
+        // Clean up any existing socket file and processes
         try {
             await fsAccess(WAYPAPER_ENGINE_SOCKET_PATH);
-            logger.info("Socket file exists, daemon is already running");
-            await testConnection();
-            return; // Daemon is already running, no need to start a new one
+            logger.info("Found existing socket file, cleaning up...");
+            // Try to connect to existing daemon first
+            try {
+                await testConnection();
+                logger.info("Existing daemon is responsive, using it");
+                return; // Use existing daemon
+            } catch (error) {
+                logger.info("Existing daemon is not responsive, cleaning up socket");
+                // Remove stale socket file
+                const { unlink } = await import("node:fs/promises");
+                await unlink(WAYPAPER_ENGINE_SOCKET_PATH);
+            }
         } catch (error) {
             // Socket doesn't exist, proceed to start daemon
-            logger.info("Socket file not found, starting new daemon...");
+            logger.info("No existing socket file found");
+        }
+        
+        // Kill any existing swww daemon processes that might conflict
+        try {
+            const { exec } = await import("node:child_process");
+            const { promisify } = await import("node:util");
+            const execAsync = promisify(exec);
+            
+            logger.info("Checking for existing swww daemon processes...");
+            const { stdout } = await execAsync("pgrep swww-daemon || true");
+            if (stdout.trim()) {
+                logger.info("Found existing swww daemon processes, killing them...");
+                await execAsync("pkill swww-daemon || true");
+                await new Promise(resolve => setTimeout(resolve, 1000)); // Wait for cleanup
+            }
+        } catch (error) {
+            logger.warn("Failed to clean up existing swww processes:", error);
         }
         
         // Launch Go daemon - it handles its own locking and swww initialization
@@ -30,9 +59,14 @@ export async function initWaypaperDaemon() {
         const output = spawn(goDaemonPath, [], {
             stdio: ["ignore", "pipe", "pipe"],
             shell: false,
-            detached: true,
+            detached: false, // Keep reference to the process
             env: { ...process.env }
         });
+        
+        logger.info(`Daemon process spawned with PID: ${output.pid}`);
+        
+        // Keep reference to the process
+        daemonProcess = output;
         
         // Log daemon output for debugging
         output.stdout?.on('data', (data) => {
@@ -45,48 +79,76 @@ export async function initWaypaperDaemon() {
         
         output.on('error', (error) => {
             logger.error(`Go daemon spawn error: ${error}`);
+            throw error; // Re-throw to trigger error handling
         });
         
         output.on('exit', (code, signal) => {
-            logger.warn(`Go daemon exited with code ${code}, signal ${signal}`);
+            logger.error(`Go daemon exited with code ${code}, signal ${signal}`);
+            logger.error("Daemon process has exited unexpectedly");
+            // Don't exit the app immediately, let the connection test handle it
         });
         
-        output.unref();
+        // Don't call unref() - we want to keep the process reference
         
-        // Give the daemon a moment to start
-        await new Promise(resolve => setTimeout(resolve, 3000));
-        
-        // Wait for socket to be created
-        let socketExists = false;
+        // Wait for socket to be created and daemon to be responsive
+        let daemonReady = false;
         let attempts = 0;
-        const maxAttempts = 10;
+        const maxAttempts = 20; // Increased attempts
+        const retryInterval = 500; // 500ms intervals
         
-        while (!socketExists && attempts < maxAttempts) {
+        while (!daemonReady && attempts < maxAttempts) {
+            attempts++;
+            logger.info(`Waiting for daemon to be ready... attempt ${attempts}/${maxAttempts}`);
+            
             try {
+                // Check if daemon process is still running
+                if (daemonProcess && daemonProcess.killed) {
+                    logger.error("Daemon process has been killed");
+                    throw new Error("Daemon process was killed");
+                }
+                
+                // First check if socket exists
                 await fsAccess(WAYPAPER_ENGINE_SOCKET_PATH);
-                socketExists = true;
-                logger.info("Socket file exists, daemon is ready");
+                logger.info("Socket file exists, testing connection...");
+                
+                // Then test if daemon is actually responsive
+                await testConnection();
+                daemonReady = true;
+                logger.info("Daemon is ready and responsive");
             } catch (error) {
-                attempts++;
-                logger.info(`Waiting for socket... attempt ${attempts}/${maxAttempts}`);
-                await new Promise(resolve => setTimeout(resolve, 500));
+                logger.debug(`Connection attempt ${attempts} failed:`, error);
+                if (attempts < maxAttempts) {
+                    await new Promise(resolve => setTimeout(resolve, retryInterval));
+                }
             }
         }
         
-        if (!socketExists) {
-            throw new Error("Daemon socket not created after maximum attempts");
+        if (!daemonReady) {
+            // Kill the daemon process if it's still running
+            if (output && !output.killed) {
+                output.kill('SIGTERM');
+            }
+            throw new Error("Daemon failed to become ready after maximum attempts");
         }
         
-        await testConnection();
+        logger.info("Waypaper daemon started successfully");
     } catch (error) {
-        logger.error(error);
+        logger.error("Failed to start waypaper-daemon:", error);
         logger.warn("Could not start waypaper-daemon, shutting down app...");
         process.exit(1);
     }
 }
+
+export function getDaemonProcess() {
+    return daemonProcess;
+}
+
+export function isDaemonRunning() {
+    return daemonProcess && !daemonProcess.killed && daemonProcess.exitCode === null;
+}
 async function testConnection() {
-    const MAX_ATTEMPTS = 10;
-    const RETRY_INTERVAL = 300;
+    const MAX_ATTEMPTS = 5;
+    const RETRY_INTERVAL = 200;
     let attempt = 1;
     while (attempt <= MAX_ATTEMPTS) {
         try {
@@ -94,11 +156,15 @@ async function testConnection() {
             logger.info("Connection to Go daemon established.");
             return;
         } catch (error) {
-            await setTimeoutPromise(RETRY_INTERVAL);
-            attempt++;
+            logger.debug(`Connection attempt ${attempt} failed:`, error);
+            if (attempt < MAX_ATTEMPTS) {
+                await setTimeoutPromise(RETRY_INTERVAL);
+                attempt++;
+            } else {
+                throw error;
+            }
         }
     }
-    throw new Error("Failed to establish connection to Go daemon.");
 }
 
 async function connectToDaemon(socketPath: string) {
@@ -106,17 +172,52 @@ async function connectToDaemon(socketPath: string) {
         try {
             const { createConnection } = require("node:net");
             const client = createConnection(socketPath, () => {
-                client.end();
-                resolve("");
+                // Send a ping command to test responsiveness
+                const pingMessage = JSON.stringify({ action: "ping", messageId: 1 }) + "\n";
+                client.write(pingMessage);
+                
+                // Set up response handler
+                let responseData = "";
+                client.on('data', (data) => {
+                    responseData += data.toString();
+                    // Check if we got a complete JSON response
+                    try {
+                        const lines = responseData.split('\n');
+                        for (const line of lines) {
+                            if (line.trim()) {
+                                const response = JSON.parse(line);
+                                if (response.action === "pong" || response.messageId === 1) {
+                                    client.end();
+                                    resolve("pong");
+                                    return;
+                                }
+                            }
+                        }
+                    } catch (e) {
+                        // Continue waiting for complete response
+                    }
+                });
+                
+                // Set timeout for response
+                setTimeout(() => {
+                    client.end();
+                    reject(new Error("Daemon ping timeout"));
+                }, 2000);
             });
+            
             client.on("error", (err: Error) => {
                 reject(err);
             });
+            
+            client.on("close", () => {
+                // Connection closed without proper response
+                if (!responseData.includes("pong")) {
+                    reject(new Error("Daemon connection closed unexpectedly"));
+                }
+            });
         } catch (error) {
-            logger.error(error);
-            logger.error(
-                "failed to test connection, this is because createConnection threw"
-            );
+            logger.error("Failed to test daemon connection:", error);
+            reject(error);
         }
     });
 }

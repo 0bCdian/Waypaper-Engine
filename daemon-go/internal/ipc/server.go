@@ -10,17 +10,17 @@ import (
 	"sync"
 )
 
-const (
-	SocketPath = "/tmp/waypaper-engine.sock"
-)
+// Default socket path (fallback)
+const DefaultSocketPath = "/tmp/waypaper-engine.sock"
 
 // Server is the IPC server.
 type Server struct {
-	listener net.Listener
-	handler  MessageHandler
-	logger   *slog.Logger
-	clients  map[net.Conn]bool
-	mu       sync.RWMutex
+	listener   net.Listener
+	handler    MessageHandler
+	logger     *slog.Logger
+	clients    map[net.Conn]bool
+	mu         sync.RWMutex
+	socketPath string
 }
 
 // MessageHandler is an interface for handling IPC messages.
@@ -29,22 +29,28 @@ type MessageHandler interface {
 	SetServer(server *Server)
 }
 
-// NewServer creates a new IPC server.
+// NewServer creates a new IPC server with default socket path.
 func NewServer(handler MessageHandler, logger *slog.Logger) (*Server, error) {
-	if err := os.RemoveAll(SocketPath); err != nil {
+	return NewServerWithSocket(handler, DefaultSocketPath, logger)
+}
+
+// NewServerWithSocket creates a new IPC server with a custom socket path.
+func NewServerWithSocket(handler MessageHandler, socketPath string, logger *slog.Logger) (*Server, error) {
+	if err := os.RemoveAll(socketPath); err != nil {
 		return nil, fmt.Errorf("failed to remove old socket: %w", err)
 	}
 
-	listener, err := net.Listen("unix", SocketPath)
+	listener, err := net.Listen("unix", socketPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to listen on socket: %w", err)
 	}
 
 	server := &Server{
-		listener: listener,
-		handler:  handler,
-		logger:   logger,
-		clients:  make(map[net.Conn]bool),
+		listener:   listener,
+		handler:    handler,
+		logger:     logger,
+		clients:    make(map[net.Conn]bool),
+		socketPath: socketPath,
 	}
 
 	// Set the server reference in the handler
@@ -55,7 +61,7 @@ func NewServer(handler MessageHandler, logger *slog.Logger) (*Server, error) {
 
 // Listen starts the server and listens for connections.
 func (s *Server) Listen() {
-	s.logger.Info("IPC server listening on", "socket", SocketPath)
+	s.logger.Info("IPC server listening on", "socket", s.socketPath)
 	for {
 		conn, err := s.listener.Accept()
 		if err != nil {

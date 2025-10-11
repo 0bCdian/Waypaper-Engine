@@ -8,11 +8,18 @@ type Position struct {
 
 // Monitor represents a single display.
 type Monitor struct {
-	Name         string `json:"name"`
-	Width        int    `json:"width"`
-	Height       int    `json:"height"`
-	CurrentImage string `json:"currentImage"`
-	Position     struct {
+	Name           string  `json:"name"`
+	Make           string  `json:"make,omitempty"`  // Monitor manufacturer
+	Model          string  `json:"model,omitempty"` // Monitor model
+	Width          int     `json:"width"`
+	Height         int     `json:"height"`
+	RefreshRate    float64 `json:"refreshRate,omitempty"`    // Refresh rate in Hz
+	Scale          int32   `json:"scale,omitempty"`          // Display scaling factor
+	Transform      int32   `json:"transform,omitempty"`      // Display transform (rotation, etc.)
+	PhysicalWidth  int32   `json:"physicalWidth,omitempty"`  // Physical width in mm
+	PhysicalHeight int32   `json:"physicalHeight,omitempty"` // Physical height in mm
+	CurrentImage   string  `json:"currentImage"`
+	Position       struct {
 		X int `json:"x"`
 		Y int `json:"y"`
 	} `json:"position"`

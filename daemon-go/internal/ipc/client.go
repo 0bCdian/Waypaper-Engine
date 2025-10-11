@@ -14,7 +14,7 @@ type Client struct {
 
 // NewClient creates a new IPC client.
 func NewClient() (*Client, error) {
-	conn, err := net.Dial("unix", SocketPath)
+	conn, err := net.Dial("unix", DefaultSocketPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to socket: %w", err)
 	}

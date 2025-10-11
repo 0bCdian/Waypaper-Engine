@@ -7,7 +7,7 @@ import (
 // Event represents a real-time event from the daemon.
 type Event struct {
 	Type     EventType     `json:"type"`
-	Payload  interface{}   `json:"payload"`
+	Payload  any           `json:"payload"`
 	Metadata EventMetadata `json:"metadata"`
 }
 
@@ -67,10 +67,10 @@ type MonitorEventMetadata struct {
 
 // ConfigEventMetadata contains metadata for configuration-related events
 type ConfigEventMetadata struct {
-	ConfigType string      `json:"configType"`         // app|daemon|backend
-	Key        string      `json:"key"`                // Configuration key that changed
-	OldValue   interface{} `json:"oldValue,omitempty"` // Previous value
-	NewValue   interface{} `json:"newValue,omitempty"` // New value
+	ConfigType string `json:"configType"`         // app|daemon|backend
+	Key        string `json:"key"`                // Configuration key that changed
+	OldValue   any    `json:"oldValue,omitempty"` // Previous value
+	NewValue   any    `json:"newValue,omitempty"` // New value
 }
 
 // EventType defines the type of daemon event.

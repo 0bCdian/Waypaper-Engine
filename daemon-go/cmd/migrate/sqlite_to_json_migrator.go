@@ -183,7 +183,7 @@ func (migrator *SQLiteToJSONMigrator) migrateImages() error {
 				migrator.logger.Error("Failed to create consolidated images directory", "error", err)
 				continue
 			}
-			
+
 			consolidatedPath := filepath.Join(consolidatedDir, dbImg.Name)
 			if err := os.Rename(originalImagePath, consolidatedPath); err != nil {
 				migrator.logger.Error("Failed to move image to consolidated directory", "error", err, "from", originalImagePath, "to", consolidatedPath)
@@ -222,7 +222,7 @@ func (migrator *SQLiteToJSONMigrator) migrateImages() error {
 		}
 
 		jsonImg := store.Image{
-			ID:        fmt.Sprintf("%d", dbImg.ID),
+			ID:        dbImg.ID,
 			Name:      dbImg.Name,
 			Path:      finalPath, // Use final path (original or consolidated)
 			MediaType: mediaType,

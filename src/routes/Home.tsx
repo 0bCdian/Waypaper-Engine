@@ -15,7 +15,7 @@ const Home = () => {
             void requeryAppConfig();
         });
     }, []);
-    
+
     console.log("🔵 Home: Rendering, isSetup:", isSetup);
     if (!isSetup) {
         console.log("🔵 Home: Not setup yet, returning null");

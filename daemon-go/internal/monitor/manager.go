@@ -38,6 +38,9 @@ type Manager struct {
 	imagesDir         string
 	thumbnailsDir     string
 	monitorsStateFile string
+
+	// New Wayland-based monitor manager
+	monitorManager *MonitorManager
 }
 
 // NewManager creates a new monitor manager
@@ -54,8 +57,20 @@ func NewManager(backendManager *backend.BackendManager, logger *slog.Logger) *Ma
 func (m *Manager) Start(ctx context.Context) error {
 	m.logger.Info("Starting monitor manager")
 
+	// Try to initialize the new Wayland-based MonitorManager
+	monitorManager, err := NewMonitorManager()
+	if err != nil {
+		m.logger.Warn("Failed to initialize Wayland MonitorManager, falling back to compositor detection", "error", err)
+	} else {
+		m.monitorManager = monitorManager
+		m.logger.Info("Initialized Wayland MonitorManager")
+
+		// Set up event handling
+		go m.handleMonitorEvents()
+	}
+
 	// Load active monitor configuration from database
-	err := m.loadActiveMonitorFromDB()
+	err = m.loadActiveMonitorFromDB()
 	if err != nil {
 		m.logger.Warn("Failed to load active monitor from database", "error", err)
 		// Continue without active monitor - it will be set when user selects one
@@ -197,8 +212,14 @@ func (m *Manager) SetWallpaper(monitorName, imagePath string) error {
 	monitor.CurrentImage = imagePath
 
 	// Use the backend to actually set the wallpaper
-	ctx := context.Background()
-	return m.backendManager.SetWallpaper(ctx, imagePath, monitorName)
+	if m.backendManager != nil {
+		ctx := context.Background()
+		return m.backendManager.SetWallpaper(ctx, imagePath, monitorName)
+	}
+
+	// If no backend manager, just update the monitor state
+	m.logger.Warn("No backend manager available, only updating monitor state")
+	return nil
 }
 
 // SetWallpaperAll sets a wallpaper on all monitors
@@ -212,12 +233,75 @@ func (m *Manager) SetWallpaperAll(imagePath string) error {
 	}
 
 	// Use the backend to set wallpaper on all monitors
-	ctx := context.Background()
-	return m.backendManager.SetWallpaperAll(ctx, imagePath)
+	if m.backendManager != nil {
+		ctx := context.Background()
+		return m.backendManager.SetWallpaperAll(ctx, imagePath)
+	}
+
+	// If no backend manager, just update the monitor state
+	m.logger.Warn("No backend manager available, only updating monitor state")
+	return nil
 }
 
 // refreshMonitors queries the compositor for current monitor information
 func (m *Manager) refreshMonitors(ctx context.Context) error {
+	// Try to use the new Wayland-based approach first
+	if m.monitorManager != nil {
+		return m.refreshMonitorsWithWayland(ctx)
+	}
+
+	// Fallback to the old compositor-based approach
+	return m.refreshMonitorsWithCompositor(ctx)
+}
+
+// refreshMonitorsWithWayland uses the new Wayland-based MonitorManager
+func (m *Manager) refreshMonitorsWithWayland(ctx context.Context) error {
+	// Get monitors from the new MonitorManager
+	monitorInfos := m.monitorManager.GetMonitors()
+
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	// Convert MonitorInfo to models.Monitor using adapter
+	newMonitors := make(map[string]*models.Monitor)
+	for _, info := range monitorInfos {
+		monitor := MonitorInfoToModel(info)
+
+		// Preserve current image if monitor already exists
+		if existing, exists := m.monitors[monitor.Name]; exists {
+			monitor.CurrentImage = existing.CurrentImage
+		}
+		newMonitors[monitor.Name] = &monitor
+	}
+
+	// Preserve monitors that were loaded from file but are not currently detected
+	for name, existingMonitor := range m.monitors {
+		if _, exists := newMonitors[name]; !exists {
+			// This monitor was loaded from file but is not currently detected
+			// Keep it in the map to preserve its state
+			newMonitors[name] = existingMonitor
+		}
+	}
+
+	m.monitors = newMonitors
+
+	// Check for changes
+	if m.hasMonitorChanges() {
+		m.logger.Info("monitor configuration changed")
+		if m.changeCallback != nil {
+			monitors := make([]models.Monitor, 0, len(m.monitors))
+			for _, monitor := range m.monitors {
+				monitors = append(monitors, *monitor)
+			}
+			m.changeCallback(monitors)
+		}
+	}
+
+	return nil
+}
+
+// refreshMonitorsWithCompositor uses the old compositor-based approach
+func (m *Manager) refreshMonitorsWithCompositor(ctx context.Context) error {
 	// Detect compositor and get monitors
 	detector := NewCompositorDetector()
 	compositorInfo, err := detector.DetectCompositor()
@@ -337,6 +421,17 @@ func (m *Manager) SetChangeCallback(callback func([]models.Monitor)) {
 	m.mutex.Lock()
 	defer m.mutex.Unlock()
 	m.changeCallback = callback
+}
+
+// SetEventCallback sets the callback function for monitor events (alias for SetChangeCallback)
+func (m *Manager) SetEventCallback(callback func(MonitorEvent)) {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+	// Convert MonitorEvent to []models.Monitor for compatibility
+	m.changeCallback = func(monitors []models.Monitor) {
+		// For now, we'll just call the callback with the monitors
+		// In a full implementation, we'd convert MonitorEvent to the appropriate format
+	}
 }
 
 // GetMonitor returns a specific monitor by name
@@ -466,12 +561,15 @@ func (m *Manager) LoadMonitorState() error {
 
 // loadMonitorStateFromFile loads the monitor state from the JSON file
 func (m *Manager) loadMonitorStateFromFile() error {
-	homeDir, err := os.UserHomeDir()
-	if err != nil {
-		return fmt.Errorf("failed to get home directory: %w", err)
+	// Use the configured monitors state file if available, otherwise use default
+	monitorsFile := m.monitorsStateFile
+	if monitorsFile == "" {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			return fmt.Errorf("failed to get home directory: %w", err)
+		}
+		monitorsFile = fmt.Sprintf("%s/.cache/waypaper_engine/monitors.json", homeDir)
 	}
-
-	monitorsFile := fmt.Sprintf("%s/.cache/waypaper_engine/monitors.json", homeDir)
 
 	// Check if file exists
 	if _, err := os.Stat(monitorsFile); os.IsNotExist(err) {
@@ -690,4 +788,36 @@ func (m *Manager) PersistCurrentWallpaperState(ctx context.Context) error {
 
 	m.logger.Info("wallpaper state persisted successfully")
 	return nil
+}
+
+// handleMonitorEvents processes events from the MonitorManager
+func (m *Manager) handleMonitorEvents() {
+	if m.monitorManager == nil {
+		return
+	}
+
+	events := m.monitorManager.Events()
+	for event := range events {
+		m.logger.Info("Received monitor event", "type", event.Type, "monitor", event.Monitor.Name)
+
+		// Refresh monitors when we receive an event
+		ctx := context.Background()
+		if err := m.refreshMonitorsWithWayland(ctx); err != nil {
+			m.logger.Error("Failed to refresh monitors after event", "error", err)
+		}
+	}
+}
+
+// Stop stops the monitor manager and cleans up resources
+func (m *Manager) Stop() {
+	m.mutex.Lock()
+	defer m.mutex.Unlock()
+
+	m.logger.Info("stopping monitor manager")
+
+	// Stop the MonitorManager if it exists
+	if m.monitorManager != nil {
+		m.monitorManager.Stop()
+		m.monitorManager = nil
+	}
 }

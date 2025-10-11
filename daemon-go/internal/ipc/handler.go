@@ -19,7 +19,6 @@ import (
 	"waypaper-engine/daemon-go/internal/playlist"
 	"waypaper-engine/daemon-go/internal/store"
 	"waypaper-engine/daemon-go/internal/system"
-	"waypaper-engine/daemon-go/internal/types"
 )
 
 // Handler is the implementation of the MessageHandler interface.
@@ -116,12 +115,6 @@ func (h *Handler) HandleMessage(msg *Message) *Response {
 		response = h.handleSavePlaylist(msg)
 
 	// Image Operations
-	case "get_image_metadata":
-		response = h.handleGetImageMetadata(msg)
-	case "resize_image":
-		response = h.handleResizeImage(msg)
-	case "convert_image":
-		response = h.handleConvertImage(msg)
 	case "process_for_monitors":
 		response = h.handleProcessForMonitors(msg)
 	case "set_image_across_monitors":
@@ -152,24 +145,13 @@ func (h *Handler) HandleMessage(msg *Message) *Response {
 		response = h.handleGetAppConfig(msg)
 	case "set_app_config":
 		response = h.handleSetAppConfig(msg)
-	case "get_swww_config":
-		response = h.handleGetSwwwConfig(msg)
-	case "set_swww_config":
-		response = h.handleSetSwwwConfig(msg)
-	case "update_config":
-		response = h.handleUpdateConfig(msg)
 
 	// System
 	case "stop_daemon":
 		response = h.handleStopDaemon(msg)
 	case "kill_daemon":
 		response = h.handleKillDaemon(msg)
-	case "stop_playlist_by_name":
-		response = h.handleStopPlaylistByName(msg)
-	case "stop_playlist_by_monitor_name":
-		response = h.handleStopPlaylistByMonitorName(msg)
-	case "stop_playlist_on_removed_monitors":
-		response = h.handleStopPlaylistOnRemovedMonitors(msg)
+		// We should recollect some useful information, this is currently a placeholder.
 	case "get_daemon_status":
 		response = h.handleGetDaemonStatus(msg)
 	case "get_monitors":
@@ -186,18 +168,6 @@ func (h *Handler) HandleMessage(msg *Message) *Response {
 		response = h.handleDeleteImageFromGallery(msg)
 	case "process_images":
 		response = h.handleProcessImages(msg)
-	case "create_thumbnail":
-		response = h.handleCreateThumbnail(msg)
-	case "delete_image_from_cache":
-		response = h.handleDeleteImageFromCache(msg)
-	case "get_image_src":
-		response = h.handleGetImageSrc(msg)
-	case "get_thumbnail_src":
-		response = h.handleGetThumbnailSrc(msg)
-	case "get_monitor_image":
-		response = h.handleGetMonitorImage(msg)
-	case "open_context_menu":
-		response = h.handleOpenContextMenu(msg)
 
 	default:
 		response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "unknown action").Error()}
@@ -225,8 +195,32 @@ func (h *Handler) handleStartPlaylist(msg *Message) *Response {
 }
 
 func (h *Handler) handleStopPlaylist(msg *Message) *Response {
+	// Handle stopping by playlist name
+	if msg.PlaylistName != "" {
+		h.logger.Info("stopping playlist by name", "playlist", msg.PlaylistName)
+		err := h.playlistManager.StopPlaylistByName(msg.PlaylistName)
+		if err != nil {
+			h.logger.Error("failed to stop playlist by name", "playlist", msg.PlaylistName, "error", err)
+			return &Response{Action: msg.Action, Error: err.Error()}
+		}
+		return &Response{Action: msg.Action, Data: "playlist stopped by name"}
+	}
+
+	// Handle stopping by multiple monitor names
+	if len(msg.Monitors) > 0 {
+		h.logger.Info("stopping playlists by monitor names", "monitors", msg.Monitors)
+		for _, monitorName := range msg.Monitors {
+			err := h.playlistManager.StopPlaylistByMonitorName(monitorName)
+			if err != nil {
+				h.logger.Error("failed to stop playlist for monitor", "monitor", monitorName, "error", err)
+			}
+		}
+		return &Response{Action: msg.Action, Data: "playlists stopped by monitor names"}
+	}
+
+	// Handle stopping by single monitor name (original behavior)
 	if msg.ActiveMonitor == nil {
-		return &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "missing monitor info").Error()}
+		return &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "missing monitor info, playlist name, or monitor names").Error()}
 	}
 
 	err := h.playlistManager.StopPlaylist(msg.ActiveMonitor.Name)
@@ -449,29 +443,11 @@ func (h *Handler) handleGetPlaylists(msg *Message) *Response {
 	return &Response{Action: msg.Action, Data: playlists}
 }
 
-func (h *Handler) handlePing(msg *Message) *Response {
+func (h *Handler) handlePing(_ *Message) *Response {
 	return &Response{Action: "pong", Data: "pong"}
 }
 
 // Image Operation Handlers
-
-func (h *Handler) handleGetImageMetadata(msg *Message) *Response {
-	// This would extract metadata from an image file
-	// For now, return a placeholder
-	return &Response{Action: msg.Action, Data: "metadata placeholder"}
-}
-
-func (h *Handler) handleResizeImage(msg *Message) *Response {
-	// This would resize an image
-	// For now, return a placeholder
-	return &Response{Action: msg.Action, Data: "resize placeholder"}
-}
-
-func (h *Handler) handleConvertImage(msg *Message) *Response {
-	// This would convert an image format
-	// For now, return a placeholder
-	return &Response{Action: msg.Action, Data: "convert placeholder"}
-}
 
 func (h *Handler) handleProcessForMonitors(msg *Message) *Response {
 	if msg.Image == nil || msg.ActiveMonitor == nil {
@@ -632,9 +608,9 @@ func (h *Handler) handleDuplicateImageAcrossMonitors(msg *Message) *Response {
 }
 
 func (h *Handler) handleDeleteImages(msg *Message) *Response {
-	// This would delete images from the database
-	// For now, return a placeholder
-	return &Response{Action: msg.Action, Data: "delete images placeholder"}
+	// This handler is redundant with handleDeleteImageFromGallery
+	// Redirect to the existing implementation
+	return h.handleDeleteImageFromGallery(msg)
 }
 
 func (h *Handler) handleGetImageHistory(msg *Message) *Response {
@@ -665,39 +641,123 @@ func (h *Handler) handleGetImageHistory(msg *Message) *Response {
 // Bulk Operation Handlers
 
 func (h *Handler) handleNextImageAll(msg *Message) *Response {
-	// This would advance to next image on all monitors
-	// For now, return a placeholder
-	return &Response{Action: msg.Action, Data: "next image all placeholder"}
+	// Get all monitors and advance to next image on each
+	monitors := h.monitorManager.GetMonitors()
+	var errors []string
+
+	for _, monitor := range monitors {
+		err := h.playlistManager.NextImage(context.Background(), monitor.Name)
+		if err != nil {
+			h.logger.Error("failed to advance image on monitor", "monitor", monitor.Name, "error", err)
+			errors = append(errors, fmt.Sprintf("monitor %s: %v", monitor.Name, err))
+		}
+	}
+
+	if len(errors) > 0 {
+		return &Response{Action: msg.Action, Error: fmt.Sprintf("some operations failed: %v", errors)}
+	}
+
+	return &Response{Action: msg.Action, Data: "advanced images on all monitors"}
 }
 
 func (h *Handler) handlePreviousImageAll(msg *Message) *Response {
-	// This would go to previous image on all monitors
-	// For now, return a placeholder
-	return &Response{Action: msg.Action, Data: "previous image all placeholder"}
+	// Get all monitors and go to previous image on each
+	monitors := h.monitorManager.GetMonitors()
+	var errors []string
+
+	for _, monitor := range monitors {
+		err := h.playlistManager.PreviousImage(context.Background(), monitor.Name)
+		if err != nil {
+			h.logger.Error("failed to go to previous image on monitor", "monitor", monitor.Name, "error", err)
+			errors = append(errors, fmt.Sprintf("monitor %s: %v", monitor.Name, err))
+		}
+	}
+
+	if len(errors) > 0 {
+		return &Response{Action: msg.Action, Error: fmt.Sprintf("some operations failed: %v", errors)}
+	}
+
+	return &Response{Action: msg.Action, Data: "went to previous images on all monitors"}
 }
 
 func (h *Handler) handleRandomImageAll(msg *Message) *Response {
-	// This would set random image on all monitors
-	// For now, return a placeholder
-	return &Response{Action: msg.Action, Data: "random image all placeholder"}
+	// Get all monitors and set random image on each
+	monitors := h.monitorManager.GetMonitors()
+	var errors []string
+
+	for _, monitor := range monitors {
+		err := h.playlistManager.RandomImage(context.Background(), monitor.Name)
+		if err != nil {
+			h.logger.Error("failed to set random image on monitor", "monitor", monitor.Name, "error", err)
+			errors = append(errors, fmt.Sprintf("monitor %s: %v", monitor.Name, err))
+		}
+	}
+
+	if len(errors) > 0 {
+		return &Response{Action: msg.Action, Error: fmt.Sprintf("some operations failed: %v", errors)}
+	}
+
+	return &Response{Action: msg.Action, Data: "set random images on all monitors"}
 }
 
 func (h *Handler) handleStopPlaylistAll(msg *Message) *Response {
-	// This would stop playlists on all monitors
-	// For now, return a placeholder
-	return &Response{Action: msg.Action, Data: "stop playlist all placeholder"}
+	// Get all monitors and stop playlists on each
+	monitors := h.monitorManager.GetMonitors()
+	var errors []string
+
+	for _, monitor := range monitors {
+		err := h.playlistManager.StopPlaylist(monitor.Name)
+		if err != nil {
+			h.logger.Error("failed to stop playlist on monitor", "monitor", monitor.Name, "error", err)
+			errors = append(errors, fmt.Sprintf("monitor %s: %v", monitor.Name, err))
+		}
+	}
+
+	if len(errors) > 0 {
+		return &Response{Action: msg.Action, Error: fmt.Sprintf("some operations failed: %v", errors)}
+	}
+
+	return &Response{Action: msg.Action, Data: "stopped playlists on all monitors"}
 }
 
 func (h *Handler) handlePausePlaylistAll(msg *Message) *Response {
-	// This would pause playlists on all monitors
-	// For now, return a placeholder
-	return &Response{Action: msg.Action, Data: "pause playlist all placeholder"}
+	// Get all monitors and pause playlists on each
+	monitors := h.monitorManager.GetMonitors()
+	var errors []string
+
+	for _, monitor := range monitors {
+		err := h.playlistManager.PausePlaylist(monitor.Name)
+		if err != nil {
+			h.logger.Error("failed to pause playlist on monitor", "monitor", monitor.Name, "error", err)
+			errors = append(errors, fmt.Sprintf("monitor %s: %v", monitor.Name, err))
+		}
+	}
+
+	if len(errors) > 0 {
+		return &Response{Action: msg.Action, Error: fmt.Sprintf("some operations failed: %v", errors)}
+	}
+
+	return &Response{Action: msg.Action, Data: "paused playlists on all monitors"}
 }
 
 func (h *Handler) handleResumePlaylistAll(msg *Message) *Response {
-	// This would resume playlists on all monitors
-	// For now, return a placeholder
-	return &Response{Action: msg.Action, Data: "resume playlist all placeholder"}
+	// Get all monitors and resume playlists on each
+	monitors := h.monitorManager.GetMonitors()
+	var errors []string
+
+	for _, monitor := range monitors {
+		err := h.playlistManager.ResumePlaylist(monitor.Name)
+		if err != nil {
+			h.logger.Error("failed to resume playlist on monitor", "monitor", monitor.Name, "error", err)
+			errors = append(errors, fmt.Sprintf("monitor %s: %v", monitor.Name, err))
+		}
+	}
+
+	if len(errors) > 0 {
+		return &Response{Action: msg.Action, Error: fmt.Sprintf("some operations failed: %v", errors)}
+	}
+
+	return &Response{Action: msg.Action, Data: "resumed playlists on all monitors"}
 }
 
 // Configuration Handlers
@@ -708,9 +768,31 @@ func (h *Handler) handleGetAppConfig(msg *Message) *Response {
 }
 
 func (h *Handler) handleSetAppConfig(msg *Message) *Response {
-	// This would set app configuration
-	// For now, return a placeholder
-	return &Response{Action: msg.Action, Data: "set app config placeholder"}
+	if msg.Config == nil || msg.Config.AppConfig == nil {
+		return &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "app config is required").Error()}
+	}
+
+	// Update the app configuration
+	err := h.configManager.SetAppConfig(msg.Config.AppConfig)
+	if err != nil {
+		h.logger.Error("failed to set app config", "error", err)
+		return &Response{Action: msg.Action, Error: err.Error()}
+	}
+
+	h.logger.Info("app config updated successfully")
+
+	// Broadcast config change event to frontend
+	if h.server != nil {
+		h.server.BroadcastEvent(&Event{
+			Type: "config_changed",
+			Payload: map[string]interface{}{
+				"configType": "app",
+				"config":     msg.Config.AppConfig,
+			},
+		})
+	}
+
+	return &Response{Action: msg.Action, Data: "app config updated successfully"}
 }
 
 func (h *Handler) handleGetSwwwConfig(msg *Message) *Response {
@@ -718,30 +800,27 @@ func (h *Handler) handleGetSwwwConfig(msg *Message) *Response {
 	return &Response{Action: msg.Action, Data: config}
 }
 
-func (h *Handler) handleSetSwwwConfig(msg *Message) *Response {
-	// This would set swww configuration
-	// For now, return a placeholder
-	return &Response{Action: msg.Action, Data: "set swww config placeholder"}
-}
-
-func (h *Handler) handleUpdateConfig(msg *Message) *Response {
-	// This would update configuration
-	// For now, return a placeholder
-	return &Response{Action: msg.Action, Data: "update config placeholder"}
-}
-
 // System Handlers
 
 func (h *Handler) handleStopDaemon(msg *Message) *Response {
-	// This would stop the daemon
-	// For now, return a placeholder
-	return &Response{Action: msg.Action, Data: "stop daemon placeholder"}
+	h.logger.Info("stop daemon requested")
+	// For now, just return success - actual daemon termination will be handled by the main process
+	response := &Response{Action: msg.Action, Data: "daemon_stop_requested"}
+	return response
 }
 
 func (h *Handler) handleGetDaemonStatus(msg *Message) *Response {
-	// This would get daemon status
-	// For now, return a placeholder
-	return &Response{Action: msg.Action, Data: "daemon status placeholder"}
+	// Return basic daemon status information
+	status := map[string]interface{}{
+		"running":   true,
+		"uptime":    "unknown", // Could be implemented with start time tracking
+		"version":   "1.0.0",   // Could be read from build info
+		"monitors":  len(h.monitorManager.GetMonitors()),
+		"playlists": "unknown", // Could be implemented by counting active playlists
+		"images":    "unknown", // Could be implemented by counting images in database
+	}
+
+	return &Response{Action: msg.Action, Data: status}
 }
 
 func (h *Handler) handleGetMonitors(msg *Message) *Response {
@@ -1143,97 +1222,6 @@ func (h *Handler) handleProcessImages(msg *Message) *Response {
 	return response
 }
 
-func (h *Handler) handleCreateThumbnail(msg *Message) *Response {
-	// Create thumbnail for a single image
-	if len(msg.ImagePaths) == 0 {
-		response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "image path is required").Error()}
-		return response
-	}
-
-	inputPath := msg.ImagePaths[0]
-	fileName := msg.FileNames[0]
-	if fileName == "" {
-		fileName = filepath.Base(inputPath)
-	}
-
-	// Use smart resolution selection based on connected monitors
-	var thumbnailPaths map[string]string
-	if h.monitorManager != nil {
-		// Get connected monitors
-		monitors := h.monitorManager.GetMonitors()
-
-		// Convert to MonitorResolution format
-		var monitorResolutions []image.MonitorResolution
-		for _, monitor := range monitors {
-			monitorResolutions = append(monitorResolutions, image.MonitorResolution{
-				Width:  monitor.Width,
-				Height: monitor.Height,
-				Name:   monitor.Name,
-			})
-		}
-
-		// Get required resolutions based on monitors
-		requiredResolutions := image.GetRequiredResolutions(monitorResolutions)
-		h.logger.Debug("Creating thumbnails for resolutions", "resolutions", requiredResolutions, "image", fileName)
-
-		// Create smart thumbnails
-		cfg, err := h.configManager.GetConfig()
-		if err != nil {
-			h.logger.Error("failed to get config for thumbnail creation", "error", err)
-			response := &Response{Action: msg.Action, Error: err.Error()}
-			return response
-		}
-
-		thumbnailPaths, err = image.CreateSmartMultiResolutionThumbnails(
-			inputPath,
-			cfg.Daemon.ThumbnailsDir,
-			fileName,
-			requiredResolutions,
-		)
-		if err != nil {
-			h.logger.Error("failed to create smart multi-resolution thumbnails", "error", err, "image", fileName)
-			response := &Response{Action: msg.Action, Error: err.Error()}
-			return response
-		}
-	} else {
-		// Fallback to creating all resolutions if no monitor manager
-		cfg, err := h.configManager.GetConfig()
-		if err != nil {
-			h.logger.Error("failed to get config for thumbnail creation", "error", err)
-			response := &Response{Action: msg.Action, Error: err.Error()}
-			return response
-		}
-
-		thumbnailPaths, err = image.CreateMultiResolutionThumbnails(
-			inputPath,
-			cfg.Daemon.ThumbnailsDir,
-			fileName,
-		)
-		if err != nil {
-			h.logger.Error("failed to create multi-resolution thumbnails", "error", err, "image", fileName)
-			response := &Response{Action: msg.Action, Error: err.Error()}
-			return response
-		}
-	}
-
-	// Send thumbnail_created event to frontend
-	if h.server != nil {
-		h.server.BroadcastEvent(&types.Event{
-			Type: "thumbnail_created",
-			Payload: map[string]interface{}{
-				"imageName":  fileName,
-				"thumbnails": thumbnailPaths,
-				"timestamp":  time.Now().Unix(),
-			},
-		})
-	}
-
-	h.logger.Info("Successfully created thumbnails", "image", fileName, "resolutions", len(thumbnailPaths))
-
-	response := &Response{Action: msg.Action, Data: thumbnailPaths}
-	return response
-}
-
 func (h *Handler) handleDeleteImageFromCache(msg *Message) *Response {
 	// Delete image and thumbnail from cache
 	if len(msg.FileNames) == 0 {
@@ -1259,9 +1247,12 @@ func (h *Handler) handleDeleteImageFromCache(msg *Message) *Response {
 }
 
 func (h *Handler) handleGetActivePlaylist(msg *Message) *Response {
-	// This would get the active playlist
-	// For now, return a placeholder
-	return &Response{Action: msg.Action, Data: "get active playlist placeholder"}
+	// Get active playlists from the playlist manager
+	// This would need to be implemented in the playlist manager
+	// For now, return empty list
+	activePlaylists := []map[string]interface{}{}
+
+	return &Response{Action: msg.Action, Data: activePlaylists}
 }
 
 func (h *Handler) handleSavePlaylist(msg *Message) *Response {
@@ -1566,42 +1557,6 @@ func (h *Handler) handleGetThumbnailSrc(msg *Message) *Response {
 	return response
 }
 
-func (h *Handler) handleGetMonitorImage(msg *Message) *Response {
-	if msg.MonitorName == "" {
-		response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "monitor name is required").Error()}
-		return response
-	}
-
-	// Get the monitor-specific image path
-	imagePath, err := h.monitorManager.GetMonitorImagePath(msg.MonitorName)
-	if err != nil {
-		h.logger.Error("failed to get monitor image path", "monitor", msg.MonitorName, "error", err)
-		response := &Response{Action: msg.Action, Error: err.Error()}
-		return response
-	}
-
-	// Validate that the file exists
-	if _, err := os.Stat(imagePath); err != nil {
-		h.logger.Warn("Monitor image file not found", "path", imagePath, "monitor", msg.MonitorName)
-		response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "monitor image file not found").Error()}
-		return response
-	}
-
-	// Return clean file path (electron will add atom:// protocol)
-	response := &Response{Action: msg.Action, Data: imagePath}
-	return response
-}
-
-func (h *Handler) handleOpenContextMenu(msg *Message) *Response {
-	// For now, just return success - the context menu will be handled by Electron
-	// The Go daemon doesn't need to implement the actual context menu logic
-	// since Electron handles the UI part
-	h.logger.Info("context menu requested", "image", msg.Image, "selectedImagesLength", msg.SelectedImagesLength)
-
-	response := &Response{Action: msg.Action, Data: "context_menu_opened"}
-	return response
-}
-
 // listenToPlaylistEvents listens to playlist manager events and broadcasts them to clients
 func (h *Handler) listenToPlaylistEvents() {
 	h.logger.Info("playlist event listener disabled (stub implementation)")
@@ -1616,64 +1571,5 @@ func (h *Handler) handleKillDaemon(msg *Message) *Response {
 	h.logger.Info("kill daemon requested")
 	// For now, just return success - actual daemon termination will be handled by the main process
 	response := &Response{Action: msg.Action, Data: "daemon_kill_requested"}
-	return response
-}
-
-// handleStopPlaylistByName handles stopping a playlist by name
-func (h *Handler) handleStopPlaylistByName(msg *Message) *Response {
-	playlistName := msg.PlaylistName
-	if playlistName == "" {
-		response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "playlist name is required").Error()}
-		return response
-	}
-
-	h.logger.Info("stopping playlist by name", "playlist", playlistName)
-	err := h.playlistManager.StopPlaylistByName(playlistName)
-	if err != nil {
-		h.logger.Error("failed to stop playlist by name", "playlist", playlistName, "error", err)
-		response := &Response{Action: msg.Action, Error: err.Error()}
-		return response
-	}
-
-	response := &Response{Action: msg.Action, Data: "playlist stopped by name"}
-	return response
-}
-
-// handleStopPlaylistByMonitorName handles stopping playlists by monitor name
-func (h *Handler) handleStopPlaylistByMonitorName(msg *Message) *Response {
-	monitors := msg.Monitors
-	if len(monitors) == 0 {
-		response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "monitors are required").Error()}
-		return response
-	}
-
-	h.logger.Info("stopping playlists by monitor name", "monitors", monitors)
-	// Stop playlist for each monitor
-	for _, monitorName := range monitors {
-		err := h.playlistManager.StopPlaylistByMonitorName(monitorName)
-		if err != nil {
-			h.logger.Error("failed to stop playlist for monitor", "monitor", monitorName, "error", err)
-		}
-	}
-
-	response := &Response{Action: msg.Action, Data: "playlists stopped by monitor name"}
-	return response
-}
-
-// handleStopPlaylistOnRemovedMonitors handles stopping playlists on removed monitors
-func (h *Handler) handleStopPlaylistOnRemovedMonitors(msg *Message) *Response {
-	h.logger.Info("stopping playlists on removed monitors")
-	monitors := msg.Monitors
-	if monitors == nil {
-		monitors = []string{}
-	}
-	err := h.playlistManager.StopPlaylistOnRemovedMonitors(monitors)
-	if err != nil {
-		h.logger.Error("failed to stop playlists on removed monitors", "error", err)
-		response := &Response{Action: msg.Action, Error: err.Error()}
-		return response
-	}
-
-	response := &Response{Action: msg.Action, Data: "playlists stopped on removed monitors"}
 	return response
 }

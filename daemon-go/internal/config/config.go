@@ -94,7 +94,7 @@ func NewConfigManager(configPath string) *ConfigManager {
 		swwwConfigPath:     filepath.Join(configDir, "swww.json"),
 		monitorsConfigPath: filepath.Join(configDir, "monitors.json"),
 		frontendConfigPath: filepath.Join(configDir, "frontend.json"),
-		frontendConfig:     make(map[string]interface{}),
+		frontendConfig:     make(map[string]any),
 	}
 }
 
@@ -332,15 +332,97 @@ func (cm *ConfigManager) deepMerge(target, source *WaypaperConfig) *WaypaperConf
 	return source
 }
 
+// GetImagesDir returns the images directory path
+func (cm *ConfigManager) GetImagesDir() (string, error) {
+	config, err := cm.LoadConfig()
+	if err != nil {
+		return "", err
+	}
+	return config.Daemon.ImagesDir, nil
+}
+
+// GetThumbnailsDir returns the thumbnails directory path
+func (cm *ConfigManager) GetThumbnailsDir() (string, error) {
+	config, err := cm.LoadConfig()
+	if err != nil {
+		return "", err
+	}
+	return config.Daemon.ThumbnailsDir, nil
+}
+
+// GetDatabasePath returns the database directory path
+func (cm *ConfigManager) GetDatabasePath() (string, error) {
+	config, err := cm.LoadConfig()
+	if err != nil {
+		return "", err
+	}
+	return config.Daemon.DatabasePath, nil
+}
+
+// GetMonitorsStateFile returns the monitors state file path
+func (cm *ConfigManager) GetMonitorsStateFile() (string, error) {
+	config, err := cm.LoadConfig()
+	if err != nil {
+		return "", err
+	}
+	return config.Daemon.MonitorsStateFile, nil
+}
+
+// GetSocketPath returns the socket path
+func (cm *ConfigManager) GetSocketPath() (string, error) {
+	config, err := cm.LoadConfig()
+	if err != nil {
+		return "", err
+	}
+	return config.Daemon.SocketPath, nil
+}
+
+// GetLogFile returns the log file path
+func (cm *ConfigManager) GetLogFile() (string, error) {
+	config, err := cm.LoadConfig()
+	if err != nil {
+		return "", err
+	}
+	return config.Daemon.LogFile, nil
+}
+
+// IsDevMode returns true if running in development mode
+func (cm *ConfigManager) IsDevMode() bool {
+	return os.Getenv("DEV") == "true"
+}
+
 func (cm *ConfigManager) getDefaultConfig() *WaypaperConfig {
 	homeDir, _ := os.UserHomeDir()
+	isDev := os.Getenv("DEV") == "true"
 
-	// Check if we're in development mode
-	var baseDir string
-	if os.Getenv("DEV") == "true" {
+	// Development vs Production paths
+	var (
+		baseDir       string
+		configDir     string
+		cacheDir      string
+		imagesDir     string
+		thumbnailsDir string
+		monitorsFile  string
+		logFile       string
+	)
+
+	if isDev {
+		// Development mode: use /tmp/waypaper-engine
 		baseDir = "/tmp/waypaper-engine"
+		configDir = baseDir
+		cacheDir = filepath.Join(baseDir, ".cache", "waypaper-engine")
+		imagesDir = filepath.Join(baseDir, "images")
+		thumbnailsDir = filepath.Join(baseDir, "data", "cache", "thumbnails")
+		monitorsFile = filepath.Join(cacheDir, "monitors.json")
+		logFile = filepath.Join(baseDir, "daemon.log")
 	} else {
-		baseDir = homeDir
+		// Production mode: use standard user directories
+		configDir = filepath.Join(homeDir, ".config", "waypaper-engine")
+		cacheDir = filepath.Join(homeDir, ".cache", "waypaper-engine")
+		imagesDir = filepath.Join(homeDir, ".waypaper-engine", "images")
+		thumbnailsDir = filepath.Join(homeDir, ".waypaper-engine", "data", "cache", "thumbnails")
+		monitorsFile = filepath.Join(cacheDir, "monitors.json")
+		logFile = filepath.Join(configDir, "daemon.log")
 	}
 
 	return &WaypaperConfig{
@@ -359,13 +441,13 @@ func (cm *ConfigManager) getDefaultConfig() *WaypaperConfig {
 			ImageHistoryLimit:       50,
 		},
 		Daemon: DaemonConfig{
-			DatabasePath:      filepath.Join(baseDir, "data"),
-			ImagesDir:         filepath.Join(baseDir, "images"),
-			ThumbnailsDir:     filepath.Join(baseDir, "data", "cache", "thumbnails"),
-			MonitorsStateFile: filepath.Join(baseDir, ".cache", "waypaper-engine", "monitors.json"),
+			DatabasePath:      filepath.Join(configDir, "data"),
+			ImagesDir:         imagesDir,
+			ThumbnailsDir:     thumbnailsDir,
+			MonitorsStateFile: monitorsFile,
 			SocketPath:        "/tmp/waypaper-engine.sock",
 			LogLevel:          "info",
-			LogFile:           "",     // Empty means no log file (stdout only)
+			LogFile:           logFile,
 			LogMaxSize:        10,     // 10 MB max log file size
 			LogMaxAge:         7,      // Keep logs for 7 days
 			LogMaxBackups:     3,      // Keep 3 backup files
