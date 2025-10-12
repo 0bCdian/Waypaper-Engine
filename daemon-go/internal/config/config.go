@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	"waypaper-engine/daemon-go/internal/models"
 
@@ -73,28 +74,19 @@ type ConfigManager struct {
 	config     *WaypaperConfig
 	mu         sync.RWMutex
 
-	// Configuration data
-	appConfig      *models.AppConfig
-	swwwConfig     *models.SwwwConfig
-	monitors       []models.Monitor
-	frontendConfig map[string]interface{}
+	// File watching
+	watchers    []func(string) // Config change callbacks
+	lastModTime time.Time
 
-	// File paths
-	appConfigPath      string
-	swwwConfigPath     string
-	monitorsConfigPath string
-	frontendConfigPath string
+	// Environment detection
+	isDev bool
 }
 
 func NewConfigManager(configPath string) *ConfigManager {
-	configDir := filepath.Dir(configPath)
+	isDev := os.Getenv("DEV") == "true"
 	return &ConfigManager{
-		configPath:         configPath,
-		appConfigPath:      filepath.Join(configDir, "app.json"),
-		swwwConfigPath:     filepath.Join(configDir, "swww.json"),
-		monitorsConfigPath: filepath.Join(configDir, "monitors.json"),
-		frontendConfigPath: filepath.Join(configDir, "frontend.json"),
-		frontendConfig:     make(map[string]any),
+		configPath: configPath,
+		isDev:      isDev,
 	}
 }
 
@@ -103,14 +95,17 @@ func (cm *ConfigManager) LoadConfig() (*WaypaperConfig, error) {
 		return cm.config, nil
 	}
 
+	// Determine the correct config file path based on environment
+	configPath := cm.GetConfigFilePath()
+
 	// Ensure the config directory exists
-	configDir := filepath.Dir(cm.configPath)
+	configDir := filepath.Dir(configPath)
 	if err := os.MkdirAll(configDir, 0755); err != nil {
 		return nil, fmt.Errorf("failed to create config directory: %w", err)
 	}
 
 	// Try to read the config file
-	if _, err := os.Stat(cm.configPath); os.IsNotExist(err) {
+	if _, err := os.Stat(configPath); os.IsNotExist(err) {
 		// File doesn't exist, create default config
 		cm.config = cm.getDefaultConfig()
 		if err := cm.SaveConfig(); err != nil {
@@ -121,7 +116,7 @@ func (cm *ConfigManager) LoadConfig() (*WaypaperConfig, error) {
 
 	// Read and parse the config file
 	var config WaypaperConfig
-	if _, err := toml.DecodeFile(cm.configPath, &config); err != nil {
+	if _, err := toml.DecodeFile(configPath, &config); err != nil {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
 
@@ -135,11 +130,14 @@ func (cm *ConfigManager) SaveConfig() error {
 		return fmt.Errorf("no config to save")
 	}
 
+	// Determine the correct config file path based on environment
+	configPath := cm.GetConfigFilePath()
+
 	// Convert paths back to tilde notation for storage
 	configToSave := cm.contractPaths(cm.config)
 
 	// Write the config file
-	file, err := os.Create(cm.configPath)
+	file, err := os.Create(configPath)
 	if err != nil {
 		return fmt.Errorf("failed to create config file: %w", err)
 	}
@@ -166,33 +164,6 @@ func (cm *ConfigManager) UpdateConfig(updates *WaypaperConfig) error {
 
 func (cm *ConfigManager) GetConfig() (*WaypaperConfig, error) {
 	return cm.LoadConfig()
-}
-
-// GetAppConfig returns the app configuration in the format expected by the frontend
-func (cm *ConfigManager) GetAppConfig() *models.AppConfig {
-	config, err := cm.LoadConfig()
-	if err != nil {
-		return &models.AppConfig{
-			KillDaemon:              false,
-			Notifications:           true,
-			StartMinimized:          false,
-			MinimizeInsteadOfClose:  true,
-			RandomImageMonitor:      "individual",
-			ShowMonitorModalOnStart: false,
-			ImagesPerPage:           20,
-		}
-	}
-
-	return &models.AppConfig{
-		KillDaemon:              config.App.KillDaemonOnExit,
-		Notifications:           config.App.Notifications,
-		StartMinimized:          config.App.StartMinimized,
-		MinimizeInsteadOfClose:  config.App.MinimizeInsteadOfClose,
-		RandomImageMonitor:      config.App.RandomImageMonitor,
-		ShowMonitorModalOnStart: config.App.ShowMonitorModalOnStart,
-		ImagesPerPage:           config.App.ImagesPerPage,
-		ImageHistoryLimit:       config.App.ImageHistoryLimit,
-	}
 }
 
 // GetSwwwConfig returns the swww configuration in the format expected by the frontend
@@ -241,41 +212,6 @@ func (cm *ConfigManager) GetSwwwConfig() *models.SwwwConfig {
 		TransitionWaveX:          20, // Default since TOML doesn't have this field
 		TransitionWaveY:          20, // Default since TOML doesn't have this field
 	}
-}
-
-// GetFrontendConfig returns the frontend configuration
-func (cm *ConfigManager) GetFrontendConfig() map[string]interface{} {
-	cm.mu.RLock()
-	defer cm.mu.RUnlock()
-
-	if len(cm.frontendConfig) == 0 {
-		// Try to load from file
-		cm.mu.RUnlock()
-		cm.mu.Lock()
-		_ = cm.loadFrontendConfig()
-		cm.mu.Unlock()
-		cm.mu.RLock()
-	}
-
-	return cm.frontendConfig
-}
-
-// SetFrontendConfig sets the frontend configuration
-func (cm *ConfigManager) SetFrontendConfig(config interface{}) error {
-	cm.mu.Lock()
-	defer cm.mu.Unlock()
-
-	// Convert to map if it's not already
-	if configMap, ok := config.(map[string]interface{}); ok {
-		cm.frontendConfig = configMap
-	} else {
-		// Try to convert JSON to map
-		cm.frontendConfig = map[string]interface{}{}
-		// Store whatever we received as-is
-		cm.frontendConfig["data"] = config
-	}
-
-	return cm.saveFrontendConfig()
 }
 
 func (cm *ConfigManager) expandPaths(config *WaypaperConfig) *WaypaperConfig {
@@ -388,7 +324,180 @@ func (cm *ConfigManager) GetLogFile() (string, error) {
 
 // IsDevMode returns true if running in development mode
 func (cm *ConfigManager) IsDevMode() bool {
-	return os.Getenv("DEV") == "true"
+	return cm.isDev
+}
+
+// SetAppConfig sets a specific app configuration value
+func (cm *ConfigManager) SetAppConfig(key string, value interface{}) error {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	config, err := cm.LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	// Update the specific field based on key
+	switch key {
+	case "kill_daemon_on_exit":
+		if v, ok := value.(bool); ok {
+			config.App.KillDaemonOnExit = v
+		}
+	case "notifications":
+		if v, ok := value.(bool); ok {
+			config.App.Notifications = v
+		}
+	case "start_minimized":
+		if v, ok := value.(bool); ok {
+			config.App.StartMinimized = v
+		}
+	case "minimize_instead_of_close":
+		if v, ok := value.(bool); ok {
+			config.App.MinimizeInsteadOfClose = v
+		}
+	case "random_image_monitor":
+		if v, ok := value.(string); ok {
+			config.App.RandomImageMonitor = v
+		}
+	case "show_monitor_modal_on_start":
+		if v, ok := value.(bool); ok {
+			config.App.ShowMonitorModalOnStart = v
+		}
+	case "images_per_page":
+		if v, ok := value.(int); ok {
+			config.App.ImagesPerPage = v
+		}
+	case "theme":
+		if v, ok := value.(string); ok {
+			config.App.Theme = v
+		}
+	case "sidebar_collapsed":
+		if v, ok := value.(bool); ok {
+			config.App.SidebarCollapsed = v
+		}
+	case "sort_by":
+		if v, ok := value.(string); ok {
+			config.App.SortBy = v
+		}
+	case "sort_order":
+		if v, ok := value.(string); ok {
+			config.App.SortOrder = v
+		}
+	case "image_history_limit":
+		if v, ok := value.(int); ok {
+			config.App.ImageHistoryLimit = v
+		}
+	default:
+		return fmt.Errorf("unknown app config key: %s", key)
+	}
+
+	cm.config = config
+	return cm.SaveConfig()
+}
+
+// GetAppConfig returns the app configuration in the format expected by the frontend
+func (cm *ConfigManager) GetAppConfig() *models.AppConfig {
+	config, err := cm.LoadConfig()
+	if err != nil {
+		return &models.AppConfig{
+			KillDaemon:              false,
+			Notifications:           true,
+			StartMinimized:          false,
+			MinimizeInsteadOfClose:  true,
+			RandomImageMonitor:      "individual",
+			ShowMonitorModalOnStart: false,
+			ImagesPerPage:           20,
+		}
+	}
+
+	return &models.AppConfig{
+		KillDaemon:              config.App.KillDaemonOnExit,
+		Notifications:           config.App.Notifications,
+		StartMinimized:          config.App.StartMinimized,
+		MinimizeInsteadOfClose:  config.App.MinimizeInsteadOfClose,
+		RandomImageMonitor:      config.App.RandomImageMonitor,
+		ShowMonitorModalOnStart: config.App.ShowMonitorModalOnStart,
+		ImagesPerPage:           config.App.ImagesPerPage,
+		ImageHistoryLimit:       config.App.ImageHistoryLimit,
+	}
+}
+
+// GetConfigFilePath returns the appropriate config file path based on environment
+func (cm *ConfigManager) GetConfigFilePath() string {
+	homeDir, _ := os.UserHomeDir()
+	configDir := filepath.Join(homeDir, ".config", "waypaper-engine")
+
+	if cm.isDev {
+		return filepath.Join(configDir, "config-dev.toml")
+	}
+	return filepath.Join(configDir, "config.toml")
+}
+
+// EnsureAllDirectories creates all necessary directories based on the current config
+func (cm *ConfigManager) EnsureAllDirectories() error {
+	config, err := cm.LoadConfig()
+	if err != nil {
+		return fmt.Errorf("failed to load config: %w", err)
+	}
+
+	// Create all directories from config
+	dirs := []string{
+		config.Daemon.DatabasePath,
+		config.Daemon.ImagesDir,
+		config.Daemon.ThumbnailsDir,
+		filepath.Dir(config.Daemon.MonitorsStateFile),
+		filepath.Dir(config.Daemon.LogFile),
+	}
+
+	for _, dir := range dirs {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return fmt.Errorf("failed to create directory %s: %w", dir, err)
+		}
+	}
+
+	return nil
+}
+
+// WatchConfig starts watching the config file for changes
+func (cm *ConfigManager) WatchConfig(callback func(string)) error {
+	cm.watchers = append(cm.watchers, callback)
+
+	go func() {
+		ticker := time.NewTicker(2 * time.Second)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			if cm.hasConfigChanged() {
+				// Reload config
+				cm.mu.Lock()
+				cm.config = nil // Force reload
+				cm.mu.Unlock()
+
+				// Notify all watchers
+				for _, watcher := range cm.watchers {
+					watcher("config_changed")
+				}
+			}
+		}
+	}()
+
+	return nil
+}
+
+// hasConfigChanged checks if the config file has been modified
+func (cm *ConfigManager) hasConfigChanged() bool {
+	configPath := cm.GetConfigFilePath()
+	info, err := os.Stat(configPath)
+	if err != nil {
+		return false
+	}
+
+	if info.ModTime().After(cm.lastModTime) {
+		cm.lastModTime = info.ModTime()
+		return true
+	}
+
+	return false
 }
 
 func (cm *ConfigManager) getDefaultConfig() *WaypaperConfig {
@@ -410,10 +519,10 @@ func (cm *ConfigManager) getDefaultConfig() *WaypaperConfig {
 		// Development mode: use /tmp/waypaper-engine
 		baseDir = "/tmp/waypaper-engine"
 		configDir = baseDir
-		cacheDir = filepath.Join(baseDir, ".cache", "waypaper-engine")
+		cacheDir = filepath.Join(baseDir, "data", "cache")
 		imagesDir = filepath.Join(baseDir, "images")
 		thumbnailsDir = filepath.Join(baseDir, "data", "cache", "thumbnails")
-		monitorsFile = filepath.Join(cacheDir, "monitors.json")
+		monitorsFile = filepath.Join(baseDir, "data", "monitors.json")
 		logFile = filepath.Join(baseDir, "daemon.log")
 	} else {
 		// Production mode: use standard user directories

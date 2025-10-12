@@ -5,7 +5,7 @@ import { playlistStore } from "../stores/playlist";
 import { type DaemonDeleteImageFromGalleryPayload, type DaemonSetImagesPerPagePayload } from "../../shared/types/daemonEvents";
 import { type rendererImage } from "../types/rendererTypes";
 
-const { goDaemon } = window.API_RENDERER;
+const goDaemon = window.API_RENDERER.goDaemon;
 
 const useContextMenuEvents = () => {
     useEffect(() => {

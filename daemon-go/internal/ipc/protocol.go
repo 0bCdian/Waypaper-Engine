@@ -27,11 +27,14 @@ type Message struct {
 
 // ConfigData holds configuration data for IPC operations
 type ConfigData struct {
+	ConfigSection string      `json:"configSection,omitempty"`
+	ConfigKey     string      `json:"configKey,omitempty"`
+	ConfigValue   interface{} `json:"configValue,omitempty"`
+
+	// Legacy support - keep for backward compatibility
 	AppConfig      *models.AppConfig  `json:"appConfig,omitempty"`
 	SwwwConfig     *models.SwwwConfig `json:"swwwConfig,omitempty"`
 	FrontendConfig any                `json:"frontendConfig,omitempty"`
-	ConfigKey      string             `json:"configKey,omitempty"`
-	ConfigValue    any                `json:"configValue,omitempty"`
 }
 
 // ImageInfo is a subset of the db.Image struct for IPC.

@@ -1,6 +1,7 @@
 // TypeScript interfaces matching Go daemon structs
 // Generated from daemon-go/internal/db/models.go and queries.sql.go
 
+// Legacy interface for database compatibility (deprecated)
 export interface DaemonImage {
     id: number;
     name: string;
@@ -9,6 +10,51 @@ export interface DaemonImage {
     width: number;
     height: number;
     format: string;
+}
+
+// Interface matching JSON store schema exactly (use this for new code)
+export interface JsonStoreImage {
+    id: number;
+    name: string;
+    path: string;
+    mediaType: string;
+    dimensions: {
+        width: number;
+        height: number;
+    };
+    metadata: {
+        format: string;
+        fileSize: number;
+        checksum: string;
+        tags: string[];
+        properties?: Record<string, unknown>;
+    };
+    selection: {
+        isChecked: boolean;
+        isSelected: boolean;
+        selectedAt?: string;
+        selectedPlaylists: string[];
+    };
+    importInfo: {
+        importedAt: string;
+        sourcePath?: string;
+        importer: string;
+    };
+    backendHints?: {
+        preferredBackends?: string[];
+        requireGpu?: boolean;
+        maxResolution?: {
+            width: number;
+            height: number;
+        };
+    };
+    thumbnails: {
+        "720p": string;
+        "1080p": string;
+        "1440p": string;
+        "4k": string;
+        "fallback": string;
+    };
 }
 
 export interface DaemonPlaylist {
@@ -73,7 +119,7 @@ export interface DaemonSelectedMonitor {
 }
 
 // Response types for IPC calls
-export interface DaemonResponse<T = any> {
+export interface DaemonResponse<T = unknown> {
     action: string;
     data?: T;
     error?: string;

@@ -10,9 +10,6 @@ import (
 	"sync"
 )
 
-// Default socket path (fallback)
-const DefaultSocketPath = "/tmp/waypaper-engine.sock"
-
 // Server is the IPC server.
 type Server struct {
 	listener   net.Listener
@@ -27,11 +24,6 @@ type Server struct {
 type MessageHandler interface {
 	HandleMessage(msg *Message) *Response
 	SetServer(server *Server)
-}
-
-// NewServer creates a new IPC server with default socket path.
-func NewServer(handler MessageHandler, logger *slog.Logger) (*Server, error) {
-	return NewServerWithSocket(handler, DefaultSocketPath, logger)
 }
 
 // NewServerWithSocket creates a new IPC server with a custom socket path.

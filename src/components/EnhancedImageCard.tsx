@@ -107,7 +107,7 @@ function EnhancedImageCard({
                     );
 
                     if (thumbnailPath) {
-                        setThumbnailSrc(`atom://${thumbnailPath}`);
+                        setThumbnailSrc(thumbnailPath);
                         console.log(
                             "🟢 EnhancedImageCard: Using thumbnail from image data:",
                             thumbnailPath
@@ -116,28 +116,44 @@ function EnhancedImageCard({
                 }
 
                 // Load image path
-                const imagePath = await goDaemon.getImageSrc(
-                    memoizedImage.name
-                );
-                if (imagePath) {
-                    setImageSrc(`atom://${imagePath}`);
-                    console.log(
-                        "🟢 EnhancedImageCard: Setting image path:",
-                        imagePath
-                    );
+                try {
+                    if (typeof goDaemon.getImageSrc === 'function') {
+                        const imagePath = await goDaemon.getImageSrc(
+                            memoizedImage.name
+                        );
+                        if (imagePath) {
+                            setImageSrc(imagePath);
+                            console.log(
+                                "🟢 EnhancedImageCard: Setting image path:",
+                                imagePath
+                            );
+                        }
+                    } else {
+                        console.warn("🔴 EnhancedImageCard: getImageSrc method not available");
+                    }
+                } catch (error) {
+                    console.error("🔴 EnhancedImageCard: Failed to get image src:", error);
                 }
 
                 // If no thumbnail path from image data, try to get it from daemon
                 if (!thumbnailSrc && memoizedImage.name) {
-                    const thumbnailPath = await goDaemon.getThumbnailSrc(
-                        memoizedImage.name
-                    );
-                    if (thumbnailPath) {
-                        setThumbnailSrc(`atom://${thumbnailPath}`);
-                        console.log(
-                            "🟢 EnhancedImageCard: Setting thumbnail path:",
-                            thumbnailPath
-                        );
+                    try {
+                        if (typeof goDaemon.getThumbnailSrc === 'function') {
+                            const thumbnailPath = await goDaemon.getThumbnailSrc(
+                                memoizedImage.name
+                            );
+                            if (thumbnailPath) {
+                                setThumbnailSrc(thumbnailPath);
+                                console.log(
+                                    "🟢 EnhancedImageCard: Setting thumbnail path:",
+                                    thumbnailPath
+                                );
+                            }
+                        } else {
+                            console.warn("🔴 EnhancedImageCard: getThumbnailSrc method not available");
+                        }
+                    } catch (error) {
+                        console.error("🔴 EnhancedImageCard: Failed to get thumbnail src:", error);
                     }
                 }
             } catch (error) {

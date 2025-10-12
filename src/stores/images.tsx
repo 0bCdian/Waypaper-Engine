@@ -1,6 +1,5 @@
 import { create } from "zustand";
 import { type Filters, type rendererImage } from "../types/rendererTypes";
-import { type imagesObject } from "../../shared/types";
 import { playlistStore } from "./playlist";
 const { goDaemon } = window.API_RENDERER;
 const initialFilters: Filters = {
@@ -100,31 +99,24 @@ export const imagesStore = create<State>()((set, get) => ({
         }));
     },
     addImage: newImage => {
-        console.log("🟣 ImagesStore.addImage: Called with image:", newImage.name, "ID:", newImage.id);
         const filters = get().filters;
         const currentArray = get().imagesArray;
-        console.log("🟣 ImagesStore.addImage: Current array length:", currentArray.length);
         
         let newImagesArray: rendererImage[] = [];
         if (filters.order === "desc") {
             newImagesArray = [newImage, ...currentArray];
-            console.log("🟣 ImagesStore.addImage: Adding to beginning (desc order)");
         } else {
             newImagesArray = [...currentArray, newImage];
-            console.log("🟣 ImagesStore.addImage: Adding to end (asc order)");
         }
         
         const oldImagesMap = get().imagesMap;
-        oldImagesMap.set(newImage.id, newImage);
-        console.log("🟣 ImagesStore.addImage: New array length:", newImagesArray.length, "Map size:", oldImagesMap.size);
-        
+        oldImagesMap.set(newImage.id, newImage);        
         set(() => ({
             imagesArray: newImagesArray,
             imagesMap: new Map(oldImagesMap),
             isEmpty: false
         }));
         
-        console.log("🟣 ImagesStore.addImage: State updated successfully");
     },
     removeImagesFromStore: images => {
         set(state => {
@@ -148,9 +140,7 @@ export const imagesStore = create<State>()((set, get) => ({
     },
     reQueryImages: () => {
         // Use Go daemon instead of direct database query
-        void goDaemon.getImages().then(images => {
-            console.log("🔵 ImagesStore: Received images from Go daemon:", images);
-            
+        void goDaemon.getImages().then(images => {            
             // Handle null or undefined response
             if (!images || !Array.isArray(images)) {
                 console.warn("🔴 ImagesStore: Received null or invalid images response:", images);

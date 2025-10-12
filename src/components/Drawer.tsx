@@ -34,18 +34,9 @@ const Drawer: FC<Props> = ({ children }) => {
                         <Link
                             draggable={false}
                             onClick={toggle}
-                            to="/swwwConfig"
+                            to="/configuration"
                         >
-                            Swww configuration
-                        </Link>
-                    </li>
-                    <li>
-                        <Link
-                            draggable={false}
-                            onClick={toggle}
-                            to="/appConfig"
-                        >
-                            App configuration
+                            Configuration
                         </Link>
                     </li>
                     <li>

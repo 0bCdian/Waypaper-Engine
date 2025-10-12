@@ -1,9 +1,11 @@
 import { spawn } from "child_process";
 import { daemonPath, logger } from "./setup";
-import { access } from "node:fs";
+import { access, mkdir } from "node:fs";
 import { promisify } from "node:util";
 import { configReader } from "./configReader";
+import { dirname } from "node:path";
 
+const fsMkdir = promisify(mkdir);
 const setTimeoutPromise = promisify(setTimeout);
 const fsAccess = promisify(access);
 
@@ -15,6 +17,9 @@ let daemonProcess: any = null;
 
 export async function initWaypaperDaemon() {
     try {
+        // First, ensure all required directories exist
+        await ensureDirectoriesExist();
+        
         // Clean up any existing socket file and processes
         try {
             await fsAccess(WAYPAPER_ENGINE_SOCKET_PATH);
@@ -146,6 +151,28 @@ export function getDaemonProcess() {
 export function isDaemonRunning() {
     return daemonProcess && !daemonProcess.killed && daemonProcess.exitCode === null;
 }
+
+async function ensureDirectoriesExist() {
+    const config = configReader.getCurrentConfig();
+    
+    // Create all required directories
+    const directories = [
+        config.daemon.database_path,
+        config.daemon.images_dir,
+        config.daemon.thumbnails_dir,
+        dirname(config.daemon.monitors_state_file),
+        dirname(WAYPAPER_ENGINE_SOCKET_PATH)
+    ];
+    
+    for (const dir of directories) {
+        try {
+            await fsMkdir(dir, { recursive: true });
+            logger.debug(`Ensured directory exists: ${dir}`);
+        } catch (error) {
+            logger.warn(`Failed to create directory ${dir}:`, error);
+        }
+    }
+}
 async function testConnection() {
     const MAX_ATTEMPTS = 5;
     const RETRY_INTERVAL = 200;
@@ -171,14 +198,16 @@ async function connectToDaemon(socketPath: string) {
     return await new Promise((resolve, reject) => {
         try {
             const { createConnection } = require("node:net");
+            let responseData = "";
+            let responseReceived = false;
+            
             const client = createConnection(socketPath, () => {
                 // Send a ping command to test responsiveness
                 const pingMessage = JSON.stringify({ action: "ping", messageId: 1 }) + "\n";
                 client.write(pingMessage);
                 
                 // Set up response handler
-                let responseData = "";
-                client.on('data', (data) => {
+                client.on('data', (data: Buffer) => {
                     responseData += data.toString();
                     // Check if we got a complete JSON response
                     try {
@@ -187,6 +216,7 @@ async function connectToDaemon(socketPath: string) {
                             if (line.trim()) {
                                 const response = JSON.parse(line);
                                 if (response.action === "pong" || response.messageId === 1) {
+                                    responseReceived = true;
                                     client.end();
                                     resolve("pong");
                                     return;
@@ -209,12 +239,12 @@ async function connectToDaemon(socketPath: string) {
                 reject(err);
             });
             
-            client.on("close", () => {
-                // Connection closed without proper response
-                if (!responseData.includes("pong")) {
-                    reject(new Error("Daemon connection closed unexpectedly"));
-                }
-            });
+                client.on("close", () => {
+                    // Connection closed without proper response
+                    if (!responseReceived) {
+                        reject(new Error("Daemon connection closed unexpectedly"));
+                    }
+                });
         } catch (error) {
             logger.error("Failed to test daemon connection:", error);
             reject(error);

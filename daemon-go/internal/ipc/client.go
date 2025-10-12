@@ -12,9 +12,9 @@ type Client struct {
 	conn net.Conn
 }
 
-// NewClient creates a new IPC client.
-func NewClient() (*Client, error) {
-	conn, err := net.Dial("unix", DefaultSocketPath)
+// NewClient creates a new IPC client with the specified socket path.
+func NewClient(socketPath string) (*Client, error) {
+	conn, err := net.Dial("unix", socketPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to socket: %w", err)
 	}

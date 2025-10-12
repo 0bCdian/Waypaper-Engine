@@ -143,7 +143,7 @@ func (s *SwwwBackend) GetDefaultConfig() *BackendConfig {
 		PositionY:          0.5,
 		PositionType:       "center",
 		FilterType:         "lanczos3",
-		CustomOptions: map[string]interface{}{
+		CustomOptions: map[string]any{
 			"invertY":          false,
 			"transitionBezier": "0.25,0.1,0.25,1",
 			"transitionWaveX":  20,
@@ -343,17 +343,4 @@ func (s *SwwwBackend) killExistingSwwwDaemons() error {
 	}
 
 	return nil
-}
-
-// wlrRandrMonitor represents the structure from swww query output
-type wlrRandrMonitor struct {
-	Name     string `json:"name"`
-	Position struct {
-		X int `json:"x"`
-		Y int `json:"y"`
-	} `json:"position"`
-	Modes []struct {
-		Width  int `json:"width"`
-		Height int `json:"height"`
-	} `json:"modes"`
 }

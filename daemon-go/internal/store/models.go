@@ -19,7 +19,7 @@ type Image struct {
 	Metadata     ImageMetadata   `json:"metadata"`
 	Selection    ImageSelection  `json:"selection"`
 	ImportInfo   ImageImportInfo `json:"importInfo"`
-	BackendHints BackendHints    `json:"backendHints,omitempty"`
+	BackendHints BackendHints    `json:"backendHints"`
 	Thumbnails   ImageThumbnails `json:"thumbnails"`
 }
 
@@ -97,11 +97,11 @@ type ImageDimensions struct {
 
 // ImageMetadata contains image metadata
 type ImageMetadata struct {
-	Format     string                 `json:"format"`
-	FileSize   int64                  `json:"fileSize"`
-	Checksum   string                 `json:"checksum"`
-	Tags       []string               `json:"tags"`
-	Properties map[string]interface{} `json:"properties,omitempty"`
+	Format     string         `json:"format"`
+	FileSize   int64          `json:"fileSize"`
+	Checksum   string         `json:"checksum"`
+	Tags       []string       `json:"tags"`
+	Properties map[string]any `json:"properties,omitempty"`
 }
 
 // ImageSelection tracks selection status

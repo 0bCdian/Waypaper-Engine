@@ -5,10 +5,9 @@ import { calculateMinResolution } from "../utils/utilities";
 import { type monitorSelectType } from "../types/rendererTypes";
 import { type Monitor } from "../../shared/types/monitor";
 import { playlistStore } from "../stores/playlist";
-const { goDaemon } = window.API_RENDERER;
+const goDaemon = window.API_RENDERER.goDaemon;
 let firstRender = true;
 const Monitors = memo(function Monitors() {
-    console.log("🟢 MonitorsModal: Component rendering");
     const {
         activeMonitor,
         monitorsList,
@@ -31,26 +30,9 @@ const Monitors = memo(function Monitors() {
         message: "error"
     });
     const closeModal = () => {
-        console.log(
-            "🟢 MonitorsModal: closeModal called, modalRef.current =",
-            modalRef.current
-        );
-
         if (modalRef.current) {
-            console.log(
-                "🟢 MonitorsModal: closeModal - calling modalRef.current.close()"
-            );
             modalRef.current.close();
-            console.log(
-                "🟢 MonitorsModal: closeModal - modalRef.current.close() completed"
-            );
-        } else {
-            console.log(
-                "🟢 MonitorsModal: closeModal - modalRef.current is null"
-            );
         }
-
-        console.log("🟢 MonitorsModal: closeModal completed");
     };
     const [resolution, setResolution] = useState<{ x: number; y: number }>({
         x: 0,
@@ -107,25 +89,12 @@ const Monitors = memo(function Monitors() {
             monitors: selectedMonitors,
             extendAcrossMonitors: extend
         };
-        console.log("🟢 MonitorsModal: onSubmit - calling setSelectedMonitor");
         await goDaemon.setSelectedMonitor(activeMonitorConfig);
-        console.log(
-            "🟢 MonitorsModal: onSubmit - setSelectedMonitor completed"
-        );
-
         // Close modal FIRST before updating state to prevent re-render issues
-        console.log("🟢 MonitorsModal: onSubmit - calling closeModal");
         closeModal();
-        console.log("🟢 MonitorsModal: onSubmit - closeModal completed");
-
         // Update state after closing modal
-        console.log("🟢 MonitorsModal: onSubmit - calling setActiveMonitor");
         setActiveMonitor(activeMonitorConfig);
-        console.log("🟢 MonitorsModal: onSubmit - setActiveMonitor completed");
-
-        console.log("🟢 MonitorsModal: onSubmit - calling clearPlaylist");
         clearPlaylist();
-        console.log("🟢 MonitorsModal: onSubmit - clearPlaylist completed");
     };
     const scale =
         1 /

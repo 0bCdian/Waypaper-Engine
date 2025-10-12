@@ -14,7 +14,9 @@ import (
 
 // RegenerateThumbnails regenerates thumbnails for all images in the JSON store
 func RegenerateThumbnails(jsonPath, tomlPath string, logger *slog.Logger) error {
-	logger.Info("Starting thumbnail regeneration", "json_path", jsonPath, "toml_path", tomlPath)
+	if logger != nil {
+		logger.Info("Starting thumbnail regeneration", "json_path", jsonPath, "toml_path", tomlPath)
+	}
 
 	// Load configuration
 	configManager := config.NewConfigManager(tomlPath)
@@ -39,11 +41,15 @@ func RegenerateThumbnails(jsonPath, tomlPath string, logger *slog.Logger) error 
 	}
 
 	if registry == nil || len(registry.Images) == 0 {
-		logger.Info("No images found in registry")
+		if logger != nil {
+			logger.Info("No images found in registry")
+		}
 		return nil
 	}
 
-	logger.Info("Found images in registry", "count", len(registry.Images))
+	if logger != nil {
+		logger.Info("Found images in registry", "count", len(registry.Images))
+	}
 
 	// Ensure thumbnails directory exists
 	if err := os.MkdirAll(cfg.Daemon.ThumbnailsDir, 0755); err != nil {
@@ -57,7 +63,9 @@ func RegenerateThumbnails(jsonPath, tomlPath string, logger *slog.Logger) error 
 	for _, img := range registry.Images {
 		// Check if image file exists
 		if _, err := os.Stat(img.Path); os.IsNotExist(err) {
-			logger.Warn("Image file not found, skipping", "image", img.Name, "path", img.Path)
+			if logger != nil {
+				logger.Warn("Image file not found, skipping", "image", img.Name, "path", img.Path)
+			}
 			errorCount++
 			continue
 		}
@@ -68,7 +76,9 @@ func RegenerateThumbnails(jsonPath, tomlPath string, logger *slog.Logger) error 
 
 		// Skip if thumbnail already exists
 		if _, err := os.Stat(thumbnailPath); err == nil {
-			logger.Debug("Thumbnail already exists, skipping", "image", img.Name, "thumbnail", thumbnailPath)
+			if logger != nil {
+				logger.Debug("Thumbnail already exists, skipping", "image", img.Name, "thumbnail", thumbnailPath)
+			}
 			continue
 		}
 
@@ -76,18 +86,24 @@ func RegenerateThumbnails(jsonPath, tomlPath string, logger *slog.Logger) error 
 		opts := image.DefaultThumbnailOptions()
 		_, err := image.CreateThumbnail(img.Path, thumbnailPath, opts)
 		if err != nil {
-			logger.Error("Failed to create thumbnail", "image", img.Name, "error", err)
+			if logger != nil {
+				logger.Error("Failed to create thumbnail", "image", img.Name, "error", err)
+			}
 			errorCount++
 		} else {
-			logger.Debug("Created thumbnail", "image", img.Name, "thumbnail", thumbnailPath)
+			if logger != nil {
+				logger.Debug("Created thumbnail", "image", img.Name, "thumbnail", thumbnailPath)
+			}
 			successCount++
 		}
 	}
 
-	logger.Info("Thumbnail regeneration completed",
-		"success_count", successCount,
-		"error_count", errorCount,
-		"total_images", len(registry.Images))
+	if logger != nil {
+		logger.Info("Thumbnail regeneration completed",
+			"success_count", successCount,
+			"error_count", errorCount,
+			"total_images", len(registry.Images))
+	}
 
 	return nil
 }

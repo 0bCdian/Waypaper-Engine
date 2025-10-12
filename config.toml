@@ -29,13 +29,7 @@ log_max_size = 10  # MB
 log_max_age = 7    # days
 log_max_backups = 3
 
-[electron]
-# Electron-specific settings
-log_level = "info"  # "debug" | "info" | "warn" | "error"
-log_file = "~/.config/waypaper-engine/electron.log"
-log_max_size = 10  # MB
-log_max_age = 7    # days
-log_max_backups = 3
+# Electron settings are handled by the app section
 
 [backend]
 # Backend configuration

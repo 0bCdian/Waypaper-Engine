@@ -53,9 +53,6 @@ type WlrRandMonitor struct {
 	AdaptiveSync bool    `json:"adaptive_sync"`
 }
 
-// WlrOutput represents an array of wlr-randr monitors.
-type WlrOutput []WlrRandMonitor
-
 // ActiveMonitor represents the monitor configuration for a playlist.
 type ActiveMonitor struct {
 	Name                 string    `json:"name"`

@@ -1,7 +1,7 @@
 import { type FC } from "react";
 const SvgComponent: FC = () => (
     <svg
-        className="m-auto text-purple-600"
+        className="m-auto"
         xmlns="http://www.w3.org/2000/svg"
         width={64}
         height={64}
@@ -9,7 +9,7 @@ const SvgComponent: FC = () => (
         viewBox="0 0 24 24"
     >
         <g
-            stroke="#ebdbb2"
+            stroke="currentColor"
             strokeLinecap="round"
             strokeLinejoin="round"
             strokeWidth={0.792}

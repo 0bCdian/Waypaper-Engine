@@ -1,3 +1,9 @@
+/* Import theme styles */
+@import './styles/themes.css';
+
+/* Import component styles */
+@import './styles/components.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;

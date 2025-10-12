@@ -1,4 +1,3 @@
-import React from "react";
 import { useImageProcessingStore } from "../stores/imageProcessingStore";
 
 export function ImageProcessingProgress() {

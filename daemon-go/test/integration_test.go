@@ -19,9 +19,10 @@ import (
 )
 
 const (
-	daemonBinaryName = "waypaper-engine-daemon"
-	cliBinaryName    = "waypaper-engine-cli"
-	testDBPath       = "test.db"
+	daemonBinaryName  = "waypaper-engine-daemon"
+	cliBinaryName     = "waypaper-engine-cli"
+	testDBPath        = "test.db"
+	defaultSocketPath = "/tmp/waypaper-engine.sock"
 )
 
 func buildBinaries(t *testing.T) (string, string) {
@@ -63,7 +64,7 @@ func stopDaemon(t *testing.T, cmd *exec.Cmd) {
 		cmd.Process.Signal(os.Interrupt)
 		cmd.Wait()
 	}
-	os.Remove(ipc.SocketPath)
+	os.Remove(defaultSocketPath)
 	os.Remove(testDBPath)
 }
 
@@ -76,13 +77,13 @@ func TestDaemonLifecycle(t *testing.T) {
 	assert.NotNil(t, daemonCmd.Process)
 
 	// Try connecting to IPC to ensure it's up
-	client, err := ipc.NewClient()
+	client, err := ipc.NewClient(defaultSocketPath)
 	assert.NoError(t, err)
 	client.Close()
 
 	stopDaemon(t, daemonCmd)
 	// Verify socket is removed
-	_, err = os.Stat(ipc.SocketPath)
+	_, err = os.Stat(defaultSocketPath)
 	assert.True(t, os.IsNotExist(err))
 }
 

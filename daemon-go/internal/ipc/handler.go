@@ -2,19 +2,16 @@ package ipc
 
 import (
 	"context"
-	"database/sql"
 	"fmt"
 	"log/slog"
 	"os"
 	"path/filepath"
-	"strings"
 	"time"
 
 	"waypaper-engine/daemon-go/internal/config"
-	"waypaper-engine/daemon-go/internal/db"
 	"waypaper-engine/daemon-go/internal/errors"
 	"waypaper-engine/daemon-go/internal/image"
-	"waypaper-engine/daemon-go/internal/media"
+	"waypaper-engine/daemon-go/internal/models"
 	"waypaper-engine/daemon-go/internal/monitor"
 	"waypaper-engine/daemon-go/internal/playlist"
 	"waypaper-engine/daemon-go/internal/store"
@@ -24,22 +21,19 @@ import (
 // Handler is the implementation of the MessageHandler interface.
 type Handler struct {
 	playlistManager *playlist.Manager
-	dbOps           *db.DatabaseOperations
-	dbQueries       *db.Queries
 	configManager   *config.ConfigManager
 	imageProcessor  *image.Processor
 	monitorManager  *monitor.Manager
 	logger          *slog.Logger
 	server          *Server
 	store           *store.Store
+	jsonStore       *store.JsonStoreManager
 }
 
 // NewHandler creates a new message handler.
-func NewHandler(playlistManager *playlist.Manager, dbOps *db.DatabaseOperations, dbQueries *db.Queries, configManager *config.ConfigManager, imageProcessor *image.Processor, monitorManager *monitor.Manager, logger *slog.Logger) *Handler {
+func NewHandler(playlistManager *playlist.Manager, configManager *config.ConfigManager, imageProcessor *image.Processor, monitorManager *monitor.Manager, logger *slog.Logger) *Handler {
 	return &Handler{
 		playlistManager: playlistManager,
-		dbOps:           dbOps,
-		dbQueries:       dbQueries,
 		configManager:   configManager,
 		imageProcessor:  imageProcessor,
 		monitorManager:  monitorManager,
@@ -49,8 +43,9 @@ func NewHandler(playlistManager *playlist.Manager, dbOps *db.DatabaseOperations,
 }
 
 // SetStore sets the JSON store for the handler
-func (h *Handler) SetStore(store *store.Store) {
-	h.store = store
+func (h *Handler) SetStore(s *store.Store) {
+	h.store = s
+	h.jsonStore = store.NewJsonStoreManager(s, h.logger)
 }
 
 // SetServer sets the server reference for event broadcasting.
@@ -127,24 +122,14 @@ func (h *Handler) HandleMessage(msg *Message) *Response {
 		response = h.handleGetImageHistory(msg)
 
 	// Bulk Operations
-	case "next_image_all":
-		response = h.handleNextImageAll(msg)
-	case "previous_image_all":
-		response = h.handlePreviousImageAll(msg)
-	case "random_image_all":
-		response = h.handleRandomImageAll(msg)
-	case "stop_playlist_all":
-		response = h.handleStopPlaylistAll(msg)
-	case "pause_playlist_all":
-		response = h.handlePausePlaylistAll(msg)
-	case "resume_playlist_all":
-		response = h.handleResumePlaylistAll(msg)
 
 	// Configuration
-	case "get_app_config":
-		response = h.handleGetAppConfig(msg)
-	case "set_app_config":
-		response = h.handleSetAppConfig(msg)
+	case "get_config":
+		response = h.handleGetConfig(msg)
+	case "set_config":
+		response = h.handleSetConfig(msg)
+	case "get_swww_config":
+		response = h.handleGetSwwwConfig(msg)
 
 	// System
 	case "stop_daemon":
@@ -218,6 +203,27 @@ func (h *Handler) handleStopPlaylist(msg *Message) *Response {
 		return &Response{Action: msg.Action, Data: "playlists stopped by monitor names"}
 	}
 
+	// Check if this is a bulk operation (all monitors)
+	if msg.ActiveMonitor != nil && msg.ActiveMonitor.Name == "*" {
+		// Get all monitors and stop playlists on each
+		monitors := h.monitorManager.GetMonitors()
+		var errors []string
+
+		for _, monitor := range monitors {
+			err := h.playlistManager.StopPlaylist(monitor.Name)
+			if err != nil {
+				h.logger.Error("failed to stop playlist on monitor", "monitor", monitor.Name, "error", err)
+				errors = append(errors, fmt.Sprintf("monitor %s: %v", monitor.Name, err))
+			}
+		}
+
+		if len(errors) > 0 {
+			return &Response{Action: msg.Action, Error: fmt.Sprintf("some operations failed: %v", errors)}
+		}
+
+		return &Response{Action: msg.Action, Data: "stopped playlists on all monitors"}
+	}
+
 	// Handle stopping by single monitor name (original behavior)
 	if msg.ActiveMonitor == nil {
 		return &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "missing monitor info, playlist name, or monitor names").Error()}
@@ -233,6 +239,28 @@ func (h *Handler) handleStopPlaylist(msg *Message) *Response {
 }
 
 func (h *Handler) handlePausePlaylist(msg *Message) *Response {
+	// Check if this is a bulk operation (all monitors)
+	if msg.ActiveMonitor != nil && msg.ActiveMonitor.Name == "*" {
+		// Get all monitors and pause playlists on each
+		monitors := h.monitorManager.GetMonitors()
+		var errors []string
+
+		for _, monitor := range monitors {
+			err := h.playlistManager.PausePlaylist(monitor.Name)
+			if err != nil {
+				h.logger.Error("failed to pause playlist on monitor", "monitor", monitor.Name, "error", err)
+				errors = append(errors, fmt.Sprintf("monitor %s: %v", monitor.Name, err))
+			}
+		}
+
+		if len(errors) > 0 {
+			return &Response{Action: msg.Action, Error: fmt.Sprintf("some operations failed: %v", errors)}
+		}
+
+		return &Response{Action: msg.Action, Data: "paused playlists on all monitors"}
+	}
+
+	// Single monitor operation (original behavior)
 	if msg.ActiveMonitor == nil {
 		return &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "missing monitor info").Error()}
 	}
@@ -247,6 +275,28 @@ func (h *Handler) handlePausePlaylist(msg *Message) *Response {
 }
 
 func (h *Handler) handleResumePlaylist(msg *Message) *Response {
+	// Check if this is a bulk operation (all monitors)
+	if msg.ActiveMonitor != nil && msg.ActiveMonitor.Name == "*" {
+		// Get all monitors and resume playlists on each
+		monitors := h.monitorManager.GetMonitors()
+		var errors []string
+
+		for _, monitor := range monitors {
+			err := h.playlistManager.ResumePlaylist(monitor.Name)
+			if err != nil {
+				h.logger.Error("failed to resume playlist on monitor", "monitor", monitor.Name, "error", err)
+				errors = append(errors, fmt.Sprintf("monitor %s: %v", monitor.Name, err))
+			}
+		}
+
+		if len(errors) > 0 {
+			return &Response{Action: msg.Action, Error: fmt.Sprintf("some operations failed: %v", errors)}
+		}
+
+		return &Response{Action: msg.Action, Data: "resumed playlists on all monitors"}
+	}
+
+	// Single monitor operation (original behavior)
 	if msg.ActiveMonitor == nil {
 		return &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "missing monitor info").Error()}
 	}
@@ -261,6 +311,28 @@ func (h *Handler) handleResumePlaylist(msg *Message) *Response {
 }
 
 func (h *Handler) handleNextImage(msg *Message) *Response {
+	// Check if this is a bulk operation (all monitors)
+	if msg.ActiveMonitor != nil && msg.ActiveMonitor.Name == "*" {
+		// Get all monitors and advance to next image on each
+		monitors := h.monitorManager.GetMonitors()
+		var errors []string
+
+		for _, monitor := range monitors {
+			err := h.playlistManager.NextImage(context.Background(), monitor.Name)
+			if err != nil {
+				h.logger.Error("failed to advance image on monitor", "monitor", monitor.Name, "error", err)
+				errors = append(errors, fmt.Sprintf("monitor %s: %v", monitor.Name, err))
+			}
+		}
+
+		if len(errors) > 0 {
+			return &Response{Action: msg.Action, Error: fmt.Sprintf("some operations failed: %v", errors)}
+		}
+
+		return &Response{Action: msg.Action, Data: "advanced images on all monitors"}
+	}
+
+	// Single monitor operation (original behavior)
 	if msg.ActiveMonitor == nil {
 		return &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "missing monitor info").Error()}
 	}
@@ -275,6 +347,28 @@ func (h *Handler) handleNextImage(msg *Message) *Response {
 }
 
 func (h *Handler) handlePreviousImage(msg *Message) *Response {
+	// Check if this is a bulk operation (all monitors)
+	if msg.ActiveMonitor != nil && msg.ActiveMonitor.Name == "*" {
+		// Get all monitors and go to previous image on each
+		monitors := h.monitorManager.GetMonitors()
+		var errors []string
+
+		for _, monitor := range monitors {
+			err := h.playlistManager.PreviousImage(context.Background(), monitor.Name)
+			if err != nil {
+				h.logger.Error("failed to go to previous image on monitor", "monitor", monitor.Name, "error", err)
+				errors = append(errors, fmt.Sprintf("monitor %s: %v", monitor.Name, err))
+			}
+		}
+
+		if len(errors) > 0 {
+			return &Response{Action: msg.Action, Error: fmt.Sprintf("some operations failed: %v", errors)}
+		}
+
+		return &Response{Action: msg.Action, Data: "went to previous images on all monitors"}
+	}
+
+	// Single monitor operation (original behavior)
 	if msg.ActiveMonitor == nil {
 		return &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "missing monitor info").Error()}
 	}
@@ -304,23 +398,26 @@ func (h *Handler) handleSetImage(msg *Message) *Response {
 	}
 
 	// Update monitor state with the current image
-	// Get the image name from database to construct the full path
-	image, err := h.dbOps.GetImage(context.Background(), msg.Image.ID)
+	// Get the image from store to construct the full path
+	registry, err := h.store.LoadImageRegistry()
 	if err != nil {
-		h.logger.Error("failed to get image for monitor state update", "error", err)
+		h.logger.Error("failed to load image registry for monitor state update", "error", err)
 		// Don't fail the operation if we can't update monitor state
 	} else {
-		// Get image data for SetWallpaperForMonitorWithName
-		imageData, err := h.dbOps.GetImageData(context.Background(), msg.Image.ID)
-		if err != nil {
-			h.logger.Error("failed to get image data for monitor state update", "error", err)
-		} else {
-			err = h.monitorManager.SetWallpaperForMonitorWithName(context.Background(), imageData, msg.ActiveMonitor.Name, image.Name)
+		var image *store.Image
+		for _, img := range registry.Images {
+			if img.ID == msg.Image.ID {
+				image = &img
+				break
+			}
+		}
+
+		if image != nil {
+			err = h.monitorManager.SetWallpaperForMonitorWithName(context.Background(), []byte(image.Path), msg.ActiveMonitor.Name, filepath.Base(image.Path))
 			if err != nil {
 				h.logger.Error("failed to update monitor state", "error", err)
-				// Don't fail the operation if we can't update monitor state
 			} else {
-				h.logger.Debug("updated monitor state", "monitor", msg.ActiveMonitor.Name, "image", image.Name)
+				h.logger.Debug("updated monitor state", "monitor", msg.ActiveMonitor.Name, "image", filepath.Base(image.Path))
 			}
 		}
 	}
@@ -329,6 +426,28 @@ func (h *Handler) handleSetImage(msg *Message) *Response {
 }
 
 func (h *Handler) handleRandomImage(msg *Message) *Response {
+	// Check if this is a bulk operation (all monitors)
+	if msg.ActiveMonitor != nil && msg.ActiveMonitor.Name == "*" {
+		// Get all monitors and set random image on each
+		monitors := h.monitorManager.GetMonitors()
+		var errors []string
+
+		for _, monitor := range monitors {
+			err := h.playlistManager.RandomImage(context.Background(), monitor.Name)
+			if err != nil {
+				h.logger.Error("failed to set random image on monitor", "monitor", monitor.Name, "error", err)
+				errors = append(errors, fmt.Sprintf("monitor %s: %v", monitor.Name, err))
+			}
+		}
+
+		if len(errors) > 0 {
+			return &Response{Action: msg.Action, Error: fmt.Sprintf("some operations failed: %v", errors)}
+		}
+
+		return &Response{Action: msg.Action, Data: "set random images on all monitors"}
+	}
+
+	// Single monitor operation (original behavior)
 	if msg.ActiveMonitor == nil {
 		return &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "missing monitor info").Error()}
 	}
@@ -343,7 +462,7 @@ func (h *Handler) handleRandomImage(msg *Message) *Response {
 }
 
 func (h *Handler) handleGetInfo(msg *Message) *Response {
-	info, err := system.GetInfo(context.Background(), h.dbOps)
+	info, err := system.GetInfo(context.Background(), h.jsonStore)
 	if err != nil {
 		h.logger.Error("failed to get info", "error", err)
 		return &Response{Action: msg.Action, Error: err.Error()}
@@ -353,10 +472,10 @@ func (h *Handler) handleGetInfo(msg *Message) *Response {
 }
 
 func (h *Handler) handleGetImages(msg *Message) *Response {
-	// For now, return all images. In the future, this could support filtering
+	// JSON-only mode: Get images from JSON store only
 	h.logger.Info("handleGetImages: starting to get images")
 
-	// Try to get images from JSON store first (migrated images)
+	// Try to get images from JSON store
 	if h.store != nil {
 		registry, err := h.store.LoadImageRegistry()
 		if err == nil && registry != nil && len(registry.Images) > 0 {
@@ -371,76 +490,35 @@ func (h *Handler) handleGetImages(msg *Message) *Response {
 				}
 			}
 
-			// Convert JSON images to frontend-compatible format
-			// Frontend expects only the database schema fields: id, name, isChecked, isSelected, width, height, format
-			var frontendImages []map[string]interface{}
-			for _, jsonImg := range registry.Images {
-				frontendImg := map[string]interface{}{
-					"id":         jsonImg.ID,
-					"name":       jsonImg.Name,
-					"isChecked":  jsonImg.Selection.IsChecked,
-					"isSelected": jsonImg.Selection.IsSelected,
-					"width":      jsonImg.Dimensions.Width,
-					"height":     jsonImg.Dimensions.Height,
-					"format":     jsonImg.Metadata.Format,
-				}
-				frontendImages = append(frontendImages, frontendImg)
-			}
-
-			h.logger.Info("handleGetImages: returning images from JSON store", "count", len(frontendImages))
-			return &Response{Action: msg.Action, Data: frontendImages}
+			// Return JSON images directly - frontend should align with JSON store schema
+			h.logger.Info("handleGetImages: returning images from JSON store", "count", len(registry.Images))
+			return &Response{Action: msg.Action, Data: registry.Images}
 		}
+		h.logger.Info("handleGetImages: no images found in JSON store")
+		return &Response{Action: msg.Action, Data: []any{}}
 	}
 
-	// Fallback to SQLite database
-	h.logger.Info("handleGetImages: falling back to SQLite database")
-	dbImages, err := h.dbOps.GetAllImages(context.Background())
-	if err != nil {
-		h.logger.Error("failed to get images", "error", err)
-		return &Response{Action: msg.Action, Error: err.Error()}
-	}
-	h.logger.Info("handleGetImages: got images from SQLite database", "count", len(dbImages))
-
-	// Log the first few images for debugging
-	for i, img := range dbImages {
-		if i < 3 { // Only log first 3 images
-			h.logger.Info("handleGetImages: SQLite image", "index", i, "id", img.ID, "name", img.Name)
-		}
-	}
-
-	// Convert database images to frontend-compatible format
-	// Frontend expects only the database schema fields: id, name, isChecked, isSelected, width, height, format
-	var frontendImages []map[string]interface{}
-	for _, dbImg := range dbImages {
-		frontendImg := map[string]interface{}{
-			"id":         dbImg.ID,
-			"name":       dbImg.Name,
-			"isChecked":  dbImg.Ischecked == 1,
-			"isSelected": dbImg.Isselected == 1,
-			"width":      int(dbImg.Width),
-			"height":     int(dbImg.Height),
-			"format":     dbImg.Format,
-		}
-		frontendImages = append(frontendImages, frontendImg)
-	}
-
-	if len(frontendImages) == 0 {
-		h.logger.Info("handleGetImages: no images found, returning null")
-		return &Response{Action: msg.Action, Data: nil}
-	}
-
-	return &Response{Action: msg.Action, Data: frontendImages}
+	// Fallback: return empty array if no store
+	h.logger.Warn("handleGetImages: no JSON store available")
+	return &Response{Action: msg.Action, Data: []any{}}
 }
 
 func (h *Handler) handleGetPlaylists(msg *Message) *Response {
-	// Get all playlists with their images
-	playlists, err := h.dbOps.GetAllPlaylistsWithImages(context.Background())
-	if err != nil {
-		h.logger.Error("failed to get playlists", "error", err)
-		return &Response{Action: msg.Action, Error: err.Error()}
+	// Use JSON store for playlists
+	if h.store != nil {
+		playlistStore := store.NewPlaylistStore(h.store, h.logger)
+		playlists, err := playlistStore.GetAllPlaylists()
+		if err == nil && playlists != nil {
+			h.logger.Info("handleGetPlaylists: found playlists in JSON store", "count", len(playlists))
+			return &Response{Action: msg.Action, Data: playlists}
+		}
+		h.logger.Warn("handleGetPlaylists: no playlists found in JSON store or error loading", "error", err)
+		return &Response{Action: msg.Action, Data: []interface{}{}}
 	}
 
-	return &Response{Action: msg.Action, Data: playlists}
+	// Fallback: return empty array if no store
+	h.logger.Warn("handleGetPlaylists: no JSON store available")
+	return &Response{Action: msg.Action, Data: []interface{}{}}
 }
 
 func (h *Handler) handlePing(_ *Message) *Response {
@@ -454,10 +532,22 @@ func (h *Handler) handleProcessForMonitors(msg *Message) *Response {
 		return h.createResponse(msg.Action, nil, errors.New(errors.IPCError, "image and activeMonitor are required"))
 	}
 
-	// Get image data from database
-	imageData, err := h.dbOps.GetImageData(context.Background(), msg.Image.ID)
+	// Get image data from store
+	registry, err := h.store.LoadImageRegistry()
 	if err != nil {
-		return h.createResponse(msg.Action, nil, errors.New(errors.SystemError, fmt.Sprintf("failed to get image data: %v", err)))
+		return h.createResponse(msg.Action, nil, errors.New(errors.SystemError, fmt.Sprintf("failed to load image registry: %v", err)))
+	}
+
+	var imageInfo *store.Image
+	for _, img := range registry.Images {
+		if img.ID == msg.Image.ID {
+			imageInfo = &img
+			break
+		}
+	}
+
+	if imageInfo == nil {
+		return h.createResponse(msg.Action, nil, errors.New(errors.SystemError, fmt.Sprintf("image with ID %d not found", msg.Image.ID)))
 	}
 
 	// Convert models.ActiveMonitor to monitor.ActiveMonitor
@@ -479,6 +569,12 @@ func (h *Handler) handleProcessForMonitors(msg *Message) *Response {
 		}
 	}
 
+	// Read image file data
+	imageData, err := os.ReadFile(imageInfo.Path)
+	if err != nil {
+		return h.createResponse(msg.Action, nil, errors.New(errors.SystemError, fmt.Sprintf("failed to read image file: %v", err)))
+	}
+
 	// Process image for monitors
 	monitorImages, err := image.ProcessForMonitors(imageData, activeMonitor)
 	if err != nil {
@@ -495,15 +591,15 @@ func (h *Handler) handleSetImageAcrossMonitors(msg *Message) *Response {
 	}
 
 	// Get image info from database
-	imageInfo, err := h.dbOps.GetImage(context.Background(), msg.Image.ID)
+	imageInfo, err := h.jsonStore.GetImageByID(context.Background(), msg.Image.ID)
 	if err != nil {
 		return h.createResponse(msg.Action, nil, errors.New(errors.SystemError, fmt.Sprintf("failed to get image info: %v", err)))
 	}
 
-	// Get image data from database
-	imageData, err := h.dbOps.GetImageData(context.Background(), msg.Image.ID)
+	// Read image file data
+	imageData, err := os.ReadFile(imageInfo.Path)
 	if err != nil {
-		return h.createResponse(msg.Action, nil, errors.New(errors.SystemError, fmt.Sprintf("failed to get image data: %v", err)))
+		return h.createResponse(msg.Action, nil, errors.New(errors.SystemError, fmt.Sprintf("failed to read image file: %v", err)))
 	}
 
 	// Convert models.ActiveMonitor to monitor.ActiveMonitor
@@ -552,15 +648,15 @@ func (h *Handler) handleDuplicateImageAcrossMonitors(msg *Message) *Response {
 	}
 
 	// Get image info from database
-	imageInfo, err := h.dbOps.GetImage(context.Background(), msg.Image.ID)
+	imageInfo, err := h.jsonStore.GetImageByID(context.Background(), msg.Image.ID)
 	if err != nil {
 		return h.createResponse(msg.Action, nil, errors.New(errors.SystemError, fmt.Sprintf("failed to get image info: %v", err)))
 	}
 
-	// Get image data from database
-	imageData, err := h.dbOps.GetImageData(context.Background(), msg.Image.ID)
+	// Read image file data
+	imageData, err := os.ReadFile(imageInfo.Path)
 	if err != nil {
-		return h.createResponse(msg.Action, nil, errors.New(errors.SystemError, fmt.Sprintf("failed to get image data: %v", err)))
+		return h.createResponse(msg.Action, nil, errors.New(errors.SystemError, fmt.Sprintf("failed to read image file: %v", err)))
 	}
 
 	// Convert models.ActiveMonitor to monitor.ActiveMonitor
@@ -629,7 +725,7 @@ func (h *Handler) handleGetImageHistory(msg *Message) *Response {
 	}
 
 	// Get image history with the configured limit
-	history, err := h.dbOps.GetImageHistory(ctx, historyLimit)
+	history, err := h.jsonStore.GetImageHistory(ctx, historyLimit)
 	if err != nil {
 		h.logger.Error("failed to get image history", "error", err)
 		return &Response{Action: msg.Action, Error: err.Error()}
@@ -638,161 +734,243 @@ func (h *Handler) handleGetImageHistory(msg *Message) *Response {
 	return &Response{Action: msg.Action, Data: history}
 }
 
-// Bulk Operation Handlers
-
-func (h *Handler) handleNextImageAll(msg *Message) *Response {
-	// Get all monitors and advance to next image on each
-	monitors := h.monitorManager.GetMonitors()
-	var errors []string
-
-	for _, monitor := range monitors {
-		err := h.playlistManager.NextImage(context.Background(), monitor.Name)
-		if err != nil {
-			h.logger.Error("failed to advance image on monitor", "monitor", monitor.Name, "error", err)
-			errors = append(errors, fmt.Sprintf("monitor %s: %v", monitor.Name, err))
-		}
-	}
-
-	if len(errors) > 0 {
-		return &Response{Action: msg.Action, Error: fmt.Sprintf("some operations failed: %v", errors)}
-	}
-
-	return &Response{Action: msg.Action, Data: "advanced images on all monitors"}
-}
-
-func (h *Handler) handlePreviousImageAll(msg *Message) *Response {
-	// Get all monitors and go to previous image on each
-	monitors := h.monitorManager.GetMonitors()
-	var errors []string
-
-	for _, monitor := range monitors {
-		err := h.playlistManager.PreviousImage(context.Background(), monitor.Name)
-		if err != nil {
-			h.logger.Error("failed to go to previous image on monitor", "monitor", monitor.Name, "error", err)
-			errors = append(errors, fmt.Sprintf("monitor %s: %v", monitor.Name, err))
-		}
-	}
-
-	if len(errors) > 0 {
-		return &Response{Action: msg.Action, Error: fmt.Sprintf("some operations failed: %v", errors)}
-	}
-
-	return &Response{Action: msg.Action, Data: "went to previous images on all monitors"}
-}
-
-func (h *Handler) handleRandomImageAll(msg *Message) *Response {
-	// Get all monitors and set random image on each
-	monitors := h.monitorManager.GetMonitors()
-	var errors []string
-
-	for _, monitor := range monitors {
-		err := h.playlistManager.RandomImage(context.Background(), monitor.Name)
-		if err != nil {
-			h.logger.Error("failed to set random image on monitor", "monitor", monitor.Name, "error", err)
-			errors = append(errors, fmt.Sprintf("monitor %s: %v", monitor.Name, err))
-		}
-	}
-
-	if len(errors) > 0 {
-		return &Response{Action: msg.Action, Error: fmt.Sprintf("some operations failed: %v", errors)}
-	}
-
-	return &Response{Action: msg.Action, Data: "set random images on all monitors"}
-}
-
-func (h *Handler) handleStopPlaylistAll(msg *Message) *Response {
-	// Get all monitors and stop playlists on each
-	monitors := h.monitorManager.GetMonitors()
-	var errors []string
-
-	for _, monitor := range monitors {
-		err := h.playlistManager.StopPlaylist(monitor.Name)
-		if err != nil {
-			h.logger.Error("failed to stop playlist on monitor", "monitor", monitor.Name, "error", err)
-			errors = append(errors, fmt.Sprintf("monitor %s: %v", monitor.Name, err))
-		}
-	}
-
-	if len(errors) > 0 {
-		return &Response{Action: msg.Action, Error: fmt.Sprintf("some operations failed: %v", errors)}
-	}
-
-	return &Response{Action: msg.Action, Data: "stopped playlists on all monitors"}
-}
-
-func (h *Handler) handlePausePlaylistAll(msg *Message) *Response {
-	// Get all monitors and pause playlists on each
-	monitors := h.monitorManager.GetMonitors()
-	var errors []string
-
-	for _, monitor := range monitors {
-		err := h.playlistManager.PausePlaylist(monitor.Name)
-		if err != nil {
-			h.logger.Error("failed to pause playlist on monitor", "monitor", monitor.Name, "error", err)
-			errors = append(errors, fmt.Sprintf("monitor %s: %v", monitor.Name, err))
-		}
-	}
-
-	if len(errors) > 0 {
-		return &Response{Action: msg.Action, Error: fmt.Sprintf("some operations failed: %v", errors)}
-	}
-
-	return &Response{Action: msg.Action, Data: "paused playlists on all monitors"}
-}
-
-func (h *Handler) handleResumePlaylistAll(msg *Message) *Response {
-	// Get all monitors and resume playlists on each
-	monitors := h.monitorManager.GetMonitors()
-	var errors []string
-
-	for _, monitor := range monitors {
-		err := h.playlistManager.ResumePlaylist(monitor.Name)
-		if err != nil {
-			h.logger.Error("failed to resume playlist on monitor", "monitor", monitor.Name, "error", err)
-			errors = append(errors, fmt.Sprintf("monitor %s: %v", monitor.Name, err))
-		}
-	}
-
-	if len(errors) > 0 {
-		return &Response{Action: msg.Action, Error: fmt.Sprintf("some operations failed: %v", errors)}
-	}
-
-	return &Response{Action: msg.Action, Data: "resumed playlists on all monitors"}
-}
-
 // Configuration Handlers
 
-func (h *Handler) handleGetAppConfig(msg *Message) *Response {
-	config := h.configManager.GetAppConfig()
-	return &Response{Action: msg.Action, Data: config}
-}
-
-func (h *Handler) handleSetAppConfig(msg *Message) *Response {
-	if msg.Config == nil || msg.Config.AppConfig == nil {
-		return &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "app config is required").Error()}
-	}
-
-	// Update the app configuration
-	err := h.configManager.SetAppConfig(msg.Config.AppConfig)
+func (h *Handler) handleGetConfig(msg *Message) *Response {
+	config, err := h.configManager.LoadConfig()
 	if err != nil {
-		h.logger.Error("failed to set app config", "error", err)
+		h.logger.Error("failed to load config", "error", err)
 		return &Response{Action: msg.Action, Error: err.Error()}
 	}
 
-	h.logger.Info("app config updated successfully")
+	// Convert to frontend-compatible format
+	frontendConfig := map[string]interface{}{
+		"app": map[string]interface{}{
+			"kill_daemon_on_exit":         config.App.KillDaemonOnExit,
+			"notifications":               config.App.Notifications,
+			"start_minimized":             config.App.StartMinimized,
+			"minimize_instead_of_close":   config.App.MinimizeInsteadOfClose,
+			"random_image_monitor":        config.App.RandomImageMonitor,
+			"show_monitor_modal_on_start": config.App.ShowMonitorModalOnStart,
+			"images_per_page":             config.App.ImagesPerPage,
+			"theme":                       config.App.Theme,
+			"sidebar_collapsed":           config.App.SidebarCollapsed,
+			"sort_by":                     config.App.SortBy,
+			"sort_order":                  config.App.SortOrder,
+			"image_history_limit":         config.App.ImageHistoryLimit,
+		},
+		"daemon": map[string]interface{}{
+			"database_path":       config.Daemon.DatabasePath,
+			"images_dir":          config.Daemon.ImagesDir,
+			"thumbnails_dir":      config.Daemon.ThumbnailsDir,
+			"monitors_state_file": config.Daemon.MonitorsStateFile,
+			"socket_path":         config.Daemon.SocketPath,
+			"log_level":           config.Daemon.LogLevel,
+			"log_file":            config.Daemon.LogFile,
+			"log_max_size":        config.Daemon.LogMaxSize,
+			"log_max_age":         config.Daemon.LogMaxAge,
+			"log_max_backups":     config.Daemon.LogMaxBackups,
+			"compositor":          config.Daemon.Compositor,
+		},
+		"backend": map[string]interface{}{
+			"type": config.Backend.Type,
+			"swww": map[string]interface{}{
+				"transition_type":     config.Backend.Swww.TransitionType,
+				"transition_step":     config.Backend.Swww.TransitionStep,
+				"transition_duration": config.Backend.Swww.TransitionDuration,
+				"transition_angle":    config.Backend.Swww.TransitionAngle,
+				"transition_pos":      config.Backend.Swww.TransitionPos,
+				"transition_bezier":   config.Backend.Swww.TransitionBezier,
+				"transition_wave":     config.Backend.Swww.TransitionWave,
+			},
+		},
+		"monitors": map[string]interface{}{
+			"selected_monitors": config.Monitors.SelectedMonitors,
+			"image_set_type":    config.Monitors.ImageSetType,
+		},
+	}
+
+	return &Response{Action: msg.Action, Data: frontendConfig}
+}
+
+func (h *Handler) handleSetConfig(msg *Message) *Response {
+	if msg.Config == nil || msg.Config.ConfigSection == "" || msg.Config.ConfigKey == "" {
+		return &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "config section and key are required").Error()}
+	}
+
+	section := msg.Config.ConfigSection
+	key := msg.Config.ConfigKey
+	value := msg.Config.ConfigValue
+
+	// Update the specific configuration value based on section
+	var err error
+	switch section {
+	case "app":
+		err = h.setAppConfigValue(key, value)
+	case "daemon":
+		err = h.setDaemonConfigValue(key, value)
+	case "backend":
+		err = h.setBackendConfigValue(key, value)
+	case "monitors":
+		err = h.setMonitorsConfigValue(key, value)
+	default:
+		return &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "unknown config section: "+section).Error()}
+	}
+
+	if err != nil {
+		h.logger.Error("failed to set config", "error", err, "section", section, "key", key, "value", value)
+		return &Response{Action: msg.Action, Error: err.Error()}
+	}
+
+	h.logger.Info("config updated", "section", section, "key", key, "value", value)
 
 	// Broadcast config change event to frontend
 	if h.server != nil {
 		h.server.BroadcastEvent(&Event{
 			Type: "config_changed",
 			Payload: map[string]interface{}{
-				"configType": "app",
-				"config":     msg.Config.AppConfig,
+				"section":   section,
+				"key":       key,
+				"value":     value,
+				"timestamp": time.Now().Unix(),
 			},
 		})
 	}
 
-	return &Response{Action: msg.Action, Data: "app config updated successfully"}
+	return &Response{Action: msg.Action, Data: true}
+}
+
+// Helper methods for setting config values by section
+func (h *Handler) setAppConfigValue(key string, value interface{}) error {
+	return h.configManager.SetAppConfig(key, value)
+}
+
+func (h *Handler) setDaemonConfigValue(key string, value interface{}) error {
+	// For daemon config, we need to update the TOML file directly
+	// This is a simplified implementation - in practice, you'd want to reload the config
+	config, err := h.configManager.LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	switch key {
+	case "database_path":
+		if v, ok := value.(string); ok {
+			config.Daemon.DatabasePath = v
+		}
+	case "images_dir":
+		if v, ok := value.(string); ok {
+			config.Daemon.ImagesDir = v
+		}
+	case "thumbnails_dir":
+		if v, ok := value.(string); ok {
+			config.Daemon.ThumbnailsDir = v
+		}
+	case "monitors_state_file":
+		if v, ok := value.(string); ok {
+			config.Daemon.MonitorsStateFile = v
+		}
+	case "socket_path":
+		if v, ok := value.(string); ok {
+			config.Daemon.SocketPath = v
+		}
+	case "log_level":
+		if v, ok := value.(string); ok {
+			config.Daemon.LogLevel = v
+		}
+	case "log_file":
+		if v, ok := value.(string); ok {
+			config.Daemon.LogFile = v
+		}
+	case "log_max_size":
+		if v, ok := value.(int); ok {
+			config.Daemon.LogMaxSize = v
+		}
+	case "log_max_age":
+		if v, ok := value.(int); ok {
+			config.Daemon.LogMaxAge = v
+		}
+	case "log_max_backups":
+		if v, ok := value.(int); ok {
+			config.Daemon.LogMaxBackups = v
+		}
+	case "compositor":
+		if v, ok := value.(string); ok {
+			config.Daemon.Compositor = v
+		}
+	default:
+		return fmt.Errorf("unknown daemon config key: %s", key)
+	}
+
+	return h.configManager.SaveConfig()
+}
+
+func (h *Handler) setBackendConfigValue(key string, value interface{}) error {
+	config, err := h.configManager.LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	switch key {
+	case "type":
+		if v, ok := value.(string); ok {
+			config.Backend.Type = v
+		}
+	case "swww.transition_type":
+		if v, ok := value.(string); ok {
+			config.Backend.Swww.TransitionType = v
+		}
+	case "swww.transition_step":
+		if v, ok := value.(int); ok {
+			config.Backend.Swww.TransitionStep = v
+		}
+	case "swww.transition_duration":
+		if v, ok := value.(int); ok {
+			config.Backend.Swww.TransitionDuration = v
+		}
+	case "swww.transition_angle":
+		if v, ok := value.(int); ok {
+			config.Backend.Swww.TransitionAngle = v
+		}
+	case "swww.transition_pos":
+		if v, ok := value.(string); ok {
+			config.Backend.Swww.TransitionPos = v
+		}
+	case "swww.transition_bezier":
+		if v, ok := value.(string); ok {
+			config.Backend.Swww.TransitionBezier = v
+		}
+	case "swww.transition_wave":
+		if v, ok := value.(string); ok {
+			config.Backend.Swww.TransitionWave = v
+		}
+	default:
+		return fmt.Errorf("unknown backend config key: %s", key)
+	}
+
+	return h.configManager.SaveConfig()
+}
+
+func (h *Handler) setMonitorsConfigValue(key string, value interface{}) error {
+	config, err := h.configManager.LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	switch key {
+	case "selected_monitors":
+		if v, ok := value.([]string); ok {
+			config.Monitors.SelectedMonitors = v
+		}
+	case "image_set_type":
+		if v, ok := value.(string); ok {
+			config.Monitors.ImageSetType = v
+		}
+	default:
+		return fmt.Errorf("unknown monitors config key: %s", key)
+	}
+
+	return h.configManager.SaveConfig()
 }
 
 func (h *Handler) handleGetSwwwConfig(msg *Message) *Response {
@@ -863,19 +1041,20 @@ func (h *Handler) handleGetPlaylistImages(msg *Message) *Response {
 		return response
 	}
 
-	images, err := h.dbQueries.GetPlaylistImagesOrdered(ctx, playlistID)
+	// Get playlist from JSON store
+	playlist, err := h.jsonStore.GetPlaylistByID(ctx, playlistID)
 	if err != nil {
 		h.logger.Error("failed to get playlist images", "error", err)
 		response := &Response{Action: msg.Action, Error: err.Error()}
 		return response
 	}
 
-	response := &Response{Action: msg.Action, Data: images}
+	response := &Response{Action: msg.Action, Data: playlist.Images}
 	return response
 }
 
 func (h *Handler) handleDeletePlaylist(msg *Message) *Response {
-	// Delete playlist from database
+	// Delete playlist from JSON store
 	ctx := context.Background()
 	playlistName := msg.PlaylistName
 	if playlistName == "" {
@@ -883,7 +1062,28 @@ func (h *Handler) handleDeletePlaylist(msg *Message) *Response {
 		return response
 	}
 
-	err := h.dbQueries.DeletePlaylistByName(ctx, playlistName)
+	// Get all playlists to find the one with matching name
+	playlists, err := h.jsonStore.GetPlaylists(ctx)
+	if err != nil {
+		h.logger.Error("failed to get playlists", "error", err)
+		response := &Response{Action: msg.Action, Error: err.Error()}
+		return response
+	}
+
+	var playlistID int64
+	for _, playlist := range playlists {
+		if playlist.Name == playlistName {
+			playlistID = playlist.ID
+			break
+		}
+	}
+
+	if playlistID == 0 {
+		response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "playlist not found").Error()}
+		return response
+	}
+
+	err = h.jsonStore.DeletePlaylist(ctx, playlistID)
 	if err != nil {
 		h.logger.Error("failed to delete playlist", "error", err)
 		response := &Response{Action: msg.Action, Error: err.Error()}
@@ -920,7 +1120,7 @@ func (h *Handler) handleDeleteImageFromGallery(msg *Message) *Response {
 	// Get image names before deleting from database
 	var imageNames []string
 	for _, id := range imageIDs {
-		image, err := h.dbOps.GetImage(ctx, id)
+		image, err := h.jsonStore.GetImageByID(ctx, id)
 		if err != nil {
 			h.logger.Warn("failed to get image name for deletion", "imageID", id, "error", err)
 			continue
@@ -928,12 +1128,13 @@ func (h *Handler) handleDeleteImageFromGallery(msg *Message) *Response {
 		imageNames = append(imageNames, image.Name)
 	}
 
-	// Delete from database
-	err := h.dbQueries.DeleteImagesByIDs(ctx, imageIDs)
-	if err != nil {
-		h.logger.Error("failed to delete images from database", "error", err)
-		response := &Response{Action: msg.Action, Error: err.Error()}
-		return response
+	// Delete from JSON store
+	for _, id := range imageIDs {
+		err := h.jsonStore.DeleteImage(ctx, id)
+		if err != nil {
+			h.logger.Error("failed to delete image from JSON store", "imageID", id, "error", err)
+			// Continue with other images even if one fails
+		}
 	}
 
 	// Delete files from storage
@@ -966,11 +1167,10 @@ func (h *Handler) handleDeleteImageFromGallery(msg *Message) *Response {
 }
 
 func (h *Handler) handleProcessImages(msg *Message) *Response {
-	// Process images from file paths (equivalent to copyImagesToCacheAndProcessThumbnails)
+	// Process images using parallel processing pipeline
 	ctx := context.Background()
 
-	fmt.Printf("DEBUG: handleProcessImages called with imagePaths=%v, fileNames=%v\n", msg.ImagePaths, msg.FileNames)
-	h.logger.Info("handleProcessImages called", "imagePaths", msg.ImagePaths, "fileNames", msg.FileNames)
+	h.logger.Info("handleProcessImages called with parallel processing", "imagePaths", msg.ImagePaths, "fileNames", msg.FileNames)
 
 	if len(msg.ImagePaths) == 0 || len(msg.FileNames) == 0 {
 		h.logger.Error("image paths or file names are empty", "imagePaths", msg.ImagePaths, "fileNames", msg.FileNames)
@@ -1002,199 +1202,100 @@ func (h *Handler) handleProcessImages(msg *Message) *Response {
 	uniqueFileNames := image.GetUniqueFileNames(existingFiles, msg.FileNames)
 	h.logger.Info("generated unique filenames", "original", msg.FileNames, "unique", uniqueFileNames)
 
-	// Process images one by one and emit events for each
+	// Determine required resolutions based on connected monitors
+	var requiredResolutions []string
+	if h.monitorManager != nil {
+		// Get connected monitors
+		monitors := h.monitorManager.GetMonitors()
+
+		// Convert to MonitorResolution format
+		var monitorResolutions []image.MonitorResolution
+		for _, monitor := range monitors {
+			monitorResolutions = append(monitorResolutions, image.MonitorResolution{
+				Width:  monitor.Width,
+				Height: monitor.Height,
+				Name:   monitor.Name,
+			})
+		}
+
+		// Get required resolutions based on monitors
+		requiredResolutions = image.GetRequiredResolutions(monitorResolutions)
+		h.logger.Debug("Creating thumbnails for resolutions", "resolutions", requiredResolutions, "monitors", len(monitors))
+	} else {
+		// Fallback to all resolutions if no monitor manager
+		requiredResolutions = []string{"720p", "1080p", "1440p", "4k", "fallback"}
+	}
+
+	// Create parallel image processing jobs
+	var jobs []*image.ImageProcessingJob
+	for i, imagePath := range msg.ImagePaths {
+		job := &image.ImageProcessingJob{
+			ImagePath:           imagePath,
+			OriginalName:        msg.FileNames[i],
+			UniqueName:          uniqueFileNames[i],
+			RequiredResolutions: requiredResolutions,
+		}
+		jobs = append(jobs, job)
+	}
+
+	// Create parallel processor
+	processor := image.NewParallelImageProcessor(cacheDir, thumbnailsDir, h.store, 4) // 4 workers
+
+	// Process images in parallel
+	h.logger.Info("starting parallel image processing", "totalImages", len(jobs), "workers", 4)
+	results, err := processor.ProcessImagesInParallel(ctx, jobs)
+	if err != nil {
+		h.logger.Error("parallel image processing failed", "error", err)
+		response := &Response{Action: msg.Action, Error: errors.New(errors.ImageError, fmt.Sprintf("parallel processing failed: %v", err)).Error()}
+		return response
+	}
+
+	// Process results and emit events
+	var successCount int
+	var totalProcessingTime time.Duration
 	var metadataList []*image.Metadata
 
-	for i, imagePath := range msg.ImagePaths {
-		originalFileName := msg.FileNames[i]
-		uniqueFileName := uniqueFileNames[i]
-		h.logger.Info("processing image", "originalFileName", originalFileName, "uniqueFileName", uniqueFileName, "path", imagePath)
-
-		// Process single image with unique filename
-		metadata, err := image.CopyImageToCache(imagePath, cacheDir, thumbnailsDir, uniqueFileName)
-		if err != nil {
-			h.logger.Error("failed to process image", "originalFileName", originalFileName, "uniqueFileName", uniqueFileName, "error", err)
+	for _, result := range results {
+		if result.Error != nil {
+			h.logger.Error("failed to process image", "originalFileName", result.Job.OriginalName, "uniqueFileName", result.Job.UniqueName, "error", result.Error)
 			// Emit error event
 			if h.server != nil {
 				h.server.BroadcastEvent(&Event{
 					Type: EventImageError,
 					Payload: map[string]interface{}{
-						"originalFileName": originalFileName,
-						"uniqueFileName":   uniqueFileName,
-						"error":            err.Error(),
+						"originalFileName": result.Job.OriginalName,
+						"uniqueFileName":   result.Job.UniqueName,
+						"error":            result.Error.Error(),
 					},
 				})
 			}
 			continue
 		}
 
-		// Create smart multi-resolution thumbnails based on connected monitors
-		var thumbnailPaths map[string]string
-		if h.monitorManager != nil {
-			// Get connected monitors
-			monitors := h.monitorManager.GetMonitors()
-
-			// Convert to MonitorResolution format
-			var monitorResolutions []image.MonitorResolution
-			for _, monitor := range monitors {
-				monitorResolutions = append(monitorResolutions, image.MonitorResolution{
-					Width:  monitor.Width,
-					Height: monitor.Height,
-					Name:   monitor.Name,
-				})
-			}
-
-			// Get required resolutions based on monitors
-			requiredResolutions := image.GetRequiredResolutions(monitorResolutions)
-			h.logger.Debug("Creating thumbnails for resolutions", "resolutions", requiredResolutions, "monitors", len(monitors))
-
-			// Create smart thumbnails
-			thumbnailPaths, err = image.CreateSmartMultiResolutionThumbnails(
-				filepath.Join(cacheDir, uniqueFileName),
-				thumbnailsDir,
-				uniqueFileName,
-				requiredResolutions,
-			)
-			if err != nil {
-				h.logger.Warn("failed to create smart multi-resolution thumbnails", "uniqueFileName", uniqueFileName, "error", err)
-				// Fallback to creating all resolutions if smart creation fails
-				thumbnailPaths, err = image.CreateMultiResolutionThumbnails(
-					filepath.Join(cacheDir, uniqueFileName),
-					thumbnailsDir,
-					uniqueFileName,
-				)
-				if err != nil {
-					h.logger.Warn("failed to create fallback multi-resolution thumbnails", "uniqueFileName", uniqueFileName, "error", err)
-				}
-			}
-		} else {
-			// Fallback to creating all resolutions if no monitor manager
-			thumbnailPaths, err = image.CreateMultiResolutionThumbnails(
-				filepath.Join(cacheDir, uniqueFileName),
-				thumbnailsDir,
-				uniqueFileName,
-			)
-			if err != nil {
-				h.logger.Warn("failed to create multi-resolution thumbnails", "uniqueFileName", uniqueFileName, "error", err)
-			}
-		}
-
-		metadataList = append(metadataList, metadata)
-
-		// Store image in JSON store with sequential ID
-		var imageID string
-		if h.store != nil {
-			// Use JSON store with sequential IDs
-			// Convert thumbnail paths to store format
-			var storeThumbnails store.ImageThumbnails
-			if thumbnailPaths != nil {
-				storeThumbnails = store.ImageThumbnails{
-					Resolution720p:  thumbnailPaths["720p"],
-					Resolution1080p: thumbnailPaths["1080p"],
-					Resolution1440p: thumbnailPaths["1440p"],
-					Resolution4k:    thumbnailPaths["4k"],
-					Fallback:        thumbnailPaths["fallback"],
-				}
-			}
-
-			storeImage := &store.Image{
-				Name:      uniqueFileName,
-				Path:      filepath.Join(cacheDir, uniqueFileName),
-				MediaType: media.MediaTypeImage, // Default to image type
-				Metadata: store.ImageMetadata{
-					Format:   metadata.Format,
-					FileSize: 0,  // Will be calculated by AddImage
-					Checksum: "", // Will be calculated by AddImage
-				},
-				Dimensions: store.ImageDimensions{
-					Width:  int64(metadata.Width),
-					Height: int64(metadata.Height),
-				},
-				Selection: store.ImageSelection{
-					IsChecked:  true,
-					IsSelected: false,
-				},
-				ImportInfo: store.ImageImportInfo{
-					ImportedAt: time.Now(),
-					Importer:   "manual",
-				},
-				Thumbnails: storeThumbnails,
-			}
-
-			imageStore := store.NewImageStore(h.store)
-			if err := imageStore.AddImage(storeImage); err != nil {
-				h.logger.Error("failed to store image in JSON store", "originalFileName", originalFileName, "uniqueFileName", uniqueFileName, "error", err)
-				// Emit error event
-				if h.server != nil {
-					h.server.BroadcastEvent(&Event{
-						Type: EventImageError,
-						Payload: map[string]interface{}{
-							"originalFileName": originalFileName,
-							"uniqueFileName":   uniqueFileName,
-							"error":            "failed to store in JSON store: " + err.Error(),
-						},
-					})
-				}
-				continue
-			}
-
-			imageID = fmt.Sprintf("%d", storeImage.ID)
-			h.logger.Info("stored image in JSON store", "originalFileName", originalFileName, "uniqueFileName", uniqueFileName, "id", imageID)
-		} else {
-			// Fallback to SQLite if JSON store not available
-			img := db.Image{
-				Name:       uniqueFileName,
-				Width:      int64(metadata.Width),
-				Height:     int64(metadata.Height),
-				Format:     metadata.Format,
-				Ischecked:  1,
-				Isselected: 0,
-			}
-
-			sqliteImageID, err := h.dbQueries.CreateImage(ctx, db.CreateImageParams{
-				Name:       img.Name,
-				Ischecked:  img.Ischecked,
-				Isselected: img.Isselected,
-				Width:      img.Width,
-				Height:     img.Height,
-				Format:     img.Format,
-			})
-			if err != nil {
-				h.logger.Error("failed to store image in SQLite database", "originalFileName", originalFileName, "uniqueFileName", uniqueFileName, "error", err)
-				// Emit error event
-				if h.server != nil {
-					h.server.BroadcastEvent(&Event{
-						Type: EventImageError,
-						Payload: map[string]interface{}{
-							"originalFileName": originalFileName,
-							"uniqueFileName":   uniqueFileName,
-							"error":            "failed to store in SQLite: " + err.Error(),
-						},
-					})
-				}
-				continue
-			}
-
-			imageID = fmt.Sprintf("%d", sqliteImageID.ID)
-			h.logger.Info("stored image in SQLite", "originalFileName", originalFileName, "uniqueFileName", uniqueFileName, "id", imageID)
-		}
-
-		// Note: imagesToStore is no longer used since we're storing directly in JSON store
+		successCount++
+		totalProcessingTime += result.ProcessingTime
+		metadataList = append(metadataList, result.Metadata)
 
 		// Emit success event
 		if h.server != nil {
 			h.server.BroadcastEvent(&Event{
 				Type: EventImageProcessed,
 				Payload: map[string]interface{}{
-					"id":               imageID,
-					"originalFileName": originalFileName,
-					"uniqueFileName":   uniqueFileName,
-					"width":            metadata.Width,
-					"height":           metadata.Height,
-					"format":           metadata.Format,
+					"id":               fmt.Sprintf("%d", result.Metadata.Width), // Using width as ID placeholder
+					"originalFileName": result.Job.OriginalName,
+					"uniqueFileName":   result.Job.UniqueName,
+					"width":            result.Metadata.Width,
+					"height":           result.Metadata.Height,
+					"format":           result.Metadata.Format,
+					"processingTime":   result.ProcessingTime.Milliseconds(),
 				},
 			})
 		}
+
+		h.logger.Info("successfully processed image",
+			"originalFileName", result.Job.OriginalName,
+			"uniqueFileName", result.Job.UniqueName,
+			"processingTime", result.ProcessingTime)
 	}
 
 	// Emit completion event
@@ -1202,8 +1303,10 @@ func (h *Handler) handleProcessImages(msg *Message) *Response {
 		h.server.BroadcastEvent(&Event{
 			Type: EventProcessingComplete,
 			Payload: map[string]interface{}{
-				"totalProcessed": len(metadataList),
-				"totalRequested": len(msg.ImagePaths),
+				"totalProcessed":        successCount,
+				"totalRequested":        len(msg.ImagePaths),
+				"totalProcessingTime":   totalProcessingTime.Milliseconds(),
+				"averageProcessingTime": totalProcessingTime.Milliseconds() / int64(max(successCount, 1)),
 			},
 		})
 
@@ -1217,6 +1320,12 @@ func (h *Handler) handleProcessImages(msg *Message) *Response {
 			})
 		}
 	}
+
+	h.logger.Info("parallel image processing completed",
+		"totalProcessed", successCount,
+		"totalRequested", len(msg.ImagePaths),
+		"totalProcessingTime", totalProcessingTime,
+		"averageProcessingTime", totalProcessingTime/time.Duration(max(successCount, 1)))
 
 	response := &Response{Action: msg.Action, Data: metadataList}
 	return response
@@ -1275,68 +1384,55 @@ func (h *Handler) handleSavePlaylist(msg *Message) *Response {
 
 	h.logger.Info("saving playlist", "name", msg.Playlist.Name, "type", msg.Playlist.Configuration.Type, "images", len(msg.Playlist.Images))
 
-	// Convert frontend playlist configuration to database playlist
-	playlist := db.Playlist{
-		Name: msg.Playlist.Name,
-		Type: msg.Playlist.Configuration.Type,
-	}
-
-	// Handle optional interval
+	// Convert frontend playlist configuration to JSON store playlist
+	var interval *int
 	if msg.Playlist.Configuration.Interval != nil {
-		playlist.Interval = sql.NullInt64{Int64: *msg.Playlist.Configuration.Interval, Valid: true}
+		intervalVal := int(*msg.Playlist.Configuration.Interval)
+		interval = &intervalVal
 	}
 
-	// Handle optional order
+	var order models.PlaylistOrder
 	if msg.Playlist.Configuration.Order != nil {
-		playlist.Order = sql.NullString{String: *msg.Playlist.Configuration.Order, Valid: true}
+		order = models.PlaylistOrder(*msg.Playlist.Configuration.Order)
 	}
 
-	// Convert boolean to int64 for database
-	if msg.Playlist.Configuration.ShowAnimations {
-		playlist.Showanimations = 1
-	} else {
-		playlist.Showanimations = 0
-	}
-
-	if msg.Playlist.Configuration.AlwaysStartOnFirstImage {
-		playlist.Alwaysstartonfirstimage = 1
-	} else {
-		playlist.Alwaysstartonfirstimage = 0
-	}
-
-	playlist.Currentimageindex = msg.Playlist.Configuration.CurrentImageIndex
-
-	// First, upsert the playlist
-	playlistID, err := h.dbQueries.UpsertPlaylist(ctx, db.UpsertPlaylistParams{
-		Name:                    playlist.Name,
-		Type:                    playlist.Type,
-		Interval:                playlist.Interval,
-		Showanimations:          playlist.Showanimations,
-		Alwaysstartonfirstimage: playlist.Alwaysstartonfirstimage,
-		Order:                   playlist.Order,
-		Currentimageindex:       playlist.Currentimageindex,
-	})
-	if err != nil {
-		h.logger.Error("failed to upsert playlist", "error", err, "name", playlist.Name)
-		return &Response{
-			Action: msg.Action,
-			Error:  errors.New(errors.DatabaseError, "failed to save playlist").WithDetails(map[string]interface{}{"error": err.Error()}).Error(),
+	// Convert RendererImage to models.Image
+	var images []models.Image
+	for _, rendererImg := range msg.Playlist.Images {
+		var time *int
+		if rendererImg.Time != nil {
+			timeVal := int(*rendererImg.Time)
+			time = &timeVal
 		}
+
+		images = append(images, models.Image{
+			ID:         rendererImg.ID,
+			Name:       "", // Will be populated from image store
+			Path:       "", // Will be populated from image store
+			IsChecked:  false,
+			IsSelected: false,
+			Width:      0,
+			Height:     0,
+			Format:     "",
+			Rating:     0,
+			Time:       time,
+		})
 	}
 
-	// Delete existing playlist images
-	if err := h.dbQueries.DeletePlaylistImages(ctx, playlistID); err != nil {
-		h.logger.Error("failed to delete existing playlist images", "error", err)
-		return &Response{
-			Action: msg.Action,
-			Error:  errors.New(errors.DatabaseError, "failed to update playlist images").Error(),
-		}
+	playlist := models.Playlist{
+		Name:                    msg.Playlist.Name,
+		Type:                    models.PlaylistType(msg.Playlist.Configuration.Type),
+		Interval:                interval,
+		ShowAnimations:          msg.Playlist.Configuration.ShowAnimations,
+		AlwaysStartOnFirstImage: msg.Playlist.Configuration.AlwaysStartOnFirstImage,
+		Order:                   order,
+		CurrentImageIndex:       msg.Playlist.Configuration.CurrentImageIndex,
+		Images:                  images,
 	}
 
-	// Insert new playlist images with time support
-	for i, rendererImg := range msg.Playlist.Images {
-		// Verify image exists in database
-		_, err := h.dbOps.GetImage(ctx, rendererImg.ID)
+	// Verify all images exist in JSON store
+	for _, rendererImg := range msg.Playlist.Images {
+		_, err := h.jsonStore.GetImageByID(ctx, rendererImg.ID)
 		if err != nil {
 			h.logger.Error("failed to get image for playlist", "imageID", rendererImg.ID, "error", err)
 			return &Response{
@@ -1344,38 +1440,27 @@ func (h *Handler) handleSavePlaylist(msg *Message) *Response {
 				Error:  errors.New(errors.DatabaseError, fmt.Sprintf("image with ID %d not found", rendererImg.ID)).Error(),
 			}
 		}
+	}
 
-		// Create playlist image params
-		params := db.InsertPlaylistImageParams{
-			Imageid:         rendererImg.ID,
-			Playlistid:      playlistID,
-			Indexinplaylist: int64(i),
-		}
-
-		// Set time if provided (for time-of-day playlists)
-		if rendererImg.Time != nil {
-			params.Time = sql.NullInt64{Int64: *rendererImg.Time, Valid: true}
-		}
-
-		// Insert the playlist image
-		if err := h.dbQueries.InsertPlaylistImage(ctx, params); err != nil {
-			h.logger.Error("failed to insert playlist image", "error", err, "imageID", rendererImg.ID)
-			return &Response{
-				Action: msg.Action,
-				Error:  errors.New(errors.DatabaseError, "failed to add images to playlist").Error(),
-			}
+	// Save playlist to JSON store
+	err := h.jsonStore.SavePlaylist(ctx, playlist)
+	if err != nil {
+		h.logger.Error("failed to save playlist", "error", err, "name", playlist.Name)
+		return &Response{
+			Action: msg.Action,
+			Error:  errors.New(errors.DatabaseError, "failed to save playlist").WithDetails(map[string]interface{}{"error": err.Error()}).Error(),
 		}
 	}
 
-	h.logger.Info("playlist saved successfully", "name", playlist.Name, "id", playlistID, "images", len(msg.Playlist.Images))
+	h.logger.Info("playlist saved successfully", "name", playlist.Name, "id", playlist.ID, "images", len(msg.Playlist.Images))
 
 	// Emit playlists updated event
 	if h.server != nil {
 		h.server.BroadcastEvent(&Event{
 			Type: "playlists_updated",
-			Payload: map[string]interface{}{
+			Payload: map[string]any{
 				"action":       "saved",
-				"playlistId":   playlistID,
+				"playlistId":   playlist.ID,
 				"playlistName": playlist.Name,
 			},
 		})
@@ -1385,176 +1470,11 @@ func (h *Handler) handleSavePlaylist(msg *Message) *Response {
 	return &Response{
 		Action: msg.Action,
 		Data: map[string]interface{}{
-			"id":      playlistID,
+			"id":      playlist.ID,
 			"name":    playlist.Name,
 			"message": "playlist saved successfully",
 		},
 	}
-}
-
-func (h *Handler) handleGetImageSrc(msg *Message) *Response {
-	if len(msg.FileNames) == 0 {
-		response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "file name is required").Error()}
-		return response
-	}
-
-	fileName := msg.FileNames[0]
-
-	// Try to get image from JSON store first (new system with full paths)
-	if h.store != nil {
-		registry, err := h.store.LoadImageRegistry()
-		if err == nil && registry != nil {
-			// Extract basename in case fileName is a full path
-			fileNameBase := filepath.Base(fileName)
-
-			// Search for image by name (both trying original fileName and basename)
-			// This handles cases where frontend passes full paths from monitor.currentImage
-			for _, image := range registry.Images {
-				if image.Name == fileName || image.Name == fileNameBase {
-					// Validate that the file actually exists
-					if _, err := os.Stat(image.Path); err == nil {
-						// Return clean file path (electron will add atom:// protocol)
-						response := &Response{Action: msg.Action, Data: image.Path}
-						return response
-					} else {
-						h.logger.Warn("Image file not found, skipping", "path", image.Path, "name", fileName, "searched_name", image.Name)
-					}
-				}
-			}
-		}
-	}
-
-	// Fallback to old system: construct path from images directory
-	config, err := h.configManager.GetConfig()
-	if err != nil {
-		response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "failed to get configuration").Error()}
-		return response
-	}
-
-	imagePath := filepath.Join(config.Daemon.ImagesDir, fileName)
-
-	// Validate that the file exists
-	if _, err := os.Stat(imagePath); err != nil {
-		h.logger.Warn("Image file not found in fallback path", "path", imagePath, "name", fileName)
-		response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "image file not found").Error()}
-		return response
-	}
-
-	// Return clean file path (electron will add atom:// protocol)
-	response := &Response{Action: msg.Action, Data: imagePath}
-	return response
-}
-
-func (h *Handler) handleGetThumbnailSrc(msg *Message) *Response {
-	if len(msg.FileNames) == 0 {
-		response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "file name is required").Error()}
-		return response
-	}
-
-	fileName := msg.FileNames[0]
-
-	// Try to get image from JSON store first (new system with full paths)
-	if h.store != nil {
-		registry, err := h.store.LoadImageRegistry()
-		if err == nil && registry != nil {
-			// Extract basename in case fileName is a full path
-			fileNameBase := filepath.Base(fileName)
-
-			// Search for image by name (both trying original fileName and basename)
-			// This handles cases where frontend passes full paths from monitor.currentImage
-			for _, img := range registry.Images {
-				if img.Name == fileName || img.Name == fileNameBase {
-					// Generate thumbnail path based on the full image path
-					thumbnailName := strings.TrimSuffix(filepath.Base(img.Path), filepath.Ext(img.Path)) + ".webp"
-
-					// Get thumbnails directory from configuration
-					config, err := h.configManager.GetConfig()
-					if err != nil {
-						response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "failed to get configuration").Error()}
-						return response
-					}
-
-					thumbnailPath := filepath.Join(config.Daemon.ThumbnailsDir, thumbnailName)
-
-					// Validate that the thumbnail exists
-					if _, err := os.Stat(thumbnailPath); err == nil {
-						// Return clean file path (electron will add atom:// protocol)
-						response := &Response{Action: msg.Action, Data: thumbnailPath}
-						return response
-					} else {
-						h.logger.Warn("Thumbnail file not found, attempting to generate", "path", thumbnailPath, "name", fileName, "searched_name", img.Name)
-
-						// Try to generate thumbnail on-demand
-						if _, err := os.Stat(img.Path); err == nil {
-							// Ensure thumbnails directory exists
-							if err := os.MkdirAll(filepath.Dir(thumbnailPath), 0755); err != nil {
-								h.logger.Error("Failed to create thumbnails directory", "error", err)
-							} else {
-								// Generate thumbnail
-								opts := image.DefaultThumbnailOptions()
-								_, err := image.CreateThumbnail(img.Path, thumbnailPath, opts)
-								if err != nil {
-									h.logger.Error("Failed to generate thumbnail", "error", err, "image", img.Path, "thumbnail", thumbnailPath)
-								} else {
-									h.logger.Info("Generated thumbnail on-demand", "image", img.Path, "thumbnail", thumbnailPath)
-									// Return the newly created thumbnail path
-									response := &Response{Action: msg.Action, Data: thumbnailPath}
-									return response
-								}
-							}
-						} else {
-							h.logger.Warn("Source image file not found, cannot generate thumbnail", "path", img.Path)
-						}
-					}
-				}
-			}
-		}
-	}
-
-	// Fallback to old system: construct thumbnail path from images directory
-	config, err := h.configManager.GetConfig()
-	if err != nil {
-		response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "failed to get configuration").Error()}
-		return response
-	}
-
-	thumbnailName := strings.TrimSuffix(fileName, filepath.Ext(fileName)) + ".webp"
-	thumbnailPath := filepath.Join(config.Daemon.ThumbnailsDir, thumbnailName)
-
-	// Validate that the thumbnail exists
-	if _, err := os.Stat(thumbnailPath); err != nil {
-		h.logger.Warn("Thumbnail file not found in fallback path, attempting to generate", "path", thumbnailPath, "name", fileName)
-
-		// Try to generate thumbnail on-demand
-		imagePath := filepath.Join(config.Daemon.ImagesDir, fileName)
-		if _, err := os.Stat(imagePath); err == nil {
-			// Ensure thumbnails directory exists
-			if err := os.MkdirAll(filepath.Dir(thumbnailPath), 0755); err != nil {
-				h.logger.Error("Failed to create thumbnails directory", "error", err)
-				response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "failed to create thumbnails directory").Error()}
-				return response
-			}
-
-			// Generate thumbnail
-			opts := image.DefaultThumbnailOptions()
-			_, err := image.CreateThumbnail(imagePath, thumbnailPath, opts)
-			if err != nil {
-				h.logger.Error("Failed to generate thumbnail", "error", err, "image", imagePath, "thumbnail", thumbnailPath)
-				response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "failed to generate thumbnail").Error()}
-				return response
-			}
-
-			h.logger.Info("Generated thumbnail on-demand", "image", imagePath, "thumbnail", thumbnailPath)
-		} else {
-			h.logger.Warn("Source image file not found, cannot generate thumbnail", "path", imagePath)
-			response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "thumbnail file not found").Error()}
-			return response
-		}
-	}
-
-	// Return clean file path (electron will add atom:// protocol)
-	response := &Response{Action: msg.Action, Data: thumbnailPath}
-	return response
 }
 
 // listenToPlaylistEvents listens to playlist manager events and broadcasts them to clients

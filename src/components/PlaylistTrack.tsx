@@ -22,7 +22,6 @@ function PlaylistTrack() {
         playlist,
         lastAddedImageID,
         movePlaylistArrayOrder,
-        addImagesToPlaylist,
         clearPlaylist,
         setPlaylist,
         setEmptyPlaylist

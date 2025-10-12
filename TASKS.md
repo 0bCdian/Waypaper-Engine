@@ -1,572 +1,281 @@
-# Waypaper Engine - Thumbnail Pipeline Refactor Plan
-
-## Problem Analysis
-
-The current thumbnail pipeline has several critical issues:
-
-1. **Infinite Loop**: Thumbnail failures trigger recreation requests that create more failures
-2. **Complex Frontend Queue**: The frontend manages a complex thumbnail request queue with retry logic
-3. **Multiple IPC Methods**: Too many individual IPC methods for image/thumbnail operations
-4. **Skeleton System**: Complex skeleton loading system that's error-prone
-5. **Race Conditions**: Multiple components requesting thumbnails simultaneously
-
-## Current Architecture Analysis
-
-### Frontend Components
-- **`src/stores/thumbnailStore.ts`**: Complex thumbnail management with queues, retries, and concurrent request limiting
-- **`src/components/ImageCard.tsx`**: Uses `useThumbnail` hook to request thumbnails on-demand
-- **`src/components/EnhancedImageCard.tsx`**: Alternative image card with different thumbnail loading logic
-- **`src/hooks/useRealTimeImageProcessing.tsx`**: Handles real-time events from daemon
-- **`src/hooks/useImageState.tsx`**: Manages image processing state
-- **`src/hooks/useOpenImages.tsx`**: Handles image adding workflow
-- **`src/stores/images.tsx`**: Main image store with skeleton management
-
-### Electron Components
-- **`electron/main.ts`**: IPC handlers for `get_image_src`, `get_thumbnail_src`, `create_thumbnail`
-- **`electron/goDaemonClient.ts`**: Go daemon client with thumbnail methods
-- **`electron/goDaemonRendererClient.ts`**: Renderer client interface
-- **`electron/exposedApi.ts`**: Exposed API methods
-- **`electron/appFunctions.ts`**: File dialog and image discovery
-
-### Daemon Components
-- **`daemon-go/internal/ipc/handler.go`**: Main IPC handler with `handleAddImages` and `handleCreateThumbnail`
-- **`daemon-go/internal/image/operations.go`**: Thumbnail creation operations
-- **`daemon-go/internal/image/batch_processor.go`**: Batch image processing
-- **`daemon-go/internal/types/events.go`**: Event type definitions
-- **`daemon-go/internal/ipc/protocol.go`**: Event constants
-
-## Proposed New Architecture
-
-### Core Principle
-**Event-Driven Processing**: The daemon processes images completely (copy, thumbnail generation, metadata extraction, database storage) and broadcasts complete image data via events. The frontend receives these events and displays images immediately.
-
-### New Workflow
-1. **User Action**: User selects images/folders via UI
-2. **Electron Discovery**: Electron handles file dialog and discovers image files
-3. **Daemon Processing**: Daemon receives image list and processes each image:
-   - Copies image to cache directory
-   - Generates multi-resolution thumbnails
-   - Extracts metadata
-   - Stores in database
-   - Broadcasts `image_processed` event with complete image data
-4. **Frontend Updates**: Frontend receives events and:
-   - Updates progress bar
-   - Adds completed images to gallery immediately
-   - No skeleton system needed
-
-## Detailed Implementation Plan
-
-### Phase 1: Daemon Event Enhancement
-
-#### 1.1 Enhance `image_processed` Event Payload
-**File**: `daemon-go/internal/ipc/handler.go`
-**Location**: Around line 1590-1602
-
-**Current Event**:
-```go
-h.server.BroadcastEvent(&Event{
-    Type: EventImageProcessed,
-    Payload: map[string]interface{}{
-        "id":               imageID,
-        "originalFileName": originalFileName,
-        "uniqueFileName":   uniqueFileName,
-        "width":            metadata.Width,
-        "height":           metadata.Height,
-        "format":           metadata.Format,
-    },
-})
-```
-
-**New Event** (include complete image data):
-```go
-h.server.BroadcastEvent(&Event{
-    Type: EventImageProcessed,
-    Payload: map[string]interface{}{
-        "id":               imageID,
-        "originalFileName": originalFileName,
-        "uniqueFileName":   uniqueFileName,
-        "width":            metadata.Width,
-        "height":           metadata.Height,
-        "format":           metadata.Format,
-        "path":             filepath.Join(cacheDir, uniqueFileName),
-        "thumbnails":       thumbnailPaths, // map[string]string
-        "size":             metadata.Size,
-        "createdAt":        time.Now().Unix(),
-    },
-})
-```
-
-#### 1.2 Add Progress Tracking Events
-**File**: `daemon-go/internal/ipc/handler.go`
-**Location**: Before the main processing loop (around line 1410)
-
-**Add new event types**:
-```go
-// Add to daemon-go/internal/types/events.go
-const (
-    EventProcessingStarted types.EventType = "processing_started"
-    EventImageProgress     types.EventType = "image_progress"
-)
-```
-
-**Broadcast processing start**:
-```go
-// Before processing loop
-if h.server != nil {
-    h.server.BroadcastEvent(&Event{
-        Type: EventProcessingStarted,
-        Payload: map[string]interface{}{
-            "totalImages": len(msg.ImagePaths),
-            "startTime":   time.Now().Unix(),
-        },
-    })
-}
-```
-
-**Broadcast progress updates**:
-```go
-// After each successful image processing (around line 1602)
-if h.server != nil {
-    h.server.BroadcastEvent(&Event{
-        Type: EventImageProgress,
-        Payload: map[string]interface{}{
-            "processed": len(metadataList),
-            "total":     len(msg.ImagePaths),
-            "current":   originalFileName,
-        },
-    })
-}
-```
-
-### Phase 2: Frontend Event Handling
-
-#### 2.1 Create New Progress Store
-**File**: `src/stores/imageProcessingStore.ts` (NEW)
-
-```typescript
-import { create } from "zustand";
-
-interface ImageProcessingState {
-    isProcessing: boolean;
-    totalImages: number;
-    processedImages: number;
-    currentImage: string | null;
-    startTime: number | null;
-}
-
-interface ImageProcessingActions {
-    startProcessing: (totalImages: number) => void;
-    updateProgress: (processed: number, current: string) => void;
-    completeProcessing: () => void;
-    reset: () => void;
-}
-
-export const useImageProcessingStore = create<ImageProcessingState & ImageProcessingActions>()((set) => ({
-    isProcessing: false,
-    totalImages: 0,
-    processedImages: 0,
-    currentImage: null,
-    startTime: null,
-
-    startProcessing: (totalImages: number) => set({
-        isProcessing: true,
-        totalImages,
-        processedImages: 0,
-        currentImage: null,
-        startTime: Date.now(),
-    }),
-
-    updateProgress: (processed: number, current: string) => set((state) => ({
-        processedImages: processed,
-        currentImage: current,
-    })),
-
-    completeProcessing: () => set({
-        isProcessing: false,
-        currentImage: null,
-    }),
-
-    reset: () => set({
-        isProcessing: false,
-        totalImages: 0,
-        processedImages: 0,
-        currentImage: null,
-        startTime: null,
-    }),
-}));
-```
-
-#### 2.2 Create Progress Bar Component
-**File**: `src/components/ImageProcessingProgress.tsx` (NEW)
-
-```typescript
-import React from "react";
-import { useImageProcessingStore } from "../stores/imageProcessingStore";
-
-export function ImageProcessingProgress() {
-    const { isProcessing, totalImages, processedImages, currentImage, startTime } = useImageProcessingStore();
-
-    if (!isProcessing) return null;
-
-    const progress = totalImages > 0 ? (processedImages / totalImages) * 100 : 0;
-    const elapsed = startTime ? Date.now() - startTime : 0;
-
-    return (
-        <div className="fixed top-4 right-4 bg-gray-800 p-4 rounded-lg shadow-lg z-50 min-w-80">
-            <div className="flex items-center justify-between mb-2">
-                <span className="text-sm font-medium text-white">Processing Images</span>
-                <span className="text-sm text-gray-300">{processedImages}/{totalImages}</span>
-            </div>
-            
-            <div className="w-full bg-gray-700 rounded-full h-2 mb-2">
-                <div 
-                    className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                    style={{ width: `${progress}%` }}
-                />
-            </div>
-            
-            {currentImage && (
-                <div className="text-xs text-gray-400 truncate">
-                    Processing: {currentImage}
-                </div>
-            )}
-            
-            <div className="text-xs text-gray-500 mt-1">
-                {Math.round(elapsed / 1000)}s elapsed
-            </div>
-        </div>
-    );
-}
-```
-
-#### 2.3 Update Real-Time Processing Hook
-**File**: `src/hooks/useRealTimeImageProcessing.tsx`
-
-**Replace the entire file content**:
-
-```typescript
-import { useEffect, useRef } from "react";
-import { imagesStore } from "../stores/images";
-import { useImageProcessingStore } from "../stores/imageProcessingStore";
-import { type rendererImage } from "../types/rendererTypes";
-import { 
-    type DaemonImageProcessedPayload,
-    type DaemonImageErrorPayload,
-    type DaemonProcessingCompletePayload,
-    type DaemonImagesUpdatedPayload
-} from "../../shared/types/daemonEvents";
-
-export function useRealTimeImageProcessing() {
-    const cleanupRef = useRef<(() => void) | null>(null);
-    const { addImage } = imagesStore();
-    const { startProcessing, updateProgress, completeProcessing } = useImageProcessingStore();
-
-    useEffect(() => {
-        const timer = setTimeout(() => {
-            try {
-                if (!window.API_RENDERER?.goDaemon?.on) {
-                    console.error("goDaemon event methods not available");
-                    return;
-                }
-
-                const handleProcessingStarted = (...args: unknown[]) => {
-                    const data = args[0] as { totalImages: number };
-                    console.log("Processing started:", data);
-                    startProcessing(data.totalImages);
-                };
-
-                const handleImageProcessed = (...args: unknown[]) => {
-                    const data = args[0] as DaemonImageProcessedPayload;
-                    try {
-                        console.log("Image processed:", data);
-                        
-                        const newImage: rendererImage = {
-                            id: parseInt(data.id),
-                            name: data.uniqueFileName,
-                            path: data.path,
-                            width: data.width,
-                            height: data.height,
-                            format: data.format,
-                            size: data.size,
-                            thumbnails: data.thumbnails,
-                            selection: {
-                                isChecked: false,
-                                isSelected: false,
-                                selectedAt: undefined,
-                                selectedPlaylists: []
-                            },
-                            time: data.createdAt
-                        };
-                        
-                        addImage(newImage);
-                    } catch (error) {
-                        console.error("Error handling image_processed event:", error);
-                    }
-                };
-
-                const handleImageProgress = (...args: unknown[]) => {
-                    const data = args[0] as { processed: number; total: number; current: string };
-                    console.log("Image progress:", data);
-                    updateProgress(data.processed, data.current);
-                };
-
-                const handleImageError = (...args: unknown[]) => {
-                    const data = args[0] as DaemonImageErrorPayload;
-                    console.error("Image processing error:", data);
-                };
-
-                const handleProcessingComplete = (...args: unknown[]) => {
-                    const data = args[0] as DaemonProcessingCompletePayload;
-                    console.log("Processing complete:", data);
-                    completeProcessing();
-                };
-
-                // Register event listeners
-                window.API_RENDERER.goDaemon.on('processing_started', handleProcessingStarted);
-                window.API_RENDERER.goDaemon.on('image_processed', handleImageProcessed);
-                window.API_RENDERER.goDaemon.on('image_progress', handleImageProgress);
-                window.API_RENDERER.goDaemon.on('image_error', handleImageError);
-                window.API_RENDERER.goDaemon.on('processing_complete', handleProcessingComplete);
-
-                cleanupRef.current = () => {
-                    window.API_RENDERER.goDaemon.off('processing_started', handleProcessingStarted);
-                    window.API_RENDERER.goDaemon.off('image_processed', handleImageProcessed);
-                    window.API_RENDERER.goDaemon.off('image_progress', handleImageProgress);
-                    window.API_RENDERER.goDaemon.off('image_error', handleImageError);
-                    window.API_RENDERER.goDaemon.off('processing_complete', handleProcessingComplete);
-                };
-            } catch (error) {
-                console.error("Error setting up real-time image processing:", error);
-            }
-        }, 1000);
-
-        return () => {
-            clearTimeout(timer);
-            if (cleanupRef.current) {
-                cleanupRef.current();
-            }
-        };
-    }, [addImage, startProcessing, updateProgress, completeProcessing]);
-}
-```
-
-### Phase 3: Simplify Image Components
-
-#### 3.1 Update ImageCard Component
-**File**: `src/components/ImageCard.tsx`
-
-**Remove thumbnail management logic**:
-- Remove `useThumbnail` hook usage
-- Remove thumbnail loading states
-- Use thumbnail paths directly from image data
-- Remove lazy loading logic
-
-**Simplified version**:
-```typescript
-function ImageCard({ Image }: ImageCardProps) {
-    const [selected, setSelected] = useState(Image.selection?.isSelected ?? false);
-    const [isChecked, setIsChecked] = useState(Image.selection?.isChecked ?? false);
-    const [imageSrc, setImageSrc] = useState<string>("");
-    const { activeMonitor } = useMonitorStore();
-
-    // Load image path only
-    useEffect(() => {
-        if (!Image.name) return;
-        
-        const loadImagePath = async () => {
-            try {
-                const imagePath = await goDaemon.getImageSrc(Image.name);
-                if (imagePath) {
-                    setImageSrc(`atom://${imagePath}`);
-                }
-            } catch (error) {
-                console.error("Failed to load image path:", error);
-            }
-        };
-        
-        loadImagePath();
-    }, [Image.name]);
-
-    // Get thumbnail path from image data
-    const getThumbnailSrc = () => {
-        if (!Image.thumbnails) return "";
-        
-        const screenWidth = window.innerWidth;
-        let thumbnailPath = "";
-        
-        if (screenWidth >= 2560) {
-            thumbnailPath = Image.thumbnails["1440p"] || Image.thumbnails["1080p"] || Image.thumbnails["720p"];
-        } else if (screenWidth >= 1920) {
-            thumbnailPath = Image.thumbnails["1080p"] || Image.thumbnails["720p"];
-        } else {
-            thumbnailPath = Image.thumbnails["720p"];
-        }
-        
-        return thumbnailPath ? `atom://${thumbnailPath}` : "";
-    };
-
-    const thumbnailSrc = getThumbnailSrc();
-
-    // Rest of component remains the same...
-}
-```
-
-#### 3.2 Remove Thumbnail Store
-**File**: `src/stores/thumbnailStore.ts`
-
-**Delete this file entirely** - it's no longer needed.
-
-#### 3.3 Update Images Store
-**File**: `src/stores/images.tsx`
-
-**Remove skeleton-related methods**:
-- Remove `skeletonsToShow` from state
-- Remove `setSkeletons` method
-- Remove `clearSkeletons` method
-- Remove skeleton-related logic from `addImages` and `addImage`
-
-### Phase 4: Update Electron Layer
-
-#### 4.1 Remove Thumbnail IPC Methods
-**File**: `electron/main.ts`
-
-**Remove these IPC handlers**:
-- `get_image_src` (around line 564)
-- `get_thumbnail_src` (around line 570)
-- `create_thumbnail` (around line 578)
-
-#### 4.2 Update GoDaemonClient
-**File**: `electron/goDaemonClient.ts`
-
-**Remove these methods**:
-- `getImageSrc`
-- `getThumbnailSrc`
-- `createThumbnail`
-
-#### 4.3 Update Exposed API
-**File**: `electron/exposedApi.ts`
-
-**Remove these methods**:
-- `getImageSrc`
-- `getThumbnailSrc`
-- `createThumbnail`
-
-### Phase 5: Update App Integration
-
-#### 5.1 Update App Component
-**File**: `src/App.tsx`
-
-**Remove thumbnail listener setup**:
-- Remove `setupThumbnailListener` import and usage
-- Add `ImageProcessingProgress` component
-
-```typescript
-import { ImageProcessingProgress } from "./components/ImageProcessingProgress";
-
-const App = () => {
-    // ... existing hooks
-    
-    return (
-        <HashRouter>
-            <ImageProcessingProgress />
-            <Drawer>
-                <NavBar />
-                {/* ... rest of app */}
-            </Drawer>
-        </HashRouter>
-    );
-};
-```
-
-#### 5.2 Update Open Images Hook
-**File**: `src/hooks/useOpenImages.tsx`
-
-**Simplify the workflow**:
-```typescript
-const openImagesStore = create<State & Actions>(set => ({
-    isActive: false,
-    openImages: async ({ action }) => {
-        set(() => ({ isActive: true }));
-        const imagesObject: imagesObject | undefined = await openFiles(action);
-        set(() => ({ isActive: false }));
-        
-        if (imagesObject === undefined) return;
-        
-        // Send images to daemon for processing
-        await handleOpenImages(imagesObject);
-        // Progress will be handled by real-time events
-        // Images will appear automatically as they're processed
-    }
-}));
-```
-
-### Phase 6: Clean Up Daemon
-
-#### 6.1 Remove Thumbnail IPC Handler
-**File**: `daemon-go/internal/ipc/handler.go`
-
-**Remove `handleCreateThumbnail` method** (around line 1630-1700)
-
-#### 6.2 Update IPC Command Router
-**File**: `daemon-go/internal/ipc/handler.go`
-
-**Remove `create_thumbnail` case** from the command router.
-
-## Implementation Order
-
-1. **Phase 1**: Enhance daemon events (most critical)
-2. **Phase 2**: Create new frontend event handling
-3. **Phase 3**: Simplify image components
-4. **Phase 4**: Update electron layer
-5. **Phase 5**: Update app integration
-6. **Phase 6**: Clean up daemon
-
-## Testing Strategy
-
-1. **Unit Tests**: Test each component individually
-2. **Integration Tests**: Test the full workflow from UI to daemon
-3. **Performance Tests**: Ensure no memory leaks or performance issues
-4. **Error Handling**: Test with invalid images, network issues, etc.
-
-## Rollback Plan
-
-If issues arise:
-1. Keep the old thumbnail store as backup
-2. Use feature flags to switch between old/new systems
-3. Maintain backward compatibility during transition
-
-## Benefits
-
-1. **Eliminates Infinite Loops**: No more thumbnail recreation requests
-2. **Simplifies Frontend**: Removes complex queue management
-3. **Better UX**: Real-time progress updates
-4. **Reduces IPC Calls**: Fewer round trips between frontend and daemon
-5. **More Reliable**: Daemon controls processing speed
-6. **Cleaner Architecture**: Event-driven design is more maintainable
-
-## Files to Delete
-
-- `src/stores/thumbnailStore.ts`
-- `src/hooks/useImageState.tsx` (if not used elsewhere)
-- Any skeleton-related components
-
-## Files to Create
-
-- `src/stores/imageProcessingStore.ts`
-- `src/components/ImageProcessingProgress.tsx`
-
-## Files to Modify
-
-- `daemon-go/internal/ipc/handler.go`
-- `daemon-go/internal/types/events.go`
-- `src/hooks/useRealTimeImageProcessing.tsx`
-- `src/components/ImageCard.tsx`
-- `src/stores/images.tsx`
-- `src/App.tsx`
-- `src/hooks/useOpenImages.tsx`
-- `electron/main.ts`
-- `electron/goDaemonClient.ts`
-- `electron/exposedApi.ts`
-- `electron/goDaemonRendererClient.ts`
-
-This plan provides a complete roadmap for implementing the new event-driven architecture while maintaining system stability and providing clear rollback options.
+# Waypaper Engine Refactor - LLM Actionable Plan
+
+## 🎯 **Project Overview**
+Refactor Waypaper Engine to adopt modern React patterns inspired by Upscayl's architecture, implementing a comprehensive theme system with multiple themes and improved component organization.
+
+## 📋 **Phase 1: Theme System Foundation**
+
+### Task 1.1: Create Theme Type Definitions ✅ COMPLETED
+- [x] Create `src/themes/types.ts` with ThemeConfig interface
+- [x] Define color palette structure
+- [x] Add theme metadata types (name, description, etc.)
+- [x] Export theme-related TypeScript types
+
+### Task 1.2: Implement Theme Configurations ✅ COMPLETED
+- [x] Create `src/themes/themes.ts` with theme definitions
+- [x] Implement dark theme configuration
+- [x] Implement light theme configuration
+- [x] Implement gruvbox theme configuration
+- [x] Implement nord theme configuration
+- [x] Implement catppuccin theme configuration
+- [x] Implement dracula theme configuration
+- [x] Implement monokai theme configuration
+- [x] Implement tokyo night theme configuration
+
+### Task 1.3: Create Theme Context System ✅ COMPLETED
+- [x] Create `src/contexts/ThemeContext.tsx`
+- [x] Implement ThemeProvider component
+- [x] Add theme state management
+- [x] Implement theme switching logic
+- [x] Add theme persistence to frontend config
+- [x] Create useTheme hook
+
+### Task 1.4: Update Tailwind Configuration ✅ COMPLETED
+- [x] Modify `tailwind.config.js` to support multiple themes
+- [x] Add custom color palette definitions
+- [x] Configure DaisyUI with new themes
+- [x] Add custom animations and transitions
+- [x] Update content paths for new structure
+
+### Task 1.5: Create CSS Custom Properties System ✅ COMPLETED
+- [x] Create `src/styles/themes.css` with CSS variables
+- [x] Define color palettes for each theme
+- [x] Add transition utilities
+- [x] Create theme-specific overrides
+- [x] Update `src/index.css` to import theme styles
+
+### Task 1.6: Implement Theme Selector Component ✅ COMPLETED
+- [x] Create `src/components/ThemeSelector.tsx`
+- [x] Add theme preview functionality
+- [x] Implement theme switching UI
+- [x] Add keyboard shortcuts for theme switching
+- [x] Create theme preview cards
+
+### Task 1.7: Integrate Theme System into App ✅ COMPLETED
+- [x] Update `src/App.tsx` with ThemeProvider
+- [x] Update `src/components/NavBar.tsx` with ThemeSelector
+- [x] Add theme transition classes
+- [x] Test theme switching functionality
+
+## 📋 **Phase 2: Component Architecture Modernization**
+
+### Task 2.1: Create UI Component Library ✅ COMPLETED
+- [x] Create `src/components/ui/` directory structure
+- [x] Implement `Button.tsx` component with variants
+- [x] Implement `Modal.tsx` component
+- [x] Implement `Card.tsx` component
+- [x] Implement `Input.tsx` component
+- [x] Implement `LoadingSpinner.tsx` component
+- [x] Create `src/components/ui/index.ts` for exports
+- [x] Add proper TypeScript interfaces for all components
+- [x] Create utility function `cn.ts` for class name concatenation
+- [x] Implement `ThemeToggle.tsx` component
+
+### Task 2.2: Create Layout Components ✅ COMPLETED
+- [x] Create `src/components/layout/` directory
+- [x] Implement `AppLayout.tsx` main layout component
+- [x] Implement `Sidebar.tsx` navigation component
+- [x] Implement `Header.tsx` with theme selector
+- [x] Implement `Footer.tsx` component
+- [x] Refactor existing `Drawer.tsx` to use new layout
+- [x] Create `src/components/layout/index.ts` for exports
+- [x] Add proper TypeScript interfaces for all components
+
+### Task 2.3: Organize Feature Components
+- [ ] Create `src/components/features/gallery/` directory
+- [ ] Move and refactor `Gallery.tsx` to new structure
+- [ ] Move and refactor `ImageCard.tsx` to new structure
+- [ ] Move and refactor `PaginatedGallery.tsx` to new structure
+- [ ] Move and refactor `Filters.tsx` to new structure
+- [ ] Create `src/components/features/playlist/` directory
+- [ ] Move and refactor playlist components
+- [ ] Create `src/components/features/settings/` directory
+- [ ] Move and refactor settings components
+
+### Task 2.4: Create Common Components
+- [ ] Create `src/components/common/` directory
+- [ ] Implement `ErrorBoundary.tsx` component
+- [ ] Implement `Toast.tsx` component
+- [ ] Refactor existing `ToastContainer.tsx`
+- [ ] Create utility components for common patterns
+
+## 📋 **Phase 3: Enhanced State Management**
+
+### Task 3.1: Refactor Store Architecture ✅ COMPLETED
+- [x] Create `src/stores/index.ts` for centralized exports
+- [x] Refactor `src/stores/appConfig.tsx` with better organization
+- [x] Refactor `src/stores/images.tsx` with improved patterns
+- [x] Refactor `src/stores/playlist.tsx` with better structure
+- [x] Create `src/stores/theme.ts` for theme management
+- [x] Create `src/stores/settings.ts` for app settings
+
+### Task 3.2: Implement Theme Store ✅ COMPLETED
+- [x] Create theme state interface
+- [x] Implement theme actions (setTheme, toggleTheme, etc.)
+- [x] Add theme persistence with Zustand persist
+- [x] Implement system theme detection
+- [x] Add theme validation and fallbacks
+
+### Task 3.3: Create Custom Hooks ✅ COMPLETED
+- [x] Create `src/hooks/useTheme.ts` hook
+- [x] Create `src/hooks/useElectronTheme.ts` hook
+- [x] Refactor existing hooks with better patterns
+- [x] Add `src/hooks/useLocalStorage.ts` hook
+- [x] Add `src/hooks/useDebounce.ts` hook
+- [x] Create `src/hooks/useMediaQuery.ts` hook
+
+### Task 3.4: Create Store Utilities ✅ COMPLETED
+- [x] Create `src/stores/types.ts` with common types
+- [x] Create `src/stores/utils/createStore.ts` utility functions
+- [x] Create `src/stores/hooks/useStoreSelector.ts` custom hooks
+- [x] Add store validation and error handling
+- [x] Add store performance monitoring
+- [x] Add store debugging utilities
+
+## 📋 **Phase 4: Enhanced Styling System**
+
+### Task 4.1: Create CSS Custom Properties System ✅ COMPLETED
+- [x] Create `src/styles/themes.css` with CSS variables
+- [x] Define color palettes for each theme
+- [x] Add transition utilities
+- [x] Create theme-specific overrides
+- [x] Update `src/index.css` to import theme styles
+
+### Task 4.2: Implement Theme Selector Component ✅ COMPLETED
+- [x] Create `src/components/ThemeSelector.tsx`
+- [x] Add theme preview functionality
+- [x] Implement theme switching UI
+- [x] Add keyboard shortcuts for theme switching
+- [x] Create theme preview cards
+
+### Task 4.3: Update Existing Styles ✅ COMPLETED
+- [x] Refactor `src/custom.css` to use CSS variables
+- [x] Update component styles to use theme variables
+- [x] Remove hardcoded colors from components
+- [x] Add theme transition animations
+- [x] Ensure responsive design across themes
+
+## 📋 **Phase 5: Enhanced Electron Integration**
+
+### Task 5.1: Improve Main Process Architecture ✅ COMPLETED
+- [x] Create `electron/managers/ThemeManager.ts`
+- [x] Create `electron/managers/WindowManager.ts`
+- [x] Create `electron/managers/IPCManager.ts`
+- [x] Refactor `electron/main.ts` with better organization
+- [x] Implement native theme synchronization
+
+### Task 5.2: Enhance Preload Script ✅ COMPLETED
+- [x] Update `electron/preload.ts` with theme API
+- [x] Add native theme detection methods
+- [x] Implement theme change listeners
+- [x] Add theme source setting functionality
+- [x] Ensure proper context bridge setup
+
+### Task 5.3: Update IPC Handlers ✅ COMPLETED
+- [x] Add theme-related IPC handlers
+- [x] Implement theme persistence in main process
+- [x] Add theme validation in main process
+- [x] Update existing handlers with better error handling
+- [x] Add theme change notifications
+
+## 📋 **Phase 6: App Structure Modernization**
+
+### Task 6.1: Refactor App Component
+- [ ] Update `src/App.tsx` with new architecture
+- [ ] Add ThemeProvider wrapper
+- [ ] Implement ErrorBoundary
+- [ ] Add AppLayout wrapper
+- [ ] Integrate theme synchronization
+
+### Task 6.2: Create Route Structure
+- [ ] Create `src/routes/AppRoutes.tsx`
+- [ ] Refactor existing route components
+- [ ] Add route-level theme support
+- [ ] Implement route transitions
+- [ ] Add route-specific layouts
+
+### Task 6.3: Update Main Entry Point
+- [ ] Update `src/main.tsx` with theme initialization
+- [ ] Add theme loading on app start
+- [ ] Implement theme fallback logic
+- [ ] Add development theme tools
+
+## 📋 **Phase 7: Testing & Polish**
+
+### Task 7.1: Theme Testing
+- [ ] Test all themes across different components
+- [ ] Verify theme persistence across app restarts
+- [ ] Test theme switching performance
+- [ ] Validate theme accessibility
+- [ ] Test cross-platform theme behavior
+
+### Task 7.2: Component Testing
+- [ ] Test new UI components
+- [ ] Verify component theme integration
+- [ ] Test responsive behavior across themes
+- [ ] Validate component accessibility
+- [ ] Test component performance
+
+### Task 7.3: Integration Testing
+- [ ] Test Electron theme synchronization
+- [ ] Verify IPC theme communication
+- [ ] Test theme persistence in main process
+- [ ] Validate theme fallback mechanisms
+- [ ] Test theme switching edge cases
+
+### Task 7.4: Performance Optimization
+- [ ] Optimize theme switching performance
+- [ ] Implement theme preloading
+- [ ] Add theme caching mechanisms
+- [ ] Optimize CSS bundle size
+- [ ] Implement lazy theme loading
+
+## 📋 **Phase 8: Documentation & Cleanup**
+
+### Task 8.1: Update Documentation
+- [ ] Update README.md with new theme system
+- [ ] Document theme development process
+- [ ] Create theme customization guide
+- [ ] Update component documentation
+- [ ] Add architecture documentation
+
+### Task 8.2: Code Cleanup
+- [ ] Remove unused theme-related code
+- [ ] Clean up old component files
+- [ ] Remove deprecated styling
+- [ ] Update import statements
+- [ ] Fix TypeScript errors
+
+### Task 8.3: Final Testing
+- [ ] End-to-end testing of theme system
+- [ ] Cross-platform compatibility testing
+- [ ] Performance benchmarking
+- [ ] Accessibility testing
+- [ ] User experience validation
+
+## 🎯 **Success Criteria**
+
+- [ ] All 8+ themes working correctly
+- [ ] Smooth theme transitions
+- [ ] Theme persistence across app restarts
+- [ ] Native OS theme synchronization
+- [ ] Improved component organization
+- [ ] Better state management
+- [ ] Enhanced user experience
+- [ ] Maintained existing functionality
+- [ ] Cross-platform compatibility
+- [ ] Performance improvements
+
+## 📝 **Notes**
+
+- Each task should be completed and tested before moving to the next
+- Maintain backward compatibility during refactor
+- Keep existing functionality intact
+- Test on multiple platforms (Linux, Windows, macOS)
+- Document any breaking changes
+- Ensure accessibility compliance
+- Optimize for performance
+
+## 🚀 **Getting Started**
+
+Start with Phase 1, Task 1.1: Create Theme Type Definitions. Each task builds upon the previous ones, so follow the order for best results.

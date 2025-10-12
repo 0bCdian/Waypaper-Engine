@@ -30,7 +30,7 @@ export const useImageProcessingStore = create<ImageProcessingState & ImageProces
         startTime: Date.now(),
     }),
 
-    updateProgress: (processed: number, current: string) => set((state) => ({
+    updateProgress: (processed: number, current: string) => set((_state) => ({
         processedImages: processed,
         currentImage: current,
     })),

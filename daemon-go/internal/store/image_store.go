@@ -1,22 +1,16 @@
 package store
 
 import (
-	"crypto/sha256"
-	"encoding/hex"
 	"fmt"
 	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
 	"time"
 
 	"waypaper-engine/daemon-go/internal/media"
 )
 
-// ImageStore handles image-specific storage operations
+// ImageStore handles image registry operations
 type ImageStore struct {
-	store  *Store
-	logger interface{} // Avoiding circular dependencies
+	store *Store
 }
 
 // NewImageStore creates a new image store
@@ -26,16 +20,15 @@ func NewImageStore(store *Store) *ImageStore {
 	}
 }
 
-// LoadImageRegistry loads the master image registry
+// LoadImageRegistry loads the image registry from the JSON file
 func (is *ImageStore) LoadImageRegistry() (*ImageRegistry, error) {
-	cacheKey := "image_registry"
-	filePath := is.store.getFilePath("images.json")
+	registryPath := is.store.getFilePath("images.json")
 
 	var registry ImageRegistry
-	if err := is.store.cachedLoad(cacheKey, filePath, &registry); err != nil {
-		// If file doesn't exist, return empty registry
-		if strings.Contains(err.Error(), "not found") {
-			return &ImageRegistry{
+	if err := is.store.loadJSON(registryPath, &registry); err != nil {
+		if os.IsNotExist(err) {
+			// Create new registry if file doesn't exist
+			registry = ImageRegistry{
 				Metadata: ImageRegistryMetadata{
 					Version:     "1.0",
 					LastUpdated: time.Now(),
@@ -43,168 +36,108 @@ func (is *ImageStore) LoadImageRegistry() (*ImageRegistry, error) {
 				},
 				Images: []Image{},
 				Indices: ImageRegistryIndices{
-					ByName:       map[string]string{},
-					ByMediaType:  map[media.MediaType][]string{},
-					ByFormat:     map[string][]string{},
-					ByDimensions: map[string][]string{},
-					ByTags:       map[string][]string{},
-					BySelected:   map[string][]string{},
+					ByName:       make(map[string]string),
+					ByMediaType:  make(map[media.MediaType][]string),
+					ByFormat:     make(map[string][]string),
+					ByDimensions: make(map[string][]string),
+					ByTags:       make(map[string][]string),
+					BySelected:   make(map[string][]string),
 				},
-			}, nil
+			}
+
+			// Save the new registry
+			if err := is.store.saveJSON(registryPath, registry); err != nil {
+				return nil, fmt.Errorf("failed to create new image registry: %w", err)
+			}
+		} else {
+			return nil, fmt.Errorf("failed to load image registry: %w", err)
 		}
-		return nil, fmt.Errorf("failed to load image registry: %w", err)
 	}
 
 	return &registry, nil
 }
 
-// SaveImageRegistry saves the image registry
+// SaveImageRegistry saves the image registry to the JSON file
 func (is *ImageStore) SaveImageRegistry(registry *ImageRegistry) error {
-	registry.Metadata.LastUpdated = time.Now()
-	registry.Metadata.TotalImages = len(registry.Images)
-
-	// Rebuild indices
-	is.rebuildIndices(registry)
-
-	filePath := is.store.getFilePath("images.json")
-	return is.store.saveJSON(filePath, registry)
+	registryPath := is.store.getFilePath("images.json")
+	return is.store.saveJSON(registryPath, registry)
 }
 
-// AddImage adds a new image to the registry
-func (is *ImageStore) AddImage(image *Image) error {
-	if image.ID == 0 {
-		// Use sequential ID instead of UUID for consistency with SQLite
-		nextID, err := is.store.sequentialIDManager.GetNextID()
-		if err != nil {
-			return fmt.Errorf("failed to get next ID: %w", err)
-		}
-		image.ID = nextID
-	}
-	if image.ImportInfo.ImportedAt.IsZero() {
-		image.ImportInfo.ImportedAt = time.Now()
-	}
-	if image.ImportInfo.Importer == "" {
-		image.ImportInfo.Importer = "manual"
-	}
-
-	// Detect media type if not set
-	if image.MediaType == "" {
-		image.MediaType = is.store.mediaDetector.DetectMediaType(image.Path)
-	}
-
-	// Calculate checksum if not set
-	if image.Metadata.Checksum == "" && image.Path != "" {
-		checksum, err := is.calculateFileChecksum(image.Path)
-		if err == nil {
-			image.Metadata.Checksum = checksum
-		}
-	}
-
-	// Create multi-resolution thumbnails if not already set
-	if image.Thumbnails.Resolution720p == "" && image.Path != "" {
-		thumbnailsDir := is.store.config.ThumbnailsDir
-		if thumbnailsDir != "" {
-			thumbnailPaths, err := is.createMultiResolutionThumbnails(image.Path, thumbnailsDir, image.Name)
-			if err == nil {
-				image.Thumbnails = thumbnailPaths
-			} else {
-				// Log warning but don't fail the operation
-				// Note: Can't use logger directly due to type assertion, but we won't crash
-			}
-		}
-	}
-
+// AddImage adds an image to the registry
+func (is *ImageStore) AddImage(image Image) error {
 	registry, err := is.LoadImageRegistry()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to load image registry: %w", err)
 	}
 
-	// Check for duplicates
-	for _, existing := range registry.Images {
-		if existing.Path == image.Path {
-			return fmt.Errorf("image already exists: %s", image.Path)
+	// Check if image already exists
+	for _, existingImg := range registry.Images {
+		if existingImg.ID == image.ID {
+			return fmt.Errorf("image with ID %d already exists", image.ID)
 		}
 	}
 
-	registry.Images = append(registry.Images, *image)
-	is.updateIndicesFromImage(registry, image)
+	// Add image
+	registry.Images = append(registry.Images, image)
+	registry.Metadata.TotalImages = len(registry.Images)
+	registry.Metadata.LastUpdated = time.Now()
+
+	// Update indices
+	is.updateIndices(registry, image)
 
 	return is.SaveImageRegistry(registry)
 }
 
-// UpdateImage updates an existing image
-func (is *ImageStore) UpdateImage(id string, updates func(*Image)) error {
+// RemoveImage removes an image from the registry
+func (is *ImageStore) RemoveImage(imageID int64) error {
 	registry, err := is.LoadImageRegistry()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to load image registry: %w", err)
 	}
 
-	// Convert string ID to int64 for comparison
-	idInt, err := strconv.ParseInt(id, 10, 64)
-	if err != nil {
-		return fmt.Errorf("invalid image ID: %w", err)
-	}
+	// Find and remove image
+	for i, img := range registry.Images {
+		if img.ID == imageID {
+			registry.Images = append(registry.Images[:i], registry.Images[i+1:]...)
+			registry.Metadata.TotalImages = len(registry.Images)
+			registry.Metadata.LastUpdated = time.Now()
 
-	for i := range registry.Images {
-		if registry.Images[i].ID == idInt {
-			image := &registry.Images[i]
-			updates(image)
-
-			// Rebuild indices after update
+			// Rebuild indices
 			is.rebuildIndices(registry)
+
 			return is.SaveImageRegistry(registry)
 		}
 	}
 
-	return fmt.Errorf("image not found: %s", id)
+	return fmt.Errorf("image with ID %d not found", imageID)
 }
 
 // GetImageByID retrieves an image by its ID
-func (is *ImageStore) GetImageByID(id string) (*Image, error) {
+func (is *ImageStore) GetImageByID(imageID int64) (*Image, error) {
 	registry, err := is.LoadImageRegistry()
 	if err != nil {
-		return nil, err
-	}
-
-	// Convert string ID to int64 for comparison
-	idInt, err := strconv.ParseInt(id, 10, 64)
-	if err != nil {
-		return nil, fmt.Errorf("invalid image ID: %w", err)
+		return nil, fmt.Errorf("failed to load image registry: %w", err)
 	}
 
 	for _, img := range registry.Images {
-		if img.ID == idInt {
+		if img.ID == imageID {
 			return &img, nil
 		}
 	}
 
-	return nil, fmt.Errorf("image not found: %s", id)
+	return nil, fmt.Errorf("image with ID %d not found", imageID)
 }
 
-// GetImageByName retrieves an image by its name
-func (is *ImageStore) GetImageByName(name string) (*Image, error) {
+// GetImagesByFormat retrieves images by format
+func (is *ImageStore) GetImagesByFormat(format string) ([]Image, error) {
 	registry, err := is.LoadImageRegistry()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to load image registry: %w", err)
 	}
 
-	if imageID, exists := registry.Indices.ByName[name]; exists {
-		return is.GetImageByID(imageID)
-	}
-
-	return nil, fmt.Errorf("image not found: %s", name)
-}
-
-// GetImagesByMediaType returns all images of a specific media type
-func (is *ImageStore) GetImagesByMediaType(mediaType media.MediaType) ([]*Image, error) {
-	registry, err := is.LoadImageRegistry()
-	if err != nil {
-		return nil, err
-	}
-
-	var images []*Image
-	for _, imageID := range registry.Indices.ByMediaType[mediaType] {
-		if img, err := is.GetImageByID(imageID); err == nil {
+	var images []Image
+	for _, img := range registry.Images {
+		if img.Metadata.Format == format {
 			images = append(images, img)
 		}
 	}
@@ -212,16 +145,16 @@ func (is *ImageStore) GetImagesByMediaType(mediaType media.MediaType) ([]*Image,
 	return images, nil
 }
 
-// GetImagesByFormat returns all images of a specific format
-func (is *ImageStore) GetImagesByFormat(format string) ([]*Image, error) {
+// GetImagesByMediaType retrieves images by media type
+func (is *ImageStore) GetImagesByMediaType(mediaType media.MediaType) ([]Image, error) {
 	registry, err := is.LoadImageRegistry()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to load image registry: %w", err)
 	}
 
-	var images []*Image
-	for _, imageID := range registry.Indices.ByFormat[format] {
-		if img, err := is.GetImageByID(imageID); err == nil {
+	var images []Image
+	for _, img := range registry.Images {
+		if img.MediaType == mediaType {
 			images = append(images, img)
 		}
 	}
@@ -229,294 +162,187 @@ func (is *ImageStore) GetImagesByFormat(format string) ([]*Image, error) {
 	return images, nil
 }
 
-// GetImagesByTags returns images that have specific tags
-func (is *ImageStore) GetImagesByTags(tags []string, requireAll bool) ([]*Image, error) {
+// GetSelectedImages retrieves all selected images
+func (is *ImageStore) GetSelectedImages() ([]Image, error) {
 	registry, err := is.LoadImageRegistry()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to load image registry: %w", err)
 	}
 
-	var images []*Image
+	var images []Image
 	for _, img := range registry.Images {
-		hasTag := false
-
-		if requireAll {
-			hasTag = true
-			for _, tag := range tags {
-				if !is.imageHasTag(img, tag) {
-					hasTag = false
-					break
-				}
-			}
-		} else {
-			for _, tag := range tags {
-				if is.imageHasTag(img, tag) {
-					hasTag = true
-					break
-				}
-			}
-		}
-
-		if hasTag {
-			imageCopy := img // Copy to avoid reference issues
-			images = append(images, &imageCopy)
+		if img.Selection.IsSelected {
+			images = append(images, img)
 		}
 	}
 
 	return images, nil
 }
 
-// DeleteImages removes images from the registry
-func (is *ImageStore) DeleteImages(imageIDs []string) error {
+// UpdateImageSelection updates the selection status of an image
+func (is *ImageStore) UpdateImageSelection(imageID int64, isChecked, isSelected bool) error {
 	registry, err := is.LoadImageRegistry()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to load image registry: %w", err)
 	}
 
-	// Filter out images to delete
-	var newImages []Image
-	deletedCount := 0
-
-	// Convert string IDs to int64 for comparison
-	var idInts []int64
-	for _, id := range imageIDs {
-		if idInt, err := strconv.ParseInt(id, 10, 64); err == nil {
-			idInts = append(idInts, idInt)
-		}
-	}
-
-	for _, img := range registry.Images {
-		shouldDelete := false
-		for _, idInt := range idInts {
-			if img.ID == idInt {
-				shouldDelete = true
-				break
-			}
-		}
-
-		if !shouldDelete {
-			newImages = append(newImages, img)
-		} else {
-			deletedCount++
-		}
-	}
-
-	registry.Images = newImages
-	is.rebuildIndices(registry)
-
-	return is.SaveImageRegistry(registry)
-}
-
-// UpdateImageSelection updates selection status for images
-func (is *ImageStore) UpdateImageSelection(imageIDs []string, isSelected, isChecked bool) error {
-	for _, id := range imageIDs {
-		err := is.UpdateImage(id, func(img *Image) {
-			img.Selection.IsSelected = isSelected
-			img.Selection.IsChecked = isChecked
-
+	for i, img := range registry.Images {
+		if img.ID == imageID {
+			registry.Images[i].Selection.IsChecked = isChecked
+			registry.Images[i].Selection.IsSelected = isSelected
 			if isSelected {
 				now := time.Now()
-				img.Selection.SelectedAt = &now
-			} else {
-				img.Selection.SelectedAt = nil
+				registry.Images[i].Selection.SelectedAt = &now
 			}
-		})
+			registry.Metadata.LastUpdated = time.Now()
 
-		if err != nil {
-			return fmt.Errorf("failed to update image %s: %w", id, err)
+			// Rebuild indices
+			is.rebuildIndices(registry)
+
+			return is.SaveImageRegistry(registry)
 		}
 	}
 
-	return nil
+	return fmt.Errorf("image with ID %d not found", imageID)
 }
 
-// SearchImages performs a text search across images
-func (is *ImageStore) SearchImages(query string) ([]*Image, error) {
-	registry, err := is.LoadImageRegistry()
-	if err != nil {
-		return nil, err
-	}
-
-	var results []*Image
-	query = strings.ToLower(query)
-
-	for _, img := range registry.Images {
-		// Search in name, tags, and description
-		if strings.Contains(strings.ToLower(img.Name), query) ||
-			strings.Contains(strings.ToLower(img.Path), query) ||
-			is.imageHasAnyTagMatching(img, query) {
-			imageCopy := img
-			results = append(results, &imageCopy)
-		}
-	}
-
-	return results, nil
-}
-
-// GetImageStatistics returns statistics about the image registry
-func (is *ImageStore) GetImageStatistics() (*ImageStatistics, error) {
-	registry, err := is.LoadImageRegistry()
-	if err != nil {
-		return nil, err
-	}
-
-	stats := &ImageStatistics{
-		TotalImages:    len(registry.Images),
-		MediaTypes:     map[media.MediaType]int{},
-		Formats:        map[string]int{},
-		Dimensions:     map[string]int{},
-		SelectedImages: 0,
-		CheckedImages:  0,
-		LastImport:     nil,
-		RegistrySize:   0,
-	}
-
-	for _, img := range registry.Images {
-		// Count media types
-		stats.MediaTypes[img.MediaType]++
-
-		// Count formats
-		stats.Formats[img.Metadata.Format]++
-
-		// Count dimensions
-		dimensionKey := fmt.Sprintf("%dx%d", img.Dimensions.Width, img.Dimensions.Height)
-		stats.Dimensions[dimensionKey]++
-
-		// Count selection status
-		if img.Selection.IsSelected {
-			stats.SelectedImages++
-		}
-		if img.Selection.IsChecked {
-			stats.CheckedImages++
-		}
-
-		// Track last import
-		if stats.LastImport == nil || img.ImportInfo.ImportedAt.After(*stats.LastImport) {
-			stats.LastImport = &img.ImportInfo.ImportedAt
-		}
-
-		// Estimate registry size (rough calculation)
-		stats.RegistrySize += len(img.Path) + len(img.Name) + len(fmt.Sprintf("%d", img.ID))
-	}
-
-	return stats, nil
-}
-
-// Helper functions
-
-// rebuildIndices rebuilds all indices from the images array
-func (is *ImageStore) rebuildIndices(registry *ImageRegistry) {
-	registry.Indices = ImageRegistryIndices{
-		ByName:       map[string]string{},
-		ByMediaType:  map[media.MediaType][]string{},
-		ByFormat:     map[string][]string{},
-		ByDimensions: map[string][]string{},
-		ByTags:       map[string][]string{},
-		BySelected:   map[string][]string{},
-	}
-
-	for _, img := range registry.Images {
-		is.updateIndicesFromImage(registry, &img)
-	}
-}
-
-// updateIndicesFromImage updates indices with a single image
-func (is *ImageStore) updateIndicesFromImage(registry *ImageRegistry, image *Image) {
-	// Convert numeric ID to string for indices
+// updateIndices updates the registry indices for a new image
+func (is *ImageStore) updateIndices(registry *ImageRegistry, image Image) {
 	imageIDStr := fmt.Sprintf("%d", image.ID)
 
 	// By name
 	registry.Indices.ByName[image.Name] = imageIDStr
 
 	// By media type
+	if registry.Indices.ByMediaType[image.MediaType] == nil {
+		registry.Indices.ByMediaType[image.MediaType] = []string{}
+	}
 	registry.Indices.ByMediaType[image.MediaType] = append(registry.Indices.ByMediaType[image.MediaType], imageIDStr)
 
 	// By format
+	if registry.Indices.ByFormat[image.Metadata.Format] == nil {
+		registry.Indices.ByFormat[image.Metadata.Format] = []string{}
+	}
 	registry.Indices.ByFormat[image.Metadata.Format] = append(registry.Indices.ByFormat[image.Metadata.Format], imageIDStr)
 
 	// By dimensions
-	dimensionKey := fmt.Sprintf("%dx%d", image.Dimensions.Width, image.Dimensions.Height)
-	registry.Indices.ByDimensions[dimensionKey] = append(registry.Indices.ByDimensions[dimensionKey], imageIDStr)
+	dimKey := fmt.Sprintf("%dx%d", image.Dimensions.Width, image.Dimensions.Height)
+	if registry.Indices.ByDimensions[dimKey] == nil {
+		registry.Indices.ByDimensions[dimKey] = []string{}
+	}
+	registry.Indices.ByDimensions[dimKey] = append(registry.Indices.ByDimensions[dimKey], imageIDStr)
 
 	// By tags
 	for _, tag := range image.Metadata.Tags {
+		if registry.Indices.ByTags[tag] == nil {
+			registry.Indices.ByTags[tag] = []string{}
+		}
 		registry.Indices.ByTags[tag] = append(registry.Indices.ByTags[tag], imageIDStr)
 	}
 
-	// By selection status
-	if image.Selection.IsSelected {
-		registry.Indices.BySelected["selected"] = append(registry.Indices.BySelected["selected"], imageIDStr)
-	}
+	// By selection
 	if image.Selection.IsChecked {
+		if registry.Indices.BySelected["checked"] == nil {
+			registry.Indices.BySelected["checked"] = []string{}
+		}
 		registry.Indices.BySelected["checked"] = append(registry.Indices.BySelected["checked"], imageIDStr)
 	}
+	if image.Selection.IsSelected {
+		if registry.Indices.BySelected["selected"] == nil {
+			registry.Indices.BySelected["selected"] = []string{}
+		}
+		registry.Indices.BySelected["selected"] = append(registry.Indices.BySelected["selected"], imageIDStr)
+	}
 }
 
-// calculateFileChecksum calculates SHA256 checksum of a file
-func (is *ImageStore) calculateFileChecksum(filePath string) (string, error) {
-	data, err := os.ReadFile(filePath)
+// rebuildIndices rebuilds all indices from scratch
+func (is *ImageStore) rebuildIndices(registry *ImageRegistry) {
+	registry.Indices = ImageRegistryIndices{
+		ByName:       make(map[string]string),
+		ByMediaType:  make(map[media.MediaType][]string),
+		ByFormat:     make(map[string][]string),
+		ByDimensions: make(map[string][]string),
+		ByTags:       make(map[string][]string),
+		BySelected:   make(map[string][]string),
+	}
+
+	for _, image := range registry.Images {
+		is.updateIndices(registry, image)
+	}
+}
+
+// ValidateRegistry validates the integrity of the image registry
+func (is *ImageStore) ValidateRegistry() error {
+	registry, err := is.LoadImageRegistry()
 	if err != nil {
-		return "", err
+		return fmt.Errorf("failed to load image registry: %w", err)
 	}
 
-	hash := sha256.Sum256(data)
-	return hex.EncodeToString(hash[:]), nil
+	// Check for duplicate IDs
+	idMap := make(map[int64]bool)
+	for _, img := range registry.Images {
+		if idMap[img.ID] {
+			return fmt.Errorf("duplicate image ID found: %d", img.ID)
+		}
+		idMap[img.ID] = true
+	}
+
+	// Check for duplicate names
+	nameMap := make(map[string]bool)
+	for _, img := range registry.Images {
+		if nameMap[img.Name] {
+			return fmt.Errorf("duplicate image name found: %s", img.Name)
+		}
+		nameMap[img.Name] = true
+	}
+
+	// Validate metadata consistency
+	if registry.Metadata.TotalImages != len(registry.Images) {
+		return fmt.Errorf("metadata total images (%d) doesn't match actual count (%d)",
+			registry.Metadata.TotalImages, len(registry.Images))
+	}
+
+	return nil
 }
 
-// imageHasTag checks if an image has a specific tag
-func (is *ImageStore) imageHasTag(image Image, tag string) bool {
-	for _, imgTag := range image.Metadata.Tags {
-		if strings.EqualFold(imgTag, tag) {
-			return true
+// GetRegistryStats returns statistics about the image registry
+func (is *ImageStore) GetRegistryStats() (map[string]interface{}, error) {
+	registry, err := is.LoadImageRegistry()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load image registry: %w", err)
+	}
+
+	stats := map[string]interface{}{
+		"totalImages":   len(registry.Images),
+		"lastUpdated":   registry.Metadata.LastUpdated,
+		"version":       registry.Metadata.Version,
+		"formats":       make(map[string]int),
+		"mediaTypes":    make(map[string]int),
+		"selectedCount": 0,
+		"checkedCount":  0,
+	}
+
+	// Count formats
+	for _, img := range registry.Images {
+		formatCount := stats["formats"].(map[string]int)
+		formatCount[img.Metadata.Format]++
+	}
+
+	// Count media types
+	for _, img := range registry.Images {
+		mediaTypeCount := stats["mediaTypes"].(map[string]int)
+		mediaTypeCount[string(img.MediaType)]++
+	}
+
+	// Count selections
+	for _, img := range registry.Images {
+		if img.Selection.IsSelected {
+			stats["selectedCount"] = stats["selectedCount"].(int) + 1
+		}
+		if img.Selection.IsChecked {
+			stats["checkedCount"] = stats["checkedCount"].(int) + 1
 		}
 	}
-	return false
-}
 
-// imageHasAnyTagMatching checks if an image has any tag matching the query
-func (is *ImageStore) imageHasAnyTagMatching(image Image, query string) bool {
-	for _, tag := range image.Metadata.Tags {
-		if strings.Contains(strings.ToLower(tag), query) {
-			return true
-		}
-	}
-	return false
-}
-
-// createMultiResolutionThumbnails creates thumbnails for all resolutions
-func (is *ImageStore) createMultiResolutionThumbnails(inputPath, thumbnailsDir, fileName string) (ImageThumbnails, error) {
-	// Note: Actual thumbnail creation is handled by the IPC handler
-	// This method just sets up the expected paths for thumbnails that will be created
-	// This avoids circular import issues between store and image packages
-
-	baseName := strings.TrimSuffix(fileName, filepath.Ext(fileName))
-	if !strings.Contains(baseName, ".") {
-		// If no extension, extract just the base name
-		parts := strings.Split(fileName, ".")
-		if len(parts) > 0 {
-			baseName = parts[0]
-		}
-	}
-
-	thumbnailPaths := ImageThumbnails{
-		Resolution720p:  fmt.Sprintf("%s/720p/%s.webp", thumbnailsDir, baseName),
-		Resolution1080p: fmt.Sprintf("%s/1080p/%s.webp", thumbnailsDir, baseName),
-		Resolution1440p: fmt.Sprintf("%s/1440p/%s.webp", thumbnailsDir, baseName),
-		Resolution4k:    fmt.Sprintf("%s/4k/%s.webp", thumbnailsDir, baseName),
-		Fallback:        fmt.Sprintf("%s/fallback/%s.webp", thumbnailsDir, baseName),
-	}
-
-	return thumbnailPaths, nil
-}
-
-// ImageStatistics contains statistics about the image registry
-type ImageStatistics struct {
-	TotalImages    int                     `json:"totalImages"`
-	MediaTypes     map[media.MediaType]int `json:"mediaTypes"`
-	Formats        map[string]int          `json:"formats"`
-	Dimensions     map[string]int          `json:"dimensions"`
-	SelectedImages int                     `json:"selectedImages"`
-	CheckedImages  int                     `json:"checkedImages"`
-	LastImport     *time.Time              `json:"lastImport,omitempty"`
-	RegistrySize   int                     `json:"registrySize"`
+	return stats, nil
 }

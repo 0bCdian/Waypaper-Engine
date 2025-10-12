@@ -21,7 +21,7 @@ export class PlaylistController extends EventEmitter {
 
     async pausePlaylist(playlist: { name: string; activeMonitor: ActiveMonitor }) {
         try {
-            await goDaemonClient.pausePlaylist(playlist.name, playlist.activeMonitor);
+            await goDaemonClient.pausePlaylist(playlist.activeMonitor);
             if (this.createTray !== undefined) void this.createTray();
         } catch (error) {
             logger.error("Failed to pause playlist:", error);
@@ -30,7 +30,7 @@ export class PlaylistController extends EventEmitter {
 
     async resumePlaylist(playlist: { name: string; activeMonitor: ActiveMonitor }) {
         try {
-            await goDaemonClient.resumePlaylist(playlist.name, playlist.activeMonitor);
+            await goDaemonClient.resumePlaylist(playlist.activeMonitor);
             if (this.createTray !== undefined) void this.createTray();
         } catch (error) {
             logger.error("Failed to resume playlist:", error);
@@ -39,7 +39,7 @@ export class PlaylistController extends EventEmitter {
 
     async stopPlaylist(playlist: { name: string; activeMonitor: ActiveMonitor }) {
         try {
-            await goDaemonClient.stopPlaylist(playlist.name, playlist.activeMonitor);
+            await goDaemonClient.stopPlaylist(playlist.activeMonitor);
             if (this.createTray !== undefined) void this.createTray();
         } catch (error) {
             logger.error("Failed to stop playlist:", error);
@@ -84,7 +84,7 @@ export class PlaylistController extends EventEmitter {
 
     async nextImage(playlist: { name: string; activeMonitor: ActiveMonitor }) {
         try {
-            await goDaemonClient.nextImage(playlist.name, playlist.activeMonitor);
+            await goDaemonClient.nextImage(playlist.activeMonitor);
             if (this.createTray !== undefined) void this.createTray();
         } catch (error) {
             logger.error("Failed to get next image:", error);
@@ -93,16 +93,16 @@ export class PlaylistController extends EventEmitter {
 
     async previousImage(playlist: { name: string; activeMonitor: ActiveMonitor }) {
         try {
-            await goDaemonClient.previousImage(playlist.name, playlist.activeMonitor);
+            await goDaemonClient.previousImage(playlist.activeMonitor);
             if (this.createTray !== undefined) void this.createTray();
         } catch (error) {
             logger.error("Failed to get previous image:", error);
         }
     }
 
-    async randomImage() {
+    async randomImage(activeMonitor: ActiveMonitor) {
         try {
-            await goDaemonClient.randomImage();
+            await goDaemonClient.randomImage(activeMonitor);
             if (this.createTray !== undefined) void this.createTray();
         } catch (error) {
             logger.error("Failed to set random image:", error);

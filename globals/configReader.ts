@@ -135,7 +135,32 @@ export class ConfigReader extends EventEmitter {
     private getDefaultConfig(): WaypaperConfig {
         const homeDir = homedir();
         const devEnv = process.env.DEV === "true";
-        const baseDir = devEnv ? "/tmp/waypaper-engine" : homeDir;
+
+        // Development vs Production paths - match daemon exactly
+        let configDir: string;
+        let cacheDir: string;
+        let imagesDir: string;
+        let thumbnailsDir: string;
+        let monitorsFile: string;
+        let logFile: string;
+
+        if (devEnv) {
+            // Development mode: use /tmp/waypaper-engine
+            configDir = "/tmp/waypaper-engine";
+            cacheDir = join("/tmp/waypaper-engine", "data", "cache");
+            imagesDir = join("/tmp/waypaper-engine", "images");
+            thumbnailsDir = join("/tmp/waypaper-engine", "data", "cache", "thumbnails");
+            monitorsFile = join("/tmp/waypaper-engine", "data", "monitors.json");
+            logFile = join("/tmp/waypaper-engine", "daemon.log");
+        } else {
+            // Production mode: use standard user directories
+            configDir = join(homeDir, ".config", "waypaper-engine");
+            cacheDir = join(homeDir, ".cache", "waypaper-engine");
+            imagesDir = join(homeDir, ".waypaper-engine", "images");
+            thumbnailsDir = join(homeDir, ".waypaper-engine", "data", "cache", "thumbnails");
+            monitorsFile = join(cacheDir, "monitors.json");
+            logFile = join(configDir, "daemon.log");
+        }
 
         return {
             app: {
@@ -153,13 +178,13 @@ export class ConfigReader extends EventEmitter {
                 image_history_limit: 50,
             },
             daemon: {
-                database_path: join(baseDir, ".waypaper-engine", "data"),
-                images_dir: join(baseDir, ".waypaper-engine", "images"),
-                thumbnails_dir: join(baseDir, ".waypaper-engine", "data", "cache", "thumbnails"),
-                monitors_state_file: join(baseDir, ".cache", "waypaper-engine", "monitors.json"),
+                database_path: join(configDir, "data"),
+                images_dir: imagesDir,
+                thumbnails_dir: thumbnailsDir,
+                monitors_state_file: monitorsFile,
                 socket_path: "/tmp/waypaper-engine.sock",
                 log_level: "info",
-                log_file: "",
+                log_file: logFile,
                 log_max_size: 10,
                 log_max_age: 7,
                 log_max_backups: 3,

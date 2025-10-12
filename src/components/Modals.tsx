@@ -10,7 +10,7 @@ import { useAppConfigStore } from "../stores/appConfig";
 import Monitors from "./monitorsModal";
 import { useMonitorStore } from "../stores/monitors";
 import { type DaemonPlaylistFromDB } from "../../shared/types/daemonEvents";
-const { goDaemon } = window.API_RENDERER;
+const goDaemon = window.API_RENDERER.goDaemon;
 let alreadyShown = false;
 function Modals() {
     const [playlistsInDB, setPlaylistsInDB] = useState<DaemonPlaylistFromDB[]>(

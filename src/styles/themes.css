@@ -1,0 +1,429 @@
+/**
+ * Theme CSS Custom Properties for Waypaper Engine
+ * 
+ * This file defines CSS custom properties for all themes, enabling
+ * dynamic theme switching with smooth transitions.
+ */
+
+/* Base theme variables with fallbacks */
+:root {
+  /* Light theme defaults */
+  --color-primary: 59 130 246;
+  --color-primary50: 239 246 255;
+  --color-primary100: 219 234 254;
+  --color-primary200: 191 219 254;
+  --color-primary300: 147 197 253;
+  --color-primary400: 96 165 250;
+  --color-primary500: 59 130 246;
+  --color-primary600: 37 99 235;
+  --color-primary700: 29 78 216;
+  --color-primary800: 30 64 175;
+  --color-primary900: 30 58 138;
+  
+  --color-secondary: 100 116 139;
+  --color-secondary50: 248 250 252;
+  --color-secondary100: 241 245 249;
+  --color-secondary200: 226 232 240;
+  --color-secondary300: 203 213 225;
+  --color-secondary400: 148 163 184;
+  --color-secondary500: 100 116 139;
+  --color-secondary600: 71 85 105;
+  --color-secondary700: 51 65 85;
+  --color-secondary800: 30 41 59;
+  --color-secondary900: 15 23 42;
+  
+  --color-accent: 245 158 11;
+  --color-neutral: 229 231 235;
+  --color-base: 255 255 255;
+  --color-baseContent: 31 41 55;
+  --color-info: 59 130 246;
+  --color-success: 16 185 129;
+  --color-warning: 245 158 11;
+  --color-error: 239 68 68;
+  
+  /* Font variables */
+  --font-primary: 'Inter', system-ui, sans-serif;
+  --font-secondary: 'Inter', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  
+  /* Spacing scale */
+  --spacing-xs: 0.25rem;
+  --spacing-sm: 0.5rem;
+  --spacing-md: 1rem;
+  --spacing-lg: 1.5rem;
+  --spacing-xl: 2rem;
+  --spacing-2xl: 3rem;
+  
+  /* Border radius scale */
+  --radius-sm: 0.25rem;
+  --radius-md: 0.5rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+  
+  /* Shadow definitions */
+  --shadow-sm: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  
+  /* Transition variables */
+  --transition-fast: 150ms ease-in-out;
+  --transition-normal: 300ms ease-in-out;
+  --transition-slow: 500ms ease-in-out;
+}
+
+/* Dark theme */
+[data-theme="dark"] {
+  --color-primary: 59 130 246;
+  --color-primary50: 30 58 138;
+  --color-primary100: 30 64 175;
+  --color-primary200: 29 78 216;
+  --color-primary300: 37 99 235;
+  --color-primary400: 59 130 246;
+  --color-primary500: 96 165 250;
+  --color-primary600: 147 197 253;
+  --color-primary700: 191 219 254;
+  --color-primary800: 219 234 254;
+  --color-primary900: 239 246 255;
+  
+  --color-secondary: 100 116 139;
+  --color-secondary50: 15 23 42;
+  --color-secondary100: 30 41 59;
+  --color-secondary200: 51 65 85;
+  --color-secondary300: 71 85 105;
+  --color-secondary400: 100 116 139;
+  --color-secondary500: 148 163 184;
+  --color-secondary600: 203 213 225;
+  --color-secondary700: 226 232 240;
+  --color-secondary800: 241 245 249;
+  --color-secondary900: 248 250 252;
+  
+  --color-accent: 245 158 11;
+  --color-neutral: 55 65 81;
+  --color-base: 31 41 55;
+  --color-baseContent: 249 250 251;
+  --color-info: 59 130 246;
+  --color-success: 16 185 129;
+  --color-warning: 245 158 11;
+  --color-error: 239 68 68;
+}
+
+/* Light theme */
+[data-theme="light"] {
+  --color-primary: 37 99 235;
+  --color-primary50: 239 246 255;
+  --color-primary100: 219 234 254;
+  --color-primary200: 191 219 254;
+  --color-primary300: 147 197 253;
+  --color-primary400: 96 165 250;
+  --color-primary500: 59 130 246;
+  --color-primary600: 37 99 235;
+  --color-primary700: 29 78 216;
+  --color-primary800: 30 64 175;
+  --color-primary900: 30 58 138;
+  
+  --color-secondary: 100 116 139;
+  --color-secondary50: 248 250 252;
+  --color-secondary100: 241 245 249;
+  --color-secondary200: 226 232 240;
+  --color-secondary300: 203 213 225;
+  --color-secondary400: 148 163 184;
+  --color-secondary500: 100 116 139;
+  --color-secondary600: 71 85 105;
+  --color-secondary700: 51 65 85;
+  --color-secondary800: 30 41 59;
+  --color-secondary900: 15 23 42;
+  
+  --color-accent: 217 119 6;
+  --color-neutral: 229 231 235;
+  --color-base: 255 255 255;
+  --color-baseContent: 31 41 55;
+  --color-info: 37 99 235;
+  --color-success: 5 150 105;
+  --color-warning: 217 119 6;
+  --color-error: 220 38 38;
+}
+
+/* Gruvbox theme */
+[data-theme="gruvbox"] {
+  --color-primary: 251 73 52;
+  --color-primary50: 60 56 54;
+  --color-primary100: 80 73 69;
+  --color-primary200: 102 92 84;
+  --color-primary300: 124 111 100;
+  --color-primary400: 146 131 116;
+  --color-primary500: 168 153 132;
+  --color-primary600: 189 174 147;
+  --color-primary700: 213 196 161;
+  --color-primary800: 235 219 178;
+  --color-primary900: 251 241 199;
+  
+  --color-secondary: 146 131 116;
+  --color-secondary50: 60 56 54;
+  --color-secondary100: 80 73 69;
+  --color-secondary200: 102 92 84;
+  --color-secondary300: 124 111 100;
+  --color-secondary400: 146 131 116;
+  --color-secondary500: 168 153 132;
+  --color-secondary600: 189 174 147;
+  --color-secondary700: 213 196 161;
+  --color-secondary800: 235 219 178;
+  --color-secondary900: 251 241 199;
+  
+  --color-accent: 250 189 47;
+  --color-neutral: 60 56 54;
+  --color-base: 40 40 40;
+  --color-baseContent: 235 219 178;
+  --color-info: 131 165 152;
+  --color-success: 184 187 38;
+  --color-warning: 250 189 47;
+  --color-error: 251 73 52;
+}
+
+/* Nord theme */
+[data-theme="nord"] {
+  --color-primary: 94 129 172;
+  --color-primary50: 236 239 244;
+  --color-primary100: 229 233 240;
+  --color-primary200: 216 222 233;
+  --color-primary300: 76 86 106;
+  --color-primary400: 67 76 94;
+  --color-primary500: 59 66 82;
+  --color-primary600: 46 52 64;
+  --color-primary700: 59 66 82;
+  --color-primary800: 67 76 94;
+  --color-primary900: 76 86 106;
+  
+  --color-secondary: 129 161 193;
+  --color-secondary50: 236 239 244;
+  --color-secondary100: 229 233 240;
+  --color-secondary200: 216 222 233;
+  --color-secondary300: 76 86 106;
+  --color-secondary400: 67 76 94;
+  --color-secondary500: 59 66 82;
+  --color-secondary600: 46 52 64;
+  --color-secondary700: 59 66 82;
+  --color-secondary800: 67 76 94;
+  --color-secondary900: 76 86 106;
+  
+  --color-accent: 136 192 208;
+  --color-neutral: 59 66 82;
+  --color-base: 46 52 64;
+  --color-baseContent: 216 222 233;
+  --color-info: 94 129 172;
+  --color-success: 163 190 140;
+  --color-warning: 235 203 139;
+  --color-error: 191 97 106;
+}
+
+/* Catppuccin theme */
+[data-theme="catppuccin"] {
+  --color-primary: 203 166 247;
+  --color-primary50: 245 194 231;
+  --color-primary100: 203 166 247;
+  --color-primary200: 180 190 254;
+  --color-primary300: 137 180 250;
+  --color-primary400: 116 199 236;
+  --color-primary500: 137 220 235;
+  --color-primary600: 148 226 213;
+  --color-primary700: 166 227 161;
+  --color-primary800: 249 226 175;
+  --color-primary900: 250 179 135;
+  
+  --color-secondary: 166 173 200;
+  --color-secondary50: 245 194 231;
+  --color-secondary100: 203 166 247;
+  --color-secondary200: 180 190 254;
+  --color-secondary300: 137 180 250;
+  --color-secondary400: 116 199 236;
+  --color-secondary500: 137 220 235;
+  --color-secondary600: 148 226 213;
+  --color-secondary700: 166 227 161;
+  --color-secondary800: 249 226 175;
+  --color-secondary900: 250 179 135;
+  
+  --color-accent: 245 194 231;
+  --color-neutral: 49 50 68;
+  --color-base: 30 30 46;
+  --color-baseContent: 205 214 244;
+  --color-info: 137 180 250;
+  --color-success: 166 227 161;
+  --color-warning: 249 226 175;
+  --color-error: 243 139 168;
+}
+
+/* Dracula theme */
+[data-theme="dracula"] {
+  --color-primary: 189 147 249;
+  --color-primary50: 248 248 242;
+  --color-primary100: 241 250 140;
+  --color-primary200: 80 250 123;
+  --color-primary300: 139 233 253;
+  --color-primary400: 189 147 249;
+  --color-primary500: 255 121 198;
+  --color-primary600: 255 85 85;
+  --color-primary700: 255 110 110;
+  --color-primary800: 255 184 108;
+  --color-primary900: 255 121 198;
+  
+  --color-secondary: 98 114 164;
+  --color-secondary50: 248 248 242;
+  --color-secondary100: 241 250 140;
+  --color-secondary200: 80 250 123;
+  --color-secondary300: 139 233 253;
+  --color-secondary400: 189 147 249;
+  --color-secondary500: 255 121 198;
+  --color-secondary600: 255 85 85;
+  --color-secondary700: 255 110 110;
+  --color-secondary800: 255 184 108;
+  --color-secondary900: 255 121 198;
+  
+  --color-accent: 255 121 198;
+  --color-neutral: 68 71 90;
+  --color-base: 40 42 54;
+  --color-baseContent: 248 248 242;
+  --color-info: 139 233 253;
+  --color-success: 80 250 123;
+  --color-warning: 241 250 140;
+  --color-error: 255 85 85;
+}
+
+/* Monokai theme */
+[data-theme="monokai"] {
+  --color-primary: 249 38 114;
+  --color-primary50: 248 248 242;
+  --color-primary100: 230 219 116;
+  --color-primary200: 166 226 46;
+  --color-primary300: 102 217 239;
+  --color-primary400: 174 129 255;
+  --color-primary500: 249 38 114;
+  --color-primary600: 253 151 31;
+  --color-primary700: 230 219 116;
+  --color-primary800: 166 226 46;
+  --color-primary900: 102 217 239;
+  
+  --color-secondary: 166 226 46;
+  --color-secondary50: 248 248 242;
+  --color-secondary100: 230 219 116;
+  --color-secondary200: 166 226 46;
+  --color-secondary300: 102 217 239;
+  --color-secondary400: 174 129 255;
+  --color-secondary500: 249 38 114;
+  --color-secondary600: 253 151 31;
+  --color-secondary700: 230 219 116;
+  --color-secondary800: 166 226 46;
+  --color-secondary900: 102 217 239;
+  
+  --color-accent: 230 219 116;
+  --color-neutral: 73 72 62;
+  --color-base: 39 40 34;
+  --color-baseContent: 248 248 242;
+  --color-info: 102 217 239;
+  --color-success: 166 226 46;
+  --color-warning: 230 219 116;
+  --color-error: 249 38 114;
+}
+
+/* Tokyo Night theme */
+[data-theme="tokyo-night"] {
+  --color-primary: 122 162 247;
+  --color-primary50: 169 177 214;
+  --color-primary100: 158 206 106;
+  --color-primary200: 224 175 104;
+  --color-primary300: 122 162 247;
+  --color-primary400: 187 154 247;
+  --color-primary500: 247 118 142;
+  --color-primary600: 122 162 247;
+  --color-primary700: 158 206 106;
+  --color-primary800: 224 175 104;
+  --color-primary900: 187 154 247;
+  
+  --color-secondary: 158 206 106;
+  --color-secondary50: 169 177 214;
+  --color-secondary100: 158 206 106;
+  --color-secondary200: 224 175 104;
+  --color-secondary300: 122 162 247;
+  --color-secondary400: 187 154 247;
+  --color-secondary500: 247 118 142;
+  --color-secondary600: 122 162 247;
+  --color-secondary700: 158 206 106;
+  --color-secondary800: 224 175 104;
+  --color-secondary900: 187 154 247;
+  
+  --color-accent: 187 154 247;
+  --color-neutral: 65 72 104;
+  --color-base: 26 27 38;
+  --color-baseContent: 169 177 214;
+  --color-info: 122 162 247;
+  --color-success: 158 206 106;
+  --color-warning: 224 175 104;
+  --color-error: 247 118 142;
+}
+
+/* Utility classes for theme transitions */
+.theme-transition {
+  transition: background-color var(--transition-normal),
+              color var(--transition-normal),
+              border-color var(--transition-normal),
+              box-shadow var(--transition-normal);
+}
+
+.theme-transition-fast {
+  transition: background-color var(--transition-fast),
+              color var(--transition-fast),
+              border-color var(--transition-fast),
+              box-shadow var(--transition-fast);
+}
+
+.theme-transition-slow {
+  transition: background-color var(--transition-slow),
+              color var(--transition-slow),
+              border-color var(--transition-slow),
+              box-shadow var(--transition-slow);
+}
+
+/* Theme-specific utility classes */
+.theme-dark {
+  color-scheme: dark;
+}
+
+.theme-light {
+  color-scheme: light;
+}
+
+/* Custom scrollbar styling for themes */
+.theme-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--color-neutral400)) hsl(var(--color-neutral200));
+}
+
+.theme-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.theme-scrollbar::-webkit-scrollbar-track {
+  background: hsl(var(--color-neutral200));
+  border-radius: var(--radius-md);
+}
+
+.theme-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--color-neutral400));
+  border-radius: var(--radius-md);
+}
+
+.theme-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--color-neutral500));
+}
+
+/* Focus ring styling for themes */
+.theme-focus-ring:focus {
+  outline: 2px solid hsl(var(--color-primary500));
+  outline-offset: 2px;
+}
+
+/* Selection styling for themes */
+.theme-selection::selection {
+  background-color: hsl(var(--color-primary500) / 0.2);
+  color: hsl(var(--color-baseContent));
+}

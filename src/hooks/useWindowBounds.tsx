@@ -1,19 +1,22 @@
 import { useEffect } from 'react';
-import { frontendConfig } from '../utils/frontendConfig';
-
-const { goDaemon } = window.API_RENDERER;
 
 export const useWindowBounds = () => {
     useEffect(() => {
         // Load and restore window bounds on mount
         const restoreWindowBounds = async () => {
             try {
-                const config = await frontendConfig.getConfig();
-                if (config.windowBounds && window.electronAPI) {
-                    // If Electron API is available, restore window bounds
-                    console.log('🟢 WindowBounds: Restoring window bounds:', config.windowBounds);
-                    // This would require an Electron API method to set window bounds
-                    // For now, we just load the config for future use
+                if (window.API_RENDERER?.goDaemon?.getAppConfig) {
+                    const config = await window.API_RENDERER.goDaemon.getAppConfig();
+                    // Check if config has window bounds (this would be in the app config)
+                    if (config && typeof config === 'object' && 'windowBounds' in config) {
+                        const windowBounds = (config as any).windowBounds;
+                        if (windowBounds && window.API_RENDERER) {
+                            // If Electron API is available, restore window bounds
+                            console.log('🟢 WindowBounds: Restoring window bounds:', windowBounds);
+                            // This would require an Electron API method to set window bounds
+                            // For now, we just load the config for future use
+                        }
+                    }
                 }
             } catch (error) {
                 console.error('🔴 WindowBounds: Failed to restore window bounds:', error);
@@ -33,9 +36,11 @@ export const useWindowBounds = () => {
                     height: window.outerHeight || 720,
                 };
                 
-                // Save to frontend config
-                await frontendConfig.setWindowBounds(bounds);
-                console.log('🟢 WindowBounds: Saved window bounds:', bounds);
+                // Save to unified config system
+                if (window.API_RENDERER?.goDaemon?.setAppConfig) {
+                    await window.API_RENDERER.goDaemon.setAppConfig('windowBounds', bounds);
+                    console.log('🟢 WindowBounds: Saved window bounds:', bounds);
+                }
             } catch (error) {
                 console.error('🔴 WindowBounds: Failed to save window bounds:', error);
             }

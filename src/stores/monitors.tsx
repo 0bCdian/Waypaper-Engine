@@ -1,8 +1,6 @@
 import { create } from "zustand";
 import { type Monitor, type ActiveMonitor } from "../../shared/types/monitor";
-import { frontendConfig } from "../utils/frontendConfig";
 import { type DaemonMonitorInfo } from "../../shared/types/daemonEvents";
-const { goDaemon } = window.API_RENDERER;
 
 export interface StoreMonitor extends Monitor {
     isSelected: boolean;
@@ -37,15 +35,16 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
             };
         });
         
-        // Persist the configuration to frontend config
+        // Persist the configuration to unified config system
         try {
             const selectedMonitors = value.monitors.map(monitor => monitor.name);
             const imageSetType = value.extendAcrossMonitors ? 'extend' : 'individual';
             
-            await frontendConfig.setSelectedMonitors(selectedMonitors);
-            await frontendConfig.setImageSetType(imageSetType);
-            
-            console.log("🟢 MonitorStore: Saved monitor config to frontend config");
+            if (window.API_RENDERER?.goDaemon?.setAppConfig) {
+                await window.API_RENDERER.goDaemon.setAppConfig('selectedMonitors', selectedMonitors);
+                await window.API_RENDERER.goDaemon.setAppConfig('imageSetType', imageSetType);
+                console.log("🟢 MonitorStore: Saved monitor config to unified config system");
+            }
         } catch (error) {
             console.error("🔴 MonitorStore: Failed to save monitor config:", error);
         }
@@ -61,8 +60,21 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
     async reQueryMonitors() {
         try {
             console.log("🟡 MonitorStore: reQueryMonitors called");
+            
+            // Check if goDaemon is available
+            if (!window.API_RENDERER?.goDaemon) {
+                console.error("🔴 MonitorStore: goDaemon not available");
+                return;
+            }
+
+            // Check if getMonitors method exists
+            if (typeof window.API_RENDERER.goDaemon.getMonitors !== 'function') {
+                console.error("🔴 MonitorStore: getMonitors method not available");
+                return;
+            }
+
             console.log("🟡 MonitorStore: Calling goDaemon.getMonitors()");
-            const monitors = await goDaemon.getMonitors();
+            const monitors = await window.API_RENDERER.goDaemon.getMonitors();
             console.log("🟡 MonitorStore: Monitors loaded from daemon:", monitors);
             const activeMonitor = get().activeMonitor;
             
@@ -93,12 +105,32 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
     },
     async setLastSavedMonitorConfig() {
         try {
+            // Check if goDaemon is available
+            if (!window.API_RENDERER?.goDaemon) {
+                console.error("🔴 MonitorStore: goDaemon not available");
+                return;
+            }
+
+            // Check if getMonitors method exists
+            if (typeof window.API_RENDERER.goDaemon.getMonitors !== 'function') {
+                console.error("🔴 MonitorStore: getMonitors method not available");
+                return;
+            }
+
             // Load monitors from daemon
-            const monitorsList = await goDaemon.getMonitors();
+            const monitorsList = await window.API_RENDERER.goDaemon.getMonitors();
             
-            // Load frontend config
-            const selectedMonitors = await frontendConfig.getSelectedMonitors();
-            const imageSetType = await frontendConfig.getImageSetType();
+            // Load config from unified system
+            let selectedMonitors: string[] = [];
+            let imageSetType: string = 'individual';
+            
+            if (window.API_RENDERER?.goDaemon?.getAppConfig) {
+                const config = await window.API_RENDERER.goDaemon.getAppConfig();
+                if (config && typeof config === 'object') {
+                    selectedMonitors = (config as any).selectedMonitors || [];
+                    imageSetType = (config as any).imageSetType || 'individual';
+                }
+            }
             
             if (selectedMonitors.length > 0) {
                 // Find the selected monitors in the current monitor list
@@ -130,7 +162,7 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
                     });
                     
                     get().setMonitorsList(storeMonitors);
-                    console.log("🟢 MonitorStore: Loaded monitor config from frontend config");
+                    console.log("🟢 MonitorStore: Loaded monitor config from unified config system");
                 } else {
                     // Selected monitors no longer exist, reset to default
                     const storeMonitors = monitorsList.map((monitor: Monitor) => ({

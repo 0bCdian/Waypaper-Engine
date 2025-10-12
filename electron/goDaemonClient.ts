@@ -1,10 +1,11 @@
 import { createConnection, Socket } from "node:net";
 import { EventEmitter } from "node:events";
 import { logger } from "../globals/setup";
+import { configReader } from "../globals/configReader";
 import type { 
+    JsonStoreImage, 
     DaemonActivePlaylist, 
     DaemonImageHistory, 
-    DaemonImage, 
     DaemonPlaylist, 
     DaemonMonitor,
     DaemonSwwwConfig
@@ -24,7 +25,6 @@ export interface GoDaemonResponse {
     data?: unknown;
     error?: string;
     messageId?: number;
-    // Real-time event fields
     type?: string;
     payload?: unknown;
 }
@@ -43,9 +43,10 @@ export class GoDaemonClient extends EventEmitter {
     > = new Map();
     private messageBuffer: string = "";
 
-    constructor(socketPath: string = "/tmp/waypaper-engine.sock") {
+    constructor(socketPath?: string) {
         super();
-        this.socketPath = socketPath;
+        // Use provided socket path or get from config
+        this.socketPath = socketPath || configReader.getSocketPath();
     }
 
     async connect(): Promise<void> {
@@ -388,17 +389,12 @@ export class GoDaemonClient extends EventEmitter {
         return this.sendCommand("process_for_monitors", payload) as Promise<boolean>;
     }
 
-    async getMonitorImage(monitorName: string): Promise<string> {
-        console.log(
-            "🔵 GoDaemonClient: getMonitorImage called with monitorName:",
-            monitorName
-        );
-        return this.sendCommand("get_monitor_image", { monitorName }) as Promise<string>;
-    }
 
     // Data queries
-    async getImages(filters?: unknown): Promise<DaemonImage[]> {
-        return this.sendCommand("get_images", { filters }) as Promise<DaemonImage[]>;
+    async getImages(filters?: unknown): Promise<JsonStoreImage[]> {
+        const response = await this.sendCommand("get_images", { filters });
+        console.log('🔍 Go Daemon Client: Raw response from daemon:', response);
+        return response as JsonStoreImage[];
     }
 
     async getPlaylists(): Promise<DaemonPlaylist[]> {
@@ -409,9 +405,6 @@ export class GoDaemonClient extends EventEmitter {
         return await this.sendCommand("get_active_playlist", { activeMonitor }) as Promise<DaemonActivePlaylist | null>;
     }
 
-    async getActivePlaylists(): Promise<DaemonActivePlaylist[]> {
-        return await this.sendCommand("get_active_playlists") as Promise<DaemonActivePlaylist[]>;
-    }
 
     async getImageHistory(): Promise<DaemonImageHistory[]> {
         return await this.sendCommand("get_image_history") as Promise<DaemonImageHistory[]>;
@@ -454,68 +447,41 @@ export class GoDaemonClient extends EventEmitter {
         }) as Promise<boolean>;
     }
 
-    async pausePlaylist(
-        playlistName: string,
-        activeMonitor: ActiveMonitor
-    ): Promise<boolean> {
+    async pausePlaylist(activeMonitor: ActiveMonitor): Promise<boolean> {
         return await this.sendCommand("pause_playlist", {
-            playlistName,
             activeMonitor
         }) as Promise<boolean>;
     }
 
-    async resumePlaylist(
-        playlistName: string,
-        activeMonitor: ActiveMonitor
-    ): Promise<boolean> {
+    async resumePlaylist(activeMonitor: ActiveMonitor): Promise<boolean> {
         return await this.sendCommand("resume_playlist", {
-            playlistName,
             activeMonitor
         }) as Promise<boolean>;
     }
 
-    async stopPlaylist(playlistName: string, activeMonitor: ActiveMonitor): Promise<boolean> {
+    async stopPlaylist(activeMonitor: ActiveMonitor): Promise<boolean> {
         return await this.sendCommand("stop_playlist", {
-            playlistName,
             activeMonitor
         }) as Promise<boolean>;
     }
 
-    async stopPlaylistByName(playlistName: string): Promise<boolean> {
-        return await this.sendCommand("stop_playlist_by_name", {
-            playlistName
-        }) as Promise<boolean>;
-    }
 
-    async stopPlaylistByMonitorName(monitors: string[]): Promise<boolean> {
-        return await this.sendCommand("stop_playlist_by_monitor_name", {
-            monitors
-        }) as Promise<boolean>;
-    }
-
-    async stopPlaylistOnRemovedMonitors(): Promise<boolean> {
-        return await this.sendCommand("stop_playlist_on_removed_monitors") as Promise<boolean>;
-    }
-
-    async nextImage(playlistName: string, activeMonitor: ActiveMonitor): Promise<boolean> {
+    async nextImage(activeMonitor: ActiveMonitor): Promise<boolean> {
         return await this.sendCommand("next_image", {
-            playlistName,
             activeMonitor
         }) as Promise<boolean>;
     }
 
-    async previousImage(
-        playlistName: string,
-        activeMonitor: ActiveMonitor
-    ): Promise<boolean> {
+    async previousImage(activeMonitor: ActiveMonitor): Promise<boolean> {
         return await this.sendCommand("previous_image", {
-            playlistName,
             activeMonitor
         }) as Promise<boolean>;
     }
 
-    async randomImage(): Promise<boolean> {
-        return await this.sendCommand("random_image") as Promise<boolean>;
+    async randomImage(activeMonitor: ActiveMonitor): Promise<boolean> {
+        return await this.sendCommand("random_image", {
+            activeMonitor
+        }) as Promise<boolean>;
     }
 
     async getInfo(): Promise<unknown> {
@@ -526,19 +492,18 @@ export class GoDaemonClient extends EventEmitter {
         return this.sendCommand("kill_daemon") as Promise<boolean>;
     }
 
-    async updateConfig(): Promise<boolean> {
-        return this.sendCommand("update_config") as Promise<boolean>;
-    }
 
     // Configuration commands
     async getAppConfig(): Promise<unknown> {
-        return this.sendCommand("get_app_config") as Promise<unknown>;
+        return this.sendCommand("get_config") as Promise<unknown>;
     }
 
-    async setAppConfig(_key: string, value: unknown): Promise<boolean> {
-        return this.sendCommand("set_app_config", { 
-            Config: { 
-                AppConfig: value 
+    async setAppConfig(key: string, value: unknown): Promise<boolean> {
+        return this.sendCommand("set_config", { 
+            config: { 
+                configSection: "app",
+                configKey: key,
+                configValue: value
             } 
         }) as Promise<boolean>;
     }
@@ -548,12 +513,31 @@ export class GoDaemonClient extends EventEmitter {
     }
 
     async setSwwwConfig(config: DaemonSwwwConfig): Promise<boolean> {
-        return this.sendCommand("set_swww_config", { 
-            Config: { 
-                SwwwConfig: config 
-            } 
-        }) as Promise<boolean>;
+        // Set each swww config property individually
+        const promises = Object.entries(config).map(([key, value]) => 
+            this.sendCommand("set_config", { 
+                config: { 
+                    configSection: "backend",
+                    configKey: `swww.${key}`,
+                    configValue: value
+                } 
+            })
+        );
+        
+        const results = await Promise.all(promises);
+        return results.every(result => result === true);
     }
+
+    // Image processing
+    async processImages(imagePaths: string[], fileNames: string[]): Promise<boolean> {
+        console.log("🔵 GoDaemonClient: processImages called with paths:", imagePaths, "names:", fileNames);
+        const payload = {
+            imagePaths,
+            fileNames
+        };
+        return this.sendCommand("process_images", payload) as Promise<boolean>;
+    }
+
 
     // System commands
     async ping(): Promise<boolean> {
@@ -566,31 +550,6 @@ export class GoDaemonClient extends EventEmitter {
 
     async stopDaemon(): Promise<boolean> {
         return this.sendCommand("stop_daemon") as Promise<boolean>;
-    }
-
-    // Bulk operations
-    async nextImageAll(monitors?: string[]): Promise<boolean> {
-        return this.sendCommand("next_image_all", { monitors }) as Promise<boolean>;
-    }
-
-    async previousImageAll(monitors?: string[]): Promise<boolean> {
-        return this.sendCommand("previous_image_all", { monitors }) as Promise<boolean>;
-    }
-
-    async randomImageAll(monitors?: string[]): Promise<boolean> {
-        return this.sendCommand("random_image_all", { monitors }) as Promise<boolean>;
-    }
-
-    async stopPlaylistAll(): Promise<boolean> {
-        return this.sendCommand("stop_playlist_all") as Promise<boolean>;
-    }
-
-    async pausePlaylistAll(): Promise<boolean> {
-        return this.sendCommand("pause_playlist_all") as Promise<boolean>;
-    }
-
-    async resumePlaylistAll(): Promise<boolean> {
-        return this.sendCommand("resume_playlist_all") as Promise<boolean>;
     }
 
     // Monitor operations

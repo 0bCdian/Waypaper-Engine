@@ -3,10 +3,13 @@ package cli
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 
-	"waypaper-engine/daemon-go/internal/db"
+	"waypaper-engine/daemon-go/internal/config"
 	"waypaper-engine/daemon-go/internal/ipc"
 	"waypaper-engine/daemon-go/internal/models"
+	"waypaper-engine/daemon-go/internal/store"
 
 	"github.com/spf13/cobra"
 )
@@ -69,21 +72,39 @@ func init() {
 }
 
 func runPlaylistCmd(cmd *cobra.Command, args []string) {
-	client, err := ipc.NewClient()
+	// Get socket path from config
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Printf("Failed to get home directory: %v\n", err)
+		return
+	}
+	configPath := filepath.Join(homeDir, ".config", "waypaper-engine", "config.toml")
+	configManager := config.NewConfigManager(configPath)
+	socketPath, err := configManager.GetSocketPath()
+	if err != nil {
+		fmt.Printf("Failed to get socket path: %v\n", err)
+		return
+	}
+
+	client, err := ipc.NewClient(socketPath)
 	if err != nil {
 		fmt.Printf("Failed to connect to daemon: %v\n", err)
 		return
 	}
 	defer client.Close()
 
-	dbManager, err := db.NewDatabaseManager("waypaper.db", db.DefaultPoolConfig())
+	// Initialize JSON store
+	storeConfig := store.DefaultStoreConfig()
+	storeConfig.BasePath = filepath.Join(homeDir, ".config", "waypaper-engine", "data")
+	jsonStore, err := store.NewStore(storeConfig, nil)
 	if err != nil {
-		fmt.Printf("Failed to connect to database: %v\n", err)
+		fmt.Printf("Failed to initialize JSON store: %v\n", err)
 		return
 	}
-	defer dbManager.Close()
 
-	msg, err := buildPlaylistMessage(cmd.Name(), args, db.NewDatabaseOperations(dbManager))
+	jsonStoreManager := store.NewJsonStoreManager(jsonStore, nil)
+
+	msg, err := buildPlaylistMessage(cmd.Name(), args, jsonStoreManager)
 	if err != nil {
 		fmt.Printf("Error: %v\n", err)
 		return
@@ -102,15 +123,29 @@ func runPlaylistCmd(cmd *cobra.Command, args []string) {
 	}
 }
 
-func buildPlaylistMessage(action string, args []string, dbOps *db.DatabaseOperations) (*ipc.Message, error) {
+func buildPlaylistMessage(action string, args []string, jsonStore *store.JsonStoreManager) (*ipc.Message, error) {
 	msg := &ipc.Message{Action: action}
 
 	switch action {
 	case "start":
-		playlist, err := dbOps.GetPlaylistByName(context.Background(), args[0])
+		// Get playlist by name from JSON store
+		playlists, err := jsonStore.GetPlaylists(context.Background())
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to get playlists: %v", err)
 		}
+
+		var playlist *models.Playlist
+		for i, p := range playlists {
+			if p.Name == args[0] {
+				playlist = &playlists[i]
+				break
+			}
+		}
+
+		if playlist == nil {
+			return nil, fmt.Errorf("playlist '%s' not found", args[0])
+		}
+
 		msg.PlaylistID = playlist.ID
 
 		// For CLI, we'll use a simple monitor setup

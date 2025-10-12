@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import { useShallow } from "zustand/react/shallow";
 import { type DaemonDeleteImageFromGalleryPayload } from "../../shared/types/daemonEvents";
 import { type rendererImage } from "../types/rendererTypes";
-const { goDaemon } = window.API_RENDERER;
+const goDaemon = window.API_RENDERER.goDaemon;
 let firstCall = true;
 export function registerOnDelete() {
     const removeImagesFromStore = imagesStore(

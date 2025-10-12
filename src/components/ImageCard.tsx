@@ -46,8 +46,7 @@ function ImageCard({ Image }: ImageCardProps) {
                 if (!memoizedImage.name || !memoizedImage.path) {
                     return;
                 }
-                // Use atom:// protocol for local file access
-                setImageSrc(`atom://${memoizedImage.path}`);
+                setImageSrc(memoizedImage.path);
             } catch (error) {
                 console.error("Failed to load image path:", error);
             }
@@ -71,7 +70,7 @@ function ImageCard({ Image }: ImageCardProps) {
             thumbnailPath = memoizedImage.thumbnails["720p"];
         }
         
-        return thumbnailPath ? `atom://${thumbnailPath}` : "";
+        return thumbnailPath || "";
     };
 
     const thumbnailSrc = getThumbnailSrc();

@@ -69,13 +69,6 @@ func (m *Manager) Start(ctx context.Context) error {
 		go m.handleMonitorEvents()
 	}
 
-	// Load active monitor configuration from database
-	err = m.loadActiveMonitorFromDB()
-	if err != nil {
-		m.logger.Warn("Failed to load active monitor from database", "error", err)
-		// Continue without active monitor - it will be set when user selects one
-	}
-
 	// Load monitor state from JSON file if it exists (before refresh to preserve state)
 	if err := m.loadMonitorStateFromFile(); err != nil {
 		m.logger.Warn("Failed to load monitor state from file", "error", err)
@@ -102,12 +95,7 @@ func (m *Manager) StartWithConfig(ctx context.Context, imagesDir, thumbnailsDir,
 	m.thumbnailsDir = thumbnailsDir
 	m.monitorsStateFile = monitorsStateFile
 
-	// Load active monitor configuration from database
-	err := m.loadActiveMonitorFromDB()
-	if err != nil {
-		m.logger.Warn("Failed to load active monitor from database", "error", err)
-		// Continue without active monitor - it will be set when user selects one
-	}
+	// Directories are now created by the centralized config manager
 
 	// Load monitor state from JSON file if it exists (before refresh to preserve state)
 	if err := m.loadMonitorStateFromFile(); err != nil {
@@ -169,18 +157,6 @@ func (m *Manager) GetActiveMonitor() *models.ActiveMonitor {
 	}
 
 	return &activeMonitorCopy
-}
-
-// loadActiveMonitorFromDB is deprecated - we only use JSON store now
-func (m *Manager) loadActiveMonitorFromDB() error {
-	// Database mode removed - using JSON store/file persistence only
-	return nil
-}
-
-// saveActiveMonitorToDB is deprecated - we only use JSON store now
-func (m *Manager) saveActiveMonitorToDB() error {
-	// Database mode removed - using JSON store/file persistence only
-	return nil
 }
 
 // SetActiveMonitor sets the active monitor configuration

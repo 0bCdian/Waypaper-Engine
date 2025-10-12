@@ -1,4 +1,5 @@
 import { useMonitorStore } from "../stores/monitors";
+import { ThemeSelector } from "./ThemeSelector";
 
 declare global {
     interface Window {
@@ -11,7 +12,7 @@ declare global {
 const NavBar = () => {
     const { activeMonitor, reQueryMonitors } = useMonitorStore();
     return (
-        <div className="navbar mb-2 bg-base-100">
+        <div className="navbar mb-2 bg-base-100 theme-transition">
             <div className="navbar-start">
                 <div className="dropdown">
                     <label
@@ -69,7 +70,9 @@ const NavBar = () => {
                     </button>
                 }
             </div>
-            <div className="navbar-end"></div>
+            <div className="navbar-end">
+                <ThemeSelector className="mr-2" />
+            </div>
         </div>
     );
 };

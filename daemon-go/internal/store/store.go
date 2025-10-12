@@ -94,7 +94,9 @@ func NewStore(config StoreConfig, logger *slog.Logger) (*Store, error) {
 
 	// Initialize sequential ID manager from existing images
 	if err := store.sequentialIDManager.InitializeFromRegistry(); err != nil {
-		logger.Warn("Failed to initialize sequential ID manager from registry", "error", err)
+		if logger != nil {
+			logger.Warn("Failed to initialize sequential ID manager from registry", "error", err)
+		}
 		// Don't fail store creation for this
 	}
 

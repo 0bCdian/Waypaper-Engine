@@ -2,7 +2,10 @@ package cli
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
+	"waypaper-engine/daemon-go/internal/config"
 	"waypaper-engine/daemon-go/internal/ipc"
 	"waypaper-engine/daemon-go/internal/models"
 
@@ -27,7 +30,21 @@ func init() {
 }
 
 func runImageCmd(cmd *cobra.Command, args []string) {
-	client, err := ipc.NewClient()
+	// Get socket path from config
+	homeDir, err := os.UserHomeDir()
+	if err != nil {
+		fmt.Printf("Failed to get home directory: %v\n", err)
+		return
+	}
+	configPath := filepath.Join(homeDir, ".config", "waypaper-engine", "config.toml")
+	configManager := config.NewConfigManager(configPath)
+	socketPath, err := configManager.GetSocketPath()
+	if err != nil {
+		fmt.Printf("Failed to get socket path: %v\n", err)
+		return
+	}
+
+	client, err := ipc.NewClient(socketPath)
 	if err != nil {
 		fmt.Printf("Failed to connect to daemon: %v\n", err)
 		return
