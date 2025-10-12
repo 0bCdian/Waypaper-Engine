@@ -119,7 +119,7 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
                         <input
                             type="time"
                             ref={timeRef}
-                            className="input input-sm input-bordered mb-2 ml-1 rounded-md invalid:bg-red-800 focus:outline-none"
+                            className="input input-sm mb-2 ml-1 rounded-md invalid:bg-error focus:outline-hidden"
                             onChange={e => {
                                 const stringValue = e.currentTarget.value;
                                 const [hours, minutes] = stringValue.split(":");
@@ -144,7 +144,7 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
                         />
                     </div>
                 )}
-                <span className="h-full text-clip whitespace-nowrap font-bold text-stone-100 shadow-xl">
+                <span className="h-full text-clip whitespace-nowrap font-bold text-base-content shadow-xl">
                     {type === "dayofweek" ? text : undefined}
                 </span>
                 <div className="relative">
@@ -154,10 +154,9 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
                     >
                         <svg
                             xmlns="http://www.w3.org/2000/svg"
-                            className="h-5 w-5"
+                            className="h-5 w-5 stroke-error-content"
                             fill="none"
                             viewBox="0 0 24 24"
-                            stroke="#F3D8D2"
                         >
                             <path
                                 strokeLinecap="round"

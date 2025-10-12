@@ -77,7 +77,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
     ref
   ) => {
     // Base classes
-    const baseClasses = 'input w-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2';
+    const baseClasses = 'input w-full transition-all duration-200';
     
     // Variant classes
     const variantClasses = {
@@ -246,7 +246,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
     ref
   ) => {
     // Base classes
-    const baseClasses = 'textarea w-full transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2';
+    const baseClasses = 'textarea w-full transition-all duration-200';
     
     // Variant classes
     const variantClasses = {

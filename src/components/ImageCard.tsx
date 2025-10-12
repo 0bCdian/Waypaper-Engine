@@ -211,7 +211,7 @@ function ImageCard({ Image }: ImageCardProps) {
                     id={memoizedImage.name}
                     onChange={handleCheckboxChange}
                     type="checkbox"
-                    className="checkbox-success checkbox checkbox-sm absolute right-2 top-2 z-20 rounded-sm opacity-0 checked:opacity-100 group-hover:bg-success group-hover:opacity-100"
+                    className="checkbox-success checkbox checkbox-sm absolute right-2 top-2 z-20 rounded-xs opacity-0 checked:opacity-100 group-hover:opacity-100"
                 />
             </div>
             <div onDoubleClick={handleDoubleClick}>
@@ -229,13 +229,13 @@ function ImageCard({ Image }: ImageCardProps) {
                         currentTarget.src = imageSrc;
                     }}
                 />
-                <p className="absolute bottom-0 w-full overflow-hidden truncate text-ellipsis bg-black bg-opacity-75 p-2 pl-2 text-justify text-lg font-medium opacity-0 transition-all duration-300 group-hover:opacity-100">
+                <p className="absolute bottom-0 w-full overflow-hidden truncate text-ellipsis bg-base-content/75 p-2 pl-2 text-justify text-lg font-medium opacity-0 transition-all duration-300 group-hover:opacity-100 text-base-100">
                     {memoizedImage.name}
                 </p>
                 <div
                     data-selected={memoizedImage.selection?.isSelected ?? false}
                     id="overlay"
-                    className="absolute top-0 z-10 h-full w-full bg-blue-600 opacity-0 transition-all data-[selected=true]:opacity-45"
+                    className="absolute top-0 z-10 h-full w-full bg-primary opacity-0 transition-all data-[selected=true]:opacity-45"
                 ></div>
             </div>
         </motion.div>

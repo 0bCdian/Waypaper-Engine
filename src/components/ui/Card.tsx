@@ -56,7 +56,7 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(
     ref
   ) => {
     // Base classes
-    const baseClasses = 'card bg-base-100 rounded-lg transition-all duration-200';
+    const baseClasses = 'card bg-base-100 transition-all duration-200';
     
     // Variant classes
     const variantClasses = {

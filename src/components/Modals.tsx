@@ -6,7 +6,7 @@ import PlaylistConfigurationModal from "./PlaylistConfigurationModal";
 import { playlistStore } from "../stores/playlist";
 import { imagesStore } from "../stores/images";
 import AdvancedFiltersModal from "./AdvancedFiltersModal";
-import { useAppConfigStore } from "../stores/appConfig";
+import { useUnifiedConfigStore } from "../stores/unifiedConfig";
 import Monitors from "./monitorsModal";
 import { useMonitorStore } from "../stores/monitors";
 import { type DaemonPlaylistFromDB } from "../../shared/types/daemonEvents";
@@ -16,13 +16,13 @@ function Modals() {
     const [playlistsInDB, setPlaylistsInDB] = useState<DaemonPlaylistFromDB[]>(
         []
     );
-    const { appConfig, isSetup } = useAppConfigStore();
+    const { config } = useUnifiedConfigStore();
     const { setLastSavedMonitorConfig, reQueryMonitors } = useMonitorStore();
     useEffect(() => {
         if (alreadyShown) return;
         alreadyShown = true;
         void setLastSavedMonitorConfig().then(() => {
-            if (!isSetup || !appConfig.showMonitorModalOnStart) return;
+            if (!config || !config.app.show_monitor_modal_on_start) return;
             setTimeout(() => {
                 void reQueryMonitors().then(() => {
                     // @ts-expect-error daisy-ui

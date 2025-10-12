@@ -26,7 +26,7 @@ const PlaylistConfigurationModal = () => {
         containerRef.current?.close();
     };
     const classNameDisabled =
-        playlist.images.length > 7 ? "bg-red-900 text-stone-100" : "";
+        playlist.images.length > 7 ? "bg-error text-error-content" : "";
     const onSubmit: SubmitHandler<Inputs> = data => {
         switch (data.type) {
             case "timer":
@@ -197,7 +197,7 @@ const PlaylistConfigurationModal = () => {
                                     required: true,
                                     min: 0
                                 })}
-                                className="input input-sm input-bordered select-none rounded-lg text-lg font-medium focus:outline-none"
+                                className="input input-sm select-none rounded-lg text-lg font-medium focus:outline-hidden"
                             />
                         </div>
                         <div className="flex w-1/5 flex-col">
@@ -217,7 +217,7 @@ const PlaylistConfigurationModal = () => {
                                 {...register("minutes", {
                                     required: true
                                 })}
-                                className="input input-sm input-bordered select-none rounded-lg text-lg font-medium focus:outline-none"
+                                className="input input-sm select-none rounded-lg text-lg font-medium focus:outline-hidden"
                             />
                         </div>
                     </div>

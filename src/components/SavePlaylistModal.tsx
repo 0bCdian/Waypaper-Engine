@@ -100,7 +100,7 @@ const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
                     id="playlistName"
                     required
                     draggable={false}
-                    className="input input-md input-bordered mb-3 rounded-md text-lg"
+                    className="input input-md mb-3 rounded-md text-lg"
                     placeholder="Playlist Name"
                 />
                 <div className="divider"></div>

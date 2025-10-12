@@ -42,8 +42,8 @@ const AppConfiguration = () => {
                             void handleSubmit(onSubmit)(e);
                         }}
                     >
-                        <div className="max-h-[65dvh] min-h-0 overflow-y-scroll scrollbar-thin scrollbar-track-transparent scrollbar-thumb-neutral-300 scrollbar-thumb-rounded-sm">
-                            <div className="bg-red mx-10 my-6 flex justify-between gap-3">
+                        <div className="max-h-[65dvh] min-h-0 overflow-y-scroll scrollbar-thin scrollbar-track-transparent scrollbar-thumb-base-300 scrollbar-thumb-rounded-sm">
+                            <div className="bg-base-200 mx-10 my-6 flex justify-between gap-3">
                                 <label htmlFor="killDaemon" className="label">
                                     <span className="label-text text-3xl">
                                         Kill daemon on app exit

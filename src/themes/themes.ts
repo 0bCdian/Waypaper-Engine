@@ -20,6 +20,19 @@ export const DAISYUI_THEMES = [
 ];
 
 /**
+ * Custom CSS theme names
+ */
+export const CUSTOM_THEMES = [
+  'gruvbox', 'catppuccin', 'monokai', 'tokyo-night', 'everforest', 'gruvbox-material',
+  'gruvbox-light', 'catppuccin-light', 'monokai-light', 'tokyo-night-light', 'everforest-light', 'gruvbox-material-light'
+];
+
+/**
+ * All available themes (DaisyUI + Custom)
+ */
+export const ALL_THEMES = [...DAISYUI_THEMES, ...CUSTOM_THEMES];
+
+/**
  * Theme metadata for DaisyUI themes
  */
 const daisyUIThemeMetadata: Record<string, { displayName: string; description: string; category: 'light' | 'dark' | 'mixed' }> = {
@@ -40,7 +53,7 @@ const daisyUIThemeMetadata: Record<string, { displayName: string; description: s
   lofi: { displayName: 'Lo-Fi', description: 'Minimalist grayscale theme', category: 'light' },
   pastel: { displayName: 'Pastel', description: 'Soft pastel colors', category: 'light' },
   fantasy: { displayName: 'Fantasy', description: 'Magical purple theme', category: 'dark' },
-  wireframe: { displayName: 'Wireframe', description: 'Minimalist outline theme', category: 'light' },
+  wireframe: { displayName: 'Wireframe', description: 'Minimalist outline-solid theme', category: 'light' },
   black: { displayName: 'Black', description: 'Pure black theme', category: 'dark' },
   luxury: { displayName: 'Luxury', description: 'Elegant gold theme', category: 'dark' },
   dracula: { displayName: 'Dracula', description: 'Dark theme with vibrant accents', category: 'dark' },
@@ -55,6 +68,24 @@ const daisyUIThemeMetadata: Record<string, { displayName: string; description: s
   dim: { displayName: 'Dim', description: 'Subtle dark theme', category: 'dark' },
   nord: { displayName: 'Nord', description: 'Arctic-inspired theme', category: 'dark' },
   sunset: { displayName: 'Sunset', description: 'Warm sunset colors', category: 'light' }
+};
+
+/**
+ * Theme metadata for custom CSS themes
+ */
+const customThemeMetadata: Record<string, { displayName: string; description: string; category: 'light' | 'dark' | 'mixed' }> = {
+  gruvbox: { displayName: 'Gruvbox', description: 'Retro groove color scheme', category: 'dark' },
+  catppuccin: { displayName: 'Catppuccin', description: 'Soothing pastel theme', category: 'dark' },
+  monokai: { displayName: 'Monokai', description: 'Classic monokai color scheme', category: 'dark' },
+  'tokyo-night': { displayName: 'Tokyo Night', description: 'Clean dark theme inspired by Tokyo', category: 'dark' },
+  everforest: { displayName: 'Everforest', description: 'Low contrast, greenish dark theme', category: 'dark' },
+  'gruvbox-material': { displayName: 'Gruvbox Material', description: 'Material Design version of Gruvbox', category: 'dark' },
+  'gruvbox-light': { displayName: 'Gruvbox Light', description: 'Light version of retro groove colors', category: 'light' },
+  'catppuccin-light': { displayName: 'Catppuccin Light', description: 'Light version of soothing pastel theme', category: 'light' },
+  'monokai-light': { displayName: 'Monokai Light', description: 'Light version of classic monokai', category: 'light' },
+  'tokyo-night-light': { displayName: 'Tokyo Day', description: 'Light version inspired by Tokyo', category: 'light' },
+  'everforest-light': { displayName: 'Everforest Light', description: 'Light version with greenish tones', category: 'light' },
+  'gruvbox-material-light': { displayName: 'Gruvbox Material Light', description: 'Light Material Design Gruvbox', category: 'light' }
 };
 
 /**
@@ -79,12 +110,42 @@ function createDaisyUITheme(name: string): ThemeConfig {
 }
 
 /**
- * All available DaisyUI themes
+ * Create custom theme configuration
  */
-export const themes: Record<string, ThemeConfig> = DAISYUI_THEMES.reduce((acc, themeName) => {
-  acc[themeName] = createDaisyUITheme(themeName);
-  return acc;
-}, {} as Record<string, ThemeConfig>);
+function createCustomTheme(name: string): ThemeConfig {
+  const metadata = customThemeMetadata[name];
+  return {
+    name,
+    displayName: metadata?.displayName || name.charAt(0).toUpperCase() + name.slice(1),
+    description: metadata?.description || `Custom ${name} theme`,
+    category: metadata?.category || 'mixed',
+    colors: {}, // Custom CSS handles colors
+    fonts: {
+      primary: 'Inter, system-ui, sans-serif',
+      secondary: 'Inter, system-ui, sans-serif',
+      mono: 'JetBrains Mono, monospace',
+    },
+    available: true,
+    isCustom: true, // Flag to indicate this is a custom CSS theme
+  };
+}
+
+/**
+ * All available themes (DaisyUI + Custom)
+ */
+export const themes: Record<string, ThemeConfig> = {
+  // DaisyUI themes
+  ...DAISYUI_THEMES.reduce((acc, themeName) => {
+    acc[themeName] = createDaisyUITheme(themeName);
+    return acc;
+  }, {} as Record<string, ThemeConfig>),
+  
+  // Custom themes
+  ...CUSTOM_THEMES.reduce((acc, themeName) => {
+    acc[themeName] = createCustomTheme(themeName);
+    return acc;
+  }, {} as Record<string, ThemeConfig>)
+};
 
 /**
  * Default theme name

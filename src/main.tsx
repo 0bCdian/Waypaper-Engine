@@ -4,7 +4,7 @@ import App from "./App";
 import "./index.css";
 
 // Apply default theme immediately to prevent flash
-const defaultTheme = localStorage.getItem('waypaper-theme') || 'dark';
+const defaultTheme = localStorage.getItem('waypaper-theme') || 'gruvbox';
 document.documentElement.setAttribute('data-theme', defaultTheme);
 
 const root = document.getElementById("root");

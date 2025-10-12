@@ -52,7 +52,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
       <div className="flex h-screen">
         {/* Sidebar */}
         {showSidebar && (
-          <aside className="w-64 bg-base-200 border-r border-base-300 flex-shrink-0">
+          <aside className="w-64 bg-base-200 border-r border-base-300 shrink-0">
             {/* Sidebar content will be rendered by children */}
           </aside>
         )}
@@ -61,7 +61,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
         <div className="flex-1 flex flex-col min-w-0">
           {/* Header */}
           {showHeader && (
-            <header className="bg-base-100 border-b border-base-300 flex-shrink-0">
+            <header className="bg-base-100 border-b border-base-300 shrink-0">
               {/* Header content will be rendered by children */}
             </header>
           )}
@@ -73,7 +73,7 @@ export const AppLayout: React.FC<AppLayoutProps> = ({
           
           {/* Footer */}
           {showFooter && (
-            <footer className="bg-base-200 border-t border-base-300 flex-shrink-0 p-4">
+            <footer className="bg-base-200 border-t border-base-300 shrink-0 p-4">
               {/* Footer content will be rendered by children */}
             </footer>
           )}

@@ -54,7 +54,7 @@ export interface StoreWithPersistence {
 export function createBaseStore<T extends StoreState & StoreActions>(
   initialState: Omit<T, keyof StoreState | keyof StoreActions>
 ): StoreCreator<T> {
-  return (set, get) => ({
+  return (set, _get) => ({
     // Base state
     isLoading: false,
     error: null,
@@ -129,7 +129,7 @@ export class StoreValidator {
   /**
    * Validate store state
    */
-  static validateState<T>(state: T, schema: any): boolean {
+  static validateState<T>(state: T, _schema: any): boolean {
     try {
       // Basic validation - can be extended with a proper schema library
       return typeof state === 'object' && state !== null;

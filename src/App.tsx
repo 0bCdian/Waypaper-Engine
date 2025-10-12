@@ -1,7 +1,5 @@
 import { Routes, Route, HashRouter } from "react-router-dom";
 import Configuration from "./routes/Configuration";
-import Drawer from "./components/Drawer";
-import NavBar from "./components/NavBar";
 import Home from "./routes/Home";
 import Modals from "./components/Modals";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -12,6 +10,7 @@ import { useWindowBounds } from "./hooks/useWindowBounds";
 import useContextMenuEvents from "./hooks/useContextMenuEvents";
 import { ImageProcessingProgress } from "./components/ImageProcessingProgress";
 import ToastContainer from "./components/ToastContainer";
+import ModernAppLayout from "./components/layout/ModernAppLayout";
 
 const App = () => {
     useLoadAppConfig()();
@@ -19,19 +18,17 @@ const App = () => {
     useRealTimeImageProcessing();
     useWindowBounds();
     useContextMenuEvents();
-    
     return (
-        <ThemeProvider defaultTheme="dark" persist={true} syncWithSystem={true}>
+        <ThemeProvider defaultTheme="gruvbox" persist={true} syncWithSystem={true}>
             <HashRouter>
                 <ImageProcessingProgress />
                 <ToastContainer />
-                <Drawer>
-                    <NavBar />
+                <ModernAppLayout>
                     <Routes>
                         <Route path="/" element={<Home />} />
                         <Route path="/configuration" element={<Configuration />} />
                     </Routes>
-                </Drawer>
+                </ModernAppLayout>
                 <Modals />
             </HashRouter>
         </ThemeProvider>

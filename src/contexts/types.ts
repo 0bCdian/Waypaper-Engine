@@ -40,6 +40,9 @@ export interface ThemeContextType {
   systemTheme: 'light' | 'dark' | 'auto';
   isLoading: boolean;
   lastChanged?: number;
+  resetTheme: () => void;
+  getTheme: (name: string) => ThemeConfig | undefined;
+  hasTheme: (name: string) => boolean;
 }
 
 /**

@@ -10,15 +10,15 @@ import { useFilteredImages } from "./useFilteredImages";
 import { imagesStore } from "../stores/images";
 import { useHotkeys } from "react-hotkeys-hook";
 import { type rendererImage } from "../types/rendererTypes";
-import { useAppConfigStore } from "../stores/appConfig";
+import { useUnifiedConfigStore } from "../stores/unifiedConfig";
 import { playlistStore } from "../stores/playlist";
 import { type DaemonSetImagesPerPagePayload, type DaemonDeleteImageFromGalleryPayload } from "../../shared/types/daemonEvents";
 const ImageCard = lazy(async () => await import("../components/ImageCard"));
 const { goDaemon } = window.API_RENDERER;
 export function useImagePagination() {
-    const { appConfig } = useAppConfigStore();
+    const { config } = useUnifiedConfigStore();
     const { removeImagesFromPlaylist, addImagesToPlaylist } = playlistStore();
-    const [imagesPerPage, setImagesPerPage] = useState(appConfig.imagesPerPage);
+    const [imagesPerPage, setImagesPerPage] = useState(config?.app?.images_per_page ?? 20);
     const [currentPage, setCurrentPage] = useState<number>(1);
     const {
         filters,

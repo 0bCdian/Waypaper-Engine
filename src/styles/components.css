@@ -10,14 +10,14 @@
     overflow: hidden;
     border-radius: var(--radius-lg);
     transition: all var(--transition-normal);
-    background: hsl(var(--color-base));
-    border: 1px solid hsl(var(--color-neutral300));
+    background: hsl(var(--color-base-100));
+    border: 1px solid hsl(var(--color-base-300));
 }
 
 .image-card-enhanced:hover {
     transform: translateY(-4px);
     box-shadow: var(--shadow-xl);
-    border-color: hsl(var(--color-primary500));
+    border-color: hsl(var(--color-primary));
 }
 
 .image-card-enhanced::before {
@@ -28,8 +28,8 @@
     right: 0;
     bottom: 0;
     background: linear-gradient(135deg, 
-        hsl(var(--color-primary500) / 0.1), 
-        hsl(var(--color-secondary500) / 0.1)
+        hsl(var(--color-primary) / 0.1), 
+        hsl(var(--color-secondary) / 0.1)
     );
     opacity: 0;
     transition: opacity var(--transition-normal);
@@ -45,7 +45,7 @@
     bottom: 0;
     left: 0;
     right: 0;
-    background: linear-gradient(transparent, hsl(var(--color-base) / 0.9));
+    background: linear-gradient(transparent, hsl(var(--color-base-100) / 0.9));
     padding: 1rem;
     transform: translateY(100%);
     transition: transform var(--transition-normal);
@@ -78,8 +78,8 @@
 
 /* Filter panel enhancements */
 .filter-panel-enhanced {
-    background: hsl(var(--color-base));
-    border: 1px solid hsl(var(--color-neutral300));
+    background: hsl(var(--color-base-100));
+    border: 1px solid hsl(var(--color-base-300));
     border-radius: var(--radius-lg);
     padding: 1.5rem;
     margin-bottom: 2rem;
@@ -97,14 +97,14 @@
 .filter-panel-enhanced .filter-label {
     display: block;
     font-weight: 600;
-    color: hsl(var(--color-baseContent));
+    color: hsl(var(--color-base-content));
     margin-bottom: 0.5rem;
 }
 
 /* Playlist enhancements */
 .playlist-enhanced {
-    background: hsl(var(--color-base));
-    border: 1px solid hsl(var(--color-neutral300));
+    background: hsl(var(--color-base-100));
+    border: 1px solid hsl(var(--color-base-300));
     border-radius: var(--radius-lg);
     padding: 1rem;
     margin-bottom: 1rem;
@@ -112,7 +112,7 @@
 }
 
 .playlist-enhanced:hover {
-    border-color: hsl(var(--color-primary500));
+    border-color: hsl(var(--color-primary));
     box-shadow: var(--shadow-md);
 }
 
@@ -126,7 +126,7 @@
 .playlist-enhanced .playlist-title {
     font-size: 1.25rem;
     font-weight: 700;
-    color: hsl(var(--color-baseContent));
+    color: hsl(var(--color-base-content));
     margin: 0;
 }
 
@@ -139,12 +139,12 @@
 /* Modal enhancements */
 .modal-backdrop-enhanced {
     backdrop-filter: blur(4px);
-    background: hsl(var(--color-base) / 0.8);
+    background: hsl(var(--color-base-100) / 0.8);
 }
 
 .modal-content-enhanced {
-    background: hsl(var(--color-base));
-    border: 1px solid hsl(var(--color-neutral300));
+    background: hsl(var(--color-base-100));
+    border: 1px solid hsl(var(--color-base-300));
     border-radius: var(--radius-xl);
     box-shadow: var(--shadow-xl);
     max-height: 90vh;
@@ -153,8 +153,8 @@
 
 /* Toast enhancements */
 .toast-enhanced {
-    background: hsl(var(--color-base));
-    border: 1px solid hsl(var(--color-neutral300));
+    background: hsl(var(--color-base-100));
+    border: 1px solid hsl(var(--color-base-300));
     border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg);
     padding: 1rem;
@@ -181,9 +181,9 @@
 /* Loading states */
 .skeleton-enhanced {
     background: linear-gradient(90deg, 
-        hsl(var(--color-neutral200)), 
-        hsl(var(--color-neutral300)), 
-        hsl(var(--color-neutral200))
+        hsl(var(--color-base-200)), 
+        hsl(var(--color-base-300)), 
+        hsl(var(--color-base-200))
     );
     background-size: 200% 100%;
     animation: skeletonLoading 1.5s infinite;
@@ -201,7 +201,7 @@
 
 /* Progress bar enhancements */
 .progress-enhanced {
-    background: hsl(var(--color-neutral200));
+    background: hsl(var(--color-base-200));
     border-radius: var(--radius-full);
     overflow: hidden;
     height: 0.5rem;
@@ -209,8 +209,8 @@
 
 .progress-enhanced .progress-bar {
     background: linear-gradient(90deg, 
-        hsl(var(--color-primary500)), 
-        hsl(var(--color-secondary500))
+        hsl(var(--color-primary)), 
+        hsl(var(--color-secondary))
     );
     height: 100%;
     border-radius: var(--radius-full);
@@ -228,8 +228,8 @@
     bottom: 100%;
     left: 50%;
     transform: translateX(-50%);
-    background: hsl(var(--color-base));
-    color: hsl(var(--color-baseContent));
+    background: hsl(var(--color-base-100));
+    color: hsl(var(--color-base-content));
     padding: 0.5rem 0.75rem;
     border-radius: var(--radius-md);
     font-size: 0.875rem;
@@ -239,7 +239,7 @@
     transition: all var(--transition-normal);
     z-index: 1000;
     box-shadow: var(--shadow-lg);
-    border: 1px solid hsl(var(--color-neutral300));
+    border: 1px solid hsl(var(--color-base-300));
 }
 
 .tooltip-enhanced::after {
@@ -249,7 +249,7 @@
     left: 50%;
     transform: translateX(-50%) translateY(100%);
     border: 4px solid transparent;
-    border-top-color: hsl(var(--color-base));
+    border-top-color: hsl(var(--color-base-100));
     opacity: 0;
     visibility: hidden;
     transition: all var(--transition-normal);
@@ -308,31 +308,31 @@
 
 /* Dark mode specific enhancements */
 [data-theme="dark"] .image-card-enhanced {
-    border-color: hsl(var(--color-neutral600));
+    border-color: hsl(var(--color-base-300));
 }
 
 [data-theme="dark"] .image-card-enhanced:hover {
-    border-color: hsl(var(--color-primary400));
+    border-color: hsl(var(--color-primary));
 }
 
 [data-theme="dark"] .filter-panel-enhanced {
-    background: hsl(var(--color-base200));
-    border-color: hsl(var(--color-neutral600));
+    background: hsl(var(--color-base-200));
+    border-color: hsl(var(--color-base-300));
 }
 
 [data-theme="dark"] .playlist-enhanced {
-    background: hsl(var(--color-base200));
-    border-color: hsl(var(--color-neutral600));
+    background: hsl(var(--color-base-200));
+    border-color: hsl(var(--color-base-300));
 }
 
 [data-theme="dark"] .modal-content-enhanced {
-    background: hsl(var(--color-base200));
-    border-color: hsl(var(--color-neutral600));
+    background: hsl(var(--color-base-200));
+    border-color: hsl(var(--color-base-300));
 }
 
 [data-theme="dark"] .toast-enhanced {
-    background: hsl(var(--color-base200));
-    border-color: hsl(var(--color-neutral600));
+    background: hsl(var(--color-base-200));
+    border-color: hsl(var(--color-base-300));
 }
 
 /* Print styles */

@@ -7,6 +7,7 @@
 
 import React, { ReactNode } from 'react';
 import { cn } from '../../utils/cn';
+import SidebarToggleButton from './SidebarToggleButton';
 
 /**
  * Sidebar props interface
@@ -24,6 +25,8 @@ export interface SidebarProps extends React.HTMLAttributes<HTMLElement> {
   className?: string;
   /** Children content */
   children?: ReactNode;
+  /** Toggle handler */
+  onToggle?: () => void;
 }
 
 /**
@@ -36,6 +39,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   right = false,
   className,
   children,
+  onToggle,
   ...props
 }) => {
   // Width classes
@@ -47,7 +51,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
   
   // Sidebar classes
   const sidebarClasses = cn(
-    'sidebar bg-base-200 border-r border-base-300 flex-shrink-0 theme-transition',
+    'sidebar bg-base-200 border-r border-base-300 shrink-0 theme-transition relative',
     widthClasses[width],
     !open && 'hidden',
     right && 'border-l border-r-0',
@@ -56,6 +60,15 @@ export const Sidebar: React.FC<SidebarProps> = ({
   
   return (
     <aside className={sidebarClasses} {...props}>
+      {/* Toggle Button */}
+      {collapsible && onToggle && (
+        <SidebarToggleButton
+          collapsed={!open}
+          onToggle={onToggle}
+          right={right}
+        />
+      )}
+      
       <div className="flex flex-col h-full">
         {children}
       </div>
@@ -233,7 +246,7 @@ export const SidebarMenuItem: React.FC<SidebarMenuItemProps> = ({
       >
         <div className="flex items-center gap-3">
           {icon && (
-            <span className="flex-shrink-0">
+            <span className="shrink-0">
               {icon}
             </span>
           )}

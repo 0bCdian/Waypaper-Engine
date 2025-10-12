@@ -1,9 +1,353 @@
-/* Import theme styles */
-@import './styles/themes.css';
+/* Import Tailwind CSS v4 */
+@import "tailwindcss";
+
+/* Import DaisyUI v5 plugin */
+@plugin "daisyui";
 
 /* Import component styles */
 @import './styles/components.css';
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* Custom theme definitions - Using DaisyUI v5 variable names */
+[data-theme="gruvbox"] {
+  --color-primary: 251 73 52;
+  --color-primary-content: 251 241 199;
+  --color-secondary: 146 131 116;
+  --color-secondary-content: 251 241 199;
+  --color-accent: 250 189 47;
+  --color-accent-content: 40 40 40;
+  --color-neutral: 60 56 54;
+  --color-neutral-content: 235 219 178;
+  --color-base-100: 40 40 40;
+  --color-base-200: 60 56 54;
+  --color-base-300: 80 73 69;
+  --color-base-content: 235 219 178;
+  --color-info: 131 165 152;
+  --color-info-content: 40 40 40;
+  --color-success: 184 187 38;
+  --color-success-content: 40 40 40;
+  --color-warning: 250 189 47;
+  --color-warning-content: 40 40 40;
+  --color-error: 251 73 52;
+  --color-error-content: 251 241 199;
+}
+
+[data-theme="catppuccin"] {
+  --color-primary: 203 166 247;
+  --color-primary-content: 205 214 244;
+  --color-secondary: 166 173 200;
+  --color-secondary-content: 205 214 244;
+  --color-accent: 245 194 231;
+  --color-accent-content: 30 30 46;
+  --color-neutral: 49 50 68;
+  --color-neutral-content: 205 214 244;
+  --color-base-100: 30 30 46;
+  --color-base-200: 49 50 68;
+  --color-base-300: 69 71 90;
+  --color-base-content: 205 214 244;
+  --color-info: 137 180 250;
+  --color-info-content: 30 30 46;
+  --color-success: 166 227 161;
+  --color-success-content: 30 30 46;
+  --color-warning: 249 226 175;
+  --color-warning-content: 30 30 46;
+  --color-error: 243 139 168;
+  --color-error-content: 205 214 244;
+}
+
+[data-theme="monokai"] {
+  --color-primary: 249 38 114;
+  --color-primary-content: 248 248 242;
+  --color-secondary: 166 226 46;
+  --color-secondary-content: 248 248 242;
+  --color-accent: 230 219 116;
+  --color-accent-content: 39 40 34;
+  --color-neutral: 73 72 62;
+  --color-neutral-content: 248 248 242;
+  --color-base-100: 39 40 34;
+  --color-base-200: 73 72 62;
+  --color-base-300: 102 217 239;
+  --color-base-content: 248 248 242;
+  --color-info: 102 217 239;
+  --color-info-content: 39 40 34;
+  --color-success: 166 226 46;
+  --color-success-content: 39 40 34;
+  --color-warning: 230 219 116;
+  --color-warning-content: 39 40 34;
+  --color-error: 249 38 114;
+  --color-error-content: 248 248 242;
+}
+
+[data-theme="tokyo-night"] {
+  --color-primary: 122 162 247;
+  --color-primary-content: 169 177 214;
+  --color-secondary: 158 206 106;
+  --color-secondary-content: 169 177 214;
+  --color-accent: 187 154 247;
+  --color-accent-content: 26 27 38;
+  --color-neutral: 65 72 104;
+  --color-neutral-content: 169 177 214;
+  --color-base-100: 26 27 38;
+  --color-base-200: 65 72 104;
+  --color-base-300: 122 162 247;
+  --color-base-content: 169 177 214;
+  --color-info: 122 162 247;
+  --color-info-content: 26 27 38;
+  --color-success: 158 206 106;
+  --color-success-content: 26 27 38;
+  --color-warning: 224 175 104;
+  --color-warning-content: 26 27 38;
+  --color-error: 247 118 142;
+  --color-error-content: 169 177 214;
+}
+
+[data-theme="everforest"] {
+  --color-primary: 167 192 128;
+  --color-primary-content: 30 35 38;
+  --color-secondary: 127 187 179;
+  --color-secondary-content: 30 35 38;
+  --color-accent: 230 152 117;
+  --color-accent-content: 30 35 38;
+  --color-neutral: 55 65 72;
+  --color-neutral-content: 211 198 170;
+  --color-base-100: 30 35 38;
+  --color-base-200: 39 56 51;
+  --color-base-300: 46 56 60;
+  --color-base-content: 211 198 170;
+  --color-info: 127 187 179;
+  --color-info-content: 30 35 38;
+  --color-success: 167 192 128;
+  --color-success-content: 30 35 38;
+  --color-warning: 219 188 127;
+  --color-warning-content: 30 35 38;
+  --color-error: 230 126 128;
+  --color-error-content: 30 35 38;
+}
+
+[data-theme="gruvbox-material"] {
+  --color-primary: 184 187 38;
+  --color-primary-content: 40 40 40;
+  --color-secondary: 131 165 152;
+  --color-secondary-content: 40 40 40;
+  --color-accent: 250 189 47;
+  --color-accent-content: 40 40 40;
+  --color-neutral: 60 56 54;
+  --color-neutral-content: 235 219 178;
+  --color-base-100: 40 40 40;
+  --color-base-200: 60 56 54;
+  --color-base-300: 80 73 69;
+  --color-base-content: 235 219 178;
+  --color-info: 131 165 152;
+  --color-info-content: 40 40 40;
+  --color-success: 184 187 38;
+  --color-success-content: 40 40 40;
+  --color-warning: 250 189 47;
+  --color-warning-content: 40 40 40;
+  --color-error: 251 73 52;
+  --color-error-content: 251 241 199;
+}
+
+[data-theme="gruvbox-light"] {
+  --color-primary: 204 36 29;
+  --color-primary-content: 251 241 199;
+  --color-secondary: 146 131 116;
+  --color-secondary-content: 251 241 199;
+  --color-accent: 215 153 33;
+  --color-accent-content: 251 241 199;
+  --color-neutral: 146 131 116;
+  --color-neutral-content: 251 241 199;
+  --color-base-100: 251 241 199;
+  --color-base-200: 235 219 178;
+  --color-base-300: 213 196 161;
+  --color-base-content: 60 56 54;
+  --color-info: 69 133 136;
+  --color-info-content: 251 241 199;
+  --color-success: 184 187 38;
+  --color-success-content: 60 56 54;
+  --color-warning: 215 153 33;
+  --color-warning-content: 60 56 54;
+  --color-error: 204 36 29;
+  --color-error-content: 251 241 199;
+}
+
+[data-theme="catppuccin-light"] {
+  --color-primary: 137 180 250;
+  --color-primary-content: 30 30 46;
+  --color-secondary: 166 173 200;
+  --color-secondary-content: 30 30 46;
+  --color-accent: 245 194 231;
+  --color-accent-content: 30 30 46;
+  --color-neutral: 49 50 68;
+  --color-neutral-content: 30 30 46;
+  --color-base-100: 239 241 245;
+  --color-base-200: 230 233 239;
+  --color-base-300: 203 208 218;
+  --color-base-content: 30 30 46;
+  --color-info: 137 180 250;
+  --color-info-content: 30 30 46;
+  --color-success: 166 227 161;
+  --color-success-content: 30 30 46;
+  --color-warning: 249 226 175;
+  --color-warning-content: 30 30 46;
+  --color-error: 243 139 168;
+  --color-error-content: 30 30 46;
+}
+
+[data-theme="monokai-light"] {
+  --color-primary: 249 38 114;
+  --color-primary-content: 248 248 242;
+  --color-secondary: 166 226 46;
+  --color-secondary-content: 248 248 242;
+  --color-accent: 230 219 116;
+  --color-accent-content: 39 40 34;
+  --color-neutral: 73 72 62;
+  --color-neutral-content: 248 248 242;
+  --color-base-100: 248 248 242;
+  --color-base-200: 230 230 230;
+  --color-base-300: 212 212 212;
+  --color-base-content: 39 40 34;
+  --color-info: 102 217 239;
+  --color-info-content: 39 40 34;
+  --color-success: 166 226 46;
+  --color-success-content: 39 40 34;
+  --color-warning: 230 219 116;
+  --color-warning-content: 39 40 34;
+  --color-error: 249 38 114;
+  --color-error-content: 248 248 242;
+}
+
+[data-theme="tokyo-night-light"] {
+  --color-primary: 122 162 247;
+  --color-primary-content: 26 27 38;
+  --color-secondary: 158 206 106;
+  --color-secondary-content: 26 27 38;
+  --color-accent: 187 154 247;
+  --color-accent-content: 26 27 38;
+  --color-neutral: 65 72 104;
+  --color-neutral-content: 26 27 38;
+  --color-base-100: 218 224 254;
+  --color-base-200: 203 210 252;
+  --color-base-300: 188 194 250;
+  --color-base-content: 26 27 38;
+  --color-info: 122 162 247;
+  --color-info-content: 26 27 38;
+  --color-success: 158 206 106;
+  --color-success-content: 26 27 38;
+  --color-warning: 224 175 104;
+  --color-warning-content: 26 27 38;
+  --color-error: 247 118 142;
+  --color-error-content: 26 27 38;
+}
+
+[data-theme="everforest-light"] {
+  --color-primary: 167 192 128;
+  --color-primary-content: 30 35 38;
+  --color-secondary: 127 187 179;
+  --color-secondary-content: 30 35 38;
+  --color-accent: 230 152 117;
+  --color-accent-content: 30 35 38;
+  --color-neutral: 55 65 72;
+  --color-neutral-content: 30 35 38;
+  --color-base-100: 211 198 170;
+  --color-base-200: 195 181 152;
+  --color-base-300: 179 164 134;
+  --color-base-content: 30 35 38;
+  --color-info: 127 187 179;
+  --color-info-content: 30 35 38;
+  --color-success: 167 192 128;
+  --color-success-content: 30 35 38;
+  --color-warning: 219 188 127;
+  --color-warning-content: 30 35 38;
+  --color-error: 230 126 128;
+  --color-error-content: 30 35 38;
+}
+
+[data-theme="gruvbox-material-light"] {
+  --color-primary: 184 187 38;
+  --color-primary-content: 40 40 40;
+  --color-secondary: 131 165 152;
+  --color-secondary-content: 40 40 40;
+  --color-accent: 250 189 47;
+  --color-accent-content: 40 40 40;
+  --color-neutral: 60 56 54;
+  --color-neutral-content: 40 40 40;
+  --color-base-100: 251 241 199;
+  --color-base-200: 235 219 178;
+  --color-base-300: 213 196 161;
+  --color-base-content: 40 40 40;
+  --color-info: 131 165 152;
+  --color-info-content: 40 40 40;
+  --color-success: 184 187 38;
+  --color-success-content: 40 40 40;
+  --color-warning: 250 189 47;
+  --color-warning-content: 40 40 40;
+  --color-error: 251 73 52;
+  --color-error-content: 251 241 199;
+}
+
+/* Utility classes for theme transitions */
+.theme-transition {
+  transition: background-color 300ms ease-in-out,
+              color 300ms ease-in-out,
+              border-color 300ms ease-in-out,
+              box-shadow 300ms ease-in-out;
+}
+
+.theme-transition-fast {
+  transition: background-color 150ms ease-in-out,
+              color 150ms ease-in-out,
+              border-color 150ms ease-in-out,
+              box-shadow 150ms ease-in-out;
+}
+
+.theme-transition-slow {
+  transition: background-color 500ms ease-in-out,
+              color 500ms ease-in-out,
+              border-color 500ms ease-in-out,
+              box-shadow 500ms ease-in-out;
+}
+
+/* Theme-specific utility classes */
+.theme-dark {
+  color-scheme: dark;
+}
+
+.theme-light {
+  color-scheme: light;
+}
+
+/* Custom scrollbar styling for themes */
+.theme-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--color-base-300)) hsl(var(--color-base-200));
+}
+
+.theme-scrollbar::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.theme-scrollbar::-webkit-scrollbar-track {
+  background: hsl(var(--color-base-200));
+  border-radius: 0.5rem;
+}
+
+.theme-scrollbar::-webkit-scrollbar-thumb {
+  background: hsl(var(--color-base-300));
+  border-radius: 0.5rem;
+}
+
+.theme-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--color-base-content));
+}
+
+/* Focus ring styling for themes */
+.theme-focus-ring:focus {
+  outline: 2px solid hsl(var(--color-primary));
+  outline-offset: 2px;
+}
+
+/* Selection styling for themes */
+.theme-selection::selection {
+  background-color: hsl(var(--color-primary) / 0.2);
+  color: hsl(var(--color-base-content));
+}

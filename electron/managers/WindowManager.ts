@@ -249,7 +249,7 @@ export class WindowManager {
     });
 
     // Window blur
-    window.on('blur', () => {
+    window.on('blur-sm', () => {
       console.log(`Window blurred: ${id}`);
     });
 

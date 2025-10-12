@@ -28,7 +28,7 @@ function PaginatedGallery() {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.5 }}
-                className="m-auto flex max-h-[84vh] min-h-[86vh] flex-col justify-between gap-4 overflow-y-hidden transition focus:outline-none sm:w-[90%]"
+                className="m-auto flex max-h-[84vh] min-h-[86vh] flex-col justify-between gap-4 overflow-y-hidden transition focus:outline-hidden sm:w-[90%]"
                 onContextMenu={e => {
                     e.stopPropagation();
                     goDaemon.openContextMenu({
@@ -37,9 +37,9 @@ function PaginatedGallery() {
                     });
                 }}
             >
-                <div className="flex flex-col items-center overflow-y-scroll scrollbar-thin scrollbar-track-transparent scrollbar-thumb-neutral-300 scrollbar-thumb-rounded-sm">
+                <div className="flex flex-col items-center overflow-y-scroll scrollbar-thin scrollbar-track-transparent scrollbar-thumb-base-300 scrollbar-thumb-rounded-sm">
                     <div
-                        className={`m-auto [min-height:full] md:grid md:auto-cols-auto ${
+                        className={`m-auto min-h-[full] md:grid md:auto-cols-auto ${
                             imagesToShow.length === 1
                                 ? "items-center"
                                 : "md:w-full md:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]"

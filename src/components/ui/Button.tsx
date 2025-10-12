@@ -81,7 +81,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     // Base classes
-    const baseClasses = 'btn relative inline-flex items-center justify-center font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+    const baseClasses = 'btn relative inline-flex items-center justify-center font-medium transition-all duration-200 focus:outline-hidden focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
     
     // Variant classes
     const variantClasses = {
@@ -177,7 +177,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
           <>
             {/* Start icon */}
             {startIcon && (
-              <span className="mr-2 flex-shrink-0">
+              <span className="mr-2 shrink-0">
                 {startIcon}
               </span>
             )}
@@ -195,7 +195,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             
             {/* End icon */}
             {endIcon && (
-              <span className="ml-2 flex-shrink-0">
+              <span className="ml-2 shrink-0">
                 {endIcon}
               </span>
             )}
@@ -247,12 +247,11 @@ export interface ButtonGroupProps {
 
 export const ButtonGroup: React.FC<ButtonGroupProps> = ({
   children,
-  connected = false,
+  connected: _connected = false,
   className,
 }) => {
   const groupClasses = cn(
-    'btn-group',
-    connected && 'btn-group-connected',
+    // btn-group removed in DaisyUI 5 - use join instead
     className
   );
   

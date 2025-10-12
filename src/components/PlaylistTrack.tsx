@@ -190,7 +190,7 @@ function PlaylistTrack() {
                     </button>
                     <ul
                         tabIndex={0}
-                        className="menu dropdown-content z-[10] mb-1 w-52 rounded-box bg-base-100 p-2 shadow"
+                        className="menu dropdown-content z-10 mb-1 w-52 rounded-box bg-base-100 p-2 shadow-sm"
                     >
                         <li>
                             <a
@@ -315,7 +315,7 @@ function PlaylistTrack() {
                 collisionDetection={closestCorners}
             >
                 <SortableContext items={sortingCriteria}>
-                    <div className="flex overflow-y-hidden overflow-x-scroll rounded-lg scrollbar scrollbar-thumb-neutral-300 scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm sm:max-w-[90vw]">
+                    <div className="flex overflow-y-hidden overflow-x-scroll rounded-lg scrollbar scrollbar-thumb-base-300 scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm sm:max-w-[90vw]">
                         <AnimatePresence>{...playlistArray}</AnimatePresence>
                     </div>
                 </SortableContext>

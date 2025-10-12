@@ -157,7 +157,7 @@ export function MonitorComponent({
                 )}
                 <div
                     draggable={false}
-                    className="absolute left-0 top-0 bg-black bg-opacity-70 px-2 py-1 md:text-lg xl:text-3xl"
+                    className="absolute left-0 top-0 bg-base-content/70 px-2 py-1 md:text-lg xl:text-3xl text-base-100"
                 >
                     {monitor.name}
                 </div>

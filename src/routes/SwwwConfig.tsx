@@ -176,7 +176,7 @@ const SwwwConfig = () => {
                                 </label>
                                 <select
                                     id="resizeType"
-                                    className="select mt-3 w-full max-w-xs cursor-default rounded-md bg-[#323232] text-xl"
+                                    className="select mt-3 w-full max-w-xs cursor-default rounded-md bg-base-300 text-xl"
                                     {...register("resizeType")}
                                 >
                                     <option value={ResizeType.crop}>
@@ -213,7 +213,7 @@ const SwwwConfig = () => {
                                 <select
                                     id="filter"
                                     defaultValue={FilterType.Lanczos3}
-                                    className="select mt-3 w-full max-w-xs cursor-default rounded-md bg-[#323232] text-xl"
+                                    className="select mt-3 w-full max-w-xs cursor-default rounded-md bg-base-300 text-xl"
                                     {...register("filterType")}
                                 >
                                     <option>Lanczos3</option>
@@ -279,7 +279,7 @@ const SwwwConfig = () => {
                                 <select
                                     id="transition"
                                     defaultValue={"Simple"}
-                                    className="select mt-3 w-full max-w-xs cursor-default rounded-md bg-[#323232] text-xl"
+                                    className="select mt-3 w-full max-w-xs cursor-default rounded-md bg-base-300 text-xl"
                                     {...register("transitionType")}
                                 >
                                     <option value={"none"}>None</option>
@@ -338,7 +338,7 @@ const SwwwConfig = () => {
                                 </label>
                                 <input
                                     type="number"
-                                    className="input w-1/2 rounded-lg bg-[#323232] text-lg font-medium focus:outline-none"
+                                    className="input w-1/2 rounded-lg bg-base-300 text-lg font-medium focus:outline-hidden"
                                     step={1}
                                     defaultValue={3}
                                     min={1}
@@ -362,7 +362,7 @@ const SwwwConfig = () => {
                                 </label>
                                 <input
                                     type="number"
-                                    className="input w-1/2 rounded-lg bg-[#323232] text-lg font-medium focus:outline-none"
+                                    className="input w-1/2 rounded-lg bg-base-300 text-lg font-medium focus:outline-hidden"
                                     step={1}
                                     defaultValue={60}
                                     min={1}
@@ -401,7 +401,7 @@ const SwwwConfig = () => {
                                             return true;
                                         }
                                     })}
-                                    className="input w-1/2 rounded-lg bg-[#323232] text-lg font-medium focus:outline-none"
+                                    className="input w-1/2 rounded-lg bg-base-300 text-lg font-medium focus:outline-hidden"
                                 />
                             </div>
                             <div className="mt-6">
@@ -428,7 +428,7 @@ const SwwwConfig = () => {
                                 </label>
                                 <select
                                     id="transitionPositionType"
-                                    className="select mt-3 w-full max-w-xs cursor-default rounded-md bg-[#323232] text-xl"
+                                    className="select mt-3 w-full max-w-xs cursor-default rounded-md bg-base-300 text-xl"
                                     {...register("transitionPositionType")}
                                 >
                                     <option value="int">Integer</option>
@@ -440,7 +440,7 @@ const SwwwConfig = () => {
                                         id="transitionPosition"
                                         {...register("transitionPosition")}
                                         defaultValue={"center"}
-                                        className="select mt-3 w-full max-w-xs cursor-default rounded-md bg-[#323232] text-xl"
+                                        className="select mt-3 w-full max-w-xs cursor-default rounded-md bg-base-300 text-xl"
                                     >
                                         <option value="center">Center</option>
                                         <option value="top">Top</option>
@@ -464,7 +464,7 @@ const SwwwConfig = () => {
                                 {transitionPositionType === "int" && (
                                     <div className="mt-3 flex gap-3">
                                         <input
-                                            className="input w-1/2 rounded-lg bg-[#323232] text-lg font-medium focus:outline-none"
+                                            className="input w-1/2 rounded-lg bg-base-300 text-lg font-medium focus:outline-hidden"
                                             type="number"
                                             placeholder="X axis"
                                             step={1}
@@ -481,7 +481,7 @@ const SwwwConfig = () => {
                                             )}
                                         />
                                         <input
-                                            className="input w-1/2 rounded-lg bg-[#323232] text-lg font-medium focus:outline-none"
+                                            className="input w-1/2 rounded-lg bg-base-300 text-lg font-medium focus:outline-hidden"
                                             type="number"
                                             placeholder="Y axis"
                                             defaultValue={540}
@@ -503,7 +503,7 @@ const SwwwConfig = () => {
                                     <div className="mt-3 flex gap-3">
                                         <input
                                             id="floatX"
-                                            className="input w-1/2 rounded-lg bg-[#323232] text-lg font-medium focus:outline-none"
+                                            className="input w-1/2 rounded-lg bg-base-300 text-lg font-medium focus:outline-hidden"
                                             type="number"
                                             placeholder="Horizontal %"
                                             step={0.001}
@@ -525,7 +525,7 @@ const SwwwConfig = () => {
                                         />
                                         <input
                                             id="floatY"
-                                            className="input w-1/2 rounded-lg bg-[#323232] text-lg font-medium focus:outline-none"
+                                            className="input w-1/2 rounded-lg bg-base-300 text-lg font-medium focus:outline-hidden"
                                             type="number"
                                             placeholder="Vertical %"
                                             step={0.001}
@@ -584,7 +584,7 @@ const SwwwConfig = () => {
                                         type="text"
                                         defaultValue={".25,.1,.25,1"}
                                         placeholder="bezier"
-                                        className="input w-full rounded-lg bg-[#323232] text-lg font-medium focus:outline-none"
+                                        className="input w-full rounded-lg bg-base-300 text-lg font-medium focus:outline-hidden"
                                     />
                                 </div>
                                 <BezierCurveEditor
@@ -627,7 +627,7 @@ const SwwwConfig = () => {
                                         {...register("transitionWaveX", {
                                             valueAsNumber: true
                                         })}
-                                        className="input w-full rounded-lg bg-[#323232] text-lg font-medium focus:outline-none"
+                                        className="input w-full rounded-lg bg-base-300 text-lg font-medium focus:outline-hidden"
                                     />
                                     <input
                                         type="number"
@@ -638,7 +638,7 @@ const SwwwConfig = () => {
                                         {...register("transitionWaveY", {
                                             valueAsNumber: true
                                         })}
-                                        className="input w-full rounded-lg bg-[#323232] text-lg font-medium focus:outline-none"
+                                        className="input w-full rounded-lg bg-base-300 text-lg font-medium focus:outline-hidden"
                                     />
                                 </div>
                             </div>

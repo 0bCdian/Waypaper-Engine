@@ -17,7 +17,7 @@ if (window.API_RENDERER?.goDaemon?.testConnection) {
     console.log('🔍 appConfig: testConnection method not available');
 }
 
-const { goDaemon } = window.API_RENDERER;
+// const { goDaemon } = window.API_RENDERER; // Unused for now
 interface State {
     appConfig: appConfigType;
     isSetup: boolean;

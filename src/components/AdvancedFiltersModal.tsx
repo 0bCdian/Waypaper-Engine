@@ -97,7 +97,7 @@ const AdvancedFiltersModal = () => {
                                     value={"all"}
                                     type="radio"
                                     {...register("resolutionConstraint")}
-                                    className="radio checked:bg-blue-500"
+                                    className="radio checked:bg-primary"
                                 />
                             </label>
                         </div>
@@ -190,7 +190,7 @@ const AdvancedFiltersModal = () => {
                                 setFormatsValues(e.target.checked);
                             }}
                             type="checkbox"
-                            className="bg-neutral-focus h-5 w-9 appearance-none rounded-full shadow-inner transition-all duration-300 before:ml-0.5 before:inline-block before:h-4 before:w-4 before:rounded-full before:bg-blue-500 checked:bg-gray-300 checked:before:translate-x-full focus:outline-none"
+                            className="bg-neutral-focus h-5 w-9 appearance-none rounded-full shadow-inner transition-all duration-300 before:ml-0.5 before:inline-block before:h-4 before:w-4 before:rounded-full before:bg-primary checked:bg-primary checked:before:translate-x-full focus:outline-hidden"
                         />
                     </label>
                     <div className="form-control ml-10 max-h-[20vh] flex-wrap">

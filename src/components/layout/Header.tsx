@@ -81,8 +81,9 @@ export const Header: React.FC<HeaderProps> = ({
         
         {/* Title and subtitle */}
         <div className="ml-4">
-          <h1 className="text-xl font-bold text-base-content">
+          <h1 className="text-2xl font-bold ">
             {title}
+            hola
           </h1>
           {subtitle && (
             <p className="text-sm text-base-content/70">
