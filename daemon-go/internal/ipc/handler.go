@@ -521,8 +521,13 @@ func (h *Handler) handleGetPlaylists(msg *Message) *Response {
 	return &Response{Action: msg.Action, Data: []interface{}{}}
 }
 
-func (h *Handler) handlePing(_ *Message) *Response {
-	return &Response{Action: "pong", Data: "pong"}
+func (h *Handler) handlePing(msg *Message) *Response {
+	h.logger.Debug("ping received", "messageId", msg.MessageID)
+	return &Response{
+		Action:    "pong",
+		MessageID: msg.MessageID,
+		Data:      "pong",
+	}
 }
 
 // Image Operation Handlers

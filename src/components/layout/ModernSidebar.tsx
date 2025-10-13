@@ -8,7 +8,6 @@
 import React, { ReactNode } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '../../utils/cn';
-import SidebarToggleButton from './SidebarToggleButton';
 import { useUnifiedConfigStore } from '../../stores/unifiedConfig';
 import SidebarConfiguration from '../SidebarConfiguration';
 
@@ -34,57 +33,60 @@ export const ModernSidebar: React.FC<ModernSidebarProps> = ({
   const sidebarCollapsed = config?.app?.sidebar_collapsed ?? false;
   const isConfigurationPage = location.pathname === '/configuration';
 
-  const handleToggle = () => {
-    if (config) {
-      setConfigValue('app', 'sidebar_collapsed', !sidebarCollapsed);
-    }
-  };
-
   // Don't render if config is not loaded
   if (!config) {
     return null;
   }
 
+  const handleSidebarClose = () => {
+    if (!sidebarCollapsed) {
+      setConfigValue('app', 'sidebar_collapsed', true);
+    }
+  };
+
+  const handleNavigationClick = () => {
+    // Close sidebar when clicking on navigation elements
+    handleSidebarClose();
+  };
+
   const sidebarClasses = cn(
-    'bg-base-200 border-r border-base-300 shrink-0 theme-transition relative',
-    'flex flex-col h-full',
+    'bg-base-200 border-r border-base-300 theme-transition absolute',
+    'flex flex-col h-screen transition-all duration-300 ease-in-out',
+    'absolute left-0 top-0 z-40',
     sidebarCollapsed ? 'w-0 overflow-hidden' : 'w-64',
     className
   );
 
   return (
-    <aside className={sidebarClasses}>
-      {/* Toggle Button */}
-      <SidebarToggleButton
-        collapsed={sidebarCollapsed}
-        onToggle={handleToggle}
-        right={false}
-      />
+    <>
+      {/* Overlay/Backdrop for outside clicks */}
+      {!sidebarCollapsed && (
+        <div
+          className="fixed inset-0 bg-black/20 z-30 transition-opacity duration-300 ease-in-out"
+          onClick={handleSidebarClose}
+          aria-hidden="true"
+        />
+      )}
       
-      {/* Sidebar Content */}
-      <div className="flex flex-col h-[calc(100dvh)] p-4">
+      <aside className={sidebarClasses}>
+
+        {/* Sidebar Content */}
+        <div className={cn(
+          "flex flex-col h-[calc(100dvh)] p-4 transition-opacity duration-300 ease-in-out",
+          sidebarCollapsed ? "opacity-0" : "opacity-100"
+        )}>
         {isConfigurationPage ? (
           <SidebarConfiguration />
         ) : (
           <>
             {/* Header */}
             <div className="flex items-center gap-3 mb-6">
-              <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="24"
-                  height="24"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  className="text-primary-content"
-                >
-                  <rect width="18" height="18" x="3" y="3" rx="2" ry="2" />
-                  <path d="M9 9h6v6H9z" />
-                </svg>
+              <div className="w-12 h-12 rounded-lg overflow-hidden flex items-center justify-center">
+                <img 
+                  src="/app.png" 
+                  alt="Waypaper Engine" 
+                  className="w-full h-full object-contain"
+                />
               </div>
               <div className="flex flex-col">
                 <h1 className="text-xl font-bold text-base-content">Waypaper Engine</h1>
@@ -98,6 +100,7 @@ export const ModernSidebar: React.FC<ModernSidebarProps> = ({
                 <li>
                   <Link 
                     to="/" 
+                    onClick={handleNavigationClick}
                     className="flex items-center gap-3 p-3 rounded-lg hover:bg-base-300 transition-colors"
                   >
                     <svg
@@ -121,7 +124,8 @@ export const ModernSidebar: React.FC<ModernSidebarProps> = ({
                 </li>
                 <li>
                   <Link 
-                    to="/configuration" 
+                    to="/settings" 
+                    onClick={handleNavigationClick}
                     className="flex items-center gap-3 p-3 rounded-lg hover:bg-base-300 transition-colors"
                   >
                     <svg
@@ -150,7 +154,7 @@ export const ModernSidebar: React.FC<ModernSidebarProps> = ({
                 onClick={() => {
                   const quit = window.confirm("Are you sure you want to quit?");
                   if (quit) {
-                    window.API_RENDERER.goDaemon.stopDaemon();
+                    window.API_RENDERER.exitApp();
                   }
                 }}
                 className="btn btn-error btn-sm w-full"
@@ -175,8 +179,9 @@ export const ModernSidebar: React.FC<ModernSidebarProps> = ({
             </div>
           </>
         )}
-      </div>
-    </aside>
+        </div>
+      </aside>
+    </>
   );
 };
 

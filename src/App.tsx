@@ -1,6 +1,7 @@
 import { Routes, Route, HashRouter } from "react-router-dom";
 import Configuration from "./routes/Configuration";
 import Home from "./routes/Home";
+import Settings from "./routes/Settings";
 import Modals from "./components/Modals";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { useLoadAppConfig } from "./hooks/useLoadAppConfig";
@@ -27,6 +28,7 @@ const App = () => {
                     <Routes>
                         <Route path="/" element={<Home />} />
                         <Route path="/configuration" element={<Configuration />} />
+                        <Route path="/settings" element={<Settings />} />
                     </Routes>
                 </ModernAppLayout>
                 <Modals />

@@ -157,6 +157,15 @@ export class GoDaemonClient extends EventEmitter {
                     // Handle ping/pong
                     if (parsed.action === "pong") {
                         this.emit("pong");
+                        
+                        // Resolve any pending ping command
+                        const messageId = this.extractMessageId(parsed);
+                        if (messageId && this.pendingMessages.has(messageId)) {
+                            const { resolve } = this.pendingMessages.get(messageId)!;
+                            this.pendingMessages.delete(messageId);
+                            resolve(true); // Ping successful
+                        }
+                        
                         startIndex = endIndex;
                         continue;
                     }
@@ -494,14 +503,14 @@ export class GoDaemonClient extends EventEmitter {
 
 
     // Configuration commands
-    async getAppConfig(): Promise<unknown> {
+    async getConfig(): Promise<unknown> {
         return this.sendCommand("get_config") as Promise<unknown>;
     }
 
-    async setAppConfig(key: string, value: unknown): Promise<boolean> {
+    async setConfig(section: string, key: string, value: unknown): Promise<boolean> {
         return this.sendCommand("set_config", { 
             config: { 
-                configSection: "app",
+                configSection: section,
                 configKey: key,
                 configValue: value
             } 
@@ -510,22 +519,6 @@ export class GoDaemonClient extends EventEmitter {
 
     async getSwwwConfig(): Promise<DaemonSwwwConfig> {
         return this.sendCommand("get_swww_config") as Promise<DaemonSwwwConfig>;
-    }
-
-    async setSwwwConfig(config: DaemonSwwwConfig): Promise<boolean> {
-        // Set each swww config property individually
-        const promises = Object.entries(config).map(([key, value]) => 
-            this.sendCommand("set_config", { 
-                config: { 
-                    configSection: "backend",
-                    configKey: `swww.${key}`,
-                    configValue: value
-                } 
-            })
-        );
-        
-        const results = await Promise.all(promises);
-        return results.every(result => result === true);
     }
 
     // Image processing

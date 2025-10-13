@@ -2,11 +2,9 @@ import { ipcRenderer } from "electron";
 import type { 
     JsonStoreImage, 
     DaemonPlaylist,
-    DaemonAppConfig,
     DaemonSwwwConfig
 } from "../shared/types/daemon";
 import type { ActiveMonitor } from "../shared/types/monitor";
-import type { UnifiedConfig, ConfigChangeEvent } from "../shared/types/unifiedConfig";
 
 export interface GoDaemonRendererClient {
     // Playlist operations
@@ -31,18 +29,12 @@ export interface GoDaemonRendererClient {
     processForMonitors(imageId: number, activeMonitor: ActiveMonitor): Promise<boolean>;
 
     // Unified configuration
-    getConfig(): Promise<UnifiedConfig>;
+    getConfig(): Promise<unknown>;
     setConfig(section: string, key: string, value: unknown): Promise<boolean>;
     
-    // Event listening
-    onConfigChanged(callback: (data: ConfigChangeEvent) => void): void;
-    offConfigChanged(callback: (data: ConfigChangeEvent) => void): void;
 
     // Configuration
-    getAppConfig(): Promise<DaemonAppConfig>;
-    setAppConfig(key: string, value: unknown): Promise<boolean>;
     getSwwwConfig(): Promise<DaemonSwwwConfig>;
-    setSwwwConfig(config: DaemonSwwwConfig): Promise<boolean>;
 
     // Monitor operations
     getMonitors(): Promise<unknown>;
@@ -173,9 +165,6 @@ class GoDaemonRendererClientImpl implements GoDaemonRendererClient {
         });
     }
 
-    async getMonitorImage(monitorName: string): Promise<string> {
-        return ipcRenderer.invoke("go-daemon-command", "get_monitor_image", { monitorName });
-    }
 
     // Playlist operations
     async savePlaylist(playlist: unknown): Promise<boolean> {
@@ -196,28 +185,20 @@ class GoDaemonRendererClientImpl implements GoDaemonRendererClient {
     }
 
     // Unified configuration methods
-    getConfig = async (): Promise<UnifiedConfig> => {
+    getConfig = async (): Promise<unknown> => {
         return ipcRenderer.invoke("go-daemon-command", "get_config");
     }
 
     setConfig = async (section: string, key: string, value: unknown): Promise<boolean> => {
         return ipcRenderer.invoke("go-daemon-command", "set_config", {
-            Config: {
-                ConfigSection: section,
-                ConfigKey: key,
-                ConfigValue: value
+            config: {
+                configSection: section,
+                configKey: key,
+                configValue: value
             }
         });
     }
 
-    // Event listening for config changes
-    onConfigChanged = (callback: (data: ConfigChangeEvent) => void): void => {
-        ipcRenderer.on("go-daemon-event-config_changed", (_, data) => callback(data));
-    }
-
-    offConfigChanged = (callback: (data: ConfigChangeEvent) => void): void => {
-        ipcRenderer.off("go-daemon-event-config_changed", callback);
-    }
     // Monitor operations
     async getMonitors(): Promise<unknown> {
         return ipcRenderer.invoke("go-daemon-command", "get_monitors");
@@ -231,7 +212,10 @@ class GoDaemonRendererClientImpl implements GoDaemonRendererClient {
         return ipcRenderer.invoke("go-daemon-command", "get_selected_monitor");
     }
 
-    // Frontend config operations
+    // Configuration
+    async getSwwwConfig(): Promise<DaemonSwwwConfig> {
+        return ipcRenderer.invoke("go-daemon-command", "get_swww_config");
+    }
 
     // System
     async ping(): Promise<boolean> {

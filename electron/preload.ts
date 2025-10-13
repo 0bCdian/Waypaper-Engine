@@ -44,10 +44,10 @@ const electronAPI = {
     // Unified configuration
     getConfig: () => ipcRenderer.invoke("go-daemon-command", "get_config"),
     setConfig: (section: string, key: string, value: unknown) => ipcRenderer.invoke("go-daemon-command", "set_config", {
-      Config: {
-        ConfigSection: section,
-        ConfigKey: key,
-        ConfigValue: value
+      config: {
+        configSection: section,
+        configKey: key,
+        configValue: value
       }
     }),
     
@@ -110,9 +110,24 @@ const electronAPI = {
   hideWindow: () => ipcRenderer.invoke('hide-window'),
   showWindow: () => ipcRenderer.invoke('show-window'),
   
+  // Application control
+  exitApp: () => ipcRenderer.invoke('exit-app'),
+  
+  // Daemon management
+  getDaemonStatus: () => ipcRenderer.invoke('get-daemon-status'),
+  restartDaemon: () => ipcRenderer.invoke('restart-daemon'),
+  startDaemon: () => ipcRenderer.invoke('start-daemon'),
+  stopDaemon: () => ipcRenderer.invoke('stop-daemon'),
+  
   // Event listeners
   onAppError: (callback: (error: any) => void) => {
     ipcRenderer.on('app-error', (_, error) => callback(error));
+  },
+  onDaemonStatusUpdate: (callback: (data: any) => void) => {
+    ipcRenderer.on('daemon-status-update', (_, data) => callback(data));
+  },
+  offDaemonStatusUpdate: (callback: (data: any) => void) => {
+    ipcRenderer.removeListener('daemon-status-update', callback);
   },
   removeAllListeners: (channel: string) => {
     ipcRenderer.removeAllListeners(channel);

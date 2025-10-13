@@ -19,6 +19,7 @@ export { useToastStore } from './toastStore';
 
 // Settings store (new)
 export { useSettingsStore } from './settings';
+export { useSettingsStore as useUnifiedSettingsStore } from './settingsStore';
 
 // Store utilities
 export { createStore } from './utils/createStore';

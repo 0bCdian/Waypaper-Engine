@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import ThemeManager from './managers/ThemeManager';
 import WindowManager from './managers/WindowManager';
 import IPCManager from './managers/IPCManager';
+import { daemonMonitor } from './managers/DaemonMonitor';
 
 // Go daemon client
 import { goDaemonClient } from './goDaemonClient';
@@ -41,7 +42,7 @@ function createMainWindow(): void {
       height: APP_CONFIG.defaultHeight,
       minWidth: APP_CONFIG.minWidth,
       minHeight: APP_CONFIG.minHeight,
-      backgroundColor: '#1f2937', // Default dark background
+      backgroundColor: '#323232', // Default dark background
       frame: false, // Always hide the frame for a clean look
       titleBarStyle: 'hidden', // Hide the title bar
     webPreferences: {
@@ -65,6 +66,7 @@ function createMainWindow(): void {
 
   // Register with managers
   ipcManager.registerWindow(mainWindow);
+  daemonMonitor.registerWindow(mainWindow);
 }
 
 /**
@@ -81,6 +83,9 @@ async function initializeApp(): Promise<void> {
     // Initialize IPC manager
     ipcManager = new IPCManager();
     ipcManager.initialize();
+
+    // Initialize daemon monitor
+    daemonMonitor.startMonitoring(5000); // Check every 5 seconds instead of 1 second
 
     // Initialize and start the daemon
     try {
@@ -110,18 +115,15 @@ function setupAppEvents(): void {
   // App ready
   app.whenReady().then(async () => {
     try {
-      // Hide the menu bar completely
-      Menu.setApplicationMenu(null);
-      
-      // Register global shortcut to toggle menu bar (Ctrl+Shift+M)
+      // Register global shortcuts
       globalShortcut.register('CommandOrControl+Shift+M', () => {
         const menu = Menu.getApplicationMenu();
         if (menu) {
-          Menu.setApplicationMenu(null);
+          Menu.setApplicationMenu(menu);
           console.log('Menu bar hidden');
         } else {
           // Create a minimal menu for development
-          const template = [
+          const template: Electron.MenuItemConstructorOptions[] = [
             {
               label: 'File',
               submenu: [
@@ -148,6 +150,23 @@ function setupAppEvents(): void {
           console.log('Menu bar shown (development mode)');
         }
       });
+
+      // Development shortcuts
+      if (process.env.NODE_ENV === 'development') {
+        // Ctrl+Shift+I for DevTools
+        globalShortcut.register('CommandOrControl+Shift+I', () => {
+          if (mainWindow) {
+            mainWindow.webContents.toggleDevTools();
+          }
+        });
+
+        // Ctrl+R for reload
+        globalShortcut.register('CommandOrControl+R', () => {
+          if (mainWindow) {
+            mainWindow.reload();
+          }
+        });
+      }
       
       await initializeApp();
       createMainWindow();

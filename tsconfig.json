@@ -24,7 +24,17 @@
         "allowUmdGlobalAccess": true,
         "declarationMap": true,
         "composite": true,
-        "outDir": "dist"
+        "outDir": "dist",
+        /* Path mapping */
+        "baseUrl": ".",
+        "paths": {
+            "@/*": ["src/*"],
+            "@/components/*": ["src/components/*"],
+            "@/utils/*": ["src/utils/*"],
+            "@/stores/*": ["src/stores/*"],
+            "@/shared/*": ["shared/*"],
+            "@/types/*": ["src/types/*", "types/*"]
+        }
     },
     "skipLibCheck": true,
     "include": ["src/**/*.ts", "src/**/*.tsx", "electron/**/*.ts", "shared/**/*.ts", "types/**/*.ts", "utils/**/*.ts", "database/**/*.ts", "globals/**/*.ts", "drizzle.config.ts"],

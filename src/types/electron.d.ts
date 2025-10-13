@@ -25,11 +25,24 @@ declare global {
         getImages: (filters?: unknown) => Promise<JsonStoreImage[]>;
         getPlaylists: () => Promise<DaemonPlaylist[]>;
         getMonitors: () => Promise<DaemonMonitor[]>;
+        stopDaemon: () => Promise<boolean>;
         // Add other methods as needed
       };
       // File operations
       openFiles: (action: string) => Promise<{ success: boolean; files: string[]; error?: string }>;
       handleOpenImages: (imagesObject: unknown) => Promise<{ success: boolean; message?: string; error?: string }>;
+      // Application control
+      exitApp: () => Promise<boolean>;
+      // Daemon management
+      getDaemonStatus: () => Promise<{ isRunning: boolean; lastChecked: number; lastError?: string; uptime?: number; version?: string }>;
+      restartDaemon: () => Promise<{ success: boolean; error?: string }>;
+      startDaemon: () => Promise<{ success: boolean; error?: string }>;
+      stopDaemon: () => Promise<{ success: boolean; error?: string }>;
+      // Event listeners
+      onAppError: (callback: (error: any) => void) => void;
+      onDaemonStatusUpdate: (callback: (data: any) => void) => void;
+      offDaemonStatusUpdate: (callback: (data: any) => void) => void;
+      removeAllListeners: (channel: string) => void;
       // Add other API methods as needed
     };
   }

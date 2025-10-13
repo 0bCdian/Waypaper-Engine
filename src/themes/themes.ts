@@ -99,7 +99,18 @@ function createDaisyUITheme(name: string): ThemeConfig {
     displayName: metadata?.displayName || name.charAt(0).toUpperCase() + name.slice(1),
     description: metadata?.description || `DaisyUI ${name} theme`,
     category: metadata?.category || 'mixed',
-    colors: {}, // DaisyUI handles colors internally
+    colors: {
+      primary: '',
+      secondary: '',
+      accent: '',
+      neutral: '',
+      base: '',
+      baseContent: '',
+      info: '',
+      success: '',
+      warning: '',
+      error: ''
+    }, // DaisyUI handles colors internally
     fonts: {
       primary: 'Inter, system-ui, sans-serif',
       secondary: 'Inter, system-ui, sans-serif',
@@ -120,14 +131,24 @@ function createCustomTheme(name: string): ThemeConfig {
     displayName: metadata?.displayName || name.charAt(0).toUpperCase() + name.slice(1),
     description: metadata?.description || `Custom ${name} theme`,
     category: metadata?.category || 'mixed',
-    colors: {}, // Custom CSS handles colors
+    colors: {
+      primary: '',
+      secondary: '',
+      accent: '',
+      neutral: '',
+      base: '',
+      baseContent: '',
+      info: '',
+      success: '',
+      warning: '',
+      error: ''
+    }, // Custom CSS handles colors
     fonts: {
       primary: 'Inter, system-ui, sans-serif',
       secondary: 'Inter, system-ui, sans-serif',
       mono: 'JetBrains Mono, monospace',
     },
     available: true,
-    isCustom: true, // Flag to indicate this is a custom CSS theme
   };
 }
 

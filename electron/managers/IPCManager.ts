@@ -4,8 +4,9 @@
  * Centralized IPC handler management for better organization and error handling.
  */
 
-import { ipcMain, BrowserWindow, dialog } from 'electron';
+import { ipcMain, BrowserWindow, dialog, app } from 'electron';
 import { goDaemonClient } from '../goDaemonClient';
+import { daemonMonitor } from './DaemonMonitor';
 import type { JsonStoreImage } from '../shared/types/daemon';
 
 export interface IPCHandler {
@@ -156,6 +157,51 @@ export class IPCManager {
         return true;
       },
       description: 'Set window bounds',
+    });
+
+    // Exit app handler
+    this.registerHandler({
+      channel: 'exit-app',
+      handler: async () => {
+        return await this.handleExitApp();
+      },
+      description: 'Handle clean application exit',
+    });
+
+    // Daemon status handler
+    this.registerHandler({
+      channel: 'get-daemon-status',
+      handler: async () => {
+        return daemonMonitor.getStatus();
+      },
+      description: 'Get current daemon status',
+    });
+
+    // Daemon restart handler
+    this.registerHandler({
+      channel: 'restart-daemon',
+      handler: async () => {
+        return await daemonMonitor.restartDaemon();
+      },
+      description: 'Restart the daemon',
+    });
+
+    // Daemon start handler
+    this.registerHandler({
+      channel: 'start-daemon',
+      handler: async () => {
+        return await daemonMonitor.startDaemon();
+      },
+      description: 'Start the daemon',
+    });
+
+    // Daemon stop handler
+    this.registerHandler({
+      channel: 'stop-daemon',
+      handler: async () => {
+        return await daemonMonitor.stopDaemon();
+      },
+      description: 'Stop the daemon',
     });
   }
 
@@ -540,6 +586,14 @@ export class IPCManager {
           );
         
         // Configuration
+        case 'get_config':
+          return await goDaemonClient.getConfig();
+        case 'set_config':
+          return await goDaemonClient.setConfig(
+            (payload as any)?.config?.configSection || '',
+            (payload as any)?.config?.configKey || '',
+            (payload as any)?.config?.configValue
+          );
         case 'get_app_config':
           return await goDaemonClient.getAppConfig();
         case 'set_app_config':
@@ -590,8 +644,8 @@ export class IPCManager {
       this.broadcastToAllWindows('go-daemon-event-playlist_updated', data);
     });
     
-    goDaemonClient.on('config_updated', (data) => {
-      this.broadcastToAllWindows('go-daemon-event-config_updated', data);
+    goDaemonClient.on('config_changed', (data) => {
+      this.broadcastToAllWindows('go-daemon-event-config_changed', data);
     });
     
     goDaemonClient.on('images_updated', (data) => {
@@ -693,6 +747,49 @@ export class IPCManager {
    */
   getHandlerCount(): number {
     return this.handlers.size;
+  }
+
+  /**
+   * Handle clean application exit
+   */
+  private async handleExitApp(): Promise<boolean> {
+    try {
+      console.log('🔄 IPCManager: Handling clean application exit...');
+      
+      // Get the current configuration to check if we should stop the daemon
+      const config = await goDaemonClient.getConfig();
+      const shouldStopDaemon = config?.app?.kill_daemon_on_exit ?? false;
+      
+      if (shouldStopDaemon) {
+        console.log('🔄 IPCManager: Stopping daemon on exit...');
+        await goDaemonClient.stopDaemon();
+        console.log('✅ IPCManager: Daemon stopped successfully');
+      } else {
+        console.log('ℹ️ IPCManager: Keeping daemon running on exit');
+      }
+      
+      // Close all windows gracefully
+      console.log('🔄 IPCManager: Closing all windows...');
+      this.windows.forEach(window => {
+        if (!window.isDestroyed()) {
+          window.close();
+        }
+      });
+      
+      // Quit the application
+      console.log('🔄 IPCManager: Quitting application...');
+      app.quit();
+      
+      return true;
+    } catch (error) {
+      console.error('❌ IPCManager: Error during application exit:', error);
+      
+      // Force quit even if there's an error
+      console.log('🔄 IPCManager: Force quitting application...');
+      app.quit();
+      
+      return false;
+    }
   }
 
   /**

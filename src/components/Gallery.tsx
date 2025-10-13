@@ -10,15 +10,15 @@ function Gallery() {
     useLoadImages()();
     if (isEmpty && isQueried)
         return (
-            <div className="m-auto flex flex-col items-center justify-center sm:h-[90dvh]">
+            <div className="h-full flex flex-col items-center justify-center p-4">
                 <AddImagesCard />
             </div>
         );
     return (
-        <>
+        <div className="h-full flex flex-col">
             <Filters />
             <PaginatedGallery />
-        </>
+        </div>
     );
 }
 

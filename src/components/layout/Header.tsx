@@ -56,7 +56,7 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Left side */}
       <div className="navbar-start">
         {/* Sidebar toggle */}
-        {showSidebarToggle && (
+    
           <button
             className="btn btn-ghost btn-sm"
             onClick={onSidebarToggle}
@@ -77,7 +77,7 @@ export const Header: React.FC<HeaderProps> = ({
               />
             </svg>
           </button>
-        )}
+        
         
         {/* Title and subtitle */}
         <div className="ml-4">

@@ -9,6 +9,7 @@ import React, { ReactNode } from 'react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { cn } from '../../utils/cn';
 import ModernSidebar from './ModernSidebar';
+import NavBar from './NavBar';
 import { useUnifiedConfigStore } from '../../stores/unifiedConfig';
 import ThemeSelector from '../ThemeSelector';
 /**
@@ -33,9 +34,6 @@ export interface ModernAppLayoutProps {
 export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({
   children,
   className,
-  showSidebar = true,
-  showHeader = true,
-  showFooter = false,
 }) => {
   const { currentTheme, isDarkMode } = useTheme();
   const { config } = useUnifiedConfigStore();
@@ -51,7 +49,7 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({
   
   // Main container classes
   const containerClasses = cn(
-    'min-h-screen theme-transition flex',
+    'h-screen theme-transition relative overflow-hidden',
     isDarkMode ? 'theme-dark' : 'theme-light',
     className
   );
@@ -61,40 +59,13 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({
       className={containerClasses}
       data-theme={currentTheme}
     >
-      {/* Sidebar */}
-      {showSidebar && <ModernSidebar />}
-      
-      {/* Main content area */}
-      <div className="flex-1 flex flex-col min-w-0">
-        {/* Header */}
-        <ThemeSelector/>
-        {showHeader && (
-          <header className="bg-base-100 border-b border-base-300 shrink-0 p-4">
-            <div className="flex items-center justify-between">
-              <h1 className="text-xl font-semibold text-base-content">
-                Waypaper Engine
-              </h1>
-              <div className="flex items-center gap-2">
-                {/* Theme selector or other header controls can go here */}
-              </div>
-            </div>
-          </header>
-        )}
-        
-        {/* Main content */}
-        <main className="flex-1 overflow-hidden bg-base-100">
-          {children}
-        </main>
-        
-        {/* Footer */}
-        {showFooter && (
-          <footer className="bg-base-200 border-t border-base-300 shrink-0 p-4">
-            <div className="text-center text-sm text-base-content/70">
-              <p>© 2024 Waypaper Engine - Wallpaper Management Made Easy</p>
-            </div>
-          </footer>
-        )}
-      </div>
+        <ModernSidebar />
+        <div className="flex flex-col h-full w-full">
+          <NavBar />
+          <main className="flex-1 overflow-hidden bg-base-100">
+            {children}
+          </main>
+        </div>
     </div>
   );
 };
