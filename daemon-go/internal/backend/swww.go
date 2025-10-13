@@ -68,12 +68,14 @@ func (s *SwwwBackend) SetWallpaper(ctx context.Context, imagePath, monitorName s
 	args = s.addConfigArgs(args, config)
 
 	// Use exec.Command directly to avoid shell escaping issues
+	s.logger.Debug("swww command", "args", args, "imagePath", imagePath, "monitorName", monitorName)
 	cmd := exec.Command("swww", args...)
 	var stdout, stderr bytes.Buffer
 	cmd.Stdout = &stdout
 	cmd.Stderr = &stderr
 	err := cmd.Run()
 	if err != nil {
+		s.logger.Error("swww command failed", "args", args, "stdout", stdout.String(), "stderr", stderr.String(), "error", err)
 		return fmt.Errorf("failed to set wallpaper: %w, output: %s", err, stderr.String())
 	}
 

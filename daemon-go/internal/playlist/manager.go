@@ -120,7 +120,33 @@ func (m *Manager) PreviousImage(ctx context.Context, monitorName string) error {
 // SetImage sets a specific image
 func (m *Manager) SetImage(ctx context.Context, monitorName string, imageID int64) error {
 	m.logger.Info("SetImage called", "monitor", monitorName, "imageID", imageID)
-	return errors.New(errors.SystemError, "SetImage not fully implemented")
+
+	// Get image from store
+	registry, err := m.store.LoadImageRegistry()
+	if err != nil {
+		return fmt.Errorf("failed to load image registry: %w", err)
+	}
+
+	var image *store.Image
+	for _, img := range registry.Images {
+		if img.ID == imageID {
+			image = &img
+			break
+		}
+	}
+
+	if image == nil {
+		return fmt.Errorf("image with ID %d not found", imageID)
+	}
+
+	// Set wallpaper using the wallpaper setter
+	err = m.wallpaperSetter.SetWallpaper(ctx, image.Path, monitorName)
+	if err != nil {
+		return fmt.Errorf("failed to set wallpaper: %w", err)
+	}
+
+	m.logger.Info("SetImage completed", "monitor", monitorName, "imageID", imageID, "imagePath", image.Path)
+	return nil
 }
 
 // RandomImage sets a random image

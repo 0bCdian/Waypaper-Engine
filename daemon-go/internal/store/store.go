@@ -133,7 +133,7 @@ func (s *Store) loadJSON(filePath string, target interface{}) error {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return fmt.Errorf("file not found: %s", filePath)
+			return err // Return the original os.IsNotExist error
 		}
 		return fmt.Errorf("failed to read file %s: %w", filePath, err)
 	}
@@ -358,4 +358,9 @@ func getCacheKeys(cache map[string]interface{}) []string {
 // LoadImageRegistry loads the image registry using the image store
 func (s *Store) LoadImageRegistry() (*ImageRegistry, error) {
 	return s.imageStore.LoadImageRegistry()
+}
+
+// GetSequentialIDManager returns the sequential ID manager
+func (s *Store) GetSequentialIDManager() *SequentialIDManager {
+	return s.sequentialIDManager
 }

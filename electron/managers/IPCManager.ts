@@ -5,6 +5,7 @@
  */
 
 import { ipcMain, BrowserWindow, dialog, app } from 'electron';
+import { join, resolve } from 'path';
 import { goDaemonClient } from '../goDaemonClient';
 import { daemonMonitor } from './DaemonMonitor';
 import type { JsonStoreImage } from '../shared/types/daemon';
@@ -477,11 +478,13 @@ export class IPCManager {
 
       // Convert main image path (only if not already atom:)
       if (convertedImage.path && typeof convertedImage.path === 'string' && !convertedImage.path.startsWith('atom:')) {
-        // Handle absolute paths properly - use atom: for absolute paths to avoid triple slashes
+        // Handle absolute paths properly - use atom:// for absolute paths
         if (convertedImage.path.startsWith('/')) {
-          convertedImage.path = `atom:${convertedImage.path}`;
+          convertedImage.path = `atom://${convertedImage.path.substring(1)}`;
         } else {
-          convertedImage.path = `atom://${convertedImage.path}`;
+          // For relative paths, expand to absolute first
+          const absolutePath = resolve(convertedImage.path);
+          convertedImage.path = `atom://${absolutePath.substring(1)}`;
         }
       }
 
@@ -492,11 +495,13 @@ export class IPCManager {
         Object.keys(convertedImage.thumbnails).forEach(key => {
           const thumbnailPath = convertedImage.thumbnails[key as keyof typeof convertedImage.thumbnails];
           if (thumbnailPath && typeof thumbnailPath === 'string' && !thumbnailPath.startsWith('atom:')) {
-            // Handle absolute paths properly - use atom: for absolute paths to avoid triple slashes
+            // Handle absolute paths properly - use atom:// for absolute paths
             if (thumbnailPath.startsWith('/')) {
-              convertedImage.thumbnails[key as keyof typeof convertedImage.thumbnails] = `atom:${thumbnailPath}`;
+              convertedImage.thumbnails[key as keyof typeof convertedImage.thumbnails] = `atom://${thumbnailPath.substring(1)}`;
             } else {
-              convertedImage.thumbnails[key as keyof typeof convertedImage.thumbnails] = `atom://${thumbnailPath}`;
+              // For relative paths, expand to absolute first
+              const absolutePath = resolve(thumbnailPath);
+              convertedImage.thumbnails[key as keyof typeof convertedImage.thumbnails] = `atom://${absolutePath.substring(1)}`;
             }
           }
         });

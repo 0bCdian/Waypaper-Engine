@@ -346,7 +346,14 @@ func (p *ParallelImageProcessor) storeImageInDatabase(job *ImageProcessingJob, m
 		}
 	}
 
+	// Get next sequential ID
+	nextID, err := p.store.GetSequentialIDManager().GetNextID()
+	if err != nil {
+		return fmt.Errorf("failed to get next ID: %w", err)
+	}
+
 	storeImage := &store.Image{
+		ID:        nextID,
 		Name:      job.UniqueName,
 		Path:      filepath.Join(p.cacheDir, job.UniqueName),
 		MediaType: "image", // Default to image type

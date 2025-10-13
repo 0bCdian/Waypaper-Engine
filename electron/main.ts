@@ -1,5 +1,6 @@
-import { app, BrowserWindow, Menu, globalShortcut } from 'electron';
+import { app, BrowserWindow, Menu, globalShortcut, protocol } from 'electron';
 import { join } from 'node:path';
+import { readFile } from 'fs/promises';
 
 // Managers
 import ThemeManager from './managers/ThemeManager';
@@ -83,6 +84,23 @@ async function initializeApp(): Promise<void> {
     // Initialize IPC manager
     ipcManager = new IPCManager();
     ipcManager.initialize();
+
+    // Register custom atom:// protocol for file access
+    protocol.registerFileProtocol('atom', (request, callback) => {
+      const url = request.url;
+      // Remove the atom:// prefix and convert back to file path
+      const filePath = url.replace('atom://', '/');
+      
+      // Check if file exists and is accessible
+      readFile(filePath)
+        .then(() => {
+          callback({ path: filePath });
+        })
+        .catch((error) => {
+          console.error('Failed to access file:', filePath, error);
+          callback({ error: -6 }); // ERR_FILE_NOT_FOUND
+        });
+    });
 
     // Initialize daemon monitor
     daemonMonitor.startMonitoring(5000); // Check every 5 seconds instead of 1 second
