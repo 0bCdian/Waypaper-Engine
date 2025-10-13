@@ -1,0 +1,153 @@
+---
+description: Apply TypeScript type definitions when writing code to ensure type safety, self-documentation, and prevent runtime errors
+globs: *.ts, *.tsx
+alwaysApply: false
+---
+# TypeScript Best Practices
+
+## Context
+
+- Apply when writing TypeScript and JavaScript code
+- Encourages strict mode and modern JS
+
+## Requirements
+
+### TypeScript Configuration
+
+- Enable strict mode in `tsconfig.json` to catch more potential errors
+- Target modern JavaScript features (at least ES2020) for better performance
+- Use module resolution NodeNext for compatibility with modern ESM packages
+- Configure paths aliases for cleaner imports across the codebase
+
+### Type Definitions
+
+- Define explicit return types for all functions and methods
+- Avoid `any` type unless absolutely necessary; use `unknown` instead
+- Create comprehensive type definitions for component props
+- Use TypeScript utility types (`Partial<T>`, `Required<T>`, `Pick<T>`, etc.) to manipulate existing types
+
+### Type Safety
+
+- Use discriminated unions for complex state management
+- Implement exhaustive type checking with never
+- Apply proper nullability handling with optional chaining and nullish coalescing
+
+### Type Organization
+
+- Create dedicated types directory for shared type definitions
+- Co-locate component-specific types with their components
+- Export types from barrel files for better organization:
+
+  <example>
+
+  ```ts
+  // types/index.ts
+  export * from './user'
+  export * from './auth'
+  ```
+
+  </example>
+
+### API Type Safety
+
+- Define robust API response types for backend communication
+- Use Zod for runtime type validation
+- Implement proper error typing for API error responses
+
+### Type Comments and Documentation
+
+- Document complex types with JSDoc comments for better IDE support
+- Add examples for non-obvious type usage
+- Include constraints and assumptions in type comments
+
+## Examples
+
+<example>
+
+```ts
+// ESM imports
+import { useState } from 'react'
+
+// Discriminated unions for complex state management
+type FetchState<T> =
+  | { status: 'idle' }
+  | { status: 'loading' }
+  | { status: 'success'; data: T }
+  | { status: 'error'; error: Error }
+
+// Unknown type with type narrowing
+function processData(data: unknown): string {
+  if (typeof data === 'string') {
+    return data.toUpperCase()
+  }
+  return String(data)
+}
+
+// Const assertions for literal types
+const config = {
+  apiUrl: 'https://api.example.com',
+  timeout: 5000,
+  features: ['auth', 'notifications'] as const
+} as const
+
+// Nullish coalescing
+const value = userInput ?? defaultValue
+
+// Proper promise handling
+async function fetchData() {
+  try {
+    const response = await fetch('/api/data')
+    return await response.json()
+  } catch (error) {
+    throw new Error(
+      `Failed to fetch data: ${
+        error instanceof Error ? error.message : String(error)
+      }`
+    )
+  }
+}
+
+// Optional chaining
+const userName = user?.profile?.name
+
+// Array literal syntax
+const items: string[] = []
+
+// Readonly props
+type ButtonProps = {
+  readonly label: string
+  readonly onClick(): void
+}
+```
+
+</example>
+
+<example type="invalid">
+
+```ts
+// ❌ Avoid CommonJS
+const React = require('react')
+
+// ❌ Avoid any
+function processData(data: any): string {
+  return data.toString()
+}
+
+// ❌ Avoid non-null assertions
+const element = document.getElementById('app')!
+
+// ❌ Avoid using || for nullish values
+const value = userInput || defaultValue
+
+// ❌ Avoid throwing non-Error objects
+throw 'Something went wrong'
+
+// ❌ Avoid unhandled promises
+fetch('/api/data').then(res => res.json())
+
+// ❌ Avoid generic Array constructor
+const items = new Array<string>()
+
+// ❌ Avoid string concatenation with different types
+const id = 'user-' + 123
+```
