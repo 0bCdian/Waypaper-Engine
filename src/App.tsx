@@ -19,7 +19,7 @@ const App = () => {
     useWindowBounds();
     useContextMenuEvents();
     return (
-        <ThemeProvider defaultTheme="gruvbox" persist={true} syncWithSystem={true}>
+        <ThemeProvider defaultTheme="business" persist={true} syncWithSystem={true}>
             <HashRouter>
                 <ImageProcessingProgress />
                 <ToastContainer />

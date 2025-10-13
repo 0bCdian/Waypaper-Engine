@@ -23,6 +23,7 @@ export const DAISYUI_THEMES = [
  * Custom CSS theme names
  */
 export const CUSTOM_THEMES = [
+  'doublezombie',
   'gruvbox', 'catppuccin', 'monokai', 'tokyo-night', 'everforest', 'gruvbox-material',
   'gruvbox-light', 'catppuccin-light', 'monokai-light', 'tokyo-night-light', 'everforest-light', 'gruvbox-material-light'
 ];

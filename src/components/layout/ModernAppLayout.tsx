@@ -10,7 +10,7 @@ import { useTheme } from '../../contexts/ThemeContext';
 import { cn } from '../../utils/cn';
 import ModernSidebar from './ModernSidebar';
 import { useUnifiedConfigStore } from '../../stores/unifiedConfig';
-
+import ThemeSelector from '../ThemeSelector';
 /**
  * Modern App Layout props interface
  */
@@ -67,6 +67,7 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({
       {/* Main content area */}
       <div className="flex-1 flex flex-col min-w-0">
         {/* Header */}
+        <ThemeSelector/>
         {showHeader && (
           <header className="bg-base-100 border-b border-base-300 shrink-0 p-4">
             <div className="flex items-center justify-between">

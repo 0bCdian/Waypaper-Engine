@@ -2,6 +2,7 @@ import { defineConfig } from "vite";
 import electron from "vite-plugin-electron";
 import renderer from "vite-plugin-electron-renderer";
 import react from "@vitejs/plugin-react";
+import tailwindcss from '@tailwindcss/vite';
 // CommonJS plugin no longer needed
 // https://vitejs.dev/config/
 export default defineConfig({
@@ -11,6 +12,7 @@ export default defineConfig({
     },
     plugins: [
         react(),
+        tailwindcss(),
         electron([
             {
                 // Main-Process entry file of the Electron App.
