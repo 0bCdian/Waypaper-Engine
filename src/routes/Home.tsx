@@ -4,20 +4,20 @@ import { useEffect } from "react";
 let firstRender = true;
 const goDaemon = window.API_RENDERER.goDaemon;
 const Home = () => {
-    const { config, loadConfig } = useUnifiedConfigStore();
-    
-    useEffect(() => {
-        if (!firstRender) return;
-        firstRender = false;
-        goDaemon.on("config_updated", () => {
-            void loadConfig();
-        });
-    }, [loadConfig]);
+	const { config, loadConfig } = useUnifiedConfigStore();
 
-    if (!config) {
-        return null;
-    }
-    return <Gallery />;
+	useEffect(() => {
+		if (!firstRender) return;
+		firstRender = false;
+		goDaemon.on("config_updated", () => {
+			void loadConfig();
+		});
+	}, [loadConfig]);
+
+	if (!config) {
+		return null;
+	}
+	return <Gallery />;
 };
 
 export default Home;

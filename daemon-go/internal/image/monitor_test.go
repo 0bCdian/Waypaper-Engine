@@ -32,7 +32,7 @@ func TestProcessForMonitors(t *testing.T) {
 	}{
 		{
 			name:               "Extend across monitors",
-			activeMonitor:      &monitor.ActiveMonitor{Name: "Test", Monitors: monitors, ExtendAcrossMonitors: true},
+			activeMonitor:      &monitor.ActiveMonitor{Name: "Test", Monitors: monitors, ImageSetType: "extend"},
 			expectError:        false,
 			expectedImageCount: 2,
 			expectedWidths:     []int{1920, 1920},
@@ -40,7 +40,7 @@ func TestProcessForMonitors(t *testing.T) {
 		},
 		{
 			name:               "Duplicate on each monitor",
-			activeMonitor:      &monitor.ActiveMonitor{Name: "Test", Monitors: monitors, ExtendAcrossMonitors: false},
+			activeMonitor:      &monitor.ActiveMonitor{Name: "Test", Monitors: monitors, ImageSetType: "clone"},
 			expectError:        false,
 			expectedImageCount: 2,
 			expectedWidths:     []int{1920, 1920},

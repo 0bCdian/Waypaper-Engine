@@ -90,7 +90,7 @@ func (h *HyprpaperBackend) GetDefaultConfig() *BackendConfig {
 		BackendType: BackendHyprpaper,
 		ResizeType:  "fit",
 		FillColor:   "#000000",
-		CustomOptions: map[string]interface{}{
+		CustomOptions: map[string]any{
 			"preload": true, // hyprpaper benefits from preloading
 		},
 	}
@@ -110,12 +110,4 @@ func (h *HyprpaperBackend) StopDaemon(ctx context.Context) error {
 // IsDaemonRunning implementation for hyprpaper backend
 func (h *HyprpaperBackend) IsDaemonRunning() bool {
 	return false
-}
-
-type hyprMonitor struct {
-	Name   string `json:"name"`
-	Width  int    `json:"width"`
-	Height int    `json:"height"`
-	X      int    `json:"x"`
-	Y      int    `json:"y"`
 }

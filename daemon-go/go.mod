@@ -6,8 +6,6 @@ require (
 	github.com/BurntSushi/toml v1.5.0
 	github.com/chai2010/webp v1.4.0
 	github.com/disintegration/imaging v1.6.2
-	github.com/mattn/go-sqlite3 v1.14.32
-	github.com/rwcarlsen/goexif v0.0.0-20190401172101-9e8deecbddbd
 	github.com/spf13/cobra v1.10.1
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/image v0.31.0

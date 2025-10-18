@@ -1,120 +1,120 @@
 /**
  * Theme Manager for Electron Main Process
- * 
+ *
  * Handles theme synchronization between Electron and the renderer process.
  */
 
-import { nativeTheme, ipcMain, BrowserWindow } from 'electron';
+import { nativeTheme, ipcMain, BrowserWindow } from "electron";
 
 export class ThemeManager {
-  private windows: Set<BrowserWindow> = new Set();
-  private isInitialized = false;
+	private windows: Set<BrowserWindow> = new Set();
+	private isInitialized = false;
 
-  /**
-   * Initialize the theme manager
-   */
-  initialize(): void {
-    if (this.isInitialized) return;
+	/**
+	 * Initialize the theme manager
+	 */
+	initialize(): void {
+		if (this.isInitialized) return;
 
-    this.setupNativeThemeHandling();
-    this.setupIPC();
-    this.isInitialized = true;
+		this.setupNativeThemeHandling();
+		this.setupIPC();
+		this.isInitialized = true;
 
-    console.log('Theme Manager initialized');
-  }
+		("Theme Manager initialized");
+	}
 
-  /**
-   * Register a window for theme updates
-   */
-  registerWindow(window: BrowserWindow): void {
-    this.windows.add(window);
-    
-    // Send current theme to the new window
-    this.sendThemeUpdate(window);
-  }
+	/**
+	 * Register a window for theme updates
+	 */
+	registerWindow(window: BrowserWindow): void {
+		this.windows.add(window);
 
-  /**
-   * Unregister a window
-   */
-  unregisterWindow(window: BrowserWindow): void {
-    this.windows.delete(window);
-  }
+		// Send current theme to the new window
+		this.sendThemeUpdate(window);
+	}
 
-  /**
-   * Setup native theme handling
-   */
-  private setupNativeThemeHandling(): void {
-    nativeTheme.on('updated', () => {
-      this.broadcastThemeUpdate();
-    });
-  }
+	/**
+	 * Unregister a window
+	 */
+	unregisterWindow(window: BrowserWindow): void {
+		this.windows.delete(window);
+	}
 
-  /**
-   * Setup IPC handlers
-   * Note: IPC handlers are now managed by IPCManager
-   */
-  private setupIPC(): void {
-    // Listen for theme changes from renderer
-    ipcMain.on('theme-changed', (_, themeName: string) => {
-      console.log(`Theme changed to: ${themeName}`);
-      // Could sync with system theme if needed
-    });
-  }
+	/**
+	 * Setup native theme handling
+	 */
+	private setupNativeThemeHandling(): void {
+		nativeTheme.on("updated", () => {
+			this.broadcastThemeUpdate();
+		});
+	}
 
-  /**
-   * Send theme update to a specific window
-   */
-  private sendThemeUpdate(window: BrowserWindow): void {
-    if (window.isDestroyed()) return;
+	/**
+	 * Setup IPC handlers
+	 * Note: IPC handlers are now managed by IPCManager
+	 */
+	private setupIPC(): void {
+		// Listen for theme changes from renderer
+		ipcMain.on("theme-changed", (_, themeName: string) => {
+			`Theme changed to: ${themeName}`;
+			// Could sync with system theme if needed
+		});
+	}
 
-    const themeInfo = {
-      shouldUseDarkColors: nativeTheme.shouldUseDarkColors,
-      shouldUseHighContrastColors: nativeTheme.shouldUseHighContrastColors,
-      shouldUseInvertedColorScheme: nativeTheme.shouldUseInvertedColorScheme,
-      themeSource: nativeTheme.themeSource,
-      timestamp: Date.now(),
-    };
+	/**
+	 * Send theme update to a specific window
+	 */
+	private sendThemeUpdate(window: BrowserWindow): void {
+		if (window.isDestroyed()) return;
 
-    window.webContents.send('native-theme-updated', themeInfo);
-  }
+		const themeInfo = {
+			shouldUseDarkColors: nativeTheme.shouldUseDarkColors,
+			shouldUseHighContrastColors: nativeTheme.shouldUseHighContrastColors,
+			shouldUseInvertedColorScheme: nativeTheme.shouldUseInvertedColorScheme,
+			themeSource: nativeTheme.themeSource,
+			timestamp: Date.now(),
+		};
 
-  /**
-   * Broadcast theme update to all registered windows
-   */
-  private broadcastThemeUpdate(): void {
-    this.windows.forEach(window => {
-      this.sendThemeUpdate(window);
-    });
-  }
+		window.webContents.send("native-theme-updated", themeInfo);
+	}
 
-  /**
-   * Get current native theme info
-   */
-  getNativeThemeInfo() {
-    return {
-      shouldUseDarkColors: nativeTheme.shouldUseDarkColors,
-      shouldUseHighContrastColors: nativeTheme.shouldUseHighContrastColors,
-      shouldUseInvertedColorScheme: nativeTheme.shouldUseInvertedColorScheme,
-      themeSource: nativeTheme.themeSource,
-    };
-  }
+	/**
+	 * Broadcast theme update to all registered windows
+	 */
+	private broadcastThemeUpdate(): void {
+		this.windows.forEach((window) => {
+			this.sendThemeUpdate(window);
+		});
+	}
 
-  /**
-   * Set theme source
-   */
-  setThemeSource(source: 'system' | 'light' | 'dark'): void {
-    nativeTheme.themeSource = source;
-    this.broadcastThemeUpdate();
-  }
+	/**
+	 * Get current native theme info
+	 */
+	getNativeThemeInfo() {
+		return {
+			shouldUseDarkColors: nativeTheme.shouldUseDarkColors,
+			shouldUseHighContrastColors: nativeTheme.shouldUseHighContrastColors,
+			shouldUseInvertedColorScheme: nativeTheme.shouldUseInvertedColorScheme,
+			themeSource: nativeTheme.themeSource,
+		};
+	}
 
-  /**
-   * Cleanup
-   */
-  cleanup(): void {
-    this.windows.clear();
-    this.isInitialized = false;
-    console.log('Theme Manager cleaned up');
-  }
+	/**
+	 * Set theme source
+	 */
+	setThemeSource(source: "system" | "light" | "dark"): void {
+		nativeTheme.themeSource = source;
+		this.broadcastThemeUpdate();
+	}
+
+	/**
+	 * Cleanup
+	 */
+	cleanup(): void {
+		this.windows.clear();
+		this.isInitialized = false;
+		("Theme Manager cleaned up");
+	}
 }
 
 export default ThemeManager;

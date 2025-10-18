@@ -8,63 +8,59 @@ import { useRef } from "react";
 const { goDaemon } = window.API_RENDERER;
 
 function PaginatedGallery() {
-    const {
-        imagesToShow,
-        handlePageChange,
-        currentPage,
-        totalPages,
-        selectedImages
-    } = useImagePagination();
-    const ref = useRef<HTMLDivElement>(null);
-    return (
-        <AnimatePresence>
-            <motion.div
-                ref={ref}
-                onHoverStart={() => {
-                    ref.current?.focus();
-                }}
-                tabIndex={-1}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.5 }}
-                className="h-full flex flex-col justify-between gap-4 overflow-y-auto transition focus:outline-hidden p-4"
-                onContextMenu={e => {
-                    e.stopPropagation();
-                    goDaemon.openContextMenu({
-                        Image: undefined,
-                        selectedImagesLength: selectedImages.size
-                    });
-                }}
-            >
-                <div className="flex flex-col items-center overflow-y-scroll scrollbar-thin scrollbar-track-transparent scrollbar-thumb-base-300 scrollbar-thumb-rounded-sm">
-                    <div
-                        className={`m-auto min-h-[full] md:grid md:auto-cols-auto ${
-                            imagesToShow.length === 1
-                                ? "items-center"
-                                : "md:w-full md:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]"
-                        }`}
-                    >
-                        {imagesToShow}
-                    </div>
-                </div>
-                <div className="flex w-full flex-col justify-between gap-12 pt-3">
-                    <div className="w-[75%] self-center">
-                        <ResponsivePagination
-                            total={totalPages}
-                            previousClassName="rounded_button_previous"
-                            nextClassName="rounded_button_next"
-                            current={currentPage}
-                            onPageChange={(page: number) => {
-                                handlePageChange(page);
-                            }}
-                        />
-                    </div>
-                    <PlaylistTrack />
-                </div>
-            </motion.div>
-        </AnimatePresence>
-    );
+	const {
+		imagesToShow,
+		handlePageChange,
+		currentPage,
+		totalPages,
+	} = useImagePagination();
+	const ref = useRef<HTMLDivElement>(null);
+	return (
+		<AnimatePresence>
+			<motion.div
+				ref={ref}
+				onHoverStart={() => {
+					ref.current?.focus();
+				}}
+				tabIndex={-1}
+				initial={{ opacity: 0 }}
+				animate={{ opacity: 1 }}
+				exit={{ opacity: 0 }}
+				transition={{ duration: 0.5 }}
+				className="h-full flex flex-col justify-between gap-4 overflow-y-auto transition focus:outline-hidden p-4"
+				onContextMenu={(e) => {
+					e.stopPropagation();
+					goDaemon.openContextMenu(0, 0);
+				}}
+			>
+				<div className="flex flex-col items-center overflow-y-scroll scrollbar-thin scrollbar-track-transparent scrollbar-thumb-base-300 scrollbar-thumb-rounded-sm">
+					<div
+						className={`m-auto min-h-[full] md:grid md:auto-cols-auto ${
+							imagesToShow.length === 1
+								? "items-center"
+								: "md:w-full md:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]"
+						}`}
+					>
+						{imagesToShow}
+					</div>
+				</div>
+				<div className="flex w-full flex-col justify-between gap-12 pt-3">
+					<div className="w-[75%] self-center">
+						<ResponsivePagination
+							total={totalPages}
+							previousClassName="rounded_button_previous"
+							nextClassName="rounded_button_next"
+							current={currentPage}
+							onPageChange={(page: number) => {
+								handlePageChange(page);
+							}}
+						/>
+					</div>
+					<PlaylistTrack />
+				</div>
+			</motion.div>
+		</AnimatePresence>
+	);
 }
 
 export default PaginatedGallery;

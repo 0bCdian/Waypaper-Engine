@@ -40,7 +40,7 @@ func main() {
 
 	// Show version if requested
 	if *showVersion {
-		fmt.Println("Waypaper Engine Daemon v2.0.0")
+		fmt.Println("Waypaper Engine Daemon v3.0.0")
 		return
 	}
 
@@ -193,6 +193,13 @@ func main() {
 	if err := monitorManager.StartWithConfig(context.Background(), imagesDir, thumbnailsDir, monitorsStateFile); err != nil {
 		log.Error("failed to start monitor manager", "error", err)
 		os.Exit(1)
+	}
+
+	// Restore last wallpapers from monitors.json after monitor manager is started
+	log.Info("restoring last wallpapers from monitors.json")
+	if err := monitorManager.RestoreLastWallpapers(context.Background(), imagesDir); err != nil {
+		log.Warn("failed to restore last wallpapers", "error", err)
+		// Don't exit - this is not critical for daemon startup
 	}
 
 	playlistManager := playlist.NewManager(jsonStore, backendManager, log, cfg)

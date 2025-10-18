@@ -114,7 +114,7 @@ type BackendConfig struct {
 	FilterType string `json:"filterType,omitempty"` // "lanczos", "bilinear", "nearest", etc.
 
 	// Backend-specific options
-	CustomOptions map[string]interface{} `json:"customOptions,omitempty"`
+	CustomOptions map[string]any `json:"customOptions,omitempty"`
 }
 
 // BackendManager manages multiple backends
@@ -181,21 +181,29 @@ func (bm *BackendManager) InitializeBackend(ctx context.Context) error {
 }
 
 // SetWallpaper sets wallpaper using the active backend
-func (bm *BackendManager) SetWallpaper(ctx context.Context, imagePath, monitorName string) error {
+func (bm *BackendManager) SetWallpaper(ctx context.Context, imagePath, monitorName string, config *BackendConfig) error {
 	backend := bm.GetActiveBackend()
 	if backend == nil {
 		return ErrNoActiveBackend
 	}
-	return backend.SetWallpaper(ctx, imagePath, monitorName, bm.config)
+	// Use provided config or fall back to manager's config
+	if config == nil {
+		config = bm.config
+	}
+	return backend.SetWallpaper(ctx, imagePath, monitorName, config)
 }
 
 // SetWallpaperAll sets wallpaper on all monitors using the active backend
-func (bm *BackendManager) SetWallpaperAll(ctx context.Context, imagePath string) error {
+func (bm *BackendManager) SetWallpaperAll(ctx context.Context, imagePath string, config *BackendConfig) error {
 	backend := bm.GetActiveBackend()
 	if backend == nil {
 		return ErrNoActiveBackend
 	}
-	return backend.SetWallpaperAll(ctx, imagePath, bm.config)
+	// Use provided config or fall back to manager's config
+	if config == nil {
+		config = bm.config
+	}
+	return backend.SetWallpaperAll(ctx, imagePath, config)
 }
 
 // UpdateConfig updates the backend configuration

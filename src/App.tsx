@@ -14,27 +14,27 @@ import ToastContainer from "./components/ToastContainer";
 import ModernAppLayout from "./components/layout/ModernAppLayout";
 
 const App = () => {
-    useLoadAppConfig()();
-    useLoadMonitors();
-    useRealTimeImageProcessing();
-    useWindowBounds();
-    useContextMenuEvents();
-    return (
-        <ThemeProvider defaultTheme="business" persist={true} syncWithSystem={true}>
-            <HashRouter>
-                <ImageProcessingProgress />
-                <ToastContainer />
-                <ModernAppLayout>
-                    <Routes>
-                        <Route path="/" element={<Home />} />
-                        <Route path="/configuration" element={<Configuration />} />
-                        <Route path="/settings" element={<Settings />} />
-                    </Routes>
-                </ModernAppLayout>
-                <Modals />
-            </HashRouter>
-        </ThemeProvider>
-    );
+	useLoadAppConfig()();
+	useLoadMonitors();
+	useRealTimeImageProcessing();
+	useWindowBounds();
+	useContextMenuEvents();
+	return (
+		<ThemeProvider defaultTheme="business" persist={true} syncWithSystem={true}>
+			<HashRouter>
+				<ImageProcessingProgress />
+				<ToastContainer />
+				<ModernAppLayout>
+					<Routes>
+						<Route path="/" element={<Home />} />
+						<Route path="/configuration" element={<Configuration />} />
+						<Route path="/settings" element={<Settings />} />
+					</Routes>
+				</ModernAppLayout>
+				<Modals />
+			</HashRouter>
+		</ThemeProvider>
+	);
 };
 
 export default App;

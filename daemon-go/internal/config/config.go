@@ -18,11 +18,9 @@ type AppConfig struct {
 	Notifications           bool   `toml:"notifications"`
 	StartMinimized          bool   `toml:"start_minimized"`
 	MinimizeInsteadOfClose  bool   `toml:"minimize_instead_of_close"`
-	RandomImageMonitor      string `toml:"random_image_monitor"`
 	ShowMonitorModalOnStart bool   `toml:"show_monitor_modal_on_start"`
 	ImagesPerPage           int    `toml:"images_per_page"`
 	Theme                   string `toml:"theme"`
-	SidebarCollapsed        bool   `toml:"sidebar_collapsed"`
 	SortBy                  string `toml:"sort_by"`
 	SortOrder               string `toml:"sort_order"`
 	ImageHistoryLimit       int    `toml:"image_history_limit"`
@@ -35,26 +33,16 @@ type DaemonConfig struct {
 	MonitorsStateFile string `toml:"monitors_state_file"`
 	SocketPath        string `toml:"socket_path"`
 	LogLevel          string `toml:"log_level"`
-	LogFile           string `toml:"log_file"`        // Optional log file path
-	LogMaxSize        int    `toml:"log_max_size"`    // Max log file size in MB
-	LogMaxAge         int    `toml:"log_max_age"`     // Max log age in days
-	LogMaxBackups     int    `toml:"log_max_backups"` // Max backup files
-	Compositor        string `toml:"compositor"`      // Force compositor: auto, x11, wayland
-}
-
-type SwwwConfig struct {
-	TransitionType     string `toml:"transition_type"`
-	TransitionStep     int    `toml:"transition_step"`
-	TransitionDuration int    `toml:"transition_duration"`
-	TransitionAngle    int    `toml:"transition_angle"`
-	TransitionPos      string `toml:"transition_pos"`
-	TransitionBezier   string `toml:"transition_bezier"`
-	TransitionWave     string `toml:"transition_wave"`
+	LogFile           string `toml:"log_file"`     // Optional log file path
+	LogMaxSize        int    `toml:"log_max_size"` // Max log file size in MB
+	LogMaxAge         int    `toml:"log_max_age"`  // Max log age in days
+	Compositor        string `toml:"compositor"`   // Force compositor: auto, x11, wayland
 }
 
 type BackendConfig struct {
 	Type string     `toml:"type"`
 	Swww SwwwConfig `toml:"swww"`
+	// TODO: Implement more backends in future implementations
 }
 
 type MonitorsConfig struct {
@@ -91,6 +79,7 @@ func NewConfigManager(configPath string) *ConfigManager {
 }
 
 func (cm *ConfigManager) LoadConfig() (*WaypaperConfig, error) {
+	// If the config is already loaded, return it
 	if cm.config != nil {
 		return cm.config, nil
 	}
@@ -328,7 +317,7 @@ func (cm *ConfigManager) IsDevMode() bool {
 }
 
 // SetAppConfig sets a specific app configuration value
-func (cm *ConfigManager) SetAppConfig(key string, value interface{}) error {
+func (cm *ConfigManager) SetAppConfig(key string, value any) error {
 	cm.mu.Lock()
 	defer cm.mu.Unlock()
 
@@ -415,7 +404,6 @@ func (cm *ConfigManager) GetAppConfig() *models.AppConfig {
 		Notifications:           config.App.Notifications,
 		StartMinimized:          config.App.StartMinimized,
 		MinimizeInsteadOfClose:  config.App.MinimizeInsteadOfClose,
-		RandomImageMonitor:      config.App.RandomImageMonitor,
 		ShowMonitorModalOnStart: config.App.ShowMonitorModalOnStart,
 		ImagesPerPage:           config.App.ImagesPerPage,
 		ImageHistoryLimit:       config.App.ImageHistoryLimit,

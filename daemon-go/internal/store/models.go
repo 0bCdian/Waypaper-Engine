@@ -27,7 +27,7 @@ type Image struct {
 func (i *Image) UnmarshalJSON(data []byte) error {
 	// Create a temporary struct with string ID for unmarshaling
 	type TempImage struct {
-		ID           interface{}     `json:"id"`
+		ID           any     `json:"id"`
 		Name         string          `json:"name"`
 		Path         string          `json:"path"`
 		MediaType    media.MediaType `json:"mediaType"`
@@ -224,7 +224,7 @@ type PlaylistImageSettings struct {
 	TransitionTime  *float64               `json:"transitionTime,omitempty"`
 	PreferredEffect *string                `json:"preferredEffect,omitempty"`
 	SkipTransitions *bool                  `json:"skipTransitions,omitempty"`
-	Metadata        map[string]interface{} `json:"metadata,omitempty"`
+	Metadata        map[string]any `json:"metadata,omitempty"`
 }
 
 // PlaylistRuntime contains runtime state for a playlist
@@ -243,7 +243,7 @@ type PlaylistRuntime struct {
 // BackendConfiguration contains backend-specific configuration
 type BackendConfiguration struct {
 	Type              string                 `json:"type"`   // "swww", "feh", "mpv", etc.
-	Config            map[string]interface{} `json:"config"` // Backend-specific config
+	Config            map[string]any `json:"config"` // Backend-specific config
 	FallbackTo        *string                `json:"fallbackTo,omitempty"`
 	MediaRestrictions *MediaRestrictions     `json:"mediaRestrictions,omitempty"`
 }

@@ -25,7 +25,7 @@ func ProcessForMonitors(data []byte, activeMonitor *monitor.ActiveMonitor) ([]Mo
 		return nil, fmt.Errorf("failed to decode image: %w", err)
 	}
 
-	if activeMonitor.ExtendAcrossMonitors {
+	if activeMonitor.ImageSetType == "extend" {
 		return splitImageForMonitors(img, activeMonitor.Monitors)
 	} else {
 		return duplicateImageForMonitors(img, activeMonitor.Monitors)

@@ -13,7 +13,7 @@
 		"build_go_daemon": "cd daemon-go && go build -o waypaper-daemon ./cmd/daemon",
 		"build": "npm run build_go_daemon && npm install && npm run rebuild && vite build && electron-builder",
 		"lint": "oxlint --react-plugin --tsconfig ./tsconfig.json src/ --fix",
-		"format": "oxlint --react-plugin --tsconfig ./tsconfig.json src/ --fix",
+		"format": "biome format --write .",
 		"preview": "vite preview",
 		"test:daemon": "cd daemon-go && go test ./... -v",
 		"test:daemon:unit": "cd daemon-go && go test -short ./... -v",
@@ -56,6 +56,7 @@
 		"zustand": "4.5.5"
 	},
 	"devDependencies": {
+		"@biomejs/biome": "2.2.6",
 		"@electron/rebuild": "3.6.0",
 		"@tailwindcss/postcss": "4.1.14",
 		"@tailwindcss/vite": "^4.1.14",

@@ -23,7 +23,7 @@ type ValidationError struct {
 	Severity   string      `json:"severity"`
 	Suggestion string      `json:"suggestion"`
 	Field      string      `json:"field"`
-	Value      interface{} `json:"value"`
+	Value      any `json:"value"`
 }
 
 // ValidationWarning represents a non-critical issue

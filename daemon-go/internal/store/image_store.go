@@ -306,13 +306,13 @@ func (is *ImageStore) ValidateRegistry() error {
 }
 
 // GetRegistryStats returns statistics about the image registry
-func (is *ImageStore) GetRegistryStats() (map[string]interface{}, error) {
+func (is *ImageStore) GetRegistryStats() (map[string]any, error) {
 	registry, err := is.LoadImageRegistry()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load image registry: %w", err)
 	}
 
-	stats := map[string]interface{}{
+	stats := map[string]any{
 		"totalImages":   len(registry.Images),
 		"lastUpdated":   registry.Metadata.LastUpdated,
 		"version":       registry.Metadata.Version,

@@ -10,8 +10,8 @@ import (
 // Info holds system information.
 type Info struct {
 	Monitors     []monitor.Monitor
-	AppConfig    interface{}
-	SwwwConfig   interface{}
+	AppConfig    any
+	SwwwConfig   any
 	ImageHistory []store.ImageHistoryEntry
 }
 

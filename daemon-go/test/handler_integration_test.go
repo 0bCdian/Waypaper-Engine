@@ -88,7 +88,7 @@ func testDaemonStatusHandler(t *testing.T, client *ipc.Client) {
 	assert.Empty(t, response.Error)
 
 	// Parse status data
-	var status map[string]interface{}
+	var status map[string]any
 	err = json.Unmarshal([]byte(fmt.Sprintf("%v", response.Data)), &status)
 	require.NoError(t, err)
 
@@ -110,7 +110,7 @@ func testMonitorHandlers(t *testing.T, client *ipc.Client) {
 	assert.Empty(t, response.Error)
 
 	// Parse monitors data
-	var monitors []map[string]interface{}
+	var monitors []map[string]any
 	err = json.Unmarshal([]byte(fmt.Sprintf("%v", response.Data)), &monitors)
 	require.NoError(t, err)
 
@@ -195,7 +195,7 @@ func testProcessImagesHandler(t *testing.T, client *ipc.Client, testImagePaths [
 	assert.Empty(t, response.Error)
 
 	// Parse metadata list
-	var metadataList []map[string]interface{}
+	var metadataList []map[string]any
 	err = json.Unmarshal([]byte(fmt.Sprintf("%v", response.Data)), &metadataList)
 	require.NoError(t, err)
 
@@ -226,7 +226,7 @@ func testGetImagesHandler(t *testing.T, client *ipc.Client) {
 	assert.Empty(t, response.Error)
 
 	// Parse images data
-	var images []map[string]interface{}
+	var images []map[string]any
 	err = json.Unmarshal([]byte(fmt.Sprintf("%v", response.Data)), &images)
 	require.NoError(t, err)
 
@@ -253,7 +253,7 @@ func testImageSourceHandlers(t *testing.T, client *ipc.Client) {
 	getResponse, err := client.Send(getMsg)
 	require.NoError(t, err)
 
-	var images []map[string]interface{}
+	var images []map[string]any
 	err = json.Unmarshal([]byte(fmt.Sprintf("%v", getResponse.Data)), &images)
 	require.NoError(t, err)
 
@@ -299,7 +299,7 @@ func testImageDeletionHandlers(t *testing.T, client *ipc.Client) {
 	getResponse, err := client.Send(getMsg)
 	require.NoError(t, err)
 
-	var images []map[string]interface{}
+	var images []map[string]any
 	err = json.Unmarshal([]byte(fmt.Sprintf("%v", getResponse.Data)), &images)
 	require.NoError(t, err)
 
@@ -353,7 +353,7 @@ func testPlaylistOperations(t *testing.T, client *ipc.Client) {
 	monitorResponse, err := client.Send(monitorMsg)
 	require.NoError(t, err)
 
-	var monitors []map[string]interface{}
+	var monitors []map[string]any
 	err = json.Unmarshal([]byte(fmt.Sprintf("%v", monitorResponse.Data)), &monitors)
 	require.NoError(t, err)
 
@@ -377,7 +377,7 @@ func testPlaylistOperations(t *testing.T, client *ipc.Client) {
 				},
 			},
 		},
-		ExtendAcrossMonitors: false,
+		ImageSetType: "clone",
 	}
 
 	// Test next_image
@@ -558,7 +558,7 @@ func TestImageProcessingErrorHandling(t *testing.T) {
 	assert.Equal(t, "process_images", response.Action)
 
 	// Should handle errors gracefully
-	var metadataList []map[string]interface{}
+	var metadataList []map[string]any
 	err = json.Unmarshal([]byte(fmt.Sprintf("%v", response.Data)), &metadataList)
 	require.NoError(t, err)
 
@@ -592,7 +592,7 @@ func TestMultiMonitorImageOperations(t *testing.T) {
 	monitorResponse, err := client.Send(monitorMsg)
 	require.NoError(t, err)
 
-	var monitors []map[string]interface{}
+	var monitors []map[string]any
 	err = json.Unmarshal([]byte(fmt.Sprintf("%v", monitorResponse.Data)), &monitors)
 	require.NoError(t, err)
 
@@ -623,7 +623,7 @@ func TestMultiMonitorImageOperations(t *testing.T) {
 				},
 			},
 		},
-		ExtendAcrossMonitors: true,
+		ImageSetType: "extend",
 	}
 
 	// First process an image
@@ -641,7 +641,7 @@ func TestMultiMonitorImageOperations(t *testing.T) {
 	processResponse, err := client.Send(processMsg)
 	require.NoError(t, err)
 
-	var metadataList []map[string]interface{}
+	var metadataList []map[string]any
 	err = json.Unmarshal([]byte(fmt.Sprintf("%v", processResponse.Data)), &metadataList)
 	require.NoError(t, err)
 

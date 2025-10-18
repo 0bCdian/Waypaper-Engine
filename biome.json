@@ -1,0 +1,26 @@
+{
+	"files": {
+		"includes": [
+			"src/**/*.ts",
+			"src/**/*.tsx",
+			"src/**/*.css",
+			"shared/**/*.ts",
+			"shared/**/*.tsx",
+			"electron/**/*.ts",
+			"!node_modules/",
+			"!dist",
+			"!dist-electron",
+			"!release"
+		]
+	},
+	"linter": {
+		"rules": {
+			"suspicious": {
+				"noUnknownAtRules": "off"
+			},
+			"correctness": {
+				"noUnknownProperty": "off"
+			}
+		}
+	}
+}

@@ -15,7 +15,7 @@ import (
 // Store handles JSON-based file storage for the Waypaper Engine daemon
 type Store struct {
 	basePath   string
-	cache      map[string]interface{}
+	cache      map[string]any
 	cacheMutex sync.RWMutex
 	logger     *slog.Logger
 	config     *StoreConfig
@@ -71,7 +71,7 @@ func NewStore(config StoreConfig, logger *slog.Logger) (*Store, error) {
 
 	store := &Store{
 		basePath: basePath,
-		cache:    make(map[string]interface{}),
+		cache:    make(map[string]any),
 		logger:   logger,
 		config:   &config,
 	}
@@ -129,7 +129,7 @@ func (s *Store) getFilePath(fileName string) string {
 }
 
 // loadJSON loads JSON data from a file into the target interface
-func (s *Store) loadJSON(filePath string, target interface{}) error {
+func (s *Store) loadJSON(filePath string, target any) error {
 	data, err := os.ReadFile(filePath)
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -146,7 +146,7 @@ func (s *Store) loadJSON(filePath string, target interface{}) error {
 }
 
 // saveJSON saves data to a JSON file with atomic operations
-func (s *Store) saveJSON(filePath string, data interface{}) error {
+func (s *Store) saveJSON(filePath string, data any) error {
 	s.writeMutex.Lock()
 	defer s.writeMutex.Unlock()
 
@@ -178,7 +178,7 @@ func (s *Store) saveJSON(filePath string, data interface{}) error {
 }
 
 // cachedLoad loads data with caching support
-func (s *Store) cachedLoad(cacheKey string, filePath string, target interface{}) error {
+func (s *Store) cachedLoad(cacheKey string, filePath string, target any) error {
 	// Check cache first
 	s.cacheMutex.RLock()
 	if cached, exists := s.cache[cacheKey]; exists {
@@ -293,7 +293,7 @@ func (s *Store) validateJSONIntegrity() error {
 			continue // Skip if file doesn't exist
 		}
 
-		var temp interface{}
+		var temp any
 		if err := s.loadJSON(filePath, &temp); err != nil {
 			return fmt.Errorf("invalid JSON in %s: %w", fileName, err)
 		}
@@ -306,15 +306,15 @@ func (s *Store) validateJSONIntegrity() error {
 func (s *Store) ClearCache() {
 	s.cacheMutex.Lock()
 	defer s.cacheMutex.Unlock()
-	s.cache = make(map[string]interface{})
+	s.cache = make(map[string]any)
 }
 
 // GetCacheStats returns cache statistics
-func (s *Store) GetCacheStats() map[string]interface{} {
+func (s *Store) GetCacheStats() map[string]any {
 	s.cacheMutex.RLock()
 	defer s.cacheMutex.RUnlock()
 
-	return map[string]interface{}{
+	return map[string]any{
 		"size":      len(s.cache),
 		"keys":      getCacheKeys(s.cache),
 		"timestamp": time.Now().Format(time.RFC3339),
@@ -336,7 +336,7 @@ func expandPath(path string) (string, error) {
 }
 
 // copyInterface copies data between interfaces (simplified implementation)
-func copyInterface(src, dst interface{}) error {
+func copyInterface(src, dst any) error {
 	// For now, we'll use JSON marshalling/unmarshalling
 	// In a production system, you might want to use reflection or type assertions
 	data, err := json.Marshal(src)
@@ -347,7 +347,7 @@ func copyInterface(src, dst interface{}) error {
 }
 
 // getCacheKeys returns all cache keys
-func getCacheKeys(cache map[string]interface{}) []string {
+func getCacheKeys(cache map[string]any) []string {
 	keys := make([]string, 0, len(cache))
 	for k := range cache {
 		keys = append(keys, k)

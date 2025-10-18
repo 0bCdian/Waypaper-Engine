@@ -74,7 +74,7 @@ transition_duration = 500
 			},
 			playlistConfig: &store.BackendConfiguration{
 				Type: "swww",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"transitionDuration": 2000,
 					"transitionType":     "wave",
 				},
@@ -95,7 +95,7 @@ transition_duration = 500
 `,
 			playlistConfig: &store.BackendConfiguration{
 				Type: "swww",
-				Config: map[string]interface{}{
+				Config: map[string]any{
 					"transitionDuration": 1500,
 				},
 			},
@@ -602,7 +602,7 @@ transition_wave = "0.5,0.5,0,0"
 	// Playlist configuration (should override env + TOML)
 	playlistConfig := &store.BackendConfiguration{
 		Type: "swww", // Override env's "feh"
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"transitionDuration": 500,      // Override env's 200
 			"transitionType":     "fade",   // Override env's "slide"
 			"transitionPos":      "center", // Override TOML's "bottom"
@@ -962,7 +962,7 @@ transition_step = 90
 
 	playlistConfig := &store.BackendConfiguration{
 		Type: "swww",
-		Config: map[string]interface{}{
+		Config: map[string]any{
 			"transitionDuration": 1000,
 			"transitionType":     "fade",
 		},

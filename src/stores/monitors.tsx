@@ -1,188 +1,267 @@
 import { create } from "zustand";
 import { type Monitor, type ActiveMonitor } from "../../shared/types/monitor";
 import { type DaemonMonitorInfo } from "../../shared/types/daemonEvents";
+import { type PartialConfig } from "../types/ipc";
 
 export interface StoreMonitor extends Monitor {
-    isSelected: boolean;
+	isSelected: boolean;
 }
 
 interface MonitorStore {
-    activeMonitor: ActiveMonitor;
-    monitorsList: StoreMonitor[];
-    setActiveMonitor: (value: ActiveMonitor) => void;
-    setMonitorsList: (monitorsList: StoreMonitor[]) => void;
-    reQueryMonitors: () => Promise<void>;
-    setLastSavedMonitorConfig: () => Promise<void>;
+	activeMonitor: ActiveMonitor;
+	monitorsList: StoreMonitor[];
+	setActiveMonitor: (value: ActiveMonitor) => void;
+	setMonitorsList: (monitorsList: StoreMonitor[]) => void;
+	reQueryMonitors: () => Promise<void>;
+	setLastSavedMonitorConfig: () => Promise<void>;
+	// Internal method for loading without persistence
+	_setActiveMonitorFromConfig: (value: ActiveMonitor) => void;
+	// Internal state to prevent race conditions
+	_isLoadingConfig: boolean;
 }
 
 const initialState = {
-    activeMonitor: {
-        name: "",
-        monitors: [] as Monitor[],
-        extendAcrossMonitors: false
-    },
-    monitorsList: [] as StoreMonitor[]
+	activeMonitor: {
+		name: "",
+		monitors: [] as Monitor[],
+		extendAcrossMonitors: false,
+	},
+	monitorsList: [] as StoreMonitor[],
+	_isLoadingConfig: false,
 };
 
 export const useMonitorStore = create<MonitorStore>()((set, get) => ({
-    activeMonitor: initialState.activeMonitor,
-    monitorsList: initialState.monitorsList,
-    async setActiveMonitor(value) {
-        set(state => {
-            return {
-                ...state,
-                activeMonitor: value
-            };
-        });
-        
-        // Persist the configuration to unified config system
-        try {
-            const selectedMonitors = value.monitors.map(monitor => monitor.name);
-            const imageSetType = value.extendAcrossMonitors ? 'extend' : 'individual';
-            
-            if (window.API_RENDERER?.goDaemon?.setAppConfig) {
-                await window.API_RENDERER.goDaemon.setAppConfig('selectedMonitors', selectedMonitors);
-                await window.API_RENDERER.goDaemon.setAppConfig('imageSetType', imageSetType);
-                console.log("🟢 MonitorStore: Saved monitor config to unified config system");
-            }
-        } catch (error) {
-            console.error("🔴 MonitorStore: Failed to save monitor config:", error);
-        }
-    },
-    setMonitorsList(monitorsList) {
-        set(state => {
-            return {
-                ...state,
-                monitorsList
-            };
-        });
-    },
-    async reQueryMonitors() {
-        try {
-            console.log("🟡 MonitorStore: reQueryMonitors called");
-            
-            // Check if goDaemon is available
-            if (!window.API_RENDERER?.goDaemon) {
-                console.error("🔴 MonitorStore: goDaemon not available");
-                return;
-            }
+	activeMonitor: initialState.activeMonitor,
+	monitorsList: initialState.monitorsList,
+	_isLoadingConfig: initialState._isLoadingConfig,
 
-            // Check if getMonitors method exists
-            if (typeof window.API_RENDERER.goDaemon.getMonitors !== 'function') {
-                console.error("🔴 MonitorStore: getMonitors method not available");
-                return;
-            }
+	// PUBLIC: Set active monitor and persist to daemon (for user actions)
+	async setActiveMonitor(value) {
+		// Prevent persistence during loading to avoid race conditions
+		if (get()._isLoadingConfig) {
+			return;
+		}
+		set((state) => {
+			return {
+				...state,
+				activeMonitor: value,
+			};
+		});
 
-            console.log("🟡 MonitorStore: Calling goDaemon.getMonitors()");
-            const monitors = await window.API_RENDERER.goDaemon.getMonitors();
-            console.log("🟡 MonitorStore: Monitors loaded from daemon:", monitors);
-            const activeMonitor = get().activeMonitor;
-            
-            // Create store monitors with proper selection state
-            const storeMonitors = monitors.map((monitor: Monitor) => {
-                const match = activeMonitor.monitors.find((activeMonitorMonitor: Monitor) => {
-                    return activeMonitorMonitor.name === monitor.name;
-                });
-                const isSelected = match !== undefined;
-                return {
-                    ...monitor,
-                    isSelected
-                };
-            });
-            
-            console.log("🟡 MonitorStore: Processed store monitors:", storeMonitors);
-            set(state => {
-                console.log("🟡 MonitorStore: Updating state with monitorsList");
-                return {
-                    ...state,
-                    monitorsList: storeMonitors
-                };
-            });
-            console.log("🟡 MonitorStore: reQueryMonitors completed successfully");
-        } catch (error) {
-            console.error("🟡 MonitorStore: Error loading monitors:", error);
-        }
-    },
-    async setLastSavedMonitorConfig() {
-        try {
-            // Check if goDaemon is available
-            if (!window.API_RENDERER?.goDaemon) {
-                console.error("🔴 MonitorStore: goDaemon not available");
-                return;
-            }
+		// Persist the configuration using type-safe partial config
+		try {
+			const selectedMonitors = value.monitors.map((monitor) => monitor.name);
+			const imageSetType = value.extendAcrossMonitors ? "extend" : "individual";
 
-            // Check if getMonitors method exists
-            if (typeof window.API_RENDERER.goDaemon.getMonitors !== 'function') {
-                console.error("🔴 MonitorStore: getMonitors method not available");
-                return;
-            }
+			// Create type-safe partial config
+			const partialConfig: PartialConfig = {
+				monitors: {
+					selected_monitors: selectedMonitors,
+					image_set_type: imageSetType,
+				},
+			};
 
-            // Load monitors from daemon
-            const monitorsList = await window.API_RENDERER.goDaemon.getMonitors();
-            
-            // Load config from unified system
-            let selectedMonitors: string[] = [];
-            let imageSetType: string = 'individual';
-            
-            if (window.API_RENDERER?.goDaemon?.getAppConfig) {
-                const config = await window.API_RENDERER.goDaemon.getAppConfig();
-                if (config && typeof config === 'object') {
-                    selectedMonitors = (config as any).selectedMonitors || [];
-                    imageSetType = (config as any).imageSetType || 'individual';
-                }
-            }
-            
-            if (selectedMonitors.length > 0) {
-                // Find the selected monitors in the current monitor list
-                const selectedMonitorObjects = monitorsList.filter((monitor: Monitor) => 
-                    selectedMonitors.includes(monitor.name)
-                );
-                
-                if (selectedMonitorObjects.length > 0) {
-                    // Create active monitor configuration
-                    const activeMonitor: ActiveMonitor = {
-                        name: selectedMonitorObjects.map((m: DaemonMonitorInfo) => m.name).join(','),
-                        monitors: selectedMonitorObjects,
-                        extendAcrossMonitors: imageSetType === 'extend'
-                    };
-                    
-                    // Set the active monitor configuration (without triggering persistence)
-                    set(state => ({
-                        ...state,
-                        activeMonitor
-                    }));
-                    
-                    // Create store monitors with proper selection state
-                    const storeMonitors = monitorsList.map((monitor: Monitor) => {
-                        const isSelected = selectedMonitors.includes(monitor.name);
-                        return {
-                            ...monitor,
-                            isSelected
-                        };
-                    });
-                    
-                    get().setMonitorsList(storeMonitors);
-                    console.log("🟢 MonitorStore: Loaded monitor config from unified config system");
-                } else {
-                    // Selected monitors no longer exist, reset to default
-                    const storeMonitors = monitorsList.map((monitor: Monitor) => ({
-                        ...monitor,
-                        isSelected: false
-                    }));
-                    get().setMonitorsList(storeMonitors);
-                    console.log("🟡 MonitorStore: Selected monitors no longer exist, reset to default");
-                }
-            } else {
-                // No saved config, set default state
-                const storeMonitors = monitorsList.map((monitor: Monitor) => ({
-                    ...monitor,
-                    isSelected: false
-                }));
-                get().setMonitorsList(storeMonitors);
-                console.log("🟡 MonitorStore: No saved config, using default state");
-            }
-        } catch (error) {
-            console.error("🟡 MonitorStore: Error setting last saved monitor config:", error);
-        }
-    }
+			// No validation needed - daemon handles validation
+
+			if (window.API_RENDERER?.goDaemon?.setPartialConfig) {
+				await window.API_RENDERER.goDaemon.setPartialConfig(partialConfig);
+			} else if (window.API_RENDERER?.goDaemon?.setAppConfig) {
+				// Fallback to legacy method
+				await window.API_RENDERER.goDaemon.setAppConfig(
+					"selectedMonitors",
+					selectedMonitors,
+				);
+				await window.API_RENDERER.goDaemon.setAppConfig(
+					"imageSetType",
+					imageSetType,
+				);
+			}
+		} catch (error) {
+			console.error("🔴 MonitorStore: Failed to save monitor config:", error);
+		}
+	},
+
+	// Validate monitor configuration
+	validateMonitorConfig(activeMonitor: ActiveMonitor): {
+		isValid: boolean;
+		error?: string;
+	} {
+		if (!activeMonitor.monitors || activeMonitor.monitors.length === 0) {
+			return { isValid: false, error: "No monitors selected" };
+		}
+
+		const monitorCount = activeMonitor.monitors.length;
+		const imageSetType =
+			activeMonitor.imageSetType ||
+			(activeMonitor.extendAcrossMonitors ? "extend" : "individual");
+
+		if (imageSetType === "individual" && monitorCount !== 1) {
+			return {
+				isValid: false,
+				error: "Individual mode requires exactly 1 monitor",
+			};
+		}
+
+		if (
+			(imageSetType === "extend" || imageSetType === "clone") &&
+			monitorCount < 2
+		) {
+			return {
+				isValid: false,
+				error: "Extend/Clone mode requires at least 2 monitors",
+			};
+		}
+
+		return { isValid: true };
+	},
+	setMonitorsList(monitorsList) {
+		set((state) => {
+			return {
+				...state,
+				monitorsList,
+			};
+		});
+	},
+	async reQueryMonitors() {
+		try {
+			// Check if goDaemon is available
+			if (!window.API_RENDERER?.goDaemon) {
+				console.error("🔴 MonitorStore: goDaemon not available");
+				return;
+			}
+
+			// Check if getMonitors method exists
+			if (typeof window.API_RENDERER.goDaemon.getMonitors !== "function") {
+				console.error("🔴 MonitorStore: getMonitors method not available");
+				return;
+			}
+
+			const monitors = await window.API_RENDERER.goDaemon.getMonitors();
+			const activeMonitor = get().activeMonitor;
+
+			// Create store monitors with proper selection state
+			const storeMonitors = monitors.map((monitor: Monitor) => {
+				const match = activeMonitor.monitors.find(
+					(activeMonitorMonitor: Monitor) => {
+						return activeMonitorMonitor.name === monitor.name;
+					},
+				);
+				const isSelected = match !== undefined;
+				return {
+					...monitor,
+					isSelected,
+				};
+			});
+
+			set((state) => {
+				return {
+					...state,
+					monitorsList: storeMonitors,
+				};
+			});
+		} catch (error) {
+			console.error("🔴 MonitorStore: Error loading monitors:", error);
+		}
+	},
+	async setLastSavedMonitorConfig() {
+		try {
+			// Set loading flag to prevent race conditions
+			set((state) => ({ ...state, _isLoadingConfig: true }));
+
+			// Check if goDaemon is available
+			if (!window.API_RENDERER?.goDaemon) {
+				console.error("🔴 MonitorStore: goDaemon not available");
+				return;
+			}
+
+			// Check if getMonitors method exists
+			if (typeof window.API_RENDERER.goDaemon.getMonitors !== "function") {
+				console.error("🔴 MonitorStore: getMonitors method not available");
+				return;
+			}
+
+			// Load monitors from daemon
+			const monitorsList = await window.API_RENDERER.goDaemon.getMonitors();
+
+			// Load config from unified system
+			let selectedMonitors: string[] = [];
+			let imageSetType: string = "individual";
+
+			if (window.API_RENDERER?.goDaemon?.getAppConfig) {
+				const config = await window.API_RENDERER.goDaemon.getAppConfig();
+
+				if (config && typeof config === "object") {
+					// Extract monitor configuration from the full config
+					const monitorsConfig = (config as any).monitors;
+
+					if (monitorsConfig) {
+						selectedMonitors = monitorsConfig.selected_monitors || [];
+						imageSetType = monitorsConfig.image_set_type || "individual";
+					}
+				}
+			}
+
+			if (selectedMonitors.length > 0) {
+				// Find the selected monitors in the current monitor list
+				const selectedMonitorObjects = monitorsList.filter((monitor: Monitor) =>
+					selectedMonitors.includes(monitor.name),
+				);
+
+				if (selectedMonitorObjects.length > 0) {
+					// Create active monitor configuration
+					const activeMonitor: ActiveMonitor = {
+						name: selectedMonitorObjects
+							.map((m: DaemonMonitorInfo) => m.name)
+							.join(","),
+						monitors: selectedMonitorObjects,
+						extendAcrossMonitors: imageSetType === "extend",
+						imageSetType: imageSetType, // Include the actual mode for the modal
+					};
+
+					// Set the active monitor configuration (without triggering persistence)
+					get()._setActiveMonitorFromConfig(activeMonitor);
+
+					// Create store monitors with proper selection state
+					const storeMonitors = monitorsList.map((monitor: Monitor) => {
+						const isSelected = selectedMonitors.includes(monitor.name);
+						return {
+							...monitor,
+							isSelected,
+						};
+					});
+
+					get().setMonitorsList(storeMonitors);
+				} else {
+					// Selected monitors no longer exist, reset to default
+					get()._setActiveMonitorFromConfig(initialState.activeMonitor);
+					const storeMonitors = monitorsList.map((monitor: Monitor) => ({
+						...monitor,
+						isSelected: false,
+					}));
+					get().setMonitorsList(storeMonitors);
+				}
+			} else {
+				// No saved config, set default state
+				get()._setActiveMonitorFromConfig(initialState.activeMonitor);
+				const storeMonitors = monitorsList.map((monitor: Monitor) => ({
+					...monitor,
+					isSelected: false,
+				}));
+				get().setMonitorsList(storeMonitors);
+			}
+		} catch (error) {
+			console.error(
+				"🟡 MonitorStore: Error setting last saved monitor config:",
+				error,
+			);
+		} finally {
+			// Always clear the loading flag
+			set((state) => ({ ...state, _isLoadingConfig: false }));
+		}
+	},
+
+	// Internal method for loading without persistence
+	_setActiveMonitorFromConfig(value) {
+		set({ activeMonitor: value });
+	},
 }));

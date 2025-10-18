@@ -42,7 +42,7 @@ func (ci *ConfigIntegration) LoadConfiguration() (*EffectiveConfig, error) {
 }
 
 // UpdateBackendSetting updates a backend setting in TOML config
-func (ci *ConfigIntegration) UpdateBackendSetting(setting string, value interface{}) error {
+func (ci *ConfigIntegration) UpdateBackendSetting(setting string, value any) error {
 	tomlConfig, err := ci.tomlManager.LoadConfig()
 	if err != nil {
 		return fmt.Errorf("failed to load TOML config: %w", err)
@@ -87,7 +87,7 @@ func (ci *ConfigIntegration) GetEffectiveBackendConfig(playlistConfig *store.Bac
 		TransitionType:     tomlConfig.Backend.Swww.TransitionType,
 		PositionType:       "center", // Default center position
 		ResizeType:         "fit",    // Default
-		CustomOptions:      make(map[string]interface{}),
+		CustomOptions:      make(map[string]any),
 	}
 
 	// Apply media type defaults
@@ -97,20 +97,20 @@ func (ci *ConfigIntegration) GetEffectiveBackendConfig(playlistConfig *store.Bac
 	case media.MediaTypeVideo:
 		// Use feh as fallback for video since mpv backend isn't implemented yet
 		result.BackendType = backend.BackendFeh
-		result.CustomOptions = map[string]interface{}{
+		result.CustomOptions = map[string]any{
 			"fullscreen": true,
 		}
 	case media.MediaTypeHTML:
 		// Use feh as fallback for HTML since electron-wallpaper isn't implemented yet
 		result.BackendType = backend.BackendFeh
-		result.CustomOptions = map[string]interface{}{
+		result.CustomOptions = map[string]any{
 			"width":  1920,
 			"height": 1080,
 		}
 	case media.MediaType3D:
 		// Use feh as fallback for 3D since webgl-wallpaper isn't implemented yet
 		result.BackendType = backend.BackendFeh
-		result.CustomOptions = map[string]interface{}{
+		result.CustomOptions = map[string]any{
 			"antialias": true,
 			"alpha":     true,
 		}
@@ -161,7 +161,7 @@ func (ci *ConfigIntegration) getBackendDefaults(mediaType media.MediaType) *back
 			TransitionType:     "simple",
 			PositionType:       "center",
 			ResizeType:         "fit",
-			CustomOptions:      make(map[string]interface{}),
+			CustomOptions:      make(map[string]any),
 		}
 	case media.MediaTypeVideo:
 		return &backend.BackendConfig{
@@ -170,7 +170,7 @@ func (ci *ConfigIntegration) getBackendDefaults(mediaType media.MediaType) *back
 			TransitionType:     "",
 			PositionType:       "center",
 			ResizeType:         "stretch",
-			CustomOptions: map[string]interface{}{
+			CustomOptions: map[string]any{
 				"fullscreen": true,
 			},
 		}
@@ -181,7 +181,7 @@ func (ci *ConfigIntegration) getBackendDefaults(mediaType media.MediaType) *back
 			TransitionType:     "",
 			PositionType:       "center",
 			ResizeType:         "fit",
-			CustomOptions: map[string]interface{}{
+			CustomOptions: map[string]any{
 				"width":  1920,
 				"height": 1080,
 			},
@@ -193,7 +193,7 @@ func (ci *ConfigIntegration) getBackendDefaults(mediaType media.MediaType) *back
 			TransitionType:     "",
 			PositionType:       "center",
 			ResizeType:         "fit",
-			CustomOptions: map[string]interface{}{
+			CustomOptions: map[string]any{
 				"antialias": true,
 				"alpha":     true,
 			},
@@ -205,7 +205,7 @@ func (ci *ConfigIntegration) getBackendDefaults(mediaType media.MediaType) *back
 			TransitionType:     "simple",
 			PositionType:       "center",
 			ResizeType:         "fit",
-			CustomOptions:      make(map[string]interface{}),
+			CustomOptions:      make(map[string]any),
 		}
 	}
 }

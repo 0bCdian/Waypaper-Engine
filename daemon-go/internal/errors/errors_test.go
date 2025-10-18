@@ -117,7 +117,7 @@ func TestError_WithCode(t *testing.T) {
 
 func TestError_WithDetails(t *testing.T) {
 	err := New(SystemError, "Test error")
-	details := map[string]interface{}{
+	details := map[string]any{
 		"file":   "test.go",
 		"line":   42,
 		"action": "read",
@@ -132,7 +132,7 @@ func TestError_WithDetails(t *testing.T) {
 func TestError_Chaining(t *testing.T) {
 	err := New(SystemError, "Test error").
 		WithCode(500).
-		WithDetails(map[string]interface{}{
+		WithDetails(map[string]any{
 			"component": "database",
 			"operation": "connect",
 		})
@@ -162,7 +162,7 @@ func TestError_NilDetails(t *testing.T) {
 
 func TestError_EmptyDetails(t *testing.T) {
 	err := New(SystemError, "Test error")
-	err = err.WithDetails(map[string]interface{}{})
+	err = err.WithDetails(map[string]any{})
 
 	assert.NotNil(t, err.Details)
 	assert.Empty(t, err.Details)
@@ -184,7 +184,7 @@ func TestError_NegativeCode(t *testing.T) {
 
 func TestError_ComplexDetails(t *testing.T) {
 	err := New(ImageError, "Processing failed")
-	details := map[string]interface{}{
+	details := map[string]any{
 		"image_path": "/path/to/image.jpg",
 		"format":     "JPEG",
 		"size":       int64(1024000),
@@ -248,7 +248,7 @@ func TestError_ImplementsErrorInterface(t *testing.T) {
 func TestError_StringRepresentation(t *testing.T) {
 	err := New(ImageError, "Failed to process image").
 		WithCode(422).
-		WithDetails(map[string]interface{}{
+		WithDetails(map[string]any{
 			"file": "test.jpg",
 		})
 

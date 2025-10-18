@@ -24,7 +24,7 @@ type Job struct {
 	ID   string
 	Data []byte
 	Type JobType
-	Opts interface{}
+	Opts any
 }
 
 // JobType defines the type of image processing job.

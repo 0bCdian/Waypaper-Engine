@@ -30,7 +30,7 @@ func NewJsonStoreManager(store *Store, logger *slog.Logger) *JsonStoreManager {
 }
 
 // Image operations
-func (jsm *JsonStoreManager) GetImages(ctx context.Context, filters map[string]interface{}) ([]models.Image, error) {
+func (jsm *JsonStoreManager) GetImages(ctx context.Context, filters map[string]any) ([]models.Image, error) {
 	registry, err := jsm.store.LoadImageRegistry()
 	if err != nil {
 		return nil, fmt.Errorf("failed to load image registry: %w", err)
@@ -373,7 +373,7 @@ func (jsm *JsonStoreManager) SaveSwwwConfig(ctx context.Context, config *models.
 
 // Helper methods
 
-func (jsm *JsonStoreManager) applyImageFilters(images []models.Image, filters map[string]interface{}) []models.Image {
+func (jsm *JsonStoreManager) applyImageFilters(images []models.Image, filters map[string]any) []models.Image {
 	var filtered []models.Image
 
 	for _, img := range images {

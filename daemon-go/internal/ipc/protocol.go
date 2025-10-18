@@ -29,7 +29,7 @@ type Message struct {
 type ConfigData struct {
 	ConfigSection string      `json:"configSection,omitempty"`
 	ConfigKey     string      `json:"configKey,omitempty"`
-	ConfigValue   interface{} `json:"configValue,omitempty"`
+	ConfigValue   any `json:"configValue,omitempty"`
 
 	// Legacy support - keep for backward compatibility
 	AppConfig      *models.AppConfig  `json:"appConfig,omitempty"`

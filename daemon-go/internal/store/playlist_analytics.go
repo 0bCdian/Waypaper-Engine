@@ -77,7 +77,7 @@ type AnalyticsEvent struct {
 	PlaylistName string                 `json:"playlist_name"`
 	PlaylistType string                 `json:"playlist_type"`
 	Duration     int64                  `json:"duration_seconds,omitempty"`
-	Metadata     map[string]interface{} `json:"metadata,omitempty"`
+	Metadata     map[string]any `json:"metadata,omitempty"`
 }
 
 // NewPlaylistAnalytics creates a new playlist analytics tracker
@@ -297,11 +297,11 @@ func (pa *PlaylistAnalytics) GetTopPlaylists(limit int) []*PlaylistStat {
 }
 
 // GetStatsSummary returns a summary of analytics
-func (pa *PlaylistAnalytics) GetStatsSummary() map[string]interface{} {
+func (pa *PlaylistAnalytics) GetStatsSummary() map[string]any {
 	pa.mu.RLock()
 	defer pa.mu.RUnlock()
 
-	return map[string]interface{}{
+	return map[string]any{
 		"total_playlists":       len(pa.data.PlaylistStats),
 		"total_sessions":        pa.data.GlobalStats.TotalSessions,
 		"total_playtime_hours":  float64(pa.data.GlobalStats.TotalPlayTime) / 3600,

@@ -19,7 +19,7 @@ type Error struct {
 	Type    ErrorType
 	Message string
 	Code    int
-	Details map[string]interface{}
+	Details map[string]any
 }
 
 // New creates a new custom error.
@@ -42,7 +42,7 @@ func (e *Error) WithCode(code int) *Error {
 }
 
 // WithDetails adds details to the error.
-func (e *Error) WithDetails(details map[string]interface{}) *Error {
+func (e *Error) WithDetails(details map[string]any) *Error {
 	e.Details = details
 	return e
 }

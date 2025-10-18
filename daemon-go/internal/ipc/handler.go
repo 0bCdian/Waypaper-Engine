@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"waypaper-engine/daemon-go/internal/config"
@@ -20,25 +21,29 @@ import (
 
 // Handler is the implementation of the MessageHandler interface.
 type Handler struct {
-	playlistManager *playlist.Manager
-	configManager   *config.ConfigManager
-	imageProcessor  *image.Processor
-	monitorManager  *monitor.Manager
-	logger          *slog.Logger
-	server          *Server
-	store           *store.Store
-	jsonStore       *store.JsonStoreManager
+	playlistManager  *playlist.Manager
+	configManager    *config.ConfigManager
+	imageProcessor   *image.Processor
+	monitorManager   *monitor.Manager
+	logger           *slog.Logger
+	server           *Server
+	store            *store.Store
+	jsonStore        *store.JsonStoreManager
+	typeRegistry     *ConfigTypeRegistry
+	messageValidator *MessageValidator
 }
 
 // NewHandler creates a new message handler.
 func NewHandler(playlistManager *playlist.Manager, configManager *config.ConfigManager, imageProcessor *image.Processor, monitorManager *monitor.Manager, logger *slog.Logger) *Handler {
 	return &Handler{
-		playlistManager: playlistManager,
-		configManager:   configManager,
-		imageProcessor:  imageProcessor,
-		monitorManager:  monitorManager,
-		store:           nil, // Will be set later if JSON store is available
-		logger:          logger,
+		playlistManager:  playlistManager,
+		configManager:    configManager,
+		imageProcessor:   imageProcessor,
+		monitorManager:   monitorManager,
+		store:            nil, // Will be set later if JSON store is available
+		logger:           logger,
+		typeRegistry:     NewConfigTypeRegistry(),
+		messageValidator: NewMessageValidator(logger),
 	}
 }
 
@@ -56,7 +61,7 @@ func (h *Handler) SetServer(server *Server) {
 }
 
 // createResponse creates a response with the message ID from the original message
-func (h *Handler) createResponse(action string, data interface{}, err error) *Response {
+func (h *Handler) createResponse(action string, data any, err error) *Response {
 	response := &Response{
 		Action:    action,
 		MessageID: 0, // Will be set by the caller
@@ -73,8 +78,31 @@ func (h *Handler) createResponse(action string, data interface{}, err error) *Re
 
 // HandleMessage handles incoming IPC messages.
 func (h *Handler) HandleMessage(msg *Message) *Response {
-	fmt.Printf("DEBUG: HandleMessage called with action=%s, imagePaths=%v, fileNames=%v\n", msg.Action, msg.ImagePaths, msg.FileNames)
 	h.logger.Info("handling message", "action", msg.Action)
+
+	// Validate the message first
+	validationResult := h.messageValidator.ValidateMessage(msg)
+	if !validationResult.Valid {
+		h.logger.Error("message validation failed", "action", msg.Action, "errors", validationResult.Errors)
+
+		// Create detailed error message
+		var errorMessages []string
+		for _, err := range validationResult.Errors {
+			errorMessages = append(errorMessages, err.Error())
+		}
+
+		return &Response{
+			Action:    msg.Action,
+			MessageID: msg.MessageID,
+			Error:     fmt.Sprintf("validation failed: %s", strings.Join(errorMessages, "; ")),
+		}
+	}
+
+	// Log any warnings
+	if len(validationResult.Warnings) > 0 {
+		h.logger.Warn("message validation warnings", "action", msg.Action, "warnings", validationResult.Warnings)
+	}
+
 	var response *Response
 
 	switch msg.Action {
@@ -147,6 +175,8 @@ func (h *Handler) HandleMessage(msg *Message) *Response {
 		response = h.handleGetSelectedMonitor(msg)
 	case "get_playlist_images":
 		response = h.handleGetPlaylistImages(msg)
+	case "get_running_playlists":
+		response = h.handleGetRunningPlaylists(msg)
 	case "delete_playlist":
 		response = h.handleDeletePlaylist(msg)
 	case "delete_image_from_gallery":
@@ -383,15 +413,12 @@ func (h *Handler) handlePreviousImage(msg *Message) *Response {
 }
 
 func (h *Handler) handleSetImage(msg *Message) *Response {
-	fmt.Printf("DEBUG: handleSetImage called with msg.Image: %+v, msg.ActiveMonitor: %+v\n", msg.Image, msg.ActiveMonitor)
-
 	if msg.Image == nil || msg.ActiveMonitor == nil {
-		fmt.Printf("DEBUG: Missing image or monitor info - Image: %v, ActiveMonitor: %v\n", msg.Image, msg.ActiveMonitor)
 		return &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "missing image or monitor info").Error()}
 	}
 
-	fmt.Printf("DEBUG: About to call SetImage with monitor: %s, imageId: %d\n", msg.ActiveMonitor.Name, msg.Image.ID)
-	err := h.playlistManager.SetImage(context.Background(), msg.ActiveMonitor.Name, msg.Image.ID)
+	// Use unified SetImage method with default backend (no playlist-specific backend)
+	err := h.playlistManager.SetImage(context.Background(), msg.Image.ID, msg.ActiveMonitor, nil)
 	if err != nil {
 		h.logger.Error("failed to set image", "error", err)
 		return &Response{Action: msg.Action, Error: err.Error()}
@@ -513,12 +540,12 @@ func (h *Handler) handleGetPlaylists(msg *Message) *Response {
 			return &Response{Action: msg.Action, Data: playlists}
 		}
 		h.logger.Warn("handleGetPlaylists: no playlists found in JSON store or error loading", "error", err)
-		return &Response{Action: msg.Action, Data: []interface{}{}}
+		return &Response{Action: msg.Action, Data: []any{}}
 	}
 
 	// Fallback: return empty array if no store
 	h.logger.Warn("handleGetPlaylists: no JSON store available")
-	return &Response{Action: msg.Action, Data: []interface{}{}}
+	return &Response{Action: msg.Action, Data: []any{}}
 }
 
 func (h *Handler) handlePing(msg *Message) *Response {
@@ -557,9 +584,9 @@ func (h *Handler) handleProcessForMonitors(msg *Message) *Response {
 
 	// Convert models.ActiveMonitor to monitor.ActiveMonitor
 	activeMonitor := &monitor.ActiveMonitor{
-		Name:                 msg.ActiveMonitor.Name,
-		ExtendAcrossMonitors: msg.ActiveMonitor.ExtendAcrossMonitors,
-		Monitors:             make([]monitor.Monitor, len(msg.ActiveMonitor.Monitors)),
+		Name:         msg.ActiveMonitor.Name,
+		ImageSetType: msg.ActiveMonitor.ImageSetType,
+		Monitors:     make([]monitor.Monitor, len(msg.ActiveMonitor.Monitors)),
 	}
 
 	for i, m := range msg.ActiveMonitor.Monitors {
@@ -595,56 +622,14 @@ func (h *Handler) handleSetImageAcrossMonitors(msg *Message) *Response {
 		return h.createResponse(msg.Action, nil, errors.New(errors.IPCError, "image and activeMonitor are required"))
 	}
 
-	// Get image info from database
-	imageInfo, err := h.jsonStore.GetImageByID(context.Background(), msg.Image.ID)
+	// Use unified SetImage method with default backend (no playlist-specific backend)
+	err := h.playlistManager.SetImage(context.Background(), msg.Image.ID, msg.ActiveMonitor, nil)
 	if err != nil {
-		return h.createResponse(msg.Action, nil, errors.New(errors.SystemError, fmt.Sprintf("failed to get image info: %v", err)))
+		h.logger.Error("failed to set image across monitors", "error", err)
+		return h.createResponse(msg.Action, nil, err)
 	}
 
-	// Read image file data
-	imageData, err := os.ReadFile(imageInfo.Path)
-	if err != nil {
-		return h.createResponse(msg.Action, nil, errors.New(errors.SystemError, fmt.Sprintf("failed to read image file: %v", err)))
-	}
-
-	// Convert models.ActiveMonitor to monitor.ActiveMonitor
-	activeMonitor := &monitor.ActiveMonitor{
-		Name:                 msg.ActiveMonitor.Name,
-		ExtendAcrossMonitors: msg.ActiveMonitor.ExtendAcrossMonitors,
-		Monitors:             make([]monitor.Monitor, len(msg.ActiveMonitor.Monitors)),
-	}
-
-	for i, m := range msg.ActiveMonitor.Monitors {
-		activeMonitor.Monitors[i] = monitor.Monitor{
-			Name:   m.Name,
-			Width:  m.Width,
-			Height: m.Height,
-			Position: monitor.Position{
-				X: m.Position.X,
-				Y: m.Position.Y,
-			},
-		}
-	}
-
-	// Process image for monitors
-	monitorImages, err := image.ProcessForMonitors(imageData, activeMonitor)
-	if err != nil {
-		return h.createResponse(msg.Action, nil, errors.New(errors.ImageError, fmt.Sprintf("failed to process image for monitors: %v", err)))
-	}
-
-	// Set wallpaper for each monitor
-	for _, monitorImage := range monitorImages {
-		err = h.monitorManager.SetWallpaperForMonitorWithName(context.Background(), monitorImage.Image, monitorImage.Monitor.Name, imageInfo.Name)
-		if err != nil {
-			h.logger.Error("failed to set wallpaper for monitor", "monitor", monitorImage.Monitor.Name, "error", err)
-			// Continue with other monitors even if one fails
-		}
-	}
-
-	// Monitor state is already updated by SetWallpaperForMonitorWithName calls above
-
-	response := &Response{Action: msg.Action, Data: "image_set_across_monitors"}
-	return response
+	return h.createResponse(msg.Action, "image set across monitors", nil)
 }
 
 func (h *Handler) handleDuplicateImageAcrossMonitors(msg *Message) *Response {
@@ -666,9 +651,9 @@ func (h *Handler) handleDuplicateImageAcrossMonitors(msg *Message) *Response {
 
 	// Convert models.ActiveMonitor to monitor.ActiveMonitor
 	activeMonitor := &monitor.ActiveMonitor{
-		Name:                 msg.ActiveMonitor.Name,
-		ExtendAcrossMonitors: false, // Force duplicate mode
-		Monitors:             make([]monitor.Monitor, len(msg.ActiveMonitor.Monitors)),
+		Name:         msg.ActiveMonitor.Name,
+		ImageSetType: "clone", // Force duplicate mode
+		Monitors:     make([]monitor.Monitor, len(msg.ActiveMonitor.Monitors)),
 	}
 
 	for i, m := range msg.ActiveMonitor.Monitors {
@@ -749,8 +734,8 @@ func (h *Handler) handleGetConfig(msg *Message) *Response {
 	}
 
 	// Convert to frontend-compatible format
-	frontendConfig := map[string]interface{}{
-		"app": map[string]interface{}{
+	frontendConfig := map[string]any{
+		"app": map[string]any{
 			"kill_daemon_on_exit":         config.App.KillDaemonOnExit,
 			"notifications":               config.App.Notifications,
 			"start_minimized":             config.App.StartMinimized,
@@ -764,7 +749,7 @@ func (h *Handler) handleGetConfig(msg *Message) *Response {
 			"sort_order":                  config.App.SortOrder,
 			"image_history_limit":         config.App.ImageHistoryLimit,
 		},
-		"daemon": map[string]interface{}{
+		"daemon": map[string]any{
 			"database_path":       config.Daemon.DatabasePath,
 			"images_dir":          config.Daemon.ImagesDir,
 			"thumbnails_dir":      config.Daemon.ThumbnailsDir,
@@ -777,9 +762,9 @@ func (h *Handler) handleGetConfig(msg *Message) *Response {
 			"log_max_backups":     config.Daemon.LogMaxBackups,
 			"compositor":          config.Daemon.Compositor,
 		},
-		"backend": map[string]interface{}{
+		"backend": map[string]any{
 			"type": config.Backend.Type,
-			"swww": map[string]interface{}{
+			"swww": map[string]any{
 				"transition_type":     config.Backend.Swww.TransitionType,
 				"transition_step":     config.Backend.Swww.TransitionStep,
 				"transition_duration": config.Backend.Swww.TransitionDuration,
@@ -789,18 +774,31 @@ func (h *Handler) handleGetConfig(msg *Message) *Response {
 				"transition_wave":     config.Backend.Swww.TransitionWave,
 			},
 		},
-		"monitors": map[string]interface{}{
+		"monitors": map[string]any{
 			"selected_monitors": config.Monitors.SelectedMonitors,
 			"image_set_type":    config.Monitors.ImageSetType,
 		},
 	}
 
+	// Monitor configuration comes from TOML config, not from monitor manager's JSON state
+	// The monitor manager's JSON state is only for current image state, not configuration
+
 	return &Response{Action: msg.Action, Data: frontendConfig}
 }
 
 func (h *Handler) handleSetConfig(msg *Message) *Response {
-	if msg.Config == nil || msg.Config.ConfigSection == "" || msg.Config.ConfigKey == "" {
-		return &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "config section and key are required").Error()}
+	if msg.Config == nil {
+		return &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "config is required").Error()}
+	}
+
+	// Check if this is a partial config update (FrontendConfig is provided)
+	if msg.Config.FrontendConfig != nil {
+		return h.handlePartialConfigUpdate(msg)
+	}
+
+	// Legacy single key-value update
+	if msg.Config.ConfigSection == "" || msg.Config.ConfigKey == "" {
+		return &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "config section and key are required for single key updates").Error()}
 	}
 
 	section := msg.Config.ConfigSection
@@ -833,7 +831,7 @@ func (h *Handler) handleSetConfig(msg *Message) *Response {
 	if h.server != nil {
 		h.server.BroadcastEvent(&Event{
 			Type: "config_changed",
-			Payload: map[string]interface{}{
+			Payload: map[string]any{
 				"section":   section,
 				"key":       key,
 				"value":     value,
@@ -845,12 +843,122 @@ func (h *Handler) handleSetConfig(msg *Message) *Response {
 	return &Response{Action: msg.Action, Data: true}
 }
 
+// handlePartialConfigUpdate handles partial configuration updates
+//
+// This method allows the frontend to send partial config objects that get intelligently merged.
+// Example usage:
+//
+//	{
+//	  "app": {
+//	    "theme": "dark",
+//	    "notifications": true
+//	  },
+//	  "monitors": {
+//	    "selected_monitors": ["DP-1", "HDMI-1"],
+//	    "image_set_type": "extend"
+//	  }
+//	}
+//
+// This will update only the specified keys in each section, leaving other keys unchanged.
+func (h *Handler) handlePartialConfigUpdate(msg *Message) *Response {
+	frontendConfig, ok := msg.Config.FrontendConfig.(map[string]any)
+	if !ok {
+		return &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "frontendConfig must be a map").Error()}
+	}
+
+	// Type validation using reflection
+	if err := h.validatePartialConfig(frontendConfig); err != nil {
+		h.logger.Error("type validation failed", "error", err)
+		return &Response{Action: msg.Action, Error: fmt.Sprintf("type validation failed: %v", err)}
+	}
+
+	var updatedSections []string
+	var errors []string
+
+	// Process each section in the partial config
+	for sectionName, sectionData := range frontendConfig {
+		sectionMap, ok := sectionData.(map[string]any)
+		if !ok {
+			errors = append(errors, fmt.Sprintf("section %s must be a map", sectionName))
+			continue
+		}
+
+		// Update each key-value pair in the section
+		for key, value := range sectionMap {
+			var err error
+			switch sectionName {
+			case "app":
+				err = h.setAppConfigValue(key, value)
+			case "daemon":
+				err = h.setDaemonConfigValue(key, value)
+			case "backend":
+				err = h.setBackendConfigValue(key, value)
+			case "monitors":
+				err = h.setMonitorsConfigValue(key, value)
+			default:
+				err = fmt.Errorf("unknown config section: %s", sectionName)
+			}
+
+			if err != nil {
+				errors = append(errors, fmt.Sprintf("failed to set %s.%s: %v", sectionName, key, err))
+				h.logger.Error("failed to set config value", "section", sectionName, "key", key, "value", value, "error", err)
+			} else {
+				h.logger.Info("config value updated", "section", sectionName, "key", key, "value", value)
+			}
+		}
+
+		updatedSections = append(updatedSections, sectionName)
+	}
+
+	// If there were any errors, return them
+	if len(errors) > 0 {
+		return &Response{Action: msg.Action, Error: fmt.Sprintf("partial config update failed: %v", errors)}
+	}
+
+	// Broadcast config change event for each updated section
+	if h.server != nil {
+		for _, section := range updatedSections {
+			h.server.BroadcastEvent(&Event{
+				Type: "config_changed",
+				Payload: map[string]any{
+					"section":   section,
+					"partial":   true,
+					"timestamp": time.Now().Unix(),
+				},
+			})
+		}
+	}
+
+	h.logger.Info("partial config update completed", "sections", updatedSections)
+	return &Response{Action: msg.Action, Data: map[string]any{
+		"updated_sections": updatedSections,
+		"success":          true,
+	}}
+}
+
+// validatePartialConfig validates the structure and types of a partial config
+func (h *Handler) validatePartialConfig(config map[string]any) error {
+	for sectionName, sectionData := range config {
+		sectionMap, ok := sectionData.(map[string]any)
+		if !ok {
+			return fmt.Errorf("section %s must be a map", sectionName)
+		}
+
+		// Validate the section using the type registry
+		if err := h.typeRegistry.ValidateSection(sectionName, sectionMap); err != nil {
+			return fmt.Errorf("validation failed for section %s: %w", sectionName, err)
+		}
+	}
+
+	return nil
+}
+
 // Helper methods for setting config values by section
-func (h *Handler) setAppConfigValue(key string, value interface{}) error {
+func (h *Handler) setAppConfigValue(key string, value any) error {
 	return h.configManager.SetAppConfig(key, value)
 }
 
-func (h *Handler) setDaemonConfigValue(key string, value interface{}) error {
+func (h *Handler) setDaemonConfigValue(key string, value any) error {
 	// For daemon config, we need to update the TOML file directly
 	// This is a simplified implementation - in practice, you'd want to reload the config
 	config, err := h.configManager.LoadConfig()
@@ -910,7 +1018,7 @@ func (h *Handler) setDaemonConfigValue(key string, value interface{}) error {
 	return h.configManager.SaveConfig()
 }
 
-func (h *Handler) setBackendConfigValue(key string, value interface{}) error {
+func (h *Handler) setBackendConfigValue(key string, value any) error {
 	config, err := h.configManager.LoadConfig()
 	if err != nil {
 		return err
@@ -956,7 +1064,10 @@ func (h *Handler) setBackendConfigValue(key string, value interface{}) error {
 	return h.configManager.SaveConfig()
 }
 
-func (h *Handler) setMonitorsConfigValue(key string, value interface{}) error {
+func (h *Handler) setMonitorsConfigValue(key string, value any) error {
+	// Monitor configuration should ONLY be saved to TOML, not JSON
+	// JSON (monitors.json) is for image state, TOML (config.toml) is for monitor configuration
+
 	config, err := h.configManager.LoadConfig()
 	if err != nil {
 		return err
@@ -975,7 +1086,49 @@ func (h *Handler) setMonitorsConfigValue(key string, value interface{}) error {
 		return fmt.Errorf("unknown monitors config key: %s", key)
 	}
 
-	return h.configManager.SaveConfig()
+	// Save to TOML config file
+	if err := h.configManager.SaveConfig(); err != nil {
+		h.logger.Error("failed to save monitor config to TOML", "error", err)
+		return err
+	}
+
+	h.logger.Info("Monitor configuration saved to TOML", "key", key, "value", value)
+	return nil
+}
+
+// validateActiveMonitorConfig validates the monitor configuration
+func (h *Handler) validateActiveMonitorConfig(activeMonitor *models.ActiveMonitor) error {
+	if activeMonitor == nil {
+		return fmt.Errorf("active monitor is nil")
+	}
+
+	if len(activeMonitor.Monitors) == 0 {
+		return fmt.Errorf("no monitors selected")
+	}
+
+	monitorCount := len(activeMonitor.Monitors)
+	imageSetType := activeMonitor.ImageSetType
+
+	// Determine the mode from imageSetType or fallback to individual
+	if imageSetType == "" {
+		imageSetType = "individual"
+	}
+
+	// Validate based on mode
+	switch imageSetType {
+	case "individual":
+		if monitorCount != 1 {
+			return fmt.Errorf("individual mode requires exactly 1 monitor, got %d", monitorCount)
+		}
+	case "extend", "clone":
+		if monitorCount < 2 {
+			return fmt.Errorf("%s mode requires at least 2 monitors, got %d", imageSetType, monitorCount)
+		}
+	default:
+		return fmt.Errorf("invalid image set type: %s", imageSetType)
+	}
+
+	return nil
 }
 
 func (h *Handler) handleGetSwwwConfig(msg *Message) *Response {
@@ -994,7 +1147,7 @@ func (h *Handler) handleStopDaemon(msg *Message) *Response {
 
 func (h *Handler) handleGetDaemonStatus(msg *Message) *Response {
 	// Return basic daemon status information
-	status := map[string]interface{}{
+	status := map[string]any{
 		"running":   true,
 		"uptime":    "unknown", // Could be implemented with start time tracking
 		"version":   "1.0.0",   // Could be read from build info
@@ -1019,13 +1172,45 @@ func (h *Handler) handleSetSelectedMonitor(msg *Message) *Response {
 		return response
 	}
 
-	// Store the active monitor configuration using the monitor manager
+	// Validate monitor configuration
+	if err := h.validateActiveMonitorConfig(msg.ActiveMonitor); err != nil {
+		h.logger.Error("invalid monitor configuration", "error", err)
+		return &Response{Action: msg.Action, Error: err.Error()}
+	}
+
+	// Update in-memory state
 	err := h.monitorManager.SetActiveMonitor(msg.ActiveMonitor)
 	if err != nil {
 		response := &Response{Action: msg.Action, Error: err.Error()}
 		return response
 	}
 
+	// ALSO save to TOML config for persistence
+	selectedMonitors := make([]string, len(msg.ActiveMonitor.Monitors))
+	for i, monitor := range msg.ActiveMonitor.Monitors {
+		selectedMonitors[i] = monitor.Name
+	}
+
+	// Use the imageSetType from frontend, fallback to individual
+	imageSetType := "individual"
+	if msg.ActiveMonitor.ImageSetType != "" {
+		imageSetType = msg.ActiveMonitor.ImageSetType
+	}
+
+	// Save to TOML config
+	err = h.setMonitorsConfigValue("selected_monitors", selectedMonitors)
+	if err != nil {
+		h.logger.Error("failed to save selected monitors to TOML", "error", err)
+		return &Response{Action: msg.Action, Error: err.Error()}
+	}
+
+	err = h.setMonitorsConfigValue("image_set_type", imageSetType)
+	if err != nil {
+		h.logger.Error("failed to save image set type to TOML", "error", err)
+		return &Response{Action: msg.Action, Error: err.Error()}
+	}
+
+	h.logger.Info("Monitor configuration saved to TOML", "monitors", selectedMonitors, "type", imageSetType)
 	response := &Response{Action: msg.Action, Data: "monitor configuration updated"}
 	return response
 }
@@ -1056,6 +1241,23 @@ func (h *Handler) handleGetPlaylistImages(msg *Message) *Response {
 
 	response := &Response{Action: msg.Action, Data: playlist.Images}
 	return response
+}
+
+func (h *Handler) handleGetRunningPlaylists(msg *Message) *Response {
+	runningPlaylists := h.playlistManager.GetRunningPlaylists()
+
+	// Convert to a format the frontend can understand
+	result := make(map[string]any)
+	for monitorName, instance := range runningPlaylists {
+		result[monitorName] = map[string]any{
+			"playlist_id":    instance.PlaylistID,
+			"playlist_name":  instance.PlaylistName,
+			"active_monitor": instance.ActiveMonitor,
+			"paused":         instance.Paused,
+		}
+	}
+
+	return &Response{Action: msg.Action, Data: result}
 }
 
 func (h *Handler) handleDeletePlaylist(msg *Message) *Response {
@@ -1099,7 +1301,7 @@ func (h *Handler) handleDeletePlaylist(msg *Message) *Response {
 	if h.server != nil {
 		h.server.BroadcastEvent(&Event{
 			Type: "playlists_updated",
-			Payload: map[string]interface{}{
+			Payload: map[string]any{
 				"action":       "deleted",
 				"playlistName": playlistName,
 			},
@@ -1161,7 +1363,7 @@ func (h *Handler) handleDeleteImageFromGallery(msg *Message) *Response {
 	if h.server != nil && len(imageIDs) > 0 {
 		h.server.BroadcastEvent(&Event{
 			Type: "images_updated",
-			Payload: map[string]interface{}{
+			Payload: map[string]any{
 				"totalDeleted": len(imageIDs),
 			},
 		})
@@ -1267,7 +1469,7 @@ func (h *Handler) handleProcessImages(msg *Message) *Response {
 			if h.server != nil {
 				h.server.BroadcastEvent(&Event{
 					Type: EventImageError,
-					Payload: map[string]interface{}{
+					Payload: map[string]any{
 						"originalFileName": result.Job.OriginalName,
 						"uniqueFileName":   result.Job.UniqueName,
 						"error":            result.Error.Error(),
@@ -1285,7 +1487,7 @@ func (h *Handler) handleProcessImages(msg *Message) *Response {
 		if h.server != nil {
 			h.server.BroadcastEvent(&Event{
 				Type: EventImageProcessed,
-				Payload: map[string]interface{}{
+				Payload: map[string]any{
 					"id":               fmt.Sprintf("%d", result.Metadata.Width), // Using width as ID placeholder
 					"originalFileName": result.Job.OriginalName,
 					"uniqueFileName":   result.Job.UniqueName,
@@ -1307,7 +1509,7 @@ func (h *Handler) handleProcessImages(msg *Message) *Response {
 	if h.server != nil {
 		h.server.BroadcastEvent(&Event{
 			Type: EventProcessingComplete,
-			Payload: map[string]interface{}{
+			Payload: map[string]any{
 				"totalProcessed":        successCount,
 				"totalRequested":        len(msg.ImagePaths),
 				"totalProcessingTime":   totalProcessingTime.Milliseconds(),
@@ -1319,7 +1521,7 @@ func (h *Handler) handleProcessImages(msg *Message) *Response {
 		if len(metadataList) > 0 {
 			h.server.BroadcastEvent(&Event{
 				Type: "images_updated",
-				Payload: map[string]interface{}{
+				Payload: map[string]any{
 					"totalAdded": len(metadataList),
 				},
 			})
@@ -1336,35 +1538,11 @@ func (h *Handler) handleProcessImages(msg *Message) *Response {
 	return response
 }
 
-func (h *Handler) handleDeleteImageFromCache(msg *Message) *Response {
-	// Delete image and thumbnail from cache
-	if len(msg.FileNames) == 0 {
-		response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "file names are required").Error()}
-		return response
-	}
-
-	if msg.CacheDir == "" || msg.ThumbnailsDir == "" {
-		response := &Response{Action: msg.Action, Error: errors.New(errors.IPCError, "cache directory and thumbnails directory are required").Error()}
-		return response
-	}
-
-	for _, fileName := range msg.FileNames {
-		err := image.DeleteImageFromCache(fileName, msg.CacheDir, msg.ThumbnailsDir)
-		if err != nil {
-			h.logger.Error("failed to delete image from cache", "error", err, "fileName", fileName)
-			// Continue with other files
-		}
-	}
-
-	response := &Response{Action: msg.Action, Data: "images deleted from cache"}
-	return response
-}
-
 func (h *Handler) handleGetActivePlaylist(msg *Message) *Response {
 	// Get active playlists from the playlist manager
 	// This would need to be implemented in the playlist manager
 	// For now, return empty list
-	activePlaylists := []map[string]interface{}{}
+	activePlaylists := []map[string]any{}
 
 	return &Response{Action: msg.Action, Data: activePlaylists}
 }
@@ -1453,7 +1631,7 @@ func (h *Handler) handleSavePlaylist(msg *Message) *Response {
 		h.logger.Error("failed to save playlist", "error", err, "name", playlist.Name)
 		return &Response{
 			Action: msg.Action,
-			Error:  errors.New(errors.DatabaseError, "failed to save playlist").WithDetails(map[string]interface{}{"error": err.Error()}).Error(),
+			Error:  errors.New(errors.DatabaseError, "failed to save playlist").WithDetails(map[string]any{"error": err.Error()}).Error(),
 		}
 	}
 
@@ -1474,7 +1652,7 @@ func (h *Handler) handleSavePlaylist(msg *Message) *Response {
 	// Return success with playlist ID
 	return &Response{
 		Action: msg.Action,
-		Data: map[string]interface{}{
+		Data: map[string]any{
 			"id":      playlist.ID,
 			"name":    playlist.Name,
 			"message": "playlist saved successfully",
