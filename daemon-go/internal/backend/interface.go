@@ -28,23 +28,11 @@ type Backend interface {
 	// SetWallpaper sets wallpaper on a specific monitor
 	SetWallpaper(ctx context.Context, imagePath, monitorName string, config *BackendConfig) error
 
-	// SetWallpaperAll sets wallpaper on all monitors
-	SetWallpaperAll(ctx context.Context, imagePath string, config *BackendConfig) error
-
 	// GetCapabilities returns what this backend supports
 	GetCapabilities() BackendCapabilities
 
 	// GetDefaultConfig returns default configuration for this backend
 	GetDefaultConfig() *BackendConfig
-
-	// StartDaemon starts the backend daemon if required
-	StartDaemon(ctx context.Context) error
-
-	// StopDaemon stops the backend daemon if it was started by this backend
-	StopDaemon(ctx context.Context) error
-
-	// IsDaemonRunning checks if the backend daemon is running
-	IsDaemonRunning() bool
 }
 
 // CompositorSupport represents supported compositors
@@ -69,28 +57,9 @@ type BackendCapabilities struct {
 
 	// Media type support
 	MediaTypes MediaTypeSupport `json:"mediaTypes"`
-
-	// Monitor capabilities
-	MultiMonitor bool `json:"multiMonitor"` // Can handle multiple monitors
-
-	// Visual capabilities
-	Transitions   bool `json:"transitions"`   // Supports transitions/animations
-	ResizeOptions bool `json:"resizeOptions"` // Supports different resize modes
-	Positioning   bool `json:"positioning"`   // Supports custom positioning
-	Filters       bool `json:"filters"`       // Supports image filters
-
-	// Runtime capabilities
-	RealTimeQuery  bool `json:"realTimeQuery"`  // Can query monitors in real-time
-	BackgroundMode bool `json:"backgroundMode"` // Can run in background
-	DaemonMode     bool `json:"daemonMode"`     // Supports daemon mode
-
-	// Performance characteristics
-	MaxImageSize    int  `json:"maxImageSize"`    // Maximum supported image size (megapixels)
-	FastSwitching   bool `json:"fastSwitching"`   // Optimized for rapid wallpaper changes
-	MemoryEfficient bool `json:"memoryEfficient"` // Low memory usage
 }
 
-// BackendConfig holds configuration for a backend
+// This is backend specific, each backend will have its own config, we cannot use a generic config for all backends
 type BackendConfig struct {
 	BackendType BackendType `json:"backendType"`
 

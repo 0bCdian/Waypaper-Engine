@@ -7,27 +7,6 @@ import (
 	"waypaper-engine/daemon-go/internal/types"
 )
 
-type Monitors map[string]types.Monitor
-
-// MonitorManager interface defines the contract for monitor management
-type MonitorManager interface {
-	GetMonitors() Monitors
-
-	GetMonitorByName(name string) (types.Monitor, bool)
-
-	Start() error
-
-	Stop()
-
-	Events() <-chan MonitorEvent
-}
-
-// MonitorEvent represents a change in monitor configuration
-type MonitorEvent struct {
-	Type    string        `json:"type"` // "added", "removed", "changed"
-	Monitor types.Monitor `json:"monitor"`
-}
-
 func DetectCompositor() (*types.CompositorInfo, error) {
 	sessionType := os.Getenv("XDG_SESSION_TYPE")
 
@@ -59,10 +38,13 @@ func DetectCompositor() (*types.CompositorInfo, error) {
 }
 
 // CreateMonitorManager creates a monitor manager for the detected compositor
-func CreateMonitorManager() (MonitorManager, error) {
-	compositorInfo, err := DetectCompositor()
-	if err != nil {
-		return nil, fmt.Errorf("failed to detect compositor: %w", err)
+func CreateMonitorManager(compositorInfo *types.CompositorInfo) (MonitorManager, error) {
+	if compositorInfo.Type == "auto" {
+		detectedCompositor, err := DetectCompositor()
+		compositorInfo.Type = detectedCompositor.Type
+		if err != nil {
+			return nil, fmt.Errorf("failed to detect compositor: %w", err)
+		}
 	}
 	switch compositorInfo.Type {
 	case types.CompositorTypeWayland:
@@ -75,7 +57,7 @@ func CreateMonitorManager() (MonitorManager, error) {
 }
 
 // GetPrimaryMonitorFromMap returns the primary monitor from a map
-func GetPrimaryMonitorFromMap(monitors Monitors) *types.Monitor {
+func GetPrimaryMonitorFromMap(monitors Monitors) *Monitor {
 	for _, monitor := range monitors {
 		if monitor.Position.X == 0 && monitor.Position.Y == 0 {
 			return &monitor

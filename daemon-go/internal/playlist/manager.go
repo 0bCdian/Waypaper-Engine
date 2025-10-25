@@ -9,7 +9,6 @@ import (
 	"waypaper-engine/daemon-go/internal/backend"
 	"waypaper-engine/daemon-go/internal/config"
 	"waypaper-engine/daemon-go/internal/errors"
-	"waypaper-engine/daemon-go/internal/models"
 	"waypaper-engine/daemon-go/internal/store"
 )
 

@@ -5,20 +5,6 @@ package types
 // ============================================================================
 
 // ImageFormat represents supported image formats
-type ImageFormat string
-
-const (
-	FormatJPG      ImageFormat = "jpg"
-	FormatJPEG     ImageFormat = "jpeg"
-	FormatPNG      ImageFormat = "png"
-	FormatBMP      ImageFormat = "bmp"
-	FormatGIF      ImageFormat = "gif"
-	FormatWebP     ImageFormat = "webp"
-	FormatFarbfeld ImageFormat = "farbfeld"
-	FormatPNM      ImageFormat = "pnm"
-	FormatTGA      ImageFormat = "tga"
-	FormatTIFF     ImageFormat = "tiff"
-)
 
 // PlaylistType defines the type of the playlist
 type PlaylistType string
@@ -36,80 +22,6 @@ type PlaylistOrder string
 const (
 	PlaylistOrderOrdered PlaylistOrder = "ordered"
 	PlaylistOrderRandom  PlaylistOrder = "random"
-)
-
-// ResizeType defines how images should be resized
-type ResizeType string
-
-const (
-	ResizeTypeCrop    ResizeType = "crop"
-	ResizeTypeFit     ResizeType = "fit"
-	ResizeTypeNone    ResizeType = "no"
-	ResizeTypeStretch ResizeType = "stretch"
-)
-
-// FilterType defines the filter algorithm for resizing
-type FilterType string
-
-const (
-	FilterTypeLanczos3   FilterType = "Lanczos3"
-	FilterTypeBilinear   FilterType = "Bilinear"
-	FilterTypeCatmullRom FilterType = "CatmullRom"
-	FilterTypeMitchell   FilterType = "Mitchell"
-	FilterTypeNearest    FilterType = "Nearest"
-)
-
-// TransitionType defines the transition effect
-type TransitionType string
-
-const (
-	TransitionTypeNone   TransitionType = "none"
-	TransitionTypeSimple TransitionType = "simple"
-	TransitionTypeFade   TransitionType = "fade"
-	TransitionTypeLeft   TransitionType = "left"
-	TransitionTypeRight  TransitionType = "right"
-	TransitionTypeTop    TransitionType = "top"
-	TransitionTypeBottom TransitionType = "bottom"
-	TransitionTypeWipe   TransitionType = "wipe"
-	TransitionTypeWave   TransitionType = "wave"
-	TransitionTypeGrow   TransitionType = "grow"
-	TransitionTypeCenter TransitionType = "center"
-	TransitionTypeAny    TransitionType = "any"
-	TransitionTypeOuter  TransitionType = "outer"
-	TransitionTypeRandom TransitionType = "random"
-)
-
-// TransitionPosition defines the position for transitions
-type TransitionPosition string
-
-const (
-	TransitionPositionCenter      TransitionPosition = "center"
-	TransitionPositionTop         TransitionPosition = "top"
-	TransitionPositionLeft        TransitionPosition = "left"
-	TransitionPositionRight       TransitionPosition = "right"
-	TransitionPositionBottom      TransitionPosition = "bottom"
-	TransitionPositionTopLeft     TransitionPosition = "top-left"
-	TransitionPositionTopRight    TransitionPosition = "top-right"
-	TransitionPositionBottomLeft  TransitionPosition = "bottom-left"
-	TransitionPositionBottomRight TransitionPosition = "bottom-right"
-)
-
-// TransitionPositionType defines the type of position values
-type TransitionPositionType string
-
-const (
-	TransitionPositionTypeAlias TransitionPositionType = "alias"
-	TransitionPositionTypeInt   TransitionPositionType = "int"
-	TransitionPositionTypeFloat TransitionPositionType = "float"
-)
-
-// MonitorMode defines how monitors are configured
-type MonitorMode string
-
-const (
-	MonitorModeIndividual MonitorMode = "individual"
-	MonitorModeExtend     MonitorMode = "extend"
-	MonitorModeClone      MonitorMode = "clone"
 )
 
 // BackendType defines supported backend types
@@ -148,64 +60,22 @@ const (
 	LogLevelError LogLevel = "error"
 )
 
-// ============================================================================
-// BASIC STRUCTS
-// ============================================================================
-
-// Position represents a 2D position
-type Position struct {
-	X int `toml:"x" json:"x"`
-	Y int `toml:"y" json:"y"`
-}
-
-// Dimensions represents width and height
 type Dimensions struct {
 	Width  int `toml:"width" json:"width"`
 	Height int `toml:"height" json:"height"`
 }
 
-// ============================================================================
-// MONITOR STRUCTS
-// ============================================================================
-
-// Monitor represents a single display.
-type Monitor struct {
-	Name         string   `json:"name"`
-	Width        int      `json:"width"`
-	Height       int      `json:"height"`
-	CurrentImage string   `json:"currentImage"`
-	Position     Position `json:"position"`
-}
-
-// MonitorSelection represents monitor configuration for operations
-type MonitorSelection struct {
-	ID       string      `toml:"id" json:"id"`
-	Monitors []Monitor   `toml:"monitors" json:"monitors"`
-	Mode     MonitorMode `toml:"mode" json:"mode"` // "individual", "extend", or "clone"
-}
-
-// MonitorImagePair represents a monitor and its associated image path
-type MonitorImagePair struct {
-	Monitor Monitor `toml:"monitor" json:"monitor"`
-	Image   string  `toml:"image" json:"image"`
-}
-
-// ============================================================================
-// IMAGE STRUCTS
-// ============================================================================
-
 // Image represents an image file
 type Image struct {
-	ID         int64       `toml:"id" json:"id"`
-	Name       string      `toml:"name" json:"name"`
-	Path       string      `toml:"path" json:"path"`
-	IsChecked  bool        `toml:"is_checked" json:"isChecked"`
-	IsSelected bool        `toml:"is_selected" json:"isSelected"`
-	Width      int         `toml:"width" json:"width"`
-	Height     int         `toml:"height" json:"height"`
-	Format     ImageFormat `toml:"format" json:"format"`
-	Rating     int         `toml:"rating" json:"rating"`
-	Time       *int        `toml:"time,omitempty" json:"time,omitempty"` // Corresponds to rendererImage's nullable time
+	ID         int64  `toml:"id" json:"id"`
+	Name       string `toml:"name" json:"name"`
+	Path       string `toml:"path" json:"path"`
+	IsChecked  bool   `toml:"is_checked" json:"isChecked"`
+	IsSelected bool   `toml:"is_selected" json:"isSelected"`
+	Width      int    `toml:"width" json:"width"`
+	Height     int    `toml:"height" json:"height"`
+	Format     string `toml:"format" json:"format"`
+	Time       *int   `toml:"time,omitempty" json:"time,omitempty"` // Corresponds to rendererImage's nullable time
 }
 
 // ImageInfo represents basic image information for IPC
@@ -224,7 +94,6 @@ type Playlist struct {
 	Name                    string        `toml:"name" json:"name"`
 	Type                    PlaylistType  `toml:"type" json:"type"`
 	Interval                *int          `toml:"interval,omitempty" json:"interval,omitempty"`
-	ShowAnimations          bool          `toml:"show_animations" json:"showAnimations"`
 	AlwaysStartOnFirstImage bool          `toml:"always_start_on_first_image" json:"alwaysStartOnFirstImage"`
 	Order                   PlaylistOrder `toml:"order,omitempty" json:"order,omitempty"`
 	CurrentImageIndex       int64         `toml:"current_image_index" json:"currentImageIndex"`
@@ -236,76 +105,11 @@ type Playlist struct {
 // ============================================================================
 
 // AppConfig represents the application configuration
-type AppConfig struct {
-	KillDaemonOnExit        bool   `toml:"kill_daemon_on_exit" json:"killDaemon"`
-	Notifications           bool   `toml:"notifications" json:"notifications"`
-	StartMinimized          bool   `toml:"start_minimized" json:"startMinimized"`
-	MinimizeInsteadOfClose  bool   `toml:"minimize_instead_of_close" json:"minimizeInsteadOfClose"`
-	ShowMonitorModalOnStart bool   `toml:"show_monitor_modal_on_start" json:"showMonitorModalOnStart"`
-	ImagesPerPage           int    `toml:"images_per_page" json:"imagesPerPage"`
-	Theme                   string `toml:"theme" json:"theme"`
-	SortBy                  string `toml:"sort_by" json:"sortBy"`
-	SortOrder               string `toml:"sort_order" json:"sortOrder"`
-	ImageHistoryLimit       int    `toml:"image_history_limit" json:"imageHistoryLimit"`
-}
-
-// DaemonConfig represents daemon configuration
-type DaemonConfig struct {
-	DatabasePath      string         `toml:"database_path" json:"databasePath"`
-	ImagesDir         string         `toml:"images_dir" json:"imagesDir"`
-	ThumbnailsDir     string         `toml:"thumbnails_dir" json:"thumbnailsDir"`
-	MonitorsStateFile string         `toml:"monitors_state_file" json:"monitorsStateFile"`
-	SocketPath        string         `toml:"socket_path" json:"socketPath"`
-	LogLevel          LogLevel       `toml:"log_level" json:"logLevel"`
-	LogFile           string         `toml:"log_file" json:"logFile"`
-	LogMaxSize        int            `toml:"log_max_size" json:"logMaxSize"`
-	LogMaxAge         int            `toml:"log_max_age" json:"logMaxAge"`
-	LogMaxBackups     int            `toml:"log_max_backups" json:"logMaxBackups"`
-	Compositor        CompositorType `toml:"compositor" json:"compositor"`
-}
-
-// SwwwConfig represents the swww configuration
-type SwwwConfig struct {
-	// Image display options
-	ResizeType ResizeType `toml:"resize_type" json:"resizeType"`
-	FillColor  string     `toml:"fill_color" json:"fillColor"`
-	FilterType FilterType `toml:"filter_type" json:"filterType"`
-
-	// Transition configuration
-	TransitionType     TransitionType `toml:"transition_type" json:"transitionType"`
-	TransitionStep     int            `toml:"transition_step" json:"transitionStep"`
-	TransitionDuration int            `toml:"transition_duration" json:"transitionDuration"`
-	TransitionFPS      int            `toml:"transition_fps" json:"transitionFPS"`
-	TransitionAngle    int            `toml:"transition_angle" json:"transitionAngle"`
-	TransitionPos      string         `toml:"transition_pos" json:"transitionPos"`
-	TransitionBezier   string         `toml:"transition_bezier" json:"transitionBezier"`
-	TransitionWave     string         `toml:"transition_wave" json:"transitionWave"`
-	InvertY            bool           `toml:"invert_y" json:"invertY"`
-
-	// Position configuration (for transitions)
-	PositionX float64 `toml:"position_x" json:"positionX"`
-	PositionY float64 `toml:"position_y" json:"positionY"`
-}
-
-// BackendConfig represents backend configuration
-type BackendConfig struct {
-	Type BackendType `toml:"type" json:"type"`
-	Swww SwwwConfig  `toml:"swww" json:"swww"`
-	// TODO: Implement more backends in future implementations
-}
 
 // MonitorsConfig represents monitors configuration
 type MonitorsConfig struct {
 	SelectedMonitors []string    `toml:"selected_monitors" json:"selectedMonitors"`
 	ImageSetType     MonitorMode `toml:"image_set_type" json:"imageSetType"`
-}
-
-// UnifiedConfig represents the complete configuration
-type UnifiedConfig struct {
-	App      AppConfig      `toml:"app" json:"app"`
-	Daemon   DaemonConfig   `toml:"daemon" json:"daemon"`
-	Backend  BackendConfig  `toml:"backend" json:"backend"`
-	Monitors MonitorsConfig `toml:"monitors" json:"monitors"`
 }
 
 // ============================================================================
@@ -413,16 +217,7 @@ type PlaylistEventMetadata struct {
 	IsPaused         bool   `toml:"is_paused" json:"isPaused"`
 }
 
-// MonitorEventMetadata contains metadata for monitor-related events
-type MonitorEventMetadata struct {
-	Name         string              `toml:"name" json:"name"`
-	Width        int                 `toml:"width" json:"width"`
-	Height       int                 `toml:"height" json:"height"`
-	Position     *Position           `toml:"position,omitempty" json:"position,omitempty"`
-	CurrentImage *ImageEventMetadata `toml:"current_image,omitempty" json:"currentImage,omitempty"`
-	Selected     bool                `toml:"selected" json:"selected"`
-}
-
+// MonitorEventMetadata contains metadata for monitor-related event
 // ConfigEventMetadata contains metadata for config-related events
 type ConfigEventMetadata struct {
 	ConfigType string `toml:"config_type" json:"configType"`

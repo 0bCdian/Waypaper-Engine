@@ -12,8 +12,6 @@ import (
 	"waypaper-engine/daemon-go/internal/config"
 	"waypaper-engine/daemon-go/internal/errors"
 	"waypaper-engine/daemon-go/internal/image"
-	"waypaper-engine/daemon-go/internal/models"
-	"waypaper-engine/daemon-go/internal/monitor"
 	"waypaper-engine/daemon-go/internal/playlist"
 	"waypaper-engine/daemon-go/internal/store"
 	"waypaper-engine/daemon-go/internal/system"
@@ -23,7 +21,6 @@ import (
 type Handler struct {
 	playlistManager  *playlist.Manager
 	configManager    *config.ConfigManager
-	imageProcessor   *image.Processor
 	monitorManager   *monitor.Manager
 	logger           *slog.Logger
 	server           *Server
@@ -34,11 +31,10 @@ type Handler struct {
 }
 
 // NewHandler creates a new message handler.
-func NewHandler(playlistManager *playlist.Manager, configManager *config.ConfigManager, imageProcessor *image.Processor, monitorManager *monitor.Manager, logger *slog.Logger) *Handler {
+func NewHandler(playlistManager *playlist.Manager, configManager *config.ConfigManager, monitorManager *monitor.Manager, logger *slog.Logger) *Handler {
 	return &Handler{
 		playlistManager:  playlistManager,
 		configManager:    configManager,
-		imageProcessor:   imageProcessor,
 		monitorManager:   monitorManager,
 		store:            nil, // Will be set later if JSON store is available
 		logger:           logger,
@@ -582,33 +578,14 @@ func (h *Handler) handleProcessForMonitors(msg *Message) *Response {
 		return h.createResponse(msg.Action, nil, errors.New(errors.SystemError, fmt.Sprintf("image with ID %d not found", msg.Image.ID)))
 	}
 
-	// Convert models.ActiveMonitor to monitor.ActiveMonitor
-	activeMonitor := &monitor.ActiveMonitor{
-		Name:         msg.ActiveMonitor.Name,
-		ImageSetType: msg.ActiveMonitor.ImageSetType,
-		Monitors:     make([]monitor.Monitor, len(msg.ActiveMonitor.Monitors)),
-	}
-
-	for i, m := range msg.ActiveMonitor.Monitors {
-		activeMonitor.Monitors[i] = monitor.Monitor{
-			Name:   m.Name,
-			Width:  m.Width,
-			Height: m.Height,
-			Position: monitor.Position{
-				X: m.Position.X,
-				Y: m.Position.Y,
-			},
-		}
-	}
-
 	// Read image file data
 	imageData, err := os.ReadFile(imageInfo.Path)
 	if err != nil {
 		return h.createResponse(msg.Action, nil, errors.New(errors.SystemError, fmt.Sprintf("failed to read image file: %v", err)))
 	}
 
-	// Process image for monitors
-	monitorImages, err := image.ProcessForMonitors(imageData, activeMonitor)
+	// Process image for monitors using types from types package
+	monitorImages, err := image.ProcessForMonitors(imageData, msg.ActiveMonitor.Monitors, msg.ActiveMonitor.Mode)
 	if err != nil {
 		return h.createResponse(msg.Action, nil, errors.New(errors.ImageError, fmt.Sprintf("failed to process image for monitors: %v", err)))
 	}
@@ -649,27 +626,8 @@ func (h *Handler) handleDuplicateImageAcrossMonitors(msg *Message) *Response {
 		return h.createResponse(msg.Action, nil, errors.New(errors.SystemError, fmt.Sprintf("failed to read image file: %v", err)))
 	}
 
-	// Convert models.ActiveMonitor to monitor.ActiveMonitor
-	activeMonitor := &monitor.ActiveMonitor{
-		Name:         msg.ActiveMonitor.Name,
-		ImageSetType: "clone", // Force duplicate mode
-		Monitors:     make([]monitor.Monitor, len(msg.ActiveMonitor.Monitors)),
-	}
-
-	for i, m := range msg.ActiveMonitor.Monitors {
-		activeMonitor.Monitors[i] = monitor.Monitor{
-			Name:   m.Name,
-			Width:  m.Width,
-			Height: m.Height,
-			Position: monitor.Position{
-				X: m.Position.X,
-				Y: m.Position.Y,
-			},
-		}
-	}
-
-	// Process image for monitors (duplicate mode)
-	monitorImages, err := image.ProcessForMonitors(imageData, activeMonitor)
+	// Process image for monitors (force clone/duplicate mode)
+	monitorImages, err := image.ProcessForMonitors(imageData, msg.ActiveMonitor.Monitors, "clone")
 	if err != nil {
 		return h.createResponse(msg.Action, nil, errors.New(errors.ImageError, fmt.Sprintf("failed to process image for monitors: %v", err)))
 	}
@@ -1351,7 +1309,10 @@ func (h *Handler) handleDeleteImageFromGallery(msg *Message) *Response {
 		// Don't fail the whole operation if we can't get config
 	} else {
 		for _, fileName := range imageNames {
-			err := image.DeleteImageFromCache(fileName, config.Daemon.ImagesDir, config.Daemon.ThumbnailsDir)
+			cachePath := filepath.Join(config.Daemon.ImagesDir, fileName)
+			thumbnailName := image.GetThumbnailName(fileName)
+			thumbnailPath := filepath.Join(config.Daemon.ThumbnailsDir, thumbnailName)
+			err := image.DeleteImageFromCache(cachePath, thumbnailPath)
 			if err != nil {
 				h.logger.Warn("failed to delete image file", "fileName", fileName, "error", err)
 				// Continue with other files
@@ -1374,10 +1335,8 @@ func (h *Handler) handleDeleteImageFromGallery(msg *Message) *Response {
 }
 
 func (h *Handler) handleProcessImages(msg *Message) *Response {
-	// Process images using parallel processing pipeline
-	ctx := context.Background()
-
-	h.logger.Info("handleProcessImages called with parallel processing", "imagePaths", msg.ImagePaths, "fileNames", msg.FileNames)
+	// Process images using simplified batch processing
+	h.logger.Info("handleProcessImages called with batch processing", "imagePaths", msg.ImagePaths, "fileNames", msg.FileNames)
 
 	if len(msg.ImagePaths) == 0 || len(msg.FileNames) == 0 {
 		h.logger.Error("image paths or file names are empty", "imagePaths", msg.ImagePaths, "fileNames", msg.FileNames)
@@ -1409,13 +1368,28 @@ func (h *Handler) handleProcessImages(msg *Message) *Response {
 	uniqueFileNames := image.GetUniqueFileNames(existingFiles, msg.FileNames)
 	h.logger.Info("generated unique filenames", "original", msg.FileNames, "unique", uniqueFileNames)
 
-	// Determine required resolutions based on connected monitors
-	var requiredResolutions []string
-	if h.monitorManager != nil {
-		// Get connected monitors
-		monitors := h.monitorManager.GetMonitors()
+	// Process images using simplified batch processing
+	h.logger.Info("starting batch image processing", "totalImages", len(msg.ImagePaths))
 
-		// Convert to MonitorResolution format
+	// Map unique filenames to their paths for processing
+	var imagePaths []string
+	var fileNames []string
+	for i := range msg.ImagePaths {
+		imagePaths = append(imagePaths, msg.ImagePaths[i])
+		fileNames = append(fileNames, uniqueFileNames[i])
+	}
+
+	// Process images - copy to cache and create default thumbnails
+	metadataList, err := image.ProcessImagesFromPaths(imagePaths, fileNames, cacheDir, thumbnailsDir)
+	if err != nil {
+		h.logger.Error("batch image processing failed", "error", err)
+		response := &Response{Action: msg.Action, Error: errors.New(errors.ImageError, fmt.Sprintf("processing failed: %v", err)).Error()}
+		return response
+	}
+
+	// Create smart resolution thumbnails if monitor manager available
+	if h.monitorManager != nil {
+		monitors := h.monitorManager.GetMonitors()
 		var monitorResolutions []image.MonitorResolution
 		for _, monitor := range monitors {
 			monitorResolutions = append(monitorResolutions, image.MonitorResolution{
@@ -1424,85 +1398,39 @@ func (h *Handler) handleProcessImages(msg *Message) *Response {
 				Name:   monitor.Name,
 			})
 		}
+		requiredResolutions := image.GetRequiredResolutions(monitorResolutions)
+		h.logger.Debug("Creating smart resolution thumbnails", "resolutions", requiredResolutions)
 
-		// Get required resolutions based on monitors
-		requiredResolutions = image.GetRequiredResolutions(monitorResolutions)
-		h.logger.Debug("Creating thumbnails for resolutions", "resolutions", requiredResolutions, "monitors", len(monitors))
-	} else {
-		// Fallback to all resolutions if no monitor manager
-		requiredResolutions = []string{"720p", "1080p", "1440p", "4k", "fallback"}
-	}
-
-	// Create parallel image processing jobs
-	var jobs []*image.ImageProcessingJob
-	for i, imagePath := range msg.ImagePaths {
-		job := &image.ImageProcessingJob{
-			ImagePath:           imagePath,
-			OriginalName:        msg.FileNames[i],
-			UniqueName:          uniqueFileNames[i],
-			RequiredResolutions: requiredResolutions,
-		}
-		jobs = append(jobs, job)
-	}
-
-	// Create parallel processor
-	processor := image.NewParallelImageProcessor(cacheDir, thumbnailsDir, h.store, 4) // 4 workers
-
-	// Process images in parallel
-	h.logger.Info("starting parallel image processing", "totalImages", len(jobs), "workers", 4)
-	results, err := processor.ProcessImagesInParallel(ctx, jobs)
-	if err != nil {
-		h.logger.Error("parallel image processing failed", "error", err)
-		response := &Response{Action: msg.Action, Error: errors.New(errors.ImageError, fmt.Sprintf("parallel processing failed: %v", err)).Error()}
-		return response
-	}
-
-	// Process results and emit events
-	var successCount int
-	var totalProcessingTime time.Duration
-	var metadataList []*image.Metadata
-
-	for _, result := range results {
-		if result.Error != nil {
-			h.logger.Error("failed to process image", "originalFileName", result.Job.OriginalName, "uniqueFileName", result.Job.UniqueName, "error", result.Error)
-			// Emit error event
-			if h.server != nil {
-				h.server.BroadcastEvent(&Event{
-					Type: EventImageError,
-					Payload: map[string]any{
-						"originalFileName": result.Job.OriginalName,
-						"uniqueFileName":   result.Job.UniqueName,
-						"error":            result.Error.Error(),
-					},
-				})
+		// Create smart thumbnails for each processed image
+		for _, fileName := range fileNames {
+			imagePath := filepath.Join(cacheDir, fileName)
+			_, err := image.CreateSmartMultiResolutionThumbnails(imagePath, thumbnailsDir, fileName, requiredResolutions)
+			if err != nil {
+				h.logger.Warn("failed to create smart thumbnails", "fileName", fileName, "error", err)
+				// Continue with other images
 			}
-			continue
 		}
+	}
 
-		successCount++
-		totalProcessingTime += result.ProcessingTime
-		metadataList = append(metadataList, result.Metadata)
-
-		// Emit success event
+	// Emit success events for processed images
+	successCount := len(metadataList)
+	for i, metadata := range metadataList {
 		if h.server != nil {
 			h.server.BroadcastEvent(&Event{
 				Type: EventImageProcessed,
 				Payload: map[string]any{
-					"id":               fmt.Sprintf("%d", result.Metadata.Width), // Using width as ID placeholder
-					"originalFileName": result.Job.OriginalName,
-					"uniqueFileName":   result.Job.UniqueName,
-					"width":            result.Metadata.Width,
-					"height":           result.Metadata.Height,
-					"format":           result.Metadata.Format,
-					"processingTime":   result.ProcessingTime.Milliseconds(),
+					"originalFileName": msg.FileNames[i],
+					"uniqueFileName":   fileNames[i],
+					"width":            metadata.Width,
+					"height":           metadata.Height,
+					"format":           metadata.Format,
 				},
 			})
 		}
 
 		h.logger.Info("successfully processed image",
-			"originalFileName", result.Job.OriginalName,
-			"uniqueFileName", result.Job.UniqueName,
-			"processingTime", result.ProcessingTime)
+			"originalFileName", msg.FileNames[i],
+			"uniqueFileName", fileNames[i])
 	}
 
 	// Emit completion event
@@ -1510,10 +1438,8 @@ func (h *Handler) handleProcessImages(msg *Message) *Response {
 		h.server.BroadcastEvent(&Event{
 			Type: EventProcessingComplete,
 			Payload: map[string]any{
-				"totalProcessed":        successCount,
-				"totalRequested":        len(msg.ImagePaths),
-				"totalProcessingTime":   totalProcessingTime.Milliseconds(),
-				"averageProcessingTime": totalProcessingTime.Milliseconds() / int64(max(successCount, 1)),
+				"totalProcessed": successCount,
+				"totalRequested": len(msg.ImagePaths),
 			},
 		})
 
@@ -1528,11 +1454,9 @@ func (h *Handler) handleProcessImages(msg *Message) *Response {
 		}
 	}
 
-	h.logger.Info("parallel image processing completed",
+	h.logger.Info("batch image processing completed",
 		"totalProcessed", successCount,
-		"totalRequested", len(msg.ImagePaths),
-		"totalProcessingTime", totalProcessingTime,
-		"averageProcessingTime", totalProcessingTime/time.Duration(max(successCount, 1)))
+		"totalRequested", len(msg.ImagePaths))
 
 	response := &Response{Action: msg.Action, Data: metadataList}
 	return response

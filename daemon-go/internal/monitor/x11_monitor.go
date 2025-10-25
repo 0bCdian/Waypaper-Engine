@@ -390,7 +390,7 @@ func (mm *X11MonitorManager) GetMonitors() Monitors {
 }
 
 // GetMonitorByName returns a monitor by its name
-func (mm *X11MonitorManager) GetMonitorByName(name string) (types.Monitor, bool) {
+func (mm *X11MonitorManager) GetMonitorByName(name string) (Monitor, bool) {
 	mm.mu.Lock()
 	defer mm.mu.Unlock()
 
@@ -399,11 +399,11 @@ func (mm *X11MonitorManager) GetMonitorByName(name string) (types.Monitor, bool)
 			return convertX11MonitorToUnified(m), true
 		}
 	}
-	return types.Monitor{}, false
+	return Monitor{}, false
 }
 
 // GetPrimaryMonitor returns the primary monitor
-func (mm *X11MonitorManager) GetPrimaryMonitor() (types.Monitor, bool) {
+func (mm *X11MonitorManager) GetPrimaryMonitor() (Monitor, bool) {
 	mm.mu.Lock()
 	defer mm.mu.Unlock()
 
@@ -412,7 +412,7 @@ func (mm *X11MonitorManager) GetPrimaryMonitor() (types.Monitor, bool) {
 			return convertX11MonitorToUnified(m), true
 		}
 	}
-	return types.Monitor{}, false
+	return Monitor{}, false
 }
 
 // GetCompositorInfo returns information about the current compositor
@@ -565,14 +565,14 @@ func go_x11_monitor_event_callback(context unsafe.Pointer, eventType C.int, outp
 	mm.handleEvent(int(eventType), outputID, info)
 }
 
-// convertX11MonitorToUnified converts X11MonitorInfo to types.Monitor
-func convertX11MonitorToUnified(info X11MonitorInfo) types.Monitor {
-	return types.Monitor{
+// convertX11MonitorToUnified converts X11MonitorInfo to Monitor
+func convertX11MonitorToUnified(info X11MonitorInfo) Monitor {
+	return Monitor{
 		Name:         info.Name,
 		Width:        int(info.Width),
 		Height:       int(info.Height),
 		CurrentImage: "", // Will be set by the manager
-		Position: types.Position{
+		Position: Position{
 			X: int(info.X),
 			Y: int(info.Y),
 		},

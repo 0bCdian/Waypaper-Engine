@@ -9,6 +9,51 @@ import (
 	"waypaper-engine/daemon-go/internal/media"
 )
 
+type AppConfig struct {
+	KillDaemonOnExit        bool   `toml:"kill_daemon_on_exit" json:"killDaemon"`
+	Notifications           bool   `toml:"notifications" json:"notifications"`
+	StartMinimized          bool   `toml:"start_minimized" json:"startMinimized"`
+	MinimizeInsteadOfClose  bool   `toml:"minimize_instead_of_close" json:"minimizeInsteadOfClose"`
+	ShowMonitorModalOnStart bool   `toml:"show_monitor_modal_on_start" json:"showMonitorModalOnStart"`
+	ImagesPerPage           int    `toml:"images_per_page" json:"imagesPerPage"`
+	Theme                   string `toml:"theme" json:"theme"`
+	SortBy                  string `toml:"sort_by" json:"sortBy"`
+	SortOrder               string `toml:"sort_order" json:"sortOrder"`
+	ImageHistoryLimit       int    `toml:"image_history_limit" json:"imageHistoryLimit"`
+}
+
+// DaemonConfig represents daemon configuration
+type DaemonConfig struct {
+	DatabasePath      string         `toml:"database_path" json:"databasePath"`
+	ImagesDir         string         `toml:"images_dir" json:"imagesDir"`
+	ThumbnailsDir     string         `toml:"thumbnails_dir" json:"thumbnailsDir"`
+	MonitorsStateFile string         `toml:"monitors_state_file" json:"monitorsStateFile"`
+	SocketPath        string         `toml:"socket_path" json:"socketPath"`
+	LogLevel          LogLevel       `toml:"log_level" json:"logLevel"`
+	LogFile           string         `toml:"log_file" json:"logFile"`
+	LogMaxSize        int            `toml:"log_max_size" json:"logMaxSize"`
+	LogMaxAge         int            `toml:"log_max_age" json:"logMaxAge"`
+	LogMaxBackups     int            `toml:"log_max_backups" json:"logMaxBackups"`
+	Compositor        CompositorType `toml:"compositor" json:"compositor"`
+}
+
+// SwwwConfig represents the swww configuration
+
+// BackendConfig represents backend configuration
+type BackendConfig struct {
+	Type BackendType `toml:"type" json:"type"`
+	Swww SwwwConfig  `toml:"swww" json:"swww"`
+	// TODO: Implement more backends in future implementations
+}
+
+// UnifiedConfig represents the complete configuration
+type UnifiedConfig struct {
+	App      AppConfig      `toml:"app" json:"app"`
+	Daemon   DaemonConfig   `toml:"daemon" json:"daemon"`
+	Backend  BackendConfig  `toml:"backend" json:"backend"`
+	Monitors MonitorsConfig `toml:"monitors" json:"monitors"`
+}
+
 // Image represents an image in the JSON store
 type Image struct {
 	ID           int64           `json:"id"`
@@ -27,7 +72,7 @@ type Image struct {
 func (i *Image) UnmarshalJSON(data []byte) error {
 	// Create a temporary struct with string ID for unmarshaling
 	type TempImage struct {
-		ID           any     `json:"id"`
+		ID           any             `json:"id"`
 		Name         string          `json:"name"`
 		Path         string          `json:"path"`
 		MediaType    media.MediaType `json:"mediaType"`
@@ -220,10 +265,10 @@ type PlaylistImage struct {
 
 // PlaylistImageSettings contains per-image customizations
 type PlaylistImageSettings struct {
-	DisplayTime     *int                   `json:"displayTime,omitempty"`
-	TransitionTime  *float64               `json:"transitionTime,omitempty"`
-	PreferredEffect *string                `json:"preferredEffect,omitempty"`
-	SkipTransitions *bool                  `json:"skipTransitions,omitempty"`
+	DisplayTime     *int           `json:"displayTime,omitempty"`
+	TransitionTime  *float64       `json:"transitionTime,omitempty"`
+	PreferredEffect *string        `json:"preferredEffect,omitempty"`
+	SkipTransitions *bool          `json:"skipTransitions,omitempty"`
 	Metadata        map[string]any `json:"metadata,omitempty"`
 }
 
@@ -238,21 +283,6 @@ type PlaylistRuntime struct {
 	PausedAt         *time.Time `json:"pausedAt,omitempty"`
 	TotalTimeActive  *int64     `json:"totalTimeActive,omitempty"`  // in seconds
 	AverageCycleTime *int64     `json:"averageCycleTime,omitempty"` // in seconds
-}
-
-// BackendConfiguration contains backend-specific configuration
-type BackendConfiguration struct {
-	Type              string                 `json:"type"`   // "swww", "feh", "mpv", etc.
-	Config            map[string]any `json:"config"` // Backend-specific config
-	FallbackTo        *string                `json:"fallbackTo,omitempty"`
-	MediaRestrictions *MediaRestrictions     `json:"mediaRestrictions,omitempty"`
-}
-
-// MediaRestrictions defines what media types are allowed
-type MediaRestrictions struct {
-	AllowedTypes        []media.MediaType `json:"allowedTypes"`
-	RequiredFeatures    []string          `json:"requiredFeatures,omitempty"`
-	MinPerformanceScore *int              `json:"minPerformanceScore,omitempty"`
 }
 
 // RuntimeState represents the current daemon runtime state
@@ -289,24 +319,6 @@ type ActivePlaylistState struct {
 	NextChange       *time.Time `json:"nextChange,omitempty"`
 	CycleCount       *int64     `json:"cycleCount,omitempty"`
 	LastActivity     time.Time  `json:"lastActivity"`
-}
-
-// MonitorStateRegistry manages monitor state
-type MonitorStateRegistry struct {
-	Monitors      []MonitorInfo `json:"monitors"`
-	LastDetection time.Time     `json:"lastDetection"`
-	TotalDetected int           `json:"totalDetected"`
-	ActiveCount   int           `json:"activeCount"`
-}
-
-// MonitorInfo represents a monitor
-type MonitorInfo struct {
-	Name               string              `json:"name"`
-	Dimensions         MonitorDimensions   `json:"dimensions"`
-	Properties         MonitorProperties   `json:"properties"`
-	CurrentWallpaper   *CurrentWallpaper   `json:"currentWallpaper,omitempty"`
-	BackendInUse       *string             `json:"backendInUse,omitempty"`
-	PerformanceMetrics *PerformanceMetrics `json:"performanceMetrics,omitempty"`
 }
 
 // MonitorDimensions represents monitor dimensions
@@ -348,40 +360,6 @@ type PerformanceMetrics struct {
 	SuccessRate     *float64   `json:"successRate,omitempty"`
 }
 
-// GlobalSettings contains global daemon settings
-type GlobalSettings struct {
-	DefaultPlaylist           *string  `json:"defaultPlaylist,omitempty"`
-	AutoStart                 bool     `json:"autoStart"`
-	ImageHistoryLimit         int      `json:"imageHistoryLimit"`
-	DefaultRefreshInterval    *int     `json:"defaultRefreshInterval,omitempty"`
-	EnableTransitions         *bool    `json:"enableTransitions,omitempty"`
-	DefaultTransitionDuration *float64 `json:"defaultTransitionDuration,omitempty"`
-	LogLevel                  *string  `json:"logLevel,omitempty"`
-	EnableDebugMode           *bool    `json:"enableDebugMode,omitempty"`
-	DefaultBackend            *string  `json:"defaultBackend,omitempty"`
-}
-
-// RuntimeStatistics contains runtime statistics
-type RuntimeStatistics struct {
-	TotalImagesProcessed  int64     `json:"totalImagesProcessed"`
-	TotalPlaylistsCreated int64     `json:"totalPlaylistsCreated"`
-	TotalImagesSet        int64     `json:"totalImagesSet"`
-	TotalUptime           int64     `json:"totalUptime"`                   // in seconds
-	AverageImageSetTime   *int64    `json:"averageImageSetTime,omitempty"` // in milliseconds
-	LastStatisticsUpdate  time.Time `json:"lastStatisticsUpdate"`
-	PeakMemoryUsage       *int64    `json:"peakMemoryUsage,omitempty"` // in bytes
-	DatabaseQueriesCount  *int64    `json:"databaseQueriesCount,omitempty"`
-	DBSize                *int64    `json:"dbSize,omitempty"` // in bytes
-}
-
-// ImageHistory represents the image history
-type ImageHistory struct {
-	Metadata   ImageHistoryMetadata `json:"metadata"`
-	Entries    []ImageHistoryEntry  `json:"entries"`
-	ByMonitor  map[string][]string  `json:"byMonitor"` // monitor name -> list of image IDs
-	Statistics ImageHistoryStats    `json:"statistics"`
-}
-
 // ImageHistoryMetadata contains history metadata
 type ImageHistoryMetadata struct {
 	Version      string    `json:"version"`
@@ -390,28 +368,4 @@ type ImageHistoryMetadata struct {
 	TotalEntries int64     `json:"totalEntries"`
 	OldestEntry  time.Time `json:"oldestEntry"`
 	NewestEntry  time.Time `json:"newestEntry"`
-}
-
-// ImageHistoryEntry represents a single history entry
-type ImageHistoryEntry struct {
-	ImageID      string          `json:"imageId"`
-	ImagePath    string          `json:"imagePath"`
-	MediaType    media.MediaType `json:"mediaType"`
-	MonitorName  string          `json:"monitorName"`
-	SetAt        time.Time       `json:"setAt"`
-	Duration     *int64          `json:"duration,omitempty"` // how long it was displayed, in milliseconds
-	PlaylistName *string         `json:"playlistName,omitempty"`
-	BackendUsed  *string         `json:"backendUsed,omitempty"`
-	Success      *bool           `json:"success,omitempty"`
-}
-
-// ImageHistoryStats contains history statistics
-type ImageHistoryStats struct {
-	TotalDisplays      int64            `json:"totalDisplays"`
-	WeeklyDisplays     map[string]int64 `json:"weeklyDisplays"`
-	MostUsedImages     []string         `json:"mostUsedImages"`               // image IDs
-	AverageDisplayTime *int64           `json:"averageDisplayTime,omitempty"` // in milliseconds
-	ErrorRate          *float64         `json:"errorRate,omitempty"`
-	PopularMonitors    map[string]int64 `json:"popularMonitors"`
-	MostActiveHours    []int            `json:"mostActiveHours"` // 0-23
 }

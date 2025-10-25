@@ -362,7 +362,7 @@ func (mm *WaylandMonitorManager) GetMonitors() Monitors {
 }
 
 // GetMonitorByName returns a monitor by its name
-func (mm *WaylandMonitorManager) GetMonitorByName(name string) (types.Monitor, bool) {
+func (mm *WaylandMonitorManager) GetMonitorByName(name string) (Monitor, bool) {
 	mm.mu.Lock()
 	defer mm.mu.Unlock()
 
@@ -371,14 +371,14 @@ func (mm *WaylandMonitorManager) GetMonitorByName(name string) (types.Monitor, b
 			return convertWaylandMonitorToUnified(m), true
 		}
 	}
-	return types.Monitor{}, false
+	return Monitor{}, false
 }
 
 // GetPrimaryMonitor returns the primary monitor
-func (mm *WaylandMonitorManager) GetPrimaryMonitor() (types.Monitor, bool) {
+func (mm *WaylandMonitorManager) GetPrimaryMonitor() (Monitor, bool) {
 	monitors := mm.GetMonitors()
 	if len(monitors) == 0 {
-		return types.Monitor{}, false
+		return Monitor{}, false
 	}
 
 	// Find monitor at position (0,0)
@@ -393,7 +393,7 @@ func (mm *WaylandMonitorManager) GetPrimaryMonitor() (types.Monitor, bool) {
 		return m, true
 	}
 
-	return types.Monitor{}, false
+	return Monitor{}, false
 }
 
 // GetCompositorInfo returns information about the current compositor
@@ -534,13 +534,13 @@ func go_monitor_event_callback(context unsafe.Pointer, eventType C.int, wlName C
 }
 
 // convertWaylandMonitorToUnified converts WaylandMonitorInfo to types.Monitor
-func convertWaylandMonitorToUnified(info WaylandMonitorInfo) types.Monitor {
-	return types.Monitor{
+func convertWaylandMonitorToUnified(info WaylandMonitorInfo) Monitor {
+	return Monitor{
 		Name:         info.Name,
 		Width:        int(info.Width),
 		Height:       int(info.Height),
 		CurrentImage: "", // Will be set by the manager
-		Position: types.Position{
+		Position: Position{
 			X: int(info.X),
 			Y: int(info.Y),
 		},

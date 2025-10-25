@@ -8,48 +8,49 @@ import (
 	"sync"
 	"time"
 
-	"waypaper-engine/daemon-go/internal/models"
-
 	"github.com/BurntSushi/toml"
 )
 
 type AppConfig struct {
-	KillDaemonOnExit        bool   `toml:"kill_daemon_on_exit"`
+	KillDaemonOnExit        bool   `toml:"kill_daemon_on_exit"` // kill daemon on exit or not when the frontend is closed
 	Notifications           bool   `toml:"notifications"`
 	StartMinimized          bool   `toml:"start_minimized"`
 	MinimizeInsteadOfClose  bool   `toml:"minimize_instead_of_close"`
-	ShowMonitorModalOnStart bool   `toml:"show_monitor_modal_on_start"`
-	ImagesPerPage           int    `toml:"images_per_page"`
-	Theme                   string `toml:"theme"`
+	ShowMonitorModalOnStart bool   `toml:"show_monitor_modal_on_start"` // show monitor modal on start or not
+	ImagesPerPage           int    `toml:"images_per_page"`             // number of images to show per page on frontend gallery
+	Theme                   string `toml:"theme"`                       // string theme, for daisy ui
 	SortBy                  string `toml:"sort_by"`
-	SortOrder               string `toml:"sort_order"`
-	ImageHistoryLimit       int    `toml:"image_history_limit"`
+	SortOrder               string `toml:"sort_order"`          // "asc" | "desc"
+	ImageHistoryLimit       int    `toml:"image_history_limit"` // Maximum number of images to store in history
 }
 
 type DaemonConfig struct {
-	DatabasePath      string `toml:"database_path"`
-	ImagesDir         string `toml:"images_dir"`
-	ThumbnailsDir     string `toml:"thumbnails_dir"`
-	MonitorsStateFile string `toml:"monitors_state_file"`
-	SocketPath        string `toml:"socket_path"`
-	LogLevel          string `toml:"log_level"`
-	LogFile           string `toml:"log_file"`     // Optional log file path
-	LogMaxSize        int    `toml:"log_max_size"` // Max log file size in MB
-	LogMaxAge         int    `toml:"log_max_age"`  // Max log age in days
-	Compositor        string `toml:"compositor"`   // Force compositor: auto, x11, wayland
+	DatabasePath      string `toml:"database_path"`       // where to store the images.json database
+	ImagesDir         string `toml:"images_dir"`          // where to copy images when the user add's them to the gallery,
+	ThumbnailsDir     string `toml:"thumbnails_dir"`      // Where to create the thumbnails for the images saved
+	MonitorsStateFile string `toml:"monitors_state_file"` // Where to store the current images/montior state, this is where we store which images are set on which monitors, with which backend, etc. So we can restore them at start.
+	SocketPath        string `toml:"socket_path"`         // Where to store the socket where the daemon listens for connections
+	LogLevel          string `toml:"log_level"`           // Log level: debug, info, warn, error
+	LogFile           string `toml:"log_file"`            // Optional log file path
+	LogMaxSize        int    `toml:"log_max_size"`        // Max log file size in MB
+	LogMaxAge         int    `toml:"log_max_age"`         // Max log age in days
+	LogMaxBackups     int    `toml:"log_max_backups"`     // Max log backups to keep
+	Compositor        string `toml:"compositor"`          // Force compositor: auto, x11, wayland, by default always auto.
 }
 
 type BackendConfig struct {
 	Type string     `toml:"type"`
-	Swww SwwwConfig `toml:"swww"`
+	Swww SwwwConfig `toml:"swww"` // This is where the problem comes, I want the configuration struct for a backend to live in the backend package, but I want to also be able to store that in the config package .toml file, so we have to import it here, without creating cyclic dependencies.
 	// TODO: Implement more backends in future implementations
 }
 
+// Selected monitors refers to "when I get a start playlist/image set command, where to display those images, and how: extend across or duplicate, i nthe frontend this is set by the monitor's modal"
 type MonitorsConfig struct {
 	SelectedMonitors []string `toml:"selected_monitors"`
 	ImageSetType     string   `toml:"image_set_type"`
 }
 
+// This represents the .toml file that is shared between the daemon and the frontend, it is used to store the configuration for the app, daemon, backend, and monitors.
 type WaypaperConfig struct {
 	App      AppConfig      `toml:"app"`
 	Daemon   DaemonConfig   `toml:"daemon"`
@@ -155,54 +156,6 @@ func (cm *ConfigManager) GetConfig() (*WaypaperConfig, error) {
 	return cm.LoadConfig()
 }
 
-// GetSwwwConfig returns the swww configuration in the format expected by the frontend
-func (cm *ConfigManager) GetSwwwConfig() *models.SwwwConfig {
-	config, err := cm.LoadConfig()
-	if err != nil {
-		return &models.SwwwConfig{
-			ResizeType:               models.ResizeTypeCrop,
-			FillColor:                "#000000",
-			FilterType:               models.FilterTypeLanczos3,
-			TransitionType:           models.TransitionTypeFade,
-			TransitionStep:           90,
-			TransitionDuration:       0.2, // 200ms in seconds
-			TransitionFPS:            60,
-			TransitionAngle:          0,
-			TransitionPositionType:   models.TransitionPositionTypeAlias,
-			TransitionPosition:       models.TransitionPositionCenter,
-			TransitionPositionIntX:   0,
-			TransitionPositionIntY:   0,
-			TransitionPositionFloatX: 0.5,
-			TransitionPositionFloatY: 0.5,
-			InvertY:                  false,
-			TransitionBezier:         "0.25,0.1,0.25,1",
-			TransitionWaveX:          20,
-			TransitionWaveY:          20,
-		}
-	}
-
-	return &models.SwwwConfig{
-		ResizeType:               models.ResizeTypeCrop,     // Default since TOML doesn't have this field
-		FillColor:                "#000000",                 // Default since TOML doesn't have this field
-		FilterType:               models.FilterTypeLanczos3, // Default since TOML doesn't have this field
-		TransitionType:           models.TransitionType(config.Backend.Swww.TransitionType),
-		TransitionStep:           config.Backend.Swww.TransitionStep,
-		TransitionDuration:       float64(config.Backend.Swww.TransitionDuration) / 1000, // Convert milliseconds to seconds
-		TransitionFPS:            60,                                                     // Default since TOML doesn't have this field
-		TransitionAngle:          int(config.Backend.Swww.TransitionAngle),
-		TransitionPositionType:   models.TransitionPositionTypeAlias, // Default since TOML doesn't have this field
-		TransitionPosition:       models.TransitionPositionCenter,    // Default since TOML doesn't have this field
-		TransitionPositionIntX:   0,                                  // Default since TOML doesn't have this field
-		TransitionPositionIntY:   0,                                  // Default since TOML doesn't have this field
-		TransitionPositionFloatX: 0.5,                                // Default since TOML doesn't have this field
-		TransitionPositionFloatY: 0.5,                                // Default since TOML doesn't have this field
-		InvertY:                  false,                              // Default since TOML doesn't have this field
-		TransitionBezier:         config.Backend.Swww.TransitionBezier,
-		TransitionWaveX:          20, // Default since TOML doesn't have this field
-		TransitionWaveY:          20, // Default since TOML doesn't have this field
-	}
-}
-
 func (cm *ConfigManager) expandPaths(config *WaypaperConfig) *WaypaperConfig {
 	expanded := *config
 
@@ -249,12 +202,6 @@ func (cm *ConfigManager) contractPaths(config *WaypaperConfig) *WaypaperConfig {
 	contracted.Daemon.MonitorsStateFile = contractPath(contracted.Daemon.MonitorsStateFile)
 
 	return &contracted
-}
-
-func (cm *ConfigManager) deepMerge(target, source *WaypaperConfig) *WaypaperConfig {
-	// For simplicity, we'll just copy the source over the target
-	// In a more complex scenario, you'd want to do proper deep merging
-	return source
 }
 
 // GetImagesDir returns the images directory path
@@ -344,10 +291,6 @@ func (cm *ConfigManager) SetAppConfig(key string, value any) error {
 		if v, ok := value.(bool); ok {
 			config.App.MinimizeInsteadOfClose = v
 		}
-	case "random_image_monitor":
-		if v, ok := value.(string); ok {
-			config.App.RandomImageMonitor = v
-		}
 	case "show_monitor_modal_on_start":
 		if v, ok := value.(bool); ok {
 			config.App.ShowMonitorModalOnStart = v
@@ -359,10 +302,6 @@ func (cm *ConfigManager) SetAppConfig(key string, value any) error {
 	case "theme":
 		if v, ok := value.(string); ok {
 			config.App.Theme = v
-		}
-	case "sidebar_collapsed":
-		if v, ok := value.(bool); ok {
-			config.App.SidebarCollapsed = v
 		}
 	case "sort_by":
 		if v, ok := value.(string); ok {
@@ -528,11 +467,9 @@ func (cm *ConfigManager) getDefaultConfig() *WaypaperConfig {
 			Notifications:           true,
 			StartMinimized:          false,
 			MinimizeInsteadOfClose:  true,
-			RandomImageMonitor:      "individual",
 			ShowMonitorModalOnStart: false,
 			ImagesPerPage:           20,
 			Theme:                   "dark",
-			SidebarCollapsed:        false,
 			SortBy:                  "name",
 			SortOrder:               "asc",
 			ImageHistoryLimit:       50,

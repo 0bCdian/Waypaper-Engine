@@ -40,11 +40,10 @@ func New(configManager *config.ConfigManager) (*slog.Logger, error) {
 
 	// Create logger configuration
 	loggerConfig := LoggerConfig{
-		Level:      level,
-		LogFile:    logFile,
-		MaxSize:    cfg.Daemon.LogMaxSize,
-		MaxAge:     cfg.Daemon.LogMaxAge,
-		MaxBackups: cfg.Daemon.LogMaxBackups,
+		Level:   level,
+		LogFile: logFile,
+		MaxSize: cfg.Daemon.LogMaxSize,
+		MaxAge:  cfg.Daemon.LogMaxAge,
 	}
 
 	return createLogger(loggerConfig)

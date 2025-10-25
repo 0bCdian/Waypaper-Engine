@@ -14,7 +14,6 @@ import (
 
 	"waypaper-engine/daemon-go/internal/backend"
 	"waypaper-engine/daemon-go/internal/config"
-	"waypaper-engine/daemon-go/internal/image"
 	"waypaper-engine/daemon-go/internal/ipc"
 	"waypaper-engine/daemon-go/internal/logger"
 	"waypaper-engine/daemon-go/internal/monitor"
@@ -204,7 +203,6 @@ func main() {
 
 	playlistManager := playlist.NewManager(jsonStore, backendManager, log, cfg)
 	playlistManager.SetHistoryLimit(cfg.App.ImageHistoryLimit)
-	imageProcessor := image.NewProcessor(4, 100, log) // 4 workers, 100 cache size
 
 	// JSON-only mode: No SQLite database initialization
 	log.Info("using JSON-only storage mode")
@@ -214,7 +212,7 @@ func main() {
 	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 
 	// Create IPC handler with JSON-only storage
-	ipcHandler := ipc.NewHandler(playlistManager, configManager, imageProcessor, monitorManager, log)
+	ipcHandler := ipc.NewHandler(playlistManager, configManager, monitorManager, log)
 	ipcHandler.SetStore(jsonStore)
 
 	// Get socket path from config
@@ -246,7 +244,6 @@ func main() {
 	defer cancel()
 
 	// Start components that accept context
-	go imageProcessor.Start(ctx)
 	go monitorManager.WatchConfigChanges(ctx)
 
 	log.Info("all components started")
@@ -323,13 +320,7 @@ func gracefulShutdown(ctx context.Context, playlistManager *playlist.Manager, mo
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
-		select {
-		case <-ctx.Done():
-			logger.Info("context cancelled, skipping image processor stop")
-		default:
-			logger.Info("stopping image processor")
-			// imageProcessor.Stop() would be called here when implemented
-		}
+		// Image processing is now done via pure functions, no cleanup needed
 	}()
 
 	// 3. Persist current state

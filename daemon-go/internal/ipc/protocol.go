@@ -1,39 +1,39 @@
 package ipc
 
 import (
-	"waypaper-engine/daemon-go/internal/models"
+	"waypaper-engine/daemon-go/internal/config"
 	"waypaper-engine/daemon-go/internal/types"
 )
 
 // Message is the structure for IPC communication.
 type Message struct {
-	Action               string                `json:"action"`
-	MessageID            int64                 `json:"messageId,omitempty"`
-	PlaylistID           int64                 `json:"playlistId,omitempty"`
-	PlaylistName         string                `json:"playlistName,omitempty"`
-	Playlist             *RendererPlaylist     `json:"playlist,omitempty"`
-	ImageIDs             []int64               `json:"imageIds,omitempty"`
-	ImagePaths           []string              `json:"imagePaths,omitempty"`
-	FileNames            []string              `json:"fileNames,omitempty"`
-	CacheDir             string                `json:"cacheDir,omitempty"`
-	ThumbnailsDir        string                `json:"thumbnailsDir,omitempty"`
-	Image                *ImageInfo            `json:"image,omitempty"`
-	ActiveMonitor        *models.ActiveMonitor `json:"activeMonitor,omitempty"`
-	Monitors             []string              `json:"monitors"`
-	SelectedImagesLength int                   `json:"selectedImagesLength,omitempty"`
-	MonitorName          string                `json:"monitorName,omitempty"`
-	Config               *ConfigData           `json:"config,omitempty"`
+	Action               string                  `json:"action"`
+	MessageID            int64                   `json:"messageId,omitempty"`
+	PlaylistID           int64                   `json:"playlistId,omitempty"`
+	PlaylistName         string                  `json:"playlistName,omitempty"`
+	Playlist             *RendererPlaylist       `json:"playlist,omitempty"`
+	ImageIDs             []int64                 `json:"imageIds,omitempty"`
+	ImagePaths           []string                `json:"imagePaths,omitempty"`
+	FileNames            []string                `json:"fileNames,omitempty"`
+	CacheDir             string                  `json:"cacheDir,omitempty"`
+	ThumbnailsDir        string                  `json:"thumbnailsDir,omitempty"`
+	Image                *ImageInfo              `json:"image,omitempty"`
+	ActiveMonitor        *types.MonitorSelection `json:"activeMonitor,omitempty"`
+	Monitors             []string                `json:"monitors"`
+	SelectedImagesLength int                     `json:"selectedImagesLength,omitempty"`
+	MonitorName          string                  `json:"monitorName,omitempty"`
+	Config               *ConfigData             `json:"config,omitempty"`
 }
 
 // ConfigData holds configuration data for IPC operations
 type ConfigData struct {
-	ConfigSection string      `json:"configSection,omitempty"`
-	ConfigKey     string      `json:"configKey,omitempty"`
-	ConfigValue   any `json:"configValue,omitempty"`
+	ConfigSection string `json:"configSection,omitempty"`
+	ConfigKey     string `json:"configKey,omitempty"`
+	ConfigValue   any    `json:"configValue,omitempty"`
 
 	// Legacy support - keep for backward compatibility
-	AppConfig      *models.AppConfig  `json:"appConfig,omitempty"`
-	SwwwConfig     *models.SwwwConfig `json:"swwwConfig,omitempty"`
+	AppConfig      *config.AppConfig  `json:"appConfig,omitempty"`
+	SwwwConfig     *config.SwwwConfig `json:"swwwConfig,omitempty"`
 	FrontendConfig any                `json:"frontendConfig,omitempty"`
 }
 
@@ -45,10 +45,10 @@ type ImageInfo struct {
 
 // RendererPlaylist represents a playlist from the frontend.
 type RendererPlaylist struct {
-	Name          string                `json:"name"`
-	Images        []RendererImage       `json:"images"`
-	Configuration PlaylistConfiguration `json:"configuration"`
-	ActiveMonitor *models.ActiveMonitor `json:"activeMonitor,omitempty"`
+	Name          string                  `json:"name"`
+	Images        []RendererImage         `json:"images"`
+	Configuration PlaylistConfiguration   `json:"configuration"`
+	ActiveMonitor *types.MonitorSelection `json:"activeMonitor,omitempty"`
 }
 
 // RendererImage represents an image from the frontend for playlist operations.
