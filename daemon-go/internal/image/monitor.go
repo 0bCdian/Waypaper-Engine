@@ -5,27 +5,27 @@ import (
 	"fmt"
 	"image"
 	"image/jpeg"
-	"waypaper-engine/daemon-go/internal/types"
+	"waypaper-engine/daemon-go/internal/monitor"
 
 	"github.com/disintegration/imaging"
 )
 
 // MonitorImage represents an image that has been processed for a specific monitor.
 type MonitorImage struct {
-	Monitor types.Monitor
+	Monitor monitor.Monitor
 	Image   []byte // Encoded image data
 }
 
 // ProcessForMonitors takes an image and a monitor setup and returns a list of images
 // ready to be applied to each monitor.
-// The mode parameter should be types.MonitorModeExtend or types.MonitorModeClone
-func ProcessForMonitors(data []byte, monitors []types.Monitor, mode types.MonitorMode) ([]MonitorImage, error) {
+// The mode parameter should be monitor.MonitorModeExtend or monitor.MonitorModeClone
+func ProcessForMonitors(data []byte, monitors []monitor.Monitor, mode monitor.MonitorMode) ([]MonitorImage, error) {
 	img, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {
 		return nil, fmt.Errorf("failed to decode image: %w", err)
 	}
 
-	if mode == types.MonitorModeExtend {
+	if mode == monitor.MonitorModeExtend {
 		return splitImageForMonitors(img, monitors)
 	} else {
 		return duplicateImageForMonitors(img, monitors)
@@ -33,7 +33,7 @@ func ProcessForMonitors(data []byte, monitors []types.Monitor, mode types.Monito
 }
 
 // splitImageForMonitors splits an image across multiple monitors.
-func splitImageForMonitors(img image.Image, monitors []types.Monitor) ([]MonitorImage, error) {
+func splitImageForMonitors(img image.Image, monitors []monitor.Monitor) ([]MonitorImage, error) {
 	var monitorImages []MonitorImage
 
 	// Calculate the total bounds of all monitors
@@ -71,7 +71,7 @@ func splitImageForMonitors(img image.Image, monitors []types.Monitor) ([]Monitor
 }
 
 // duplicateImageForMonitors duplicates an image for each monitor.
-func duplicateImageForMonitors(img image.Image, monitors []types.Monitor) ([]MonitorImage, error) {
+func duplicateImageForMonitors(img image.Image, monitors []monitor.Monitor) ([]MonitorImage, error) {
 	var monitorImages []MonitorImage
 
 	for _, m := range monitors {

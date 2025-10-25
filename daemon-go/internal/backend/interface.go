@@ -3,7 +3,6 @@ package backend
 import (
 	"context"
 	"fmt"
-	"strings"
 )
 
 // BackendType represents the type of wallpaper backend
@@ -22,17 +21,17 @@ type Backend interface {
 	// GetType returns the backend type
 	GetType() BackendType
 
-	// Initialize checks if the backend is available and initializes it
-	Initialize(ctx context.Context) error
-
 	// SetWallpaper sets wallpaper on a specific monitor
-	SetWallpaper(ctx context.Context, imagePath, monitorName string, config *BackendConfig) error
+	SetWallpaper(ctx context.Context, imagePath, monitorName string, config any) error
+
+	// SetWallpaperAll sets wallpaper on all monitors
+	SetWallpaperAll(ctx context.Context, imagePath string, config any) error
 
 	// GetCapabilities returns what this backend supports
 	GetCapabilities() BackendCapabilities
 
 	// GetDefaultConfig returns default configuration for this backend
-	GetDefaultConfig() *BackendConfig
+	GetDefaultConfig() any
 }
 
 // CompositorSupport represents supported compositors
@@ -86,42 +85,50 @@ type BackendConfig struct {
 	CustomOptions map[string]any `json:"customOptions,omitempty"`
 }
 
-// BackendManager manages multiple backends
-type BackendManager struct {
-	backends map[BackendType]Backend
-	active   BackendType
-	config   *BackendConfig
+// BackendManager interface for managing backends
+type BackendManager interface {
+	GetAvailableBackends() []BackendType
+	SetActiveBackend(backendType BackendType) error
+	GetActiveBackend() Backend
+	GetCapabilities() BackendCapabilities
+	SetWallpaper(ctx context.Context, imagePath, monitorName string) error
+	SetWallpaperAll(ctx context.Context, imagePath string) error
+	CleanupChildProcesses(ctx context.Context) error
 }
 
-// NewBackendManager creates a new backend manager
-func NewBackendManager() *BackendManager {
-	return &BackendManager{
-		backends: make(map[BackendType]Backend),
-		config:   &BackendConfig{},
+// backendManager implements BackendManager interface
+type backendManager struct {
+	backends      map[BackendType]Backend
+	active        BackendType
+	configManager ConfigManager // Interface to get backend config
+}
+
+// ConfigManager interface for getting backend configuration
+type ConfigManager interface {
+	GetActiveBackendType() string
+	GetBackendConfigForType(backendType string) (any, error)
+}
+
+// NewBackendManager creates a new backend manager with hardcoded backends
+func NewBackendManager(configManager ConfigManager) BackendManager {
+	bm := &backendManager{
+		backends:      make(map[BackendType]Backend),
+		configManager: configManager,
 	}
+
+	// Hardcode available backends
+	bm.backends[BackendSwww] = NewSwwwBackend()
+	// TODO: Add other backends as they are implemented
+	// bm.backends[BackendHyprpaper] = NewHyprpaperBackend()
+
+	// Set default active backend
+	bm.active = BackendSwww
+
+	return bm
 }
 
-// RegisterBackend registers a backend
-func (bm *BackendManager) RegisterBackend(backend Backend) {
-	bm.backends[backend.GetType()] = backend
-}
-
-// SetActiveBackend sets the active backend
-func (bm *BackendManager) SetActiveBackend(backendType BackendType) error {
-	if _, exists := bm.backends[backendType]; !exists {
-		return ErrBackendNotRegistered
-	}
-	bm.active = backendType
-	return nil
-}
-
-// GetActiveBackend returns the active backend
-func (bm *BackendManager) GetActiveBackend() Backend {
-	return bm.backends[bm.active]
-}
-
-// GetAvailableBackends returns all registered backends
-func (bm *BackendManager) GetAvailableBackends() []BackendType {
+// GetAvailableBackends returns all available backends
+func (bm *backendManager) GetAvailableBackends() []BackendType {
 	var types []BackendType
 	for backendType := range bm.backends {
 		types = append(types, backendType)
@@ -129,203 +136,64 @@ func (bm *BackendManager) GetAvailableBackends() []BackendType {
 	return types
 }
 
-// InitializeBackend initializes the active backend and starts its daemon if needed
-func (bm *BackendManager) InitializeBackend(ctx context.Context) error {
-	backend := bm.GetActiveBackend()
-	if backend == nil {
-		return ErrNoActiveBackend
+// SetActiveBackend sets the active backend
+func (bm *backendManager) SetActiveBackend(backendType BackendType) error {
+	if _, exists := bm.backends[backendType]; !exists {
+		return fmt.Errorf("backend '%s' is not available", backendType)
 	}
-
-	// Initialize the backend
-	if err := backend.Initialize(ctx); err != nil {
-		return err
-	}
-
-	// Start daemon if needed (for backends that require it)
-	if err := backend.StartDaemon(ctx); err != nil {
-		return fmt.Errorf("failed to start backend daemon: %w", err)
-	}
-
+	bm.active = backendType
 	return nil
 }
 
-// SetWallpaper sets wallpaper using the active backend
-func (bm *BackendManager) SetWallpaper(ctx context.Context, imagePath, monitorName string, config *BackendConfig) error {
+// GetActiveBackend returns the active backend
+func (bm *backendManager) GetActiveBackend() Backend {
+	return bm.backends[bm.active]
+}
+
+// GetCapabilities returns capabilities of the active backend
+func (bm *backendManager) GetCapabilities() BackendCapabilities {
 	backend := bm.GetActiveBackend()
 	if backend == nil {
-		return ErrNoActiveBackend
+		return BackendCapabilities{}
 	}
-	// Use provided config or fall back to manager's config
-	if config == nil {
-		config = bm.config
+	return backend.GetCapabilities()
+}
+
+// SetWallpaper sets wallpaper using the active backend
+func (bm *backendManager) SetWallpaper(ctx context.Context, imagePath, monitorName string) error {
+	backend := bm.GetActiveBackend()
+	if backend == nil {
+		return fmt.Errorf("no active backend")
 	}
+
+	// Get backend config from config manager
+	config, err := bm.configManager.GetBackendConfigForType(string(bm.active))
+	if err != nil {
+		return fmt.Errorf("failed to get backend config: %w", err)
+	}
+
 	return backend.SetWallpaper(ctx, imagePath, monitorName, config)
 }
 
 // SetWallpaperAll sets wallpaper on all monitors using the active backend
-func (bm *BackendManager) SetWallpaperAll(ctx context.Context, imagePath string, config *BackendConfig) error {
+func (bm *backendManager) SetWallpaperAll(ctx context.Context, imagePath string) error {
 	backend := bm.GetActiveBackend()
 	if backend == nil {
-		return ErrNoActiveBackend
+		return fmt.Errorf("no active backend")
 	}
-	// Use provided config or fall back to manager's config
-	if config == nil {
-		config = bm.config
+
+	// Get backend config from config manager
+	config, err := bm.configManager.GetBackendConfigForType(string(bm.active))
+	if err != nil {
+		return fmt.Errorf("failed to get backend config: %w", err)
 	}
+
 	return backend.SetWallpaperAll(ctx, imagePath, config)
 }
 
-// UpdateConfig updates the backend configuration
-func (bm *BackendManager) UpdateConfig(config *BackendConfig) {
-	bm.config = config
-}
-
-// GetConfig returns the current configuration
-func (bm *BackendManager) GetConfig() *BackendConfig {
-	return bm.config
-}
-
-// GetBackendCapabilities returns capabilities of the active backend
-func (bm *BackendManager) GetBackendCapabilities() *BackendCapabilities {
-	backend := bm.GetActiveBackend()
-	if backend == nil {
-		return nil
-	}
-	capabilities := backend.GetCapabilities()
-	return &capabilities
-}
-
-// ValidateBackendCompatibility checks if a backend is compatible with the current compositor
-func (bm *BackendManager) ValidateBackendCompatibility(backendType BackendType, currentCompositor string) error {
-	backend, exists := bm.backends[backendType]
-	if !exists {
-		return fmt.Errorf("backend '%s' is not registered", backendType)
-	}
-
-	capabilities := backend.GetCapabilities()
-
-	// Normalize compositor names
-	var compositorCompat bool
-	switch strings.ToLower(currentCompositor) {
-	case "wayland":
-		compositorCompat = capabilities.Compositor.Wayland
-	case "x11":
-		compositorCompat = capabilities.Compositor.X11
-	default:
-		return fmt.Errorf("unknown compositor type: %s", currentCompositor)
-	}
-
-	if !compositorCompat {
-		return fmt.Errorf("backend '%s' does not support %s compositor", backendType, currentCompositor)
-	}
-
-	return nil
-}
-
-// GetCompatibleBackends returns backends compatible with the current compositor
-func (bm *BackendManager) GetCompatibleBackends(currentCompositor string) []BackendType {
-	var compatible []BackendType
-
-	for backendType, backend := range bm.backends {
-		capabilities := backend.GetCapabilities()
-
-		var isCompatible bool
-		switch strings.ToLower(currentCompositor) {
-		case "wayland":
-			isCompatible = capabilities.Compositor.Wayland
-		case "x11":
-			isCompatible = capabilities.Compositor.X11
-		}
-
-		if isCompatible {
-			compatible = append(compatible, backendType)
-		}
-	}
-
-	return compatible
-}
-
-// GetBestBackend returns the best backend for the given media type and compositor
-func (bm *BackendManager) GetBestBackend(mediaType string, currentCompositor string) (BackendType, error) {
-	compatibleBackends := bm.GetCompatibleBackends(currentCompositor)
-
-	if len(compatibleBackends) == 0 {
-		return "", fmt.Errorf("no backends compatible with %s compositor", currentCompositor)
-	}
-
-	// Score backends based on capabilities
-	type scoredBackend struct {
-		backend BackendType
-		score   int
-	}
-
-	var scores []scoredBackend
-
-	for _, backendType := range compatibleBackends {
-		backend := bm.backends[backendType]
-		capabilities := backend.GetCapabilities()
-
-		score := 0
-
-		// Media type compatibility
-		switch strings.ToLower(mediaType) {
-		case "image":
-			if capabilities.MediaTypes.Images {
-				score += 10
-			}
-		case "video":
-			if capabilities.MediaTypes.Videos {
-				score += 10
-			}
-		case "html":
-			if capabilities.MediaTypes.HTML {
-				score += 10
-			}
-		case "3d":
-			if capabilities.MediaTypes.D3D {
-				score += 10
-			}
-		}
-
-		// Additional scoring based on capabilities
-		if capabilities.FastSwitching {
-			score += 5
-		}
-		if capabilities.MemoryEfficient {
-			score += 3
-		}
-		if capabilities.BackgroundMode {
-			score += 2
-		}
-
-		scores = append(scores, scoredBackend{
-			backend: backendType,
-			score:   score,
-		})
-	}
-
-	// Sort by score (highest first)
-	for i := 0; i < len(scores)-1; i++ {
-		for j := i + 1; j < len(scores); j++ {
-			if scores[i].score < scores[j].score {
-				scores[i], scores[j] = scores[j], scores[i]
-			}
-		}
-	}
-
-	if len(scores) > 0 {
-		return scores[0].backend, nil
-	}
-
-	return "", fmt.Errorf("no suitable backend found for %s on %s", mediaType, currentCompositor)
-}
-
-// CleanupChildProcesses cleans up child processes (daemons, etc.) from managed backends
-func (bm *BackendManager) CleanupChildProcesses(ctx context.Context) error {
-	for backendType, backend := range bm.backends {
-		if err := backend.StopDaemon(ctx); err != nil {
-			return fmt.Errorf("failed to cleanup %s backend processes: %w", backendType, err)
-		}
-	}
+// CleanupChildProcesses cleans up any child processes started by backends
+func (bm *backendManager) CleanupChildProcesses(ctx context.Context) error {
+	// For now, this is a no-op since backends handle their own lifecycle
+	// In the future, this could clean up any child processes
 	return nil
 }

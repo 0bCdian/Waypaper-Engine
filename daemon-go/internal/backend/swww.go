@@ -60,8 +60,16 @@ func (r *SwwwCommandRunner) Run(command string) (string, string, error) {
 	return stdout.String(), stderr.String(), err
 }
 
-// NewSwwwBackend creates a new swww backend
-func NewSwwwBackend(runner CommandRunner, logger *slog.Logger) *SwwwBackend {
+// NewSwwwBackend creates a new swww backend with default settings
+func NewSwwwBackend() *SwwwBackend {
+	return &SwwwBackend{
+		runner: &SwwwCommandRunner{},
+		logger: slog.Default(),
+	}
+}
+
+// NewSwwwBackendWithRunner creates a new swww backend with custom runner and logger
+func NewSwwwBackendWithRunner(runner CommandRunner, logger *slog.Logger) *SwwwBackend {
 	return &SwwwBackend{
 		runner: runner,
 		logger: logger,
@@ -83,11 +91,16 @@ func (s *SwwwBackend) Initialize(ctx context.Context) error {
 }
 
 // SetWallpaper sets wallpaper on a specific monitor
-func (s *SwwwBackend) SetWallpaper(ctx context.Context, imagePath, monitorName string, config *BackendConfig) error {
+func (s *SwwwBackend) SetWallpaper(ctx context.Context, imagePath, monitorName string, config any) error {
+	swwwConfig, ok := config.(SwwwConfig)
+	if !ok {
+		return fmt.Errorf("invalid config type for swww backend")
+	}
+
 	args := []string{"img", imagePath, "--outputs", monitorName}
 
 	// Add configuration options
-	args = s.addConfigArgs(args, config)
+	args = s.addSwwwConfigArgs(args, swwwConfig)
 
 	// Use exec.Command directly to avoid shell escaping issues
 	s.logger.Debug("swww command", "args", args, "imagePath", imagePath, "monitorName", monitorName)
@@ -105,11 +118,16 @@ func (s *SwwwBackend) SetWallpaper(ctx context.Context, imagePath, monitorName s
 }
 
 // SetWallpaperAll sets wallpaper on all monitors
-func (s *SwwwBackend) SetWallpaperAll(ctx context.Context, imagePath string, config *BackendConfig) error {
+func (s *SwwwBackend) SetWallpaperAll(ctx context.Context, imagePath string, config any) error {
+	swwwConfig, ok := config.(SwwwConfig)
+	if !ok {
+		return fmt.Errorf("invalid config type for swww backend")
+	}
+
 	args := []string{"img", imagePath}
 
 	// Add configuration options
-	args = s.addConfigArgs(args, config)
+	args = s.addSwwwConfigArgs(args, swwwConfig)
 
 	// Use exec.Command directly to avoid shell escaping issues
 	cmd := exec.Command("swww", args...)
@@ -138,42 +156,84 @@ func (s *SwwwBackend) GetCapabilities() BackendCapabilities {
 			D3D:    false,
 			GIFs:   false, // Only first frame of GIFs
 		},
-		MultiMonitor:    true,
-		Transitions:     true,
-		ResizeOptions:   true,
-		Positioning:     true,
-		Filters:         true,
-		RealTimeQuery:   true,
-		BackgroundMode:  true,
-		DaemonMode:      true,
-		MaxImageSize:    50, // SWW can handle large images efficiently
-		FastSwitching:   true,
-		MemoryEfficient: true,
 	}
 }
 
 // GetDefaultConfig returns default swww configuration
-func (s *SwwwBackend) GetDefaultConfig() *BackendConfig {
-	return &BackendConfig{
-		BackendType:        BackendSwww,
-		ResizeType:         "fit",
+func (s *SwwwBackend) GetDefaultConfig() any {
+	return SwwwConfig{
+		ResizeType:         ResizeTypeCrop,
 		FillColor:          "#000000",
-		TransitionType:     "fade",
-		TransitionDuration: 0.2, // 200ms in seconds
+		FilterType:         FilterTypeLanczos3,
+		TransitionType:     TransitionTypeSimple,
 		TransitionStep:     90,
+		TransitionDuration: 200,
 		TransitionFPS:      60,
-		TransitionAngle:    0,
+		TransitionAngle:    45,
+		TransitionPos:      "center",
+		TransitionBezier:   "0.4,0.0,0.2,1",
+		TransitionWave:     "0,0,0,0",
+		InvertY:            false,
 		PositionX:          0.5,
 		PositionY:          0.5,
-		PositionType:       "center",
-		FilterType:         "lanczos3",
-		CustomOptions: map[string]any{
-			"invertY":          false,
-			"transitionBezier": "0.25,0.1,0.25,1",
-			"transitionWaveX":  20,
-			"transitionWaveY":  20,
-		},
 	}
+}
+
+// addSwwwConfigArgs adds configuration arguments to the swww command
+func (s *SwwwBackend) addSwwwConfigArgs(args []string, config SwwwConfig) []string {
+	// Add resize type
+	if config.ResizeType != "" {
+		args = append(args, "--resize", string(config.ResizeType))
+	}
+
+	// Add fill color
+	if config.FillColor != "" {
+		args = append(args, "--fill-color", config.FillColor)
+	}
+
+	// Add filter type
+	if config.FilterType != "" {
+		args = append(args, "--filter", string(config.FilterType))
+	}
+
+	// Add transition options
+	if config.TransitionType != "" && config.TransitionType != TransitionTypeNone {
+		args = append(args, "--transition-type", string(config.TransitionType))
+
+		if config.TransitionDuration > 0 {
+			args = append(args, "--transition-duration", fmt.Sprintf("%d", config.TransitionDuration))
+		}
+
+		if config.TransitionStep > 0 {
+			args = append(args, "--transition-step", fmt.Sprintf("%d", config.TransitionStep))
+		}
+
+		if config.TransitionFPS > 0 {
+			args = append(args, "--transition-fps", fmt.Sprintf("%d", config.TransitionFPS))
+		}
+
+		if config.TransitionAngle != 0 {
+			args = append(args, "--transition-angle", fmt.Sprintf("%d", config.TransitionAngle))
+		}
+
+		if config.TransitionPos != "" {
+			args = append(args, "--transition-pos", config.TransitionPos)
+		}
+
+		if config.TransitionBezier != "" {
+			args = append(args, "--transition-bezier", config.TransitionBezier)
+		}
+
+		if config.TransitionWave != "" {
+			args = append(args, "--transition-wave", config.TransitionWave)
+		}
+
+		if config.InvertY {
+			args = append(args, "--invert-y")
+		}
+	}
+
+	return args
 }
 
 // addConfigArgs adds configuration arguments to the swww command

@@ -2,19 +2,21 @@ package playlist
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
+	"math/rand"
 	"sync"
 
 	"waypaper-engine/daemon-go/internal/backend"
 	"waypaper-engine/daemon-go/internal/config"
-	"waypaper-engine/daemon-go/internal/errors"
+	"waypaper-engine/daemon-go/internal/monitor"
 	"waypaper-engine/daemon-go/internal/store"
 )
 
 // Manager manages playlist instances
 type Manager struct {
-	store           *store.Store
+	store           store.JSONDBManager
 	wallpaperSetter WallpaperSetter
 	logger          *slog.Logger
 	config          *config.WaypaperConfig
@@ -32,12 +34,12 @@ type WallpaperSetter interface {
 type Instance struct {
 	PlaylistID    int64
 	PlaylistName  string
-	ActiveMonitor *models.ActiveMonitor
+	ActiveMonitor *monitor.MonitorSelection
 	Paused        bool
 }
 
 // NewManager creates a new playlist manager
-func NewManager(store *store.Store, wallpaperSetter WallpaperSetter, logger *slog.Logger, config *config.WaypaperConfig) *Manager {
+func NewManager(store store.JSONDBManager, wallpaperSetter WallpaperSetter, logger *slog.Logger, config *config.WaypaperConfig) *Manager {
 	return &Manager{
 		store:           store,
 		wallpaperSetter: wallpaperSetter,
@@ -53,11 +55,11 @@ func (m *Manager) SetHistoryLimit(limit int) {
 }
 
 // StartPlaylist starts a playlist, automatically stopping any conflicting playlists
-func (m *Manager) StartPlaylist(ctx context.Context, playlistID int64, activeMonitor *models.ActiveMonitor) error {
+func (m *Manager) StartPlaylist(ctx context.Context, playlistID int64, activeMonitor *monitor.MonitorSelection) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.logger.Info("StartPlaylist called", "playlistID", playlistID, "monitor", activeMonitor.Name)
+	m.logger.Info("StartPlaylist called", "playlistID", playlistID, "monitor", activeMonitor.ID)
 
 	// Check for conflicts: stop any playlists running on monitors that overlap with the new playlist
 	conflictingMonitors := m.findConflictingMonitors(activeMonitor)
@@ -67,7 +69,7 @@ func (m *Manager) StartPlaylist(ctx context.Context, playlistID int64, activeMon
 			m.logger.Info("Stopping conflicting playlist",
 				"conflictingMonitor", monitorName,
 				"conflictingPlaylist", instance.PlaylistName,
-				"newMonitor", activeMonitor.Name)
+				"newMonitor", activeMonitor.ID)
 
 			// Stop the conflicting playlist
 			delete(m.instances, monitorName)
@@ -82,12 +84,12 @@ func (m *Manager) StartPlaylist(ctx context.Context, playlistID int64, activeMon
 		Paused:        false,
 	}
 
-	m.instances[activeMonitor.Name] = instance
+	m.instances[activeMonitor.ID] = instance
 	return nil
 }
 
 // findConflictingMonitors finds monitors that would conflict with the new playlist
-func (m *Manager) findConflictingMonitors(newMonitor *models.ActiveMonitor) []string {
+func (m *Manager) findConflictingMonitors(newMonitor *monitor.MonitorSelection) []string {
 	var conflictingMonitors []string
 
 	// Get all monitor names from the new playlist's monitor configuration
@@ -132,7 +134,7 @@ func (m *Manager) SetPlaylistName(monitorName string, playlistName string) error
 		return nil
 	}
 
-	return errors.New(errors.SystemError, fmt.Sprintf("no playlist running on monitor %s", monitorName))
+	return fmt.Errorf("no playlist running on monitor %s", monitorName)
 }
 
 // GetRunningPlaylists returns information about all currently running playlists
@@ -176,7 +178,7 @@ func (m *Manager) PausePlaylist(monitorName string) error {
 		m.logger.Info("PausePlaylist called", "monitor", monitorName)
 		return nil
 	}
-	return errors.New(errors.SystemError, fmt.Sprintf("no playlist running on monitor %s", monitorName))
+	return fmt.Errorf("no playlist running on monitor %s", monitorName)
 }
 
 // ResumePlaylist resumes a playlist
@@ -189,33 +191,112 @@ func (m *Manager) ResumePlaylist(monitorName string) error {
 		m.logger.Info("ResumePlaylist called", "monitor", monitorName)
 		return nil
 	}
-	return errors.New(errors.SystemError, fmt.Sprintf("no playlist running on monitor %s", monitorName))
+	return fmt.Errorf("no playlist running on monitor %s", monitorName)
 }
 
 // NextImage advances to next image
 func (m *Manager) NextImage(ctx context.Context, monitorName string) error {
-	m.logger.Info("NextImage called", "monitor", monitorName)
-	return errors.New(errors.SystemError, "NextImage not fully implemented")
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	instance, exists := m.instances[monitorName]
+	if !exists {
+		return fmt.Errorf("no playlist running on monitor %s", monitorName)
+	}
+
+	// Get playlist from store
+	playlists, err := m.store.LoadPlaylists()
+	if err != nil {
+		return fmt.Errorf("failed to load playlists: %w", err)
+	}
+
+	var playlist *store.Playlist
+	playlistIDStr := fmt.Sprintf("%d", instance.PlaylistID)
+	for _, pl := range playlists {
+		if pl.ID == playlistIDStr {
+			playlist = &pl
+			break
+		}
+	}
+
+	if playlist == nil || len(playlist.Images) == 0 {
+		return fmt.Errorf("playlist not found or empty")
+	}
+
+	// Calculate next index - for now, just cycle through images
+	// TODO: Implement proper current image tracking
+	nextIndex := 0 // Default to first image for now
+	nextImage := playlist.Images[nextIndex]
+
+	// Set image via wallpaper setter
+	activeMonitor := &monitor.MonitorSelection{
+		ID:       monitorName,
+		Monitors: []monitor.Monitor{{Name: monitorName}},
+		Mode:     monitor.MonitorModeExtend,
+	}
+
+	return m.setWallpaperWithBackend(ctx, nextImage.ImagePath, activeMonitor, backend.BackendType(playlist.Backend.BackendType))
 }
 
 // PreviousImage goes to previous image
 func (m *Manager) PreviousImage(ctx context.Context, monitorName string) error {
-	m.logger.Info("PreviousImage called", "monitor", monitorName)
-	return errors.New(errors.SystemError, "PreviousImage not fully implemented")
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	instance, exists := m.instances[monitorName]
+	if !exists {
+		return fmt.Errorf("no playlist running on monitor %s", monitorName)
+	}
+
+	// Get playlist from store
+	playlists, err := m.store.LoadPlaylists()
+	if err != nil {
+		return fmt.Errorf("failed to load playlists: %w", err)
+	}
+
+	var playlist *store.Playlist
+	playlistIDStr := fmt.Sprintf("%d", instance.PlaylistID)
+	for _, pl := range playlists {
+		if pl.ID == playlistIDStr {
+			playlist = &pl
+			break
+		}
+	}
+
+	if playlist == nil || len(playlist.Images) == 0 {
+		return fmt.Errorf("playlist not found or empty")
+	}
+
+	// Calculate previous index - for now, just use last image
+	// TODO: Implement proper current image tracking
+	prevIndex := len(playlist.Images) - 1
+	if prevIndex < 0 {
+		prevIndex = 0
+	}
+	prevImage := playlist.Images[prevIndex]
+
+	// Set image via wallpaper setter
+	activeMonitor := &monitor.MonitorSelection{
+		ID:       monitorName,
+		Monitors: []monitor.Monitor{{Name: monitorName}},
+		Mode:     monitor.MonitorModeExtend,
+	}
+
+	return m.setWallpaperWithBackend(ctx, prevImage.ImagePath, activeMonitor, backend.BackendType(playlist.Backend.BackendType))
 }
 
 // SetImage sets a specific image with automatic backend selection
-func (m *Manager) SetImage(ctx context.Context, imageID int64, activeMonitor *models.ActiveMonitor, playlistBackend *store.BackendConfiguration) error {
-	m.logger.Info("SetImage called", "imageID", imageID, "monitor", activeMonitor.Name)
+func (m *Manager) SetImage(ctx context.Context, imageID int64, activeMonitor *monitor.MonitorSelection, playlistBackend *backend.BackendConfig) error {
+	m.logger.Info("SetImage called", "imageID", imageID, "monitor", activeMonitor.ID)
 
 	// Get image from store
-	registry, err := m.store.LoadImageRegistry()
+	images, err := m.store.LoadImageGallery()
 	if err != nil {
-		return fmt.Errorf("failed to load image registry: %w", err)
+		return fmt.Errorf("failed to load image gallery: %w", err)
 	}
 
 	var image *store.Image
-	for _, img := range registry.Images {
+	for _, img := range images {
 		if img.ID == imageID {
 			image = &img
 			break
@@ -243,11 +324,11 @@ func (m *Manager) SetImage(ctx context.Context, imageID int64, activeMonitor *mo
 }
 
 // selectBackendForImage determines which backend to use for setting an image
-func (m *Manager) selectBackendForImage(playlistBackend *store.BackendConfiguration, image *store.Image) (backend.BackendType, error) {
+func (m *Manager) selectBackendForImage(playlistBackend *backend.BackendConfig, image *store.Image) (backend.BackendType, error) {
 	// Priority 1: Playlist-specific backend
-	if playlistBackend != nil && playlistBackend.Type != "" {
-		m.logger.Info("using playlist-specific backend", "backend", playlistBackend.Type)
-		return backend.BackendType(playlistBackend.Type), nil
+	if playlistBackend != nil && playlistBackend.BackendType != "" {
+		m.logger.Info("using playlist-specific backend", "backend", playlistBackend.BackendType)
+		return playlistBackend.BackendType, nil
 	}
 
 	// Priority 2: Default backend from config
@@ -257,24 +338,27 @@ func (m *Manager) selectBackendForImage(playlistBackend *store.BackendConfigurat
 }
 
 // setWallpaperWithBackend sets wallpaper using a specific backend
-func (m *Manager) setWallpaperWithBackend(ctx context.Context, imagePath string, activeMonitor *models.ActiveMonitor, backendType backend.BackendType) error {
+func (m *Manager) setWallpaperWithBackend(ctx context.Context, imagePath string, activeMonitor *monitor.MonitorSelection, backendType backend.BackendType) error {
 	// Create backend config from TOML config
 	backendConfig := &backend.BackendConfig{
 		BackendType:        backendType,
 		TransitionDuration: float64(m.config.Backend.Swww.TransitionDuration) / 1000, // Convert ms to seconds
-		TransitionType:     m.config.Backend.Swww.TransitionType,
+		TransitionType:     string(m.config.Backend.Swww.TransitionType),
 		PositionType:       "center", // Default
 		ResizeType:         "fit",    // Default
 		CustomOptions:      make(map[string]any),
 	}
 
 	// Handle multi-monitor vs single monitor
-	if activeMonitor.ImageSetType == "extend" && len(activeMonitor.Monitors) > 1 {
+	if activeMonitor.Mode == monitor.MonitorModeExtend && len(activeMonitor.Monitors) > 1 {
 		// Multi-monitor: set on all monitors
 		return m.wallpaperSetter.SetWallpaperAll(ctx, imagePath, backendConfig)
 	} else {
 		// Single monitor: set on specific monitor
-		return m.wallpaperSetter.SetWallpaper(ctx, imagePath, activeMonitor.Name, backendConfig)
+		if len(activeMonitor.Monitors) > 0 {
+			return m.wallpaperSetter.SetWallpaper(ctx, imagePath, activeMonitor.Monitors[0].Name, backendConfig)
+		}
+		return errors.New("no monitors configured")
 	}
 }
 
@@ -282,8 +366,45 @@ func (m *Manager) setWallpaperWithBackend(ctx context.Context, imagePath string,
 
 // RandomImage sets a random image
 func (m *Manager) RandomImage(ctx context.Context, monitorName string) error {
-	m.logger.Info("RandomImage called", "monitor", monitorName)
-	return errors.New(errors.SystemError, "RandomImage not fully implemented")
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	instance, exists := m.instances[monitorName]
+	if !exists {
+		return fmt.Errorf("no playlist running on monitor %s", monitorName)
+	}
+
+	// Get playlist from store
+	playlists, err := m.store.LoadPlaylists()
+	if err != nil {
+		return fmt.Errorf("failed to load playlists: %w", err)
+	}
+
+	var playlist *store.Playlist
+	playlistIDStr := fmt.Sprintf("%d", instance.PlaylistID)
+	for _, pl := range playlists {
+		if pl.ID == playlistIDStr {
+			playlist = &pl
+			break
+		}
+	}
+
+	if playlist == nil || len(playlist.Images) == 0 {
+		return fmt.Errorf("playlist not found or empty")
+	}
+
+	// Select random image
+	randomIndex := rand.Intn(len(playlist.Images))
+	randomImage := playlist.Images[randomIndex]
+
+	// Set image via wallpaper setter
+	activeMonitor := &monitor.MonitorSelection{
+		ID:       monitorName,
+		Monitors: []monitor.Monitor{{Name: monitorName}},
+		Mode:     monitor.MonitorModeExtend,
+	}
+
+	return m.setWallpaperWithBackend(ctx, randomImage.ImagePath, activeMonitor, backend.BackendType(playlist.Backend.BackendType))
 }
 
 // GetInstance gets a playlist instance
@@ -354,4 +475,14 @@ func (m *Manager) GetAllDiagnostics() (map[string]any, error) {
 	return map[string]any{
 		"status": "ok",
 	}, nil
+}
+
+// findImageIndex finds the index of an image in a playlist by ID
+func (m *Manager) findImageIndex(images []store.PlaylistImage, imageID int64) int {
+	for i, img := range images {
+		if img.ImageID == fmt.Sprintf("%d", imageID) {
+			return i
+		}
+	}
+	return 0 // Default to first image if not found
 }

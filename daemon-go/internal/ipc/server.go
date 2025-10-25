@@ -8,16 +8,20 @@ import (
 	"net"
 	"os"
 	"sync"
+
+	"waypaper-engine/daemon-go/internal/events"
 )
 
 // Server is the IPC server.
 type Server struct {
-	listener   net.Listener
-	handler    MessageHandler
-	logger     *slog.Logger
-	clients    map[net.Conn]bool
-	mu         sync.RWMutex
-	socketPath string
+	listener      net.Listener
+	handler       MessageHandler
+	logger        *slog.Logger
+	clients       map[net.Conn]bool
+	mu            sync.RWMutex
+	socketPath    string
+	eventBus      *events.EventBus
+	subscriptions *ClientSubscriptions
 }
 
 // MessageHandler is an interface for handling IPC messages.
@@ -26,7 +30,10 @@ type MessageHandler interface {
 	SetServer(server *Server)
 }
 
-// NewServerWithSocket creates a new IPC server with a custom socket path.
+// SetEventBus sets the event bus for the server
+func (s *Server) SetEventBus(eventBus *events.EventBus) {
+	s.eventBus = eventBus
+}
 func NewServerWithSocket(handler MessageHandler, socketPath string, logger *slog.Logger) (*Server, error) {
 	if err := os.RemoveAll(socketPath); err != nil {
 		return nil, fmt.Errorf("failed to remove old socket: %w", err)
@@ -38,11 +45,12 @@ func NewServerWithSocket(handler MessageHandler, socketPath string, logger *slog
 	}
 
 	server := &Server{
-		listener:   listener,
-		handler:    handler,
-		logger:     logger,
-		clients:    make(map[net.Conn]bool),
-		socketPath: socketPath,
+		listener:      listener,
+		handler:       handler,
+		logger:        logger,
+		clients:       make(map[net.Conn]bool),
+		socketPath:    socketPath,
+		subscriptions: NewClientSubscriptions(),
 	}
 
 	// Set the server reference in the handler
@@ -71,17 +79,20 @@ func (s *Server) Close() {
 }
 
 // BroadcastEvent broadcasts an event to all connected clients.
-func (s *Server) BroadcastEvent(event *Event) {
+func (s *Server) BroadcastEvent(event *events.Event) error {
 	s.mu.RLock()
 	defer s.mu.RUnlock()
 
 	eventBytes, err := json.Marshal(event)
 	if err != nil {
 		s.logger.Error("failed to marshal event", "error", err)
-		return
+		return err
 	}
 
-	for conn := range s.clients {
+	// Get clients subscribed to this event type
+	subscribedClients := s.subscriptions.GetSubscribedClients(string(event.Type))
+
+	for _, conn := range subscribedClients {
 		if _, err := conn.Write(append(eventBytes, '\n')); err != nil {
 			s.logger.Error("failed to send event to client", "error", err)
 			// Remove the client from the map
@@ -89,6 +100,8 @@ func (s *Server) BroadcastEvent(event *Event) {
 			conn.Close()
 		}
 	}
+
+	return nil
 }
 
 func (s *Server) handleConnection(conn net.Conn) {

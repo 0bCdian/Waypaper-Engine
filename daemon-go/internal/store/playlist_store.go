@@ -325,7 +325,7 @@ func (ps *PlaylistStore) CalculatePlaylistStatistics(name string) (*PlaylistStat
 
 	// Get backend type
 	if playlist.Backend != nil {
-		stats.BackendType = playlist.Backend.Type
+		stats.BackendType = playlist.Backend.BackendType
 	}
 
 	return stats, nil
@@ -367,7 +367,7 @@ func (ps *PlaylistStore) updateImageMediaTypes(playlist *Playlist) error {
 
 // playlistUsesBackend checks if a playlist uses a specific backend
 func (ps *PlaylistStore) playlistUsesBackend(playlist *Playlist, backendType string) bool {
-	if playlist.Backend != nil && playlist.Backend.Type == backendType {
+	if playlist.Backend != nil && playlist.Backend.BackendType == backendType {
 		return true
 	}
 	return false

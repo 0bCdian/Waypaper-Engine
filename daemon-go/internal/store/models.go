@@ -7,7 +7,127 @@ import (
 	"time"
 
 	"waypaper-engine/daemon-go/internal/media"
+	"waypaper-engine/daemon-go/internal/monitor"
 )
+
+// LogLevel defines log levels
+type LogLevel string
+
+const (
+	LogLevelDebug LogLevel = "debug"
+	LogLevelInfo  LogLevel = "info"
+	LogLevelWarn  LogLevel = "warn"
+	LogLevelError LogLevel = "error"
+)
+
+// CompositorType defines supported compositor types
+type CompositorType string
+
+const (
+	CompositorTypeAuto    CompositorType = "auto"
+	CompositorTypeX11     CompositorType = "x11"
+	CompositorTypeWayland CompositorType = "wayland"
+)
+
+// BackendType defines supported backend types
+type BackendType string
+
+const (
+	BackendTypeSwww      BackendType = "swww"
+	BackendTypeHyprpaper BackendType = "hyprpaper"
+)
+
+// SwwwConfig represents the swww configuration
+type SwwwConfig struct {
+	ResizeType               string  `toml:"resize_type" json:"resizeType"`
+	FillColor                string  `toml:"fill_color" json:"fillColor"`
+	FilterType               string  `toml:"filter_type" json:"filterType"`
+	TransitionType           string  `toml:"transition_type" json:"transitionType"`
+	TransitionStep           int     `toml:"transition_step" json:"transitionStep"`
+	TransitionDuration       int     `toml:"transition_duration" json:"transitionDuration"`
+	TransitionAngle          int     `toml:"transition_angle" json:"transitionAngle"`
+	TransitionPositionType   string  `toml:"transition_position_type" json:"transitionPositionType"`
+	TransitionPositionIntX   int     `toml:"transition_position_int_x" json:"transitionPositionIntX"`
+	TransitionPositionIntY   int     `toml:"transition_position_int_y" json:"transitionPositionIntY"`
+	TransitionPositionFloatX float64 `toml:"transition_position_float_x" json:"transitionPositionFloatX"`
+	TransitionPositionFloatY float64 `toml:"transition_position_float_y" json:"transitionPositionFloatY"`
+	TransitionPosition       string  `toml:"transition_position" json:"transitionPosition"`
+	TransitionBezier         string  `toml:"transition_bezier" json:"transitionBezier"`
+	TransitionWaveX          int     `toml:"transition_wave_x" json:"transitionWaveX"`
+	TransitionWaveY          int     `toml:"transition_wave_y" json:"transitionWaveY"`
+	TransitionFPS            int     `toml:"transition_fps" json:"transitionFps"`
+	InvertY                  bool    `toml:"invert_y" json:"invertY"`
+	PositionX                float64 `toml:"position_x" json:"positionX"`
+	PositionY                float64 `toml:"position_y" json:"positionY"`
+}
+
+// MonitorsConfig represents monitors configuration
+type MonitorsConfig struct {
+	SelectedMonitors []string                  `toml:"selected_monitors" json:"selectedMonitors"`
+	ImageSetType     string                    `toml:"image_set_type" json:"imageSetType"`
+	ActiveMonitor    *monitor.MonitorSelection `toml:"active_monitor,omitempty" json:"activeMonitor,omitempty"`
+}
+
+// BackendConfiguration represents backend configuration for image sets
+type BackendConfiguration struct {
+	BackendType        string                 `json:"backendType"`
+	TransitionDuration float64                `json:"transitionDuration"`
+	TransitionType     string                 `json:"transitionType"`
+	PositionType       string                 `json:"positionType"`
+	ResizeType         string                 `json:"resizeType"`
+	CustomOptions      map[string]interface{} `json:"customOptions"`
+}
+
+// MonitorStateRegistry represents the state of all monitors
+type MonitorStateRegistry struct {
+	Monitors map[string]MonitorState `json:"monitors"`
+}
+
+// MonitorState represents the state of a single monitor
+type MonitorState struct {
+	Name         string    `json:"name"`
+	CurrentImage string    `json:"currentImage"`
+	LastSet      time.Time `json:"lastSet"`
+}
+
+// GlobalSettings represents global daemon settings
+type GlobalSettings struct {
+	DefaultBackend string `json:"defaultBackend"`
+	CacheEnabled   bool   `json:"cacheEnabled"`
+	CacheTTL       int    `json:"cacheTTL"`
+}
+
+// RuntimeStatistics represents runtime statistics
+type RuntimeStatistics struct {
+	ImagesProcessed int `json:"imagesProcessed"`
+	ImagesCached    int `json:"imagesCached"`
+	PlaylistsActive int `json:"playlistsActive"`
+	Uptime          int `json:"uptime"`
+}
+
+// ImageHistory represents the complete image history
+type ImageHistory struct {
+	Entries []ImageHistoryEntry `json:"entries"`
+	Stats   ImageHistoryStats   `json:"stats"`
+}
+
+// ImageHistoryStats represents statistics about image history
+type ImageHistoryStats struct {
+	TotalImages     int `json:"totalImages"`
+	UniqueImages    int `json:"uniqueImages"`
+	TotalDuration   int `json:"totalDuration"`
+	AverageDuration int `json:"averageDuration"`
+}
+
+// Helper function to check if a string slice contains a string
+func containsString(slice []string, item string) bool {
+	for _, s := range slice {
+		if s == item {
+			return true
+		}
+	}
+	return false
+}
 
 type AppConfig struct {
 	KillDaemonOnExit        bool   `toml:"kill_daemon_on_exit" json:"killDaemon"`

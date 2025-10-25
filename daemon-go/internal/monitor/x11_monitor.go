@@ -159,7 +159,7 @@ static void scan_outputs(x11_context *ctx) {
     XRRFreeScreenResources(resources);
 }
 
-x11_context* x11_init(void *go_context) {
+static x11_context* x11_init(void *go_context) {
     Display *display = XOpenDisplay(NULL);
     if (!display) return NULL;
 
@@ -192,17 +192,17 @@ x11_context* x11_init(void *go_context) {
     return ctx;
 }
 
-int x11_get_fd(x11_context *ctx) {
+static int x11_get_fd(x11_context *ctx) {
     if (!ctx || !ctx->display) return -1;
     return ConnectionNumber(ctx->display);
 }
 
-int x11_pending(x11_context *ctx) {
+static int x11_pending(x11_context *ctx) {
     if (!ctx || !ctx->display) return 0;
     return XPending(ctx->display);
 }
 
-int x11_process_event(x11_context *ctx) {
+static int x11_process_event(x11_context *ctx) {
     if (!ctx || !ctx->display) return -1;
 
     XEvent event;
@@ -220,7 +220,7 @@ int x11_process_event(x11_context *ctx) {
     return 0;
 }
 
-void x11_cleanup(x11_context *ctx) {
+static void x11_cleanup(x11_context *ctx) {
     if (!ctx) return;
 
     x11_output_state *current = ctx->outputs;
@@ -237,7 +237,7 @@ void x11_cleanup(x11_context *ctx) {
     free(ctx);
 }
 
-x11_output_info* x11_get_outputs(x11_context *ctx, int *count) {
+static x11_output_info* x11_get_outputs(x11_context *ctx, int *count) {
     if (!ctx) {
         *count = 0;
         return NULL;
@@ -276,8 +276,6 @@ import (
 	"sync"
 	"syscall"
 	"unsafe"
-
-	"waypaper-engine/daemon-go/internal/types"
 )
 
 // X11MonitorInfo represents information about a single X11 monitor
@@ -342,7 +340,8 @@ func NewX11MonitorManager() (*X11MonitorManager, error) {
 
 	mm.handle = cgo.NewHandle(mm)
 
-	mm.ctx = C.x11_init(unsafe.Pointer(&mm.handle))
+	// Convert handle to pointer in same expression (unsafe rule 4)
+	mm.ctx = C.x11_init(unsafe.Pointer(uintptr(mm.handle)))
 	if mm.ctx == nil {
 		mm.handle.Delete()
 		return nil, fmt.Errorf("failed to connect to X11 display or RandR not available")
@@ -416,9 +415,9 @@ func (mm *X11MonitorManager) GetPrimaryMonitor() (Monitor, bool) {
 }
 
 // GetCompositorInfo returns information about the current compositor
-func (mm *X11MonitorManager) GetCompositorInfo() *types.CompositorInfo {
-	return &types.CompositorInfo{
-		Type: types.CompositorTypeX11,
+func (mm *X11MonitorManager) GetCompositorInfo() *CompositorInfo {
+	return &CompositorInfo{
+		Type: CompositorTypeX11,
 	}
 }
 
@@ -560,7 +559,15 @@ func x11MonitorsEqual(a, b X11MonitorInfo) bool {
 
 //export go_x11_monitor_event_callback
 func go_x11_monitor_event_callback(context unsafe.Pointer, eventType C.int, outputID C.RROutput, info *C.x11_output_info) {
-	handle := *(*cgo.Handle)(context)
+	// Safely recover from any panics in the callback
+	defer func() {
+		if r := recover(); r != nil {
+			// Ignore errors during initialization - the handle might not be valid yet
+		}
+	}()
+
+	// context is the handle value itself, not a pointer to it
+	handle := cgo.Handle(context)
 	mm := handle.Value().(*X11MonitorManager)
 	mm.handleEvent(int(eventType), outputID, info)
 }

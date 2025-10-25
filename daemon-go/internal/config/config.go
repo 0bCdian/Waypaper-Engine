@@ -8,6 +8,10 @@ import (
 	"sync"
 	"time"
 
+	"waypaper-engine/daemon-go/internal/backend"
+	"waypaper-engine/daemon-go/internal/monitor"
+	"waypaper-engine/daemon-go/internal/store"
+
 	"github.com/BurntSushi/toml"
 )
 
@@ -28,6 +32,7 @@ type DaemonConfig struct {
 	DatabasePath      string `toml:"database_path"`       // where to store the images.json database
 	ImagesDir         string `toml:"images_dir"`          // where to copy images when the user add's them to the gallery,
 	ThumbnailsDir     string `toml:"thumbnails_dir"`      // Where to create the thumbnails for the images saved
+	CacheDir          string `toml:"cache_dir"`           // Where to store processed/split images cache
 	MonitorsStateFile string `toml:"monitors_state_file"` // Where to store the current images/montior state, this is where we store which images are set on which monitors, with which backend, etc. So we can restore them at start.
 	SocketPath        string `toml:"socket_path"`         // Where to store the socket where the daemon listens for connections
 	LogLevel          string `toml:"log_level"`           // Log level: debug, info, warn, error
@@ -39,15 +44,18 @@ type DaemonConfig struct {
 }
 
 type BackendConfig struct {
-	Type string     `toml:"type"`
-	Swww SwwwConfig `toml:"swww"` // This is where the problem comes, I want the configuration struct for a backend to live in the backend package, but I want to also be able to store that in the config package .toml file, so we have to import it here, without creating cyclic dependencies.
-	// TODO: Implement more backends in future implementations
+	Type string `toml:"type"`
+	// Dynamic backend configs - each backend can have its own config section
+	// This will be populated from TOML sections like [backend.swww], [backend.hyprpaper]
+	Swww backend.SwwwConfig `toml:"swww,omitempty"`
+	// TODO: Add more backends as they are implemented
 }
 
 // Selected monitors refers to "when I get a start playlist/image set command, where to display those images, and how: extend across or duplicate, i nthe frontend this is set by the monitor's modal"
 type MonitorsConfig struct {
-	SelectedMonitors []string `toml:"selected_monitors"`
-	ImageSetType     string   `toml:"image_set_type"`
+	SelectedMonitors []string                  `toml:"selected_monitors"`
+	ImageSetType     string                    `toml:"image_set_type"`
+	ActiveMonitor    *monitor.MonitorSelection `toml:"active_monitor,omitempty"`
 }
 
 // This represents the .toml file that is shared between the daemon and the frontend, it is used to store the configuration for the app, daemon, backend, and monitors.
@@ -69,13 +77,17 @@ type ConfigManager struct {
 
 	// Environment detection
 	isDev bool
+
+	// Backend config registry
+	backendRegistry *BackendConfigRegistry
 }
 
 func NewConfigManager(configPath string) *ConfigManager {
 	isDev := os.Getenv("DEV") == "true"
 	return &ConfigManager{
-		configPath: configPath,
-		isDev:      isDev,
+		configPath:      configPath,
+		isDev:           isDev,
+		backendRegistry: NewBackendConfigRegistry(),
 	}
 }
 
@@ -110,6 +122,13 @@ func (cm *ConfigManager) LoadConfig() (*WaypaperConfig, error) {
 		return nil, fmt.Errorf("failed to parse config file: %w", err)
 	}
 
+	// Validate the configuration
+	// TODO: Re-enable validation once Zog issues are resolved
+	// if err := ValidateConfig(&config); err != nil {
+	// 	fmt.Printf("Config validation warning: %v\n", err)
+	// 	config = *cm.applyDefaults(&config, err)
+	// }
+
 	// Expand tilde paths
 	cm.config = cm.expandPaths(&config)
 	return cm.config, nil
@@ -142,13 +161,12 @@ func (cm *ConfigManager) SaveConfig() error {
 }
 
 func (cm *ConfigManager) UpdateConfig(updates *WaypaperConfig) error {
-	currentConfig, err := cm.LoadConfig()
-	if err != nil {
-		return err
-	}
+	// For now, just replace the entire config
+	// TODO: Implement proper deep merge if needed
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
 
-	// Deep merge the updates
-	cm.config = cm.deepMerge(currentConfig, updates)
+	cm.config = updates
 	return cm.SaveConfig()
 }
 
@@ -222,6 +240,26 @@ func (cm *ConfigManager) GetThumbnailsDir() (string, error) {
 	return config.Daemon.ThumbnailsDir, nil
 }
 
+// GetCacheDir returns the cache directory path for processed images
+func (cm *ConfigManager) GetCacheDir() (string, error) {
+	config, err := cm.LoadConfig()
+	if err != nil {
+		return "", err
+	}
+
+	// If CacheDir is explicitly set, use it
+	if config.Daemon.CacheDir != "" {
+		return config.Daemon.CacheDir, nil
+	}
+
+	// Otherwise, default to thumbnails_dir/processed
+	thumbnailsDir, err := cm.GetThumbnailsDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(thumbnailsDir, "processed"), nil
+}
+
 // GetDatabasePath returns the database directory path
 func (cm *ConfigManager) GetDatabasePath() (string, error) {
 	config, err := cm.LoadConfig()
@@ -261,6 +299,98 @@ func (cm *ConfigManager) GetLogFile() (string, error) {
 // IsDevMode returns true if running in development mode
 func (cm *ConfigManager) IsDevMode() bool {
 	return cm.isDev
+}
+
+// SetActiveBackend sets the active backend type in the TOML config
+func (cm *ConfigManager) SetActiveBackend(backendType string) error {
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	config, err := cm.LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	config.Backend.Type = backendType
+	cm.config = config
+	return cm.SaveConfig()
+}
+
+// GetActiveBackendType returns the currently active backend type
+func (cm *ConfigManager) GetActiveBackendType() string {
+	config, err := cm.LoadConfig()
+	if err != nil {
+		return "swww" // Default fallback
+	}
+	return config.Backend.Type
+}
+
+// GetBackendConfigForType returns the configuration for a specific backend type
+func (cm *ConfigManager) GetBackendConfigForType(backendType string) (any, error) {
+	// First check if we have it in the registry
+	if cm.backendRegistry.HasBackendConfig(backendType) {
+		return cm.backendRegistry.GetBackendConfig(backendType)
+	}
+
+	// Otherwise, get default config
+	return cm.backendRegistry.GetDefaultBackendConfig(backendType)
+}
+
+// SetBackendConfigForType sets the configuration for a specific backend type
+func (cm *ConfigManager) SetBackendConfigForType(backendType string, config any) error {
+	cm.backendRegistry.RegisterBackendConfig(backendType, config)
+
+	// Also update the TOML config if it's the active backend
+	if backendType == cm.GetActiveBackendType() {
+		cm.mu.Lock()
+		defer cm.mu.Unlock()
+
+		waypaperConfig, err := cm.LoadConfig()
+		if err != nil {
+			return err
+		}
+
+		// Update the specific backend config in the TOML structure
+		switch backendType {
+		case "swww":
+			if swwwConfig, ok := config.(backend.SwwwConfig); ok {
+				waypaperConfig.Backend.Swww = swwwConfig
+			}
+			// TODO: Add other backends as they are implemented
+		}
+
+		cm.config = waypaperConfig
+		return cm.SaveConfig()
+	}
+
+	return nil
+}
+
+// SetActiveMonitor sets the active monitor selection after validation
+func (cm *ConfigManager) SetActiveMonitor(monitorManager interface{}, selection *monitor.MonitorSelection) error {
+	// Note: monitorManager parameter is interface{} to avoid circular import
+	// The caller should pass the actual monitor manager for validation
+
+	cm.mu.Lock()
+	defer cm.mu.Unlock()
+
+	config, err := cm.LoadConfig()
+	if err != nil {
+		return err
+	}
+
+	config.Monitors.ActiveMonitor = selection
+	cm.config = config
+	return cm.SaveConfig()
+}
+
+// GetActiveMonitor returns the currently selected monitor configuration
+func (cm *ConfigManager) GetActiveMonitor() (*monitor.MonitorSelection, error) {
+	config, err := cm.LoadConfig()
+	if err != nil {
+		return nil, err
+	}
+	return config.Monitors.ActiveMonitor, nil
 }
 
 // SetAppConfig sets a specific app configuration value
@@ -324,22 +454,21 @@ func (cm *ConfigManager) SetAppConfig(key string, value any) error {
 }
 
 // GetAppConfig returns the app configuration in the format expected by the frontend
-func (cm *ConfigManager) GetAppConfig() *models.AppConfig {
+func (cm *ConfigManager) GetAppConfig() *store.AppConfig {
 	config, err := cm.LoadConfig()
 	if err != nil {
-		return &models.AppConfig{
-			KillDaemon:              false,
+		return &store.AppConfig{
+			KillDaemonOnExit:        false,
 			Notifications:           true,
 			StartMinimized:          false,
 			MinimizeInsteadOfClose:  true,
-			RandomImageMonitor:      "individual",
 			ShowMonitorModalOnStart: false,
 			ImagesPerPage:           20,
 		}
 	}
 
-	return &models.AppConfig{
-		KillDaemon:              config.App.KillDaemonOnExit,
+	return &store.AppConfig{
+		KillDaemonOnExit:        config.App.KillDaemonOnExit,
 		Notifications:           config.App.Notifications,
 		StartMinimized:          config.App.StartMinimized,
 		MinimizeInsteadOfClose:  config.App.MinimizeInsteadOfClose,
@@ -478,6 +607,7 @@ func (cm *ConfigManager) getDefaultConfig() *WaypaperConfig {
 			DatabasePath:      filepath.Join(configDir, "data"),
 			ImagesDir:         imagesDir,
 			ThumbnailsDir:     thumbnailsDir,
+			CacheDir:          filepath.Join(thumbnailsDir, "processed"),
 			MonitorsStateFile: monitorsFile,
 			SocketPath:        "/tmp/waypaper-engine.sock",
 			LogLevel:          "info",
@@ -487,9 +617,9 @@ func (cm *ConfigManager) getDefaultConfig() *WaypaperConfig {
 			LogMaxBackups:     3,      // Keep 3 backup files
 			Compositor:        "auto", // Auto-detect compositor
 		},
-		Backend: BackendConfig{
+		Backend: BackendConfig{ // Maybe each backend should have a function or satic struct that returns the default config for that backend, so we can use that here.
 			Type: "swww",
-			Swww: SwwwConfig{
+			Swww: backend.SwwwConfig{
 				TransitionType:     "simple",
 				TransitionStep:     90,
 				TransitionDuration: 200, // Keep as milliseconds in TOML config
@@ -504,4 +634,11 @@ func (cm *ConfigManager) getDefaultConfig() *WaypaperConfig {
 			ImageSetType:     "individual",
 		},
 	}
+}
+
+// applyDefaults applies default values for invalid configuration fields
+func (cm *ConfigManager) applyDefaults(config *WaypaperConfig, validationError error) *WaypaperConfig {
+	// For now, just return the default config
+	// TODO: Implement more sophisticated field-by-field default application
+	return cm.getDefaultConfig()
 }

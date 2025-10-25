@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"log/slog"
 	"strings"
-	"waypaper-engine/daemon-go/internal/models"
+
+	"waypaper-engine/daemon-go/internal/monitor"
 )
 
 // ValidationError represents a validation error with detailed information
@@ -828,7 +829,7 @@ func (mv *MessageValidator) validateProcessImagesMessage(msg *Message) *Validati
 // Helper validation methods
 
 // validateActiveMonitor validates an active monitor configuration
-func (mv *MessageValidator) validateActiveMonitor(activeMonitor *models.ActiveMonitor) *ValidationError {
+func (mv *MessageValidator) validateActiveMonitor(activeMonitor *monitor.MonitorSelection) *ValidationError {
 	if activeMonitor == nil {
 		return &ValidationError{
 			Field:   "activeMonitor",
@@ -838,10 +839,10 @@ func (mv *MessageValidator) validateActiveMonitor(activeMonitor *models.ActiveMo
 		}
 	}
 
-	if strings.TrimSpace(activeMonitor.Name) == "" {
+	if strings.TrimSpace(activeMonitor.ID) == "" {
 		return &ValidationError{
 			Field:   "activeMonitor.name",
-			Value:   activeMonitor.Name,
+			Value:   activeMonitor.ID,
 			Message: "monitor name cannot be empty",
 			Code:    "EMPTY_MONITOR_NAME",
 		}
@@ -887,11 +888,11 @@ func (mv *MessageValidator) validateActiveMonitor(activeMonitor *models.ActiveMo
 	}
 
 	// Validate image set type if provided
-	if activeMonitor.ImageSetType != "" {
+	if string(activeMonitor.Mode) != "" {
 		validTypes := []string{"individual", "extend", "clone"}
 		isValid := false
 		for _, validType := range validTypes {
-			if activeMonitor.ImageSetType == validType {
+			if string(activeMonitor.Mode) == validType {
 				isValid = true
 				break
 			}
@@ -899,7 +900,7 @@ func (mv *MessageValidator) validateActiveMonitor(activeMonitor *models.ActiveMo
 		if !isValid {
 			return &ValidationError{
 				Field:   "activeMonitor.imageSetType",
-				Value:   activeMonitor.ImageSetType,
+				Value:   string(activeMonitor.Mode),
 				Message: fmt.Sprintf("image set type must be one of: %s", strings.Join(validTypes, ", ")),
 				Code:    "INVALID_IMAGE_SET_TYPE",
 			}

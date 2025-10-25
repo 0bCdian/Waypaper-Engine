@@ -153,7 +153,7 @@ static const struct wl_registry_listener registry_listener = {
     .global_remove = registry_global_remove,
 };
 
-wayland_context* wayland_init(void *go_context) {
+static wayland_context* wayland_init(void *go_context) {
     struct wl_display *display = wl_display_connect(NULL);
     if (!display) return NULL;
 
@@ -177,12 +177,12 @@ wayland_context* wayland_init(void *go_context) {
     return ctx;
 }
 
-int wayland_dispatch(wayland_context *ctx) {
+static int wayland_dispatch(wayland_context *ctx) {
     if (!ctx || !ctx->display) return -1;
     return wl_display_dispatch(ctx->display);
 }
 
-void wayland_cleanup(wayland_context *ctx) {
+static void wayland_cleanup(wayland_context *ctx) {
     if (!ctx) return;
 
     pthread_mutex_lock(&ctx->lock);
@@ -206,7 +206,7 @@ void wayland_cleanup(wayland_context *ctx) {
     free(ctx);
 }
 
-output_info* wayland_get_outputs(wayland_context *ctx, int *count) {
+static output_info* wayland_get_outputs(wayland_context *ctx, int *count) {
     if (!ctx) {
         *count = 0;
         return NULL;
@@ -243,8 +243,6 @@ import (
 	"runtime/cgo"
 	"sync"
 	"unsafe"
-
-	"waypaper-engine/daemon-go/internal/types"
 )
 
 // WaylandMonitorInfo represents information about a single Wayland monitor
@@ -314,7 +312,8 @@ func NewWaylandMonitorManager() (*WaylandMonitorManager, error) {
 	mm.handle = cgo.NewHandle(mm)
 
 	// Initialize Wayland connection
-	mm.ctx = C.wayland_init(unsafe.Pointer(&mm.handle))
+	// Convert handle to pointer in same expression (unsafe rule 4)
+	mm.ctx = C.wayland_init(unsafe.Pointer(uintptr(mm.handle)))
 	if mm.ctx == nil {
 		mm.handle.Delete()
 		return nil, fmt.Errorf("failed to connect to Wayland display")
@@ -397,9 +396,9 @@ func (mm *WaylandMonitorManager) GetPrimaryMonitor() (Monitor, bool) {
 }
 
 // GetCompositorInfo returns information about the current compositor
-func (mm *WaylandMonitorManager) GetCompositorInfo() *types.CompositorInfo {
-	return &types.CompositorInfo{
-		Type: types.CompositorTypeWayland,
+func (mm *WaylandMonitorManager) GetCompositorInfo() *CompositorInfo {
+	return &CompositorInfo{
+		Type: CompositorTypeWayland,
 	}
 }
 
@@ -528,12 +527,20 @@ func monitorsEqual(a, b WaylandMonitorInfo) bool {
 
 //export go_monitor_event_callback
 func go_monitor_event_callback(context unsafe.Pointer, eventType C.int, wlName C.uint32_t, info *C.output_info) {
-	handle := *(*cgo.Handle)(context)
+	// Safely recover from any panics in the callback
+	defer func() {
+		if r := recover(); r != nil {
+			// Ignore errors during initialization - the handle might not be valid yet
+		}
+	}()
+
+	// context is the handle value itself, not a pointer to it
+	handle := cgo.Handle(context)
 	mm := handle.Value().(*WaylandMonitorManager)
 	mm.handleEvent(int(eventType), uint32(wlName), info)
 }
 
-// convertWaylandMonitorToUnified converts WaylandMonitorInfo to types.Monitor
+// convertWaylandMonitorToUnified converts WaylandMonitorInfo to Monitor
 func convertWaylandMonitorToUnified(info WaylandMonitorInfo) Monitor {
 	return Monitor{
 		Name:         info.Name,

@@ -1,5 +1,19 @@
 package monitor
 
+// CompositorType defines supported compositor types
+type CompositorType string
+
+const (
+	CompositorTypeAuto    CompositorType = "auto"
+	CompositorTypeX11     CompositorType = "x11"
+	CompositorTypeWayland CompositorType = "wayland"
+)
+
+// CompositorInfo contains information about the current compositor
+type CompositorInfo struct {
+	Type CompositorType `toml:"type" json:"type"`
+}
+
 type Position struct {
 	X int `json:"x"`
 	Y int `json:"y"`

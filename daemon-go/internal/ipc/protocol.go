@@ -1,28 +1,31 @@
 package ipc
 
 import (
+	"waypaper-engine/daemon-go/internal/backend"
 	"waypaper-engine/daemon-go/internal/config"
-	"waypaper-engine/daemon-go/internal/types"
+	"waypaper-engine/daemon-go/internal/events"
+	"waypaper-engine/daemon-go/internal/monitor"
 )
 
 // Message is the structure for IPC communication.
 type Message struct {
-	Action               string                  `json:"action"`
-	MessageID            int64                   `json:"messageId,omitempty"`
-	PlaylistID           int64                   `json:"playlistId,omitempty"`
-	PlaylistName         string                  `json:"playlistName,omitempty"`
-	Playlist             *RendererPlaylist       `json:"playlist,omitempty"`
-	ImageIDs             []int64                 `json:"imageIds,omitempty"`
-	ImagePaths           []string                `json:"imagePaths,omitempty"`
-	FileNames            []string                `json:"fileNames,omitempty"`
-	CacheDir             string                  `json:"cacheDir,omitempty"`
-	ThumbnailsDir        string                  `json:"thumbnailsDir,omitempty"`
-	Image                *ImageInfo              `json:"image,omitempty"`
-	ActiveMonitor        *types.MonitorSelection `json:"activeMonitor,omitempty"`
-	Monitors             []string                `json:"monitors"`
-	SelectedImagesLength int                     `json:"selectedImagesLength,omitempty"`
-	MonitorName          string                  `json:"monitorName,omitempty"`
-	Config               *ConfigData             `json:"config,omitempty"`
+	Action               string                    `json:"action"`
+	MessageID            int64                     `json:"messageId,omitempty"`
+	PlaylistID           int64                     `json:"playlistId,omitempty"`
+	PlaylistName         string                    `json:"playlistName,omitempty"`
+	Playlist             *RendererPlaylist         `json:"playlist,omitempty"`
+	ImageIDs             []int64                   `json:"imageIds,omitempty"`
+	ImagePaths           []string                  `json:"imagePaths,omitempty"`
+	FileNames            []string                  `json:"fileNames,omitempty"`
+	CacheDir             string                    `json:"cacheDir,omitempty"`
+	ThumbnailsDir        string                    `json:"thumbnailsDir,omitempty"`
+	Image                *ImageInfo                `json:"image,omitempty"`
+	ActiveMonitor        *monitor.MonitorSelection `json:"activeMonitor,omitempty"`
+	Monitors             []string                  `json:"monitors"`
+	SelectedImagesLength int                       `json:"selectedImagesLength,omitempty"`
+	MonitorName          string                    `json:"monitorName,omitempty"`
+	Config               *ConfigData               `json:"config,omitempty"`
+	EventTypes           []string                  `json:"eventTypes,omitempty"`
 }
 
 // ConfigData holds configuration data for IPC operations
@@ -32,9 +35,9 @@ type ConfigData struct {
 	ConfigValue   any    `json:"configValue,omitempty"`
 
 	// Legacy support - keep for backward compatibility
-	AppConfig      *config.AppConfig  `json:"appConfig,omitempty"`
-	SwwwConfig     *config.SwwwConfig `json:"swwwConfig,omitempty"`
-	FrontendConfig any                `json:"frontendConfig,omitempty"`
+	AppConfig      *config.AppConfig   `json:"appConfig,omitempty"`
+	SwwwConfig     *backend.SwwwConfig `json:"swwwConfig,omitempty"`
+	FrontendConfig any                 `json:"frontendConfig,omitempty"`
 }
 
 // ImageInfo is a subset of the db.Image struct for IPC.
@@ -45,10 +48,10 @@ type ImageInfo struct {
 
 // RendererPlaylist represents a playlist from the frontend.
 type RendererPlaylist struct {
-	Name          string                  `json:"name"`
-	Images        []RendererImage         `json:"images"`
-	Configuration PlaylistConfiguration   `json:"configuration"`
-	ActiveMonitor *types.MonitorSelection `json:"activeMonitor,omitempty"`
+	Name          string                    `json:"name"`
+	Images        []RendererImage           `json:"images"`
+	Configuration PlaylistConfiguration     `json:"configuration"`
+	ActiveMonitor *monitor.MonitorSelection `json:"activeMonitor,omitempty"`
 }
 
 // RendererImage represents an image from the frontend for playlist operations.
@@ -76,53 +79,38 @@ type Response struct {
 }
 
 // Event represents a real-time event from the daemon.
-type Event = types.Event
+type Event = events.Event
 
-// EventMetadata contains rich metadata for events
-type EventMetadata = types.EventMetadata
-
-// ImageEventMetadata contains metadata for image-related events
-type ImageEventMetadata = types.ImageEventMetadata
-
-// PlaylistEventMetadata contains metadata for playlist-related events
-type PlaylistEventMetadata = types.PlaylistEventMetadata
-
-// MonitorEventMetadata contains metadata for monitor-related events
-type MonitorEventMetadata = types.MonitorEventMetadata
-
-// ConfigEventMetadata contains metadata for configuration-related events
-type ConfigEventMetadata = types.ConfigEventMetadata
-
-// EventType defines the type of daemon event.
-type EventType = types.EventType
+// EventType defines the type of daemon event (string alias for clarity).
+type EventType = string
 
 const (
 	// Image processing events
-	EventProcessingStarted  types.EventType = "processing_started"
-	EventImageProcessed     types.EventType = "image_processed"
-	EventImageProgress      types.EventType = "image_progress"
-	EventImageError         types.EventType = "image_error"
-	EventProcessingComplete types.EventType = "processing_complete"
+	EventProcessingStarted  EventType = "processing_started"
+	EventImageProcessed     EventType = "image_processed"
+	EventImageProgress      EventType = "image_progress"
+	EventImageError         EventType = "image_error"
+	EventProcessingComplete EventType = "processing_complete"
 
 	// Playlist events
-	EventPlaylistStarted      types.EventType = "playlist_started"
-	EventPlaylistStopped      types.EventType = "playlist_stopped"
-	EventPlaylistPaused       types.EventType = "playlist_paused"
-	EventPlaylistResumed      types.EventType = "playlist_resumed"
-	EventPlaylistImageChanged types.EventType = "playlist_image_changed"
+	EventPlaylistStarted      EventType = "playlist_started"
+	EventPlaylistStopped      EventType = "playlist_stopped"
+	EventPlaylistPaused       EventType = "playlist_paused"
+	EventPlaylistResumed      EventType = "playlist_resumed"
+	EventPlaylistImageChanged EventType = "playlist_image_changed"
 
 	// Wallpaper/Image events
-	EventWallpaperChanged types.EventType = "wallpaper_changed"
-	EventImageChanged     types.EventType = "image_changed"
+	EventWallpaperChanged EventType = "wallpaper_changed"
+	EventImageChanged     EventType = "image_changed"
 
 	// Monitor events
-	EventMonitorChanged      types.EventType = "monitor_changed"
-	EventMonitorDisconnected types.EventType = "monitor_disconnected"
+	EventMonitorChanged      EventType = "monitor_changed"
+	EventMonitorDisconnected EventType = "monitor_disconnected"
 
 	// Configuration events
-	EventConfigChanged types.EventType = "config_changed"
+	EventConfigChanged EventType = "config_changed"
 
 	// Gallery/Image library events
-	EventImagesUpdated    types.EventType = "images_updated"
-	EventPlaylistsUpdated types.EventType = "playlists_updated"
+	EventImagesUpdated    EventType = "images_updated"
+	EventPlaylistsUpdated EventType = "playlists_updated"
 )
