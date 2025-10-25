@@ -39,22 +39,8 @@ func DetectCompositor() (*CompositorInfo, error) {
 
 // CreateMonitorManager creates a monitor manager for the detected compositor
 func CreateMonitorManager(compositorInfo *CompositorInfo) (MonitorManager, error) {
-	if compositorInfo.Type == "auto" {
-		detectedCompositor, err := DetectCompositor()
-		if err != nil {
-			return nil, fmt.Errorf("failed to detect compositor: %w", err)
-		}
-		compositorInfo.Type = detectedCompositor.Type
-	}
-
-	switch compositorInfo.Type {
-	case CompositorTypeWayland:
-		return NewWaylandMonitorManager()
-	case CompositorTypeX11:
-		return NewX11MonitorManager()
-	default:
-		return nil, fmt.Errorf("unsupported compositor type: %s", compositorInfo.Type)
-	}
+	// Use unified implementation
+	return NewUnifiedMonitorManager()
 }
 
 // GetPrimaryMonitorFromMap returns the primary monitor from a map

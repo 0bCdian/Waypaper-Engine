@@ -148,9 +148,6 @@ func (h *Handler) HandleMessage(msg *Message) *Response {
 		response = h.handleGetConfig(msg)
 	case "set_config":
 		response = h.handleSetConfig(msg)
-	case "get_swww_config":
-		response = h.handleGetSwwwConfig(msg)
-
 	// System
 	case "stop_daemon":
 		response = h.handleStopDaemon(msg)
@@ -545,7 +542,7 @@ func (h *Handler) handleProcessForMonitors(msg *Message) *Response {
 	// Get image data from store
 	registry, err := h.jsonDBManager.LoadImageGallery()
 	if err != nil {
-		return h.createResponse(msg.Action, nil, errors.New(fmt.Sprintf("failed to load image registry: %v", err)))
+		return h.createResponse(msg.Action, nil, fmt.Errorf("failed to load image registry: %v", err))
 	}
 
 	var imageInfo *store.Image
@@ -557,19 +554,19 @@ func (h *Handler) handleProcessForMonitors(msg *Message) *Response {
 	}
 
 	if imageInfo == nil {
-		return h.createResponse(msg.Action, nil, errors.New(fmt.Sprintf("image with ID %d not found", msg.Image.ID)))
+		return h.createResponse(msg.Action, nil, fmt.Errorf("image with ID %d not found", msg.Image.ID))
 	}
 
 	// Read image file data
 	imageData, err := os.ReadFile(imageInfo.Path)
 	if err != nil {
-		return h.createResponse(msg.Action, nil, errors.New(fmt.Sprintf("failed to read image file: %v", err)))
+		return h.createResponse(msg.Action, nil, fmt.Errorf("failed to read image file: %v", err))
 	}
 
 	// Process image for monitors using types from types package
 	monitorImages, err := image.ProcessForMonitors(imageData, msg.ActiveMonitor.Monitors, msg.ActiveMonitor.Mode)
 	if err != nil {
-		return h.createResponse(msg.Action, nil, errors.New(fmt.Sprintf("failed to process image for monitors: %v", err)))
+		return h.createResponse(msg.Action, nil, fmt.Errorf("failed to process image for monitors: %v", err))
 	}
 
 	response := &Response{Action: msg.Action, Data: monitorImages}
@@ -599,19 +596,19 @@ func (h *Handler) handleDuplicateImageAcrossMonitors(msg *Message) *Response {
 	// Get image info from database
 	imageInfo, err := h.jsonDBManager.GetImageByID(context.Background(), msg.Image.ID)
 	if err != nil {
-		return h.createResponse(msg.Action, nil, errors.New(fmt.Sprintf("failed to get image info: %v", err)))
+		return h.createResponse(msg.Action, nil, fmt.Errorf("failed to get image info: %v", err))
 	}
 
 	// Read image file data
 	imageData, err := os.ReadFile(imageInfo.Path)
 	if err != nil {
-		return h.createResponse(msg.Action, nil, errors.New(fmt.Sprintf("failed to read image file: %v", err)))
+		return h.createResponse(msg.Action, nil, fmt.Errorf("failed to read image file: %v", err))
 	}
 
 	// Process image for monitors (force clone/duplicate mode)
 	monitorImages, err := image.ProcessForMonitors(imageData, msg.ActiveMonitor.Monitors, "clone")
 	if err != nil {
-		return h.createResponse(msg.Action, nil, errors.New(fmt.Sprintf("failed to process image for monitors: %v", err)))
+		return h.createResponse(msg.Action, nil, fmt.Errorf("failed to process image for monitors: %v", err))
 	}
 
 	// Set wallpaper for each monitor
@@ -1060,21 +1057,6 @@ func (h *Handler) validateActiveMonitorConfig(activeMonitor *monitor.MonitorSele
 	return nil
 }
 
-func (h *Handler) handleGetSwwwConfig(msg *Message) *Response {
-	backendConfig, err := h.configManager.GetBackendConfigForType("swww")
-	if err != nil {
-		return &Response{Action: msg.Action, Error: err.Error()}
-	}
-
-	// Cast to SwwwConfig
-	swwwConfig, ok := backendConfig.(backend.SwwwConfig)
-	if !ok {
-		return &Response{Action: msg.Action, Error: "invalid swww config type"}
-	}
-
-	return &Response{Action: msg.Action, Data: swwwConfig}
-}
-
 // System Handlers
 
 func (h *Handler) handleStopDaemon(msg *Message) *Response {
@@ -1370,7 +1352,7 @@ func (h *Handler) handleProcessImages(msg *Message) *Response {
 	metadataList, err := image.ProcessImagesFromPaths(imagePaths, fileNames, cacheDir, thumbnailsDir)
 	if err != nil {
 		h.logger.Error("batch image processing failed", "error", err)
-		response := &Response{Action: msg.Action, Error: errors.New(fmt.Sprintf("processing failed: %v", err)).Error()}
+		response := &Response{Action: msg.Action, Error: fmt.Errorf("processing failed: %v", err).Error()}
 		return response
 	}
 
@@ -1526,7 +1508,7 @@ func (h *Handler) handleSavePlaylist(msg *Message) *Response {
 			h.logger.Error("failed to get image for playlist", "imageID", rendererImg.ID, "error", err)
 			return &Response{
 				Action: msg.Action,
-				Error:  errors.New(fmt.Sprintf("image with ID %d not found", rendererImg.ID)).Error(),
+				Error:  fmt.Errorf("image with ID %d not found", rendererImg.ID).Error(),
 			}
 		}
 	}
@@ -1585,7 +1567,7 @@ func (h *Handler) handleKillDaemon(msg *Message) *Response {
 
 // handleSubscribe handles client subscription requests
 func (h *Handler) handleSubscribe(msg *Message) *Response {
-	if msg.EventTypes == nil || len(msg.EventTypes) == 0 {
+	if len(msg.EventTypes) == 0 {
 		return &Response{Action: msg.Action, Error: "no event types specified"}
 	}
 
@@ -1599,7 +1581,7 @@ func (h *Handler) handleSubscribe(msg *Message) *Response {
 
 // handleUnsubscribe handles client unsubscription requests
 func (h *Handler) handleUnsubscribe(msg *Message) *Response {
-	if msg.EventTypes == nil || len(msg.EventTypes) == 0 {
+	if len(msg.EventTypes) == 0 {
 		return &Response{Action: msg.Action, Error: "no event types specified"}
 	}
 
