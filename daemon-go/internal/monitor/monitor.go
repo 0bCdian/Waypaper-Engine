@@ -1,11 +1,76 @@
 package monitor
 
 import (
+	"errors"
 	"fmt"
 	"os"
 )
 
-// DetectCompositor detects the current compositor environment
+// Position represents monitor position
+type Position struct {
+	X int `json:"x"`
+	Y int `json:"y"`
+}
+
+// Monitor represents a display monitor
+type Monitor struct {
+	Name         string   `json:"name"`
+	Width        int      `json:"width"`
+	Height       int      `json:"height"`
+	CurrentImage string   `json:"current_image"`
+	Position     Position `json:"position"`
+}
+
+type Monitors map[string]Monitor
+
+// MonitorManager interface defines the contract for monitor management
+type MonitorManager interface {
+	GetMonitors() Monitors
+
+	GetMonitorByName(name string) (Monitor, bool)
+
+	Start() error
+
+	Stop()
+
+	Events() <-chan MonitorEvent
+}
+
+// MonitorEvent represents a change in monitor configuration
+type MonitorEvent struct {
+	Type    string  `json:"type"` // "added", "removed", "changed"
+	Monitor Monitor `json:"monitor"`
+}
+
+// CompositorType represents the type of compositor
+type CompositorType string
+
+const (
+	CompositorTypeWayland CompositorType = "wayland"
+	CompositorTypeX11     CompositorType = "x11"
+)
+
+// CompositorInfo contains information about the compositor
+type CompositorInfo struct {
+	Type CompositorType `json:"type"`
+}
+
+// MonitorMode represents how images are displayed across monitors
+type MonitorMode string
+
+const (
+	MonitorModeExtend     MonitorMode = "extend"
+	MonitorModeClone      MonitorMode = "clone"
+	MonitorModeIndividual MonitorMode = "individual"
+)
+
+// MonitorSelection represents the active monitor selection for wallpapers
+type MonitorSelection struct {
+	ID       int64       `json:"id,omitempty"`
+	Monitors []Monitor   `json:"monitors"`
+	Mode     MonitorMode `json:"mode"`
+}
+
 func DetectCompositor() (*CompositorInfo, error) {
 	sessionType := os.Getenv("XDG_SESSION_TYPE")
 
@@ -20,7 +85,6 @@ func DetectCompositor() (*CompositorInfo, error) {
 			Type: CompositorTypeX11,
 		}, nil
 	}
-
 	// Fallback to environment variables
 	if waylandDisplay := os.Getenv("WAYLAND_DISPLAY"); waylandDisplay != "" {
 		return &CompositorInfo{
@@ -34,13 +98,23 @@ func DetectCompositor() (*CompositorInfo, error) {
 		}, nil
 	}
 
-	return nil, fmt.Errorf("no compositor detected")
+	return nil, errors.New("no compositor detected")
 }
 
 // CreateMonitorManager creates a monitor manager for the detected compositor
-func CreateMonitorManager(compositorInfo *CompositorInfo) (MonitorManager, error) {
-	// Use unified implementation
-	return NewUnifiedMonitorManager()
+func CreateMonitorManager() (MonitorManager, error) {
+	compositorInfo, err := DetectCompositor()
+	if err != nil {
+		return nil, fmt.Errorf("failed to detect compositor: %w", err)
+	}
+	switch compositorInfo.Type {
+	case CompositorTypeWayland:
+		return NewWaylandMonitorManager()
+	case CompositorTypeX11:
+		return NewX11MonitorManager()
+	default:
+		return nil, fmt.Errorf("unsupported compositor type: %s", compositorInfo.Type)
+	}
 }
 
 // GetPrimaryMonitorFromMap returns the primary monitor from a map
@@ -55,4 +129,45 @@ func GetPrimaryMonitorFromMap(monitors Monitors) *Monitor {
 		return &monitor
 	}
 	return nil
+}
+
+// CalculateTotalBounds calculates the bounding box of all monitors from a map
+func CalculateTotalBounds(monitors Monitors) (x, y, width, height int32) {
+	if len(monitors) == 0 {
+		return 0, 0, 0, 0
+	}
+
+	// Find min/max coordinates
+	var minX, minY, maxX, maxY int32
+	first := true
+
+	for _, m := range monitors {
+		mX := int32(m.Position.X)
+		mY := int32(m.Position.Y)
+		mW := int32(m.Width)
+		mH := int32(m.Height)
+
+		if first {
+			minX = mX
+			minY = mY
+			maxX = mX + mW
+			maxY = mY + mH
+			first = false
+		} else {
+			if mX < minX {
+				minX = mX
+			}
+			if mY < minY {
+				minY = mY
+			}
+			if mX+mW > maxX {
+				maxX = mX + mW
+			}
+			if mY+mH > maxY {
+				maxY = mY + mH
+			}
+		}
+	}
+
+	return minX, minY, maxX - minX, maxY - minY
 }
