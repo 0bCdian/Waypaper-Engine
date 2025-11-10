@@ -108,11 +108,12 @@ func (h *Handler) HandleMessage(msg *Message) *Response {
 		response = h.handlePausePlaylist(msg)
 	case "resume_playlist":
 		response = h.handleResumePlaylist(msg)
+		// We need to differentiate between next_image in history, and next image in playlist, same for previous_image
 	case "next_image":
 		response = h.handleNextImage(msg)
 	case "previous_image":
 		response = h.handlePreviousImage(msg)
-	case "set_image":
+	case "set_image": // This is a manual image set, not a playlist image set, we never set "images manually" from a playlist, we only do that with next and previous handlers
 		response = h.handleSetImage(msg)
 	case "random_image":
 		response = h.handleRandomImage(msg)
@@ -493,17 +494,6 @@ func (h *Handler) handleGetImages(msg *Message) *Response {
 	// Try to get images from JSON store
 	registry, err := h.jsonDBManager.LoadImageGallery()
 	if err == nil && registry != nil && len(registry) > 0 {
-		h.logger.Info("handleGetImages: found images in JSON store", "count", len(registry))
-
-		// Log the first few images for debugging
-		for i, img := range registry {
-			if i < 3 { // Only log first 3 images
-				h.logger.Info("handleGetImages: JSON image", "index", i, "id", img.ID, "name", img.Name, "path", img.Path)
-			} else {
-				break
-			}
-		}
-
 		// Return JSON images directly - frontend should align with JSON store schema
 		h.logger.Info("handleGetImages: returning images from JSON store", "count", len(registry))
 		return &Response{Action: msg.Action, Data: registry}

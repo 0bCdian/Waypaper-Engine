@@ -17,6 +17,8 @@ type Monitor struct {
 	Name         string   `json:"name"`
 	Width        int      `json:"width"`
 	Height       int      `json:"height"`
+	Scale        int      `json:"scale"`
+	Transform    int      `json:"transform"`
 	CurrentImage string   `json:"current_image"`
 	Position     Position `json:"position"`
 }
@@ -32,14 +34,6 @@ type MonitorManager interface {
 	Start() error
 
 	Stop()
-
-	Events() <-chan MonitorEvent
-}
-
-// MonitorEvent represents a change in monitor configuration
-type MonitorEvent struct {
-	Type    string  `json:"type"` // "added", "removed", "changed"
-	Monitor Monitor `json:"monitor"`
 }
 
 // CompositorType represents the type of compositor
@@ -66,7 +60,7 @@ const (
 
 // MonitorSelection represents the active monitor selection for wallpapers
 type MonitorSelection struct {
-	ID       int64       `json:"id,omitempty"`
+	ID       string      `json:"id,omitempty"`
 	Monitors []Monitor   `json:"monitors"`
 	Mode     MonitorMode `json:"mode"`
 }

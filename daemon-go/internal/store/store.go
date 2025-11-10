@@ -92,6 +92,15 @@ func NewStore(config StoreConfig, logger *slog.Logger) (*Store, error) {
 		}
 	}
 
+	// Initialize image registry in memory (lazy loading via ensureInitialized)
+	// This pre-loads the registry so it's ready for use
+	if err := store.imageStore.ensureInitialized(); err != nil {
+		if logger != nil {
+			logger.Warn("Failed to initialize image registry", "error", err)
+		}
+		// Don't fail store creation for this - will be loaded on first use
+	}
+
 	// Initialize sequential ID manager from existing images
 	if err := store.sequentialIDManager.InitializeFromRegistry(); err != nil {
 		if logger != nil {

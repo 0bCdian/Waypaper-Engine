@@ -120,7 +120,11 @@ func (jdm *jsonDBManager) SaveImageGallery(images []Image) error {
 			LastUpdated: time.Now(),
 			TotalImages: len(images),
 		},
+		// Indices will be rebuilt by SaveImageRegistry
 	}
+
+	// Rebuild indices before saving
+	jdm.store.imageStore.rebuildIndices(registry)
 
 	return jdm.store.imageStore.SaveImageRegistry(registry)
 }

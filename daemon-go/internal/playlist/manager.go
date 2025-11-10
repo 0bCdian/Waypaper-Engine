@@ -231,7 +231,7 @@ func (m *Manager) NextImage(ctx context.Context, monitorName string) error {
 	// Set image via wallpaper setter
 	activeMonitor := &monitor.MonitorSelection{
 		ID:       monitorName,
-		Monitors: []monitor.Monitor{{Name: monitorName}},
+		Monitors: []monitor.Monitor{{Name: monitorName, Width: 1920, Height: 1080}},
 		Mode:     monitor.MonitorModeExtend,
 	}
 
@@ -278,7 +278,7 @@ func (m *Manager) PreviousImage(ctx context.Context, monitorName string) error {
 	// Set image via wallpaper setter
 	activeMonitor := &monitor.MonitorSelection{
 		ID:       monitorName,
-		Monitors: []monitor.Monitor{{Name: monitorName}},
+		Monitors: []monitor.Monitor{{Name: monitorName, Width: 1920, Height: 1080}},
 		Mode:     monitor.MonitorModeExtend,
 	}
 
@@ -400,7 +400,7 @@ func (m *Manager) RandomImage(ctx context.Context, monitorName string) error {
 	// Set image via wallpaper setter
 	activeMonitor := &monitor.MonitorSelection{
 		ID:       monitorName,
-		Monitors: []monitor.Monitor{{Name: monitorName}},
+		Monitors: []monitor.Monitor{{Name: monitorName, Width: 1920, Height: 1080}},
 		Mode:     monitor.MonitorModeExtend,
 	}
 

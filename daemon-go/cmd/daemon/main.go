@@ -162,15 +162,8 @@ func main() {
 		log.Warn("Image path validation failed, continuing anyway", "error", err)
 	}
 
-	// Detect compositor
-	compositorInfo, err := monitor.DetectCompositor()
-	if err != nil {
-		log.Error("Failed to detect compositor", "error", err)
-		os.Exit(1)
-	}
-
-	// Initialize monitor manager
-	monitorManager, err := monitor.CreateMonitorManager(compositorInfo)
+	// Initialize monitor manager (detects compositor internally)
+	monitorManager, err := monitor.CreateMonitorManager()
 	if err != nil {
 		log.Error("Failed to create monitor manager", "error", err)
 		os.Exit(1)
@@ -256,15 +249,13 @@ func main() {
 
 	// Start cleanup handler in background
 	go func() {
-		for sig := range sigChan {
-			log.Info("received signal, initiating cleanup", "signal", sig)
-			// Ensure lock is released even if main goroutine is blocked
-			if err := lockManager.ReleaseLock(); err != nil {
-				log.Error("error releasing lock during signal handler", "error", err)
-			} else {
-				log.Info("lock released by signal handler")
-			}
-			break
+		sig := <-sigChan
+		log.Info("received signal, initiating cleanup", "signal", sig)
+		// Ensure lock is released even if main goroutine is blocked
+		if err := lockManager.ReleaseLock(); err != nil {
+			log.Error("error releasing lock during signal handler", "error", err)
+		} else {
+			log.Info("lock released by signal handler")
 		}
 	}()
 
