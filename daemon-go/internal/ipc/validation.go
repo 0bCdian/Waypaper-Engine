@@ -48,40 +48,59 @@ func NewMessageValidator(logger *slog.Logger) *MessageValidator {
 
 // registerValidators registers validation functions for all message types
 func (mv *MessageValidator) registerValidators() {
+	// System
 	mv.validators["ping"] = mv.validatePingMessage
+	mv.validators["get_info"] = mv.validateGetInfoMessage
+	mv.validators["get_diagnostics"] = mv.validateGetDiagnosticsMessage
+	mv.validators["get_monitors"] = mv.validateGetMonitorsMessage
+	mv.validators["get_daemon_status"] = mv.validateGetDaemonStatusMessage
+	mv.validators["kill_daemon"] = mv.validateKillDaemonMessage
+	mv.validators["stop_daemon"] = mv.validateStopDaemonMessage
+
+	// Playlists
+	mv.validators["get_playlists"] = mv.validateGetPlaylistsMessage
+	mv.validators["get_playlist"] = mv.validateGetPlaylistImagesMessage // Reuse same validation
+	mv.validators["upsert_playlist"] = mv.validateSavePlaylistMessage
+	mv.validators["save_playlist"] = mv.validateSavePlaylistMessage // Legacy
+	mv.validators["delete_playlist"] = mv.validateDeletePlaylistMessage
 	mv.validators["start_playlist"] = mv.validateStartPlaylistMessage
 	mv.validators["stop_playlist"] = mv.validateStopPlaylistMessage
 	mv.validators["pause_playlist"] = mv.validatePausePlaylistMessage
 	mv.validators["resume_playlist"] = mv.validateResumePlaylistMessage
-	mv.validators["next_image"] = mv.validateNextImageMessage
-	mv.validators["previous_image"] = mv.validatePreviousImageMessage
-	mv.validators["set_image"] = mv.validateSetImageMessage
-	mv.validators["random_image"] = mv.validateRandomImageMessage
-	mv.validators["get_info"] = mv.validateGetInfoMessage
-	mv.validators["get_diagnostics"] = mv.validateGetDiagnosticsMessage
+	mv.validators["next_playlist_image"] = mv.validateNextImageMessage
+	mv.validators["previous_playlist_image"] = mv.validatePreviousImageMessage
+	mv.validators["get_running_playlists"] = mv.validateGetRunningPlaylistsMessage
+	mv.validators["get_playlist_images"] = mv.validateGetPlaylistImagesMessage // Legacy
+	mv.validators["get_active_playlist"] = mv.validateGetRunningPlaylistsMessage // Legacy
+
+	// Images
 	mv.validators["get_images"] = mv.validateGetImagesMessage
-	mv.validators["get_playlists"] = mv.validateGetPlaylistsMessage
-	mv.validators["get_active_playlist"] = mv.validateGetActivePlaylistMessage
-	mv.validators["save_playlist"] = mv.validateSavePlaylistMessage
-	mv.validators["process_for_monitors"] = mv.validateProcessForMonitorsMessage
-	mv.validators["set_image_across_monitors"] = mv.validateSetImageAcrossMonitorsMessage
-	mv.validators["duplicate_image_across_monitors"] = mv.validateDuplicateImageAcrossMonitorsMessage
+	mv.validators["process_images"] = mv.validateProcessImagesMessage
 	mv.validators["delete_images"] = mv.validateDeleteImagesMessage
+	mv.validators["delete_image_from_gallery"] = mv.validateDeleteImageFromGalleryMessage // Legacy
+	mv.validators["upsert_image"] = mv.validateSetImageMessage // Reuse set_image validation
 	mv.validators["get_image_history"] = mv.validateGetImageHistoryMessage
+
+	// Configuration
 	mv.validators["get_config"] = mv.validateGetConfigMessage
-	mv.validators["set_config"] = mv.validateSetConfigMessage
-	mv.validators["get_swww_config"] = mv.validateGetSwwwConfigMessage
-	mv.validators["stop_daemon"] = mv.validateStopDaemonMessage
-	mv.validators["kill_daemon"] = mv.validateKillDaemonMessage
-	mv.validators["get_daemon_status"] = mv.validateGetDaemonStatusMessage
-	mv.validators["get_monitors"] = mv.validateGetMonitorsMessage
+	mv.validators["upsert_config"] = mv.validateSetConfigMessage
+	mv.validators["set_config"] = mv.validateSetConfigMessage // Legacy
 	mv.validators["set_selected_monitor"] = mv.validateSetSelectedMonitorMessage
 	mv.validators["get_selected_monitor"] = mv.validateGetSelectedMonitorMessage
-	mv.validators["get_playlist_images"] = mv.validateGetPlaylistImagesMessage
-	mv.validators["get_running_playlists"] = mv.validateGetRunningPlaylistsMessage
-	mv.validators["delete_playlist"] = mv.validateDeletePlaylistMessage
-	mv.validators["delete_image_from_gallery"] = mv.validateDeleteImageFromGalleryMessage
-	mv.validators["process_images"] = mv.validateProcessImagesMessage
+	mv.validators["get_swww_config"] = mv.validateGetSwwwConfigMessage
+
+	// Misc
+	mv.validators["set_image"] = mv.validateSetImageMessage
+	mv.validators["set_image_across_monitors"] = mv.validateSetImageAcrossMonitorsMessage
+	mv.validators["next_image_history"] = mv.validateNextImageMessage
+	mv.validators["previous_image_history"] = mv.validatePreviousImageMessage
+	mv.validators["random_image"] = mv.validateRandomImageMessage
+	mv.validators["process_for_monitors"] = mv.validateProcessForMonitorsMessage
+
+	// Legacy action names for backward compatibility
+	mv.validators["next_image"] = mv.validateNextImageMessage
+	mv.validators["previous_image"] = mv.validatePreviousImageMessage
+	mv.validators["duplicate_image_across_monitors"] = mv.validateDuplicateImageAcrossMonitorsMessage
 }
 
 // ValidateMessage validates a message based on its action type
