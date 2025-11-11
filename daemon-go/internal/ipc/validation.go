@@ -70,7 +70,7 @@ func (mv *MessageValidator) registerValidators() {
 	mv.validators["next_playlist_image"] = mv.validateNextImageMessage
 	mv.validators["previous_playlist_image"] = mv.validatePreviousImageMessage
 	mv.validators["get_running_playlists"] = mv.validateGetRunningPlaylistsMessage
-	mv.validators["get_playlist_images"] = mv.validateGetPlaylistImagesMessage // Legacy
+	mv.validators["get_playlist_images"] = mv.validateGetPlaylistImagesMessage   // Legacy
 	mv.validators["get_active_playlist"] = mv.validateGetRunningPlaylistsMessage // Legacy
 
 	// Images
@@ -78,7 +78,7 @@ func (mv *MessageValidator) registerValidators() {
 	mv.validators["process_images"] = mv.validateProcessImagesMessage
 	mv.validators["delete_images"] = mv.validateDeleteImagesMessage
 	mv.validators["delete_image_from_gallery"] = mv.validateDeleteImageFromGalleryMessage // Legacy
-	mv.validators["upsert_image"] = mv.validateSetImageMessage // Reuse set_image validation
+	mv.validators["upsert_image"] = mv.validateSetImageMessage                            // Reuse set_image validation
 	mv.validators["get_image_history"] = mv.validateGetImageHistoryMessage
 
 	// Configuration
@@ -426,13 +426,6 @@ func (mv *MessageValidator) validateGetImagesMessage(msg *Message) *ValidationRe
 func (mv *MessageValidator) validateGetPlaylistsMessage(msg *Message) *ValidationResult {
 	result := &ValidationResult{Valid: true}
 	// Get playlists doesn't require any specific fields
-	return result
-}
-
-// validateGetActivePlaylistMessage validates get active playlist messages
-func (mv *MessageValidator) validateGetActivePlaylistMessage(msg *Message) *ValidationResult {
-	result := &ValidationResult{Valid: true}
-	// Get active playlist doesn't require any specific fields
 	return result
 }
 
@@ -1031,7 +1024,7 @@ func (mv *MessageValidator) validatePlaylistConfiguration(config *PlaylistConfig
 	}
 
 	// Validate playlist type
-	validTypes := []string{"timer", "never", "timeofday", "dayofweek"}
+	validTypes := []string{"timer", "never", "manual", "time_of_day", "day_of_week", "timeofday", "dayofweek"}
 	isValidType := false
 	for _, validType := range validTypes {
 		if config.Type == validType {

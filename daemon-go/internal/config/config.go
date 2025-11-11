@@ -123,11 +123,11 @@ func (cm *ConfigManager) LoadConfig() (*WaypaperConfig, error) {
 	}
 
 	// Validate the configuration
-	// TODO: Re-enable validation once Zog issues are resolved
-	// if err := ValidateConfig(&config); err != nil {
-	// 	fmt.Printf("Config validation warning: %v\n", err)
-	// 	config = *cm.applyDefaults(&config, err)
-	// }
+	if err := ValidateConfig(&config); err != nil {
+		// Log validation warning (using fmt since ConfigManager doesn't have logger yet)
+		fmt.Printf("Config validation warning: %v\n", err)
+		config = *cm.applyDefaults(&config, err)
+	}
 
 	// Expand tilde paths
 	cm.config = cm.expandPaths(&config)
@@ -637,8 +637,10 @@ func (cm *ConfigManager) getDefaultConfig() *WaypaperConfig {
 }
 
 // applyDefaults applies default values for invalid configuration fields
+// Currently returns the full default config as a simple fallback.
+// A more sophisticated implementation would apply defaults only to invalid fields
+// while preserving valid ones, but this approach ensures a working configuration.
 func (cm *ConfigManager) applyDefaults(config *WaypaperConfig, validationError error) *WaypaperConfig {
-	// For now, just return the default config
-	// TODO: Implement more sophisticated field-by-field default application
+	// Return default config as fallback - ensures daemon can start with valid config
 	return cm.getDefaultConfig()
 }

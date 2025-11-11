@@ -13,7 +13,11 @@ import (
 	"waypaper-engine/daemon-go/internal/monitor"
 )
 
-// SplitImageForMonitors processes image for monitors with caching
+// SplitImageForMonitors processes an image file for multiple monitors with disk caching.
+// This function works with file paths and saves processed images to disk cache.
+// Use this when you have a file path and want cached results on disk.
+// Returns MultiMonitorResult with file paths to cached processed images.
+// Supports modes: "extend" (split across monitors), "clone" (duplicate), "individual" (single monitor).
 func SplitImageForMonitors(imagePath string, monitors []monitor.Monitor, mode string, cacheDir string) (*MultiMonitorResult, error) {
 	// 1. Generate cache key
 	cacheKey := GenerateCacheKey(imagePath, monitors, mode)

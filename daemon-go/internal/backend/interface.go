@@ -192,8 +192,10 @@ func (bm *backendManager) SetWallpaperAll(ctx context.Context, imagePath string)
 }
 
 // CleanupChildProcesses cleans up any child processes started by backends
+// This is intentionally a no-op: each backend (e.g., swww) manages its own
+// daemon process lifecycle. Backends are responsible for starting/stopping
+// their own processes and cleaning up on shutdown.
 func (bm *backendManager) CleanupChildProcesses(ctx context.Context) error {
-	// For now, this is a no-op since backends handle their own lifecycle
-	// In the future, this could clean up any child processes
+	// No-op: backends handle their own process lifecycle
 	return nil
 }

@@ -379,6 +379,7 @@ type PlaylistImage struct {
 	MediaType       media.MediaType        `json:"mediaType"`
 	Index           int                    `json:"index"`
 	AddedAt         time.Time              `json:"addedAt"`
+	Time            *int                   `json:"time,omitempty"` // For TIME_OF_DAY playlists: minutes since midnight (0-1439)
 	CustomSettings  *PlaylistImageSettings `json:"customSettings,omitempty"`
 	BackendOverride *BackendConfiguration  `json:"backendOverride,omitempty"`
 }

@@ -99,15 +99,19 @@ type Monitor struct {
 
 // jsonDBManager implements the JSONDBManager interface
 type jsonDBManager struct {
-	store  *Store
-	logger *slog.Logger
+	store         *Store
+	playlistStore *PlaylistStore
+	stateManager  *StateManager
+	logger        *slog.Logger
 }
 
 // NewJSONDBManager creates a new JSON DB manager
 func NewJSONDBManager(store *Store, logger *slog.Logger) JSONDBManager {
 	return &jsonDBManager{
-		store:  store,
-		logger: logger,
+		store:         store,
+		playlistStore: store.playlistStore,
+		stateManager:  store.stateManager,
+		logger:        logger,
 	}
 }
 
@@ -166,18 +170,30 @@ func (jdm *jsonDBManager) RemoveImagesFromGallery(imageIDs []string) error {
 
 // SavePlaylists saves all playlists
 func (jdm *jsonDBManager) SavePlaylists(playlists []Playlist) error {
-	// TODO: Implement playlist saving
-	// This would save all playlists to a playlists.json file
 	jdm.logger.Debug("saving playlists", "count", len(playlists))
+	for i := range playlists {
+		if err := jdm.playlistStore.SavePlaylist(&playlists[i]); err != nil {
+			return fmt.Errorf("failed to save playlist %s: %w", playlists[i].Name, err)
+		}
+	}
 	return nil
 }
 
 // LoadPlaylists loads all playlists
 func (jdm *jsonDBManager) LoadPlaylists() ([]Playlist, error) {
-	// TODO: Implement playlist loading
-	// This would load all playlists from a playlists.json file
 	jdm.logger.Debug("loading playlists")
-	return []Playlist{}, nil
+	playlistPtrs, err := jdm.playlistStore.GetAllPlaylists()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load playlists: %w", err)
+	}
+
+	// Convert []*Playlist to []Playlist
+	playlists := make([]Playlist, len(playlistPtrs))
+	for i, ptr := range playlistPtrs {
+		playlists[i] = *ptr
+	}
+
+	return playlists, nil
 }
 
 // DeletePlaylists deletes multiple playlists
@@ -207,60 +223,65 @@ func (jdm *jsonDBManager) DeletePlaylists(playlistIDs []string) error {
 
 // SaveActivePlaylistState saves the active playlist state
 func (jdm *jsonDBManager) SaveActivePlaylistState(state *ManagerActivePlaylistState) error {
-	// TODO: Implement active playlist state saving
 	jdm.logger.Debug("saving active playlist state", "playlistCount", len(state.ActivePlaylists))
-	return nil
+	return jdm.stateManager.SaveActivePlaylistState(state)
 }
 
 // LoadActivePlaylistState loads the active playlist state
 func (jdm *jsonDBManager) LoadActivePlaylistState() (*ManagerActivePlaylistState, error) {
-	// TODO: Implement active playlist state loading
 	jdm.logger.Debug("loading active playlist state")
-	return &ManagerActivePlaylistState{
-		ActivePlaylists: make(map[string]*PlaylistInstance),
-		LastUpdated:     time.Now(),
-	}, nil
+	return jdm.stateManager.LoadActivePlaylistState()
 }
 
 // SaveImageSetState saves the current image set state
 func (jdm *jsonDBManager) SaveImageSetState(state *ImageSetState) error {
-	// TODO: Implement image set state saving
 	jdm.logger.Debug("saving image set state", "imageID", state.ImageID, "setType", state.SetType)
-	return nil
+	return jdm.stateManager.SaveImageSetState(state)
 }
 
 // LoadImageSetState loads the current image set state
 func (jdm *jsonDBManager) LoadImageSetState() (*ImageSetState, error) {
-	// TODO: Implement image set state loading
 	jdm.logger.Debug("loading image set state")
-	return &ImageSetState{
-		ImageID:   "",
-		ImagePath: "",
-		SetType:   "individual",
-		Monitors:  make(map[string]Monitor),
-		LastSet:   time.Now(),
-	}, nil
+	return jdm.stateManager.LoadImageSetState()
 }
 
 // LoadImageHistory loads image history with a limit
 func (jdm *jsonDBManager) LoadImageHistory(limit int) ([]ImageHistoryEntry, error) {
-	// TODO: Implement image history loading with limit
 	jdm.logger.Debug("loading image history", "limit", limit)
-	return []ImageHistoryEntry{}, nil
+	history, err := jdm.stateManager.LoadImageHistory()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load image history: %w", err)
+	}
+
+	// Apply limit if specified
+	if limit > 0 && len(history) > limit {
+		history = history[:limit]
+	}
+
+	return history, nil
 }
 
 // AddImageHistoryEntry adds an entry to the image history
 func (jdm *jsonDBManager) AddImageHistoryEntry(entry ImageHistoryEntry) error {
-	// TODO: Implement image history entry addition
-	// This should also trim the history to the configured limit
 	jdm.logger.Debug("adding image history entry", "imageID", entry.ImageID, "monitors", entry.Monitors)
-	return nil
+	// Use a reasonable default limit if not configured
+	// The limit should ideally come from config, but for now we use a default
+	maxEntries := 100
+	return jdm.stateManager.AddImageHistoryEntry(entry, maxEntries)
 }
 
 // Validate validates the JSON database integrity
 func (jdm *jsonDBManager) Validate() error {
-	// TODO: Implement database validation
 	jdm.logger.Debug("validating JSON database")
+	issues := jdm.store.ValidateHealth()
+
+	// Check for errors
+	for _, issue := range issues {
+		if issue.Severity == "error" {
+			return fmt.Errorf("validation error in %s: %s", issue.Component, issue.Message)
+		}
+	}
+
 	return nil
 }
 

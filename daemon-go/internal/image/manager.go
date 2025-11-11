@@ -153,21 +153,16 @@ func (im *ImageManager) ProcessImageForMonitors(imagePath string, monitors []mon
 	return result, nil
 }
 
-// splitImageForMonitors splits an image across multiple monitors
+// splitImageForMonitors splits an image across multiple monitors.
+// This is a wrapper around SplitImageForMonitors that handles cache directory retrieval.
+// Use this method when working through the ImageManager interface.
 func (im *ImageManager) splitImageForMonitors(imagePath string, monitors []monitor.Monitor) (*MultiMonitorResult, error) {
-	// TODO: Implement image splitting logic based on the Node.js implementation
-	// For now, return a placeholder
-	result := &MultiMonitorResult{
-		MonitorImages: make(map[string]string),
+	cacheDir, err := im.configManager.GetCacheDir()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get cache directory: %w", err)
 	}
 
-	for _, monitor := range monitors {
-		// For now, just use the original image path
-		// In a real implementation, this would split the image
-		result.MonitorImages[monitor.Name] = imagePath
-	}
-
-	return result, nil
+	return SplitImageForMonitors(imagePath, monitors, "extend", cacheDir)
 }
 
 // duplicateImageForMonitors duplicates an image across multiple monitors
@@ -195,9 +190,9 @@ func (im *ImageManager) processIndividualImage(imagePath string, monitor monitor
 
 // GenerateMultiResolutionThumbnails generates thumbnails at multiple resolutions
 func (im *ImageManager) GenerateMultiResolutionThumbnails(imagePath, cacheDir string) error {
-	// TODO: Implement multi-resolution thumbnail generation
-	// This would create thumbnails at different sizes (e.g., 150x100, 300x200, 600x400)
-	return nil
+	sizes := []int{150, 300, 600}
+	_, err := im.cache.GenerateMultiResolutionThumbnails(imagePath, sizes)
+	return err
 }
 
 // ClearExpiredCache clears expired cache entries

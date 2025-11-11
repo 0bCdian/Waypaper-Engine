@@ -16,9 +16,11 @@ type MonitorImage struct {
 	Image   []byte // Encoded image data
 }
 
-// ProcessForMonitors takes an image and a monitor setup and returns a list of images
-// ready to be applied to each monitor.
-// The mode parameter should be monitor.MonitorModeExtend or monitor.MonitorModeClone
+// ProcessForMonitors processes image data (as []byte) for multiple monitors.
+// This function works with in-memory image data and returns encoded image bytes
+// for each monitor. Use this when you already have image data loaded in memory.
+// The mode parameter should be monitor.MonitorModeExtend or monitor.MonitorModeClone.
+// Returns MonitorImage structs with []byte image data for each monitor.
 func ProcessForMonitors(data []byte, monitors []monitor.Monitor, mode monitor.MonitorMode) ([]MonitorImage, error) {
 	img, _, err := image.Decode(bytes.NewReader(data))
 	if err != nil {

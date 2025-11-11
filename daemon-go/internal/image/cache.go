@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/disintegration/imaging"
 	"waypaper-engine/daemon-go/internal/monitor"
 )
 
@@ -146,19 +147,32 @@ func (cm *CacheManager) ClearExpiredCache() error {
 
 // GenerateMultiResolutionThumbnails generates thumbnails at different resolutions
 func (cm *CacheManager) GenerateMultiResolutionThumbnails(imagePath string, sizes []int) (map[int]string, error) {
-	// TODO: Implement thumbnail generation
-	// This would use Go image processing libraries to create thumbnails
-	// at different sizes (e.g., 64x64, 128x128, 256x256)
-
 	thumbnails := make(map[int]string)
+
+	// Open source image
+	img, err := imaging.Open(imagePath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open image: %w", err)
+	}
 
 	for _, size := range sizes {
 		// Generate thumbnail path
 		hash := fmt.Sprintf("%x", md5.Sum([]byte(imagePath)))
 		thumbnailPath := filepath.Join(cm.cacheDir, "thumbnails", fmt.Sprintf("%s_%dx%d.jpg", hash, size, size))
 
-		// TODO: Actually generate the thumbnail
-		// For now, just return the path
+		// Create directory if needed
+		if err := os.MkdirAll(filepath.Dir(thumbnailPath), 0755); err != nil {
+			return nil, fmt.Errorf("failed to create thumbnail directory: %w", err)
+		}
+
+		// Resize image to thumbnail size
+		thumbnail := imaging.Resize(img, size, size, imaging.Lanczos)
+
+		// Save thumbnail
+		if err := imaging.Save(thumbnail, thumbnailPath, imaging.JPEGQuality(85)); err != nil {
+			return nil, fmt.Errorf("failed to save thumbnail: %w", err)
+		}
+
 		thumbnails[size] = thumbnailPath
 	}
 

@@ -26,7 +26,7 @@ type Server struct {
 
 // MessageHandler is an interface for handling IPC messages.
 type MessageHandler interface {
-	HandleMessage(msg *Message) *Response
+	HandleMessage(msg *Message, conn net.Conn) *Response
 	SetServer(server *Server)
 }
 
@@ -108,6 +108,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 	defer func() {
 		s.mu.Lock()
 		delete(s.clients, conn)
+		s.subscriptions.UnsubscribeAll(conn)
 		s.mu.Unlock()
 		conn.Close()
 	}()
@@ -128,7 +129,7 @@ func (s *Server) handleConnection(conn net.Conn) {
 			continue
 		}
 
-		resp := s.handler.HandleMessage(&msg)
+		resp := s.handler.HandleMessage(&msg, conn)
 
 		respBytes, err := json.Marshal(resp)
 		if err != nil {

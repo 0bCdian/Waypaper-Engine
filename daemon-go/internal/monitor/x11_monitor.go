@@ -21,7 +21,10 @@ func NewX11MonitorManager() (*X11MonitorManager, error) {
 	return &X11MonitorManager{}, nil
 }
 
-// Start begins monitoring (no-op for external tool approach)
+// Start begins monitoring
+// This is intentionally a no-op: we use an external tool approach (xrandr)
+// rather than maintaining a persistent monitoring process. Monitor state
+// is queried on-demand via GetMonitors().
 func (m *X11MonitorManager) Start() error {
 	// Verify xrandr is still available
 	if _, err := exec.LookPath("xrandr"); err != nil {
@@ -30,9 +33,11 @@ func (m *X11MonitorManager) Start() error {
 	return nil
 }
 
-// Stop stops the monitor manager (no-op for external tool approach)
+// Stop stops the monitor manager
+// This is intentionally a no-op: we use an external tool approach (xrandr)
+// with no persistent processes to clean up.
 func (m *X11MonitorManager) Stop() {
-	// Nothing to clean up
+	// Nothing to clean up - external tool approach
 }
 
 // GetMonitors returns a snapshot of current monitors

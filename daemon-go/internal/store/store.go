@@ -30,7 +30,9 @@ type Store struct {
 	sequentialIDManager *SequentialIDManager
 
 	// Store components
-	imageStore *ImageStore
+	imageStore     *ImageStore
+	playlistStore  *PlaylistStore
+	stateManager   *StateManager
 }
 
 // StoreConfig holds configuration for the JSON store
@@ -84,6 +86,8 @@ func NewStore(config StoreConfig, logger *slog.Logger) (*Store, error) {
 
 	// Initialize store components
 	store.imageStore = NewImageStore(store)
+	store.playlistStore = NewPlaylistStore(store, logger)
+	store.stateManager = NewStateManager(store, logger)
 
 	// Create base directory structure if needed
 	if config.AutoCreateDirectories {

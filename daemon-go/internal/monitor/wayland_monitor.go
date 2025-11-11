@@ -21,7 +21,10 @@ func NewWaylandMonitorManager() (*WaylandMonitorManager, error) {
 	return &WaylandMonitorManager{}, nil
 }
 
-// Start begins monitoring (no-op for external tool approach)
+// Start begins monitoring
+// This is intentionally a no-op: we use an external tool approach (wlr-randr)
+// rather than maintaining a persistent monitoring process. Monitor state
+// is queried on-demand via GetMonitors().
 func (mm *WaylandMonitorManager) Start() error {
 	// Verify wlr-randr is still available
 	if _, err := exec.LookPath("wlr-randr"); err != nil {
@@ -30,9 +33,11 @@ func (mm *WaylandMonitorManager) Start() error {
 	return nil
 }
 
-// Stop stops the monitor manager (no-op for external tool approach)
+// Stop stops the monitor manager
+// This is intentionally a no-op: we use an external tool approach (wlr-randr)
+// with no persistent processes to clean up.
 func (mm *WaylandMonitorManager) Stop() {
-	// Nothing to clean up
+	// Nothing to clean up - external tool approach
 }
 
 // GetMonitors returns a snapshot of current monitors

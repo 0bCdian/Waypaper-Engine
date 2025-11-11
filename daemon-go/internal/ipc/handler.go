@@ -4,9 +4,12 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"net"
 	"strings"
+	"time"
 
 	"waypaper-engine/daemon-go/internal/config"
+	"waypaper-engine/daemon-go/internal/events"
 	"waypaper-engine/daemon-go/internal/image"
 	"waypaper-engine/daemon-go/internal/monitor"
 	"waypaper-engine/daemon-go/internal/playlist"
@@ -15,26 +18,28 @@ import (
 
 // Handler is the implementation of the MessageHandler interface.
 type Handler struct {
-	playlistManager  *playlist.Manager
-	configManager    *config.ConfigManager
-	monitorManager   monitor.MonitorManager
-	imageManager     *image.ImageManager
-	jsonDBManager    store.JSONDBManager
-	logger           *slog.Logger
-	server           *Server
-	messageValidator *MessageValidator
+	playlistManager        *playlist.Manager
+	configManager          *config.ConfigManager
+	monitorManager         monitor.MonitorManager
+	imageManager           *image.ImageManager
+	jsonDBManager          store.JSONDBManager
+	logger                 *slog.Logger
+	server                 *Server
+	messageValidator       *MessageValidator
+	historyNavigationState map[string]int // tracks current history index per monitor
 }
 
 // NewHandler creates a new message handler.
 func NewHandler(playlistManager *playlist.Manager, configManager *config.ConfigManager, monitorManager monitor.MonitorManager, imageManager *image.ImageManager, jsonDBManager store.JSONDBManager, logger *slog.Logger) *Handler {
 	return &Handler{
-		playlistManager:  playlistManager,
-		configManager:    configManager,
-		monitorManager:   monitorManager,
-		imageManager:     imageManager,
-		jsonDBManager:    jsonDBManager,
-		logger:           logger,
-		messageValidator: NewMessageValidator(logger),
+		playlistManager:        playlistManager,
+		configManager:          configManager,
+		monitorManager:         monitorManager,
+		imageManager:           imageManager,
+		jsonDBManager:          jsonDBManager,
+		logger:                 logger,
+		messageValidator:       NewMessageValidator(logger),
+		historyNavigationState: make(map[string]int),
 	}
 }
 
@@ -62,7 +67,7 @@ func (h *Handler) createResponse(action string, data any, err error) *Response {
 }
 
 // HandleMessage handles incoming IPC messages.
-func (h *Handler) HandleMessage(msg *Message) *Response {
+func (h *Handler) HandleMessage(msg *Message, conn net.Conn) *Response {
 	h.logger.Info("handling message", "action", msg.Action)
 
 	// Validate the message first
@@ -194,11 +199,11 @@ func (h *Handler) HandleMessage(msg *Message) *Response {
 		}
 		response = h.handleSetImage(msg)
 
-	// Subscriptions (stub implementations)
+	// Subscriptions
 	case "subscribe":
-		response = h.handleSubscribe(msg)
+		response = h.handleSubscribe(msg, conn)
 	case "unsubscribe":
-		response = h.handleUnsubscribe(msg)
+		response = h.handleUnsubscribe(msg, conn)
 
 	default:
 		response := &Response{Action: msg.Action, Error: errors.New("unknown action").Error()}
@@ -213,37 +218,79 @@ func (h *Handler) HandleMessage(msg *Message) *Response {
 
 // listenToPlaylistEvents listens to playlist manager events and broadcasts them to clients
 func (h *Handler) listenToPlaylistEvents() {
-	h.logger.Info("playlist event listener disabled (stub implementation)")
-	// Event channel is closed immediately, so this function does nothing
-	for range h.playlistManager.GetEventChan() {
-		// No-op: channel is already closed
+	eventChan := h.playlistManager.GetEventChan()
+	h.logger.Info("playlist event listener started")
+
+	for eventData := range eventChan {
+		// Convert map[string]any to events.Event
+		eventMap, ok := eventData.(map[string]any)
+		if !ok {
+			h.logger.Warn("received invalid event format", "event", eventData)
+			continue
+		}
+
+		eventType, ok := eventMap["type"].(string)
+		if !ok {
+			h.logger.Warn("event missing type field", "event", eventMap)
+			continue
+		}
+
+		// Create event payload (all fields except type)
+		payload := make(map[string]interface{})
+		for k, v := range eventMap {
+			if k != "type" {
+				payload[k] = v
+			}
+		}
+
+		// Create and broadcast event
+		event := &events.Event{
+			Type:      eventType,
+			Timestamp: time.Now(),
+			Source:    "playlist-manager",
+			Payload:   payload,
+		}
+
+		if h.server != nil {
+			if err := h.server.BroadcastEvent(event); err != nil {
+				h.logger.Error("failed to broadcast playlist event", "error", err, "eventType", eventType)
+			}
+		}
 	}
+
+	h.logger.Info("playlist event listener stopped")
 }
 
 // handleSubscribe handles client subscription requests
-func (h *Handler) handleSubscribe(msg *Message) *Response {
+func (h *Handler) handleSubscribe(msg *Message, conn net.Conn) *Response {
 	if len(msg.EventTypes) == 0 {
 		return &Response{Action: msg.Action, Error: "no event types specified"}
 	}
 
-	// Get client connection from message context
-	// Note: In a real implementation, we'd need to track client connections
-	// For now, we'll return success but not actually subscribe
-	h.logger.Info("client subscription request", "eventTypes", msg.EventTypes)
+	if h.server == nil {
+		return &Response{Action: msg.Action, Error: "server not available"}
+	}
+
+	// Subscribe the client to the requested event types
+	h.server.subscriptions.Subscribe(conn, msg.EventTypes)
+	h.logger.Info("client subscription request", "eventTypes", msg.EventTypes, "remote_addr", conn.RemoteAddr().String())
 
 	return &Response{Action: msg.Action, Data: "subscribed successfully"}
 }
 
 // handleUnsubscribe handles client unsubscription requests
-func (h *Handler) handleUnsubscribe(msg *Message) *Response {
+func (h *Handler) handleUnsubscribe(msg *Message, conn net.Conn) *Response {
 	if len(msg.EventTypes) == 0 {
 		return &Response{Action: msg.Action, Error: "no event types specified"}
 	}
 
-	// Get client connection from message context
-	// Note: In a real implementation, we'd need to track client connections
-	// For now, we'll return success but not actually unsubscribe
-	h.logger.Info("client unsubscription request", "eventTypes", msg.EventTypes)
+	if h.server == nil {
+		return &Response{Action: msg.Action, Error: "server not available"}
+	}
+
+	// Unsubscribe the client from the requested event types
+	h.server.subscriptions.Unsubscribe(conn, msg.EventTypes)
+	h.logger.Info("client unsubscription request", "eventTypes", msg.EventTypes, "remote_addr", conn.RemoteAddr().String())
 
 	return &Response{Action: msg.Action, Data: "unsubscribed successfully"}
 }

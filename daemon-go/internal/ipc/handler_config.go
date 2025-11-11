@@ -203,17 +203,108 @@ func (h *Handler) handlePartialConfigUpdate(msg *Message) *Response {
 
 // validatePartialConfig validates the structure and types of a partial config
 func (h *Handler) validatePartialConfig(config map[string]any) error {
+	// Define expected types for common config keys
+	expectedTypes := map[string]map[string]string{
+		"app": {
+			"kill_daemon_on_exit":         "bool",
+			"notifications":               "bool",
+			"start_minimized":             "bool",
+			"minimize_instead_of_close":   "bool",
+			"show_monitor_modal_on_start": "bool",
+			"images_per_page":             "int",
+			"theme":                       "string",
+			"sort_by":                     "string",
+			"sort_order":                  "string",
+			"image_history_limit":         "int",
+		},
+		"daemon": {
+			"database_path":       "string",
+			"images_dir":          "string",
+			"thumbnails_dir":      "string",
+			"cache_dir":           "string",
+			"monitors_state_file": "string",
+			"socket_path":         "string",
+			"log_level":           "string",
+			"log_file":            "string",
+			"log_max_size":        "int",
+			"log_max_age":         "int",
+			"log_max_backups":     "int",
+			"compositor":          "string",
+		},
+		"backend": {
+			"type": "string",
+		},
+		"monitors": {
+			"selected_monitors": "[]string",
+			"image_set_type":    "string",
+		},
+	}
+
 	for sectionName, sectionData := range config {
 		sectionMap, ok := sectionData.(map[string]any)
 		if !ok {
 			return fmt.Errorf("section %s must be a map", sectionName)
 		}
 
-		// Validation removed - typeRegistry not available
-		// TODO: Add proper validation when available
-		_ = sectionMap // Avoid unused variable warning
+		// Get expected types for this section
+		sectionTypes, exists := expectedTypes[sectionName]
+		if !exists {
+			// Unknown section, skip type validation but allow it
+			continue
+		}
+
+		// Validate each field in the section
+		for key, value := range sectionMap {
+			expectedType, exists := sectionTypes[key]
+			if !exists {
+				// Unknown field, skip validation
+				continue
+			}
+
+			// Check type
+			if err := validateFieldType(value, expectedType); err != nil {
+				return fmt.Errorf("section %s, field %s: %w", sectionName, key, err)
+			}
+		}
 	}
 
+	return nil
+}
+
+// validateFieldType checks if a value matches the expected type
+func validateFieldType(value any, expectedType string) error {
+	switch expectedType {
+	case "string":
+		if _, ok := value.(string); !ok {
+			return fmt.Errorf("expected string, got %T", value)
+		}
+	case "int":
+		switch value.(type) {
+		case int, int32, int64, float64:
+			// Accept various numeric types
+		default:
+			return fmt.Errorf("expected int, got %T", value)
+		}
+	case "bool":
+		if _, ok := value.(bool); !ok {
+			return fmt.Errorf("expected bool, got %T", value)
+		}
+	case "[]string":
+		if _, ok := value.([]string); !ok {
+			// Also check []interface{} which might contain strings
+			if arr, ok := value.([]interface{}); ok {
+				for i, v := range arr {
+					if _, ok := v.(string); !ok {
+						return fmt.Errorf("expected []string, but element %d is %T", i, v)
+					}
+				}
+			} else {
+				return fmt.Errorf("expected []string, got %T", value)
+			}
+		}
+	default:
+		// Unknown type, skip validation
+	}
 	return nil
 }
 
@@ -449,4 +540,3 @@ func (h *Handler) handleGetSelectedMonitor(msg *Message) *Response {
 	}
 	return &Response{Action: msg.Action, Data: activeMonitor}
 }
-

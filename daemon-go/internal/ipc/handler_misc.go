@@ -58,6 +58,11 @@ func (h *Handler) handleSetImage(msg *Message) *Response {
 		}
 	}
 
+	// Reset history navigation state when new image is set manually
+	if msg.ActiveMonitor != nil {
+		h.historyNavigationState[msg.ActiveMonitor.ID] = 0
+	}
+
 	return &Response{Action: msg.Action, Data: "image changed"}
 }
 
@@ -106,19 +111,21 @@ func (h *Handler) handleNextImageHistory(msg *Message) *Response {
 		return &Response{Action: msg.Action, Error: "no image history available"}
 	}
 
-	// Find current position in history (most recent entry for the monitor)
-	// For simplicity, we'll use the most recent entry as starting point
-	// In a full implementation, we'd track the current history index
-	currentIndex := 0
+	// Get current index from state (defaults to 0 if not set)
+	currentIndex := h.historyNavigationState[msg.ActiveMonitor.ID]
 
-	// Navigate to next (newer) entry - going forward in the list (index + 1)
+	// Navigate to next (older) entry - going forward in the list (index + 1)
 	// Since history is stored with newest first, index 0 is most recent
 	// Next means going to index + 1 (older entry)
-	if currentIndex+1 >= len(history) {
+	nextIndex := currentIndex + 1
+	if nextIndex >= len(history) {
 		return &Response{Action: msg.Action, Error: "already at oldest image in history"}
 	}
 
-	nextEntry := history[currentIndex+1]
+	// Update state
+	h.historyNavigationState[msg.ActiveMonitor.ID] = nextIndex
+
+	nextEntry := history[nextIndex]
 
 	// Convert image ID from string to int64
 	imageID, err := strconv.ParseInt(nextEntry.ImageID, 10, 64)
@@ -166,19 +173,22 @@ func (h *Handler) handlePreviousImageHistory(msg *Message) *Response {
 		return &Response{Action: msg.Action, Error: "no image history available"}
 	}
 
-	// Find current position in history (most recent entry for the monitor)
-	// For simplicity, we'll use the most recent entry as starting point
-	// In a full implementation, we'd track the current history index
-	currentIndex := 0
+	// Get current index from state (defaults to 0 if not set)
+	currentIndex := h.historyNavigationState[msg.ActiveMonitor.ID]
 
-	// Navigate to previous (older) entry - going backward in the list (index - 1)
+	// Navigate to previous (newer) entry - going backward in the list (index - 1)
 	// Since history is stored with newest first, index 0 is most recent
-	// Previous means going to index - 1 (newer entry, but we're already at newest)
+	// Previous means going to index - 1 (newer entry)
 	if currentIndex <= 0 {
 		return &Response{Action: msg.Action, Error: "already at newest image in history"}
 	}
 
-	prevEntry := history[currentIndex-1]
+	prevIndex := currentIndex - 1
+
+	// Update state
+	h.historyNavigationState[msg.ActiveMonitor.ID] = prevIndex
+
+	prevEntry := history[prevIndex]
 
 	// Convert image ID from string to int64
 	imageID, err := strconv.ParseInt(prevEntry.ImageID, 10, 64)

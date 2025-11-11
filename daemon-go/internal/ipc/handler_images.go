@@ -215,8 +215,6 @@ func (h *Handler) handleDeleteImages(msg *Message) *Response {
 }
 
 func (h *Handler) handleUpsertImage(msg *Message) *Response {
-	// Update image metadata/tags (for future tag support)
-	// This is a placeholder for now
 	ctx := context.Background()
 
 	if msg.Image == nil || msg.Image.ID == 0 {
@@ -229,8 +227,42 @@ func (h *Handler) handleUpsertImage(msg *Message) *Response {
 		return &Response{Action: msg.Action, Error: fmt.Errorf("image not found: %v", err).Error()}
 	}
 
-	// TODO: Implement tag/metadata update logic when tags are added
-	h.logger.Info("upsert image called", "imageID", msg.Image.ID, "imageName", existingImage.Name)
+	// Update name if provided
+	if msg.Image.Name != "" {
+		existingImage.Name = msg.Image.Name
+	}
+
+	// Note: ImageInfo in the protocol only has ID and Name.
+	// For tag/metadata updates, the protocol would need to be extended
+	// to include those fields in ImageInfo or use a different message structure.
+	// For now, we update what's available (name).
+
+	// Save updated image back to gallery
+	images, err := h.jsonDBManager.LoadImageGallery()
+	if err != nil {
+		return &Response{Action: msg.Action, Error: fmt.Errorf("failed to load image gallery: %v", err).Error()}
+	}
+
+	// Find and update the image
+	found := false
+	for i := range images {
+		if images[i].ID == existingImage.ID {
+			images[i] = *existingImage
+			found = true
+			break
+		}
+	}
+
+	if !found {
+		return &Response{Action: msg.Action, Error: "image not found in gallery"}
+	}
+
+	// Save updated gallery
+	if err := h.jsonDBManager.SaveImageGallery(images); err != nil {
+		return &Response{Action: msg.Action, Error: fmt.Errorf("failed to save image gallery: %v", err).Error()}
+	}
+
+	h.logger.Info("upsert image completed", "imageID", msg.Image.ID, "imageName", existingImage.Name)
 
 	return &Response{Action: msg.Action, Data: "image updated"}
 }
