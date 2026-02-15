@@ -1,218 +1,400 @@
 /**
  * Preload Script for Waypaper Engine
  *
- * Restored original functionality with theme enhancements.
+ * Exposes safe APIs to the renderer process via contextBridge.
+ * Updated for Go Daemon v2.0.0 API
  */
 
 import { contextBridge, ipcRenderer } from "electron";
-import type { ActiveMonitor } from "../shared/types/monitor";
 import type {
-	DaemonSwwwConfig,
-} from "../shared/types/daemon";
-import type { rendererPlaylist } from "../src/types/rendererTypes";
+	ActiveMonitor,
+	MonitorSelection,
+	Monitor,
+} from "../shared/types/monitor";
+import type {
+	RendererPlaylist,
+	StoredPlaylist,
+	RunningPlaylistInfo,
+	ImageHistory,
+	ImageInfo,
+	UnifiedConfig,
+	DaemonStatus,
+	DaemonInfo,
+	PlaylistDiagnostics,
+	EventType,
+} from "./daemon-go-types";
+import type { JsonStoreImage } from "../shared/types/daemon";
 
-// Create the API object using your original system
+// Type for configuration payloads
+interface ConfigPayload {
+	configSection?: string;
+	configKey?: string;
+	configValue?: unknown;
+	frontendConfig?: Partial<UnifiedConfig>;
+}
+
+// Create the API object
 const electronAPI = {
-	// Your original Go daemon client
+	// ============================================================================
+	// GO DAEMON API
+	// ============================================================================
 	goDaemon: {
-		// Playlist operations
-		startPlaylist: (playlistId: number, activeMonitor: ActiveMonitor) =>
-			ipcRenderer.invoke("go-daemon-command", "start_playlist", {
-				playlistId,
-				activeMonitor,
-			}),
-		stopPlaylist: (activeMonitor: ActiveMonitor) =>
-			ipcRenderer.invoke("go-daemon-command", "stop_playlist", {
-				activeMonitor,
-			}),
-		pausePlaylist: (activeMonitor: ActiveMonitor) =>
-			ipcRenderer.invoke("go-daemon-command", "pause_playlist", {
-				activeMonitor,
-			}),
-		resumePlaylist: (activeMonitor: ActiveMonitor) =>
-			ipcRenderer.invoke("go-daemon-command", "resume_playlist", {
-				activeMonitor,
-			}),
-		savePlaylist: (playlist: rendererPlaylist) =>
-			ipcRenderer.invoke("go-daemon-command", "save_playlist", { playlist }),
-		deletePlaylist: (playlistName: string) =>
-			ipcRenderer.invoke("go-daemon-command", "delete_playlist", {
-				playlistName,
-			}),
-		getActivePlaylist: (activeMonitor: ActiveMonitor) =>
-			ipcRenderer.invoke("go-daemon-command", "get_active_playlist", {
-				activeMonitor,
-			}),
-		getPlaylistImages: (playlistId: number) =>
-			ipcRenderer.invoke("go-daemon-command", "get_playlist_images", {
-				playlistId,
-			}),
+		// ----------------------------------------------------------------------------
+		// SYSTEM OPERATIONS
+		// ----------------------------------------------------------------------------
+		ping: (): Promise<boolean> =>
+			ipcRenderer.invoke("go-daemon-command", "ping"),
 
-		// Image navigation
-		nextImage: (activeMonitor: ActiveMonitor) =>
-			ipcRenderer.invoke("go-daemon-command", "next_image", { activeMonitor }),
-		previousImage: (activeMonitor: ActiveMonitor) =>
-			ipcRenderer.invoke("go-daemon-command", "previous_image", {
-				activeMonitor,
-			}),
-		randomImage: (activeMonitor: ActiveMonitor) =>
-			ipcRenderer.invoke("go-daemon-command", "random_image", {
-				activeMonitor,
-			}),
-		setImage: (imageId: number, monitorName: string) =>
-			ipcRenderer.invoke("go-daemon-command", "set_image", {
-				image: { id: imageId },
-				activeMonitor: { name: monitorName },
-			}),
+		getInfo: (): Promise<DaemonInfo> =>
+			ipcRenderer.invoke("go-daemon-command", "get_info"),
 
-		// Multi-monitor operations
-		setImageAcrossMonitors: (imageId: number, activeMonitor: ActiveMonitor) =>
-			ipcRenderer.invoke("go-daemon-command", "set_image_across_monitors", {
-				image: { id: imageId },
-				activeMonitor,
-			}),
-		duplicateImageAcrossMonitors: (
-			imageId: number,
-			activeMonitor: ActiveMonitor,
-		) =>
-			ipcRenderer.invoke(
-				"go-daemon-command",
-				"duplicate_image_across_monitors",
-				{ image: { id: imageId }, activeMonitor },
-			),
-		processForMonitors: (imageId: number, activeMonitor: ActiveMonitor) =>
-			ipcRenderer.invoke("go-daemon-command", "process_for_monitors", {
-				image: { id: imageId },
-				activeMonitor,
-			}),
+		getMonitors: (): Promise<Monitor[]> =>
+			ipcRenderer.invoke("go-daemon-command", "get_monitors"),
 
-		// Data queries
-		getImages: (filters?: unknown) =>
-			ipcRenderer.invoke("go-daemon-command", "get_images", { filters }),
-		getPlaylists: () =>
-			ipcRenderer.invoke("go-daemon-command", "get_playlists"),
-		getImageHistory: () =>
-			ipcRenderer.invoke("go-daemon-command", "get_image_history"),
-		deleteImagesFromGallery: (imageIds: number[]) =>
-			ipcRenderer.invoke("go-daemon-command", "delete_image_from_gallery", {
-				imageIds,
-			}),
-		getDiagnostics: (monitorName?: string) =>
+		getDaemonStatus: (): Promise<DaemonStatus> =>
+			ipcRenderer.invoke("go-daemon-command", "get_daemon_status"),
+
+		getDiagnostics: (monitorName?: string): Promise<PlaylistDiagnostics> =>
 			ipcRenderer.invoke("go-daemon-command", "get_diagnostics", {
 				monitorName,
 			}),
 
-		// Additional image methods
-		getImageSrc: (imageId: number) =>
-			ipcRenderer.invoke("go-daemon-command", "get_image_src", { imageId }),
-		getThumbnailSrc: (imageId: number) =>
-			ipcRenderer.invoke("go-daemon-command", "get_thumbnail_src", { imageId }),
-		openContextMenu: (x: number, y: number, imageId?: number) =>
-			ipcRenderer.invoke("go-daemon-command", "open_context_menu", { x, y, imageId }),
-		updateTray: () =>
-			ipcRenderer.invoke("go-daemon-command", "update_tray"),
+		killDaemon: (): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "kill_daemon"),
 
-		// Unified configuration
-		getConfig: () => ipcRenderer.invoke("go-daemon-command", "get_config"),
-		setConfig: (section: string, key: string, value: unknown) =>
-			ipcRenderer.invoke("go-daemon-command", "set_config", {
-				config: {
-					configSection: section,
-					configKey: key,
-					configValue: value,
-				},
+		stopDaemon: (): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "stop_daemon"),
+
+		// ----------------------------------------------------------------------------
+		// PLAYLIST OPERATIONS
+		// ----------------------------------------------------------------------------
+		getPlaylists: (): Promise<StoredPlaylist[]> =>
+			ipcRenderer.invoke("go-daemon-command", "get_playlists"),
+
+		getPlaylist: (playlistId: number): Promise<StoredPlaylist> =>
+			ipcRenderer.invoke("go-daemon-command", "get_playlist", {
+				playlistId,
 			}),
 
-		// Event listening for config changes
-		onConfigChanged: (callback: (data: any) => void) => {
-			ipcRenderer.on("go-daemon-event-config_changed", (_, data) =>
-				callback(data),
-			);
-		},
-		offConfigChanged: (callback: (data: any) => void) => {
-			ipcRenderer.off("go-daemon-event-config_changed", callback);
-		},
-
-		// Legacy configuration (keep for backward compatibility)
-		getAppConfig: () => ipcRenderer.invoke("go-daemon-command", "get_config"),
-		setAppConfig: (key: string, value: unknown) =>
-			ipcRenderer.invoke("go-daemon-command", "set_config", {
-				configSection:
-					key === "selectedMonitors" || key === "imageSetType"
-						? "monitors"
-						: "app",
-				configKey:
-					key === "selectedMonitors"
-						? "selected_monitors"
-						: key === "imageSetType"
-							? "image_set_type"
-							: key,
-				configValue: value,
+		savePlaylist: (playlist: RendererPlaylist): Promise<StoredPlaylist> =>
+			ipcRenderer.invoke("go-daemon-command", "upsert_playlist", {
+				playlist,
 			}),
 
-		// New partial config update method
-		setPartialConfig: (
-			partialConfig: Record<string, Record<string, unknown>>,
-		) =>
-			ipcRenderer.invoke("go-daemon-command", "set_config", {
-				frontendConfig: partialConfig,
+		deletePlaylist: (playlistName: string): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "delete_playlist", {
+				playlistName,
 			}),
-		getSwwwConfig: () =>
-			ipcRenderer.invoke("go-daemon-command", "get_swww_config"),
-		setSwwwConfig: (config: DaemonSwwwConfig) =>
-			ipcRenderer.invoke("go-daemon-command", "set_swww_config", config),
 
-		// Monitor operations
-		getMonitors: () => ipcRenderer.invoke("go-daemon-command", "get_monitors"),
-		setSelectedMonitor: (activeMonitor: ActiveMonitor) =>
-			ipcRenderer.invoke("go-daemon-command", "set_selected_monitor", {
+		startPlaylist: (
+			playlistId: number,
+			activeMonitor: ActiveMonitor | MonitorSelection,
+		): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "start_playlist", {
+				playlistId,
 				activeMonitor,
 			}),
-		getSelectedMonitor: () =>
-			ipcRenderer.invoke("go-daemon-command", "get_selected_monitor"),
 
-		// Image processing
-		processImages: (imagePaths: string[], fileNames: string[]) =>
+		stopPlaylist: (
+			activeMonitor: ActiveMonitor | MonitorSelection,
+		): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "stop_playlist", {
+				activeMonitor,
+			}),
+
+		pausePlaylist: (
+			activeMonitor: ActiveMonitor | MonitorSelection,
+		): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "pause_playlist", {
+				activeMonitor,
+			}),
+
+		resumePlaylist: (
+			activeMonitor: ActiveMonitor | MonitorSelection,
+		): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "resume_playlist", {
+				activeMonitor,
+			}),
+
+		nextPlaylistImage: (
+			activeMonitor: ActiveMonitor | MonitorSelection,
+		): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "next_playlist_image", {
+				activeMonitor,
+			}),
+
+		previousPlaylistImage: (
+			activeMonitor: ActiveMonitor | MonitorSelection,
+		): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "previous_playlist_image", {
+				activeMonitor,
+			}),
+
+		getRunningPlaylists: (): Promise<Record<string, RunningPlaylistInfo>> =>
+			ipcRenderer.invoke("go-daemon-command", "get_running_playlists"),
+
+		// ----------------------------------------------------------------------------
+		// IMAGE OPERATIONS
+		// ----------------------------------------------------------------------------
+		getImages: (filters?: unknown): Promise<JsonStoreImage[]> =>
+			ipcRenderer.invoke("go-daemon-command", "get_images", { filters }),
+
+		processImages: (
+			imagePaths: string[],
+			fileNames: string[],
+		): Promise<void> =>
 			ipcRenderer.invoke("go-daemon-command", "process_images", {
 				imagePaths,
 				fileNames,
 			}),
 
-		// System
-		ping: () => ipcRenderer.invoke("go-daemon-command", "ping"),
-		getDaemonStatus: () =>
-			ipcRenderer.invoke("go-daemon-command", "get_daemon_status"),
-		stopDaemon: () => ipcRenderer.invoke("go-daemon-command", "stop_daemon"),
+		deleteImages: (imageIds: number[]): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "delete_images", { imageIds }),
 
-		// Event listeners - properly wrapped according to Electron docs
-		on: (event: string, callback: (data: any) => void) => {
+		upsertImage: (image: ImageInfo): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "upsert_image", { image }),
+
+		getImageHistory: (): Promise<ImageHistory[]> =>
+			ipcRenderer.invoke("go-daemon-command", "get_image_history"),
+
+		processForMonitors: (
+			imageId: number,
+			activeMonitor: ActiveMonitor | MonitorSelection,
+		): Promise<Record<string, string>> =>
+			ipcRenderer.invoke("go-daemon-command", "process_for_monitors", {
+				image: { id: imageId },
+				activeMonitor,
+			}),
+
+		// ----------------------------------------------------------------------------
+		// CONFIGURATION OPERATIONS
+		// ----------------------------------------------------------------------------
+		getConfig: (): Promise<UnifiedConfig> =>
+			ipcRenderer.invoke("go-daemon-command", "get_config"),
+
+		setConfig: (section: string, key: string, value: unknown): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "upsert_config", {
+				config: {
+					configSection: section,
+					configKey: key,
+					configValue: value,
+				} as ConfigPayload,
+			}),
+
+		setBulkConfig: (config: Partial<UnifiedConfig>): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "upsert_config", {
+				config: {
+					frontendConfig: config,
+				} as ConfigPayload,
+			}),
+
+		setSelectedMonitor: (
+			activeMonitor: ActiveMonitor | MonitorSelection,
+		): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "set_selected_monitor", {
+				activeMonitor,
+			}),
+
+		getSelectedMonitor: (): Promise<MonitorSelection> =>
+			ipcRenderer.invoke("go-daemon-command", "get_selected_monitor"),
+
+		// ----------------------------------------------------------------------------
+		// MISCELLANEOUS OPERATIONS
+		// ----------------------------------------------------------------------------
+		setImage: (
+			imageId: number,
+			imageName: string,
+			activeMonitor: ActiveMonitor | MonitorSelection | string,
+		): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "set_image", {
+				image: { id: imageId, name: imageName },
+				activeMonitor,
+			}),
+
+		setImageAcrossMonitors: (
+			imageId: number,
+			imageName: string,
+			activeMonitor: ActiveMonitor | MonitorSelection,
+		): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "set_image_across_monitors", {
+				image: { id: imageId, name: imageName },
+				activeMonitor,
+			}),
+
+		nextImageHistory: (
+			activeMonitor: ActiveMonitor | MonitorSelection,
+		): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "next_image_history", {
+				activeMonitor,
+			}),
+
+		previousImageHistory: (
+			activeMonitor: ActiveMonitor | MonitorSelection,
+		): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "previous_image_history", {
+				activeMonitor,
+			}),
+
+		randomImage: (
+			activeMonitor: ActiveMonitor | MonitorSelection,
+		): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "random_image", {
+				activeMonitor,
+			}),
+
+		// ----------------------------------------------------------------------------
+		// EVENT SUBSCRIPTION
+		// ----------------------------------------------------------------------------
+		subscribeToEvents: (eventTypes: Array<EventType | "*">): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "subscribe", { eventTypes }),
+
+		unsubscribeFromEvents: (
+			eventTypes: Array<EventType | "*">,
+		): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "unsubscribe", { eventTypes }),
+
+		// Event listeners
+		on: (event: EventType, callback: (data: unknown) => void): void => {
 			ipcRenderer.on(`go-daemon-event-${event}`, (_, data) => callback(data));
 		},
-		off: (event: string, callback: (data: any) => void) => {
+
+		off: (event: EventType, callback: (data: unknown) => void): void => {
 			ipcRenderer.off(`go-daemon-event-${event}`, callback);
 		},
+
+		// ----------------------------------------------------------------------------
+		// LEGACY COMPATIBILITY METHODS
+		// ----------------------------------------------------------------------------
+
+		/** @deprecated Use deleteImages instead */
+		deleteImagesFromGallery: (imageIds: number[]): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "delete_images", { imageIds }),
+
+		/** @deprecated Use nextPlaylistImage instead */
+		nextImage: (activeMonitor: ActiveMonitor | MonitorSelection): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "next_playlist_image", {
+				activeMonitor,
+			}),
+
+		/** @deprecated Use previousPlaylistImage instead */
+		previousImage: (
+			activeMonitor: ActiveMonitor | MonitorSelection,
+		): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "previous_playlist_image", {
+				activeMonitor,
+			}),
+
+		/** @deprecated Use getRunningPlaylists instead */
+		getActivePlaylist: (
+			activeMonitor: ActiveMonitor | MonitorSelection,
+		): Promise<RunningPlaylistInfo | null> =>
+			ipcRenderer.invoke("go-daemon-command", "get_running_playlists", {
+				activeMonitor,
+			}),
+
+		/** @deprecated Use getPlaylist instead */
+		getPlaylistImages: (playlistId: number): Promise<StoredPlaylist> =>
+			ipcRenderer.invoke("go-daemon-command", "get_playlist", {
+				playlistId,
+			}),
+
+		/** @deprecated Use setImageAcrossMonitors with mode: "clone" */
+		duplicateImageAcrossMonitors: (
+			imageId: number,
+			activeMonitor: ActiveMonitor | MonitorSelection,
+		): Promise<void> =>
+			ipcRenderer.invoke(
+				"go-daemon-command",
+				"duplicate_image_across_monitors",
+				{
+					image: { id: imageId },
+					activeMonitor,
+				},
+			),
+
+		/** @deprecated Use getConfig instead */
+		getAppConfig: (): Promise<UnifiedConfig> =>
+			ipcRenderer.invoke("go-daemon-command", "get_config"),
+
+		/** @deprecated Use setBulkConfig instead */
+		setAppConfig: (config: Partial<UnifiedConfig>): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "upsert_config", {
+				config: { frontendConfig: config } as ConfigPayload,
+			}),
+
+		/** @deprecated Use getConfig instead */
+		getSwwwConfig: async (): Promise<UnifiedConfig["backend"]["swww"]> => {
+			const config = await ipcRenderer.invoke("go-daemon-command", "get_config");
+			return config.backend.swww;
+		},
+
+		/** @deprecated Use setBulkConfig instead */
+		setSwwwConfig: (
+			swwwConfig: UnifiedConfig["backend"]["swww"],
+		): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "upsert_config", {
+				config: {
+					frontendConfig: {
+						backend: {
+							type: "swww" as const,
+							swww: swwwConfig,
+						},
+					},
+				} as ConfigPayload,
+			}),
+
+		/** @deprecated Legacy event listener - use on() instead */
+		onConfigChanged: (callback: (data: unknown) => void): void => {
+			ipcRenderer.on("go-daemon-event-config_changed", (_, data) =>
+				callback(data),
+			);
+		},
+
+		/** @deprecated Legacy event listener - use off() instead */
+		offConfigChanged: (callback: (data: unknown) => void): void => {
+			ipcRenderer.off("go-daemon-event-config_changed", callback);
+		},
+
+		/** @deprecated Use setBulkConfig instead */
+		setPartialConfig: (
+			partialConfig: Partial<UnifiedConfig>,
+		): Promise<void> =>
+			ipcRenderer.invoke("go-daemon-command", "upsert_config", {
+				config: {
+					frontendConfig: partialConfig,
+				} as ConfigPayload,
+			}),
 	},
 
-	// Theme management (new)
+	// ============================================================================
+	// THEME MANAGEMENT
+	// ============================================================================
 	getNativeTheme: () => ipcRenderer.invoke("get-native-theme"),
+
 	setThemeSource: (source: "system" | "light" | "dark") =>
 		ipcRenderer.invoke("set-theme-source", source),
-	onNativeThemeUpdated: (callback: (themeInfo: any) => void) => {
+
+	onNativeThemeUpdated: (callback: (themeInfo: unknown) => void) => {
 		ipcRenderer.on("native-theme-updated", (_, themeInfo) =>
 			callback(themeInfo),
 		);
 	},
-	onThemeChanged: (callback: (data: any) => void) => {
+
+	onThemeChanged: (callback: (data: unknown) => void) => {
 		ipcRenderer.on("theme-changed", (_, data) => callback(data));
 	},
 
-	// System info (new)
+	// ============================================================================
+	// SYSTEM INFO
+	// ============================================================================
 	getAppInfo: () => ipcRenderer.invoke("get-app-info"),
 	ping: () => ipcRenderer.invoke("ping"),
 
-	// Window management (new)
+	// ============================================================================
+	// WINDOW MANAGEMENT
+	// ============================================================================
 	getWindowBounds: () => ipcRenderer.invoke("get-window-bounds"),
-	setWindowBounds: (bounds: any) =>
+	setWindowBounds: (bounds: Electron.Rectangle) =>
 		ipcRenderer.invoke("set-window-bounds", bounds),
 	minimizeWindow: () => ipcRenderer.invoke("minimize-window"),
 	maximizeWindow: () => ipcRenderer.invoke("maximize-window"),
@@ -220,45 +402,57 @@ const electronAPI = {
 	hideWindow: () => ipcRenderer.invoke("hide-window"),
 	showWindow: () => ipcRenderer.invoke("show-window"),
 
-	// Application control
+	// ============================================================================
+	// APPLICATION CONTROL
+	// ============================================================================
 	exitApp: () => ipcRenderer.invoke("exit-app"),
 
-	// Daemon management
+	// ============================================================================
+	// DAEMON MANAGEMENT
+	// ============================================================================
 	getDaemonStatus: () => ipcRenderer.invoke("get-daemon-status"),
 	restartDaemon: () => ipcRenderer.invoke("restart-daemon"),
 	startDaemon: () => ipcRenderer.invoke("start-daemon"),
 	stopDaemon: () => ipcRenderer.invoke("stop-daemon"),
 
-	// Event listeners
-	onAppError: (callback: (error: any) => void) => {
+	// ============================================================================
+	// EVENT LISTENERS
+	// ============================================================================
+	onAppError: (callback: (error: unknown) => void) => {
 		ipcRenderer.on("app-error", (_, error) => callback(error));
 	},
-	onDaemonStatusUpdate: (callback: (data: any) => void) => {
+
+	onDaemonStatusUpdate: (callback: (data: unknown) => void) => {
 		ipcRenderer.on("daemon-status-update", (_, data) => callback(data));
 	},
-	offDaemonStatusUpdate: (callback: (data: any) => void) => {
+
+	offDaemonStatusUpdate: (callback: (data: unknown) => void) => {
 		ipcRenderer.removeListener("daemon-status-update", callback);
 	},
+
 	removeAllListeners: (channel: string) => {
 		ipcRenderer.removeAllListeners(channel);
 	},
 
-	// File operations
-	openFiles: (action: any) => ipcRenderer.invoke("openFiles", action),
-	handleOpenImages: (imagesObject: any) =>
-		ipcRenderer.invoke("handleOpenImages", imagesObject),
-};
+	// ============================================================================
+	// FILE OPERATIONS
+	// ============================================================================
+	openFiles: (action: "file" | "folder") =>
+		ipcRenderer.invoke("openFiles", action),
 
-// Debug: Log the goDaemon object to see what methods are available
-console.log("🔍 Preload: goDaemon object:", electronAPI.goDaemon);
-console.log("🔍 Preload: goDaemon.getAppConfig:", typeof electronAPI.goDaemon.getAppConfig);
-console.log("🔍 Preload: goDaemon.setAppConfig:", typeof electronAPI.goDaemon.setAppConfig);
-console.log("🔍 Preload: goDaemon.on:", typeof electronAPI.goDaemon.on);
-console.log("🔍 Preload: goDaemon.getPlaylists:", typeof electronAPI.goDaemon.getPlaylists);
-console.log("🔍 Preload: goDaemon.getMonitors:", typeof electronAPI.goDaemon.getMonitors);
+	handleOpenImages: (imagesObject: {
+		success: boolean;
+		data: { files: string[] };
+	}) => ipcRenderer.invoke("handleOpenImages", imagesObject),
+
+	openContextMenu: (options: {
+		Image?: unknown;
+		selectedImagesLength: number;
+	}) => ipcRenderer.invoke("openContextMenu", options),
+};
 
 // Expose the API to the renderer process
 contextBridge.exposeInMainWorld("API_RENDERER", electronAPI);
 
 // Log successful preload
-console.log("Preload script loaded successfully");
+console.log("✅ Preload script loaded successfully - Go Daemon v2.0.0 API ready");

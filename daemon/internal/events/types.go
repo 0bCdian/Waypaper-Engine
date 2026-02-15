@@ -1,0 +1,47 @@
+// Package events defines event type constants for the daemon's pub/sub event bus.
+//
+// Events are published by daemon components (playlist manager, image processor, etc.)
+// and consumed by the SSE broker to stream to connected clients.
+package events
+
+// EventType identifies a specific kind of event in the daemon.
+type EventType string
+
+// Image processing events — emitted during batch image import.
+const (
+	ProcessingStarted EventType = "processing_started"
+	ImageProcessed    EventType = "image_processed"
+	ImageError        EventType = "image_error"
+	ProcessingComplete EventType = "processing_complete"
+)
+
+// Playlist events — emitted when playlist state changes.
+const (
+	PlaylistStarted      EventType = "playlist_started"
+	PlaylistStopped      EventType = "playlist_stopped"
+	PlaylistPaused       EventType = "playlist_paused"
+	PlaylistResumed      EventType = "playlist_resumed"
+	PlaylistImageChanged EventType = "playlist_image_changed"
+)
+
+// Wallpaper events — emitted when a wallpaper changes on any monitor.
+const (
+	WallpaperChanged EventType = "wallpaper_changed"
+)
+
+// Monitor events — emitted when monitor configuration changes.
+const (
+	MonitorConnected    EventType = "monitor_connected"
+	MonitorDisconnected EventType = "monitor_disconnected"
+)
+
+// Configuration events — emitted when config is updated.
+const (
+	ConfigChanged EventType = "config_changed"
+)
+
+// Gallery events — emitted when the image or playlist collections change.
+const (
+	ImagesUpdated    EventType = "images_updated"
+	PlaylistsUpdated EventType = "playlists_updated"
+)

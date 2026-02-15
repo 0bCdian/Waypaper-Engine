@@ -1,0 +1,728 @@
+{
+  "name": "mindrally/skills",
+  "version": "47f47c12e62f62b5e171bd5af61d0fc24b329701",
+  "summary": "Auto-generated tile from GitHub (240 skills)",
+  "private": true,
+  "skills": {
+    "accessibility-a11y": {
+      "path": "accessibility-a11y/SKILL.md"
+    },
+    "alpine-js": {
+      "path": "alpine-js/SKILL.md"
+    },
+    "analytics-data-analysis": {
+      "path": "analytics-data-analysis/SKILL.md"
+    },
+    "android-development": {
+      "path": "android-development/SKILL.md"
+    },
+    "angular": {
+      "path": "angular/SKILL.md"
+    },
+    "angular-development": {
+      "path": "angular-development/SKILL.md"
+    },
+    "anime-js": {
+      "path": "anime-js/SKILL.md"
+    },
+    "anthropic-claude-development": {
+      "path": "anthropic-claude-development/SKILL.md"
+    },
+    "api-development": {
+      "path": "api-development/SKILL.md"
+    },
+    "apollo-graphql": {
+      "path": "apollo-graphql/SKILL.md"
+    },
+    "aspnet-core": {
+      "path": "aspnet-core/SKILL.md"
+    },
+    "astro": {
+      "path": "astro/SKILL.md"
+    },
+    "auth0-authentication": {
+      "path": "auth0-authentication/SKILL.md"
+    },
+    "autogen-development": {
+      "path": "autogen-development/SKILL.md"
+    },
+    "aws-development": {
+      "path": "aws-development/SKILL.md"
+    },
+    "azure": {
+      "path": "azure/SKILL.md"
+    },
+    "backend-development": {
+      "path": "backend-development/SKILL.md"
+    },
+    "bash-scripting": {
+      "path": "bash-scripting/SKILL.md"
+    },
+    "beautifulsoup-parsing": {
+      "path": "beautifulsoup-parsing/SKILL.md"
+    },
+    "bitbucket-workflow": {
+      "path": "bitbucket-workflow/SKILL.md"
+    },
+    "blazor": {
+      "path": "blazor/SKILL.md"
+    },
+    "blockchain": {
+      "path": "blockchain/SKILL.md"
+    },
+    "bootstrap": {
+      "path": "bootstrap/SKILL.md"
+    },
+    "business-central-development": {
+      "path": "business-central-development/SKILL.md"
+    },
+    "c-sharp": {
+      "path": "c-sharp/SKILL.md"
+    },
+    "cheerio-parsing": {
+      "path": "cheerio-parsing/SKILL.md"
+    },
+    "chrome-extension-development": {
+      "path": "chrome-extension-development/SKILL.md"
+    },
+    "ci-cd-best-practices": {
+      "path": "ci-cd-best-practices/SKILL.md"
+    },
+    "clean-architecture": {
+      "path": "clean-architecture/SKILL.md"
+    },
+    "clerk-authentication": {
+      "path": "clerk-authentication/SKILL.md"
+    },
+    "cloudflare-development": {
+      "path": "cloudflare-development/SKILL.md"
+    },
+    "computer-vision-opencv": {
+      "path": "computer-vision-opencv/SKILL.md"
+    },
+    "convex": {
+      "path": "convex/SKILL.md"
+    },
+    "cpp": {
+      "path": "cpp/SKILL.md"
+    },
+    "css": {
+      "path": "css/SKILL.md"
+    },
+    "cypress": {
+      "path": "cypress/SKILL.md"
+    },
+    "data-analysis-jupyter": {
+      "path": "data-analysis-jupyter/SKILL.md"
+    },
+    "data-analyst": {
+      "path": "data-analyst/SKILL.md"
+    },
+    "data-jupyter-python": {
+      "path": "data-jupyter-python/SKILL.md"
+    },
+    "deep-learning": {
+      "path": "deep-learning/SKILL.md"
+    },
+    "deep-learning-python": {
+      "path": "deep-learning-python/SKILL.md"
+    },
+    "deep-learning-pytorch": {
+      "path": "deep-learning-pytorch/SKILL.md"
+    },
+    "deno-typescript": {
+      "path": "deno-typescript/SKILL.md"
+    },
+    "design-systems": {
+      "path": "design-systems/SKILL.md"
+    },
+    "devops": {
+      "path": "devops/SKILL.md"
+    },
+    "django-python": {
+      "path": "django-python/SKILL.md"
+    },
+    "django-rest-api-development": {
+      "path": "django-rest-api-development/SKILL.md"
+    },
+    "docker": {
+      "path": "docker/SKILL.md"
+    },
+    "dotnet": {
+      "path": "dotnet/SKILL.md"
+    },
+    "drizzle-orm": {
+      "path": "drizzle-orm/SKILL.md"
+    },
+    "drupal-development": {
+      "path": "drupal-development/SKILL.md"
+    },
+    "elasticsearch-best-practices": {
+      "path": "elasticsearch-best-practices/SKILL.md"
+    },
+    "electron-development": {
+      "path": "electron-development/SKILL.md"
+    },
+    "elixir": {
+      "path": "elixir/SKILL.md"
+    },
+    "esbuild-bundler": {
+      "path": "esbuild-bundler/SKILL.md"
+    },
+    "ethereum": {
+      "path": "ethereum/SKILL.md"
+    },
+    "expo-react-native-javascript-best-practices": {
+      "path": "expo-react-native-javascript-best-practices/SKILL.md"
+    },
+    "expo-react-native-typescript": {
+      "path": "expo-react-native-typescript/SKILL.md"
+    },
+    "express-typescript": {
+      "path": "express-typescript/SKILL.md"
+    },
+    "fastapi-microservices-serverless": {
+      "path": "fastapi-microservices-serverless/SKILL.md"
+    },
+    "fastapi-python": {
+      "path": "fastapi-python/SKILL.md"
+    },
+    "fastify-typescript": {
+      "path": "fastify-typescript/SKILL.md"
+    },
+    "figma-integration": {
+      "path": "figma-integration/SKILL.md"
+    },
+    "firebase-development": {
+      "path": "firebase-development/SKILL.md"
+    },
+    "flask-python": {
+      "path": "flask-python/SKILL.md"
+    },
+    "flutter": {
+      "path": "flutter/SKILL.md"
+    },
+    "fpga": {
+      "path": "fpga/SKILL.md"
+    },
+    "framer-motion": {
+      "path": "framer-motion/SKILL.md"
+    },
+    "front-end-developer": {
+      "path": "front-end-developer/SKILL.md"
+    },
+    "game-development": {
+      "path": "game-development/SKILL.md"
+    },
+    "gcp-development": {
+      "path": "gcp-development/SKILL.md"
+    },
+    "general-best-practices": {
+      "path": "general-best-practices/SKILL.md"
+    },
+    "ghost": {
+      "path": "ghost/SKILL.md"
+    },
+    "git-workflow": {
+      "path": "git-workflow/SKILL.md"
+    },
+    "github-workflow": {
+      "path": "github-workflow/SKILL.md"
+    },
+    "gitlab-workflow": {
+      "path": "gitlab-workflow/SKILL.md"
+    },
+    "go": {
+      "path": "go/SKILL.md"
+    },
+    "go-api-development": {
+      "path": "go-api-development/SKILL.md"
+    },
+    "go-backend-microservices": {
+      "path": "go-backend-microservices/SKILL.md"
+    },
+    "graalvm": {
+      "path": "graalvm/SKILL.md"
+    },
+    "graphql": {
+      "path": "graphql/SKILL.md"
+    },
+    "graphql-development": {
+      "path": "graphql-development/SKILL.md"
+    },
+    "grpc-development": {
+      "path": "grpc-development/SKILL.md"
+    },
+    "gsap": {
+      "path": "gsap/SKILL.md"
+    },
+    "hono-typescript": {
+      "path": "hono-typescript/SKILL.md"
+    },
+    "html": {
+      "path": "html/SKILL.md"
+    },
+    "htmx": {
+      "path": "htmx/SKILL.md"
+    },
+    "internationalization-i18n": {
+      "path": "internationalization-i18n/SKILL.md"
+    },
+    "ionic": {
+      "path": "ionic/SKILL.md"
+    },
+    "java": {
+      "path": "java/SKILL.md"
+    },
+    "java-quarkus-development": {
+      "path": "java-quarkus-development/SKILL.md"
+    },
+    "java-spring-development": {
+      "path": "java-spring-development/SKILL.md"
+    },
+    "jax-best-practices": {
+      "path": "jax-best-practices/SKILL.md"
+    },
+    "jest": {
+      "path": "jest/SKILL.md"
+    },
+    "julia": {
+      "path": "julia/SKILL.md"
+    },
+    "jwt-security": {
+      "path": "jwt-security/SKILL.md"
+    },
+    "kafka-development": {
+      "path": "kafka-development/SKILL.md"
+    },
+    "koa-typescript": {
+      "path": "koa-typescript/SKILL.md"
+    },
+    "kotlin-development": {
+      "path": "kotlin-development/SKILL.md"
+    },
+    "kubernetes": {
+      "path": "kubernetes/SKILL.md"
+    },
+    "kysely": {
+      "path": "kysely/SKILL.md"
+    },
+    "langchain-development": {
+      "path": "langchain-development/SKILL.md"
+    },
+    "laravel": {
+      "path": "laravel/SKILL.md"
+    },
+    "laravel-development": {
+      "path": "laravel-development/SKILL.md"
+    },
+    "lerna": {
+      "path": "lerna/SKILL.md"
+    },
+    "less-best-practices": {
+      "path": "less-best-practices/SKILL.md"
+    },
+    "llamaindex-development": {
+      "path": "llamaindex-development/SKILL.md"
+    },
+    "llm": {
+      "path": "llm/SKILL.md"
+    },
+    "localization-l10n": {
+      "path": "localization-l10n/SKILL.md"
+    },
+    "logging-best-practices": {
+      "path": "logging-best-practices/SKILL.md"
+    },
+    "lottie": {
+      "path": "lottie/SKILL.md"
+    },
+    "lua": {
+      "path": "lua/SKILL.md"
+    },
+    "machine-learning": {
+      "path": "machine-learning/SKILL.md"
+    },
+    "matplotlib-best-practices": {
+      "path": "matplotlib-best-practices/SKILL.md"
+    },
+    "meta-prompt": {
+      "path": "meta-prompt/SKILL.md"
+    },
+    "micronaut": {
+      "path": "micronaut/SKILL.md"
+    },
+    "microservices": {
+      "path": "microservices/SKILL.md"
+    },
+    "modern-web-development": {
+      "path": "modern-web-development/SKILL.md"
+    },
+    "mongodb-development": {
+      "path": "mongodb-development/SKILL.md"
+    },
+    "monitoring-guidelines": {
+      "path": "monitoring-guidelines/SKILL.md"
+    },
+    "monorepo": {
+      "path": "monorepo/SKILL.md"
+    },
+    "monorepo-tamagui": {
+      "path": "monorepo-tamagui/SKILL.md"
+    },
+    "motion": {
+      "path": "motion/SKILL.md"
+    },
+    "mqtt-development": {
+      "path": "mqtt-development/SKILL.md"
+    },
+    "mysql-best-practices": {
+      "path": "mysql-best-practices/SKILL.md"
+    },
+    "nestjs-clean-typescript": {
+      "path": "nestjs-clean-typescript/SKILL.md"
+    },
+    "netlify-development": {
+      "path": "netlify-development/SKILL.md"
+    },
+    "nextauth-authentication": {
+      "path": "nextauth-authentication/SKILL.md"
+    },
+    "nextjs-react-redux-typescript-cursor-rules": {
+      "path": "nextjs-react-redux-typescript-cursor-rules/SKILL.md"
+    },
+    "nextjs-react-typescript": {
+      "path": "nextjs-react-typescript/SKILL.md"
+    },
+    "nextjs-typescript-tailwindcss-supabase": {
+      "path": "nextjs-typescript-tailwindcss-supabase/SKILL.md"
+    },
+    "nlp-natural-language-processing": {
+      "path": "nlp-natural-language-processing/SKILL.md"
+    },
+    "nodejs-development": {
+      "path": "nodejs-development/SKILL.md"
+    },
+    "numpy-best-practices": {
+      "path": "numpy-best-practices/SKILL.md"
+    },
+    "nuxtjs-vue-typescript": {
+      "path": "nuxtjs-vue-typescript/SKILL.md"
+    },
+    "nx": {
+      "path": "nx/SKILL.md"
+    },
+    "oauth-implementation": {
+      "path": "oauth-implementation/SKILL.md"
+    },
+    "observability-guidelines": {
+      "path": "observability-guidelines/SKILL.md"
+    },
+    "odoo-development": {
+      "path": "odoo-development/SKILL.md"
+    },
+    "onchainkit": {
+      "path": "onchainkit/SKILL.md"
+    },
+    "openai-api-development": {
+      "path": "openai-api-development/SKILL.md"
+    },
+    "optimized-nextjs-typescript": {
+      "path": "optimized-nextjs-typescript/SKILL.md"
+    },
+    "pandas-best-practices": {
+      "path": "pandas-best-practices/SKILL.md"
+    },
+    "parcel-bundler": {
+      "path": "parcel-bundler/SKILL.md"
+    },
+    "performance-optimization": {
+      "path": "performance-optimization/SKILL.md"
+    },
+    "phoenix": {
+      "path": "phoenix/SKILL.md"
+    },
+    "php-development": {
+      "path": "php-development/SKILL.md"
+    },
+    "pixi-js": {
+      "path": "pixi-js/SKILL.md"
+    },
+    "playwright": {
+      "path": "playwright/SKILL.md"
+    },
+    "playwright-cursor-rules": {
+      "path": "playwright-cursor-rules/SKILL.md"
+    },
+    "pnpm": {
+      "path": "pnpm/SKILL.md"
+    },
+    "postcss-best-practices": {
+      "path": "postcss-best-practices/SKILL.md"
+    },
+    "postgresql-best-practices": {
+      "path": "postgresql-best-practices/SKILL.md"
+    },
+    "prisma": {
+      "path": "prisma/SKILL.md"
+    },
+    "prisma-development": {
+      "path": "prisma-development/SKILL.md"
+    },
+    "puppeteer-automation": {
+      "path": "puppeteer-automation/SKILL.md"
+    },
+    "pwa-development": {
+      "path": "pwa-development/SKILL.md"
+    },
+    "python": {
+      "path": "python/SKILL.md"
+    },
+    "python-cybersecurity-tool-development": {
+      "path": "python-cybersecurity-tool-development/SKILL.md"
+    },
+    "python-odoo-cursor-rules": {
+      "path": "python-odoo-cursor-rules/SKILL.md"
+    },
+    "python-testing": {
+      "path": "python-testing/SKILL.md"
+    },
+    "python-uv": {
+      "path": "python-uv/SKILL.md"
+    },
+    "pytorch": {
+      "path": "pytorch/SKILL.md"
+    },
+    "quarkus": {
+      "path": "quarkus/SKILL.md"
+    },
+    "rabbitmq-development": {
+      "path": "rabbitmq-development/SKILL.md"
+    },
+    "react": {
+      "path": "react/SKILL.md"
+    },
+    "react-native-cursor-rules": {
+      "path": "react-native-cursor-rules/SKILL.md"
+    },
+    "react-native-r3f": {
+      "path": "react-native-r3f/SKILL.md"
+    },
+    "react-query": {
+      "path": "react-query/SKILL.md"
+    },
+    "redis-best-practices": {
+      "path": "redis-best-practices/SKILL.md"
+    },
+    "redux-toolkit": {
+      "path": "redux-toolkit/SKILL.md"
+    },
+    "remix": {
+      "path": "remix/SKILL.md"
+    },
+    "responsive-design": {
+      "path": "responsive-design/SKILL.md"
+    },
+    "rest-api-django": {
+      "path": "rest-api-django/SKILL.md"
+    },
+    "robocorp-cursor-rules": {
+      "path": "robocorp-cursor-rules/SKILL.md"
+    },
+    "rollup-bundler": {
+      "path": "rollup-bundler/SKILL.md"
+    },
+    "rspec": {
+      "path": "rspec/SKILL.md"
+    },
+    "ruby": {
+      "path": "ruby/SKILL.md"
+    },
+    "ruby-rails": {
+      "path": "ruby-rails/SKILL.md"
+    },
+    "rust": {
+      "path": "rust/SKILL.md"
+    },
+    "salesforce-development": {
+      "path": "salesforce-development/SKILL.md"
+    },
+    "salesforce-dx": {
+      "path": "salesforce-dx/SKILL.md"
+    },
+    "sanity": {
+      "path": "sanity/SKILL.md"
+    },
+    "sass-best-practices": {
+      "path": "sass-best-practices/SKILL.md"
+    },
+    "scikit-learn-best-practices": {
+      "path": "scikit-learn-best-practices/SKILL.md"
+    },
+    "scipy-best-practices": {
+      "path": "scipy-best-practices/SKILL.md"
+    },
+    "scrapy-web-scraping": {
+      "path": "scrapy-web-scraping/SKILL.md"
+    },
+    "scss-best-practices": {
+      "path": "scss-best-practices/SKILL.md"
+    },
+    "security-best-practices": {
+      "path": "security-best-practices/SKILL.md"
+    },
+    "selenium-automation": {
+      "path": "selenium-automation/SKILL.md"
+    },
+    "seo-best-practices": {
+      "path": "seo-best-practices/SKILL.md"
+    },
+    "sequelize": {
+      "path": "sequelize/SKILL.md"
+    },
+    "serverless": {
+      "path": "serverless/SKILL.md"
+    },
+    "shopify": {
+      "path": "shopify/SKILL.md"
+    },
+    "shopify-theme-development-guidelines": {
+      "path": "shopify-theme-development-guidelines/SKILL.md"
+    },
+    "solana": {
+      "path": "solana/SKILL.md"
+    },
+    "solidity": {
+      "path": "solidity/SKILL.md"
+    },
+    "spring-boot": {
+      "path": "spring-boot/SKILL.md"
+    },
+    "spring-framework": {
+      "path": "spring-framework/SKILL.md"
+    },
+    "sql-best-practices": {
+      "path": "sql-best-practices/SKILL.md"
+    },
+    "storybook": {
+      "path": "storybook/SKILL.md"
+    },
+    "stripe": {
+      "path": "stripe/SKILL.md"
+    },
+    "styled-components-best-practices": {
+      "path": "styled-components-best-practices/SKILL.md"
+    },
+    "supabase": {
+      "path": "supabase/SKILL.md"
+    },
+    "supabase-development": {
+      "path": "supabase-development/SKILL.md"
+    },
+    "svelte": {
+      "path": "svelte/SKILL.md"
+    },
+    "sveltekit": {
+      "path": "sveltekit/SKILL.md"
+    },
+    "swift": {
+      "path": "swift/SKILL.md"
+    },
+    "swiftui-development": {
+      "path": "swiftui-development/SKILL.md"
+    },
+    "swr": {
+      "path": "swr/SKILL.md"
+    },
+    "systemverilog": {
+      "path": "systemverilog/SKILL.md"
+    },
+    "tailwindcss": {
+      "path": "tailwindcss/SKILL.md"
+    },
+    "tanstack-query": {
+      "path": "tanstack-query/SKILL.md"
+    },
+    "tauri-development": {
+      "path": "tauri-development/SKILL.md"
+    },
+    "technical-writing": {
+      "path": "technical-writing/SKILL.md"
+    },
+    "terraform": {
+      "path": "terraform/SKILL.md"
+    },
+    "testing": {
+      "path": "testing/SKILL.md"
+    },
+    "three-js": {
+      "path": "three-js/SKILL.md"
+    },
+    "transformers-huggingface": {
+      "path": "transformers-huggingface/SKILL.md"
+    },
+    "trpc": {
+      "path": "trpc/SKILL.md"
+    },
+    "turbopack-bundler": {
+      "path": "turbopack-bundler/SKILL.md"
+    },
+    "turborepo": {
+      "path": "turborepo/SKILL.md"
+    },
+    "typeorm": {
+      "path": "typeorm/SKILL.md"
+    },
+    "typescript": {
+      "path": "typescript/SKILL.md"
+    },
+    "ui-design": {
+      "path": "ui-design/SKILL.md"
+    },
+    "unity": {
+      "path": "unity/SKILL.md"
+    },
+    "ux-design": {
+      "path": "ux-design/SKILL.md"
+    },
+    "vercel-development": {
+      "path": "vercel-development/SKILL.md"
+    },
+    "viewcomfy-api-rules": {
+      "path": "viewcomfy-api-rules/SKILL.md"
+    },
+    "vite": {
+      "path": "vite/SKILL.md"
+    },
+    "vue-typescript": {
+      "path": "vue-typescript/SKILL.md"
+    },
+    "vuejs-typescript-best-practices": {
+      "path": "vuejs-typescript-best-practices/SKILL.md"
+    },
+    "web-development": {
+      "path": "web-development/SKILL.md"
+    },
+    "web-scraping": {
+      "path": "web-scraping/SKILL.md"
+    },
+    "webpack-bundler": {
+      "path": "webpack-bundler/SKILL.md"
+    },
+    "websocket-development": {
+      "path": "websocket-development/SKILL.md"
+    },
+    "woocommerce": {
+      "path": "woocommerce/SKILL.md"
+    },
+    "wordpress": {
+      "path": "wordpress/SKILL.md"
+    },
+    "zod-schema-validation": {
+      "path": "zod-schema-validation/SKILL.md"
+    },
+    "zustand-state-management": {
+      "path": "zustand-state-management/SKILL.md"
+    }
+  }
+}

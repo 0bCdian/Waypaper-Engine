@@ -37,7 +37,7 @@ async function setImageViaGoDaemon(
 		// Use single monitor mode
 		return await goDaemonClient.setImage(
 			imageId,
-			activeMonitor.monitors[0].name,
+			activeMonitor,
 		);
 	}
 }

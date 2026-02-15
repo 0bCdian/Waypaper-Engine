@@ -1,16 +1,17 @@
 import { useEffect, useState } from "react";
+import type { UnifiedConfig } from "../../shared/types/unifiedConfig";
 
 export const useFrontendConfig = () => {
 	const [isLoaded, setIsLoaded] = useState(false);
-	const [config, setConfig] = useState<any>(null);
+	const [config, setConfig] = useState<UnifiedConfig | null>(null);
 
 	useEffect(() => {
 		const loadConfig = async () => {
 			try {
 				// Use the unified config system via goDaemon
-				if (window.API_RENDERER?.goDaemon?.getAppConfig) {
+				if (window.API_RENDERER?.goDaemon?.getConfig) {
 					const loadedConfig =
-						await window.API_RENDERER.goDaemon.getAppConfig();
+						await window.API_RENDERER.goDaemon.getConfig();
 					setConfig(loadedConfig);
 					setIsLoaded(true);
 					console.log(
@@ -18,7 +19,7 @@ export const useFrontendConfig = () => {
 					);
 				} else {
 					console.warn(
-						"🔴 FrontendConfig: goDaemon.getAppConfig not available",
+						"🔴 FrontendConfig: goDaemon.getConfig not available",
 					);
 					setIsLoaded(true);
 				}

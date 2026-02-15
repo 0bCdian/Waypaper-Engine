@@ -6,16 +6,19 @@ import (
 
 // Event type constants
 const (
-	EventImageSet        = "image:set"
-	EventImageProcessed  = "image:processed"
-	EventPlaylistStarted = "playlist:started"
-	EventPlaylistStopped = "playlist:stopped"
-	EventPlaylistPaused  = "playlist:paused"
-	EventPlaylistResumed = "playlist:resumed"
-	EventConfigChanged   = "config:changed"
-	EventConfigError     = "config:error"
-	EventMonitorChanged  = "monitor:changed"
-	EventBackendChanged  = "backend:changed"
+	EventImageSet           = "image:set"
+	EventImageProcessed     = "image:processed"
+	EventProcessingStarted  = "processing:started"
+	EventProcessingComplete = "processing:complete"
+	EventImageError         = "image:error"
+	EventPlaylistStarted    = "playlist:started"
+	EventPlaylistStopped    = "playlist:stopped"
+	EventPlaylistPaused     = "playlist:paused"
+	EventPlaylistResumed    = "playlist:resumed"
+	EventConfigChanged      = "config:changed"
+	EventConfigError        = "config:error"
+	EventMonitorChanged     = "monitor:changed"
+	EventBackendChanged     = "backend:changed"
 )
 
 // Event payload types

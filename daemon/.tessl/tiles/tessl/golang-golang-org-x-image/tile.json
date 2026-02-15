@@ -1,0 +1,8 @@
+{
+  "name": "tessl/golang-golang-org-x-image",
+  "version": "0.33.0",
+  "docs": "docs/index.md",
+  "describes": "pkg:golang/golang.org/x/image@v0.33.0",
+  "summary": "Go supplementary image libraries providing additional image format support and font rendering capabilities",
+  "private": false
+}

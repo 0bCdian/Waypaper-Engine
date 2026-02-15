@@ -1,0 +1,62 @@
+{
+  "name": "ysyecust/everything-claude-code",
+  "version": "dd3b331e3924b4118df2ccc0c6937a28a3abe87e",
+  "summary": "Auto-generated tile from GitHub (18 skills)",
+  "private": true,
+  "skills": {
+    "clickhouse-io": {
+      "path": "skills/clickhouse-io/SKILL.md"
+    },
+    "coding-standards": {
+      "path": "skills/coding-standards/SKILL.md"
+    },
+    "continuous-learning": {
+      "path": "skills/continuous-learning/SKILL.md"
+    },
+    "continuous-learning-v2": {
+      "path": "skills/continuous-learning-v2/SKILL.md"
+    },
+    "eval-harness": {
+      "path": "skills/eval-harness/SKILL.md"
+    },
+    "golang-patterns": {
+      "path": "skills/golang-patterns/SKILL.md"
+    },
+    "golang-testing": {
+      "path": "skills/golang-testing/SKILL.md"
+    },
+    "hpc-patterns": {
+      "path": "skills/hpc-patterns/SKILL.md"
+    },
+    "iterative-retrieval": {
+      "path": "skills/iterative-retrieval/SKILL.md"
+    },
+    "jpa-patterns": {
+      "path": "skills/jpa-patterns/SKILL.md"
+    },
+    "numerical-patterns": {
+      "path": "skills/numerical-patterns/SKILL.md"
+    },
+    "postgres-patterns": {
+      "path": "skills/postgres-patterns/SKILL.md"
+    },
+    "security-review": {
+      "path": "skills/security-review/SKILL.md"
+    },
+    "springboot-patterns": {
+      "path": "skills/springboot-patterns/SKILL.md"
+    },
+    "springboot-security": {
+      "path": "skills/springboot-security/SKILL.md"
+    },
+    "springboot-tdd": {
+      "path": "skills/springboot-tdd/SKILL.md"
+    },
+    "strategic-compact": {
+      "path": "skills/strategic-compact/SKILL.md"
+    },
+    "tdd-workflow": {
+      "path": "skills/tdd-workflow/SKILL.md"
+    }
+  }
+}

@@ -1,0 +1,175 @@
+package store
+
+import "context"
+
+// ---------------------------------------------------------------------------
+// Pagination & Query types
+// ---------------------------------------------------------------------------
+
+// PaginatedResult wraps a page of results with pagination metadata.
+type PaginatedResult[T any] struct {
+	Data       []T        `json:"data"`
+	Pagination Pagination `json:"pagination"`
+}
+
+// Pagination holds the metadata for a paginated response.
+type Pagination struct {
+	Page       int `json:"page"`
+	PerPage    int `json:"per_page"`
+	TotalItems int `json:"total_items"`
+	TotalPages int `json:"total_pages"`
+}
+
+// ImageQueryOpts controls filtering, sorting, and pagination for image queries.
+type ImageQueryOpts struct {
+	// Page number (1-indexed). Default: 1.
+	Page int
+	// Items per page. Default: 50, max: 200.
+	PerPage int
+	// Sort field: "name", "imported_at", "file_size". Default: "imported_at".
+	SortBy string
+	// Sort direction: "asc" or "desc". Default: "desc".
+	SortOrder string
+	// Filter by media type: "image", "video", "gif". Empty = no filter.
+	MediaType string
+	// Fuzzy search on name and tags. Empty = no search.
+	Search string
+	// Filter by tags (all must match). Empty = no filter.
+	Tags []string
+}
+
+// HistoryQueryOpts controls filtering and pagination for history queries.
+type HistoryQueryOpts struct {
+	// Maximum number of entries to return. Default: 50.
+	Limit int
+	// Filter by monitor name. Empty = all monitors.
+	Monitor string
+	// Only return entries with ID greater than this value (for polling). 0 = no filter.
+	SinceID int
+}
+
+// ---------------------------------------------------------------------------
+// ImageStore
+// ---------------------------------------------------------------------------
+
+// ImageStore manages the "images" CloverDB collection.
+//
+// All methods are goroutine-safe (CloverDB handles internal locking).
+// IDs are sequential integers managed by the store, not CloverDB's auto-generated _id.
+type ImageStore interface {
+	// GetAll returns a paginated, filtered, sorted list of images.
+	GetAll(ctx context.Context, opts ImageQueryOpts) (*PaginatedResult[Image], error)
+
+	// GetByID returns a single image by its sequential ID.
+	// Returns an error if not found.
+	GetByID(ctx context.Context, id int) (*Image, error)
+
+	// Create inserts one or more images into the collection.
+	// IDs are assigned by the store (next sequential value).
+	// Returns the created images with their assigned IDs.
+	Create(ctx context.Context, images []Image) ([]Image, error)
+
+	// Update applies a partial update to a single image.
+	// Only fields present in the updates map are changed.
+	// Returns the full updated image, or an error if not found.
+	Update(ctx context.Context, id int, updates map[string]any) (*Image, error)
+
+	// Delete removes images by their IDs. Also removes associated files and thumbnails
+	// from disk (or delegates that to the caller — TBD during implementation).
+	// Returns the number of images actually deleted.
+	Delete(ctx context.Context, ids []int) (int, error)
+
+	// Count returns the total number of images in the collection.
+	Count(ctx context.Context) (int, error)
+}
+
+// ---------------------------------------------------------------------------
+// PlaylistStore
+// ---------------------------------------------------------------------------
+
+// PlaylistStore manages the "playlists" CloverDB collection.
+type PlaylistStore interface {
+	// GetAll returns all playlists.
+	GetAll(ctx context.Context) ([]Playlist, error)
+
+	// GetByID returns a single playlist by its sequential ID.
+	// Returns an error if not found.
+	GetByID(ctx context.Context, id int) (*Playlist, error)
+
+	// Create inserts a new playlist. The ID is assigned by the store.
+	// Returns the created playlist with its assigned ID and timestamps.
+	Create(ctx context.Context, playlist Playlist) (*Playlist, error)
+
+	// Update applies a partial update to a playlist.
+	// Only fields present in the updates map are changed. UpdatedAt is set automatically.
+	// Returns the full updated playlist, or an error if not found.
+	Update(ctx context.Context, id int, updates map[string]any) (*Playlist, error)
+
+	// Delete removes a playlist by ID.
+	// Returns an error if not found.
+	Delete(ctx context.Context, id int) error
+
+	// Count returns the total number of playlists in the collection.
+	Count(ctx context.Context) (int, error)
+}
+
+// ---------------------------------------------------------------------------
+// HistoryStore
+// ---------------------------------------------------------------------------
+
+// HistoryStore manages the "history" CloverDB collection — the global wallpaper
+// history log. This is an append-heavy, ordered collection with automatic trimming.
+type HistoryStore interface {
+	// Append adds a new entry to the history log.
+	// The ID is assigned by the store (next sequential value).
+	// Returns the entry with its assigned ID.
+	Append(ctx context.Context, entry ImageHistoryEntry) (*ImageHistoryEntry, error)
+
+	// GetRecent returns history entries in reverse chronological order (newest first),
+	// with optional filtering by monitor and since_id.
+	GetRecent(ctx context.Context, opts HistoryQueryOpts) ([]ImageHistoryEntry, error)
+
+	// Trim removes the oldest entries so that the total count does not exceed maxEntries.
+	// Called after each Append when the history limit is configured.
+	Trim(ctx context.Context, maxEntries int) error
+
+	// Count returns the total number of history entries.
+	Count(ctx context.Context) (int, error)
+}
+
+// ---------------------------------------------------------------------------
+// StateStore
+// ---------------------------------------------------------------------------
+
+// StateStore manages ephemeral runtime state that is NOT persisted to CloverDB.
+// This includes active playlist instances and per-monitor current wallpaper tracking.
+//
+// All methods are goroutine-safe (implementation must use internal locking).
+// State is lost on daemon restart and must be reconstructed from playlists/config.
+type StateStore interface {
+	// GetActivePlaylists returns all currently running playlist instances,
+	// keyed by monitor name.
+	GetActivePlaylists() map[string]ActivePlaylistInstance
+
+	// GetActivePlaylistByMonitor returns the active playlist for a specific monitor.
+	// Returns nil if no playlist is running on that monitor.
+	GetActivePlaylistByMonitor(monitor string) *ActivePlaylistInstance
+
+	// SetActivePlaylist registers a running playlist instance on a monitor.
+	// If a playlist is already active on that monitor, it is replaced.
+	SetActivePlaylist(monitor string, instance ActivePlaylistInstance)
+
+	// RemoveActivePlaylist removes the active playlist from a monitor.
+	// No-op if no playlist is active on that monitor.
+	RemoveActivePlaylist(monitor string)
+
+	// RemoveAllActivePlaylists stops tracking all active playlists.
+	RemoveAllActivePlaylists()
+
+	// GetCurrentWallpaper returns the most recent history entry for a monitor.
+	// Returns nil if no wallpaper has been set on that monitor since daemon start.
+	GetCurrentWallpaper(monitor string) *ImageHistoryEntry
+
+	// SetCurrentWallpaper records the most recent wallpaper change for a monitor.
+	SetCurrentWallpaper(monitor string, entry ImageHistoryEntry)
+}

@@ -87,13 +87,6 @@ const searchSuggestions: SearchSuggestion[] = [
 		description: "Default sort order for images",
 		category: "Gallery",
 	},
-	{
-		section: "app",
-		key: "sidebar_collapsed",
-		label: "Sidebar Collapsed",
-		description: "Start with sidebar collapsed",
-		category: "Layout",
-	},
 
 	// Daemon settings
 	{

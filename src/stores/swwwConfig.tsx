@@ -5,6 +5,7 @@ import {
 	TransitionType,
 	transitionPosition,
 } from "../../shared/types/swww";
+import type { UnifiedConfig } from "../../shared/types/unifiedConfig";
 
 // Define config types locally since database schema is no longer used
 interface SwwwConfig {
@@ -59,7 +60,7 @@ interface Actions {
 }
 export const swwwConfigStore = create<State & Actions>()((set, get) => ({
 	swwwConfig: initialSwwwConfig,
-	saveConfig: (data: SwwwConfig) => {
+	saveConfig: async (data: SwwwConfig) => {
 		set((state) => {
 			return {
 				...state,
@@ -67,8 +68,17 @@ export const swwwConfigStore = create<State & Actions>()((set, get) => ({
 			};
 		});
 		const { goDaemon } = window.API_RENDERER;
-		const newState = get().swwwConfig;
-		goDaemon.setSwwwConfig({ config: JSON.stringify(newState) });
+		// Convert local config to unified config format
+		const unifiedSwwwConfig: UnifiedConfig["backend"]["swww"] = {
+			transition_type: data.transitionType as UnifiedConfig["backend"]["swww"]["transition_type"],
+			transition_step: data.transitionStep,
+			transition_duration: data.transitionDuration,
+			transition_angle: data.transitionAngle,
+			transition_pos: data.transitionPosition as UnifiedConfig["backend"]["swww"]["transition_pos"],
+			transition_bezier: data.transitionBezier,
+			transition_wave: `${data.transitionWaveX},${data.transitionWaveY}`,
+		};
+		await goDaemon.setSwwwConfig(unifiedSwwwConfig);
 	},
 	getConfig: () => {
 		return get().swwwConfig;

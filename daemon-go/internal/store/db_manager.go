@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"time"
 )
 
@@ -13,6 +14,7 @@ type JSONDBManager interface {
 	SaveImageGallery(images []Image) error
 	LoadImageGallery() ([]Image, error)
 	RemoveImagesFromGallery(imageIDs []string) error
+	AddProcessedImages(fileNames []string, imagePaths []string, widths []int, heights []int, formats []string, thumbnailPaths []map[string]string) ([]Image, error)
 
 	// Playlists - bulk operations
 	SavePlaylists(playlists []Playlist) error
@@ -117,12 +119,35 @@ func NewJSONDBManager(store *Store, logger *slog.Logger) JSONDBManager {
 
 // SaveImageGallery saves the entire image gallery
 func (jdm *jsonDBManager) SaveImageGallery(images []Image) error {
+	// Load existing registry to preserve LastUsedID
+	existingRegistry, err := jdm.store.LoadImageRegistry()
+	if err != nil {
+		// If registry doesn't exist, create new one
+		existingRegistry = &ImageRegistry{
+			Metadata: ImageRegistryMetadata{
+				Version:     "1.0",
+				LastUpdated: time.Now(),
+				TotalImages: 0,
+				LastUsedID:  0,
+			},
+		}
+	}
+
+	// Find max ID from images to ensure LastUsedID is at least that
+	maxID := existingRegistry.Metadata.LastUsedID
+	for _, img := range images {
+		if img.ID > maxID {
+			maxID = img.ID
+		}
+	}
+
 	registry := &ImageRegistry{
 		Images: images,
 		Metadata: ImageRegistryMetadata{
-			Version:     "1.0",
+			Version:     existingRegistry.Metadata.Version,
 			LastUpdated: time.Now(),
 			TotalImages: len(images),
+			LastUsedID:  maxID, // Preserve or update LastUsedID
 		},
 		// Indices will be rebuilt by SaveImageRegistry
 	}
@@ -166,6 +191,127 @@ func (jdm *jsonDBManager) RemoveImagesFromGallery(imageIDs []string) error {
 
 	// Save the updated registry
 	return jdm.SaveImageGallery(filteredImages)
+}
+
+// AddProcessedImages adds processed images to the gallery with proper IDs and metadata
+func (jdm *jsonDBManager) AddProcessedImages(fileNames []string, imagePaths []string, widths []int, heights []int, formats []string, thumbnailPaths []map[string]string) ([]Image, error) {
+	if len(fileNames) != len(imagePaths) || len(fileNames) != len(widths) || len(fileNames) != len(heights) || len(fileNames) != len(formats) {
+		return nil, fmt.Errorf("mismatched array lengths in AddProcessedImages")
+	}
+	if len(thumbnailPaths) != len(fileNames) {
+		return nil, fmt.Errorf("thumbnailPaths length (%d) must match fileNames length (%d)", len(thumbnailPaths), len(fileNames))
+	}
+
+	// Generate images with proper IDs
+	// Get registry to access metadata with LastUsedID (don't use SequentialIDManager - that's for playlist tracking)
+	registry, err := jdm.store.LoadImageRegistry()
+	if err != nil {
+		return nil, fmt.Errorf("failed to load image registry to generate IDs: %w", err)
+	}
+
+	// Start from LastUsedID in metadata
+	nextID := registry.Metadata.LastUsedID
+
+	images := make([]Image, 0, len(fileNames))
+	now := time.Now()
+
+	for i := 0; i < len(fileNames); i++ {
+		// Increment and use the ID
+		nextID++
+		id := nextID
+
+		// Get file size if possible
+		var fileSize int64
+		if info, err := os.Stat(imagePaths[i]); err == nil {
+			fileSize = info.Size()
+		}
+
+		// Detect media type
+		mediaType := jdm.store.mediaDetector.DetectMediaType(imagePaths[i])
+
+		// Get source path (pointer)
+		sourcePath := imagePaths[i]
+
+		// Create Image object
+		image := Image{
+			ID:        id,
+			Name:      fileNames[i],
+			Path:      imagePaths[i],
+			MediaType: mediaType,
+			Dimensions: ImageDimensions{
+				Width:  int64(widths[i]),
+				Height: int64(heights[i]),
+			},
+			Metadata: ImageMetadata{
+				Format:   formats[i],
+				FileSize: fileSize,
+				Tags:     []string{},
+			},
+			Selection: ImageSelection{
+				IsChecked:         false,
+				IsSelected:        false,
+				SelectedPlaylists: []string{},
+			},
+			ImportInfo: ImageImportInfo{
+				ImportedAt: now,
+				SourcePath: &sourcePath,
+				Importer:   "user_import",
+			},
+			BackendHints: BackendHints{
+				PreferredBackends: []string{},
+				RequireGPU:        false,
+			},
+			Thumbnails: jdm.buildImageThumbnails(thumbnailPaths[i]),
+		}
+
+		images = append(images, image)
+	}
+
+	// Add images to the store using batch operation
+	// AddImages will automatically update LastUsedID in metadata
+	if err := jdm.store.imageStore.AddImages(images); err != nil {
+		return nil, fmt.Errorf("failed to add images to store: %w", err)
+	}
+
+	jdm.logger.Info("added processed images to gallery", "count", len(images), "lastUsedID", nextID)
+	return images, nil
+}
+
+// buildImageThumbnails constructs ImageThumbnails from a map of resolution -> path
+func (jdm *jsonDBManager) buildImageThumbnails(thumbnailMap map[string]string) ImageThumbnails {
+	thumbnails := ImageThumbnails{
+		Fallback: "",
+	}
+
+	// Map resolution names to struct fields
+	if path, ok := thumbnailMap["720p"]; ok {
+		thumbnails.Resolution720p = path
+	}
+	if path, ok := thumbnailMap["1080p"]; ok {
+		thumbnails.Resolution1080p = path
+	}
+	if path, ok := thumbnailMap["1440p"]; ok {
+		thumbnails.Resolution1440p = path
+	}
+	if path, ok := thumbnailMap["4k"]; ok {
+		thumbnails.Resolution4k = path
+	}
+
+	// Set fallback to the first available thumbnail (prefer lower resolution for faster loading)
+	// Check for explicit fallback first (default thumbnail from ProcessImagesFromPaths)
+	if fallbackPath, ok := thumbnailMap["fallback"]; ok && fallbackPath != "" {
+		thumbnails.Fallback = fallbackPath
+	} else if thumbnails.Resolution720p != "" {
+		thumbnails.Fallback = thumbnails.Resolution720p
+	} else if thumbnails.Resolution1080p != "" {
+		thumbnails.Fallback = thumbnails.Resolution1080p
+	} else if thumbnails.Resolution1440p != "" {
+		thumbnails.Fallback = thumbnails.Resolution1440p
+	} else if thumbnails.Resolution4k != "" {
+		thumbnails.Fallback = thumbnails.Resolution4k
+	}
+
+	return thumbnails
 }
 
 // SavePlaylists saves all playlists

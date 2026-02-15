@@ -1,314 +1,542 @@
 import { ipcRenderer } from "electron";
+import type { JsonStoreImage } from "../shared/types/daemon";
 import type {
-	JsonStoreImage,
-	DaemonPlaylist,
-	DaemonMonitor,
-	DaemonSwwwConfig,
-} from "../shared/types/daemon";
-import type { ActiveMonitor } from "../shared/types/monitor";
+	ActiveMonitor,
+	MonitorSelection,
+	Monitor,
+} from "../shared/types/monitor";
+import { convertToMonitorSelection } from "../shared/types/monitor";
+import type {
+	RendererPlaylist,
+	StoredPlaylist,
+	RunningPlaylistInfo,
+	ImageHistory,
+	ImageInfo,
+	UnifiedConfig,
+	DaemonStatus,
+	DaemonInfo,
+	PlaylistDiagnostics,
+	EventType,
+} from "./daemon-go-types";
 
 export interface GoDaemonRendererClient {
-	// Playlist operations
+	// ============================================================================
+	// SYSTEM OPERATIONS
+	// ============================================================================
+	ping(): Promise<boolean>;
+	getInfo(): Promise<DaemonInfo>;
+	getMonitors(): Promise<Monitor[]>;
+	getDaemonStatus(): Promise<DaemonStatus>;
+	getDiagnostics(monitorName?: string): Promise<PlaylistDiagnostics>;
+	killDaemon(): Promise<void>;
+	stopDaemon(): Promise<void>;
+
+	// ============================================================================
+	// PLAYLIST OPERATIONS
+	// ============================================================================
+	getPlaylists(): Promise<StoredPlaylist[]>;
+	getPlaylist(playlistId: number): Promise<StoredPlaylist>;
+	savePlaylist(playlist: RendererPlaylist): Promise<StoredPlaylist>;
+	deletePlaylist(playlistName: string): Promise<void>;
 	startPlaylist(
 		playlistId: number,
-		activeMonitor: ActiveMonitor,
-	): Promise<boolean>;
-	stopPlaylist(activeMonitor: ActiveMonitor): Promise<boolean>;
-	pausePlaylist(activeMonitor: ActiveMonitor): Promise<boolean>;
-	resumePlaylist(activeMonitor: ActiveMonitor): Promise<boolean>;
-	savePlaylist(playlist: unknown): Promise<boolean>;
-	getRunningPlaylists(): Promise<unknown>;
-	deletePlaylist(playlistName: string): Promise<boolean>;
-	getActivePlaylist(activeMonitor: ActiveMonitor): Promise<unknown>;
-	getPlaylistImages(playlistId: number): Promise<unknown>;
+		activeMonitor: ActiveMonitor | MonitorSelection,
+	): Promise<void>;
+	stopPlaylist(activeMonitor: ActiveMonitor | MonitorSelection): Promise<void>;
+	pausePlaylist(activeMonitor: ActiveMonitor | MonitorSelection): Promise<void>;
+	resumePlaylist(activeMonitor: ActiveMonitor | MonitorSelection): Promise<void>;
+	nextPlaylistImage(
+		activeMonitor: ActiveMonitor | MonitorSelection,
+	): Promise<void>;
+	previousPlaylistImage(
+		activeMonitor: ActiveMonitor | MonitorSelection,
+	): Promise<void>;
+	getRunningPlaylists(): Promise<Record<string, RunningPlaylistInfo>>;
 
-	// Image navigation
-	nextImage(activeMonitor: ActiveMonitor): Promise<boolean>;
-	previousImage(activeMonitor: ActiveMonitor): Promise<boolean>;
-	randomImage(activeMonitor: ActiveMonitor): Promise<boolean>;
-	setImage(imageId: number, monitorName: string): Promise<boolean>;
-
-	// Multi-monitor operations
-	setImageAcrossMonitors(
-		imageId: number,
-		activeMonitor: ActiveMonitor,
-	): Promise<boolean>;
-	duplicateImageAcrossMonitors(
-		imageId: number,
-		activeMonitor: ActiveMonitor,
-	): Promise<boolean>;
+	// ============================================================================
+	// IMAGE OPERATIONS
+	// ============================================================================
+	getImages(filters?: unknown): Promise<JsonStoreImage[]>;
+	processImages(imagePaths: string[], fileNames: string[]): Promise<void>;
+	deleteImages(imageIds: number[]): Promise<void>;
+	upsertImage(image: ImageInfo): Promise<void>;
+	getImageHistory(): Promise<ImageHistory[]>;
 	processForMonitors(
 		imageId: number,
-		activeMonitor: ActiveMonitor,
-	): Promise<boolean>;
+		activeMonitor: ActiveMonitor | MonitorSelection,
+	): Promise<Record<string, string>>;
 
-	// Unified configuration
-	getConfig(): Promise<unknown>;
-	setConfig(section: string, key: string, value: unknown): Promise<boolean>;
+	// ============================================================================
+	// CONFIGURATION OPERATIONS
+	// ============================================================================
+	getConfig(): Promise<UnifiedConfig>;
+	setConfig(section: string, key: string, value: unknown): Promise<void>;
+	setBulkConfig(config: Partial<UnifiedConfig>): Promise<void>;
+	setSelectedMonitor(
+		activeMonitor: ActiveMonitor | MonitorSelection,
+	): Promise<void>;
+	getSelectedMonitor(): Promise<MonitorSelection>;
 
-	// Configuration
-	getSwwwConfig(): Promise<DaemonSwwwConfig>;
+	// ============================================================================
+	// MISCELLANEOUS OPERATIONS
+	// ============================================================================
+	setImage(
+		imageId: number,
+		activeMonitor: ActiveMonitor | MonitorSelection,
+	): Promise<void>;
+	setImageAcrossMonitors(
+		imageId: number,
+		activeMonitor: ActiveMonitor | MonitorSelection,
+	): Promise<void>;
+	nextImageHistory(
+		activeMonitor: ActiveMonitor | MonitorSelection,
+	): Promise<void>;
+	previousImageHistory(
+		activeMonitor: ActiveMonitor | MonitorSelection,
+	): Promise<void>;
+	randomImage(activeMonitor: ActiveMonitor | MonitorSelection): Promise<void>;
 
-	// Monitor operations
-	getMonitors(): Promise<unknown>;
-	setSelectedMonitor(activeMonitor: ActiveMonitor): Promise<boolean>;
-	getSelectedMonitor(): Promise<unknown>;
+	// ============================================================================
+	// EVENT SUBSCRIPTION
+	// ============================================================================
+	subscribeToEvents(eventTypes: Array<EventType | "*">): Promise<void>;
+	unsubscribeFromEvents(eventTypes: Array<EventType | "*">): Promise<void>;
+	on(event: EventType, callback: (data: unknown) => void): void;
+	off(event: EventType, callback: (data: unknown) => void): void;
 
-	// System
-	ping(): Promise<boolean>;
-	getDaemonStatus(): Promise<unknown>;
-	stopDaemon(): Promise<boolean>;
-	killDaemon(): Promise<boolean>;
-
-	// Image processing
-	processImages(imagePaths: string[], fileNames: string[]): Promise<boolean>;
-
-	// Event listeners
-	on(event: string, callback: (data: unknown) => void): void;
-	off(event: string, callback: (data: unknown) => void): void;
+	// ============================================================================
+	// LEGACY COMPATIBILITY
+	// ============================================================================
+	/** @deprecated Use deleteImages instead */
+	deleteImagesFromGallery(imageIds: number[]): Promise<void>;
+	/** @deprecated Use nextPlaylistImage instead */
+	nextImage(activeMonitor: ActiveMonitor | MonitorSelection): Promise<void>;
+	/** @deprecated Use previousPlaylistImage instead */
+	previousImage(activeMonitor: ActiveMonitor | MonitorSelection): Promise<void>;
+	/** @deprecated Use getRunningPlaylists instead */
+	getActivePlaylist(
+		activeMonitor: ActiveMonitor | MonitorSelection,
+	): Promise<RunningPlaylistInfo | null>;
+	/** @deprecated Use getPlaylist instead */
+	getPlaylistImages(playlistId: number): Promise<StoredPlaylist>;
+	/** @deprecated Use setImageAcrossMonitors with mode: "clone" */
+	duplicateImageAcrossMonitors(
+		imageId: number,
+		activeMonitor: ActiveMonitor | MonitorSelection,
+	): Promise<void>;
 }
 
 class GoDaemonRendererClientImpl implements GoDaemonRendererClient {
-	// Playlist operations
-	startPlaylist = async (
-		playlistId: number,
-		activeMonitor: ActiveMonitor,
-	): Promise<boolean> => {
-		return ipcRenderer.invoke("go-daemon-command", "start_playlist", {
-			playlistId,
-			activeMonitor,
-		});
-	};
+	// ============================================================================
+	// SYSTEM OPERATIONS
+	// ============================================================================
 
-	stopPlaylist = async (activeMonitor: ActiveMonitor): Promise<boolean> => {
-		return ipcRenderer.invoke("go-daemon-command", "stop_playlist", {
-			activeMonitor,
-		});
-	};
-
-	pausePlaylist = async (activeMonitor: ActiveMonitor): Promise<boolean> => {
-		return ipcRenderer.invoke("go-daemon-command", "pause_playlist", {
-			activeMonitor,
-		});
-	};
-
-	resumePlaylist = async (activeMonitor: ActiveMonitor): Promise<boolean> => {
-		return ipcRenderer.invoke("go-daemon-command", "resume_playlist", {
-			activeMonitor,
-		});
-	};
-
-	// Image navigation
-	async nextImage(activeMonitor: ActiveMonitor): Promise<boolean> {
-		return ipcRenderer.invoke("go-daemon-command", "next_image", {
-			activeMonitor,
-		});
+	async ping(): Promise<boolean> {
+		return ipcRenderer.invoke("go-daemon-command", "ping");
 	}
 
-	async previousImage(activeMonitor: ActiveMonitor): Promise<boolean> {
-		return ipcRenderer.invoke("go-daemon-command", "previous_image", {
-			activeMonitor,
-		});
-	}
-
-	async randomImage(activeMonitor: ActiveMonitor): Promise<boolean> {
-		return ipcRenderer.invoke("go-daemon-command", "random_image", {
-			activeMonitor,
-		});
-	}
-
-	async setImage(imageId: number, monitorName: string): Promise<boolean> {
-		const payload = {
-			image: { id: imageId },
-			activeMonitor: { name: monitorName },
-		};
-		console.log("🔵 RendererClient: setImage called with imageId:", imageId, "monitorName:", monitorName);
-		console.log("🔵 RendererClient: setImage payload:", payload);
-		return ipcRenderer.invoke("go-daemon-command", "set_image", payload);
-	}
-
-	// Data queries
-	async getImages(filters?: unknown): Promise<JsonStoreImage[]> {
-		return ipcRenderer.invoke("go-daemon-command", "get_images", {
-			filters,
-		}) as Promise<JsonStoreImage[]>;
-	}
-
-	async getPlaylists(): Promise<DaemonPlaylist[]> {
-		return ipcRenderer.invoke("go-daemon-command", "get_playlists") as Promise<
-			DaemonPlaylist[]
-		>;
-	}
-
-	async getInfo(): Promise<unknown> {
+	async getInfo(): Promise<DaemonInfo> {
 		return ipcRenderer.invoke("go-daemon-command", "get_info");
 	}
 
-	async getImageHistory(): Promise<unknown[]> {
-		return ipcRenderer.invoke("go-daemon-command", "get_image_history");
+	async getMonitors(): Promise<Monitor[]> {
+		return ipcRenderer.invoke("go-daemon-command", "get_monitors");
 	}
 
-	async deleteImagesFromGallery(imageIds: number[]): Promise<boolean> {
-		return ipcRenderer.invoke(
-			"go-daemon-command",
-			"delete_image_from_gallery",
-			{ imageIds },
-		);
+	async getDaemonStatus(): Promise<DaemonStatus> {
+		return ipcRenderer.invoke("go-daemon-command", "get_daemon_status");
 	}
 
-	async getDiagnostics(monitorName?: string): Promise<unknown> {
+	async getDiagnostics(monitorName?: string): Promise<PlaylistDiagnostics> {
 		return ipcRenderer.invoke("go-daemon-command", "get_diagnostics", {
 			monitorName,
 		});
 	}
 
-	// Multi-monitor operations
-	async setImageAcrossMonitors(
-		imageId: number,
-		activeMonitor: ActiveMonitor,
-	): Promise<boolean> {
-		return ipcRenderer.invoke(
-			"go-daemon-command",
-			"set_image_across_monitors",
-			{
-				image: { id: imageId },
-				activeMonitor,
-			},
-		);
+	async killDaemon(): Promise<void> {
+		await ipcRenderer.invoke("go-daemon-command", "kill_daemon");
 	}
 
-	async duplicateImageAcrossMonitors(
-		imageId: number,
-		activeMonitor: ActiveMonitor,
-	): Promise<boolean> {
-		return ipcRenderer.invoke(
-			"go-daemon-command",
-			"duplicate_image_across_monitors",
-			{
-				image: { id: imageId },
-				activeMonitor,
-			},
-		);
+	async stopDaemon(): Promise<void> {
+		await ipcRenderer.invoke("go-daemon-command", "stop_daemon");
 	}
 
-	async processForMonitors(
-		imageId: number,
-		activeMonitor: ActiveMonitor,
-	): Promise<boolean> {
-		return ipcRenderer.invoke("go-daemon-command", "process_for_monitors", {
-			image: { id: imageId },
-			activeMonitor,
-		});
+	// ============================================================================
+	// PLAYLIST OPERATIONS
+	// ============================================================================
+
+	async getPlaylists(): Promise<StoredPlaylist[]> {
+		return ipcRenderer.invoke("go-daemon-command", "get_playlists");
 	}
 
-	// Playlist operations
-	async savePlaylist(playlist: unknown): Promise<boolean> {
-		return ipcRenderer.invoke("go-daemon-command", "save_playlist", {
-			playlist,
-		});
-	}
-
-	async getRunningPlaylists(): Promise<unknown> {
-		return ipcRenderer.invoke(
-			"go-daemon-command",
-			"get_running_playlists",
-		) as Promise<unknown>;
-	}
-
-	async deletePlaylist(playlistName: string): Promise<boolean> {
-		return ipcRenderer.invoke("go-daemon-command", "delete_playlist", {
-			playlistName,
-		});
-	}
-
-	async getActivePlaylist(activeMonitor: ActiveMonitor): Promise<unknown> {
-		return ipcRenderer.invoke("go-daemon-command", "get_active_playlist", {
-			activeMonitor,
-		});
-	}
-
-	async getPlaylistImages(playlistId: number): Promise<unknown> {
-		return ipcRenderer.invoke("go-daemon-command", "get_playlist_images", {
+	async getPlaylist(playlistId: number): Promise<StoredPlaylist> {
+		return ipcRenderer.invoke("go-daemon-command", "get_playlist", {
 			playlistId,
 		});
 	}
 
-	// Unified configuration methods
-	getConfig = async (): Promise<unknown> => {
-		return ipcRenderer.invoke("go-daemon-command", "get_config");
-	};
+	async savePlaylist(playlist: RendererPlaylist): Promise<StoredPlaylist> {
+		// Convert ActiveMonitor to MonitorSelection if needed
+		if (playlist.activeMonitor) {
+			const activeMonitor = playlist.activeMonitor as unknown as ActiveMonitor;
+			if (!("mode" in activeMonitor) || !activeMonitor.mode) {
+				playlist.activeMonitor = convertToMonitorSelection(activeMonitor);
+			}
+		}
 
-	setConfig = async (
-		section: string,
-		key: string,
-		value: unknown,
-	): Promise<boolean> => {
-		return ipcRenderer.invoke("go-daemon-command", "set_config", {
+		return ipcRenderer.invoke("go-daemon-command", "upsert_playlist", {
+			playlist,
+		});
+	}
+
+	async deletePlaylist(playlistName: string): Promise<void> {
+		await ipcRenderer.invoke("go-daemon-command", "delete_playlist", {
+			playlistName,
+		});
+	}
+
+	async startPlaylist(
+		playlistId: number,
+		activeMonitor: ActiveMonitor | MonitorSelection,
+	): Promise<void> {
+		const monitorSelection =
+			"mode" in activeMonitor
+				? activeMonitor
+				: convertToMonitorSelection(activeMonitor);
+
+		await ipcRenderer.invoke("go-daemon-command", "start_playlist", {
+			playlistId,
+			activeMonitor: monitorSelection,
+		});
+	}
+
+	async stopPlaylist(
+		activeMonitor: ActiveMonitor | MonitorSelection,
+	): Promise<void> {
+		const monitorSelection =
+			"mode" in activeMonitor
+				? activeMonitor
+				: convertToMonitorSelection(activeMonitor);
+
+		await ipcRenderer.invoke("go-daemon-command", "stop_playlist", {
+			activeMonitor: monitorSelection,
+		});
+	}
+
+	async pausePlaylist(
+		activeMonitor: ActiveMonitor | MonitorSelection,
+	): Promise<void> {
+		const monitorSelection =
+			"mode" in activeMonitor
+				? activeMonitor
+				: convertToMonitorSelection(activeMonitor);
+
+		await ipcRenderer.invoke("go-daemon-command", "pause_playlist", {
+			activeMonitor: monitorSelection,
+		});
+	}
+
+	async resumePlaylist(
+		activeMonitor: ActiveMonitor | MonitorSelection,
+	): Promise<void> {
+		const monitorSelection =
+			"mode" in activeMonitor
+				? activeMonitor
+				: convertToMonitorSelection(activeMonitor);
+
+		await ipcRenderer.invoke("go-daemon-command", "resume_playlist", {
+			activeMonitor: monitorSelection,
+		});
+	}
+
+	async nextPlaylistImage(
+		activeMonitor: ActiveMonitor | MonitorSelection,
+	): Promise<void> {
+		const monitorSelection =
+			"mode" in activeMonitor
+				? activeMonitor
+				: convertToMonitorSelection(activeMonitor);
+
+		await ipcRenderer.invoke("go-daemon-command", "next_playlist_image", {
+			activeMonitor: monitorSelection,
+		});
+	}
+
+	async previousPlaylistImage(
+		activeMonitor: ActiveMonitor | MonitorSelection,
+	): Promise<void> {
+		const monitorSelection =
+			"mode" in activeMonitor
+				? activeMonitor
+				: convertToMonitorSelection(activeMonitor);
+
+		await ipcRenderer.invoke("go-daemon-command", "previous_playlist_image", {
+			activeMonitor: monitorSelection,
+		});
+	}
+
+	async getRunningPlaylists(): Promise<Record<string, RunningPlaylistInfo>> {
+		return ipcRenderer.invoke("go-daemon-command", "get_running_playlists");
+	}
+
+	// ============================================================================
+	// IMAGE OPERATIONS
+	// ============================================================================
+
+	async getImages(filters?: unknown): Promise<JsonStoreImage[]> {
+		return ipcRenderer.invoke("go-daemon-command", "get_images", {
+			filters,
+		});
+	}
+
+	async processImages(imagePaths: string[], fileNames: string[]): Promise<void> {
+		await ipcRenderer.invoke("go-daemon-command", "process_images", {
+			imagePaths,
+			fileNames,
+		});
+	}
+
+	async deleteImages(imageIds: number[]): Promise<void> {
+		await ipcRenderer.invoke("go-daemon-command", "delete_images", {
+			imageIds,
+		});
+	}
+
+	async upsertImage(image: ImageInfo): Promise<void> {
+		await ipcRenderer.invoke("go-daemon-command", "upsert_image", {
+			image,
+		});
+	}
+
+	async getImageHistory(): Promise<ImageHistory[]> {
+		return ipcRenderer.invoke("go-daemon-command", "get_image_history");
+	}
+
+	async processForMonitors(
+		imageId: number,
+		activeMonitor: ActiveMonitor | MonitorSelection,
+	): Promise<Record<string, string>> {
+		const monitorSelection =
+			"mode" in activeMonitor
+				? activeMonitor
+				: convertToMonitorSelection(activeMonitor);
+
+		return ipcRenderer.invoke("go-daemon-command", "process_for_monitors", {
+			image: { id: imageId },
+			activeMonitor: monitorSelection,
+		});
+	}
+
+	// ============================================================================
+	// CONFIGURATION OPERATIONS
+	// ============================================================================
+
+	async getConfig(): Promise<UnifiedConfig> {
+		return ipcRenderer.invoke("go-daemon-command", "get_config");
+	}
+
+	async setConfig(section: string, key: string, value: unknown): Promise<void> {
+		await ipcRenderer.invoke("go-daemon-command", "upsert_config", {
 			config: {
 				configSection: section,
 				configKey: key,
 				configValue: value,
 			},
 		});
-	};
-
-	// Monitor operations
-	async getMonitors(): Promise<DaemonMonitor[]> {
-		return ipcRenderer.invoke("go-daemon-command", "get_monitors") as Promise<
-			DaemonMonitor[]
-		>;
 	}
 
-	async setSelectedMonitor(activeMonitor: ActiveMonitor): Promise<boolean> {
-		return ipcRenderer.invoke("go-daemon-command", "set_selected_monitor", {
-			activeMonitor,
+	async setBulkConfig(config: Partial<UnifiedConfig>): Promise<void> {
+		await ipcRenderer.invoke("go-daemon-command", "upsert_config", {
+			config: {
+				frontendConfig: config,
+			},
 		});
 	}
 
-	async getSelectedMonitor(): Promise<unknown> {
+	async setSelectedMonitor(
+		activeMonitor: ActiveMonitor | MonitorSelection,
+	): Promise<void> {
+		const monitorSelection =
+			"mode" in activeMonitor
+				? activeMonitor
+				: convertToMonitorSelection(activeMonitor);
+
+		await ipcRenderer.invoke("go-daemon-command", "set_selected_monitor", {
+			activeMonitor: monitorSelection,
+		});
+	}
+
+	async getSelectedMonitor(): Promise<MonitorSelection> {
 		return ipcRenderer.invoke("go-daemon-command", "get_selected_monitor");
 	}
 
-	// Configuration
-	async getSwwwConfig(): Promise<DaemonSwwwConfig> {
-		return ipcRenderer.invoke("go-daemon-command", "get_swww_config");
-	}
+	// ============================================================================
+	// MISCELLANEOUS OPERATIONS
+	// ============================================================================
 
-	// System
-	async ping(): Promise<boolean> {
-		return ipcRenderer.invoke("go-daemon-command", "ping");
-	}
+	async setImage(
+		imageId: number,
+		activeMonitor: ActiveMonitor | MonitorSelection | string,
+	): Promise<void> {
+		// Handle string input (legacy/mistake - convert to ActiveMonitor)
+		let processedMonitor: ActiveMonitor | MonitorSelection;
+		if (typeof activeMonitor === "string") {
+			// Get monitors to find the one with this name
+			const monitors = await this.getMonitors();
+			const monitor = monitors.find((m) => m.name === activeMonitor);
+			if (!monitor) {
+				throw new Error(`Monitor "${activeMonitor}" not found`);
+			}
+			processedMonitor = {
+				monitors: [monitor],
+				extendAcrossMonitors: false,
+			};
+		} else {
+			processedMonitor = activeMonitor;
+		}
 
-	async getDaemonStatus(): Promise<unknown> {
-		return ipcRenderer.invoke("go-daemon-command", "get_daemon_status");
-	}
+		const monitorSelection =
+			"mode" in processedMonitor
+				? processedMonitor
+				: convertToMonitorSelection(processedMonitor);
 
-	async stopDaemon(): Promise<boolean> {
-		return ipcRenderer.invoke("go-daemon-command", "stop_daemon");
-	}
-
-	async killDaemon(): Promise<boolean> {
-		return ipcRenderer.invoke("go-daemon-command", "kill_daemon");
-	}
-
-	// Image processing
-	async processImages(
-		imagePaths: string[],
-		fileNames: string[],
-	): Promise<boolean> {
-		return ipcRenderer.invoke("go-daemon-command", "process_images", {
-			imagePaths,
-			fileNames,
+		await ipcRenderer.invoke("go-daemon-command", "set_image", {
+			image: { id: imageId },
+			activeMonitor: monitorSelection,
 		});
 	}
 
-	// Event listeners
-	on(event: string, callback: (data: unknown) => void): void {
+	async setImageAcrossMonitors(
+		imageId: number,
+		activeMonitor: ActiveMonitor | MonitorSelection,
+	): Promise<void> {
+		const monitorSelection =
+			"mode" in activeMonitor
+				? activeMonitor
+				: convertToMonitorSelection(activeMonitor);
+
+		await ipcRenderer.invoke("go-daemon-command", "set_image_across_monitors", {
+			image: { id: imageId },
+			activeMonitor: monitorSelection,
+		});
+	}
+
+	async nextImageHistory(
+		activeMonitor: ActiveMonitor | MonitorSelection,
+	): Promise<void> {
+		const monitorSelection =
+			"mode" in activeMonitor
+				? activeMonitor
+				: convertToMonitorSelection(activeMonitor);
+
+		await ipcRenderer.invoke("go-daemon-command", "next_image_history", {
+			activeMonitor: monitorSelection,
+		});
+	}
+
+	async previousImageHistory(
+		activeMonitor: ActiveMonitor | MonitorSelection,
+	): Promise<void> {
+		const monitorSelection =
+			"mode" in activeMonitor
+				? activeMonitor
+				: convertToMonitorSelection(activeMonitor);
+
+		await ipcRenderer.invoke("go-daemon-command", "previous_image_history", {
+			activeMonitor: monitorSelection,
+		});
+	}
+
+	async randomImage(
+		activeMonitor: ActiveMonitor | MonitorSelection,
+	): Promise<void> {
+		const monitorSelection =
+			"mode" in activeMonitor
+				? activeMonitor
+				: convertToMonitorSelection(activeMonitor);
+
+		await ipcRenderer.invoke("go-daemon-command", "random_image", {
+			activeMonitor: monitorSelection,
+		});
+	}
+
+	// ============================================================================
+	// EVENT SUBSCRIPTION
+	// ============================================================================
+
+	async subscribeToEvents(eventTypes: Array<EventType | "*">): Promise<void> {
+		await ipcRenderer.invoke("go-daemon-command", "subscribe", {
+			eventTypes,
+		});
+	}
+
+	async unsubscribeFromEvents(
+		eventTypes: Array<EventType | "*">,
+	): Promise<void> {
+		await ipcRenderer.invoke("go-daemon-command", "unsubscribe", {
+			eventTypes,
+		});
+	}
+
+	on(event: EventType, callback: (data: unknown) => void): void {
 		ipcRenderer.on(`go-daemon-event-${event}`, (_, data) => callback(data));
 	}
 
-	off(event: string, callback: (data: unknown) => void): void {
+	off(event: EventType, callback: (data: unknown) => void): void {
 		ipcRenderer.off(`go-daemon-event-${event}`, callback);
+	}
+
+	// ============================================================================
+	// LEGACY COMPATIBILITY
+	// ============================================================================
+
+	/** @deprecated Use deleteImages instead */
+	async deleteImagesFromGallery(imageIds: number[]): Promise<void> {
+		return this.deleteImages(imageIds);
+	}
+
+	/** @deprecated Use nextPlaylistImage instead */
+	async nextImage(activeMonitor: ActiveMonitor | MonitorSelection): Promise<void> {
+		return this.nextPlaylistImage(activeMonitor);
+	}
+
+	/** @deprecated Use previousPlaylistImage instead */
+	async previousImage(activeMonitor: ActiveMonitor | MonitorSelection): Promise<void> {
+		return this.previousPlaylistImage(activeMonitor);
+	}
+
+	/** @deprecated Use getRunningPlaylists instead */
+	async getActivePlaylist(
+		activeMonitor: ActiveMonitor | MonitorSelection,
+	): Promise<RunningPlaylistInfo | null> {
+		const runningPlaylists = await this.getRunningPlaylists();
+		const monitorSelection =
+			"mode" in activeMonitor
+				? activeMonitor
+				: convertToMonitorSelection(activeMonitor);
+
+		return runningPlaylists[monitorSelection.id] || null;
+	}
+
+	/** @deprecated Use getPlaylist instead */
+	async getPlaylistImages(playlistId: number): Promise<StoredPlaylist> {
+		return this.getPlaylist(playlistId);
+	}
+
+	/** @deprecated Use setImageAcrossMonitors with mode: "clone" */
+	async duplicateImageAcrossMonitors(
+		imageId: number,
+		activeMonitor: ActiveMonitor | MonitorSelection,
+	): Promise<void> {
+		const monitorSelection =
+			"mode" in activeMonitor
+				? activeMonitor
+				: convertToMonitorSelection(activeMonitor);
+
+		// Force clone mode
+		monitorSelection.mode = "clone";
+
+		return this.setImage(imageId, monitorSelection);
 	}
 }
 

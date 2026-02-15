@@ -9,47 +9,66 @@ import {
 	TransitionType,
 	transitionPosition,
 } from "../../shared/types/swww";
-import { type DaemonSwwwConfigPayload } from "../../shared/types/daemonEvents";
+import type { UnifiedConfig } from "../../shared/types/unifiedConfig";
 
-// Helper function to convert daemon config to local config
-function convertDaemonToLocalConfig(
-	daemonConfig: DaemonSwwwConfigPayload,
-): any {
+// Local config type matching the store
+interface LocalSwwwConfig {
+	resizeType: ResizeType;
+	fillColor: string;
+	filterType: FilterType;
+	transitionType: TransitionType;
+	transitionStep: number;
+	transitionDuration: number;
+	transitionFPS: number;
+	transitionAngle: number;
+	transitionPositionType: string;
+	transitionPosition: transitionPosition;
+	transitionPositionIntX: number;
+	transitionPositionIntY: number;
+	transitionPositionFloatX: number;
+	transitionPositionFloatY: number;
+	invertY: boolean;
+	transitionBezier: string;
+	transitionWaveX: number;
+	transitionWaveY: number;
+}
+
+// Helper function to convert unified config to local config
+function convertUnifiedToLocalConfig(
+	unifiedConfig: UnifiedConfig["backend"]["swww"],
+): LocalSwwwConfig {
 	return {
-		resizeType: daemonConfig.resizeType as ResizeType,
-		fillColor: daemonConfig.fillColor,
-		filterType: daemonConfig.filterType as FilterType,
-		transitionType: daemonConfig.transitionType as TransitionType,
-		transitionStep: daemonConfig.transitionStep,
-		transitionDuration: daemonConfig.transitionDuration,
-		transitionFPS: daemonConfig.transitionFPS,
-		transitionAngle: daemonConfig.transitionAngle,
-		transitionPositionType: daemonConfig.transitionPositionType,
-		transitionPosition:
-			daemonConfig.transitionPositionType === "alias"
-				? (daemonConfig.transitionPosition as unknown as transitionPosition)
-				: transitionPosition.center, // Default fallback
-		transitionPositionIntX: daemonConfig.transitionPositionIntX,
-		transitionPositionIntY: daemonConfig.transitionPositionIntY,
-		transitionPositionFloatX: daemonConfig.transitionPositionFloatX,
-		transitionPositionFloatY: daemonConfig.transitionPositionFloatY,
-		invertY: daemonConfig.invertY,
-		transitionBezier: daemonConfig.transitionBezier,
-		transitionWaveX: daemonConfig.transitionWaveX,
-		transitionWaveY: daemonConfig.transitionWaveY,
+		resizeType: "crop" as ResizeType, // Default, not in unified config
+		fillColor: "#000000", // Default, not in unified config
+		filterType: FilterType.Lanczos3, // Default, not in unified config
+		transitionType: unifiedConfig.transition_type as TransitionType,
+		transitionStep: unifiedConfig.transition_step,
+		transitionDuration: unifiedConfig.transition_duration,
+		transitionFPS: 60, // Default, not in unified config
+		transitionAngle: unifiedConfig.transition_angle,
+		transitionPositionType: "alias", // Default
+		transitionPosition: unifiedConfig.transition_pos as transitionPosition,
+		transitionPositionIntX: 960, // Default
+		transitionPositionIntY: 540, // Default
+		transitionPositionFloatX: 0.5, // Default
+		transitionPositionFloatY: 0.5, // Default
+		invertY: false, // Default, not in unified config
+		transitionBezier: unifiedConfig.transition_bezier,
+		transitionWaveX: parseInt(unifiedConfig.transition_wave.split(",")[0] || "20", 10),
+		transitionWaveY: parseInt(unifiedConfig.transition_wave.split(",")[1] || "20", 10),
 	};
 }
 let saveConfigTimeout: ReturnType<typeof setTimeout> | null = null;
 const { goDaemon } = window.API_RENDERER;
 const SwwwConfig = () => {
 	const { register, handleSubmit, watch, setValue } =
-		useForm<DaemonSwwwConfigPayload>();
+		useForm<LocalSwwwConfig>();
 	const { saveConfig } = swwwConfigStore();
 	const [transitionPositionType, setTransitionPositionType] = useState("alias");
 	const [bezier, setBezier] = useState<[number, number, number, number]>([
 		0.25, 1, 0.25, 1,
 	]);
-	const onSubmit = (data: DaemonSwwwConfigPayload) => {
+	const onSubmit = (data: LocalSwwwConfig) => {
 		if (saveConfigTimeout !== null) {
 			clearTimeout(saveConfigTimeout);
 		}
@@ -68,7 +87,7 @@ const SwwwConfig = () => {
 				data.transitionPositionIntX = 960;
 				data.transitionPositionIntY = 540;
 			}
-			saveConfig(convertDaemonToLocalConfig(data));
+			saveConfig(data);
 		}, 300);
 	};
 
@@ -91,41 +110,34 @@ const SwwwConfig = () => {
 		};
 	}, [watch]);
 	useEffect(() => {
-		void goDaemon.getSwwwConfig().then((config: DaemonSwwwConfigPayload) => {
-			const bezierArray = config.transitionBezier
+		void goDaemon.getSwwwConfig().then((swwwConfig: UnifiedConfig["backend"]["swww"]) => {
+			const localConfig = convertUnifiedToLocalConfig(swwwConfig);
+			const bezierArray = localConfig.transitionBezier
 				.split(",")
 				.map((item: string) => {
 					return parseFloat(item);
 				}) as [number, number, number, number];
-			setValue("resizeType", config.resizeType);
-			setValue("fillColor", config.fillColor);
-			setValue("filterType", config.filterType);
-			setValue("transitionType", config.transitionType);
-			setValue("transitionStep", config.transitionStep);
-			setValue("transitionDuration", config.transitionDuration);
-			setValue("transitionFPS", config.transitionFPS);
-			setValue("transitionAngle", config.transitionAngle);
-			setValue("invertY", config.invertY);
-			setValue("transitionBezier", config.transitionBezier);
+			setValue("resizeType", localConfig.resizeType);
+			setValue("fillColor", localConfig.fillColor);
+			setValue("filterType", localConfig.filterType);
+			setValue("transitionType", localConfig.transitionType);
+			setValue("transitionStep", localConfig.transitionStep);
+			setValue("transitionDuration", localConfig.transitionDuration);
+			setValue("transitionFPS", localConfig.transitionFPS);
+			setValue("transitionAngle", localConfig.transitionAngle);
+			setValue("invertY", localConfig.invertY);
+			setValue("transitionBezier", localConfig.transitionBezier);
 			setBezier(bezierArray);
-			switch (config.transitionPositionType) {
-				case "alias":
-					setValue("transitionPositionType", config.transitionPositionType);
-					setValue("transitionPosition", config.transitionPosition);
-					break;
-				case "float":
-					setValue("transitionPositionType", config.transitionPositionType);
-					setValue("transitionPositionFloatX", config.transitionPositionFloatX);
-					setValue("transitionPositionFloatY", config.transitionPositionFloatY);
-					break;
-				case "int":
-					setValue("transitionPositionType", config.transitionPositionType);
-					setValue("transitionPositionIntX", config.transitionPositionIntX);
-					setValue("transitionPositionIntY", config.transitionPositionIntY);
-					break;
-			}
+			setValue("transitionPositionType", localConfig.transitionPositionType);
+			setValue("transitionPosition", localConfig.transitionPosition);
+			setValue("transitionPositionIntX", localConfig.transitionPositionIntX);
+			setValue("transitionPositionIntY", localConfig.transitionPositionIntY);
+			setValue("transitionPositionFloatX", localConfig.transitionPositionFloatX);
+			setValue("transitionPositionFloatY", localConfig.transitionPositionFloatY);
+			setValue("transitionWaveX", localConfig.transitionWaveX);
+			setValue("transitionWaveY", localConfig.transitionWaveY);
 		});
-	}, []);
+	}, [setValue]);
 	return (
 		<>
 			<AnimatePresence>
@@ -229,7 +241,7 @@ const SwwwConfig = () => {
 											<br></br>
 											center is an alias to grow with position set to center of
 											screen.
-											<br></br> any is an alias to grow with position set to a
+											<br></br> "any" is an alias to grow with position set to a
 											random point on screen. outer is the same as grow but the
 											circle shrinks instead of growing. Finally, random will
 											select a transition effect at random
@@ -253,7 +265,7 @@ const SwwwConfig = () => {
 									<option value={"wave"}>Wave</option>
 									<option value={"grow"}>Grow</option>
 									<option value={"center"}>Center</option>
-									<option value={"any"}>Any</option>
+									<option value="any">Any</option>
 									<option value={"outer"}>Outer</option>
 									<option value={"random"}>Random</option>
 								</select>

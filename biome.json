@@ -22,5 +22,20 @@
 				"noUnknownProperty": "off"
 			}
 		}
-	}
+	},
+	"assist": {
+		"actions": {
+		  "source": {
+			"organizeImports": {
+			  "level": "off",
+			  "options": {
+				"groups": [
+				  ":URL:",
+			  	  ":NODE:"
+				]
+			  }
+			}
+		  }
+		}
+	  }
 }

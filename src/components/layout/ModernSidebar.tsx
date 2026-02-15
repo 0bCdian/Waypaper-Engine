@@ -8,7 +8,7 @@
 import React, { ReactNode } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { cn } from "../../utils/cn";
-import { useUnifiedConfigStore } from "../../stores/unifiedConfig";
+import { useSidebarState } from "../../hooks/useSidebarState";
 import SidebarConfiguration from "../SidebarConfiguration";
 
 /**
@@ -28,19 +28,13 @@ export const ModernSidebar: React.FC<ModernSidebarProps> = ({
 	children: _children,
 	className,
 }) => {
-	const { config, setConfigValue } = useUnifiedConfigStore();
+	const { isCollapsed: sidebarCollapsed, setCollapsed } = useSidebarState();
 	const location = useLocation();
-	const sidebarCollapsed = config?.app?.sidebar_collapsed ?? false;
 	const isConfigurationPage = location.pathname === "/configuration";
-
-	// Don't render if config is not loaded
-	if (!config) {
-		return null;
-	}
 
 	const handleSidebarClose = () => {
 		if (!sidebarCollapsed) {
-			setConfigValue("app", "sidebar_collapsed", true);
+			setCollapsed(true);
 		}
 	};
 
@@ -59,10 +53,11 @@ export const ModernSidebar: React.FC<ModernSidebarProps> = ({
 
 	return (
 		<>
-			{/* Overlay/Backdrop for outside clicks */}
+			{/* Overlay/Backdrop for outside clicks - positioned below navbar */}
 			{!sidebarCollapsed && (
 				<div
-					className="fixed inset-0 bg-black/20 z-30 transition-opacity duration-300 ease-in-out"
+					className="fixed left-0 right-0 bottom-0 bg-black/20 z-30 transition-opacity duration-300 ease-in-out"
+					style={{ top: '64px' }}
 					onClick={handleSidebarClose}
 					aria-hidden="true"
 				/>

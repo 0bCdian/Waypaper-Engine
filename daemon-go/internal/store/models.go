@@ -303,6 +303,7 @@ type ImageRegistryMetadata struct {
 	Version     string     `json:"version"`
 	LastUpdated time.Time  `json:"lastUpdated"`
 	TotalImages int        `json:"totalImages"`
+	LastUsedID  int64      `json:"lastUsedId"` // Tracks the last used image ID
 	LastScan    *time.Time `json:"lastScan,omitempty"`
 }
 

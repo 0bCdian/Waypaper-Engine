@@ -63,18 +63,9 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
 
 			// No validation needed - daemon handles validation
 
-			if (window.API_RENDERER?.goDaemon?.setPartialConfig) {
-				await window.API_RENDERER.goDaemon.setPartialConfig(partialConfig);
-			} else if (window.API_RENDERER?.goDaemon?.setAppConfig) {
-				// Fallback to legacy method
-				await window.API_RENDERER.goDaemon.setAppConfig(
-					"selectedMonitors",
-					selectedMonitors,
-				);
-				await window.API_RENDERER.goDaemon.setAppConfig(
-					"imageSetType",
-					imageSetType,
-				);
+			// Use the modern unified config API
+			if (window.API_RENDERER?.goDaemon?.setBulkConfig) {
+				await window.API_RENDERER.goDaemon.setBulkConfig(partialConfig);
 			}
 		} catch (error) {
 			console.error("🔴 MonitorStore: Failed to save monitor config:", error);
@@ -136,11 +127,27 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
 				return;
 			}
 
-			const monitors = await window.API_RENDERER.goDaemon.getMonitors();
-			const activeMonitor = get().activeMonitor;
+		const monitorsResponse = await window.API_RENDERER.goDaemon.getMonitors();
+		console.log("🔵 MonitorStore: Raw monitors response:", monitorsResponse);
 
-			// Create store monitors with proper selection state
-			const storeMonitors = monitors.map((monitor: Monitor) => {
+		// Handle case where response might be an object or array
+		let monitors: Monitor[] = [];
+		if (Array.isArray(monitorsResponse)) {
+			monitors = monitorsResponse;
+		} else if (typeof monitorsResponse === "object" && monitorsResponse !== null) {
+			// Convert object to array
+			monitors = Object.values(monitorsResponse) as Monitor[];
+		}
+
+		if (monitors.length === 0) {
+			console.warn("🟡 MonitorStore: No monitors found");
+			return;
+		}
+
+		const activeMonitor = get().activeMonitor;
+
+		// Create store monitors with proper selection state
+		const storeMonitors = monitors.map((monitor: Monitor) => {
 				const match = activeMonitor.monitors.find(
 					(activeMonitorMonitor: Monitor) => {
 						return activeMonitorMonitor.name === monitor.name;
@@ -180,24 +187,36 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
 				return;
 			}
 
-			// Load monitors from daemon
-			const monitorsList = await window.API_RENDERER.goDaemon.getMonitors();
+		// Load monitors from daemon
+		const monitorsListResponse = await window.API_RENDERER.goDaemon.getMonitors();
+		console.log("🔵 MonitorStore: Raw monitors list response:", monitorsListResponse);
 
-			// Load config from unified system
+		// Handle case where response might be an object or array
+		let monitorsList: Monitor[] = [];
+		if (Array.isArray(monitorsListResponse)) {
+			monitorsList = monitorsListResponse;
+		} else if (typeof monitorsListResponse === "object" && monitorsListResponse !== null) {
+			// Convert object to array
+			monitorsList = Object.values(monitorsListResponse) as Monitor[];
+		}
+
+		if (monitorsList.length === 0) {
+			console.warn("🟡 MonitorStore: No monitors found for config");
+			set((state) => ({ ...state, _isLoadingConfig: false }));
+			return;
+		}
+
+		// Load config from unified system
 			let selectedMonitors: string[] = [];
 			let imageSetType: string = "individual";
 
-			if (window.API_RENDERER?.goDaemon?.getAppConfig) {
-				const config = await window.API_RENDERER.goDaemon.getAppConfig();
+			if (window.API_RENDERER?.goDaemon?.getConfig) {
+				const config = await window.API_RENDERER.goDaemon.getConfig();
 
-				if (config && typeof config === "object") {
-					// Extract monitor configuration from the full config
-					const monitorsConfig = (config as any).monitors;
-
-					if (monitorsConfig) {
-						selectedMonitors = monitorsConfig.selected_monitors || [];
-						imageSetType = monitorsConfig.image_set_type || "individual";
-					}
+				// Extract monitor configuration from the unified config
+				if (config && config.monitors) {
+					selectedMonitors = config.monitors.selected_monitors || [];
+					imageSetType = config.monitors.image_set_type || "individual";
 				}
 			}
 

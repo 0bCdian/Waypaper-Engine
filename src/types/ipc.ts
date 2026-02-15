@@ -29,11 +29,9 @@ export interface AppConfig {
 	notifications: boolean;
 	start_minimized: boolean;
 	minimize_instead_of_close: boolean;
-	random_image_monitor: "individual" | "extend" | "clone";
 	show_monitor_modal_on_start: boolean;
 	images_per_page: number;
 	theme: "light" | "dark" | "auto";
-	sidebar_collapsed: boolean;
 	sort_by: "name" | "date" | "size";
 	sort_order: "asc" | "desc";
 	image_history_limit: number;

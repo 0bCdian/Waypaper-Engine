@@ -4,8 +4,10 @@ import {
 	type PLAYLIST_TYPES_TYPE,
 	type PLAYLIST_ORDER_TYPES,
 } from "../../shared/types/playlist";
-// Database types no longer needed - using Go daemon
-import { type ActiveMonitor } from "../../shared/types/monitor";
+import {
+	type ActiveMonitor,
+	type MonitorSelection,
+} from "../../shared/types/monitor";
 import { type JsonStoreImage } from "../../shared/types/daemon";
 
 export enum STORE_ACTIONS {
@@ -15,17 +17,19 @@ export enum STORE_ACTIONS {
 	RESET_IMAGES_ARRAY = "RESET_IMAGES_ARRAY",
 }
 
+// Updated configuration to match new daemon API
 export interface configuration {
 	type: PLAYLIST_TYPES_TYPE;
-	interval: number | null;
+	interval: number | null; // Seconds for timer playlists
 	order: PLAYLIST_ORDER_TYPES | null;
 	showAnimations: boolean;
 	alwaysStartOnFirstImage: boolean;
+	currentImageIndex: number; // Added for v2.0.0 API
 }
 
 // Renderer image extends the shared JsonStoreImage type
 export interface rendererImage extends JsonStoreImage {
-	time: number | null;
+	time: number | null; // Minutes since midnight (0-1439) for time_of_day playlists
 }
 
 export interface ImageThumbnails {
@@ -39,7 +43,7 @@ export interface rendererPlaylist {
 	images: rendererImage[];
 	configuration: configuration;
 	name: string;
-	activeMonitor: ActiveMonitor;
+	activeMonitor: ActiveMonitor | MonitorSelection; // Support both legacy and new API
 }
 export type monitorSelectType = "individual" | "clone" | "extend";
 export interface Filters {

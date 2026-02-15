@@ -14,13 +14,14 @@ import {
 
 export function useRealTimeImageProcessing() {
 	const cleanupRef = useRef<(() => void) | null>(null);
+	const reQueryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 	const { addImage } = imagesStore();
 	const { startProcessing, updateProgress, completeProcessing } =
 		useImageProcessingStore();
 
 	useEffect(() => {
 		// Add a small delay to ensure everything is initialized
-		const timer = setTimeout(() => {
+		const timer = setTimeout(async () => {
 			try {
 				// Add safety checks to prevent catastrophic failures
 				if (!window.API_RENDERER) {
@@ -43,6 +44,9 @@ export function useRealTimeImageProcessing() {
 
 				console.info("Setting up real-time image processing listeners");
 
+				// Note: Event subscription is handled globally by useSubscribeToEvents hook
+				const { goDaemon } = window.API_RENDERER;
+
 				const handleProcessingStarted = (...args: unknown[]) => {
 					const data = args[0] as DaemonProcessingStartedPayload;
 					try {
@@ -53,69 +57,34 @@ export function useRealTimeImageProcessing() {
 					}
 				};
 
-				const handleImageProcessed = (...args: unknown[]) => {
+				const handleImageProcessed = async (...args: unknown[]) => {
 					const data = args[0] as DaemonImageProcessedPayload;
 					try {
 						console.info("Real-time event: image_processed", data);
 						console.log(
-							"🟢 Creating new image object from event data, ID:",
+							"🟢 Image processed event received, ID:",
 							data.id,
+							"File:",
+							data.uniqueFileName,
 						);
-						const newImage: rendererImage = {
-							id: parseInt(data.id),
-							name: data.uniqueFileName,
-							path: data.path,
-							mediaType: "image",
-							dimensions: {
-								width: data.width,
-								height: data.height,
-							},
-							metadata: {
-								format: data.format,
-								fileSize: data.size,
-								checksum: "",
-								tags: [],
-								properties: {},
-							},
-							selection: {
-								isChecked: false,
-								isSelected: false,
-								selectedAt: undefined,
-								selectedPlaylists: [],
-							},
-							importInfo: {
-								importedAt: new Date(data.createdAt * 1000).toISOString(),
-								sourcePath: data.path,
-								importer: "daemon",
-							},
-							thumbnails: {
-								"720p":
-									data.thumbnails?.["720p"] ||
-									(data.thumbnails as any)?.["fallback"] ||
-									"",
-								"1080p":
-									data.thumbnails?.["1080p"] ||
-									(data.thumbnails as any)?.["fallback"] ||
-									"",
-								"1440p":
-									data.thumbnails?.["1440p"] ||
-									(data.thumbnails as any)?.["fallback"] ||
-									"",
-								"4k":
-									data.thumbnails?.["4k"] ||
-									(data.thumbnails as any)?.["fallback"] ||
-									"",
-								fallback:
-									(data.thumbnails as any)?.["fallback"] ||
-									data.thumbnails?.["720p"] ||
-									data.thumbnails?.["1080p"] ||
-									"",
-							},
-							time: null,
-						};
-						console.log("🟢 About to call addImage with:", newImage);
-						addImage(newImage);
-						console.log("🟢 addImage called successfully");
+
+						// The Go daemon event doesn't include all fields (path, size, thumbnails, etc.)
+						// So we need to fetch the complete image data from the daemon
+						// Debounce re-queries to avoid excessive calls when processing many images
+						if (reQueryTimeoutRef.current) {
+							clearTimeout(reQueryTimeoutRef.current);
+						}
+						reQueryTimeoutRef.current = setTimeout(async () => {
+							try {
+								const { reQueryImages } = imagesStore.getState();
+								console.log("🟢 Re-querying images to get complete data for processed images");
+								await reQueryImages();
+								console.log("🟢 Images re-queried successfully");
+							} catch (error) {
+								console.error("Error re-querying images after processing:", error);
+							}
+							reQueryTimeoutRef.current = null;
+						}, 1000); // 1 second debounce - wait for batch of images to be processed
 					} catch (error) {
 						console.error("Error handling image_processed event:", error);
 					}
@@ -159,6 +128,13 @@ export function useRealTimeImageProcessing() {
 							`Processing complete: ${data.totalProcessed} processed`,
 						);
 						completeProcessing();
+						
+						// Final re-query to ensure all processed images are loaded
+						const { reQueryImages } = imagesStore.getState();
+						setTimeout(() => {
+							console.log("🟢 Processing complete, performing final re-query");
+							reQueryImages();
+						}, 500);
 					} catch (error) {
 						console.error("Error handling processing_complete event:", error);
 					}
@@ -170,22 +146,23 @@ export function useRealTimeImageProcessing() {
 						console.info("Real-time event: images_updated", data);
 						console.log(`Images ${data.action}: ${data.count} images affected`);
 
-						// Only reQuery for delete/update actions, not for "added"
-						// since we're already adding images in real-time via image_processed events
-						if (data.action === "removed" || data.action === "updated") {
-							const { reQueryImages } = imagesStore.getState();
-							console.log(
-								"🟢 useRealTimeImageProcessing: Images updated, re-querying images",
-							);
+						// Re-query for all actions to ensure we have the latest data
+						// This is especially important for "added" since image_processed events
+						// don't include all required fields (path, thumbnails, etc.)
+						const { reQueryImages } = imagesStore.getState();
+						console.log(
+							"🟢 useRealTimeImageProcessing: Images updated, re-querying images",
+						);
+						// Use a small delay to ensure JSON store is fully updated
+						setTimeout(() => {
 							reQueryImages();
-						}
+						}, 300);
 					} catch (error) {
 						console.error("Error handling images_updated event:", error);
 					}
 				};
 
 				// Listen for real-time events from the Go daemon
-				const { goDaemon } = window.API_RENDERER;
 				goDaemon.on("processing_started", handleProcessingStarted);
 				goDaemon.on("image_processed", handleImageProcessed);
 				goDaemon.on("image_progress", handleImageProgress);
@@ -219,6 +196,10 @@ export function useRealTimeImageProcessing() {
 
 		return () => {
 			clearTimeout(timer);
+			if (reQueryTimeoutRef.current) {
+				clearTimeout(reQueryTimeoutRef.current);
+				reQueryTimeoutRef.current = null;
+			}
 			if (cleanupRef.current) {
 				cleanupRef.current();
 				cleanupRef.current = null;

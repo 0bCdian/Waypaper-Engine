@@ -7,6 +7,7 @@
 
 import React, { useState, useEffect } from "react";
 import { cn } from "../../utils/cn";
+import type { UnifiedConfig } from "../../../shared/types/unifiedConfig";
 
 /**
  * App Settings props interface
@@ -20,14 +21,7 @@ export interface AppSettingsProps {
  * App configuration interface
  */
 interface AppConfig {
-	sidebar_collapsed?: boolean;
 	theme?: string;
-	window_bounds?: {
-		x: number;
-		y: number;
-		width: number;
-		height: number;
-	};
 	auto_start?: boolean;
 	minimize_to_tray?: boolean;
 	close_to_tray?: boolean;
@@ -53,8 +47,11 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ className }) => {
 			setError(null);
 
 			// Get app config from daemon
-			const appConfig = await window.API_RENDERER.goDaemon.getAppConfig();
-			setConfig(appConfig || {});
+			const unifiedConfig = await window.API_RENDERER.goDaemon.getConfig();
+			// Convert unified config to local format
+			setConfig({
+				theme: unifiedConfig.app.theme,
+			});
 		} catch (err) {
 			console.error("Failed to load app config:", err);
 			setError(
@@ -70,7 +67,12 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ className }) => {
 			setSaving(true);
 			setError(null);
 
-			await window.API_RENDERER.goDaemon.setAppConfig(key, value);
+			// Use setBulkConfig for app settings
+			await window.API_RENDERER.goDaemon.setBulkConfig({
+				app: {
+					[key]: value,
+				} as Partial<UnifiedConfig["app"]>,
+			});
 
 			// Update local state
 			setConfig((prev) => ({ ...prev, [key]: value }));
@@ -232,29 +234,6 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ className }) => {
 					</h2>
 
 					<div className="space-y-4">
-						{/* Sidebar Collapsed */}
-						<div className="form-control">
-							<label className="label cursor-pointer">
-								<span className="label-text text-lg">
-									Start with sidebar collapsed
-								</span>
-								<input
-									type="checkbox"
-									className="toggle toggle-primary"
-									checked={config.sidebar_collapsed || false}
-									onChange={(e) =>
-										saveConfig("sidebar_collapsed", e.target.checked)
-									}
-									disabled={saving}
-								/>
-							</label>
-							<div className="label">
-								<span className="label-text-alt">
-									Start the application with the sidebar hidden
-								</span>
-							</div>
-						</div>
-
 						{/* Theme Selection */}
 						<div className="form-control">
 							<label className="label">

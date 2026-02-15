@@ -1,55 +1,49 @@
 import { create } from "zustand";
 import { type appConfigType } from "../../shared/types/app";
 import { initialAppConfig } from "../../shared/constants";
+import type { UnifiedConfig } from "../../shared/types/unifiedConfig";
 
-// Debug: Check what's available on the API_RENDERER
-console.log("🔍 appConfig: window.API_RENDERER:", window.API_RENDERER);
-console.log("🔍 appConfig: goDaemon:", window.API_RENDERER?.goDaemon);
-console.log(
-	"🔍 appConfig: goDaemon methods:",
-	window.API_RENDERER?.goDaemon
-		? Object.getOwnPropertyNames(window.API_RENDERER.goDaemon)
-		: "no goDaemon",
-);
-
-// Test basic IPC communication
-if (window.API_RENDERER?.goDaemon?.testConnection) {
-	console.log("🔍 appConfig: Testing IPC connection...");
-	window.API_RENDERER.goDaemon
-		.testConnection()
-		.then((result) => console.log("🔍 appConfig: IPC test result:", result))
-		.catch((error) => console.error("🔍 appConfig: IPC test error:", error));
-} else {
-	console.log("🔍 appConfig: testConnection method not available");
-}
-
-// const { goDaemon } = window.API_RENDERER; // Unused for now
 interface State {
 	appConfig: appConfigType;
 	isSetup: boolean;
 }
 
 interface Actions {
-	saveConfig: (data: appConfigType) => void;
+	saveConfig: (data: appConfigType) => Promise<void>;
 	requeryAppConfig: () => Promise<void>;
 }
 
 export const useAppConfigStore = create<State & Actions>()((set) => ({
 	appConfig: initialAppConfig,
 	isSetup: false,
-	saveConfig: (newConfig) => {
+	saveConfig: async (newConfig) => {
 		console.log("🔵 appConfigStore: saveConfig called with:", newConfig);
 
-		// Check if goDaemon and setAppConfig method are available
+		// Use the modern unified config API
 		if (
 			window.API_RENDERER?.goDaemon &&
-			typeof window.API_RENDERER.goDaemon.setAppConfig === "function"
+			typeof window.API_RENDERER.goDaemon.setBulkConfig === "function"
 		) {
 			try {
-				// Save each config field individually to the unified config system
-				Object.entries(newConfig).forEach(([key, value]) => {
-					window.API_RENDERER.goDaemon.setAppConfig(key, value);
-				});
+				// Convert appConfigType to UnifiedConfig format
+				const unifiedConfig: Partial<UnifiedConfig> = {
+					app: {
+						kill_daemon_on_exit: newConfig.kill_daemon_on_exit ?? false,
+						notifications: newConfig.notifications ?? true,
+						start_minimized: newConfig.start_minimized ?? false,
+					minimize_instead_of_close:
+						newConfig.minimize_instead_of_close ?? true,
+					show_monitor_modal_on_start:
+							newConfig.show_monitor_modal_on_start ?? false,
+					images_per_page: newConfig.images_per_page ?? 20,
+					theme: newConfig.theme ?? "dark",
+					sort_by: newConfig.sort_by ?? "name",
+						sort_order: newConfig.sort_order ?? "asc",
+						image_history_limit: newConfig.image_history_limit ?? 50,
+					},
+				};
+
+				await window.API_RENDERER.goDaemon.setBulkConfig(unifiedConfig);
 				console.log("🔵 appConfigStore: Config saved to daemon");
 			} catch (error) {
 				console.error(
@@ -59,7 +53,7 @@ export const useAppConfigStore = create<State & Actions>()((set) => ({
 			}
 		} else {
 			console.warn(
-				"🔴 appConfigStore: setAppConfig method not available, saving locally only",
+				"🔴 appConfigStore: setBulkConfig method not available, saving locally only",
 			);
 		}
 
@@ -67,14 +61,28 @@ export const useAppConfigStore = create<State & Actions>()((set) => ({
 		console.log("🔵 appConfigStore: isSetup set to true");
 	},
 	requeryAppConfig: async () => {
-		// Check if goDaemon and getAppConfig method are available
+		// Use the modern unified config API
 		if (
 			window.API_RENDERER?.goDaemon &&
-			typeof window.API_RENDERER.goDaemon.getAppConfig === "function"
+			typeof window.API_RENDERER.goDaemon.getConfig === "function"
 		) {
 			try {
-				const newConfig = await window.API_RENDERER.goDaemon.getAppConfig();
-				set(() => ({ appConfig: newConfig }));
+				const unifiedConfig = await window.API_RENDERER.goDaemon.getConfig();
+				// Convert UnifiedConfig to appConfigType
+				const appConfig: appConfigType = {
+					kill_daemon_on_exit: unifiedConfig.app.kill_daemon_on_exit,
+					notifications: unifiedConfig.app.notifications,
+					start_minimized: unifiedConfig.app.start_minimized,
+					minimize_instead_of_close: unifiedConfig.app.minimize_instead_of_close,
+					show_monitor_modal_on_start:
+						unifiedConfig.app.show_monitor_modal_on_start,
+					images_per_page: unifiedConfig.app.images_per_page,
+					theme: unifiedConfig.app.theme,
+					sort_by: unifiedConfig.app.sort_by,
+					sort_order: unifiedConfig.app.sort_order,
+					image_history_limit: unifiedConfig.app.image_history_limit,
+				};
+				set(() => ({ appConfig }));
 				console.log("🔵 appConfigStore: Config loaded from daemon");
 			} catch (error) {
 				console.error(
@@ -83,7 +91,7 @@ export const useAppConfigStore = create<State & Actions>()((set) => ({
 				);
 			}
 		} else {
-			console.warn("🔴 appConfigStore: getAppConfig method not available");
+			console.warn("🔴 appConfigStore: getConfig method not available");
 		}
 	},
 }));

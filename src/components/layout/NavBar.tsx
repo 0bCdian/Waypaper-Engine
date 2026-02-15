@@ -7,7 +7,7 @@
 
 import React from "react";
 import { useMonitorStore } from "../../stores/monitors";
-import { useUnifiedConfigStore } from "../../stores/unifiedConfig";
+import { useSidebarState } from "../../hooks/useSidebarState";
 import { cn } from "../../utils/cn";
 
 /**
@@ -23,7 +23,7 @@ export interface NavBarProps {
  */
 export const NavBar: React.FC<NavBarProps> = ({ className }) => {
 	const { activeMonitor, reQueryMonitors } = useMonitorStore();
-	const { config, setConfigValue } = useUnifiedConfigStore();
+	const { toggle: toggleSidebar } = useSidebarState();
 
 	const handleMonitorSelect = async () => {
 		try {
@@ -36,14 +36,11 @@ export const NavBar: React.FC<NavBarProps> = ({ className }) => {
 	};
 
 	const handleSidebarToggle = () => {
-		if (config) {
-			const sidebarCollapsed = config.app?.sidebar_collapsed ?? false;
-			setConfigValue("app", "sidebar_collapsed", !sidebarCollapsed);
-		}
+		toggleSidebar();
 	};
 
 	const navbarClasses = cn(
-		"navbar bg-base-100 border-b border-base-300 px-4 py-2",
+		"navbar bg-base-100 border-b border-base-300 px-4 py-2 relative z-50 shrink-0",
 		className,
 	);
 

@@ -6,8 +6,11 @@
 
 import { ipcMain, BrowserWindow, dialog, app } from "electron";
 import { resolve } from "path";
+import { readdir, stat } from "fs/promises";
+import { join } from "path";
 import { goDaemonClient } from "../goDaemonClient";
 import { daemonMonitor } from "./DaemonMonitor";
+import { contextMenuManager } from "./ContextMenuManager";
 import type { JsonStoreImage, DaemonPlaylist, DaemonMonitor } from "../../shared/types/daemon";
 
 export interface IPCHandler {
@@ -249,9 +252,11 @@ export class IPCManager {
 				try {
 					const mainWindow = BrowserWindow.getFocusedWindow();
 					if (!mainWindow) {
+						console.warn("🟡 openFiles: No focused window");
 						return { success: false, error: "No focused window" };
 					}
 
+					console.log("🟢 openFiles: Opening dialog with action:", action);
 					let result;
 					if (action === "file") {
 						result = await dialog.showOpenDialog(mainWindow, {
@@ -282,11 +287,76 @@ export class IPCManager {
 						return { success: false, error: "Invalid action" };
 					}
 
+					console.log("🟢 openFiles: Dialog result:", { canceled: result.canceled, filePaths: result.filePaths });
+
 					if (result.canceled) {
+						console.log("🟡 openFiles: Dialog was canceled");
 						return { success: true, files: [] };
 					}
 
-					return { success: true, files: result.filePaths };
+					if (!result.filePaths || result.filePaths.length === 0) {
+						console.warn("🟡 openFiles: No file paths returned");
+						return { success: true, files: [] };
+					}
+
+					let files: string[] = [];
+
+					if (action === "folder") {
+						// For folders, recursively scan for image files
+						console.log("🟢 openFiles: Scanning folder(s) for images:", result.filePaths);
+						const imageExtensions = new Set([
+							".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg",
+						]);
+
+						const scanDirectory = async (dirPath: string): Promise<string[]> => {
+							const imageFiles: string[] = [];
+							try {
+								const entries = await readdir(dirPath);
+								for (const entry of entries) {
+									const fullPath = join(dirPath, entry);
+									try {
+										const stats = await stat(fullPath);
+										if (stats.isDirectory()) {
+											// Recursively scan subdirectories
+											const subImages = await scanDirectory(fullPath);
+											imageFiles.push(...subImages);
+										} else if (stats.isFile()) {
+											// Check if it's an image file
+											const ext = entry.toLowerCase().substring(entry.lastIndexOf("."));
+											if (imageExtensions.has(ext)) {
+												imageFiles.push(fullPath);
+											}
+										}
+									} catch (err) {
+										// Skip files/directories we can't access
+										console.warn(`Could not access ${fullPath}:`, err);
+									}
+								}
+							} catch (err) {
+								console.error(`Error scanning directory ${dirPath}:`, err);
+							}
+							return imageFiles;
+						};
+
+						// Scan all selected folders
+						for (const folderPath of result.filePaths) {
+							const folderImages = await scanDirectory(folderPath);
+							files.push(...folderImages);
+						}
+
+						console.log(`🟢 openFiles: Found ${files.length} image files in folder(s)`);
+					} else {
+						// For file selection, use the selected files directly
+						files = result.filePaths;
+					}
+
+					if (files.length === 0) {
+						console.warn("🟡 openFiles: No image files found");
+						return { success: true, files: [] };
+					}
+
+					console.log("🟢 openFiles: Returning", files.length, "file paths");
+					return { success: true, files };
 				} catch (error) {
 					console.error("Error opening files:", error);
 					return {
@@ -326,21 +396,18 @@ export class IPCManager {
 					console.log("Processing images with paths:", imagePaths, "names:", fileNames);
 
 					// Call Go daemon to process images
-					const result = await goDaemonClient.processImages(
+					// processImages returns Promise<void>, so we just await it
+					// Events will be emitted by the daemon as images are processed
+					await goDaemonClient.processImages(
 						imagePaths,
 						fileNames,
 					);
 
-					if (result) {
-						("Successfully processed images");
-						return {
-							success: true,
-							message: `Successfully processed ${files.length} images`,
-						};
-					} else {
-						console.error("Failed to process images");
-						return { success: false, error: "Failed to process images" };
-					}
+					console.log("Successfully initiated image processing");
+					return {
+						success: true,
+						message: `Processing ${files.length} images...`,
+					};
 				} catch (error) {
 					console.error("Error handling open images:", error);
 					return {
@@ -354,6 +421,39 @@ export class IPCManager {
 
 		// Setup event forwarding from Go daemon to renderer
 		this.setupGoDaemonEventForwarding();
+
+		// Setup context menu handler
+		this.setupContextMenuHandler();
+	}
+
+	/**
+	 * Setup context menu handler
+	 */
+	private setupContextMenuHandler(): void {
+		this.registerHandler({
+			channel: "openContextMenu",
+			handler: async (event, options: { Image?: unknown; selectedImagesLength: number }) => {
+				const window = BrowserWindow.fromWebContents(event.sender);
+				if (!window) {
+					return { success: false, error: "Window not found" };
+				}
+
+				try {
+					await contextMenuManager.showContextMenu(window, {
+						image: options.Image as JsonStoreImage | undefined,
+						selectedImagesLength: options.selectedImagesLength || 0,
+					});
+					return { success: true };
+				} catch (error) {
+					console.error("Failed to show context menu:", error);
+					return {
+						success: false,
+						error: error instanceof Error ? error.message : "Unknown error",
+					};
+				}
+			},
+			description: "Show context menu for images/gallery",
+		});
 	}
 
 	/**
@@ -570,136 +670,234 @@ export class IPCManager {
 	private async handleGoDaemonCommand(
 		action: string,
 		payload?: unknown,
-	): Promise<any> {
+	): Promise<unknown> {
 		try {
+			const typedPayload = payload as Record<string, unknown>;
+
 			switch (action) {
-				// Playlist operations
-				case "start_playlist":
-					return await goDaemonClient.sendCommand("start_playlist", payload);
-				case "stop_playlist":
-					return await goDaemonClient.sendCommand("stop_playlist", payload);
-				case "pause_playlist":
-					return await goDaemonClient.sendCommand("pause_playlist", payload);
-				case "resume_playlist":
-					return await goDaemonClient.sendCommand("resume_playlist", payload);
-				case "save_playlist":
-					return await goDaemonClient.savePlaylist((payload as any)?.playlist);
-				case "delete_playlist":
-					return await goDaemonClient.deletePlaylist(
-						(payload as any)?.playlistName,
-					);
-				case "get_active_playlist":
-					return await goDaemonClient.getActivePlaylist(
-						(payload as any)?.activeMonitor,
-					);
-				case "get_active_playlists":
-					return await goDaemonClient.getActivePlaylists();
-				case "get_playlist_images":
-					return await goDaemonClient.getPlaylistImages(
-						(payload as any)?.playlistId,
-					);
-
-				// Image navigation
-				case "next_image":
-					return await goDaemonClient.sendCommand("next_image", payload);
-				case "previous_image":
-					return await goDaemonClient.sendCommand("previous_image", payload);
-				case "random_image":
-					return await goDaemonClient.sendCommand("random_image", payload);
-				case "set_image":
-					return await goDaemonClient.sendCommand("set_image", payload);
-
-				// Multi-monitor operations
-				case "set_image_across_monitors":
-					return await goDaemonClient.setImageAcrossMonitors(
-						(payload as any)?.image?.id,
-						(payload as any)?.activeMonitor,
-					);
-				case "duplicate_image_across_monitors":
-					return await goDaemonClient.duplicateImageAcrossMonitors(
-						(payload as any)?.image?.id,
-						(payload as any)?.activeMonitor,
-					);
-				case "process_for_monitors":
-					return await goDaemonClient.processForMonitors(
-						(payload as any)?.image?.id,
-						(payload as any)?.activeMonitor,
-					);
-
-				// Data queries
-				case "get_images":
-					const images = (await goDaemonClient.getImages(
-						payload,
-					)) as JsonStoreImage[];
-					console.log("🔍 IPC Manager: Raw images from daemon:", images);
-					// Convert all paths to atom:// protocol for frontend consumption
-					return this.convertPathsToAtomProtocol(images);
-				case "get_playlists":
-					return (await goDaemonClient.getPlaylists()) as DaemonPlaylist[];
-				case "get_monitors":
-					return (await goDaemonClient.getMonitors()) as DaemonMonitor[];
+				// ============================================================================
+				// SYSTEM OPERATIONS
+				// ============================================================================
+				case "ping":
+					return await goDaemonClient.ping();
 				case "get_info":
-					return await goDaemonClient.sendCommand("get_info", {});
-				case "get_image_history":
-					return await goDaemonClient.getImageHistory();
-				case "delete_image_from_gallery":
-					return await goDaemonClient.deleteImagesFromGallery(
-						(payload as any)?.imageIds,
-					);
+					return await goDaemonClient.getInfo();
+				case "get_monitors":
+					return await goDaemonClient.getMonitors();
+				case "get_daemon_status":
+					return await goDaemonClient.getDaemonStatus();
 				case "get_diagnostics":
 					return await goDaemonClient.getDiagnostics(
-						(payload as any)?.monitorName,
+						typedPayload?.monitorName as string | undefined,
+					);
+				case "kill_daemon":
+					await goDaemonClient.killDaemon();
+					return "daemon_kill_requested";
+				case "stop_daemon":
+					await goDaemonClient.stopDaemon();
+					return "daemon_stop_requested";
+
+				// ============================================================================
+				// PLAYLIST OPERATIONS
+				// ============================================================================
+				case "get_playlists":
+					return await goDaemonClient.getPlaylists();
+				case "get_playlist":
+					return await goDaemonClient.getPlaylist(
+						typedPayload?.playlistId as number,
+					);
+				case "upsert_playlist":
+				case "save_playlist": // Legacy support
+					return await goDaemonClient.savePlaylist(
+						typedPayload?.playlist as Parameters<typeof goDaemonClient.savePlaylist>[0],
+					);
+				case "delete_playlist":
+					await goDaemonClient.deletePlaylist(
+						typedPayload?.playlistName as string,
+					);
+					return "playlist deleted";
+				case "start_playlist":
+					await goDaemonClient.startPlaylist(
+						typedPayload?.playlistId as number,
+						typedPayload?.activeMonitor as Parameters<typeof goDaemonClient.startPlaylist>[1],
+					);
+					return "playlist started";
+				case "stop_playlist":
+					await goDaemonClient.stopPlaylist(
+						typedPayload?.activeMonitor as Parameters<typeof goDaemonClient.stopPlaylist>[0],
+					);
+					return "playlist stopped";
+				case "pause_playlist":
+					await goDaemonClient.pausePlaylist(
+						typedPayload?.activeMonitor as Parameters<typeof goDaemonClient.pausePlaylist>[0],
+					);
+					return "playlist paused";
+				case "resume_playlist":
+					await goDaemonClient.resumePlaylist(
+						typedPayload?.activeMonitor as Parameters<typeof goDaemonClient.resumePlaylist>[0],
+					);
+					return "playlist resumed";
+				case "next_playlist_image":
+				case "next_image": // Legacy support
+					await goDaemonClient.nextPlaylistImage(
+						typedPayload?.activeMonitor as Parameters<typeof goDaemonClient.nextPlaylistImage>[0],
+					);
+					return "image changed";
+				case "previous_playlist_image":
+				case "previous_image": // Legacy support
+					await goDaemonClient.previousPlaylistImage(
+						typedPayload?.activeMonitor as Parameters<typeof goDaemonClient.previousPlaylistImage>[0],
+					);
+					return "image changed";
+				case "get_running_playlists":
+				case "get_active_playlists": // Legacy support
+				case "get_active_playlist": // Legacy support
+					return await goDaemonClient.getRunningPlaylists();
+				case "get_playlist_images": // Legacy support
+					return await goDaemonClient.getPlaylist(
+						typedPayload?.playlistId as number,
 					);
 
-				// Image processing
+				// ============================================================================
+				// IMAGE OPERATIONS
+				// ============================================================================
+				case "get_images": {
+					const images = await goDaemonClient.getImages(typedPayload?.filters);
+					console.log("🔍 IPC Manager: Raw images from daemon:", images);
+					return this.convertPathsToAtomProtocol(images);
+				}
 				case "process_images":
-					return await goDaemonClient.processImages(
-						(payload as any)?.imagePaths || [],
-						(payload as any)?.fileNames || [],
+					await goDaemonClient.processImages(
+						typedPayload?.imagePaths as string[] || [],
+						typedPayload?.fileNames as string[] || [],
+					);
+					return true;
+				case "delete_images":
+				case "delete_image_from_gallery": // Legacy support
+					await goDaemonClient.deleteImages(
+						typedPayload?.imageIds as number[],
+					);
+					return "images deleted";
+				case "upsert_image":
+					await goDaemonClient.upsertImage(
+						typedPayload?.image as Parameters<typeof goDaemonClient.upsertImage>[0],
+					);
+					return "image updated";
+				case "get_image_history":
+					return await goDaemonClient.getImageHistory();
+				case "process_for_monitors":
+					return await goDaemonClient.processForMonitors(
+						(typedPayload?.image as { id: number })?.id,
+						typedPayload?.activeMonitor as Parameters<typeof goDaemonClient.processForMonitors>[1],
 					);
 
-				// Configuration
+				// ============================================================================
+				// CONFIGURATION OPERATIONS
+				// ============================================================================
 				case "get_config":
 					return await goDaemonClient.getConfig();
-				case "set_config":
-					return await goDaemonClient.setConfig(
-						(payload as any)?.config?.configSection || "",
-						(payload as any)?.config?.configKey || "",
-						(payload as any)?.config?.configValue,
-					);
-				case "get_app_config":
-					return await goDaemonClient.getAppConfig();
-				case "set_app_config":
-					return await goDaemonClient.setAppConfig(payload);
-				case "get_swww_config":
-					return await goDaemonClient.getSwwwConfig();
-				case "set_swww_config":
-					return await goDaemonClient.setSwwwConfig(payload as any);
-				case "get_frontend_config":
-					return await goDaemonClient.sendCommand("get_frontend_config", {});
-				case "set_frontend_config":
-					return await goDaemonClient.setFrontendConfig(payload);
-				case "restore_last_wallpapers":
-					return await goDaemonClient.sendCommand(
-						"restore_last_wallpapers",
-						{},
-					);
+				case "upsert_config":
+				case "set_config": // Legacy support
+					{
+						const config = typedPayload?.config as {
+							configSection?: string;
+							configKey?: string;
+							configValue?: unknown;
+							frontendConfig?: Record<string, unknown>;
+						};
 
-				// Monitor operations
+						if (config?.frontendConfig) {
+							// Bulk update
+							await goDaemonClient.setBulkConfig(config.frontendConfig);
+						} else if (config?.configSection && config?.configKey) {
+							// Single key update
+							await goDaemonClient.setConfig(
+								config.configSection,
+								config.configKey,
+								config.configValue,
+							);
+						}
+
+						return true;
+					}
 				case "set_selected_monitor":
-					return await goDaemonClient.setSelectedMonitor(
-						(payload as any)?.activeMonitor,
+					await goDaemonClient.setSelectedMonitor(
+						typedPayload?.activeMonitor as Parameters<typeof goDaemonClient.setSelectedMonitor>[0],
 					);
+					return "monitor configuration updated";
 				case "get_selected_monitor":
 					return await goDaemonClient.getSelectedMonitor();
 
-				// System
-				case "ping":
-					return await goDaemonClient.ping();
-				case "get_daemon_status":
-					return await goDaemonClient.getDaemonStatus();
-				case "stop_daemon":
-					return await goDaemonClient.stopDaemon();
+				// ============================================================================
+				// MISCELLANEOUS OPERATIONS
+				// ============================================================================
+				case "set_image":
+					await goDaemonClient.setImage(
+						(typedPayload?.image as { id: number; name: string })?.id,
+						(typedPayload?.image as { id: number; name: string })?.name || "",
+						typedPayload?.activeMonitor as Parameters<typeof goDaemonClient.setImage>[2],
+					);
+					return "image changed";
+				case "set_image_across_monitors":
+					await goDaemonClient.setImageAcrossMonitors(
+						(typedPayload?.image as { id: number; name: string })?.id,
+						(typedPayload?.image as { id: number; name: string })?.name || "",
+						typedPayload?.activeMonitor as Parameters<typeof goDaemonClient.setImageAcrossMonitors>[2],
+					);
+					return "image set across monitors";
+				case "duplicate_image_across_monitors":
+					await goDaemonClient.duplicateImageAcrossMonitors(
+						(typedPayload?.image as { id: number })?.id,
+						typedPayload?.activeMonitor as Parameters<typeof goDaemonClient.duplicateImageAcrossMonitors>[1],
+					);
+					return "image duplicated across monitors";
+				case "next_image_history":
+					await goDaemonClient.nextImageHistory(
+						typedPayload?.activeMonitor as Parameters<typeof goDaemonClient.nextImageHistory>[0],
+					);
+					return "image changed from history";
+				case "previous_image_history":
+					await goDaemonClient.previousImageHistory(
+						typedPayload?.activeMonitor as Parameters<typeof goDaemonClient.previousImageHistory>[0],
+					);
+					return "image changed from history";
+				case "random_image":
+					await goDaemonClient.randomImage(
+						typedPayload?.activeMonitor as Parameters<typeof goDaemonClient.randomImage>[0],
+					);
+					return "image changed";
+
+				// ============================================================================
+				// EVENT SUBSCRIPTION
+				// ============================================================================
+				case "subscribe":
+					await goDaemonClient.subscribeToEvents(
+						typedPayload?.eventTypes as Parameters<typeof goDaemonClient.subscribeToEvents>[0],
+					);
+					return "subscribed to events";
+				case "unsubscribe":
+					await goDaemonClient.unsubscribeFromEvents(
+						typedPayload?.eventTypes as Parameters<typeof goDaemonClient.unsubscribeFromEvents>[0],
+					);
+					return "unsubscribed from events";
+
+				// ============================================================================
+				// LEGACY COMPATIBILITY
+				// ============================================================================
+				case "get_app_config":
+				case "get_frontend_config":
+					return await goDaemonClient.getConfig();
+				case "set_app_config":
+				case "set_frontend_config":
+					await goDaemonClient.setBulkConfig(payload as Parameters<typeof goDaemonClient.setBulkConfig>[0]);
+					return true;
+				case "get_swww_config": {
+					const config = await goDaemonClient.getConfig();
+					return config.backend.swww;
+				}
+				case "set_swww_config":
+					await goDaemonClient.setSwwwConfig(payload as Parameters<typeof goDaemonClient.setSwwwConfig>[0]);
+					return true;
 
 				default:
 					throw new Error(`Unknown Go daemon action: ${action}`);
@@ -714,6 +912,13 @@ export class IPCManager {
 	 * Setup Go daemon event forwarding to renderer processes
 	 */
 	private setupGoDaemonEventForwarding(): void {
+		// Subscribe to all events from the Go daemon
+		// Note: The subscribe action may not be validated, but we try anyway
+		// Events will still be received if the daemon broadcasts them
+		goDaemonClient.subscribeToEvents(["*"]).catch((error) => {
+			console.warn("Failed to subscribe to events (may not be supported):", error);
+		});
+
 		// Listen for all events from the Go daemon client
 		goDaemonClient.on("playlist_updated", (data) => {
 			this.broadcastToAllWindows("go-daemon-event-playlist_updated", data);
@@ -728,22 +933,27 @@ export class IPCManager {
 		});
 
 		goDaemonClient.on("image_processed", (data) => {
+			console.log("🟢 IPCManager: Received image_processed event, forwarding to renderer", data);
 			this.broadcastToAllWindows("go-daemon-event-image_processed", data);
 		});
 
 		goDaemonClient.on("image_error", (data) => {
+			console.log("🔴 IPCManager: Received image_error event, forwarding to renderer", data);
 			this.broadcastToAllWindows("go-daemon-event-image_error", data);
 		});
 
 		goDaemonClient.on("processing_complete", (data) => {
+			console.log("✅ IPCManager: Received processing_complete event, forwarding to renderer", data);
 			this.broadcastToAllWindows("go-daemon-event-processing_complete", data);
 		});
 
 		goDaemonClient.on("processing_started", (data) => {
+			console.log("🚀 IPCManager: Received processing_started event, forwarding to renderer", data);
 			this.broadcastToAllWindows("go-daemon-event-processing_started", data);
 		});
 
 		goDaemonClient.on("image_progress", (data) => {
+			console.log("📊 IPCManager: Received image_progress event, forwarding to renderer", data);
 			this.broadcastToAllWindows("go-daemon-event-image_progress", data);
 		});
 

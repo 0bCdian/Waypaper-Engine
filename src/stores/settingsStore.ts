@@ -69,11 +69,9 @@ const defaultConfig: UnifiedConfig = {
 		notifications: true,
 		start_minimized: false,
 		minimize_instead_of_close: true,
-		random_image_monitor: "individual",
 		show_monitor_modal_on_start: false,
 		images_per_page: 20,
 		theme: "dark",
-		sidebar_collapsed: false,
 		sort_by: "name",
 		sort_order: "asc",
 		image_history_limit: 50,
@@ -167,6 +165,16 @@ export const useSettingsStore = create<SettingsStore>()(
 				const currentConfig = get().config;
 				if (!currentConfig) {
 					console.error("🔴 SettingsStore: No config loaded");
+					return;
+				}
+
+				// Validate that the key is allowed for the section
+				// Window bounds and other Electron-specific settings should not be saved to Go daemon config
+				const invalidKeys = ["windowBounds", "window_bounds"];
+				if (invalidKeys.includes(key)) {
+					console.warn(
+						`🔴 SettingsStore: Attempted to save invalid config key "${key}" to section "${section}". This key is not supported by the Go daemon config.`,
+					);
 					return;
 				}
 
@@ -400,16 +408,32 @@ if (typeof window !== "undefined" && window.API_RENDERER?.goDaemon) {
 
 	// Listen for config change events from the daemon
 	// The Go handler sends events with structure: { type: "config_changed", payload: { section, key, value, timestamp } }
-	window.API_RENDERER.goDaemon.onConfigChanged((event: any) => {
+	window.API_RENDERER.goDaemon.onConfigChanged((event: unknown) => {
 		// Convert Go handler event format to our ConfigChangeEvent format
-		if (event.type === "config_changed" && event.payload) {
-			const configEvent: ConfigChangeEvent = {
-				section: event.payload.section,
-				key: event.payload.key,
-				value: event.payload.value,
-				timestamp: event.payload.timestamp,
+		if (
+			typeof event === "object" &&
+			event !== null &&
+			"type" in event &&
+			event.type === "config_changed" &&
+			"payload" in event &&
+			typeof event.payload === "object" &&
+			event.payload !== null
+		) {
+			const payload = event.payload as {
+				section?: string;
+				key?: string;
+				value?: unknown;
+				timestamp?: number;
 			};
-			store.handleConfigChange(configEvent);
+			if (payload.section && payload.key !== undefined) {
+				const configEvent: ConfigChangeEvent = {
+					section: payload.section as ConfigSection,
+					key: payload.key,
+					value: payload.value,
+					timestamp: payload.timestamp ?? Date.now(),
+				};
+				store.handleConfigChange(configEvent);
+			}
 		}
 	});
 }

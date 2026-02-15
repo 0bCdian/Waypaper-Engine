@@ -5,7 +5,7 @@ import PlaylistTrack from "./PlaylistTrack";
 import { useImagePagination } from "../hooks/useImagePagination";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRef } from "react";
-const { goDaemon } = window.API_RENDERER;
+import { imagesStore } from "../stores/images";
 
 function PaginatedGallery() {
 	const {
@@ -14,7 +14,19 @@ function PaginatedGallery() {
 		currentPage,
 		totalPages,
 	} = useImagePagination();
+	const { selectedImages } = imagesStore();
 	const ref = useRef<HTMLDivElement>(null);
+	
+	const handleContextMenu = (e: React.MouseEvent) => {
+		e.stopPropagation();
+		if (window.API_RENDERER?.openContextMenu) {
+			void window.API_RENDERER.openContextMenu({
+				Image: undefined,
+				selectedImagesLength: selectedImages.size,
+			});
+		}
+	};
+
 	return (
 		<AnimatePresence>
 			<motion.div
@@ -28,17 +40,14 @@ function PaginatedGallery() {
 				exit={{ opacity: 0 }}
 				transition={{ duration: 0.5 }}
 				className="h-full flex flex-col justify-between gap-4 overflow-y-auto transition focus:outline-hidden p-4"
-				onContextMenu={(e) => {
-					e.stopPropagation();
-					goDaemon.openContextMenu(0, 0);
-				}}
+				onContextMenu={handleContextMenu}
 			>
 				<div className="flex flex-col items-center overflow-y-scroll scrollbar-thin scrollbar-track-transparent scrollbar-thumb-base-300 scrollbar-thumb-rounded-sm">
 					<div
-						className={`m-auto min-h-[full] md:grid md:auto-cols-auto ${
+						className={`m-auto min-h-[full] ${
 							imagesToShow.length === 1
 								? "items-center"
-								: "md:w-full md:grid-cols-[repeat(auto-fill,minmax(300px,1fr))]"
+								: "w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(clamp(280px,25vw,400px),1fr))] gap-3 md:gap-4 lg:gap-4 xl:gap-5 2xl:gap-6"
 						}`}
 					>
 						{imagesToShow}

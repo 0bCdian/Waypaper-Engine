@@ -5,29 +5,20 @@ export const useWindowBounds = () => {
 		// Load and restore window bounds on mount
 		const restoreWindowBounds = async () => {
 			try {
-				if (window.API_RENDERER?.goDaemon?.getAppConfig) {
-					const config = await window.API_RENDERER.goDaemon.getAppConfig();
-					// Check if config has window bounds (this would be in the app config)
-					if (
-						config &&
-						typeof config === "object" &&
-						"windowBounds" in config
-					) {
-						const windowBounds = (config as any).windowBounds;
-						if (windowBounds && window.API_RENDERER) {
-							// If Electron API is available, restore window bounds
-							console.log(
-								"🟢 WindowBounds: Restoring window bounds:",
-								windowBounds,
-							);
-							// This would require an Electron API method to set window bounds
-							// For now, we just load the config for future use
-						}
+				// Use Electron's native API to get window bounds
+				if (window.API_RENDERER?.getWindowBounds) {
+					const bounds = await window.API_RENDERER.getWindowBounds();
+					if (bounds) {
+						console.log(
+							"🟢 WindowBounds: Current window bounds:",
+							bounds,
+						);
+						// Bounds are managed by Electron, no need to restore
 					}
 				}
 			} catch (error) {
 				console.error(
-					"🔴 WindowBounds: Failed to restore window bounds:",
+					"🔴 WindowBounds: Failed to get window bounds:",
 					error,
 				);
 			}
@@ -37,26 +28,17 @@ export const useWindowBounds = () => {
 
 		const saveWindowBounds = async () => {
 			try {
-				// For Electron apps, we would get the window bounds here
-				// For now, we'll save a placeholder or the current viewport size
-				const bounds = {
-					x: window.screenX || 0,
-					y: window.screenY || 0,
-					width: window.outerWidth || 1280,
-					height: window.outerHeight || 720,
-				};
-
-				// Save to unified config system
-				if (window.API_RENDERER?.goDaemon?.setConfig) {
-					await window.API_RENDERER.goDaemon.setConfig(
-						"app",
-						"windowBounds",
-						bounds,
-					);
-					console.log("🟢 WindowBounds: Saved window bounds:", bounds);
+				// Use Electron's native API to get and save window bounds
+				if (window.API_RENDERER?.getWindowBounds) {
+					const bounds = await window.API_RENDERER.getWindowBounds();
+					if (bounds) {
+						console.log("🟢 WindowBounds: Saved window bounds:", bounds);
+						// Electron persists bounds automatically, no need to manually save
+					}
 				}
 			} catch (error) {
-				console.error("🔴 WindowBounds: Failed to save window bounds:", error);
+				// Silently fail - window bounds are not critical
+				console.debug("WindowBounds: Could not save bounds:", error);
 			}
 		};
 

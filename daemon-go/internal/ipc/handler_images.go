@@ -29,7 +29,7 @@ func (h *Handler) handleGetImages(msg *Message) *Response {
 }
 
 func (h *Handler) handleProcessImages(msg *Message) *Response {
-	// Process images using simplified batch processing
+	// Process images asynchronously to avoid blocking other IPC calls
 	h.logger.Info("handleProcessImages called with batch processing", "imagePaths", msg.ImagePaths, "fileNames", msg.FileNames)
 
 	if len(msg.ImagePaths) == 0 || len(msg.FileNames) == 0 {
@@ -37,10 +37,52 @@ func (h *Handler) handleProcessImages(msg *Message) *Response {
 		return &Response{Action: msg.Action, Error: errors.New("image paths and file names are required").Error()}
 	}
 
+	// Start async processing in background goroutine
+	go h.processImagesAsync(msg)
+
+	// Return immediately - processing happens in background
+	return &Response{
+		Action: msg.Action,
+		Data: map[string]any{
+			"status":      "processing",
+			"totalImages": len(msg.ImagePaths),
+			"message":     "image processing started in background",
+		},
+	}
+}
+
+// processImagesAsync processes images in the background
+func (h *Handler) processImagesAsync(msg *Message) {
+	totalImages := len(msg.ImagePaths)
+
+	h.logger.Info("starting async image processing", "totalImages", totalImages)
+
+	// Emit processing started event
+	if h.server != nil {
+		h.server.BroadcastEvent(&events.Event{
+			Type: events.EventProcessingStarted,
+			Payload: map[string]any{
+				"totalImages": totalImages,
+			},
+		})
+	}
+
 	// Get cache directory paths from configuration
 	config, err := h.configManager.GetConfig()
 	if err != nil {
-		return &Response{Action: msg.Action, Error: errors.New("failed to get configuration").Error()}
+		h.logger.Error("failed to get configuration for async processing", "error", err)
+		if h.server != nil {
+			h.server.BroadcastEvent(&events.Event{
+				Type: events.EventProcessingComplete,
+				Payload: map[string]any{
+					"success":      false,
+					"error":        "failed to get configuration",
+					"totalRequested": totalImages,
+					"totalProcessed": 0,
+				},
+			})
+		}
+		return
 	}
 
 	cacheDir := config.Daemon.ImagesDir
@@ -75,7 +117,44 @@ func (h *Handler) handleProcessImages(msg *Message) *Response {
 	metadataList, err := image.ProcessImagesFromPaths(imagePaths, fileNames, cacheDir, thumbnailsDir)
 	if err != nil {
 		h.logger.Error("batch image processing failed", "error", err)
-		return &Response{Action: msg.Action, Error: fmt.Errorf("processing failed: %v", err).Error()}
+		if h.server != nil {
+			h.server.BroadcastEvent(&events.Event{
+				Type: events.EventImageError,
+				Payload: map[string]any{
+					"error":         err.Error(),
+					"totalRequested": totalImages,
+				},
+			})
+			h.server.BroadcastEvent(&events.Event{
+				Type: events.EventProcessingComplete,
+				Payload: map[string]any{
+					"success":       false,
+					"error":         err.Error(),
+					"totalRequested": totalImages,
+					"totalProcessed": 0,
+				},
+			})
+		}
+		return
+	}
+
+	// Collect thumbnail paths for each image
+	allThumbnailPaths := make([]map[string]string, len(fileNames))
+
+	// First, get default thumbnail paths from ProcessImagesFromPaths
+	// (ProcessImagesFromPaths creates a default thumbnail via CopyImageToCache)
+	for i, fileName := range fileNames {
+		thumbnailMap := make(map[string]string)
+		
+		// Default thumbnail path (created by CopyImageToCache)
+		defaultThumbnailName := image.GetThumbnailName(fileName)
+		defaultThumbnailPath := filepath.Join(thumbnailsDir, defaultThumbnailName)
+		// Check if default thumbnail exists, if so add it as fallback
+		if _, err := os.Stat(defaultThumbnailPath); err == nil {
+			thumbnailMap["fallback"] = defaultThumbnailPath
+		}
+		
+		allThumbnailPaths[i] = thumbnailMap
 	}
 
 	// Create smart resolution thumbnails if monitor manager available
@@ -92,34 +171,82 @@ func (h *Handler) handleProcessImages(msg *Message) *Response {
 		requiredResolutions := image.GetRequiredResolutions(monitorResolutions)
 		h.logger.Debug("Creating smart resolution thumbnails", "resolutions", requiredResolutions)
 
-		// Create smart thumbnails for each processed image
-		for _, fileName := range fileNames {
+		// Create smart thumbnails for each processed image and capture paths
+		for i, fileName := range fileNames {
 			imagePath := filepath.Join(cacheDir, fileName)
-			_, err := image.CreateSmartMultiResolutionThumbnails(imagePath, thumbnailsDir, fileName, requiredResolutions)
+			smartThumbnails, err := image.CreateSmartMultiResolutionThumbnails(imagePath, thumbnailsDir, fileName, requiredResolutions)
 			if err != nil {
 				h.logger.Warn("failed to create smart thumbnails", "fileName", fileName, "error", err)
 				// Continue with other images
+			} else {
+				// Merge smart thumbnails into the map
+				for resolution, path := range smartThumbnails {
+					allThumbnailPaths[i][resolution] = path
+				}
 			}
 		}
 	}
 
-	// Emit success events for processed images
-	successCount := len(metadataList)
+	// Add images to JSON gallery
+	// Prepare data for AddProcessedImages
+	var fullImagePaths []string
+	var widths []int
+	var heights []int
+	var formats []string
+
 	for i, metadata := range metadataList {
+		fullImagePaths = append(fullImagePaths, filepath.Join(cacheDir, fileNames[i]))
+		widths = append(widths, metadata.Width)
+		heights = append(heights, metadata.Height)
+		formats = append(formats, metadata.Format)
+	}
+
+	addedImages, err := h.jsonDBManager.AddProcessedImages(fileNames, fullImagePaths, widths, heights, formats, allThumbnailPaths)
+	if err != nil {
+		h.logger.Error("failed to add images to gallery", "error", err)
+		if h.server != nil {
+			h.server.BroadcastEvent(&events.Event{
+				Type: events.EventImageError,
+				Payload: map[string]any{
+					"error":         fmt.Sprintf("images processed but failed to add to gallery: %v", err),
+					"totalRequested": totalImages,
+					"totalProcessed": len(metadataList),
+				},
+			})
+			h.server.BroadcastEvent(&events.Event{
+				Type: events.EventProcessingComplete,
+				Payload: map[string]any{
+					"success":       false,
+					"error":         err.Error(),
+					"totalRequested": totalImages,
+					"totalProcessed": len(metadataList),
+				},
+			})
+		}
+		return
+	}
+
+	h.logger.Info("successfully added images to gallery", "count", len(addedImages))
+
+	// Emit success events for processed images with IDs
+	successCount := len(addedImages)
+	for i, img := range addedImages {
 		if h.server != nil {
 			h.server.BroadcastEvent(&events.Event{
 				Type: events.EventImageProcessed,
 				Payload: map[string]any{
+					"id":               img.ID,
 					"originalFileName": msg.FileNames[i],
 					"uniqueFileName":   fileNames[i],
-					"width":            metadata.Width,
-					"height":           metadata.Height,
-					"format":           metadata.Format,
+					"width":            img.Dimensions.Width,
+					"height":           img.Dimensions.Height,
+					"format":           img.Metadata.Format,
 				},
 			})
 		}
 
 		h.logger.Info("successfully processed image",
+			"id", img.ID,
 			"originalFileName", msg.FileNames[i],
 			"uniqueFileName", fileNames[i])
 	}
@@ -127,19 +254,20 @@ func (h *Handler) handleProcessImages(msg *Message) *Response {
 	// Emit completion event
 	if h.server != nil {
 		h.server.BroadcastEvent(&events.Event{
-			Type: events.EventImageProcessed,
+			Type: events.EventProcessingComplete,
 			Payload: map[string]any{
+				"success":       true,
 				"totalProcessed": successCount,
-				"totalRequested": len(msg.ImagePaths),
+				"totalRequested": totalImages,
 			},
 		})
 
 		// Emit images updated event if any images were processed
-		if len(metadataList) > 0 {
+		if len(addedImages) > 0 {
 			h.server.BroadcastEvent(&events.Event{
 				Type: "images_updated",
 				Payload: map[string]any{
-					"totalAdded": len(metadataList),
+					"totalAdded": len(addedImages),
 				},
 			})
 		}
@@ -147,9 +275,7 @@ func (h *Handler) handleProcessImages(msg *Message) *Response {
 
 	h.logger.Info("batch image processing completed",
 		"totalProcessed", successCount,
-		"totalRequested", len(msg.ImagePaths))
-
-	return &Response{Action: msg.Action, Data: metadataList}
+		"totalRequested", totalImages)
 }
 
 func (h *Handler) handleDeleteImages(msg *Message) *Response {

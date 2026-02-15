@@ -56,6 +56,7 @@ func (is *ImageStore) ensureInitialized() error {
 					Version:     "1.0",
 					LastUpdated: time.Now(),
 					TotalImages: 0,
+					LastUsedID:  0,
 				},
 				Images: []Image{},
 				Indices: ImageRegistryIndices{
@@ -130,10 +131,10 @@ func (is *ImageStore) AddImage(image Image) error {
 	}
 
 	is.registryMutex.Lock()
-	defer is.registryMutex.Unlock()
 
 	// O(1) check if image already exists
 	if _, exists := is.imagesMap[image.ID]; exists {
+		is.registryMutex.Unlock()
 		return fmt.Errorf("image with ID %d already exists", image.ID)
 	}
 
@@ -141,6 +142,11 @@ func (is *ImageStore) AddImage(image Image) error {
 	is.registry.Images = append(is.registry.Images, image)
 	is.registry.Metadata.TotalImages = len(is.registry.Images)
 	is.registry.Metadata.LastUpdated = time.Now()
+	
+	// Update LastUsedID if this image's ID is higher
+	if image.ID > is.registry.Metadata.LastUsedID {
+		is.registry.Metadata.LastUsedID = image.ID
+	}
 
 	// Add to map for O(1) lookup
 	is.imagesMap[image.ID] = &is.registry.Images[len(is.registry.Images)-1]
@@ -148,9 +154,15 @@ func (is *ImageStore) AddImage(image Image) error {
 	// Update indices
 	is.updateIndices(is.registry, image)
 
-	// Save to disk
+	// Create a copy of the registry for saving (outside the lock)
+	registryCopy := *is.registry
 	registryPath := is.store.getFilePath("images.json")
-	return is.store.saveJSON(registryPath, is.registry)
+	
+	// Release lock BEFORE file I/O to minimize blocking
+	is.registryMutex.Unlock()
+
+	// Save to disk outside the lock
+	return is.store.saveJSON(registryPath, &registryCopy)
 }
 
 // AddImages adds multiple images to the registry in a single batch operation
@@ -165,11 +177,11 @@ func (is *ImageStore) AddImages(images []Image) error {
 	}
 
 	is.registryMutex.Lock()
-	defer is.registryMutex.Unlock()
 
 	// Check for duplicates first (O(1) per image)
 	for _, image := range images {
 		if _, exists := is.imagesMap[image.ID]; exists {
+			is.registryMutex.Unlock()
 			return fmt.Errorf("image with ID %d already exists", image.ID)
 		}
 	}
@@ -179,6 +191,13 @@ func (is *ImageStore) AddImages(images []Image) error {
 	is.registry.Images = append(is.registry.Images, images...)
 	is.registry.Metadata.TotalImages = len(is.registry.Images)
 	is.registry.Metadata.LastUpdated = time.Now()
+	
+	// Update LastUsedID to the maximum ID in the new images
+	for _, img := range images {
+		if img.ID > is.registry.Metadata.LastUsedID {
+			is.registry.Metadata.LastUsedID = img.ID
+		}
+	}
 
 	// Add all images to map and update indices
 	for i := range images {
@@ -187,9 +206,15 @@ func (is *ImageStore) AddImages(images []Image) error {
 		is.updateIndices(is.registry, images[i])
 	}
 
-	// Single save operation for all images
+	// Create a copy of the registry for saving (outside the lock)
+	registryCopy := *is.registry
 	registryPath := is.store.getFilePath("images.json")
-	return is.store.saveJSON(registryPath, is.registry)
+	
+	// Release lock BEFORE file I/O to minimize blocking
+	is.registryMutex.Unlock()
+
+	// Save to disk outside the lock
+	return is.store.saveJSON(registryPath, &registryCopy)
 }
 
 // RemoveImage removes an image from the registry using O(1) lookup

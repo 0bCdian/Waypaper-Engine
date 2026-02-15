@@ -120,7 +120,11 @@ const useContextMenuEvents = () => {
 
 			// Update the app config via Go daemon
 			goDaemon
-				.setAppConfig("imagesPerPage", payload.imagesPerPage)
+				.setBulkConfig({
+					app: {
+						images_per_page: payload.imagesPerPage,
+					},
+				})
 				.then(() => {
 					console.log(`Updated images per page to ${payload.imagesPerPage}`);
 					// Reload the page to reflect the changes

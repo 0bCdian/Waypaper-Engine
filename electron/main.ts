@@ -24,8 +24,6 @@ let ipcManager: IPCManager;
 const APP_CONFIG = {
 	name: "Waypaper Engine",
 	version: "2.0.4",
-	minWidth: 800,
-	minHeight: 600,
 	defaultWidth: 1200,
 	defaultHeight: 1000,
 };
@@ -41,8 +39,6 @@ function createMainWindow(): void {
 	mainWindow = windowManager.createWindow("main", {
 		width: APP_CONFIG.defaultWidth,
 		height: APP_CONFIG.defaultHeight,
-		minWidth: APP_CONFIG.minWidth,
-		minHeight: APP_CONFIG.minHeight,
 		backgroundColor: "#323232", // Default dark background
 		frame: false, // Always hide the frame for a clean look
 		titleBarStyle: "hidden", // Hide the title bar

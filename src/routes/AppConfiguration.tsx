@@ -1,26 +1,35 @@
 import { useForm } from "react-hook-form";
 import { useEffect } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { type DaemonAppConfigPayload } from "../../shared/types/daemonEvents";
+import type { UnifiedConfig } from "../../shared/types/unifiedConfig";
+
+interface AppConfigForm {
+	kill_daemon_on_exit: boolean;
+	notifications: boolean;
+	start_minimized: boolean;
+	minimize_instead_of_close: boolean;
+	show_monitor_modal_on_start: boolean;
+	images_per_page: number;
+}
 
 const { goDaemon } = window.API_RENDERER;
 const AppConfiguration = () => {
-	const { register, handleSubmit, setValue } =
-		useForm<DaemonAppConfigPayload>();
-	const onSubmit = (data: DaemonAppConfigPayload) => {
-		goDaemon.setAppConfig("config", data);
+	const { register, handleSubmit, setValue } = useForm<AppConfigForm>();
+	const onSubmit = async (data: AppConfigForm) => {
+		await goDaemon.setBulkConfig({
+			app: data,
+		});
 	};
 	useEffect(() => {
-		void goDaemon.getAppConfig().then((data: DaemonAppConfigPayload) => {
-			setValue("killDaemon", data.killDaemon);
-			setValue("notifications", data.notifications);
-			setValue("startMinimized", data.startMinimized);
-			setValue("minimizeInsteadOfClose", data.minimizeInsteadOfClose);
-			setValue("showMonitorModalOnStart", data.showMonitorModalOnStart);
-			setValue("imagesPerPage", data.imagesPerPage);
-			setValue("randomImageMonitor", data.randomImageMonitor);
+		void goDaemon.getConfig().then((config: UnifiedConfig) => {
+			setValue("kill_daemon_on_exit", config.app.kill_daemon_on_exit);
+			setValue("notifications", config.app.notifications);
+			setValue("start_minimized", config.app.start_minimized);
+			setValue("minimize_instead_of_close", config.app.minimize_instead_of_close);
+			setValue("show_monitor_modal_on_start", config.app.show_monitor_modal_on_start);
+			setValue("images_per_page", config.app.images_per_page);
 		});
-	}, []);
+	}, [setValue]);
 
 	return (
 		<>
@@ -53,7 +62,7 @@ const AppConfiguration = () => {
 									type="checkbox"
 									id="killDaemon"
 									className="checkbox mt-4"
-									{...register("killDaemon")}
+									{...register("kill_daemon_on_exit")}
 								/>
 							</div>
 							<div className="mx-10 my-6 flex justify-between">
@@ -115,7 +124,7 @@ const AppConfiguration = () => {
 								<select
 									id="imagesPerPage"
 									className="select select-bordered rounded-md text-2xl shadow-inner"
-									{...register("imagesPerPage", {
+									{...register("images_per_page", {
 										valueAsNumber: true,
 									})}
 								>
@@ -123,22 +132,6 @@ const AppConfiguration = () => {
 									<option value="50">50</option>
 									<option value="100">100</option>
 									<option value="200">200</option>
-								</select>
-							</div>{" "}
-							<div className="mx-10 my-6 flex items-end justify-between">
-								<label htmlFor="randomImageMonitor" className="label">
-									<span className="label-text text-3xl">
-										Random image monitor behavior
-									</span>
-								</label>
-								<select
-									id="randomImageMonitor"
-									className="select select-bordered rounded-md text-2xl shadow-inner"
-									{...register("randomImageMonitor")}
-								>
-									<option value="clone">clone</option>
-									<option value="individual">individual</option>
-									<option value="extend">extend</option>
 								</select>
 							</div>
 						</div>

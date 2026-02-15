@@ -34,11 +34,9 @@ const defaultConfig: UnifiedConfig = {
 		notifications: true,
 		start_minimized: false,
 		minimize_instead_of_close: true,
-		random_image_monitor: "individual",
 		show_monitor_modal_on_start: false,
 		images_per_page: 20,
 		theme: "dark",
-		sidebar_collapsed: false,
 		sort_by: "name",
 		sort_order: "asc",
 		image_history_limit: 50,
@@ -130,6 +128,16 @@ export const useUnifiedConfigStore = create<UnifiedConfigStore>()(
 				const currentConfig = get().config;
 				if (!currentConfig) {
 					console.error("🔴 UnifiedConfig: No config loaded");
+					return;
+				}
+
+				// Validate that the key is allowed for the section
+				// Window bounds and other Electron-specific settings should not be saved to Go daemon config
+				const invalidKeys = ["windowBounds", "window_bounds"];
+				if (invalidKeys.includes(key)) {
+					console.warn(
+						`🔴 UnifiedConfig: Attempted to save invalid config key "${key}" to section "${section}". This key is not supported by the Go daemon config.`,
+					);
 					return;
 				}
 

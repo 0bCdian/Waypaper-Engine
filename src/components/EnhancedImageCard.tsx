@@ -198,8 +198,11 @@ function EnhancedImageCard({
 		e.preventDefault();
 		e.stopPropagation();
 
-		if (memoizedImage) {
-			goDaemon.openContextMenu(0, 0, memoizedImage.id);
+		if (memoizedImage && window.API_RENDERER?.openContextMenu) {
+			void window.API_RENDERER.openContextMenu({
+				Image: memoizedImage,
+				selectedImagesLength: 0,
+			});
 		}
 	};
 

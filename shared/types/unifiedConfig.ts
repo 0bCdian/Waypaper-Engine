@@ -31,9 +31,16 @@ export interface DaemonConfig {
 }
 
 export interface SwwwConfig {
-	transition_type: "simple" | "wipe" | "grow" | "outer" | "wave";
+	transition_type:
+		| "simple"
+		| "wipe"
+		| "grow"
+		| "outer"
+		| "wave"
+		| "none"
+		| "fade";
 	transition_step: number;
-	transition_duration: number; // milliseconds
+	transition_duration: number; // seconds (daemon converts)
 	transition_angle: number;
 	transition_pos: "center" | "top" | "bottom" | "left" | "right";
 	transition_bezier: string;

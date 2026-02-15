@@ -78,23 +78,6 @@ export const AppSettingsSection: React.FC<AppSettingsSectionProps> = ({
 			description: "Show monitor selection modal when starting the application",
 			type: "boolean",
 		},
-		{
-			key: "sidebar_collapsed",
-			label: "Sidebar Collapsed",
-			description: "Start with the sidebar collapsed",
-			type: "boolean",
-		},
-		{
-			key: "random_image_monitor",
-			label: "Random Image Monitor",
-			description: "How random images are applied across monitors",
-			type: "select",
-			options: [
-				{ value: "individual", label: "Individual" },
-				{ value: "clone", label: "Clone" },
-				{ value: "extend", label: "Extend" },
-			],
-		},
 	];
 
 	const handleValueChange = async (key: string, value: unknown) => {

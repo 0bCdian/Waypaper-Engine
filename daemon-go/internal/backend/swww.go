@@ -92,6 +92,14 @@ func (s *SwwwBackend) Initialize(ctx context.Context) error {
 
 // SetWallpaper sets wallpaper on a specific monitor
 func (s *SwwwBackend) SetWallpaper(ctx context.Context, imagePath, monitorName string, config any) error {
+	// Ensure swww daemon is running before setting wallpaper
+	if !s.IsDaemonRunning() {
+		s.logger.Info("swww daemon not running, starting it before setting wallpaper")
+		if err := s.StartDaemon(ctx); err != nil {
+			return fmt.Errorf("failed to start swww daemon: %w", err)
+		}
+	}
+
 	swwwConfig, ok := config.(SwwwConfig)
 	if !ok {
 		return fmt.Errorf("invalid config type for swww backend")
@@ -119,6 +127,14 @@ func (s *SwwwBackend) SetWallpaper(ctx context.Context, imagePath, monitorName s
 
 // SetWallpaperAll sets wallpaper on all monitors
 func (s *SwwwBackend) SetWallpaperAll(ctx context.Context, imagePath string, config any) error {
+	// Ensure swww daemon is running before setting wallpaper
+	if !s.IsDaemonRunning() {
+		s.logger.Info("swww daemon not running, starting it before setting wallpaper")
+		if err := s.StartDaemon(ctx); err != nil {
+			return fmt.Errorf("failed to start swww daemon: %w", err)
+		}
+	}
+
 	swwwConfig, ok := config.(SwwwConfig)
 	if !ok {
 		return fmt.Errorf("invalid config type for swww backend")
@@ -380,12 +396,26 @@ func (s *SwwwBackend) IsDaemonRunning() bool {
 	s.daemonMutex.Lock()
 	defer s.daemonMutex.Unlock()
 
-	if s.daemonProcess == nil {
+	// If we started a daemon process, check if it's still alive
+	if s.daemonProcess != nil {
+		// Check if process is still running by sending signal 0
+		if err := s.daemonProcess.Signal(syscall.Signal(0)); err != nil {
+			// Process is dead, clear the reference
+			s.daemonProcess = nil
+			return false
+		}
+		return true
+	}
+
+	// If we don't have a process reference, check if any swww-daemon is running
+	// This handles cases where the daemon was started externally
+	cmd := exec.Command("pgrep", "-f", "swww-daemon")
+	if err := cmd.Run(); err != nil {
+		// No process found
 		return false
 	}
 
-	// If we have a daemonProcess, assume it's running
-	// The complex validation was causing hangs
+	// Process found
 	return true
 }
 
