@@ -41,11 +41,7 @@ function PaginatedGallery() {
 				{/* Scrollable image grid -- the only scrollable region */}
 				<div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-base-300 scrollbar-thumb-rounded-sm">
 					<div
-						className={`m-auto ${
-							imagesToShow.length === 1
-								? "items-center"
-								: "w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(clamp(280px,25vw,400px),1fr))] gap-3 md:gap-4 lg:gap-4 xl:gap-5 2xl:gap-6"
-						}`}
+						className="m-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(16vw,1fr))] gap-3 md:gap-3 lg:gap-3 xl:gap-4 2xl:gap-5"
 					>
 						{imagesToShow}
 					</div>

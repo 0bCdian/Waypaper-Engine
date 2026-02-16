@@ -245,7 +245,7 @@ function PlaylistTrack() {
 				collisionDetection={closestCorners}
 			>
 				<SortableContext items={sortingCriteria}>
-					<div className="flex overflow-y-hidden overflow-x-scroll rounded-lg scrollbar scrollbar-thumb-base-300 scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm sm:max-w-[90vw]">
+					<div className={`flex rounded-lg sm:max-w-[90vw] ${playlistArray.length > 0 ? "overflow-y-hidden overflow-x-scroll scrollbar-thumb-base-300 scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm" : ""}`}>
 						<AnimatePresence>{...playlistArray}</AnimatePresence>
 					</div>
 				</SortableContext>

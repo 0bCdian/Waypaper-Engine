@@ -7,8 +7,13 @@ import Filters from "./Filters";
 function Gallery() {
 	const isEmpty = useImagesStore(useShallow((state) => state.isEmpty));
 	const isQueried = useImagesStore(useShallow((state) => state.isQueried));
+	const filters = useImagesStore((s) => s.filters);
 	useLoadImages()();
-	if (isEmpty && isQueried)
+	const hasActiveFilters =
+		filters.searchString !== "" ||
+		filters.advancedFilters.formats.length < 10 ||
+		filters.advancedFilters.resolution.constraint !== "all";
+	if (isEmpty && isQueried && !hasActiveFilters)
 		return (
 			<div className="h-full flex flex-col items-center justify-center p-4">
 				<AddImagesCard />

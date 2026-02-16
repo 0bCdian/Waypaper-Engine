@@ -123,7 +123,7 @@ function ImageCard({ Image }: ImageCardProps) {
 			>
 				<picture className="block w-full h-full">
 					{Image.thumbnails?.["4k"]?.trim() && (
-						<source media="(width >= 3840px)" srcSet={Image.thumbnails["4k"]} />
+						<source media="(width >= 7680px)" srcSet={Image.thumbnails["4k"]} />
 					)}
 					{Image.thumbnails?.["1440p"]?.trim() && (
 						<source
@@ -133,19 +133,19 @@ function ImageCard({ Image }: ImageCardProps) {
 					)}
 					{Image.thumbnails?.["1080p"]?.trim() && (
 						<source
-							media="(width >= 1920px)"
+							media="(width >= 720px)"
 							srcSet={Image.thumbnails["1080p"]}
 						/>
 					)}
 					{Image.thumbnails?.["720p"]?.trim() && (
 						<source
-							media="(width >= 1280px)"
+							media="(width >= 300px)"
 							srcSet={Image.thumbnails["720p"]}
 						/>
 					)}
 					{Image.thumbnails?.default?.trim() && (
 						<source
-							media="(width < 1279px)"
+							media="(width < 720px)"
 							srcSet={Image.thumbnails.default}
 						/>
 					)}

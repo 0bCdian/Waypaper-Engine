@@ -66,22 +66,6 @@ func (s *imageStore) GetAll(_ context.Context, opts ImageQueryOpts) (*PaginatedR
 		}
 	}
 
-	// Count total items (with filters, without pagination).
-	countQ := query.NewQuery(CollectionImages)
-	if criteria != nil {
-		countQ = countQ.Where(criteria)
-	}
-	total, err := s.db.Count(countQ)
-	if err != nil {
-		return nil, fmt.Errorf("image store: count: %w", err)
-	}
-
-	// Build paginated query.
-	q := query.NewQuery(CollectionImages)
-	if criteria != nil {
-		q = q.Where(criteria)
-	}
-
 	// Sorting.
 	sortField := "imported_at"
 	if opts.SortBy != "" {
@@ -91,9 +75,74 @@ func (s *imageStore) GetAll(_ context.Context, opts ImageQueryOpts) (*PaginatedR
 	if strings.ToLower(opts.SortOrder) == "asc" {
 		sortDir = 1
 	}
+
+	// When search is active, load all DB-filtered images, apply search
+	// in-memory, THEN paginate the results. CloverDB doesn't support
+	// native fuzzy search, so we must filter before pagination.
+	if opts.Search != "" {
+		q := query.NewQuery(CollectionImages)
+		if criteria != nil {
+			q = q.Where(criteria)
+		}
+		q = q.Sort(query.SortOption{Field: sortField, Direction: sortDir})
+
+		docs, err := s.db.FindAll(q)
+		if err != nil {
+			return nil, fmt.Errorf("image store: find all: %w", err)
+		}
+
+		allImages := make([]Image, 0, len(docs))
+		for _, doc := range docs {
+			var img Image
+			if err := doc.Unmarshal(&img); err != nil {
+				continue
+			}
+			allImages = append(allImages, img)
+		}
+
+		// Filter by search FIRST.
+		filtered := filterImagesBySearch(allImages, opts.Search)
+		total := len(filtered)
+		totalPages := int(math.Ceil(float64(total) / float64(opts.PerPage)))
+
+		// THEN paginate.
+		skip := (opts.Page - 1) * opts.PerPage
+		end := skip + opts.PerPage
+		if skip > total {
+			skip = total
+		}
+		if end > total {
+			end = total
+		}
+		paged := filtered[skip:end]
+
+		return &PaginatedResult[Image]{
+			Data: paged,
+			Pagination: Pagination{
+				Page:       opts.Page,
+				PerPage:    opts.PerPage,
+				TotalItems: total,
+				TotalPages: totalPages,
+			},
+		}, nil
+	}
+
+	// No search -- use DB-level pagination.
+	countQ := query.NewQuery(CollectionImages)
+	if criteria != nil {
+		countQ = countQ.Where(criteria)
+	}
+	total, err := s.db.Count(countQ)
+	if err != nil {
+		return nil, fmt.Errorf("image store: count: %w", err)
+	}
+
+	q := query.NewQuery(CollectionImages)
+	if criteria != nil {
+		q = q.Where(criteria)
+	}
 	q = q.Sort(query.SortOption{Field: sortField, Direction: sortDir})
 
-	// Pagination.
 	skip := (opts.Page - 1) * opts.PerPage
 	q = q.Skip(skip).Limit(opts.PerPage)
 
@@ -109,11 +158,6 @@ func (s *imageStore) GetAll(_ context.Context, opts ImageQueryOpts) (*PaginatedR
 			continue
 		}
 		images = append(images, img)
-	}
-
-	// Apply in-memory fuzzy search if requested (CloverDB doesn't have native fuzzy).
-	if opts.Search != "" {
-		images = filterImagesBySearch(images, opts.Search)
 	}
 
 	totalPages := int(math.Ceil(float64(total) / float64(opts.PerPage)))

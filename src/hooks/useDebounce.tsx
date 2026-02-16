@@ -1,14 +1,20 @@
-import { useEffect, type DependencyList } from "react";
-import useTimeout from "./useTimeout";
+import { useEffect, useRef, type DependencyList } from "react";
 
 type Callback = () => void;
 
 export default function useDebounce(
 	callback: Callback,
 	delay: number,
-	_dependencies: DependencyList,
+	dependencies: DependencyList,
 ): void {
-	const { reset, clear } = useTimeout({ callback, delay });
-	useEffect(reset, []);
-	useEffect(clear, []);
+	const callbackRef = useRef(callback);
+
+	useEffect(() => {
+		callbackRef.current = callback;
+	});
+
+	useEffect(() => {
+		const timer = setTimeout(() => callbackRef.current(), delay);
+		return () => clearTimeout(timer);
+	}, dependencies);
 }

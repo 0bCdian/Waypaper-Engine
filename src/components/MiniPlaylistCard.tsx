@@ -113,7 +113,7 @@ function MiniPlaylistCard({
 			transition={{ duration: 0.2 }}
 			ref={setNodeRef}
 		>
-			<div className="mx-1 mb-2 w-32 sm:w-40 md:w-48 lg:w-56 shrink-0 rounded-lg shadow-xl">
+			<div className="mx-1 mb-2 w-28 sm:w-32 md:w-40 lg:w-44 xl:w-48 shrink-0 rounded-lg shadow-xl">
 				{type === "time_of_day" && (
 					<div className="flex max-h-[fit] flex-col">
 						<span

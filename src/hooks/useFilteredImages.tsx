@@ -47,7 +47,6 @@ export function useFilteredImages() {
 				filters.advancedFilters.resolution.height ===
 				0;
 		const dontFilterByFormat = filters.advancedFilters.formats.length === 10;
-		const dontFilterByName = filters.searchString === "";
 
 		const imagesfilteredByResolution: rendererImage[] = dontFilterByResolution
 			? sortedImages
@@ -84,15 +83,7 @@ export function useFilteredImages() {
 					});
 		}
 
-		const imagesFilteredByName: rendererImage[] = dontFilterByName
-			? imagesFilteredByFormat
-			: imagesFilteredByFormat.filter((image) => {
-					return image.name
-						.toLocaleLowerCase()
-						.includes(filters.searchString.toLocaleLowerCase());
-				});
-
-		setFilteredImages(imagesFilteredByName);
+		setFilteredImages(imagesFilteredByFormat);
 	}, [sortedImages, filters]);
 
 	return {
