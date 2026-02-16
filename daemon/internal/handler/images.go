@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
@@ -90,7 +91,10 @@ func (h *ImageHandler) Add(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Process asynchronously; respond immediately with accepted status.
-	h.processor.ProcessBatch(r.Context(), req.Paths)
+	// Use context.Background() instead of r.Context() because the request
+	// context is cancelled as soon as we send the response, which would
+	// abort the background goroutine immediately.
+	h.processor.ProcessBatch(context.Background(), req.Paths)
 
 	WriteJSON(w, http.StatusAccepted, map[string]any{
 		"status": "processing",

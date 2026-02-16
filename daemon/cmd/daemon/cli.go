@@ -8,6 +8,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -26,7 +27,10 @@ func buildCLI() *cobra.Command {
 		Long: `waypaper-daemon is the background service for Waypaper Engine.
 
 It provides an HTTP API over a Unix domain socket for managing wallpapers,
-playlists, images, monitors, and configuration.`,
+playlists, images, monitors, and configuration.
+
+Run without a subcommand to start the daemon. Use subcommands to interact
+with a running daemon instance.`,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return startDaemon(configPath, logLevel)
 		},
@@ -35,15 +39,29 @@ playlists, images, monitors, and configuration.`,
 	rootCmd.PersistentFlags().StringVarP(&configPath, "config", "c", "", "config file path (default: $XDG_CONFIG_HOME/waypaper-engine/config.toml)")
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "override log level (debug, info, warn, error)")
 
+	// Daemon lifecycle commands.
 	rootCmd.AddCommand(buildStartCmd(&configPath, &logLevel))
 	rootCmd.AddCommand(buildStopCmd())
 	rootCmd.AddCommand(buildStatusCmd())
+	rootCmd.AddCommand(buildVersionCmd())
+
+	// Wallpaper commands (top-level shortcuts).
 	rootCmd.AddCommand(buildSetCmd())
 	rootCmd.AddCommand(buildRandomCmd())
-	rootCmd.AddCommand(buildVersionCmd())
+	rootCmd.AddCommand(buildNextCmd())
+	rootCmd.AddCommand(buildPreviousCmd())
+
+	// Domain subcommand groups.
+	rootCmd.AddCommand(buildImagesCmd())
+	rootCmd.AddCommand(buildPlaylistCmd())
+	rootCmd.AddCommand(buildMonitorsCmd())
+	rootCmd.AddCommand(buildBackendsCmd())
+	rootCmd.AddCommand(buildConfigCmd())
 
 	return rootCmd
 }
+
+// --- Daemon lifecycle commands ---
 
 func buildStartCmd(configPath *string, logLevel *string) *cobra.Command {
 	return &cobra.Command{
@@ -65,6 +83,9 @@ func buildStopCmd() *cobra.Command {
 				return fmt.Errorf("failed to stop daemon: %w", err)
 			}
 			defer resp.Body.Close()
+			if err := checkResponse(resp); err != nil {
+				return err
+			}
 			printJSON(resp.Body)
 			return nil
 		},
@@ -81,11 +102,26 @@ func buildStatusCmd() *cobra.Command {
 				return fmt.Errorf("daemon not reachable: %w", err)
 			}
 			defer resp.Body.Close()
+			if err := checkResponse(resp); err != nil {
+				return err
+			}
 			printJSON(resp.Body)
 			return nil
 		},
 	}
 }
+
+func buildVersionCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "version",
+		Short: "Print daemon version",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Printf("waypaper-daemon %s\n", version)
+		},
+	}
+}
+
+// --- Top-level wallpaper shortcuts ---
 
 func buildSetCmd() *cobra.Command {
 	var monitorName string
@@ -96,19 +132,16 @@ func buildSetCmd() *cobra.Command {
 		Short: "Set a wallpaper by image ID",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			id, err := strconv.Atoi(args[0])
+			if err != nil {
+				return fmt.Errorf("invalid image ID %q: %w", args[0], err)
+			}
 			body := map[string]any{
-				"image_id": args[0],
+				"image_id": id,
 				"monitor":  monitorName,
 				"mode":     mode,
 			}
-			jsonBody, _ := json.Marshal(body)
-			resp, err := doRequest("POST", "/wallpaper/set", strings.NewReader(string(jsonBody)))
-			if err != nil {
-				return err
-			}
-			defer resp.Body.Close()
-			printJSON(resp.Body)
-			return nil
+			return doJSONRequest("POST", "/wallpaper/set", body)
 		},
 	}
 
@@ -130,14 +163,7 @@ func buildRandomCmd() *cobra.Command {
 				"monitor": monitorName,
 				"mode":    mode,
 			}
-			jsonBody, _ := json.Marshal(body)
-			resp, err := doRequest("POST", "/wallpaper/random", strings.NewReader(string(jsonBody)))
-			if err != nil {
-				return err
-			}
-			defer resp.Body.Close()
-			printJSON(resp.Body)
-			return nil
+			return doJSONRequest("POST", "/wallpaper/random", body)
 		},
 	}
 
@@ -147,15 +173,28 @@ func buildRandomCmd() *cobra.Command {
 	return cmd
 }
 
-func buildVersionCmd() *cobra.Command {
+func buildNextCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "version",
-		Short: "Print daemon version",
-		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("waypaper-daemon %s\n", version)
+		Use:   "next",
+		Short: "Go to next wallpaper in history",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return doSimpleRequest("POST", "/wallpaper/history/next")
 		},
 	}
 }
+
+func buildPreviousCmd() *cobra.Command {
+	return &cobra.Command{
+		Use:   "previous",
+		Short: "Go to previous wallpaper in history",
+		Aliases: []string{"prev"},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return doSimpleRequest("POST", "/wallpaper/history/previous")
+		},
+	}
+}
+
+// --- Shared HTTP helpers ---
 
 // doRequest sends an HTTP request to the daemon's Unix socket.
 func doRequest(method, path string, body io.Reader) (*http.Response, error) {
@@ -177,6 +216,48 @@ func doRequest(method, path string, body io.Reader) (*http.Response, error) {
 	req.Header.Set("Content-Type", "application/json")
 
 	return client.Do(req)
+}
+
+// checkResponse returns an error if the HTTP status code is not 2xx.
+func checkResponse(resp *http.Response) error {
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		return nil
+	}
+	body, _ := io.ReadAll(resp.Body)
+	return fmt.Errorf("daemon returned %d: %s", resp.StatusCode, strings.TrimSpace(string(body)))
+}
+
+// doSimpleRequest performs a request with no body and prints the JSON response.
+func doSimpleRequest(method, path string) error {
+	resp, err := doRequest(method, path, nil)
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+	if err := checkResponse(resp); err != nil {
+		return err
+	}
+	printJSON(resp.Body)
+	return nil
+}
+
+// doJSONRequest marshals body as JSON, sends the request, and prints the response.
+func doJSONRequest(method, path string, body any) error {
+	jsonBody, err := json.Marshal(body)
+	if err != nil {
+		return fmt.Errorf("marshal request: %w", err)
+	}
+
+	resp, err := doRequest(method, path, strings.NewReader(string(jsonBody)))
+	if err != nil {
+		return fmt.Errorf("request failed: %w", err)
+	}
+	defer resp.Body.Close()
+	if err := checkResponse(resp); err != nil {
+		return err
+	}
+	printJSON(resp.Body)
+	return nil
 }
 
 // printJSON reads a response body and pretty-prints it.

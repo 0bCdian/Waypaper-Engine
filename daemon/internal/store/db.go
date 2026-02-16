@@ -6,9 +6,10 @@ package store
 
 // CloverDB collection names. Each resource type maps to one collection.
 const (
-	CollectionImages    = "images"
-	CollectionPlaylists = "playlists"
-	CollectionHistory   = "history"
+	CollectionImages       = "images"
+	CollectionPlaylists    = "playlists"
+	CollectionHistory      = "history"
+	CollectionMonitorState = "monitor_state"
 )
 
 // ---------------------------------------------------------------------------
@@ -33,6 +34,9 @@ const (
 	IndexHistoryID      = "id"
 	IndexHistorySetAt   = "set_at"
 	IndexHistoryImageID = "image_id"
+
+	// MonitorState collection indexes
+	IndexMonitorStateName = "monitor_name"
 )
 
 // ---------------------------------------------------------------------------
@@ -71,4 +75,8 @@ type DB interface {
 	// StateStore returns the in-memory runtime state store.
 	// This store is NOT backed by CloverDB — state is lost on restart.
 	StateStore() StateStore
+
+	// MonitorStateStore returns the persisted monitor state store.
+	// Tracks the current wallpaper per monitor across daemon restarts.
+	MonitorStateStore() MonitorStateStore
 }

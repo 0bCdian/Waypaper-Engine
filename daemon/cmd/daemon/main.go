@@ -28,7 +28,8 @@ import (
 	"waypaper-engine/daemon/internal/system"
 )
 
-const version = "0.1.0"
+// version is set at build time via ldflags: -X main.version=...
+var version = "dev"
 
 func main() {
 	if err := run(); err != nil {
@@ -152,6 +153,9 @@ func startDaemon(configPath string, logLevel string) error {
 		slog.Info("backend initialized", "name", activeBackend.Name())
 	}
 
+	// 10b. Restore wallpapers from persisted monitor state.
+	restoreWallpapers(ctx, db.MonitorStateStore(), db.StateStore(), reg, monManager)
+
 	// 11. Create image processor and splitter.
 	processor := image.NewProcessor(db.ImageStore(), bus, cfg.GetImagesDir(), cfg.GetThumbnailsDir())
 	splitter := image.NewSplitter(cfg.GetImagesDir())
@@ -162,6 +166,7 @@ func startDaemon(configPath string, logLevel string) error {
 		db.StateStore(),
 		db.HistoryStore(),
 		db.ImageStore(),
+		db.MonitorStateStore(),
 		reg,
 		monManager,
 		bus,
@@ -186,7 +191,7 @@ func startDaemon(configPath string, logLevel string) error {
 		Config:    handler.NewConfigHandler(cfg, reg, bus),
 		Backends:  handler.NewBackendHandler(reg, cfg, bus),
 		Wallpaper: handler.NewWallpaperHandler(
-			db.ImageStore(), db.HistoryStore(), db.StateStore(),
+			db.ImageStore(), db.HistoryStore(), db.StateStore(), db.MonitorStateStore(),
 			reg, monManager, splitter, bus,
 		),
 	}
@@ -254,6 +259,97 @@ func startDaemon(configPath string, logLevel string) error {
 
 	slog.Info("daemon stopped")
 	return nil
+}
+
+// restoreWallpapers re-applies the last known wallpaper for each connected
+// monitor using the persisted monitor state from CloverDB. This runs during
+// startup so that monitors show the correct wallpaper after a daemon restart.
+// Best-effort: errors are logged but do not block startup.
+func restoreWallpapers(
+	ctx context.Context,
+	monitorStateStore store.MonitorStateStore,
+	stateStore store.StateStore,
+	reg backend.Registry,
+	monManager monitor.MonitorManager,
+) {
+	states, err := monitorStateStore.GetAll(ctx)
+	if err != nil {
+		slog.Warn("restore: failed to load monitor states", "error", err)
+		return
+	}
+	if len(states) == 0 {
+		slog.Info("restore: no persisted monitor state, skipping")
+		return
+	}
+
+	// Log the persisted state names for debugging.
+	stateNames := make([]string, len(states))
+	for i, s := range states {
+		stateNames[i] = s.MonitorName
+	}
+	slog.Info("restore: loaded persisted states", "monitors", stateNames)
+
+	monitors, err := monManager.GetMonitors(ctx)
+	if err != nil {
+		slog.Warn("restore: failed to get monitors", "error", err)
+		return
+	}
+
+	// Build a set of connected monitor names for fast lookup.
+	connected := make(map[string]monitor.Monitor, len(monitors))
+	connectedNames := make([]string, len(monitors))
+	for i, mon := range monitors {
+		connected[mon.Name] = mon
+		connectedNames[i] = mon.Name
+	}
+	slog.Info("restore: detected monitors", "monitors", connectedNames)
+
+	activeBackend := reg.Active()
+	restored := 0
+	skipped := 0
+
+	for _, state := range states {
+		mon, ok := connected[state.MonitorName]
+		if !ok {
+			slog.Warn("restore: monitor not connected, skipping",
+				"persisted_name", state.MonitorName,
+				"connected_monitors", connectedNames,
+			)
+			skipped++
+			continue
+		}
+
+		req := backend.WallpaperRequest{
+			ImagePath: state.ImagePath,
+			Monitors:  []monitor.Monitor{mon},
+			Mode:      monitor.MonitorMode(state.Mode),
+		}
+
+		if err := activeBackend.SetWallpaper(ctx, req); err != nil {
+			slog.Warn("restore: failed to set wallpaper",
+				"monitor", state.MonitorName,
+				"image_id", state.ImageID,
+				"image_path", state.ImagePath,
+				"error", err,
+			)
+			continue
+		}
+
+		// Populate in-memory state so API queries return correct data immediately.
+		stateStore.SetCurrentWallpaper(state.MonitorName, store.ImageHistoryEntry{
+			ImageID:   state.ImageID,
+			ImageName: state.ImageName,
+			Monitors:  []string{state.MonitorName},
+			Mode:      state.Mode,
+			SetAt:     state.SetAt,
+			Source:    store.HistorySource{Type: "restore"},
+			Backend:   state.Backend,
+		})
+
+		restored++
+	}
+
+	slog.Info("wallpaper restore complete", "restored", restored, "skipped", skipped)
 }
 
 // setupLogging configures slog with file output (via lumberjack) and stderr.

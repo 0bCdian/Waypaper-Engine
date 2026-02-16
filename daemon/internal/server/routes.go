@@ -41,6 +41,7 @@ func NewRouter(h Handlers, bus events.Bus) *chi.Mux {
 		r.Post("/", h.Images.Add)
 		r.Delete("/", h.Images.Delete)
 		r.Get("/count", h.Images.Count)
+		r.Get("/history", h.Wallpaper.GetHistory)
 		r.Post("/select-all", h.Images.SelectAll)
 		r.Get("/{id}", h.Images.Get)
 		r.Patch("/{id}", h.Images.Update)
@@ -53,8 +54,16 @@ func NewRouter(h Handlers, bus events.Bus) *chi.Mux {
 	r.Route("/playlists", func(r chi.Router) {
 		r.Get("/", h.Playlists.List)
 		r.Post("/", h.Playlists.Create)
+
+		// Bulk active-playlist actions (must be before /{id} to avoid chi conflict).
 		r.Get("/active", h.Playlists.ListActive)
 		r.Get("/active/{monitor}", h.Playlists.GetActiveByMonitor)
+		r.Post("/active/stop", h.Playlists.StopAll)
+		r.Post("/active/pause", h.Playlists.PauseAll)
+		r.Post("/active/resume", h.Playlists.ResumeAll)
+		r.Post("/active/next", h.Playlists.NextAll)
+		r.Post("/active/previous", h.Playlists.PreviousAll)
+
 		r.Get("/{id}", h.Playlists.Get)
 		r.Patch("/{id}", h.Playlists.Update)
 		r.Delete("/{id}", h.Playlists.Delete)
@@ -90,7 +99,6 @@ func NewRouter(h Handlers, bus events.Bus) *chi.Mux {
 	r.Route("/wallpaper", func(r chi.Router) {
 		r.Post("/set", h.Wallpaper.Set)
 		r.Post("/random", h.Wallpaper.Random)
-		r.Get("/history", h.Wallpaper.GetHistory)
 		r.Post("/history/next", h.Wallpaper.HistoryNext)
 		r.Post("/history/previous", h.Wallpaper.HistoryPrevious)
 	})

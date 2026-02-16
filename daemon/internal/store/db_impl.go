@@ -9,11 +9,12 @@ import (
 
 // database is the concrete implementation of the DB interface using CloverDB.
 type database struct {
-	db            *clover.DB
-	imageStore    ImageStore
-	playlistStore PlaylistStore
-	historyStore  HistoryStore
-	stateStore    StateStore
+	db                *clover.DB
+	imageStore        ImageStore
+	playlistStore     PlaylistStore
+	historyStore      HistoryStore
+	stateStore        StateStore
+	monitorStateStore MonitorStateStore
 }
 
 // OpenDB opens a CloverDB database at the given directory, creates collections
@@ -27,7 +28,7 @@ func OpenDB(dbPath string) (DB, error) {
 	}
 
 	// Ensure collections exist (idempotent).
-	for _, coll := range []string{CollectionImages, CollectionPlaylists, CollectionHistory} {
+	for _, coll := range []string{CollectionImages, CollectionPlaylists, CollectionHistory, CollectionMonitorState} {
 		if has, _ := db.HasCollection(coll); !has {
 			if err := db.CreateCollection(coll); err != nil {
 				_ = db.Close()
@@ -49,6 +50,9 @@ func OpenDB(dbPath string) (DB, error) {
 		CollectionHistory: {
 			IndexHistoryID, IndexHistorySetAt, IndexHistoryImageID,
 		},
+		CollectionMonitorState: {
+			IndexMonitorStateName,
+		},
 	}
 	for coll, fields := range indexes {
 		for _, field := range fields {
@@ -63,6 +67,7 @@ func OpenDB(dbPath string) (DB, error) {
 	d.playlistStore = newPlaylistStore(db)
 	d.historyStore = newHistoryStore(db)
 	d.stateStore = newStateStore()
+	d.monitorStateStore = newMonitorStateStore(db)
 
 	return d, nil
 }
@@ -72,7 +77,8 @@ func (d *database) Close() error {
 	return d.db.Close()
 }
 
-func (d *database) ImageStore() ImageStore      { return d.imageStore }
-func (d *database) PlaylistStore() PlaylistStore { return d.playlistStore }
-func (d *database) HistoryStore() HistoryStore   { return d.historyStore }
-func (d *database) StateStore() StateStore       { return d.stateStore }
+func (d *database) ImageStore() ImageStore              { return d.imageStore }
+func (d *database) PlaylistStore() PlaylistStore        { return d.playlistStore }
+func (d *database) HistoryStore() HistoryStore          { return d.historyStore }
+func (d *database) StateStore() StateStore              { return d.stateStore }
+func (d *database) MonitorStateStore() MonitorStateStore { return d.monitorStateStore }

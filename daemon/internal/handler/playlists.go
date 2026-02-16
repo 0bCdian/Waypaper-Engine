@@ -136,9 +136,12 @@ func (h *PlaylistHandler) Delete(w http.ResponseWriter, r *http.Request) {
 // --- Playlist lifecycle actions ---
 
 // startRequest is the JSON body for POST /playlists/{id}/start.
+// Spec shape: { "monitor": { "id": "...", "mode": "..." } }
 type startRequest struct {
-	Monitor string              `json:"monitor"`
-	Mode    monitor.MonitorMode `json:"mode"`
+	Monitor struct {
+		ID   string              `json:"id"`
+		Mode monitor.MonitorMode `json:"mode"`
+	} `json:"monitor"`
 }
 
 // Start handles POST /playlists/{id}/start.
@@ -155,16 +158,16 @@ func (h *PlaylistHandler) Start(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Monitor == "" {
-		req.Monitor = "*"
+	if req.Monitor.ID == "" {
+		req.Monitor.ID = "*"
 	}
-	if req.Mode == "" {
-		req.Mode = monitor.ModeIndividual
+	if req.Monitor.Mode == "" {
+		req.Monitor.Mode = monitor.ModeIndividual
 	}
 
 	target := monitor.MonitorTarget{
-		ID:   req.Monitor,
-		Mode: req.Mode,
+		ID:   req.Monitor.ID,
+		Mode: req.Monitor.Mode,
 	}
 
 	if err := h.manager.Start(r.Context(), id, target); err != nil {
@@ -253,6 +256,53 @@ func (h *PlaylistHandler) Previous(w http.ResponseWriter, r *http.Request) {
 	}
 
 	WriteJSON(w, http.StatusOK, map[string]string{"status": "rewound"})
+}
+
+// --- Bulk active-playlist lifecycle actions ---
+
+// StopAll handles POST /playlists/active/stop.
+func (h *PlaylistHandler) StopAll(w http.ResponseWriter, r *http.Request) {
+	count := h.manager.StopAll()
+	WriteJSON(w, http.StatusOK, map[string]any{
+		"message": "all playlists stopped",
+		"stopped": count,
+	})
+}
+
+// PauseAll handles POST /playlists/active/pause.
+func (h *PlaylistHandler) PauseAll(w http.ResponseWriter, r *http.Request) {
+	count := h.manager.PauseAll(r.Context())
+	WriteJSON(w, http.StatusOK, map[string]any{
+		"message": "all playlists paused",
+		"paused":  count,
+	})
+}
+
+// ResumeAll handles POST /playlists/active/resume.
+func (h *PlaylistHandler) ResumeAll(w http.ResponseWriter, r *http.Request) {
+	count := h.manager.ResumeAll(r.Context())
+	WriteJSON(w, http.StatusOK, map[string]any{
+		"message": "all playlists resumed",
+		"resumed": count,
+	})
+}
+
+// NextAll handles POST /playlists/active/next.
+func (h *PlaylistHandler) NextAll(w http.ResponseWriter, r *http.Request) {
+	count := h.manager.NextAll(r.Context())
+	WriteJSON(w, http.StatusOK, map[string]any{
+		"message": "all playlists advanced",
+		"advanced": count,
+	})
+}
+
+// PreviousAll handles POST /playlists/active/previous.
+func (h *PlaylistHandler) PreviousAll(w http.ResponseWriter, r *http.Request) {
+	count := h.manager.PreviousAll(r.Context())
+	WriteJSON(w, http.StatusOK, map[string]any{
+		"message":  "all playlists reversed",
+		"reversed": count,
+	})
 }
 
 // --- Active playlist queries ---

@@ -58,8 +58,9 @@ func NewViperManager(configPath string) (*ViperManager, error) {
 			return nil, fmt.Errorf("config: ensure config dir: %w", err)
 		}
 		// Persist defaults so the user has a concrete file to edit.
-		if err := v.SafeWriteConfig(); err != nil {
-			// SafeWriteConfig fails if file exists — not critical, ignore.
+		if err := v.WriteConfigAs(configPath); err != nil {
+			// Non-critical: daemon works fine with in-memory defaults.
+			// Log-level logging isn't set up yet, so just ignore.
 			_ = err
 		}
 	}

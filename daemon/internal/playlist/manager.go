@@ -16,15 +16,16 @@ import (
 
 // Manager handles playlist lifecycle: start, stop, pause, resume, next, previous.
 type Manager struct {
-	mu             sync.RWMutex
-	playlistStore  store.PlaylistStore
-	stateStore     store.StateStore
-	historyStore   store.HistoryStore
-	registry       backend.Registry
-	monitorManager monitor.MonitorManager
-	bus            events.Bus
-	splitter       *image.Splitter
-	imageStore     store.ImageStore
+	mu                sync.RWMutex
+	playlistStore     store.PlaylistStore
+	stateStore        store.StateStore
+	historyStore      store.HistoryStore
+	monitorStateStore store.MonitorStateStore
+	registry          backend.Registry
+	monitorManager    monitor.MonitorManager
+	bus               events.Bus
+	splitter          *image.Splitter
+	imageStore        store.ImageStore
 
 	// schedulers tracks running schedulers keyed by monitor name.
 	schedulers map[string]Scheduler
@@ -38,22 +39,24 @@ func NewManager(
 	stateStore store.StateStore,
 	historyStore store.HistoryStore,
 	imageStore store.ImageStore,
+	monitorStateStore store.MonitorStateStore,
 	registry backend.Registry,
 	monitorManager monitor.MonitorManager,
 	bus events.Bus,
 	splitter *image.Splitter,
 ) *Manager {
 	return &Manager{
-		playlistStore:  playlistStore,
-		stateStore:     stateStore,
-		historyStore:   historyStore,
-		imageStore:     imageStore,
-		registry:       registry,
-		monitorManager: monitorManager,
-		bus:            bus,
-		splitter:       splitter,
-		schedulers:     make(map[string]Scheduler),
-		cancelFuncs:    make(map[string]context.CancelFunc),
+		playlistStore:     playlistStore,
+		stateStore:        stateStore,
+		historyStore:      historyStore,
+		imageStore:        imageStore,
+		monitorStateStore: monitorStateStore,
+		registry:          registry,
+		monitorManager:    monitorManager,
+		bus:               bus,
+		splitter:          splitter,
+		schedulers:        make(map[string]Scheduler),
+		cancelFuncs:       make(map[string]context.CancelFunc),
 	}
 }
 
@@ -81,12 +84,6 @@ func (m *Manager) Start(ctx context.Context, playlistID int, target monitor.Moni
 		}
 	}
 
-	// Determine start index.
-	startIdx := 0
-	if pl.Configuration.AlwaysStartOnFirstImage {
-		startIdx = 0
-	}
-
 	// Build time slots for time_of_day playlists.
 	var timeSlots []TimeSlot
 	if pl.Configuration.Type == "time_of_day" {
@@ -96,6 +93,22 @@ func (m *Manager) Start(ctx context.Context, playlistID int, target monitor.Moni
 					Minutes:    *pimg.Time,
 					ImageIndex: i,
 				})
+			}
+		}
+	}
+
+	// Determine start index based on playlist type and AlwaysStartOnFirstImage.
+	startIdx := 0
+	if !pl.Configuration.AlwaysStartOnFirstImage {
+		switch pl.Configuration.Type {
+		case "time_of_day":
+			startIdx = findClosestTimeSlot(timeSlots)
+		case "day_of_week":
+			weekday := int(time.Now().Weekday())
+			if weekday >= len(pl.Images) {
+				startIdx = len(pl.Images) - 1
+			} else {
+				startIdx = weekday
 			}
 		}
 	}
@@ -133,9 +146,16 @@ func (m *Manager) Start(ctx context.Context, playlistID int, target monitor.Moni
 		}
 		m.stateStore.SetActivePlaylist(mon.Name, instance)
 
+		monCtx, monCancel := context.WithCancel(ctx)
 		m.mu.Lock()
 		m.schedulers[mon.Name] = sched
+		m.cancelFuncs[mon.Name] = monCancel
 		m.mu.Unlock()
+
+		// Start missed event checker for time-based playlists.
+		if pl.Configuration.Type == "time_of_day" || pl.Configuration.Type == "day_of_week" {
+			go m.missedEventChecker(monCtx, mon.Name, pl, monitors, target)
+		}
 	}
 
 	// Apply first image.
@@ -259,12 +279,116 @@ func (m *Manager) Previous(ctx context.Context, playlistID int) error {
 	return m.advancePlaylist(ctx, playlistID, -1)
 }
 
-// StopAll stops all running playlists.
-func (m *Manager) StopAll() {
+// StopAll stops all running playlists and returns the count of stopped instances.
+func (m *Manager) StopAll() int {
 	active := m.stateStore.GetActivePlaylists()
+	count := 0
 	for monName := range active {
 		m.stopForMonitor(monName)
+		count++
 	}
+	if count > 0 {
+		m.bus.Publish(events.Event{
+			Type: events.PlaylistStopped,
+			Data: map[string]any{"action": "stop_all", "stopped": count},
+		})
+	}
+	return count
+}
+
+// PauseAll pauses all running playlists and returns the count of paused instances.
+func (m *Manager) PauseAll(ctx context.Context) int {
+	active := m.stateStore.GetActivePlaylists()
+	count := 0
+	for monName, inst := range active {
+		if inst.Paused {
+			continue
+		}
+		m.mu.RLock()
+		if sched, ok := m.schedulers[monName]; ok {
+			sched.Pause()
+		}
+		m.mu.RUnlock()
+
+		inst.Paused = true
+		inst.NextChangeAt = nil
+		m.stateStore.SetActivePlaylist(monName, inst)
+		count++
+	}
+	if count > 0 {
+		m.bus.Publish(events.Event{
+			Type: events.PlaylistPaused,
+			Data: map[string]any{"action": "pause_all", "paused": count},
+		})
+	}
+	return count
+}
+
+// ResumeAll resumes all paused playlists and returns the count of resumed instances.
+func (m *Manager) ResumeAll(ctx context.Context) int {
+	active := m.stateStore.GetActivePlaylists()
+	count := 0
+	for monName, inst := range active {
+		if !inst.Paused {
+			continue
+		}
+		m.mu.RLock()
+		if sched, ok := m.schedulers[monName]; ok {
+			sched.Resume()
+			inst.NextChangeAt = sched.NextChangeAt()
+		}
+		m.mu.RUnlock()
+
+		inst.Paused = false
+		m.stateStore.SetActivePlaylist(monName, inst)
+		count++
+	}
+	if count > 0 {
+		m.bus.Publish(events.Event{
+			Type: events.PlaylistResumed,
+			Data: map[string]any{"action": "resume_all", "resumed": count},
+		})
+	}
+	return count
+}
+
+// NextAll advances all running playlists and returns the count of advanced instances.
+func (m *Manager) NextAll(ctx context.Context) int {
+	active := m.stateStore.GetActivePlaylists()
+	count := 0
+	// Collect unique playlist IDs to avoid advancing the same playlist twice.
+	seen := make(map[int]bool)
+	for _, inst := range active {
+		if seen[inst.PlaylistID] {
+			continue
+		}
+		seen[inst.PlaylistID] = true
+		if err := m.Next(ctx, inst.PlaylistID); err != nil {
+			slog.Warn("next_all: failed to advance playlist", "playlist_id", inst.PlaylistID, "error", err)
+			continue
+		}
+		count++
+	}
+	return count
+}
+
+// PreviousAll reverses all running playlists and returns the count of reversed instances.
+func (m *Manager) PreviousAll(ctx context.Context) int {
+	active := m.stateStore.GetActivePlaylists()
+	count := 0
+	seen := make(map[int]bool)
+	for _, inst := range active {
+		if seen[inst.PlaylistID] {
+			continue
+		}
+		seen[inst.PlaylistID] = true
+		if err := m.Previous(ctx, inst.PlaylistID); err != nil {
+			slog.Warn("previous_all: failed to reverse playlist", "playlist_id", inst.PlaylistID, "error", err)
+			continue
+		}
+		count++
+	}
+	return count
 }
 
 // advancePlaylist moves the playlist index by delta (+1 or -1).
@@ -445,9 +569,22 @@ func (m *Manager) applyImage(ctx context.Context, pl *store.Playlist, index int,
 	}
 	_, _ = m.historyStore.Append(ctx, entry)
 
-	// Update current wallpaper in state store.
+	// Update current wallpaper state (in-memory + persisted).
 	for _, mon := range monitors {
 		m.stateStore.SetCurrentWallpaper(mon.Name, entry)
+
+		// Persist to CloverDB for restore on restart.
+		if err := m.monitorStateStore.Set(ctx, store.MonitorState{
+			MonitorName: mon.Name,
+			ImageID:     img.ID,
+			ImageName:   img.Name,
+			ImagePath:   img.Path,
+			Mode:        string(mode),
+			Backend:     activeBackend.Name(),
+			SetAt:       entry.SetAt,
+		}); err != nil {
+			slog.Warn("failed to persist monitor state", "monitor", mon.Name, "error", err)
+		}
 	}
 
 	return nil
@@ -470,6 +607,92 @@ func (m *Manager) resolveMonitors(ctx context.Context, target monitor.MonitorTar
 	return []monitor.Monitor{mon}, nil
 }
 
+// missedEventChecker polls every 10 seconds to detect missed scheduler events
+// (e.g. after system sleep/wake). If the expected next change time has passed
+// by more than 30 seconds, it re-triggers the scheduler by computing the
+// correct current image and applying it.
+func (m *Manager) missedEventChecker(ctx context.Context, monName string, pl *store.Playlist, monitors []monitor.Monitor, target monitor.MonitorTarget) {
+	ticker := time.NewTicker(10 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			inst := m.stateStore.GetActivePlaylistByMonitor(monName)
+			if inst == nil {
+				// Playlist was stopped.
+				return
+			}
+			if inst.Paused {
+				continue
+			}
+			if inst.NextChangeAt == nil {
+				continue
+			}
+
+			now := time.Now()
+			if now.After(inst.NextChangeAt.Add(30 * time.Second)) {
+				slog.Warn("missed event detected, re-triggering scheduler",
+					"monitor", monName,
+					"expected_time", inst.NextChangeAt,
+					"current_time", now,
+					"playlist_id", pl.ID,
+					"playlist_type", pl.Configuration.Type,
+				)
+
+				// Compute the correct image index for the current time.
+				var newIdx int
+				switch pl.Configuration.Type {
+				case "time_of_day":
+					var slots []TimeSlot
+					for i, pimg := range pl.Images {
+						if pimg.Time != nil {
+							slots = append(slots, TimeSlot{Minutes: *pimg.Time, ImageIndex: i})
+						}
+					}
+					newIdx = findClosestTimeSlot(slots)
+				case "day_of_week":
+					weekday := int(now.Weekday())
+					newIdx = min(weekday, len(pl.Images)-1)
+				}
+
+				// Apply the correct image.
+				if err := m.applyImage(ctx, pl, newIdx, monitors, target.Mode); err != nil {
+					slog.Warn("missed event: failed to apply image", "error", err)
+					continue
+				}
+
+				// Update state.
+				inst.CurrentIndex = newIdx
+				inst.CurrentImageID = pl.Images[newIdx].ImageID
+				if len(pl.Images) > 1 {
+					nid := pl.Images[(newIdx+1)%len(pl.Images)].ImageID
+					inst.NextImageID = &nid
+				}
+				m.mu.RLock()
+				if sched, ok := m.schedulers[monName]; ok {
+					inst.NextChangeAt = sched.NextChangeAt()
+				}
+				m.mu.RUnlock()
+				m.stateStore.SetActivePlaylist(monName, *inst)
+
+				m.bus.Publish(events.Event{
+					Type: events.PlaylistImageChanged,
+					Data: map[string]any{
+						"playlist_id": pl.ID,
+						"image_index": newIdx,
+						"image_id":    pl.Images[newIdx].ImageID,
+						"monitor":     monName,
+						"source":      "missed_event_recovery",
+					},
+				})
+			}
+		}
+	}
+}
+
 // monitorNames extracts names from a list of monitors.
 func monitorNames(monitors []monitor.Monitor) []string {
 	names := make([]string, len(monitors))
@@ -477,4 +700,37 @@ func monitorNames(monitors []monitor.Monitor) []string {
 		names[i] = mon.Name
 	}
 	return names
+}
+
+// findClosestTimeSlot returns the image index for the time slot closest to
+// (but not after) the current time. Uses binary search. Returns 0 if no
+// slots or all slots are in the future (wraps to last slot).
+func findClosestTimeSlot(slots []TimeSlot) int {
+	if len(slots) == 0 {
+		return 0
+	}
+
+	now := time.Now()
+	currentMinutes := now.Hour()*60 + now.Minute()
+
+	// Binary search for the latest slot that is <= currentMinutes.
+	low, high := 0, len(slots)-1
+	closestIdx := -1
+
+	for low <= high {
+		mid := (low + high) / 2
+		if slots[mid].Minutes <= currentMinutes {
+			closestIdx = mid
+			low = mid + 1
+		} else {
+			high = mid - 1
+		}
+	}
+
+	// If no slot before current time, wrap to last slot (yesterday's last slot).
+	if closestIdx == -1 {
+		closestIdx = len(slots) - 1
+	}
+
+	return slots[closestIdx].ImageIndex
 }

@@ -188,6 +188,36 @@ type PlaylistImage struct {
 }
 
 // ---------------------------------------------------------------------------
+// Monitor State (persisted to CloverDB)
+// ---------------------------------------------------------------------------
+
+// MonitorState tracks the current wallpaper on a specific monitor.
+// Stored in the "monitor_state" collection, one document per monitor.
+// This is persisted so the daemon can restore wallpapers after restart.
+type MonitorState struct {
+	// MonitorName is the unique key — one entry per monitor.
+	MonitorName string `json:"monitor_name" clover:"monitor_name"`
+
+	// ImageID references the currently displayed image.
+	ImageID int `json:"image_id" clover:"image_id"`
+
+	// ImageName is denormalized for display convenience.
+	ImageName string `json:"image_name" clover:"image_name"`
+
+	// ImagePath is the absolute path to the image file on disk.
+	ImagePath string `json:"image_path" clover:"image_path"`
+
+	// Mode is the monitor mode used: "individual", "clone", or "extend".
+	Mode string `json:"mode" clover:"mode"`
+
+	// Backend is the name of the backend that applied the wallpaper.
+	Backend string `json:"backend" clover:"backend"`
+
+	// SetAt is when this wallpaper was applied.
+	SetAt time.Time `json:"set_at" clover:"set_at"`
+}
+
+// ---------------------------------------------------------------------------
 // Runtime State (in-memory only, NOT persisted to CloverDB)
 // ---------------------------------------------------------------------------
 

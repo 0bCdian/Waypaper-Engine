@@ -324,7 +324,8 @@ func (s *dayOfWeekScheduler) Start(callback func(int)) {
 
 	// Fire immediately for today's weekday.
 	go func() {
-		idx := int(time.Now().Weekday()) % s.totalImages
+		weekday := int(time.Now().Weekday())
+		idx := min(weekday, s.totalImages-1)
 		s.mu.Lock()
 		cb := s.callback
 		s.mu.Unlock()
@@ -357,7 +358,8 @@ func (s *dayOfWeekScheduler) scheduleNext() {
 			s.mu.Unlock()
 
 			if !paused && cb != nil {
-				idx := int(time.Now().Weekday()) % s.totalImages
+				weekday := int(time.Now().Weekday())
+				idx := min(weekday, s.totalImages-1)
 				cb(idx)
 			}
 		}

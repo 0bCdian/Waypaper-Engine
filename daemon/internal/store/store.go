@@ -138,6 +138,29 @@ type HistoryStore interface {
 }
 
 // ---------------------------------------------------------------------------
+// MonitorStateStore
+// ---------------------------------------------------------------------------
+
+// MonitorStateStore manages the "monitor_state" CloverDB collection.
+// It persists the current wallpaper for each monitor so the daemon can
+// restore wallpapers after restart. One document per monitor (upsert pattern).
+type MonitorStateStore interface {
+	// Get returns the current wallpaper state for a specific monitor.
+	// Returns nil and no error if the monitor has no persisted state.
+	Get(ctx context.Context, monitorName string) (*MonitorState, error)
+
+	// GetAll returns the persisted state for all monitors.
+	GetAll(ctx context.Context) ([]MonitorState, error)
+
+	// Set upserts the wallpaper state for a monitor.
+	// If an entry for the monitor already exists, it is replaced.
+	Set(ctx context.Context, state MonitorState) error
+
+	// Remove deletes the persisted state for a monitor.
+	Remove(ctx context.Context, monitorName string) error
+}
+
+// ---------------------------------------------------------------------------
 // StateStore
 // ---------------------------------------------------------------------------
 

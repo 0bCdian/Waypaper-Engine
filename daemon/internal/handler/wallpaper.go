@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"log/slog"
 	"math/rand"
 	"net/http"
 	"time"
@@ -15,13 +16,14 @@ import (
 
 // WallpaperHandler handles /wallpaper endpoints.
 type WallpaperHandler struct {
-	imageStore     store.ImageStore
-	historyStore   store.HistoryStore
-	stateStore     store.StateStore
-	registry       backend.Registry
-	monitorManager monitor.MonitorManager
-	splitter       *image.Splitter
-	bus            events.Bus
+	imageStore        store.ImageStore
+	historyStore      store.HistoryStore
+	stateStore        store.StateStore
+	monitorStateStore store.MonitorStateStore
+	registry          backend.Registry
+	monitorManager    monitor.MonitorManager
+	splitter          *image.Splitter
+	bus               events.Bus
 }
 
 // NewWallpaperHandler creates a WallpaperHandler.
@@ -29,19 +31,21 @@ func NewWallpaperHandler(
 	imageStore store.ImageStore,
 	historyStore store.HistoryStore,
 	stateStore store.StateStore,
+	monitorStateStore store.MonitorStateStore,
 	registry backend.Registry,
 	monitorManager monitor.MonitorManager,
 	splitter *image.Splitter,
 	bus events.Bus,
 ) *WallpaperHandler {
 	return &WallpaperHandler{
-		imageStore:     imageStore,
-		historyStore:   historyStore,
-		stateStore:     stateStore,
-		registry:       registry,
-		monitorManager: monitorManager,
-		splitter:       splitter,
-		bus:            bus,
+		imageStore:        imageStore,
+		historyStore:      historyStore,
+		stateStore:        stateStore,
+		monitorStateStore: monitorStateStore,
+		registry:          registry,
+		monitorManager:    monitorManager,
+		splitter:          splitter,
+		bus:               bus,
 	}
 }
 
@@ -245,9 +249,22 @@ func (h *WallpaperHandler) applyWallpaper(ctx context.Context, img *store.Image,
 	}
 	_, _ = h.historyStore.Append(ctx, entry)
 
-	// Update current wallpaper state.
+	// Update current wallpaper state (in-memory + persisted).
 	for _, mon := range monitors {
 		h.stateStore.SetCurrentWallpaper(mon.Name, entry)
+
+		// Persist to CloverDB for restore on restart.
+		if err := h.monitorStateStore.Set(ctx, store.MonitorState{
+			MonitorName: mon.Name,
+			ImageID:     img.ID,
+			ImageName:   img.Name,
+			ImagePath:   img.Path,
+			Mode:        string(target.Mode),
+			Backend:     activeBackend.Name(),
+			SetAt:       entry.SetAt,
+		}); err != nil {
+			slog.Warn("failed to persist monitor state", "monitor", mon.Name, "error", err)
+		}
 	}
 
 	// Publish event.
