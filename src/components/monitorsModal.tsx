@@ -45,7 +45,7 @@ function Monitors() {
 		if (monitorSelection.mode !== selectType) {
 			setSelectType(monitorSelection.mode);
 		}
-	}, [monitorSelection.mode, selectType]);
+	}, [monitorSelection.mode]);
 
 	useEffect(() => {
 		return () => {};
@@ -58,7 +58,7 @@ function Monitors() {
 
 	useEffect(() => {
 		void reQueryMonitors();
-	}, [reQueryMonitors]);
+	}, []);
 
 	useEffect(() => {
 		if (monitorsList.length < 1) return;
@@ -75,7 +75,7 @@ function Monitors() {
 			}));
 			setMonitorsList(updatedMonitors);
 		}
-	}, [selectType, monitorsList, setMonitorsList]);
+	}, [selectType]);
 
 	useEffect(() => {
 		if (!firstRender) return;
@@ -94,7 +94,7 @@ function Monitors() {
 				void reQueryMonitors();
 			}, 300);
 		});
-	}, [reQueryMonitors]);
+	}, []);
 
 	// All plain functions after hooks
 	const closeModal = () => {

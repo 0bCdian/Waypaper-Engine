@@ -60,7 +60,7 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ className }) => {
 	// Load configuration on mount
 	useEffect(() => {
 		loadConfig();
-	}, [loadConfig]);
+	}, []);
 
 	const saveConfig = async (key: string, value: unknown) => {
 		try {

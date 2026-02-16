@@ -62,9 +62,9 @@ function Filters() {
 			advancedFilters: filters.advancedFilters,
 		};
 		setFilters(resetFilters);
-	}, [filters.advancedFilters, partialFilters, setFilters]);
+	}, [filters.advancedFilters, partialFilters]);
 	return (
-		<section className="group mb-5 flex justify-center gap-2">
+		<section className="group my-5 flex justify-center gap-2">
 			<div className="tooltip" data-tip="more filters">
 				<button
 					className="btn btn-active rounded-xl uppercase"

@@ -130,7 +130,7 @@ function PlaylistTrack() {
 		if (playlist.configuration.type === "time_of_day") {
 			reorderSortingCriteria();
 		}
-	}, [playlist.configuration.type, reorderSortingCriteria]);
+	}, [playlist.configuration.type]);
 
 	return (
 		<div className="mb-2 flex w-full flex-col gap-5">

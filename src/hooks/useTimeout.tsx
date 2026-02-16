@@ -28,7 +28,7 @@ export default function useTimeout({ callback, delay }: TimeoutOptions) {
 	useEffect(() => {
 		set();
 		return clear;
-	}, [clear, set]);
+	}, [delay]);
 
 	const reset = () => {
 		clear();

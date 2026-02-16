@@ -267,7 +267,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 		};
 
 		initializeTheme();
-	}, [defaultTheme, persist, applyTheme, hasTheme]);
+	}, [defaultTheme, persist]);
 
 	/**
 	 * Listen for system theme changes
@@ -290,7 +290,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 		return () => {
 			mediaQuery.removeEventListener("change", handleSystemThemeChange);
 		};
-	}, [syncWithSystem, systemTheme, setTheme]);
+	}, [syncWithSystem, systemTheme]);
 
 	// Context value
 	const contextValue: ThemeContextType = {

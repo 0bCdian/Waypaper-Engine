@@ -53,7 +53,7 @@ export function MonitorComponent({
 	// Fetch on mount and when monitor changes
 	useEffect(() => {
 		fetchWallpaperPreview();
-	}, [fetchWallpaperPreview]);
+	}, []);
 
 	// Re-fetch when a wallpaper changes on any monitor
 	useEffect(() => {
@@ -61,7 +61,7 @@ export function MonitorComponent({
 		return () => {
 			goDaemon.off("wallpaper_changed", fetchWallpaperPreview);
 		};
-	}, [fetchWallpaperPreview]);
+	}, []);
 
 	const scaledWidth = monitor.width * scale;
 	const scaledHeight = monitor.height * scale;
