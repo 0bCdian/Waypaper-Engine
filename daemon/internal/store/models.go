@@ -8,13 +8,17 @@
 //   - "images"    — the image gallery
 //   - "playlists" — user-created playlists
 //   - "history"   — global wallpaper history log
+//   - "monitor_state" — per-monitor wallpaper state for restore on restart
 //
 // Runtime state (active playlists, current wallpapers) is kept in-memory only
 // and is NOT persisted — it is reconstructed on daemon startup.
 //
-// All model structs carry both `json` tags (for HTTP API serialization) and `clover`
-// tags (for CloverDB document mapping). The `_id` field managed by CloverDB is an
-// internal detail; the API-facing identifier is the sequential integer `id` field.
+// IMPORTANT: Do NOT add `clover` struct tags to model fields. CloverDB's Unmarshal
+// uses `clover` tags to rename document keys to Go field names, then feeds the
+// result through json.Unmarshal which expects `json` tag names — causing a mismatch
+// for any field where the json tag differs from the Go name (e.g. "monitor_name"
+// gets renamed to "MonitorName", but json expects "monitor_name"). Without `clover`
+// tags, document keys pass through unchanged and json.Unmarshal matches them directly.
 package store
 
 import "time"
@@ -28,48 +32,48 @@ import "time"
 type Image struct {
 	// ID is the sequential integer identifier, generated daemon-side.
 	// This is the API-facing primary key (NOT CloverDB's internal _id).
-	ID int `json:"id" clover:"id"`
+	ID int `json:"id"`
 
 	// Name is the display name, derived from the original filename.
-	Name string `json:"name" clover:"name"`
+	Name string `json:"name"`
 
 	// Path is the absolute path to the cached copy of the image inside ImagesDir.
-	Path string `json:"path" clover:"path"`
+	Path string `json:"path"`
 
 	// MediaType classifies the file: "image", "video", "gif".
-	MediaType string `json:"media_type" clover:"media_type"`
+	MediaType string `json:"media_type"`
 
 	// Width is the horizontal resolution in pixels.
-	Width int `json:"width" clover:"width"`
+	Width int `json:"width"`
 
 	// Height is the vertical resolution in pixels.
-	Height int `json:"height" clover:"height"`
+	Height int `json:"height"`
 
 	// Format is the file format (e.g. "png", "jpg", "webp").
-	Format string `json:"format" clover:"format"`
+	Format string `json:"format"`
 
 	// FileSize is the size of the file in bytes.
-	FileSize int64 `json:"file_size" clover:"file_size"`
+	FileSize int64 `json:"file_size"`
 
 	// Checksum is a content hash for deduplication (e.g. "sha256:abc123...").
-	Checksum string `json:"checksum" clover:"checksum"`
+	Checksum string `json:"checksum"`
 
 	// Tags is a user-defined list of labels for organization and filtering.
-	Tags []string `json:"tags" clover:"tags"`
+	Tags []string `json:"tags"`
 
 	// ImportedAt is when the image was added to the gallery.
-	ImportedAt time.Time `json:"imported_at" clover:"imported_at"`
+	ImportedAt time.Time `json:"imported_at"`
 
 	// SourcePath is the original filesystem path the image was imported from.
-	SourcePath string `json:"source_path" clover:"source_path"`
+	SourcePath string `json:"source_path"`
 
 	// IsSelected tracks whether the user has selected this image in the UI
 	// (for batch operations).
-	IsSelected bool `json:"is_selected" clover:"is_selected"`
+	IsSelected bool `json:"is_selected"`
 
 	// Thumbnails maps resolution labels to their absolute file paths.
 	// Keys: "default", "720p", "1080p", "1440p", "4k".
-	Thumbnails map[string]string `json:"thumbnails" clover:"thumbnails"`
+	Thumbnails map[string]string `json:"thumbnails"`
 }
 
 // ImageUpdate contains the mutable fields for PATCH /images/{id}.
@@ -92,44 +96,44 @@ type ImageUpdate struct {
 // limit (default 1000), the oldest entries are trimmed.
 type ImageHistoryEntry struct {
 	// ID is the sequential, ever-incrementing transaction identifier.
-	ID int `json:"id" clover:"id"`
+	ID int `json:"id"`
 
 	// ImageID references the Image that was set.
-	ImageID int `json:"image_id" clover:"image_id"`
+	ImageID int `json:"image_id"`
 
 	// ImageName is denormalized from the Image for display convenience.
-	ImageName string `json:"image_name" clover:"image_name"`
+	ImageName string `json:"image_name"`
 
 	// Monitors lists which monitors were affected. Multiple monitors for
 	// clone/extend mode; single monitor for individual mode.
-	Monitors []string `json:"monitors" clover:"monitors"`
+	Monitors []string `json:"monitors"`
 
 	// Mode is the monitor mode used: "individual", "clone", or "extend".
-	Mode string `json:"mode" clover:"mode"`
+	Mode string `json:"mode"`
 
 	// SetAt is when this wallpaper change occurred.
-	SetAt time.Time `json:"set_at" clover:"set_at"`
+	SetAt time.Time `json:"set_at"`
 
 	// Source describes what caused this wallpaper change.
-	Source HistorySource `json:"source" clover:"source"`
+	Source HistorySource `json:"source"`
 
 	// Backend is the name of the backend that applied the wallpaper (e.g. "swww").
-	Backend string `json:"backend" clover:"backend"`
+	Backend string `json:"backend"`
 }
 
 // HistorySource identifies the origin of a wallpaper change.
 type HistorySource struct {
 	// Type is the source category: "manual", "playlist", "random", or "history".
-	Type string `json:"type" clover:"type"`
+	Type string `json:"type"`
 
 	// PlaylistID is set when Type is "playlist".
-	PlaylistID *int `json:"playlist_id,omitempty" clover:"playlist_id"`
+	PlaylistID *int `json:"playlist_id,omitempty"`
 
 	// PlaylistName is set when Type is "playlist".
-	PlaylistName string `json:"playlist_name,omitempty" clover:"playlist_name"`
+	PlaylistName string `json:"playlist_name,omitempty"`
 
 	// HistoryID is set when Type is "history" (replaying a previous entry).
-	HistoryID *int `json:"history_id,omitempty" clover:"history_id"`
+	HistoryID *int `json:"history_id,omitempty"`
 }
 
 // ---------------------------------------------------------------------------
@@ -140,51 +144,51 @@ type HistorySource struct {
 // Stored in the "playlists" collection.
 type Playlist struct {
 	// ID is the sequential integer identifier, generated daemon-side.
-	ID int `json:"id" clover:"id"`
+	ID int `json:"id"`
 
 	// Name is the user-facing display name (e.g. "Evening rotation").
-	Name string `json:"name" clover:"name"`
+	Name string `json:"name"`
 
 	// CreatedAt is when the playlist was first created.
-	CreatedAt time.Time `json:"created_at" clover:"created_at"`
+	CreatedAt time.Time `json:"created_at"`
 
 	// UpdatedAt is when the playlist was last modified.
-	UpdatedAt time.Time `json:"updated_at" clover:"updated_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 
 	// Configuration holds the playback behavior settings.
-	Configuration PlaylistConfiguration `json:"configuration" clover:"configuration"`
+	Configuration PlaylistConfiguration `json:"configuration"`
 
 	// Images is the ordered list of images in this playlist.
-	Images []PlaylistImage `json:"images" clover:"images"`
+	Images []PlaylistImage `json:"images"`
 }
 
 // PlaylistConfiguration defines how a playlist rotates through its images.
 type PlaylistConfiguration struct {
 	// Type is the rotation strategy: "timer", "manual", "time_of_day", "day_of_week".
-	Type string `json:"type" clover:"type"`
+	Type string `json:"type"`
 
 	// Interval is the rotation period in seconds (only used for "timer" type).
-	Interval int `json:"interval" clover:"interval"`
+	Interval int `json:"interval"`
 
 	// Order is the playback order: "ordered" or "random" (only used for "timer" type).
-	Order string `json:"order" clover:"order"`
+	Order string `json:"order"`
 
 	// ShowAnimations controls whether backend transitions are used during rotation.
-	ShowAnimations bool `json:"show_animations" clover:"show_animations"`
+	ShowAnimations bool `json:"show_animations"`
 
 	// AlwaysStartOnFirstImage forces the playlist to start from index 0 every time.
-	AlwaysStartOnFirstImage bool `json:"always_start_on_first_image" clover:"always_start_on_first_image"`
+	AlwaysStartOnFirstImage bool `json:"always_start_on_first_image"`
 }
 
 // PlaylistImage is a reference to an image within a playlist, with optional
 // time-of-day scheduling metadata.
 type PlaylistImage struct {
 	// ImageID references the Image in the gallery.
-	ImageID int `json:"image_id" clover:"image_id"`
+	ImageID int `json:"image_id"`
 
 	// Time is minutes since midnight (0–1439), used by "time_of_day" playlists.
 	// Nil for other playlist types.
-	Time *int `json:"time" clover:"time"`
+	Time *int `json:"time"`
 }
 
 // ---------------------------------------------------------------------------
@@ -196,25 +200,25 @@ type PlaylistImage struct {
 // This is persisted so the daemon can restore wallpapers after restart.
 type MonitorState struct {
 	// MonitorName is the unique key — one entry per monitor.
-	MonitorName string `json:"monitor_name" clover:"monitor_name"`
+	MonitorName string `json:"monitor_name"`
 
 	// ImageID references the currently displayed image.
-	ImageID int `json:"image_id" clover:"image_id"`
+	ImageID int `json:"image_id"`
 
 	// ImageName is denormalized for display convenience.
-	ImageName string `json:"image_name" clover:"image_name"`
+	ImageName string `json:"image_name"`
 
 	// ImagePath is the absolute path to the image file on disk.
-	ImagePath string `json:"image_path" clover:"image_path"`
+	ImagePath string `json:"image_path"`
 
 	// Mode is the monitor mode used: "individual", "clone", or "extend".
-	Mode string `json:"mode" clover:"mode"`
+	Mode string `json:"mode"`
 
 	// Backend is the name of the backend that applied the wallpaper.
-	Backend string `json:"backend" clover:"backend"`
+	Backend string `json:"backend"`
 
 	// SetAt is when this wallpaper was applied.
-	SetAt time.Time `json:"set_at" clover:"set_at"`
+	SetAt time.Time `json:"set_at"`
 }
 
 // ---------------------------------------------------------------------------
