@@ -1,27 +1,30 @@
-import { useState, useEffect } from "react";
-
-const SIDEBAR_COLLAPSED_KEY = "sidebar_collapsed";
-
 /**
- * Hook to manage sidebar collapsed state in localStorage
+ * Sidebar state utilities for the DaisyUI drawer.
+ *
+ * The DaisyUI drawer checkbox is the source of truth for open/closed state.
+ * This module provides helpers for programmatic control.
  */
-export function useSidebarState() {
-	const [isCollapsed, setIsCollapsed] = useState<boolean>(() => {
-		const stored = localStorage.getItem(SIDEBAR_COLLAPSED_KEY);
-		return stored === "true";
-	});
 
-	useEffect(() => {
-		localStorage.setItem(SIDEBAR_COLLAPSED_KEY, String(isCollapsed));
-	}, [isCollapsed]);
+const DRAWER_CHECKBOX_ID = "sidebar-drawer";
 
-	const toggle = () => setIsCollapsed((prev) => !prev);
-	const setCollapsed = (collapsed: boolean) => setIsCollapsed(collapsed);
-
-	return {
-		isCollapsed,
-		toggle,
-		setCollapsed,
-	};
+function getCheckbox(): HTMLInputElement | null {
+	return document.getElementById(DRAWER_CHECKBOX_ID) as HTMLInputElement | null;
 }
 
+/** Open the drawer */
+export function openDrawer() {
+	const cb = getCheckbox();
+	if (cb) cb.checked = true;
+}
+
+/** Close the drawer */
+export function closeDrawer() {
+	const cb = getCheckbox();
+	if (cb) cb.checked = false;
+}
+
+/** Toggle the drawer */
+export function toggleDrawer() {
+	const cb = getCheckbox();
+	if (cb) cb.checked = !cb.checked;
+}

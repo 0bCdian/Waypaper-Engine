@@ -37,7 +37,7 @@ export function useStoreSubscription<T>(
 	callback: (value: any, prevValue: any) => void,
 	equalityFn?: (a: any, b: any) => boolean,
 ): void {
-	const prevValueRef = useRef<any>();
+	const prevValueRef = useRef<any>(undefined);
 
 	useEffect(() => {
 		const unsubscribe = store.subscribe((state) => {
@@ -61,7 +61,7 @@ export function useDebouncedStoreUpdate<T>(
 	store: UseBoundStore<StoreApi<T>>,
 	delay: number = 300,
 ) {
-	const timeoutRef = useRef<NodeJS.Timeout>();
+	const timeoutRef = useRef<NodeJS.Timeout>(undefined);
 
 	return useCallback(
 		(updater: (state: T) => Partial<T>) => {

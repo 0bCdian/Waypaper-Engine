@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import LoadPlaylistModal from "./LoadPlaylistModal";
 import SavePlaylistModal from "./SavePlaylistModal";
 import AddToPlaylistModal from "./AddToPlaylistModal";
 import PlaylistConfigurationModal from "./PlaylistConfigurationModal";
 import { playlistStore } from "../stores/playlist";
-import { imagesStore } from "../stores/images";
 import AdvancedFiltersModal from "./AdvancedFiltersModal";
 import { useUnifiedConfigStore } from "../stores/unifiedConfig";
 import Monitors from "./monitorsModal";
@@ -33,18 +32,36 @@ function Modals() {
 
 	const [shouldReload, setShouldReload] = useState<boolean>(false);
 	const { playlist } = playlistStore();
-	const { imagesArray } = imagesStore();
-	useEffect(() => {
-		setShouldReload(false);
+
+	const fetchPlaylists = useCallback(() => {
 		void goDaemon.getPlaylists().then((playlists) => {
 			setPlaylistsInDB(playlists);
 		});
-	}, [shouldReload, imagesArray]);
-	useEffect(() => {
-		void goDaemon.getPlaylists().then((newPlaylists) => {
-			setPlaylistsInDB(newPlaylists);
-		});
 	}, []);
+
+	// Fetch on mount and when shouldReload changes
+	useEffect(() => {
+		fetchPlaylists();
+		if (shouldReload) {
+			setShouldReload(false);
+		}
+	}, [shouldReload, fetchPlaylists]);
+
+	// Listen for playlists_updated SSE event from daemon
+	useEffect(() => {
+		const api = window.API_RENDERER?.goDaemon;
+		if (!api?.on || !api?.off) return;
+
+		const handlePlaylistsUpdated = () => {
+			fetchPlaylists();
+		};
+
+		api.on("playlists_updated", handlePlaylistsUpdated);
+		return () => {
+			api.off("playlists_updated", handlePlaylistsUpdated);
+		};
+	}, [fetchPlaylists]);
+
 	return (
 		<>
 			<LoadPlaylistModal

@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, startTransition } from "react";
 import { imagesStore } from "../stores/images";
 import { useImageProcessingStore } from "../stores/imageProcessingStore";
 import { useToastStore } from "../stores/toastStore";
@@ -12,7 +12,6 @@ import type {
 export function useRealTimeImageProcessing() {
 	const cleanupRef = useRef<(() => void) | null>(null);
 	const reQueryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-	const { addImage } = imagesStore();
 	const { startProcessing, updateProgress, completeProcessing } =
 		useImageProcessingStore();
 
@@ -38,20 +37,22 @@ export function useRealTimeImageProcessing() {
 				const handleImageProcessed = async (...args: unknown[]) => {
 					const data = args[0] as ImageProcessedPayload;
 					try {
-						updateProgress(data.index, data.name);
+						updateProgress(data.index + 1, data.name);
 
 						// Debounce re-queries
 						if (reQueryTimeoutRef.current) {
 							clearTimeout(reQueryTimeoutRef.current);
 						}
-						reQueryTimeoutRef.current = setTimeout(async () => {
-							try {
+					reQueryTimeoutRef.current = setTimeout(() => {
+						try {
+							startTransition(() => {
 								imagesStore.getState().reQueryImages();
-							} catch (error) {
-								console.error("Error re-querying images:", error);
-							}
-							reQueryTimeoutRef.current = null;
-						}, 1000);
+							});
+						} catch (error) {
+							console.error("Error re-querying images:", error);
+						}
+						reQueryTimeoutRef.current = null;
+					}, 1000);
 					} catch (error) {
 						console.error("Error handling image_processed:", error);
 					}
@@ -80,20 +81,24 @@ export function useRealTimeImageProcessing() {
 						);
 						completeProcessing();
 
-						// Final re-query
-						setTimeout(() => {
+					// Final re-query
+					setTimeout(() => {
+						startTransition(() => {
 							imagesStore.getState().reQueryImages();
-						}, 500);
+						});
+					}, 500);
 					} catch (error) {
 						console.error("Error handling processing_complete:", error);
 					}
 				};
 
-				const handleImagesUpdated = () => {
-					try {
-						setTimeout(() => {
+			const handleImagesUpdated = () => {
+				try {
+					setTimeout(() => {
+						startTransition(() => {
 							imagesStore.getState().reQueryImages();
-						}, 300);
+						});
+					}, 300);
 					} catch (error) {
 						console.error("Error handling images_updated:", error);
 					}
@@ -132,5 +137,5 @@ export function useRealTimeImageProcessing() {
 				cleanupRef.current = null;
 			}
 		};
-	}, [addImage, startProcessing, updateProgress, completeProcessing]);
+	}, [startProcessing, updateProgress, completeProcessing]);
 }

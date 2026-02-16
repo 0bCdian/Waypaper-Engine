@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { useImageProcessingStore } from "../stores/imageProcessingStore";
 
 export function ImageProcessingProgress() {
@@ -9,10 +10,25 @@ export function ImageProcessingProgress() {
 		startTime,
 	} = useImageProcessingStore();
 
+	const [elapsed, setElapsed] = useState(0);
+
+	useEffect(() => {
+		if (!isProcessing || !startTime) {
+			setElapsed(0);
+			return;
+		}
+
+		setElapsed(Date.now() - startTime);
+		const interval = setInterval(() => {
+			setElapsed(Date.now() - startTime);
+		}, 1000);
+
+		return () => clearInterval(interval);
+	}, [isProcessing, startTime]);
+
 	if (!isProcessing) return null;
 
 	const progress = totalImages > 0 ? (processedImages / totalImages) * 100 : 0;
-	const elapsed = startTime ? Date.now() - startTime : 0;
 
 	return (
 		<div className="fixed top-4 right-4 bg-base-100 p-4 rounded-lg shadow-lg z-50 min-w-80 border border-base-300">

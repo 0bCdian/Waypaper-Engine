@@ -1,5 +1,5 @@
 import {
-	useState,
+	type ReactNode,
 	useEffect,
 	useCallback,
 	useMemo,
@@ -16,79 +16,60 @@ const ImageCard = lazy(async () => await import("../components/ImageCard"));
 
 export function useImagePagination() {
 	const { config } = useUnifiedConfigStore();
-	const [imagesPerPage] = useState(
-		config?.app?.images_per_page ?? 50,
-	);
-	const [currentPage, setCurrentPage] = useState<number>(1);
 	const {
 		filters,
 		selectedImages,
 		setSelectedImages,
+		pagination,
+		perPage,
+		currentPage,
 	} = imagesStore();
 	const { filteredImages } = useFilteredImages();
 
-	const lastImageIndex = useMemo(
-		() => currentPage * imagesPerPage,
-		[currentPage, imagesPerPage],
-	);
-	const firstImageIndex = useMemo(
-		() => lastImageIndex - imagesPerPage,
-		[lastImageIndex, imagesPerPage],
-	);
-	const totalImages = useMemo(() => {
-		return filteredImages.length - 1;
-	}, [filteredImages]);
-	const lastImageIndexReversed = useMemo(
-		() => totalImages - (currentPage - 1) * imagesPerPage,
-		[currentPage, imagesPerPage, totalImages],
-	);
-	const firstImageIndexReversed = useMemo(
-		() => lastImageIndexReversed - imagesPerPage,
-		[lastImageIndexReversed, imagesPerPage],
-	);
-	const totalPages = useMemo(() => {
-		return Math.ceil(filteredImages.length / imagesPerPage);
-	}, [filteredImages, imagesPerPage]);
+	// Sync perPage from config on first load
+	useEffect(() => {
+		const configPerPage = config?.app?.images_per_page ?? 50;
+		if (configPerPage !== perPage) {
+			imagesStore.setState({ perPage: configPerPage });
+		}
+	}, [config?.app?.images_per_page, perPage]);
 
+	// Use server-side total when available, fall back to client-side count
+	const totalPages = useMemo(() => {
+		if (pagination?.total_pages) {
+			return pagination.total_pages;
+		}
+		return Math.max(1, Math.ceil(filteredImages.length / perPage));
+	}, [pagination, filteredImages.length, perPage]);
+
+	// Build the image cards from the current page data (already fetched from server)
 	const [imagesToShow, imagesInCurrentPage] = useMemo((): [
-		JSX.Element[],
+		ReactNode[],
 		rendererImage[],
 	] => {
-		const imageCardJsxArray: JSX.Element[] = [];
-		const imagesInCurrentPage: rendererImage[] = [];
-		if (filters.order === "desc") {
-			for (let idx = firstImageIndex; idx < lastImageIndex; idx++) {
-				const currentImage = filteredImages[idx];
-				if (currentImage === undefined) break;
-				imagesInCurrentPage.push(currentImage);
-				imageCardJsxArray.push(
-					<Suspense key={currentImage.id || `image-${idx}`}>
-						<ImageCard Image={currentImage} />
-					</Suspense>,
-				);
-			}
-		} else {
-			for (
-				let idx = lastImageIndexReversed;
-				idx > firstImageIndexReversed;
-				idx--
-			) {
-				const currentImage = filteredImages[idx];
-				if (currentImage === undefined) break;
-				imagesInCurrentPage.push(currentImage);
-				imageCardJsxArray.push(
-					<Suspense key={currentImage.id || `image-${idx}`}>
-						<ImageCard Image={currentImage} />
-					</Suspense>,
-				);
-			}
-		}
-		return [imageCardJsxArray, imagesInCurrentPage];
-	}, [filteredImages, filters, currentPage, totalPages]);
+		const imageCardJsxArray: ReactNode[] = [];
+		const currentPageImages: rendererImage[] = [];
 
-	const handlePageChange = useCallback((page: number) => {
-		setCurrentPage(page);
-	}, []);
+		for (let idx = 0; idx < filteredImages.length; idx++) {
+			const currentImage = filteredImages[idx];
+			if (currentImage === undefined) break;
+			currentPageImages.push(currentImage);
+			imageCardJsxArray.push(
+				<Suspense key={currentImage.id || `image-${idx}`}>
+					<ImageCard Image={currentImage} />
+				</Suspense>,
+			);
+		}
+
+		return [imageCardJsxArray, currentPageImages];
+	}, [filteredImages]);
+
+	const handlePageChange = useCallback(
+		(page: number) => {
+			imagesStore.getState().fetchPage(page);
+		},
+		[],
+	);
 
 	const selectImagesInCurrentPage = () => {
 		const newSet = new Set(selectedImages);
@@ -110,14 +91,12 @@ export function useImagePagination() {
 		[imagesInCurrentPage, selectedImages],
 	);
 
+	// Reset to page 1 when search is cleared
 	useEffect(() => {
-		if (imagesToShow.length === 0) {
-			setCurrentPage(totalPages);
-		}
 		if (filters.searchString === "") {
-			setCurrentPage(1);
+			imagesStore.getState().fetchPage(1);
 		}
-	}, [imagesPerPage, totalPages, filters]);
+	}, [filters.searchString]);
 
 	return {
 		currentPage,

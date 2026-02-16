@@ -16,17 +16,9 @@ export function useSetLastActivePlaylist() {
 		const monitorName = monitorSelection.selectedMonitors[0];
 		if (!monitorName) return;
 
-		// #region agent log
-		fetch('http://127.0.0.1:7242/ingest/016eda8e-0554-4a39-9dc1-a62053da874d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useSetLastActivePlaylist.tsx:effect',message:'effect triggered',data:{monitorName,selectedMonitors:monitorSelection.selectedMonitors},timestamp:Date.now(),hypothesisId:'C',runId:'post-fix'})}).catch(()=>{});
-		// #endregion
-
 		void goDaemon
 			.getActivePlaylistForMonitor(monitorName)
 			.then(async (activePlaylist: ActivePlaylistInstance) => {
-				// #region agent log
-				fetch('http://127.0.0.1:7242/ingest/016eda8e-0554-4a39-9dc1-a62053da874d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useSetLastActivePlaylist.tsx:then',message:'activePlaylist resolved value',data:{activePlaylist,type:typeof activePlaylist,keys:activePlaylist?Object.keys(activePlaylist):null,playlist_id:activePlaylist?.playlist_id},timestamp:Date.now(),hypothesisId:'A',runId:'post-fix'})}).catch(()=>{});
-				// #endregion
-
 				if (!activePlaylist) return;
 
 				// Fetch the full playlist to get image list
@@ -47,10 +39,7 @@ export function useSetLastActivePlaylist() {
 				};
 				setPlaylist(currentPlaylist);
 			})
-			.catch((err) => {
-				// #region agent log
-				fetch('http://127.0.0.1:7242/ingest/016eda8e-0554-4a39-9dc1-a62053da874d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'useSetLastActivePlaylist.tsx:catch',message:'promise rejected (expected for no active playlist)',data:{error:String(err)},timestamp:Date.now(),hypothesisId:'A',runId:'post-fix'})}).catch(()=>{});
-				// #endregion
+			.catch(() => {
 				// No active playlist for this monitor
 			});
 	}, [monitorSelection]);

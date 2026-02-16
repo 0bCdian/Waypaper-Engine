@@ -1,46 +1,34 @@
 /**
  * NavBar Component for Waypaper Engine
  *
- * A modern navbar implementation following DaisyUI 5 best practices.
- * Features monitor selection and clean design.
+ * Uses a <label> linked to the DaisyUI drawer-toggle checkbox
+ * for the hamburger menu. No z-index needed -- the drawer handles stacking.
  */
 
-import React from "react";
+import type React from "react";
 import { useMonitorStore } from "../../stores/monitors";
-import { useSidebarState } from "../../hooks/useSidebarState";
 import { cn } from "../../utils/cn";
+import { DRAWER_CHECKBOX_ID } from "./ModernAppLayout";
 
-/**
- * NavBar props interface
- */
 export interface NavBarProps {
-	/** Additional CSS classes */
 	className?: string;
 }
 
-/**
- * NavBar component
- */
 export const NavBar: React.FC<NavBarProps> = ({ className }) => {
 	const { monitorSelection, reQueryMonitors } = useMonitorStore();
-	const { toggle: toggleSidebar } = useSidebarState();
 
 	const handleMonitorSelect = async () => {
 		try {
 			await reQueryMonitors();
-			// @ts-expect-error daisyui
+			// @ts-expect-error daisyui modal
 			window.monitors.showModal();
 		} catch (error) {
 			console.error("Failed to query monitors:", error);
 		}
 	};
 
-	const handleSidebarToggle = () => {
-		toggleSidebar();
-	};
-
 	const navbarClasses = cn(
-		"navbar bg-base-100 border-b border-base-300 px-4 py-2 relative z-50 shrink-0",
+		"navbar bg-base-100 border-b border-base-300 px-4 py-2 shrink-0",
 		className,
 	);
 
@@ -48,35 +36,33 @@ export const NavBar: React.FC<NavBarProps> = ({ className }) => {
 		<nav className={navbarClasses}>
 			{/* Left side - Sidebar toggle */}
 			<div className="navbar-start">
-				<div className="flex items-center gap-2">
-					{/* Sidebar toggle button */}
-					<button
-						className="btn btn-ghost btn-sm"
-						onClick={handleSidebarToggle}
-						aria-label="Toggle sidebar"
-						title="Toggle sidebar"
+				<label
+					htmlFor={DRAWER_CHECKBOX_ID}
+					className="btn btn-ghost btn-sm drawer-button"
+					aria-label="Toggle sidebar"
+				>
+					<svg
+						className="w-5 h-5"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+						xmlns="http://www.w3.org/2000/svg"
 					>
-						<svg
-							className="w-5 h-5"
-							fill="none"
-							stroke="currentColor"
-							viewBox="0 0 24 24"
-							xmlns="http://www.w3.org/2000/svg"
-						>
-							<path
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								strokeWidth={2}
-								d="M4 6h16M4 12h16M4 18h7"
-							/>
-						</svg>
-					</button>
-				</div>
+						<title>Menu</title>
+						<path
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							strokeWidth={2}
+							d="M4 6h16M4 12h16M4 18h7"
+						/>
+					</svg>
+				</label>
 			</div>
 
 			{/* Center - Monitor selection */}
 			<div className="navbar-center">
 				<button
+					type="button"
 					onClick={handleMonitorSelect}
 					className="btn btn-primary btn-lg w-full max-w-md text-ellipsis rounded-lg text-xl font-medium transition-all duration-200 hover:btn-primary-focus"
 					aria-label="Select display monitor"
@@ -94,6 +80,7 @@ export const NavBar: React.FC<NavBarProps> = ({ className }) => {
 						stroke="currentColor"
 						strokeWidth="2"
 					>
+						<title>Display</title>
 						<path
 							strokeLinecap="round"
 							strokeLinejoin="round"
@@ -108,11 +95,9 @@ export const NavBar: React.FC<NavBarProps> = ({ className }) => {
 				</button>
 			</div>
 
-			{/* Right side - Empty for now, can add theme selector or other controls */}
+			{/* Right side */}
 			<div className="navbar-end">
-				<div className="flex items-center gap-2">
-					{/* Placeholder for future right-side content */}
-				</div>
+				<div className="flex items-center gap-2" />
 			</div>
 		</nav>
 	);

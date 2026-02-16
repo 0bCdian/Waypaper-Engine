@@ -4,7 +4,7 @@
  * Handles daemon health checks, status monitoring, and restart functionality.
  */
 
-import { BrowserWindow } from "electron";
+import type { BrowserWindow } from "electron";
 import { goDaemonClient } from "../goDaemonClient";
 import { initWaypaperDaemon } from "../../globals/startDaemons";
 

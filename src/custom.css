@@ -52,10 +52,12 @@
 
 .page-item.active .page-link {
 	font-weight: 700;
-	color: hsl(var(--color-baseContent));
+	color: hsl(var(--color-primary-content, var(--color-baseContent)));
 	background-color: hsl(var(--color-primary500));
 	border-color: hsl(var(--color-primary500));
-	box-shadow: var(--shadow-sm);
+	box-shadow: 0 0 0 2px hsl(var(--color-primary500) / 0.3), var(--shadow-sm);
+	transform: scale(1.08);
+	pointer-events: none;
 }
 
 .page-item.disabled .page-link {

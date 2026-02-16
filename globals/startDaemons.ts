@@ -1,13 +1,8 @@
 import { spawn } from "child_process";
 import { request as httpRequest } from "node:http";
+import { access, unlink } from "node:fs/promises";
 import { daemonPath, logger } from "./setup";
-import { access, mkdir } from "node:fs";
-import { promisify } from "node:util";
 import { configReader } from "./configReader";
-import { dirname } from "node:path";
-
-const fsMkdir = promisify(mkdir);
-const fsAccess = promisify(access);
 
 // Get socket path from TOML configuration
 const WAYPAPER_ENGINE_SOCKET_PATH = configReader.getSocketPath();
@@ -17,12 +12,9 @@ let daemonProcess: any = null;
 
 export async function initWaypaperDaemon() {
 	try {
-		// First, ensure all required directories exist
-		await ensureDirectoriesExist();
-
 		// Clean up any existing socket file and processes
 		try {
-			await fsAccess(WAYPAPER_ENGINE_SOCKET_PATH);
+			await access(WAYPAPER_ENGINE_SOCKET_PATH);
 			logger.info("Found existing socket file, cleaning up...");
 			// Try to connect to existing daemon first
 			try {
@@ -31,8 +23,6 @@ export async function initWaypaperDaemon() {
 				return; // Use existing daemon
 			} catch (error) {
 				logger.info("Existing daemon is not responsive, cleaning up socket");
-				// Remove stale socket file
-				const { unlink } = await import("node:fs/promises");
 				await unlink(WAYPAPER_ENGINE_SOCKET_PATH);
 			}
 		} catch (error) {
@@ -40,28 +30,9 @@ export async function initWaypaperDaemon() {
 			logger.info("No existing socket file found");
 		}
 
-		// Kill any existing swww daemon processes that might conflict
-		try {
-			const { exec } = await import("node:child_process");
-			const { promisify } = await import("node:util");
-			const execAsync = promisify(exec);
+		logger.info(`Starting waypaper-daemon at: ${daemonPath}`);
 
-			logger.info("Checking for existing swww daemon processes...");
-			const { stdout } = await execAsync("pgrep swww-daemon || true");
-			if (stdout.trim()) {
-				logger.info("Found existing swww daemon processes, killing them...");
-				await execAsync("pkill swww-daemon || true");
-				await new Promise((resolve) => setTimeout(resolve, 1000));
-			}
-		} catch (error) {
-			logger.warn("Failed to clean up existing swww processes:", error);
-		}
-
-		// Launch Go daemon
-		const goDaemonPath = daemonPath;
-		logger.info(`Starting waypaper-daemon at: ${goDaemonPath}`);
-
-		const output = spawn(goDaemonPath, [], {
+		const output = spawn(daemonPath, [], {
 			stdio: ["ignore", "pipe", "pipe"],
 			shell: false,
 			detached: false,
@@ -106,7 +77,7 @@ export async function initWaypaperDaemon() {
 					throw new Error("Daemon process was killed");
 				}
 
-				await fsAccess(WAYPAPER_ENGINE_SOCKET_PATH);
+				await access(WAYPAPER_ENGINE_SOCKET_PATH);
 				logger.info("Socket file exists, testing connection...");
 
 				await testConnection();
@@ -143,27 +114,6 @@ export function isDaemonRunning() {
 	return (
 		daemonProcess && !daemonProcess.killed && daemonProcess.exitCode === null
 	);
-}
-
-async function ensureDirectoriesExist() {
-	const config = configReader.getCurrentConfig();
-
-	const directories = [
-		config.daemon.database_path,
-		config.daemon.images_dir,
-		config.daemon.thumbnails_dir,
-		dirname(config.daemon.monitors_state_file),
-		dirname(WAYPAPER_ENGINE_SOCKET_PATH),
-	];
-
-	for (const dir of directories) {
-		try {
-			await fsMkdir(dir, { recursive: true });
-			logger.debug(`Ensured directory exists: ${dir}`);
-		} catch (error) {
-			logger.warn(`Failed to create directory ${dir}:`, error);
-		}
-	}
 }
 
 async function testConnection(): Promise<void> {

@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useDeferredValue, useMemo, useState } from "react";
 import { imagesStore } from "../stores/images";
 import { type rendererImage } from "../types/rendererTypes";
 import { useHotkeys } from "react-hotkeys-hook";
 
 export function useFilteredImages() {
 	const { imagesArray, filters, setSelectedImages } = imagesStore();
+	const deferredImages = useDeferredValue(imagesArray);
 	const [filteredImages, setFilteredImages] =
-		useState<rendererImage[]>(imagesArray);
+		useState<rendererImage[]>(deferredImages);
 
 	const selectAllImages = useCallback(() => {
 		const newSelected = new Set<number>();
@@ -28,11 +29,11 @@ export function useFilteredImages() {
 	useHotkeys("escape", clearSelection);
 
 	const sortedImages = useMemo(() => {
-		if (filters.type === "id") return [...imagesArray];
-		const shallowCopy = [...imagesArray];
+		if (filters.type === "id") return [...deferredImages];
+		const shallowCopy = [...deferredImages];
 		shallowCopy.sort((a, b) => b.name.localeCompare(a.name));
 		return shallowCopy;
-	}, [imagesArray, filters]);
+	}, [deferredImages, filters]);
 
 	useEffect(() => {
 		const dontFilterByResolution =

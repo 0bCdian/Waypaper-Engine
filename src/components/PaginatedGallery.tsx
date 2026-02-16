@@ -39,12 +39,13 @@ function PaginatedGallery() {
 				animate={{ opacity: 1 }}
 				exit={{ opacity: 0 }}
 				transition={{ duration: 0.5 }}
-				className="h-full flex flex-col justify-between gap-4 overflow-y-auto transition focus:outline-hidden p-4"
+				className="flex-1 min-h-0 flex flex-col gap-4 transition focus:outline-hidden p-4"
 				onContextMenu={handleContextMenu}
 			>
-				<div className="flex flex-col items-center overflow-y-scroll scrollbar-thin scrollbar-track-transparent scrollbar-thumb-base-300 scrollbar-thumb-rounded-sm">
+				{/* Scrollable image grid -- the only scrollable region */}
+				<div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-base-300 scrollbar-thumb-rounded-sm">
 					<div
-						className={`m-auto min-h-[full] ${
+						className={`m-auto ${
 							imagesToShow.length === 1
 								? "items-center"
 								: "w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(clamp(280px,25vw,400px),1fr))] gap-3 md:gap-4 lg:gap-4 xl:gap-5 2xl:gap-6"
@@ -53,8 +54,10 @@ function PaginatedGallery() {
 						{imagesToShow}
 					</div>
 				</div>
-				<div className="flex w-full flex-col justify-between gap-12 pt-3">
-					<div className="w-[75%] self-center">
+
+				{/* Pinned bottom: pagination + playlist track */}
+				<div className="shrink-0 flex w-full flex-col justify-between gap-4 pt-3">
+					<div className="w-[75%] self-center flex flex-col items-center gap-2">
 						<ResponsivePagination
 							total={totalPages}
 							previousClassName="rounded_button_previous"
@@ -64,6 +67,11 @@ function PaginatedGallery() {
 								handlePageChange(page);
 							}}
 						/>
+						{totalPages > 1 && (
+							<span className="text-xs text-base-content/50">
+								Page {currentPage} of {totalPages}
+							</span>
+						)}
 					</div>
 					<PlaylistTrack />
 				</div>

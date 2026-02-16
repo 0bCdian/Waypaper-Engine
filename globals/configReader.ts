@@ -23,44 +23,44 @@ export interface AppConfig {
 	notifications: boolean;
 	start_minimized: boolean;
 	minimize_instead_of_close: boolean;
-	random_image_monitor: string;
 	show_monitor_modal_on_start: boolean;
 	images_per_page: number;
-	theme: string;
-	sidebar_collapsed: boolean;
-	sort_by: string;
-	sort_order: string;
+	theme: "light" | "dark" | "system";
 	image_history_limit: number;
+	sort_by: "name" | "imported_at" | "file_size";
+	sort_order: "asc" | "desc";
 }
 
 export interface DaemonConfig {
-	database_path: string;
 	images_dir: string;
 	thumbnails_dir: string;
-	monitors_state_file: string;
+	database_dir: string;
 	socket_path: string;
-	log_level: string;
+	log_level: "debug" | "info" | "warn" | "error";
 	log_file: string;
-	log_max_size: number;
-	log_max_age: number;
+	log_max_size_mb: number;
 	log_max_backups: number;
-	compositor: string;
-	daemon_path?: string;
+	compositor: "auto" | "wayland" | "x11";
 }
 
 export interface SwwwConfig {
 	transition_type: string;
 	transition_step: number;
 	transition_duration: number;
+	transition_fps: number;
 	transition_angle: number;
 	transition_pos: string;
 	transition_bezier: string;
 	transition_wave: string;
+	resize: string;
+	fill_color: string;
+	filter_type: string;
+	invert_y: boolean;
 }
 
 export interface BackendConfig {
 	type: string;
-	swww: SwwwConfig;
+	swww?: SwwwConfig;
 }
 
 export interface MonitorsConfig {
@@ -134,13 +134,9 @@ export class ConfigReader extends EventEmitter {
 			...config,
 			daemon: {
 				...config.daemon,
-				database_path: this.expandPath(config.daemon.database_path, homeDir),
+				database_dir: this.expandPath(config.daemon.database_dir, homeDir),
 				images_dir: this.expandPath(config.daemon.images_dir, homeDir),
 				thumbnails_dir: this.expandPath(config.daemon.thumbnails_dir, homeDir),
-				monitors_state_file: this.expandPath(
-					config.daemon.monitors_state_file,
-					homeDir,
-				),
 				socket_path: this.expandPath(config.daemon.socket_path, homeDir),
 			},
 		};
@@ -155,83 +151,48 @@ export class ConfigReader extends EventEmitter {
 
 	private getDefaultConfig(): WaypaperConfig {
 		const homeDir = homedir();
-		const devEnv = process.env.DEV === "true";
-
-		// Development vs Production paths - match daemon exactly
-		let configDir: string;
-		let cacheDir: string;
-		let imagesDir: string;
-		let thumbnailsDir: string;
-		let monitorsFile: string;
-		let logFile: string;
-
-		if (devEnv) {
-			// Development mode: use /tmp/waypaper-engine
-			configDir = "/tmp/waypaper-engine";
-			cacheDir = join("/tmp/waypaper-engine", "data", "cache");
-			imagesDir = join("/tmp/waypaper-engine", "images");
-			thumbnailsDir = join(
-				"/tmp/waypaper-engine",
-				"data",
-				"cache",
-				"thumbnails",
-			);
-			monitorsFile = join("/tmp/waypaper-engine", "data", "monitors.json");
-			logFile = join("/tmp/waypaper-engine", "daemon.log");
-		} else {
-			// Production mode: use standard user directories
-			configDir = join(homeDir, ".config", "waypaper-engine");
-			cacheDir = join(homeDir, ".cache", "waypaper-engine");
-			imagesDir = join(homeDir, ".waypaper-engine", "images");
-			thumbnailsDir = join(
-				homeDir,
-				".waypaper-engine",
-				"data",
-				"cache",
-				"thumbnails",
-			);
-			monitorsFile = join(cacheDir, "monitors.json");
-			logFile = join(configDir, "daemon.log");
-		}
+		const dataDir = join(homeDir, ".local", "share", "waypaper-engine");
+		const cacheDir = join(homeDir, ".cache", "waypaper-engine");
 
 		return {
 			app: {
-				kill_daemon_on_exit: true,
+				kill_daemon_on_exit: false,
 				notifications: true,
 				start_minimized: false,
-				minimize_instead_of_close: true,
-				random_image_monitor: "individual",
+				minimize_instead_of_close: false,
 				show_monitor_modal_on_start: false,
-				images_per_page: 20,
+				images_per_page: 50,
 				theme: "dark",
-				sidebar_collapsed: false,
-				sort_by: "name",
-				sort_order: "asc",
-				image_history_limit: 50,
+				image_history_limit: 100,
+				sort_by: "imported_at",
+				sort_order: "desc",
 			},
 			daemon: {
-				database_path: join(configDir, "data"),
-				images_dir: imagesDir,
-				thumbnails_dir: thumbnailsDir,
-				monitors_state_file: monitorsFile,
+				images_dir: join(dataDir, "images"),
+				thumbnails_dir: join(cacheDir, "thumbnails"),
+				database_dir: join(dataDir, "db"),
 				socket_path: defaultSocketPath(),
 				log_level: "info",
-				log_file: logFile,
-				log_max_size: 10,
-				log_max_age: 7,
+				log_file: join(dataDir, "daemon.log"),
+				log_max_size_mb: 10,
 				log_max_backups: 3,
 				compositor: "auto",
 			},
 			backend: {
 				type: "swww",
 				swww: {
-					transition_type: "simple",
+					transition_type: "wipe",
 					transition_step: 90,
-					transition_duration: 200,
+					transition_duration: 3,
+					transition_fps: 60,
 					transition_angle: 45,
 					transition_pos: "center",
-					transition_bezier: "0.4,0.0,0.2,1",
-					transition_wave: "0,0,0,0",
+					transition_bezier: "0.25,0.1,0.25,1.0",
+					transition_wave: "20,20",
+					resize: "crop",
+					fill_color: "000000",
+					filter_type: "Lanczos3",
+					invert_y: false,
 				},
 			},
 			monitors: {
@@ -242,12 +203,6 @@ export class ConfigReader extends EventEmitter {
 	}
 
 	getDaemonPath(): string {
-		const config = this.loadConfig();
-
-		if (config.daemon.daemon_path) {
-			return config.daemon.daemon_path;
-		}
-
 		const isPackaged = !(process.env.NODE_ENV === "development");
 		const resourcesPath = join(__dirname, "..", "..");
 
@@ -271,14 +226,9 @@ export class ConfigReader extends EventEmitter {
 		return config.daemon.thumbnails_dir;
 	}
 
-	getDatabasePath(): string {
+	getDatabaseDir(): string {
 		const config = this.loadConfig();
-		return config.daemon.database_path;
-	}
-
-	getMonitorsStateFile(): string {
-		const config = this.loadConfig();
-		return config.daemon.monitors_state_file;
+		return config.daemon.database_dir;
 	}
 
 	// File watching methods

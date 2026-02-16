@@ -4,6 +4,7 @@
 /* Import DaisyUI v5 plugin */
 @plugin "daisyui" {
 	themes: all;
+	exclude: rootscrollgutter;
 }
 
 @plugin "daisyui/theme" {

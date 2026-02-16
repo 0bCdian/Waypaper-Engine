@@ -5,10 +5,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"os"
 	"os/exec"
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	"waypaper-engine/daemon/internal/backend"
@@ -27,10 +29,11 @@ var daemonCandidates = []string{"swww-daemon", "awww-daemon"}
 
 // Swww implements backend.Backend for the swww (or awww) wallpaper daemon.
 type Swww struct {
-	once       sync.Once
-	cliBinary  string // resolved CLI binary ("swww" or "awww")
-	daemonBin  string // resolved daemon binary ("swww-daemon" or "awww-daemon")
-	v          *viper.Viper // viper instance for reading config at runtime
+	once      sync.Once
+	cliBinary string       // resolved CLI binary ("swww" or "awww")
+	daemonBin string       // resolved daemon binary ("swww-daemon" or "awww-daemon")
+	v         *viper.Viper // viper instance for reading config at runtime
+	process   *os.Process  // tracks the swww-daemon we started (nil if pre-existing)
 }
 
 // New returns a new swww/awww backend instance.
@@ -88,11 +91,13 @@ func (s *Swww) Initialize(ctx context.Context) error {
 
 	slog.Info("starting daemon with --no-cache", "binary", s.daemonBin)
 	cmd := exec.CommandContext(ctx, s.daemonBin, "--no-cache")
+	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGTERM}
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("swww: start %s: %w", s.daemonBin, err)
 	}
+	s.process = cmd.Process
 
-	// Release the process so it survives if our context is cancelled during startup.
+	// Collect exit status in the background so the process doesn't become a zombie.
 	go func() {
 		_ = cmd.Wait()
 	}()
@@ -118,8 +123,30 @@ func (s *Swww) Shutdown(ctx context.Context) error {
 	}
 
 	slog.Info("stopping daemon", "binary", s.cliBinary)
-	if err := exec.CommandContext(ctx, s.cliBinary, "kill").Run(); err != nil {
-		return fmt.Errorf("swww: %s kill: %w", s.cliBinary, err)
+	killErr := exec.CommandContext(ctx, s.cliBinary, "kill").Run()
+	if killErr != nil {
+		slog.Warn("swww kill command failed", "error", killErr)
+	}
+
+	// If we started the daemon ourselves, ensure the process is actually dead.
+	if s.process != nil {
+		done := make(chan struct{})
+		go func() {
+			_, _ = s.process.Wait()
+			close(done)
+		}()
+		select {
+		case <-done:
+			slog.Debug("swww-daemon process exited")
+		case <-time.After(3 * time.Second):
+			slog.Warn("swww-daemon did not exit after kill, sending SIGKILL")
+			_ = s.process.Signal(syscall.SIGKILL)
+		}
+		s.process = nil
+	}
+
+	if killErr != nil {
+		return fmt.Errorf("swww: %s kill: %w", s.cliBinary, killErr)
 	}
 	return nil
 }

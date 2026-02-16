@@ -144,8 +144,8 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
 						ref={ref}
 						className={cn(
 							inputClasses,
-							startIcon && "pl-10",
-							endIcon && "pr-10",
+						!!startIcon && "pl-10",
+						!!endIcon && "pr-10",
 						)}
 						disabled={disabled}
 						maxLength={maxLength}

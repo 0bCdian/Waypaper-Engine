@@ -6,9 +6,9 @@
  */
 
 import { ipcMain, BrowserWindow, dialog, app } from "electron";
-import { resolve } from "path";
-import { readdir, stat } from "fs/promises";
-import { join } from "path";
+import { resolve } from "node:path";
+import { readdir, stat } from "node:fs/promises";
+import { join } from "node:path";
 import { goDaemonClient } from "../goDaemonClient";
 import { daemonMonitor } from "./DaemonMonitor";
 import { contextMenuManager } from "./ContextMenuManager";
@@ -78,11 +78,6 @@ export class IPCManager {
 				return { success: true, data: result };
 			} catch (error) {
 				console.error(`IPC error: ${handler.channel}`, error);
-				// #region agent log
-				const isUnwrapped = unwrappedChannels.includes(handler.channel);
-				const logData = {location:'IPCManager.ts:catch',message:'IPC error caught',data:{channel:handler.channel,isUnwrapped,errorMsg:error instanceof Error?error.message:String(error),args:args?.slice(0,2)},timestamp:Date.now(),hypothesisId:'A',runId:'post-fix'};
-				fetch('http://127.0.0.1:7242/ingest/016eda8e-0554-4a39-9dc1-a62053da874d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch(()=>{});
-				// #endregion
 
 				if (unwrappedChannels.includes(handler.channel)) {
 					throw error;
@@ -427,8 +422,10 @@ export class IPCManager {
 					result.data = this.convertPathsToAtomProtocol(result.data);
 					return result;
 				}
-				case "get_image":
-					return await goDaemonClient.getImage(p?.id as number);
+				case "get_image": {
+					const image = await goDaemonClient.getImage(p?.id as number);
+					return this.convertPathsToAtomProtocol([image])[0];
+				}
 				case "get_image_count":
 					return await goDaemonClient.getImageCount();
 				case "import_images":

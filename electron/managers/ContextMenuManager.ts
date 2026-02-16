@@ -5,7 +5,7 @@
  * Uses Go daemon HTTP API for all operations.
  */
 
-import { Menu, BrowserWindow, dialog } from "electron";
+import { Menu, type BrowserWindow, dialog } from "electron";
 import { goDaemonClient } from "../goDaemonClient";
 import type { Image } from "../daemon-go-types";
 import { MENU_EVENTS } from "../../shared/constants";

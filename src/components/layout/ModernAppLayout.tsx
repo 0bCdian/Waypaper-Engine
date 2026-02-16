@@ -1,35 +1,25 @@
 /**
  * Modern App Layout Component for Waypaper Engine
  *
- * A modern layout implementation inspired by Upscayl's design.
- * Uses the new ModernSidebar with toggle functionality.
+ * Uses DaisyUI's drawer component for the sidebar.
+ * The drawer checkbox is the single source of truth for open/closed state.
  */
 
-import React, { ReactNode } from "react";
+import type React from "react";
+import type { ReactNode } from "react";
 import { useTheme } from "../../contexts/ThemeContext";
 import { cn } from "../../utils/cn";
-import ModernSidebar from "./ModernSidebar";
+import { SidebarContent } from "./ModernSidebar";
 import NavBar from "./NavBar";
 import { useUnifiedConfigStore } from "../../stores/unifiedConfig";
-/**
- * Modern App Layout props interface
- */
+
+export const DRAWER_CHECKBOX_ID = "sidebar-drawer";
+
 export interface ModernAppLayoutProps {
-	/** Children content */
 	children: ReactNode;
-	/** Additional CSS classes */
 	className?: string;
-	/** Whether to show sidebar */
-	showSidebar?: boolean;
-	/** Whether to show header */
-	showHeader?: boolean;
-	/** Whether to show footer */
-	showFooter?: boolean;
 }
 
-/**
- * Modern App Layout component
- */
 export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({
 	children,
 	className,
@@ -37,7 +27,6 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({
 	const { currentTheme, isDarkMode } = useTheme();
 	const { config } = useUnifiedConfigStore();
 
-	// Show loading state if config is not yet loaded
 	if (!config) {
 		return (
 			<div className="min-h-screen bg-base-200 flex items-center justify-center">
@@ -46,19 +35,38 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({
 		);
 	}
 
-	// Main container classes
 	const containerClasses = cn(
-		"h-screen theme-transition relative overflow-hidden",
+		"h-screen theme-transition",
 		isDarkMode ? "theme-dark" : "theme-light",
 		className,
 	);
 
 	return (
 		<div className={containerClasses} data-theme={currentTheme}>
-			<ModernSidebar />
-			<div className="flex flex-col h-full w-full">
-				<NavBar />
-				<main className="flex-1 overflow-hidden bg-base-100">{children}</main>
+			<div className="drawer h-screen">
+				<input
+					id={DRAWER_CHECKBOX_ID}
+					type="checkbox"
+					className="drawer-toggle"
+				/>
+
+				{/* Main content area */}
+				<div className="drawer-content flex flex-col h-full overflow-hidden">
+					<NavBar />
+					<main className="flex-1 overflow-hidden bg-base-100">
+						{children}
+					</main>
+				</div>
+
+				{/* Sidebar */}
+				<div className="drawer-side z-50">
+					<label
+						htmlFor={DRAWER_CHECKBOX_ID}
+						aria-label="close sidebar"
+						className="drawer-overlay"
+					/>
+					<SidebarContent />
+				</div>
 			</div>
 		</div>
 	);

@@ -7,7 +7,7 @@ interface TimeoutOptions {
 
 export default function useTimeout({ callback, delay }: TimeoutOptions) {
 	const callbackRef = useRef<() => void>(callback);
-	const timeoutRef = useRef<NodeJS.Timeout | undefined>();
+	const timeoutRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
 	useEffect(() => {
 		callbackRef.current = callback;

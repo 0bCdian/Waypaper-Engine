@@ -213,6 +213,7 @@ func startDaemon(configPath string, logLevel string) error {
 	slog.Info("daemon ready", "socket", cfg.GetSocketPath(), "pid", os.Getpid())
 
 	// 17. Wait for shutdown signal.
+	var serverErr error
 	select {
 	case sig := <-sigCh:
 		slog.Info("received signal", "signal", sig)
@@ -220,7 +221,8 @@ func startDaemon(configPath string, logLevel string) error {
 		slog.Info("shutdown requested via API")
 	case err := <-errCh:
 		if err != nil {
-			return fmt.Errorf("server error: %w", err)
+			serverErr = err
+			slog.Error("server error, initiating shutdown", "error", err)
 		}
 	}
 
@@ -238,8 +240,10 @@ func startDaemon(configPath string, logLevel string) error {
 		slog.Error("server shutdown error", "error", err)
 	}
 
-	// Shutdown backend.
-	if err := activeBackend.Shutdown(shutdownCtx); err != nil {
+	// Shutdown the currently active backend (use registry to get the
+	// current one, not the startup-time snapshot which may be stale if
+	// the backend was switched at runtime via the API).
+	if err := reg.Active().Shutdown(shutdownCtx); err != nil {
 		slog.Warn("backend shutdown error", "error", err)
 	}
 
@@ -258,6 +262,9 @@ func startDaemon(configPath string, logLevel string) error {
 	_ = lock.Release()
 
 	slog.Info("daemon stopped")
+	if serverErr != nil {
+		return fmt.Errorf("server error: %w", serverErr)
+	}
 	return nil
 }
 
@@ -409,4 +416,3 @@ func setupLogging(cfg *config.ViperManager, levelOverride string) {
 
 	slog.SetDefault(slog.New(multi))
 }
-

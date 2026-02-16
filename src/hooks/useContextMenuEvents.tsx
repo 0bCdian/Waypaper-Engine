@@ -78,13 +78,10 @@ const useContextMenuEvents = () => {
 			const imagesPerPage = args[0] as number;
 
 			goDaemon
-				.updateConfig({
-					app: {
-						images_per_page: imagesPerPage,
-					} as any,
-				})
+				.updateConfigSection("app", { images_per_page: imagesPerPage })
 				.then(() => {
-					window.location.reload();
+					imagesStore.setState({ perPage: imagesPerPage });
+					imagesStore.getState().fetchPage(1);
 				})
 				.catch((error: unknown) => {
 					console.error("Failed to update images per page:", error);

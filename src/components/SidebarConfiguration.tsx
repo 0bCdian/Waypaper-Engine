@@ -1,6 +1,5 @@
 import React, { useState } from "react";
 import { useUnifiedConfigStore } from "../stores/unifiedConfig";
-import { useSidebarState } from "../hooks/useSidebarState";
 import { cn } from "../utils/cn";
 
 /**
@@ -71,24 +70,9 @@ export const SidebarConfiguration: React.FC = () => {
  */
 const AppSettings: React.FC = () => {
 	const { config, setConfigValue } = useUnifiedConfigStore();
-	const { isCollapsed: sidebarCollapsed, setCollapsed } = useSidebarState();
 
 	return (
 		<div className="space-y-4">
-			<div className="form-control">
-				<label className="label">
-					<span className="label-text text-sm font-medium">
-						Sidebar Collapsed
-					</span>
-				</label>
-				<input
-					type="checkbox"
-					className="toggle toggle-primary"
-					checked={sidebarCollapsed}
-					onChange={(e) => setCollapsed(e.target.checked)}
-				/>
-			</div>
-
 			<div className="form-control">
 				<label className="label">
 					<span className="label-text text-sm font-medium">Auto Start</span>

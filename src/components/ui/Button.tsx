@@ -183,7 +183,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
 						{/* Button content */}
 						{children && (
 							<span
-								className={cn("flex-1", startIcon && "ml-2", endIcon && "mr-2")}
+								className={cn("flex-1", !!startIcon && "ml-2", !!endIcon && "mr-2")}
 							>
 								{children}
 							</span>

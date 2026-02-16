@@ -39,6 +39,8 @@ interface State {
 	filters: Filters;
 	selectedImages: Set<number>;
 	pagination: Pagination | null;
+	currentPage: number;
+	perPage: number;
 	addImages: (newImages: rendererImage[]) => void;
 	addImage: (newImage: rendererImage) => void;
 	setFilters: (newFilters: Filters) => void;
@@ -47,6 +49,8 @@ interface State {
 	setSelectedImages: (newSelectedImages: Set<number>) => void;
 	removeImagesFromStore: (images: rendererImage[]) => void;
 	reQueryImages: (params?: ImageQueryParams) => void;
+	setCurrentPage: (page: number) => void;
+	fetchPage: (page: number) => void;
 	addToSelectedImages: (imageSelected: rendererImage) => void;
 	removeFromSelectedImages: (imageSelected: rendererImage) => void;
 	deleteSelectedImages: () => void;
@@ -66,6 +70,8 @@ export const imagesStore = create<State>()((set, get) => ({
 	filters: initialFilters,
 	selectedImages: new Set<number>(),
 	pagination: null,
+	currentPage: 1,
+	perPage: 50,
 
 	setFilters: (newFilters) => {
 		set(() => ({ filters: newFilters }));
@@ -142,9 +148,21 @@ export const imagesStore = create<State>()((set, get) => ({
 			};
 		});
 	},
+	setCurrentPage: (page: number) => {
+		set({ currentPage: page });
+	},
+	fetchPage: (page: number) => {
+		set({ currentPage: page });
+		get().reQueryImages({ page, per_page: get().perPage });
+	},
 	reQueryImages: (params?: ImageQueryParams) => {
+		const mergedParams: ImageQueryParams = {
+			page: get().currentPage,
+			per_page: get().perPage,
+			...params,
+		};
 		void goDaemon
-			.getImages(params)
+			.getImages(mergedParams)
 			.then((response) => {
 				if (!response || !response.data || !Array.isArray(response.data)) {
 					console.warn("ImagesStore: Invalid images response:", response);
@@ -163,7 +181,6 @@ export const imagesStore = create<State>()((set, get) => ({
 				const newImagesMap = new Map<number, rendererImage>();
 
 				images.forEach((image) => {
-					// Set default time for playlist compatibility
 					if (image.time === undefined) {
 						image.time = null;
 					}
