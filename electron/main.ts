@@ -1,12 +1,23 @@
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { app, BrowserWindow, globalShortcut, Menu, protocol } from "electron";
+import {
+	Tray,
+	app,
+	BrowserWindow,
+	globalShortcut,
+	Menu,
+	nativeImage,
+	protocol,
+} from "electron";
 
 // Daemon initialization
 import { initWaypaperDaemon } from "../globals/startDaemons";
 
 // Go daemon client
 import { goDaemonClient } from "./goDaemonClient";
+
+// Menus
+import { trayMenu } from "../globals/menus";
 
 // Managers
 import { daemonMonitor } from "./managers/DaemonMonitor";
@@ -16,6 +27,7 @@ import WindowManager from "./managers/WindowManager";
 
 // Global variables
 let mainWindow: BrowserWindow | null = null;
+let tray: Tray | null = null;
 let themeManager: ThemeManager;
 let windowManager: WindowManager;
 let ipcManager: IPCManager;
@@ -67,6 +79,33 @@ function createMainWindow(): void {
 }
 
 /**
+ * Create or refresh the system tray icon and context menu.
+ */
+async function createAppTray(): Promise<void> {
+	const iconPath = join(__dirname, "../public/app.png");
+	if (!tray) {
+		const icon = nativeImage.createFromPath(iconPath);
+		tray = new Tray(icon.resize({ width: 22, height: 22 }));
+		tray.setToolTip(APP_CONFIG.name);
+		tray.on("click", () => {
+			if (mainWindow) {
+				if (mainWindow.isVisible() && mainWindow.isFocused()) {
+					mainWindow.hide();
+				} else if (mainWindow.isVisible()) {
+					mainWindow.focus();
+				} else {
+					mainWindow.show();
+					mainWindow.focus();
+				}
+			}
+		});
+	}
+
+	const menu = await trayMenu(app, tray, createAppTray);
+	tray.setContextMenu(menu);
+}
+
+/**
  * Initialize the application
  */
 async function initializeApp(): Promise<void> {
@@ -113,6 +152,14 @@ async function initializeApp(): Promise<void> {
 		} catch (error) {
 			console.error("Failed to initialize daemon:", error);
 			console.log("Continuing without daemon functionality");
+		}
+
+		// Create system tray icon
+		try {
+			await createAppTray();
+			console.log("Tray icon created");
+		} catch (error) {
+			console.error("Failed to create tray icon:", error);
 		}
 
 		("Application initialized successfully");

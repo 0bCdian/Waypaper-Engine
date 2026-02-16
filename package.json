@@ -2,6 +2,7 @@
 	"name": "waypaper-engine",
 	"private": true,
 	"version": "2.0.4",
+	"description": "A wallpaper setter GUI with playlist functionality for Wayland",
 	"author": {
 		"name": "0bCdian",
 		"email": "diegoparranava@protonmail.com",
@@ -9,9 +10,9 @@
 	},
 	"scripts": {
 		"dev": "npm run build:daemon && DEV=true vite",
-		"rebuild": "electron-rebuild",
-		"build:daemon": "cd daemon && go build -o waypaper-daemon ./cmd/daemon",
-		"build": "npm run build:daemon && npm install && npm run rebuild && vite build && electron-builder",
+		"build:daemon": "cd daemon && make build",
+		"build": "npm run build:daemon && npm install && vite build && electron-builder",
+		"postinstall": "electron-builder install-app-deps",
 		"lint": "oxlint --react-plugin --tsconfig ./tsconfig.json src/ --fix",
 		"format": "biome format --write .",
 		"preview": "vite preview",
@@ -38,11 +39,10 @@
 		"react-router-dom": "6.15.0",
 		"smol-toml": "^1.6.0",
 		"toml": "^3.0.0",
-		"zustand": "4.5.5"
+		"zustand": "^5.0.11"
 	},
 	"devDependencies": {
 		"@biomejs/biome": "2.2.6",
-		"@electron/rebuild": "3.6.0",
 		"@tailwindcss/postcss": "4.1.14",
 		"@tailwindcss/vite": "^4.1.14",
 		"@types/node": "22.13.0",
@@ -50,7 +50,7 @@
 		"@types/react-dom": "^19.2.3",
 		"@vitejs/plugin-react": "5.0.0",
 		"daisyui": "^5.2.3",
-		"electron": "38.2.1",
+		"electron": "40.4.1",
 		"electron-builder": "25.1.8",
 		"electron-reload": "2.0.0-alpha.1",
 		"oxlint": "1.19.0",

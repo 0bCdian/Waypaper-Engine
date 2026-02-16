@@ -6,12 +6,12 @@
  * custom color definitions as they're handled by DaisyUI itself.
  */
 
-import { ThemeConfig } from "./types";
+import type { ThemeConfig } from "./types";
 
 /**
  * All DaisyUI theme names (35 themes total)
  */
-export const DAISYUI_THEMES = [
+const DAISYUI_THEMES = [
 	"light",
 	"dark",
 	"cupcake",
@@ -49,7 +49,7 @@ export const DAISYUI_THEMES = [
 /**
  * Custom CSS theme names
  */
-export const CUSTOM_THEMES = [
+const CUSTOM_THEMES = [
 	"doublezombie",
 	"gruvbox",
 	"catppuccin",
@@ -68,8 +68,6 @@ export const CUSTOM_THEMES = [
 /**
  * All available themes (DaisyUI + Custom)
  */
-export const ALL_THEMES = [...DAISYUI_THEMES, ...CUSTOM_THEMES];
-
 /**
  * Theme metadata for DaisyUI themes
  */
@@ -403,68 +401,5 @@ export const themes: Record<string, ThemeConfig> = {
 		{} as Record<string, ThemeConfig>,
 	),
 };
-
-/**
- * Default theme name
- */
-export const DEFAULT_THEME_NAME = "dark";
-
-/**
- * Get theme by name
- */
-export function getTheme(name: string): ThemeConfig | undefined {
-	return themes[name];
-}
-
-/**
- * Get all available themes
- */
-export function getAllThemes(): ThemeConfig[] {
-	return Object.values(themes).filter((theme) => theme.available);
-}
-
-/**
- * Get themes by category
- */
-export function getThemesByCategory(
-	category: ThemeConfig["category"],
-): ThemeConfig[] {
-	return Object.values(themes).filter(
-		(theme) => theme.category === category && theme.available,
-	);
-}
-
-/**
- * Check if theme exists
- */
-export function hasTheme(name: string): boolean {
-	return name in themes && (themes[name].available ?? true);
-}
-
-/**
- * Get theme metadata for display purposes
- */
-export function getThemeMetadata(name: string) {
-	const theme = themes[name];
-	if (!theme) return undefined;
-
-	return {
-		name: theme.name,
-		displayName: theme.displayName,
-		description: theme.description,
-		category: theme.category,
-		previewImage: theme.previewImage,
-		available: theme.available,
-	};
-}
-
-/**
- * Get all theme metadata
- */
-export function getAllThemeMetadata() {
-	return Object.values(themes)
-		.filter((theme) => theme.available)
-		.map((theme) => getThemeMetadata(theme.name)!);
-}
 
 export default themes;

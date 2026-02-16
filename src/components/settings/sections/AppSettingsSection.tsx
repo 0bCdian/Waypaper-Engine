@@ -4,9 +4,10 @@
  * Handles all application-specific settings from the [app] section of the TOML config.
  */
 
-import React, { useState } from "react";
+import type React from "react";
 import { cn } from "@/utils/cn";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { useShallow } from "zustand/react/shallow";
 import InlineThemeSelector from "../InlineThemeSelector";
 import type { ConfigSection } from "@/shared/types/unifiedConfig";
 
@@ -38,12 +39,20 @@ interface SettingField {
 export const AppSettingsSection: React.FC<AppSettingsSectionProps> = ({
 	className = "",
 }) => {
-	const { config, saveConfigSection, errors } = useSettingsStore();
+	const { config, saveConfigSection, errors, expandedSections, toggleSection } =
+		useSettingsStore(
+			useShallow((s) => ({
+				config: s.config,
+				saveConfigSection: s.saveConfigSection,
+				errors: s.errors,
+				expandedSections: s.expandedSections,
+				toggleSection: s.toggleSection,
+			})),
+		);
 	const section: ConfigSection = "app";
-	const [themeAccordionOpen, setThemeAccordionOpen] = useState(false);
-	const [activeThemeTab, setActiveThemeTab] = useState<"light" | "dark">(
-		"dark",
-	);
+	const themeAccordionOpen = expandedSections.has("theme");
+	const themeTabDark = expandedSections.has("themeTab_dark") || !expandedSections.has("themeTab_light");
+	const activeThemeTab: "light" | "dark" = themeTabDark ? "dark" : "light";
 
 	// Define all app settings fields (excluding theme and gallery filters)
 	const settingsFields: SettingField[] = [
@@ -244,7 +253,7 @@ export const AppSettingsSection: React.FC<AppSettingsSectionProps> = ({
 				<input
 					type="checkbox"
 					checked={themeAccordionOpen}
-					onChange={(e) => setThemeAccordionOpen(e.target.checked)}
+					onChange={() => toggleSection("theme")}
 				/>
 				<div className="collapse-title text-lg font-medium">
 					<div className="flex items-center gap-2">
@@ -279,11 +288,15 @@ export const AppSettingsSection: React.FC<AppSettingsSectionProps> = ({
 							{/* Theme Category Tabs */}
 							<div className="tabs tabs-boxed">
 								<button
+									type="button"
 									className={cn(
 										"tab tab-sm",
 										activeThemeTab === "dark" ? "tab-active" : "",
 									)}
-									onClick={() => setActiveThemeTab("dark")}
+									onClick={() => {
+										if (!expandedSections.has("themeTab_dark")) toggleSection("themeTab_dark");
+										if (expandedSections.has("themeTab_light")) toggleSection("themeTab_light");
+									}}
 								>
 									<svg
 										className="w-4 h-4 mr-1"
@@ -301,11 +314,15 @@ export const AppSettingsSection: React.FC<AppSettingsSectionProps> = ({
 									Dark Themes
 								</button>
 								<button
+									type="button"
 									className={cn(
 										"tab tab-sm",
 										activeThemeTab === "light" ? "tab-active" : "",
 									)}
-									onClick={() => setActiveThemeTab("light")}
+									onClick={() => {
+										if (!expandedSections.has("themeTab_light")) toggleSection("themeTab_light");
+										if (expandedSections.has("themeTab_dark")) toggleSection("themeTab_dark");
+									}}
 								>
 									<svg
 										className="w-4 h-4 mr-1"

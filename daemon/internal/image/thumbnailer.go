@@ -48,14 +48,15 @@ func (t *Thumbnailer) Generate(sourcePath string, imageID int) (map[string]strin
 		return nil, fmt.Errorf("thumbnailer: open source: %w", err)
 	}
 
-	if err := os.MkdirAll(t.thumbnailsDir, 0o755); err != nil {
-		return nil, fmt.Errorf("thumbnailer: create dir: %w", err)
-	}
-
 	thumbnails := make(map[string]string, len(t.resolutions))
 
 	for _, res := range t.resolutions {
-		outPath := filepath.Join(t.thumbnailsDir, fmt.Sprintf("%d_%s.webp", imageID, res.Label))
+		resDir := filepath.Join(t.thumbnailsDir, res.Label)
+		if err := os.MkdirAll(resDir, 0o755); err != nil {
+			return nil, fmt.Errorf("thumbnailer: create dir %s: %w", res.Label, err)
+		}
+
+		outPath := filepath.Join(resDir, fmt.Sprintf("%d.webp", imageID))
 
 		thumb := fitImage(src, res.MaxWidth, res.MaxHeight)
 

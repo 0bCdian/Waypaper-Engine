@@ -13,9 +13,8 @@ import { StoreApi, UseBoundStore } from "zustand";
 export function useStoreSelector<T, R>(
 	store: UseBoundStore<StoreApi<T>>,
 	selector: (state: T) => R,
-	equalityFn?: (a: R, b: R) => boolean,
 ): R {
-	return store(selector, equalityFn || Object.is);
+	return store(selector);
 }
 
 /**
@@ -222,7 +221,7 @@ export function useStoreErrorHandling<T>(
 	useEffect(() => {
 		const originalSetState = store.setState;
 
-		store.setState = (partial, replace) => {
+		store.setState = ((partial: any, replace?: any) => {
 			try {
 				return originalSetState(partial, replace);
 			} catch (error) {
@@ -232,7 +231,7 @@ export function useStoreErrorHandling<T>(
 				onError?.(err);
 				throw err;
 			}
-		};
+		}) as typeof store.setState;
 
 		return () => {
 			store.setState = originalSetState;

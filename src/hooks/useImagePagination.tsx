@@ -10,12 +10,13 @@ import { useFilteredImages } from "./useFilteredImages";
 import { imagesStore } from "../stores/images";
 import { useHotkeys } from "react-hotkeys-hook";
 import { type rendererImage } from "../types/rendererTypes";
-import { useUnifiedConfigStore } from "../stores/unifiedConfig";
+import { useSettingsStore } from "../stores/settingsStore";
+import type { ImageQueryParams } from "../../electron/daemon-go-types";
 
 const ImageCard = lazy(async () => await import("../components/ImageCard"));
 
 export function useImagePagination() {
-	const { config } = useUnifiedConfigStore();
+	const { config } = useSettingsStore();
 	const {
 		filters,
 		selectedImages,
@@ -66,7 +67,13 @@ export function useImagePagination() {
 
 	const handlePageChange = useCallback(
 		(page: number) => {
-			imagesStore.getState().fetchPage(page);
+			const { filters: currentFilters } = imagesStore.getState();
+			const queryParams: Partial<ImageQueryParams> = {
+				sort_by: currentFilters.type === "name" ? "name" : "imported_at",
+				sort_order: currentFilters.order,
+				search: currentFilters.searchString || undefined,
+			};
+			imagesStore.getState().fetchPage(page, queryParams);
 		},
 		[],
 	);
@@ -85,16 +92,22 @@ export function useImagePagination() {
 
 	useHotkeys(
 		"ctrl+a",
-		() => {
+		(e) => {
+			e.preventDefault();
 			selectImagesInCurrentPage();
 		},
+		{ preventDefault: true },
 		[imagesInCurrentPage, selectedImages],
 	);
 
 	// Reset to page 1 when search is cleared
 	useEffect(() => {
 		if (filters.searchString === "") {
-			imagesStore.getState().fetchPage(1);
+			const { filters: currentFilters } = imagesStore.getState();
+			imagesStore.getState().fetchPage(1, {
+				sort_by: currentFilters.type === "name" ? "name" : "imported_at",
+				sort_order: currentFilters.order,
+			});
 		}
 	}, [filters.searchString]);
 

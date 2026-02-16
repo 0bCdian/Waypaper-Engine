@@ -16,16 +16,3 @@ export interface ConfigChangeEvent {
 // Configuration section types for form handling
 export type ConfigSection = "app" | "daemon" | "backend" | "monitors";
 
-// Helper types for form validation
-export interface ConfigValidationError {
-	section: ConfigSection;
-	key: string;
-	message: string;
-}
-
-export interface ConfigFormState {
-	isLoading: boolean;
-	isDirty: boolean;
-	errors: ConfigValidationError[];
-	lastSaved: number | null;
-}

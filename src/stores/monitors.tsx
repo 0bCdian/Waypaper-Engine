@@ -18,6 +18,7 @@ interface MonitorStore {
 	reQueryMonitors: () => Promise<void>;
 	setLastSavedMonitorConfig: () => Promise<void>;
 	_isLoadingConfig: boolean;
+	_configLoaded: boolean;
 }
 
 const initialSelection: MonitorSelection = {
@@ -29,6 +30,7 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
 	monitorSelection: initialSelection,
 	monitorsList: [] as StoreMonitor[],
 	_isLoadingConfig: false,
+	_configLoaded: false,
 
 	async setMonitorSelection(value) {
 		if (get()._isLoadingConfig) return;
@@ -80,6 +82,10 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
 	},
 
 	async setLastSavedMonitorConfig() {
+		// Only load persisted config once at startup. Subsequent calls are no-ops
+		// so we don't overwrite in-session monitor selections.
+		if (get()._configLoaded) return;
+
 		try {
 			set({ _isLoadingConfig: true });
 
@@ -118,6 +124,7 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
 			set({
 				monitorSelection: selection,
 				monitorsList: storeMonitors,
+				_configLoaded: true,
 			});
 		} catch (error) {
 			console.error("MonitorStore: Error setting last saved config:", error);

@@ -7,6 +7,7 @@
 
 import type React from "react";
 import { useMonitorStore } from "../../stores/monitors";
+import { useTheme } from "../../contexts/ThemeContext";
 import { cn } from "../../utils/cn";
 import { DRAWER_CHECKBOX_ID } from "./ModernAppLayout";
 
@@ -16,6 +17,11 @@ export interface NavBarProps {
 
 export const NavBar: React.FC<NavBarProps> = ({ className }) => {
 	const { monitorSelection, reQueryMonitors } = useMonitorStore();
+	const { isDarkMode, setTheme } = useTheme();
+
+	const handleThemeToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
+		setTheme(e.target.checked ? "dark" : "light");
+	};
 
 	const handleMonitorSelect = async () => {
 		try {
@@ -95,9 +101,57 @@ export const NavBar: React.FC<NavBarProps> = ({ className }) => {
 				</button>
 			</div>
 
-			{/* Right side */}
+			{/* Right side - Theme toggle */}
 			<div className="navbar-end">
-				<div className="flex items-center gap-2" />
+				<label className="toggle text-base-content">
+					<input
+						type="checkbox"
+						className="theme-controller"
+						value="dark"
+						checked={isDarkMode}
+						onChange={handleThemeToggle}
+					/>
+					{/* Sun icon */}
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						viewBox="0 0 24 24"
+					>
+						<title>Light mode</title>
+						<g
+							strokeLinejoin="round"
+							strokeLinecap="round"
+							strokeWidth="2"
+							fill="none"
+							stroke="currentColor"
+						>
+							<circle cx="12" cy="12" r="4" />
+							<path d="M12 2v2" />
+							<path d="M12 20v2" />
+							<path d="m4.93 4.93 1.41 1.41" />
+							<path d="m17.66 17.66 1.41 1.41" />
+							<path d="M2 12h2" />
+							<path d="M20 12h2" />
+							<path d="m6.34 17.66-1.41 1.41" />
+							<path d="m19.07 4.93-1.41 1.41" />
+						</g>
+					</svg>
+					{/* Moon icon */}
+					<svg
+						xmlns="http://www.w3.org/2000/svg"
+						viewBox="0 0 24 24"
+					>
+						<title>Dark mode</title>
+						<g
+							strokeLinejoin="round"
+							strokeLinecap="round"
+							strokeWidth="2"
+							fill="none"
+							stroke="currentColor"
+						>
+							<path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+						</g>
+					</svg>
+				</label>
 			</div>
 		</nav>
 	);

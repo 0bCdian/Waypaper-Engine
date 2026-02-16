@@ -1,7 +1,7 @@
 import { useMonitorStore, type StoreMonitor } from "../stores/monitors";
-import { type monitorSelectType } from "../types/rendererTypes";
+import type { monitorSelectType } from "../types/rendererTypes";
 import SvgComponent from "./addImagesIcon";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 
 const goDaemon = window.API_RENDERER.goDaemon;
 
@@ -22,47 +22,49 @@ export function MonitorComponent({
 	const [wallpaperSrc, setWallpaperSrc] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 
-	useEffect(() => {
-		let cancelled = false;
+	const fetchWallpaperPreview = useCallback(() => {
 		setIsLoading(true);
-
 		goDaemon
 			.getImageHistory(1, monitor.name)
 			.then((history) => {
-				if (cancelled) return;
 				if (history.length > 0) {
 					return goDaemon.getImage(history[0].image_id);
 				}
 				return null;
 			})
 			.then((image) => {
-				if (cancelled) return;
 				if (image) {
 					const src =
-						image.thumbnails?.default ||
 						image.thumbnails?.["1080p"] ||
+						image.thumbnails?.["720p"] ||
+						image.thumbnails?.default ||
 						image.path;
 					setWallpaperSrc(src);
 				}
 			})
 			.catch((err) => {
-				if (!cancelled) {
-					console.warn(
-						`Failed to load wallpaper for ${monitor.name}:`,
-						err,
-					);
-				}
+				console.warn(
+					`Failed to load wallpaper for ${monitor.name}:`,
+					err,
+				);
 			})
 			.finally(() => {
-				if (!cancelled) {
-					setIsLoading(false);
-				}
+				setIsLoading(false);
 			});
-
-		return () => {
-			cancelled = true;
-		};
 	}, [monitor.name]);
+
+	// Fetch on mount and when monitor changes
+	useEffect(() => {
+		fetchWallpaperPreview();
+	}, [fetchWallpaperPreview]);
+
+	// Re-fetch when a wallpaper changes on any monitor
+	useEffect(() => {
+		goDaemon.on("wallpaper_changed", fetchWallpaperPreview);
+		return () => {
+			goDaemon.off("wallpaper_changed", fetchWallpaperPreview);
+		};
+	}, [fetchWallpaperPreview]);
 
 	const scaledWidth = monitor.width * scale;
 	const scaledHeight = monitor.height * scale;

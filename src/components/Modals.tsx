@@ -5,7 +5,7 @@ import AddToPlaylistModal from "./AddToPlaylistModal";
 import PlaylistConfigurationModal from "./PlaylistConfigurationModal";
 import { playlistStore } from "../stores/playlist";
 import AdvancedFiltersModal from "./AdvancedFiltersModal";
-import { useUnifiedConfigStore } from "../stores/unifiedConfig";
+import { useSettingsStore } from "../stores/settingsStore";
 import Monitors from "./monitorsModal";
 import { useMonitorStore } from "../stores/monitors";
 import type { Playlist } from "../../electron/daemon-go-types";
@@ -15,12 +15,12 @@ function Modals() {
 	const [playlistsInDB, setPlaylistsInDB] = useState<Playlist[]>(
 		[],
 	);
-	const { config } = useUnifiedConfigStore();
 	const { setLastSavedMonitorConfig, reQueryMonitors } = useMonitorStore();
 	useEffect(() => {
 		if (alreadyShown) return;
 		alreadyShown = true;
 		void setLastSavedMonitorConfig().then(() => {
+			const config = useSettingsStore.getState().config;
 			if (!config || !config.app.show_monitor_modal_on_start) return;
 			setTimeout(() => {
 				void reQueryMonitors().then(() => {

@@ -12,10 +12,10 @@ import React, {
 	useEffect,
 	useState,
 	useCallback,
-	ReactNode,
+	type ReactNode,
 } from "react";
-import { ThemeContextType } from "./types";
-import { ThemeConfig } from "../themes/types";
+import type { ThemeContextType } from "./types";
+import type { ThemeConfig } from "../themes/types";
 import { themes } from "../themes/themes";
 
 // Default theme name
@@ -342,87 +342,6 @@ export const useTheme = (): ThemeContextType => {
 	}
 
 	return context;
-};
-
-/**
- * Hook for theme-specific utilities
- *
- * Provides utility functions for working with the current theme,
- * including color access, CSS class generation, and theme variables.
- *
- * @returns Object containing theme utility functions and current theme info
- */
-export const useThemeUtils = () => {
-	const { currentTheme, currentThemeConfig, isDarkMode, isLightMode } =
-		useTheme();
-
-	/**
-	 * Get color value from current theme
-	 *
-	 * @param colorName - The name of the color to retrieve
-	 * @returns Color value as string, or empty string if not found
-	 */
-	const getColor = useCallback(
-		(colorName: keyof ThemeConfig["colors"]) => {
-			return (currentThemeConfig?.colors as any)?.[colorName] || "";
-		},
-		[currentThemeConfig],
-	);
-
-	/**
-	 * Check if current theme has a specific color
-	 *
-	 * @param colorName - The name of the color to check
-	 * @returns True if the color exists in the current theme
-	 */
-	const hasColor = useCallback(
-		(colorName: keyof ThemeConfig["colors"]) => {
-			return Boolean((currentThemeConfig?.colors as any)?.[colorName]);
-		},
-		[currentThemeConfig],
-	);
-
-	/**
-	 * Get theme-specific CSS class
-	 *
-	 * @param baseClass - Base CSS class name
-	 * @returns CSS class with theme prefix
-	 */
-	const getThemeClass = useCallback(
-		(baseClass: string) => {
-			return `${baseClass} theme-${currentTheme}`;
-		},
-		[currentTheme],
-	);
-
-	/**
-	 * Get theme-specific CSS variables
-	 *
-	 * @returns Object containing CSS custom properties for the current theme
-	 */
-	const getThemeVariables = useCallback(() => {
-		if (!currentThemeConfig) return {};
-
-		const variables: Record<string, string> = {};
-		Object.entries(currentThemeConfig.colors).forEach(([key, value]) => {
-			if (typeof value === "string") {
-				variables[`--color-${key}`] = value;
-			}
-		});
-
-		return variables;
-	}, [currentThemeConfig]);
-
-	return {
-		getColor,
-		hasColor,
-		getThemeClass,
-		getThemeVariables,
-		isDarkMode,
-		isLightMode,
-		currentTheme,
-		currentThemeConfig,
-	};
 };
 
 export default ThemeProvider;

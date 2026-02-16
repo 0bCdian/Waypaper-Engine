@@ -11,7 +11,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { cn } from "../../utils/cn";
 import { SidebarContent } from "./ModernSidebar";
 import NavBar from "./NavBar";
-import { useUnifiedConfigStore } from "../../stores/unifiedConfig";
+import { useSettingsStore } from "../../stores/settingsStore";
 
 export const DRAWER_CHECKBOX_ID = "sidebar-drawer";
 
@@ -25,7 +25,7 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({
 	className,
 }) => {
 	const { currentTheme, isDarkMode } = useTheme();
-	const { config } = useUnifiedConfigStore();
+	const config = useSettingsStore((s) => s.config);
 
 	if (!config) {
 		return (

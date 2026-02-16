@@ -1,4 +1,5 @@
 import { readFileSync, existsSync, watch, FSWatcher } from "node:fs";
+import { execSync } from "node:child_process";
 import { join } from "node:path";
 import { homedir, tmpdir } from "node:os";
 import toml from "toml";
@@ -206,9 +207,24 @@ export class ConfigReader extends EventEmitter {
 		const isPackaged = !(process.env.NODE_ENV === "development");
 		const resourcesPath = join(__dirname, "..", "..");
 
-		return isPackaged
+		const bundled = isPackaged
 			? join(resourcesPath, "waypaper-daemon")
-			: join(process.cwd(), "daemon", "waypaper-daemon");
+			: join(process.cwd(), "daemon", "build", "waypaper-daemon");
+
+		if (existsSync(bundled)) return bundled;
+
+		// Fall back to system-installed binary (e.g. /usr/bin/waypaper-daemon)
+		try {
+			const systemPath = execSync("which waypaper-daemon", {
+				encoding: "utf-8",
+			}).trim();
+			if (systemPath && existsSync(systemPath)) return systemPath;
+		} catch {
+			// which failed -- binary not in PATH
+		}
+
+		// Return the bundled path anyway so spawn fails with a clear error
+		return bundled;
 	}
 
 	getSocketPath(): string {

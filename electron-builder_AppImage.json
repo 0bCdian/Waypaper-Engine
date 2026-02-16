@@ -14,16 +14,8 @@
 			"filter": ["**/*"]
 		},
 		{
-			"from": "daemon",
-			"to": "resources/daemon"
-		},
-		{
-			"from": "node_modules/better-sqlite3/build/Release/better_sqlite3.node",
-			"to": "resources/better_sqlite3.node"
-		},
-		{
-			"from": "database/migrations",
-			"to": "resources/migrations"
+			"from": "daemon/build/waypaper-daemon",
+			"to": "resources/waypaper-daemon"
 		}
 	],
 	"linux": {

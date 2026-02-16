@@ -3,7 +3,7 @@ import { join, dirname } from "path";
 import { homedir } from "os";
 import { parse, stringify } from "smol-toml";
 
-export interface AppConfig {
+interface AppConfig {
 	kill_daemon_on_exit: boolean;
 	notifications: boolean;
 	start_minimized: boolean;
@@ -17,7 +17,7 @@ export interface AppConfig {
 	sort_order: "asc" | "desc";
 }
 
-export interface DaemonConfig {
+interface DaemonConfig {
 	database_path: string;
 	images_dir: string;
 	thumbnails_dir: string;
@@ -31,7 +31,7 @@ export interface DaemonConfig {
 	compositor: string;
 }
 
-export interface SwwwConfig {
+interface SwwwConfig {
 	transition_type: "simple" | "wipe" | "grow" | "outer" | "wave";
 	transition_step: number;
 	transition_duration: number;
@@ -41,17 +41,17 @@ export interface SwwwConfig {
 	transition_wave: string;
 }
 
-export interface BackendConfig {
+interface BackendConfig {
 	type: "swww" | "feh" | "nitrogen" | "custom";
 	swww?: SwwwConfig;
 }
 
-export interface MonitorsConfig {
+interface MonitorsConfig {
 	selected_monitors: string[];
 	image_set_type: "individual" | "extend" | "clone";
 }
 
-export interface ElectronConfig {
+interface ElectronConfig {
 	log_level: "debug" | "info" | "warn" | "error";
 	log_file: string;
 	log_max_size: number;
@@ -59,7 +59,7 @@ export interface ElectronConfig {
 	log_max_backups: number;
 }
 
-export interface WaypaperConfig {
+interface WaypaperConfig {
 	app: AppConfig;
 	daemon: DaemonConfig;
 	electron: ElectronConfig;
@@ -67,7 +67,7 @@ export interface WaypaperConfig {
 	monitors: MonitorsConfig;
 }
 
-export class ConfigManager {
+class ConfigManager {
 	private configPath: string;
 	private config: WaypaperConfig | null = null;
 	private watchers: Set<(config: WaypaperConfig) => void> = new Set();

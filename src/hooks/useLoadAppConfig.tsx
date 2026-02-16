@@ -1,16 +1,15 @@
 import { useCallback } from "react";
-import { useUnifiedConfigStore } from "../stores/unifiedConfig";
+import { useSettingsStore } from "../stores/settingsStore";
 
 export function useLoadAppConfig() {
-	const { loadConfig, config, isLoading } = useUnifiedConfigStore();
+	const configLoaded = useSettingsStore((s) => !!s.config);
+	const isLoading = useSettingsStore((s) => s.isLoading);
+	const loadConfig = useSettingsStore((s) => s.loadConfig);
 
 	const loadAppConfig = useCallback(() => {
-		// Only load if config is not already loaded and not currently loading
-		if (config || isLoading) return;
-
-		console.log("🔵 useLoadAppConfig: Loading unified config...");
+		if (configLoaded || isLoading) return;
 		loadConfig();
-	}, [loadConfig, config, isLoading]);
+	}, [loadConfig, configLoaded, isLoading]);
 
 	return loadAppConfig;
 }

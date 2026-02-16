@@ -107,7 +107,7 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
 			transition={{ duration: 0.2 }}
 			ref={setNodeRef}
 		>
-			<div className="mx-1 mb-2 w-32 shrink-0 rounded-lg shadow-xl">
+			<div className="mx-1 mb-2 w-32 sm:w-40 md:w-48 lg:w-56 shrink-0 rounded-lg shadow-xl">
 				{type === "time_of_day" && (
 					<div className="flex max-h-[fit] flex-col">
 						<span
@@ -165,15 +165,15 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
 						</svg>
 					</button>
 				</div>
-				<img
-					{...attributes}
-					{...listeners}
-					src={imageSrc}
-					alt={imageName}
-					className="cursor-default rounded-lg shadow-2xl transition-all active:scale-105 active:opacity-45"
-					ref={imageRef}
-					loading="lazy"
-				/>
+			<img
+				{...attributes}
+				{...listeners}
+				src={imageSrc}
+				alt={imageName}
+				className="w-full aspect-[3/2] object-cover cursor-default rounded-lg shadow-2xl transition-all active:scale-105 active:opacity-45"
+				ref={imageRef}
+				loading="lazy"
+			/>
 			</div>
 		</motion.div>
 	);

@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { type Filters, type rendererImage } from "../types/rendererTypes";
+import type { Filters, rendererImage } from "../types/rendererTypes";
 import { playlistStore } from "./playlist";
 import type { Pagination, ImageQueryParams } from "../../electron/daemon-go-types";
 
@@ -50,7 +50,7 @@ interface State {
 	removeImagesFromStore: (images: rendererImage[]) => void;
 	reQueryImages: (params?: ImageQueryParams) => void;
 	setCurrentPage: (page: number) => void;
-	fetchPage: (page: number) => void;
+	fetchPage: (page: number, extraParams?: Partial<ImageQueryParams>) => void;
 	addToSelectedImages: (imageSelected: rendererImage) => void;
 	removeFromSelectedImages: (imageSelected: rendererImage) => void;
 	deleteSelectedImages: () => void;
@@ -151,9 +151,9 @@ export const imagesStore = create<State>()((set, get) => ({
 	setCurrentPage: (page: number) => {
 		set({ currentPage: page });
 	},
-	fetchPage: (page: number) => {
+	fetchPage: (page: number, extraParams?: Partial<ImageQueryParams>) => {
 		set({ currentPage: page });
-		get().reQueryImages({ page, per_page: get().perPage });
+		get().reQueryImages({ page, per_page: get().perPage, ...extraParams });
 	},
 	reQueryImages: (params?: ImageQueryParams) => {
 		const mergedParams: ImageQueryParams = {

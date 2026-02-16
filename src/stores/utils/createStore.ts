@@ -87,14 +87,14 @@ export function withLogging<T>(
 		// Log state changes in development
 		if (process.env.NODE_ENV === "development") {
 			const originalSet = set;
-			set = (partial, replace) => {
+			set = ((partial: any, replace?: any) => {
 				console.group(`🔄 ${storeName} State Update`);
 				console.log("Previous state:", get());
 				console.log("Update:", partial);
 				originalSet(partial, replace);
 				console.log("New state:", get());
 				console.groupEnd();
-			};
+			}) as typeof set;
 		}
 
 		return store;
@@ -147,16 +147,15 @@ export function withPerformanceMonitoring<T>(
 		// Monitor performance in development
 		if (process.env.NODE_ENV === "development") {
 			const originalSet = set;
-			set = (partial, replace) => {
+			set = ((partial: any, replace?: any) => {
 				const start = performance.now();
 				originalSet(partial, replace);
 				const end = performance.now();
 
 				if (end - start > 10) {
-					// Log if update takes more than 10ms
 					console.warn(`⚠️ Slow store update in ${storeName}: ${end - start}ms`);
 				}
-			};
+			}) as typeof set;
 		}
 
 		return store;
@@ -174,9 +173,9 @@ export function withValidation<T>(
 		const store = storeCreator(set, get, api);
 
 		const originalSet = set;
-		set = (partial, replace) => {
+		set = ((partial: any, replace?: any) => {
 			const newState =
-				typeof partial === "function" ? (partial as any)(get()) : partial;
+				typeof partial === "function" ? partial(get()) : partial;
 			const mergedState = { ...get(), ...newState };
 
 			if (!validator(mergedState)) {
@@ -185,7 +184,7 @@ export function withValidation<T>(
 			}
 
 			originalSet(partial, replace);
-		};
+		}) as typeof set;
 
 		return store;
 	};
@@ -202,7 +201,7 @@ export function withSubscriptions<T>(
 		const subscriptions = new Set<(state: T, prevState: T) => void>();
 
 		const originalSet = set;
-		set = (partial, replace) => {
+		set = ((partial: any, replace?: any) => {
 			const prevState = get();
 			originalSet(partial, replace);
 			const newState = get();
@@ -214,7 +213,7 @@ export function withSubscriptions<T>(
 					console.error("Subscription error:", error);
 				}
 			});
-		};
+		}) as typeof set;
 
 		// Add subscription method
 		(store as any).subscribe = (callback: (state: T, prevState: T) => void) => {

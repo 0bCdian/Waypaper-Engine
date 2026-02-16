@@ -4,9 +4,10 @@
  * Handles all daemon-specific settings from the [daemon] section of the TOML config.
  */
 
-import React from "react";
+import type React from "react";
 import { cn } from "@/utils/cn";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { useShallow } from "zustand/react/shallow";
 import DaemonStatusComponent from "../DaemonStatusComponent";
 import type { ConfigSection } from "@/shared/types/unifiedConfig";
 
@@ -39,45 +40,44 @@ interface SettingField {
 export const DaemonSettingsSection: React.FC<DaemonSettingsSectionProps> = ({
 	className = "",
 }) => {
-	const { config, saveConfigSection, errors } = useSettingsStore();
+	const { config, saveConfigSection, errors } = useSettingsStore(
+		useShallow((s) => ({
+			config: s.config,
+			saveConfigSection: s.saveConfigSection,
+			errors: s.errors,
+		})),
+	);
 	const section: ConfigSection = "daemon";
 
-	// Define all daemon settings fields
+	// Define all daemon settings fields (aligned with daemon/internal/config/types.go)
 	const settingsFields: SettingField[] = [
 		{
-			key: "database_path",
-			label: "Database Path",
-			description: "Path to the SQLite database file",
+			key: "database_dir",
+			label: "Database Directory",
+			description: "Directory where CloverDB database files are stored",
 			type: "path",
-			placeholder: "~/.config/waypaper-engine/data",
+			placeholder: "~/.local/share/waypaper-engine/db",
 		},
 		{
 			key: "images_dir",
 			label: "Images Directory",
-			description: "Directory where processed images are cached",
+			description: "Directory where imported images are cached",
 			type: "path",
-			placeholder: "~/.waypaper-engine/images",
+			placeholder: "~/.local/share/waypaper-engine/images",
 		},
 		{
 			key: "thumbnails_dir",
 			label: "Thumbnails Directory",
-			description: "Directory where image thumbnails are stored",
+			description: "Directory where generated thumbnails are stored",
 			type: "path",
-			placeholder: "~/.waypaper-engine/data/cache/thumbnails",
-		},
-		{
-			key: "monitors_state_file",
-			label: "Monitors State File",
-			description: "File to store monitor configuration state",
-			type: "path",
-			placeholder: "~/.cache/waypaper-engine/monitors.json",
+			placeholder: "~/.cache/waypaper-engine/thumbnails",
 		},
 		{
 			key: "socket_path",
 			label: "Socket Path",
-			description: "Unix socket path for IPC communication",
+			description: "Unix socket path for daemon communication",
 			type: "path",
-			placeholder: "/tmp/waypaper-engine.sock",
+			placeholder: "/run/user/1000/waypaper-engine.sock",
 		},
 		{
 			key: "log_level",
@@ -96,30 +96,21 @@ export const DaemonSettingsSection: React.FC<DaemonSettingsSectionProps> = ({
 			label: "Log File",
 			description: "Path to the daemon log file",
 			type: "path",
-			placeholder: "~/.config/waypaper-engine/daemon.log",
+			placeholder: "~/.local/share/waypaper-engine/daemon.log",
 		},
 		{
-			key: "log_max_size",
+			key: "log_max_size_mb",
 			label: "Log Max Size (MB)",
-			description: "Maximum size of log file before rotation",
+			description: "Maximum size of log file in megabytes before rotation",
 			type: "number",
 			min: 1,
 			max: 1000,
 			step: 1,
 		},
 		{
-			key: "log_max_age",
-			label: "Log Max Age (days)",
-			description: "Maximum age of log files before deletion",
-			type: "number",
-			min: 1,
-			max: 365,
-			step: 1,
-		},
-		{
 			key: "log_max_backups",
 			label: "Log Max Backups",
-			description: "Maximum number of log file backups to keep",
+			description: "Maximum number of rotated log file backups to keep",
 			type: "number",
 			min: 1,
 			max: 10,
@@ -128,9 +119,10 @@ export const DaemonSettingsSection: React.FC<DaemonSettingsSectionProps> = ({
 		{
 			key: "compositor",
 			label: "Compositor",
-			description: "Window compositor type (wayland or x11)",
+			description: "Compositor detection mode",
 			type: "select",
 			options: [
+				{ value: "auto", label: "Auto-detect" },
 				{ value: "wayland", label: "Wayland" },
 				{ value: "x11", label: "X11" },
 			],
@@ -290,10 +282,9 @@ export const DaemonSettingsSection: React.FC<DaemonSettingsSectionProps> = ({
 					{settingsFields
 						.filter((field) =>
 							[
-								"database_path",
+								"database_dir",
 								"images_dir",
 								"thumbnails_dir",
-								"monitors_state_file",
 							].includes(field.key),
 						)
 						.map(renderField)}
@@ -321,8 +312,7 @@ export const DaemonSettingsSection: React.FC<DaemonSettingsSectionProps> = ({
 							[
 								"log_level",
 								"log_file",
-								"log_max_size",
-								"log_max_age",
+								"log_max_size_mb",
 								"log_max_backups",
 							].includes(field.key),
 						)

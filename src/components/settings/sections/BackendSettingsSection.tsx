@@ -8,6 +8,7 @@
 import React, { useState } from "react";
 import { cn } from "@/utils/cn";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { useShallow } from "zustand/react/shallow";
 import type { ConfigSection } from "@/shared/types/unifiedConfig";
 
 /**
@@ -45,7 +46,15 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 		errors,
 		showAdvancedSettings,
 		setShowAdvancedSettings,
-	} = useSettingsStore();
+	} = useSettingsStore(
+		useShallow((s) => ({
+			config: s.config,
+			saveConfigSection: s.saveConfigSection,
+			errors: s.errors,
+			showAdvancedSettings: s.showAdvancedSettings,
+			setShowAdvancedSettings: s.setShowAdvancedSettings,
+		})),
+	);
 	const section: ConfigSection = "backend";
 	const [expandedAccordions, setExpandedAccordions] = useState<Set<string>>(
 		new Set(["general"]),

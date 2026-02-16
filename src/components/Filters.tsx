@@ -1,7 +1,9 @@
 import { type ChangeEvent, useEffect, useState } from "react";
 import useDebounce from "../hooks/useDebounce";
-import { type Filters as FiltersType } from "../types/rendererTypes";
+import type { Filters as FiltersType } from "../types/rendererTypes";
 import { imagesStore } from "../stores/images";
+import type { ImageQueryParams } from "../../electron/daemon-go-types";
+
 interface PartialFilters {
 	order: "asc" | "desc";
 	type: "name" | "id";
@@ -12,6 +14,15 @@ const initialFilters: PartialFilters = {
 	type: "id",
 	searchString: "",
 };
+
+function mapFiltersToQueryParams(f: PartialFilters): Partial<ImageQueryParams> {
+	return {
+		sort_by: f.type === "name" ? "name" : "imported_at",
+		sort_order: f.order,
+		search: f.searchString || undefined,
+	};
+}
+
 function Filters() {
 	const { setFilters, filters } = imagesStore();
 	const [partialFilters, setPartialFilters] = useState(initialFilters);
@@ -31,6 +42,10 @@ function Filters() {
 				advancedFilters: filters.advancedFilters,
 			};
 			setFilters(newFilters);
+			// Trigger server-side re-query with the mapped params
+			imagesStore
+				.getState()
+				.fetchPage(1, mapFiltersToQueryParams(partialFilters));
 		},
 		200,
 		[partialFilters],

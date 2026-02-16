@@ -14,7 +14,7 @@
       "version": "4.1.0"
     },
     "tessl/npm-types--react": {
-      "version": "18.3.0"
+      "version": "19.1.0"
     },
     "tessl/npm-vitejs--plugin-react": {
       "version": "5.1.0"
@@ -44,7 +44,7 @@
       "version": "9.9.0"
     },
     "tessl/npm-react-dom": {
-      "version": "18.3.0"
+      "version": "19.2.0"
     },
     "tessl/npm-react-hotkeys-hook": {
       "version": "4.6.0"
@@ -65,7 +65,7 @@
       "version": "7.3.0"
     },
     "tessl/npm-zustand": {
-      "version": "4.5.0"
+      "version": "5.0.0"
     }
   }
 }

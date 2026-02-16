@@ -1,17 +1,18 @@
-import React, { useState } from "react";
-import { useUnifiedConfigStore } from "../stores/unifiedConfig";
+import type React from "react";
+import { useState } from "react";
+import { useSettingsStore } from "../stores/settingsStore";
+import { useShallow } from "zustand/react/shallow";
 import { cn } from "../utils/cn";
 
 /**
  * Sidebar Configuration Component
  */
 export const SidebarConfiguration: React.FC = () => {
-	const { config } = useUnifiedConfigStore();
+	const config = useSettingsStore((s) => s.config);
 	const [activeSection, setActiveSection] = useState<"app" | "swww" | "daemon">(
 		"app",
 	);
 
-	// Don't render if config is not loaded
 	if (!config) {
 		return (
 			<div className="flex items-center justify-center h-full">
@@ -28,7 +29,6 @@ export const SidebarConfiguration: React.FC = () => {
 
 	return (
 		<div className="flex flex-col">
-			{/* Header */}
 			<div className="mb-6">
 				<h2 className="text-lg font-semibold text-base-content mb-2">
 					Settings
@@ -38,10 +38,10 @@ export const SidebarConfiguration: React.FC = () => {
 				</p>
 			</div>
 
-			{/* Section Tabs */}
 			<div className="flex flex-col gap-2 mb-6">
 				{sections.map((section) => (
 					<button
+						type="button"
 						key={section.id}
 						onClick={() => setActiveSection(section.id)}
 						className={cn(
@@ -55,7 +55,6 @@ export const SidebarConfiguration: React.FC = () => {
 				))}
 			</div>
 
-			{/* Configuration Content */}
 			<div className="flex-1 overflow-y-auto">
 				{activeSection === "app" && <AppSettings />}
 				{activeSection === "swww" && <SwwwSettings />}
@@ -65,24 +64,23 @@ export const SidebarConfiguration: React.FC = () => {
 	);
 };
 
-/**
- * App Settings Component
- */
 const AppSettings: React.FC = () => {
-	const { config, setConfigValue } = useUnifiedConfigStore();
+	const { config, saveConfigSection } = useSettingsStore(
+		useShallow((s) => ({ config: s.config, saveConfigSection: s.saveConfigSection })),
+	);
 
 	return (
 		<div className="space-y-4">
 			<div className="form-control">
 				<label className="label">
-					<span className="label-text text-sm font-medium">Auto Start</span>
+					<span className="label-text text-sm font-medium">Start Minimized</span>
 				</label>
 				<input
 					type="checkbox"
 					className="toggle toggle-primary"
 					checked={config?.app?.start_minimized || false}
 					onChange={(e) =>
-						setConfigValue("app", { start_minimized: e.target.checked })
+						saveConfigSection("app", { start_minimized: e.target.checked })
 					}
 				/>
 			</div>
@@ -98,7 +96,7 @@ const AppSettings: React.FC = () => {
 					className="toggle toggle-primary"
 					checked={config?.app?.minimize_instead_of_close || false}
 					onChange={(e) =>
-						setConfigValue("app", { minimize_instead_of_close: e.target.checked })
+						saveConfigSection("app", { minimize_instead_of_close: e.target.checked })
 					}
 				/>
 			</div>
@@ -106,15 +104,15 @@ const AppSettings: React.FC = () => {
 			<div className="form-control">
 				<label className="label">
 					<span className="label-text text-sm font-medium">
-						Start Minimized
+						Kill Daemon on Exit
 					</span>
 				</label>
 				<input
 					type="checkbox"
 					className="toggle toggle-primary"
-					checked={config?.app?.start_minimized || false}
+					checked={config?.app?.kill_daemon_on_exit || false}
 					onChange={(e) =>
-						setConfigValue("app", { start_minimized: e.target.checked })
+						saveConfigSection("app", { kill_daemon_on_exit: e.target.checked })
 					}
 				/>
 			</div>
@@ -122,11 +120,10 @@ const AppSettings: React.FC = () => {
 	);
 };
 
-/**
- * Swww Settings Component
- */
 const SwwwSettings: React.FC = () => {
-	const { config, setConfigValue } = useUnifiedConfigStore();
+	const { config, saveConfigSection } = useSettingsStore(
+		useShallow((s) => ({ config: s.config, saveConfigSection: s.saveConfigSection })),
+	);
 
 	return (
 		<div className="space-y-4">
@@ -140,7 +137,7 @@ const SwwwSettings: React.FC = () => {
 					className="select select-primary select-sm w-full"
 					value={config?.backend?.swww?.transition_type || "simple"}
 					onChange={(e) =>
-						setConfigValue("backend", { ...config?.backend?.swww, transition_type: e.target.value })
+						saveConfigSection("backend", { transition_type: e.target.value })
 					}
 				>
 					<option value="simple">Simple</option>
@@ -156,24 +153,24 @@ const SwwwSettings: React.FC = () => {
 			<div className="form-control">
 				<label className="label">
 					<span className="label-text text-sm font-medium">
-						Transition Duration
+						Transition Step
 					</span>
 				</label>
 				<input
 					type="range"
 					min="0"
-					max="10"
-					step="0.1"
+					max="255"
+					step="1"
 					className="range range-primary range-sm"
 					value={config?.backend?.swww?.transition_step || 0}
 					onChange={(e) =>
-					setConfigValue("backend", { ...config?.backend?.swww, transition_step: parseFloat(e.target.value) })
+						saveConfigSection("backend", { transition_step: parseInt(e.target.value) })
 					}
 				/>
 				<div className="flex justify-between text-xs text-base-content/60 px-2">
-					<span>0s</span>
-					<span>{config?.backend?.swww?.transition_step || 0}s</span>
-					<span>10s</span>
+					<span>0</span>
+					<span>{config?.backend?.swww?.transition_step || 0}</span>
+					<span>255</span>
 				</div>
 			</div>
 
@@ -183,9 +180,9 @@ const SwwwSettings: React.FC = () => {
 				</label>
 				<select
 					className="select select-primary select-sm w-full"
-					value={config?.backend?.swww?.transition_pos || "center"}
+					value={config?.backend?.swww?.resize || "crop"}
 					onChange={(e) =>
-						setConfigValue("backend", { ...config?.backend?.swww, transition_pos: e.target.value })
+						saveConfigSection("backend", { resize: e.target.value })
 					}
 				>
 					<option value="crop">Crop</option>
@@ -197,50 +194,13 @@ const SwwwSettings: React.FC = () => {
 	);
 };
 
-/**
- * Daemon Settings Component
- */
 const DaemonSettings: React.FC = () => {
-	const { config, setConfigValue } = useUnifiedConfigStore();
+	const { config, saveConfigSection } = useSettingsStore(
+		useShallow((s) => ({ config: s.config, saveConfigSection: s.saveConfigSection })),
+	);
 
 	return (
 		<div className="space-y-4">
-			{/* Port configuration - not available in current DaemonConfig */}
-			{/* 
-			<div className="form-control">
-				<label className="label">
-					<span className="label-text text-sm font-medium">Daemon Port</span>
-				</label>
-				<input
-					type="number"
-					className="input input-primary input-sm w-full"
-					value={config?.daemon?.port || 8080}
-					onChange={(e) =>
-						setConfigValue("daemon", "port", parseInt(e.target.value))
-					}
-				/>
-			</div>
-			*/}
-
-			{/* Auto start configuration - not available in current DaemonConfig */}
-			{/* 
-			<div className="form-control">
-				<label className="label">
-					<span className="label-text text-sm font-medium">
-						Auto Start Daemon
-					</span>
-				</label>
-				<input
-					type="checkbox"
-					className="toggle toggle-primary"
-					checked={config?.daemon?.auto_start || false}
-					onChange={(e) =>
-						setConfigValue("daemon", "auto_start", e.target.checked)
-					}
-				/>
-			</div>
-			*/}
-
 			<div className="form-control">
 				<label className="label">
 					<span className="label-text text-sm font-medium">Log Level</span>
@@ -249,7 +209,7 @@ const DaemonSettings: React.FC = () => {
 					className="select select-primary select-sm w-full"
 					value={config?.daemon?.log_level || "info"}
 					onChange={(e) =>
-						setConfigValue("daemon", { log_level: e.target.value })
+						saveConfigSection("daemon", { log_level: e.target.value })
 					}
 				>
 					<option value="debug">Debug</option>

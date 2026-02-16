@@ -1,7 +1,8 @@
 /**
  * Unified Settings Store for Waypaper Engine
  *
- * Manages all configuration settings and syncs with the daemon via HTTP API.
+ * Single source of truth for all configuration settings.
+ * Syncs with the daemon via HTTP API and listens for SSE config_changed events.
  */
 
 import { create } from "zustand";
@@ -15,24 +16,31 @@ import type {
 interface SettingsStoreState {
 	config: UnifiedConfig | null;
 	isLoading: boolean;
+	isDirty: boolean;
 	lastSaved: number | null;
 	errors: Array<{ section: ConfigSection; key: string; message: string }>;
 	searchTerm: string;
 	filteredSections: ConfigSection[];
-	expandedSections: Set<ConfigSection>;
+	expandedSections: Set<string>;
 	showAdvancedSettings: boolean;
 }
 
 interface SettingsStoreActions {
 	loadConfig: () => Promise<void>;
+	/** Save a config section to the daemon. Used by settings page components. */
 	saveConfigSection: (
+		section: ConfigSection,
+		data: Record<string, unknown>,
+	) => Promise<void>;
+	/** Alias for saveConfigSection (backward compat with old unifiedConfigStore). */
+	setConfigValue: (
 		section: ConfigSection,
 		data: Record<string, unknown>,
 	) => Promise<void>;
 	resetToDefaults: () => Promise<void>;
 	setSearchTerm: (term: string) => void;
 	clearSearch: () => void;
-	toggleSection: (section: ConfigSection) => void;
+	toggleSection: (sectionId: string) => void;
 	setShowAdvancedSettings: (show: boolean) => void;
 	handleConfigChange: (event: ConfigChangeEvent) => void;
 	clearErrors: () => void;
@@ -78,34 +86,56 @@ export const useSettingsStore = create<SettingsStore>()(
 		(set, get) => ({
 			config: null,
 			isLoading: false,
+			isDirty: false,
 			lastSaved: null,
 			errors: [],
 			searchTerm: "",
 			filteredSections: ["app", "daemon", "backend", "monitors"],
-			expandedSections: new Set(["app"]),
+			expandedSections: new Set<string>(["app"]),
 			showAdvancedSettings: false,
 
 			loadConfig: async () => {
-				set({ isLoading: true, errors: [] });
+				const existing = get().config;
+				// Only show the loading spinner on the very first load (config is null).
+				// Subsequent reloads (e.g. from SSE file-change events) keep the
+				// existing config visible so the page doesn't flash.
+				set({ isLoading: !existing, errors: [] });
 
 				try {
 					if (window.API_RENDERER?.goDaemon?.getConfig) {
-						const config = await window.API_RENDERER.goDaemon.getConfig();
+						const incoming = await window.API_RENDERER.goDaemon.getConfig();
+						// Merge incoming over existing so we don't clobber with null
+						// on first load, and preserve the structure on subsequent loads.
+						const merged = existing
+							? {
+									app: { ...existing.app, ...incoming.app },
+									daemon: { ...existing.daemon, ...incoming.daemon },
+									backend: {
+										...existing.backend,
+										...incoming.backend,
+										swww: incoming.backend?.swww
+											? { ...existing.backend?.swww, ...incoming.backend.swww }
+											: existing.backend?.swww,
+									},
+									monitors: { ...existing.monitors, ...incoming.monitors },
+								}
+							: incoming;
 						set({
-							config,
+							config: merged as UnifiedConfig,
 							isLoading: false,
+							isDirty: false,
 							lastSaved: Date.now(),
 						});
 					} else {
 						set({
-							config: defaultConfig,
+							config: existing ?? defaultConfig,
 							isLoading: false,
 						});
 					}
 				} catch (error) {
 					console.error("SettingsStore: Failed to load config:", error);
 					set({
-						config: defaultConfig,
+						config: existing ?? defaultConfig,
 						isLoading: false,
 						errors: [
 							{
@@ -125,14 +155,13 @@ export const useSettingsStore = create<SettingsStore>()(
 				const currentConfig = get().config;
 				if (!currentConfig) return;
 
-				// Optimistic update
+				// Build the optimistic config update
 				const newConfig = { ...currentConfig };
 				if (section === "app") {
 					newConfig.app = { ...newConfig.app, ...data } as typeof newConfig.app;
 				} else if (section === "daemon") {
 					newConfig.daemon = { ...newConfig.daemon, ...data } as typeof newConfig.daemon;
 				} else if (section === "backend") {
-					// Backend data can be { type } or SwwwConfig fields (merged into backend.swww)
 					if ("type" in data) {
 						newConfig.backend = { ...newConfig.backend, ...data } as typeof newConfig.backend;
 					} else {
@@ -145,11 +174,12 @@ export const useSettingsStore = create<SettingsStore>()(
 					newConfig.monitors = { ...newConfig.monitors, ...data } as typeof newConfig.monitors;
 				}
 
+				// Single set() for the optimistic update -- only config and errors
+				// change, so selectors for other fields won't trigger re-renders.
 				set({ config: newConfig, errors: [] });
 
 				try {
 					if (section === "backend") {
-						// Backend config goes through special endpoint
 						if (window.API_RENDERER?.goDaemon?.updateBackendConfig) {
 							await window.API_RENDERER.goDaemon.updateBackendConfig(data as any);
 						}
@@ -174,13 +204,16 @@ export const useSettingsStore = create<SettingsStore>()(
 				}
 			},
 
+			// Alias so callers that used the old unifiedConfigStore API still work.
+			setConfigValue: (...args) => get().saveConfigSection(...args),
+
 			resetToDefaults: async () => {
 				set({ isLoading: true });
 				try {
 					if (window.API_RENDERER?.goDaemon?.updateConfig) {
 						await window.API_RENDERER.goDaemon.updateConfig(defaultConfig);
 					}
-					set({ config: defaultConfig, isLoading: false });
+					set({ config: defaultConfig, isLoading: false, isDirty: false });
 				} catch (error) {
 					console.error("SettingsStore: Failed to reset config:", error);
 					set({ isLoading: false });
@@ -226,12 +259,12 @@ export const useSettingsStore = create<SettingsStore>()(
 				});
 			},
 
-			toggleSection: (section: ConfigSection) => {
+			toggleSection: (sectionId: string) => {
 				const expandedSections = new Set(get().expandedSections);
-				if (expandedSections.has(section)) {
-					expandedSections.delete(section);
+				if (expandedSections.has(sectionId)) {
+					expandedSections.delete(sectionId);
 				} else {
-					expandedSections.add(section);
+					expandedSections.add(sectionId);
 				}
 				set({ expandedSections });
 			},
@@ -240,9 +273,14 @@ export const useSettingsStore = create<SettingsStore>()(
 				set({ showAdvancedSettings: show });
 			},
 
-			handleConfigChange: (_event: ConfigChangeEvent) => {
-				const { loadConfig } = get();
-				loadConfig();
+			handleConfigChange: (event: ConfigChangeEvent) => {
+				// Only reload from daemon for external file changes.
+				// API-triggered changes don't include a "source" field and are
+				// already reflected via the optimistic update in saveConfigSection.
+				const source = (event as unknown as Record<string, unknown>)?.source;
+				if (source === "file") {
+					get().loadConfig();
+				}
 			},
 
 			clearErrors: () => {
@@ -253,7 +291,7 @@ export const useSettingsStore = create<SettingsStore>()(
 	),
 );
 
-// Initialize event listener for real-time config updates
+// Initialize event listener for real-time config updates.
 if (typeof window !== "undefined" && window.API_RENDERER?.goDaemon) {
 	window.API_RENDERER.goDaemon.on("config_changed", (data: unknown) => {
 		const store = useSettingsStore.getState();

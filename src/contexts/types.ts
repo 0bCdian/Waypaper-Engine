@@ -1,19 +1,8 @@
 /**
  * Theme Context Types for Waypaper Engine
- *
- * Type definitions for the theme context system.
  */
 
-import { ThemeConfig } from "../themes/types";
-
-/**
- * Theme change event interface
- */
-export interface ThemeChangeEvent {
-	themeName: string;
-	timestamp: number;
-	source: "user" | "system" | "auto";
-}
+import type { ThemeConfig } from "../themes/types";
 
 /**
  * Theme context type interface
@@ -43,14 +32,4 @@ export interface ThemeContextType {
 	resetTheme: () => void;
 	getTheme: (name: string) => ThemeConfig | undefined;
 	hasTheme: (name: string) => boolean;
-}
-
-/**
- * Theme provider props interface
- */
-export interface ThemeProviderProps {
-	children: React.ReactNode;
-	defaultTheme?: string;
-	persist?: boolean;
-	syncWithSystem?: boolean;
 }

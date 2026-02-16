@@ -8,6 +8,7 @@
 import React, { useState, useEffect } from "react";
 import { cn } from "@/utils/cn";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { useShallow } from "zustand/react/shallow";
 import SettingsSearch from "./SettingsSearch";
 import AppSettingsSection from "./sections/AppSettingsSection";
 import DaemonSettingsSection from "./sections/DaemonSettingsSection";
@@ -38,23 +39,26 @@ interface TabConfig {
  */
 export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className }) => {
 	const {
-		isLoading,
 		lastSaved,
 		errors,
 		searchTerm,
 		filteredSections,
-		loadConfig,
 		setSearchTerm,
 		clearSearch,
 		clearErrors,
-	} = useSettingsStore();
+	} = useSettingsStore(
+		useShallow((s) => ({
+			lastSaved: s.lastSaved,
+			errors: s.errors,
+			searchTerm: s.searchTerm,
+			filteredSections: s.filteredSections,
+			setSearchTerm: s.setSearchTerm,
+			clearSearch: s.clearSearch,
+			clearErrors: s.clearErrors,
+		})),
+	);
 
 	const [activeTab, setActiveTab] = useState<ConfigSection>("app");
-
-	// Load configuration on mount
-	useEffect(() => {
-		loadConfig();
-	}, [loadConfig]);
 
 	// Clear errors when component unmounts
 	useEffect(() => {
@@ -157,19 +161,6 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className }) => {
 		const days = Math.floor(hours / 24);
 		return `${days}d ago`;
 	};
-
-	if (isLoading) {
-		return (
-			<div className={containerClasses}>
-				<div className="flex items-center justify-center h-full">
-					<div className="text-center space-y-4">
-						<div className="loading loading-spinner loading-lg"></div>
-						<div className="text-base-content/60">Loading settings...</div>
-					</div>
-				</div>
-			</div>
-		);
-	}
 
 	return (
 		<div className={containerClasses}>

@@ -91,6 +91,19 @@ func startDaemon(configPath string, logLevel string) error {
 	bus := events.NewBus()
 	defer bus.Close()
 
+	// 6b. Publish SSE events when config.toml is edited externally.
+	cfg.OnConfigChange(func(section string) {
+		sections := []string{section}
+		if section == "" {
+			sections = []string{"app", "daemon", "backend", "monitors"}
+		}
+		slog.Info("config file changed externally", "sections", sections)
+		bus.Publish(events.Event{
+			Type: events.ConfigChanged,
+			Data: map[string]any{"sections": sections, "source": "file"},
+		})
+	})
+
 	// 7. Create monitor manager.
 	providers := []monitor.MonitorProvider{
 		monitor.NewHyprctlProvider(),
@@ -153,12 +166,12 @@ func startDaemon(configPath string, logLevel string) error {
 		slog.Info("backend initialized", "name", activeBackend.Name())
 	}
 
-	// 10b. Restore wallpapers from persisted monitor state.
-	restoreWallpapers(ctx, db.MonitorStateStore(), db.StateStore(), reg, monManager)
-
 	// 11. Create image processor and splitter.
 	processor := image.NewProcessor(db.ImageStore(), bus, cfg.GetImagesDir(), cfg.GetThumbnailsDir())
 	splitter := image.NewSplitter(cfg.GetImagesDir())
+
+	// 10b. Restore wallpapers from persisted monitor state.
+	restoreWallpapers(ctx, db.MonitorStateStore(), db.StateStore(), reg, monManager, splitter)
 
 	// 12. Create playlist manager.
 	playlistMgr := playlist.NewManager(
@@ -278,6 +291,7 @@ func restoreWallpapers(
 	stateStore store.StateStore,
 	reg backend.Registry,
 	monManager monitor.MonitorManager,
+	splitter *image.Splitter,
 ) {
 	states, err := monitorStateStore.GetAll(ctx)
 	if err != nil {
@@ -312,12 +326,21 @@ func restoreWallpapers(
 	slog.Info("restore: detected monitors", "monitors", connectedNames)
 
 	activeBackend := reg.Active()
+	caps := activeBackend.Capabilities()
 	restored := 0
 	skipped := 0
 
+	// Separate extend-mode states from individual/clone states.
+	// Extend-mode monitors must be grouped by image so we can split once.
+	type extendGroup struct {
+		state    store.MonitorState
+		monitors []monitor.Monitor
+	}
+	extendGroups := make(map[int]*extendGroup) // keyed by image_id
+	var nonExtendStates []store.MonitorState
+
 	for _, state := range states {
-		mon, ok := connected[state.MonitorName]
-		if !ok {
+		if _, ok := connected[state.MonitorName]; !ok {
 			slog.Warn("restore: monitor not connected, skipping",
 				"persisted_name", state.MonitorName,
 				"connected_monitors", connectedNames,
@@ -326,6 +349,91 @@ func restoreWallpapers(
 			continue
 		}
 
+		if state.Mode == string(monitor.ModeExtend) {
+			grp, exists := extendGroups[state.ImageID]
+			if !exists {
+				grp = &extendGroup{state: state}
+				extendGroups[state.ImageID] = grp
+			}
+			grp.monitors = append(grp.monitors, connected[state.MonitorName])
+		} else {
+			nonExtendStates = append(nonExtendStates, state)
+		}
+	}
+
+	// Restore extend-mode monitors: split the image across grouped monitors.
+	for _, grp := range extendGroups {
+		if !caps.NativeExtend && splitter != nil && len(grp.monitors) > 1 {
+			splitPaths, err := splitter.Split(grp.state.ImagePath, grp.state.ImageID, grp.monitors)
+			if err != nil {
+				slog.Warn("restore: failed to split image for extend",
+					"image_id", grp.state.ImageID,
+					"image_path", grp.state.ImagePath,
+					"error", err,
+				)
+				continue
+			}
+
+			for _, mon := range grp.monitors {
+				splitPath, ok := splitPaths[mon.Name]
+				if !ok {
+					continue
+				}
+				req := backend.WallpaperRequest{
+					ImagePath: splitPath,
+					Monitors:  []monitor.Monitor{mon},
+					Mode:      monitor.ModeIndividual,
+				}
+				if err := activeBackend.SetWallpaper(ctx, req); err != nil {
+					slog.Warn("restore: failed to set split wallpaper",
+						"monitor", mon.Name, "error", err,
+					)
+					continue
+				}
+				stateStore.SetCurrentWallpaper(mon.Name, store.ImageHistoryEntry{
+					ImageID:   grp.state.ImageID,
+					ImageName: grp.state.ImageName,
+					Monitors:  []string{mon.Name},
+					Mode:      grp.state.Mode,
+					SetAt:     grp.state.SetAt,
+					Source:    store.HistorySource{Type: "restore"},
+					Backend:   grp.state.Backend,
+				})
+				restored++
+			}
+		} else {
+			// Native extend or single-monitor extend: pass all monitors at once.
+			req := backend.WallpaperRequest{
+				ImagePath: grp.state.ImagePath,
+				Monitors:  grp.monitors,
+				Mode:      monitor.ModeExtend,
+			}
+			if err := activeBackend.SetWallpaper(ctx, req); err != nil {
+				slog.Warn("restore: failed to set extend wallpaper",
+					"image_id", grp.state.ImageID, "error", err,
+				)
+				continue
+			}
+			monNames := make([]string, len(grp.monitors))
+			for i, mon := range grp.monitors {
+				monNames[i] = mon.Name
+				stateStore.SetCurrentWallpaper(mon.Name, store.ImageHistoryEntry{
+					ImageID:   grp.state.ImageID,
+					ImageName: grp.state.ImageName,
+					Monitors:  monNames,
+					Mode:      grp.state.Mode,
+					SetAt:     grp.state.SetAt,
+					Source:    store.HistorySource{Type: "restore"},
+					Backend:   grp.state.Backend,
+				})
+			}
+			restored += len(grp.monitors)
+		}
+	}
+
+	// Restore individual/clone mode monitors.
+	for _, state := range nonExtendStates {
+		mon := connected[state.MonitorName]
 		req := backend.WallpaperRequest{
 			ImagePath: state.ImagePath,
 			Monitors:  []monitor.Monitor{mon},
@@ -342,7 +450,6 @@ func restoreWallpapers(
 			continue
 		}
 
-		// Populate in-memory state so API queries return correct data immediately.
 		stateStore.SetCurrentWallpaper(state.MonitorName, store.ImageHistoryEntry{
 			ImageID:   state.ImageID,
 			ImageName: state.ImageName,
