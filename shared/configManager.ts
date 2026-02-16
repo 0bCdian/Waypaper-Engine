@@ -109,7 +109,7 @@ class ConfigManager {
 			await this.saveConfig();
 		}
 
-		return this.config!;
+		return this.config as WaypaperConfig;
 	}
 
 	async saveConfig(): Promise<void> {
@@ -118,22 +118,16 @@ class ConfigManager {
 			return;
 		}
 
-		try {
-			// Ensure the config directory exists
-			const configDir = dirname(this.configPath);
-			await fs.mkdir(configDir, { recursive: true });
+		// Ensure the config directory exists
+		const configDir = dirname(this.configPath);
+		await fs.mkdir(configDir, { recursive: true });
 
-			// Convert paths back to tilde notation for storage
-			const configToSave = this.contractPaths(this.config);
+		// Convert paths back to tilde notation for storage
+		const configToSave = this.contractPaths(this.config);
 
-			// Write the config file
-			const tomlContent = stringify(configToSave);
-			await fs.writeFile(this.configPath, tomlContent, "utf-8");
-			// Config saved successfully
-		} catch (error) {
-			throw error;
-			throw error;
-		}
+		// Write the config file
+		const tomlContent = stringify(configToSave);
+		await fs.writeFile(this.configPath, tomlContent, "utf-8");
 	}
 
 	async updateConfig(updates: Partial<WaypaperConfig>): Promise<void> {
@@ -194,10 +188,11 @@ class ConfigManager {
 	}
 
 	private notifyWatchers(): void {
-		if (this.config) {
+		const config = this.config;
+		if (config) {
 			this.watchers.forEach((callback) => {
 				try {
-					callback(this.config!);
+					callback(config);
 				} catch (_error) {
 					// Error in config watcher - continuing
 				}

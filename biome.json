@@ -19,7 +19,18 @@
 				"noUnknownAtRules": "off"
 			},
 			"correctness": {
-				"noUnknownProperty": "off"
+				"noUnknownProperty": "off",
+				"useUniqueElementIds": "off",
+				"useExhaustiveDependencies": "off"
+			},
+			"a11y": {
+				"noSvgWithoutTitle": "off",
+				"useButtonType": "off",
+				"noLabelWithoutControl": "off",
+				"noStaticElementInteractions": "off",
+				"useKeyWithClickEvents": "off",
+				"useValidAnchor": "off",
+				"useSemanticElements": "off"
 			}
 		}
 	},

@@ -75,8 +75,8 @@ export class WindowManager {
 		const { width, height } = screen.getPrimaryDisplay().workAreaSize;
 
 		// Center the window
-		const x = Math.round((width - windowConfig.width!) / 2);
-		const y = Math.round((height - windowConfig.height!) / 2);
+		const x = Math.round((width - (windowConfig.width ?? 1200)) / 2);
+		const y = Math.round((height - (windowConfig.height ?? 1000)) / 2);
 
 		const window = new BrowserWindow({
 			...windowConfig,

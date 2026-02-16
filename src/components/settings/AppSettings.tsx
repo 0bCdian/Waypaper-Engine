@@ -36,11 +36,6 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ className }) => {
 	const [saving, setSaving] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	// Load configuration on mount
-	useEffect(() => {
-		loadConfig();
-	}, [loadConfig]);
-
 	const loadConfig = async () => {
 		try {
 			setLoading(true);
@@ -61,6 +56,11 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ className }) => {
 			setLoading(false);
 		}
 	};
+
+	// Load configuration on mount
+	useEffect(() => {
+		loadConfig();
+	}, [loadConfig]);
 
 	const saveConfig = async (key: string, value: unknown) => {
 		try {

@@ -267,7 +267,10 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className }) => {
 					<div className="space-y-2">
 						<div className="font-medium text-error">Configuration Errors:</div>
 						{errors.map((error, index) => (
-							<div key={index} className="text-sm text-error">
+							<div
+								key={`${error.section}-${error.key}-${index}`}
+								className="text-sm text-error"
+							>
 								<span className="font-medium">
 									{error.section}.{error.key}:
 								</span>{" "}

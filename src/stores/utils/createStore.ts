@@ -8,6 +8,8 @@ import type { StateCreator } from "zustand";
 import { devtools } from "zustand/middleware";
 import { persist } from "zustand/middleware";
 
+type SetStateAction<T> = T | Partial<T> | ((state: T) => T | Partial<T>);
+
 /**
  * Create store with devtools support
  */
@@ -30,7 +32,7 @@ export function withPersistence<T>(
 		name: string;
 		partialize?: (state: T) => Partial<T>;
 		version?: number;
-		migrate?: (persistedState: any, version: number) => T;
+		migrate?: (persistedState: unknown, version: number) => T;
 	},
 ): StateCreator<T> {
 	return persist(storeCreator, {
@@ -52,7 +54,7 @@ export function createStore<T>(
 		persistence?: {
 			partialize?: (state: T) => Partial<T>;
 			version?: number;
-			migrate?: (persistedState: any, version: number) => T;
+			migrate?: (persistedState: unknown, version: number) => T;
 		};
 	},
 ): StateCreator<T, [], [], T> {
@@ -87,11 +89,11 @@ export function withLogging<T>(
 		// Log state changes in development
 		if (process.env.NODE_ENV === "development") {
 			const originalSet = set;
-			set = ((partial: any, replace?: any) => {
+			set = ((partial: SetStateAction<T>, replace?: boolean | undefined) => {
 				console.group(`🔄 ${storeName} State Update`);
 				console.log("Previous state:", get());
 				console.log("Update:", partial);
-				originalSet(partial, replace);
+				originalSet(partial as Partial<T>, replace as undefined);
 				console.log("New state:", get());
 				console.groupEnd();
 			}) as typeof set;
@@ -113,22 +115,22 @@ export function withErrorHandling<T>(
 		// Wrap actions with error handling
 		const wrappedStore = { ...store };
 
-		Object.keys(store as Record<string, any>).forEach((key) => {
+		for (const key of Object.keys(store as Record<string, unknown>)) {
 			const value = store[key as keyof T];
 			if (typeof value === "function") {
-				wrappedStore[key as keyof T] = ((...args: any[]) => {
+				wrappedStore[key as keyof T] = ((...args: unknown[]) => {
 					try {
-						return (value as any)(...args);
+						return (value as (...args: unknown[]) => unknown)(...args);
 					} catch (error) {
 						console.error(`Error in store action ${key}:`, error);
 						set({
 							error: error instanceof Error ? error.message : "Unknown error",
-						} as any);
+						} as Partial<T>);
 						throw error;
 					}
-				}) as any;
+				}) as T[keyof T];
 			}
-		});
+		}
 
 		return wrappedStore;
 	};
@@ -147,9 +149,9 @@ export function withPerformanceMonitoring<T>(
 		// Monitor performance in development
 		if (process.env.NODE_ENV === "development") {
 			const originalSet = set;
-			set = ((partial: any, replace?: any) => {
+			set = ((partial: SetStateAction<T>, replace?: boolean | undefined) => {
 				const start = performance.now();
-				originalSet(partial, replace);
+				originalSet(partial as Partial<T>, replace as undefined);
 				const end = performance.now();
 
 				if (end - start > 10) {
@@ -173,16 +175,19 @@ export function withValidation<T>(
 		const store = storeCreator(set, get, api);
 
 		const originalSet = set;
-		set = ((partial: any, replace?: any) => {
-			const newState = typeof partial === "function" ? partial(get()) : partial;
+		set = ((partial: SetStateAction<T>, replace?: boolean | undefined) => {
+			const newState =
+				typeof partial === "function"
+					? (partial as (state: T) => Partial<T>)(get())
+					: partial;
 			const mergedState = { ...get(), ...newState };
 
-			if (!validator(mergedState)) {
+			if (!validator(mergedState as T)) {
 				console.error("Store validation failed:", mergedState);
 				throw new Error("Invalid store state");
 			}
 
-			originalSet(partial, replace);
+			originalSet(partial as Partial<T>, replace as undefined);
 		}) as typeof set;
 
 		return store;
@@ -194,33 +199,44 @@ export function withValidation<T>(
  */
 export function withSubscriptions<T>(
 	storeCreator: StateCreator<T, [], [], T>,
-): StateCreator<T, [], [], T> {
+): StateCreator<
+	T & { subscribe: (callback: (state: T, prevState: T) => void) => () => void },
+	[],
+	[],
+	T & { subscribe: (callback: (state: T, prevState: T) => void) => () => void }
+> {
 	return (set, get, api) => {
-		const store = storeCreator(set, get, api);
+		const store = storeCreator(
+			set as unknown as Parameters<StateCreator<T, [], [], T>>[0],
+			get as unknown as Parameters<StateCreator<T, [], [], T>>[1],
+			api as unknown as Parameters<StateCreator<T, [], [], T>>[2],
+		);
 		const subscriptions = new Set<(state: T, prevState: T) => void>();
 
 		const originalSet = set;
-		set = ((partial: any, replace?: any) => {
+		set = ((partial: SetStateAction<T>, replace?: boolean | undefined) => {
 			const prevState = get();
-			originalSet(partial, replace);
+			originalSet(partial as Partial<T>, replace as undefined);
 			const newState = get();
 
 			subscriptions.forEach((subscription) => {
 				try {
-					subscription(newState, prevState);
+					subscription(newState as T, prevState as T);
 				} catch (error) {
 					console.error("Subscription error:", error);
 				}
 			});
 		}) as typeof set;
 
-		// Add subscription method
-		(store as any).subscribe = (callback: (state: T, prevState: T) => void) => {
-			subscriptions.add(callback);
-			return () => subscriptions.delete(callback);
+		return {
+			...store,
+			subscribe: (callback: (state: T, prevState: T) => void) => {
+				subscriptions.add(callback);
+				return () => {
+					subscriptions.delete(callback);
+				};
+			},
 		};
-
-		return store;
 	};
 }
 

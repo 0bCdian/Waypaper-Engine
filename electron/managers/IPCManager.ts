@@ -12,14 +12,23 @@ import { join } from "node:path";
 import { goDaemonClient } from "../goDaemonClient";
 import { daemonMonitor } from "./DaemonMonitor";
 import { contextMenuManager } from "./ContextMenuManager";
-import type { Image } from "../daemon-go-types";
+import type {
+	Image,
+	ImageQueryParams,
+	UpdateImageRequest,
+	MonitorMode,
+	CreatePlaylistRequest,
+	UpdatePlaylistRequest,
+	UnifiedConfig,
+	SwwwConfig,
+} from "../daemon-go-types";
 
 export interface IPCHandler {
 	channel: string;
 	handler: (
 		event: Electron.IpcMainInvokeEvent,
-		...args: any[]
-	) => Promise<any> | any;
+		...args: unknown[]
+	) => Promise<unknown> | unknown;
 	description?: string;
 }
 
@@ -203,7 +212,7 @@ export class IPCManager {
 						return { success: false, error: "No focused window" };
 					}
 
-					let result;
+					let result: Electron.OpenDialogReturnValue;
 					if (action === "file") {
 						result = await dialog.showOpenDialog(mainWindow, {
 							title: "Select Images",
@@ -391,22 +400,21 @@ export class IPCManager {
 
 			// Convert thumbnail paths
 			if (converted.thumbnails && typeof converted.thumbnails === "object") {
-				converted.thumbnails = { ...converted.thumbnails };
-				for (const key of Object.keys(converted.thumbnails) as Array<
-					keyof typeof converted.thumbnails
-				>) {
-					const thumbPath = converted.thumbnails[key];
+				const thumbs: Record<string, string> = {
+					...converted.thumbnails,
+				};
+				for (const key of Object.keys(thumbs)) {
+					const thumbPath = thumbs[key];
 					if (thumbPath && !thumbPath.startsWith("atom:")) {
 						if (thumbPath.startsWith("/")) {
-							(converted.thumbnails as any)[key] =
-								`atom://${thumbPath.substring(1)}`;
+							thumbs[key] = `atom://${thumbPath.substring(1)}`;
 						} else {
 							const absolutePath = resolve(thumbPath);
-							(converted.thumbnails as any)[key] =
-								`atom://${absolutePath.substring(1)}`;
+							thumbs[key] = `atom://${absolutePath.substring(1)}`;
 						}
 					}
 				}
+				converted.thumbnails = thumbs as unknown as typeof converted.thumbnails;
 			}
 
 			return converted;
@@ -437,7 +445,9 @@ export class IPCManager {
 
 				// IMAGES
 				case "get_images": {
-					const result = await goDaemonClient.getImages(p as any);
+					const result = await goDaemonClient.getImages(
+						p as ImageQueryParams | undefined,
+					);
 					result.data = this.convertPathsToAtomProtocol(result.data);
 					return result;
 				}
@@ -454,7 +464,7 @@ export class IPCManager {
 				case "update_image":
 					return await goDaemonClient.updateImage(
 						p?.id as number,
-						p?.update as any,
+						p?.update as UpdateImageRequest,
 					);
 				case "select_all_images":
 					return await goDaemonClient.selectAllImages(p?.selected as boolean);
@@ -469,12 +479,12 @@ export class IPCManager {
 					return await goDaemonClient.setWallpaper(
 						p?.image_id as number,
 						(p?.monitor as string) || "*",
-						(p?.mode as any) || "individual",
+						(p?.mode as MonitorMode) || "individual",
 					);
 				case "random_wallpaper":
 					return await goDaemonClient.setRandomWallpaper(
 						(p?.monitor as string) || "*",
-						(p?.mode as any) || "individual",
+						(p?.mode as MonitorMode) || "individual",
 					);
 
 				// PLAYLISTS
@@ -483,11 +493,13 @@ export class IPCManager {
 				case "get_playlist":
 					return await goDaemonClient.getPlaylist(p?.id as number);
 				case "create_playlist":
-					return await goDaemonClient.createPlaylist(p as any);
+					return await goDaemonClient.createPlaylist(
+						p as unknown as CreatePlaylistRequest,
+					);
 				case "update_playlist":
 					return await goDaemonClient.updatePlaylist(
 						p?.id as number,
-						p?.update as any,
+						p?.update as UpdatePlaylistRequest,
 					);
 				case "delete_playlist":
 					return await goDaemonClient.deletePlaylist(p?.id as number);
@@ -495,7 +507,7 @@ export class IPCManager {
 					return await goDaemonClient.startPlaylist(
 						p?.id as number,
 						(p?.monitor as string) || "*",
-						(p?.mode as any) || "individual",
+						(p?.mode as MonitorMode) || "individual",
 					);
 				case "stop_playlist":
 					return await goDaemonClient.stopPlaylist(p?.id as number);
@@ -530,7 +542,9 @@ export class IPCManager {
 				case "get_config":
 					return await goDaemonClient.getConfig();
 				case "update_config":
-					return await goDaemonClient.updateConfig(p as any);
+					return await goDaemonClient.updateConfig(
+						p as unknown as Partial<UnifiedConfig>,
+					);
 				case "get_config_section":
 					return await goDaemonClient.getConfigSection(p?.section as string);
 				case "update_config_section":
@@ -541,7 +555,9 @@ export class IPCManager {
 				case "get_backend_config":
 					return await goDaemonClient.getBackendConfig();
 				case "update_backend_config":
-					return await goDaemonClient.updateBackendConfig(p as any);
+					return await goDaemonClient.updateBackendConfig(
+						p as unknown as Partial<SwwwConfig>,
+					);
 
 				// BACKENDS
 				case "get_backends":
@@ -711,7 +727,7 @@ export class IPCManager {
 	// UTILITIES
 	// ============================================================================
 
-	private broadcastToAllWindows(channel: string, data: any): void {
+	private broadcastToAllWindows(channel: string, data: unknown): void {
 		this.windows.forEach((window) => {
 			if (!window.isDestroyed()) {
 				window.webContents.send(channel, data);
@@ -729,7 +745,7 @@ export class IPCManager {
 
 	private async handleExitApp(): Promise<boolean> {
 		try {
-			const config = (await goDaemonClient.getConfig()) as any;
+			const config = await goDaemonClient.getConfig();
 			const shouldStopDaemon = config?.app?.kill_daemon_on_exit ?? false;
 
 			if (shouldStopDaemon) {

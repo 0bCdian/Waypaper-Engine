@@ -172,7 +172,9 @@ export class ContextMenuManager {
 							window.webContents.send(MENU_EVENTS.setImagesPerPage, count);
 							try {
 								await goDaemonClient.updateConfig({
-									app: { images_per_page: count } as any,
+									app: { images_per_page: count } as Partial<
+										import("../daemon-go-types").AppConfig
+									>,
 								});
 							} catch (error) {
 								console.error("Failed to set images per page:", error);

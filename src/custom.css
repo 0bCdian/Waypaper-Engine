@@ -20,7 +20,6 @@
 	flex-wrap: wrap;
 	align-items: center;
 	justify-content: center;
-	border-color: transparent;
 	text-align: center;
 	transition: all var(--transition-normal);
 	border-radius: var(--radius-md);

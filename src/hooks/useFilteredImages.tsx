@@ -78,8 +78,8 @@ export function useFilteredImages() {
 			imagesFilteredByFormat = dontFilterByFormat
 				? imagesfilteredByResolution
 				: imagesfilteredByResolution.filter((image) => {
-						return filters.advancedFilters.formats.includes(
-							image.format as any,
+						return (filters.advancedFilters.formats as string[]).includes(
+							image.format,
 						);
 					});
 		}

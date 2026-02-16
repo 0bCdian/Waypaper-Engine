@@ -67,7 +67,9 @@ export function useImageState() {
 	const addProcessingImages = (imageIds: number[]) => {
 		setState((prev) => {
 			const newProcessingImages = new Set(prev.processingImages);
-			imageIds.forEach((id) => newProcessingImages.add(id));
+			imageIds.forEach((id) => {
+				newProcessingImages.add(id);
+			});
 
 			return {
 				...prev,

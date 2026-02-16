@@ -194,7 +194,7 @@ export const useSettingsStore = create<SettingsStore>()(
 					if (section === "backend") {
 						if (window.API_RENDERER?.goDaemon?.updateBackendConfig) {
 							await window.API_RENDERER.goDaemon.updateBackendConfig(
-								data as any,
+								data as Record<string, unknown>,
 							);
 						}
 					} else {

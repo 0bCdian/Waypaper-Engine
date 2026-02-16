@@ -31,20 +31,6 @@ export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({
 	const [isLoading, setIsLoading] = useState(false);
 	const [error, setError] = useState<string | null>(null);
 
-	// Load initial status
-	useEffect(() => {
-		loadStatus();
-	}, [loadStatus]);
-
-	// Auto-refresh every 5 seconds
-	useEffect(() => {
-		const interval = setInterval(() => {
-			loadStatus();
-		}, 5000); // Check every 5 seconds
-
-		return () => clearInterval(interval);
-	}, [loadStatus]);
-
 	const loadStatus = async () => {
 		try {
 			if (window.API_RENDERER?.getDaemonStatus) {
@@ -71,6 +57,20 @@ export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({
 			);
 		}
 	};
+
+	// Load initial status
+	useEffect(() => {
+		loadStatus();
+	}, [loadStatus]);
+
+	// Auto-refresh every 5 seconds
+	useEffect(() => {
+		const interval = setInterval(() => {
+			loadStatus();
+		}, 5000); // Check every 5 seconds
+
+		return () => clearInterval(interval);
+	}, [loadStatus]);
 
 	const handleRestart = async () => {
 		setIsLoading(true);

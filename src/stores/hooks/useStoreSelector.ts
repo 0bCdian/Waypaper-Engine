@@ -30,13 +30,13 @@ export function useStoreAction<T, R>(
 /**
  * Hook for subscribing to store changes
  */
-export function useStoreSubscription<T>(
+export function useStoreSubscription<T, R>(
 	store: UseBoundStore<StoreApi<T>>,
-	selector: (state: T) => any,
-	callback: (value: any, prevValue: any) => void,
-	equalityFn?: (a: any, b: any) => boolean,
+	selector: (state: T) => R,
+	callback: (value: R, prevValue: R | undefined) => void,
+	equalityFn?: (a: R, b: R | undefined) => boolean,
 ): void {
-	const prevValueRef = useRef<any>(undefined);
+	const prevValueRef = useRef<R | undefined>(undefined);
 
 	useEffect(() => {
 		const unsubscribe = store.subscribe((state) => {
@@ -215,7 +215,10 @@ export function useStoreErrorHandling<T>(
 	useEffect(() => {
 		const originalSetState = store.setState;
 
-		store.setState = ((partial: any, replace?: any) => {
+		store.setState = ((
+			partial: T | Partial<T> | ((state: T) => T | Partial<T>),
+			replace?: boolean | undefined,
+		) => {
 			try {
 				return originalSetState(partial, replace);
 			} catch (error) {
