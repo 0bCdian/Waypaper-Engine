@@ -4,7 +4,7 @@
  * Handles theme synchronization between Electron and the renderer process.
  */
 
-import { nativeTheme, ipcMain, BrowserWindow } from "electron";
+import { nativeTheme, ipcMain, type BrowserWindow } from "electron";
 
 export class ThemeManager {
 	private windows: Set<BrowserWindow> = new Set();

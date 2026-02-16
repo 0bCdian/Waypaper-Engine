@@ -1,4 +1,4 @@
-import { EventEmitter } from "events";
+import { EventEmitter } from "node:events";
 import { logger } from "../globals/setup";
 import { goDaemonClient } from "./goDaemonClient";
 import type { MonitorMode } from "./daemon-go-types";
@@ -10,7 +10,11 @@ export class PlaylistController extends EventEmitter {
 		this.createTray = trayReference;
 	}
 
-	async startPlaylist(playlistId: number, monitor: string = "*", mode: MonitorMode = "individual") {
+	async startPlaylist(
+		playlistId: number,
+		monitor: string = "*",
+		mode: MonitorMode = "individual",
+	) {
 		try {
 			await goDaemonClient.startPlaylist(playlistId, monitor, mode);
 			if (this.createTray !== undefined) void this.createTray();

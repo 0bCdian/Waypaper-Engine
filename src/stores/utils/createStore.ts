@@ -4,7 +4,7 @@
  * Utility functions for creating and managing Zustand stores.
  */
 
-import { StateCreator } from "zustand";
+import type { StateCreator } from "zustand";
 import { devtools } from "zustand/middleware";
 import { persist } from "zustand/middleware";
 
@@ -174,8 +174,7 @@ export function withValidation<T>(
 
 		const originalSet = set;
 		set = ((partial: any, replace?: any) => {
-			const newState =
-				typeof partial === "function" ? partial(get()) : partial;
+			const newState = typeof partial === "function" ? partial(get()) : partial;
 			const mergedState = { ...get(), ...newState };
 
 			if (!validator(mergedState)) {

@@ -4,7 +4,8 @@
  * Displays real-time daemon status with health checks and restart functionality.
  */
 
-import React, { useState, useEffect } from "react";
+import type React from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/utils/cn";
 
 interface DaemonStatus {
@@ -33,7 +34,7 @@ export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({
 	// Load initial status
 	useEffect(() => {
 		loadStatus();
-	}, []);
+	}, [loadStatus]);
 
 	// Auto-refresh every 5 seconds
 	useEffect(() => {
@@ -42,17 +43,22 @@ export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({
 		}, 5000); // Check every 5 seconds
 
 		return () => clearInterval(interval);
-	}, []);
+	}, [loadStatus]);
 
 	const loadStatus = async () => {
 		try {
 			if (window.API_RENDERER?.getDaemonStatus) {
-				const response = (await window.API_RENDERER.getDaemonStatus()) as DaemonActionResult;
+				const response =
+					(await window.API_RENDERER.getDaemonStatus()) as DaemonActionResult;
 
 				if (response?.success && response.data) {
 					setStatus(response.data);
 					setError(null);
-				} else if (response && typeof response === "object" && "isRunning" in response) {
+				} else if (
+					response &&
+					typeof response === "object" &&
+					"isRunning" in response
+				) {
 					setStatus(response as unknown as DaemonStatus);
 					setError(null);
 				} else {
@@ -72,7 +78,8 @@ export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({
 
 		try {
 			if (window.API_RENDERER?.restartDaemon) {
-				const result = (await window.API_RENDERER.restartDaemon()) as DaemonActionResult;
+				const result =
+					(await window.API_RENDERER.restartDaemon()) as DaemonActionResult;
 				if (!result?.success) {
 					setError(result?.error || "Failed to restart daemon");
 				}
@@ -90,7 +97,8 @@ export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({
 
 		try {
 			if (window.API_RENDERER?.startDaemon) {
-				const result = (await window.API_RENDERER.startDaemon()) as DaemonActionResult;
+				const result =
+					(await window.API_RENDERER.startDaemon()) as DaemonActionResult;
 				if (!result?.success) {
 					setError(result?.error || "Failed to start daemon");
 				}
@@ -108,7 +116,8 @@ export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({
 
 		try {
 			if (window.API_RENDERER?.stopDaemon) {
-				const result = (await window.API_RENDERER.stopDaemon()) as DaemonActionResult;
+				const result =
+					(await window.API_RENDERER.stopDaemon()) as DaemonActionResult;
 				if (!result?.success) {
 					setError(result?.error || "Failed to stop daemon");
 				}
@@ -125,7 +134,7 @@ export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({
 		const timestampNum =
 			typeof timestamp === "string" ? parseInt(timestamp, 10) : timestamp;
 
-		if (isNaN(timestampNum)) {
+		if (Number.isNaN(timestampNum)) {
 			return "Unknown";
 		}
 

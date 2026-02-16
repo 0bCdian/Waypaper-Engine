@@ -1,5 +1,5 @@
-import { useState, useCallback } from "react";
-import { type rendererImage } from "../types/rendererTypes";
+import { useState } from "react";
+import type { rendererImage } from "../types/rendererTypes";
 import type { ImageThumbnails } from "../../electron/daemon-go-types";
 
 interface ImageProcessingState {
@@ -30,8 +30,7 @@ export function useImageState() {
 		completedImages: new Map(),
 	});
 
-	// Handle image processing events from daemon
-	const handleImageProcessed = useCallback((event: ImageProcessedEvent) => {
+	const handleImageProcessed = (event: ImageProcessedEvent) => {
 		setState((prev) => {
 			const newProcessingImages = new Set(prev.processingImages);
 			newProcessingImages.delete(event.imageId);
@@ -44,9 +43,9 @@ export function useImageState() {
 				completedImages: newCompletedImages,
 			};
 		});
-	}, []);
+	};
 
-	const handleImageError = useCallback((event: ImageErrorEvent) => {
+	const handleImageError = (event: ImageErrorEvent) => {
 		setState((prev) => {
 			const newProcessingImages = new Set(prev.processingImages);
 			newProcessingImages.delete(event.imageId);
@@ -56,21 +55,16 @@ export function useImageState() {
 				processingImages: newProcessingImages,
 			};
 		});
-	}, []);
+	};
 
-	const handleProcessingComplete = useCallback(
-		(_event: ProcessingCompleteEvent) => {
-			// Clear all processing images when processing is complete
-			setState((prev) => ({
-				...prev,
-				processingImages: new Set(),
-			}));
-		},
-		[],
-	);
+	const handleProcessingComplete = (_event: ProcessingCompleteEvent) => {
+		setState((prev) => ({
+			...prev,
+			processingImages: new Set(),
+		}));
+	};
 
-	// Add images to processing state
-	const addProcessingImages = useCallback((imageIds: number[]) => {
+	const addProcessingImages = (imageIds: number[]) => {
 		setState((prev) => {
 			const newProcessingImages = new Set(prev.processingImages);
 			imageIds.forEach((id) => newProcessingImages.add(id));
@@ -80,54 +74,43 @@ export function useImageState() {
 				processingImages: newProcessingImages,
 			};
 		});
-	}, []);
+	};
 
-	// Get thumbnail path for current screen resolution
-	const getThumbnailPath = useCallback(
-		(thumbnails: ImageThumbnails, screenWidth: number): string => {
-			if (screenWidth >= 3840) {
-				return thumbnails["4k"] || thumbnails.default;
-			} else if (screenWidth >= 2560) {
-				return thumbnails["1440p"] || thumbnails.default;
-			} else if (screenWidth >= 1920) {
-				return thumbnails["1080p"] || thumbnails.default;
-			} else if (screenWidth >= 1280) {
-				return thumbnails["720p"] || thumbnails.default;
-			} else {
-				return thumbnails.default;
-			}
-		},
-		[],
-	);
+	const getThumbnailPath = (
+		thumbnails: ImageThumbnails,
+		screenWidth: number,
+	): string => {
+		if (screenWidth >= 3840) {
+			return thumbnails["4k"] || thumbnails.default;
+		} else if (screenWidth >= 2560) {
+			return thumbnails["1440p"] || thumbnails.default;
+		} else if (screenWidth >= 1920) {
+			return thumbnails["1080p"] || thumbnails.default;
+		} else if (screenWidth >= 1280) {
+			return thumbnails["720p"] || thumbnails.default;
+		} else {
+			return thumbnails.default;
+		}
+	};
 
-	// Check if image is being processed
-	const isImageProcessing = useCallback(
-		(imageId: number): boolean => {
-			return state.processingImages.has(imageId);
-		},
-		[state.processingImages],
-	);
+	const isImageProcessing = (imageId: number): boolean => {
+		return state.processingImages.has(imageId);
+	};
 
-	// Get completed image
-	const getCompletedImage = useCallback(
-		(imageId: number): rendererImage | undefined => {
-			return state.completedImages.get(imageId);
-		},
-		[state.completedImages],
-	);
+	const getCompletedImage = (imageId: number): rendererImage | undefined => {
+		return state.completedImages.get(imageId);
+	};
 
-	// Get all completed images
-	const getAllCompletedImages = useCallback((): rendererImage[] => {
+	const getAllCompletedImages = (): rendererImage[] => {
 		return Array.from(state.completedImages.values());
-	}, [state.completedImages]);
+	};
 
-	// Clear completed images (useful for cleanup)
-	const clearCompletedImages = useCallback(() => {
+	const clearCompletedImages = () => {
 		setState((prev) => ({
 			...prev,
 			completedImages: new Map(),
 		}));
-	}, []);
+	};
 
 	return {
 		state,

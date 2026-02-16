@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
-import { playlistStore } from "../stores/playlist";
+import { usePlaylistStore } from "../stores/playlist";
+import { useShallow } from "zustand/react/shallow";
 import { useMonitorStore } from "../stores/monitors";
 import type { PlaylistImage } from "../../electron/daemon-go-types";
 const { goDaemon } = window.API_RENDERER;
@@ -13,9 +14,14 @@ interface savePlaylistModalFields {
 	playlistName: string;
 }
 const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
-	const { setName, readPlaylist } = playlistStore();
+	const { setName, readPlaylist } = usePlaylistStore(
+		useShallow((s) => ({
+			setName: s.setName,
+			readPlaylist: s.readPlaylist,
+		})),
+	);
 	const [error, showError] = useState({ state: false, message: "" });
-	const { monitorSelection } = useMonitorStore();
+	const monitorSelection = useMonitorStore((s) => s.monitorSelection);
 	const modalRef = useRef<HTMLDialogElement>(null);
 	const { register, handleSubmit, setValue } =
 		useForm<savePlaylistModalFields>();
@@ -89,7 +95,7 @@ const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
 	};
 	useEffect(() => {
 		setValue("playlistName", currentPlaylistName);
-	}, [currentPlaylistName]);
+	}, [currentPlaylistName, setValue]);
 	return (
 		<dialog
 			id="savePlaylistModal"

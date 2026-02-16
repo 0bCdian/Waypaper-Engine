@@ -3,7 +3,7 @@ import type {
 	PlaylistImage,
 	PlaylistConfiguration,
 } from "../../electron/daemon-go-types";
-import { type rendererPlaylist } from "../types/rendererTypes";
+import type { rendererPlaylist } from "../types/rendererTypes";
 
 const configurationInitial: PlaylistConfiguration = {
 	type: "timer",
@@ -39,7 +39,7 @@ interface Actions {
 	setEmptyPlaylist: () => void;
 }
 
-export const playlistStore = create<State & Actions>()((set, get) => ({
+export const usePlaylistStore = create<State & Actions>()((set, get) => ({
 	playlist: initialPlaylistState,
 	isEmpty: true,
 	playlistImagesSet: new Set<number>(),

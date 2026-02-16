@@ -1,6 +1,7 @@
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { useRef, useEffect, useState } from "react";
-import { playlistStore } from "../stores/playlist";
+import { usePlaylistStore } from "../stores/playlist";
+import { useShallow } from "zustand/react/shallow";
 import {
 	type PLAYLIST_TYPES_TYPE,
 	type PLAYLIST_ORDER_TYPES,
@@ -19,7 +20,12 @@ interface Inputs {
 
 const PlaylistConfigurationModal = () => {
 	const [showError, setShowError] = useState(false);
-	const { setConfiguration, playlist } = playlistStore();
+	const { setConfiguration, playlist } = usePlaylistStore(
+		useShallow((s) => ({
+			setConfiguration: s.setConfiguration,
+			playlist: s.playlist,
+		})),
+	);
 	const { register, handleSubmit, watch, setValue } = useForm<Inputs>();
 	const containerRef = useRef<HTMLDialogElement>(null);
 	const closeModal = () => {
@@ -33,7 +39,10 @@ const PlaylistConfigurationModal = () => {
 				if (data.hours === null || data.minutes === null) {
 					console.error("Hours and minutes are required");
 				} else {
-					const interval = toMS(parseInt(data.hours), parseInt(data.minutes));
+					const interval = toMS(
+						parseInt(data.hours, 10),
+						parseInt(data.minutes, 10),
+					);
 					const configuration = {
 						type: data.type,
 						order: data.order ?? undefined,
@@ -87,8 +96,8 @@ const PlaylistConfigurationModal = () => {
 	const minutes = watch("minutes");
 	useEffect(() => {
 		if (hours === null || minutes === null) return;
-		const parsedHours = parseInt(hours);
-		const parsedMinutes = parseInt(minutes);
+		const parsedHours = parseInt(hours, 10);
+		const parsedMinutes = parseInt(minutes, 10);
 		if (parsedMinutes === 60) {
 			setValue("hours", (parsedHours + 1).toString());
 			setValue("minutes", "0");
@@ -96,7 +105,7 @@ const PlaylistConfigurationModal = () => {
 		if (parsedMinutes === 0 && parsedHours === 0) {
 			setValue("minutes", "1");
 		}
-	}, [hours, minutes]);
+	}, [hours, minutes, setValue]);
 	useEffect(() => {
 		const interval = playlist.configuration.interval;
 		if (interval != null) {
@@ -111,7 +120,7 @@ const PlaylistConfigurationModal = () => {
 			"alwaysStartOnFirstImage",
 			playlist.configuration.always_start_on_first_image,
 		);
-	}, [playlist]);
+	}, [playlist, setValue]);
 	return (
 		<dialog
 			id="playlistConfigurationModal"

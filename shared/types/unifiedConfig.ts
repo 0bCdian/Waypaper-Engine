@@ -15,4 +15,3 @@ export interface ConfigChangeEvent {
 
 // Configuration section types for form handling
 export type ConfigSection = "app" | "daemon" | "backend" | "monitors";
-

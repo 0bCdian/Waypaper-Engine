@@ -4,8 +4,8 @@
  * Custom hooks for working with Zustand stores.
  */
 
-import { useCallback, useEffect, useRef } from "react";
-import { StoreApi, UseBoundStore } from "zustand";
+import { useEffect, useRef } from "react";
+import type { StoreApi, UseBoundStore } from "zustand";
 
 /**
  * Hook for selecting from store with shallow comparison
@@ -62,18 +62,15 @@ export function useDebouncedStoreUpdate<T>(
 ) {
 	const timeoutRef = useRef<NodeJS.Timeout>(undefined);
 
-	return useCallback(
-		(updater: (state: T) => Partial<T>) => {
-			if (timeoutRef.current) {
-				clearTimeout(timeoutRef.current);
-			}
+	return (updater: (state: T) => Partial<T>) => {
+		if (timeoutRef.current) {
+			clearTimeout(timeoutRef.current);
+		}
 
-			timeoutRef.current = setTimeout(() => {
-				store.setState(updater);
-			}, delay);
-		},
-		[store, delay],
-	);
+		timeoutRef.current = setTimeout(() => {
+			store.setState(updater);
+		}, delay);
+	};
 }
 
 /**
@@ -85,17 +82,14 @@ export function useThrottledStoreUpdate<T>(
 ) {
 	const lastUpdateRef = useRef<number>(0);
 
-	return useCallback(
-		(updater: (state: T) => Partial<T>) => {
-			const now = Date.now();
+	return (updater: (state: T) => Partial<T>) => {
+		const now = Date.now();
 
-			if (now - lastUpdateRef.current >= delay) {
-				lastUpdateRef.current = now;
-				store.setState(updater);
-			}
-		},
-		[store, delay],
-	);
+		if (now - lastUpdateRef.current >= delay) {
+			lastUpdateRef.current = now;
+			store.setState(updater);
+		}
+	};
 }
 
 /**

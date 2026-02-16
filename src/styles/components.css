@@ -343,7 +343,7 @@
 	.btn-enhanced,
 	.playlist-enhanced .playlist-controls,
 	.filter-panel-enhanced {
-		display: none !important;
+		display: none;
 	}
 
 	.gallery-grid-enhanced {

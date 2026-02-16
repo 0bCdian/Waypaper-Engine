@@ -66,14 +66,19 @@ export const SidebarConfiguration: React.FC = () => {
 
 const AppSettings: React.FC = () => {
 	const { config, saveConfigSection } = useSettingsStore(
-		useShallow((s) => ({ config: s.config, saveConfigSection: s.saveConfigSection })),
+		useShallow((s) => ({
+			config: s.config,
+			saveConfigSection: s.saveConfigSection,
+		})),
 	);
 
 	return (
 		<div className="space-y-4">
 			<div className="form-control">
 				<label className="label">
-					<span className="label-text text-sm font-medium">Start Minimized</span>
+					<span className="label-text text-sm font-medium">
+						Start Minimized
+					</span>
 				</label>
 				<input
 					type="checkbox"
@@ -96,7 +101,9 @@ const AppSettings: React.FC = () => {
 					className="toggle toggle-primary"
 					checked={config?.app?.minimize_instead_of_close || false}
 					onChange={(e) =>
-						saveConfigSection("app", { minimize_instead_of_close: e.target.checked })
+						saveConfigSection("app", {
+							minimize_instead_of_close: e.target.checked,
+						})
 					}
 				/>
 			</div>
@@ -122,7 +129,10 @@ const AppSettings: React.FC = () => {
 
 const SwwwSettings: React.FC = () => {
 	const { config, saveConfigSection } = useSettingsStore(
-		useShallow((s) => ({ config: s.config, saveConfigSection: s.saveConfigSection })),
+		useShallow((s) => ({
+			config: s.config,
+			saveConfigSection: s.saveConfigSection,
+		})),
 	);
 
 	return (
@@ -164,7 +174,9 @@ const SwwwSettings: React.FC = () => {
 					className="range range-primary range-sm"
 					value={config?.backend?.swww?.transition_step || 0}
 					onChange={(e) =>
-						saveConfigSection("backend", { transition_step: parseInt(e.target.value) })
+						saveConfigSection("backend", {
+							transition_step: parseInt(e.target.value, 10),
+						})
 					}
 				/>
 				<div className="flex justify-between text-xs text-base-content/60 px-2">
@@ -196,7 +208,10 @@ const SwwwSettings: React.FC = () => {
 
 const DaemonSettings: React.FC = () => {
 	const { config, saveConfigSection } = useSettingsStore(
-		useShallow((s) => ({ config: s.config, saveConfigSection: s.saveConfigSection })),
+		useShallow((s) => ({
+			config: s.config,
+			saveConfigSection: s.saveConfigSection,
+		})),
 	);
 
 	return (

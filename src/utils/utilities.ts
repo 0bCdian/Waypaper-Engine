@@ -1,4 +1,4 @@
-import { type Monitor } from "../../electron/daemon-go-types";
+import type { Monitor } from "../../electron/daemon-go-types";
 
 export function toMS(hours: number, minutes: number) {
 	return hours * 60 * 60 * 1000 + minutes * 60 * 1000;
@@ -24,7 +24,7 @@ export function debounce(callback: () => void, timer = 1000) {
 
 export function parseResolution(resolution: string) {
 	const [width, height] = resolution.split("x");
-	return { width: parseInt(width), height: parseInt(height) };
+	return { width: parseInt(width, 10), height: parseInt(height, 10) };
 }
 
 export function calculateMinResolution(monitors: Monitor[]) {

@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 import LoadPlaylistModal from "./LoadPlaylistModal";
 import SavePlaylistModal from "./SavePlaylistModal";
 import AddToPlaylistModal from "./AddToPlaylistModal";
 import PlaylistConfigurationModal from "./PlaylistConfigurationModal";
-import { playlistStore } from "../stores/playlist";
+import { usePlaylistStore } from "../stores/playlist";
 import AdvancedFiltersModal from "./AdvancedFiltersModal";
+import { useShallow } from "zustand/react/shallow";
 import { useSettingsStore } from "../stores/settingsStore";
 import Monitors from "./monitorsModal";
 import { useMonitorStore } from "../stores/monitors";
@@ -12,10 +13,17 @@ import type { Playlist } from "../../electron/daemon-go-types";
 const goDaemon = window.API_RENDERER.goDaemon;
 let alreadyShown = false;
 function Modals() {
-	const [playlistsInDB, setPlaylistsInDB] = useState<Playlist[]>(
-		[],
+	// All hooks grouped at the top
+	const [playlistsInDB, setPlaylistsInDB] = useState<Playlist[]>([]);
+	const { setLastSavedMonitorConfig, reQueryMonitors } = useMonitorStore(
+		useShallow((s) => ({
+			setLastSavedMonitorConfig: s.setLastSavedMonitorConfig,
+			reQueryMonitors: s.reQueryMonitors,
+		})),
 	);
-	const { setLastSavedMonitorConfig, reQueryMonitors } = useMonitorStore();
+	const [shouldReload, setShouldReload] = useState<boolean>(false);
+	const playlist = usePlaylistStore((s) => s.playlist);
+
 	useEffect(() => {
 		if (alreadyShown) return;
 		alreadyShown = true;
@@ -28,39 +36,32 @@ function Modals() {
 				});
 			}, 300);
 		});
-	}, []);
+	}, [reQueryMonitors, setLastSavedMonitorConfig]);
 
-	const [shouldReload, setShouldReload] = useState<boolean>(false);
-	const { playlist } = playlistStore();
-
-	const fetchPlaylists = useCallback(() => {
+	useEffect(() => {
 		void goDaemon.getPlaylists().then((playlists) => {
 			setPlaylistsInDB(playlists);
 		});
-	}, []);
-
-	// Fetch on mount and when shouldReload changes
-	useEffect(() => {
-		fetchPlaylists();
 		if (shouldReload) {
 			setShouldReload(false);
 		}
-	}, [shouldReload, fetchPlaylists]);
+	}, [shouldReload]);
 
-	// Listen for playlists_updated SSE event from daemon
 	useEffect(() => {
 		const api = window.API_RENDERER?.goDaemon;
 		if (!api?.on || !api?.off) return;
 
 		const handlePlaylistsUpdated = () => {
-			fetchPlaylists();
+			void goDaemon.getPlaylists().then((playlists) => {
+				setPlaylistsInDB(playlists);
+			});
 		};
 
 		api.on("playlists_updated", handlePlaylistsUpdated);
 		return () => {
 			api.off("playlists_updated", handlePlaylistsUpdated);
 		};
-	}, [fetchPlaylists]);
+	}, []);
 
 	return (
 		<>

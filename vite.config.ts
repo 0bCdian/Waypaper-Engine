@@ -1,6 +1,5 @@
 import { defineConfig } from "vite";
 import electron from "vite-plugin-electron";
-import renderer from "vite-plugin-electron-renderer";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { resolve } from "path";
@@ -9,8 +8,8 @@ import { resolve } from "path";
 // https://vitejs.dev/config/
 export default defineConfig({
 	build: {
-		minify: false,
-		sourcemap: "inline",
+		minify: process.env.DEBUG_BUILD ? false : "esbuild",
+		sourcemap: process.env.DEV === "true" ? "inline" : false,
 	},
 	resolve: {
 		alias: {
@@ -23,7 +22,11 @@ export default defineConfig({
 		},
 	},
 	plugins: [
-		react(),
+		react({
+			babel: {
+				plugins: ["babel-plugin-react-compiler"],
+			},
+		}),
 		tailwindcss(),
 		electron([
 			{
@@ -48,7 +51,6 @@ export default defineConfig({
 				},
 			},
 		]),
-		renderer(),
 	],
 	define: {
 		global: "globalThis",

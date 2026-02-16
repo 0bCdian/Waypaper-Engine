@@ -51,7 +51,9 @@ export const AppSettingsSection: React.FC<AppSettingsSectionProps> = ({
 		);
 	const section: ConfigSection = "app";
 	const themeAccordionOpen = expandedSections.has("theme");
-	const themeTabDark = expandedSections.has("themeTab_dark") || !expandedSections.has("themeTab_light");
+	const themeTabDark =
+		expandedSections.has("themeTab_dark") ||
+		!expandedSections.has("themeTab_light");
 	const activeThemeTab: "light" | "dark" = themeTabDark ? "dark" : "light";
 
 	// Define all app settings fields (excluding theme and gallery filters)
@@ -174,7 +176,7 @@ export const AppSettingsSection: React.FC<AppSettingsSectionProps> = ({
 								)}
 								value={(currentValue as number) || 0}
 								onChange={(e) =>
-									handleValueChange(field.key, parseInt(e.target.value))
+									handleValueChange(field.key, parseInt(e.target.value, 10))
 								}
 								min={field.min}
 								max={field.max}
@@ -294,8 +296,10 @@ export const AppSettingsSection: React.FC<AppSettingsSectionProps> = ({
 										activeThemeTab === "dark" ? "tab-active" : "",
 									)}
 									onClick={() => {
-										if (!expandedSections.has("themeTab_dark")) toggleSection("themeTab_dark");
-										if (expandedSections.has("themeTab_light")) toggleSection("themeTab_light");
+										if (!expandedSections.has("themeTab_dark"))
+											toggleSection("themeTab_dark");
+										if (expandedSections.has("themeTab_light"))
+											toggleSection("themeTab_light");
 									}}
 								>
 									<svg
@@ -320,8 +324,10 @@ export const AppSettingsSection: React.FC<AppSettingsSectionProps> = ({
 										activeThemeTab === "light" ? "tab-active" : "",
 									)}
 									onClick={() => {
-										if (!expandedSections.has("themeTab_light")) toggleSection("themeTab_light");
-										if (expandedSections.has("themeTab_dark")) toggleSection("themeTab_dark");
+										if (!expandedSections.has("themeTab_light"))
+											toggleSection("themeTab_light");
+										if (expandedSections.has("themeTab_dark"))
+											toggleSection("themeTab_dark");
 									}}
 								>
 									<svg

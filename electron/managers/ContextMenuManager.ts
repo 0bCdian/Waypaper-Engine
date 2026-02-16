@@ -113,7 +113,9 @@ export class ContextMenuManager {
 					{
 						label: "Remove selected images from current playlist",
 						click: () => {
-							window.webContents.send(MENU_EVENTS.removeSelectedImagesFromPlaylist);
+							window.webContents.send(
+								MENU_EVENTS.removeSelectedImagesFromPlaylist,
+							);
 						},
 					},
 					{

@@ -7,6 +7,7 @@
 
 import type React from "react";
 import { useMonitorStore } from "../../stores/monitors";
+import { useShallow } from "zustand/react/shallow";
 import { useTheme } from "../../contexts/ThemeContext";
 import { cn } from "../../utils/cn";
 import { DRAWER_CHECKBOX_ID } from "./ModernAppLayout";
@@ -16,7 +17,12 @@ export interface NavBarProps {
 }
 
 export const NavBar: React.FC<NavBarProps> = ({ className }) => {
-	const { monitorSelection, reQueryMonitors } = useMonitorStore();
+	const { monitorSelection, reQueryMonitors } = useMonitorStore(
+		useShallow((s) => ({
+			monitorSelection: s.monitorSelection,
+			reQueryMonitors: s.reQueryMonitors,
+		})),
+	);
 	const { isDarkMode, setTheme } = useTheme();
 
 	const handleThemeToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -112,10 +118,7 @@ export const NavBar: React.FC<NavBarProps> = ({ className }) => {
 						onChange={handleThemeToggle}
 					/>
 					{/* Sun icon */}
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						viewBox="0 0 24 24"
-					>
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
 						<title>Light mode</title>
 						<g
 							strokeLinejoin="round"
@@ -136,10 +139,7 @@ export const NavBar: React.FC<NavBarProps> = ({ className }) => {
 						</g>
 					</svg>
 					{/* Moon icon */}
-					<svg
-						xmlns="http://www.w3.org/2000/svg"
-						viewBox="0 0 24 24"
-					>
+					<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
 						<title>Dark mode</title>
 						<g
 							strokeLinejoin="round"

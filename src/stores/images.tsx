@@ -1,7 +1,10 @@
 import { create } from "zustand";
 import type { Filters, rendererImage } from "../types/rendererTypes";
-import { playlistStore } from "./playlist";
-import type { Pagination, ImageQueryParams } from "../../electron/daemon-go-types";
+import { usePlaylistStore } from "./playlist";
+import type {
+	Pagination,
+	ImageQueryParams,
+} from "../../electron/daemon-go-types";
 
 const { goDaemon } = window.API_RENDERER;
 
@@ -61,7 +64,7 @@ interface State {
 	selectAllImagesInGallery: () => void;
 }
 
-export const imagesStore = create<State>()((set, get) => ({
+export const useImagesStore = create<State>()((set, get) => ({
 	imagesArray: [] as rendererImage[],
 	imagesMap: new Map<number, rendererImage>(),
 	filteredImages: [] as rendererImage[],
@@ -140,7 +143,7 @@ export const imagesStore = create<State>()((set, get) => ({
 				selectedImages.delete(imageToDelete.id);
 				imagesSetToDelete.add(imageToDelete.id);
 			});
-			playlistStore.getState().removeImagesFromPlaylist(imagesSetToDelete);
+			usePlaylistStore.getState().removeImagesFromPlaylist(imagesSetToDelete);
 			return {
 				...state,
 				imagesArray: Array.from(imagesMap.values()),
@@ -227,16 +230,14 @@ export const imagesStore = create<State>()((set, get) => ({
 			imagesToDelete.push(image);
 			imagesSetToDelete.add(id);
 		});
-		void goDaemon
-			.deleteImages(imagesToDelete.map((img) => img.id))
-			.then(() => {
-				set(() => ({
-					imagesMap: newImagesMap,
-					imagesArray: Array.from(newImagesMap.values()),
-					selectedImages: newSelectedImages,
-				}));
-				playlistStore.getState().removeImagesFromPlaylist(imagesSetToDelete);
-			});
+		void goDaemon.deleteImages(imagesToDelete.map((img) => img.id)).then(() => {
+			set(() => ({
+				imagesMap: newImagesMap,
+				imagesArray: Array.from(newImagesMap.values()),
+				selectedImages: newSelectedImages,
+			}));
+			usePlaylistStore.getState().removeImagesFromPlaylist(imagesSetToDelete);
+		});
 	},
 	getFilters() {
 		return get().filters;

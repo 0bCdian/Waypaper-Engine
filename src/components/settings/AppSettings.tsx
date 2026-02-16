@@ -5,7 +5,8 @@
  * Handles window behavior, theme, and app preferences.
  */
 
-import React, { useState, useEffect } from "react";
+import type React from "react";
+import { useState, useEffect } from "react";
 import { cn } from "../../utils/cn";
 
 /**
@@ -38,7 +39,7 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ className }) => {
 	// Load configuration on mount
 	useEffect(() => {
 		loadConfig();
-	}, []);
+	}, [loadConfig]);
 
 	const loadConfig = async () => {
 		try {

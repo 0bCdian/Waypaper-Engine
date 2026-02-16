@@ -1,4 +1,3 @@
-import { useCallback } from "react";
 import { useSettingsStore } from "../stores/settingsStore";
 
 export function useLoadAppConfig() {
@@ -6,10 +5,10 @@ export function useLoadAppConfig() {
 	const isLoading = useSettingsStore((s) => s.isLoading);
 	const loadConfig = useSettingsStore((s) => s.loadConfig);
 
-	const loadAppConfig = useCallback(() => {
+	const loadAppConfig = () => {
 		if (configLoaded || isLoading) return;
 		loadConfig();
-	}, [loadConfig, configLoaded, isLoading]);
+	};
 
 	return loadAppConfig;
 }

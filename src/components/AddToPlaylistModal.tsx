@@ -1,6 +1,6 @@
 import { useRef, useState } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
-import { imagesStore } from "../stores/images";
+import { useImagesStore } from "../stores/images";
 import type { Playlist } from "../../electron/daemon-go-types";
 
 interface Input {
@@ -15,7 +15,7 @@ interface Props {
 const { goDaemon } = window.API_RENDERER;
 
 const AddToPlaylistModal = ({ playlistsInDB, setShouldReload }: Props) => {
-	const { selectedImages } = imagesStore();
+	const selectedImages = useImagesStore((s) => s.selectedImages);
 	const [error, setError] = useState("");
 	const [success, setSuccess] = useState("");
 	const { register, handleSubmit } = useForm<Input>();
@@ -186,9 +186,7 @@ const AddToPlaylistModal = ({ playlistsInDB, setShouldReload }: Props) => {
 								id="selectPlaylist"
 								className="select select-bordered w-full rounded-md text-lg"
 								defaultValue={
-									playlistsInDB.length > 0
-										? playlistsInDB[0].name
-										: ""
+									playlistsInDB.length > 0 ? playlistsInDB[0].name : ""
 								}
 								{...register("selectPlaylist", {
 									required: true,

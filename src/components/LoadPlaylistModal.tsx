@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
-import { playlistStore } from "../stores/playlist";
+import { usePlaylistStore } from "../stores/playlist";
+import { useShallow } from "zustand/react/shallow";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import type { rendererPlaylist } from "../types/rendererTypes";
 import { useMonitorStore } from "../stores/monitors";
@@ -22,10 +23,15 @@ const LoadPlaylistModal = ({
 	setShouldReload,
 	currentPlaylistName,
 }: Props) => {
-	const { clearPlaylist, setPlaylist } = playlistStore();
+	const { clearPlaylist, setPlaylist } = usePlaylistStore(
+		useShallow((s) => ({
+			clearPlaylist: s.clearPlaylist,
+			setPlaylist: s.setPlaylist,
+		})),
+	);
 	const [error, setError] = useState("");
 	const { register, handleSubmit, watch } = useForm<Input>();
-	const { monitorSelection } = useMonitorStore();
+	const monitorSelection = useMonitorStore((s) => s.monitorSelection);
 	const modalRef = useRef<HTMLDialogElement>(null);
 
 	const closeModal = () => {
@@ -62,11 +68,7 @@ const LoadPlaylistModal = ({
 				monitorSelection.selectedMonitors.length === 1
 					? monitorSelection.selectedMonitors[0]
 					: "*";
-			goDaemon.startPlaylist(
-				fullPlaylist.id,
-				monitor,
-				monitorSelection.mode,
-			);
+			goDaemon.startPlaylist(fullPlaylist.id, monitor, monitorSelection.mode);
 		}
 		closeModal();
 	};
@@ -129,9 +131,7 @@ const LoadPlaylistModal = ({
 								id="selectPlaylist"
 								className="select select-bordered basis-[90%] rounded-md text-lg"
 								defaultValue={
-									playlistsInDB.length > 0
-										? playlistsInDB[0].name
-										: ""
+									playlistsInDB.length > 0 ? playlistsInDB[0].name : ""
 								}
 								{...register("selectPlaylist", {
 									required: true,

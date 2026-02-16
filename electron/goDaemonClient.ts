@@ -82,18 +82,10 @@ export class GoDaemonClient extends EventEmitter {
 							const errorData = data
 								? JSON.parse(data)
 								: { error: `HTTP ${res.statusCode}` };
-							reject(
-								new Error(
-									errorData.error || `HTTP ${res.statusCode}`,
-								),
-							);
+							reject(new Error(errorData.error || `HTTP ${res.statusCode}`));
 						}
 					} catch (parseError) {
-						reject(
-							new Error(
-								`Failed to parse response: ${parseError}`,
-							),
-						);
+						reject(new Error(`Failed to parse response: ${parseError}`));
 					}
 				});
 			});
@@ -218,10 +210,7 @@ export class GoDaemonClient extends EventEmitter {
 		}
 
 		this.sseReconnectAttempts++;
-		const delay = Math.min(
-			1000 * this.sseReconnectAttempts,
-			30000,
-		);
+		const delay = Math.min(1000 * this.sseReconnectAttempts, 30000);
 		logger.info(
 			`Scheduling SSE reconnect in ${delay}ms (attempt ${this.sseReconnectAttempts})`,
 		);
@@ -316,7 +305,9 @@ export class GoDaemonClient extends EventEmitter {
 		return this.request<{ count: number }>("GET", "/images/count");
 	}
 
-	async importImages(paths: string[]): Promise<{ status: string; total: number }> {
+	async importImages(
+		paths: string[],
+	): Promise<{ status: string; total: number }> {
 		const body: ImportImagesRequest = { paths };
 		return this.request<{ status: string; total: number }>(
 			"POST",
@@ -330,10 +321,7 @@ export class GoDaemonClient extends EventEmitter {
 		return this.request<{ deleted: number }>("DELETE", "/images", body);
 	}
 
-	async updateImage(
-		id: number,
-		update: UpdateImageRequest,
-	): Promise<Image> {
+	async updateImage(id: number, update: UpdateImageRequest): Promise<Image> {
 		return this.request<Image>("PATCH", `/images/${id}`, update);
 	}
 
@@ -374,11 +362,7 @@ export class GoDaemonClient extends EventEmitter {
 			monitor,
 			mode,
 		};
-		return this.request<SetWallpaperResponse>(
-			"POST",
-			"/wallpaper/set",
-			body,
-		);
+		return this.request<SetWallpaperResponse>("POST", "/wallpaper/set", body);
 	}
 
 	async setRandomWallpaper(
@@ -449,9 +433,7 @@ export class GoDaemonClient extends EventEmitter {
 		await this.request("POST", `/playlists/${id}/previous`);
 	}
 
-	async getActivePlaylists(): Promise<
-		Record<string, ActivePlaylistInstance>
-	> {
+	async getActivePlaylists(): Promise<Record<string, ActivePlaylistInstance>> {
 		return this.request<Record<string, ActivePlaylistInstance>>(
 			"GET",
 			"/playlists/active",
@@ -517,9 +499,7 @@ export class GoDaemonClient extends EventEmitter {
 		return this.request<UnifiedConfig>("GET", "/config");
 	}
 
-	async updateConfig(
-		config: Partial<UnifiedConfig>,
-	): Promise<UnifiedConfig> {
+	async updateConfig(config: Partial<UnifiedConfig>): Promise<UnifiedConfig> {
 		return this.request<UnifiedConfig>("PATCH", "/config", config);
 	}
 
@@ -538,9 +518,7 @@ export class GoDaemonClient extends EventEmitter {
 		return this.request<SwwwConfig>("GET", "/config/backend");
 	}
 
-	async updateBackendConfig(
-		config: Partial<SwwwConfig>,
-	): Promise<void> {
+	async updateBackendConfig(config: Partial<SwwwConfig>): Promise<void> {
 		await this.request("PATCH", "/config/backend", config);
 	}
 

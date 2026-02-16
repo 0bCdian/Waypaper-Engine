@@ -5,7 +5,8 @@
  * and keyboard navigation support.
  */
 
-import React, { useState, useEffect, useRef } from "react";
+import type React from "react";
+import { useState, useEffect, useRef } from "react";
 import { cn } from "@/utils/cn";
 import type { ConfigSection } from "@/shared/types/unifiedConfig";
 
@@ -178,34 +179,27 @@ export const SettingsSearch: React.FC<SettingsSearchProps> = ({
 	showSuggestions = true,
 }) => {
 	const [isFocused, setIsFocused] = useState(false);
-	const [filteredSuggestions, setFilteredSuggestions] = useState<
-		SearchSuggestion[]
-	>([]);
 	const [selectedSuggestionIndex, setSelectedSuggestionIndex] = useState(-1);
 	const inputRef = useRef<HTMLInputElement>(null);
 	const suggestionsRef = useRef<HTMLDivElement>(null);
+	const prevSearchTermRef = useRef(searchTerm);
 
-	// Filter suggestions based on search term
-	useEffect(() => {
-		if (!searchTerm.trim()) {
-			setFilteredSuggestions([]);
-			setSelectedSuggestionIndex(-1);
-			return;
-		}
+	const filteredSuggestions = searchTerm.trim()
+		? searchSuggestions.filter(
+				(suggestion) =>
+					suggestion.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+					suggestion.description
+						.toLowerCase()
+						.includes(searchTerm.toLowerCase()) ||
+					suggestion.key.toLowerCase().includes(searchTerm.toLowerCase()) ||
+					suggestion.category.toLowerCase().includes(searchTerm.toLowerCase()),
+			)
+		: [];
 
-		const filtered = searchSuggestions.filter(
-			(suggestion) =>
-				suggestion.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-				suggestion.description
-					.toLowerCase()
-					.includes(searchTerm.toLowerCase()) ||
-				suggestion.key.toLowerCase().includes(searchTerm.toLowerCase()) ||
-				suggestion.category.toLowerCase().includes(searchTerm.toLowerCase()),
-		);
-
-		setFilteredSuggestions(filtered);
+	if (prevSearchTermRef.current !== searchTerm) {
+		prevSearchTermRef.current = searchTerm;
 		setSelectedSuggestionIndex(-1);
-	}, [searchTerm]);
+	}
 
 	// Handle keyboard navigation
 	const handleKeyDown = (event: React.KeyboardEvent) => {

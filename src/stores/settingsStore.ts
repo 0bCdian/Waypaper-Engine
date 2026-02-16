@@ -160,18 +160,30 @@ export const useSettingsStore = create<SettingsStore>()(
 				if (section === "app") {
 					newConfig.app = { ...newConfig.app, ...data } as typeof newConfig.app;
 				} else if (section === "daemon") {
-					newConfig.daemon = { ...newConfig.daemon, ...data } as typeof newConfig.daemon;
+					newConfig.daemon = {
+						...newConfig.daemon,
+						...data,
+					} as typeof newConfig.daemon;
 				} else if (section === "backend") {
 					if ("type" in data) {
-						newConfig.backend = { ...newConfig.backend, ...data } as typeof newConfig.backend;
+						newConfig.backend = {
+							...newConfig.backend,
+							...data,
+						} as typeof newConfig.backend;
 					} else {
 						newConfig.backend = {
 							...newConfig.backend,
-							swww: { ...newConfig.backend.swww, ...data } as typeof newConfig.backend.swww,
+							swww: {
+								...newConfig.backend.swww,
+								...data,
+							} as typeof newConfig.backend.swww,
 						};
 					}
 				} else if (section === "monitors") {
-					newConfig.monitors = { ...newConfig.monitors, ...data } as typeof newConfig.monitors;
+					newConfig.monitors = {
+						...newConfig.monitors,
+						...data,
+					} as typeof newConfig.monitors;
 				}
 
 				// Single set() for the optimistic update -- only config and errors
@@ -181,11 +193,16 @@ export const useSettingsStore = create<SettingsStore>()(
 				try {
 					if (section === "backend") {
 						if (window.API_RENDERER?.goDaemon?.updateBackendConfig) {
-							await window.API_RENDERER.goDaemon.updateBackendConfig(data as any);
+							await window.API_RENDERER.goDaemon.updateBackendConfig(
+								data as any,
+							);
 						}
 					} else {
 						if (window.API_RENDERER?.goDaemon?.updateConfigSection) {
-							await window.API_RENDERER.goDaemon.updateConfigSection(section, data);
+							await window.API_RENDERER.goDaemon.updateConfigSection(
+								section,
+								data,
+							);
 						}
 					}
 					set({ lastSaved: Date.now() });

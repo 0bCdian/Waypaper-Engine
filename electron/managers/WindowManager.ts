@@ -6,7 +6,7 @@
 
 import { BrowserWindow, screen } from "electron";
 import { join } from "node:path";
-import type{ ThemeManager } from "./ThemeManager";
+import type { ThemeManager } from "./ThemeManager";
 
 export interface WindowConfig {
 	width?: number;

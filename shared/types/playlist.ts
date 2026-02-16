@@ -1,4 +1,4 @@
-import { type objectValues } from "../types";
+import type { objectValues } from "../types";
 
 export const PLAYLIST_ORDER = {
 	ordered: "ordered",

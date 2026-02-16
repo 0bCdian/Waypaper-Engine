@@ -53,9 +53,7 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({
 				{/* Main content area */}
 				<div className="drawer-content flex flex-col h-full overflow-hidden">
 					<NavBar />
-					<main className="flex-1 overflow-hidden bg-base-100">
-						{children}
-					</main>
+					<main className="flex-1 overflow-hidden bg-base-100">{children}</main>
 				</div>
 
 				{/* Sidebar */}

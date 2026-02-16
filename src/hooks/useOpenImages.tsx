@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { type openFileAction } from "../../shared/types";
+import type { openFileAction } from "../../shared/types";
 const { openFiles, handleOpenImages } = window.API_RENDERER;
 
 interface State {
@@ -19,20 +19,23 @@ const openImagesStore = create<State & Actions>((set) => ({
 	openImages: async ({ action }) => {
 		console.log("🟢 useOpenImages: Starting openImages with action:", action);
 		set(() => ({ isActive: true }));
-		
+
 		const result = await openFiles(action);
 		console.log("🟢 useOpenImages: openFiles returned:", result);
-		
+
 		set(() => ({ isActive: false }));
 
 		if (!result.success) {
-			console.warn("🟡 useOpenImages: openFiles returned unsuccessful:", result);
+			console.warn(
+				"🟡 useOpenImages: openFiles returned unsuccessful:",
+				result,
+			);
 			return;
 		}
 
 		// Check for files in result.data.files (the actual structure returned)
 		const files = result.data?.files || result.files || [];
-		
+
 		if (files.length === 0) {
 			console.warn("🟡 useOpenImages: No files returned from dialog");
 			return;
@@ -48,8 +51,11 @@ const openImagesStore = create<State & Actions>((set) => ({
 			},
 		};
 
-		console.log("🟢 useOpenImages: Calling handleOpenImages with:", imagesObject);
-		
+		console.log(
+			"🟢 useOpenImages: Calling handleOpenImages with:",
+			imagesObject,
+		);
+
 		// Send images to daemon for processing
 		try {
 			const handleResult = await handleOpenImages(imagesObject);

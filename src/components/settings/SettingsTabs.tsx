@@ -5,7 +5,8 @@
  * and real-time TOML synchronization. Features accordion layouts and inline theme selection.
  */
 
-import React, { useState, useEffect } from "react";
+import type React from "react";
+import { useState, useEffect } from "react";
 import { cn } from "@/utils/cn";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useShallow } from "zustand/react/shallow";

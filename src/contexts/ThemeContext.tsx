@@ -11,7 +11,6 @@ import React, {
 	useContext,
 	useEffect,
 	useState,
-	useCallback,
 	type ReactNode,
 } from "react";
 import type { ThemeContextType } from "./types";
@@ -83,11 +82,21 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 	 *
 	 * @param themeName - The name of the theme to apply
 	 */
-	const applyTheme = useCallback((themeName: string) => {
+	const applyTheme = (themeName: string) => {
+		// Disable all CSS transitions to prevent color flashing during theme switch
+		document.documentElement.classList.add("disable-transitions");
+
 		document.documentElement.setAttribute("data-theme", themeName);
 		// Remove any conflicting data-theme from body
 		document.body.removeAttribute("data-theme");
-	}, []);
+
+		// Re-enable transitions after the browser has painted with the new theme
+		requestAnimationFrame(() => {
+			requestAnimationFrame(() => {
+				document.documentElement.classList.remove("disable-transitions");
+			});
+		});
+	};
 
 	/**
 	 * Set theme with persistence and validation
@@ -97,30 +106,27 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 	 *
 	 * @param themeName - The name of the theme to set
 	 */
-	const setTheme = useCallback(
-		(themeName: string) => {
-			const theme = getTheme(themeName);
-			if (!theme) {
-				return;
+	const setTheme = (themeName: string) => {
+		const theme = getTheme(themeName);
+		if (!theme) {
+			return;
+		}
+
+		const timestamp = Date.now();
+
+		setCurrentThemeState(themeName);
+		setLastChanged(timestamp);
+
+		applyTheme(themeName);
+
+		if (persist) {
+			try {
+				localStorage.setItem("waypaper-theme", themeName);
+			} catch (error) {
+				console.warn("Failed to persist theme selection:", error);
 			}
-
-			const timestamp = Date.now();
-
-			setCurrentThemeState(themeName);
-			setLastChanged(timestamp);
-
-			applyTheme(themeName);
-
-			if (persist) {
-				try {
-					localStorage.setItem("waypaper-theme", themeName);
-				} catch (error) {
-					console.warn("Failed to persist theme selection:", error);
-				}
-			}
-		},
-		[currentTheme, applyTheme, persist],
-	);
+		}
+	};
 
 	/**
 	 * Toggle between light and dark themes
@@ -128,7 +134,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 	 * Automatically switches to the opposite theme category (light ↔ dark).
 	 * Finds the first available theme in the opposite category and applies it.
 	 */
-	const toggleTheme = useCallback(() => {
+	const toggleTheme = () => {
 		const current = getTheme(currentTheme);
 		if (!current) return;
 
@@ -140,7 +146,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 		if (oppositeTheme) {
 			setTheme(oppositeTheme.name);
 		}
-	}, [currentTheme, setTheme]);
+	};
 
 	/**
 	 * Set system theme preference
@@ -151,39 +157,36 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 	 *
 	 * @param mode - System theme mode: 'light', 'dark', or 'auto'
 	 */
-	const setSystemThemePreference = useCallback(
-		(mode: "light" | "dark" | "auto") => {
-			setSystemTheme(mode);
-			setSyncWithSystem(mode === "auto");
+	const setSystemThemePreference = (mode: "light" | "dark" | "auto") => {
+		setSystemTheme(mode);
+		setSyncWithSystem(mode === "auto");
 
-			if (persist) {
-				try {
-					localStorage.setItem("waypaper-system-theme", mode);
-				} catch (error) {
-					console.warn("Failed to persist system theme preference:", error);
-				}
+		if (persist) {
+			try {
+				localStorage.setItem("waypaper-system-theme", mode);
+			} catch (error) {
+				console.warn("Failed to persist system theme preference:", error);
 			}
+		}
 
-			if (mode === "auto") {
-				const prefersDark = window.matchMedia(
-					"(prefers-color-scheme: dark)",
-				).matches;
-				const themeName = prefersDark ? "dark" : "light";
-				setTheme(themeName);
-			} else {
-				setTheme(mode);
-			}
-		},
-		[setTheme, persist],
-	);
+		if (mode === "auto") {
+			const prefersDark = window.matchMedia(
+				"(prefers-color-scheme: dark)",
+			).matches;
+			const themeName = prefersDark ? "dark" : "light";
+			setTheme(themeName);
+		} else {
+			setTheme(mode);
+		}
+	};
 	/**
 	 * Reset to default theme
 	 *
 	 * Resets the current theme to the default theme specified in the provider props.
 	 */
-	const resetTheme = useCallback(() => {
+	const resetTheme = () => {
 		setTheme(defaultTheme);
-	}, [setTheme, defaultTheme]);
+	};
 
 	/**
 	 * Get theme by name
@@ -193,12 +196,9 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 	 * @param name - The name of the theme to retrieve
 	 * @returns Theme configuration or undefined if not found
 	 */
-	const getThemeByName = useCallback(
-		(name: string): ThemeConfig | undefined => {
-			return getTheme(name);
-		},
-		[],
-	);
+	const getThemeByName = (name: string): ThemeConfig | undefined => {
+		return getTheme(name);
+	};
 
 	/**
 	 * Check if theme exists
@@ -208,9 +208,9 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 	 * @param name - The name of the theme to check
 	 * @returns True if the theme exists and is available, false otherwise
 	 */
-	const hasTheme = useCallback((name: string): boolean => {
+	const hasTheme = (name: string): boolean => {
 		return name in themes && (themes[name].available ?? true);
-	}, []);
+	};
 
 	/**
 	 * Get all available themes
@@ -220,7 +220,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 	 *
 	 * @returns Array of theme metadata objects
 	 */
-	const getAvailableThemes = useCallback(() => {
+	const getAvailableThemes = () => {
 		return Object.values(themes)
 			.filter((theme) => theme.available ?? true)
 			.map((theme) => ({
@@ -231,7 +231,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 				previewImage: theme.previewImage,
 				available: theme.available ?? true,
 			}));
-	}, []);
+	};
 
 	/**
 	 * Initialize theme on mount
@@ -267,7 +267,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 		};
 
 		initializeTheme();
-	}, [applyTheme, defaultTheme, persist, hasTheme]);
+	}, [defaultTheme, persist, applyTheme, hasTheme]);
 
 	/**
 	 * Listen for system theme changes

@@ -1,11 +1,10 @@
-import { useEffect, useId, useRef, useState } from "react";
+import { useId, useRef } from "react";
 import type { ChangeEvent } from "react";
-import { motion } from "framer-motion";
 import { isHotkeyPressed } from "react-hotkeys-hook";
 import { useShallow } from "zustand/react/shallow";
-import { imagesStore } from "../stores/images";
+import { useImagesStore } from "../stores/images";
 import { useMonitorStore } from "../stores/monitors";
-import { playlistStore } from "../stores/playlist";
+import { usePlaylistStore } from "../stores/playlist";
 import type { rendererImage } from "../types/rendererTypes";
 
 interface ImageCardProps {
@@ -17,21 +16,33 @@ const { goDaemon } = window.API_RENDERER;
 function ImageCard({ Image }: ImageCardProps) {
 	const imgRef = useRef<HTMLImageElement>(null);
 	const overlayId = useId();
-	const { monitorSelection } = useMonitorStore();
-	const addImageToPlaylist = playlistStore(useShallow((s) => s.addImagesToPlaylist));
-	const readPlaylist = playlistStore(useShallow((s) => s.readPlaylist));
-	const removeImageFromPlaylist = playlistStore(useShallow((s) => s.removeImagesFromPlaylist));
-	const isEmpty = playlistStore(useShallow((s) => s.isEmpty));
-	const imagesInPlaylist = playlistStore(useShallow((s) => s.playlistImagesSet));
-	const { addToSelectedImages, removeFromSelectedImages, selectedImages } = imagesStore();
+	const monitorSelection = useMonitorStore((s) => s.monitorSelection);
+	const {
+		addImagesToPlaylist: addImageToPlaylist,
+		readPlaylist,
+		removeImagesFromPlaylist: removeImageFromPlaylist,
+		isEmpty,
+		playlistImagesSet: imagesInPlaylist,
+	} = usePlaylistStore(
+		useShallow((s) => ({
+			addImagesToPlaylist: s.addImagesToPlaylist,
+			readPlaylist: s.readPlaylist,
+			removeImagesFromPlaylist: s.removeImagesFromPlaylist,
+			isEmpty: s.isEmpty,
+			playlistImagesSet: s.playlistImagesSet,
+		})),
+	);
+	const { addToSelectedImages, removeFromSelectedImages, selectedImages } =
+		useImagesStore(
+			useShallow((s) => ({
+				addToSelectedImages: s.addToSelectedImages,
+				removeFromSelectedImages: s.removeFromSelectedImages,
+				selectedImages: s.selectedImages,
+			})),
+		);
 
-	const [isChecked, setIsChecked] = useState(false);
+	const isChecked = !isEmpty && imagesInPlaylist.has(Image.id);
 	const isSelected = selectedImages.has(Image.id);
-
-	useEffect(() => {
-		const shouldBeChecked = !isEmpty && imagesInPlaylist.has(Image.id);
-		setIsChecked(shouldBeChecked);
-	}, [isEmpty, imagesInPlaylist, Image]);
 
 	const handleDoubleClick = () => {
 		if (!Image.id) {
@@ -63,8 +74,6 @@ function ImageCard({ Image }: ImageCardProps) {
 		} else {
 			removeImageFromPlaylist(new Set([Image.id]));
 		}
-
-		setIsChecked(checked);
 	};
 
 	const handleClick = (e: React.MouseEvent) => {
@@ -87,12 +96,10 @@ function ImageCard({ Image }: ImageCardProps) {
 	};
 
 	return (
-		<motion.div
-			initial={{ opacity: 0 }}
-			animate={{ opacity: 1 }}
+		<div
 			onContextMenu={handleRightClick}
 			onClick={handleClick}
-			className="group relative w-full overflow-hidden rounded-lg duration-200"
+			className="group relative w-full overflow-hidden rounded-lg duration-200 animate-fade-in"
 		>
 			<input
 				checked={isChecked}
@@ -116,10 +123,7 @@ function ImageCard({ Image }: ImageCardProps) {
 			>
 				<picture className="block w-full h-full">
 					{Image.thumbnails?.["4k"]?.trim() && (
-						<source
-							media="(width >= 3840px)"
-							srcSet={Image.thumbnails["4k"]}
-						/>
+						<source media="(width >= 3840px)" srcSet={Image.thumbnails["4k"]} />
 					)}
 					{Image.thumbnails?.["1440p"]?.trim() && (
 						<source
@@ -168,7 +172,7 @@ function ImageCard({ Image }: ImageCardProps) {
 					aria-hidden="true"
 				/>
 			</button>
-		</motion.div>
+		</div>
 	);
 }
 

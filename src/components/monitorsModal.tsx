@@ -1,49 +1,107 @@
-import { useEffect, useRef, useState, memo } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useMonitorStore, type MonitorSelection } from "../stores/monitors";
+import { useShallow } from "zustand/react/shallow";
 import { MonitorComponent } from "./Monitor";
 import { calculateMinResolution } from "../utils/utilities";
-import { type monitorSelectType } from "../types/rendererTypes";
-import { playlistStore } from "../stores/playlist";
+import type { monitorSelectType } from "../types/rendererTypes";
+import { usePlaylistStore } from "../stores/playlist";
 
 const goDaemon = window.API_RENDERER.goDaemon;
 let firstRender = true;
 
-const Monitors = memo(function Monitors() {
+function Monitors() {
+	// All hooks grouped at the top
 	const {
 		monitorSelection,
 		monitorsList,
 		setMonitorsList,
 		setMonitorSelection,
 		reQueryMonitors,
-	} = useMonitorStore();
-
-	const { clearPlaylist } = playlistStore();
-
-	const initialSelectState: monitorSelectType = monitorSelection.mode || "individual";
+	} = useMonitorStore(
+		useShallow((s) => ({
+			monitorSelection: s.monitorSelection,
+			monitorsList: s.monitorsList,
+			setMonitorsList: s.setMonitorsList,
+			setMonitorSelection: s.setMonitorSelection,
+			reQueryMonitors: s.reQueryMonitors,
+		})),
+	);
+	const clearPlaylist = usePlaylistStore((s) => s.clearPlaylist);
+	const initialSelectState: monitorSelectType =
+		monitorSelection.mode || "individual";
 	const [selectType, setSelectType] =
 		useState<monitorSelectType>(initialSelectState);
+	const [error, setError] = useState<{ state: boolean; message: string }>({
+		state: false,
+		message: "error",
+	});
+	const [resolution, setResolution] = useState<{ x: number; y: number }>({
+		x: 0,
+		y: 0,
+	});
+	const modalRef = useRef<HTMLDialogElement>(null);
 
 	useEffect(() => {
 		if (monitorSelection.mode !== selectType) {
 			setSelectType(monitorSelection.mode);
 		}
-	}, [monitorSelection.mode]);
+	}, [monitorSelection.mode, selectType]);
 
-	const [error, setError] = useState<{ state: boolean; message: string }>({
-		state: false,
-		message: "error",
-	});
+	useEffect(() => {
+		return () => {};
+	}, []);
 
+	useEffect(() => {
+		const res = calculateMinResolution(monitorsList);
+		setResolution(res);
+	}, [monitorsList]);
+
+	useEffect(() => {
+		void reQueryMonitors();
+	}, [reQueryMonitors]);
+
+	useEffect(() => {
+		if (monitorsList.length < 1) return;
+		if (selectType === "individual") {
+			const resetMonitors = monitorsList.map((monitor, index) => ({
+				...monitor,
+				isSelected: index === 0,
+			}));
+			setMonitorsList(resetMonitors);
+		} else {
+			const updatedMonitors = monitorsList.map((monitor, index) => ({
+				...monitor,
+				isSelected: index === 0,
+			}));
+			setMonitorsList(updatedMonitors);
+		}
+	}, [selectType, monitorsList, setMonitorsList]);
+
+	useEffect(() => {
+		if (!firstRender) return;
+		firstRender = false;
+
+		goDaemon.on("monitor_connected", () => {
+			setTimeout(() => {
+				void reQueryMonitors().then(() => {
+					window.monitors?.showModal();
+				});
+			}, 300);
+		});
+
+		goDaemon.on("monitor_disconnected", () => {
+			setTimeout(() => {
+				void reQueryMonitors();
+			}, 300);
+		});
+	}, [reQueryMonitors]);
+
+	// All plain functions after hooks
 	const closeModal = () => {
 		if (modalRef.current) {
 			modalRef.current.close();
 		}
 	};
-
-	const [resolution, setResolution] = useState<{ x: number; y: number }>({
-		x: 0,
-		y: 0,
-	});
 
 	const onSubmit = async () => {
 		const selectedMonitors: string[] = [];
@@ -92,10 +150,6 @@ const Monitors = memo(function Monitors() {
 		clearPlaylist();
 	};
 
-	const scale =
-		1 / ((monitorsList.length + 1) * (screen.availWidth / window.innerWidth));
-	const modalRef = useRef<HTMLDialogElement>(null);
-
 	const setModalRef = (element: HTMLDialogElement | null) => {
 		Object.assign(modalRef, { current: element });
 		if (element) {
@@ -111,10 +165,8 @@ const Monitors = memo(function Monitors() {
 		}
 	};
 
-	useEffect(() => {
-		return () => {};
-	}, []);
-
+	const scale =
+		1 / ((monitorsList.length + 1) * (screen.availWidth / window.innerWidth));
 	const isSingleMonitor = monitorsList.length === 1;
 	const styles: React.CSSProperties = {
 		width: isSingleMonitor
@@ -124,51 +176,6 @@ const Monitors = memo(function Monitors() {
 			? monitorsList[0].height * scale
 			: resolution.y * scale,
 	};
-
-	useEffect(() => {
-		const res = calculateMinResolution(monitorsList);
-		setResolution(res);
-	}, [monitorsList, screen.availWidth]);
-
-	useEffect(() => {
-		void reQueryMonitors();
-	}, []);
-
-	useEffect(() => {
-		if (monitorsList.length < 1) return;
-		if (selectType === "individual") {
-			const resetMonitors = monitorsList.map((monitor, index) => ({
-				...monitor,
-				isSelected: index === 0,
-			}));
-			setMonitorsList(resetMonitors);
-		} else {
-			const updatedMonitors = monitorsList.map((monitor, index) => ({
-				...monitor,
-				isSelected: index === 0,
-			}));
-			setMonitorsList(updatedMonitors);
-		}
-	}, [selectType]);
-
-	useEffect(() => {
-		if (!firstRender) return;
-		firstRender = false;
-
-		goDaemon.on("monitor_connected", () => {
-			setTimeout(() => {
-				void reQueryMonitors().then(() => {
-					window.monitors?.showModal();
-				});
-			}, 300);
-		});
-
-		goDaemon.on("monitor_disconnected", () => {
-			setTimeout(() => {
-				void reQueryMonitors();
-			}, 300);
-		});
-	}, []);
 
 	return (
 		<dialog
@@ -243,6 +250,6 @@ const Monitors = memo(function Monitors() {
 			</div>
 		</dialog>
 	);
-});
+}
 
 export default Monitors;

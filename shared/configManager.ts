@@ -1,6 +1,6 @@
-import { promises as fs, FSWatcher } from "fs";
-import { join, dirname } from "path";
-import { homedir } from "os";
+import { promises as fs, type FSWatcher } from "node:fs";
+import { join, dirname } from "node:path";
+import { homedir } from "node:os";
 import { parse, stringify } from "smol-toml";
 
 interface AppConfig {
@@ -102,7 +102,7 @@ class ConfigManager {
 			this.config = this.expandPaths(this.config);
 
 			// Config loaded successfully - no need to log every time
-		} catch (error) {
+		} catch (_error) {
 			// If file doesn't exist or is invalid, use defaults
 			// Using default config - this is normal on first run
 			this.config = this.getDefaultConfig();
@@ -156,7 +156,7 @@ class ConfigManager {
 		}
 
 		try {
-			const { watch } = await import("fs");
+			const { watch } = await import("node:fs");
 			this.fileWatcher = watch(this.configPath, async (eventType) => {
 				if (eventType === "change") {
 					try {
@@ -166,13 +166,13 @@ class ConfigManager {
 						);
 						this.notifyWatchers();
 						// Config file changed and reloaded
-					} catch (error) {
+					} catch (_error) {
 						// Failed to reload config - will retry on next change
 					}
 				}
 			});
 			// Started watching config file
-		} catch (error) {
+		} catch (_error) {
 			// Failed to start watching - config changes won't be detected
 		}
 	}
@@ -198,7 +198,7 @@ class ConfigManager {
 			this.watchers.forEach((callback) => {
 				try {
 					callback(this.config!);
-				} catch (error) {
+				} catch (_error) {
 					// Error in config watcher - continuing
 				}
 			});
@@ -229,7 +229,7 @@ class ConfigManager {
 		const contractPath = (path: string): string => {
 			const home = homedir();
 			if (path.startsWith(home)) {
-				return "~" + path.slice(home.length);
+				return `~${path.slice(home.length)}`;
 			}
 			return path;
 		};

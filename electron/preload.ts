@@ -51,7 +51,9 @@ const electronAPI = {
 		getImageCount: (): Promise<{ count: number }> =>
 			ipcRenderer.invoke("go-daemon-command", "get_image_count"),
 
-		importImages: (paths: string[]): Promise<{ status: string; total: number }> =>
+		importImages: (
+			paths: string[],
+		): Promise<{ status: string; total: number }> =>
 			ipcRenderer.invoke("go-daemon-command", "import_images", { paths }),
 
 		deleteImages: (ids: number[]): Promise<{ deleted: number }> =>
@@ -60,18 +62,33 @@ const electronAPI = {
 		updateImage: (id: number, update: UpdateImageRequest): Promise<Image> =>
 			ipcRenderer.invoke("go-daemon-command", "update_image", { id, update }),
 
-		selectAllImages: (selected: boolean): Promise<{ updated: number; selected: boolean }> =>
-			ipcRenderer.invoke("go-daemon-command", "select_all_images", { selected }),
+		selectAllImages: (
+			selected: boolean,
+		): Promise<{ updated: number; selected: boolean }> =>
+			ipcRenderer.invoke("go-daemon-command", "select_all_images", {
+				selected,
+			}),
 
-		getImageHistory: (limit?: number, monitor?: string): Promise<ImageHistoryEntry[]> =>
-			ipcRenderer.invoke("go-daemon-command", "get_image_history", { limit, monitor }),
+		getImageHistory: (
+			limit?: number,
+			monitor?: string,
+		): Promise<ImageHistoryEntry[]> =>
+			ipcRenderer.invoke("go-daemon-command", "get_image_history", {
+				limit,
+				monitor,
+			}),
 
 		// WALLPAPER
 		setWallpaper: (
 			imageId: number,
 			monitor?: string,
 			mode?: MonitorMode,
-		): Promise<{ status: string; image_id: number; monitor: string; mode: string }> =>
+		): Promise<{
+			status: string;
+			image_id: number;
+			monitor: string;
+			mode: string;
+		}> =>
 			ipcRenderer.invoke("go-daemon-command", "set_wallpaper", {
 				image_id: imageId,
 				monitor: monitor || "*",
@@ -81,7 +98,12 @@ const electronAPI = {
 		setRandomWallpaper: (
 			monitor?: string,
 			mode?: MonitorMode,
-		): Promise<{ status: string; image_id: number; monitor: string; mode: string }> =>
+		): Promise<{
+			status: string;
+			image_id: number;
+			monitor: string;
+			mode: string;
+		}> =>
 			ipcRenderer.invoke("go-daemon-command", "random_wallpaper", {
 				monitor: monitor || "*",
 				mode: mode || "individual",
@@ -97,8 +119,14 @@ const electronAPI = {
 		createPlaylist: (playlist: CreatePlaylistRequest): Promise<Playlist> =>
 			ipcRenderer.invoke("go-daemon-command", "create_playlist", playlist),
 
-		updatePlaylist: (id: number, update: UpdatePlaylistRequest): Promise<Playlist> =>
-			ipcRenderer.invoke("go-daemon-command", "update_playlist", { id, update }),
+		updatePlaylist: (
+			id: number,
+			update: UpdatePlaylistRequest,
+		): Promise<Playlist> =>
+			ipcRenderer.invoke("go-daemon-command", "update_playlist", {
+				id,
+				update,
+			}),
 
 		deletePlaylist: (id: number): Promise<void> =>
 			ipcRenderer.invoke("go-daemon-command", "delete_playlist", { id }),
@@ -127,13 +155,21 @@ const electronAPI = {
 			ipcRenderer.invoke("go-daemon-command", "next_playlist_image", { id }),
 
 		previousPlaylistImage: (id: number): Promise<void> =>
-			ipcRenderer.invoke("go-daemon-command", "previous_playlist_image", { id }),
+			ipcRenderer.invoke("go-daemon-command", "previous_playlist_image", {
+				id,
+			}),
 
 		getActivePlaylists: (): Promise<Record<string, ActivePlaylistInstance>> =>
 			ipcRenderer.invoke("go-daemon-command", "get_active_playlists"),
 
-		getActivePlaylistForMonitor: (monitor: string): Promise<ActivePlaylistInstance> =>
-			ipcRenderer.invoke("go-daemon-command", "get_active_playlist_for_monitor", { monitor }),
+		getActivePlaylistForMonitor: (
+			monitor: string,
+		): Promise<ActivePlaylistInstance> =>
+			ipcRenderer.invoke(
+				"go-daemon-command",
+				"get_active_playlist_for_monitor",
+				{ monitor },
+			),
 
 		stopAllPlaylists: (): Promise<void> =>
 			ipcRenderer.invoke("go-daemon-command", "stop_all_playlists"),
@@ -153,10 +189,18 @@ const electronAPI = {
 			ipcRenderer.invoke("go-daemon-command", "update_config", config),
 
 		getConfigSection: (section: string): Promise<unknown> =>
-			ipcRenderer.invoke("go-daemon-command", "get_config_section", { section }),
+			ipcRenderer.invoke("go-daemon-command", "get_config_section", {
+				section,
+			}),
 
-		updateConfigSection: (section: string, data: Record<string, unknown>): Promise<unknown> =>
-			ipcRenderer.invoke("go-daemon-command", "update_config_section", { section, data }),
+		updateConfigSection: (
+			section: string,
+			data: Record<string, unknown>,
+		): Promise<unknown> =>
+			ipcRenderer.invoke("go-daemon-command", "update_config_section", {
+				section,
+				data,
+			}),
 
 		getBackendConfig: (): Promise<SwwwConfig> =>
 			ipcRenderer.invoke("go-daemon-command", "get_backend_config"),
@@ -168,7 +212,9 @@ const electronAPI = {
 		getBackends: (): Promise<BackendInfo[]> =>
 			ipcRenderer.invoke("go-daemon-command", "get_backends"),
 
-		activateBackend: (name: string): Promise<{ status: string; backend: string }> =>
+		activateBackend: (
+			name: string,
+		): Promise<{ status: string; backend: string }> =>
 			ipcRenderer.invoke("go-daemon-command", "activate_backend", { name }),
 
 		// EVENT LISTENERS (SSE events forwarded via IPC)
@@ -252,11 +298,17 @@ const electronAPI = {
 	// ============================================================================
 	// MENU / IPC RENDERER EVENTS
 	// ============================================================================
-	onMenuEvent: (event: IPC_RENDERER_EVENTS_TYPE, callback: (...args: unknown[]) => void): void => {
+	onMenuEvent: (
+		event: IPC_RENDERER_EVENTS_TYPE,
+		callback: (...args: unknown[]) => void,
+	): void => {
 		ipcRenderer.on(event, (_event, ...args) => callback(...args));
 	},
 
-	offMenuEvent: (event: IPC_RENDERER_EVENTS_TYPE, callback: (...args: unknown[]) => void): void => {
+	offMenuEvent: (
+		event: IPC_RENDERER_EVENTS_TYPE,
+		callback: (...args: unknown[]) => void,
+	): void => {
 		ipcRenderer.removeListener(event, callback);
 	},
 

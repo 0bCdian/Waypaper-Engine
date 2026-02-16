@@ -5,7 +5,8 @@
  * using the theme-change library approach similar to Upscayl.
  */
 
-import React, { useState, useRef, useEffect } from "react";
+import type React from "react";
+import { useState, useRef, useEffect } from "react";
 import { useTheme } from "../contexts/ThemeContext";
 
 /**
@@ -91,7 +92,6 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
 				return "dropdown-left";
 			case "center":
 				return "dropdown-center";
-			case "right":
 			default:
 				return "dropdown-end";
 		}
@@ -150,7 +150,6 @@ export const ThemeSelector: React.FC<ThemeSelectorProps> = ({
 						className="input input-sm"
 						value={searchTerm}
 						onChange={(e) => setSearchTerm(e.target.value)}
-						autoFocus
 					/>
 				</div>
 

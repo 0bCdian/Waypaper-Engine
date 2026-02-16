@@ -1,7 +1,7 @@
 import { useEffect } from "react";
 import { MENU_EVENTS } from "../../shared/constants";
-import { imagesStore } from "../stores/images";
-import { playlistStore } from "../stores/playlist";
+import { useImagesStore } from "../stores/images";
+import { usePlaylistStore } from "../stores/playlist";
 
 const { goDaemon, onMenuEvent, offMenuEvent } = window.API_RENDERER;
 
@@ -17,10 +17,15 @@ const useContextMenuEvents = () => {
 		};
 
 		const handleRemoveSelectedImagesFromPlaylist = () => {
-			const { selectedImages } = imagesStore.getState();
-			const { removeImagesFromPlaylist, playlist } = playlistStore.getState();
+			const { selectedImages } = useImagesStore.getState();
+			const { removeImagesFromPlaylist, playlist } =
+				usePlaylistStore.getState();
 
-			if (selectedImages.size === 0 || !playlist.name || playlist.images.length === 0) {
+			if (
+				selectedImages.size === 0 ||
+				!playlist.name ||
+				playlist.images.length === 0
+			) {
 				return;
 			}
 
@@ -35,13 +40,16 @@ const useContextMenuEvents = () => {
 						})),
 					})
 					.catch((error: unknown) => {
-						console.error("Failed to update playlist after removing images:", error);
+						console.error(
+							"Failed to update playlist after removing images:",
+							error,
+						);
 					});
 			}
 		};
 
 		const handleDeleteAllSelectedImages = () => {
-			const { selectedImages, clearSelection } = imagesStore.getState();
+			const { selectedImages, clearSelection } = useImagesStore.getState();
 			const imageIds = Array.from(selectedImages);
 
 			goDaemon
@@ -55,22 +63,22 @@ const useContextMenuEvents = () => {
 		};
 
 		const handleClearSelectionOnCurrentPage = () => {
-			const { clearSelectionOnCurrentPage } = imagesStore.getState();
+			const { clearSelectionOnCurrentPage } = useImagesStore.getState();
 			clearSelectionOnCurrentPage();
 		};
 
 		const handleClearSelection = () => {
-			const { clearSelection } = imagesStore.getState();
+			const { clearSelection } = useImagesStore.getState();
 			clearSelection();
 		};
 
 		const handleSelectAllImagesInCurrentPage = () => {
-			const { selectAllImagesInCurrentPage } = imagesStore.getState();
+			const { selectAllImagesInCurrentPage } = useImagesStore.getState();
 			selectAllImagesInCurrentPage();
 		};
 
 		const handleSelectAllImagesInGallery = () => {
-			const { selectAllImagesInGallery } = imagesStore.getState();
+			const { selectAllImagesInGallery } = useImagesStore.getState();
 			selectAllImagesInGallery();
 		};
 
@@ -80,8 +88,8 @@ const useContextMenuEvents = () => {
 			goDaemon
 				.updateConfigSection("app", { images_per_page: imagesPerPage })
 				.then(() => {
-					imagesStore.setState({ perPage: imagesPerPage });
-					imagesStore.getState().fetchPage(1);
+					useImagesStore.setState({ perPage: imagesPerPage });
+					useImagesStore.getState().fetchPage(1);
 				})
 				.catch((error: unknown) => {
 					console.error("Failed to update images per page:", error);
@@ -89,23 +97,59 @@ const useContextMenuEvents = () => {
 		};
 
 		// Register IPC event listeners
-		onMenuEvent(MENU_EVENTS.addSelectedImagesToPlaylist, handleAddSelectedImagesToPlaylist);
-		onMenuEvent(MENU_EVENTS.removeSelectedImagesFromPlaylist, handleRemoveSelectedImagesFromPlaylist);
-		onMenuEvent(MENU_EVENTS.deleteAllSelectedImages, handleDeleteAllSelectedImages);
-		onMenuEvent(MENU_EVENTS.clearSelectionOnCurrentPage, handleClearSelectionOnCurrentPage);
+		onMenuEvent(
+			MENU_EVENTS.addSelectedImagesToPlaylist,
+			handleAddSelectedImagesToPlaylist,
+		);
+		onMenuEvent(
+			MENU_EVENTS.removeSelectedImagesFromPlaylist,
+			handleRemoveSelectedImagesFromPlaylist,
+		);
+		onMenuEvent(
+			MENU_EVENTS.deleteAllSelectedImages,
+			handleDeleteAllSelectedImages,
+		);
+		onMenuEvent(
+			MENU_EVENTS.clearSelectionOnCurrentPage,
+			handleClearSelectionOnCurrentPage,
+		);
 		onMenuEvent(MENU_EVENTS.clearSelection, handleClearSelection);
-		onMenuEvent(MENU_EVENTS.selectAllImagesInCurrentPage, handleSelectAllImagesInCurrentPage);
-		onMenuEvent(MENU_EVENTS.selectAllImagesInGallery, handleSelectAllImagesInGallery);
+		onMenuEvent(
+			MENU_EVENTS.selectAllImagesInCurrentPage,
+			handleSelectAllImagesInCurrentPage,
+		);
+		onMenuEvent(
+			MENU_EVENTS.selectAllImagesInGallery,
+			handleSelectAllImagesInGallery,
+		);
 		onMenuEvent(MENU_EVENTS.setImagesPerPage, handleSetImagesPerPage);
 
 		return () => {
-			offMenuEvent(MENU_EVENTS.addSelectedImagesToPlaylist, handleAddSelectedImagesToPlaylist);
-			offMenuEvent(MENU_EVENTS.removeSelectedImagesFromPlaylist, handleRemoveSelectedImagesFromPlaylist);
-			offMenuEvent(MENU_EVENTS.deleteAllSelectedImages, handleDeleteAllSelectedImages);
-			offMenuEvent(MENU_EVENTS.clearSelectionOnCurrentPage, handleClearSelectionOnCurrentPage);
+			offMenuEvent(
+				MENU_EVENTS.addSelectedImagesToPlaylist,
+				handleAddSelectedImagesToPlaylist,
+			);
+			offMenuEvent(
+				MENU_EVENTS.removeSelectedImagesFromPlaylist,
+				handleRemoveSelectedImagesFromPlaylist,
+			);
+			offMenuEvent(
+				MENU_EVENTS.deleteAllSelectedImages,
+				handleDeleteAllSelectedImages,
+			);
+			offMenuEvent(
+				MENU_EVENTS.clearSelectionOnCurrentPage,
+				handleClearSelectionOnCurrentPage,
+			);
 			offMenuEvent(MENU_EVENTS.clearSelection, handleClearSelection);
-			offMenuEvent(MENU_EVENTS.selectAllImagesInCurrentPage, handleSelectAllImagesInCurrentPage);
-			offMenuEvent(MENU_EVENTS.selectAllImagesInGallery, handleSelectAllImagesInGallery);
+			offMenuEvent(
+				MENU_EVENTS.selectAllImagesInCurrentPage,
+				handleSelectAllImagesInCurrentPage,
+			);
+			offMenuEvent(
+				MENU_EVENTS.selectAllImagesInGallery,
+				handleSelectAllImagesInGallery,
+			);
 			offMenuEvent(MENU_EVENTS.setImagesPerPage, handleSetImagesPerPage);
 		};
 	}, []);

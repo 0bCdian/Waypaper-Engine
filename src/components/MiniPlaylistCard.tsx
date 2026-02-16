@@ -1,8 +1,9 @@
 import { useSortable } from "@dnd-kit/sortable";
-import { useEffect, useRef, useCallback, useState, memo } from "react";
-import { type PLAYLIST_TYPES_TYPE } from "../../shared/types/playlist";
-import { playlistStore } from "../stores/playlist";
-import { imagesStore } from "../stores/images";
+import { useEffect, useRef, useState } from "react";
+import type { PLAYLIST_TYPES_TYPE } from "../../shared/types/playlist";
+import { usePlaylistStore } from "../stores/playlist";
+import { useImagesStore } from "../stores/images";
+import { useShallow } from "zustand/react/shallow";
 import { motion } from "framer-motion";
 import useDebounceCallback from "../hooks/useDebounceCallback";
 import type { PlaylistImage } from "../../electron/daemon-go-types";
@@ -18,7 +19,7 @@ const daysOfWeek = [
 	"Saturday",
 ];
 
-const MiniPlaylistCard = memo(function MiniPlaylistCard({
+function MiniPlaylistCard({
 	playlistImage,
 	type,
 	index,
@@ -31,8 +32,13 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
 	isLast: boolean;
 	reorderSortingCriteria: () => void;
 }) {
-	const { removeImagesFromPlaylist, playlistImagesTimeSet } = playlistStore();
-	const { imagesMap } = imagesStore();
+	const { removeImagesFromPlaylist, playlistImagesTimeSet } = usePlaylistStore(
+		useShallow((s) => ({
+			removeImagesFromPlaylist: s.removeImagesFromPlaylist,
+			playlistImagesTimeSet: s.playlistImagesTimeSet,
+		})),
+	);
+	const imagesMap = useImagesStore((s) => s.imagesMap);
 	const [isInvalid, setIsInvalid] = useState(false);
 	const imageRef = useRef<HTMLImageElement>(null);
 	const timeRef = useRef<HTMLInputElement>(null);
@@ -61,9 +67,9 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
 		text = daysOfWeek[index];
 	}
 
-	const onRemove = useCallback(() => {
+	const onRemove = () => {
 		removeImagesFromPlaylist(new Set<number>().add(playlistImage.image_id));
-	}, [playlistImage.image_id]);
+	};
 
 	const reOrderDebounced = useDebounceCallback(() => {
 		reorderSortingCriteria();
@@ -77,11 +83,11 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
 		) {
 			let minutes: string | number = playlistImage.time % 60;
 			let hours: string | number = (playlistImage.time - minutes) / 60;
-			minutes = minutes < 10 ? "0" + minutes : minutes;
-			hours = hours < 10 ? "0" + hours : hours;
+			minutes = minutes < 10 ? `0${minutes}` : minutes;
+			hours = hours < 10 ? `0${hours}` : hours;
 			timeRef.current.value = `${hours}:${minutes}`;
 		}
-	}, [type, playlistImage.time, playlistImagesTimeSet]);
+	}, [type, playlistImage.time]);
 
 	useEffect(() => {
 		if (firstRender) {
@@ -95,7 +101,7 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
 				});
 			}, 500);
 		}
-	}, [index]);
+	}, [isLast]);
 
 	return (
 		<motion.div
@@ -165,18 +171,18 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
 						</svg>
 					</button>
 				</div>
-			<img
-				{...attributes}
-				{...listeners}
-				src={imageSrc}
-				alt={imageName}
-				className="w-full aspect-[3/2] object-cover cursor-default rounded-lg shadow-2xl transition-all active:scale-105 active:opacity-45"
-				ref={imageRef}
-				loading="lazy"
-			/>
+				<img
+					{...attributes}
+					{...listeners}
+					src={imageSrc}
+					alt={imageName}
+					className="w-full aspect-[3/2] object-cover cursor-default rounded-lg shadow-2xl transition-all active:scale-105 active:opacity-45"
+					ref={imageRef}
+					loading="lazy"
+				/>
 			</div>
 		</motion.div>
 	);
-});
+}
 
 export default MiniPlaylistCard;

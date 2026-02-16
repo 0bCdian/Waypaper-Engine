@@ -496,6 +496,15 @@
 	--noise: 0;
 }
 
+/* Disable all transitions during theme switch to prevent color flashing */
+.disable-transitions,
+.disable-transitions *,
+.disable-transitions *::before,
+.disable-transitions *::after {
+	transition: none;
+	animation: none;
+}
+
 /* Utility classes for theme transitions */
 .theme-transition {
 	transition:
@@ -566,4 +575,3 @@
 	background-color: hsl(var(--color-primary) / 0.2);
 	color: hsl(var(--color-base-content));
 }
-

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useEffect, useRef } from "react";
 
 interface TimeoutOptions {
 	callback: () => void;
@@ -13,27 +13,27 @@ export default function useTimeout({ callback, delay }: TimeoutOptions) {
 		callbackRef.current = callback;
 	}, [callback]);
 
-	const set = useCallback(() => {
+	const set = () => {
 		timeoutRef.current = setTimeout(() => {
 			callbackRef.current();
 		}, delay);
-	}, [delay]);
+	};
 
-	const clear = useCallback(() => {
+	const clear = () => {
 		if (timeoutRef.current !== undefined) {
 			clearTimeout(timeoutRef.current);
 		}
-	}, []);
+	};
 
 	useEffect(() => {
 		set();
 		return clear;
-	}, [delay, set, clear]);
+	}, [clear, set]);
 
-	const reset = useCallback(() => {
+	const reset = () => {
 		clear();
 		set();
-	}, [clear, set]);
+	};
 
 	return { reset, clear };
 }

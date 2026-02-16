@@ -1,14 +1,12 @@
-import { useCallback } from "react";
-import { imagesStore } from "../stores/images";
-import { useShallow } from "zustand/react/shallow";
+import { useImagesStore } from "../stores/images";
 let firstRender = true;
 
 export function useLoadImages() {
-	const reQueryImages = imagesStore(useShallow((state) => state.reQueryImages));
-	const loadImages = useCallback(() => {
+	const reQueryImages = useImagesStore((state) => state.reQueryImages);
+	const loadImages = () => {
 		if (!firstRender) return;
 		firstRender = false;
 		reQueryImages();
-	}, [firstRender]);
+	};
 	return loadImages;
 }

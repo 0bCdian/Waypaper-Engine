@@ -48,9 +48,7 @@ export const SidebarContent: React.FC = () => {
 							<h1 className="text-xl font-bold text-base-content">
 								Waypaper Engine
 							</h1>
-							<p className="text-sm text-base-content/70">
-								Wallpaper Manager
-							</p>
+							<p className="text-sm text-base-content/70">Wallpaper Manager</p>
 						</div>
 					</div>
 
@@ -115,9 +113,7 @@ export const SidebarContent: React.FC = () => {
 						<button
 							type="button"
 							onClick={() => {
-								const quit = window.confirm(
-									"Are you sure you want to quit?",
-								);
+								const quit = window.confirm("Are you sure you want to quit?");
 								if (quit) {
 									window.API_RENDERER.exitApp();
 								}

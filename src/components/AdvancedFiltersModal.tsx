@@ -1,12 +1,13 @@
-import { imagesStore } from "../stores/images";
+import { useImagesStore } from "../stores/images";
+import { useShallow } from "zustand/react/shallow";
 import { useEffect, useRef } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { parseResolution } from "../utils/utilities";
-import {
-	type advancedFilters,
-	type resolutionConstraints,
+import type {
+	advancedFilters,
+	resolutionConstraints,
 } from "../types/rendererTypes";
-import { type Formats } from "../../shared/types/image";
+import type { Formats } from "../../shared/types/image";
 interface AdvancedFiltersForm {
 	resolutionConstraint: resolutionConstraints;
 	width: string;
@@ -27,7 +28,12 @@ const AdvancedFiltersModal = () => {
 	const { register, handleSubmit, setValue, reset } =
 		useForm<AdvancedFiltersForm>();
 	const containerRef = useRef<HTMLDialogElement>(null);
-	const { setFilters, filters } = imagesStore();
+	const { setFilters, filters } = useImagesStore(
+		useShallow((s) => ({
+			setFilters: s.setFilters,
+			filters: s.filters,
+		})),
+	);
 	const onSubmit: SubmitHandler<AdvancedFiltersForm> = (data) => {
 		const { width, height, resolutionConstraint, ...formats } = data;
 		const formatsArray: Formats[] = [];
@@ -65,7 +71,7 @@ const AdvancedFiltersModal = () => {
 
 	useEffect(() => {
 		reset();
-	}, []);
+	}, [reset]);
 	return (
 		<dialog id="AdvancedFiltersModal" className="modal" ref={containerRef}>
 			<div className="modal-box rounded-xl">

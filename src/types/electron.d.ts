@@ -33,40 +33,70 @@ declare global {
 				shutdown: () => Promise<void>;
 
 				// IMAGES
-				getImages: (params?: ImageQueryParams) => Promise<PaginatedResponse<Image>>;
+				getImages: (
+					params?: ImageQueryParams,
+				) => Promise<PaginatedResponse<Image>>;
 				getImage: (id: number) => Promise<Image>;
 				getImageCount: () => Promise<{ count: number }>;
-				importImages: (paths: string[]) => Promise<{ status: string; total: number }>;
+				importImages: (
+					paths: string[],
+				) => Promise<{ status: string; total: number }>;
 				deleteImages: (ids: number[]) => Promise<{ deleted: number }>;
 				updateImage: (id: number, update: UpdateImageRequest) => Promise<Image>;
-				selectAllImages: (selected: boolean) => Promise<{ updated: number; selected: boolean }>;
-				getImageHistory: (limit?: number, monitor?: string) => Promise<ImageHistoryEntry[]>;
+				selectAllImages: (
+					selected: boolean,
+				) => Promise<{ updated: number; selected: boolean }>;
+				getImageHistory: (
+					limit?: number,
+					monitor?: string,
+				) => Promise<ImageHistoryEntry[]>;
 
 				// WALLPAPER
 				setWallpaper: (
 					imageId: number,
 					monitor?: string,
 					mode?: MonitorMode,
-				) => Promise<{ status: string; image_id: number; monitor: string; mode: string }>;
+				) => Promise<{
+					status: string;
+					image_id: number;
+					monitor: string;
+					mode: string;
+				}>;
 				setRandomWallpaper: (
 					monitor?: string,
 					mode?: MonitorMode,
-				) => Promise<{ status: string; image_id: number; monitor: string; mode: string }>;
+				) => Promise<{
+					status: string;
+					image_id: number;
+					monitor: string;
+					mode: string;
+				}>;
 
 				// PLAYLISTS
 				getPlaylists: () => Promise<Playlist[]>;
 				getPlaylist: (id: number) => Promise<Playlist>;
 				createPlaylist: (playlist: CreatePlaylistRequest) => Promise<Playlist>;
-				updatePlaylist: (id: number, update: UpdatePlaylistRequest) => Promise<Playlist>;
+				updatePlaylist: (
+					id: number,
+					update: UpdatePlaylistRequest,
+				) => Promise<Playlist>;
 				deletePlaylist: (id: number) => Promise<void>;
-				startPlaylist: (id: number, monitor?: string, mode?: MonitorMode) => Promise<void>;
+				startPlaylist: (
+					id: number,
+					monitor?: string,
+					mode?: MonitorMode,
+				) => Promise<void>;
 				stopPlaylist: (id: number) => Promise<void>;
 				pausePlaylist: (id: number) => Promise<void>;
 				resumePlaylist: (id: number) => Promise<void>;
 				nextPlaylistImage: (id: number) => Promise<void>;
 				previousPlaylistImage: (id: number) => Promise<void>;
-				getActivePlaylists: () => Promise<Record<string, ActivePlaylistInstance>>;
-				getActivePlaylistForMonitor: (monitor: string) => Promise<ActivePlaylistInstance>;
+				getActivePlaylists: () => Promise<
+					Record<string, ActivePlaylistInstance>
+				>;
+				getActivePlaylistForMonitor: (
+					monitor: string,
+				) => Promise<ActivePlaylistInstance>;
 				stopAllPlaylists: () => Promise<void>;
 
 				// MONITORS
@@ -75,15 +105,22 @@ declare global {
 
 				// CONFIG
 				getConfig: () => Promise<UnifiedConfig>;
-				updateConfig: (config: Partial<UnifiedConfig>) => Promise<UnifiedConfig>;
+				updateConfig: (
+					config: Partial<UnifiedConfig>,
+				) => Promise<UnifiedConfig>;
 				getConfigSection: (section: string) => Promise<unknown>;
-				updateConfigSection: (section: string, data: Record<string, unknown>) => Promise<unknown>;
+				updateConfigSection: (
+					section: string,
+					data: Record<string, unknown>,
+				) => Promise<unknown>;
 				getBackendConfig: () => Promise<SwwwConfig>;
 				updateBackendConfig: (config: Partial<SwwwConfig>) => Promise<void>;
 
 				// BACKENDS
 				getBackends: () => Promise<BackendInfo[]>;
-				activateBackend: (name: string) => Promise<{ status: string; backend: string }>;
+				activateBackend: (
+					name: string,
+				) => Promise<{ status: string; backend: string }>;
 
 				// EVENT LISTENERS
 				on: (event: EventType, callback: (data: unknown) => void) => void;
@@ -125,13 +162,22 @@ declare global {
 			removeAllListeners: (channel: string) => void;
 
 			// MENU / IPC RENDERER EVENTS
-			onMenuEvent: (event: IPC_RENDERER_EVENTS_TYPE, callback: (...args: unknown[]) => void) => void;
-			offMenuEvent: (event: IPC_RENDERER_EVENTS_TYPE, callback: (...args: unknown[]) => void) => void;
+			onMenuEvent: (
+				event: IPC_RENDERER_EVENTS_TYPE,
+				callback: (...args: unknown[]) => void,
+			) => void;
+			offMenuEvent: (
+				event: IPC_RENDERER_EVENTS_TYPE,
+				callback: (...args: unknown[]) => void,
+			) => void;
 
 			// FILE OPERATIONS
-			openFiles: (
-				action: "file" | "folder",
-			) => Promise<{ success: boolean; data?: { files: string[] }; files?: string[]; error?: string }>;
+			openFiles: (action: "file" | "folder") => Promise<{
+				success: boolean;
+				data?: { files: string[] };
+				files?: string[];
+				error?: string;
+			}>;
 			handleOpenImages: (imagesObject: {
 				success: boolean;
 				data: { files: string[] };
@@ -143,5 +189,3 @@ declare global {
 		};
 	}
 }
-
-export {};

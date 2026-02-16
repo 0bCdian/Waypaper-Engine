@@ -1,8 +1,9 @@
 import { DndContext, type DragEndEvent, closestCorners } from "@dnd-kit/core";
 import { SortableContext, arrayMove } from "@dnd-kit/sortable";
-import { useMemo, useEffect, useCallback, lazy, Suspense } from "react";
-import { playlistStore } from "../stores/playlist";
+import { useEffect, lazy, Suspense } from "react";
+import { usePlaylistStore } from "../stores/playlist";
 import openImagesStore from "../hooks/useOpenImages";
+import { useShallow } from "zustand/react/shallow";
 import { motion, AnimatePresence } from "framer-motion";
 import { useMonitorStore } from "../stores/monitors";
 import type { openFileAction } from "../../shared/types";
@@ -20,16 +21,29 @@ function PlaylistTrack() {
 		movePlaylistArrayOrder,
 		clearPlaylist,
 		setPlaylist,
-	} = playlistStore();
-	const { monitorSelection } = useMonitorStore();
-	const { openImages, isActive } = openImagesStore();
+	} = usePlaylistStore(
+		useShallow((s) => ({
+			playlist: s.playlist,
+			lastAddedImageID: s.lastAddedImageID,
+			movePlaylistArrayOrder: s.movePlaylistArrayOrder,
+			clearPlaylist: s.clearPlaylist,
+			setPlaylist: s.setPlaylist,
+		})),
+	);
+	const monitorSelection = useMonitorStore((s) => s.monitorSelection);
+	const { openImages, isActive } = openImagesStore(
+		useShallow((s) => ({
+			openImages: s.openImages,
+			isActive: s.isActive,
+		})),
+	);
 	useSetLastActivePlaylist();
 
-	const handleClickAddImages = useCallback((action: openFileAction) => {
+	const handleClickAddImages = (action: openFileAction) => {
 		void openImages({ action });
-	}, []);
+	};
 
-	const reorderSortingCriteria = useCallback(() => {
+	const reorderSortingCriteria = () => {
 		const newArray = [...playlist.images].sort(
 			(a: PlaylistImage, b: PlaylistImage) => {
 				if (a.time == null || b.time == null) return 0;
@@ -37,58 +51,52 @@ function PlaylistTrack() {
 			},
 		);
 		movePlaylistArrayOrder(newArray);
-	}, [playlist]);
+	};
 
-	const handleDragEnd = useCallback(
-		(event: DragEndEvent) => {
-			const { over, active } = event;
-			if (over === null) return;
-			if (over.id !== active.id) {
-				const oldindex = playlist.images.findIndex(
-					(element) => element.image_id === active.id,
-				);
-				const newIndex = playlist.images.findIndex(
-					(element) => element.image_id === over?.id,
-				);
-				const oldImage = playlist.images[oldindex];
-				const newImage = playlist.images[newIndex];
-				const buffer = oldImage.time;
-				oldImage.time = newImage.time;
-				newImage.time = buffer;
-				const newArrayOrder = arrayMove(playlist.images, oldindex, newIndex);
-				if (playlist.configuration.type === "time_of_day") {
-					reorderSortingCriteria();
-					return;
-				}
-				movePlaylistArrayOrder(newArrayOrder);
-			}
-		},
-		[playlist],
-	);
-
-	const [playlistArray, sortingCriteria] = useMemo(() => {
-		const lastIndex = playlist.images.length - 1;
-		const sortingCriteria: number[] = [];
-		const elements = playlist.images.map((img, index) => {
-			const isLast =
-				playlist.configuration.type === "time_of_day"
-					? lastAddedImageID === img.image_id
-					: index === lastIndex;
-			sortingCriteria.push(img.image_id);
-			return (
-				<Suspense key={img.image_id}>
-					<MiniPlaylistCard
-						isLast={isLast}
-						reorderSortingCriteria={reorderSortingCriteria}
-						type={playlist.configuration.type}
-						index={index}
-						playlistImage={img}
-					/>
-				</Suspense>
+	const handleDragEnd = (event: DragEndEvent) => {
+		const { over, active } = event;
+		if (over === null) return;
+		if (over.id !== active.id) {
+			const oldindex = playlist.images.findIndex(
+				(element) => element.image_id === active.id,
 			);
-		});
-		return [elements, sortingCriteria];
-	}, [playlist]);
+			const newIndex = playlist.images.findIndex(
+				(element) => element.image_id === over?.id,
+			);
+			const oldImage = playlist.images[oldindex];
+			const newImage = playlist.images[newIndex];
+			const buffer = oldImage.time;
+			oldImage.time = newImage.time;
+			newImage.time = buffer;
+			const newArrayOrder = arrayMove(playlist.images, oldindex, newIndex);
+			if (playlist.configuration.type === "time_of_day") {
+				reorderSortingCriteria();
+				return;
+			}
+			movePlaylistArrayOrder(newArrayOrder);
+		}
+	};
+
+	const lastIndex = playlist.images.length - 1;
+	const sortingCriteria: number[] = [];
+	const playlistArray = playlist.images.map((img, index) => {
+		const isLast =
+			playlist.configuration.type === "time_of_day"
+				? lastAddedImageID === img.image_id
+				: index === lastIndex;
+		sortingCriteria.push(img.image_id);
+		return (
+			<Suspense key={img.image_id}>
+				<MiniPlaylistCard
+					isLast={isLast}
+					reorderSortingCriteria={reorderSortingCriteria}
+					type={playlist.configuration.type}
+					index={index}
+					playlistImage={img}
+				/>
+			</Suspense>
+		);
+	});
 
 	useEffect(() => {
 		if (firstRender) {
@@ -98,7 +106,7 @@ function PlaylistTrack() {
 		if (playlist.images.length === 0) {
 			clearPlaylist();
 		}
-	}, [playlist.images]);
+	}, [playlist.images, clearPlaylist]);
 
 	useEffect(() => {
 		goDaemon.on("playlists_updated", () => {
@@ -116,13 +124,13 @@ function PlaylistTrack() {
 				});
 			}
 		});
-	}, [playlist.id]);
+	}, [playlist.id, setPlaylist]);
 
 	useEffect(() => {
 		if (playlist.configuration.type === "time_of_day") {
 			reorderSortingCriteria();
 		}
-	}, [playlist.images.length, playlist.configuration.type]);
+	}, [playlist.configuration.type, reorderSortingCriteria]);
 
 	return (
 		<div className="mb-2 flex w-full flex-col gap-5">
@@ -135,22 +143,16 @@ function PlaylistTrack() {
 				<div className="dropdown dropdown-top">
 					<button
 						tabIndex={0}
-						role="button"
 						className="btn btn-primary w-full rounded-lg uppercase"
 					>
 						Add images
 					</button>
-					<ul
-						tabIndex={0}
-						className="menu dropdown-content z-10 mb-1 w-52 rounded-box bg-base-100 p-2 shadow-sm"
-					>
+					<ul className="menu dropdown-content z-10 mb-1 w-52 rounded-box bg-base-100 p-2 shadow-sm">
 						<li>
 							<a
 								className="text-lg text-base-content"
 								onClick={
-									isActive
-										? undefined
-										: () => handleClickAddImages("file")
+									isActive ? undefined : () => handleClickAddImages("file")
 								}
 							>
 								Individual images
@@ -160,9 +162,7 @@ function PlaylistTrack() {
 							<a
 								className="text-lg text-base-content"
 								onClick={
-									isActive
-										? undefined
-										: () => handleClickAddImages("folder")
+									isActive ? undefined : () => handleClickAddImages("folder")
 								}
 							>
 								Image directory

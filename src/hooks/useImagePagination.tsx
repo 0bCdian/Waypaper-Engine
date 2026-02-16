@@ -1,22 +1,17 @@
-import {
-	type ReactNode,
-	useEffect,
-	useCallback,
-	useMemo,
-	lazy,
-	Suspense,
-} from "react";
+import type { ReactNode } from "react";
+import { useEffect, lazy, Suspense } from "react";
 import { useFilteredImages } from "./useFilteredImages";
-import { imagesStore } from "../stores/images";
+import { useImagesStore } from "../stores/images";
+import { useShallow } from "zustand/react/shallow";
 import { useHotkeys } from "react-hotkeys-hook";
-import { type rendererImage } from "../types/rendererTypes";
+import type { rendererImage } from "../types/rendererTypes";
 import { useSettingsStore } from "../stores/settingsStore";
 import type { ImageQueryParams } from "../../electron/daemon-go-types";
 
 const ImageCard = lazy(async () => await import("../components/ImageCard"));
 
 export function useImagePagination() {
-	const { config } = useSettingsStore();
+	const config = useSettingsStore((s) => s.config);
 	const {
 		filters,
 		selectedImages,
@@ -24,59 +19,55 @@ export function useImagePagination() {
 		pagination,
 		perPage,
 		currentPage,
-	} = imagesStore();
+	} = useImagesStore(
+		useShallow((s) => ({
+			filters: s.filters,
+			selectedImages: s.selectedImages,
+			setSelectedImages: s.setSelectedImages,
+			pagination: s.pagination,
+			perPage: s.perPage,
+			currentPage: s.currentPage,
+		})),
+	);
 	const { filteredImages } = useFilteredImages();
 
 	// Sync perPage from config on first load
 	useEffect(() => {
 		const configPerPage = config?.app?.images_per_page ?? 50;
 		if (configPerPage !== perPage) {
-			imagesStore.setState({ perPage: configPerPage });
+			useImagesStore.setState({ perPage: configPerPage });
 		}
 	}, [config?.app?.images_per_page, perPage]);
 
-	// Use server-side total when available, fall back to client-side count
-	const totalPages = useMemo(() => {
-		if (pagination?.total_pages) {
-			return pagination.total_pages;
-		}
-		return Math.max(1, Math.ceil(filteredImages.length / perPage));
-	}, [pagination, filteredImages.length, perPage]);
+	const totalPages = pagination?.total_pages
+		? pagination.total_pages
+		: Math.max(1, Math.ceil(filteredImages.length / perPage));
 
-	// Build the image cards from the current page data (already fetched from server)
-	const [imagesToShow, imagesInCurrentPage] = useMemo((): [
-		ReactNode[],
-		rendererImage[],
-	] => {
-		const imageCardJsxArray: ReactNode[] = [];
-		const currentPageImages: rendererImage[] = [];
+	const imageCardJsxArray: ReactNode[] = [];
+	const imagesInCurrentPage: rendererImage[] = [];
 
-		for (let idx = 0; idx < filteredImages.length; idx++) {
-			const currentImage = filteredImages[idx];
-			if (currentImage === undefined) break;
-			currentPageImages.push(currentImage);
-			imageCardJsxArray.push(
-				<Suspense key={currentImage.id || `image-${idx}`}>
-					<ImageCard Image={currentImage} />
-				</Suspense>,
-			);
-		}
+	for (let idx = 0; idx < filteredImages.length; idx++) {
+		const currentImage = filteredImages[idx];
+		if (currentImage === undefined) break;
+		imagesInCurrentPage.push(currentImage);
+		imageCardJsxArray.push(
+			<Suspense key={currentImage.id || `image-${idx}`}>
+				<ImageCard Image={currentImage} />
+			</Suspense>,
+		);
+	}
 
-		return [imageCardJsxArray, currentPageImages];
-	}, [filteredImages]);
+	const imagesToShow = imageCardJsxArray;
 
-	const handlePageChange = useCallback(
-		(page: number) => {
-			const { filters: currentFilters } = imagesStore.getState();
-			const queryParams: Partial<ImageQueryParams> = {
-				sort_by: currentFilters.type === "name" ? "name" : "imported_at",
-				sort_order: currentFilters.order,
-				search: currentFilters.searchString || undefined,
-			};
-			imagesStore.getState().fetchPage(page, queryParams);
-		},
-		[],
-	);
+	const handlePageChange = (page: number) => {
+		const { filters: currentFilters } = useImagesStore.getState();
+		const queryParams: Partial<ImageQueryParams> = {
+			sort_by: currentFilters.type === "name" ? "name" : "imported_at",
+			sort_order: currentFilters.order,
+			search: currentFilters.searchString || undefined,
+		};
+		useImagesStore.getState().fetchPage(page, queryParams);
+	};
 
 	const selectImagesInCurrentPage = () => {
 		const newSet = new Set(selectedImages);
@@ -103,8 +94,8 @@ export function useImagePagination() {
 	// Reset to page 1 when search is cleared
 	useEffect(() => {
 		if (filters.searchString === "") {
-			const { filters: currentFilters } = imagesStore.getState();
-			imagesStore.getState().fetchPage(1, {
+			const { filters: currentFilters } = useImagesStore.getState();
+			useImagesStore.getState().fetchPage(1, {
 				sort_by: currentFilters.type === "name" ? "name" : "imported_at",
 				sort_order: currentFilters.order,
 			});

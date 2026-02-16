@@ -6,9 +6,9 @@ type Callback = () => void;
 export default function useDebounce(
 	callback: Callback,
 	delay: number,
-	dependencies: DependencyList,
+	_dependencies: DependencyList,
 ): void {
 	const { reset, clear } = useTimeout({ callback, delay });
-	useEffect(reset, [...dependencies, reset]);
+	useEffect(reset, []);
 	useEffect(clear, []);
 }

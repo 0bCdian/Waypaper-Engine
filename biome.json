@@ -25,17 +25,14 @@
 	},
 	"assist": {
 		"actions": {
-		  "source": {
-			"organizeImports": {
-			  "level": "off",
-			  "options": {
-				"groups": [
-				  ":URL:",
-			  	  ":NODE:"
-				]
-			  }
+			"source": {
+				"organizeImports": {
+					"level": "off",
+					"options": {
+						"groups": [":URL:", ":NODE:"]
+					}
+				}
 			}
-		  }
 		}
-	  }
+	}
 }

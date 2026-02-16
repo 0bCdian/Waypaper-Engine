@@ -56,7 +56,7 @@ interface Actions {
 	saveConfig: (data: SwwwConfig) => void;
 	getConfig: () => SwwwConfig;
 }
-export const swwwConfigStore = create<State & Actions>()((set, get) => ({
+export const useSwwwConfigStore = create<State & Actions>()((set, get) => ({
 	swwwConfig: initialSwwwConfig,
 	saveConfig: async (data: SwwwConfig) => {
 		set((state) => {
@@ -76,7 +76,7 @@ export const swwwConfigStore = create<State & Actions>()((set, get) => ({
 			transition_bezier: data.transitionBezier,
 			transition_wave: `${data.transitionWaveX},${data.transitionWaveY}`,
 			resize: data.resizeType,
-			fill_color: data.fillColor.replace('#', ''),
+			fill_color: data.fillColor.replace("#", ""),
 			filter_type: data.filterType,
 			invert_y: data.invertY,
 		});

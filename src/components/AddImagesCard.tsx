@@ -1,18 +1,23 @@
 import SvgComponent from "./addImagesIcon";
 import SvgComponentFolder from "./AddFoldersIcon";
 import openImagesStore from "../hooks/useOpenImages";
+import { useShallow } from "zustand/react/shallow";
 import type { openFileAction } from "../../shared/types";
-import { useCallback } from "react";
 
 function AddImagesCard() {
-	const { openImages, isActive } = openImagesStore();
-	const handleClickAddImages = useCallback((action: openFileAction) => {
+	const { openImages, isActive } = openImagesStore(
+		useShallow((s) => ({
+			openImages: s.openImages,
+			isActive: s.isActive,
+		})),
+	);
+	const handleClickAddImages = (action: openFileAction) => {
 		void openImages({
 			action,
 		});
-	}, [openImages]);
+	};
 
-	const handleKeyDown = useCallback(
+	const handleKeyDown =
 		(action: openFileAction) => (e: React.KeyboardEvent) => {
 			if (e.key === "Enter" || e.key === " ") {
 				e.preventDefault();
@@ -20,9 +25,7 @@ function AddImagesCard() {
 					handleClickAddImages(action);
 				}
 			}
-		},
-		[isActive, handleClickAddImages],
-	);
+		};
 
 	return (
 		<div className="flex gap-20">

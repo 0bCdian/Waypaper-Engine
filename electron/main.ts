@@ -70,7 +70,7 @@ function createMainWindow(): void {
 		mainWindow.loadURL("http://localhost:5173");
 		mainWindow.webContents.openDevTools();
 	} else {
-		mainWindow.loadFile(join(__dirname, "../index.html"));
+		mainWindow.loadFile(join(__dirname, "../dist/index.html"));
 	}
 
 	// Register with managers
@@ -82,7 +82,10 @@ function createMainWindow(): void {
  * Create or refresh the system tray icon and context menu.
  */
 async function createAppTray(): Promise<void> {
-	const iconPath = join(__dirname, "../public/app.png");
+	const isDev = process.env.NODE_ENV === "development";
+	const iconPath = isDev
+		? join(__dirname, "../public/app.png")
+		: join(__dirname, "../dist/app.png");
 	if (!tray) {
 		const icon = nativeImage.createFromPath(iconPath);
 		tray = new Tray(icon.resize({ width: 22, height: 22 }));

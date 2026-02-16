@@ -1,7 +1,7 @@
 import { useMonitorStore, type StoreMonitor } from "../stores/monitors";
 import type { monitorSelectType } from "../types/rendererTypes";
 import SvgComponent from "./addImagesIcon";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect } from "react";
 
 const goDaemon = window.API_RENDERER.goDaemon;
 
@@ -18,11 +18,11 @@ export function MonitorComponent({
 	selectType,
 	monitorsList,
 }: props) {
-	const { setMonitorsList } = useMonitorStore();
+	const setMonitorsList = useMonitorStore((s) => s.setMonitorsList);
 	const [wallpaperSrc, setWallpaperSrc] = useState<string | null>(null);
 	const [isLoading, setIsLoading] = useState(true);
 
-	const fetchWallpaperPreview = useCallback(() => {
+	const fetchWallpaperPreview = () => {
 		setIsLoading(true);
 		goDaemon
 			.getImageHistory(1, monitor.name)
@@ -43,15 +43,12 @@ export function MonitorComponent({
 				}
 			})
 			.catch((err) => {
-				console.warn(
-					`Failed to load wallpaper for ${monitor.name}:`,
-					err,
-				);
+				console.warn(`Failed to load wallpaper for ${monitor.name}:`, err);
 			})
 			.finally(() => {
 				setIsLoading(false);
 			});
-	}, [monitor.name]);
+	};
 
 	// Fetch on mount and when monitor changes
 	useEffect(() => {

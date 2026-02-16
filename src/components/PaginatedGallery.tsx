@@ -5,18 +5,14 @@ import PlaylistTrack from "./PlaylistTrack";
 import { useImagePagination } from "../hooks/useImagePagination";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRef } from "react";
-import { imagesStore } from "../stores/images";
+import { useImagesStore } from "../stores/images";
 
 function PaginatedGallery() {
-	const {
-		imagesToShow,
-		handlePageChange,
-		currentPage,
-		totalPages,
-	} = useImagePagination();
-	const { selectedImages } = imagesStore();
+	const { imagesToShow, handlePageChange, currentPage, totalPages } =
+		useImagePagination();
+	const selectedImages = useImagesStore((s) => s.selectedImages);
 	const ref = useRef<HTMLDivElement>(null);
-	
+
 	const handleContextMenu = (e: React.MouseEvent) => {
 		e.stopPropagation();
 		if (window.API_RENDERER?.openContextMenu) {

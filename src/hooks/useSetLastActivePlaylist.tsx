@@ -1,14 +1,20 @@
-import { playlistStore } from "../stores/playlist";
+import { usePlaylistStore } from "../stores/playlist";
 import { useMonitorStore } from "../stores/monitors";
-import { type rendererPlaylist } from "../types/rendererTypes";
+import { useShallow } from "zustand/react/shallow";
+import type { rendererPlaylist } from "../types/rendererTypes";
 import { useEffect } from "react";
 import type { ActivePlaylistInstance } from "../../electron/daemon-go-types";
 
 const { goDaemon } = window.API_RENDERER;
 
 export function useSetLastActivePlaylist() {
-	const { setPlaylist, playlist } = playlistStore();
-	const { monitorSelection } = useMonitorStore();
+	const { setPlaylist, playlist } = usePlaylistStore(
+		useShallow((s) => ({
+			setPlaylist: s.setPlaylist,
+			playlist: s.playlist,
+		})),
+	);
+	const monitorSelection = useMonitorStore((s) => s.monitorSelection);
 
 	useEffect(() => {
 		if (monitorSelection.selectedMonitors.length === 0) return;
@@ -25,7 +31,11 @@ export function useSetLastActivePlaylist() {
 				const fullPlaylist = await goDaemon.getPlaylist(
 					activePlaylist.playlist_id,
 				);
-				if (!fullPlaylist || !fullPlaylist.images || fullPlaylist.images.length < 1) {
+				if (
+					!fullPlaylist ||
+					!fullPlaylist.images ||
+					fullPlaylist.images.length < 1
+				) {
 					return;
 				}
 
@@ -42,5 +52,5 @@ export function useSetLastActivePlaylist() {
 			.catch(() => {
 				// No active playlist for this monitor
 			});
-	}, [monitorSelection]);
+	}, [monitorSelection, playlist.name, setPlaylist]);
 }

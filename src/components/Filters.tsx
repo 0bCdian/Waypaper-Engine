@@ -1,7 +1,8 @@
 import { type ChangeEvent, useEffect, useState } from "react";
 import useDebounce from "../hooks/useDebounce";
 import type { Filters as FiltersType } from "../types/rendererTypes";
-import { imagesStore } from "../stores/images";
+import { useImagesStore } from "../stores/images";
+import { useShallow } from "zustand/react/shallow";
 import type { ImageQueryParams } from "../../electron/daemon-go-types";
 
 interface PartialFilters {
@@ -24,7 +25,12 @@ function mapFiltersToQueryParams(f: PartialFilters): Partial<ImageQueryParams> {
 }
 
 function Filters() {
-	const { setFilters, filters } = imagesStore();
+	const { setFilters, filters } = useImagesStore(
+		useShallow((s) => ({
+			setFilters: s.setFilters,
+			filters: s.filters,
+		})),
+	);
 	const [partialFilters, setPartialFilters] = useState(initialFilters);
 	const onTextChange = (event: ChangeEvent<HTMLInputElement>) => {
 		const target = event.target;
@@ -43,7 +49,7 @@ function Filters() {
 			};
 			setFilters(newFilters);
 			// Trigger server-side re-query with the mapped params
-			imagesStore
+			useImagesStore
 				.getState()
 				.fetchPage(1, mapFiltersToQueryParams(partialFilters));
 		},
@@ -56,7 +62,7 @@ function Filters() {
 			advancedFilters: filters.advancedFilters,
 		};
 		setFilters(resetFilters);
-	}, []);
+	}, [filters.advancedFilters, partialFilters, setFilters]);
 	return (
 		<section className="group mb-5 flex justify-center gap-2">
 			<div className="tooltip" data-tip="more filters">

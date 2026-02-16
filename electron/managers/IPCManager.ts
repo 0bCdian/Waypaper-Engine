@@ -211,7 +211,13 @@ export class IPCManager {
 								{
 									name: "Images",
 									extensions: [
-										"jpg", "jpeg", "png", "gif", "bmp", "webp", "svg",
+										"jpg",
+										"jpeg",
+										"png",
+										"gif",
+										"bmp",
+										"webp",
+										"svg",
 									],
 								},
 								{ name: "All Files", extensions: ["*"] },
@@ -235,10 +241,18 @@ export class IPCManager {
 
 					if (action === "folder") {
 						const imageExtensions = new Set([
-							".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg",
+							".jpg",
+							".jpeg",
+							".png",
+							".gif",
+							".bmp",
+							".webp",
+							".svg",
 						]);
 
-						const scanDirectory = async (dirPath: string): Promise<string[]> => {
+						const scanDirectory = async (
+							dirPath: string,
+						): Promise<string[]> => {
 							const imageFiles: string[] = [];
 							try {
 								const entries = await readdir(dirPath);
@@ -250,7 +264,9 @@ export class IPCManager {
 											const subImages = await scanDirectory(fullPath);
 											imageFiles.push(...subImages);
 										} else if (stats.isFile()) {
-											const ext = entry.toLowerCase().substring(entry.lastIndexOf("."));
+											const ext = entry
+												.toLowerCase()
+												.substring(entry.lastIndexOf("."));
 											if (imageExtensions.has(ext)) {
 												imageFiles.push(fullPath);
 											}
@@ -325,7 +341,10 @@ export class IPCManager {
 	private setupContextMenuHandler(): void {
 		this.registerHandler({
 			channel: "openContextMenu",
-			handler: async (event, options: { Image?: unknown; selectedImagesLength: number }) => {
+			handler: async (
+				event,
+				options: { Image?: unknown; selectedImagesLength: number },
+			) => {
 				const window = BrowserWindow.fromWebContents(event.sender);
 				if (!window) {
 					return { success: false, error: "Window not found" };
@@ -379,10 +398,12 @@ export class IPCManager {
 					const thumbPath = converted.thumbnails[key];
 					if (thumbPath && !thumbPath.startsWith("atom:")) {
 						if (thumbPath.startsWith("/")) {
-							(converted.thumbnails as any)[key] = `atom://${thumbPath.substring(1)}`;
+							(converted.thumbnails as any)[key] =
+								`atom://${thumbPath.substring(1)}`;
 						} else {
 							const absolutePath = resolve(thumbPath);
-							(converted.thumbnails as any)[key] = `atom://${absolutePath.substring(1)}`;
+							(converted.thumbnails as any)[key] =
+								`atom://${absolutePath.substring(1)}`;
 						}
 					}
 				}
@@ -416,9 +437,7 @@ export class IPCManager {
 
 				// IMAGES
 				case "get_images": {
-					const result = await goDaemonClient.getImages(
-						p as any,
-					);
+					const result = await goDaemonClient.getImages(p as any);
 					result.data = this.convertPathsToAtomProtocol(result.data);
 					return result;
 				}
@@ -429,22 +448,16 @@ export class IPCManager {
 				case "get_image_count":
 					return await goDaemonClient.getImageCount();
 				case "import_images":
-					return await goDaemonClient.importImages(
-						p?.paths as string[],
-					);
+					return await goDaemonClient.importImages(p?.paths as string[]);
 				case "delete_images":
-					return await goDaemonClient.deleteImages(
-						p?.ids as number[],
-					);
+					return await goDaemonClient.deleteImages(p?.ids as number[]);
 				case "update_image":
 					return await goDaemonClient.updateImage(
 						p?.id as number,
 						p?.update as any,
 					);
 				case "select_all_images":
-					return await goDaemonClient.selectAllImages(
-						p?.selected as boolean,
-					);
+					return await goDaemonClient.selectAllImages(p?.selected as boolean);
 				case "get_image_history":
 					return await goDaemonClient.getImageHistory(
 						p?.limit as number | undefined,
@@ -519,9 +532,7 @@ export class IPCManager {
 				case "update_config":
 					return await goDaemonClient.updateConfig(p as any);
 				case "get_config_section":
-					return await goDaemonClient.getConfigSection(
-						p?.section as string,
-					);
+					return await goDaemonClient.getConfigSection(p?.section as string);
 				case "update_config_section":
 					return await goDaemonClient.updateConfigSection(
 						p?.section as string,
@@ -536,9 +547,7 @@ export class IPCManager {
 				case "get_backends":
 					return await goDaemonClient.getBackends();
 				case "activate_backend":
-					return await goDaemonClient.activateBackend(
-						p?.name as string,
-					);
+					return await goDaemonClient.activateBackend(p?.name as string);
 
 				default:
 					throw new Error(`Unknown Go daemon action: ${action}`);

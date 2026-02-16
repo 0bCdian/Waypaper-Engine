@@ -5,7 +5,7 @@
  * Handles routing and provides the main settings interface.
  */
 
-import React from "react";
+import type React from "react";
 import SettingsTabs from "../components/settings/SettingsTabs";
 
 /**

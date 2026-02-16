@@ -55,7 +55,9 @@
 	color: hsl(var(--color-primary-content, var(--color-baseContent)));
 	background-color: hsl(var(--color-primary500));
 	border-color: hsl(var(--color-primary500));
-	box-shadow: 0 0 0 2px hsl(var(--color-primary500) / 0.3), var(--shadow-sm);
+	box-shadow:
+		0 0 0 2px hsl(var(--color-primary500) / 0.3),
+		var(--shadow-sm);
 	transform: scale(1.08);
 	pointer-events: none;
 }
@@ -69,11 +71,11 @@
 }
 
 .rounded_button_next :first-child {
-	border-radius: 0 var(--radius-md) var(--radius-md) 0 !important;
+	border-radius: 0 var(--radius-md) var(--radius-md) 0;
 }
 
 .rounded_button_previous :first-child {
-	border-radius: var(--radius-md) 0 0 var(--radius-md) !important;
+	border-radius: var(--radius-md) 0 0 var(--radius-md);
 }
 
 /* Enhanced Button Styles */
@@ -235,7 +237,7 @@
 
 /* Enhanced Animation Classes */
 .animate-fade-in {
-	animation: fadeIn 0.5s ease-in-out;
+	animation: fadeIn 0.3s ease-out;
 }
 
 .animate-slide-up {

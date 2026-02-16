@@ -197,7 +197,7 @@ export const DaemonSettingsSection: React.FC<DaemonSettingsSectionProps> = ({
 								)}
 								value={(currentValue as number) || 0}
 								onChange={(e) =>
-									handleValueChange(field.key, parseInt(e.target.value))
+									handleValueChange(field.key, parseInt(e.target.value, 10))
 								}
 								min={field.min}
 								max={field.max}
@@ -281,11 +281,9 @@ export const DaemonSettingsSection: React.FC<DaemonSettingsSectionProps> = ({
 				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 					{settingsFields
 						.filter((field) =>
-							[
-								"database_dir",
-								"images_dir",
-								"thumbnails_dir",
-							].includes(field.key),
+							["database_dir", "images_dir", "thumbnails_dir"].includes(
+								field.key,
+							),
 						)
 						.map(renderField)}
 				</div>

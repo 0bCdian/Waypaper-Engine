@@ -5,7 +5,7 @@ import type {
 	MonitorMode,
 	Pagination,
 } from "../../electron/daemon-go-types";
-import { type Formats } from "../../shared/types/image";
+import type { Formats } from "../../shared/types/image";
 
 export enum STORE_ACTIONS {
 	SET_IMAGES_ARRAY = "SET_IMAGES_ARRAY",

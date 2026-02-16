@@ -1,7 +1,5 @@
+import { lazy, Suspense } from "react";
 import { Routes, Route, HashRouter } from "react-router-dom";
-import Configuration from "./routes/Configuration";
-import Home from "./routes/Home";
-import Settings from "./routes/Settings";
 import Modals from "./components/Modals";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { useLoadAppConfig } from "./hooks/useLoadAppConfig";
@@ -13,6 +11,10 @@ import { ImageProcessingProgress } from "./components/ImageProcessingProgress";
 import ToastContainer from "./components/ToastContainer";
 import ModernAppLayout from "./components/layout/ModernAppLayout";
 
+const Home = lazy(() => import("./routes/Home"));
+const Settings = lazy(() => import("./routes/Settings"));
+const Configuration = lazy(() => import("./routes/Configuration"));
+
 const App = () => {
 	useLoadAppConfig()();
 	useLoadMonitors();
@@ -21,15 +23,19 @@ const App = () => {
 	useContextMenuEvents();
 	return (
 		<ThemeProvider defaultTheme="business" persist={true} syncWithSystem={true}>
-			<HashRouter>
+			<HashRouter
+				future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
+			>
 				<ImageProcessingProgress />
 				<ToastContainer />
 				<ModernAppLayout>
-					<Routes>
-						<Route path="/" element={<Home />} />
-						<Route path="/configuration" element={<Configuration />} />
-						<Route path="/settings" element={<Settings />} />
-					</Routes>
+					<Suspense fallback={<div className="skeleton w-full h-full" />}>
+						<Routes>
+							<Route path="/" element={<Home />} />
+							<Route path="/configuration" element={<Configuration />} />
+							<Route path="/settings" element={<Settings />} />
+						</Routes>
+					</Suspense>
 				</ModernAppLayout>
 				<Modals />
 			</HashRouter>

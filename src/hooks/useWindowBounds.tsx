@@ -9,18 +9,12 @@ export const useWindowBounds = () => {
 				if (window.API_RENDERER?.getWindowBounds) {
 					const bounds = await window.API_RENDERER.getWindowBounds();
 					if (bounds) {
-						console.log(
-							"🟢 WindowBounds: Current window bounds:",
-							bounds,
-						);
+						console.log("🟢 WindowBounds: Current window bounds:", bounds);
 						// Bounds are managed by Electron, no need to restore
 					}
 				}
 			} catch (error) {
-				console.error(
-					"🔴 WindowBounds: Failed to get window bounds:",
-					error,
-				);
+				console.error("🔴 WindowBounds: Failed to get window bounds:", error);
 			}
 		};
 

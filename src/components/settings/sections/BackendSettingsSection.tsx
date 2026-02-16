@@ -5,7 +5,8 @@
  * Uses accordion layout for better organization as requested.
  */
 
-import React, { useState } from "react";
+import type React from "react";
+import { useState } from "react";
 import { cn } from "@/utils/cn";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useShallow } from "zustand/react/shallow";
@@ -238,7 +239,7 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 								)}
 								value={(currentValue as number) || 0}
 								onChange={(e) =>
-									handleValueChange(field.key, parseInt(e.target.value))
+									handleValueChange(field.key, parseInt(e.target.value, 10))
 								}
 								min={field.min}
 								max={field.max}
