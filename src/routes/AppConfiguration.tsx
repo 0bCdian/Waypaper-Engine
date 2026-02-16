@@ -16,9 +16,7 @@ const { goDaemon } = window.API_RENDERER;
 const AppConfiguration = () => {
 	const { register, handleSubmit, setValue } = useForm<AppConfigForm>();
 	const onSubmit = async (data: AppConfigForm) => {
-		await goDaemon.setBulkConfig({
-			app: data,
-		});
+		await goDaemon.updateConfigSection("app", data as unknown as Record<string, unknown>);
 	};
 	useEffect(() => {
 		void goDaemon.getConfig().then((config: UnifiedConfig) => {
@@ -88,7 +86,7 @@ const AppConfiguration = () => {
 									type="checkbox"
 									id="startMinimized"
 									className="checkbox mt-4"
-									{...register("startMinimized")}
+									{...register("start_minimized")}
 								/>
 							</div>
 							<div className="mx-10 my-6 flex justify-between">
@@ -101,7 +99,7 @@ const AppConfiguration = () => {
 									type="checkbox"
 									id="minimizeInsteadOfClose"
 									className="checkbox mt-4"
-									{...register("minimizeInsteadOfClose")}
+									{...register("minimize_instead_of_close")}
 								/>
 							</div>
 							<div className="mx-10 my-6 flex justify-between">
@@ -114,7 +112,7 @@ const AppConfiguration = () => {
 									type="checkbox"
 									id="showMonitorModalOnStart"
 									className="checkbox mt-4"
-									{...register("showMonitorModalOnStart")}
+									{...register("show_monitor_modal_on_start")}
 								/>
 							</div>
 							<div className="mx-10 my-6 flex items-end justify-between">

@@ -20,6 +20,7 @@ export const initialAppConfig: appConfigType = {
 	notifications: true,
 	start_minimized: false,
 	minimize_instead_of_close: false,
+	show_monitor_modal_on_start: false,
 	images_per_page: 50,
 	theme: "dark",
 	image_history_limit: 100,

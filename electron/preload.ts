@@ -24,6 +24,7 @@ import type {
 	MonitorMode,
 	EventType,
 } from "./daemon-go-types";
+import type { IPC_RENDERER_EVENTS_TYPE } from "../shared/constants";
 
 const electronAPI = {
 	// ============================================================================
@@ -246,6 +247,17 @@ const electronAPI = {
 
 	removeAllListeners: (channel: string) => {
 		ipcRenderer.removeAllListeners(channel);
+	},
+
+	// ============================================================================
+	// MENU / IPC RENDERER EVENTS
+	// ============================================================================
+	onMenuEvent: (event: IPC_RENDERER_EVENTS_TYPE, callback: (...args: unknown[]) => void): void => {
+		ipcRenderer.on(event, (_event, ...args) => callback(...args));
+	},
+
+	offMenuEvent: (event: IPC_RENDERER_EVENTS_TYPE, callback: (...args: unknown[]) => void): void => {
+		ipcRenderer.removeListener(event, callback);
 	},
 
 	// ============================================================================

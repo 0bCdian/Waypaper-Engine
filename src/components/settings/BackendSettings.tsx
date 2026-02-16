@@ -7,7 +7,6 @@
 
 import React, { useState, useEffect } from "react";
 import { cn } from "../../utils/cn";
-import type { UnifiedConfig } from "../../../shared/types/unifiedConfig";
 
 /**
  * Backend Settings props interface
@@ -58,17 +57,17 @@ export const BackendSettings: React.FC<BackendSettingsProps> = ({
 			setError(null);
 
 			// Get swww config from daemon
-			const unifiedConfig = await window.API_RENDERER.goDaemon.getConfig();
-			const swwwConfig = unifiedConfig.backend.swww;
-			// Convert unified config to local format
+			const backendConfig = await window.API_RENDERER.goDaemon.getBackendConfig();
+			// Convert backend config to local format
 			setConfig({
-				transition_type: swwwConfig.transition_type,
-				transition_step: swwwConfig.transition_step,
-				transition_duration: swwwConfig.transition_duration,
-				transition_angle: swwwConfig.transition_angle,
-				transition_pos: swwwConfig.transition_pos,
-				transition_bezier: swwwConfig.transition_bezier,
-				transition_wave: swwwConfig.transition_wave !== "0,0,0,0",
+				transition_type: backendConfig.transition_type,
+				transition_step: backendConfig.transition_step,
+				transition_duration: backendConfig.transition_duration,
+				transition_angle: backendConfig.transition_angle,
+				transition_pos: backendConfig.transition_pos,
+				transition_bezier: backendConfig.transition_bezier,
+				transition_fps: backendConfig.transition_fps,
+				transition_wave: backendConfig.transition_wave !== "0,0,0,0",
 			});
 		} catch (err) {
 			console.error("Failed to load swww config:", err);
@@ -85,17 +84,10 @@ export const BackendSettings: React.FC<BackendSettingsProps> = ({
 			setSaving(true);
 			setError(null);
 
-			// Convert to unified config format
-			const unifiedSwwwConfig: UnifiedConfig["backend"]["swww"] = {
-				transition_type: key === "transition_type" ? (value as string) : config.transition_type || "simple",
-				transition_step: key === "transition_step" ? (value as number) : config.transition_step || 90,
-				transition_duration: key === "transition_duration" ? (value as number) : config.transition_duration || 200,
-				transition_angle: key === "transition_angle" ? (value as number) : config.transition_angle || 0,
-				transition_pos: key === "transition_pos" ? (value as UnifiedConfig["backend"]["swww"]["transition_pos"]) : (config.transition_pos as UnifiedConfig["backend"]["swww"]["transition_pos"]) || "center",
-				transition_bezier: key === "transition_bezier" ? (value as string) : config.transition_bezier || "0.4,0.0,0.2,1",
-				transition_wave: key === "transition_wave" ? (value ? "20,20" : "0,0,0,0") : (config.transition_wave ? "20,20" : "0,0,0,0"),
-			};
-			await window.API_RENDERER.goDaemon.setSwwwConfig(unifiedSwwwConfig);
+			// Update backend config via daemon
+			await window.API_RENDERER.goDaemon.updateBackendConfig({
+				[key]: value,
+			} as Record<string, unknown>);
 
 			// Update local state
 			setConfig((prev) => ({ ...prev, [key]: value }));

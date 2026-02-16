@@ -1,15 +1,10 @@
 import type {
 	Image,
-	Playlist,
 	PlaylistConfiguration,
 	PlaylistImage,
 	MonitorMode,
 	Pagination,
 } from "../../electron/daemon-go-types";
-import {
-	type PLAYLIST_TYPES_TYPE,
-	type PLAYLIST_ORDER_TYPES,
-} from "../../shared/types/playlist";
 import { type Formats } from "../../shared/types/image";
 
 export enum STORE_ACTIONS {

@@ -1,11 +1,10 @@
 import {
 	type App,
 	Menu,
-	dialog,
 	type Tray,
 	type BrowserWindow,
 } from "electron";
-import { IPC_MAIN_EVENTS, MENU_EVENTS } from "../shared/constants";
+import { IPC_MAIN_EVENTS } from "../shared/constants";
 import { PlaylistController } from "../electron/playlistController";
 import { goDaemonClient } from "../electron/goDaemonClient";
 import type {

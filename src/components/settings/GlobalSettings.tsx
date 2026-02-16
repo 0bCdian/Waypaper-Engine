@@ -53,7 +53,7 @@ export const GlobalSettings: React.FC<GlobalSettingsProps> = ({
 
 			// Get global config from daemon
 			const globalConfig = await window.API_RENDERER.goDaemon.getConfig();
-			setConfig(globalConfig?.global || {});
+			setConfig(globalConfig?.daemon || {});
 		} catch (err) {
 			console.error("Failed to load global config:", err);
 			setError(
@@ -69,7 +69,7 @@ export const GlobalSettings: React.FC<GlobalSettingsProps> = ({
 			setSaving(true);
 			setError(null);
 
-			await window.API_RENDERER.goDaemon.setConfig("global", key, value);
+			await window.API_RENDERER.goDaemon.updateConfigSection("daemon", { [key]: value });
 
 			// Update local state
 			setConfig((prev) => ({ ...prev, [key]: value }));

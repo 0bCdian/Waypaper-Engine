@@ -38,7 +38,7 @@ interface SettingField {
 export const AppSettingsSection: React.FC<AppSettingsSectionProps> = ({
 	className = "",
 }) => {
-	const { config, saveConfig, errors } = useSettingsStore();
+	const { config, saveConfigSection, errors } = useSettingsStore();
 	const section: ConfigSection = "app";
 	const [themeAccordionOpen, setThemeAccordionOpen] = useState(false);
 	const [activeThemeTab, setActiveThemeTab] = useState<"light" | "dark">(
@@ -81,7 +81,7 @@ export const AppSettingsSection: React.FC<AppSettingsSectionProps> = ({
 	];
 
 	const handleValueChange = async (key: string, value: unknown) => {
-		await saveConfig(section, key, value);
+		await saveConfigSection(section, { [key]: value });
 	};
 
 	const getFieldError = (key: string) => {

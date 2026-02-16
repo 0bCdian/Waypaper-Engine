@@ -13,6 +13,12 @@ interface DaemonStatus {
 	lastError?: string;
 }
 
+interface DaemonActionResult {
+	success: boolean;
+	error?: string;
+	data?: DaemonStatus;
+}
+
 interface DaemonStatusComponentProps {
 	className?: string;
 }
@@ -41,25 +47,16 @@ export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({
 	const loadStatus = async () => {
 		try {
 			if (window.API_RENDERER?.getDaemonStatus) {
-				const response = await window.API_RENDERER.getDaemonStatus();
+				const response = (await window.API_RENDERER.getDaemonStatus()) as DaemonActionResult;
 
-				// Handle wrapped response format
-				if (
-					response &&
-					typeof response === "object" &&
-					"success" in response &&
-					"data" in response
-				) {
-					if (response.success) {
-						setStatus(response.data as DaemonStatus);
-						setError(null);
-					} else {
-						setError("Failed to get daemon status");
-					}
-				} else {
-					// Handle direct response format (fallback)
-					setStatus(response as DaemonStatus);
+				if (response?.success && response.data) {
+					setStatus(response.data);
 					setError(null);
+				} else if (response && typeof response === "object" && "isRunning" in response) {
+					setStatus(response as unknown as DaemonStatus);
+					setError(null);
+				} else {
+					setError("Failed to get daemon status");
 				}
 			}
 		} catch (err) {
@@ -75,9 +72,9 @@ export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({
 
 		try {
 			if (window.API_RENDERER?.restartDaemon) {
-				const result = await window.API_RENDERER.restartDaemon();
-				if (!result.success) {
-					setError(result.error || "Failed to restart daemon");
+				const result = (await window.API_RENDERER.restartDaemon()) as DaemonActionResult;
+				if (!result?.success) {
+					setError(result?.error || "Failed to restart daemon");
 				}
 			}
 		} catch (err) {
@@ -93,9 +90,9 @@ export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({
 
 		try {
 			if (window.API_RENDERER?.startDaemon) {
-				const result = await window.API_RENDERER.startDaemon();
-				if (!result.success) {
-					setError(result.error || "Failed to start daemon");
+				const result = (await window.API_RENDERER.startDaemon()) as DaemonActionResult;
+				if (!result?.success) {
+					setError(result?.error || "Failed to start daemon");
 				}
 			}
 		} catch (err) {
@@ -111,9 +108,9 @@ export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({
 
 		try {
 			if (window.API_RENDERER?.stopDaemon) {
-				const result = await window.API_RENDERER.stopDaemon();
-				if (!result.success) {
-					setError(result.error || "Failed to stop daemon");
+				const result = (await window.API_RENDERER.stopDaemon()) as DaemonActionResult;
+				if (!result?.success) {
+					setError(result?.error || "Failed to stop daemon");
 				}
 			}
 		} catch (err) {

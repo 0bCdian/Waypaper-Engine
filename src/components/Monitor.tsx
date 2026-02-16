@@ -1,7 +1,9 @@
 import { useMonitorStore, type StoreMonitor } from "../stores/monitors";
 import { type monitorSelectType } from "../types/rendererTypes";
 import SvgComponent from "./addImagesIcon";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+
+const goDaemon = window.API_RENDERER.goDaemon;
 
 interface props {
 	monitor: StoreMonitor;
@@ -17,7 +19,50 @@ export function MonitorComponent({
 	monitorsList,
 }: props) {
 	const { setMonitorsList } = useMonitorStore();
-	const [isLoading] = useState(false);
+	const [wallpaperSrc, setWallpaperSrc] = useState<string | null>(null);
+	const [isLoading, setIsLoading] = useState(true);
+
+	useEffect(() => {
+		let cancelled = false;
+		setIsLoading(true);
+
+		goDaemon
+			.getImageHistory(1, monitor.name)
+			.then((history) => {
+				if (cancelled) return;
+				if (history.length > 0) {
+					return goDaemon.getImage(history[0].image_id);
+				}
+				return null;
+			})
+			.then((image) => {
+				if (cancelled) return;
+				if (image) {
+					const src =
+						image.thumbnails?.default ||
+						image.thumbnails?.["1080p"] ||
+						image.path;
+					setWallpaperSrc(src);
+				}
+			})
+			.catch((err) => {
+				if (!cancelled) {
+					console.warn(
+						`Failed to load wallpaper for ${monitor.name}:`,
+						err,
+					);
+				}
+			})
+			.finally(() => {
+				if (!cancelled) {
+					setIsLoading(false);
+				}
+			});
+
+		return () => {
+			cancelled = true;
+		};
+	}, [monitor.name]);
 
 	const scaledWidth = monitor.width * scale;
 	const scaledHeight = monitor.height * scale;
@@ -78,6 +123,14 @@ export function MonitorComponent({
 							<p className="mt-2 text-sm font-medium">Loading...</p>
 						</div>
 					</div>
+				) : wallpaperSrc ? (
+					<img
+						src={wallpaperSrc}
+						alt={`Wallpaper on ${monitor.name}`}
+						className="h-full w-full cursor-pointer object-cover"
+						style={imageStyle}
+						draggable={false}
+					/>
 				) : (
 					<div
 						className="flex h-full w-full cursor-pointer items-center justify-center border-2 border-dashed border-base-300 bg-base-200/50"

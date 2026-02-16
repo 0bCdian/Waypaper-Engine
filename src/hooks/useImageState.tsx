@@ -1,8 +1,6 @@
 import { useState, useCallback } from "react";
-import {
-	type rendererImage,
-	type ImageThumbnails,
-} from "../types/rendererTypes";
+import { type rendererImage } from "../types/rendererTypes";
+import type { ImageThumbnails } from "../../electron/daemon-go-types";
 
 interface ImageProcessingState {
 	processingImages: Set<number>; // Set of image IDs being processed
@@ -87,17 +85,16 @@ export function useImageState() {
 	// Get thumbnail path for current screen resolution
 	const getThumbnailPath = useCallback(
 		(thumbnails: ImageThumbnails, screenWidth: number): string => {
-			// Determine appropriate resolution based on screen width
 			if (screenWidth >= 3840) {
-				return thumbnails["4k"] || thumbnails.fallback;
+				return thumbnails["4k"] || thumbnails.default;
 			} else if (screenWidth >= 2560) {
-				return thumbnails["1440p"] || thumbnails.fallback;
+				return thumbnails["1440p"] || thumbnails.default;
 			} else if (screenWidth >= 1920) {
-				return thumbnails["1080p"] || thumbnails.fallback;
+				return thumbnails["1080p"] || thumbnails.default;
 			} else if (screenWidth >= 1280) {
-				return thumbnails["720p"] || thumbnails.fallback;
+				return thumbnails["720p"] || thumbnails.default;
 			} else {
-				return thumbnails.fallback;
+				return thumbnails.default;
 			}
 		},
 		[],

@@ -41,7 +41,7 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 }) => {
 	const {
 		config,
-		saveConfig,
+		saveConfigSection,
 		errors,
 		showAdvancedSettings,
 		setShowAdvancedSettings,
@@ -139,7 +139,17 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 	];
 
 	const handleValueChange = async (key: string, value: unknown) => {
-		await saveConfig(section, key, value);
+		if (key.startsWith("swww.")) {
+			// PATCH /config/backend expects SwwwConfig fields directly
+			const swwwKey = key.replace("swww.", "");
+			const swwwData = {
+				...(config?.backend?.swww ?? {}),
+				[swwwKey]: value,
+			};
+			await saveConfigSection(section, swwwData);
+		} else {
+			await saveConfigSection(section, { [key]: value });
+		}
 	};
 
 	const getFieldError = (key: string) => {

@@ -78,6 +78,16 @@ export class IPCManager {
 				return { success: true, data: result };
 			} catch (error) {
 				console.error(`IPC error: ${handler.channel}`, error);
+				// #region agent log
+				const isUnwrapped = unwrappedChannels.includes(handler.channel);
+				const logData = {location:'IPCManager.ts:catch',message:'IPC error caught',data:{channel:handler.channel,isUnwrapped,errorMsg:error instanceof Error?error.message:String(error),args:args?.slice(0,2)},timestamp:Date.now(),hypothesisId:'A',runId:'post-fix'};
+				fetch('http://127.0.0.1:7242/ingest/016eda8e-0554-4a39-9dc1-a62053da874d',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(logData)}).catch(()=>{});
+				// #endregion
+
+				if (unwrappedChannels.includes(handler.channel)) {
+					throw error;
+				}
+
 				return {
 					success: false,
 					error: error instanceof Error ? error.message : "Unknown error",

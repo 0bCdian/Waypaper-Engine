@@ -2,10 +2,13 @@ import { imagesStore } from "../stores/images";
 import { playlistStore } from "../stores/playlist";
 import { useEffect } from "react";
 import { useShallow } from "zustand/react/shallow";
-import { type DaemonDeleteImageFromGalleryPayload } from "../../shared/types/daemonEvents";
+import { MENU_EVENTS } from "../../shared/constants";
 import { type rendererImage } from "../types/rendererTypes";
-const goDaemon = window.API_RENDERER.goDaemon;
+import type { Image } from "../../electron/daemon-go-types";
+
+const { onMenuEvent } = window.API_RENDERER;
 let firstCall = true;
+
 export function registerOnDelete() {
 	const removeImagesFromStore = imagesStore(
 		useShallow((state) => state.removeImagesFromStore),
@@ -13,47 +16,37 @@ export function registerOnDelete() {
 	const removeImageFromPlaylist = playlistStore(
 		useShallow((state) => state.removeImagesFromPlaylist),
 	);
+
 	useEffect(() => {
 		if (!firstCall) return;
 		firstCall = false;
-		goDaemon.on("delete_image_from_gallery", (...args: unknown[]) => {
-			const image = args[0] as DaemonDeleteImageFromGalleryPayload;
-			// Convert DaemonDeleteImageFromGalleryPayload to rendererImage for compatibility
+
+		const handleDeleteImageFromGallery = (...args: unknown[]) => {
+			const image = args[0] as Image;
+			if (!image) return;
+
 			const imageToRemove: rendererImage = {
 				id: image.id,
 				name: image.name,
 				path: image.path,
-				mediaType: "image",
-				dimensions: { width: 0, height: 0 },
-				metadata: {
-					format: "",
-					fileSize: 0,
-					checksum: "",
-					tags: [],
-					properties: {},
-				},
-				selection: {
-					isChecked: false,
-					isSelected: false,
-					selectedAt: undefined,
-					selectedPlaylists: [],
-				},
-				importInfo: {
-					importedAt: "",
-					sourcePath: image.path,
-					importer: "unknown",
-				},
-				thumbnails: {
-					"720p": "",
-					"1080p": "",
-					"1440p": "",
-					"4k": "",
-					fallback: "",
-				},
+				media_type: image.media_type,
+				width: image.width,
+				height: image.height,
+				format: image.format,
+				file_size: image.file_size,
+				checksum: image.checksum,
+				tags: image.tags,
+				imported_at: image.imported_at,
+				source_path: image.source_path,
+				is_selected: false,
+				thumbnails: image.thumbnails,
 				time: null,
 			};
+
 			removeImagesFromStore([imageToRemove]);
 			removeImageFromPlaylist(new Set([image.id]));
-		});
+		};
+
+		onMenuEvent(MENU_EVENTS.deleteImageFromGallery, handleDeleteImageFromGallery);
 	}, []);
 }

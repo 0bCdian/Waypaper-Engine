@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { type openFileAction, type imagesObject } from "../../shared/types";
+import { type openFileAction } from "../../shared/types";
 const { openFiles, handleOpenImages } = window.API_RENDERER;
 
 interface State {

@@ -25,8 +25,7 @@ function Modals() {
 			if (!config || !config.app.show_monitor_modal_on_start) return;
 			setTimeout(() => {
 				void reQueryMonitors().then(() => {
-					// @ts-expect-error daisy-ui
-					window.monitors.showModal();
+					window.monitors?.showModal();
 				});
 			}, 300);
 		});

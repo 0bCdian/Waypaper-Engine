@@ -11,14 +11,12 @@ import { imagesStore } from "../stores/images";
 import { useHotkeys } from "react-hotkeys-hook";
 import { type rendererImage } from "../types/rendererTypes";
 import { useUnifiedConfigStore } from "../stores/unifiedConfig";
-import { playlistStore } from "../stores/playlist";
 
 const ImageCard = lazy(async () => await import("../components/ImageCard"));
 
 export function useImagePagination() {
 	const { config } = useUnifiedConfigStore();
-	const { removeImagesFromPlaylist, addImagesToPlaylist } = playlistStore();
-	const [imagesPerPage, setImagesPerPage] = useState(
+	const [imagesPerPage] = useState(
 		config?.app?.images_per_page ?? 50,
 	);
 	const [currentPage, setCurrentPage] = useState<number>(1);
@@ -26,12 +24,8 @@ export function useImagePagination() {
 		filters,
 		selectedImages,
 		setSelectedImages,
-		deleteSelectedImages,
-		getSelectedImages,
-		removeImagesFromStore,
 	} = imagesStore();
-	const { filteredImages, selectAllImages, clearSelection } =
-		useFilteredImages();
+	const { filteredImages } = useFilteredImages();
 
 	const lastImageIndex = useMemo(
 		() => currentPage * imagesPerPage,
@@ -104,14 +98,6 @@ export function useImagePagination() {
 			} else {
 				newSet.add(image.id);
 			}
-		});
-		setSelectedImages(newSet);
-	};
-
-	const clearSelectedImagesInCurrentPage = () => {
-		const newSet = new Set(selectedImages);
-		imagesInCurrentPage.forEach((image) => {
-			newSet.delete(image.id);
 		});
 		setSelectedImages(newSet);
 	};

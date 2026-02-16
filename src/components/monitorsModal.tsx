@@ -3,7 +3,6 @@ import { useMonitorStore, type MonitorSelection } from "../stores/monitors";
 import { MonitorComponent } from "./Monitor";
 import { calculateMinResolution } from "../utils/utilities";
 import { type monitorSelectType } from "../types/rendererTypes";
-import type { Monitor } from "../../electron/daemon-go-types";
 import { playlistStore } from "../stores/playlist";
 
 const goDaemon = window.API_RENDERER.goDaemon;

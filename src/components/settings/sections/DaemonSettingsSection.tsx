@@ -39,7 +39,7 @@ interface SettingField {
 export const DaemonSettingsSection: React.FC<DaemonSettingsSectionProps> = ({
 	className = "",
 }) => {
-	const { config, saveConfig, errors } = useSettingsStore();
+	const { config, saveConfigSection, errors } = useSettingsStore();
 	const section: ConfigSection = "daemon";
 
 	// Define all daemon settings fields
@@ -138,7 +138,7 @@ export const DaemonSettingsSection: React.FC<DaemonSettingsSectionProps> = ({
 	];
 
 	const handleValueChange = async (key: string, value: unknown) => {
-		await saveConfig(section, key, value);
+		await saveConfigSection(section, { [key]: value });
 	};
 
 	const getFieldError = (key: string) => {

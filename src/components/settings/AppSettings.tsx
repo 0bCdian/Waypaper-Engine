@@ -7,7 +7,6 @@
 
 import React, { useState, useEffect } from "react";
 import { cn } from "../../utils/cn";
-import type { UnifiedConfig } from "../../../shared/types/unifiedConfig";
 
 /**
  * App Settings props interface
@@ -67,11 +66,8 @@ export const AppSettings: React.FC<AppSettingsProps> = ({ className }) => {
 			setSaving(true);
 			setError(null);
 
-			// Use setBulkConfig for app settings
-			await window.API_RENDERER.goDaemon.setBulkConfig({
-				app: {
-					[key]: value,
-				} as Partial<UnifiedConfig["app"]>,
+			await window.API_RENDERER.goDaemon.updateConfigSection("app", {
+				[key]: value,
 			});
 
 			// Update local state

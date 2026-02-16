@@ -9,7 +9,7 @@ import {
 	TransitionType,
 	transitionPosition,
 } from "../../shared/types/swww";
-import type { UnifiedConfig } from "../../shared/types/unifiedConfig";
+import type { SwwwConfig } from "../../electron/daemon-go-types";
 
 // Local config type matching the store
 interface LocalSwwwConfig {
@@ -33,29 +33,29 @@ interface LocalSwwwConfig {
 	transitionWaveY: number;
 }
 
-// Helper function to convert unified config to local config
-function convertUnifiedToLocalConfig(
-	unifiedConfig: UnifiedConfig["backend"]["swww"],
+// Helper function to convert backend config to local config
+function convertBackendToLocalConfig(
+	backendConfig: SwwwConfig,
 ): LocalSwwwConfig {
 	return {
-		resizeType: "crop" as ResizeType, // Default, not in unified config
-		fillColor: "#000000", // Default, not in unified config
-		filterType: FilterType.Lanczos3, // Default, not in unified config
-		transitionType: unifiedConfig.transition_type as TransitionType,
-		transitionStep: unifiedConfig.transition_step,
-		transitionDuration: unifiedConfig.transition_duration,
-		transitionFPS: 60, // Default, not in unified config
-		transitionAngle: unifiedConfig.transition_angle,
+		resizeType: "crop" as ResizeType, // Default, not in backend config
+		fillColor: "#000000", // Default, not in backend config
+		filterType: FilterType.Lanczos3, // Default, not in backend config
+		transitionType: backendConfig.transition_type as TransitionType,
+		transitionStep: backendConfig.transition_step,
+		transitionDuration: backendConfig.transition_duration,
+		transitionFPS: backendConfig.transition_fps ?? 60,
+		transitionAngle: backendConfig.transition_angle,
 		transitionPositionType: "alias", // Default
-		transitionPosition: unifiedConfig.transition_pos as transitionPosition,
+		transitionPosition: backendConfig.transition_pos as transitionPosition,
 		transitionPositionIntX: 960, // Default
 		transitionPositionIntY: 540, // Default
 		transitionPositionFloatX: 0.5, // Default
 		transitionPositionFloatY: 0.5, // Default
-		invertY: false, // Default, not in unified config
-		transitionBezier: unifiedConfig.transition_bezier,
-		transitionWaveX: parseInt(unifiedConfig.transition_wave.split(",")[0] || "20", 10),
-		transitionWaveY: parseInt(unifiedConfig.transition_wave.split(",")[1] || "20", 10),
+		invertY: backendConfig.invert_y ?? false,
+		transitionBezier: backendConfig.transition_bezier,
+		transitionWaveX: parseInt(backendConfig.transition_wave.split(",")[0] || "20", 10),
+		transitionWaveY: parseInt(backendConfig.transition_wave.split(",")[1] || "20", 10),
 	};
 }
 let saveConfigTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -110,8 +110,8 @@ const SwwwConfig = () => {
 		};
 	}, [watch]);
 	useEffect(() => {
-		void goDaemon.getSwwwConfig().then((swwwConfig: UnifiedConfig["backend"]["swww"]) => {
-			const localConfig = convertUnifiedToLocalConfig(swwwConfig);
+		void goDaemon.getBackendConfig().then((swwwConfig) => {
+			const localConfig = convertBackendToLocalConfig(swwwConfig);
 			const bezierArray = localConfig.transitionBezier
 				.split(",")
 				.map((item: string) => {

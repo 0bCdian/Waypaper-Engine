@@ -98,7 +98,7 @@ const AppSettings: React.FC = () => {
 					className="toggle toggle-primary"
 					checked={config?.app?.start_minimized || false}
 					onChange={(e) =>
-						setConfigValue("app", "start_minimized", e.target.checked)
+						setConfigValue("app", { start_minimized: e.target.checked })
 					}
 				/>
 			</div>
@@ -114,7 +114,7 @@ const AppSettings: React.FC = () => {
 					className="toggle toggle-primary"
 					checked={config?.app?.minimize_instead_of_close || false}
 					onChange={(e) =>
-						setConfigValue("app", "minimize_instead_of_close", e.target.checked)
+						setConfigValue("app", { minimize_instead_of_close: e.target.checked })
 					}
 				/>
 			</div>
@@ -130,7 +130,7 @@ const AppSettings: React.FC = () => {
 					className="toggle toggle-primary"
 					checked={config?.app?.start_minimized || false}
 					onChange={(e) =>
-						setConfigValue("app", "start_minimized", e.target.checked)
+						setConfigValue("app", { start_minimized: e.target.checked })
 					}
 				/>
 			</div>
@@ -156,7 +156,7 @@ const SwwwSettings: React.FC = () => {
 					className="select select-primary select-sm w-full"
 					value={config?.backend?.swww?.transition_type || "simple"}
 					onChange={(e) =>
-						setConfigValue("backend", "swww", { ...config?.backend?.swww, transition_type: e.target.value as any })
+						setConfigValue("backend", { ...config?.backend?.swww, transition_type: e.target.value })
 					}
 				>
 					<option value="simple">Simple</option>
@@ -183,7 +183,7 @@ const SwwwSettings: React.FC = () => {
 					className="range range-primary range-sm"
 					value={config?.backend?.swww?.transition_step || 0}
 					onChange={(e) =>
-					setConfigValue("backend", "swww", { ...config?.backend?.swww, transition_step: parseFloat(e.target.value) })
+					setConfigValue("backend", { ...config?.backend?.swww, transition_step: parseFloat(e.target.value) })
 					}
 				/>
 				<div className="flex justify-between text-xs text-base-content/60 px-2">
@@ -201,7 +201,7 @@ const SwwwSettings: React.FC = () => {
 					className="select select-primary select-sm w-full"
 					value={config?.backend?.swww?.transition_pos || "center"}
 					onChange={(e) =>
-						setConfigValue("backend", "swww", { ...config?.backend?.swww, transition_pos: e.target.value as any })
+						setConfigValue("backend", { ...config?.backend?.swww, transition_pos: e.target.value })
 					}
 				>
 					<option value="crop">Crop</option>
@@ -265,7 +265,7 @@ const DaemonSettings: React.FC = () => {
 					className="select select-primary select-sm w-full"
 					value={config?.daemon?.log_level || "info"}
 					onChange={(e) =>
-						setConfigValue("daemon", "log_level", e.target.value as any)
+						setConfigValue("daemon", { log_level: e.target.value })
 					}
 				>
 					<option value="debug">Debug</option>

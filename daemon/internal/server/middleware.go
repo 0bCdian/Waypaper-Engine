@@ -54,6 +54,8 @@ func Logger(next http.Handler) http.Handler {
 }
 
 // statusWriter wraps http.ResponseWriter to capture the status code.
+// It also implements http.Flusher by delegating to the underlying writer,
+// which is required for SSE streaming to work through this middleware.
 type statusWriter struct {
 	http.ResponseWriter
 	status int
@@ -62,6 +64,13 @@ type statusWriter struct {
 func (w *statusWriter) WriteHeader(code int) {
 	w.status = code
 	w.ResponseWriter.WriteHeader(code)
+}
+
+// Flush implements http.Flusher by delegating to the underlying ResponseWriter.
+func (w *statusWriter) Flush() {
+	if f, ok := w.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
 }
 
 // Recoverer catches panics and returns a 500 response.

@@ -16,9 +16,15 @@ import type {
 	MonitorMode,
 	EventType,
 } from "../../electron/daemon-go-types";
+import type { IPC_RENDERER_EVENTS_TYPE } from "../../shared/constants";
 
 declare global {
 	interface Window {
+		monitors?: {
+			showModal: () => void;
+			closeModal: () => void;
+			close: () => void;
+		};
 		API_RENDERER: {
 			goDaemon: {
 				// HEALTH & SYSTEM
@@ -117,6 +123,10 @@ declare global {
 			onDaemonStatusUpdate: (callback: (data: unknown) => void) => void;
 			offDaemonStatusUpdate: (callback: (data: unknown) => void) => void;
 			removeAllListeners: (channel: string) => void;
+
+			// MENU / IPC RENDERER EVENTS
+			onMenuEvent: (event: IPC_RENDERER_EVENTS_TYPE, callback: (...args: unknown[]) => void) => void;
+			offMenuEvent: (event: IPC_RENDERER_EVENTS_TYPE, callback: (...args: unknown[]) => void) => void;
 
 			// FILE OPERATIONS
 			openFiles: (

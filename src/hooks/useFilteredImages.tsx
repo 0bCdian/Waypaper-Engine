@@ -4,7 +4,7 @@ import { type rendererImage } from "../types/rendererTypes";
 import { useHotkeys } from "react-hotkeys-hook";
 
 export function useFilteredImages() {
-	const { imagesArray, filters, setSelectedImages, selectedImages } = imagesStore();
+	const { imagesArray, filters, setSelectedImages } = imagesStore();
 	const [filteredImages, setFilteredImages] =
 		useState<rendererImage[]>(imagesArray);
 

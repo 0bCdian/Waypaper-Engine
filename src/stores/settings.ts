@@ -196,14 +196,10 @@ export const useSettingsStore = create<SettingsStore>()(
 
 				try {
 					// Validate settings before saving
-					const validatedSettings = get().validateSettings(state.settings);
+					get().validateSettings(state.settings);
 
-					// Save to frontend config via Go daemon
-					if (window.API_RENDERER?.goDaemon) {
-						await window.API_RENDERER.goDaemon.setFrontendConfig({
-							settings: validatedSettings,
-						});
-					}
+					// Save to local storage via Zustand persist middleware
+					// No daemon call needed - this store uses local persistence
 
 					set({
 						isDirty: false,
@@ -222,24 +218,10 @@ export const useSettingsStore = create<SettingsStore>()(
 				set({ isLoading: true });
 
 				try {
-					// Load from frontend config via Go daemon
-					if (window.API_RENDERER?.goDaemon) {
-						const config =
-							await window.API_RENDERER.goDaemon.getFrontendConfig();
-						const loadedSettings = (config as any)?.settings || defaultSettings;
-
-						// Validate loaded settings
-						const validatedSettings = get().validateSettings(loadedSettings);
-
-						set({
-							settings: validatedSettings,
-							isLoading: false,
-						});
-
-						console.log("Settings loaded successfully");
-					} else {
-						set({ isLoading: false });
-					}
+					// Settings are loaded from local storage via Zustand persist middleware
+					// Just mark loading as complete
+					set({ isLoading: false });
+					console.log("Settings loaded from local storage");
 				} catch (error) {
 					console.error("Failed to load settings:", error);
 					set({ isLoading: false });

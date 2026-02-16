@@ -46,6 +46,7 @@ const defaultConfig: UnifiedConfig = {
 		notifications: true,
 		start_minimized: false,
 		minimize_instead_of_close: true,
+		show_monitor_modal_on_start: false,
 		images_per_page: 50,
 		theme: "dark",
 		sort_by: "imported_at",
@@ -130,6 +131,16 @@ export const useSettingsStore = create<SettingsStore>()(
 					newConfig.app = { ...newConfig.app, ...data } as typeof newConfig.app;
 				} else if (section === "daemon") {
 					newConfig.daemon = { ...newConfig.daemon, ...data } as typeof newConfig.daemon;
+				} else if (section === "backend") {
+					// Backend data can be { type } or SwwwConfig fields (merged into backend.swww)
+					if ("type" in data) {
+						newConfig.backend = { ...newConfig.backend, ...data } as typeof newConfig.backend;
+					} else {
+						newConfig.backend = {
+							...newConfig.backend,
+							swww: { ...newConfig.backend.swww, ...data } as typeof newConfig.backend.swww,
+						};
+					}
 				} else if (section === "monitors") {
 					newConfig.monitors = { ...newConfig.monitors, ...data } as typeof newConfig.monitors;
 				}
@@ -229,9 +240,7 @@ export const useSettingsStore = create<SettingsStore>()(
 				set({ showAdvancedSettings: show });
 			},
 
-			handleConfigChange: (event: ConfigChangeEvent) => {
-				// New API: config_changed event contains {sections: [...]}
-				// Re-fetch the affected sections
+			handleConfigChange: (_event: ConfigChangeEvent) => {
 				const { loadConfig } = get();
 				loadConfig();
 			},

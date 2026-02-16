@@ -63,15 +63,13 @@ export const DaemonSettings: React.FC<DaemonSettingsProps> = ({
 			setError(null);
 
 			// Load daemon config and status in parallel
-			const [daemonConfig, daemonStatus] = await Promise.all([
-				window.API_RENDERER.goDaemon.getConfig().catch(() => ({})),
-				window.API_RENDERER.goDaemon
-					.getDaemonStatus()
-					.catch(() => ({ running: false })),
+			const [daemonConfig, daemonInfo] = await Promise.all([
+				window.API_RENDERER.goDaemon.getConfig().catch(() => null),
+				window.API_RENDERER.goDaemon.getInfo().catch(() => null),
 			]);
 
 			setConfig(daemonConfig?.daemon || {});
-			setStatus(daemonStatus || { running: false });
+			setStatus(daemonInfo ? { running: true, pid: daemonInfo.pid, version: daemonInfo.version } : { running: false });
 		} catch (err) {
 			console.error("Failed to load daemon data:", err);
 			setError(
@@ -89,7 +87,7 @@ export const DaemonSettings: React.FC<DaemonSettingsProps> = ({
 			setSaving(true);
 			setError(null);
 
-			await window.API_RENDERER.goDaemon.setConfig("daemon", key, value);
+			await window.API_RENDERER.goDaemon.updateConfigSection("daemon", { [key]: value });
 
 			// Update local state
 			setConfig((prev) => ({ ...prev, [key]: value }));
@@ -113,10 +111,10 @@ export const DaemonSettings: React.FC<DaemonSettingsProps> = ({
 					// Start daemon logic would go here
 					break;
 				case "stop":
-					await window.API_RENDERER.goDaemon.stopDaemon();
+					await window.API_RENDERER.goDaemon.shutdown();
 					break;
 				case "restart":
-					await window.API_RENDERER.goDaemon.stopDaemon();
+					await window.API_RENDERER.goDaemon.shutdown();
 					// Restart logic would go here
 					break;
 			}

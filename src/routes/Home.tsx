@@ -9,7 +9,7 @@ const Home = () => {
 	useEffect(() => {
 		if (!firstRender) return;
 		firstRender = false;
-		goDaemon.on("config_updated", () => {
+		goDaemon.on("config_changed", () => {
 			void loadConfig();
 		});
 	}, [loadConfig]);
