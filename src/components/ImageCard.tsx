@@ -17,8 +17,7 @@ const { goDaemon } = window.API_RENDERER;
 function ImageCard({ Image }: ImageCardProps) {
 	const imgRef = useRef<HTMLImageElement>(null);
 	const overlayId = useId();
-	const { activeMonitor } = useMonitorStore();
-	// Zustand selectors
+	const { monitorSelection } = useMonitorStore();
 	const addImageToPlaylist = playlistStore(useShallow((s) => s.addImagesToPlaylist));
 	const readPlaylist = playlistStore(useShallow((s) => s.readPlaylist));
 	const removeImageFromPlaylist = playlistStore(useShallow((s) => s.removeImagesFromPlaylist));
@@ -26,49 +25,26 @@ function ImageCard({ Image }: ImageCardProps) {
 	const imagesInPlaylist = playlistStore(useShallow((s) => s.playlistImagesSet));
 	const { addToSelectedImages, removeFromSelectedImages, selectedImages } = imagesStore();
 
-	// Initialize selection object if missing
-	if (!Image.selection) {
-		Image.selection = {
-			isChecked: false,
-			isSelected: false,
-			selectedAt: undefined,
-			selectedPlaylists: [],
-		};
-	}
-
-	// Local state synced with Image.selection
-	const [isChecked, setIsChecked] = useState(Image.selection?.isChecked ?? false);
+	const [isChecked, setIsChecked] = useState(false);
 	const isSelected = selectedImages.has(Image.id);
 
-	// Sync checkbox state with playlist
 	useEffect(() => {
 		const shouldBeChecked = !isEmpty && imagesInPlaylist.has(Image.id);
 		setIsChecked(shouldBeChecked);
-		if (Image.selection) {
-			Image.selection.isChecked = shouldBeChecked;
-		}
 	}, [isEmpty, imagesInPlaylist, Image]);
 
-	// Sync selection state with store
-	useEffect(() => {
-		if (isSelected) {
-			addToSelectedImages(Image);
-		} else {
-			removeFromSelectedImages(Image);
-		}
-	}, [isSelected, addToSelectedImages, removeFromSelectedImages, Image]);
-
 	const handleDoubleClick = () => {
-		if (!Image.id || !activeMonitor?.name) {
-			console.error("Cannot set image - missing id or monitor", { Image, activeMonitor });
+		if (!Image.id) {
+			console.error("Cannot set image - missing id", { Image });
 			return;
 		}
 
-		if (activeMonitor.extendAcrossMonitors && activeMonitor.monitors?.length > 1) {
-			goDaemon.setImageAcrossMonitors(Image.id, Image.name, activeMonitor);
-		} else {
-			goDaemon.setImage(Image.id, Image.name, activeMonitor.name);
-		}
+		const monitor =
+			monitorSelection.selectedMonitors.length === 1
+				? monitorSelection.selectedMonitors[0]
+				: "*";
+
+		goDaemon.setWallpaper(Image.id, monitor, monitorSelection.mode);
 	};
 
 	const handleCheckboxChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -77,32 +53,27 @@ function ImageCard({ Image }: ImageCardProps) {
 
 		if (checked) {
 			const playlist = readPlaylist();
-			// Prevent adding more than 7 images to dayofweek playlists
-			if (playlist.configuration.type === "dayofweek" && playlist.images.length >= 7) {
+			if (
+				playlist.configuration.type === "day_of_week" &&
+				playlist.images.length >= 7
+			) {
 				return;
 			}
-			addImageToPlaylist([Image]);
+			addImageToPlaylist([Image.id]);
 		} else {
 			removeImageFromPlaylist(new Set([Image.id]));
 		}
-		
+
 		setIsChecked(checked);
-		if (Image.selection) {
-			Image.selection.isChecked = checked;
-		}
 	};
 
 	const handleClick = (e: React.MouseEvent) => {
 		e.stopPropagation();
 		if (isHotkeyPressed("ctrl")) {
-			const newSelected = !isSelected;
-			if (Image.selection) {
-				Image.selection.isSelected = newSelected;
-			}
-			if (newSelected) {
-				addToSelectedImages(Image);
-			} else {
+			if (isSelected) {
 				removeFromSelectedImages(Image);
+			} else {
+				addToSelectedImages(Image);
 			}
 		}
 	};
@@ -168,17 +139,16 @@ function ImageCard({ Image }: ImageCardProps) {
 							srcSet={Image.thumbnails["720p"]}
 						/>
 					)}
-					{Image.thumbnails?.fallback?.trim() && (
+					{Image.thumbnails?.default?.trim() && (
 						<source
 							media="(width < 1279px)"
-							srcSet={Image.thumbnails.fallback}
+							srcSet={Image.thumbnails.default}
 						/>
 					)}
-					{/* Fallback img - uses fallback thumbnail or full image path */}
 					<img
 						ref={imgRef}
 						className="transform-gpu rounded-lg transition-all duration-300 group-hover:scale-110 group-hover:object-center w-full h-auto aspect-[3/2] object-cover"
-						src={Image.thumbnails?.fallback?.trim() || Image.path}
+						src={Image.thumbnails?.default?.trim() || Image.path}
 						alt={Image.name}
 						draggable={false}
 						loading="lazy"

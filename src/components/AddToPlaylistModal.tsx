@@ -1,21 +1,21 @@
 import { useRef, useState } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { imagesStore } from "../stores/images";
-import { type DaemonPlaylistFromDB } from "../../shared/types/daemonEvents";
+import type { Playlist } from "../../electron/daemon-go-types";
 
 interface Input {
 	selectPlaylist: string;
 }
 
 interface Props {
-	playlistsInDB: DaemonPlaylistFromDB[];
+	playlistsInDB: Playlist[];
 	setShouldReload: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const { goDaemon } = window.API_RENDERER;
 
 const AddToPlaylistModal = ({ playlistsInDB, setShouldReload }: Props) => {
-	const { selectedImages, imagesMap } = imagesStore();
+	const { selectedImages } = imagesStore();
 	const [error, setError] = useState("");
 	const [success, setSuccess] = useState("");
 	const { register, handleSubmit } = useForm<Input>();
@@ -41,7 +41,6 @@ const AddToPlaylistModal = ({ playlistsInDB, setShouldReload }: Props) => {
 				return;
 			}
 
-			// Get currently selected image IDs
 			const imageIdsToAdd = Array.from(selectedImages);
 
 			if (imageIdsToAdd.length === 0) {
@@ -49,15 +48,13 @@ const AddToPlaylistModal = ({ playlistsInDB, setShouldReload }: Props) => {
 				return;
 			}
 
-			// Get existing playlist images
-			const existingPlaylistImages = await goDaemon.getPlaylistImages(
-				selectedPlaylist.id,
-			);
+			// Get existing playlist
+			const fullPlaylist = await goDaemon.getPlaylist(selectedPlaylist.id);
 			const existingImageIds = new Set(
-				existingPlaylistImages.map((img: { id: number }) => img.id),
+				fullPlaylist.images.map((img) => img.image_id),
 			);
 
-			// Filter out images that are already in the playlist
+			// Filter out duplicates
 			const newImageIds = imageIdsToAdd.filter(
 				(id) => !existingImageIds.has(id),
 			);
@@ -68,40 +65,15 @@ const AddToPlaylistModal = ({ playlistsInDB, setShouldReload }: Props) => {
 				return;
 			}
 
-			// Create updated playlist with new images
-			const updatedPlaylistImages = [
-				...existingPlaylistImages,
-				...newImageIds.map((id) => {
-					const image = imagesMap.get(id);
-					return {
-						id,
-						name: image?.name || "",
-						path: image?.path || "",
-						time: null,
-					};
-				}),
+			// Update playlist with new images
+			const updatedImages = [
+				...fullPlaylist.images,
+				...newImageIds.map((id) => ({ image_id: id })),
 			];
 
-			// Save the updated playlist
-			const updatedPlaylist = {
-				id: selectedPlaylist.id,
-				name: selectedPlaylist.name,
-				configuration: {
-					type: selectedPlaylist.type,
-					order: selectedPlaylist.order,
-					interval: selectedPlaylist.interval,
-					showAnimations: selectedPlaylist.showAnimations,
-					alwaysStartOnFirstImage: selectedPlaylist.alwaysStartOnFirstImage,
-				},
-				images: updatedPlaylistImages,
-				activeMonitor: {
-					name: "",
-					extendAcrossMonitors: false,
-					monitors: [],
-				},
-			};
-
-			await goDaemon.savePlaylist(updatedPlaylist);
+			await goDaemon.updatePlaylist(selectedPlaylist.id, {
+				images: updatedImages,
+			});
 
 			setSuccess(
 				`Added ${newImageIds.length} image${newImageIds.length > 1 ? "s" : ""} to ${selectedPlaylist.name}`,
@@ -214,7 +186,7 @@ const AddToPlaylistModal = ({ playlistsInDB, setShouldReload }: Props) => {
 								id="selectPlaylist"
 								className="select select-bordered w-full rounded-md text-lg"
 								defaultValue={
-									playlistsInDB && playlistsInDB.length > 0
+									playlistsInDB.length > 0
 										? playlistsInDB[0].name
 										: ""
 								}
@@ -222,12 +194,11 @@ const AddToPlaylistModal = ({ playlistsInDB, setShouldReload }: Props) => {
 									required: true,
 								})}
 							>
-								{playlistsInDB &&
-									playlistsInDB.map((playlist) => (
-										<option key={playlist.id} value={playlist.name}>
-											{playlist.name}
-										</option>
-									))}
+								{playlistsInDB.map((playlist) => (
+									<option key={playlist.id} value={playlist.name}>
+										{playlist.name}
+									</option>
+								))}
 							</select>
 
 							<div className="mt-3 flex justify-center gap-3">

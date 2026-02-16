@@ -4,19 +4,15 @@ import { useMemo, useEffect, useCallback, lazy, Suspense } from "react";
 import { playlistStore } from "../stores/playlist";
 import openImagesStore from "../hooks/useOpenImages";
 import { motion, AnimatePresence } from "framer-motion";
-import { imagesStore } from "../stores/images";
 import { useMonitorStore } from "../stores/monitors";
-import { type openFileAction } from "../../shared/types";
-import {
-	type rendererPlaylist,
-	type rendererImage,
-} from "../types/rendererTypes";
+import type { openFileAction } from "../../shared/types";
 import { useSetLastActivePlaylist } from "../hooks/useSetLastActivePlaylist";
-import { PLAYLIST_TYPES, type PLAYLIST_TYPES_TYPE, type PLAYLIST_ORDER_TYPES } from "../../shared/types/playlist";
-import { type DaemonPlaylistImage } from "../../shared/types/daemonEvents";
+import type { PlaylistImage } from "../../electron/daemon-go-types";
+
 let firstRender = true;
 const { goDaemon } = window.API_RENDERER;
 const MiniPlaylistCard = lazy(async () => await import("./MiniPlaylistCard"));
+
 function PlaylistTrack() {
 	const {
 		playlist,
@@ -24,29 +20,20 @@ function PlaylistTrack() {
 		movePlaylistArrayOrder,
 		clearPlaylist,
 		setPlaylist,
-		setEmptyPlaylist,
 	} = playlistStore();
-	const { activeMonitor } = useMonitorStore();
+	const { monitorSelection } = useMonitorStore();
 	const { openImages, isActive } = openImagesStore();
-	const { imagesArray } = imagesStore();
 	useSetLastActivePlaylist();
 
 	const handleClickAddImages = useCallback((action: openFileAction) => {
-		void openImages({
-			action,
-		});
+		void openImages({ action });
 	}, []);
+
 	const reorderSortingCriteria = useCallback(() => {
-		const newArray = playlist.images.toSorted(
-			(a: rendererImage, b: rendererImage) => {
-				if (a.time === null || b.time === null) return 0;
-				if (a.time < b.time) {
-					return -1;
-				}
-				if (a.time > b.time) {
-					return 1;
-				}
-				return 0;
+		const newArray = [...playlist.images].sort(
+			(a: PlaylistImage, b: PlaylistImage) => {
+				if (a.time == null || b.time == null) return 0;
+				return a.time - b.time;
 			},
 		);
 		movePlaylistArrayOrder(newArray);
@@ -58,10 +45,10 @@ function PlaylistTrack() {
 			if (over === null) return;
 			if (over.id !== active.id) {
 				const oldindex = playlist.images.findIndex(
-					(element) => element.id === active.id,
+					(element) => element.image_id === active.id,
 				);
 				const newIndex = playlist.images.findIndex(
-					(element) => element.id === over?.id,
+					(element) => element.image_id === over?.id,
 				);
 				const oldImage = playlist.images[oldindex];
 				const newImage = playlist.images[newIndex];
@@ -69,7 +56,7 @@ function PlaylistTrack() {
 				oldImage.time = newImage.time;
 				newImage.time = buffer;
 				const newArrayOrder = arrayMove(playlist.images, oldindex, newIndex);
-				if (playlist.configuration.type === "timeofday") {
+				if (playlist.configuration.type === "time_of_day") {
 					reorderSortingCriteria();
 					return;
 				}
@@ -82,74 +69,27 @@ function PlaylistTrack() {
 	const [playlistArray, sortingCriteria] = useMemo(() => {
 		const lastIndex = playlist.images.length - 1;
 		const sortingCriteria: number[] = [];
-		const elements = playlist.images.map((Image, index) => {
+		const elements = playlist.images.map((img, index) => {
 			const isLast =
-				playlist.configuration.type === "timeofday"
-					? lastAddedImageID === Image.id
+				playlist.configuration.type === "time_of_day"
+					? lastAddedImageID === img.image_id
 					: index === lastIndex;
-			sortingCriteria.push(Image.id);
+			sortingCriteria.push(img.image_id);
 			return (
-				<Suspense key={Image.id}>
+				<Suspense key={img.image_id}>
 					<MiniPlaylistCard
 						isLast={isLast}
 						reorderSortingCriteria={reorderSortingCriteria}
 						type={playlist.configuration.type}
 						index={index}
-						Image={Image}
+						playlistImage={img}
 					/>
 				</Suspense>
 			);
 		});
 		return [elements, sortingCriteria];
 	}, [playlist]);
-	const updatePlaylist = () => {
-		void goDaemon.getActivePlaylist(activeMonitor).then((playlistFromDB) => {
-			if (playlistFromDB === undefined) {
-				setEmptyPlaylist();
-				return;
-			}
 
-			if (playlistFromDB && playlistFromDB.images.length < 1) {
-				// Don't delete empty playlists - let the daemon handle this logic
-				return;
-			}
-
-			const imagesToStorePlaylist: rendererImage[] = [];
-			if (playlistFromDB && playlistFromDB.images) {
-				playlistFromDB.images.forEach(
-					(imageInActivePlaylist: DaemonPlaylistImage) => {
-					const imageToCheck = imagesArray.find((imageInGallery) => {
-						return imageInGallery.name === imageInActivePlaylist.name;
-					});
-					if (imageToCheck === undefined) {
-						return;
-					}
-					if (
-						playlistFromDB.type === PLAYLIST_TYPES.TIME_OF_DAY &&
-						imageInActivePlaylist.time !== undefined
-					) {
-						imageToCheck.time = imageInActivePlaylist.time;
-					}
-					imageToCheck.selection.isChecked = true;
-					imagesToStorePlaylist.push(imageToCheck);
-				},
-			);
-			}
-			const currentPlaylist: rendererPlaylist = {
-				name: playlistFromDB?.name || "",
-				configuration: {
-					type: (playlistFromDB?.type as PLAYLIST_TYPES_TYPE) || "timer",
-					order: (playlistFromDB?.order as PLAYLIST_ORDER_TYPES) || "ordered",
-					interval: playlistFromDB?.interval || null,
-					showAnimations: playlistFromDB?.showAnimations || false,
-					alwaysStartOnFirstImage: playlistFromDB?.alwaysStartOnFirstImage || false,
-				},
-				images: imagesToStorePlaylist,
-				activeMonitor,
-			};
-			setPlaylist(currentPlaylist);
-		});
-	};
 	useEffect(() => {
 		if (firstRender) {
 			firstRender = false;
@@ -159,14 +99,27 @@ function PlaylistTrack() {
 			clearPlaylist();
 		}
 	}, [playlist.images]);
+
 	useEffect(() => {
-		// Listen for playlist updates via Go daemon events
-		goDaemon.on("playlist_updated", () => {
-			updatePlaylist();
+		goDaemon.on("playlists_updated", () => {
+			// Re-fetch if we have an active playlist
+			if (playlist.id) {
+				goDaemon.getPlaylist(playlist.id).then((fullPlaylist) => {
+					if (fullPlaylist) {
+						setPlaylist({
+							id: fullPlaylist.id,
+							name: fullPlaylist.name,
+							configuration: fullPlaylist.configuration,
+							images: fullPlaylist.images,
+						});
+					}
+				});
+			}
 		});
-	}, [activeMonitor, imagesArray]);
+	}, [playlist.id]);
+
 	useEffect(() => {
-		if (playlist.configuration.type === "timeofday") {
+		if (playlist.configuration.type === "time_of_day") {
 			reorderSortingCriteria();
 		}
 	}, [playlist.images.length, playlist.configuration.type]);
@@ -197,9 +150,7 @@ function PlaylistTrack() {
 								onClick={
 									isActive
 										? undefined
-										: () => {
-												handleClickAddImages("file");
-											}
+										: () => handleClickAddImages("file")
 								}
 							>
 								Individual images
@@ -211,9 +162,7 @@ function PlaylistTrack() {
 								onClick={
 									isActive
 										? undefined
-										: () => {
-												handleClickAddImages("folder");
-											}
+										: () => handleClickAddImages("folder")
 								}
 							>
 								Image directory
@@ -232,14 +181,11 @@ function PlaylistTrack() {
 				</button>
 				<button
 					onClick={() => {
-						if (!activeMonitor?.name) {
-							console.error(
-								"🔴 PlaylistTrack: Cannot set random image - activeMonitor.name is undefined",
-								activeMonitor,
-							);
-							return;
-						}
-						goDaemon.randomImage(activeMonitor.name);
+						const monitor =
+							monitorSelection.selectedMonitors.length === 1
+								? monitorSelection.selectedMonitors[0]
+								: "*";
+						goDaemon.setRandomWallpaper(monitor, monitorSelection.mode);
 					}}
 					className="btn btn-primary rounded-lg uppercase"
 				>
@@ -251,10 +197,7 @@ function PlaylistTrack() {
 						<>
 							<motion.button
 								initial={{ y: 100 }}
-								transition={{
-									duration: 0.25,
-									ease: "easeInOut",
-								}}
+								transition={{ duration: 0.25, ease: "easeInOut" }}
 								animate={{ y: 0, opacity: 1 }}
 								exit={{ y: 100, opacity: 0 }}
 								onClick={() => {
@@ -267,10 +210,7 @@ function PlaylistTrack() {
 							</motion.button>
 							<motion.button
 								initial={{ y: 100 }}
-								transition={{
-									duration: 0.25,
-									ease: "easeInOut",
-								}}
+								transition={{ duration: 0.25, ease: "easeInOut" }}
 								animate={{ y: 0, opacity: 1 }}
 								exit={{ y: 100, opacity: 0 }}
 								onClick={() => {
@@ -288,17 +228,11 @@ function PlaylistTrack() {
 					{playlist.images.length > 1 && (
 						<motion.button
 							initial={{ y: 100, opacity: 0 }}
-							transition={{
-								duration: 0.25,
-								ease: "easeInOut",
-							}}
+							transition={{ duration: 0.25, ease: "easeInOut" }}
 							animate={{ y: 0, opacity: 1 }}
 							exit={{ y: 100, opacity: 0 }}
 							className="btn btn-error rounded-lg uppercase"
-							onClick={() => {
-								// Clear local playlist state - daemon handles stopping conflicts
-								clearPlaylist();
-							}}
+							onClick={() => clearPlaylist()}
 						>
 							Clear
 						</motion.button>

@@ -1,107 +1,76 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useState } from "react";
 import { playlistStore } from "../stores/playlist";
 import { useForm, type SubmitHandler } from "react-hook-form";
-import { imagesStore } from "../stores/images";
-import {
-	PLAYLIST_TYPES,
-	type PLAYLIST_TYPES_TYPE,
-	type PLAYLIST_ORDER_TYPES,
-} from "../../shared/types/playlist";
-import {
-	type rendererPlaylist,
-	type rendererImage,
-} from "../types/rendererTypes";
+import type { rendererPlaylist } from "../types/rendererTypes";
 import { useMonitorStore } from "../stores/monitors";
-import {
-	type DaemonPlaylistFromDB,
-	type DaemonClearPlaylistPayload,
-	type DaemonPlaylistImage,
-} from "../../shared/types/daemonEvents";
+import type { Playlist } from "../../electron/daemon-go-types";
+
 interface Input {
 	selectPlaylist: string;
 }
 
 interface Props {
-	playlistsInDB: DaemonPlaylistFromDB[];
+	playlistsInDB: Playlist[];
 	currentPlaylistName: string;
 	setShouldReload: React.Dispatch<React.SetStateAction<boolean>>;
 }
 
 const { goDaemon } = window.API_RENDERER;
-let firstRender = true;
+
 const LoadPlaylistModal = ({
 	playlistsInDB,
 	setShouldReload,
 	currentPlaylistName,
 }: Props) => {
 	const { clearPlaylist, setPlaylist } = playlistStore();
-	const { imagesMap } = imagesStore();
 	const [error, setError] = useState("");
 	const { register, handleSubmit, watch } = useForm<Input>();
-	const { activeMonitor } = useMonitorStore();
+	const { monitorSelection } = useMonitorStore();
 	const modalRef = useRef<HTMLDialogElement>(null);
 
 	const closeModal = () => {
 		modalRef.current?.close();
 	};
+
 	const onSubmit: SubmitHandler<Input> = async (data) => {
 		clearPlaylist();
 		const selectedPlaylist = playlistsInDB.find((playlist) => {
 			return playlist.name === data.selectPlaylist;
 		});
+
 		if (selectedPlaylist !== undefined) {
-			const imagesArrayFromPlaylist = await goDaemon.getPlaylistImages(
-				selectedPlaylist.id,
-			);
-			const imagesToStorePlaylist: rendererImage[] = [];
-			imagesArrayFromPlaylist.forEach((image: DaemonPlaylistImage) => {
-				const imageToStore = imagesMap.get(image.id);
-				if (imageToStore === undefined) return;
-				if (
-					selectedPlaylist.type === PLAYLIST_TYPES.TIME_OF_DAY &&
-					image.time !== undefined
-				) {
-					imageToStore.time = image.time;
-				}
-				imageToStore.selection.isChecked = true;
-				imagesToStorePlaylist.push(imageToStore);
-			});
+			// Fetch the full playlist with images
+			const fullPlaylist = await goDaemon.getPlaylist(selectedPlaylist.id);
+
 			const currentPlaylist: rendererPlaylist = {
-				name: selectedPlaylist.name,
-				configuration: {
-					type: selectedPlaylist.type as PLAYLIST_TYPES_TYPE,
-					order: selectedPlaylist.order as PLAYLIST_ORDER_TYPES | null,
-					interval: selectedPlaylist.interval ?? null,
-					showAnimations: Boolean(selectedPlaylist.showAnimations),
-					alwaysStartOnFirstImage: Boolean(
-						selectedPlaylist.alwaysStartOnFirstImage,
-					),
-				},
-				images: imagesToStorePlaylist,
-				activeMonitor,
+				id: fullPlaylist.id,
+				name: fullPlaylist.name,
+				configuration: fullPlaylist.configuration,
+				images: fullPlaylist.images,
 			};
-			if (activeMonitor.monitors.length < 1) {
+
+			if (monitorSelection.selectedMonitors.length < 1) {
 				setError("Select at least one display before setting a playlist");
-				setTimeout(() => {
-					setError("");
-				}, 3000);
+				setTimeout(() => setError(""), 3000);
 				return;
 			}
+
 			setPlaylist(currentPlaylist);
-			goDaemon.startPlaylist(currentPlaylist.name, activeMonitor);
+
+			// Start playlist on selected monitor
+			const monitor =
+				monitorSelection.selectedMonitors.length === 1
+					? monitorSelection.selectedMonitors[0]
+					: "*";
+			goDaemon.startPlaylist(
+				fullPlaylist.id,
+				monitor,
+				monitorSelection.mode,
+			);
 		}
 		closeModal();
 	};
-	useEffect(() => {
-		if (!firstRender) return;
-		firstRender = false;
-		// Listen for clear playlist events via Go daemon
-		goDaemon.on("clear_playlist", (...args: unknown[]) => {
-			const playlist = args[0] as DaemonClearPlaylistPayload;
-			clearPlaylist(playlist);
-			goDaemon.updateTray();
-		});
-	}, []);
+
 	return (
 		<dialog id="LoadPlaylistModal" className="modal" ref={modalRef}>
 			<div className="container modal-box flex flex-col">
@@ -160,7 +129,7 @@ const LoadPlaylistModal = ({
 								id="selectPlaylist"
 								className="select select-bordered basis-[90%] rounded-md text-lg"
 								defaultValue={
-									playlistsInDB && playlistsInDB.length > 0
+									playlistsInDB.length > 0
 										? playlistsInDB[0].name
 										: ""
 								}
@@ -171,36 +140,37 @@ const LoadPlaylistModal = ({
 								<option value="" disabled>
 									Select a playlist...
 								</option>
-								{playlistsInDB &&
-									playlistsInDB.map((playlist) => (
-										<option key={playlist.id} value={playlist.name}>
-											{playlist.name}
-										</option>
-									))}
+								{playlistsInDB.map((playlist) => (
+									<option key={playlist.id} value={playlist.name}>
+										{playlist.name}
+									</option>
+								))}
 							</select>
 							<button
 								type="button"
 								className="btn btn-error btn-md rounded-md uppercase"
 								onClick={async () => {
 									const current = watch("selectPlaylist");
-
-									// Validate that a playlist is selected
 									if (!current || current.trim() === "") {
 										setError("Please select a playlist to delete");
 										return;
 									}
+
+									const playlistToDelete = playlistsInDB.find(
+										(p) => p.name === current,
+									);
+									if (!playlistToDelete) return;
 
 									const shouldDelete = window.confirm(
 										`Are you sure to delete ${current}?`,
 									);
 									if (shouldDelete) {
 										try {
-											await goDaemon.deletePlaylist(current);
+											await goDaemon.deletePlaylist(playlistToDelete.id);
 											setShouldReload(true);
-											setError(""); // Clear any previous errors
+											setError("");
 
 											if (currentPlaylistName !== "") {
-												// Clear local playlist state - daemon handles stopping conflicts
 												clearPlaylist();
 											}
 										} catch (error) {

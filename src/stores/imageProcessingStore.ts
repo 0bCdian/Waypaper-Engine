@@ -6,6 +6,7 @@ interface ImageProcessingState {
 	processedImages: number;
 	currentImage: string | null;
 	startTime: number | null;
+	errors: number;
 }
 
 interface ImageProcessingActions {
@@ -23,6 +24,7 @@ export const useImageProcessingStore = create<
 	processedImages: 0,
 	currentImage: null,
 	startTime: null,
+	errors: 0,
 
 	startProcessing: (totalImages: number) =>
 		set({
@@ -31,13 +33,14 @@ export const useImageProcessingStore = create<
 			processedImages: 0,
 			currentImage: null,
 			startTime: Date.now(),
+			errors: 0,
 		}),
 
 	updateProgress: (processed: number, current: string) =>
-		set((_state) => ({
+		set({
 			processedImages: processed,
 			currentImage: current,
-		})),
+		}),
 
 	completeProcessing: () =>
 		set({
@@ -52,5 +55,6 @@ export const useImageProcessingStore = create<
 			processedImages: 0,
 			currentImage: null,
 			startTime: null,
+			errors: 0,
 		}),
 }));

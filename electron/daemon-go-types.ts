@@ -1,67 +1,98 @@
-// Go Daemon IPC API Type Definitions
-// Based on GO_DAEMON_IPC_API.md v2.0.0
+// Go Daemon HTTP API Type Definitions
+// Based on daemon/API_CONTRACT.md - HTTP over Unix socket REST API
 
 // ============================================================================
-// MESSAGE & RESPONSE STRUCTURES
+// ERROR FORMAT
 // ============================================================================
 
-export interface DaemonMessage {
-	action: string;
-	messageId?: number;
-	playlistId?: number;
-	playlistName?: string;
-	playlist?: RendererPlaylist;
-	imageIds?: number[];
-	imagePaths?: string[];
-	fileNames?: string[];
-	image?: ImageInfo;
-	activeMonitor?: MonitorSelection;
-	monitors?: string[];
-	monitorName?: string;
-	config?: ConfigData;
-	eventTypes?: string[];
-}
-
-export interface DaemonResponse<T = unknown> {
-	action: string;
-	messageId?: number;
-	data?: T;
-	error?: string;
-}
-
-export interface DaemonEvent<T = unknown> {
-	type: EventType;
-	payload: T;
+export interface DaemonError {
+	error: string;
+	code: number;
 }
 
 // ============================================================================
-// EVENT TYPES
+// PAGINATION
 // ============================================================================
 
-export type EventType =
-	// Image Processing Events
-	| "processing_started"
-	| "image_processed"
-	| "image_progress"
-	| "image_error"
-	| "processing_complete"
-	// Playlist Events
-	| "playlist_started"
-	| "playlist_stopped"
-	| "playlist_paused"
-	| "playlist_resumed"
-	| "playlist_image_changed"
-	// Wallpaper Events
-	| "wallpaper_changed"
-	| "image_changed"
-	// Monitor Events
-	| "monitor_changed"
-	| "monitor_disconnected"
-	// Configuration Events
-	| "config_changed"
-	// Gallery Events
-	| "images_updated"
-	| "playlists_updated";
+export interface Pagination {
+	page: number;
+	per_page: number;
+	total_items: number;
+	total_pages: number;
+}
+
+export interface PaginatedResponse<T> {
+	data: T[];
+	pagination: Pagination;
+}
+
+// ============================================================================
+// IMAGE QUERY PARAMS
+// ============================================================================
+
+export interface ImageQueryParams {
+	page?: number;
+	per_page?: number;
+	sort_by?: "name" | "imported_at" | "file_size";
+	sort_order?: "asc" | "desc";
+	media_type?: "image" | "video" | "gif";
+	search?: string;
+	tags?: string;
+}
+
+// ============================================================================
+// IMAGE TYPES
+// ============================================================================
+
+export interface Image {
+	id: number;
+	name: string;
+	path: string;
+	media_type: string;
+	width: number;
+	height: number;
+	format: string;
+	file_size: number;
+	checksum: string;
+	tags: string[];
+	imported_at: string;
+	source_path: string;
+	is_selected: boolean;
+	thumbnails: ImageThumbnails;
+}
+
+export interface ImageThumbnails {
+	default: string;
+	"720p": string;
+	"1080p": string;
+	"1440p": string;
+	"4k": string;
+}
+
+export interface ImageHistoryEntry {
+	id: number;
+	image_id: number;
+	image_name: string;
+	monitors: string[];
+	mode: MonitorMode;
+	set_at: string;
+	source: ImageHistorySource;
+	backend: string;
+}
+
+export type ImageHistorySourceType =
+	| "manual"
+	| "random"
+	| "playlist"
+	| "history"
+	| "restore";
+
+export interface ImageHistorySource {
+	type: ImageHistorySourceType;
+	playlist_id?: number;
+	playlist_name?: string;
+	history_id?: number;
+}
 
 // ============================================================================
 // MONITOR TYPES
@@ -73,193 +104,132 @@ export interface Monitor {
 	name: string;
 	width: number;
 	height: number;
-	x?: number;
-	y?: number;
-	scale?: number;
-	refreshRate?: number;
-}
-
-export interface MonitorSelection {
-	id: string; // Monitor name or "*" for all monitors
-	monitors: Monitor[];
-	mode: MonitorMode;
+	x: number;
+	y: number;
+	scale: number;
+	refresh_rate: number;
+	transform: number;
 }
 
 // ============================================================================
 // PLAYLIST TYPES
 // ============================================================================
 
-export type PlaylistType =
-	| "timer"
-	| "never"
-	| "manual"
-	| "time_of_day"
-	| "day_of_week"
-	| "timeofday" // Legacy format
-	| "dayofweek"; // Legacy format
-
+export type PlaylistType = "timer" | "manual" | "time_of_day" | "day_of_week";
 export type PlaylistOrder = "ordered" | "random";
-
-export interface RendererImage {
-	id: number;
-	time?: number; // Minutes since midnight (0-1439) for time_of_day playlists
-}
 
 export interface PlaylistConfiguration {
 	type: PlaylistType;
-	interval?: number; // Seconds for timer playlists
+	interval?: number;
 	order?: PlaylistOrder;
-	showAnimations: boolean;
-	alwaysStartOnFirstImage: boolean;
-	currentImageIndex: number;
-}
-
-export interface RendererPlaylist {
-	name: string;
-	images: RendererImage[];
-	configuration: PlaylistConfiguration;
-	activeMonitor?: MonitorSelection;
-}
-
-export interface PlaylistMetadata {
-	version: string;
-	createdAt: string;
-	lastModified: string;
+	show_animations: boolean;
+	always_start_on_first_image: boolean;
 }
 
 export interface PlaylistImage {
-	imageId: string;
-	imagePath: string;
-	mediaType: string;
-	index: number;
-	addedAt: string;
-	time?: number; // For time_of_day playlists
+	image_id: number;
+	time?: number;
 }
 
-export interface StoredPlaylist {
-	id: string;
+export interface Playlist {
+	id: number;
 	name: string;
-	metadata: PlaylistMetadata;
-	configuration: {
-		type: string;
-		interval?: number;
-		showAnimations: boolean;
-		alwaysStartOnFirstImage: boolean;
-		order: string;
-	};
+	created_at: string;
+	updated_at: string;
+	configuration: PlaylistConfiguration;
 	images: PlaylistImage[];
 }
 
-export interface RunningPlaylistInfo {
+export interface ActivePlaylistInstance {
 	playlist_id: number;
 	playlist_name: string;
-	active_monitor: MonitorSelection;
+	current_index: number;
+	current_image_id: number;
+	previous_image_id: number | null;
+	next_image_id: number | null;
+	total_images: number;
 	paused: boolean;
-}
-
-export interface PlaylistDiagnostics {
-	monitor: string;
-	playlistId: number;
-	playlistName: string;
-	currentIndex: number;
-	paused: boolean;
-	totalImages: number;
-	status: string;
-}
-
-// ============================================================================
-// IMAGE TYPES
-// ============================================================================
-
-export interface ImageInfo {
-	id: number;
-	name: string;
-}
-
-export interface ImageHistory {
-	imageId: string;
-	timestamp: string;
-	monitorName: string;
+	mode: MonitorMode;
+	started_at: string;
+	next_change_at: string | null;
 }
 
 // ============================================================================
 // CONFIGURATION TYPES
 // ============================================================================
 
-export interface ConfigData {
-	// For single key updates (legacy)
-	configSection?: string;
-	configKey?: string;
-	configValue?: unknown;
-
-	// For partial bulk updates (modern)
-	frontendConfig?: {
-		app?: Partial<AppConfig>;
-		daemon?: Partial<DaemonConfig>;
-		backend?: Partial<BackendConfig>;
-		monitors?: Partial<MonitorsConfig>;
-	};
-}
-
 export interface AppConfig {
 	kill_daemon_on_exit: boolean;
 	notifications: boolean;
 	start_minimized: boolean;
 	minimize_instead_of_close: boolean;
-	show_monitor_modal_on_start: boolean;
 	images_per_page: number;
 	theme: "light" | "dark" | "system";
-	sort_by: "name" | "date" | "size";
-	sort_order: "asc" | "desc";
 	image_history_limit: number;
+	sort_by: "name" | "imported_at" | "file_size";
+	sort_order: "asc" | "desc";
 }
 
 export interface DaemonConfig {
-	database_path: string;
 	images_dir: string;
 	thumbnails_dir: string;
-	monitors_state_file: string;
+	database_dir: string;
 	socket_path: string;
 	log_level: "debug" | "info" | "warn" | "error";
 	log_file: string;
-	log_max_size: number;
-	log_max_age: number;
+	log_max_size_mb: number;
 	log_max_backups: number;
-	compositor: "auto" | "x11" | "wayland";
+	compositor: "auto" | "wayland" | "x11";
+}
+
+export interface BackendSection {
+	type: string;
 }
 
 export interface SwwwConfig {
-	transition_type:
-		| "simple"
-		| "wipe"
-		| "grow"
-		| "outer"
-		| "wave"
-		| "none"
-		| "fade";
+	transition_type: string;
 	transition_step: number;
 	transition_duration: number;
+	transition_fps: number;
 	transition_angle: number;
-	transition_pos: "center" | "top" | "bottom" | "left" | "right";
+	transition_pos: string;
 	transition_bezier: string;
 	transition_wave: string;
-}
-
-export interface BackendConfig {
-	type: "swww" | "hyprpaper" | "swaybg" | "feh" | "nitrogen" | "custom";
-	swww: SwwwConfig;
+	resize: string;
+	fill_color: string;
+	filter_type: string;
+	invert_y: boolean;
 }
 
 export interface MonitorsConfig {
 	selected_monitors: string[];
-	image_set_type: "individual" | "extend" | "clone";
+	image_set_type: MonitorMode;
 }
 
 export interface UnifiedConfig {
 	app: AppConfig;
 	daemon: DaemonConfig;
-	backend: BackendConfig;
+	backend: BackendSection;
 	monitors: MonitorsConfig;
+}
+
+// ============================================================================
+// BACKEND TYPES
+// ============================================================================
+
+export interface BackendCapabilities {
+	compositors: string[];
+	media_types: string[];
+	transitions: boolean;
+	per_monitor: boolean;
+	native_extend: boolean;
+	daemon_process: boolean;
+}
+
+export interface BackendInfo {
+	name: string;
+	available: boolean;
+	capabilities: BackendCapabilities;
 }
 
 // ============================================================================
@@ -267,62 +237,153 @@ export interface UnifiedConfig {
 // ============================================================================
 
 export interface DaemonInfo {
-	status: string;
 	version: string;
-}
-
-export interface DaemonStatus {
-	running: boolean;
+	pid: number;
+	hostname: string;
 	uptime: string;
-	version: string;
-	monitors: number;
-	playlists: number;
-	images: number;
+	go_version: string;
+	os: string;
+	arch: string;
+}
+
+export interface HealthResponse {
+	status: "ok";
+}
+
+export interface ShutdownResponse {
+	status: "shutting_down";
 }
 
 // ============================================================================
-// EVENT PAYLOAD TYPES
+// EVENT TYPES (SSE)
 // ============================================================================
 
-export interface PlaylistStartedPayload {
-	playlistID: number;
-	monitorName: string;
-}
+export type EventType =
+	// Image Processing Events
+	| "processing_started"
+	| "image_processed"
+	| "image_error"
+	| "processing_complete"
+	// Wallpaper Events
+	| "wallpaper_changed"
+	// Playlist Events
+	| "playlist_started"
+	| "playlist_stopped"
+	| "playlist_paused"
+	| "playlist_resumed"
+	| "playlist_image_changed"
+	// Monitor Events
+	| "monitor_connected"
+	| "monitor_disconnected"
+	// Config Events
+	| "config_changed"
+	// Gallery Events
+	| "images_updated"
+	| "playlists_updated";
 
-export interface PlaylistStoppedPayload {
-	monitorName: string;
-	playlistID: number;
-}
+// ============================================================================
+// EVENT PAYLOADS
+// ============================================================================
 
-export interface PlaylistImageChangedPayload {
-	monitorName: string;
-	playlistID: number;
-	imageIndex: number;
-	imageID: string;
+export interface ProcessingStartedPayload {
+	total: number;
 }
 
 export interface ImageProcessedPayload {
-	originalFileName: string;
-	uniqueFileName: string;
-	width: number;
-	height: number;
-	format: string;
+	id: number;
+	name: string;
+	index: number;
+	total: number;
 }
 
-export interface ImagesUpdatedPayload {
-	totalAdded?: number;
-	totalDeleted?: number;
+export interface ImageErrorPayload {
+	path: string;
+	error: string;
 }
 
-export interface PlaylistsUpdatedPayload {
-	action: "saved" | "deleted";
-	playlistId: string;
-	playlistName: string;
+export interface ProcessingCompletePayload {
+	processed: number;
+	errors: number;
+	total: number;
+}
+
+export interface WallpaperChangedPayload {
+	image_id: number;
+	monitors: string[];
+	mode: MonitorMode;
+	source: ImageHistorySourceType;
+	backend: string;
+}
+
+export interface PlaylistEventPayload {
+	playlist_id: number;
+	monitor: string;
+}
+
+export interface PlaylistImageChangedPayload {
+	playlist_id: number;
+	image_id: number;
+	monitor: string;
+}
+
+export interface MonitorEventPayload {
+	name: string;
 }
 
 export interface ConfigChangedPayload {
-	section: string;
-	key: string;
-	value: unknown;
-	timestamp: number;
+	sections: string[];
+}
+
+// ============================================================================
+// REQUEST/RESPONSE TYPES
+// ============================================================================
+
+export interface SetWallpaperRequest {
+	image_id: number;
+	monitor?: string;
+	mode?: MonitorMode;
+}
+
+export interface SetWallpaperResponse {
+	status: "set";
+	image_id: number;
+	monitor: string;
+	mode: MonitorMode;
+}
+
+export interface StartPlaylistRequest {
+	monitor?: {
+		id?: string;
+		mode?: MonitorMode;
+	};
+}
+
+export interface CreatePlaylistRequest {
+	name: string;
+	configuration: PlaylistConfiguration;
+	images: PlaylistImage[];
+}
+
+export interface UpdatePlaylistRequest {
+	name?: string;
+	configuration?: Partial<PlaylistConfiguration>;
+	images?: PlaylistImage[];
+}
+
+export interface UpdateImageRequest {
+	name?: string;
+	tags?: string[];
+	is_selected?: boolean;
+}
+
+export interface ImportImagesRequest {
+	paths: string[];
+}
+
+export interface DeleteImagesRequest {
+	ids: number[];
+}
+
+export interface SelectAllImagesRequest {
+	selected: boolean;
 }

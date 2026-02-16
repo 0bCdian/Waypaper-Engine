@@ -1,9 +1,22 @@
 import { readFileSync, existsSync, watch, FSWatcher } from "node:fs";
 import { join } from "node:path";
-import { homedir } from "node:os";
+import { homedir, tmpdir } from "node:os";
 import toml from "toml";
 import { EventEmitter } from "node:events";
 import { logger } from "./setup";
+
+/**
+ * Returns the default socket path matching the Go daemon's XDG logic:
+ * $XDG_RUNTIME_DIR/waypaper-engine.sock
+ * Falls back to /tmp/waypaper-engine-<uid>.sock if XDG_RUNTIME_DIR is unset.
+ */
+function defaultSocketPath(): string {
+	const runtimeDir = process.env.XDG_RUNTIME_DIR;
+	if (runtimeDir) {
+		return join(runtimeDir, "waypaper-engine.sock");
+	}
+	return join(tmpdir(), `waypaper-engine-${process.getuid?.() ?? 0}.sock`);
+}
 
 export interface AppConfig {
 	kill_daemon_on_exit: boolean;
@@ -128,7 +141,7 @@ export class ConfigReader extends EventEmitter {
 					config.daemon.monitors_state_file,
 					homeDir,
 				),
-				socket_path: config.daemon.socket_path,
+				socket_path: this.expandPath(config.daemon.socket_path, homeDir),
 			},
 		};
 	}
@@ -201,7 +214,7 @@ export class ConfigReader extends EventEmitter {
 				images_dir: imagesDir,
 				thumbnails_dir: thumbnailsDir,
 				monitors_state_file: monitorsFile,
-				socket_path: "/tmp/waypaper-engine.sock",
+				socket_path: defaultSocketPath(),
 				log_level: "info",
 				log_file: logFile,
 				log_max_size: 10,
@@ -240,7 +253,7 @@ export class ConfigReader extends EventEmitter {
 
 		return isPackaged
 			? join(resourcesPath, "waypaper-daemon")
-			: join(process.cwd(), "daemon-go", "waypaper-daemon");
+			: join(process.cwd(), "daemon", "waypaper-daemon");
 	}
 
 	getSocketPath(): string {

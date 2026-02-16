@@ -1,29 +1,24 @@
 import { create } from "zustand";
-import {
-	type rendererImage,
-	type rendererPlaylist,
-	type configuration,
-} from "../types/rendererTypes";
-import { type ActiveMonitor, type Monitor } from "../../shared/types/monitor";
-import { useMonitorStore } from "./monitors";
-const imagesInitial: rendererImage[] = [];
-const configurationInitial: rendererPlaylist["configuration"] = {
+import type {
+	PlaylistImage,
+	PlaylistConfiguration,
+} from "../../electron/daemon-go-types";
+import { type rendererPlaylist } from "../types/rendererTypes";
+
+const configurationInitial: PlaylistConfiguration = {
 	type: "timer",
-	interval: 3_600_000,
+	interval: 300,
 	order: "ordered",
-	showAnimations: true,
-	alwaysStartOnFirstImage: false,
+	show_animations: true,
+	always_start_on_first_image: false,
 };
+
 const initialPlaylistState: rendererPlaylist = {
-	images: imagesInitial,
+	images: [],
 	configuration: configurationInitial,
 	name: "",
-	activeMonitor: {
-		name: "",
-		extendAcrossMonitors: false,
-		monitors: [] as Monitor[],
-	},
 };
+
 interface State {
 	playlist: rendererPlaylist;
 	isEmpty: boolean;
@@ -33,19 +28,15 @@ interface State {
 }
 
 interface Actions {
-	addImagesToPlaylist: (Images: rendererImage[]) => void;
-	setConfiguration: (newConfiguration: configuration) => void;
+	addImagesToPlaylist: (imageIds: number[]) => void;
+	setConfiguration: (newConfiguration: PlaylistConfiguration) => void;
 	setName: (newName: string) => void;
-	movePlaylistArrayOrder: (newlyOrderedArray: rendererImage[]) => void;
-	removeImagesFromPlaylist: (Images: Set<number>) => void;
-	clearPlaylist: (playlistToDelete?: {
-		name: string;
-		activeMonitor: ActiveMonitor;
-	}) => void;
+	movePlaylistArrayOrder: (newlyOrderedArray: PlaylistImage[]) => void;
+	removeImagesFromPlaylist: (imageIds: Set<number>) => void;
+	clearPlaylist: () => void;
 	readPlaylist: () => rendererPlaylist;
 	setPlaylist: (newPlaylist: rendererPlaylist) => void;
 	setEmptyPlaylist: () => void;
-	setActiveMonitorPlaylist: (activeMonitor: ActiveMonitor) => void;
 }
 
 export const playlistStore = create<State & Actions>()((set, get) => ({
@@ -54,28 +45,28 @@ export const playlistStore = create<State & Actions>()((set, get) => ({
 	playlistImagesSet: new Set<number>(),
 	playlistImagesTimeSet: new Set<number>(),
 	lastAddedImageID: -1,
-	addImagesToPlaylist: (Images) => {
+
+	addImagesToPlaylist: (imageIds: number[]) => {
 		const playlistImagesSet = get().playlistImagesSet;
 		const playlistImagesTimeSet = get().playlistImagesTimeSet;
 		const currentPlaylist = get().playlist;
-		if (currentPlaylist.configuration.type === "dayofweek") {
+
+		if (currentPlaylist.configuration.type === "day_of_week") {
 			const availableSpace = 7 - currentPlaylist.images.length;
 			if (availableSpace <= 0) return;
-			else {
-				Images = Images.slice(0, availableSpace);
-			}
+			imageIds = imageIds.slice(0, availableSpace);
 		}
-		const imagesToAdd: rendererImage[] = [];
-		const highestTimeStamp = Math.max(...playlistImagesTimeSet);
+
+		const imagesToAdd: PlaylistImage[] = [];
 		const date = new Date();
 		let initialTimeStamp = Math.max(
-			highestTimeStamp,
+			...[...playlistImagesTimeSet],
 			date.getHours() * 60 + date.getMinutes(),
 		);
-		for (let current = 0; current < Images.length; current++) {
-			if (playlistImagesSet.has(Images[current].id)) {
-				continue;
-			}
+
+		for (const imageId of imageIds) {
+			if (playlistImagesSet.has(imageId)) continue;
+
 			initialTimeStamp += 5;
 			if (initialTimeStamp >= 1440) {
 				initialTimeStamp -= 1439;
@@ -83,95 +74,77 @@ export const playlistStore = create<State & Actions>()((set, get) => ({
 			while (playlistImagesTimeSet.has(initialTimeStamp)) {
 				initialTimeStamp++;
 			}
-			Images[current].time = initialTimeStamp;
-			Images[current].selection.isChecked = true;
-			playlistImagesSet.add(Images[current].id);
+
+			playlistImagesSet.add(imageId);
 			playlistImagesTimeSet.add(initialTimeStamp);
-			imagesToAdd.push(Images[current]);
+
+			imagesToAdd.push({
+				image_id: imageId,
+				time: initialTimeStamp,
+			});
 		}
+
 		set((state) => {
 			const newImages = [...state.playlist.images, ...imagesToAdd];
-			const newPlaylist = {
-				...state.playlist,
-				images: newImages,
-			};
+			const newPlaylist = { ...state.playlist, images: newImages };
 			return {
 				playlist: newPlaylist,
 				isEmpty: false,
 				playlistImagesSet: new Set(playlistImagesSet),
 				playlistImagesTimeSet: new Set(playlistImagesTimeSet),
-				lastAddedImageID: newPlaylist.images.at(-1)?.id || -1,
+				lastAddedImageID: newPlaylist.images.at(-1)?.image_id || -1,
 			};
 		});
 	},
+
 	setConfiguration: (newConfiguration) => {
-		set((state) => {
-			return {
-				playlist: { ...state.playlist, configuration: newConfiguration },
-			};
-		});
-	},
-	setName: (newName) => {
-		set((state) => {
-			return { playlist: { ...state.playlist, name: newName } };
-		});
-	},
-	setActiveMonitorPlaylist: (activeMonitor) => {
 		set((state) => ({
-			playlist: { ...state.playlist, activeMonitor },
+			playlist: { ...state.playlist, configuration: newConfiguration },
 		}));
 	},
+
+	setName: (newName) => {
+		set((state) => ({
+			playlist: { ...state.playlist, name: newName },
+		}));
+	},
+
 	movePlaylistArrayOrder: (newlyOrderedArray) => {
 		set((state) => ({
 			playlist: { ...state.playlist, images: newlyOrderedArray },
 		}));
 	},
-	removeImagesFromPlaylist: (Images) => {
+
+	removeImagesFromPlaylist: (imageIds) => {
 		set((state) => {
-			const newImagesArray = state.playlist.images.filter((image) => {
-				const shouldNotFilter = !Images.has(image.id);
-				if (Images.has(image.id) && image.time !== null) {
-					state.playlistImagesTimeSet.delete(image.time);
+			const newImagesArray = state.playlist.images.filter((img) => {
+				const shouldKeep = !imageIds.has(img.image_id);
+				if (!shouldKeep && img.time != null) {
+					state.playlistImagesTimeSet.delete(img.time);
 				}
-				return shouldNotFilter;
+				return shouldKeep;
 			});
-			Images.forEach((id) => {
+			imageIds.forEach((id) => {
 				state.playlistImagesSet.delete(id);
 			});
 			return {
-				playlist: {
-					...state.playlist,
-					images: newImagesArray,
-				},
+				playlist: { ...state.playlist, images: newImagesArray },
 				playlistImagesSet: new Set(state.playlistImagesSet),
 				playlistImagesTimeSet: new Set(state.playlistImagesTimeSet),
 			};
 		});
 	},
-	clearPlaylist: (playlistToDelete) => {
-		const activeMonitor = useMonitorStore.getState().activeMonitor;
-		const currentPlaylist = get().playlist;
-		if (
-			playlistToDelete === undefined ||
-			(currentPlaylist.name === playlistToDelete.name &&
-				currentPlaylist.activeMonitor.name ===
-					playlistToDelete.activeMonitor.name)
-		) {
-			set(() => {
-				const emptyPlaylist = {
-					...initialPlaylistState,
-					activeMonitor,
-				};
-				return {
-					playlist: emptyPlaylist,
-					isEmpty: true,
-					playlistImagesSet: new Set<number>(),
-					playlistImagesTimeSet: new Set<number>(),
-					lastAddedImageID: -1,
-				};
-			});
-		}
+
+	clearPlaylist: () => {
+		set(() => ({
+			playlist: initialPlaylistState,
+			isEmpty: true,
+			playlistImagesSet: new Set<number>(),
+			playlistImagesTimeSet: new Set<number>(),
+			lastAddedImageID: -1,
+		}));
 	},
+
 	readPlaylist: () => {
 		return get().playlist;
 	},
@@ -181,9 +154,10 @@ export const playlistStore = create<State & Actions>()((set, get) => ({
 		const newPlaylistImagesTimeSet = new Set<number>();
 		const date = new Date();
 		let initialTimeStamp = date.getHours() * 60 + date.getMinutes();
-		newPlaylist.images.forEach((image) => {
-			newPlaylistImagesSet.add(image.id);
-			if (image.time === null || image.time === undefined) {
+
+		newPlaylist.images.forEach((img) => {
+			newPlaylistImagesSet.add(img.image_id);
+			if (img.time == null) {
 				initialTimeStamp += 5;
 				if (initialTimeStamp >= 1440) {
 					initialTimeStamp -= 1439;
@@ -191,10 +165,11 @@ export const playlistStore = create<State & Actions>()((set, get) => ({
 				while (newPlaylistImagesTimeSet.has(initialTimeStamp)) {
 					initialTimeStamp++;
 				}
-				image.time = initialTimeStamp;
+				img.time = initialTimeStamp;
 			}
-			newPlaylistImagesTimeSet.add(image.time);
+			newPlaylistImagesTimeSet.add(img.time);
 		});
+
 		set(() => ({
 			playlist: newPlaylist,
 			isEmpty: false,
@@ -202,6 +177,7 @@ export const playlistStore = create<State & Actions>()((set, get) => ({
 			playlistImagesTimeSet: newPlaylistImagesTimeSet,
 		}));
 	},
+
 	setEmptyPlaylist: () => {
 		set(() => ({
 			playlist: initialPlaylistState,

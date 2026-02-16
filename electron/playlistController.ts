@@ -1,7 +1,7 @@
 import { EventEmitter } from "events";
-import { type ActiveMonitor } from "../shared/types/monitor";
 import { logger } from "../globals/setup";
 import { goDaemonClient } from "./goDaemonClient";
+import type { MonitorMode } from "./daemon-go-types";
 
 export class PlaylistController extends EventEmitter {
 	createTray: (() => Promise<void>) | undefined;
@@ -10,57 +10,66 @@ export class PlaylistController extends EventEmitter {
 		this.createTray = trayReference;
 	}
 
-	async startPlaylist(playlist: {
-		name: string;
-		activeMonitor: ActiveMonitor;
-	}) {
+	async startPlaylist(playlistId: number, monitor: string = "*", mode: MonitorMode = "individual") {
 		try {
-			await goDaemonClient.startPlaylist(playlist.name, playlist.activeMonitor);
+			await goDaemonClient.startPlaylist(playlistId, monitor, mode);
 			if (this.createTray !== undefined) void this.createTray();
 		} catch (error) {
 			logger.error("Failed to start playlist:", error);
 		}
 	}
 
-	async pausePlaylist(playlist: {
-		name: string;
-		activeMonitor: ActiveMonitor;
-	}) {
+	async pausePlaylist(playlistId: number) {
 		try {
-			await goDaemonClient.pausePlaylist(playlist.activeMonitor);
+			await goDaemonClient.pausePlaylist(playlistId);
 			if (this.createTray !== undefined) void this.createTray();
 		} catch (error) {
 			logger.error("Failed to pause playlist:", error);
 		}
 	}
 
-	async resumePlaylist(playlist: {
-		name: string;
-		activeMonitor: ActiveMonitor;
-	}) {
+	async resumePlaylist(playlistId: number) {
 		try {
-			await goDaemonClient.resumePlaylist(playlist.activeMonitor);
+			await goDaemonClient.resumePlaylist(playlistId);
 			if (this.createTray !== undefined) void this.createTray();
 		} catch (error) {
 			logger.error("Failed to resume playlist:", error);
 		}
 	}
 
-	async stopPlaylist(playlist: { name: string; activeMonitor: ActiveMonitor }) {
+	async stopPlaylist(playlistId: number) {
 		try {
-			await goDaemonClient.stopPlaylist(playlist.activeMonitor);
+			await goDaemonClient.stopPlaylist(playlistId);
 			if (this.createTray !== undefined) void this.createTray();
 		} catch (error) {
 			logger.error("Failed to stop playlist:", error);
 		}
 	}
 
-	async stopPlaylistByName(playlistName: string) {
+	async nextImage(playlistId: number) {
 		try {
-			await goDaemonClient.stopPlaylistByName(playlistName);
+			await goDaemonClient.nextPlaylistImage(playlistId);
 			if (this.createTray !== undefined) void this.createTray();
 		} catch (error) {
-			logger.error("Failed to stop playlist by name:", error);
+			logger.error("Failed to get next image:", error);
+		}
+	}
+
+	async previousImage(playlistId: number) {
+		try {
+			await goDaemonClient.previousPlaylistImage(playlistId);
+			if (this.createTray !== undefined) void this.createTray();
+		} catch (error) {
+			logger.error("Failed to get previous image:", error);
+		}
+	}
+
+	async randomImage(monitor: string = "*", mode: MonitorMode = "individual") {
+		try {
+			await goDaemonClient.setRandomWallpaper(monitor, mode);
+			if (this.createTray !== undefined) void this.createTray();
+		} catch (error) {
+			logger.error("Failed to set random image:", error);
 		}
 	}
 
@@ -73,71 +82,20 @@ export class PlaylistController extends EventEmitter {
 		}
 	}
 
-	async stopPlaylistByMonitorName(monitors: string[]) {
+	async stopAllPlaylists() {
 		try {
-			// Stop playlist for each monitor
-			await Promise.all(
-				monitors.map(monitor => goDaemonClient.stopPlaylistByMonitorName(monitor))
-			);
+			await goDaemonClient.stopAllPlaylists();
 			if (this.createTray !== undefined) void this.createTray();
 		} catch (error) {
-			logger.error("Failed to stop playlist by monitor name:", error);
+			logger.error("Failed to stop all playlists:", error);
 		}
 	}
 
-	async stopPlaylistOnRemovedMonitors() {
+	async shutdown() {
 		try {
-			await goDaemonClient.stopPlaylistOnRemovedMonitors();
-			if (this.createTray !== undefined) void this.createTray();
+			await goDaemonClient.shutdown();
 		} catch (error) {
-			logger.error("Failed to stop playlist on removed monitors:", error);
-		}
-	}
-
-	async nextImage(playlist: { name: string; activeMonitor: ActiveMonitor }) {
-		try {
-			await goDaemonClient.nextImage(playlist.activeMonitor);
-			if (this.createTray !== undefined) void this.createTray();
-		} catch (error) {
-			logger.error("Failed to get next image:", error);
-		}
-	}
-
-	async previousImage(playlist: {
-		name: string;
-		activeMonitor: ActiveMonitor;
-	}) {
-		try {
-			await goDaemonClient.previousImage(playlist.activeMonitor);
-			if (this.createTray !== undefined) void this.createTray();
-		} catch (error) {
-			logger.error("Failed to get previous image:", error);
-		}
-	}
-
-	async randomImage(activeMonitor: ActiveMonitor) {
-		try {
-			await goDaemonClient.randomImage(activeMonitor);
-			if (this.createTray !== undefined) void this.createTray();
-		} catch (error) {
-			logger.error("Failed to set random image:", error);
-		}
-	}
-
-	async killDaemon() {
-		try {
-			await goDaemonClient.killDaemon();
-		} catch (error) {
-			logger.error("Failed to kill daemon:", error);
-		}
-	}
-
-	async updateConfig() {
-		try {
-			await goDaemonClient.updateConfig();
-			if (this.createTray !== undefined) void this.createTray();
-		} catch (error) {
-			logger.error("Failed to update config:", error);
+			logger.error("Failed to shutdown daemon:", error);
 		}
 	}
 }

@@ -1,14 +1,16 @@
-import { type imagesObject } from "../../shared/types";
-import { type Formats } from "../../shared/types/image";
+import type {
+	Image,
+	Playlist,
+	PlaylistConfiguration,
+	PlaylistImage,
+	MonitorMode,
+	Pagination,
+} from "../../electron/daemon-go-types";
 import {
 	type PLAYLIST_TYPES_TYPE,
 	type PLAYLIST_ORDER_TYPES,
 } from "../../shared/types/playlist";
-import {
-	type ActiveMonitor,
-	type MonitorSelection,
-} from "../../shared/types/monitor";
-import { type JsonStoreImage } from "../../shared/types/daemon";
+import { type Formats } from "../../shared/types/image";
 
 export enum STORE_ACTIONS {
 	SET_IMAGES_ARRAY = "SET_IMAGES_ARRAY",
@@ -17,35 +19,20 @@ export enum STORE_ACTIONS {
 	RESET_IMAGES_ARRAY = "RESET_IMAGES_ARRAY",
 }
 
-// Updated configuration to match new daemon API
-export interface configuration {
-	type: PLAYLIST_TYPES_TYPE;
-	interval: number | null; // Seconds for timer playlists
-	order: PLAYLIST_ORDER_TYPES | null;
-	showAnimations: boolean;
-	alwaysStartOnFirstImage: boolean;
-	currentImageIndex: number; // Added for v2.0.0 API
-}
-
-// Renderer image extends the shared JsonStoreImage type
-export interface rendererImage extends JsonStoreImage {
+// Renderer image extends the daemon Image with playlist-specific time
+export interface rendererImage extends Image {
 	time: number | null; // Minutes since midnight (0-1439) for time_of_day playlists
 }
 
-export interface ImageThumbnails {
-	"720p": string;
-	"1080p": string;
-	"1440p": string;
-	"4k": string;
-	fallback: string;
-}
 export interface rendererPlaylist {
-	images: rendererImage[];
-	configuration: configuration;
+	id?: number; // Undefined for new playlists, set for existing
 	name: string;
-	activeMonitor: ActiveMonitor | MonitorSelection; // Support both legacy and new API
+	images: PlaylistImage[];
+	configuration: PlaylistConfiguration;
 }
-export type monitorSelectType = "individual" | "clone" | "extend";
+
+export type monitorSelectType = MonitorMode;
+
 export interface Filters {
 	order: "asc" | "desc";
 	type: "name" | "id";
@@ -63,16 +50,9 @@ export interface advancedFilters {
 }
 
 export type resolutionConstraints = "all" | "exact" | "moreThan" | "lessThan";
+
 export interface state {
 	imagesArray: rendererImage[];
 	filters: Filters;
+	pagination: Pagination | null;
 }
-
-export type action =
-	| { type: STORE_ACTIONS.SET_IMAGES_ARRAY; payload: rendererImage[] }
-	| {
-			type: STORE_ACTIONS.SET_SKELETONS_TO_SHOW;
-			payload: imagesObject | undefined;
-	  }
-	| { type: STORE_ACTIONS.SET_FILTERS; payload: Filters }
-	| { type: STORE_ACTIONS.RESET_IMAGES_ARRAY; payload: rendererImage[] };

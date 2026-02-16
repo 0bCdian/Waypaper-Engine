@@ -1,7 +1,10 @@
 import { create } from "zustand";
 import { type Filters, type rendererImage } from "../types/rendererTypes";
 import { playlistStore } from "./playlist";
+import type { Pagination, ImageQueryParams } from "../../electron/daemon-go-types";
+
 const { goDaemon } = window.API_RENDERER;
+
 const initialFilters: Filters = {
 	order: "desc",
 	type: "id",
@@ -26,6 +29,7 @@ const initialFilters: Filters = {
 		},
 	},
 };
+
 interface State {
 	imagesArray: rendererImage[];
 	imagesMap: Map<number, rendererImage>;
@@ -34,6 +38,7 @@ interface State {
 	isQueried: boolean;
 	filters: Filters;
 	selectedImages: Set<number>;
+	pagination: Pagination | null;
 	addImages: (newImages: rendererImage[]) => void;
 	addImage: (newImage: rendererImage) => void;
 	setFilters: (newFilters: Filters) => void;
@@ -41,7 +46,7 @@ interface State {
 	setFilteredImages: (filteredImages: rendererImage[]) => void;
 	setSelectedImages: (newSelectedImages: Set<number>) => void;
 	removeImagesFromStore: (images: rendererImage[]) => void;
-	reQueryImages: () => void;
+	reQueryImages: (params?: ImageQueryParams) => void;
 	addToSelectedImages: (imageSelected: rendererImage) => void;
 	removeFromSelectedImages: (imageSelected: rendererImage) => void;
 	deleteSelectedImages: () => void;
@@ -60,6 +65,8 @@ export const imagesStore = create<State>()((set, get) => ({
 	isQueried: false,
 	filters: initialFilters,
 	selectedImages: new Set<number>(),
+	pagination: null,
+
 	setFilters: (newFilters) => {
 		set(() => ({ filters: newFilters }));
 	},
@@ -83,7 +90,7 @@ export const imagesStore = create<State>()((set, get) => ({
 	},
 	addImages: (newImages) => {
 		const filters = get().filters;
-		let newImagesArray: rendererImage[] = [];
+		let newImagesArray: rendererImage[];
 		if (filters.order === "desc") {
 			newImagesArray = [...newImages, ...get().imagesArray];
 		} else {
@@ -102,7 +109,7 @@ export const imagesStore = create<State>()((set, get) => ({
 		const filters = get().filters;
 		const currentArray = get().imagesArray;
 
-		let newImagesArray: rendererImage[] = [];
+		let newImagesArray: rendererImage[];
 		if (filters.order === "desc") {
 			newImagesArray = [newImage, ...currentArray];
 		} else {
@@ -135,71 +142,50 @@ export const imagesStore = create<State>()((set, get) => ({
 			};
 		});
 	},
-	reQueryImages: () => {
-		// Use Go daemon instead of direct database query
+	reQueryImages: (params?: ImageQueryParams) => {
 		void goDaemon
-			.getImages()
-			.then((images) => {
-				// Handle null or undefined response
-				if (!images || !Array.isArray(images)) {
-					console.warn(
-						"🔴 ImagesStore: Received null or invalid images response:",
-						images,
-					);
+			.getImages(params)
+			.then((response) => {
+				if (!response || !response.data || !Array.isArray(response.data)) {
+					console.warn("ImagesStore: Invalid images response:", response);
 					set(() => ({
 						imagesArray: [],
 						isEmpty: true,
 						isQueried: true,
 						imagesMap: new Map<number, rendererImage>(),
+						pagination: null,
 					}));
 					return;
 				}
 
+				const images = response.data as rendererImage[];
 				const isEmpty = images.length <= 0;
 				const newImagesMap = new Map<number, rendererImage>();
+
 				images.forEach((image) => {
-					console.log("🔵 ImagesStore: Processing image:", image);
-					console.log(
-						"🔵 ImagesStore: Image name:",
-						image.name,
-						"Type:",
-						typeof image.name,
-					);
-					if (!image.name) {
-						console.error("🔴 ImagesStore: Image has no name!", image);
+					// Set default time for playlist compatibility
+					if (image.time === undefined) {
+						image.time = null;
 					}
-
-					// Ensure image has selection property with default values
-					if (!image.selection) {
-						image.selection = {
-							isChecked: false,
-							isSelected: false,
-							selectedAt: undefined,
-							selectedPlaylists: [],
-						};
-					}
-
 					newImagesMap.set(image.id, image);
 				});
+
 				set(() => ({
 					imagesArray: images,
 					isEmpty,
 					isQueried: true,
 					imagesMap: newImagesMap,
+					pagination: response.pagination,
 				}));
-				console.log(
-					"🔵 ImagesStore: Set images in store, count:",
-					images.length,
-				);
 			})
 			.catch((error) => {
-				console.error("🔴 ImagesStore: Error loading images:", error);
-				// Set empty state on error
+				console.error("ImagesStore: Error loading images:", error);
 				set(() => ({
 					imagesArray: [],
 					isEmpty: true,
 					isQueried: true,
 					imagesMap: new Map<number, rendererImage>(),
+					pagination: null,
 				}));
 			});
 	},
@@ -225,7 +211,7 @@ export const imagesStore = create<State>()((set, get) => ({
 			imagesSetToDelete.add(id);
 		});
 		void goDaemon
-			.deleteImagesFromGallery(imagesToDelete.map((img) => img.id))
+			.deleteImages(imagesToDelete.map((img) => img.id))
 			.then(() => {
 				set(() => ({
 					imagesMap: newImagesMap,
@@ -242,13 +228,9 @@ export const imagesStore = create<State>()((set, get) => ({
 		set(() => ({ selectedImages: new Set<number>() }));
 	},
 	clearSelectionOnCurrentPage() {
-		// This would need to be implemented with pagination context
-		// For now, just clear all selection
 		set(() => ({ selectedImages: new Set<number>() }));
 	},
 	selectAllImagesInCurrentPage() {
-		// This would need to be implemented with pagination context
-		// For now, select all images
 		const allImageIds = new Set(get().imagesArray.map((img) => img.id));
 		set(() => ({ selectedImages: allImageIds }));
 	},

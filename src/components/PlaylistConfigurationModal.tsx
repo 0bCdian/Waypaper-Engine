@@ -36,24 +36,24 @@ const PlaylistConfigurationModal = () => {
 					const interval = toMS(parseInt(data.hours), parseInt(data.minutes));
 					const configuration = {
 						type: data.type,
-						order: data.order,
-						showAnimations: data.showTransition,
-						alwaysStartOnFirstImage: data.alwaysStartOnFirstImage,
+						order: data.order ?? undefined,
+						show_animations: data.showTransition,
+						always_start_on_first_image: data.alwaysStartOnFirstImage,
 						interval,
 					};
 					setConfiguration(configuration);
 				}
 				break;
-			case "timeofday":
+			case "time_of_day":
 				setConfiguration({
 					type: data.type,
-					order: null,
-					showAnimations: data.showTransition,
-					interval: null,
-					alwaysStartOnFirstImage: false,
+					order: undefined,
+					show_animations: data.showTransition,
+					interval: undefined,
+					always_start_on_first_image: false,
 				});
 				break;
-			case "dayofweek":
+			case "day_of_week":
 				if (playlist.images.length > 7) {
 					setShowError((prevState) => !prevState);
 					setTimeout(() => {
@@ -63,19 +63,19 @@ const PlaylistConfigurationModal = () => {
 				}
 				setConfiguration({
 					type: data.type,
-					order: null,
-					showAnimations: data.showTransition,
-					interval: null,
-					alwaysStartOnFirstImage: false,
+					order: undefined,
+					show_animations: data.showTransition,
+					interval: undefined,
+					always_start_on_first_image: false,
 				});
 				break;
-			case "never":
+			case "manual":
 				setConfiguration({
 					type: data.type,
-					order: data.order,
-					showAnimations: data.showTransition,
-					interval: null,
-					alwaysStartOnFirstImage: data.alwaysStartOnFirstImage,
+					order: data.order ?? undefined,
+					show_animations: data.showTransition,
+					interval: undefined,
+					always_start_on_first_image: data.alwaysStartOnFirstImage,
 				});
 				break;
 			default:
@@ -99,17 +99,17 @@ const PlaylistConfigurationModal = () => {
 	}, [hours, minutes]);
 	useEffect(() => {
 		const interval = playlist.configuration.interval;
-		if (interval !== null) {
+		if (interval != null) {
 			const { hours, minutes } = toHoursAndMinutes(interval);
 			setValue("hours", hours.toString());
 			setValue("minutes", minutes.toString());
 		}
 		setValue("type", playlist.configuration.type);
-		setValue("order", playlist.configuration.order);
-		setValue("showTransition", playlist.configuration.showAnimations);
+		setValue("order", playlist.configuration.order ?? null);
+		setValue("showTransition", playlist.configuration.show_animations);
 		setValue(
 			"alwaysStartOnFirstImage",
-			playlist.configuration.alwaysStartOnFirstImage,
+			playlist.configuration.always_start_on_first_image,
 		);
 	}, [playlist]);
 	return (
@@ -166,7 +166,7 @@ const PlaylistConfigurationModal = () => {
 						>
 							Day of week
 						</option>
-						<option value={PLAYLIST_TYPES.NEVER}>Never</option>
+						<option value={PLAYLIST_TYPES.MANUAL}>Manual</option>
 					</select>
 				</div>
 				{watch("type") === PLAYLIST_TYPES.TIMER && (

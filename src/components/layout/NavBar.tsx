@@ -22,7 +22,7 @@ export interface NavBarProps {
  * NavBar component
  */
 export const NavBar: React.FC<NavBarProps> = ({ className }) => {
-	const { activeMonitor, reQueryMonitors } = useMonitorStore();
+	const { monitorSelection, reQueryMonitors } = useMonitorStore();
 	const { toggle: toggleSidebar } = useSidebarState();
 
 	const handleMonitorSelect = async () => {
@@ -81,8 +81,8 @@ export const NavBar: React.FC<NavBarProps> = ({ className }) => {
 					className="btn btn-primary btn-lg w-full max-w-md text-ellipsis rounded-lg text-xl font-medium transition-all duration-200 hover:btn-primary-focus"
 					aria-label="Select display monitor"
 					title={
-						activeMonitor.name.length > 0
-							? activeMonitor.name
+						monitorSelection.selectedMonitors.length > 0
+							? monitorSelection.selectedMonitors.join(", ")
 							: "Select display"
 					}
 				>
@@ -101,8 +101,8 @@ export const NavBar: React.FC<NavBarProps> = ({ className }) => {
 						/>
 					</svg>
 					<span className="truncate">
-						{activeMonitor.name.length > 0
-							? activeMonitor.name
+						{monitorSelection.selectedMonitors.length > 0
+							? monitorSelection.selectedMonitors.join(", ")
 							: "Select Display"}
 					</span>
 				</button>

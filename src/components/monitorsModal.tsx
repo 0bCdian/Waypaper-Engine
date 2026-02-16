@@ -1,176 +1,121 @@
 import { useEffect, useRef, useState, memo } from "react";
-import { useMonitorStore } from "../stores/monitors";
+import { useMonitorStore, type MonitorSelection } from "../stores/monitors";
 import { MonitorComponent } from "./Monitor";
 import { calculateMinResolution } from "../utils/utilities";
 import { type monitorSelectType } from "../types/rendererTypes";
-import { type Monitor } from "../../shared/types/monitor";
+import type { Monitor } from "../../electron/daemon-go-types";
 import { playlistStore } from "../stores/playlist";
+
 const goDaemon = window.API_RENDERER.goDaemon;
 let firstRender = true;
+
 const Monitors = memo(function Monitors() {
 	const {
-		activeMonitor,
+		monitorSelection,
 		monitorsList,
 		setMonitorsList,
-		setActiveMonitor,
+		setMonitorSelection,
 		reQueryMonitors,
 	} = useMonitorStore();
-	const { clearPlaylist } = playlistStore();
-	let initialSelectState: monitorSelectType = "individual";
 
-	// Use imageSetType from activeMonitor if available, otherwise fallback to legacy logic
-	if (
-		activeMonitor.imageSetType &&
-		["extend", "clone", "individual"].includes(activeMonitor.imageSetType)
-	) {
-		initialSelectState = activeMonitor.imageSetType as monitorSelectType;
-	} else {
-		// Legacy fallback logic
-		if (activeMonitor.extendAcrossMonitors) {
-			initialSelectState = "extend";
-		} else if (activeMonitor.monitors.length === 1) {
-			initialSelectState = "individual";
-		} else if (monitorsList.length > 1) {
-			initialSelectState = "clone";
-		}
-	}
+	const { clearPlaylist } = playlistStore();
+
+	const initialSelectState: monitorSelectType = monitorSelection.mode || "individual";
 	const [selectType, setSelectType] =
 		useState<monitorSelectType>(initialSelectState);
 
-	// Update selectType when activeMonitor changes (e.g., when config is loaded)
 	useEffect(() => {
-		let newSelectType: monitorSelectType = "individual";
-
-		// Use imageSetType from activeMonitor if available, otherwise fallback to legacy logic
-		if (
-			activeMonitor.imageSetType &&
-			["extend", "clone", "individual"].includes(activeMonitor.imageSetType)
-		) {
-			newSelectType = activeMonitor.imageSetType as monitorSelectType;
-		} else {
-			// Legacy fallback logic
-			if (activeMonitor.extendAcrossMonitors) {
-				newSelectType = "extend";
-			} else if (activeMonitor.monitors.length === 1) {
-				newSelectType = "individual";
-			} else if (monitorsList.length > 1) {
-				newSelectType = "clone";
-			}
+		if (monitorSelection.mode !== selectType) {
+			setSelectType(monitorSelection.mode);
 		}
+	}, [monitorSelection.mode]);
 
-		// Only update if it's different to avoid unnecessary re-renders
-		if (newSelectType !== selectType) {
-			setSelectType(newSelectType);
-		}
-	}, [activeMonitor, monitorsList.length]);
 	const [error, setError] = useState<{ state: boolean; message: string }>({
 		state: false,
 		message: "error",
 	});
+
 	const closeModal = () => {
 		if (modalRef.current) {
 			modalRef.current.close();
 		}
 	};
+
 	const [resolution, setResolution] = useState<{ x: number; y: number }>({
 		x: 0,
 		y: 0,
 	});
+
 	const onSubmit = async () => {
-		let name: string = "";
-		const selectedMonitors: Monitor[] = [];
+		const selectedMonitors: string[] = [];
 		monitorsList.forEach((monitor) => {
 			if (!monitor.isSelected) return;
-			name = name.concat(monitor.name, ",");
-			// eslint-disable-next-line no-unused-vars
-			const { isSelected, ...selectedMonitor } = monitor;
-			selectedMonitors.push(selectedMonitor);
+			selectedMonitors.push(monitor.name);
 		});
+
 		if (selectedMonitors.length === 0) {
 			setError({ state: true, message: "Select at least one display" });
 			setTimeout(() => {
-				setError((prevError) => {
-					return { ...prevError, state: false };
-				});
+				setError((prev) => ({ ...prev, state: false }));
 			}, 3000);
 			return;
 		}
+
 		if (selectType === "individual" && selectedMonitors.length > 1) {
 			setError({
 				state: true,
 				message: "Cannot select more than one display in this mode",
 			});
 			setTimeout(() => {
-				setError((prevError) => {
-					return { ...prevError, state: false };
-				});
+				setError((prev) => ({ ...prev, state: false }));
 			}, 3000);
 			return;
 		}
+
 		if (
 			(selectType === "clone" || selectType === "extend") &&
 			selectedMonitors.length < 2
 		) {
 			setError({ state: true, message: "Select at least two displays" });
 			setTimeout(() => {
-				setError((prevError) => {
-					return { ...prevError, state: false };
-				});
+				setError((prev) => ({ ...prev, state: false }));
 			}, 3000);
 			return;
 		}
-		name = name.slice(0, name.length - 1);
-		const activeMonitorConfig = {
-			name,
-			monitors: selectedMonitors,
-			extendAcrossMonitors: selectType === "extend",
-			imageSetType: selectType, // Send the actual mode: "extend", "clone", or "individual"
+
+		const newSelection: MonitorSelection = {
+			selectedMonitors,
+			mode: selectType,
 		};
 
-		await goDaemon.setSelectedMonitor(activeMonitorConfig);
-		// Close modal FIRST before updating state to prevent re-render issues
 		closeModal();
-		// Update state after closing modal
-		setActiveMonitor(activeMonitorConfig);
+		setMonitorSelection(newSelection);
 		clearPlaylist();
 	};
+
 	const scale =
 		1 / ((monitorsList.length + 1) * (screen.availWidth / window.innerWidth));
 	const modalRef = useRef<HTMLDialogElement>(null);
 
-	// Callback ref to ensure the modal is exposed as soon as it's available
 	const setModalRef = (element: HTMLDialogElement | null) => {
-		// Use Object.assign to update the ref
 		Object.assign(modalRef, { current: element });
 		if (element) {
-			// Expose the modal with showModal method
 			window.monitors = {
-				showModal: () => {
-					element.showModal();
-				},
-				closeModal: () => {
-					element.close();
-				},
-				close: () => {
-					element.close();
-				},
+				showModal: () => element.showModal(),
+				closeModal: () => element.close(),
+				close: () => element.close(),
 			};
 		} else {
-			// Clear the window.monitors reference when element is null
 			if (window.monitors) {
 				window.monitors = undefined;
 			}
 		}
 	};
 
-	// Debug useEffect to track component lifecycle
 	useEffect(() => {
-		return () => {
-			// Component unmounting
-		};
-	}, []); // Remove dependency to prevent unnecessary re-renders
+		return () => {};
+	}, []);
 
-	// For single monitor, center it by adjusting the container size and positioning
 	const isSingleMonitor = monitorsList.length === 1;
 	const styles: React.CSSProperties = {
 		width: isSingleMonitor
@@ -180,20 +125,15 @@ const Monitors = memo(function Monitors() {
 			? monitorsList[0].height * scale
 			: resolution.y * scale,
 	};
+
 	useEffect(() => {
 		const res = calculateMinResolution(monitorsList);
 		setResolution(res);
 	}, [monitorsList, screen.availWidth]);
 
-	// Load monitors on mount
 	useEffect(() => {
 		void reQueryMonitors();
 	}, []);
-
-	// Debug: Check if modal element exists
-	useEffect(() => {
-		// Component mounted
-	}, []); // Remove dependency to prevent re-renders
 
 	useEffect(() => {
 		if (monitorsList.length < 1) return;
@@ -210,24 +150,27 @@ const Monitors = memo(function Monitors() {
 			}));
 			setMonitorsList(updatedMonitors);
 		}
-	}, [selectType]); // Only trigger when selectType changes
+	}, [selectType]);
 
 	useEffect(() => {
 		if (!firstRender) return;
 		firstRender = false;
 
-		// Listen for display changes via Go daemon events
-		goDaemon.on("displays_changed", () => {
-			// this setTimeout is added to circumvent an swww limitation on querying recently inserted monitorsList
-			//  which sets currentImage to 00000 instead of the actual cached image
+		goDaemon.on("monitor_connected", () => {
 			setTimeout(() => {
 				void reQueryMonitors().then(() => {
-					// @ts-expect-error daisy-ui
-					window.monitors.showModal();
+					window.monitors?.showModal();
 				});
 			}, 300);
 		});
+
+		goDaemon.on("monitor_disconnected", () => {
+			setTimeout(() => {
+				void reQueryMonitors();
+			}, 300);
+		});
 	}, []);
+
 	return (
 		<dialog
 			id="monitors"
@@ -259,17 +202,16 @@ const Monitors = memo(function Monitors() {
 						<div className="divider"></div>
 						<div style={styles} className="relative m-auto">
 							{monitorsList.map((monitor) => {
-								// For single monitor, center it at (0,0) regardless of its actual position
-								const left = isSingleMonitor ? 0 : monitor.position.x * scale;
-								const top = isSingleMonitor ? 0 : monitor.position.y * scale;
+								const left = isSingleMonitor ? 0 : monitor.x * scale;
+								const top = isSingleMonitor ? 0 : monitor.y * scale;
 
 								return (
 									<div
 										draggable={false}
 										style={{
 											position: "absolute",
-											left: left,
-											top: top,
+											left,
+											top,
 										}}
 										key={monitor.name}
 									>

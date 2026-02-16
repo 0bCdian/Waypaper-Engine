@@ -1,0 +1,71 @@
+{
+  "name": "project",
+  "dependencies": {
+    "tessl/npm-biomejs--biome": {
+      "version": "2.3.0"
+    },
+    "tessl/npm-dnd-kit--utilities": {
+      "version": "3.2.0"
+    },
+    "tessl/npm-tailwindcss--postcss": {
+      "version": "4.1.0"
+    },
+    "tessl/npm-tailwindcss--vite": {
+      "version": "4.1.0"
+    },
+    "tessl/npm-types--react": {
+      "version": "18.3.0"
+    },
+    "tessl/npm-vitejs--plugin-react": {
+      "version": "5.1.0"
+    },
+    "tessl/npm-daisyui": {
+      "version": "5.1.0"
+    },
+    "tessl/npm-electron-builder": {
+      "version": "25.1.0"
+    },
+    "tessl/npm-electron-reload": {
+      "version": "1.5.0"
+    },
+    "tessl/npm-electron": {
+      "version": "37.4.0"
+    },
+    "tessl/npm-esbuild": {
+      "version": "0.25.0"
+    },
+    "tessl/npm-framer-motion": {
+      "version": "12.23.0"
+    },
+    "tessl/npm-oxlint": {
+      "version": "1.16.0"
+    },
+    "tessl/npm-pino": {
+      "version": "9.9.0"
+    },
+    "tessl/npm-react-dom": {
+      "version": "18.3.0"
+    },
+    "tessl/npm-react-hotkeys-hook": {
+      "version": "4.6.0"
+    },
+    "tessl/npm-react-router-dom": {
+      "version": "7.8.0"
+    },
+    "tessl/npm-react": {
+      "version": "19.2.0"
+    },
+    "tessl/npm-tailwindcss": {
+      "version": "4.1.1"
+    },
+    "tessl/npm-typescript": {
+      "version": "5.9.1"
+    },
+    "tessl/npm-vite": {
+      "version": "7.3.0"
+    },
+    "tessl/npm-zustand": {
+      "version": "4.5.0"
+    }
+  }
+}

@@ -23,102 +23,49 @@ export class DaemonMonitor {
 	private windows: Set<BrowserWindow> = new Set();
 	private isMonitoring = false;
 
-	/**
-	 * Start monitoring the daemon
-	 */
-	startMonitoring(intervalMs: number = 1000): void {
-		if (this.isMonitoring) {
-			("DaemonMonitor: Already monitoring");
-			return;
-		}
+	startMonitoring(intervalMs: number = 5000): void {
+		if (this.isMonitoring) return;
 
 		this.isMonitoring = true;
-		`DaemonMonitor: Starting health checks every ${intervalMs}ms`;
-
-		// Initial health check
 		this.performHealthCheck();
 
-		// Set up interval
 		this.healthCheckInterval = setInterval(() => {
 			this.performHealthCheck();
 		}, intervalMs);
 	}
 
-	/**
-	 * Stop monitoring the daemon
-	 */
 	stopMonitoring(): void {
-		if (!this.isMonitoring) {
-			return;
-		}
+		if (!this.isMonitoring) return;
 
 		this.isMonitoring = false;
-		("DaemonMonitor: Stopping health checks");
-
 		if (this.healthCheckInterval) {
 			clearInterval(this.healthCheckInterval);
 			this.healthCheckInterval = null;
 		}
 	}
 
-	/**
-	 * Register a window to receive daemon status updates
-	 */
 	registerWindow(window: BrowserWindow): void {
 		this.windows.add(window);
 	}
 
-	/**
-	 * Unregister a window
-	 */
 	unregisterWindow(window: BrowserWindow): void {
 		this.windows.delete(window);
 	}
 
-	/**
-	 * Get current daemon status
-	 */
 	getStatus(): DaemonStatus {
 		return { ...this.status };
 	}
 
-	/**
-	 * Perform a health check on the daemon
-	 */
 	private async performHealthCheck(): Promise<void> {
 		try {
-			// Try to ping the daemon
-			const pingResult = await goDaemonClient.ping();
+			const isAlive = await goDaemonClient.ping();
 
-			let newStatus: DaemonStatus;
+			const newStatus: DaemonStatus = {
+				isRunning: isAlive,
+				lastChecked: Date.now(),
+				lastError: isAlive ? undefined : "Health check failed",
+			};
 
-			if (pingResult) {
-				// Daemon is responding, try to get more detailed status
-				try {
-					await goDaemonClient.getDaemonStatus();
-
-					newStatus = {
-						isRunning: true,
-						lastChecked: Date.now(),
-						lastError: undefined,
-					};
-				} catch (error) {
-					// Ping worked but getDaemonStatus failed
-					newStatus = {
-						isRunning: true,
-						lastChecked: Date.now(),
-						lastError: `Status query failed: ${error instanceof Error ? error.message : String(error)}`,
-					};
-				}
-			} else {
-				newStatus = {
-					isRunning: false,
-					lastChecked: Date.now(),
-					lastError: "Ping failed",
-				};
-			}
-
-			// Only broadcast if status actually changed
 			const statusChanged =
 				this.status.isRunning !== newStatus.isRunning ||
 				this.status.lastError !== newStatus.lastError;
@@ -126,17 +73,15 @@ export class DaemonMonitor {
 			this.status = newStatus;
 
 			if (statusChanged) {
-				("DaemonMonitor: Status changed, broadcasting update");
 				this.broadcastStatusUpdate();
 			}
 		} catch (error) {
-			const newStatus = {
+			const newStatus: DaemonStatus = {
 				isRunning: false,
 				lastChecked: Date.now(),
 				lastError: error instanceof Error ? error.message : String(error),
 			};
 
-			// Only broadcast if status actually changed
 			const statusChanged =
 				this.status.isRunning !== newStatus.isRunning ||
 				this.status.lastError !== newStatus.lastError;
@@ -144,15 +89,11 @@ export class DaemonMonitor {
 			this.status = newStatus;
 
 			if (statusChanged) {
-				("DaemonMonitor: Status changed to error, broadcasting update");
 				this.broadcastStatusUpdate();
 			}
 		}
 	}
 
-	/**
-	 * Broadcast daemon status to all registered windows
-	 */
 	private broadcastStatusUpdate(): void {
 		const statusUpdate = {
 			type: "daemon-status-update",
@@ -166,40 +107,24 @@ export class DaemonMonitor {
 		});
 	}
 
-	/**
-	 * Restart the daemon
-	 */
 	async restartDaemon(): Promise<{ success: boolean; error?: string }> {
 		try {
-			("DaemonMonitor: Restarting daemon...");
-
-			// Stop the daemon first
 			try {
-				await goDaemonClient.stopDaemon();
-				("DaemonMonitor: Daemon stopped successfully");
+				await goDaemonClient.shutdown();
 			} catch (error) {
 				console.warn("DaemonMonitor: Error stopping daemon:", error);
-				// Continue with restart even if stop failed
 			}
 
-			// Wait a moment for the daemon to fully stop
 			await new Promise((resolve) => setTimeout(resolve, 1000));
 
-			// Start the daemon
-			try {
-				await goDaemonClient.startDaemon();
-				("DaemonMonitor: Daemon started successfully");
+			await initWaypaperDaemon();
 
-				// Perform immediate health check
-				await this.performHealthCheck();
+			// Reconnect the client
+			await goDaemonClient.connect();
 
-				return { success: true };
-			} catch (error) {
-				const errorMessage =
-					error instanceof Error ? error.message : String(error);
-				console.error("DaemonMonitor: Failed to start daemon:", errorMessage);
-				return { success: false, error: errorMessage };
-			}
+			await this.performHealthCheck();
+
+			return { success: true };
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : String(error);
@@ -208,19 +133,15 @@ export class DaemonMonitor {
 		}
 	}
 
-	/**
-	 * Start the daemon
-	 */
 	async startDaemon(): Promise<{ success: boolean; error?: string }> {
 		try {
-			("DaemonMonitor: Starting daemon...");
 			await initWaypaperDaemon();
-			("DaemonMonitor: Daemon started successfully");
 
-			// Wait a moment for the daemon to fully initialize
 			await new Promise((resolve) => setTimeout(resolve, 2000));
 
-			// Perform immediate health check
+			// Connect the client
+			await goDaemonClient.connect();
+
 			await this.performHealthCheck();
 
 			return { success: true };
@@ -232,16 +153,10 @@ export class DaemonMonitor {
 		}
 	}
 
-	/**
-	 * Stop the daemon
-	 */
 	async stopDaemon(): Promise<{ success: boolean; error?: string }> {
 		try {
-			("DaemonMonitor: Stopping daemon...");
-			await goDaemonClient.stopDaemon();
-			("DaemonMonitor: Daemon stopped successfully");
+			await goDaemonClient.shutdown();
 
-			// Update status immediately
 			this.status = {
 				isRunning: false,
 				lastChecked: Date.now(),
@@ -258,15 +173,10 @@ export class DaemonMonitor {
 		}
 	}
 
-	/**
-	 * Cleanup
-	 */
 	cleanup(): void {
 		this.stopMonitoring();
 		this.windows.clear();
-		("DaemonMonitor: Cleaned up");
 	}
 }
 
-// Export singleton instance
 export const daemonMonitor = new DaemonMonitor();

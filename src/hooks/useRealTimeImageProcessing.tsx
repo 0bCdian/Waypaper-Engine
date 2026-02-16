@@ -2,15 +2,12 @@ import { useEffect, useRef } from "react";
 import { imagesStore } from "../stores/images";
 import { useImageProcessingStore } from "../stores/imageProcessingStore";
 import { useToastStore } from "../stores/toastStore";
-import { type rendererImage } from "../types/rendererTypes";
-import {
-	type DaemonProcessingStartedPayload,
-	type DaemonImageProcessedPayload,
-	type DaemonImageProgressPayload,
-	type DaemonImageErrorPayload,
-	type DaemonProcessingCompletePayload,
-	type DaemonImagesUpdatedPayload,
-} from "../../shared/types/daemonEvents";
+import type {
+	ProcessingStartedPayload,
+	ImageProcessedPayload,
+	ImageErrorPayload,
+	ProcessingCompletePayload,
+} from "../../electron/daemon-go-types";
 
 export function useRealTimeImageProcessing() {
 	const cleanupRef = useRef<(() => void) | null>(null);
@@ -20,179 +17,109 @@ export function useRealTimeImageProcessing() {
 		useImageProcessingStore();
 
 	useEffect(() => {
-		// Add a small delay to ensure everything is initialized
 		const timer = setTimeout(async () => {
 			try {
-				// Add safety checks to prevent catastrophic failures
-				if (!window.API_RENDERER) {
-					console.error("API_RENDERER not available");
-					return;
-				}
-
-				if (!window.API_RENDERER.goDaemon) {
-					console.error("goDaemon not available");
-					return;
-				}
-
-				if (
-					!window.API_RENDERER.goDaemon.on ||
-					!window.API_RENDERER.goDaemon.off
-				) {
+				if (!window.API_RENDERER?.goDaemon?.on || !window.API_RENDERER?.goDaemon?.off) {
 					console.error("goDaemon event methods not available");
 					return;
 				}
 
-				console.info("Setting up real-time image processing listeners");
-
-				// Note: Event subscription is handled globally by useSubscribeToEvents hook
 				const { goDaemon } = window.API_RENDERER;
 
 				const handleProcessingStarted = (...args: unknown[]) => {
-					const data = args[0] as DaemonProcessingStartedPayload;
+					const data = args[0] as ProcessingStartedPayload;
 					try {
-						console.info("Real-time event: processing_started", data);
-						startProcessing(data.totalImages);
+						startProcessing(data.total);
 					} catch (error) {
-						console.error("Error handling processing_started event:", error);
+						console.error("Error handling processing_started:", error);
 					}
 				};
 
 				const handleImageProcessed = async (...args: unknown[]) => {
-					const data = args[0] as DaemonImageProcessedPayload;
+					const data = args[0] as ImageProcessedPayload;
 					try {
-						console.info("Real-time event: image_processed", data);
-						console.log(
-							"🟢 Image processed event received, ID:",
-							data.id,
-							"File:",
-							data.uniqueFileName,
-						);
+						updateProgress(data.index, data.name);
 
-						// The Go daemon event doesn't include all fields (path, size, thumbnails, etc.)
-						// So we need to fetch the complete image data from the daemon
-						// Debounce re-queries to avoid excessive calls when processing many images
+						// Debounce re-queries
 						if (reQueryTimeoutRef.current) {
 							clearTimeout(reQueryTimeoutRef.current);
 						}
 						reQueryTimeoutRef.current = setTimeout(async () => {
 							try {
-								const { reQueryImages } = imagesStore.getState();
-								console.log("🟢 Re-querying images to get complete data for processed images");
-								await reQueryImages();
-								console.log("🟢 Images re-queried successfully");
+								imagesStore.getState().reQueryImages();
 							} catch (error) {
-								console.error("Error re-querying images after processing:", error);
+								console.error("Error re-querying images:", error);
 							}
 							reQueryTimeoutRef.current = null;
-						}, 1000); // 1 second debounce - wait for batch of images to be processed
+						}, 1000);
 					} catch (error) {
-						console.error("Error handling image_processed event:", error);
-					}
-				};
-
-				const handleImageProgress = (...args: unknown[]) => {
-					const data = args[0] as DaemonImageProgressPayload;
-					try {
-						console.info("Real-time event: image_progress", data);
-						updateProgress(data.processed, data.current);
-					} catch (error) {
-						console.error("Error handling image_progress event:", error);
+						console.error("Error handling image_processed:", error);
 					}
 				};
 
 				const handleImageError = (...args: unknown[]) => {
-					const data = args[0] as DaemonImageErrorPayload;
+					const data = args[0] as ImageErrorPayload;
 					try {
-						console.error("Real-time event: image_error", data);
-						console.error(
-							`Failed to process image: ${data.originalFileName} - ${data.error}`,
-						);
-
-						// Show toast notification for the error
+						console.error(`Failed to process: ${data.path} - ${data.error}`);
 						const { addToast } = useToastStore.getState();
 						addToast(
-							`Failed to process: ${data.originalFileName} - ${data.error}`,
+							`Failed to process: ${data.path} - ${data.error}`,
 							"error",
 							7000,
 						);
 					} catch (error) {
-						console.error("Error handling image_error event:", error);
+						console.error("Error handling image_error:", error);
 					}
 				};
 
 				const handleProcessingComplete = (...args: unknown[]) => {
-					const data = args[0] as DaemonProcessingCompletePayload;
+					const data = args[0] as ProcessingCompletePayload;
 					try {
-						console.info("Real-time event: processing_complete", data);
 						console.log(
-							`Processing complete: ${data.totalProcessed} processed`,
+							`Processing complete: ${data.processed} processed, ${data.errors} errors`,
 						);
 						completeProcessing();
-						
-						// Final re-query to ensure all processed images are loaded
-						const { reQueryImages } = imagesStore.getState();
+
+						// Final re-query
 						setTimeout(() => {
-							console.log("🟢 Processing complete, performing final re-query");
-							reQueryImages();
+							imagesStore.getState().reQueryImages();
 						}, 500);
 					} catch (error) {
-						console.error("Error handling processing_complete event:", error);
+						console.error("Error handling processing_complete:", error);
 					}
 				};
 
-				const handleImagesUpdated = (...args: unknown[]) => {
-					const data = args[0] as DaemonImagesUpdatedPayload;
+				const handleImagesUpdated = () => {
 					try {
-						console.info("Real-time event: images_updated", data);
-						console.log(`Images ${data.action}: ${data.count} images affected`);
-
-						// Re-query for all actions to ensure we have the latest data
-						// This is especially important for "added" since image_processed events
-						// don't include all required fields (path, thumbnails, etc.)
-						const { reQueryImages } = imagesStore.getState();
-						console.log(
-							"🟢 useRealTimeImageProcessing: Images updated, re-querying images",
-						);
-						// Use a small delay to ensure JSON store is fully updated
 						setTimeout(() => {
-							reQueryImages();
+							imagesStore.getState().reQueryImages();
 						}, 300);
 					} catch (error) {
-						console.error("Error handling images_updated event:", error);
+						console.error("Error handling images_updated:", error);
 					}
 				};
 
-				// Listen for real-time events from the Go daemon
 				goDaemon.on("processing_started", handleProcessingStarted);
 				goDaemon.on("image_processed", handleImageProcessed);
-				goDaemon.on("image_progress", handleImageProgress);
 				goDaemon.on("image_error", handleImageError);
 				goDaemon.on("processing_complete", handleProcessingComplete);
 				goDaemon.on("images_updated", handleImagesUpdated);
 
-				console.info(
-					"Real-time image processing listeners set up successfully",
-				);
-
-				// Store cleanup function
 				cleanupRef.current = () => {
 					try {
-						// Cleanup listeners
 						goDaemon.off("processing_started", handleProcessingStarted);
 						goDaemon.off("image_processed", handleImageProcessed);
-						goDaemon.off("image_progress", handleImageProgress);
 						goDaemon.off("image_error", handleImageError);
 						goDaemon.off("processing_complete", handleProcessingComplete);
 						goDaemon.off("images_updated", handleImagesUpdated);
-						console.info("Real-time image processing listeners cleaned up");
 					} catch (error) {
-						console.error("Error cleaning up real-time listeners:", error);
+						console.error("Error cleaning up listeners:", error);
 					}
 				};
 			} catch (error) {
 				console.error("Error setting up real-time listeners:", error);
 			}
-		}, 1000); // 1 second delay
+		}, 1000);
 
 		return () => {
 			clearTimeout(timer);

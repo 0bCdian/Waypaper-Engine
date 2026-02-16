@@ -2,32 +2,31 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { imagesStore } from "../stores/images";
 import { type rendererImage } from "../types/rendererTypes";
 import { useHotkeys } from "react-hotkeys-hook";
+
 export function useFilteredImages() {
-	// The default order is descending, the images come in sorted from the database by ID in descending order.
-	// So we must respect that order in the ordering of names
-	// And we "order" by ascending or descending
-	const { imagesArray, filters, setSelectedImages } = imagesStore();
+	const { imagesArray, filters, setSelectedImages, selectedImages } = imagesStore();
 	const [filteredImages, setFilteredImages] =
 		useState<rendererImage[]>(imagesArray);
+
 	const selectAllImages = useCallback(() => {
-		const selectedImages = new Set<number>();
-		for (let index = 0; index < filteredImages.length; index++) {
-			filteredImages[index].selection.isSelected =
-				!filteredImages[index].selection.isSelected;
-			if (filteredImages[index].selection.isSelected) {
-				selectedImages.add(filteredImages[index].id);
+		const newSelected = new Set<number>();
+		for (const image of filteredImages) {
+			if (newSelected.has(image.id)) {
+				newSelected.delete(image.id);
+			} else {
+				newSelected.add(image.id);
 			}
 		}
-		setSelectedImages(selectedImages);
+		setSelectedImages(newSelected);
 	}, [filteredImages]);
+
 	const clearSelection = useCallback(() => {
-		for (let index = 0; index < filteredImages.length; index++) {
-			filteredImages[index].selection.isSelected = false;
-		}
 		setSelectedImages(new Set<number>());
-	}, [filteredImages]);
+	}, []);
+
 	useHotkeys("ctrl+shift+a", selectAllImages);
 	useHotkeys("escape", clearSelection);
+
 	const sortedImages = useMemo(() => {
 		if (filters.type === "id") return [...imagesArray];
 		const shallowCopy = [...imagesArray];
@@ -36,7 +35,6 @@ export function useFilteredImages() {
 	}, [imagesArray, filters]);
 
 	useEffect(() => {
-		// this is done on purpose to prevent as much iterations of sortedImages as possible
 		const dontFilterByResolution =
 			filters.advancedFilters.resolution.constraint === "all" ||
 			filters.advancedFilters.resolution.width +
@@ -44,6 +42,7 @@ export function useFilteredImages() {
 				0;
 		const dontFilterByFormat = filters.advancedFilters.formats.length === 10;
 		const dontFilterByName = filters.searchString === "";
+
 		const imagesfilteredByResolution: rendererImage[] = dontFilterByResolution
 			? sortedImages
 			: sortedImages.filter((image) => {
@@ -52,34 +51,36 @@ export function useFilteredImages() {
 					switch (filters.advancedFilters.resolution.constraint) {
 						case "exact":
 							return (
-								image.dimensions.width === widthToFilter &&
-								image.dimensions.height === heightToFilter
+								image.width === widthToFilter &&
+								image.height === heightToFilter
 							);
 						case "lessThan":
 							return (
-								image.dimensions.width <= widthToFilter &&
-								image.dimensions.height <= heightToFilter
+								image.width <= widthToFilter &&
+								image.height <= heightToFilter
 							);
 						case "moreThan":
 							return (
-								image.dimensions.width >= widthToFilter &&
-								image.dimensions.height >= heightToFilter
+								image.width >= widthToFilter &&
+								image.height >= heightToFilter
 							);
 					}
 					return undefined;
 				});
+
 		let imagesFilteredByFormat: rendererImage[];
 		if (filters.advancedFilters.formats.length === 0) {
 			imagesFilteredByFormat = [];
 		} else {
 			imagesFilteredByFormat = dontFilterByFormat
 				? imagesfilteredByResolution
-				: imagesfilteredByResolution.filter((images) => {
+				: imagesfilteredByResolution.filter((image) => {
 						return filters.advancedFilters.formats.includes(
-							images.metadata.format as any,
+							image.format as any,
 						);
 					});
 		}
+
 		const imagesFilteredByName: rendererImage[] = dontFilterByName
 			? imagesFilteredByFormat
 			: imagesFilteredByFormat.filter((image) => {
@@ -87,6 +88,7 @@ export function useFilteredImages() {
 						.toLocaleLowerCase()
 						.includes(filters.searchString.toLocaleLowerCase());
 				});
+
 		setFilteredImages(imagesFilteredByName);
 	}, [sortedImages, filters]);
 

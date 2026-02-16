@@ -1,289 +1,275 @@
-import { createConnection, Socket } from "node:net";
+import { request as httpRequest, type IncomingMessage } from "node:http";
 import { EventEmitter } from "node:events";
 import { logger } from "../globals/setup";
 import { configReader } from "../globals/configReader";
-import type { JsonStoreImage } from "../shared/types/daemon";
 import type {
-	ActiveMonitor,
-	MonitorSelection,
+	Image,
+	ImageQueryParams,
+	PaginatedResponse,
+	ImageHistoryEntry,
+	UpdateImageRequest,
+	ImportImagesRequest,
+	DeleteImagesRequest,
+	SelectAllImagesRequest,
+	Playlist,
+	CreatePlaylistRequest,
+	UpdatePlaylistRequest,
+	ActivePlaylistInstance,
+	StartPlaylistRequest,
 	Monitor,
-} from "../shared/types/monitor";
-import { convertToMonitorSelection } from "../shared/types/monitor";
-import type {
-	DaemonMessage,
-	DaemonResponse,
-	DaemonEvent,
-	EventType,
-	RendererPlaylist,
-	StoredPlaylist,
-	RunningPlaylistInfo,
-	ImageHistory,
-	ImageInfo,
 	UnifiedConfig,
+	SwwwConfig,
+	BackendInfo,
 	DaemonInfo,
-	DaemonStatus,
-	PlaylistDiagnostics,
-	ConfigData,
+	HealthResponse,
+	SetWallpaperRequest,
+	SetWallpaperResponse,
+	MonitorMode,
+	EventType,
 } from "./daemon-go-types";
 
-export interface GoDaemonMessage extends DaemonMessage {}
-
-export interface GoDaemonResponse extends DaemonResponse {}
-
 export class GoDaemonClient extends EventEmitter {
-	private socket: Socket | null = null;
 	private socketPath: string;
+	private sseConnection: IncomingMessage | null = null;
+	private sseReconnectTimer: NodeJS.Timeout | null = null;
+	private sseReconnectAttempts: number = 0;
+	private maxSseReconnectAttempts: number = 50;
+	private sseBuffer: string = "";
 	private isConnected: boolean = false;
-	private reconnectAttempts: number = 0;
-	private maxReconnectAttempts: number = 10;
-	private reconnectInterval: number = 1000;
-	private messageId: number = 0;
-	private pendingMessages: Map<
-		number,
-		{ resolve: (value: unknown) => void; reject: (error: unknown) => void }
-	> = new Map();
-	private messageBuffer: string = "";
-	private subscribedEvents: Set<EventType | "*"> = new Set();
 
 	constructor(socketPath?: string) {
 		super();
 		this.socketPath = socketPath || configReader.getSocketPath();
 	}
 
-	async connect(): Promise<void> {
+	// ============================================================================
+	// HTTP TRANSPORT
+	// ============================================================================
+
+	private request<T = unknown>(
+		method: string,
+		path: string,
+		body?: unknown,
+	): Promise<T> {
 		return new Promise((resolve, reject) => {
-			try {
-				this.socket = createConnection(this.socketPath, () => {
-					this.isConnected = true;
-					this.reconnectAttempts = 0;
-					logger.info("Connected to Go daemon");
-					this.emit("connected");
+			const options = {
+				socketPath: this.socketPath,
+				path,
+				method,
+				headers: {
+					"Content-Type": "application/json",
+				},
+			};
 
-					// Subscribe to all events by default
-					this.subscribeToEvents(["*"]).catch((error) => {
-						logger.error("Failed to subscribe to events:", error);
-					});
-
-					resolve();
+			const req = httpRequest(options, (res) => {
+				let data = "";
+				res.on("data", (chunk: Buffer) => {
+					data += chunk.toString();
 				});
-
-				this.socket.on("data", (data) => {
-					this.handleMessage(data);
+				res.on("end", () => {
+					try {
+						if (
+							res.statusCode &&
+							res.statusCode >= 200 &&
+							res.statusCode < 300
+						) {
+							if (data.trim() === "") {
+								resolve(undefined as T);
+							} else {
+								resolve(JSON.parse(data) as T);
+							}
+						} else {
+							const errorData = data
+								? JSON.parse(data)
+								: { error: `HTTP ${res.statusCode}` };
+							reject(
+								new Error(
+									errorData.error || `HTTP ${res.statusCode}`,
+								),
+							);
+						}
+					} catch (parseError) {
+						reject(
+							new Error(
+								`Failed to parse response: ${parseError}`,
+							),
+						);
+					}
 				});
+			});
 
-				this.socket.on("error", (error) => {
-					logger.error("Socket error:", error);
-					this.isConnected = false;
-					this.emit("error", error);
-					this.handleReconnect();
-				});
-
-				this.socket.on("close", () => {
-					logger.warn("Connection to Go daemon closed");
-					this.isConnected = false;
-					this.emit("disconnected");
-					this.handleReconnect();
-				});
-
-				this.socket.on("end", () => {
-					logger.warn("Go daemon ended connection");
-					this.isConnected = false;
-					this.emit("disconnected");
-					this.handleReconnect();
-				});
-			} catch (error) {
-				logger.error("Failed to connect to Go daemon:", error);
+			req.on("error", (error) => {
 				reject(error);
+			});
+
+			req.setTimeout(30000, () => {
+				req.destroy();
+				reject(new Error(`Request timeout: ${method} ${path}`));
+			});
+
+			if (body !== undefined) {
+				req.write(JSON.stringify(body));
 			}
+
+			req.end();
 		});
 	}
 
-	private handleMessage(data: Buffer): void {
-		this.messageBuffer += data.toString();
+	// ============================================================================
+	// SSE (Server-Sent Events) CONNECTION
+	// ============================================================================
 
-		let startIndex = 0;
-		while (startIndex < this.messageBuffer.length) {
-			let braceCount = 0;
-			let endIndex = startIndex;
-			let inString = false;
-			let escaped = false;
+	connectSSE(): void {
+		if (this.sseConnection) {
+			return;
+		}
 
-			for (let i = startIndex; i < this.messageBuffer.length; i++) {
-				const char = this.messageBuffer[i];
+		const options = {
+			socketPath: this.socketPath,
+			path: "/events",
+			method: "GET",
+			headers: {
+				Accept: "text/event-stream",
+				"Cache-Control": "no-cache",
+			},
+		};
 
-				if (escaped) {
-					escaped = false;
-					continue;
-				}
+		const req = httpRequest(options, (res) => {
+			this.sseConnection = res;
+			this.sseReconnectAttempts = 0;
+			this.isConnected = true;
+			this.sseBuffer = "";
+			logger.info("SSE connection established");
+			this.emit("connected");
 
-				if (char === "\\") {
-					escaped = true;
-					continue;
-				}
+			res.on("data", (chunk: Buffer) => {
+				this.handleSSEData(chunk.toString());
+			});
 
-				if (char === '"') {
-					inString = !inString;
-					continue;
-				}
+			res.on("end", () => {
+				logger.warn("SSE connection ended");
+				this.sseConnection = null;
+				this.isConnected = false;
+				this.emit("disconnected");
+				this.scheduleSseReconnect();
+			});
 
-				if (!inString) {
-					if (char === "{") {
-						braceCount++;
-					} else if (char === "}") {
-						braceCount--;
-						if (braceCount === 0) {
-							endIndex = i + 1;
-							break;
-						}
+			res.on("error", (error) => {
+				logger.error("SSE connection error:", error);
+				this.sseConnection = null;
+				this.isConnected = false;
+				this.emit("error", error);
+				this.scheduleSseReconnect();
+			});
+		});
+
+		req.on("error", (error) => {
+			logger.error("SSE request error:", error);
+			this.sseConnection = null;
+			this.isConnected = false;
+			this.emit("error", error);
+			this.scheduleSseReconnect();
+		});
+
+		req.end();
+	}
+
+	private handleSSEData(chunk: string): void {
+		this.sseBuffer += chunk;
+		const lines = this.sseBuffer.split("\n");
+
+		let currentEvent = "";
+		let currentData = "";
+
+		for (let i = 0; i < lines.length - 1; i++) {
+			const line = lines[i].trim();
+
+			if (line === "") {
+				// Empty line signals end of event
+				if (currentEvent && currentData) {
+					try {
+						const payload = JSON.parse(currentData);
+						this.emit(currentEvent as EventType, payload);
+					} catch (error) {
+						logger.error(
+							`Failed to parse SSE event data for ${currentEvent}:`,
+							error,
+						);
 					}
 				}
-			}
-
-			if (braceCount === 0 && endIndex > startIndex) {
-				const message = this.messageBuffer.substring(startIndex, endIndex);
-				try {
-					const parsed = JSON.parse(message);
-
-					// Handle pong
-					if (parsed.action === "pong") {
-						this.emit("pong");
-						const messageId = this.extractMessageId(parsed);
-						if (messageId && this.pendingMessages.has(messageId)) {
-							const { resolve } = this.pendingMessages.get(messageId)!;
-							this.pendingMessages.delete(messageId);
-							resolve(true);
-						}
-						startIndex = endIndex;
-						continue;
-					}
-
-					// Handle events (has 'type' field, no 'action' field)
-					if (parsed.type && !parsed.action) {
-						const event = parsed as DaemonEvent;
-						this.emit(event.type, event.payload);
-						startIndex = endIndex;
-						continue;
-					}
-
-					// Handle responses to pending messages
-					const messageId = this.extractMessageId(parsed);
-					if (messageId && this.pendingMessages.has(messageId)) {
-						const { resolve, reject } = this.pendingMessages.get(messageId)!;
-						this.pendingMessages.delete(messageId);
-
-						if (parsed.error) {
-							reject(new Error(parsed.error));
-						} else {
-							resolve(parsed.data);
-						}
-					}
-				} catch (error) {
-					logger.error("Failed to parse message from Go daemon:", error);
-				}
-				startIndex = endIndex;
-			} else {
-				break;
+				currentEvent = "";
+				currentData = "";
+			} else if (line.startsWith("event:")) {
+				currentEvent = line.substring(6).trim();
+			} else if (line.startsWith("data:")) {
+				currentData = line.substring(5).trim();
 			}
 		}
 
-		this.messageBuffer = this.messageBuffer.substring(startIndex);
+		// Keep the last incomplete line in the buffer
+		this.sseBuffer = lines[lines.length - 1];
 	}
 
-	private extractMessageId(
-		response: GoDaemonResponse | DaemonEvent,
-	): number | null {
-		if (response && typeof response === "object" && "messageId" in response) {
-			return response.messageId as number;
-		}
-		return null;
-	}
-
-	private async handleReconnect(): Promise<void> {
-		if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-			logger.error("Max reconnection attempts reached");
+	private scheduleSseReconnect(): void {
+		if (this.sseReconnectAttempts >= this.maxSseReconnectAttempts) {
+			logger.error("Max SSE reconnection attempts reached");
 			this.emit("maxReconnectAttemptsReached");
 			return;
 		}
 
-		this.reconnectAttempts++;
+		this.sseReconnectAttempts++;
+		const delay = Math.min(
+			1000 * this.sseReconnectAttempts,
+			30000,
+		);
 		logger.info(
-			`Attempting to reconnect to Go daemon (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`,
+			`Scheduling SSE reconnect in ${delay}ms (attempt ${this.sseReconnectAttempts})`,
 		);
 
-		setTimeout(async () => {
-			try {
-				await this.connect();
-			} catch (error) {
-				logger.error("Reconnection failed:", error);
-			}
-		}, this.reconnectInterval * this.reconnectAttempts);
+		this.sseReconnectTimer = setTimeout(() => {
+			this.connectSSE();
+		}, delay);
 	}
 
-	async sendCommand(action: string, payload?: unknown): Promise<unknown> {
-		if (!this.isConnected || !this.socket) {
-			throw new Error("Not connected to Go daemon");
+	// ============================================================================
+	// CONNECTION MANAGEMENT
+	// ============================================================================
+
+	async connect(): Promise<void> {
+		// Test the connection with a health check
+		await this.healthCheck();
+		// Start SSE connection for events
+		this.connectSSE();
+	}
+
+	disconnect(): void {
+		if (this.sseConnection) {
+			this.sseConnection.destroy();
+			this.sseConnection = null;
 		}
+		if (this.sseReconnectTimer) {
+			clearTimeout(this.sseReconnectTimer);
+			this.sseReconnectTimer = null;
+		}
+		this.isConnected = false;
+		this.emit("disconnected");
+	}
 
-		return new Promise((resolve, reject) => {
-			const messageId = ++this.messageId;
-			const message: GoDaemonMessage = {
-				action,
-				messageId,
-				...(payload && typeof payload === "object" ? payload : {}),
-			};
-
-			this.pendingMessages.set(messageId, {
-				resolve: (value) => {
-					resolve(value);
-				},
-				reject: (error) => {
-					reject(error);
-				},
-			});
-
-			// Add timeout to prevent hanging requests
-			// Use longer timeout for operations that might take time (like get_images during processing)
-			const timeoutDuration = action === "get_images" ? 60000 : 30000; // 60s for get_images, 30s for others
-			setTimeout(() => {
-				if (this.pendingMessages.has(messageId)) {
-					this.pendingMessages.delete(messageId);
-					reject(new Error(`Command timeout: ${action}`));
-				}
-			}, timeoutDuration);
-
-			try {
-				const messageStr = JSON.stringify(message) + "\n";
-				this.socket!.write(messageStr);
-			} catch (error) {
-				this.pendingMessages.delete(messageId);
-				reject(error);
-			}
-		});
+	isConnectedToDaemon(): boolean {
+		return this.isConnected;
 	}
 
 	// ============================================================================
-	// EVENT SUBSCRIPTION
+	// HEALTH & SYSTEM
 	// ============================================================================
 
-	async subscribeToEvents(eventTypes: Array<EventType | "*">): Promise<void> {
-		await this.sendCommand("subscribe", { eventTypes });
-		eventTypes.forEach((type) => this.subscribedEvents.add(type));
+	async healthCheck(): Promise<HealthResponse> {
+		return this.request<HealthResponse>("GET", "/healthz");
 	}
-
-	async unsubscribeFromEvents(
-		eventTypes: Array<EventType | "*">,
-	): Promise<void> {
-		await this.sendCommand("unsubscribe", { eventTypes });
-		eventTypes.forEach((type) => this.subscribedEvents.delete(type));
-	}
-
-	// ============================================================================
-	// SYSTEM OPERATIONS
-	// ============================================================================
 
 	async ping(): Promise<boolean> {
 		try {
-			await this.sendCommand("ping");
+			await this.healthCheck();
 			return true;
 		} catch {
 			return false;
@@ -291,462 +277,288 @@ export class GoDaemonClient extends EventEmitter {
 	}
 
 	async getInfo(): Promise<DaemonInfo> {
-		return (await this.sendCommand("get_info")) as DaemonInfo;
+		return this.request<DaemonInfo>("GET", "/info");
 	}
 
-	async getMonitors(): Promise<Monitor[]> {
-		const response = await this.sendCommand("get_monitors");
-		// Handle case where Go daemon returns a map/object instead of array
-		if (Array.isArray(response)) {
-			return response as Monitor[];
-		}
-		if (typeof response === "object" && response !== null) {
-			// Convert object/map to array
-			return Object.values(response) as Monitor[];
-		}
-		return [];
-	}
-
-	async getDaemonStatus(): Promise<DaemonStatus> {
-		return (await this.sendCommand("get_daemon_status")) as DaemonStatus;
-	}
-
-	async getDiagnostics(monitorName?: string): Promise<PlaylistDiagnostics> {
-		return (await this.sendCommand("get_diagnostics", {
-			monitorName,
-		})) as PlaylistDiagnostics;
-	}
-
-	async killDaemon(): Promise<void> {
-		await this.sendCommand("kill_daemon");
+	async shutdown(): Promise<void> {
+		await this.request("POST", "/shutdown");
 	}
 
 	async stopDaemon(): Promise<void> {
-		await this.sendCommand("stop_daemon");
+		return this.shutdown();
 	}
 
 	// ============================================================================
-	// PLAYLIST OPERATIONS
+	// IMAGES
 	// ============================================================================
 
-	async getPlaylists(): Promise<StoredPlaylist[]> {
-		return (await this.sendCommand("get_playlists")) as StoredPlaylist[];
+	async getImages(
+		params?: ImageQueryParams,
+	): Promise<PaginatedResponse<Image>> {
+		const query = new URLSearchParams();
+		if (params?.page) query.set("page", String(params.page));
+		if (params?.per_page) query.set("per_page", String(params.per_page));
+		if (params?.sort_by) query.set("sort_by", params.sort_by);
+		if (params?.sort_order) query.set("sort_order", params.sort_order);
+		if (params?.media_type) query.set("media_type", params.media_type);
+		if (params?.search) query.set("search", params.search);
+		if (params?.tags) query.set("tags", params.tags);
+		const qs = query.toString();
+		const path = qs ? `/images?${qs}` : "/images";
+		return this.request<PaginatedResponse<Image>>("GET", path);
 	}
 
-	async getPlaylist(playlistId: number): Promise<StoredPlaylist> {
-		return (await this.sendCommand("get_playlist", {
-			playlistId,
-		})) as StoredPlaylist;
+	async getImage(id: number): Promise<Image> {
+		return this.request<Image>("GET", `/images/${id}`);
 	}
 
-	async savePlaylist(playlist: RendererPlaylist): Promise<StoredPlaylist> {
-		// Convert ActiveMonitor to MonitorSelection if needed
-		if (playlist.activeMonitor) {
-			const activeMonitor = playlist.activeMonitor as ActiveMonitor;
-			if (!("mode" in activeMonitor) || !activeMonitor.mode) {
-				playlist.activeMonitor = convertToMonitorSelection(activeMonitor);
-			}
-		}
-
-		const result = (await this.sendCommand("upsert_playlist", {
-			playlist,
-		})) as StoredPlaylist;
-		return result;
+	async getImageCount(): Promise<{ count: number }> {
+		return this.request<{ count: number }>("GET", "/images/count");
 	}
 
-	async deletePlaylist(playlistName: string): Promise<void> {
-		await this.sendCommand("delete_playlist", { playlistName });
+	async importImages(paths: string[]): Promise<{ status: string; total: number }> {
+		const body: ImportImagesRequest = { paths };
+		return this.request<{ status: string; total: number }>(
+			"POST",
+			"/images",
+			body,
+		);
+	}
+
+	async deleteImages(ids: number[]): Promise<{ deleted: number }> {
+		const body: DeleteImagesRequest = { ids };
+		return this.request<{ deleted: number }>("DELETE", "/images", body);
+	}
+
+	async updateImage(
+		id: number,
+		update: UpdateImageRequest,
+	): Promise<Image> {
+		return this.request<Image>("PATCH", `/images/${id}`, update);
+	}
+
+	async selectAllImages(
+		selected: boolean,
+	): Promise<{ updated: number; selected: boolean }> {
+		const body: SelectAllImagesRequest = { selected };
+		return this.request<{ updated: number; selected: boolean }>(
+			"POST",
+			"/images/select-all",
+			body,
+		);
+	}
+
+	async getImageHistory(
+		limit?: number,
+		monitor?: string,
+	): Promise<ImageHistoryEntry[]> {
+		const query = new URLSearchParams();
+		if (limit) query.set("limit", String(limit));
+		if (monitor) query.set("monitor", monitor);
+		const qs = query.toString();
+		const path = qs ? `/images/history?${qs}` : "/images/history";
+		return this.request<ImageHistoryEntry[]>("GET", path);
+	}
+
+	// ============================================================================
+	// WALLPAPER
+	// ============================================================================
+
+	async setWallpaper(
+		imageId: number,
+		monitor: string = "*",
+		mode: MonitorMode = "individual",
+	): Promise<SetWallpaperResponse> {
+		const body: SetWallpaperRequest = {
+			image_id: imageId,
+			monitor,
+			mode,
+		};
+		return this.request<SetWallpaperResponse>(
+			"POST",
+			"/wallpaper/set",
+			body,
+		);
+	}
+
+	async setRandomWallpaper(
+		monitor: string = "*",
+		mode: MonitorMode = "individual",
+	): Promise<SetWallpaperResponse> {
+		return this.request<SetWallpaperResponse>("POST", "/wallpaper/random", {
+			monitor,
+			mode,
+		});
+	}
+
+	// ============================================================================
+	// PLAYLISTS
+	// ============================================================================
+
+	async getPlaylists(): Promise<Playlist[]> {
+		return this.request<Playlist[]>("GET", "/playlists");
+	}
+
+	async getPlaylist(id: number): Promise<Playlist> {
+		return this.request<Playlist>("GET", `/playlists/${id}`);
+	}
+
+	async createPlaylist(playlist: CreatePlaylistRequest): Promise<Playlist> {
+		return this.request<Playlist>("POST", "/playlists", playlist);
+	}
+
+	async updatePlaylist(
+		id: number,
+		update: UpdatePlaylistRequest,
+	): Promise<Playlist> {
+		return this.request<Playlist>("PATCH", `/playlists/${id}`, update);
+	}
+
+	async deletePlaylist(id: number): Promise<void> {
+		await this.request("DELETE", `/playlists/${id}`);
 	}
 
 	async startPlaylist(
-		playlistId: number,
-		activeMonitor: ActiveMonitor | MonitorSelection,
+		id: number,
+		monitor: string = "*",
+		mode: MonitorMode = "individual",
 	): Promise<void> {
-		// Convert to MonitorSelection if needed
-		const monitorSelection =
-			"mode" in activeMonitor
-				? activeMonitor
-				: convertToMonitorSelection(activeMonitor);
-
-		await this.sendCommand("start_playlist", {
-			playlistId,
-			activeMonitor: monitorSelection,
-		});
+		const body: StartPlaylistRequest = {
+			monitor: { id: monitor, mode },
+		};
+		await this.request("POST", `/playlists/${id}/start`, body);
 	}
 
-	async stopPlaylist(
-		activeMonitor: ActiveMonitor | MonitorSelection,
-	): Promise<void> {
-		const monitorSelection =
-			"mode" in activeMonitor
-				? activeMonitor
-				: convertToMonitorSelection(activeMonitor);
-
-		await this.sendCommand("stop_playlist", {
-			activeMonitor: monitorSelection,
-		});
+	async stopPlaylist(id: number): Promise<void> {
+		await this.request("POST", `/playlists/${id}/stop`);
 	}
 
-	async pausePlaylist(
-		activeMonitor: ActiveMonitor | MonitorSelection,
-	): Promise<void> {
-		const monitorSelection =
-			"mode" in activeMonitor
-				? activeMonitor
-				: convertToMonitorSelection(activeMonitor);
-
-		await this.sendCommand("pause_playlist", {
-			activeMonitor: monitorSelection,
-		});
+	async pausePlaylist(id: number): Promise<void> {
+		await this.request("POST", `/playlists/${id}/pause`);
 	}
 
-	async resumePlaylist(
-		activeMonitor: ActiveMonitor | MonitorSelection,
-	): Promise<void> {
-		const monitorSelection =
-			"mode" in activeMonitor
-				? activeMonitor
-				: convertToMonitorSelection(activeMonitor);
-
-		await this.sendCommand("resume_playlist", {
-			activeMonitor: monitorSelection,
-		});
+	async resumePlaylist(id: number): Promise<void> {
+		await this.request("POST", `/playlists/${id}/resume`);
 	}
 
-	async nextPlaylistImage(
-		activeMonitor: ActiveMonitor | MonitorSelection,
-	): Promise<void> {
-		const monitorSelection =
-			"mode" in activeMonitor
-				? activeMonitor
-				: convertToMonitorSelection(activeMonitor);
-
-		await this.sendCommand("next_playlist_image", {
-			activeMonitor: monitorSelection,
-		});
+	async nextPlaylistImage(id: number): Promise<void> {
+		await this.request("POST", `/playlists/${id}/next`);
 	}
 
-	async previousPlaylistImage(
-		activeMonitor: ActiveMonitor | MonitorSelection,
-	): Promise<void> {
-		const monitorSelection =
-			"mode" in activeMonitor
-				? activeMonitor
-				: convertToMonitorSelection(activeMonitor);
-
-		await this.sendCommand("previous_playlist_image", {
-			activeMonitor: monitorSelection,
-		});
+	async previousPlaylistImage(id: number): Promise<void> {
+		await this.request("POST", `/playlists/${id}/previous`);
 	}
 
-	async getRunningPlaylists(): Promise<Record<string, RunningPlaylistInfo>> {
-		return (await this.sendCommand(
-			"get_running_playlists",
-		)) as Record<string, RunningPlaylistInfo>;
+	async getActivePlaylists(): Promise<
+		Record<string, ActivePlaylistInstance>
+	> {
+		return this.request<Record<string, ActivePlaylistInstance>>(
+			"GET",
+			"/playlists/active",
+		);
+	}
+
+	async getActivePlaylistForMonitor(
+		monitor: string,
+	): Promise<ActivePlaylistInstance> {
+		return this.request<ActivePlaylistInstance>(
+			"GET",
+			`/playlists/active/${encodeURIComponent(monitor)}`,
+		);
+	}
+
+	// Bulk playlist actions
+	async stopAllPlaylists(): Promise<{ message: string; stopped: number }> {
+		return this.request("POST", "/playlists/active/stop");
+	}
+
+	async pauseAllPlaylists(): Promise<{ message: string; paused: number }> {
+		return this.request("POST", "/playlists/active/pause");
+	}
+
+	async resumeAllPlaylists(): Promise<{
+		message: string;
+		resumed: number;
+	}> {
+		return this.request("POST", "/playlists/active/resume");
+	}
+
+	async nextAllPlaylists(): Promise<{ message: string; advanced: number }> {
+		return this.request("POST", "/playlists/active/next");
+	}
+
+	async previousAllPlaylists(): Promise<{
+		message: string;
+		reversed: number;
+	}> {
+		return this.request("POST", "/playlists/active/previous");
 	}
 
 	// ============================================================================
-	// IMAGE OPERATIONS
+	// MONITORS
 	// ============================================================================
 
-	async getImages(filters?: unknown): Promise<JsonStoreImage[]> {
-		return (await this.sendCommand("get_images", { filters })) as JsonStoreImage[];
+	async getMonitors(): Promise<Monitor[]> {
+		return this.request<Monitor[]>("GET", "/monitors");
 	}
 
-	async processImages(
-		imagePaths: string[],
-		fileNames: string[],
-	): Promise<void> {
-		await this.sendCommand("process_images", {
-			imagePaths,
-			fileNames,
-		});
-	}
-
-	async deleteImages(imageIds: number[]): Promise<void> {
-		await this.sendCommand("delete_images", { imageIds });
-	}
-
-	async upsertImage(image: ImageInfo): Promise<void> {
-		await this.sendCommand("upsert_image", { image });
-	}
-
-	async getImageHistory(): Promise<ImageHistory[]> {
-		return (await this.sendCommand("get_image_history")) as ImageHistory[];
-	}
-
-	async processForMonitors(
-		imageId: number,
-		activeMonitor: ActiveMonitor | MonitorSelection,
-	): Promise<Record<string, string>> {
-		const monitorSelection =
-			"mode" in activeMonitor
-				? activeMonitor
-				: convertToMonitorSelection(activeMonitor);
-
-		return (await this.sendCommand("process_for_monitors", {
-			image: { id: imageId },
-			activeMonitor: monitorSelection,
-		})) as Record<string, string>;
+	async getMonitor(name: string): Promise<Monitor> {
+		return this.request<Monitor>(
+			"GET",
+			`/monitors/${encodeURIComponent(name)}`,
+		);
 	}
 
 	// ============================================================================
-	// CONFIGURATION OPERATIONS
+	// CONFIG
 	// ============================================================================
 
 	async getConfig(): Promise<UnifiedConfig> {
-		return (await this.sendCommand("get_config")) as UnifiedConfig;
+		return this.request<UnifiedConfig>("GET", "/config");
 	}
 
-	async setConfig(
+	async updateConfig(
+		config: Partial<UnifiedConfig>,
+	): Promise<UnifiedConfig> {
+		return this.request<UnifiedConfig>("PATCH", "/config", config);
+	}
+
+	async getConfigSection(section: string): Promise<unknown> {
+		return this.request("GET", `/config/${section}`);
+	}
+
+	async updateConfigSection(
 		section: string,
-		key: string,
-		value: unknown,
+		data: Record<string, unknown>,
+	): Promise<unknown> {
+		return this.request("PATCH", `/config/${section}`, data);
+	}
+
+	async getBackendConfig(): Promise<SwwwConfig> {
+		return this.request<SwwwConfig>("GET", "/config/backend");
+	}
+
+	async updateBackendConfig(
+		config: Partial<SwwwConfig>,
 	): Promise<void> {
-		await this.sendCommand("upsert_config", {
-			config: {
-				configSection: section,
-				configKey: key,
-				configValue: value,
-			} as ConfigData,
-		});
-	}
-
-	async setBulkConfig(config: Partial<UnifiedConfig>): Promise<void> {
-		await this.sendCommand("upsert_config", {
-			config: {
-				frontendConfig: config,
-			} as ConfigData,
-		});
-	}
-
-	async setSelectedMonitor(
-		activeMonitor: ActiveMonitor | MonitorSelection,
-	): Promise<void> {
-		const monitorSelection =
-			"mode" in activeMonitor
-				? activeMonitor
-				: convertToMonitorSelection(activeMonitor);
-
-		await this.sendCommand("set_selected_monitor", {
-			activeMonitor: monitorSelection,
-		});
-	}
-
-	async getSelectedMonitor(): Promise<MonitorSelection> {
-		return (await this.sendCommand(
-			"get_selected_monitor",
-		)) as MonitorSelection;
+		await this.request("PATCH", "/config/backend", config);
 	}
 
 	// ============================================================================
-	// MISCELLANEOUS OPERATIONS
+	// BACKENDS
 	// ============================================================================
 
-	async setImage(
-		imageId: number,
-		imageName: string,
-		activeMonitor: ActiveMonitor | MonitorSelection | string,
-	): Promise<void> {
-		// Handle string input (legacy/mistake - convert to ActiveMonitor)
-		if (typeof activeMonitor === "string") {
-			// Get monitors to find the one with this name
-			const monitors = await this.getMonitors();
-			// Ensure monitors is an array
-			const monitorsArray = Array.isArray(monitors) ? monitors : Object.values(monitors);
-			const monitor = monitorsArray.find((m) => m.name === activeMonitor);
-			if (!monitor) {
-				throw new Error(`Monitor "${activeMonitor}" not found`);
-			}
-			activeMonitor = {
-				monitors: [monitor],
-				extendAcrossMonitors: false,
-			};
-		}
-
-		const monitorSelection =
-			"mode" in activeMonitor
-				? activeMonitor
-				: convertToMonitorSelection(activeMonitor);
-
-		await this.sendCommand("set_image", {
-			image: { id: imageId, name: imageName },
-			activeMonitor: monitorSelection,
-		});
+	async getBackends(): Promise<BackendInfo[]> {
+		return this.request<BackendInfo[]>("GET", "/backends");
 	}
 
-	async setImageAcrossMonitors(
-		imageId: number,
-		imageName: string,
-		activeMonitor: ActiveMonitor | MonitorSelection,
-	): Promise<void> {
-		const monitorSelection =
-			"mode" in activeMonitor
-				? activeMonitor
-				: convertToMonitorSelection(activeMonitor);
-
-		await this.sendCommand("set_image_across_monitors", {
-			image: { id: imageId, name: imageName },
-			activeMonitor: monitorSelection,
-		});
-	}
-
-	async nextImageHistory(
-		activeMonitor: ActiveMonitor | MonitorSelection,
-	): Promise<void> {
-		const monitorSelection =
-			"mode" in activeMonitor
-				? activeMonitor
-				: convertToMonitorSelection(activeMonitor);
-
-		await this.sendCommand("next_image_history", {
-			activeMonitor: monitorSelection,
-		});
-	}
-
-	async previousImageHistory(
-		activeMonitor: ActiveMonitor | MonitorSelection,
-	): Promise<void> {
-		const monitorSelection =
-			"mode" in activeMonitor
-				? activeMonitor
-				: convertToMonitorSelection(activeMonitor);
-
-		await this.sendCommand("previous_image_history", {
-			activeMonitor: monitorSelection,
-		});
-	}
-
-	async randomImage(
-		activeMonitor: ActiveMonitor | MonitorSelection,
-	): Promise<void> {
-		const monitorSelection =
-			"mode" in activeMonitor
-				? activeMonitor
-				: convertToMonitorSelection(activeMonitor);
-
-		await this.sendCommand("random_image", {
-			activeMonitor: monitorSelection,
-		});
-	}
-
-	// ============================================================================
-	// LEGACY COMPATIBILITY METHODS
-	// ============================================================================
-
-	/**
-	 * @deprecated Use deleteImages instead
-	 */
-	async deleteImagesFromGallery(imageIds: number[]): Promise<void> {
-		return this.deleteImages(imageIds);
-	}
-
-	/**
-	 * @deprecated Use nextPlaylistImage instead
-	 */
-	async nextImage(activeMonitor: ActiveMonitor | MonitorSelection): Promise<void> {
-		return this.nextPlaylistImage(activeMonitor);
-	}
-
-	/**
-	 * @deprecated Use previousPlaylistImage instead
-	 */
-	async previousImage(activeMonitor: ActiveMonitor | MonitorSelection): Promise<void> {
-		return this.previousPlaylistImage(activeMonitor);
-	}
-
-	/**
-	 * @deprecated Use getRunningPlaylists instead
-	 */
-	async getActivePlaylist(
-		activeMonitor: ActiveMonitor | MonitorSelection,
-	): Promise<RunningPlaylistInfo | null> {
-		const runningPlaylists = await this.getRunningPlaylists();
-		const monitorSelection =
-			"mode" in activeMonitor
-				? activeMonitor
-				: convertToMonitorSelection(activeMonitor);
-
-		return runningPlaylists[monitorSelection.id] || null;
-	}
-
-	/**
-	 * @deprecated Use getPlaylist instead
-	 */
-	async getPlaylistImages(playlistId: number): Promise<StoredPlaylist> {
-		return this.getPlaylist(playlistId);
-	}
-
-	/**
-	 * @deprecated Use setImageAcrossMonitors with mode: "clone" instead
-	 */
-	async duplicateImageAcrossMonitors(
-		imageId: number,
-		activeMonitor: ActiveMonitor | MonitorSelection,
-	): Promise<void> {
-		const monitorSelection =
-			"mode" in activeMonitor
-				? activeMonitor
-				: convertToMonitorSelection(activeMonitor);
-
-		// Force clone mode for duplication
-		monitorSelection.mode = "clone";
-
-		return this.setImage(imageId, monitorSelection);
-	}
-
-	/**
-	 * @deprecated These methods don't exist in the new API
-	 */
-	async getAppConfig(): Promise<UnifiedConfig> {
-		return this.getConfig();
-	}
-
-	async setAppConfig(config: Partial<UnifiedConfig>): Promise<void> {
-		return this.setBulkConfig(config);
-	}
-
-	async getSwwwConfig(): Promise<UnifiedConfig["backend"]["swww"]> {
-		const config = await this.getConfig();
-		return config.backend.swww;
-	}
-
-	async setSwwwConfig(
-		swwwConfig: UnifiedConfig["backend"]["swww"],
-	): Promise<void> {
-		await this.setBulkConfig({
-			backend: {
-				type: "swww",
-				swww: swwwConfig,
-			},
-		});
-	}
-
-	async setFrontendConfig(config: Partial<UnifiedConfig>): Promise<void> {
-		return this.setBulkConfig(config);
-	}
-
-	async getFrontendConfig(): Promise<UnifiedConfig> {
-		return this.getConfig();
-	}
-
-	async getActivePlaylists(): Promise<Record<string, RunningPlaylistInfo>> {
-		return this.getRunningPlaylists();
-	}
-
-	// Connection utilities
-	disconnect(): void {
-		if (this.socket) {
-			this.socket.end();
-			this.socket = null;
-		}
-		this.isConnected = false;
-		this.subscribedEvents.clear();
-		this.emit("disconnected");
-	}
-
-	isConnectedToDaemon(): boolean {
-		return this.isConnected;
+	async activateBackend(
+		name: string,
+	): Promise<{ status: string; backend: string }> {
+		return this.request<{ status: string; backend: string }>(
+			"POST",
+			`/backends/${encodeURIComponent(name)}/activate`,
+		);
 	}
 }
 

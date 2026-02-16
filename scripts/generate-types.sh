@@ -7,7 +7,7 @@ set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-GO_CONTRACTS_DIR="$PROJECT_ROOT/daemon-go/internal/contracts"
+GO_CONTRACTS_DIR="$PROJECT_ROOT/daemon/internal/contracts"
 TS_CONTRACTS_DIR="$PROJECT_ROOT/shared/types/contracts"
 
 echo "🔧 Type Generation Script"

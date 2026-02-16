@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { playlistStore } from "../stores/playlist";
-import { type rendererImage } from "../types/rendererTypes";
 import { useMonitorStore } from "../stores/monitors";
+import type { PlaylistImage } from "../../electron/daemon-go-types";
 const { goDaemon } = window.API_RENDERER;
 
 interface Props {
@@ -15,32 +15,31 @@ interface savePlaylistModalFields {
 const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
 	const { setName, readPlaylist } = playlistStore();
 	const [error, showError] = useState({ state: false, message: "" });
-	const { activeMonitor } = useMonitorStore();
+	const { monitorSelection } = useMonitorStore();
 	const modalRef = useRef<HTMLDialogElement>(null);
 	const { register, handleSubmit, setValue } =
 		useForm<savePlaylistModalFields>();
 	const closeModal = () => {
 		modalRef.current?.close();
 	};
-	const checkDuplicateTimes = (Images: rendererImage[]) => {
+	const checkDuplicateTimes = (images: PlaylistImage[]) => {
 		let duplicatesExist = false;
-		const maxImageIndex = Images.length;
-		// impossible value to get from the input time in miniplaylist card
+		const maxImageIndex = images.length;
 		let lastTime = -1;
 		for (let current = 0; current < maxImageIndex; current++) {
-			if (Images[current].time === lastTime) {
+			const time = images[current].time;
+			if (time != null && time === lastTime) {
 				duplicatesExist = true;
-			} else {
-				// eslint-disable-next-line @typescript-eslint/no-non-null-assertion
-				lastTime = Images[current].time!;
+			} else if (time != null) {
+				lastTime = time;
 			}
 		}
 		return duplicatesExist;
 	};
-	const onSubmit: SubmitHandler<savePlaylistModalFields> = (data) => {
+	const onSubmit: SubmitHandler<savePlaylistModalFields> = async (data) => {
 		setName(data.playlistName);
 		const playlist = readPlaylist();
-		if (playlist.configuration.type === "timeofday") {
+		if (playlist.configuration.type === "time_of_day") {
 			if (checkDuplicateTimes(playlist.images)) {
 				showError({
 					state: true,
@@ -52,7 +51,7 @@ const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
 				showError({ state: false, message: "" });
 			}
 		}
-		if (activeMonitor.monitors.length < 1 || activeMonitor.name === "") {
+		if (monitorSelection.selectedMonitors.length < 1) {
 			showError({
 				state: true,
 				message: "Select at least one monitor to save playlist.",
@@ -62,10 +61,31 @@ const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
 			}, 3000);
 			return;
 		}
-		playlist.activeMonitor = activeMonitor;
-		goDaemon.savePlaylist(playlist);
-		setShouldReload(true);
-		closeModal();
+		try {
+			if (playlist.id) {
+				// Update existing playlist
+				await goDaemon.updatePlaylist(playlist.id, {
+					name: data.playlistName,
+					images: playlist.images,
+					configuration: playlist.configuration,
+				});
+			} else {
+				// Create new playlist
+				await goDaemon.createPlaylist({
+					name: data.playlistName,
+					images: playlist.images,
+					configuration: playlist.configuration,
+				});
+			}
+			setShouldReload(true);
+			closeModal();
+		} catch (err) {
+			console.error("Failed to save playlist:", err);
+			showError({
+				state: true,
+				message: `Failed to save playlist: ${err instanceof Error ? err.message : "Unknown error"}`,
+			});
+		}
 	};
 	useEffect(() => {
 		setValue("playlistName", currentPlaylistName);

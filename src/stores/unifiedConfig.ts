@@ -15,8 +15,7 @@ interface UnifiedConfigStore extends ConfigFormState {
 	loadConfig: () => Promise<void>;
 	setConfigValue: (
 		section: ConfigSection,
-		key: string,
-		value: unknown,
+		data: Record<string, unknown>,
 	) => Promise<void>;
 	resetToDefaults: () => Promise<void>;
 
@@ -34,37 +33,25 @@ const defaultConfig: UnifiedConfig = {
 		notifications: true,
 		start_minimized: false,
 		minimize_instead_of_close: true,
-		show_monitor_modal_on_start: false,
-		images_per_page: 20,
+		images_per_page: 50,
 		theme: "dark",
-		sort_by: "name",
-		sort_order: "asc",
-		image_history_limit: 50,
+		sort_by: "imported_at",
+		sort_order: "desc",
+		image_history_limit: 100,
 	},
 	daemon: {
-		database_path: "~/.config/waypaper-engine/data",
-		images_dir: "~/.waypaper-engine/images",
-		thumbnails_dir: "~/.waypaper-engine/data/cache/thumbnails",
-		monitors_state_file: "~/.cache/waypaper-engine/monitors.json",
-		socket_path: "/tmp/waypaper-engine.sock",
+		images_dir: "~/.local/share/waypaper-engine/images",
+		thumbnails_dir: "~/.cache/waypaper-engine/thumbnails",
+		database_dir: "~/.local/share/waypaper-engine/db",
+		socket_path: "/run/user/1000/waypaper-engine.sock",
 		log_level: "info",
-		log_file: "~/.config/waypaper-engine/daemon.log",
-		log_max_size: 10,
-		log_max_age: 7,
+		log_file: "~/.local/share/waypaper-engine/daemon.log",
+		log_max_size_mb: 10,
 		log_max_backups: 3,
 		compositor: "auto",
 	},
 	backend: {
 		type: "swww",
-		swww: {
-			transition_type: "simple",
-			transition_step: 90,
-			transition_duration: 200,
-			transition_angle: 45,
-			transition_pos: "center",
-			transition_bezier: "0.4,0.0,0.2,1",
-			transition_wave: "0,0,0,0",
-		},
 	},
 	monitors: {
 		selected_monitors: [],
@@ -75,14 +62,12 @@ const defaultConfig: UnifiedConfig = {
 export const useUnifiedConfigStore = create<UnifiedConfigStore>()(
 	devtools(
 		(set, get) => ({
-			// Initial state
 			config: null,
 			isLoading: false,
 			isDirty: false,
 			errors: [],
 			lastSaved: null,
 
-			// Load configuration from daemon
 			loadConfig: async () => {
 				set({ isLoading: true, errors: [] });
 
@@ -95,120 +80,66 @@ export const useUnifiedConfigStore = create<UnifiedConfigStore>()(
 							isDirty: false,
 							lastSaved: Date.now(),
 						});
-						console.log("🟢 UnifiedConfig: Config loaded successfully", config);
 					} else {
-						console.warn("🔴 UnifiedConfig: getConfig method not available");
-						set({
-							config: defaultConfig,
-							isLoading: false,
-						});
+						set({ config: defaultConfig, isLoading: false });
 					}
 				} catch (error) {
-					console.error("🔴 UnifiedConfig: Failed to load config:", error);
+					console.error("UnifiedConfig: Failed to load config:", error);
 					set({
 						config: defaultConfig,
 						isLoading: false,
 						errors: [
-							{
-								section: "app",
-								key: "load",
-								message: "Failed to load configuration",
-							},
+							{ section: "app", key: "load", message: "Failed to load configuration" },
 						],
 					});
 				}
 			},
 
-			// Set a specific configuration value
 			setConfigValue: async (
 				section: ConfigSection,
-				key: string,
-				value: unknown,
+				data: Record<string, unknown>,
 			) => {
 				const currentConfig = get().config;
-				if (!currentConfig) {
-					console.error("🔴 UnifiedConfig: No config loaded");
-					return;
-				}
-
-				// Validate that the key is allowed for the section
-				// Window bounds and other Electron-specific settings should not be saved to Go daemon config
-				const invalidKeys = ["windowBounds", "window_bounds"];
-				if (invalidKeys.includes(key)) {
-					console.warn(
-						`🔴 UnifiedConfig: Attempted to save invalid config key "${key}" to section "${section}". This key is not supported by the Go daemon config.`,
-					);
-					return;
-				}
+				if (!currentConfig) return;
 
 				// Optimistic update
 				const newConfig = { ...currentConfig };
 				if (section === "app") {
-					newConfig.app = { ...newConfig.app, [key]: value };
+					newConfig.app = { ...newConfig.app, ...data } as typeof newConfig.app;
 				} else if (section === "daemon") {
-					newConfig.daemon = { ...newConfig.daemon, [key]: value };
-				} else if (section === "backend") {
-					if (key.startsWith("swww.")) {
-						const swwwKey = key.replace("swww.", "");
-						newConfig.backend.swww = {
-							...newConfig.backend.swww,
-							[swwwKey]: value,
-						};
-					} else {
-						newConfig.backend = { ...newConfig.backend, [key]: value };
-					}
+					newConfig.daemon = { ...newConfig.daemon, ...data } as typeof newConfig.daemon;
 				} else if (section === "monitors") {
-					newConfig.monitors = { ...newConfig.monitors, [key]: value };
+					newConfig.monitors = { ...newConfig.monitors, ...data } as typeof newConfig.monitors;
 				}
 
 				set({ config: newConfig, isDirty: true });
 
 				try {
-					if (window.API_RENDERER?.goDaemon?.setConfig) {
-						await window.API_RENDERER.goDaemon.setConfig(section, key, value);
-						set({
-							isDirty: false,
-							lastSaved: Date.now(),
-							errors: [],
-						});
-						console.log("🟢 UnifiedConfig: Config updated successfully", {
-							section,
-							key,
-							value,
-						});
+					if (section === "backend") {
+						if (window.API_RENDERER?.goDaemon?.updateBackendConfig) {
+							await window.API_RENDERER.goDaemon.updateBackendConfig(data as any);
+						}
 					} else {
-						console.warn("🔴 UnifiedConfig: setConfig method not available");
+						if (window.API_RENDERER?.goDaemon?.updateConfigSection) {
+							await window.API_RENDERER.goDaemon.updateConfigSection(section, data);
+						}
 					}
+					set({ isDirty: false, lastSaved: Date.now(), errors: [] });
 				} catch (error) {
-					console.error("🔴 UnifiedConfig: Failed to update config:", error);
-					// Revert optimistic update
-					set({ config: currentConfig });
+					console.error("UnifiedConfig: Failed to update config:", error);
 					set({
-						errors: [{ section, key, message: `Failed to update ${key}` }],
+						config: currentConfig,
+						errors: [{ section, key: "save", message: `Failed to update ${section}` }],
 					});
 				}
 			},
 
-			// Reset to default configuration
 			resetToDefaults: async () => {
 				set({ isLoading: true });
-
 				try {
-					// Reset each section to defaults
-					for (const [section, sectionConfig] of Object.entries(
-						defaultConfig,
-					)) {
-						for (const [key, value] of Object.entries(sectionConfig)) {
-							if (window.API_RENDERER?.goDaemon?.setConfig) {
-								await window.API_RENDERER.goDaemon.setConfig(
-									section as ConfigSection,
-									key,
-									value,
-								);
-							}
-						}
+					if (window.API_RENDERER?.goDaemon?.updateConfig) {
+						await window.API_RENDERER.goDaemon.updateConfig(defaultConfig);
 					}
-
 					set({
 						config: defaultConfig,
 						isLoading: false,
@@ -216,80 +147,30 @@ export const useUnifiedConfigStore = create<UnifiedConfigStore>()(
 						lastSaved: Date.now(),
 						errors: [],
 					});
-					console.log("🟢 UnifiedConfig: Reset to defaults successful");
 				} catch (error) {
-					console.error(
-						"🔴 UnifiedConfig: Failed to reset to defaults:",
-						error,
-					);
+					console.error("UnifiedConfig: Failed to reset to defaults:", error);
 					set({
 						isLoading: false,
 						errors: [
-							{
-								section: "app",
-								key: "reset",
-								message: "Failed to reset configuration",
-							},
+							{ section: "app", key: "reset", message: "Failed to reset configuration" },
 						],
 					});
 				}
 			},
 
-			// Handle config change events from daemon
-			handleConfigChange: (event: ConfigChangeEvent) => {
-				const currentConfig = get().config;
-				if (!currentConfig) return;
-
-				console.log("🟡 UnifiedConfig: Received config change event", event);
-
-				// Update the config with the new value
-				const newConfig = { ...currentConfig };
-				if (event.section === "app") {
-					newConfig.app = { ...newConfig.app, [event.key]: event.value };
-				} else if (event.section === "daemon") {
-					newConfig.daemon = { ...newConfig.daemon, [event.key]: event.value };
-				} else if (event.section === "backend") {
-					if (event.key.startsWith("swww.")) {
-						const swwwKey = event.key.replace("swww.", "");
-						newConfig.backend.swww = {
-							...newConfig.backend.swww,
-							[swwwKey]: event.value,
-						};
-					} else {
-						newConfig.backend = {
-							...newConfig.backend,
-							[event.key]: event.value,
-						};
-					}
-				} else if (event.section === "monitors") {
-					newConfig.monitors = {
-						...newConfig.monitors,
-						[event.key]: event.value,
-					};
-				}
-
-				set({
-					config: newConfig,
-					isDirty: false,
-					lastSaved: event.timestamp * 1000, // Convert to milliseconds
-				});
+			handleConfigChange: (_event: ConfigChangeEvent) => {
+				// Re-fetch entire config when daemon notifies of changes
+				get().loadConfig();
 			},
 
-			// Validate configuration (simplified - daemon handles real validation)
-			validateConfig: (
-				_config: Partial<UnifiedConfig>,
-			): ConfigValidationError[] => {
-				// Return empty array - daemon handles validation
+			validateConfig: (_config: Partial<UnifiedConfig>): ConfigValidationError[] => {
 				return [];
 			},
 
-			// Clear validation errors
 			clearErrors: () => {
 				set({ errors: [] });
 			},
 		}),
-		{
-			name: "unified-config-store",
-		},
+		{ name: "unified-config-store" },
 	),
 );

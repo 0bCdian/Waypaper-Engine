@@ -1,7 +1,7 @@
 import { useMonitorStore, type StoreMonitor } from "../stores/monitors";
 import { type monitorSelectType } from "../types/rendererTypes";
 import SvgComponent from "./addImagesIcon";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 
 interface props {
 	monitor: StoreMonitor;
@@ -16,9 +16,8 @@ export function MonitorComponent({
 	selectType,
 	monitorsList,
 }: props) {
-	const { setMonitorsList, activeMonitor } = useMonitorStore();
-	const [monitorImagePath, setMonitorImagePath] = useState<string | null>(null);
-	const [isLoading, setIsLoading] = useState(false);
+	const { setMonitorsList } = useMonitorStore();
+	const [isLoading] = useState(false);
 
 	const scaledWidth = monitor.width * scale;
 	const scaledHeight = monitor.height * scale;
@@ -33,82 +32,27 @@ export function MonitorComponent({
 		objectFit: "cover",
 	};
 
-	// Load monitor-specific image when in extend mode
-	useEffect(() => {
-		const loadMonitorImage = async () => {
-			if (!monitor.currentImage) {
-				setMonitorImagePath(null);
-				return;
-			}
-
-			// In extend mode, get the monitor-specific image
-			if (
-				activeMonitor.extendAcrossMonitors &&
-				activeMonitor.monitors.length > 1
-			) {
-				setIsLoading(true);
-				try {
-					const imagePath = await window.API_RENDERER.goDaemon.getMonitorImage(
-						monitor.name,
-					);
-					setMonitorImagePath(imagePath);
-				} catch (error) {
-					console.error("Failed to load monitor-specific image:", error);
-					// Fall back to empty path - let the image src handle the fallback
-					setMonitorImagePath(null);
-				} finally {
-					setIsLoading(false);
-				}
-			} else {
-				// In individual mode, get the image path from Electron (which handles atom:// protocol)
-				try {
-					const imagePath = await window.API_RENDERER.goDaemon.getImageSrc(
-						parseInt(monitor.currentImage) || 0,
-					);
-					setMonitorImagePath(imagePath);
-				} catch (error) {
-					console.error("Failed to get image path from Electron:", error);
-					// Fall back to empty path - let the image src handle the fallback
-					setMonitorImagePath(null);
-				}
-			}
-		};
-
-		loadMonitorImage();
-	}, [
-		monitor.currentImage,
-		monitor.name,
-		activeMonitor.extendAcrossMonitors,
-		activeMonitor.monitors.length,
-	]);
 	return (
 		<div
 			onClick={() => {
 				if (monitorsList.length < 1) return;
 
-				// Handle different monitor selection modes
 				if (selectType === "individual") {
-					// Individual mode: only one monitor can be selected
 					if (!monitor.isSelected) {
-						// Deselect all others, select this one
 						monitorsList.forEach((otherMonitor) => {
 							otherMonitor.isSelected = otherMonitor.name === monitor.name;
 						});
 					} else {
-						// Deselect this one
 						monitor.isSelected = false;
 					}
 				} else if (selectType === "extend" || selectType === "clone") {
-					// Extend/Clone mode: require at least 2 monitors
 					const currentlySelected = monitorsList.filter(
 						(m) => m.isSelected,
 					).length;
 
 					if (!monitor.isSelected) {
-						// Selecting this monitor
 						monitor.isSelected = true;
 					} else if (currentlySelected > 2) {
-						// Can deselect if we have more than 2 selected
 						monitor.isSelected = false;
 					}
 				}
@@ -124,27 +68,16 @@ export function MonitorComponent({
 				style={rectangleStyle}
 				className="border-[0.2rem] border-transparent transition-all data-[selected=true]:border-info"
 			>
-				{monitor.currentImage ? (
-					isLoading ? (
-						<div
-							className="flex h-full w-full cursor-pointer items-center justify-center bg-base-200/50"
-							style={imageStyle}
-						>
-							<div className="text-center text-base-content/70">
-								<div className="loading loading-spinner loading-md"></div>
-								<p className="mt-2 text-sm font-medium">Loading...</p>
-							</div>
+				{isLoading ? (
+					<div
+						className="flex h-full w-full cursor-pointer items-center justify-center bg-base-200/50"
+						style={imageStyle}
+					>
+						<div className="text-center text-base-content/70">
+							<div className="loading loading-spinner loading-md"></div>
+							<p className="mt-2 text-sm font-medium">Loading...</p>
 						</div>
-					) : (
-						<img
-							data-selected={monitor.isSelected}
-							draggable={false}
-							src={monitorImagePath || ""}
-							alt="Monitor"
-							style={imageStyle}
-							className="transform-gpu cursor-pointer"
-						/>
-					)
+					</div>
 				) : (
 					<div
 						className="flex h-full w-full cursor-pointer items-center justify-center border-2 border-dashed border-base-300 bg-base-200/50"
@@ -154,8 +87,10 @@ export function MonitorComponent({
 							<div className="mx-auto mb-2 h-12 w-12 opacity-50">
 								<SvgComponent />
 							</div>
-							<p className="text-sm font-medium">No wallpaper set</p>
-							<p className="text-xs opacity-75">Click to set one</p>
+							<p className="text-sm font-medium">{monitor.name}</p>
+							<p className="text-xs opacity-75">
+								{monitor.width}x{monitor.height}
+							</p>
 						</div>
 					</div>
 				)}

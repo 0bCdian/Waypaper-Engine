@@ -9,11 +9,11 @@ import AdvancedFiltersModal from "./AdvancedFiltersModal";
 import { useUnifiedConfigStore } from "../stores/unifiedConfig";
 import Monitors from "./monitorsModal";
 import { useMonitorStore } from "../stores/monitors";
-import { type DaemonPlaylistFromDB } from "../../shared/types/daemonEvents";
+import type { Playlist } from "../../electron/daemon-go-types";
 const goDaemon = window.API_RENDERER.goDaemon;
 let alreadyShown = false;
 function Modals() {
-	const [playlistsInDB, setPlaylistsInDB] = useState<DaemonPlaylistFromDB[]>(
+	const [playlistsInDB, setPlaylistsInDB] = useState<Playlist[]>(
 		[],
 	);
 	const { config } = useUnifiedConfigStore();

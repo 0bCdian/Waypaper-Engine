@@ -2,10 +2,11 @@ import { useSortable } from "@dnd-kit/sortable";
 import { useEffect, useRef, useCallback, useState, memo } from "react";
 import { type PLAYLIST_TYPES_TYPE } from "../../shared/types/playlist";
 import { playlistStore } from "../stores/playlist";
-import { type rendererImage } from "../types/rendererTypes";
+import { imagesStore } from "../stores/images";
 import { motion } from "framer-motion";
 import useDebounceCallback from "../hooks/useDebounceCallback";
-const { goDaemon } = window.API_RENDERER;
+import type { PlaylistImage } from "../../electron/daemon-go-types";
+
 let firstRender = true;
 const daysOfWeek = [
 	"Sunday",
@@ -16,39 +17,39 @@ const daysOfWeek = [
 	"Friday",
 	"Saturday",
 ];
+
 const MiniPlaylistCard = memo(function MiniPlaylistCard({
-	Image,
+	playlistImage,
 	type,
 	index,
 	isLast,
 	reorderSortingCriteria,
 }: {
-	Image: rendererImage;
+	playlistImage: PlaylistImage;
 	type: PLAYLIST_TYPES_TYPE;
 	index: number;
 	isLast: boolean;
 	reorderSortingCriteria: () => void;
 }) {
 	const { removeImagesFromPlaylist, playlistImagesTimeSet } = playlistStore();
+	const { imagesMap } = imagesStore();
 	const [isInvalid, setIsInvalid] = useState(false);
 	const imageRef = useRef<HTMLImageElement>(null);
 	const timeRef = useRef<HTMLInputElement>(null);
-	const [imageSrc, setImageSrc] = useState<string>("");
 
-	useEffect(() => {
-		const loadThumbnail = async () => {
-			try {
-				const thumbnailPath = await goDaemon.getThumbnailSrc(Image.id);
-				setImageSrc(thumbnailPath);
-			} catch (error) {
-				console.error("Failed to load thumbnail:", error);
-			}
-		};
-		loadThumbnail();
-	}, [Image.name]);
+	// Get the full image info from the store
+	const imageInfo = imagesMap.get(playlistImage.image_id);
+	const imageName = imageInfo?.name || `Image #${playlistImage.image_id}`;
+	const imageSrc =
+		imageInfo?.thumbnails?.default ||
+		imageInfo?.thumbnails?.["720p"] ||
+		imageInfo?.path ||
+		"";
+
 	const { attributes, listeners, setNodeRef } = useSortable({
-		id: Image.id,
+		id: playlistImage.image_id,
 	});
+
 	let text: string;
 	if (isLast === undefined) {
 		if (index < 6) {
@@ -59,27 +60,28 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
 	} else {
 		text = daysOfWeek[index];
 	}
+
 	const onRemove = useCallback(() => {
-		Image.selection.isChecked = false;
-		removeImagesFromPlaylist(new Set<number>().add(Image.id));
-	}, []);
+		removeImagesFromPlaylist(new Set<number>().add(playlistImage.image_id));
+	}, [playlistImage.image_id]);
 
 	const reOrderDebounced = useDebounceCallback(() => {
 		reorderSortingCriteria();
 	}, 200);
+
 	useEffect(() => {
 		if (
 			timeRef.current !== null &&
-			Image.time !== null &&
-			type === "timeofday"
+			playlistImage.time != null &&
+			type === "time_of_day"
 		) {
-			let minutes: string | number = Image.time % 60;
-			let hours: string | number = (Image.time - minutes) / 60;
+			let minutes: string | number = playlistImage.time % 60;
+			let hours: string | number = (playlistImage.time - minutes) / 60;
 			minutes = minutes < 10 ? "0" + minutes : minutes;
 			hours = hours < 10 ? "0" + hours : hours;
 			timeRef.current.value = `${hours}:${minutes}`;
 		}
-	}, [type, Image.time, playlistImagesTimeSet]);
+	}, [type, playlistImage.time, playlistImagesTimeSet]);
 
 	useEffect(() => {
 		if (firstRender) {
@@ -94,10 +96,11 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
 			}, 500);
 		}
 	}, [index]);
+
 	return (
 		<motion.div
 			layout
-			key={Image.id}
+			key={playlistImage.image_id}
 			initial={{ scale: 0.5 }}
 			animate={{ scale: 1 }}
 			exit={{ scale: 0 }}
@@ -105,7 +108,7 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
 			ref={setNodeRef}
 		>
 			<div className="mx-1 mb-2 w-32 shrink-0 rounded-lg shadow-xl">
-				{type === "timeofday" && (
+				{type === "time_of_day" && (
 					<div className="flex max-h-[fit] flex-col">
 						<span
 							className={
@@ -130,8 +133,8 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
 								} else {
 									e.currentTarget.setCustomValidity("");
 									setIsInvalid(false);
-									playlistImagesTimeSet.delete(Image.time ?? -1);
-									Image.time = newTimeSum;
+									playlistImagesTimeSet.delete(playlistImage.time ?? -1);
+									playlistImage.time = newTimeSum;
 									playlistImagesTimeSet.add(newTimeSum);
 									reOrderDebounced();
 								}
@@ -140,7 +143,7 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
 					</div>
 				)}
 				<span className="h-full text-clip whitespace-nowrap font-bold text-base-content shadow-xl">
-					{type === "dayofweek" ? text : undefined}
+					{type === "day_of_week" ? text : undefined}
 				</span>
 				<div className="relative">
 					<button
@@ -166,7 +169,7 @@ const MiniPlaylistCard = memo(function MiniPlaylistCard({
 					{...attributes}
 					{...listeners}
 					src={imageSrc}
-					alt={Image.name}
+					alt={imageName}
 					className="cursor-default rounded-lg shadow-2xl transition-all active:scale-105 active:opacity-45"
 					ref={imageRef}
 					loading="lazy"
