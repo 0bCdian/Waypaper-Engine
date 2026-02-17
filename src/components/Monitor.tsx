@@ -57,10 +57,8 @@ export function MonitorComponent({
 
 	// Re-fetch when a wallpaper changes on any monitor
 	useEffect(() => {
-		goDaemon.on("wallpaper_changed", fetchWallpaperPreview);
-		return () => {
-			goDaemon.off("wallpaper_changed", fetchWallpaperPreview);
-		};
+		const dispose = goDaemon.on("wallpaper_changed", fetchWallpaperPreview);
+		return dispose;
 	}, []);
 
 	const scaledWidth = monitor.width * scale;
@@ -110,7 +108,7 @@ export function MonitorComponent({
 				draggable={false}
 				data-selected={monitor.isSelected}
 				style={rectangleStyle}
-				className="border-[0.2rem] border-transparent transition-all data-[selected=true]:border-info"
+				className="border-[0.2rem] border-transparent transition-colors duration-200 data-[selected=true]:border-info"
 			>
 				{isLoading ? (
 					<div

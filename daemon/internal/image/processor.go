@@ -53,22 +53,29 @@ func NewProcessor(imageStore store.ImageStore, bus events.Bus, imagesDir string,
 }
 
 // ProcessBatch imports a batch of images asynchronously. It publishes SSE events
-// for progress tracking.
-func (p *Processor) ProcessBatch(ctx context.Context, paths []string) {
-	go p.processBatchSync(ctx, paths)
+// for progress tracking. Returns the batch ID that identifies this import in
+// all emitted events.
+func (p *Processor) ProcessBatch(ctx context.Context, paths []string) string {
+	batchID := fmt.Sprintf("%d", time.Now().UnixNano())
+	go p.processBatchSync(ctx, paths, batchID)
+	return batchID
 }
 
 // ProcessBatchSync imports a batch of images synchronously.
 // Returns the created images or an error.
 func (p *Processor) ProcessBatchSync(ctx context.Context, paths []string) ([]store.Image, error) {
-	return p.processBatchSync(ctx, paths)
+	batchID := fmt.Sprintf("%d", time.Now().UnixNano())
+	return p.processBatchSync(ctx, paths, batchID)
 }
 
-func (p *Processor) processBatchSync(ctx context.Context, paths []string) ([]store.Image, error) {
+func (p *Processor) processBatchSync(ctx context.Context, paths []string, batchID string) ([]store.Image, error) {
+	startTime := time.Now()
+
 	p.bus.Publish(events.Event{
 		Type: events.ProcessingStarted,
 		Data: map[string]any{
-			"total": len(paths),
+			"batch_id": batchID,
+			"total":    len(paths),
 		},
 	})
 
@@ -93,10 +100,12 @@ func (p *Processor) processBatchSync(ctx context.Context, paths []string) ([]sto
 			p.bus.Publish(events.Event{
 				Type: events.ImageError,
 				Data: map[string]any{
-					"path":    path,
-					"error":   err.Error(),
-					"current": i + 1,
-					"total":   len(paths),
+					"batch_id":   batchID,
+					"path":       path,
+					"error":      err.Error(),
+					"current":    i + 1,
+					"total":      len(paths),
+					"elapsed_ms": time.Since(startTime).Milliseconds(),
 				},
 			})
 			continue
@@ -106,9 +115,11 @@ func (p *Processor) processBatchSync(ctx context.Context, paths []string) ([]sto
 		p.bus.Publish(events.Event{
 			Type: events.ImageProcessed,
 			Data: map[string]any{
-				"image":   img,
-				"current": i + 1,
-				"total":   len(paths),
+				"batch_id":   batchID,
+				"image":      img,
+				"current":    i + 1,
+				"total":      len(paths),
+				"elapsed_ms": time.Since(startTime).Milliseconds(),
 			},
 		})
 	}
@@ -116,9 +127,11 @@ func (p *Processor) processBatchSync(ctx context.Context, paths []string) ([]sto
 	p.bus.Publish(events.Event{
 		Type: events.ProcessingComplete,
 		Data: map[string]any{
-			"total":     len(paths),
-			"succeeded": len(created),
-			"failed":    errCount,
+			"batch_id":   batchID,
+			"total":      len(paths),
+			"succeeded":  len(created),
+			"failed":     errCount,
+			"elapsed_ms": time.Since(startTime).Milliseconds(),
 		},
 	})
 

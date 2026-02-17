@@ -1,7 +1,8 @@
 import { DndContext, type DragEndEvent, closestCorners } from "@dnd-kit/core";
 import { SortableContext, arrayMove } from "@dnd-kit/sortable";
-import { useEffect, lazy, Suspense } from "react";
+import { useEffect, useRef, lazy, Suspense } from "react";
 import { usePlaylistStore } from "../stores/playlist";
+import { useImagesStore } from "../stores/images";
 import openImagesStore from "../hooks/useOpenImages";
 import { useShallow } from "zustand/react/shallow";
 import { motion, AnimatePresence } from "framer-motion";
@@ -10,7 +11,6 @@ import type { openFileAction } from "../../shared/types";
 import { useSetLastActivePlaylist } from "../hooks/useSetLastActivePlaylist";
 import type { PlaylistImage } from "../../electron/daemon-go-types";
 
-let firstRender = true;
 const { goDaemon } = window.API_RENDERER;
 const MiniPlaylistCard = lazy(async () => await import("./MiniPlaylistCard"));
 
@@ -21,6 +21,7 @@ function PlaylistTrack() {
 		movePlaylistArrayOrder,
 		clearPlaylist,
 		setPlaylist,
+		swapImageTimes,
 	} = usePlaylistStore(
 		useShallow((s) => ({
 			playlist: s.playlist,
@@ -28,6 +29,7 @@ function PlaylistTrack() {
 			movePlaylistArrayOrder: s.movePlaylistArrayOrder,
 			clearPlaylist: s.clearPlaylist,
 			setPlaylist: s.setPlaylist,
+			swapImageTimes: s.swapImageTimes,
 		})),
 	);
 	const monitorSelection = useMonitorStore((s) => s.monitorSelection);
@@ -38,8 +40,10 @@ function PlaylistTrack() {
 		})),
 	);
 	useSetLastActivePlaylist();
+	const isFirstRender = useRef(true);
 
 	const handleClickAddImages = (action: openFileAction) => {
+		console.log("handleClickAddImages", action);
 		void openImages({ action });
 	};
 
@@ -63,16 +67,14 @@ function PlaylistTrack() {
 			const newIndex = playlist.images.findIndex(
 				(element) => element.image_id === over?.id,
 			);
-			const oldImage = playlist.images[oldindex];
-			const newImage = playlist.images[newIndex];
-			const buffer = oldImage.time;
-			oldImage.time = newImage.time;
-			newImage.time = buffer;
-			const newArrayOrder = arrayMove(playlist.images, oldindex, newIndex);
+
+			swapImageTimes(active.id as number, over.id as number);
+
 			if (playlist.configuration.type === "time_of_day") {
 				reorderSortingCriteria();
 				return;
 			}
+			const newArrayOrder = arrayMove(playlist.images, oldindex, newIndex);
 			movePlaylistArrayOrder(newArrayOrder);
 		}
 	};
@@ -99,8 +101,8 @@ function PlaylistTrack() {
 	});
 
 	useEffect(() => {
-		if (firstRender) {
-			firstRender = false;
+		if (isFirstRender.current) {
+			isFirstRender.current = false;
 			return;
 		}
 		if (playlist.images.length === 0) {
@@ -109,8 +111,7 @@ function PlaylistTrack() {
 	}, [playlist.images, clearPlaylist]);
 
 	useEffect(() => {
-		goDaemon.on("playlists_updated", () => {
-			// Re-fetch if we have an active playlist
+		const dispose = goDaemon.on("playlists_updated", () => {
 			if (playlist.id) {
 				goDaemon.getPlaylist(playlist.id).then((fullPlaylist) => {
 					if (fullPlaylist) {
@@ -120,10 +121,16 @@ function PlaylistTrack() {
 							configuration: fullPlaylist.configuration,
 							images: fullPlaylist.images,
 						});
+						void useImagesStore
+							.getState()
+							.fetchMissingImages(
+								fullPlaylist.images.map((img) => img.image_id),
+							);
 					}
 				});
 			}
 		});
+		return dispose;
 	}, [playlist.id, setPlaylist]);
 
 	useEffect(() => {
@@ -140,36 +147,36 @@ function PlaylistTrack() {
 						? `Playlist (${playlistArray.length})`
 						: "Playlist"}
 				</span>
-				<div className="dropdown dropdown-top">
-					<button
-						tabIndex={0}
-						className="btn btn-primary w-full rounded-lg uppercase"
-					>
-						Add images
-					</button>
-					<ul className="menu dropdown-content z-10 mb-1 w-52 rounded-box bg-base-100 p-2 shadow-sm">
-						<li>
-							<a
-								className="text-lg text-base-content"
-								onClick={
-									isActive ? undefined : () => handleClickAddImages("file")
-								}
-							>
-								Individual images
-							</a>
-						</li>
-						<li>
-							<a
-								className="text-lg text-base-content"
-								onClick={
-									isActive ? undefined : () => handleClickAddImages("folder")
-								}
-							>
-								Image directory
-							</a>
-						</li>
-					</ul>
-				</div>
+			<div className="dropdown dropdown-top">
+				<button
+					tabIndex={0}
+					className="btn btn-primary w-full rounded-lg uppercase"
+				>
+					Add images
+				</button>
+				<ul className="menu dropdown-content z-10 mb-1 w-52 rounded-box bg-base-100 p-2 shadow-sm">
+					<li>
+						<a
+							className="text-lg text-base-content"
+							onMouseDown={
+								isActive ? undefined : () => handleClickAddImages("file")
+							}
+						>
+							Individual images
+						</a>
+					</li>
+					<li>
+						<a
+							className="text-lg text-base-content"
+							onMouseDown={
+								isActive ? undefined : () => handleClickAddImages("folder")
+							}
+						>
+							Image directory
+						</a>
+					</li>
+				</ul>
+			</div>
 				<button
 					onClick={() => {
 						// @ts-expect-error daisyui fix
@@ -231,9 +238,18 @@ function PlaylistTrack() {
 							transition={{ duration: 0.25, ease: "easeInOut" }}
 							animate={{ y: 0, opacity: 1 }}
 							exit={{ y: 100, opacity: 0 }}
-							className="btn btn-error rounded-lg uppercase"
-							onClick={() => clearPlaylist()}
-						>
+						className="btn btn-error rounded-lg uppercase"
+						onClick={async () => {
+							if (playlist.id) {
+								try {
+									await goDaemon.stopPlaylist(playlist.id);
+								} catch {
+									// Playlist may not be running
+								}
+							}
+							clearPlaylist();
+						}}
+					>
 							Clear
 						</motion.button>
 					)}

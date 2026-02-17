@@ -24,19 +24,20 @@ function Modals() {
 	const [shouldReload, setShouldReload] = useState<boolean>(false);
 	const playlist = usePlaylistStore((s) => s.playlist);
 
+	const config = useSettingsStore((s) => s.config);
+
 	useEffect(() => {
-		if (alreadyShown) return;
+		if (alreadyShown || !config) return;
 		alreadyShown = true;
+		if (!config.app.show_monitor_modal_on_start) return;
 		void setLastSavedMonitorConfig().then(() => {
-			const config = useSettingsStore.getState().config;
-			if (!config || !config.app.show_monitor_modal_on_start) return;
 			setTimeout(() => {
 				void reQueryMonitors().then(() => {
 					window.monitors?.showModal();
 				});
 			}, 300);
 		});
-	}, [reQueryMonitors, setLastSavedMonitorConfig]);
+	}, [config, reQueryMonitors, setLastSavedMonitorConfig]);
 
 	useEffect(() => {
 		void goDaemon.getPlaylists().then((playlists) => {
@@ -48,19 +49,12 @@ function Modals() {
 	}, [shouldReload]);
 
 	useEffect(() => {
-		const api = window.API_RENDERER?.goDaemon;
-		if (!api?.on || !api?.off) return;
-
-		const handlePlaylistsUpdated = () => {
+		const dispose = goDaemon.on("playlists_updated", () => {
 			void goDaemon.getPlaylists().then((playlists) => {
 				setPlaylistsInDB(playlists);
 			});
-		};
-
-		api.on("playlists_updated", handlePlaylistsUpdated);
-		return () => {
-			api.off("playlists_updated", handlePlaylistsUpdated);
-		};
+		});
+		return dispose;
 	}, []);
 
 	return (

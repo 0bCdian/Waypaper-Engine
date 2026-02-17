@@ -129,13 +129,21 @@ export const trayMenu = async (
 	> = imageHistory.length > 0
 		? [
 				{
-					label: "Recent wallpapers",
-					submenu: imageHistory.map((entry, index) => ({
-						label: `${index + 1}. ${entry.image_name}`,
-						click: async () => {
-							try {
-								await goDaemonClient.setWallpaper(entry.image_id);
-							} catch (error) {
+				label: "Recent wallpapers",
+				submenu: imageHistory.map((entry, index) => ({
+					label: `${index + 1}. ${entry.image_name}`,
+					click: async () => {
+						try {
+							const monitor =
+								entry.mode === "extend" || entry.mode === "clone"
+									? "*"
+									: entry.monitors[0] ?? "*";
+							await goDaemonClient.setWallpaper(
+								entry.image_id,
+								monitor,
+								entry.mode,
+							);
+						} catch (error) {
 								console.error("Failed to set image from tray:", error);
 							}
 							void trayMenu(app, trayInstance).then((menu) => {

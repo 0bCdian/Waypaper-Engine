@@ -27,7 +27,7 @@ interface SettingField {
 	key: string;
 	label: string;
 	description: string;
-	type: "text" | "number" | "select";
+	type: "text" | "number" | "select" | "checkbox";
 	options?: Array<{ value: string; label: string }>;
 	min?: number;
 	max?: number;
@@ -83,13 +83,22 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 			label: "Transition Type",
 			description: "Type of transition effect when changing wallpapers",
 			type: "select",
-			options: [
-				{ value: "simple", label: "Simple" },
-				{ value: "wipe", label: "Wipe" },
-				{ value: "grow", label: "Grow" },
-				{ value: "outer", label: "Outer" },
-				{ value: "wave", label: "Wave" },
-			],
+		options: [
+			{ value: "none", label: "None" },
+			{ value: "simple", label: "Simple" },
+			{ value: "fade", label: "Fade" },
+			{ value: "left", label: "Left" },
+			{ value: "right", label: "Right" },
+			{ value: "top", label: "Top" },
+			{ value: "bottom", label: "Bottom" },
+			{ value: "wipe", label: "Wipe" },
+			{ value: "wave", label: "Wave" },
+			{ value: "grow", label: "Grow" },
+			{ value: "center", label: "Center" },
+			{ value: "any", label: "Any" },
+			{ value: "outer", label: "Outer" },
+			{ value: "random", label: "Random" },
+		],
 		},
 		{
 			key: "swww.transition_duration",
@@ -129,6 +138,10 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 				{ value: "bottom", label: "Bottom" },
 				{ value: "left", label: "Left" },
 				{ value: "right", label: "Right" },
+				{value:"top-left", label: "Top Left" },
+				{value:"top-right", label: "Top Right" },
+				{value:"bottom-left", label: "Bottom Left" },
+				{value:"bottom-right", label: "Bottom Right" },
 			],
 		},
 		{
@@ -145,6 +158,54 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 			description: "Wave parameters for wave transitions",
 			type: "text",
 			placeholder: "0,0,0,0",
+		},
+		{
+			key: "swww.transition_fps",
+			label: "Transition FPS",
+			description: "Target frames per second for the transition animation",
+			type: "number",
+			min: 1,
+			max: 244,
+			step: 1,
+		},
+		{
+			key: "swww.resize",
+			label: "Resize Mode",
+			description: "How the image is fitted to the monitor",
+			type: "select",
+			options: [
+				{ value: "crop", label: "Crop" },
+				{ value: "fit", label: "Fit" },
+				{ value: "no", label: "No Resize" },
+				{ value: "stretch", label: "Stretch" },
+			],
+		},
+		{
+			key: "swww.fill_color",
+			label: "Fill Color",
+			description:
+				'Color used to fill empty space when resize is "fit" (hex without #, e.g. 000000)',
+			type: "text",
+			placeholder: "000000",
+		},
+		{
+			key: "swww.filter_type",
+			label: "Filter Type",
+			description: "Resampling filter used when resizing images",
+			type: "select",
+			options: [
+				{ value: "Lanczos3", label: "Lanczos3" },
+				{ value: "Bilinear", label: "Bilinear" },
+				{ value: "CatmullRom", label: "CatmullRom" },
+				{ value: "Mitchell", label: "Mitchell" },
+				{ value: "Nearest", label: "Nearest" },
+			],
+		},
+		{
+			key: "swww.invert_y",
+			label: "Invert Y",
+			description: "Invert the y-axis for transition animations",
+			type: "checkbox",
 		},
 	];
 
@@ -190,7 +251,7 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 			return (
 				<div key={field.key} className="card bg-base-200 shadow-sm">
 					<div className="card-body p-4">
-						<div className="form-control">
+						<div className="flex flex-col gap-2">
 							<label className="label">
 								<span className="text-sm font-medium text-base-content">
 									{field.label}
@@ -225,7 +286,7 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 			return (
 				<div key={field.key} className="card bg-base-200 shadow-sm">
 					<div className="card-body p-4">
-						<div className="form-control">
+						<div className="flex flex-col gap-2">
 							<label className="label">
 								<span className="text-sm font-medium text-base-content">
 									{field.label}
@@ -264,7 +325,7 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 			return (
 				<div key={field.key} className="card bg-base-200 shadow-sm">
 					<div className="card-body p-4">
-						<div className="form-control flex flex-col gap-2">
+						<div className="flex flex-col gap-2">
 							<label className="label">
 								<span className="text-sm font-medium text-base-content">
 									{field.label}
@@ -285,6 +346,38 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 									</option>
 								))}
 							</select>
+							<div className="label">
+								<span className="text-xs text-base-content/60">
+									{field.description}
+								</span>
+							</div>
+							{error && (
+								<div className="text-xs text-error mt-1">{error.message}</div>
+							)}
+						</div>
+					</div>
+				</div>
+			);
+		}
+
+		if (field.type === "checkbox") {
+			return (
+				<div key={field.key} className="card bg-base-200 shadow-sm">
+					<div className="card-body p-4">
+						<div className="flex flex-col gap-2">
+							<label className="label cursor-pointer justify-start gap-3">
+								<input
+									type="checkbox"
+									className="checkbox checkbox-sm"
+									checked={!!currentValue}
+									onChange={(e) =>
+										handleValueChange(field.key, e.target.checked)
+									}
+								/>
+								<span className="text-sm font-medium text-base-content">
+									{field.label}
+								</span>
+							</label>
 							<div className="label">
 								<span className="text-xs text-base-content/60">
 									{field.description}

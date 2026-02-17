@@ -7,6 +7,7 @@ import { useLoadMonitors } from "./hooks/useLoadMonitors";
 import { useRealTimeImageProcessing } from "./hooks/useRealTimeImageProcessing";
 import { useWindowBounds } from "./hooks/useWindowBounds";
 import useContextMenuEvents from "./hooks/useContextMenuEvents";
+import useNotifications from "./hooks/useNotifications";
 import { ImageProcessingProgress } from "./components/ImageProcessingProgress";
 import ToastContainer from "./components/ToastContainer";
 import ModernAppLayout from "./components/layout/ModernAppLayout";
@@ -21,6 +22,7 @@ const App = () => {
 	useRealTimeImageProcessing();
 	useWindowBounds();
 	useContextMenuEvents();
+	useNotifications();
 	return (
 		<ThemeProvider defaultTheme="business" persist={true} syncWithSystem={true}>
 			<HashRouter

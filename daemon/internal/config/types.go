@@ -24,6 +24,9 @@ type AppConfig struct {
 	// MinimizeInsteadOfClose makes the window minimize to tray instead of closing.
 	MinimizeInsteadOfClose bool `mapstructure:"minimize_instead_of_close" json:"minimize_instead_of_close"`
 
+	// ShowMonitorModalOnStart shows the monitor selection modal when the app starts.
+	ShowMonitorModalOnStart bool `mapstructure:"show_monitor_modal_on_start" json:"show_monitor_modal_on_start"`
+
 	// ImagesPerPage is the number of images shown per page in the gallery.
 	ImagesPerPage int `mapstructure:"images_per_page" json:"images_per_page"`
 

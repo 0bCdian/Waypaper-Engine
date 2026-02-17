@@ -37,6 +37,8 @@ interface Actions {
 	readPlaylist: () => rendererPlaylist;
 	setPlaylist: (newPlaylist: rendererPlaylist) => void;
 	setEmptyPlaylist: () => void;
+	updateImageTime: (imageId: number, oldTime: number | undefined, newTime: number) => void;
+	swapImageTimes: (imageIdA: number, imageIdB: number) => void;
 }
 
 export const usePlaylistStore = create<State & Actions>()((set, get) => ({
@@ -117,20 +119,24 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
 
 	removeImagesFromPlaylist: (imageIds) => {
 		set((state) => {
+			const newImagesSet = new Set(state.playlistImagesSet);
+			const newTimesSet = new Set(state.playlistImagesTimeSet);
+
 			const newImagesArray = state.playlist.images.filter((img) => {
 				const shouldKeep = !imageIds.has(img.image_id);
-				if (!shouldKeep && img.time != null) {
-					state.playlistImagesTimeSet.delete(img.time);
+				if (!shouldKeep) {
+					newImagesSet.delete(img.image_id);
+					if (img.time != null) {
+						newTimesSet.delete(img.time);
+					}
 				}
 				return shouldKeep;
 			});
-			imageIds.forEach((id) => {
-				state.playlistImagesSet.delete(id);
-			});
+
 			return {
 				playlist: { ...state.playlist, images: newImagesArray },
-				playlistImagesSet: new Set(state.playlistImagesSet),
-				playlistImagesTimeSet: new Set(state.playlistImagesTimeSet),
+				playlistImagesSet: newImagesSet,
+				playlistImagesTimeSet: newTimesSet,
 			};
 		});
 	},
@@ -186,5 +192,49 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
 			playlistImagesTimeSet: new Set<number>(),
 			lastAddedImageID: -1,
 		}));
+	},
+
+	updateImageTime: (imageId, oldTime, newTime) => {
+		set((state) => {
+			const newTimeSet = new Set(state.playlistImagesTimeSet);
+			if (oldTime != null) {
+				newTimeSet.delete(oldTime);
+			}
+			newTimeSet.add(newTime);
+
+			const newImages = state.playlist.images.map((img) =>
+				img.image_id === imageId ? { ...img, time: newTime } : img,
+			);
+
+			return {
+				playlist: { ...state.playlist, images: newImages },
+				playlistImagesTimeSet: newTimeSet,
+			};
+		});
+	},
+
+	swapImageTimes: (imageIdA, imageIdB) => {
+		set((state) => {
+			const imgA = state.playlist.images.find(
+				(img) => img.image_id === imageIdA,
+			);
+			const imgB = state.playlist.images.find(
+				(img) => img.image_id === imageIdB,
+			);
+			if (!imgA || !imgB) return state;
+
+			const timeA = imgA.time;
+			const timeB = imgB.time;
+
+			const newImages = state.playlist.images.map((img) => {
+				if (img.image_id === imageIdA) return { ...img, time: timeB };
+				if (img.image_id === imageIdB) return { ...img, time: timeA };
+				return img;
+			});
+
+			return {
+				playlist: { ...state.playlist, images: newImages },
+			};
+		});
 	},
 }));

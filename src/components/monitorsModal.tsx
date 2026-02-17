@@ -81,7 +81,7 @@ function Monitors() {
 		if (!firstRender) return;
 		firstRender = false;
 
-		goDaemon.on("monitor_connected", () => {
+		const disposeConnected = goDaemon.on("monitor_connected", () => {
 			setTimeout(() => {
 				void reQueryMonitors().then(() => {
 					window.monitors?.showModal();
@@ -89,11 +89,17 @@ function Monitors() {
 			}, 300);
 		});
 
-		goDaemon.on("monitor_disconnected", () => {
+		const disposeDisconnected = goDaemon.on("monitor_disconnected", () => {
 			setTimeout(() => {
 				void reQueryMonitors();
 			}, 300);
 		});
+
+		return () => {
+			disposeConnected();
+			disposeDisconnected();
+			firstRender = true;
+		};
 	}, []);
 
 	// All plain functions after hooks
@@ -185,63 +191,78 @@ function Monitors() {
 			draggable={false}
 		>
 			<div className="modal-box min-w-max">
-				<div className="m-auto flex max-w-fit flex-col justify-center">
-					<h2 className="select-none py-3 text-center text-4xl font-bold">
+				<div className="m-auto flex max-w-fit flex-col justify-center gap-4 xl:gap-5 2xl:gap-6">
+					<h2 className="select-none text-center text-4xl font-bold">
 						Choose Display
 					</h2>
-					<div className="form-control">
+
+					<fieldset className="fieldset bg-base-200 border border-base-300 rounded-box p-4 xl:p-5 2xl:p-6">
+						<legend className="fieldset-legend text-base 2xl:text-lg">
+							Display Mode
+						</legend>
 						<select
 							defaultValue={initialSelectState}
 							onChange={(e) => {
-								setSelectType(e.currentTarget.value as monitorSelectType);
+								setSelectType(
+									e.currentTarget.value as monitorSelectType,
+								);
 							}}
-							className="select w-full max-w-full text-center text-xl"
+							className="select select-bordered w-full text-center text-lg xl:text-xl"
 						>
-							<option value={"individual"}>Wallpaper per display</option>
-							<option value={"extend"} disabled={monitorsList.length < 2}>
+							<option value="individual">Wallpaper per display</option>
+							<option
+								value="extend"
+								disabled={monitorsList.length < 2}
+							>
 								Stretch single wallpaper
 							</option>
-							<option value={"clone"} disabled={monitorsList.length < 2}>
+							<option
+								value="clone"
+								disabled={monitorsList.length < 2}
+							>
 								Clone single wallpaper
 							</option>
 						</select>
-						<div className="divider"></div>
-						<div style={styles} className="relative m-auto">
-							{monitorsList.map((monitor) => {
-								const left = isSingleMonitor ? 0 : monitor.x * scale;
-								const top = isSingleMonitor ? 0 : monitor.y * scale;
+					</fieldset>
 
-								return (
-									<div
-										draggable={false}
-										style={{
-											position: "absolute",
-											left,
-											top,
-										}}
-										key={monitor.name}
-									>
-										<MonitorComponent
-											monitorsList={monitorsList}
-											monitor={monitor}
-											selectType={selectType}
-											scale={scale * 0.99}
-										/>
-									</div>
-								);
-							})}
-						</div>
-						<div className="divider"></div>
+					<div style={styles} className="relative m-auto">
+						{monitorsList.map((monitor) => {
+							const left = isSingleMonitor ? 0 : monitor.x * scale;
+							const top = isSingleMonitor ? 0 : monitor.y * scale;
+
+							return (
+								<div
+									draggable={false}
+									style={{
+										position: "absolute",
+										left,
+										top,
+									}}
+									key={monitor.name}
+								>
+									<MonitorComponent
+										monitorsList={monitorsList}
+										monitor={monitor}
+										selectType={selectType}
+										scale={scale * 0.99}
+									/>
+								</div>
+							);
+						})}
+					</div>
+
+					<div className="flex flex-col items-center gap-3">
 						<span
 							data-error={error.state}
-							className="opcacity-0 invisible m-auto mb-4 select-none text-center text-2xl italic text-error transition-all duration-300 data-[error=true]:visible data-[error=true]:opacity-100"
+							className="h-8 select-none text-center text-xl italic text-error opacity-0 transition-opacity duration-300 data-[error=true]:opacity-100 xl:text-2xl"
 						>
 							{error.message}
 						</span>
 
 						<button
+							type="button"
 							onClick={onSubmit}
-							className="btn btn-primary btn-wide m-auto rounded-md text-xl"
+							className="btn btn-primary btn-wide xl:btn-lg rounded-md text-xl"
 						>
 							Save
 						</button>

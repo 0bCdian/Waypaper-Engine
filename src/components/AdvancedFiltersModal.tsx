@@ -74,225 +74,182 @@ const AdvancedFiltersModal = () => {
 	}, [reset]);
 	return (
 		<dialog id="AdvancedFiltersModal" className="modal" ref={containerRef}>
-			<div className="modal-box rounded-xl">
+			<div className="modal-box max-w-lg xl:max-w-xl 2xl:max-w-2xl rounded-xl">
 				<button
-					className="btn btn-circle btn-ghost absolute right-4 top-4"
+					type="button"
+					className="btn btn-circle btn-ghost btn-sm absolute right-3 top-3"
 					onClick={() => {
 						containerRef.current?.close();
 					}}
 				>
-					X
+					✕
 				</button>
+				<h2 className="mb-4 text-2xl xl:text-3xl 2xl:text-4xl font-bold">
+					Advanced Filters
+				</h2>
+
 				<form
 					method="dialog"
-					className="flex flex-col"
+					className="flex flex-col gap-4 xl:gap-5 2xl:gap-6"
 					onSubmit={(e) => {
 						void handleSubmit(onSubmit)(e);
 					}}
 				>
-					<h2 className="text-3xl">Resolution</h2>
-					<div className="divider my-2"></div>
-					<div>
-						<div className="form-control">
-							<label className="label cursor-pointer">
-								<span className="label-text text-xl">Show all resolutions</span>
-								<input
-									defaultChecked
-									value={"all"}
-									type="radio"
-									{...register("resolutionConstraint")}
-									className="radio checked:bg-primary"
-								/>
-							</label>
-						</div>
-						<div className="form-control">
-							<label className="label cursor-pointer">
-								<span className="label-text text-xl">
-									Filter by exact resolution
-								</span>
-								<input
-									type="radio"
-									value={"exact"}
-									{...register("resolutionConstraint")}
-									className="radio"
-								/>
-							</label>
-						</div>
-						<div className="form-control">
-							<label className="label cursor-pointer">
-								<span className="label-text text-xl">
-									Less than specified resolution
-								</span>
-								<input
-									type="radio"
-									value={"lessThan"}
-									{...register("resolutionConstraint")}
-									className="radio"
-								/>
-							</label>
-						</div>
-						<div className="form-control">
-							<label className="label cursor-pointer">
-								<span className="label-text text-xl">
-									More than specified resolution
-								</span>
-								<input
-									type="radio"
-									value={"moreThan"}
-									{...register("resolutionConstraint")}
-									className="radio"
-								/>
-							</label>
-						</div>
-					</div>
-					<div className="flex flex-col">
-						<label className="label-text italic">
-							A value of zero means all resolutions
-						</label>
-						<div className="flex flex-col">
-							<label htmlFor="width" className="label">
-								<span className="label-text text-lg">Width</span>
-							</label>
-							<input
-								type="number"
-								defaultValue={0}
-								min={0}
-								step={1}
-								{...register("width")}
-								id="width"
-								className="input input-info rounded-xl"
-							/>
-						</div>
-						<div className="flex flex-col">
-							<label htmlFor="height" className="label">
-								<span className="label-text text-lg">Height</span>
-							</label>
-							<input
-								type="number"
-								id="height"
-								defaultValue={0}
-								step={1}
-								min={0}
-								{...register("height")}
-								className="input input-info rounded-xl"
-							/>
-						</div>
-					</div>
-					<div className="divider my-3"></div>
-					<h2 className="mb-3 text-3xl">Image formats</h2>
-					<label className="label cursor-pointer">
-						<span className="label-text text-2xl">
-							Select/Unselect All Formats
-						</span>
-						<input
-							defaultChecked={true}
-							onChange={(e) => {
-								setFormatsValues(e.target.checked);
-							}}
-							type="checkbox"
-							className="bg-neutral-focus h-5 w-9 appearance-none rounded-full shadow-inner transition-all duration-300 before:ml-0.5 before:inline-block before:h-4 before:w-4 before:rounded-full before:bg-primary checked:bg-primary checked:before:translate-x-full focus:outline-hidden"
-						/>
-					</label>
-					<div className="form-control ml-10 max-h-[20vh] flex-wrap">
-						<label className="label cursor-pointer justify-start gap-5">
-							<input
-								defaultChecked
-								type="checkbox"
-								className="checkbox"
-								{...register("jpeg")}
-							/>
-							<span className="label-text text-lg">JPEG</span>
-						</label>
-						<label className="label cursor-pointer justify-start gap-5">
-							<input
-								defaultChecked
-								type="checkbox"
-								className="checkbox"
-								{...register("jpg")}
-							/>
-							<span className="label-text text-lg">JPG</span>
-						</label>
-						<label className="label cursor-pointer justify-start gap-5">
-							<input
-								defaultChecked
-								type="checkbox"
-								className="checkbox"
-								{...register("webp")}
-							/>
-							<span className="label-text text-lg">WEBP</span>
-						</label>
-						<label className="label cursor-pointer justify-start gap-5">
-							<input
-								defaultChecked
-								type="checkbox"
-								className="checkbox"
-								{...register("gif")}
-							/>
-							<span className="label-text justify-start gap-5 text-lg">
-								GIF
+					{/* Resolution constraint */}
+					<fieldset className="fieldset bg-base-200 border border-base-300 rounded-box p-4 xl:p-5 2xl:p-6">
+						<legend className="fieldset-legend text-base 2xl:text-lg">
+							Resolution
+						</legend>
+
+						<label className="label cursor-pointer justify-between">
+							<span className="text-sm xl:text-base 2xl:text-lg">
+								Show all resolutions
 							</span>
-						</label>
-						<label className="label cursor-pointer justify-start gap-5">
 							<input
 								defaultChecked
-								type="checkbox"
-								className="checkbox"
-								{...register("png")}
+								value="all"
+								type="radio"
+								{...register("resolutionConstraint")}
+								className="radio radio-primary"
 							/>
-							<span className="label-text text-lg">PNG</span>
 						</label>
-						<label className="label cursor-pointer justify-start gap-5">
+						<label className="label cursor-pointer justify-between">
+							<span className="text-sm xl:text-base 2xl:text-lg">
+								Exact resolution
+							</span>
 							<input
-								defaultChecked
-								type="checkbox"
-								className="checkbox"
-								{...register("bmp")}
+								type="radio"
+								value="exact"
+								{...register("resolutionConstraint")}
+								className="radio radio-primary"
 							/>
-							<span className="label-text text-lg">BMP</span>
 						</label>
-						<label className="label cursor-pointer justify-start gap-5">
+						<label className="label cursor-pointer justify-between">
+							<span className="text-sm xl:text-base 2xl:text-lg">
+								Less than
+							</span>
 							<input
-								defaultChecked
-								type="checkbox"
-								className="checkbox"
-								{...register("tiff")}
+								type="radio"
+								value="lessThan"
+								{...register("resolutionConstraint")}
+								className="radio radio-primary"
 							/>
-							<span className="label-text text-lg">TIFF</span>
 						</label>
-						<label className="label cursor-pointer justify-start gap-5">
+						<label className="label cursor-pointer justify-between">
+							<span className="text-sm xl:text-base 2xl:text-lg">
+								Greater than
+							</span>
 							<input
-								defaultChecked
-								type="checkbox"
-								className="checkbox"
-								{...register("tga")}
+								type="radio"
+								value="moreThan"
+								{...register("resolutionConstraint")}
+								className="radio radio-primary"
 							/>
-							<span className="label-text text-lg">TGA</span>
 						</label>
-						<label className="label cursor-pointer justify-start gap-5">
+
+						<p className="label text-base-content/60 mt-2 text-xs xl:text-sm italic">
+							A value of zero means all resolutions
+						</p>
+
+						<div className="mt-1 grid grid-cols-2 gap-3">
+							<div>
+								<label
+									htmlFor="width"
+									className="label text-sm xl:text-base font-medium"
+								>
+									Width
+								</label>
+								<input
+									type="number"
+									defaultValue={0}
+									min={0}
+									step={1}
+									{...register("width")}
+									id="width"
+									className="input input-bordered xl:input-lg w-full"
+								/>
+							</div>
+							<div>
+								<label
+									htmlFor="height"
+									className="label text-sm xl:text-base font-medium"
+								>
+									Height
+								</label>
+								<input
+									type="number"
+									id="height"
+									defaultValue={0}
+									step={1}
+									min={0}
+									{...register("height")}
+									className="input input-bordered xl:input-lg w-full"
+								/>
+							</div>
+						</div>
+					</fieldset>
+
+					{/* Image formats */}
+					<fieldset className="fieldset bg-base-200 border border-base-300 rounded-box p-4 xl:p-5 2xl:p-6">
+						<legend className="fieldset-legend text-base 2xl:text-lg">
+							Image Formats
+						</legend>
+
+						<label className="label cursor-pointer justify-between">
+							<span className="font-medium text-sm xl:text-base 2xl:text-lg">
+								Select / Deselect All
+							</span>
 							<input
-								defaultChecked
+								defaultChecked={true}
+								onChange={(e) => {
+									setFormatsValues(e.target.checked);
+								}}
 								type="checkbox"
-								className="checkbox"
-								{...register("pnm")}
+								className="toggle toggle-primary"
 							/>
-							<span className="label-text text-lg">PNM</span>
 						</label>
-						<label className="label cursor-pointer justify-start gap-5">
-							<input
-								defaultChecked
-								type="checkbox"
-								className="checkbox"
-								{...register("farbfeld")}
-							/>
-							<span className="label-text text-lg">FARBELD</span>
-						</label>
-					</div>
-					<div className="divider"></div>
-					<button className="btn btn-lg rounded-xl">Save Filters</button>
+
+						<div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1">
+							{(
+								[
+									["jpeg", "JPEG"],
+									["jpg", "JPG"],
+									["png", "PNG"],
+									["webp", "WEBP"],
+									["gif", "GIF"],
+									["bmp", "BMP"],
+									["tiff", "TIFF"],
+									["tga", "TGA"],
+									["pnm", "PNM"],
+									["farbfeld", "FARBFELD"],
+								] as const
+							).map(([name, label]) => (
+								<label
+									key={name}
+									className="label cursor-pointer justify-start gap-3"
+								>
+									<input
+										defaultChecked
+										type="checkbox"
+										className="checkbox checkbox-sm xl:checkbox-md checkbox-primary"
+										{...register(name)}
+									/>
+									<span className="text-sm xl:text-base">{label}</span>
+								</label>
+							))}
+						</div>
+					</fieldset>
+
+					<button
+						type="submit"
+						className="btn btn-primary btn-block xl:btn-lg mt-2"
+					>
+						Save Filters
+					</button>
 				</form>
 			</div>
 			<form method="dialog" className="modal-backdrop">
-				<button>close</button>
+				<button type="button">close</button>
 			</form>
 		</dialog>
 	);

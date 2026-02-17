@@ -1,12 +1,12 @@
 import type { Monitor } from "../../electron/daemon-go-types";
 
-export function toMS(hours: number, minutes: number) {
-	return hours * 60 * 60 * 1000 + minutes * 60 * 1000;
+export function toSeconds(hours: number, minutes: number) {
+	return hours * 3600 + minutes * 60;
 }
 
-export function toHoursAndMinutes(ms: number) {
-	const hours = Math.floor(ms / (60 * 60 * 1000));
-	const minutes = Math.floor((ms - hours * 60 * 60 * 1000) / (60 * 1000));
+export function toHoursAndMinutes(seconds: number) {
+	const hours = Math.floor(seconds / 3600);
+	const minutes = Math.floor((seconds % 3600) / 60);
 	return { hours, minutes };
 }
 

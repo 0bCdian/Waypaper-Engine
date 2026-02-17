@@ -1,5 +1,6 @@
 import { useRef, useState } from "react";
 import { usePlaylistStore } from "../stores/playlist";
+import { useImagesStore } from "../stores/images";
 import { useShallow } from "zustand/react/shallow";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import type { rendererPlaylist } from "../types/rendererTypes";
@@ -39,13 +40,22 @@ const LoadPlaylistModal = ({
 	};
 
 	const onSubmit: SubmitHandler<Input> = async (data) => {
-		clearPlaylist();
-		const selectedPlaylist = playlistsInDB.find((playlist) => {
-			return playlist.name === data.selectPlaylist;
-		});
+		const selectedId = Number(data.selectPlaylist);
+		const selectedPlaylist = playlistsInDB.find((p) => p.id === selectedId);
 
-		if (selectedPlaylist !== undefined) {
-			// Fetch the full playlist with images
+		if (selectedPlaylist === undefined) {
+			setError("Please select a valid playlist");
+			setTimeout(() => setError(""), 3000);
+			return;
+		}
+
+		if (monitorSelection.selectedMonitors.length < 1) {
+			setError("Select at least one display before loading a playlist");
+			setTimeout(() => setError(""), 3000);
+			return;
+		}
+
+		try {
 			const fullPlaylist = await goDaemon.getPlaylist(selectedPlaylist.id);
 
 			const currentPlaylist: rendererPlaylist = {
@@ -55,22 +65,35 @@ const LoadPlaylistModal = ({
 				images: fullPlaylist.images,
 			};
 
-			if (monitorSelection.selectedMonitors.length < 1) {
-				setError("Select at least one display before setting a playlist");
-				setTimeout(() => setError(""), 3000);
-				return;
-			}
-
+			clearPlaylist();
 			setPlaylist(currentPlaylist);
 
-			// Start playlist on selected monitor
+			// Fetch image data for thumbnail resolution
+			void useImagesStore
+				.getState()
+				.fetchMissingImages(
+					fullPlaylist.images.map((img) => img.image_id),
+				);
+
+			// Start playlist on selected monitor(s)
 			const monitor =
 				monitorSelection.selectedMonitors.length === 1
 					? monitorSelection.selectedMonitors[0]
 					: "*";
-			goDaemon.startPlaylist(fullPlaylist.id, monitor, monitorSelection.mode);
+			await goDaemon.startPlaylist(
+				fullPlaylist.id,
+				monitor,
+				monitorSelection.mode,
+			);
+
+			closeModal();
+		} catch (err) {
+			console.error("Failed to load playlist:", err);
+			setError(
+				`Failed to load playlist: ${err instanceof Error ? err.message : "Unknown error"}`,
+			);
+			setTimeout(() => setError(""), 5000);
 		}
-		closeModal();
 	};
 
 	return (
@@ -131,7 +154,9 @@ const LoadPlaylistModal = ({
 								id="selectPlaylist"
 								className="select select-bordered basis-[90%] rounded-md text-lg"
 								defaultValue={
-									playlistsInDB.length > 0 ? playlistsInDB[0].name : ""
+									playlistsInDB.length > 0
+										? String(playlistsInDB[0].id)
+										: ""
 								}
 								{...register("selectPlaylist", {
 									required: true,
@@ -141,7 +166,10 @@ const LoadPlaylistModal = ({
 									Select a playlist...
 								</option>
 								{playlistsInDB.map((playlist) => (
-									<option key={playlist.id} value={playlist.name}>
+									<option
+										key={playlist.id}
+										value={String(playlist.id)}
+									>
 										{playlist.name}
 									</option>
 								))}
@@ -150,19 +178,20 @@ const LoadPlaylistModal = ({
 								type="button"
 								className="btn btn-error btn-md rounded-md uppercase"
 								onClick={async () => {
-									const current = watch("selectPlaylist");
-									if (!current || current.trim() === "") {
+									const currentVal = watch("selectPlaylist");
+									const currentId = Number(currentVal);
+									if (!currentVal || Number.isNaN(currentId)) {
 										setError("Please select a playlist to delete");
 										return;
 									}
 
 									const playlistToDelete = playlistsInDB.find(
-										(p) => p.name === current,
+										(p) => p.id === currentId,
 									);
 									if (!playlistToDelete) return;
 
 									const shouldDelete = window.confirm(
-										`Are you sure to delete ${current}?`,
+										`Are you sure to delete ${playlistToDelete.name}?`,
 									);
 									if (shouldDelete) {
 										try {
@@ -173,10 +202,13 @@ const LoadPlaylistModal = ({
 											if (currentPlaylistName !== "") {
 												clearPlaylist();
 											}
-										} catch (error) {
-											console.error("Failed to delete playlist:", error);
+										} catch (deleteErr) {
+											console.error(
+												"Failed to delete playlist:",
+												deleteErr,
+											);
 											setError(
-												`Failed to delete playlist: ${error instanceof Error ? error.message : "Unknown error"}`,
+												`Failed to delete playlist: ${deleteErr instanceof Error ? deleteErr.message : "Unknown error"}`,
 											);
 										}
 									}
@@ -204,7 +236,7 @@ const LoadPlaylistModal = ({
 				)}
 			</div>
 			<form method="dialog" className="modal-backdrop">
-				<button>close</button>
+				<button type="button">close</button>
 			</form>
 		</dialog>
 	);

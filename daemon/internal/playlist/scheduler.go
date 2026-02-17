@@ -68,6 +68,7 @@ type timerScheduler struct {
 	callback     func(int)
 	ticker       *time.Ticker
 	stopCh       chan struct{}
+	stopOnce     sync.Once
 	paused       bool
 	nextChange   *time.Time
 }
@@ -132,14 +133,16 @@ func (s *timerScheduler) Start(callback func(int)) {
 }
 
 func (s *timerScheduler) Stop() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.stopOnce.Do(func() {
+		s.mu.Lock()
+		defer s.mu.Unlock()
 
-	if s.ticker != nil {
-		s.ticker.Stop()
-	}
-	close(s.stopCh)
-	s.nextChange = nil
+		if s.ticker != nil {
+			s.ticker.Stop()
+		}
+		close(s.stopCh)
+		s.nextChange = nil
+	})
 }
 
 func (s *timerScheduler) Pause() {
@@ -181,6 +184,7 @@ type timeOfDayScheduler struct {
 	callback   func(int)
 	timer      *time.Timer
 	stopCh     chan struct{}
+	stopOnce   sync.Once
 	paused     bool
 	nextChange *time.Time
 }
@@ -259,14 +263,16 @@ func todayAt(minutesSinceMidnight int) time.Time {
 }
 
 func (s *timeOfDayScheduler) Stop() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.stopOnce.Do(func() {
+		s.mu.Lock()
+		defer s.mu.Unlock()
 
-	close(s.stopCh)
-	if s.timer != nil {
-		s.timer.Stop()
-	}
-	s.nextChange = nil
+		close(s.stopCh)
+		if s.timer != nil {
+			s.timer.Stop()
+		}
+		s.nextChange = nil
+	})
 }
 
 func (s *timeOfDayScheduler) Pause() {
@@ -306,6 +312,7 @@ type dayOfWeekScheduler struct {
 	callback    func(int)
 	timer       *time.Timer
 	stopCh      chan struct{}
+	stopOnce    sync.Once
 	paused      bool
 	nextChange  *time.Time
 }
@@ -367,14 +374,16 @@ func (s *dayOfWeekScheduler) scheduleNext() {
 }
 
 func (s *dayOfWeekScheduler) Stop() {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+	s.stopOnce.Do(func() {
+		s.mu.Lock()
+		defer s.mu.Unlock()
 
-	close(s.stopCh)
-	if s.timer != nil {
-		s.timer.Stop()
-	}
-	s.nextChange = nil
+		close(s.stopCh)
+		if s.timer != nil {
+			s.timer.Stop()
+		}
+		s.nextChange = nil
+	})
 }
 
 func (s *dayOfWeekScheduler) Pause() {

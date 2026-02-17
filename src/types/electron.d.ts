@@ -123,8 +123,10 @@ declare global {
 				) => Promise<{ status: string; backend: string }>;
 
 				// EVENT LISTENERS
-				on: (event: EventType, callback: (data: unknown) => void) => void;
-				off: (event: EventType, callback: (data: unknown) => void) => void;
+				on: (
+					event: EventType,
+					callback: (data: unknown) => void,
+				) => () => void;
 			};
 
 			// THEME MANAGEMENT

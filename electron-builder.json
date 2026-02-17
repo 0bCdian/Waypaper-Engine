@@ -25,11 +25,13 @@
 		"executableName": "waypaper-engine-bin",
 		"description": "A graphical frontend for setting wallpapers and playlists, using swww under the hood!",
 		"desktop": {
-			"Name": "Waypaper Engine",
-			"Comment": "Waypaper Engine",
-			"Terminal": "false",
-			"Type": "Application",
-			"Icon": "/build/icons/512x512.png"
+			"entry": {
+				"Name": "Waypaper Engine",
+				"Comment": "Waypaper Engine",
+				"Terminal": "false",
+				"Type": "Application",
+				"Icon": "/build/icons/512x512.png"
+			}
 		}
 	}
 }

@@ -13,12 +13,20 @@
 // Runtime state (active playlists, current wallpapers) is kept in-memory only
 // and is NOT persisted — it is reconstructed on daemon startup.
 //
-// IMPORTANT: Do NOT add `clover` struct tags to model fields. CloverDB's Unmarshal
-// uses `clover` tags to rename document keys to Go field names, then feeds the
-// result through json.Unmarshal which expects `json` tag names — causing a mismatch
-// for any field where the json tag differs from the Go name (e.g. "monitor_name"
-// gets renamed to "MonitorName", but json expects "monitor_name"). Without `clover`
-// tags, document keys pass through unchanged and json.Unmarshal matches them directly.
+// IMPORTANT — CloverDB struct field name mismatch:
+//
+// CloverDB's doc.Set("key", structValue) normalizes structs using Go field names
+// (e.g. "ImageID"), but doc.Unmarshal reads back via json.Unmarshal which expects
+// JSON tag names (e.g. "image_id"). Fields whose Go name differs from their JSON
+// tag (any name with underscores) silently get zero values on read-back.
+//
+// To avoid this, always wrap struct/slice-of-struct values with jsonValue() when
+// passing them to doc.Set(). This JSON-round-trips the value so keys use JSON tag
+// names. Primitive values (int, string, bool, time.Time) set with explicit key
+// names (e.g. doc.Set("image_id", entry.ImageID)) are unaffected.
+//
+// Do NOT add `clover` struct tags — they cause a different mismatch (clover tag →
+// Go field name rename, then json.Unmarshal still expects JSON tag name).
 package store
 
 import "time"

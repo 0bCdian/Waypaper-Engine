@@ -205,12 +205,12 @@ export class IPCManager {
 		// File operations
 		this.registerHandler({
 			channel: "openFiles",
-			handler: async (_event, action) => {
-				try {
-					const mainWindow = BrowserWindow.getFocusedWindow();
-					if (!mainWindow) {
-						return { success: false, error: "No focused window" };
-					}
+		handler: async (event, action) => {
+			try {
+				const mainWindow = BrowserWindow.fromWebContents(event.sender);
+				if (!mainWindow) {
+					return { success: false, error: "No window available" };
+				}
 
 					let result: Electron.OpenDialogReturnValue;
 					if (action === "file") {

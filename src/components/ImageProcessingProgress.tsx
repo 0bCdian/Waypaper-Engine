@@ -1,37 +1,15 @@
-import { useState, useEffect } from "react";
-import { useImageProcessingStore } from "../stores/imageProcessingStore";
+import {
+	useImageProcessingStore,
+	type BatchProgress,
+} from "../stores/imageProcessingStore";
 
-export function ImageProcessingProgress() {
-	const {
-		isProcessing,
-		totalImages,
-		processedImages,
-		currentImage,
-		startTime,
-	} = useImageProcessingStore();
-
-	const [elapsed, setElapsed] = useState(0);
-
-	useEffect(() => {
-		if (!isProcessing || !startTime) {
-			setElapsed(0);
-			return;
-		}
-
-		setElapsed(Date.now() - startTime);
-		const interval = setInterval(() => {
-			setElapsed(Date.now() - startTime);
-		}, 1000);
-
-		return () => clearInterval(interval);
-	}, [isProcessing, startTime]);
-
-	if (!isProcessing) return null;
-
+function BatchCard({ batch }: { batch: BatchProgress }) {
+	const { totalImages, processedImages, currentImage, elapsedMs } = batch;
 	const progress = totalImages > 0 ? (processedImages / totalImages) * 100 : 0;
+	const elapsedSeconds = Math.round(elapsedMs / 1000);
 
 	return (
-		<div className="fixed top-4 right-4 bg-base-100 p-4 rounded-lg shadow-lg z-50 min-w-80 border border-base-300">
+		<div className="bg-base-100 p-4 rounded-lg shadow-lg min-w-80 border border-base-300">
 			<div className="flex items-center justify-between mb-2">
 				<span className="text-sm font-medium text-base-content">
 					Processing Images
@@ -55,8 +33,22 @@ export function ImageProcessingProgress() {
 			)}
 
 			<div className="text-xs text-base-content/50 mt-1">
-				{Math.round(elapsed / 1000)}s elapsed
+				{elapsedSeconds}s elapsed
 			</div>
+		</div>
+	);
+}
+
+export function ImageProcessingProgress() {
+	const batches = useImageProcessingStore((s) => s.batches);
+
+	if (batches.size === 0) return null;
+
+	return (
+		<div className="fixed top-4 right-4 z-50 flex flex-col gap-2">
+			{Array.from(batches.entries()).map(([batchId, batch]) => (
+				<BatchCard key={batchId} batch={batch} />
+			))}
 		</div>
 	);
 }

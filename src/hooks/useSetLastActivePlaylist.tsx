@@ -1,4 +1,5 @@
 import { usePlaylistStore } from "../stores/playlist";
+import { useImagesStore } from "../stores/images";
 import { useMonitorStore } from "../stores/monitors";
 import { useShallow } from "zustand/react/shallow";
 import type { rendererPlaylist } from "../types/rendererTypes";
@@ -27,7 +28,6 @@ export function useSetLastActivePlaylist() {
 			.then(async (activePlaylist: ActivePlaylistInstance) => {
 				if (!activePlaylist) return;
 
-				// Fetch the full playlist to get image list
 				const fullPlaylist = await goDaemon.getPlaylist(
 					activePlaylist.playlist_id,
 				);
@@ -48,6 +48,11 @@ export function useSetLastActivePlaylist() {
 					images: fullPlaylist.images,
 				};
 				setPlaylist(currentPlaylist);
+				await useImagesStore
+					.getState()
+					.fetchMissingImages(
+						fullPlaylist.images.map((img) => img.image_id),
+					);
 			})
 			.catch(() => {
 				// No active playlist for this monitor

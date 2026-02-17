@@ -7,8 +7,6 @@ import { useShallow } from "zustand/react/shallow";
 import { motion } from "framer-motion";
 import useDebounceCallback from "../hooks/useDebounceCallback";
 import type { PlaylistImage } from "../../electron/daemon-go-types";
-
-let firstRender = true;
 const daysOfWeek = [
 	"Sunday",
 	"Monday",
@@ -32,12 +30,14 @@ function MiniPlaylistCard({
 	isLast: boolean;
 	reorderSortingCriteria: () => void;
 }) {
-	const { removeImagesFromPlaylist, playlistImagesTimeSet } = usePlaylistStore(
-		useShallow((s) => ({
-			removeImagesFromPlaylist: s.removeImagesFromPlaylist,
-			playlistImagesTimeSet: s.playlistImagesTimeSet,
-		})),
-	);
+	const { removeImagesFromPlaylist, playlistImagesTimeSet, updateImageTime } =
+		usePlaylistStore(
+			useShallow((s) => ({
+				removeImagesFromPlaylist: s.removeImagesFromPlaylist,
+				playlistImagesTimeSet: s.playlistImagesTimeSet,
+				updateImageTime: s.updateImageTime,
+			})),
+		);
 	const imagesMap = useImagesStore((s) => s.imagesMap);
 	const [isInvalid, setIsInvalid] = useState(false);
 	const imageRef = useRef<HTMLImageElement>(null);
@@ -89,9 +89,10 @@ function MiniPlaylistCard({
 		}
 	}, [type, playlistImage.time]);
 
+	const isFirstRender = useRef(true);
 	useEffect(() => {
-		if (firstRender) {
-			firstRender = false;
+		if (isFirstRender.current) {
+			isFirstRender.current = false;
 			return;
 		}
 		if (isLast) {
@@ -136,14 +137,16 @@ function MiniPlaylistCard({
 										"invalid time, another image has the same time",
 									);
 									setIsInvalid(true);
-								} else {
-									e.currentTarget.setCustomValidity("");
-									setIsInvalid(false);
-									playlistImagesTimeSet.delete(playlistImage.time ?? -1);
-									playlistImage.time = newTimeSum;
-									playlistImagesTimeSet.add(newTimeSum);
-									reOrderDebounced();
-								}
+							} else {
+								e.currentTarget.setCustomValidity("");
+								setIsInvalid(false);
+								updateImageTime(
+									playlistImage.image_id,
+									playlistImage.time ?? undefined,
+									newTimeSum,
+								);
+								reOrderDebounced();
+							}
 							}}
 						/>
 					</div>

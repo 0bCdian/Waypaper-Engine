@@ -1,60 +1,72 @@
 import { create } from "zustand";
 
-interface ImageProcessingState {
-	isProcessing: boolean;
+export interface BatchProgress {
 	totalImages: number;
 	processedImages: number;
 	currentImage: string | null;
-	startTime: number | null;
+	elapsedMs: number;
 	errors: number;
 }
 
+interface ImageProcessingState {
+	batches: Map<string, BatchProgress>;
+}
+
 interface ImageProcessingActions {
-	startProcessing: (totalImages: number) => void;
-	updateProgress: (processed: number, current: string) => void;
-	completeProcessing: () => void;
+	startBatch: (batchId: string, totalImages: number) => void;
+	updateBatch: (
+		batchId: string,
+		processed: number,
+		current: string,
+		elapsedMs: number,
+	) => void;
+	completeBatch: (batchId: string) => void;
 	reset: () => void;
 }
 
 export const useImageProcessingStore = create<
 	ImageProcessingState & ImageProcessingActions
->()((set) => ({
-	isProcessing: false,
-	totalImages: 0,
-	processedImages: 0,
-	currentImage: null,
-	startTime: null,
-	errors: 0,
+>()((set, get) => ({
+	batches: new Map<string, BatchProgress>(),
 
-	startProcessing: (totalImages: number) =>
-		set({
-			isProcessing: true,
+	startBatch: (batchId: string, totalImages: number) => {
+		const next = new Map(get().batches);
+		next.set(batchId, {
 			totalImages,
 			processedImages: 0,
 			currentImage: null,
-			startTime: Date.now(),
+			elapsedMs: 0,
 			errors: 0,
-		}),
+		});
+		set({ batches: next });
+	},
 
-	updateProgress: (processed: number, current: string) =>
-		set({
-			processedImages: processed,
-			currentImage: current,
-		}),
+	updateBatch: (
+		batchId: string,
+		processed: number,
+		current: string,
+		elapsedMs: number,
+	) => {
+		const next = new Map(get().batches);
+		const existing = next.get(batchId);
+		if (existing) {
+			next.set(batchId, {
+				...existing,
+				processedImages: processed,
+				currentImage: current,
+				elapsedMs,
+			});
+		}
+		set({ batches: next });
+	},
 
-	completeProcessing: () =>
-		set({
-			isProcessing: false,
-			currentImage: null,
-		}),
+	completeBatch: (batchId: string) => {
+		const next = new Map(get().batches);
+		next.delete(batchId);
+		set({ batches: next });
+	},
 
-	reset: () =>
-		set({
-			isProcessing: false,
-			totalImages: 0,
-			processedImages: 0,
-			currentImage: null,
-			startTime: null,
-			errors: 0,
-		}),
+	reset: () => {
+		set({ batches: new Map() });
+	},
 }));

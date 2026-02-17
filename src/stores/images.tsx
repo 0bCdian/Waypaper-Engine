@@ -62,6 +62,7 @@ interface State {
 	clearSelectionOnCurrentPage: () => void;
 	selectAllImagesInCurrentPage: () => void;
 	selectAllImagesInGallery: () => void;
+	fetchMissingImages: (imageIds: number[]) => Promise<void>;
 }
 
 export const useImagesStore = create<State>()((set, get) => ({
@@ -255,5 +256,33 @@ export const useImagesStore = create<State>()((set, get) => ({
 	selectAllImagesInGallery() {
 		const allImageIds = new Set(get().imagesArray.map((img) => img.id));
 		set(() => ({ selectedImages: allImageIds }));
+	},
+	async fetchMissingImages(imageIds: number[]) {
+		const currentMap = get().imagesMap;
+		const missingIds = imageIds.filter((id) => !currentMap.has(id));
+		if (missingIds.length === 0) return;
+
+		const results = await Promise.allSettled(
+			missingIds.map((id) => goDaemon.getImage(id)),
+		);
+
+		const fetched: rendererImage[] = [];
+		for (const result of results) {
+			if (result.status === "fulfilled" && result.value) {
+				const img = result.value as rendererImage;
+				if (img.time === undefined) {
+					img.time = null;
+				}
+				fetched.push(img);
+			}
+		}
+
+		if (fetched.length === 0) return;
+
+		const updatedMap = new Map(get().imagesMap);
+		for (const img of fetched) {
+			updatedMap.set(img.id, img);
+		}
+		set(() => ({ imagesMap: updatedMap }));
 	},
 }));

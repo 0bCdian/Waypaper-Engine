@@ -288,25 +288,31 @@ export type EventType =
 // ============================================================================
 
 export interface ProcessingStartedPayload {
+	batch_id: string;
 	total: number;
 }
 
 export interface ImageProcessedPayload {
-	id: number;
-	name: string;
-	index: number;
+	batch_id: string;
+	image: Image;
+	current: number;
 	total: number;
+	elapsed_ms: number;
 }
 
 export interface ImageErrorPayload {
+	batch_id: string;
 	path: string;
 	error: string;
+	elapsed_ms: number;
 }
 
 export interface ProcessingCompletePayload {
-	processed: number;
-	errors: number;
+	batch_id: string;
 	total: number;
+	succeeded: number;
+	failed: number;
+	elapsed_ms: number;
 }
 
 export interface WallpaperChangedPayload {

@@ -33,22 +33,15 @@ export async function initWaypaperDaemon() {
 		logger.info(`Starting waypaper-daemon at: ${daemonPath}`);
 
 		const output = spawn(daemonPath, [], {
-			stdio: ["ignore", "pipe", "pipe"],
-			shell: false,
-			detached: false,
+			stdio: "ignore",
+			shell: true,
+			detached: true,
 			env: { ...process.env },
 		});
+		output.unref();
 
 		logger.info(`Daemon process spawned with PID: ${output.pid}`);
 		daemonProcess = output;
-
-		output.stdout?.on("data", (data) => {
-			logger.info(`Go daemon stdout: ${data.toString()}`);
-		});
-
-		output.stderr?.on("data", (data) => {
-			logger.error(`Go daemon stderr: ${data.toString()}`);
-		});
 
 		output.on("error", (error) => {
 			logger.error(`Go daemon spawn error: ${error}`);

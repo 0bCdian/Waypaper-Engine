@@ -4,9 +4,11 @@
  * Handles window creation, management, and lifecycle.
  */
 
-import { BrowserWindow, screen } from "electron";
+import { BrowserWindow, app, screen } from "electron";
 import { join } from "node:path";
 import type { ThemeManager } from "./ThemeManager";
+import { goDaemonClient } from "../goDaemonClient";
+import type { UnifiedConfig } from "../daemon-go-types";
 
 export interface WindowConfig {
 	width?: number;
@@ -33,6 +35,8 @@ export class WindowManager {
 	private windows: Map<string, BrowserWindow> = new Map();
 	private themeManager: ThemeManager;
 	private defaultConfig: WindowConfig;
+	cachedConfig: UnifiedConfig | null = null;
+	private isInitialWindow = true;
 
 	constructor(themeManager: ThemeManager) {
 		this.themeManager = themeManager;
@@ -62,6 +66,17 @@ export class WindowManager {
 				experimentalFeatures: false,
 			},
 		};
+	}
+
+	/**
+	 * Load config from Go daemon. Must be called (and awaited) before createWindow.
+	 */
+	async loadConfig(): Promise<void> {
+		try {
+			this.cachedConfig = await goDaemonClient.getConfig();
+		} catch (error) {
+			console.warn("WindowManager: failed to load config:", error);
+		}
 	}
 
 	/**
@@ -230,6 +245,15 @@ export class WindowManager {
 	 * Setup window event handlers
 	 */
 	private setupWindowEvents(id: string, window: BrowserWindow): void {
+		// Intercept close to hide instead (like the old code: minimize-to-tray)
+		window.on("close", (event) => {
+			if ((app as unknown as Record<string, boolean>).isQuitting) return;
+			if (this.cachedConfig?.app?.minimize_instead_of_close) {
+				event.preventDefault();
+				window.hide();
+			}
+		});
+
 		// Window closed
 		window.on("closed", () => {
 			this.windows.delete(id);
@@ -239,7 +263,12 @@ export class WindowManager {
 
 		// Window ready to show
 		window.once("ready-to-show", () => {
-			window.show();
+			if (this.isInitialWindow && this.cachedConfig?.app?.start_minimized) {
+				window.hide();
+			} else {
+				window.show();
+			}
+			this.isInitialWindow = false;
 			console.log(`Window ready: ${id}`);
 		});
 

@@ -8,6 +8,7 @@ import {
 	Menu,
 	nativeImage,
 	protocol,
+	Notification,
 } from "electron";
 
 // Daemon initialization
@@ -43,9 +44,10 @@ const APP_CONFIG = {
 /**
  * Create the main application window
  */
-function createMainWindow(): void {
-	// Create window manager
+async function createMainWindow(): Promise<void> {
+	// Create window manager and load config before creating the window
 	windowManager = new WindowManager(themeManager);
+	await windowManager.loadConfig();
 
 	// Create main window
 	mainWindow = windowManager.createWindow("main", {
@@ -161,6 +163,14 @@ async function initializeApp(): Promise<void> {
 		try {
 			await createAppTray();
 			console.log("Tray icon created");
+
+			// Refresh tray menu when wallpaper changes
+			goDaemonClient.on("wallpaper_changed", () => {
+				void createAppTray();
+			});
+
+			// Native desktop notifications when window is hidden
+			setupNativeNotifications();
 		} catch (error) {
 			console.error("Failed to create tray icon:", error);
 		}
@@ -170,6 +180,52 @@ async function initializeApp(): Promise<void> {
 		console.error("Failed to initialize application:", error);
 		throw error;
 	}
+}
+
+/**
+ * Send native desktop notifications for daemon events when the window is hidden.
+ * In-app toasts handle visible-window notifications on the renderer side.
+ */
+function setupNativeNotifications(): void {
+	goDaemonClient.on("wallpaper_changed", (data: Record<string, unknown>) => {
+		if (mainWindow?.isVisible()) return;
+		const config = windowManager?.cachedConfig;
+		if (!config?.app?.notifications) return;
+		new Notification({
+			title: "Wallpaper Changed",
+			body: `Wallpaper set on ${Array.isArray(data?.monitors) ? (data.monitors as string[]).join(", ") : "monitor"}`,
+		}).show();
+	});
+
+	goDaemonClient.on("playlist_started", (data: Record<string, unknown>) => {
+		if (mainWindow?.isVisible()) return;
+		const config = windowManager?.cachedConfig;
+		if (!config?.app?.notifications) return;
+		new Notification({
+			title: "Playlist Started",
+			body: `Playlist "${String(data?.name ?? "")}" started`,
+		}).show();
+	});
+
+	goDaemonClient.on("playlist_stopped", (data: Record<string, unknown>) => {
+		if (mainWindow?.isVisible()) return;
+		const config = windowManager?.cachedConfig;
+		if (!config?.app?.notifications) return;
+		new Notification({
+			title: "Playlist Stopped",
+			body: `Playlist "${String(data?.name ?? "")}" stopped`,
+		}).show();
+	});
+
+	goDaemonClient.on("processing_complete", () => {
+		if (mainWindow?.isVisible()) return;
+		const config = windowManager?.cachedConfig;
+		if (!config?.app?.notifications) return;
+		new Notification({
+			title: "Processing Complete",
+			body: "Image processing finished",
+		}).show();
+	});
 }
 
 /**
@@ -231,7 +287,7 @@ function setupAppEvents(): void {
 			}
 
 			await initializeApp();
-			createMainWindow();
+			await createMainWindow();
 		} catch (error) {
 			console.error("Failed to start application:", error);
 			app.quit();
@@ -252,27 +308,29 @@ function setupAppEvents(): void {
 		}
 	});
 
-	// App before quit
-	app.on("before-quit", async () => {
-		try {
-			("Shutting down application...");
+	// App before quit -- set flag so window close handler allows the close
+	app.on("before-quit", () => {
+		(app as unknown as Record<string, boolean>).isQuitting = true;
+	});
 
+	// App quit -- synchronous cleanup, matching old main.ts behavior
+	app.on("quit", () => {
+		try {
 			// Unregister global shortcuts
 			globalShortcut.unregisterAll();
 
-			// Stop Go daemon (only if connected)
-			try {
-				await goDaemonClient.stopDaemon();
-			} catch (error) {
-				console.error("Go daemon was not connected, skipping stop", error);
+			// Stop Go daemon only if kill_daemon_on_exit is enabled.
+			// Use the cached config (synchronous) like the old code did.
+			const config = windowManager?.cachedConfig;
+			if (config?.app?.kill_daemon_on_exit) {
+				goDaemonClient.stopDaemon().catch((error) => {
+					console.error("Failed to stop daemon:", error);
+				});
 			}
 
 			// Cleanup managers
 			if (themeManager) themeManager.cleanup();
-			if (windowManager) windowManager.cleanup();
 			if (ipcManager) ipcManager.cleanup();
-
-			("Application shutdown complete");
 		} catch (error) {
 			console.error("Error during shutdown:", error);
 		}

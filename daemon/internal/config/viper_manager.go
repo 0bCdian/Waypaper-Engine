@@ -105,15 +105,18 @@ func (m *ViperManager) UpdateConfig(section string, values map[string]any) error
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
+	// Read the current section as a flat map, merge new values, then set as a whole.
+	// This avoids Viper's dotted-key override shadowing the config-file layer.
+	existing := m.v.GetStringMap(section)
 	for k, val := range values {
-		m.v.Set(section+"."+k, val)
+		existing[k] = val
 	}
+	m.v.Set(section, existing)
 
 	if err := m.v.WriteConfig(); err != nil {
 		return fmt.Errorf("config: write after update: %w", err)
 	}
 
-	go m.notifyCallbacks(section)
 	return nil
 }
 
@@ -167,16 +170,19 @@ func (m *ViperManager) SetBackendConfig(backendName string, raw json.RawMessage)
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	prefix := "backend." + backendName + "."
+	// Read-modify-write: read the current backend sub-section, merge new values,
+	// then set as a whole to avoid Viper dotted-key override shadowing.
+	key := "backend." + backendName
+	existing := m.v.GetStringMap(key)
 	for k, val := range values {
-		m.v.Set(prefix+k, val)
+		existing[k] = val
 	}
+	m.v.Set(key, existing)
 
 	if err := m.v.WriteConfig(); err != nil {
 		return fmt.Errorf("config: write after backend config update: %w", err)
 	}
 
-	go m.notifyCallbacks("backend." + backendName)
 	return nil
 }
 
@@ -193,12 +199,15 @@ func (m *ViperManager) SetActiveBackendType(name string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	m.v.Set("backend.type", name)
+	// Read-modify-write for backend section to preserve other backend keys.
+	existing := m.v.GetStringMap("backend")
+	existing["type"] = name
+	m.v.Set("backend", existing)
+
 	if err := m.v.WriteConfig(); err != nil {
 		return fmt.Errorf("config: write after active backend change: %w", err)
 	}
 
-	go m.notifyCallbacks("backend")
 	return nil
 }
 
@@ -258,6 +267,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("app.notifications", true)
 	v.SetDefault("app.start_minimized", false)
 	v.SetDefault("app.minimize_instead_of_close", false)
+	v.SetDefault("app.show_monitor_modal_on_start", false)
 	v.SetDefault("app.images_per_page", 50)
 	v.SetDefault("app.theme", "dark")
 	v.SetDefault("app.image_history_limit", 100)

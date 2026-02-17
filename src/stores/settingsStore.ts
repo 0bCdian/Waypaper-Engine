@@ -53,7 +53,7 @@ const defaultConfig: UnifiedConfig = {
 		kill_daemon_on_exit: false,
 		notifications: true,
 		start_minimized: false,
-		minimize_instead_of_close: true,
+		minimize_instead_of_close: false,
 		show_monitor_modal_on_start: false,
 		images_per_page: 50,
 		theme: "dark",
@@ -101,25 +101,43 @@ export const useSettingsStore = create<SettingsStore>()(
 				// existing config visible so the page doesn't flash.
 				set({ isLoading: !existing, errors: [] });
 
-				try {
-					if (window.API_RENDERER?.goDaemon?.getConfig) {
-						const incoming = await window.API_RENDERER.goDaemon.getConfig();
-						// Merge incoming over existing so we don't clobber with null
-						// on first load, and preserve the structure on subsequent loads.
-						const merged = existing
-							? {
-									app: { ...existing.app, ...incoming.app },
-									daemon: { ...existing.daemon, ...incoming.daemon },
-									backend: {
-										...existing.backend,
-										...incoming.backend,
-										swww: incoming.backend?.swww
-											? { ...existing.backend?.swww, ...incoming.backend.swww }
-											: existing.backend?.swww,
-									},
-									monitors: { ...existing.monitors, ...incoming.monitors },
-								}
-							: incoming;
+			try {
+				if (window.API_RENDERER?.goDaemon?.getConfig) {
+					const incoming = await window.API_RENDERER.goDaemon.getConfig();
+
+					// The main GET /config doesn't include backend sub-configs (swww, feh, etc.)
+					// because the Go struct only has "type". Fetch the active backend config
+					// separately and merge it in.
+					try {
+						if (window.API_RENDERER.goDaemon.getBackendConfig) {
+							const backendConfig =
+								await window.API_RENDERER.goDaemon.getBackendConfig();
+							if (backendConfig) {
+								const backendType = incoming.backend?.type ?? "swww";
+								(incoming.backend as Record<string, unknown>)[backendType] =
+									backendConfig;
+							}
+						}
+					} catch {
+						// Non-critical: backend settings will just show defaults
+					}
+
+					// Merge incoming over existing so we don't clobber with null
+					// on first load, and preserve the structure on subsequent loads.
+					const merged = existing
+						? {
+								app: { ...existing.app, ...incoming.app },
+								daemon: { ...existing.daemon, ...incoming.daemon },
+								backend: {
+									...existing.backend,
+									...incoming.backend,
+									swww: incoming.backend?.swww
+										? { ...existing.backend?.swww, ...incoming.backend.swww }
+										: existing.backend?.swww,
+								},
+								monitors: { ...existing.monitors, ...incoming.monitors },
+							}
+						: incoming;
 						set({
 							config: merged as UnifiedConfig,
 							isLoading: false,
@@ -308,10 +326,14 @@ export const useSettingsStore = create<SettingsStore>()(
 	),
 );
 
-// Initialize event listener for real-time config updates.
+// Initialize event listener for real-time config updates (module-level, runs once).
 if (typeof window !== "undefined" && window.API_RENDERER?.goDaemon) {
-	window.API_RENDERER.goDaemon.on("config_changed", (data: unknown) => {
-		const store = useSettingsStore.getState();
-		store.handleConfigChange(data as ConfigChangeEvent);
-	});
+	// Disposer stored but never called -- this listener lives for the app's lifetime.
+	const _disposeConfigChanged = window.API_RENDERER.goDaemon.on(
+		"config_changed",
+		(data: unknown) => {
+			const store = useSettingsStore.getState();
+			store.handleConfigChange(data as ConfigChangeEvent);
+		},
+	);
 }

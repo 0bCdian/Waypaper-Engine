@@ -72,6 +72,7 @@ func (s *playlistStore) GetByID(_ context.Context, id int) (*Playlist, error) {
 	if err := doc.Unmarshal(&pl); err != nil {
 		return nil, fmt.Errorf("playlist store: unmarshal: %w", err)
 	}
+
 	return &pl, nil
 }
 
@@ -86,8 +87,8 @@ func (s *playlistStore) Create(_ context.Context, playlist Playlist) (*Playlist,
 	doc.Set("name", playlist.Name)
 	doc.Set("created_at", playlist.CreatedAt)
 	doc.Set("updated_at", playlist.UpdatedAt)
-	doc.Set("configuration", playlist.Configuration)
-	doc.Set("images", playlist.Images)
+	doc.Set("configuration", jsonValue(playlist.Configuration))
+	doc.Set("images", jsonValue(playlist.Images))
 
 	if _, err := s.db.InsertOne(CollectionPlaylists, doc); err != nil {
 		return nil, fmt.Errorf("playlist store: insert: %w", err)

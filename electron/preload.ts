@@ -218,12 +218,21 @@ const electronAPI = {
 			ipcRenderer.invoke("go-daemon-command", "activate_backend", { name }),
 
 		// EVENT LISTENERS (SSE events forwarded via IPC)
-		on: (event: EventType, callback: (data: unknown) => void): void => {
-			ipcRenderer.on(`go-daemon-event-${event}`, (_, data) => callback(data));
-		},
-
-		off: (event: EventType, callback: (data: unknown) => void): void => {
-			ipcRenderer.off(`go-daemon-event-${event}`, callback);
+		// Returns a disposer function that removes the listener when called.
+		// contextBridge does not preserve function identity, so the classic
+		// on/off(callback) pattern cannot work. The disposer captures the
+		// exact wrapper reference in the preload closure.
+		on: (
+			event: EventType,
+			callback: (data: unknown) => void,
+		): (() => void) => {
+			const channel = `go-daemon-event-${event}`;
+			const wrapper = (_: Electron.IpcRendererEvent, data: unknown) =>
+				callback(data);
+			ipcRenderer.on(channel, wrapper);
+			return () => {
+				ipcRenderer.off(channel, wrapper);
+			};
 		},
 	},
 

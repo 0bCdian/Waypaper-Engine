@@ -94,11 +94,12 @@ func (h *ImageHandler) Add(w http.ResponseWriter, r *http.Request) {
 	// Use context.Background() instead of r.Context() because the request
 	// context is cancelled as soon as we send the response, which would
 	// abort the background goroutine immediately.
-	h.processor.ProcessBatch(context.Background(), req.Paths)
+	batchID := h.processor.ProcessBatch(context.Background(), req.Paths)
 
 	WriteJSON(w, http.StatusAccepted, map[string]any{
-		"status": "processing",
-		"total":  len(req.Paths),
+		"status":   "processing",
+		"total":    len(req.Paths),
+		"batch_id": batchID,
 	})
 }
 

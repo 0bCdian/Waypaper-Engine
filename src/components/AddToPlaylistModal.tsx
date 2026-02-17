@@ -32,9 +32,10 @@ const AddToPlaylistModal = ({ playlistsInDB, setShouldReload }: Props) => {
 			setError("");
 			setSuccess("");
 
-			const selectedPlaylist = playlistsInDB.find(
-				(playlist) => playlist.name === data.selectPlaylist,
-			);
+		const selectedId = Number(data.selectPlaylist);
+		const selectedPlaylist = playlistsInDB.find(
+			(playlist) => playlist.id === selectedId,
+		);
 
 			if (!selectedPlaylist) {
 				setError("Selected playlist not found");
@@ -182,22 +183,27 @@ const AddToPlaylistModal = ({ playlistsInDB, setShouldReload }: Props) => {
 								Select Playlist
 							</label>
 
-							<select
-								id="selectPlaylist"
-								className="select select-bordered w-full rounded-md text-lg"
-								defaultValue={
-									playlistsInDB.length > 0 ? playlistsInDB[0].name : ""
-								}
-								{...register("selectPlaylist", {
-									required: true,
-								})}
-							>
-								{playlistsInDB.map((playlist) => (
-									<option key={playlist.id} value={playlist.name}>
-										{playlist.name}
-									</option>
-								))}
-							</select>
+						<select
+							id="selectPlaylist"
+							className="select select-bordered w-full rounded-md text-lg"
+							defaultValue={
+								playlistsInDB.length > 0
+									? String(playlistsInDB[0].id)
+									: ""
+							}
+							{...register("selectPlaylist", {
+								required: true,
+							})}
+						>
+							{playlistsInDB.map((playlist) => (
+								<option
+									key={playlist.id}
+									value={String(playlist.id)}
+								>
+									{playlist.name}
+								</option>
+							))}
+						</select>
 
 							<div className="mt-3 flex justify-center gap-3">
 								<button

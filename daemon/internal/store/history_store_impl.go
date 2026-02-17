@@ -47,7 +47,7 @@ func (s *historyStore) Append(_ context.Context, entry ImageHistoryEntry) (*Imag
 	doc.Set("monitors", entry.Monitors)
 	doc.Set("mode", entry.Mode)
 	doc.Set("set_at", entry.SetAt)
-	doc.Set("source", entry.Source)
+	doc.Set("source", jsonValue(entry.Source))
 	doc.Set("backend", entry.Backend)
 
 	if _, err := s.db.InsertOne(CollectionHistory, doc); err != nil {

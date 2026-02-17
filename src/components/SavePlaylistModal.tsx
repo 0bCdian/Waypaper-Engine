@@ -14,10 +14,11 @@ interface savePlaylistModalFields {
 	playlistName: string;
 }
 const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
-	const { setName, readPlaylist } = usePlaylistStore(
+	const { setName, readPlaylist, setPlaylist } = usePlaylistStore(
 		useShallow((s) => ({
 			setName: s.setName,
 			readPlaylist: s.readPlaylist,
+			setPlaylist: s.setPlaylist,
 		})),
 	);
 	const [error, showError] = useState({ state: false, message: "" });
@@ -57,32 +58,46 @@ const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
 				showError({ state: false, message: "" });
 			}
 		}
-		if (monitorSelection.selectedMonitors.length < 1) {
-			showError({
-				state: true,
-				message: "Select at least one monitor to save playlist.",
-			});
-			setTimeout(() => {
-				showError({ state: false, message: "" });
-			}, 3000);
-			return;
-		}
 		try {
+			let savedId: number;
 			if (playlist.id) {
-				// Update existing playlist
 				await goDaemon.updatePlaylist(playlist.id, {
 					name: data.playlistName,
 					images: playlist.images,
 					configuration: playlist.configuration,
 				});
+				savedId = playlist.id;
 			} else {
-				// Create new playlist
-				await goDaemon.createPlaylist({
+				const created = await goDaemon.createPlaylist({
 					name: data.playlistName,
 					images: playlist.images,
 					configuration: playlist.configuration,
 				});
+				savedId = created.id;
+				setPlaylist({
+					...playlist,
+					id: created.id,
+					name: data.playlistName,
+				});
 			}
+
+			// Start playlist on monitors if any are selected
+			if (monitorSelection.selectedMonitors.length > 0) {
+				const monitor =
+					monitorSelection.selectedMonitors.length === 1
+						? monitorSelection.selectedMonitors[0]
+						: "*";
+				try {
+					await goDaemon.startPlaylist(
+						savedId,
+						monitor,
+						monitorSelection.mode,
+					);
+				} catch (startErr) {
+					console.error("Failed to start playlist:", startErr);
+				}
+			}
+
 			setShouldReload(true);
 			closeModal();
 		} catch (err) {

@@ -1,5 +1,25 @@
 package store
 
+import "encoding/json"
+
+// jsonValue converts a Go value to a JSON-compatible interface{} by marshaling
+// to JSON then unmarshaling back. This ensures nested struct fields are stored
+// with their JSON tag names (e.g. "image_id") instead of Go field names (e.g.
+// "ImageID"). Required because CloverDB's Normalize uses Go field names, but
+// its Unmarshal reads back via json.Unmarshal which expects JSON tag names.
+// Only use for values stored via doc.Set that contain structs or slices of structs.
+func jsonValue(v interface{}) interface{} {
+	b, err := json.Marshal(v)
+	if err != nil {
+		return v
+	}
+	var result interface{}
+	if err := json.Unmarshal(b, &result); err != nil {
+		return v
+	}
+	return result
+}
+
 // ---------------------------------------------------------------------------
 // Collection names
 // ---------------------------------------------------------------------------
