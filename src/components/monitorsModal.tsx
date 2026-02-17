@@ -5,6 +5,7 @@ import { MonitorComponent } from "./Monitor";
 import { calculateMinResolution } from "../utils/utilities";
 import type { monitorSelectType } from "../types/rendererTypes";
 import { usePlaylistStore } from "../stores/playlist";
+import NeoCloseButton from "./NeoCloseButton";
 
 const goDaemon = window.API_RENDERER.goDaemon;
 let firstRender = true;
@@ -191,6 +192,7 @@ function Monitors() {
 			draggable={false}
 		>
 			<div className="modal-box min-w-max">
+				<NeoCloseButton onClick={closeModal} />
 				<div className="m-auto flex max-w-fit flex-col justify-center gap-4 xl:gap-5 2xl:gap-6">
 					<h2 className="select-none text-center text-4xl font-bold">
 						Choose Display

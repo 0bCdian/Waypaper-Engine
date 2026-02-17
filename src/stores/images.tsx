@@ -156,7 +156,7 @@ export const useImagesStore = create<State>()((set, get) => ({
 		set({ currentPage: page });
 	},
 	fetchPage: (page: number, extraParams?: Partial<ImageQueryParams>) => {
-		set({ currentPage: page });
+		set({ currentPage: page, isQueried: false });
 		get().reQueryImages({ page, per_page: get().perPage, ...extraParams });
 	},
 	reQueryImages: (params?: ImageQueryParams) => {

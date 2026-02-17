@@ -1,18 +1,19 @@
 import { DndContext, type DragEndEvent, closestCorners } from "@dnd-kit/core";
 import { SortableContext, arrayMove } from "@dnd-kit/sortable";
-import { useEffect, useRef, lazy, Suspense } from "react";
+import { useEffect, useRef } from "react";
 import { usePlaylistStore } from "../stores/playlist";
 import { useImagesStore } from "../stores/images";
 import openImagesStore from "../hooks/useOpenImages";
 import { useShallow } from "zustand/react/shallow";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import { useMonitorStore } from "../stores/monitors";
 import type { openFileAction } from "../../shared/types";
 import { useSetLastActivePlaylist } from "../hooks/useSetLastActivePlaylist";
 import type { PlaylistImage } from "../../electron/daemon-go-types";
+import { useDesignSystemStore } from "../stores/designSystemStore";
 
 const { goDaemon } = window.API_RENDERER;
-const MiniPlaylistCard = lazy(async () => await import("./MiniPlaylistCard"));
+import MiniPlaylistCard from "./MiniPlaylistCard";
 
 function PlaylistTrack() {
 	const {
@@ -48,7 +49,8 @@ function PlaylistTrack() {
 	};
 
 	const reorderSortingCriteria = () => {
-		const newArray = [...playlist.images].sort(
+		const currentImages = usePlaylistStore.getState().playlist.images;
+		const newArray = [...currentImages].sort(
 			(a: PlaylistImage, b: PlaylistImage) => {
 				if (a.time == null || b.time == null) return 0;
 				return a.time - b.time;
@@ -88,15 +90,14 @@ function PlaylistTrack() {
 				: index === lastIndex;
 		sortingCriteria.push(img.image_id);
 		return (
-			<Suspense key={img.image_id}>
-				<MiniPlaylistCard
-					isLast={isLast}
-					reorderSortingCriteria={reorderSortingCriteria}
-					type={playlist.configuration.type}
-					index={index}
-					playlistImage={img}
-				/>
-			</Suspense>
+			<MiniPlaylistCard
+				key={img.image_id}
+				isLast={isLast}
+				reorderSortingCriteria={reorderSortingCriteria}
+				type={playlist.configuration.type}
+				index={index}
+				playlistImage={img}
+			/>
 		);
 	});
 
@@ -139,6 +140,18 @@ function PlaylistTrack() {
 		}
 	}, [playlist.configuration.type]);
 
+	const isNeo = useDesignSystemStore(
+		(s) => s.designMode === "neobrutalist",
+	);
+	const btnClass = isNeo
+		? "btn btn-primary w-full xl:w-auto xl:flex-1 uppercase"
+		: "btn btn-primary w-full xl:w-auto xl:flex-1 rounded-lg uppercase";
+	const scrollClass = playlistArray.length > 0
+		? isNeo
+			? "neo-playlist-scroll overflow-y-hidden overflow-x-scroll scrollbar-thumb-base-300 scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm"
+			: "overflow-y-hidden overflow-x-scroll scrollbar-thumb-base-300 scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm rounded-lg"
+		: "";
+
 	return (
 		<div className="mb-2 flex w-full flex-col gap-5">
 			<div className="grid grid-cols-3 items-center gap-5 sm:flex-row xl:flex">
@@ -147,14 +160,14 @@ function PlaylistTrack() {
 						? `Playlist (${playlistArray.length})`
 						: "Playlist"}
 				</span>
-			<div className="dropdown dropdown-top">
-				<button
-					tabIndex={0}
-					className="btn btn-primary w-full rounded-lg uppercase"
-				>
-					Add images
-				</button>
-				<ul className="menu dropdown-content z-10 mb-1 w-52 rounded-box bg-base-100 p-2 shadow-sm">
+	<div className="dropdown dropdown-top">
+			<button
+				tabIndex={0}
+				className={btnClass}
+			>
+				Add images
+			</button>
+			<ul className="menu dropdown-content z-10 mb-1 w-52 bg-base-100 p-2 shadow-sm">
 					<li>
 						<a
 							className="text-lg text-base-content"
@@ -182,7 +195,7 @@ function PlaylistTrack() {
 						// @ts-expect-error daisyui fix
 						window.LoadPlaylistModal.showModal();
 					}}
-					className="btn btn-primary rounded-lg uppercase"
+					className={btnClass}
 				>
 					Load Playlist
 				</button>
@@ -194,51 +207,33 @@ function PlaylistTrack() {
 								: "*";
 						goDaemon.setRandomWallpaper(monitor, monitorSelection.mode);
 					}}
-					className="btn btn-primary rounded-lg uppercase"
+					className={btnClass}
 				>
 					Random Image
 				</button>
 
-				<AnimatePresence mode="sync">
-					{playlist.images.length > 1 && (
-						<>
-							<motion.button
-								initial={{ y: 100 }}
-								transition={{ duration: 0.25, ease: "easeInOut" }}
-								animate={{ y: 0, opacity: 1 }}
-								exit={{ y: 100, opacity: 0 }}
-								onClick={() => {
-									// @ts-expect-error daisyui fix
-									window.savePlaylistModal.showModal();
-								}}
-								className="btn btn-primary rounded-lg uppercase"
-							>
-								Save
-							</motion.button>
-							<motion.button
-								initial={{ y: 100 }}
-								transition={{ duration: 0.25, ease: "easeInOut" }}
-								animate={{ y: 0, opacity: 1 }}
-								exit={{ y: 100, opacity: 0 }}
-								onClick={() => {
-									// @ts-expect-error daisyui fix
-									window.playlistConfigurationModal.showModal();
-								}}
-								className="btn btn-primary rounded-lg uppercase"
-							>
-								Configure
-							</motion.button>
-						</>
-					)}
-				</AnimatePresence>
-				<AnimatePresence>
-					{playlist.images.length > 1 && (
-						<motion.button
-							initial={{ y: 100, opacity: 0 }}
-							transition={{ duration: 0.25, ease: "easeInOut" }}
-							animate={{ y: 0, opacity: 1 }}
-							exit={{ y: 100, opacity: 0 }}
-						className="btn btn-error rounded-lg uppercase"
+		{playlist.images.length > 1 && (
+				<>
+					<button
+						onClick={() => {
+							// @ts-expect-error daisyui fix
+							window.savePlaylistModal.showModal();
+						}}
+						className={btnClass}
+					>
+						Save
+					</button>
+					<button
+						onClick={() => {
+							// @ts-expect-error daisyui fix
+							window.playlistConfigurationModal.showModal();
+						}}
+						className={btnClass}
+					>
+						Configure
+					</button>
+					<button
+						className={isNeo ? "btn btn-error xl:flex-1 xl:w-auto uppercase" : "btn btn-error xl:flex-1 xl:w-auto rounded-lg uppercase"}
 						onClick={async () => {
 							if (playlist.id) {
 								try {
@@ -250,10 +245,10 @@ function PlaylistTrack() {
 							clearPlaylist();
 						}}
 					>
-							Clear
-						</motion.button>
-					)}
-				</AnimatePresence>
+						Clear
+					</button>
+				</>
+			)}
 			</div>
 			<DndContext
 				autoScroll={true}
@@ -261,7 +256,7 @@ function PlaylistTrack() {
 				collisionDetection={closestCorners}
 			>
 				<SortableContext items={sortingCriteria}>
-					<div className={`flex rounded-lg sm:max-w-[90vw] ${playlistArray.length > 0 ? "overflow-y-hidden overflow-x-scroll scrollbar-thumb-base-300 scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm" : ""}`}>
+					<div className={`flex sm:max-w-[90vw] ${scrollClass}`}>
 						<AnimatePresence>{...playlistArray}</AnimatePresence>
 					</div>
 				</SortableContext>

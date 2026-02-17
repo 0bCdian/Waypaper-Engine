@@ -6,6 +6,7 @@ import { useForm, type SubmitHandler } from "react-hook-form";
 import type { rendererPlaylist } from "../types/rendererTypes";
 import { useMonitorStore } from "../stores/monitors";
 import type { Playlist } from "../../electron/daemon-go-types";
+import NeoCloseButton from "./NeoCloseButton";
 
 interface Input {
 	selectPlaylist: string;
@@ -98,7 +99,8 @@ const LoadPlaylistModal = ({
 
 	return (
 		<dialog id="LoadPlaylistModal" className="modal" ref={modalRef}>
-			<div className="container modal-box flex flex-col">
+			<div className="modal-box flex flex-col max-w-lg xl:max-w-xl 2xl:max-w-2xl">
+				<NeoCloseButton onClick={closeModal} />
 				<h2 className="select-none py-3 text-center text-4xl font-bold">
 					Load Playlist
 				</h2>

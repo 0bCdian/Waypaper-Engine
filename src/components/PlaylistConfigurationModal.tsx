@@ -9,6 +9,7 @@ import {
 	PLAYLIST_ORDER,
 } from "../../shared/types/playlist";
 import { toSeconds, toHoursAndMinutes } from "../utils/utilities";
+import NeoCloseButton from "./NeoCloseButton";
 interface Inputs {
 	type: PLAYLIST_TYPES_TYPE;
 	order: PLAYLIST_ORDER_TYPES | null;
@@ -128,14 +129,8 @@ const PlaylistConfigurationModal = () => {
 			className="modal select-none"
 			draggable={false}
 		>
-			<div className="modal-box max-w-lg xl:max-w-xl 2xl:max-w-2xl rounded-xl">
-				<button
-					type="button"
-					className="btn btn-circle btn-ghost btn-sm absolute right-3 top-3"
-					onClick={closeModal}
-				>
-					✕
-				</button>
+			<div className="modal-box max-w-lg xl:max-w-xl 2xl:max-w-2xl">
+				<NeoCloseButton onClick={closeModal} />
 				<h2 className="mb-4 text-2xl xl:text-3xl 2xl:text-4xl font-bold text-center select-none">
 					Playlist Settings
 				</h2>

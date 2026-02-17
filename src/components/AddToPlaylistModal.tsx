@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { useImagesStore } from "../stores/images";
 import type { Playlist } from "../../electron/daemon-go-types";
+import NeoCloseButton from "./NeoCloseButton";
 
 interface Input {
 	selectPlaylist: string;
@@ -94,7 +95,8 @@ const AddToPlaylistModal = ({ playlistsInDB, setShouldReload }: Props) => {
 
 	return (
 		<dialog id="AddToPlaylistModal" className="modal" ref={modalRef}>
-			<div className="container modal-box flex flex-col">
+			<div className="modal-box flex flex-col max-w-lg xl:max-w-xl 2xl:max-w-2xl">
+				<NeoCloseButton onClick={closeModal} />
 				<h2 className="select-none py-3 text-center text-4xl font-bold">
 					Add to Playlist
 				</h2>

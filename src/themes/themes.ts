@@ -57,12 +57,16 @@ const CUSTOM_THEMES = [
 	"tokyo-night",
 	"everforest",
 	"gruvbox-material",
+	"kanagawa",
 	"gruvbox-light",
 	"catppuccin-light",
 	"monokai-light",
 	"tokyo-night-light",
 	"everforest-light",
 	"gruvbox-material-light",
+	"kanagawa-light",
+	"dracula-light",
+	"nord-light",
 ];
 
 /**
@@ -252,6 +256,11 @@ const customThemeMetadata: Record<
 		category: "light" | "dark" | "mixed";
 	}
 > = {
+	doublezombie: {
+		displayName: "Double Zombie",
+		description: "Dark theme with warm yellow and cool accents",
+		category: "dark",
+	},
 	gruvbox: {
 		displayName: "Gruvbox",
 		description: "Retro groove color scheme",
@@ -310,6 +319,26 @@ const customThemeMetadata: Record<
 	"gruvbox-material-light": {
 		displayName: "Gruvbox Material Light",
 		description: "Light Material Design Gruvbox",
+		category: "light",
+	},
+	kanagawa: {
+		displayName: "Kanagawa",
+		description: "Japanese ink-inspired dark theme",
+		category: "dark",
+	},
+	"kanagawa-light": {
+		displayName: "Kanagawa Light",
+		description: "Japanese ink-inspired light theme",
+		category: "light",
+	},
+	"dracula-light": {
+		displayName: "Dracula Light",
+		description: "Light variant with Dracula accent colors",
+		category: "light",
+	},
+	"nord-light": {
+		displayName: "Nord Light",
+		description: "Arctic-inspired light theme with frost accents",
 		category: "light",
 	},
 };

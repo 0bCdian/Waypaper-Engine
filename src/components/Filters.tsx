@@ -4,6 +4,7 @@ import type { Filters as FiltersType } from "../types/rendererTypes";
 import { useImagesStore } from "../stores/images";
 import { useShallow } from "zustand/react/shallow";
 import type { ImageQueryParams } from "../../electron/daemon-go-types";
+import { useDesignSystemStore } from "../stores/designSystemStore";
 
 interface PartialFilters {
 	order: "asc" | "desc";
@@ -63,8 +64,11 @@ function Filters() {
 		};
 		setFilters(resetFilters);
 	}, [filters.advancedFilters]);
+	const isNeo = useDesignSystemStore(
+		(s) => s.designMode === "neobrutalist",
+	);
 	return (
-		<section className="group mt-10 mb-5 flex justify-center gap-2">
+		<section className={`group mt-10 mb-5 flex justify-center gap-2${isNeo ? " neo-filters-strip" : ""}`}>
 			<div className="tooltip" data-tip="more filters">
 				<button
 					className="btn btn-active rounded-xl uppercase"

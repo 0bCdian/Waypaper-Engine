@@ -10,6 +10,7 @@ import type React from "react";
 import { Link, useLocation } from "react-router-dom";
 import SidebarConfiguration from "../SidebarConfiguration";
 import { DRAWER_CHECKBOX_ID } from "./ModernAppLayout";
+import { useDesignSystemStore } from "../../stores/designSystemStore";
 
 /** Programmatically close the drawer by unchecking the toggle */
 export function closeDrawer() {
@@ -24,6 +25,9 @@ export function closeDrawer() {
 export const SidebarContent: React.FC = () => {
 	const location = useLocation();
 	const isConfigurationPage = location.pathname === "/configuration";
+	const isNeo = useDesignSystemStore(
+		(s) => s.designMode === "neobrutalist",
+	);
 
 	const handleNavigationClick = () => {
 		closeDrawer();
@@ -37,7 +41,7 @@ export const SidebarContent: React.FC = () => {
 				<>
 					{/* Header */}
 					<div className="flex items-center gap-3 mb-6">
-						<div className="w-12 h-12 rounded-lg overflow-hidden flex items-center justify-center">
+						<div className={`w-12 h-12 overflow-hidden flex items-center justify-center ${isNeo ? "neo-icon-box" : "rounded-lg"}`}>
 							<img
 								src="/app.png"
 								alt="Waypaper Engine"

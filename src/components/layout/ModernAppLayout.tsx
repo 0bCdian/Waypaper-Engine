@@ -6,12 +6,13 @@
  */
 
 import type React from "react";
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { useTheme } from "../../contexts/ThemeContext";
 import { cn } from "../../utils/cn";
 import { SidebarContent } from "./ModernSidebar";
 import NavBar from "./NavBar";
 import { useSettingsStore } from "../../stores/settingsStore";
+import { useDesignSystemStore } from "../../stores/designSystemStore";
 
 export const DRAWER_CHECKBOX_ID = "sidebar-drawer";
 
@@ -26,6 +27,11 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({
 }) => {
 	const { currentTheme, isDarkMode } = useTheme();
 	const config = useSettingsStore((s) => s.config);
+	const syncToDOM = useDesignSystemStore((s) => s.syncToDOM);
+
+	useEffect(() => {
+		syncToDOM();
+	}, [syncToDOM]);
 
 	if (!config) {
 		return (

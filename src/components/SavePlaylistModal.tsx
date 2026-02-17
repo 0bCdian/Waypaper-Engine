@@ -4,6 +4,7 @@ import { usePlaylistStore } from "../stores/playlist";
 import { useShallow } from "zustand/react/shallow";
 import { useMonitorStore } from "../stores/monitors";
 import type { PlaylistImage } from "../../electron/daemon-go-types";
+import NeoCloseButton from "./NeoCloseButton";
 const { goDaemon } = window.API_RENDERER;
 
 interface Props {
@@ -122,8 +123,9 @@ const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
 				onSubmit={(e) => {
 					void handleSubmit(onSubmit)(e);
 				}}
-				className="form-control modal-box rounded-xl"
+				className="form-control modal-box max-w-lg xl:max-w-xl 2xl:max-w-2xl"
 			>
+				<NeoCloseButton onClick={closeModal} />
 				<h2 className="py-3 text-center text-4xl font-bold">Save Playlist</h2>
 				<div className="divider"></div>
 				<label htmlFor="playlistName" className="label italic text-warning">

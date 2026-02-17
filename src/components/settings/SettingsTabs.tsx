@@ -9,6 +9,7 @@ import type React from "react";
 import { useState, useEffect } from "react";
 import { cn } from "@/utils/cn";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { useDesignSystemStore } from "@/stores/designSystemStore";
 import { useShallow } from "zustand/react/shallow";
 import SettingsSearch from "./SettingsSearch";
 import AppSettingsSection from "./sections/AppSettingsSection";
@@ -59,6 +60,9 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className }) => {
 		})),
 	);
 
+	const isNeo = useDesignSystemStore(
+		(s) => s.designMode === "neobrutalist",
+	);
 	const [activeTab, setActiveTab] = useState<ConfigSection>("app");
 
 	// Clear errors when component unmounts
@@ -169,7 +173,7 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className }) => {
 			<div className="bg-base-100 border-b border-base-300 p-6">
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-4">
-						<div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
+						<div className={cn("w-12 h-12 bg-primary flex items-center justify-center", isNeo ? "neo-icon-box" : "rounded-lg")}>
 							<svg
 								xmlns="http://www.w3.org/2000/svg"
 								width="24"

@@ -5,6 +5,7 @@ import { useShallow } from "zustand/react/shallow";
 import { useImagesStore } from "../stores/images";
 import { useMonitorStore } from "../stores/monitors";
 import { usePlaylistStore } from "../stores/playlist";
+import { useDesignSystemStore } from "../stores/designSystemStore";
 import type { rendererImage } from "../types/rendererTypes";
 
 interface ImageCardProps {
@@ -40,6 +41,10 @@ function ImageCard({ Image }: ImageCardProps) {
 				selectedImages: s.selectedImages,
 			})),
 		);
+
+	const isPolaroid = useDesignSystemStore(
+		(s) => s.designMode === "neobrutalist" && s.neoConfig.polaroidCards,
+	);
 
 	const isChecked = !isEmpty && imagesInPlaylist.has(Image.id);
 	const isSelected = selectedImages.has(Image.id);
@@ -95,6 +100,99 @@ function ImageCard({ Image }: ImageCardProps) {
 		});
 	};
 
+	const handleKeyDown = (e: React.KeyboardEvent) => {
+		if (e.key === "Enter" || e.key === " ") {
+			e.preventDefault();
+			handleDoubleClick();
+		}
+	};
+
+	const pictureElement = (
+		<picture className={isPolaroid ? "neo-polaroid-image" : "block w-full h-full"}>
+			{Image.thumbnails?.["4k"]?.trim() && (
+				<source media="(width >= 7680px)" srcSet={Image.thumbnails["4k"]} />
+			)}
+			{Image.thumbnails?.["1440p"]?.trim() && (
+				<source
+					media="(width >= 2560px)"
+					srcSet={Image.thumbnails["1440p"]}
+				/>
+			)}
+			{Image.thumbnails?.["1080p"]?.trim() && (
+				<source
+					media="(width >= 720px)"
+					srcSet={Image.thumbnails["1080p"]}
+				/>
+			)}
+			{Image.thumbnails?.["720p"]?.trim() && (
+				<source
+					media="(width >= 300px)"
+					srcSet={Image.thumbnails["720p"]}
+				/>
+			)}
+			{Image.thumbnails?.default?.trim() && (
+				<source
+					media="(width < 720px)"
+					srcSet={Image.thumbnails.default}
+				/>
+			)}
+			<img
+				ref={imgRef}
+				className={
+					isPolaroid
+						? "w-full h-auto aspect-[3/2] object-cover block"
+						: "transform-gpu rounded-lg transition-all duration-300 group-hover:scale-110 group-hover:object-center w-full h-auto aspect-[3/2] object-cover"
+				}
+				src={Image.thumbnails?.default?.trim() || Image.path}
+				alt={Image.name}
+				draggable={false}
+				loading="lazy"
+				onError={({ currentTarget }) => {
+					currentTarget.onerror = null;
+					currentTarget.src = Image.path;
+				}}
+			/>
+		</picture>
+	);
+
+	if (isPolaroid) {
+		return (
+			<div
+				onContextMenu={handleRightClick}
+				onClick={handleClick}
+				className="neo-polaroid group relative w-full animate-fade-in"
+			>
+				<input
+					checked={isChecked}
+					id={Image.name}
+					onChange={handleCheckboxChange}
+					type="checkbox"
+					className="checkbox-success checkbox checkbox-sm absolute right-2 top-2 z-20 rounded-xs opacity-0 checked:opacity-100 group-hover:opacity-100"
+				/>
+
+				<button
+					type="button"
+					onDoubleClick={handleDoubleClick}
+					onKeyDown={handleKeyDown}
+					className="neo-polaroid-inner"
+					aria-label={`Set ${Image.name} as wallpaper`}
+				>
+					{pictureElement}
+					<div className="neo-polaroid-caption">
+						<p className="neo-polaroid-name">{Image.name}</p>
+					</div>
+				</button>
+
+				<div
+					data-selected={isSelected}
+					id={overlayId}
+					className="neo-polaroid-overlay"
+					aria-hidden="true"
+				/>
+			</div>
+		);
+	}
+
 	return (
 		<div
 			onContextMenu={handleRightClick}
@@ -112,56 +210,11 @@ function ImageCard({ Image }: ImageCardProps) {
 			<button
 				type="button"
 				onDoubleClick={handleDoubleClick}
-				onKeyDown={(e) => {
-					if (e.key === "Enter" || e.key === " ") {
-						e.preventDefault();
-						handleDoubleClick();
-					}
-				}}
+				onKeyDown={handleKeyDown}
 				className="relative w-full h-full border-0 bg-transparent p-0 cursor-pointer"
 				aria-label={`Set ${Image.name} as wallpaper`}
 			>
-				<picture className="block w-full h-full">
-					{Image.thumbnails?.["4k"]?.trim() && (
-						<source media="(width >= 7680px)" srcSet={Image.thumbnails["4k"]} />
-					)}
-					{Image.thumbnails?.["1440p"]?.trim() && (
-						<source
-							media="(width >= 2560px)"
-							srcSet={Image.thumbnails["1440p"]}
-						/>
-					)}
-					{Image.thumbnails?.["1080p"]?.trim() && (
-						<source
-							media="(width >= 720px)"
-							srcSet={Image.thumbnails["1080p"]}
-						/>
-					)}
-					{Image.thumbnails?.["720p"]?.trim() && (
-						<source
-							media="(width >= 300px)"
-							srcSet={Image.thumbnails["720p"]}
-						/>
-					)}
-					{Image.thumbnails?.default?.trim() && (
-						<source
-							media="(width < 720px)"
-							srcSet={Image.thumbnails.default}
-						/>
-					)}
-					<img
-						ref={imgRef}
-						className="transform-gpu rounded-lg transition-all duration-300 group-hover:scale-110 group-hover:object-center w-full h-auto aspect-[3/2] object-cover"
-						src={Image.thumbnails?.default?.trim() || Image.path}
-						alt={Image.name}
-						draggable={false}
-						loading="lazy"
-						onError={({ currentTarget }) => {
-							currentTarget.onerror = null;
-							currentTarget.src = Image.path;
-						}}
-					/>
-				</picture>
+				{pictureElement}
 				<p className="absolute bottom-0 w-full overflow-hidden truncate text-ellipsis bg-base-content/75 p-2 pl-2 text-justify text-lg font-medium opacity-0 transition-all duration-300 group-hover:opacity-100 text-base-100">
 					{Image.name}
 				</p>

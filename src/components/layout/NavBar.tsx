@@ -8,7 +8,7 @@
 import type React from "react";
 import { useMonitorStore } from "../../stores/monitors";
 import { useShallow } from "zustand/react/shallow";
-// import { useTheme } from "../../contexts/ThemeContext";
+import { useDesignSystemStore } from "../../stores/designSystemStore";
 import { cn } from "../../utils/cn";
 import { DRAWER_CHECKBOX_ID } from "./ModernAppLayout";
 
@@ -23,11 +23,9 @@ export const NavBar: React.FC<NavBarProps> = ({ className }) => {
 			reQueryMonitors: s.reQueryMonitors,
 		})),
 	);
-	// const { isDarkMode, setTheme } = useTheme();
-
-	// const handleThemeToggle = (e: React.ChangeEvent<HTMLInputElement>) => {
-	// 	setTheme(e.target.checked ? "dark" : "light");
-	// };
+	const isNeo = useDesignSystemStore(
+		(s) => s.designMode === "neobrutalist",
+	);
 
 	const handleMonitorSelect = async () => {
 		try {
@@ -50,7 +48,7 @@ export const NavBar: React.FC<NavBarProps> = ({ className }) => {
 			<div className="navbar-start">
 				<label
 					htmlFor={DRAWER_CHECKBOX_ID}
-					className="btn btn-ghost btn-sm drawer-button"
+					className={isNeo ? "btn btn-ghost btn-sm drawer-button neo-icon-box" : "btn btn-ghost btn-sm drawer-button"}
 					aria-label="Toggle sidebar"
 				>
 					<svg
@@ -76,7 +74,10 @@ export const NavBar: React.FC<NavBarProps> = ({ className }) => {
 				<button
 					type="button"
 					onClick={handleMonitorSelect}
-					className="btn btn-primary btn-lg w-full max-w-md text-ellipsis rounded-lg text-xl font-medium transition-all duration-200 hover:btn-primary-focus"
+					className={cn(
+						"btn btn-primary btn-lg w-full max-w-md text-ellipsis text-xl font-medium transition-all duration-200",
+						!isNeo && "rounded-lg hover:btn-primary-focus",
+					)}
 					aria-label="Select display monitor"
 					title={
 						monitorSelection.selectedMonitors.length > 0

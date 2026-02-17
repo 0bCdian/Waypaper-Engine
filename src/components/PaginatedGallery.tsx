@@ -6,11 +6,15 @@ import { useImagePagination } from "../hooks/useImagePagination";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRef } from "react";
 import { useImagesStore } from "../stores/images";
+import { useDesignSystemStore } from "../stores/designSystemStore";
 
 function PaginatedGallery() {
 	const { imagesToShow, handlePageChange, currentPage, totalPages } =
 		useImagePagination();
 	const selectedImages = useImagesStore((s) => s.selectedImages);
+	const isNeo = useDesignSystemStore(
+		(s) => s.designMode === "neobrutalist",
+	);
 	const ref = useRef<HTMLDivElement>(null);
 
 	const handleContextMenu = (e: React.MouseEvent) => {
@@ -39,7 +43,7 @@ function PaginatedGallery() {
 				onContextMenu={handleContextMenu}
 			>
 				{/* Scrollable image grid -- the only scrollable region */}
-				<div className="flex-1 min-h-0 overflow-y-auto scrollbar-thin scrollbar-track-transparent scrollbar-thumb-base-300 scrollbar-thumb-rounded-sm">
+				<div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-track-transparent scrollbar-thumb-base-300 scrollbar-thumb-rounded-sm">
 					<div
 						className="m-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(16vw,1fr))] gap-3 md:gap-3 lg:gap-3 xl:gap-4 2xl:gap-5"
 					>
@@ -48,7 +52,7 @@ function PaginatedGallery() {
 				</div>
 
 				{/* Pinned bottom: pagination + playlist track */}
-				<div className="shrink-0 flex w-full flex-col justify-between gap-4 pt-3">
+				<div className={`shrink-0 flex w-full flex-col justify-between gap-4 pt-3${isNeo ? " neo-bottom-dock" : ""}`}>
 					<div className="w-[75%] self-center flex flex-col items-center gap-2">
 						<ResponsivePagination
 							total={totalPages}

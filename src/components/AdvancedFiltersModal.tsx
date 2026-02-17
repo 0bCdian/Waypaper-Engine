@@ -8,6 +8,7 @@ import type {
 	resolutionConstraints,
 } from "../types/rendererTypes";
 import type { Formats } from "../../shared/types/image";
+import NeoCloseButton from "./NeoCloseButton";
 interface AdvancedFiltersForm {
 	resolutionConstraint: resolutionConstraints;
 	width: string;
@@ -74,16 +75,8 @@ const AdvancedFiltersModal = () => {
 	}, [reset]);
 	return (
 		<dialog id="AdvancedFiltersModal" className="modal" ref={containerRef}>
-			<div className="modal-box max-w-lg xl:max-w-xl 2xl:max-w-2xl rounded-xl">
-				<button
-					type="button"
-					className="btn btn-circle btn-ghost btn-sm absolute right-3 top-3"
-					onClick={() => {
-						containerRef.current?.close();
-					}}
-				>
-					✕
-				</button>
+			<div className="modal-box max-w-lg xl:max-w-xl 2xl:max-w-2xl">
+				<NeoCloseButton onClick={() => containerRef.current?.close()} />
 				<h2 className="mb-4 text-2xl xl:text-3xl 2xl:text-4xl font-bold">
 					Advanced Filters
 				</h2>

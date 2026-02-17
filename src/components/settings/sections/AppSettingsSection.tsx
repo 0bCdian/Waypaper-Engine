@@ -7,6 +7,7 @@
 import type React from "react";
 import { cn } from "@/utils/cn";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { useDesignSystemStore } from "@/stores/designSystemStore";
 import { useShallow } from "zustand/react/shallow";
 import InlineThemeSelector from "../InlineThemeSelector";
 import type { ConfigSection } from "@/shared/types/unifiedConfig";
@@ -360,9 +361,206 @@ export const AppSettingsSection: React.FC<AppSettingsSectionProps> = ({
 				</div>
 			</div>
 
+			{/* Design System Section */}
+			<DesignSystemSection />
+
 			{/* Settings Fields - Bento Grid Layout */}
 			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
 				{settingsFields.map(renderField)}
+			</div>
+		</div>
+	);
+};
+
+/* ── Design System Settings ────────────────────────────────────── */
+
+const DesignSystemSection: React.FC = () => {
+	const { designMode, neoConfig, setDesignMode, updateNeoConfig } =
+		useDesignSystemStore(
+			useShallow((s) => ({
+				designMode: s.designMode,
+				neoConfig: s.neoConfig,
+				setDesignMode: s.setDesignMode,
+				updateNeoConfig: s.updateNeoConfig,
+			})),
+		);
+
+	const isNeo = designMode === "neobrutalist";
+
+	return (
+		<div className="collapse collapse-arrow bg-base-200">
+			<input type="checkbox" defaultChecked={isNeo} />
+			<div className="collapse-title text-lg font-medium">
+				<div className="flex items-center gap-2">
+					<svg
+						className="w-5 h-5"
+						fill="none"
+						stroke="currentColor"
+						viewBox="0 0 24 24"
+					>
+						<title>Design System</title>
+						<path
+							strokeLinecap="round"
+							strokeLinejoin="round"
+							strokeWidth={2}
+							d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"
+						/>
+					</svg>
+					Design System
+				</div>
+			</div>
+			<div className="collapse-content">
+				<div className="pt-4 space-y-4">
+					{/* Neobrutalist toggle */}
+					<div className="card bg-base-100 shadow-sm">
+						<div className="card-body p-4">
+							<label className="label cursor-pointer justify-start gap-3">
+								<input
+									type="checkbox"
+									className="toggle toggle-primary"
+									checked={isNeo}
+									onChange={(e) =>
+										setDesignMode(
+											e.target.checked ? "neobrutalist" : "default",
+										)
+									}
+								/>
+								<div>
+									<div className="text-sm font-medium text-base-content">
+										Neobrutalist Mode
+									</div>
+									<div className="text-xs text-base-content/60">
+										Thick borders, hard shadows, bold typography on all UI
+										elements
+									</div>
+								</div>
+							</label>
+						</div>
+					</div>
+
+					{/* Neobrutalist config (visible only when active) */}
+					{isNeo && (
+						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+							{/* Polaroid cards */}
+							<div className="card bg-base-100 shadow-sm">
+								<div className="card-body p-4">
+									<label className="label cursor-pointer justify-start gap-3">
+										<input
+											type="checkbox"
+											className="toggle toggle-secondary"
+											checked={neoConfig.polaroidCards}
+											onChange={(e) =>
+												updateNeoConfig({
+													polaroidCards: e.target.checked,
+												})
+											}
+										/>
+										<div>
+											<div className="text-sm font-medium text-base-content">
+												Polaroid Image Cards
+											</div>
+											<div className="text-xs text-base-content/60">
+												Display wallpaper thumbnails as polaroid-style frames
+											</div>
+										</div>
+									</label>
+								</div>
+							</div>
+
+							{/* Shadow offset */}
+							<div className="card bg-base-100 shadow-sm">
+								<div className="card-body p-4">
+									<label className="label">
+										<span className="text-sm font-medium text-base-content">
+											Shadow Offset
+										</span>
+										<span className="text-xs text-base-content/60">
+											{neoConfig.shadowOffsetX}px
+										</span>
+									</label>
+									<input
+										type="range"
+										min={1}
+										max={6}
+										step={1}
+										className="range range-primary range-xs"
+										value={neoConfig.shadowOffsetX}
+										onChange={(e) => {
+											const v = Number(e.target.value);
+											updateNeoConfig({
+												shadowOffsetX: v,
+												shadowOffsetY: v,
+											});
+										}}
+									/>
+									<div className="text-xs text-base-content/60 mt-1">
+										Hard shadow distance behind elements
+									</div>
+								</div>
+							</div>
+
+							{/* Border width */}
+							<div className="card bg-base-100 shadow-sm">
+								<div className="card-body p-4">
+									<label className="label">
+										<span className="text-sm font-medium text-base-content">
+											Border Width
+										</span>
+										<span className="text-xs text-base-content/60">
+											{neoConfig.borderWidth}px
+										</span>
+									</label>
+									<input
+										type="range"
+										min={1}
+										max={4}
+										step={1}
+										className="range range-primary range-xs"
+										value={neoConfig.borderWidth}
+										onChange={(e) =>
+											updateNeoConfig({
+												borderWidth: Number(e.target.value),
+											})
+										}
+									/>
+									<div className="text-xs text-base-content/60 mt-1">
+										Thickness of element borders
+									</div>
+								</div>
+							</div>
+
+							{/* Corner radius */}
+							<div className="card bg-base-100 shadow-sm">
+								<div className="card-body p-4">
+									<label className="label">
+										<span className="text-sm font-medium text-base-content">
+											Corner Radius
+										</span>
+										<span className="text-xs text-base-content/60">
+											{neoConfig.cornerRadius}rem
+										</span>
+									</label>
+									<input
+										type="range"
+										min={0}
+										max={1}
+										step={0.125}
+										className="range range-primary range-xs"
+										value={neoConfig.cornerRadius}
+										onChange={(e) =>
+											updateNeoConfig({
+												cornerRadius: Number(e.target.value),
+											})
+										}
+									/>
+									<div className="text-xs text-base-content/60 mt-1">
+										0 for sharp corners, higher for rounded
+									</div>
+								</div>
+							</div>
+						</div>
+					)}
+				</div>
 			</div>
 		</div>
 	);
