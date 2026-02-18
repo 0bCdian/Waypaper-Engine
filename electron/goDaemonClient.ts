@@ -15,6 +15,7 @@ import type {
 	CreatePlaylistRequest,
 	UpdatePlaylistRequest,
 	ActivePlaylistInstance,
+	ActivePlaylistResponse,
 	StartPlaylistRequest,
 	Monitor,
 	UnifiedConfig,
@@ -433,8 +434,8 @@ export class GoDaemonClient extends EventEmitter {
 		await this.request("POST", `/playlists/${id}/previous`);
 	}
 
-	async getActivePlaylists(): Promise<Record<string, ActivePlaylistInstance>> {
-		return this.request<Record<string, ActivePlaylistInstance>>(
+	async getActivePlaylists(): Promise<ActivePlaylistResponse[]> {
+		return this.request<ActivePlaylistResponse[]>(
 			"GET",
 			"/playlists/active",
 		);

@@ -8,6 +8,7 @@ import type {
 	CreatePlaylistRequest,
 	UpdatePlaylistRequest,
 	ActivePlaylistInstance,
+	ActivePlaylistResponse,
 	Monitor,
 	UnifiedConfig,
 	SwwwConfig,
@@ -91,9 +92,7 @@ declare global {
 				resumePlaylist: (id: number) => Promise<void>;
 				nextPlaylistImage: (id: number) => Promise<void>;
 				previousPlaylistImage: (id: number) => Promise<void>;
-				getActivePlaylists: () => Promise<
-					Record<string, ActivePlaylistInstance>
-				>;
+				getActivePlaylists: () => Promise<ActivePlaylistResponse[]>;
 				getActivePlaylistForMonitor: (
 					monitor: string,
 				) => Promise<ActivePlaylistInstance>;

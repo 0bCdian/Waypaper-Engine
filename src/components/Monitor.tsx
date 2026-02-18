@@ -1,7 +1,8 @@
 import { useMonitorStore, type StoreMonitor } from "../stores/monitors";
 import type { monitorSelectType } from "../types/rendererTypes";
 import SvgComponent from "./addImagesIcon";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
+import { calculateMinResolution } from "../utils/utilities";
 
 const goDaemon = window.API_RENDERER.goDaemon;
 
@@ -61,12 +62,43 @@ export function MonitorComponent({
 		return dispose;
 	}, []);
 
+	// For extend mode: compute the image style so each monitor shows its
+	// corresponding portion of the wallpaper (like the daemon's image splitter).
+	const extendImageStyle = useMemo((): React.CSSProperties | null => {
+		if (selectType !== "extend") return null;
+		const totalRes = calculateMinResolution(monitorsList);
+		if (totalRes.x === 0 || totalRes.y === 0) return null;
+
+		// Scale the full image to cover the entire virtual desktop,
+		// then position it so only this monitor's region is visible.
+		const scaleX = (totalRes.x / monitor.width) * 100;
+		const scaleY = (totalRes.y / monitor.height) * 100;
+		const posX =
+			totalRes.x > monitor.width
+				? (monitor.x / (totalRes.x - monitor.width)) * 100
+				: 0;
+		const posY =
+			totalRes.y > monitor.height
+				? (monitor.y / (totalRes.y - monitor.height)) * 100
+				: 0;
+
+		return {
+			width: "100%",
+			height: "100%",
+			objectFit: "cover",
+			objectPosition: `${posX}% ${posY}%`,
+			transform: `scale(${Math.max(scaleX, scaleY) / 100})`,
+			transformOrigin: `${posX}% ${posY}%`,
+		};
+	}, [selectType, monitor, monitorsList]);
+
 	const scaledWidth = monitor.width * scale;
 	const scaledHeight = monitor.height * scale;
 	const rectangleStyle: React.CSSProperties = {
 		width: scaledWidth,
 		height: scaledHeight,
 		position: "relative",
+		overflow: "hidden",
 	};
 	const imageStyle: React.CSSProperties = {
 		width: "100%",
@@ -125,7 +157,7 @@ export function MonitorComponent({
 						src={wallpaperSrc}
 						alt={`Wallpaper on ${monitor.name}`}
 						className="h-full w-full cursor-pointer object-cover"
-						style={imageStyle}
+						style={extendImageStyle ?? imageStyle}
 						draggable={false}
 					/>
 				) : (

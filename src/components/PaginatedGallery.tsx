@@ -39,11 +39,11 @@ function PaginatedGallery() {
 				animate={{ opacity: 1 }}
 				exit={{ opacity: 0 }}
 				transition={{ duration: 0.5 }}
-				className="flex-1 min-h-0 flex flex-col gap-4 transition focus:outline-hidden p-4"
+				className="flex-1 min-h-0 flex flex-col transition focus:outline-hidden"
 				onContextMenu={handleContextMenu}
 			>
-				{/* Scrollable image grid -- the only scrollable region */}
-				<div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-track-transparent scrollbar-thumb-base-300 scrollbar-thumb-rounded-sm">
+			{/* Scrollable image grid -- the only scrollable region */}
+			<div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-track-transparent scrollbar-thumb-base-300 scrollbar-thumb-rounded-sm p-4" style={{scrollbarGutter:'stable'}}>
 					<div
 						className="m-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(16vw,1fr))] gap-3 md:gap-3 lg:gap-3 xl:gap-4 2xl:gap-5"
 					>
@@ -52,8 +52,8 @@ function PaginatedGallery() {
 				</div>
 
 				{/* Pinned bottom: pagination + playlist track */}
-				<div className={`shrink-0 flex w-full flex-col justify-between gap-4 pt-3${isNeo ? " neo-bottom-dock" : ""}`}>
-					<div className="w-[75%] self-center flex flex-col items-center gap-2">
+				<div className={`shrink-0 flex w-full flex-col justify-between gap-4 px-4 pt-3 pb-2${isNeo ? " neo-bottom-dock" : ""}`}>
+					<div className="self-center flex flex-col items-center gap-2">
 						<ResponsivePagination
 							total={totalPages}
 							previousClassName="rounded_button_previous"

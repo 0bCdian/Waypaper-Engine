@@ -65,13 +65,15 @@ func toLogical(mon monitor.Monitor) logicalMonitor {
 // to physical per-monitor via its resize mode.
 //
 // Results are cached per imageID in a subfolder with a cache.json that records
-// monitor geometry. If the current monitors match the cached geometry, the
-// previously split images are returned without re-processing.
+// source file metadata (path, size, modification time) and monitor geometry.
+// The cache is only reused when BOTH the source file and monitor layout match,
+// which prevents stale fragments after a DB wipe and re-import where IDs get
+// reassigned to different images.
 func (s *Splitter) Split(sourcePath string, imageID int, monitors []monitor.Monitor) (map[string]string, error) {
 	imageDir := filepath.Join(s.outputDir, "processed", fmt.Sprintf("%d", imageID))
 
 	// Check for a valid cache before doing any image processing.
-	if cached, ok := s.loadCache(imageDir, monitors); ok {
+	if cached, ok := s.loadCache(imageDir, sourcePath, monitors); ok {
 		slog.Debug("splitter: using cached split images", "image_id", imageID)
 		return cached, nil
 	}
@@ -131,7 +133,7 @@ func (s *Splitter) Split(sourcePath string, imageID int, monitors []monitor.Moni
 	}
 
 	// Persist cache metadata so subsequent calls can skip processing.
-	if err := s.saveCache(imageDir, monitors, result); err != nil {
+	if err := s.saveCache(imageDir, sourcePath, monitors, result); err != nil {
 		slog.Warn("splitter: failed to save cache", "image_id", imageID, "error", err)
 	}
 
@@ -152,18 +154,22 @@ type splitCacheEntry struct {
 }
 
 // splitCache is the JSON structure written to cache.json inside each image's
-// processed directory.
+// processed directory. It includes source file metadata so the cache is
+// invalidated when the source changes (e.g. after a DB wipe and re-import
+// where IDs are reassigned to different images).
 type splitCache struct {
-	Monitors []splitCacheEntry `json:"monitors"`
+	SourcePath    string            `json:"source_path"`
+	SourceSize    int64             `json:"source_size"`
+	SourceModTime int64             `json:"source_mod_time"`
+	Monitors      []splitCacheEntry `json:"monitors"`
 }
 
 const cacheFileName = "cache.json"
 
-// loadCache reads the cache.json from imageDir and checks if the cached monitor
-// geometry matches the current monitors. If it matches, returns the map of
-// monitor name to cached image path. Returns (nil, false) if cache is missing,
-// unreadable, or stale.
-func (s *Splitter) loadCache(imageDir string, monitors []monitor.Monitor) (map[string]string, bool) {
+// loadCache reads the cache.json from imageDir and checks if the cached source
+// file and monitor geometry match the current request. Returns (nil, false) if
+// the cache is missing, unreadable, or stale.
+func (s *Splitter) loadCache(imageDir string, sourcePath string, monitors []monitor.Monitor) (map[string]string, bool) {
 	data, err := os.ReadFile(filepath.Join(imageDir, cacheFileName))
 	if err != nil {
 		return nil, false
@@ -171,6 +177,21 @@ func (s *Splitter) loadCache(imageDir string, monitors []monitor.Monitor) (map[s
 
 	var cache splitCache
 	if err := json.Unmarshal(data, &cache); err != nil {
+		return nil, false
+	}
+
+	// Validate that the source image hasn't changed (guards against ID reuse
+	// after a DB wipe, file replacement, etc.).
+	srcInfo, err := os.Stat(sourcePath)
+	if err != nil {
+		return nil, false
+	}
+	if cache.SourcePath != sourcePath ||
+		cache.SourceSize != srcInfo.Size() ||
+		cache.SourceModTime != srcInfo.ModTime().UnixNano() {
+		slog.Debug("splitter: cache stale (source changed)",
+			"cached_path", cache.SourcePath, "current_path", sourcePath,
+			"cached_size", cache.SourceSize, "current_size", srcInfo.Size())
 		return nil, false
 	}
 
@@ -204,11 +225,20 @@ func (s *Splitter) loadCache(imageDir string, monitors []monitor.Monitor) (map[s
 	return result, true
 }
 
-// saveCache writes a cache.json into imageDir recording the monitor geometry
-// and output paths so future Split calls can skip processing.
-func (s *Splitter) saveCache(imageDir string, monitors []monitor.Monitor, paths map[string]string) error {
+// saveCache writes a cache.json into imageDir recording the source file
+// metadata, monitor geometry, and output paths so future Split calls can skip
+// processing.
+func (s *Splitter) saveCache(imageDir string, sourcePath string, monitors []monitor.Monitor, paths map[string]string) error {
+	srcInfo, err := os.Stat(sourcePath)
+	if err != nil {
+		return fmt.Errorf("stat source for cache: %w", err)
+	}
+
 	cache := splitCache{
-		Monitors: make([]splitCacheEntry, 0, len(monitors)),
+		SourcePath:    sourcePath,
+		SourceSize:    srcInfo.Size(),
+		SourceModTime: srcInfo.ModTime().UnixNano(),
+		Monitors:      make([]splitCacheEntry, 0, len(monitors)),
 	}
 	for _, mon := range monitors {
 		cache.Monitors = append(cache.Monitors, splitCacheEntry{

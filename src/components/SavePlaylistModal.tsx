@@ -45,6 +45,13 @@ const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
 		return duplicatesExist;
 	};
 	const onSubmit: SubmitHandler<savePlaylistModalFields> = async (data) => {
+		if (monitorSelection.selectedMonitors.length === 0) {
+			showError({
+				state: true,
+				message: "Select at least one display before saving a playlist.",
+			});
+			return;
+		}
 		setName(data.playlistName);
 		const playlist = readPlaylist();
 		if (playlist.configuration.type === "time_of_day") {
@@ -123,12 +130,12 @@ const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
 				onSubmit={(e) => {
 					void handleSubmit(onSubmit)(e);
 				}}
-				className="form-control modal-box max-w-lg xl:max-w-xl 2xl:max-w-2xl"
+				className="flex flex-col modal-box max-w-lg xl:max-w-xl 2xl:max-w-2xl"
 			>
 				<NeoCloseButton onClick={closeModal} />
 				<h2 className="py-3 text-center text-4xl font-bold">Save Playlist</h2>
 				<div className="divider"></div>
-				<label htmlFor="playlistName" className="label italic text-warning">
+				<label htmlFor="playlistName" className="label mb-3 italic text-warning">
 					Playlists with the same name will be overwritten.
 				</label>
 
@@ -138,7 +145,7 @@ const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
 					id="playlistName"
 					required
 					draggable={false}
-					className="input input-md mb-3 rounded-md text-lg"
+					className="input w-full mb-3 rounded-md text-lg"
 					placeholder="Playlist Name"
 				/>
 				<div className="divider"></div>

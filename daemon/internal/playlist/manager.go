@@ -14,6 +14,15 @@ import (
 	"waypaper-engine/daemon/internal/store"
 )
 
+// playlistRun groups the scheduler and cancel func for a single Start() invocation.
+// Multiple monitors may share the same run (e.g. clone/extend mode).
+// Identified by pointer identity so stopForMonitor can safely check if other
+// monitors still reference the same run before tearing it down.
+type playlistRun struct {
+	sched  Scheduler
+	cancel context.CancelFunc
+}
+
 // Manager handles playlist lifecycle: start, stop, pause, resume, next, previous.
 type Manager struct {
 	mu                sync.RWMutex
@@ -27,10 +36,9 @@ type Manager struct {
 	splitter          *image.Splitter
 	imageStore        store.ImageStore
 
-	// schedulers tracks running schedulers keyed by monitor name.
-	schedulers map[string]Scheduler
-	// cancelFuncs tracks cancel functions for scheduler goroutine contexts.
-	cancelFuncs map[string]context.CancelFunc
+	// runs tracks active playlist runs keyed by monitor name.
+	// Monitors that were started together share the same *playlistRun pointer.
+	runs map[string]*playlistRun
 }
 
 // NewManager creates a new playlist manager with all required dependencies.
@@ -55,8 +63,7 @@ func NewManager(
 		monitorManager:    monitorManager,
 		bus:               bus,
 		splitter:          splitter,
-		schedulers:        make(map[string]Scheduler),
-		cancelFuncs:       make(map[string]context.CancelFunc),
+		runs:              make(map[string]*playlistRun),
 	}
 }
 
@@ -75,6 +82,9 @@ func (m *Manager) Start(ctx context.Context, playlistID int, target monitor.Moni
 	monitors, err := m.resolveMonitors(ctx, target)
 	if err != nil {
 		return err
+	}
+	if len(monitors) == 0 {
+		return fmt.Errorf("playlist manager: no monitors resolved for target %q", target.ID)
 	}
 
 	// Stop any existing playlist on target monitors.
@@ -123,7 +133,36 @@ func (m *Manager) Start(ctx context.Context, playlistID int, target monitor.Moni
 		TimeSlots:   timeSlots,
 	})
 
-	// Register state and start scheduler for each target monitor.
+	// Use a detached context for playlist lifecycle — the HTTP request context
+	// (ctx) is cancelled as soon as the response is written, but the playlist
+	// must keep running independently.
+	playCtx, playCancel := context.WithCancel(context.Background())
+
+	// Create a shared run for all target monitors in this Start() call.
+	run := &playlistRun{sched: sched, cancel: playCancel}
+
+	// Register the run for each target monitor.
+	for _, mon := range monitors {
+		m.mu.Lock()
+		m.runs[mon.Name] = run
+		m.mu.Unlock()
+
+		// Start missed event checker for time-based playlists.
+		if pl.Configuration.Type == "time_of_day" || pl.Configuration.Type == "day_of_week" {
+			go m.missedEventChecker(playCtx, mon.Name, pl, monitors, target)
+		}
+	}
+
+	// Apply first image (still use the original ctx since the HTTP request is alive).
+	if err := m.applyImage(ctx, pl, startIdx, monitors, target.Mode); err != nil {
+		slog.Warn("playlist: failed to apply first image", "error", err)
+	}
+	// Start scheduler with detached context so ticks survive after HTTP response.
+	sched.Start(func(index int) {
+		m.onTick(playCtx, pl, index, monitors, target)
+	})
+
+	// Update state AFTER sched.Start() so NextChangeAt is populated.
 	for _, mon := range monitors {
 		firstImageID := pl.Images[startIdx].ImageID
 		var nextImageID *int
@@ -145,28 +184,7 @@ func (m *Manager) Start(ctx context.Context, playlistID int, target monitor.Moni
 			NextChangeAt:   sched.NextChangeAt(),
 		}
 		m.stateStore.SetActivePlaylist(mon.Name, instance)
-
-		monCtx, monCancel := context.WithCancel(ctx)
-		m.mu.Lock()
-		m.schedulers[mon.Name] = sched
-		m.cancelFuncs[mon.Name] = monCancel
-		m.mu.Unlock()
-
-		// Start missed event checker for time-based playlists.
-		if pl.Configuration.Type == "time_of_day" || pl.Configuration.Type == "day_of_week" {
-			go m.missedEventChecker(monCtx, mon.Name, pl, monitors, target)
-		}
 	}
-
-	// Apply first image.
-	if err := m.applyImage(ctx, pl, startIdx, monitors, target.Mode); err != nil {
-		slog.Warn("playlist: failed to apply first image", "error", err)
-	}
-
-	// Start scheduler with callback.
-	sched.Start(func(index int) {
-		m.onTick(ctx, pl, index, monitors, target)
-	})
 
 	m.bus.Publish(events.Event{
 		Type: events.PlaylistStarted,
@@ -216,8 +234,8 @@ func (m *Manager) Pause(ctx context.Context, playlistID int) error {
 	for monName, inst := range active {
 		if inst.PlaylistID == playlistID {
 			m.mu.RLock()
-			if sched, ok := m.schedulers[monName]; ok {
-				sched.Pause()
+			if run, ok := m.runs[monName]; ok {
+				run.sched.Pause()
 			}
 			m.mu.RUnlock()
 
@@ -246,9 +264,9 @@ func (m *Manager) Resume(ctx context.Context, playlistID int) error {
 	for monName, inst := range active {
 		if inst.PlaylistID == playlistID {
 			m.mu.RLock()
-			if sched, ok := m.schedulers[monName]; ok {
-				sched.Resume()
-				inst.NextChangeAt = sched.NextChangeAt()
+			if run, ok := m.runs[monName]; ok {
+				run.sched.Resume()
+				inst.NextChangeAt = run.sched.NextChangeAt()
 			}
 			m.mu.RUnlock()
 
@@ -305,8 +323,8 @@ func (m *Manager) PauseAll(ctx context.Context) int {
 			continue
 		}
 		m.mu.RLock()
-		if sched, ok := m.schedulers[monName]; ok {
-			sched.Pause()
+		if run, ok := m.runs[monName]; ok {
+			run.sched.Pause()
 		}
 		m.mu.RUnlock()
 
@@ -333,9 +351,9 @@ func (m *Manager) ResumeAll(ctx context.Context) int {
 			continue
 		}
 		m.mu.RLock()
-		if sched, ok := m.schedulers[monName]; ok {
-			sched.Resume()
-			inst.NextChangeAt = sched.NextChangeAt()
+		if run, ok := m.runs[monName]; ok {
+			run.sched.Resume()
+			inst.NextChangeAt = run.sched.NextChangeAt()
 		}
 		m.mu.RUnlock()
 
@@ -453,15 +471,28 @@ func (m *Manager) advancePlaylist(ctx context.Context, playlistID int, delta int
 }
 
 // stopForMonitor stops the scheduler and cleans up state for a single monitor.
+// If other monitors share the same run (e.g. clone/extend), the scheduler is
+// only stopped when the last monitor referencing it is removed.
 func (m *Manager) stopForMonitor(monName string) {
 	m.mu.Lock()
-	if sched, ok := m.schedulers[monName]; ok {
-		sched.Stop()
-		delete(m.schedulers, monName)
-	}
-	if cancel, ok := m.cancelFuncs[monName]; ok {
-		cancel()
-		delete(m.cancelFuncs, monName)
+	run, ok := m.runs[monName]
+	if ok {
+		delete(m.runs, monName)
+
+		// Check if any other monitor still references this run.
+		shared := false
+		for _, r := range m.runs {
+			if r == run {
+				shared = true
+				break
+			}
+		}
+
+		// Only tear down the scheduler/context when no monitors remain.
+		if !shared {
+			run.sched.Stop()
+			run.cancel()
+		}
 	}
 	m.mu.Unlock()
 
@@ -489,8 +520,8 @@ func (m *Manager) onTick(ctx context.Context, pl *store.Playlist, index int, mon
 			inst.NextImageID = &nid
 		}
 		m.mu.RLock()
-		if sched, ok := m.schedulers[mon.Name]; ok {
-			inst.NextChangeAt = sched.NextChangeAt()
+		if run, ok := m.runs[mon.Name]; ok {
+			inst.NextChangeAt = run.sched.NextChangeAt()
 		}
 		m.mu.RUnlock()
 
@@ -672,8 +703,8 @@ func (m *Manager) missedEventChecker(ctx context.Context, monName string, pl *st
 					inst.NextImageID = &nid
 				}
 				m.mu.RLock()
-				if sched, ok := m.schedulers[monName]; ok {
-					inst.NextChangeAt = sched.NextChangeAt()
+				if run, ok := m.runs[monName]; ok {
+					inst.NextChangeAt = run.sched.NextChangeAt()
 				}
 				m.mu.RUnlock()
 				m.stateStore.SetActivePlaylist(monName, *inst)

@@ -16,6 +16,7 @@ import type {
 	CreatePlaylistRequest,
 	UpdatePlaylistRequest,
 	ActivePlaylistInstance,
+	ActivePlaylistResponse,
 	Monitor,
 	UnifiedConfig,
 	SwwwConfig,
@@ -159,7 +160,7 @@ const electronAPI = {
 				id,
 			}),
 
-		getActivePlaylists: (): Promise<Record<string, ActivePlaylistInstance>> =>
+		getActivePlaylists: (): Promise<ActivePlaylistResponse[]> =>
 			ipcRenderer.invoke("go-daemon-command", "get_active_playlists"),
 
 		getActivePlaylistForMonitor: (

@@ -235,7 +235,7 @@ type MonitorState struct {
 
 // ActivePlaylistInstance represents a running playlist on a specific monitor.
 // This is ephemeral runtime state — it is NOT stored in CloverDB.
-// Returned by GET /playlists/active.
+// Used internally by the state store, keyed by monitor name.
 type ActivePlaylistInstance struct {
 	PlaylistID      int        `json:"playlist_id"`
 	PlaylistName    string     `json:"playlist_name"`
@@ -248,4 +248,26 @@ type ActivePlaylistInstance struct {
 	Mode            string     `json:"mode"`
 	StartedAt       time.Time  `json:"started_at"`
 	NextChangeAt    *time.Time `json:"next_change_at"`
+}
+
+// ActivePlaylistResponse is the API response for GET /playlists/active.
+// Groups active playlist state by playlist, with monitors nested inside.
+type ActivePlaylistResponse struct {
+	PlaylistID      int                   `json:"playlist_id"`
+	PlaylistName    string                `json:"playlist_name"`
+	CurrentIndex    int                   `json:"current_index"`
+	CurrentImageID  int                   `json:"current_image_id"`
+	PreviousImageID *int                  `json:"previous_image_id"`
+	NextImageID     *int                  `json:"next_image_id"`
+	TotalImages     int                   `json:"total_images"`
+	Paused          bool                  `json:"paused"`
+	StartedAt       time.Time             `json:"started_at"`
+	NextChangeAt    *time.Time            `json:"next_change_at"`
+	Monitors        []ActiveMonitorInfo   `json:"monitors"`
+}
+
+// ActiveMonitorInfo describes a monitor that a playlist is playing on.
+type ActiveMonitorInfo struct {
+	Name string `json:"name"`
+	Mode string `json:"mode"`
 }

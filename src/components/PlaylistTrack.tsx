@@ -144,8 +144,8 @@ function PlaylistTrack() {
 		(s) => s.designMode === "neobrutalist",
 	);
 	const btnClass = isNeo
-		? "btn btn-primary w-full xl:w-auto xl:flex-1 uppercase"
-		: "btn btn-primary w-full xl:w-auto xl:flex-1 rounded-lg uppercase";
+		? "btn btn-primary uppercase"
+		: "btn btn-primary rounded-lg uppercase";
 	const scrollClass = playlistArray.length > 0
 		? isNeo
 			? "neo-playlist-scroll overflow-y-hidden overflow-x-scroll scrollbar-thumb-base-300 scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm"
@@ -154,8 +154,8 @@ function PlaylistTrack() {
 
 	return (
 		<div className="mb-2 flex w-full flex-col gap-5">
-			<div className="grid grid-cols-3 items-center gap-5 sm:flex-row xl:flex">
-				<span className="col-span-3 text-4xl font-bold">
+			<div className="flex flex-wrap items-center gap-3">
+				<span className="w-full text-4xl font-bold">
 					{playlistArray.length > 0
 						? `Playlist (${playlistArray.length})`
 						: "Playlist"}
@@ -233,7 +233,7 @@ function PlaylistTrack() {
 						Configure
 					</button>
 					<button
-						className={isNeo ? "btn btn-error xl:flex-1 xl:w-auto uppercase" : "btn btn-error xl:flex-1 xl:w-auto rounded-lg uppercase"}
+						className={isNeo ? "btn btn-error uppercase" : "btn btn-error rounded-lg uppercase"}
 						onClick={async () => {
 							if (playlist.id) {
 								try {
@@ -256,7 +256,7 @@ function PlaylistTrack() {
 				collisionDetection={closestCorners}
 			>
 				<SortableContext items={sortingCriteria}>
-					<div className={`flex sm:max-w-[90vw] ${scrollClass}`}>
+					<div className={`flex w-full ${scrollClass}`}>
 						<AnimatePresence>{...playlistArray}</AnimatePresence>
 					</div>
 				</SortableContext>

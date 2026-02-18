@@ -308,9 +308,42 @@ func (h *PlaylistHandler) PreviousAll(w http.ResponseWriter, r *http.Request) {
 // --- Active playlist queries ---
 
 // ListActive handles GET /playlists/active.
+// Groups active playlists by playlist ID, with monitors nested inside.
 func (h *PlaylistHandler) ListActive(w http.ResponseWriter, r *http.Request) {
 	active := h.stateStore.GetActivePlaylists()
-	WriteJSON(w, http.StatusOK, active)
+
+	// Group by playlist ID.
+	grouped := make(map[int]*store.ActivePlaylistResponse)
+	for monName, inst := range active {
+		resp, exists := grouped[inst.PlaylistID]
+		if !exists {
+			resp = &store.ActivePlaylistResponse{
+				PlaylistID:      inst.PlaylistID,
+				PlaylistName:    inst.PlaylistName,
+				CurrentIndex:    inst.CurrentIndex,
+				CurrentImageID:  inst.CurrentImageID,
+				PreviousImageID: inst.PreviousImageID,
+				NextImageID:     inst.NextImageID,
+				TotalImages:     inst.TotalImages,
+				Paused:          inst.Paused,
+				StartedAt:       inst.StartedAt,
+				NextChangeAt:    inst.NextChangeAt,
+			}
+			grouped[inst.PlaylistID] = resp
+		}
+		resp.Monitors = append(resp.Monitors, store.ActiveMonitorInfo{
+			Name: monName,
+			Mode: inst.Mode,
+		})
+	}
+
+	// Collect into a slice.
+	result := make([]store.ActivePlaylistResponse, 0, len(grouped))
+	for _, resp := range grouped {
+		result = append(result, *resp)
+	}
+
+	WriteJSON(w, http.StatusOK, result)
 }
 
 // GetActiveByMonitor handles GET /playlists/active/{monitor}.

@@ -140,6 +140,8 @@ export interface Playlist {
 	images: PlaylistImage[];
 }
 
+// ActivePlaylistInstance is the per-monitor internal representation.
+// Used by getActivePlaylistForMonitor.
 export interface ActivePlaylistInstance {
 	playlist_id: number;
 	playlist_name: string;
@@ -152,6 +154,27 @@ export interface ActivePlaylistInstance {
 	mode: MonitorMode;
 	started_at: string;
 	next_change_at: string | null;
+}
+
+// ActivePlaylistResponse is the playlist-centric API response for GET /playlists/active.
+// Groups by playlist, with monitors nested inside.
+export interface ActivePlaylistResponse {
+	playlist_id: number;
+	playlist_name: string;
+	current_index: number;
+	current_image_id: number;
+	previous_image_id: number | null;
+	next_image_id: number | null;
+	total_images: number;
+	paused: boolean;
+	started_at: string;
+	next_change_at: string | null;
+	monitors: ActiveMonitorInfo[];
+}
+
+export interface ActiveMonitorInfo {
+	name: string;
+	mode: MonitorMode;
 }
 
 // ============================================================================

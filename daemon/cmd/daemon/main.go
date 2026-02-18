@@ -7,6 +7,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"syscall"
 	"time"
 
@@ -169,6 +170,11 @@ func startDaemon(configPath string, logLevel string) error {
 	// 11. Create image processor and splitter.
 	processor := image.NewProcessor(db.ImageStore(), bus, cfg.GetImagesDir(), cfg.GetThumbnailsDir())
 	splitter := image.NewSplitter(cfg.GetImagesDir())
+
+	// 11b. Clean stale processed images if the gallery is empty (e.g. after a
+	// DB wipe). Prevents cached split fragments from being served for
+	// newly-assigned image IDs that map to different source images.
+	cleanStaleProcessedDir(ctx, db.ImageStore(), cfg.GetImagesDir())
 
 	// 10b. Restore wallpapers from persisted monitor state.
 	restoreWallpapers(ctx, db.MonitorStateStore(), db.StateStore(), reg, monManager, splitter)
@@ -522,4 +528,29 @@ func setupLogging(cfg *config.ViperManager, levelOverride string) {
 	)
 
 	slog.SetDefault(slog.New(multi))
+}
+
+// cleanStaleProcessedDir removes the processed/ split-image cache when the
+// image gallery is empty. This prevents stale cached fragments from being
+// served after a DB wipe + re-import where image IDs get reassigned.
+func cleanStaleProcessedDir(ctx context.Context, imageStore store.ImageStore, imagesDir string) {
+	count, err := imageStore.Count(ctx)
+	if err != nil {
+		slog.Warn("clean processed: failed to count images", "error", err)
+		return
+	}
+	if count > 0 {
+		return
+	}
+
+	processedDir := filepath.Join(imagesDir, "processed")
+	if _, err := os.Stat(processedDir); os.IsNotExist(err) {
+		return
+	}
+
+	if err := os.RemoveAll(processedDir); err != nil {
+		slog.Warn("clean processed: failed to remove stale cache", "error", err)
+		return
+	}
+	slog.Info("clean processed: removed stale split-image cache (gallery is empty)")
 }

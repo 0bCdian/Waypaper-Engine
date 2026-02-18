@@ -500,17 +500,31 @@ Go back to previous image in the playlist.
 
 ### `GET /playlists/active`
 
-Get all currently running playlists (keyed by monitor name).
+Get all currently running playlists, grouped by playlist with monitors nested inside.
 
 **Response** `200`:
 ```json
-{
-  "DP-1": ActivePlaylistInstance,
-  "HDMI-A-1": ActivePlaylistInstance
-}
+[
+  {
+    "playlist_id": 1,
+    "playlist_name": "Evening rotation",
+    "current_index": 2,
+    "current_image_id": 12,
+    "previous_image_id": 5,
+    "next_image_id": 1,
+    "total_images": 3,
+    "paused": false,
+    "started_at": "2026-02-15T14:30:00Z",
+    "next_change_at": "2026-02-15T14:35:00Z",
+    "monitors": [
+      { "name": "DP-1", "mode": "clone" },
+      { "name": "HDMI-A-1", "mode": "clone" }
+    ]
+  }
+]
 ```
 
-See [ActivePlaylistInstance model](#activeplaylistinstance).
+See [ActivePlaylistResponse model](#activeplaylistresponse).
 
 ---
 
@@ -869,6 +883,8 @@ For `time_of_day`, images include the `time` field:
 
 ### ActivePlaylistInstance
 
+Per-monitor representation, returned by `GET /playlists/active/{monitor}`:
+
 ```json
 {
   "playlist_id": 1,
@@ -882,6 +898,29 @@ For `time_of_day`, images include the `time` field:
   "mode": "individual",
   "started_at": "2026-02-15T14:30:00Z",
   "next_change_at": "2026-02-15T14:35:00Z"
+}
+```
+
+### ActivePlaylistResponse
+
+Playlist-centric representation, returned by `GET /playlists/active`:
+
+```json
+{
+  "playlist_id": 1,
+  "playlist_name": "Evening rotation",
+  "current_index": 2,
+  "current_image_id": 12,
+  "previous_image_id": 5,
+  "next_image_id": 1,
+  "total_images": 3,
+  "paused": false,
+  "started_at": "2026-02-15T14:30:00Z",
+  "next_change_at": "2026-02-15T14:35:00Z",
+  "monitors": [
+    { "name": "DP-1", "mode": "clone" },
+    { "name": "HDMI-A-1", "mode": "clone" }
+  ]
 }
 ```
 

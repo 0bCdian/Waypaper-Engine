@@ -179,7 +179,14 @@ function ImageCard({ Image }: ImageCardProps) {
 				>
 					{pictureElement}
 					<div className="neo-polaroid-caption">
-						<p className="neo-polaroid-name">{Image.name}</p>
+						<p className="neo-polaroid-name">
+							{Image.name}
+							{Image.format && (
+								<span className="ml-1.5 inline-block rounded bg-base-300/80 px-1 py-0.5 align-middle text-[0.6rem] font-semibold uppercase leading-none text-base-content/70">
+									{Image.format}
+								</span>
+							)}
+						</p>
 					</div>
 				</button>
 
@@ -217,6 +224,11 @@ function ImageCard({ Image }: ImageCardProps) {
 				{pictureElement}
 				<p className="absolute bottom-0 w-full overflow-hidden truncate text-ellipsis bg-base-content/75 p-2 pl-2 text-justify text-lg font-medium opacity-0 transition-all duration-300 group-hover:opacity-100 text-base-100">
 					{Image.name}
+					{Image.format && (
+						<span className="ml-1.5 inline-block rounded bg-base-100/20 px-1 py-0.5 align-middle text-[0.6rem] font-semibold uppercase leading-none">
+							{Image.format}
+						</span>
+					)}
 				</p>
 				<div
 					data-selected={isSelected}

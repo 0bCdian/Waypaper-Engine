@@ -8,7 +8,7 @@ import { IPC_MAIN_EVENTS } from "../shared/constants";
 import { PlaylistController } from "../electron/playlistController";
 import { goDaemonClient } from "../electron/goDaemonClient";
 import type {
-	ActivePlaylistInstance,
+	ActivePlaylistResponse,
 	ImageHistoryEntry,
 } from "../electron/daemon-go-types";
 
@@ -56,26 +56,24 @@ export const trayMenu = async (
 	trayInstance: Tray,
 	createTray?: () => Promise<void>,
 ) => {
-	let activePlaylists: Record<string, ActivePlaylistInstance> = {};
+	let activePlaylists: ActivePlaylistResponse[] = [];
 	let imageHistory: ImageHistoryEntry[] = [];
 
 	try {
-		activePlaylists = (await goDaemonClient.getActivePlaylists()) || {};
+		activePlaylists = (await goDaemonClient.getActivePlaylists()) || [];
 		imageHistory = (await goDaemonClient.getImageHistory(10)) || [];
 	} catch (error) {
 		console.error("Failed to fetch tray menu data:", error);
 	}
 
-	const playlistEntries = Object.entries(activePlaylists);
-
 	const playlistMenu: Array<
 		Electron.MenuItemConstructorOptions | Electron.MenuItem
-	> = playlistEntries.length > 0
+	> = activePlaylists.length > 0
 		? [
 				{
 					label: "Active playlists",
-					submenu: playlistEntries.map(([monitor, playlist]) => ({
-						label: `${playlist.playlist_name} on: ${monitor}`,
+					submenu: activePlaylists.map((playlist) => ({
+						label: `${playlist.playlist_name} on: ${playlist.monitors.map((m) => m.name).join(", ")}`,
 						submenu: [
 							{
 								label: "Next image",
@@ -112,7 +110,6 @@ export const trayMenu = async (
 											IPC_MAIN_EVENTS.clearPlaylist,
 											{
 												playlist_id: playlist.playlist_id,
-												monitor,
 											},
 										);
 									}
