@@ -6,10 +6,12 @@ import { useLoadAppConfig } from "./hooks/useLoadAppConfig";
 import { useLoadMonitors } from "./hooks/useLoadMonitors";
 import { useRealTimeImageProcessing } from "./hooks/useRealTimeImageProcessing";
 import { useWindowBounds } from "./hooks/useWindowBounds";
-import useContextMenuEvents from "./hooks/useContextMenuEvents";
 import useNotifications from "./hooks/useNotifications";
 import { ImageProcessingProgress } from "./components/ImageProcessingProgress";
 import ToastContainer from "./components/ToastContainer";
+import ImageDetailSidebar from "./components/ImageDetailSidebar";
+import ContextMenu from "./components/ContextMenu";
+import ConfirmDialog from "./components/ConfirmDialog";
 import ModernAppLayout from "./components/layout/ModernAppLayout";
 
 const Home = lazy(() => import("./routes/Home"));
@@ -21,7 +23,6 @@ const App = () => {
 	useLoadMonitors();
 	useRealTimeImageProcessing();
 	useWindowBounds();
-	useContextMenuEvents();
 	useNotifications();
 	return (
 		<ThemeProvider defaultTheme="business" persist={true} syncWithSystem={true}>
@@ -30,6 +31,8 @@ const App = () => {
 			>
 				<ImageProcessingProgress />
 				<ToastContainer />
+				<ContextMenu />
+				<ConfirmDialog />
 				<ModernAppLayout>
 					<Suspense fallback={<div className="skeleton w-full h-full" />}>
 						<Routes>
@@ -40,6 +43,7 @@ const App = () => {
 					</Suspense>
 				</ModernAppLayout>
 				<Modals />
+				<ImageDetailSidebar />
 			</HashRouter>
 		</ThemeProvider>
 	);

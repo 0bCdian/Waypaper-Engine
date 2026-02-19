@@ -156,7 +156,13 @@ async function initializeApp(): Promise<void> {
 			console.log("Connected to daemon successfully");
 		} catch (error) {
 			console.error("Failed to initialize daemon:", error);
-			console.log("Continuing without daemon functionality");
+			const { dialog: electronDialog } = await import("electron");
+			electronDialog.showErrorBox(
+				"Waypaper Engine — Daemon Error",
+				`The daemon process failed to start. The application cannot function without it.\n\n${error instanceof Error ? error.message : String(error)}`,
+			);
+			app.exit(1);
+			return;
 		}
 
 		// Create system tray icon
@@ -349,25 +355,12 @@ function setupAppEvents(): void {
  * Setup global error handling
  */
 function setupErrorHandling(): void {
-	// Uncaught exceptions
-	process.on("uncaughtException", (error) => {
-		console.error("Uncaught Exception:", error);
-		// Could show error dialog or send to crash reporting service
-	});
-
-	// Unhandled promise rejections
-	process.on("unhandledRejection", (reason, _promise) => {
-		console.error("Unhandled Rejection:", reason);
-		// Could show error dialog or send to crash reporting service
-	});
-
-	// Electron crash reporter
 	if (process.env.NODE_ENV === "production") {
 		const { crashReporter } = require("electron");
 		crashReporter.start({
 			productName: APP_CONFIG.name,
 			companyName: "Waypaper Engine",
-			submitURL: "", // Add crash reporting URL if needed
+			submitURL: "",
 			uploadToServer: false,
 		});
 	}

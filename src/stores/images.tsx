@@ -12,6 +12,7 @@ const initialFilters: Filters = {
 	order: "desc",
 	type: "id",
 	searchString: "",
+	tags: [],
 	advancedFilters: {
 		formats: [
 			"jpeg",

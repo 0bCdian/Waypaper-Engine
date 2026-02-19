@@ -25,7 +25,6 @@ import type {
 	MonitorMode,
 	EventType,
 } from "./daemon-go-types";
-import type { IPC_RENDERER_EVENTS_TYPE } from "../shared/constants";
 
 const electronAPI = {
 	// ============================================================================
@@ -69,6 +68,9 @@ const electronAPI = {
 			ipcRenderer.invoke("go-daemon-command", "select_all_images", {
 				selected,
 			}),
+
+		getImageTags: (): Promise<{ tags: string[] }> =>
+			ipcRenderer.invoke("go-daemon-command", "get_image_tags"),
 
 		getImageHistory: (
 			limit?: number,
@@ -289,37 +291,23 @@ const electronAPI = {
 	// ============================================================================
 	// EVENT LISTENERS
 	// ============================================================================
-	onAppError: (callback: (error: unknown) => void) => {
-		ipcRenderer.on("app-error", (_, error) => callback(error));
+	onAppError: (callback: (error: unknown) => void): (() => void) => {
+		const wrapper = (_: Electron.IpcRendererEvent, error: unknown) =>
+			callback(error);
+		ipcRenderer.on("app-error", wrapper);
+		return () => ipcRenderer.removeListener("app-error", wrapper);
 	},
 
-	onDaemonStatusUpdate: (callback: (data: unknown) => void) => {
-		ipcRenderer.on("daemon-status-update", (_, data) => callback(data));
-	},
-
-	offDaemonStatusUpdate: (callback: (data: unknown) => void) => {
-		ipcRenderer.removeListener("daemon-status-update", callback);
+	onDaemonStatusUpdate: (callback: (data: unknown) => void): (() => void) => {
+		const wrapper = (_: Electron.IpcRendererEvent, data: unknown) =>
+			callback(data);
+		ipcRenderer.on("daemon-status-update", wrapper);
+		return () =>
+			ipcRenderer.removeListener("daemon-status-update", wrapper);
 	},
 
 	removeAllListeners: (channel: string) => {
 		ipcRenderer.removeAllListeners(channel);
-	},
-
-	// ============================================================================
-	// MENU / IPC RENDERER EVENTS
-	// ============================================================================
-	onMenuEvent: (
-		event: IPC_RENDERER_EVENTS_TYPE,
-		callback: (...args: unknown[]) => void,
-	): void => {
-		ipcRenderer.on(event, (_event, ...args) => callback(...args));
-	},
-
-	offMenuEvent: (
-		event: IPC_RENDERER_EVENTS_TYPE,
-		callback: (...args: unknown[]) => void,
-	): void => {
-		ipcRenderer.removeListener(event, callback);
 	},
 
 	// ============================================================================
@@ -333,13 +321,15 @@ const electronAPI = {
 		data: { files: string[] };
 	}) => ipcRenderer.invoke("handleOpenImages", imagesObject),
 
-	openContextMenu: (options: {
-		Image?: unknown;
-		selectedImagesLength: number;
-	}) => ipcRenderer.invoke("openContextMenu", options),
+	revealInFileManager: (path: string) =>
+		ipcRenderer.invoke("reveal-in-file-manager", path),
 };
 
 // Expose the API to the renderer process
 contextBridge.exposeInMainWorld("API_RENDERER", electronAPI);
+
+// Expose debug mode flag
+const isDebug = process.argv.includes("--debug");
+contextBridge.exposeInMainWorld("__DEBUG__", isDebug);
 
 console.log("Preload script loaded - Go Daemon HTTP REST API ready");

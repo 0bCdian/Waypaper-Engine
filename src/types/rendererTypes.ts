@@ -32,6 +32,7 @@ export interface Filters {
 	order: "asc" | "desc";
 	type: "name" | "id";
 	searchString: string;
+	tags: string[];
 	advancedFilters: advancedFilters;
 }
 

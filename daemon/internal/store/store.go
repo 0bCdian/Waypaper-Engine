@@ -79,6 +79,13 @@ type ImageStore interface {
 	// Returns the number of images actually deleted.
 	Delete(ctx context.Context, ids []int) (int, error)
 
+	// UpdateAll applies a partial update to every image in the collection.
+	// Returns the number of images updated.
+	UpdateAll(ctx context.Context, updates map[string]any) (int, error)
+
+	// GetAllTags returns all unique tags across every image in the collection.
+	GetAllTags(ctx context.Context) ([]string, error)
+
 	// Count returns the total number of images in the collection.
 	Count(ctx context.Context) (int, error)
 }

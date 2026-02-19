@@ -3,11 +3,14 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type { PLAYLIST_TYPES_TYPE } from "../../shared/types/playlist";
 import { usePlaylistStore } from "../stores/playlist";
 import { useImagesStore } from "../stores/images";
+import { useMonitorStore } from "../stores/monitors";
 import { useShallow } from "zustand/react/shallow";
 import { motion } from "framer-motion";
 import useDebounceCallback from "../hooks/useDebounceCallback";
 import type { PlaylistImage } from "../../electron/daemon-go-types";
 import { useDesignSystemStore } from "../stores/designSystemStore";
+import { useContextMenuStore } from "../stores/contextMenuStore";
+import { buildPlaylistCardMenuItems } from "../utils/contextMenuItems";
 
 const daysOfWeek = [
 	"Sunday",
@@ -52,6 +55,8 @@ function MiniPlaylistCard({
 	const isNeo = useDesignSystemStore(
 		(s) => s.designMode === "neobrutalist",
 	);
+	const openContextMenu = useContextMenuStore((s) => s.open);
+	const monitorsList = useMonitorStore((s) => s.monitorsList);
 	const [isInvalid, setIsInvalid] = useState(false);
 	const [localTime, setLocalTime] = useState(() =>
 		playlistImage.time != null ? formatTime(playlistImage.time) : "00:00",
@@ -83,6 +88,16 @@ function MiniPlaylistCard({
 
 	const onRemove = () => {
 		removeImagesFromPlaylist(new Set<number>().add(playlistImage.image_id));
+	};
+
+	const handleContextMenu = (e: React.MouseEvent) => {
+		const items = buildPlaylistCardMenuItems(
+			playlistImage,
+			imageName,
+			playlistImage.image_id,
+			monitorsList,
+		);
+		openContextMenu(e, items);
 	};
 
 	const reOrderDebounced = useDebounceCallback(() => {
@@ -204,7 +219,7 @@ function MiniPlaylistCard({
 		transition={{ duration: 0.15, ease: "easeOut" }}
 			ref={setNodeRef}
 		>
-			<div className={cardClass}>
+			<div className={cardClass} onContextMenu={handleContextMenu}>
 				{/* Neo: button sits on the card (overflow:visible), image is clipped separately */}
 				{isNeo && removeButton}
 				<div className={isNeo ? "overflow-hidden" : "relative"}>

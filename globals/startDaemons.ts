@@ -1,7 +1,7 @@
 import { spawn } from "child_process";
 import { request as httpRequest } from "node:http";
 import { access, unlink } from "node:fs/promises";
-import { daemonPath, logger } from "./setup";
+import { daemonPath, logger, isDebugMode } from "./setup";
 import { configReader } from "./configReader";
 
 // Get socket path from TOML configuration
@@ -30,9 +30,10 @@ export async function initWaypaperDaemon() {
 			logger.info("No existing socket file found");
 		}
 
-		logger.info(`Starting waypaper-daemon at: ${daemonPath}`);
+		const daemonArgs = isDebugMode ? ["-l", "debug"] : [];
+		logger.info(`Starting waypaper-daemon at: ${daemonPath} ${daemonArgs.join(" ")}`);
 
-		const output = spawn(daemonPath, [], {
+		const output = spawn(daemonPath, daemonArgs, {
 			stdio: "ignore",
 			shell: true,
 			detached: true,
@@ -94,8 +95,9 @@ export async function initWaypaperDaemon() {
 		logger.info("Waypaper daemon started successfully");
 	} catch (error) {
 		logger.error("Failed to start waypaper-daemon:", error);
-		logger.warn("Could not start waypaper-daemon, shutting down app...");
-		process.exit(1);
+		throw new Error(
+			`Could not start waypaper-daemon: ${error instanceof Error ? error.message : String(error)}`,
+		);
 	}
 }
 

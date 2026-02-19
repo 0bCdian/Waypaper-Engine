@@ -11,7 +11,6 @@ import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 import { goDaemonClient } from "../goDaemonClient";
 import { daemonMonitor } from "./DaemonMonitor";
-import { contextMenuManager } from "./ContextMenuManager";
 import type {
 	Image,
 	ImageQueryParams,
@@ -343,35 +342,14 @@ export class IPCManager {
 		// Setup SSE event forwarding
 		this.setupGoDaemonEventForwarding();
 
-		// Context menu
-		this.setupContextMenuHandler();
-	}
-
-	private setupContextMenuHandler(): void {
+		// Reveal file in file manager
 		this.registerHandler({
-			channel: "openContextMenu",
-			handler: async (
-				event,
-				options: { Image?: unknown; selectedImagesLength: number },
-			) => {
-				const window = BrowserWindow.fromWebContents(event.sender);
-				if (!window) {
-					return { success: false, error: "Window not found" };
-				}
-
-				try {
-					await contextMenuManager.showContextMenu(window, {
-						image: options.Image as Image | undefined,
-						selectedImagesLength: options.selectedImagesLength || 0,
-					});
-					return { success: true };
-				} catch (error) {
-					console.error("Failed to show context menu:", error);
-					return {
-						success: false,
-						error: error instanceof Error ? error.message : "Unknown error",
-					};
-				}
+			channel: "reveal-in-file-manager",
+			handler: async (_event, ...args: unknown[]) => {
+				const filePath = args[0] as string;
+				const { shell } = await import("electron");
+				shell.showItemInFolder(filePath);
+				return { success: true };
 			},
 		});
 	}
@@ -468,6 +446,8 @@ export class IPCManager {
 					);
 				case "select_all_images":
 					return await goDaemonClient.selectAllImages(p?.selected as boolean);
+				case "get_image_tags":
+					return await goDaemonClient.getImageTags();
 				case "get_image_history":
 					return await goDaemonClient.getImageHistory(
 						p?.limit as number | undefined,
@@ -602,6 +582,13 @@ export class IPCManager {
 				this.broadcastToAllWindows(`go-daemon-event-${eventName}`, data);
 			});
 		}
+
+		goDaemonClient.on("sseDisconnected", () => {
+			this.broadcastToAllWindows("go-daemon-event-sse_disconnected", {});
+		});
+		goDaemonClient.on("sseReconnected", () => {
+			this.broadcastToAllWindows("go-daemon-event-sse_reconnected", {});
+		});
 	}
 
 	// ============================================================================

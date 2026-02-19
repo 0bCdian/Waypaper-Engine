@@ -59,8 +59,8 @@ export class WindowManager {
 			webPreferences: {
 				preload: join(__dirname, "preload.js"),
 				sandbox: false,
-				nodeIntegration: true,
-				contextIsolation: false,
+				nodeIntegration: false,
+				contextIsolation: true,
 				webSecurity: true,
 				allowRunningInsecureContent: false,
 				experimentalFeatures: false,

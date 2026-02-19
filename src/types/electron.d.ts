@@ -17,9 +17,8 @@ import type {
 	MonitorMode,
 	EventType,
 } from "../../electron/daemon-go-types";
-import type { IPC_RENDERER_EVENTS_TYPE } from "../../shared/constants";
-
 declare global {
+	const __DEBUG__: boolean;
 	interface Window {
 		monitors?: {
 			showModal: () => void;
@@ -47,6 +46,7 @@ declare global {
 				selectAllImages: (
 					selected: boolean,
 				) => Promise<{ updated: number; selected: boolean }>;
+				getImageTags: () => Promise<{ tags: string[] }>;
 				getImageHistory: (
 					limit?: number,
 					monitor?: string,
@@ -157,20 +157,9 @@ declare global {
 			stopDaemon: () => Promise<unknown>;
 
 			// EVENT LISTENERS
-			onAppError: (callback: (error: unknown) => void) => void;
-			onDaemonStatusUpdate: (callback: (data: unknown) => void) => void;
-			offDaemonStatusUpdate: (callback: (data: unknown) => void) => void;
+			onAppError: (callback: (error: unknown) => void) => () => void;
+			onDaemonStatusUpdate: (callback: (data: unknown) => void) => () => void;
 			removeAllListeners: (channel: string) => void;
-
-			// MENU / IPC RENDERER EVENTS
-			onMenuEvent: (
-				event: IPC_RENDERER_EVENTS_TYPE,
-				callback: (...args: unknown[]) => void,
-			) => void;
-			offMenuEvent: (
-				event: IPC_RENDERER_EVENTS_TYPE,
-				callback: (...args: unknown[]) => void,
-			) => void;
 
 			// FILE OPERATIONS
 			openFiles: (action: "file" | "folder") => Promise<{
@@ -183,10 +172,8 @@ declare global {
 				success: boolean;
 				data: { files: string[] };
 			}) => Promise<{ success: boolean; message?: string; error?: string }>;
-			openContextMenu: (options: {
-				Image?: unknown;
-				selectedImagesLength: number;
-			}) => Promise<{ success: boolean; error?: string }>;
+
+			revealInFileManager: (path: string) => Promise<{ success: boolean }>;
 		};
 	}
 }

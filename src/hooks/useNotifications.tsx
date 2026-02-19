@@ -4,7 +4,10 @@ import { useToastStore } from "../stores/toastStore";
 import type {
 	WallpaperChangedPayload,
 	ProcessingCompletePayload,
+	ProcessingStartedPayload,
 	PlaylistEventPayload,
+	PlaylistImageChangedPayload,
+	MonitorEventPayload,
 } from "../../electron/daemon-go-types";
 
 const goDaemon = window.API_RENDERER.goDaemon;
@@ -17,43 +20,113 @@ export default function useNotifications(): void {
 		if (!config?.app?.notifications) return;
 		if (!goDaemon?.on) return;
 
-		const onWallpaperChanged = (data: unknown) => {
-			const payload = data as WallpaperChangedPayload;
-			const monitors = payload?.monitors?.join(", ") ?? "unknown";
-			addToast(`Wallpaper set on ${monitors}`, "success");
-		};
+		const disposers: (() => void)[] = [];
 
-		const onProcessingComplete = (data: unknown) => {
-			const payload = data as ProcessingCompletePayload;
-			const msg =
-				payload?.failed > 0
-					? `Processing complete: ${payload.succeeded} images (${payload.failed} errors)`
-					: `Processing complete: ${payload.succeeded} images`;
-			addToast(msg, payload?.failed > 0 ? "warning" : "success");
-		};
+		disposers.push(
+			goDaemon.on("wallpaper_changed", (data: unknown) => {
+				const payload = data as WallpaperChangedPayload;
+				const monitors = payload?.monitors?.join(", ") ?? "unknown";
+				addToast(`Wallpaper set on ${monitors}`, "success");
+			}),
+		);
 
-		const onPlaylistStarted = (data: unknown) => {
-			const payload = data as PlaylistEventPayload;
-			const name = payload?.monitor ?? "";
-			addToast(`Playlist started${name ? ` on ${name}` : ""}`, "info");
-		};
+		disposers.push(
+			goDaemon.on("processing_started", (data: unknown) => {
+				const payload = data as ProcessingStartedPayload;
+				addToast(`Importing ${payload?.total ?? 0} images...`, "info");
+			}),
+		);
 
-		const onPlaylistStopped = (data: unknown) => {
-			const payload = data as PlaylistEventPayload;
-			const name = payload?.monitor ?? "";
-			addToast(`Playlist stopped${name ? ` on ${name}` : ""}`, "info");
-		};
+		disposers.push(
+			goDaemon.on("processing_complete", (data: unknown) => {
+				const payload = data as ProcessingCompletePayload;
+				const msg =
+					payload?.failed > 0
+						? `Processing complete: ${payload.succeeded} images (${payload.failed} errors)`
+						: `Processing complete: ${payload.succeeded} images`;
+				addToast(msg, payload?.failed > 0 ? "warning" : "success");
+			}),
+		);
 
-		const disposeWallpaper = goDaemon.on("wallpaper_changed", onWallpaperChanged);
-		const disposeProcessing = goDaemon.on("processing_complete", onProcessingComplete);
-		const disposePlaylistStart = goDaemon.on("playlist_started", onPlaylistStarted);
-		const disposePlaylistStop = goDaemon.on("playlist_stopped", onPlaylistStopped);
+		disposers.push(
+			goDaemon.on("playlist_started", (data: unknown) => {
+				const payload = data as PlaylistEventPayload;
+				const name = payload?.monitor ?? "";
+				addToast(`Playlist started${name ? ` on ${name}` : ""}`, "info");
+			}),
+		);
+
+		disposers.push(
+			goDaemon.on("playlist_stopped", (data: unknown) => {
+				const payload = data as PlaylistEventPayload;
+				const name = payload?.monitor ?? "";
+				addToast(`Playlist stopped${name ? ` on ${name}` : ""}`, "info");
+			}),
+		);
+
+		disposers.push(
+			goDaemon.on("playlist_paused", (data: unknown) => {
+				const payload = data as PlaylistEventPayload;
+				const name = payload?.monitor ?? "";
+				addToast(`Playlist paused${name ? ` on ${name}` : ""}`, "info");
+			}),
+		);
+
+		disposers.push(
+			goDaemon.on("playlist_resumed", (data: unknown) => {
+				const payload = data as PlaylistEventPayload;
+				const name = payload?.monitor ?? "";
+				addToast(`Playlist resumed${name ? ` on ${name}` : ""}`, "info");
+			}),
+		);
+
+		disposers.push(
+			goDaemon.on("playlist_image_changed", (data: unknown) => {
+				const payload = data as PlaylistImageChangedPayload;
+				const monitor = payload?.monitor ?? "";
+				addToast(
+					`Playlist advanced${monitor ? ` on ${monitor}` : ""}`,
+					"info",
+					3000,
+				);
+			}),
+		);
+
+		disposers.push(
+			goDaemon.on("monitor_connected", (data: unknown) => {
+				const payload = data as MonitorEventPayload;
+				addToast(`Monitor connected: ${payload?.name ?? "unknown"}`, "info");
+			}),
+		);
+
+		disposers.push(
+			goDaemon.on("monitor_disconnected", (data: unknown) => {
+				const payload = data as MonitorEventPayload;
+				addToast(
+					`Monitor disconnected: ${payload?.name ?? "unknown"}`,
+					"warning",
+				);
+			}),
+		);
+
+		disposers.push(
+			goDaemon.on("sse_disconnected", () => {
+				addToast(
+					"Lost connection to daemon — reconnecting...",
+					"warning",
+					0,
+				);
+			}),
+		);
+
+		disposers.push(
+			goDaemon.on("sse_reconnected", () => {
+				addToast("Reconnected to daemon", "success");
+			}),
+		);
 
 		return () => {
-			disposeWallpaper();
-			disposeProcessing();
-			disposePlaylistStart();
-			disposePlaylistStop();
+			for (const dispose of disposers) dispose();
 		};
 	}, [config, addToast]);
 }

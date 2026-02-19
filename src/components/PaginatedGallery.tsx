@@ -2,11 +2,14 @@ import ResponsivePagination from "react-responsive-pagination";
 import "react-responsive-pagination/themes/minimal.css";
 import "../custom.css";
 import PlaylistTrack from "./PlaylistTrack";
+import PlaylistController from "./PlaylistController";
 import { useImagePagination } from "../hooks/useImagePagination";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRef } from "react";
 import { useImagesStore } from "../stores/images";
 import { useDesignSystemStore } from "../stores/designSystemStore";
+import { useContextMenuStore } from "../stores/contextMenuStore";
+import { buildGalleryMenuItems } from "../utils/contextMenuItems";
 
 function PaginatedGallery() {
 	const { imagesToShow, handlePageChange, currentPage, totalPages } =
@@ -16,15 +19,11 @@ function PaginatedGallery() {
 		(s) => s.designMode === "neobrutalist",
 	);
 	const ref = useRef<HTMLDivElement>(null);
+	const openContextMenu = useContextMenuStore((s) => s.open);
 
 	const handleContextMenu = (e: React.MouseEvent) => {
-		e.stopPropagation();
-		if (window.API_RENDERER?.openContextMenu) {
-			void window.API_RENDERER.openContextMenu({
-				Image: undefined,
-				selectedImagesLength: selectedImages.size,
-			});
-		}
+		const items = buildGalleryMenuItems(selectedImages.size);
+		openContextMenu(e, items);
 	};
 
 	return (
@@ -69,6 +68,7 @@ function PaginatedGallery() {
 							</span>
 						)}
 					</div>
+					<PlaylistController />
 					<PlaylistTrack />
 				</div>
 			</motion.div>

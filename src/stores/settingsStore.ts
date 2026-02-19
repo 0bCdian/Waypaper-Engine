@@ -326,14 +326,25 @@ export const useSettingsStore = create<SettingsStore>()(
 	),
 );
 
-// Initialize event listener for real-time config updates (module-level, runs once).
-if (typeof window !== "undefined" && window.API_RENDERER?.goDaemon) {
-	// Disposer stored but never called -- this listener lives for the app's lifetime.
-	const _disposeConfigChanged = window.API_RENDERER.goDaemon.on(
-		"config_changed",
-		(data: unknown) => {
-			const store = useSettingsStore.getState();
-			store.handleConfigChange(data as ConfigChangeEvent);
-		},
-	);
+let _disposeConfigChanged: (() => void) | undefined;
+
+function initConfigListener() {
+	_disposeConfigChanged?.();
+	if (typeof window !== "undefined" && window.API_RENDERER?.goDaemon) {
+		_disposeConfigChanged = window.API_RENDERER.goDaemon.on(
+			"config_changed",
+			(data: unknown) => {
+				const store = useSettingsStore.getState();
+				store.handleConfigChange(data as ConfigChangeEvent);
+			},
+		);
+	}
+}
+
+initConfigListener();
+
+if (import.meta.hot) {
+	import.meta.hot.dispose(() => {
+		_disposeConfigChanged?.();
+	});
 }

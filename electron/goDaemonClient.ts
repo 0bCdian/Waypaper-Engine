@@ -34,7 +34,6 @@ export class GoDaemonClient extends EventEmitter {
 	private sseConnection: IncomingMessage | null = null;
 	private sseReconnectTimer: NodeJS.Timeout | null = null;
 	private sseReconnectAttempts: number = 0;
-	private maxSseReconnectAttempts: number = 50;
 	private sseBuffer: string = "";
 	private isConnected: boolean = false;
 
@@ -129,11 +128,15 @@ export class GoDaemonClient extends EventEmitter {
 
 		const req = httpRequest(options, (res) => {
 			this.sseConnection = res;
+			const wasReconnect = this.sseReconnectAttempts > 0;
 			this.sseReconnectAttempts = 0;
 			this.isConnected = true;
 			this.sseBuffer = "";
 			logger.info("SSE connection established");
 			this.emit("connected");
+			if (wasReconnect) {
+				this.emit("sseReconnected");
+			}
 
 			res.on("data", (chunk: Buffer) => {
 				this.handleSSEData(chunk.toString());
@@ -204,14 +207,13 @@ export class GoDaemonClient extends EventEmitter {
 	}
 
 	private scheduleSseReconnect(): void {
-		if (this.sseReconnectAttempts >= this.maxSseReconnectAttempts) {
-			logger.error("Max SSE reconnection attempts reached");
-			this.emit("maxReconnectAttemptsReached");
-			return;
+		this.sseReconnectAttempts++;
+		const delay = Math.min(1000 * Math.pow(2, Math.min(this.sseReconnectAttempts - 1, 6)), 60000);
+
+		if (this.sseReconnectAttempts === 1) {
+			this.emit("sseDisconnected");
 		}
 
-		this.sseReconnectAttempts++;
-		const delay = Math.min(1000 * this.sseReconnectAttempts, 30000);
 		logger.info(
 			`Scheduling SSE reconnect in ${delay}ms (attempt ${this.sseReconnectAttempts})`,
 		);
@@ -335,6 +337,10 @@ export class GoDaemonClient extends EventEmitter {
 			"/images/select-all",
 			body,
 		);
+	}
+
+	async getImageTags(): Promise<{ tags: string[] }> {
+		return this.request<{ tags: string[] }>("GET", "/images/tags");
 	}
 
 	async getImageHistory(

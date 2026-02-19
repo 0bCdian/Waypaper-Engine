@@ -1,36 +1,80 @@
 import { usePlaylistStore } from "../stores/playlist";
 import { useImagesStore } from "../stores/images";
 import { useMonitorStore } from "../stores/monitors";
+import { useActivePlaylistStore } from "../stores/activePlaylistStore";
 import { useShallow } from "zustand/react/shallow";
 import type { rendererPlaylist } from "../types/rendererTypes";
 import { useEffect } from "react";
-import type { ActivePlaylistInstance } from "../../electron/daemon-go-types";
+import type { ActivePlaylistResponse } from "../../electron/daemon-go-types";
 
 const { goDaemon } = window.API_RENDERER;
 
+function monitorSetsMatch(
+	selected: string[],
+	playlistMonitors: { name: string }[],
+): boolean {
+	if (selected.length !== playlistMonitors.length) return false;
+	const a = new Set(selected);
+	return playlistMonitors.every((m) => a.has(m.name));
+}
+
 export function useSetLastActivePlaylist() {
-	const { setPlaylist, playlist } = usePlaylistStore(
+	const { setPlaylist, clearPlaylist, playlist } = usePlaylistStore(
 		useShallow((s) => ({
 			setPlaylist: s.setPlaylist,
+			clearPlaylist: s.clearPlaylist,
 			playlist: s.playlist,
 		})),
 	);
 	const monitorSelection = useMonitorStore((s) => s.monitorSelection);
+	const setActivePlaylist = useActivePlaylistStore(
+		(s) => s.setActivePlaylist,
+	);
+	const clearActive = useActivePlaylistStore((s) => s.clear);
 
 	useEffect(() => {
-		if (monitorSelection.selectedMonitors.length === 0) return;
+		if (monitorSelection.selectedMonitors.length === 0) {
+			clearActive();
+			return;
+		}
 
-		const monitorName = monitorSelection.selectedMonitors[0];
-		if (!monitorName) return;
+		let cancelled = false;
 
 		void goDaemon
-			.getActivePlaylistForMonitor(monitorName)
-			.then(async (activePlaylist: ActivePlaylistInstance) => {
-				if (!activePlaylist) return;
+			.getActivePlaylists()
+			.then(async (activePlaylists: ActivePlaylistResponse[]) => {
+				if (cancelled) return;
+
+				if (!activePlaylists || activePlaylists.length === 0) {
+					clearActive();
+					clearPlaylist();
+					return;
+				}
+
+				const match = activePlaylists.find((ap) =>
+					monitorSetsMatch(
+						monitorSelection.selectedMonitors,
+						ap.monitors,
+					),
+				);
+
+				if (!match) {
+					clearActive();
+					clearPlaylist();
+					return;
+				}
+
+				setActivePlaylist(match);
+
+				if (playlist.name === match.playlist_name && playlist.id === match.playlist_id) {
+					return;
+				}
 
 				const fullPlaylist = await goDaemon.getPlaylist(
-					activePlaylist.playlist_id,
+					match.playlist_id,
 				);
+				if (cancelled) return;
+
 				if (
 					!fullPlaylist ||
 					!fullPlaylist.images ||
@@ -38,8 +82,6 @@ export function useSetLastActivePlaylist() {
 				) {
 					return;
 				}
-
-				if (playlist.name === fullPlaylist.name) return;
 
 				const currentPlaylist: rendererPlaylist = {
 					id: fullPlaylist.id,
@@ -55,7 +97,64 @@ export function useSetLastActivePlaylist() {
 					);
 			})
 			.catch(() => {
-				// No active playlist for this monitor
+				clearActive();
 			});
-	}, [monitorSelection, playlist.name, setPlaylist]);
+
+		return () => {
+			cancelled = true;
+		};
+	}, [
+		monitorSelection,
+		playlist.name,
+		playlist.id,
+		setPlaylist,
+		clearPlaylist,
+		setActivePlaylist,
+		clearActive,
+	]);
+
+	useEffect(() => {
+		const disposers = [
+			goDaemon.on("playlist_started", () => {
+				void refreshActivePlaylist();
+			}),
+			goDaemon.on("playlist_stopped", () => {
+				void refreshActivePlaylist();
+			}),
+			goDaemon.on("playlist_paused", () => {
+				void refreshActivePlaylist();
+			}),
+			goDaemon.on("playlist_resumed", () => {
+				void refreshActivePlaylist();
+			}),
+			goDaemon.on("playlist_image_changed", () => {
+				void refreshActivePlaylist();
+			}),
+		];
+
+		return () => {
+			for (const d of disposers) d();
+		};
+
+		function refreshActivePlaylist() {
+			const selected =
+				useMonitorStore.getState().monitorSelection.selectedMonitors;
+			if (selected.length === 0) return;
+
+			return goDaemon.getActivePlaylists().then((activePlaylists) => {
+				if (!activePlaylists || activePlaylists.length === 0) {
+					useActivePlaylistStore.getState().clear();
+					return;
+				}
+				const match = activePlaylists.find((ap) =>
+					monitorSetsMatch(selected, ap.monitors),
+				);
+				useActivePlaylistStore
+					.getState()
+					.setActivePlaylist(match ?? null);
+			}).catch(() => {
+				// Ignore
+			});
+		}
+	}, []);
 }

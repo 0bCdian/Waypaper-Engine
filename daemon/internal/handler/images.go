@@ -182,19 +182,14 @@ func (h *ImageHandler) SelectAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get all image IDs.
-	result, err := h.store.GetAll(r.Context(), store.ImageQueryOpts{Page: 1, PerPage: 200})
+	updated, err := h.store.UpdateAll(r.Context(), map[string]any{"is_selected": body.Selected})
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	for _, image := range result.Data {
-		_, _ = h.store.Update(r.Context(), image.ID, map[string]any{"is_selected": body.Selected})
-	}
-
 	WriteJSON(w, http.StatusOK, map[string]any{
-		"updated": len(result.Data),
+		"updated": updated,
 		"selected": body.Selected,
 	})
 }
@@ -208,6 +203,19 @@ func (h *ImageHandler) Count(w http.ResponseWriter, r *http.Request) {
 	}
 
 	WriteJSON(w, http.StatusOK, map[string]any{"count": count})
+}
+
+// Tags handles GET /images/tags — returns all unique tags across images.
+func (h *ImageHandler) Tags(w http.ResponseWriter, r *http.Request) {
+	tags, err := h.store.GetAllTags(r.Context())
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if tags == nil {
+		tags = []string{}
+	}
+	WriteJSON(w, http.StatusOK, map[string]any{"tags": tags})
 }
 
 // Thumbnail handles GET /images/{id}/thumbnail.

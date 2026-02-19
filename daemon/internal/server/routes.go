@@ -41,6 +41,7 @@ func NewRouter(h Handlers, bus events.Bus) *chi.Mux {
 		r.Post("/", h.Images.Add)
 		r.Delete("/", h.Images.Delete)
 		r.Get("/count", h.Images.Count)
+		r.Get("/tags", h.Images.Tags)
 		r.Get("/history", h.Wallpaper.GetHistory)
 		r.Post("/select-all", h.Images.SelectAll)
 		r.Get("/{id}", h.Images.Get)

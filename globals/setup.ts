@@ -64,9 +64,15 @@ export const { values } = parseArgs({
 			short: "l",
 			default: false,
 		},
+		debug: {
+			type: "boolean",
+			default: false,
+		},
 	},
 	strict: false,
 });
+
+export const isDebugMode = values.debug === true;
 
 type customLogger = {
 	error: (message: unknown, ...args: unknown[]) => void;
@@ -77,9 +83,12 @@ type customLogger = {
 
 export let logger: customLogger;
 
-if (values.logs === true) {
+const enableFileLogs = values.logs === true || isDebugMode;
+const logLevel = isDebugMode ? "debug" : electronConfig.log_level;
+
+if (enableFileLogs) {
 	const parentLogger = pino({
-		level: electronConfig.log_level,
+		level: logLevel,
 		transport: {
 			target: "pino/file",
 			options: {
@@ -96,9 +105,13 @@ if (values.logs === true) {
 	logger = console;
 }
 
-process.on("uncaughtException", (error) => {
-	logger.error(error);
-});
-process.on("unhandledRejection", (error) => {
-	logger.error(error);
-});
+if (isDebugMode) {
+	const os = require("node:os");
+	logger.info("=== DEBUG MODE ENABLED ===");
+	logger.info(`Platform: ${process.platform} ${os.release()}`);
+	logger.info(`Node: ${process.version}, Electron: ${process.versions.electron}`);
+	logger.info(`Socket path: ${configReader.getSocketPath()}`);
+	logger.info(`Daemon binary: ${daemonPath}`);
+	logger.info(`Log file: ${logPath}`);
+}
+

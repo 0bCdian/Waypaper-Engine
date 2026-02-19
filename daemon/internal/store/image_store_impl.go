@@ -241,6 +241,18 @@ func (s *imageStore) Update(_ context.Context, id int, updates map[string]any) (
 	return &img, nil
 }
 
+func (s *imageStore) UpdateAll(_ context.Context, updates map[string]any) (int, error) {
+	q := query.NewQuery(CollectionImages)
+	count, err := s.db.Count(q)
+	if err != nil {
+		return 0, fmt.Errorf("image store: count for update all: %w", err)
+	}
+	if err := s.db.Update(q, updates); err != nil {
+		return 0, fmt.Errorf("image store: update all: %w", err)
+	}
+	return count, nil
+}
+
 func (s *imageStore) Delete(_ context.Context, ids []int) (int, error) {
 	deleted := 0
 	for _, id := range ids {
@@ -251,6 +263,28 @@ func (s *imageStore) Delete(_ context.Context, ids []int) (int, error) {
 		deleted++
 	}
 	return deleted, nil
+}
+
+func (s *imageStore) GetAllTags(_ context.Context) ([]string, error) {
+	docs, err := s.db.FindAll(query.NewQuery(CollectionImages))
+	if err != nil {
+		return nil, fmt.Errorf("image store: find all for tags: %w", err)
+	}
+	seen := make(map[string]struct{})
+	for _, doc := range docs {
+		var img Image
+		if err := doc.Unmarshal(&img); err != nil {
+			continue
+		}
+		for _, tag := range img.Tags {
+			seen[tag] = struct{}{}
+		}
+	}
+	tags := make([]string, 0, len(seen))
+	for tag := range seen {
+		tags = append(tags, tag)
+	}
+	return tags, nil
 }
 
 func (s *imageStore) Count(_ context.Context) (int, error) {

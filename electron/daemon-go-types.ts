@@ -304,7 +304,10 @@ export type EventType =
 	| "config_changed"
 	// Gallery Events
 	| "images_updated"
-	| "playlists_updated";
+	| "playlists_updated"
+	// Connection Events (Electron-only, not from daemon SSE)
+	| "sse_disconnected"
+	| "sse_reconnected";
 
 // ============================================================================
 // EVENT PAYLOADS

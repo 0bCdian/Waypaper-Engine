@@ -11,6 +11,7 @@ import type { openFileAction } from "../../shared/types";
 import { useSetLastActivePlaylist } from "../hooks/useSetLastActivePlaylist";
 import type { PlaylistImage } from "../../electron/daemon-go-types";
 import { useDesignSystemStore } from "../stores/designSystemStore";
+import { useActivePlaylistStore } from "../stores/activePlaylistStore";
 
 const { goDaemon } = window.API_RENDERER;
 import MiniPlaylistCard from "./MiniPlaylistCard";
@@ -140,9 +141,18 @@ function PlaylistTrack() {
 		}
 	}, [playlist.configuration.type]);
 
+	const activePlaylist = useActivePlaylistStore((s) => s.activePlaylist);
 	const isNeo = useDesignSystemStore(
 		(s) => s.designMode === "neobrutalist",
 	);
+	const isPlaying =
+		activePlaylist != null &&
+		activePlaylist.playlist_id === playlist.id &&
+		!activePlaylist.paused;
+	const activeMonitorLabel =
+		activePlaylist != null && activePlaylist.playlist_id === playlist.id
+			? activePlaylist.monitors.map((m) => m.name).join(", ")
+			: null;
 	const btnClass = isNeo
 		? "btn btn-primary uppercase"
 		: "btn btn-primary rounded-lg uppercase";
@@ -155,11 +165,20 @@ function PlaylistTrack() {
 	return (
 		<div className="mb-2 flex w-full flex-col gap-5">
 			<div className="flex flex-wrap items-center gap-3">
-				<span className="w-full text-4xl font-bold">
+			<div className="flex w-full flex-col">
+				<span className="text-4xl font-bold">
 					{playlistArray.length > 0
 						? `Playlist (${playlistArray.length})`
 						: "Playlist"}
 				</span>
+				{activePlaylist && activeMonitorLabel && (
+					<span className="text-sm text-base-content/60">
+						{isPlaying ? "Playing" : "Paused"}{" "}
+						&ldquo;{activePlaylist.playlist_name}&rdquo; on{" "}
+						{activeMonitorLabel}
+					</span>
+				)}
+			</div>
 	<div className="dropdown dropdown-top">
 			<button
 				tabIndex={0}
