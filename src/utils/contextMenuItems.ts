@@ -10,6 +10,11 @@ import type { Image } from "../../electron/daemon-go-types";
 
 const { goDaemon } = window.API_RENDERER;
 
+function toFilesystemPath(path: string): string {
+	if (path?.startsWith("atom://")) return "/" + path.slice("atom://".length);
+	return path;
+}
+
 function wallpaperSubmenu(
 	imageId: number,
 	monitors: Monitor[],
@@ -180,7 +185,7 @@ export function buildImageMenuItems(
 			type: "action",
 			label: "Copy image path",
 			onClick: () => {
-				void navigator.clipboard.writeText(image.path);
+				void navigator.clipboard.writeText(toFilesystemPath(image.path));
 			},
 		},
 		{

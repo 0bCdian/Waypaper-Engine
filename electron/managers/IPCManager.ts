@@ -350,7 +350,10 @@ export class IPCManager {
 		this.registerHandler({
 			channel: "reveal-in-file-manager",
 			handler: async (_event, ...args: unknown[]) => {
-				const filePath = args[0] as string;
+				let filePath = args[0] as string;
+				if (filePath?.startsWith("atom://")) {
+					filePath = "/" + filePath.slice("atom://".length);
+				}
 				const { shell } = await import("electron");
 				shell.showItemInFolder(filePath);
 				return { success: true };

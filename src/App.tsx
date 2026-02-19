@@ -5,7 +5,6 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { useLoadAppConfig } from "./hooks/useLoadAppConfig";
 import { useLoadMonitors } from "./hooks/useLoadMonitors";
 import { useRealTimeImageProcessing } from "./hooks/useRealTimeImageProcessing";
-import { useWindowBounds } from "./hooks/useWindowBounds";
 import useNotifications from "./hooks/useNotifications";
 import { ImageProcessingProgress } from "./components/ImageProcessingProgress";
 import ToastContainer from "./components/ToastContainer";
@@ -23,7 +22,6 @@ const App = () => {
 	useLoadAppConfig()();
 	useLoadMonitors();
 	useRealTimeImageProcessing();
-	useWindowBounds();
 	useNotifications();
 	return (
 		<ThemeProvider defaultTheme="business" persist={true} syncWithSystem={true}>
