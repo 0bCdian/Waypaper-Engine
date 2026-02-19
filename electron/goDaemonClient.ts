@@ -328,6 +328,10 @@ export class GoDaemonClient extends EventEmitter {
 		return this.request<Image>("PATCH", `/images/${id}`, update);
 	}
 
+	async renameImage(id: number, name: string): Promise<Image> {
+		return this.request<Image>("POST", `/images/${id}/rename`, { name });
+	}
+
 	async selectAllImages(
 		selected: boolean,
 	): Promise<{ updated: number; selected: boolean }> {

@@ -5,7 +5,7 @@
  * Updated for Go Daemon HTTP REST API
  */
 
-import { contextBridge, ipcRenderer } from "electron";
+import { contextBridge, ipcRenderer, webUtils } from "electron";
 import type {
 	Image,
 	ImageQueryParams,
@@ -61,6 +61,9 @@ const electronAPI = {
 
 		updateImage: (id: number, update: UpdateImageRequest): Promise<Image> =>
 			ipcRenderer.invoke("go-daemon-command", "update_image", { id, update }),
+
+		renameImage: (id: number, name: string): Promise<Image> =>
+			ipcRenderer.invoke("go-daemon-command", "rename_image", { id, name }),
 
 		selectAllImages: (
 			selected: boolean,
@@ -311,8 +314,30 @@ const electronAPI = {
 	},
 
 	// ============================================================================
+	// WALLHAVEN API
+	// ============================================================================
+	wallhaven: {
+		search: (params: Record<string, string>): Promise<unknown> =>
+			ipcRenderer.invoke("wallhaven-search", params),
+
+		getWallpaper: (id: string, apikey?: string): Promise<unknown> =>
+			ipcRenderer.invoke("wallhaven-wallpaper", id, apikey),
+
+		download: (imageUrl: string): Promise<string> =>
+			ipcRenderer.invoke("wallhaven-download", imageUrl),
+	},
+
+	// ============================================================================
 	// FILE OPERATIONS
 	// ============================================================================
+	getPathForFile: (file: File): string => webUtils.getPathForFile(file),
+
+	downloadUrl: (url: string): Promise<string> =>
+		ipcRenderer.invoke("download-url", url).then((r: { success: boolean; data: string; error?: string }) => {
+			if (!r.success) throw new Error(r.error ?? "Download failed");
+			return r.data;
+		}),
+
 	openFiles: (action: "file" | "folder") =>
 		ipcRenderer.invoke("openFiles", action),
 

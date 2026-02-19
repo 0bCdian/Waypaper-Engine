@@ -14,10 +14,11 @@ import (
 
 // validSections lists the top-level config sections that UpdateConfig/GetSection accept.
 var validSections = map[string]bool{
-	"app":      true,
-	"daemon":   true,
-	"backend":  true,
-	"monitors": true,
+	"app":       true,
+	"daemon":    true,
+	"backend":   true,
+	"monitors":  true,
+	"wallhaven": true,
 }
 
 // ViperManager implements ConfigManager using Viper for TOML-based configuration.
@@ -99,7 +100,7 @@ func (m *ViperManager) GetConfig() (*Config, error) {
 
 func (m *ViperManager) UpdateConfig(section string, values map[string]any) error {
 	if !validSections[section] {
-		return fmt.Errorf("config: unknown section %q (valid: app, daemon, backend, monitors)", section)
+		return fmt.Errorf("config: unknown section %q (valid: app, daemon, backend, monitors, wallhaven)", section)
 	}
 
 	m.mu.Lock()

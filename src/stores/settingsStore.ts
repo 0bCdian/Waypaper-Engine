@@ -79,6 +79,10 @@ const defaultConfig: UnifiedConfig = {
 		selected_monitors: [],
 		image_set_type: "individual",
 	},
+	wallhaven: {
+		api_key: "",
+		enabled: false,
+	},
 };
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -90,7 +94,7 @@ export const useSettingsStore = create<SettingsStore>()(
 			lastSaved: null,
 			errors: [],
 			searchTerm: "",
-			filteredSections: ["app", "daemon", "backend", "monitors"],
+			filteredSections: ["app", "daemon", "backend", "monitors", "wallhaven"],
 			expandedSections: new Set<string>(["app"]),
 			showAdvancedSettings: false,
 
@@ -202,6 +206,11 @@ export const useSettingsStore = create<SettingsStore>()(
 						...newConfig.monitors,
 						...data,
 					} as typeof newConfig.monitors;
+				} else if (section === "wallhaven") {
+					newConfig.wallhaven = {
+						...newConfig.wallhaven,
+						...data,
+					} as typeof newConfig.wallhaven;
 				}
 
 				// Single set() for the optimistic update -- only config and errors
@@ -259,7 +268,7 @@ export const useSettingsStore = create<SettingsStore>()(
 				set({ searchTerm: term });
 
 				if (term.trim() === "") {
-					set({ filteredSections: ["app", "daemon", "backend", "monitors"] });
+					set({ filteredSections: ["app", "daemon", "backend", "monitors", "wallhaven"] });
 					return;
 				}
 
@@ -290,7 +299,7 @@ export const useSettingsStore = create<SettingsStore>()(
 			clearSearch: () => {
 				set({
 					searchTerm: "",
-					filteredSections: ["app", "daemon", "backend", "monitors"],
+					filteredSections: ["app", "daemon", "backend", "monitors", "wallhaven"],
 				});
 			},
 

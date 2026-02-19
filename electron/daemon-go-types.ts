@@ -231,11 +231,17 @@ export interface MonitorsConfig {
 	image_set_type: MonitorMode;
 }
 
+export interface WallhavenConfig {
+	api_key: string;
+	enabled: boolean;
+}
+
 export interface UnifiedConfig {
 	app: AppConfig;
 	daemon: DaemonConfig;
 	backend: BackendSection;
 	monitors: MonitorsConfig;
+	wallhaven: WallhavenConfig;
 }
 
 // ============================================================================
@@ -408,6 +414,10 @@ export interface UpdateImageRequest {
 	name?: string;
 	tags?: string[];
 	is_selected?: boolean;
+}
+
+export interface RenameImageRequest {
+	name: string;
 }
 
 export interface ImportImagesRequest {

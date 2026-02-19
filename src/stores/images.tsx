@@ -63,6 +63,7 @@ interface State {
 	clearSelectionOnCurrentPage: () => void;
 	selectAllImagesInCurrentPage: () => void;
 	selectAllImagesInGallery: () => void;
+	renameImage: (id: number, newName: string) => Promise<rendererImage>;
 	fetchMissingImages: (imageIds: number[]) => Promise<void>;
 }
 
@@ -258,6 +259,20 @@ export const useImagesStore = create<State>()((set, get) => ({
 		const allImageIds = new Set(get().imagesArray.map((img) => img.id));
 		set(() => ({ selectedImages: allImageIds }));
 	},
+	async renameImage(id: number, newName: string): Promise<rendererImage> {
+		const updated = (await goDaemon.renameImage(id, newName)) as rendererImage;
+		if (updated.time === undefined) {
+			updated.time = null;
+		}
+		const imagesMap = new Map(get().imagesMap);
+		imagesMap.set(id, updated);
+		set(() => ({
+			imagesMap,
+			imagesArray: Array.from(imagesMap.values()),
+		}));
+		return updated;
+	},
+
 	async fetchMissingImages(imageIds: number[]) {
 		const currentMap = get().imagesMap;
 		const missingIds = imageIds.filter((id) => !currentMap.has(id));

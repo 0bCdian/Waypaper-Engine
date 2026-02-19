@@ -5,6 +5,7 @@ export type {
 	SwwwConfig,
 	BackendSection,
 	MonitorsConfig,
+	WallhavenConfig,
 	UnifiedConfig,
 } from "../../electron/daemon-go-types";
 
@@ -14,4 +15,4 @@ export interface ConfigChangeEvent {
 }
 
 // Configuration section types for form handling
-export type ConfigSection = "app" | "daemon" | "backend" | "monitors";
+export type ConfigSection = "app" | "daemon" | "backend" | "monitors" | "wallhaven";

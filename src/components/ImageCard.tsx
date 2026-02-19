@@ -1,4 +1,4 @@
-import { useId, useRef } from "react";
+import { useCallback, useId, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { isHotkeyPressed } from "react-hotkeys-hook";
 import { useShallow } from "zustand/react/shallow";
@@ -8,6 +8,7 @@ import { usePlaylistStore } from "../stores/playlist";
 import { useDesignSystemStore } from "../stores/designSystemStore";
 import { useImageDetailStore } from "../stores/imageDetailStore";
 import { useContextMenuStore } from "../stores/contextMenuStore";
+import { useToastStore } from "../stores/toastStore";
 import { buildImageMenuItems } from "../utils/contextMenuItems";
 import type { rendererImage } from "../types/rendererTypes";
 
@@ -48,6 +49,37 @@ function ImageCard({ Image }: ImageCardProps) {
 	const isPolaroid = useDesignSystemStore(
 		(s) => s.designMode === "neobrutalist" && s.neoConfig.polaroidCards,
 	);
+	const addToast = useToastStore((s) => s.addToast);
+	const [isRenaming, setIsRenaming] = useState(false);
+	const [renameName, setRenameName] = useState("");
+	const renameInputRef = useRef<HTMLInputElement>(null);
+
+	const startRename = useCallback(() => {
+		setRenameName(Image.name);
+		setIsRenaming(true);
+		requestAnimationFrame(() => renameInputRef.current?.select());
+	}, [Image.name]);
+
+	const submitRename = useCallback(async () => {
+		setIsRenaming(false);
+		const trimmed = renameName.trim();
+		if (!trimmed || trimmed === Image.name) return;
+		try {
+			const updated = await useImagesStore.getState().renameImage(Image.id, trimmed);
+			if (updated.name !== trimmed) {
+				addToast(`Renamed to "${updated.name}" (original name was taken)`, "info", 3000);
+			} else {
+				addToast("Image renamed", "success", 2000);
+			}
+		} catch {
+			addToast("Failed to rename image", "error");
+		}
+	}, [Image.id, Image.name, renameName, addToast]);
+
+	const cancelRename = useCallback(() => {
+		setIsRenaming(false);
+		setRenameName(Image.name);
+	}, [Image.name]);
 
 	const isChecked = !isEmpty && imagesInPlaylist.has(Image.id);
 	const isSelected = selectedImages.has(Image.id);
@@ -104,7 +136,10 @@ function ImageCard({ Image }: ImageCardProps) {
 	};
 
 	const handleKeyDown = (e: React.KeyboardEvent) => {
-		if (e.key === "Enter" || e.key === " ") {
+		if (e.key === "F2") {
+			e.preventDefault();
+			startRename();
+		} else if (e.key === "Enter" || e.key === " ") {
 			e.preventDefault();
 			handleDoubleClick();
 		}
@@ -115,6 +150,28 @@ function ImageCard({ Image }: ImageCardProps) {
 		e.stopPropagation();
 		openDetail(Image as unknown as import("../../electron/daemon-go-types").Image);
 	};
+
+	const renameInput = (
+		<input
+			ref={renameInputRef}
+			type="text"
+			className="input input-xs w-full bg-base-100 text-base-content font-medium"
+			value={renameName}
+			onChange={(e) => setRenameName(e.target.value)}
+			onBlur={() => void submitRename()}
+			onKeyDown={(e) => {
+				e.stopPropagation();
+				if (e.key === "Enter") {
+					e.preventDefault();
+					renameInputRef.current?.blur();
+				} else if (e.key === "Escape") {
+					cancelRename();
+				}
+			}}
+			onClick={(e) => e.stopPropagation()}
+			onDoubleClick={(e) => e.stopPropagation()}
+		/>
+	);
 
 	const pictureElement = (
 		<picture className={isPolaroid ? "neo-polaroid-image" : "block w-full h-full"}>
@@ -198,14 +255,21 @@ function ImageCard({ Image }: ImageCardProps) {
 				>
 					{pictureElement}
 					<div className="neo-polaroid-caption">
-						<p className="neo-polaroid-name">
-							{Image.name}
-							{Image.format && (
-								<span className="ml-1.5 inline-block rounded bg-base-300/80 px-1 py-0.5 align-middle text-[0.6rem] font-semibold uppercase leading-none text-base-content/70">
-									{Image.format}
-								</span>
-							)}
-						</p>
+						{isRenaming ? (
+							renameInput
+						) : (
+							<p
+								className="neo-polaroid-name"
+								onDoubleClick={(e) => { e.stopPropagation(); startRename(); }}
+							>
+								{Image.name}
+								{Image.format && (
+									<span className="ml-1.5 inline-block rounded bg-base-300/80 px-1 py-0.5 align-middle text-[0.6rem] font-semibold uppercase leading-none text-base-content/70">
+										{Image.format}
+									</span>
+								)}
+							</p>
+						)}
 					</div>
 				</button>
 
@@ -251,14 +315,23 @@ function ImageCard({ Image }: ImageCardProps) {
 				aria-label={`Set ${Image.name} as wallpaper`}
 			>
 				{pictureElement}
-				<p className="absolute bottom-0 w-full overflow-hidden truncate text-ellipsis bg-base-content/75 p-2 pl-2 text-justify text-lg font-medium opacity-0 transition-all duration-300 group-hover:opacity-100 text-base-100">
-					{Image.name}
-					{Image.format && (
-						<span className="ml-1.5 inline-block rounded bg-base-100/20 px-1 py-0.5 align-middle text-[0.6rem] font-semibold uppercase leading-none">
-							{Image.format}
-						</span>
+				<div className="absolute bottom-0 w-full bg-base-content/75 p-2 pl-2 opacity-0 transition-all duration-300 group-hover:opacity-100 text-base-100">
+					{isRenaming ? (
+						renameInput
+					) : (
+						<p
+							className="w-full overflow-hidden truncate text-ellipsis text-justify text-lg font-medium"
+							onDoubleClick={(e) => { e.stopPropagation(); startRename(); }}
+						>
+							{Image.name}
+							{Image.format && (
+								<span className="ml-1.5 inline-block rounded bg-base-100/20 px-1 py-0.5 align-middle text-[0.6rem] font-semibold uppercase leading-none">
+									{Image.format}
+								</span>
+							)}
+						</p>
 					)}
-				</p>
+				</div>
 				<div
 					data-selected={isSelected}
 					id={overlayId}

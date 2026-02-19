@@ -19,6 +19,7 @@ import (
 
 	"waypaper-engine/daemon/internal/events"
 	"waypaper-engine/daemon/internal/store"
+	"waypaper-engine/daemon/internal/system"
 )
 
 // supportedExtensions lists file extensions the processor accepts.
@@ -184,7 +185,7 @@ func (p *Processor) processOne(ctx context.Context, sourcePath string) (*store.I
 	destPath := filepath.Join(p.imagesDir, name)
 
 	// Handle filename collisions.
-	destPath = uniquePath(destPath)
+	destPath = system.UniquePath(destPath)
 
 	if err := copyFile(sourcePath, destPath); err != nil {
 		return nil, fmt.Errorf("copy file: %w", err)
@@ -273,19 +274,3 @@ func copyFile(src, dst string) error {
 	return out.Sync()
 }
 
-// uniquePath appends a counter suffix if the file already exists.
-func uniquePath(path string) string {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return path
-	}
-
-	ext := filepath.Ext(path)
-	base := strings.TrimSuffix(path, ext)
-
-	for i := 1; ; i++ {
-		candidate := fmt.Sprintf("%s_%d%s", base, i, ext)
-		if _, err := os.Stat(candidate); os.IsNotExist(err) {
-			return candidate
-		}
-	}
-}

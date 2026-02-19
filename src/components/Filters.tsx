@@ -21,12 +21,25 @@ const initialFilters: PartialFilters = {
 	tags: [],
 };
 
+function parseSearchInput(text: string): { search: string; hashTags: string[] } {
+	const hashTags: string[] = [];
+	const search = text
+		.replace(/#(\S+)/g, (_, tag) => {
+			hashTags.push(tag);
+			return "";
+		})
+		.trim();
+	return { search, hashTags };
+}
+
 function mapFiltersToQueryParams(f: PartialFilters): Partial<ImageQueryParams> {
+	const { search, hashTags } = parseSearchInput(f.searchString);
+	const combinedTags = [...new Set([...f.tags, ...hashTags])];
 	return {
 		sort_by: f.type === "name" ? "name" : "imported_at",
 		sort_order: f.order,
-		search: f.searchString || undefined,
-		tags: f.tags.length > 0 ? f.tags.join(",") : undefined,
+		search: search || undefined,
+		tags: combinedTags.length > 0 ? combinedTags.join(",") : undefined,
 	};
 }
 
@@ -44,10 +57,12 @@ function Filters() {
 	const tagRef = useRef<HTMLDivElement>(null);
 
 	useEffect(() => {
-		void goDaemon.getImageTags().then((resp) => {
-			setAllTags(resp.tags ?? []);
-		}).catch(() => {});
-	}, []);
+		if (tagDropdownOpen) {
+			void goDaemon.getImageTags().then((resp) => {
+				setAllTags(resp.tags ?? []);
+			}).catch(() => {});
+		}
+	}, [tagDropdownOpen]);
 
 	useEffect(() => {
 		function handleClickOutside(e: MouseEvent) {
@@ -124,7 +139,7 @@ function Filters() {
 					Filters
 				</button>
 			</div>
-			<div className="tooltip" data-tip="Order by Name or ID">
+			<div className="tooltip z-50" data-tip="Order by Name or ID">
 				<label className="btn swap btn-active swap-rotate rounded-xl text-xs uppercase">
 					<input
 						type="checkbox"
@@ -159,46 +174,50 @@ function Filters() {
 				type="text"
 				id="default-search"
 				className="input input-primary w-1/6 rounded-xl border-0 bg-base-300 text-center text-xl font-medium sm:w-1/4"
-				placeholder="Search"
+				placeholder="Search or #tag"
 			/>
 
 			{/* Tag filter */}
-			{allTags.length > 0 && (
-				<div className="relative" ref={tagRef}>
-					<button
-						type="button"
-						className={`btn btn-active rounded-xl uppercase ${partialFilters.tags.length > 0 ? "btn-primary" : ""}`}
-						onClick={() => setTagDropdownOpen((v) => !v)}
-					>
-						Tags{partialFilters.tags.length > 0 ? ` (${partialFilters.tags.length})` : ""}
-					</button>
+			<div className="relative" ref={tagRef}>
+				<button
+					type="button"
+					className={`btn btn-active rounded-xl uppercase ${partialFilters.tags.length > 0 ? "btn-primary" : ""}`}
+					onClick={() => setTagDropdownOpen((v) => !v)}
+				>
+					Tags{partialFilters.tags.length > 0 ? ` (${partialFilters.tags.length})` : ""}
+				</button>
 
-					{tagDropdownOpen && (
-						<div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-base-300 bg-base-100 p-2 shadow-xl">
-							<input
-								type="text"
-								className="input input-bordered input-xs w-full mb-2"
-								placeholder="Search tags..."
-								value={tagSearch}
-								onChange={(e) => setTagSearch(e.target.value)}
-								ref={(el) => el?.focus()}
-							/>
+				{tagDropdownOpen && (
+					<div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-base-300 bg-base-100 p-2 shadow-xl">
+						<input
+							type="text"
+							className="input input-bordered input-xs w-full mb-2"
+							placeholder="Search tags..."
+							value={tagSearch}
+							onChange={(e) => setTagSearch(e.target.value)}
+							ref={(el) => el?.focus()}
+						/>
 
-							{/* Selected tags */}
-							{partialFilters.tags.length > 0 && (
-								<div className="mb-2 flex flex-wrap gap-1">
-									{partialFilters.tags.map((tag) => (
-										<span
-											key={tag}
-											className="badge badge-primary badge-sm cursor-pointer gap-1"
-											onClick={() => toggleTag(tag)}
-										>
-											{tag} &times;
-										</span>
-									))}
-								</div>
-							)}
+						{/* Selected tags */}
+						{partialFilters.tags.length > 0 && (
+							<div className="mb-2 flex flex-wrap gap-1">
+								{partialFilters.tags.map((tag) => (
+									<span
+										key={tag}
+										className="badge badge-primary badge-sm cursor-pointer gap-1"
+										onClick={() => toggleTag(tag)}
+									>
+										{tag} &times;
+									</span>
+								))}
+							</div>
+						)}
 
+						{allTags.length === 0 && partialFilters.tags.length === 0 ? (
+							<p className="px-2 py-3 text-xs text-base-content/50 text-center">
+								No tags yet — tag images from the detail sidebar
+							</p>
+						) : (
 							<ul className="max-h-40 overflow-y-auto">
 								{filteredTags.map((tag) => (
 									<li key={tag}>
@@ -211,16 +230,16 @@ function Filters() {
 										</button>
 									</li>
 								))}
-								{filteredTags.length === 0 && (
+								{filteredTags.length === 0 && allTags.length > 0 && (
 									<li className="px-2 py-1 text-xs text-base-content/50">
 										No matching tags
 									</li>
 								)}
 							</ul>
-						</div>
-					)}
-				</div>
-			)}
+						)}
+					</div>
+				)}
+			</div>
 		</section>
 	);
 }

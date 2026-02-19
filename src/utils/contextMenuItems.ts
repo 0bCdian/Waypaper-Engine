@@ -55,6 +55,17 @@ function selectionItems(selectedCount: number): MenuItem[] {
 			type: "action",
 			label: "Add selected to playlist",
 			onClick: () => {
+				const { selectedImages } = useImagesStore.getState();
+				if (selectedImages.size === 0) return;
+				usePlaylistStore
+					.getState()
+					.addImagesToPlaylist(Array.from(selectedImages));
+			},
+		},
+		{
+			type: "action",
+			label: "Save selected to saved playlist…",
+			onClick: () => {
 				const modal = document.getElementById(
 					"AddToPlaylistModal",
 				) as HTMLDialogElement | null;
@@ -70,14 +81,6 @@ function selectionItems(selectedCount: number): MenuItem[] {
 					usePlaylistStore.getState();
 				if (selectedImages.size === 0 || playlist.images.length === 0) return;
 				removeImagesFromPlaylist(selectedImages);
-				if (playlist.id) {
-					void goDaemon.updatePlaylist(playlist.id, {
-						images: playlist.images.map((img) => ({
-							image_id: img.image_id,
-							time: img.time,
-						})),
-					});
-				}
 			},
 		},
 		{

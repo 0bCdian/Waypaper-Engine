@@ -31,10 +31,14 @@ function ImageDetailSidebar() {
 	const [saving, setSaving] = useState(false);
 	const [showSuggestions, setShowSuggestions] = useState(false);
 	const inputRef = useRef<HTMLInputElement>(null);
+	const [editName, setEditName] = useState("");
+	const [renaming, setRenaming] = useState(false);
+	const nameInputRef = useRef<HTMLInputElement>(null);
 
 	useEffect(() => {
 		if (selectedImage) {
 			setTags([...(selectedImage.tags ?? [])]);
+			setEditName(selectedImage.name);
 		}
 	}, [selectedImage]);
 
@@ -109,6 +113,30 @@ function ImageDetailSidebar() {
 		}
 	}, [selectedImage, tags, addToast]);
 
+	const submitRename = useCallback(async () => {
+		if (!selectedImage) return;
+		const trimmed = editName.trim();
+		if (!trimmed || trimmed === selectedImage.name) {
+			setEditName(selectedImage.name);
+			return;
+		}
+		setRenaming(true);
+		try {
+			const updated = await useImagesStore.getState().renameImage(selectedImage.id, trimmed);
+			useImageDetailStore.getState().open(updated as unknown as import("../../electron/daemon-go-types").Image);
+			if (updated.name !== trimmed) {
+				addToast(`Renamed to "${updated.name}" (original name was taken)`, "info", 3000);
+			} else {
+				addToast("Image renamed", "success", 2000);
+			}
+		} catch {
+			addToast("Failed to rename image", "error");
+			setEditName(selectedImage.name);
+		} finally {
+			setRenaming(false);
+		}
+	}, [selectedImage, editName, addToast]);
+
 	const hasChanges = useMemo(() => {
 		const original = selectedImage?.tags ?? [];
 		if (original.length !== tags.length) return true;
@@ -166,11 +194,33 @@ function ImageDetailSidebar() {
 						/>
 					)}
 
+					{/* Editable name */}
+					<div className="space-y-1">
+						<label className="text-xs font-semibold uppercase tracking-wide text-base-content/60">
+							Name
+						</label>
+						<input
+							ref={nameInputRef}
+							type="text"
+							className="input input-bordered input-sm w-full font-medium"
+							value={editName}
+							disabled={renaming}
+							onChange={(e) => setEditName(e.target.value)}
+							onBlur={() => void submitRename()}
+							onKeyDown={(e) => {
+								if (e.key === "Enter") {
+									e.preventDefault();
+									nameInputRef.current?.blur();
+								} else if (e.key === "Escape") {
+									setEditName(selectedImage.name);
+									nameInputRef.current?.blur();
+								}
+							}}
+						/>
+					</div>
+
 					{/* Metadata */}
 					<div className="space-y-1 text-xs text-base-content/70">
-						<p className="truncate font-medium text-base-content">
-							{selectedImage.name}
-						</p>
 						<p>
 							{selectedImage.width} &times; {selectedImage.height}
 						</p>

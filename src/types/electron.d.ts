@@ -43,6 +43,7 @@ declare global {
 				) => Promise<{ status: string; total: number }>;
 				deleteImages: (ids: number[]) => Promise<{ deleted: number }>;
 				updateImage: (id: number, update: UpdateImageRequest) => Promise<Image>;
+				renameImage: (id: number, name: string) => Promise<Image>;
 				selectAllImages: (
 					selected: boolean,
 				) => Promise<{ updated: number; selected: boolean }>;
@@ -161,7 +162,16 @@ declare global {
 			onDaemonStatusUpdate: (callback: (data: unknown) => void) => () => void;
 			removeAllListeners: (channel: string) => void;
 
+			// WALLHAVEN API
+			wallhaven: {
+				search: (params: Record<string, string>) => Promise<unknown>;
+				getWallpaper: (id: string, apikey?: string) => Promise<unknown>;
+				download: (imageUrl: string) => Promise<string>;
+			};
+
 			// FILE OPERATIONS
+			getPathForFile: (file: File) => string;
+			downloadUrl: (url: string) => Promise<string>;
 			openFiles: (action: "file" | "folder") => Promise<{
 				success: boolean;
 				data?: { files: string[] };

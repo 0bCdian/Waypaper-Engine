@@ -75,6 +75,20 @@ async function createMainWindow(): Promise<void> {
 		mainWindow.loadFile(join(__dirname, "../dist/index.html"));
 	}
 
+	// Block reload shortcuts in production
+	if (process.env.NODE_ENV !== "development") {
+		mainWindow.webContents.on("before-input-event", (event, input) => {
+			if (
+				input.key === "F5" ||
+				(input.key === "r" && (input.control || input.meta)) ||
+				(input.key === "R" && (input.control || input.meta) && input.shift)
+			) {
+				event.preventDefault();
+			}
+		});
+		mainWindow.setMenu(null);
+	}
+
 	// Register with managers
 	ipcManager.registerWindow(mainWindow);
 	daemonMonitor.registerWindow(mainWindow);

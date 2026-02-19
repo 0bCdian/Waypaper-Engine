@@ -3,10 +3,11 @@ package config
 // Config is the top-level configuration structure.
 // It mirrors the TOML file layout and the JSON shape returned by GET /config.
 type Config struct {
-	App      AppConfig      `mapstructure:"app"      json:"app"`
-	Daemon   DaemonConfig   `mapstructure:"daemon"   json:"daemon"`
-	Backend  BackendSection `mapstructure:"backend"  json:"backend"`
-	Monitors MonitorsConfig `mapstructure:"monitors" json:"monitors"`
+	App       AppConfig       `mapstructure:"app"       json:"app"`
+	Daemon    DaemonConfig    `mapstructure:"daemon"    json:"daemon"`
+	Backend   BackendSection  `mapstructure:"backend"   json:"backend"`
+	Monitors  MonitorsConfig  `mapstructure:"monitors"  json:"monitors"`
+	Wallhaven WallhavenConfig `mapstructure:"wallhaven" json:"wallhaven"`
 }
 
 // AppConfig holds application-level settings that affect the Electron frontend
@@ -93,4 +94,13 @@ type MonitorsConfig struct {
 
 	// ImageSetType is the default monitor mode: "individual", "clone", or "extend".
 	ImageSetType string `mapstructure:"image_set_type" json:"image_set_type"`
+}
+
+// WallhavenConfig holds Wallhaven API integration settings.
+type WallhavenConfig struct {
+	// APIKey is the user's Wallhaven API key for accessing NSFW content and user-specific features.
+	APIKey string `mapstructure:"api_key" json:"api_key"`
+
+	// Enabled controls whether the Wallhaven integration is active.
+	Enabled bool `mapstructure:"enabled" json:"enabled"`
 }

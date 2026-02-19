@@ -7,8 +7,10 @@
 
 import { ipcMain, BrowserWindow, dialog, app } from "electron";
 import { resolve } from "node:path";
-import { readdir, stat } from "node:fs/promises";
+import { readdir, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
+import { tmpdir } from "node:os";
+import { randomUUID } from "node:crypto";
 import { goDaemonClient } from "../goDaemonClient";
 import { daemonMonitor } from "./DaemonMonitor";
 import type {
@@ -43,6 +45,8 @@ export class IPCManager {
 		this.setupGoDaemonHandlers();
 		this.setupThemeHandlers();
 		this.setupWindowHandlers();
+		this.setupWallhavenHandlers();
+		this.setupDownloadHandlers();
 		this.setupErrorHandling();
 
 		this.isInitialized = true;
@@ -444,6 +448,13 @@ export class IPCManager {
 						p?.id as number,
 						p?.update as UpdateImageRequest,
 					);
+				case "rename_image": {
+					const renamed = await goDaemonClient.renameImage(
+						p?.id as number,
+						p?.name as string,
+					);
+					return this.convertPathsToAtomProtocol([renamed])[0];
+				}
 				case "select_all_images":
 					return await goDaemonClient.selectAllImages(p?.selected as boolean);
 				case "get_image_tags":
@@ -685,6 +696,86 @@ export class IPCManager {
 				window.show();
 				return true;
 			},
+		});
+	}
+
+	// ============================================================================
+	// WALLHAVEN API PROXY
+	// ============================================================================
+
+	private setupWallhavenHandlers(): void {
+		this.registerHandler({
+			channel: "wallhaven-search",
+			handler: async (_event, ...args) => {
+				const params = args[0] as Record<string, string>;
+				const url = new URL("https://wallhaven.cc/api/v1/search");
+				for (const [k, v] of Object.entries(params)) {
+					if (v !== undefined && v !== "") url.searchParams.set(k, v);
+				}
+				const res = await fetch(url.toString());
+				if (!res.ok) throw new Error(`Wallhaven API error: ${res.status}`);
+				return res.json();
+			},
+			description: "Proxy Wallhaven search requests",
+		});
+
+		this.registerHandler({
+			channel: "wallhaven-wallpaper",
+			handler: async (_event, ...args) => {
+				const id = args[0] as string;
+				const apikey = args[1] as string | undefined;
+				const url = new URL(`https://wallhaven.cc/api/v1/w/${id}`);
+				if (apikey) url.searchParams.set("apikey", apikey);
+				const res = await fetch(url.toString());
+				if (!res.ok) throw new Error(`Wallhaven API error: ${res.status}`);
+				return res.json();
+			},
+			description: "Proxy Wallhaven wallpaper detail requests",
+		});
+
+		this.registerHandler({
+			channel: "wallhaven-download",
+			handler: async (_event, ...args) => {
+				const imageUrl = args[0] as string;
+				const res = await fetch(imageUrl);
+				if (!res.ok)
+					throw new Error(`Download failed: ${res.status}`);
+				const buf = Buffer.from(await res.arrayBuffer());
+				const ext =
+					imageUrl.slice(imageUrl.lastIndexOf(".")) || ".jpg";
+				const tmpPath = join(
+					tmpdir(),
+					`wallhaven-${randomUUID()}${ext}`,
+				);
+				await writeFile(tmpPath, buf);
+				return tmpPath;
+			},
+			description: "Download a Wallhaven image to temp and return its path",
+		});
+	}
+
+	// ============================================================================
+	// GENERIC DOWNLOAD
+	// ============================================================================
+
+	private setupDownloadHandlers(): void {
+		this.registerHandler({
+			channel: "download-url",
+			handler: async (_event, ...args) => {
+				const url = args[0] as string;
+				const parsed = new URL(url);
+				if (!["http:", "https:"].includes(parsed.protocol)) {
+					throw new Error("Only http/https URLs are supported");
+				}
+				const res = await fetch(url);
+				if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+				const buf = Buffer.from(await res.arrayBuffer());
+				const ext = url.slice(url.lastIndexOf(".")).split("?")[0] || ".jpg";
+				const tmpPath = join(tmpdir(), `import-${randomUUID()}${ext}`);
+				await writeFile(tmpPath, buf);
+				return tmpPath;
+			},
+			description: "Download any URL to a temp file and return its path",
 		});
 	}
 

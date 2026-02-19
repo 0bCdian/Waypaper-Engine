@@ -4,7 +4,7 @@ import { useMonitorStore } from "../stores/monitors";
 import { useActivePlaylistStore } from "../stores/activePlaylistStore";
 import { useShallow } from "zustand/react/shallow";
 import type { rendererPlaylist } from "../types/rendererTypes";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import type { ActivePlaylistResponse } from "../../electron/daemon-go-types";
 
 const { goDaemon } = window.API_RENDERER;
@@ -19,11 +19,10 @@ function monitorSetsMatch(
 }
 
 export function useSetLastActivePlaylist() {
-	const { setPlaylist, clearPlaylist, playlist } = usePlaylistStore(
+	const { setPlaylist, clearPlaylist } = usePlaylistStore(
 		useShallow((s) => ({
 			setPlaylist: s.setPlaylist,
 			clearPlaylist: s.clearPlaylist,
-			playlist: s.playlist,
 		})),
 	);
 	const monitorSelection = useMonitorStore((s) => s.monitorSelection);
@@ -31,6 +30,7 @@ export function useSetLastActivePlaylist() {
 		(s) => s.setActivePlaylist,
 	);
 	const clearActive = useActivePlaylistStore((s) => s.clear);
+	const lastSyncedIdRef = useRef<number | null>(null);
 
 	useEffect(() => {
 		if (monitorSelection.selectedMonitors.length === 0) {
@@ -48,6 +48,7 @@ export function useSetLastActivePlaylist() {
 				if (!activePlaylists || activePlaylists.length === 0) {
 					clearActive();
 					clearPlaylist();
+					lastSyncedIdRef.current = null;
 					return;
 				}
 
@@ -61,12 +62,13 @@ export function useSetLastActivePlaylist() {
 				if (!match) {
 					clearActive();
 					clearPlaylist();
+					lastSyncedIdRef.current = null;
 					return;
 				}
 
 				setActivePlaylist(match);
 
-				if (playlist.name === match.playlist_name && playlist.id === match.playlist_id) {
+				if (lastSyncedIdRef.current === match.playlist_id) {
 					return;
 				}
 
@@ -83,6 +85,7 @@ export function useSetLastActivePlaylist() {
 					return;
 				}
 
+				lastSyncedIdRef.current = match.playlist_id;
 				const currentPlaylist: rendererPlaylist = {
 					id: fullPlaylist.id,
 					name: fullPlaylist.name,
@@ -105,8 +108,6 @@ export function useSetLastActivePlaylist() {
 		};
 	}, [
 		monitorSelection,
-		playlist.name,
-		playlist.id,
 		setPlaylist,
 		clearPlaylist,
 		setActivePlaylist,

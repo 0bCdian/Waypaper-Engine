@@ -21,10 +21,27 @@ interface MonitorStore {
 	_configLoaded: boolean;
 }
 
-const initialSelection: MonitorSelection = {
-	selectedMonitors: [],
-	mode: "individual",
-};
+const STORAGE_KEY = "waypaper-monitor-selection";
+
+function loadPersistedSelection(): MonitorSelection {
+	try {
+		const raw = localStorage.getItem(STORAGE_KEY);
+		if (!raw) return { selectedMonitors: [], mode: "individual" };
+		return JSON.parse(raw) as MonitorSelection;
+	} catch {
+		return { selectedMonitors: [], mode: "individual" };
+	}
+}
+
+function persistSelection(sel: MonitorSelection) {
+	try {
+		localStorage.setItem(STORAGE_KEY, JSON.stringify(sel));
+	} catch {
+		/* ignore */
+	}
+}
+
+const initialSelection: MonitorSelection = loadPersistedSelection();
 
 export const useMonitorStore = create<MonitorStore>()((set, get) => ({
 	monitorSelection: initialSelection,
@@ -36,6 +53,7 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
 		if (get()._isLoadingConfig) return;
 
 		set({ monitorSelection: value });
+		persistSelection(value);
 
 		try {
 			if (window.API_RENDERER?.goDaemon?.updateConfig) {
@@ -126,6 +144,7 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
 				monitorsList: storeMonitors,
 				_configLoaded: true,
 			});
+			persistSelection(selection);
 		} catch (error) {
 			console.error("MonitorStore: Error setting last saved config:", error);
 		} finally {

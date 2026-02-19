@@ -15,11 +15,12 @@ interface savePlaylistModalFields {
 	playlistName: string;
 }
 const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
-	const { setName, readPlaylist, setPlaylist } = usePlaylistStore(
+	const { setName, readPlaylist, setPlaylist, markClean } = usePlaylistStore(
 		useShallow((s) => ({
 			setName: s.setName,
 			readPlaylist: s.readPlaylist,
 			setPlaylist: s.setPlaylist,
+			markClean: s.markClean,
 		})),
 	);
 	const [error, showError] = useState({ state: false, message: "" });
@@ -106,6 +107,7 @@ const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
 				}
 			}
 
+			markClean();
 			setShouldReload(true);
 			closeModal();
 		} catch (err) {

@@ -88,6 +88,9 @@ type ImageStore interface {
 
 	// Count returns the total number of images in the collection.
 	Count(ctx context.Context) (int, error)
+
+	// IsNameTaken reports whether any image other than excludeID already uses the given name.
+	IsNameTaken(ctx context.Context, name string, excludeID int) (bool, error)
 }
 
 // ---------------------------------------------------------------------------

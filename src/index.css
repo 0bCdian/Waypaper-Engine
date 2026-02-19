@@ -1,6 +1,10 @@
 /* Import Tailwind CSS v4 */
 @import "tailwindcss";
 
+/* Default typeface (Google Sans Flex / Google Sans) */
+@import "@fontsource/google-sans-flex";
+@import "@fontsource/google-sans";
+
 /* Import neobrutalist design system overlay */
 @import "./styles/neobrutalist.css";
 
@@ -19,6 +23,11 @@ textarea,
 pre,
 code {
 	user-select: text;
+}
+
+/* Default typography — Google Sans Flex with Google Sans fallback */
+:root {
+	font-family: "Google Sans Flex", "Google Sans", ui-sans-serif, system-ui, sans-serif;
 }
 
 /* Import DaisyUI v5 plugin */

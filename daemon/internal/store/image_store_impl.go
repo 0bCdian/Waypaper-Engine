@@ -272,12 +272,21 @@ func (s *imageStore) GetAllTags(_ context.Context) ([]string, error) {
 	}
 	seen := make(map[string]struct{})
 	for _, doc := range docs {
-		var img Image
-		if err := doc.Unmarshal(&img); err != nil {
+		rawTags := doc.Get("tags")
+		if rawTags == nil {
 			continue
 		}
-		for _, tag := range img.Tags {
-			seen[tag] = struct{}{}
+		switch t := rawTags.(type) {
+		case []interface{}:
+			for _, v := range t {
+				if str, ok := v.(string); ok {
+					seen[str] = struct{}{}
+				}
+			}
+		case []string:
+			for _, tag := range t {
+				seen[tag] = struct{}{}
+			}
 		}
 	}
 	tags := make([]string, 0, len(seen))
@@ -293,6 +302,17 @@ func (s *imageStore) Count(_ context.Context) (int, error) {
 		return 0, fmt.Errorf("image store: count: %w", err)
 	}
 	return count, nil
+}
+
+func (s *imageStore) IsNameTaken(_ context.Context, name string, excludeID int) (bool, error) {
+	q := query.NewQuery(CollectionImages).Where(
+		query.Field("name").Eq(name).And(query.Field("id").Neq(excludeID)),
+	)
+	count, err := s.db.Count(q)
+	if err != nil {
+		return false, fmt.Errorf("image store: check name taken: %w", err)
+	}
+	return count > 0, nil
 }
 
 // filterImagesBySearch performs case-insensitive fuzzy search on name and tags.

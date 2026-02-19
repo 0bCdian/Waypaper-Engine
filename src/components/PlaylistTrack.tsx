@@ -20,6 +20,7 @@ function PlaylistTrack() {
 	const {
 		playlist,
 		lastAddedImageID,
+		isDirty,
 		movePlaylistArrayOrder,
 		clearPlaylist,
 		setPlaylist,
@@ -28,6 +29,7 @@ function PlaylistTrack() {
 		useShallow((s) => ({
 			playlist: s.playlist,
 			lastAddedImageID: s.lastAddedImageID,
+			isDirty: s.isDirty,
 			movePlaylistArrayOrder: s.movePlaylistArrayOrder,
 			clearPlaylist: s.clearPlaylist,
 			setPlaylist: s.setPlaylist,
@@ -170,6 +172,9 @@ function PlaylistTrack() {
 					{playlistArray.length > 0
 						? `Playlist (${playlistArray.length})`
 						: "Playlist"}
+					{isDirty && (
+						<span className="ml-2 inline-block h-2.5 w-2.5 rounded-full bg-warning align-middle" title="Unsaved changes" />
+					)}
 				</span>
 				{activePlaylist && activeMonitorLabel && (
 					<span className="text-sm text-base-content/60">
@@ -238,9 +243,9 @@ function PlaylistTrack() {
 							// @ts-expect-error daisyui fix
 							window.savePlaylistModal.showModal();
 						}}
-						className={btnClass}
+						className={isDirty ? `${btnClass} btn-warning animate-pulse` : btnClass}
 					>
-						Save
+						{isDirty ? "Save*" : "Save"}
 					</button>
 					<button
 						onClick={() => {

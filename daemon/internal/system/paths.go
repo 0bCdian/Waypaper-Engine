@@ -102,6 +102,22 @@ func ConfigHome() string {
 	return filepath.Join(base, appName)
 }
 
+// UniquePath returns path unchanged if nothing exists there.
+// Otherwise it appends _1, _2, … before the extension until it finds a free name.
+func UniquePath(path string) string {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return path
+	}
+	ext := filepath.Ext(path)
+	base := strings.TrimSuffix(path, ext)
+	for i := 1; ; i++ {
+		candidate := fmt.Sprintf("%s_%d%s", base, i, ext)
+		if _, err := os.Stat(candidate); os.IsNotExist(err) {
+			return candidate
+		}
+	}
+}
+
 // --- Default path helpers ---
 
 // DefaultConfigPath returns the default config file location:

@@ -225,7 +225,7 @@
 /* ── Range Slider ──────────────────────────────────────────────── */
 [data-design="neobrutalist"] .range {
 	border-radius: 0;
-	height: 0.5rem;
+	height: 0.75rem;
 	border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.7);
 	background: oklch(from var(--color-base-300) l c h);
 	-webkit-appearance: none;
@@ -243,7 +243,7 @@
 	box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0
 		oklch(from var(--color-base-content) l c h / 0.7);
 	cursor: pointer;
-	margin-top: -0.55rem;
+	margin-top: -0.45rem;
 	transition: box-shadow 0.1s ease;
 }
 
@@ -258,7 +258,7 @@
 }
 
 [data-design="neobrutalist"] .range::-webkit-slider-runnable-track {
-	height: 0.5rem;
+	height: 0.75rem;
 	background: oklch(from var(--color-base-300) l c h);
 	border-radius: 0;
 }
@@ -275,7 +275,7 @@
 }
 
 [data-design="neobrutalist"] .range::-moz-range-track {
-	height: 0.5rem;
+	height: 0.75rem;
 	background: oklch(from var(--color-base-300) l c h);
 	border-radius: 0;
 	border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.7);
@@ -344,6 +344,11 @@
 }
 
 /* ── Tooltip ───────────────────────────────────────────────────── */
+[data-design="neobrutalist"] .tooltip::before,
+[data-design="neobrutalist"] .tooltip::after {
+	z-index: 100;
+}
+
 [data-design="neobrutalist"] .tooltip::before {
 	border-radius: var(--neo-radius);
 	border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.85);

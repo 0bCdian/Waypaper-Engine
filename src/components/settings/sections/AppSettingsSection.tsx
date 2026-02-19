@@ -1,378 +1,152 @@
-/**
- * App Settings Section Component
- *
- * Handles all application-specific settings from the [app] section of the TOML config.
- */
-
 import type React from "react";
+import { useCallback, useState } from "react";
 import { cn } from "@/utils/cn";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useDesignSystemStore } from "@/stores/designSystemStore";
 import { useShallow } from "zustand/react/shallow";
 import InlineThemeSelector from "../InlineThemeSelector";
+import { SettingRow, SettingSectionHeader } from "../SettingRow";
 import type { ConfigSection } from "@/shared/types/unifiedConfig";
 
-/**
- * App Settings Section Props
- */
 interface AppSettingsSectionProps {
-	/** Additional CSS classes */
 	className?: string;
 }
 
-/**
- * Setting field configuration
- */
-interface SettingField {
+interface BoolField {
 	key: string;
 	label: string;
 	description: string;
-	type: "boolean" | "number" | "select" | "theme";
-	options?: Array<{ value: string; label: string }>;
-	min?: number;
-	max?: number;
-	step?: number;
 }
 
-/**
- * App Settings Section Component
- */
+const behaviorFields: BoolField[] = [
+	{
+		key: "kill_daemon_on_exit",
+		label: "Kill Daemon on Exit",
+		description:
+			"Terminate the background daemon when the application closes",
+	},
+	{
+		key: "notifications",
+		label: "Notifications",
+		description: "Enable desktop notifications for wallpaper changes",
+	},
+	{
+		key: "start_minimized",
+		label: "Start Minimized",
+		description: "Start the application minimized to system tray",
+	},
+	{
+		key: "minimize_instead_of_close",
+		label: "Minimize Instead of Close",
+		description: "Minimize to tray instead of closing the application",
+	},
+	{
+		key: "show_monitor_modal_on_start",
+		label: "Show Monitor Modal on Start",
+		description:
+			"Show monitor selection modal when starting the application",
+	},
+];
+
 export const AppSettingsSection: React.FC<AppSettingsSectionProps> = ({
 	className = "",
 }) => {
-	const { config, saveConfigSection, errors, expandedSections, toggleSection } =
-		useSettingsStore(
-			useShallow((s) => ({
-				config: s.config,
-				saveConfigSection: s.saveConfigSection,
-				errors: s.errors,
-				expandedSections: s.expandedSections,
-				toggleSection: s.toggleSection,
-			})),
-		);
+	const { config, saveConfigSection, errors } = useSettingsStore(
+		useShallow((s) => ({
+			config: s.config,
+			saveConfigSection: s.saveConfigSection,
+			errors: s.errors,
+		})),
+	);
 	const section: ConfigSection = "app";
-	const themeAccordionOpen = expandedSections.has("theme");
-	const themeTabDark =
-		expandedSections.has("themeTab_dark") ||
-		!expandedSections.has("themeTab_light");
-	const activeThemeTab: "light" | "dark" = themeTabDark ? "dark" : "light";
 
-	// Define all app settings fields (excluding theme and gallery filters)
-	const settingsFields: SettingField[] = [
-		{
-			key: "kill_daemon_on_exit",
-			label: "Kill Daemon on Exit",
-			description:
-				"Terminate the background daemon when the application closes",
-			type: "boolean",
-		},
-		{
-			key: "notifications",
-			label: "Notifications",
-			description: "Enable desktop notifications for wallpaper changes",
-			type: "boolean",
-		},
-		{
-			key: "start_minimized",
-			label: "Start Minimized",
-			description: "Start the application minimized to system tray",
-			type: "boolean",
-		},
-		{
-			key: "minimize_instead_of_close",
-			label: "Minimize Instead of Close",
-			description: "Minimize to tray instead of closing the application",
-			type: "boolean",
-		},
-		{
-			key: "show_monitor_modal_on_start",
-			label: "Show Monitor Modal on Start",
-			description: "Show monitor selection modal when starting the application",
-			type: "boolean",
-		},
-	];
+	const [themeOpen, setThemeOpen] = useState(false);
 
-	const handleValueChange = async (key: string, value: unknown) => {
+	const handleChange = async (key: string, value: unknown) => {
 		await saveConfigSection(section, { [key]: value });
 	};
 
-	const getFieldError = (key: string) => {
-		return errors.find(
-			(error) => error.section === section && error.key === key,
-		);
-	};
-
-	const renderField = (field: SettingField) => {
-		const currentValue = config?.app?.[field.key as keyof typeof config.app];
-		const error = getFieldError(field.key);
-
-		if (field.type === "theme") {
-			return (
-				<div key={field.key} className="space-y-3">
-					<div>
-						<label className="text-sm font-medium text-base-content">
-							{field.label}
-						</label>
-						<p className="text-xs text-base-content/60 mt-1">
-							{field.description}
-						</p>
-					</div>
-					<InlineThemeSelector
-						onThemeChange={(themeName) =>
-							handleValueChange(field.key, themeName)
-						}
-						showDescriptions={false}
-					/>
-				</div>
-			);
-		}
-
-		if (field.type === "boolean") {
-			return (
-				<div key={field.key} className="card bg-base-200 shadow-sm">
-					<div className="card-body p-4">
-						<div className="form-control">
-							<label className="label cursor-pointer justify-start gap-3">
-								<input
-									type="checkbox"
-									className="toggle toggle-primary"
-									checked={Boolean(currentValue)}
-									onChange={(e) =>
-										handleValueChange(field.key, e.target.checked)
-									}
-								/>
-								<div>
-									<div className="text-sm font-medium text-base-content">
-										{field.label}
-									</div>
-									<div className="text-xs text-base-content/60">
-										{field.description}
-									</div>
-								</div>
-							</label>
-							{error && (
-								<div className="text-xs text-error mt-1">{error.message}</div>
-							)}
-						</div>
-					</div>
-				</div>
-			);
-		}
-
-		if (field.type === "number") {
-			return (
-				<div key={field.key} className="card bg-base-200 shadow-sm">
-					<div className="card-body p-4">
-						<div className="form-control">
-							<label className="label">
-								<span className="text-sm font-medium text-base-content">
-									{field.label}
-								</span>
-							</label>
-							<input
-								type="number"
-								className={cn(
-									"input input-bordered input-sm",
-									error && "input-error",
-								)}
-								value={(currentValue as number) || 0}
-								onChange={(e) =>
-									handleValueChange(field.key, parseInt(e.target.value, 10))
-								}
-								min={field.min}
-								max={field.max}
-								step={field.step}
-							/>
-							<div className="label">
-								<span className="text-xs text-base-content/60">
-									{field.description}
-								</span>
-							</div>
-							{error && (
-								<div className="text-xs text-error mt-1">{error.message}</div>
-							)}
-						</div>
-					</div>
-				</div>
-			);
-		}
-
-		if (field.type === "select") {
-			return (
-				<div key={field.key} className="card bg-base-200 shadow-sm">
-					<div className="card-body p-4">
-						<div className="form-control flex flex-col gap-2">
-							<label className="label">
-								<span className="text-sm font-medium text-base-content">
-									{field.label}
-								</span>
-							</label>
-							<select
-								className={cn(
-									"select select-bordered select-sm",
-									error && "select-error",
-								)}
-								value={(currentValue as string) || ""}
-								onChange={(e) => handleValueChange(field.key, e.target.value)}
-							>
-								{field.options?.map((option) => (
-									<option key={option.value} value={option.value}>
-										{option.label}
-									</option>
-								))}
-							</select>
-							<div className="label">
-								<span className="text-xs text-base-content/60">
-									{field.description}
-								</span>
-							</div>
-							{error && (
-								<div className="text-xs text-error mt-1">{error.message}</div>
-							)}
-						</div>
-					</div>
-				</div>
-			);
-		}
-
-		return null;
-	};
+	const fieldError = (key: string) =>
+		errors.find((e) => e.section === section && e.key === key)?.message;
 
 	return (
-		<div className={cn("space-y-6", className)}>
-			{/* Section Header */}
-			<div className="border-b border-base-300 pb-4">
-				<h2 className="text-lg font-semibold text-base-content">
-					Application Settings
-				</h2>
-				<p className="text-sm text-base-content/60 mt-1">
-					Configure application behavior, appearance, and user interface
-					preferences.
-				</p>
-			</div>
+		<div className={cn("space-y-0", className)}>
+			{/* ── Section title ──────────────────────────────── */}
+			<h2 className="text-lg font-semibold text-base-content mb-1">General</h2>
+			<p className="text-sm text-base-content/50 mb-4">
+				Application behavior, appearance, and UI preferences.
+			</p>
 
-			{/* Theme Section - Accordion */}
-			<div className="collapse collapse-arrow bg-base-200">
-				<input
-					type="checkbox"
-					checked={themeAccordionOpen}
-					onChange={() => toggleSection("theme")}
-				/>
-				<div className="collapse-title text-lg font-medium">
-					<div className="flex items-center gap-2">
-						<svg
-							className="w-5 h-5"
-							fill="none"
-							stroke="currentColor"
-							viewBox="0 0 24 24"
-						>
-							<path
-								strokeLinecap="round"
-								strokeLinejoin="round"
-								strokeWidth={2}
-								d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zM21 5a2 2 0 00-2-2h-4a2 2 0 00-2 2v12a4 4 0 004 4h4a2 2 0 002-2V5z"
-							/>
-						</svg>
-						Theme & Appearance
+			{/* ── Theme & Appearance ─────────────────────────── */}
+			<SettingSectionHeader title="Theme & Appearance" />
+
+			<button
+				type="button"
+				className="w-full flex items-center justify-between py-4 border-b border-base-content/5 group"
+				onClick={() => setThemeOpen((v) => !v)}
+			>
+				<div className="text-left">
+					<div className="text-sm font-medium text-base-content">
+						Application Theme
+					</div>
+					<div className="text-xs text-base-content/50 mt-0.5">
+						Choose the visual theme for the application interface
 					</div>
 				</div>
-				<div className="collapse-content">
-					<div className="pt-4">
-						<div className="space-y-4">
-							<div>
-								<label className="text-sm font-medium text-base-content">
-									Application Theme
-								</label>
-								<p className="text-xs text-base-content/60 mt-1">
-									Choose the visual theme for the application interface
-								</p>
-							</div>
+				<svg
+					className={cn(
+						"w-4 h-4 text-base-content/40 transition-transform",
+						themeOpen && "rotate-180",
+					)}
+					fill="none"
+					stroke="currentColor"
+					viewBox="0 0 24 24"
+				>
+					<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+				</svg>
+			</button>
 
-							{/* Theme Category Tabs */}
-							<div className="tabs tabs-boxed">
-								<button
-									type="button"
-									className={cn(
-										"tab tab-sm",
-										activeThemeTab === "dark" ? "tab-active" : "",
-									)}
-									onClick={() => {
-										if (!expandedSections.has("themeTab_dark"))
-											toggleSection("themeTab_dark");
-										if (expandedSections.has("themeTab_light"))
-											toggleSection("themeTab_light");
-									}}
-								>
-									<svg
-										className="w-4 h-4 mr-1"
-										fill="none"
-										stroke="currentColor"
-										viewBox="0 0 24 24"
-									>
-										<path
-											strokeLinecap="round"
-											strokeLinejoin="round"
-											strokeWidth={2}
-											d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"
-										/>
-									</svg>
-									Dark Themes
-								</button>
-								<button
-									type="button"
-									className={cn(
-										"tab tab-sm",
-										activeThemeTab === "light" ? "tab-active" : "",
-									)}
-									onClick={() => {
-										if (!expandedSections.has("themeTab_light"))
-											toggleSection("themeTab_light");
-										if (expandedSections.has("themeTab_dark"))
-											toggleSection("themeTab_dark");
-									}}
-								>
-									<svg
-										className="w-4 h-4 mr-1"
-										fill="none"
-										stroke="currentColor"
-										viewBox="0 0 24 24"
-									>
-										<path
-											strokeLinecap="round"
-											strokeLinejoin="round"
-											strokeWidth={2}
-											d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"
-										/>
-									</svg>
-									Light Themes
-								</button>
-							</div>
-
-							{/* Theme Selector with Category Filter */}
-							<InlineThemeSelector
-								onThemeChange={(themeName) =>
-									handleValueChange("theme", themeName)
-								}
-								showDescriptions={true}
-								categoryFilter={activeThemeTab}
-							/>
-						</div>
-					</div>
+			{themeOpen && (
+				<div className="py-4 border-b border-base-content/5">
+					<InlineThemeSelector
+						onThemeChange={(themeName) => handleChange("theme", themeName)}
+						showDescriptions={true}
+					/>
 				</div>
-			</div>
+			)}
 
-			{/* Design System Section */}
+			{/* ── Design System ───────────────────────────────── */}
 			<DesignSystemSection />
 
-			{/* Settings Fields - Bento Grid Layout */}
-			<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-				{settingsFields.map(renderField)}
-			</div>
+			{/* ── Behavior ────────────────────────────────────── */}
+			<SettingSectionHeader title="Behavior" />
+
+			{behaviorFields.map((f) => (
+				<SettingRow
+					key={f.key}
+					label={f.label}
+					description={f.description}
+					error={fieldError(f.key)}
+				>
+					<input
+						type="checkbox"
+						className="toggle toggle-primary"
+						checked={Boolean(
+							config?.app?.[f.key as keyof typeof config.app],
+						)}
+						onChange={(e) => handleChange(f.key, e.target.checked)}
+					/>
+				</SettingRow>
+			))}
+
+			{/* ── Import ─────────────────────────────────────── */}
+			<SettingSectionHeader title="Import" />
+			<UrlImportWarningSetting />
 		</div>
 	);
 };
 
-/* ── Design System Settings ────────────────────────────────────── */
+/* ── Design System Settings ──────────────────────────────────── */
 
 const DesignSystemSection: React.FC = () => {
 	const { designMode, neoConfig, setDesignMode, updateNeoConfig } =
@@ -388,181 +162,141 @@ const DesignSystemSection: React.FC = () => {
 	const isNeo = designMode === "neobrutalist";
 
 	return (
-		<div className="collapse collapse-arrow bg-base-200">
-			<input type="checkbox" defaultChecked={isNeo} />
-			<div className="collapse-title text-lg font-medium">
-				<div className="flex items-center gap-2">
-					<svg
-						className="w-5 h-5"
-						fill="none"
-						stroke="currentColor"
-						viewBox="0 0 24 24"
+		<>
+			<SettingSectionHeader title="Design System" />
+
+			<SettingRow
+				label="Neobrutalist Mode"
+				description="Thick borders, hard shadows, bold typography on all UI elements"
+			>
+				<input
+					type="checkbox"
+					className="toggle toggle-primary"
+					checked={isNeo}
+					onChange={(e) =>
+						setDesignMode(e.target.checked ? "neobrutalist" : "default")
+					}
+				/>
+			</SettingRow>
+
+			{isNeo && (
+				<>
+					<SettingRow
+						label="Polaroid Image Cards"
+						description="Display wallpaper thumbnails as polaroid-style frames"
 					>
-						<title>Design System</title>
-						<path
-							strokeLinecap="round"
-							strokeLinejoin="round"
-							strokeWidth={2}
-							d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"
+						<input
+							type="checkbox"
+							className="toggle toggle-secondary"
+							checked={neoConfig.polaroidCards}
+							onChange={(e) =>
+								updateNeoConfig({ polaroidCards: e.target.checked })
+							}
 						/>
-					</svg>
-					Design System
-				</div>
-			</div>
-			<div className="collapse-content">
-				<div className="pt-4 space-y-4">
-					{/* Neobrutalist toggle */}
-					<div className="card bg-base-100 shadow-sm">
-						<div className="card-body p-4">
-							<label className="label cursor-pointer justify-start gap-3">
-								<input
-									type="checkbox"
-									className="toggle toggle-primary"
-									checked={isNeo}
-									onChange={(e) =>
-										setDesignMode(
-											e.target.checked ? "neobrutalist" : "default",
-										)
-									}
-								/>
-								<div>
-									<div className="text-sm font-medium text-base-content">
-										Neobrutalist Mode
-									</div>
-									<div className="text-xs text-base-content/60">
-										Thick borders, hard shadows, bold typography on all UI
-										elements
-									</div>
-								</div>
-							</label>
+					</SettingRow>
+
+					<SettingRow
+						label="Shadow Offset"
+						description="Hard shadow distance behind elements"
+					>
+						<div className="flex items-center gap-3">
+							<input
+								type="range"
+								min={1}
+								max={6}
+								step={1}
+								className="range range-primary range-sm w-28"
+								value={neoConfig.shadowOffsetX}
+								onChange={(e) => {
+									const v = Number(e.target.value);
+									updateNeoConfig({ shadowOffsetX: v, shadowOffsetY: v });
+								}}
+							/>
+							<span className="text-xs text-base-content/50 w-8 text-right">
+								{neoConfig.shadowOffsetX}px
+							</span>
 						</div>
-					</div>
+					</SettingRow>
 
-					{/* Neobrutalist config (visible only when active) */}
-					{isNeo && (
-						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-							{/* Polaroid cards */}
-							<div className="card bg-base-100 shadow-sm">
-								<div className="card-body p-4">
-									<label className="label cursor-pointer justify-start gap-3">
-										<input
-											type="checkbox"
-											className="toggle toggle-secondary"
-											checked={neoConfig.polaroidCards}
-											onChange={(e) =>
-												updateNeoConfig({
-													polaroidCards: e.target.checked,
-												})
-											}
-										/>
-										<div>
-											<div className="text-sm font-medium text-base-content">
-												Polaroid Image Cards
-											</div>
-											<div className="text-xs text-base-content/60">
-												Display wallpaper thumbnails as polaroid-style frames
-											</div>
-										</div>
-									</label>
-								</div>
-							</div>
-
-							{/* Shadow offset */}
-							<div className="card bg-base-100 shadow-sm">
-								<div className="card-body p-4">
-									<label className="label">
-										<span className="text-sm font-medium text-base-content">
-											Shadow Offset
-										</span>
-										<span className="text-xs text-base-content/60">
-											{neoConfig.shadowOffsetX}px
-										</span>
-									</label>
-									<input
-										type="range"
-										min={1}
-										max={6}
-										step={1}
-										className="range range-primary range-xs"
-										value={neoConfig.shadowOffsetX}
-										onChange={(e) => {
-											const v = Number(e.target.value);
-											updateNeoConfig({
-												shadowOffsetX: v,
-												shadowOffsetY: v,
-											});
-										}}
-									/>
-									<div className="text-xs text-base-content/60 mt-1">
-										Hard shadow distance behind elements
-									</div>
-								</div>
-							</div>
-
-							{/* Border width */}
-							<div className="card bg-base-100 shadow-sm">
-								<div className="card-body p-4">
-									<label className="label">
-										<span className="text-sm font-medium text-base-content">
-											Border Width
-										</span>
-										<span className="text-xs text-base-content/60">
-											{neoConfig.borderWidth}px
-										</span>
-									</label>
-									<input
-										type="range"
-										min={1}
-										max={4}
-										step={1}
-										className="range range-primary range-xs"
-										value={neoConfig.borderWidth}
-										onChange={(e) =>
-											updateNeoConfig({
-												borderWidth: Number(e.target.value),
-											})
-										}
-									/>
-									<div className="text-xs text-base-content/60 mt-1">
-										Thickness of element borders
-									</div>
-								</div>
-							</div>
-
-							{/* Corner radius */}
-							<div className="card bg-base-100 shadow-sm">
-								<div className="card-body p-4">
-									<label className="label">
-										<span className="text-sm font-medium text-base-content">
-											Corner Radius
-										</span>
-										<span className="text-xs text-base-content/60">
-											{neoConfig.cornerRadius}rem
-										</span>
-									</label>
-									<input
-										type="range"
-										min={0}
-										max={1}
-										step={0.125}
-										className="range range-primary range-xs"
-										value={neoConfig.cornerRadius}
-										onChange={(e) =>
-											updateNeoConfig({
-												cornerRadius: Number(e.target.value),
-											})
-										}
-									/>
-									<div className="text-xs text-base-content/60 mt-1">
-										0 for sharp corners, higher for rounded
-									</div>
-								</div>
-							</div>
+					<SettingRow
+						label="Border Width"
+						description="Thickness of element borders"
+					>
+						<div className="flex items-center gap-3">
+							<input
+								type="range"
+								min={1}
+								max={4}
+								step={1}
+								className="range range-primary range-sm w-28"
+								value={neoConfig.borderWidth}
+								onChange={(e) =>
+									updateNeoConfig({ borderWidth: Number(e.target.value) })
+								}
+							/>
+							<span className="text-xs text-base-content/50 w-8 text-right">
+								{neoConfig.borderWidth}px
+							</span>
 						</div>
-					)}
-				</div>
-			</div>
-		</div>
+					</SettingRow>
+
+					<SettingRow
+						label="Corner Radius"
+						description="0 for sharp corners, higher for rounded"
+					>
+						<div className="flex items-center gap-3">
+							<input
+								type="range"
+								min={0}
+								max={1}
+								step={0.125}
+								className="range range-primary range-sm w-28"
+								value={neoConfig.cornerRadius}
+								onChange={(e) =>
+									updateNeoConfig({
+										cornerRadius: Number(e.target.value),
+									})
+								}
+							/>
+							<span className="text-xs text-base-content/50 w-12 text-right">
+								{neoConfig.cornerRadius}rem
+							</span>
+						</div>
+					</SettingRow>
+				</>
+			)}
+		</>
+	);
+};
+
+/* ── URL Import Warning Setting (localStorage-backed) ─────────── */
+
+const UrlImportWarningSetting: React.FC = () => {
+	const [skip, setSkip] = useState(
+		() => localStorage.getItem("skipUrlImportWarning") === "true",
+	);
+
+	const toggle = useCallback((checked: boolean) => {
+		setSkip(checked);
+		if (checked) {
+			localStorage.setItem("skipUrlImportWarning", "true");
+		} else {
+			localStorage.removeItem("skipUrlImportWarning");
+		}
+	}, []);
+
+	return (
+		<SettingRow
+			label="Skip URL Import Warning"
+			description="When enabled, images dragged from the browser are imported without a safety prompt"
+		>
+			<input
+				type="checkbox"
+				className="toggle toggle-primary"
+				checked={skip}
+				onChange={(e) => toggle(e.target.checked)}
+			/>
+		</SettingRow>
 	);
 };
 

@@ -5,6 +5,8 @@ import type {
 } from "../../electron/daemon-go-types";
 import type { rendererPlaylist } from "../types/rendererTypes";
 
+const STORAGE_KEY = "waypaper-playlist";
+
 const configurationInitial: PlaylistConfiguration = {
 	type: "timer",
 	interval: 300,
@@ -13,15 +15,36 @@ const configurationInitial: PlaylistConfiguration = {
 	always_start_on_first_image: false,
 };
 
-const initialPlaylistState: rendererPlaylist = {
+const defaultPlaylistState: rendererPlaylist = {
 	images: [],
 	configuration: configurationInitial,
 	name: "",
 };
 
+function loadPersistedPlaylist(): rendererPlaylist {
+	try {
+		const raw = localStorage.getItem(STORAGE_KEY);
+		if (!raw) return defaultPlaylistState;
+		return JSON.parse(raw) as rendererPlaylist;
+	} catch {
+		return defaultPlaylistState;
+	}
+}
+
+function persistPlaylist(playlist: rendererPlaylist) {
+	try {
+		localStorage.setItem(STORAGE_KEY, JSON.stringify(playlist));
+	} catch {
+		/* ignore */
+	}
+}
+
+const initialPlaylistState: rendererPlaylist = loadPersistedPlaylist();
+
 interface State {
 	playlist: rendererPlaylist;
 	isEmpty: boolean;
+	isDirty: boolean;
 	playlistImagesSet: Set<number>;
 	playlistImagesTimeSet: Set<number>;
 	lastAddedImageID: number;
@@ -39,13 +62,27 @@ interface Actions {
 	setEmptyPlaylist: () => void;
 	updateImageTime: (imageId: number, oldTime: number | undefined, newTime: number) => void;
 	swapImageTimes: (imageIdA: number, imageIdB: number) => void;
+	markClean: () => void;
 }
+
+function buildSets(playlist: rendererPlaylist) {
+	const imagesSet = new Set<number>();
+	const timesSet = new Set<number>();
+	for (const img of playlist.images) {
+		imagesSet.add(img.image_id);
+		if (img.time != null) timesSet.add(img.time);
+	}
+	return { imagesSet, timesSet };
+}
+
+const _initial = buildSets(initialPlaylistState);
 
 export const usePlaylistStore = create<State & Actions>()((set, get) => ({
 	playlist: initialPlaylistState,
-	isEmpty: true,
-	playlistImagesSet: new Set<number>(),
-	playlistImagesTimeSet: new Set<number>(),
+	isEmpty: initialPlaylistState.images.length === 0,
+	isDirty: false,
+	playlistImagesSet: _initial.imagesSet,
+	playlistImagesTimeSet: _initial.timesSet,
 	lastAddedImageID: -1,
 
 	addImagesToPlaylist: (imageIds: number[]) => {
@@ -89,9 +126,11 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
 		set((state) => {
 			const newImages = [...state.playlist.images, ...imagesToAdd];
 			const newPlaylist = { ...state.playlist, images: newImages };
+			persistPlaylist(newPlaylist);
 			return {
 				playlist: newPlaylist,
 				isEmpty: false,
+				isDirty: true,
 				playlistImagesSet: new Set(playlistImagesSet),
 				playlistImagesTimeSet: new Set(playlistImagesTimeSet),
 				lastAddedImageID: newPlaylist.images.at(-1)?.image_id || -1,
@@ -100,21 +139,27 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
 	},
 
 	setConfiguration: (newConfiguration) => {
-		set((state) => ({
-			playlist: { ...state.playlist, configuration: newConfiguration },
-		}));
+		set((state) => {
+			const newPlaylist = { ...state.playlist, configuration: newConfiguration };
+			persistPlaylist(newPlaylist);
+			return { playlist: newPlaylist, isDirty: true };
+		});
 	},
 
 	setName: (newName) => {
-		set((state) => ({
-			playlist: { ...state.playlist, name: newName },
-		}));
+		set((state) => {
+			const newPlaylist = { ...state.playlist, name: newName };
+			persistPlaylist(newPlaylist);
+			return { playlist: newPlaylist, isDirty: true };
+		});
 	},
 
 	movePlaylistArrayOrder: (newlyOrderedArray) => {
-		set((state) => ({
-			playlist: { ...state.playlist, images: newlyOrderedArray },
-		}));
+		set((state) => {
+			const newPlaylist = { ...state.playlist, images: newlyOrderedArray };
+			persistPlaylist(newPlaylist);
+			return { playlist: newPlaylist, isDirty: true };
+		});
 	},
 
 	removeImagesFromPlaylist: (imageIds) => {
@@ -133,8 +178,11 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
 				return shouldKeep;
 			});
 
+			const newPlaylist = { ...state.playlist, images: newImagesArray };
+			persistPlaylist(newPlaylist);
 			return {
-				playlist: { ...state.playlist, images: newImagesArray },
+				playlist: newPlaylist,
+				isDirty: true,
 				playlistImagesSet: newImagesSet,
 				playlistImagesTimeSet: newTimesSet,
 			};
@@ -142,9 +190,11 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
 	},
 
 	clearPlaylist: () => {
+		persistPlaylist(defaultPlaylistState);
 		set(() => ({
-			playlist: initialPlaylistState,
+			playlist: defaultPlaylistState,
 			isEmpty: true,
+			isDirty: false,
 			playlistImagesSet: new Set<number>(),
 			playlistImagesTimeSet: new Set<number>(),
 			lastAddedImageID: -1,
@@ -176,18 +226,22 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
 			newPlaylistImagesTimeSet.add(img.time);
 		});
 
+		persistPlaylist(newPlaylist);
 		set(() => ({
 			playlist: newPlaylist,
 			isEmpty: false,
+			isDirty: false,
 			playlistImagesSet: newPlaylistImagesSet,
 			playlistImagesTimeSet: newPlaylistImagesTimeSet,
 		}));
 	},
 
 	setEmptyPlaylist: () => {
+		persistPlaylist(defaultPlaylistState);
 		set(() => ({
-			playlist: initialPlaylistState,
+			playlist: defaultPlaylistState,
 			isEmpty: true,
+			isDirty: false,
 			playlistImagesSet: new Set<number>(),
 			playlistImagesTimeSet: new Set<number>(),
 			lastAddedImageID: -1,
@@ -206,11 +260,18 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
 				img.image_id === imageId ? { ...img, time: newTime } : img,
 			);
 
+			const newPlaylist = { ...state.playlist, images: newImages };
+			persistPlaylist(newPlaylist);
 			return {
-				playlist: { ...state.playlist, images: newImages },
+				playlist: newPlaylist,
+				isDirty: true,
 				playlistImagesTimeSet: newTimeSet,
 			};
 		});
+	},
+
+	markClean: () => {
+		set({ isDirty: false });
 	},
 
 	swapImageTimes: (imageIdA, imageIdB) => {
@@ -232,8 +293,11 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
 				return img;
 			});
 
+			const newPlaylist = { ...state.playlist, images: newImages };
+			persistPlaylist(newPlaylist);
 			return {
-				playlist: { ...state.playlist, images: newImages },
+				playlist: newPlaylist,
+				isDirty: true,
 			};
 		});
 	},
