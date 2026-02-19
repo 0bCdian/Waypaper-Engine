@@ -9,27 +9,56 @@
 
 ### _A wallpaper setter gui, developed with ricing in mind!_ 🍚
 
-**[<kbd> <br> Why <br>  </kbd>](#why)**
-**[<kbd> <br> How to install <br> </kbd>](#install)**
-**[<kbd> <br> Usage <br> </kbd>](#usage)**
-**[<kbd> <br> TODO <br> </kbd>](#todo)**
-**[<kbd> <br> Gallery <br> </kbd>](#gallery)**
-**[<kbd> <br> Special Thanks <br> </kbd>](#special-thanks)**
+**[<kbd> <br> Why <br>  </kbd>](#why)**
+**[<kbd> <br> How to install <br> </kbd>](#install)**
+**[<kbd> <br> Usage <br> </kbd>](#usage)**
+**[<kbd> <br> TODO <br> </kbd>](#todo)**
+**[<kbd> <br> Gallery <br> </kbd>](#gallery)**
+**[<kbd> <br> Special Thanks <br> </kbd>](#special-thanks)**
 
 </div>
 
-# Features
+> [!IMPORTANT]
+> **Project Status:** This project was inactive for a while as I moved into a DevOps engineering role and didn't have the time to maintain it. I've recently come back to active development and the project is undergoing a major rewrite. **Waypaper Engine is not abandoned or archived** — it's being rebuilt from the ground up with a new Go daemon backend, pluggable wallpaper backend support, and a modernized UI. The current `main` branch reflects the older codebase; the rewrite is happening on the `refactor/wayaper-daemon` branch and will be merged once stable. Expect breaking changes, new features, and updated install instructions when the rewrite lands.
+
+# What's New (v3 Rewrite)
+
+The rewrite replaces the old Node.js backend with a Go daemon and overhauls the frontend. Here's what's been implemented so far:
+
+### Architecture
+-   **Go daemon backend** — A standalone Go service that handles all wallpaper, playlist, image, and monitor operations over a Unix socket HTTP API. Replaces the old Node.js/SQLite backend entirely. No more node dependency issues breaking the app.
+-   **Pluggable wallpaper backends** — Support for [swww](https://github.com/LGFae/swww), [hyprpaper](https://github.com/hyprwm/hyprpaper), [feh](https://feh.finalrewind.org/), and many more to come, with a registry that allows runtime switching. No longer locked to swww, and laying the ground work for my next project, a wallpaper setter that can render animations just like lively wallpaper or waypaper engine! :).
+-   **CloverDB storage** — Lightweight embedded database replacing SQLite, managed entirely by the daemon.
+-   **Server-Sent Events (SSE)** — Real-time event streaming from daemon to frontend for image processing progress, wallpaper changes, playlist updates, and config changes.
+-   **Cobra CLI** — Full CLI (`start`, `stop`, `status`, `set`, `random`, `next`, `previous`, image/playlist/monitor/backend/config management) that talks to the running daemon over the socket.
+
+### Features
+-   **Image renaming** — Rename images from the gallery (inline or detail sidebar), with automatic deduplication and physical file rename on disk. Playlists are unaffected since they reference images by stable IDs.
+-   **Wallhaven integration** — Search, browse, and download wallpapers from [Wallhaven](https://wallhaven.cc/) directly into your gallery.
+-   **URL/drag-and-drop import** — Drop image URLs or files onto the window to import them. HTTP(S) URLs are downloaded automatically.
+-   **Image detail sidebar** — View metadata, edit tags with autocomplete, and rename images from a slide-over panel.
+-   **Context menus** — Right-click context menus throughout the gallery with wallpaper setting, playlist management, selection, rename, delete, and file manager integration.
+-   **Multi-resolution thumbnails** — Automatic thumbnail generation at multiple resolutions (720p, 1080p, 1440p, 4K) for fast gallery rendering.
+-   **Monitor auto-detection** — Native detection via hyprctl, swaymsg, wlr-randr, or xrandr depending on the compositor, with manual override support.
+-   **Wallpaper history** — Per-monitor history log with forward/back navigation.
+
+### UI
+-   **Neobrutalist design mode** — Optional design mode with configurable shadow offsets, border widths, corner radius, and polaroid-style image cards. Toggleable alongside the standard DaisyUI look.
+-   **Expanded theme library** — 30+ themes including Gruvbox, Catppuccin, Tokyo Night, Nord, Dracula, Rosé Pine, Everforest, and more, on top of all DaisyUI built-in themes.
+-   **Modernized layout** — Drawer-based navigation with sidebar, image processing progress overlay, toast notifications, and confirm dialogs.
+
+### Current Status
+
+https://www.youtube.com/watch?v=tVfqcAUs8ME
+
+# Legacy Features
+
+These features carry over from the original version:
 
 -   Multi monitor support.
--   Four different types of playlists (Time of day, daily,interval based or static).
--   Easy configuration of all [swww](https://github.com/Horus645/swww) options.
+-   Four different types of playlists (Time of day, daily, interval based or static).
 -   Tray controls.
--   CLI Support.
--   All of [swww](https://github.com/Horus645/swww) features such as wallpaper change animations and wallpaper persistance through reboots.
--   Filter images by format, resolution,name,etc.
--   Run scripts on image set.
-    <br>
-    <br>
+-   Filter images by format, resolution, name, etc.
 
 ---
 
