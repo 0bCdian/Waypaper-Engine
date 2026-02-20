@@ -140,6 +140,7 @@ export const useSettingsStore = create<SettingsStore>()(
 										: existing.backend?.swww,
 								},
 								monitors: { ...existing.monitors, ...incoming.monitors },
+								wallhaven: { ...existing.wallhaven, ...incoming.wallhaven },
 							}
 						: incoming;
 						set({

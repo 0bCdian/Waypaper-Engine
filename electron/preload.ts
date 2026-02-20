@@ -318,13 +318,22 @@ const electronAPI = {
 	// ============================================================================
 	wallhaven: {
 		search: (params: Record<string, string>): Promise<unknown> =>
-			ipcRenderer.invoke("wallhaven-search", params),
+			ipcRenderer.invoke("wallhaven-search", params).then((r: { success: boolean; data: unknown; error?: string }) => {
+				if (!r.success) throw new Error(r.error ?? "Wallhaven search failed");
+				return r.data;
+			}),
 
 		getWallpaper: (id: string, apikey?: string): Promise<unknown> =>
-			ipcRenderer.invoke("wallhaven-wallpaper", id, apikey),
+			ipcRenderer.invoke("wallhaven-wallpaper", id, apikey).then((r: { success: boolean; data: unknown; error?: string }) => {
+				if (!r.success) throw new Error(r.error ?? "Wallhaven wallpaper fetch failed");
+				return r.data;
+			}),
 
 		download: (imageUrl: string): Promise<string> =>
-			ipcRenderer.invoke("wallhaven-download", imageUrl),
+			ipcRenderer.invoke("wallhaven-download", imageUrl).then((r: { success: boolean; data: string; error?: string }) => {
+				if (!r.success) throw new Error(r.error ?? "Wallhaven download failed");
+				return r.data;
+			}),
 	},
 
 	// ============================================================================
