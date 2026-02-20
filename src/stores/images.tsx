@@ -31,6 +31,7 @@ const initialFilters: Filters = {
 			width: 0,
 			height: 0,
 		},
+		colors: [],
 	},
 };
 

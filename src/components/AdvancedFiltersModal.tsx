@@ -53,6 +53,7 @@ const AdvancedFiltersModal = () => {
 				height: parsedHeight,
 				constraint: resolutionConstraint,
 			},
+			colors: filters.advancedFilters.colors ?? [],
 		};
 		console.log(data, formatsArray, formats);
 		setFilters({ ...filters, advancedFilters });

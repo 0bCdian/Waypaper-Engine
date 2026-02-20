@@ -36,6 +36,8 @@ type ImageQueryOpts struct {
 	Search string
 	// Filter by tags (all must match). Empty = no filter.
 	Tags []string
+	// Filter by colors (any must match). Empty = no filter.
+	Colors []string
 }
 
 // HistoryQueryOpts controls filtering and pagination for history queries.
@@ -145,6 +147,9 @@ type HistoryStore interface {
 
 	// Count returns the total number of history entries.
 	Count(ctx context.Context) (int, error)
+
+	// Clear removes all history entries and resets the ID sequence.
+	Clear(ctx context.Context) error
 }
 
 // ---------------------------------------------------------------------------

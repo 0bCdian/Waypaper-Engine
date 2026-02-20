@@ -66,6 +66,13 @@ func (s *imageStore) GetAll(_ context.Context, opts ImageQueryOpts) (*PaginatedR
 		}
 	}
 
+	if len(opts.Colors) > 0 {
+		for _, color := range opts.Colors {
+			c := query.Field("colors").Contains(color)
+			criteria = chainAnd(criteria, c)
+		}
+	}
+
 	// Sorting.
 	sortField := "imported_at"
 	if opts.SortBy != "" {
@@ -208,6 +215,7 @@ func (s *imageStore) Create(_ context.Context, images []Image) ([]Image, error) 
 		doc.Set("file_size", img.FileSize)
 		doc.Set("checksum", img.Checksum)
 		doc.Set("tags", img.Tags)
+		doc.Set("colors", img.Colors)
 		doc.Set("imported_at", img.ImportedAt)
 		doc.Set("source_path", img.SourcePath)
 		doc.Set("is_selected", img.IsSelected)

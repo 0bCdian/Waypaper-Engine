@@ -69,6 +69,10 @@ type Image struct {
 	// Tags is a user-defined list of labels for organization and filtering.
 	Tags []string `json:"tags"`
 
+	// Colors is a list of hex color strings representing the image's dominant color palette.
+	// Populated from Wallhaven metadata on download, or extracted locally via k-means.
+	Colors []string `json:"colors"`
+
 	// ImportedAt is when the image was added to the gallery.
 	ImportedAt time.Time `json:"imported_at"`
 
@@ -89,6 +93,7 @@ type Image struct {
 type ImageUpdate struct {
 	Name       *string   `json:"name,omitempty"`
 	Tags       *[]string `json:"tags,omitempty"`
+	Colors     *[]string `json:"colors,omitempty"`
 	IsSelected *bool     `json:"is_selected,omitempty"`
 }
 

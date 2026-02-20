@@ -21,7 +21,42 @@ interface Field {
 	placeholder?: string;
 }
 
-const swwwFields: Field[] = [
+const swwwDisplayFields: Field[] = [
+	{
+		key: "swww.resize",
+		label: "Resize Mode",
+		description: "How the image is fitted to the monitor",
+		type: "select",
+		options: [
+			{ value: "crop", label: "Crop (cover, preserve aspect ratio)" },
+			{ value: "fit", label: "Fit (contain, letterbox)" },
+			{ value: "no", label: "No Resize (native resolution)" },
+			{ value: "stretch", label: "Stretch (fill, ignore aspect ratio)" },
+		],
+	},
+	{
+		key: "swww.fill_color",
+		label: "Fill Color",
+		description: 'Color for empty space when resize is "Fit" (hex without #)',
+		type: "text",
+		placeholder: "000000",
+	},
+	{
+		key: "swww.filter_type",
+		label: "Filter Type",
+		description: "Resampling filter used when resizing images",
+		type: "select",
+		options: [
+			{ value: "Lanczos3", label: "Lanczos3" },
+			{ value: "Bilinear", label: "Bilinear" },
+			{ value: "CatmullRom", label: "CatmullRom" },
+			{ value: "Mitchell", label: "Mitchell" },
+			{ value: "Nearest", label: "Nearest" },
+		],
+	},
+];
+
+const swwwTransitionFields: Field[] = [
 	{
 		key: "swww.transition_type",
 		label: "Transition Type",
@@ -112,42 +147,26 @@ const swwwFields: Field[] = [
 		step: 1,
 	},
 	{
-		key: "swww.resize",
-		label: "Resize Mode",
-		description: "How the image is fitted to the monitor",
-		type: "select",
-		options: [
-			{ value: "crop", label: "Crop" },
-			{ value: "fit", label: "Fit" },
-			{ value: "no", label: "No Resize" },
-			{ value: "stretch", label: "Stretch" },
-		],
-	},
-	{
-		key: "swww.fill_color",
-		label: "Fill Color",
-		description: 'Color for empty space when resize is "fit" (hex without #)',
-		type: "text",
-		placeholder: "000000",
-	},
-	{
-		key: "swww.filter_type",
-		label: "Filter Type",
-		description: "Resampling filter used when resizing images",
-		type: "select",
-		options: [
-			{ value: "Lanczos3", label: "Lanczos3" },
-			{ value: "Bilinear", label: "Bilinear" },
-			{ value: "CatmullRom", label: "CatmullRom" },
-			{ value: "Mitchell", label: "Mitchell" },
-			{ value: "Nearest", label: "Nearest" },
-		],
-	},
-	{
 		key: "swww.invert_y",
 		label: "Invert Y",
 		description: "Invert the y-axis for transition animations",
 		type: "checkbox",
+	},
+];
+
+const fehDisplayFields: Field[] = [
+	{
+		key: "feh.mode",
+		label: "Display Mode",
+		description: "How the image is fitted to the screen",
+		type: "select",
+		options: [
+			{ value: "fill", label: "Fill (cover + crop)" },
+			{ value: "scale", label: "Scale (fit, letterbox)" },
+			{ value: "tile", label: "Tile (repeat)" },
+			{ value: "center", label: "Center (no scaling)" },
+			{ value: "max", label: "Max (fit + fill remainder)" },
+		],
 	},
 ];
 
@@ -176,6 +195,10 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 			const swwwKey = key.replace("swww.", "");
 			const swwwData = { ...(config?.backend?.swww ?? {}), [swwwKey]: value };
 			await saveConfigSection(section, swwwData);
+		} else if (key.startsWith("feh.")) {
+			const fehKey = key.replace("feh.", "");
+			const fehData = { ...(config?.backend?.feh ?? {}), [fehKey]: value };
+			await saveConfigSection(section, fehData);
 		} else {
 			await saveConfigSection(section, { [key]: value });
 		}
@@ -185,11 +208,18 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 		errors.find((e) => e.section === section && e.key === key)?.message;
 
 	const renderField = (field: Field) => {
-		const raw = field.key.startsWith("swww.")
-			? config?.backend?.swww?.[
-					field.key.replace("swww.", "") as keyof typeof config.backend.swww
-				]
-			: config?.backend?.[field.key as keyof typeof config.backend];
+		let raw: unknown;
+		if (field.key.startsWith("swww.")) {
+			raw = config?.backend?.swww?.[
+				field.key.replace("swww.", "") as keyof NonNullable<typeof config.backend.swww>
+			];
+		} else if (field.key.startsWith("feh.")) {
+			raw = config?.backend?.feh?.[
+				field.key.replace("feh.", "") as keyof NonNullable<typeof config.backend.feh>
+			];
+		} else {
+			raw = config?.backend?.[field.key as keyof typeof config.backend];
+		}
 
 		if (field.type === "checkbox") {
 			return (
@@ -219,7 +249,7 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 				>
 					<select
 						className={cn(
-							"select select-bordered select-sm w-44",
+							"select select-bordered select-sm w-full lg:w-44",
 							fieldError(field.key) && "select-error",
 						)}
 						value={(raw as string) ?? ""}
@@ -246,7 +276,7 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 					<input
 						type="number"
 						className={cn(
-							"input input-bordered input-sm w-28",
+							"input input-bordered input-sm w-full lg:w-28",
 							fieldError(field.key) && "input-error",
 						)}
 						value={(raw as number) ?? 0}
@@ -271,7 +301,7 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 				<input
 					type="text"
 					className={cn(
-						"input input-bordered input-sm w-48",
+						"input input-bordered input-sm w-full lg:w-48",
 						fieldError(field.key) && "input-error",
 					)}
 					value={(raw as string) ?? ""}
@@ -332,17 +362,19 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 			{/* ── swww settings ───────────────────────────────── */}
 			{backendType === "swww" && (
 				<>
-					<SettingSectionHeader title="swww Transitions" />
-					{swwwFields.map(renderField)}
+					<SettingSectionHeader title="Image Display" />
+					{swwwDisplayFields.map(renderField)}
+					<SettingSectionHeader title="Transitions" />
+					{swwwTransitionFields.map(renderField)}
 				</>
 			)}
 
-			{/* ── Info banners for other backends ─────────────── */}
+			{/* ── feh settings ──────────────────────────────────── */}
 			{backendType === "feh" && (
-				<div className="mt-4 rounded-lg bg-info/10 px-4 py-3 text-sm text-info">
-					feh backend selected. Additional feh-specific settings will be
-					available in a future update.
-				</div>
+				<>
+					<SettingSectionHeader title="Image Display" />
+					{fehDisplayFields.map(renderField)}
+				</>
 			)}
 			{backendType === "nitrogen" && (
 				<div className="mt-4 rounded-lg bg-info/10 px-4 py-3 text-sm text-info">

@@ -148,7 +148,7 @@ function ImageDetailSidebar() {
 		<>
 		{/* Overlay backdrop — click to close, same as left drawer */}
 		<div
-			className={`fixed inset-0 z-30 bg-black/20 transition-opacity duration-300 ${
+			className={`fixed inset-0 z-40 bg-black/20 transition-opacity duration-300 ${
 				isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
 			}`}
 			onClick={close}
@@ -158,7 +158,7 @@ function ImageDetailSidebar() {
 			aria-label="close sidebar"
 		/>
 		<div
-			className={`fixed inset-y-0 right-0 z-40 flex w-80 flex-col border-l border-base-300 bg-base-200 shadow-xl transition-transform duration-300 ease-in-out ${
+			className={`fixed inset-y-0 right-0 z-50 flex w-full lg:w-80 flex-col border-l border-base-300 bg-base-200 shadow-xl transition-transform duration-300 ease-in-out ${
 				isOpen ? "translate-x-0" : "translate-x-full"
 			} ${isNeo ? "neo-card" : ""}`}
 		>
@@ -229,6 +229,27 @@ function ImageDetailSidebar() {
 							{formatFileSize(selectedImage.file_size)}
 						</p>
 					</div>
+
+					{/* Color Palette */}
+					{selectedImage.colors && selectedImage.colors.length > 0 && (
+						<div className="space-y-1">
+							<label className="text-xs font-semibold uppercase tracking-wide text-base-content/60">
+								Colors
+							</label>
+							<div className="flex flex-wrap gap-1.5">
+								{selectedImage.colors.map((c) => (
+									<div
+										key={c}
+										className="w-6 h-6 rounded border border-base-content/20 cursor-pointer tooltip"
+										style={{ backgroundColor: c }}
+										data-tip={c}
+										title={c}
+										onClick={() => void navigator.clipboard.writeText(c)}
+									/>
+								))}
+							</div>
+						</div>
+					)}
 
 					{/* Tags */}
 					<div className="space-y-2">

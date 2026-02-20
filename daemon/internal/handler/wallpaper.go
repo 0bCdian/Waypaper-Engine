@@ -157,6 +157,33 @@ func (h *WallpaperHandler) HistoryPrevious(w http.ResponseWriter, r *http.Reques
 	WriteError(w, http.StatusNotImplemented, "history navigation not yet implemented")
 }
 
+// GetCurrent handles GET /wallpaper/current.
+// Returns the persisted per-monitor wallpaper state from monitorStateStore,
+// which is independent of the history collection and survives history clearing.
+func (h *WallpaperHandler) GetCurrent(w http.ResponseWriter, r *http.Request) {
+	states, err := h.monitorStateStore.GetAll(r.Context())
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	WriteJSON(w, http.StatusOK, states)
+}
+
+// ClearHistory handles DELETE /images/history.
+func (h *WallpaperHandler) ClearHistory(w http.ResponseWriter, r *http.Request) {
+	if err := h.historyStore.Clear(r.Context()); err != nil {
+		WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	h.bus.Publish(events.Event{
+		Type: events.HistoryCleared,
+		Data: map[string]any{},
+	})
+
+	WriteJSON(w, http.StatusOK, map[string]any{"status": "cleared"})
+}
+
 // GetHistory handles GET /wallpaper/history.
 func (h *WallpaperHandler) GetHistory(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()

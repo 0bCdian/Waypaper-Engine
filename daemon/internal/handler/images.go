@@ -50,6 +50,10 @@ func (h *ImageHandler) List(w http.ResponseWriter, r *http.Request) {
 		opts.Tags = strings.Split(tags, ",")
 	}
 
+	if colors := q.Get("colors"); colors != "" {
+		opts.Colors = strings.Split(colors, ",")
+	}
+
 	result, err := h.store.GetAll(r.Context(), opts)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, err.Error())
@@ -122,7 +126,7 @@ func (h *ImageHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Only allow mutable fields.
-	allowed := map[string]bool{"name": true, "tags": true, "is_selected": true}
+	allowed := map[string]bool{"name": true, "tags": true, "colors": true, "is_selected": true}
 	for key := range updates {
 		if !allowed[key] {
 			WriteErrorf(w, http.StatusBadRequest, "field %q is not updatable", key)
@@ -140,6 +144,19 @@ func (h *ImageHandler) Update(w http.ResponseWriter, r *http.Request) {
 				}
 			}
 			updates["tags"] = tags
+		}
+	}
+
+	// Normalize colors from []interface{} to []string.
+	if colorsRaw, ok := updates["colors"]; ok {
+		if arr, ok := colorsRaw.([]interface{}); ok {
+			colors := make([]string, 0, len(arr))
+			for _, v := range arr {
+				if str, ok := v.(string); ok {
+					colors = append(colors, str)
+				}
+			}
+			updates["colors"] = colors
 		}
 	}
 

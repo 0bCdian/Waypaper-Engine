@@ -26,6 +26,7 @@ import type {
 	SetWallpaperRequest,
 	SetWallpaperResponse,
 	MonitorMode,
+	MonitorState,
 	EventType,
 } from "./daemon-go-types";
 
@@ -100,7 +101,9 @@ export class GoDaemonClient extends EventEmitter {
 			});
 
 			if (body !== undefined) {
-				req.write(JSON.stringify(body));
+				const jsonBody = JSON.stringify(body);
+				req.setHeader("Content-Length", Buffer.byteLength(jsonBody));
+				req.write(jsonBody);
 			}
 
 			req.end();
@@ -295,6 +298,7 @@ export class GoDaemonClient extends EventEmitter {
 		if (params?.media_type) query.set("media_type", params.media_type);
 		if (params?.search) query.set("search", params.search);
 		if (params?.tags) query.set("tags", params.tags);
+		if (params?.colors) query.set("colors", params.colors);
 		const qs = query.toString();
 		const path = qs ? `/images?${qs}` : "/images";
 		return this.request<PaginatedResponse<Image>>("GET", path);
@@ -359,9 +363,17 @@ export class GoDaemonClient extends EventEmitter {
 		return this.request<ImageHistoryEntry[]>("GET", path);
 	}
 
+	async clearImageHistory(): Promise<{ status: string }> {
+		return this.request<{ status: string }>("DELETE", "/images/history");
+	}
+
 	// ============================================================================
 	// WALLPAPER
 	// ============================================================================
+
+	async getCurrentWallpapers(): Promise<MonitorState[]> {
+		return this.request<MonitorState[]>("GET", "/wallpaper/current");
+	}
 
 	async setWallpaper(
 		imageId: number,

@@ -673,6 +673,48 @@ code {
 	color-scheme: light;
 }
 
+/* ── Global thin-to-expand scrollbar ──────────────────────────
+   Reserves full width at all times (no layout shift) but uses
+   transparent borders so the visible thumb is thin when idle.
+   On container hover the thumb expands to fill the track.
+   ─────────────────────────────────────────────────────────── */
+::-webkit-scrollbar {
+	width: 14px;
+	height: 14px;
+}
+
+::-webkit-scrollbar-track {
+	background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+	background: oklch(from var(--color-base-content) l c h / 0.12);
+	border: 5px solid transparent;
+	background-clip: padding-box;
+	border-radius: 7px;
+}
+
+::-webkit-scrollbar-corner {
+	background: transparent;
+}
+
+:hover::-webkit-scrollbar-thumb {
+	background: oklch(from var(--color-base-content) l c h / 0.25);
+	border: 3px solid transparent;
+	background-clip: padding-box;
+	border-radius: 5px;
+}
+
+:hover::-webkit-scrollbar-thumb:hover {
+	background: oklch(from var(--color-base-content) l c h / 0.4);
+	border: 2px solid transparent;
+	background-clip: padding-box;
+}
+
+:hover::-webkit-scrollbar-thumb:active {
+	background: oklch(from var(--color-base-content) l c h / 0.55);
+}
+
 /* Custom scrollbar styling for themes */
 .theme-scrollbar {
 	scrollbar-width: thin;

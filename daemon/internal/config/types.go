@@ -103,4 +103,7 @@ type WallhavenConfig struct {
 
 	// Enabled controls whether the Wallhaven integration is active.
 	Enabled bool `mapstructure:"enabled" json:"enabled"`
+
+	// ScrollMode controls the browsing mode: "paginated" for page-by-page or "infinite" for auto-loading.
+	ScrollMode string `mapstructure:"scroll_mode" json:"scroll_mode"`
 }

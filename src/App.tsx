@@ -17,6 +17,7 @@ const Home = lazy(() => import("./routes/Home"));
 const Settings = lazy(() => import("./routes/Settings"));
 const Configuration = lazy(() => import("./routes/Configuration"));
 const Wallhaven = lazy(() => import("./routes/Wallhaven"));
+const History = lazy(() => import("./routes/History"));
 
 const App = () => {
 	useLoadAppConfig()();
@@ -39,6 +40,7 @@ const App = () => {
 							<Route path="/configuration" element={<Configuration />} />
 							<Route path="/settings" element={<Settings />} />
 							<Route path="/wallhaven" element={<Wallhaven />} />
+							<Route path="/history" element={<History />} />
 						</Routes>
 					</Suspense>
 				</ModernAppLayout>

@@ -191,6 +191,14 @@ func (p *Processor) processOne(ctx context.Context, sourcePath string) (*store.I
 		return nil, fmt.Errorf("copy file: %w", err)
 	}
 
+	// Extract dominant colors (non-fatal if it fails).
+	colors, err := ExtractPalette(destPath, 5)
+	if err != nil {
+		slog.Warn("color palette extraction failed, continuing without colors",
+			"path", destPath, "error", err)
+		colors = []string{}
+	}
+
 	// Create the image record (without thumbnails first to get an ID).
 	imgs, err := p.imageStore.Create(ctx, []store.Image{{
 		Name:       strings.TrimSuffix(name, ext),
@@ -202,6 +210,7 @@ func (p *Processor) processOne(ctx context.Context, sourcePath string) (*store.I
 		FileSize:   info.Size(),
 		Checksum:   "sha256:" + checksum,
 		Tags:       []string{},
+		Colors:     colors,
 		ImportedAt: time.Now(),
 		SourcePath: sourcePath,
 		IsSelected: false,

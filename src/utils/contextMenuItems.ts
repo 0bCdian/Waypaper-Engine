@@ -4,6 +4,7 @@ import type { Monitor, PlaylistImage } from "../../electron/daemon-go-types";
 import { useImagesStore } from "../stores/images";
 import { usePlaylistStore } from "../stores/playlist";
 import { useImageDetailStore } from "../stores/imageDetailStore";
+import { useHistoryStore } from "../stores/historyStore";
 import { confirmDialog } from "../components/ConfirmDialog";
 import openImagesStore from "../hooks/useOpenImages";
 import type { Image } from "../../electron/daemon-go-types";
@@ -139,7 +140,7 @@ function globalItems(selectedCount: number): MenuItem[] {
 		{
 			type: "submenu",
 			label: "Images per page",
-			children: [20, 50, 100, 200].map((count) => ({
+			children: [10, 20, 30, 50, 75, 100, 150, 200].map((count) => ({
 				type: "action" as const,
 				label: String(count),
 				onClick: () => {
@@ -153,6 +154,23 @@ function globalItems(selectedCount: number): MenuItem[] {
 			})),
 		},
 	];
+
+	items.push({ type: "separator" });
+	items.push({
+		type: "action",
+		label: "Clear wallpaper history",
+		danger: true,
+		onClick: async () => {
+			const confirmed = await confirmDialog({
+				title: "Clear wallpaper history",
+				message:
+					"Are you sure you want to delete all wallpaper history? This cannot be undone.",
+				confirmLabel: "Clear all",
+				danger: true,
+			});
+			if (confirmed) void useHistoryStore.getState().clearHistory();
+		},
+	});
 
 	if (selectedCount > 0) {
 		items.unshift(...selectionItems(selectedCount), { type: "separator" });

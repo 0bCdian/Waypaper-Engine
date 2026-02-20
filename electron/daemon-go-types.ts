@@ -38,6 +38,7 @@ export interface ImageQueryParams {
 	media_type?: "image" | "video" | "gif";
 	search?: string;
 	tags?: string;
+	colors?: string;
 }
 
 // ============================================================================
@@ -55,6 +56,7 @@ export interface Image {
 	file_size: number;
 	checksum: string;
 	tags: string[];
+	colors: string[];
 	imported_at: string;
 	source_path: string;
 	is_selected: boolean;
@@ -97,6 +99,16 @@ export interface ImageHistorySource {
 // ============================================================================
 // MONITOR TYPES
 // ============================================================================
+
+export interface MonitorState {
+	monitor_name: string;
+	image_id: number;
+	image_name: string;
+	image_path: string;
+	mode: string;
+	backend: string;
+	set_at: string;
+}
 
 export type MonitorMode = "individual" | "clone" | "extend";
 
@@ -209,6 +221,7 @@ export interface DaemonConfig {
 export interface BackendSection {
 	type: string;
 	swww?: SwwwConfig;
+	feh?: FehConfig;
 }
 
 export interface SwwwConfig {
@@ -226,6 +239,10 @@ export interface SwwwConfig {
 	invert_y: boolean;
 }
 
+export interface FehConfig {
+	mode: string;
+}
+
 export interface MonitorsConfig {
 	selected_monitors: string[];
 	image_set_type: MonitorMode;
@@ -234,6 +251,7 @@ export interface MonitorsConfig {
 export interface WallhavenConfig {
 	api_key: string;
 	enabled: boolean;
+	scroll_mode: "paginated" | "infinite";
 }
 
 export interface UnifiedConfig {
@@ -308,6 +326,8 @@ export type EventType =
 	| "monitor_disconnected"
 	// Config Events
 	| "config_changed"
+	// History Events
+	| "history_cleared"
 	// Gallery Events
 	| "images_updated"
 	| "playlists_updated"
@@ -413,6 +433,7 @@ export interface UpdatePlaylistRequest {
 export interface UpdateImageRequest {
 	name?: string;
 	tags?: string[];
+	colors?: string[];
 	is_selected?: boolean;
 }
 

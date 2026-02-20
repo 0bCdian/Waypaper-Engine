@@ -12,7 +12,8 @@ function Gallery() {
 	const hasActiveFilters =
 		filters.searchString !== "" ||
 		filters.advancedFilters.formats.length < 10 ||
-		filters.advancedFilters.resolution.constraint !== "all";
+		filters.advancedFilters.resolution.constraint !== "all" ||
+		(filters.advancedFilters.colors?.length ?? 0) > 0;
 	if (isEmpty && isQueried && !hasActiveFilters)
 		return (
 			<div className="h-full flex flex-col items-center justify-center p-4">
@@ -20,7 +21,7 @@ function Gallery() {
 			</div>
 		);
 	return (
-		<div className="h-full flex flex-col">
+		<div className="h-full flex flex-col overflow-hidden">
 			<Filters />
 			<PaginatedGallery />
 		</div>

@@ -51,7 +51,7 @@ function PaginatedGallery() {
 				</div>
 
 				{/* Pinned bottom: pagination + playlist track */}
-				<div className={`shrink-0 flex w-full flex-col justify-between gap-4 px-4 pt-3 pb-2${isNeo ? " neo-bottom-dock" : ""}`}>
+				<div className={`shrink-0 flex w-full min-w-0 flex-col justify-between gap-4 px-2 lg:px-4 pt-3 pb-2 overflow-hidden${isNeo ? " neo-bottom-dock" : ""}`}>
 					<div className="self-center flex flex-col items-center gap-2">
 						<ResponsivePagination
 							total={totalPages}

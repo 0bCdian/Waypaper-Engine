@@ -467,8 +467,12 @@ export class IPCManager {
 						p?.limit as number | undefined,
 						p?.monitor as string | undefined,
 					);
+				case "clear_image_history":
+					return await goDaemonClient.clearImageHistory();
 
 				// WALLPAPER
+				case "get_current_wallpapers":
+					return await goDaemonClient.getCurrentWallpapers();
 				case "set_wallpaper":
 					return await goDaemonClient.setWallpaper(
 						p?.image_id as number,
@@ -587,6 +591,7 @@ export class IPCManager {
 			"monitor_connected",
 			"monitor_disconnected",
 			"config_changed",
+			"history_cleared",
 			"images_updated",
 			"playlists_updated",
 		];

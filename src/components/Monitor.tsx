@@ -26,10 +26,11 @@ export function MonitorComponent({
 	const fetchWallpaperPreview = () => {
 		setIsLoading(true);
 		goDaemon
-			.getImageHistory(1, monitor.name)
-			.then((history) => {
-				if (history.length > 0) {
-					return goDaemon.getImage(history[0].image_id);
+			.getCurrentWallpapers()
+			.then((states) => {
+				const state = states.find((s) => s.monitor_name === monitor.name);
+				if (state) {
+					return goDaemon.getImage(state.image_id);
 				}
 				return null;
 			})

@@ -40,6 +40,7 @@
   - [5.1 User Imports Images](#51-user-imports-images)
   - [5.2 User Sets a Wallpaper](#52-user-sets-a-wallpaper)
   - [5.3 Playlist Timer Tick](#53-playlist-timer-tick)
+  - [5.4 User Downloads Wallhaven Wallpaper to Gallery](#54-user-downloads-wallhaven-wallpaper-to-gallery)
 - [6. Type Contract Alignment](#6-type-contract-alignment)
 - [7. Bug Audit](#7-bug-audit)
 - [8. Developer Guide](#8-developer-guide)
@@ -70,6 +71,7 @@ graph TB
   subgraph electronMain ["Electron Main Process (Node.js)"]
     IPCMgr[IPCManager]
     DaemonClient[GoDaemonClient]
+    WallhavenProxy["Wallhaven API Proxy"]
     DaemonMon[DaemonMonitor]
     WinMgr[WindowManager]
     ThemeMgr[ThemeManager]
@@ -87,8 +89,12 @@ graph TB
     DB[CloverDB]
   end
 
+  WallhavenAPI["wallhaven.cc API"]
+
   Components -->|"window.API_RENDERER.*"| IPCMgr
   IPCMgr -->|ipcMain.handle| DaemonClient
+  IPCMgr -->|ipcMain.handle| WallhavenProxy
+  WallhavenProxy -->|"fetch (HTTPS)"| WallhavenAPI
   DaemonClient -->|"HTTP over Unix socket"| HTTPSrv
   HTTPSrv --> Handlers
   Handlers --> PlaylistMgr
@@ -394,10 +400,20 @@ The SSE broker (`server/sse.go`) subscribes to the bus and streams events to HTT
 
 Configuration is stored in a TOML file at `$XDG_CONFIG_HOME/waypaper-engine/config.toml`. The `ViperManager` handles:
 
-- Setting defaults for all sections (app, daemon, backend, monitors).
+- Setting defaults for all sections (app, daemon, backend, monitors, wallhaven).
 - Reading the config file (or creating it with defaults if missing).
 - Watching for external file changes via `fsnotify` and publishing `config_changed` events.
 - Thread-safe reads/writes via `sync.RWMutex`.
+
+**Config sections**:
+
+| Section | TOML key | Go struct | Description |
+|---------|----------|-----------|-------------|
+| `app` | `[app]` | `AppConfig` | UI preferences (theme, start page, monitor modal) |
+| `daemon` | `[daemon]` | `DaemonConfig` | Log level, kill-on-exit behavior |
+| `backend` | `[backend]` | `BackendSection` | Active backend type + per-backend sub-sections |
+| `monitors` | `[monitors]` | `MonitorsConfig` | Selected monitors and image set type |
+| `wallhaven` | `[wallhaven]` | `WallhavenConfig` | Wallhaven integration (`api_key: string`, `enabled: bool`) |
 
 Backend-specific config lives under `[backend.<name>]` in the TOML file. Each backend registers its own defaults via `RegisterDefaults(v)` and validates/parses its config section independently.
 
@@ -494,6 +510,16 @@ The central IPC hub. All `ipcMain.handle` registrations go through this class.
 
 **Other IPC channels**: `openFiles` (file/folder dialog), `handleOpenImages` (forward to daemon import), `openContextMenu`, window management, theme management, daemon control.
 
+**Wallhaven API proxy**: the IPCManager also registers three channels that bypass the Go daemon entirely and proxy requests directly to the external Wallhaven API (`wallhaven.cc`) using Node.js `fetch()`. This is the only IPC pathway that reaches outside the local system.
+
+| Channel | Proxied endpoint | Behavior |
+|---------|-----------------|----------|
+| `wallhaven-search` | `GET https://wallhaven.cc/api/v1/search` | Forwards query params (categories, purity, sorting, page, q, apikey). Returns `{ data: WallhavenWallpaper[], meta: SearchMeta }`. |
+| `wallhaven-wallpaper` | `GET https://wallhaven.cc/api/v1/w/{id}` | Fetches full wallpaper detail including tags. Accepts optional `apikey` for NSFW content. |
+| `wallhaven-download` | Direct image URL (`https://w.wallhaven.cc/full/...`) | Downloads the full-resolution image binary, writes it to a temp file (`/tmp/wallhaven-{uuid}.{ext}`), and returns the temp path. |
+
+These channels are subject to the standard `{ success, data }` response wrapping. The preload script unwraps the envelope before exposing the result to the renderer — see Section 3.4.
+
 ### 3.4 Preload Script — contextBridge API
 
 **File**: [`electron/preload.ts`](../electron/preload.ts)
@@ -505,6 +531,7 @@ The API is organized into sections:
 | Section | Key methods |
 |---------|------------|
 | `goDaemon.*` | All daemon operations + `on(event, callback)` for SSE events |
+| `wallhaven.*` | `search(params)` — proxied Wallhaven search, `getWallpaper(id, apikey?)` — full wallpaper detail with tags, `download(imageUrl)` — download full-res image to temp file. All three unwrap the `{ success, data }` IPC envelope and throw on failure. |
 | Theme | `getNativeTheme()`, `setThemeSource()`, `onNativeThemeUpdated()` |
 | Window | `minimizeWindow()`, `maximizeWindow()`, `closeWindow()`, etc. |
 | App control | `exitApp()`, `getDaemonStatus()`, `restartDaemon()` |
@@ -550,6 +577,7 @@ The `goDaemon.on()` method correctly implements a disposer pattern — it return
 | `/` | `Home` → `Gallery` | Main gallery view with image grid, filters, pagination |
 | `/configuration` | `Configuration` | Placeholder; sidebar switches to contextual config |
 | `/settings` | `Settings` → `SettingsTabs` | App, daemon, and backend settings |
+| `/wallhaven` | `WallhavenPage` (lazy-loaded) | Search, browse, and download wallpapers from wallhaven.cc. Includes search toolbar, filter controls (category/purity/sorting), paginated thumbnail grid, and detail modal with download-to-gallery action. Only accessible when `config.wallhaven.enabled` is `true`. |
 
 **Layout**: `ModernAppLayout` provides a full-height DaisyUI drawer with:
 - **Navbar** at top (with sidebar toggle)
@@ -570,8 +598,10 @@ The `goDaemon.on()` method correctly implements a disposer pattern — it return
 | `AddToPlaylistModal` | `AddToPlaylistModal.tsx` | Add selected images to an existing playlist |
 | `PlaylistConfigurationModal` | `PlaylistConfigurationModal.tsx` | Configure playlist type, interval, order |
 | `monitorsModal` + `Monitor` | `monitorsModal.tsx`, `Monitor.tsx` | Monitor selection + live wallpaper preview |
-| `SettingsTabs` | `settings/SettingsTabs.tsx` | Tabbed settings: App, Daemon, Backend sections |
+| `SettingsTabs` | `settings/SettingsTabs.tsx` | Tabbed settings: App, Daemon, Backend, Wallhaven sections |
 | `DaemonStatusComponent` | `settings/DaemonStatusComponent.tsx` | Daemon status + start/stop/restart controls |
+| `WallhavenSettingsSection` | `settings/sections/WallhavenSettingsSection.tsx` | Enable/disable toggle + API key input with "Test" button that validates against `wallhaven.cc/api/v1/settings` |
+| `WallhavenPage` | `routes/Wallhaven.tsx` | Full Wallhaven search UI: `WallhavenCard` thumbnails, `WallhavenDetailModal` for preview/download |
 
 ### 4.2 State Management (Zustand)
 
@@ -587,6 +617,7 @@ All application state lives in Zustand stores. There is no Redux, no React Conte
 | `useToastStore` | `stores/toastStore.tsx` | `toasts[]` | `addToast()`, `removeToast()` |
 | `useImageProcessingStore` | `stores/imageProcessingStore.ts` | `batches` map | `startBatch()`, `updateBatch()`, `completeBatch()` |
 | `useDesignSystemStore` | `stores/designSystemStore.ts` | neobrutalist config, design tokens | `syncToDOM()` |
+| `useWallhavenStore` | `stores/wallhavenStore.ts` | `filters` (query, categories, purity, sorting, page), `results` (`WallhavenWallpaper[]`), `meta` (pagination), `selectedWallpaper`, `downloadingIds` | `search(apiKey?)`, `downloadToGallery(wp)`, `selectWallpaper(wp)`, `setQuery()`, `toggleCategory()`, `togglePurity()`, `setSorting()`, `setPage()` |
 | `openImagesStore` | `hooks/useOpenImages.tsx` | `isActive` | `openImages({action})` — file/folder dialogs + daemon import |
 
 **Theme**: managed via React Context (`contexts/ThemeContext.tsx`), not Zustand. Persists to `localStorage` and applies via `data-theme` attribute on `<html>`.
@@ -745,6 +776,133 @@ sequenceDiagram
   UI->>UI: Playlist UI + monitor preview update
 ```
 
+### 5.4 User Downloads Wallhaven Wallpaper to Gallery
+
+The Wallhaven integration allows users to search, browse, and download wallpapers from [wallhaven.cc](https://wallhaven.cc) directly into the local gallery. It is the only feature that reaches an external network service, and the only IPC pathway that bypasses the Go daemon for its core operations (search, detail, download). The daemon is only involved at the final import step.
+
+**Files involved**:
+
+| Layer | Files |
+|-------|-------|
+| Frontend page | [`src/routes/Wallhaven.tsx`](../src/routes/Wallhaven.tsx) — `WallhavenPage`, `WallhavenCard`, `WallhavenDetailModal` |
+| Frontend store | [`src/stores/wallhavenStore.ts`](../src/stores/wallhavenStore.ts) — `useWallhavenStore` |
+| Frontend settings | [`src/components/settings/sections/WallhavenSettingsSection.tsx`](../src/components/settings/sections/WallhavenSettingsSection.tsx) |
+| IPC proxy | [`electron/managers/IPCManager.ts`](../electron/managers/IPCManager.ts) — `setupWallhavenHandlers()` |
+| Preload | [`electron/preload.ts`](../electron/preload.ts) — `wallhaven.*` namespace |
+| Config (Go) | [`daemon/internal/config/types.go`](../daemon/internal/config/types.go) — `WallhavenConfig` |
+| Config (TS) | [`electron/daemon-go-types.ts`](../electron/daemon-go-types.ts) — `WallhavenConfig`, [`shared/types/unifiedConfig.ts`](../shared/types/unifiedConfig.ts) |
+
+**Data model** — the Wallhaven API returns wallpapers with this shape (mirrored in `WallhavenWallpaper`):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `id` | `string` | Wallhaven wallpaper ID (e.g., `"abc123"`) |
+| `url` | `string` | Wallhaven page URL |
+| `path` | `string` | Full-resolution image URL (e.g., `https://w.wallhaven.cc/full/ab/wallhaven-abc123.jpg`) |
+| `thumbs` | `{ large, original, small }` | Thumbnail URLs at various sizes |
+| `resolution` | `string` | e.g., `"1920x1080"` |
+| `category` | `string` | `"general"`, `"anime"`, or `"people"` |
+| `purity` | `string` | `"sfw"`, `"sketchy"`, or `"nsfw"` |
+| `colors` | `string[]` | Dominant hex colors |
+| `file_size` | `number` | Size in bytes |
+| `file_type` | `string` | MIME type (e.g., `"image/jpeg"`) |
+| `tags` | `Array<{ id, name, purity }>` | **Only populated by the detail endpoint** (`/api/v1/w/{id}`), not by search results |
+| `views`, `favorites` | `number` | Popularity metrics |
+| `source` | `string` | Original source URL |
+
+**Search & browse flow**:
+
+```mermaid
+sequenceDiagram
+  participant User
+  participant Page as WallhavenPage
+  participant Store as wallhavenStore
+  participant IPC as IPCManager
+  participant WH as wallhaven.cc API
+
+  User->>Page: Navigate to /wallhaven
+  Page->>Store: Check isEnabled via settingsStore
+  alt Wallhaven disabled
+    Page->>User: Show "Wallhaven is disabled" message
+  else Wallhaven enabled
+    Page->>Store: search(apiKey)
+    Store->>IPC: wallhaven.search({categories, purity, sorting, page, q, apikey})
+    IPC->>WH: GET /api/v1/search?...
+    WH-->>IPC: {data: WallhavenWallpaper[], meta: SearchMeta}
+    IPC-->>Store: unwrapped response
+    Store->>Page: results + meta updated
+    Page->>User: Render thumbnail grid (wp.thumbs.small)
+  end
+```
+
+**Download-to-gallery flow**:
+
+```mermaid
+sequenceDiagram
+  participant User
+  participant Page as WallhavenPage
+  participant Store as wallhavenStore
+  participant IPC as IPCManager
+  participant WH as wallhaven.cc
+  participant Client as GoDaemonClient
+  participant Daemon as Go Daemon
+  participant Proc as Image Processor
+  participant DB as CloverDB
+  participant Bus as EventBus
+
+  User->>Page: Click download button on WallhavenCard
+  Page->>Store: downloadToGallery(wp)
+  Store->>Store: Add wp.id to downloadingIds (UI shows spinner)
+
+  Note over Store,WH: Phase 1 — Download image binary
+  Store->>IPC: wallhaven.download(wp.path)
+  IPC->>WH: fetch(wp.path) — full-resolution image
+  WH-->>IPC: image binary
+  IPC->>IPC: Write to /tmp/wallhaven-{uuid}.{ext}
+  IPC-->>Store: tmpPath
+
+  Note over Store,Daemon: Phase 2 — Import into gallery
+  Store->>Client: goDaemon.importImages([tmpPath])
+  Client->>Daemon: POST /images {paths: [tmpPath]}
+  Daemon-->>Client: 202 {status: "processing"}
+  Daemon->>Proc: ProcessBatch(ctx, [tmpPath])
+  Proc->>Proc: Validate, checksum, dimensions, copy to imagesDir
+  Proc->>DB: Create image (tags: [], source_path: tmpPath)
+  Proc->>Proc: Generate thumbnails
+  Proc->>Bus: image_processed + processing_complete + images_updated
+
+  Store->>Store: Remove wp.id from downloadingIds
+  Bus-->>Page: SSE images_updated → gallery refreshes
+```
+
+**Search filter controls** — `WallhavenPage` exposes toolbar controls that map to Wallhaven API query parameters:
+
+| Control | Store field | API param | Values |
+|---------|------------|-----------|--------|
+| Search input | `filters.query` | `q` | Free text |
+| Category buttons | `filters.categories` | `categories` | 3-char bitmask (`"111"` = all) for general/anime/people |
+| Purity buttons | `filters.purity` | `purity` | 3-char bitmask (`"100"` = SFW only) for sfw/sketchy/nsfw |
+| Sort dropdown | `filters.sorting` | `sorting` | `date_added`, `relevance`, `random`, `views`, `favorites`, `toplist` |
+| Pagination | `filters.page` | `page` | Page number (24 results per page) |
+
+NSFW purity requires an API key. The NSFW button is only rendered when `apiKey` is present.
+
+**Metadata preservation gap** — the current download flow discards all Wallhaven metadata:
+
+| Wallhaven metadata | Available in API | Preserved on import | Notes |
+|--------------------|-----------------|--------------------|----|
+| Image pixels | Yes (`dimension_x`, `dimension_y`) | Re-extracted | The daemon processor extracts dimensions from the raw image file independently |
+| File size | Yes (`file_size`) | Re-computed | Computed from the copied file in `imagesDir` |
+| Format | Yes (`file_type`) | Re-detected | Detected from file extension |
+| **Tags** | **Detail endpoint only** | **No** | `processOne()` hardcodes `Tags: []string{}`. The search endpoint does not return tags; a separate `GET /api/v1/w/{id}` call is needed. |
+| Colors | Yes (`colors[]`) | No | No corresponding field on the `Image` model |
+| Category / Purity | Yes | No | No corresponding field on the `Image` model |
+| Source URL | Yes (`source`, `url`) | No | `SourcePath` is set to the temp file path, not the Wallhaven URL |
+| Wallhaven ID | Yes (`id`) | No | Not stored anywhere |
+| Views / Favorites | Yes | No | No corresponding field on the `Image` model |
+
+The `Image` model in the Go daemon does have a `Tags []string` field and a `SourcePath string` field (see Section 2.8). Tags are updatable via `PATCH /images/{id}` and searchable/filterable. The gap is purely in the import pipeline: `POST /images` only accepts `{ paths: [...] }` with no metadata sidecar, and `downloadToGallery()` only passes `wp.path` (the image URL) — no Wallhaven metadata travels with the file.
+
 ---
 
 ## 6. Type Contract Alignment
@@ -764,6 +922,7 @@ The Go daemon structs and the TypeScript types are manually kept in sync. Here i
 | `store.ActiveMonitorInfo` | `ActiveMonitorInfo` | 1:1 match. |
 | `monitor.Monitor` | `Monitor` | 1:1 match. |
 | `config types` | `AppConfig`, `DaemonConfig`, `BackendSection`, `MonitorsConfig`, `UnifiedConfig` | Match. `AppConfig` in TS has `show_monitor_modal_on_start` which the Go config also supports. |
+| `config.WallhavenConfig` | `WallhavenConfig` | 1:1 match. Go: `APIKey string` + `Enabled bool`. TS: `api_key: string` + `enabled: boolean`. Included in `UnifiedConfig` on both sides. |
 | `backend.Capabilities` | `BackendCapabilities` | 1:1 match. |
 | `swww.Config` | `SwwwConfig` | Field names match the TOML/JSON keys (`transition_type`, `resize`, etc.). TS uses `string` for enum-like fields. |
 

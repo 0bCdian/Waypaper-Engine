@@ -43,8 +43,8 @@ export class WindowManager {
 		this.defaultConfig = {
 			width: 1200,
 			height: 1000,
-			minWidth: 800,
-			minHeight: 600,
+			minWidth: 350,
+			minHeight: 400,
 			resizable: true,
 			minimizable: true,
 			maximizable: true,

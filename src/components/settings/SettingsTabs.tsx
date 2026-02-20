@@ -58,16 +58,18 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className }) => {
 	)?.component;
 
 	return (
-		<div className={cn("h-full w-full flex", className)}>
-			{/* ── Sidebar ──────────────────────────────────────────── */}
+		<div className={cn("h-full w-full flex flex-col lg:flex-row", className)}>
+			{/* Sidebar (vertical at lg+) / Tab strip (horizontal below lg) */}
 			<aside
 				className={cn(
-					"w-56 flex-shrink-0 flex flex-col border-r border-base-content/10 bg-base-100",
-					isNeo && "border-r-2 border-base-content/80",
+					"shrink-0 flex border-base-content/10 bg-base-100",
+					"flex-row lg:flex-col lg:w-56 lg:border-r",
+					"border-b lg:border-b-0",
+					isNeo && "lg:border-r-2 border-base-content/80",
 				)}
 			>
-				{/* Search */}
-				<div className="p-3 border-b border-base-content/5">
+				{/* Search -- only visible at lg+ */}
+				<div className="hidden lg:block p-3 border-b border-base-content/5">
 					<SettingsSearch
 						searchTerm={searchTerm}
 						onSearchChange={setSearchTerm}
@@ -77,15 +79,16 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className }) => {
 					/>
 				</div>
 
-				{/* Navigation */}
-				<nav className="flex-1 overflow-y-auto py-2 px-2">
+				{/* Navigation -- horizontal scroll below lg, vertical at lg+ */}
+				<nav className="flex lg:flex-col flex-1 overflow-x-auto lg:overflow-x-visible lg:overflow-y-auto py-1 px-2 lg:py-2 gap-1">
 					{visibleNav.map((item) => (
 						<button
 							key={item.id}
 							type="button"
 							onClick={() => setActiveSection(item.id)}
 							className={cn(
-								"w-full text-left rounded-lg px-3 py-2 text-sm transition-colors",
+								"whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-colors",
+								"lg:w-full lg:text-left",
 								activeSection === item.id
 									? "bg-base-content/10 font-medium text-base-content"
 									: "text-base-content/60 hover:bg-base-content/5 hover:text-base-content",
@@ -96,9 +99,9 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className }) => {
 					))}
 				</nav>
 
-				{/* Error badge in sidebar footer */}
+				{/* Error badge -- only visible at lg+ */}
 				{errors.length > 0 && (
-					<div className="p-3 border-t border-base-content/5">
+					<div className="hidden lg:block p-3 border-t border-base-content/5">
 						<div className="flex items-center gap-2 text-error text-xs">
 							<svg className="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20">
 								<path
@@ -113,10 +116,10 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className }) => {
 				)}
 			</aside>
 
-			{/* ── Content ──────────────────────────────────────────── */}
-			<main className="flex-1 overflow-y-auto">
+			{/* Content */}
+			<main className="flex-1 min-h-0 overflow-y-auto">
 				{ActiveComponent && (
-					<div className="max-w-2xl mx-auto px-8 py-6">
+					<div className="lg:max-w-2xl lg:mx-auto px-4 lg:px-8 py-4 lg:py-6">
 						<ActiveComponent />
 					</div>
 				)}

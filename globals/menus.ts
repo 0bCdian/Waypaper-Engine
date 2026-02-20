@@ -153,11 +153,31 @@ export const trayMenu = async (
 		  ]
 		: [];
 
+	const clearHistoryMenu: Array<
+		Electron.MenuItemConstructorOptions | Electron.MenuItem
+	> = imageHistory.length > 0
+		? [
+				{
+					label: "Clear history",
+					click: async () => {
+						try {
+							await goDaemonClient.clearImageHistory();
+						} catch (error) {
+							console.error("Failed to clear history:", error);
+						}
+						if (createTray) void createTray();
+					},
+				},
+				{ type: "separator" },
+		  ]
+		: [];
+
 	const baseMenu: Array<
 		Electron.MenuItemConstructorOptions | Electron.MenuItem
 	> = [
 		...playlistMenu,
 		...imageHistoryMenu,
+		...clearHistoryMenu,
 		{
 			label: "Random Wallpaper",
 			click: () => {

@@ -43,6 +43,7 @@ func NewRouter(h Handlers, bus events.Bus) *chi.Mux {
 		r.Get("/count", h.Images.Count)
 		r.Get("/tags", h.Images.Tags)
 		r.Get("/history", h.Wallpaper.GetHistory)
+		r.Delete("/history", h.Wallpaper.ClearHistory)
 		r.Post("/select-all", h.Images.SelectAll)
 		r.Get("/{id}", h.Images.Get)
 		r.Patch("/{id}", h.Images.Update)
@@ -99,6 +100,7 @@ func NewRouter(h Handlers, bus events.Bus) *chi.Mux {
 
 	// Wallpaper.
 	r.Route("/wallpaper", func(r chi.Router) {
+		r.Get("/current", h.Wallpaper.GetCurrent)
 		r.Post("/set", h.Wallpaper.Set)
 		r.Post("/random", h.Wallpaper.Random)
 		r.Post("/history/next", h.Wallpaper.HistoryNext)

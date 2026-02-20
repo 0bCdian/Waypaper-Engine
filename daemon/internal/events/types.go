@@ -40,6 +40,11 @@ const (
 	ConfigChanged EventType = "config_changed"
 )
 
+// History events — emitted when the wallpaper history is modified.
+const (
+	HistoryCleared EventType = "history_cleared"
+)
+
 // Gallery events — emitted when the image or playlist collections change.
 const (
 	ImagesUpdated    EventType = "images_updated"

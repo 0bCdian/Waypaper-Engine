@@ -139,7 +139,7 @@ export const DaemonSettingsSection: React.FC<DaemonSettingsSectionProps> = ({
 				>
 					<select
 						className={cn(
-							"select select-bordered select-sm w-44",
+							"select select-bordered select-sm w-full lg:w-44",
 							fieldError(field.key) && "select-error",
 						)}
 						value={(raw as string) ?? ""}
@@ -166,7 +166,7 @@ export const DaemonSettingsSection: React.FC<DaemonSettingsSectionProps> = ({
 					<input
 						type="number"
 						className={cn(
-							"input input-bordered input-sm w-28",
+							"input input-bordered input-sm w-full lg:w-28",
 							fieldError(field.key) && "input-error",
 						)}
 						value={(raw as number) ?? 0}
@@ -191,7 +191,7 @@ export const DaemonSettingsSection: React.FC<DaemonSettingsSectionProps> = ({
 				<input
 					type="text"
 					className={cn(
-						"input input-bordered input-sm w-64",
+						"input input-bordered input-sm w-full lg:w-64",
 						fieldError(field.key) && "input-error",
 					)}
 					value={(raw as string) ?? ""}

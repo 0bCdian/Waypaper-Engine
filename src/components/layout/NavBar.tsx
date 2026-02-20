@@ -75,7 +75,7 @@ export const NavBar: React.FC<NavBarProps> = ({ className }) => {
 					type="button"
 					onClick={handleMonitorSelect}
 					className={cn(
-						"btn btn-primary btn-lg w-full max-w-md text-ellipsis text-xl font-medium transition-all duration-200",
+						"btn btn-primary btn-md lg:btn-lg w-full max-w-xs lg:max-w-md text-ellipsis text-base lg:text-xl font-medium transition-all duration-200",
 						!isNeo && "rounded-lg hover:btn-primary-focus",
 					)}
 					aria-label="Select display monitor"

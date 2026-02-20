@@ -32,7 +32,7 @@ function parseSearchInput(text: string): { search: string; hashTags: string[] } 
 	return { search, hashTags };
 }
 
-function mapFiltersToQueryParams(f: PartialFilters): Partial<ImageQueryParams> {
+function mapFiltersToQueryParams(f: PartialFilters, colors?: string[]): Partial<ImageQueryParams> {
 	const { search, hashTags } = parseSearchInput(f.searchString);
 	const combinedTags = [...new Set([...f.tags, ...hashTags])];
 	return {
@@ -40,6 +40,7 @@ function mapFiltersToQueryParams(f: PartialFilters): Partial<ImageQueryParams> {
 		sort_order: f.order,
 		search: search || undefined,
 		tags: combinedTags.length > 0 ? combinedTags.join(",") : undefined,
+		colors: colors && colors.length > 0 ? colors.join(",") : undefined,
 	};
 }
 
@@ -111,7 +112,7 @@ function Filters() {
 			setFilters(newFilters);
 			useImagesStore
 				.getState()
-				.fetchPage(1, mapFiltersToQueryParams(partialFilters));
+				.fetchPage(1, mapFiltersToQueryParams(partialFilters, filters.advancedFilters.colors));
 		},
 		200,
 		[partialFilters],
@@ -127,7 +128,7 @@ function Filters() {
 		(s) => s.designMode === "neobrutalist",
 	);
 	return (
-		<section className={`group mt-10 mb-5 flex flex-wrap justify-center gap-2${isNeo ? " neo-filters-strip" : ""}`}>
+		<section className={`group mt-4 lg:mt-10 mb-3 lg:mb-5 flex flex-wrap justify-center gap-2 px-2${isNeo ? " neo-filters-strip" : ""}`}>
 			<div className="tooltip" data-tip="more filters">
 				<button
 					className="btn btn-active rounded-xl uppercase"
@@ -139,7 +140,7 @@ function Filters() {
 					Filters
 				</button>
 			</div>
-			<div className="tooltip z-50" data-tip="Order by Name or ID">
+			<div className="tooltip" data-tip="Order by Name or ID">
 				<label className="btn swap btn-active swap-rotate rounded-xl text-xs uppercase">
 					<input
 						type="checkbox"
@@ -173,7 +174,7 @@ function Filters() {
 				onChange={onTextChange}
 				type="text"
 				id="default-search"
-				className="input input-primary w-1/6 rounded-xl border-0 bg-base-300 text-center text-xl font-medium sm:w-1/4"
+				className="input input-primary w-full sm:w-1/3 lg:w-1/4 rounded-xl border-0 bg-base-300 text-center text-xl font-medium"
 				placeholder="Search or #tag"
 			/>
 

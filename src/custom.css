@@ -300,6 +300,14 @@
 	}
 }
 
+/* Hide DaisyUI tooltips on small screens to prevent clipping by overflow-hidden ancestors */
+@media (max-width: 1023px) {
+	.tooltip::before,
+	.tooltip::after {
+		display: none !important;
+	}
+}
+
 /* Enhanced Responsive Utilities */
 @media (max-width: 768px) {
 	.pagination {

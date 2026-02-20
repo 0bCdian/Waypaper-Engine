@@ -165,10 +165,10 @@ function PlaylistTrack() {
 		: "";
 
 	return (
-		<div className="mb-2 flex w-full flex-col gap-5">
-			<div className="flex flex-wrap items-center gap-3">
-			<div className="flex w-full flex-col">
-				<span className="text-4xl font-bold">
+		<div className="mb-2 flex w-full min-w-0 flex-col gap-5 overflow-hidden">
+			<div className="flex flex-wrap items-center gap-2 lg:gap-3">
+			<div className="flex w-full min-w-0 flex-col">
+				<span className="text-2xl lg:text-4xl font-bold truncate">
 					{playlistArray.length > 0
 						? `Playlist (${playlistArray.length})`
 						: "Playlist"}

@@ -289,6 +289,9 @@ func setDefaults(v *viper.Viper) {
 	// Backend defaults
 	v.SetDefault("backend.type", "swww")
 
+	// Wallhaven defaults
+	v.SetDefault("wallhaven.scroll_mode", "paginated")
+
 	// Monitors defaults
 	v.SetDefault("monitors.selected_monitors", []string{})
 	v.SetDefault("monitors.image_set_type", "individual")

@@ -21,8 +21,10 @@ export const SettingRow: React.FC<SettingRowProps> = ({
 }) => (
 	<div
 		className={cn(
-			"flex gap-4 py-4 border-b border-base-content/5",
-			stacked ? "flex-col" : "items-center justify-between",
+			"flex gap-3 lg:gap-4 py-4 border-b border-base-content/5",
+			stacked
+				? "flex-col"
+				: "flex-col lg:flex-row lg:items-center lg:justify-between",
 			className,
 		)}
 	>
@@ -33,7 +35,7 @@ export const SettingRow: React.FC<SettingRowProps> = ({
 			)}
 			{error && <div className="text-xs text-error mt-1">{error}</div>}
 		</div>
-		<div className={cn("flex-shrink-0", stacked && "w-full")}>{children}</div>
+		<div className={cn("flex-shrink-0", stacked ? "w-full" : "w-full lg:w-auto")}>{children}</div>
 	</div>
 );
 

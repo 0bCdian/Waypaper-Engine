@@ -124,3 +124,11 @@ func (s *historyStore) Count(_ context.Context) (int, error) {
 	}
 	return count, nil
 }
+
+func (s *historyStore) Clear(_ context.Context) error {
+	if err := s.db.Delete(query.NewQuery(CollectionHistory)); err != nil {
+		return fmt.Errorf("history store: clear: %w", err)
+	}
+	s.nextID.Store(0)
+	return nil
+}

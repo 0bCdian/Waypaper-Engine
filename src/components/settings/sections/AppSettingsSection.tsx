@@ -205,7 +205,7 @@ const DesignSystemSection: React.FC = () => {
 								min={1}
 								max={6}
 								step={1}
-								className="range range-primary range-sm w-28"
+								className="range range-primary range-sm w-full lg:w-28"
 								value={neoConfig.shadowOffsetX}
 								onChange={(e) => {
 									const v = Number(e.target.value);
@@ -228,7 +228,7 @@ const DesignSystemSection: React.FC = () => {
 								min={1}
 								max={4}
 								step={1}
-								className="range range-primary range-sm w-28"
+								className="range range-primary range-sm w-full lg:w-28"
 								value={neoConfig.borderWidth}
 								onChange={(e) =>
 									updateNeoConfig({ borderWidth: Number(e.target.value) })
@@ -250,7 +250,7 @@ const DesignSystemSection: React.FC = () => {
 								min={0}
 								max={1}
 								step={0.125}
-								className="range range-primary range-sm w-28"
+								className="range range-primary range-sm w-full lg:w-28"
 								value={neoConfig.cornerRadius}
 								onChange={(e) =>
 									updateNeoConfig({

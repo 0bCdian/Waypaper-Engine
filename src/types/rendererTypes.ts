@@ -43,6 +43,7 @@ export interface advancedFilters {
 		width: number;
 		height: number;
 	};
+	colors: string[];
 }
 
 export type resolutionConstraints = "all" | "exact" | "moreThan" | "lessThan";
