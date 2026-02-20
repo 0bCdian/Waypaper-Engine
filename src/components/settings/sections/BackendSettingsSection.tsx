@@ -1,4 +1,5 @@
 import type React from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { cn } from "@/utils/cn";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useShallow } from "zustand/react/shallow";
@@ -170,6 +171,108 @@ const fehDisplayFields: Field[] = [
 	},
 ];
 
+function DebouncedNumberInput({
+	value: externalValue,
+	onCommit,
+	className,
+	min,
+	max,
+	step,
+}: {
+	value: number;
+	onCommit: (v: number) => void;
+	className?: string;
+	min?: number;
+	max?: number;
+	step?: number;
+}) {
+	const [local, setLocal] = useState(String(externalValue));
+	const timerRef = useRef<ReturnType<typeof setTimeout>>();
+
+	useEffect(() => {
+		setLocal(String(externalValue));
+	}, [externalValue]);
+
+	const commit = useCallback(
+		(raw: string) => {
+			clearTimeout(timerRef.current);
+			const n = Number.parseInt(raw, 10);
+			if (!Number.isNaN(n)) onCommit(n);
+		},
+		[onCommit],
+	);
+
+	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const v = e.target.value;
+		setLocal(v);
+		clearTimeout(timerRef.current);
+		timerRef.current = setTimeout(() => commit(v), 600);
+	};
+
+	return (
+		<input
+			type="number"
+			className={className}
+			value={local}
+			onChange={handleChange}
+			onBlur={() => commit(local)}
+			min={min}
+			max={max}
+			step={step}
+		/>
+	);
+}
+
+function DebouncedTextInput({
+	value: externalValue,
+	onCommit,
+	className,
+	placeholder,
+}: {
+	value: string;
+	onCommit: (v: string) => void;
+	className?: string;
+	placeholder?: string;
+}) {
+	const [local, setLocal] = useState(externalValue);
+	const timerRef = useRef<ReturnType<typeof setTimeout>>();
+
+	useEffect(() => {
+		setLocal(externalValue);
+	}, [externalValue]);
+
+	const commit = useCallback(
+		(v: string) => {
+			clearTimeout(timerRef.current);
+			onCommit(v);
+		},
+		[onCommit],
+	);
+
+	const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+		const v = e.target.value;
+		setLocal(v);
+		clearTimeout(timerRef.current);
+		timerRef.current = setTimeout(() => commit(v), 600);
+	};
+
+	return (
+		<input
+			type="text"
+			className={className}
+			value={local}
+			onChange={handleChange}
+			onBlur={() => commit(local)}
+			placeholder={placeholder}
+		/>
+	);
+}
+
+interface AvailableBackend {
+	name: string;
+	available: boolean;
+}
+
 export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 	className = "",
 }) => {
@@ -190,15 +293,25 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 	);
 	const section: ConfigSection = "backend";
 
+	const [availableBackends, setAvailableBackends] = useState<AvailableBackend[]>([]);
+
+	useEffect(() => {
+		window.API_RENDERER?.goDaemon?.getBackends?.()
+			.then((backends) => {
+				setAvailableBackends(
+					backends.map((b) => ({ name: b.name, available: b.available })),
+				);
+			})
+			.catch(() => {});
+	}, []);
+
 	const handleChange = async (key: string, value: unknown) => {
 		if (key.startsWith("swww.")) {
 			const swwwKey = key.replace("swww.", "");
-			const swwwData = { ...(config?.backend?.swww ?? {}), [swwwKey]: value };
-			await saveConfigSection(section, swwwData);
+			await saveConfigSection(section, { [swwwKey]: value });
 		} else if (key.startsWith("feh.")) {
 			const fehKey = key.replace("feh.", "");
-			const fehData = { ...(config?.backend?.feh ?? {}), [fehKey]: value };
-			await saveConfigSection(section, fehData);
+			await saveConfigSection(section, { [fehKey]: value });
 		} else {
 			await saveConfigSection(section, { [key]: value });
 		}
@@ -273,16 +386,13 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 					description={field.description}
 					error={fieldError(field.key)}
 				>
-					<input
-						type="number"
+					<DebouncedNumberInput
 						className={cn(
 							"input input-bordered input-sm w-full lg:w-28",
 							fieldError(field.key) && "input-error",
 						)}
 						value={(raw as number) ?? 0}
-						onChange={(e) =>
-							handleChange(field.key, parseInt(e.target.value, 10))
-						}
+						onCommit={(v) => handleChange(field.key, v)}
 						min={field.min}
 						max={field.max}
 						step={field.step}
@@ -298,14 +408,13 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 				description={field.description}
 				error={fieldError(field.key)}
 			>
-				<input
-					type="text"
+				<DebouncedTextInput
 					className={cn(
 						"input input-bordered input-sm w-full lg:w-48",
 						fieldError(field.key) && "input-error",
 					)}
 					value={(raw as string) ?? ""}
-					onChange={(e) => handleChange(field.key, e.target.value)}
+					onCommit={(v) => handleChange(field.key, v)}
 					placeholder={field.placeholder}
 				/>
 			</SettingRow>
@@ -352,10 +461,14 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 					value={(backendType as string) ?? "swww"}
 					onChange={(e) => handleChange("type", e.target.value)}
 				>
-					<option value="swww">swww (Wayland)</option>
-					<option value="feh">feh (X11)</option>
-					<option value="nitrogen">nitrogen (X11)</option>
-					<option value="custom">Custom Script</option>
+					{availableBackends.length > 0
+						? availableBackends.map((b) => (
+								<option key={b.name} value={b.name} disabled={!b.available}>
+									{b.name}{!b.available ? " (not installed)" : ""}
+								</option>
+							))
+						: <option value={backendType ?? "swww"}>{backendType ?? "swww"}</option>
+					}
 				</select>
 			</SettingRow>
 
@@ -375,18 +488,6 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 					<SettingSectionHeader title="Image Display" />
 					{fehDisplayFields.map(renderField)}
 				</>
-			)}
-			{backendType === "nitrogen" && (
-				<div className="mt-4 rounded-lg bg-info/10 px-4 py-3 text-sm text-info">
-					nitrogen backend selected. Additional nitrogen-specific settings will
-					be available in a future update.
-				</div>
-			)}
-			{backendType === "custom" && (
-				<div className="mt-4 rounded-lg bg-warning/10 px-4 py-3 text-sm text-warning">
-					Custom backend selected. You'll need to configure custom scripts
-					manually.
-				</div>
 			)}
 		</div>
 	);

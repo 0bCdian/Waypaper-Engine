@@ -8,21 +8,40 @@ import (
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/config"
 	"waypaper-engine/daemon/internal/events"
+	"waypaper-engine/daemon/internal/image"
+	"waypaper-engine/daemon/internal/monitor"
+	"waypaper-engine/daemon/internal/store"
 )
 
 // BackendHandler handles /backends endpoints.
 type BackendHandler struct {
-	registry backend.Registry
-	cfg      config.ConfigManager
-	bus      events.Bus
+	registry          backend.Registry
+	cfg               config.ConfigManager
+	bus               events.Bus
+	monitorStateStore store.MonitorStateStore
+	stateStore        store.StateStore
+	monitorManager    monitor.MonitorManager
+	splitter          *image.Splitter
 }
 
 // NewBackendHandler creates a BackendHandler.
-func NewBackendHandler(registry backend.Registry, cfg config.ConfigManager, bus events.Bus) *BackendHandler {
+func NewBackendHandler(
+	registry backend.Registry,
+	cfg config.ConfigManager,
+	bus events.Bus,
+	monitorStateStore store.MonitorStateStore,
+	stateStore store.StateStore,
+	monitorManager monitor.MonitorManager,
+	splitter *image.Splitter,
+) *BackendHandler {
 	return &BackendHandler{
-		registry: registry,
-		cfg:      cfg,
-		bus:      bus,
+		registry:          registry,
+		cfg:               cfg,
+		bus:               bus,
+		monitorStateStore: monitorStateStore,
+		stateStore:        stateStore,
+		monitorManager:    monitorManager,
+		splitter:          splitter,
 	}
 }
 
@@ -67,6 +86,9 @@ func (h *BackendHandler) Activate(w http.ResponseWriter, r *http.Request) {
 		WriteErrorf(w, http.StatusInternalServerError, "persist backend type: %s", err.Error())
 		return
 	}
+
+	// Re-apply wallpapers with the newly activated backend.
+	RestoreWallpapers(r.Context(), h.monitorStateStore, h.stateStore, h.registry, h.monitorManager, h.splitter)
 
 	h.bus.Publish(events.Event{
 		Type: events.ConfigChanged,

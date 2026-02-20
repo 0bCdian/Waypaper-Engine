@@ -50,7 +50,9 @@ func (h *Hyprpaper) Initialize(ctx context.Context) error {
 	}
 
 	slog.Info("starting hyprpaper")
-	cmd := exec.CommandContext(ctx, "hyprpaper")
+	// Use exec.Command (not CommandContext): the daemon must outlive the HTTP
+	// request that triggered activation.
+	cmd := exec.Command("hyprpaper")
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("hyprpaper: start: %w", err)
 	}

@@ -85,6 +85,8 @@ const defaultConfig: UnifiedConfig = {
 	},
 };
 
+let _lastApiSaveAt = 0;
+
 export const useSettingsStore = create<SettingsStore>()(
 	devtools(
 		(set, get) => ({
@@ -118,30 +120,35 @@ export const useSettingsStore = create<SettingsStore>()(
 								await window.API_RENDERER.goDaemon.getBackendConfig();
 							if (backendConfig) {
 								const backendType = incoming.backend?.type ?? "swww";
+								const cleaned = { ...backendConfig } as Record<string, unknown>;
+								delete cleaned.type;
 								(incoming.backend as Record<string, unknown>)[backendType] =
-									backendConfig;
+									cleaned;
 							}
 						}
 					} catch {
 						// Non-critical: backend settings will just show defaults
 					}
 
-					// Merge incoming over existing so we don't clobber with null
-					// on first load, and preserve the structure on subsequent loads.
 					const merged = existing
-						? {
-								app: { ...existing.app, ...incoming.app },
-								daemon: { ...existing.daemon, ...incoming.daemon },
-								backend: {
-									...existing.backend,
-									...incoming.backend,
-									swww: incoming.backend?.swww
-										? { ...existing.backend?.swww, ...incoming.backend.swww }
-										: existing.backend?.swww,
-								},
-								monitors: { ...existing.monitors, ...incoming.monitors },
-								wallhaven: { ...existing.wallhaven, ...incoming.wallhaven },
-							}
+						? (() => {
+								const activeBackend = incoming.backend?.type ?? existing.backend?.type ?? "swww";
+								const existingBackendSub = (existing.backend as Record<string, unknown>)?.[activeBackend] as Record<string, unknown> | undefined;
+								const incomingBackendSub = (incoming.backend as Record<string, unknown>)?.[activeBackend] as Record<string, unknown> | undefined;
+								return {
+									app: { ...existing.app, ...incoming.app },
+									daemon: { ...existing.daemon, ...incoming.daemon },
+									backend: {
+										...existing.backend,
+										...incoming.backend,
+										[activeBackend]: incomingBackendSub
+											? { ...existingBackendSub, ...incomingBackendSub }
+											: existingBackendSub,
+									},
+									monitors: { ...existing.monitors, ...incoming.monitors },
+									wallhaven: { ...existing.wallhaven, ...incoming.wallhaven },
+								};
+							})()
 						: incoming;
 						set({
 							config: merged as UnifiedConfig,
@@ -171,83 +178,93 @@ export const useSettingsStore = create<SettingsStore>()(
 				}
 			},
 
-			saveConfigSection: async (
-				section: ConfigSection,
-				data: Record<string, unknown>,
-			) => {
-				const currentConfig = get().config;
-				if (!currentConfig) return;
+		saveConfigSection: async (
+			section: ConfigSection,
+			data: Record<string, unknown>,
+		) => {
+			const currentConfig = get().config;
+			if (!currentConfig) return;
 
-				// Build the optimistic config update
-				const newConfig = { ...currentConfig };
-				if (section === "app") {
-					newConfig.app = { ...newConfig.app, ...data } as typeof newConfig.app;
-				} else if (section === "daemon") {
-					newConfig.daemon = {
-						...newConfig.daemon,
-						...data,
-					} as typeof newConfig.daemon;
-				} else if (section === "backend") {
-					if ("type" in data) {
-						newConfig.backend = {
-							...newConfig.backend,
+			const isBackendTypeChange = section === "backend" && "type" in data && Object.keys(data).length === 1;
+
+			const newConfig = { ...currentConfig };
+			if (section === "app") {
+				newConfig.app = { ...newConfig.app, ...data } as typeof newConfig.app;
+			} else if (section === "daemon") {
+				newConfig.daemon = {
+					...newConfig.daemon,
+					...data,
+				} as typeof newConfig.daemon;
+			} else if (section === "backend") {
+				if (isBackendTypeChange) {
+					newConfig.backend = {
+						...newConfig.backend,
+						type: data.type as string,
+					} as typeof newConfig.backend;
+				} else {
+					const backendType = newConfig.backend.type ?? "swww";
+					newConfig.backend = {
+						...newConfig.backend,
+						[backendType]: {
+							...(newConfig.backend as Record<string, unknown>)[backendType] as Record<string, unknown> | undefined,
 							...data,
-						} as typeof newConfig.backend;
-					} else {
-						newConfig.backend = {
-							...newConfig.backend,
-							swww: {
-								...newConfig.backend.swww,
-								...data,
-							} as typeof newConfig.backend.swww,
-						};
-					}
-				} else if (section === "monitors") {
-					newConfig.monitors = {
-						...newConfig.monitors,
-						...data,
-					} as typeof newConfig.monitors;
-				} else if (section === "wallhaven") {
-					newConfig.wallhaven = {
-						...newConfig.wallhaven,
-						...data,
-					} as typeof newConfig.wallhaven;
+						},
+					} as typeof newConfig.backend;
 				}
+			} else if (section === "monitors") {
+				newConfig.monitors = {
+					...newConfig.monitors,
+					...data,
+				} as typeof newConfig.monitors;
+			} else if (section === "wallhaven") {
+				newConfig.wallhaven = {
+					...newConfig.wallhaven,
+					...data,
+				} as typeof newConfig.wallhaven;
+			}
 
-				// Single set() for the optimistic update -- only config and errors
-				// change, so selectors for other fields won't trigger re-renders.
-				set({ config: newConfig, errors: [] });
+			set({ config: newConfig, errors: [] });
+			_lastApiSaveAt = Date.now();
 
-				try {
-					if (section === "backend") {
+			try {
+				if (section === "backend") {
+					if (isBackendTypeChange) {
+						if (window.API_RENDERER?.goDaemon?.activateBackend) {
+							await window.API_RENDERER.goDaemon.activateBackend(
+								data.type as string,
+							);
+						}
+					} else {
 						if (window.API_RENDERER?.goDaemon?.updateBackendConfig) {
 							await window.API_RENDERER.goDaemon.updateBackendConfig(
 								data as Record<string, unknown>,
 							);
 						}
-					} else {
-						if (window.API_RENDERER?.goDaemon?.updateConfigSection) {
-							await window.API_RENDERER.goDaemon.updateConfigSection(
-								section,
-								data,
-							);
-						}
 					}
-					set({ lastSaved: Date.now() });
-				} catch (error) {
-					console.error("SettingsStore: Failed to update config:", error);
-					set({
-						config: currentConfig,
-						errors: [
-							{
-								section,
-								key: "save",
-								message: `Failed to save ${section} config`,
-							},
-						],
-					});
+				} else {
+					if (window.API_RENDERER?.goDaemon?.updateConfigSection) {
+						await window.API_RENDERER.goDaemon.updateConfigSection(
+							section,
+							data,
+						);
+					}
 				}
-			},
+				_lastApiSaveAt = Date.now();
+				set({ lastSaved: Date.now() });
+			} catch (error) {
+				console.error("SettingsStore: Failed to update config:", error);
+				set({
+					config: currentConfig,
+					errors: [
+						{
+							section,
+							key: "save",
+							message: `Failed to save ${section} config`,
+						},
+					],
+				});
+			}
+		},
 
 			// Alias so callers that used the old unifiedConfigStore API still work.
 			setConfigValue: (...args) => get().saveConfigSection(...args),
@@ -319,11 +336,9 @@ export const useSettingsStore = create<SettingsStore>()(
 			},
 
 			handleConfigChange: (event: ConfigChangeEvent) => {
-				// Only reload from daemon for external file changes.
-				// API-triggered changes don't include a "source" field and are
-				// already reflected via the optimistic update in saveConfigSection.
 				const source = (event as unknown as Record<string, unknown>)?.source;
-				if (source === "file") {
+				const suppressedByApiSave = source === "file" && (Date.now() - _lastApiSaveAt) < 2000;
+				if (source === "file" && !suppressedByApiSave) {
 					get().loadConfig();
 				}
 			},

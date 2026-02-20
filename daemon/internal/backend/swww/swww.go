@@ -90,7 +90,9 @@ func (s *Swww) Initialize(ctx context.Context) error {
 	}
 
 	slog.Info("starting daemon with --no-cache", "binary", s.daemonBin)
-	cmd := exec.CommandContext(ctx, s.daemonBin, "--no-cache")
+	// Use Background context: the daemon must outlive the HTTP request that
+	// triggered activation. Pdeathsig ensures cleanup when waypaper-daemon exits.
+	cmd := exec.Command(s.daemonBin, "--no-cache")
 	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGTERM}
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("swww: start %s: %w", s.daemonBin, err)
@@ -123,9 +125,9 @@ func (s *Swww) Shutdown(ctx context.Context) error {
 	}
 
 	slog.Info("stopping daemon", "binary", s.cliBinary)
-	killErr := exec.CommandContext(ctx, s.cliBinary, "kill").Run()
-	if killErr != nil {
-		slog.Warn("swww kill command failed", "error", killErr)
+	if err := exec.CommandContext(ctx, s.cliBinary, "kill").Run(); err != nil {
+		// Exit 1 means the daemon wasn't running — that's the desired state.
+		slog.Warn("swww kill command failed (daemon may already be stopped)", "error", err)
 	}
 
 	// If we started the daemon ourselves, ensure the process is actually dead.
@@ -145,9 +147,6 @@ func (s *Swww) Shutdown(ctx context.Context) error {
 		s.process = nil
 	}
 
-	if killErr != nil {
-		return fmt.Errorf("swww: %s kill: %w", s.cliBinary, killErr)
-	}
 	return nil
 }
 

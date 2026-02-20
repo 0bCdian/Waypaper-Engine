@@ -117,7 +117,7 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className }) => {
 			</aside>
 
 			{/* Content */}
-			<main className="flex-1 min-h-0 overflow-y-auto">
+			<main className="flex-1 min-h-0 overflow-y-auto" style={{ scrollbarGutter: "stable" }}>
 				{ActiveComponent && (
 					<div className="lg:max-w-2xl lg:mx-auto px-4 lg:px-8 py-4 lg:py-6">
 						<ActiveComponent />
