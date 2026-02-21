@@ -63,7 +63,7 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className }) => {
 			<aside
 				className={cn(
 					"shrink-0 flex border-base-content/10 bg-base-100",
-					"flex-row lg:flex-col lg:w-56 lg:border-r",
+					"flex-row lg:flex-col lg:w-56 xl:w-64 lg:border-r",
 					"border-b lg:border-b-0",
 					isNeo && "lg:border-r-2 border-base-content/80",
 				)}
@@ -87,7 +87,7 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className }) => {
 							type="button"
 							onClick={() => setActiveSection(item.id)}
 							className={cn(
-								"whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-colors",
+								"whitespace-nowrap rounded-lg px-3 py-2 xl:px-4 xl:py-2.5 text-sm xl:text-base transition-colors",
 								"lg:w-full lg:text-left",
 								activeSection === item.id
 									? "bg-base-content/10 font-medium text-base-content"
@@ -119,7 +119,7 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className }) => {
 			{/* Content */}
 			<main className="flex-1 min-h-0 overflow-y-auto" style={{ scrollbarGutter: "stable" }}>
 				{ActiveComponent && (
-					<div className="lg:max-w-2xl lg:mx-auto px-4 lg:px-8 py-4 lg:py-6">
+					<div className="lg:max-w-2xl xl:max-w-3xl 2xl:max-w-4xl lg:mx-auto px-4 lg:px-8 xl:px-12 py-4 lg:py-6 xl:py-8">
 						<ActiveComponent />
 					</div>
 				)}

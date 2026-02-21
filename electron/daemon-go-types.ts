@@ -222,6 +222,7 @@ export interface BackendSection {
 	type: string;
 	swww?: SwwwConfig;
 	feh?: FehConfig;
+	hyprpaper?: HyprpaperConfig;
 }
 
 export interface SwwwConfig {
@@ -241,6 +242,12 @@ export interface SwwwConfig {
 
 export interface FehConfig {
 	mode: string;
+}
+
+export interface HyprpaperConfig {
+	fit_mode: string;
+	use_ipc: boolean;
+	config_path: string;
 }
 
 export interface MonitorsConfig {

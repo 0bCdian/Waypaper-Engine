@@ -4,6 +4,7 @@ import { cn } from "@/utils/cn";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useShallow } from "zustand/react/shallow";
 import { SettingRow, SettingSectionHeader } from "../SettingRow";
+import { WallhavenDisclaimerModal } from "@/components/WallhavenDisclaimerModal";
 
 interface WallhavenSettingsSectionProps {
 	className?: string;
@@ -20,6 +21,7 @@ const WallhavenSettingsSection: React.FC<WallhavenSettingsSectionProps> = ({
 	);
 
 	const [showKey, setShowKey] = useState(false);
+	const [showDisclaimer, setShowDisclaimer] = useState(false);
 	const [testStatus, setTestStatus] = useState<
 		"idle" | "loading" | "success" | "error"
 	>("idle");
@@ -75,9 +77,13 @@ const WallhavenSettingsSection: React.FC<WallhavenSettingsSectionProps> = ({
 					type="checkbox"
 					className="toggle toggle-primary"
 					checked={wallhaven.enabled}
-					onChange={(e) =>
-						void saveConfigSection("wallhaven", { enabled: e.target.checked })
-					}
+					onChange={(e) => {
+						if (e.target.checked) {
+							setShowDisclaimer(true);
+						} else {
+							void saveConfigSection("wallhaven", { enabled: false });
+						}
+					}}
 				/>
 			</SettingRow>
 
@@ -169,6 +175,15 @@ const WallhavenSettingsSection: React.FC<WallhavenSettingsSectionProps> = ({
 					</div>
 				)}
 			</SettingRow>
+
+			<WallhavenDisclaimerModal
+				isOpen={showDisclaimer}
+				onConfirm={() => {
+					setShowDisclaimer(false);
+					void saveConfigSection("wallhaven", { enabled: true });
+				}}
+				onCancel={() => setShowDisclaimer(false)}
+			/>
 		</div>
 	);
 };

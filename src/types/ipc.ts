@@ -7,6 +7,7 @@ export type {
 	MonitorsConfig,
 	BackendSection as BackendConfig,
 	SwwwConfig,
+	HyprpaperConfig,
 	UnifiedConfig,
 } from "../../electron/daemon-go-types";
 

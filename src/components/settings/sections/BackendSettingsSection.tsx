@@ -171,6 +171,39 @@ const fehDisplayFields: Field[] = [
 	},
 ];
 
+const hyprpaperDisplayFields: Field[] = [
+	{
+		key: "hyprpaper.fit_mode",
+		label: "Fit Mode",
+		description: "How hyprpaper scales the wallpaper image",
+		type: "select",
+		options: [
+			{ value: "cover", label: "Cover" },
+			{ value: "contain", label: "Contain" },
+			{ value: "tile", label: "Tile" },
+			{ value: "fill", label: "Fill" },
+		],
+	},
+];
+
+const hyprpaperAdvancedFields: Field[] = [
+	{
+		key: "hyprpaper.use_ipc",
+		label: "Use IPC Mode",
+		description:
+			"Use hyprctl IPC instead of config-file restart (requires hyprpaper > 0.8.3)",
+		type: "checkbox",
+	},
+	{
+		key: "hyprpaper.config_path",
+		label: "Config Path Override",
+		description:
+			"Custom path for hyprpaper.conf (leave empty for default ~/.config/hypr/hyprpaper.conf)",
+		type: "text",
+		placeholder: "~/.config/hypr/hyprpaper.conf",
+	},
+];
+
 function DebouncedNumberInput({
 	value: externalValue,
 	onCommit,
@@ -312,6 +345,9 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 		} else if (key.startsWith("feh.")) {
 			const fehKey = key.replace("feh.", "");
 			await saveConfigSection(section, { [fehKey]: value });
+		} else if (key.startsWith("hyprpaper.")) {
+			const hpKey = key.replace("hyprpaper.", "");
+			await saveConfigSection(section, { [hpKey]: value });
 		} else {
 			await saveConfigSection(section, { [key]: value });
 		}
@@ -329,6 +365,10 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 		} else if (field.key.startsWith("feh.")) {
 			raw = config?.backend?.feh?.[
 				field.key.replace("feh.", "") as keyof NonNullable<typeof config.backend.feh>
+			];
+		} else if (field.key.startsWith("hyprpaper.")) {
+			raw = config?.backend?.hyprpaper?.[
+				field.key.replace("hyprpaper.", "") as keyof NonNullable<typeof config.backend.hyprpaper>
 			];
 		} else {
 			raw = config?.backend?.[field.key as keyof typeof config.backend];
@@ -487,6 +527,20 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 				<>
 					<SettingSectionHeader title="Image Display" />
 					{fehDisplayFields.map(renderField)}
+				</>
+			)}
+
+			{/* ── hyprpaper settings ─────────────────────────────── */}
+			{backendType === "hyprpaper" && (
+				<>
+					<SettingSectionHeader title="Image Display" />
+					{hyprpaperDisplayFields.map(renderField)}
+					{showAdvancedSettings && (
+						<>
+							<SettingSectionHeader title="Advanced" />
+							{hyprpaperAdvancedFields.map(renderField)}
+						</>
+					)}
 				</>
 			)}
 		</div>
