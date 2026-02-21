@@ -12,6 +12,7 @@ import (
 	"waypaper-engine/daemon/internal/image"
 	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/store"
+	"waypaper-engine/daemon/internal/wallpaper"
 )
 
 // playlistRun groups the scheduler and cancel func for a single Start() invocation.
@@ -94,36 +95,8 @@ func (m *Manager) Start(ctx context.Context, playlistID int, target monitor.Moni
 		}
 	}
 
-	// Build time slots for time_of_day playlists.
-	var timeSlots []TimeSlot
-	if pl.Configuration.Type == "time_of_day" {
-		for i, pimg := range pl.Images {
-			if pimg.Time != nil {
-				timeSlots = append(timeSlots, TimeSlot{
-					Minutes:    *pimg.Time,
-					ImageIndex: i,
-				})
-			}
-		}
-	}
+	timeSlots, startIdx := computeInitialState(pl)
 
-	// Determine start index based on playlist type and AlwaysStartOnFirstImage.
-	startIdx := 0
-	if !pl.Configuration.AlwaysStartOnFirstImage {
-		switch pl.Configuration.Type {
-		case "time_of_day":
-			startIdx = findClosestTimeSlot(timeSlots)
-		case "day_of_week":
-			weekday := int(time.Now().Weekday())
-			if weekday >= len(pl.Images) {
-				startIdx = len(pl.Images) - 1
-			} else {
-				startIdx = weekday
-			}
-		}
-	}
-
-	// Create scheduler.
 	sched := NewScheduler(SchedulerConfig{
 		Type:        pl.Configuration.Type,
 		Interval:    pl.Configuration.Interval,
@@ -162,27 +135,19 @@ func (m *Manager) Start(ctx context.Context, playlistID int, target monitor.Moni
 		m.onTick(playCtx, pl, index, monitors, target)
 	})
 
-	// Update state AFTER sched.Start() so NextChangeAt is populated.
 	for _, mon := range monitors {
-		firstImageID := pl.Images[startIdx].ImageID
-		var nextImageID *int
-		if len(pl.Images) > 1 {
-			nid := pl.Images[(startIdx+1)%len(pl.Images)].ImageID
-			nextImageID = &nid
-		}
-
 		instance := store.ActivePlaylistInstance{
-			PlaylistID:     pl.ID,
-			PlaylistName:   pl.Name,
-			CurrentIndex:   startIdx,
-			CurrentImageID: firstImageID,
-			NextImageID:    nextImageID,
-			TotalImages:    len(pl.Images),
-			Paused:         false,
-			Mode:           string(target.Mode),
-			StartedAt:      time.Now(),
-			NextChangeAt:   sched.NextChangeAt(),
+			ActivePlaylistState: store.ActivePlaylistState{
+				PlaylistID:   pl.ID,
+				PlaylistName: pl.Name,
+				TotalImages:  len(pl.Images),
+				Paused:       false,
+				StartedAt:    time.Now(),
+				NextChangeAt: sched.NextChangeAt(),
+			},
+			Mode: string(target.Mode),
 		}
+		updateInstanceIndex(&instance, pl, startIdx)
 		m.stateStore.SetActivePlaylist(mon.Name, instance)
 	}
 
@@ -442,16 +407,10 @@ func (m *Manager) advancePlaylist(ctx context.Context, playlistID int, delta int
 			return err
 		}
 
-		// Update state.
-		inst.CurrentIndex = newIdx
-		inst.CurrentImageID = pl.Images[newIdx].ImageID
-		if len(pl.Images) > 1 {
-			nid := pl.Images[(newIdx+1)%len(pl.Images)].ImageID
-			inst.NextImageID = &nid
-			if newIdx > 0 {
-				pid := pl.Images[newIdx-1].ImageID
-				inst.PreviousImageID = &pid
-			}
+		updateInstanceIndex(&inst, pl, newIdx)
+		if newIdx > 0 && len(pl.Images) > 1 {
+			pid := pl.Images[newIdx-1].ImageID
+			inst.PreviousImageID = &pid
 		}
 		m.stateStore.SetActivePlaylist(monName, inst)
 
@@ -513,12 +472,7 @@ func (m *Manager) onTick(ctx context.Context, pl *store.Playlist, index int, mon
 			continue
 		}
 
-		inst.CurrentIndex = index
-		inst.CurrentImageID = pl.Images[index].ImageID
-		if len(pl.Images) > 1 {
-			nid := pl.Images[(index+1)%len(pl.Images)].ImageID
-			inst.NextImageID = &nid
-		}
+		updateInstanceIndex(inst, pl, index)
 		m.mu.RLock()
 		if run, ok := m.runs[mon.Name]; ok {
 			inst.NextChangeAt = run.sched.NextChangeAt()
@@ -551,74 +505,21 @@ func (m *Manager) applyImage(ctx context.Context, pl *store.Playlist, index int,
 		return fmt.Errorf("load image %d: %w", imgRef.ImageID, err)
 	}
 
-	activeBackend := m.registry.Active()
-	caps := activeBackend.Capabilities()
-
-	// Handle extend mode: split image if backend doesn't support native extend.
-	if mode == monitor.ModeExtend && !caps.NativeExtend && m.splitter != nil && len(monitors) > 1 {
-		splitPaths, err := m.splitter.Split(img.Path, img.ID, monitors)
-		if err != nil {
-			return fmt.Errorf("split image: %w", err)
-		}
-
-		for _, mon := range monitors {
-			if splitPath, ok := splitPaths[mon.Name]; ok {
-				req := backend.WallpaperRequest{
-					ImagePath: splitPath,
-					Monitors:  []monitor.Monitor{mon},
-					Mode:      monitor.ModeIndividual,
-				}
-				if err := activeBackend.SetWallpaper(ctx, req); err != nil {
-					return fmt.Errorf("set wallpaper for %s: %w", mon.Name, err)
-				}
-			}
-		}
-	} else {
-		req := backend.WallpaperRequest{
-			ImagePath: img.Path,
-			Monitors:  monitors,
-			Mode:      mode,
-		}
-		if err := activeBackend.SetWallpaper(ctx, req); err != nil {
-			return fmt.Errorf("set wallpaper: %w", err)
-		}
-	}
-
-	// Record history.
-	entry := store.ImageHistoryEntry{
-		ImageID:   img.ID,
-		ImageName: img.Name,
-		Monitors:  monitorNames(monitors),
-		Mode:      string(mode),
-		SetAt:     time.Now(),
+	return wallpaper.Apply(ctx, wallpaper.ApplyOpts{
+		Image:    img,
+		Monitors: monitors,
+		Mode:     mode,
 		Source: store.HistorySource{
 			Type:         "playlist",
 			PlaylistID:   &pl.ID,
 			PlaylistName: pl.Name,
 		},
-		Backend: activeBackend.Name(),
-	}
-	_, _ = m.historyStore.Append(ctx, entry)
-
-	// Update current wallpaper state (in-memory + persisted).
-	for _, mon := range monitors {
-		m.stateStore.SetCurrentWallpaper(mon.Name, entry)
-
-		// Persist to CloverDB for restore on restart.
-		if err := m.monitorStateStore.Set(ctx, store.MonitorState{
-			MonitorName: mon.Name,
-			ImageID:     img.ID,
-			ImageName:   img.Name,
-			ImagePath:   img.Path,
-			Mode:        string(mode),
-			Backend:     activeBackend.Name(),
-			SetAt:       entry.SetAt,
-		}); err != nil {
-			slog.Warn("failed to persist monitor state", "monitor", mon.Name, "error", err)
-		}
-	}
-
-	return nil
+		Backend:  m.registry.Active(),
+		Splitter: m.splitter,
+		History:  m.historyStore,
+		MonState: m.monitorStateStore,
+		State:    m.stateStore,
+	})
 }
 
 // resolveMonitors resolves the target specification to concrete monitors.
@@ -673,17 +574,10 @@ func (m *Manager) missedEventChecker(ctx context.Context, monName string, pl *st
 					"playlist_type", pl.Configuration.Type,
 				)
 
-				// Compute the correct image index for the current time.
 				var newIdx int
 				switch pl.Configuration.Type {
 				case "time_of_day":
-					var slots []TimeSlot
-					for i, pimg := range pl.Images {
-						if pimg.Time != nil {
-							slots = append(slots, TimeSlot{Minutes: *pimg.Time, ImageIndex: i})
-						}
-					}
-					newIdx = findClosestTimeSlot(slots)
+					newIdx = findClosestTimeSlot(buildTimeSlots(pl))
 				case "day_of_week":
 					weekday := int(now.Weekday())
 					newIdx = min(weekday, len(pl.Images)-1)
@@ -695,13 +589,7 @@ func (m *Manager) missedEventChecker(ctx context.Context, monName string, pl *st
 					continue
 				}
 
-				// Update state.
-				inst.CurrentIndex = newIdx
-				inst.CurrentImageID = pl.Images[newIdx].ImageID
-				if len(pl.Images) > 1 {
-					nid := pl.Images[(newIdx+1)%len(pl.Images)].ImageID
-					inst.NextImageID = &nid
-				}
+				updateInstanceIndex(inst, pl, newIdx)
 				m.mu.RLock()
 				if run, ok := m.runs[monName]; ok {
 					inst.NextChangeAt = run.sched.NextChangeAt()
@@ -721,6 +609,54 @@ func (m *Manager) missedEventChecker(ctx context.Context, monName string, pl *st
 				})
 			}
 		}
+	}
+}
+
+// computeInitialState returns the time slots and starting image index for a
+// playlist, respecting AlwaysStartOnFirstImage and playlist type.
+func computeInitialState(pl *store.Playlist) ([]TimeSlot, int) {
+	var timeSlots []TimeSlot
+	if pl.Configuration.Type == "time_of_day" {
+		timeSlots = buildTimeSlots(pl)
+	}
+
+	if pl.Configuration.AlwaysStartOnFirstImage {
+		return timeSlots, 0
+	}
+
+	switch pl.Configuration.Type {
+	case "time_of_day":
+		return timeSlots, findClosestTimeSlot(timeSlots)
+	case "day_of_week":
+		weekday := int(time.Now().Weekday())
+		if weekday >= len(pl.Images) {
+			return timeSlots, len(pl.Images) - 1
+		}
+		return timeSlots, weekday
+	default:
+		return timeSlots, 0
+	}
+}
+
+// buildTimeSlots extracts TimeSlot entries from the playlist's images.
+func buildTimeSlots(pl *store.Playlist) []TimeSlot {
+	var slots []TimeSlot
+	for i, pimg := range pl.Images {
+		if pimg.Time != nil {
+			slots = append(slots, TimeSlot{Minutes: *pimg.Time, ImageIndex: i})
+		}
+	}
+	return slots
+}
+
+// updateInstanceIndex updates the navigation fields (CurrentIndex,
+// CurrentImageID, NextImageID) on an ActivePlaylistInstance.
+func updateInstanceIndex(inst *store.ActivePlaylistInstance, pl *store.Playlist, newIdx int) {
+	inst.CurrentIndex = newIdx
+	inst.CurrentImageID = pl.Images[newIdx].ImageID
+	if len(pl.Images) > 1 {
+		nid := pl.Images[(newIdx+1)%len(pl.Images)].ImageID
+		inst.NextImageID = &nid
 	}
 }
 

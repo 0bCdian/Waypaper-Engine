@@ -8,7 +8,8 @@ import type {
 	resolutionConstraints,
 } from "../types/rendererTypes";
 import type { Formats } from "../../shared/types/image";
-import NeoCloseButton from "./NeoCloseButton";
+import Modal, { type ModalHandle } from "./Modal";
+import { useModalStore } from "../stores/modalStore";
 interface AdvancedFiltersForm {
 	resolutionConstraint: resolutionConstraints;
 	width: string;
@@ -28,7 +29,15 @@ interface AdvancedFiltersForm {
 const AdvancedFiltersModal = () => {
 	const { register, handleSubmit, setValue, reset } =
 		useForm<AdvancedFiltersForm>();
-	const containerRef = useRef<HTMLDialogElement>(null);
+	const containerRef = useRef<ModalHandle>(null);
+
+	useEffect(() => {
+		if (containerRef.current) {
+			useModalStore.getState().register("AdvancedFiltersModal", containerRef.current);
+		}
+		return () => useModalStore.getState().unregister("AdvancedFiltersModal");
+	}, []);
+
 	const { setFilters, filters } = useImagesStore(
 		useShallow((s) => ({
 			setFilters: s.setFilters,
@@ -55,7 +64,6 @@ const AdvancedFiltersModal = () => {
 			},
 			colors: filters.advancedFilters.colors ?? [],
 		};
-		console.log(data, formatsArray, formats);
 		setFilters({ ...filters, advancedFilters });
 	};
 	const setFormatsValues = (value: boolean) => {
@@ -75,9 +83,7 @@ const AdvancedFiltersModal = () => {
 		reset();
 	}, [reset]);
 	return (
-		<dialog id="AdvancedFiltersModal" className="modal" ref={containerRef}>
-			<div className="modal-box max-w-lg xl:max-w-xl 2xl:max-w-2xl">
-				<NeoCloseButton onClick={() => containerRef.current?.close()} />
+		<Modal id="AdvancedFiltersModal" ref={containerRef} className="modal-box max-w-lg xl:max-w-xl 2xl:max-w-2xl">
 				<h2 className="mb-4 text-2xl xl:text-3xl 2xl:text-4xl font-bold">
 					Advanced Filters
 				</h2>
@@ -241,11 +247,7 @@ const AdvancedFiltersModal = () => {
 						Save Filters
 					</button>
 				</form>
-			</div>
-			<form method="dialog" className="modal-backdrop">
-				<button type="button">close</button>
-			</form>
-		</dialog>
+		</Modal>
 	);
 };
 

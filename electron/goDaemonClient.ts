@@ -283,10 +283,6 @@ export class GoDaemonClient extends EventEmitter {
 		await this.request("POST", "/shutdown");
 	}
 
-	async stopDaemon(): Promise<void> {
-		return this.shutdown();
-	}
-
 	// ============================================================================
 	// IMAGES
 	// ============================================================================

@@ -12,8 +12,8 @@ import (
 
 // ThumbnailResolution defines a named thumbnail size.
 type ThumbnailResolution struct {
-	Label    string
-	MaxWidth int
+	Label     string
+	MaxWidth  int
 	MaxHeight int
 }
 
@@ -57,24 +57,29 @@ func (t *Thumbnailer) Generate(sourcePath string, imageID int) (map[string]strin
 		}
 
 		outPath := filepath.Join(resDir, fmt.Sprintf("%d.webp", imageID))
-
 		thumb := fitImage(src, res.MaxWidth, res.MaxHeight)
 
-		f, err := os.Create(outPath)
-		if err != nil {
-			return nil, fmt.Errorf("thumbnailer: create file %s: %w", res.Label, err)
+		if err := writeWebP(outPath, thumb); err != nil {
+			return nil, fmt.Errorf("thumbnailer: %s: %w", res.Label, err)
 		}
-
-		if err := webp.Encode(f, thumb, &webp.Options{Quality: 80}); err != nil {
-			f.Close()
-			return nil, fmt.Errorf("thumbnailer: encode %s: %w", res.Label, err)
-		}
-		f.Close()
 
 		thumbnails[res.Label] = outPath
 	}
 
 	return thumbnails, nil
+}
+
+func writeWebP(path string, img image.Image) (err error) {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if cerr := f.Close(); err == nil {
+			err = cerr
+		}
+	}()
+	return webp.Encode(f, img, &webp.Options{Quality: 80})
 }
 
 // fitImage resizes the image to fit within maxWidth x maxHeight, preserving aspect ratio.

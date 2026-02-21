@@ -9,7 +9,8 @@ import {
 	PLAYLIST_ORDER,
 } from "../../shared/types/playlist";
 import { toSeconds, toHoursAndMinutes } from "../utils/utilities";
-import NeoCloseButton from "./NeoCloseButton";
+import Modal, { type ModalHandle } from "./Modal";
+import { useModalStore } from "../stores/modalStore";
 interface Inputs {
 	type: PLAYLIST_TYPES_TYPE;
 	order: PLAYLIST_ORDER_TYPES | null;
@@ -28,7 +29,15 @@ const PlaylistConfigurationModal = () => {
 		})),
 	);
 	const { register, handleSubmit, watch, setValue } = useForm<Inputs>();
-	const containerRef = useRef<HTMLDialogElement>(null);
+	const containerRef = useRef<ModalHandle>(null);
+
+	useEffect(() => {
+		if (containerRef.current) {
+			useModalStore.getState().register("playlistConfigurationModal", containerRef.current);
+		}
+		return () => useModalStore.getState().unregister("playlistConfigurationModal");
+	}, []);
+
 	const closeModal = () => {
 		containerRef.current?.close();
 	};
@@ -123,14 +132,12 @@ const PlaylistConfigurationModal = () => {
 		);
 	}, [playlist, setValue]);
 	return (
-		<dialog
+		<Modal
 			id="playlistConfigurationModal"
 			ref={containerRef}
-			className="modal select-none"
-			draggable={false}
+			onClose={closeModal}
+			className="modal-box max-w-lg xl:max-w-xl 2xl:max-w-2xl"
 		>
-			<div className="modal-box max-w-lg xl:max-w-xl 2xl:max-w-2xl">
-				<NeoCloseButton onClick={closeModal} />
 				<h2 className="mb-4 text-2xl xl:text-3xl 2xl:text-4xl font-bold text-center select-none">
 					Playlist Settings
 				</h2>
@@ -306,11 +313,7 @@ const PlaylistConfigurationModal = () => {
 						Save
 					</button>
 				</form>
-			</div>
-			<form method="dialog" className="modal-backdrop">
-				<button type="button">close</button>
-			</form>
-		</dialog>
+		</Modal>
 	);
 };
 

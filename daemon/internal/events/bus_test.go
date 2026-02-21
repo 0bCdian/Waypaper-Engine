@@ -319,25 +319,3 @@ func TestConcurrentPublishSubscribe(t *testing.T) {
 		t.Logf("subscriber %d received %d/%d events", i, c, totalExpected)
 	}
 }
-
-func TestMarshalData(t *testing.T) {
-	tests := []struct {
-		name string
-		data any
-		want string
-	}{
-		{"nil data", nil, "{}"},
-		{"map data", map[string]any{"key": "value"}, `{"key":"value"}`},
-		{"string data", "hello", `"hello"`},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			evt := Event{Type: WallpaperChanged, Data: tt.data}
-			got := string(evt.MarshalData())
-			if got != tt.want {
-				t.Errorf("MarshalData() = %s, want %s", got, tt.want)
-			}
-		})
-	}
-}

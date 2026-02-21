@@ -58,6 +58,32 @@ type Monitor struct {
 	Transform int `json:"transform"`
 }
 
+// parseTransform converts a compositor transform string (e.g. "normal", "90",
+// "flipped-180") to the integer code used in Monitor.Transform.
+// Shared by swaymsg and wlr-randr providers.
+func parseTransform(s string) int {
+	switch s {
+	case "normal":
+		return 0
+	case "90":
+		return 1
+	case "180":
+		return 2
+	case "270":
+		return 3
+	case "flipped":
+		return 4
+	case "flipped-90":
+		return 5
+	case "flipped-180":
+		return 6
+	case "flipped-270":
+		return 7
+	default:
+		return 0
+	}
+}
+
 // MonitorTarget is used in API request bodies to specify which monitor(s) an action targets.
 type MonitorTarget struct {
 	// ID is the monitor name (e.g. "HDMI-A-1") or "*" for all monitors.

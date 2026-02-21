@@ -8,8 +8,9 @@
 import type React from "react";
 import { useMonitorStore } from "../../stores/monitors";
 import { useShallow } from "zustand/react/shallow";
-import { useDesignSystemStore } from "../../stores/designSystemStore";
+import { useIsNeo } from "../../hooks/useIsNeo";
 import { cn } from "../../utils/cn";
+import { useModalStore } from "../../stores/modalStore";
 import { DRAWER_CHECKBOX_ID } from "./ModernAppLayout";
 
 export interface NavBarProps {
@@ -23,15 +24,12 @@ export const NavBar: React.FC<NavBarProps> = ({ className }) => {
 			reQueryMonitors: s.reQueryMonitors,
 		})),
 	);
-	const isNeo = useDesignSystemStore(
-		(s) => s.designMode === "neobrutalist",
-	);
+	const isNeo = useIsNeo();
 
 	const handleMonitorSelect = async () => {
 		try {
 			await reQueryMonitors();
-			// @ts-expect-error daisyui modal
-			window.monitors.showModal();
+			useModalStore.getState().open("monitors");
 		} catch (error) {
 			console.error("Failed to query monitors:", error);
 		}

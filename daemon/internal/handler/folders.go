@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -254,10 +255,11 @@ func (h *FolderHandler) reparentContents(ctx context.Context, folderID int, newP
 	}
 
 	for _, img := range allImages.Data {
-		_, _ = h.imageStore.Update(ctx, img.ID, map[string]any{"folder_id": parentVal})
+		if _, err := h.imageStore.Update(ctx, img.ID, map[string]any{"folder_id": parentVal}); err != nil {
+			slog.Warn("reparent image failed", "image_id", img.ID, "error", err)
+		}
 	}
 
-	// Handle pagination if more than 200 images.
 	for allImages.Pagination.TotalPages > allImages.Pagination.Page {
 		allImages, err = h.imageStore.GetAll(ctx, store.ImageQueryOpts{
 			FolderID: &folderID,
@@ -268,23 +270,21 @@ func (h *FolderHandler) reparentContents(ctx context.Context, folderID int, newP
 			return err
 		}
 		for _, img := range allImages.Data {
-			_, _ = h.imageStore.Update(ctx, img.ID, map[string]any{"folder_id": parentVal})
+			if _, err := h.imageStore.Update(ctx, img.ID, map[string]any{"folder_id": parentVal}); err != nil {
+				slog.Warn("reparent image failed", "image_id", img.ID, "error", err)
+			}
 		}
 	}
 
-	// Re-parent subfolders.
 	subfolders, err := h.folderStore.GetAll(ctx, &folderID)
 	if err != nil {
 		return err
 	}
 	for _, sub := range subfolders {
-		updates := map[string]any{}
-		if newParentID != nil {
-			updates["parent_id"] = *newParentID
-		} else {
-			updates["parent_id"] = nil
+		updates := map[string]any{"parent_id": parentVal}
+		if _, err := h.folderStore.Update(ctx, sub.ID, updates); err != nil {
+			slog.Warn("reparent subfolder failed", "folder_id", sub.ID, "error", err)
 		}
-		_, _ = h.folderStore.Update(ctx, sub.ID, updates)
 	}
 
 	return nil
@@ -358,7 +358,9 @@ func (h *FolderHandler) MoveImages(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, imgID := range req.ImageIDs {
-		_, _ = h.imageStore.Update(r.Context(), imgID, map[string]any{"folder_id": folderVal})
+		if _, err := h.imageStore.Update(r.Context(), imgID, map[string]any{"folder_id": folderVal}); err != nil {
+			slog.Warn("move image failed", "image_id", imgID, "error", err)
+		}
 	}
 
 	h.bus.Publish(events.Event{

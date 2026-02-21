@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -178,84 +179,44 @@ func (h *PlaylistHandler) Start(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, map[string]string{"status": "started"})
 }
 
-// Stop handles POST /playlists/{id}/stop.
-func (h *PlaylistHandler) Stop(w http.ResponseWriter, r *http.Request) {
+// playlistAction is the shared handler for single-playlist lifecycle operations.
+func (h *PlaylistHandler) playlistAction(w http.ResponseWriter, r *http.Request,
+	action func(ctx context.Context, id int) error, statusWord string) {
 	id, err := ParseIntParam(chi.URLParam(r, "id"))
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
-
-	if err := h.manager.Stop(r.Context(), id); err != nil {
+	if err := action(r.Context(), id); err != nil {
 		WriteError(w, http.StatusNotFound, err.Error())
 		return
 	}
+	WriteJSON(w, http.StatusOK, map[string]string{"status": statusWord})
+}
 
-	WriteJSON(w, http.StatusOK, map[string]string{"status": "stopped"})
+// Stop handles POST /playlists/{id}/stop.
+func (h *PlaylistHandler) Stop(w http.ResponseWriter, r *http.Request) {
+	h.playlistAction(w, r, h.manager.Stop, "stopped")
 }
 
 // Pause handles POST /playlists/{id}/pause.
 func (h *PlaylistHandler) Pause(w http.ResponseWriter, r *http.Request) {
-	id, err := ParseIntParam(chi.URLParam(r, "id"))
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	if err := h.manager.Pause(r.Context(), id); err != nil {
-		WriteError(w, http.StatusNotFound, err.Error())
-		return
-	}
-
-	WriteJSON(w, http.StatusOK, map[string]string{"status": "paused"})
+	h.playlistAction(w, r, h.manager.Pause, "paused")
 }
 
 // Resume handles POST /playlists/{id}/resume.
 func (h *PlaylistHandler) Resume(w http.ResponseWriter, r *http.Request) {
-	id, err := ParseIntParam(chi.URLParam(r, "id"))
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	if err := h.manager.Resume(r.Context(), id); err != nil {
-		WriteError(w, http.StatusNotFound, err.Error())
-		return
-	}
-
-	WriteJSON(w, http.StatusOK, map[string]string{"status": "resumed"})
+	h.playlistAction(w, r, h.manager.Resume, "resumed")
 }
 
 // Next handles POST /playlists/{id}/next.
 func (h *PlaylistHandler) Next(w http.ResponseWriter, r *http.Request) {
-	id, err := ParseIntParam(chi.URLParam(r, "id"))
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	if err := h.manager.Next(r.Context(), id); err != nil {
-		WriteError(w, http.StatusNotFound, err.Error())
-		return
-	}
-
-	WriteJSON(w, http.StatusOK, map[string]string{"status": "advanced"})
+	h.playlistAction(w, r, h.manager.Next, "advanced")
 }
 
 // Previous handles POST /playlists/{id}/previous.
 func (h *PlaylistHandler) Previous(w http.ResponseWriter, r *http.Request) {
-	id, err := ParseIntParam(chi.URLParam(r, "id"))
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	if err := h.manager.Previous(r.Context(), id); err != nil {
-		WriteError(w, http.StatusNotFound, err.Error())
-		return
-	}
-
-	WriteJSON(w, http.StatusOK, map[string]string{"status": "rewound"})
+	h.playlistAction(w, r, h.manager.Previous, "rewound")
 }
 
 // --- Bulk active-playlist lifecycle actions ---
@@ -291,7 +252,7 @@ func (h *PlaylistHandler) ResumeAll(w http.ResponseWriter, r *http.Request) {
 func (h *PlaylistHandler) NextAll(w http.ResponseWriter, r *http.Request) {
 	count := h.manager.NextAll(r.Context())
 	WriteJSON(w, http.StatusOK, map[string]any{
-		"message": "all playlists advanced",
+		"message":  "all playlists advanced",
 		"advanced": count,
 	})
 }
@@ -318,16 +279,7 @@ func (h *PlaylistHandler) ListActive(w http.ResponseWriter, r *http.Request) {
 		resp, exists := grouped[inst.PlaylistID]
 		if !exists {
 			resp = &store.ActivePlaylistResponse{
-				PlaylistID:      inst.PlaylistID,
-				PlaylistName:    inst.PlaylistName,
-				CurrentIndex:    inst.CurrentIndex,
-				CurrentImageID:  inst.CurrentImageID,
-				PreviousImageID: inst.PreviousImageID,
-				NextImageID:     inst.NextImageID,
-				TotalImages:     inst.TotalImages,
-				Paused:          inst.Paused,
-				StartedAt:       inst.StartedAt,
-				NextChangeAt:    inst.NextChangeAt,
+				ActivePlaylistState: inst.ActivePlaylistState,
 			}
 			grouped[inst.PlaylistID] = resp
 		}

@@ -1,4 +1,19 @@
-import type { Monitor } from "../../electron/daemon-go-types";
+import type { Image, Monitor } from "../../electron/daemon-go-types";
+
+export function getThumbnailSrc(
+	image: Pick<Image, "thumbnails" | "path">,
+	preferredSize?: keyof Image["thumbnails"],
+): string {
+	if (preferredSize) {
+		const val = image.thumbnails?.[preferredSize]?.trim();
+		if (val) return val;
+	}
+	return (
+		image.thumbnails?.default?.trim() ||
+		image.thumbnails?.["720p"]?.trim() ||
+		image.path
+	);
+}
 
 export function toSeconds(hours: number, minutes: number) {
 	return hours * 3600 + minutes * 60;
@@ -8,18 +23,6 @@ export function toHoursAndMinutes(seconds: number) {
 	const hours = Math.floor(seconds / 3600);
 	const minutes = Math.floor((seconds % 3600) / 60);
 	return { hours, minutes };
-}
-
-export function debounce(callback: () => void, timer = 1000) {
-	let previous: ReturnType<typeof window.setTimeout> | undefined;
-	return () => {
-		if (previous !== undefined) {
-			clearTimeout(previous);
-		}
-		previous = setTimeout(() => {
-			callback();
-		}, timer);
-	};
 }
 
 export function parseResolution(resolution: string) {

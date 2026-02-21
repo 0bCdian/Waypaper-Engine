@@ -6,13 +6,13 @@ import (
 	"log/slog"
 	"math/rand"
 	"net/http"
-	"time"
 
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/events"
 	"waypaper-engine/daemon/internal/image"
 	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/store"
+	"waypaper-engine/daemon/internal/wallpaper"
 )
 
 // WallpaperHandler handles /wallpaper endpoints.
@@ -155,16 +155,6 @@ func (h *WallpaperHandler) Random(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// HistoryNext handles POST /wallpaper/history/next.
-func (h *WallpaperHandler) HistoryNext(w http.ResponseWriter, r *http.Request) {
-	WriteError(w, http.StatusNotImplemented, "history navigation not yet implemented")
-}
-
-// HistoryPrevious handles POST /wallpaper/history/previous.
-func (h *WallpaperHandler) HistoryPrevious(w http.ResponseWriter, r *http.Request) {
-	WriteError(w, http.StatusNotImplemented, "history navigation not yet implemented")
-}
-
 // GetCurrent handles GET /wallpaper/current.
 // Returns the persisted per-monitor wallpaper state from monitorStateStore,
 // which is independent of the history collection and survives history clearing.
@@ -247,88 +237,18 @@ func (h *WallpaperHandler) resolveMonitors(ctx context.Context, names []string, 
 	return []monitor.Monitor{mon}, nil
 }
 
-// applyWallpaper is the core wallpaper setting flow shared by Set and Random.
-// Callers resolve monitors beforehand via resolveMonitors.
+// applyWallpaper delegates to the shared wallpaper.Apply function.
 func (h *WallpaperHandler) applyWallpaper(ctx context.Context, img *store.Image, monitors []monitor.Monitor, mode monitor.MonitorMode, source string) error {
-	activeBackend := h.registry.Active()
-	caps := activeBackend.Capabilities()
-
-	// Handle extend mode: split image if backend doesn't support native extend.
-	if mode == monitor.ModeExtend && !caps.NativeExtend && h.splitter != nil && len(monitors) > 1 {
-		splitPaths, err := h.splitter.Split(img.Path, img.ID, monitors)
-		if err != nil {
-			return err
-		}
-
-		for _, mon := range monitors {
-			if splitPath, ok := splitPaths[mon.Name]; ok {
-				req := backend.WallpaperRequest{
-					ImagePath: splitPath,
-					Monitors:  []monitor.Monitor{mon},
-					Mode:      monitor.ModeIndividual,
-				}
-				if err := activeBackend.SetWallpaper(ctx, req); err != nil {
-					return err
-				}
-			}
-		}
-	} else {
-		req := backend.WallpaperRequest{
-			ImagePath: img.Path,
-			Monitors:  monitors,
-			Mode:      mode,
-		}
-		if err := activeBackend.SetWallpaper(ctx, req); err != nil {
-			return err
-		}
-	}
-
-	// Record history.
-	monNames := make([]string, len(monitors))
-	for i, mon := range monitors {
-		monNames[i] = mon.Name
-	}
-
-	entry := store.ImageHistoryEntry{
-		ImageID:   img.ID,
-		ImageName: img.Name,
-		Monitors:  monNames,
-		Mode:      string(mode),
-		SetAt:     time.Now(),
-		Source:    store.HistorySource{Type: source},
-		Backend:   activeBackend.Name(),
-	}
-	_, _ = h.historyStore.Append(ctx, entry)
-
-	// Update current wallpaper state (in-memory + persisted).
-	for _, mon := range monitors {
-		h.stateStore.SetCurrentWallpaper(mon.Name, entry)
-
-		// Persist to CloverDB for restore on restart.
-		if err := h.monitorStateStore.Set(ctx, store.MonitorState{
-			MonitorName: mon.Name,
-			ImageID:     img.ID,
-			ImageName:   img.Name,
-			ImagePath:   img.Path,
-			Mode:        string(mode),
-			Backend:     activeBackend.Name(),
-			SetAt:       entry.SetAt,
-		}); err != nil {
-			slog.Warn("failed to persist monitor state", "monitor", mon.Name, "error", err)
-		}
-	}
-
-	// Publish event.
-	h.bus.Publish(events.Event{
-		Type: events.WallpaperChanged,
-		Data: map[string]any{
-			"image_id": img.ID,
-			"monitors": monNames,
-			"mode":     mode,
-			"source":   source,
-			"backend":  activeBackend.Name(),
-		},
+	return wallpaper.Apply(ctx, wallpaper.ApplyOpts{
+		Image:    img,
+		Monitors: monitors,
+		Mode:     mode,
+		Source:   store.HistorySource{Type: source},
+		Backend:  h.registry.Active(),
+		Splitter: h.splitter,
+		History:  h.historyStore,
+		MonState: h.monitorStateStore,
+		State:    h.stateStore,
+		Bus:      h.bus,
 	})
-
-	return nil
 }

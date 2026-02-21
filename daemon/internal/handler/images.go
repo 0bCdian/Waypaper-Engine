@@ -148,28 +148,13 @@ func (h *ImageHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// Normalize tags from []interface{} (JSON decode artifact) to []string.
 	if tagsRaw, ok := updates["tags"]; ok {
-		if arr, ok := tagsRaw.([]interface{}); ok {
-			tags := make([]string, 0, len(arr))
-			for _, v := range arr {
-				if str, ok := v.(string); ok {
-					tags = append(tags, str)
-				}
-			}
+		if tags := normalizeStringSlice(tagsRaw); tags != nil {
 			updates["tags"] = tags
 		}
 	}
-
-	// Normalize colors from []interface{} to []string.
 	if colorsRaw, ok := updates["colors"]; ok {
-		if arr, ok := colorsRaw.([]interface{}); ok {
-			colors := make([]string, 0, len(arr))
-			for _, v := range arr {
-				if str, ok := v.(string); ok {
-					colors = append(colors, str)
-				}
-			}
+		if colors := normalizeStringSlice(colorsRaw); colors != nil {
 			updates["colors"] = colors
 		}
 	}
@@ -369,12 +354,13 @@ func (h *ImageHandler) Tags(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, map[string]any{"tags": tags})
 }
 
-// Thumbnail handles GET /images/{id}/thumbnail.
-func (h *ImageHandler) Thumbnail(w http.ResponseWriter, r *http.Request) {
+// resolveThumbnail looks up an image and returns the thumbnail path for the
+// requested resolution. Writes an HTTP error and returns ("", false) on failure.
+func (h *ImageHandler) resolveThumbnail(w http.ResponseWriter, r *http.Request) (string, bool) {
 	id, err := ParseIntParam(chi.URLParam(r, "id"))
 	if err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
-		return
+		return "", false
 	}
 
 	resolution := r.URL.Query().Get("resolution")
@@ -385,54 +371,38 @@ func (h *ImageHandler) Thumbnail(w http.ResponseWriter, r *http.Request) {
 	image, err := h.store.GetByID(r.Context(), id)
 	if err != nil {
 		WriteError(w, http.StatusNotFound, err.Error())
-		return
+		return "", false
 	}
 
 	if image.Thumbnails == nil {
 		WriteError(w, http.StatusNotFound, "no thumbnails available")
-		return
+		return "", false
 	}
 
 	thumbPath, ok := image.Thumbnails[resolution]
 	if !ok {
 		WriteErrorf(w, http.StatusNotFound, "thumbnail resolution %q not found", resolution)
-		return
+		return "", false
 	}
 
-	// Encode path as JSON.
+	return thumbPath, true
+}
+
+// Thumbnail handles GET /images/{id}/thumbnail.
+func (h *ImageHandler) Thumbnail(w http.ResponseWriter, r *http.Request) {
+	thumbPath, ok := h.resolveThumbnail(w, r)
+	if !ok {
+		return
+	}
 	WriteJSON(w, http.StatusOK, map[string]string{"path": thumbPath})
 }
 
 // RawThumbnail handles GET /images/{id}/thumbnail/raw — serves the actual image file.
 func (h *ImageHandler) RawThumbnail(w http.ResponseWriter, r *http.Request) {
-	id, err := ParseIntParam(chi.URLParam(r, "id"))
-	if err != nil {
-		WriteError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	resolution := r.URL.Query().Get("resolution")
-	if resolution == "" {
-		resolution = "default"
-	}
-
-	image, err := h.store.GetByID(r.Context(), id)
-	if err != nil {
-		WriteError(w, http.StatusNotFound, err.Error())
-		return
-	}
-
-	if image.Thumbnails == nil {
-		WriteError(w, http.StatusNotFound, "no thumbnails available")
-		return
-	}
-
-	thumbPath, ok := image.Thumbnails[resolution]
+	thumbPath, ok := h.resolveThumbnail(w, r)
 	if !ok {
-		WriteErrorf(w, http.StatusNotFound, "thumbnail resolution %q not found", resolution)
 		return
 	}
-
 	w.Header().Set("Content-Type", "image/webp")
 	http.ServeFile(w, r, thumbPath)
 }

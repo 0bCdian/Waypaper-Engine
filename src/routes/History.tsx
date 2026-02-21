@@ -5,6 +5,7 @@ import { useMonitorStore } from "../stores/monitors";
 import { buildHistoryEntryMenuItems } from "../utils/historyContextMenuItems";
 import { confirmDialog } from "../components/ConfirmDialog";
 import type { ImageHistoryEntry, Image } from "../../electron/daemon-go-types";
+import { getThumbnailSrc } from "../utils/utilities";
 
 const { goDaemon } = window.API_RENDERER;
 
@@ -76,7 +77,7 @@ function EntryThumbnail({ image }: { image: Image | undefined }) {
 		);
 	}
 
-	const src = image.thumbnails?.default?.trim() || image.path;
+	const src = getThumbnailSrc(image);
 	return (
 		<img
 			src={src}

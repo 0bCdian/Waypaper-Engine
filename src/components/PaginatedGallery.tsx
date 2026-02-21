@@ -11,7 +11,7 @@ import { useImagePagination } from "../hooks/useImagePagination";
 import { motion, AnimatePresence } from "framer-motion";
 import { useImagesStore } from "../stores/images";
 import { useFoldersStore } from "../stores/foldersStore";
-import { useDesignSystemStore } from "../stores/designSystemStore";
+import { useIsNeo } from "../hooks/useIsNeo";
 import { useContextMenuStore } from "../stores/contextMenuStore";
 import { buildGalleryMenuItems } from "../utils/contextMenuItems";
 import type { DropTargetData } from "../stores/dragStore";
@@ -39,9 +39,7 @@ function PaginatedGallery() {
 	const currentFolderId = useFoldersStore((s) => s.currentFolderId);
 	const searchResults = useFoldersStore((s) => s.searchResults);
 	const searchString = useImagesStore((s) => s.filters.searchString);
-	const isNeo = useDesignSystemStore(
-		(s) => s.designMode === "neobrutalist",
-	);
+	const isNeo = useIsNeo();
 	const ref = useRef<HTMLDivElement>(null);
 	const openContextMenu = useContextMenuStore((s) => s.open);
 

@@ -48,50 +48,30 @@ export class DaemonMonitor {
 		this.windows.add(window);
 	}
 
-	unregisterWindow(window: BrowserWindow): void {
-		this.windows.delete(window);
-	}
-
 	getStatus(): DaemonStatus {
 		return { ...this.status };
 	}
 
 	private async performHealthCheck(): Promise<void> {
+		let isRunning = false;
+		let lastError: string | undefined;
 		try {
-			const isAlive = await goDaemonClient.ping();
-
-			const newStatus: DaemonStatus = {
-				isRunning: isAlive,
-				lastChecked: Date.now(),
-				lastError: isAlive ? undefined : "Health check failed",
-			};
-
-			const statusChanged =
-				this.status.isRunning !== newStatus.isRunning ||
-				this.status.lastError !== newStatus.lastError;
-
-			this.status = newStatus;
-
-			if (statusChanged) {
-				this.broadcastStatusUpdate();
-			}
+			isRunning = await goDaemonClient.ping();
+			if (!isRunning) lastError = "Health check failed";
 		} catch (error) {
-			const newStatus: DaemonStatus = {
-				isRunning: false,
-				lastChecked: Date.now(),
-				lastError: error instanceof Error ? error.message : String(error),
-			};
-
-			const statusChanged =
-				this.status.isRunning !== newStatus.isRunning ||
-				this.status.lastError !== newStatus.lastError;
-
-			this.status = newStatus;
-
-			if (statusChanged) {
-				this.broadcastStatusUpdate();
-			}
+			lastError = error instanceof Error ? error.message : String(error);
 		}
+
+		const newStatus: DaemonStatus = {
+			isRunning,
+			lastChecked: Date.now(),
+			lastError,
+		};
+		const changed =
+			this.status.isRunning !== newStatus.isRunning ||
+			this.status.lastError !== newStatus.lastError;
+		this.status = newStatus;
+		if (changed) this.broadcastStatusUpdate();
 	}
 
 	private broadcastStatusUpdate(): void {

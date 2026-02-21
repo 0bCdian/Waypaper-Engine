@@ -33,13 +33,22 @@ func FindOne[T any](db *clover.DB, q *query.Query, label string) (*T, error) {
 		return nil, fmt.Errorf("%s: find: %w", label, err)
 	}
 	if doc == nil {
-		return nil, fmt.Errorf("%s: not found", label)
+		return nil, fmt.Errorf("%s: %w", label, ErrNotFound)
 	}
 	var v T
 	if err := doc.Unmarshal(&v); err != nil {
 		return nil, fmt.Errorf("%s: unmarshal: %w", label, err)
 	}
 	return &v, nil
+}
+
+// countCollection returns the number of documents in the given collection.
+func countCollection(db *clover.DB, collection, label string) (int, error) {
+	count, err := db.Count(query.NewQuery(collection))
+	if err != nil {
+		return 0, fmt.Errorf("%s: count: %w", label, err)
+	}
+	return count, nil
 }
 
 // Paginate slices an in-memory result set and wraps it in a PaginatedResult.

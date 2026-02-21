@@ -1,4 +1,4 @@
-import SvgComponent from "./addImagesIcon";
+import SvgComponent from "./AddImagesIcon";
 import SvgComponentFolder from "./AddFoldersIcon";
 import openImagesStore from "../hooks/useOpenImages";
 import { useShallow } from "zustand/react/shallow";

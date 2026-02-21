@@ -115,8 +115,6 @@ func NewRouter(h Handlers, bus events.Bus) *chi.Mux {
 		r.Get("/current", h.Wallpaper.GetCurrent)
 		r.Post("/set", h.Wallpaper.Set)
 		r.Post("/random", h.Wallpaper.Random)
-		r.Post("/history/next", h.Wallpaper.HistoryNext)
-		r.Post("/history/previous", h.Wallpaper.HistoryPrevious)
 	})
 
 	return r

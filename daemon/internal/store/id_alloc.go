@@ -38,8 +38,11 @@ func (a *IDAllocator) Init(db *clover.DB, collection string) {
 		query.NewQuery(collection).Sort(query.SortOption{Field: "id", Direction: -1}),
 	)
 	if err == nil && doc != nil {
-		if id, ok := doc.Get("id").(int64); ok {
+		switch id := doc.Get("id").(type) {
+		case int64:
 			a.nextID.Store(id)
+		case float64:
+			a.nextID.Store(int64(id))
 		}
 	}
 }

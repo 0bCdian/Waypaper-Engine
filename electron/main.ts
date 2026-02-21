@@ -129,8 +129,6 @@ async function createAppTray(): Promise<void> {
  */
 async function initializeApp(): Promise<void> {
 	try {
-		("Initializing Waypaper Engine...");
-
 		// Initialize theme manager
 		themeManager = new ThemeManager();
 		themeManager.initialize();
@@ -195,11 +193,19 @@ async function initializeApp(): Promise<void> {
 			console.error("Failed to create tray icon:", error);
 		}
 
-		("Application initialized successfully");
 	} catch (error) {
 		console.error("Failed to initialize application:", error);
 		throw error;
 	}
+}
+
+/**
+ * Show a native desktop notification only when the window is hidden and notifications are enabled.
+ */
+function notifyIfHidden(title: string, body: string): void {
+	if (mainWindow?.isVisible()) return;
+	if (!windowManager?.cachedConfig?.app?.notifications) return;
+	new Notification({ title, body }).show();
 }
 
 /**
@@ -208,43 +214,22 @@ async function initializeApp(): Promise<void> {
  */
 function setupNativeNotifications(): void {
 	goDaemonClient.on("wallpaper_changed", (data: Record<string, unknown>) => {
-		if (mainWindow?.isVisible()) return;
-		const config = windowManager?.cachedConfig;
-		if (!config?.app?.notifications) return;
-		new Notification({
-			title: "Wallpaper Changed",
-			body: `Wallpaper set on ${Array.isArray(data?.monitors) ? (data.monitors as string[]).join(", ") : "monitor"}`,
-		}).show();
+		const monitors = Array.isArray(data?.monitors)
+			? (data.monitors as string[]).join(", ")
+			: "monitor";
+		notifyIfHidden("Wallpaper Changed", `Wallpaper set on ${monitors}`);
 	});
 
 	goDaemonClient.on("playlist_started", (data: Record<string, unknown>) => {
-		if (mainWindow?.isVisible()) return;
-		const config = windowManager?.cachedConfig;
-		if (!config?.app?.notifications) return;
-		new Notification({
-			title: "Playlist Started",
-			body: `Playlist "${String(data?.name ?? "")}" started`,
-		}).show();
+		notifyIfHidden("Playlist Started", `Playlist "${String(data?.name ?? "")}" started`);
 	});
 
 	goDaemonClient.on("playlist_stopped", (data: Record<string, unknown>) => {
-		if (mainWindow?.isVisible()) return;
-		const config = windowManager?.cachedConfig;
-		if (!config?.app?.notifications) return;
-		new Notification({
-			title: "Playlist Stopped",
-			body: `Playlist "${String(data?.name ?? "")}" stopped`,
-		}).show();
+		notifyIfHidden("Playlist Stopped", `Playlist "${String(data?.name ?? "")}" stopped`);
 	});
 
 	goDaemonClient.on("processing_complete", () => {
-		if (mainWindow?.isVisible()) return;
-		const config = windowManager?.cachedConfig;
-		if (!config?.app?.notifications) return;
-		new Notification({
-			title: "Processing Complete",
-			body: "Image processing finished",
-		}).show();
+		notifyIfHidden("Processing Complete", "Image processing finished");
 	});
 }
 
@@ -259,8 +244,7 @@ function setupAppEvents(): void {
 			globalShortcut.register("CommandOrControl+Shift+M", () => {
 				const menu = Menu.getApplicationMenu();
 				if (menu) {
-					Menu.setApplicationMenu(menu);
-					("Menu bar hidden");
+				Menu.setApplicationMenu(menu);
 				} else {
 					// Create a minimal menu for development
 					const template: Electron.MenuItemConstructorOptions[] = [
@@ -284,8 +268,7 @@ function setupAppEvents(): void {
 						},
 					];
 					const devMenu = Menu.buildFromTemplate(template);
-					Menu.setApplicationMenu(devMenu);
-					("Menu bar shown (development mode)");
+				Menu.setApplicationMenu(devMenu);
 				}
 			});
 
@@ -314,18 +297,8 @@ function setupAppEvents(): void {
 		}
 	});
 
-	// App window all closed
 	app.on("window-all-closed", () => {
-		if (process.platform !== "darwin") {
-			app.quit();
-		}
-	});
-
-	// App activate (macOS)
-	app.on("activate", () => {
-		if (BrowserWindow.getAllWindows().length === 0) {
-			createMainWindow();
-		}
+		app.quit();
 	});
 
 	// App before quit -- set flag so window close handler allows the close
@@ -343,7 +316,7 @@ function setupAppEvents(): void {
 			// Use the cached config (synchronous) like the old code did.
 			const config = windowManager?.cachedConfig;
 			if (config?.app?.kill_daemon_on_exit) {
-				goDaemonClient.stopDaemon().catch((error) => {
+				goDaemonClient.shutdown().catch((error) => {
 					console.error("Failed to stop daemon:", error);
 				});
 			}
@@ -369,15 +342,7 @@ function setupAppEvents(): void {
  * Setup global error handling
  */
 function setupErrorHandling(): void {
-	if (process.env.NODE_ENV === "production") {
-		const { crashReporter } = require("electron");
-		crashReporter.start({
-			productName: APP_CONFIG.name,
-			companyName: "Waypaper Engine",
-			submitURL: "",
-			uploadToServer: false,
-		});
-	}
+	// No-op for now; crash reporting can be added when a submit endpoint exists.
 }
 
 /**
@@ -420,7 +385,6 @@ function main(): void {
 	// Setup application events
 	setupAppEvents();
 
-	`${APP_CONFIG.name} v${APP_CONFIG.version} starting...`;
 }
 
 // Start the application

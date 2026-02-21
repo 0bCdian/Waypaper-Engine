@@ -239,11 +239,7 @@ func (s *imageStore) GetAllTags(_ context.Context) ([]string, error) {
 }
 
 func (s *imageStore) Count(_ context.Context) (int, error) {
-	count, err := s.db.Count(query.NewQuery(CollectionImages))
-	if err != nil {
-		return 0, fmt.Errorf("image store: count: %w", err)
-	}
-	return count, nil
+	return countCollection(s.db, CollectionImages, "image store")
 }
 
 func (s *imageStore) IsNameTaken(_ context.Context, name string, excludeID int) (bool, error) {

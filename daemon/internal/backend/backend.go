@@ -10,6 +10,7 @@ package backend
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
@@ -99,6 +100,23 @@ type Capabilities struct {
 	// DaemonProcess indicates whether the backend requires a long-running
 	// background process (e.g. swww-daemon, hyprpaper).
 	DaemonProcess bool `json:"daemon_process"`
+}
+
+// UnmarshalValidateConfig is a generic helper for backends whose ValidateConfig
+// just unmarshals the JSON into their typed config struct.
+func UnmarshalValidateConfig[T any](raw json.RawMessage) error {
+	var cfg T
+	return json.Unmarshal(raw, &cfg)
+}
+
+// UnmarshalParseConfig is a generic helper for backends whose ParseConfig
+// unmarshals the JSON and returns the typed config pointer.
+func UnmarshalParseConfig[T any](raw json.RawMessage, backendName string) (*T, error) {
+	var cfg T
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return nil, fmt.Errorf("%s: parse config: %w", backendName, err)
+	}
+	return &cfg, nil
 }
 
 // WallpaperRequest contains everything a backend needs to set a wallpaper.

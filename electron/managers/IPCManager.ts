@@ -30,7 +30,6 @@ export interface IPCHandler {
 		event: Electron.IpcMainInvokeEvent,
 		...args: unknown[]
 	) => Promise<unknown> | unknown;
-	description?: string;
 }
 
 export class IPCManager {
@@ -54,10 +53,6 @@ export class IPCManager {
 
 	registerWindow(window: BrowserWindow): void {
 		this.windows.add(window);
-	}
-
-	unregisterWindow(window: BrowserWindow): void {
-		this.windows.delete(window);
 	}
 
 	registerHandler(handler: IPCHandler): void {
@@ -103,12 +98,6 @@ export class IPCManager {
 		});
 	}
 
-	unregisterHandler(channel: string): void {
-		if (!this.handlers.has(channel)) return;
-		ipcMain.removeHandler(channel);
-		this.handlers.delete(channel);
-	}
-
 	// ============================================================================
 	// DEFAULT HANDLERS
 	// ============================================================================
@@ -119,7 +108,6 @@ export class IPCManager {
 			handler: async () => {
 				return { message: "pong", timestamp: Date.now() };
 			},
-			description: "Ping-pong handler",
 		});
 
 		this.registerHandler({
@@ -134,7 +122,6 @@ export class IPCManager {
 					electronVersion: process.versions.electron,
 				};
 			},
-			description: "Get application information",
 		});
 
 		this.registerHandler({
@@ -202,7 +189,6 @@ export class IPCManager {
 			handler: async (_event, action: string, payload?: unknown) => {
 				return await this.handleGoDaemonCommand(action, payload);
 			},
-			description: "Handle Go daemon commands",
 		});
 
 		// File operations
@@ -766,7 +752,6 @@ export class IPCManager {
 				if (!res.ok) throw new Error(`Wallhaven API error: ${res.status}`);
 				return res.json();
 			},
-			description: "Proxy Wallhaven search requests",
 		});
 
 		this.registerHandler({
@@ -780,27 +765,13 @@ export class IPCManager {
 				if (!res.ok) throw new Error(`Wallhaven API error: ${res.status}`);
 				return res.json();
 			},
-			description: "Proxy Wallhaven wallpaper detail requests",
 		});
 
 		this.registerHandler({
 			channel: "wallhaven-download",
 			handler: async (_event, ...args) => {
-				const imageUrl = args[0] as string;
-				const res = await fetch(imageUrl);
-				if (!res.ok)
-					throw new Error(`Download failed: ${res.status}`);
-				const buf = Buffer.from(await res.arrayBuffer());
-				const ext =
-					imageUrl.slice(imageUrl.lastIndexOf(".")) || ".jpg";
-				const tmpPath = join(
-					tmpdir(),
-					`wallhaven-${randomUUID()}${ext}`,
-				);
-				await writeFile(tmpPath, buf);
-				return tmpPath;
+				return this.downloadToTemp(args[0] as string, "wallhaven");
 			},
-			description: "Download a Wallhaven image to temp and return its path",
 		});
 	}
 
@@ -817,15 +788,8 @@ export class IPCManager {
 				if (!["http:", "https:"].includes(parsed.protocol)) {
 					throw new Error("Only http/https URLs are supported");
 				}
-				const res = await fetch(url);
-				if (!res.ok) throw new Error(`Download failed: ${res.status}`);
-				const buf = Buffer.from(await res.arrayBuffer());
-				const ext = url.slice(url.lastIndexOf(".")).split("?")[0] || ".jpg";
-				const tmpPath = join(tmpdir(), `import-${randomUUID()}${ext}`);
-				await writeFile(tmpPath, buf);
-				return tmpPath;
+				return this.downloadToTemp(url, "import");
 			},
-			description: "Download any URL to a temp file and return its path",
 		});
 	}
 
@@ -855,20 +819,22 @@ export class IPCManager {
 	// UTILITIES
 	// ============================================================================
 
+	private async downloadToTemp(url: string, prefix = "download"): Promise<string> {
+		const res = await fetch(url);
+		if (!res.ok) throw new Error(`Download failed: ${res.status}`);
+		const buf = Buffer.from(await res.arrayBuffer());
+		const ext = url.slice(url.lastIndexOf(".")).split("?")[0] || ".jpg";
+		const tmpPath = join(tmpdir(), `${prefix}-${randomUUID()}${ext}`);
+		await writeFile(tmpPath, buf);
+		return tmpPath;
+	}
+
 	private broadcastToAllWindows(channel: string, data: unknown): void {
 		this.windows.forEach((window) => {
 			if (!window.isDestroyed()) {
 				window.webContents.send(channel, data);
 			}
 		});
-	}
-
-	getAllHandlers(): IPCHandler[] {
-		return Array.from(this.handlers.values());
-	}
-
-	getHandlerCount(): number {
-		return this.handlers.size;
 	}
 
 	private async handleExitApp(): Promise<boolean> {

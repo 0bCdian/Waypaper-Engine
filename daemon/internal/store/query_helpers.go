@@ -21,18 +21,6 @@ func WhereNilOrNotExists(docs []*d.Document, field string) []*d.Document {
 	return filtered
 }
 
-// WhereNotNil filters documents in-memory, keeping only those where the
-// given field exists and is not nil. Inverse of WhereNilOrNotExists.
-func WhereNotNil(docs []*d.Document, field string) []*d.Document {
-	filtered := make([]*d.Document, 0, len(docs))
-	for _, doc := range docs {
-		if doc.Get(field) != nil {
-			filtered = append(filtered, doc)
-		}
-	}
-	return filtered
-}
-
 // ChainAnd chains criteria with AND. If existing is nil, returns the new one.
 // CloverDB's Criteria.And() requires a non-nil receiver, so this handles the
 // common pattern of building criteria incrementally from zero or more filters.

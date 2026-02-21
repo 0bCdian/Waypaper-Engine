@@ -5,7 +5,8 @@ import { useImagesStore } from "../stores/images";
 import { useFoldersStore } from "../stores/foldersStore";
 import { useShallow } from "zustand/react/shallow";
 import type { ImageQueryParams } from "../../electron/daemon-go-types";
-import { useDesignSystemStore } from "../stores/designSystemStore";
+import { useIsNeo } from "../hooks/useIsNeo";
+import { useModalStore } from "../stores/modalStore";
 
 const { goDaemon } = window.API_RENDERER;
 
@@ -131,18 +132,15 @@ function Filters() {
 		};
 		setFilters(resetFilters);
 	}, [filters.advancedFilters]);
-	const isNeo = useDesignSystemStore(
-		(s) => s.designMode === "neobrutalist",
-	);
+	const isNeo = useIsNeo();
 	return (
 		<section className={`group mt-4 lg:mt-10 mb-3 lg:mb-5 flex flex-wrap justify-center gap-2 px-2${isNeo ? " neo-filters-strip" : ""}`}>
 			<div className="tooltip" data-tip="more filters">
 				<button
 					className="btn btn-active rounded-xl uppercase"
-					onClick={() => {
-						// @ts-expect-error workaround for daisyui
-						window.AdvancedFiltersModal.showModal();
-					}}
+				onClick={() => {
+					useModalStore.getState().open("AdvancedFiltersModal");
+				}}
 				>
 					Filters
 				</button>

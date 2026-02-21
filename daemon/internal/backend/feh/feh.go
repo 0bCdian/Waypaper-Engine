@@ -70,16 +70,11 @@ func (f *Feh) RegisterDefaults(v *viper.Viper) {
 }
 
 func (f *Feh) ValidateConfig(raw json.RawMessage) error {
-	var cfg Config
-	return json.Unmarshal(raw, &cfg)
+	return backend.UnmarshalValidateConfig[Config](raw)
 }
 
 func (f *Feh) ParseConfig(raw json.RawMessage) (any, error) {
-	var cfg Config
-	if err := json.Unmarshal(raw, &cfg); err != nil {
-		return nil, fmt.Errorf("feh: parse config: %w", err)
-	}
-	return &cfg, nil
+	return backend.UnmarshalParseConfig[Config](raw, "feh")
 }
 
 // modeToFlag converts a FehMode to the corresponding feh CLI flag.

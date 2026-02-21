@@ -1,6 +1,6 @@
 import { useEffect, useRef } from "react";
 import { create } from "zustand";
-import { useDesignSystemStore } from "../stores/designSystemStore";
+import { useIsNeo } from "../hooks/useIsNeo";
 
 interface ConfirmOptions {
 	title: string;
@@ -42,7 +42,7 @@ export function confirmDialog(options: ConfirmOptions): Promise<boolean> {
 function ConfirmDialog() {
 	const { isOpen, options, respond } = useConfirmStore();
 	const dialogRef = useRef<HTMLDialogElement>(null);
-	const isNeo = useDesignSystemStore((s) => s.designMode === "neobrutalist");
+	const isNeo = useIsNeo();
 
 	useEffect(() => {
 		if (isOpen) {

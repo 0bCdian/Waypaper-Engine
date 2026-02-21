@@ -1,6 +1,7 @@
 import { useDragStore } from "../stores/dragStore";
 import { useImagesStore } from "../stores/images";
 import { useFoldersStore } from "../stores/foldersStore";
+import { getThumbnailSrc } from "../utils/utilities";
 
 interface DragPreviewProps {
 	source: { id: string | number; data?: unknown } | null;
@@ -36,10 +37,7 @@ export default function DragPreview({ source }: DragPreviewProps) {
 	if (dragType === "image" || dragType === "playlist-item") {
 		const count = dragIds.length;
 		const firstImage = imagesMap.get(dragIds[0]);
-		const thumbSrc =
-			firstImage?.thumbnails?.default ||
-			firstImage?.thumbnails?.["720p"] ||
-			firstImage?.path;
+		const thumbSrc = firstImage ? getThumbnailSrc(firstImage) : undefined;
 
 		if (count === 1) {
 			return (
@@ -61,10 +59,7 @@ export default function DragPreview({ source }: DragPreviewProps) {
 		}
 
 		const secondImage = dragIds.length > 1 ? imagesMap.get(dragIds[1]) : null;
-		const secondSrc =
-			secondImage?.thumbnails?.default ||
-			secondImage?.thumbnails?.["720p"] ||
-			secondImage?.path;
+		const secondSrc = secondImage ? getThumbnailSrc(secondImage) : undefined;
 
 		return (
 			<div className="relative" style={{ width: 100, height: 80 }}>

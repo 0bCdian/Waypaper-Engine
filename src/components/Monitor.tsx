@@ -1,8 +1,8 @@
 import { useMonitorStore, type StoreMonitor } from "../stores/monitors";
 import type { monitorSelectType } from "../types/rendererTypes";
-import SvgComponent from "./addImagesIcon";
+import SvgComponent from "./AddImagesIcon";
 import { useState, useEffect, useMemo } from "react";
-import { calculateMinResolution } from "../utils/utilities";
+import { calculateMinResolution, getThumbnailSrc } from "../utils/utilities";
 
 const goDaemon = window.API_RENDERER.goDaemon;
 
@@ -36,12 +36,7 @@ export function MonitorComponent({
 			})
 			.then((image) => {
 				if (image) {
-					const src =
-						image.thumbnails?.["1080p"] ||
-						image.thumbnails?.["720p"] ||
-						image.thumbnails?.default ||
-						image.path;
-					setWallpaperSrc(src);
+					setWallpaperSrc(getThumbnailSrc(image, "1080p"));
 				}
 			})
 			.catch((err) => {

@@ -98,7 +98,7 @@ func parseWlrRandr(output string) ([]Monitor, error) {
 		}
 
 		if strings.HasPrefix(trimmed, "Transform:") {
-			current.Transform = parseWlrTransform(strings.TrimSpace(strings.TrimPrefix(trimmed, "Transform:")))
+			current.Transform = parseTransform(strings.TrimSpace(strings.TrimPrefix(trimmed, "Transform:")))
 			continue
 		}
 
@@ -147,30 +147,6 @@ func parseWlrPosition(s string) (int, int) {
 	x, _ := strconv.Atoi(strings.TrimSpace(parts[0]))
 	y, _ := strconv.Atoi(strings.TrimSpace(parts[1]))
 	return x, y
-}
-
-// parseWlrTransform converts wlr-randr's transform string to the integer code.
-func parseWlrTransform(s string) int {
-	switch s {
-	case "normal":
-		return 0
-	case "90":
-		return 1
-	case "180":
-		return 2
-	case "270":
-		return 3
-	case "flipped":
-		return 4
-	case "flipped-90":
-		return 5
-	case "flipped-180":
-		return 6
-	case "flipped-270":
-		return 7
-	default:
-		return 0
-	}
 }
 
 // parseWlrMode extracts width, height, and refresh rate from a mode line.

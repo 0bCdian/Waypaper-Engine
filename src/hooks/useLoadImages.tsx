@@ -1,11 +1,12 @@
+import { useRef } from "react";
 import { useImagesStore } from "../stores/images";
-let firstRender = true;
 
 export function useLoadImages() {
 	const reQueryImages = useImagesStore((state) => state.reQueryImages);
+	const hasLoaded = useRef(false);
 	const loadImages = () => {
-		if (!firstRender) return;
-		firstRender = false;
+		if (hasLoaded.current) return;
+		hasLoaded.current = true;
 		reQueryImages();
 	};
 	return loadImages;

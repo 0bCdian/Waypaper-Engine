@@ -1,15 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { useActivePlaylistStore } from "../stores/activePlaylistStore";
 import { useImagesStore } from "../stores/images";
-import { useDesignSystemStore } from "../stores/designSystemStore";
+import { useIsNeo } from "../hooks/useIsNeo";
+import { getThumbnailSrc } from "../utils/utilities";
 
 const { goDaemon } = window.API_RENDERER;
 
 function PlaylistController() {
 	const activePlaylist = useActivePlaylistStore((s) => s.activePlaylist);
-	const isNeo = useDesignSystemStore(
-		(s) => s.designMode === "neobrutalist",
-	);
+	const isNeo = useIsNeo();
 	const imagesMap = useImagesStore((s) => s.imagesMap);
 	const [countdown, setCountdown] = useState<string | null>(null);
 
@@ -76,9 +75,9 @@ function PlaylistController() {
 		<div
 			className={`flex items-center gap-3 rounded-xl border border-base-300 bg-base-200 px-4 py-2 shadow-sm ${isNeo ? "neo-card" : ""}`}
 		>
-			{currentImage?.thumbnails?.default && (
+			{currentImage && (
 				<img
-					src={currentImage.thumbnails.default}
+					src={getThumbnailSrc(currentImage)}
 					alt={currentImage.name}
 					className="h-10 w-10 rounded-lg object-cover"
 				/>

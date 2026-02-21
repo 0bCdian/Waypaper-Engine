@@ -90,34 +90,9 @@ func (p *swaymsgProvider) Detect(ctx context.Context) ([]Monitor, error) {
 			Y:           m.Rect.Y,
 			Scale:       m.Scale,
 			RefreshRate: refreshRate,
-			Transform:   parseSwayTransform(m.Transform),
+			Transform:   parseTransform(m.Transform),
 		})
 	}
 
 	return monitors, nil
-}
-
-// parseSwayTransform converts Sway's string transform to the integer code
-// used in the Monitor struct.
-func parseSwayTransform(s string) int {
-	switch s {
-	case "normal":
-		return 0
-	case "90":
-		return 1
-	case "180":
-		return 2
-	case "270":
-		return 3
-	case "flipped":
-		return 4
-	case "flipped-90":
-		return 5
-	case "flipped-180":
-		return 6
-	case "flipped-270":
-		return 7
-	default:
-		return 0
-	}
 }

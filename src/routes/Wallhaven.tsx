@@ -9,7 +9,7 @@ import {
 	type WallhavenWallpaper,
 } from "../stores/wallhavenStore";
 import { useSettingsStore } from "../stores/settingsStore";
-import { useDesignSystemStore } from "../stores/designSystemStore";
+import { useIsNeo } from "../hooks/useIsNeo";
 import { useContextMenuStore } from "../stores/contextMenuStore";
 import { useMonitorStore } from "../stores/monitors";
 import { buildWallhavenCardMenuItems, buildWallhavenPageMenuItems } from "../utils/wallhavenContextMenuItems";
@@ -26,7 +26,7 @@ const SORTING_OPTIONS: { value: WallhavenSorting; label: string }[] = [
 
 function WallhavenPage() {
 	const config = useSettingsStore((s) => s.config);
-	const isNeo = useDesignSystemStore((s) => s.designMode === "neobrutalist");
+	const isNeo = useIsNeo();
 
 	const {
 		filters,

@@ -31,11 +31,11 @@ func NewSplitter(outputDir string) *Splitter {
 // physical pixels. This struct ensures all fields are in the same coordinate
 // space so bounding box and crop math is correct, including for HiDPI displays.
 type logicalMonitor struct {
-	Name           string
-	LogicalWidth   int
-	LogicalHeight  int
-	X              int // already logical from the compositor
-	Y              int // already logical from the compositor
+	Name          string
+	LogicalWidth  int
+	LogicalHeight int
+	X             int // already logical from the compositor
+	Y             int // already logical from the compositor
 }
 
 // toLogical converts a monitor's physical Width/Height to logical pixels using
@@ -118,16 +118,9 @@ func (s *Splitter) Split(sourcePath string, imageID int, monitors []monitor.Moni
 
 		outPath := filepath.Join(imageDir, fmt.Sprintf("%s.png", lm.Name))
 
-		f, err := os.Create(outPath)
-		if err != nil {
-			return nil, fmt.Errorf("splitter: create file for %s: %w", lm.Name, err)
+		if err := writePNG(outPath, cropped); err != nil {
+			return nil, fmt.Errorf("splitter: %s: %w", lm.Name, err)
 		}
-
-		if err := png.Encode(f, cropped); err != nil {
-			f.Close()
-			return nil, fmt.Errorf("splitter: encode for %s: %w", lm.Name, err)
-		}
-		f.Close()
 
 		result[lm.Name] = outPath
 	}
@@ -258,6 +251,19 @@ func (s *Splitter) saveCache(imageDir string, sourcePath string, monitors []moni
 	}
 
 	return os.WriteFile(filepath.Join(imageDir, cacheFileName), data, 0o644)
+}
+
+func writePNG(path string, img image.Image) (err error) {
+	f, err := os.Create(path)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if cerr := f.Close(); err == nil {
+			err = cerr
+		}
+	}()
+	return png.Encode(f, img)
 }
 
 // boundingBox represents the combined area of all monitors in logical pixels.

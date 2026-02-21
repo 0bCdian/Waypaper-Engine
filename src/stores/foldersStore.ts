@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { Folder } from "../../electron/daemon-go-types";
+import { getThumbnailSrc } from "../utils/utilities";
 
 const { goDaemon } = window.API_RENDERER;
 
@@ -71,12 +72,10 @@ export const useFoldersStore = create<FoldersState>()((set, get) => ({
 			toFetch.map(async (id) => {
 				try {
 					const res = await goDaemon.getImages({ folder_id: id, per_page: 4, page: 1 });
-					const thumbs = res.data
-						.map((img) => img.thumbnails?.default)
-						.filter((t): t is string => !!t);
+					const thumbs = res.data.map((img) => getThumbnailSrc(img));
 					return [id, thumbs] as const;
 				} catch {
-					return [id, []] as const;
+					return [id, [] as string[]] as const;
 				}
 			}),
 		);

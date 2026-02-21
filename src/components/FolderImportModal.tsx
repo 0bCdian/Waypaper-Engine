@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from "react";
 import openImagesStore from "../hooks/useOpenImages";
-import { useDesignSystemStore } from "../stores/designSystemStore";
+import { useIsNeo } from "../hooks/useIsNeo";
 
 const selectPending = () => openImagesStore.getState().pendingFolderImport;
 
@@ -9,7 +9,7 @@ function FolderImportModal() {
 		openImagesStore.subscribe,
 		selectPending,
 	);
-	const isNeo = useDesignSystemStore((s) => s.designMode === "neobrutalist");
+	const isNeo = useIsNeo();
 	const dialogRef = useRef<HTMLDialogElement>(null);
 	const [createFolder, setCreateFolder] = useState(true);
 

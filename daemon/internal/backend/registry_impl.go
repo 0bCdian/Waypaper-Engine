@@ -2,6 +2,7 @@ package backend
 
 import (
 	"fmt"
+	"slices"
 	"sync"
 
 	"waypaper-engine/daemon/internal/monitor"
@@ -79,6 +80,15 @@ func (r *registry) Available() []BackendInfo {
 			Capabilities: b.Capabilities(),
 		})
 	}
+	slices.SortFunc(infos, func(a, b BackendInfo) int {
+		if a.Name < b.Name {
+			return -1
+		}
+		if a.Name > b.Name {
+			return 1
+		}
+		return 0
+	})
 	return infos
 }
 
@@ -101,5 +111,14 @@ func (r *registry) Compatible(compositor monitor.CompositorType) []BackendInfo {
 			}
 		}
 	}
+	slices.SortFunc(infos, func(a, b BackendInfo) int {
+		if a.Name < b.Name {
+			return -1
+		}
+		if a.Name > b.Name {
+			return 1
+		}
+		return 0
+	})
 	return infos
 }

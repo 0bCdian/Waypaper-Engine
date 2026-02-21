@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import LoadPlaylistModal from "./LoadPlaylistModal";
 import SavePlaylistModal from "./SavePlaylistModal";
 import AddToPlaylistModal from "./AddToPlaylistModal";
@@ -9,13 +9,14 @@ import FolderImportModal from "./FolderImportModal";
 import FolderPickerModal from "./FolderPickerModal";
 import { useShallow } from "zustand/react/shallow";
 import { useSettingsStore } from "../stores/settingsStore";
-import Monitors from "./monitorsModal";
+import { useModalStore } from "../stores/modalStore";
+import Monitors from "./MonitorsModal";
 import { useMonitorStore } from "../stores/monitors";
 import type { Playlist } from "../../electron/daemon-go-types";
 const goDaemon = window.API_RENDERER.goDaemon;
-let alreadyShown = false;
+
 function Modals() {
-	// All hooks grouped at the top
+	const alreadyShown = useRef(false);
 	const [playlistsInDB, setPlaylistsInDB] = useState<Playlist[]>([]);
 	const { setLastSavedMonitorConfig, reQueryMonitors } = useMonitorStore(
 		useShallow((s) => ({
@@ -29,13 +30,13 @@ function Modals() {
 	const config = useSettingsStore((s) => s.config);
 
 	useEffect(() => {
-		if (alreadyShown || !config) return;
-		alreadyShown = true;
+		if (alreadyShown.current || !config) return;
+		alreadyShown.current = true;
 		if (!config.app.show_monitor_modal_on_start) return;
 		void setLastSavedMonitorConfig().then(() => {
 			setTimeout(() => {
 				void reQueryMonitors().then(() => {
-					window.monitors?.showModal();
+					useModalStore.getState().open("monitors");
 				});
 			}, 300);
 		});

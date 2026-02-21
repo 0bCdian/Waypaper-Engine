@@ -82,10 +82,7 @@ export function useRealTimeImageProcessing() {
 		const handleProcessingComplete = (...args: unknown[]) => {
 			const data = args[0] as ProcessingCompletePayload;
 			try {
-				console.log(
-					`Processing complete: ${data.succeeded} processed, ${data.failed} errors`,
-				);
-				completeBatch(data.batch_id);
+			completeBatch(data.batch_id);
 
 				setTimeout(() => {
 					startTransition(() => {

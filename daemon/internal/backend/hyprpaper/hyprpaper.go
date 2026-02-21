@@ -289,14 +289,9 @@ func (h *Hyprpaper) loadConfigFromViper() *Config {
 }
 
 func (h *Hyprpaper) ValidateConfig(raw json.RawMessage) error {
-	var cfg Config
-	return json.Unmarshal(raw, &cfg)
+	return backend.UnmarshalValidateConfig[Config](raw)
 }
 
 func (h *Hyprpaper) ParseConfig(raw json.RawMessage) (any, error) {
-	var cfg Config
-	if err := json.Unmarshal(raw, &cfg); err != nil {
-		return nil, fmt.Errorf("hyprpaper: parse config: %w", err)
-	}
-	return &cfg, nil
+	return backend.UnmarshalParseConfig[Config](raw, "hyprpaper")
 }

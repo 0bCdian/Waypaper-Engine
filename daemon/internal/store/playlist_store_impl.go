@@ -87,9 +87,5 @@ func (s *playlistStore) Delete(_ context.Context, id int) error {
 }
 
 func (s *playlistStore) Count(_ context.Context) (int, error) {
-	count, err := s.db.Count(query.NewQuery(CollectionPlaylists))
-	if err != nil {
-		return 0, fmt.Errorf("playlist store: count: %w", err)
-	}
-	return count, nil
+	return countCollection(s.db, CollectionPlaylists, "playlist store")
 }

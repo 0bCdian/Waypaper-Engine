@@ -4,7 +4,7 @@ import {
 	useContextMenuStore,
 	type MenuItem,
 } from "../stores/contextMenuStore";
-import { useDesignSystemStore } from "../stores/designSystemStore";
+import { useIsNeo } from "../hooks/useIsNeo";
 
 const MENU_MIN_WIDTH = 200;
 const SUBMENU_DELAY = 150;
@@ -12,7 +12,7 @@ const VIEWPORT_PADDING = 8;
 
 function ContextMenu() {
 	const { isOpen, position, items, close } = useContextMenuStore();
-	const isNeo = useDesignSystemStore((s) => s.designMode === "neobrutalist");
+	const isNeo = useIsNeo();
 	const menuRef = useRef<HTMLDivElement>(null);
 	const [adjustedPos, setAdjustedPos] = useState(position);
 	const [visible, setVisible] = useState(false);

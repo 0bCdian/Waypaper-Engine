@@ -9,9 +9,10 @@ import { useMonitorStore } from "../stores/monitors";
 import type { openFileAction } from "../../shared/types";
 import { useSetLastActivePlaylist } from "../hooks/useSetLastActivePlaylist";
 import type { PlaylistImage } from "../../electron/daemon-go-types";
-import { useDesignSystemStore } from "../stores/designSystemStore";
+import { useIsNeo } from "../hooks/useIsNeo";
 import { useDragStore } from "../stores/dragStore";
 import type { DropTargetData } from "../stores/dragStore";
+import { useModalStore } from "../stores/modalStore";
 
 const { goDaemon } = window.API_RENDERER;
 import MiniPlaylistCard from "./MiniPlaylistCard";
@@ -45,7 +46,6 @@ function PlaylistTrack() {
 	const isFirstRender = useRef(true);
 
 	const handleClickAddImages = (action: openFileAction) => {
-		console.log("handleClickAddImages", action);
 		void openImages({ action });
 	};
 
@@ -130,9 +130,7 @@ function PlaylistTrack() {
 		}
 	}, [playlist.images, imagesMap]);
 
-	const isNeo = useDesignSystemStore(
-		(s) => s.designMode === "neobrutalist",
-	);
+	const isNeo = useIsNeo();
 
 	const dropData = useMemo<DropTargetData>(() => ({ type: "playlist" }), []);
 	const { ref: playlistDropRef, isDropTarget } = useDroppable({
@@ -197,15 +195,14 @@ function PlaylistTrack() {
 					</li>
 				</ul>
 			</div>
-				<button
-					onClick={() => {
-						// @ts-expect-error daisyui fix
-						window.LoadPlaylistModal.showModal();
-					}}
-					className={btnClass}
-				>
-					Load Playlist
-				</button>
+			<button
+				onClick={() => {
+					useModalStore.getState().open("LoadPlaylistModal");
+				}}
+				className={btnClass}
+			>
+				Load Playlist
+			</button>
 				<button
 					onClick={() => {
 						const monitor =
@@ -221,24 +218,22 @@ function PlaylistTrack() {
 
 		{playlist.images.length > 1 && (
 				<>
-					<button
-						onClick={() => {
-							// @ts-expect-error daisyui fix
-							window.savePlaylistModal.showModal();
-						}}
-						className={isDirty ? `${btnClass} btn-warning animate-pulse` : btnClass}
-					>
-						{isDirty ? "Save*" : "Save"}
-					</button>
-					<button
-						onClick={() => {
-							// @ts-expect-error daisyui fix
-							window.playlistConfigurationModal.showModal();
-						}}
-						className={btnClass}
-					>
-						Configure
-					</button>
+				<button
+					onClick={() => {
+						useModalStore.getState().open("savePlaylistModal");
+					}}
+					className={isDirty ? `${btnClass} btn-warning animate-pulse` : btnClass}
+				>
+					{isDirty ? "Save*" : "Save"}
+				</button>
+				<button
+					onClick={() => {
+						useModalStore.getState().open("playlistConfigurationModal");
+					}}
+					className={btnClass}
+				>
+					Configure
+				</button>
 					<button
 						className={isNeo ? "btn btn-error uppercase" : "btn btn-error rounded-lg uppercase"}
 						onClick={async () => {

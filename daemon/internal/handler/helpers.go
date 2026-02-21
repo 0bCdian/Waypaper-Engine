@@ -2,10 +2,13 @@ package handler
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
+
+	"waypaper-engine/daemon/internal/store"
 )
 
 // WriteJSON writes a JSON response with the given status code.
@@ -53,9 +56,35 @@ func ParseBody(r *http.Request, target any) error {
 func ParseIntParam(value string) (int, error) {
 	n, err := strconv.Atoi(value)
 	if err != nil {
-		return 0, fmt.Errorf("invalid integer parameter: %s", value)
+		return 0, fmt.Errorf("invalid integer parameter %q: %w", value, err)
 	}
 	return n, nil
+}
+
+// WriteStoreError writes an appropriate HTTP error for a store operation failure.
+// Returns 404 for ErrNotFound, 500 for everything else.
+func WriteStoreError(w http.ResponseWriter, err error) {
+	if errors.Is(err, store.ErrNotFound) {
+		WriteError(w, http.StatusNotFound, err.Error())
+	} else {
+		WriteError(w, http.StatusInternalServerError, err.Error())
+	}
+}
+
+// normalizeStringSlice converts a []interface{} (from JSON decoding) to []string.
+// Used to normalize tags and colors in update request maps.
+func normalizeStringSlice(raw any) []string {
+	arr, ok := raw.([]interface{})
+	if !ok {
+		return nil
+	}
+	out := make([]string, 0, len(arr))
+	for _, v := range arr {
+		if str, ok := v.(string); ok {
+			out = append(out, str)
+		}
+	}
+	return out
 }
 
 // PaginationParams holds parsed pagination query parameters.

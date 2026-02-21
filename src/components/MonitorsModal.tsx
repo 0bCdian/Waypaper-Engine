@@ -5,10 +5,10 @@ import { MonitorComponent } from "./Monitor";
 import { calculateMinResolution } from "../utils/utilities";
 import type { monitorSelectType } from "../types/rendererTypes";
 import { usePlaylistStore } from "../stores/playlist";
+import { useModalStore } from "../stores/modalStore";
 import NeoCloseButton from "./NeoCloseButton";
 
 const goDaemon = window.API_RENDERER.goDaemon;
-let firstRender = true;
 
 function Monitors() {
 	// All hooks grouped at the top
@@ -49,10 +49,6 @@ function Monitors() {
 	}, [monitorSelection.mode]);
 
 	useEffect(() => {
-		return () => {};
-	}, []);
-
-	useEffect(() => {
 		const res = calculateMinResolution(monitorsList);
 		setResolution(res);
 	}, [monitorsList]);
@@ -79,13 +75,20 @@ function Monitors() {
 	}, [selectType]);
 
 	useEffect(() => {
-		if (!firstRender) return;
-		firstRender = false;
+		if (modalRef.current) {
+			useModalStore.getState().register("monitors", {
+				showModal: () => modalRef.current?.showModal(),
+				close: () => modalRef.current?.close(),
+			});
+		}
+		return () => useModalStore.getState().unregister("monitors");
+	}, []);
 
+	useEffect(() => {
 		const disposeConnected = goDaemon.on("monitor_connected", () => {
 			setTimeout(() => {
 				void reQueryMonitors().then(() => {
-					window.monitors?.showModal();
+					useModalStore.getState().open("monitors");
 				});
 			}, 300);
 		});
@@ -99,7 +102,6 @@ function Monitors() {
 		return () => {
 			disposeConnected();
 			disposeDisconnected();
-			firstRender = true;
 		};
 	}, []);
 
@@ -157,21 +159,6 @@ function Monitors() {
 		clearPlaylist();
 	};
 
-	const setModalRef = (element: HTMLDialogElement | null) => {
-		Object.assign(modalRef, { current: element });
-		if (element) {
-			window.monitors = {
-				showModal: () => element.showModal(),
-				closeModal: () => element.close(),
-				close: () => element.close(),
-			};
-		} else {
-			if (window.monitors) {
-				window.monitors = undefined;
-			}
-		}
-	};
-
 	const scale =
 		1 / ((monitorsList.length + 1) * (screen.availWidth / window.innerWidth));
 	const isSingleMonitor = monitorsList.length === 1;
@@ -188,7 +175,7 @@ function Monitors() {
 		<dialog
 			id="monitors"
 			className="modal w-full select-none"
-			ref={setModalRef}
+			ref={modalRef}
 			draggable={false}
 		>
 			<div className="modal-box min-w-max">

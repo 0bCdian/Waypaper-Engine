@@ -168,10 +168,15 @@ func marshalEventData(evt events.Event) []byte {
 		return b
 	}
 
-	// Try to treat Data as a map so we can inject the timestamp key.
 	switch d := evt.Data.(type) {
 	case map[string]any:
-		d["timestamp"] = ts
+		// Clone to avoid mutating the shared event data.
+		m := make(map[string]any, len(d)+1)
+		for k, v := range d {
+			m[k] = v
+		}
+		m["timestamp"] = ts
+		d = m
 		b, err := json.Marshal(d)
 		if err != nil {
 			slog.Warn("failed to marshal event data map", "type", evt.Type, "error", err)

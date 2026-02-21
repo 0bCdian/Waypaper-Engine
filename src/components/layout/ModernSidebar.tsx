@@ -10,7 +10,7 @@ import type React from "react";
 import { Link, useLocation } from "react-router-dom";
 import SidebarConfiguration from "../SidebarConfiguration";
 import { DRAWER_CHECKBOX_ID } from "./ModernAppLayout";
-import { useDesignSystemStore } from "../../stores/designSystemStore";
+import { useIsNeo } from "../../hooks/useIsNeo";
 
 /** Programmatically close the drawer by unchecking the toggle */
 export function closeDrawer() {
@@ -25,9 +25,7 @@ export function closeDrawer() {
 export const SidebarContent: React.FC = () => {
 	const location = useLocation();
 	const isConfigurationPage = location.pathname === "/configuration";
-	const isNeo = useDesignSystemStore(
-		(s) => s.designMode === "neobrutalist",
-	);
+	const isNeo = useIsNeo();
 
 	const handleNavigationClick = () => {
 		closeDrawer();

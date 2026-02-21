@@ -7,13 +7,6 @@ import type {
 } from "../../electron/daemon-go-types";
 import type { Formats } from "../../shared/types/image";
 
-export enum STORE_ACTIONS {
-	SET_IMAGES_ARRAY = "SET_IMAGES_ARRAY",
-	SET_SKELETONS_TO_SHOW = "SET_SKELETONS_TO_SHOW",
-	SET_FILTERS = "SET_FILTERS",
-	RESET_IMAGES_ARRAY = "RESET_IMAGES_ARRAY",
-}
-
 // Renderer image extends the daemon Image with playlist-specific time
 export interface rendererImage extends Image {
 	time: number | null; // Minutes since midnight (0-1439) for time_of_day playlists

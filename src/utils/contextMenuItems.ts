@@ -6,7 +6,7 @@ import { usePlaylistStore } from "../stores/playlist";
 import { useImageDetailStore } from "../stores/imageDetailStore";
 import { useHistoryStore } from "../stores/historyStore";
 import { useFoldersStore, getAllImageIdsInFolder } from "../stores/foldersStore";
-import { useFolderPickerStore } from "../components/FolderPickerModal";
+import { useFolderPickerStore } from "../stores/folderPickerStore";
 import { confirmDialog } from "../components/ConfirmDialog";
 import openImagesStore from "../hooks/useOpenImages";
 import type { Image } from "../../electron/daemon-go-types";

@@ -125,9 +125,5 @@ func (s *folderStore) Search(_ context.Context, searchQuery string) ([]Folder, e
 }
 
 func (s *folderStore) Count(_ context.Context) (int, error) {
-	count, err := s.db.Count(query.NewQuery(CollectionFolders))
-	if err != nil {
-		return 0, fmt.Errorf("folder store: count: %w", err)
-	}
-	return count, nil
+	return countCollection(s.db, CollectionFolders, "folder store")
 }

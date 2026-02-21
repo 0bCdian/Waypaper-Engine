@@ -9,7 +9,7 @@ import {
 import { useImageDetailStore } from "../stores/imageDetailStore";
 import { useImagesStore } from "../stores/images";
 import { useToastStore } from "../stores/toastStore";
-import { useDesignSystemStore } from "../stores/designSystemStore";
+import { useIsNeo } from "../hooks/useIsNeo";
 
 const { goDaemon } = window.API_RENDERER;
 
@@ -22,9 +22,7 @@ function formatFileSize(bytes: number): string {
 function ImageDetailSidebar() {
 	const { selectedImage, isOpen, close } = useImageDetailStore();
 	const addToast = useToastStore((s) => s.addToast);
-	const isNeo = useDesignSystemStore(
-		(s) => s.designMode === "neobrutalist",
-	);
+	const isNeo = useIsNeo();
 	const [tags, setTags] = useState<string[]>([]);
 	const [tagInput, setTagInput] = useState("");
 	const [allTags, setAllTags] = useState<string[]>([]);

@@ -50,11 +50,6 @@ func (h *BackendHandler) List(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, h.registry.Available())
 }
 
-// activateRequest is the JSON body for POST /backends/{name}/activate.
-type activateRequest struct {
-	// empty for now, could have options in the future
-}
-
 // Activate handles POST /backends/{name}/activate.
 func (h *BackendHandler) Activate(w http.ResponseWriter, r *http.Request) {
 	name := chi.URLParam(r, "name")

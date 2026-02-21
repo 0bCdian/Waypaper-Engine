@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback, useMemo, type KeyboardEvent } from "react";
+import { useCallback, useMemo, type KeyboardEvent } from "react";
 import type { Folder } from "../../electron/daemon-go-types";
 import { useDraggable } from "@dnd-kit/react";
 import { useDroppable } from "@dnd-kit/react";
@@ -6,7 +6,8 @@ import { useFoldersStore } from "../stores/foldersStore";
 import { useImagesStore } from "../stores/images";
 import { useContextMenuStore } from "../stores/contextMenuStore";
 import { useToastStore } from "../stores/toastStore";
-import { useDesignSystemStore } from "../stores/designSystemStore";
+import { useIsNeo } from "../hooks/useIsNeo";
+import { useInlineRename } from "../hooks/useInlineRename";
 import { buildFolderMenuItems } from "../utils/contextMenuItems";
 import type { DragSourceData, DropTargetData } from "../stores/dragStore";
 
@@ -14,7 +15,7 @@ interface FolderCardProps {
 	folder: Folder;
 }
 
-const FolderIcon = ({ className }: { className?: string }) => (
+export const FolderIcon = ({ className }: { className?: string }) => (
 	<svg
 		xmlns="http://www.w3.org/2000/svg"
 		viewBox="0 0 20 20"
@@ -25,7 +26,7 @@ const FolderIcon = ({ className }: { className?: string }) => (
 	</svg>
 );
 
-const FolderIconLarge = ({ className }: { className?: string }) => (
+export const FolderIconLarge = ({ className }: { className?: string }) => (
 	<svg
 		xmlns="http://www.w3.org/2000/svg"
 		viewBox="0 0 24 24"
@@ -41,12 +42,7 @@ function FolderCard({ folder }: FolderCardProps) {
 	const previews = useFoldersStore((s) => s.folderPreviews.get(folder.id));
 	const openContextMenu = useContextMenuStore((s) => s.open);
 	const addToast = useToastStore((s) => s.addToast);
-	const isNeo = useDesignSystemStore(
-		(s) => s.designMode === "neobrutalist",
-	);
-	const [isRenaming, setIsRenaming] = useState(false);
-	const [renameName, setRenameName] = useState(folder.name);
-	const renameInputRef = useRef<HTMLInputElement>(null);
+	const isNeo = useIsNeo();
 
 	const dragData = useMemo<DragSourceData>(
 		() => ({ type: "folder", folderId: folder.id }),
@@ -66,11 +62,17 @@ function FolderCard({ folder }: FolderCardProps) {
 		data: dropData,
 	});
 
-	const startRename = useCallback(() => {
-		setRenameName(folder.name);
-		setIsRenaming(true);
-		requestAnimationFrame(() => renameInputRef.current?.select());
-	}, [folder.name]);
+	const handleRenameSubmit = useCallback(async (newName: string) => {
+		try {
+			await useFoldersStore.getState().renameFolder(folder.id, newName);
+			addToast("Folder renamed", "success", 2000);
+		} catch {
+			addToast("Failed to rename folder", "error");
+		}
+	}, [folder.id, addToast]);
+
+	const { isRenaming, renameName, setRenameName, renameInputRef, startRename, submitRename, cancelRename } =
+		useInlineRename({ currentName: folder.name, onSubmit: handleRenameSubmit });
 
 	const handleClick = () => {
 		if (isRenaming) return;
@@ -93,18 +95,6 @@ function FolderCard({ folder }: FolderCardProps) {
 			handleClick();
 		}
 	};
-
-	const submitRename = useCallback(async () => {
-		setIsRenaming(false);
-		const trimmed = renameName.trim();
-		if (!trimmed || trimmed === folder.name) return;
-		try {
-			await useFoldersStore.getState().renameFolder(folder.id, trimmed);
-			addToast("Folder renamed", "success", 2000);
-		} catch {
-			addToast("Failed to rename folder", "error");
-		}
-	}, [folder.id, folder.name, renameName, addToast]);
 
 	const mergedRef = useCallback(
 		(node: HTMLDivElement | null) => {
@@ -130,10 +120,9 @@ function FolderCard({ folder }: FolderCardProps) {
 				if (e.key === "Enter") {
 					e.preventDefault();
 					renameInputRef.current?.blur();
-				} else if (e.key === "Escape") {
-					setIsRenaming(false);
-					setRenameName(folder.name);
-				}
+			} else if (e.key === "Escape") {
+				cancelRename();
+			}
 			}}
 			onClick={(e) => e.stopPropagation()}
 		/>

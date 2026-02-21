@@ -1,4 +1,4 @@
-import { useDesignSystemStore } from "../stores/designSystemStore";
+import { useIsNeo } from "../hooks/useIsNeo";
 
 interface NeoCloseButtonProps {
 	onClick: () => void;
@@ -10,9 +10,7 @@ interface NeoCloseButtonProps {
  * the standard DaisyUI ghost circle button otherwise.
  */
 function NeoCloseButton({ onClick }: NeoCloseButtonProps) {
-	const isNeo = useDesignSystemStore(
-		(s) => s.designMode === "neobrutalist",
-	);
+	const isNeo = useIsNeo();
 
 	if (isNeo) {
 		return (

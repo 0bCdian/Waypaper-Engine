@@ -1,4 +1,4 @@
-import { useCallback, useId, useMemo, useRef, useState } from "react";
+import { useCallback, useId, useMemo, useRef } from "react";
 import type { ChangeEvent } from "react";
 import { isHotkeyPressed } from "react-hotkeys-hook";
 import { useShallow } from "zustand/react/shallow";
@@ -11,6 +11,7 @@ import { useImageDetailStore } from "../stores/imageDetailStore";
 import { useContextMenuStore } from "../stores/contextMenuStore";
 import { useToastStore } from "../stores/toastStore";
 import { buildImageMenuItems } from "../utils/contextMenuItems";
+import { useInlineRename } from "../hooks/useInlineRename";
 import type { rendererImage } from "../types/rendererTypes";
 import type { DragSourceData } from "../stores/dragStore";
 
@@ -52,23 +53,11 @@ function ImageCard({ Image }: ImageCardProps) {
 		(s) => s.designMode === "neobrutalist" && s.neoConfig.polaroidCards,
 	);
 	const addToast = useToastStore((s) => s.addToast);
-	const [isRenaming, setIsRenaming] = useState(false);
-	const [renameName, setRenameName] = useState("");
-	const renameInputRef = useRef<HTMLInputElement>(null);
 
-	const startRename = useCallback(() => {
-		setRenameName(Image.name);
-		setIsRenaming(true);
-		requestAnimationFrame(() => renameInputRef.current?.select());
-	}, [Image.name]);
-
-	const submitRename = useCallback(async () => {
-		setIsRenaming(false);
-		const trimmed = renameName.trim();
-		if (!trimmed || trimmed === Image.name) return;
+	const handleRenameSubmit = useCallback(async (newName: string) => {
 		try {
-			const updated = await useImagesStore.getState().renameImage(Image.id, trimmed);
-			if (updated.name !== trimmed) {
+			const updated = await useImagesStore.getState().renameImage(Image.id, newName);
+			if (updated.name !== newName) {
 				addToast(`Renamed to "${updated.name}" (original name was taken)`, "info", 3000);
 			} else {
 				addToast("Image renamed", "success", 2000);
@@ -76,12 +65,10 @@ function ImageCard({ Image }: ImageCardProps) {
 		} catch {
 			addToast("Failed to rename image", "error");
 		}
-	}, [Image.id, Image.name, renameName, addToast]);
+	}, [Image.id, addToast]);
 
-	const cancelRename = useCallback(() => {
-		setIsRenaming(false);
-		setRenameName(Image.name);
-	}, [Image.name]);
+	const { isRenaming, renameName, setRenameName, renameInputRef, startRename, submitRename, cancelRename } =
+		useInlineRename({ currentName: Image.name, onSubmit: handleRenameSubmit });
 
 	const isChecked = !isEmpty && imagesInPlaylist.has(Image.id);
 	const isSelected = selectedImages.has(Image.id);

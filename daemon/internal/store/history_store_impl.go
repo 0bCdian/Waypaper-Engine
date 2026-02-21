@@ -69,33 +69,8 @@ func (s *historyStore) GetRecent(_ context.Context, opts HistoryQueryOpts) ([]Im
 	return UnmarshalAll[ImageHistoryEntry](docs), nil
 }
 
-func (s *historyStore) Trim(_ context.Context, maxEntries int) error {
-	count, err := s.db.Count(query.NewQuery(CollectionHistory))
-	if err != nil {
-		return fmt.Errorf("history store: count for trim: %w", err)
-	}
-
-	excess := count - maxEntries
-	if excess <= 0 {
-		return nil
-	}
-
-	q := query.NewQuery(CollectionHistory).
-		Sort(query.SortOption{Field: "id", Direction: 1}).
-		Limit(excess)
-
-	if err := s.db.Delete(q); err != nil {
-		return fmt.Errorf("history store: trim: %w", err)
-	}
-	return nil
-}
-
 func (s *historyStore) Count(_ context.Context) (int, error) {
-	count, err := s.db.Count(query.NewQuery(CollectionHistory))
-	if err != nil {
-		return 0, fmt.Errorf("history store: count: %w", err)
-	}
-	return count, nil
+	return countCollection(s.db, CollectionHistory, "history store")
 }
 
 func (s *historyStore) Clear(_ context.Context) error {

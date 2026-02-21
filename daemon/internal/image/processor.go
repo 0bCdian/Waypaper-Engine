@@ -68,13 +68,6 @@ func (p *Processor) ProcessBatchWithFolder(ctx context.Context, paths []string, 
 	return batchID
 }
 
-// ProcessBatchSync imports a batch of images synchronously.
-// Returns the created images or an error.
-func (p *Processor) ProcessBatchSync(ctx context.Context, paths []string) ([]store.Image, error) {
-	batchID := fmt.Sprintf("%d", time.Now().UnixNano())
-	return p.processBatchSync(ctx, paths, batchID, nil)
-}
-
 func (p *Processor) processBatchSync(ctx context.Context, paths []string, batchID string, folderID *int) ([]store.Image, error) {
 	startTime := time.Now()
 
@@ -270,7 +263,7 @@ func getImageDimensions(path string) (int, int, error) {
 	return cfg.Width, cfg.Height, nil
 }
 
-// copyFile copies a file from src to dst.
+// copyFile copies a file from src to dst, removing dst on error.
 func copyFile(src, dst string) error {
 	in, err := os.Open(src)
 	if err != nil {
@@ -285,7 +278,12 @@ func copyFile(src, dst string) error {
 	defer out.Close()
 
 	if _, err := io.Copy(out, in); err != nil {
+		os.Remove(dst)
 		return err
 	}
-	return out.Sync()
+	if err := out.Sync(); err != nil {
+		os.Remove(dst)
+		return err
+	}
+	return nil
 }

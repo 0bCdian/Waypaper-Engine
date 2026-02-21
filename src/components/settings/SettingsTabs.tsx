@@ -2,7 +2,7 @@ import type React from "react";
 import { useState, useEffect } from "react";
 import { cn } from "@/utils/cn";
 import { useSettingsStore } from "@/stores/settingsStore";
-import { useDesignSystemStore } from "@/stores/designSystemStore";
+import { useIsNeo } from "@/hooks/useIsNeo";
 import { useShallow } from "zustand/react/shallow";
 import SettingsSearch from "./SettingsSearch";
 import AppSettingsSection from "./sections/AppSettingsSection";
@@ -47,7 +47,7 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className }) => {
 		})),
 	);
 
-	const isNeo = useDesignSystemStore((s) => s.designMode === "neobrutalist");
+	const isNeo = useIsNeo();
 	const [activeSection, setActiveSection] = useState<ConfigSection>("app");
 
 	useEffect(() => () => clearErrors(), [clearErrors]);

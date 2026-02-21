@@ -1,7 +1,6 @@
 package events
 
 import (
-	"encoding/json"
 	"log/slog"
 	"sync"
 	"time"
@@ -21,20 +20,6 @@ type Event struct {
 	// Timestamp is when the event was published.
 	// Set automatically by Publish() if zero.
 	Timestamp time.Time `json:"timestamp"`
-}
-
-// MarshalData returns the Data field as a JSON byte slice.
-// Returns an empty JSON object if Data is nil or marshaling fails.
-func (e Event) MarshalData() []byte {
-	if e.Data == nil {
-		return []byte("{}")
-	}
-	b, err := json.Marshal(e.Data)
-	if err != nil {
-		slog.Warn("failed to marshal event data", "type", e.Type, "error", err)
-		return []byte("{}")
-	}
-	return b
 }
 
 // Bus is the interface for the daemon's in-process pub/sub event system.

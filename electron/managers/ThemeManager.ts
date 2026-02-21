@@ -19,8 +19,6 @@ export class ThemeManager {
 		this.setupNativeThemeHandling();
 		this.setupIPC();
 		this.isInitialized = true;
-
-		("Theme Manager initialized");
 	}
 
 	/**
@@ -55,8 +53,7 @@ export class ThemeManager {
 	 */
 	private setupIPC(): void {
 		// Listen for theme changes from renderer
-		ipcMain.on("theme-changed", (_, themeName: string) => {
-			`Theme changed to: ${themeName}`;
+		ipcMain.on("theme-changed", (_) => {
 			// Could sync with system theme if needed
 		});
 	}
@@ -88,32 +85,11 @@ export class ThemeManager {
 	}
 
 	/**
-	 * Get current native theme info
-	 */
-	getNativeThemeInfo() {
-		return {
-			shouldUseDarkColors: nativeTheme.shouldUseDarkColors,
-			shouldUseHighContrastColors: nativeTheme.shouldUseHighContrastColors,
-			shouldUseInvertedColorScheme: nativeTheme.shouldUseInvertedColorScheme,
-			themeSource: nativeTheme.themeSource,
-		};
-	}
-
-	/**
-	 * Set theme source
-	 */
-	setThemeSource(source: "system" | "light" | "dark"): void {
-		nativeTheme.themeSource = source;
-		this.broadcastThemeUpdate();
-	}
-
-	/**
 	 * Cleanup
 	 */
 	cleanup(): void {
 		this.windows.clear();
 		this.isInitialized = false;
-		("Theme Manager cleaned up");
 	}
 }
 

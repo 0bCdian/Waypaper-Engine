@@ -335,10 +335,6 @@ export interface HealthResponse {
 	status: "ok";
 }
 
-export interface ShutdownResponse {
-	status: "shutting_down";
-}
-
 // ============================================================================
 // EVENT TYPES (SSE)
 // ============================================================================
@@ -473,10 +469,6 @@ export interface UpdateImageRequest {
 	tags?: string[];
 	colors?: string[];
 	is_selected?: boolean;
-}
-
-export interface RenameImageRequest {
-	name: string;
 }
 
 export interface ImportImagesRequest {

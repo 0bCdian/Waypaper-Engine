@@ -307,7 +307,7 @@ func (s *timeOfDayScheduler) NextChangeAt() *time.Time {
 // --- Day-of-Week Scheduler ---
 
 type dayOfWeekScheduler struct {
-	mu         sync.Mutex
+	mu          sync.Mutex
 	totalImages int
 	callback    func(int)
 	timer       *time.Timer
@@ -389,14 +389,20 @@ func (s *dayOfWeekScheduler) Stop() {
 func (s *dayOfWeekScheduler) Pause() {
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
 	s.paused = true
+	if s.timer != nil {
+		s.timer.Stop()
+	}
 	s.nextChange = nil
 }
 
 func (s *dayOfWeekScheduler) Resume() {
 	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.paused = false
+	s.mu.Unlock()
+
+	go s.scheduleNext()
 }
 
 func (s *dayOfWeekScheduler) NextChangeAt() *time.Time {

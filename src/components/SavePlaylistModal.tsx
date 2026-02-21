@@ -4,7 +4,8 @@ import { usePlaylistStore } from "../stores/playlist";
 import { useShallow } from "zustand/react/shallow";
 import { useMonitorStore } from "../stores/monitors";
 import type { PlaylistImage } from "../../electron/daemon-go-types";
-import NeoCloseButton from "./NeoCloseButton";
+import Modal, { type ModalHandle } from "./Modal";
+import { useModalStore } from "../stores/modalStore";
 const { goDaemon } = window.API_RENDERER;
 
 interface Props {
@@ -25,9 +26,17 @@ const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
 	);
 	const [error, showError] = useState({ state: false, message: "" });
 	const monitorSelection = useMonitorStore((s) => s.monitorSelection);
-	const modalRef = useRef<HTMLDialogElement>(null);
+	const modalRef = useRef<ModalHandle>(null);
 	const { register, handleSubmit, setValue } =
 		useForm<savePlaylistModalFields>();
+
+	useEffect(() => {
+		if (modalRef.current) {
+			useModalStore.getState().register("savePlaylistModal", modalRef.current);
+		}
+		return () => useModalStore.getState().unregister("savePlaylistModal");
+	}, []);
+
 	const closeModal = () => {
 		modalRef.current?.close();
 	};
@@ -122,19 +131,18 @@ const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
 		setValue("playlistName", currentPlaylistName);
 	}, [currentPlaylistName, setValue]);
 	return (
-		<dialog
+		<Modal
 			id="savePlaylistModal"
-			className="modal select-none"
-			draggable={false}
 			ref={modalRef}
+			onClose={closeModal}
+			className="modal-box max-w-lg xl:max-w-xl 2xl:max-w-2xl"
 		>
 			<form
 				onSubmit={(e) => {
 					void handleSubmit(onSubmit)(e);
 				}}
-				className="flex flex-col modal-box max-w-lg xl:max-w-xl 2xl:max-w-2xl"
+				className="flex flex-col"
 			>
-				<NeoCloseButton onClick={closeModal} />
 				<h2 className="py-3 text-center text-4xl font-bold">Save Playlist</h2>
 				<div className="divider"></div>
 				<label htmlFor="playlistName" className="label mb-3 italic text-warning">
@@ -163,10 +171,7 @@ const SavePlaylistModal = ({ currentPlaylistName, setShouldReload }: Props) => {
 					Save
 				</button>
 			</form>
-			<form method="dialog" className="modal-backdrop">
-				<button>close</button>
-			</form>
-		</dialog>
+		</Modal>
 	);
 };
 

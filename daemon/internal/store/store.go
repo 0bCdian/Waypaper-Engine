@@ -1,6 +1,12 @@
 package store
 
-import "context"
+import (
+	"context"
+	"errors"
+)
+
+// ErrNotFound is returned when a requested entity does not exist.
+var ErrNotFound = errors.New("not found")
 
 // ---------------------------------------------------------------------------
 // Pagination & Query types
@@ -177,10 +183,6 @@ type HistoryStore interface {
 	// GetRecent returns history entries in reverse chronological order (newest first),
 	// with optional filtering by monitor and since_id.
 	GetRecent(ctx context.Context, opts HistoryQueryOpts) ([]ImageHistoryEntry, error)
-
-	// Trim removes the oldest entries so that the total count does not exceed maxEntries.
-	// Called after each Append when the history limit is configured.
-	Trim(ctx context.Context, maxEntries int) error
 
 	// Count returns the total number of history entries.
 	Count(ctx context.Context) (int, error)

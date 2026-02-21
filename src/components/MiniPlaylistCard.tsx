@@ -9,9 +9,10 @@ import { motion } from "framer-motion";
 import useDebounceCallback from "../hooks/useDebounceCallback";
 import type { PlaylistImage } from "../../electron/daemon-go-types";
 import type { DragSourceData } from "../stores/dragStore";
-import { useDesignSystemStore } from "../stores/designSystemStore";
+import { useIsNeo } from "../hooks/useIsNeo";
 import { useContextMenuStore } from "../stores/contextMenuStore";
 import { buildPlaylistCardMenuItems } from "../utils/contextMenuItems";
+import { getThumbnailSrc } from "../utils/utilities";
 
 const daysOfWeek = [
 	"Sunday",
@@ -53,9 +54,7 @@ function MiniPlaylistCard({
 			})),
 		);
 	const imagesMap = useImagesStore((s) => s.imagesMap);
-	const isNeo = useDesignSystemStore(
-		(s) => s.designMode === "neobrutalist",
-	);
+	const isNeo = useIsNeo();
 	const openContextMenu = useContextMenuStore((s) => s.open);
 	const monitorsList = useMonitorStore((s) => s.monitorsList);
 	const [isInvalid, setIsInvalid] = useState(false);
@@ -66,11 +65,7 @@ function MiniPlaylistCard({
 
 	const imageInfo = imagesMap.get(playlistImage.image_id);
 	const imageName = imageInfo?.name || `Image #${playlistImage.image_id}`;
-	const imageSrc =
-		imageInfo?.thumbnails?.default ||
-		imageInfo?.thumbnails?.["720p"] ||
-		imageInfo?.path ||
-		undefined;
+	const imageSrc = imageInfo ? getThumbnailSrc(imageInfo) : undefined;
 
 	const sortableData = useMemo<DragSourceData>(
 		() => ({ type: "playlist-item", imageId: playlistImage.image_id }),

@@ -20,7 +20,6 @@ import "encoding/json"
 // Usage patterns:
 //
 //	cfg, _ := configManager.GetConfig()             // Full config as struct
-//	configManager.UnmarshalSection("app", &appCfg)  // Section into typed struct
 //	raw, _ := configManager.GetBackendConfig("swww") // Backend config as raw JSON
 type ConfigManager interface {
 	// --- Full config access ---
@@ -41,12 +40,6 @@ type ConfigManager interface {
 	// GetSection returns a config section as a raw map.
 	// Useful for the API layer to serialize a section as JSON without knowing its type.
 	GetSection(section string) (map[string]any, error)
-
-	// UnmarshalSection decodes a config section into a typed struct.
-	// `section` uses dot notation (e.g. "app", "daemon", "backend.swww").
-	// `target` must be a pointer to the target struct.
-	// Viper uses `mapstructure` tags on the struct for field mapping.
-	UnmarshalSection(section string, target any) error
 
 	// --- Backend-specific config ---
 

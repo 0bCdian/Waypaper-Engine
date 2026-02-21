@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useRef, useState, useEffect } from "react";
 import { usePlaylistStore } from "../stores/playlist";
 import { useImagesStore } from "../stores/images";
 import { useShallow } from "zustand/react/shallow";
@@ -6,7 +6,8 @@ import { useForm, type SubmitHandler } from "react-hook-form";
 import type { rendererPlaylist } from "../types/rendererTypes";
 import { useMonitorStore } from "../stores/monitors";
 import type { Playlist } from "../../electron/daemon-go-types";
-import NeoCloseButton from "./NeoCloseButton";
+import Modal, { type ModalHandle } from "./Modal";
+import { useModalStore } from "../stores/modalStore";
 
 interface Input {
 	selectPlaylist: string;
@@ -34,7 +35,14 @@ const LoadPlaylistModal = ({
 	const [error, setError] = useState("");
 	const { register, handleSubmit, watch } = useForm<Input>();
 	const monitorSelection = useMonitorStore((s) => s.monitorSelection);
-	const modalRef = useRef<HTMLDialogElement>(null);
+	const modalRef = useRef<ModalHandle>(null);
+
+	useEffect(() => {
+		if (modalRef.current) {
+			useModalStore.getState().register("LoadPlaylistModal", modalRef.current);
+		}
+		return () => useModalStore.getState().unregister("LoadPlaylistModal");
+	}, []);
 
 	const closeModal = () => {
 		modalRef.current?.close();
@@ -98,9 +106,7 @@ const LoadPlaylistModal = ({
 	};
 
 	return (
-		<dialog id="LoadPlaylistModal" className="modal" ref={modalRef}>
-			<div className="modal-box flex flex-col max-w-lg xl:max-w-xl 2xl:max-w-2xl">
-				<NeoCloseButton onClick={closeModal} />
+		<Modal id="LoadPlaylistModal" ref={modalRef} onClose={closeModal} className="modal-box flex flex-col max-w-lg xl:max-w-xl 2xl:max-w-2xl">
 				<h2 className="select-none py-3 text-center text-4xl font-bold">
 					Load Playlist
 				</h2>
@@ -236,11 +242,7 @@ const LoadPlaylistModal = ({
 						</div>
 					</form>
 				)}
-			</div>
-			<form method="dialog" className="modal-backdrop">
-				<button type="button">close</button>
-			</form>
-		</dialog>
+		</Modal>
 	);
 };
 

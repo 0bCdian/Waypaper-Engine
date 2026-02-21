@@ -5,14 +5,19 @@ import {
 	type BrowserWindow,
 } from "electron";
 import { IPC_MAIN_EVENTS } from "../shared/constants";
-import { PlaylistController } from "../electron/playlistController";
 import { goDaemonClient } from "../electron/goDaemonClient";
 import type {
 	ActivePlaylistResponse,
 	ImageHistoryEntry,
 } from "../electron/daemon-go-types";
 
-const playlistControllerInstance = new PlaylistController();
+async function safeCall(fn: () => Promise<unknown>, label: string) {
+	try {
+		await fn();
+	} catch (error) {
+		console.error(`Failed to ${label}:`, error);
+	}
+}
 
 export const devMenu = () => {
 	const devMenuTemplate: Array<
@@ -76,35 +81,35 @@ export const trayMenu = async (
 						label: `${playlist.playlist_name} on: ${playlist.monitors.map((m) => m.name).join(", ")}`,
 						submenu: [
 							{
-								label: "Next image",
-								click: () => {
-									playlistControllerInstance.nextImage(playlist.playlist_id);
-									if (createTray) void createTray();
-								},
+							label: "Next image",
+							click: () => {
+								void safeCall(() => goDaemonClient.nextPlaylistImage(playlist.playlist_id), "get next image");
+								if (createTray) void createTray();
+							},
 							},
 							{
-								label: "Previous image",
-								click: () => {
-									playlistControllerInstance.previousImage(playlist.playlist_id);
-									if (createTray) void createTray();
-								},
+							label: "Previous image",
+							click: () => {
+								void safeCall(() => goDaemonClient.previousPlaylistImage(playlist.playlist_id), "get previous image");
+								if (createTray) void createTray();
+							},
 							},
 							{
 								label: playlist.paused ? "Resume" : "Pause",
-								click: () => {
-									if (playlist.paused) {
-										playlistControllerInstance.resumePlaylist(playlist.playlist_id);
-									} else {
-										playlistControllerInstance.pausePlaylist(playlist.playlist_id);
-									}
-									if (createTray) void createTray();
-								},
+							click: () => {
+								if (playlist.paused) {
+									void safeCall(() => goDaemonClient.resumePlaylist(playlist.playlist_id), "resume playlist");
+								} else {
+									void safeCall(() => goDaemonClient.pausePlaylist(playlist.playlist_id), "pause playlist");
+								}
+								if (createTray) void createTray();
+							},
 							},
 							{
 								label: "Stop",
-								click: (_, win) => {
-									playlistControllerInstance.stopPlaylist(playlist.playlist_id);
-									if (createTray) void createTray();
+							click: (_, win) => {
+								void safeCall(() => goDaemonClient.stopPlaylist(playlist.playlist_id), "stop playlist");
+								if (createTray) void createTray();
 									if (win && "webContents" in win) {
 										(win as BrowserWindow).webContents.send(
 											IPC_MAIN_EVENTS.clearPlaylist,
@@ -179,11 +184,11 @@ export const trayMenu = async (
 		...imageHistoryMenu,
 		...clearHistoryMenu,
 		{
-			label: "Random Wallpaper",
-			click: () => {
-				playlistControllerInstance.randomImage();
-				if (createTray) void createTray();
-			},
+		label: "Random Wallpaper",
+		click: () => {
+			void safeCall(() => goDaemonClient.setRandomWallpaper(), "set random wallpaper");
+			if (createTray) void createTray();
+		},
 		},
 		{
 			label: "Quit",

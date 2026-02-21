@@ -2,7 +2,7 @@ import { useRef, useState } from "react";
 import { useForm, type SubmitHandler } from "react-hook-form";
 import { useImagesStore } from "../stores/images";
 import type { Playlist } from "../../electron/daemon-go-types";
-import NeoCloseButton from "./NeoCloseButton";
+import Modal, { type ModalHandle } from "./Modal";
 
 interface Input {
 	selectPlaylist: string;
@@ -20,12 +20,11 @@ const AddToPlaylistModal = ({ playlistsInDB, setShouldReload }: Props) => {
 	const [error, setError] = useState("");
 	const [success, setSuccess] = useState("");
 	const { register, handleSubmit } = useForm<Input>();
-	const modalRef = useRef<HTMLDialogElement>(null);
+	const modalRef = useRef<ModalHandle>(null);
 
 	const closeModal = () => {
 		setError("");
 		setSuccess("");
-		modalRef.current?.close();
 	};
 
 	const onSubmit: SubmitHandler<Input> = async (data) => {
@@ -84,6 +83,7 @@ const AddToPlaylistModal = ({ playlistsInDB, setShouldReload }: Props) => {
 
 			setTimeout(() => {
 				closeModal();
+				modalRef.current?.close();
 			}, 1500);
 		} catch (err) {
 			console.error("Failed to add images to playlist:", err);
@@ -94,9 +94,7 @@ const AddToPlaylistModal = ({ playlistsInDB, setShouldReload }: Props) => {
 	};
 
 	return (
-		<dialog id="AddToPlaylistModal" className="modal" ref={modalRef}>
-			<div className="modal-box flex flex-col max-w-lg xl:max-w-xl 2xl:max-w-2xl">
-				<NeoCloseButton onClick={closeModal} />
+		<Modal id="AddToPlaylistModal" ref={modalRef} onClose={closeModal} className="modal-box flex flex-col max-w-lg xl:max-w-xl 2xl:max-w-2xl">
 				<h2 className="select-none py-3 text-center text-4xl font-bold">
 					Add to Playlist
 				</h2>
@@ -211,9 +209,12 @@ const AddToPlaylistModal = ({ playlistsInDB, setShouldReload }: Props) => {
 								<button
 									type="button"
 									className="btn btn-md rounded-md uppercase"
-									onClick={closeModal}
-								>
-									Cancel
+								onClick={() => {
+									closeModal();
+									modalRef.current?.close();
+								}}
+							>
+								Cancel
 								</button>
 								<button
 									type="submit"
@@ -224,11 +225,7 @@ const AddToPlaylistModal = ({ playlistsInDB, setShouldReload }: Props) => {
 							</div>
 						</form>
 					)}
-			</div>
-			<form method="dialog" className="modal-backdrop">
-				<button>close</button>
-			</form>
-		</dialog>
+		</Modal>
 	);
 };
 

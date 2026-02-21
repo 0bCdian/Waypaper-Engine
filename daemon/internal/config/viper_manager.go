@@ -2,8 +2,9 @@ package config
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
-	"os"
+	"io/fs"
 	"sync"
 
 	"waypaper-engine/daemon/internal/system"
@@ -106,19 +107,7 @@ func (m *ViperManager) UpdateConfig(section string, values map[string]any) error
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// Read the current section as a flat map, merge new values, then set as a whole.
-	// This avoids Viper's dotted-key override shadowing the config-file layer.
-	existing := m.v.GetStringMap(section)
-	for k, val := range values {
-		existing[k] = val
-	}
-	m.v.Set(section, existing)
-
-	if err := m.v.WriteConfig(); err != nil {
-		return fmt.Errorf("config: write after update: %w", err)
-	}
-
-	return nil
+	return m.mergeAndSet(section, values)
 }
 
 // ---------- Section access ----------
@@ -134,13 +123,6 @@ func (m *ViperManager) GetSection(section string) (map[string]any, error) {
 	}
 
 	return sub.AllSettings(), nil
-}
-
-func (m *ViperManager) UnmarshalSection(section string, target any) error {
-	m.mu.RLock()
-	defer m.mu.RUnlock()
-
-	return m.v.UnmarshalKey(section, target)
 }
 
 // ---------- Backend-specific config ----------
@@ -171,20 +153,7 @@ func (m *ViperManager) SetBackendConfig(backendName string, raw json.RawMessage)
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// Read-modify-write: read the current backend sub-section, merge new values,
-	// then set as a whole to avoid Viper dotted-key override shadowing.
-	key := "backend." + backendName
-	existing := m.v.GetStringMap(key)
-	for k, val := range values {
-		existing[k] = val
-	}
-	m.v.Set(key, existing)
-
-	if err := m.v.WriteConfig(); err != nil {
-		return fmt.Errorf("config: write after backend config update: %w", err)
-	}
-
-	return nil
+	return m.mergeAndSet("backend."+backendName, values)
 }
 
 // ---------- Active backend ----------
@@ -200,16 +169,7 @@ func (m *ViperManager) SetActiveBackendType(name string) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// Read-modify-write for backend section to preserve other backend keys.
-	existing := m.v.GetStringMap("backend")
-	existing["type"] = name
-	m.v.Set("backend", existing)
-
-	if err := m.v.WriteConfig(); err != nil {
-		return fmt.Errorf("config: write after active backend change: %w", err)
-	}
-
-	return nil
+	return m.mergeAndSet("backend", map[string]any{"type": name})
 }
 
 // ---------- Change notification ----------
@@ -297,14 +257,31 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("monitors.image_set_type", "individual")
 }
 
-// ---------- helpers ----------
+// ---------- internal helpers ----------
+
+// mergeAndSet reads the current value of key as a map, merges values into it,
+// sets it back, and persists. Must be called with m.mu held.
+func (m *ViperManager) mergeAndSet(key string, values map[string]any) error {
+	existing := m.v.GetStringMap(key)
+	for k, val := range values {
+		existing[k] = val
+	}
+	m.v.Set(key, existing)
+
+	if err := m.v.WriteConfig(); err != nil {
+		return fmt.Errorf("config: write after update (%s): %w", key, err)
+	}
+	return nil
+}
+
+// ---------- file helpers ----------
 
 // isFileNotFound returns true for any error indicating the file does not exist,
 // covering both os.ErrNotExist and viper.ConfigFileNotFoundError.
 func isFileNotFound(err error) bool {
-	if _, ok := err.(viper.ConfigFileNotFoundError); ok {
+	var viperNotFound viper.ConfigFileNotFoundError
+	if errors.As(err, &viperNotFound) {
 		return true
 	}
-	// os.IsNotExist catches the wrapped os-level error.
-	return os.IsNotExist(err)
+	return errors.Is(err, fs.ErrNotExist)
 }

@@ -298,14 +298,9 @@ func (s *Swww) loadConfigFromViper() *Config {
 }
 
 func (s *Swww) ValidateConfig(raw json.RawMessage) error {
-	var cfg Config
-	return json.Unmarshal(raw, &cfg)
+	return backend.UnmarshalValidateConfig[Config](raw)
 }
 
 func (s *Swww) ParseConfig(raw json.RawMessage) (any, error) {
-	var cfg Config
-	if err := json.Unmarshal(raw, &cfg); err != nil {
-		return nil, fmt.Errorf("swww: parse config: %w", err)
-	}
-	return &cfg, nil
+	return backend.UnmarshalParseConfig[Config](raw, "swww")
 }
