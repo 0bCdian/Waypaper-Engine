@@ -25,6 +25,7 @@ import type {
 	MonitorMode,
 	MonitorState,
 	EventType,
+	Folder,
 } from "./daemon-go-types";
 
 const electronAPI = {
@@ -54,8 +55,12 @@ const electronAPI = {
 
 		importImages: (
 			paths: string[],
+			folderID?: number | null,
 		): Promise<{ status: string; total: number }> =>
-			ipcRenderer.invoke("go-daemon-command", "import_images", { paths }),
+			ipcRenderer.invoke("go-daemon-command", "import_images", {
+				paths,
+				folder_id: folderID,
+			}),
 
 		deleteImages: (ids: number[]): Promise<{ deleted: number }> =>
 			ipcRenderer.invoke("go-daemon-command", "delete_images", { ids }),
@@ -186,6 +191,58 @@ const electronAPI = {
 
 		stopAllPlaylists: (): Promise<void> =>
 			ipcRenderer.invoke("go-daemon-command", "stop_all_playlists"),
+
+		// FOLDERS
+		getFolders: (
+			parentId?: number | null,
+			search?: string,
+		): Promise<{ data: Folder[] }> =>
+			ipcRenderer.invoke("go-daemon-command", "get_folders", {
+				parent_id: parentId,
+				search,
+			}),
+
+		getFolder: (id: number): Promise<Folder> =>
+			ipcRenderer.invoke("go-daemon-command", "get_folder", { id }),
+
+		getFolderPath: (id: number): Promise<{ data: Folder[] }> =>
+			ipcRenderer.invoke("go-daemon-command", "get_folder_path", { id }),
+
+		createFolder: (
+			name: string,
+			parentId?: number | null,
+		): Promise<Folder> =>
+			ipcRenderer.invoke("go-daemon-command", "create_folder", {
+				name,
+				parent_id: parentId,
+			}),
+
+		updateFolder: (
+			id: number,
+			update: { name?: string; parent_id?: number | null },
+		): Promise<Folder> =>
+			ipcRenderer.invoke("go-daemon-command", "update_folder", {
+				id,
+				update,
+			}),
+
+		deleteFolder: (
+			id: number,
+			mode?: "keep_contents" | "delete_all",
+		): Promise<{ deleted: boolean; mode: string }> =>
+			ipcRenderer.invoke("go-daemon-command", "delete_folder", {
+				id,
+				mode: mode || "keep_contents",
+			}),
+
+		moveImagesToFolder: (
+			imageIds: number[],
+			folderId: number | null,
+		): Promise<{ moved: number }> =>
+			ipcRenderer.invoke("go-daemon-command", "move_images_to_folder", {
+				image_ids: imageIds,
+				folder_id: folderId,
+			}),
 
 		// MONITORS
 		getMonitors: (): Promise<Monitor[]> =>
@@ -359,7 +416,7 @@ const electronAPI = {
 
 	handleOpenImages: (imagesObject: {
 		success: boolean;
-		data: { files: string[] };
+		data: { files: string[]; folder_id?: number };
 	}) => ipcRenderer.invoke("handleOpenImages", imagesObject),
 
 	revealInFileManager: (path: string) =>

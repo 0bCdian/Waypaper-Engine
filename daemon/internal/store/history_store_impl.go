@@ -3,7 +3,6 @@ package store
 import (
 	"context"
 	"fmt"
-	"sync/atomic"
 
 	clover "github.com/ostafen/clover/v2"
 	d "github.com/ostafen/clover/v2/document"
@@ -12,33 +11,18 @@ import (
 
 // historyStore is the CloverDB-backed implementation of HistoryStore.
 type historyStore struct {
-	db     *clover.DB
-	nextID atomic.Int64
+	db *clover.DB
+	IDAllocator
 }
 
 func newHistoryStore(db *clover.DB) *historyStore {
 	s := &historyStore{db: db}
-	s.initNextID()
+	s.IDAllocator.Init(db, CollectionHistory)
 	return s
 }
 
-func (s *historyStore) initNextID() {
-	doc, err := s.db.FindFirst(
-		query.NewQuery(CollectionHistory).Sort(query.SortOption{Field: "id", Direction: -1}),
-	)
-	if err == nil && doc != nil {
-		if id, ok := doc.Get("id").(int64); ok {
-			s.nextID.Store(id)
-		}
-	}
-}
-
-func (s *historyStore) allocID() int {
-	return int(s.nextID.Add(1))
-}
-
 func (s *historyStore) Append(_ context.Context, entry ImageHistoryEntry) (*ImageHistoryEntry, error) {
-	entry.ID = s.allocID()
+	entry.ID = s.Next()
 
 	doc := d.NewDocument()
 	doc.Set("id", entry.ID)
@@ -64,13 +48,11 @@ func (s *historyStore) GetRecent(_ context.Context, opts HistoryQueryOpts) ([]Im
 	var criteria query.Criteria
 
 	if opts.Monitor != "" {
-		c := query.Field("monitors").Contains(opts.Monitor)
-		criteria = chainAnd(criteria, c)
+		criteria = ChainAnd(criteria, query.Field("monitors").Contains(opts.Monitor))
 	}
 
 	if opts.SinceID > 0 {
-		c := query.Field("id").Gt(opts.SinceID)
-		criteria = chainAnd(criteria, c)
+		criteria = ChainAnd(criteria, query.Field("id").Gt(opts.SinceID))
 	}
 
 	q := query.NewQuery(CollectionHistory)
@@ -84,15 +66,7 @@ func (s *historyStore) GetRecent(_ context.Context, opts HistoryQueryOpts) ([]Im
 		return nil, fmt.Errorf("history store: get recent: %w", err)
 	}
 
-	entries := make([]ImageHistoryEntry, 0, len(docs))
-	for _, doc := range docs {
-		var entry ImageHistoryEntry
-		if err := doc.Unmarshal(&entry); err != nil {
-			continue
-		}
-		entries = append(entries, entry)
-	}
-	return entries, nil
+	return UnmarshalAll[ImageHistoryEntry](docs), nil
 }
 
 func (s *historyStore) Trim(_ context.Context, maxEntries int) error {
@@ -106,7 +80,6 @@ func (s *historyStore) Trim(_ context.Context, maxEntries int) error {
 		return nil
 	}
 
-	// Delete oldest N entries.
 	q := query.NewQuery(CollectionHistory).
 		Sort(query.SortOption{Field: "id", Direction: 1}).
 		Limit(excess)
@@ -129,6 +102,6 @@ func (s *historyStore) Clear(_ context.Context) error {
 	if err := s.db.Delete(query.NewQuery(CollectionHistory)); err != nil {
 		return fmt.Errorf("history store: clear: %w", err)
 	}
-	s.nextID.Store(0)
+	s.IDAllocator.Reset()
 	return nil
 }

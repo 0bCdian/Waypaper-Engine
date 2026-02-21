@@ -5,6 +5,8 @@ import AddToPlaylistModal from "./AddToPlaylistModal";
 import PlaylistConfigurationModal from "./PlaylistConfigurationModal";
 import { usePlaylistStore } from "../stores/playlist";
 import AdvancedFiltersModal from "./AdvancedFiltersModal";
+import FolderImportModal from "./FolderImportModal";
+import FolderPickerModal from "./FolderPickerModal";
 import { useShallow } from "zustand/react/shallow";
 import { useSettingsStore } from "../stores/settingsStore";
 import Monitors from "./monitorsModal";
@@ -74,6 +76,8 @@ function Modals() {
 			/>
 			<PlaylistConfigurationModal />
 			<AdvancedFiltersModal />
+			<FolderImportModal />
+			<FolderPickerModal />
 			<Monitors />
 		</>
 	);

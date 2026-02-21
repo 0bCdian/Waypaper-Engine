@@ -1,5 +1,5 @@
-import { useSortable } from "@dnd-kit/sortable";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useSortable } from "@dnd-kit/react/sortable";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PLAYLIST_TYPES_TYPE } from "../../shared/types/playlist";
 import { usePlaylistStore } from "../stores/playlist";
 import { useImagesStore } from "../stores/images";
@@ -8,6 +8,7 @@ import { useShallow } from "zustand/react/shallow";
 import { motion } from "framer-motion";
 import useDebounceCallback from "../hooks/useDebounceCallback";
 import type { PlaylistImage } from "../../electron/daemon-go-types";
+import type { DragSourceData } from "../stores/dragStore";
 import { useDesignSystemStore } from "../stores/designSystemStore";
 import { useContextMenuStore } from "../stores/contextMenuStore";
 import { buildPlaylistCardMenuItems } from "../utils/contextMenuItems";
@@ -71,8 +72,14 @@ function MiniPlaylistCard({
 		imageInfo?.path ||
 		undefined;
 
-	const { attributes, listeners, setNodeRef } = useSortable({
+	const sortableData = useMemo<DragSourceData>(
+		() => ({ type: "playlist-item", imageId: playlistImage.image_id }),
+		[playlistImage.image_id],
+	);
+	const { ref: sortableRef, isDragging } = useSortable({
 		id: playlistImage.image_id,
+		index,
+		data: sortableData,
 	});
 
 	let text: string;
@@ -217,17 +224,15 @@ function MiniPlaylistCard({
 			layout
 			key={playlistImage.image_id}
 		transition={{ duration: 0.15, ease: "easeOut" }}
-			ref={setNodeRef}
+			ref={sortableRef}
 		>
-			<div className={cardClass} onContextMenu={handleContextMenu}>
+			<div className={`${cardClass}${isDragging ? " opacity-50" : ""}`} onContextMenu={handleContextMenu}>
 				{/* Neo: button sits on the card (overflow:visible), image is clipped separately */}
 				{isNeo && removeButton}
 				<div className={isNeo ? "overflow-hidden" : "relative"}>
 					{/* Non-neo: button inside the relative wrapper */}
 					{!isNeo && removeButton}
 					<img
-						{...attributes}
-						{...listeners}
 						src={imageSrc}
 						alt={imageName}
 						className={imgClass}

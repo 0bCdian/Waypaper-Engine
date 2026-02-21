@@ -60,9 +60,9 @@ func ParseIntParam(value string) (int, error) {
 
 // PaginationParams holds parsed pagination query parameters.
 type PaginationParams struct {
-	Page    int
-	PerPage int
-	SortBy  string
+	Page      int
+	PerPage   int
+	SortBy    string
 	SortOrder string
 }
 

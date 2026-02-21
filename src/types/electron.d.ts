@@ -17,6 +17,7 @@ import type {
 	MonitorMode,
 	MonitorState,
 	EventType,
+	Folder,
 } from "../../electron/daemon-go-types";
 declare global {
 	const __DEBUG__: boolean;
@@ -41,6 +42,7 @@ declare global {
 				getImageCount: () => Promise<{ count: number }>;
 				importImages: (
 					paths: string[],
+					folderID?: number | null,
 				) => Promise<{ status: string; total: number }>;
 				deleteImages: (ids: number[]) => Promise<{ deleted: number }>;
 				updateImage: (id: number, update: UpdateImageRequest) => Promise<Image>;
@@ -101,6 +103,30 @@ declare global {
 					monitor: string,
 				) => Promise<ActivePlaylistInstance>;
 				stopAllPlaylists: () => Promise<void>;
+
+				// FOLDERS
+				getFolders: (
+					parentId?: number | null,
+					search?: string,
+				) => Promise<{ data: Folder[] }>;
+				getFolder: (id: number) => Promise<Folder>;
+				getFolderPath: (id: number) => Promise<{ data: Folder[] }>;
+				createFolder: (
+					name: string,
+					parentId?: number | null,
+				) => Promise<Folder>;
+				updateFolder: (
+					id: number,
+					update: { name?: string; parent_id?: number | null },
+				) => Promise<Folder>;
+				deleteFolder: (
+					id: number,
+					mode?: "keep_contents" | "delete_all",
+				) => Promise<{ deleted: boolean; mode: string }>;
+				moveImagesToFolder: (
+					imageIds: number[],
+					folderId: number | null,
+				) => Promise<{ moved: number }>;
 
 				// MONITORS
 				getMonitors: () => Promise<Monitor[]>;
@@ -179,11 +205,12 @@ declare global {
 				success: boolean;
 				data?: { files: string[] };
 				files?: string[];
+				folderName?: string;
 				error?: string;
 			}>;
 			handleOpenImages: (imagesObject: {
 				success: boolean;
-				data: { files: string[] };
+				data: { files: string[]; folder_id?: number };
 			}) => Promise<{ success: boolean; message?: string; error?: string }>;
 
 			revealInFileManager: (path: string) => Promise<{ success: boolean }>;

@@ -15,6 +15,7 @@ type database struct {
 	historyStore      HistoryStore
 	stateStore        StateStore
 	monitorStateStore MonitorStateStore
+	folderStore       FolderStore
 }
 
 // OpenDB opens a CloverDB database at the given directory, creates collections
@@ -28,7 +29,7 @@ func OpenDB(dbPath string) (DB, error) {
 	}
 
 	// Ensure collections exist (idempotent).
-	for _, coll := range []string{CollectionImages, CollectionPlaylists, CollectionHistory, CollectionMonitorState} {
+	for _, coll := range []string{CollectionImages, CollectionPlaylists, CollectionHistory, CollectionMonitorState, CollectionFolders} {
 		if has, _ := db.HasCollection(coll); !has {
 			if err := db.CreateCollection(coll); err != nil {
 				_ = db.Close()
@@ -53,6 +54,9 @@ func OpenDB(dbPath string) (DB, error) {
 		CollectionMonitorState: {
 			IndexMonitorStateName,
 		},
+		CollectionFolders: {
+			IndexFolderID, IndexFolderParentID, IndexFolderName,
+		},
 	}
 	for coll, fields := range indexes {
 		for _, field := range fields {
@@ -68,6 +72,7 @@ func OpenDB(dbPath string) (DB, error) {
 	d.historyStore = newHistoryStore(db)
 	d.stateStore = newStateStore()
 	d.monitorStateStore = newMonitorStateStore(db)
+	d.folderStore = newFolderStore(db)
 
 	return d, nil
 }
@@ -77,8 +82,9 @@ func (d *database) Close() error {
 	return d.db.Close()
 }
 
-func (d *database) ImageStore() ImageStore              { return d.imageStore }
-func (d *database) PlaylistStore() PlaylistStore        { return d.playlistStore }
-func (d *database) HistoryStore() HistoryStore          { return d.historyStore }
-func (d *database) StateStore() StateStore              { return d.stateStore }
+func (d *database) ImageStore() ImageStore               { return d.imageStore }
+func (d *database) PlaylistStore() PlaylistStore         { return d.playlistStore }
+func (d *database) HistoryStore() HistoryStore           { return d.historyStore }
+func (d *database) StateStore() StateStore               { return d.stateStore }
 func (d *database) MonitorStateStore() MonitorStateStore { return d.monitorStateStore }
+func (d *database) FolderStore() FolderStore             { return d.folderStore }

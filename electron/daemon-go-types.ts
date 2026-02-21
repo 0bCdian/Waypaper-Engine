@@ -39,6 +39,7 @@ export interface ImageQueryParams {
 	search?: string;
 	tags?: string;
 	colors?: string;
+	folder_id?: number | "root";
 }
 
 // ============================================================================
@@ -61,6 +62,7 @@ export interface Image {
 	source_path: string;
 	is_selected: boolean;
 	thumbnails: ImageThumbnails;
+	folder_id: number | null;
 }
 
 export interface ImageThumbnails {
@@ -69,6 +71,33 @@ export interface ImageThumbnails {
 	"1080p": string;
 	"1440p": string;
 	"4k": string;
+}
+
+// ============================================================================
+// FOLDER TYPES
+// ============================================================================
+
+export interface Folder {
+	id: number;
+	name: string;
+	parent_id: number | null;
+	created_at: string;
+	updated_at: string;
+}
+
+export interface CreateFolderRequest {
+	name: string;
+	parent_id?: number | null;
+}
+
+export interface UpdateFolderRequest {
+	name?: string;
+	parent_id?: number | null;
+}
+
+export interface MoveImagesRequest {
+	image_ids: number[];
+	folder_id: number | null;
 }
 
 export interface ImageHistoryEntry {
@@ -338,6 +367,7 @@ export type EventType =
 	// Gallery Events
 	| "images_updated"
 	| "playlists_updated"
+	| "folders_updated"
 	// Connection Events (Electron-only, not from daemon SSE)
 	| "sse_disconnected"
 	| "sse_reconnected";
@@ -450,6 +480,7 @@ export interface RenameImageRequest {
 
 export interface ImportImagesRequest {
 	paths: string[];
+	folder_id?: number | null;
 }
 
 export interface DeleteImagesRequest {

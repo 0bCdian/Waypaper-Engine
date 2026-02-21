@@ -28,6 +28,10 @@ import type {
 	MonitorMode,
 	MonitorState,
 	EventType,
+	Folder,
+	CreateFolderRequest,
+	UpdateFolderRequest,
+	MoveImagesRequest,
 } from "./daemon-go-types";
 
 export class GoDaemonClient extends EventEmitter {
@@ -299,6 +303,7 @@ export class GoDaemonClient extends EventEmitter {
 		if (params?.search) query.set("search", params.search);
 		if (params?.tags) query.set("tags", params.tags);
 		if (params?.colors) query.set("colors", params.colors);
+		if (params?.folder_id !== undefined) query.set("folder_id", String(params.folder_id));
 		const qs = query.toString();
 		const path = qs ? `/images?${qs}` : "/images";
 		return this.request<PaginatedResponse<Image>>("GET", path);
@@ -314,8 +319,12 @@ export class GoDaemonClient extends EventEmitter {
 
 	async importImages(
 		paths: string[],
+		folderID?: number | null,
 	): Promise<{ status: string; total: number }> {
 		const body: ImportImagesRequest = { paths };
+		if (folderID !== undefined && folderID !== null) {
+			body.folder_id = folderID;
+		}
 		return this.request<{ status: string; total: number }>(
 			"POST",
 			"/images",
@@ -497,6 +506,75 @@ export class GoDaemonClient extends EventEmitter {
 		reversed: number;
 	}> {
 		return this.request("POST", "/playlists/active/previous");
+	}
+
+	// ============================================================================
+	// FOLDERS
+	// ============================================================================
+
+	async getFolders(
+		parentId?: number | null,
+		search?: string,
+	): Promise<{ data: Folder[] }> {
+		const query = new URLSearchParams();
+		if (parentId !== undefined && parentId !== null) {
+			query.set("parent_id", String(parentId));
+		}
+		if (search) query.set("search", search);
+		const qs = query.toString();
+		const path = qs ? `/folders?${qs}` : "/folders";
+		return this.request<{ data: Folder[] }>("GET", path);
+	}
+
+	async getFolder(id: number): Promise<Folder> {
+		return this.request<Folder>("GET", `/folders/${id}`);
+	}
+
+	async getFolderPath(id: number): Promise<{ data: Folder[] }> {
+		return this.request<{ data: Folder[] }>("GET", `/folders/${id}/path`);
+	}
+
+	async createFolder(
+		name: string,
+		parentId?: number | null,
+	): Promise<Folder> {
+		const body: CreateFolderRequest = { name };
+		if (parentId !== undefined && parentId !== null) {
+			body.parent_id = parentId;
+		}
+		return this.request<Folder>("POST", "/folders", body);
+	}
+
+	async updateFolder(
+		id: number,
+		update: UpdateFolderRequest,
+	): Promise<Folder> {
+		return this.request<Folder>("PATCH", `/folders/${id}`, update);
+	}
+
+	async deleteFolder(
+		id: number,
+		mode: "keep_contents" | "delete_all" = "keep_contents",
+	): Promise<{ deleted: boolean; mode: string }> {
+		return this.request<{ deleted: boolean; mode: string }>(
+			"DELETE",
+			`/folders/${id}?mode=${mode}`,
+		);
+	}
+
+	async moveImagesToFolder(
+		imageIds: number[],
+		folderId: number | null,
+	): Promise<{ moved: number }> {
+		const body: MoveImagesRequest = {
+			image_ids: imageIds,
+			folder_id: folderId,
+		};
+		return this.request<{ moved: number }>(
+			"POST",
+			"/folders/move-images",
+			body,
+		);
 	}
 
 	// ============================================================================

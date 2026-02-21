@@ -1,10 +1,12 @@
 import type { MenuItem } from "../stores/contextMenuStore";
 import type { rendererImage } from "../types/rendererTypes";
-import type { Monitor, PlaylistImage } from "../../electron/daemon-go-types";
+import type { Monitor, PlaylistImage, Folder } from "../../electron/daemon-go-types";
 import { useImagesStore } from "../stores/images";
 import { usePlaylistStore } from "../stores/playlist";
 import { useImageDetailStore } from "../stores/imageDetailStore";
 import { useHistoryStore } from "../stores/historyStore";
+import { useFoldersStore } from "../stores/foldersStore";
+import { useFolderPickerStore } from "../components/FolderPickerModal";
 import { confirmDialog } from "../components/ConfirmDialog";
 import openImagesStore from "../hooks/useOpenImages";
 import type { Image } from "../../electron/daemon-go-types";
@@ -57,6 +59,15 @@ function selectionItems(selectedCount: number): MenuItem[] {
 	if (selectedCount === 0) return [];
 
 	const items: MenuItem[] = [
+		{
+			type: "action",
+			label: "Move selected to folder…",
+			onClick: () => {
+				const { selectedImages } = useImagesStore.getState();
+				if (selectedImages.size === 0) return;
+				useFolderPickerStore.getState().open(Array.from(selectedImages));
+			},
+		},
 		{
 			type: "action",
 			label: "Add selected to playlist",
@@ -220,6 +231,13 @@ export function buildImageMenuItems(
 				usePlaylistStore.getState().addImagesToPlaylist([image.id]);
 			},
 		},
+		{
+			type: "action",
+			label: "Move to folder…",
+			onClick: () => {
+				useFolderPickerStore.getState().open([image.id]);
+			},
+		},
 		{ type: "separator" },
 		{
 			type: "action",
@@ -323,7 +341,82 @@ export function buildGalleryMenuItems(selectedCount: number): MenuItem[] {
 			},
 		},
 		{ type: "separator" },
+		{
+			type: "action",
+			label: "New folder",
+			onClick: async () => {
+				const currentFolderId = useFoldersStore.getState().currentFolderId;
+				try {
+					await useFoldersStore.getState().createFolder("New folder", currentFolderId);
+				} catch {
+					// silently fail
+				}
+			},
+		},
+		{ type: "separator" },
 		...globalItems(selectedCount),
+	];
+
+	return items;
+}
+
+export function buildFolderMenuItems(
+	folder: Folder,
+	onRename: () => void,
+): MenuItem[] {
+	const items: MenuItem[] = [
+		{
+			type: "action",
+			label: "Open folder",
+			onClick: () => {
+				useFoldersStore.getState().navigateToFolder(folder.id);
+				useImagesStore.getState().fetchPage(1, { folder_id: folder.id });
+			},
+		},
+		{
+			type: "action",
+			label: "Rename folder",
+			onClick: onRename,
+		},
+		{ type: "separator" },
+		{
+			type: "action",
+			label: "Delete folder (keep contents)",
+			danger: true,
+			onClick: async () => {
+				const confirmed = await confirmDialog({
+					title: "Delete folder",
+					message: `Delete "${folder.name}"? Images will be moved to the parent level.`,
+					confirmLabel: "Delete folder",
+					danger: true,
+				});
+				if (!confirmed) return;
+				await useFoldersStore.getState().deleteFolder(folder.id, "keep_contents");
+				const fid = useFoldersStore.getState().currentFolderId;
+				useImagesStore.getState().fetchPage(1, {
+					folder_id: fid === null ? "root" : fid,
+				});
+			},
+		},
+		{
+			type: "action",
+			label: "Delete folder and contents",
+			danger: true,
+			onClick: async () => {
+				const confirmed = await confirmDialog({
+					title: "Delete folder and all contents",
+					message: `Delete "${folder.name}" and ALL images inside it? This cannot be undone.`,
+					confirmLabel: "Delete everything",
+					danger: true,
+				});
+				if (!confirmed) return;
+				await useFoldersStore.getState().deleteFolder(folder.id, "delete_all");
+				const fid = useFoldersStore.getState().currentFolderId;
+				useImagesStore.getState().fetchPage(1, {
+					folder_id: fid === null ? "root" : fid,
+				});
+			},
+		},
 	];
 
 	return items;

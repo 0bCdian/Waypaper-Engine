@@ -16,6 +16,7 @@ type Handlers struct {
 	Config    *handler.ConfigHandler
 	Backends  *handler.BackendHandler
 	Wallpaper *handler.WallpaperHandler
+	Folders   *handler.FolderHandler
 }
 
 // NewRouter creates a chi router with all routes and middleware registered.
@@ -76,6 +77,17 @@ func NewRouter(h Handlers, bus events.Bus) *chi.Mux {
 		r.Post("/{id}/resume", h.Playlists.Resume)
 		r.Post("/{id}/next", h.Playlists.Next)
 		r.Post("/{id}/previous", h.Playlists.Previous)
+	})
+
+	// Folders.
+	r.Route("/folders", func(r chi.Router) {
+		r.Get("/", h.Folders.List)
+		r.Post("/", h.Folders.Create)
+		r.Post("/move-images", h.Folders.MoveImages)
+		r.Get("/{id}", h.Folders.Get)
+		r.Patch("/{id}", h.Folders.Update)
+		r.Delete("/{id}", h.Folders.Delete)
+		r.Get("/{id}/path", h.Folders.GetPath)
 	})
 
 	// Monitors.

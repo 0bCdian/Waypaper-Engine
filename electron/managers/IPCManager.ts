@@ -250,6 +250,7 @@ export class IPCManager {
 					}
 
 					let files: string[] = [];
+					let folderName: string | undefined;
 
 					if (action === "folder") {
 						const imageExtensions = new Set([
@@ -294,6 +295,9 @@ export class IPCManager {
 						};
 
 						for (const folderPath of result.filePaths) {
+							if (!folderName) {
+								folderName = folderPath.split("/").pop() || folderPath.split("\\").pop();
+							}
 							const folderImages = await scanDirectory(folderPath);
 							files.push(...folderImages);
 						}
@@ -301,7 +305,7 @@ export class IPCManager {
 						files = result.filePaths;
 					}
 
-					return { success: true, files };
+					return { success: true, files, folderName };
 				} catch (error) {
 					console.error("Error opening files:", error);
 					return {
@@ -325,9 +329,11 @@ export class IPCManager {
 					}
 
 					const files: string[] = imagesObject.data.files;
+					const folderId = imagesObject.data.folder_id as
+						| number
+						| undefined;
 
-					// Use new POST /images endpoint with {paths}
-					await goDaemonClient.importImages(files);
+					await goDaemonClient.importImages(files, folderId);
 
 					return {
 						success: true,
@@ -443,7 +449,10 @@ export class IPCManager {
 				case "get_image_count":
 					return await goDaemonClient.getImageCount();
 				case "import_images":
-					return await goDaemonClient.importImages(p?.paths as string[]);
+					return await goDaemonClient.importImages(
+						p?.paths as string[],
+						p?.folder_id as number | undefined,
+					);
 				case "delete_images":
 					return await goDaemonClient.deleteImages(p?.ids as number[]);
 				case "update_image":
@@ -530,6 +539,37 @@ export class IPCManager {
 				case "resume_all_playlists":
 					return await goDaemonClient.resumeAllPlaylists();
 
+				// FOLDERS
+				case "get_folders":
+					return await goDaemonClient.getFolders(
+						p?.parent_id as number | undefined,
+						p?.search as string | undefined,
+					);
+				case "get_folder":
+					return await goDaemonClient.getFolder(p?.id as number);
+				case "get_folder_path":
+					return await goDaemonClient.getFolderPath(p?.id as number);
+				case "create_folder":
+					return await goDaemonClient.createFolder(
+						p?.name as string,
+						p?.parent_id as number | undefined,
+					);
+				case "update_folder":
+					return await goDaemonClient.updateFolder(
+						p?.id as number,
+						p?.update as { name?: string; parent_id?: number | null },
+					);
+				case "delete_folder":
+					return await goDaemonClient.deleteFolder(
+						p?.id as number,
+						(p?.mode as "keep_contents" | "delete_all") || "keep_contents",
+					);
+				case "move_images_to_folder":
+					return await goDaemonClient.moveImagesToFolder(
+						p?.image_ids as number[],
+						p?.folder_id as number | null,
+					);
+
 				// MONITORS
 				case "get_monitors":
 					return await goDaemonClient.getMonitors();
@@ -594,6 +634,7 @@ export class IPCManager {
 			"history_cleared",
 			"images_updated",
 			"playlists_updated",
+			"folders_updated",
 		];
 
 		for (const eventName of events) {

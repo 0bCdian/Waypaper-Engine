@@ -57,8 +57,14 @@ func NewProcessor(imageStore store.ImageStore, bus events.Bus, imagesDir string,
 // for progress tracking. Returns the batch ID that identifies this import in
 // all emitted events.
 func (p *Processor) ProcessBatch(ctx context.Context, paths []string) string {
+	return p.ProcessBatchWithFolder(ctx, paths, nil)
+}
+
+// ProcessBatchWithFolder imports a batch of images asynchronously, assigning them
+// to the given folder. Returns the batch ID.
+func (p *Processor) ProcessBatchWithFolder(ctx context.Context, paths []string, folderID *int) string {
 	batchID := fmt.Sprintf("%d", time.Now().UnixNano())
-	go p.processBatchSync(ctx, paths, batchID)
+	go p.processBatchSync(ctx, paths, batchID, folderID)
 	return batchID
 }
 
@@ -66,10 +72,10 @@ func (p *Processor) ProcessBatch(ctx context.Context, paths []string) string {
 // Returns the created images or an error.
 func (p *Processor) ProcessBatchSync(ctx context.Context, paths []string) ([]store.Image, error) {
 	batchID := fmt.Sprintf("%d", time.Now().UnixNano())
-	return p.processBatchSync(ctx, paths, batchID)
+	return p.processBatchSync(ctx, paths, batchID, nil)
 }
 
-func (p *Processor) processBatchSync(ctx context.Context, paths []string, batchID string) ([]store.Image, error) {
+func (p *Processor) processBatchSync(ctx context.Context, paths []string, batchID string, folderID *int) ([]store.Image, error) {
 	startTime := time.Now()
 
 	p.bus.Publish(events.Event{
@@ -94,7 +100,7 @@ func (p *Processor) processBatchSync(ctx context.Context, paths []string, batchI
 		default:
 		}
 
-		img, err := p.processOne(ctx, path)
+		img, err := p.processOne(ctx, path, folderID)
 		if err != nil {
 			errCount++
 			slog.Warn("failed to process image", "path", path, "error", err)
@@ -148,7 +154,7 @@ func (p *Processor) processBatchSync(ctx context.Context, paths []string, batchI
 }
 
 // processOne handles a single file: validate, copy, extract metadata, generate thumbnails.
-func (p *Processor) processOne(ctx context.Context, sourcePath string) (*store.Image, error) {
+func (p *Processor) processOne(ctx context.Context, sourcePath string, folderID *int) (*store.Image, error) {
 	// Validate extension.
 	ext := strings.ToLower(filepath.Ext(sourcePath))
 	format, ok := supportedExtensions[ext]
@@ -214,6 +220,7 @@ func (p *Processor) processOne(ctx context.Context, sourcePath string) (*store.I
 		ImportedAt: time.Now(),
 		SourcePath: sourcePath,
 		IsSelected: false,
+		FolderID:   folderID,
 	}})
 	if err != nil {
 		return nil, fmt.Errorf("create record: %w", err)
@@ -282,4 +289,3 @@ func copyFile(src, dst string) error {
 	}
 	return out.Sync()
 }
-

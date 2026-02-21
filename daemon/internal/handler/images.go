@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/go-chi/chi/v5"
@@ -54,6 +55,18 @@ func (h *ImageHandler) List(w http.ResponseWriter, r *http.Request) {
 		opts.Colors = strings.Split(colors, ",")
 	}
 
+	if folderID := q.Get("folder_id"); folderID != "" {
+		if folderID == "root" || folderID == "0" {
+			zero := 0
+			opts.FolderID = &zero
+		} else {
+			fid, err := strconv.Atoi(folderID)
+			if err == nil {
+				opts.FolderID = &fid
+			}
+		}
+	}
+
 	result, err := h.store.GetAll(r.Context(), opts)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, err.Error())
@@ -82,7 +95,8 @@ func (h *ImageHandler) Get(w http.ResponseWriter, r *http.Request) {
 
 // addRequest is the JSON body for POST /images.
 type addRequest struct {
-	Paths []string `json:"paths"`
+	Paths    []string `json:"paths"`
+	FolderID *int     `json:"folder_id,omitempty"`
 }
 
 // Add handles POST /images.
@@ -102,7 +116,7 @@ func (h *ImageHandler) Add(w http.ResponseWriter, r *http.Request) {
 	// Use context.Background() instead of r.Context() because the request
 	// context is cancelled as soon as we send the response, which would
 	// abort the background goroutine immediately.
-	batchID := h.processor.ProcessBatch(context.Background(), req.Paths)
+	batchID := h.processor.ProcessBatchWithFolder(context.Background(), req.Paths, req.FolderID)
 
 	WriteJSON(w, http.StatusAccepted, map[string]any{
 		"status":   "processing",
@@ -126,7 +140,7 @@ func (h *ImageHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Only allow mutable fields.
-	allowed := map[string]bool{"name": true, "tags": true, "colors": true, "is_selected": true}
+	allowed := map[string]bool{"name": true, "tags": true, "colors": true, "is_selected": true, "folder_id": true}
 	for key := range updates {
 		if !allowed[key] {
 			WriteErrorf(w, http.StatusBadRequest, "field %q is not updatable", key)
@@ -326,7 +340,7 @@ func (h *ImageHandler) SelectAll(w http.ResponseWriter, r *http.Request) {
 	}
 
 	WriteJSON(w, http.StatusOK, map[string]any{
-		"updated": updated,
+		"updated":  updated,
 		"selected": body.Selected,
 	})
 }

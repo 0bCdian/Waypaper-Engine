@@ -86,6 +86,10 @@ type Image struct {
 	// Thumbnails maps resolution labels to their absolute file paths.
 	// Keys: "default", "720p", "1080p", "1440p", "4k".
 	Thumbnails map[string]string `json:"thumbnails"`
+
+	// FolderID is the optional folder this image belongs to.
+	// nil means the image is at the root level of the gallery.
+	FolderID *int `json:"folder_id"`
 }
 
 // ImageUpdate contains the mutable fields for PATCH /images/{id}.
@@ -95,6 +99,30 @@ type ImageUpdate struct {
 	Tags       *[]string `json:"tags,omitempty"`
 	Colors     *[]string `json:"colors,omitempty"`
 	IsSelected *bool     `json:"is_selected,omitempty"`
+	FolderID   *int      `json:"folder_id,omitempty"`
+}
+
+// ---------------------------------------------------------------------------
+// Folder
+// ---------------------------------------------------------------------------
+
+// Folder represents a virtual folder for organizing images in the gallery.
+// Stored in the "folders" collection.
+type Folder struct {
+	// ID is the sequential integer identifier, generated daemon-side.
+	ID int `json:"id"`
+
+	// Name is the display name of the folder.
+	Name string `json:"name"`
+
+	// ParentID is the ID of the parent folder. nil means root level.
+	ParentID *int `json:"parent_id"`
+
+	// CreatedAt is when the folder was created.
+	CreatedAt time.Time `json:"created_at"`
+
+	// UpdatedAt is when the folder was last modified.
+	UpdatedAt time.Time `json:"updated_at"`
 }
 
 // ---------------------------------------------------------------------------
@@ -258,17 +286,17 @@ type ActivePlaylistInstance struct {
 // ActivePlaylistResponse is the API response for GET /playlists/active.
 // Groups active playlist state by playlist, with monitors nested inside.
 type ActivePlaylistResponse struct {
-	PlaylistID      int                   `json:"playlist_id"`
-	PlaylistName    string                `json:"playlist_name"`
-	CurrentIndex    int                   `json:"current_index"`
-	CurrentImageID  int                   `json:"current_image_id"`
-	PreviousImageID *int                  `json:"previous_image_id"`
-	NextImageID     *int                  `json:"next_image_id"`
-	TotalImages     int                   `json:"total_images"`
-	Paused          bool                  `json:"paused"`
-	StartedAt       time.Time             `json:"started_at"`
-	NextChangeAt    *time.Time            `json:"next_change_at"`
-	Monitors        []ActiveMonitorInfo   `json:"monitors"`
+	PlaylistID      int                 `json:"playlist_id"`
+	PlaylistName    string              `json:"playlist_name"`
+	CurrentIndex    int                 `json:"current_index"`
+	CurrentImageID  int                 `json:"current_image_id"`
+	PreviousImageID *int                `json:"previous_image_id"`
+	NextImageID     *int                `json:"next_image_id"`
+	TotalImages     int                 `json:"total_images"`
+	Paused          bool                `json:"paused"`
+	StartedAt       time.Time           `json:"started_at"`
+	NextChangeAt    *time.Time          `json:"next_change_at"`
+	Monitors        []ActiveMonitorInfo `json:"monitors"`
 }
 
 // ActiveMonitorInfo describes a monitor that a playlist is playing on.

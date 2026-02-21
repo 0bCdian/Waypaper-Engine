@@ -9,9 +9,9 @@ type EventType string
 
 // Image processing events — emitted during batch image import.
 const (
-	ProcessingStarted EventType = "processing_started"
-	ImageProcessed    EventType = "image_processed"
-	ImageError        EventType = "image_error"
+	ProcessingStarted  EventType = "processing_started"
+	ImageProcessed     EventType = "image_processed"
+	ImageError         EventType = "image_error"
 	ProcessingComplete EventType = "processing_complete"
 )
 
@@ -49,4 +49,5 @@ const (
 const (
 	ImagesUpdated    EventType = "images_updated"
 	PlaylistsUpdated EventType = "playlists_updated"
+	FoldersUpdated   EventType = "folders_updated"
 )

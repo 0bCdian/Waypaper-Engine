@@ -46,6 +46,7 @@ interface State {
 	pagination: Pagination | null;
 	currentPage: number;
 	perPage: number;
+	currentFolderId: number | null;
 	addImages: (newImages: rendererImage[]) => void;
 	addImage: (newImage: rendererImage) => void;
 	setFilters: (newFilters: Filters) => void;
@@ -79,6 +80,7 @@ export const useImagesStore = create<State>()((set, get) => ({
 	pagination: null,
 	currentPage: 1,
 	perPage: 50,
+	currentFolderId: null,
 
 	setFilters: (newFilters) => {
 		set(() => ({ filters: newFilters }));
@@ -163,11 +165,15 @@ export const useImagesStore = create<State>()((set, get) => ({
 		get().reQueryImages({ page, per_page: get().perPage, ...extraParams });
 	},
 	reQueryImages: (params?: ImageQueryParams) => {
+		const currentFolderId = get().currentFolderId;
 		const mergedParams: ImageQueryParams = {
 			page: get().currentPage,
 			per_page: get().perPage,
 			...params,
 		};
+		if (mergedParams.folder_id === undefined && !mergedParams.search) {
+			mergedParams.folder_id = currentFolderId === null ? "root" : currentFolderId;
+		}
 		void goDaemon
 			.getImages(mergedParams)
 			.then((response) => {
@@ -193,6 +199,15 @@ export const useImagesStore = create<State>()((set, get) => ({
 					}
 					newImagesMap.set(image.id, image);
 				});
+
+				const oldMap = get().imagesMap;
+				const playlistImageIds = usePlaylistStore.getState().playlist.images;
+				for (const pImg of playlistImageIds) {
+					if (!newImagesMap.has(pImg.image_id)) {
+						const cached = oldMap.get(pImg.image_id);
+						if (cached) newImagesMap.set(pImg.image_id, cached);
+					}
+				}
 
 				set(() => ({
 					imagesArray: images,

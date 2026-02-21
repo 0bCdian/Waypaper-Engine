@@ -38,6 +38,10 @@ type ImageQueryOpts struct {
 	Tags []string
 	// Filter by colors (any must match). Empty = no filter.
 	Colors []string
+	// FolderID filters images by folder. nil = no filter (all images).
+	// A pointer to 0 means root level (images with no folder).
+	// A pointer to a positive int means images in that specific folder.
+	FolderID *int
 }
 
 // HistoryQueryOpts controls filtering and pagination for history queries.
@@ -93,6 +97,39 @@ type ImageStore interface {
 
 	// IsNameTaken reports whether any image other than excludeID already uses the given name.
 	IsNameTaken(ctx context.Context, name string, excludeID int) (bool, error)
+}
+
+// ---------------------------------------------------------------------------
+// FolderStore
+// ---------------------------------------------------------------------------
+
+// FolderStore manages the "folders" CloverDB collection.
+type FolderStore interface {
+	// GetAll returns all folders with the given parent ID.
+	// parentID nil returns root-level folders.
+	GetAll(ctx context.Context, parentID *int) ([]Folder, error)
+
+	// GetByID returns a single folder by its sequential ID.
+	GetByID(ctx context.Context, id int) (*Folder, error)
+
+	// GetPath returns the ancestor chain from root to the given folder (inclusive).
+	// Used for breadcrumb navigation.
+	GetPath(ctx context.Context, id int) ([]Folder, error)
+
+	// Create inserts a new folder. The ID is assigned by the store.
+	Create(ctx context.Context, folder Folder) (*Folder, error)
+
+	// Update applies a partial update to a folder.
+	Update(ctx context.Context, id int, updates map[string]any) (*Folder, error)
+
+	// Delete removes a folder by ID.
+	Delete(ctx context.Context, id int) error
+
+	// Search returns folders whose name matches the query (case-insensitive substring).
+	Search(ctx context.Context, query string) ([]Folder, error)
+
+	// Count returns the total number of folders.
+	Count(ctx context.Context) (int, error)
 }
 
 // ---------------------------------------------------------------------------

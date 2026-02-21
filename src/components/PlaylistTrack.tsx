@@ -1,6 +1,5 @@
-import { DndContext, type DragEndEvent, closestCorners } from "@dnd-kit/core";
-import { SortableContext, arrayMove } from "@dnd-kit/sortable";
-import { useEffect, useRef } from "react";
+import { useDroppable } from "@dnd-kit/react";
+import { useEffect, useMemo, useRef } from "react";
 import { usePlaylistStore } from "../stores/playlist";
 import { useImagesStore } from "../stores/images";
 import openImagesStore from "../hooks/useOpenImages";
@@ -11,6 +10,8 @@ import type { openFileAction } from "../../shared/types";
 import { useSetLastActivePlaylist } from "../hooks/useSetLastActivePlaylist";
 import type { PlaylistImage } from "../../electron/daemon-go-types";
 import { useDesignSystemStore } from "../stores/designSystemStore";
+import { useDragStore } from "../stores/dragStore";
+import type { DropTargetData } from "../stores/dragStore";
 
 const { goDaemon } = window.API_RENDERER;
 import MiniPlaylistCard from "./MiniPlaylistCard";
@@ -23,7 +24,6 @@ function PlaylistTrack() {
 		movePlaylistArrayOrder,
 		clearPlaylist,
 		setPlaylist,
-		swapImageTimes,
 	} = usePlaylistStore(
 		useShallow((s) => ({
 			playlist: s.playlist,
@@ -32,7 +32,6 @@ function PlaylistTrack() {
 			movePlaylistArrayOrder: s.movePlaylistArrayOrder,
 			clearPlaylist: s.clearPlaylist,
 			setPlaylist: s.setPlaylist,
-			swapImageTimes: s.swapImageTimes,
 		})),
 	);
 	const monitorSelection = useMonitorStore((s) => s.monitorSelection);
@@ -61,36 +60,12 @@ function PlaylistTrack() {
 		movePlaylistArrayOrder(newArray);
 	};
 
-	const handleDragEnd = (event: DragEndEvent) => {
-		const { over, active } = event;
-		if (over === null) return;
-		if (over.id !== active.id) {
-			const oldindex = playlist.images.findIndex(
-				(element) => element.image_id === active.id,
-			);
-			const newIndex = playlist.images.findIndex(
-				(element) => element.image_id === over?.id,
-			);
-
-			swapImageTimes(active.id as number, over.id as number);
-
-			if (playlist.configuration.type === "time_of_day") {
-				reorderSortingCriteria();
-				return;
-			}
-			const newArrayOrder = arrayMove(playlist.images, oldindex, newIndex);
-			movePlaylistArrayOrder(newArrayOrder);
-		}
-	};
-
 	const lastIndex = playlist.images.length - 1;
-	const sortingCriteria: number[] = [];
 	const playlistArray = playlist.images.map((img, index) => {
 		const isLast =
 			playlist.configuration.type === "time_of_day"
 				? lastAddedImageID === img.image_id
 				: index === lastIndex;
-		sortingCriteria.push(img.image_id);
 		return (
 			<MiniPlaylistCard
 				key={img.image_id}
@@ -158,6 +133,18 @@ function PlaylistTrack() {
 	const isNeo = useDesignSystemStore(
 		(s) => s.designMode === "neobrutalist",
 	);
+
+	const dropData = useMemo<DropTargetData>(() => ({ type: "playlist" }), []);
+	const { ref: playlistDropRef, isDropTarget } = useDroppable({
+		id: "playlist-drop",
+		data: dropData,
+	});
+
+	const isDraggingImage = useDragStore(
+		(s) => s.isDragging && s.dragType === "image",
+	);
+	const showDropIndicator = isDropTarget && isDraggingImage;
+
 	const btnClass = isNeo
 		? "btn btn-primary uppercase"
 		: "btn btn-primary rounded-lg uppercase";
@@ -270,17 +257,17 @@ function PlaylistTrack() {
 				</>
 			)}
 			</div>
-			<DndContext
-				autoScroll={true}
-				onDragEnd={handleDragEnd}
-				collisionDetection={closestCorners}
+			<div
+				ref={playlistDropRef}
+				className={`relative flex w-full min-h-[4.5rem] ${scrollClass} transition-all duration-200${showDropIndicator ? " ring-2 ring-dashed ring-primary bg-primary/10" : ""}`}
 			>
-				<SortableContext items={sortingCriteria}>
-					<div className={`flex w-full ${scrollClass}`}>
-						<AnimatePresence>{...playlistArray}</AnimatePresence>
+				{showDropIndicator && playlistArray.length === 0 && (
+					<div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+						<span className="text-sm font-medium text-primary">Drop to add to playlist</span>
 					</div>
-				</SortableContext>
-			</DndContext>
+				)}
+				<AnimatePresence>{...playlistArray}</AnimatePresence>
+			</div>
 		</div>
 	);
 }

@@ -1,9 +1,17 @@
 import { create } from "zustand";
 import type { openFileAction } from "../../shared/types";
+import { useFoldersStore } from "../stores/foldersStore";
+
 const { openFiles, handleOpenImages } = window.API_RENDERER;
+
+interface PendingFolderImport {
+	files: string[];
+	folderName: string;
+}
 
 interface State {
 	isActive: boolean;
+	pendingFolderImport: PendingFolderImport | null;
 }
 
 interface openImagesProps {
@@ -12,59 +20,89 @@ interface openImagesProps {
 
 interface Actions {
 	openImages: (openImagesProps: openImagesProps) => Promise<void>;
+	confirmFolderImport: (createFolder: boolean) => Promise<void>;
+	cancelFolderImport: () => void;
 }
 
-const openImagesStore = create<State & Actions>((set) => ({
+const openImagesStore = create<State & Actions>((set, get) => ({
 	isActive: false,
+	pendingFolderImport: null,
+
 	openImages: async ({ action }) => {
-		console.log("🟢 useOpenImages: Starting openImages with action:", action);
 		set(() => ({ isActive: true }));
 
 		const result = await openFiles(action);
-		console.log("🟢 useOpenImages: openFiles returned:", result);
 
 		set(() => ({ isActive: false }));
 
 		if (!result.success) {
-			console.warn(
-				"🟡 useOpenImages: openFiles returned unsuccessful:",
-				result,
-			);
 			return;
 		}
 
-		// Check for files in result.data.files (the actual structure returned)
 		const files = result.data?.files || result.files || [];
 
 		if (files.length === 0) {
-			console.warn("🟡 useOpenImages: No files returned from dialog");
 			return;
 		}
 
-		console.log("🟢 useOpenImages: Files selected:", files.length, "files");
+		if (action === "folder" && result.folderName) {
+			set({
+				pendingFolderImport: {
+					files,
+					folderName: result.folderName,
+				},
+			});
+			return;
+		}
 
-		// Format for handleOpenImages which expects {success: boolean, data: {files: string[]}}
+		const currentFolderId = useFoldersStore.getState().currentFolderId;
 		const imagesObject = {
 			success: true,
 			data: {
-				files: files,
+				files,
+				folder_id: currentFolderId ?? undefined,
 			},
 		};
 
-		console.log(
-			"🟢 useOpenImages: Calling handleOpenImages with:",
-			imagesObject,
-		);
-
-		// Send images to daemon for processing
 		try {
-			const handleResult = await handleOpenImages(imagesObject);
-			console.log("🟢 useOpenImages: handleOpenImages returned:", handleResult);
+			await handleOpenImages(imagesObject);
 		} catch (error) {
-			console.error("🔴 useOpenImages: Error calling handleOpenImages:", error);
+			console.error("useOpenImages: Error calling handleOpenImages:", error);
 		}
-		// Progress will be handled by real-time events
-		// Images will appear automatically as they're processed
+	},
+
+	confirmFolderImport: async (createFolder: boolean) => {
+		const pending = get().pendingFolderImport;
+		if (!pending) return;
+
+		set({ pendingFolderImport: null });
+		const currentFolderId = useFoldersStore.getState().currentFolderId;
+
+		if (createFolder) {
+			try {
+				const folder = await useFoldersStore
+					.getState()
+					.createFolder(pending.folderName, currentFolderId);
+				await handleOpenImages({
+					success: true,
+					data: { files: pending.files, folder_id: folder.id },
+				});
+			} catch (error) {
+				console.error("useOpenImages: Error creating folder:", error);
+			}
+		} else {
+			await handleOpenImages({
+				success: true,
+				data: {
+					files: pending.files,
+					folder_id: currentFolderId ?? undefined,
+				},
+			});
+		}
+	},
+
+	cancelFolderImport: () => {
+		set({ pendingFolderImport: null });
 	},
 }));
 

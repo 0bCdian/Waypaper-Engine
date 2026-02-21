@@ -213,6 +213,7 @@ func startDaemon(configPath string, logLevel string) error {
 			db.ImageStore(), db.HistoryStore(), db.StateStore(), db.MonitorStateStore(),
 			reg, monManager, splitter, bus,
 		),
+		Folders: handler.NewFolderHandler(db.FolderStore(), db.ImageStore(), bus),
 	}
 
 	// 15. Create router and server.

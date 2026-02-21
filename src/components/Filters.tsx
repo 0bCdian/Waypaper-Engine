@@ -2,6 +2,7 @@ import { type ChangeEvent, useEffect, useState, useRef, useMemo } from "react";
 import useDebounce from "../hooks/useDebounce";
 import type { Filters as FiltersType } from "../types/rendererTypes";
 import { useImagesStore } from "../stores/images";
+import { useFoldersStore } from "../stores/foldersStore";
 import { useShallow } from "zustand/react/shallow";
 import type { ImageQueryParams } from "../../electron/daemon-go-types";
 import { useDesignSystemStore } from "../stores/designSystemStore";
@@ -113,6 +114,12 @@ function Filters() {
 			useImagesStore
 				.getState()
 				.fetchPage(1, mapFiltersToQueryParams(partialFilters, filters.advancedFilters.colors));
+
+			if (partialFilters.searchString.trim()) {
+				useFoldersStore.getState().searchFolders(partialFilters.searchString);
+			} else {
+				useFoldersStore.getState().clearSearchResults();
+			}
 		},
 		200,
 		[partialFilters],

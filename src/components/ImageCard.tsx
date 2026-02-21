@@ -1,7 +1,8 @@
-import { useCallback, useId, useRef, useState } from "react";
+import { useCallback, useId, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { isHotkeyPressed } from "react-hotkeys-hook";
 import { useShallow } from "zustand/react/shallow";
+import { useDraggable } from "@dnd-kit/react";
 import { useImagesStore } from "../stores/images";
 import { useMonitorStore } from "../stores/monitors";
 import { usePlaylistStore } from "../stores/playlist";
@@ -11,6 +12,7 @@ import { useContextMenuStore } from "../stores/contextMenuStore";
 import { useToastStore } from "../stores/toastStore";
 import { buildImageMenuItems } from "../utils/contextMenuItems";
 import type { rendererImage } from "../types/rendererTypes";
+import type { DragSourceData } from "../stores/dragStore";
 
 interface ImageCardProps {
 	Image: rendererImage;
@@ -83,6 +85,16 @@ function ImageCard({ Image }: ImageCardProps) {
 
 	const isChecked = !isEmpty && imagesInPlaylist.has(Image.id);
 	const isSelected = selectedImages.has(Image.id);
+
+	const dragData = useMemo<DragSourceData>(() => {
+		const ids = isSelected ? Array.from(selectedImages) : [Image.id];
+		return { type: "image", imageId: Image.id, selectedIds: ids };
+	}, [Image.id, isSelected, selectedImages]);
+
+	const { ref: dragRef, isDragging } = useDraggable({
+		id: `image-${Image.id}`,
+		data: dragData,
+	});
 
 	const handleDoubleClick = () => {
 		if (!Image.id) {
@@ -223,11 +235,12 @@ function ImageCard({ Image }: ImageCardProps) {
 
 	if (isPolaroid) {
 		return (
-			<div
-				onContextMenu={handleRightClick}
-				onClick={handleClick}
-				className="neo-polaroid group relative w-full animate-fade-in"
-			>
+		<div
+			ref={dragRef}
+			onContextMenu={handleRightClick}
+			onClick={handleClick}
+			className={`neo-polaroid group relative w-full animate-fade-in${isDragging ? " opacity-50" : ""}`}
+		>
 				<input
 					checked={isChecked}
 					id={Image.name}
@@ -246,20 +259,22 @@ function ImageCard({ Image }: ImageCardProps) {
 					</svg>
 				</button>
 
-				<button
-					type="button"
+				<div
+					role="button"
+					tabIndex={0}
 					onDoubleClick={handleDoubleClick}
 					onKeyDown={handleKeyDown}
 					className="neo-polaroid-inner"
 					aria-label={`Set ${Image.name} as wallpaper`}
 				>
 					{pictureElement}
-					<div className="neo-polaroid-caption">
+					<div className="neo-polaroid-caption relative z-20">
 						{isRenaming ? (
 							renameInput
 						) : (
 							<p
 								className="neo-polaroid-name"
+								onClick={(e) => e.stopPropagation()}
 								onDoubleClick={(e) => { e.stopPropagation(); startRename(); }}
 							>
 								{Image.name}
@@ -271,12 +286,12 @@ function ImageCard({ Image }: ImageCardProps) {
 							</p>
 						)}
 					</div>
-				</button>
+				</div>
 
 				<div
 					data-selected={isSelected}
 					id={overlayId}
-					className="neo-polaroid-overlay"
+					className="neo-polaroid-overlay pointer-events-none"
 					aria-hidden="true"
 				/>
 			</div>
@@ -285,9 +300,10 @@ function ImageCard({ Image }: ImageCardProps) {
 
 	return (
 		<div
+			ref={dragRef}
 			onContextMenu={handleRightClick}
 			onClick={handleClick}
-			className="group relative w-full overflow-hidden rounded-lg duration-200 animate-fade-in"
+			className={`group relative w-full overflow-hidden rounded-lg duration-200 animate-fade-in${isDragging ? " opacity-50" : ""}`}
 		>
 			<input
 				checked={isChecked}
@@ -307,20 +323,22 @@ function ImageCard({ Image }: ImageCardProps) {
 				</svg>
 			</button>
 
-			<button
-				type="button"
+			<div
+				role="button"
+				tabIndex={0}
 				onDoubleClick={handleDoubleClick}
 				onKeyDown={handleKeyDown}
 				className="relative w-full h-full border-0 bg-transparent p-0 cursor-pointer"
 				aria-label={`Set ${Image.name} as wallpaper`}
 			>
 				{pictureElement}
-				<div className="absolute bottom-0 w-full bg-base-content/75 p-2 pl-2 opacity-0 transition-all duration-300 group-hover:opacity-100 text-base-100">
+				<div className="absolute bottom-0 z-20 w-full bg-base-content/75 p-2 pl-2 opacity-0 transition-all duration-300 group-hover:opacity-100 text-base-100">
 					{isRenaming ? (
 						renameInput
 					) : (
 						<p
 							className="w-full overflow-hidden truncate text-ellipsis text-justify text-lg font-medium"
+							onClick={(e) => e.stopPropagation()}
 							onDoubleClick={(e) => { e.stopPropagation(); startRename(); }}
 						>
 							{Image.name}
@@ -335,10 +353,10 @@ function ImageCard({ Image }: ImageCardProps) {
 				<div
 					data-selected={isSelected}
 					id={overlayId}
-					className="absolute top-0 z-10 h-full w-full bg-primary opacity-0 transition-all data-[selected=true]:opacity-45"
+					className="absolute top-0 z-10 h-full w-full bg-primary opacity-0 transition-all data-[selected=true]:opacity-45 pointer-events-none"
 					aria-hidden="true"
 				/>
-			</button>
+			</div>
 		</div>
 	);
 }

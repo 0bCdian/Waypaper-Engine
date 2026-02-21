@@ -30,6 +30,7 @@ const (
 	CollectionPlaylists    = "playlists"
 	CollectionHistory      = "history"
 	CollectionMonitorState = "monitor_state"
+	CollectionFolders      = "folders"
 )
 
 // ---------------------------------------------------------------------------
@@ -57,6 +58,11 @@ const (
 
 	// MonitorState collection indexes
 	IndexMonitorStateName = "monitor_name"
+
+	// Folders collection indexes
+	IndexFolderID       = "id"
+	IndexFolderParentID = "parent_id"
+	IndexFolderName     = "name"
 )
 
 // ---------------------------------------------------------------------------
@@ -99,4 +105,7 @@ type DB interface {
 	// MonitorStateStore returns the persisted monitor state store.
 	// Tracks the current wallpaper per monitor across daemon restarts.
 	MonitorStateStore() MonitorStateStore
+
+	// FolderStore returns the store for the "folders" collection.
+	FolderStore() FolderStore
 }

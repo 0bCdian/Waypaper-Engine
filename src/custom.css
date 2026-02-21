@@ -321,6 +321,15 @@
 	}
 }
 
+/* Shrink drag overlay to fit preview content instead of matching source element size */
+[data-dnd-overlay] {
+	width: fit-content !important;
+	max-width: fit-content !important;
+	height: fit-content !important;
+	max-height: fit-content !important;
+	pointer-events: none;
+}
+
 @media (max-width: 480px) {
 	.pagination {
 		flex-wrap: wrap;

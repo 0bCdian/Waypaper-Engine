@@ -3,9 +3,7 @@ package store
 import (
 	"context"
 	"fmt"
-	"math"
 	"strings"
-	"sync/atomic"
 
 	clover "github.com/ostafen/clover/v2"
 	d "github.com/ostafen/clover/v2/document"
@@ -14,30 +12,14 @@ import (
 
 // imageStore is the CloverDB-backed implementation of ImageStore.
 type imageStore struct {
-	db     *clover.DB
-	nextID atomic.Int64
+	db *clover.DB
+	IDAllocator
 }
 
 func newImageStore(db *clover.DB) *imageStore {
 	s := &imageStore{db: db}
-	s.initNextID()
+	s.IDAllocator.Init(db, CollectionImages)
 	return s
-}
-
-// initNextID loads the current max ID from the collection.
-func (s *imageStore) initNextID() {
-	doc, err := s.db.FindFirst(
-		query.NewQuery(CollectionImages).Sort(query.SortOption{Field: "id", Direction: -1}),
-	)
-	if err == nil && doc != nil {
-		if id, ok := doc.Get("id").(int64); ok {
-			s.nextID.Store(id)
-		}
-	}
-}
-
-func (s *imageStore) allocID() int {
-	return int(s.nextID.Add(1))
 }
 
 func (s *imageStore) GetAll(_ context.Context, opts ImageQueryOpts) (*PaginatedResult[Image], error) {
@@ -51,42 +33,41 @@ func (s *imageStore) GetAll(_ context.Context, opts ImageQueryOpts) (*PaginatedR
 		opts.PerPage = 200
 	}
 
-	// Build base query criteria.
 	var criteria query.Criteria
 
 	if opts.MediaType != "" {
-		c := query.Field("media_type").Eq(opts.MediaType)
-		criteria = chainAnd(criteria, c)
+		criteria = ChainAnd(criteria, query.Field("media_type").Eq(opts.MediaType))
 	}
 
-	if len(opts.Tags) > 0 {
-		for _, tag := range opts.Tags {
-			c := query.Field("tags").Contains(tag)
-			criteria = chainAnd(criteria, c)
+	for _, tag := range opts.Tags {
+		criteria = ChainAnd(criteria, query.Field("tags").Contains(tag))
+	}
+
+	for _, color := range opts.Colors {
+		criteria = ChainAnd(criteria, query.Field("colors").Contains(color))
+	}
+
+	filterRootFolder := false
+	if opts.FolderID != nil {
+		if *opts.FolderID == 0 {
+			filterRootFolder = true
+		} else {
+			criteria = ChainAnd(criteria, query.Field("folder_id").Eq(*opts.FolderID))
 		}
 	}
 
-	if len(opts.Colors) > 0 {
-		for _, color := range opts.Colors {
-			c := query.Field("colors").Contains(color)
-			criteria = chainAnd(criteria, c)
-		}
-	}
-
-	// Sorting.
 	sortField := "imported_at"
 	if opts.SortBy != "" {
 		sortField = opts.SortBy
 	}
-	sortDir := -1 // desc
+	sortDir := -1
 	if strings.ToLower(opts.SortOrder) == "asc" {
 		sortDir = 1
 	}
 
-	// When search is active, load all DB-filtered images, apply search
-	// in-memory, THEN paginate the results. CloverDB doesn't support
-	// native fuzzy search, so we must filter before pagination.
-	if opts.Search != "" {
+	// When search or root-folder filtering is active, load all DB-filtered
+	// docs, apply in-memory filters, then paginate in Go.
+	if opts.Search != "" || filterRootFolder {
 		q := query.NewQuery(CollectionImages)
 		if criteria != nil {
 			q = q.Where(criteria)
@@ -98,43 +79,20 @@ func (s *imageStore) GetAll(_ context.Context, opts ImageQueryOpts) (*PaginatedR
 			return nil, fmt.Errorf("image store: find all: %w", err)
 		}
 
-		allImages := make([]Image, 0, len(docs))
-		for _, doc := range docs {
-			var img Image
-			if err := doc.Unmarshal(&img); err != nil {
-				continue
-			}
-			allImages = append(allImages, img)
+		if filterRootFolder {
+			docs = WhereNilOrNotExists(docs, "folder_id")
 		}
 
-		// Filter by search FIRST.
-		filtered := filterImagesBySearch(allImages, opts.Search)
-		total := len(filtered)
-		totalPages := int(math.Ceil(float64(total) / float64(opts.PerPage)))
+		allImages := UnmarshalAll[Image](docs)
 
-		// THEN paginate.
-		skip := (opts.Page - 1) * opts.PerPage
-		end := skip + opts.PerPage
-		if skip > total {
-			skip = total
+		if opts.Search != "" {
+			allImages = filterImagesBySearch(allImages, opts.Search)
 		}
-		if end > total {
-			end = total
-		}
-		paged := filtered[skip:end]
 
-		return &PaginatedResult[Image]{
-			Data: paged,
-			Pagination: Pagination{
-				Page:       opts.Page,
-				PerPage:    opts.PerPage,
-				TotalItems: total,
-				TotalPages: totalPages,
-			},
-		}, nil
+		return Paginate(allImages, opts.Page, opts.PerPage), nil
 	}
 
-	// No search -- use DB-level pagination.
+	// No in-memory filters needed — use DB-level pagination.
 	countQ := query.NewQuery(CollectionImages)
 	if criteria != nil {
 		countQ = countQ.Where(criteria)
@@ -158,16 +116,11 @@ func (s *imageStore) GetAll(_ context.Context, opts ImageQueryOpts) (*PaginatedR
 		return nil, fmt.Errorf("image store: find all: %w", err)
 	}
 
-	images := make([]Image, 0, len(docs))
-	for _, doc := range docs {
-		var img Image
-		if err := doc.Unmarshal(&img); err != nil {
-			continue
-		}
-		images = append(images, img)
+	images := UnmarshalAll[Image](docs)
+	totalPages := 0
+	if opts.PerPage > 0 {
+		totalPages = (total + opts.PerPage - 1) / opts.PerPage
 	}
-
-	totalPages := int(math.Ceil(float64(total) / float64(opts.PerPage)))
 
 	return &PaginatedResult[Image]{
 		Data: images,
@@ -181,28 +134,15 @@ func (s *imageStore) GetAll(_ context.Context, opts ImageQueryOpts) (*PaginatedR
 }
 
 func (s *imageStore) GetByID(_ context.Context, id int) (*Image, error) {
-	doc, err := s.db.FindFirst(
-		query.NewQuery(CollectionImages).Where(query.Field("id").Eq(id)),
-	)
-	if err != nil {
-		return nil, fmt.Errorf("image store: find by id: %w", err)
-	}
-	if doc == nil {
-		return nil, fmt.Errorf("image store: image %d not found", id)
-	}
-
-	var img Image
-	if err := doc.Unmarshal(&img); err != nil {
-		return nil, fmt.Errorf("image store: unmarshal: %w", err)
-	}
-	return &img, nil
+	q := query.NewQuery(CollectionImages).Where(query.Field("id").Eq(id))
+	return FindOne[Image](s.db, q, fmt.Sprintf("image store: image %d", id))
 }
 
 func (s *imageStore) Create(_ context.Context, images []Image) ([]Image, error) {
 	created := make([]Image, 0, len(images))
 
 	for _, img := range images {
-		img.ID = s.allocID()
+		img.ID = s.Next()
 
 		doc := d.NewDocument()
 		doc.Set("id", img.ID)
@@ -220,6 +160,9 @@ func (s *imageStore) Create(_ context.Context, images []Image) ([]Image, error) 
 		doc.Set("source_path", img.SourcePath)
 		doc.Set("is_selected", img.IsSelected)
 		doc.Set("thumbnails", img.Thumbnails)
+		if img.FolderID != nil {
+			doc.Set("folder_id", *img.FolderID)
+		}
 
 		if _, err := s.db.InsertOne(CollectionImages, doc); err != nil {
 			return nil, fmt.Errorf("image store: insert image %q: %w", img.Name, err)
@@ -237,16 +180,7 @@ func (s *imageStore) Update(_ context.Context, id int, updates map[string]any) (
 		return nil, fmt.Errorf("image store: update image %d: %w", id, err)
 	}
 
-	doc, err := s.db.FindFirst(q)
-	if err != nil || doc == nil {
-		return nil, fmt.Errorf("image store: image %d not found after update", id)
-	}
-
-	var img Image
-	if err := doc.Unmarshal(&img); err != nil {
-		return nil, fmt.Errorf("image store: unmarshal after update: %w", err)
-	}
-	return &img, nil
+	return FindOne[Image](s.db, q, fmt.Sprintf("image store: image %d after update", id))
 }
 
 func (s *imageStore) UpdateAll(_ context.Context, updates map[string]any) (int, error) {
@@ -323,7 +257,7 @@ func (s *imageStore) IsNameTaken(_ context.Context, name string, excludeID int) 
 	return count > 0, nil
 }
 
-// filterImagesBySearch performs case-insensitive fuzzy search on name and tags.
+// filterImagesBySearch performs case-insensitive substring search on name and tags.
 func filterImagesBySearch(images []Image, search string) []Image {
 	term := strings.ToLower(search)
 	var filtered []Image
@@ -340,12 +274,4 @@ func filterImagesBySearch(images []Image, search string) []Image {
 		}
 	}
 	return filtered
-}
-
-// chainAnd chains criteria with AND. If existing is nil, returns the new criteria.
-func chainAnd(existing, new query.Criteria) query.Criteria {
-	if existing == nil {
-		return new
-	}
-	return existing.And(new)
 }

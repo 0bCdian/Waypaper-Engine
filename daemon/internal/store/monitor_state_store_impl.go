@@ -20,11 +20,11 @@ func newMonitorStateStore(db *clover.DB) *monitorStateStore {
 }
 
 func (s *monitorStateStore) Get(_ context.Context, monitorName string) (*MonitorState, error) {
-	doc, err := s.db.FindFirst(
-		query.NewQuery(CollectionMonitorState).Where(
-			query.Field("monitor_name").Eq(monitorName),
-		),
+	q := query.NewQuery(CollectionMonitorState).Where(
+		query.Field("monitor_name").Eq(monitorName),
 	)
+
+	doc, err := s.db.FindFirst(q)
 	if err != nil {
 		return nil, fmt.Errorf("monitor state store: get %q: %w", monitorName, err)
 	}
@@ -45,20 +45,10 @@ func (s *monitorStateStore) GetAll(_ context.Context) ([]MonitorState, error) {
 		return nil, fmt.Errorf("monitor state store: get all: %w", err)
 	}
 
-	states := make([]MonitorState, 0, len(docs))
-	for _, doc := range docs {
-		var state MonitorState
-		if err := doc.Unmarshal(&state); err != nil {
-			continue
-		}
-		states = append(states, state)
-	}
-	return states, nil
+	return UnmarshalAll[MonitorState](docs), nil
 }
 
 func (s *monitorStateStore) Set(_ context.Context, state MonitorState) error {
-	// Upsert pattern: delete existing entry for this monitor, then insert new one.
-	// CloverDB doesn't have a native upsert, so we delete + insert.
 	_ = s.db.Delete(
 		query.NewQuery(CollectionMonitorState).Where(
 			query.Field("monitor_name").Eq(state.MonitorName),
