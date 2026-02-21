@@ -16,12 +16,6 @@ import { useContextMenuStore } from "../stores/contextMenuStore";
 import { buildGalleryMenuItems } from "../utils/contextMenuItems";
 import type { DropTargetData } from "../stores/dragStore";
 
-function paginationMinWidth(totalPages: number): number {
-	if (totalPages <= 1) return 0;
-	const maxSlots = Math.min(totalPages + 2, 9);
-	return maxSlots * 3 + (maxSlots - 1) * 0.25;
-}
-
 function GalleryDropZone({ children }: { children: React.ReactNode }) {
 	const dropData = useMemo<DropTargetData>(() => ({ type: "gallery" }), []);
 	const { ref } = useDroppable({
