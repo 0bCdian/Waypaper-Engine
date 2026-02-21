@@ -69,7 +69,7 @@ function MiniPlaylistCard({
 		imageInfo?.thumbnails?.default ||
 		imageInfo?.thumbnails?.["720p"] ||
 		imageInfo?.path ||
-		"";
+		undefined;
 
 	const { attributes, listeners, setNodeRef } = useSortable({
 		id: playlistImage.image_id,

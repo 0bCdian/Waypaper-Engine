@@ -11,7 +11,6 @@ import type { openFileAction } from "../../shared/types";
 import { useSetLastActivePlaylist } from "../hooks/useSetLastActivePlaylist";
 import type { PlaylistImage } from "../../electron/daemon-go-types";
 import { useDesignSystemStore } from "../stores/designSystemStore";
-import { useActivePlaylistStore } from "../stores/activePlaylistStore";
 
 const { goDaemon } = window.API_RENDERER;
 import MiniPlaylistCard from "./MiniPlaylistCard";
@@ -143,18 +142,22 @@ function PlaylistTrack() {
 		}
 	}, [playlist.configuration.type]);
 
-	const activePlaylist = useActivePlaylistStore((s) => s.activePlaylist);
+	const imagesMap = useImagesStore((s) => s.imagesMap);
+	useEffect(() => {
+		if (playlist.images.length === 0) return;
+		const missing = playlist.images.filter(
+			(img) => !imagesMap.has(img.image_id),
+		);
+		if (missing.length > 0) {
+			void useImagesStore
+				.getState()
+				.fetchMissingImages(missing.map((img) => img.image_id));
+		}
+	}, [playlist.images, imagesMap]);
+
 	const isNeo = useDesignSystemStore(
 		(s) => s.designMode === "neobrutalist",
 	);
-	const isPlaying =
-		activePlaylist != null &&
-		activePlaylist.playlist_id === playlist.id &&
-		!activePlaylist.paused;
-	const activeMonitorLabel =
-		activePlaylist != null && activePlaylist.playlist_id === playlist.id
-			? activePlaylist.monitors.map((m) => m.name).join(", ")
-			: null;
 	const btnClass = isNeo
 		? "btn btn-primary uppercase"
 		: "btn btn-primary rounded-lg uppercase";
@@ -176,13 +179,6 @@ function PlaylistTrack() {
 						<span className="ml-2 inline-block h-2.5 w-2.5 rounded-full bg-warning align-middle" title="Unsaved changes" />
 					)}
 				</span>
-				{activePlaylist && activeMonitorLabel && (
-					<span className="text-sm text-base-content/60">
-						{isPlaying ? "Playing" : "Paused"}{" "}
-						&ldquo;{activePlaylist.playlist_name}&rdquo; on{" "}
-						{activeMonitorLabel}
-					</span>
-				)}
 			</div>
 	<div className="dropdown dropdown-top">
 			<button
