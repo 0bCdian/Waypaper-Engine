@@ -63,6 +63,7 @@ declare global {
 					imageId: number,
 					monitor?: string,
 					mode?: MonitorMode,
+					monitors?: string[],
 				) => Promise<{
 					status: string;
 					image_id: number;

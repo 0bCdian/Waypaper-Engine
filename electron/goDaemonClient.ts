@@ -388,11 +388,13 @@ export class GoDaemonClient extends EventEmitter {
 		imageId: number,
 		monitor: string = "*",
 		mode: MonitorMode = "individual",
+		monitors?: string[],
 	): Promise<SetWallpaperResponse> {
 		const body: SetWallpaperRequest = {
 			image_id: imageId,
 			monitor,
 			mode,
+			monitors,
 		};
 		return this.request<SetWallpaperResponse>("POST", "/wallpaper/set", body);
 	}

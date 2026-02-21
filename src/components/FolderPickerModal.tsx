@@ -147,10 +147,9 @@ function FolderPickerModal() {
 		try {
 			await useFoldersStore.getState().moveImagesToFolder(imageIds, selectedFolderId);
 			useImagesStore.getState().clearSelection();
+			useImagesStore.getState().reQueryImages();
 			const fid = useFoldersStore.getState().currentFolderId;
-			useImagesStore.getState().fetchPage(1, {
-				folder_id: fid === null ? "root" : fid,
-			});
+			useFoldersStore.getState().fetchFolders(fid);
 			addToast(`Moved ${imageIds.length} image(s)`, "success", 2000);
 			close();
 		} catch {

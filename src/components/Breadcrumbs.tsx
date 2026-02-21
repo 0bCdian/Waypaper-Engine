@@ -1,5 +1,4 @@
 import { useMemo, type ReactNode } from "react";
-import { motion, AnimatePresence } from "framer-motion";
 import { useDroppable } from "@dnd-kit/react";
 import { useFoldersStore } from "../stores/foldersStore";
 import { useImagesStore } from "../stores/images";
@@ -38,7 +37,7 @@ function Breadcrumbs() {
 	const currentFolderId = useFoldersStore((s) => s.currentFolderId);
 	const navigateToFolder = useFoldersStore((s) => s.navigateToFolder);
 
-	if (currentFolderId === null) return null;
+	const isAtRoot = currentFolderId === null;
 
 	const handleNavigate = (folderId: number | null) => {
 		navigateToFolder(folderId);
@@ -48,16 +47,28 @@ function Breadcrumbs() {
 	};
 
 	return (
-		<AnimatePresence>
-			<motion.nav
-				initial={{ opacity: 0, y: -8 }}
-				animate={{ opacity: 1, y: 0 }}
-				exit={{ opacity: 0, y: -8 }}
-				transition={{ duration: 0.2 }}
-				className="flex items-center gap-1 px-4 py-2 text-sm"
-				aria-label="Breadcrumb"
-			>
-				<DroppableBreadcrumb folderId={null} droppableId="breadcrumb-root">
+		<nav
+			className="flex items-center gap-1 px-4 py-2 text-sm"
+			aria-label="Breadcrumb"
+		>
+			<DroppableBreadcrumb folderId={null} droppableId="breadcrumb-root">
+				{isAtRoot ? (
+					<span className="btn btn-ghost btn-xs gap-1 font-semibold text-base-content cursor-default">
+						<svg
+							xmlns="http://www.w3.org/2000/svg"
+							viewBox="0 0 20 20"
+							fill="currentColor"
+							className="h-4 w-4"
+						>
+							<path
+								fillRule="evenodd"
+								d="M9.293 2.293a1 1 0 011.414 0l7 7A1 1 0 0117 11h-1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-3a1 1 0 00-1-1H9a1 1 0 00-1 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-6H3a1 1 0 01-.707-1.707l7-7z"
+								clipRule="evenodd"
+							/>
+						</svg>
+						Gallery
+					</span>
+				) : (
 					<button
 						type="button"
 						onClick={() => handleNavigate(null)}
@@ -77,9 +88,11 @@ function Breadcrumbs() {
 						</svg>
 						Gallery
 					</button>
-				</DroppableBreadcrumb>
+				)}
+			</DroppableBreadcrumb>
 
-				{breadcrumbPath.map((folder, index) => {
+			{!isAtRoot &&
+				breadcrumbPath.map((folder, index) => {
 					const isLast = index === breadcrumbPath.length - 1;
 					return (
 						<span key={folder.id} className="flex items-center gap-1">
@@ -116,8 +129,7 @@ function Breadcrumbs() {
 						</span>
 					);
 				})}
-			</motion.nav>
-		</AnimatePresence>
+		</nav>
 	);
 }
 

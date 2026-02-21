@@ -321,12 +321,11 @@
 	}
 }
 
-/* Shrink drag overlay to fit preview content instead of matching source element size */
+/* Center drag preview within the source-sized overlay so cursor stays near the preview */
 [data-dnd-overlay] {
-	width: fit-content !important;
-	max-width: fit-content !important;
-	height: fit-content !important;
-	max-height: fit-content !important;
+	display: flex !important;
+	align-items: center !important;
+	justify-content: center !important;
 	pointer-events: none;
 }
 

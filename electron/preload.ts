@@ -101,6 +101,7 @@ const electronAPI = {
 			imageId: number,
 			monitor?: string,
 			mode?: MonitorMode,
+			monitors?: string[],
 		): Promise<{
 			status: string;
 			image_id: number;
@@ -111,6 +112,7 @@ const electronAPI = {
 				image_id: imageId,
 				monitor: monitor || "*",
 				mode: mode || "individual",
+				monitors,
 			}),
 
 		setRandomWallpaper: (

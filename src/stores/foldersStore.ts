@@ -9,8 +9,11 @@ interface FoldersState {
 	currentFolderId: number | null;
 	isLoading: boolean;
 	searchResults: Folder[];
+	folderPreviews: Map<number, string[]>;
 
 	fetchFolders: (parentId?: number | null) => Promise<void>;
+	fetchFolderPreviews: (folderIds: number[]) => Promise<void>;
+	invalidateFolderPreview: (folderId: number) => void;
 	fetchBreadcrumbPath: (folderId: number | null) => Promise<void>;
 	navigateToFolder: (folderId: number | null) => void;
 	createFolder: (name: string, parentId?: number | null) => Promise<Folder>;
@@ -27,22 +30,69 @@ interface FoldersState {
 	clearSearchResults: () => void;
 }
 
+export async function getAllImageIdsInFolder(folderId: number): Promise<number[]> {
+	const ids: number[] = [];
+	let page = 1;
+	for (;;) {
+		const res = await goDaemon.getImages({ folder_id: folderId, per_page: 200, page });
+		for (const img of res.data) ids.push(img.id);
+		if (page >= res.pagination.total_pages) break;
+		page++;
+	}
+	return ids;
+}
+
 export const useFoldersStore = create<FoldersState>()((set, get) => ({
 	folders: [],
 	breadcrumbPath: [],
 	currentFolderId: null,
 	isLoading: false,
 	searchResults: [],
+	folderPreviews: new Map(),
 
 	fetchFolders: async (parentId?: number | null) => {
 		set({ isLoading: true });
 		try {
 			const result = await goDaemon.getFolders(parentId);
-			set({ folders: result.data || [], isLoading: false });
+			const folders = result.data || [];
+			set({ folders, isLoading: false });
+			void get().fetchFolderPreviews(folders.map((f) => f.id));
 		} catch (error) {
 			console.error("FoldersStore: Error fetching folders:", error);
 			set({ folders: [], isLoading: false });
 		}
+	},
+
+	fetchFolderPreviews: async (folderIds: number[]) => {
+		const existing = get().folderPreviews;
+		const toFetch = folderIds.filter((id) => !existing.has(id));
+		if (toFetch.length === 0) return;
+		const results = await Promise.all(
+			toFetch.map(async (id) => {
+				try {
+					const res = await goDaemon.getImages({ folder_id: id, per_page: 4, page: 1 });
+					const thumbs = res.data
+						.map((img) => img.thumbnails?.default)
+						.filter((t): t is string => !!t);
+					return [id, thumbs] as const;
+				} catch {
+					return [id, []] as const;
+				}
+			}),
+		);
+		set((state) => {
+			const next = new Map(state.folderPreviews);
+			for (const [id, thumbs] of results) next.set(id, thumbs);
+			return { folderPreviews: next };
+		});
+	},
+
+	invalidateFolderPreview: (folderId: number) => {
+		set((state) => {
+			const next = new Map(state.folderPreviews);
+			next.delete(folderId);
+			return { folderPreviews: next };
+		});
 	},
 
 	fetchBreadcrumbPath: async (folderId: number | null) => {

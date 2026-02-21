@@ -438,6 +438,7 @@ export interface ConfigChangedPayload {
 export interface SetWallpaperRequest {
 	image_id: number;
 	monitor?: string;
+	monitors?: string[];
 	mode?: MonitorMode;
 }
 

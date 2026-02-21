@@ -598,6 +598,77 @@
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   FOLDER CARD (neobrutalist override)
+   ══════════════════════════════════════════════════════════════════ */
+
+[data-design="neobrutalist"] .neo-folder-card {
+	background: oklch(from var(--color-base-200) l c h);
+	padding: 8px 8px 0 8px;
+	border: var(--neo-border-width) solid
+		oklch(from var(--color-base-content) l c h / 0.9);
+	box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0
+		oklch(from var(--color-base-content) l c h / 0.7);
+	border-radius: var(--neo-radius);
+	cursor: pointer;
+	transition: box-shadow 0.15s ease, transform 0.15s ease;
+}
+
+[data-design="neobrutalist"] .neo-folder-card:hover {
+	box-shadow: calc(var(--neo-shadow-x) + 2px) calc(var(--neo-shadow-y) + 2px)
+		0 0 oklch(from var(--color-primary) l c h / 0.85);
+	z-index: 5;
+}
+
+[data-design="neobrutalist"] .neo-folder-card[data-drop-target="true"] {
+	border-color: oklch(from var(--color-primary) l c h);
+	box-shadow: calc(var(--neo-shadow-x) + 3px) calc(var(--neo-shadow-y) + 3px)
+		0 0 oklch(from var(--color-primary) l c h / 0.9);
+	transform: scale(1.03);
+}
+
+[data-design="neobrutalist"] .neo-folder-inner {
+	display: flex;
+	flex-direction: column;
+	width: 100%;
+	border-radius: var(--neo-radius);
+	overflow: hidden;
+}
+
+[data-design="neobrutalist"] .neo-folder-preview {
+	aspect-ratio: 3 / 2;
+	width: 100%;
+	overflow: hidden;
+	line-height: 0;
+}
+
+[data-design="neobrutalist"] .neo-folder-preview img {
+	object-fit: cover;
+	width: 100%;
+	height: 100%;
+	display: block;
+	transition: transform 0.3s ease;
+}
+
+[data-design="neobrutalist"] .neo-folder-card:hover .neo-folder-preview img {
+	transform: scale(1.05);
+}
+
+[data-design="neobrutalist"] .neo-folder-caption {
+	padding: 10px 6px 14px;
+}
+
+[data-design="neobrutalist"] .neo-folder-name {
+	font-weight: 800;
+	font-size: 0.8rem;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+	display: flex;
+	align-items: center;
+	gap: 0.4rem;
+}
+
+/* ══════════════════════════════════════════════════════════════════
    MINI PLAYLIST CARD (neobrutalist override)
    ══════════════════════════════════════════════════════════════════ */
 

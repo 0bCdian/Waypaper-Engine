@@ -487,6 +487,7 @@ export class IPCManager {
 						p?.image_id as number,
 						(p?.monitor as string) || "*",
 						(p?.mode as MonitorMode) || "individual",
+						p?.monitors as string[] | undefined,
 					);
 				case "random_wallpaper":
 					return await goDaemonClient.setRandomWallpaper(

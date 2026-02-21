@@ -9,7 +9,28 @@ function wallpaperSubmenu(
 	entry: ImageHistoryEntry,
 	monitors: Monitor[],
 ): MenuItem[] {
+	const modeLabel =
+		entry.mode === "extend"
+			? "Extend"
+			: entry.mode === "clone"
+				? "Clone"
+				: "Individual";
+	const monitorsLabel = entry.monitors.join(", ");
+
 	const items: MenuItem[] = [
+		{
+			type: "action",
+			label: `Restore original (${modeLabel} on ${monitorsLabel})`,
+			onClick: () => {
+				void goDaemon.setWallpaper(
+					entry.image_id,
+					undefined,
+					entry.mode,
+					entry.monitors,
+				);
+			},
+		},
+		{ type: "separator" },
 		{
 			type: "action",
 			label: "Duplicate across all monitors",

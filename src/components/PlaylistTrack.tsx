@@ -4,7 +4,7 @@ import { usePlaylistStore } from "../stores/playlist";
 import { useImagesStore } from "../stores/images";
 import openImagesStore from "../hooks/useOpenImages";
 import { useShallow } from "zustand/react/shallow";
-import { AnimatePresence } from "framer-motion";
+
 import { useMonitorStore } from "../stores/monitors";
 import type { openFileAction } from "../../shared/types";
 import { useSetLastActivePlaylist } from "../hooks/useSetLastActivePlaylist";
@@ -140,10 +140,10 @@ function PlaylistTrack() {
 		data: dropData,
 	});
 
-	const isDraggingImage = useDragStore(
-		(s) => s.isDragging && s.dragType === "image",
+	const isDraggingAddable = useDragStore(
+		(s) => s.isDragging && (s.dragType === "image" || s.dragType === "folder"),
 	);
-	const showDropIndicator = isDropTarget && isDraggingImage;
+	const showDropIndicator = isDropTarget && isDraggingAddable;
 
 	const btnClass = isNeo
 		? "btn btn-primary uppercase"
@@ -266,7 +266,7 @@ function PlaylistTrack() {
 						<span className="text-sm font-medium text-primary">Drop to add to playlist</span>
 					</div>
 				)}
-				<AnimatePresence>{...playlistArray}</AnimatePresence>
+				{...playlistArray}
 			</div>
 		</div>
 	);

@@ -237,9 +237,9 @@ function ImageDetailSidebar() {
 								Colors
 							</label>
 							<div className="flex flex-wrap gap-1.5">
-								{selectedImage.colors.map((c) => (
-									<div
-										key={c}
+							{selectedImage.colors.map((c, i) => (
+								<div
+									key={`${c}-${i}`}
 										className="w-6 h-6 rounded border border-base-content/20 cursor-pointer tooltip"
 										style={{ backgroundColor: c }}
 										data-tip={c}

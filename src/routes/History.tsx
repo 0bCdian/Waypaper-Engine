@@ -98,11 +98,12 @@ function HistoryEntry({
 	onContextMenu: (e: React.MouseEvent, entry: ImageHistoryEntry) => void;
 }) {
 	const handleClick = () => {
-		const monitor =
-			entry.mode === "extend" || entry.mode === "clone"
-				? "*"
-				: entry.monitors[0] ?? "*";
-		void goDaemon.setWallpaper(entry.image_id, monitor, entry.mode);
+		void goDaemon.setWallpaper(
+			entry.image_id,
+			undefined,
+			entry.mode,
+			entry.monitors,
+		);
 	};
 
 	return (

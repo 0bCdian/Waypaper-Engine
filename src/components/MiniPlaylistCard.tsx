@@ -221,9 +221,9 @@ function MiniPlaylistCard({
 
 	return (
 		<motion.div
-			layout
+			layout="position"
 			key={playlistImage.image_id}
-		transition={{ duration: 0.15, ease: "easeOut" }}
+			transition={{ duration: 0.15, ease: "easeOut" }}
 			ref={sortableRef}
 		>
 			<div className={`${cardClass}${isDragging ? " opacity-50" : ""}`} onContextMenu={handleContextMenu}>

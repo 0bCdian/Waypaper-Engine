@@ -3,7 +3,7 @@ import { DragDropProvider, DragOverlay } from "@dnd-kit/react";
 import { PointerSensor, PointerActivationConstraints } from "@dnd-kit/dom";
 import { arrayMove } from "@dnd-kit/helpers";
 import { useDragStore, type DragSourceData, type DropTargetData } from "../stores/dragStore";
-import { useFoldersStore } from "../stores/foldersStore";
+import { useFoldersStore, getAllImageIdsInFolder } from "../stores/foldersStore";
 import { useImagesStore } from "../stores/images";
 import { usePlaylistStore } from "../stores/playlist";
 import DragPreview from "./DragPreview";
@@ -98,6 +98,8 @@ async function dispatchDrop(
 			const ids = getIds(sourceData);
 			await useFoldersStore.getState().moveImagesToFolder(ids, targetData.folderId);
 			useImagesStore.getState().reQueryImages();
+			useFoldersStore.getState().fetchFolders(currentFolderId);
+			useFoldersStore.getState().invalidateFolderPreview(targetData.folderId);
 		} else if (sourceData.type === "folder" && sourceData.folderId != null) {
 			if (sourceData.folderId !== targetData.folderId) {
 				await goDaemon.updateFolder(sourceData.folderId, {
@@ -114,6 +116,11 @@ async function dispatchDrop(
 			usePlaylistStore.getState().addImagesToPlaylist(getIds(sourceData));
 			return;
 		}
+		if (sourceData.type === "folder" && sourceData.folderId != null) {
+			const ids = await getAllImageIdsInFolder(sourceData.folderId);
+			if (ids.length > 0) usePlaylistStore.getState().addImagesToPlaylist(ids);
+			return;
+		}
 		if (targetData.type === "playlist") return;
 	}
 
@@ -122,6 +129,7 @@ async function dispatchDrop(
 		if (sourceData.type === "image") {
 			await useFoldersStore.getState().moveImagesToFolder(getIds(sourceData), destFolderId);
 			useImagesStore.getState().reQueryImages();
+			useFoldersStore.getState().fetchFolders(currentFolderId);
 		} else if (sourceData.type === "folder" && sourceData.folderId != null) {
 			await goDaemon.updateFolder(sourceData.folderId, {
 				parent_id: destFolderId,

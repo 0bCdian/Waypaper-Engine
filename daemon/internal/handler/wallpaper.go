@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"fmt"
 	"log/slog"
 	"math/rand"
 	"net/http"
@@ -51,9 +52,10 @@ func NewWallpaperHandler(
 
 // setWallpaperRequest is the JSON body for POST /wallpaper/set.
 type setWallpaperRequest struct {
-	ImageID int                 `json:"image_id"`
-	Monitor string              `json:"monitor"`
-	Mode    monitor.MonitorMode `json:"mode"`
+	ImageID  int                 `json:"image_id"`
+	Monitor  string              `json:"monitor"`
+	Monitors []string            `json:"monitors,omitempty"`
+	Mode     monitor.MonitorMode `json:"mode"`
 }
 
 // Set handles POST /wallpaper/set.
@@ -75,16 +77,17 @@ func (h *WallpaperHandler) Set(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if req.Monitor == "" {
-		req.Monitor = "*"
-	}
 	if req.Mode == "" {
 		req.Mode = monitor.ModeIndividual
 	}
 
-	target := monitor.MonitorTarget{ID: req.Monitor, Mode: req.Mode}
+	monitors, err := h.resolveMonitors(r.Context(), req.Monitors, req.Monitor)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
 
-	if err := h.applyWallpaper(r.Context(), img, target, "manual"); err != nil {
+	if err := h.applyWallpaper(r.Context(), img, monitors, req.Mode, "manual"); err != nil {
 		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -132,9 +135,14 @@ func (h *WallpaperHandler) Random(w http.ResponseWriter, r *http.Request) {
 	}
 
 	img := &result.Data[0]
-	target := monitor.MonitorTarget{ID: req.Monitor, Mode: req.Mode}
 
-	if err := h.applyWallpaper(r.Context(), img, target, "random"); err != nil {
+	monitors, err := h.resolveMonitors(r.Context(), nil, req.Monitor)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := h.applyWallpaper(r.Context(), img, monitors, req.Mode, "random"); err != nil {
 		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -207,30 +215,46 @@ func (h *WallpaperHandler) GetHistory(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, entries)
 }
 
-// applyWallpaper is the core wallpaper setting flow shared by Set and Random.
-func (h *WallpaperHandler) applyWallpaper(ctx context.Context, img *store.Image, target monitor.MonitorTarget, source string) error {
-	// Resolve monitors.
-	var monitors []monitor.Monitor
-	var err error
-	if target.ID == "*" {
-		monitors, err = h.monitorManager.GetMonitors(ctx)
-	} else {
-		mon, e := h.monitorManager.GetMonitorByName(ctx, target.ID)
-		if e != nil {
-			return e
+// resolveMonitors turns the request's monitor fields into concrete Monitor structs.
+// If names is non-empty, each name is resolved individually (unavailable monitors
+// are skipped with a warning). Otherwise falls back to the legacy single-monitor
+// field: "*" means all connected monitors, anything else is a single name lookup.
+func (h *WallpaperHandler) resolveMonitors(ctx context.Context, names []string, fallback string) ([]monitor.Monitor, error) {
+	if len(names) > 0 {
+		var resolved []monitor.Monitor
+		for _, name := range names {
+			mon, err := h.monitorManager.GetMonitorByName(ctx, name)
+			if err != nil {
+				slog.Warn("skipping unavailable monitor from history replay", "name", name, "error", err)
+				continue
+			}
+			resolved = append(resolved, mon)
 		}
-		monitors = []monitor.Monitor{mon}
-		err = nil
-	}
-	if err != nil {
-		return err
+		if len(resolved) == 0 {
+			return nil, fmt.Errorf("none of the specified monitors are available: %v", names)
+		}
+		return resolved, nil
 	}
 
+	if fallback == "" || fallback == "*" {
+		return h.monitorManager.GetMonitors(ctx)
+	}
+
+	mon, err := h.monitorManager.GetMonitorByName(ctx, fallback)
+	if err != nil {
+		return nil, err
+	}
+	return []monitor.Monitor{mon}, nil
+}
+
+// applyWallpaper is the core wallpaper setting flow shared by Set and Random.
+// Callers resolve monitors beforehand via resolveMonitors.
+func (h *WallpaperHandler) applyWallpaper(ctx context.Context, img *store.Image, monitors []monitor.Monitor, mode monitor.MonitorMode, source string) error {
 	activeBackend := h.registry.Active()
 	caps := activeBackend.Capabilities()
 
 	// Handle extend mode: split image if backend doesn't support native extend.
-	if target.Mode == monitor.ModeExtend && !caps.NativeExtend && h.splitter != nil && len(monitors) > 1 {
+	if mode == monitor.ModeExtend && !caps.NativeExtend && h.splitter != nil && len(monitors) > 1 {
 		splitPaths, err := h.splitter.Split(img.Path, img.ID, monitors)
 		if err != nil {
 			return err
@@ -252,7 +276,7 @@ func (h *WallpaperHandler) applyWallpaper(ctx context.Context, img *store.Image,
 		req := backend.WallpaperRequest{
 			ImagePath: img.Path,
 			Monitors:  monitors,
-			Mode:      target.Mode,
+			Mode:      mode,
 		}
 		if err := activeBackend.SetWallpaper(ctx, req); err != nil {
 			return err
@@ -269,7 +293,7 @@ func (h *WallpaperHandler) applyWallpaper(ctx context.Context, img *store.Image,
 		ImageID:   img.ID,
 		ImageName: img.Name,
 		Monitors:  monNames,
-		Mode:      string(target.Mode),
+		Mode:      string(mode),
 		SetAt:     time.Now(),
 		Source:    store.HistorySource{Type: source},
 		Backend:   activeBackend.Name(),
@@ -286,7 +310,7 @@ func (h *WallpaperHandler) applyWallpaper(ctx context.Context, img *store.Image,
 			ImageID:     img.ID,
 			ImageName:   img.Name,
 			ImagePath:   img.Path,
-			Mode:        string(target.Mode),
+			Mode:        string(mode),
 			Backend:     activeBackend.Name(),
 			SetAt:       entry.SetAt,
 		}); err != nil {
@@ -298,11 +322,11 @@ func (h *WallpaperHandler) applyWallpaper(ctx context.Context, img *store.Image,
 	h.bus.Publish(events.Event{
 		Type: events.WallpaperChanged,
 		Data: map[string]any{
-			"image_id":  img.ID,
-			"monitors":  monNames,
-			"mode":      target.Mode,
-			"source":    source,
-			"backend":   activeBackend.Name(),
+			"image_id": img.ID,
+			"monitors": monNames,
+			"mode":     mode,
+			"source":   source,
+			"backend":  activeBackend.Name(),
 		},
 	})
 

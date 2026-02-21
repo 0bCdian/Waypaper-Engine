@@ -5,13 +5,20 @@ import { useImagesStore } from "../stores/images";
 import { usePlaylistStore } from "../stores/playlist";
 import { useImageDetailStore } from "../stores/imageDetailStore";
 import { useHistoryStore } from "../stores/historyStore";
-import { useFoldersStore } from "../stores/foldersStore";
+import { useFoldersStore, getAllImageIdsInFolder } from "../stores/foldersStore";
 import { useFolderPickerStore } from "../components/FolderPickerModal";
 import { confirmDialog } from "../components/ConfirmDialog";
 import openImagesStore from "../hooks/useOpenImages";
 import type { Image } from "../../electron/daemon-go-types";
 
 const { goDaemon } = window.API_RENDERER;
+
+function getParentFolderId(): number | null | undefined {
+	const { currentFolderId, breadcrumbPath } = useFoldersStore.getState();
+	if (currentFolderId === null) return undefined;
+	if (breadcrumbPath.length <= 1) return null;
+	return breadcrumbPath[breadcrumbPath.length - 2].id;
+}
 
 function toFilesystemPath(path: string): string {
 	if (path?.startsWith("atom://")) return "/" + path.slice("atom://".length);
@@ -68,6 +75,23 @@ function selectionItems(selectedCount: number): MenuItem[] {
 				useFolderPickerStore.getState().open(Array.from(selectedImages));
 			},
 		},
+		...(useFoldersStore.getState().currentFolderId !== null
+			? [
+					{
+						type: "action" as const,
+						label: "Move selected to parent folder",
+						onClick: async () => {
+							const parentId = getParentFolderId();
+							if (parentId === undefined) return;
+							const { selectedImages, clearSelection } = useImagesStore.getState();
+							if (selectedImages.size === 0) return;
+							await useFoldersStore.getState().moveImagesToFolder(Array.from(selectedImages), parentId);
+							clearSelection();
+							useImagesStore.getState().reQueryImages();
+						},
+					},
+				]
+			: []),
 		{
 			type: "action",
 			label: "Add selected to playlist",
@@ -238,6 +262,20 @@ export function buildImageMenuItems(
 				useFolderPickerStore.getState().open([image.id]);
 			},
 		},
+		...(useFoldersStore.getState().currentFolderId !== null
+			? [
+					{
+						type: "action" as const,
+						label: "Move to parent folder",
+						onClick: async () => {
+							const parentId = getParentFolderId();
+							if (parentId === undefined) return;
+							await useFoldersStore.getState().moveImagesToFolder([image.id], parentId);
+							useImagesStore.getState().reQueryImages();
+						},
+					},
+				]
+			: []),
 		{ type: "separator" },
 		{
 			type: "action",
@@ -377,6 +415,23 @@ export function buildFolderMenuItems(
 			type: "action",
 			label: "Rename folder",
 			onClick: onRename,
+		},
+		{ type: "separator" },
+		{
+			type: "action",
+			label: "Add folder images to playlist",
+			onClick: async () => {
+				const ids = await getAllImageIdsInFolder(folder.id);
+				if (ids.length > 0) usePlaylistStore.getState().addImagesToPlaylist(ids);
+			},
+		},
+		{
+			type: "action",
+			label: "Remove folder images from playlist",
+			onClick: async () => {
+				const ids = await getAllImageIdsInFolder(folder.id);
+				if (ids.length > 0) usePlaylistStore.getState().removeImagesFromPlaylist(new Set(ids));
+			},
 		},
 		{ type: "separator" },
 		{

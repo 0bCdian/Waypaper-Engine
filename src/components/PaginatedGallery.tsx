@@ -16,6 +16,12 @@ import { useContextMenuStore } from "../stores/contextMenuStore";
 import { buildGalleryMenuItems } from "../utils/contextMenuItems";
 import type { DropTargetData } from "../stores/dragStore";
 
+function paginationMinWidth(totalPages: number): number {
+	if (totalPages <= 1) return 0;
+	const maxSlots = Math.min(totalPages + 2, 9);
+	return maxSlots * 3 + (maxSlots - 1) * 0.25;
+}
+
 function GalleryDropZone({ children }: { children: React.ReactNode }) {
 	const dropData = useMemo<DropTargetData>(() => ({ type: "gallery" }), []);
 	const { ref } = useDroppable({
@@ -36,6 +42,7 @@ function PaginatedGallery() {
 		useImagePagination();
 	const selectedImages = useImagesStore((s) => s.selectedImages);
 	const folders = useFoldersStore((s) => s.folders);
+	const currentFolderId = useFoldersStore((s) => s.currentFolderId);
 	const searchResults = useFoldersStore((s) => s.searchResults);
 	const searchString = useImagesStore((s) => s.filters.searchString);
 	const isNeo = useDesignSystemStore(
@@ -69,29 +76,38 @@ function PaginatedGallery() {
 					onContextMenu={handleContextMenu}
 				>
 				<GalleryDropZone>
-						<div
-							className="m-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(16vw,1fr))] gap-3 md:gap-3 lg:gap-3 xl:gap-4 2xl:gap-5 [&>:only-child]:max-w-[25vw] [&>:only-child]:justify-self-center"
-						>
-							{showFolders &&
-								displayFolders.map((folder) => (
-									<FolderCard key={`folder-${folder.id}`} folder={folder} />
-								))}
-							{imagesToShow}
-						</div>
+						<AnimatePresence mode="wait">
+							<motion.div
+								key={`${currentFolderId ?? "root"}-${currentPage}`}
+								initial={{ opacity: 0 }}
+								animate={{ opacity: 1 }}
+								exit={{ opacity: 0 }}
+								transition={{ duration: 0.15 }}
+								className="m-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(16vw,1fr))] gap-3 md:gap-3 lg:gap-3 xl:gap-4 2xl:gap-5 [&>:only-child]:max-w-[25vw] [&>:only-child]:justify-self-center"
+							>
+								{showFolders &&
+									displayFolders.map((folder) => (
+										<FolderCard key={`folder-${folder.id}`} folder={folder} />
+									))}
+								{imagesToShow}
+							</motion.div>
+						</AnimatePresence>
 					</GalleryDropZone>
 
 					{/* Pinned bottom: pagination + playlist track */}
 					<div className={`shrink-0 flex w-full min-w-0 flex-col justify-between gap-4 px-2 lg:px-4 pt-3 pb-2 overflow-hidden${isNeo ? " neo-bottom-dock" : ""}`}>
 						<div className="self-center flex flex-col items-center gap-2">
-							<ResponsivePagination
-								total={totalPages}
-								previousClassName="rounded_button_previous"
-								nextClassName="rounded_button_next"
-								current={currentPage}
-								onPageChange={(page: number) => {
-									handlePageChange(page);
-								}}
-							/>
+							<div className="max-w-2xl min-w-1">
+								<ResponsivePagination
+									total={totalPages}
+									previousClassName="rounded_button_previous"
+									nextClassName="rounded_button_next"
+									current={currentPage}
+									onPageChange={(page: number) => {
+										handlePageChange(page);
+									}}
+								/>
+							</div>
 							{totalPages > 1 && (
 								<span className="text-xs text-base-content/50">
 									Page {currentPage} of {totalPages}
