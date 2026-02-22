@@ -1,4 +1,4 @@
-import { useForm, type SubmitHandler } from "react-hook-form";
+import { useForm, useStore } from "@tanstack/react-form";
 import { useRef, useEffect, useState } from "react";
 import { usePlaylistStore } from "../stores/playlist";
 import { useShallow } from "zustand/react/shallow";
@@ -11,14 +11,6 @@ import {
 import { toSeconds, toHoursAndMinutes } from "../utils/utilities";
 import Modal, { type ModalHandle } from "./Modal";
 import { useModalStore } from "../stores/modalStore";
-interface Inputs {
-	type: PLAYLIST_TYPES_TYPE;
-	order: PLAYLIST_ORDER_TYPES | null;
-	hours: string | null;
-	minutes: string | null;
-	showTransition: boolean;
-	alwaysStartOnFirstImage: boolean;
-}
 
 const PlaylistConfigurationModal = () => {
 	const [showError, setShowError] = useState(false);
@@ -28,8 +20,114 @@ const PlaylistConfigurationModal = () => {
 			playlist: s.playlist,
 		})),
 	);
-	const { register, handleSubmit, watch, setValue } = useForm<Inputs>();
 	const containerRef = useRef<ModalHandle>(null);
+
+	const initialHours = playlist.configuration.interval != null
+		? toHoursAndMinutes(playlist.configuration.interval).hours.toString()
+		: "1";
+	const initialMinutes = playlist.configuration.interval != null
+		? toHoursAndMinutes(playlist.configuration.interval).minutes.toString()
+		: "0";
+
+	const form = useForm({
+		defaultValues: {
+			type: playlist.configuration.type as PLAYLIST_TYPES_TYPE,
+			order: (playlist.configuration.order ?? null) as PLAYLIST_ORDER_TYPES | null,
+			hours: initialHours as string | null,
+			minutes: initialMinutes as string | null,
+			showTransition: playlist.configuration.show_animations,
+			alwaysStartOnFirstImage: playlist.configuration.always_start_on_first_image,
+		},
+		onSubmit: ({ value }) => {
+			switch (value.type) {
+				case "timer":
+					if (value.hours === null || value.minutes === null) {
+						console.error("Hours and minutes are required");
+					} else {
+						const interval = toSeconds(
+							parseInt(value.hours, 10),
+							parseInt(value.minutes, 10),
+						);
+						setConfiguration({
+							type: value.type,
+							order: value.order ?? undefined,
+							show_animations: value.showTransition,
+							always_start_on_first_image: value.alwaysStartOnFirstImage,
+							interval,
+						});
+					}
+					break;
+				case "time_of_day":
+					setConfiguration({
+						type: value.type,
+						order: undefined,
+						show_animations: value.showTransition,
+						interval: undefined,
+						always_start_on_first_image: false,
+					});
+					break;
+				case "day_of_week":
+					if (playlist.images.length > 7) {
+						setShowError(true);
+						setTimeout(() => setShowError(false), 5000);
+						return;
+					}
+					setConfiguration({
+						type: value.type,
+						order: undefined,
+						show_animations: value.showTransition,
+						interval: undefined,
+						always_start_on_first_image: false,
+					});
+					break;
+				case "manual":
+					setConfiguration({
+						type: value.type,
+						order: value.order ?? undefined,
+						show_animations: value.showTransition,
+						interval: undefined,
+						always_start_on_first_image: value.alwaysStartOnFirstImage,
+					});
+					break;
+				default:
+					console.error("Invalid playlist type");
+			}
+			closeModal();
+		},
+	});
+
+	const playlistType = useStore(form.store, (s) => s.values.type);
+	const hours = useStore(form.store, (s) => s.values.hours);
+	const minutes = useStore(form.store, (s) => s.values.minutes);
+
+	useEffect(() => {
+		if (hours === null || minutes === null) return;
+		const parsedHours = parseInt(hours, 10);
+		const parsedMinutes = parseInt(minutes, 10);
+		if (parsedMinutes === 60) {
+			form.setFieldValue("hours", (parsedHours + 1).toString());
+			form.setFieldValue("minutes", "0");
+		}
+		if (parsedMinutes === 0 && parsedHours === 0) {
+			form.setFieldValue("minutes", "1");
+		}
+	}, [hours, minutes, form]);
+
+	useEffect(() => {
+		const interval = playlist.configuration.interval;
+		if (interval != null) {
+			const { hours, minutes } = toHoursAndMinutes(interval);
+			form.setFieldValue("hours", hours.toString());
+			form.setFieldValue("minutes", minutes.toString());
+		}
+		form.setFieldValue("type", playlist.configuration.type);
+		form.setFieldValue("order", playlist.configuration.order ?? null);
+		form.setFieldValue("showTransition", playlist.configuration.show_animations);
+		form.setFieldValue(
+			"alwaysStartOnFirstImage",
+			playlist.configuration.always_start_on_first_image,
+		);
+	}, [playlist, form]);
 
 	useEffect(() => {
 		if (containerRef.current) {
@@ -41,96 +139,15 @@ const PlaylistConfigurationModal = () => {
 	const closeModal = () => {
 		containerRef.current?.close();
 	};
+
 	const classNameDisabled =
 		playlist.images.length > 7 ? "bg-error text-error-content" : "";
-	const onSubmit: SubmitHandler<Inputs> = (data) => {
-		switch (data.type) {
-			case "timer":
-				if (data.hours === null || data.minutes === null) {
-					console.error("Hours and minutes are required");
-				} else {
-				const interval = toSeconds(
-					parseInt(data.hours, 10),
-					parseInt(data.minutes, 10),
-				);
-					const configuration = {
-						type: data.type,
-						order: data.order ?? undefined,
-						show_animations: data.showTransition,
-						always_start_on_first_image: data.alwaysStartOnFirstImage,
-						interval,
-					};
-					setConfiguration(configuration);
-				}
-				break;
-			case "time_of_day":
-				setConfiguration({
-					type: data.type,
-					order: undefined,
-					show_animations: data.showTransition,
-					interval: undefined,
-					always_start_on_first_image: false,
-				});
-				break;
-		case "day_of_week":
-			if (playlist.images.length > 7) {
-				setShowError(true);
-				setTimeout(() => {
-					setShowError(false);
-				}, 5000);
-				return;
-			}
-				setConfiguration({
-					type: data.type,
-					order: undefined,
-					show_animations: data.showTransition,
-					interval: undefined,
-					always_start_on_first_image: false,
-				});
-				break;
-			case "manual":
-				setConfiguration({
-					type: data.type,
-					order: data.order ?? undefined,
-					show_animations: data.showTransition,
-					interval: undefined,
-					always_start_on_first_image: data.alwaysStartOnFirstImage,
-				});
-				break;
-			default:
-				console.error("Invalid playlist type");
-		}
-		closeModal();
-	};
-	const hours = watch("hours");
-	const minutes = watch("minutes");
-	useEffect(() => {
-		if (hours === null || minutes === null) return;
-		const parsedHours = parseInt(hours, 10);
-		const parsedMinutes = parseInt(minutes, 10);
-		if (parsedMinutes === 60) {
-			setValue("hours", (parsedHours + 1).toString());
-			setValue("minutes", "0");
-		}
-		if (parsedMinutes === 0 && parsedHours === 0) {
-			setValue("minutes", "1");
-		}
-	}, [hours, minutes, setValue]);
-	useEffect(() => {
-		const interval = playlist.configuration.interval;
-		if (interval != null) {
-			const { hours, minutes } = toHoursAndMinutes(interval);
-			setValue("hours", hours.toString());
-			setValue("minutes", minutes.toString());
-		}
-		setValue("type", playlist.configuration.type);
-		setValue("order", playlist.configuration.order ?? null);
-		setValue("showTransition", playlist.configuration.show_animations);
-		setValue(
-			"alwaysStartOnFirstImage",
-			playlist.configuration.always_start_on_first_image,
-		);
-	}, [playlist, setValue]);
+
+	const showTimerFields = playlistType === PLAYLIST_TYPES.TIMER;
+	const showOrderField =
+		playlistType !== PLAYLIST_TYPES.TIME_OF_DAY &&
+		playlistType !== PLAYLIST_TYPES.DAY_OF_WEEK;
+
 	return (
 		<Modal
 			id="playlistConfigurationModal"
@@ -142,7 +159,6 @@ const PlaylistConfigurationModal = () => {
 					Playlist Settings
 				</h2>
 
-				{/* Error alert with smooth transition */}
 				<div
 					data-visible={showError}
 					className="alert alert-error mb-4 opacity-0 transition-opacity duration-300 data-[visible=true]:opacity-100"
@@ -169,36 +185,41 @@ const PlaylistConfigurationModal = () => {
 				<form
 					className="flex flex-col gap-4 xl:gap-5 2xl:gap-6"
 					onSubmit={(e) => {
-						void handleSubmit(onSubmit)(e);
+						e.preventDefault();
+						void form.handleSubmit();
 					}}
 				>
-					{/* Wallpaper change mode */}
 					<fieldset className="fieldset bg-base-200 border border-base-300 rounded-box p-4 xl:p-5 2xl:p-6">
 						<legend className="fieldset-legend text-base 2xl:text-lg">
 							Change Wallpaper
 						</legend>
 
-						<select
-							id="type"
-							className="select select-bordered w-full text-base xl:text-lg"
-							defaultValue="timer"
-							{...register("type", { required: true })}
-						>
-							<option value={PLAYLIST_TYPES.TIMER}>On a timer</option>
-							<option value={PLAYLIST_TYPES.TIME_OF_DAY}>
-								Time of day
-							</option>
-							<option
-								disabled={playlist.images.length > 7}
-								className={classNameDisabled}
-								value={PLAYLIST_TYPES.DAY_OF_WEEK}
-							>
-								Day of week
-							</option>
-							<option value={PLAYLIST_TYPES.MANUAL}>Manual</option>
-						</select>
+						<form.Field name="type">
+							{(field) => (
+								<select
+									id="type"
+									className="select select-bordered w-full text-base xl:text-lg"
+									value={field.state.value}
+									onChange={(e) => field.handleChange(e.target.value as PLAYLIST_TYPES_TYPE)}
+									onBlur={field.handleBlur}
+								>
+									<option value={PLAYLIST_TYPES.TIMER}>On a timer</option>
+									<option value={PLAYLIST_TYPES.TIME_OF_DAY}>
+										Time of day
+									</option>
+									<option
+										disabled={playlist.images.length > 7}
+										className={classNameDisabled}
+										value={PLAYLIST_TYPES.DAY_OF_WEEK}
+									>
+										Day of week
+									</option>
+									<option value={PLAYLIST_TYPES.MANUAL}>Manual</option>
+								</select>
+							)}
+						</form.Field>
 
-						{watch("type") === PLAYLIST_TYPES.TIMER && (
+						{showTimerFields && (
 							<div className="mt-3 grid grid-cols-2 gap-3">
 								<div>
 									<label
@@ -207,17 +228,19 @@ const PlaylistConfigurationModal = () => {
 									>
 										Hours
 									</label>
-									<input
-										id="hours"
-										min="0"
-										defaultValue={1}
-										type="number"
-										{...register("hours", {
-											required: true,
-											min: 0,
-										})}
-										className="input input-bordered xl:input-lg w-full"
-									/>
+									<form.Field name="hours">
+										{(field) => (
+											<input
+												id="hours"
+												min="0"
+												type="number"
+												value={field.state.value ?? "1"}
+												onChange={(e) => field.handleChange(e.target.value)}
+												onBlur={field.handleBlur}
+												className="input input-bordered xl:input-lg w-full"
+											/>
+										)}
+									</form.Field>
 								</div>
 								<div>
 									<label
@@ -226,84 +249,96 @@ const PlaylistConfigurationModal = () => {
 									>
 										Minutes
 									</label>
-									<input
-										id="minutes"
-										defaultValue={0}
-										min="0"
-										max="60"
-										type="number"
-										step={1}
-										{...register("minutes", {
-											required: true,
-										})}
-										className="input input-bordered xl:input-lg w-full"
-									/>
+									<form.Field name="minutes">
+										{(field) => (
+											<input
+												id="minutes"
+												min="0"
+												max="60"
+												type="number"
+												step={1}
+												value={field.state.value ?? "0"}
+												onChange={(e) => field.handleChange(e.target.value)}
+												onBlur={field.handleBlur}
+												className="input input-bordered xl:input-lg w-full"
+											/>
+										)}
+									</form.Field>
 								</div>
 							</div>
 						)}
 					</fieldset>
 
-					{/* Order (only for timer / manual) */}
-					{watch("type") !== PLAYLIST_TYPES.TIME_OF_DAY &&
-						watch("type") !== PLAYLIST_TYPES.DAY_OF_WEEK && (
-							<fieldset className="fieldset bg-base-200 border border-base-300 rounded-box p-4 xl:p-5 2xl:p-6">
-								<legend className="fieldset-legend text-base 2xl:text-lg">
-									Order
-								</legend>
-								<select
-									className="select select-bordered w-full text-base xl:text-lg"
-									{...register("order", { required: true })}
-									defaultValue={PLAYLIST_ORDER.ordered}
-									id="order"
-								>
-									<option value={PLAYLIST_ORDER.random}>Random</option>
-									<option value={PLAYLIST_ORDER.ordered}>
-										Ordered
-									</option>
-								</select>
-							</fieldset>
-						)}
+					{showOrderField && (
+						<fieldset className="fieldset bg-base-200 border border-base-300 rounded-box p-4 xl:p-5 2xl:p-6">
+							<legend className="fieldset-legend text-base 2xl:text-lg">
+								Order
+							</legend>
+							<form.Field name="order">
+								{(field) => (
+									<select
+										className="select select-bordered w-full text-base xl:text-lg"
+										value={field.state.value ?? PLAYLIST_ORDER.ordered}
+										onChange={(e) => field.handleChange(e.target.value as PLAYLIST_ORDER_TYPES)}
+										onBlur={field.handleBlur}
+										id="order"
+									>
+										<option value={PLAYLIST_ORDER.random}>Random</option>
+										<option value={PLAYLIST_ORDER.ordered}>
+											Ordered
+										</option>
+									</select>
+								)}
+							</form.Field>
+						</fieldset>
+					)}
 
-					{/* Options */}
 					<fieldset className="fieldset bg-base-200 border border-base-300 rounded-box p-4 xl:p-5 2xl:p-6">
 						<legend className="fieldset-legend text-base 2xl:text-lg">
 							Options
 						</legend>
 
-						<label
-							htmlFor="showTransition"
-							className="label cursor-pointer justify-between"
-						>
-							<span className="text-sm xl:text-base 2xl:text-lg font-medium">
-								Show transition
-							</span>
-							<input
-								type="checkbox"
-								className="toggle toggle-primary"
-								id="showTransition"
-								defaultChecked={true}
-								{...register("showTransition")}
-							/>
-						</label>
-
-						{watch("type") !== PLAYLIST_TYPES.TIME_OF_DAY &&
-							watch("type") !== PLAYLIST_TYPES.DAY_OF_WEEK && (
+						<form.Field name="showTransition">
+							{(field) => (
 								<label
-									htmlFor="alwaysStartOnFirstImage"
+									htmlFor="showTransition"
 									className="label cursor-pointer justify-between"
 								>
 									<span className="text-sm xl:text-base 2xl:text-lg font-medium">
-										Always start on the first image
+										Show transition
 									</span>
 									<input
 										type="checkbox"
 										className="toggle toggle-primary"
-										id="alwaysStartOnFirstImage"
-										defaultChecked={false}
-										{...register("alwaysStartOnFirstImage")}
+										id="showTransition"
+										checked={field.state.value}
+										onChange={(e) => field.handleChange(e.target.checked)}
 									/>
 								</label>
 							)}
+						</form.Field>
+
+						{showOrderField && (
+							<form.Field name="alwaysStartOnFirstImage">
+								{(field) => (
+									<label
+										htmlFor="alwaysStartOnFirstImage"
+										className="label cursor-pointer justify-between"
+									>
+										<span className="text-sm xl:text-base 2xl:text-lg font-medium">
+											Always start on the first image
+										</span>
+										<input
+											type="checkbox"
+											className="toggle toggle-primary"
+											id="alwaysStartOnFirstImage"
+											checked={field.state.value}
+											onChange={(e) => field.handleChange(e.target.checked)}
+										/>
+									</label>
+								)}
+							</form.Field>
+						)}
 					</fieldset>
 
 					<button

@@ -75,12 +75,13 @@ const AppSettings: React.FC = () => {
 	return (
 		<div className="space-y-4">
 			<div className="form-control">
-				<label className="label">
+			<label htmlFor="app-start-minimized" className="label">
 					<span className="label-text text-sm font-medium">
 						Start Minimized
 					</span>
 				</label>
 				<input
+					id="app-start-minimized"
 					type="checkbox"
 					className="toggle toggle-primary"
 					checked={config?.app?.start_minimized || false}
@@ -91,12 +92,13 @@ const AppSettings: React.FC = () => {
 			</div>
 
 			<div className="form-control">
-				<label className="label">
+				<label htmlFor="app-minimize-to-tray" className="label">
 					<span className="label-text text-sm font-medium">
 						Minimize to Tray
 					</span>
 				</label>
 				<input
+					id="app-minimize-to-tray"
 					type="checkbox"
 					className="toggle toggle-primary"
 					checked={config?.app?.minimize_instead_of_close || false}
@@ -109,12 +111,13 @@ const AppSettings: React.FC = () => {
 			</div>
 
 			<div className="form-control">
-				<label className="label">
+				<label htmlFor="app-kill-daemon-on-exit" className="label">
 					<span className="label-text text-sm font-medium">
 						Kill Daemon on Exit
 					</span>
 				</label>
 				<input
+					id="app-kill-daemon-on-exit"
 					type="checkbox"
 					className="toggle toggle-primary"
 					checked={config?.app?.kill_daemon_on_exit || false}
@@ -138,12 +141,13 @@ const SwwwSettings: React.FC = () => {
 	return (
 		<div className="space-y-4">
 			<div className="form-control">
-				<label className="label">
+				<label htmlFor="swww-transition-type" className="label">
 					<span className="label-text text-sm font-medium">
 						Transition Type
 					</span>
 				</label>
 				<select
+					id="swww-transition-type"
 					className="select select-primary select-sm w-full"
 					value={config?.backend?.swww?.transition_type || "simple"}
 					onChange={(e) =>
@@ -161,12 +165,13 @@ const SwwwSettings: React.FC = () => {
 			</div>
 
 			<div className="form-control">
-				<label className="label">
+				<label htmlFor="swww-transition-step" className="label">
 					<span className="label-text text-sm font-medium">
 						Transition Step
 					</span>
 				</label>
 				<input
+					id="swww-transition-step"
 					type="range"
 					min="0"
 					max="255"
@@ -187,10 +192,11 @@ const SwwwSettings: React.FC = () => {
 			</div>
 
 			<div className="form-control">
-				<label className="label">
+				<label htmlFor="swww-resize-type" className="label">
 					<span className="label-text text-sm font-medium">Resize Type</span>
 				</label>
 				<select
+					id="swww-resize-type"
 					className="select select-primary select-sm w-full"
 					value={config?.backend?.swww?.resize || "crop"}
 					onChange={(e) =>
@@ -217,10 +223,11 @@ const DaemonSettings: React.FC = () => {
 	return (
 		<div className="space-y-4">
 			<div className="form-control">
-				<label className="label">
+				<label htmlFor="daemon-log-level" className="label">
 					<span className="label-text text-sm font-medium">Log Level</span>
 				</label>
 				<select
+					id="daemon-log-level"
 					className="select select-primary select-sm w-full"
 					value={config?.daemon?.log_level || "info"}
 					onChange={(e) =>

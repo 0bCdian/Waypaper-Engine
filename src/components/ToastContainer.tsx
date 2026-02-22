@@ -1,7 +1,8 @@
 import { useToastStore, type ToastType } from "../stores/toastStore";
+import { useShallow } from "zustand/react/shallow";
 
 const ToastContainer = () => {
-	const { toasts, removeToast } = useToastStore();
+	const { toasts, removeToast } = useToastStore(useShallow((s) => ({ toasts: s.toasts, removeToast: s.removeToast })));
 
 	const getAlertClass = (type: ToastType): string => {
 		switch (type) {
@@ -92,11 +93,14 @@ const ToastContainer = () => {
 	return (
 		<div className="toast toast-end toast-top z-50">
 			{toasts.map((toast) => (
-				<div
-					key={toast.id}
-					className={`alert ${getAlertClass(toast.type)} cursor-pointer shadow-lg`}
-					onClick={() => removeToast(toast.id)}
-				>
+			<div
+				key={toast.id}
+				className={`alert ${getAlertClass(toast.type)} cursor-pointer shadow-lg`}
+				onClick={() => removeToast(toast.id)}
+				onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); removeToast(toast.id); } }}
+				role="button"
+				tabIndex={0}
+			>
 					{getIcon(toast.type)}
 					<span>{toast.message}</span>
 					<button

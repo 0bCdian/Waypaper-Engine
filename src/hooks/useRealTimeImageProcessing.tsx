@@ -12,10 +12,9 @@ import type {
 export function useRealTimeImageProcessing() {
 	const cleanupRef = useRef<(() => void) | null>(null);
 	const reQueryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
-	const { startBatch, updateBatch, completeBatch } =
-		useImageProcessingStore();
 
 	useEffect(() => {
+		const { startBatch, updateBatch, completeBatch } = useImageProcessingStore.getState();
 		if (!window.API_RENDERER?.goDaemon?.on) {
 			console.error("goDaemon event methods not available");
 			return;
@@ -34,6 +33,7 @@ export function useRealTimeImageProcessing() {
 
 		const handleImageProcessed = async (...args: unknown[]) => {
 			const data = args[0] as ImageProcessedPayload;
+			const imageName = data.image ? data.image.name : "";
 			try {
 				const store = useImageProcessingStore.getState();
 				if (!store.batches.has(data.batch_id)) {
@@ -42,7 +42,7 @@ export function useRealTimeImageProcessing() {
 				updateBatch(
 					data.batch_id,
 					data.current,
-					data.image?.name ?? "",
+					imageName,
 					data.elapsed_ms,
 				);
 
@@ -134,5 +134,5 @@ export function useRealTimeImageProcessing() {
 				cleanupRef.current = null;
 			}
 		};
-	}, [startBatch, updateBatch, completeBatch]);
+	}, []);
 }

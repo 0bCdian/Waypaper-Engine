@@ -5,7 +5,7 @@ import { usePlaylistStore } from "../stores/playlist";
 import { useImagesStore } from "../stores/images";
 import { useMonitorStore } from "../stores/monitors";
 import { useShallow } from "zustand/react/shallow";
-import { motion } from "framer-motion";
+import { LazyMotion, m, domAnimation } from "framer-motion";
 import useDebounceCallback from "../hooks/useDebounceCallback";
 import type { PlaylistImage } from "../../electron/daemon-go-types";
 import type { DragSourceData } from "../stores/dragStore";
@@ -215,7 +215,8 @@ function MiniPlaylistCard({
 		: "px-1.5 py-1.5 flex flex-col items-center gap-0.5 bg-base-200/60 rounded-b-lg";
 
 	return (
-		<motion.div
+		<LazyMotion features={domAnimation}>
+		<m.div
 			layout="position"
 			key={playlistImage.image_id}
 			transition={{ duration: 0.15, ease: "easeOut" }}
@@ -266,7 +267,8 @@ function MiniPlaylistCard({
 					</div>
 				)}
 			</div>
-		</motion.div>
+		</m.div>
+		</LazyMotion>
 	);
 }
 

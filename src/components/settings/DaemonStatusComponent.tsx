@@ -24,6 +24,26 @@ interface DaemonStatusComponentProps {
 	className?: string;
 }
 
+async function executeDaemonAction(
+	action: (() => Promise<unknown>) | undefined,
+	fallbackError: string,
+): Promise<string | null> {
+	if (!action) return null;
+	try {
+		const result = (await action()) as DaemonActionResult;
+		if (result) {
+			if (!result.success) {
+				if (result.error) return result.error;
+				return fallbackError;
+			}
+		}
+		return null;
+	} catch (err) {
+		if (err instanceof Error) return err.message;
+		return fallbackError;
+	}
+}
+
 export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({
 	className,
 }) => {
@@ -75,58 +95,31 @@ export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({
 	const handleRestart = async () => {
 		setIsLoading(true);
 		setError(null);
-
-		try {
-			if (window.API_RENDERER?.restartDaemon) {
-				const result =
-					(await window.API_RENDERER.restartDaemon()) as DaemonActionResult;
-				if (!result?.success) {
-					setError(result?.error || "Failed to restart daemon");
-				}
-			}
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to restart daemon");
-		} finally {
-			setIsLoading(false);
-		}
+		const api = window.API_RENDERER;
+		const fn = api?.restartDaemon ? () => api.restartDaemon() : undefined;
+		const errorMsg = await executeDaemonAction(fn, "Failed to restart daemon");
+		if (errorMsg) setError(errorMsg);
+		setIsLoading(false);
 	};
 
 	const handleStart = async () => {
 		setIsLoading(true);
 		setError(null);
-
-		try {
-			if (window.API_RENDERER?.startDaemon) {
-				const result =
-					(await window.API_RENDERER.startDaemon()) as DaemonActionResult;
-				if (!result?.success) {
-					setError(result?.error || "Failed to start daemon");
-				}
-			}
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to start daemon");
-		} finally {
-			setIsLoading(false);
-		}
+		const api = window.API_RENDERER;
+		const fn = api?.startDaemon ? () => api.startDaemon() : undefined;
+		const errorMsg = await executeDaemonAction(fn, "Failed to start daemon");
+		if (errorMsg) setError(errorMsg);
+		setIsLoading(false);
 	};
 
 	const handleStop = async () => {
 		setIsLoading(true);
 		setError(null);
-
-		try {
-			if (window.API_RENDERER?.stopDaemon) {
-				const result =
-					(await window.API_RENDERER.stopDaemon()) as DaemonActionResult;
-				if (!result?.success) {
-					setError(result?.error || "Failed to stop daemon");
-				}
-			}
-		} catch (err) {
-			setError(err instanceof Error ? err.message : "Failed to stop daemon");
-		} finally {
-			setIsLoading(false);
-		}
+		const api = window.API_RENDERER;
+		const fn = api?.stopDaemon ? () => api.stopDaemon() : undefined;
+		const errorMsg = await executeDaemonAction(fn, "Failed to stop daemon");
+		if (errorMsg) setError(errorMsg);
+		setIsLoading(false);
 	};
 
 	const formatLastChecked = (timestamp: number | string) => {

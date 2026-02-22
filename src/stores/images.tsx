@@ -5,6 +5,7 @@ import type {
 	Pagination,
 	ImageQueryParams,
 } from "../../electron/daemon-go-types";
+import { useFoldersStore } from "./foldersStore";
 
 const { goDaemon } = window.API_RENDERER;
 
@@ -46,7 +47,6 @@ interface State {
 	pagination: Pagination | null;
 	currentPage: number;
 	perPage: number;
-	currentFolderId: number | null;
 	addImages: (newImages: rendererImage[]) => void;
 	addImage: (newImage: rendererImage) => void;
 	setFilters: (newFilters: Filters) => void;
@@ -80,7 +80,6 @@ export const useImagesStore = create<State>()((set, get) => ({
 	pagination: null,
 	currentPage: 1,
 	perPage: 50,
-	currentFolderId: null,
 
 	setFilters: (newFilters) => {
 		set(() => ({ filters: newFilters }));
@@ -111,13 +110,13 @@ export const useImagesStore = create<State>()((set, get) => ({
 		} else {
 			newImagesArray = [...get().imagesArray, ...newImages];
 		}
-		const oldImagesMap = get().imagesMap;
+		const newMap = new Map(get().imagesMap);
 		newImages.forEach((image) => {
-			oldImagesMap.set(image.id, image);
+			newMap.set(image.id, image);
 		});
 		set(() => ({
 			imagesArray: newImagesArray,
-			imagesMap: new Map(oldImagesMap),
+			imagesMap: newMap,
 		}));
 	},
 	addImage: (newImage) => {
@@ -131,29 +130,30 @@ export const useImagesStore = create<State>()((set, get) => ({
 			newImagesArray = [...currentArray, newImage];
 		}
 
-		const oldImagesMap = get().imagesMap;
-		oldImagesMap.set(newImage.id, newImage);
+		const newMap = new Map(get().imagesMap);
+		newMap.set(newImage.id, newImage);
 		set(() => ({
 			imagesArray: newImagesArray,
-			imagesMap: new Map(oldImagesMap),
+			imagesMap: newMap,
 			isEmpty: false,
 		}));
 	},
 	removeImagesFromStore: (images) => {
 		set((state) => {
-			const imagesMap = get().imagesMap;
-			const selectedImages = get().selectedImages;
+			const newImagesMap = new Map(state.imagesMap);
+			const newSelectedImages = new Set(state.selectedImages);
 			const imagesSetToDelete = new Set<number>();
 			images.forEach((imageToDelete) => {
-				imagesMap.delete(imageToDelete.id);
-				selectedImages.delete(imageToDelete.id);
+				newImagesMap.delete(imageToDelete.id);
+				newSelectedImages.delete(imageToDelete.id);
 				imagesSetToDelete.add(imageToDelete.id);
 			});
 			usePlaylistStore.getState().removeImagesFromPlaylist(imagesSetToDelete);
 			return {
 				...state,
-				imagesArray: Array.from(imagesMap.values()),
-				imagesMap: new Map(imagesMap),
+				imagesArray: Array.from(newImagesMap.values()),
+				imagesMap: newImagesMap,
+				selectedImages: newSelectedImages,
 			};
 		});
 	},
@@ -165,7 +165,7 @@ export const useImagesStore = create<State>()((set, get) => ({
 		get().reQueryImages({ page, per_page: get().perPage, ...extraParams });
 	},
 	reQueryImages: (params?: ImageQueryParams) => {
-		const currentFolderId = get().currentFolderId;
+		const currentFolderId = useFoldersStore.getState().currentFolderId;
 		const mergedParams: ImageQueryParams = {
 			page: get().currentPage,
 			per_page: get().perPage,
@@ -229,12 +229,18 @@ export const useImagesStore = create<State>()((set, get) => ({
 			});
 	},
 	addToSelectedImages(imageSelected) {
-		get().selectedImages.add(imageSelected.id);
-		set((state) => ({ selectedImages: new Set(state.selectedImages) }));
+		set((state) => {
+			const next = new Set(state.selectedImages);
+			next.add(imageSelected.id);
+			return { selectedImages: next };
+		});
 	},
 	removeFromSelectedImages(imageSelected) {
-		get().selectedImages.delete(imageSelected.id);
-		set((state) => ({ selectedImages: new Set(state.selectedImages) }));
+		set((state) => {
+			const next = new Set(state.selectedImages);
+			next.delete(imageSelected.id);
+			return { selectedImages: next };
+		});
 	},
 	deleteSelectedImages() {
 		const imagesToDelete: rendererImage[] = [];

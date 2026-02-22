@@ -270,9 +270,11 @@ function DebouncedTextInput({
 	const [local, setLocal] = useState(externalValue);
 	const timerRef = useRef<ReturnType<typeof setTimeout>>();
 
-	useEffect(() => {
+	const [prevExternal, setPrevExternal] = useState(externalValue);
+	if (externalValue !== prevExternal) {
+		setPrevExternal(externalValue);
 		setLocal(externalValue);
-	}, [externalValue]);
+	}
 
 	const commit = useCallback(
 		(v: string) => {

@@ -66,6 +66,9 @@
     },
     "tessl/npm-zustand": {
       "version": "5.0.0"
+    },
+    "tessl/npm-tanstack--react-form": {
+      "version": "1.23.0"
     }
   }
 }

@@ -5,30 +5,30 @@ import {
 	type MenuItem,
 } from "../stores/contextMenuStore";
 import { useIsNeo } from "../hooks/useIsNeo";
+import { useShallow } from "zustand/react/shallow";
 
 const MENU_MIN_WIDTH = 200;
 const SUBMENU_DELAY = 150;
 const VIEWPORT_PADDING = 8;
 
 function ContextMenu() {
-	const { isOpen, position, items, close } = useContextMenuStore();
+	const { isOpen, position, items, close } = useContextMenuStore(useShallow((s) => ({ isOpen: s.isOpen, position: s.position, items: s.items, close: s.close })));
 	const isNeo = useIsNeo();
 	const menuRef = useRef<HTMLDivElement>(null);
 	const [adjustedPos, setAdjustedPos] = useState(position);
-	const [visible, setVisible] = useState(false);
-	const [focusIndex, setFocusIndex] = useState(-1);
+	const [fadeIn, setFadeIn] = useState(false);
+	const [focusIdx, setFocusIdx] = useState(-1);
+
+	const visible = isOpen && fadeIn;
+	const focusIndex = isOpen ? focusIdx : -1;
 
 	useEffect(() => {
-		if (!isOpen) {
-			setVisible(false);
-			setFocusIndex(-1);
-			return;
-		}
+		if (!isOpen) return;
 
 		requestAnimationFrame(() => {
 			if (!menuRef.current) {
 				setAdjustedPos(position);
-				setVisible(true);
+				setFadeIn(true);
 				return;
 			}
 			const rect = menuRef.current.getBoundingClientRect();
@@ -43,8 +43,9 @@ function ContextMenu() {
 			if (x < VIEWPORT_PADDING) x = VIEWPORT_PADDING;
 			if (y < VIEWPORT_PADDING) y = VIEWPORT_PADDING;
 			setAdjustedPos({ x, y });
-			setVisible(true);
+			setFadeIn(true);
 		});
+		return () => setFadeIn(false);
 	}, [isOpen, position]);
 
 	useEffect(() => {
@@ -65,13 +66,13 @@ function ContextMenu() {
 			const actionItems = items.filter((i) => i.type !== "separator");
 			if (e.key === "ArrowDown") {
 				e.preventDefault();
-				setFocusIndex((prev) => {
+				setFocusIdx((prev) => {
 					const next = prev + 1;
 					return next >= actionItems.length ? 0 : next;
 				});
 			} else if (e.key === "ArrowUp") {
 				e.preventDefault();
-				setFocusIndex((prev) => {
+				setFocusIdx((prev) => {
 					const next = prev - 1;
 					return next < 0 ? actionItems.length - 1 : next;
 				});
@@ -241,15 +242,19 @@ function SubmenuItem({
 	}, []);
 
 	useEffect(() => {
-		if (open && submenuRef.current && containerRef.current) {
-			const parentRect = containerRef.current.getBoundingClientRect();
-			const subRect = submenuRef.current.getBoundingClientRect();
-			if (parentRect.right + subRect.width + VIEWPORT_PADDING > window.innerWidth) {
-				setSubmenuSide("left");
-			} else {
-				setSubmenuSide("right");
+		if (!open) return;
+		const raf = requestAnimationFrame(() => {
+			if (submenuRef.current && containerRef.current) {
+				const parentRect = containerRef.current.getBoundingClientRect();
+				const subRect = submenuRef.current.getBoundingClientRect();
+				if (parentRect.right + subRect.width + VIEWPORT_PADDING > window.innerWidth) {
+					setSubmenuSide("left");
+				} else {
+					setSubmenuSide("right");
+				}
 			}
-		}
+		});
+		return () => cancelAnimationFrame(raf);
 	}, [open]);
 
 	useEffect(() => () => clearTimeout(timerRef.current), []);

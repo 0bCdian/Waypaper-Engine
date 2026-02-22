@@ -244,16 +244,17 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 			try {
 				// Get saved theme or use default
 				let savedTheme = defaultTheme;
-				if (persist) {
-					try {
-						const stored = localStorage.getItem("waypaper-theme");
-						if (stored && hasTheme(stored)) {
-							savedTheme = stored;
-						}
-					} catch (error) {
-						console.warn("Failed to load saved theme:", error);
-					}
+			if (persist) {
+				let stored: string | null = null;
+				try {
+					stored = localStorage.getItem("waypaper-theme");
+				} catch (error) {
+					console.warn("Failed to load saved theme:", error);
 				}
+				if (stored && hasTheme(stored)) {
+					savedTheme = stored;
+				}
+			}
 
 				setCurrentThemeState(savedTheme);
 				applyTheme(savedTheme);

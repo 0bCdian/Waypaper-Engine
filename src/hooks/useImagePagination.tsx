@@ -39,9 +39,15 @@ export function useImagePagination() {
 		}
 	}, [config?.app?.images_per_page, perPage]);
 
-	const totalPages = pagination?.total_pages
-		? pagination.total_pages
-		: Math.max(1, Math.ceil(filteredImages.length / perPage));
+	const hasClientSideFilter =
+		filters.advancedFilters.resolution.constraint !== "all" ||
+		filters.advancedFilters.formats.length < 10;
+
+	const totalPages = hasClientSideFilter
+		? Math.max(1, Math.ceil(filteredImages.length / perPage))
+		: pagination?.total_pages
+			? pagination.total_pages
+			: Math.max(1, Math.ceil(filteredImages.length / perPage));
 
 	const imageCardJsxArray: ReactNode[] = [];
 	const imagesInCurrentPage: rendererImage[] = [];

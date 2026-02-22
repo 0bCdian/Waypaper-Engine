@@ -13,11 +13,11 @@ import type {
 const goDaemon = window.API_RENDERER.goDaemon;
 
 export default function useNotifications(): void {
-	const config = useSettingsStore((s) => s.config);
+	const notificationsEnabled = useSettingsStore((s) => s.config?.app?.notifications);
 	const addToast = useToastStore((s) => s.addToast);
 
 	useEffect(() => {
-		if (!config?.app?.notifications) return;
+		if (!notificationsEnabled) return;
 		if (!goDaemon?.on) return;
 
 		const disposers: (() => void)[] = [];
@@ -128,5 +128,5 @@ export default function useNotifications(): void {
 		return () => {
 			for (const dispose of disposers) dispose();
 		};
-	}, [config, addToast]);
+	}, [notificationsEnabled, addToast]);
 }

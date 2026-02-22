@@ -42,7 +42,14 @@ export function confirmDialog(options: ConfirmOptions): Promise<boolean> {
 function ConfirmDialog() {
 	const { isOpen, options, respond } = useConfirmStore();
 	const dialogRef = useRef<HTMLDialogElement>(null);
+	const lastOptionsRef = useRef(options);
 	const isNeo = useIsNeo();
+
+	if (options) {
+		lastOptionsRef.current = options;
+	}
+
+	const display = options ?? lastOptionsRef.current;
 
 	useEffect(() => {
 		if (isOpen) {
@@ -52,9 +59,7 @@ function ConfirmDialog() {
 		}
 	}, [isOpen]);
 
-	if (!options) return null;
-
-	const confirmClass = options.danger
+	const confirmClass = display?.danger
 		? isNeo
 			? "btn btn-error uppercase"
 			: "btn btn-error"
@@ -69,29 +74,33 @@ function ConfirmDialog() {
 			className="modal"
 			onClose={() => respond(false)}
 		>
-			<div className={`modal-box ${isNeo ? "neo-card" : ""}`}>
-				<h3 className="text-lg font-bold">{options.title}</h3>
-				<p className="py-4 text-base-content/80">{options.message}</p>
-				<div className="modal-action">
-					<button
-						type="button"
-						className={cancelClass}
-						onClick={() => respond(false)}
-					>
-						{options.cancelLabel ?? "Cancel"}
-					</button>
-					<button
-						type="button"
-						className={confirmClass}
-						onClick={() => respond(true)}
-					>
-						{options.confirmLabel ?? "Confirm"}
-					</button>
-				</div>
-			</div>
-			<form method="dialog" className="modal-backdrop">
-				<button type="submit" onClick={() => respond(false)}>close</button>
-			</form>
+			{display && (
+				<>
+					<div className={`modal-box ${isNeo ? "neo-card" : ""}`}>
+						<h3 className="text-lg font-bold">{display.title}</h3>
+						<p className="py-4 text-base-content/80">{display.message}</p>
+						<div className="modal-action">
+							<button
+								type="button"
+								className={cancelClass}
+								onClick={() => respond(false)}
+							>
+								{display.cancelLabel ?? "Cancel"}
+							</button>
+							<button
+								type="button"
+								className={confirmClass}
+								onClick={() => respond(true)}
+							>
+								{display.confirmLabel ?? "Confirm"}
+							</button>
+						</div>
+					</div>
+					<form method="dialog" className="modal-backdrop">
+						<button type="submit" onClick={() => respond(false)}>close</button>
+					</form>
+				</>
+			)}
 		</dialog>
 	);
 }

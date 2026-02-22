@@ -501,6 +501,14 @@ function WallhavenCard({
 				isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-base-100",
 			)}
 			onContextMenu={handleContextMenu}
+			onClick={handleClick}
+			onDoubleClick={(e) => {
+				e.stopPropagation();
+				onDoubleClick();
+			}}
+			onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(); } }}
+			role="button"
+			tabIndex={0}
 		>
 			{isSelected && (
 				<div className="absolute top-2 left-2 z-10">
@@ -525,11 +533,6 @@ function WallhavenCard({
 				alt={`Wallhaven ${wp.id}`}
 				className="transform-gpu w-full aspect-[3/2] object-cover transition-transform duration-300 group-hover:scale-105"
 				loading="lazy"
-				onClick={handleClick}
-				onDoubleClick={(e) => {
-					e.stopPropagation();
-					onDoubleClick();
-				}}
 			/>
 			<div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none" />
 			<div className="absolute bottom-0 left-0 right-0 p-2 flex items-end justify-between opacity-0 group-hover:opacity-100 transition-opacity duration-200">
@@ -585,6 +588,10 @@ function WallhavenDetailModal({
 		<div
 			className="fixed inset-0 z-[150] flex items-center justify-center bg-black/70 backdrop-blur-sm"
 			onClick={onClose}
+			onKeyDown={(e) => { if (e.key === "Enter" || e.key === " " || e.key === "Escape") { e.preventDefault(); onClose(); } }}
+			role="button"
+			tabIndex={0}
+			aria-label="Close modal"
 		>
 			<div
 				className={cn(

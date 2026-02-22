@@ -86,8 +86,8 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
 	lastAddedImageID: -1,
 
 	addImagesToPlaylist: (imageIds: number[]) => {
-		const playlistImagesSet = get().playlistImagesSet;
-		const playlistImagesTimeSet = get().playlistImagesTimeSet;
+		const playlistImagesSet = new Set(get().playlistImagesSet);
+		const playlistImagesTimeSet = new Set(get().playlistImagesTimeSet);
 		const currentPlaylist = get().playlist;
 
 		if (currentPlaylist.configuration.type === "day_of_week") {
@@ -131,8 +131,8 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
 				playlist: newPlaylist,
 				isEmpty: false,
 				isDirty: true,
-				playlistImagesSet: new Set(playlistImagesSet),
-				playlistImagesTimeSet: new Set(playlistImagesTimeSet),
+				playlistImagesSet,
+				playlistImagesTimeSet,
 				lastAddedImageID: newPlaylist.images.at(-1)?.image_id || -1,
 			};
 		});
@@ -211,7 +211,7 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
 		const date = new Date();
 		let initialTimeStamp = date.getHours() * 60 + date.getMinutes();
 
-		newPlaylist.images.forEach((img) => {
+		const fixedImages = newPlaylist.images.map((img) => {
 			newPlaylistImagesSet.add(img.image_id);
 			if (img.time == null) {
 				initialTimeStamp += 5;
@@ -221,14 +221,18 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
 				while (newPlaylistImagesTimeSet.has(initialTimeStamp)) {
 					initialTimeStamp++;
 				}
-				img.time = initialTimeStamp;
+				const fixed = { ...img, time: initialTimeStamp };
+				newPlaylistImagesTimeSet.add(initialTimeStamp);
+				return fixed;
 			}
 			newPlaylistImagesTimeSet.add(img.time);
+			return img;
 		});
 
-		persistPlaylist(newPlaylist);
+		const playlist = { ...newPlaylist, images: fixedImages };
+		persistPlaylist(playlist);
 		set(() => ({
-			playlist: newPlaylist,
+			playlist,
 			isEmpty: false,
 			isDirty: false,
 			playlistImagesSet: newPlaylistImagesSet,

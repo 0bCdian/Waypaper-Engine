@@ -28,30 +28,21 @@ function Monitors() {
 		})),
 	);
 	const clearPlaylist = usePlaylistStore((s) => s.clearPlaylist);
-	const initialSelectState: monitorSelectType =
-		monitorSelection.mode || "individual";
 	const [selectType, setSelectType] =
-		useState<monitorSelectType>(initialSelectState);
+		useState<monitorSelectType>(monitorSelection.mode || "individual");
 	const [error, setError] = useState<{ state: boolean; message: string }>({
 		state: false,
 		message: "error",
 	});
-	const [resolution, setResolution] = useState<{ x: number; y: number }>({
-		x: 0,
-		y: 0,
-	});
 	const modalRef = useRef<HTMLDialogElement>(null);
 
-	useEffect(() => {
-		if (monitorSelection.mode !== selectType) {
-			setSelectType(monitorSelection.mode);
-		}
-	}, [monitorSelection.mode]);
+	const resolution = calculateMinResolution(monitorsList);
 
-	useEffect(() => {
-		const res = calculateMinResolution(monitorsList);
-		setResolution(res);
-	}, [monitorsList]);
+	const [prevMode, setPrevMode] = useState(monitorSelection.mode);
+	if (monitorSelection.mode !== prevMode) {
+		setPrevMode(monitorSelection.mode);
+		setSelectType(monitorSelection.mode);
+	}
 
 	useEffect(() => {
 		void reQueryMonitors();
@@ -190,7 +181,7 @@ function Monitors() {
 							Display Mode
 						</legend>
 						<select
-							defaultValue={initialSelectState}
+							defaultValue={selectType}
 							onChange={(e) => {
 								setSelectType(
 									e.currentTarget.value as monitorSelectType,
@@ -258,6 +249,9 @@ function Monitors() {
 					</div>
 				</div>
 			</div>
+			<form method="dialog" className="modal-backdrop">
+				<button type="button" onClick={closeModal}>close</button>
+			</form>
 		</dialog>
 	);
 }

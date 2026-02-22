@@ -1,5 +1,4 @@
 import { useEffect } from "react";
-import { useShallow } from "zustand/react/shallow";
 import { useLoadImages } from "../hooks/useLoadImages";
 import { useImagesStore } from "../stores/images";
 import { useFoldersStore } from "../stores/foldersStore";
@@ -9,11 +8,11 @@ import Filters from "./Filters";
 import Breadcrumbs from "./Breadcrumbs";
 
 function Gallery() {
-	const isEmpty = useImagesStore(useShallow((state) => state.isEmpty));
-	const isQueried = useImagesStore(useShallow((state) => state.isQueried));
+	const isEmpty = useImagesStore((state) => state.isEmpty);
+	const isQueried = useImagesStore((state) => state.isQueried);
 	const filters = useImagesStore((s) => s.filters);
 	const currentFolderId = useFoldersStore((s) => s.currentFolderId);
-	useLoadImages()();
+	useLoadImages();
 
 	useEffect(() => {
 		useFoldersStore.getState().fetchFolders(currentFolderId);
@@ -28,21 +27,20 @@ function Gallery() {
 		return dispose;
 	}, []);
 
+	const folders = useFoldersStore((s) => s.folders);
+
 	const hasActiveFilters =
 		filters.searchString !== "" ||
 		filters.advancedFilters.formats.length < 10 ||
 		filters.advancedFilters.resolution.constraint !== "all" ||
 		(filters.advancedFilters.colors?.length ?? 0) > 0;
 
-	if (isEmpty && isQueried && !hasActiveFilters && currentFolderId === null) {
-		const folders = useFoldersStore.getState().folders;
-		if (folders.length === 0) {
-			return (
-				<div className="h-full flex flex-col items-center justify-center p-4">
-					<AddImagesCard />
-				</div>
-			);
-		}
+	if (isEmpty && isQueried && !hasActiveFilters && currentFolderId === null && folders.length === 0) {
+		return (
+			<div className="h-full flex flex-col items-center justify-center p-4">
+				<AddImagesCard />
+			</div>
+		);
 	}
 
 	return (

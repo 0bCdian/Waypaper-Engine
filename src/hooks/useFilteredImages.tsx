@@ -1,4 +1,4 @@
-import { useEffect, useDeferredValue, useState } from "react";
+import { useDeferredValue } from "react";
 import { useImagesStore } from "../stores/images";
 import { useShallow } from "zustand/react/shallow";
 import type { rendererImage } from "../types/rendererTypes";
@@ -13,8 +13,56 @@ export function useFilteredImages() {
 		})),
 	);
 	const deferredImages = useDeferredValue(imagesArray);
-	const [filteredImages, setFilteredImages] =
-		useState<rendererImage[]>(deferredImages);
+
+	const sortedImages =
+		filters.type === "id"
+			? [...deferredImages]
+			: [...deferredImages].sort((a, b) => b.name.localeCompare(a.name));
+
+	const dontFilterByResolution =
+		filters.advancedFilters.resolution.constraint === "all" ||
+		filters.advancedFilters.resolution.width +
+			filters.advancedFilters.resolution.height ===
+			0;
+	const dontFilterByFormat = filters.advancedFilters.formats.length === 10;
+
+	const imagesfilteredByResolution: rendererImage[] = dontFilterByResolution
+		? sortedImages
+		: sortedImages.filter((image) => {
+				const w = filters.advancedFilters.resolution.width;
+				const h = filters.advancedFilters.resolution.height;
+				switch (filters.advancedFilters.resolution.constraint) {
+					case "exact":
+						return (
+							(w === 0 || image.width === w) &&
+							(h === 0 || image.height === h)
+						);
+					case "lessThan":
+						return (
+							(w === 0 || image.width <= w) &&
+							(h === 0 || image.height <= h)
+						);
+					case "moreThan":
+						return (
+							(w === 0 || image.width >= w) &&
+							(h === 0 || image.height >= h)
+						);
+				}
+				return undefined;
+			});
+
+	let filteredImages: rendererImage[];
+	if (filters.advancedFilters.formats.length === 0) {
+		filteredImages = [];
+	} else {
+		filteredImages = dontFilterByFormat
+			? imagesfilteredByResolution
+			: imagesfilteredByResolution.filter((image) => {
+					return (filters.advancedFilters.formats as string[]).includes(
+						image.format,
+					);
+				});
+	}
 
 	const selectAllImages = () => {
 		const newSelected = new Set<number>();
@@ -34,57 +82,6 @@ export function useFilteredImages() {
 
 	useHotkeys("ctrl+shift+a", selectAllImages);
 	useHotkeys("escape", clearSelection);
-
-	const sortedImages =
-		filters.type === "id"
-			? [...deferredImages]
-			: [...deferredImages].sort((a, b) => b.name.localeCompare(a.name));
-
-	useEffect(() => {
-		const dontFilterByResolution =
-			filters.advancedFilters.resolution.constraint === "all" ||
-			filters.advancedFilters.resolution.width +
-				filters.advancedFilters.resolution.height ===
-				0;
-		const dontFilterByFormat = filters.advancedFilters.formats.length === 10;
-
-		const imagesfilteredByResolution: rendererImage[] = dontFilterByResolution
-			? sortedImages
-			: sortedImages.filter((image) => {
-					const widthToFilter = filters.advancedFilters.resolution.width;
-					const heightToFilter = filters.advancedFilters.resolution.height;
-					switch (filters.advancedFilters.resolution.constraint) {
-						case "exact":
-							return (
-								image.width === widthToFilter && image.height === heightToFilter
-							);
-						case "lessThan":
-							return (
-								image.width <= widthToFilter && image.height <= heightToFilter
-							);
-						case "moreThan":
-							return (
-								image.width >= widthToFilter && image.height >= heightToFilter
-							);
-					}
-					return undefined;
-				});
-
-		let imagesFilteredByFormat: rendererImage[];
-		if (filters.advancedFilters.formats.length === 0) {
-			imagesFilteredByFormat = [];
-		} else {
-			imagesFilteredByFormat = dontFilterByFormat
-				? imagesfilteredByResolution
-				: imagesfilteredByResolution.filter((image) => {
-						return (filters.advancedFilters.formats as string[]).includes(
-							image.format,
-						);
-					});
-		}
-
-		setFilteredImages(imagesFilteredByFormat);
-	}, [sortedImages, filters]);
 
 	return {
 		filteredImages,

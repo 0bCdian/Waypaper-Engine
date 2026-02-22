@@ -2,7 +2,6 @@ import { type ChangeEvent, useEffect, useState, useRef, useMemo } from "react";
 import useDebounce from "../hooks/useDebounce";
 import type { Filters as FiltersType } from "../types/rendererTypes";
 import { useImagesStore } from "../stores/images";
-import { useFoldersStore } from "../stores/foldersStore";
 import { useShallow } from "zustand/react/shallow";
 import type { ImageQueryParams } from "../../electron/daemon-go-types";
 import { useIsNeo } from "../hooks/useIsNeo";
@@ -54,6 +53,11 @@ function Filters() {
 		})),
 	);
 	const [partialFilters, setPartialFilters] = useState(initialFilters);
+	const partialFiltersRef = useRef(partialFilters);
+
+	useEffect(() => {
+		partialFiltersRef.current = partialFilters;
+	});
 	const [allTags, setAllTags] = useState<string[]>([]);
 	const [tagDropdownOpen, setTagDropdownOpen] = useState(false);
 	const [tagSearch, setTagSearch] = useState("");
@@ -112,26 +116,23 @@ function Filters() {
 				advancedFilters: filters.advancedFilters,
 			};
 			setFilters(newFilters);
-			useImagesStore
-				.getState()
-				.fetchPage(1, mapFiltersToQueryParams(partialFilters, filters.advancedFilters.colors));
-
-			if (partialFilters.searchString.trim()) {
-				useFoldersStore.getState().searchFolders(partialFilters.searchString);
-			} else {
-				useFoldersStore.getState().clearSearchResults();
-			}
+		useImagesStore
+			.getState()
+			.fetchPage(1, mapFiltersToQueryParams(partialFilters, filters.advancedFilters.colors));
 		},
 		200,
 		[partialFilters],
 	);
 	useEffect(() => {
 		const resetFilters: FiltersType = {
-			...partialFilters,
+			...partialFiltersRef.current,
 			advancedFilters: filters.advancedFilters,
 		};
 		setFilters(resetFilters);
-	}, [filters.advancedFilters]);
+		useImagesStore
+			.getState()
+			.fetchPage(1, mapFiltersToQueryParams(partialFiltersRef.current, filters.advancedFilters.colors));
+	}, [filters.advancedFilters, setFilters]);
 	const isNeo = useIsNeo();
 	return (
 		<section className={`group mt-4 lg:mt-10 mb-3 lg:mb-5 flex flex-wrap justify-center gap-2 px-2${isNeo ? " neo-filters-strip" : ""}`}>
@@ -208,13 +209,14 @@ function Filters() {
 						{partialFilters.tags.length > 0 && (
 							<div className="mb-2 flex flex-wrap gap-1">
 								{partialFilters.tags.map((tag) => (
-									<span
-										key={tag}
-										className="badge badge-primary badge-sm cursor-pointer gap-1"
-										onClick={() => toggleTag(tag)}
-									>
-										{tag} &times;
-									</span>
+								<button
+									type="button"
+									key={tag}
+									className="badge badge-primary badge-sm cursor-pointer gap-1"
+									onClick={() => toggleTag(tag)}
+								>
+									{tag} &times;
+								</button>
 								))}
 							</div>
 						)}

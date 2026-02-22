@@ -1,7 +1,7 @@
 import { useImagesStore } from "../stores/images";
 import { useShallow } from "zustand/react/shallow";
 import { useEffect, useRef } from "react";
-import { useForm, type SubmitHandler } from "react-hook-form";
+import { useForm } from "@tanstack/react-form";
 import { parseResolution } from "../utils/utilities";
 import type {
 	advancedFilters,
@@ -10,25 +10,14 @@ import type {
 import type { Formats } from "../../shared/types/image";
 import Modal, { type ModalHandle } from "./Modal";
 import { useModalStore } from "../stores/modalStore";
-interface AdvancedFiltersForm {
-	resolutionConstraint: resolutionConstraints;
-	width: string;
-	height: string;
-	jpeg: boolean;
-	jpg: boolean;
-	webp: boolean;
-	gif: boolean;
-	png: boolean;
-	bmp: boolean;
-	tiff: boolean;
-	tga: boolean;
-	pnm: boolean;
-	farbfeld: boolean;
-}
+
+const FORMAT_KEYS = [
+	"jpeg", "jpg", "png", "webp", "gif", "bmp", "tiff", "tga", "pnm", "farbfeld",
+] as const;
+
+type FormatKey = (typeof FORMAT_KEYS)[number];
 
 const AdvancedFiltersModal = () => {
-	const { register, handleSubmit, setValue, reset } =
-		useForm<AdvancedFiltersForm>();
 	const containerRef = useRef<ModalHandle>(null);
 
 	useEffect(() => {
@@ -44,44 +33,53 @@ const AdvancedFiltersModal = () => {
 			filters: s.filters,
 		})),
 	);
-	const onSubmit: SubmitHandler<AdvancedFiltersForm> = (data) => {
-		const { width, height, resolutionConstraint, ...formats } = data;
-		const formatsArray: Formats[] = [];
-		const { width: parsedWidth, height: parsedHeight } = parseResolution(
-			`${width}x${height}`,
-		);
-		for (const key in formats) {
-			if (formats[key as Formats]) {
-				formatsArray.push(key as Formats);
+
+	const form = useForm({
+		defaultValues: {
+			resolutionConstraint: "all" as resolutionConstraints,
+			width: "0",
+			height: "0",
+			jpeg: true,
+			jpg: true,
+			webp: true,
+			gif: true,
+			png: true,
+			bmp: true,
+			tiff: true,
+			tga: true,
+			pnm: true,
+			farbfeld: true,
+		},
+		onSubmit: ({ value }) => {
+			const { width, height, resolutionConstraint, ...formats } = value;
+			const formatsArray: Formats[] = [];
+			const { width: parsedWidth, height: parsedHeight } = parseResolution(
+				`${width}x${height}`,
+			);
+			for (const key in formats) {
+				if (formats[key as FormatKey]) {
+					formatsArray.push(key as Formats);
+				}
 			}
-		}
-		const advancedFilters: advancedFilters = {
-			formats: formatsArray,
-			resolution: {
-				width: parsedWidth,
-				height: parsedHeight,
-				constraint: resolutionConstraint,
-			},
-			colors: filters.advancedFilters.colors ?? [],
-		};
-		setFilters({ ...filters, advancedFilters });
-	};
+			const advancedFilters: advancedFilters = {
+				formats: formatsArray,
+				resolution: {
+					width: parsedWidth,
+					height: parsedHeight,
+					constraint: resolutionConstraint,
+				},
+				colors: filters.advancedFilters.colors ?? [],
+			};
+			setFilters({ ...filters, advancedFilters });
+		},
+	});
+
 	const setFormatsValues = (value: boolean) => {
-		setValue("jpeg", value);
-		setValue("png", value);
-		setValue("farbfeld", value);
-		setValue("bmp", value);
-		setValue("webp", value);
-		setValue("gif", value);
-		setValue("tiff", value);
-		setValue("tga", value);
-		setValue("pnm", value);
-		setValue("jpg", value);
+		for (const key of FORMAT_KEYS) {
+			form.setFieldValue(key, value);
+		}
 	};
 
-	useEffect(() => {
-		reset();
-	}, [reset]);
 	return (
 		<Modal id="AdvancedFiltersModal" ref={containerRef} className="modal-box max-w-lg xl:max-w-xl 2xl:max-w-2xl">
 				<h2 className="mb-4 text-2xl xl:text-3xl 2xl:text-4xl font-bold">
@@ -92,60 +90,42 @@ const AdvancedFiltersModal = () => {
 					method="dialog"
 					className="flex flex-col gap-4 xl:gap-5 2xl:gap-6"
 					onSubmit={(e) => {
-						void handleSubmit(onSubmit)(e);
+						e.preventDefault();
+						void form.handleSubmit();
 					}}
 				>
-					{/* Resolution constraint */}
 					<fieldset className="fieldset bg-base-200 border border-base-300 rounded-box p-4 xl:p-5 2xl:p-6">
 						<legend className="fieldset-legend text-base 2xl:text-lg">
 							Resolution
 						</legend>
 
-						<label className="label cursor-pointer justify-between">
-							<span className="text-sm xl:text-base 2xl:text-lg">
-								Show all resolutions
-							</span>
-							<input
-								defaultChecked
-								value="all"
-								type="radio"
-								{...register("resolutionConstraint")}
-								className="radio radio-primary"
-							/>
-						</label>
-						<label className="label cursor-pointer justify-between">
-							<span className="text-sm xl:text-base 2xl:text-lg">
-								Exact resolution
-							</span>
-							<input
-								type="radio"
-								value="exact"
-								{...register("resolutionConstraint")}
-								className="radio radio-primary"
-							/>
-						</label>
-						<label className="label cursor-pointer justify-between">
-							<span className="text-sm xl:text-base 2xl:text-lg">
-								Less than
-							</span>
-							<input
-								type="radio"
-								value="lessThan"
-								{...register("resolutionConstraint")}
-								className="radio radio-primary"
-							/>
-						</label>
-						<label className="label cursor-pointer justify-between">
-							<span className="text-sm xl:text-base 2xl:text-lg">
-								Greater than
-							</span>
-							<input
-								type="radio"
-								value="moreThan"
-								{...register("resolutionConstraint")}
-								className="radio radio-primary"
-							/>
-						</label>
+						<form.Field name="resolutionConstraint">
+							{(field) => (
+								<>
+									{(
+										[
+											["all", "Show all resolutions"],
+											["exact", "Exact resolution"],
+											["lessThan", "Less than"],
+											["moreThan", "Greater than"],
+										] as const
+									).map(([val, label]) => (
+										<label key={val} className="label cursor-pointer justify-between">
+											<span className="text-sm xl:text-base 2xl:text-lg">
+												{label}
+											</span>
+											<input
+												type="radio"
+												value={val}
+												checked={field.state.value === val}
+												onChange={() => field.handleChange(val)}
+												className="radio radio-primary"
+											/>
+										</label>
+									))}
+								</>
+							)}
+						</form.Field>
 
 						<p className="label text-base-content/60 mt-2 text-xs xl:text-sm italic">
 							A value of zero means all resolutions
@@ -159,15 +139,20 @@ const AdvancedFiltersModal = () => {
 								>
 									Width
 								</label>
-								<input
-									type="number"
-									defaultValue={0}
-									min={0}
-									step={1}
-									{...register("width")}
-									id="width"
-									className="input input-bordered xl:input-lg w-full"
-								/>
+								<form.Field name="width">
+									{(field) => (
+										<input
+											type="number"
+											min={0}
+											step={1}
+											id="width"
+											value={field.state.value}
+											onChange={(e) => field.handleChange(e.target.value)}
+											onBlur={field.handleBlur}
+											className="input input-bordered xl:input-lg w-full"
+										/>
+									)}
+								</form.Field>
 							</div>
 							<div>
 								<label
@@ -176,20 +161,24 @@ const AdvancedFiltersModal = () => {
 								>
 									Height
 								</label>
-								<input
-									type="number"
-									id="height"
-									defaultValue={0}
-									step={1}
-									min={0}
-									{...register("height")}
-									className="input input-bordered xl:input-lg w-full"
-								/>
+								<form.Field name="height">
+									{(field) => (
+										<input
+											type="number"
+											id="height"
+											step={1}
+											min={0}
+											value={field.state.value}
+											onChange={(e) => field.handleChange(e.target.value)}
+											onBlur={field.handleBlur}
+											className="input input-bordered xl:input-lg w-full"
+										/>
+									)}
+								</form.Field>
 							</div>
 						</div>
 					</fieldset>
 
-					{/* Image formats */}
 					<fieldset className="fieldset bg-base-200 border border-base-300 rounded-box p-4 xl:p-5 2xl:p-6">
 						<legend className="fieldset-legend text-base 2xl:text-lg">
 							Image Formats
@@ -200,7 +189,6 @@ const AdvancedFiltersModal = () => {
 								Select / Deselect All
 							</span>
 							<input
-								defaultChecked={true}
 								onChange={(e) => {
 									setFormatsValues(e.target.checked);
 								}}
@@ -224,18 +212,19 @@ const AdvancedFiltersModal = () => {
 									["farbfeld", "FARBFELD"],
 								] as const
 							).map(([name, label]) => (
-								<label
-									key={name}
-									className="label cursor-pointer justify-start gap-3"
-								>
-									<input
-										defaultChecked
-										type="checkbox"
-										className="checkbox checkbox-sm xl:checkbox-md checkbox-primary"
-										{...register(name)}
-									/>
-									<span className="text-sm xl:text-base">{label}</span>
-								</label>
+								<form.Field key={name} name={name}>
+									{(field) => (
+										<label className="label cursor-pointer justify-start gap-3">
+											<input
+												type="checkbox"
+												className="checkbox checkbox-sm xl:checkbox-md checkbox-primary"
+												checked={field.state.value}
+												onChange={(e) => field.handleChange(e.target.checked)}
+											/>
+											<span className="text-sm xl:text-base">{label}</span>
+										</label>
+									)}
+								</form.Field>
 							))}
 						</div>
 					</fieldset>

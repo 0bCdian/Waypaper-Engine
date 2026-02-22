@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useHistoryStore } from "../stores/historyStore";
 import { useContextMenuStore } from "../stores/contextMenuStore";
+import { useShallow } from "zustand/react/shallow";
 import { useMonitorStore } from "../stores/monitors";
 import { buildHistoryEntryMenuItems } from "../utils/historyContextMenuItems";
 import { confirmDialog } from "../components/ConfirmDialog";
@@ -142,7 +143,7 @@ function HistoryEntry({
 
 const History = () => {
 	const { entries, imageCache, isLoading, hasMore, fetchHistory, loadMore, clearHistory } =
-		useHistoryStore();
+		useHistoryStore(useShallow((s) => ({ entries: s.entries, imageCache: s.imageCache, isLoading: s.isLoading, hasMore: s.hasMore, fetchHistory: s.fetchHistory, loadMore: s.loadMore, clearHistory: s.clearHistory })));
 	const monitors = useMonitorStore((s) => s.monitorsList);
 	const openContextMenu = useContextMenuStore((s) => s.open);
 

@@ -107,28 +107,31 @@ export function MonitorComponent({
 			onClick={() => {
 				if (monitorsList.length < 1) return;
 
-				if (selectType === "individual") {
-					if (!monitor.isSelected) {
-						monitorsList.forEach((otherMonitor) => {
-							otherMonitor.isSelected = otherMonitor.name === monitor.name;
-						});
-					} else {
-						monitor.isSelected = false;
+				const updatedMonitors = monitorsList.map((m) => {
+					if (selectType === "individual") {
+						return {
+							...m,
+							isSelected: !monitor.isSelected
+								? m.name === monitor.name
+								: m.name === monitor.name ? false : m.isSelected,
+						};
 					}
-				} else if (selectType === "extend" || selectType === "clone") {
-					const currentlySelected = monitorsList.filter(
-						(m) => m.isSelected,
-					).length;
-
+					if (m.name !== monitor.name) return m;
+					const currentlySelected = monitorsList.filter((x) => x.isSelected).length;
 					if (!monitor.isSelected) {
-						monitor.isSelected = true;
-					} else if (currentlySelected > 2) {
-						monitor.isSelected = false;
+						return { ...m, isSelected: true };
 					}
-				}
-
-				setMonitorsList([...monitorsList]);
+					if (currentlySelected > 2) {
+						return { ...m, isSelected: false };
+					}
+					return m;
+				});
+				setMonitorsList(updatedMonitors);
 			}}
+			onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); e.currentTarget.click(); } }}
+			role="button"
+			tabIndex={0}
+			aria-label={`Select monitor ${monitor.name}`}
 			className="relative select-none rounded-lg"
 			draggable={false}
 		>

@@ -56,7 +56,7 @@ export const SettingsSearch: React.FC<SettingsSearchProps> = ({
 	const [selectedIdx, setSelectedIdx] = useState(-1);
 	const inputRef = useRef<HTMLInputElement>(null);
 	const suggestionsRef = useRef<HTMLDivElement>(null);
-	const prevTermRef = useRef(searchTerm);
+	const [prevTerm, setPrevTerm] = useState(searchTerm);
 
 	const filtered = searchTerm.trim()
 		? searchSuggestions.filter(
@@ -68,8 +68,8 @@ export const SettingsSearch: React.FC<SettingsSearchProps> = ({
 			)
 		: [];
 
-	if (prevTermRef.current !== searchTerm) {
-		prevTermRef.current = searchTerm;
+	if (prevTerm !== searchTerm) {
+		setPrevTerm(searchTerm);
 		setSelectedIdx(-1);
 	}
 

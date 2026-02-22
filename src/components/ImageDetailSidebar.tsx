@@ -8,10 +8,26 @@ import {
 } from "react";
 import { useImageDetailStore } from "../stores/imageDetailStore";
 import { useImagesStore } from "../stores/images";
+import { useShallow } from "zustand/react/shallow";
 import { useToastStore } from "../stores/toastStore";
 import { useIsNeo } from "../hooks/useIsNeo";
 
 const { goDaemon } = window.API_RENDERER;
+
+async function saveImageTags(imageId: number, tags: string[]) {
+	await goDaemon.updateImage(imageId, { tags });
+	const freshImage = await goDaemon.getImage(imageId);
+	useImageDetailStore.getState().open(freshImage);
+	useImagesStore.getState().reQueryImages();
+}
+
+async function performImageRename(imageId: number, newName: string) {
+	const updated = await useImagesStore.getState().renameImage(imageId, newName);
+	useImageDetailStore.getState().open(
+		updated as unknown as import("../../electron/daemon-go-types").Image,
+	);
+	return updated;
+}
 
 function formatFileSize(bytes: number): string {
 	if (bytes < 1024) return `${bytes} B`;
@@ -20,7 +36,7 @@ function formatFileSize(bytes: number): string {
 }
 
 function ImageDetailSidebar() {
-	const { selectedImage, isOpen, close } = useImageDetailStore();
+	const { selectedImage, isOpen, close } = useImageDetailStore(useShallow((s) => ({ selectedImage: s.selectedImage, isOpen: s.isOpen, close: s.close })));
 	const addToast = useToastStore((s) => s.addToast);
 	const isNeo = useIsNeo();
 	const [tags, setTags] = useState<string[]>([]);
@@ -99,11 +115,8 @@ function ImageDetailSidebar() {
 		if (!selectedImage) return;
 		setSaving(true);
 		try {
-			await goDaemon.updateImage(selectedImage.id, { tags });
+			await saveImageTags(selectedImage.id, tags);
 			addToast("Tags saved", "success", 2000);
-			const freshImage = await goDaemon.getImage(selectedImage.id);
-			useImageDetailStore.getState().open(freshImage);
-			useImagesStore.getState().reQueryImages();
 		} catch {
 			addToast("Failed to save tags", "error");
 		} finally {
@@ -120,8 +133,7 @@ function ImageDetailSidebar() {
 		}
 		setRenaming(true);
 		try {
-			const updated = await useImagesStore.getState().renameImage(selectedImage.id, trimmed);
-			useImageDetailStore.getState().open(updated as unknown as import("../../electron/daemon-go-types").Image);
+			const updated = await performImageRename(selectedImage.id, trimmed);
 			if (updated.name !== trimmed) {
 				addToast(`Renamed to "${updated.name}" (original name was taken)`, "info", 3000);
 			} else {
@@ -194,12 +206,13 @@ function ImageDetailSidebar() {
 
 					{/* Editable name */}
 					<div className="space-y-1">
-						<label className="text-xs font-semibold uppercase tracking-wide text-base-content/60">
-							Name
-						</label>
-						<input
-							ref={nameInputRef}
-							type="text"
+					<label htmlFor="image-detail-name" className="text-xs font-semibold uppercase tracking-wide text-base-content/60">
+						Name
+					</label>
+					<input
+						id="image-detail-name"
+						ref={nameInputRef}
+						type="text"
 							className="input input-bordered input-sm w-full font-medium"
 							value={editName}
 							disabled={renaming}
@@ -236,12 +249,14 @@ function ImageDetailSidebar() {
 							</label>
 							<div className="flex flex-wrap gap-1.5">
 							{selectedImage.colors.map((c, i) => (
-								<div
+								<button
+									type="button"
 									key={`${c}-${i}`}
-										className="w-6 h-6 rounded border border-base-content/20 cursor-pointer tooltip"
+										className="w-6 h-6 rounded border border-base-content/20 cursor-pointer tooltip p-0"
 										style={{ backgroundColor: c }}
 										data-tip={c}
 										title={c}
+										aria-label={`Copy color ${c}`}
 										onClick={() => void navigator.clipboard.writeText(c)}
 									/>
 								))}
@@ -251,9 +266,9 @@ function ImageDetailSidebar() {
 
 					{/* Tags */}
 					<div className="space-y-2">
-						<label className="text-xs font-semibold uppercase tracking-wide text-base-content/60">
-							Tags
-						</label>
+					<label htmlFor="image-detail-tags" className="text-xs font-semibold uppercase tracking-wide text-base-content/60">
+						Tags
+					</label>
 
 						{/* Current tags */}
 						<div className="flex flex-wrap gap-1.5">
@@ -281,11 +296,12 @@ function ImageDetailSidebar() {
 
 						{/* Tag input */}
 						<div className="relative">
-							<input
-								ref={inputRef}
-								type="text"
-								className="input input-bordered input-sm w-full"
-								placeholder="Add a tag..."
+						<input
+							id="image-detail-tags"
+							ref={inputRef}
+							type="text"
+							className="input input-bordered input-sm w-full"
+							placeholder="Add a tag..."
 								value={tagInput}
 								onChange={(e) => {
 									setTagInput(e.target.value);

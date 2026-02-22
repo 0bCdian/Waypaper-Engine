@@ -101,11 +101,17 @@
 
 /* ── Modal Backdrop Blur ───────────────────────────────────────── */
 [data-design="neobrutalist"] .modal-backdrop {
-	backdrop-filter: blur(4px);
-	-webkit-backdrop-filter: blur(4px);
+	backdrop-filter: blur(0px);
+	-webkit-backdrop-filter: blur(0px);
+	background: rgba(0, 0, 0, 0);
+	transition:
+		backdrop-filter 0.3s ease-out,
+		-webkit-backdrop-filter 0.3s ease-out,
+		background 0.3s ease-out;
 }
 
-[data-design="neobrutalist"] dialog.modal::backdrop {
+[data-design="neobrutalist"] .modal[open] .modal-backdrop,
+[data-design="neobrutalist"] .modal.modal-open .modal-backdrop {
 	backdrop-filter: blur(4px);
 	-webkit-backdrop-filter: blur(4px);
 	background: rgba(0, 0, 0, 0.4);

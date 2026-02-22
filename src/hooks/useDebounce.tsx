@@ -16,5 +16,6 @@ export default function useDebounce(
 	useEffect(() => {
 		const timer = setTimeout(() => callbackRef.current(), delay);
 		return () => clearTimeout(timer);
-	}, dependencies);
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [...dependencies, delay]);
 }

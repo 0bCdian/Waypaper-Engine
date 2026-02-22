@@ -70,6 +70,21 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({
 		[],
 	);
 
+	const importUrls = async (urls: string[]) => {
+		const downloadedPaths: string[] = [];
+		for (const url of urls) {
+			try {
+				const tmpPath = await window.API_RENDERER.downloadUrl(url);
+				downloadedPaths.push(tmpPath);
+			} catch (err) {
+				console.error("Failed to download URL:", url, err);
+			}
+		}
+		if (downloadedPaths.length > 0) {
+			await window.API_RENDERER.goDaemon.importImages(downloadedPaths);
+		}
+	};
+
 	const handleDrop = useCallback((e: React.DragEvent) => {
 		e.preventDefault();
 		e.stopPropagation();
@@ -114,21 +129,6 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({
 			}
 		}
 	}, []);
-
-	const importUrls = async (urls: string[]) => {
-		const downloadedPaths: string[] = [];
-		for (const url of urls) {
-			try {
-				const tmpPath = await window.API_RENDERER.downloadUrl(url);
-				downloadedPaths.push(tmpPath);
-			} catch (err) {
-				console.error("Failed to download URL:", url, err);
-			}
-		}
-		if (downloadedPaths.length > 0) {
-			await window.API_RENDERER.goDaemon.importImages(downloadedPaths);
-		}
-	};
 
 	const handleUrlImportConfirm = useCallback((dontShowAgain: boolean) => {
 		if (dontShowAgain) {

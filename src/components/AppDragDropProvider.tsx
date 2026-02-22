@@ -28,25 +28,23 @@ function getIds(data: DragSourceData): number[] {
 export default function AppDragDropProvider({
 	children,
 }: { children: ReactNode }) {
-	const { setDragStart, setOverTarget, reset } = useDragStore.getState();
-
 	return (
 		<DragDropProvider
 			sensors={[POINTER_SENSOR]}
 			onDragStart={(event) => {
 				const data = event.operation.source?.data as DragSourceData | undefined;
 				if (!data) return;
-				setDragStart(data.type, getIds(data));
+				useDragStore.getState().setDragStart(data.type, getIds(data));
 			}}
 			onDragOver={(event) => {
 				const target = event.operation?.target;
 				if (!target) {
-					setOverTarget(null);
+					useDragStore.getState().setOverTarget(null);
 					return;
 				}
 				const targetData = target.data as DropTargetData | undefined;
 				if (targetData) {
-					setOverTarget({
+					useDragStore.getState().setOverTarget({
 						type: targetData.type,
 						id: targetData.folderId ?? undefined,
 					});
@@ -61,7 +59,7 @@ export default function AppDragDropProvider({
 							usePlaylistStore.getState().removeImagesFromPlaylist(new Set([srcData.imageId]));
 						}
 					}
-					reset();
+					useDragStore.getState().reset();
 					return;
 				}
 
@@ -69,13 +67,13 @@ export default function AppDragDropProvider({
 				const targetData = operation.target?.data as DropTargetData | undefined;
 
 				if (!sourceData || !targetData) {
-					reset();
+					useDragStore.getState().reset();
 					return;
 				}
 
 				dispatchDrop(sourceData, targetData, operation).catch((err) => {
 					console.error("Drop handler error:", err);
-				}).finally(reset);
+				}).finally(() => useDragStore.getState().reset());
 			}}
 		>
 			{children}

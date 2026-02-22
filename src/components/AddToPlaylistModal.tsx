@@ -1,25 +1,20 @@
 import { useRef, useState } from "react";
-import { useForm, type SubmitHandler } from "react-hook-form";
+import { useForm } from "@tanstack/react-form";
 import { useImagesStore } from "../stores/images";
 import type { Playlist } from "../../electron/daemon-go-types";
 import Modal, { type ModalHandle } from "./Modal";
 
-interface Input {
-	selectPlaylist: string;
-}
-
 interface Props {
 	playlistsInDB: Playlist[];
-	setShouldReload: React.Dispatch<React.SetStateAction<boolean>>;
+	onPlaylistChanged: () => void;
 }
 
 const { goDaemon } = window.API_RENDERER;
 
-const AddToPlaylistModal = ({ playlistsInDB, setShouldReload }: Props) => {
+const AddToPlaylistModal = ({ playlistsInDB, onPlaylistChanged }: Props) => {
 	const selectedImages = useImagesStore((s) => s.selectedImages);
 	const [error, setError] = useState("");
 	const [success, setSuccess] = useState("");
-	const { register, handleSubmit } = useForm<Input>();
 	const modalRef = useRef<ModalHandle>(null);
 
 	const closeModal = () => {
@@ -27,71 +22,78 @@ const AddToPlaylistModal = ({ playlistsInDB, setShouldReload }: Props) => {
 		setSuccess("");
 	};
 
-	const onSubmit: SubmitHandler<Input> = async (data) => {
-		try {
-			setError("");
-			setSuccess("");
+	const form = useForm({
+		defaultValues: {
+			selectPlaylist: playlistsInDB.length > 0 ? String(playlistsInDB[0].id) : "",
+		},
+		onSubmit: async ({ value }) => {
+			try {
+				setError("");
+				setSuccess("");
 
-		const selectedId = Number(data.selectPlaylist);
-		const selectedPlaylist = playlistsInDB.find(
-			(playlist) => playlist.id === selectedId,
-		);
+				const selectedId = Number(value.selectPlaylist);
+				const selectedPlaylist = playlistsInDB.find(
+					(playlist) => playlist.id === selectedId,
+				);
 
-			if (!selectedPlaylist) {
-				setError("Selected playlist not found");
-				return;
+				if (!selectedPlaylist) {
+					setError("Selected playlist not found");
+					return;
+				}
+
+				const imageIdsToAdd = Array.from(selectedImages);
+
+				if (imageIdsToAdd.length === 0) {
+					setError("No images selected");
+					return;
+				}
+
+				const fullPlaylist = await goDaemon.getPlaylist(selectedPlaylist.id);
+				const existingImageIds = new Set(
+					fullPlaylist.images.map((img) => img.image_id),
+				);
+
+				const newImageIds = imageIdsToAdd.filter(
+					(id) => !existingImageIds.has(id),
+				);
+
+				if (newImageIds.length === 0) {
+					setError("All selected images are already in this playlist");
+					setTimeout(() => setError(""), 3000);
+					return;
+				}
+
+				const updatedImages = [
+					...fullPlaylist.images,
+					...newImageIds.map((id) => ({ image_id: id })),
+				];
+
+				await goDaemon.updatePlaylist(selectedPlaylist.id, {
+					images: updatedImages,
+				});
+
+				let successMsg: string;
+				if (newImageIds.length > 1) {
+					successMsg = `Added ${newImageIds.length} images to ${selectedPlaylist.name}`;
+				} else {
+					successMsg = `Added ${newImageIds.length} image to ${selectedPlaylist.name}`;
+				}
+				setSuccess(successMsg);
+				onPlaylistChanged();
+
+				setTimeout(() => {
+					closeModal();
+					const modal = modalRef.current;
+					if (modal) modal.close();
+				}, 1500);
+			} catch (err) {
+				console.error("Failed to add images to playlist:", err);
+				let errorMsg = "Failed to add images to playlist";
+				if (err instanceof Error) errorMsg = err.message;
+				setError(errorMsg);
 			}
-
-			const imageIdsToAdd = Array.from(selectedImages);
-
-			if (imageIdsToAdd.length === 0) {
-				setError("No images selected");
-				return;
-			}
-
-			// Get existing playlist
-			const fullPlaylist = await goDaemon.getPlaylist(selectedPlaylist.id);
-			const existingImageIds = new Set(
-				fullPlaylist.images.map((img) => img.image_id),
-			);
-
-			// Filter out duplicates
-			const newImageIds = imageIdsToAdd.filter(
-				(id) => !existingImageIds.has(id),
-			);
-
-			if (newImageIds.length === 0) {
-				setError("All selected images are already in this playlist");
-				setTimeout(() => setError(""), 3000);
-				return;
-			}
-
-			// Update playlist with new images
-			const updatedImages = [
-				...fullPlaylist.images,
-				...newImageIds.map((id) => ({ image_id: id })),
-			];
-
-			await goDaemon.updatePlaylist(selectedPlaylist.id, {
-				images: updatedImages,
-			});
-
-			setSuccess(
-				`Added ${newImageIds.length} image${newImageIds.length > 1 ? "s" : ""} to ${selectedPlaylist.name}`,
-			);
-			setShouldReload(true);
-
-			setTimeout(() => {
-				closeModal();
-				modalRef.current?.close();
-			}, 1500);
-		} catch (err) {
-			console.error("Failed to add images to playlist:", err);
-			setError(
-				err instanceof Error ? err.message : "Failed to add images to playlist",
-			);
-		}
-	};
+		},
+	});
 
 	return (
 		<Modal id="AddToPlaylistModal" ref={modalRef} onClose={closeModal} className="modal-box flex flex-col max-w-lg xl:max-w-xl 2xl:max-w-2xl">
@@ -162,7 +164,7 @@ const AddToPlaylistModal = ({ playlistsInDB, setShouldReload }: Props) => {
 							type="button"
 							className="btn btn-active btn-block uppercase"
 							onClick={() => {
-								setShouldReload(true);
+								onPlaylistChanged();
 							}}
 						>
 							Refresh playlists
@@ -175,7 +177,8 @@ const AddToPlaylistModal = ({ playlistsInDB, setShouldReload }: Props) => {
 					selectedImages.size > 0 && (
 						<form
 							onSubmit={(e) => {
-								void handleSubmit(onSubmit)(e);
+								e.preventDefault();
+								void form.handleSubmit();
 							}}
 							className="form-control flex flex-col gap-5"
 						>
@@ -183,27 +186,26 @@ const AddToPlaylistModal = ({ playlistsInDB, setShouldReload }: Props) => {
 								Select Playlist
 							</label>
 
-						<select
-							id="selectPlaylist"
-							className="select select-bordered w-full rounded-md text-lg"
-							defaultValue={
-								playlistsInDB.length > 0
-									? String(playlistsInDB[0].id)
-									: ""
-							}
-							{...register("selectPlaylist", {
-								required: true,
-							})}
-						>
-							{playlistsInDB.map((playlist) => (
-								<option
-									key={playlist.id}
-									value={String(playlist.id)}
+						<form.Field name="selectPlaylist">
+							{(field) => (
+								<select
+									id="selectPlaylist"
+									className="select select-bordered w-full rounded-md text-lg"
+									value={field.state.value}
+									onChange={(e) => field.handleChange(e.target.value)}
+									onBlur={field.handleBlur}
 								>
-									{playlist.name}
-								</option>
-							))}
-						</select>
+									{playlistsInDB.map((playlist) => (
+										<option
+											key={playlist.id}
+											value={String(playlist.id)}
+										>
+											{playlist.name}
+										</option>
+									))}
+								</select>
+							)}
+						</form.Field>
 
 							<div className="mt-3 flex justify-center gap-3">
 								<button

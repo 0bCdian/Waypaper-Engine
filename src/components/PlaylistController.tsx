@@ -10,30 +10,27 @@ function PlaylistController() {
 	const activePlaylist = useActivePlaylistStore((s) => s.activePlaylist);
 	const isNeo = useIsNeo();
 	const imagesMap = useImagesStore((s) => s.imagesMap);
-	const [countdown, setCountdown] = useState<string | null>(null);
+	const [tickedCountdown, setTickedCountdown] = useState<string | null>(null);
 
 	useEffect(() => {
-		if (!activePlaylist?.next_change_at) {
-			setCountdown(null);
-			return;
-		}
+		if (!activePlaylist?.next_change_at) return;
 
 		function tick() {
 			if (!activePlaylist?.next_change_at) return;
 			const diff = new Date(activePlaylist.next_change_at).getTime() - Date.now();
 			if (diff <= 0) {
-				setCountdown(null);
+				setTickedCountdown(null);
 				return;
 			}
 			const secs = Math.floor(diff / 1000);
 			const mins = Math.floor(secs / 60);
 			const hrs = Math.floor(mins / 60);
 			if (hrs > 0) {
-				setCountdown(`${hrs}h ${mins % 60}m`);
+				setTickedCountdown(`${hrs}h ${mins % 60}m`);
 			} else if (mins > 0) {
-				setCountdown(`${mins}m ${secs % 60}s`);
+				setTickedCountdown(`${mins}m ${secs % 60}s`);
 			} else {
-				setCountdown(`${secs}s`);
+				setTickedCountdown(`${secs}s`);
 			}
 		}
 
@@ -41,6 +38,8 @@ function PlaylistController() {
 		const interval = setInterval(tick, 1000);
 		return () => clearInterval(interval);
 	}, [activePlaylist?.next_change_at]);
+
+	const countdown = activePlaylist?.next_change_at ? tickedCountdown : null;
 
 	const handlePrevious = useCallback(() => {
 		if (!activePlaylist) return;

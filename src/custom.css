@@ -321,6 +321,11 @@
 	}
 }
 
+/* Prevent native ::backdrop flash on dialog.showModal() — DaisyUI's .modal-backdrop handles the overlay */
+dialog.modal::backdrop {
+	background: transparent;
+}
+
 /* Center drag preview within the source-sized overlay so cursor stays near the preview */
 [data-dnd-overlay] {
 	display: flex !important;

@@ -24,10 +24,15 @@ function Modals() {
 			reQueryMonitors: s.reQueryMonitors,
 		})),
 	);
-	const [shouldReload, setShouldReload] = useState<boolean>(false);
 	const playlist = usePlaylistStore((s) => s.playlist);
 
 	const config = useSettingsStore((s) => s.config);
+
+	const reloadPlaylists = () => {
+		void goDaemon.getPlaylists().then((playlists) => {
+			setPlaylistsInDB(playlists);
+		});
+	};
 
 	useEffect(() => {
 		if (alreadyShown.current || !config) return;
@@ -43,13 +48,8 @@ function Modals() {
 	}, [config, reQueryMonitors, setLastSavedMonitorConfig]);
 
 	useEffect(() => {
-		void goDaemon.getPlaylists().then((playlists) => {
-			setPlaylistsInDB(playlists);
-		});
-		if (shouldReload) {
-			setShouldReload(false);
-		}
-	}, [shouldReload]);
+		reloadPlaylists();
+	}, []);
 
 	useEffect(() => {
 		const dispose = goDaemon.on("playlists_updated", () => {
@@ -64,16 +64,16 @@ function Modals() {
 		<>
 			<LoadPlaylistModal
 				playlistsInDB={playlistsInDB}
-				setShouldReload={setShouldReload}
+				onPlaylistChanged={reloadPlaylists}
 				currentPlaylistName={playlist.name}
 			/>
 			<SavePlaylistModal
-				setShouldReload={setShouldReload}
+				onPlaylistChanged={reloadPlaylists}
 				currentPlaylistName={playlist.name}
 			/>
 			<AddToPlaylistModal
 				playlistsInDB={playlistsInDB}
-				setShouldReload={setShouldReload}
+				onPlaylistChanged={reloadPlaylists}
 			/>
 			<PlaylistConfigurationModal />
 			<AdvancedFiltersModal />

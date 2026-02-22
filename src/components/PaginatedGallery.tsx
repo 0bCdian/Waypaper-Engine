@@ -8,7 +8,7 @@ import PlaylistController from "./PlaylistController";
 import FolderCard from "./FolderCard";
 import AppDragDropProvider from "./AppDragDropProvider";
 import { useImagePagination } from "../hooks/useImagePagination";
-import { motion, AnimatePresence } from "framer-motion";
+import { LazyMotion, m, AnimatePresence, domAnimation } from "framer-motion";
 import { useImagesStore } from "../stores/images";
 import { useFoldersStore } from "../stores/foldersStore";
 import { useIsNeo } from "../hooks/useIsNeo";
@@ -37,8 +37,7 @@ function PaginatedGallery() {
 	const selectedImages = useImagesStore((s) => s.selectedImages);
 	const folders = useFoldersStore((s) => s.folders);
 	const currentFolderId = useFoldersStore((s) => s.currentFolderId);
-	const searchResults = useFoldersStore((s) => s.searchResults);
-	const searchString = useImagesStore((s) => s.filters.searchString);
+	const filters = useImagesStore((s) => s.filters);
 	const isNeo = useIsNeo();
 	const ref = useRef<HTMLDivElement>(null);
 	const openContextMenu = useContextMenuStore((s) => s.open);
@@ -48,13 +47,20 @@ function PaginatedGallery() {
 		openContextMenu(e, items);
 	};
 
-	const displayFolders = searchString ? searchResults : folders;
-	const showFolders = currentPage === 1 && displayFolders.length > 0;
+	const hasActiveFilters =
+		filters.searchString !== "" ||
+		filters.tags.length > 0 ||
+		filters.advancedFilters.resolution.constraint !== "all" ||
+		filters.advancedFilters.formats.length < 10 ||
+		(filters.advancedFilters.colors?.length ?? 0) > 0;
+
+	const showFolders = !hasActiveFilters && currentPage === 1 && folders.length > 0;
 
 	return (
+		<LazyMotion features={domAnimation}>
 		<AppDragDropProvider>
 			<AnimatePresence>
-				<motion.div
+				<m.div
 					ref={ref}
 					onHoverStart={() => {
 						ref.current?.focus();
@@ -69,7 +75,7 @@ function PaginatedGallery() {
 				>
 				<GalleryDropZone>
 						<AnimatePresence mode="wait">
-							<motion.div
+							<m.div
 								key={`${currentFolderId ?? "root"}-${currentPage}`}
 								initial={{ opacity: 0 }}
 								animate={{ opacity: 1 }}
@@ -77,12 +83,12 @@ function PaginatedGallery() {
 								transition={{ duration: 0.15 }}
 								className="m-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(16vw,1fr))] gap-3 md:gap-3 lg:gap-3 xl:gap-4 2xl:gap-5 [&>:only-child]:max-w-[25vw] [&>:only-child]:justify-self-center"
 							>
-								{showFolders &&
-									displayFolders.map((folder) => (
+							{showFolders &&
+								folders.map((folder) => (
 										<FolderCard key={`folder-${folder.id}`} folder={folder} />
 									))}
 								{imagesToShow}
-							</motion.div>
+							</m.div>
 						</AnimatePresence>
 					</GalleryDropZone>
 
@@ -109,9 +115,10 @@ function PaginatedGallery() {
 						<PlaylistController />
 						<PlaylistTrack />
 					</div>
-				</motion.div>
+				</m.div>
 			</AnimatePresence>
 		</AppDragDropProvider>
+		</LazyMotion>
 	);
 }
 

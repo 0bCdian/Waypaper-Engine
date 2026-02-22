@@ -4,6 +4,7 @@ import { useFoldersStore } from "../stores/foldersStore";
 import { useImagesStore } from "../stores/images";
 import { useFolderPickerStore } from "../stores/folderPickerStore";
 import { useIsNeo } from "../hooks/useIsNeo";
+import { useShallow } from "zustand/react/shallow";
 import { useToastStore } from "../stores/toastStore";
 import { FolderIcon } from "./FolderCard";
 
@@ -25,7 +26,12 @@ function FolderTreeItem({ folder, level, selectedId, onSelect }: FolderTreeItemP
 		if (!loaded) {
 			try {
 				const result = await goDaemon.getFolders(folder.id);
-				setChildren(result.data || []);
+				const data = result.data;
+				if (data) {
+					setChildren(data);
+				} else {
+					setChildren([]);
+				}
 				setLoaded(true);
 			} catch {
 				setChildren([]);
@@ -92,7 +98,7 @@ function FolderTreeItem({ folder, level, selectedId, onSelect }: FolderTreeItemP
 }
 
 function FolderPickerModal() {
-	const { isOpen, imageIds, close } = useFolderPickerStore();
+	const { isOpen, imageIds, close } = useFolderPickerStore(useShallow((s) => ({ isOpen: s.isOpen, imageIds: s.imageIds, close: s.close })));
 	const isNeo = useIsNeo();
 	const addToast = useToastStore((s) => s.addToast);
 	const dialogRef = useRef<HTMLDialogElement>(null);
@@ -101,6 +107,15 @@ function FolderPickerModal() {
 	const [isCreating, setIsCreating] = useState(false);
 	const [newFolderName, setNewFolderName] = useState("");
 	const newFolderInputRef = useRef<HTMLInputElement>(null);
+
+	const loadRootFolders = async () => {
+		try {
+			const result = await goDaemon.getFolders(undefined);
+			setRootFolders(result.data || []);
+		} catch {
+			setRootFolders([]);
+		}
+	};
 
 	useEffect(() => {
 		if (isOpen) {
@@ -112,15 +127,6 @@ function FolderPickerModal() {
 			dialogRef.current?.close();
 		}
 	}, [isOpen]);
-
-	const loadRootFolders = async () => {
-		try {
-			const result = await goDaemon.getFolders(undefined);
-			setRootFolders(result.data || []);
-		} catch {
-			setRootFolders([]);
-		}
-	};
 
 	const handleMove = useCallback(async () => {
 		if (imageIds.length === 0) return;

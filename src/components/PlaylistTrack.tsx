@@ -17,6 +17,14 @@ import { useModalStore } from "../stores/modalStore";
 const { goDaemon } = window.API_RENDERER;
 import MiniPlaylistCard from "./MiniPlaylistCard";
 
+async function stopPlaylistSilent(playlistId: number) {
+	try {
+		await goDaemon.stopPlaylist(playlistId);
+	} catch {
+		// Playlist may not be running
+	}
+}
+
 function PlaylistTrack() {
 	const {
 		playlist,
@@ -236,16 +244,12 @@ function PlaylistTrack() {
 				</button>
 					<button
 						className={isNeo ? "btn btn-error uppercase" : "btn btn-error rounded-lg uppercase"}
-						onClick={async () => {
-							if (playlist.id) {
-								try {
-									await goDaemon.stopPlaylist(playlist.id);
-								} catch {
-									// Playlist may not be running
-								}
-							}
-							clearPlaylist();
-						}}
+					onClick={async () => {
+						if (playlist.id) {
+							await stopPlaylistSilent(playlist.id);
+						}
+						clearPlaylist();
+					}}
 					>
 						Clear
 					</button>

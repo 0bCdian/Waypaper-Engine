@@ -137,25 +137,28 @@ export function useSetLastActivePlaylist() {
 			for (const d of disposers) d();
 		};
 
-		function refreshActivePlaylist() {
-			const selected =
-				useMonitorStore.getState().monitorSelection.selectedMonitors;
-			if (selected.length === 0) return;
+	async function refreshActivePlaylist() {
+		const selected =
+			useMonitorStore.getState().monitorSelection.selectedMonitors;
+		if (selected.length === 0) return;
 
-			return goDaemon.getActivePlaylists().then((activePlaylists) => {
-				if (!activePlaylists || activePlaylists.length === 0) {
-					useActivePlaylistStore.getState().clear();
-					return;
-				}
-				const match = activePlaylists.find((ap) =>
-					monitorSetsMatch(selected, ap.monitors),
-				);
-				useActivePlaylistStore
-					.getState()
-					.setActivePlaylist(match ?? null);
-			}).catch(() => {
-				// Ignore
-			});
+		let activePlaylists: ActivePlaylistResponse[] | undefined;
+		try {
+			activePlaylists = await goDaemon.getActivePlaylists();
+		} catch {
+			return;
 		}
+
+		if (!activePlaylists || activePlaylists.length === 0) {
+			useActivePlaylistStore.getState().clear();
+			return;
+		}
+		const match = activePlaylists.find((ap) =>
+			monitorSetsMatch(selected, ap.monitors),
+		);
+		useActivePlaylistStore
+			.getState()
+			.setActivePlaylist(match ?? null);
+	}
 	}, []);
 }

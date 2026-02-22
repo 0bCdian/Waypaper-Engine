@@ -12,10 +12,17 @@ function FolderImportModal() {
 	const isNeo = useIsNeo();
 	const dialogRef = useRef<HTMLDialogElement>(null);
 	const [createFolder, setCreateFolder] = useState(true);
+	const [prevPending, setPrevPending] = useState(pendingFolderImport);
+
+	if (pendingFolderImport !== prevPending) {
+		setPrevPending(pendingFolderImport);
+		if (pendingFolderImport) {
+			setCreateFolder(true);
+		}
+	}
 
 	useEffect(() => {
 		if (pendingFolderImport) {
-			setCreateFolder(true);
 			dialogRef.current?.showModal();
 		} else {
 			dialogRef.current?.close();
@@ -44,20 +51,22 @@ function FolderImportModal() {
 						</p>
 
 						<div className="flex flex-col gap-3 py-3">
-							<label
-								className={`flex items-start gap-3 rounded-lg border-2 p-3 cursor-pointer transition-all ${
-									createFolder
-										? "border-primary bg-primary/5"
-										: "border-base-300 hover:border-base-content/20"
-								}`}
-							>
-								<input
-									type="radio"
-									name="import-mode"
-									className="radio radio-primary mt-0.5"
-									checked={createFolder}
-									onChange={() => setCreateFolder(true)}
-								/>
+						<label
+							htmlFor="folder-import-create"
+							className={`flex items-start gap-3 rounded-lg border-2 p-3 cursor-pointer transition-all ${
+								createFolder
+									? "border-primary bg-primary/5"
+									: "border-base-300 hover:border-base-content/20"
+							}`}
+						>
+							<input
+								id="folder-import-create"
+								type="radio"
+								name="import-mode"
+								className="radio radio-primary mt-0.5"
+								checked={createFolder}
+								onChange={() => setCreateFolder(true)}
+							/>
 								<div>
 									<p className="font-medium">Create as folder</p>
 									<p className="text-sm text-base-content/60">
@@ -66,20 +75,22 @@ function FolderImportModal() {
 								</div>
 							</label>
 
-							<label
-								className={`flex items-start gap-3 rounded-lg border-2 p-3 cursor-pointer transition-all ${
-									!createFolder
-										? "border-primary bg-primary/5"
-										: "border-base-300 hover:border-base-content/20"
-								}`}
-							>
-								<input
-									type="radio"
-									name="import-mode"
-									className="radio radio-primary mt-0.5"
-									checked={!createFolder}
-									onChange={() => setCreateFolder(false)}
-								/>
+						<label
+							htmlFor="folder-import-individual"
+							className={`flex items-start gap-3 rounded-lg border-2 p-3 cursor-pointer transition-all ${
+								!createFolder
+									? "border-primary bg-primary/5"
+									: "border-base-300 hover:border-base-content/20"
+							}`}
+						>
+							<input
+								id="folder-import-individual"
+								type="radio"
+								name="import-mode"
+								className="radio radio-primary mt-0.5"
+								checked={!createFolder}
+								onChange={() => setCreateFolder(false)}
+							/>
 								<div>
 									<p className="font-medium">Import individually</p>
 									<p className="text-sm text-base-content/60">
