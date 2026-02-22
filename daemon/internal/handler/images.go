@@ -125,6 +125,35 @@ func (h *ImageHandler) Add(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// cancelImportRequest is the JSON body for POST /images/cancel-import.
+type cancelImportRequest struct {
+	BatchID string `json:"batch_id"`
+}
+
+// CancelImport handles POST /images/cancel-import.
+func (h *ImageHandler) CancelImport(w http.ResponseWriter, r *http.Request) {
+	var req cancelImportRequest
+	if err := ParseBody(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if req.BatchID == "" {
+		WriteError(w, http.StatusBadRequest, "batch_id is required")
+		return
+	}
+
+	if !h.processor.CancelBatch(req.BatchID) {
+		WriteError(w, http.StatusNotFound, "batch not found or already completed")
+		return
+	}
+
+	WriteJSON(w, http.StatusOK, map[string]any{
+		"status":   "cancelled",
+		"batch_id": req.BatchID,
+	})
+}
+
 // Update handles PATCH /images/{id}.
 func (h *ImageHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id, err := ParseIntParam(chi.URLParam(r, "id"))

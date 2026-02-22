@@ -2,7 +2,7 @@ import { create } from "zustand";
 import type { openFileAction } from "../../shared/types";
 import { useFoldersStore } from "../stores/foldersStore";
 
-const { openFiles, handleOpenImages } = window.API_RENDERER;
+const { openFiles, handleOpenImages, scanDirectory } = window.API_RENDERER;
 
 interface PendingFolderImport {
 	files: string[];
@@ -20,6 +20,7 @@ interface openImagesProps {
 
 interface Actions {
 	openImages: (openImagesProps: openImagesProps) => Promise<void>;
+	importDroppedDirectory: (dirPath: string) => Promise<void>;
 	confirmFolderImport: (createFolder: boolean) => Promise<void>;
 	cancelFolderImport: () => void;
 }
@@ -69,6 +70,26 @@ const openImagesStore = create<State & Actions>((set, get) => ({
 		} catch (error) {
 			console.error("useOpenImages: Error calling handleOpenImages:", error);
 		}
+	},
+
+	importDroppedDirectory: async (dirPath: string) => {
+		let result: { files: string[]; folderName: string };
+		try {
+			result = await scanDirectory(dirPath);
+		} catch (error) {
+			console.error("useOpenImages: scanDirectory failed for", dirPath, error);
+			return;
+		}
+		if (result.files.length === 0) {
+			console.warn("useOpenImages: no images found in directory", dirPath);
+			return;
+		}
+		set({
+			pendingFolderImport: {
+				files: result.files,
+				folderName: result.folderName,
+			},
+		});
 	},
 
 	confirmFolderImport: async (createFolder: boolean) => {

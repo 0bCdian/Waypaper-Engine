@@ -62,6 +62,13 @@ const electronAPI = {
 				folder_id: folderID,
 			}),
 
+		cancelImport: (
+			batchID: string,
+		): Promise<{ status: string; batch_id: string }> =>
+			ipcRenderer.invoke("go-daemon-command", "cancel_import", {
+				batch_id: batchID,
+			}),
+
 		deleteImages: (ids: number[]): Promise<{ deleted: number }> =>
 			ipcRenderer.invoke("go-daemon-command", "delete_images", { ids }),
 
@@ -415,6 +422,12 @@ const electronAPI = {
 
 	openFiles: (action: "file" | "folder") =>
 		ipcRenderer.invoke("openFiles", action),
+
+	scanDirectory: (dirPath: string): Promise<{ files: string[]; folderName: string }> =>
+		ipcRenderer.invoke("scan-directory", dirPath).then((r: { success: boolean; data: { files: string[]; folderName: string }; error?: string }) => {
+			if (!r.success) throw new Error(r.error ?? "Directory scan failed");
+			return r.data;
+		}),
 
 	handleOpenImages: (imagesObject: {
 		success: boolean;

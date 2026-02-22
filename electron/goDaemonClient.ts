@@ -328,6 +328,16 @@ export class GoDaemonClient extends EventEmitter {
 		);
 	}
 
+	async cancelImport(
+		batchID: string,
+	): Promise<{ status: string; batch_id: string }> {
+		return this.request<{ status: string; batch_id: string }>(
+			"POST",
+			"/images/cancel-import",
+			{ batch_id: batchID },
+		);
+	}
+
 	async deleteImages(ids: number[]): Promise<{ deleted: number }> {
 		const body: DeleteImagesRequest = { ids };
 		return this.request<{ deleted: number }>("DELETE", "/images", body);

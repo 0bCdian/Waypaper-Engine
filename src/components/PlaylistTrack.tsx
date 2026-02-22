@@ -161,7 +161,7 @@ function PlaylistTrack() {
 		: "";
 
 	return (
-		<div className="mb-2 flex w-full min-w-0 flex-col gap-5 overflow-hidden">
+		<div className="mb-2 flex w-full min-w-0 flex-col gap-5 overflow-x-clip">
 			<div className="flex flex-wrap items-center gap-2 lg:gap-3">
 			<div className="flex w-full min-w-0 flex-col">
 				<span className="text-2xl lg:text-4xl font-bold truncate">

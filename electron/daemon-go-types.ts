@@ -345,6 +345,7 @@ export type EventType =
 	| "image_processed"
 	| "image_error"
 	| "processing_complete"
+	| "processing_cancelled"
 	// Wallpaper Events
 	| "wallpaper_changed"
 	// Playlist Events
@@ -393,6 +394,14 @@ export interface ImageErrorPayload {
 }
 
 export interface ProcessingCompletePayload {
+	batch_id: string;
+	total: number;
+	succeeded: number;
+	failed: number;
+	elapsed_ms: number;
+}
+
+export interface ProcessingCancelledPayload {
 	batch_id: string;
 	total: number;
 	succeeded: number;

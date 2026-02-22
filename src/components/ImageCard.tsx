@@ -1,4 +1,4 @@
-import { useCallback, useId, useMemo, useRef } from "react";
+import { useCallback, useId, useMemo, useRef, useState } from "react";
 import type { ChangeEvent } from "react";
 import { isHotkeyPressed } from "react-hotkeys-hook";
 import { useShallow } from "zustand/react/shallow";
@@ -21,8 +21,13 @@ interface ImageCardProps {
 
 const { goDaemon } = window.API_RENDERER;
 
+const TRANSPARENT_PIXEL =
+	"data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
+
 function ImageCard({ Image }: ImageCardProps) {
 	const imgRef = useRef<HTMLImageElement>(null);
+	const imgErrorCountRef = useRef(0);
+	const [imgBroken, setImgBroken] = useState(false);
 	const overlayId = useId();
 	const monitorSelection = useMonitorStore((s) => s.monitorSelection);
 	const {
@@ -208,13 +213,17 @@ function ImageCard({ Image }: ImageCardProps) {
 						? "w-full h-auto aspect-[3/2] object-cover block"
 						: "transform-gpu rounded-lg transition-all duration-300 group-hover:scale-110 group-hover:object-center w-full h-auto aspect-[3/2] object-cover"
 				}
-				src={Image.thumbnails?.default?.trim() || Image.path}
+				src={imgBroken ? TRANSPARENT_PIXEL : (Image.thumbnails?.default?.trim() || Image.path)}
 				alt={Image.name}
 				draggable={false}
 				loading="lazy"
 				onError={({ currentTarget }) => {
-					currentTarget.onerror = null;
-					currentTarget.src = Image.path;
+					imgErrorCountRef.current++;
+					if (imgErrorCountRef.current === 1 && Image.thumbnails?.default?.trim()) {
+						currentTarget.src = Image.path;
+						return;
+					}
+					setImgBroken(true);
 				}}
 			/>
 		</picture>

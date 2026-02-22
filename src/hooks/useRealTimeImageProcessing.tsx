@@ -7,11 +7,13 @@ import type {
 	ImageProcessedPayload,
 	ImageErrorPayload,
 	ProcessingCompletePayload,
+	ProcessingCancelledPayload,
 } from "../../electron/daemon-go-types";
 
 export function useRealTimeImageProcessing() {
 	const cleanupRef = useRef<(() => void) | null>(null);
 	const reQueryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+	const lastReQueryRef = useRef<number>(0);
 
 	useEffect(() => {
 		const { startBatch, updateBatch, completeBatch } = useImageProcessingStore.getState();
@@ -46,19 +48,24 @@ export function useRealTimeImageProcessing() {
 					data.elapsed_ms,
 				);
 
-				if (reQueryTimeoutRef.current) {
-					clearTimeout(reQueryTimeoutRef.current);
+				const THROTTLE_MS = 2000;
+				const now = Date.now();
+				const elapsed = now - lastReQueryRef.current;
+
+				if (!reQueryTimeoutRef.current) {
+					const delay = elapsed >= THROTTLE_MS ? 0 : THROTTLE_MS - elapsed;
+					reQueryTimeoutRef.current = setTimeout(() => {
+						lastReQueryRef.current = Date.now();
+						reQueryTimeoutRef.current = null;
+						try {
+							startTransition(() => {
+								useImagesStore.getState().reQueryImages();
+							});
+						} catch (error) {
+							console.error("Error re-querying images:", error);
+						}
+					}, delay);
 				}
-				reQueryTimeoutRef.current = setTimeout(() => {
-					try {
-						startTransition(() => {
-							useImagesStore.getState().reQueryImages();
-						});
-					} catch (error) {
-						console.error("Error re-querying images:", error);
-					}
-					reQueryTimeoutRef.current = null;
-				}, 1000);
 			} catch (error) {
 				console.error("Error handling image_processed:", error);
 			}
@@ -94,6 +101,28 @@ export function useRealTimeImageProcessing() {
 			}
 		};
 
+		const handleProcessingCancelled = (...args: unknown[]) => {
+			const data = args[0] as ProcessingCancelledPayload;
+			try {
+				completeBatch(data.batch_id);
+
+				const { addToast } = useToastStore.getState();
+				addToast(
+					`Import cancelled (${data.succeeded}/${data.total} images imported)`,
+					"info",
+					5000,
+				);
+
+				setTimeout(() => {
+					startTransition(() => {
+						useImagesStore.getState().reQueryImages();
+					});
+				}, 500);
+			} catch (error) {
+				console.error("Error handling processing_cancelled:", error);
+			}
+		};
+
 		const handleImagesUpdated = () => {
 			try {
 				setTimeout(() => {
@@ -110,6 +139,7 @@ export function useRealTimeImageProcessing() {
 		const disposeProcessed = goDaemon.on("image_processed", handleImageProcessed);
 		const disposeError = goDaemon.on("image_error", handleImageError);
 		const disposeComplete = goDaemon.on("processing_complete", handleProcessingComplete);
+		const disposeCancelled = goDaemon.on("processing_cancelled", handleProcessingCancelled);
 		const disposeUpdated = goDaemon.on("images_updated", handleImagesUpdated);
 
 		cleanupRef.current = () => {
@@ -118,6 +148,7 @@ export function useRealTimeImageProcessing() {
 				disposeProcessed();
 				disposeError();
 				disposeComplete();
+				disposeCancelled();
 				disposeUpdated();
 			} catch (error) {
 				console.error("Error cleaning up listeners:", error);

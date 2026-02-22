@@ -235,18 +235,9 @@ func (h *FolderHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	WriteJSON(w, http.StatusOK, map[string]any{"deleted": true, "mode": mode})
 }
 
-// reparentContents moves all images and subfolders from the deleted folder to its parent.
+// reparentContents recursively reparents all images from the folder tree to
+// newParentID, then deletes all subfolders (depth-first).
 func (h *FolderHandler) reparentContents(ctx context.Context, folderID int, newParentID *int) error {
-	// Re-parent images: set folder_id to the deleted folder's parent.
-	allImages, err := h.imageStore.GetAll(ctx, store.ImageQueryOpts{
-		FolderID: &folderID,
-		Page:     1,
-		PerPage:  200,
-	})
-	if err != nil {
-		return err
-	}
-
 	var parentVal any
 	if newParentID != nil {
 		parentVal = *newParentID
@@ -254,39 +245,63 @@ func (h *FolderHandler) reparentContents(ctx context.Context, folderID int, newP
 		parentVal = nil
 	}
 
-	for _, img := range allImages.Data {
-		if _, err := h.imageStore.Update(ctx, img.ID, map[string]any{"folder_id": parentVal}); err != nil {
-			slog.Warn("reparent image failed", "image_id", img.ID, "error", err)
-		}
+	if err := h.reparentImagesRecursive(ctx, folderID, parentVal); err != nil {
+		return err
 	}
 
-	for allImages.Pagination.TotalPages > allImages.Pagination.Page {
-		allImages, err = h.imageStore.GetAll(ctx, store.ImageQueryOpts{
+	return h.deleteSubfoldersRecursive(ctx, folderID)
+}
+
+// reparentImagesRecursive moves all images in folderID and its subfolders to targetParent.
+func (h *FolderHandler) reparentImagesRecursive(ctx context.Context, folderID int, targetParent any) error {
+	// Reparent images in this folder (paginated).
+	for {
+		page, err := h.imageStore.GetAll(ctx, store.ImageQueryOpts{
 			FolderID: &folderID,
-			Page:     allImages.Pagination.Page + 1,
+			Page:     1,
 			PerPage:  200,
 		})
 		if err != nil {
 			return err
 		}
-		for _, img := range allImages.Data {
-			if _, err := h.imageStore.Update(ctx, img.ID, map[string]any{"folder_id": parentVal}); err != nil {
+		if len(page.Data) == 0 {
+			break
+		}
+		for _, img := range page.Data {
+			if _, err := h.imageStore.Update(ctx, img.ID, map[string]any{"folder_id": targetParent}); err != nil {
 				slog.Warn("reparent image failed", "image_id", img.ID, "error", err)
 			}
 		}
 	}
 
+	// Recurse into subfolders.
 	subfolders, err := h.folderStore.GetAll(ctx, &folderID)
 	if err != nil {
 		return err
 	}
 	for _, sub := range subfolders {
-		updates := map[string]any{"parent_id": parentVal}
-		if _, err := h.folderStore.Update(ctx, sub.ID, updates); err != nil {
-			slog.Warn("reparent subfolder failed", "folder_id", sub.ID, "error", err)
+		if err := h.reparentImagesRecursive(ctx, sub.ID, targetParent); err != nil {
+			return err
 		}
 	}
 
+	return nil
+}
+
+// deleteSubfoldersRecursive deletes all subfolders under folderID (depth-first).
+func (h *FolderHandler) deleteSubfoldersRecursive(ctx context.Context, folderID int) error {
+	subfolders, err := h.folderStore.GetAll(ctx, &folderID)
+	if err != nil {
+		return err
+	}
+	for _, sub := range subfolders {
+		if err := h.deleteSubfoldersRecursive(ctx, sub.ID); err != nil {
+			return err
+		}
+		if err := h.folderStore.Delete(ctx, sub.ID); err != nil {
+			slog.Warn("delete subfolder failed", "folder_id", sub.ID, "error", err)
+		}
+	}
 	return nil
 }
 

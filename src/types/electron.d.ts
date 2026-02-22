@@ -44,6 +44,9 @@ declare global {
 					paths: string[],
 					folderID?: number | null,
 				) => Promise<{ status: string; total: number }>;
+				cancelImport: (
+					batchID: string,
+				) => Promise<{ status: string; batch_id: string }>;
 				deleteImages: (ids: number[]) => Promise<{ deleted: number }>;
 				updateImage: (id: number, update: UpdateImageRequest) => Promise<Image>;
 				renameImage: (id: number, name: string) => Promise<Image>;
@@ -208,6 +211,10 @@ declare global {
 				files?: string[];
 				folderName?: string;
 				error?: string;
+			}>;
+			scanDirectory: (dirPath: string) => Promise<{
+				files: string[];
+				folderName: string;
 			}>;
 			handleOpenImages: (imagesObject: {
 				success: boolean;

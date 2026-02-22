@@ -14,6 +14,7 @@ import NavBar from "./NavBar";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useDesignSystemStore } from "../../stores/designSystemStore";
 import { UrlImportWarningModal } from "../UrlImportWarningModal";
+import openImagesStore from "../../hooks/useOpenImages";
 
 const IMAGE_EXTENSIONS = new Set([
 	".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg", ".tiff", ".tif",
@@ -95,7 +96,8 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({
 		const uriList = e.dataTransfer.getData("text/uri-list");
 		const textPlain = e.dataTransfer.getData("text/plain");
 
-		const paths: string[] = [];
+		const imagePaths: string[] = [];
+		const otherPaths: string[] = [];
 		for (let i = 0; i < (files?.length ?? 0); i++) {
 			const file = files[i];
 			let filePath: string | undefined;
@@ -105,14 +107,44 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({
 			if (!filePath) continue;
 			const ext = filePath.slice(filePath.lastIndexOf(".")).toLowerCase();
 			if (IMAGE_EXTENSIONS.has(ext)) {
-				paths.push(filePath);
+				imagePaths.push(filePath);
+			} else {
+				otherPaths.push(filePath);
 			}
 		}
 
-		if (paths.length > 0) {
-			void window.API_RENDERER.goDaemon.importImages(paths);
+		// Fallback for Linux file managers (Nautilus/GTK) that deliver
+		// dropped files as file:// URIs instead of populating dataTransfer.files.
+		if (imagePaths.length === 0 && otherPaths.length === 0) {
+			const rawUri = uriList || textPlain || "";
+			const fileUris = rawUri
+				.split(/\r?\n/)
+				.map((u) => u.trim())
+				.filter((u) => u.startsWith("file://"));
+
+			for (const uri of fileUris) {
+				const fsPath = decodeURIComponent(uri.replace(/^file:\/\//, ""));
+				const ext = fsPath.slice(fsPath.lastIndexOf(".")).toLowerCase();
+				if (IMAGE_EXTENSIONS.has(ext)) {
+					imagePaths.push(fsPath);
+				} else {
+					otherPaths.push(fsPath);
+				}
+			}
+		}
+
+		if (imagePaths.length > 0) {
+			void window.API_RENDERER.goDaemon.importImages(imagePaths);
+		}
+
+		if (otherPaths.length > 0) {
+			for (const dirPath of otherPaths) {
+				void openImagesStore.getState().importDroppedDirectory(dirPath);
+			}
 			return;
 		}
+
+		if (imagePaths.length > 0) return;
 
 		const rawUrl = uriList || textPlain || "";
 		const urls = rawUrl
@@ -184,10 +216,10 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({
 							/>
 						</svg>
 						<span className="text-2xl font-bold text-primary">
-							Drop images to import
+							Drop images or folders to import
 						</span>
 						<span className="text-sm text-base-content/60">
-							JPG, PNG, GIF, WebP, BMP, SVG
+							JPG, PNG, GIF, WebP, BMP, SVG, or folders
 						</span>
 					</div>
 				</div>

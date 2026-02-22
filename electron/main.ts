@@ -3,7 +3,7 @@ import { join } from "node:path";
 import {
 	Tray,
 	app,
-	BrowserWindow,
+	type BrowserWindow,
 	globalShortcut,
 	Menu,
 	nativeImage,
@@ -139,11 +139,9 @@ async function initializeApp(): Promise<void> {
 
 		// Register custom atom:// protocol for file access
 		protocol.registerFileProtocol("atom", (request, callback) => {
-			const url = request.url;
-			// Remove the atom:// prefix and convert back to file path
+			const url = decodeURI(request.url);
 			const filePath = url.replace("atom://", "/");
 
-			// Check if file exists and is accessible
 			readFile(filePath)
 				.then(() => {
 					callback({ path: filePath });

@@ -232,6 +232,7 @@ function ImageDetailSidebar() {
 
 					{/* Metadata */}
 					<div className="space-y-1 text-xs text-base-content/70">
+						<p>ID: {selectedImage.id}</p>
 						<p>
 							{selectedImage.width} &times; {selectedImage.height}
 						</p>

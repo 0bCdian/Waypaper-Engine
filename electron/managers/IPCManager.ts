@@ -24,6 +24,37 @@ import type {
 	SwwwConfig,
 } from "../daemon-go-types";
 
+const IMAGE_EXTENSIONS = new Set([
+	".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg",
+]);
+
+async function scanDirectoryForImages(dirPath: string): Promise<string[]> {
+	const imageFiles: string[] = [];
+	try {
+		const entries = await readdir(dirPath);
+		for (const entry of entries) {
+			const fullPath = join(dirPath, entry);
+			try {
+				const stats = await stat(fullPath);
+				if (stats.isDirectory()) {
+					const subImages = await scanDirectoryForImages(fullPath);
+					imageFiles.push(...subImages);
+				} else if (stats.isFile()) {
+					const ext = entry.toLowerCase().substring(entry.lastIndexOf("."));
+					if (IMAGE_EXTENSIONS.has(ext)) {
+						imageFiles.push(fullPath);
+					}
+				}
+			} catch {
+				// Skip inaccessible files
+			}
+		}
+	} catch (err) {
+		console.error(`Error scanning directory ${dirPath}:`, err);
+	}
+	return imageFiles;
+}
+
 export interface IPCHandler {
 	channel: string;
 	handler: (
@@ -239,52 +270,11 @@ export class IPCManager {
 					let folderName: string | undefined;
 
 					if (action === "folder") {
-						const imageExtensions = new Set([
-							".jpg",
-							".jpeg",
-							".png",
-							".gif",
-							".bmp",
-							".webp",
-							".svg",
-						]);
-
-						const scanDirectory = async (
-							dirPath: string,
-						): Promise<string[]> => {
-							const imageFiles: string[] = [];
-							try {
-								const entries = await readdir(dirPath);
-								for (const entry of entries) {
-									const fullPath = join(dirPath, entry);
-									try {
-										const stats = await stat(fullPath);
-										if (stats.isDirectory()) {
-											const subImages = await scanDirectory(fullPath);
-											imageFiles.push(...subImages);
-										} else if (stats.isFile()) {
-											const ext = entry
-												.toLowerCase()
-												.substring(entry.lastIndexOf("."));
-											if (imageExtensions.has(ext)) {
-												imageFiles.push(fullPath);
-											}
-										}
-									} catch {
-										// Skip inaccessible files
-									}
-								}
-							} catch (err) {
-								console.error(`Error scanning directory ${dirPath}:`, err);
-							}
-							return imageFiles;
-						};
-
 						for (const folderPath of result.filePaths) {
 							if (!folderName) {
 								folderName = folderPath.split("/").pop() || folderPath.split("\\").pop();
 							}
-							const folderImages = await scanDirectory(folderPath);
+							const folderImages = await scanDirectoryForImages(folderPath);
 							files.push(...folderImages);
 						}
 					} else {
@@ -332,6 +322,20 @@ export class IPCManager {
 						error: error instanceof Error ? error.message : "Unknown error",
 					};
 				}
+			},
+		});
+
+		this.registerHandler({
+			channel: "scan-directory",
+			handler: async (_event, ...args: unknown[]) => {
+				const dirPath = args[0] as string;
+				const stats_ = await stat(dirPath);
+				if (!stats_.isDirectory()) {
+					throw new Error("Path is not a directory");
+				}
+				const files = await scanDirectoryForImages(dirPath);
+				const folderName = dirPath.split("/").pop() || dirPath.split("\\").pop() || dirPath;
+				return { files, folderName };
 			},
 		});
 
@@ -438,6 +442,10 @@ export class IPCManager {
 					return await goDaemonClient.importImages(
 						p?.paths as string[],
 						p?.folder_id as number | undefined,
+					);
+				case "cancel_import":
+					return await goDaemonClient.cancelImport(
+						p?.batch_id as string,
 					);
 				case "delete_images":
 					return await goDaemonClient.deleteImages(p?.ids as number[]);
@@ -609,6 +617,7 @@ export class IPCManager {
 			"image_processed",
 			"image_error",
 			"processing_complete",
+			"processing_cancelled",
 			"wallpaper_changed",
 			"playlist_started",
 			"playlist_stopped",

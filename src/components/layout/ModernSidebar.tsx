@@ -11,6 +11,7 @@ import { Link, useLocation } from "react-router-dom";
 import SidebarConfiguration from "../SidebarConfiguration";
 import { DRAWER_CHECKBOX_ID } from "./ModernAppLayout";
 import { useIsNeo } from "../../hooks/useIsNeo";
+import { confirmDialog } from "../ConfirmDialog";
 
 /** Programmatically close the drawer by unchecking the toggle */
 export function closeDrawer() {
@@ -41,7 +42,7 @@ export const SidebarContent: React.FC = () => {
 					<div className="flex items-center gap-3 mb-6">
 						<div className={`w-12 h-12 overflow-hidden flex items-center justify-center ${isNeo ? "neo-icon-box" : "rounded-lg"}`}>
 							<img
-								src="/app.png"
+								src={`${import.meta.env.BASE_URL}app.png`}
 								alt="Waypaper Engine"
 								className="w-full h-full object-contain"
 							/>
@@ -161,8 +162,13 @@ export const SidebarContent: React.FC = () => {
 					<div className="mt-auto pt-4 border-t border-base-300">
 						<button
 							type="button"
-							onClick={() => {
-								const quit = window.confirm("Are you sure you want to quit?");
+							onClick={async () => {
+								const quit = await confirmDialog({
+									title: "Quit Application",
+									message: "Are you sure you want to quit?",
+									confirmLabel: "Quit",
+									danger: true,
+								});
 								if (quit) {
 									window.API_RENDERER.exitApp();
 								}

@@ -5,6 +5,7 @@ import (
 	"image"
 	"os"
 	"path/filepath"
+	"sync"
 
 	"github.com/chai2010/webp"
 	"github.com/disintegration/imaging"
@@ -41,6 +42,7 @@ func NewThumbnailer(thumbnailsDir string) *Thumbnailer {
 }
 
 // Generate creates thumbnails for the given source image.
+// All resolutions are generated concurrently from a single decoded source.
 // Returns a map of resolution label to thumbnail absolute path.
 func (t *Thumbnailer) Generate(sourcePath string, imageID int) (map[string]string, error) {
 	src, err := imaging.Open(sourcePath)
@@ -48,22 +50,42 @@ func (t *Thumbnailer) Generate(sourcePath string, imageID int) (map[string]strin
 		return nil, fmt.Errorf("thumbnailer: open source: %w", err)
 	}
 
-	thumbnails := make(map[string]string, len(t.resolutions))
-
+	// Ensure all resolution directories exist before spawning goroutines.
 	for _, res := range t.resolutions {
 		resDir := filepath.Join(t.thumbnailsDir, res.Label)
 		if err := os.MkdirAll(resDir, 0o755); err != nil {
 			return nil, fmt.Errorf("thumbnailer: create dir %s: %w", res.Label, err)
 		}
+	}
 
-		outPath := filepath.Join(resDir, fmt.Sprintf("%d.webp", imageID))
-		thumb := fitImage(src, res.MaxWidth, res.MaxHeight)
+	type thumbEntry struct {
+		label   string
+		outPath string
+		err     error
+	}
 
-		if err := writeWebP(outPath, thumb); err != nil {
-			return nil, fmt.Errorf("thumbnailer: %s: %w", res.Label, err)
+	entries := make([]thumbEntry, len(t.resolutions))
+	var wg sync.WaitGroup
+	wg.Add(len(t.resolutions))
+
+	for i, res := range t.resolutions {
+		go func(idx int, res ThumbnailResolution) {
+			defer wg.Done()
+			outPath := filepath.Join(t.thumbnailsDir, res.Label, fmt.Sprintf("%d.webp", imageID))
+			thumb := fitImage(src, res.MaxWidth, res.MaxHeight)
+			err := writeWebP(outPath, thumb)
+			entries[idx] = thumbEntry{label: res.Label, outPath: outPath, err: err}
+		}(i, res)
+	}
+
+	wg.Wait()
+
+	thumbnails := make(map[string]string, len(t.resolutions))
+	for _, e := range entries {
+		if e.err != nil {
+			return nil, fmt.Errorf("thumbnailer: %s: %w", e.label, e.err)
 		}
-
-		thumbnails[res.Label] = outPath
+		thumbnails[e.label] = e.outPath
 	}
 
 	return thumbnails, nil
