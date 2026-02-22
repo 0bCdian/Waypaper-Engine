@@ -119,10 +119,10 @@ export class ConfigReader extends EventEmitter {
 			this.config = this.expandPaths(this.config);
 			return this.config;
 		} catch (error) {
-			logger.error("Failed to load config, using default configuration", {
-				error: error instanceof Error ? error.message : String(error),
-				configPath: this.configPath,
-			});
+		logger.error(
+			{ err: error instanceof Error ? error.message : String(error), configPath: this.configPath },
+			"Failed to load config, using default configuration",
+		);
 			this.config = this.getDefaultConfig();
 			return this.config;
 		}
@@ -262,10 +262,10 @@ export class ConfigReader extends EventEmitter {
 
 			this.isWatching = true;
 		} catch (error) {
-			logger.error("Failed to start watching config file", {
-				error: error instanceof Error ? error.message : String(error),
-				configPath: this.configPath,
-			});
+		logger.error(
+			{ err: error instanceof Error ? error.message : String(error), configPath: this.configPath },
+			"Failed to start watching config file",
+		);
 		}
 	}
 
@@ -283,10 +283,10 @@ export class ConfigReader extends EventEmitter {
 			const newConfig = this.loadConfig();
 			this.emit("configChanged", newConfig);
 		} catch (error) {
-			logger.error("Failed to reload configuration", {
-				error: error instanceof Error ? error.message : String(error),
-				configPath: this.configPath,
-			});
+		logger.error(
+			{ err: error instanceof Error ? error.message : String(error), configPath: this.configPath },
+			"Failed to reload configuration",
+		);
 		}
 	}
 

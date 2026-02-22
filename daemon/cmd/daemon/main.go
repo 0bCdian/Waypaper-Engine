@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"io"
 	"log/slog"
 	"os"
 	"os/signal"
@@ -288,13 +287,19 @@ func startDaemon(configPath string, logLevel string) error {
 	return nil
 }
 
-// setupLogging configures slog with file output (via lumberjack) and stderr.
+// logLevel is a package-level LevelVar so the level can be changed at runtime.
+var programLevel = new(slog.LevelVar)
+
+// setupLogging configures slog with a human-readable text handler for stderr
+// and a JSON handler for the log file (via lumberjack rotation).
+// Level precedence: CLI flag > WAYPAPER_LOG_LEVEL env var > config file > info.
 func setupLogging(cfg *config.ViperManager, levelOverride string) {
 	logFile := cfg.GetLogFile()
 
-	// Determine log level.
-	level := slog.LevelInfo
 	levelStr := levelOverride
+	if levelStr == "" {
+		levelStr = os.Getenv("WAYPAPER_LOG_LEVEL")
+	}
 	if levelStr == "" {
 		fullCfg, _ := cfg.GetConfig()
 		if fullCfg != nil {
@@ -303,22 +308,26 @@ func setupLogging(cfg *config.ViperManager, levelOverride string) {
 	}
 	switch levelStr {
 	case "debug":
-		level = slog.LevelDebug
+		programLevel.Set(slog.LevelDebug)
+	case "info":
+		programLevel.Set(slog.LevelInfo)
 	case "warn":
-		level = slog.LevelWarn
+		programLevel.Set(slog.LevelWarn)
 	case "error":
-		level = slog.LevelError
+		programLevel.Set(slog.LevelError)
+	default:
+		programLevel.Set(slog.LevelInfo)
 	}
 
-	// Setup writers.
-	var writers []io.Writer
-	writers = append(writers, os.Stderr)
+	handlers := []slog.Handler{
+		slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: programLevel}),
+	}
 
 	if logFile != "" {
 		if err := system.EnsureParentDir(logFile); err == nil {
 			lj := &lumberjack.Logger{
 				Filename:   logFile,
-				MaxSize:    10, // megabytes
+				MaxSize:    10,
 				MaxBackups: 3,
 				Compress:   false,
 			}
@@ -333,17 +342,11 @@ func setupLogging(cfg *config.ViperManager, levelOverride string) {
 				}
 			}
 
-			writers = append(writers, lj)
+			handlers = append(handlers, slog.NewJSONHandler(lj, &slog.HandlerOptions{Level: programLevel}))
 		}
 	}
 
-	// Create slog handler with multi-writer.
-	handlerOpts := &slog.HandlerOptions{Level: level}
-	multi := slogmulti.Fanout(
-		slog.NewJSONHandler(io.MultiWriter(writers...), handlerOpts),
-	)
-
-	slog.SetDefault(slog.New(multi))
+	slog.SetDefault(slog.New(slogmulti.Fanout(handlers...)))
 }
 
 // cleanStaleProcessedDir removes the processed/ split-image cache when the

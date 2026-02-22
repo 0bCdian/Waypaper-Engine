@@ -7,6 +7,7 @@ import { useFoldersStore, getAllImageIdsInFolder } from "../stores/foldersStore"
 import { useImagesStore } from "../stores/images";
 import { usePlaylistStore } from "../stores/playlist";
 import DragPreview from "./DragPreview";
+import { logger } from "../utils/logger";
 
 const { goDaemon } = window.API_RENDERER;
 
@@ -72,7 +73,7 @@ export default function AppDragDropProvider({
 				}
 
 				dispatchDrop(sourceData, targetData, operation).catch((err) => {
-					console.error("Drop handler error:", err);
+					logger.error("Drop handler error:", err);
 				}).finally(() => useDragStore.getState().reset());
 			}}
 		>

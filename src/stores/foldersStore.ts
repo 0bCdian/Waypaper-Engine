@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { Folder } from "../../electron/daemon-go-types";
 import { getThumbnailSrc } from "../utils/utilities";
+import { logger } from "../utils/logger";
 
 const { goDaemon } = window.API_RENDERER;
 
@@ -59,7 +60,7 @@ export const useFoldersStore = create<FoldersState>()((set, get) => ({
 			set({ folders, isLoading: false });
 			void get().fetchFolderPreviews(folders.map((f) => f.id));
 		} catch (error) {
-			console.error("FoldersStore: Error fetching folders:", error);
+			logger.error("FoldersStore: Error fetching folders:", error);
 			set({ folders: [], isLoading: false });
 		}
 	},
@@ -103,7 +104,7 @@ export const useFoldersStore = create<FoldersState>()((set, get) => ({
 			const result = await goDaemon.getFolderPath(folderId);
 			set({ breadcrumbPath: result.data || [] });
 		} catch (error) {
-			console.error("FoldersStore: Error fetching path:", error);
+			logger.error("FoldersStore: Error fetching path:", error);
 			set({ breadcrumbPath: [] });
 		}
 	},

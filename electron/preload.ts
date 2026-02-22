@@ -436,6 +436,15 @@ const electronAPI = {
 
 	revealInFileManager: (path: string) =>
 		ipcRenderer.invoke("reveal-in-file-manager", path),
+
+	// LOGGING
+	logToMain: (
+		level: "debug" | "info" | "warn" | "error",
+		message: string,
+		data?: Record<string, unknown>,
+	): void => {
+		ipcRenderer.send("log-to-main", { level, message, data });
+	},
 };
 
 // Expose the API to the renderer process
@@ -445,4 +454,5 @@ contextBridge.exposeInMainWorld("API_RENDERER", electronAPI);
 const isDebug = process.argv.includes("--debug");
 contextBridge.exposeInMainWorld("__DEBUG__", isDebug);
 
-console.log("Preload script loaded - Go Daemon HTTP REST API ready");
+import { logger } from "./logger";
+logger.info("Preload script loaded - Go Daemon HTTP REST API ready");

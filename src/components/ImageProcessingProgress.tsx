@@ -3,6 +3,7 @@ import {
 	type BatchProgress,
 } from "../stores/imageProcessingStore";
 import { confirmDialog } from "./ConfirmDialog";
+import { logger } from "../utils/logger";
 
 function BatchCard({
 	batchId,
@@ -24,7 +25,7 @@ function BatchCard({
 			try {
 				await window.API_RENDERER.goDaemon.cancelImport(batchId);
 			} catch (err) {
-				console.error("Failed to cancel import:", err);
+				logger.error("Failed to cancel import:", err);
 			}
 		}
 	};

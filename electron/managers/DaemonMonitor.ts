@@ -7,6 +7,7 @@
 import type { BrowserWindow } from "electron";
 import { goDaemonClient } from "../goDaemonClient";
 import { initWaypaperDaemon } from "../../globals/startDaemons";
+import { logger } from "../logger";
 
 export interface DaemonStatus {
 	isRunning: boolean;
@@ -92,7 +93,7 @@ export class DaemonMonitor {
 			try {
 				await goDaemonClient.shutdown();
 			} catch (error) {
-				console.warn("DaemonMonitor: Error stopping daemon:", error);
+				logger.warn({ err: error }, "DaemonMonitor: Error stopping daemon");
 			}
 
 			await new Promise((resolve) => setTimeout(resolve, 1000));
@@ -108,7 +109,7 @@ export class DaemonMonitor {
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : String(error);
-			console.error("DaemonMonitor: Failed to restart daemon:", errorMessage);
+			logger.error({ err: errorMessage }, "DaemonMonitor: Failed to restart daemon");
 			return { success: false, error: errorMessage };
 		}
 	}
@@ -128,7 +129,7 @@ export class DaemonMonitor {
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : String(error);
-			console.error("DaemonMonitor: Failed to start daemon:", errorMessage);
+			logger.error({ err: errorMessage }, "DaemonMonitor: Failed to start daemon");
 			return { success: false, error: errorMessage };
 		}
 	}
@@ -148,7 +149,7 @@ export class DaemonMonitor {
 		} catch (error) {
 			const errorMessage =
 				error instanceof Error ? error.message : String(error);
-			console.error("DaemonMonitor: Failed to stop daemon:", errorMessage);
+			logger.error({ err: errorMessage }, "DaemonMonitor: Failed to stop daemon");
 			return { success: false, error: errorMessage };
 		}
 	}

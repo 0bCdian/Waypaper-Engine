@@ -3,6 +3,7 @@ import { useForm } from "@tanstack/react-form";
 import { useImagesStore } from "../stores/images";
 import type { Playlist } from "../../electron/daemon-go-types";
 import Modal, { type ModalHandle } from "./Modal";
+import { logger } from "../utils/logger";
 
 interface Props {
 	playlistsInDB: Playlist[];
@@ -87,7 +88,7 @@ const AddToPlaylistModal = ({ playlistsInDB, onPlaylistChanged }: Props) => {
 					if (modal) modal.close();
 				}, 1500);
 			} catch (err) {
-				console.error("Failed to add images to playlist:", err);
+				logger.error("Failed to add images to playlist:", err);
 				let errorMsg = "Failed to add images to playlist";
 				if (err instanceof Error) errorMsg = err.message;
 				setError(errorMsg);

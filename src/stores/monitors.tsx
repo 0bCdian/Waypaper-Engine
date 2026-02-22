@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { Monitor, MonitorMode } from "../../electron/daemon-go-types";
+import { logger } from "../utils/logger";
 
 export interface StoreMonitor extends Monitor {
 	isSelected: boolean;
@@ -65,7 +66,7 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
 				});
 			}
 		} catch (error) {
-			console.error("MonitorStore: Failed to save monitor config:", error);
+			logger.error("MonitorStore: Failed to save monitor config:", error);
 		}
 	},
 
@@ -76,14 +77,14 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
 	async reQueryMonitors() {
 		try {
 			if (!window.API_RENDERER?.goDaemon?.getMonitors) {
-				console.error("MonitorStore: getMonitors not available");
+				logger.error("MonitorStore: getMonitors not available");
 				return;
 			}
 
 			const monitors = await window.API_RENDERER.goDaemon.getMonitors();
 
 			if (!Array.isArray(monitors) || monitors.length === 0) {
-				console.warn("MonitorStore: No monitors found");
+				logger.warn("MonitorStore: No monitors found");
 				return;
 			}
 
@@ -95,7 +96,7 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
 
 			set({ monitorsList: storeMonitors });
 		} catch (error) {
-			console.error("MonitorStore: Error loading monitors:", error);
+			logger.error("MonitorStore: Error loading monitors:", error);
 		}
 	},
 
@@ -108,7 +109,7 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
 			set({ _isLoadingConfig: true });
 
 			if (!window.API_RENDERER?.goDaemon) {
-				console.error("MonitorStore: goDaemon not available");
+				logger.error("MonitorStore: goDaemon not available");
 				return;
 			}
 
@@ -146,7 +147,7 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
 			});
 			persistSelection(selection);
 		} catch (error) {
-			console.error("MonitorStore: Error setting last saved config:", error);
+			logger.error("MonitorStore: Error setting last saved config:", error);
 		} finally {
 			set({ _isLoadingConfig: false });
 		}

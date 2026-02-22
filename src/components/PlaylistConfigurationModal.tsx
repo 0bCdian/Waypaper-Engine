@@ -11,6 +11,7 @@ import {
 import { toSeconds, toHoursAndMinutes } from "../utils/utilities";
 import Modal, { type ModalHandle } from "./Modal";
 import { useModalStore } from "../stores/modalStore";
+import { logger } from "../utils/logger";
 
 const PlaylistConfigurationModal = () => {
 	const [showError, setShowError] = useState(false);
@@ -42,7 +43,7 @@ const PlaylistConfigurationModal = () => {
 			switch (value.type) {
 				case "timer":
 					if (value.hours === null || value.minutes === null) {
-						console.error("Hours and minutes are required");
+						logger.error("Hours and minutes are required");
 					} else {
 						const interval = toSeconds(
 							parseInt(value.hours, 10),
@@ -90,7 +91,7 @@ const PlaylistConfigurationModal = () => {
 					});
 					break;
 				default:
-					console.error("Invalid playlist type");
+					logger.error("Invalid playlist type");
 			}
 			closeModal();
 		},

@@ -12,6 +12,7 @@ import type {
 	ConfigSection,
 	ConfigChangeEvent,
 } from "../../shared/types/unifiedConfig";
+import { logger } from "../utils/logger";
 
 interface SettingsStoreState {
 	config: UnifiedConfig | null;
@@ -163,7 +164,7 @@ export const useSettingsStore = create<SettingsStore>()(
 						});
 					}
 				} catch (error) {
-					console.error("SettingsStore: Failed to load config:", error);
+					logger.error("SettingsStore: Failed to load config:", error);
 					set({
 						config: existing ?? defaultConfig,
 						isLoading: false,
@@ -252,7 +253,7 @@ export const useSettingsStore = create<SettingsStore>()(
 				_lastApiSaveAt = Date.now();
 				set({ lastSaved: Date.now() });
 			} catch (error) {
-				console.error("SettingsStore: Failed to update config:", error);
+				logger.error("SettingsStore: Failed to update config:", error);
 				set({
 					config: currentConfig,
 					errors: [
@@ -277,7 +278,7 @@ export const useSettingsStore = create<SettingsStore>()(
 					}
 					set({ config: defaultConfig, isLoading: false, isDirty: false });
 				} catch (error) {
-					console.error("SettingsStore: Failed to reset config:", error);
+					logger.error("SettingsStore: Failed to reset config:", error);
 					set({ isLoading: false });
 				}
 			},

@@ -16,6 +16,7 @@ import React, {
 import type { ThemeContextType } from "./types";
 import type { ThemeConfig } from "../themes/types";
 import { themes } from "../themes/themes";
+import { logger } from "../utils/logger";
 
 // Default theme name
 const DEFAULT_THEME_NAME = "dark";
@@ -123,7 +124,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 			try {
 				localStorage.setItem("waypaper-theme", themeName);
 			} catch (error) {
-				console.warn("Failed to persist theme selection:", error);
+				logger.warn("Failed to persist theme selection:", error);
 			}
 		}
 	};
@@ -165,7 +166,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 			try {
 				localStorage.setItem("waypaper-system-theme", mode);
 			} catch (error) {
-				console.warn("Failed to persist system theme preference:", error);
+				logger.warn("Failed to persist system theme preference:", error);
 			}
 		}
 
@@ -249,7 +250,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 				try {
 					stored = localStorage.getItem("waypaper-theme");
 				} catch (error) {
-					console.warn("Failed to load saved theme:", error);
+					logger.warn("Failed to load saved theme:", error);
 				}
 				if (stored && hasTheme(stored)) {
 					savedTheme = stored;
@@ -261,7 +262,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 
 				setIsLoading(false);
 			} catch (error) {
-				console.error("Failed to initialize theme:", error);
+				logger.error("Failed to initialize theme:", error);
 				applyTheme(defaultTheme);
 				setIsLoading(false);
 			}

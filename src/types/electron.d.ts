@@ -222,6 +222,13 @@ declare global {
 			}) => Promise<{ success: boolean; message?: string; error?: string }>;
 
 			revealInFileManager: (path: string) => Promise<{ success: boolean }>;
+
+			// LOGGING
+			logToMain: (
+				level: "debug" | "info" | "warn" | "error",
+				message: string,
+				data?: Record<string, unknown>,
+			) => void;
 		};
 	}
 }

@@ -15,6 +15,7 @@ import { useSettingsStore } from "../../stores/settingsStore";
 import { useDesignSystemStore } from "../../stores/designSystemStore";
 import { UrlImportWarningModal } from "../UrlImportWarningModal";
 import openImagesStore from "../../hooks/useOpenImages";
+import { logger } from "../../utils/logger";
 
 const IMAGE_EXTENSIONS = new Set([
 	".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp", ".svg", ".tiff", ".tif",
@@ -78,7 +79,7 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({
 				const tmpPath = await window.API_RENDERER.downloadUrl(url);
 				downloadedPaths.push(tmpPath);
 			} catch (err) {
-				console.error("Failed to download URL:", url, err);
+				logger.error("Failed to download URL:", url, err);
 			}
 		}
 		if (downloadedPaths.length > 0) {

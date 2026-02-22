@@ -8,6 +8,7 @@
 
 import { create } from "zustand";
 import { devtools } from "zustand/middleware";
+import { logger } from "../utils/logger";
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
@@ -74,7 +75,7 @@ function saveToStorage(state: DesignSystemState) {
 			}),
 		);
 	} catch {
-		console.warn("Failed to persist design system state");
+		logger.warn("Failed to persist design system state");
 	}
 }
 

@@ -12,6 +12,7 @@ import { useContextMenuStore } from "../stores/contextMenuStore";
 import { useToastStore } from "../stores/toastStore";
 import { buildImageMenuItems } from "../utils/contextMenuItems";
 import { useInlineRename } from "../hooks/useInlineRename";
+import { logger } from "../utils/logger";
 import type { rendererImage } from "../types/rendererTypes";
 import type { DragSourceData } from "../stores/dragStore";
 
@@ -90,7 +91,7 @@ function ImageCard({ Image }: ImageCardProps) {
 
 	const handleDoubleClick = () => {
 		if (!Image.id) {
-			console.error("Cannot set image - missing id", { Image });
+			logger.error("Cannot set image - missing id", { Image });
 			return;
 		}
 

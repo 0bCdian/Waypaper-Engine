@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { MonitorMode } from "../../electron/daemon-go-types";
+import { logger } from "../utils/logger";
 
 export interface WallhavenThumb {
 	large: string;
@@ -170,7 +171,7 @@ async function patchImageMetadata(
 			await window.API_RENDERER.goDaemon.updateImage(imageId, update);
 		}
 	} catch (err) {
-		console.error("Failed to patch image metadata:", err);
+		logger.error("Failed to patch image metadata:", err);
 	}
 }
 
@@ -447,7 +448,7 @@ export const useWallhavenStore = create<WallhavenState & WallhavenActions>()(
 					setTimeout(() => dispose?.(), 30000);
 				}
 			} catch (err) {
-				console.error("Wallhaven download failed:", err);
+				logger.error("Wallhaven download failed:", err);
 			} finally {
 				set((s) => {
 					const next = new Set(s.downloadingIds);
@@ -471,7 +472,7 @@ export const useWallhavenStore = create<WallhavenState & WallhavenActions>()(
 					mode,
 				);
 			} catch (err) {
-				console.error("Wallhaven download+set failed:", err);
+				logger.error("Wallhaven download+set failed:", err);
 			} finally {
 				set((s) => {
 					const next = new Set(s.downloadingIds);

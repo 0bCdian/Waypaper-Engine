@@ -6,6 +6,7 @@ import type {
 	ImageQueryParams,
 } from "../../electron/daemon-go-types";
 import { useFoldersStore } from "./foldersStore";
+import { logger } from "../utils/logger";
 
 const { goDaemon } = window.API_RENDERER;
 
@@ -178,7 +179,7 @@ export const useImagesStore = create<State>()((set, get) => ({
 			.getImages(mergedParams)
 			.then((response) => {
 				if (!response || !response.data || !Array.isArray(response.data)) {
-					console.warn("ImagesStore: Invalid images response:", response);
+					logger.warn("ImagesStore: Invalid images response:", response);
 					set(() => ({
 						imagesArray: [],
 						isEmpty: true,
@@ -218,7 +219,7 @@ export const useImagesStore = create<State>()((set, get) => ({
 				}));
 			})
 			.catch((error) => {
-				console.error("ImagesStore: Error loading images:", error);
+				logger.error("ImagesStore: Error loading images:", error);
 				set(() => ({
 					imagesArray: [],
 					isEmpty: true,

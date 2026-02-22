@@ -9,6 +9,7 @@ import { join } from "node:path";
 import type { ThemeManager } from "./ThemeManager";
 import { goDaemonClient } from "../goDaemonClient";
 import type { UnifiedConfig } from "../daemon-go-types";
+import { logger } from "../logger";
 
 export interface WindowConfig {
 	width?: number;
@@ -75,7 +76,7 @@ export class WindowManager {
 		try {
 			this.cachedConfig = await goDaemonClient.getConfig();
 		} catch (error) {
-			console.warn("WindowManager: failed to load config:", error);
+			logger.warn({ err: error }, "WindowManager: failed to load config");
 		}
 	}
 
@@ -109,7 +110,7 @@ export class WindowManager {
 		// Setup window event handlers
 		this.setupWindowEvents(id, window);
 
-		console.log(`Window created: ${id}`);
+		logger.info({ windowId: id }, "Window created");
 		return window;
 	}
 
@@ -130,7 +131,7 @@ export class WindowManager {
 		window.on("closed", () => {
 			this.windows.delete(id);
 			this.themeManager.unregisterWindow(window);
-			console.log(`Window closed: ${id}`);
+			logger.info({ windowId: id }, "Window closed");
 		});
 
 		// Window ready to show
@@ -141,7 +142,7 @@ export class WindowManager {
 				window.show();
 			}
 			this.isInitialWindow = false;
-			console.log(`Window ready: ${id}`);
+			logger.info({ windowId: id }, "Window ready");
 		});
 
 	}

@@ -13,6 +13,7 @@ import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { goDaemonClient } from "../goDaemonClient";
 import { daemonMonitor } from "./DaemonMonitor";
+import { logger } from "../logger";
 import type {
 	Image,
 	ImageQueryParams,
@@ -50,7 +51,7 @@ async function scanDirectoryForImages(dirPath: string): Promise<string[]> {
 			}
 		}
 	} catch (err) {
-		console.error(`Error scanning directory ${dirPath}:`, err);
+		logger.error({ err, dirPath }, "Error scanning directory");
 	}
 	return imageFiles;
 }
@@ -78,6 +79,7 @@ export class IPCManager {
 		this.setupWallhavenHandlers();
 		this.setupDownloadHandlers();
 		this.setupErrorHandling();
+		this.setupRendererLogging();
 
 		this.isInitialized = true;
 	}
@@ -88,16 +90,12 @@ export class IPCManager {
 
 	registerHandler(handler: IPCHandler): void {
 		if (this.handlers.has(handler.channel)) {
-			console.warn(
-				`IPC handler already exists for channel: ${handler.channel}`,
-			);
+		logger.warn({ channel: handler.channel }, "IPC handler already exists for channel");
 			return;
 		}
 
 		if (ipcMain.listenerCount(handler.channel) > 0) {
-			console.warn(
-				`IPC handler already registered in Electron for channel: ${handler.channel}`,
-			);
+		logger.warn({ channel: handler.channel }, "IPC handler already registered in Electron for channel");
 			return;
 		}
 
@@ -115,7 +113,7 @@ export class IPCManager {
 
 				return { success: true, data: result };
 			} catch (error) {
-				console.error(`IPC error: ${handler.channel}`, error);
+				logger.error({ err: error, channel: handler.channel }, "IPC error");
 
 				if (unwrappedChannels.includes(handler.channel)) {
 					throw error;
@@ -283,7 +281,7 @@ export class IPCManager {
 
 					return { success: true, files, folderName };
 				} catch (error) {
-					console.error("Error opening files:", error);
+					logger.error({ err: error }, "Error opening files");
 					return {
 						success: false,
 						error: error instanceof Error ? error.message : "Unknown error",
@@ -316,7 +314,7 @@ export class IPCManager {
 						message: `Processing ${files.length} images...`,
 					};
 				} catch (error) {
-					console.error("Error handling open images:", error);
+					logger.error({ err: error }, "Error handling open images");
 					return {
 						success: false,
 						error: error instanceof Error ? error.message : "Unknown error",
@@ -602,7 +600,7 @@ export class IPCManager {
 					throw new Error(`Unknown Go daemon action: ${action}`);
 			}
 		} catch (error) {
-			console.error(`Go daemon command failed: ${action}`, error);
+			logger.error({ err: error, action }, "Go daemon command failed");
 			throw error;
 		}
 	}
@@ -808,7 +806,7 @@ export class IPCManager {
 
 	private setupErrorHandling(): void {
 		process.on("uncaughtException", (error) => {
-			console.error("Uncaught Exception:", error);
+			logger.error({ err: error }, "Uncaught Exception");
 			this.broadcastToAllWindows("app-error", {
 				error: error.message,
 				stack: error.stack,
@@ -816,12 +814,43 @@ export class IPCManager {
 		});
 
 		process.on("unhandledRejection", (reason, _promise) => {
-			console.error("Unhandled Rejection:", reason);
+			logger.error({ err: reason }, "Unhandled Rejection");
 			this.broadcastToAllWindows("app-error", {
 				error: "Unhandled Promise Rejection",
 				reason: reason?.toString(),
 			});
 		});
+	}
+
+	// ============================================================================
+	// RENDERER LOG FORWARDING
+	// ============================================================================
+
+	private setupRendererLogging(): void {
+		const rendererLogger = logger.child({ module: "renderer" });
+		ipcMain.on(
+			"log-to-main",
+			(_event, payload: { level: string; message: string; data?: Record<string, unknown> }) => {
+				const { level, message, data } = payload;
+				const ctx = data ?? {};
+				switch (level) {
+					case "debug":
+						rendererLogger.debug(ctx, message);
+						break;
+					case "info":
+						rendererLogger.info(ctx, message);
+						break;
+					case "warn":
+						rendererLogger.warn(ctx, message);
+						break;
+					case "error":
+						rendererLogger.error(ctx, message);
+						break;
+					default:
+						rendererLogger.info(ctx, message);
+				}
+			},
+		);
 	}
 
 	// ============================================================================
@@ -864,7 +893,7 @@ export class IPCManager {
 			app.quit();
 			return true;
 		} catch (error) {
-			console.error("Error during application exit:", error);
+			logger.error({ err: error }, "Error during application exit");
 			app.quit();
 			return false;
 		}

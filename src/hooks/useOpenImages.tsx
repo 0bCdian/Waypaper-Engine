@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { openFileAction } from "../../shared/types";
 import { useFoldersStore } from "../stores/foldersStore";
+import { logger } from "../utils/logger";
 
 const { openFiles, handleOpenImages, scanDirectory } = window.API_RENDERER;
 
@@ -68,7 +69,7 @@ const openImagesStore = create<State & Actions>((set, get) => ({
 		try {
 			await handleOpenImages(imagesObject);
 		} catch (error) {
-			console.error("useOpenImages: Error calling handleOpenImages:", error);
+			logger.error("useOpenImages: Error calling handleOpenImages:", error);
 		}
 	},
 
@@ -77,11 +78,11 @@ const openImagesStore = create<State & Actions>((set, get) => ({
 		try {
 			result = await scanDirectory(dirPath);
 		} catch (error) {
-			console.error("useOpenImages: scanDirectory failed for", dirPath, error);
+			logger.error("useOpenImages: scanDirectory failed for", dirPath, error);
 			return;
 		}
 		if (result.files.length === 0) {
-			console.warn("useOpenImages: no images found in directory", dirPath);
+			logger.warn("useOpenImages: no images found in directory", dirPath);
 			return;
 		}
 		set({
@@ -109,7 +110,7 @@ const openImagesStore = create<State & Actions>((set, get) => ({
 					data: { files: pending.files, folder_id: folder.id },
 				});
 			} catch (error) {
-				console.error("useOpenImages: Error creating folder:", error);
+				logger.error("useOpenImages: Error creating folder:", error);
 			}
 		} else {
 			await handleOpenImages({

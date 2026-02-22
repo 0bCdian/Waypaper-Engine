@@ -6,6 +6,7 @@ import { useMonitorStore } from "../stores/monitors";
 import type { PlaylistImage } from "../../electron/daemon-go-types";
 import Modal, { type ModalHandle } from "./Modal";
 import { useModalStore } from "../stores/modalStore";
+import { logger } from "../utils/logger";
 const { goDaemon } = window.API_RENDERER;
 
 interface Props {
@@ -100,7 +101,7 @@ const SavePlaylistModal = ({ currentPlaylistName, onPlaylistChanged }: Props) =>
 							monitorSelection.mode,
 						);
 					} catch (startErr) {
-						console.error("Failed to start playlist:", startErr);
+						logger.error("Failed to start playlist:", startErr);
 					}
 				}
 
@@ -108,7 +109,7 @@ const SavePlaylistModal = ({ currentPlaylistName, onPlaylistChanged }: Props) =>
 				onPlaylistChanged();
 				closeModal();
 			} catch (err) {
-				console.error("Failed to save playlist:", err);
+				logger.error("Failed to save playlist:", err);
 				let errorDetail = "Unknown error";
 				if (err instanceof Error) errorDetail = err.message;
 				showError({

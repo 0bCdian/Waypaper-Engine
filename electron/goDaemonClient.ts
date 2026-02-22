@@ -1,6 +1,6 @@
 import { request as httpRequest, type IncomingMessage } from "node:http";
 import { EventEmitter } from "node:events";
-import { logger } from "../globals/setup";
+import { logger } from "./logger";
 import { configReader } from "../globals/configReader";
 import type {
 	Image,
@@ -158,7 +158,7 @@ export class GoDaemonClient extends EventEmitter {
 			});
 
 			res.on("error", (error) => {
-				logger.error("SSE connection error:", error);
+				logger.error({ err: error }, "SSE connection error");
 				this.sseConnection = null;
 				this.isConnected = false;
 				this.emit("error", error);
@@ -167,7 +167,7 @@ export class GoDaemonClient extends EventEmitter {
 		});
 
 		req.on("error", (error) => {
-			logger.error("SSE request error:", error);
+			logger.error({ err: error }, "SSE request error");
 			this.sseConnection = null;
 			this.isConnected = false;
 			this.emit("error", error);
@@ -194,10 +194,10 @@ export class GoDaemonClient extends EventEmitter {
 						const payload = JSON.parse(currentData);
 						this.emit(currentEvent as EventType, payload);
 					} catch (error) {
-						logger.error(
-							`Failed to parse SSE event data for ${currentEvent}:`,
-							error,
-						);
+					logger.error(
+						{ err: error, event: currentEvent },
+						"Failed to parse SSE event data",
+					);
 					}
 				}
 				currentEvent = "";

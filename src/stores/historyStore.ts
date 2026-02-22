@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { ImageHistoryEntry, Image } from "../../electron/daemon-go-types";
+import { logger } from "../utils/logger";
 
 const { goDaemon } = window.API_RENDERER;
 
@@ -56,7 +57,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
 				hasMore: entries.length >= limit,
 			});
 		} catch (err) {
-			console.error("Failed to fetch history:", err);
+			logger.error("Failed to fetch history:", err);
 		} finally {
 			set({ isLoading: false });
 		}
@@ -79,7 +80,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
 				hasMore: newer.length >= DEFAULT_LIMIT,
 			});
 		} catch (err) {
-			console.error("Failed to load more history:", err);
+			logger.error("Failed to load more history:", err);
 		} finally {
 			set({ isLoading: false });
 		}
@@ -90,7 +91,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
 			await goDaemon.clearImageHistory();
 			set({ entries: [], imageCache: new Map(), hasMore: false });
 		} catch (err) {
-			console.error("Failed to clear history:", err);
+			logger.error("Failed to clear history:", err);
 		}
 	},
 

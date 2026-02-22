@@ -11,6 +11,9 @@ import {
 	Notification,
 } from "electron";
 
+// Structured logger
+import { logger } from "./logger";
+
 // Daemon initialization
 import { initWaypaperDaemon } from "../globals/startDaemons";
 
@@ -147,7 +150,7 @@ async function initializeApp(): Promise<void> {
 					callback({ path: filePath });
 				})
 				.catch((error) => {
-					console.error("Failed to access file:", filePath, error);
+					logger.error({ err: error, filePath }, "Failed to access file");
 					callback({ error: -6 }); // ERR_FILE_NOT_FOUND
 				});
 		});
@@ -157,15 +160,15 @@ async function initializeApp(): Promise<void> {
 
 		// Initialize and start the daemon
 		try {
-			console.log("Initializing waypaper daemon...");
+			logger.info("Initializing waypaper daemon...");
 			await initWaypaperDaemon();
-			console.log("Daemon initialized successfully");
+			logger.info("Daemon initialized successfully");
 
 			// Connect to the daemon
 			await goDaemonClient.connect();
-			console.log("Connected to daemon successfully");
+			logger.info("Connected to daemon successfully");
 		} catch (error) {
-			console.error("Failed to initialize daemon:", error);
+			logger.error({ err: error }, "Failed to initialize daemon");
 			const { dialog: electronDialog } = await import("electron");
 			electronDialog.showErrorBox(
 				"Waypaper Engine — Daemon Error",
@@ -178,7 +181,7 @@ async function initializeApp(): Promise<void> {
 		// Create system tray icon
 		try {
 			await createAppTray();
-			console.log("Tray icon created");
+			logger.info("Tray icon created");
 
 			// Refresh tray menu when wallpaper changes
 			goDaemonClient.on("wallpaper_changed", () => {
@@ -188,27 +191,31 @@ async function initializeApp(): Promise<void> {
 			// Native desktop notifications when window is hidden
 			setupNativeNotifications();
 		} catch (error) {
-			console.error("Failed to create tray icon:", error);
+			logger.error({ err: error }, "Failed to create tray icon");
 		}
 
 	} catch (error) {
-		console.error("Failed to initialize application:", error);
+		logger.error({ err: error }, "Failed to initialize application");
 		throw error;
 	}
 }
 
 /**
- * Show a native desktop notification only when the window is hidden and notifications are enabled.
+ * Show a native desktop notification when the user can't see in-app toasts
+ * (window hidden to tray or minimized to taskbar) and notifications are enabled.
  */
 function notifyIfHidden(title: string, body: string): void {
-	if (mainWindow?.isVisible()) return;
+	if (mainWindow?.isVisible() && !mainWindow?.isMinimized()) return;
 	if (!windowManager?.cachedConfig?.app?.notifications) return;
 	new Notification({ title, body }).show();
 }
 
 /**
- * Send native desktop notifications for daemon events when the window is hidden.
- * In-app toasts handle visible-window notifications on the renderer side.
+ * Send native desktop notifications for daemon events when the window is
+ * hidden or minimized. In-app toasts handle the visible-window case on the
+ * renderer side (useNotifications hook).
+ *
+ * Skipped: playlist_image_changed (fires too frequently for native notifications).
  */
 function setupNativeNotifications(): void {
 	goDaemonClient.on("wallpaper_changed", (data: Record<string, unknown>) => {
@@ -218,16 +225,60 @@ function setupNativeNotifications(): void {
 		notifyIfHidden("Wallpaper Changed", `Wallpaper set on ${monitors}`);
 	});
 
+	goDaemonClient.on("processing_started", (data: Record<string, unknown>) => {
+		const total = Number(data?.total ?? 0);
+		notifyIfHidden("Import Started", `Importing ${total} images...`);
+	});
+
+	goDaemonClient.on("processing_complete", (data: Record<string, unknown>) => {
+		const succeeded = Number(data?.succeeded ?? 0);
+		const failed = Number(data?.failed ?? 0);
+		const msg = failed > 0
+			? `Processing complete: ${succeeded} images (${failed} errors)`
+			: `Processing complete: ${succeeded} images`;
+		notifyIfHidden("Processing Complete", msg);
+	});
+
+	goDaemonClient.on("processing_cancelled", (data: Record<string, unknown>) => {
+		const succeeded = Number(data?.succeeded ?? 0);
+		const total = Number(data?.total ?? 0);
+		notifyIfHidden("Import Cancelled", `Import cancelled (${succeeded}/${total} images imported)`);
+	});
+
 	goDaemonClient.on("playlist_started", (data: Record<string, unknown>) => {
-		notifyIfHidden("Playlist Started", `Playlist "${String(data?.name ?? "")}" started`);
+		const monitor = String(data?.monitor ?? "");
+		notifyIfHidden("Playlist Started", `Playlist started${monitor ? ` on ${monitor}` : ""}`);
 	});
 
 	goDaemonClient.on("playlist_stopped", (data: Record<string, unknown>) => {
-		notifyIfHidden("Playlist Stopped", `Playlist "${String(data?.name ?? "")}" stopped`);
+		const monitor = String(data?.monitor ?? "");
+		notifyIfHidden("Playlist Stopped", `Playlist stopped${monitor ? ` on ${monitor}` : ""}`);
 	});
 
-	goDaemonClient.on("processing_complete", () => {
-		notifyIfHidden("Processing Complete", "Image processing finished");
+	goDaemonClient.on("playlist_paused", (data: Record<string, unknown>) => {
+		const monitor = String(data?.monitor ?? "");
+		notifyIfHidden("Playlist Paused", `Playlist paused${monitor ? ` on ${monitor}` : ""}`);
+	});
+
+	goDaemonClient.on("playlist_resumed", (data: Record<string, unknown>) => {
+		const monitor = String(data?.monitor ?? "");
+		notifyIfHidden("Playlist Resumed", `Playlist resumed${monitor ? ` on ${monitor}` : ""}`);
+	});
+
+	goDaemonClient.on("monitor_connected", (data: Record<string, unknown>) => {
+		notifyIfHidden("Monitor Connected", `Monitor connected: ${String(data?.name ?? "unknown")}`);
+	});
+
+	goDaemonClient.on("monitor_disconnected", (data: Record<string, unknown>) => {
+		notifyIfHidden("Monitor Disconnected", `Monitor disconnected: ${String(data?.name ?? "unknown")}`);
+	});
+
+	goDaemonClient.on("sseDisconnected", () => {
+		notifyIfHidden("Daemon Connection Lost", "Lost connection to daemon — reconnecting...");
+	});
+
+	goDaemonClient.on("sseReconnected", () => {
+		notifyIfHidden("Daemon Reconnected", "Reconnected to daemon");
 	});
 }
 
@@ -290,7 +341,7 @@ function setupAppEvents(): void {
 			await initializeApp();
 			await createMainWindow();
 		} catch (error) {
-			console.error("Failed to start application:", error);
+			logger.error({ err: error }, "Failed to start application");
 			app.quit();
 		}
 	});
@@ -315,7 +366,7 @@ function setupAppEvents(): void {
 			const config = windowManager?.cachedConfig;
 			if (config?.app?.kill_daemon_on_exit) {
 				goDaemonClient.shutdown().catch((error) => {
-					console.error("Failed to stop daemon:", error);
+					logger.error({ err: error }, "Failed to stop daemon");
 				});
 			}
 
@@ -323,7 +374,7 @@ function setupAppEvents(): void {
 			if (themeManager) themeManager.cleanup();
 			if (ipcManager) ipcManager.cleanup();
 		} catch (error) {
-			console.error("Error during shutdown:", error);
+			logger.error({ err: error }, "Error during shutdown");
 		}
 	});
 
@@ -355,10 +406,7 @@ function setupDevTools(): void {
 				hardResetMethod: "exit",
 			});
 		} catch (error) {
-			console.warn(
-				"Live reload not available:",
-				error instanceof Error ? error.message : String(error),
-			);
+		logger.warn({ err: error }, "Live reload not available");
 		}
 	}
 }

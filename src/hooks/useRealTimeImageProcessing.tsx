@@ -2,6 +2,7 @@ import { useEffect, useRef, startTransition } from "react";
 import { useImagesStore } from "../stores/images";
 import { useImageProcessingStore } from "../stores/imageProcessingStore";
 import { useToastStore } from "../stores/toastStore";
+import { logger } from "../utils/logger";
 import type {
 	ProcessingStartedPayload,
 	ImageProcessedPayload,
@@ -18,7 +19,7 @@ export function useRealTimeImageProcessing() {
 	useEffect(() => {
 		const { startBatch, updateBatch, completeBatch } = useImageProcessingStore.getState();
 		if (!window.API_RENDERER?.goDaemon?.on) {
-			console.error("goDaemon event methods not available");
+			logger.error("goDaemon event methods not available");
 			return;
 		}
 
@@ -29,7 +30,7 @@ export function useRealTimeImageProcessing() {
 			try {
 				startBatch(data.batch_id, data.total);
 			} catch (error) {
-				console.error("Error handling processing_started:", error);
+				logger.error("Error handling processing_started:", error);
 			}
 		};
 
@@ -62,19 +63,19 @@ export function useRealTimeImageProcessing() {
 								useImagesStore.getState().reQueryImages();
 							});
 						} catch (error) {
-							console.error("Error re-querying images:", error);
+							logger.error("Error re-querying images:", error);
 						}
 					}, delay);
 				}
 			} catch (error) {
-				console.error("Error handling image_processed:", error);
+				logger.error("Error handling image_processed:", error);
 			}
 		};
 
 		const handleImageError = (...args: unknown[]) => {
 			const data = args[0] as ImageErrorPayload;
 			try {
-				console.error(`Failed to process: ${data.path} - ${data.error}`);
+				logger.error(`Failed to process: ${data.path} - ${data.error}`);
 				const { addToast } = useToastStore.getState();
 				addToast(
 					`Failed to process: ${data.path} - ${data.error}`,
@@ -82,7 +83,7 @@ export function useRealTimeImageProcessing() {
 					7000,
 				);
 			} catch (error) {
-				console.error("Error handling image_error:", error);
+				logger.error("Error handling image_error:", error);
 			}
 		};
 
@@ -97,7 +98,7 @@ export function useRealTimeImageProcessing() {
 					});
 				}, 500);
 			} catch (error) {
-				console.error("Error handling processing_complete:", error);
+				logger.error("Error handling processing_complete:", error);
 			}
 		};
 
@@ -119,7 +120,7 @@ export function useRealTimeImageProcessing() {
 					});
 				}, 500);
 			} catch (error) {
-				console.error("Error handling processing_cancelled:", error);
+				logger.error("Error handling processing_cancelled:", error);
 			}
 		};
 
@@ -131,7 +132,7 @@ export function useRealTimeImageProcessing() {
 					});
 				}, 300);
 			} catch (error) {
-				console.error("Error handling images_updated:", error);
+				logger.error("Error handling images_updated:", error);
 			}
 		};
 
@@ -151,7 +152,7 @@ export function useRealTimeImageProcessing() {
 				disposeCancelled();
 				disposeUpdated();
 			} catch (error) {
-				console.error("Error cleaning up listeners:", error);
+				logger.error("Error cleaning up listeners:", error);
 			}
 		};
 

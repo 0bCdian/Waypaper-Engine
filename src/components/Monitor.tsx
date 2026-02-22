@@ -3,6 +3,7 @@ import type { monitorSelectType } from "../types/rendererTypes";
 import SvgComponent from "./AddImagesIcon";
 import { useState, useEffect, useMemo } from "react";
 import { calculateMinResolution, getThumbnailSrc } from "../utils/utilities";
+import { logger } from "../utils/logger";
 
 const goDaemon = window.API_RENDERER.goDaemon;
 
@@ -40,7 +41,7 @@ export function MonitorComponent({
 				}
 			})
 			.catch((err) => {
-				console.warn(`Failed to load wallpaper for ${monitor.name}:`, err);
+				logger.warn(`Failed to load wallpaper for ${monitor.name}:`, err);
 			})
 			.finally(() => {
 				setIsLoading(false);

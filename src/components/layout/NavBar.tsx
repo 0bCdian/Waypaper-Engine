@@ -12,6 +12,7 @@ import { useIsNeo } from "../../hooks/useIsNeo";
 import { cn } from "../../utils/cn";
 import { useModalStore } from "../../stores/modalStore";
 import { DRAWER_CHECKBOX_ID } from "./ModernAppLayout";
+import { logger } from "../../utils/logger";
 
 export interface NavBarProps {
 	className?: string;
@@ -31,7 +32,7 @@ export const NavBar: React.FC<NavBarProps> = ({ className }) => {
 			await reQueryMonitors();
 			useModalStore.getState().open("monitors");
 		} catch (error) {
-			console.error("Failed to query monitors:", error);
+			logger.error("Failed to query monitors:", error);
 		}
 	};
 

@@ -78,7 +78,7 @@ export async function initWaypaperDaemon() {
 				daemonReady = true;
 				logger.info("Daemon is ready and responsive");
 			} catch (error) {
-				logger.debug(`Connection attempt ${attempts} failed:`, error);
+				logger.debug({ err: error, attempt: attempts }, "Connection attempt failed");
 				if (attempts < maxAttempts) {
 					await new Promise((resolve) => setTimeout(resolve, retryInterval));
 				}
@@ -94,7 +94,7 @@ export async function initWaypaperDaemon() {
 
 		logger.info("Waypaper daemon started successfully");
 	} catch (error) {
-		logger.error("Failed to start waypaper-daemon:", error);
+		logger.error({ err: error }, "Failed to start waypaper-daemon");
 		throw new Error(
 			`Could not start waypaper-daemon: ${error instanceof Error ? error.message : String(error)}`,
 		);
@@ -121,7 +121,7 @@ async function testConnection(): Promise<void> {
 			logger.info("Connection to Go daemon established via HTTP.");
 			return;
 		} catch (error) {
-			logger.debug(`Connection attempt ${attempt} failed:`, error);
+			logger.debug({ err: error, attempt }, "Connection attempt failed");
 			if (attempt < MAX_ATTEMPTS) {
 				await new Promise((resolve) => setTimeout(resolve, RETRY_INTERVAL));
 				attempt++;

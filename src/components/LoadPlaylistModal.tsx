@@ -9,6 +9,7 @@ import type { Playlist } from "../../electron/daemon-go-types";
 import Modal, { type ModalHandle } from "./Modal";
 import { useModalStore } from "../stores/modalStore";
 import { confirmDialog } from "./ConfirmDialog";
+import { logger } from "../utils/logger";
 
 interface Props {
 	playlistsInDB: Playlist[];
@@ -84,7 +85,7 @@ const LoadPlaylistModal = ({
 
 				closeModal();
 			} catch (err) {
-				console.error("Failed to load playlist:", err);
+				logger.error("Failed to load playlist:", err);
 				setError(
 					`Failed to load playlist: ${err instanceof Error ? err.message : "Unknown error"}`,
 				);
@@ -216,7 +217,7 @@ const LoadPlaylistModal = ({
 											clearPlaylist();
 										}
 									} catch (deleteErr) {
-										console.error(
+										logger.error(
 											"Failed to delete playlist:",
 											deleteErr,
 										);

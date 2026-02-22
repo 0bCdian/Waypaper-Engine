@@ -34,6 +34,7 @@
 		"@tanstack/react-form": "^1.28.3",
 		"framer-motion": "12.34.0",
 		"pino": "9.13.1",
+		"pino-roll": "^4.0.0",
 		"react": "^19.2.4",
 		"react-bezier-curve-editor": "1.1.2",
 		"react-dom": "^19.2.4",
