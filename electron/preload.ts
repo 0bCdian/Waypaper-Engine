@@ -454,5 +454,4 @@ contextBridge.exposeInMainWorld("API_RENDERER", electronAPI);
 const isDebug = process.argv.includes("--debug");
 contextBridge.exposeInMainWorld("__DEBUG__", isDebug);
 
-import { logger } from "./logger";
-logger.info("Preload script loaded - Go Daemon HTTP REST API ready");
+console.log("Preload script loaded - Go Daemon HTTP REST API ready");
