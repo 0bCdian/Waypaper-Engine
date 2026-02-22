@@ -16,6 +16,8 @@ import (
 	"waypaper-engine/daemon/internal/system"
 )
 
+var jsonOutput bool
+
 // buildCLI creates the root command and subcommands.
 func buildCLI() *cobra.Command {
 	var configPath string
@@ -38,6 +40,7 @@ with a running daemon instance.`,
 
 	rootCmd.PersistentFlags().StringVarP(&configPath, "config", "c", "", "config file path (default: $XDG_CONFIG_HOME/waypaper-engine/config.toml)")
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "override log level (debug, info, warn, error)")
+	rootCmd.PersistentFlags().BoolVar(&jsonOutput, "json", false, "output raw compact JSON (for scripting)")
 
 	// Daemon lifecycle commands.
 	rootCmd.AddCommand(buildStartCmd(&configPath, &logLevel))
@@ -57,6 +60,9 @@ with a running daemon instance.`,
 	rootCmd.AddCommand(buildMonitorsCmd())
 	rootCmd.AddCommand(buildBackendsCmd())
 	rootCmd.AddCommand(buildConfigCmd())
+	rootCmd.AddCommand(buildWallpaperCmd())
+	rootCmd.AddCommand(buildFoldersCmd())
+	rootCmd.AddCommand(buildEventsCmd())
 
 	return rootCmd
 }
@@ -185,8 +191,8 @@ func buildNextCmd() *cobra.Command {
 
 func buildPreviousCmd() *cobra.Command {
 	return &cobra.Command{
-		Use:   "previous",
-		Short: "Go to previous wallpaper in history",
+		Use:     "previous",
+		Short:   "Go to previous wallpaper in history",
 		Aliases: []string{"prev"},
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return doSimpleRequest("POST", "/wallpaper/history/previous")
@@ -260,11 +266,23 @@ func doJSONRequest(method, path string, body any) error {
 	return nil
 }
 
-// printJSON reads a response body and pretty-prints it.
+// printJSON reads a response body and prints it. When --json is set,
+// output is compact JSON; otherwise it is pretty-printed.
 func printJSON(r io.Reader) {
 	data, err := io.ReadAll(r)
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "error reading response:", err)
+		return
+	}
+
+	if jsonOutput {
+		var parsed any
+		if json.Unmarshal(data, &parsed) == nil {
+			compact, _ := json.Marshal(parsed)
+			fmt.Println(string(compact))
+		} else {
+			fmt.Print(string(data))
+		}
 		return
 	}
 
