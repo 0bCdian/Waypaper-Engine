@@ -1057,7 +1057,7 @@ npm run dev
 ```
 
 `npm run dev` does two things:
-1. `npm run build:daemon` — runs `cd daemon && make build`, producing `daemon/build/waypaper-daemon`.
+1. `npm run build:daemon` — runs `go build` in `daemon/`, producing `daemon/build/waypaper-daemon`.
 2. `DEV=true vite` — starts Vite with HMR, then launches Electron pointing at `http://localhost:5173`.
 
 The Electron main process will spawn the daemon binary automatically.
@@ -1083,7 +1083,6 @@ waypaper-engine/
 │   │   ├── store/                 # Data models + CloverDB store implementations
 │   │   └── system/                # Path utilities, PID lockfile
 │   ├── go.mod / go.sum
-│   ├── Makefile
 │   └── API_CONTRACT.md            # REST API specification
 │
 ├── electron/                      # Electron main process

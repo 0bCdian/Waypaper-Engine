@@ -176,13 +176,24 @@ export class ConfigReader extends EventEmitter {
 
 	getDaemonPath(): string {
 		const isPackaged = !(process.env.NODE_ENV === "development");
-		const resourcesPath = join(__dirname, "..", "..");
+		const bundledCandidates = isPackaged
+			? [
+				// Preferred packaged location (works for AppImage and unpacked installs)
+				join(process.resourcesPath, "waypaper-daemon"),
+				// Legacy fallback for older layouts
+				join(process.resourcesPath, "app", "waypaper-daemon"),
+				join(__dirname, "..", "..", "waypaper-daemon"),
+			]
+			: [join(process.cwd(), "daemon", "build", "waypaper-daemon")];
 
-		const bundled = isPackaged
-			? join(resourcesPath, "waypaper-daemon")
-			: join(process.cwd(), "daemon", "build", "waypaper-daemon");
+		for (const candidate of bundledCandidates) {
+			if (existsSync(candidate)) return candidate;
+		}
 
-		if (existsSync(bundled)) return bundled;
+		if (isPackaged) {
+			// Packaged builds must use the bundled daemon to avoid version drift.
+			return bundledCandidates[0];
+		}
 
 		// Fall back to system-installed binary (e.g. /usr/bin/waypaper-daemon)
 		try {
@@ -194,8 +205,8 @@ export class ConfigReader extends EventEmitter {
 			// which failed -- binary not in PATH
 		}
 
-		// Return the bundled path anyway so spawn fails with a clear error
-		return bundled;
+		// Return primary bundled candidate so spawn fails with a clear error
+		return bundledCandidates[0];
 	}
 
 	getSocketPath(): string {

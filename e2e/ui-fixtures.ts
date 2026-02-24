@@ -69,7 +69,10 @@ async function waitForDaemon(socketPath: string, timeoutMs = 15_000): Promise<vo
 function buildDaemon(): string {
 	const binaryPath = join(ROOT, "daemon", "build", "waypaper-daemon");
 	if (!existsSync(binaryPath)) {
-		execSync("make -C daemon build", { cwd: ROOT, stdio: "pipe" });
+		execSync(
+			"mkdir -p daemon/build && cd daemon && go build -ldflags \"-s -w\" -o build/waypaper-daemon ./cmd/daemon",
+			{ cwd: ROOT, stdio: "pipe" },
+		);
 	}
 	return binaryPath;
 }

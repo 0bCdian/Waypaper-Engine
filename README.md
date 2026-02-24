@@ -92,10 +92,16 @@ Prerequisites: `git`, `go` (1.22+), `node` (18+), `npm`
 git clone https://github.com/0bCdian/Waypaper-Engine.git
 cd Waypaper-Engine
 make deps
+make daemon
+make electron
 sudo make install
 ```
 
-This builds and installs:
+Build and install are intentionally separate:
+- Build artifacts with `make daemon` and `make electron` (or `make build`)
+- Install prebuilt artifacts with `sudo make install`
+
+This installs:
 - Go daemon binary: `/usr/local/bin/waypaper-daemon`
 - Electron app (unpacked): `/opt/waypaper-engine`
 - Launcher: `/usr/local/bin/waypaper-engine`
@@ -132,11 +138,16 @@ make appimage
 
 The resulting AppImage is created in `release/`.
 
+Release-downloaded `.AppImage` artifacts are intended for GUI use (double-click / run directly). The daemon is bundled and started internally by the app, so no separate daemon CLI setup is required for this mode. Packaged builds intentionally do not fall back to a system `waypaper-daemon`.
+
 Install that AppImage system-wide with:
 
 ```bash
+make appimage
 sudo make install-appimage
 ```
+
+`install-appimage` installs an existing artifact from `release/` and does not build one.
 
 This installs:
 - AppImage binary: `/opt/waypaper-engine-appimage/waypaper-engine.AppImage`

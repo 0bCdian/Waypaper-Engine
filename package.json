@@ -10,8 +10,8 @@
 	},
 	"scripts": {
 		"dev": "npm run build:daemon && DEV=true vite",
-		"build:daemon": "cd daemon && make build",
-		"build": "npm run build:daemon && npm install && vite build && electron-builder",
+		"build:daemon": "mkdir -p daemon/build && cd daemon && go build -ldflags \"-s -w\" -o build/waypaper-daemon ./cmd/daemon",
+		"build": "npm run build:daemon && vite build && electron-builder --publish never --config electron-builder.json",
 		"postinstall": "electron-builder install-app-deps",
 		"lint": "oxlint --react-plugin --tsconfig ./tsconfig.json src/ --fix",
 		"format": "biome format --write .",
@@ -26,7 +26,7 @@
 		"test:daemon:coverage": "cd daemon && go test -coverprofile=coverage.out ./... && go tool cover -html=coverage.out -o coverage.html",
 		"test:daemon:race": "cd daemon && go test -race ./... -v",
 		"test:daemon:build": "cd daemon && go build ./cmd/daemon",
-		"test:daemon:clean": "cd daemon && rm -f waypaper-daemon coverage.out coverage.html",
+		"test:daemon:clean": "cd daemon && rm -rf build coverage.out coverage.html",
 		"test:e2e": "npm run build:daemon && npx playwright test --config e2e/playwright.config.ts",
 		"test:ui": "npx playwright test --config e2e/playwright-ui.config.ts",
 		"test:all": "npm run test && npm run test:daemon && npm run test:e2e"
