@@ -35,11 +35,13 @@ export function useSetLastActivePlaylist() {
 	const setActivePlaylist = useActivePlaylistStore(
 		(s) => s.setActivePlaylist,
 	);
+	const clearActivePlaylist = useActivePlaylistStore((s) => s.clear);
 	const lastSyncedIdRef = useRef<number | null>(null);
 
 	useEffect(() => {
 		if (monitorSelection.selectedMonitors.length === 0) {
 			clearPlaylist();
+			clearActivePlaylist();
 			return;
 		}
 
@@ -52,6 +54,7 @@ export function useSetLastActivePlaylist() {
 
 				if (!activePlaylists || activePlaylists.length === 0) {
 					clearPlaylist();
+					clearActivePlaylist();
 					lastSyncedIdRef.current = null;
 					return;
 				}
@@ -67,6 +70,7 @@ export function useSetLastActivePlaylist() {
 
 				if (!match) {
 					clearPlaylist();
+					clearActivePlaylist();
 					lastSyncedIdRef.current = null;
 					return;
 				}
@@ -111,7 +115,13 @@ export function useSetLastActivePlaylist() {
 		return () => {
 			cancelled = true;
 		};
-	}, [monitorSelection, setPlaylist, clearPlaylist, setActivePlaylist]);
+	}, [
+		monitorSelection,
+		setPlaylist,
+		clearPlaylist,
+		setActivePlaylist,
+		clearActivePlaylist,
+	]);
 
 	useEffect(() => {
 		const disposers = [
@@ -145,7 +155,12 @@ export function useSetLastActivePlaylist() {
 		async function refreshActivePlaylist() {
 			const { selectedMonitors, mode } =
 				useMonitorStore.getState().monitorSelection;
-			if (selectedMonitors.length === 0) return;
+			if (selectedMonitors.length === 0) {
+				usePlaylistStore.getState().clearPlaylist();
+				useActivePlaylistStore.getState().clear();
+				lastSyncedIdRef.current = null;
+				return;
+			}
 
 			let activePlaylists: ActivePlaylistInstance[] | undefined;
 			try {
@@ -156,6 +171,7 @@ export function useSetLastActivePlaylist() {
 
 			if (!activePlaylists || activePlaylists.length === 0) {
 				usePlaylistStore.getState().clearPlaylist();
+				useActivePlaylistStore.getState().clear();
 				lastSyncedIdRef.current = null;
 				return;
 			}
@@ -166,6 +182,7 @@ export function useSetLastActivePlaylist() {
 
 			if (!match) {
 				usePlaylistStore.getState().clearPlaylist();
+				useActivePlaylistStore.getState().clear();
 				lastSyncedIdRef.current = null;
 				return;
 			}

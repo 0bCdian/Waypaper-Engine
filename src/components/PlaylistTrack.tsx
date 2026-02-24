@@ -13,6 +13,7 @@ import { useIsNeo } from "../hooks/useIsNeo";
 import { useDragStore } from "../stores/dragStore";
 import type { DropTargetData } from "../stores/dragStore";
 import { useModalStore } from "../stores/modalStore";
+import { useActivePlaylistStore } from "../stores/activePlaylistStore";
 
 const { goDaemon } = window.API_RENDERER;
 import MiniPlaylistCard from "./MiniPlaylistCard";
@@ -249,6 +250,7 @@ function PlaylistTrack() {
 							await stopPlaylistSilent(playlist.id);
 						}
 						clearPlaylist();
+						useActivePlaylistStore.getState().clear();
 					}}
 					>
 						Clear

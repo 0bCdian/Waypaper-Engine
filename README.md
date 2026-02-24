@@ -95,7 +95,18 @@ make deps
 sudo make install
 ```
 
-This builds the Go daemon, the React frontend, packages the Electron app, and installs everything to standard system paths (`/opt/waypaper-engine`, `/usr/bin`, `/usr/share`). Run `make help` to see all available targets and options.
+This builds and installs:
+- Go daemon binary: `/usr/local/bin/waypaper-daemon`
+- Electron app (unpacked): `/opt/waypaper-engine`
+- Launcher: `/usr/local/bin/waypaper-engine`
+- Desktop entry/icon: `/usr/local/share/...`
+
+The `waypaper-engine` launcher is a single entrypoint:
+- `waypaper-engine` (or `waypaper-engine run`) launches the GUI
+- `waypaper-engine daemon <args>` forwards to daemon CLI
+- `waypaper-engine <args>` also forwards to daemon CLI commands directly
+
+Run `make help` to see all available targets.
 
 To uninstall:
 
@@ -103,7 +114,14 @@ To uninstall:
 sudo make uninstall
 ```
 
-## AppImage (portable)
+Use `PREFIX` and/or `DESTDIR` to customize install locations:
+
+```bash
+sudo make install PREFIX=/usr
+make install DESTDIR="$PWD/pkgroot" PREFIX=/usr/local
+```
+
+## AppImage (build + system install)
 
 ```bash
 git clone https://github.com/0bCdian/Waypaper-Engine.git
@@ -112,7 +130,24 @@ make deps
 make appimage
 ```
 
-The resulting AppImage will be in the `release/` directory.
+The resulting AppImage is created in `release/`.
+
+Install that AppImage system-wide with:
+
+```bash
+sudo make install-appimage
+```
+
+This installs:
+- AppImage binary: `/opt/waypaper-engine-appimage/waypaper-engine.AppImage`
+- Launcher: `/usr/local/bin/waypaper-engine-appimage`
+- Desktop entry: `/usr/local/share/applications/waypaper-engine-appimage.desktop`
+
+To remove the AppImage install:
+
+```bash
+sudo make uninstall-appimage
+```
 
 ## Other Formats
 
