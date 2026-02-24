@@ -47,7 +47,11 @@ func run() error {
 // startDaemon is the main entry point called by the "start" command.
 func startDaemon(configPath string, logLevel string) error {
 	// 1. Acquire PID lock.
-	lock := system.NewLockFile(system.DefaultLockPath())
+	lp := lockPath
+	if lp == "" {
+		lp = system.DefaultLockPath()
+	}
+	lock := system.NewLockFile(lp)
 	if err := lock.Acquire(); err != nil {
 		return fmt.Errorf("acquire lock: %w", err)
 	}

@@ -15,7 +15,6 @@ import type {
 	CreatePlaylistRequest,
 	UpdatePlaylistRequest,
 	ActivePlaylistInstance,
-	ActivePlaylistResponse,
 	StartPlaylistRequest,
 	Monitor,
 	UnifiedConfig,
@@ -46,10 +45,6 @@ export class GoDaemonClient extends EventEmitter {
 		super();
 		this.socketPath = socketPath || configReader.getSocketPath();
 	}
-
-	// ============================================================================
-	// HTTP TRANSPORT
-	// ============================================================================
 
 	private request<T = unknown>(
 		method: string,
@@ -113,10 +108,6 @@ export class GoDaemonClient extends EventEmitter {
 			req.end();
 		});
 	}
-
-	// ============================================================================
-	// SSE (Server-Sent Events) CONNECTION
-	// ============================================================================
 
 	connectSSE(): void {
 		if (this.sseConnection) {
@@ -214,6 +205,7 @@ export class GoDaemonClient extends EventEmitter {
 	}
 
 	private scheduleSseReconnect(): void {
+		if (this.sseReconnectTimer) return;
 		this.sseReconnectAttempts++;
 		const delay = Math.min(1000 * Math.pow(2, Math.min(this.sseReconnectAttempts - 1, 6)), 60000);
 
@@ -229,10 +221,6 @@ export class GoDaemonClient extends EventEmitter {
 			this.connectSSE();
 		}, delay);
 	}
-
-	// ============================================================================
-	// CONNECTION MANAGEMENT
-	// ============================================================================
 
 	async connect(): Promise<void> {
 		// Test the connection with a health check
@@ -258,10 +246,6 @@ export class GoDaemonClient extends EventEmitter {
 		return this.isConnected;
 	}
 
-	// ============================================================================
-	// HEALTH & SYSTEM
-	// ============================================================================
-
 	async healthCheck(): Promise<HealthResponse> {
 		return this.request<HealthResponse>("GET", "/healthz");
 	}
@@ -282,10 +266,6 @@ export class GoDaemonClient extends EventEmitter {
 	async shutdown(): Promise<void> {
 		await this.request("POST", "/shutdown");
 	}
-
-	// ============================================================================
-	// IMAGES
-	// ============================================================================
 
 	async getImages(
 		params?: ImageQueryParams,
@@ -382,10 +362,6 @@ export class GoDaemonClient extends EventEmitter {
 		return this.request<{ status: string }>("DELETE", "/images/history");
 	}
 
-	// ============================================================================
-	// WALLPAPER
-	// ============================================================================
-
 	async getCurrentWallpapers(): Promise<MonitorState[]> {
 		return this.request<MonitorState[]>("GET", "/wallpaper/current");
 	}
@@ -414,10 +390,6 @@ export class GoDaemonClient extends EventEmitter {
 			mode,
 		});
 	}
-
-	// ============================================================================
-	// PLAYLISTS
-	// ============================================================================
 
 	async getPlaylists(): Promise<Playlist[]> {
 		return this.request<Playlist[]>("GET", "/playlists");
@@ -473,8 +445,8 @@ export class GoDaemonClient extends EventEmitter {
 		await this.request("POST", `/playlists/${id}/previous`);
 	}
 
-	async getActivePlaylists(): Promise<ActivePlaylistResponse[]> {
-		return this.request<ActivePlaylistResponse[]>(
+	async getActivePlaylists(): Promise<ActivePlaylistInstance[]> {
+		return this.request<ActivePlaylistInstance[]>(
 			"GET",
 			"/playlists/active",
 		);
@@ -515,10 +487,6 @@ export class GoDaemonClient extends EventEmitter {
 	}> {
 		return this.request("POST", "/playlists/active/previous");
 	}
-
-	// ============================================================================
-	// FOLDERS
-	// ============================================================================
 
 	async getFolders(
 		parentId?: number | null,
@@ -585,10 +553,6 @@ export class GoDaemonClient extends EventEmitter {
 		);
 	}
 
-	// ============================================================================
-	// MONITORS
-	// ============================================================================
-
 	async getMonitors(): Promise<Monitor[]> {
 		return this.request<Monitor[]>("GET", "/monitors");
 	}
@@ -599,10 +563,6 @@ export class GoDaemonClient extends EventEmitter {
 			`/monitors/${encodeURIComponent(name)}`,
 		);
 	}
-
-	// ============================================================================
-	// CONFIG
-	// ============================================================================
 
 	async getConfig(): Promise<UnifiedConfig> {
 		return this.request<UnifiedConfig>("GET", "/config");
@@ -630,10 +590,6 @@ export class GoDaemonClient extends EventEmitter {
 	async updateBackendConfig(config: Partial<SwwwConfig>): Promise<void> {
 		await this.request("PATCH", "/config/backend", config);
 	}
-
-	// ============================================================================
-	// BACKENDS
-	// ============================================================================
 
 	async getBackends(): Promise<BackendInfo[]> {
 		return this.request<BackendInfo[]>("GET", "/backends");

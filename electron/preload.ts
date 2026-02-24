@@ -16,7 +16,6 @@ import type {
 	CreatePlaylistRequest,
 	UpdatePlaylistRequest,
 	ActivePlaylistInstance,
-	ActivePlaylistResponse,
 	Monitor,
 	UnifiedConfig,
 	SwwwConfig,
@@ -29,9 +28,6 @@ import type {
 } from "./daemon-go-types";
 
 const electronAPI = {
-	// ============================================================================
-	// GO DAEMON API
-	// ============================================================================
 	goDaemon: {
 		// HEALTH & SYSTEM
 		ping: (): Promise<boolean> =>
@@ -186,7 +182,7 @@ const electronAPI = {
 				id,
 			}),
 
-		getActivePlaylists: (): Promise<ActivePlaylistResponse[]> =>
+		getActivePlaylists: (): Promise<ActivePlaylistInstance[]> =>
 			ipcRenderer.invoke("go-daemon-command", "get_active_playlists"),
 
 		getActivePlaylistForMonitor: (
@@ -315,33 +311,28 @@ const electronAPI = {
 		},
 	},
 
-	// ============================================================================
-	// THEME MANAGEMENT
-	// ============================================================================
 	getNativeTheme: () => ipcRenderer.invoke("get-native-theme"),
 
 	setThemeSource: (source: "system" | "light" | "dark") =>
 		ipcRenderer.invoke("set-theme-source", source),
 
-	onNativeThemeUpdated: (callback: (themeInfo: unknown) => void) => {
-		ipcRenderer.on("native-theme-updated", (_, themeInfo) =>
-			callback(themeInfo),
-		);
+	onNativeThemeUpdated: (callback: (themeInfo: unknown) => void): (() => void) => {
+		const wrapper = (_: Electron.IpcRendererEvent, themeInfo: unknown) =>
+			callback(themeInfo);
+		ipcRenderer.on("native-theme-updated", wrapper);
+		return () => ipcRenderer.removeListener("native-theme-updated", wrapper);
 	},
 
-	onThemeChanged: (callback: (data: unknown) => void) => {
-		ipcRenderer.on("theme-changed", (_, data) => callback(data));
+	onThemeChanged: (callback: (data: unknown) => void): (() => void) => {
+		const wrapper = (_: Electron.IpcRendererEvent, data: unknown) =>
+			callback(data);
+		ipcRenderer.on("theme-changed", wrapper);
+		return () => ipcRenderer.removeListener("theme-changed", wrapper);
 	},
 
-	// ============================================================================
-	// SYSTEM INFO
-	// ============================================================================
 	getAppInfo: () => ipcRenderer.invoke("get-app-info"),
 	ping: () => ipcRenderer.invoke("ping"),
 
-	// ============================================================================
-	// WINDOW MANAGEMENT
-	// ============================================================================
 	getWindowBounds: () => ipcRenderer.invoke("get-window-bounds"),
 	setWindowBounds: (bounds: Electron.Rectangle) =>
 		ipcRenderer.invoke("set-window-bounds", bounds),
@@ -351,22 +342,13 @@ const electronAPI = {
 	hideWindow: () => ipcRenderer.invoke("hide-window"),
 	showWindow: () => ipcRenderer.invoke("show-window"),
 
-	// ============================================================================
-	// APPLICATION CONTROL
-	// ============================================================================
 	exitApp: () => ipcRenderer.invoke("exit-app"),
 
-	// ============================================================================
-	// DAEMON MANAGEMENT
-	// ============================================================================
 	getDaemonStatus: () => ipcRenderer.invoke("get-daemon-status"),
 	restartDaemon: () => ipcRenderer.invoke("restart-daemon"),
 	startDaemon: () => ipcRenderer.invoke("start-daemon"),
 	stopDaemon: () => ipcRenderer.invoke("stop-daemon"),
 
-	// ============================================================================
-	// EVENT LISTENERS
-	// ============================================================================
 	onAppError: (callback: (error: unknown) => void): (() => void) => {
 		const wrapper = (_: Electron.IpcRendererEvent, error: unknown) =>
 			callback(error);
@@ -386,9 +368,6 @@ const electronAPI = {
 		ipcRenderer.removeAllListeners(channel);
 	},
 
-	// ============================================================================
-	// WALLHAVEN API
-	// ============================================================================
 	wallhaven: {
 		search: (params: Record<string, string>): Promise<unknown> =>
 			ipcRenderer.invoke("wallhaven-search", params).then((r: { success: boolean; data: unknown; error?: string }) => {
@@ -396,9 +375,15 @@ const electronAPI = {
 				return r.data;
 			}),
 
-		getWallpaper: (id: string, apikey?: string): Promise<unknown> =>
-			ipcRenderer.invoke("wallhaven-wallpaper", id, apikey).then((r: { success: boolean; data: unknown; error?: string }) => {
+		getWallpaper: (id: string): Promise<unknown> =>
+			ipcRenderer.invoke("wallhaven-wallpaper", id).then((r: { success: boolean; data: unknown; error?: string }) => {
 				if (!r.success) throw new Error(r.error ?? "Wallhaven wallpaper fetch failed");
+				return r.data;
+			}),
+
+		testApiKey: (apiKey: string): Promise<unknown> =>
+			ipcRenderer.invoke("wallhaven-test-key", apiKey).then((r: { success: boolean; data: unknown; error?: string }) => {
+				if (!r.success) throw new Error(r.error ?? "API key test failed");
 				return r.data;
 			}),
 
@@ -409,9 +394,6 @@ const electronAPI = {
 			}),
 	},
 
-	// ============================================================================
-	// FILE OPERATIONS
-	// ============================================================================
 	getPathForFile: (file: File): string => webUtils.getPathForFile(file),
 
 	downloadUrl: (url: string): Promise<string> =>

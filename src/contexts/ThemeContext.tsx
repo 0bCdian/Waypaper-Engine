@@ -1,11 +1,3 @@
-/**
- * Theme Context System for Waypaper Engine
- *
- * This file provides React context for theme management, including
- * theme switching, persistence, and synchronization with system preferences.
- * Uses DaisyUI's data-theme attribute system for seamless theme switching.
- */
-
 import React, {
 	createContext,
 	useContext,
@@ -21,21 +13,10 @@ import { logger } from "../utils/logger";
 // Default theme name
 const DEFAULT_THEME_NAME = "dark";
 
-/**
- * Get theme by name from the themes registry
- * @param name - The theme name to retrieve
- * @returns Theme configuration or undefined if not found
- */
 const getTheme = (name: string) => themes[name];
 
-/**
- * Theme Context for providing theme state and actions to child components
- */
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-/**
- * Theme Provider Props
- */
 interface ThemeProviderProps {
 	children: ReactNode;
 	defaultTheme?: string;
@@ -43,17 +24,6 @@ interface ThemeProviderProps {
 	syncWithSystem?: boolean;
 }
 
-/**
- * Theme Provider Component
- *
- * Provides theme context to all child components and manages theme state,
- * persistence, and system synchronization using DaisyUI's data-theme system.
- *
- * @param children - React child components
- * @param defaultTheme - Default theme to use if none is saved (default: 'dark')
- * @param persist - Whether to persist theme selection to localStorage (default: true)
- * @param syncWithSystem - Whether to sync with system theme preference (default: true)
- */
 export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 	children,
 	defaultTheme = DEFAULT_THEME_NAME,
@@ -75,14 +45,6 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 	const isDarkMode = currentThemeConfig?.category === "dark";
 	const isLightMode = currentThemeConfig?.category === "light";
 
-	/**
-	 * Apply theme to document using DaisyUI's data-theme attribute
-	 *
-	 * Sets the data-theme attribute on document.documentElement only.
-	 * DaisyUI themes should only be applied to the root element to avoid conflicts.
-	 *
-	 * @param themeName - The name of the theme to apply
-	 */
 	const applyTheme = (themeName: string) => {
 		// Disable all CSS transitions to prevent color flashing during theme switch
 		document.documentElement.classList.add("disable-transitions");
@@ -99,14 +61,6 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 		});
 	};
 
-	/**
-	 * Set theme with persistence and validation
-	 *
-	 * Validates the theme exists, updates the current theme state, applies the theme
-	 * to the document, and optionally persists the selection to localStorage.
-	 *
-	 * @param themeName - The name of the theme to set
-	 */
 	const setTheme = (themeName: string) => {
 		const theme = getTheme(themeName);
 		if (!theme) {
@@ -129,12 +83,6 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 		}
 	};
 
-	/**
-	 * Toggle between light and dark themes
-	 *
-	 * Automatically switches to the opposite theme category (light ↔ dark).
-	 * Finds the first available theme in the opposite category and applies it.
-	 */
 	const toggleTheme = () => {
 		const current = getTheme(currentTheme);
 		if (!current) return;
@@ -149,15 +97,6 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 		}
 	};
 
-	/**
-	 * Set system theme preference
-	 *
-	 * Configures how the theme system responds to system theme changes.
-	 * When set to 'auto', the theme will automatically switch based on the
-	 * system's dark/light mode preference.
-	 *
-	 * @param mode - System theme mode: 'light', 'dark', or 'auto'
-	 */
 	const setSystemThemePreference = (mode: "light" | "dark" | "auto") => {
 		setSystemTheme(mode);
 		setSyncWithSystem(mode === "auto");
@@ -180,47 +119,18 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 			setTheme(mode);
 		}
 	};
-	/**
-	 * Reset to default theme
-	 *
-	 * Resets the current theme to the default theme specified in the provider props.
-	 */
 	const resetTheme = () => {
 		setTheme(defaultTheme);
 	};
 
-	/**
-	 * Get theme by name
-	 *
-	 * Retrieves a theme configuration by its name from the themes registry.
-	 *
-	 * @param name - The name of the theme to retrieve
-	 * @returns Theme configuration or undefined if not found
-	 */
 	const getThemeByName = (name: string): ThemeConfig | undefined => {
 		return getTheme(name);
 	};
 
-	/**
-	 * Check if theme exists
-	 *
-	 * Verifies whether a theme with the given name exists and is available.
-	 *
-	 * @param name - The name of the theme to check
-	 * @returns True if the theme exists and is available, false otherwise
-	 */
 	const hasTheme = (name: string): boolean => {
 		return name in themes && (themes[name].available ?? true);
 	};
 
-	/**
-	 * Get all available themes
-	 *
-	 * Returns an array of all themes that are marked as available,
-	 * formatted for display purposes with metadata.
-	 *
-	 * @returns Array of theme metadata objects
-	 */
 	const getAvailableThemes = () => {
 		return Object.values(themes)
 			.filter((theme) => theme.available ?? true)
@@ -234,12 +144,6 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 			}));
 	};
 
-	/**
-	 * Initialize theme on mount
-	 *
-	 * Loads saved theme from localStorage or uses default theme,
-	 * then applies it to the document.
-	 */
 	useEffect(() => {
 		const initializeTheme = () => {
 			try {
@@ -271,12 +175,6 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 		initializeTheme();
 	}, [defaultTheme, persist]);
 
-	/**
-	 * Listen for system theme changes
-	 *
-	 * Automatically switches theme when system dark/light mode preference changes,
-	 * but only when syncWithSystem is enabled and systemTheme is set to 'auto'.
-	 */
 	useEffect(() => {
 		if (!syncWithSystem || systemTheme !== "auto") return;
 
@@ -293,6 +191,30 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 			mediaQuery.removeEventListener("change", handleSystemThemeChange);
 		};
 	}, [syncWithSystem, systemTheme]);
+
+	useEffect(() => {
+		if (!window.API_RENDERER?.goDaemon) return;
+		const dispose = window.API_RENDERER.goDaemon.on(
+			"config_changed",
+			(data: unknown) => {
+				const event = data as { sections?: string[]; source?: string };
+				if (!event.sections || event.sections.includes("app")) {
+					void window.API_RENDERER.goDaemon.getConfig().then((config) => {
+						const newTheme = config?.app?.theme;
+						if (!newTheme) return;
+						if (newTheme === "system") {
+							if (!syncWithSystem) {
+								setSystemThemePreference("auto");
+							}
+						} else if (newTheme !== currentTheme && hasTheme(newTheme)) {
+							setTheme(newTheme);
+						}
+					});
+				}
+			},
+		);
+		return dispose;
+	}, [currentTheme, syncWithSystem]);
 
 	// Context value
 	const contextValue: ThemeContextType = {
@@ -327,15 +249,6 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 	);
 };
 
-/**
- * Hook to use theme context
- *
- * Provides access to the theme context value including current theme state,
- * theme switching functions, and theme metadata.
- *
- * @returns Theme context value with all theme-related state and actions
- * @throws Error if used outside ThemeProvider
- */
 export const useTheme = (): ThemeContextType => {
 	const context = useContext(ThemeContext);
 

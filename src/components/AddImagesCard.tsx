@@ -64,7 +64,7 @@ function AddImagesCard() {
 				disabled={isActive}
 				aria-label="Add images from directory"
 			>
-				<div className="mt-[4.1rem] flex min-w-[300px] justify-center rounded-lg">
+				<div className="flex min-w-[300px] justify-center rounded-lg">
 					<SvgComponentFolder />
 				</div>
 				<p className="absolute left-12 top-[75%] font-bold text-base-content">

@@ -110,8 +110,8 @@ interface WallhavenActions {
 	togglePurity: (pur: WallhavenPurity) => void;
 	setSorting: (sorting: WallhavenSorting) => void;
 	setPage: (page: number) => void;
-	search: (apiKey?: string) => Promise<void>;
-	loadNextPage: (apiKey?: string) => Promise<void>;
+	search: () => Promise<void>;
+	loadNextPage: () => Promise<void>;
 	selectWallpaper: (wp: WallhavenWallpaper | null) => void;
 	downloadToGallery: (wp: WallhavenWallpaper) => Promise<void>;
 	downloadImportAndSet: (wp: WallhavenWallpaper, monitor: string, mode: MonitorMode) => Promise<void>;
@@ -120,7 +120,7 @@ interface WallhavenActions {
 	toggleSelection: (id: string) => void;
 	selectAllVisible: () => void;
 	clearSelection: () => void;
-	downloadSelected: (apiKey?: string) => Promise<void>;
+	downloadSelected: () => Promise<void>;
 }
 
 function buildCategoryString(cats: Record<WallhavenCategory, boolean>): string {
@@ -145,12 +145,10 @@ const defaultFilters: WallhavenFilters = {
 
 async function fetchWallhavenDetail(
 	wpId: string,
-	apiKey?: string,
 ): Promise<WallhavenWallpaper | null> {
 	try {
 		const detail = (await window.API_RENDERER.wallhaven.getWallpaper(
 			wpId,
-			apiKey,
 		)) as { data: WallhavenWallpaper };
 		return detail.data;
 	} catch {
@@ -311,7 +309,7 @@ export const useWallhavenStore = create<WallhavenState & WallhavenActions>()(
 		setPage: (page) =>
 			set((s) => ({ filters: { ...s.filters, page } })),
 
-		search: async (apiKey) => {
+		search: async () => {
 			const { filters, cacheKey, pageCache } = get();
 
 			const cached = pageCache.get(cacheKey)?.get(filters.page);
@@ -336,7 +334,6 @@ export const useWallhavenStore = create<WallhavenState & WallhavenActions>()(
 				};
 				const processedQuery = preprocessQuery(filters.query);
 				if (processedQuery) params.q = processedQuery;
-				if (apiKey) params.apikey = apiKey;
 
 				const raw = (await window.API_RENDERER.wallhaven.search(
 					params,
@@ -384,14 +381,14 @@ export const useWallhavenStore = create<WallhavenState & WallhavenActions>()(
 			}
 		},
 
-		loadNextPage: async (apiKey) => {
+		loadNextPage: async () => {
 			const { meta, isLoading, infiniteHighestPage } = get();
 			if (isLoading) return;
 			if (meta && infiniteHighestPage >= meta.last_page) return;
 
 			const nextPage = infiniteHighestPage + 1;
 			get().setPage(nextPage);
-			await get().search(apiKey);
+			await get().search();
 		},
 
 		selectWallpaper: (wp) => set({ selectedWallpaper: wp }),
@@ -512,7 +509,7 @@ export const useWallhavenStore = create<WallhavenState & WallhavenActions>()(
 
 		clearSelection: () => set({ selectedWallpapers: new Set() }),
 
-		downloadSelected: async (_apiKey) => {
+		downloadSelected: async () => {
 			const { selectedWallpapers, results, infiniteResults, scrollMode } =
 				get();
 			if (selectedWallpapers.size === 0) return;

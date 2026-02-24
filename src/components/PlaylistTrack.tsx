@@ -20,8 +20,8 @@ import MiniPlaylistCard from "./MiniPlaylistCard";
 async function stopPlaylistSilent(playlistId: number) {
 	try {
 		await goDaemon.stopPlaylist(playlistId);
-	} catch {
-		// Playlist may not be running
+	} catch(error) {
+		console.error(error);
 	}
 }
 

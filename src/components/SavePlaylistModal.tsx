@@ -131,11 +131,9 @@ const SavePlaylistModal = ({ currentPlaylistName, onPlaylistChanged }: Props) =>
 		modalRef.current?.close();
 	};
 
-	const [prevPlaylistName, setPrevPlaylistName] = useState(currentPlaylistName);
-	if (currentPlaylistName !== prevPlaylistName) {
-		setPrevPlaylistName(currentPlaylistName);
+	useEffect(() => {
 		form.setFieldValue("playlistName", currentPlaylistName);
-	}
+	}, [currentPlaylistName, form]);
 	return (
 		<Modal
 			id="savePlaylistModal"

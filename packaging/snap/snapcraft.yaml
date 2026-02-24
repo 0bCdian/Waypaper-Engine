@@ -1,0 +1,52 @@
+# Waypaper Engine -- Snap packaging template
+# Status: TEMPLATE -- not yet functional, needs testing and refinement.
+#
+# To build:  snapcraft
+# To install: snap install waypaper-engine_*.snap --dangerous
+#
+# See https://snapcraft.io/docs for Snapcraft documentation.
+
+name: waypaper-engine
+version: '2.0.4'
+summary: A wallpaper setter GUI with playlist functionality for Wayland
+description: |
+  Waypaper Engine is an Electron-based graphical frontend for managing
+  wallpapers on Wayland compositors. It supports multiple backends (swww,
+  hyprpaper, feh), playlist scheduling, drag-and-drop import, Wallhaven
+  integration, and per-monitor wallpaper history.
+
+grade: devel
+confinement: classic
+base: core22
+
+# TODO: Snap requires classic confinement for Wayland socket access and
+# wallpaper backend invocation. Evaluate strict confinement with plugs
+# if the snap store requires it for publication.
+
+parts:
+  waypaper-engine:
+    plugin: make
+    source: .
+    source-type: local
+    build-packages:
+      - golang
+      - npm
+      - nodejs
+    override-build: |
+      make deps
+      make electron
+      make install DESTDIR=$SNAPCRAFT_PART_INSTALL PREFIX=/usr
+    stage-packages:
+      - libgtk-3-0
+      - libnotify4
+      - libnss3
+      - libxss1
+      - libxtst6
+      - xdg-utils
+
+apps:
+  waypaper-engine:
+    command: opt/waypaper-engine/waypaper-engine-bin
+    desktop: usr/share/applications/waypaper-engine.desktop
+  waypaper-daemon:
+    command: usr/bin/waypaper-daemon

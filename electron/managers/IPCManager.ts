@@ -127,10 +127,6 @@ export class IPCManager {
 		});
 	}
 
-	// ============================================================================
-	// DEFAULT HANDLERS
-	// ============================================================================
-
 	private setupDefaultHandlers(): void {
 		this.registerHandler({
 			channel: "ping",
@@ -164,7 +160,8 @@ export class IPCManager {
 
 		this.registerHandler({
 			channel: "set-window-bounds",
-			handler: async (event, bounds) => {
+			handler: async (event, ...args: unknown[]) => {
+				const bounds = args[0] as Partial<Electron.Rectangle>;
 				const window = BrowserWindow.fromWebContents(event.sender);
 				if (!window) return false;
 				window.setBounds(bounds);
@@ -208,14 +205,12 @@ export class IPCManager {
 		});
 	}
 
-	// ============================================================================
-	// GO DAEMON HANDLERS
-	// ============================================================================
-
 	private setupGoDaemonHandlers(): void {
 		this.registerHandler({
 			channel: "go-daemon-command",
-			handler: async (_event, action: string, payload?: unknown) => {
+			handler: async (_event, ...args: unknown[]) => {
+				const action = args[0] as string;
+				const payload = args[1] as unknown | undefined;
 				return await this.handleGoDaemonCommand(action, payload);
 			},
 		});
@@ -223,103 +218,75 @@ export class IPCManager {
 		// File operations
 		this.registerHandler({
 			channel: "openFiles",
-		handler: async (event, action) => {
-			try {
+			handler: async (event, action) => {
 				const mainWindow = BrowserWindow.fromWebContents(event.sender);
 				if (!mainWindow) {
-					return { success: false, error: "No window available" };
+					throw new Error("No window available");
 				}
 
-					let result: Electron.OpenDialogReturnValue;
-					if (action === "file") {
-						result = await dialog.showOpenDialog(mainWindow, {
-							title: "Select Images",
-							filters: [
-								{
-									name: "Images",
-									extensions: [
-										"jpg",
-										"jpeg",
-										"png",
-										"gif",
-										"bmp",
-										"webp",
-										"svg",
-									],
-								},
-								{ name: "All Files", extensions: ["*"] },
-							],
-							properties: ["openFile", "multiSelections"],
-						});
-					} else if (action === "folder") {
-						result = await dialog.showOpenDialog(mainWindow, {
-							title: "Select Folder",
-							properties: ["openDirectory"],
-						});
-					} else {
-						return { success: false, error: "Invalid action" };
-					}
+				let result: Electron.OpenDialogReturnValue;
+				if (action === "file") {
+					result = await dialog.showOpenDialog(mainWindow, {
+						title: "Select Images",
+						filters: [
+							{
+								name: "Images",
+								extensions: ["jpg", "jpeg", "png", "gif", "bmp", "webp", "svg"],
+							},
+							{ name: "All Files", extensions: ["*"] },
+						],
+						properties: ["openFile", "multiSelections"],
+					});
+				} else if (action === "folder") {
+					result = await dialog.showOpenDialog(mainWindow, {
+						title: "Select Folder",
+						properties: ["openDirectory"],
+					});
+				} else {
+					throw new Error("Invalid action");
+				}
 
-					if (result.canceled || !result.filePaths?.length) {
-						return { success: true, files: [] };
-					}
+				if (result.canceled || !result.filePaths?.length) {
+					return { files: [] };
+				}
 
-					let files: string[] = [];
-					let folderName: string | undefined;
+				let files: string[] = [];
+				let folderName: string | undefined;
 
-					if (action === "folder") {
-						for (const folderPath of result.filePaths) {
-							if (!folderName) {
-								folderName = folderPath.split("/").pop() || folderPath.split("\\").pop();
-							}
-							const folderImages = await scanDirectoryForImages(folderPath);
-							files.push(...folderImages);
+				if (action === "folder") {
+					for (const folderPath of result.filePaths) {
+						if (!folderName) {
+							folderName = folderPath.split("/").pop() || folderPath.split("\\").pop();
 						}
-					} else {
-						files = result.filePaths;
+						const folderImages = await scanDirectoryForImages(folderPath);
+						files.push(...folderImages);
 					}
-
-					return { success: true, files, folderName };
-				} catch (error) {
-					logger.error({ err: error }, "Error opening files");
-					return {
-						success: false,
-						error: error instanceof Error ? error.message : "Unknown error",
-					};
+				} else {
+					files = result.filePaths;
 				}
+
+				return { files, folderName };
 			},
 		});
 
 		this.registerHandler({
 			channel: "handleOpenImages",
-			handler: async (_event, imagesObject) => {
-				try {
-					if (
-						!imagesObject.success ||
-						!imagesObject.data.files ||
-						imagesObject.data.files.length === 0
-					) {
-						return { success: true, message: "No files to process" };
-					}
-
-					const files: string[] = imagesObject.data.files;
-					const folderId = imagesObject.data.folder_id as
-						| number
-						| undefined;
-
-					await goDaemonClient.importImages(files, folderId);
-
-					return {
-						success: true,
-						message: `Processing ${files.length} images...`,
-					};
-				} catch (error) {
-					logger.error({ err: error }, "Error handling open images");
-					return {
-						success: false,
-						error: error instanceof Error ? error.message : "Unknown error",
-					};
+			handler: async (_event, ...args: unknown[]) => {
+				const imagesObject = args[0] as { success: boolean; data: { files: string[]; folder_id?: number } };
+				if (
+					!imagesObject.success ||
+					!imagesObject.data.files ||
+					imagesObject.data.files.length === 0
+				) {
+					return { message: "No files to process" };
 				}
+
+				const files: string[] = imagesObject.data.files;
+				const folderId = imagesObject.data.folder_id;
+
+				await goDaemonClient.importImages(files, folderId);
+
+				return { message: `Processing ${files.length} images...` };
 			},
 		});
 
@@ -346,18 +313,14 @@ export class IPCManager {
 			handler: async (_event, ...args: unknown[]) => {
 				let filePath = args[0] as string;
 				if (filePath?.startsWith("atom://")) {
-					filePath = "/" + filePath.slice("atom://".length);
+					filePath = `/${filePath.slice("atom://".length)}`;
 				}
 				const { shell } = await import("electron");
 				shell.showItemInFolder(filePath);
-				return { success: true };
+				return true;
 			},
 		});
 	}
-
-	// ============================================================================
-	// PATH CONVERSION
-	// ============================================================================
 
 	private convertPathsToAtomProtocol(images: Image[]): Image[] {
 		if (!Array.isArray(images)) return images;
@@ -399,10 +362,6 @@ export class IPCManager {
 			return converted;
 		});
 	}
-
-	// ============================================================================
-	// COMMAND ROUTER
-	// ============================================================================
 
 	private async handleGoDaemonCommand(
 		action: string,
@@ -605,10 +564,6 @@ export class IPCManager {
 		}
 	}
 
-	// ============================================================================
-	// SSE EVENT FORWARDING
-	// ============================================================================
-
 	private setupGoDaemonEventForwarding(): void {
 		const events = [
 			"processing_started",
@@ -645,10 +600,6 @@ export class IPCManager {
 		});
 	}
 
-	// ============================================================================
-	// THEME HANDLERS
-	// ============================================================================
-
 	private setupThemeHandlers(): void {
 		this.registerHandler({
 			channel: "get-native-theme",
@@ -666,7 +617,8 @@ export class IPCManager {
 
 		this.registerHandler({
 			channel: "set-theme-source",
-			handler: async (_event, source: "system" | "light" | "dark") => {
+			handler: async (_event, ...args: unknown[]) => {
+				const source = args[0] as "system" | "light" | "dark";
 				const { nativeTheme } = require("electron");
 				nativeTheme.themeSource = source;
 				return true;
@@ -675,16 +627,13 @@ export class IPCManager {
 
 		this.registerHandler({
 			channel: "theme-changed",
-			handler: async (_event, themeName: string) => {
+			handler: async (_event, ...args: unknown[]) => {
+				const themeName = args[0] as string;
 				this.broadcastToAllWindows("theme-changed", { themeName });
 				return true;
 			},
 		});
 	}
-
-	// ============================================================================
-	// WINDOW HANDLERS
-	// ============================================================================
 
 	private setupWindowHandlers(): void {
 		this.registerHandler({
@@ -742,10 +691,6 @@ export class IPCManager {
 		});
 	}
 
-	// ============================================================================
-	// WALLHAVEN API PROXY
-	// ============================================================================
-
 	private setupWallhavenHandlers(): void {
 		this.registerHandler({
 			channel: "wallhaven-search",
@@ -753,7 +698,14 @@ export class IPCManager {
 				const params = args[0] as Record<string, string>;
 				const url = new URL("https://wallhaven.cc/api/v1/search");
 				for (const [k, v] of Object.entries(params)) {
-					if (v !== undefined && v !== "") url.searchParams.set(k, v);
+					if (v !== undefined && v !== "" && k !== "apikey") url.searchParams.set(k, v);
+				}
+				try {
+					const config = await goDaemonClient.getConfig();
+					const apiKey = config?.wallhaven?.api_key;
+					if (apiKey) url.searchParams.set("apikey", apiKey);
+				} catch {
+					// Config unavailable, proceed without key
 				}
 				const res = await fetch(url.toString());
 				if (!res.ok) throw new Error(`Wallhaven API error: ${res.status}`);
@@ -765,9 +717,14 @@ export class IPCManager {
 			channel: "wallhaven-wallpaper",
 			handler: async (_event, ...args) => {
 				const id = args[0] as string;
-				const apikey = args[1] as string | undefined;
 				const url = new URL(`https://wallhaven.cc/api/v1/w/${id}`);
-				if (apikey) url.searchParams.set("apikey", apikey);
+				try {
+					const config = await goDaemonClient.getConfig();
+					const apiKey = config?.wallhaven?.api_key;
+					if (apiKey) url.searchParams.set("apikey", apiKey);
+				} catch {
+					// Config unavailable, proceed without key
+				}
 				const res = await fetch(url.toString());
 				if (!res.ok) throw new Error(`Wallhaven API error: ${res.status}`);
 				return res.json();
@@ -775,16 +732,28 @@ export class IPCManager {
 		});
 
 		this.registerHandler({
+			channel: "wallhaven-test-key",
+			handler: async (_event, ...args) => {
+				const apiKey = args[0] as string;
+				const res = await fetch(`https://wallhaven.cc/api/v1/settings?apikey=${encodeURIComponent(apiKey)}`);
+				if (!res.ok) throw new Error(`Wallhaven API key test failed: ${res.status}`);
+				return res.json();
+			},
+		});
+
+		this.registerHandler({
 			channel: "wallhaven-download",
 			handler: async (_event, ...args) => {
-				return this.downloadToTemp(args[0] as string, "wallhaven");
+				const url = args[0] as string;
+				const parsed = new URL(url);
+				const allowedHosts = ["w.wallhaven.cc", "th.wallhaven.cc", "wallhaven.cc"];
+				if (parsed.protocol !== "https:" || !allowedHosts.includes(parsed.hostname)) {
+					throw new Error("Only Wallhaven CDN URLs are allowed");
+				}
+				return this.downloadToTemp(url, "wallhaven");
 			},
 		});
 	}
-
-	// ============================================================================
-	// GENERIC DOWNLOAD
-	// ============================================================================
 
 	private setupDownloadHandlers(): void {
 		this.registerHandler({
@@ -799,10 +768,6 @@ export class IPCManager {
 			},
 		});
 	}
-
-	// ============================================================================
-	// ERROR HANDLING
-	// ============================================================================
 
 	private setupErrorHandling(): void {
 		process.on("uncaughtException", (error) => {
@@ -821,10 +786,6 @@ export class IPCManager {
 			});
 		});
 	}
-
-	// ============================================================================
-	// RENDERER LOG FORWARDING
-	// ============================================================================
 
 	private setupRendererLogging(): void {
 		const rendererLogger = logger.child({ module: "renderer" });
@@ -853,15 +814,13 @@ export class IPCManager {
 		);
 	}
 
-	// ============================================================================
-	// UTILITIES
-	// ============================================================================
-
 	private async downloadToTemp(url: string, prefix = "download"): Promise<string> {
+		const ALLOWED_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"]);
 		const res = await fetch(url);
 		if (!res.ok) throw new Error(`Download failed: ${res.status}`);
 		const buf = Buffer.from(await res.arrayBuffer());
-		const ext = url.slice(url.lastIndexOf(".")).split("?")[0] || ".jpg";
+		const rawExt = url.slice(url.lastIndexOf(".")).split("?")[0].toLowerCase();
+		const ext = ALLOWED_EXTENSIONS.has(rawExt) ? rawExt : ".jpg";
 		const tmpPath = join(tmpdir(), `${prefix}-${randomUUID()}${ext}`);
 		await writeFile(tmpPath, buf);
 		return tmpPath;

@@ -4,8 +4,6 @@ import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { resolve } from "path";
 
-// CommonJS plugin no longer needed
-// https://vitejs.dev/config/
 export default defineConfig({
 	base: "./",
 	build: {
@@ -31,12 +29,20 @@ export default defineConfig({
 		tailwindcss(),
 		electron([
 			{
-				// Main-Process entry file of the Electron App.
 				entry: "electron/main.ts",
 				vite: {
 					build: {
 						minify: false,
 						sourcemap: true,
+						rollupOptions: {
+							external: [
+								"pino",
+								"pino-roll",
+								"pino-pretty",
+								"thread-stream",
+								"pino-abstract-transport",
+							],
+						},
 					},
 					define: {
 						"process.env.DEV": JSON.stringify(process.env.DEV || "false"),
@@ -46,8 +52,6 @@ export default defineConfig({
 			{
 				entry: "electron/preload.ts",
 				onstart(options) {
-					// Notify the Renderer-Process to reload the page when the Preload-Scripts build is complete,
-					// instead of restarting the entire Electron App.
 					options.reload();
 				},
 			},
@@ -56,5 +60,4 @@ export default defineConfig({
 	define: {
 		global: "globalThis",
 	},
-	// optimizeDeps no longer needed without commonjs plugin
 });

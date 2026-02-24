@@ -2,45 +2,7 @@ import type { MenuItem } from "../stores/contextMenuStore";
 import type { WallhavenWallpaper } from "../stores/wallhavenStore";
 import { useWallhavenStore } from "../stores/wallhavenStore";
 import type { Monitor } from "../../electron/daemon-go-types";
-
-function wallhavenWallpaperSubmenu(
-	wp: WallhavenWallpaper,
-	monitors: Monitor[],
-): MenuItem[] {
-	const { downloadImportAndSet } = useWallhavenStore.getState();
-
-	const items: MenuItem[] = [
-		{
-			type: "action",
-			label: "Duplicate across all monitors",
-			onClick: () => {
-				void downloadImportAndSet(wp, "*", "clone");
-			},
-		},
-		{
-			type: "action",
-			label: "Extend across all monitors",
-			onClick: () => {
-				void downloadImportAndSet(wp, "*", "extend");
-			},
-		},
-	];
-
-	if (monitors.length > 0) {
-		items.push({ type: "separator" });
-		for (const monitor of monitors) {
-			items.push({
-				type: "action",
-				label: `On ${monitor.name}`,
-				onClick: () => {
-					void downloadImportAndSet(wp, monitor.name, "individual");
-				},
-			});
-		}
-	}
-
-	return items;
-}
+import { buildWallpaperSubmenu } from "./sharedContextMenuHelpers";
 
 export function buildWallhavenCardMenuItems(
 	wp: WallhavenWallpaper,
@@ -61,7 +23,9 @@ export function buildWallhavenCardMenuItems(
 		{
 			type: "submenu",
 			label: setLabel,
-			children: wallhavenWallpaperSubmenu(wp, monitors),
+			children: buildWallpaperSubmenu(monitors, (monitor, mode) => {
+				void useWallhavenStore.getState().downloadImportAndSet(wp, monitor, mode);
+			}),
 		},
 		{
 			type: "action",

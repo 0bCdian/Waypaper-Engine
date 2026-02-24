@@ -89,6 +89,7 @@ function WallhavenPage() {
 	const monitorSelection = useMonitorStore((s) => s.monitorSelection);
 
 	const apiKey = config?.wallhaven?.api_key ?? "";
+	const hasApiKey = apiKey.length > 0;
 	const isEnabled = config?.wallhaven?.enabled ?? false;
 
 	const configScrollMode = config?.wallhaven?.scroll_mode;
@@ -106,9 +107,9 @@ function WallhavenPage() {
 	const doSearch = useCallback(
 		(page?: number) => {
 			if (page !== undefined) setPage(page);
-			void search(apiKey || undefined);
+			void search();
 		},
-		[search, apiKey, setPage],
+		[search, setPage],
 	);
 
 	const handleSearchSubmit = (e: React.FormEvent) => {
@@ -131,14 +132,14 @@ function WallhavenPage() {
 		const observer = new IntersectionObserver(
 			(entries) => {
 				if (entries[0]?.isIntersecting && !isLoading) {
-					void loadNextPage(apiKey || undefined);
+					void loadNextPage();
 				}
 			},
 			{ root: scrollContainerRef.current, rootMargin: "200px" },
 		);
 		observer.observe(sentinel);
 		return () => observer.disconnect();
-	}, [scrollMode, isLoading, loadNextPage, apiKey]);
+	}, [scrollMode, isLoading, loadNextPage]);
 
 	useEffect(() => {
 		const handler = (e: KeyboardEvent) => {
@@ -288,7 +289,7 @@ function WallhavenPage() {
 					<span className="text-xs text-base-content/50 hidden lg:inline">Purity:</span>
 					{purityBtn("sfw", "SFW")}
 					{purityBtn("sketchy", "Sketchy")}
-					{apiKey && purityBtn("nsfw", "NSFW")}
+					{hasApiKey && purityBtn("nsfw", "NSFW")}
 				</div>
 
 				<select
@@ -333,7 +334,7 @@ function WallhavenPage() {
 				<button
 					type="button"
 					className={cn("btn btn-xs btn-primary transition-opacity", hasSelection ? "opacity-100" : "opacity-0 pointer-events-none")}
-					onClick={() => void downloadSelected(apiKey || undefined)}
+					onClick={() => void downloadSelected()}
 					disabled={batchDownloadProgress !== null}
 					tabIndex={hasSelection ? 0 : -1}
 				>

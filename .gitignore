@@ -37,3 +37,10 @@ daemon/build/
 !postcss.config.js
 !tailwind.config.js
 
+.tessl/
+.cursor/
+.agents/
+.gemini/
+test-results/
+AGENTS.md
+tessl.json

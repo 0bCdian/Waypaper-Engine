@@ -151,6 +151,8 @@ func restoreExtendGroup(
 		monNames := make([]string, len(grp.monitors))
 		for i, mon := range grp.monitors {
 			monNames[i] = mon.Name
+		}
+		for _, mon := range grp.monitors {
 			stateStore.SetCurrentWallpaper(mon.Name, restoreEntry(grp.state, monNames))
 		}
 		restored += len(grp.monitors)

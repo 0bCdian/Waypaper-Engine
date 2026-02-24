@@ -70,13 +70,13 @@ I started this project for two main reasons, one as a learning oportunity, and t
 
 # Install
 
-Simply install from the aur like so:
+## Arch Linux (AUR)
 
 ```bash
 yay -S waypaper-engine
 ```
 
-or
+or the git version:
 
 ```bash
 yay -S waypaper-engine-git
@@ -84,24 +84,39 @@ yay -S waypaper-engine-git
 
 Both the normal and -git version conflict with each other, so make sure to delete the other with `yay -Rns package_name package_name-debug` before installing either.
 
-## Manual installation
+## Manual Install (any distro)
 
-Be advised you will need to run some of the commands with sudo privileges as you will be copying files to protected paths.
+Prerequisites: `git`, `go` (1.22+), `node` (18+), `npm`
 
-1. Clone this repo `git clone git@github.com:0bCdian/Waypaper-Engine.git` or download and extract the zip file
-2. cd into Waypaper-Engine
-3. run `npm run build`
-4. cd into release `cd release`
-5. Optional: if you want to change the tray icon, change the 512x512.png image inside linux-unpacked/resources/icons
-6. Optional: copy the 512x512.png file to the icons system directory `cp linux-unpacked/resources/icons/512x512.png /usr/share/icons/hicolor/512x512/apps/waypaper-engine.png`
-7. copy the whole directory to it's final destination `sudo cp ./linux-unpacked -rt /opt/waypaper-engine`
-8. go back to root dir `cd ..`
-9. cd into cli `cd cli`
-10. copy waypaper-engine file to your $PATH or /usr/bin `sudo cp ./waypaper-engine /usr/bin` or `cp ./waypaper/engine $HOME/.local/bin` be advised, if you do not copy the cli file to /usr/bin, the path you're copying it into must be in your $PATH, read [this](https://askubuntu.com/questions/551990/what-does-path-mean) for more info
-11. go back to root `cd ..`
-12. copy the .desktop file to /usr/share/applications `sudo cp ./waypaper-engine.desktop /usr/share/applications/`
+```bash
+git clone https://github.com/0bCdian/Waypaper-Engine.git
+cd Waypaper-Engine
+make deps
+sudo make install
+```
 
-and you're done!
+This builds the Go daemon, the React frontend, packages the Electron app, and installs everything to standard system paths (`/opt/waypaper-engine`, `/usr/bin`, `/usr/share`). Run `make help` to see all available targets and options.
+
+To uninstall:
+
+```bash
+sudo make uninstall
+```
+
+## AppImage (portable)
+
+```bash
+git clone https://github.com/0bCdian/Waypaper-Engine.git
+cd Waypaper-Engine
+make deps
+make appimage
+```
+
+The resulting AppImage will be in the `release/` directory.
+
+## Other Formats
+
+See [packaging/README.md](packaging/README.md) for RPM (Fedora), Snap, and instructions on adding new packaging formats.
 
 # Usage
 

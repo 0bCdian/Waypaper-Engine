@@ -1,5 +1,5 @@
-import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { access as fsAccess } from "node:fs/promises";
+import { join, resolve } from "node:path";
 import {
 	Tray,
 	app,
@@ -7,23 +7,15 @@ import {
 	globalShortcut,
 	Menu,
 	nativeImage,
+	net,
 	protocol,
 	Notification,
 } from "electron";
 
-// Structured logger
 import { logger } from "./logger";
-
-// Daemon initialization
 import { initWaypaperDaemon } from "../globals/startDaemons";
-
-// Go daemon client
 import { goDaemonClient } from "./goDaemonClient";
-
-// Menus
 import { trayMenu } from "../globals/menus";
-
-// Managers
 import { daemonMonitor } from "./managers/DaemonMonitor";
 import IPCManager from "./managers/IPCManager";
 import ThemeManager from "./managers/ThemeManager";
@@ -141,18 +133,23 @@ async function initializeApp(): Promise<void> {
 		ipcManager.initialize();
 
 		// Register custom atom:// protocol for file access
-		protocol.registerFileProtocol("atom", (request, callback) => {
+		protocol.handle("atom", async (request) => {
 			const url = decodeURI(request.url);
-			const filePath = url.replace("atom://", "/");
+			const rawPath = url.replace("atom://", "/");
+			const filePath = resolve(rawPath);
 
-			readFile(filePath)
-				.then(() => {
-					callback({ path: filePath });
-				})
-				.catch((error) => {
-					logger.error({ err: error, filePath }, "Failed to access file");
-					callback({ error: -6 }); // ERR_FILE_NOT_FOUND
-				});
+			if (filePath !== rawPath) {
+				logger.warn({ rawPath, filePath }, "atom:// path traversal blocked");
+				return new Response("Not found", { status: 404 });
+			}
+
+			try {
+				await fsAccess(filePath);
+				return net.fetch(`file://${filePath}`);
+			} catch (error) {
+				logger.error({ err: error, filePath }, "Failed to access file");
+				return new Response("Not found", { status: 404 });
+			}
 		});
 
 		// Initialize daemon monitor
@@ -373,6 +370,7 @@ function setupAppEvents(): void {
 			// Cleanup managers
 			if (themeManager) themeManager.cleanup();
 			if (ipcManager) ipcManager.cleanup();
+			if (daemonMonitor) daemonMonitor.cleanup();
 		} catch (error) {
 			logger.error({ err: error }, "Error during shutdown");
 		}
@@ -385,13 +383,6 @@ function setupAppEvents(): void {
 			mainWindow.focus();
 		}
 	});
-}
-
-/**
- * Setup global error handling
- */
-function setupErrorHandling(): void {
-	// No-op for now; crash reporting can be added when a submit endpoint exists.
 }
 
 /**
@@ -421,9 +412,6 @@ function main(): void {
 		app.quit();
 		return;
 	}
-
-	// Setup error handling
-	setupErrorHandling();
 
 	// Setup development tools
 	setupDevTools();

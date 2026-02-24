@@ -10,6 +10,7 @@ import { useFolderPickerStore } from "../stores/folderPickerStore";
 import { confirmDialog } from "../components/ConfirmDialog";
 import openImagesStore from "../hooks/useOpenImages";
 import type { Image } from "../../electron/daemon-go-types";
+import { buildWallpaperSubmenu, buildClearHistoryItem } from "./sharedContextMenuHelpers";
 
 const { goDaemon } = window.API_RENDERER;
 
@@ -21,45 +22,8 @@ function getParentFolderId(): number | null | undefined {
 }
 
 function toFilesystemPath(path: string): string {
-	if (path?.startsWith("atom://")) return "/" + path.slice("atom://".length);
+	if (path?.startsWith("atom://")) return `/${path.slice("atom://".length)}`;
 	return path;
-}
-
-function wallpaperSubmenu(
-	imageId: number,
-	monitors: Monitor[],
-): MenuItem[] {
-	const items: MenuItem[] = [
-		{
-			type: "action",
-			label: "Duplicate across all monitors",
-			onClick: () => {
-				void goDaemon.setWallpaper(imageId, "*", "clone");
-			},
-		},
-		{
-			type: "action",
-			label: "Extend across all monitors",
-			onClick: () => {
-				void goDaemon.setWallpaper(imageId, "*", "extend");
-			},
-		},
-	];
-
-	if (monitors.length > 0) {
-		items.push({ type: "separator" });
-		for (const monitor of monitors) {
-			items.push({
-				type: "action",
-				label: `On ${monitor.name}`,
-				onClick: () => {
-					void goDaemon.setWallpaper(imageId, monitor.name, "individual");
-				},
-			});
-		}
-	}
-
-	return items;
 }
 
 function selectionItems(selectedCount: number): MenuItem[] {
@@ -191,21 +155,11 @@ function globalItems(selectedCount: number): MenuItem[] {
 	];
 
 	items.push({ type: "separator" });
-	items.push({
-		type: "action",
-		label: "Clear wallpaper history",
-		danger: true,
-		onClick: async () => {
-			const confirmed = await confirmDialog({
-				title: "Clear wallpaper history",
-				message:
-					"Are you sure you want to delete all wallpaper history? This cannot be undone.",
-				confirmLabel: "Clear all",
-				danger: true,
-			});
-			if (confirmed) void useHistoryStore.getState().clearHistory();
-		},
-	});
+	items.push(
+		buildClearHistoryItem(
+			() => void useHistoryStore.getState().clearHistory(),
+		),
+	);
 
 	if (selectedCount > 0) {
 		items.unshift(...selectionItems(selectedCount), { type: "separator" });
@@ -223,7 +177,9 @@ export function buildImageMenuItems(
 		{
 			type: "submenu",
 			label: `Set "${image.name}"`,
-			children: wallpaperSubmenu(image.id, monitors),
+			children: buildWallpaperSubmenu(monitors, (monitor, mode) => {
+				void goDaemon.setWallpaper(image.id, monitor, mode);
+			}),
 		},
 		{
 			type: "action",
@@ -310,7 +266,9 @@ export function buildPlaylistCardMenuItems(
 		{
 			type: "submenu",
 			label: `Set "${imageName}"`,
-			children: wallpaperSubmenu(imageId, monitors),
+			children: buildWallpaperSubmenu(monitors, (monitor, mode) => {
+				void goDaemon.setWallpaper(imageId, monitor, mode);
+			}),
 		},
 		{
 			type: "action",

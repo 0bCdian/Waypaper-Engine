@@ -8,7 +8,6 @@ import type {
 	CreatePlaylistRequest,
 	UpdatePlaylistRequest,
 	ActivePlaylistInstance,
-	ActivePlaylistResponse,
 	Monitor,
 	UnifiedConfig,
 	SwwwConfig,
@@ -102,7 +101,7 @@ declare global {
 				resumePlaylist: (id: number) => Promise<void>;
 				nextPlaylistImage: (id: number) => Promise<void>;
 				previousPlaylistImage: (id: number) => Promise<void>;
-				getActivePlaylists: () => Promise<ActivePlaylistResponse[]>;
+				getActivePlaylists: () => Promise<ActivePlaylistInstance[]>;
 				getActivePlaylistForMonitor: (
 					monitor: string,
 				) => Promise<ActivePlaylistInstance>;
@@ -198,7 +197,8 @@ declare global {
 			// WALLHAVEN API
 			wallhaven: {
 				search: (params: Record<string, string>) => Promise<unknown>;
-				getWallpaper: (id: string, apikey?: string) => Promise<unknown>;
+				getWallpaper: (id: string) => Promise<unknown>;
+				testApiKey: (apiKey: string) => Promise<unknown>;
 				download: (imageUrl: string) => Promise<string>;
 			};
 

@@ -1,0 +1,328 @@
+package playlist
+
+import (
+	"sync/atomic"
+	"testing"
+	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"waypaper-engine/daemon/internal/store"
+)
+
+func TestFindClosestTimeSlot(t *testing.T) {
+	now := time.Now()
+	currentMinutes := now.Hour()*60 + now.Minute()
+
+	tests := []struct {
+		name     string
+		slots    []TimeSlot
+		expected int
+	}{
+		{
+			name:     "empty slots returns 0",
+			slots:    nil,
+			expected: 0,
+		},
+		{
+			name: "all slots in future wraps to last",
+			slots: []TimeSlot{
+				{Minutes: currentMinutes + 60, ImageIndex: 3},
+				{Minutes: currentMinutes + 120, ImageIndex: 5},
+			},
+			expected: 5,
+		},
+		{
+			name: "exact match on current time",
+			slots: []TimeSlot{
+				{Minutes: currentMinutes - 60, ImageIndex: 0},
+				{Minutes: currentMinutes, ImageIndex: 1},
+				{Minutes: currentMinutes + 60, ImageIndex: 2},
+			},
+			expected: 1,
+		},
+		{
+			name: "between two slots returns earlier",
+			slots: []TimeSlot{
+				{Minutes: currentMinutes - 120, ImageIndex: 10},
+				{Minutes: currentMinutes - 30, ImageIndex: 20},
+				{Minutes: currentMinutes + 60, ImageIndex: 30},
+			},
+			expected: 20,
+		},
+		{
+			name: "after all slots returns last",
+			slots: []TimeSlot{
+				{Minutes: currentMinutes - 180, ImageIndex: 0},
+				{Minutes: currentMinutes - 60, ImageIndex: 1},
+			},
+			expected: 1,
+		},
+		{
+			name: "single slot before now",
+			slots: []TimeSlot{
+				{Minutes: currentMinutes - 10, ImageIndex: 7},
+			},
+			expected: 7,
+		},
+		{
+			name: "single slot after now wraps",
+			slots: []TimeSlot{
+				{Minutes: currentMinutes + 10, ImageIndex: 7},
+			},
+			expected: 7,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			result := findClosestTimeSlot(tt.slots)
+			assert.Equal(t, tt.expected, result)
+		})
+	}
+}
+
+func TestBuildTimeSlots(t *testing.T) {
+	min60 := 60
+	min120 := 120
+
+	pl := &store.Playlist{
+		Images: []store.PlaylistImage{
+			{ImageID: 1, Time: &min60},
+			{ImageID: 2, Time: nil},
+			{ImageID: 3, Time: &min120},
+		},
+	}
+
+	slots := buildTimeSlots(pl)
+	require.Len(t, slots, 2)
+	assert.Equal(t, TimeSlot{Minutes: 60, ImageIndex: 0}, slots[0])
+	assert.Equal(t, TimeSlot{Minutes: 120, ImageIndex: 2}, slots[1])
+}
+
+func TestBuildTimeSlotsEmpty(t *testing.T) {
+	pl := &store.Playlist{
+		Images: []store.PlaylistImage{
+			{ImageID: 1, Time: nil},
+			{ImageID: 2, Time: nil},
+		},
+	}
+
+	slots := buildTimeSlots(pl)
+	assert.Empty(t, slots)
+}
+
+func TestComputeInitialState(t *testing.T) {
+	t.Run("always start on first image", func(t *testing.T) {
+		pl := &store.Playlist{
+			Configuration: store.PlaylistConfiguration{
+				Type:                    "timer",
+				AlwaysStartOnFirstImage: true,
+			},
+			Images: []store.PlaylistImage{{ImageID: 1}, {ImageID: 2}},
+		}
+		_, idx := computeInitialState(pl)
+		assert.Equal(t, 0, idx)
+	})
+
+	t.Run("timer type starts at 0", func(t *testing.T) {
+		pl := &store.Playlist{
+			Configuration: store.PlaylistConfiguration{
+				Type: "timer",
+			},
+			Images: []store.PlaylistImage{{ImageID: 1}, {ImageID: 2}},
+		}
+		_, idx := computeInitialState(pl)
+		assert.Equal(t, 0, idx)
+	})
+
+	t.Run("manual type starts at 0", func(t *testing.T) {
+		pl := &store.Playlist{
+			Configuration: store.PlaylistConfiguration{
+				Type: "manual",
+			},
+			Images: []store.PlaylistImage{{ImageID: 1}, {ImageID: 2}},
+		}
+		_, idx := computeInitialState(pl)
+		assert.Equal(t, 0, idx)
+	})
+
+	t.Run("day_of_week type uses current weekday", func(t *testing.T) {
+		images := make([]store.PlaylistImage, 7)
+		for i := range images {
+			images[i] = store.PlaylistImage{ImageID: i + 1}
+		}
+		pl := &store.Playlist{
+			Configuration: store.PlaylistConfiguration{
+				Type: "day_of_week",
+			},
+			Images: images,
+		}
+		_, idx := computeInitialState(pl)
+		expected := int(time.Now().Weekday())
+		assert.Equal(t, expected, idx)
+	})
+
+	t.Run("day_of_week capped to image count", func(t *testing.T) {
+		pl := &store.Playlist{
+			Configuration: store.PlaylistConfiguration{
+				Type: "day_of_week",
+			},
+			Images: []store.PlaylistImage{{ImageID: 1}},
+		}
+		_, idx := computeInitialState(pl)
+		assert.Equal(t, 0, idx)
+	})
+}
+
+func TestNewSchedulerTypes(t *testing.T) {
+	tests := []struct {
+		name    string
+		cfgType string
+	}{
+		{"timer", "timer"},
+		{"time_of_day", "time_of_day"},
+		{"day_of_week", "day_of_week"},
+		{"manual", "manual"},
+		{"unknown defaults to manual", "unknown"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			sched := NewScheduler(SchedulerConfig{
+				Type:        tt.cfgType,
+				Interval:    1,
+				Order:       "ordered",
+				TotalImages: 3,
+				StartIndex:  0,
+			})
+			require.NotNil(t, sched)
+		})
+	}
+}
+
+func TestTimerSchedulerStartAndTick(t *testing.T) {
+	tickCh := make(chan int, 100)
+
+	sched := NewScheduler(SchedulerConfig{
+		Type:        "timer",
+		Interval:    1,
+		Order:       "ordered",
+		TotalImages: 5,
+		StartIndex:  0,
+	})
+
+	ts := sched.(*timerScheduler)
+	ts.interval = 20 * time.Millisecond
+
+	sched.Start(func(index int) {
+		tickCh <- index
+	})
+	defer sched.Stop()
+
+	next := sched.NextChangeAt()
+	require.NotNil(t, next, "NextChangeAt should be set after Start")
+
+	select {
+	case <-tickCh:
+	case <-time.After(200 * time.Millisecond):
+		t.Fatal("expected at least one tick within 200ms")
+	}
+}
+
+func TestTimerSchedulerPauseStopsTicking(t *testing.T) {
+	var count atomic.Int32
+
+	sched := NewScheduler(SchedulerConfig{
+		Type:        "timer",
+		Interval:    1,
+		Order:       "ordered",
+		TotalImages: 5,
+		StartIndex:  0,
+	})
+
+	ts := sched.(*timerScheduler)
+	ts.interval = 10 * time.Millisecond
+
+	sched.Start(func(index int) {
+		count.Add(1)
+	})
+	defer sched.Stop()
+
+	time.Sleep(50 * time.Millisecond)
+	sched.Pause()
+	assert.Nil(t, sched.NextChangeAt(), "NextChangeAt should be nil after Pause")
+
+	countBefore := count.Load()
+	time.Sleep(50 * time.Millisecond)
+	countAfter := count.Load()
+	assert.Equal(t, countBefore, countAfter, "no ticks should occur while paused")
+}
+
+func TestTimerSchedulerStop(t *testing.T) {
+	sched := NewScheduler(SchedulerConfig{
+		Type:        "timer",
+		Interval:    1,
+		Order:       "ordered",
+		TotalImages: 5,
+		StartIndex:  0,
+	})
+
+	ts := sched.(*timerScheduler)
+	ts.interval = 20 * time.Millisecond
+
+	sched.Start(func(index int) {})
+	sched.Stop()
+	assert.Nil(t, sched.NextChangeAt(), "NextChangeAt should be nil after Stop")
+}
+
+func TestManualSchedulerNoOps(t *testing.T) {
+	sched := NewScheduler(SchedulerConfig{
+		Type:        "manual",
+		TotalImages: 3,
+		StartIndex:  1,
+	})
+
+	sched.Start(func(index int) {
+		t.Fatal("manual scheduler should never tick")
+	})
+
+	assert.Nil(t, sched.NextChangeAt())
+
+	sched.Pause()
+	sched.Resume()
+	sched.Stop()
+}
+
+func TestTimerSchedulerOrderedIndices(t *testing.T) {
+	indices := make([]int, 0, 5)
+	done := make(chan struct{})
+
+	sched := NewScheduler(SchedulerConfig{
+		Type:        "timer",
+		Interval:    1,
+		Order:       "ordered",
+		TotalImages: 3,
+		StartIndex:  0,
+	})
+
+	ts := sched.(*timerScheduler)
+	ts.interval = 10 * time.Millisecond
+
+	sched.Start(func(index int) {
+		indices = append(indices, index)
+		if len(indices) >= 3 {
+			close(done)
+		}
+	})
+	defer sched.Stop()
+
+	select {
+	case <-done:
+	case <-time.After(500 * time.Millisecond):
+		t.Fatal("did not get 3 ticks in time")
+	}
+
+	assert.Equal(t, []int{1, 2, 0}, indices, "ordered scheduler should cycle through indices sequentially")
+}

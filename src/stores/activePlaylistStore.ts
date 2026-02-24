@@ -1,19 +1,19 @@
 import { create } from "zustand";
-import type { ActivePlaylistResponse } from "../../electron/daemon-go-types";
+import type { ActivePlaylistInstance } from "../../electron/daemon-go-types";
 
 const STORAGE_KEY = "waypaper-active-playlist";
 
-function loadPersisted(): ActivePlaylistResponse | null {
+function loadPersisted(): ActivePlaylistInstance | null {
 	try {
 		const raw = localStorage.getItem(STORAGE_KEY);
 		if (!raw) return null;
-		return JSON.parse(raw) as ActivePlaylistResponse;
+		return JSON.parse(raw) as ActivePlaylistInstance;
 	} catch {
 		return null;
 	}
 }
 
-function persist(playlist: ActivePlaylistResponse | null) {
+function persist(playlist: ActivePlaylistInstance | null) {
 	try {
 		if (playlist) {
 			localStorage.setItem(STORAGE_KEY, JSON.stringify(playlist));
@@ -26,8 +26,8 @@ function persist(playlist: ActivePlaylistResponse | null) {
 }
 
 interface ActivePlaylistState {
-	activePlaylist: ActivePlaylistResponse | null;
-	setActivePlaylist: (playlist: ActivePlaylistResponse | null) => void;
+	activePlaylist: ActivePlaylistInstance | null;
+	setActivePlaylist: (playlist: ActivePlaylistInstance | null) => void;
 	clear: () => void;
 }
 

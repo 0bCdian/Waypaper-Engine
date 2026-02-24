@@ -4,7 +4,6 @@ import { useShallow } from "zustand/react/shallow";
 import { MonitorComponent } from "./Monitor";
 import { calculateMinResolution } from "../utils/utilities";
 import type { monitorSelectType } from "../types/rendererTypes";
-import { usePlaylistStore } from "../stores/playlist";
 import { useModalStore } from "../stores/modalStore";
 import NeoCloseButton from "./NeoCloseButton";
 
@@ -15,19 +14,16 @@ function Monitors() {
 	const {
 		monitorSelection,
 		monitorsList,
-		setMonitorsList,
 		setMonitorSelection,
-		reQueryMonitors,
+		refreshFromDaemon,
 	} = useMonitorStore(
 		useShallow((s) => ({
 			monitorSelection: s.monitorSelection,
 			monitorsList: s.monitorsList,
-			setMonitorsList: s.setMonitorsList,
 			setMonitorSelection: s.setMonitorSelection,
-			reQueryMonitors: s.reQueryMonitors,
+			refreshFromDaemon: s.refreshFromDaemon,
 		})),
 	);
-	const clearPlaylist = usePlaylistStore((s) => s.clearPlaylist);
 	const [selectType, setSelectType] =
 		useState<monitorSelectType>(monitorSelection.mode || "individual");
 	const [error, setError] = useState<{ state: boolean; message: string }>({
@@ -35,6 +31,7 @@ function Monitors() {
 		message: "error",
 	});
 	const modalRef = useRef<HTMLDialogElement>(null);
+	const [refreshKey, setRefreshKey] = useState(0);
 
 	const resolution = calculateMinResolution(monitorsList);
 
@@ -45,30 +42,14 @@ function Monitors() {
 	}
 
 	useEffect(() => {
-		void reQueryMonitors();
-	}, []);
-
-	useEffect(() => {
-		if (monitorsList.length < 1) return;
-		if (selectType === "individual") {
-			const resetMonitors = monitorsList.map((monitor, index) => ({
-				...monitor,
-				isSelected: index === 0,
-			}));
-			setMonitorsList(resetMonitors);
-		} else {
-			const updatedMonitors = monitorsList.map((monitor, index) => ({
-				...monitor,
-				isSelected: index === 0,
-			}));
-			setMonitorsList(updatedMonitors);
-		}
-	}, [selectType]);
-
-	useEffect(() => {
 		if (modalRef.current) {
 			useModalStore.getState().register("monitors", {
-				showModal: () => modalRef.current?.showModal(),
+				showModal: () => {
+					setRefreshKey((k) => k + 1);
+					void refreshFromDaemon().then(() => {
+						modalRef.current?.showModal();
+					});
+				},
 				close: () => modalRef.current?.close(),
 			});
 		}
@@ -78,7 +59,7 @@ function Monitors() {
 	useEffect(() => {
 		const disposeConnected = goDaemon.on("monitor_connected", () => {
 			setTimeout(() => {
-				void reQueryMonitors().then(() => {
+				void refreshFromDaemon().then(() => {
 					useModalStore.getState().open("monitors");
 				});
 			}, 300);
@@ -86,7 +67,7 @@ function Monitors() {
 
 		const disposeDisconnected = goDaemon.on("monitor_disconnected", () => {
 			setTimeout(() => {
-				void reQueryMonitors();
+				void refreshFromDaemon();
 			}, 300);
 		});
 
@@ -144,10 +125,8 @@ function Monitors() {
 			selectedMonitors,
 			mode: selectType,
 		};
-
-		closeModal();
 		setMonitorSelection(newSelection);
-		clearPlaylist();
+		closeModal();
 	};
 
 	const scale =
@@ -180,13 +159,13 @@ function Monitors() {
 						<legend className="fieldset-legend text-base 2xl:text-lg">
 							Display Mode
 						</legend>
-						<select
-							defaultValue={selectType}
-							onChange={(e) => {
-								setSelectType(
-									e.currentTarget.value as monitorSelectType,
-								);
-							}}
+					<select
+						value={selectType}
+						onChange={(e) => {
+							setSelectType(
+								e.currentTarget.value as monitorSelectType,
+							);
+						}}
 							className="select select-bordered w-full text-center text-lg xl:text-xl"
 						>
 							<option value="individual">Wallpaper per display</option>
@@ -220,12 +199,13 @@ function Monitors() {
 									}}
 									key={monitor.name}
 								>
-									<MonitorComponent
-										monitorsList={monitorsList}
-										monitor={monitor}
-										selectType={selectType}
-										scale={scale * 0.99}
-									/>
+								<MonitorComponent
+									monitorsList={monitorsList}
+									monitor={monitor}
+									selectType={selectType}
+									scale={scale * 0.99}
+									refreshKey={refreshKey}
+								/>
 								</div>
 							);
 						})}

@@ -68,7 +68,7 @@ function PlaylistController() {
 	if (!activePlaylist) return null;
 
 	const currentImage = imagesMap.get(activePlaylist.current_image_id);
-	const monitors = activePlaylist.monitors.map((m) => m.name).join(", ");
+	const monitors = activePlaylist.monitors.join(", ");
 
 	return (
 		<div

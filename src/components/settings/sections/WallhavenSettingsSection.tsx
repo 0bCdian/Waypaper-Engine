@@ -43,22 +43,17 @@ const WallhavenSettingsSection: React.FC<WallhavenSettingsSectionProps> = ({
 		setTestMessage("");
 
 		try {
-			const res = await fetch(
-				`https://wallhaven.cc/api/v1/settings?apikey=${encodeURIComponent(key)}`,
-			);
-			if (res.ok) {
-				setTestStatus("success");
-				setTestMessage("API key is valid.");
-			} else if (res.status === 401) {
-				setTestStatus("error");
+			await window.API_RENDERER.wallhaven.testApiKey(key);
+			setTestStatus("success");
+			setTestMessage("API key is valid.");
+		} catch (err) {
+			setTestStatus("error");
+			const msg = err instanceof Error ? err.message : "Unknown error";
+			if (msg.includes("401")) {
 				setTestMessage("Invalid API key.");
 			} else {
-				setTestStatus("error");
-				setTestMessage(`Wallhaven returned status ${res.status}.`);
+				setTestMessage(msg);
 			}
-		} catch {
-			setTestStatus("error");
-			setTestMessage("Could not reach Wallhaven. Check your network.");
 		}
 	};
 

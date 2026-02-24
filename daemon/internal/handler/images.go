@@ -323,10 +323,29 @@ func (h *ImageHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Collect file paths before deletion so we can clean up disk afterward.
+	var paths []string
+	for _, id := range req.IDs {
+		img, err := h.store.GetByID(r.Context(), id)
+		if err != nil {
+			continue
+		}
+		paths = append(paths, img.Path)
+		for _, thumbPath := range img.Thumbnails {
+			if thumbPath != "" {
+				paths = append(paths, thumbPath)
+			}
+		}
+	}
+
 	count, err := h.store.Delete(r.Context(), req.IDs)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
+	}
+
+	for _, p := range paths {
+		os.Remove(p)
 	}
 
 	h.bus.Publish(events.Event{

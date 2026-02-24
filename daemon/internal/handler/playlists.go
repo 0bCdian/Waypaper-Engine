@@ -269,30 +269,13 @@ func (h *PlaylistHandler) PreviousAll(w http.ResponseWriter, r *http.Request) {
 // --- Active playlist queries ---
 
 // ListActive handles GET /playlists/active.
-// Groups active playlists by playlist ID, with monitors nested inside.
+// Returns all active playlist instances, each with their monitors embedded.
 func (h *PlaylistHandler) ListActive(w http.ResponseWriter, r *http.Request) {
 	active := h.stateStore.GetActivePlaylists()
 
-	// Group by playlist ID.
-	grouped := make(map[int]*store.ActivePlaylistResponse)
-	for monName, inst := range active {
-		resp, exists := grouped[inst.PlaylistID]
-		if !exists {
-			resp = &store.ActivePlaylistResponse{
-				ActivePlaylistState: inst.ActivePlaylistState,
-			}
-			grouped[inst.PlaylistID] = resp
-		}
-		resp.Monitors = append(resp.Monitors, store.ActiveMonitorInfo{
-			Name: monName,
-			Mode: inst.Mode,
-		})
-	}
-
-	// Collect into a slice.
-	result := make([]store.ActivePlaylistResponse, 0, len(grouped))
-	for _, resp := range grouped {
-		result = append(result, *resp)
+	result := make([]store.ActivePlaylistInstance, 0, len(active))
+	for _, inst := range active {
+		result = append(result, inst)
 	}
 
 	WriteJSON(w, http.StatusOK, result)
@@ -302,7 +285,7 @@ func (h *PlaylistHandler) ListActive(w http.ResponseWriter, r *http.Request) {
 func (h *PlaylistHandler) GetActiveByMonitor(w http.ResponseWriter, r *http.Request) {
 	monName := chi.URLParam(r, "monitor")
 
-	inst := h.stateStore.GetActivePlaylistByMonitor(monName)
+	inst := h.stateStore.GetActivePlaylistForMonitor(monName)
 	if inst == nil {
 		WriteErrorf(w, http.StatusNotFound, "no active playlist on monitor %s", monName)
 		return

@@ -83,6 +83,7 @@ const defaultConfig: UnifiedConfig = {
 	wallhaven: {
 		api_key: "",
 		enabled: false,
+		scroll_mode: "paginated",
 	},
 };
 
@@ -121,9 +122,9 @@ export const useSettingsStore = create<SettingsStore>()(
 								await window.API_RENDERER.goDaemon.getBackendConfig();
 							if (backendConfig) {
 								const backendType = incoming.backend?.type ?? "swww";
-								const cleaned = { ...backendConfig } as Record<string, unknown>;
+								const cleaned = { ...backendConfig } as unknown as Record<string, unknown>;
 								delete cleaned.type;
-								(incoming.backend as Record<string, unknown>)[backendType] =
+								(incoming.backend as unknown as Record<string, unknown>)[backendType] =
 									cleaned;
 							}
 						}
@@ -134,8 +135,8 @@ export const useSettingsStore = create<SettingsStore>()(
 					const merged = existing
 						? (() => {
 								const activeBackend = incoming.backend?.type ?? existing.backend?.type ?? "swww";
-								const existingBackendSub = (existing.backend as Record<string, unknown>)?.[activeBackend] as Record<string, unknown> | undefined;
-								const incomingBackendSub = (incoming.backend as Record<string, unknown>)?.[activeBackend] as Record<string, unknown> | undefined;
+								const existingBackendSub = (existing.backend as unknown as Record<string, unknown>)?.[activeBackend] as Record<string, unknown> | undefined;
+								const incomingBackendSub = (incoming.backend as unknown as Record<string, unknown>)?.[activeBackend] as Record<string, unknown> | undefined;
 								return {
 									app: { ...existing.app, ...incoming.app },
 									daemon: { ...existing.daemon, ...incoming.daemon },
@@ -207,7 +208,7 @@ export const useSettingsStore = create<SettingsStore>()(
 					newConfig.backend = {
 						...newConfig.backend,
 						[backendType]: {
-							...(newConfig.backend as Record<string, unknown>)[backendType] as Record<string, unknown> | undefined,
+							...(newConfig.backend as unknown as Record<string, unknown>)[backendType] as Record<string, unknown> | undefined,
 							...data,
 						},
 					} as typeof newConfig.backend;

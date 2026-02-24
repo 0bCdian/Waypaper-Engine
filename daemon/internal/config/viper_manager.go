@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io/fs"
+	"os"
 	"sync"
 
 	"waypaper-engine/daemon/internal/system"
@@ -70,7 +71,7 @@ func NewViperManager(configPath string) (*ViperManager, error) {
 	m := &ViperManager{v: v}
 
 	// Start watching for external changes.
-	v.OnConfigChange(func(e fsnotify.Event) {
+	v.OnConfigChange(func(_ fsnotify.Event) {
 		m.notifyCallbacks("")
 	})
 	v.WatchConfig()
@@ -260,16 +261,41 @@ func setDefaults(v *viper.Viper) {
 // ---------- internal helpers ----------
 
 // mergeAndSet reads the current value of key as a map, merges values into it,
-// sets it back, and persists. Must be called with m.mu held.
+// writes to the config register (not the override register), and persists.
+// Using MergeConfigMap instead of Set avoids creating overrides that would
+// permanently shadow file values on subsequent ReadInConfig calls.
+// Must be called with m.mu held.
 func (m *ViperManager) mergeAndSet(key string, values map[string]any) error {
-	existing := m.v.GetStringMap(key)
+	cfgPath := m.v.ConfigFileUsed()
+	writer := viper.New()
+	writer.SetConfigFile(cfgPath)
+	writer.SetConfigType("toml")
+	setDefaults(writer)
+	if err := writer.ReadInConfig(); err != nil && !isFileNotFound(err) {
+		return fmt.Errorf("config: read before update (%s): %w", key, err)
+	}
+
+	existing := writer.GetStringMap(key)
 	for k, val := range values {
 		existing[k] = val
 	}
-	m.v.Set(key, existing)
 
-	if err := m.v.WriteConfig(); err != nil {
+	if err := writer.MergeConfigMap(map[string]any{key: existing}); err != nil {
+		return fmt.Errorf("config: merge after update (%s): %w", key, err)
+	}
+
+	if _, err := os.Stat(cfgPath); errors.Is(err, fs.ErrNotExist) {
+		if err := writer.WriteConfigAs(cfgPath); err != nil {
+			return fmt.Errorf("config: write new file after update (%s): %w", key, err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("config: stat before write (%s): %w", key, err)
+	} else if err := writer.WriteConfig(); err != nil {
 		return fmt.Errorf("config: write after update (%s): %w", key, err)
+	}
+
+	if err := m.v.ReadInConfig(); err != nil && !isFileNotFound(err) {
+		return fmt.Errorf("config: reload after update (%s): %w", key, err)
 	}
 	return nil
 }

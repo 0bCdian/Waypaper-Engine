@@ -7,7 +7,7 @@ import {
 import { IPC_MAIN_EVENTS } from "../shared/constants";
 import { goDaemonClient } from "../electron/goDaemonClient";
 import type {
-	ActivePlaylistResponse,
+	ActivePlaylistInstance,
 	ImageHistoryEntry,
 } from "../electron/daemon-go-types";
 
@@ -61,7 +61,7 @@ export const trayMenu = async (
 	trayInstance: Tray,
 	createTray?: () => Promise<void>,
 ) => {
-	let activePlaylists: ActivePlaylistResponse[] = [];
+	let activePlaylists: ActivePlaylistInstance[] = [];
 	let imageHistory: ImageHistoryEntry[] = [];
 
 	try {
@@ -78,7 +78,7 @@ export const trayMenu = async (
 				{
 					label: "Active playlists",
 					submenu: activePlaylists.map((playlist) => ({
-						label: `${playlist.playlist_name} on: ${playlist.monitors.map((m) => m.name).join(", ")}`,
+						label: `${playlist.playlist_name} on: ${playlist.monitors.join(", ")}`,
 						submenu: [
 							{
 							label: "Next image",

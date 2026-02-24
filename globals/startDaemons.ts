@@ -8,7 +8,7 @@ import { configReader } from "./configReader";
 const WAYPAPER_ENGINE_SOCKET_PATH = configReader.getSocketPath();
 
 // Keep reference to daemon process
-let daemonProcess: any = null;
+let daemonProcess: import("child_process").ChildProcess | null = null;
 
 export async function initWaypaperDaemon() {
 	try {
@@ -45,8 +45,7 @@ export async function initWaypaperDaemon() {
 		daemonProcess = output;
 
 		output.on("error", (error) => {
-			logger.error(`Go daemon spawn error: ${error}`);
-			throw error;
+			logger.error({ err: error }, "Go daemon spawn error");
 		});
 
 		output.on("exit", (code, signal) => {
@@ -99,16 +98,6 @@ export async function initWaypaperDaemon() {
 			`Could not start waypaper-daemon: ${error instanceof Error ? error.message : String(error)}`,
 		);
 	}
-}
-
-export function getDaemonProcess() {
-	return daemonProcess;
-}
-
-export function isDaemonRunning() {
-	return (
-		daemonProcess && !daemonProcess.killed && daemonProcess.exitCode === null
-	);
 }
 
 async function testConnection(): Promise<void> {

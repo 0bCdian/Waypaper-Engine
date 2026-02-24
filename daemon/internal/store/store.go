@@ -225,20 +225,29 @@ type MonitorStateStore interface {
 // State is lost on daemon restart and must be reconstructed from playlists/config.
 type StateStore interface {
 	// GetActivePlaylists returns all currently running playlist instances,
-	// keyed by monitor name.
-	GetActivePlaylists() map[string]ActivePlaylistInstance
+	// keyed by playlist ID.
+	GetActivePlaylists() map[int]ActivePlaylistInstance
 
-	// GetActivePlaylistByMonitor returns the active playlist for a specific monitor.
+	// GetActivePlaylistByID returns the active playlist for a specific playlist ID.
+	// Returns nil if the playlist is not running.
+	GetActivePlaylistByID(playlistID int) *ActivePlaylistInstance
+
+	// GetActivePlaylistForMonitor scans active playlists and returns the one
+	// whose Monitors list contains the given monitor name.
 	// Returns nil if no playlist is running on that monitor.
-	GetActivePlaylistByMonitor(monitor string) *ActivePlaylistInstance
+	GetActivePlaylistForMonitor(monitor string) *ActivePlaylistInstance
 
-	// SetActivePlaylist registers a running playlist instance on a monitor.
-	// If a playlist is already active on that monitor, it is replaced.
-	SetActivePlaylist(monitor string, instance ActivePlaylistInstance)
+	// SetActivePlaylist registers a running playlist instance, keyed by PlaylistID.
+	SetActivePlaylist(instance ActivePlaylistInstance)
 
-	// RemoveActivePlaylist removes the active playlist from a monitor.
-	// No-op if no playlist is active on that monitor.
-	RemoveActivePlaylist(monitor string)
+	// UpdateActivePlaylist applies fn to the instance with the given playlist ID
+	// under the write lock, avoiding a get-modify-set round-trip.
+	// Returns false if the playlist ID is not found.
+	UpdateActivePlaylist(playlistID int, fn func(*ActivePlaylistInstance)) bool
+
+	// RemoveActivePlaylist removes the active playlist by playlist ID.
+	// No-op if the playlist is not active.
+	RemoveActivePlaylist(playlistID int)
 
 	// RemoveAllActivePlaylists stops tracking all active playlists.
 	RemoveAllActivePlaylists()

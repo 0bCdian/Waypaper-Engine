@@ -4,7 +4,7 @@
  * Handles theme synchronization between Electron and the renderer process.
  */
 
-import { nativeTheme, ipcMain, type BrowserWindow } from "electron";
+import { nativeTheme, type BrowserWindow } from "electron";
 
 export class ThemeManager {
 	private windows: Set<BrowserWindow> = new Set();
@@ -17,7 +17,6 @@ export class ThemeManager {
 		if (this.isInitialized) return;
 
 		this.setupNativeThemeHandling();
-		this.setupIPC();
 		this.isInitialized = true;
 	}
 
@@ -44,17 +43,6 @@ export class ThemeManager {
 	private setupNativeThemeHandling(): void {
 		nativeTheme.on("updated", () => {
 			this.broadcastThemeUpdate();
-		});
-	}
-
-	/**
-	 * Setup IPC handlers
-	 * Note: IPC handlers are now managed by IPCManager
-	 */
-	private setupIPC(): void {
-		// Listen for theme changes from renderer
-		ipcMain.on("theme-changed", (_) => {
-			// Could sync with system theme if needed
 		});
 	}
 

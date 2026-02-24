@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -17,6 +16,7 @@ import (
 )
 
 var jsonOutput bool
+var lockPath string
 
 // buildCLI creates the root command and subcommands.
 func buildCLI() *cobra.Command {
@@ -41,6 +41,7 @@ with a running daemon instance.`,
 	rootCmd.PersistentFlags().StringVarP(&configPath, "config", "c", "", "config file path (default: $XDG_CONFIG_HOME/waypaper-engine/config.toml)")
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "override log level (debug, info, warn, error)")
 	rootCmd.PersistentFlags().BoolVar(&jsonOutput, "json", false, "output raw compact JSON (for scripting)")
+	rootCmd.PersistentFlags().StringVar(&lockPath, "lock-path", "", "override PID lock file path (for testing)")
 
 	// Daemon lifecycle commands.
 	rootCmd.AddCommand(buildStartCmd(&configPath, &logLevel))
@@ -127,77 +128,30 @@ func buildVersionCmd() *cobra.Command {
 	}
 }
 
-// --- Top-level wallpaper shortcuts ---
+// --- Top-level wallpaper shortcuts (delegate to wallpaper subcommands) ---
 
 func buildSetCmd() *cobra.Command {
-	var monitorName string
-	var mode string
-
-	cmd := &cobra.Command{
-		Use:   "set [image-id]",
-		Short: "Set a wallpaper by image ID",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			id, err := strconv.Atoi(args[0])
-			if err != nil {
-				return fmt.Errorf("invalid image ID %q: %w", args[0], err)
-			}
-			body := map[string]any{
-				"image_id": id,
-				"monitor":  monitorName,
-				"mode":     mode,
-			}
-			return doJSONRequest("POST", "/wallpaper/set", body)
-		},
-	}
-
-	cmd.Flags().StringVarP(&monitorName, "monitor", "m", "*", "target monitor name (* for all)")
-	cmd.Flags().StringVar(&mode, "mode", "individual", "monitor mode (individual, clone, extend)")
-
+	cmd := buildWallpaperSetCmd()
+	cmd.Short = "Set a wallpaper by image ID (shortcut for 'wallpaper set')"
 	return cmd
 }
 
 func buildRandomCmd() *cobra.Command {
-	var monitorName string
-	var mode string
-
-	cmd := &cobra.Command{
-		Use:   "random",
-		Short: "Set a random wallpaper",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			body := map[string]any{
-				"monitor": monitorName,
-				"mode":    mode,
-			}
-			return doJSONRequest("POST", "/wallpaper/random", body)
-		},
-	}
-
-	cmd.Flags().StringVarP(&monitorName, "monitor", "m", "*", "target monitor name (* for all)")
-	cmd.Flags().StringVar(&mode, "mode", "individual", "monitor mode (individual, clone, extend)")
-
+	cmd := buildWallpaperRandomCmd()
+	cmd.Short = "Set a random wallpaper (shortcut for 'wallpaper random')"
 	return cmd
 }
 
 func buildNextCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "next",
-		Short: "Go to next wallpaper in history",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return doSimpleRequest("POST", "/wallpaper/history/next")
-		},
-	}
+	cmd := buildWallpaperNextCmd()
+	cmd.Short = "Go to next wallpaper in history (shortcut for 'wallpaper next')"
+	return cmd
 }
 
 func buildPreviousCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:     "previous",
-		Short:   "Go to previous wallpaper in history",
-		Aliases: []string{"prev"},
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return doSimpleRequest("POST", "/wallpaper/history/previous")
-		},
-	}
+	cmd := buildWallpaperPreviousCmd()
+	cmd.Short = "Go to previous wallpaper in history (shortcut for 'wallpaper previous')"
+	return cmd
 }
 
 // --- Shared HTTP helpers ---

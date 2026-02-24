@@ -12,6 +12,7 @@ interface props {
 	scale: number;
 	selectType: monitorSelectType;
 	monitorsList: StoreMonitor[];
+	refreshKey?: number;
 }
 
 export function MonitorComponent({
@@ -19,6 +20,7 @@ export function MonitorComponent({
 	scale,
 	selectType,
 	monitorsList,
+	refreshKey,
 }: props) {
 	const setMonitorsList = useMonitorStore((s) => s.setMonitorsList);
 	const [wallpaperSrc, setWallpaperSrc] = useState<string | null>(null);
@@ -48,10 +50,9 @@ export function MonitorComponent({
 			});
 	};
 
-	// Fetch on mount and when monitor changes
 	useEffect(() => {
 		fetchWallpaperPreview();
-	}, []);
+	}, [refreshKey]);
 
 	// Re-fetch when a wallpaper changes on any monitor
 	useEffect(() => {

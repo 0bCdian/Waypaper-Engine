@@ -4,7 +4,13 @@ import { join } from "node:path";
 import { homedir, tmpdir } from "node:os";
 import toml from "toml";
 import { EventEmitter } from "node:events";
-import { logger } from "./setup";
+import type {
+	AppConfig,
+	DaemonConfig,
+	BackendSection,
+	MonitorsConfig,
+	WallhavenConfig,
+} from "../electron/daemon-go-types";
 
 /**
  * Returns the default socket path matching the Go daemon's XDG logic:
@@ -19,61 +25,24 @@ function defaultSocketPath(): string {
 	return join(tmpdir(), `waypaper-engine-${process.getuid?.() ?? 0}.sock`);
 }
 
-export interface AppConfig {
-	kill_daemon_on_exit: boolean;
-	notifications: boolean;
-	start_minimized: boolean;
-	minimize_instead_of_close: boolean;
-	show_monitor_modal_on_start: boolean;
-	images_per_page: number;
-	theme: "light" | "dark" | "system";
-	image_history_limit: number;
-	sort_by: "name" | "imported_at" | "file_size";
-	sort_order: "asc" | "desc";
-}
-
-export interface DaemonConfig {
-	images_dir: string;
-	thumbnails_dir: string;
-	database_dir: string;
-	socket_path: string;
+export interface ElectronConfig {
 	log_level: "debug" | "info" | "warn" | "error";
 	log_file: string;
 	log_max_size_mb: number;
 	log_max_backups: number;
-	compositor: "auto" | "wayland" | "x11";
 }
 
-export interface SwwwConfig {
-	transition_type: string;
-	transition_step: number;
-	transition_duration: number;
-	transition_fps: number;
-	transition_angle: number;
-	transition_pos: string;
-	transition_bezier: string;
-	transition_wave: string;
-	resize: string;
-	fill_color: string;
-	filter_type: string;
-	invert_y: boolean;
-}
-
-export interface BackendConfig {
-	type: string;
-	swww?: SwwwConfig;
-}
-
-export interface MonitorsConfig {
-	selected_monitors: string[];
-	image_set_type: string;
-}
-
+/**
+ * Extends the daemon's UnifiedConfig with the optional electron section,
+ * and makes wallhaven optional since the TOML may omit it at startup.
+ */
 export interface WaypaperConfig {
 	app: AppConfig;
 	daemon: DaemonConfig;
-	backend: BackendConfig;
+	electron?: ElectronConfig;
+	backend: BackendSection;
 	monitors: MonitorsConfig;
+	wallhaven?: WallhavenConfig;
 }
 
 export class ConfigReader extends EventEmitter {
@@ -85,7 +54,9 @@ export class ConfigReader extends EventEmitter {
 	constructor(configPath?: string) {
 		super();
 
-		if (configPath) {
+		if (process.env.WAYPAPER_CONFIG) {
+			this.configPath = process.env.WAYPAPER_CONFIG;
+		} else if (configPath) {
 			this.configPath = configPath;
 		} else {
 			const homeDir = homedir();
@@ -119,9 +90,9 @@ export class ConfigReader extends EventEmitter {
 			this.config = this.expandPaths(this.config);
 			return this.config;
 		} catch (error) {
-		logger.error(
-			{ err: error instanceof Error ? error.message : String(error), configPath: this.configPath },
+		console.error(
 			"Failed to load config, using default configuration",
+			{ err: error instanceof Error ? error.message : String(error), configPath: this.configPath },
 		);
 			this.config = this.getDefaultConfig();
 			return this.config;
@@ -228,6 +199,7 @@ export class ConfigReader extends EventEmitter {
 	}
 
 	getSocketPath(): string {
+		if (process.env.WAYPAPER_SOCKET) return process.env.WAYPAPER_SOCKET;
 		const config = this.loadConfig();
 		return config.daemon.socket_path;
 	}
@@ -247,6 +219,24 @@ export class ConfigReader extends EventEmitter {
 		return config.daemon.database_dir;
 	}
 
+	getElectronConfig(): ElectronConfig {
+		const config = this.loadConfig();
+		return config.electron ?? {
+			log_level: "info",
+			log_file: join(homedir(), ".local", "share", "waypaper-engine", "electron.log"),
+			log_max_size_mb: 10,
+			log_max_backups: 3,
+		};
+	}
+
+	getElectronLogFile(): string {
+		const electronConfig = this.getElectronConfig();
+		if (electronConfig.log_file.startsWith("~/")) {
+			return join(homedir(), electronConfig.log_file.slice(2));
+		}
+		return electronConfig.log_file;
+	}
+
 	// File watching methods
 	startWatching(): void {
 		if (this.isWatching) {
@@ -262,9 +252,9 @@ export class ConfigReader extends EventEmitter {
 
 			this.isWatching = true;
 		} catch (error) {
-		logger.error(
-			{ err: error instanceof Error ? error.message : String(error), configPath: this.configPath },
+		console.error(
 			"Failed to start watching config file",
+			{ err: error instanceof Error ? error.message : String(error), configPath: this.configPath },
 		);
 		}
 	}
@@ -283,9 +273,9 @@ export class ConfigReader extends EventEmitter {
 			const newConfig = this.loadConfig();
 			this.emit("configChanged", newConfig);
 		} catch (error) {
-		logger.error(
-			{ err: error instanceof Error ? error.message : String(error), configPath: this.configPath },
+		console.error(
 			"Failed to reload configuration",
+			{ err: error instanceof Error ? error.message : String(error), configPath: this.configPath },
 		);
 		}
 	}

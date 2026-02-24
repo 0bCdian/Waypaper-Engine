@@ -1,8 +1,0 @@
-{
-  "name": "tessl/go-viper",
-  "version": "1.21.0",
-  "docs": "docs/index.md",
-  "describes": "pkg:golang/github.com/spf13/viper@v1.21.0",
-  "summary": "Go configuration with fangs - A complete configuration solution for Go applications",
-  "private": false
-}

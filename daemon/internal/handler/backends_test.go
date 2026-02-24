@@ -1,0 +1,68 @@
+package handler
+
+import (
+	"context"
+	"encoding/json"
+	"errors"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"waypaper-engine/daemon/internal/backend"
+	"waypaper-engine/daemon/internal/testutil"
+)
+
+func TestBackendHandler_List(t *testing.T) {
+	reg := &testutil.MockRegistry{
+		AvailableFn: func() []backend.BackendInfo {
+			return []backend.BackendInfo{
+				{Name: "swww", Available: true, Active: true},
+				{Name: "swaybg", Available: true, Active: false},
+			}
+		},
+	}
+	h := NewBackendHandler(reg, &testutil.MockConfigManager{}, &testutil.MockBus{},
+		&testutil.MockMonitorStateStore{}, &testutil.MockStateStore{},
+		&testutil.MockMonitorManager{}, nil)
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/backends", nil)
+	h.List(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var infos []backend.BackendInfo
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&infos))
+	assert.Len(t, infos, 2)
+	assert.Equal(t, "swww", infos[0].Name)
+}
+
+func TestBackendHandler_Activate_NotRegistered(t *testing.T) {
+	mockBackend := &testutil.MockBackend{
+		NameFn:     func() string { return "swww" },
+		ShutdownFn: func(_ context.Context) error { return nil },
+	}
+	reg := &testutil.MockRegistry{
+		ActiveFn: func() backend.Backend { return mockBackend },
+		SetActiveFn: func(name string) error {
+			return errors.New("backend not registered: " + name)
+		},
+	}
+	h := NewBackendHandler(reg, &testutil.MockConfigManager{}, &testutil.MockBus{},
+		&testutil.MockMonitorStateStore{}, &testutil.MockStateStore{},
+		&testutil.MockMonitorManager{}, nil)
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodPost, "/backends/unknown/activate", nil)
+	r = testutil.WithChiURLParams(r, map[string]string{"name": "unknown"})
+	h.Activate(w, r)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+
+	var apiErr APIError
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&apiErr))
+	assert.Contains(t, apiErr.Error, "not registered")
+}

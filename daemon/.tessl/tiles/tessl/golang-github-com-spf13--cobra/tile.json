@@ -1,8 +1,0 @@
-{
-  "name": "tessl/golang-github-com-spf13--cobra",
-  "version": "1.10.1",
-  "docs": "docs/index.md",
-  "describes": "pkg:golang/github.com/spf13/cobra@v1.10.1",
-  "summary": "Cobra is a library for creating powerful modern CLI applications",
-  "private": false
-}
