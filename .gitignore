@@ -44,3 +44,15 @@ daemon/build/
 test-results/
 AGENTS.md
 tessl.json
+
+# Playwright / Vitest artifacts
+playwright-report/
+blob-report/
+allure*/
+test-results
+.playwright-cli
+.local-browsers/
+playwright.env
+tests/coverage-report/
+coverage/
+coverage-report/
