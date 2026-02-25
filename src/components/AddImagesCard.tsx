@@ -5,74 +5,73 @@ import { useShallow } from "zustand/react/shallow";
 import type { openFileAction } from "../../shared/types";
 
 function AddImagesCard() {
-	const { openImages, isActive } = openImagesStore(
-		useShallow((s) => ({
-			openImages: s.openImages,
-			isActive: s.isActive,
-		})),
-	);
-	const handleClickAddImages = (action: openFileAction) => {
-		void openImages({
-			action,
-		});
-	};
+  const { openImages, isActive } = openImagesStore(
+    useShallow((s) => ({
+      openImages: s.openImages,
+      isActive: s.isActive,
+    })),
+  );
+  const handleClickAddImages = (action: openFileAction) => {
+    void openImages({
+      action,
+    });
+  };
 
-	const handleKeyDown =
-		(action: openFileAction) => (e: React.KeyboardEvent) => {
-			if (e.key === "Enter" || e.key === " ") {
-				e.preventDefault();
-				if (!isActive) {
-					handleClickAddImages(action);
-				}
-			}
-		};
+  const handleKeyDown = (action: openFileAction) => (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      if (!isActive) {
+        handleClickAddImages(action);
+      }
+    }
+  };
 
-	return (
-		<div className="flex gap-20">
-			<button
-				type="button"
-				className="relative max-w-fit cursor-pointer rounded-lg transition-all ease-in-out hover:bg-base-300 active:scale-95 border-0 bg-transparent p-0"
-				onClick={
-					isActive
-						? undefined
-						: () => {
-								handleClickAddImages("file");
-							}
-				}
-				onKeyDown={handleKeyDown("file")}
-				disabled={isActive}
-				aria-label="Add individual images"
-			>
-				<div className="flex min-h-[200px] min-w-[300px] justify-center rounded-lg">
-					<SvgComponent />
-				</div>
-				<p className="absolute left-16 top-[75%] font-bold text-base-content">
-					Add individual images
-				</p>
-			</button>
-			<button
-				type="button"
-				className="relative max-w-fit cursor-pointer rounded-lg transition-all ease-in-out hover:bg-base-300 active:scale-95 border-0 bg-transparent p-0"
-				onClick={
-					isActive
-						? undefined
-						: () => {
-								handleClickAddImages("folder");
-							}
-				}
-				onKeyDown={handleKeyDown("folder")}
-				disabled={isActive}
-				aria-label="Add images from directory"
-			>
-				<div className="flex min-w-[300px] justify-center rounded-lg">
-					<SvgComponentFolder />
-				</div>
-				<p className="absolute left-12 top-[75%] font-bold text-base-content">
-					Add images from directory
-				</p>
-			</button>
-		</div>
-	);
+  return (
+    <div className="flex gap-20">
+      <button
+        type="button"
+        className="relative max-w-fit cursor-pointer rounded-lg transition-all ease-in-out hover:bg-base-300 active:scale-95 border-0 bg-transparent p-0"
+        onClick={
+          isActive
+            ? undefined
+            : () => {
+                handleClickAddImages("file");
+              }
+        }
+        onKeyDown={handleKeyDown("file")}
+        disabled={isActive}
+        aria-label="Add individual images"
+      >
+        <div className="flex min-h-[200px] min-w-[300px] justify-center rounded-lg">
+          <SvgComponent />
+        </div>
+        <p className="absolute left-16 top-[75%] font-bold text-base-content">
+          Add individual images
+        </p>
+      </button>
+      <button
+        type="button"
+        className="relative max-w-fit cursor-pointer rounded-lg transition-all ease-in-out hover:bg-base-300 active:scale-95 border-0 bg-transparent p-0"
+        onClick={
+          isActive
+            ? undefined
+            : () => {
+                handleClickAddImages("folder");
+              }
+        }
+        onKeyDown={handleKeyDown("folder")}
+        disabled={isActive}
+        aria-label="Add images from directory"
+      >
+        <div className="flex min-w-[300px] justify-center rounded-lg">
+          <SvgComponentFolder />
+        </div>
+        <p className="absolute left-12 top-[75%] font-bold text-base-content">
+          Add images from directory
+        </p>
+      </button>
+    </div>
+  );
 }
 
 export default AddImagesCard;

@@ -1,3 +1,3 @@
 export const IPC_MAIN_EVENTS = {
-	clearPlaylist: "clearPlaylist",
+  clearPlaylist: "clearPlaylist",
 } as const;

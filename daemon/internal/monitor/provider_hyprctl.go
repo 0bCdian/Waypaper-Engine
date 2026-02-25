@@ -35,16 +35,16 @@ func (p *hyprctlProvider) Priority() int {
 
 // hyprctlMonitor is the JSON shape returned by `hyprctl monitors -j`.
 type hyprctlMonitor struct {
-	Name         string  `json:"name"`
-	Width        int     `json:"width"`
-	Height       int     `json:"height"`
-	X            int     `json:"x"`
-	Y            int     `json:"y"`
-	Scale        float64 `json:"scale"`
-	RefreshRate  float64 `json:"refreshRate"`
-	Transform    int     `json:"transform"`
-	Disabled     bool    `json:"disabled"`
-	ActivelyTearing bool `json:"activelyTearing"`
+	Name            string  `json:"name"`
+	Width           int     `json:"width"`
+	Height          int     `json:"height"`
+	X               int     `json:"x"`
+	Y               int     `json:"y"`
+	Scale           float64 `json:"scale"`
+	RefreshRate     float64 `json:"refreshRate"`
+	Transform       int     `json:"transform"`
+	Disabled        bool    `json:"disabled"`
+	ActivelyTearing bool    `json:"activelyTearing"`
 }
 
 func (p *hyprctlProvider) Detect(ctx context.Context) ([]Monitor, error) {

@@ -19,34 +19,32 @@ const Wallhaven = lazy(() => import("./routes/Wallhaven"));
 const History = lazy(() => import("./routes/History"));
 
 const App = () => {
-	useLoadAppConfig()();
-	useLoadMonitors();
-	useRealTimeImageProcessing();
-	useNotifications();
-	return (
-		<ThemeProvider defaultTheme="business" persist={true} syncWithSystem={true}>
-			<HashRouter
-				future={{ v7_startTransition: true, v7_relativeSplatPath: true }}
-			>
-				<ImageProcessingProgress />
-				<ToastContainer />
-				<ContextMenu />
-				<ConfirmDialog />
-				<ModernAppLayout>
-					<Suspense fallback={<div className="skeleton w-full h-full" />}>
-						<Routes>
-							<Route path="/" element={<Home />} />
-							<Route path="/settings" element={<Settings />} />
-							<Route path="/wallhaven" element={<Wallhaven />} />
-							<Route path="/history" element={<History />} />
-						</Routes>
-					</Suspense>
-				</ModernAppLayout>
-				<Modals />
-				<ImageDetailSidebar />
-			</HashRouter>
-		</ThemeProvider>
-	);
+  useLoadAppConfig()();
+  useLoadMonitors();
+  useRealTimeImageProcessing();
+  useNotifications();
+  return (
+    <ThemeProvider defaultTheme="business" persist={true} syncWithSystem={true}>
+      <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <ImageProcessingProgress />
+        <ToastContainer />
+        <ContextMenu />
+        <ConfirmDialog />
+        <ModernAppLayout>
+          <Suspense fallback={<div className="skeleton w-full h-full" />}>
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/settings" element={<Settings />} />
+              <Route path="/wallhaven" element={<Wallhaven />} />
+              <Route path="/history" element={<History />} />
+            </Routes>
+          </Suspense>
+        </ModernAppLayout>
+        <Modals />
+        <ImageDetailSidebar />
+      </HashRouter>
+    </ThemeProvider>
+  );
 };
 
 export default App;

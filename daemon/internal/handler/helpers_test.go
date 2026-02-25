@@ -104,4 +104,3 @@ func TestParsePagination_Clamps(t *testing.T) {
 	assert.Equal(t, 1, p.Page)
 	assert.Equal(t, 200, p.PerPage)
 }
-

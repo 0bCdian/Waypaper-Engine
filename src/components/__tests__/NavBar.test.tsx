@@ -6,93 +6,86 @@ const mockReQueryMonitors = vi.fn().mockResolvedValue(undefined);
 const mockModalOpen = vi.fn();
 
 let mockMonitorState = {
-	monitorSelection: {
-		selectedMonitors: ["HDMI-A-1"],
-		mode: "individual" as const,
-	},
-	reQueryMonitors: mockReQueryMonitors,
+  monitorSelection: {
+    selectedMonitors: ["HDMI-A-1"],
+    mode: "individual" as const,
+  },
+  reQueryMonitors: mockReQueryMonitors,
 };
 
 vi.mock("zustand/react/shallow", () => ({
-	useShallow: (fn: Function) => fn,
+  useShallow: (fn: Function) => fn,
 }));
 
 vi.mock("../../hooks/useIsNeo", () => ({ useIsNeo: () => false }));
 
 vi.mock("../../stores/monitors", () => ({
-	useMonitorStore: (selector: (s: typeof mockMonitorState) => unknown) =>
-		selector(mockMonitorState),
+  useMonitorStore: (selector: (s: typeof mockMonitorState) => unknown) =>
+    selector(mockMonitorState),
 }));
 
 vi.mock("../../stores/modalStore", () => ({
-	useModalStore: { getState: () => ({ open: mockModalOpen }) },
+  useModalStore: { getState: () => ({ open: mockModalOpen }) },
 }));
 
 vi.mock("./ModernAppLayout", () => ({
-	DRAWER_CHECKBOX_ID: "sidebar-drawer",
+  DRAWER_CHECKBOX_ID: "sidebar-drawer",
 }));
 
 vi.mock("../../utils/cn", () => ({
-	cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
+  cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));
 
 vi.mock("../../utils/logger", () => ({
-	logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
+  logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
 }));
 
 import { NavBar } from "../layout/NavBar";
 
 beforeEach(() => {
-	vi.clearAllMocks();
+  vi.clearAllMocks();
 
-	mockMonitorState = {
-		monitorSelection: {
-			selectedMonitors: ["HDMI-A-1"],
-			mode: "individual" as const,
-		},
-		reQueryMonitors: mockReQueryMonitors,
-	};
+  mockMonitorState = {
+    monitorSelection: {
+      selectedMonitors: ["HDMI-A-1"],
+      mode: "individual" as const,
+    },
+    reQueryMonitors: mockReQueryMonitors,
+  };
 });
 
 describe("NavBar", () => {
-	it("renders hamburger toggle and monitor button", () => {
-		render(<NavBar />);
+  it("renders hamburger toggle and monitor button", () => {
+    render(<NavBar />);
 
-		expect(
-			screen.getByLabelText("Toggle sidebar"),
-		).toBeInTheDocument();
-		expect(
-			screen.getByLabelText("Select display monitor"),
-		).toBeInTheDocument();
-	});
+    expect(screen.getByLabelText("Toggle sidebar")).toBeInTheDocument();
+    expect(screen.getByLabelText("Select display monitor")).toBeInTheDocument();
+  });
 
-	it("shows selected monitor names when monitors are selected", () => {
-		mockMonitorState.monitorSelection.selectedMonitors = [
-			"HDMI-A-1",
-			"DP-1",
-		];
+  it("shows selected monitor names when monitors are selected", () => {
+    mockMonitorState.monitorSelection.selectedMonitors = ["HDMI-A-1", "DP-1"];
 
-		render(<NavBar />);
+    render(<NavBar />);
 
-		expect(screen.getByText("HDMI-A-1, DP-1")).toBeInTheDocument();
-	});
+    expect(screen.getByText("HDMI-A-1, DP-1")).toBeInTheDocument();
+  });
 
-	it('shows "Select Display" when no monitors are selected', () => {
-		mockMonitorState.monitorSelection.selectedMonitors = [];
+  it('shows "Select Display" when no monitors are selected', () => {
+    mockMonitorState.monitorSelection.selectedMonitors = [];
 
-		render(<NavBar />);
+    render(<NavBar />);
 
-		expect(screen.getByText("Select Display")).toBeInTheDocument();
-	});
+    expect(screen.getByText("Select Display")).toBeInTheDocument();
+  });
 
-	it("clicking monitor button calls reQueryMonitors then opens modal", async () => {
-		const user = userEvent.setup();
-		render(<NavBar />);
+  it("clicking monitor button calls reQueryMonitors then opens modal", async () => {
+    const user = userEvent.setup();
+    render(<NavBar />);
 
-		const monitorBtn = screen.getByLabelText("Select display monitor");
-		await user.click(monitorBtn);
+    const monitorBtn = screen.getByLabelText("Select display monitor");
+    await user.click(monitorBtn);
 
-		expect(mockReQueryMonitors).toHaveBeenCalled();
-		expect(mockModalOpen).toHaveBeenCalledWith("monitors");
-	});
+    expect(mockReQueryMonitors).toHaveBeenCalled();
+    expect(mockModalOpen).toHaveBeenCalledWith("monitors");
+  });
 });

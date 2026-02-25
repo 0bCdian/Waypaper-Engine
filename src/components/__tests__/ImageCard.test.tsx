@@ -4,8 +4,8 @@ import type { rendererImage } from "../../types/rendererTypes";
 
 const mockAddImagesToPlaylist = vi.fn();
 const mockReadPlaylist = vi.fn().mockReturnValue({
-	configuration: { type: "interval" },
-	images: [],
+  configuration: { type: "interval" },
+  images: [],
 });
 const mockRemoveImagesFromPlaylist = vi.fn();
 const mockAddToSelectedImages = vi.fn();
@@ -16,252 +16,255 @@ const mockAddToast = vi.fn();
 const mockBuildImageMenuItems = vi.fn().mockReturnValue([]);
 
 let mockPlaylistState = {
-	addImagesToPlaylist: mockAddImagesToPlaylist,
-	readPlaylist: mockReadPlaylist,
-	removeImagesFromPlaylist: mockRemoveImagesFromPlaylist,
-	isEmpty: true,
-	playlistImagesSet: new Set<number>(),
+  addImagesToPlaylist: mockAddImagesToPlaylist,
+  readPlaylist: mockReadPlaylist,
+  removeImagesFromPlaylist: mockRemoveImagesFromPlaylist,
+  isEmpty: true,
+  playlistImagesSet: new Set<number>(),
 };
 
 let mockImagesState = {
-	addToSelectedImages: mockAddToSelectedImages,
-	removeFromSelectedImages: mockRemoveFromSelectedImages,
-	selectedImages: new Set<number>(),
-	renameImage: vi.fn(),
+  addToSelectedImages: mockAddToSelectedImages,
+  removeFromSelectedImages: mockRemoveFromSelectedImages,
+  selectedImages: new Set<number>(),
+  renameImage: vi.fn(),
 };
 
 let mockMonitorState = {
-	monitorSelection: {
-		selectedMonitors: ["HDMI-A-1"],
-		mode: "individual" as const,
-	},
-	monitorsList: [],
+  monitorSelection: {
+    selectedMonitors: ["HDMI-A-1"],
+    mode: "individual" as const,
+  },
+  monitorsList: [],
 };
 
 vi.mock("zustand/react/shallow", () => ({
-	useShallow: (fn: Function) => fn,
+  useShallow: (fn: Function) => fn,
 }));
 
 vi.mock("../../hooks/useIsNeo", () => ({ useIsNeo: () => false }));
 
 vi.mock("../../hooks/useInlineRename", () => ({
-	useInlineRename: () => ({
-		isRenaming: false,
-		renameName: "",
-		setRenameName: vi.fn(),
-		renameInputRef: { current: null },
-		startRename: vi.fn(),
-		submitRename: vi.fn(),
-		cancelRename: vi.fn(),
-	}),
+  useInlineRename: () => ({
+    isRenaming: false,
+    renameName: "",
+    setRenameName: vi.fn(),
+    renameInputRef: { current: null },
+    startRename: vi.fn(),
+    submitRename: vi.fn(),
+    cancelRename: vi.fn(),
+  }),
 }));
 
 vi.mock("@dnd-kit/react", () => ({
-	useDraggable: () => ({ ref: { current: null }, isDragging: false }),
+  useDraggable: () => ({ ref: { current: null }, isDragging: false }),
 }));
 
 vi.mock("react-hotkeys-hook", () => ({
-	isHotkeyPressed: vi.fn().mockReturnValue(false),
+  isHotkeyPressed: vi.fn().mockReturnValue(false),
 }));
 
 vi.mock("../../stores/monitors", () => ({
-	useMonitorStore: (selector: (s: typeof mockMonitorState) => unknown) =>
-		selector(mockMonitorState),
+  useMonitorStore: (selector: (s: typeof mockMonitorState) => unknown) =>
+    selector(mockMonitorState),
 }));
 
 vi.mock("../../stores/playlist", () => ({
-	usePlaylistStore: (selector: (s: typeof mockPlaylistState) => unknown) =>
-		selector(mockPlaylistState),
+  usePlaylistStore: (selector: (s: typeof mockPlaylistState) => unknown) =>
+    selector(mockPlaylistState),
 }));
 
 vi.mock("../../stores/images", () => ({
-	useImagesStore: Object.assign(
-		(selector: (s: typeof mockImagesState) => unknown) =>
-			selector(mockImagesState),
-		{ getState: () => mockImagesState },
-	),
+  useImagesStore: Object.assign(
+    (selector: (s: typeof mockImagesState) => unknown) => selector(mockImagesState),
+    { getState: () => mockImagesState },
+  ),
 }));
 
 vi.mock("../../stores/designSystemStore", () => ({
-	useDesignSystemStore: () => false,
+  useDesignSystemStore: () => false,
 }));
 
 vi.mock("../../stores/imageDetailStore", () => ({
-	useImageDetailStore: () => mockOpenDetail,
+  useImageDetailStore: () => mockOpenDetail,
 }));
 
 vi.mock("../../stores/contextMenuStore", () => ({
-	useContextMenuStore: () => mockOpenContextMenu,
+  useContextMenuStore: () => mockOpenContextMenu,
 }));
 
 vi.mock("../../stores/toastStore", () => ({
-	useToastStore: () => mockAddToast,
+  useToastStore: () => mockAddToast,
 }));
 
 vi.mock("../../utils/contextMenuItems", () => ({
-	buildImageMenuItems: (...args: unknown[]) => mockBuildImageMenuItems(...args),
+  buildImageMenuItems: (...args: unknown[]) => mockBuildImageMenuItems(...args),
 }));
 
 vi.mock("../../utils/logger", () => ({
-	logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
+  logger: { error: vi.fn(), warn: vi.fn(), info: vi.fn(), debug: vi.fn() },
 }));
 
 import ImageCard from "../ImageCard";
 
 function sampleRendererImage(id: number): rendererImage {
-	return {
-		id,
-		name: `image_${id}.jpg`,
-		path: `/tmp/images/image_${id}.jpg`,
-		media_type: "image",
-		width: 1920,
-		height: 1080,
-		format: "jpg",
-		file_size: 1024000,
-		checksum: `sha256:abc${id}`,
-		tags: ["nature", "landscape"],
-		colors: ["#ff0000", "#00ff00"],
-		imported_at: new Date().toISOString(),
-		source_path: `/home/user/wallpapers/image_${id}.jpg`,
-		is_selected: false,
-		thumbnails: {
-			default: `/tmp/thumbs/${id}_default.jpg`,
-			"720p": `/tmp/thumbs/${id}_720p.jpg`,
-			"1080p": `/tmp/thumbs/${id}_1080p.jpg`,
-			"1440p": `/tmp/thumbs/${id}_1440p.jpg`,
-			"4k": `/tmp/thumbs/${id}_4k.jpg`,
-		},
-		folder_id: null,
-		time: null,
-	};
+  return {
+    id,
+    name: `image_${id}.jpg`,
+    path: `/tmp/images/image_${id}.jpg`,
+    media_type: "image",
+    width: 1920,
+    height: 1080,
+    format: "jpg",
+    file_size: 1024000,
+    checksum: `sha256:abc${id}`,
+    tags: ["nature", "landscape"],
+    colors: ["#ff0000", "#00ff00"],
+    imported_at: new Date().toISOString(),
+    source_path: `/home/user/wallpapers/image_${id}.jpg`,
+    is_selected: false,
+    thumbnails: {
+      default: `/tmp/thumbs/${id}_default.jpg`,
+      "720p": `/tmp/thumbs/${id}_720p.jpg`,
+      "1080p": `/tmp/thumbs/${id}_1080p.jpg`,
+      "1440p": `/tmp/thumbs/${id}_1440p.jpg`,
+      "4k": `/tmp/thumbs/${id}_4k.jpg`,
+    },
+    folder_id: null,
+    time: null,
+  };
 }
 
 beforeEach(() => {
-	vi.clearAllMocks();
+  vi.clearAllMocks();
 
-	mockPlaylistState = {
-		addImagesToPlaylist: mockAddImagesToPlaylist,
-		readPlaylist: mockReadPlaylist,
-		removeImagesFromPlaylist: mockRemoveImagesFromPlaylist,
-		isEmpty: true,
-		playlistImagesSet: new Set<number>(),
-	};
+  mockPlaylistState = {
+    addImagesToPlaylist: mockAddImagesToPlaylist,
+    readPlaylist: mockReadPlaylist,
+    removeImagesFromPlaylist: mockRemoveImagesFromPlaylist,
+    isEmpty: true,
+    playlistImagesSet: new Set<number>(),
+  };
 
-	mockImagesState = {
-		addToSelectedImages: mockAddToSelectedImages,
-		removeFromSelectedImages: mockRemoveFromSelectedImages,
-		selectedImages: new Set<number>(),
-		renameImage: vi.fn(),
-	};
+  mockImagesState = {
+    addToSelectedImages: mockAddToSelectedImages,
+    removeFromSelectedImages: mockRemoveFromSelectedImages,
+    selectedImages: new Set<number>(),
+    renameImage: vi.fn(),
+  };
 
-	mockMonitorState = {
-		monitorSelection: {
-			selectedMonitors: ["HDMI-A-1"],
-			mode: "individual" as const,
-		},
-		monitorsList: [],
-	};
+  mockMonitorState = {
+    monitorSelection: {
+      selectedMonitors: ["HDMI-A-1"],
+      mode: "individual" as const,
+    },
+    monitorsList: [],
+  };
 });
 
 describe("ImageCard", () => {
-	it("renders image name and alt text", () => {
-		const img = sampleRendererImage(1);
-		render(<ImageCard Image={img} />);
+  it("renders image name and alt text", () => {
+    const img = sampleRendererImage(1);
+    render(<ImageCard Image={img} />);
 
-		expect(screen.getByText("image_1.jpg")).toBeInTheDocument();
-		expect(screen.getByAltText("image_1.jpg")).toBeInTheDocument();
-	});
+    expect(screen.getByText("image_1.jpg")).toBeInTheDocument();
+    expect(screen.getByAltText("image_1.jpg")).toBeInTheDocument();
+  });
 
-	it("double-click calls goDaemon.setWallpaper with correct args", () => {
-		const img = sampleRendererImage(1);
-		render(<ImageCard Image={img} />);
+  it("double-click calls goDaemon.setWallpaper with correct args", () => {
+    const img = sampleRendererImage(1);
+    render(<ImageCard Image={img} />);
 
-		const btn = screen.getByRole("button", {
-			name: /Set image_1\.jpg as wallpaper/,
-		});
-		fireEvent.doubleClick(btn);
+    const btn = screen.getByRole("button", {
+      name: /Set image_1\.jpg as wallpaper/,
+    });
+    fireEvent.doubleClick(btn);
 
-		expect(window.API_RENDERER.goDaemon.setWallpaper).toHaveBeenCalledWith(
-			1,
-			"HDMI-A-1",
-			"individual",
-		);
-	});
+    expect(window.API_RENDERER.goDaemon.setWallpaper).toHaveBeenCalledWith(
+      1,
+      "HDMI-A-1",
+      "individual",
+    );
+  });
 
-	it("checking checkbox calls addImagesToPlaylist", () => {
-		const img = sampleRendererImage(1);
-		render(<ImageCard Image={img} />);
+  it("checking checkbox calls addImagesToPlaylist", () => {
+    const img = sampleRendererImage(1);
+    render(<ImageCard Image={img} />);
 
-		const checkbox = screen.getByRole("checkbox");
-		fireEvent.click(checkbox);
+    const checkbox = screen.getByRole("checkbox");
+    fireEvent.click(checkbox);
 
-		expect(mockAddImagesToPlaylist).toHaveBeenCalledWith([1]);
-	});
+    expect(mockAddImagesToPlaylist).toHaveBeenCalledWith([1]);
+  });
 
-	it("unchecking checkbox calls removeImagesFromPlaylist", () => {
-		mockPlaylistState.isEmpty = false;
-		mockPlaylistState.playlistImagesSet = new Set([1]);
+  it("unchecking checkbox calls removeImagesFromPlaylist", () => {
+    mockPlaylistState.isEmpty = false;
+    mockPlaylistState.playlistImagesSet = new Set([1]);
 
-		const img = sampleRendererImage(1);
-		render(<ImageCard Image={img} />);
+    const img = sampleRendererImage(1);
+    render(<ImageCard Image={img} />);
 
-		const checkbox = screen.getByRole("checkbox");
-		expect(checkbox).toBeChecked();
+    const checkbox = screen.getByRole("checkbox");
+    expect(checkbox).toBeChecked();
 
-		fireEvent.click(checkbox);
-		expect(mockRemoveImagesFromPlaylist).toHaveBeenCalledWith(new Set([1]));
-	});
+    fireEvent.click(checkbox);
+    expect(mockRemoveImagesFromPlaylist).toHaveBeenCalledWith(new Set([1]));
+  });
 
-	it("right-click calls context menu open", () => {
-		const img = sampleRendererImage(1);
-		render(<ImageCard Image={img} />);
+  it("right-click calls context menu open", () => {
+    const img = sampleRendererImage(1);
+    render(<ImageCard Image={img} />);
 
-		const card = screen.getByRole("button", {
-			name: /Set image_1\.jpg as wallpaper/,
-		}).closest("[class*='group']")!;
-		fireEvent.contextMenu(card);
+    const card = screen
+      .getByRole("button", {
+        name: /Set image_1\.jpg as wallpaper/,
+      })
+      .closest("[class*='group']")!;
+    fireEvent.contextMenu(card);
 
-		expect(mockOpenContextMenu).toHaveBeenCalled();
-	});
+    expect(mockOpenContextMenu).toHaveBeenCalled();
+  });
 
-	it("info button calls imageDetailStore.open", () => {
-		const img = sampleRendererImage(1);
-		render(<ImageCard Image={img} />);
+  it("info button calls imageDetailStore.open", () => {
+    const img = sampleRendererImage(1);
+    render(<ImageCard Image={img} />);
 
-		const infoBtn = screen.getByTitle("Edit details");
-		fireEvent.click(infoBtn);
+    const infoBtn = screen.getByTitle("Edit details");
+    fireEvent.click(infoBtn);
 
-		expect(mockOpenDetail).toHaveBeenCalled();
-	});
+    expect(mockOpenDetail).toHaveBeenCalled();
+  });
 
-	it("renders format badge", () => {
-		const img = sampleRendererImage(1);
-		render(<ImageCard Image={img} />);
+  it("renders format badge", () => {
+    const img = sampleRendererImage(1);
+    render(<ImageCard Image={img} />);
 
-		expect(screen.getByText("jpg")).toBeInTheDocument();
-	});
+    expect(screen.getByText("jpg")).toBeInTheDocument();
+  });
 
-	it("shows selected overlay when image is in selectedImages", () => {
-		mockImagesState.selectedImages = new Set([1]);
+  it("shows selected overlay when image is in selectedImages", () => {
+    mockImagesState.selectedImages = new Set([1]);
 
-		const img = sampleRendererImage(1);
-		render(<ImageCard Image={img} />);
+    const img = sampleRendererImage(1);
+    render(<ImageCard Image={img} />);
 
-		const overlay = screen.getByRole("button", {
-			name: /Set image_1\.jpg as wallpaper/,
-		}).querySelector("[data-selected='true']");
+    const overlay = screen
+      .getByRole("button", {
+        name: /Set image_1\.jpg as wallpaper/,
+      })
+      .querySelector("[data-selected='true']");
 
-		expect(overlay).toBeInTheDocument();
-	});
+    expect(overlay).toBeInTheDocument();
+  });
 
-	it("has correct aria-label on the wallpaper button", () => {
-		const img = sampleRendererImage(5);
-		render(<ImageCard Image={img} />);
+  it("has correct aria-label on the wallpaper button", () => {
+    const img = sampleRendererImage(5);
+    render(<ImageCard Image={img} />);
 
-		expect(
-			screen.getByRole("button", {
-				name: "Set image_5.jpg as wallpaper",
-			}),
-		).toBeInTheDocument();
-	});
+    expect(
+      screen.getByRole("button", {
+        name: "Set image_5.jpg as wallpaper",
+      }),
+    ).toBeInTheDocument();
+  });
 });

@@ -62,7 +62,7 @@ Daemon metadata.
   "pid": 12345,
   "hostname": "myhost",
   "uptime": "2h15m30s",
-  "go_version": "go1.23.1",
+  "go_version": "go1.26",
   "os": "linux",
   "arch": "amd64"
 }

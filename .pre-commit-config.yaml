@@ -1,0 +1,26 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: check-yaml
+      - id: check-toml
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  - repo: local
+    hooks:
+      - id: format-check
+        name: Oxfmt format check
+        entry: npm run format:check
+        language: system
+        pass_filenames: false
+      - id: lint-check
+        name: Frontend lint check
+        entry: npm run lint:check
+        language: system
+        pass_filenames: false
+      - id: gofmt-check
+        name: gofmt check (daemon)
+        entry: npm run gofmt:check
+        language: system
+        pass_filenames: false

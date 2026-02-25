@@ -1,8 +1,3 @@
-// Package config defines the configuration types and the ConfigManager interface.
-//
-// Configuration is backed by Viper (github.com/spf13/viper) and stored as a TOML file.
-// The daemon core accesses config through the ConfigManager interface — it never
-// imports Viper directly. This keeps the config implementation swappable and testable.
 package config
 
 import "encoding/json"

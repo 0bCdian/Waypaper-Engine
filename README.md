@@ -86,7 +86,7 @@ Both the normal and -git version conflict with each other, so make sure to delet
 
 ## Manual Install (any distro)
 
-Prerequisites: `git`, `go` (1.22+), `node` (18+), `npm`
+Prerequisites: `git`, `go` (1.26+), `node` (22+), `npm`
 
 ```bash
 git clone https://github.com/0bCdian/Waypaper-Engine.git
@@ -164,6 +164,58 @@ sudo make uninstall-appimage
 
 See [packaging/README.md](packaging/README.md) for RPM (Fedora), Snap, and instructions on adding new packaging formats.
 
+## CI/CD and Releases
+
+This repo uses a lightweight flow:
+- `main` is the latest edge branch (can move fast, may break occasionally).
+- Releases are created only from Git tags matching `v*` (for example `v3.0.1`).
+- `package.json` is the canonical release version and must match each release tag.
+
+### Release flow (tag-driven)
+
+1. Open a PR that bumps `package.json` to your target release version `X.Y.Z`.
+2. Merge that PR into `main` after CI is green.
+3. Create and push the matching tag `vX.Y.Z`.
+
+```bash
+git tag vX.Y.Z
+git push origin vX.Y.Z
+```
+
+Pushing a `v*` tag triggers tag/version validation first. If `package.json` does not equal the tag version, the workflow fails before publishing.
+
+When validation passes, the release workflow builds and publishes:
+- `waypaper-daemon` binary
+- `*.AppImage`
+- `checksums.txt` (sha256 for both artifacts)
+
+### Recommended branch protection (GitHub settings)
+
+For `main`, keep it minimal:
+- Require a pull request before merging.
+- Require status checks to pass: `CI / validate`.
+- Require approvals: `0` or `1` (your preference for speed vs safety).
+- Keep “require branch up to date” disabled for a low-friction hobby flow.
+
+## Contributor Setup
+
+To run the same checks locally as CI:
+
+```bash
+npm run ci:check
+```
+
+Optional local hook setup:
+
+```bash
+pipx install pre-commit
+pre-commit install
+pre-commit run --all-files
+```
+
+CI enforces the same `npm run ci:check` command on pull requests (formatting, linting, Go formatting, typecheck, frontend tests, daemon unit tests, and frontend production build).
+Formatting uses Oxfmt and linting uses Oxlint.
+
 # Usage
 
 Simply start the app and add wallpapers to the gallery, from there you can double click to set the wallpapers or right click for more options, to create playlists simply click on the checkboxes that appear when hover over the images, and configure it, and then save it to auto start it.
@@ -197,7 +249,7 @@ https://github.com/0bCdian/Waypaper-Engine/assets/101421807/f454a904-7fa7-4ce9-8
 # TODO
 
 -   [ ] Add testing.
--   [ ] Have a ci/cd pipeline.
+-   [x] Have a ci/cd pipeline.
 -   [x] Implement a logger for errors.
 -   [x] Publish in the aur.
 -   [x] Find a good icon/logo for the app (Thank you [Cristian Avendaño](https://github.com/c-avendano)!).

@@ -3,212 +3,209 @@ import type { Monitor, MonitorMode } from "../../electron/daemon-go-types";
 import { logger } from "../utils/logger";
 
 export interface StoreMonitor extends Monitor {
-	isSelected: boolean;
+  isSelected: boolean;
 }
 
 export interface MonitorSelection {
-	selectedMonitors: string[];
-	mode: MonitorMode;
+  selectedMonitors: string[];
+  mode: MonitorMode;
 }
 
 interface MonitorStore {
-	monitorSelection: MonitorSelection;
-	monitorsList: StoreMonitor[];
-	setMonitorSelection: (value: MonitorSelection) => void;
-	setMonitorsList: (monitorsList: StoreMonitor[]) => void;
-	reQueryMonitors: () => Promise<void>;
-	refreshFromDaemon: () => Promise<void>;
-	setLastSavedMonitorConfig: () => Promise<void>;
-	_isLoadingConfig: boolean;
-	_configLoaded: boolean;
+  monitorSelection: MonitorSelection;
+  monitorsList: StoreMonitor[];
+  setMonitorSelection: (value: MonitorSelection) => void;
+  setMonitorsList: (monitorsList: StoreMonitor[]) => void;
+  reQueryMonitors: () => Promise<void>;
+  refreshFromDaemon: () => Promise<void>;
+  setLastSavedMonitorConfig: () => Promise<void>;
+  _isLoadingConfig: boolean;
+  _configLoaded: boolean;
 }
 
 const STORAGE_KEY = "waypaper-monitor-selection";
 
 function loadPersistedSelection(): MonitorSelection {
-	try {
-		const raw = localStorage.getItem(STORAGE_KEY);
-		if (!raw) return { selectedMonitors: [], mode: "individual" };
-		return JSON.parse(raw) as MonitorSelection;
-	} catch {
-		return { selectedMonitors: [], mode: "individual" };
-	}
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return { selectedMonitors: [], mode: "individual" };
+    return JSON.parse(raw) as MonitorSelection;
+  } catch {
+    return { selectedMonitors: [], mode: "individual" };
+  }
 }
 
 function persistSelection(sel: MonitorSelection) {
-	try {
-		localStorage.setItem(STORAGE_KEY, JSON.stringify(sel));
-	} catch {
-		/* ignore */
-	}
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(sel));
+  } catch {
+    /* ignore */
+  }
 }
 
 const initialSelection: MonitorSelection = loadPersistedSelection();
 
 export const useMonitorStore = create<MonitorStore>()((set, get) => ({
-	monitorSelection: initialSelection,
-	monitorsList: [] as StoreMonitor[],
-	_isLoadingConfig: false,
-	_configLoaded: false,
+  monitorSelection: initialSelection,
+  monitorsList: [] as StoreMonitor[],
+  _isLoadingConfig: false,
+  _configLoaded: false,
 
-	async setMonitorSelection(value) {
-		if (get()._isLoadingConfig) return;
+  async setMonitorSelection(value) {
+    if (get()._isLoadingConfig) return;
 
-		set({ monitorSelection: value });
-		persistSelection(value);
+    set({ monitorSelection: value });
+    persistSelection(value);
 
-		try {
-			if (window.API_RENDERER?.goDaemon?.updateConfig) {
-				await window.API_RENDERER.goDaemon.updateConfig({
-					monitors: {
-						selected_monitors: value.selectedMonitors,
-						image_set_type: value.mode,
-					},
-				});
-			}
-		} catch (error) {
-			logger.error("MonitorStore: Failed to save monitor config:", error);
-		}
-	},
+    try {
+      if (window.API_RENDERER?.goDaemon?.updateConfig) {
+        await window.API_RENDERER.goDaemon.updateConfig({
+          monitors: {
+            selected_monitors: value.selectedMonitors,
+            image_set_type: value.mode,
+          },
+        });
+      }
+    } catch (error) {
+      logger.error("MonitorStore: Failed to save monitor config:", error);
+    }
+  },
 
-	setMonitorsList(monitorsList) {
-		set({ monitorsList });
-	},
+  setMonitorsList(monitorsList) {
+    set({ monitorsList });
+  },
 
-	async reQueryMonitors() {
-		try {
-			if (!window.API_RENDERER?.goDaemon?.getMonitors) {
-				logger.error("MonitorStore: getMonitors not available");
-				return;
-			}
+  async reQueryMonitors() {
+    try {
+      if (!window.API_RENDERER?.goDaemon?.getMonitors) {
+        logger.error("MonitorStore: getMonitors not available");
+        return;
+      }
 
-			const monitors = await window.API_RENDERER.goDaemon.getMonitors();
+      const monitors = await window.API_RENDERER.goDaemon.getMonitors();
 
-			if (!Array.isArray(monitors) || monitors.length === 0) {
-				logger.warn("MonitorStore: No monitors found");
-				return;
-			}
+      if (!Array.isArray(monitors) || monitors.length === 0) {
+        logger.warn("MonitorStore: No monitors found");
+        return;
+      }
 
-			const selection = get().monitorSelection;
-			const storeMonitors: StoreMonitor[] = monitors.map((monitor) => ({
-				...monitor,
-				isSelected: selection.selectedMonitors.includes(monitor.name),
-			}));
+      const selection = get().monitorSelection;
+      const storeMonitors: StoreMonitor[] = monitors.map((monitor) => ({
+        ...monitor,
+        isSelected: selection.selectedMonitors.includes(monitor.name),
+      }));
 
-			set({ monitorsList: storeMonitors });
-		} catch (error) {
-			logger.error("MonitorStore: Error loading monitors:", error);
-		}
-	},
+      set({ monitorsList: storeMonitors });
+    } catch (error) {
+      logger.error("MonitorStore: Error loading monitors:", error);
+    }
+  },
 
-	async refreshFromDaemon() {
-		try {
-			if (!window.API_RENDERER?.goDaemon?.getConfig) return;
+  async refreshFromDaemon() {
+    try {
+      if (!window.API_RENDERER?.goDaemon?.getConfig) return;
 
-			const [monitors, config] = await Promise.all([
-				window.API_RENDERER.goDaemon.getMonitors(),
-				window.API_RENDERER.goDaemon.getConfig(),
-			]);
+      const [monitors, config] = await Promise.all([
+        window.API_RENDERER.goDaemon.getMonitors(),
+        window.API_RENDERER.goDaemon.getConfig(),
+      ]);
 
-			if (!config?.monitors) return;
+      if (!config?.monitors) return;
 
-			const selectedMonitors = config.monitors.selected_monitors || [];
-			const mode: MonitorMode = config.monitors.image_set_type || "individual";
-			const selection: MonitorSelection = { selectedMonitors, mode };
+      const selectedMonitors = config.monitors.selected_monitors || [];
+      const mode: MonitorMode = config.monitors.image_set_type || "individual";
+      const selection: MonitorSelection = { selectedMonitors, mode };
 
-			const storeMonitors: StoreMonitor[] = (Array.isArray(monitors) ? monitors : []).map(
-				(monitor) => ({
-					...monitor,
-					isSelected: selectedMonitors.includes(monitor.name),
-				}),
-			);
+      const storeMonitors: StoreMonitor[] = (Array.isArray(monitors) ? monitors : []).map(
+        (monitor) => ({
+          ...monitor,
+          isSelected: selectedMonitors.includes(monitor.name),
+        }),
+      );
 
-			set({ monitorSelection: selection, monitorsList: storeMonitors });
-			persistSelection(selection);
-		} catch (error) {
-			logger.error("MonitorStore: Error refreshing from daemon:", error);
-		}
-	},
+      set({ monitorSelection: selection, monitorsList: storeMonitors });
+      persistSelection(selection);
+    } catch (error) {
+      logger.error("MonitorStore: Error refreshing from daemon:", error);
+    }
+  },
 
-	async setLastSavedMonitorConfig() {
-		if (get()._configLoaded) return;
+  async setLastSavedMonitorConfig() {
+    if (get()._configLoaded) return;
 
-		try {
-			set({ _isLoadingConfig: true });
+    try {
+      set({ _isLoadingConfig: true });
 
-			if (!window.API_RENDERER?.goDaemon) {
-				logger.error("MonitorStore: goDaemon not available");
-				return;
-			}
+      if (!window.API_RENDERER?.goDaemon) {
+        logger.error("MonitorStore: goDaemon not available");
+        return;
+      }
 
-			const monitors = await window.API_RENDERER.goDaemon.getMonitors();
-			if (!Array.isArray(monitors) || monitors.length === 0) {
-				set({ _isLoadingConfig: false });
-				return;
-			}
+      const monitors = await window.API_RENDERER.goDaemon.getMonitors();
+      if (!Array.isArray(monitors) || monitors.length === 0) {
+        set({ _isLoadingConfig: false });
+        return;
+      }
 
-			let selectedMonitors: string[] = [];
-			let imageSetType: MonitorMode = "individual";
+      let selectedMonitors: string[] = [];
+      let imageSetType: MonitorMode = "individual";
 
-			if (window.API_RENDERER.goDaemon.getConfig) {
-				const config = await window.API_RENDERER.goDaemon.getConfig();
-				if (config?.monitors) {
-					selectedMonitors = config.monitors.selected_monitors || [];
-					imageSetType = config.monitors.image_set_type || "individual";
-				}
-			}
+      if (window.API_RENDERER.goDaemon.getConfig) {
+        const config = await window.API_RENDERER.goDaemon.getConfig();
+        if (config?.monitors) {
+          selectedMonitors = config.monitors.selected_monitors || [];
+          imageSetType = config.monitors.image_set_type || "individual";
+        }
+      }
 
-			const selection: MonitorSelection = {
-				selectedMonitors,
-				mode: imageSetType,
-			};
+      const selection: MonitorSelection = {
+        selectedMonitors,
+        mode: imageSetType,
+      };
 
-			const storeMonitors: StoreMonitor[] = monitors.map((monitor) => ({
-				...monitor,
-				isSelected: selectedMonitors.includes(monitor.name),
-			}));
+      const storeMonitors: StoreMonitor[] = monitors.map((monitor) => ({
+        ...monitor,
+        isSelected: selectedMonitors.includes(monitor.name),
+      }));
 
-		set({
-			monitorSelection: selection,
-			monitorsList: storeMonitors,
-			_configLoaded: true,
-		});
-		persistSelection(selection);
-		} catch (error) {
-			logger.error("MonitorStore: Error setting last saved config:", error);
-		} finally {
-			set({ _isLoadingConfig: false });
-		}
-	},
+      set({
+        monitorSelection: selection,
+        monitorsList: storeMonitors,
+        _configLoaded: true,
+      });
+      persistSelection(selection);
+    } catch (error) {
+      logger.error("MonitorStore: Error setting last saved config:", error);
+    } finally {
+      set({ _isLoadingConfig: false });
+    }
+  },
 }));
 
 interface ConfigChangeEvent {
-	sections?: string[];
-	source?: string;
+  sections?: string[];
+  source?: string;
 }
 
 let _disposeConfigChanged: (() => void) | undefined;
 
 function initMonitorConfigListener() {
-	_disposeConfigChanged?.();
-	if (typeof window !== "undefined" && window.API_RENDERER?.goDaemon) {
-		_disposeConfigChanged = window.API_RENDERER.goDaemon.on(
-			"config_changed",
-			(data: unknown) => {
-				const event = data as ConfigChangeEvent;
-				const sections = event?.sections;
-				if (!sections || sections.includes("monitors")) {
-					void useMonitorStore.getState().refreshFromDaemon();
-				}
-			},
-		);
-	}
+  _disposeConfigChanged?.();
+  if (typeof window !== "undefined" && window.API_RENDERER?.goDaemon) {
+    _disposeConfigChanged = window.API_RENDERER.goDaemon.on("config_changed", (data: unknown) => {
+      const event = data as ConfigChangeEvent;
+      const sections = event?.sections;
+      if (!sections || sections.includes("monitors")) {
+        void useMonitorStore.getState().refreshFromDaemon();
+      }
+    });
+  }
 }
 
 initMonitorConfigListener();
 
 if (import.meta.hot) {
-	import.meta.hot.dispose(() => {
-		_disposeConfigChanged?.();
-	});
+  import.meta.hot.dispose(() => {
+    _disposeConfigChanged?.();
+  });
 }

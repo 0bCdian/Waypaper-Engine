@@ -10,60 +10,59 @@ import { confirmDialog } from "../components/ConfirmDialog";
  *                     (e.g. "Restore original" in the history menu).
  */
 export function buildWallpaperSubmenu(
-	monitors: Monitor[],
-	onSet: (monitor: string, mode: MonitorMode) => void,
-	prefixItems?: MenuItem[],
+  monitors: Monitor[],
+  onSet: (monitor: string, mode: MonitorMode) => void,
+  prefixItems?: MenuItem[],
 ): MenuItem[] {
-	const items: MenuItem[] = [];
+  const items: MenuItem[] = [];
 
-	if (prefixItems?.length) {
-		items.push(...prefixItems);
-	}
+  if (prefixItems?.length) {
+    items.push(...prefixItems);
+  }
 
-	items.push(
-		{
-			type: "action",
-			label: "Duplicate across all monitors",
-			onClick: () => onSet("*", "clone"),
-		},
-		{
-			type: "action",
-			label: "Extend across all monitors",
-			onClick: () => onSet("*", "extend"),
-		},
-	);
+  items.push(
+    {
+      type: "action",
+      label: "Duplicate across all monitors",
+      onClick: () => onSet("*", "clone"),
+    },
+    {
+      type: "action",
+      label: "Extend across all monitors",
+      onClick: () => onSet("*", "extend"),
+    },
+  );
 
-	if (monitors.length > 0) {
-		items.push({ type: "separator" });
-		for (const monitor of monitors) {
-			items.push({
-				type: "action",
-				label: `On ${monitor.name}`,
-				onClick: () => onSet(monitor.name, "individual"),
-			});
-		}
-	}
+  if (monitors.length > 0) {
+    items.push({ type: "separator" });
+    for (const monitor of monitors) {
+      items.push({
+        type: "action",
+        label: `On ${monitor.name}`,
+        onClick: () => onSet(monitor.name, "individual"),
+      });
+    }
+  }
 
-	return items;
+  return items;
 }
 
 export function buildClearHistoryItem(
-	onClear: () => void,
-	label = "Clear wallpaper history",
+  onClear: () => void,
+  label = "Clear wallpaper history",
 ): MenuItem {
-	return {
-		type: "action",
-		label,
-		danger: true,
-		onClick: async () => {
-			const confirmed = await confirmDialog({
-				title: "Clear wallpaper history",
-				message:
-					"Are you sure you want to delete all wallpaper history? This cannot be undone.",
-				confirmLabel: "Clear all",
-				danger: true,
-			});
-			if (confirmed) onClear();
-		},
-	};
+  return {
+    type: "action",
+    label,
+    danger: true,
+    onClick: async () => {
+      const confirmed = await confirmDialog({
+        title: "Clear wallpaper history",
+        message: "Are you sure you want to delete all wallpaper history? This cannot be undone.",
+        confirmLabel: "Clear all",
+        danger: true,
+      });
+      if (confirmed) onClear();
+    },
+  };
 }

@@ -1,187 +1,169 @@
 import { vi } from "vitest";
 
 export function createMockAPI(): Window["API_RENDERER"] {
-	return {
-		goDaemon: {
-			ping: vi.fn().mockResolvedValue(true),
-			getInfo: vi.fn().mockResolvedValue({
-				version: "3.0.0",
-				pid: 1234,
-				hostname: "test",
-				uptime: "1h0m0s",
-				go_version: "go1.23",
-				os: "linux",
-				arch: "amd64",
-			}),
-			shutdown: vi.fn().mockResolvedValue(undefined),
+  return {
+    goDaemon: {
+      ping: vi.fn().mockResolvedValue(true),
+      getInfo: vi.fn().mockResolvedValue({
+        version: "3.0.0",
+        pid: 1234,
+        hostname: "test",
+        uptime: "1h0m0s",
+        go_version: "go1.26",
+        os: "linux",
+        arch: "amd64",
+      }),
+      shutdown: vi.fn().mockResolvedValue(undefined),
 
-			getImages: vi.fn().mockResolvedValue({
-				data: [],
-				pagination: {
-					page: 1,
-					per_page: 50,
-					total_items: 0,
-					total_pages: 0,
-				},
-			}),
-			getImage: vi.fn().mockResolvedValue(null),
-			getImageCount: vi.fn().mockResolvedValue({ count: 0 }),
-			importImages: vi
-				.fn()
-				.mockResolvedValue({ status: "processing", total: 0 }),
-			cancelImport: vi
-				.fn()
-				.mockResolvedValue({ status: "cancelled", batch_id: "" }),
-			deleteImages: vi.fn().mockResolvedValue({ deleted: 0 }),
-			updateImage: vi.fn().mockResolvedValue(null),
-			renameImage: vi.fn().mockResolvedValue(null),
-			selectAllImages: vi
-				.fn()
-				.mockResolvedValue({ updated: 0, selected: false }),
-			getImageTags: vi.fn().mockResolvedValue({ tags: [] }),
-			getImageHistory: vi.fn().mockResolvedValue([]),
-			clearImageHistory: vi.fn().mockResolvedValue({ status: "cleared" }),
+      getImages: vi.fn().mockResolvedValue({
+        data: [],
+        pagination: {
+          page: 1,
+          per_page: 50,
+          total_items: 0,
+          total_pages: 0,
+        },
+      }),
+      getImage: vi.fn().mockResolvedValue(null),
+      getImageCount: vi.fn().mockResolvedValue({ count: 0 }),
+      importImages: vi.fn().mockResolvedValue({ status: "processing", total: 0 }),
+      cancelImport: vi.fn().mockResolvedValue({ status: "cancelled", batch_id: "" }),
+      deleteImages: vi.fn().mockResolvedValue({ deleted: 0 }),
+      updateImage: vi.fn().mockResolvedValue(null),
+      renameImage: vi.fn().mockResolvedValue(null),
+      selectAllImages: vi.fn().mockResolvedValue({ updated: 0, selected: false }),
+      getImageTags: vi.fn().mockResolvedValue({ tags: [] }),
+      getImageHistory: vi.fn().mockResolvedValue([]),
+      clearImageHistory: vi.fn().mockResolvedValue({ status: "cleared" }),
 
-			getCurrentWallpapers: vi.fn().mockResolvedValue([]),
-			setWallpaper: vi.fn().mockResolvedValue({
-				status: "set",
-				image_id: 0,
-				monitor: "",
-				mode: "individual",
-			}),
-			setRandomWallpaper: vi.fn().mockResolvedValue({
-				status: "set",
-				image_id: 0,
-				monitor: "",
-				mode: "individual",
-			}),
+      getCurrentWallpapers: vi.fn().mockResolvedValue([]),
+      setWallpaper: vi.fn().mockResolvedValue({
+        status: "set",
+        image_id: 0,
+        monitor: "",
+        mode: "individual",
+      }),
+      setRandomWallpaper: vi.fn().mockResolvedValue({
+        status: "set",
+        image_id: 0,
+        monitor: "",
+        mode: "individual",
+      }),
 
-			getPlaylists: vi.fn().mockResolvedValue([]),
-			getPlaylist: vi.fn().mockResolvedValue(null),
-			createPlaylist: vi.fn().mockResolvedValue(null),
-			updatePlaylist: vi.fn().mockResolvedValue(null),
-			deletePlaylist: vi.fn().mockResolvedValue(undefined),
-			startPlaylist: vi.fn().mockResolvedValue(undefined),
-			stopPlaylist: vi.fn().mockResolvedValue(undefined),
-			pausePlaylist: vi.fn().mockResolvedValue(undefined),
-			resumePlaylist: vi.fn().mockResolvedValue(undefined),
-			nextPlaylistImage: vi.fn().mockResolvedValue(undefined),
-			previousPlaylistImage: vi.fn().mockResolvedValue(undefined),
-			getActivePlaylists: vi.fn().mockResolvedValue([]),
-			getActivePlaylistForMonitor: vi.fn().mockResolvedValue(null),
-			stopAllPlaylists: vi.fn().mockResolvedValue(undefined),
+      getPlaylists: vi.fn().mockResolvedValue([]),
+      getPlaylist: vi.fn().mockResolvedValue(null),
+      createPlaylist: vi.fn().mockResolvedValue(null),
+      updatePlaylist: vi.fn().mockResolvedValue(null),
+      deletePlaylist: vi.fn().mockResolvedValue(undefined),
+      startPlaylist: vi.fn().mockResolvedValue(undefined),
+      stopPlaylist: vi.fn().mockResolvedValue(undefined),
+      pausePlaylist: vi.fn().mockResolvedValue(undefined),
+      resumePlaylist: vi.fn().mockResolvedValue(undefined),
+      nextPlaylistImage: vi.fn().mockResolvedValue(undefined),
+      previousPlaylistImage: vi.fn().mockResolvedValue(undefined),
+      getActivePlaylists: vi.fn().mockResolvedValue([]),
+      getActivePlaylistForMonitor: vi.fn().mockResolvedValue(null),
+      stopAllPlaylists: vi.fn().mockResolvedValue(undefined),
 
-			getFolders: vi.fn().mockResolvedValue({ data: [] }),
-			getFolder: vi.fn().mockResolvedValue(null),
-			getFolderPath: vi.fn().mockResolvedValue({ data: [] }),
-			createFolder: vi.fn().mockResolvedValue(null),
-			updateFolder: vi.fn().mockResolvedValue(null),
-			deleteFolder: vi
-				.fn()
-				.mockResolvedValue({ deleted: true, mode: "keep_contents" }),
-			moveImagesToFolder: vi.fn().mockResolvedValue({ moved: 0 }),
+      getFolders: vi.fn().mockResolvedValue({ data: [] }),
+      getFolder: vi.fn().mockResolvedValue(null),
+      getFolderPath: vi.fn().mockResolvedValue({ data: [] }),
+      createFolder: vi.fn().mockResolvedValue(null),
+      updateFolder: vi.fn().mockResolvedValue(null),
+      deleteFolder: vi.fn().mockResolvedValue({ deleted: true, mode: "keep_contents" }),
+      moveImagesToFolder: vi.fn().mockResolvedValue({ moved: 0 }),
 
-			getMonitors: vi.fn().mockResolvedValue([]),
-			getMonitor: vi.fn().mockResolvedValue(null),
+      getMonitors: vi.fn().mockResolvedValue([]),
+      getMonitor: vi.fn().mockResolvedValue(null),
 
-			getConfig: vi.fn().mockResolvedValue({
-				app: {
-					kill_daemon_on_exit: false,
-					notifications: true,
-					start_minimized: false,
-					minimize_instead_of_close: false,
-					show_monitor_modal_on_start: true,
-					images_per_page: 50,
-					theme: "dark" as const,
-					image_history_limit: 1000,
-					sort_by: "imported_at" as const,
-					sort_order: "desc" as const,
-				},
-				daemon: {
-					images_dir: "/tmp/images",
-					thumbnails_dir: "/tmp/thumbs",
-					database_dir: "/tmp/db",
-					socket_path: "/tmp/waypaper.sock",
-					log_level: "info" as const,
-					log_file: "/tmp/daemon.log",
-					log_max_size_mb: 10,
-					log_max_backups: 3,
-					compositor: "auto" as const,
-				},
-				backend: { type: "swww" },
-				monitors: {
-					selected_monitors: [],
-					image_set_type: "individual" as const,
-				},
-				wallhaven: {
-					api_key: "",
-					enabled: false,
-					scroll_mode: "paginated" as const,
-				},
-			}),
-			updateConfig: vi.fn().mockResolvedValue(null),
-			getConfigSection: vi.fn().mockResolvedValue({}),
-			updateConfigSection: vi.fn().mockResolvedValue({}),
-			getBackendConfig: vi.fn().mockResolvedValue({}),
-			updateBackendConfig: vi.fn().mockResolvedValue(undefined),
+      getConfig: vi.fn().mockResolvedValue({
+        app: {
+          kill_daemon_on_exit: false,
+          notifications: true,
+          start_minimized: false,
+          minimize_instead_of_close: false,
+          show_monitor_modal_on_start: true,
+          images_per_page: 50,
+          theme: "dark" as const,
+          image_history_limit: 1000,
+          sort_by: "imported_at" as const,
+          sort_order: "desc" as const,
+        },
+        daemon: {
+          images_dir: "/tmp/images",
+          thumbnails_dir: "/tmp/thumbs",
+          database_dir: "/tmp/db",
+          socket_path: "/tmp/waypaper.sock",
+          log_level: "info" as const,
+          log_file: "/tmp/daemon.log",
+          log_max_size_mb: 10,
+          log_max_backups: 3,
+          compositor: "auto" as const,
+        },
+        backend: { type: "swww" },
+        monitors: {
+          selected_monitors: [],
+          image_set_type: "individual" as const,
+        },
+        wallhaven: {
+          api_key: "",
+          enabled: false,
+          scroll_mode: "paginated" as const,
+        },
+      }),
+      updateConfig: vi.fn().mockResolvedValue(null),
+      getConfigSection: vi.fn().mockResolvedValue({}),
+      updateConfigSection: vi.fn().mockResolvedValue({}),
+      getBackendConfig: vi.fn().mockResolvedValue({}),
+      updateBackendConfig: vi.fn().mockResolvedValue(undefined),
 
-			getBackends: vi.fn().mockResolvedValue([]),
-			activateBackend: vi
-				.fn()
-				.mockResolvedValue({ status: "activated", backend: "" }),
+      getBackends: vi.fn().mockResolvedValue([]),
+      activateBackend: vi.fn().mockResolvedValue({ status: "activated", backend: "" }),
 
-			on: vi.fn().mockReturnValue(() => {}),
-		},
+      on: vi.fn().mockReturnValue(() => {}),
+    },
 
-		getNativeTheme: vi.fn().mockResolvedValue({ shouldUseDarkColors: true }),
-		setThemeSource: vi.fn().mockResolvedValue(undefined),
-		onNativeThemeUpdated: vi.fn(),
-		onThemeChanged: vi.fn(),
+    getNativeTheme: vi.fn().mockResolvedValue({ shouldUseDarkColors: true }),
+    setThemeSource: vi.fn().mockResolvedValue(undefined),
+    onNativeThemeUpdated: vi.fn(),
+    onThemeChanged: vi.fn(),
 
-		getAppInfo: vi.fn().mockResolvedValue({}),
-		ping: vi.fn().mockResolvedValue(true),
+    getAppInfo: vi.fn().mockResolvedValue({}),
+    ping: vi.fn().mockResolvedValue(true),
 
-		getWindowBounds: vi
-			.fn()
-			.mockResolvedValue({ x: 0, y: 0, width: 1280, height: 720 }),
-		setWindowBounds: vi.fn().mockResolvedValue(undefined),
-		minimizeWindow: vi.fn().mockResolvedValue(undefined),
-		maximizeWindow: vi.fn().mockResolvedValue(undefined),
-		closeWindow: vi.fn().mockResolvedValue(undefined),
-		hideWindow: vi.fn().mockResolvedValue(undefined),
-		showWindow: vi.fn().mockResolvedValue(undefined),
+    getWindowBounds: vi.fn().mockResolvedValue({ x: 0, y: 0, width: 1280, height: 720 }),
+    setWindowBounds: vi.fn().mockResolvedValue(undefined),
+    minimizeWindow: vi.fn().mockResolvedValue(undefined),
+    maximizeWindow: vi.fn().mockResolvedValue(undefined),
+    closeWindow: vi.fn().mockResolvedValue(undefined),
+    hideWindow: vi.fn().mockResolvedValue(undefined),
+    showWindow: vi.fn().mockResolvedValue(undefined),
 
-		exitApp: vi.fn().mockResolvedValue(undefined),
+    exitApp: vi.fn().mockResolvedValue(undefined),
 
-		getDaemonStatus: vi.fn().mockResolvedValue({ running: true }),
-		restartDaemon: vi.fn().mockResolvedValue(undefined),
-		startDaemon: vi.fn().mockResolvedValue(undefined),
-		stopDaemon: vi.fn().mockResolvedValue(undefined),
+    getDaemonStatus: vi.fn().mockResolvedValue({ running: true }),
+    restartDaemon: vi.fn().mockResolvedValue(undefined),
+    startDaemon: vi.fn().mockResolvedValue(undefined),
+    stopDaemon: vi.fn().mockResolvedValue(undefined),
 
-		onAppError: vi.fn().mockReturnValue(() => {}),
-		onDaemonStatusUpdate: vi.fn().mockReturnValue(() => {}),
-		removeAllListeners: vi.fn(),
+    onAppError: vi.fn().mockReturnValue(() => {}),
+    onDaemonStatusUpdate: vi.fn().mockReturnValue(() => {}),
+    removeAllListeners: vi.fn(),
 
-		wallhaven: {
-			search: vi.fn().mockResolvedValue({}),
-			getWallpaper: vi.fn().mockResolvedValue({}),
-			testApiKey: vi.fn().mockResolvedValue({}),
-			download: vi.fn().mockResolvedValue(""),
-		},
+    wallhaven: {
+      search: vi.fn().mockResolvedValue({}),
+      getWallpaper: vi.fn().mockResolvedValue({}),
+      testApiKey: vi.fn().mockResolvedValue({}),
+      download: vi.fn().mockResolvedValue(""),
+    },
 
-		getPathForFile: vi.fn().mockReturnValue(""),
-		downloadUrl: vi.fn().mockResolvedValue(""),
-		openFiles: vi
-			.fn()
-			.mockResolvedValue({ success: true, data: { files: [] } }),
-		scanDirectory: vi
-			.fn()
-			.mockResolvedValue({ files: [], folderName: "" }),
-		handleOpenImages: vi
-			.fn()
-			.mockResolvedValue({ success: true }),
-		revealInFileManager: vi.fn().mockResolvedValue({ success: true }),
+    getPathForFile: vi.fn().mockReturnValue(""),
+    downloadUrl: vi.fn().mockResolvedValue(""),
+    openFiles: vi.fn().mockResolvedValue({ success: true, data: { files: [] } }),
+    scanDirectory: vi.fn().mockResolvedValue({ files: [], folderName: "" }),
+    handleOpenImages: vi.fn().mockResolvedValue({ success: true }),
+    revealInFileManager: vi.fn().mockResolvedValue({ success: true }),
 
-		logToMain: vi.fn(),
-	};
+    logToMain: vi.fn(),
+  };
 }

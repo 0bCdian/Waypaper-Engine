@@ -32,11 +32,6 @@ waypaper.sqlite3
 # daemon build artifacts
 daemon/build/
 
-# exclude from gitignore
-
-!postcss.config.js
-!tailwind.config.js
-
 .tessl/
 .cursor/
 .agents/
@@ -49,7 +44,6 @@ tessl.json
 playwright-report/
 blob-report/
 allure*/
-test-results
 .playwright-cli
 .local-browsers/
 playwright.env

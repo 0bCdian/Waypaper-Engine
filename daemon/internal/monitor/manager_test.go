@@ -18,7 +18,7 @@ type stubProvider struct {
 	detectFn   func(context.Context) ([]Monitor, error)
 }
 
-func (s *stubProvider) Name() string              { return s.name }
+func (s *stubProvider) Name() string               { return s.name }
 func (s *stubProvider) IsAvailable() bool          { return s.avail }
 func (s *stubProvider) Compositor() CompositorType { return s.compositor }
 func (s *stubProvider) Priority() int              { return s.priority }

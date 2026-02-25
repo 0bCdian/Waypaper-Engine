@@ -11,8 +11,8 @@ import (
 	"os"
 	"sort"
 
-	_ "golang.org/x/image/webp"
 	"golang.org/x/image/draw"
+	_ "golang.org/x/image/webp"
 )
 
 const (

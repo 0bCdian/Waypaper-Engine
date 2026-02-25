@@ -16,72 +16,66 @@ import type { Playlist } from "../../electron/daemon-go-types";
 const goDaemon = window.API_RENDERER.goDaemon;
 
 function Modals() {
-	const alreadyShown = useRef(false);
-	const [playlistsInDB, setPlaylistsInDB] = useState<Playlist[]>([]);
-	const { setLastSavedMonitorConfig, reQueryMonitors } = useMonitorStore(
-		useShallow((s) => ({
-			setLastSavedMonitorConfig: s.setLastSavedMonitorConfig,
-			reQueryMonitors: s.reQueryMonitors,
-		})),
-	);
-	const playlist = usePlaylistStore((s) => s.playlist);
+  const alreadyShown = useRef(false);
+  const [playlistsInDB, setPlaylistsInDB] = useState<Playlist[]>([]);
+  const { setLastSavedMonitorConfig, reQueryMonitors } = useMonitorStore(
+    useShallow((s) => ({
+      setLastSavedMonitorConfig: s.setLastSavedMonitorConfig,
+      reQueryMonitors: s.reQueryMonitors,
+    })),
+  );
+  const playlist = usePlaylistStore((s) => s.playlist);
 
-	const config = useSettingsStore((s) => s.config);
+  const config = useSettingsStore((s) => s.config);
 
-	const reloadPlaylists = () => {
-		void goDaemon.getPlaylists().then((playlists) => {
-			setPlaylistsInDB(playlists);
-		});
-	};
+  const reloadPlaylists = () => {
+    void goDaemon.getPlaylists().then((playlists) => {
+      setPlaylistsInDB(playlists);
+    });
+  };
 
-	useEffect(() => {
-		if (alreadyShown.current || !config) return;
-		alreadyShown.current = true;
-		if (!config.app.show_monitor_modal_on_start) return;
-		void setLastSavedMonitorConfig().then(() => {
-			setTimeout(() => {
-				void reQueryMonitors().then(() => {
-					useModalStore.getState().open("monitors");
-				});
-			}, 300);
-		});
-	}, [config, reQueryMonitors, setLastSavedMonitorConfig]);
+  useEffect(() => {
+    if (alreadyShown.current || !config) return;
+    alreadyShown.current = true;
+    if (!config.app.show_monitor_modal_on_start) return;
+    void setLastSavedMonitorConfig().then(() => {
+      setTimeout(() => {
+        void reQueryMonitors().then(() => {
+          useModalStore.getState().open("monitors");
+        });
+      }, 300);
+    });
+  }, [config, reQueryMonitors, setLastSavedMonitorConfig]);
 
-	useEffect(() => {
-		reloadPlaylists();
-	}, []);
+  useEffect(() => {
+    reloadPlaylists();
+  }, []);
 
-	useEffect(() => {
-		const dispose = goDaemon.on("playlists_updated", () => {
-			void goDaemon.getPlaylists().then((playlists) => {
-				setPlaylistsInDB(playlists);
-			});
-		});
-		return dispose;
-	}, []);
+  useEffect(() => {
+    const dispose = goDaemon.on("playlists_updated", () => {
+      void goDaemon.getPlaylists().then((playlists) => {
+        setPlaylistsInDB(playlists);
+      });
+    });
+    return dispose;
+  }, []);
 
-	return (
-		<>
-			<LoadPlaylistModal
-				playlistsInDB={playlistsInDB}
-				onPlaylistChanged={reloadPlaylists}
-				currentPlaylistName={playlist.name}
-			/>
-			<SavePlaylistModal
-				onPlaylistChanged={reloadPlaylists}
-				currentPlaylistName={playlist.name}
-			/>
-			<AddToPlaylistModal
-				playlistsInDB={playlistsInDB}
-				onPlaylistChanged={reloadPlaylists}
-			/>
-			<PlaylistConfigurationModal />
-			<AdvancedFiltersModal />
-			<FolderImportModal />
-			<FolderPickerModal />
-			<Monitors />
-		</>
-	);
+  return (
+    <>
+      <LoadPlaylistModal
+        playlistsInDB={playlistsInDB}
+        onPlaylistChanged={reloadPlaylists}
+        currentPlaylistName={playlist.name}
+      />
+      <SavePlaylistModal onPlaylistChanged={reloadPlaylists} currentPlaylistName={playlist.name} />
+      <AddToPlaylistModal playlistsInDB={playlistsInDB} onPlaylistChanged={reloadPlaylists} />
+      <PlaylistConfigurationModal />
+      <AdvancedFiltersModal />
+      <FolderImportModal />
+      <FolderPickerModal />
+      <Monitors />
+    </>
+  );
 }
 
 export default Modals;

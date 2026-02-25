@@ -9,94 +9,92 @@ let mockErrors: string[] = [];
 let mockFilteredSections = ["app", "daemon", "backend", "wallhaven"];
 
 vi.mock("zustand/react/shallow", () => ({
-	useShallow: (fn: Function) => fn,
+  useShallow: (fn: Function) => fn,
 }));
 
 vi.mock("@/hooks/useIsNeo", () => ({ useIsNeo: () => false }));
 
 vi.mock("@/stores/settingsStore", () => ({
-	useSettingsStore: (selector: Function) =>
-		selector({
-			errors: mockErrors,
-			searchTerm: "",
-			filteredSections: mockFilteredSections,
-			setSearchTerm: mockSetSearchTerm,
-			clearSearch: mockClearSearch,
-			clearErrors: mockClearErrors,
-		}),
+  useSettingsStore: (selector: Function) =>
+    selector({
+      errors: mockErrors,
+      searchTerm: "",
+      filteredSections: mockFilteredSections,
+      setSearchTerm: mockSetSearchTerm,
+      clearSearch: mockClearSearch,
+      clearErrors: mockClearErrors,
+    }),
 }));
 
 vi.mock("../settings/SettingsSearch", () => ({
-	default: () => <div data-testid="settings-search">Search</div>,
+  default: () => <div data-testid="settings-search">Search</div>,
 }));
 
 vi.mock("../settings/sections/AppSettingsSection", () => ({
-	default: () => <div data-testid="app-settings">App Settings</div>,
+  default: () => <div data-testid="app-settings">App Settings</div>,
 }));
 
 vi.mock("../settings/sections/DaemonSettingsSection", () => ({
-	default: () => <div data-testid="daemon-settings">Daemon Settings</div>,
+  default: () => <div data-testid="daemon-settings">Daemon Settings</div>,
 }));
 
 vi.mock("../settings/sections/BackendSettingsSection", () => ({
-	default: () => <div data-testid="backend-settings">Backend Settings</div>,
+  default: () => <div data-testid="backend-settings">Backend Settings</div>,
 }));
 
 vi.mock("../settings/sections/WallhavenSettingsSection", () => ({
-	default: () => (
-		<div data-testid="wallhaven-settings">Wallhaven Settings</div>
-	),
+  default: () => <div data-testid="wallhaven-settings">Wallhaven Settings</div>,
 }));
 
 vi.mock("@/utils/cn", () => ({
-	cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
+  cn: (...args: unknown[]) => args.filter(Boolean).join(" "),
 }));
 
 import { SettingsTabs } from "../settings/SettingsTabs";
 
 beforeEach(() => {
-	vi.clearAllMocks();
-	mockErrors = [];
-	mockFilteredSections = ["app", "daemon", "backend", "wallhaven"];
+  vi.clearAllMocks();
+  mockErrors = [];
+  mockFilteredSections = ["app", "daemon", "backend", "wallhaven"];
 });
 
 describe("SettingsTabs", () => {
-	it("renders all four section tabs", () => {
-		render(<SettingsTabs />);
+  it("renders all four section tabs", () => {
+    render(<SettingsTabs />);
 
-		expect(screen.getByText("General")).toBeInTheDocument();
-		expect(screen.getByText("Daemon")).toBeInTheDocument();
-		expect(screen.getByText("Backend")).toBeInTheDocument();
-		expect(screen.getByText("Wallhaven")).toBeInTheDocument();
-	});
+    expect(screen.getByText("General")).toBeInTheDocument();
+    expect(screen.getByText("Daemon")).toBeInTheDocument();
+    expect(screen.getByText("Backend")).toBeInTheDocument();
+    expect(screen.getByText("Wallhaven")).toBeInTheDocument();
+  });
 
-	it("clicking a tab switches the active section", async () => {
-		const user = userEvent.setup();
-		render(<SettingsTabs />);
+  it("clicking a tab switches the active section", async () => {
+    const user = userEvent.setup();
+    render(<SettingsTabs />);
 
-		expect(screen.getByTestId("app-settings")).toBeInTheDocument();
+    expect(screen.getByTestId("app-settings")).toBeInTheDocument();
 
-		await user.click(screen.getByText("Daemon"));
+    await user.click(screen.getByText("Daemon"));
 
-		expect(screen.getByTestId("daemon-settings")).toBeInTheDocument();
-	});
+    expect(screen.getByTestId("daemon-settings")).toBeInTheDocument();
+  });
 
-	it("shows error count badge when errors exist", () => {
-		mockErrors = ["field is required", "invalid value"];
+  it("shows error count badge when errors exist", () => {
+    mockErrors = ["field is required", "invalid value"];
 
-		render(<SettingsTabs />);
+    render(<SettingsTabs />);
 
-		expect(screen.getByText("2 errors")).toBeInTheDocument();
-	});
+    expect(screen.getByText("2 errors")).toBeInTheDocument();
+  });
 
-	it("only renders tabs for filteredSections", () => {
-		mockFilteredSections = ["app", "daemon"];
+  it("only renders tabs for filteredSections", () => {
+    mockFilteredSections = ["app", "daemon"];
 
-		render(<SettingsTabs />);
+    render(<SettingsTabs />);
 
-		expect(screen.getByText("General")).toBeInTheDocument();
-		expect(screen.getByText("Daemon")).toBeInTheDocument();
-		expect(screen.queryByText("Backend")).not.toBeInTheDocument();
-		expect(screen.queryByText("Wallhaven")).not.toBeInTheDocument();
-	});
+    expect(screen.getByText("General")).toBeInTheDocument();
+    expect(screen.getByText("Daemon")).toBeInTheDocument();
+    expect(screen.queryByText("Backend")).not.toBeInTheDocument();
+    expect(screen.queryByText("Wallhaven")).not.toBeInTheDocument();
+  });
 });

@@ -1,0 +1,122 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  validate-tag-version:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Validate tag commit is on main
+        run: |
+          git fetch origin main --depth=1
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || {
+            echo "Tag commit is not reachable from origin/main"
+            exit 1
+          }
+      - name: Validate tag matches package.json version
+        run: |
+          TAG="${GITHUB_REF_NAME#v}"
+          PKG_VERSION="$(node -p "require('./package.json').version")"
+          echo "Tag version: $TAG"
+          echo "package.json version: $PKG_VERSION"
+          if [ "$TAG" != "$PKG_VERSION" ]; then
+            echo "Version mismatch: tag v$TAG != package.json $PKG_VERSION"
+            exit 1
+          fi
+
+  quality-gates:
+    needs: validate-tag-version
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          cache-dependency-path: daemon/go.sum
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run canonical CI checks
+        run: npm run ci:check
+
+  appimage:
+    needs: [validate-tag-version, quality-gates]
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.26"
+          cache-dependency-path: daemon/go.sum
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build AppImage artifact
+        run: make appimage
+
+      - name: Build daemon artifact
+        run: make daemon
+
+      - name: Generate SHA256 checksums
+        run: |
+          sha256sum release/*.AppImage daemon/build/waypaper-daemon > release/checksums.txt
+
+      - name: Upload workflow artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: waypaper-engine-release
+          path: |
+            release/*.AppImage
+            daemon/build/waypaper-daemon
+            release/checksums.txt
+          if-no-files-found: error
+
+      - name: Publish GitHub Release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            release/*.AppImage
+            daemon/build/waypaper-daemon
+            release/checksums.txt

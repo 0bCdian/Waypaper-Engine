@@ -1,6 +1,6 @@
 module waypaper-engine/daemon
 
-go 1.25.6
+go 1.26
 
 require (
 	github.com/chai2010/webp v1.4.0

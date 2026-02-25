@@ -9,13 +9,13 @@ document.documentElement.setAttribute("data-theme", defaultTheme);
 
 const root = document.getElementById("root");
 if (root === null) {
-	throw new Error("Could not find root div element");
+  throw new Error("Could not find root div element");
 }
 
 createRoot(root).render(
-	<StrictMode>
-		<ErrorBoundary>
-			<App />
-		</ErrorBoundary>
-	</StrictMode>,
+  <StrictMode>
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  </StrictMode>,
 );

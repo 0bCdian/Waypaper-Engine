@@ -1,15 +1,15 @@
 import type { objectValues } from "../types";
 
 export const PLAYLIST_ORDER = {
-	ordered: "ordered",
-	random: "random",
+  ordered: "ordered",
+  random: "random",
 } as const;
 
 export const PLAYLIST_TYPES = {
-	TIMER: "timer",
-	MANUAL: "manual",
-	TIME_OF_DAY: "time_of_day",
-	DAY_OF_WEEK: "day_of_week",
+  TIMER: "timer",
+  MANUAL: "manual",
+  TIME_OF_DAY: "time_of_day",
+  DAY_OF_WEEK: "day_of_week",
 } as const;
 
 export type PLAYLIST_ORDER_TYPES = objectValues<typeof PLAYLIST_ORDER>;
