@@ -14,10 +14,12 @@
 - [Images](#images)
 - [Wallpaper](#wallpaper)
 - [Playlists](#playlists)
+- [Folders](#folders)
 - [Monitors](#monitors)
 - [Config](#config)
 - [Backends](#backends)
 - [Server-Sent Events (SSE)](#server-sent-events-sse)
+- [Electron Renderer Bridge Notes](#electron-renderer-bridge-notes)
 - [Data Models](#data-models)
 - [Enums & Constants](#enums--constants)
 
@@ -30,7 +32,8 @@ All error responses use:
 ```json
 {
   "error": "human-readable message",
-  "code": 400
+  "code": 400,
+  "details": "optional additional context"
 }
 ```
 
@@ -100,6 +103,8 @@ Paginated, sortable, filterable image gallery.
 | `media_type` | string | —             | Filter: `image`, `video`, `gif`              |
 | `search`    | string | —             | Case-insensitive fuzzy search on name/tags   |
 | `tags`      | string | —             | Comma-separated tag filter                   |
+| `colors`    | string | —             | Comma-separated dominant color filter (hex)  |
+| `folder_id` | string | —             | Folder filter (`root`/`0` for root, or ID)   |
 
 **Response** `200`:
 ```json
@@ -125,7 +130,8 @@ Import images into the gallery. Processing happens asynchronously. Progress is r
 **Request Body**:
 ```json
 {
-  "paths": ["/home/user/wallpapers/photo.png", "/home/user/wallpapers/art.jpg"]
+  "paths": ["/home/user/wallpapers/photo.png", "/home/user/wallpapers/art.jpg"],
+  "folder_id": 12
 }
 ```
 
@@ -133,7 +139,8 @@ Import images into the gallery. Processing happens asynchronously. Progress is r
 ```json
 {
   "status": "processing",
-  "total": 2
+  "total": 2,
+  "batch_id": "db7f4388-4a6d-4a66-b27a-39c8a3f67e49"
 }
 ```
 
@@ -191,6 +198,8 @@ Update mutable image fields.
 {
   "name": "new display name",
   "tags": ["landscape", "dark"],
+  "colors": ["#1a2b3c", "#fefefe"],
+  "folder_id": 4,
   "is_selected": true
 }
 ```
@@ -215,6 +224,40 @@ Batch select/deselect all images.
 {
   "updated": 120,
   "selected": true
+}
+```
+
+---
+
+### `GET /images/tags`
+
+Returns all distinct tags across stored images.
+
+**Response** `200`:
+```json
+{
+  "tags": ["landscape", "anime", "dark"]
+}
+```
+
+---
+
+### `POST /images/cancel-import`
+
+Cancel an in-flight image import batch.
+
+**Request Body**:
+```json
+{
+  "batch_id": "db7f4388-4a6d-4a66-b27a-39c8a3f67e49"
+}
+```
+
+**Response** `200`:
+```json
+{
+  "status": "cancelled",
+  "batch_id": "db7f4388-4a6d-4a66-b27a-39c8a3f67e49"
 }
 ```
 
@@ -257,6 +300,21 @@ Serves the original image file directly.
 
 ---
 
+### `POST /images/{id}/rename`
+
+Rename the image display name and underlying file name (safe + unique).
+
+**Request Body**:
+```json
+{
+  "name": "new_wallpaper_name"
+}
+```
+
+**Response** `200`: Updated [`Image`](#image) object.
+
+---
+
 ### `GET /images/history`
 
 Global wallpaper change history (most recent first).
@@ -278,7 +336,35 @@ See [ImageHistoryEntry model](#imagehistoryentry).
 
 ---
 
+### `DELETE /images/history`
+
+Clear global wallpaper history.
+
+**Response** `200`:
+```json
+{
+  "status": "cleared"
+}
+```
+
+Publishes `history_cleared` SSE event.
+
+---
+
 ## Wallpaper
+
+### `GET /wallpaper/current`
+
+Get persisted per-monitor wallpaper state.
+
+**Response** `200`:
+```json
+[MonitorState]
+```
+
+See [MonitorState model](#monitorstate).
+
+---
 
 ### `POST /wallpaper/set`
 
@@ -332,22 +418,6 @@ Set a random image from the gallery.
   "mode": "individual"
 }
 ```
-
----
-
-### `POST /wallpaper/history/next`
-
-Navigate forward in wallpaper history.
-
-**Response** `501`: Not yet implemented.
-
----
-
-### `POST /wallpaper/history/previous`
-
-Navigate backward in wallpaper history.
-
-**Response** `501`: Not yet implemented.
 
 ---
 
@@ -500,7 +570,7 @@ Go back to previous image in the playlist.
 
 ### `GET /playlists/active`
 
-Get all currently running playlists, grouped by playlist with monitors nested inside.
+Get all currently running playlists as active instances.
 
 **Response** `200`:
 ```json
@@ -514,12 +584,10 @@ Get all currently running playlists, grouped by playlist with monitors nested in
     "next_image_id": 1,
     "total_images": 3,
     "paused": false,
+    "mode": "clone",
     "started_at": "2026-02-15T14:30:00Z",
     "next_change_at": "2026-02-15T14:35:00Z",
-    "monitors": [
-      { "name": "DP-1", "mode": "clone" },
-      { "name": "HDMI-A-1", "mode": "clone" }
-    ]
+    "monitors": ["DP-1", "HDMI-A-1"]
   }
 ]
 ```
@@ -555,6 +623,122 @@ These operate on ALL active playlists across all monitors:
 {
   "message": "all playlists stopped",
   "stopped": 2
+}
+```
+
+---
+
+## Folders
+
+### `GET /folders`
+
+List folders. Supports hierarchy filtering and search.
+
+**Query Parameters**:
+
+| Parameter   | Type   | Default | Description                                          |
+|------------|--------|---------|------------------------------------------------------|
+| `parent_id` | string | —       | Parent folder id, or `root` / `null` for root level |
+| `search`    | string | —       | Name search (returns matching folders only)          |
+
+**Response** `200`:
+```json
+{
+  "data": [Folder]
+}
+```
+
+---
+
+### `POST /folders`
+
+Create a folder.
+
+**Request Body**:
+```json
+{
+  "name": "Landscapes",
+  "parent_id": null
+}
+```
+
+**Response** `201`: Created [`Folder`](#folder) object.
+
+---
+
+### `POST /folders/move-images`
+
+Move images to a folder (or root when `folder_id` is `null`).
+
+**Request Body**:
+```json
+{
+  "image_ids": [1, 2, 3],
+  "folder_id": 12
+}
+```
+
+**Response** `200`:
+```json
+{
+  "moved": 3
+}
+```
+
+---
+
+### `GET /folders/{id}`
+
+Get a folder by ID.
+
+**Response** `200`: [`Folder`](#folder) object.
+
+---
+
+### `PATCH /folders/{id}`
+
+Update folder fields (`name`, `parent_id`).
+
+**Request Body** (partial):
+```json
+{
+  "name": "Favorites",
+  "parent_id": 4
+}
+```
+
+**Response** `200`: Updated [`Folder`](#folder) object.
+
+---
+
+### `DELETE /folders/{id}`
+
+Delete a folder.
+
+**Query Parameters**:
+
+| Parameter | Type   | Default         | Description                                                        |
+|----------|--------|-----------------|--------------------------------------------------------------------|
+| `mode`   | string | `keep_contents` | `keep_contents` re-parents content, `delete_all` recursively deletes |
+
+**Response** `200`:
+```json
+{
+  "deleted": true,
+  "mode": "keep_contents"
+}
+```
+
+---
+
+### `GET /folders/{id}/path`
+
+Get the full folder path from root to the folder.
+
+**Response** `200`:
+```json
+{
+  "data": [Folder]
 }
 ```
 
@@ -597,7 +781,8 @@ Get the full daemon configuration.
   "app": AppConfig,
   "daemon": DaemonConfig,
   "backend": { "type": "swww" },
-  "monitors": MonitorsConfig
+  "monitors": MonitorsConfig,
+  "wallhaven": WallhavenConfig
 }
 ```
 
@@ -630,11 +815,15 @@ Publishes `config_changed` SSE event.
 
 ### `GET /config/{section}`
 
-Get a specific config section. Valid sections: `app`, `daemon`, `backend`, `monitors`.
+Get a specific config section. Valid sections for update are: `app`, `daemon`, `backend`, `monitors`, `wallhaven`.
 
 For `backend`: returns the active backend's specific config (e.g. swww transition settings), NOT the `BackendSection` struct.
 
 **Response** `200`: Section object or raw JSON for backend.
+
+Notes:
+- `backend` returns active backend-specific JSON (not `BackendSection`).
+- Current default config manager returns `{}` for unknown/missing sections instead of `404`.
 
 ---
 
@@ -733,16 +922,19 @@ Persistent streaming connection. Each event has:
 - `event:` — the event type string
 - `data:` — JSON payload
 
+`data` payloads always include a `timestamp` field (injected server-side).
+
 ### Event Types
 
 #### Image Processing Events
 
 | Event                  | Data                                                                 |
 |-----------------------|----------------------------------------------------------------------|
-| `processing_started`  | `{"total": 5}`                                                       |
-| `image_processed`     | `{"id": 3, "name": "photo.png", "index": 1, "total": 5}`           |
-| `image_error`         | `{"path": "/path/to/file.png", "error": "unsupported format"}`      |
-| `processing_complete` | `{"processed": 4, "errors": 1, "total": 5}`                         |
+| `processing_started`  | `{"batch_id":"...","total":5,"timestamp":"..."}`                    |
+| `image_processed`     | `{"batch_id":"...","image":{...},"current":1,"total":5,"elapsed_ms":91,"timestamp":"..."}` |
+| `image_error`         | `{"batch_id":"...","path":"/path/to/file.png","error":"...","current":1,"total":5,"elapsed_ms":12,"timestamp":"..."}` |
+| `processing_complete` | `{"batch_id":"...","total":5,"succeeded":4,"failed":1,"elapsed_ms":901,"timestamp":"..."}` |
+| `processing_cancelled`| `{"batch_id":"...","total":5,"succeeded":2,"failed":1,"elapsed_ms":420,"timestamp":"..."}` |
 
 #### Wallpaper Events
 
@@ -775,10 +967,29 @@ Persistent streaming connection. Each event has:
 
 #### Gallery Events
 
-| Event              | Data  |
-|-------------------|-------|
-| `images_updated`   | `{}`  |
-| `playlists_updated`| `{}`  |
+| Event               | Data                                  |
+|--------------------|---------------------------------------|
+| `images_updated`    | `{"action":"added","count":5,"timestamp":"..."}` |
+| `playlists_updated` | `{"action":"updated","playlist_id":3,"timestamp":"..."}` |
+| `folders_updated`   | `{"action":"created","folder_id":12,"timestamp":"..."}` |
+| `history_cleared`   | `{"timestamp":"..."}`                 |
+
+---
+
+## Electron Renderer Bridge Notes
+
+This document defines daemon HTTP behavior. The Electron renderer interacts through the preload bridge (`window.API_RENDERER`) and not by calling daemon HTTP directly.
+
+Important bridge behavior:
+
+- Most Electron IPC channels are wrapped by main-process `IPCManager` as:
+  - success: `{ "success": true, "data": <value> }`
+  - error: `{ "success": false, "error": "..." }`
+- `go-daemon-command` is the exception: it is **unwrapped** and returns raw data/errors.
+- Some daemon image payload paths are rewritten for renderer use:
+  - `path` and `thumbnails.*` may be converted from filesystem paths to `atom://...` URLs.
+  - This affects renderer-visible payloads for actions like image listing/get/rename.
+- Renderer convenience method signatures (for example `shutdown(): Promise<void>`) may abstract raw daemon return payloads (daemon still returns `{ "status": "shutting_down" }`).
 
 ---
 
@@ -798,9 +1009,11 @@ Persistent streaming connection. Each event has:
   "file_size": 8542190,
   "checksum": "sha256:abc123...",
   "tags": ["landscape", "sunset"],
+  "colors": ["#1a2b3c", "#fefefe"],
   "imported_at": "2026-02-15T14:30:00Z",
   "source_path": "/home/user/Pictures/sunset.png",
   "is_selected": false,
+  "folder_id": 4,
   "thumbnails": {
     "default": "/home/user/.cache/waypaper-engine/thumbnails/1_default.webp",
     "720p": "/home/user/.cache/waypaper-engine/thumbnails/1_720p.webp",
@@ -808,6 +1021,20 @@ Persistent streaming connection. Each event has:
     "1440p": "/home/user/.cache/waypaper-engine/thumbnails/1_1440p.webp",
     "4k": "/home/user/.cache/waypaper-engine/thumbnails/1_4k.webp"
   }
+}
+```
+
+---
+
+### Folder
+
+```json
+{
+  "id": 12,
+  "name": "Landscapes",
+  "parent_id": null,
+  "created_at": "2026-02-15T14:30:00Z",
+  "updated_at": "2026-02-15T14:30:00Z"
 }
 ```
 
@@ -883,7 +1110,7 @@ For `time_of_day`, images include the `time` field:
 
 ### ActivePlaylistInstance
 
-Per-monitor representation, returned by `GET /playlists/active/{monitor}`:
+Returned by `GET /playlists/active/{monitor}` (single instance) and by `GET /playlists/active` (array of instances):
 
 ```json
 {
@@ -897,13 +1124,16 @@ Per-monitor representation, returned by `GET /playlists/active/{monitor}`:
   "paused": false,
   "mode": "individual",
   "started_at": "2026-02-15T14:30:00Z",
-  "next_change_at": "2026-02-15T14:35:00Z"
+  "next_change_at": "2026-02-15T14:35:00Z",
+  "monitors": ["DP-1"]
 }
 ```
 
+`previous_image_id`, `next_image_id`, and `next_change_at` may be `null`.
+
 ### ActivePlaylistResponse
 
-Playlist-centric representation, returned by `GET /playlists/active`:
+Alias of [`ActivePlaylistInstance`](#activeplaylistinstance), used for historical naming compatibility in this document.
 
 ```json
 {
@@ -915,16 +1145,30 @@ Playlist-centric representation, returned by `GET /playlists/active`:
   "next_image_id": 1,
   "total_images": 3,
   "paused": false,
+  "mode": "clone",
   "started_at": "2026-02-15T14:30:00Z",
   "next_change_at": "2026-02-15T14:35:00Z",
-  "monitors": [
-    { "name": "DP-1", "mode": "clone" },
-    { "name": "HDMI-A-1", "mode": "clone" }
-  ]
+  "monitors": ["DP-1", "HDMI-A-1"]
 }
 ```
 
-`previous_image_id`, `next_image_id`, and `next_change_at` may be `null`.
+---
+
+### MonitorState
+
+Persisted per-monitor wallpaper state, returned by `GET /wallpaper/current`:
+
+```json
+{
+  "monitor_name": "DP-1",
+  "image_id": 2,
+  "image_name": "sunset_wallpaper",
+  "image_path": "/home/user/.local/share/waypaper-engine/images/sunset_wallpaper.png",
+  "mode": "individual",
+  "backend": "swww",
+  "set_at": "2026-02-15T14:30:00Z"
+}
+```
 
 ---
 
@@ -957,6 +1201,7 @@ Playlist-centric representation, returned by `GET /playlists/active`:
   "notifications": true,
   "start_minimized": false,
   "minimize_instead_of_close": false,
+  "show_monitor_modal_on_start": false,
   "images_per_page": 50,
   "theme": "dark",
   "image_history_limit": 100,
@@ -1020,6 +1265,16 @@ TOML config supports both hyphens and underscores (e.g. `transition-type` and `t
 {
   "selected_monitors": ["DP-1", "HDMI-A-1"],
   "image_set_type": "individual"
+}
+```
+
+#### WallhavenConfig
+
+```json
+{
+  "api_key": "",
+  "enabled": false,
+  "scroll_mode": "paginated"
 }
 ```
 
