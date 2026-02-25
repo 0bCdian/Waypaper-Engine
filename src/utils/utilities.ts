@@ -1,9 +1,12 @@
 import type { Image, Monitor } from "../../electron/daemon-go-types";
 
 export function getThumbnailSrc(
-  image: Pick<Image, "thumbnails" | "path">,
+  image: Pick<Image, "thumbnails" | "path"> & Partial<Pick<Image, "media_type" | "format">>,
   preferredSize?: keyof Image["thumbnails"],
 ): string {
+  if (image.media_type === "gif" || image.format === "gif") {
+    return image.path;
+  }
   if (preferredSize) {
     const val = image.thumbnails?.[preferredSize]?.trim();
     if (val) return val;

@@ -61,6 +61,15 @@ describe("getThumbnailSrc", () => {
     const img = { thumbnails: undefined as unknown as Image["thumbnails"], path: "/img.jpg" };
     expect(getThumbnailSrc(img)).toBe("/img.jpg");
   });
+
+  it("returns original path for gif media even when thumbnails exist", () => {
+    const img = {
+      thumbnails: baseThumbnails,
+      path: "/animated.gif",
+      media_type: "gif",
+    };
+    expect(getThumbnailSrc(img)).toBe("/animated.gif");
+  });
 });
 
 describe("toSeconds", () => {

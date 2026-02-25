@@ -159,6 +159,7 @@ function ImageCard({ Image }: ImageCardProps) {
     e.stopPropagation();
     openDetail(Image as unknown as import("../../electron/daemon-go-types").Image);
   };
+  const isGifPreview = Image.media_type === "gif" || Image.format?.toLowerCase() === "gif";
 
   const renameInput = (
     <input
@@ -184,19 +185,19 @@ function ImageCard({ Image }: ImageCardProps) {
 
   const pictureElement = (
     <picture className={isPolaroid ? "neo-polaroid-image" : "block w-full h-full"}>
-      {Image.thumbnails?.["4k"]?.trim() && (
+      {!isGifPreview && Image.thumbnails?.["4k"]?.trim() && (
         <source media="(width >= 7680px)" srcSet={Image.thumbnails["4k"]} />
       )}
-      {Image.thumbnails?.["1440p"]?.trim() && (
+      {!isGifPreview && Image.thumbnails?.["1440p"]?.trim() && (
         <source media="(width >= 2560px)" srcSet={Image.thumbnails["1440p"]} />
       )}
-      {Image.thumbnails?.["1080p"]?.trim() && (
+      {!isGifPreview && Image.thumbnails?.["1080p"]?.trim() && (
         <source media="(width >= 720px)" srcSet={Image.thumbnails["1080p"]} />
       )}
-      {Image.thumbnails?.["720p"]?.trim() && (
+      {!isGifPreview && Image.thumbnails?.["720p"]?.trim() && (
         <source media="(width >= 300px)" srcSet={Image.thumbnails["720p"]} />
       )}
-      {Image.thumbnails?.default?.trim() && (
+      {!isGifPreview && Image.thumbnails?.default?.trim() && (
         <source media="(width < 720px)" srcSet={Image.thumbnails.default} />
       )}
       <img
@@ -206,7 +207,13 @@ function ImageCard({ Image }: ImageCardProps) {
             ? "w-full h-auto aspect-[3/2] object-cover block"
             : "transform-gpu rounded-lg transition-all duration-300 group-hover:scale-110 group-hover:object-center w-full h-auto aspect-[3/2] object-cover"
         }
-        src={imgBroken ? TRANSPARENT_PIXEL : Image.thumbnails?.default?.trim() || Image.path}
+        src={
+          imgBroken
+            ? TRANSPARENT_PIXEL
+            : isGifPreview
+              ? Image.path
+              : Image.thumbnails?.default?.trim() || Image.path
+        }
         alt={Image.name}
         draggable={false}
         loading="lazy"

@@ -267,4 +267,15 @@ describe("ImageCard", () => {
       }),
     ).toBeInTheDocument();
   });
+
+  it("uses original gif path as preview source for gif media", () => {
+    const img = sampleRendererImage(6);
+    img.media_type = "gif";
+    img.format = "gif";
+    img.path = "/tmp/images/animated_6.gif";
+    render(<ImageCard Image={img} />);
+
+    const preview = screen.getByAltText("image_6.jpg") as HTMLImageElement;
+    expect(preview.getAttribute("src")).toContain("/tmp/images/animated_6.gif");
+  });
 });
