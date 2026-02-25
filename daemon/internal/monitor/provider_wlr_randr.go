@@ -3,6 +3,7 @@ package monitor
 import (
 	"bufio"
 	"context"
+	"encoding/json"
 	"fmt"
 	"os/exec"
 	"strconv"
@@ -48,13 +49,89 @@ func (p *wlrRandrProvider) Priority() int {
 }
 
 func (p *wlrRandrProvider) Detect(ctx context.Context) ([]Monitor, error) {
+	jsonCmd := exec.CommandContext(ctx, "wlr-randr", "--json")
+	jsonOutput, jsonErr := jsonCmd.Output()
+	if jsonErr == nil {
+		monitors, parseErr := parseWlrRandrJSON(jsonOutput)
+		if parseErr == nil {
+			return monitors, nil
+		}
+	}
+
 	cmd := exec.CommandContext(ctx, "wlr-randr")
 	output, err := cmd.Output()
 	if err != nil {
+		if jsonErr != nil {
+			return nil, fmt.Errorf("wlr-randr --json: %v; wlr-randr: %w", jsonErr, err)
+		}
 		return nil, fmt.Errorf("wlr-randr: %w", err)
 	}
 
 	return parseWlrRandr(string(output))
+}
+
+type wlrRandrJSONMode struct {
+	Width   int     `json:"width"`
+	Height  int     `json:"height"`
+	Refresh float64 `json:"refresh"`
+	Current bool    `json:"current"`
+}
+
+type wlrRandrJSONPosition struct {
+	X int `json:"x"`
+	Y int `json:"y"`
+}
+
+type wlrRandrJSONOutput struct {
+	Name      string               `json:"name"`
+	Enabled   bool                 `json:"enabled"`
+	Modes     []wlrRandrJSONMode   `json:"modes"`
+	Position  wlrRandrJSONPosition `json:"position"`
+	Transform string               `json:"transform"`
+	Scale     float64              `json:"scale"`
+}
+
+func parseWlrRandrJSON(output []byte) ([]Monitor, error) {
+	if len(strings.TrimSpace(string(output))) == 0 {
+		return []Monitor{}, nil
+	}
+
+	var parsed []wlrRandrJSONOutput
+	if err := json.Unmarshal(output, &parsed); err != nil {
+		return nil, fmt.Errorf("parse wlr-randr json: %w", err)
+	}
+
+	monitors := make([]Monitor, 0, len(parsed))
+	for _, display := range parsed {
+		if !display.Enabled {
+			continue
+		}
+
+		monitor := Monitor{
+			Name:      display.Name,
+			X:         display.Position.X,
+			Y:         display.Position.Y,
+			Scale:     1.0,
+			Transform: parseTransform(display.Transform),
+		}
+		if display.Scale > 0 {
+			monitor.Scale = display.Scale
+		}
+
+		for _, mode := range display.Modes {
+			if !mode.Current {
+				continue
+			}
+			monitor.Width = mode.Width
+			monitor.Height = mode.Height
+			monitor.RefreshRate = mode.Refresh
+			break
+		}
+
+		monitors = append(monitors, monitor)
+	}
+
+	return monitors, nil
 }
 
 // parseWlrRandr parses the text output of wlr-randr into Monitor structs.
