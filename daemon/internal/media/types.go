@@ -9,5 +9,7 @@ const (
 	MediaTypeImage MediaType = "image"
 	MediaTypeVideo MediaType = "video"
 	MediaTypeGIF   MediaType = "gif"
-	MediaTypeHTML  MediaType = "html"
+	MediaTypeWeb   MediaType = "web"
+	// MediaTypeHTML is a legacy alias kept for compatibility.
+	MediaTypeHTML MediaType = "web"
 )

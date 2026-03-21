@@ -113,6 +113,8 @@ function sampleRendererImage(id: number): rendererImage {
     name: `image_${id}.jpg`,
     path: `/tmp/images/image_${id}.jpg`,
     media_type: "image",
+    duration: 0,
+    audio_enabled: false,
     width: 1920,
     height: 1080,
     format: "jpg",
@@ -130,6 +132,8 @@ function sampleRendererImage(id: number): rendererImage {
       "1440p": `/tmp/thumbs/${id}_1440p.jpg`,
       "4k": `/tmp/thumbs/${id}_4k.jpg`,
     },
+    preview_path: "",
+    web_meta: null,
     folder_id: null,
     time: null,
   };

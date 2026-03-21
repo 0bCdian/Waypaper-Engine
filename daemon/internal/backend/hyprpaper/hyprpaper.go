@@ -57,7 +57,6 @@ func (h *Hyprpaper) Capabilities() backend.Capabilities {
 		MediaTypes:    []media.MediaType{media.MediaTypeImage},
 		Transitions:   false,
 		PerMonitor:    true,
-		NativeExtend:  false,
 		DaemonProcess: true,
 	}
 }

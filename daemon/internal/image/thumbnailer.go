@@ -3,7 +3,9 @@ package image
 import (
 	"fmt"
 	"image"
+	"image/color"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"sync"
 
@@ -41,11 +43,19 @@ func NewThumbnailer(thumbnailsDir string) *Thumbnailer {
 	}
 }
 
-// Generate creates thumbnails for the given source image.
+// Generate creates thumbnails for the given source media.
 // All resolutions are generated concurrently from a single decoded source.
 // Returns a map of resolution label to thumbnail absolute path.
-func (t *Thumbnailer) Generate(sourcePath string, imageID int) (map[string]string, error) {
-	src, err := imaging.Open(sourcePath)
+func (t *Thumbnailer) Generate(sourcePath string, imageID int, mediaType string, previewPath string) (map[string]string, error) {
+	srcPath, cleanup, err := t.prepareThumbnailSource(sourcePath, mediaType, previewPath)
+	if err != nil {
+		return nil, err
+	}
+	if cleanup != nil {
+		defer cleanup()
+	}
+
+	src, err := imaging.Open(srcPath)
 	if err != nil {
 		return nil, fmt.Errorf("thumbnailer: open source: %w", err)
 	}
@@ -89,6 +99,52 @@ func (t *Thumbnailer) Generate(sourcePath string, imageID int) (map[string]strin
 	}
 
 	return thumbnails, nil
+}
+
+func (t *Thumbnailer) prepareThumbnailSource(sourcePath, mediaType, previewPath string) (string, func(), error) {
+	switch mediaType {
+	case "video":
+		tmp, err := os.CreateTemp("", "waypaper-video-thumb-*.png")
+		if err != nil {
+			return "", nil, fmt.Errorf("thumbnailer: create temp file: %w", err)
+		}
+		tmpPath := tmp.Name()
+		_ = tmp.Close()
+		cmd := exec.Command(
+			"ffmpeg",
+			"-hide_banner",
+			"-loglevel", "error",
+			"-y",
+			"-ss", "1",
+			"-i", sourcePath,
+			"-frames:v", "1",
+			tmpPath,
+		)
+		if err := cmd.Run(); err != nil {
+			return "", nil, fmt.Errorf("thumbnailer: ffmpeg frame extract failed: %w", err)
+		}
+		return tmpPath, func() { _ = os.Remove(tmpPath) }, nil
+	case "web":
+		if previewPath != "" {
+			if _, err := os.Stat(previewPath); err == nil {
+				return previewPath, nil, nil
+			}
+		}
+		// Placeholder for web wallpapers without preview assets.
+		placeholder := imaging.New(1280, 720, color.NRGBA{R: 32, G: 32, B: 32, A: 255})
+		tmp, err := os.CreateTemp("", "waypaper-web-thumb-*.webp")
+		if err != nil {
+			return "", nil, fmt.Errorf("thumbnailer: create temp file: %w", err)
+		}
+		tmpPath := tmp.Name()
+		_ = tmp.Close()
+		if err := writeWebP(tmpPath, placeholder); err != nil {
+			return "", nil, fmt.Errorf("thumbnailer: write web placeholder: %w", err)
+		}
+		return tmpPath, func() { _ = os.Remove(tmpPath) }, nil
+	default:
+		return sourcePath, nil, nil
+	}
 }
 
 func writeWebP(path string, img image.Image) (err error) {

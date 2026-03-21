@@ -62,7 +62,7 @@ func TestConfigHandler_GetSection(t *testing.T) {
 
 func TestConfigHandler_GetSection_Backend(t *testing.T) {
 	cfg := &testutil.MockConfigManager{
-		GetActiveBackendTypeFn: func() string { return "swww" },
+		GetActiveBackendTypeFn: func() string { return "awww" },
 		GetBackendConfigFn: func(name string) (json.RawMessage, error) {
 			return json.RawMessage(`{"transition":"fade"}`), nil
 		},

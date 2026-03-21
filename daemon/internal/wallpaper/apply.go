@@ -4,11 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"time"
 
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/events"
 	"waypaper-engine/daemon/internal/image"
+	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/store"
 )
@@ -30,9 +32,23 @@ type ApplyOpts struct {
 // Apply is the core wallpaper-setting flow used by both the wallpaper handler
 // and the playlist manager.
 func Apply(ctx context.Context, opts ApplyOpts) error {
-	caps := opts.Backend.Capabilities()
+	mediaType := normalizeMediaType(opts.Image.MediaType)
 
-	if opts.Mode == monitor.ModeExtend && !caps.NativeExtend && opts.Splitter != nil && len(opts.Monitors) > 1 {
+	switch {
+	case opts.Mode == monitor.ModeExtend && mediaType != media.MediaTypeImage:
+		// GIF / video / web: cannot engine-split; same wallpaper on each monitor (clone semantics).
+		req := backend.WallpaperRequest{
+			MediaType:    mediaType,
+			ImagePath:    opts.Image.Path,
+			AudioEnabled: opts.Image.AudioEnabled,
+			Monitors:     opts.Monitors,
+			Mode:         monitor.ModeClone,
+		}
+		if err := opts.Backend.SetWallpaper(ctx, req); err != nil {
+			return fmt.Errorf("set wallpaper: %w", err)
+		}
+
+	case opts.Mode == monitor.ModeExtend && mediaType == media.MediaTypeImage && opts.Splitter != nil && len(opts.Monitors) > 1:
 		splitPaths, err := opts.Splitter.Split(opts.Image.Path, opts.Image.ID, opts.Monitors)
 		if err != nil {
 			return fmt.Errorf("split image: %w", err)
@@ -41,20 +57,25 @@ func Apply(ctx context.Context, opts ApplyOpts) error {
 		for _, mon := range opts.Monitors {
 			if splitPath, ok := splitPaths[mon.Name]; ok {
 				req := backend.WallpaperRequest{
-					ImagePath: splitPath,
-					Monitors:  []monitor.Monitor{mon},
-					Mode:      monitor.ModeIndividual,
+					MediaType:    mediaType,
+					ImagePath:    splitPath,
+					AudioEnabled: opts.Image.AudioEnabled,
+					Monitors:     []monitor.Monitor{mon},
+					Mode:         monitor.ModeIndividual,
 				}
 				if err := opts.Backend.SetWallpaper(ctx, req); err != nil {
 					return fmt.Errorf("set wallpaper for %s: %w", mon.Name, err)
 				}
 			}
 		}
-	} else {
+
+	default:
 		req := backend.WallpaperRequest{
-			ImagePath: opts.Image.Path,
-			Monitors:  opts.Monitors,
-			Mode:      opts.Mode,
+			MediaType:    mediaType,
+			ImagePath:    opts.Image.Path,
+			AudioEnabled: opts.Image.AudioEnabled,
+			Monitors:     opts.Monitors,
+			Mode:         opts.Mode,
 		}
 		if err := opts.Backend.SetWallpaper(ctx, req); err != nil {
 			return fmt.Errorf("set wallpaper: %w", err)
@@ -83,6 +104,7 @@ func Apply(ctx context.Context, opts ApplyOpts) error {
 	for _, mon := range opts.Monitors {
 		opts.State.SetCurrentWallpaper(mon.Name, entry)
 
+		// Persist user-selected mode even when the backend call used clone (extend + non-static) or per-monitor crops.
 		if err := opts.MonState.Set(ctx, store.MonitorState{
 			MonitorName: mon.Name,
 			ImageID:     opts.Image.ID,
@@ -110,4 +132,17 @@ func Apply(ctx context.Context, opts ApplyOpts) error {
 	}
 
 	return nil
+}
+
+func normalizeMediaType(value string) media.MediaType {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case string(media.MediaTypeGIF):
+		return media.MediaTypeGIF
+	case string(media.MediaTypeVideo):
+		return media.MediaTypeVideo
+	case string(media.MediaTypeWeb):
+		return media.MediaTypeWeb
+	default:
+		return media.MediaTypeImage
+	}
 }

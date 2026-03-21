@@ -5,7 +5,7 @@ import "waypaper-engine/daemon/internal/monitor"
 // BackendInfo is the API-facing representation of a registered backend.
 // Returned by GET /backends.
 type BackendInfo struct {
-	// Name is the unique identifier (e.g. "swww", "feh").
+	// Name is the unique identifier (e.g. "awww", "feh").
 	Name string `json:"name"`
 
 	// Available indicates whether the backend's dependencies are installed on this system.

@@ -18,8 +18,8 @@ import type {
   ActivePlaylistInstance,
   Monitor,
   UnifiedConfig,
-  SwwwConfig,
   BackendInfo,
+  BackendCapabilities,
   DaemonInfo,
   MonitorMode,
   MonitorState,
@@ -52,6 +52,12 @@ const electronAPI = {
     ): Promise<{ status: string; total: number }> =>
       ipcRenderer.invoke("go-daemon-command", "import_images", {
         paths,
+        folder_id: folderID,
+      }),
+
+    importWebWallpaper: (path: string, folderID?: number | null): Promise<Image> =>
+      ipcRenderer.invoke("go-daemon-command", "import_web_wallpaper", {
+        path,
         folder_id: folderID,
       }),
 
@@ -240,15 +246,18 @@ const electronAPI = {
         data,
       }),
 
-    getBackendConfig: (): Promise<SwwwConfig> =>
+    getBackendConfig: (): Promise<Record<string, unknown>> =>
       ipcRenderer.invoke("go-daemon-command", "get_backend_config"),
 
-    updateBackendConfig: (config: Partial<SwwwConfig>): Promise<void> =>
+    updateBackendConfig: (config: Record<string, unknown>): Promise<void> =>
       ipcRenderer.invoke("go-daemon-command", "update_backend_config", config),
 
     // BACKENDS
     getBackends: (): Promise<BackendInfo[]> =>
       ipcRenderer.invoke("go-daemon-command", "get_backends"),
+
+    getBackendCapabilities: (): Promise<BackendCapabilities | null> =>
+      ipcRenderer.invoke("go-daemon-command", "get_backend_capabilities"),
 
     activateBackend: (name: string): Promise<{ status: string; backend: string }> =>
       ipcRenderer.invoke("go-daemon-command", "activate_backend", { name }),
@@ -363,7 +372,8 @@ const electronAPI = {
         return r.data;
       }),
 
-  openFiles: (action: "file" | "folder") => ipcRenderer.invoke("openFiles", action),
+  openFiles: (action: "file" | "folder" | "video" | "web") =>
+    ipcRenderer.invoke("openFiles", action),
 
   scanDirectory: (dirPath: string): Promise<{ files: string[]; folderName: string }> =>
     ipcRenderer

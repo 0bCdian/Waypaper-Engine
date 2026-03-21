@@ -23,7 +23,7 @@
 		"category": "Utility",
 		"target": ["appImage"],
 		"executableName": "waypaper-engine-bin",
-		"description": "A graphical frontend for setting wallpapers and playlists, using swww under the hood!",
+		"description": "A graphical frontend for setting wallpapers and playlists, using awww under the hood!",
 		"desktop": {
 			"entry": {
 				"Name": "Waypaper Engine",

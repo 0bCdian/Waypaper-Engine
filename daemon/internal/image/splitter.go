@@ -61,7 +61,7 @@ func toLogical(mon monitor.Monitor) logicalMonitor {
 // All geometry is normalized to logical pixels before processing. Wayland
 // compositors report positions in logical coordinates but resolutions in physical
 // pixels; dividing by Scale brings everything into the same coordinate space.
-// The resulting split images are at logical resolution -- swww handles upscaling
+// The resulting split images are at logical resolution -- awww handles upscaling
 // to physical per-monitor via its resize mode.
 //
 // Results are cached per imageID in a subfolder with a cache.json that records

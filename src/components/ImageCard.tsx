@@ -25,6 +25,14 @@ const { goDaemon } = window.API_RENDERER;
 const TRANSPARENT_PIXEL =
   "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 
+function formatDuration(seconds?: number): string {
+  if (!seconds || !Number.isFinite(seconds) || seconds <= 0) return "";
+  const total = Math.round(seconds);
+  const mins = Math.floor(total / 60);
+  const secs = total % 60;
+  return `${mins}:${String(secs).padStart(2, "0")}`;
+}
+
 function ImageCard({ Image }: ImageCardProps) {
   const imgRef = useRef<HTMLImageElement>(null);
   const imgErrorCountRef = useRef(0);
@@ -107,7 +115,18 @@ function ImageCard({ Image }: ImageCardProps) {
     const monitor =
       monitorSelection.selectedMonitors.length === 1 ? monitorSelection.selectedMonitors[0] : "*";
 
-    goDaemon.setWallpaper(Image.id, monitor, monitorSelection.mode);
+    const media = (Image.media_type || "image").toLowerCase();
+    const requestedMode = monitorSelection.mode;
+    // Engine splits extend only for static raster "image"; gif/video/web use clone on the wire.
+    const mode = requestedMode === "extend" && media !== "image" ? "clone" : requestedMode;
+    if (requestedMode === "extend" && mode === "clone") {
+      addToast(
+        "Extend spans static images only. Using the same wallpaper on each display (clone).",
+        "info",
+        3200,
+      );
+    }
+    goDaemon.setWallpaper(Image.id, monitor, mode);
   };
 
   const handleCheckboxChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -160,6 +179,9 @@ function ImageCard({ Image }: ImageCardProps) {
     openDetail(Image as unknown as import("../../electron/daemon-go-types").Image);
   };
   const isGifPreview = Image.media_type === "gif" || Image.format?.toLowerCase() === "gif";
+  const isVideo = Image.media_type === "video";
+  const isWeb = Image.media_type === "web";
+  const durationLabel = formatDuration(Image.duration);
 
   const renameInput = (
     <input
@@ -273,6 +295,16 @@ function ImageCard({ Image }: ImageCardProps) {
           aria-label={`Set ${Image.name} as wallpaper`}
         >
           {pictureElement}
+          {(isVideo || isWeb) && (
+            <div className="absolute left-2 top-2 z-20 rounded bg-base-content/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-base-100">
+              {isVideo ? "video" : "web"}
+            </div>
+          )}
+          {isVideo && durationLabel && (
+            <div className="absolute right-2 bottom-2 z-20 rounded bg-base-content/70 px-1.5 py-0.5 text-[10px] font-semibold text-base-100">
+              {durationLabel}
+            </div>
+          )}
           <div className="neo-polaroid-caption relative z-20">
             {isRenaming ? (
               renameInput
@@ -349,6 +381,16 @@ function ImageCard({ Image }: ImageCardProps) {
         aria-label={`Set ${Image.name} as wallpaper`}
       >
         {pictureElement}
+        {(isVideo || isWeb) && (
+          <div className="absolute left-2 top-2 z-20 rounded bg-base-content/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-base-100">
+            {isVideo ? "video" : "web"}
+          </div>
+        )}
+        {isVideo && durationLabel && (
+          <div className="absolute right-2 bottom-2 z-20 rounded bg-base-content/70 px-1.5 py-0.5 text-[10px] font-semibold text-base-100">
+            {durationLabel}
+          </div>
+        )}
         <div className="absolute bottom-0 z-20 w-full bg-base-content/75 p-2 pl-2 opacity-0 transition-all duration-300 group-hover:opacity-100 text-base-100">
           {isRenaming ? (
             renameInput

@@ -116,7 +116,7 @@ log_max_backups = 1
 compositor = "auto"
 
 [backend]
-type = "swww"
+type = "awww"
 
 [monitors]
 selected_monitors = []

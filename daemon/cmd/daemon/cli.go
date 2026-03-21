@@ -18,6 +18,9 @@ import (
 var jsonOutput bool
 var lockPath string
 
+// allowNetworkWallpapers is forwarded to the wayland-utauri binary when the daemon starts it.
+var allowNetworkWallpapers bool
+
 // buildCLI creates the root command and subcommands.
 func buildCLI() *cobra.Command {
 	var configPath string
@@ -42,6 +45,12 @@ with a running daemon instance.`,
 	rootCmd.PersistentFlags().StringVarP(&logLevel, "log-level", "l", "", "override log level (debug, info, warn, error)")
 	rootCmd.PersistentFlags().BoolVar(&jsonOutput, "json", false, "output raw compact JSON (for scripting)")
 	rootCmd.PersistentFlags().StringVar(&lockPath, "lock-path", "", "override PID lock file path (for testing)")
+	rootCmd.PersistentFlags().BoolVar(
+		&allowNetworkWallpapers,
+		"allow-network-wallpapers",
+		false,
+		"when using wayland-utauri: pass --allow-network-wallpapers so HTML wallpapers may use fetch/XHR to the network (requires restarting wayland-utauri)",
+	)
 
 	// Daemon lifecycle commands.
 	rootCmd.AddCommand(buildStartCmd(&configPath, &logLevel))

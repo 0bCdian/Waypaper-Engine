@@ -397,6 +397,56 @@ Set a specific image as wallpaper.
 
 ---
 
+### Local Spec v0 Compatibility (Wayland-Utani Web Wallpapers)
+
+This section is additive and provisional. It documents how a first-party
+`wayland-utauri` backend can expose local web wallpapers while remaining
+compatible with the existing gallery + wallpaper APIs.
+
+Compatibility goals:
+
+- Keep existing endpoints and core payloads valid (`/images`, `/wallpaper/set`).
+- Preserve `image_id` as the selector for `POST /wallpaper/set`.
+- Extend metadata, not control semantics.
+
+Provisional media extension:
+
+- `Image.media_type` may include `"web"` in addition to existing values.
+- `GET /images` `media_type` filter may include `"web"` for compatible backends.
+
+Provisional sidecar metadata shape for `media_type="web"`:
+
+```json
+{
+  "kind": "web",
+  "source": {
+    "package_root": "/abs/path/to/package",
+    "manifest_path": "/abs/path/to/package/project.json",
+    "entry_path": "/abs/path/to/package/index.html",
+    "preview_path": "/abs/path/to/package/preview.jpg"
+  },
+  "engine": {
+    "type": "wallpaper_engine_web",
+    "version": 1,
+    "workshop_id": "1234567890",
+    "workshop_url": "https://steamcommunity.com/..."
+  },
+  "properties": {},
+  "validation": {
+    "warnings": [],
+    "missing_assets": []
+  }
+}
+```
+
+Set semantics remain unchanged:
+
+- Client still calls `POST /wallpaper/set` with `{ "image_id": <id> }`.
+- Backend resolves image by ID and dispatches appropriate renderer path based on
+  media type (`image` vs `web`).
+
+---
+
 ### `POST /wallpaper/random`
 
 Set a random image from the gallery.
@@ -780,7 +830,7 @@ Get the full daemon configuration.
 {
   "app": AppConfig,
   "daemon": DaemonConfig,
-  "backend": { "type": "swww" },
+  "backend": { "type": "awww" },
   "monitors": MonitorsConfig,
   "wallhaven": WallhavenConfig
 }
@@ -817,7 +867,7 @@ Publishes `config_changed` SSE event.
 
 Get a specific config section. Valid sections for update are: `app`, `daemon`, `backend`, `monitors`, `wallhaven`.
 
-For `backend`: returns the active backend's specific config (e.g. swww transition settings), NOT the `BackendSection` struct.
+For `backend`: returns the active backend's specific config (e.g. awww transition settings), NOT the `BackendSection` struct.
 
 **Response** `200`: Section object or raw JSON for backend.
 
@@ -872,14 +922,24 @@ List all registered backends and their availability.
 ```json
 [
   {
-    "name": "swww",
+    "name": "wayland-utauri",
     "available": true,
     "capabilities": {
       "compositors": ["wayland"],
       "media_types": ["image"],
       "transitions": true,
       "per_monitor": true,
-      "native_extend": false,
+      "daemon_process": true
+    }
+  },
+  {
+    "name": "awww",
+    "available": true,
+    "capabilities": {
+      "compositors": ["wayland"],
+      "media_types": ["image"],
+      "transitions": true,
+      "per_monitor": true,
       "daemon_process": true
     }
   },
@@ -891,7 +951,6 @@ List all registered backends and their availability.
       "media_types": ["image"],
       "transitions": false,
       "per_monitor": true,
-      "native_extend": false,
       "daemon_process": false
     }
   }
@@ -908,7 +967,7 @@ Switch the active wallpaper backend.
 ```json
 {
   "status": "activated",
-  "backend": "swww"
+  "backend": "awww"
 }
 ```
 
@@ -940,7 +999,7 @@ Persistent streaming connection. Each event has:
 
 | Event               | Data                                                                           |
 |--------------------|--------------------------------------------------------------------------------|
-| `wallpaper_changed` | `{"image_id": 2, "monitors": ["DP-1","HDMI-A-1"], "mode": "individual", "source": "manual", "backend": "swww"}` |
+| `wallpaper_changed` | `{"image_id": 2, "monitors": ["DP-1","HDMI-A-1"], "mode": "individual", "source": "manual", "backend": "awww"}` |
 
 #### Playlist Events
 
@@ -1053,7 +1112,7 @@ Important bridge behavior:
   "source": {
     "type": "manual"
   },
-  "backend": "swww"
+  "backend": "awww"
 }
 ```
 
@@ -1165,7 +1224,7 @@ Persisted per-monitor wallpaper state, returned by `GET /wallpaper/current`:
   "image_name": "sunset_wallpaper",
   "image_path": "/home/user/.local/share/waypaper-engine/images/sunset_wallpaper.png",
   "mode": "individual",
-  "backend": "swww",
+  "backend": "awww",
   "set_at": "2026-02-15T14:30:00Z"
 }
 ```
@@ -1230,15 +1289,15 @@ Persisted per-monitor wallpaper state, returned by `GET /wallpaper/current`:
 
 ```json
 {
-  "type": "swww"
+  "type": "awww"
 }
 ```
 
 Note: `GET /config/backend` returns the **active backend's specific config** (see below), not this object.
 
-#### swww Backend Config
+#### awww Backend Config
 
-Returned by `GET /config/backend` when the active backend is `swww`. Updated by `PATCH /config/backend`.
+Returned by `GET /config/backend` when the active backend is `awww`. Updated by `PATCH /config/backend`.
 
 ```json
 {
@@ -1306,19 +1365,19 @@ TOML config supports both hyphens and underscores (e.g. `transition-type` and `t
 | `ordered` | Sequential playback      |
 | `random`  | Random shuffle           |
 
-### swww Transition Types
+### awww Transition Types
 
 `none`, `simple`, `fade`, `left`, `right`, `top`, `bottom`, `wipe`, `wave`, `grow`, `center`, `any`, `outer`, `random`
 
-### swww Transition Positions
+### awww Transition Positions
 
 `center`, `top`, `bottom`, `left`, `right`, `top-left`, `top-right`, `bottom-left`, `bottom-right`
 
-### swww Resize Types
+### awww Resize Types
 
 `crop`, `fit`, `no`, `stretch`
 
-### swww Filter Types
+### awww Filter Types
 
 `Lanczos3`, `Bilinear`, `CatmullRom`, `Mitchell`, `Nearest`
 

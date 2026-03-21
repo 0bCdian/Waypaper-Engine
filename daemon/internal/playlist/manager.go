@@ -4,12 +4,14 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"strings"
 	"sync"
 	"time"
 
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/events"
 	"waypaper-engine/daemon/internal/image"
+	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/store"
 	"waypaper-engine/daemon/internal/wallpaper"
@@ -449,6 +451,20 @@ func (m *Manager) applyImage(ctx context.Context, pl *store.Playlist, index int,
 	if err != nil {
 		return fmt.Errorf("load image %d: %w", imgRef.ImageID, err)
 	}
+	if imgRef.MediaType == "" {
+		imgRef.MediaType = strings.ToLower(strings.TrimSpace(img.MediaType))
+	}
+
+	activeBackend := m.registry.Active()
+	if !backendSupportsMedia(activeBackend.Capabilities(), img.MediaType) {
+		slog.Warn("playlist: skipping media unsupported by backend",
+			"playlist_id", pl.ID,
+			"image_id", img.ID,
+			"media_type", img.MediaType,
+			"backend", activeBackend.Name(),
+		)
+		return nil
+	}
 
 	return wallpaper.Apply(ctx, wallpaper.ApplyOpts{
 		Image:    img,
@@ -459,12 +475,25 @@ func (m *Manager) applyImage(ctx context.Context, pl *store.Playlist, index int,
 			PlaylistID:   &pl.ID,
 			PlaylistName: pl.Name,
 		},
-		Backend:  m.registry.Active(),
+		Backend:  activeBackend,
 		Splitter: m.splitter,
 		History:  m.historyStore,
 		MonState: m.monitorStateStore,
 		State:    m.stateStore,
 	})
+}
+
+func backendSupportsMedia(caps backend.Capabilities, mediaType string) bool {
+	target := strings.ToLower(strings.TrimSpace(mediaType))
+	if target == "" {
+		target = string(media.MediaTypeImage)
+	}
+	for _, mt := range caps.MediaTypes {
+		if strings.ToLower(string(mt)) == target {
+			return true
+		}
+	}
+	return false
 }
 
 // resolveMonitors resolves the target specification to concrete monitors.

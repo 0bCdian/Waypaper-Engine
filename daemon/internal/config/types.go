@@ -78,11 +78,11 @@ type DaemonConfig struct {
 }
 
 // BackendSection holds the active backend type selector.
-// Per-backend configuration (e.g. swww transitions, feh mode) is accessed
+// Per-backend configuration (e.g. awww transitions, feh mode) is accessed
 // separately via ConfigManager.GetBackendConfig() — it is NOT part of this struct.
 // This keeps the daemon core decoupled from backend-specific config shapes.
 type BackendSection struct {
-	// Type is the name of the active backend (e.g. "swww", "feh", "hyprpaper").
+	// Type is the name of the active backend (e.g. "awww", "feh", "hyprpaper", "wayland-utauri").
 	Type string `mapstructure:"type" json:"type"`
 }
 

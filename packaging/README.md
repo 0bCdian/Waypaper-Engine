@@ -12,13 +12,14 @@ Every packaging format should use these targets:
 |------|---------|-------------|
 | Dependencies | `make deps` | Runs `npm ci` to install Node.js dependencies |
 | Build | `make electron` | Builds daemon, frontend, and packages the Electron app |
-| Install | `make install DESTDIR=<staging> PREFIX=/usr` | Installs everything to the staging root |
+| Install | `make install-system DESTDIR=<staging>` | Installs everything to the staging root with system paths |
 | Clean | `make clean` | Removes all build artifacts |
 
 The `DESTDIR` variable stages files under a temporary root (standard for packaging).
-The `PREFIX` variable controls the system prefix (default `/usr`).
+The default `make install` target is user-local (`~/.local`). Packaging should use
+`make install-system` to stage system-style paths.
 
-### What `make install` places
+### What `make install-system` places
 
 ```
 /opt/waypaper-engine/          Electron app (unpacked)
@@ -42,9 +43,9 @@ The `PREFIX` variable controls the system prefix (default `/usr`).
 
 1. Create a subdirectory here (e.g., `packaging/flatpak/`)
 2. Write the format's metadata file (spec, snapcraft.yaml, etc.)
-3. Use `make deps`, `make electron`, and `make install DESTDIR=...` in the build/install steps
+3. Use `make deps`, `make electron`, and `make install-system DESTDIR=...` in the build/install steps
 4. List runtime dependencies: `electron`, `hicolor-icon-theme`
-5. List optional dependencies: `swww`, `hyprpaper`, `feh`, `wlr-randr`
+5. List runtime dependencies for your target path: first-party Wayland path should include `wayland-utauri`; optional backends remain `awww`, `hyprpaper`, `feh`, plus monitor tooling like `wlr-randr`
 6. List build dependencies: `go`, `npm`, `nodejs`, `git`
 
 ## Existing Formats

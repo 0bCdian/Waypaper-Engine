@@ -13,6 +13,8 @@ export function sampleImage(id: number, overrides?: Partial<Image>): Image {
     name: `image_${id}.jpg`,
     path: `/tmp/images/image_${id}.jpg`,
     media_type: "image",
+    duration: 0,
+    audio_enabled: false,
     width: 1920,
     height: 1080,
     format: "jpg",
@@ -30,6 +32,8 @@ export function sampleImage(id: number, overrides?: Partial<Image>): Image {
       "1440p": `/tmp/thumbs/${id}_1440p.jpg`,
       "4k": `/tmp/thumbs/${id}_4k.jpg`,
     },
+    preview_path: "",
+    web_meta: null,
     folder_id: null,
     ...overrides,
   };
@@ -98,7 +102,7 @@ export function sampleHistoryEntry(
     mode: "individual",
     set_at: new Date().toISOString(),
     source: { type: "manual" },
-    backend: "swww",
+    backend: "awww",
     ...overrides,
   };
 }

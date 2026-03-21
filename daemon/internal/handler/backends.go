@@ -20,6 +20,7 @@ type BackendHandler struct {
 	bus               events.Bus
 	monitorStateStore store.MonitorStateStore
 	stateStore        store.StateStore
+	imageStore        store.ImageStore
 	monitorManager    monitor.MonitorManager
 	splitter          *image.Splitter
 }
@@ -31,6 +32,7 @@ func NewBackendHandler(
 	bus events.Bus,
 	monitorStateStore store.MonitorStateStore,
 	stateStore store.StateStore,
+	imageStore store.ImageStore,
 	monitorManager monitor.MonitorManager,
 	splitter *image.Splitter,
 ) *BackendHandler {
@@ -40,6 +42,7 @@ func NewBackendHandler(
 		bus:               bus,
 		monitorStateStore: monitorStateStore,
 		stateStore:        stateStore,
+		imageStore:        imageStore,
 		monitorManager:    monitorManager,
 		splitter:          splitter,
 	}
@@ -83,7 +86,7 @@ func (h *BackendHandler) Activate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Re-apply wallpapers with the newly activated backend.
-	RestoreWallpapers(r.Context(), h.monitorStateStore, h.stateStore, h.registry, h.monitorManager, h.splitter)
+	RestoreWallpapers(r.Context(), h.monitorStateStore, h.stateStore, h.registry, h.monitorManager, h.imageStore, h.splitter)
 
 	h.bus.Publish(events.Event{
 		Type: events.ConfigChanged,

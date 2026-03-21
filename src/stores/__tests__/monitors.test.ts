@@ -101,7 +101,7 @@ describe("useMonitorStore", () => {
     mockAPI.goDaemon.getConfig = vi.fn().mockResolvedValue({
       app: {},
       daemon: {},
-      backend: { type: "swww" },
+      backend: { type: "awww" },
       monitors: {
         selected_monitors: ["DP-1"],
         image_set_type: "individual",
@@ -129,7 +129,7 @@ describe("useMonitorStore", () => {
     mockAPI.goDaemon.getConfig = vi.fn().mockResolvedValue({
       app: {},
       daemon: {},
-      backend: { type: "swww" },
+      backend: { type: "awww" },
       monitors: {
         selected_monitors: ["HDMI-A-1"],
         image_set_type: "individual",

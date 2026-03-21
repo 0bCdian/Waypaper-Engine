@@ -35,7 +35,7 @@ export interface ImageQueryParams {
   per_page?: number;
   sort_by?: "name" | "imported_at" | "file_size";
   sort_order?: "asc" | "desc";
-  media_type?: "image" | "video" | "gif";
+  media_type?: "image" | "video" | "gif" | "web";
   search?: string;
   tags?: string;
   colors?: string;
@@ -51,6 +51,8 @@ export interface Image {
   name: string;
   path: string;
   media_type: string;
+  duration: number;
+  audio_enabled: boolean;
   width: number;
   height: number;
   format: string;
@@ -62,7 +64,27 @@ export interface Image {
   source_path: string;
   is_selected: boolean;
   thumbnails: ImageThumbnails;
+  preview_path?: string;
+  web_meta?: WebMeta | null;
   folder_id: number | null;
+}
+
+export interface WebCapabilities {
+  network: boolean;
+  keyboard: boolean;
+  audio_reactive: boolean;
+  parallax_aware: boolean;
+}
+
+export interface WebMeta {
+  package_root: string;
+  manifest_path: string;
+  entry_path: string;
+  title: string;
+  description: string;
+  author: string;
+  capabilities: WebCapabilities;
+  properties?: Record<string, unknown>;
 }
 
 export interface ImageThumbnails {
@@ -164,6 +186,7 @@ export interface PlaylistConfiguration {
 
 export interface PlaylistImage {
   image_id: number;
+  media_type?: string;
   time?: number;
 }
 
@@ -224,12 +247,13 @@ export interface DaemonConfig {
 
 export interface BackendSection {
   type: string;
-  swww?: SwwwConfig;
+  awww?: AwwwConfig;
   feh?: FehConfig;
   hyprpaper?: HyprpaperConfig;
+  waylandutauri?: WaylandUtauriConfig;
 }
 
-export interface SwwwConfig {
+export interface AwwwConfig {
   transition_type: string;
   transition_step: number;
   transition_duration: number;
@@ -252,6 +276,24 @@ export interface HyprpaperConfig {
   fit_mode: string;
   use_ipc: boolean;
   config_path: string;
+}
+
+export interface WaylandUtauriConfig {
+  socket_path: string;
+  expected_service: string;
+  expected_api_version: string;
+  connect_timeout_ms: number;
+  request_timeout_ms: number;
+  show_on_initialize: boolean;
+  hide_on_shutdown: boolean;
+  transition: string;
+  duration_ms: number;
+  parallax_enabled?: boolean;
+  parallax_zoom?: number;
+  parallax_step_percent?: number;
+  parallax_animation_ms?: number;
+  parallax_easing?: [number, number, number, number];
+  video_audio_default?: boolean;
 }
 
 export interface MonitorsConfig {
@@ -282,7 +324,6 @@ export interface BackendCapabilities {
   media_types: string[];
   transitions: boolean;
   per_monitor: boolean;
-  native_extend: boolean;
   daemon_process: boolean;
 }
 
@@ -457,6 +498,11 @@ export interface UpdateImageRequest {
 
 export interface ImportImagesRequest {
   paths: string[];
+  folder_id?: number | null;
+}
+
+export interface ImportWebWallpaperRequest {
+  path: string;
   folder_id?: number | null;
 }
 

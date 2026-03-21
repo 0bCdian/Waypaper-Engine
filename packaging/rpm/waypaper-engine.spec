@@ -22,15 +22,16 @@ BuildRequires:  make
 Requires:       electron
 Requires:       hicolor-icon-theme
 
-Recommends:     swww
+Recommends:     wayland-utauri
+Recommends:     awww
 Suggests:       hyprpaper
 Suggests:       feh
 Suggests:       wlr-randr
 
 %description
 Waypaper Engine is an Electron-based graphical frontend for managing
-wallpapers on Wayland compositors. It supports multiple backends (swww,
-hyprpaper, feh), playlist scheduling, drag-and-drop import, Wallhaven
+wallpapers on Wayland compositors. It supports multiple backends (wayland-utauri,
+awww, hyprpaper, feh), playlist scheduling, drag-and-drop import, Wallhaven
 integration, and per-monitor wallpaper history.
 
 %prep

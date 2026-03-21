@@ -22,9 +22,9 @@ interface Field {
   placeholder?: string;
 }
 
-const swwwDisplayFields: Field[] = [
+const awwwDisplayFields: Field[] = [
   {
-    key: "swww.resize",
+    key: "awww.resize",
     label: "Resize Mode",
     description: "How the image is fitted to the monitor",
     type: "select",
@@ -36,14 +36,14 @@ const swwwDisplayFields: Field[] = [
     ],
   },
   {
-    key: "swww.fill_color",
+    key: "awww.fill_color",
     label: "Fill Color",
     description: 'Color for empty space when resize is "Fit" (hex without #)',
     type: "text",
     placeholder: "000000",
   },
   {
-    key: "swww.filter_type",
+    key: "awww.filter_type",
     label: "Filter Type",
     description: "Resampling filter used when resizing images",
     type: "select",
@@ -57,9 +57,9 @@ const swwwDisplayFields: Field[] = [
   },
 ];
 
-const swwwTransitionFields: Field[] = [
+const awwwTransitionFields: Field[] = [
   {
-    key: "swww.transition_type",
+    key: "awww.transition_type",
     label: "Transition Type",
     description: "Type of transition effect when changing wallpapers",
     type: "select",
@@ -81,7 +81,7 @@ const swwwTransitionFields: Field[] = [
     ],
   },
   {
-    key: "swww.transition_duration",
+    key: "awww.transition_duration",
     label: "Transition Duration (ms)",
     description: "Duration of the transition animation in milliseconds",
     type: "number",
@@ -90,7 +90,7 @@ const swwwTransitionFields: Field[] = [
     step: 50,
   },
   {
-    key: "swww.transition_step",
+    key: "awww.transition_step",
     label: "Transition Step",
     description: "Step size for transition effects (0-255)",
     type: "number",
@@ -99,7 +99,7 @@ const swwwTransitionFields: Field[] = [
     step: 1,
   },
   {
-    key: "swww.transition_angle",
+    key: "awww.transition_angle",
     label: "Transition Angle",
     description: "Angle for directional transitions (0-360 degrees)",
     type: "number",
@@ -108,7 +108,7 @@ const swwwTransitionFields: Field[] = [
     step: 1,
   },
   {
-    key: "swww.transition_pos",
+    key: "awww.transition_pos",
     label: "Transition Position",
     description: "Starting position for transitions",
     type: "select",
@@ -125,21 +125,21 @@ const swwwTransitionFields: Field[] = [
     ],
   },
   {
-    key: "swww.transition_bezier",
+    key: "awww.transition_bezier",
     label: "Transition Bezier",
     description: "Bezier curve parameters (x1,y1,x2,y2)",
     type: "text",
     placeholder: "0.25,0.1,0.25,1",
   },
   {
-    key: "swww.transition_wave",
+    key: "awww.transition_wave",
     label: "Transition Wave",
     description: "Wave parameters for wave transitions",
     type: "text",
     placeholder: "0,0,0,0",
   },
   {
-    key: "swww.transition_fps",
+    key: "awww.transition_fps",
     label: "Transition FPS",
     description: "Target frames per second for the transition animation",
     type: "number",
@@ -148,7 +148,7 @@ const swwwTransitionFields: Field[] = [
     step: 1,
   },
   {
-    key: "swww.invert_y",
+    key: "awww.invert_y",
     label: "Invert Y",
     description: "Invert the y-axis for transition animations",
     type: "checkbox",
@@ -200,6 +200,115 @@ const hyprpaperAdvancedFields: Field[] = [
       "Custom path for hyprpaper.conf (leave empty for default ~/.config/hypr/hyprpaper.conf)",
     type: "text",
     placeholder: "~/.config/hypr/hyprpaper.conf",
+  },
+];
+
+const waylandUtauriTransitionFields: Field[] = [
+  {
+    key: "waylandutauri.transition",
+    label: "Transition Type",
+    description: "Transition style used by wayland-utauri",
+    type: "select",
+    options: [
+      { value: "none", label: "None" },
+      { value: "fade", label: "Fade" },
+      { value: "wipe", label: "Wipe" },
+      { value: "grow", label: "Grow" },
+    ],
+  },
+  {
+    key: "waylandutauri.duration_ms",
+    label: "Transition Duration (ms)",
+    description: "Default transition duration",
+    type: "number",
+    min: 50,
+    max: 5000,
+    step: 50,
+  },
+];
+
+const waylandUtauriParallaxFields: Field[] = [
+  {
+    key: "waylandutauri.parallax_enabled",
+    label: "Enable Parallax",
+    description: "Enable wayland-utauri parallax motion",
+    type: "checkbox",
+  },
+  {
+    key: "waylandutauri.parallax_zoom",
+    label: "Parallax Zoom (%)",
+    description: "Zoom used for parallax movement bounds",
+    type: "number",
+    min: 100,
+    max: 200,
+    step: 1,
+  },
+  {
+    key: "waylandutauri.parallax_step_percent",
+    label: "Parallax Step (%)",
+    description: "Step percentage applied by workspace moves",
+    type: "number",
+    min: 1,
+    max: 100,
+    step: 1,
+  },
+  {
+    key: "waylandutauri.parallax_animation_ms",
+    label: "Parallax Animation (ms)",
+    description: "Animation duration for parallax updates",
+    type: "number",
+    min: 16,
+    max: 5000,
+    step: 1,
+  },
+  {
+    key: "waylandutauri.parallax_easing",
+    label: "Parallax Easing",
+    description: "Cubic bezier string (x1,y1,x2,y2)",
+    type: "text",
+    placeholder: "0.215,0.610,0.355,1.000",
+  },
+];
+
+const waylandUtauriVideoFields: Field[] = [
+  {
+    key: "waylandutauri.video_audio_default",
+    label: "Default Video Audio",
+    description: "Enable audio by default for video wallpapers",
+    type: "checkbox",
+  },
+];
+
+const waylandUtauriAdvancedFields: Field[] = [
+  {
+    key: "waylandutauri.socket_path",
+    label: "Socket Path",
+    description: "Unix socket path for wayland-utauri control API",
+    type: "text",
+  },
+  {
+    key: "waylandutauri.connect_timeout_ms",
+    label: "Connect Timeout (ms)",
+    description: "Timeout for connection checks",
+    type: "number",
+    min: 50,
+    max: 30000,
+    step: 50,
+  },
+  {
+    key: "waylandutauri.request_timeout_ms",
+    label: "Request Timeout (ms)",
+    description: "Timeout for API requests",
+    type: "number",
+    min: 50,
+    max: 60000,
+    step: 50,
+  },
+  {
+    key: "waylandutauri.show_on_initialize",
+    label: "Show on Initialize",
+    description: "Show renderer when backend initializes",
+    type: "checkbox",
   },
 ];
 
@@ -334,15 +443,18 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
   }, []);
 
   const handleChange = async (key: string, value: unknown) => {
-    if (key.startsWith("swww.")) {
-      const swwwKey = key.replace("swww.", "");
-      await saveConfigSection(section, { [swwwKey]: value });
+    if (key.startsWith("awww.")) {
+      const awwwKey = key.replace("awww.", "");
+      await saveConfigSection(section, { [awwwKey]: value });
     } else if (key.startsWith("feh.")) {
       const fehKey = key.replace("feh.", "");
       await saveConfigSection(section, { [fehKey]: value });
     } else if (key.startsWith("hyprpaper.")) {
       const hpKey = key.replace("hyprpaper.", "");
       await saveConfigSection(section, { [hpKey]: value });
+    } else if (key.startsWith("waylandutauri.")) {
+      const wutKey = key.replace("waylandutauri.", "");
+      await saveConfigSection(section, { [wutKey]: value });
     } else {
       await saveConfigSection(section, { [key]: value });
     }
@@ -353,10 +465,10 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 
   const renderField = (field: Field) => {
     let raw: unknown;
-    if (field.key.startsWith("swww.")) {
+    if (field.key.startsWith("awww.")) {
       raw =
-        config?.backend?.swww?.[
-          field.key.replace("swww.", "") as keyof NonNullable<typeof config.backend.swww>
+        config?.backend?.awww?.[
+          field.key.replace("awww.", "") as keyof NonNullable<typeof config.backend.awww>
         ];
     } else if (field.key.startsWith("feh.")) {
       raw =
@@ -368,6 +480,12 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
         config?.backend?.hyprpaper?.[
           field.key.replace("hyprpaper.", "") as keyof NonNullable<typeof config.backend.hyprpaper>
         ];
+    } else if (field.key.startsWith("waylandutauri.")) {
+      const waylandCfg =
+        (config?.backend as unknown as Record<string, unknown>)?.["wayland-utauri"] ??
+        (config?.backend as unknown as Record<string, unknown>)?.waylandutauri;
+      raw =
+        (waylandCfg as Record<string, unknown> | undefined)?.[field.key.replace("waylandutauri.", "")];
     } else {
       raw = config?.backend?.[field.key as keyof typeof config.backend];
     }
@@ -492,7 +610,7 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
             "select select-bordered select-sm w-44",
             fieldError("type") && "select-error",
           )}
-          value={(backendType as string) ?? "swww"}
+          value={(backendType as string) ?? "awww"}
           onChange={(e) => handleChange("type", e.target.value)}
         >
           {availableBackends.length > 0 ? (
@@ -503,18 +621,18 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
               </option>
             ))
           ) : (
-            <option value={backendType ?? "swww"}>{backendType ?? "swww"}</option>
+            <option value={backendType ?? "awww"}>{backendType ?? "awww"}</option>
           )}
         </select>
       </SettingRow>
 
-      {/* ── swww settings ───────────────────────────────── */}
-      {backendType === "swww" && (
+      {/* ── awww settings ───────────────────────────────── */}
+      {backendType === "awww" && (
         <>
           <SettingSectionHeader title="Image Display" />
-          {swwwDisplayFields.map(renderField)}
+          {awwwDisplayFields.map(renderField)}
           <SettingSectionHeader title="Transitions" />
-          {swwwTransitionFields.map(renderField)}
+          {awwwTransitionFields.map(renderField)}
         </>
       )}
 
@@ -535,6 +653,23 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
             <>
               <SettingSectionHeader title="Advanced" />
               {hyprpaperAdvancedFields.map(renderField)}
+            </>
+          )}
+        </>
+      )}
+
+      {backendType === "wayland-utauri" && (
+        <>
+          <SettingSectionHeader title="Transitions" />
+          {waylandUtauriTransitionFields.map(renderField)}
+          <SettingSectionHeader title="Parallax" />
+          {waylandUtauriParallaxFields.map(renderField)}
+          <SettingSectionHeader title="Video" />
+          {waylandUtauriVideoFields.map(renderField)}
+          {showAdvancedSettings && (
+            <>
+              <SettingSectionHeader title="Advanced" />
+              {waylandUtauriAdvancedFields.map(renderField)}
             </>
           )}
         </>

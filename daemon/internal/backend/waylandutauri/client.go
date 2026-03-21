@@ -1,0 +1,165 @@
+package waylandutauri
+
+import (
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
+	"net"
+	"net/http"
+	"strings"
+	"time"
+)
+
+const localHTTPBaseURL = "http://wayland-utauri.local"
+
+type controlClient struct {
+	httpClient      *http.Client
+	baseURL         string
+	expectedService string
+	expectedAPI     string
+}
+
+func newControlClient(cfg *Config) (*controlClient, error) {
+	if strings.TrimSpace(cfg.SocketPath) == "" {
+		return nil, fmt.Errorf("%w: empty socket path", errUnavailable)
+	}
+
+	transport := &http.Transport{
+		DialContext: func(ctx context.Context, _, _ string) (net.Conn, error) {
+			var d net.Dialer
+			return d.DialContext(ctx, "unix", cfg.SocketPath)
+		},
+	}
+
+	timeout := time.Duration(cfg.RequestTimeoutMS) * time.Millisecond
+	if timeout <= 0 {
+		timeout = 1500 * time.Millisecond
+	}
+
+	return &controlClient{
+		httpClient: &http.Client{
+			Transport: transport,
+			Timeout:   timeout,
+		},
+		baseURL:         localHTTPBaseURL,
+		expectedService: cfg.ExpectedService,
+		expectedAPI:     cfg.ExpectedAPIVersion,
+	}, nil
+}
+
+func (c *controlClient) checkHealth(ctx context.Context) error {
+	var payload struct {
+		OK         bool   `json:"ok"`
+		Service    string `json:"service"`
+		APIVersion string `json:"api_version"`
+	}
+	headers, status, body, err := c.doJSON(ctx, http.MethodGet, "/health", nil)
+	if err != nil {
+		return fmt.Errorf("%w: %v", errUnavailable, err)
+	}
+	if status < 200 || status >= 300 {
+		return classifyHTTPError(status, body)
+	}
+	if err := json.Unmarshal([]byte(body), &payload); err != nil {
+		return fmt.Errorf("%w: decode health response: %v", errContract, err)
+	}
+	if !payload.OK {
+		return fmt.Errorf("%w: health returned ok=false", errContract)
+	}
+	if c.expectedService != "" && payload.Service != c.expectedService {
+		return fmt.Errorf("%w: service %q does not match expected %q", errContract, payload.Service, c.expectedService)
+	}
+	respAPI := strings.TrimSpace(headers.Get("X-API-Version"))
+	if respAPI == "" {
+		respAPI = payload.APIVersion
+	}
+	if c.expectedAPI != "" && respAPI != c.expectedAPI {
+		return fmt.Errorf("%w: api version %q does not match expected %q", errContract, respAPI, c.expectedAPI)
+	}
+	return nil
+}
+
+func (c *controlClient) status(ctx context.Context) (*statusResponse, error) {
+	_, status, body, err := c.doJSON(ctx, http.MethodGet, "/wallpaper/status", nil)
+	if err != nil {
+		return nil, err
+	}
+	if status < 200 || status >= 300 {
+		return nil, classifyHTTPError(status, body)
+	}
+	var resp statusResponse
+	if err := json.Unmarshal([]byte(body), &resp); err != nil {
+		return nil, fmt.Errorf("%w: decode status response: %v", errContract, err)
+	}
+	if !resp.OK {
+		return nil, fmt.Errorf("%w: status returned ok=false", errContract)
+	}
+	return &resp, nil
+}
+
+func (c *controlClient) show(ctx context.Context) error {
+	return c.postNoBody(ctx, "/wallpaper/show")
+}
+
+func (c *controlClient) hide(ctx context.Context) error {
+	return c.postNoBody(ctx, "/wallpaper/hide")
+}
+
+func (c *controlClient) load(ctx context.Context, req loadRequest) (int, string, error) {
+	_, status, body, err := c.doJSON(ctx, http.MethodPost, "/wallpaper/load", req)
+	return status, body, err
+}
+
+func (c *controlClient) setParallax(ctx context.Context, body map[string]any) error {
+	_, status, respBody, err := c.doJSON(ctx, http.MethodPost, "/wallpaper/parallax", body)
+	if err != nil {
+		return err
+	}
+	if status < 200 || status >= 300 {
+		return classifyHTTPError(status, respBody)
+	}
+	return nil
+}
+
+func (c *controlClient) postNoBody(ctx context.Context, path string) error {
+	_, status, body, err := c.doJSON(ctx, http.MethodPost, path, map[string]any{})
+	if err != nil {
+		return err
+	}
+	if status < 200 || status >= 300 {
+		return classifyHTTPError(status, body)
+	}
+	return nil
+}
+
+func (c *controlClient) doJSON(ctx context.Context, method, path string, payload any) (http.Header, int, string, error) {
+	var bodyReader io.Reader
+	if payload != nil {
+		raw, err := json.Marshal(payload)
+		if err != nil {
+			return nil, 0, "", fmt.Errorf("marshal request: %w", err)
+		}
+		bodyReader = bytes.NewReader(raw)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, method, c.baseURL+path, bodyReader)
+	if err != nil {
+		return nil, 0, "", fmt.Errorf("create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, 0, "", err
+	}
+	defer resp.Body.Close()
+
+	rawBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return resp.Header, resp.StatusCode, "", fmt.Errorf("read response: %w", err)
+	}
+
+	return resp.Header, resp.StatusCode, strings.TrimSpace(string(rawBody)), nil
+}

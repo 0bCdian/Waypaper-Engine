@@ -1,4 +1,4 @@
-import { type ChangeEvent, useEffect, useState, useRef, useMemo } from "react";
+import { type ChangeEvent, useEffect, useState, useRef, useMemo, useId } from "react";
 import useDebounce from "../hooks/useDebounce";
 import type { Filters as FiltersType } from "../types/rendererTypes";
 import { useImagesStore } from "../stores/images";
@@ -12,12 +12,14 @@ const { goDaemon } = window.API_RENDERER;
 interface PartialFilters {
   order: "asc" | "desc";
   type: "name" | "id";
+  mediaType: "all" | "image" | "video" | "web" | "gif";
   searchString: string;
   tags: string[];
 }
 const initialFilters: PartialFilters = {
   order: "desc",
   type: "id",
+  mediaType: "all",
   searchString: "",
   tags: [],
 };
@@ -39,6 +41,7 @@ function mapFiltersToQueryParams(f: PartialFilters, colors?: string[]): Partial<
   return {
     sort_by: f.type === "name" ? "name" : "imported_at",
     sort_order: f.order,
+    media_type: f.mediaType === "all" ? undefined : f.mediaType,
     search: search || undefined,
     tags: combinedTags.length > 0 ? combinedTags.join(",") : undefined,
     colors: colors && colors.length > 0 ? colors.join(",") : undefined,
@@ -46,6 +49,7 @@ function mapFiltersToQueryParams(f: PartialFilters, colors?: string[]): Partial<
 }
 
 function Filters() {
+  const searchInputId = useId();
   const { setFilters, filters } = useImagesStore(
     useShallow((s) => ({
       setFilters: s.setFilters,
@@ -144,6 +148,7 @@ function Filters() {
     >
       <div className="tooltip" data-tip="more filters">
         <button
+          type="button"
           className="btn btn-active rounded-xl uppercase"
           onClick={() => {
             useModalStore.getState().open("AdvancedFiltersModal");
@@ -182,10 +187,28 @@ function Filters() {
           <div className="swap-off">Desc</div>
         </label>
       </div>
+      <div className="join">
+        {(["all", "image", "video", "web"] as const).map((type) => (
+          <button
+            key={type}
+            type="button"
+            className={`join-item btn btn-sm ${partialFilters.mediaType === type ? "btn-primary" : "btn-active"}`}
+            onClick={() => {
+              setPartialFilters((previous) => ({ ...previous, mediaType: type }));
+            }}
+          >
+            {type === "all"
+              ? "All"
+              : type === "web"
+                ? "Web"
+                : `${type[0].toUpperCase()}${type.slice(1)}s`}
+          </button>
+        ))}
+      </div>
       <input
         onChange={onTextChange}
         type="text"
-        id="default-search"
+        id={searchInputId}
         className="input input-primary w-full sm:w-1/3 lg:w-1/4 rounded-xl border-0 bg-base-300 text-center text-xl font-medium"
         placeholder="Search or #tag"
       />

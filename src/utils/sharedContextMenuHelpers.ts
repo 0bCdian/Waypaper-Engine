@@ -13,7 +13,12 @@ export function buildWallpaperSubmenu(
   monitors: Monitor[],
   onSet: (monitor: string, mode: MonitorMode) => void,
   prefixItems?: MenuItem[],
+  options?: { allowExtend?: boolean; extendLabel?: string },
 ): MenuItem[] {
+  const allowExtend = options?.allowExtend ?? true;
+  const extendLabel =
+    options?.extendLabel ??
+    "Extend across monitors (static images span; GIF/video/web clone per display)";
   const items: MenuItem[] = [];
 
   if (prefixItems?.length) {
@@ -28,7 +33,8 @@ export function buildWallpaperSubmenu(
     },
     {
       type: "action",
-      label: "Extend across all monitors",
+      label: allowExtend ? extendLabel : `${extendLabel} (not available)`,
+      disabled: !allowExtend,
       onClick: () => onSet("*", "extend"),
     },
   );

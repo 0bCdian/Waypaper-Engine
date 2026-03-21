@@ -11,8 +11,8 @@ version: '2.0.4'
 summary: A wallpaper setter GUI with playlist functionality for Wayland
 description: |
   Waypaper Engine is an Electron-based graphical frontend for managing
-  wallpapers on Wayland compositors. It supports multiple backends (swww,
-  hyprpaper, feh), playlist scheduling, drag-and-drop import, Wallhaven
+  wallpapers on Wayland compositors. It supports multiple backends (wayland-utauri,
+  awww, hyprpaper, feh), playlist scheduling, drag-and-drop import, Wallhaven
   integration, and per-monitor wallpaper history.
 
 grade: devel

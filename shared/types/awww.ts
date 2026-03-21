@@ -27,7 +27,7 @@ export enum TransitionType {
   random = "random",
 }
 
-export enum transitionPosition {
+export enum TransitionPosition {
   center = "center",
   top = "top",
   left = "left",
@@ -38,8 +38,8 @@ export enum transitionPosition {
   bottomLeft = "bottom-left",
   bottomRight = "bottom-right",
 }
-export type transitionPositionType = "alias" | "int" | "float";
-export interface swwwConfig {
+export type TransitionPositionType = "alias" | "int" | "float";
+export interface AwwwConfig {
   resizeType: ResizeType;
   fillColor: string;
   filterType: FilterType;
@@ -48,8 +48,8 @@ export interface swwwConfig {
   transitionDuration: number;
   transitionFPS: number;
   transitionAngle: number;
-  transitionPositionType: transitionPositionType;
-  transitionPosition: transitionPosition;
+  transitionPositionType: TransitionPositionType;
+  transitionPosition: TransitionPosition;
   transitionPositionIntX: number;
   transitionPositionIntY: number;
   transitionPositionFloatX: number;

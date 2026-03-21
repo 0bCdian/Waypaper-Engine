@@ -10,6 +10,7 @@ const { goDaemon } = window.API_RENDERER;
 const initialFilters: Filters = {
   order: "desc",
   type: "id",
+  mediaType: "all",
   searchString: "",
   tags: [],
   advancedFilters: {

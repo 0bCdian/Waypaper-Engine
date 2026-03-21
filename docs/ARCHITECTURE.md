@@ -12,6 +12,7 @@
   - [1.1 Three-Layer Architecture](#11-three-layer-architecture)
   - [1.2 Transport & Contracts](#12-transport--contracts)
   - [1.3 Key Design Decisions](#13-key-design-decisions)
+  - [1.4 Security (daemon socket & HTML wallpapers)](#14-security-daemon-socket--html-wallpapers)
 - [2. Go Daemon (`daemon/`)](#2-go-daemon-daemon)
   - [2.1 Entry Point & Startup](#21-entry-point--startup)
   - [2.2 HTTP Server & Routing](#22-http-server--routing)
@@ -128,8 +129,25 @@ There is **no gRPC** in this project — all daemon communication is HTTP+SSE.
 - **Daemon is independent**: it can run without Electron (started via CLI or systemd), enabling headless operation and third-party integrations.
 - **Electron is a thin bridge**: almost no business logic lives in the Electron main process. It translates IPC calls into HTTP requests and forwards SSE events.
 - **CloverDB for persistence**: lightweight embedded document database, no external DB server needed.
-- **Pluggable backends**: `swww`, `hyprpaper`, `feh` implement a common `Backend` interface. Adding a new backend requires implementing ~6 methods.
+- **Pluggable backends**: `awww`, `hyprpaper`, `feh`, and `wayland-utauri` implement a common `Backend` interface. Adding a new backend requires implementing ~6 methods.
 - **SSE for real-time**: all state changes (wallpaper applied, image imported, playlist advanced) flow as SSE events to connected clients.
+
+### 1.4 Security (daemon socket & HTML wallpapers)
+
+The Go daemon is a **local** service: control plane is **HTTP over a Unix domain socket** only (see §1.2). There is no intentional remote network API on the daemon itself.
+
+**Operational hygiene**: socket permissions and path validation on IPC matter (who can connect, what paths are accepted for wallpaper loads). Treat the socket like any other local privileged channel.
+
+**wayland-utauri + HTML wallpapers**: the meaningful script-driven risk is **local HTML wallpapers** running in a WebKit webview: script can use `fetch`/XHR (e.g. after reading local content) to **talk to the network** if the engine allows it. That is **not** the same threat model as generic untrusted web content, but it is the one vector worth tightening.
+
+Mitigation (intentionally **launch-time only**, not a runtime toggle wallpaper content can flip):
+
+- **Default**: when navigating to a user HTML wallpaper (`file:` document), wayland-utauri sets WebKit’s **default** CSP to `connect-src 'none'`, blocking network `fetch`/XHR/WebSocket targets.
+- **Opt-in**: start the stack with **`--allow-network-wallpapers`** on **both** `waypaper-daemon` (so it forwards the flag when it spawns `wayland-utauri`) and, if you start `wayland-utauri` manually, on that binary too. With the flag, the same hook uses `connect-src *` instead.
+
+Images, video, and GIF wallpapers are not treated as an HTML/script exfil channel in this model. Asset-protocol scope breadth is a **Tauri/`convertFileSrc` mechanics** concern (paths the user can already read), not a separate “attacker in `$HOME`” story.
+
+**Optional follow-ups (not security requirements):** Tauri’s asset allowlist is **static** in [`wayland-utauri`’s `tauri.conf.json`](../waypaper-tauri/src-tauri/tauri.conf.json) (`$HOME/**`, `$HOME/.*/**`, explicit store paths, etc.). We do **not** currently expand scope at runtime; if static globs still miss edge-case paths on a given Tauri version, investigate that version’s APIs for runtime scope updates, or a **Rust read → `blob:` URL** path in the wallpaper renderer to bypass asset scope for images only.
 
 ---
 
@@ -149,9 +167,9 @@ The `startDaemon(configPath, logLevel)` function is the composition root. It exe
 5.  Open CloverDB → construct all stores
 6.  Create event bus, wire config-file-change callback
 7.  Detect compositor (Wayland/X11) → create MonitorManager with providers
-8.  Register backends (swww, feh, hyprpaper), register defaults in Viper
+8.  Register backends (awww, feh, hyprpaper, wayland-utauri), register defaults in Viper
 9.  Activate configured backend; fallback to any available if preferred fails
-10. Initialize active backend (may start swww-daemon/hyprpaper)
+10. Initialize active backend (may start/check awww-daemon/hyprpaper/wayland-utauri)
 11. Create image Processor + Splitter
 12. Restore wallpapers from persisted MonitorState
 13. Create Playlist Manager
@@ -331,15 +349,18 @@ type Backend interface {
 }
 ```
 
-`Capabilities` declares what a backend supports (compositors, transitions, per-monitor targeting, native extend, daemon process). The daemon adapts its behavior based on these — for example, if `NativeExtend` is false, the daemon splits the image itself before calling `SetWallpaper`.
+`Capabilities` declares what a backend supports (compositors, media kinds, transitions, per-monitor targeting, daemon process). **Extend** spanning for static raster images is always handled in the engine: the daemon splits the image and calls `SetWallpaper` once per monitor with `Mode=individual`. GIF, video, and web wallpapers use **clone** semantics when the user chose extend (same path on all monitors); history and persisted monitor state still record the user’s **extend** intent.
 
 **Implemented backends**:
 
-| Backend | Directory | Compositor | Transitions | Per-Monitor | Native Extend | Daemon Process |
-|---------|-----------|-----------|-------------|-------------|---------------|----------------|
-| `swww` | `backend/swww/` | Wayland | Yes | Yes | No | Yes (`swww-daemon`) |
-| `hyprpaper` | `backend/hyprpaper/` | Wayland (Hyprland) | No | Yes | No | Yes (`hyprpaper`) |
-| `feh` | `backend/feh/` | X11 | No | No | No | No |
+| Backend | Directory | Compositor | Transitions | Per-Monitor | Daemon Process |
+|---------|-----------|-----------|-------------|-------------|----------------|
+| `awww` | `backend/awww/` | Wayland | Yes | Yes | Yes (`awww-daemon`) |
+| `hyprpaper` | `backend/hyprpaper/` | Wayland (Hyprland) | No | Yes | Yes (`hyprpaper`) |
+| `feh` | `backend/feh/` | X11 | No | No | No |
+| `wayland-utauri` | `backend/waylandutauri/` | Wayland | Yes | Yes | Yes (external control API daemon) |
+
+The **wayland-utauri** adapter sends `transition` / `duration_ms` on `POST /wallpaper/load` (`wait_for_completion=false`), embeds **`parallax`** on the load body when enabled, and only calls **`POST /wallpaper/parallax`** after load when parallax is disabled (to reset runtime state). Config: `backend.wayland-utauri` (legacy `backend.waylandutauri` still read). See [WAYLAND_UTAURI_FIRST_PARTY_INTEGRATION_SPEC.md](WAYLAND_UTAURI_FIRST_PARTY_INTEGRATION_SPEC.md) §4.2.1.
 
 The `Registry` (`registry.go`) manages backend registration, activation, and lookup. It is thread-safe via `sync.RWMutex`.
 
@@ -613,7 +634,7 @@ All application state lives in Zustand stores. There is no Redux, no React Conte
 | `usePlaylistStore` | `stores/playlist.tsx` | `playlist` (current editing), `playlistImagesSet`, `lastAddedImageID` | `addImagesToPlaylist()`, `removeImagesFromPlaylist()`, `clearPlaylist()`, `setPlaylist()`, `movePlaylistArrayOrder()`, `swapImageTimes()` |
 | `useMonitorStore` | `stores/monitors.tsx` | `monitorSelection` (selected + mode), `monitorsList` | `setMonitorSelection()` (persists to daemon), `reQueryMonitors()`, `setLastSavedMonitorConfig()` |
 | `useSettingsStore` | `stores/settingsStore.ts` | `config` (UnifiedConfig), `errors`, `searchTerm`, `filteredSections` | `loadConfig()`, `saveConfigSection()`, `resetToDefaults()`, `handleConfigChange()` |
-| `useSwwwConfigStore` | `stores/swwwConfig.tsx` | `swwwConfig` | `saveConfig()` (persists to daemon), `getConfig()` |
+| `useAwwwConfigStore` | `stores/awwwConfig.tsx` | `awwwConfig` | `saveConfig()` (persists to daemon), `getConfig()` |
 | `useToastStore` | `stores/toastStore.tsx` | `toasts[]` | `addToast()`, `removeToast()` |
 | `useImageProcessingStore` | `stores/imageProcessingStore.ts` | `batches` map | `startBatch()`, `updateBatch()`, `completeBatch()` |
 | `useDesignSystemStore` | `stores/designSystemStore.ts` | neobrutalist config, design tokens | `syncToDOM()` |
@@ -717,7 +738,7 @@ sequenceDiagram
   participant IPC as Electron IPC
   participant Client as GoDaemonClient
   participant Daemon as Go Daemon
-  participant Backend as swww Backend
+  participant Backend as awww Backend
   participant Bus as Event Bus
 
   User->>UI: Double-click image
@@ -726,15 +747,17 @@ sequenceDiagram
   IPC->>Client: setWallpaper(id, monitor, mode)
   Client->>Daemon: POST /wallpaper/set {image_id, monitor, mode}
   Daemon->>Daemon: Resolve monitors, load image
-  alt mode=extend AND backend lacks NativeExtend
+  alt mode=extend AND static image AND multiple monitors
     Daemon->>Daemon: Splitter.Split(image, monitors)
     loop Each monitor
       Daemon->>Backend: SetWallpaper(crop, [monitor], "individual")
     end
+  else mode=extend AND (gif/video/web OR single monitor)
+    Daemon->>Backend: SetWallpaper(image, monitors, clone or extend as applicable)
   else
     Daemon->>Backend: SetWallpaper(image, monitors, mode)
   end
-  Backend->>Backend: exec swww img ... (with transitions)
+  Backend->>Backend: exec awww img ... (with transitions)
   Daemon->>Daemon: Append to HistoryStore
   Daemon->>Daemon: Update StateStore + MonitorStateStore
   Daemon->>Bus: wallpaper_changed
@@ -760,7 +783,7 @@ sequenceDiagram
   Sched->>Mgr: onTick callback fires
   Mgr->>Mgr: Compute next index (ordered or random)
   Mgr->>Mgr: Load image from ImageStore
-  alt extend mode + no NativeExtend
+  alt extend + static image + multiple monitors
     Mgr->>Mgr: Split image per monitor
     loop Each monitor
       Mgr->>Backend: SetWallpaper(crop)
@@ -924,7 +947,7 @@ The Go daemon structs and the TypeScript types are manually kept in sync. Here i
 | `config types` | `AppConfig`, `DaemonConfig`, `BackendSection`, `MonitorsConfig`, `UnifiedConfig` | Match. `AppConfig` in TS has `show_monitor_modal_on_start` which the Go config also supports. |
 | `config.WallhavenConfig` | `WallhavenConfig` | 1:1 match. Go: `APIKey string` + `Enabled bool`. TS: `api_key: string` + `enabled: boolean`. Included in `UnifiedConfig` on both sides. |
 | `backend.Capabilities` | `BackendCapabilities` | 1:1 match. |
-| `swww.Config` | `SwwwConfig` | Field names match the TOML/JSON keys (`transition_type`, `resize`, etc.). TS uses `string` for enum-like fields. |
+| `awww.Config` | `AwwwConfig` | Field names match the TOML/JSON keys (`transition_type`, `resize`, etc.). TS uses `string` for enum-like fields. |
 
 **Renderer-side extensions**: [`src/types/rendererTypes.ts`](../src/types/rendererTypes.ts) defines `rendererImage` (extends `Image` with `time: number | null` for playlist context) and `rendererPlaylist` (local editing model with optional `id`).
 
@@ -1034,7 +1057,7 @@ The Go daemon structs and the TypeScript types are manually kept in sync. Here i
 | **Go** | 1.25+ | Build the daemon binary |
 | **Node.js** | 20+ | Build Electron + React frontend |
 | **npm** | 10+ | Package management |
-| **One wallpaper backend** | — | `swww` (Wayland), `hyprpaper` (Hyprland), or `feh` (X11) |
+| **One wallpaper backend** | — | `awww` (Wayland), `hyprpaper` (Hyprland), or `feh` (X11) |
 | **A compositor** | — | Any Wayland compositor (Hyprland, Sway, etc.) or X11 |
 | **Git** | — | Version control |
 
@@ -1070,9 +1093,10 @@ waypaper-engine/
 │   ├── cmd/daemon/                # CLI entry point (main.go, cli*.go)
 │   ├── internal/
 │   │   ├── backend/               # Backend interface + implementations
-│   │   │   ├── swww/              #   swww backend
+│   │   │   ├── awww/              #   awww backend
 │   │   │   ├── hyprpaper/         #   hyprpaper backend
-│   │   │   └── feh/               #   feh backend
+│   │   │   ├── feh/               #   feh backend
+│   │   │   └── waylandutauri/      #   wayland-utauri backend adapter
 │   │   ├── config/                # Viper-based TOML config manager
 │   │   ├── events/                # In-process event bus (pub/sub)
 │   │   ├── handler/               # HTTP request handlers
@@ -1118,7 +1142,7 @@ waypaper-engine/
 │   │   ├── playlist.tsx
 │   │   ├── monitors.tsx
 │   │   ├── settingsStore.ts
-│   │   ├── swwwConfig.tsx
+│   │   ├── awwwConfig.tsx
 │   │   └── toastStore.tsx
 │   ├── hooks/                     # Custom React hooks
 │   ├── contexts/                  # ThemeContext
@@ -1128,7 +1152,7 @@ waypaper-engine/
 │
 ├── shared/                        # Code shared between electron + renderer
 │   ├── constants.ts               # MENU_EVENTS, IPC_MAIN_EVENTS
-│   └── types/                     # playlist, image, swww, unifiedConfig types
+│   └── types/                     # playlist, image, awww, unifiedConfig types
 │
 ├── globals/                       # Electron-side global utilities
 │   ├── setup.ts                   # Directory setup, logger, daemon path

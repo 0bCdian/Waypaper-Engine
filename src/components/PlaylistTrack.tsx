@@ -1,5 +1,5 @@
 import { useDroppable } from "@dnd-kit/react";
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useCallback } from "react";
 import { usePlaylistStore } from "../stores/playlist";
 import { useImagesStore } from "../stores/images";
 import openImagesStore from "../hooks/useOpenImages";
@@ -58,14 +58,14 @@ function PlaylistTrack() {
     void openImages({ action });
   };
 
-  const reorderSortingCriteria = () => {
+  const reorderSortingCriteria = useCallback(() => {
     const currentImages = usePlaylistStore.getState().playlist.images;
     const newArray = [...currentImages].sort((a: PlaylistImage, b: PlaylistImage) => {
       if (a.time == null || b.time == null) return 0;
       return a.time - b.time;
     });
     movePlaylistArrayOrder(newArray);
-  };
+  }, [movePlaylistArrayOrder]);
 
   const lastIndex = playlist.images.length - 1;
   const playlistArray = playlist.images.map((img, index) => {
@@ -120,7 +120,7 @@ function PlaylistTrack() {
     if (playlist.configuration.type === "time_of_day") {
       reorderSortingCriteria();
     }
-  }, [playlist.configuration.type]);
+  }, [playlist.configuration.type, reorderSortingCriteria]);
 
   const imagesMap = useImagesStore((s) => s.imagesMap);
   useEffect(() => {
@@ -167,29 +167,50 @@ function PlaylistTrack() {
           </span>
         </div>
         <div className="dropdown dropdown-top">
-          <button tabIndex={0} className={btnClass}>
+          <button type="button" tabIndex={0} className={btnClass}>
             Add images
           </button>
           <ul className="menu dropdown-content z-10 mb-1 w-52 bg-base-100 p-2 shadow-sm">
             <li>
-              <a
+              <button
+                type="button"
                 className="text-lg text-base-content"
                 onMouseDown={isActive ? undefined : () => handleClickAddImages("file")}
               >
                 Individual images
-              </a>
+              </button>
             </li>
             <li>
-              <a
+              <button
+                type="button"
                 className="text-lg text-base-content"
                 onMouseDown={isActive ? undefined : () => handleClickAddImages("folder")}
               >
-                Image directory
-              </a>
+                Media directory
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                className="text-lg text-base-content"
+                onMouseDown={isActive ? undefined : () => handleClickAddImages("video")}
+              >
+                Videos
+              </button>
+            </li>
+            <li>
+              <button
+                type="button"
+                className="text-lg text-base-content"
+                onMouseDown={isActive ? undefined : () => handleClickAddImages("web")}
+              >
+                Web wallpaper
+              </button>
             </li>
           </ul>
         </div>
         <button
+          type="button"
           onClick={() => {
             useModalStore.getState().open("LoadPlaylistModal");
           }}
@@ -198,6 +219,7 @@ function PlaylistTrack() {
           Load Playlist
         </button>
         <button
+          type="button"
           onClick={() => {
             const monitor =
               monitorSelection.selectedMonitors.length === 1
@@ -213,6 +235,7 @@ function PlaylistTrack() {
         {playlist.images.length > 1 && (
           <>
             <button
+              type="button"
               onClick={() => {
                 useModalStore.getState().open("savePlaylistModal");
               }}
@@ -221,6 +244,7 @@ function PlaylistTrack() {
               {isDirty ? "Save*" : "Save"}
             </button>
             <button
+              type="button"
               onClick={() => {
                 useModalStore.getState().open("playlistConfigurationModal");
               }}
@@ -229,6 +253,7 @@ function PlaylistTrack() {
               Configure
             </button>
             <button
+              type="button"
               className={isNeo ? "btn btn-error uppercase" : "btn btn-error rounded-lg uppercase"}
               onClick={async () => {
                 if (playlist.id) {

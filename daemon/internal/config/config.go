@@ -15,7 +15,7 @@ import "encoding/json"
 // Usage patterns:
 //
 //	cfg, _ := configManager.GetConfig()             // Full config as struct
-//	raw, _ := configManager.GetBackendConfig("swww") // Backend config as raw JSON
+//	raw, _ := configManager.GetBackendConfig("awww") // Backend config as raw JSON
 type ConfigManager interface {
 	// --- Full config access ---
 
@@ -39,7 +39,7 @@ type ConfigManager interface {
 	// --- Backend-specific config ---
 
 	// GetBackendConfig returns the configuration for a specific backend as raw JSON.
-	// Example: GetBackendConfig("swww") returns the JSON for [backend.swww] in the TOML.
+	// Example: GetBackendConfig("awww") returns the JSON for [backend.awww] in the TOML.
 	// The shape of the JSON depends on the backend — the daemon core treats it as opaque.
 	GetBackendConfig(backendName string) (json.RawMessage, error)
 

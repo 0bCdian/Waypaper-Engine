@@ -9,6 +9,7 @@ import type {
   ImageHistoryEntry,
   UpdateImageRequest,
   ImportImagesRequest,
+  ImportWebWallpaperRequest,
   DeleteImagesRequest,
   SelectAllImagesRequest,
   Playlist,
@@ -18,7 +19,6 @@ import type {
   StartPlaylistRequest,
   Monitor,
   UnifiedConfig,
-  SwwwConfig,
   BackendInfo,
   DaemonInfo,
   HealthResponse,
@@ -287,6 +287,17 @@ export class GoDaemonClient extends EventEmitter {
     return this.request<{ status: string; total: number }>("POST", "/images", body);
   }
 
+  async importWebWallpaper(
+    path: string,
+    folderID?: number | null,
+  ): Promise<Image> {
+    const body: ImportWebWallpaperRequest = { path };
+    if (folderID !== undefined && folderID !== null) {
+      body.folder_id = folderID;
+    }
+    return this.request<Image>("POST", "/images/import-web", body);
+  }
+
   async cancelImport(batchID: string): Promise<{ status: string; batch_id: string }> {
     return this.request<{ status: string; batch_id: string }>("POST", "/images/cancel-import", {
       batch_id: batchID,
@@ -522,11 +533,11 @@ export class GoDaemonClient extends EventEmitter {
     return this.request("PATCH", `/config/${section}`, data);
   }
 
-  async getBackendConfig(): Promise<SwwwConfig> {
-    return this.request<SwwwConfig>("GET", "/config/backend");
+  async getBackendConfig(): Promise<Record<string, unknown>> {
+    return this.request<Record<string, unknown>>("GET", "/config/backend");
   }
 
-  async updateBackendConfig(config: Partial<SwwwConfig>): Promise<void> {
+  async updateBackendConfig(config: Record<string, unknown>): Promise<void> {
     await this.request("PATCH", "/config/backend", config);
   }
 

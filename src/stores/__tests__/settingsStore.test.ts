@@ -30,7 +30,7 @@ describe("useSettingsStore", () => {
     const state = useSettingsStore.getState();
     expect(state.config).not.toBeNull();
     expect(state.config!.app.theme).toBe("dark");
-    expect(state.config!.backend.type).toBe("swww");
+    expect(state.config!.backend.type).toBe("awww");
     expect(state.isLoading).toBe(false);
     expect(mockAPI.goDaemon.getConfig).toHaveBeenCalled();
   });

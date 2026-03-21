@@ -154,6 +154,10 @@ function Monitors() {
                 Clone single wallpaper
               </option>
             </select>
+            <p className="mt-2 text-xs text-base-content/70">
+              Extend spans static images only; video, GIF, and web wallpapers use the same image on each
+              monitor (clone).
+            </p>
           </fieldset>
 
           <div style={styles} className="relative m-auto">

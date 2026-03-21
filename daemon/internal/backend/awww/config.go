@@ -1,10 +1,9 @@
-// Package swww defines the configuration types for the swww wallpaper backend.
+// Package awww defines the configuration types for the awww wallpaper backend.
 //
-// swww is a Wayland-only wallpaper daemon that supports animated transitions.
-// See: https://github.com/LGFae/swww
-package swww
+// awww is a Wayland-only wallpaper daemon that supports animated transitions.
+package awww
 
-// Config holds all swww-specific configuration.
+// Config holds all awww-specific configuration.
 // Tags: `mapstructure` for Viper unmarshaling from TOML, `json` for API serialization.
 type Config struct {
 	// TransitionType is the animation used when changing wallpapers.
@@ -47,7 +46,7 @@ type Config struct {
 
 // --- Type enums ---
 
-// TransitionType defines the animation style when swww transitions between wallpapers.
+// TransitionType defines the animation style when awww transitions between wallpapers.
 type TransitionType string
 
 const (
@@ -82,7 +81,7 @@ const (
 	PosBottomRight TransitionPosition = "bottom-right"
 )
 
-// ResizeType defines how swww fits the image to the monitor dimensions.
+// ResizeType defines how awww fits the image to the monitor dimensions.
 type ResizeType string
 
 const (
@@ -92,7 +91,7 @@ const (
 	ResizeStretch ResizeType = "stretch"
 )
 
-// FilterType defines the resampling filter used when swww resizes images.
+// FilterType defines the resampling filter used when awww resizes images.
 type FilterType string
 
 const (

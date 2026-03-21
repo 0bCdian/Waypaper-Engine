@@ -29,7 +29,10 @@
 // Go field name rename, then json.Unmarshal still expects JSON tag name).
 package store
 
-import "time"
+import (
+	"encoding/json"
+	"time"
+)
 
 // ---------------------------------------------------------------------------
 // Image
@@ -50,6 +53,12 @@ type Image struct {
 
 	// MediaType classifies the file: "image", "video", "gif".
 	MediaType string `json:"media_type"`
+
+	// Duration is the media duration in seconds (videos only, 0 for others).
+	Duration float64 `json:"duration"`
+
+	// AudioEnabled indicates whether the media has an audio track (videos only).
+	AudioEnabled bool `json:"audio_enabled"`
 
 	// Width is the horizontal resolution in pixels.
 	Width int `json:"width"`
@@ -87,9 +96,36 @@ type Image struct {
 	// Keys: "default", "720p", "1080p", "1440p", "4k".
 	Thumbnails map[string]string `json:"thumbnails"`
 
+	// PreviewPath is an optional preview asset path (mainly for web wallpapers).
+	PreviewPath string `json:"preview_path"`
+
+	// WebMeta holds web-wallpaper manifest metadata. Nil for non-web media.
+	WebMeta *WebMeta `json:"web_meta,omitempty"`
+
 	// FolderID is the optional folder this image belongs to.
 	// nil means the image is at the root level of the gallery.
 	FolderID *int `json:"folder_id"`
+}
+
+// WebCapabilities describes optional runtime capabilities declared by
+// web-wallpaper manifests.
+type WebCapabilities struct {
+	Network       bool `json:"network"`
+	Keyboard      bool `json:"keyboard"`
+	AudioReactive bool `json:"audio_reactive"`
+	ParallaxAware bool `json:"parallax_aware"`
+}
+
+// WebMeta stores resolved metadata for imported web wallpapers.
+type WebMeta struct {
+	PackageRoot  string          `json:"package_root"`
+	ManifestPath string          `json:"manifest_path"`
+	EntryPath    string          `json:"entry_path"`
+	Title        string          `json:"title"`
+	Description  string          `json:"description"`
+	Author       string          `json:"author"`
+	Capabilities WebCapabilities `json:"capabilities"`
+	Properties   json.RawMessage `json:"properties,omitempty"`
 }
 
 // ImageUpdate contains the mutable fields for PATCH /images/{id}.
@@ -158,7 +194,7 @@ type ImageHistoryEntry struct {
 	// Source describes what caused this wallpaper change.
 	Source HistorySource `json:"source"`
 
-	// Backend is the name of the backend that applied the wallpaper (e.g. "swww").
+	// Backend is the name of the backend that applied the wallpaper (e.g. "awww").
 	Backend string `json:"backend"`
 }
 
@@ -226,6 +262,9 @@ type PlaylistConfiguration struct {
 type PlaylistImage struct {
 	// ImageID references the Image in the gallery.
 	ImageID int `json:"image_id"`
+
+	// MediaType is denormalized for quick playlist filtering.
+	MediaType string `json:"media_type,omitempty"`
 
 	// Time is minutes since midnight (0–1439), used by "time_of_day" playlists.
 	// Nil for other playlist types.

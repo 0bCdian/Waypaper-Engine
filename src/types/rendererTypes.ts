@@ -24,6 +24,7 @@ export type monitorSelectType = MonitorMode;
 export interface Filters {
   order: "asc" | "desc";
   type: "name" | "id";
+  mediaType: "all" | "image" | "video" | "web" | "gif";
   searchString: string;
   tags: string[];
   advancedFilters: advancedFilters;

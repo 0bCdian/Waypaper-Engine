@@ -10,8 +10,8 @@ import type {
   ActivePlaylistInstance,
   Monitor,
   UnifiedConfig,
-  SwwwConfig,
   BackendInfo,
+  BackendCapabilities,
   DaemonInfo,
   MonitorMode,
   MonitorState,
@@ -41,6 +41,10 @@ declare global {
           paths: string[],
           folderID?: number | null,
         ) => Promise<{ status: string; total: number }>;
+        importWebWallpaper: (
+          path: string,
+          folderID?: number | null,
+        ) => Promise<Image>;
         cancelImport: (batchID: string) => Promise<{ status: string; batch_id: string }>;
         deleteImages: (ids: number[]) => Promise<{ deleted: number }>;
         updateImage: (id: number, update: UpdateImageRequest) => Promise<Image>;
@@ -116,11 +120,12 @@ declare global {
         updateConfig: (config: Partial<UnifiedConfig>) => Promise<UnifiedConfig>;
         getConfigSection: (section: string) => Promise<unknown>;
         updateConfigSection: (section: string, data: Record<string, unknown>) => Promise<unknown>;
-        getBackendConfig: () => Promise<SwwwConfig>;
-        updateBackendConfig: (config: Partial<SwwwConfig>) => Promise<void>;
+        getBackendConfig: () => Promise<Record<string, unknown>>;
+        updateBackendConfig: (config: Record<string, unknown>) => Promise<void>;
 
         // BACKENDS
         getBackends: () => Promise<BackendInfo[]>;
+        getBackendCapabilities: () => Promise<BackendCapabilities | null>;
         activateBackend: (name: string) => Promise<{ status: string; backend: string }>;
 
         // EVENT LISTENERS
@@ -171,7 +176,7 @@ declare global {
       // FILE OPERATIONS
       getPathForFile: (file: File) => string;
       downloadUrl: (url: string) => Promise<string>;
-      openFiles: (action: "file" | "folder") => Promise<{
+      openFiles: (action: "file" | "folder" | "video" | "web") => Promise<{
         success: boolean;
         data?: { files: string[] };
         files?: string[];

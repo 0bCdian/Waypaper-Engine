@@ -27,6 +27,7 @@ export function createMockAPI(): Window["API_RENDERER"] {
       getImage: vi.fn().mockResolvedValue(null),
       getImageCount: vi.fn().mockResolvedValue({ count: 0 }),
       importImages: vi.fn().mockResolvedValue({ status: "processing", total: 0 }),
+      importWebWallpaper: vi.fn().mockResolvedValue(null),
       cancelImport: vi.fn().mockResolvedValue({ status: "cancelled", batch_id: "" }),
       deleteImages: vi.fn().mockResolvedValue({ deleted: 0 }),
       updateImage: vi.fn().mockResolvedValue(null),
@@ -100,7 +101,7 @@ export function createMockAPI(): Window["API_RENDERER"] {
           log_max_backups: 3,
           compositor: "auto" as const,
         },
-        backend: { type: "swww" },
+        backend: { type: "awww" },
         monitors: {
           selected_monitors: [],
           image_set_type: "individual" as const,
@@ -118,6 +119,7 @@ export function createMockAPI(): Window["API_RENDERER"] {
       updateBackendConfig: vi.fn().mockResolvedValue(undefined),
 
       getBackends: vi.fn().mockResolvedValue([]),
+      getBackendCapabilities: vi.fn().mockResolvedValue(null),
       activateBackend: vi.fn().mockResolvedValue({ status: "activated", backend: "" }),
 
       on: vi.fn().mockReturnValue(() => {}),

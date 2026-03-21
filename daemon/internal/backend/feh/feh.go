@@ -37,7 +37,6 @@ func (f *Feh) Capabilities() backend.Capabilities {
 		MediaTypes:    []media.MediaType{media.MediaTypeImage},
 		Transitions:   false,
 		PerMonitor:    false,
-		NativeExtend:  false,
 		DaemonProcess: false,
 	}
 }

@@ -9,7 +9,7 @@ import { cn } from "../utils/cn";
  */
 export const SidebarConfiguration: React.FC = () => {
   const config = useSettingsStore((s) => s.config);
-  const [activeSection, setActiveSection] = useState<"app" | "swww" | "daemon">("app");
+  const [activeSection, setActiveSection] = useState<"app" | "awww" | "daemon">("app");
 
   if (!config) {
     return (
@@ -21,7 +21,7 @@ export const SidebarConfiguration: React.FC = () => {
 
   const sections = [
     { id: "app", label: "App Settings", icon: "⚙️" },
-    { id: "swww", label: "Swww Config", icon: "🖼️" },
+    { id: "awww", label: "Awww Config", icon: "🖼️" },
     { id: "daemon", label: "Daemon", icon: "🔧" },
   ] as const;
 
@@ -51,7 +51,7 @@ export const SidebarConfiguration: React.FC = () => {
 
       <div className="flex-1 overflow-y-auto">
         {activeSection === "app" && <AppSettings />}
-        {activeSection === "swww" && <SwwwSettings />}
+        {activeSection === "awww" && <AwwwSettings />}
         {activeSection === "daemon" && <DaemonSettings />}
       </div>
     </div>
@@ -114,7 +114,7 @@ const AppSettings: React.FC = () => {
   );
 };
 
-const SwwwSettings: React.FC = () => {
+const AwwwSettings: React.FC = () => {
   const { config, saveConfigSection } = useSettingsStore(
     useShallow((s) => ({
       config: s.config,
@@ -125,13 +125,13 @@ const SwwwSettings: React.FC = () => {
   return (
     <div className="space-y-4">
       <div className="form-control">
-        <label htmlFor="swww-transition-type" className="label">
+        <label htmlFor="awww-transition-type" className="label">
           <span className="label-text text-sm font-medium">Transition Type</span>
         </label>
         <select
-          id="swww-transition-type"
+          id="awww-transition-type"
           className="select select-primary select-sm w-full"
-          value={config?.backend?.swww?.transition_type || "simple"}
+          value={config?.backend?.awww?.transition_type || "simple"}
           onChange={(e) => saveConfigSection("backend", { transition_type: e.target.value })}
         >
           <option value="simple">Simple</option>
@@ -145,17 +145,17 @@ const SwwwSettings: React.FC = () => {
       </div>
 
       <div className="form-control">
-        <label htmlFor="swww-transition-step" className="label">
+        <label htmlFor="awww-transition-step" className="label">
           <span className="label-text text-sm font-medium">Transition Step</span>
         </label>
         <input
-          id="swww-transition-step"
+          id="awww-transition-step"
           type="range"
           min="0"
           max="255"
           step="1"
           className="range range-primary range-sm"
-          value={config?.backend?.swww?.transition_step || 0}
+          value={config?.backend?.awww?.transition_step || 0}
           onChange={(e) =>
             saveConfigSection("backend", {
               transition_step: parseInt(e.target.value, 10),
@@ -164,19 +164,19 @@ const SwwwSettings: React.FC = () => {
         />
         <div className="flex justify-between text-xs text-base-content/60 px-2">
           <span>0</span>
-          <span>{config?.backend?.swww?.transition_step || 0}</span>
+          <span>{config?.backend?.awww?.transition_step || 0}</span>
           <span>255</span>
         </div>
       </div>
 
       <div className="form-control">
-        <label htmlFor="swww-resize-type" className="label">
+        <label htmlFor="awww-resize-type" className="label">
           <span className="label-text text-sm font-medium">Resize Type</span>
         </label>
         <select
-          id="swww-resize-type"
+          id="awww-resize-type"
           className="select select-primary select-sm w-full"
-          value={config?.backend?.swww?.resize || "crop"}
+          value={config?.backend?.awww?.resize || "crop"}
           onChange={(e) => saveConfigSection("backend", { resize: e.target.value })}
         >
           <option value="crop">Crop</option>

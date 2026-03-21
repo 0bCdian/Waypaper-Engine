@@ -3,6 +3,7 @@ package image
 import (
 	"context"
 	"crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"image"
 	_ "image/gif"
@@ -11,6 +12,7 @@ import (
 	"io"
 	"log/slog"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -37,6 +39,11 @@ var supportedExtensions = map[string]string{
 	".bmp":  "bmp",
 	".tiff": "tiff",
 	".tif":  "tiff",
+	".mp4":  "mp4",
+	".webm": "webm",
+	".mkv":  "mkv",
+	".avi":  "avi",
+	".mov":  "mov",
 }
 
 // Processor handles importing images into the gallery: validation, copying,
@@ -117,6 +124,8 @@ type preProcessResult struct {
 	fileSize   int64
 	checksum   string
 	colors     []string
+	duration   float64
+	audio      bool
 	err        error
 }
 
@@ -143,6 +152,7 @@ func (p *Processor) processBatchSync(ctx context.Context, paths []string, batchI
 		name       string
 		ext        string
 		format     string
+		mediaType  string
 	}
 	validPaths := make([]validated, 0, total)
 	preErrors := make(map[int]string) // index -> error message
@@ -162,6 +172,7 @@ func (p *Processor) processBatchSync(ctx context.Context, paths []string, batchI
 			name:       name,
 			ext:        ext,
 			format:     format,
+			mediaType:  mediaTypeForExt(ext, format),
 		})
 	}
 
@@ -214,7 +225,7 @@ func (p *Processor) processBatchSync(ctx context.Context, paths []string, batchI
 	var created []store.Image
 	progressCounter := errCount
 
-	for i, r := range results {
+	for _, r := range results {
 		if ctx.Err() != nil {
 			break
 		}
@@ -237,26 +248,23 @@ func (p *Processor) processBatchSync(ctx context.Context, paths []string, batchI
 			continue
 		}
 
-		mediaType := "image"
-		if validPaths[i].format == "gif" {
-			mediaType = "gif"
-		}
-
 		imgs, err := p.imageStore.Create(ctx, []store.Image{{
-			Name:       strings.TrimSuffix(r.name, r.ext),
-			Path:       r.destPath,
-			MediaType:  mediaType,
-			Width:      r.width,
-			Height:     r.height,
-			Format:     r.format,
-			FileSize:   r.fileSize,
-			Checksum:   "sha256:" + r.checksum,
-			Tags:       []string{},
-			Colors:     r.colors,
-			ImportedAt: time.Now(),
-			SourcePath: r.sourcePath,
-			IsSelected: false,
-			FolderID:   folderID,
+			Name:         strings.TrimSuffix(r.name, r.ext),
+			Path:         r.destPath,
+			MediaType:    r.mediaType,
+			Duration:     r.duration,
+			AudioEnabled: r.audio,
+			Width:        r.width,
+			Height:       r.height,
+			Format:       r.format,
+			FileSize:     r.fileSize,
+			Checksum:     "sha256:" + r.checksum,
+			Tags:         []string{},
+			Colors:       r.colors,
+			ImportedAt:   time.Now(),
+			SourcePath:   r.sourcePath,
+			IsSelected:   false,
+			FolderID:     folderID,
 		}})
 		if err != nil {
 			errCount++
@@ -300,7 +308,7 @@ func (p *Processor) processBatchSync(ctx context.Context, paths []string, batchI
 			}
 			img := &created[i]
 
-			thumbnails, err := p.thumbnailer.Generate(img.Path, img.ID)
+			thumbnails, err := p.thumbnailer.Generate(img.Path, img.ID, img.MediaType, img.PreviewPath)
 			if err != nil {
 				slog.Warn("thumbnail generation failed, continuing without thumbnails",
 					"image_id", img.ID, "error", err)
@@ -396,6 +404,34 @@ func (p *Processor) preProcessOne(sourcePath, destPath, name, ext, format string
 	}
 	r.checksum = checksum
 
+	if err := copyFile(sourcePath, destPath); err != nil {
+		r.err = fmt.Errorf("copy file: %w", err)
+		return r
+	}
+
+	r.mediaType = mediaTypeForExt(ext, format)
+	if r.mediaType == "video" {
+		if _, err := exec.LookPath("ffmpeg"); err != nil {
+			r.err = fmt.Errorf("video import requires ffmpeg in PATH")
+			return r
+		}
+		if _, err := exec.LookPath("ffprobe"); err != nil {
+			r.err = fmt.Errorf("video import requires ffprobe in PATH")
+			return r
+		}
+		meta, err := probeVideo(sourcePath)
+		if err != nil {
+			r.err = fmt.Errorf("probe video: %w", err)
+			return r
+		}
+		r.width = meta.Width
+		r.height = meta.Height
+		r.duration = meta.Duration
+		r.audio = meta.HasAudio
+		r.colors = []string{}
+		return r
+	}
+
 	width, height, err := getImageDimensions(sourcePath)
 	if err != nil {
 		r.err = fmt.Errorf("dimensions: %w", err)
@@ -403,11 +439,6 @@ func (p *Processor) preProcessOne(sourcePath, destPath, name, ext, format string
 	}
 	r.width = width
 	r.height = height
-
-	if err := copyFile(sourcePath, destPath); err != nil {
-		r.err = fmt.Errorf("copy file: %w", err)
-		return r
-	}
 
 	colors, err := ExtractPalette(destPath, 5)
 	if err != nil {
@@ -417,12 +448,82 @@ func (p *Processor) preProcessOne(sourcePath, destPath, name, ext, format string
 	}
 	r.colors = colors
 
-	r.mediaType = "image"
+	return r
+}
+
+func mediaTypeForExt(ext, format string) string {
+	if isVideoExtension(ext) {
+		return "video"
+	}
 	if format == "gif" {
-		r.mediaType = "gif"
+		return "gif"
+	}
+	return "image"
+}
+
+func isVideoExtension(ext string) bool {
+	switch strings.ToLower(ext) {
+	case ".mp4", ".webm", ".mkv", ".avi", ".mov":
+		return true
+	default:
+		return false
+	}
+}
+
+type probedVideo struct {
+	Width    int
+	Height   int
+	Duration float64
+	HasAudio bool
+}
+
+func probeVideo(path string) (probedVideo, error) {
+	cmd := exec.Command(
+		"ffprobe",
+		"-v", "error",
+		"-print_format", "json",
+		"-show_format",
+		"-show_streams",
+		path,
+	)
+	out, err := cmd.Output()
+	if err != nil {
+		return probedVideo{}, fmt.Errorf("ffprobe not available or failed: %w", err)
 	}
 
-	return r
+	var parsed struct {
+		Streams []struct {
+			CodecType string `json:"codec_type"`
+			Width     int    `json:"width"`
+			Height    int    `json:"height"`
+		} `json:"streams"`
+		Format struct {
+			Duration string `json:"duration"`
+		} `json:"format"`
+	}
+	if err := json.Unmarshal(out, &parsed); err != nil {
+		return probedVideo{}, fmt.Errorf("decode ffprobe output: %w", err)
+	}
+
+	result := probedVideo{}
+	for _, s := range parsed.Streams {
+		if s.CodecType == "video" && result.Width == 0 && result.Height == 0 {
+			result.Width = s.Width
+			result.Height = s.Height
+		}
+		if s.CodecType == "audio" {
+			result.HasAudio = true
+		}
+	}
+	if parsed.Format.Duration != "" {
+		var duration float64
+		_, _ = fmt.Sscanf(parsed.Format.Duration, "%f", &duration)
+		result.Duration = duration
+	}
+	if result.Width == 0 || result.Height == 0 {
+		return probedVideo{}, fmt.Errorf("video stream dimensions not found")
+	}
+	return result, nil
 }
 
 // computeChecksum returns the hex-encoded SHA-256 of a file.

@@ -1,4 +1,4 @@
-package swww
+package awww
 
 import (
 	"context"
@@ -20,84 +20,60 @@ import (
 	"github.com/spf13/viper"
 )
 
-// binaryCandidates lists the CLI binary names to search for, in priority order.
-// swww is the original; awww is a community fork with the same CLI interface.
-var binaryCandidates = []string{"swww", "awww"}
+const cliBinary = "awww"
+const daemonBinary = "awww-daemon"
 
-// daemonCandidates lists the daemon binary names, matching the CLI order.
-var daemonCandidates = []string{"swww-daemon", "awww-daemon"}
-
-// Swww implements backend.Backend for the swww (or awww) wallpaper daemon.
-type Swww struct {
-	once      sync.Once
-	cliBinary string       // resolved CLI binary ("swww" or "awww")
-	daemonBin string       // resolved daemon binary ("swww-daemon" or "awww-daemon")
-	v         *viper.Viper // viper instance for reading config at runtime
-	process   *os.Process  // tracks the swww-daemon we started (nil if pre-existing)
+// Awww implements backend.Backend for the awww wallpaper daemon.
+type Awww struct {
+	once    sync.Once
+	v       *viper.Viper // viper instance for reading config at runtime
+	process *os.Process  // tracks the awww-daemon we started (nil if pre-existing)
 }
 
-// New returns a new swww/awww backend instance.
+// New returns a new awww backend instance.
 func New() backend.Backend {
-	return &Swww{}
+	return &Awww{}
 }
 
-var _ backend.Backend = (*Swww)(nil)
+var _ backend.Backend = (*Awww)(nil)
 
-func (s *Swww) Name() string { return "swww" }
+func (a *Awww) Name() string { return "awww" }
 
-// resolveBinary finds which binary is installed (swww preferred, awww fallback).
-// Called lazily and cached via sync.Once.
-func (s *Swww) resolveBinary() {
-	s.once.Do(func() {
-		for i, bin := range binaryCandidates {
-			if _, err := exec.LookPath(bin); err == nil {
-				s.cliBinary = bin
-				s.daemonBin = daemonCandidates[i]
-				slog.Debug("swww backend: resolved binary", "cli", s.cliBinary, "daemon", s.daemonBin)
-				return
-			}
-		}
-		// Neither found — leave empty, IsAvailable() will return false.
-	})
+func (a *Awww) IsAvailable() bool {
+	_, err := exec.LookPath(cliBinary)
+	return err == nil
 }
 
-func (s *Swww) IsAvailable() bool {
-	s.resolveBinary()
-	return s.cliBinary != ""
-}
-
-func (s *Swww) Capabilities() backend.Capabilities {
+func (a *Awww) Capabilities() backend.Capabilities {
 	return backend.Capabilities{
 		Compositors:   []monitor.CompositorType{monitor.CompositorWayland},
 		MediaTypes:    []media.MediaType{media.MediaTypeImage},
 		Transitions:   true,
 		PerMonitor:    true,
-		NativeExtend:  false,
 		DaemonProcess: true,
 	}
 }
 
-func (s *Swww) Initialize(ctx context.Context) error {
-	s.resolveBinary()
-	if s.cliBinary == "" {
-		return fmt.Errorf("swww: neither swww nor awww found in PATH")
+func (a *Awww) Initialize(ctx context.Context) error {
+	if !a.IsAvailable() {
+		return fmt.Errorf("awww: awww not found in PATH")
 	}
 
 	// Check if the daemon is already running via `<cli> query`.
-	if err := exec.CommandContext(ctx, s.cliBinary, "query").Run(); err == nil {
-		slog.Info("daemon already running", "binary", s.cliBinary)
+	if err := exec.CommandContext(ctx, cliBinary, "query").Run(); err == nil {
+		slog.Info("daemon already running", "binary", cliBinary)
 		return nil
 	}
 
-	slog.Info("starting daemon with --no-cache", "binary", s.daemonBin)
+	slog.Info("starting daemon with --no-cache", "binary", daemonBinary)
 	// Use Background context: the daemon must outlive the HTTP request that
 	// triggered activation. Pdeathsig ensures cleanup when waypaper-daemon exits.
-	cmd := exec.Command(s.daemonBin, "--no-cache")
+	cmd := exec.Command(daemonBinary, "--no-cache")
 	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGTERM}
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("swww: start %s: %w", s.daemonBin, err)
+		return fmt.Errorf("awww: start %s: %w", daemonBinary, err)
 	}
-	s.process = cmd.Process
+	a.process = cmd.Process
 
 	// Collect exit status in the background so the process doesn't become a zombie.
 	go func() {
@@ -105,60 +81,58 @@ func (s *Swww) Initialize(ctx context.Context) error {
 	}()
 
 	// Wait for the daemon to become ready (accepts queries).
-	// swww-daemon needs a moment to start listening on its socket.
+	// awww-daemon needs a moment to start listening on its socket.
 	for i := range 20 {
-		if err := exec.CommandContext(ctx, s.cliBinary, "query").Run(); err == nil {
-			slog.Info("daemon ready", "binary", s.daemonBin, "attempts", i+1)
+		if err := exec.CommandContext(ctx, cliBinary, "query").Run(); err == nil {
+			slog.Info("daemon ready", "binary", daemonBinary, "attempts", i+1)
 			return nil
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
 
-	slog.Warn("daemon started but may not be ready yet", "binary", s.daemonBin)
+	slog.Warn("daemon started but may not be ready yet", "binary", daemonBinary)
 	return nil
 }
 
-func (s *Swww) Shutdown(ctx context.Context) error {
-	s.resolveBinary()
-	if s.cliBinary == "" {
+func (a *Awww) Shutdown(ctx context.Context) error {
+	if !a.IsAvailable() {
 		return nil
 	}
 
-	slog.Info("stopping daemon", "binary", s.cliBinary)
-	if err := exec.CommandContext(ctx, s.cliBinary, "kill").Run(); err != nil {
+	slog.Info("stopping daemon", "binary", cliBinary)
+	if err := exec.CommandContext(ctx, cliBinary, "kill").Run(); err != nil {
 		// Exit 1 means the daemon wasn't running — that's the desired state.
-		slog.Warn("swww kill command failed (daemon may already be stopped)", "error", err)
+		slog.Warn("awww kill command failed (daemon may already be stopped)", "error", err)
 	}
 
 	// If we started the daemon ourselves, ensure the process is actually dead.
-	if s.process != nil {
+	if a.process != nil {
 		done := make(chan struct{})
 		go func() {
-			_, _ = s.process.Wait()
+			_, _ = a.process.Wait()
 			close(done)
 		}()
 		select {
 		case <-done:
-			slog.Debug("swww-daemon process exited")
+			slog.Debug("awww-daemon process exited")
 		case <-time.After(3 * time.Second):
-			slog.Warn("swww-daemon did not exit after kill, sending SIGKILL")
-			_ = s.process.Signal(syscall.SIGKILL)
+			slog.Warn("awww-daemon did not exit after kill, sending SIGKILL")
+			_ = a.process.Signal(syscall.SIGKILL)
 		}
-		s.process = nil
+		a.process = nil
 	}
 
 	return nil
 }
 
-func (s *Swww) SetWallpaper(ctx context.Context, req backend.WallpaperRequest) error {
-	s.resolveBinary()
-	if s.cliBinary == "" {
-		return fmt.Errorf("swww: neither swww nor awww found in PATH")
+func (a *Awww) SetWallpaper(ctx context.Context, req backend.WallpaperRequest) error {
+	if !a.IsAvailable() {
+		return fmt.Errorf("awww: awww not found in PATH")
 	}
 
 	cfg, _ := req.Config.(*Config)
 	if cfg == nil {
-		cfg = s.loadConfigFromViper()
+		cfg = a.loadConfigFromViper()
 	}
 
 	args := []string{"img", req.ImagePath}
@@ -206,70 +180,70 @@ func (s *Swww) SetWallpaper(ctx context.Context, req backend.WallpaperRequest) e
 		args = append(args, "--outputs", req.Monitors[0].Name)
 	}
 
-	slog.Debug("swww command", "binary", s.cliBinary, "args", args)
-	cmd := exec.CommandContext(ctx, s.cliBinary, args...)
+	slog.Debug("awww command", "binary", cliBinary, "args", args)
+	cmd := exec.CommandContext(ctx, cliBinary, args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
-		return fmt.Errorf("%s img: %w (output: %s)", s.cliBinary, err, string(output))
+		return fmt.Errorf("%s img: %w (output: %s)", cliBinary, err, string(output))
 	}
 	return nil
 }
 
-func (s *Swww) RegisterDefaults(v *viper.Viper) {
-	s.v = v
-	v.SetDefault("backend.swww.transition_type", string(TransitionWipe))
-	v.SetDefault("backend.swww.transition_step", 90)
-	v.SetDefault("backend.swww.transition_duration", 3)
-	v.SetDefault("backend.swww.transition_fps", 60)
-	v.SetDefault("backend.swww.transition_angle", 45)
-	v.SetDefault("backend.swww.transition_pos", string(PosCenter))
-	v.SetDefault("backend.swww.transition_bezier", "0.25,0.1,0.25,1.0")
-	v.SetDefault("backend.swww.transition_wave", "20,20")
-	v.SetDefault("backend.swww.resize", string(ResizeCrop))
-	v.SetDefault("backend.swww.fill_color", "000000")
-	v.SetDefault("backend.swww.filter_type", string(FilterLanczos3))
-	v.SetDefault("backend.swww.invert_y", false)
+func (a *Awww) RegisterDefaults(v *viper.Viper) {
+	a.v = v
+	v.SetDefault("backend.awww.transition_type", string(TransitionWipe))
+	v.SetDefault("backend.awww.transition_step", 90)
+	v.SetDefault("backend.awww.transition_duration", 3)
+	v.SetDefault("backend.awww.transition_fps", 60)
+	v.SetDefault("backend.awww.transition_angle", 45)
+	v.SetDefault("backend.awww.transition_pos", string(PosCenter))
+	v.SetDefault("backend.awww.transition_bezier", "0.25,0.1,0.25,1.0")
+	v.SetDefault("backend.awww.transition_wave", "20,20")
+	v.SetDefault("backend.awww.resize", string(ResizeCrop))
+	v.SetDefault("backend.awww.fill_color", "000000")
+	v.SetDefault("backend.awww.filter_type", string(FilterLanczos3))
+	v.SetDefault("backend.awww.invert_y", false)
 }
 
-// loadConfigFromViper reads the [backend.swww] section from the TOML config via Viper.
+// loadConfigFromViper reads the [backend.awww] section from the TOML config via Viper.
 // This is used as the fallback when req.Config is nil (i.e., most call sites).
 //
 // TOML convention uses hyphens (transition-type) while Go/mapstructure uses underscores
 // (transition_type). Viper treats them as distinct keys, so we check both variants
 // and prefer the explicitly-set value (from the file) over the default.
-func (s *Swww) loadConfigFromViper() *Config {
-	if s.v == nil {
+func (a *Awww) loadConfigFromViper() *Config {
+	if a.v == nil {
 		return &Config{}
 	}
 
-	prefix := "backend.swww."
+	prefix := "backend.awww."
 
 	// getString checks the hyphenated key first (TOML convention), then underscored (defaults).
 	getString := func(underscoreKey string) string {
 		hyphenKey := prefix + strings.ReplaceAll(underscoreKey, "_", "-")
 		fullKey := prefix + underscoreKey
-		if s.v.IsSet(hyphenKey) {
-			return s.v.GetString(hyphenKey)
+		if a.v.IsSet(hyphenKey) {
+			return a.v.GetString(hyphenKey)
 		}
-		return s.v.GetString(fullKey)
+		return a.v.GetString(fullKey)
 	}
 
 	getInt := func(underscoreKey string) int {
 		hyphenKey := prefix + strings.ReplaceAll(underscoreKey, "_", "-")
 		fullKey := prefix + underscoreKey
-		if s.v.IsSet(hyphenKey) {
-			return s.v.GetInt(hyphenKey)
+		if a.v.IsSet(hyphenKey) {
+			return a.v.GetInt(hyphenKey)
 		}
-		return s.v.GetInt(fullKey)
+		return a.v.GetInt(fullKey)
 	}
 
 	getBool := func(underscoreKey string) bool {
 		hyphenKey := prefix + strings.ReplaceAll(underscoreKey, "_", "-")
 		fullKey := prefix + underscoreKey
-		if s.v.IsSet(hyphenKey) {
-			return s.v.GetBool(hyphenKey)
+		if a.v.IsSet(hyphenKey) {
+			return a.v.GetBool(hyphenKey)
 		}
-		return s.v.GetBool(fullKey)
+		return a.v.GetBool(fullKey)
 	}
 
 	cfg := &Config{
@@ -287,7 +261,7 @@ func (s *Swww) loadConfigFromViper() *Config {
 		InvertY:            getBool("invert_y"),
 	}
 
-	slog.Debug("swww: loaded config from viper",
+	slog.Debug("awww: loaded config from viper",
 		"transition_type", cfg.TransitionType,
 		"transition_duration", cfg.TransitionDuration,
 		"transition_fps", cfg.TransitionFPS,
@@ -297,10 +271,10 @@ func (s *Swww) loadConfigFromViper() *Config {
 	return cfg
 }
 
-func (s *Swww) ValidateConfig(raw json.RawMessage) error {
+func (a *Awww) ValidateConfig(raw json.RawMessage) error {
 	return backend.UnmarshalValidateConfig[Config](raw)
 }
 
-func (s *Swww) ParseConfig(raw json.RawMessage) (any, error) {
-	return backend.UnmarshalParseConfig[Config](raw, "swww")
+func (a *Awww) ParseConfig(raw json.RawMessage) (any, error) {
+	return backend.UnmarshalParseConfig[Config](raw, "awww")
 }

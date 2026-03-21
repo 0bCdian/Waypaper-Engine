@@ -98,26 +98,26 @@ const searchSuggestions: SearchSuggestion[] = [
     section: "backend",
     key: "type",
     label: "Backend Type",
-    description: "Wallpaper backend (swww, feh, etc.)",
+    description: "Wallpaper backend (awww, feh, etc.)",
     category: "Backend",
   },
   {
     section: "backend",
-    key: "swww.transition_type",
+    key: "awww.transition_type",
     label: "Transition Type",
     description: "Type of wallpaper transition",
     category: "Transitions",
   },
   {
     section: "backend",
-    key: "swww.transition_duration",
+    key: "awww.transition_duration",
     label: "Transition Duration",
     description: "Duration of transitions in ms",
     category: "Transitions",
   },
   {
     section: "backend",
-    key: "swww.transition_step",
+    key: "awww.transition_step",
     label: "Transition Step",
     description: "Step size for transitions",
     category: "Transitions",
@@ -179,7 +179,7 @@ export const SettingsSearch: React.FC<SettingsSearchProps> = ({
           target = "app";
         else if (lc.includes("daemon") || lc.includes("log") || lc.includes("database"))
           target = "daemon";
-        else if (lc.includes("backend") || lc.includes("swww") || lc.includes("transition"))
+        else if (lc.includes("backend") || lc.includes("awww") || lc.includes("transition"))
           target = "backend";
         if (target) {
           onNavigateToSection(target);

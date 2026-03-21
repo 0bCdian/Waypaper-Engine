@@ -1,6 +1,6 @@
 // Package backend defines the interfaces and types for wallpaper backend abstraction.
 //
-// Each backend (swww, feh, hyprpaper, etc.) implements the Backend interface.
+// Each backend (awww, feh, hyprpaper, etc.) implements the Backend interface.
 // Backends are compiled into the daemon binary and registered at startup via the Registry.
 //
 // The daemon core never inspects backend-specific configuration — it treats it as opaque
@@ -27,20 +27,19 @@ import (
 //   - Shutdown() is called when the daemon stops or when switching away from this backend.
 //   - SetWallpaper() is only called on the active backend.
 type Backend interface {
-	// Name returns the unique identifier for this backend (e.g. "swww", "feh", "hyprpaper").
+	// Name returns the unique identifier for this backend (e.g. "awww", "feh", "hyprpaper").
 	Name() string
 
 	// IsAvailable checks whether the backend's external dependencies are installed
-	// on the system (e.g. the `swww` binary exists in $PATH).
+	// on the system (e.g. the `awww` binary exists in $PATH).
 	// This is a runtime check, not a compile-time one.
 	IsAvailable() bool
 
 	// Capabilities returns what this backend supports. The daemon and frontend use this
-	// to adapt behavior (e.g. skip image splitting if NativeExtend is true, hide
-	// transition UI if Transitions is false).
+	// to adapt behavior (e.g. hide transition UI if Transitions is false).
 	Capabilities() Capabilities
 
-	// Initialize prepares the backend for use. For daemon-based backends (e.g. swww),
+	// Initialize prepares the backend for use. For daemon-based backends (e.g. awww),
 	// this starts the background process. For simple backends (e.g. feh), this may be a no-op.
 	// Called once when the backend becomes active.
 	Initialize(ctx context.Context) error
@@ -52,15 +51,15 @@ type Backend interface {
 	// SetWallpaper applies a wallpaper to the specified monitor(s).
 	//
 	// The WallpaperRequest contains monitor geometry and mode information.
-	// For backends with NativeExtend=false, the daemon will have already split
-	// the image and will call SetWallpaper once per monitor with Mode="individual".
-	// For backends with NativeExtend=true, the daemon passes the full image and
-	// all monitors, letting the backend handle spanning.
+	// For extend mode with static raster images and multiple monitors, the daemon
+	// splits the image first and calls SetWallpaper once per monitor with
+	// Mode=individual. Interactive media (gif/video/web) uses clone semantics
+	// when the user chose extend.
 	SetWallpaper(ctx context.Context, req WallpaperRequest) error
 
 	// RegisterDefaults registers this backend's default configuration values with Viper.
 	// Called at startup for every registered backend (not just the active one).
-	// Example: v.SetDefault("backend.swww.transition_type", "wipe")
+	// Example: v.SetDefault("backend.awww.transition_type", "wipe")
 	RegisterDefaults(v *viper.Viper)
 
 	// ValidateConfig checks whether the given raw JSON is valid configuration for
@@ -92,13 +91,8 @@ type Capabilities struct {
 	// (e.g. feh on X11 sets the root window).
 	PerMonitor bool `json:"per_monitor"`
 
-	// NativeExtend indicates whether the backend can span a single image across
-	// multiple monitors by itself. If false, the daemon performs image splitting
-	// before calling SetWallpaper.
-	NativeExtend bool `json:"native_extend"`
-
 	// DaemonProcess indicates whether the backend requires a long-running
-	// background process (e.g. swww-daemon, hyprpaper).
+	// background process (e.g. awww-daemon, hyprpaper).
 	DaemonProcess bool `json:"daemon_process"`
 }
 
@@ -121,8 +115,14 @@ func UnmarshalParseConfig[T any](raw json.RawMessage, backendName string) (*T, e
 
 // WallpaperRequest contains everything a backend needs to set a wallpaper.
 type WallpaperRequest struct {
+	// MediaType is the wallpaper media kind.
+	MediaType media.MediaType `json:"media_type"`
+
 	// ImagePath is the absolute filesystem path to the image file.
 	ImagePath string `json:"image_path"`
+
+	// AudioEnabled indicates whether audio should be enabled for video media.
+	AudioEnabled bool `json:"audio_enabled"`
 
 	// Monitors contains the target monitor(s) with their geometry (position, size).
 	// For individual mode, this is a single monitor.

@@ -146,8 +146,8 @@ export class ConfigReader extends EventEmitter {
         compositor: "auto",
       },
       backend: {
-        type: "swww",
-        swww: {
+        type: "awww",
+        awww: {
           transition_type: "wipe",
           transition_step: 90,
           transition_duration: 3,

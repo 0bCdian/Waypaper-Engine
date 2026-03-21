@@ -14,9 +14,10 @@ import (
 	"gopkg.in/natefinch/lumberjack.v2"
 
 	"waypaper-engine/daemon/internal/backend"
+	"waypaper-engine/daemon/internal/backend/awww"
 	"waypaper-engine/daemon/internal/backend/feh"
 	"waypaper-engine/daemon/internal/backend/hyprpaper"
-	"waypaper-engine/daemon/internal/backend/swww"
+	"waypaper-engine/daemon/internal/backend/waylandutauri"
 	"waypaper-engine/daemon/internal/config"
 	"waypaper-engine/daemon/internal/events"
 	"waypaper-engine/daemon/internal/handler"
@@ -130,11 +131,13 @@ func startDaemon(configPath string, logLevel string) error {
 	slog.Info("compositor detected", "type", monManager.Compositor())
 
 	// 8. Create and register backends.
+	waylandutauri.SetAllowNetworkWallpapers(allowNetworkWallpapers)
 	reg := backend.NewRegistry()
 	backends := []backend.Backend{
-		swww.New(),
+		awww.New(),
 		feh.New(),
 		hyprpaper.New(),
+		waylandutauri.New(),
 	}
 	for _, b := range backends {
 		if err := reg.Register(b); err != nil {
@@ -180,7 +183,7 @@ func startDaemon(configPath string, logLevel string) error {
 	cleanStaleProcessedDir(ctx, db.ImageStore(), cfg.GetImagesDir())
 
 	// 10b. Restore wallpapers from persisted monitor state.
-	handler.RestoreWallpapers(ctx, db.MonitorStateStore(), db.StateStore(), reg, monManager, splitter)
+	handler.RestoreWallpapers(ctx, db.MonitorStateStore(), db.StateStore(), reg, monManager, db.ImageStore(), splitter)
 
 	// 12. Create playlist manager.
 	playlistMgr := playlist.NewManager(
@@ -211,7 +214,7 @@ func startDaemon(configPath string, logLevel string) error {
 		Playlists: handler.NewPlaylistHandler(db.PlaylistStore(), db.StateStore(), playlistMgr, bus),
 		Monitors:  handler.NewMonitorHandler(monManager),
 		Config:    handler.NewConfigHandler(cfg, reg, bus),
-		Backends:  handler.NewBackendHandler(reg, cfg, bus, db.MonitorStateStore(), db.StateStore(), monManager, splitter),
+		Backends:  handler.NewBackendHandler(reg, cfg, bus, db.MonitorStateStore(), db.StateStore(), db.ImageStore(), monManager, splitter),
 		Wallpaper: handler.NewWallpaperHandler(
 			db.ImageStore(), db.HistoryStore(), db.StateStore(), db.MonitorStateStore(),
 			reg, monManager, splitter, bus,

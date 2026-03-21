@@ -22,7 +22,7 @@ func buildBackendsCmd() *cobra.Command {
 func buildBackendsActivateCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "activate [name]",
-		Short: "Activate a wallpaper backend (e.g. swww, feh, hyprpaper)",
+		Short: "Activate a wallpaper backend (e.g. awww, feh, hyprpaper)",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return doSimpleRequest("POST", "/backends/"+args[0]+"/activate")

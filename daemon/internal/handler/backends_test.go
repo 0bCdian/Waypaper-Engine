@@ -19,13 +19,13 @@ func TestBackendHandler_List(t *testing.T) {
 	reg := &testutil.MockRegistry{
 		AvailableFn: func() []backend.BackendInfo {
 			return []backend.BackendInfo{
-				{Name: "swww", Available: true, Active: true},
+				{Name: "awww", Available: true, Active: true},
 				{Name: "swaybg", Available: true, Active: false},
 			}
 		},
 	}
 	h := NewBackendHandler(reg, &testutil.MockConfigManager{}, &testutil.MockBus{},
-		&testutil.MockMonitorStateStore{}, &testutil.MockStateStore{},
+		&testutil.MockMonitorStateStore{}, &testutil.MockStateStore{}, &testutil.MockImageStore{},
 		&testutil.MockMonitorManager{}, nil)
 
 	w := httptest.NewRecorder()
@@ -37,12 +37,12 @@ func TestBackendHandler_List(t *testing.T) {
 	var infos []backend.BackendInfo
 	require.NoError(t, json.NewDecoder(w.Body).Decode(&infos))
 	assert.Len(t, infos, 2)
-	assert.Equal(t, "swww", infos[0].Name)
+	assert.Equal(t, "awww", infos[0].Name)
 }
 
 func TestBackendHandler_Activate_NotRegistered(t *testing.T) {
 	mockBackend := &testutil.MockBackend{
-		NameFn:     func() string { return "swww" },
+		NameFn:     func() string { return "awww" },
 		ShutdownFn: func(_ context.Context) error { return nil },
 	}
 	reg := &testutil.MockRegistry{
@@ -52,7 +52,7 @@ func TestBackendHandler_Activate_NotRegistered(t *testing.T) {
 		},
 	}
 	h := NewBackendHandler(reg, &testutil.MockConfigManager{}, &testutil.MockBus{},
-		&testutil.MockMonitorStateStore{}, &testutil.MockStateStore{},
+		&testutil.MockMonitorStateStore{}, &testutil.MockStateStore{}, &testutil.MockImageStore{},
 		&testutil.MockMonitorManager{}, nil)
 
 	w := httptest.NewRecorder()

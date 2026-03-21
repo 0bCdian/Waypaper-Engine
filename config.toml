@@ -33,10 +33,10 @@ log_max_backups = 3
 
 [backend]
 # Backend configuration
-type = "swww"  # "swww" | "feh" | "nitrogen" | "custom"
+type = "awww"  # "awww" | "hyprpaper" | "feh" | "wayland-utauri"
 
-[backend.swww]
-# swww-specific configuration
+[backend.awww]
+# awww-specific configuration
 transition_type = "simple"  # "simple" | "wipe" | "grow" | "outer" | "wave"
 transition_step = 90
 transition_duration = 200
@@ -44,6 +44,18 @@ transition_angle = 45
 transition_pos = "center"  # "center" | "top" | "bottom" | "left" | "right"
 transition_bezier = "0.4,0.0,0.2,1"
 transition_wave = "0,0,0,0"
+
+[backend.wayland-utauri]
+# wayland-utauri first-party backend configuration (must match backend.type name; legacy [backend.waylandutauri] is still read)
+socket_path = ""
+expected_service = "wayland-utauri"
+expected_api_version = "1"
+connect_timeout_ms = 500
+request_timeout_ms = 1500
+show_on_initialize = false
+hide_on_shutdown = true
+transition = "none"
+duration_ms = 300
 
 [monitors]
 # Monitor configuration

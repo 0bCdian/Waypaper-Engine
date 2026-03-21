@@ -99,6 +99,11 @@ type addRequest struct {
 	FolderID *int     `json:"folder_id,omitempty"`
 }
 
+type importWebRequest struct {
+	Path     string `json:"path"`
+	FolderID *int   `json:"folder_id,omitempty"`
+}
+
 // Add handles POST /images.
 func (h *ImageHandler) Add(w http.ResponseWriter, r *http.Request) {
 	var req addRequest
@@ -123,6 +128,32 @@ func (h *ImageHandler) Add(w http.ResponseWriter, r *http.Request) {
 		"total":    len(req.Paths),
 		"batch_id": batchID,
 	})
+}
+
+// ImportWeb handles POST /images/import-web.
+func (h *ImageHandler) ImportWeb(w http.ResponseWriter, r *http.Request) {
+	var req importWebRequest
+	if err := ParseBody(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if strings.TrimSpace(req.Path) == "" {
+		WriteError(w, http.StatusBadRequest, "path is required")
+		return
+	}
+	record, err := h.processor.ImportWebWallpaper(r.Context(), req.Path, req.FolderID)
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	h.bus.Publish(events.Event{
+		Type: events.ImagesUpdated,
+		Data: map[string]any{
+			"action": "added",
+			"count":  1,
+		},
+	})
+	WriteJSON(w, http.StatusOK, record)
 }
 
 // cancelImportRequest is the JSON body for POST /images/cancel-import.
@@ -336,6 +367,9 @@ func (h *ImageHandler) Delete(w http.ResponseWriter, r *http.Request) {
 				paths = append(paths, thumbPath)
 			}
 		}
+		if img.WebMeta != nil && img.WebMeta.PackageRoot != "" {
+			paths = append(paths, img.WebMeta.PackageRoot)
+		}
 	}
 
 	count, err := h.store.Delete(r.Context(), req.IDs)
@@ -345,7 +379,7 @@ func (h *ImageHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, p := range paths {
-		os.Remove(p)
+		_ = os.RemoveAll(p)
 	}
 
 	h.bus.Publish(events.Event{
@@ -473,6 +507,10 @@ func (h *ImageHandler) RawImage(w http.ResponseWriter, r *http.Request) {
 	contentType := "image/" + image.Format
 	if image.Format == "jpg" {
 		contentType = "image/jpeg"
+	} else if image.MediaType == "video" {
+		contentType = "video/" + image.Format
+	} else if image.MediaType == "web" || image.Format == "html" {
+		contentType = "text/html"
 	}
 
 	w.Header().Set("Content-Type", contentType)

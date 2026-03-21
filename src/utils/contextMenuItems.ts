@@ -161,13 +161,15 @@ export function buildImageMenuItems(
   monitors: Monitor[],
   selectedCount: number,
 ): MenuItem[] {
+  const mediaType = (image.media_type || "image").toLowerCase();
+  const allowExtend = mediaType === "image" || mediaType === "gif";
   const items: MenuItem[] = [
     {
       type: "submenu",
       label: `Set "${image.name}"`,
       children: buildWallpaperSubmenu(monitors, (monitor, mode) => {
         void goDaemon.setWallpaper(image.id, monitor, mode);
-      }),
+      }, undefined, { allowExtend }),
     },
     {
       type: "action",
@@ -310,6 +312,20 @@ export function buildGalleryMenuItems(selectedCount: number): MenuItem[] {
       label: "Import folder",
       onClick: () => {
         void openImagesStore.getState().openImages({ action: "folder" });
+      },
+    },
+    {
+      type: "action",
+      label: "Import videos",
+      onClick: () => {
+        void openImagesStore.getState().openImages({ action: "video" });
+      },
+    },
+    {
+      type: "action",
+      label: "Import web wallpaper",
+      onClick: () => {
+        void openImagesStore.getState().openImages({ action: "web" });
       },
     },
     { type: "separator" },

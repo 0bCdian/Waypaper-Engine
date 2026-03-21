@@ -59,11 +59,11 @@ func TestRegistry_GetUnknown(t *testing.T) {
 
 func TestRegistry_SetActive(t *testing.T) {
 	reg := NewRegistry()
-	b := &stubBackend{name: "swww", avail: true}
+	b := &stubBackend{name: "awww", avail: true}
 
 	require.NoError(t, reg.Register(b))
-	require.NoError(t, reg.SetActive("swww"))
-	assert.Equal(t, "swww", reg.Active().Name())
+	require.NoError(t, reg.SetActive("awww"))
+	assert.Equal(t, "awww", reg.Active().Name())
 }
 
 func TestRegistry_SetActive_Unknown(t *testing.T) {

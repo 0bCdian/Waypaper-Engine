@@ -27,10 +27,12 @@ The rewrite replaces the old Node.js backend with a Go daemon and overhauls the 
 
 ### Architecture
 -   **Go daemon backend** — A standalone Go service that handles all wallpaper, playlist, image, and monitor operations over a Unix socket HTTP API. Replaces the old Node.js/SQLite backend entirely.
--   **Pluggable wallpaper backends** — Support for [swww](https://github.com/LGFae/swww), [hyprpaper](https://github.com/hyprwm/hyprpaper), and [feh](https://feh.finalrewind.org/), with a registry that allows runtime switching. No longer locked to swww.
+-   **Pluggable wallpaper backends** — Support for [awww](https://github.com/LGFae/awww), [hyprpaper](https://github.com/hyprwm/hyprpaper), [feh](https://feh.finalrewind.org/), and first-party Wayland integration via `wayland-utauri`, with a registry that allows runtime switching.
 -   **CloverDB storage** — Lightweight embedded database replacing SQLite, managed entirely by the daemon.
 -   **Server-Sent Events (SSE)** — Real-time event streaming from daemon to frontend for image processing progress, wallpaper changes, playlist updates, and config changes.
 -   **Cobra CLI** — Full CLI (`start`, `stop`, `status`, `set`, `random`, `next`, `previous`, image/playlist/monitor/backend/config management) that talks to the running daemon over the socket.
+
+**wayland-utauri / HTML wallpapers**: by default, HTML wallpapers cannot use `fetch`/XHR to the network (WebKit `connect-src 'none'`). To allow network access for those pages, start the daemon with **`--allow-network-wallpapers`** so it passes the same flag when spawning `wayland-utauri`. There is no in-app toggle — wallpaper content cannot grant itself network access. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#14-security-daemon-socket--html-wallpapers).
 
 ### Features
 -   **Image renaming** — Rename images from the gallery (inline or detail sidebar), with automatic deduplication and physical file rename on disk. Playlists are unaffected since they reference images by stable IDs.
@@ -66,7 +68,7 @@ https://github.com/0bCdian/Waypaper-Engine/assets/101421807/4d49225a-cbdc-42a0-a
 
 # Why
 
-I started this project for two main reasons, one as a learning oportunity, and two because the available options for a tool like this didn't suit my needs fully. I really like [swww](https://github.com/Horus645/swww) but it lacks a lot of the features that I missed from wallpaper engine in windows, so this is my attempt to bridge that gap a little.
+I started this project for two main reasons, one as a learning oportunity, and two because the available options for a tool like this didn't suit my needs fully. I really like [awww](https://github.com/Horus645/awww) but it lacks a lot of the features that I missed from wallpaper engine in windows, so this is my attempt to bridge that gap a little.
 
 # Install
 
@@ -94,18 +96,24 @@ cd Waypaper-Engine
 make deps
 make daemon
 make electron
-sudo make install
+make install
 ```
 
 Build and install are intentionally separate:
 - Build artifacts with `make daemon` and `make electron` (or `make build`)
-- Install prebuilt artifacts with `sudo make install`
+- Install prebuilt artifacts with `make install` (user-local, no sudo)
+
+For a system-wide install, use:
+
+```bash
+sudo make install-system
+```
 
 This installs:
-- Go daemon binary: `/usr/local/bin/waypaper-daemon`
-- Electron app (unpacked): `/opt/waypaper-engine`
-- Launcher: `/usr/local/bin/waypaper-engine`
-- Desktop entry/icon: `/usr/local/share/...`
+- Go daemon binary: `~/.local/bin/waypaper-daemon`
+- Electron app (unpacked): `~/.local/opt/waypaper-engine`
+- Launcher: `~/.local/bin/waypaper-engine`
+- Desktop entry/icon: `~/.local/share/...`
 
 The `waypaper-engine` launcher is a single entrypoint:
 - `waypaper-engine` (or `waypaper-engine run`) launches the GUI
@@ -117,17 +125,23 @@ Run `make help` to see all available targets.
 To uninstall:
 
 ```bash
-sudo make uninstall
+make uninstall
+```
+
+For system-wide uninstall:
+
+```bash
+sudo make uninstall-system
 ```
 
 Use `PREFIX` and/or `DESTDIR` to customize install locations:
 
 ```bash
-sudo make install PREFIX=/usr
+make install PREFIX="$HOME/.local"
 make install DESTDIR="$PWD/pkgroot" PREFIX=/usr/local
 ```
 
-## AppImage (build + system install)
+## AppImage (build + user-local install)
 
 ```bash
 git clone https://github.com/0bCdian/Waypaper-Engine.git
@@ -140,24 +154,30 @@ The resulting AppImage is created in `release/`.
 
 Release-downloaded `.AppImage` artifacts are intended for GUI use (double-click / run directly). The daemon is bundled and started internally by the app, so no separate daemon CLI setup is required for this mode. Packaged builds intentionally do not fall back to a system `waypaper-daemon`.
 
-Install that AppImage system-wide with:
+Install that AppImage to your user profile with:
 
 ```bash
 make appimage
-sudo make install-appimage
+make install-appimage
 ```
 
 `install-appimage` installs an existing artifact from `release/` and does not build one.
 
 This installs:
-- AppImage binary: `/opt/waypaper-engine-appimage/waypaper-engine.AppImage`
-- Launcher: `/usr/local/bin/waypaper-engine-appimage`
-- Desktop entry: `/usr/local/share/applications/waypaper-engine-appimage.desktop`
+- AppImage binary: `~/.local/opt/waypaper-engine-appimage/waypaper-engine.AppImage`
+- Launcher: `~/.local/bin/waypaper-engine-appimage`
+- Desktop entry: `~/.local/share/applications/waypaper-engine-appimage.desktop`
 
-To remove the AppImage install:
+For system-wide AppImage install instead:
 
 ```bash
-sudo make uninstall-appimage
+sudo make install-appimage-system
+```
+
+To remove the user-local AppImage install:
+
+```bash
+make uninstall-appimage
 ```
 
 ## Other Formats
@@ -271,7 +291,7 @@ _If you encounter any problems or would like to make a suggestion, please feel f
 
 # Special Thanks
 
-**[LGFae](https://github.com/LGFae)** - _for the amazing little tool that swww is !_ ❤️
+**[LGFae](https://github.com/LGFae)** - _for the amazing little tool that awww is !_ ❤️
 
 **[Simon Ser](https://git.sr.ht/~emersion/)** - _for wlr-randr, without it making this work across different wayland wm's would've been a nightmare_ 🥲
 

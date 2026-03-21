@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"math/rand"
 	"net/http"
+	"strings"
 
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/events"
@@ -88,6 +89,10 @@ func (h *WallpaperHandler) Set(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.applyWallpaper(r.Context(), img, monitors, req.Mode, "manual"); err != nil {
+		if strings.Contains(err.Error(), "extend mode is only supported") {
+			WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
@@ -143,6 +148,10 @@ func (h *WallpaperHandler) Random(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err := h.applyWallpaper(r.Context(), img, monitors, req.Mode, "random"); err != nil {
+		if strings.Contains(err.Error(), "extend mode is only supported") {
+			WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
 		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}

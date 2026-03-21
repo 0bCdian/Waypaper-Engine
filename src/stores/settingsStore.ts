@@ -68,7 +68,7 @@ const defaultConfig: UnifiedConfig = {
     compositor: "auto",
   },
   backend: {
-    type: "swww",
+    type: "awww",
   },
   monitors: {
     selected_monitors: [],
@@ -107,14 +107,14 @@ export const useSettingsStore = create<SettingsStore>()(
           if (window.API_RENDERER?.goDaemon?.getConfig) {
             const incoming = await window.API_RENDERER.goDaemon.getConfig();
 
-            // The main GET /config doesn't include backend sub-configs (swww, feh, etc.)
+            // The main GET /config doesn't include backend sub-configs (awww, feh, etc.)
             // because the Go struct only has "type". Fetch the active backend config
             // separately and merge it in.
             try {
               if (window.API_RENDERER.goDaemon.getBackendConfig) {
                 const backendConfig = await window.API_RENDERER.goDaemon.getBackendConfig();
                 if (backendConfig) {
-                  const backendType = incoming.backend?.type ?? "swww";
+                  const backendType = incoming.backend?.type ?? "awww";
                   const cleaned = { ...backendConfig } as unknown as Record<string, unknown>;
                   delete cleaned.type;
                   (incoming.backend as unknown as Record<string, unknown>)[backendType] = cleaned;
@@ -126,7 +126,7 @@ export const useSettingsStore = create<SettingsStore>()(
 
             const merged = existing
               ? (() => {
-                  const activeBackend = incoming.backend?.type ?? existing.backend?.type ?? "swww";
+                  const activeBackend = incoming.backend?.type ?? existing.backend?.type ?? "awww";
                   const existingBackendSub = (
                     existing.backend as unknown as Record<string, unknown>
                   )?.[activeBackend] as Record<string, unknown> | undefined;
@@ -198,7 +198,7 @@ export const useSettingsStore = create<SettingsStore>()(
               type: data.type as string,
             } as typeof newConfig.backend;
           } else {
-            const backendType = newConfig.backend.type ?? "swww";
+            const backendType = newConfig.backend.type ?? "awww";
             newConfig.backend = {
               ...newConfig.backend,
               [backendType]: {

@@ -22,10 +22,10 @@ import type {
   CreatePlaylistRequest,
   UpdatePlaylistRequest,
   UnifiedConfig,
-  SwwwConfig,
 } from "../daemon-go-types";
 
 const IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg"]);
+const VIDEO_EXTENSIONS = new Set([".mp4", ".webm", ".mkv", ".avi", ".mov"]);
 
 async function scanDirectoryForImages(dirPath: string): Promise<string[]> {
   const imageFiles: string[] = [];
@@ -40,7 +40,7 @@ async function scanDirectoryForImages(dirPath: string): Promise<string[]> {
           imageFiles.push(...subImages);
         } else if (stats.isFile()) {
           const ext = entry.toLowerCase().substring(entry.lastIndexOf("."));
-          if (IMAGE_EXTENSIONS.has(ext)) {
+          if (IMAGE_EXTENSIONS.has(ext) || VIDEO_EXTENSIONS.has(ext)) {
             imageFiles.push(fullPath);
           }
         }
@@ -235,6 +235,30 @@ export class IPCManager {
             ],
             properties: ["openFile", "multiSelections"],
           });
+        } else if (action === "video") {
+          result = await dialog.showOpenDialog(mainWindow, {
+            title: "Select Videos",
+            filters: [
+              {
+                name: "Videos",
+                extensions: ["mp4", "webm", "mkv", "avi", "mov"],
+              },
+              { name: "All Files", extensions: ["*"] },
+            ],
+            properties: ["openFile", "multiSelections"],
+          });
+        } else if (action === "web") {
+          result = await dialog.showOpenDialog(mainWindow, {
+            title: "Select Web Wallpaper (Folder or Manifest)",
+            filters: [
+              {
+                name: "Manifest",
+                extensions: ["json"],
+              },
+              { name: "All Files", extensions: ["*"] },
+            ],
+            properties: ["openFile", "openDirectory"],
+          });
         } else if (action === "folder") {
           result = await dialog.showOpenDialog(mainWindow, {
             title: "Select Folder",
@@ -396,6 +420,11 @@ export class IPCManager {
             p?.paths as string[],
             p?.folder_id as number | undefined,
           );
+        case "import_web_wallpaper":
+          return await goDaemonClient.importWebWallpaper(
+            p?.path as string,
+            p?.folder_id as number | undefined,
+          );
         case "cancel_import":
           return await goDaemonClient.cancelImport(p?.batch_id as string);
         case "delete_images":
@@ -527,11 +556,19 @@ export class IPCManager {
         case "get_backend_config":
           return await goDaemonClient.getBackendConfig();
         case "update_backend_config":
-          return await goDaemonClient.updateBackendConfig(p as unknown as Partial<SwwwConfig>);
+          return await goDaemonClient.updateBackendConfig((p ?? {}) as Record<string, unknown>);
 
         // BACKENDS
         case "get_backends":
           return await goDaemonClient.getBackends();
+        case "get_backend_capabilities": {
+          const [cfg, backends] = await Promise.all([
+            goDaemonClient.getConfig(),
+            goDaemonClient.getBackends(),
+          ]);
+          const active = backends.find((b) => b.name === cfg.backend.type);
+          return active?.capabilities ?? null;
+        }
         case "activate_backend":
           return await goDaemonClient.activateBackend(p?.name as string);
 

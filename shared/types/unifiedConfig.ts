@@ -1,12 +1,12 @@
 // Unified configuration types matching the new Go daemon HTTP API
 export type {
   AppConfig,
-  DaemonConfig,
-  SwwwConfig,
+  AwwwConfig,
   BackendSection,
+  DaemonConfig,
   MonitorsConfig,
-  WallhavenConfig,
   UnifiedConfig,
+  WallhavenConfig,
 } from "../../electron/daemon-go-types";
 
 // Configuration change event - now reports affected sections

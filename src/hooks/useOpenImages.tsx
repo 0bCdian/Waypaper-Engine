@@ -3,7 +3,7 @@ import type { openFileAction } from "../../shared/types";
 import { useFoldersStore } from "../stores/foldersStore";
 import { logger } from "../utils/logger";
 
-const { openFiles, handleOpenImages, scanDirectory } = window.API_RENDERER;
+const { openFiles, handleOpenImages, scanDirectory, goDaemon } = window.API_RENDERER;
 
 interface PendingFolderImport {
   files: string[];
@@ -47,6 +47,18 @@ const openImagesStore = create<State & Actions>((set, get) => ({
       return;
     }
 
+    if (action === "web") {
+      const targetPath = files[0];
+      if (!targetPath) return;
+      const currentFolderId = useFoldersStore.getState().currentFolderId;
+      try {
+        await goDaemon.importWebWallpaper(targetPath, currentFolderId ?? undefined);
+      } catch (error) {
+        logger.error("useOpenImages: Error importing web wallpaper:", error);
+      }
+      return;
+    }
+
     if (action === "folder" && result.folderName) {
       set({
         pendingFolderImport: {
@@ -82,8 +94,13 @@ const openImagesStore = create<State & Actions>((set, get) => ({
       return;
     }
     if (result.files.length === 0) {
-      logger.warn("useOpenImages: no images found in directory", dirPath);
-      return;
+      try {
+        await goDaemon.importWebWallpaper(dirPath, useFoldersStore.getState().currentFolderId ?? undefined);
+        return;
+      } catch {
+        logger.warn("useOpenImages: no media found in directory", dirPath);
+        return;
+      }
     }
     set({
       pendingFolderImport: {

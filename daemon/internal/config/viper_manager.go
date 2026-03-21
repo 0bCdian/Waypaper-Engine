@@ -248,7 +248,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("daemon.compositor", "auto")
 
 	// Backend defaults
-	v.SetDefault("backend.type", "swww")
+	v.SetDefault("backend.type", "awww")
 
 	// Wallhaven defaults
 	v.SetDefault("wallhaven.scroll_mode", "paginated")

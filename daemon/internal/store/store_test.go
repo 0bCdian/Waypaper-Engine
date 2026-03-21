@@ -565,7 +565,7 @@ func newHistoryEntry(imageID int, monitors []string) store.ImageHistoryEntry {
 		Mode:      "individual",
 		SetAt:     time.Now(),
 		Source:    store.HistorySource{Type: "manual"},
-		Backend:   "swww",
+		Backend:   "awww",
 	}
 }
 
@@ -665,7 +665,7 @@ func newMonitorState(name string, imageID int) store.MonitorState {
 		ImageName:   "wallpaper.jpg",
 		ImagePath:   "/tmp/wallpaper.jpg",
 		Mode:        "individual",
-		Backend:     "swww",
+		Backend:     "awww",
 		SetAt:       time.Now(),
 	}
 }
@@ -886,7 +886,7 @@ func TestStateStore_CurrentWallpaper(t *testing.T) {
 		Mode:      "individual",
 		SetAt:     time.Now(),
 		Source:    store.HistorySource{Type: "manual"},
-		Backend:   "swww",
+		Backend:   "awww",
 	}
 	ss.SetCurrentWallpaper("HDMI-A-1", entry)
 

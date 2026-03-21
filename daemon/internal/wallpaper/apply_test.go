@@ -3,6 +3,11 @@ package wallpaper
 import (
 	"context"
 	"encoding/json"
+	"image"
+	"image/color"
+	"image/png"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -11,6 +16,8 @@ import (
 
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/events"
+	imgpkg "waypaper-engine/daemon/internal/image"
+	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/store"
 )
@@ -122,6 +129,21 @@ func (m *mockBus) Subscribe(...events.EventType) <-chan events.Event { return ni
 func (m *mockBus) Unsubscribe(<-chan events.Event)                   {}
 func (m *mockBus) Close()                                            {}
 
+func writeTestPNG(t *testing.T, path string, w, h int) {
+	t.Helper()
+	rect := image.Rect(0, 0, w, h)
+	img := image.NewRGBA(rect)
+	for y := 0; y < h; y++ {
+		for x := 0; x < w; x++ {
+			img.Set(x, y, color.RGBA{R: uint8(x % 256), G: uint8(y % 256), B: 0, A: 255})
+		}
+	}
+	f, err := os.Create(path)
+	require.NoError(t, err)
+	require.NoError(t, png.Encode(f, img))
+	require.NoError(t, f.Close())
+}
+
 // ---------------------------------------------------------------------------
 // Test fixture
 // ---------------------------------------------------------------------------
@@ -139,7 +161,6 @@ func newApplyFixture() *applyFixture {
 	return &applyFixture{
 		backend: &mockBackend{
 			nameFn:         func() string { return "test" },
-			capabilitiesFn: func() backend.Capabilities { return backend.Capabilities{NativeExtend: false} },
 			setWallpaperFn: func(_ context.Context, _ backend.WallpaperRequest) error { return nil },
 		},
 		history: &mockHistoryStore{
@@ -213,18 +234,67 @@ func TestApply_CloneMode(t *testing.T) {
 	assert.Equal(t, 1, calls)
 }
 
-func TestApply_ExtendMode_NativeExtend(t *testing.T) {
+func TestApply_ExtendMode_SingleMonitor_UsesExtend(t *testing.T) {
 	f := newApplyFixture()
-	f.backend.capabilitiesFn = func() backend.Capabilities {
-		return backend.Capabilities{NativeExtend: true}
-	}
 	var calls int
 	f.backend.setWallpaperFn = func(_ context.Context, req backend.WallpaperRequest) error {
 		calls++
 		assert.Equal(t, monitor.ModeExtend, req.Mode)
+		assert.Len(t, req.Monitors, 1)
 		return nil
 	}
 
+	mons := []monitor.Monitor{{Name: "HDMI-A-1", Width: 1920, Height: 1080}}
+	opts := f.opts(mons, monitor.ModeExtend)
+	opts.Splitter = imgpkg.NewSplitter(t.TempDir())
+	err := Apply(context.Background(), opts)
+	require.NoError(t, err)
+	assert.Equal(t, 1, calls)
+}
+
+func TestApply_ExtendMode_MultiImage_WithSplitter_UsesIndividualPerMonitor(t *testing.T) {
+	f := newApplyFixture()
+	dir := t.TempDir()
+	src := filepath.Join(dir, "src.png")
+	writeTestPNG(t, src, 400, 200)
+	f.img.Path = src
+	f.img.ID = 99
+	f.img.MediaType = "image"
+
+	splitter := imgpkg.NewSplitter(dir)
+	mons := []monitor.Monitor{
+		{Name: "m1", X: 0, Y: 0, Width: 200, Height: 100, Scale: 1},
+		{Name: "m2", X: 200, Y: 0, Width: 200, Height: 100, Scale: 1},
+	}
+	var calls int
+	var modes []monitor.MonitorMode
+	f.backend.setWallpaperFn = func(_ context.Context, req backend.WallpaperRequest) error {
+		calls++
+		modes = append(modes, req.Mode)
+		assert.Len(t, req.Monitors, 1)
+		assert.NotEqual(t, src, req.ImagePath)
+		assert.Equal(t, media.MediaTypeImage, req.MediaType)
+		return nil
+	}
+	opts := f.opts(mons, monitor.ModeExtend)
+	opts.Splitter = splitter
+	err := Apply(context.Background(), opts)
+	require.NoError(t, err)
+	assert.Equal(t, 2, calls)
+	assert.Equal(t, []monitor.MonitorMode{monitor.ModeIndividual, monitor.ModeIndividual}, modes)
+}
+
+func testExtendInteractiveUsesClone(t *testing.T, mediaType string, wantMT media.MediaType) {
+	t.Helper()
+	f := newApplyFixture()
+	f.img.MediaType = mediaType
+	var calls int
+	var last backend.WallpaperRequest
+	f.backend.setWallpaperFn = func(_ context.Context, req backend.WallpaperRequest) error {
+		calls++
+		last = req
+		return nil
+	}
 	mons := []monitor.Monitor{
 		{Name: "HDMI-A-1", Width: 1920, Height: 1080},
 		{Name: "eDP-1", Width: 1920, Height: 1080},
@@ -232,6 +302,48 @@ func TestApply_ExtendMode_NativeExtend(t *testing.T) {
 	err := Apply(context.Background(), f.opts(mons, monitor.ModeExtend))
 	require.NoError(t, err)
 	assert.Equal(t, 1, calls)
+	assert.Equal(t, monitor.ModeClone, last.Mode)
+	assert.Equal(t, wantMT, last.MediaType)
+	assert.Len(t, last.Monitors, 2)
+}
+
+func TestApply_ExtendMode_VideoUsesClone(t *testing.T) {
+	testExtendInteractiveUsesClone(t, "video", media.MediaTypeVideo)
+}
+
+func TestApply_ExtendMode_WebUsesClone(t *testing.T) {
+	testExtendInteractiveUsesClone(t, "web", media.MediaTypeWeb)
+}
+
+func TestApply_ExtendMode_GIFUsesClone(t *testing.T) {
+	testExtendInteractiveUsesClone(t, "gif", media.MediaTypeGIF)
+}
+
+func TestApply_ExtendMode_VideoClone_StillRecordsExtendInHistoryAndState(t *testing.T) {
+	f := newApplyFixture()
+	f.img.MediaType = "video"
+	var hist store.ImageHistoryEntry
+	f.history.appendFn = func(_ context.Context, e store.ImageHistoryEntry) (*store.ImageHistoryEntry, error) {
+		hist = e
+		e.ID = 1
+		return &e, nil
+	}
+	var states []store.MonitorState
+	f.monState.setFn = func(_ context.Context, s store.MonitorState) error {
+		states = append(states, s)
+		return nil
+	}
+	mons := []monitor.Monitor{
+		{Name: "HDMI-A-1", Width: 1920, Height: 1080},
+		{Name: "eDP-1", Width: 1920, Height: 1080},
+	}
+	err := Apply(context.Background(), f.opts(mons, monitor.ModeExtend))
+	require.NoError(t, err)
+	assert.Equal(t, "extend", hist.Mode)
+	require.Len(t, states, 2)
+	for _, s := range states {
+		assert.Equal(t, "extend", s.Mode)
+	}
 }
 
 func TestApply_ExtendMode_NilSplitter(t *testing.T) {

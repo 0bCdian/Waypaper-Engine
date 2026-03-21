@@ -4,7 +4,7 @@ How wallpaper images are scaled and positioned to fit your monitor(s). Each back
 
 ## Quick Reference
 
-| Concept | swww | feh | hyprpaper | Preserves Aspect Ratio |
+| Concept | awww | feh | hyprpaper | Preserves Aspect Ratio |
 |---------|------|-----|-----------|----------------------|
 | **Cover** -- Scale to fill the screen, crop excess | `crop` | `fill` | Always (default) | Yes |
 | **Contain** -- Scale to fit inside the screen, letterbox the rest | `fit` | `scale` | -- | Yes |
@@ -13,34 +13,34 @@ How wallpaper images are scaled and positioned to fit your monitor(s). Each back
 | **Tile** -- Repeat the image to fill the screen | -- | `tile` | -- | N/A (no scaling) |
 | **Max** -- Scale to fit, then fill remaining space | -- | `max` | -- | Yes |
 
-## swww (Wayland)
+## awww (Wayland)
 
-swww is a Wayland wallpaper daemon with animated transitions. Configure the display mode via `--resize` on the CLI or the **Resize Mode** setting in Backend > Image Display.
+awww is a Wayland wallpaper daemon with animated transitions. Configure the display mode via `--resize` on the CLI or the **Resize Mode** setting in Backend > Image Display.
 
 ### Modes
 
 **Crop** (default)
 Scales the image up (or down) so it completely covers the monitor, preserving aspect ratio. Any excess is cropped from the center. This is the most common mode -- your wallpaper always fills the screen with no empty space.
 
-- CLI: `swww img --resize crop`
+- CLI: `awww img --resize crop`
 - CSS equivalent: `object-fit: cover`
 
 **Fit**
 Scales the image so it fits entirely within the monitor bounds, preserving aspect ratio. If the image's aspect ratio doesn't match the monitor's, empty space is filled with the **Fill Color** (default: black / `000000`).
 
-- CLI: `swww img --resize fit --fill-color 000000`
+- CLI: `awww img --resize fit --fill-color 000000`
 - CSS equivalent: `object-fit: contain`
 
 **Stretch**
 Stretches the image to exactly match the monitor dimensions. Does **not** preserve aspect ratio -- the image will be distorted if proportions differ.
 
-- CLI: `swww img --resize stretch`
+- CLI: `awww img --resize stretch`
 - CSS equivalent: `object-fit: fill`
 
 **No Resize**
 Displays the image at its native pixel resolution, centered on the monitor. If the image is smaller than the monitor, the surrounding area is filled with the **Fill Color**. If larger, the edges are cropped.
 
-- CLI: `swww img --resize no`
+- CLI: `awww img --resize no`
 - CSS equivalent: `object-fit: none`
 
 ### Additional Settings
@@ -66,12 +66,12 @@ feh is a lightweight X11 image viewer that sets the root window wallpaper. It is
 ### Modes
 
 **Fill** (default)
-Scales the image to fill the screen, cropping if the aspect ratios don't match. Equivalent to swww's Crop.
+Scales the image to fill the screen, cropping if the aspect ratios don't match. Equivalent to awww's Crop.
 
 - CLI: `feh --bg-fill`
 
 **Scale**
-Scales the image to fit within the screen, preserving aspect ratio. Empty space may appear (letterboxing). Equivalent to swww's Fit.
+Scales the image to fit within the screen, preserving aspect ratio. Empty space may appear (letterboxing). Equivalent to awww's Fit.
 
 - CLI: `feh --bg-scale`
 
@@ -92,7 +92,7 @@ Scales the image up to the maximum size that fits within the screen (like Scale)
 
 ## hyprpaper (Wayland)
 
-hyprpaper is a Wayland wallpaper daemon designed for Hyprland. It does not expose any resize/fit configuration -- images always scale to cover the monitor (equivalent to swww's Crop / feh's Fill). Per-monitor wallpapers are supported via its IPC socket.
+hyprpaper is a Wayland wallpaper daemon designed for Hyprland. It does not expose any resize/fit configuration -- images always scale to cover the monitor (equivalent to awww's Crop / feh's Fill). Per-monitor wallpapers are supported via its IPC socket.
 
 ## Aspect Ratio Behavior Summary
 

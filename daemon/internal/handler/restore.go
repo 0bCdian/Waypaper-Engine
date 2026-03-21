@@ -3,9 +3,11 @@ package handler
 import (
 	"context"
 	"log/slog"
+	"strings"
 
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/image"
+	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/store"
 )
@@ -25,6 +27,7 @@ func RestoreWallpapers(
 	stateStore store.StateStore,
 	reg backend.Registry,
 	monManager monitor.MonitorManager,
+	images store.ImageStore,
 	splitter *image.Splitter,
 ) {
 	states, err := monitorStateStore.GetAll(ctx)
@@ -58,7 +61,6 @@ func RestoreWallpapers(
 	slog.Info("restore: detected monitors", "monitors", connectedNames)
 
 	activeBackend := reg.Active()
-	caps := activeBackend.Capabilities()
 	restored := 0
 	skipped := 0
 
@@ -88,11 +90,11 @@ func RestoreWallpapers(
 	}
 
 	for _, grp := range extendGroups {
-		restored += restoreExtendGroup(ctx, grp, activeBackend, caps, splitter, stateStore)
+		restored += restoreExtendGroup(ctx, grp, activeBackend, splitter, stateStore, images)
 	}
 
 	for _, state := range nonExtendStates {
-		if restoreIndividual(ctx, state, connected[state.MonitorName], activeBackend, stateStore) {
+		if restoreIndividual(ctx, state, connected[state.MonitorName], activeBackend, stateStore, images) {
 			restored++
 		}
 	}
@@ -100,17 +102,41 @@ func RestoreWallpapers(
 	slog.Info("wallpaper restore complete", "restored", restored, "skipped", skipped)
 }
 
+func normalizeRestoreMediaType(value string) media.MediaType {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case string(media.MediaTypeGIF):
+		return media.MediaTypeGIF
+	case string(media.MediaTypeVideo):
+		return media.MediaTypeVideo
+	case string(media.MediaTypeWeb):
+		return media.MediaTypeWeb
+	default:
+		return media.MediaTypeImage
+	}
+}
+
 func restoreExtendGroup(
 	ctx context.Context,
 	grp *extendGroup,
 	activeBackend backend.Backend,
-	caps backend.Capabilities,
 	splitter *image.Splitter,
 	stateStore store.StateStore,
+	images store.ImageStore,
 ) int {
 	restored := 0
 
-	if !caps.NativeExtend && splitter != nil && len(grp.monitors) > 1 {
+	img, err := images.GetByID(ctx, grp.state.ImageID)
+	resolved := err == nil && img != nil
+	mt := media.MediaTypeImage
+	audio := false
+	if resolved {
+		mt = normalizeRestoreMediaType(img.MediaType)
+		audio = img.AudioEnabled
+	}
+
+	useSplit := resolved && mt == media.MediaTypeImage && splitter != nil && len(grp.monitors) > 1
+
+	if useSplit {
 		splitPaths, err := splitter.Split(grp.state.ImagePath, grp.state.ImageID, grp.monitors)
 		if err != nil {
 			slog.Warn("restore: failed to split image for extend",
@@ -127,9 +153,11 @@ func restoreExtendGroup(
 				continue
 			}
 			req := backend.WallpaperRequest{
-				ImagePath: splitPath,
-				Monitors:  []monitor.Monitor{mon},
-				Mode:      monitor.ModeIndividual,
+				MediaType:    media.MediaTypeImage,
+				ImagePath:    splitPath,
+				AudioEnabled: audio,
+				Monitors:     []monitor.Monitor{mon},
+				Mode:         monitor.ModeIndividual,
 			}
 			if err := activeBackend.SetWallpaper(ctx, req); err != nil {
 				slog.Warn("restore: failed to set split wallpaper", "monitor", mon.Name, "error", err)
@@ -140,9 +168,11 @@ func restoreExtendGroup(
 		}
 	} else {
 		req := backend.WallpaperRequest{
-			ImagePath: grp.state.ImagePath,
-			Monitors:  grp.monitors,
-			Mode:      monitor.ModeExtend,
+			MediaType:    mt,
+			ImagePath:    grp.state.ImagePath,
+			AudioEnabled: audio,
+			Monitors:     grp.monitors,
+			Mode:         monitor.ModeClone,
 		}
 		if err := activeBackend.SetWallpaper(ctx, req); err != nil {
 			slog.Warn("restore: failed to set extend wallpaper", "image_id", grp.state.ImageID, "error", err)
@@ -167,11 +197,20 @@ func restoreIndividual(
 	mon monitor.Monitor,
 	activeBackend backend.Backend,
 	stateStore store.StateStore,
+	images store.ImageStore,
 ) bool {
+	mt := media.MediaTypeImage
+	audio := false
+	if img, err := images.GetByID(ctx, state.ImageID); err == nil && img != nil {
+		mt = normalizeRestoreMediaType(img.MediaType)
+		audio = img.AudioEnabled
+	}
 	req := backend.WallpaperRequest{
-		ImagePath: state.ImagePath,
-		Monitors:  []monitor.Monitor{mon},
-		Mode:      monitor.MonitorMode(state.Mode),
+		MediaType:    mt,
+		ImagePath:    state.ImagePath,
+		AudioEnabled: audio,
+		Monitors:     []monitor.Monitor{mon},
+		Mode:         monitor.MonitorMode(state.Mode),
 	}
 
 	if err := activeBackend.SetWallpaper(ctx, req); err != nil {
