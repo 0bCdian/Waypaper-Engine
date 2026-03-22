@@ -13,15 +13,25 @@ type loadTarget struct {
 	Target  string `json:"target"`
 }
 
+type transitionParamsBody struct {
+	Bezier               [4]float32 `json:"bezier"`
+	AngleDeg             float64    `json:"angle_deg"`
+	OriginXPercent       float32    `json:"origin_x_percent"`
+	OriginYPercent       float32    `json:"origin_y_percent"`
+	WaveAmplitudePercent float32    `json:"wave_amplitude_percent"`
+	WaveFrequency        float32    `json:"wave_frequency"`
+}
+
 type loadRequest struct {
-	Kind              string         `json:"kind,omitempty"`
-	Target            string         `json:"target,omitempty"`
-	Targets           []loadTarget   `json:"targets,omitempty"`
-	AudioEnabled      bool           `json:"audio_enabled,omitempty"`
-	Transition        string         `json:"transition,omitempty"`
-	DurationMS        int            `json:"duration_ms,omitempty"`
-	WaitForCompletion bool           `json:"wait_for_completion"`
-	Parallax          map[string]any `json:"parallax,omitempty"`
+	Kind              string                `json:"kind,omitempty"`
+	Target            string                `json:"target,omitempty"`
+	Targets           []loadTarget          `json:"targets,omitempty"`
+	AudioEnabled      bool                  `json:"audio_enabled,omitempty"`
+	Transition        string                `json:"transition,omitempty"`
+	TransitionParams  *transitionParamsBody `json:"transition_params,omitempty"`
+	DurationMS        int                   `json:"duration_ms,omitempty"`
+	WaitForCompletion bool                  `json:"wait_for_completion"`
+	Parallax          map[string]any        `json:"parallax,omitempty"`
 }
 
 func buildLoadRequest(req backend.WallpaperRequest, cfg *Config, monitorMap map[string]uint32) (loadRequest, error) {
@@ -37,17 +47,28 @@ func buildLoadRequest(req backend.WallpaperRequest, cfg *Config, monitorMap map[
 		return loadRequest{}, fmt.Errorf("wayland-utauri: unsupported media type %q", req.MediaType)
 	}
 
+	bezier := parseTransitionBezierOrDefault(cfg.TransitionBezier)
 	out := loadRequest{
 		Kind:         kind,
 		AudioEnabled: req.AudioEnabled,
 		Transition:   cfg.Transition,
 		DurationMS:   cfg.DurationMS,
+		TransitionParams: &transitionParamsBody{
+			Bezier:               bezier,
+			AngleDeg:             float64(cfg.TransitionAngleDeg),
+			OriginXPercent:       float32(cfg.TransitionOriginXPct),
+			OriginYPercent:       float32(cfg.TransitionOriginYPct),
+			WaveAmplitudePercent: cfg.TransitionWaveAmplitudePercent,
+			WaveFrequency:        cfg.TransitionWaveFrequency,
+		},
 		// Non-blocking: server returns 202 immediately while transitions run. Using true ties the
 		// HTTP client deadline (request_timeout_ms, often ~1.5s) to transition duration and can
 		// serialize the control server so /wallpaper/status also times out (see tiny_http / command queue).
 		WaitForCompletion: false,
 	}
-	if cfg.ParallaxEnabled {
+	// HTML/web wallpapers: parallax is intentionally unsupported (no zoom/pan). Omit from load and
+	// skip follow-up parallax sync in SetWallpaper (see waylandutauri.go).
+	if kind != "web" {
 		out.Parallax = buildParallaxRequestBody(cfg)
 	}
 

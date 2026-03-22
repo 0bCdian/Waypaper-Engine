@@ -1,0 +1,51 @@
+package waylandutauri
+
+import (
+	"context"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+)
+
+func TestWaylandUtauri_SyncRuntimeFromConfig_Success(t *testing.T) {
+	var sawParallax bool
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/wallpaper/parallax" && r.Method == http.MethodPost {
+			sawParallax = true
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	t.Cleanup(srv.Close)
+
+	v := viper.New()
+	wut := &WaylandUtauri{
+		v: v,
+		makeClient: func(_ *Config) (*controlClient, error) {
+			return &controlClient{httpClient: srv.Client(), baseURL: srv.URL}, nil
+		},
+	}
+	wut.RegisterDefaults(v)
+
+	err := wut.SyncRuntimeFromConfig(context.Background())
+	require.NoError(t, err)
+	assert.True(t, sawParallax, "expected POST /wallpaper/parallax")
+}
+
+func TestWaylandUtauri_SyncRuntimeFromConfig_ClientError(t *testing.T) {
+	v := viper.New()
+	wut := &WaylandUtauri{
+		v: v,
+		makeClient: func(_ *Config) (*controlClient, error) {
+			return nil, errUnavailable
+		},
+	}
+	wut.RegisterDefaults(v)
+
+	err := wut.SyncRuntimeFromConfig(context.Background())
+	require.Error(t, err)
+	assert.ErrorContains(t, err, "runtime sync")
+}

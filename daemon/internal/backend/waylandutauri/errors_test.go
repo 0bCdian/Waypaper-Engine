@@ -50,3 +50,14 @@ func TestIsRetryableUnixSocketDial(t *testing.T) {
 	assert.False(t, isRetryableUnixSocketDial(errors.New("bad request")))
 	assert.False(t, isRetryableUnixSocketDial(nil))
 }
+
+func TestIsRetryableControlStatusErr(t *testing.T) {
+	timeoutAwait := errors.New(`Get "http://wayland-utauri.local/wallpaper/status": context deadline exceeded (Client.Timeout exceeded while awaiting headers)`)
+	assert.True(t, isRetryableControlStatusErr(timeoutAwait))
+
+	refused := &net.OpError{Op: "dial", Net: "unix", Err: syscall.ECONNREFUSED}
+	assert.True(t, isRetryableControlStatusErr(refused))
+
+	assert.False(t, isRetryableControlStatusErr(errors.New("bad request")))
+	assert.False(t, isRetryableControlStatusErr(nil))
+}

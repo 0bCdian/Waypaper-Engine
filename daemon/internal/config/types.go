@@ -84,6 +84,11 @@ type DaemonConfig struct {
 type BackendSection struct {
 	// Type is the name of the active backend (e.g. "awww", "feh", "hyprpaper", "wayland-utauri").
 	Type string `mapstructure:"type" json:"type"`
+
+	// TransitionDurationSeconds is the canonical wallpaper transition length in seconds (float).
+	// When > 0, wayland-utauri and awww map it to duration_ms / CLI seconds respectively.
+	// When 0 or unset, each backend falls back to its legacy fields (duration_ms, transition_duration).
+	TransitionDurationSeconds float64 `mapstructure:"transition_duration_seconds" json:"transition_duration_seconds,omitempty"`
 }
 
 // MonitorsConfig holds monitor selection and display mode preferences.

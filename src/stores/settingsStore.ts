@@ -199,14 +199,28 @@ export const useSettingsStore = create<SettingsStore>()(
             } as typeof newConfig.backend;
           } else {
             const backendType = newConfig.backend.type ?? "awww";
+            const top: Record<string, unknown> = {};
+            const sub: Record<string, unknown> = {};
+            for (const [k, v] of Object.entries(data)) {
+              if (k === "transition_duration_seconds") {
+                top[k] = v;
+              } else {
+                sub[k] = v;
+              }
+            }
             newConfig.backend = {
               ...newConfig.backend,
-              [backendType]: {
-                ...((newConfig.backend as unknown as Record<string, unknown>)[backendType] as
-                  | Record<string, unknown>
-                  | undefined),
-                ...data,
-              },
+              ...top,
+              ...(Object.keys(sub).length > 0
+                ? {
+                    [backendType]: {
+                      ...((newConfig.backend as unknown as Record<string, unknown>)[backendType] as
+                        | Record<string, unknown>
+                        | undefined),
+                      ...sub,
+                    },
+                  }
+                : {}),
             } as typeof newConfig.backend;
           }
         } else if (section === "monitors") {
@@ -231,10 +245,25 @@ export const useSettingsStore = create<SettingsStore>()(
                 await window.API_RENDERER.goDaemon.activateBackend(data.type as string);
               }
             } else {
-              if (window.API_RENDERER?.goDaemon?.updateBackendConfig) {
-                await window.API_RENDERER.goDaemon.updateBackendConfig(
-                  data as Record<string, unknown>,
-                );
+              const top: Record<string, unknown> = {};
+              const sub: Record<string, unknown> = {};
+              for (const [k, v] of Object.entries(data)) {
+                if (k === "transition_duration_seconds") {
+                  top[k] = v;
+                } else {
+                  sub[k] = v;
+                }
+              }
+              if (Object.keys(top).length > 0 && window.API_RENDERER?.goDaemon?.updateConfig) {
+                await window.API_RENDERER.goDaemon.updateConfig({
+                  backend: top,
+                } as unknown as Partial<UnifiedConfig>);
+              }
+              if (Object.keys(sub).length > 0 && window.API_RENDERER?.goDaemon?.updateBackendConfig) {
+                await window.API_RENDERER.goDaemon.updateBackendConfig(sub as Record<string, unknown>);
+              }
+              if (Object.keys(top).length > 0) {
+                await get().loadConfig();
               }
             }
           } else {

@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -10,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/config"
 	"waypaper-engine/daemon/internal/testutil"
 )
@@ -118,4 +120,77 @@ func TestConfigHandler_PatchSection_Unknown(t *testing.T) {
 	h.PatchSection(w, r)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+// syncProbe implements backend.Backend and backend.RuntimeConfigSync for config handler tests.
+type syncProbe struct {
+	testutil.MockBackend
+	syncCalls int
+	syncErr   error
+}
+
+func (s *syncProbe) SyncRuntimeFromConfig(ctx context.Context) error {
+	s.syncCalls++
+	return s.syncErr
+}
+
+func TestConfigHandler_PatchSection_Backend_CallsRuntimeSync(t *testing.T) {
+	sb := &syncProbe{
+		MockBackend: testutil.MockBackend{
+			ValidateConfigFn: func(json.RawMessage) error { return nil },
+		},
+	}
+	reg := &testutil.MockRegistry{
+		GetFn: func(name string) (backend.Backend, bool) {
+			if name == "wayland-utauri" {
+				return sb, true
+			}
+			return nil, false
+		},
+	}
+	cfgMgr := &testutil.MockConfigManager{
+		GetActiveBackendTypeFn: func() string { return "wayland-utauri" },
+		SetBackendConfigFn:     func(string, json.RawMessage) error { return nil },
+	}
+	h := NewConfigHandler(cfgMgr, reg, &testutil.MockBus{})
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodPatch, "/config/backend",
+		testutil.JSONBody(t, map[string]any{"parallax_enabled": true}))
+	r = testutil.WithChiURLParams(r, map[string]string{"section": "backend"})
+	h.PatchSection(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, 1, sb.syncCalls)
+}
+
+func TestConfigHandler_PatchSection_Backend_RuntimeSyncErrorStillOK(t *testing.T) {
+	sb := &syncProbe{
+		MockBackend: testutil.MockBackend{
+			ValidateConfigFn: func(json.RawMessage) error { return nil },
+		},
+		syncErr: errors.New("socket down"),
+	}
+	reg := &testutil.MockRegistry{
+		GetFn: func(name string) (backend.Backend, bool) {
+			if name == "wayland-utauri" {
+				return sb, true
+			}
+			return nil, false
+		},
+	}
+	cfgMgr := &testutil.MockConfigManager{
+		GetActiveBackendTypeFn: func() string { return "wayland-utauri" },
+		SetBackendConfigFn:     func(string, json.RawMessage) error { return nil },
+	}
+	h := NewConfigHandler(cfgMgr, reg, &testutil.MockBus{})
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodPatch, "/config/backend",
+		testutil.JSONBody(t, map[string]any{"parallax_enabled": false}))
+	r = testutil.WithChiURLParams(r, map[string]string{"section": "backend"})
+	h.PatchSection(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Equal(t, 1, sb.syncCalls)
 }

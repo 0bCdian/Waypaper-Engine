@@ -1,6 +1,7 @@
 package waylandutauri
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -67,4 +68,28 @@ func isRetryableUnixSocketDial(err error) bool {
 	// http.Client sometimes wraps differently across platforms
 	msg := strings.ToLower(err.Error())
 	return strings.Contains(msg, "connection refused") || strings.Contains(msg, "no such file or directory")
+}
+
+// isRetryableControlStatusErr is true for dial races and for hung/slow control
+// HTTP (e.g. http.Client Timeout while awaiting headers) so getStatus can backoff
+// or SetWallpaper can re-Initialize.
+func isRetryableControlStatusErr(err error) bool {
+	if err == nil {
+		return false
+	}
+	if isRetryableUnixSocketDial(err) {
+		return true
+	}
+	if errors.Is(err, context.DeadlineExceeded) {
+		return true
+	}
+	var netErr net.Error
+	if errors.As(err, &netErr) && netErr.Timeout() {
+		return true
+	}
+	msg := strings.ToLower(err.Error())
+	return strings.Contains(msg, "deadline exceeded") ||
+		strings.Contains(msg, "awaiting headers") ||
+		strings.Contains(msg, "i/o timeout") ||
+		strings.Contains(msg, "client.timeout")
 }

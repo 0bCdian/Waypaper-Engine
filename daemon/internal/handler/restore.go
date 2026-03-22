@@ -4,6 +4,7 @@ import (
 	"context"
 	"log/slog"
 	"strings"
+	"time"
 
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/image"
@@ -15,6 +16,72 @@ import (
 type extendGroup struct {
 	state    store.MonitorState
 	monitors []monitor.Monitor
+}
+
+// StartDeferredDaemonRestore runs in a background goroutine. It retries
+// reg.Active().Initialize until success (with exponential backoff), then calls
+// RestoreWallpapers. Use when a DaemonProcess backend failed Initialize at
+// startup so wallpapers apply once the child process becomes available.
+// Stops when stopCtx is cancelled or after maxAttempts.
+func StartDeferredDaemonRestore(
+	stopCtx context.Context,
+	reg backend.Registry,
+	monitorStateStore store.MonitorStateStore,
+	stateStore store.StateStore,
+	monManager monitor.MonitorManager,
+	images store.ImageStore,
+	splitter *image.Splitter,
+) {
+	go func() {
+		const maxAttempts = 36
+		backoff := time.Second
+		const maxBackoff = 32 * time.Second
+
+		for attempt := 1; attempt <= maxAttempts; attempt++ {
+			select {
+			case <-stopCtx.Done():
+				slog.Debug("deferred wallpaper restore cancelled")
+				return
+			default:
+			}
+
+			active := reg.Active()
+			initCtx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
+			err := active.Initialize(initCtx)
+			cancel()
+			if err != nil {
+				slog.Warn("deferred restore: backend initialize failed, will retry",
+					"backend", active.Name(),
+					"attempt", attempt,
+					"max_attempts", maxAttempts,
+					"error", err,
+				)
+				select {
+				case <-stopCtx.Done():
+					return
+				case <-time.After(backoff):
+				}
+				next := backoff * 2
+				if next > maxBackoff {
+					next = maxBackoff
+				}
+				backoff = next
+				continue
+			}
+
+			slog.Info("deferred restore: backend ready, applying persisted wallpapers",
+				"backend", active.Name(),
+				"attempt", attempt,
+			)
+			RestoreWallpapers(context.Background(), monitorStateStore, stateStore, reg, monManager, images, splitter)
+			return
+		}
+
+		slog.Error("deferred restore: exhausted retries; ensure the backend binary is on PATH and the control socket path matches",
+			"backend", reg.Active().Name(),
+			"max_attempts", maxAttempts,
+		)
+	}()
 }
 
 // RestoreWallpapers re-applies the last known wallpaper for each connected

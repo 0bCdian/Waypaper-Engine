@@ -6,8 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 	"os"
 	"os/exec"
+	"strings"
 	"syscall"
 	"time"
 
@@ -26,6 +28,54 @@ const viperBackendKey = "backend.wayland-utauri"
 // viperBackendKeyLegacy was used before hyphen matched Name(); still read for old config.toml.
 const viperBackendKeyLegacy = "backend.waylandutauri"
 
+// Grow/outer origin as % of view (v_uv); values outside 0–100 place the anchor off-screen.
+const transitionOriginPctMin = -200
+const transitionOriginPctMax = 200
+
+func intFromViperPrefixes(v *viper.Viper, wantKey string, fallback int) int {
+	if v == nil {
+		return fallback
+	}
+	for _, p := range []string{viperBackendKey + ".", viperBackendKeyLegacy + "."} {
+		full := p + wantKey
+		if v.IsSet(full) {
+			return v.GetInt(full)
+		}
+	}
+	return fallback
+}
+
+func float32FromViperPrefixes(v *viper.Viper, wantKey string, fallback float32) float32 {
+	if v == nil {
+		return fallback
+	}
+	for _, p := range []string{viperBackendKey + ".", viperBackendKeyLegacy + "."} {
+		full := p + wantKey
+		if v.IsSet(full) {
+			return float32(v.GetFloat64(full))
+		}
+	}
+	return fallback
+}
+
+func clampInt(v, lo, hi int) int {
+	if v < lo {
+		return lo
+	}
+	if v > hi {
+		return hi
+	}
+	return v
+}
+
+func normalizeAngleDeg(v int) int {
+	v %= 360
+	if v < 0 {
+		v += 360
+	}
+	return v
+}
+
 // Launch flag forwarded to the wayland-utauri process (set by the daemon from CLI before Register).
 var allowNetworkWallpapers bool
 
@@ -42,6 +92,7 @@ type WaylandUtauri struct {
 }
 
 var _ backend.Backend = (*WaylandUtauri)(nil)
+var _ backend.RuntimeConfigSync = (*WaylandUtauri)(nil)
 
 func New() backend.Backend {
 	return &WaylandUtauri{makeClient: newControlClient}
@@ -168,7 +219,7 @@ func (w *WaylandUtauri) getStatusWithRetry(ctx context.Context, client *controlC
 			return st, nil
 		}
 		lastErr = err
-		if !isRetryableUnixSocketDial(err) {
+		if !isRetryableControlStatusErr(err) {
 			return nil, err
 		}
 	}
@@ -223,6 +274,17 @@ func (w *WaylandUtauri) SetWallpaper(ctx context.Context, req backend.WallpaperR
 	}
 
 	status, err := w.getStatusWithRetry(ctx, client)
+	if err != nil && isRetryableControlStatusErr(err) {
+		slog.Info("wayland-utauri: control plane error; re-initializing backend", "error", err)
+		if initErr := w.Initialize(ctx); initErr != nil {
+			return fmt.Errorf("wayland-utauri: get status: %w (re-init: %v)", err, initErr)
+		}
+		client, err = w.makeControlClient(cfg)
+		if err != nil {
+			return err
+		}
+		status, err = w.getStatusWithRetry(ctx, client)
+	}
 	if err != nil {
 		return fmt.Errorf("wayland-utauri: get status: %w", err)
 	}
@@ -254,8 +316,11 @@ func (w *WaylandUtauri) SetWallpaper(ctx context.Context, req backend.WallpaperR
 		}
 
 		if statusCode >= 200 && statusCode < 300 {
-			// Parallax already embedded on load when enabled; avoid second POST and renderer double-apply.
-			if cfg.ParallaxEnabled && loadReq.Parallax != nil {
+			// Parallax embedded on load for image/video; web loads omit it (parallax is a no-op there).
+			if loadReq.Parallax != nil {
+				return nil
+			}
+			if strings.EqualFold(loadReq.Kind, "web") {
 				return nil
 			}
 			pErr := client.setParallax(ctx, buildParallaxRequestBody(cfg))
@@ -291,6 +356,12 @@ func (w *WaylandUtauri) RegisterDefaults(v *viper.Viper) {
 	v.SetDefault(viperBackendKey+".hide_on_shutdown", def.HideOnShutdown)
 	v.SetDefault(viperBackendKey+".transition", def.Transition)
 	v.SetDefault(viperBackendKey+".duration_ms", def.DurationMS)
+	v.SetDefault(viperBackendKey+".transition_bezier", def.TransitionBezier)
+	v.SetDefault(viperBackendKey+".transition_angle_deg", def.TransitionAngleDeg)
+	v.SetDefault(viperBackendKey+".transition_origin_x_percent", def.TransitionOriginXPct)
+	v.SetDefault(viperBackendKey+".transition_origin_y_percent", def.TransitionOriginYPct)
+	v.SetDefault(viperBackendKey+".transition_wave_amplitude_percent", def.TransitionWaveAmplitudePercent)
+	v.SetDefault(viperBackendKey+".transition_wave_frequency", def.TransitionWaveFrequency)
 	v.SetDefault(viperBackendKey+".parallax_enabled", def.ParallaxEnabled)
 	v.SetDefault(viperBackendKey+".parallax_zoom", def.ParallaxZoom)
 	v.SetDefault(viperBackendKey+".parallax_step_percent", def.ParallaxStepPct)
@@ -300,7 +371,16 @@ func (w *WaylandUtauri) RegisterDefaults(v *viper.Viper) {
 }
 
 func (w *WaylandUtauri) ValidateConfig(raw json.RawMessage) error {
-	return backend.UnmarshalValidateConfig[Config](raw)
+	var cfg Config
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return fmt.Errorf("wayland-utauri: parse config: %w", err)
+	}
+	if s := strings.TrimSpace(cfg.TransitionBezier); s != "" {
+		if _, err := parseTransitionBezierStrict(s); err != nil {
+			return fmt.Errorf("wayland-utauri: invalid transition_bezier: %w", err)
+		}
+	}
+	return nil
 }
 
 func (w *WaylandUtauri) ParseConfig(raw json.RawMessage) (any, error) {
@@ -364,8 +444,25 @@ func (w *WaylandUtauri) loadConfigFromViper() *Config {
 	if val := getString("transition"); val != "" {
 		cfg.Transition = val
 	}
-	if val := getInt("duration_ms"); val > 0 {
+	if w.v != nil {
+		if canon := w.v.GetFloat64("backend.transition_duration_seconds"); canon > 0 {
+			ms := int(math.Round(canon * 1000))
+			if ms < 1 {
+				ms = 1
+			}
+			const maxDurMS = 120_000
+			if ms > maxDurMS {
+				ms = maxDurMS
+			}
+			cfg.DurationMS = ms
+		} else if val := getInt("duration_ms"); val > 0 {
+			cfg.DurationMS = val
+		}
+	} else if val := getInt("duration_ms"); val > 0 {
 		cfg.DurationMS = val
+	}
+	if val := getString("transition_bezier"); val != "" {
+		cfg.TransitionBezier = val
 	}
 	cfg.ParallaxEnabled = getBool("parallax_enabled")
 	if val := getInt("parallax_zoom"); val > 0 {
@@ -382,6 +479,20 @@ func (w *WaylandUtauri) loadConfigFromViper() *Config {
 	}
 	cfg.VideoAudioDefault = getBool("video_audio_default")
 
+	if w.v != nil {
+		cfg.TransitionAngleDeg = normalizeAngleDeg(intFromViperPrefixes(w.v, "transition_angle_deg", cfg.TransitionAngleDeg))
+		cfg.TransitionOriginXPct = clampInt(intFromViperPrefixes(w.v, "transition_origin_x_percent", cfg.TransitionOriginXPct), transitionOriginPctMin, transitionOriginPctMax)
+		cfg.TransitionOriginYPct = clampInt(intFromViperPrefixes(w.v, "transition_origin_y_percent", cfg.TransitionOriginYPct), transitionOriginPctMin, transitionOriginPctMax)
+		cfg.TransitionWaveAmplitudePercent = float32FromViperPrefixes(w.v, "transition_wave_amplitude_percent", cfg.TransitionWaveAmplitudePercent)
+		if cfg.TransitionWaveAmplitudePercent < 0 {
+			cfg.TransitionWaveAmplitudePercent = 0
+		}
+		cfg.TransitionWaveFrequency = float32FromViperPrefixes(w.v, "transition_wave_frequency", cfg.TransitionWaveFrequency)
+		if cfg.TransitionWaveFrequency < 0 {
+			cfg.TransitionWaveFrequency = 0
+		}
+	}
+
 	return cfg
 }
 
@@ -390,4 +501,20 @@ func (w *WaylandUtauri) makeControlClient(cfg *Config) (*controlClient, error) {
 		return w.makeClient(cfg)
 	}
 	return newControlClient(cfg)
+}
+
+// SyncRuntimeFromConfig pushes parallax settings to waypaper-tauri so UI toggles
+// apply without waiting for the next wallpaper load. Failures are non-fatal
+// (child may be down); callers should log returned errors and still treat
+// config save as successful.
+func (w *WaylandUtauri) SyncRuntimeFromConfig(ctx context.Context) error {
+	cfg := w.loadConfigFromViper()
+	client, err := w.makeControlClient(cfg)
+	if err != nil {
+		return fmt.Errorf("wayland-utauri: runtime sync: %w", err)
+	}
+	if err := client.setParallax(ctx, buildParallaxRequestBody(cfg)); err != nil {
+		return fmt.Errorf("wayland-utauri: runtime sync parallax: %w", err)
+	}
+	return nil
 }

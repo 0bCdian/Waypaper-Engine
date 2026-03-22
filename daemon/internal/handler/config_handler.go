@@ -2,6 +2,7 @@ package handler
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -121,6 +122,12 @@ func (h *ConfigHandler) PatchSection(w http.ResponseWriter, r *http.Request) {
 		if err := h.cfg.SetBackendConfig(backendType, raw); err != nil {
 			WriteError(w, http.StatusInternalServerError, err.Error())
 			return
+		}
+
+		if syncer, ok := b.(backend.RuntimeConfigSync); ok {
+			if err := syncer.SyncRuntimeFromConfig(r.Context()); err != nil {
+				slog.Warn("backend runtime sync after config save failed", "backend", backendType, "error", err)
+			}
 		}
 
 		h.bus.Publish(events.Event{

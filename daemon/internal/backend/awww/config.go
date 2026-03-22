@@ -13,8 +13,9 @@ type Config struct {
 	// Range: 1-255. Only applies to non-fade transitions.
 	TransitionStep int `mapstructure:"transition_step" json:"transition_step"`
 
-	// TransitionDuration is how long the transition takes in seconds.
-	TransitionDuration int `mapstructure:"transition_duration" json:"transition_duration"`
+	// TransitionDuration is how long the transition takes in seconds (awww CLI --transition-duration).
+	// Fractional values are supported when passed through from the universal backend setting.
+	TransitionDuration float64 `mapstructure:"transition_duration" json:"transition_duration"`
 
 	// TransitionFPS is the target frames per second for the transition animation.
 	TransitionFPS int `mapstructure:"transition_fps" json:"transition_fps"`

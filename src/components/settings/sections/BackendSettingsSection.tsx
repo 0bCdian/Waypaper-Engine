@@ -4,7 +4,7 @@ import { cn } from "@/utils/cn";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useShallow } from "zustand/react/shallow";
 import { SettingRow, SettingSectionHeader } from "../SettingRow";
-import type { ConfigSection } from "@/shared/types/unifiedConfig";
+import type { ConfigSection, UnifiedConfig } from "@/shared/types/unifiedConfig";
 
 interface BackendSettingsSectionProps {
   className?: string;
@@ -21,6 +21,44 @@ interface Field {
   step?: number;
   placeholder?: string;
 }
+
+/** Display value when `transition_duration_seconds` is unset (derive from legacy backend fields). */
+function effectiveTransitionDurationSeconds(config: UnifiedConfig | null): number {
+  if (!config?.backend) {
+    return 3;
+  }
+  const c = config.backend.transition_duration_seconds;
+  if (c != null && c > 0) {
+    return c;
+  }
+  const t = config.backend.type;
+  if (t === "wayland-utauri") {
+    const w =
+      (config.backend as unknown as Record<string, unknown>)["wayland-utauri"] ??
+      (config.backend as unknown as Record<string, unknown>).waylandutauri;
+    const ms = (w as { duration_ms?: number } | undefined)?.duration_ms ?? 300;
+    return ms / 1000;
+  }
+  if (t === "awww" && config.backend.awww) {
+    const d = config.backend.awww.transition_duration;
+    if (Number.isInteger(d) && d >= 500 && d <= 5000) {
+      return Math.max(1, Math.round((d + 500) / 1000));
+    }
+    return d;
+  }
+  return 3;
+}
+
+const transitionDurationSharedField: Field = {
+  key: "transition_duration_seconds",
+  label: "Transition duration (seconds)",
+  description:
+    "How long image transitions run. One value for all backends: awww uses it as CLI seconds; wayland-utauri converts to milliseconds.",
+  type: "number",
+  min: 0.05,
+  max: 120,
+  step: 0.1,
+};
 
 const awwwDisplayFields: Field[] = [
   {
@@ -79,15 +117,6 @@ const awwwTransitionFields: Field[] = [
       { value: "outer", label: "Outer" },
       { value: "random", label: "Random" },
     ],
-  },
-  {
-    key: "awww.transition_duration",
-    label: "Transition Duration (ms)",
-    description: "Duration of the transition animation in milliseconds",
-    type: "number",
-    min: 50,
-    max: 5000,
-    step: 50,
   },
   {
     key: "awww.transition_step",
@@ -207,23 +236,80 @@ const waylandUtauriTransitionFields: Field[] = [
   {
     key: "waylandutauri.transition",
     label: "Transition Type",
-    description: "Transition style used by wayland-utauri",
+    description: "Transition style used by wayland-utauri (matches waypaper-tauri TransitionMode)",
     type: "select",
     options: [
       { value: "none", label: "None" },
       { value: "fade", label: "Fade" },
+      { value: "left", label: "Wipe — left" },
+      { value: "right", label: "Wipe — right" },
+      { value: "top", label: "Wipe — top" },
+      { value: "bottom", label: "Wipe — bottom" },
       { value: "wipe", label: "Wipe" },
       { value: "grow", label: "Grow" },
+      { value: "outer", label: "Outer" },
+      { value: "wave", label: "Wave" },
+      { value: "center", label: "Center" },
+      { value: "any", label: "Any" },
+      { value: "random", label: "Random" },
+      { value: "blur_through", label: "Blur through" },
     ],
   },
   {
-    key: "waylandutauri.duration_ms",
-    label: "Transition Duration (ms)",
-    description: "Default transition duration",
+    key: "waylandutauri.transition_bezier",
+    label: "Transition easing (Bézier)",
+    description:
+      "CSS cubic-bezier(x1,y1,x2,y2) control points for how transition progress runs over time (comma-separated). Applies on the next wallpaper change.",
+    type: "text",
+    placeholder: "0.54,0,0.34,0.99",
+  },
+  {
+    key: "waylandutauri.transition_angle_deg",
+    label: "Wipe / wave angle (degrees)",
+    description:
+      "Angle for generic wipe and wave transitions (0–360). Left/right/top/bottom presets ignore this and use fixed angles.",
     type: "number",
-    min: 50,
-    max: 5000,
-    step: 50,
+    min: 0,
+    max: 360,
+    step: 1,
+  },
+  {
+    key: "waylandutauri.transition_origin_x_percent",
+    label: "Grow / outer origin X (%)",
+    description:
+      "Horizontal origin (0 = left, 100 = right). Negative or >100 moves the anchor off-screen.",
+    type: "number",
+    min: -200,
+    max: 200,
+    step: 1,
+  },
+  {
+    key: "waylandutauri.transition_origin_y_percent",
+    label: "Grow / outer origin Y (%)",
+    description:
+      "Vertical origin (0 = top, 100 = bottom). Negative or >100 moves the anchor off-screen.",
+    type: "number",
+    min: -200,
+    max: 200,
+    step: 1,
+  },
+  {
+    key: "waylandutauri.transition_wave_amplitude_percent",
+    label: "Wave amplitude (%)",
+    description: "Wave edge displacement strength for the wave transition.",
+    type: "number",
+    min: 0,
+    max: 50,
+    step: 0.5,
+  },
+  {
+    key: "waylandutauri.transition_wave_frequency",
+    label: "Wave frequency",
+    description: "Number of wave cycles along the wipe axis.",
+    type: "number",
+    min: 0.5,
+    max: 20,
+    step: 0.5,
   },
 ];
 
@@ -310,7 +396,70 @@ const waylandUtauriAdvancedFields: Field[] = [
     description: "Show renderer when backend initializes",
     type: "checkbox",
   },
+  {
+    key: "waylandutauri.hide_on_shutdown",
+    label: "Hide on Shutdown",
+    description: "Send hide to wayland-utauri before the daemon stops or switches backend",
+    type: "checkbox",
+  },
 ];
+
+function DebouncedFloatInput({
+  value: externalValue,
+  onCommit,
+  className,
+  min,
+  max,
+  step,
+}: {
+  value: number;
+  onCommit: (v: number) => void;
+  className?: string;
+  min?: number;
+  max?: number;
+  step?: number;
+}) {
+  const [local, setLocal] = useState(String(externalValue));
+  const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+
+  useEffect(() => {
+    setLocal(String(externalValue));
+  }, [externalValue]);
+
+  const commit = useCallback(
+    (raw: string) => {
+      clearTimeout(timerRef.current);
+      const n = Number.parseFloat(raw);
+      if (Number.isNaN(n)) return;
+      let v = n;
+      if (min !== undefined) v = Math.max(min, v);
+      if (max !== undefined) v = Math.min(max, v);
+      onCommit(v);
+    },
+    [onCommit, min, max],
+  );
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setLocal(val);
+    clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => commit(val), 600);
+  };
+
+  return (
+    <input
+      type="number"
+      inputMode="decimal"
+      className={className}
+      value={local}
+      onChange={handleChange}
+      onBlur={() => commit(local)}
+      min={min}
+      max={max}
+      step={step}
+    />
+  );
+}
 
 function DebouncedNumberInput({
   value: externalValue,
@@ -465,7 +614,9 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 
   const renderField = (field: Field) => {
     let raw: unknown;
-    if (field.key.startsWith("awww.")) {
+    if (field.key === "transition_duration_seconds") {
+      raw = effectiveTransitionDurationSeconds(config);
+    } else if (field.key.startsWith("awww.")) {
       raw =
         config?.backend?.awww?.[
           field.key.replace("awww.", "") as keyof NonNullable<typeof config.backend.awww>
@@ -535,6 +686,21 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
     }
 
     if (field.type === "number") {
+      const useFloatInput =
+        field.key === "transition_duration_seconds" ||
+        field.key === "waylandutauri.transition_wave_amplitude_percent" ||
+        field.key === "waylandutauri.transition_wave_frequency";
+      const Input = useFloatInput ? DebouncedFloatInput : DebouncedNumberInput;
+      const numValue =
+        field.key === "waylandutauri.transition_wave_amplitude_percent"
+          ? typeof raw === "number"
+            ? raw
+            : 5
+          : field.key === "waylandutauri.transition_wave_frequency"
+            ? typeof raw === "number"
+              ? raw
+              : 3
+            : ((raw as number) ?? 0);
       return (
         <SettingRow
           key={field.key}
@@ -542,12 +708,12 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
           description={field.description}
           error={fieldError(field.key)}
         >
-          <DebouncedNumberInput
+          <Input
             className={cn(
               "input input-bordered input-sm w-full lg:w-28",
               fieldError(field.key) && "input-error",
             )}
-            value={(raw as number) ?? 0}
+            value={numValue}
             onCommit={(v) => handleChange(field.key, v)}
             min={field.min}
             max={field.max}
@@ -632,6 +798,7 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
           <SettingSectionHeader title="Image Display" />
           {awwwDisplayFields.map(renderField)}
           <SettingSectionHeader title="Transitions" />
+          {renderField(transitionDurationSharedField)}
           {awwwTransitionFields.map(renderField)}
         </>
       )}
@@ -661,6 +828,7 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
       {backendType === "wayland-utauri" && (
         <>
           <SettingSectionHeader title="Transitions" />
+          {renderField(transitionDurationSharedField)}
           {waylandUtauriTransitionFields.map(renderField)}
           <SettingSectionHeader title="Parallax" />
           {waylandUtauriParallaxFields.map(renderField)}

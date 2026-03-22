@@ -134,13 +134,14 @@ const AwwwSettings: React.FC = () => {
           value={config?.backend?.awww?.transition_type || "simple"}
           onChange={(e) => saveConfigSection("backend", { transition_type: e.target.value })}
         >
+          <option value="none">None</option>
           <option value="simple">Simple</option>
           <option value="fade">Fade</option>
           <option value="wipe">Wipe</option>
+          <option value="center">Center</option>
           <option value="outer">Outer</option>
           <option value="grow">Grow</option>
           <option value="wave">Wave</option>
-          <option value="pixelate">Pixelate</option>
         </select>
       </div>
 

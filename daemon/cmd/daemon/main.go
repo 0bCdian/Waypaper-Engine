@@ -166,9 +166,23 @@ func startDaemon(configPath string, logLevel string) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	// Cancel deferred wallpaper restore retries as soon as graceful shutdown begins.
+	restoreRetryCtx, cancelRestoreRetry := context.WithCancel(context.Background())
+	defer cancelRestoreRetry()
+
 	activeBackend := reg.Active()
-	if err := activeBackend.Initialize(ctx); err != nil {
-		slog.Warn("failed to initialize backend", "name", activeBackend.Name(), "error", err)
+	caps := activeBackend.Capabilities()
+	initErr := activeBackend.Initialize(ctx)
+	if initErr != nil {
+		if caps.DaemonProcess {
+			slog.Error("failed to initialize daemon backend; wallpaper restore deferred until it becomes available",
+				"name", activeBackend.Name(),
+				"error", initErr,
+				"hint", "ensure the backend binary is on PATH when the daemon starts and XDG_RUNTIME_DIR matches the backend",
+			)
+		} else {
+			slog.Warn("failed to initialize backend", "name", activeBackend.Name(), "error", initErr)
+		}
 	} else {
 		slog.Info("backend initialized", "name", activeBackend.Name())
 	}
@@ -183,7 +197,19 @@ func startDaemon(configPath string, logLevel string) error {
 	cleanStaleProcessedDir(ctx, db.ImageStore(), cfg.GetImagesDir())
 
 	// 10b. Restore wallpapers from persisted monitor state.
-	handler.RestoreWallpapers(ctx, db.MonitorStateStore(), db.StateStore(), reg, monManager, db.ImageStore(), splitter)
+	if initErr != nil && caps.DaemonProcess {
+		handler.StartDeferredDaemonRestore(
+			restoreRetryCtx,
+			reg,
+			db.MonitorStateStore(),
+			db.StateStore(),
+			monManager,
+			db.ImageStore(),
+			splitter,
+		)
+	} else {
+		handler.RestoreWallpapers(ctx, db.MonitorStateStore(), db.StateStore(), reg, monManager, db.ImageStore(), splitter)
+	}
 
 	// 12. Create playlist manager.
 	playlistMgr := playlist.NewManager(
@@ -254,6 +280,8 @@ func startDaemon(configPath string, logLevel string) error {
 
 	// 18. Graceful shutdown.
 	slog.Info("shutting down...")
+
+	cancelRestoreRetry()
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()

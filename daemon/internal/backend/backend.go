@@ -73,6 +73,13 @@ type Backend interface {
 	ParseConfig(raw json.RawMessage) (any, error)
 }
 
+// RuntimeConfigSync is optional. Backends that control a long-lived renderer
+// (e.g. wayland-utauri) implement it to push global settings to the child
+// immediately after PATCH /config/backend, without waiting for SetWallpaper.
+type RuntimeConfigSync interface {
+	SyncRuntimeFromConfig(ctx context.Context) error
+}
+
 // Capabilities declares what a backend supports. Used by the daemon to adapt its
 // behavior and by the frontend to show/hide UI elements.
 type Capabilities struct {

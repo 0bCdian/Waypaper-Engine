@@ -115,6 +115,7 @@ func TestBuildLoadRequest_WebKind(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "web", got.Kind)
 	assert.Equal(t, "/tmp/pkg/index.html", got.Target)
+	assert.Nil(t, got.Parallax, "parallax must be omitted for web/HTML wallpapers")
 }
 
 func TestBuildLoadRequest_EmbedsParallaxWhenEnabled(t *testing.T) {
@@ -136,7 +137,7 @@ func TestBuildLoadRequest_EmbedsParallaxWhenEnabled(t *testing.T) {
 	assert.Contains(t, string(raw), `"parallax"`)
 }
 
-func TestBuildLoadRequest_OmitsParallaxWhenDisabled(t *testing.T) {
+func TestBuildLoadRequest_EmbedsParallaxWhenDisabled(t *testing.T) {
 	cfg := defaultConfig()
 	cfg.ParallaxEnabled = false
 	req := backend.WallpaperRequest{
@@ -147,5 +148,69 @@ func TestBuildLoadRequest_OmitsParallaxWhenDisabled(t *testing.T) {
 
 	got, err := buildLoadRequest(req, cfg, nil)
 	require.NoError(t, err)
-	assert.Nil(t, got.Parallax)
+	require.NotNil(t, got.Parallax)
+	assert.Equal(t, false, got.Parallax["enabled"])
+	raw, err := json.Marshal(got)
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), `"parallax"`)
+}
+
+func TestBuildLoadRequest_IncludesTransitionParamsBezier(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.TransitionBezier = "0,0,1,1"
+	req := backend.WallpaperRequest{
+		MediaType: media.MediaTypeImage,
+		ImagePath: "/tmp/wall.jpg",
+		Mode:      monitor.ModeClone,
+	}
+
+	got, err := buildLoadRequest(req, cfg, nil)
+	require.NoError(t, err)
+	require.NotNil(t, got.TransitionParams)
+	assert.Equal(t, [4]float32{0, 0, 1, 1}, got.TransitionParams.Bezier)
+	raw, err := json.Marshal(got)
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), `"transition_params"`)
+	assert.Contains(t, string(raw), `"bezier"`)
+}
+
+func TestBuildLoadRequest_DefaultTransitionBezier(t *testing.T) {
+	cfg := defaultConfig()
+	req := backend.WallpaperRequest{
+		MediaType: media.MediaTypeImage,
+		ImagePath: "/tmp/wall.jpg",
+		Mode:      monitor.ModeClone,
+	}
+
+	got, err := buildLoadRequest(req, cfg, nil)
+	require.NoError(t, err)
+	require.NotNil(t, got.TransitionParams)
+	assert.Equal(t, defaultTransitionBezier, got.TransitionParams.Bezier)
+}
+
+func TestBuildLoadRequest_TransitionParamsAngleOriginWave(t *testing.T) {
+	cfg := defaultConfig()
+	cfg.TransitionAngleDeg = 45
+	cfg.TransitionOriginXPct = 25
+	cfg.TransitionOriginYPct = 75
+	cfg.TransitionWaveAmplitudePercent = 7
+	cfg.TransitionWaveFrequency = 4
+	req := backend.WallpaperRequest{
+		MediaType: media.MediaTypeImage,
+		ImagePath: "/tmp/wall.jpg",
+		Mode:      monitor.ModeClone,
+	}
+
+	got, err := buildLoadRequest(req, cfg, nil)
+	require.NoError(t, err)
+	require.NotNil(t, got.TransitionParams)
+	assert.Equal(t, 45.0, got.TransitionParams.AngleDeg)
+	assert.Equal(t, float32(25), got.TransitionParams.OriginXPercent)
+	assert.Equal(t, float32(75), got.TransitionParams.OriginYPercent)
+	assert.Equal(t, float32(7), got.TransitionParams.WaveAmplitudePercent)
+	assert.Equal(t, float32(4), got.TransitionParams.WaveFrequency)
+	raw, err := json.Marshal(got)
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), `"angle_deg":45`)
+	assert.Contains(t, string(raw), `"origin_x_percent":25`)
 }

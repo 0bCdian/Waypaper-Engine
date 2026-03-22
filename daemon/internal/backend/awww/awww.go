@@ -141,11 +141,13 @@ func (a *Awww) SetWallpaper(ctx context.Context, req backend.WallpaperRequest) e
 	if cfg.TransitionType != "" {
 		args = append(args, "--transition-type", string(cfg.TransitionType))
 	}
-	if cfg.TransitionStep > 0 {
+	// For "none", awww sets step=255 internally for an instant switch; passing --transition-step
+	// after --transition-type would override that and break the effect.
+	if cfg.TransitionType != TransitionNone && cfg.TransitionStep > 0 {
 		args = append(args, "--transition-step", strconv.Itoa(cfg.TransitionStep))
 	}
-	if cfg.TransitionDuration > 0 {
-		args = append(args, "--transition-duration", strconv.Itoa(cfg.TransitionDuration))
+	if durStr := formatAwwwTransitionDurationCLI(cfg.TransitionDuration); durStr != "" {
+		args = append(args, "--transition-duration", durStr)
 	}
 	if cfg.TransitionFPS > 0 {
 		args = append(args, "--transition-fps", strconv.Itoa(cfg.TransitionFPS))
@@ -237,6 +239,15 @@ func (a *Awww) loadConfigFromViper() *Config {
 		return a.v.GetInt(fullKey)
 	}
 
+	getFloat := func(underscoreKey string) float64 {
+		hyphenKey := prefix + strings.ReplaceAll(underscoreKey, "_", "-")
+		fullKey := prefix + underscoreKey
+		if a.v.IsSet(hyphenKey) {
+			return a.v.GetFloat64(hyphenKey)
+		}
+		return a.v.GetFloat64(fullKey)
+	}
+
 	getBool := func(underscoreKey string) bool {
 		hyphenKey := prefix + strings.ReplaceAll(underscoreKey, "_", "-")
 		fullKey := prefix + underscoreKey
@@ -249,7 +260,7 @@ func (a *Awww) loadConfigFromViper() *Config {
 	cfg := &Config{
 		TransitionType:     TransitionType(getString("transition_type")),
 		TransitionStep:     getInt("transition_step"),
-		TransitionDuration: getInt("transition_duration"),
+		TransitionDuration: getFloat("transition_duration"),
 		TransitionFPS:      getInt("transition_fps"),
 		TransitionAngle:    getInt("transition_angle"),
 		TransitionPos:      TransitionPosition(getString("transition_pos")),
@@ -259,6 +270,15 @@ func (a *Awww) loadConfigFromViper() *Config {
 		FillColor:          getString("fill_color"),
 		FilterType:         FilterType(getString("filter_type")),
 		InvertY:            getBool("invert_y"),
+	}
+
+	if a.v != nil {
+		if canon := a.v.GetFloat64("backend.transition_duration_seconds"); canon > 0 {
+			if canon > 120 {
+				canon = 120
+			}
+			cfg.TransitionDuration = canon
+		}
 	}
 
 	slog.Debug("awww: loaded config from viper",
@@ -272,7 +292,14 @@ func (a *Awww) loadConfigFromViper() *Config {
 }
 
 func (a *Awww) ValidateConfig(raw json.RawMessage) error {
-	return backend.UnmarshalValidateConfig[Config](raw)
+	var cfg Config
+	if err := json.Unmarshal(raw, &cfg); err != nil {
+		return fmt.Errorf("awww: parse config: %w", err)
+	}
+	if cfg.TransitionDuration < 0 || cfg.TransitionDuration > 120 {
+		return fmt.Errorf("awww: transition_duration must be between 0 and 120 seconds")
+	}
+	return nil
 }
 
 func (a *Awww) ParseConfig(raw json.RawMessage) (any, error) {

@@ -247,6 +247,8 @@ export interface DaemonConfig {
 
 export interface BackendSection {
   type: string;
+  /** Canonical transition length in seconds (float). When set, awww and wayland-utauri use this value. */
+  transition_duration_seconds?: number;
   awww?: AwwwConfig;
   feh?: FehConfig;
   hyprpaper?: HyprpaperConfig;
@@ -256,6 +258,7 @@ export interface BackendSection {
 export interface AwwwConfig {
   transition_type: string;
   transition_step: number;
+  /** Seconds for awww `--transition-duration` (fractional allowed). Legacy whole numbers 500–5000 are treated as ms. */
   transition_duration: number;
   transition_fps: number;
   transition_angle: number;
@@ -288,6 +291,14 @@ export interface WaylandUtauriConfig {
   hide_on_shutdown: boolean;
   transition: string;
   duration_ms: number;
+  /** CSS cubic-bezier(x1,y1,x2,y2) control points, comma-separated */
+  transition_bezier?: string;
+  /** Degrees 0–359; used for generic `wipe` and wave angle (directional presets lock angle). */
+  transition_angle_deg?: number;
+  transition_origin_x_percent?: number;
+  transition_origin_y_percent?: number;
+  transition_wave_amplitude_percent?: number;
+  transition_wave_frequency?: number;
   parallax_enabled?: boolean;
   parallax_zoom?: number;
   parallax_step_percent?: number;
