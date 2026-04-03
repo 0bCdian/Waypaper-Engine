@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { openFileAction } from "../../shared/types";
 import { useFoldersStore } from "../stores/foldersStore";
+import { notifyWebWallpaperImportFailed } from "../utils/daemonUserFacingError";
 import { logger } from "../utils/logger";
 
 const { openFiles, handleOpenImages, scanDirectory, goDaemon } = window.API_RENDERER;
@@ -33,6 +34,7 @@ async function importWebPackageRoots(roots: string[], folderID: number | undefin
       await goDaemon.importWebWallpaper(root, folderID);
     } catch (error) {
       logger.error("useOpenImages: import web wallpaper failed:", root, error);
+      notifyWebWallpaperImportFailed(root, error);
     }
   }
 }
@@ -65,6 +67,7 @@ const openImagesStore = create<State & Actions>((set, get) => ({
         await goDaemon.importWebWallpaper(targetPath, currentFolderId ?? undefined);
       } catch (error) {
         logger.error("useOpenImages: Error importing web wallpaper:", error);
+        notifyWebWallpaperImportFailed(targetPath, error);
       }
       return;
     }
@@ -113,8 +116,9 @@ const openImagesStore = create<State & Actions>((set, get) => ({
       try {
         await goDaemon.importWebWallpaper(dirPath, useFoldersStore.getState().currentFolderId ?? undefined);
         return;
-      } catch {
-        logger.warn("useOpenImages: no media found in directory", dirPath);
+      } catch (error) {
+        logger.error("useOpenImages: web import failed for directory", dirPath, error);
+        notifyWebWallpaperImportFailed(dirPath, error);
         return;
       }
     }

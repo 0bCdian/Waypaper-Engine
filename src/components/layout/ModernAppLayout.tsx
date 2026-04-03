@@ -16,6 +16,7 @@ import { useDesignSystemStore } from "../../stores/designSystemStore";
 import { UrlImportWarningModal } from "../UrlImportWarningModal";
 import openImagesStore from "../../hooks/useOpenImages";
 import { useFoldersStore } from "../../stores/foldersStore";
+import { notifyWebWallpaperImportFailed } from "../../utils/daemonUserFacingError";
 import { logger } from "../../utils/logger";
 
 const IMAGE_EXTENSIONS = new Set([
@@ -164,7 +165,10 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({ children, clas
     const folderId = useFoldersStore.getState().currentFolderId ?? undefined;
     if (manifestPaths.length > 0) {
       for (const p of manifestPaths) {
-        void window.API_RENDERER.goDaemon.importWebWallpaper(p, folderId);
+        void window.API_RENDERER.goDaemon.importWebWallpaper(p, folderId).catch((err) => {
+          logger.error("Web wallpaper import failed:", p, err);
+          notifyWebWallpaperImportFailed(p, err);
+        });
       }
     }
     if (mediaPaths.length > 0) {

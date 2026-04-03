@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import type { MonitorMode } from "../../electron/daemon-go-types";
+import { notifyWallpaperApplyFailed } from "../utils/daemonUserFacingError";
 import { logger } from "../utils/logger";
 
 export interface WallhavenThumb {
@@ -429,6 +430,7 @@ export const useWallhavenStore = create<WallhavenState & WallhavenActions>()((se
       await window.API_RENDERER.goDaemon.setWallpaper(imageId, monitor, mode);
     } catch (err) {
       logger.error("Wallhaven download+set failed:", err);
+      notifyWallpaperApplyFailed(err);
     } finally {
       set((s) => {
         const next = new Set(s.downloadingIds);

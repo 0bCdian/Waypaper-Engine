@@ -1,6 +1,7 @@
 import type { MenuItem } from "../stores/contextMenuStore";
 import type { ImageHistoryEntry, Monitor } from "../../electron/daemon-go-types";
 import { useHistoryStore } from "../stores/historyStore";
+import { notifyWallpaperApplyFailed } from "./daemonUserFacingError";
 import { buildWallpaperSubmenu, buildClearHistoryItem } from "./sharedContextMenuHelpers";
 
 const { goDaemon } = window.API_RENDERER;
@@ -20,14 +21,16 @@ export function buildHistoryEntryMenuItems(
       children: buildWallpaperSubmenu(
         monitors,
         (monitor, mode) => {
-          void goDaemon.setWallpaper(entry.image_id, monitor, mode);
+          void goDaemon.setWallpaper(entry.image_id, monitor, mode).catch(notifyWallpaperApplyFailed);
         },
         [
           {
             type: "action",
             label: `Restore original (${modeLabel} on ${monitorsLabel})`,
             onClick: () => {
-              void goDaemon.setWallpaper(entry.image_id, undefined, entry.mode, entry.monitors);
+              void goDaemon
+                .setWallpaper(entry.image_id, undefined, entry.mode, entry.monitors)
+                .catch(notifyWallpaperApplyFailed);
             },
           },
           { type: "separator" },

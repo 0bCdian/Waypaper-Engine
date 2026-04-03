@@ -6,6 +6,7 @@ import { useMonitorStore } from "../stores/monitors";
 import { buildHistoryEntryMenuItems } from "../utils/historyContextMenuItems";
 import { confirmDialog } from "../components/ConfirmDialog";
 import type { ImageHistoryEntry, Image } from "../../electron/daemon-go-types";
+import { notifyWallpaperApplyFailed } from "../utils/daemonUserFacingError";
 import { getThumbnailSrc } from "../utils/utilities";
 
 const { goDaemon } = window.API_RENDERER;
@@ -98,7 +99,9 @@ function HistoryEntry({
   onContextMenu: (e: React.MouseEvent, entry: ImageHistoryEntry) => void;
 }) {
   const handleClick = () => {
-    void goDaemon.setWallpaper(entry.image_id, undefined, entry.mode, entry.monitors);
+    void goDaemon
+      .setWallpaper(entry.image_id, undefined, entry.mode, entry.monitors)
+      .catch(notifyWallpaperApplyFailed);
   };
 
   return (

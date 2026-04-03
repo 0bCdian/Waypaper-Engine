@@ -10,6 +10,7 @@ import { useFolderPickerStore } from "../stores/folderPickerStore";
 import { confirmDialog } from "../components/ConfirmDialog";
 import openImagesStore from "../hooks/useOpenImages";
 import type { Image } from "../../electron/daemon-go-types";
+import { notifyWallpaperApplyFailed } from "./daemonUserFacingError";
 import { buildWallpaperSubmenu, buildClearHistoryItem } from "./sharedContextMenuHelpers";
 
 const { goDaemon } = window.API_RENDERER;
@@ -168,7 +169,7 @@ export function buildImageMenuItems(
       type: "submenu",
       label: `Set "${image.name}"`,
       children: buildWallpaperSubmenu(monitors, (monitor, mode) => {
-        void goDaemon.setWallpaper(image.id, monitor, mode);
+        void goDaemon.setWallpaper(image.id, monitor, mode).catch(notifyWallpaperApplyFailed);
       }, undefined, { allowExtend }),
     },
     {
@@ -255,7 +256,7 @@ export function buildPlaylistCardMenuItems(
       type: "submenu",
       label: `Set "${imageName}"`,
       children: buildWallpaperSubmenu(monitors, (monitor, mode) => {
-        void goDaemon.setWallpaper(imageId, monitor, mode);
+        void goDaemon.setWallpaper(imageId, monitor, mode).catch(notifyWallpaperApplyFailed);
       }),
     },
     {

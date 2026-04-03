@@ -15,6 +15,7 @@ import { buildImageMenuItems } from "../utils/contextMenuItems";
 import { webPreviewPlaybackKind } from "../utils/webPreviewPlayback";
 import { playMutedVideoWhenReady } from "../utils/videoPreview";
 import { useInlineRename } from "../hooks/useInlineRename";
+import { notifyWallpaperApplyFailed } from "../utils/daemonUserFacingError";
 import { logger } from "../utils/logger";
 import type { DragSourceData } from "../stores/dragStore";
 
@@ -131,7 +132,7 @@ function ImageCard({ Image }: ImageCardProps) {
         3200,
       );
     }
-    goDaemon.setWallpaper(Image.id, monitor, mode);
+    void goDaemon.setWallpaper(Image.id, monitor, mode).catch(notifyWallpaperApplyFailed);
   };
 
   const handleCheckboxChange = (event: ChangeEvent<HTMLInputElement>) => {
