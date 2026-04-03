@@ -17,8 +17,6 @@ type Config struct {
 	ExpectedAPIVersion string `mapstructure:"expected_api_version" json:"expected_api_version"`
 	ConnectTimeoutMS   int    `mapstructure:"connect_timeout_ms" json:"connect_timeout_ms"`
 	RequestTimeoutMS   int    `mapstructure:"request_timeout_ms" json:"request_timeout_ms"`
-	ShowOnInitialize   bool   `mapstructure:"show_on_initialize" json:"show_on_initialize"`
-	HideOnShutdown     bool   `mapstructure:"hide_on_shutdown" json:"hide_on_shutdown"`
 	Transition         string `mapstructure:"transition" json:"transition"`
 	DurationMS         int    `mapstructure:"duration_ms" json:"duration_ms"`
 	TransitionBezier   string `mapstructure:"transition_bezier" json:"transition_bezier"`
@@ -51,8 +49,6 @@ func defaultConfig() *Config {
 		ExpectedAPIVersion:             defaultAPIVersion,
 		ConnectTimeoutMS:               500,
 		RequestTimeoutMS:               1500,
-		ShowOnInitialize:               false,
-		HideOnShutdown:                 true,
 		Transition:                     "none",
 		DurationMS:                     300,
 		TransitionBezier:               "0.54,0,0.34,0.99",

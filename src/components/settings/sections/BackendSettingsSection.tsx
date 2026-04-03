@@ -384,18 +384,6 @@ const waylandUtauriAdvancedFields: Field[] = [
     max: 60000,
     step: 50,
   },
-  {
-    key: "waylandutauri.show_on_initialize",
-    label: "Show on Initialize",
-    description: "Show renderer when backend initializes",
-    type: "checkbox",
-  },
-  {
-    key: "waylandutauri.hide_on_shutdown",
-    label: "Hide on Shutdown",
-    description: "Send hide to wayland-utauri before the daemon stops or switches backend",
-    type: "checkbox",
-  },
 ];
 
 function DebouncedFloatInput({

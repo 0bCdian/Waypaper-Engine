@@ -52,8 +52,6 @@ expected_service = "wayland-utauri"
 expected_api_version = "1"
 connect_timeout_ms = 500
 request_timeout_ms = 1500
-show_on_initialize = false
-hide_on_shutdown = true
 transition = "none"
 duration_ms = 300
 

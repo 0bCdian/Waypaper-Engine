@@ -286,8 +286,6 @@ export interface WaylandUtauriConfig {
   expected_api_version: string;
   connect_timeout_ms: number;
   request_timeout_ms: number;
-  show_on_initialize: boolean;
-  hide_on_shutdown: boolean;
   transition: string;
   duration_ms: number;
   /** CSS cubic-bezier(x1,y1,x2,y2) control points, comma-separated */

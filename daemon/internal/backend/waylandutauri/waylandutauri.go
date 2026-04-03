@@ -133,7 +133,7 @@ func (w *WaylandUtauri) Initialize(ctx context.Context) error {
 
 	if initialErr == nil {
 		slog.Info("wayland-utauri already running")
-		return w.postInitShow(ctx, client, cfg)
+		return nil
 	}
 
 	// If the service is reachable but has a contract mismatch (wrong
@@ -177,7 +177,7 @@ func (w *WaylandUtauri) Initialize(ctx context.Context) error {
 		lastPollErr = pollErr
 		if pollErr == nil {
 			slog.Info("wayland-utauri ready", "attempts", i+1)
-			return w.postInitShow(ctx, client, cfg)
+			return nil
 		}
 		if errors.Is(pollErr, errContract) {
 			return fmt.Errorf("wayland-utauri: %w", pollErr)
@@ -189,15 +189,6 @@ func (w *WaylandUtauri) Initialize(ctx context.Context) error {
 			"Ensure the binary runs on Wayland and uses the same socket as "+viperBackendKey+".socket_path",
 		binaryName, lastPollErr,
 	)
-}
-
-func (w *WaylandUtauri) postInitShow(ctx context.Context, client *controlClient, cfg *Config) error {
-	if cfg.ShowOnInitialize {
-		if err := client.show(ctx); err != nil {
-			return fmt.Errorf("wayland-utauri: show on initialize: %w", err)
-		}
-	}
-	return nil
 }
 
 const statusDialRetries = 12
@@ -226,19 +217,7 @@ func (w *WaylandUtauri) getStatusWithRetry(ctx context.Context, client *controlC
 	return nil, lastErr
 }
 
-func (w *WaylandUtauri) Shutdown(ctx context.Context) error {
-	cfg := w.loadConfigFromViper()
-
-	// Best-effort hide before stopping.
-	if cfg.HideOnShutdown {
-		client, err := w.makeControlClient(cfg)
-		if err == nil {
-			if err := client.hide(ctx); err != nil {
-				slog.Warn("wayland-utauri: hide on shutdown failed", "error", err)
-			}
-		}
-	}
-
+func (w *WaylandUtauri) Shutdown(_ context.Context) error {
 	// If we started the process ourselves, terminate it.
 	if w.process != nil {
 		slog.Info("stopping wayland-utauri process we started")
@@ -352,8 +331,6 @@ func (w *WaylandUtauri) RegisterDefaults(v *viper.Viper) {
 	v.SetDefault(viperBackendKey+".expected_api_version", def.ExpectedAPIVersion)
 	v.SetDefault(viperBackendKey+".connect_timeout_ms", def.ConnectTimeoutMS)
 	v.SetDefault(viperBackendKey+".request_timeout_ms", def.RequestTimeoutMS)
-	v.SetDefault(viperBackendKey+".show_on_initialize", def.ShowOnInitialize)
-	v.SetDefault(viperBackendKey+".hide_on_shutdown", def.HideOnShutdown)
 	v.SetDefault(viperBackendKey+".transition", def.Transition)
 	v.SetDefault(viperBackendKey+".duration_ms", def.DurationMS)
 	v.SetDefault(viperBackendKey+".transition_bezier", def.TransitionBezier)
@@ -439,8 +416,6 @@ func (w *WaylandUtauri) loadConfigFromViper() *Config {
 	if val := getInt("request_timeout_ms"); val > 0 {
 		cfg.RequestTimeoutMS = val
 	}
-	cfg.ShowOnInitialize = getBool("show_on_initialize")
-	cfg.HideOnShutdown = getBool("hide_on_shutdown")
 	if val := getString("transition"); val != "" {
 		cfg.Transition = val
 	}

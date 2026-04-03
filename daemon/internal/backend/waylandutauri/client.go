@@ -99,14 +99,6 @@ func (c *controlClient) status(ctx context.Context) (*statusResponse, error) {
 	return &resp, nil
 }
 
-func (c *controlClient) show(ctx context.Context) error {
-	return c.postNoBody(ctx, "/wallpaper/show")
-}
-
-func (c *controlClient) hide(ctx context.Context) error {
-	return c.postNoBody(ctx, "/wallpaper/hide")
-}
-
 func (c *controlClient) load(ctx context.Context, req loadRequest) (int, string, error) {
 	_, status, body, err := c.doJSON(ctx, http.MethodPost, "/wallpaper/load", req)
 	return status, body, err
@@ -119,17 +111,6 @@ func (c *controlClient) setParallax(ctx context.Context, body map[string]any) er
 	}
 	if status < 200 || status >= 300 {
 		return classifyHTTPError(status, respBody)
-	}
-	return nil
-}
-
-func (c *controlClient) postNoBody(ctx context.Context, path string) error {
-	_, status, body, err := c.doJSON(ctx, http.MethodPost, path, map[string]any{})
-	if err != nil {
-		return err
-	}
-	if status < 200 || status >= 300 {
-		return classifyHTTPError(status, body)
 	}
 	return nil
 }

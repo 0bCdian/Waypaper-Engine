@@ -96,21 +96,66 @@ func buildLoadRequest(req backend.WallpaperRequest, cfg *Config, monitorMap map[
 	}
 }
 
+type parallaxStateSnapshot struct {
+	Enabled     bool       `json:"enabled"`
+	Zoom        float32    `json:"zoom"`
+	OffsetX     float32    `json:"offset_x"`
+	OffsetY     float32    `json:"offset_y"`
+	StepPercent float32    `json:"step_percent"`
+	AnimationMS uint64     `json:"animation_ms"`
+	Easing      [4]float32 `json:"easing"`
+	ResetMS     uint64     `json:"reset_ms"`
+}
+
+type monitorStatusSnapshot struct {
+	Monitor        uint32                `json:"monitor"`
+	Visible        bool                  `json:"visible"`
+	CurrentTarget  *string               `json:"current_target,omitempty"`
+	PendingTarget  *string               `json:"pending_target,omitempty"`
+	LastTransition string                `json:"last_transition"`
+	InProgress     bool                  `json:"in_progress"`
+	CurrentKind    string                `json:"current_kind"`
+	PendingKind    *string               `json:"pending_kind,omitempty"`
+	Parallax       parallaxStateSnapshot `json:"parallax"`
+}
+
+type schedulerSnapshot struct {
+	Mode           string `json:"mode"`
+	MaxQueueSize   int    `json:"max_queue_size"`
+	QueuedRequests int    `json:"queued_requests"`
+}
+
+type playbackSnapshot struct {
+	Mode           string `json:"mode"`
+	DesktopFocused bool   `json:"desktop_focused"`
+	Paused         bool   `json:"paused"`
+	Reason         string `json:"reason"`
+}
+
+// wallpaperStatusPayload mirrors the `status` object from GET /wallpaper/status (wayland-utauri).
+type wallpaperStatusPayload struct {
+	TopologyPolicy string                  `json:"topology_policy"`
+	MonitorCount   int                     `json:"monitor_count"`
+	Topology       []topologyEntry         `json:"topology"`
+	Monitors       []monitorStatusSnapshot `json:"monitors"`
+	Scheduler      schedulerSnapshot       `json:"scheduler"`
+	Playback       playbackSnapshot        `json:"playback"`
+}
+
 type statusResponse struct {
-	OK         bool   `json:"ok"`
-	APIVersion string `json:"api_version"`
-	Status     struct {
-		Topology []topologyEntry `json:"topology"`
-	} `json:"status"`
+	OK         bool                   `json:"ok"`
+	APIVersion string                 `json:"api_version"`
+	Status     wallpaperStatusPayload `json:"status"`
 }
 
 type topologyEntry struct {
-	Monitor  uint32 `json:"monitor"`
-	StableID string `json:"stable_id"`
-	Width    int    `json:"width"`
-	Height   int    `json:"height"`
-	X        int    `json:"x"`
-	Y        int    `json:"y"`
+	Monitor  uint32  `json:"monitor"`
+	StableID string  `json:"stable_id"`
+	Width    int     `json:"width"`
+	Height   int     `json:"height"`
+	X        int     `json:"x"`
+	Y        int     `json:"y"`
+	Model    *string `json:"model,omitempty"`
 }
 
 func buildMonitorMap(topology []topologyEntry, engineMonitors []monitor.Monitor) map[string]uint32 {

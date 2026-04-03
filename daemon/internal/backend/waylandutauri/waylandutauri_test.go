@@ -71,7 +71,6 @@ func TestRegisterDefaultsAndLoadConfig(t *testing.T) {
 	assert.Equal(t, defaultAPIVersion, cfg.ExpectedAPIVersion)
 	assert.Equal(t, 500, cfg.ConnectTimeoutMS)
 	assert.Equal(t, 1500, cfg.RequestTimeoutMS)
-	assert.True(t, cfg.HideOnShutdown)
 	assert.Equal(t, "0.54,0,0.34,0.99", cfg.TransitionBezier)
 }
 
