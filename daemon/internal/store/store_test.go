@@ -217,6 +217,35 @@ func TestImageStore_GetAll_FolderFilter(t *testing.T) {
 	assert.Equal(t, "in_folder.jpg", inFolder.Data[0].Name)
 }
 
+func TestImageStore_Create_persistsWebPreviewPathAndMeta(t *testing.T) {
+	db := testutil.OpenTestDB(t)
+	is := db.ImageStore()
+	ctx := context.Background()
+
+	img := testutil.SampleImage(0)
+	img.Name = "Fluid Web"
+	img.MediaType = "web"
+	img.Format = "html"
+	img.Path = "/cache/pkg/index.html"
+	img.PreviewPath = "/cache/pkg/preview.gif"
+	img.WebMeta = &store.WebMeta{
+		PackageRoot:  "/cache/pkg",
+		ManifestPath: "/cache/pkg/waypaper.json",
+		EntryPath:    "/cache/pkg/index.html",
+		Title:        "Colorful Fluid",
+	}
+	created, err := is.Create(ctx, []store.Image{img})
+	require.NoError(t, err)
+	id := created[0].ID
+
+	got, err := is.GetByID(ctx, id)
+	require.NoError(t, err)
+	assert.Equal(t, "/cache/pkg/preview.gif", got.PreviewPath)
+	require.NotNil(t, got.WebMeta)
+	assert.Equal(t, "/cache/pkg", got.WebMeta.PackageRoot)
+	assert.Equal(t, "Colorful Fluid", got.WebMeta.Title)
+}
+
 func TestImageStore_Update(t *testing.T) {
 	db := testutil.OpenTestDB(t)
 	is := db.ImageStore()

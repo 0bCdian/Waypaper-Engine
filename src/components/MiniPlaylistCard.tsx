@@ -56,7 +56,8 @@ function MiniPlaylistCard({
 
   const imageInfo = imagesMap.get(playlistImage.image_id);
   const imageName = imageInfo?.name || `Image #${playlistImage.image_id}`;
-  const imageSrc = imageInfo ? getThumbnailSrc(imageInfo) : undefined;
+  const rawThumb = imageInfo ? getThumbnailSrc(imageInfo) : "";
+  const imageSrc = rawThumb.trim() ? rawThumb : undefined;
 
   const sortableData = useMemo<DragSourceData>(
     () => ({ type: "playlist-item", imageId: playlistImage.image_id }),
@@ -202,13 +203,26 @@ function MiniPlaylistCard({
           <div className={isNeo ? "overflow-hidden" : "relative"}>
             {/* Non-neo: button inside the relative wrapper */}
             {!isNeo && removeButton}
-            <img
-              src={imageSrc}
-              alt={imageName}
-              className={imgClass}
-              ref={imageRef}
-              loading="lazy"
-            />
+            {imageSrc ? (
+              <img
+                src={imageSrc}
+                alt={imageName}
+                className={imgClass}
+                ref={imageRef}
+                loading="lazy"
+              />
+            ) : (
+              <div
+                className={`${imgClass} bg-base-300 flex items-center justify-center text-[10px] font-semibold uppercase text-base-content/50`}
+                aria-hidden
+              >
+                {imageInfo?.media_type === "web"
+                  ? "web"
+                  : imageInfo?.media_type === "video"
+                    ? "video"
+                    : "—"}
+              </div>
+            )}
           </div>
 
           {/* Polaroid-style caption below the image */}

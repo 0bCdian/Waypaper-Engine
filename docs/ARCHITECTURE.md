@@ -372,10 +372,9 @@ The `Registry` (`registry.go`) manages backend registration, activation, and loo
 
 | Provider | Tool | Compositor | Priority |
 |----------|------|-----------|----------|
-| `hyprctlProvider` | `hyprctl monitors -j` | Wayland (Hyprland) | High |
-| `swaymsgProvider` | `swaymsg -t get_outputs` | Wayland (Sway) | High |
-| `wlrRandrProvider` | `wlr-randr` | Wayland (generic) | Low |
-| `xrandrProvider` | `xrandr --query` | X11 | High |
+| wayland-utauri | `GET /wallpaper/status` (Unix socket) | Wayland | 30 |
+| `wlrRandrProvider` | `wlr-randr` | Wayland (wlroots) | 10 |
+| `xrandrProvider` | `xrandr --query` | X11 | 10 |
 
 Monitor data includes name, resolution (width/height), position (x/y), scale, refresh rate, and transform. This geometry is used by the image splitter for extend mode.
 

@@ -4,6 +4,8 @@ import { useImagesStore } from "../stores/images";
 import { useShallow } from "zustand/react/shallow";
 import { useToastStore } from "../stores/toastStore";
 import { useIsNeo } from "../hooks/useIsNeo";
+import { webPreviewPlaybackKind } from "../utils/webPreviewPlayback";
+import { playMutedVideoWhenReady } from "../utils/videoPreview";
 
 const { goDaemon } = window.API_RENDERER;
 
@@ -26,6 +28,46 @@ function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function DetailHoverVideo({ src, poster }: { src: string; poster?: string }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  const cancelPlayRef = useRef<(() => void) | null>(null);
+  return (
+    <div
+      className="w-full"
+      onPointerEnter={() => {
+        cancelPlayRef.current?.();
+        const v = ref.current;
+        if (v) cancelPlayRef.current = playMutedVideoWhenReady(v);
+      }}
+      onPointerLeave={() => {
+        cancelPlayRef.current?.();
+        cancelPlayRef.current = null;
+        const v = ref.current;
+        if (v) {
+          v.pause();
+          v.currentTime = 0;
+        }
+      }}
+    >
+      <video
+        ref={ref}
+        src={src}
+        poster={poster}
+        className="w-full rounded-lg object-cover"
+        muted
+        loop
+        playsInline
+        preload="auto"
+        onEnded={(e) => {
+          const v = e.currentTarget;
+          v.currentTime = 0;
+          void v.play().catch(() => {});
+        }}
+      />
+    </div>
+  );
 }
 
 function ImageDetailSidebar() {
@@ -184,13 +226,46 @@ function ImageDetailSidebar() {
         {selectedImage && (
           <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
             {/* Preview */}
-            {selectedImage.thumbnails?.default && (
-              <img
-                src={selectedImage.thumbnails.default}
-                alt={selectedImage.name}
-                className="w-full rounded-lg object-cover"
-              />
-            )}
+            {(() => {
+              const thumb = selectedImage.thumbnails?.default?.trim();
+              const webKind =
+                selectedImage.media_type === "web"
+                  ? webPreviewPlaybackKind(selectedImage.preview_path)
+                  : null;
+              const previewPath = selectedImage.preview_path?.trim();
+
+              if (selectedImage.media_type === "video") {
+                const videoSrc = selectedImage.preview_path?.trim() || selectedImage.path;
+                return thumb || videoSrc ? (
+                  <DetailHoverVideo src={videoSrc} poster={thumb || undefined} />
+                ) : null;
+              }
+
+              if (webKind === "video" && previewPath) {
+                return <DetailHoverVideo src={previewPath} poster={thumb || undefined} />;
+              }
+
+              if (webKind === "animatedImage" && previewPath) {
+                return (
+                  <img
+                    src={previewPath}
+                    alt={selectedImage.name}
+                    className="w-full rounded-lg object-cover"
+                  />
+                );
+              }
+
+              if (thumb) {
+                return (
+                  <img
+                    src={thumb}
+                    alt={selectedImage.name}
+                    className="w-full rounded-lg object-cover"
+                  />
+                );
+              }
+              return null;
+            })()}
 
             {/* Editable name */}
             <div className="space-y-1">

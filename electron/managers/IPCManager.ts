@@ -7,7 +7,7 @@
 
 import { ipcMain, BrowserWindow, dialog, app } from "electron";
 import { resolve } from "node:path";
-import { readdir, stat, writeFile } from "node:fs/promises";
+import { stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
@@ -23,36 +23,7 @@ import type {
   UpdatePlaylistRequest,
   UnifiedConfig,
 } from "../daemon-go-types";
-
-const IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg"]);
-const VIDEO_EXTENSIONS = new Set([".mp4", ".webm", ".mkv", ".avi", ".mov"]);
-
-async function scanDirectoryForImages(dirPath: string): Promise<string[]> {
-  const imageFiles: string[] = [];
-  try {
-    const entries = await readdir(dirPath);
-    for (const entry of entries) {
-      const fullPath = join(dirPath, entry);
-      try {
-        const stats = await stat(fullPath);
-        if (stats.isDirectory()) {
-          const subImages = await scanDirectoryForImages(fullPath);
-          imageFiles.push(...subImages);
-        } else if (stats.isFile()) {
-          const ext = entry.toLowerCase().substring(entry.lastIndexOf("."));
-          if (IMAGE_EXTENSIONS.has(ext) || VIDEO_EXTENSIONS.has(ext)) {
-            imageFiles.push(fullPath);
-          }
-        }
-      } catch {
-        // Skip inaccessible files
-      }
-    }
-  } catch (err) {
-    logger.error({ err, dirPath }, "Error scanning directory");
-  }
-  return imageFiles;
-}
+import { scanDirectoryForImports } from "../scanDirectoryForImports";
 
 export interface IPCHandler {
   channel: string;
@@ -269,25 +240,27 @@ export class IPCManager {
         }
 
         if (result.canceled || !result.filePaths?.length) {
-          return { files: [] };
+          return { files: [], webRoots: [] };
         }
 
         let files: string[] = [];
         let folderName: string | undefined;
 
+        let webRoots: string[] = [];
         if (action === "folder") {
           for (const folderPath of result.filePaths) {
             if (!folderName) {
               folderName = folderPath.split("/").pop() || folderPath.split("\\").pop();
             }
-            const folderImages = await scanDirectoryForImages(folderPath);
-            files.push(...folderImages);
+            const scanned = await scanDirectoryForImports(folderPath);
+            files.push(...scanned.mediaFiles);
+            webRoots.push(...scanned.webPackageRoots);
           }
         } else {
           files = result.filePaths;
         }
 
-        return { files, folderName };
+        return { files, webRoots, folderName };
       },
     });
 
@@ -323,9 +296,9 @@ export class IPCManager {
         if (!stats_.isDirectory()) {
           throw new Error("Path is not a directory");
         }
-        const files = await scanDirectoryForImages(dirPath);
+        const { mediaFiles, webPackageRoots } = await scanDirectoryForImports(dirPath);
         const folderName = dirPath.split("/").pop() || dirPath.split("\\").pop() || dirPath;
-        return { files, folderName };
+        return { files: mediaFiles, webRoots: webPackageRoots, folderName };
       },
     });
 
@@ -384,6 +357,16 @@ export class IPCManager {
         converted.thumbnails = thumbs as unknown as typeof converted.thumbnails;
       }
 
+      if (converted.preview_path && !converted.preview_path.startsWith("atom:")) {
+        const pp = converted.preview_path;
+        if (pp.startsWith("/")) {
+          converted.preview_path = `atom://${pp.substring(1)}`;
+        } else {
+          const absolutePath = resolve(pp);
+          converted.preview_path = `atom://${absolutePath.substring(1)}`;
+        }
+      }
+
       return converted;
     });
   }
@@ -413,6 +396,13 @@ export class IPCManager {
           const image = await goDaemonClient.getImage(p?.id as number);
           return this.convertPathsToAtomProtocol([image])[0];
         }
+        case "ensure_browser_preview": {
+          const image = await goDaemonClient.ensureBrowserPreview(
+            p?.id as number,
+            p?.force as boolean | undefined,
+          );
+          return this.convertPathsToAtomProtocol([image])[0];
+        }
         case "get_image_count":
           return await goDaemonClient.getImageCount();
         case "import_images":
@@ -420,17 +410,24 @@ export class IPCManager {
             p?.paths as string[],
             p?.folder_id as number | undefined,
           );
-        case "import_web_wallpaper":
-          return await goDaemonClient.importWebWallpaper(
+        case "import_web_wallpaper": {
+          const imported = await goDaemonClient.importWebWallpaper(
             p?.path as string,
             p?.folder_id as number | undefined,
           );
+          return this.convertPathsToAtomProtocol([imported])[0];
+        }
         case "cancel_import":
           return await goDaemonClient.cancelImport(p?.batch_id as string);
         case "delete_images":
           return await goDaemonClient.deleteImages(p?.ids as number[]);
-        case "update_image":
-          return await goDaemonClient.updateImage(p?.id as number, p?.update as UpdateImageRequest);
+        case "update_image": {
+          const updated = await goDaemonClient.updateImage(
+            p?.id as number,
+            p?.update as UpdateImageRequest,
+          );
+          return this.convertPathsToAtomProtocol([updated])[0];
+        }
         case "rename_image": {
           const renamed = await goDaemonClient.renameImage(p?.id as number, p?.name as string);
           return this.convertPathsToAtomProtocol([renamed])[0];

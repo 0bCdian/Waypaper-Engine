@@ -180,8 +180,8 @@ Degraded behavior rules:
 
 ### Phase A (informational parity)
 
-- Engine monitor providers remain primary (`hyprctl`, `swaymsg`, `wlr-randr`, `xrandr`).
-- Wayland-Utani monitor topology only used for adapter-local monitor id translation.
+- Engine Wayland monitor chain: **Wayland-Utani** (control API topology) preferred, then **`wlr-randr`**; **X11**: `xrandr`. Tiling-WM CLIs (`hyprctl`, `swaymsg`) are not used.
+- Wayland-Utani topology is both the preferred monitor list (when the socket is up) and the source for adapter-local monitor id translation.
 
 Readiness:
 
@@ -199,8 +199,7 @@ Observability:
 
 ### Phase B (optional monitor source)
 
-- Engine may consume Wayland-Utani monitor data as an optional source in Wayland sessions.
-- Legacy providers remain available and default unless explicitly enabled.
+- *(Largely superseded by default engine behavior.)* Engine prefers Wayland-Utani when healthy; `wlr-randr` remains the Wayland fallback.
 
 Readiness:
 
@@ -208,7 +207,7 @@ Readiness:
 
 Rollback:
 
-- feature flag off; return to legacy-only monitor provider chain
+- n/a — fall back is generic `wlr-randr`, not compositor-specific CLIs
 
 Observability:
 
@@ -217,8 +216,8 @@ Observability:
 
 ### Phase C (preferred monitor source on Wayland)
 
-- Wayland-Utani monitor detection preferred on Wayland.
-- Legacy providers used as fallback only.
+- Wayland-Utani monitor detection preferred on Wayland when the control socket is available.
+- `wlr-randr` used as fallback on Wayland; `xrandr` on X11.
 
 Readiness:
 

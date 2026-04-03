@@ -37,6 +37,11 @@ export function MonitorComponent({ monitor, scale, selectType, monitorsList, ref
         }
       })
       .catch((err) => {
+        const msg = String(err instanceof Error ? err.message : err);
+        if (msg.includes("not found")) {
+          setWallpaperSrc(null);
+          return;
+        }
         logger.warn(`Failed to load wallpaper for ${monitor.name}:`, err);
       })
       .finally(() => {

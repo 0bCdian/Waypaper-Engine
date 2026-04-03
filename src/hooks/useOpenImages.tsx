@@ -7,6 +7,7 @@ const { openFiles, handleOpenImages, scanDirectory, goDaemon } = window.API_REND
 
 interface PendingFolderImport {
   files: string[];
+  webRoots: string[];
   folderName: string;
 }
 
@@ -26,6 +27,16 @@ interface Actions {
   cancelFolderImport: () => void;
 }
 
+async function importWebPackageRoots(roots: string[], folderID: number | undefined) {
+  for (const root of roots) {
+    try {
+      await goDaemon.importWebWallpaper(root, folderID);
+    } catch (error) {
+      logger.error("useOpenImages: import web wallpaper failed:", root, error);
+    }
+  }
+}
+
 const openImagesStore = create<State & Actions>((set, get) => ({
   isActive: false,
   pendingFolderImport: null,
@@ -41,11 +52,10 @@ const openImagesStore = create<State & Actions>((set, get) => ({
       return;
     }
 
-    const files = result.data?.files || result.files || [];
-
-    if (files.length === 0) {
-      return;
-    }
+    const data = result.data;
+    const files = data?.files ?? result.files ?? [];
+    const webRoots = data?.webRoots ?? [];
+    const pickedFolderName = data?.folderName ?? result.folderName;
 
     if (action === "web") {
       const targetPath = files[0];
@@ -59,13 +69,18 @@ const openImagesStore = create<State & Actions>((set, get) => ({
       return;
     }
 
-    if (action === "folder" && result.folderName) {
+    if (action === "folder" && pickedFolderName && (files.length > 0 || webRoots.length > 0)) {
       set({
         pendingFolderImport: {
           files,
-          folderName: result.folderName,
+          webRoots,
+          folderName: pickedFolderName,
         },
       });
+      return;
+    }
+
+    if (files.length === 0) {
       return;
     }
 
@@ -86,14 +101,15 @@ const openImagesStore = create<State & Actions>((set, get) => ({
   },
 
   importDroppedDirectory: async (dirPath: string) => {
-    let result: { files: string[]; folderName: string };
+    let result: { files: string[]; webRoots: string[]; folderName: string };
     try {
       result = await scanDirectory(dirPath);
     } catch (error) {
       logger.error("useOpenImages: scanDirectory failed for", dirPath, error);
       return;
     }
-    if (result.files.length === 0) {
+    const webRoots = result.webRoots ?? [];
+    if (result.files.length === 0 && webRoots.length === 0) {
       try {
         await goDaemon.importWebWallpaper(dirPath, useFoldersStore.getState().currentFolderId ?? undefined);
         return;
@@ -105,6 +121,7 @@ const openImagesStore = create<State & Actions>((set, get) => ({
     set({
       pendingFolderImport: {
         files: result.files,
+        webRoots,
         folderName: result.folderName,
       },
     });
@@ -116,27 +133,34 @@ const openImagesStore = create<State & Actions>((set, get) => ({
 
     set({ pendingFolderImport: null });
     const currentFolderId = useFoldersStore.getState().currentFolderId;
+    const { files, webRoots, folderName } = pending;
 
+    let targetFolderId: number | undefined;
     if (createFolder) {
       try {
-        const folder = await useFoldersStore
-          .getState()
-          .createFolder(pending.folderName, currentFolderId);
-        await handleOpenImages({
-          success: true,
-          data: { files: pending.files, folder_id: folder.id },
-        });
+        const folder = await useFoldersStore.getState().createFolder(folderName, currentFolderId);
+        targetFolderId = folder.id;
       } catch (error) {
         logger.error("useOpenImages: Error creating folder:", error);
+        return;
       }
     } else {
-      await handleOpenImages({
-        success: true,
-        data: {
-          files: pending.files,
-          folder_id: currentFolderId ?? undefined,
-        },
-      });
+      targetFolderId = currentFolderId ?? undefined;
+    }
+
+    if (files.length > 0) {
+      try {
+        await handleOpenImages({
+          success: true,
+          data: { files, folder_id: targetFolderId },
+        });
+      } catch (error) {
+        logger.error("useOpenImages: Error calling handleOpenImages:", error);
+      }
+    }
+
+    if (webRoots.length > 0) {
+      await importWebPackageRoots(webRoots, targetFolderId);
     }
   },
 

@@ -111,8 +111,7 @@ func startDaemon(configPath string, logLevel string) error {
 
 	// 7. Create monitor manager.
 	providers := []monitor.MonitorProvider{
-		monitor.NewHyprctlProvider(),
-		monitor.NewSwaymsgProvider(),
+		waylandutauri.NewMonitorProvider(cfg.Viper()),
 		monitor.NewWlrRandrProvider(),
 		monitor.NewXrandrProvider(),
 	}
@@ -190,6 +189,9 @@ func startDaemon(configPath string, logLevel string) error {
 	// 11. Create image processor and splitter.
 	processor := image.NewProcessor(db.ImageStore(), bus, cfg.GetImagesDir(), cfg.GetThumbnailsDir())
 	splitter := image.NewSplitter(cfg.GetImagesDir())
+
+	// 11a. Legacy videos: generate H.264 preview_path for codecs Chromium cannot play (async).
+	go processor.BackfillMissingVideoBrowserPreviews(context.Background())
 
 	// 11b. Clean stale processed images if the gallery is empty (e.g. after a
 	// DB wipe). Prevents cached split fragments from being served for

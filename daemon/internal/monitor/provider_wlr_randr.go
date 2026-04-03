@@ -11,8 +11,7 @@ import (
 )
 
 // wlrRandrProvider detects monitors via `wlr-randr`, a generic wlroots utility.
-// It serves as a fallback for any wlroots-based Wayland compositor that doesn't
-// have a compositor-specific tool (hyprctl, swaymsg).
+// It is the fallback when wayland-utauri's control socket is unavailable.
 //
 // wlr-randr output format (example):
 //

@@ -57,6 +57,14 @@ func (p *Processor) ImportWebWallpaper(ctx context.Context, sourcePath string, f
 		return nil, fmt.Errorf("web entry file not found: %w", err)
 	}
 
+	if strings.TrimSpace(manifest.Preview) == "" {
+		return nil, fmt.Errorf("web manifest preview is required")
+	}
+	previewSrc := filepath.Join(resolvedPath, manifest.Preview)
+	if _, err := os.Stat(previewSrc); err != nil {
+		return nil, fmt.Errorf("web preview file not found: %w", err)
+	}
+
 	if err := os.MkdirAll(p.imagesDir, 0o755); err != nil {
 		return nil, fmt.Errorf("create images dir: %w", err)
 	}
@@ -67,13 +75,7 @@ func (p *Processor) ImportWebWallpaper(ctx context.Context, sourcePath string, f
 	}
 
 	copiedEntryPath := filepath.Join(targetDir, manifest.Entry)
-	previewPath := ""
-	if strings.TrimSpace(manifest.Preview) != "" {
-		candidate := filepath.Join(targetDir, manifest.Preview)
-		if _, err := os.Stat(candidate); err == nil {
-			previewPath = candidate
-		}
-	}
+	previewPath := filepath.Join(targetDir, manifest.Preview)
 
 	checksumBytes := sha256.Sum256(manifestRaw)
 	imageName := strings.TrimSpace(manifest.Title)

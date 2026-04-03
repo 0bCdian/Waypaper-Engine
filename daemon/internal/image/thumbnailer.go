@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/chai2010/webp"
@@ -101,32 +102,120 @@ func (t *Thumbnailer) Generate(sourcePath string, imageID int, mediaType string,
 	return thumbnails, nil
 }
 
+func isRasterWebPreviewFile(path string) bool {
+	ext := strings.ToLower(filepath.Ext(path))
+	switch ext {
+	case ".mp4", ".webm", ".mkv", ".mov", ".avi":
+		return false
+	default:
+		return true
+	}
+}
+
+// videoSeekSecondsForThumbnail picks a timestamp less likely to be black / wrong vs always using 1s.
+func videoSeekSecondsForThumbnail(videoPath string) string {
+	ffprobe := resolveFFprobe()
+	if ffprobe == "" {
+		return "1"
+	}
+	cmd := exec.Command(
+		ffprobe, "-v", "error",
+		"-show_entries", "format=duration",
+		"-of", "default=noprint_wrappers=1:nokey=1",
+		videoPath,
+	)
+	out, err := cmd.Output()
+	if err != nil {
+		return "1"
+	}
+	var dur float64
+	_, _ = fmt.Sscanf(strings.TrimSpace(string(out)), "%f", &dur)
+	if dur <= 0 {
+		return "0.25"
+	}
+	if dur < 0.5 {
+		return "0"
+	}
+	if dur < 2 {
+		return fmt.Sprintf("%.3f", dur*0.2)
+	}
+	return "1"
+}
+
+// ffmpegExtractFrame writes one PNG frame from a video file and returns its path + cleanup.
+func ffmpegExtractFrame(videoPath string) (string, func(), error) {
+	tmp, err := os.CreateTemp("", "waypaper-video-thumb-*.png")
+	if err != nil {
+		return "", nil, fmt.Errorf("thumbnailer: create temp file: %w", err)
+	}
+	tmpPath := tmp.Name()
+	_ = tmp.Close()
+	seek := videoSeekSecondsForThumbnail(videoPath)
+	ffmpeg := resolveFFmpeg()
+	if ffmpeg == "" {
+		return "", nil, fmt.Errorf("thumbnailer: ffmpeg not found in PATH or standard locations")
+	}
+	cmd := exec.Command(
+		ffmpeg,
+		"-hide_banner",
+		"-loglevel", "error",
+		"-y",
+		"-ss", seek,
+		"-i", videoPath,
+		"-frames:v", "1",
+		tmpPath,
+	)
+	if err := cmd.Run(); err != nil {
+		_ = os.Remove(tmpPath)
+		return "", nil, fmt.Errorf("thumbnailer: ffmpeg frame extract failed: %w", err)
+	}
+	return tmpPath, func() { _ = os.Remove(tmpPath) }, nil
+}
+
+// WriteBrowserVideoPreview transcodes the file to H.264/AAC-less MP4 for Chromium/Electron
+// gallery preview when the source codec is not reliably playable (e.g. HEVC on Linux).
+func (t *Thumbnailer) WriteBrowserVideoPreview(sourcePath string, imageID int) (string, error) {
+	dir := filepath.Join(t.thumbnailsDir, "video_preview")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", fmt.Errorf("thumbnailer: video_preview dir: %w", err)
+	}
+	outPath := filepath.Join(dir, fmt.Sprintf("%d.mp4", imageID))
+	_ = os.Remove(outPath)
+	ffmpeg := resolveFFmpeg()
+	if ffmpeg == "" {
+		return "", fmt.Errorf("thumbnailer: ffmpeg not found in PATH or standard locations")
+	}
+	cmd := exec.Command(
+		ffmpeg,
+		"-hide_banner",
+		"-loglevel", "error",
+		"-y",
+		"-i", sourcePath,
+		"-an",
+		"-c:v", "libx264",
+		"-preset", "veryfast",
+		"-crf", "26",
+		"-pix_fmt", "yuv420p",
+		"-movflags", "+faststart",
+		"-vf", "scale=min(1920\\,iw):-2",
+		outPath,
+	)
+	if err := cmd.Run(); err != nil {
+		return "", fmt.Errorf("thumbnailer: browser preview transcode: %w", err)
+	}
+	return outPath, nil
+}
+
 func (t *Thumbnailer) prepareThumbnailSource(sourcePath, mediaType, previewPath string) (string, func(), error) {
 	switch mediaType {
 	case "video":
-		tmp, err := os.CreateTemp("", "waypaper-video-thumb-*.png")
-		if err != nil {
-			return "", nil, fmt.Errorf("thumbnailer: create temp file: %w", err)
-		}
-		tmpPath := tmp.Name()
-		_ = tmp.Close()
-		cmd := exec.Command(
-			"ffmpeg",
-			"-hide_banner",
-			"-loglevel", "error",
-			"-y",
-			"-ss", "1",
-			"-i", sourcePath,
-			"-frames:v", "1",
-			tmpPath,
-		)
-		if err := cmd.Run(); err != nil {
-			return "", nil, fmt.Errorf("thumbnailer: ffmpeg frame extract failed: %w", err)
-		}
-		return tmpPath, func() { _ = os.Remove(tmpPath) }, nil
+		return ffmpegExtractFrame(sourcePath)
 	case "web":
 		if previewPath != "" {
 			if _, err := os.Stat(previewPath); err == nil {
+				if !isRasterWebPreviewFile(previewPath) {
+					return ffmpegExtractFrame(previewPath)
+				}
 				return previewPath, nil, nil
 			}
 		}

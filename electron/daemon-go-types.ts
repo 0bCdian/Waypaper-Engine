@@ -277,7 +277,6 @@ export interface FehConfig {
 
 export interface HyprpaperConfig {
   fit_mode: string;
-  use_ipc: boolean;
   config_path: string;
 }
 
@@ -360,6 +359,9 @@ export interface DaemonInfo {
 
 export interface HealthResponse {
   status: "ok";
+  /** Present on daemons built with monitor stack v2+ (see handler/health.go). */
+  monitor_stack_version?: number;
+  monitor_provider_order?: string[];
 }
 
 // ============================================================================

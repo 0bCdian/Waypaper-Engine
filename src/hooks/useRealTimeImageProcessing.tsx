@@ -134,6 +134,15 @@ export function useRealTimeImageProcessing() {
     const disposeCancelled = goDaemon.on("processing_cancelled", handleProcessingCancelled);
     const disposeUpdated = goDaemon.on("images_updated", handleImagesUpdated);
 
+    // Video preview backfill (and similar async daemon work) may finish before this hook
+    // registers images_updated, so the SSE event is missed and the gallery stays stale.
+    // One deferred refetch catches persisted preview_path without relying on event ordering.
+    const backfillCatchupId = window.setTimeout(() => {
+      startTransition(() => {
+        useImagesStore.getState().reQueryImages();
+      });
+    }, 2800);
+
     cleanupRef.current = () => {
       try {
         disposeStarted();
@@ -148,6 +157,7 @@ export function useRealTimeImageProcessing() {
     };
 
     return () => {
+      clearTimeout(backfillCatchupId);
       if (reQueryTimeoutRef.current) {
         clearTimeout(reQueryTimeoutRef.current);
         reQueryTimeoutRef.current = null;

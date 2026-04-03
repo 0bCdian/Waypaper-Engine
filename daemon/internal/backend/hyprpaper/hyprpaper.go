@@ -21,10 +21,7 @@ import (
 )
 
 // Hyprpaper implements backend.Backend for the hyprpaper wallpaper daemon.
-// Supports two wallpaper-setting strategies controlled by the use_ipc config:
-//   - IPC mode (hyprctl hyprpaper wallpaper) -- requires hyprpaper > 0.8.3
-//     with the fix for hyprwm/hyprpaper#333 (PR #335).
-//   - Config-file mode (write hyprpaper.conf + restart) -- works with any version.
+// It writes hyprpaper.conf and restarts the daemon (compatible with all hyprpaper versions).
 type Hyprpaper struct {
 	v       *viper.Viper
 	process *os.Process
@@ -40,15 +37,8 @@ var _ backend.Backend = (*Hyprpaper)(nil)
 func (h *Hyprpaper) Name() string { return "hyprpaper" }
 
 func (h *Hyprpaper) IsAvailable() bool {
-	if _, err := exec.LookPath("hyprpaper"); err != nil {
-		return false
-	}
-	if h.loadConfigFromViper().UseIPC {
-		if _, err := exec.LookPath("hyprctl"); err != nil {
-			return false
-		}
-	}
-	return true
+	_, err := exec.LookPath("hyprpaper")
+	return err == nil
 }
 
 func (h *Hyprpaper) Capabilities() backend.Capabilities {
@@ -113,59 +103,7 @@ func (h *Hyprpaper) startDaemon() error {
 }
 
 // ---------------------------------------------------------------------------
-// IPC mode helpers (hyprctl hyprpaper wallpaper)
-// Requires hyprpaper >= post-0.8.3 with hyprwm/hyprpaper#335
-// ---------------------------------------------------------------------------
-
-func isIPCReady(ctx context.Context) bool {
-	if !isProcessRunning() {
-		return false
-	}
-	out, _ := exec.CommandContext(ctx, "hyprctl", "hyprpaper", "wallpaper", ", /dev/null, cover").CombinedOutput()
-	s := strings.ToLower(string(out))
-	return !strings.Contains(s, "unknown") &&
-		!strings.Contains(s, "failed to connect") &&
-		!strings.Contains(s, "can't send")
-}
-
-func (h *Hyprpaper) setWallpaperIPC(ctx context.Context, req backend.WallpaperRequest, fitMode string) error {
-	for _, mon := range req.Monitors {
-		arg := fmt.Sprintf("%s, %s, %s", mon.Name, req.ImagePath, fitMode)
-		out, err := exec.CommandContext(ctx, "hyprctl", "hyprpaper", "wallpaper", arg).CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("hyprpaper wallpaper %s: %w (output: %s)", mon.Name, err, strings.TrimSpace(string(out)))
-		}
-	}
-	return nil
-}
-
-func (h *Hyprpaper) initializeIPC(ctx context.Context) error {
-	if isIPCReady(ctx) {
-		slog.Info("hyprpaper already running")
-		return nil
-	}
-
-	slog.Info("starting hyprpaper")
-	if err := h.startDaemon(); err != nil {
-		return err
-	}
-
-	for i := range 30 {
-		if isIPCReady(ctx) {
-			slog.Info("hyprpaper ready", "attempts", i+1)
-			return nil
-		}
-		time.Sleep(100 * time.Millisecond)
-	}
-
-	slog.Warn("hyprpaper started but may not be ready yet")
-	return nil
-}
-
-// ---------------------------------------------------------------------------
-// Config-file mode helpers (write conf + restart)
-// Workaround for hyprpaper <=0.8.3 where IPC wallpaper commands are
-// accepted but never rendered (hyprwm/hyprpaper#333).
+// Config-file mode (write conf + restart)
 // ---------------------------------------------------------------------------
 
 func configPath(override string) string {
@@ -237,9 +175,6 @@ func (h *Hyprpaper) initializeConfig(ctx context.Context) error {
 // ---------------------------------------------------------------------------
 
 func (h *Hyprpaper) Initialize(ctx context.Context) error {
-	if h.loadConfigFromViper().UseIPC {
-		return h.initializeIPC(ctx)
-	}
 	return h.initializeConfig(ctx)
 }
 
@@ -263,16 +198,12 @@ func (h *Hyprpaper) SetWallpaper(ctx context.Context, req backend.WallpaperReque
 		fitMode = string(FitCover)
 	}
 
-	if cfg.UseIPC {
-		return h.setWallpaperIPC(ctx, req, fitMode)
-	}
 	return h.setWallpaperConfig(ctx, req, fitMode, cfg.ConfigPath)
 }
 
 func (h *Hyprpaper) RegisterDefaults(v *viper.Viper) {
 	h.v = v
 	v.SetDefault("backend.hyprpaper.fit_mode", string(FitCover))
-	v.SetDefault("backend.hyprpaper.use_ipc", false)
 	v.SetDefault("backend.hyprpaper.config_path", "")
 }
 
@@ -282,7 +213,6 @@ func (h *Hyprpaper) loadConfigFromViper() *Config {
 	}
 	return &Config{
 		FitMode:    FitMode(h.v.GetString("backend.hyprpaper.fit_mode")),
-		UseIPC:     h.v.GetBool("backend.hyprpaper.use_ipc"),
 		ConfigPath: h.v.GetString("backend.hyprpaper.config_path"),
 	}
 }

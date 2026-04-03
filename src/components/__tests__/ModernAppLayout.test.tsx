@@ -46,6 +46,10 @@ vi.mock("../../stores/designSystemStore", () => ({
   useDesignSystemStore: (selector: Function) => selector({ syncToDOM: mockSyncToDOM }),
 }));
 
+vi.mock("../../stores/foldersStore", () => ({
+  useFoldersStore: { getState: () => ({ currentFolderId: null as number | null }) },
+}));
+
 import { ModernAppLayout, DRAWER_CHECKBOX_ID } from "../layout/ModernAppLayout";
 
 beforeEach(() => {

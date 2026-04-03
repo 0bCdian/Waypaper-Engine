@@ -9,6 +9,7 @@ let mockImagesState = {
   filters: {
     order: "desc",
     type: "id",
+    mediaType: "all" as "all" | "image" | "video" | "web" | "gif",
     searchString: "",
     tags: [],
     advancedFilters: {
@@ -69,6 +70,7 @@ beforeEach(() => {
     filters: {
       order: "desc",
       type: "id",
+      mediaType: "all",
       searchString: "",
       tags: [],
       advancedFilters: {
@@ -119,6 +121,24 @@ describe("Gallery", () => {
 
     render(<Gallery />);
 
+    expect(screen.getByTestId("paginated-gallery")).toBeInTheDocument();
+    expect(screen.queryByTestId("add-images-card")).not.toBeInTheDocument();
+  });
+
+  it("renders gallery with Filters when media type filter matches nothing", () => {
+    mockImagesState = {
+      ...mockImagesState,
+      isEmpty: true,
+      isQueried: true,
+      filters: {
+        ...mockImagesState.filters,
+        mediaType: "web",
+      },
+    };
+
+    render(<Gallery />);
+
+    expect(screen.getByTestId("filters")).toBeInTheDocument();
     expect(screen.getByTestId("paginated-gallery")).toBeInTheDocument();
     expect(screen.queryByTestId("add-images-card")).not.toBeInTheDocument();
   });

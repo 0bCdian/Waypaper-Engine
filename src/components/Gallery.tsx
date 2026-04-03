@@ -31,6 +31,8 @@ function Gallery() {
 
   const hasActiveFilters =
     filters.searchString !== "" ||
+    filters.mediaType !== "all" ||
+    filters.tags.length > 0 ||
     filters.advancedFilters.formats.length < 10 ||
     filters.advancedFilters.resolution.constraint !== "all" ||
     (filters.advancedFilters.colors?.length ?? 0) > 0;

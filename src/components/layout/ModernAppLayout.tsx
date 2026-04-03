@@ -15,6 +15,7 @@ import { useSettingsStore } from "../../stores/settingsStore";
 import { useDesignSystemStore } from "../../stores/designSystemStore";
 import { UrlImportWarningModal } from "../UrlImportWarningModal";
 import openImagesStore from "../../hooks/useOpenImages";
+import { useFoldersStore } from "../../stores/foldersStore";
 import { logger } from "../../utils/logger";
 
 const IMAGE_EXTENSIONS = new Set([
@@ -28,6 +29,33 @@ const IMAGE_EXTENSIONS = new Set([
   ".tiff",
   ".tif",
 ]);
+
+const VIDEO_EXTENSIONS = new Set([".mp4", ".webm", ".mkv", ".avi", ".mov"]);
+
+function fileBasename(filePath: string): string {
+  const i = Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\"));
+  return i >= 0 ? filePath.slice(i + 1) : filePath;
+}
+
+function classifyDroppedPath(
+  filePath: string,
+  mediaOut: string[],
+  manifestOut: string[],
+  otherOut: string[],
+): void {
+  const base = fileBasename(filePath).toLowerCase();
+  if (base === "waypaper.json" || base === "project.json") {
+    manifestOut.push(filePath);
+    return;
+  }
+  const dot = filePath.lastIndexOf(".");
+  const ext = dot >= 0 ? filePath.slice(dot).toLowerCase() : "";
+  if (IMAGE_EXTENSIONS.has(ext) || VIDEO_EXTENSIONS.has(ext)) {
+    mediaOut.push(filePath);
+    return;
+  }
+  otherOut.push(filePath);
+}
 
 export const DRAWER_CHECKBOX_ID = "sidebar-drawer";
 
@@ -103,7 +131,8 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({ children, clas
     const uriList = e.dataTransfer.getData("text/uri-list");
     const textPlain = e.dataTransfer.getData("text/plain");
 
-    const imagePaths: string[] = [];
+    const mediaPaths: string[] = [];
+    const manifestPaths: string[] = [];
     const otherPaths: string[] = [];
     for (let i = 0; i < (files?.length ?? 0); i++) {
       const file = files[i];
@@ -114,17 +143,12 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({ children, clas
         /* not available */
       }
       if (!filePath) continue;
-      const ext = filePath.slice(filePath.lastIndexOf(".")).toLowerCase();
-      if (IMAGE_EXTENSIONS.has(ext)) {
-        imagePaths.push(filePath);
-      } else {
-        otherPaths.push(filePath);
-      }
+      classifyDroppedPath(filePath, mediaPaths, manifestPaths, otherPaths);
     }
 
     // Fallback for Linux file managers (Nautilus/GTK) that deliver
     // dropped files as file:// URIs instead of populating dataTransfer.files.
-    if (imagePaths.length === 0 && otherPaths.length === 0) {
+    if (mediaPaths.length === 0 && manifestPaths.length === 0 && otherPaths.length === 0) {
       const rawUri = uriList || textPlain || "";
       const fileUris = rawUri
         .split(/\r?\n/)
@@ -133,27 +157,28 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({ children, clas
 
       for (const uri of fileUris) {
         const fsPath = decodeURIComponent(uri.replace(/^file:\/\//, ""));
-        const ext = fsPath.slice(fsPath.lastIndexOf(".")).toLowerCase();
-        if (IMAGE_EXTENSIONS.has(ext)) {
-          imagePaths.push(fsPath);
-        } else {
-          otherPaths.push(fsPath);
-        }
+        classifyDroppedPath(fsPath, mediaPaths, manifestPaths, otherPaths);
       }
     }
 
-    if (imagePaths.length > 0) {
-      void window.API_RENDERER.goDaemon.importImages(imagePaths);
+    const folderId = useFoldersStore.getState().currentFolderId ?? undefined;
+    if (manifestPaths.length > 0) {
+      for (const p of manifestPaths) {
+        void window.API_RENDERER.goDaemon.importWebWallpaper(p, folderId);
+      }
     }
-
+    if (mediaPaths.length > 0) {
+      void window.API_RENDERER.goDaemon.importImages(mediaPaths);
+    }
     if (otherPaths.length > 0) {
-      for (const dirPath of otherPaths) {
-        void openImagesStore.getState().importDroppedDirectory(dirPath);
+      for (const p of otherPaths) {
+        void openImagesStore.getState().importDroppedDirectory(p);
       }
+    }
+
+    if (manifestPaths.length > 0 || mediaPaths.length > 0 || otherPaths.length > 0) {
       return;
     }
-
-    if (imagePaths.length > 0) return;
 
     const rawUrl = uriList || textPlain || "";
     const urls = rawUrl

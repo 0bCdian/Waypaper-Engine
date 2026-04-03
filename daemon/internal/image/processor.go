@@ -69,6 +69,123 @@ func NewProcessor(imageStore store.ImageStore, bus events.Bus, imagesDir string,
 	}
 }
 
+// BackfillMissingVideoBrowserPreviews walks existing video rows with no preview_path,
+// ffprobes each file, and transcodes to H.264 when the codec is not reliably playable
+// in Chromium (e.g. HEVC). Idempotent: skips rows that already have preview_path set.
+func (p *Processor) BackfillMissingVideoBrowserPreviews(ctx context.Context) {
+	if resolveFFmpeg() == "" {
+		slog.Warn("video preview backfill skipped: ffmpeg not found (PATH and standard locations)")
+		return
+	}
+	wrotePreview := false
+	defer func() {
+		if !wrotePreview {
+			return
+		}
+		p.bus.Publish(events.Event{
+			Type: events.ImagesUpdated,
+			Data: map[string]any{"action": "video_preview_backfill"},
+		})
+	}()
+
+	page := 1
+	for {
+		if ctx.Err() != nil {
+			return
+		}
+		res, err := p.imageStore.GetAll(ctx, store.ImageQueryOpts{
+			Page:      page,
+			PerPage:   200,
+			MediaType: "video",
+			SortBy:    "imported_at",
+			SortOrder: "asc",
+		})
+		if err != nil {
+			slog.Warn("video preview backfill: list failed", "error", err)
+			return
+		}
+		if len(res.Data) == 0 {
+			return
+		}
+		for _, img := range res.Data {
+			if img.PreviewPath != "" {
+				continue
+			}
+			if _, err := os.Stat(img.Path); err != nil {
+				continue
+			}
+			meta, err := probeVideo(img.Path)
+			if err != nil {
+				slog.Debug("video preview backfill: probe failed", "image_id", img.ID, "error", err)
+				continue
+			}
+			if strings.TrimSpace(meta.CodecName) == "" {
+				slog.Debug("video preview backfill: empty codec_name, skipping", "image_id", img.ID)
+				continue
+			}
+			if !meta.NeedsBrowserPreview {
+				continue
+			}
+			ppath, err := p.thumbnailer.WriteBrowserVideoPreview(img.Path, img.ID)
+			if err != nil {
+				slog.Warn("video preview backfill: transcode failed", "image_id", img.ID, "codec", meta.CodecName, "error", err)
+				continue
+			}
+			if _, err := p.imageStore.Update(ctx, img.ID, map[string]any{"preview_path": ppath}); err != nil {
+				slog.Warn("video preview backfill: persist failed", "image_id", img.ID, "error", err)
+				continue
+			}
+			wrotePreview = true
+			slog.Info("video preview backfill: wrote H.264 browser proxy", "image_id", img.ID, "codec", meta.CodecName)
+		}
+		if res.Pagination.TotalPages == 0 || page >= res.Pagination.TotalPages {
+			return
+		}
+		page++
+	}
+}
+
+// EnsureBrowserVideoPreview writes an H.264 browser proxy when preview_path is empty
+// and ffprobe reports Chromium needs it, or when force is true (e.g. after <video> decode error).
+func (p *Processor) EnsureBrowserVideoPreview(ctx context.Context, id int, force bool) (*store.Image, error) {
+	img, err := p.imageStore.GetByID(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+	if img.MediaType != "video" {
+		return nil, fmt.Errorf("not a video")
+	}
+	if strings.TrimSpace(img.PreviewPath) != "" {
+		return img, nil
+	}
+	if _, err := os.Stat(img.Path); err != nil {
+		return nil, fmt.Errorf("source file missing: %w", err)
+	}
+	if resolveFFmpeg() == "" {
+		return nil, fmt.Errorf("ffmpeg not available")
+	}
+	meta, err := probeVideo(img.Path)
+	if err != nil {
+		return nil, fmt.Errorf("probe: %w", err)
+	}
+	if !force && !meta.NeedsBrowserPreview {
+		return nil, fmt.Errorf("browser preview not required")
+	}
+	ppath, err := p.thumbnailer.WriteBrowserVideoPreview(img.Path, img.ID)
+	if err != nil {
+		return nil, err
+	}
+	updated, err := p.imageStore.Update(ctx, img.ID, map[string]any{"preview_path": ppath})
+	if err != nil {
+		return nil, err
+	}
+	p.bus.Publish(events.Event{
+		Type: events.ImagesUpdated,
+		Data: map[string]any{"action": "ensure_browser_preview", "image_id": id},
+	})
+	return updated, nil
+}
+
 // CancelBatch cancels a running batch import. Returns true if the batch was
 // found and cancelled, false if the batch ID was not active.
 func (p *Processor) CancelBatch(batchID string) bool {
@@ -308,6 +425,25 @@ func (p *Processor) processBatchSync(ctx context.Context, paths []string, batchI
 			}
 			img := &created[i]
 
+			if img.MediaType == "video" {
+				meta, probeErr := probeVideo(img.Path)
+				if probeErr != nil {
+					slog.Warn("video codec probe failed, skipping browser preview transcode",
+						"image_id", img.ID, "error", probeErr)
+				} else if meta.NeedsBrowserPreview {
+					ppath, transErr := p.thumbnailer.WriteBrowserVideoPreview(img.Path, img.ID)
+					if transErr != nil {
+						slog.Warn("browser video preview transcode failed",
+							"image_id", img.ID, "codec", meta.CodecName, "error", transErr)
+					} else {
+						img.PreviewPath = ppath
+						if _, upErr := p.imageStore.Update(tgctx, img.ID, map[string]any{"preview_path": ppath}); upErr != nil {
+							slog.Warn("persist video preview path failed", "image_id", img.ID, "error", upErr)
+						}
+					}
+				}
+			}
+
 			thumbnails, err := p.thumbnailer.Generate(img.Path, img.ID, img.MediaType, img.PreviewPath)
 			if err != nil {
 				slog.Warn("thumbnail generation failed, continuing without thumbnails",
@@ -411,12 +547,12 @@ func (p *Processor) preProcessOne(sourcePath, destPath, name, ext, format string
 
 	r.mediaType = mediaTypeForExt(ext, format)
 	if r.mediaType == "video" {
-		if _, err := exec.LookPath("ffmpeg"); err != nil {
-			r.err = fmt.Errorf("video import requires ffmpeg in PATH")
+		if resolveFFmpeg() == "" {
+			r.err = fmt.Errorf("video import requires ffmpeg (install ffmpeg or ensure it is in PATH)")
 			return r
 		}
-		if _, err := exec.LookPath("ffprobe"); err != nil {
-			r.err = fmt.Errorf("video import requires ffprobe in PATH")
+		if resolveFFprobe() == "" {
+			r.err = fmt.Errorf("video import requires ffprobe (install ffmpeg or ensure it is in PATH)")
 			return r
 		}
 		meta, err := probeVideo(sourcePath)
@@ -471,15 +607,50 @@ func isVideoExtension(ext string) bool {
 }
 
 type probedVideo struct {
-	Width    int
-	Height   int
-	Duration float64
-	HasAudio bool
+	Width     int
+	Height    int
+	Duration  float64
+	HasAudio  bool
+	CodecName string
+	// Profile of the primary (largest-area) video stream from ffprobe (e.g. "Main", "Constrained Baseline").
+	Profile string
+	// NeedsBrowserPreview is true if any video stream needs an H.264 proxy for Chromium
+	// (not only the primary/largest stream — multi-track MP4s may mix H.264 + HEVC).
+	NeedsBrowserPreview bool
+}
+
+// needsBrowserVideoPreviewTranscode is true when the Electron/Chromium <video> tag
+// often cannot decode the source (HEVC on Linux, etc.); we serve an H.264 proxy in preview_path.
+func needsBrowserVideoPreviewTranscode(codec string) bool {
+	switch strings.ToLower(strings.TrimSpace(codec)) {
+	case "h264", "avc1", "avc", "vp8", "vp9":
+		return false
+	default:
+		return true
+	}
+}
+
+// h264Baseline4KChromiumIssue: Chromium/Electron often fails <video> decode (MEDIA_ERR_SRC_NOT_SUPPORTED)
+// for H.264 Constrained Baseline at 4K even though ffprobe reports a "normal" h264 stream. A scaled
+// libx264 Main proxy matches what luna-style encodes play reliably.
+func h264Baseline4KChromiumIssue(codec, profile string, width, height int) bool {
+	if strings.ToLower(strings.TrimSpace(codec)) != "h264" {
+		return false
+	}
+	if width < 1920 && height < 1080 {
+		return false
+	}
+	p := strings.ToLower(strings.TrimSpace(profile))
+	return strings.Contains(p, "baseline") || strings.Contains(p, "constrained")
 }
 
 func probeVideo(path string) (probedVideo, error) {
+	ffprobe := resolveFFprobe()
+	if ffprobe == "" {
+		return probedVideo{}, fmt.Errorf("ffprobe not found in PATH or standard locations")
+	}
 	cmd := exec.Command(
-		"ffprobe",
+		ffprobe,
 		"-v", "error",
 		"-print_format", "json",
 		"-show_format",
@@ -494,6 +665,8 @@ func probeVideo(path string) (probedVideo, error) {
 	var parsed struct {
 		Streams []struct {
 			CodecType string `json:"codec_type"`
+			CodecName string `json:"codec_name"`
+			Profile   string `json:"profile"`
 			Width     int    `json:"width"`
 			Height    int    `json:"height"`
 		} `json:"streams"`
@@ -505,14 +678,40 @@ func probeVideo(path string) (probedVideo, error) {
 		return probedVideo{}, fmt.Errorf("decode ffprobe output: %w", err)
 	}
 
+	// Use the largest video stream by pixel area for codec/dimensions. Some MP4s list a
+	// small embedded preview/cover track (often H.264) before the main feature (e.g. HEVC);
+	// taking only the first stream made needsBrowserVideoPreviewTranscode false and skipped
+	// generating preview_path while Chromium still decoded the main unsupported codec.
 	result := probedVideo{}
+	bestArea := -1
 	for _, s := range parsed.Streams {
-		if s.CodecType == "video" && result.Width == 0 && result.Height == 0 {
-			result.Width = s.Width
-			result.Height = s.Height
+		if s.CodecType == "video" {
+			area := s.Width * s.Height
+			if area > bestArea {
+				bestArea = area
+				result.CodecName = s.CodecName
+				result.Profile = s.Profile
+				result.Width = s.Width
+				result.Height = s.Height
+			}
 		}
 		if s.CodecType == "audio" {
 			result.HasAudio = true
+		}
+	}
+	if bestArea <= 0 {
+		for _, s := range parsed.Streams {
+			if s.CodecType != "video" {
+				continue
+			}
+			if s.CodecName != "" && result.CodecName == "" {
+				result.CodecName = s.CodecName
+				result.Profile = s.Profile
+			}
+			if result.Width == 0 && result.Height == 0 && s.Width > 0 && s.Height > 0 {
+				result.Width = s.Width
+				result.Height = s.Height
+			}
 		}
 	}
 	if parsed.Format.Duration != "" {
@@ -522,6 +721,18 @@ func probeVideo(path string) (probedVideo, error) {
 	}
 	if result.Width == 0 || result.Height == 0 {
 		return probedVideo{}, fmt.Errorf("video stream dimensions not found")
+	}
+	for _, s := range parsed.Streams {
+		if s.CodecType != "video" || strings.TrimSpace(s.CodecName) == "" {
+			continue
+		}
+		if needsBrowserVideoPreviewTranscode(s.CodecName) {
+			result.NeedsBrowserPreview = true
+			break
+		}
+	}
+	if !result.NeedsBrowserPreview {
+		result.NeedsBrowserPreview = h264Baseline4KChromiumIssue(result.CodecName, result.Profile, result.Width, result.Height)
 	}
 	return result, nil
 }

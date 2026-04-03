@@ -12,7 +12,6 @@ const (
 
 // Config holds all hyprpaper-specific configuration.
 type Config struct {
-	FitMode    FitMode `mapstructure:"fit_mode"    json:"fit_mode"`
-	UseIPC     bool    `mapstructure:"use_ipc"     json:"use_ipc"`
+	FitMode    FitMode `mapstructure:"fit_mode"      json:"fit_mode"`
 	ConfigPath string  `mapstructure:"config_path" json:"config_path"`
 }

@@ -2,7 +2,7 @@
 //
 // Monitor detection is compositor-specific (Wayland vs X11). The MonitorProvider
 // interface abstracts this — multiple providers can exist for the same compositor
-// (e.g. hyprctl for Hyprland, swaymsg for Sway, wlr-randr as generic fallback).
+// (e.g. wayland-utauri control API, wlr-randr on wlroots).
 // The MonitorManager auto-selects the best available provider at startup.
 package monitor
 
@@ -60,7 +60,7 @@ type Monitor struct {
 
 // parseTransform converts a compositor transform string (e.g. "normal", "90",
 // "flipped-180") to the integer code used in Monitor.Transform.
-// Shared by swaymsg and wlr-randr providers.
+// Shared by wlr-randr and other text-based compositor outputs.
 func parseTransform(s string) int {
 	switch s {
 	case "normal":

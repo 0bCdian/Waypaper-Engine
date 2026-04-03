@@ -42,6 +42,8 @@ const electronAPI = {
 
     getImage: (id: number): Promise<Image> =>
       ipcRenderer.invoke("go-daemon-command", "get_image", { id }),
+    ensureBrowserPreview: (id: number, force?: boolean): Promise<Image> =>
+      ipcRenderer.invoke("go-daemon-command", "ensure_browser_preview", { id, force }),
 
     getImageCount: (): Promise<{ count: number }> =>
       ipcRenderer.invoke("go-daemon-command", "get_image_count"),
@@ -375,13 +377,15 @@ const electronAPI = {
   openFiles: (action: "file" | "folder" | "video" | "web") =>
     ipcRenderer.invoke("openFiles", action),
 
-  scanDirectory: (dirPath: string): Promise<{ files: string[]; folderName: string }> =>
+  scanDirectory: (
+    dirPath: string,
+  ): Promise<{ files: string[]; webRoots: string[]; folderName: string }> =>
     ipcRenderer
       .invoke("scan-directory", dirPath)
       .then(
         (r: {
           success: boolean;
-          data: { files: string[]; folderName: string };
+          data: { files: string[]; webRoots: string[]; folderName: string };
           error?: string;
         }) => {
           if (!r.success) throw new Error(r.error ?? "Directory scan failed");

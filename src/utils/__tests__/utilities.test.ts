@@ -70,6 +70,22 @@ describe("getThumbnailSrc", () => {
     };
     expect(getThumbnailSrc(img)).toBe("/animated.gif");
   });
+
+  it("returns empty string for web wallpapers when thumbnails missing (path is HTML)", () => {
+    const img = {
+      thumbnails: {
+        default: "",
+        "720p": "",
+        "1080p": "",
+        "1440p": "",
+        "4k": "",
+      },
+      path: "atom://pkg/index.html",
+      media_type: "web",
+      format: "html",
+    };
+    expect(getThumbnailSrc(img)).toBe("");
+  });
 });
 
 describe("toSeconds", () => {

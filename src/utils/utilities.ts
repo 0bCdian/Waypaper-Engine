@@ -11,7 +11,17 @@ export function getThumbnailSrc(
     const val = image.thumbnails?.[preferredSize]?.trim();
     if (val) return val;
   }
-  return image.thumbnails?.default?.trim() || image.thumbnails?.["720p"]?.trim() || image.path;
+  const sized =
+    image.thumbnails?.default?.trim() ||
+    image.thumbnails?.["720p"]?.trim() ||
+    image.thumbnails?.["1080p"]?.trim() ||
+    "";
+  if (sized) return sized;
+  // Web entries use path → HTML; never use as <img src> (e.g. drag overlay, playlist strip).
+  if (image.media_type === "web") {
+    return "";
+  }
+  return image.path;
 }
 
 export function toSeconds(hours: number, minutes: number) {

@@ -160,6 +160,10 @@ func (s *imageStore) Create(_ context.Context, images []Image) ([]Image, error) 
 		doc.Set("source_path", img.SourcePath)
 		doc.Set("is_selected", img.IsSelected)
 		doc.Set("thumbnails", img.Thumbnails)
+		doc.Set("preview_path", img.PreviewPath)
+		if img.WebMeta != nil {
+			doc.Set("web_meta", jsonValue(img.WebMeta))
+		}
 		if img.FolderID != nil {
 			doc.Set("folder_id", *img.FolderID)
 		}

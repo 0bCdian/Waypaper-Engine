@@ -20,7 +20,14 @@ func TestHealthHandler_Healthz(t *testing.T) {
 	h.Healthz(w, r)
 
 	assert.Equal(t, http.StatusOK, w.Code)
-	assert.JSONEq(t, `{"status":"ok"}`, w.Body.String())
+	var body map[string]any
+	require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+	assert.Equal(t, "ok", body["status"])
+	assert.EqualValues(t, MonitorStackVersion, body["monitor_stack_version"])
+	order, ok := body["monitor_provider_order"].([]any)
+	require.True(t, ok)
+	require.GreaterOrEqual(t, len(order), 1)
+	assert.Equal(t, "wayland-utauri", order[0])
 }
 
 func TestHealthHandler_Info(t *testing.T) {

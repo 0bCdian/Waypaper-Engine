@@ -25,6 +25,7 @@ export function createMockAPI(): Window["API_RENDERER"] {
         },
       }),
       getImage: vi.fn().mockResolvedValue(null),
+      ensureBrowserPreview: vi.fn().mockResolvedValue(null),
       getImageCount: vi.fn().mockResolvedValue({ count: 0 }),
       importImages: vi.fn().mockResolvedValue({ status: "processing", total: 0 }),
       importWebWallpaper: vi.fn().mockResolvedValue(null),
@@ -161,8 +162,8 @@ export function createMockAPI(): Window["API_RENDERER"] {
 
     getPathForFile: vi.fn().mockReturnValue(""),
     downloadUrl: vi.fn().mockResolvedValue(""),
-    openFiles: vi.fn().mockResolvedValue({ success: true, data: { files: [] } }),
-    scanDirectory: vi.fn().mockResolvedValue({ files: [], folderName: "" }),
+    openFiles: vi.fn().mockResolvedValue({ success: true, data: { files: [], webRoots: [] } }),
+    scanDirectory: vi.fn().mockResolvedValue({ files: [], webRoots: [], folderName: "" }),
     handleOpenImages: vi.fn().mockResolvedValue({ success: true }),
     revealInFileManager: vi.fn().mockResolvedValue({ success: true }),
 

@@ -48,6 +48,7 @@ func NewRouter(h Handlers, bus events.Bus) *chi.Mux {
 		r.Delete("/history", h.Wallpaper.ClearHistory)
 		r.Post("/cancel-import", h.Images.CancelImport)
 		r.Post("/select-all", h.Images.SelectAll)
+		r.Post("/{id}/ensure-browser-preview", h.Images.EnsureBrowserPreview)
 		r.Get("/{id}", h.Images.Get)
 		r.Patch("/{id}", h.Images.Update)
 		r.Post("/{id}/rename", h.Images.RenameImage)

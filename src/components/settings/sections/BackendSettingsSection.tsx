@@ -217,12 +217,6 @@ const hyprpaperDisplayFields: Field[] = [
 
 const hyprpaperAdvancedFields: Field[] = [
   {
-    key: "hyprpaper.use_ipc",
-    label: "Use IPC Mode",
-    description: "Use hyprctl IPC instead of config-file restart (requires hyprpaper > 0.8.3)",
-    type: "checkbox",
-  },
-  {
     key: "hyprpaper.config_path",
     label: "Config Path Override",
     description:

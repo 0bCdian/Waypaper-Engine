@@ -1,9 +1,10 @@
-import { useCallback, useId, useMemo, useRef, useState } from "react";
-import type { ChangeEvent } from "react";
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import type { ChangeEvent, SyntheticEvent } from "react";
 import { isHotkeyPressed } from "react-hotkeys-hook";
 import { useShallow } from "zustand/react/shallow";
 import { useDraggable } from "@dnd-kit/react";
 import { useImagesStore } from "../stores/images";
+import type { rendererImage } from "../types/rendererTypes";
 import { useMonitorStore } from "../stores/monitors";
 import { usePlaylistStore } from "../stores/playlist";
 import { useDesignSystemStore } from "../stores/designSystemStore";
@@ -11,9 +12,10 @@ import { useImageDetailStore } from "../stores/imageDetailStore";
 import { useContextMenuStore } from "../stores/contextMenuStore";
 import { useToastStore } from "../stores/toastStore";
 import { buildImageMenuItems } from "../utils/contextMenuItems";
+import { webPreviewPlaybackKind } from "../utils/webPreviewPlayback";
+import { playMutedVideoWhenReady } from "../utils/videoPreview";
 import { useInlineRename } from "../hooks/useInlineRename";
 import { logger } from "../utils/logger";
-import type { rendererImage } from "../types/rendererTypes";
 import type { DragSourceData } from "../stores/dragStore";
 
 interface ImageCardProps {
@@ -35,7 +37,10 @@ function formatDuration(seconds?: number): string {
 
 function ImageCard({ Image }: ImageCardProps) {
   const imgRef = useRef<HTMLImageElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const cancelVideoHoverPlayRef = useRef<(() => void) | null>(null);
   const imgErrorCountRef = useRef(0);
+  const ensurePreviewOnceRef = useRef(false);
   const [imgBroken, setImgBroken] = useState(false);
   const overlayId = useId();
   const monitorSelection = useMonitorStore((s) => s.monitorSelection);
@@ -174,14 +179,54 @@ function ImageCard({ Image }: ImageCardProps) {
   };
 
   const openDetail = useImageDetailStore((s) => s.open);
+  useEffect(() => {
+    ensurePreviewOnceRef.current = false;
+  }, [Image.id]);
+  const daemonImage = Image as unknown as import("../../electron/daemon-go-types").Image;
   const handleOpenDetail = (e: React.MouseEvent) => {
     e.stopPropagation();
-    openDetail(Image as unknown as import("../../electron/daemon-go-types").Image);
+    openDetail(daemonImage);
   };
   const isGifPreview = Image.media_type === "gif" || Image.format?.toLowerCase() === "gif";
   const isVideo = Image.media_type === "video";
   const isWeb = Image.media_type === "web";
+  const webPlaybackKind = isWeb ? webPreviewPlaybackKind(Image.preview_path) : null;
+  const webVideoPreview = Boolean(isWeb && webPlaybackKind === "video");
+  const webAnimatedPreview = Boolean(isWeb && webPlaybackKind === "animatedImage");
+  const useThumbSources = !isGifPreview && !webAnimatedPreview;
   const durationLabel = formatDuration(Image.duration);
+  /** H.264 proxy from daemon when source codec is not playable in Chromium (e.g. HEVC). */
+  const nativeVideoSrc = Image.preview_path?.trim() || Image.path;
+
+  const handleVideoDebugError = useCallback(
+    (e: SyntheticEvent<HTMLVideoElement>) => {
+      const v = e.currentTarget;
+      if (!isVideo || webVideoPreview) return;
+      if (ensurePreviewOnceRef.current) return;
+      const hasPreview = Boolean((Image.preview_path ?? "").trim());
+      if (hasPreview) return;
+      if (v.error?.code !== 4) return;
+      ensurePreviewOnceRef.current = true;
+      void (async () => {
+        try {
+          const updated = (await goDaemon.ensureBrowserPreview(Image.id, true)) as rendererImage;
+          if (updated.time === undefined) updated.time = null;
+          useImagesStore.setState((s) => {
+            const m = new Map(s.imagesMap);
+            m.set(Image.id, updated);
+            return {
+              imagesMap: m,
+              imagesArray: s.imagesArray.map((im) => (im.id === Image.id ? updated : im)),
+            };
+          });
+        } catch (err) {
+          ensurePreviewOnceRef.current = false;
+          logger.warn("ensure browser preview failed", err);
+        }
+      })();
+    },
+    [Image.id, Image.preview_path, isVideo, webVideoPreview],
+  );
 
   const renameInput = (
     <input
@@ -205,51 +250,167 @@ function ImageCard({ Image }: ImageCardProps) {
     />
   );
 
-  const pictureElement = (
-    <picture className={isPolaroid ? "neo-polaroid-image" : "block w-full h-full"}>
-      {!isGifPreview && Image.thumbnails?.["4k"]?.trim() && (
-        <source media="(width >= 7680px)" srcSet={Image.thumbnails["4k"]} />
-      )}
-      {!isGifPreview && Image.thumbnails?.["1440p"]?.trim() && (
-        <source media="(width >= 2560px)" srcSet={Image.thumbnails["1440p"]} />
-      )}
-      {!isGifPreview && Image.thumbnails?.["1080p"]?.trim() && (
-        <source media="(width >= 720px)" srcSet={Image.thumbnails["1080p"]} />
-      )}
-      {!isGifPreview && Image.thumbnails?.["720p"]?.trim() && (
-        <source media="(width >= 300px)" srcSet={Image.thumbnails["720p"]} />
-      )}
-      {!isGifPreview && Image.thumbnails?.default?.trim() && (
-        <source media="(width < 720px)" srcSet={Image.thumbnails.default} />
-      )}
-      <img
-        ref={imgRef}
-        className={
-          isPolaroid
-            ? "w-full h-auto aspect-[3/2] object-cover block"
-            : "transform-gpu rounded-lg transition-all duration-300 group-hover:scale-110 group-hover:object-center w-full h-auto aspect-[3/2] object-cover"
+  const [isHovered, setIsHovered] = useState(false);
+
+  const rasterClass = isPolaroid
+    ? "w-full h-auto aspect-[3/2] object-cover block"
+    : "transform-gpu rounded-lg transition-all duration-300 group-hover/card:scale-105 group-hover/card:object-center w-full h-auto aspect-[3/2] object-cover";
+
+  const pictureWrapClass = isPolaroid ? "neo-polaroid-image" : "block w-full h-full";
+
+  const videoPoster = Image.thumbnails?.default?.trim() || undefined;
+  /**
+   * Use mouse enter/leave (not pointer) so preview playback isn’t disrupted by drag-and-drop
+   * pointer capture. Invisible caption bars use pointer-events-none until the card is hovered.
+   */
+  const videoCardHoverHandlers = {
+    onMouseEnter: () => {
+      setIsHovered(true);
+      if (isVideo || webVideoPreview) {
+        cancelVideoHoverPlayRef.current?.();
+        const v = videoRef.current;
+        if (!v) return;
+        cancelVideoHoverPlayRef.current = playMutedVideoWhenReady(v);
+      }
+    },
+    onMouseLeave: () => {
+      setIsHovered(false);
+      if (isVideo || webVideoPreview) {
+        cancelVideoHoverPlayRef.current?.();
+        cancelVideoHoverPlayRef.current = null;
+        const v = videoRef.current;
+        if (v) {
+          v.pause();
+          v.currentTime = 0;
         }
-        src={
-          imgBroken
-            ? TRANSPARENT_PIXEL
-            : isGifPreview
-              ? Image.path
-              : Image.thumbnails?.default?.trim() || Image.path
-        }
-        alt={Image.name}
-        draggable={false}
-        loading="lazy"
-        onError={({ currentTarget }) => {
-          imgErrorCountRef.current++;
-          if (imgErrorCountRef.current === 1 && Image.thumbnails?.default?.trim()) {
-            currentTarget.src = Image.path;
-            return;
-          }
-          setImgBroken(true);
-        }}
-      />
-    </picture>
-  );
+      }
+    },
+  };
+
+  const rasterImgSrc = imgBroken
+    ? TRANSPARENT_PIXEL
+    : isGifPreview
+      ? Image.path
+      : webAnimatedPreview
+        ? Image.preview_path?.trim() || Image.thumbnails?.default?.trim() || TRANSPARENT_PIXEL
+        : isWeb
+          ? Image.thumbnails?.default?.trim() || TRANSPARENT_PIXEL
+          : Image.thumbnails?.default?.trim() || Image.path;
+
+  const onRasterImgError = ({ currentTarget }: SyntheticEvent<HTMLImageElement>) => {
+    if (webAnimatedPreview) {
+      const thumb = Image.thumbnails?.default?.trim();
+      if (thumb && currentTarget.src !== thumb) {
+        currentTarget.src = thumb;
+        return;
+      }
+      setImgBroken(true);
+      return;
+    }
+    if (isWeb) {
+      setImgBroken(true);
+      return;
+    }
+    imgErrorCountRef.current++;
+    if (imgErrorCountRef.current === 1 && Image.thumbnails?.default?.trim()) {
+      currentTarget.src = Image.path;
+      return;
+    }
+    setImgBroken(true);
+  };
+
+  const mediaPreview =
+    isVideo || webVideoPreview ? (
+      isPolaroid ? (
+        <div className={pictureWrapClass}>
+          <video
+            ref={videoRef}
+            className={rasterClass}
+            style={{ transform: isHovered ? "scale(1.03)" : "scale(1)" }}
+            src={isVideo ? nativeVideoSrc : (Image.preview_path ?? "")}
+            poster={videoPoster}
+            muted
+            loop
+            playsInline
+            preload="auto"
+            aria-label={Image.name}
+            onError={handleVideoDebugError}
+          />
+        </div>
+      ) : (
+        <video
+          ref={videoRef}
+          className={rasterClass}
+          style={{ transform: isHovered ? "scale(1.05)" : "scale(1)" }}
+          src={isVideo ? nativeVideoSrc : (Image.preview_path ?? "")}
+          poster={videoPoster}
+          muted
+          loop
+          playsInline
+          preload="auto"
+          aria-label={Image.name}
+          onError={handleVideoDebugError}
+        />
+      )
+    ) : webAnimatedPreview ? (
+      // Skip <picture> (single raster src). Polaroid needs .neo-polaroid-image for neobrutalist.css hover.
+      // Default: same <img className={rasterClass}> as standalone GIF tiles — group-hover:scale on the img works there.
+      isPolaroid ? (
+        <div className={pictureWrapClass}>
+          <img
+            ref={imgRef}
+            className={rasterClass}
+            style={{ transform: isHovered ? "scale(1.03)" : "scale(1)" }}
+            src={rasterImgSrc}
+            alt={Image.name}
+            draggable={false}
+            loading="lazy"
+            onError={onRasterImgError}
+          />
+        </div>
+      ) : (
+        <picture className={pictureWrapClass}>
+          <img
+            ref={imgRef}
+            className={rasterClass}
+            style={{ transform: isHovered ? "scale(1.05)" : "scale(1)" }}
+            src={rasterImgSrc}
+            alt={Image.name}
+            draggable={false}
+            loading="lazy"
+            onError={onRasterImgError}
+          />
+        </picture>
+      )
+    ) : (
+      <picture className={pictureWrapClass}>
+        {useThumbSources && Image.thumbnails?.["4k"]?.trim() && (
+          <source media="(width >= 7680px)" srcSet={Image.thumbnails["4k"]} />
+        )}
+        {useThumbSources && Image.thumbnails?.["1440p"]?.trim() && (
+          <source media="(width >= 2560px)" srcSet={Image.thumbnails["1440p"]} />
+        )}
+        {useThumbSources && Image.thumbnails?.["1080p"]?.trim() && (
+          <source media="(width >= 720px)" srcSet={Image.thumbnails["1080p"]} />
+        )}
+        {useThumbSources && Image.thumbnails?.["720p"]?.trim() && (
+          <source media="(width >= 300px)" srcSet={Image.thumbnails["720p"]} />
+        )}
+        {useThumbSources && Image.thumbnails?.default?.trim() && (
+          <source media="(width < 720px)" srcSet={Image.thumbnails.default} />
+        )}
+        <img
+          ref={imgRef}
+          className={rasterClass}
+          style={{ transform: isHovered ? (isPolaroid ? "scale(1.03)" : "scale(1.05)") : "scale(1)" }}
+          src={rasterImgSrc}
+          alt={Image.name}
+          draggable={false}
+          loading="lazy"
+          onError={onRasterImgError}
+        />
+      </picture>
+    );
 
   if (isPolaroid) {
     return (
@@ -291,21 +452,17 @@ function ImageCard({ Image }: ImageCardProps) {
           tabIndex={0}
           onDoubleClick={handleDoubleClick}
           onKeyDown={handleKeyDown}
-          className="neo-polaroid-inner"
+          className="group/card neo-polaroid-inner"
           aria-label={`Set ${Image.name} as wallpaper`}
+          {...videoCardHoverHandlers}
         >
-          {pictureElement}
-          {(isVideo || isWeb) && (
-            <div className="absolute left-2 top-2 z-20 rounded bg-base-content/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-base-100">
-              {isVideo ? "video" : "web"}
-            </div>
-          )}
+          {mediaPreview}
           {isVideo && durationLabel && (
-            <div className="absolute right-2 bottom-2 z-20 rounded bg-base-content/70 px-1.5 py-0.5 text-[10px] font-semibold text-base-100">
+            <div className="pointer-events-none absolute right-2 bottom-2 z-20 rounded bg-base-content/70 px-1.5 py-0.5 text-[10px] font-semibold text-base-100">
               {durationLabel}
             </div>
           )}
-          <div className="neo-polaroid-caption relative z-20">
+          <div className="neo-polaroid-caption pointer-events-none group-hover:pointer-events-auto relative z-20">
             {isRenaming ? (
               renameInput
             ) : (
@@ -377,21 +534,17 @@ function ImageCard({ Image }: ImageCardProps) {
         tabIndex={0}
         onDoubleClick={handleDoubleClick}
         onKeyDown={handleKeyDown}
-        className="relative w-full h-full border-0 bg-transparent p-0 cursor-pointer"
+        className="group/card relative w-full h-full border-0 bg-transparent p-0 cursor-pointer"
         aria-label={`Set ${Image.name} as wallpaper`}
+        {...videoCardHoverHandlers}
       >
-        {pictureElement}
-        {(isVideo || isWeb) && (
-          <div className="absolute left-2 top-2 z-20 rounded bg-base-content/70 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-base-100">
-            {isVideo ? "video" : "web"}
-          </div>
-        )}
+        {mediaPreview}
         {isVideo && durationLabel && (
-          <div className="absolute right-2 bottom-2 z-20 rounded bg-base-content/70 px-1.5 py-0.5 text-[10px] font-semibold text-base-100">
+          <div className="pointer-events-none absolute right-2 bottom-2 z-20 rounded bg-base-content/70 px-1.5 py-0.5 text-[10px] font-semibold text-base-100">
             {durationLabel}
           </div>
         )}
-        <div className="absolute bottom-0 z-20 w-full bg-base-content/75 p-2 pl-2 opacity-0 transition-all duration-300 group-hover:opacity-100 text-base-100">
+        <div className="pointer-events-none group-hover:pointer-events-auto absolute bottom-0 z-20 w-full bg-base-content/75 p-2 pl-2 opacity-0 transition-all duration-300 group-hover:opacity-100 text-base-100">
           {isRenaming ? (
             renameInput
           ) : (

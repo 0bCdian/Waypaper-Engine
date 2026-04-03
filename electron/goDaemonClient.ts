@@ -272,6 +272,11 @@ export class GoDaemonClient extends EventEmitter {
     return this.request<Image>("GET", `/images/${id}`);
   }
 
+  async ensureBrowserPreview(id: number, force?: boolean): Promise<Image> {
+    const q = force ? "?force=1" : "";
+    return this.request<Image>("POST", `/images/${id}/ensure-browser-preview${q}`);
+  }
+
   async getImageCount(): Promise<{ count: number }> {
     return this.request<{ count: number }>("GET", "/images/count");
   }

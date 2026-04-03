@@ -36,6 +36,7 @@ declare global {
         // IMAGES
         getImages: (params?: ImageQueryParams) => Promise<PaginatedResponse<Image>>;
         getImage: (id: number) => Promise<Image>;
+        ensureBrowserPreview: (id: number, force?: boolean) => Promise<Image>;
         getImageCount: () => Promise<{ count: number }>;
         importImages: (
           paths: string[],
@@ -178,13 +179,14 @@ declare global {
       downloadUrl: (url: string) => Promise<string>;
       openFiles: (action: "file" | "folder" | "video" | "web") => Promise<{
         success: boolean;
-        data?: { files: string[] };
+        data?: { files: string[]; webRoots?: string[]; folderName?: string };
         files?: string[];
         folderName?: string;
         error?: string;
       }>;
       scanDirectory: (dirPath: string) => Promise<{
         files: string[];
+        webRoots: string[];
         folderName: string;
       }>;
       handleOpenImages: (imagesObject: {

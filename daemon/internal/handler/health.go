@@ -23,9 +23,17 @@ func NewHealthHandler(version string, shutdownFn func()) *HealthHandler {
 	}
 }
 
+// MonitorStackVersion increments when the daemon's monitor-discovery ABI changes materially.
+// Clients in development use this to recycle a still-healthy but outdated long-lived process.
+const MonitorStackVersion = 2
+
 // Healthz handles GET /healthz.
 func (h *HealthHandler) Healthz(w http.ResponseWriter, r *http.Request) {
-	WriteJSON(w, http.StatusOK, map[string]string{"status": "ok"})
+	WriteJSON(w, http.StatusOK, map[string]any{
+		"status":                 "ok",
+		"monitor_stack_version":  MonitorStackVersion,
+		"monitor_provider_order": []string{"wayland-utauri", "wlr-randr", "xrandr"},
+	})
 }
 
 // Info handles GET /info.

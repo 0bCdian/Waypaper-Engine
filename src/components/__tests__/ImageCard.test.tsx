@@ -86,7 +86,8 @@ vi.mock("../../stores/designSystemStore", () => ({
 }));
 
 vi.mock("../../stores/imageDetailStore", () => ({
-  useImageDetailStore: () => mockOpenDetail,
+  useImageDetailStore: (selector: (s: { open: typeof mockOpenDetail }) => unknown) =>
+    selector({ open: mockOpenDetail }),
 }));
 
 vi.mock("../../stores/contextMenuStore", () => ({
@@ -281,5 +282,85 @@ describe("ImageCard", () => {
 
     const preview = screen.getByAltText("image_6.jpg") as HTMLImageElement;
     expect(preview.getAttribute("src")).toContain("/tmp/images/animated_6.gif");
+  });
+
+  it("renders video element for video media", () => {
+    const img = sampleRendererImage(7);
+    img.media_type = "video";
+    img.format = "mp4";
+    img.path = "/tmp/vid.mp4";
+    render(<ImageCard Image={img} />);
+
+    const vid = document.querySelector("video");
+    expect(vid).toBeTruthy();
+    expect(vid?.getAttribute("src")).toContain("/tmp/vid.mp4");
+  });
+
+  it("web wallpaper preview uses thumbnail only, not HTML path", () => {
+    const img = sampleRendererImage(8);
+    img.media_type = "web";
+    img.format = "html";
+    img.path = "/pkg/index.html";
+    img.preview_path = "/pkg/preview.png";
+    img.thumbnails = {
+      ...img.thumbnails,
+      default: "/thumbs/web8.jpg",
+    };
+    render(<ImageCard Image={img} />);
+
+    const preview = screen.getByAltText("image_8.jpg") as HTMLImageElement;
+    expect(preview.getAttribute("src")).toBe("/thumbs/web8.jpg");
+  });
+
+  it("web wallpaper with gif preview uses preview_path for animated img", () => {
+    const img = sampleRendererImage(8);
+    img.media_type = "web";
+    img.format = "html";
+    img.path = "/pkg/index.html";
+    img.preview_path = "/pkg/anim.gif";
+    img.thumbnails = {
+      ...img.thumbnails,
+      default: "/thumbs/web8.webp",
+    };
+    render(<ImageCard Image={img} />);
+
+    const preview = screen.getByAltText("image_8.jpg") as HTMLImageElement;
+    expect(preview.getAttribute("src")).toContain("anim.gif");
+  });
+
+  it("web wallpaper with mp4 preview uses video element", () => {
+    const img = sampleRendererImage(8);
+    img.media_type = "web";
+    img.format = "html";
+    img.path = "/pkg/index.html";
+    img.preview_path = "/pkg/clip.mp4";
+    img.thumbnails = {
+      ...img.thumbnails,
+      default: "/thumbs/web8.webp",
+    };
+    render(<ImageCard Image={img} />);
+
+    const vid = document.querySelector("video");
+    expect(vid).toBeTruthy();
+    expect(vid?.getAttribute("src")).toContain("clip.mp4");
+  });
+
+  it("Edit details opens sidebar for video and raster cards", () => {
+    const video = sampleRendererImage(9);
+    video.media_type = "video";
+    video.format = "mp4";
+    video.path = "/tmp/a.mp4";
+    const { unmount } = render(<ImageCard Image={video} />);
+    fireEvent.click(screen.getByTitle("Edit details"));
+    expect(mockOpenDetail).toHaveBeenCalled();
+    unmount();
+    mockOpenDetail.mockClear();
+
+    const raster = sampleRendererImage(10);
+    raster.media_type = "image";
+    raster.format = "png";
+    render(<ImageCard Image={raster} />);
+    fireEvent.click(screen.getByTitle("Edit details"));
+    expect(mockOpenDetail).toHaveBeenCalled();
   });
 });

@@ -43,8 +43,11 @@ function FolderImportModal() {
           <div className={`modal-box max-w-md ${isNeo ? "neo-card" : ""}`}>
             <h3 className="text-lg font-bold">Import Folder</h3>
             <p className="py-2 text-base-content/70">
-              Found <span className="font-semibold text-base-content">{pending.files.length}</span>{" "}
-              images in{" "}
+              Found{" "}
+              <span className="font-semibold text-base-content">{pending.files.length}</span> image
+              {pending.files.length === 1 ? "" : "s"} and{" "}
+              <span className="font-semibold text-base-content">{pending.webRoots.length}</span> web
+              wallpaper package{pending.webRoots.length === 1 ? "" : "s"} in{" "}
               <span className="font-semibold text-base-content">"{pending.folderName}"</span>
             </p>
 

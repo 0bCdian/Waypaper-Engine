@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -515,4 +516,33 @@ func (h *ImageHandler) RawImage(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", contentType)
 	http.ServeFile(w, r, image.Path)
+}
+
+// EnsureBrowserPreview handles POST /images/{id}/ensure-browser-preview — generates an H.264
+// proxy when preview_path is missing and the file needs it, or when force=1 after decode failure.
+func (h *ImageHandler) EnsureBrowserPreview(w http.ResponseWriter, r *http.Request) {
+	id, err := ParseIntParam(chi.URLParam(r, "id"))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	force := r.URL.Query().Get("force") == "1" || r.URL.Query().Get("force") == "true"
+	img, err := h.processor.EnsureBrowserVideoPreview(r.Context(), id, force)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			WriteError(w, http.StatusNotFound, err.Error())
+			return
+		}
+		msg := err.Error()
+		switch {
+		case strings.Contains(msg, "not a video"):
+			WriteError(w, http.StatusBadRequest, msg)
+		case strings.Contains(msg, "browser preview not required"):
+			WriteError(w, http.StatusConflict, msg)
+		default:
+			WriteError(w, http.StatusInternalServerError, msg)
+		}
+		return
+	}
+	WriteJSON(w, http.StatusOK, img)
 }

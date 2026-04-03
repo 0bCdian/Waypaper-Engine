@@ -540,7 +540,8 @@
   line-height: 0;
 }
 
-[data-design="neobrutalist"] .neo-polaroid-image img {
+[data-design="neobrutalist"] .neo-polaroid-image img,
+[data-design="neobrutalist"] .neo-polaroid-image video {
   aspect-ratio: 3 / 2;
   object-fit: cover;
   width: 100%;
@@ -548,7 +549,8 @@
   transition: transform 0.3s ease;
 }
 
-[data-design="neobrutalist"] .neo-polaroid:hover .neo-polaroid-image img {
+[data-design="neobrutalist"] .neo-polaroid:hover .neo-polaroid-image img,
+[data-design="neobrutalist"] .neo-polaroid:hover .neo-polaroid-image video {
   transform: scale(1.05);
 }
 

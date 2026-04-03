@@ -1,5 +1,7 @@
-import { access as fsAccess } from "node:fs/promises";
-import { join, resolve } from "node:path";
+import { createReadStream } from "node:fs";
+import { access as fsAccess, stat as fsStat } from "node:fs/promises";
+import { extname, join, resolve } from "node:path";
+import { Readable } from "node:stream";
 import {
   Tray,
   app,
@@ -7,7 +9,6 @@ import {
   globalShortcut,
   Menu,
   nativeImage,
-  net,
   protocol,
   Notification,
 } from "electron";
@@ -20,6 +21,93 @@ import { daemonMonitor } from "./managers/DaemonMonitor";
 import IPCManager from "./managers/IPCManager";
 import ThemeManager from "./managers/ThemeManager";
 import WindowManager from "./managers/WindowManager";
+
+/** Force MIME for atom:// so <video>/<img> can sniff type (file:// often returns octet-stream). */
+const ATOM_MIME_BY_EXT: Record<string, string> = {
+  ".mp4": "video/mp4",
+  ".webm": "video/webm",
+  ".mkv": "video/x-matroska",
+  ".avi": "video/x-msvideo",
+  ".mov": "video/quicktime",
+  ".gif": "image/gif",
+  ".png": "image/png",
+  ".jpg": "image/jpeg",
+  ".jpeg": "image/jpeg",
+  ".webp": "image/webp",
+  ".bmp": "image/bmp",
+  ".svg": "image/svg+xml",
+  ".html": "text/html",
+  ".htm": "text/html",
+  ".json": "application/json",
+};
+
+/**
+ * Parse a single Range: bytes=… value. Returns null when the range is not satisfiable.
+ * Chromium video elements use byte-range requests; without 206 + Content-Range, MP4 often fails to load (MEDIA_ERR_SRC_NOT_SUPPORTED).
+ */
+function parseRangeHeader(rangeHeader: string, size: number): { start: number; end: number } | null {
+  const [unit, rest] = rangeHeader.split("=");
+  if (unit.trim().toLowerCase() !== "bytes" || !rest) return null;
+  const spec = rest.trim().split(",")[0].trim();
+  if (spec.startsWith("-")) {
+    const suffix = parseInt(spec.slice(1), 10);
+    if (!Number.isFinite(suffix) || suffix <= 0) return null;
+    const start = Math.max(0, size - suffix);
+    return { start, end: size - 1 };
+  }
+  const dash = spec.indexOf("-");
+  if (dash < 0) return null;
+  const startStr = spec.slice(0, dash);
+  const endStr = spec.slice(dash + 1);
+  let start = startStr === "" ? 0 : parseInt(startStr, 10);
+  let end = endStr === "" ? size - 1 : parseInt(endStr, 10);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+  if (start >= size) return null;
+  end = Math.min(end, size - 1);
+  if (start > end) return null;
+  return { start, end };
+}
+
+async function atomProtocolResponse(request: Request, filePath: string): Promise<Response> {
+  const ext = extname(filePath).toLowerCase();
+  const mime = ATOM_MIME_BY_EXT[ext] ?? "application/octet-stream";
+  const { size } = await fsStat(filePath);
+
+  const rangeHeader = request.headers.get("range");
+  if (rangeHeader) {
+    const range = parseRangeHeader(rangeHeader, size);
+    if (!range) {
+      return new Response(null, {
+        status: 416,
+        headers: { "Content-Range": `bytes */${size}` },
+      });
+    }
+    const { start, end } = range;
+    const chunkSize = end - start + 1;
+    const nodeStream = createReadStream(filePath, { start, end });
+    const webStream = Readable.toWeb(nodeStream);
+    return new Response(webStream as unknown as BodyInit, {
+      status: 206,
+      headers: {
+        "Content-Type": mime,
+        "Content-Length": String(chunkSize),
+        "Content-Range": `bytes ${start}-${end}/${size}`,
+        "Accept-Ranges": "bytes",
+      },
+    });
+  }
+
+  const nodeStream = createReadStream(filePath);
+  const webStream = Readable.toWeb(nodeStream);
+  return new Response(webStream as unknown as BodyInit, {
+    status: 200,
+    headers: {
+      "Content-Type": mime,
+      "Content-Length": String(size),
+      "Accept-Ranges": "bytes",
+    },
+  });
+}
 
 // Global variables
 let mainWindow: BrowserWindow | null = null;
@@ -145,7 +233,7 @@ async function initializeApp(): Promise<void> {
 
       try {
         await fsAccess(filePath);
-        return net.fetch(`file://${filePath}`);
+        return await atomProtocolResponse(request, filePath);
       } catch (error) {
         logger.error({ err: error, filePath }, "Failed to access file");
         return new Response("Not found", { status: 404 });

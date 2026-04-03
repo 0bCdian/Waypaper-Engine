@@ -4,6 +4,9 @@ import { access, unlink } from "node:fs/promises";
 import { daemonPath, logger, isDebugMode } from "./setup";
 import { configReader } from "./configReader";
 
+// Must match daemon/internal/handler/health.go MonitorStackVersion.
+const MIN_MONITOR_STACK_VERSION = 2;
+
 // Get socket path from TOML configuration
 const WAYPAPER_ENGINE_SOCKET_PATH = configReader.getSocketPath();
 
@@ -18,9 +21,32 @@ export async function initWaypaperDaemon() {
       logger.info("Found existing socket file, cleaning up...");
       // Try to connect to existing daemon first
       try {
-        await testConnection();
-        logger.info("Existing daemon is responsive, using it");
-        return; // Use existing daemon
+        const health = await testConnection();
+        const isDev = process.env.NODE_ENV === "development";
+        const ver = health.monitor_stack_version;
+        const stale =
+          isDev &&
+          (typeof ver !== "number" || ver < MIN_MONITOR_STACK_VERSION);
+        if (stale) {
+          logger.info(
+            { monitor_stack_version: ver },
+            "Development mode: replacing daemon with outdated monitor discovery ABI",
+          );
+          try {
+            await requestShutdown(WAYPAPER_ENGINE_SOCKET_PATH);
+          } catch (err) {
+            logger.debug({ err }, "Graceful shutdown request failed; removing socket anyway");
+          }
+          try {
+            await unlink(WAYPAPER_ENGINE_SOCKET_PATH);
+          } catch (err) {
+            logger.debug({ err }, "Could not remove stale socket");
+          }
+          // Fall through to spawn a fresh daemon below.
+        } else {
+          logger.info("Existing daemon is responsive, using it");
+          return; // Use existing daemon
+        }
       } catch (error) {
         logger.info("Existing daemon is not responsive, cleaning up socket");
         await unlink(WAYPAPER_ENGINE_SOCKET_PATH);
@@ -98,15 +124,20 @@ export async function initWaypaperDaemon() {
   }
 }
 
-async function testConnection(): Promise<void> {
+type HealthzBody = {
+  status?: string;
+  monitor_stack_version?: number;
+};
+
+async function testConnection(): Promise<HealthzBody> {
   const MAX_ATTEMPTS = 5;
   const RETRY_INTERVAL = 200;
   let attempt = 1;
   while (attempt <= MAX_ATTEMPTS) {
     try {
-      await healthCheck(WAYPAPER_ENGINE_SOCKET_PATH);
+      const body = await healthCheck(WAYPAPER_ENGINE_SOCKET_PATH);
       logger.info("Connection to Go daemon established via HTTP.");
-      return;
+      return body;
     } catch (error) {
       logger.debug({ err: error, attempt }, "Connection attempt failed");
       if (attempt < MAX_ATTEMPTS) {
@@ -117,9 +148,10 @@ async function testConnection(): Promise<void> {
       }
     }
   }
+  throw new Error("unreachable");
 }
 
-async function healthCheck(socketPath: string): Promise<void> {
+async function healthCheck(socketPath: string): Promise<HealthzBody> {
   return new Promise((resolve, reject) => {
     const req = httpRequest(
       {
@@ -136,9 +168,9 @@ async function healthCheck(socketPath: string): Promise<void> {
         res.on("end", () => {
           if (res.statusCode === 200) {
             try {
-              const body = JSON.parse(data);
+              const body = JSON.parse(data) as HealthzBody;
               if (body.status === "ok") {
-                resolve();
+                resolve(body);
                 return;
               }
             } catch {
@@ -154,6 +186,33 @@ async function healthCheck(socketPath: string): Promise<void> {
     req.setTimeout(2000, () => {
       req.destroy();
       reject(new Error("Health check timeout"));
+    });
+    req.end();
+  });
+}
+
+function requestShutdown(socketPath: string): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const req = httpRequest(
+      {
+        socketPath,
+        path: "/shutdown",
+        method: "POST",
+        headers: { "Content-Length": "0" },
+      },
+      (res) => {
+        res.resume();
+        if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+          resolve();
+          return;
+        }
+        reject(new Error(`shutdown failed: HTTP ${res.statusCode}`));
+      },
+    );
+    req.on("error", (err) => reject(err));
+    req.setTimeout(8000, () => {
+      req.destroy();
+      reject(new Error("shutdown request timeout"));
     });
     req.end();
   });

@@ -96,7 +96,8 @@ type Image struct {
 	// Keys: "default", "720p", "1080p", "1440p", "4k".
 	Thumbnails map[string]string `json:"thumbnails"`
 
-	// PreviewPath is an optional preview asset path (mainly for web wallpapers).
+	// PreviewPath is an optional preview asset: web wallpaper clips, or an H.264 MP4
+	// proxy generated for native videos whose codec the UI cannot decode (e.g. HEVC).
 	PreviewPath string `json:"preview_path"`
 
 	// WebMeta holds web-wallpaper manifest metadata. Nil for non-web media.

@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"math/rand"
@@ -167,13 +168,34 @@ func (h *WallpaperHandler) Random(w http.ResponseWriter, r *http.Request) {
 // GetCurrent handles GET /wallpaper/current.
 // Returns the persisted per-monitor wallpaper state from monitorStateStore,
 // which is independent of the history collection and survives history clearing.
+// Entries whose image_id no longer exists (e.g. image deleted) are removed from
+// the store and omitted from the response so clients do not call get_image on stale IDs.
 func (h *WallpaperHandler) GetCurrent(w http.ResponseWriter, r *http.Request) {
 	states, err := h.monitorStateStore.GetAll(r.Context())
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	WriteJSON(w, http.StatusOK, states)
+	ctx := r.Context()
+	out := make([]store.MonitorState, 0, len(states))
+	for _, st := range states {
+		_, err := h.imageStore.GetByID(ctx, st.ImageID)
+		if err != nil {
+			if errors.Is(err, store.ErrNotFound) {
+				slog.Info("wallpaper/current: removing monitor state for deleted image",
+					"monitor", st.MonitorName, "image_id", st.ImageID)
+				if rmErr := h.monitorStateStore.Remove(ctx, st.MonitorName); rmErr != nil {
+					slog.Warn("wallpaper/current: failed to remove stale monitor state",
+						"monitor", st.MonitorName, "error", rmErr)
+				}
+				continue
+			}
+			WriteError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		out = append(out, st)
+	}
+	WriteJSON(w, http.StatusOK, out)
 }
 
 // ClearHistory handles DELETE /images/history.

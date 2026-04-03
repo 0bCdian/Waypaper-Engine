@@ -41,7 +41,7 @@ The rewrite replaces the old Node.js backend with a Go daemon and overhauls the 
 -   **Image detail sidebar** — View metadata, edit tags with autocomplete, and rename images from a slide-over panel.
 -   **Context menus** — Right-click context menus throughout the gallery with wallpaper setting, playlist management, selection, rename, delete, and file manager integration.
 -   **Multi-resolution thumbnails** — Automatic thumbnail generation at multiple resolutions (720p, 1080p, 1440p, 4K) for fast gallery rendering.
--   **Monitor auto-detection** — Native detection via hyprctl, swaymsg, wlr-randr, or xrandr depending on the compositor, with manual override support.
+-   **Monitor auto-detection** — On Wayland: wayland-utauri control API when available, otherwise `wlr-randr`. On X11: `xrandr`. Manual override supported.
 -   **Wallpaper history** — Per-monitor history log with forward/back navigation.
 
 ### UI
