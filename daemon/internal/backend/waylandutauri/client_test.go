@@ -15,11 +15,11 @@ import (
 func TestControlClientCheckHealth_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, "/health", r.URL.Path)
-		w.Header().Set("X-API-Version", "1")
+		w.Header().Set("X-API-Version", "0")
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"ok":          true,
 			"service":     "wayland-utauri",
-			"api_version": "1",
+			"api_version": "0",
 		})
 	}))
 	t.Cleanup(srv.Close)
@@ -28,7 +28,7 @@ func TestControlClientCheckHealth_Success(t *testing.T) {
 		httpClient:      srv.Client(),
 		baseURL:         srv.URL,
 		expectedService: "wayland-utauri",
-		expectedAPI:     "1",
+		expectedAPI:     "0",
 	}
 
 	require.NoError(t, c.checkHealth(context.Background()))
@@ -49,7 +49,7 @@ func TestControlClientCheckHealth_ServiceMismatch(t *testing.T) {
 		httpClient:      srv.Client(),
 		baseURL:         srv.URL,
 		expectedService: "wayland-utauri",
-		expectedAPI:     "1",
+		expectedAPI:     "0",
 	}
 
 	err := c.checkHealth(context.Background())

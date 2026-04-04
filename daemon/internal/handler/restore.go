@@ -7,10 +7,12 @@ import (
 	"time"
 
 	"waypaper-engine/daemon/internal/backend"
+	"waypaper-engine/daemon/internal/events"
 	"waypaper-engine/daemon/internal/image"
 	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/store"
+	"waypaper-engine/daemon/internal/wallpaper"
 )
 
 type extendGroup struct {
@@ -31,6 +33,7 @@ func StartDeferredDaemonRestore(
 	monManager monitor.MonitorManager,
 	images store.ImageStore,
 	splitter *image.Splitter,
+	bus events.Bus,
 ) {
 	go func() {
 		const maxAttempts = 36
@@ -81,6 +84,15 @@ func StartDeferredDaemonRestore(
 			"backend", reg.Active().Name(),
 			"max_attempts", maxAttempts,
 		)
+		if bus != nil {
+			bus.Publish(events.Event{
+				Type: events.BackendUnavailable,
+				Data: map[string]any{
+					"backend": reg.Active().Name(),
+					"message": "Wallpaper backend did not become ready after repeated retries; check wayland-utauri and socket_path in config.",
+				},
+			})
+		}
 	}()
 }
 
@@ -194,12 +206,17 @@ func restoreExtendGroup(
 
 	img, err := images.GetByID(ctx, grp.state.ImageID)
 	resolved := err == nil && img != nil
+	var imgPtr *store.Image
+	if resolved {
+		imgPtr = img
+	}
 	mt := media.MediaTypeImage
 	audio := false
 	if resolved {
 		mt = normalizeRestoreMediaType(img.MediaType)
 		audio = img.AudioEnabled
 	}
+	cfgVals := wallpaper.MergedWallpaperConfigForImage(imgPtr)
 
 	useSplit := resolved && mt == media.MediaTypeImage && splitter != nil && len(grp.monitors) > 1
 
@@ -220,11 +237,12 @@ func restoreExtendGroup(
 				continue
 			}
 			req := backend.WallpaperRequest{
-				MediaType:    media.MediaTypeImage,
-				ImagePath:    splitPath,
-				AudioEnabled: audio,
-				Monitors:     []monitor.Monitor{mon},
-				Mode:         monitor.ModeIndividual,
+				MediaType:             media.MediaTypeImage,
+				ImagePath:             splitPath,
+				AudioEnabled:          audio,
+				Monitors:              []monitor.Monitor{mon},
+				Mode:                  monitor.ModeIndividual,
+				WallpaperConfigValues: cfgVals,
 			}
 			if err := activeBackend.SetWallpaper(ctx, req); err != nil {
 				slog.Warn("restore: failed to set split wallpaper", "monitor", mon.Name, "error", err)
@@ -235,11 +253,12 @@ func restoreExtendGroup(
 		}
 	} else {
 		req := backend.WallpaperRequest{
-			MediaType:    mt,
-			ImagePath:    grp.state.ImagePath,
-			AudioEnabled: audio,
-			Monitors:     grp.monitors,
-			Mode:         monitor.ModeClone,
+			MediaType:             mt,
+			ImagePath:             grp.state.ImagePath,
+			AudioEnabled:          audio,
+			Monitors:              grp.monitors,
+			Mode:                  monitor.ModeClone,
+			WallpaperConfigValues: cfgVals,
 		}
 		if err := activeBackend.SetWallpaper(ctx, req); err != nil {
 			slog.Warn("restore: failed to set extend wallpaper", "image_id", grp.state.ImageID, "error", err)
@@ -268,16 +287,19 @@ func restoreIndividual(
 ) bool {
 	mt := media.MediaTypeImage
 	audio := false
+	var imgPtr *store.Image
 	if img, err := images.GetByID(ctx, state.ImageID); err == nil && img != nil {
+		imgPtr = img
 		mt = normalizeRestoreMediaType(img.MediaType)
 		audio = img.AudioEnabled
 	}
 	req := backend.WallpaperRequest{
-		MediaType:    mt,
-		ImagePath:    state.ImagePath,
-		AudioEnabled: audio,
-		Monitors:     []monitor.Monitor{mon},
-		Mode:         monitor.MonitorMode(state.Mode),
+		MediaType:             mt,
+		ImagePath:             state.ImagePath,
+		AudioEnabled:          audio,
+		Monitors:              []monitor.Monitor{mon},
+		Mode:                  monitor.MonitorMode(state.Mode),
+		WallpaperConfigValues: wallpaper.MergedWallpaperConfigForImage(imgPtr),
 	}
 
 	if err := activeBackend.SetWallpaper(ctx, req); err != nil {

@@ -130,7 +130,6 @@ func startDaemon(configPath string, logLevel string) error {
 	slog.Info("compositor detected", "type", monManager.Compositor())
 
 	// 8. Create and register backends.
-	waylandutauri.SetAllowNetworkWallpapers(allowNetworkWallpapers)
 	reg := backend.NewRegistry()
 	backends := []backend.Backend{
 		awww.New(),
@@ -184,6 +183,11 @@ func startDaemon(configPath string, logLevel string) error {
 		}
 	} else {
 		slog.Info("backend initialized", "name", activeBackend.Name())
+		if syncer, ok := activeBackend.(backend.RuntimeConfigSync); ok {
+			if err := syncer.SyncRuntimeFromConfig(ctx); err != nil {
+				slog.Warn("backend runtime sync after init failed", "error", err)
+			}
+		}
 	}
 
 	// 11. Create image processor and splitter.
@@ -208,6 +212,7 @@ func startDaemon(configPath string, logLevel string) error {
 			monManager,
 			db.ImageStore(),
 			splitter,
+			bus,
 		)
 	} else {
 		handler.RestoreWallpapers(ctx, db.MonitorStateStore(), db.StateStore(), reg, monManager, db.ImageStore(), splitter)
@@ -238,7 +243,7 @@ func startDaemon(configPath string, logLevel string) error {
 	// 14. Create handlers.
 	handlers := server.Handlers{
 		Health:    handler.NewHealthHandler(version, shutdownFn),
-		Images:    handler.NewImageHandler(db.ImageStore(), processor, bus),
+		Images:    handler.NewImageHandler(db.ImageStore(), processor, bus, reg),
 		Playlists: handler.NewPlaylistHandler(db.PlaylistStore(), db.StateStore(), playlistMgr, bus),
 		Monitors:  handler.NewMonitorHandler(monManager),
 		Config:    handler.NewConfigHandler(cfg, reg, bus),

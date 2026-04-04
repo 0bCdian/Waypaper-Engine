@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -12,10 +13,12 @@ import (
 
 	"github.com/go-chi/chi/v5"
 
+	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/events"
 	img "waypaper-engine/daemon/internal/image"
 	"waypaper-engine/daemon/internal/store"
 	"waypaper-engine/daemon/internal/system"
+	"waypaper-engine/daemon/internal/wallpaper"
 )
 
 // ImageHandler handles all /images endpoints.
@@ -23,14 +26,21 @@ type ImageHandler struct {
 	store     store.ImageStore
 	processor *img.Processor
 	bus       events.Bus
+	registry  backend.Registry
 }
 
 // NewImageHandler creates an ImageHandler.
-func NewImageHandler(store store.ImageStore, processor *img.Processor, bus events.Bus) *ImageHandler {
+func NewImageHandler(
+	store store.ImageStore,
+	processor *img.Processor,
+	bus events.Bus,
+	registry backend.Registry,
+) *ImageHandler {
 	return &ImageHandler{
 		store:     store,
 		processor: processor,
 		bus:       bus,
+		registry:  registry,
 	}
 }
 
@@ -201,7 +211,14 @@ func (h *ImageHandler) Update(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Only allow mutable fields.
-	allowed := map[string]bool{"name": true, "tags": true, "colors": true, "is_selected": true, "folder_id": true}
+	allowed := map[string]bool{
+		"name":                       true,
+		"tags":                       true,
+		"colors":                     true,
+		"is_selected":                true,
+		"folder_id":                  true,
+		"wallpaper_config_overrides": true,
+	}
 	for key := range updates {
 		if !allowed[key] {
 			WriteErrorf(w, http.StatusBadRequest, "field %q is not updatable", key)
@@ -224,6 +241,15 @@ func (h *ImageHandler) Update(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		WriteError(w, http.StatusNotFound, err.Error())
 		return
+	}
+
+	if _, touched := updates["wallpaper_config_overrides"]; touched && h.registry != nil && image != nil {
+		if strings.EqualFold(strings.TrimSpace(image.MediaType), "web") {
+			merged := wallpaper.MergedWallpaperConfigForImage(image)
+			if err := wallpaper.PushWallpaperConfigToRenderer(r.Context(), h.registry, image.Path, merged); err != nil {
+				slog.Warn("push web wallpaper config to renderer failed", "image_id", id, "error", err)
+			}
+		}
 	}
 
 	h.bus.Publish(events.Event{

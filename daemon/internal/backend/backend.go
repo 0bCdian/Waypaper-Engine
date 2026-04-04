@@ -139,6 +139,9 @@ type WallpaperRequest struct {
 	// Mode is how the wallpaper should be applied across monitors.
 	Mode monitor.MonitorMode `json:"mode"`
 
+	// WallpaperConfigValues is merged manifest defaults + user overrides for web wallpapers.
+	WallpaperConfigValues json.RawMessage `json:"-"`
+
 	// Config is the backend's own typed configuration, as returned by ParseConfig().
 	// The daemon core does not inspect this value — it passes it through opaquely.
 	// Each backend type-asserts this to its own config struct internally.

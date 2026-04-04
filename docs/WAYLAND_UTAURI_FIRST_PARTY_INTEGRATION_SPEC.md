@@ -148,20 +148,18 @@ Engine should not depend on renderer-internal telemetry fields for core correctn
 
 ## 7) Versioning and Compatibility Matrix
 
-Version source of truth: `X-API-Version` header from Wayland-Utani responses.
+Version source of truth: `X-API-Version` header from wayland-utauri responses (string match against `backend.wayland-utauri.expected_api_version`, default **`0`**).
+
+Control-plane epoch string is **`0`** ([ZeroVer](https://0ver.org/) in spirit), independent of Waypaper Engine app semver or the wayland-utauri crate version.
 
 Compatibility policy:
 
-- Engine adapter declares supported API major versions.
-- Major mismatch => backend unavailable.
-- Minor additive fields are tolerated (ignore unknown fields).
+- `X-API-Version` / body `api_version` must equal `backend.wayland-utauri.expected_api_version` (default `0`).
+- Additive JSON fields are tolerated (ignore unknown fields).
 
-Initial matrix:
-
-| Engine release line | Expected backend type | Supported Wayland-Utani API |
+| Integration | Backend | Expected `X-API-Version` |
 |---|---|---|
-| `2.x` with adapter | `wayland-utauri` | `v1` |
-| future `3.x` | `wayland-utauri` | `v1`, `v2` (planned) |
+| Go daemon `wayland-utauri` backend | `wayland-utauri` | `0` (default) |
 
 ## 8) Capability and Selection Policy (Milestone 1)
 

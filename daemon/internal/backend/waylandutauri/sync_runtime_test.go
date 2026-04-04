@@ -12,10 +12,13 @@ import (
 )
 
 func TestWaylandUtauri_SyncRuntimeFromConfig_Success(t *testing.T) {
-	var sawParallax bool
+	var sawParallax, sawNetwork bool
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/wallpaper/parallax" && r.Method == http.MethodPost {
 			sawParallax = true
+		}
+		if r.URL.Path == "/settings/network" && r.Method == http.MethodPost {
+			sawNetwork = true
 		}
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -33,6 +36,7 @@ func TestWaylandUtauri_SyncRuntimeFromConfig_Success(t *testing.T) {
 	err := wut.SyncRuntimeFromConfig(context.Background())
 	require.NoError(t, err)
 	assert.True(t, sawParallax, "expected POST /wallpaper/parallax")
+	assert.True(t, sawNetwork, "expected POST /settings/network")
 }
 
 func TestWaylandUtauri_SyncRuntimeFromConfig_ClientError(t *testing.T) {

@@ -6,6 +6,7 @@ import { useToastStore } from "../stores/toastStore";
 import { useIsNeo } from "../hooks/useIsNeo";
 import { webPreviewPlaybackKind } from "../utils/webPreviewPlayback";
 import { playMutedVideoWhenReady } from "../utils/videoPreview";
+import type { Image as DaemonImage, WebWallpaperConfigProp } from "../../electron/daemon-go-types";
 
 const { goDaemon } = window.API_RENDERER;
 
@@ -28,6 +29,125 @@ function formatFileSize(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`;
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function WebWallpaperConfigForm({
+  image,
+  onUpdated,
+}: {
+  image: DaemonImage;
+  onUpdated: (img: DaemonImage) => void;
+}) {
+  const addToast = useToastStore((s) => s.addToast);
+  const schema = image.web_meta?.wallpaper_config;
+  const keys = schema ? Object.keys(schema) : [];
+  const [overrides, setOverrides] = useState<Record<string, unknown>>(() => ({
+    ...(image.wallpaper_config_overrides ?? {}),
+  }));
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    setOverrides({ ...(image.wallpaper_config_overrides ?? {}) });
+  }, [image.id, image.wallpaper_config_overrides]);
+
+  if (!schema || keys.length === 0) return null;
+
+  const save = async () => {
+    setBusy(true);
+    try {
+      const updated = await goDaemon.updateImage(image.id, { wallpaper_config_overrides: overrides });
+      onUpdated(updated);
+      addToast("Wallpaper settings saved", "success");
+    } catch (e) {
+      addToast(e instanceof Error ? e.message : String(e), "error");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="space-y-3 border-t border-base-300 pt-3">
+      <h4 className="text-xs font-semibold uppercase tracking-wide text-base-content/60">
+        Web wallpaper options
+      </h4>
+      <p className="text-xs text-base-content/50">
+        From <code className="text-[10px]">wallpaper_config</code> in waypaper.json. Values are injected as{" "}
+        <code className="text-[10px]">window.__WAYPAPER_CONFIG</code>.
+      </p>
+      <div className="flex flex-col gap-3">
+        {keys.map((key) => {
+          const prop = schema[key] as WebWallpaperConfigProp;
+          const raw = overrides[key];
+          const val = raw !== undefined ? raw : prop.default;
+          const label = prop.label ?? key;
+          const t = (prop.type ?? "").toLowerCase();
+          if (t === "bool" || t === "boolean") {
+            return (
+              <label key={key} className="flex items-center gap-2 text-xs">
+                <input
+                  type="checkbox"
+                  className="toggle toggle-primary toggle-sm"
+                  checked={Boolean(val)}
+                  onChange={(e) => setOverrides((o) => ({ ...o, [key]: e.target.checked }))}
+                />
+                <span>{label}</span>
+              </label>
+            );
+          }
+          if (t === "number") {
+            const n = typeof val === "number" ? val : Number(val);
+            return (
+              <div key={key} className="space-y-1">
+                <label className="text-xs font-semibold text-base-content/60">{label}</label>
+                <input
+                  type="number"
+                  className="input input-bordered input-sm w-full"
+                  min={prop.min}
+                  max={prop.max}
+                  step={prop.step}
+                  value={Number.isFinite(n) ? n : ""}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setOverrides((o) => ({
+                      ...o,
+                      [key]: v === "" ? prop.default : Number(v),
+                    }));
+                  }}
+                />
+              </div>
+            );
+          }
+          if (t === "color") {
+            return (
+              <div key={key} className="space-y-1">
+                <label className="text-xs font-semibold text-base-content/60">{label}</label>
+                <input
+                  type="text"
+                  className="input input-bordered input-sm w-full font-mono text-xs"
+                  value={typeof val === "string" ? val : String(val ?? "")}
+                  onChange={(e) => setOverrides((o) => ({ ...o, [key]: e.target.value }))}
+                />
+              </div>
+            );
+          }
+          return (
+            <div key={key} className="space-y-1">
+              <label className="text-xs font-semibold text-base-content/60">{label}</label>
+              <input
+                type="text"
+                className="input input-bordered input-sm w-full"
+                value={typeof val === "string" ? val : val != null ? String(val) : ""}
+                onChange={(e) => setOverrides((o) => ({ ...o, [key]: e.target.value }))}
+              />
+            </div>
+          );
+        })}
+      </div>
+      <button type="button" className="btn btn-secondary btn-sm" disabled={busy} onClick={() => void save()}>
+        {busy ? "Saving…" : "Save wallpaper options"}
+      </button>
+    </div>
+  );
 }
 
 function DetailHoverVideo({ src, poster }: { src: string; poster?: string }) {
@@ -307,6 +427,13 @@ function ImageDetailSidebar() {
                 {formatFileSize(selectedImage.file_size)}
               </p>
             </div>
+
+            {selectedImage.media_type === "web" && (
+              <WebWallpaperConfigForm
+                image={selectedImage as DaemonImage}
+                onUpdated={(img) => useImageDetailStore.getState().open(img)}
+              />
+            )}
 
             {/* Color Palette */}
             {selectedImage.colors && selectedImage.colors.length > 0 && (

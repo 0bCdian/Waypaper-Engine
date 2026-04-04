@@ -10,6 +10,8 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"syscall"
 	"time"
 
@@ -76,19 +78,14 @@ func normalizeAngleDeg(v int) int {
 	return v
 }
 
-// Launch flag forwarded to the wayland-utauri process (set by the daemon from CLI before Register).
-var allowNetworkWallpapers bool
-
-// SetAllowNetworkWallpapers records whether the daemon was started with --allow-network-wallpapers.
-// Call before registering the backend (e.g. from cmd/daemon).
-func SetAllowNetworkWallpapers(allow bool) {
-	allowNetworkWallpapers = allow
-}
-
 type WaylandUtauri struct {
 	v          *viper.Viper
 	makeClient func(cfg *Config) (*controlClient, error)
+	processMu  sync.Mutex
 	process    *os.Process
+	// spawnGeneration increments on each child spawn; the wait goroutine only clears
+	// process when it still matches, so a replaced child is not wiped by an old Wait.
+	spawnGeneration int64
 }
 
 var _ backend.Backend = (*WaylandUtauri)(nil)
@@ -146,7 +143,7 @@ func (w *WaylandUtauri) Initialize(ctx context.Context) error {
 	// process outlives the HTTP request that triggered activation.
 	slog.Info("starting wayland-utauri", "binary", binaryName)
 	args := []string(nil)
-	if allowNetworkWallpapers {
+	if cfg.AllowNetworkWallpapers {
 		args = append(args, "--allow-network-wallpapers")
 	}
 	cmd := exec.Command(binaryName, args...)
@@ -154,40 +151,72 @@ func (w *WaylandUtauri) Initialize(ctx context.Context) error {
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("wayland-utauri: start %s: %w", binaryName, err)
 	}
+
+	gen := atomic.AddInt64(&w.spawnGeneration, 1)
+	w.processMu.Lock()
 	w.process = cmd.Process
+	w.processMu.Unlock()
 
-	go func() {
-		_ = cmd.Wait()
-	}()
+	go func(g int64, c *exec.Cmd) {
+		_ = c.Wait()
+		w.processMu.Lock()
+		defer w.processMu.Unlock()
+		if atomic.LoadInt64(&w.spawnGeneration) != g {
+			return
+		}
+		if w.process != nil && c.Process != nil && w.process.Pid == c.Process.Pid {
+			w.process = nil
+		}
+		slog.Info("wayland-utauri child process exited", "pid", c.Process.Pid)
+	}(gen, cmd)
 
-	// Poll until the service becomes healthy (Tauri cold start can exceed a few seconds).
-	const pollInterval = 250 * time.Millisecond
-	const maxAttempts = 80 // up to ~20s after spawn
+	if err := w.pollHealthUntilReady(ctx, client, cfg); err != nil {
+		return err
+	}
+	slog.Info("wayland-utauri ready after spawn")
+	return nil
+}
 
-	var lastPollErr error
-	for i := range maxAttempts {
+// pollHealthUntilReady polls checkHealth with exponential backoff until success or overall deadline (~50s).
+func (w *WaylandUtauri) pollHealthUntilReady(ctx context.Context, client *controlClient, cfg *Config) error {
+	deadline := time.Now().Add(50 * time.Second)
+	delay := 150 * time.Millisecond
+	const maxDelay = 2 * time.Second
+	var lastErr error
+	attempts := 0
+	for time.Now().Before(deadline) {
 		select {
 		case <-ctx.Done():
 			return ctx.Err()
-		case <-time.After(pollInterval):
+		default:
 		}
+		attempts++
 		pollCtx, pollCancel := context.WithTimeout(ctx, time.Duration(cfg.ConnectTimeoutMS)*time.Millisecond)
-		pollErr := client.checkHealth(pollCtx)
+		err := client.checkHealth(pollCtx)
 		pollCancel()
-		lastPollErr = pollErr
-		if pollErr == nil {
-			slog.Info("wayland-utauri ready", "attempts", i+1)
+		lastErr = err
+		if err == nil {
+			slog.Info("wayland-utauri health ok", "poll_attempts", attempts)
 			return nil
 		}
-		if errors.Is(pollErr, errContract) {
-			return fmt.Errorf("wayland-utauri: %w", pollErr)
+		if errors.Is(err, errContract) {
+			return fmt.Errorf("wayland-utauri: %w", err)
 		}
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(delay):
+		}
+		next := delay * 2
+		if next > maxDelay {
+			next = maxDelay
+		}
+		delay = next
 	}
-
 	return fmt.Errorf(
-		"wayland-utauri: timed out waiting for control socket after starting %s (last error: %w). "+
-			"Ensure the binary runs on Wayland and uses the same socket as "+viperBackendKey+".socket_path",
-		binaryName, lastPollErr,
+		"wayland-utauri: unavailable after %d health poll attempts (~50s, last error: %w). "+
+			"Ensure the binary runs on Wayland and "+viperBackendKey+".socket_path matches the child",
+		attempts, lastErr,
 	)
 }
 
@@ -218,26 +247,55 @@ func (w *WaylandUtauri) getStatusWithRetry(ctx context.Context, client *controlC
 }
 
 func (w *WaylandUtauri) Shutdown(_ context.Context) error {
-	// If we started the process ourselves, terminate it.
-	if w.process != nil {
-		slog.Info("stopping wayland-utauri process we started")
-		_ = w.process.Signal(syscall.SIGTERM)
-
-		done := make(chan struct{})
-		go func() {
-			_, _ = w.process.Wait()
-			close(done)
-		}()
-		select {
-		case <-done:
-			slog.Debug("wayland-utauri process exited")
-		case <-time.After(3 * time.Second):
-			slog.Warn("wayland-utauri did not exit after SIGTERM, sending SIGKILL")
-			_ = w.process.Signal(syscall.SIGKILL)
-		}
-		w.process = nil
+	w.processMu.Lock()
+	p := w.process
+	w.processMu.Unlock()
+	if p == nil {
+		return nil
 	}
+	slog.Info("stopping wayland-utauri process we started")
+	_ = p.Signal(syscall.SIGTERM)
+	// Spawn goroutine in Initialize owns cmd.Wait; poll until it clears w.process.
+	deadline := time.After(4 * time.Second)
+	tick := time.NewTicker(80 * time.Millisecond)
+	defer tick.Stop()
+	for {
+		select {
+		case <-deadline:
+			slog.Warn("wayland-utauri did not exit after SIGTERM, sending SIGKILL")
+			_ = p.Signal(syscall.SIGKILL)
+			return nil
+		case <-tick.C:
+			w.processMu.Lock()
+			empty := w.process == nil
+			w.processMu.Unlock()
+			if empty {
+				slog.Debug("wayland-utauri process exited")
+				return nil
+			}
+		}
+	}
+}
 
+// ensureRunning verifies the control plane answers health; if not (and not a contract error), runs Initialize.
+func (w *WaylandUtauri) ensureRunning(ctx context.Context, cfg *Config) error {
+	client, err := w.makeControlClient(cfg)
+	if err != nil {
+		return err
+	}
+	hctx, cancel := context.WithTimeout(ctx, time.Duration(cfg.ConnectTimeoutMS)*time.Millisecond)
+	err = client.checkHealth(hctx)
+	cancel()
+	if err == nil {
+		return nil
+	}
+	if errors.Is(err, errContract) {
+		return fmt.Errorf("wayland-utauri: %w", err)
+	}
+	slog.Info("wayland-utauri: control plane unreachable, attempting initialize/restart", "error", err)
+	if initErr := w.Initialize(ctx); initErr != nil {
+		return fmt.Errorf("wayland-utauri: unavailable — could not reach or start backend: %w", initErr)
+	}
 	return nil
 }
 
@@ -247,55 +305,69 @@ func (w *WaylandUtauri) SetWallpaper(ctx context.Context, req backend.WallpaperR
 		cfg = w.loadConfigFromViper()
 	}
 
-	client, err := w.makeControlClient(cfg)
-	if err != nil {
-		return err
-	}
-
-	status, err := w.getStatusWithRetry(ctx, client)
-	if err != nil && isRetryableControlStatusErr(err) {
-		slog.Info("wayland-utauri: control plane error; re-initializing backend", "error", err)
-		if initErr := w.Initialize(ctx); initErr != nil {
-			return fmt.Errorf("wayland-utauri: get status: %w (re-init: %v)", err, initErr)
+	const statusRounds = 2
+	var status *statusResponse
+	var err error
+	for round := 0; round < statusRounds; round++ {
+		if err = w.ensureRunning(ctx, cfg); err != nil {
+			return err
 		}
+		var client *controlClient
 		client, err = w.makeControlClient(cfg)
 		if err != nil {
 			return err
 		}
 		status, err = w.getStatusWithRetry(ctx, client)
+		if err == nil {
+			break
+		}
+		if !isRetryableControlStatusErr(err) || round == statusRounds-1 {
+			return fmt.Errorf("wayland-utauri: get status after reconnect: %w", err)
+		}
+		slog.Info("wayland-utauri: status still failing after ensure, retrying round", "round", round+1, "error", err)
 	}
-	if err != nil {
+	if err != nil || status == nil {
 		return fmt.Errorf("wayland-utauri: get status: %w", err)
 	}
+
 	monitorMap := buildMonitorMap(status.Status.Topology, req.Monitors)
 	loadReq, err := buildLoadRequest(req, cfg, monitorMap)
-
 	if err != nil {
 		return err
 	}
 
-	backoffs := []time.Duration{0, 100 * time.Millisecond, 300 * time.Millisecond}
+	const loadAttempts = 7
+	delay := 200 * time.Millisecond
+	const maxDelay = 5 * time.Second
 	var lastErr error
-	for attempt := range backoffs {
+	for attempt := range loadAttempts {
 		if attempt > 0 {
 			select {
-			case <-time.After(backoffs[attempt]):
+			case <-time.After(delay):
 			case <-ctx.Done():
 				return ctx.Err()
 			}
+			next := delay * 2
+			if next > maxDelay {
+				next = maxDelay
+			}
+			delay = next
 		}
 
+		client, cerr := w.makeControlClient(cfg)
+		if cerr != nil {
+			return cerr
+		}
 		statusCode, body, callErr := client.load(ctx, loadReq)
 		if callErr != nil {
 			lastErr = callErr
-			if !isRetryableError(callErr) || attempt == len(backoffs)-1 {
-				return fmt.Errorf("wayland-utauri: load request failed: %w", callErr)
+			if !isRetryableError(callErr) || attempt == loadAttempts-1 {
+				return fmt.Errorf("wayland-utauri: load request failed after %d attempt(s): %w", attempt+1, callErr)
 			}
 			continue
 		}
 
 		if statusCode >= 200 && statusCode < 300 {
-			// Parallax embedded on load for image/video; web loads omit it (parallax is a no-op there).
 			if loadReq.Parallax != nil {
 				return nil
 			}
@@ -311,13 +383,13 @@ func (w *WaylandUtauri) SetWallpaper(ctx context.Context, req backend.WallpaperR
 
 		httpErr := classifyHTTPError(statusCode, body)
 		lastErr = httpErr
-		if !isTransientHTTPStatus(statusCode) || attempt == len(backoffs)-1 {
-			return fmt.Errorf("wayland-utauri: load request failed: %w", httpErr)
+		if !isTransientHTTPStatus(statusCode) || attempt == loadAttempts-1 {
+			return fmt.Errorf("wayland-utauri: load request failed after %d attempt(s): %w", attempt+1, httpErr)
 		}
 	}
 
 	if lastErr != nil {
-		return fmt.Errorf("wayland-utauri: load request failed after retries: %w", lastErr)
+		return fmt.Errorf("wayland-utauri: load request failed after %d attempt(s): %w", loadAttempts, lastErr)
 	}
 	return fmt.Errorf("wayland-utauri: load request failed without explicit error")
 }
@@ -345,6 +417,8 @@ func (w *WaylandUtauri) RegisterDefaults(v *viper.Viper) {
 	v.SetDefault(viperBackendKey+".parallax_animation_ms", def.ParallaxAnimMS)
 	v.SetDefault(viperBackendKey+".parallax_easing", def.ParallaxEasing)
 	v.SetDefault(viperBackendKey+".video_audio_default", def.VideoAudioDefault)
+	v.SetDefault(viperBackendKey+".allow_network_wallpapers", def.AllowNetworkWallpapers)
+	v.SetDefault(viperBackendKey+".renderer_pause", def.RendererPause)
 }
 
 func (w *WaylandUtauri) ValidateConfig(raw json.RawMessage) error {
@@ -453,6 +527,8 @@ func (w *WaylandUtauri) loadConfigFromViper() *Config {
 		cfg.ParallaxEasing = val
 	}
 	cfg.VideoAudioDefault = getBool("video_audio_default")
+	cfg.AllowNetworkWallpapers = getBool("allow_network_wallpapers")
+	cfg.RendererPause = getBool("renderer_pause")
 
 	if w.v != nil {
 		cfg.TransitionAngleDeg = normalizeAngleDeg(intFromViperPrefixes(w.v, "transition_angle_deg", cfg.TransitionAngleDeg))
@@ -482,6 +558,19 @@ func (w *WaylandUtauri) makeControlClient(cfg *Config) (*controlClient, error) {
 // apply without waiting for the next wallpaper load. Failures are non-fatal
 // (child may be down); callers should log returned errors and still treat
 // config save as successful.
+// PushWallpaperConfig pushes merged user config to wayland-utauri for monitors showing this entry path.
+func (w *WaylandUtauri) PushWallpaperConfig(ctx context.Context, sourceTarget string, values json.RawMessage) error {
+	cfg := w.loadConfigFromViper()
+	client, err := w.makeControlClient(cfg)
+	if err != nil {
+		return fmt.Errorf("wayland-utauri: push wallpaper config: %w", err)
+	}
+	if err := client.pushWallpaperConfig(ctx, sourceTarget, values); err != nil {
+		return fmt.Errorf("wayland-utauri: push wallpaper config: %w", err)
+	}
+	return nil
+}
+
 func (w *WaylandUtauri) SyncRuntimeFromConfig(ctx context.Context) error {
 	cfg := w.loadConfigFromViper()
 	client, err := w.makeControlClient(cfg)
@@ -490,6 +579,12 @@ func (w *WaylandUtauri) SyncRuntimeFromConfig(ctx context.Context) error {
 	}
 	if err := client.setParallax(ctx, buildParallaxRequestBody(cfg)); err != nil {
 		return fmt.Errorf("wayland-utauri: runtime sync parallax: %w", err)
+	}
+	if err := client.setAllowNetworkWallpapers(ctx, cfg.AllowNetworkWallpapers); err != nil {
+		return fmt.Errorf("wayland-utauri: runtime sync network policy: %w", err)
+	}
+	if err := client.setRendererPause(ctx, cfg.RendererPause); err != nil {
+		return fmt.Errorf("wayland-utauri: runtime sync renderer pause: %w", err)
 	}
 	return nil
 }

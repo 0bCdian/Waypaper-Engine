@@ -2,6 +2,7 @@ package wallpaper
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"strings"
@@ -13,6 +14,7 @@ import (
 	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/store"
+	"waypaper-engine/daemon/internal/wallpaper/wallpaperconfig"
 )
 
 // ApplyOpts holds all dependencies and parameters needed to set a wallpaper.
@@ -33,16 +35,18 @@ type ApplyOpts struct {
 // and the playlist manager.
 func Apply(ctx context.Context, opts ApplyOpts) error {
 	mediaType := normalizeMediaType(opts.Image.MediaType)
+	cfgVals := MergedWallpaperConfigForImage(opts.Image)
 
 	switch {
 	case opts.Mode == monitor.ModeExtend && mediaType != media.MediaTypeImage:
 		// GIF / video / web: cannot engine-split; same wallpaper on each monitor (clone semantics).
 		req := backend.WallpaperRequest{
-			MediaType:    mediaType,
-			ImagePath:    opts.Image.Path,
-			AudioEnabled: opts.Image.AudioEnabled,
-			Monitors:     opts.Monitors,
-			Mode:         monitor.ModeClone,
+			MediaType:             mediaType,
+			ImagePath:             opts.Image.Path,
+			AudioEnabled:          opts.Image.AudioEnabled,
+			Monitors:              opts.Monitors,
+			Mode:                  monitor.ModeClone,
+			WallpaperConfigValues: cfgVals,
 		}
 		if err := opts.Backend.SetWallpaper(ctx, req); err != nil {
 			return fmt.Errorf("set wallpaper: %w", err)
@@ -57,11 +61,12 @@ func Apply(ctx context.Context, opts ApplyOpts) error {
 		for _, mon := range opts.Monitors {
 			if splitPath, ok := splitPaths[mon.Name]; ok {
 				req := backend.WallpaperRequest{
-					MediaType:    mediaType,
-					ImagePath:    splitPath,
-					AudioEnabled: opts.Image.AudioEnabled,
-					Monitors:     []monitor.Monitor{mon},
-					Mode:         monitor.ModeIndividual,
+					MediaType:             mediaType,
+					ImagePath:             splitPath,
+					AudioEnabled:          opts.Image.AudioEnabled,
+					Monitors:              []monitor.Monitor{mon},
+					Mode:                  monitor.ModeIndividual,
+					WallpaperConfigValues: cfgVals,
 				}
 				if err := opts.Backend.SetWallpaper(ctx, req); err != nil {
 					return fmt.Errorf("set wallpaper for %s: %w", mon.Name, err)
@@ -71,11 +76,12 @@ func Apply(ctx context.Context, opts ApplyOpts) error {
 
 	default:
 		req := backend.WallpaperRequest{
-			MediaType:    mediaType,
-			ImagePath:    opts.Image.Path,
-			AudioEnabled: opts.Image.AudioEnabled,
-			Monitors:     opts.Monitors,
-			Mode:         opts.Mode,
+			MediaType:             mediaType,
+			ImagePath:             opts.Image.Path,
+			AudioEnabled:          opts.Image.AudioEnabled,
+			Monitors:              opts.Monitors,
+			Mode:                  opts.Mode,
+			WallpaperConfigValues: cfgVals,
 		}
 		if err := opts.Backend.SetWallpaper(ctx, req); err != nil {
 			return fmt.Errorf("set wallpaper: %w", err)
@@ -132,6 +138,19 @@ func Apply(ctx context.Context, opts ApplyOpts) error {
 	}
 
 	return nil
+}
+
+// MergedWallpaperConfigForImage merges manifest wallpaper_config defaults with stored overrides.
+func MergedWallpaperConfigForImage(img *store.Image) json.RawMessage {
+	if img == nil || img.WebMeta == nil {
+		return []byte("{}")
+	}
+	raw, err := wallpaperconfig.MergeValues(img.WebMeta.WallpaperConfig, img.WallpaperConfigOverrides)
+	if err != nil {
+		slog.Warn("wallpaper config merge failed", "error", err)
+		return []byte("{}")
+	}
+	return raw
 }
 
 func normalizeMediaType(value string) media.MediaType {

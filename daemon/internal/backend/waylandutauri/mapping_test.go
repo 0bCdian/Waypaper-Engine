@@ -106,9 +106,10 @@ func TestBuildLoadRequest_VideoKind(t *testing.T) {
 func TestBuildLoadRequest_WebKind(t *testing.T) {
 	cfg := defaultConfig()
 	req := backend.WallpaperRequest{
-		MediaType: media.MediaTypeWeb,
-		ImagePath: "/tmp/pkg/index.html",
-		Mode:      monitor.ModeClone,
+		MediaType:             media.MediaTypeWeb,
+		ImagePath:             "/tmp/pkg/index.html",
+		Mode:                  monitor.ModeClone,
+		WallpaperConfigValues: []byte(`{"speed":2}`),
 	}
 
 	got, err := buildLoadRequest(req, cfg, nil)
@@ -116,6 +117,7 @@ func TestBuildLoadRequest_WebKind(t *testing.T) {
 	assert.Equal(t, "web", got.Kind)
 	assert.Equal(t, "/tmp/pkg/index.html", got.Target)
 	assert.Nil(t, got.Parallax, "parallax must be omitted for web/HTML wallpapers")
+	assert.JSONEq(t, `{"speed":2}`, string(got.WallpaperConfigValues))
 }
 
 func TestBuildLoadRequest_EmbedsParallaxWhenEnabled(t *testing.T) {

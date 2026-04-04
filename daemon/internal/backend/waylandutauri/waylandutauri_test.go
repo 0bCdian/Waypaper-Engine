@@ -20,6 +20,13 @@ func TestSetWallpaper_RetriesOnInternalError(t *testing.T) {
 	var loadCalls int32
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
+		case "/health":
+			w.Header().Set("X-API-Version", "0")
+			_ = json.NewEncoder(w).Encode(map[string]any{
+				"ok":          true,
+				"service":     "wayland-utauri",
+				"api_version": "0",
+			})
 		case "/wallpaper/status":
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"ok": true,
@@ -38,6 +45,8 @@ func TestSetWallpaper_RetriesOnInternalError(t *testing.T) {
 			}
 			_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 		case "/wallpaper/parallax":
+			_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
+		case "/settings/network":
 			_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 		default:
 			w.WriteHeader(http.StatusNotFound)
@@ -98,7 +107,7 @@ func TestInitialize_FailsOnHealthMismatch(t *testing.T) {
 				httpClient:      srv.Client(),
 				baseURL:         srv.URL,
 				expectedService: "wayland-utauri",
-				expectedAPI:     "1",
+				expectedAPI:     "0",
 			}, nil
 		},
 	}

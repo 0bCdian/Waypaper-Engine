@@ -1,6 +1,7 @@
 package waylandutauri
 
 import (
+	"encoding/json"
 	"fmt"
 
 	"waypaper-engine/daemon/internal/backend"
@@ -23,15 +24,16 @@ type transitionParamsBody struct {
 }
 
 type loadRequest struct {
-	Kind              string                `json:"kind,omitempty"`
-	Target            string                `json:"target,omitempty"`
-	Targets           []loadTarget          `json:"targets,omitempty"`
-	AudioEnabled      bool                  `json:"audio_enabled,omitempty"`
-	Transition        string                `json:"transition,omitempty"`
-	TransitionParams  *transitionParamsBody `json:"transition_params,omitempty"`
-	DurationMS        int                   `json:"duration_ms,omitempty"`
-	WaitForCompletion bool                  `json:"wait_for_completion"`
-	Parallax          map[string]any        `json:"parallax,omitempty"`
+	Kind                  string                `json:"kind,omitempty"`
+	Target                string                `json:"target,omitempty"`
+	Targets               []loadTarget          `json:"targets,omitempty"`
+	AudioEnabled          bool                  `json:"audio_enabled,omitempty"`
+	Transition            string                `json:"transition,omitempty"`
+	TransitionParams      *transitionParamsBody `json:"transition_params,omitempty"`
+	DurationMS            int                   `json:"duration_ms,omitempty"`
+	WaitForCompletion     bool                  `json:"wait_for_completion"`
+	Parallax              map[string]any        `json:"parallax,omitempty"`
+	WallpaperConfigValues json.RawMessage       `json:"wallpaper_config_values,omitempty"`
 }
 
 func buildLoadRequest(req backend.WallpaperRequest, cfg *Config, monitorMap map[string]uint32) (loadRequest, error) {
@@ -70,6 +72,8 @@ func buildLoadRequest(req backend.WallpaperRequest, cfg *Config, monitorMap map[
 	// skip follow-up parallax sync in SetWallpaper (see waylandutauri.go).
 	if kind != "web" {
 		out.Parallax = buildParallaxRequestBody(cfg)
+	} else if len(req.WallpaperConfigValues) > 0 {
+		out.WallpaperConfigValues = req.WallpaperConfigValues
 	}
 
 	switch req.Mode {

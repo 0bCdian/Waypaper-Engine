@@ -357,6 +357,20 @@ const waylandUtauriVideoFields: Field[] = [
     description: "Enable audio by default for video wallpapers",
     type: "checkbox",
   },
+  {
+    key: "waylandutauri.allow_network_wallpapers",
+    label: "Allow network for HTML wallpapers",
+    description:
+      "Lets local HTML wallpapers use fetch/XHR/WebSocket (WebKit connect-src). Applied immediately via wayland-utauri; restart is only needed for the spawn flag on first start.",
+    type: "checkbox",
+  },
+  {
+    key: "waylandutauri.renderer_pause",
+    label: "Pause HTML wallpaper rendering",
+    description:
+      "Reduces CPU/GPU by pausing web wallpaper scripts/animations. Synced immediately to wayland-utauri.",
+    type: "checkbox",
+  },
 ];
 
 const waylandUtauriAdvancedFields: Field[] = [

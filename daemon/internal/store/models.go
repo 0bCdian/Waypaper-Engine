@@ -103,6 +103,9 @@ type Image struct {
 	// WebMeta holds web-wallpaper manifest metadata. Nil for non-web media.
 	WebMeta *WebMeta `json:"web_meta,omitempty"`
 
+	// WallpaperConfigOverrides stores user-edited values for keys declared in web_meta.wallpaper_config.
+	WallpaperConfigOverrides json.RawMessage `json:"wallpaper_config_overrides,omitempty"`
+
 	// FolderID is the optional folder this image belongs to.
 	// nil means the image is at the root level of the gallery.
 	FolderID *int `json:"folder_id"`
@@ -119,24 +122,25 @@ type WebCapabilities struct {
 
 // WebMeta stores resolved metadata for imported web wallpapers.
 type WebMeta struct {
-	PackageRoot  string          `json:"package_root"`
-	ManifestPath string          `json:"manifest_path"`
-	EntryPath    string          `json:"entry_path"`
-	Title        string          `json:"title"`
-	Description  string          `json:"description"`
-	Author       string          `json:"author"`
-	Capabilities WebCapabilities `json:"capabilities"`
-	Properties   json.RawMessage `json:"properties,omitempty"`
+	PackageRoot     string          `json:"package_root"`
+	ManifestPath    string          `json:"manifest_path"`
+	EntryPath       string          `json:"entry_path"`
+	Title           string          `json:"title"`
+	Description     string          `json:"description"`
+	Author          string          `json:"author"`
+	Capabilities    WebCapabilities `json:"capabilities"`
+	WallpaperConfig json.RawMessage `json:"wallpaper_config,omitempty"`
 }
 
 // ImageUpdate contains the mutable fields for PATCH /images/{id}.
 // Only non-nil / non-zero fields are applied.
 type ImageUpdate struct {
-	Name       *string   `json:"name,omitempty"`
-	Tags       *[]string `json:"tags,omitempty"`
-	Colors     *[]string `json:"colors,omitempty"`
-	IsSelected *bool     `json:"is_selected,omitempty"`
-	FolderID   *int      `json:"folder_id,omitempty"`
+	Name                     *string         `json:"name,omitempty"`
+	Tags                     *[]string       `json:"tags,omitempty"`
+	Colors                   *[]string       `json:"colors,omitempty"`
+	IsSelected               *bool           `json:"is_selected,omitempty"`
+	FolderID                 *int            `json:"folder_id,omitempty"`
+	WallpaperConfigOverrides json.RawMessage `json:"wallpaper_config_overrides,omitempty"`
 }
 
 // ---------------------------------------------------------------------------

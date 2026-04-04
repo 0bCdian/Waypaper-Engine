@@ -103,6 +103,16 @@ export default function useNotifications(): void {
     );
 
     disposers.push(
+      goDaemon.on("backend_unavailable", (data: unknown) => {
+        const payload = data as { message?: string; backend?: string };
+        const msg =
+          payload?.message ??
+          `Wallpaper backend (${payload?.backend ?? "unknown"}) is not available.`;
+        addToast(msg, "error", 12_000);
+      }),
+    );
+
+    disposers.push(
       goDaemon.on("sse_disconnected", () => {
         addToast("Lost connection to daemon — reconnecting...", "warning", 0);
       }),

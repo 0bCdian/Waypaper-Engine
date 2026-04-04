@@ -104,6 +104,52 @@ func (c *controlClient) load(ctx context.Context, req loadRequest) (int, string,
 	return status, body, err
 }
 
+func (c *controlClient) setAllowNetworkWallpapers(ctx context.Context, allow bool) error {
+	_, status, body, err := c.doJSON(ctx, http.MethodPost, "/settings/network", map[string]any{
+		"allow_network_wallpapers": allow,
+	})
+	if err != nil {
+		return err
+	}
+	if status < 200 || status >= 300 {
+		return classifyHTTPError(status, body)
+	}
+	return nil
+}
+
+func (c *controlClient) setRendererPause(ctx context.Context, paused bool) error {
+	_, status, body, err := c.doJSON(ctx, http.MethodPost, "/wallpaper/renderer-pause", map[string]any{
+		"paused": paused,
+	})
+	if err != nil {
+		return err
+	}
+	if status < 200 || status >= 300 {
+		return classifyHTTPError(status, body)
+	}
+	return nil
+}
+
+func (c *controlClient) pushWallpaperConfig(ctx context.Context, sourceTarget string, valuesJSON json.RawMessage) error {
+	var values any = map[string]any{}
+	if len(valuesJSON) > 0 {
+		if err := json.Unmarshal(valuesJSON, &values); err != nil {
+			return fmt.Errorf("decode wallpaper config values: %w", err)
+		}
+	}
+	_, status, body, err := c.doJSON(ctx, http.MethodPost, "/wallpaper/wallpaper-config", map[string]any{
+		"source_target": sourceTarget,
+		"values":        values,
+	})
+	if err != nil {
+		return err
+	}
+	if status < 200 || status >= 300 {
+		return classifyHTTPError(status, body)
+	}
+	return nil
+}
+
 func (c *controlClient) setParallax(ctx context.Context, body map[string]any) error {
 	_, status, respBody, err := c.doJSON(ctx, http.MethodPost, "/wallpaper/parallax", body)
 	if err != nil {

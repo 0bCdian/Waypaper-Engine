@@ -49,11 +49,13 @@ transition_wave = "0,0,0,0"
 # wayland-utauri first-party backend configuration (must match backend.type name; legacy [backend.waylandutauri] is still read)
 socket_path = ""
 expected_service = "wayland-utauri"
-expected_api_version = "1"
+expected_api_version = "0"
 connect_timeout_ms = 500
 request_timeout_ms = 1500
 transition = "none"
 duration_ms = 300
+allow_network_wallpapers = false
+renderer_pause = false
 
 [monitors]
 # Monitor configuration

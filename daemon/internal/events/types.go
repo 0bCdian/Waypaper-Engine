@@ -52,3 +52,6 @@ const (
 	PlaylistsUpdated EventType = "playlists_updated"
 	FoldersUpdated   EventType = "folders_updated"
 )
+
+// BackendUnavailable — long-lived renderer (e.g. wayland-utauri) could not be reached after retries.
+const BackendUnavailable EventType = "backend_unavailable"

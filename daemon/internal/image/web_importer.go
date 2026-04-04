@@ -20,9 +20,15 @@ type webManifest struct {
 	Description  string          `json:"description"`
 	Author       string          `json:"author"`
 	Entry        string          `json:"entry"`
+	File         string          `json:"file"`
 	Preview      string          `json:"preview"`
 	Capabilities webCapabilities `json:"capabilities"`
-	Properties   json.RawMessage `json:"properties"`
+	// Canonical schema for user-tunable props (see WEB_WALLPAPER_SPEC).
+	WallpaperConfig json.RawMessage `json:"wallpaper_config"`
+	// Legacy project.json: general.properties — imported as wallpaper_config only for that manifest.
+	General *struct {
+		Properties json.RawMessage `json:"properties"`
+	} `json:"general"`
 }
 
 type webCapabilities struct {
@@ -48,11 +54,19 @@ func (p *Processor) ImportWebWallpaper(ctx context.Context, sourcePath string, f
 	if err := json.Unmarshal(manifestRaw, &manifest); err != nil {
 		return nil, fmt.Errorf("parse web manifest: %w", err)
 	}
-	if strings.TrimSpace(manifest.Entry) == "" {
+	wallpaperCfg := manifest.WallpaperConfig
+	if len(wallpaperCfg) == 0 && manifest.General != nil && len(manifest.General.Properties) > 0 {
+		wallpaperCfg = manifest.General.Properties
+	}
+	entryRel := strings.TrimSpace(manifest.Entry)
+	if entryRel == "" {
+		entryRel = strings.TrimSpace(manifest.File)
+	}
+	if entryRel == "" {
 		return nil, fmt.Errorf("web manifest entry is required")
 	}
 
-	entryPath := filepath.Join(resolvedPath, manifest.Entry)
+	entryPath := filepath.Join(resolvedPath, entryRel)
 	if _, err := os.Stat(entryPath); err != nil {
 		return nil, fmt.Errorf("web entry file not found: %w", err)
 	}
@@ -74,7 +88,7 @@ func (p *Processor) ImportWebWallpaper(ctx context.Context, sourcePath string, f
 		return nil, fmt.Errorf("copy web package: %w", err)
 	}
 
-	copiedEntryPath := filepath.Join(targetDir, manifest.Entry)
+	copiedEntryPath := filepath.Join(targetDir, entryRel)
 	previewPath := filepath.Join(targetDir, manifest.Preview)
 
 	checksumBytes := sha256.Sum256(manifestRaw)
@@ -113,7 +127,7 @@ func (p *Processor) ImportWebWallpaper(ctx context.Context, sourcePath string, f
 				AudioReactive: manifest.Capabilities.AudioReactive,
 				ParallaxAware: manifest.Capabilities.ParallaxAware,
 			},
-			Properties: manifest.Properties,
+			WallpaperConfig: wallpaperCfg,
 		},
 	}})
 	if err != nil {

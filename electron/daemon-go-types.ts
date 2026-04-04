@@ -66,6 +66,8 @@ export interface Image {
   thumbnails: ImageThumbnails;
   preview_path?: string;
   web_meta?: WebMeta | null;
+  /** User overrides for keys declared in web_meta.wallpaper_config */
+  wallpaper_config_overrides?: Record<string, unknown>;
   folder_id: number | null;
 }
 
@@ -76,6 +78,15 @@ export interface WebCapabilities {
   parallax_aware: boolean;
 }
 
+export interface WebWallpaperConfigProp {
+  type: string;
+  default?: unknown;
+  label?: string;
+  min?: number;
+  max?: number;
+  step?: number;
+}
+
 export interface WebMeta {
   package_root: string;
   manifest_path: string;
@@ -84,7 +95,7 @@ export interface WebMeta {
   description: string;
   author: string;
   capabilities: WebCapabilities;
-  properties?: Record<string, unknown>;
+  wallpaper_config?: Record<string, WebWallpaperConfigProp>;
 }
 
 export interface ImageThumbnails {
@@ -302,6 +313,10 @@ export interface WaylandUtauriConfig {
   parallax_animation_ms?: number;
   parallax_easing?: [number, number, number, number];
   video_audio_default?: boolean;
+  /** When true, HTML wallpapers may use fetch/XHR to the network (synced to wayland-utauri at runtime). */
+  allow_network_wallpapers?: boolean;
+  /** When true, pauses wallpaper web renderers (lower CPU/GPU use). Synced to wayland-utauri. */
+  renderer_pause?: boolean;
 }
 
 export interface MonitorsConfig {
@@ -392,6 +407,7 @@ export type EventType =
   | "images_updated"
   | "playlists_updated"
   | "folders_updated"
+  | "backend_unavailable"
   // Connection Events (Electron-only, not from daemon SSE)
   | "sse_disconnected"
   | "sse_reconnected";
@@ -505,6 +521,7 @@ export interface UpdateImageRequest {
   tags?: string[];
   colors?: string[];
   is_selected?: boolean;
+  wallpaper_config_overrides?: Record<string, unknown>;
 }
 
 export interface ImportImagesRequest {

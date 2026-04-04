@@ -598,6 +598,7 @@ export class IPCManager {
       "images_updated",
       "playlists_updated",
       "folders_updated",
+      "backend_unavailable",
     ];
 
     for (const eventName of events) {

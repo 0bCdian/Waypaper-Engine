@@ -7,7 +7,7 @@ import (
 
 const (
 	defaultExpectedService = "wayland-utauri"
-	defaultAPIVersion      = "1"
+	defaultAPIVersion      = "0" // ZeroVer control-plane epoch; matches wayland-utauri X-API-Version
 )
 
 // Config holds wayland-utauri specific backend settings.
@@ -32,6 +32,8 @@ type Config struct {
 	ParallaxAnimMS                 int     `mapstructure:"parallax_animation_ms" json:"parallax_animation_ms"`
 	ParallaxEasing                 string  `mapstructure:"parallax_easing" json:"parallax_easing"`
 	VideoAudioDefault              bool    `mapstructure:"video_audio_default" json:"video_audio_default"`
+	AllowNetworkWallpapers         bool    `mapstructure:"allow_network_wallpapers" json:"allow_network_wallpapers"`
+	RendererPause                  bool    `mapstructure:"renderer_pause" json:"renderer_pause"`
 }
 
 func defaultSocketPath() string {
@@ -63,5 +65,7 @@ func defaultConfig() *Config {
 		ParallaxAnimMS:                 600,
 		ParallaxEasing:                 "0.215,0.610,0.355,1.000",
 		VideoAudioDefault:              false,
+		AllowNetworkWallpapers:         false,
+		RendererPause:                  false,
 	}
 }
