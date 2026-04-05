@@ -1,10 +1,7 @@
 import { create } from "zustand";
 import type { Monitor, MonitorMode } from "../../electron/daemon-go-types";
 import { logger } from "../utils/logger";
-import {
-  normalizeSelectedMonitors,
-  selectedMonitorsOrderChanged,
-} from "../utils/monitorNames";
+import { normalizeSelectedMonitors, selectedMonitorsOrderChanged } from "../utils/monitorNames";
 
 export interface StoreMonitor extends Monitor {
   isSelected: boolean;
@@ -209,10 +206,7 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
         selectedMonitors,
         mode: imageSetType,
       };
-      const needsDaemonSync = selectedMonitorsOrderChanged(
-        rawSelectedFromDaemon,
-        selectedMonitors,
-      );
+      const needsDaemonSync = selectedMonitorsOrderChanged(rawSelectedFromDaemon, selectedMonitors);
 
       const storeMonitors: StoreMonitor[] = monitors.map((monitor) => ({
         ...monitor,

@@ -168,9 +168,14 @@ export function buildImageMenuItems(
     {
       type: "submenu",
       label: `Set "${image.name}"`,
-      children: buildWallpaperSubmenu(monitors, (monitor, mode) => {
-        void goDaemon.setWallpaper(image.id, monitor, mode).catch(notifyWallpaperApplyFailed);
-      }, undefined, { allowExtend }),
+      children: buildWallpaperSubmenu(
+        monitors,
+        (monitor, mode) => {
+          void goDaemon.setWallpaper(image.id, monitor, mode).catch(notifyWallpaperApplyFailed);
+        },
+        undefined,
+        { allowExtend },
+      ),
     },
     {
       type: "action",

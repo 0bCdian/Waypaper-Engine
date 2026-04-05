@@ -45,7 +45,10 @@ const ATOM_MIME_BY_EXT: Record<string, string> = {
  * Parse a single Range: bytes=… value. Returns null when the range is not satisfiable.
  * Chromium video elements use byte-range requests; without 206 + Content-Range, MP4 often fails to load (MEDIA_ERR_SRC_NOT_SUPPORTED).
  */
-function parseRangeHeader(rangeHeader: string, size: number): { start: number; end: number } | null {
+function parseRangeHeader(
+  rangeHeader: string,
+  size: number,
+): { start: number; end: number } | null {
   const [unit, rest] = rangeHeader.split("=");
   if (unit.trim().toLowerCase() !== "bytes" || !rest) return null;
   const spec = rest.trim().split(",")[0].trim();

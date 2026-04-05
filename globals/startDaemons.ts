@@ -24,9 +24,7 @@ export async function initWaypaperDaemon() {
         const health = await testConnection();
         const isDev = process.env.NODE_ENV === "development";
         const ver = health.monitor_stack_version;
-        const stale =
-          isDev &&
-          (typeof ver !== "number" || ver < MIN_MONITOR_STACK_VERSION);
+        const stale = isDev && (typeof ver !== "number" || ver < MIN_MONITOR_STACK_VERSION);
         if (stale) {
           logger.info(
             { monitor_stack_version: ver },

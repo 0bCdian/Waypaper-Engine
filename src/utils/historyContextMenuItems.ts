@@ -21,7 +21,9 @@ export function buildHistoryEntryMenuItems(
       children: buildWallpaperSubmenu(
         monitors,
         (monitor, mode) => {
-          void goDaemon.setWallpaper(entry.image_id, monitor, mode).catch(notifyWallpaperApplyFailed);
+          void goDaemon
+            .setWallpaper(entry.image_id, monitor, mode)
+            .catch(notifyWallpaperApplyFailed);
         },
         [
           {

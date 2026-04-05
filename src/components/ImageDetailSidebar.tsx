@@ -232,8 +232,9 @@ function WebWallpaperConfigForm({
         Web wallpaper
       </h4>
       <p className="text-xs text-base-content/50">
-        Saves to <code className="text-[10px]">waypaper.json</code> on disk when you click Save. Merged values are
-        pushed to the desktop as <code className="text-[10px]">waypaper:config</code> (capabilities update the host
+        Saves to <code className="text-[10px]">waypaper.json</code> on disk when you click Save.
+        Merged values are pushed to the desktop as{" "}
+        <code className="text-[10px]">waypaper:config</code> (capabilities update the host
         immediately after save).
       </p>
 
@@ -243,15 +244,18 @@ function WebWallpaperConfigForm({
         </h5>
         {wutCfg === null && (
           <p className="text-[11px] text-base-content/50">
-            Load settings to see backend policy hints, or open Backend → wayland-utauri for web capability limits.
+            Load settings to see backend policy hints, or open Backend → wayland-utauri for web
+            capability limits.
           </p>
         )}
-        {wutCfg && wutCfg.allow_web_manifest_network && wutCfg.allow_network_wallpapers !== true && (
-          <p className="text-[11px] text-base-content/50">
-            Manifest network also needs &quot;Allow network for HTML wallpapers&quot; in Backend settings for outbound
-            fetch/XHR.
-          </p>
-        )}
+        {wutCfg &&
+          wutCfg.allow_web_manifest_network &&
+          wutCfg.allow_network_wallpapers !== true && (
+            <p className="text-[11px] text-base-content/50">
+              Manifest network also needs &quot;Allow network for HTML wallpapers&quot; in Backend
+              settings for outbound fetch/XHR.
+            </p>
+          )}
         <div className="flex flex-col gap-2">
           {WEB_CAP_KEYS.map((key) => {
             const policyAllows = webCapabilityAllowedByPolicy(key, wutCfg);
@@ -364,8 +368,8 @@ function WebWallpaperConfigForm({
         </>
       ) : (
         <p className="text-xs text-base-content/40">
-          No <code className="text-[10px]">wallpaper_config</code> in this package — only capabilities can be edited
-          here.
+          No <code className="text-[10px]">wallpaper_config</code> in this package — only
+          capabilities can be edited here.
         </p>
       )}
 

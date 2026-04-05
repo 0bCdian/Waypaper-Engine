@@ -259,8 +259,13 @@ export const useSettingsStore = create<SettingsStore>()(
                   backend: top,
                 } as unknown as Partial<UnifiedConfig>);
               }
-              if (Object.keys(sub).length > 0 && window.API_RENDERER?.goDaemon?.updateBackendConfig) {
-                await window.API_RENDERER.goDaemon.updateBackendConfig(sub as Record<string, unknown>);
+              if (
+                Object.keys(sub).length > 0 &&
+                window.API_RENDERER?.goDaemon?.updateBackendConfig
+              ) {
+                await window.API_RENDERER.goDaemon.updateBackendConfig(
+                  sub as Record<string, unknown>,
+                );
               }
               if (Object.keys(top).length > 0) {
                 await get().loadConfig();

@@ -292,10 +292,7 @@ export class GoDaemonClient extends EventEmitter {
     return this.request<{ status: string; total: number }>("POST", "/images", body);
   }
 
-  async importWebWallpaper(
-    path: string,
-    folderID?: number | null,
-  ): Promise<Image> {
+  async importWebWallpaper(path: string, folderID?: number | null): Promise<Image> {
     const body: ImportWebWallpaperRequest = { path };
     if (folderID !== undefined && folderID !== null) {
       body.folder_id = folderID;

@@ -18,11 +18,7 @@ describe("monitorNames", () => {
 
   it("normalizeSelectedMonitors maps and dedupes", () => {
     expect(
-      normalizeSelectedMonitors([
-        "monitor:1:0:0:1920:1080",
-        "HDMI-A-1",
-        "monitor:1:0:0:1920:1080",
-      ]),
+      normalizeSelectedMonitors(["monitor:1:0:0:1920:1080", "HDMI-A-1", "monitor:1:0:0:1920:1080"]),
     ).toEqual(["Monitor 1", "HDMI-A-1"]);
   });
 

@@ -700,8 +700,9 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
       const waylandCfg =
         (config?.backend as unknown as Record<string, unknown>)?.["wayland-utauri"] ??
         (config?.backend as unknown as Record<string, unknown>)?.waylandutauri;
-      raw =
-        (waylandCfg as Record<string, unknown> | undefined)?.[field.key.replace("waylandutauri.", "")];
+      raw = (waylandCfg as Record<string, unknown> | undefined)?.[
+        field.key.replace("waylandutauri.", "")
+      ];
     } else {
       raw = config?.backend?.[field.key as keyof typeof config.backend];
     }

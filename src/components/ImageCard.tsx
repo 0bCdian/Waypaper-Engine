@@ -403,7 +403,9 @@ function ImageCard({ Image }: ImageCardProps) {
         <img
           ref={imgRef}
           className={rasterClass}
-          style={{ transform: isHovered ? (isPolaroid ? "scale(1.03)" : "scale(1.05)") : "scale(1)" }}
+          style={{
+            transform: isHovered ? (isPolaroid ? "scale(1.03)" : "scale(1.05)") : "scale(1)",
+          }}
           src={rasterImgSrc}
           alt={Image.name}
           draggable={false}

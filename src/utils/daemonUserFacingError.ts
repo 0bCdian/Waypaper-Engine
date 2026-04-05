@@ -19,10 +19,14 @@ function webImportHint(coreMessage: string): string {
     m.includes("web preview file not found") ||
     m.includes("web manifest preview")
   ) {
-    return " In waypaper.json, set \"preview\" to a file that exists in the package (e.g. preview.gif or preview.png).";
+    return ' In waypaper.json, set "preview" to a file that exists in the package (e.g. preview.gif or preview.png).';
   }
-  if (m.includes("entry is required") || m.includes("web entry file not found") || m.includes("web manifest entry")) {
-    return " In waypaper.json, set \"entry\" to your main HTML file (e.g. \"index.html\").";
+  if (
+    m.includes("entry is required") ||
+    m.includes("web entry file not found") ||
+    m.includes("web manifest entry")
+  ) {
+    return ' In waypaper.json, set "entry" to your main HTML file (e.g. "index.html").';
   }
   if (m.includes("parse web manifest")) {
     return " Fix JSON syntax in waypaper.json and ensure the file is valid UTF-8.";
@@ -46,9 +50,13 @@ export function formatWebWallpaperImportFailure(sourcePath: string, err: unknown
 }
 
 export function notifyWebWallpaperImportFailed(sourcePath: string, err: unknown): void {
-  useToastStore.getState().addToast(formatWebWallpaperImportFailure(sourcePath, err), "error", 10_000);
+  useToastStore
+    .getState()
+    .addToast(formatWebWallpaperImportFailure(sourcePath, err), "error", 10_000);
 }
 
 export function notifyWallpaperApplyFailed(err: unknown): void {
-  useToastStore.getState().addToast(`Could not apply wallpaper: ${daemonUserFacingMessage(err)}`, "error", 8000);
+  useToastStore
+    .getState()
+    .addToast(`Could not apply wallpaper: ${daemonUserFacingMessage(err)}`, "error", 8000);
 }

@@ -1,15 +1,7 @@
 import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 
-export const IMAGE_EXTENSIONS = new Set([
-  ".jpg",
-  ".jpeg",
-  ".png",
-  ".gif",
-  ".bmp",
-  ".webp",
-  ".svg",
-]);
+export const IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg"]);
 export const VIDEO_EXTENSIONS = new Set([".mp4", ".webm", ".mkv", ".avi", ".mov"]);
 
 const WEB_MANIFEST_NAMES = new Set(["waypaper.json", "project.json"]);
@@ -30,7 +22,9 @@ function fileExtLower(entry: string): string {
  * (directories that directly contain waypaper.json or project.json). Files inside
  * a web package directory are not collected as standalone media.
  */
-export async function scanDirectoryForImports(dirPath: string): Promise<ScanDirectoryForImportsResult> {
+export async function scanDirectoryForImports(
+  dirPath: string,
+): Promise<ScanDirectoryForImportsResult> {
   const mediaFiles: string[] = [];
   const webPackageRoots: string[] = [];
 
