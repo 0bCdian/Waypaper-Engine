@@ -217,10 +217,10 @@ func TopologyMonitorMatchByPosition(topo []topologyEntry, x, y float64) (uint32,
 	return 0, false
 }
 
-// ResolveParallaxMonitor picks a waypaper monitor using geometry first (reliable
-// across GDK/Hyprland enumeration order), falling back to compositor ID only as
-// a last resort since Hyprland and GDK assign monitor indices independently.
-func ResolveParallaxMonitor(topo []topologyEntry, boundsX, boundsY, boundsW, boundsH float64, compositorMonitorID *int) (uint32, bool) {
+// ResolveParallaxMonitor picks a waypaper monitor using only geometry-derived
+// topology matching so compositor-specific monitor indices never leak into
+// resolution.
+func ResolveParallaxMonitor(topo []topologyEntry, boundsX, boundsY, boundsW, boundsH float64) (uint32, bool) {
 	if id, ok := TopologyMonitorMatch(topo, boundsX, boundsY, boundsW, boundsH); ok {
 		return id, true
 	}
@@ -229,14 +229,6 @@ func ResolveParallaxMonitor(topo []topologyEntry, boundsX, boundsY, boundsW, bou
 	}
 	if id, ok := TopologyMonitorContainingCenter(topo, boundsX, boundsY, boundsW, boundsH); ok {
 		return id, true
-	}
-	if compositorMonitorID != nil {
-		u := uint32(*compositorMonitorID)
-		for _, e := range topo {
-			if e.Monitor == u {
-				return u, true
-			}
-		}
 	}
 	return 0, false
 }

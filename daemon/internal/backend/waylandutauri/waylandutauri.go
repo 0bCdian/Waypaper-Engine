@@ -481,15 +481,13 @@ func (w *WaylandUtauri) syncParallaxDriver(cfg *Config) {
 	w.parallaxDriverCancel = cancel
 	w.parallaxDriverMu.Unlock()
 
-	resolver := newMonitorResolverCache(func(c context.Context) ([]topologyEntry, error) {
+	resolve := func(c context.Context, e parallaxdriver.MonitorWorkspaceEntry) (uint32, bool) {
 		st, err := client.status(c)
 		if err != nil {
-			return nil, err
+			slog.Debug("parallax compositor driver: status for monitor resolve", "error", err)
+			return 0, false
 		}
-		return st.Status.Topology, nil
-	}, slog.Default())
-	resolve := func(c context.Context, e parallaxdriver.MonitorWorkspaceEntry) (uint32, bool) {
-		return resolver.resolve(c, e)
+		return ResolveParallaxMonitor(st.Status.Topology, e.Bounds.X, e.Bounds.Y, e.Bounds.Width, e.Bounds.Height)
 	}
 	move := func(c context.Context, dir string, amountPercent float64, monitor uint32) error {
 		return client.parallaxMoveScoped(c, dir, amountPercent, monitor)

@@ -68,11 +68,9 @@ func hyprlandAllMonitorWorkspaces(ctx context.Context) ([]MonitorWorkspaceEntry,
 		if m.Width <= 0 || m.Height <= 0 {
 			continue
 		}
-		mid := m.ID
 		entries = append(entries, MonitorWorkspaceEntry{
-			WorkspaceID:     m.ActiveWorkspace.ID,
-			Bounds:          Rect{X: m.X, Y: m.Y, Width: m.Width, Height: m.Height},
-			CompositorMonID: &mid,
+			WorkspaceID: m.ActiveWorkspace.ID,
+			Bounds:      Rect{X: m.X, Y: m.Y, Width: m.Width, Height: m.Height},
 		})
 	}
 	return entries, len(entries) > 0

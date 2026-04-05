@@ -9,9 +9,8 @@ import (
 // MonitorWorkspaceEntry represents one physical monitor and the workspace
 // currently active on it.
 type MonitorWorkspaceEntry struct {
-	WorkspaceID     int
-	Bounds          Rect
-	CompositorMonID *int
+	WorkspaceID int
+	Bounds      Rect
 }
 
 // ResolveMonitorFunc maps compositor monitor data to the waypaper-tauri monitor id

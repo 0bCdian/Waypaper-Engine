@@ -22,36 +22,26 @@ func workspaceTargetPercent(id, chunkSize int) float64 {
 // workspaceParallaxAbsoluteState tracks the last applied target and active workspace
 // per waypaper monitor so each output's parallax stays independent.
 type workspaceParallaxAbsoluteState struct {
-	lastSentTargetPercent map[uint32]float64
-	lastActiveWSPerMon    map[uint32]int
+	byMonitor map[uint32]monitorParallaxState
 }
 
-func (s *workspaceParallaxAbsoluteState) lastSent(mon uint32) float64 {
-	if s.lastSentTargetPercent == nil {
-		return 0
-	}
-	return s.lastSentTargetPercent[mon]
+type monitorParallaxState struct {
+	lastSentTargetPercent float64
+	lastActiveWSID        int
 }
 
-func (s *workspaceParallaxAbsoluteState) setLastSent(mon uint32, target float64) {
-	if s.lastSentTargetPercent == nil {
-		s.lastSentTargetPercent = make(map[uint32]float64)
+func (s *workspaceParallaxAbsoluteState) forMonitor(mon uint32) monitorParallaxState {
+	if s.byMonitor == nil {
+		return monitorParallaxState{}
 	}
-	s.lastSentTargetPercent[mon] = target
+	return s.byMonitor[mon]
 }
 
-func (s *workspaceParallaxAbsoluteState) lastWS(mon uint32) int {
-	if s.lastActiveWSPerMon == nil {
-		return 0
+func (s *workspaceParallaxAbsoluteState) updateMonitor(mon uint32, st monitorParallaxState) {
+	if s.byMonitor == nil {
+		s.byMonitor = make(map[uint32]monitorParallaxState)
 	}
-	return s.lastActiveWSPerMon[mon]
-}
-
-func (s *workspaceParallaxAbsoluteState) setLastWS(mon uint32, wsID int) {
-	if s.lastActiveWSPerMon == nil {
-		s.lastActiveWSPerMon = make(map[uint32]int)
-	}
-	s.lastActiveWSPerMon[mon] = wsID
+	s.byMonitor[mon] = st
 }
 
 // tick processes all monitor entries and sends parallax-move for any that changed.
@@ -75,13 +65,15 @@ func (s *workspaceParallaxAbsoluteState) tick(
 		if !ok {
 			continue
 		}
-		if s.lastWS(monID) == e.WorkspaceID {
+		monState := s.forMonitor(monID)
+		if monState.lastActiveWSID == e.WorkspaceID {
 			continue
 		}
 		target := workspaceTargetPercent(e.WorkspaceID, chunkSize)
-		delta := target - s.lastSent(monID)
+		delta := target - monState.lastSentTargetPercent
 		if math.Abs(delta) < 0.25 {
-			s.setLastWS(monID, e.WorkspaceID)
+			monState.lastActiveWSID = e.WorkspaceID
+			s.updateMonitor(monID, monState)
 			continue
 		}
 		dir := directionForDelta(delta, vertical)
@@ -95,8 +87,9 @@ func (s *workspaceParallaxAbsoluteState) tick(
 			log.Debug("parallaxdriver: parallax-move failed", "monitor", monID, "error", err)
 			continue
 		}
-		s.setLastSent(monID, target)
-		s.setLastWS(monID, e.WorkspaceID)
+		monState.lastSentTargetPercent = target
+		monState.lastActiveWSID = e.WorkspaceID
+		s.updateMonitor(monID, monState)
 	}
 }
 

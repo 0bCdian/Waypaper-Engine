@@ -73,23 +73,20 @@ func TestTick_multiMonitor(t *testing.T) {
 		return nil
 	}
 	resolve := func(_ context.Context, e MonitorWorkspaceEntry) (uint32, bool) {
-		if e.CompositorMonID != nil {
-			return uint32(*e.CompositorMonID), true
+		if e.Bounds.X >= 1920 {
+			return 1, true
 		}
-		return 0, false
+		return 0, true
 	}
 
 	st := &workspaceParallaxAbsoluteState{}
 	ctx := context.Background()
 
-	mon0 := 0
-	mon1 := 1
-
 	// ws 1 -> target -40% (delta from 0 = -40 -> left, amount 40)
 	// ws 3 -> target -20% (delta from 0 = -20 -> left, amount 20)
 	entries := []MonitorWorkspaceEntry{
-		{WorkspaceID: 1, Bounds: Rect{X: 0, Y: 0, Width: 1920, Height: 1080}, CompositorMonID: &mon0},
-		{WorkspaceID: 3, Bounds: Rect{X: 1920, Y: 0, Width: 1920, Height: 1080}, CompositorMonID: &mon1},
+		{WorkspaceID: 1, Bounds: Rect{X: 0, Y: 0, Width: 1920, Height: 1080}},
+		{WorkspaceID: 3, Bounds: Rect{X: 1920, Y: 0, Width: 1920, Height: 1080}},
 	}
 
 	st.tick(ctx, entries, move, resolve, false, 10, nil)
@@ -133,12 +130,10 @@ func TestTick_skipsSpecialWorkspaces(t *testing.T) {
 
 	st := &workspaceParallaxAbsoluteState{}
 	ctx := context.Background()
-	mon0 := 0
-
 	entries := []MonitorWorkspaceEntry{
-		{WorkspaceID: -1, CompositorMonID: &mon0},
-		{WorkspaceID: -99, CompositorMonID: &mon0},
-		{WorkspaceID: 0, CompositorMonID: &mon0},
+		{WorkspaceID: -1},
+		{WorkspaceID: -99},
+		{WorkspaceID: 0},
 	}
 	st.tick(ctx, entries, move, resolve, false, 10, nil)
 	if called {
