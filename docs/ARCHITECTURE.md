@@ -1,7 +1,7 @@
 # Waypaper Engine — Architecture, Bug Audit & Developer Guide
 
-> **Version**: 2.0.4  
-> **Last updated**: 2026-02-18  
+> **Version**: 3.0.0  
+> **Last updated**: 2026-04-06  
 > **Audience**: developers who need to understand, debug, extend, or fix Waypaper Engine
 
 ---
@@ -148,7 +148,7 @@ Mitigation (user-controlled in config; manifest flags are **capped** by host pol
 
 Images, video, and GIF wallpapers are not treated as an HTML/script exfil channel in this model. Asset-protocol scope breadth is a **Tauri/`convertFileSrc` mechanics** concern (paths the user can already read), not a separate “attacker in `$HOME`” story.
 
-**Optional follow-ups (not security requirements):** Tauri’s asset allowlist is **static** in [`wayland-utauri`’s `tauri.conf.json`](../waypaper-tauri/src-tauri/tauri.conf.json) (`$HOME/**`, `$HOME/.*/**`, explicit store paths, etc.). We do **not** currently expand scope at runtime; if static globs still miss edge-case paths on a given Tauri version, investigate that version’s APIs for runtime scope updates, or a **Rust read → `blob:` URL** path in the wallpaper renderer to bypass asset scope for images only.
+**Optional follow-ups (not security requirements):** Tauri’s asset allowlist is static in the `waypaper-tauri` repository (`src-tauri/tauri.conf.json`). We do **not** currently expand scope at runtime; if static globs still miss edge-case paths on a given Tauri version, investigate that version’s APIs for runtime scope updates, or a **Rust read → `blob:` URL** path in the wallpaper renderer to bypass asset scope for images only.
 
 ---
 
@@ -705,7 +705,7 @@ sequenceDiagram
   User->>UI: Click "Add Images" button
   UI->>IPC: openFiles("file")
   IPC->>IPC: dialog.showOpenDialog()
-  IPC-->>UI: {success: true, data: {files: [...]}}
+  IPC-->>UI: {files: [...]}
   UI->>IPC: handleOpenImages({files})
   IPC->>Client: importImages(paths)
   Client->>Daemon: POST /images {paths}
@@ -1054,8 +1054,8 @@ The Go daemon structs and the TypeScript types are manually kept in sync. Here i
 
 | Requirement | Version | Purpose |
 |-------------|---------|---------|
-| **Go** | 1.25+ | Build the daemon binary |
-| **Node.js** | 20+ | Build Electron + React frontend |
+| **Go** | 1.26+ | Build the daemon binary |
+| **Node.js** | 22+ | Build Electron + React frontend |
 | **npm** | 10+ | Package management |
 | **One wallpaper backend** | — | `awww` (Wayland), `hyprpaper` (Hyprland), or `feh` (X11) |
 | **A compositor** | — | Any Wayland compositor (Hyprland, Sway, etc.) or X11 |

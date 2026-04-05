@@ -19,7 +19,7 @@
 </div>
 
 > [!IMPORTANT]
-> **Project Status:** This project was inactive for a while as I moved into a DevOps engineering role and didn't have the time to maintain it. I've recently come back to active development and the project is undergoing a major rewrite. **Waypaper Engine is not abandoned or archived** — it's being rebuilt from the ground up with a new Go daemon backend, pluggable wallpaper backend support, and a modernized UI. The current `main` branch reflects the older codebase; the rewrite is happening on the `refactor/wayaper-daemon` branch and will be merged once stable. Expect breaking changes, new features, and updated install instructions when the rewrite lands.
+> **Project Status:** Waypaper Engine is under active development and in a major rewrite cycle. Release-ready work currently happens on `main` and `refactor/wayaper-daemon` until the rewrite fully lands in `main`. Expect rapid iteration and occasional breaking changes before stable tags.
 
 # What's New (v2 Rewrite)
 
@@ -68,7 +68,7 @@ https://github.com/0bCdian/Waypaper-Engine/assets/101421807/4d49225a-cbdc-42a0-a
 
 # Why
 
-I started this project for two main reasons, one as a learning oportunity, and two because the available options for a tool like this didn't suit my needs fully. I really like [awww](https://github.com/Horus645/awww) but it lacks a lot of the features that I missed from wallpaper engine in windows, so this is my attempt to bridge that gap a little.
+I started this project for two main reasons, one as a learning oportunity, and two because the available options for a tool like this didn't suit my needs fully. I really like [awww](https://github.com/LGFae/awww) but it lacks a lot of the features that I missed from wallpaper engine in windows, so this is my attempt to bridge that gap a little.
 
 # Install
 
@@ -189,14 +189,14 @@ See [packaging/README.md](packaging/README.md) for RPM (Fedora), Snap, and instr
 ## CI/CD and Releases
 
 This repo uses a lightweight flow:
-- `main` is the latest edge branch (can move fast, may break occasionally).
+- `main` and `refactor/wayaper-daemon` are active development branches.
 - Releases are created only from Git tags matching `v*` (for example `v3.0.1`).
 - `package.json` is the canonical release version and must match each release tag.
 
 ### Release flow (tag-driven)
 
 1. Open a PR that bumps `package.json` to your target release version `X.Y.Z`.
-2. Merge that PR into `main` after CI is green.
+2. Merge that PR into an active release branch (`main` or `refactor/wayaper-daemon`) after CI is green.
 3. Create and push the matching tag `vX.Y.Z`.
 
 ```bash
@@ -270,7 +270,7 @@ https://github.com/0bCdian/Waypaper-Engine/assets/101421807/f454a904-7fa7-4ce9-8
 
 # TODO
 
--   [ ] Add testing.
+-   [x] Add testing.
 -   [x] Have a ci/cd pipeline.
 -   [x] Implement a logger for errors.
 -   [x] Publish in the aur.

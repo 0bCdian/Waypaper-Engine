@@ -4,14 +4,14 @@ How wallpaper images are scaled and positioned to fit your monitor(s). Each back
 
 ## Quick Reference
 
-| Concept | awww | feh | hyprpaper | Preserves Aspect Ratio |
-|---------|------|-----|-----------|----------------------|
-| **Cover** -- Scale to fill the screen, crop excess | `crop` | `fill` | Always (default) | Yes |
-| **Contain** -- Scale to fit inside the screen, letterbox the rest | `fit` | `scale` | -- | Yes |
-| **Stretch** -- Stretch to exactly fill, distorting if needed | `stretch` | -- | -- | No |
-| **Center** -- Display at native resolution, no scaling | `no` | `center` | -- | N/A (no scaling) |
-| **Tile** -- Repeat the image to fill the screen | -- | `tile` | -- | N/A (no scaling) |
-| **Max** -- Scale to fit, then fill remaining space | -- | `max` | -- | Yes |
+| Concept | awww | feh | hyprpaper | wayland-utauri | Preserves Aspect Ratio |
+|---------|------|-----|-----------|----------------|----------------------|
+| **Cover** -- Scale to fill the screen, crop excess | `crop` | `fill` | Always (default) | `cover` | Yes |
+| **Contain** -- Scale to fit inside the screen, letterbox the rest | `fit` | `scale` | -- | `contain` | Yes |
+| **Stretch** -- Stretch to exactly fill, distorting if needed | `stretch` | -- | -- | `stretch` | No |
+| **Center** -- Display at native resolution, no scaling | `no` | `center` | -- | `center` | N/A (no scaling) |
+| **Tile** -- Repeat the image to fill the screen | -- | `tile` | -- | -- | N/A (no scaling) |
+| **Max** -- Scale to fit, then fill remaining space | -- | `max` | -- | -- | Yes |
 
 ## awww (Wayland)
 
@@ -93,6 +93,15 @@ Scales the image up to the maximum size that fits within the screen (like Scale)
 ## hyprpaper (Wayland)
 
 hyprpaper is a Wayland wallpaper daemon designed for Hyprland. It does not expose any resize/fit configuration -- images always scale to cover the monitor (equivalent to awww's Crop / feh's Fill). Per-monitor wallpapers are supported via its IPC socket.
+
+## wayland-utauri (Wayland, first-party)
+
+wayland-utauri is the first-party Wayland backend used for image, video, and web wallpapers. For image scaling it follows CSS-style fit semantics:
+
+- `cover` behaves like awww `crop` / feh `fill`
+- `contain` behaves like awww `fit` / feh `scale`
+- `stretch` fills exactly and may distort
+- `center` keeps native size and centers content
 
 ## Aspect Ratio Behavior Summary
 

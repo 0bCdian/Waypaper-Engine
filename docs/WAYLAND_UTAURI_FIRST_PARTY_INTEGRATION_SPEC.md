@@ -1,16 +1,15 @@
-# Wayland-Utani First-Party Integration Specification
+# Wayland-Utauri First-Party Integration Specification (Historical)
 
-> Status: proposal, implementation-ready
+> Status: historical design notes for an already-implemented integration
 > Scope: spec-first milestone (no adapter implementation in this document)
-> Projects: `waypaper-engine` and `wayland-utauri` (to be renamed to `Wayland-Utani`)
+> Projects: `waypaper-engine` and `wayland-utauri`
 
 ## 1) Goal
 
-Formalize a stable first-party integration contract so `waypaper-engine` can use the Tauri Wayland renderer as a backend while both repositories remain independent projects.
+Document the original contract used to integrate `waypaper-engine` with the first-party Tauri Wayland renderer while both repositories remain independent projects.
 
 This document defines:
 
-- the full clean-break rename contract
 - backend-to-control-API mapping
 - capability and error translation rules
 - monitor-detection ownership transition plan
