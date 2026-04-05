@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"strings"
 
@@ -166,6 +167,12 @@ func (s *imageStore) Create(_ context.Context, images []Image) ([]Image, error) 
 		}
 		if img.FolderID != nil {
 			doc.Set("folder_id", *img.FolderID)
+		}
+		if len(img.WallpaperConfigOverrides) > 0 {
+			var ov any
+			if err := json.Unmarshal(img.WallpaperConfigOverrides, &ov); err == nil {
+				doc.Set("wallpaper_config_overrides", ov)
+			}
 		}
 
 		if _, err := s.db.InsertOne(CollectionImages, doc); err != nil {

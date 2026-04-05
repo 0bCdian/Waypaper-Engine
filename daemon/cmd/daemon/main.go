@@ -191,7 +191,7 @@ func startDaemon(configPath string, logLevel string) error {
 	}
 
 	// 11. Create image processor and splitter.
-	processor := image.NewProcessor(db.ImageStore(), bus, cfg.GetImagesDir(), cfg.GetThumbnailsDir())
+	processor := image.NewProcessor(db.ImageStore(), bus, cfg.GetImagesDir(), cfg.GetThumbnailsDir(), cfg.Viper())
 	splitter := image.NewSplitter(cfg.GetImagesDir())
 
 	// 11a. Legacy videos: generate H.264 preview_path for codecs Chromium cannot play (async).

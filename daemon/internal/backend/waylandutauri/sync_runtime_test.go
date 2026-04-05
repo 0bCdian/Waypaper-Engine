@@ -12,13 +12,16 @@ import (
 )
 
 func TestWaylandUtauri_SyncRuntimeFromConfig_Success(t *testing.T) {
-	var sawParallax, sawNetwork bool
+	var sawParallax, sawNetwork, sawWebCapPolicy bool
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/wallpaper/parallax" && r.Method == http.MethodPost {
 			sawParallax = true
 		}
 		if r.URL.Path == "/settings/network" && r.Method == http.MethodPost {
 			sawNetwork = true
+		}
+		if r.URL.Path == "/settings/web-capability-policy" && r.Method == http.MethodPost {
+			sawWebCapPolicy = true
 		}
 		w.WriteHeader(http.StatusOK)
 	}))
@@ -37,6 +40,7 @@ func TestWaylandUtauri_SyncRuntimeFromConfig_Success(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, sawParallax, "expected POST /wallpaper/parallax")
 	assert.True(t, sawNetwork, "expected POST /settings/network")
+	assert.True(t, sawWebCapPolicy, "expected POST /settings/web-capability-policy")
 }
 
 func TestWaylandUtauri_SyncRuntimeFromConfig_ClientError(t *testing.T) {

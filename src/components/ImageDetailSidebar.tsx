@@ -6,9 +6,53 @@ import { useToastStore } from "../stores/toastStore";
 import { useIsNeo } from "../hooks/useIsNeo";
 import { webPreviewPlaybackKind } from "../utils/webPreviewPlayback";
 import { playMutedVideoWhenReady } from "../utils/videoPreview";
-import type { Image as DaemonImage, WebWallpaperConfigProp } from "../../electron/daemon-go-types";
+import type {
+  Image as DaemonImage,
+  WaylandUtauriConfig,
+  WebCapabilities,
+  WebWallpaperConfigProp,
+} from "../../electron/daemon-go-types";
+import type { UnifiedConfig } from "@/shared/types/unifiedConfig";
+import { useSettingsStore } from "@/stores/settingsStore";
 
 const { goDaemon } = window.API_RENDERER;
+
+const WEB_CAP_POLICY_DEFAULTS = {
+  allow_web_keyboard: false,
+  allow_web_audio_reactive: false,
+  allow_web_pointer_interactive: true,
+  allow_web_parallax_aware: true,
+  allow_web_manifest_network: false,
+} as const;
+
+function waylandUtauriFromUnified(config: UnifiedConfig | null): WaylandUtauriConfig | null {
+  if (!config?.backend || config.backend.type !== "wayland-utauri") return null;
+  const b = config.backend as unknown as Record<string, unknown>;
+  const w = b["wayland-utauri"] ?? b.waylandutauri;
+  if (!w || typeof w !== "object") return null;
+  return w as WaylandUtauriConfig;
+}
+
+function webCapabilityAllowedByPolicy(
+  key: keyof WebCapabilities,
+  wut: WaylandUtauriConfig | null,
+): boolean {
+  const p = { ...WEB_CAP_POLICY_DEFAULTS, ...wut };
+  switch (key) {
+    case "network":
+      return p.allow_web_manifest_network === true;
+    case "keyboard":
+      return p.allow_web_keyboard === true;
+    case "audio_reactive":
+      return p.allow_web_audio_reactive === true;
+    case "pointer_interactive":
+      return p.allow_web_pointer_interactive !== false;
+    case "parallax_aware":
+      return p.allow_web_parallax_aware !== false;
+    default:
+      return false;
+  }
+}
 
 async function saveImageTags(imageId: number, tags: string[]) {
   await goDaemon.updateImage(imageId, { tags });
@@ -31,6 +75,44 @@ function formatFileSize(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function colorPickerValue(hex: string): string {
+  const s = String(hex ?? "").trim();
+  if (/^#[0-9a-fA-F]{6}$/.test(s)) return s;
+  if (/^#[0-9a-fA-F]{3}$/.test(s)) {
+    const r = s[1]!;
+    const g = s[2]!;
+    const b = s[3]!;
+    return `#${r}${r}${g}${g}${b}${b}`;
+  }
+  return "#000000";
+}
+
+function normalizeWebCaps(c?: WebCapabilities | null): WebCapabilities {
+  return {
+    network: Boolean(c?.network),
+    keyboard: Boolean(c?.keyboard),
+    audio_reactive: Boolean(c?.audio_reactive),
+    parallax_aware: Boolean(c?.parallax_aware),
+    pointer_interactive: Boolean(c?.pointer_interactive),
+  };
+}
+
+const WEB_CAP_KEYS: (keyof WebCapabilities)[] = [
+  "network",
+  "keyboard",
+  "audio_reactive",
+  "parallax_aware",
+  "pointer_interactive",
+];
+
+const WEB_CAP_LABELS: Record<keyof WebCapabilities, string> = {
+  network: "Network (fetch, WebSocket, …)",
+  keyboard: "Keyboard input",
+  audio_reactive: "Audio reactive",
+  parallax_aware: "Parallax (tilt / workspace)",
+  pointer_interactive: "Pointer interactive (hit-testing)",
+};
+
 function WebWallpaperConfigForm({
   image,
   onUpdated,
@@ -39,113 +121,270 @@ function WebWallpaperConfigForm({
   onUpdated: (img: DaemonImage) => void;
 }) {
   const addToast = useToastStore((s) => s.addToast);
-  const schema = image.web_meta?.wallpaper_config;
+  const unifiedConfig = useSettingsStore((s) => s.config);
+  const wutCfg = useMemo(() => waylandUtauriFromUnified(unifiedConfig), [unifiedConfig]);
+  const meta = image.web_meta;
+  const schema = meta?.wallpaper_config;
   const keys = schema ? Object.keys(schema) : [];
+  const hasSchema = keys.length > 0;
+
   const [overrides, setOverrides] = useState<Record<string, unknown>>(() => ({
-    ...(image.wallpaper_config_overrides ?? {}),
+    ...image.wallpaper_config_overrides,
   }));
+  const [caps, setCaps] = useState<WebCapabilities>(() => normalizeWebCaps(meta?.capabilities));
   const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  const overridesRef = useRef(overrides);
+  overridesRef.current = overrides;
+  const capsRef = useRef(caps);
+  capsRef.current = caps;
+
+  const serverOverridesKey = useMemo(
+    () => JSON.stringify(image.wallpaper_config_overrides ?? {}),
+    [image.wallpaper_config_overrides],
+  );
+
+  const serverCapsKey = useMemo(
+    () => JSON.stringify(normalizeWebCaps(meta?.capabilities)),
+    [image.id, meta?.capabilities],
+  );
+
+  const dirtyOverrides = useMemo(
+    () => JSON.stringify(overrides) !== serverOverridesKey,
+    [overrides, serverOverridesKey],
+  );
+
+  const dirtyCaps = useMemo(() => JSON.stringify(caps) !== serverCapsKey, [caps, serverCapsKey]);
+
+  const dirty = dirtyOverrides || dirtyCaps;
 
   useEffect(() => {
-    setOverrides({ ...(image.wallpaper_config_overrides ?? {}) });
-  }, [image.id, image.wallpaper_config_overrides]);
+    const next = { ...(image.wallpaper_config_overrides ?? {}) };
+    setOverrides((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
+    setSaveError(false);
+  }, [image.id, serverOverridesKey]);
 
-  if (!schema || keys.length === 0) return null;
+  useEffect(() => {
+    const next = normalizeWebCaps(image.web_meta?.capabilities);
+    setCaps((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
+    capsRef.current = next;
+    setSaveError(false);
+  }, [image.id, serverCapsKey]);
 
-  const save = async () => {
+  const patchOverride = useCallback((key: string, value: unknown) => {
+    setOverrides((o) => {
+      const next = { ...o, [key]: value };
+      overridesRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const patchCap = useCallback((key: keyof WebCapabilities, value: boolean) => {
+    setCaps((c) => {
+      const next = { ...c, [key]: value };
+      capsRef.current = next;
+      return next;
+    });
+  }, []);
+
+  const saveWebManifest = async () => {
+    if (!dirtyOverrides && !dirtyCaps) return;
     setBusy(true);
+    setSaveError(false);
     try {
-      const updated = await goDaemon.updateImage(image.id, { wallpaper_config_overrides: overrides });
+      const update: {
+        wallpaper_config_overrides?: Record<string, unknown>;
+        web_capabilities?: Partial<WebCapabilities>;
+      } = {};
+      if (dirtyOverrides) update.wallpaper_config_overrides = overridesRef.current;
+      if (dirtyCaps) update.web_capabilities = capsRef.current;
+      const updated = await goDaemon.updateImage(image.id, update);
       onUpdated(updated);
-      addToast("Wallpaper settings saved", "success");
+      addToast("Web wallpaper saved", "success");
     } catch (e) {
+      setSaveError(true);
       addToast(e instanceof Error ? e.message : String(e), "error");
     } finally {
       setBusy(false);
     }
   };
 
+  const defaultOverrides = useMemo(() => {
+    const d: Record<string, unknown> = {};
+    if (!schema) return d;
+    for (const k of Object.keys(schema)) {
+      const prop = schema[k] as WebWallpaperConfigProp;
+      d[k] = prop.default;
+    }
+    return d;
+  }, [schema]);
+
+  const resetOverridesToDefaults = () => {
+    setOverrides({ ...defaultOverrides });
+    overridesRef.current = { ...defaultOverrides };
+  };
+
+  if (!meta) return null;
+
   return (
     <div className="space-y-3 border-t border-base-300 pt-3">
       <h4 className="text-xs font-semibold uppercase tracking-wide text-base-content/60">
-        Web wallpaper options
+        Web wallpaper
       </h4>
       <p className="text-xs text-base-content/50">
-        From <code className="text-[10px]">wallpaper_config</code> in waypaper.json. Values are injected as{" "}
-        <code className="text-[10px]">window.__WAYPAPER_CONFIG</code>.
+        Saves to <code className="text-[10px]">waypaper.json</code> on disk when you click Save. Merged values are
+        pushed to the desktop as <code className="text-[10px]">waypaper:config</code> (capabilities update the host
+        immediately after save).
       </p>
-      <div className="flex flex-col gap-3">
-        {keys.map((key) => {
-          const prop = schema[key] as WebWallpaperConfigProp;
-          const raw = overrides[key];
-          const val = raw !== undefined ? raw : prop.default;
-          const label = prop.label ?? key;
-          const t = (prop.type ?? "").toLowerCase();
-          if (t === "bool" || t === "boolean") {
+
+      <div className="space-y-2">
+        <h5 className="text-[11px] font-semibold uppercase tracking-wide text-base-content/50">
+          Capabilities
+        </h5>
+        {wutCfg === null && (
+          <p className="text-[11px] text-base-content/50">
+            Load settings to see backend policy hints, or open Backend → wayland-utauri for web capability limits.
+          </p>
+        )}
+        {wutCfg && wutCfg.allow_web_manifest_network && wutCfg.allow_network_wallpapers !== true && (
+          <p className="text-[11px] text-base-content/50">
+            Manifest network also needs &quot;Allow network for HTML wallpapers&quot; in Backend settings for outbound
+            fetch/XHR.
+          </p>
+        )}
+        <div className="flex flex-col gap-2">
+          {WEB_CAP_KEYS.map((key) => {
+            const policyAllows = webCapabilityAllowedByPolicy(key, wutCfg);
+            const on = Boolean(caps[key]);
+            const disabled = !policyAllows && !on;
             return (
-              <label key={key} className="flex items-center gap-2 text-xs">
-                <input
-                  type="checkbox"
-                  className="toggle toggle-primary toggle-sm"
-                  checked={Boolean(val)}
-                  onChange={(e) => setOverrides((o) => ({ ...o, [key]: e.target.checked }))}
-                />
-                <span>{label}</span>
+              <label key={key} className="flex flex-col gap-0.5 text-xs">
+                <span className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    className="toggle toggle-primary toggle-sm"
+                    disabled={disabled}
+                    checked={on}
+                    onChange={(e) => patchCap(key, e.target.checked)}
+                  />
+                  <span>{WEB_CAP_LABELS[key]}</span>
+                </span>
+                {!policyAllows && (
+                  <span className="pl-8 text-[10px] text-base-content/45">
+                    Blocked by backend policy (Settings → Backend → wayland-utauri).
+                  </span>
+                )}
               </label>
             );
-          }
-          if (t === "number") {
-            const n = typeof val === "number" ? val : Number(val);
-            return (
-              <div key={key} className="space-y-1">
-                <label className="text-xs font-semibold text-base-content/60">{label}</label>
-                <input
-                  type="number"
-                  className="input input-bordered input-sm w-full"
-                  min={prop.min}
-                  max={prop.max}
-                  step={prop.step}
-                  value={Number.isFinite(n) ? n : ""}
-                  onChange={(e) => {
-                    const v = e.target.value;
-                    setOverrides((o) => ({
-                      ...o,
-                      [key]: v === "" ? prop.default : Number(v),
-                    }));
-                  }}
-                />
-              </div>
-            );
-          }
-          if (t === "color") {
-            return (
-              <div key={key} className="space-y-1">
-                <label className="text-xs font-semibold text-base-content/60">{label}</label>
-                <input
-                  type="text"
-                  className="input input-bordered input-sm w-full font-mono text-xs"
-                  value={typeof val === "string" ? val : String(val ?? "")}
-                  onChange={(e) => setOverrides((o) => ({ ...o, [key]: e.target.value }))}
-                />
-              </div>
-            );
-          }
-          return (
-            <div key={key} className="space-y-1">
-              <label className="text-xs font-semibold text-base-content/60">{label}</label>
-              <input
-                type="text"
-                className="input input-bordered input-sm w-full"
-                value={typeof val === "string" ? val : val != null ? String(val) : ""}
-                onChange={(e) => setOverrides((o) => ({ ...o, [key]: e.target.value }))}
-              />
-            </div>
-          );
-        })}
+          })}
+        </div>
       </div>
-      <button type="button" className="btn btn-secondary btn-sm" disabled={busy} onClick={() => void save()}>
-        {busy ? "Saving…" : "Save wallpaper options"}
-      </button>
+
+      {hasSchema ? (
+        <>
+          <h5 className="text-[11px] font-semibold uppercase tracking-wide text-base-content/50 pt-1">
+            Wallpaper settings
+          </h5>
+          <div className="flex flex-col gap-3">
+            {keys.map((key) => {
+              const prop = schema![key] as WebWallpaperConfigProp;
+              const raw = overrides[key];
+              const val = raw !== undefined ? raw : prop.default;
+              const label = prop.label ?? key;
+              const t = (prop.type ?? "").toLowerCase();
+              if (t === "bool" || t === "boolean") {
+                return (
+                  <label key={key} className="flex items-center gap-2 text-xs">
+                    <input
+                      type="checkbox"
+                      className="toggle toggle-primary toggle-sm"
+                      checked={Boolean(val)}
+                      onChange={(e) => patchOverride(key, e.target.checked)}
+                    />
+                    <span>{label}</span>
+                  </label>
+                );
+              }
+              if (t === "number") {
+                const n = typeof val === "number" ? val : Number(val);
+                return (
+                  <div key={key} className="space-y-1">
+                    <label className="text-xs font-semibold text-base-content/60">{label}</label>
+                    <input
+                      type="number"
+                      className="input input-bordered input-sm w-full"
+                      min={prop.min}
+                      max={prop.max}
+                      step={prop.step}
+                      value={Number.isFinite(n) ? n : ""}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        patchOverride(key, v === "" ? prop.default : Number(v));
+                      }}
+                    />
+                  </div>
+                );
+              }
+              if (t === "color") {
+                const sval = typeof val === "string" ? val : String(val ?? "");
+                return (
+                  <div key={key} className="space-y-1">
+                    <label className="text-xs font-semibold text-base-content/60">{label}</label>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <input
+                        type="color"
+                        aria-label={`${label} picker`}
+                        className="h-9 w-14 cursor-pointer rounded border border-base-300 bg-base-100 p-0"
+                        value={colorPickerValue(sval)}
+                        onChange={(e) => patchOverride(key, e.target.value)}
+                      />
+                      <input
+                        type="text"
+                        className="input input-bordered input-sm min-w-[8rem] flex-1 font-mono text-xs"
+                        value={sval}
+                        onChange={(e) => patchOverride(key, e.target.value)}
+                      />
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <div key={key} className="space-y-1">
+                  <label className="text-xs font-semibold text-base-content/60">{label}</label>
+                  <input
+                    type="text"
+                    className="input input-bordered input-sm w-full"
+                    value={typeof val === "string" ? val : val != null ? String(val) : ""}
+                    onChange={(e) => patchOverride(key, e.target.value)}
+                  />
+                </div>
+              );
+            })}
+          </div>
+        </>
+      ) : (
+        <p className="text-xs text-base-content/40">
+          No <code className="text-[10px]">wallpaper_config</code> in this package — only capabilities can be edited
+          here.
+        </p>
+      )}
+
+      <div className="flex flex-wrap items-center gap-2">
+        {hasSchema && (
+          <button type="button" className="btn btn-ghost btn-sm" onClick={resetOverridesToDefaults}>
+            Reset settings to defaults
+          </button>
+        )}
+        <button
+          type="button"
+          className="btn btn-secondary btn-sm"
+          disabled={busy || !dirty}
+          onClick={() => void saveWebManifest()}
+        >
+          {busy ? "Saving…" : "Save"}
+        </button>
+        {saveError && <span className="text-[10px] text-error">Save failed — check toast</span>}
+      </div>
     </div>
   );
 }
@@ -195,6 +434,9 @@ function ImageDetailSidebar() {
     useShallow((s) => ({ selectedImage: s.selectedImage, isOpen: s.isOpen, close: s.close })),
   );
   const addToast = useToastStore((s) => s.addToast);
+  const openDetailFromConfigForm = useCallback((img: DaemonImage) => {
+    useImageDetailStore.getState().open(img);
+  }, []);
   const isNeo = useIsNeo();
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
@@ -428,13 +670,6 @@ function ImageDetailSidebar() {
               </p>
             </div>
 
-            {selectedImage.media_type === "web" && (
-              <WebWallpaperConfigForm
-                image={selectedImage as DaemonImage}
-                onUpdated={(img) => useImageDetailStore.getState().open(img)}
-              />
-            )}
-
             {/* Color Palette */}
             {selectedImage.colors && selectedImage.colors.length > 0 && (
               <div className="space-y-1">
@@ -456,6 +691,14 @@ function ImageDetailSidebar() {
                   ))}
                 </div>
               </div>
+            )}
+
+            {selectedImage.media_type === "web" && (
+              <WebWallpaperConfigForm
+                key={selectedImage.id}
+                image={selectedImage as DaemonImage}
+                onUpdated={openDetailFromConfigForm}
+              />
             )}
 
             {/* Tags */}

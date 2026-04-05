@@ -68,11 +68,8 @@ func buildLoadRequest(req backend.WallpaperRequest, cfg *Config, monitorMap map[
 		// serialize the control server so /wallpaper/status also times out (see tiny_http / command queue).
 		WaitForCompletion: false,
 	}
-	// HTML/web wallpapers: parallax is intentionally unsupported (no zoom/pan). Omit from load and
-	// skip follow-up parallax sync in SetWallpaper (see waylandutauri.go).
-	if kind != "web" {
-		out.Parallax = buildParallaxRequestBody(cfg)
-	} else if len(req.WallpaperConfigValues) > 0 {
+	out.Parallax = buildParallaxRequestBody(cfg)
+	if kind == "web" && len(req.WallpaperConfigValues) > 0 {
 		out.WallpaperConfigValues = req.WallpaperConfigValues
 	}
 
@@ -175,15 +172,10 @@ func buildMonitorMap(topology []topologyEntry, engineMonitors []monitor.Monitor)
 		}
 	}
 
-	// Fallback: if geometry matching yielded nothing, use stable_id as the key
-	// (preserves original behavior for topologies that use output names).
+	// Fallback: if geometry matching yielded nothing, use the same labels as topologyToEngineMonitors.
 	if len(m) == 0 {
 		for _, entry := range topology {
-			name := entry.StableID
-			if name == "" {
-				name = fmt.Sprintf("WAYLAND-OUTPUT-%d", entry.Monitor)
-			}
-			m[name] = entry.Monitor
+			m[fmt.Sprintf("Monitor %d", entry.Monitor)] = entry.Monitor
 		}
 	}
 

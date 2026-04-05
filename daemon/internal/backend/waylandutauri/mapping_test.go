@@ -76,15 +76,15 @@ func TestBuildMonitorMap_MatchesByGeometry(t *testing.T) {
 	assert.Equal(t, uint32(1), got["HDMI-A-1"])
 }
 
-func TestBuildMonitorMap_FallsBackToStableID(t *testing.T) {
+func TestBuildMonitorMap_FallsBackToMonitorLabels(t *testing.T) {
 	topology := []topologyEntry{
 		{Monitor: 1, StableID: "DP-1"},
 		{Monitor: 2, StableID: ""},
 	}
 	got := buildMonitorMap(topology, nil)
 
-	assert.Equal(t, uint32(1), got["DP-1"])
-	assert.Equal(t, uint32(2), got["WAYLAND-OUTPUT-2"])
+	assert.Equal(t, uint32(1), got["Monitor 1"])
+	assert.Equal(t, uint32(2), got["Monitor 2"])
 }
 
 func TestBuildLoadRequest_VideoKind(t *testing.T) {
@@ -116,7 +116,7 @@ func TestBuildLoadRequest_WebKind(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "web", got.Kind)
 	assert.Equal(t, "/tmp/pkg/index.html", got.Target)
-	assert.Nil(t, got.Parallax, "parallax must be omitted for web/HTML wallpapers")
+	require.NotNil(t, got.Parallax, "parallax is included for web; pages opt in via wallpaper:parallax listener")
 	assert.JSONEq(t, `{"speed":2}`, string(got.WallpaperConfigValues))
 }
 

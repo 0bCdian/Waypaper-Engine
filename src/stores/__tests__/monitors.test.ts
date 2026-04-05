@@ -39,6 +39,22 @@ describe("useMonitorStore", () => {
     expect(state.monitorSelection.mode).toBe("individual");
   });
 
+  it("initial state migrates legacy stable_id in localStorage", async () => {
+    localStorage.setItem(
+      STORAGE_KEY,
+      JSON.stringify({
+        selectedMonitors: ["monitor:0:0:0:1920:1080"],
+        mode: "individual",
+      }),
+    );
+
+    const useMonitorStore = await getStore();
+    expect(useMonitorStore.getState().monitorSelection.selectedMonitors).toEqual(["Monitor 0"]);
+
+    const persisted = JSON.parse(localStorage.getItem(STORAGE_KEY) ?? "{}");
+    expect(persisted.selectedMonitors).toEqual(["Monitor 0"]);
+  });
+
   it("setMonitorSelection updates state and persists", async () => {
     const useMonitorStore = await getStore();
 
@@ -121,6 +137,94 @@ describe("useMonitorStore", () => {
     expect(state.monitorsList[0].isSelected).toBe(false);
     expect(state.monitorsList[1].isSelected).toBe(true);
     expect(state._configLoaded).toBe(true);
+  });
+
+  it("setLastSavedMonitorConfig normalizes legacy stable_id and syncs daemon", async () => {
+    const monitors = [sampleMonitor("Monitor 0")];
+    mockAPI.goDaemon.getMonitors = vi.fn().mockResolvedValue(monitors);
+    mockAPI.goDaemon.getConfig = vi.fn().mockResolvedValue({
+      app: {},
+      daemon: {},
+      backend: { type: "wayland-utauri" },
+      monitors: {
+        selected_monitors: ["monitor:0:0:0:1920:1080"],
+        image_set_type: "individual",
+      },
+      wallhaven: {},
+    });
+
+    const useMonitorStore = await getStore();
+
+    await act(async () => {
+      await useMonitorStore.getState().setLastSavedMonitorConfig();
+    });
+
+    expect(useMonitorStore.getState().monitorSelection.selectedMonitors).toEqual(["Monitor 0"]);
+    expect(mockAPI.goDaemon.updateConfig).toHaveBeenCalledWith({
+      monitors: {
+        selected_monitors: ["Monitor 0"],
+        image_set_type: "individual",
+      },
+    });
+  });
+
+  it("refreshFromDaemon normalizes legacy stable_id and syncs daemon", async () => {
+    const monitors = [sampleMonitor("Monitor 0")];
+    mockAPI.goDaemon.getMonitors = vi.fn().mockResolvedValue(monitors);
+    mockAPI.goDaemon.getConfig = vi.fn().mockResolvedValue({
+      app: {},
+      daemon: {},
+      backend: { type: "wayland-utauri" },
+      monitors: {
+        selected_monitors: ["monitor:0:0:0:1920:1080"],
+        image_set_type: "individual",
+      },
+      wallhaven: {},
+    });
+
+    const useMonitorStore = await getStore();
+
+    await act(async () => {
+      await useMonitorStore.getState().refreshFromDaemon();
+    });
+
+    const state = useMonitorStore.getState();
+    expect(state.monitorSelection.selectedMonitors).toEqual(["Monitor 0"]);
+    expect(state.monitorsList[0]?.isSelected).toBe(true);
+    expect(mockAPI.goDaemon.updateConfig).toHaveBeenCalledWith({
+      monitors: {
+        selected_monitors: ["Monitor 0"],
+        image_set_type: "individual",
+      },
+    });
+  });
+
+  it("reQueryMonitors normalizes legacy selection and syncs daemon", async () => {
+    const monitors = [sampleMonitor("Monitor 0"), sampleMonitor("Monitor 1")];
+    mockAPI.goDaemon.getMonitors = vi.fn().mockResolvedValue(monitors);
+
+    const useMonitorStore = await getStore();
+    useMonitorStore.setState({
+      monitorSelection: {
+        selectedMonitors: ["monitor:0:0:0:1920:1080"],
+        mode: "individual",
+      },
+    });
+
+    await act(async () => {
+      await useMonitorStore.getState().reQueryMonitors();
+    });
+
+    const state = useMonitorStore.getState();
+    expect(state.monitorSelection.selectedMonitors).toEqual(["Monitor 0"]);
+    expect(state.monitorsList[0]?.isSelected).toBe(true);
+    expect(state.monitorsList[1]?.isSelected).toBe(false);
+    expect(mockAPI.goDaemon.updateConfig).toHaveBeenCalledWith({
+      monitors: {
+        selected_monitors: ["Monitor 0"],
+        image_set_type: "individual",
+      },
+    });
   });
 
   it("setLastSavedMonitorConfig is idempotent after first load", async () => {

@@ -365,6 +365,41 @@ const waylandUtauriVideoFields: Field[] = [
     type: "checkbox",
   },
   {
+    key: "waylandutauri.allow_web_manifest_network",
+    label: "Allow manifest to request network capability",
+    description:
+      "When off, wallpaper `capabilities.network` in waypaper.json is ignored for CSP even if global HTML network is enabled. Defense-in-depth: both this and “Allow network for HTML wallpapers” must be on for outbound fetch.",
+    type: "checkbox",
+  },
+  {
+    key: "waylandutauri.allow_web_keyboard",
+    label: "Allow web wallpapers: keyboard",
+    description:
+      "When off, gallery and manifests cannot enable layer-shell keyboard delivery to HTML wallpapers.",
+    type: "checkbox",
+  },
+  {
+    key: "waylandutauri.allow_web_audio_reactive",
+    label: "Allow web wallpapers: audio reactive",
+    description:
+      "When off, desktop audio capture is not started for wallpapers that request audio_reactive.",
+    type: "checkbox",
+  },
+  {
+    key: "waylandutauri.allow_web_pointer_interactive",
+    label: "Allow web wallpapers: pointer interactive",
+    description:
+      "When off, GTK keeps input-shape passthrough (wallpapers cannot opt into hit-testing).",
+    type: "checkbox",
+  },
+  {
+    key: "waylandutauri.allow_web_parallax_aware",
+    label: "Allow web wallpapers: parallax_aware flag",
+    description:
+      "When off, manifest parallax_aware is stripped before apply (mostly declarative; host may still emit parallax).",
+    type: "checkbox",
+  },
+  {
     key: "waylandutauri.renderer_pause",
     label: "Pause HTML wallpaper rendering",
     description:

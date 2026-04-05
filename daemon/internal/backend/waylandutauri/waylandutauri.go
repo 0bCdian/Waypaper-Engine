@@ -18,6 +18,7 @@ import (
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
+	"waypaper-engine/daemon/internal/store"
 
 	"github.com/spf13/viper"
 )
@@ -419,6 +420,11 @@ func (w *WaylandUtauri) RegisterDefaults(v *viper.Viper) {
 	v.SetDefault(viperBackendKey+".video_audio_default", def.VideoAudioDefault)
 	v.SetDefault(viperBackendKey+".allow_network_wallpapers", def.AllowNetworkWallpapers)
 	v.SetDefault(viperBackendKey+".renderer_pause", def.RendererPause)
+	v.SetDefault(viperBackendKey+".allow_web_keyboard", def.AllowWebKeyboard)
+	v.SetDefault(viperBackendKey+".allow_web_audio_reactive", def.AllowWebAudioReactive)
+	v.SetDefault(viperBackendKey+".allow_web_pointer_interactive", def.AllowWebPointerInteractive)
+	v.SetDefault(viperBackendKey+".allow_web_parallax_aware", def.AllowWebParallaxAware)
+	v.SetDefault(viperBackendKey+".allow_web_manifest_network", def.AllowWebManifestNetwork)
 }
 
 func (w *WaylandUtauri) ValidateConfig(raw json.RawMessage) error {
@@ -529,6 +535,11 @@ func (w *WaylandUtauri) loadConfigFromViper() *Config {
 	cfg.VideoAudioDefault = getBool("video_audio_default")
 	cfg.AllowNetworkWallpapers = getBool("allow_network_wallpapers")
 	cfg.RendererPause = getBool("renderer_pause")
+	cfg.AllowWebKeyboard = getBool("allow_web_keyboard")
+	cfg.AllowWebAudioReactive = getBool("allow_web_audio_reactive")
+	cfg.AllowWebPointerInteractive = getBool("allow_web_pointer_interactive")
+	cfg.AllowWebParallaxAware = getBool("allow_web_parallax_aware")
+	cfg.AllowWebManifestNetwork = getBool("allow_web_manifest_network")
 
 	if w.v != nil {
 		cfg.TransitionAngleDeg = normalizeAngleDeg(intFromViperPrefixes(w.v, "transition_angle_deg", cfg.TransitionAngleDeg))
@@ -571,6 +582,19 @@ func (w *WaylandUtauri) PushWallpaperConfig(ctx context.Context, sourceTarget st
 	return nil
 }
 
+// PushWebCapabilities updates the running waypaper-tauri session for monitors showing this entry.
+func (w *WaylandUtauri) PushWebCapabilities(ctx context.Context, sourceTarget string, caps json.RawMessage) error {
+	cfg := w.loadConfigFromViper()
+	client, err := w.makeControlClient(cfg)
+	if err != nil {
+		return fmt.Errorf("wayland-utauri: push web capabilities: %w", err)
+	}
+	if err := client.pushWebCapabilities(ctx, sourceTarget, caps); err != nil {
+		return fmt.Errorf("wayland-utauri: push web capabilities: %w", err)
+	}
+	return nil
+}
+
 func (w *WaylandUtauri) SyncRuntimeFromConfig(ctx context.Context) error {
 	cfg := w.loadConfigFromViper()
 	client, err := w.makeControlClient(cfg)
@@ -583,8 +607,25 @@ func (w *WaylandUtauri) SyncRuntimeFromConfig(ctx context.Context) error {
 	if err := client.setAllowNetworkWallpapers(ctx, cfg.AllowNetworkWallpapers); err != nil {
 		return fmt.Errorf("wayland-utauri: runtime sync network policy: %w", err)
 	}
+	if err := client.setWebCapabilityPolicy(ctx, cfg); err != nil {
+		return fmt.Errorf("wayland-utauri: runtime sync web capability policy: %w", err)
+	}
 	if err := client.setRendererPause(ctx, cfg.RendererPause); err != nil {
 		return fmt.Errorf("wayland-utauri: runtime sync renderer pause: %w", err)
 	}
 	return nil
+}
+
+// LoadConfigFromViper reads [backend.wayland-utauri] from v. Nil v returns built-in defaults.
+func LoadConfigFromViper(v *viper.Viper) *Config {
+	if v == nil {
+		return defaultConfig()
+	}
+	w := &WaylandUtauri{v: v}
+	return w.loadConfigFromViper()
+}
+
+// ClampWebCapabilitiesFromConfig applies the current viper-backed policy ceiling to caps.
+func (w *WaylandUtauri) ClampWebCapabilitiesFromConfig(caps store.WebCapabilities) store.WebCapabilities {
+	return w.loadConfigFromViper().ApplyWebCapabilityPolicy(caps)
 }

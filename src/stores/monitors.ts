@@ -1,6 +1,10 @@
 import { create } from "zustand";
 import type { Monitor, MonitorMode } from "../../electron/daemon-go-types";
 import { logger } from "../utils/logger";
+import {
+  normalizeSelectedMonitors,
+  selectedMonitorsOrderChanged,
+} from "../utils/monitorNames";
 
 export interface StoreMonitor extends Monitor {
   isSelected: boolean;
@@ -29,7 +33,15 @@ function loadPersistedSelection(): MonitorSelection {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
     if (!raw) return { selectedMonitors: [], mode: "individual" };
-    return JSON.parse(raw) as MonitorSelection;
+    const parsed = JSON.parse(raw) as MonitorSelection;
+    const mode = parsed.mode ?? "individual";
+    const rawNames = Array.isArray(parsed.selectedMonitors) ? parsed.selectedMonitors : [];
+    const normalized = normalizeSelectedMonitors(rawNames);
+    const out: MonitorSelection = { selectedMonitors: normalized, mode };
+    if (selectedMonitorsOrderChanged(rawNames, normalized)) {
+      persistSelection(out);
+    }
+    return out;
   } catch {
     return { selectedMonitors: [], mode: "individual" };
   }
@@ -40,6 +52,21 @@ function persistSelection(sel: MonitorSelection) {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(sel));
   } catch {
     /* ignore */
+  }
+}
+
+async function pushMonitorSelectionToDaemon(sel: MonitorSelection): Promise<void> {
+  try {
+    if (window.API_RENDERER?.goDaemon?.updateConfig) {
+      await window.API_RENDERER.goDaemon.updateConfig({
+        monitors: {
+          selected_monitors: sel.selectedMonitors,
+          image_set_type: sel.mode,
+        },
+      });
+    }
+  } catch (error) {
+    logger.error("MonitorStore: Failed to sync normalized monitor names to daemon:", error);
   }
 }
 
@@ -89,10 +116,23 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
         return;
       }
 
-      const selection = get().monitorSelection;
+      const sel = get().monitorSelection;
+      const rawNames = sel.selectedMonitors;
+      const normalizedNames = normalizeSelectedMonitors(rawNames);
+      const selectionChanged = selectedMonitorsOrderChanged(rawNames, normalizedNames);
+      const effectiveSelection: MonitorSelection = selectionChanged
+        ? { ...sel, selectedMonitors: normalizedNames }
+        : sel;
+
+      if (selectionChanged) {
+        set({ monitorSelection: effectiveSelection });
+        persistSelection(effectiveSelection);
+        await pushMonitorSelectionToDaemon(effectiveSelection);
+      }
+
       const storeMonitors: StoreMonitor[] = monitors.map((monitor) => ({
         ...monitor,
-        isSelected: selection.selectedMonitors.includes(monitor.name),
+        isSelected: effectiveSelection.selectedMonitors.includes(monitor.name),
       }));
 
       set({ monitorsList: storeMonitors });
@@ -112,9 +152,11 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
 
       if (!config?.monitors) return;
 
-      const selectedMonitors = config.monitors.selected_monitors || [];
+      const rawSelected = config.monitors.selected_monitors || [];
+      const selectedMonitors = normalizeSelectedMonitors(rawSelected);
       const mode: MonitorMode = config.monitors.image_set_type || "individual";
       const selection: MonitorSelection = { selectedMonitors, mode };
+      const needsDaemonSync = selectedMonitorsOrderChanged(rawSelected, selectedMonitors);
 
       const storeMonitors: StoreMonitor[] = (Array.isArray(monitors) ? monitors : []).map(
         (monitor) => ({
@@ -125,6 +167,9 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
 
       set({ monitorSelection: selection, monitorsList: storeMonitors });
       persistSelection(selection);
+      if (needsDaemonSync) {
+        await pushMonitorSelectionToDaemon(selection);
+      }
     } catch (error) {
       logger.error("MonitorStore: Error refreshing from daemon:", error);
     }
@@ -150,10 +195,12 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
       let selectedMonitors: string[] = [];
       let imageSetType: MonitorMode = "individual";
 
+      let rawSelectedFromDaemon: string[] = [];
       if (window.API_RENDERER.goDaemon.getConfig) {
         const config = await window.API_RENDERER.goDaemon.getConfig();
         if (config?.monitors) {
-          selectedMonitors = config.monitors.selected_monitors || [];
+          rawSelectedFromDaemon = config.monitors.selected_monitors || [];
+          selectedMonitors = normalizeSelectedMonitors(rawSelectedFromDaemon);
           imageSetType = config.monitors.image_set_type || "individual";
         }
       }
@@ -162,6 +209,10 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
         selectedMonitors,
         mode: imageSetType,
       };
+      const needsDaemonSync = selectedMonitorsOrderChanged(
+        rawSelectedFromDaemon,
+        selectedMonitors,
+      );
 
       const storeMonitors: StoreMonitor[] = monitors.map((monitor) => ({
         ...monitor,
@@ -174,6 +225,9 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
         _configLoaded: true,
       });
       persistSelection(selection);
+      if (needsDaemonSync) {
+        await pushMonitorSelectionToDaemon(selection);
+      }
     } catch (error) {
       logger.error("MonitorStore: Error setting last saved config:", error);
     } finally {

@@ -24,6 +24,8 @@ import (
 
 	_ "golang.org/x/image/webp"
 
+	"github.com/spf13/viper"
+
 	"waypaper-engine/daemon/internal/events"
 	"waypaper-engine/daemon/internal/store"
 	"waypaper-engine/daemon/internal/system"
@@ -53,18 +55,26 @@ type Processor struct {
 	bus         events.Bus
 	imagesDir   string
 	thumbnailer *Thumbnailer
+	configViper *viper.Viper
 
 	mu            sync.Mutex
 	activeBatches map[string]context.CancelFunc
 }
 
 // NewProcessor creates a new image Processor.
-func NewProcessor(imageStore store.ImageStore, bus events.Bus, imagesDir string, thumbnailsDir string) *Processor {
+func NewProcessor(
+	imageStore store.ImageStore,
+	bus events.Bus,
+	imagesDir string,
+	thumbnailsDir string,
+	configViper *viper.Viper,
+) *Processor {
 	return &Processor{
 		imageStore:    imageStore,
 		bus:           bus,
 		imagesDir:     imagesDir,
 		thumbnailer:   NewThumbnailer(thumbnailsDir),
+		configViper:   configViper,
 		activeBatches: make(map[string]context.CancelFunc),
 	}
 }

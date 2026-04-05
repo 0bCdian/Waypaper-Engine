@@ -12,7 +12,7 @@ var defaultParallaxEasing = [4]float32{0.215, 0.610, 0.355, 1.000}
 // parallaxZoomFromPercent converts UI percent (100–200) to Rust scale (>= 1.0).
 func parallaxZoomFromPercent(pct int) float32 {
 	if pct <= 0 {
-		return 1.15 // match tauri default when unset
+		return 1.2 // match tauri default when unset
 	}
 	z := float32(pct) / 100.0
 	if z < 1.0 {
@@ -58,7 +58,7 @@ func buildParallaxRequestBody(cfg *Config) map[string]any {
 	}
 	step := float32(cfg.ParallaxStepPct)
 	if step <= 0 {
-		step = 8
+		step = 5
 	}
 	anim := uint64(cfg.ParallaxAnimMS)
 	if anim == 0 {

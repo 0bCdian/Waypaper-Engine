@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -14,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"waypaper-engine/daemon/internal/backend"
+	"waypaper-engine/daemon/internal/backend/waylandutauri"
 	"waypaper-engine/daemon/internal/events"
 	img "waypaper-engine/daemon/internal/image"
 	"waypaper-engine/daemon/internal/store"
@@ -42,6 +44,15 @@ func NewImageHandler(
 		bus:       bus,
 		registry:  registry,
 	}
+}
+
+func (h *ImageHandler) clampWebCaps(caps store.WebCapabilities) store.WebCapabilities {
+	if h.registry != nil {
+		if w, ok := h.registry.Active().(*waylandutauri.WaylandUtauri); ok {
+			return w.ClampWebCapabilitiesFromConfig(caps)
+		}
+	}
+	return waylandutauri.LoadConfigFromViper(nil).ApplyWebCapabilityPolicy(caps)
 }
 
 // List handles GET /images.
@@ -218,8 +229,53 @@ func (h *ImageHandler) Update(w http.ResponseWriter, r *http.Request) {
 		"is_selected":                true,
 		"folder_id":                  true,
 		"wallpaper_config_overrides": true,
+		"web_capabilities":           true,
 	}
 	for key := range updates {
+		if !allowed[key] {
+			WriteErrorf(w, http.StatusBadRequest, "field %q is not updatable", key)
+			return
+		}
+	}
+
+	syncCapsToManifest := false
+	if raw, ok := updates["web_capabilities"]; ok {
+		cur, gerr := h.store.GetByID(r.Context(), id)
+		if gerr != nil {
+			WriteError(w, http.StatusNotFound, gerr.Error())
+			return
+		}
+		if !strings.EqualFold(strings.TrimSpace(cur.MediaType), "web") || cur.WebMeta == nil {
+			WriteError(w, http.StatusBadRequest, "web_capabilities applies only to web wallpapers with metadata")
+			return
+		}
+		patch, ok := raw.(map[string]any)
+		if !ok {
+			WriteError(w, http.StatusBadRequest, "web_capabilities must be a JSON object")
+			return
+		}
+		merged := wallpaper.MergeWebCapabilitiesJSON(cur.WebMeta.Capabilities, patch)
+		cur.WebMeta.Capabilities = h.clampWebCaps(merged)
+		wmJSON, mErr := json.Marshal(cur.WebMeta)
+		if mErr != nil {
+			WriteError(w, http.StatusInternalServerError, mErr.Error())
+			return
+		}
+		var wmMap map[string]any
+		if err := json.Unmarshal(wmJSON, &wmMap); err != nil {
+			WriteError(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		// Replace client key with full web_meta document for the store layer.
+		delete(updates, "web_capabilities")
+		updates["web_meta"] = wmMap
+		syncCapsToManifest = true
+	}
+
+	for key := range updates {
+		if key == "web_meta" {
+			continue // injected by web_capabilities merge above
+		}
 		if !allowed[key] {
 			WriteErrorf(w, http.StatusBadRequest, "field %q is not updatable", key)
 			return
@@ -243,11 +299,40 @@ func (h *ImageHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if _, touched := updates["wallpaper_config_overrides"]; touched && h.registry != nil && image != nil {
-		if strings.EqualFold(strings.TrimSpace(image.MediaType), "web") {
+	if _, touched := updates["wallpaper_config_overrides"]; touched && image != nil {
+		if strings.EqualFold(strings.TrimSpace(image.MediaType), "web") && image.WebMeta != nil {
+			mp := strings.TrimSpace(image.WebMeta.ManifestPath)
+			if mp != "" {
+				if err := wallpaper.WriteWallpaperConfigOverridesToManifest(mp, image.WallpaperConfigOverrides); err != nil {
+					slog.Warn("sync wallpaper_config_overrides to manifest failed", "image_id", id, "error", err)
+				}
+			}
+		}
+		if h.registry != nil && strings.EqualFold(strings.TrimSpace(image.MediaType), "web") {
 			merged := wallpaper.MergedWallpaperConfigForImage(image)
-			if err := wallpaper.PushWallpaperConfigToRenderer(r.Context(), h.registry, image.Path, merged); err != nil {
+			target := wallpaper.WebConfigPushSourceTarget(image)
+			if err := wallpaper.PushWallpaperConfigToRenderer(r.Context(), h.registry, target, merged); err != nil {
 				slog.Warn("push web wallpaper config to renderer failed", "image_id", id, "error", err)
+			}
+		}
+	}
+
+	if syncCapsToManifest && image != nil && strings.EqualFold(strings.TrimSpace(image.MediaType), "web") && image.WebMeta != nil {
+		mp := strings.TrimSpace(image.WebMeta.ManifestPath)
+		if mp != "" {
+			if err := wallpaper.WriteWebCapabilitiesToManifest(mp, image.WebMeta.Capabilities); err != nil {
+				slog.Warn("sync web capabilities to manifest failed", "image_id", id, "error", err)
+			}
+		}
+		if h.registry != nil {
+			capsJSON, mErr := json.Marshal(image.WebMeta.Capabilities)
+			if mErr != nil {
+				slog.Warn("marshal web capabilities for renderer push failed", "image_id", id, "error", mErr)
+			} else {
+				target := wallpaper.WebConfigPushSourceTarget(image)
+				if err := wallpaper.PushWebCapabilitiesToRenderer(r.Context(), h.registry, target, capsJSON); err != nil {
+					slog.Warn("push web capabilities to renderer failed", "image_id", id, "error", err)
+				}
 			}
 		}
 	}

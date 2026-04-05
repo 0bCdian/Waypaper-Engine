@@ -3,6 +3,8 @@ package waylandutauri
 import (
 	"os"
 	"path/filepath"
+
+	"waypaper-engine/daemon/internal/store"
 )
 
 const (
@@ -34,6 +36,11 @@ type Config struct {
 	VideoAudioDefault              bool    `mapstructure:"video_audio_default" json:"video_audio_default"`
 	AllowNetworkWallpapers         bool    `mapstructure:"allow_network_wallpapers" json:"allow_network_wallpapers"`
 	RendererPause                  bool    `mapstructure:"renderer_pause" json:"renderer_pause"`
+	AllowWebKeyboard               bool    `mapstructure:"allow_web_keyboard" json:"allow_web_keyboard"`
+	AllowWebAudioReactive          bool    `mapstructure:"allow_web_audio_reactive" json:"allow_web_audio_reactive"`
+	AllowWebPointerInteractive     bool    `mapstructure:"allow_web_pointer_interactive" json:"allow_web_pointer_interactive"`
+	AllowWebParallaxAware          bool    `mapstructure:"allow_web_parallax_aware" json:"allow_web_parallax_aware"`
+	AllowWebManifestNetwork        bool    `mapstructure:"allow_web_manifest_network" json:"allow_web_manifest_network"`
 }
 
 func defaultSocketPath() string {
@@ -61,11 +68,27 @@ func defaultConfig() *Config {
 		TransitionWaveFrequency:        3,
 		ParallaxEnabled:                false,
 		ParallaxZoom:                   120,
-		ParallaxStepPct:                8,
+		ParallaxStepPct:                5,
 		ParallaxAnimMS:                 600,
 		ParallaxEasing:                 "0.215,0.610,0.355,1.000",
 		VideoAudioDefault:              false,
 		AllowNetworkWallpapers:         false,
 		RendererPause:                  false,
+		AllowWebKeyboard:               false,
+		AllowWebAudioReactive:          false,
+		AllowWebPointerInteractive:     true,
+		AllowWebParallaxAware:          true,
+		AllowWebManifestNetwork:        false,
+	}
+}
+
+// ApplyWebCapabilityPolicy returns caps ∧ host policy ceiling (gallery / manifest requests).
+func (c *Config) ApplyWebCapabilityPolicy(caps store.WebCapabilities) store.WebCapabilities {
+	return store.WebCapabilities{
+		Network:            caps.Network && c.AllowWebManifestNetwork,
+		Keyboard:           caps.Keyboard && c.AllowWebKeyboard,
+		AudioReactive:      caps.AudioReactive && c.AllowWebAudioReactive,
+		ParallaxAware:      caps.ParallaxAware && c.AllowWebParallaxAware,
+		PointerInteractive: caps.PointerInteractive && c.AllowWebPointerInteractive,
 	}
 }

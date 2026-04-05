@@ -140,10 +140,11 @@ The Go daemon is a **local** service: control plane is **HTTP over a Unix domain
 
 **wayland-utauri + HTML wallpapers**: the meaningful script-driven risk is **local HTML wallpapers** running in a WebKit webview: script can use `fetch`/XHR (e.g. after reading local content) to **talk to the network** if the engine allows it. That is **not** the same threat model as generic untrusted web content, but it is the one vector worth tightening.
 
-Mitigation (user-controlled in config; wallpaper JSON cannot flip it):
+Mitigation (user-controlled in config; manifest flags are **capped** by host policy):
 
-- **Default**: when navigating to a user HTML wallpaper (`file:` document), wayland-utauri sets WebKit’s **default** CSP to `connect-src 'none'`, blocking network `fetch`/XHR/WebSocket targets.
-- **Opt-in**: set **`backend.wayland-utauri.allow_network_wallpapers = true`** (Settings → Backend, or TOML). The daemon calls wayland-utauri’s control API (`POST /settings/network`) so a running renderer updates CSP/reloads web wallpapers; when the daemon spawns `wayland-utauri`, it also passes **`--allow-network-wallpapers`** so the first process matches config. If you start `wayland-utauri` manually, pass that flag only if you want network at launch before the daemon syncs.
+- **Default**: when navigating to a user HTML wallpaper (`file:` document), wayland-utauri sets WebKit’s **default** CSP to `connect-src 'none'`, blocking network `fetch`/XHR/WebSocket targets unless both the global toggle and the per-manifest policy allow it.
+- **Opt-in network**: set **`backend.wayland-utauri.allow_network_wallpapers = true`** and **`allow_web_manifest_network = true`** when you want `waypaper.json` `capabilities.network` to participate. Effective `connect-src` is `global allow ∧ clamped manifest network`. The daemon calls **`POST /settings/network`** and **`POST /settings/web-capability-policy`** on sync.
+- **Other capabilities** (keyboard, audio reactive, pointer, parallax) are clamped by **`allow_web_*`** keys in the same section; defaults deny keyboard/audio/manifest-network and allow pointer/parallax. Wallpaper JS cannot change these—only config and the daemon control socket (local user) can.
 
 Images, video, and GIF wallpapers are not treated as an HTML/script exfil channel in this model. Asset-protocol scope breadth is a **Tauri/`convertFileSrc` mechanics** concern (paths the user can already read), not a separate “attacker in `$HOME`” story.
 

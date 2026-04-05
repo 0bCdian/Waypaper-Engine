@@ -117,6 +117,23 @@ func (c *controlClient) setAllowNetworkWallpapers(ctx context.Context, allow boo
 	return nil
 }
 
+func (c *controlClient) setWebCapabilityPolicy(ctx context.Context, cfg *Config) error {
+	_, status, body, err := c.doJSON(ctx, http.MethodPost, "/settings/web-capability-policy", map[string]any{
+		"allow_web_keyboard":            cfg.AllowWebKeyboard,
+		"allow_web_audio_reactive":      cfg.AllowWebAudioReactive,
+		"allow_web_pointer_interactive": cfg.AllowWebPointerInteractive,
+		"allow_web_parallax_aware":      cfg.AllowWebParallaxAware,
+		"allow_web_manifest_network":    cfg.AllowWebManifestNetwork,
+	})
+	if err != nil {
+		return err
+	}
+	if status < 200 || status >= 300 {
+		return classifyHTTPError(status, body)
+	}
+	return nil
+}
+
 func (c *controlClient) setRendererPause(ctx context.Context, paused bool) error {
 	_, status, body, err := c.doJSON(ctx, http.MethodPost, "/wallpaper/renderer-pause", map[string]any{
 		"paused": paused,
@@ -140,6 +157,26 @@ func (c *controlClient) pushWallpaperConfig(ctx context.Context, sourceTarget st
 	_, status, body, err := c.doJSON(ctx, http.MethodPost, "/wallpaper/wallpaper-config", map[string]any{
 		"source_target": sourceTarget,
 		"values":        values,
+	})
+	if err != nil {
+		return err
+	}
+	if status < 200 || status >= 300 {
+		return classifyHTTPError(status, body)
+	}
+	return nil
+}
+
+func (c *controlClient) pushWebCapabilities(ctx context.Context, sourceTarget string, capsJSON json.RawMessage) error {
+	var caps any = map[string]any{}
+	if len(capsJSON) > 0 {
+		if err := json.Unmarshal(capsJSON, &caps); err != nil {
+			return fmt.Errorf("decode web capabilities: %w", err)
+		}
+	}
+	_, status, body, err := c.doJSON(ctx, http.MethodPost, "/wallpaper/web-capabilities", map[string]any{
+		"source_target": sourceTarget,
+		"capabilities":  caps,
 	})
 	if err != nil {
 		return err

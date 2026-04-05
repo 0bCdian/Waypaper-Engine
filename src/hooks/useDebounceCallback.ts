@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useCallback, useEffect, useRef } from "react";
 
 type callback = (...args: unknown[]) => void;
 
@@ -18,7 +18,7 @@ function useDebounceCallback(callback: callback, delay = 500) {
     };
   }, []);
 
-  return function debouncedCallback(...args: unknown[]) {
+  return useCallback((...args: unknown[]) => {
     if (timeoutRef.current.id !== null) {
       clearTimeout(timeoutRef.current.id);
     }
@@ -27,7 +27,7 @@ function useDebounceCallback(callback: callback, delay = 500) {
       callbackRef.current(...args);
       timeoutRef.current.id = null;
     }, delay);
-  };
+  }, [delay]);
 }
 
 export default useDebounceCallback;

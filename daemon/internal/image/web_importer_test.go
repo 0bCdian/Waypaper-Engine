@@ -29,7 +29,7 @@ func TestImportWebWallpaper_RequiresPreview(t *testing.T) {
 	require.NoError(t, os.WriteFile(filepath.Join(tmpSrc, "waypaper.json"), []byte(`{"entry":"index.html","title":"t"}`), 0o644))
 
 	db := testutil.OpenTestDB(t)
-	p := image.NewProcessor(db.ImageStore(), nil, t.TempDir(), t.TempDir())
+	p := image.NewProcessor(db.ImageStore(), nil, t.TempDir(), t.TempDir(), nil)
 
 	_, err := p.ImportWebWallpaper(ctx, tmpSrc, nil)
 	require.Error(t, err)
@@ -47,7 +47,7 @@ func TestImportWebWallpaper_WithPreview(t *testing.T) {
 	db := testutil.OpenTestDB(t)
 	imagesDir := t.TempDir()
 	thumbsDir := t.TempDir()
-	p := image.NewProcessor(db.ImageStore(), nil, imagesDir, thumbsDir)
+	p := image.NewProcessor(db.ImageStore(), nil, imagesDir, thumbsDir, nil)
 
 	img, err := p.ImportWebWallpaper(ctx, tmpSrc, nil)
 	require.NoError(t, err)

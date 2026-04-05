@@ -114,10 +114,11 @@ type Image struct {
 // WebCapabilities describes optional runtime capabilities declared by
 // web-wallpaper manifests.
 type WebCapabilities struct {
-	Network       bool `json:"network"`
-	Keyboard      bool `json:"keyboard"`
-	AudioReactive bool `json:"audio_reactive"`
-	ParallaxAware bool `json:"parallax_aware"`
+	Network            bool `json:"network"`
+	Keyboard           bool `json:"keyboard"`
+	AudioReactive      bool `json:"audio_reactive"`
+	ParallaxAware      bool `json:"parallax_aware"`
+	PointerInteractive bool `json:"pointer_interactive"`
 }
 
 // WebMeta stores resolved metadata for imported web wallpapers.

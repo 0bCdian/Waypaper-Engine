@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"waypaper-engine/daemon/internal/backend/waylandutauri"
 	"waypaper-engine/daemon/internal/store"
 	"waypaper-engine/daemon/internal/system"
 )
@@ -25,6 +26,8 @@ type webManifest struct {
 	Capabilities webCapabilities `json:"capabilities"`
 	// Canonical schema for user-tunable props (see WEB_WALLPAPER_SPEC).
 	WallpaperConfig json.RawMessage `json:"wallpaper_config"`
+	// Optional saved overrides (synced from gallery); merged on load with schema defaults.
+	WallpaperConfigOverrides json.RawMessage `json:"wallpaper_config_overrides"`
 	// Legacy project.json: general.properties — imported as wallpaper_config only for that manifest.
 	General *struct {
 		Properties json.RawMessage `json:"properties"`
@@ -32,10 +35,11 @@ type webManifest struct {
 }
 
 type webCapabilities struct {
-	Network       bool `json:"network"`
-	Keyboard      bool `json:"keyboard"`
-	AudioReactive bool `json:"audio_reactive"`
-	ParallaxAware bool `json:"parallax_aware"`
+	Network            bool `json:"network"`
+	Keyboard           bool `json:"keyboard"`
+	AudioReactive      bool `json:"audio_reactive"`
+	ParallaxAware      bool `json:"parallax_aware"`
+	PointerInteractive bool `json:"pointer_interactive"`
 }
 
 // ImportWebWallpaper imports a web wallpaper package from a directory or manifest path.
@@ -97,36 +101,42 @@ func (p *Processor) ImportWebWallpaper(ctx context.Context, sourcePath string, f
 		imageName = filepath.Base(targetDir)
 	}
 
+	cfg := waylandutauri.LoadConfigFromViper(p.configViper)
+	rawCaps := store.WebCapabilities{
+		Network:            manifest.Capabilities.Network,
+		Keyboard:           manifest.Capabilities.Keyboard,
+		AudioReactive:      manifest.Capabilities.AudioReactive,
+		ParallaxAware:      manifest.Capabilities.ParallaxAware,
+		PointerInteractive: manifest.Capabilities.PointerInteractive,
+	}
+	clampedCaps := cfg.ApplyWebCapabilityPolicy(rawCaps)
+
 	created, err := p.imageStore.Create(ctx, []store.Image{{
-		Name:        imageName,
-		Path:        copiedEntryPath,
-		MediaType:   "web",
-		Width:       0,
-		Height:      0,
-		Format:      "html",
-		FileSize:    dirSize(targetDir),
-		Checksum:    "sha256:" + fmt.Sprintf("%x", checksumBytes[:]),
-		Tags:        []string{},
-		Colors:      []string{},
-		ImportedAt:  time.Now(),
-		SourcePath:  sourcePath,
-		IsSelected:  false,
-		Thumbnails:  map[string]string{},
-		PreviewPath: previewPath,
-		FolderID:    folderID,
+		Name:                     imageName,
+		Path:                     copiedEntryPath,
+		MediaType:                "web",
+		Width:                    0,
+		Height:                   0,
+		Format:                   "html",
+		FileSize:                 dirSize(targetDir),
+		Checksum:                 "sha256:" + fmt.Sprintf("%x", checksumBytes[:]),
+		Tags:                     []string{},
+		Colors:                   []string{},
+		ImportedAt:               time.Now(),
+		SourcePath:               sourcePath,
+		IsSelected:               false,
+		Thumbnails:               map[string]string{},
+		PreviewPath:              previewPath,
+		FolderID:                 folderID,
+		WallpaperConfigOverrides: manifest.WallpaperConfigOverrides,
 		WebMeta: &store.WebMeta{
-			PackageRoot:  targetDir,
-			ManifestPath: filepath.Join(targetDir, filepath.Base(manifestPath)),
-			EntryPath:    copiedEntryPath,
-			Title:        manifest.Title,
-			Description:  manifest.Description,
-			Author:       manifest.Author,
-			Capabilities: store.WebCapabilities{
-				Network:       manifest.Capabilities.Network,
-				Keyboard:      manifest.Capabilities.Keyboard,
-				AudioReactive: manifest.Capabilities.AudioReactive,
-				ParallaxAware: manifest.Capabilities.ParallaxAware,
-			},
+			PackageRoot:     targetDir,
+			ManifestPath:    filepath.Join(targetDir, filepath.Base(manifestPath)),
+			EntryPath:       copiedEntryPath,
+			Title:           manifest.Title,
+			Description:     manifest.Description,
+			Author:          manifest.Author,
+			Capabilities:    clampedCaps,
 			WallpaperConfig: wallpaperCfg,
 		},
 	}})

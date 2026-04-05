@@ -12,8 +12,8 @@ func TestParallaxZoomFromPercent(t *testing.T) {
 	assert.InDelta(t, 1.0, parallaxZoomFromPercent(100), 1e-5)
 	assert.InDelta(t, 1.5, parallaxZoomFromPercent(150), 1e-5)
 	assert.InDelta(t, 1.0, parallaxZoomFromPercent(50), 1e-5) // below 100% clamps to 1.0
-	assert.InDelta(t, 1.15, parallaxZoomFromPercent(0), 1e-5)
-	assert.InDelta(t, 1.15, parallaxZoomFromPercent(-5), 1e-5)
+	assert.InDelta(t, 1.2, parallaxZoomFromPercent(0), 1e-5)
+	assert.InDelta(t, 1.2, parallaxZoomFromPercent(-5), 1e-5)
 }
 
 func TestParseParallaxEasingOrDefault(t *testing.T) {
@@ -57,6 +57,6 @@ func TestBuildParallaxRequestBody_StepAndAnimFallbacks(t *testing.T) {
 		ParallaxAnimMS:  0,
 	}
 	body := buildParallaxRequestBody(cfg)
-	assert.Equal(t, float32(8), body["step_percent"])
+	assert.Equal(t, float32(5), body["step_percent"])
 	assert.Equal(t, uint64(600), body["animation_ms"])
 }
