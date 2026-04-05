@@ -243,6 +243,7 @@ func restoreExtendGroup(
 				Monitors:              []monitor.Monitor{mon},
 				Mode:                  monitor.ModeIndividual,
 				WallpaperConfigValues: cfgVals,
+				ParallaxDirection:     wallpaper.ParallaxDirectionOverrideFromImage(imgPtr),
 			}
 			if err := activeBackend.SetWallpaper(ctx, req); err != nil {
 				slog.Warn("restore: failed to set split wallpaper", "monitor", mon.Name, "error", err)
@@ -259,6 +260,7 @@ func restoreExtendGroup(
 			Monitors:              grp.monitors,
 			Mode:                  monitor.ModeClone,
 			WallpaperConfigValues: cfgVals,
+			ParallaxDirection:     wallpaper.ParallaxDirectionOverrideFromImage(imgPtr),
 		}
 		if err := activeBackend.SetWallpaper(ctx, req); err != nil {
 			slog.Warn("restore: failed to set extend wallpaper", "image_id", grp.state.ImageID, "error", err)
@@ -300,6 +302,7 @@ func restoreIndividual(
 		Monitors:              []monitor.Monitor{mon},
 		Mode:                  monitor.MonitorMode(state.Mode),
 		WallpaperConfigValues: wallpaper.MergedWallpaperConfigForImage(imgPtr),
+		ParallaxDirection:     wallpaper.ParallaxDirectionOverrideFromImage(imgPtr),
 	}
 
 	if err := activeBackend.SetWallpaper(ctx, req); err != nil {

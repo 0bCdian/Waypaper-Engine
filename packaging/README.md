@@ -19,17 +19,20 @@ The `DESTDIR` variable stages files under a temporary root (standard for packagi
 The default `make install` target is user-local (`~/.local`). Packaging should use
 `make install-system` to stage system-style paths.
 
+**`DESTDIR` vs runtime paths:** files are copied under `$(DESTDIR)` + the normal install prefix (e.g. `$(DESTDIR)/opt/waypaper-engine`). The `waypaper-engine` launcher is generated so **`GUI_BIN` uses `ELECTRON_APP_ROOT` only** (for `install-system`, `/opt/waypaper-engine/...`) — never the staging path inside `DESTDIR`. The AppImage wrapper uses **`APPIMAGE_APP_ROOT`** the same way. If your distro puts the unpacked Electron tree somewhere other than `/opt/waypaper-engine`, override **`ELECTRON_APP_ROOT`** when invoking `make install` / `install-system` so the launcher matches.
+
 ### What `make install-system` places
 
 ```
-/opt/waypaper-engine/          Electron app (unpacked)
-/usr/bin/waypaper-engine       Launcher script
-/usr/bin/waypaper-daemon       Go daemon binary
-/usr/share/applications/       Desktop entry
-/usr/share/icons/hicolor/      App icons (16-512px)
-/usr/lib/systemd/user/         Systemd user service
-/usr/share/licenses/...        License file
+/opt/waypaper-engine/              Electron app (unpacked)
+/usr/local/bin/waypaper-engine     Launcher script (generated from waypaper-engine.sh.in)
+/usr/local/bin/waypaper-daemon     Go daemon binary
+/usr/local/share/applications/     Desktop entry
+/usr/local/share/pixmaps/          App icon (`waypaper-engine.png`; override `ICON_DIR` for hicolor paths)
+/usr/local/lib/systemd/user/      Systemd user service
 ```
+
+(License files or extra icon sizes, if added by a specific package recipe, are not created by the stock `Makefile`.)
 
 ### Additional targets
 

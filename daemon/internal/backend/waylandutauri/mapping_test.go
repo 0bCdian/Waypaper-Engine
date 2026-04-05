@@ -1,218 +1,129 @@
 package waylandutauri
 
-import (
-	"encoding/json"
-	"testing"
+import "testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
-
-	"waypaper-engine/daemon/internal/backend"
-	"waypaper-engine/daemon/internal/media"
-	"waypaper-engine/daemon/internal/monitor"
-)
-
-func TestBuildLoadRequest_IndividualModeUsesTargets(t *testing.T) {
-	cfg := defaultConfig()
-	req := backend.WallpaperRequest{
-		MediaType: media.MediaTypeImage,
-		ImagePath: "/tmp/wall.jpg",
-		Mode:      monitor.ModeIndividual,
-		Monitors:  []monitor.Monitor{{Name: "DP-1"}},
+func TestTopologyMonitorMatch(t *testing.T) {
+	t.Parallel()
+	topo := []topologyEntry{
+		{Monitor: 0, X: 0, Y: 0, Width: 1920, Height: 1080},
+		{Monitor: 1, X: 1920, Y: 0, Width: 1920, Height: 1080},
 	}
-	monitorMap := map[string]uint32{"DP-1": 7}
-
-	got, err := buildLoadRequest(req, cfg, monitorMap)
-	require.NoError(t, err)
-	assert.Equal(t, "image", got.Kind)
-	assert.Empty(t, got.Target)
-	require.Len(t, got.Targets, 1)
-	assert.Equal(t, uint32(7), got.Targets[0].Monitor)
-	assert.Equal(t, "/tmp/wall.jpg", got.Targets[0].Target)
-	assert.False(t, got.WaitForCompletion)
+	id, ok := TopologyMonitorMatch(topo, 1920, 0, 1920, 1080)
+	if !ok || id != 1 {
+		t.Fatalf("match right monitor: ok=%v id=%d", ok, id)
+	}
+	id, ok = TopologyMonitorMatch(topo, 1920.5, 0.5, 1920, 1080)
+	if !ok || id != 1 {
+		t.Fatalf("match with epsilon: ok=%v id=%d", ok, id)
+	}
+	_, ok = TopologyMonitorMatch(topo, 9999, 0, 1920, 1080)
+	if ok {
+		t.Fatal("expected no match")
+	}
 }
 
-func TestBuildLoadRequest_CloneModeUsesSingleTarget(t *testing.T) {
-	cfg := defaultConfig()
-	req := backend.WallpaperRequest{
-		MediaType: media.MediaTypeImage,
-		ImagePath: "/tmp/wall.jpg",
-		Mode:      monitor.ModeClone,
+func TestTopologyMonitorContainingCenter(t *testing.T) {
+	t.Parallel()
+	topo := []topologyEntry{
+		{Monitor: 0, X: 0, Y: 0, Width: 1920, Height: 1080},
+		{Monitor: 1, X: 1920, Y: 0, Width: 1920, Height: 1080},
 	}
-
-	got, err := buildLoadRequest(req, cfg, nil)
-	require.NoError(t, err)
-	assert.Equal(t, "/tmp/wall.jpg", got.Target)
-	assert.Empty(t, got.Targets)
-	assert.False(t, got.WaitForCompletion)
+	id, ok := TopologyMonitorContainingCenter(topo, 1920, 0, 2500, 1200)
+	if !ok || id != 1 {
+		t.Fatalf("center fallback: ok=%v id=%d", ok, id)
+	}
 }
 
-func TestBuildLoadRequest_UnknownMonitorFails(t *testing.T) {
-	cfg := defaultConfig()
-	req := backend.WallpaperRequest{
-		MediaType: media.MediaTypeImage,
-		ImagePath: "/tmp/wall.jpg",
-		Mode:      monitor.ModeIndividual,
-		Monitors:  []monitor.Monitor{{Name: "DP-1"}},
+func TestTopologyMonitorMatchByPosition(t *testing.T) {
+	t.Parallel()
+	topo := []topologyEntry{
+		{Monitor: 0, X: 0, Y: 0, Width: 1920, Height: 1080},
+		{Monitor: 1, X: 1920, Y: 0, Width: 2560, Height: 1440},
 	}
-
-	_, err := buildLoadRequest(req, cfg, map[string]uint32{"HDMI-A-1": 1})
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "unknown monitor")
+	id, ok := TopologyMonitorMatchByPosition(topo, 1920, 0)
+	if !ok || id != 1 {
+		t.Fatalf("position match: ok=%v id=%d", ok, id)
+	}
+	id, ok = TopologyMonitorMatchByPosition(topo, 0.5, 0.5)
+	if !ok || id != 0 {
+		t.Fatalf("position match with epsilon: ok=%v id=%d", ok, id)
+	}
+	_, ok = TopologyMonitorMatchByPosition(topo, 5000, 0)
+	if ok {
+		t.Fatal("expected no match for out-of-range position")
+	}
 }
 
-func TestBuildMonitorMap_MatchesByGeometry(t *testing.T) {
-	topology := []topologyEntry{
-		{Monitor: 0, StableID: "monitor:0:1920:0:2560:1440", Width: 2560, Height: 1440, X: 1920, Y: 0},
-		{Monitor: 1, StableID: "monitor:1:0:0:1920:1080", Width: 1920, Height: 1080, X: 0, Y: 0},
+func TestResolveParallaxMonitor_geometryBeforeCompositorID(t *testing.T) {
+	t.Parallel()
+	// GDK order: HDMI-A-1 is monitor 0 at (0,0), DP-1 is monitor 1 at (1920,0).
+	// Hyprland order: DP-1 is id 0, HDMI-A-1 is id 1 (swapped).
+	topo := []topologyEntry{
+		{Monitor: 0, X: 0, Y: 0, Width: 1920, Height: 1080},
+		{Monitor: 1, X: 1920, Y: 0, Width: 2560, Height: 1440},
 	}
-	engines := []monitor.Monitor{
-		{Name: "DP-1", Width: 2560, Height: 1440, X: 1920, Y: 0},
-		{Name: "HDMI-A-1", Width: 1920, Height: 1080, X: 0, Y: 0},
-	}
-	got := buildMonitorMap(topology, engines)
 
-	assert.Equal(t, uint32(0), got["DP-1"])
-	assert.Equal(t, uint32(1), got["HDMI-A-1"])
+	// DP-1 in Hyprland: compositor id=0, position (1920, 0), size 2560x1440.
+	// Without geometry priority, compositor id=0 would match topology monitor 0
+	// (HDMI-A-1) -- wrong display. With geometry, it correctly maps to monitor 1.
+	dp1Hint := 0
+	id, ok := ResolveParallaxMonitor(topo, 1920, 0, 2560, 1440, &dp1Hint)
+	if !ok || id != 1 {
+		t.Fatalf("DP-1 with swapped compositor id: ok=%v id=%d, want 1", ok, id)
+	}
+
+	// HDMI-A-1 in Hyprland: compositor id=1, position (0, 0), size 1920x1080.
+	// Without geometry priority, compositor id=1 would match topology monitor 1
+	// (DP-1) -- wrong display. With geometry, it correctly maps to monitor 0.
+	hdmiHint := 1
+	id, ok = ResolveParallaxMonitor(topo, 0, 0, 1920, 1080, &hdmiHint)
+	if !ok || id != 0 {
+		t.Fatalf("HDMI-A-1 with swapped compositor id: ok=%v id=%d, want 0", ok, id)
+	}
 }
 
-func TestBuildMonitorMap_FallsBackToMonitorLabels(t *testing.T) {
-	topology := []topologyEntry{
-		{Monitor: 1, StableID: "DP-1"},
-		{Monitor: 2, StableID: ""},
+func TestResolveParallaxMonitor_positionFallbackOnScalingMismatch(t *testing.T) {
+	t.Parallel()
+	// GDK reports scaled dimensions, Hyprland reports physical.
+	topo := []topologyEntry{
+		{Monitor: 0, X: 0, Y: 0, Width: 1707, Height: 960},
+		{Monitor: 1, X: 1707, Y: 0, Width: 1920, Height: 1080},
 	}
-	got := buildMonitorMap(topology, nil)
 
-	assert.Equal(t, uint32(1), got["Monitor 1"])
-	assert.Equal(t, uint32(2), got["Monitor 2"])
+	// Hyprland reports physical 2560x1440 at position (0,0) -- exact match fails
+	// due to width/height mismatch, but position (0, 0) matches monitor 0.
+	id, ok := ResolveParallaxMonitor(topo, 0, 0, 2560, 1440, nil)
+	if !ok || id != 0 {
+		t.Fatalf("position fallback on scaling mismatch: ok=%v id=%d, want 0", ok, id)
+	}
 }
 
-func TestBuildLoadRequest_VideoKind(t *testing.T) {
-	cfg := defaultConfig()
-	req := backend.WallpaperRequest{
-		MediaType:    media.MediaTypeVideo,
-		ImagePath:    "/tmp/clip.mp4",
-		AudioEnabled: true,
-		Mode:         monitor.ModeClone,
+func TestResolveParallaxMonitor_compositorIDLastResort(t *testing.T) {
+	t.Parallel()
+	// No geometry available (zeros) -- compositor ID is the only option.
+	topo := []topologyEntry{
+		{Monitor: 0, X: 0, Y: 0, Width: 1920, Height: 1080},
+		{Monitor: 1, X: 1920, Y: 0, Width: 1920, Height: 1080},
 	}
-
-	got, err := buildLoadRequest(req, cfg, nil)
-	require.NoError(t, err)
-	assert.Equal(t, "video", got.Kind)
-	assert.Equal(t, "/tmp/clip.mp4", got.Target)
-	assert.True(t, got.AudioEnabled)
+	hint := 1
+	id, ok := ResolveParallaxMonitor(topo, 0, 0, 0, 0, &hint)
+	// Position (0,0) matches monitor 0 -- geometry still wins over compositor ID
+	// even when bounds have zero width/height, because position matches.
+	if !ok || id != 0 {
+		t.Fatalf("zero-size bounds with position: ok=%v id=%d, want 0", ok, id)
+	}
 }
 
-func TestBuildLoadRequest_WebKind(t *testing.T) {
-	cfg := defaultConfig()
-	req := backend.WallpaperRequest{
-		MediaType:             media.MediaTypeWeb,
-		ImagePath:             "/tmp/pkg/index.html",
-		Mode:                  monitor.ModeClone,
-		WallpaperConfigValues: []byte(`{"speed":2}`),
+func TestResolveParallaxMonitor_compositorIDWhenNoGeometry(t *testing.T) {
+	t.Parallel()
+	// Position doesn't match anything -- compositor ID is the only fallback.
+	topo := []topologyEntry{
+		{Monitor: 0, X: 0, Y: 0, Width: 1920, Height: 1080},
+		{Monitor: 1, X: 1920, Y: 0, Width: 1920, Height: 1080},
 	}
-
-	got, err := buildLoadRequest(req, cfg, nil)
-	require.NoError(t, err)
-	assert.Equal(t, "web", got.Kind)
-	assert.Equal(t, "/tmp/pkg/index.html", got.Target)
-	require.NotNil(t, got.Parallax, "parallax is included for web; pages opt in via wallpaper:parallax listener")
-	assert.JSONEq(t, `{"speed":2}`, string(got.WallpaperConfigValues))
-}
-
-func TestBuildLoadRequest_EmbedsParallaxWhenEnabled(t *testing.T) {
-	cfg := defaultConfig()
-	cfg.ParallaxEnabled = true
-	cfg.ParallaxZoom = 110
-	req := backend.WallpaperRequest{
-		MediaType: media.MediaTypeImage,
-		ImagePath: "/tmp/wall.jpg",
-		Mode:      monitor.ModeClone,
+	hint := 1
+	id, ok := ResolveParallaxMonitor(topo, 9999, 9999, 0, 0, &hint)
+	if !ok || id != 1 {
+		t.Fatalf("compositor id fallback: ok=%v id=%d, want 1", ok, id)
 	}
-
-	got, err := buildLoadRequest(req, cfg, nil)
-	require.NoError(t, err)
-	require.NotNil(t, got.Parallax)
-	assert.Equal(t, true, got.Parallax["enabled"])
-	raw, err := json.Marshal(got)
-	require.NoError(t, err)
-	assert.Contains(t, string(raw), `"parallax"`)
-}
-
-func TestBuildLoadRequest_EmbedsParallaxWhenDisabled(t *testing.T) {
-	cfg := defaultConfig()
-	cfg.ParallaxEnabled = false
-	req := backend.WallpaperRequest{
-		MediaType: media.MediaTypeImage,
-		ImagePath: "/tmp/wall.jpg",
-		Mode:      monitor.ModeClone,
-	}
-
-	got, err := buildLoadRequest(req, cfg, nil)
-	require.NoError(t, err)
-	require.NotNil(t, got.Parallax)
-	assert.Equal(t, false, got.Parallax["enabled"])
-	raw, err := json.Marshal(got)
-	require.NoError(t, err)
-	assert.Contains(t, string(raw), `"parallax"`)
-}
-
-func TestBuildLoadRequest_IncludesTransitionParamsBezier(t *testing.T) {
-	cfg := defaultConfig()
-	cfg.TransitionBezier = "0,0,1,1"
-	req := backend.WallpaperRequest{
-		MediaType: media.MediaTypeImage,
-		ImagePath: "/tmp/wall.jpg",
-		Mode:      monitor.ModeClone,
-	}
-
-	got, err := buildLoadRequest(req, cfg, nil)
-	require.NoError(t, err)
-	require.NotNil(t, got.TransitionParams)
-	assert.Equal(t, [4]float32{0, 0, 1, 1}, got.TransitionParams.Bezier)
-	raw, err := json.Marshal(got)
-	require.NoError(t, err)
-	assert.Contains(t, string(raw), `"transition_params"`)
-	assert.Contains(t, string(raw), `"bezier"`)
-}
-
-func TestBuildLoadRequest_DefaultTransitionBezier(t *testing.T) {
-	cfg := defaultConfig()
-	req := backend.WallpaperRequest{
-		MediaType: media.MediaTypeImage,
-		ImagePath: "/tmp/wall.jpg",
-		Mode:      monitor.ModeClone,
-	}
-
-	got, err := buildLoadRequest(req, cfg, nil)
-	require.NoError(t, err)
-	require.NotNil(t, got.TransitionParams)
-	assert.Equal(t, defaultTransitionBezier, got.TransitionParams.Bezier)
-}
-
-func TestBuildLoadRequest_TransitionParamsAngleOriginWave(t *testing.T) {
-	cfg := defaultConfig()
-	cfg.TransitionAngleDeg = 45
-	cfg.TransitionOriginXPct = 25
-	cfg.TransitionOriginYPct = 75
-	cfg.TransitionWaveAmplitudePercent = 7
-	cfg.TransitionWaveFrequency = 4
-	req := backend.WallpaperRequest{
-		MediaType: media.MediaTypeImage,
-		ImagePath: "/tmp/wall.jpg",
-		Mode:      monitor.ModeClone,
-	}
-
-	got, err := buildLoadRequest(req, cfg, nil)
-	require.NoError(t, err)
-	require.NotNil(t, got.TransitionParams)
-	assert.Equal(t, 45.0, got.TransitionParams.AngleDeg)
-	assert.Equal(t, float32(25), got.TransitionParams.OriginXPercent)
-	assert.Equal(t, float32(75), got.TransitionParams.OriginYPercent)
-	assert.Equal(t, float32(7), got.TransitionParams.WaveAmplitudePercent)
-	assert.Equal(t, float32(4), got.TransitionParams.WaveFrequency)
-	raw, err := json.Marshal(got)
-	require.NoError(t, err)
-	assert.Contains(t, string(raw), `"angle_deg":45`)
-	assert.Contains(t, string(raw), `"origin_x_percent":25`)
 }

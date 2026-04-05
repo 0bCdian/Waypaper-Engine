@@ -18,6 +18,7 @@ import (
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
+	"waypaper-engine/daemon/internal/parallaxdriver"
 	"waypaper-engine/daemon/internal/store"
 
 	"github.com/spf13/viper"
@@ -87,6 +88,14 @@ type WaylandUtauri struct {
 	// spawnGeneration increments on each child spawn; the wait goroutine only clears
 	// process when it still matches, so a replaced child is not wiped by an old Wait.
 	spawnGeneration int64
+
+	parallaxDriverMu     sync.Mutex
+	parallaxDriverCancel context.CancelFunc
+	parallaxDriverWG     sync.WaitGroup
+
+	parallaxManifestDirMu     sync.Mutex
+	parallaxManifestDirection string // "horizontal" | "vertical" | ""
+	workspaceParallaxVertical atomic.Bool
 }
 
 var _ backend.Backend = (*WaylandUtauri)(nil)
@@ -131,6 +140,7 @@ func (w *WaylandUtauri) Initialize(ctx context.Context) error {
 
 	if initialErr == nil {
 		slog.Info("wayland-utauri already running")
+		w.syncParallaxDriver(w.loadConfigFromViper())
 		return nil
 	}
 
@@ -175,6 +185,7 @@ func (w *WaylandUtauri) Initialize(ctx context.Context) error {
 		return err
 	}
 	slog.Info("wayland-utauri ready after spawn")
+	w.syncParallaxDriver(w.loadConfigFromViper())
 	return nil
 }
 
@@ -248,6 +259,14 @@ func (w *WaylandUtauri) getStatusWithRetry(ctx context.Context, client *controlC
 }
 
 func (w *WaylandUtauri) Shutdown(_ context.Context) error {
+	w.parallaxDriverMu.Lock()
+	if w.parallaxDriverCancel != nil {
+		w.parallaxDriverCancel()
+		w.parallaxDriverCancel = nil
+	}
+	w.parallaxDriverMu.Unlock()
+	w.parallaxDriverWG.Wait()
+
 	w.processMu.Lock()
 	p := w.process
 	w.processMu.Unlock()
@@ -369,6 +388,7 @@ func (w *WaylandUtauri) SetWallpaper(ctx context.Context, req backend.WallpaperR
 		}
 
 		if statusCode >= 200 && statusCode < 300 {
+			w.noteWallpaperParallaxDirection(cfg, &req)
 			if loadReq.Parallax != nil {
 				return nil
 			}
@@ -395,6 +415,101 @@ func (w *WaylandUtauri) SetWallpaper(ctx context.Context, req backend.WallpaperR
 	return fmt.Errorf("wayland-utauri: load request failed without explicit error")
 }
 
+func (w *WaylandUtauri) recomputeWorkspaceParallaxVertical(cfg *Config) {
+	if cfg == nil {
+		cfg = defaultConfig()
+	}
+	w.parallaxManifestDirMu.Lock()
+	o := w.parallaxManifestDirection
+	w.parallaxManifestDirMu.Unlock()
+	v := parallaxdriver.EffectiveWorkspaceParallaxVertical(cfg.ParallaxDirection, o)
+	w.workspaceParallaxVertical.Store(v)
+}
+
+func (w *WaylandUtauri) noteWallpaperParallaxDirection(cfg *Config, req *backend.WallpaperRequest) {
+	if req == nil {
+		return
+	}
+	raw := strings.ToLower(strings.TrimSpace(req.ParallaxDirection))
+	switch raw {
+	case "vertical", "horizontal":
+		w.parallaxManifestDirMu.Lock()
+		w.parallaxManifestDirection = raw
+		w.parallaxManifestDirMu.Unlock()
+	default:
+		w.parallaxManifestDirMu.Lock()
+		w.parallaxManifestDirection = ""
+		w.parallaxManifestDirMu.Unlock()
+	}
+	w.recomputeWorkspaceParallaxVertical(cfg)
+}
+
+// syncParallaxDriver starts or stops the Hyprland/Sway workspace → parallax-move loop.
+func (w *WaylandUtauri) syncParallaxDriver(cfg *Config) {
+	w.recomputeWorkspaceParallaxVertical(cfg)
+	w.parallaxDriverMu.Lock()
+	if w.parallaxDriverCancel != nil {
+		w.parallaxDriverCancel()
+		w.parallaxDriverCancel = nil
+	}
+	w.parallaxDriverMu.Unlock()
+	w.parallaxDriverWG.Wait()
+
+	if cfg == nil || !cfg.ParallaxEnabled {
+		return
+	}
+	mode := parallaxdriver.ParseDriverMode(cfg.ParallaxCompositorDriver)
+	kind := parallaxdriver.EffectiveKind(mode)
+	if kind == parallaxdriver.None {
+		slog.Debug("parallax compositor driver inactive", "mode", string(mode))
+		return
+	}
+
+	client, err := w.makeControlClient(cfg)
+	if err != nil {
+		slog.Debug("parallax compositor driver: no control client", "error", err)
+		return
+	}
+
+	resetCtx, resetCancel := context.WithTimeout(context.Background(), 2*time.Second)
+	_ = client.setParallax(resetCtx, map[string]any{"enabled": false})
+	_ = client.setParallax(resetCtx, buildParallaxRequestBody(cfg))
+	resetCancel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	w.parallaxDriverMu.Lock()
+	w.parallaxDriverCancel = cancel
+	w.parallaxDriverMu.Unlock()
+
+	resolver := newMonitorResolverCache(func(c context.Context) ([]topologyEntry, error) {
+		st, err := client.status(c)
+		if err != nil {
+			return nil, err
+		}
+		return st.Status.Topology, nil
+	}, slog.Default())
+	resolve := func(c context.Context, e parallaxdriver.MonitorWorkspaceEntry) (uint32, bool) {
+		return resolver.resolve(c, e)
+	}
+	move := func(c context.Context, dir string, amountPercent float64, monitor uint32) error {
+		return client.parallaxMoveScoped(c, dir, amountPercent, monitor)
+	}
+
+	wRef := w
+	opts := parallaxdriver.RunOpts{
+		Move:           move,
+		ResolveMonitor: resolve,
+		ChunkSize:      cfg.ParallaxWorkspaceChunkSize,
+		Vertical:       func() bool { return wRef.workspaceParallaxVertical.Load() },
+	}
+
+	w.parallaxDriverWG.Add(1)
+	go func() {
+		defer w.parallaxDriverWG.Done()
+		_ = parallaxdriver.Run(ctx, kind, opts, slog.Default())
+	}()
+}
+
 func (w *WaylandUtauri) RegisterDefaults(v *viper.Viper) {
 	w.v = v
 	def := defaultConfig()
@@ -415,8 +530,11 @@ func (w *WaylandUtauri) RegisterDefaults(v *viper.Viper) {
 	v.SetDefault(viperBackendKey+".parallax_enabled", def.ParallaxEnabled)
 	v.SetDefault(viperBackendKey+".parallax_zoom", def.ParallaxZoom)
 	v.SetDefault(viperBackendKey+".parallax_step_percent", def.ParallaxStepPct)
+	v.SetDefault(viperBackendKey+".parallax_workspace_chunk_size", def.ParallaxWorkspaceChunkSize)
 	v.SetDefault(viperBackendKey+".parallax_animation_ms", def.ParallaxAnimMS)
 	v.SetDefault(viperBackendKey+".parallax_easing", def.ParallaxEasing)
+	v.SetDefault(viperBackendKey+".parallax_compositor_driver", def.ParallaxCompositorDriver)
+	v.SetDefault(viperBackendKey+".parallax_direction", def.ParallaxDirection)
 	v.SetDefault(viperBackendKey+".video_audio_default", def.VideoAudioDefault)
 	v.SetDefault(viperBackendKey+".allow_network_wallpapers", def.AllowNetworkWallpapers)
 	v.SetDefault(viperBackendKey+".renderer_pause", def.RendererPause)
@@ -435,6 +553,11 @@ func (w *WaylandUtauri) ValidateConfig(raw json.RawMessage) error {
 	if s := strings.TrimSpace(cfg.TransitionBezier); s != "" {
 		if _, err := parseTransitionBezierStrict(s); err != nil {
 			return fmt.Errorf("wayland-utauri: invalid transition_bezier: %w", err)
+		}
+	}
+	if s := strings.ToLower(strings.TrimSpace(cfg.ParallaxDirection)); s != "" {
+		if s != "horizontal" && s != "vertical" {
+			return fmt.Errorf("wayland-utauri: parallax_direction must be horizontal or vertical")
 		}
 	}
 	return nil
@@ -526,11 +649,20 @@ func (w *WaylandUtauri) loadConfigFromViper() *Config {
 	if val := getInt("parallax_step_percent"); val > 0 {
 		cfg.ParallaxStepPct = val
 	}
+	if val := getInt("parallax_workspace_chunk_size"); val > 0 {
+		cfg.ParallaxWorkspaceChunkSize = val
+	}
 	if val := getInt("parallax_animation_ms"); val > 0 {
 		cfg.ParallaxAnimMS = val
 	}
 	if val := getString("parallax_easing"); val != "" {
 		cfg.ParallaxEasing = val
+	}
+	if val := getString("parallax_compositor_driver"); val != "" {
+		cfg.ParallaxCompositorDriver = val
+	}
+	if val := getString("parallax_direction"); val != "" {
+		cfg.ParallaxDirection = val
 	}
 	cfg.VideoAudioDefault = getBool("video_audio_default")
 	cfg.AllowNetworkWallpapers = getBool("allow_network_wallpapers")
@@ -604,6 +736,7 @@ func (w *WaylandUtauri) SyncRuntimeFromConfig(ctx context.Context) error {
 	if err := client.setParallax(ctx, buildParallaxRequestBody(cfg)); err != nil {
 		return fmt.Errorf("wayland-utauri: runtime sync parallax: %w", err)
 	}
+	w.syncParallaxDriver(cfg)
 	if err := client.setAllowNetworkWallpapers(ctx, cfg.AllowNetworkWallpapers); err != nil {
 		return fmt.Errorf("wayland-utauri: runtime sync network policy: %w", err)
 	}

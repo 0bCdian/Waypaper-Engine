@@ -97,3 +97,45 @@ func TestControlClientSetParallax_Success(t *testing.T) {
 	err := c.setParallax(context.Background(), buildParallaxRequestBody(defaultConfig()))
 	require.NoError(t, err)
 }
+
+func TestControlClientParallaxMove_Success(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/wallpaper/parallax-move", r.URL.Path)
+		raw, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		var payload map[string]any
+		require.NoError(t, json.Unmarshal(raw, &payload))
+		assert.Equal(t, "right", payload["direction"])
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
+	}))
+	t.Cleanup(srv.Close)
+
+	c := &controlClient{httpClient: srv.Client(), baseURL: srv.URL}
+	require.NoError(t, c.parallaxMove(context.Background(), "right", nil, nil))
+}
+
+func TestControlClientParallaxMoveScoped_IncludesMonitorAndAmount(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		require.Equal(t, http.MethodPost, r.Method)
+		require.Equal(t, "/wallpaper/parallax-move", r.URL.Path)
+		raw, err := io.ReadAll(r.Body)
+		require.NoError(t, err)
+		var payload map[string]any
+		require.NoError(t, json.Unmarshal(raw, &payload))
+		assert.Equal(t, "left", payload["direction"])
+		assert.Equal(t, float64(12.5), payload["amount_percent"])
+		assert.Equal(t, float64(2), payload["monitor"])
+		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
+	}))
+	t.Cleanup(srv.Close)
+
+	c := &controlClient{httpClient: srv.Client(), baseURL: srv.URL}
+	require.NoError(t, c.parallaxMoveScoped(context.Background(), "left", 12.5, 2))
+}
+
+func TestControlClientParallaxMove_InvalidDirection(t *testing.T) {
+	c := &controlClient{}
+	err := c.parallaxMove(context.Background(), "sideways", nil, nil)
+	require.Error(t, err)
+}

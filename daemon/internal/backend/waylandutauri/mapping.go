@@ -159,6 +159,96 @@ type topologyEntry struct {
 	Model    *string `json:"model,omitempty"`
 }
 
+const topologyGeometryEpsilonPx = 2.0
+
+// TopologyMonitorMatch returns the waypaper-tauri monitor index whose GDK geometry
+// matches compositor-reported bounds in global layout space.
+func TopologyMonitorMatch(topo []topologyEntry, x, y, width, height float64) (uint32, bool) {
+	for _, e := range topo {
+		if approxEqTopology(float64(e.X), x) &&
+			approxEqTopology(float64(e.Y), y) &&
+			approxEqTopology(float64(e.Width), width) &&
+			approxEqTopology(float64(e.Height), height) {
+			return e.Monitor, true
+		}
+	}
+	return 0, false
+}
+
+// TopologyMonitorContainingCenter returns the topology entry whose rectangle contains
+// the center of bounds, preferring the smallest area when rects overlap (unlikely).
+// Used when Hyprland/GDK width/height differ but position still matches.
+func TopologyMonitorContainingCenter(topo []topologyEntry, x, y, width, height float64) (uint32, bool) {
+	if width <= 0 || height <= 0 {
+		return 0, false
+	}
+	cx := x + width*0.5
+	cy := y + height*0.5
+	var best *topologyEntry
+	var bestArea int64 = 1<<62 - 1
+	for i := range topo {
+		e := &topo[i]
+		ex, ey := float64(e.X), float64(e.Y)
+		ew, eh := float64(e.Width), float64(e.Height)
+		if cx < ex || cx > ex+ew || cy < ey || cy > ey+eh {
+			continue
+		}
+		area := int64(e.Width) * int64(e.Height)
+		if area < bestArea {
+			best = e
+			bestArea = area
+		}
+	}
+	if best != nil {
+		return best.Monitor, true
+	}
+	return 0, false
+}
+
+// TopologyMonitorMatchByPosition returns the topology entry whose X, Y position
+// matches the compositor-reported bounds origin. Width/height are ignored so
+// scaling differences between Hyprland and GDK don't cause mismatches.
+func TopologyMonitorMatchByPosition(topo []topologyEntry, x, y float64) (uint32, bool) {
+	for _, e := range topo {
+		if approxEqTopology(float64(e.X), x) && approxEqTopology(float64(e.Y), y) {
+			return e.Monitor, true
+		}
+	}
+	return 0, false
+}
+
+// ResolveParallaxMonitor picks a waypaper monitor using geometry first (reliable
+// across GDK/Hyprland enumeration order), falling back to compositor ID only as
+// a last resort since Hyprland and GDK assign monitor indices independently.
+func ResolveParallaxMonitor(topo []topologyEntry, boundsX, boundsY, boundsW, boundsH float64, compositorMonitorID *int) (uint32, bool) {
+	if id, ok := TopologyMonitorMatch(topo, boundsX, boundsY, boundsW, boundsH); ok {
+		return id, true
+	}
+	if id, ok := TopologyMonitorMatchByPosition(topo, boundsX, boundsY); ok {
+		return id, true
+	}
+	if id, ok := TopologyMonitorContainingCenter(topo, boundsX, boundsY, boundsW, boundsH); ok {
+		return id, true
+	}
+	if compositorMonitorID != nil {
+		u := uint32(*compositorMonitorID)
+		for _, e := range topo {
+			if e.Monitor == u {
+				return u, true
+			}
+		}
+	}
+	return 0, false
+}
+
+func approxEqTopology(a, b float64) bool {
+	d := a - b
+	if d < 0 {
+		d = -d
+	}
+	return d <= topologyGeometryEpsilonPx
+}
+
 func buildMonitorMap(topology []topologyEntry, engineMonitors []monitor.Monitor) map[string]uint32 {
 	m := make(map[string]uint32, len(topology))
 

@@ -312,8 +312,14 @@ export interface WaylandUtauriConfig {
   parallax_enabled?: boolean;
   parallax_zoom?: number;
   parallax_step_percent?: number;
+  /** Workspace ids per chunk for Hyprland/Sway compositor parallax (match bar span). */
+  parallax_workspace_chunk_size?: number;
   parallax_animation_ms?: number;
   parallax_easing?: [number, number, number, number];
+  /** Hyprland/Sway workspace → parallax-move when parallax_enabled: auto | off | hyprland | sway */
+  parallax_compositor_driver?: string;
+  /** Workspace parallax axis when waypaper.json does not set parallax_direction: horizontal | vertical */
+  parallax_direction?: string;
   video_audio_default?: boolean;
   /** When true, HTML wallpapers may use fetch/XHR to the network (synced to wayland-utauri at runtime). */
   allow_network_wallpapers?: boolean;

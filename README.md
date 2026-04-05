@@ -115,7 +115,9 @@ This installs:
 - Launcher: `~/.local/bin/waypaper-engine`
 - Desktop entry/icon: `~/.local/share/...`
 
-The `waypaper-engine` launcher is a single entrypoint:
+The `waypaper-engine` launcher is **generated during `make install-ui`** from [`waypaper-engine.sh.in`](waypaper-engine.sh.in): it embeds the path to `waypaper-engine-bin` under **`ELECTRON_APP_ROOT`** (default `$(PREFIX)/opt/waypaper-engine`, or `/opt/waypaper-engine` for `make install-system`). That path is the runtime location on the target system — it does **not** include `DESTDIR`, so distro staging (`make install-system DESTDIR="$pkgdir"`) still produces a launcher that points at `/opt/...` on the end user’s machine.
+
+The launcher is a single entrypoint:
 - `waypaper-engine` (or `waypaper-engine run`) launches the GUI
 - `waypaper-engine daemon <args>` forwards to daemon CLI
 - `waypaper-engine <args>` also forwards to daemon CLI commands directly
@@ -134,11 +136,11 @@ For system-wide uninstall:
 sudo make uninstall-system
 ```
 
-Use `PREFIX` and/or `DESTDIR` to customize install locations:
+Use `PREFIX`, `DESTDIR`, and optionally **`ELECTRON_APP_ROOT`** / **`APPIMAGE_APP_ROOT`** to customize install locations (see the top of the `Makefile`). `DESTDIR` only prefixes the filesystem layout under a staging root; launchers embed the corresponding `*_APP_ROOT` without `DESTDIR`.
 
 ```bash
 make install PREFIX="$HOME/.local"
-make install DESTDIR="$PWD/pkgroot" PREFIX=/usr/local
+make install-system DESTDIR="$PWD/pkgroot"   # staged system layout; launcher still uses /opt/…
 ```
 
 ## AppImage (build + user-local install)

@@ -47,6 +47,7 @@ func Apply(ctx context.Context, opts ApplyOpts) error {
 			Monitors:              opts.Monitors,
 			Mode:                  monitor.ModeClone,
 			WallpaperConfigValues: cfgVals,
+			ParallaxDirection:     ParallaxDirectionOverrideFromImage(opts.Image),
 		}
 		if err := opts.Backend.SetWallpaper(ctx, req); err != nil {
 			return fmt.Errorf("set wallpaper: %w", err)
@@ -67,6 +68,7 @@ func Apply(ctx context.Context, opts ApplyOpts) error {
 					Monitors:              []monitor.Monitor{mon},
 					Mode:                  monitor.ModeIndividual,
 					WallpaperConfigValues: cfgVals,
+					ParallaxDirection:     ParallaxDirectionOverrideFromImage(opts.Image),
 				}
 				if err := opts.Backend.SetWallpaper(ctx, req); err != nil {
 					return fmt.Errorf("set wallpaper for %s: %w", mon.Name, err)
@@ -82,6 +84,7 @@ func Apply(ctx context.Context, opts ApplyOpts) error {
 			Monitors:              opts.Monitors,
 			Mode:                  opts.Mode,
 			WallpaperConfigValues: cfgVals,
+			ParallaxDirection:     ParallaxDirectionOverrideFromImage(opts.Image),
 		}
 		if err := opts.Backend.SetWallpaper(ctx, req); err != nil {
 			return fmt.Errorf("set wallpaper: %w", err)

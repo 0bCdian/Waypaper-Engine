@@ -31,16 +31,22 @@ type Config struct {
 	ParallaxEnabled                bool    `mapstructure:"parallax_enabled" json:"parallax_enabled"`
 	ParallaxZoom                   int     `mapstructure:"parallax_zoom" json:"parallax_zoom"`
 	ParallaxStepPct                int     `mapstructure:"parallax_step_percent" json:"parallax_step_percent"`
-	ParallaxAnimMS                 int     `mapstructure:"parallax_animation_ms" json:"parallax_animation_ms"`
-	ParallaxEasing                 string  `mapstructure:"parallax_easing" json:"parallax_easing"`
-	VideoAudioDefault              bool    `mapstructure:"video_audio_default" json:"video_audio_default"`
-	AllowNetworkWallpapers         bool    `mapstructure:"allow_network_wallpapers" json:"allow_network_wallpapers"`
-	RendererPause                  bool    `mapstructure:"renderer_pause" json:"renderer_pause"`
-	AllowWebKeyboard               bool    `mapstructure:"allow_web_keyboard" json:"allow_web_keyboard"`
-	AllowWebAudioReactive          bool    `mapstructure:"allow_web_audio_reactive" json:"allow_web_audio_reactive"`
-	AllowWebPointerInteractive     bool    `mapstructure:"allow_web_pointer_interactive" json:"allow_web_pointer_interactive"`
-	AllowWebParallaxAware          bool    `mapstructure:"allow_web_parallax_aware" json:"allow_web_parallax_aware"`
-	AllowWebManifestNetwork        bool    `mapstructure:"allow_web_manifest_network" json:"allow_web_manifest_network"`
+	// ParallaxWorkspaceChunkSize: workspace ids per chunk for compositor parallax (Hyprland/Sway); matches Quickshell-style bar span.
+	ParallaxWorkspaceChunkSize int    `mapstructure:"parallax_workspace_chunk_size" json:"parallax_workspace_chunk_size"`
+	ParallaxAnimMS             int    `mapstructure:"parallax_animation_ms" json:"parallax_animation_ms"`
+	ParallaxEasing             string `mapstructure:"parallax_easing" json:"parallax_easing"`
+	// ParallaxCompositorDriver: auto | off | hyprland | sway — workspace → POST /wallpaper/parallax-move (Hyprland/Sway only).
+	ParallaxCompositorDriver string `mapstructure:"parallax_compositor_driver" json:"parallax_compositor_driver"`
+	// ParallaxDirection: horizontal | vertical — workspace parallax axis when waypaper.json does not override.
+	ParallaxDirection          string `mapstructure:"parallax_direction" json:"parallax_direction"`
+	VideoAudioDefault          bool   `mapstructure:"video_audio_default" json:"video_audio_default"`
+	AllowNetworkWallpapers     bool   `mapstructure:"allow_network_wallpapers" json:"allow_network_wallpapers"`
+	RendererPause              bool   `mapstructure:"renderer_pause" json:"renderer_pause"`
+	AllowWebKeyboard           bool   `mapstructure:"allow_web_keyboard" json:"allow_web_keyboard"`
+	AllowWebAudioReactive      bool   `mapstructure:"allow_web_audio_reactive" json:"allow_web_audio_reactive"`
+	AllowWebPointerInteractive bool   `mapstructure:"allow_web_pointer_interactive" json:"allow_web_pointer_interactive"`
+	AllowWebParallaxAware      bool   `mapstructure:"allow_web_parallax_aware" json:"allow_web_parallax_aware"`
+	AllowWebManifestNetwork    bool   `mapstructure:"allow_web_manifest_network" json:"allow_web_manifest_network"`
 }
 
 func defaultSocketPath() string {
@@ -69,8 +75,11 @@ func defaultConfig() *Config {
 		ParallaxEnabled:                false,
 		ParallaxZoom:                   120,
 		ParallaxStepPct:                5,
+		ParallaxWorkspaceChunkSize:     10,
 		ParallaxAnimMS:                 600,
 		ParallaxEasing:                 "0.215,0.610,0.355,1.000",
+		ParallaxCompositorDriver:       "auto",
+		ParallaxDirection:              "horizontal",
 		VideoAudioDefault:              false,
 		AllowNetworkWallpapers:         false,
 		RendererPause:                  false,

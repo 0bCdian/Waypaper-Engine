@@ -145,6 +145,20 @@ const searchSuggestions: SearchSuggestion[] = [
   },
   {
     section: "backend",
+    key: "waylandutauri.parallax_compositor_driver",
+    label: "Compositor parallax driver",
+    description: "Hyprland/Sway workspace → parallax bridge",
+    category: "Backend",
+  },
+  {
+    section: "backend",
+    key: "waylandutauri.parallax_workspace_chunk_size",
+    label: "Parallax workspace chunk size",
+    description: "Workspace ids per chunk for compositor parallax absolute targets",
+    category: "Backend",
+  },
+  {
+    section: "backend",
     key: "awww.transition_step",
     label: "Transition Step",
     description: "Step size for transitions",

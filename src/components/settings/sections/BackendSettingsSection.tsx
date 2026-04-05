@@ -326,10 +326,20 @@ const waylandUtauriParallaxFields: Field[] = [
   {
     key: "waylandutauri.parallax_step_percent",
     label: "Parallax Step (%)",
-    description: "Step percentage applied by workspace moves",
+    description: "Default step for manual/script parallax-move calls without amount_percent",
     type: "number",
     min: 1,
     max: 100,
+    step: 1,
+  },
+  {
+    key: "waylandutauri.parallax_workspace_chunk_size",
+    label: "Parallax workspace chunk size",
+    description:
+      "Hyprland/Sway: number of workspace ids per chunk for absolute pan targets (match your bar workspace count).",
+    type: "number",
+    min: 1,
+    max: 64,
     step: 1,
   },
   {
@@ -347,6 +357,30 @@ const waylandUtauriParallaxFields: Field[] = [
     description: "Cubic bezier string (x1,y1,x2,y2)",
     type: "text",
     placeholder: "0.215,0.610,0.355,1.000",
+  },
+  {
+    key: "waylandutauri.parallax_direction",
+    label: "Parallax direction (workspace)",
+    description:
+      "Whether Hyprland/Sway workspace parallax pans horizontally or vertically. Web wallpapers can override with waypaper.json parallax_direction.",
+    type: "select",
+    options: [
+      { value: "horizontal", label: "Horizontal" },
+      { value: "vertical", label: "Vertical" },
+    ],
+  },
+  {
+    key: "waylandutauri.parallax_compositor_driver",
+    label: "Compositor parallax driver",
+    description:
+      "Hyprland/Sway: listens for workspace changes and drives parallax. “off” disables; “auto” picks Hyprland or Sway from the session.",
+    type: "select",
+    options: [
+      { value: "auto", label: "Auto" },
+      { value: "off", label: "Off" },
+      { value: "hyprland", label: "Hyprland" },
+      { value: "sway", label: "Sway" },
+    ],
   },
 ];
 

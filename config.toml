@@ -61,6 +61,10 @@ allow_web_audio_reactive = false
 allow_web_pointer_interactive = true
 allow_web_parallax_aware = true
 allow_web_manifest_network = false
+# Workspace → parallax for Hyprland/Sway when parallax_enabled = true (auto | off | hyprland | sway)
+parallax_compositor_driver = "auto"
+# parallax_workspace_chunk_size = 10      # ids per chunk for absolute pan (match bar span)
+# parallax_direction = "horizontal"        # horizontal | vertical — default workspace parallax axis (waypaper.json can override)
 
 [monitors]
 # Monitor configuration

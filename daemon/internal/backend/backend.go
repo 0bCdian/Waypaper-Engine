@@ -142,6 +142,9 @@ type WallpaperRequest struct {
 	// WallpaperConfigValues is merged manifest defaults + user overrides for web wallpapers.
 	WallpaperConfigValues json.RawMessage `json:"-"`
 
+	// ParallaxDirection is optional waypaper.json override: "horizontal" or "vertical" (empty = backend default only).
+	ParallaxDirection string `json:"-"`
+
 	// Config is the backend's own typed configuration, as returned by ParseConfig().
 	// The daemon core does not inspect this value — it passes it through opaquely.
 	// Each backend type-asserts this to its own config struct internally.

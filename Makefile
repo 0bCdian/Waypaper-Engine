@@ -10,19 +10,27 @@
 #   make install-daemon - Install just the daemon/CLI binary
 #   make uninstall      - Remove files installed by make install
 #   make clean          - Remove all build artifacts
+#
+# Install paths:
+#   ELECTRON_APP_ROOT / APPIMAGE_APP_ROOT — runtime paths baked into launchers (no DESTDIR).
+#   ELECTRON_APP_INSTALL_DIR / APPIMAGE_INSTALL_DIR — $(DESTDIR)$(…_APP_ROOT) for cp/install -m.
 
 PREFIX ?= $(HOME)/.local
 DESTDIR ?=
-APP_DIR ?= $(DESTDIR)$(PREFIX)/opt/waypaper-engine
-APPIMAGE_DIR ?= $(DESTDIR)$(PREFIX)/opt/waypaper-engine-appimage
+# Unpacked Electron: on disk under DESTDIR+root; launcher embeds this path only (no DESTDIR).
+ELECTRON_APP_ROOT ?= $(PREFIX)/opt/waypaper-engine
+ELECTRON_APP_INSTALL_DIR = $(DESTDIR)$(ELECTRON_APP_ROOT)
+# AppImage install directory (same pattern).
+APPIMAGE_APP_ROOT ?= $(PREFIX)/opt/waypaper-engine-appimage
+APPIMAGE_INSTALL_DIR = $(DESTDIR)$(APPIMAGE_APP_ROOT)
+
 BIN_DIR ?= $(DESTDIR)$(PREFIX)/bin
 DESKTOP_DIR ?= $(DESTDIR)$(PREFIX)/share/applications
-ICON_DIR ?= $(DESTDIR)$(PREFIX)/share/icons/hicolor/512x512/apps
+# pixmaps/ avoids icons/hicolor/... which is often root-owned on distros and breaks user-local install.
+ICON_DIR ?= $(DESTDIR)$(PREFIX)/share/pixmaps
 SYSTEMD_DIR ?= $(DESTDIR)$(HOME)/.config/systemd/user
 APPIMAGE_NAME = waypaper-engine.AppImage
 INSTALL_PREFIX_SYSTEM := /usr/local
-APP_DIR_SYSTEM := $(DESTDIR)/opt/waypaper-engine
-APPIMAGE_DIR_SYSTEM := $(DESTDIR)/opt/waypaper-engine-appimage
 SYSTEMD_DIR_SYSTEM := $(DESTDIR)$(INSTALL_PREFIX_SYSTEM)/lib/systemd/user
 DAEMON_BUILD_DIR = daemon/build
 DAEMON_BINARY = $(DAEMON_BUILD_DIR)/waypaper-daemon
@@ -64,6 +72,9 @@ help:
 	@echo "Variables:"
 	@echo "  PREFIX=$(PREFIX)"
 	@echo "  DESTDIR=$(DESTDIR)"
+	@echo "  ELECTRON_APP_ROOT (runtime path for GUI; default PREFIX/opt/waypaper-engine)"
+	@echo "  APPIMAGE_APP_ROOT (runtime path for AppImage file)"
+	@echo "  ICON_DIR (default PREFIX/share/pixmaps; override for hicolor theme paths)"
 
 # ---------------------------------------------------------------------------
 # Build targets
@@ -111,23 +122,25 @@ install-daemon: verify-daemon-binary
 install-systemd:
 	install -Dm644 waypaper-daemon.service $(SYSTEMD_DIR)/waypaper-daemon.service
 
+# Launcher is generated so GUI_BIN matches ELECTRON_APP_ROOT (DESTDIR is never embedded).
 install-ui: verify-ui-artifacts
-	install -dm755 $(APP_DIR)
-	cp -r release/linux-unpacked/* $(APP_DIR)/
-	chmod 755 $(APP_DIR)/waypaper-engine-bin
-	install -Dm755 waypaper-engine.sh $(BIN_DIR)/waypaper-engine
-	install -Dm644 waypaper-engine.desktop $(DESKTOP_DIR)/waypaper-engine.desktop
-	install -Dm644 build/icons/512x512.png $(ICON_DIR)/waypaper-engine.png
+	install -dm755 $(ELECTRON_APP_INSTALL_DIR)
+	cp -r release/linux-unpacked/* $(ELECTRON_APP_INSTALL_DIR)/
+	chmod 755 $(ELECTRON_APP_INSTALL_DIR)/waypaper-engine-bin
+	sed 's|@WAYPAPER_GUI_BIN@|$(ELECTRON_APP_ROOT)/waypaper-engine-bin|g' waypaper-engine.sh.in | install -Dm755 /dev/stdin $(BIN_DIR)/waypaper-engine
+	install -dm755 $(DESKTOP_DIR) $(ICON_DIR)
+	install -m644 waypaper-engine.desktop $(DESKTOP_DIR)/waypaper-engine.desktop
+	install -m644 build/icons/512x512.png $(ICON_DIR)/waypaper-engine.png
 
 install-all: install
 
 install: install-ui install-daemon install-systemd
 
 install-appimage: verify-appimage-artifact
-	install -dm755 $(APPIMAGE_DIR)
+	install -dm755 $(APPIMAGE_INSTALL_DIR)
 	@APPIMAGE_PATH="$$(ls -t release/*.AppImage | head -n 1)"; \
-	install -Dm755 "$$APPIMAGE_PATH" $(APPIMAGE_DIR)/$(APPIMAGE_NAME)
-	printf '#!/bin/sh\nexec %s/%s "$$@"\n' "$(APPIMAGE_DIR)" "$(APPIMAGE_NAME)" | install -Dm755 /dev/stdin $(BIN_DIR)/waypaper-engine-appimage
+	install -Dm755 "$$APPIMAGE_PATH" $(APPIMAGE_INSTALL_DIR)/$(APPIMAGE_NAME)
+	printf '#!/bin/sh\nexec %s/%s "$$@"\n' "$(APPIMAGE_APP_ROOT)" "$(APPIMAGE_NAME)" | install -Dm755 /dev/stdin $(BIN_DIR)/waypaper-engine-appimage
 	printf '%s\n' \
 		'[Desktop Entry]' \
 		'Type=Application' \
@@ -140,10 +153,11 @@ install-appimage: verify-appimage-artifact
 		'Terminal=false' \
 		'StartupNotify=true' \
 		'Keywords=wallpaper;playlist;electron;' | install -Dm644 /dev/stdin $(DESKTOP_DIR)/waypaper-engine-appimage.desktop
-	install -Dm644 build/icons/512x512.png $(ICON_DIR)/waypaper-engine.png
+	install -dm755 $(ICON_DIR)
+	install -m644 build/icons/512x512.png $(ICON_DIR)/waypaper-engine.png
 
 uninstall-ui:
-	rm -rf $(APP_DIR)
+	rm -rf $(ELECTRON_APP_INSTALL_DIR)
 	rm -f $(BIN_DIR)/waypaper-engine
 	rm -f $(DESKTOP_DIR)/waypaper-engine.desktop
 	rm -f $(ICON_DIR)/waypaper-engine.png
@@ -157,36 +171,41 @@ uninstall-systemd:
 uninstall: uninstall-ui uninstall-daemon uninstall-systemd
 
 uninstall-appimage:
-	rm -rf $(APPIMAGE_DIR)
+	rm -rf $(APPIMAGE_INSTALL_DIR)
 	rm -f $(BIN_DIR)/waypaper-engine-appimage
 	rm -f $(DESKTOP_DIR)/waypaper-engine-appimage.desktop
+	rm -f $(ICON_DIR)/waypaper-engine.png
 
 install-system:
 	$(MAKE) install \
+		DESTDIR="$(DESTDIR)" \
 		PREFIX="$(INSTALL_PREFIX_SYSTEM)" \
-		APP_DIR="$(APP_DIR_SYSTEM)" \
-		APPIMAGE_DIR="$(APPIMAGE_DIR_SYSTEM)" \
+		ELECTRON_APP_ROOT=/opt/waypaper-engine \
+		APPIMAGE_APP_ROOT=/opt/waypaper-engine-appimage \
 		SYSTEMD_DIR="$(SYSTEMD_DIR_SYSTEM)"
 
 uninstall-system:
 	$(MAKE) uninstall \
+		DESTDIR="$(DESTDIR)" \
 		PREFIX="$(INSTALL_PREFIX_SYSTEM)" \
-		APP_DIR="$(APP_DIR_SYSTEM)" \
-		APPIMAGE_DIR="$(APPIMAGE_DIR_SYSTEM)" \
+		ELECTRON_APP_ROOT=/opt/waypaper-engine \
+		APPIMAGE_APP_ROOT=/opt/waypaper-engine-appimage \
 		SYSTEMD_DIR="$(SYSTEMD_DIR_SYSTEM)"
 
 install-appimage-system:
 	$(MAKE) install-appimage \
+		DESTDIR="$(DESTDIR)" \
 		PREFIX="$(INSTALL_PREFIX_SYSTEM)" \
-		APP_DIR="$(APP_DIR_SYSTEM)" \
-		APPIMAGE_DIR="$(APPIMAGE_DIR_SYSTEM)" \
+		ELECTRON_APP_ROOT=/opt/waypaper-engine \
+		APPIMAGE_APP_ROOT=/opt/waypaper-engine-appimage \
 		SYSTEMD_DIR="$(SYSTEMD_DIR_SYSTEM)"
 
 uninstall-appimage-system:
 	$(MAKE) uninstall-appimage \
+		DESTDIR="$(DESTDIR)" \
 		PREFIX="$(INSTALL_PREFIX_SYSTEM)" \
-		APP_DIR="$(APP_DIR_SYSTEM)" \
-		APPIMAGE_DIR="$(APPIMAGE_DIR_SYSTEM)" \
+		ELECTRON_APP_ROOT=/opt/waypaper-engine \
+		APPIMAGE_APP_ROOT=/opt/waypaper-engine-appimage \
 		SYSTEMD_DIR="$(SYSTEMD_DIR_SYSTEM)"
 
 # ---------------------------------------------------------------------------

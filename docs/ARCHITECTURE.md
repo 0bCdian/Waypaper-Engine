@@ -361,7 +361,7 @@ type Backend interface {
 | `feh` | `backend/feh/` | X11 | No | No | No |
 | `wayland-utauri` | `backend/waylandutauri/` | Wayland | Yes | Yes | Yes (external control API daemon) |
 
-The **wayland-utauri** adapter sends `transition` / `duration_ms` on `POST /wallpaper/load` (`wait_for_completion=false`), embeds **`parallax`** on the load body when enabled, and only calls **`POST /wallpaper/parallax`** after load when parallax is disabled (to reset runtime state). Config: `backend.wayland-utauri` (legacy `backend.waylandutauri` still read). See [WAYLAND_UTAURI_FIRST_PARTY_INTEGRATION_SPEC.md](WAYLAND_UTAURI_FIRST_PARTY_INTEGRATION_SPEC.md) §4.2.1.
+The **wayland-utauri** adapter sends `transition` / `duration_ms` on `POST /wallpaper/load` (`wait_for_completion=false`), embeds **`parallax`** on the load body when enabled, and only calls **`POST /wallpaper/parallax`** after load when parallax is disabled (to reset runtime state). With **`parallax_enabled`** it can also run an optional **Hyprland/Sway workspace → `parallax-move`** loop (`parallax_compositor_driver`); see [PARALLAX_WL_DRIVER.md](PARALLAX_WL_DRIVER.md). Config: `backend.wayland-utauri` (legacy `backend.waylandutauri` still read). See [WAYLAND_UTAURI_FIRST_PARTY_INTEGRATION_SPEC.md](WAYLAND_UTAURI_FIRST_PARTY_INTEGRATION_SPEC.md) §4.2.1.
 
 The `Registry` (`registry.go`) manages backend registration, activation, and lookup. It is thread-safe via `sync.RWMutex`.
 
