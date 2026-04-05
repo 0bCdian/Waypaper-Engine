@@ -14,12 +14,6 @@ interface DaemonStatus {
   lastError?: string;
 }
 
-interface DaemonActionResult {
-  success: boolean;
-  error?: string;
-  data?: DaemonStatus;
-}
-
 interface DaemonStatusComponentProps {
   className?: string;
 }
@@ -30,13 +24,7 @@ async function executeDaemonAction(
 ): Promise<string | null> {
   if (!action) return null;
   try {
-    const result = (await action()) as DaemonActionResult;
-    if (result) {
-      if (!result.success) {
-        if (result.error) return result.error;
-        return fallbackError;
-      }
-    }
+    await action();
     return null;
   } catch (err) {
     if (err instanceof Error) return err.message;
@@ -52,17 +40,9 @@ export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({ cl
   const loadStatus = async () => {
     try {
       if (window.API_RENDERER?.getDaemonStatus) {
-        const response = (await window.API_RENDERER.getDaemonStatus()) as DaemonActionResult;
-
-        if (response?.success && response.data) {
-          setStatus(response.data);
-          setError(null);
-        } else if (response && typeof response === "object" && "isRunning" in response) {
-          setStatus(response as unknown as DaemonStatus);
-          setError(null);
-        } else {
-          setError("Failed to get daemon status");
-        }
+        const response = (await window.API_RENDERER.getDaemonStatus()) as DaemonStatus;
+        setStatus(response);
+        setError(null);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load daemon status");

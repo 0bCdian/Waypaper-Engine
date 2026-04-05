@@ -26,6 +26,13 @@ import type {
   EventType,
   Folder,
 } from "./daemon-go-types";
+import { unwrapIPCResponse } from "./ipcEnvelope";
+
+function invokeWrapped<T>(channel: string, ...args: unknown[]): Promise<T> {
+  return ipcRenderer.invoke(channel, ...args).then((response: unknown) => {
+    return unwrapIPCResponse<T>(channel, response);
+  });
+}
 
 const electronAPI = {
   goDaemon: {
@@ -279,10 +286,10 @@ const electronAPI = {
     },
   },
 
-  getNativeTheme: () => ipcRenderer.invoke("get-native-theme"),
+  getNativeTheme: () => invokeWrapped<unknown>("get-native-theme"),
 
   setThemeSource: (source: "system" | "light" | "dark") =>
-    ipcRenderer.invoke("set-theme-source", source),
+    invokeWrapped<void>("set-theme-source", source),
 
   onNativeThemeUpdated: (callback: (themeInfo: unknown) => void): (() => void) => {
     const wrapper = (_: Electron.IpcRendererEvent, themeInfo: unknown) => callback(themeInfo);
@@ -296,23 +303,23 @@ const electronAPI = {
     return () => ipcRenderer.removeListener("theme-changed", wrapper);
   },
 
-  getAppInfo: () => ipcRenderer.invoke("get-app-info"),
-  ping: () => ipcRenderer.invoke("ping"),
+  getAppInfo: () => invokeWrapped<unknown>("get-app-info"),
+  ping: () => invokeWrapped<unknown>("ping"),
 
-  getWindowBounds: () => ipcRenderer.invoke("get-window-bounds"),
-  setWindowBounds: (bounds: Electron.Rectangle) => ipcRenderer.invoke("set-window-bounds", bounds),
-  minimizeWindow: () => ipcRenderer.invoke("minimize-window"),
-  maximizeWindow: () => ipcRenderer.invoke("maximize-window"),
-  closeWindow: () => ipcRenderer.invoke("close-window"),
-  hideWindow: () => ipcRenderer.invoke("hide-window"),
-  showWindow: () => ipcRenderer.invoke("show-window"),
+  getWindowBounds: () => invokeWrapped<Electron.Rectangle>("get-window-bounds"),
+  setWindowBounds: (bounds: Electron.Rectangle) => invokeWrapped<void>("set-window-bounds", bounds),
+  minimizeWindow: () => invokeWrapped<void>("minimize-window"),
+  maximizeWindow: () => invokeWrapped<void>("maximize-window"),
+  closeWindow: () => invokeWrapped<void>("close-window"),
+  hideWindow: () => invokeWrapped<void>("hide-window"),
+  showWindow: () => invokeWrapped<void>("show-window"),
 
-  exitApp: () => ipcRenderer.invoke("exit-app"),
+  exitApp: () => invokeWrapped<void>("exit-app"),
 
-  getDaemonStatus: () => ipcRenderer.invoke("get-daemon-status"),
-  restartDaemon: () => ipcRenderer.invoke("restart-daemon"),
-  startDaemon: () => ipcRenderer.invoke("start-daemon"),
-  stopDaemon: () => ipcRenderer.invoke("stop-daemon"),
+  getDaemonStatus: () => invokeWrapped<unknown>("get-daemon-status"),
+  restartDaemon: () => invokeWrapped<unknown>("restart-daemon"),
+  startDaemon: () => invokeWrapped<unknown>("start-daemon"),
+  stopDaemon: () => invokeWrapped<unknown>("stop-daemon"),
 
   onAppError: (callback: (error: unknown) => void): (() => void) => {
     const wrapper = (_: Electron.IpcRendererEvent, error: unknown) => callback(error);
@@ -332,73 +339,34 @@ const electronAPI = {
 
   wallhaven: {
     search: (params: Record<string, string>): Promise<unknown> =>
-      ipcRenderer
-        .invoke("wallhaven-search", params)
-        .then((r: { success: boolean; data: unknown; error?: string }) => {
-          if (!r.success) throw new Error(r.error ?? "Wallhaven search failed");
-          return r.data;
-        }),
+      invokeWrapped("wallhaven-search", params),
 
-    getWallpaper: (id: string): Promise<unknown> =>
-      ipcRenderer
-        .invoke("wallhaven-wallpaper", id)
-        .then((r: { success: boolean; data: unknown; error?: string }) => {
-          if (!r.success) throw new Error(r.error ?? "Wallhaven wallpaper fetch failed");
-          return r.data;
-        }),
+    getWallpaper: (id: string): Promise<unknown> => invokeWrapped("wallhaven-wallpaper", id),
 
-    testApiKey: (apiKey: string): Promise<unknown> =>
-      ipcRenderer
-        .invoke("wallhaven-test-key", apiKey)
-        .then((r: { success: boolean; data: unknown; error?: string }) => {
-          if (!r.success) throw new Error(r.error ?? "API key test failed");
-          return r.data;
-        }),
+    testApiKey: (apiKey: string): Promise<unknown> => invokeWrapped("wallhaven-test-key", apiKey),
 
-    download: (imageUrl: string): Promise<string> =>
-      ipcRenderer
-        .invoke("wallhaven-download", imageUrl)
-        .then((r: { success: boolean; data: string; error?: string }) => {
-          if (!r.success) throw new Error(r.error ?? "Wallhaven download failed");
-          return r.data;
-        }),
+    download: (imageUrl: string): Promise<string> => invokeWrapped("wallhaven-download", imageUrl),
   },
 
   getPathForFile: (file: File): string => webUtils.getPathForFile(file),
 
-  downloadUrl: (url: string): Promise<string> =>
-    ipcRenderer
-      .invoke("download-url", url)
-      .then((r: { success: boolean; data: string; error?: string }) => {
-        if (!r.success) throw new Error(r.error ?? "Download failed");
-        return r.data;
-      }),
+  downloadUrl: (url: string): Promise<string> => invokeWrapped("download-url", url),
 
   openFiles: (action: "file" | "folder" | "video" | "web") =>
-    ipcRenderer.invoke("openFiles", action),
+    invokeWrapped<{ files: string[]; webRoots?: string[]; folderName?: string }>(
+      "openFiles",
+      action,
+    ),
 
   scanDirectory: (
     dirPath: string,
   ): Promise<{ files: string[]; webRoots: string[]; folderName: string }> =>
-    ipcRenderer
-      .invoke("scan-directory", dirPath)
-      .then(
-        (r: {
-          success: boolean;
-          data: { files: string[]; webRoots: string[]; folderName: string };
-          error?: string;
-        }) => {
-          if (!r.success) throw new Error(r.error ?? "Directory scan failed");
-          return r.data;
-        },
-      ),
+    invokeWrapped("scan-directory", dirPath),
 
-  handleOpenImages: (imagesObject: {
-    success: boolean;
-    data: { files: string[]; folder_id?: number };
-  }) => ipcRenderer.invoke("handleOpenImages", imagesObject),
+  handleOpenImages: (imagesObject: { files: string[]; folder_id?: number }) =>
+    invokeWrapped<{ message: string }>("handleOpenImages", imagesObject),
 
-  revealInFileManager: (path: string) => ipcRenderer.invoke("reveal-in-file-manager", path),
+  revealInFileManager: (path: string) => invokeWrapped<boolean>("reveal-in-file-manager", path),
 
   // LOGGING
   logToMain: (

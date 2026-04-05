@@ -24,6 +24,7 @@ import type {
   UnifiedConfig,
 } from "../daemon-go-types";
 import { scanDirectoryForImports } from "../scanDirectoryForImports";
+import { ensureDaemonActionSuccess } from "../ipcEnvelope";
 
 export interface IPCHandler {
   channel: string;
@@ -155,21 +156,27 @@ export class IPCManager {
     this.registerHandler({
       channel: "restart-daemon",
       handler: async () => {
-        return await daemonMonitor.restartDaemon();
+        const result = await daemonMonitor.restartDaemon();
+        ensureDaemonActionSuccess("restart-daemon", result);
+        return result;
       },
     });
 
     this.registerHandler({
       channel: "start-daemon",
       handler: async () => {
-        return await daemonMonitor.startDaemon();
+        const result = await daemonMonitor.startDaemon();
+        ensureDaemonActionSuccess("start-daemon", result);
+        return result;
       },
     });
 
     this.registerHandler({
       channel: "stop-daemon",
       handler: async () => {
-        return await daemonMonitor.stopDaemon();
+        const result = await daemonMonitor.stopDaemon();
+        ensureDaemonActionSuccess("stop-daemon", result);
+        return result;
       },
     });
   }
@@ -267,20 +274,13 @@ export class IPCManager {
     this.registerHandler({
       channel: "handleOpenImages",
       handler: async (_event, ...args: unknown[]) => {
-        const imagesObject = args[0] as {
-          success: boolean;
-          data: { files: string[]; folder_id?: number };
-        };
-        if (
-          !imagesObject.success ||
-          !imagesObject.data.files ||
-          imagesObject.data.files.length === 0
-        ) {
+        const imagesObject = args[0] as { files: string[]; folder_id?: number };
+        if (!imagesObject.files || imagesObject.files.length === 0) {
           return { message: "No files to process" };
         }
 
-        const files: string[] = imagesObject.data.files;
-        const folderId = imagesObject.data.folder_id;
+        const files: string[] = imagesObject.files;
+        const folderId = imagesObject.folder_id;
 
         await goDaemonClient.importImages(files, folderId);
 

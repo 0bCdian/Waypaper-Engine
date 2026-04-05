@@ -50,14 +50,9 @@ const openImagesStore = create<State & Actions>((set, get) => ({
 
     set(() => ({ isActive: false }));
 
-    if (!result.success) {
-      return;
-    }
-
-    const data = result.data;
-    const files = data?.files ?? result.files ?? [];
-    const webRoots = data?.webRoots ?? [];
-    const pickedFolderName = data?.folderName ?? result.folderName;
+    const files = result.files ?? [];
+    const webRoots = result.webRoots ?? [];
+    const pickedFolderName = result.folderName;
 
     if (action === "web") {
       const targetPath = files[0];
@@ -88,16 +83,11 @@ const openImagesStore = create<State & Actions>((set, get) => ({
     }
 
     const currentFolderId = useFoldersStore.getState().currentFolderId;
-    const imagesObject = {
-      success: true,
-      data: {
+    try {
+      await handleOpenImages({
         files,
         folder_id: currentFolderId ?? undefined,
-      },
-    };
-
-    try {
-      await handleOpenImages(imagesObject);
+      });
     } catch (error) {
       logger.error("useOpenImages: Error calling handleOpenImages:", error);
     }
@@ -114,7 +104,10 @@ const openImagesStore = create<State & Actions>((set, get) => ({
     const webRoots = result.webRoots ?? [];
     if (result.files.length === 0 && webRoots.length === 0) {
       try {
-        await goDaemon.importWebWallpaper(dirPath, useFoldersStore.getState().currentFolderId ?? undefined);
+        await goDaemon.importWebWallpaper(
+          dirPath,
+          useFoldersStore.getState().currentFolderId ?? undefined,
+        );
         return;
       } catch (error) {
         logger.error("useOpenImages: web import failed for directory", dirPath, error);
@@ -155,8 +148,8 @@ const openImagesStore = create<State & Actions>((set, get) => ({
     if (files.length > 0) {
       try {
         await handleOpenImages({
-          success: true,
-          data: { files, folder_id: targetFolderId },
+          files,
+          folder_id: targetFolderId,
         });
       } catch (error) {
         logger.error("useOpenImages: Error calling handleOpenImages:", error);

@@ -20,6 +20,11 @@ import type {
 } from "../../electron/daemon-go-types";
 declare global {
   const __DEBUG__: boolean;
+  interface DaemonStatus {
+    isRunning: boolean;
+    lastChecked: number;
+    lastError?: string;
+  }
   interface Window {
     monitors?: {
       showModal: () => void;
@@ -42,10 +47,7 @@ declare global {
           paths: string[],
           folderID?: number | null,
         ) => Promise<{ status: string; total: number }>;
-        importWebWallpaper: (
-          path: string,
-          folderID?: number | null,
-        ) => Promise<Image>;
+        importWebWallpaper: (path: string, folderID?: number | null) => Promise<Image>;
         cancelImport: (batchID: string) => Promise<{ status: string; batch_id: string }>;
         deleteImages: (ids: number[]) => Promise<{ deleted: number }>;
         updateImage: (id: number, update: UpdateImageRequest) => Promise<Image>;
@@ -156,10 +158,10 @@ declare global {
       exitApp: () => Promise<void>;
 
       // DAEMON MANAGEMENT
-      getDaemonStatus: () => Promise<unknown>;
-      restartDaemon: () => Promise<unknown>;
-      startDaemon: () => Promise<unknown>;
-      stopDaemon: () => Promise<unknown>;
+      getDaemonStatus: () => Promise<DaemonStatus>;
+      restartDaemon: () => Promise<{ success: true }>;
+      startDaemon: () => Promise<{ success: true }>;
+      stopDaemon: () => Promise<{ success: true }>;
 
       // EVENT LISTENERS
       onAppError: (callback: (error: unknown) => void) => () => void;
@@ -178,11 +180,9 @@ declare global {
       getPathForFile: (file: File) => string;
       downloadUrl: (url: string) => Promise<string>;
       openFiles: (action: "file" | "folder" | "video" | "web") => Promise<{
-        success: boolean;
-        data?: { files: string[]; webRoots?: string[]; folderName?: string };
-        files?: string[];
+        files: string[];
+        webRoots?: string[];
         folderName?: string;
-        error?: string;
       }>;
       scanDirectory: (dirPath: string) => Promise<{
         files: string[];
@@ -190,11 +190,11 @@ declare global {
         folderName: string;
       }>;
       handleOpenImages: (imagesObject: {
-        success: boolean;
-        data: { files: string[]; folder_id?: number };
-      }) => Promise<{ success: boolean; message?: string; error?: string }>;
+        files: string[];
+        folder_id?: number;
+      }) => Promise<{ message: string }>;
 
-      revealInFileManager: (path: string) => Promise<{ success: boolean }>;
+      revealInFileManager: (path: string) => Promise<boolean>;
 
       // LOGGING
       logToMain: (

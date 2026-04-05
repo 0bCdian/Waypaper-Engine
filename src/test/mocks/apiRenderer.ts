@@ -144,10 +144,13 @@ export function createMockAPI(): Window["API_RENDERER"] {
 
     exitApp: vi.fn().mockResolvedValue(undefined),
 
-    getDaemonStatus: vi.fn().mockResolvedValue({ running: true }),
-    restartDaemon: vi.fn().mockResolvedValue(undefined),
-    startDaemon: vi.fn().mockResolvedValue(undefined),
-    stopDaemon: vi.fn().mockResolvedValue(undefined),
+    getDaemonStatus: vi.fn().mockResolvedValue({
+      isRunning: true,
+      lastChecked: Date.now(),
+    }),
+    restartDaemon: vi.fn().mockResolvedValue({ success: true }),
+    startDaemon: vi.fn().mockResolvedValue({ success: true }),
+    stopDaemon: vi.fn().mockResolvedValue({ success: true }),
 
     onAppError: vi.fn().mockReturnValue(() => {}),
     onDaemonStatusUpdate: vi.fn().mockReturnValue(() => {}),
@@ -162,10 +165,10 @@ export function createMockAPI(): Window["API_RENDERER"] {
 
     getPathForFile: vi.fn().mockReturnValue(""),
     downloadUrl: vi.fn().mockResolvedValue(""),
-    openFiles: vi.fn().mockResolvedValue({ success: true, data: { files: [], webRoots: [] } }),
+    openFiles: vi.fn().mockResolvedValue({ files: [], webRoots: [] }),
     scanDirectory: vi.fn().mockResolvedValue({ files: [], webRoots: [], folderName: "" }),
-    handleOpenImages: vi.fn().mockResolvedValue({ success: true }),
-    revealInFileManager: vi.fn().mockResolvedValue({ success: true }),
+    handleOpenImages: vi.fn().mockResolvedValue({ message: "ok" }),
+    revealInFileManager: vi.fn().mockResolvedValue(true),
 
     logToMain: vi.fn(),
   };

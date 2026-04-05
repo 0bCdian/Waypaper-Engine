@@ -66,3 +66,52 @@ func TestBackendHandler_Activate_NotRegistered(t *testing.T) {
 	require.NoError(t, json.NewDecoder(w.Body).Decode(&apiErr))
 	assert.Contains(t, apiErr.Error, "not registered")
 }
+
+func TestBackendHandler_Activate_InitializeFailureRollsBack(t *testing.T) {
+	prevBackend := &testutil.MockBackend{
+		NameFn: func() string { return "awww" },
+		InitializeFn: func(_ context.Context) error {
+			return nil
+		},
+		ShutdownFn: func(_ context.Context) error { return nil },
+	}
+	nextBackend := &testutil.MockBackend{
+		NameFn: func() string { return "feh" },
+		InitializeFn: func(_ context.Context) error {
+			return errors.New("boom")
+		},
+	}
+
+	activeName := "awww"
+	setActiveCalls := make([]string, 0, 2)
+	reg := &testutil.MockRegistry{
+		ActiveFn: func() backend.Backend {
+			if activeName == "feh" {
+				return nextBackend
+			}
+			return prevBackend
+		},
+		SetActiveFn: func(name string) error {
+			setActiveCalls = append(setActiveCalls, name)
+			activeName = name
+			return nil
+		},
+	}
+
+	h := NewBackendHandler(reg, &testutil.MockConfigManager{}, &testutil.MockBus{},
+		&testutil.MockMonitorStateStore{}, &testutil.MockStateStore{}, &testutil.MockImageStore{},
+		&testutil.MockMonitorManager{}, nil)
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodPost, "/backends/feh/activate", nil)
+	r = testutil.WithChiURLParams(r, map[string]string{"name": "feh"})
+	h.Activate(w, r)
+
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Equal(t, "awww", activeName, "active backend should be rolled back")
+	assert.Equal(t, []string{"feh", "awww"}, setActiveCalls)
+
+	var apiErr APIError
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&apiErr))
+	assert.Contains(t, apiErr.Error, "initialize backend feh")
+}

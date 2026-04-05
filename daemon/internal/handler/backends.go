@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"errors"
+	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -56,14 +58,20 @@ func (h *BackendHandler) List(w http.ResponseWriter, r *http.Request) {
 // Activate handles POST /backends/{name}/activate.
 func (h *BackendHandler) Activate(w http.ResponseWriter, r *http.Request) {
 	name := chi.URLParam(r, "name")
+	currentBackend := h.registry.Active()
+	currentName := currentBackend.Name()
+	if currentName == name {
+		WriteJSON(w, http.StatusOK, map[string]any{
+			"status":  "activated",
+			"backend": name,
+		})
+		return
+	}
 
 	// Shutdown current backend.
-	currentBackend := h.registry.Active()
-	if currentBackend.Name() != name {
-		if err := currentBackend.Shutdown(r.Context()); err != nil {
-			WriteErrorf(w, http.StatusInternalServerError, "shutdown current backend: %s", err.Error())
-			return
-		}
+	if err := currentBackend.Shutdown(r.Context()); err != nil {
+		WriteErrorf(w, http.StatusInternalServerError, "shutdown current backend: %s", err.Error())
+		return
 	}
 
 	// Switch to new backend.
@@ -75,6 +83,26 @@ func (h *BackendHandler) Activate(w http.ResponseWriter, r *http.Request) {
 	// Initialize new backend.
 	newBackend := h.registry.Active()
 	if err := newBackend.Initialize(r.Context()); err != nil {
+		var rollbackErrs []error
+		if setErr := h.registry.SetActive(currentName); setErr != nil {
+			rollbackErrs = append(rollbackErrs, fmt.Errorf("rollback set active %q: %w", currentName, setErr))
+		} else {
+			rollbackBackend := h.registry.Active()
+			if initErr := rollbackBackend.Initialize(r.Context()); initErr != nil {
+				rollbackErrs = append(rollbackErrs, fmt.Errorf("rollback initialize %q: %w", currentName, initErr))
+			}
+		}
+		if len(rollbackErrs) > 0 {
+			WriteErrorf(
+				w,
+				http.StatusInternalServerError,
+				"initialize backend %s: %s (rollback failed: %s)",
+				name,
+				err.Error(),
+				errors.Join(rollbackErrs...).Error(),
+			)
+			return
+		}
 		WriteErrorf(w, http.StatusInternalServerError, "initialize backend %s: %s", name, err.Error())
 		return
 	}
