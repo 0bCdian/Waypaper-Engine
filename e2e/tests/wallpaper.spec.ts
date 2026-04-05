@@ -3,6 +3,24 @@ import { resolve, join } from "node:path";
 import { copyFileSync } from "node:fs";
 
 const TEST_IMAGES_DIR = resolve(__dirname, "..", "test-data", "images");
+const IMPORT_WAIT_MS = 5000;
+const IMPORT_POLL_MS = 250;
+
+async function waitForImportedImages(
+	api: { get: (path: string) => Promise<{ data: unknown }> },
+	minCount: number,
+): Promise<{ id: number }[]> {
+	const deadline = Date.now() + IMPORT_WAIT_MS;
+	while (Date.now() < deadline) {
+		const listRes = await api.get(`/images?page=1&per_page=${Math.max(minCount, 1)}`);
+		const images = (listRes.data as { data: { id: number }[] }).data ?? [];
+		if (images.length >= minCount) {
+			return images;
+		}
+		await new Promise((r) => setTimeout(r, IMPORT_POLL_MS));
+	}
+	return [];
+}
 
 test.describe("Wallpaper", () => {
 	test("get current wallpapers returns array", async ({ api }) => {
@@ -16,23 +34,17 @@ test.describe("Wallpaper", () => {
 		const dst = join(daemon.imagesDir, "wp_set.jpg");
 		copyFileSync(src, dst);
 		await api.post("/images", { paths: [dst] });
-		await new Promise((r) => setTimeout(r, 2000));
-
-		const listRes = await api.get("/images?page=1&per_page=1");
-		const images = (listRes.data as { data: { id: number }[] }).data;
+		const images = await waitForImportedImages(api, 1);
 		if (images.length === 0) {
 			test.skip();
 			return;
 		}
 
 		const res = await api.post("/wallpaper/set", { image_id: images[0].id });
-		// May fail if no wallpaper backend is available in CI -- that's a code issue, not test issue
-		expect([200, 500]).toContain(res.status);
-		if (res.status === 200) {
-			const data = res.data as { status: string; image_id: number };
-			expect(data.status).toBe("set");
-			expect(data.image_id).toBe(images[0].id);
-		}
+		expect(res.status).toBe(200);
+		const data = res.data as { status: string; image_id: number };
+		expect(data.status).toBe("set");
+		expect(data.image_id).toBe(images[0].id);
 	});
 
 	test("set random wallpaper", async ({ api, daemon }) => {
@@ -43,14 +55,16 @@ test.describe("Wallpaper", () => {
 			return dst;
 		});
 		await api.post("/images", { paths });
-		await new Promise((r) => setTimeout(r, 2000));
+		const images = await waitForImportedImages(api, 2);
+		if (images.length < 2) {
+			test.skip();
+			return;
+		}
 
 		const res = await api.post("/wallpaper/random", {});
-		expect([200, 500]).toContain(res.status);
-		if (res.status === 200) {
-			const data = res.data as { status: string; image_id: number };
-			expect(data.status).toBe("set");
-			expect(data.image_id).toBeGreaterThan(0);
-		}
+		expect(res.status).toBe(200);
+		const data = res.data as { status: string; image_id: number };
+		expect(data.status).toBe("set");
+		expect(data.image_id).toBeGreaterThan(0);
 	});
 });
