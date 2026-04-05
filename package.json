@@ -10,7 +10,7 @@
 	},
 	"scripts": {
 		"dev": "npm run build:daemon && DEV=true vite",
-		"build:daemon": "mkdir -p daemon/build && cd daemon && go build -ldflags \"-s -w\" -o build/waypaper-daemon ./cmd/daemon",
+		"build:daemon": "make daemon",
 		"build": "npm run build:daemon && vite build && electron-builder --publish never --config electron-builder.json",
 		"ci:check": "npm run build:daemon && npm run format:check && npm run lint:check && npm run gofmt:check && npx tsc --noEmit && npm run test && npm run test:daemon:unit && npx vite build",
 		"postinstall": "electron-builder install-app-deps",

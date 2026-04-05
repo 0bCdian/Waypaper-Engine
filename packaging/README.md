@@ -39,7 +39,6 @@ The default `make install` target is user-local (`~/.local`). Packaging should u
 - `make appimage` -- builds a portable AppImage instead of a directory package
 - `make install-daemon` -- installs only the daemon binary
 - `make uninstall` -- removes all installed files
-- `make dist` -- creates a source tarball from the git tree
 - `make help` -- prints all available targets
 
 ## Adding a New Format

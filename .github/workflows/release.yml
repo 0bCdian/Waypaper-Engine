@@ -25,13 +25,19 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-      - name: Validate tag commit is on main
+      - name: Validate tag commit is on an allowed release branch
+        env:
+          RELEASE_BASE_BRANCHES: "main refactor/wayaper-daemon"
         run: |
-          git fetch origin main --depth=1
-          git merge-base --is-ancestor "$GITHUB_SHA" origin/main || {
-            echo "Tag commit is not reachable from origin/main"
-            exit 1
-          }
+          git fetch --no-tags origin $RELEASE_BASE_BRANCHES
+          for branch in $RELEASE_BASE_BRANCHES; do
+            if git merge-base --is-ancestor "$GITHUB_SHA" "origin/$branch"; then
+              echo "Tag commit is reachable from origin/$branch"
+              exit 0
+            fi
+          done
+          echo "Tag commit is not reachable from any allowed release branch: $RELEASE_BASE_BRANCHES"
+          exit 1
       - name: Validate tag matches package.json version
         run: |
           TAG="${GITHUB_REF_NAME#v}"

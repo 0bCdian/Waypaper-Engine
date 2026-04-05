@@ -30,6 +30,7 @@ DESKTOP_DIR ?= $(DESTDIR)$(PREFIX)/share/applications
 ICON_DIR ?= $(DESTDIR)$(PREFIX)/share/pixmaps
 SYSTEMD_DIR ?= $(DESTDIR)$(HOME)/.config/systemd/user
 APPIMAGE_NAME = waypaper-engine.AppImage
+APPIMAGE_ICON_NAME = waypaper-engine-appimage.png
 INSTALL_PREFIX_SYSTEM := /usr/local
 SYSTEMD_DIR_SYSTEM := $(DESTDIR)$(INSTALL_PREFIX_SYSTEM)/lib/systemd/user
 DAEMON_BUILD_DIR = daemon/build
@@ -148,13 +149,13 @@ install-appimage: verify-appimage-artifact
 		'GenericName=Wallpaper Management' \
 		'Comment=Portable AppImage install for Waypaper Engine' \
 		'Exec=waypaper-engine-appimage run' \
-		'Icon=waypaper-engine' \
+		'Icon=waypaper-engine-appimage' \
 		'Categories=Utility;Graphics;' \
 		'Terminal=false' \
 		'StartupNotify=true' \
 		'Keywords=wallpaper;playlist;electron;' | install -Dm644 /dev/stdin $(DESKTOP_DIR)/waypaper-engine-appimage.desktop
 	install -dm755 $(ICON_DIR)
-	install -m644 build/icons/512x512.png $(ICON_DIR)/waypaper-engine.png
+	install -m644 build/icons/512x512.png $(ICON_DIR)/$(APPIMAGE_ICON_NAME)
 
 uninstall-ui:
 	rm -rf $(ELECTRON_APP_INSTALL_DIR)
@@ -174,7 +175,7 @@ uninstall-appimage:
 	rm -rf $(APPIMAGE_INSTALL_DIR)
 	rm -f $(BIN_DIR)/waypaper-engine-appimage
 	rm -f $(DESKTOP_DIR)/waypaper-engine-appimage.desktop
-	rm -f $(ICON_DIR)/waypaper-engine.png
+	rm -f $(ICON_DIR)/$(APPIMAGE_ICON_NAME)
 
 install-system:
 	$(MAKE) install \
