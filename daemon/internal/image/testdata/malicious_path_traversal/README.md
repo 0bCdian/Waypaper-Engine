@@ -1,0 +1,1 @@
+Intentional **invalid** manifests for security tests (`TestImportWebWallpaper_*Fixture` in `web_importer_test.go`). Do not use as a real wallpaper. Same layout as `waypaper-tauri/test_wallpapers/malicious_path_traversal/`.

@@ -1,0 +1,6 @@
+{
+  "waypaper": "1",
+  "title": "malicious preview traversal (fixture)",
+  "entry": "index.html",
+  "preview": "../secret.png"
+}

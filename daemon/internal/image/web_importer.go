@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"waypaper-engine/daemon/internal/backend/waylandutauri"
+	"waypaper-engine/daemon/internal/pathsecure"
 	"waypaper-engine/daemon/internal/store"
 	"waypaper-engine/daemon/internal/system"
 )
@@ -70,15 +71,26 @@ func (p *Processor) ImportWebWallpaper(ctx context.Context, sourcePath string, f
 		return nil, fmt.Errorf("web manifest entry is required")
 	}
 
-	entryPath := filepath.Join(resolvedPath, entryRel)
-	if _, err := os.Stat(entryPath); err != nil {
+	entryPath, err := pathsecure.MustResolveUnder(resolvedPath, entryRel)
+	if err != nil {
+		return nil, fmt.Errorf("web entry: %w", err)
+	}
+	entryInfo, err := os.Stat(entryPath)
+	if err != nil {
 		return nil, fmt.Errorf("web entry file not found: %w", err)
 	}
+	if entryInfo.IsDir() {
+		return nil, fmt.Errorf("web entry path must be a file, not a directory")
+	}
 
-	if strings.TrimSpace(manifest.Preview) == "" {
+	previewRel := strings.TrimSpace(manifest.Preview)
+	if previewRel == "" {
 		return nil, fmt.Errorf("web manifest preview is required")
 	}
-	previewSrc := filepath.Join(resolvedPath, manifest.Preview)
+	previewSrc, err := pathsecure.MustResolveUnder(resolvedPath, previewRel)
+	if err != nil {
+		return nil, fmt.Errorf("web preview: %w", err)
+	}
 	if _, err := os.Stat(previewSrc); err != nil {
 		return nil, fmt.Errorf("web preview file not found: %w", err)
 	}
@@ -92,8 +104,14 @@ func (p *Processor) ImportWebWallpaper(ctx context.Context, sourcePath string, f
 		return nil, fmt.Errorf("copy web package: %w", err)
 	}
 
-	copiedEntryPath := filepath.Join(targetDir, entryRel)
-	previewPath := filepath.Join(targetDir, manifest.Preview)
+	copiedEntryPath, err := pathsecure.MustResolveUnder(targetDir, entryRel)
+	if err != nil {
+		return nil, fmt.Errorf("web entry (imported copy): %w", err)
+	}
+	previewPath, err := pathsecure.MustResolveUnder(targetDir, previewRel)
+	if err != nil {
+		return nil, fmt.Errorf("web preview (imported copy): %w", err)
+	}
 
 	checksumBytes := sha256.Sum256(manifestRaw)
 	imageName := strings.TrimSpace(manifest.Title)
