@@ -96,7 +96,7 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
     const imagesToAdd: PlaylistImage[] = [];
     const date = new Date();
     let initialTimeStamp = Math.max(
-      ...[...playlistImagesTimeSet],
+      ...playlistImagesTimeSet,
       date.getHours() * 60 + date.getMinutes(),
     );
 

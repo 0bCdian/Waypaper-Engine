@@ -24,6 +24,33 @@ const initialFilters: Filters = {
   },
 };
 
+function parseSearchInput(text: string): { search: string; hashTags: string[] } {
+  const hashTags: string[] = [];
+  const search = text
+    .replace(/#(\S+)/g, (_, tag) => {
+      hashTags.push(tag);
+      return "";
+    })
+    .trim();
+  return { search, hashTags };
+}
+
+function mapFiltersToQueryParams(filters: Filters): Partial<ImageQueryParams> {
+  const { search, hashTags } = parseSearchInput(filters.searchString);
+  const combinedTags = [...new Set([...filters.tags, ...hashTags])];
+  return {
+    sort_by: filters.type === "name" ? "name" : "imported_at",
+    sort_order: filters.order,
+    media_type: filters.mediaType === "all" ? undefined : filters.mediaType,
+    search: search || undefined,
+    tags: combinedTags.length > 0 ? combinedTags.join(",") : undefined,
+    colors:
+      filters.advancedFilters.colors && filters.advancedFilters.colors.length > 0
+        ? filters.advancedFilters.colors.join(",")
+        : undefined,
+  };
+}
+
 interface State {
   imagesArray: rendererImage[];
   imagesMap: Map<number, rendererImage>;
@@ -154,9 +181,12 @@ export const useImagesStore = create<State>()((set, get) => ({
   },
   reQueryImages: (params?: ImageQueryParams) => {
     const currentFolderId = useFoldersStore.getState().currentFolderId;
+    const currentFilters = get().filters;
+    const filterQueryParams = mapFiltersToQueryParams(currentFilters);
     const mergedParams: ImageQueryParams = {
       page: get().currentPage,
       per_page: get().perPage,
+      ...filterQueryParams,
       ...params,
     };
     if (mergedParams.folder_id === undefined && !mergedParams.search) {

@@ -112,6 +112,48 @@ describe("useImagesStore", () => {
     expect(state.isEmpty).toBe(true);
   });
 
+  it("reQueryImages preserves active filters in daemon query", async () => {
+    mockAPI.goDaemon.getImages = vi.fn().mockResolvedValue({
+      data: [],
+      pagination: { page: 1, per_page: 50, total_items: 0, total_pages: 1 },
+    });
+
+    const useImagesStore = await getStore();
+
+    act(() => {
+      useImagesStore.getState().setFilters({
+        ...useImagesStore.getState().filters,
+        order: "asc",
+        type: "name",
+        mediaType: "web",
+        searchString: "neon city #night",
+        tags: ["favorites"],
+        advancedFilters: {
+          ...useImagesStore.getState().filters.advancedFilters,
+          colors: ["#112233"],
+        },
+      });
+    });
+
+    await act(async () => {
+      useImagesStore.getState().reQueryImages();
+      await vi.waitFor(() => {
+        expect(mockAPI.goDaemon.getImages).toHaveBeenCalled();
+      });
+    });
+
+    expect(mockAPI.goDaemon.getImages).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sort_by: "name",
+        sort_order: "asc",
+        media_type: "web",
+        search: "neon city",
+        tags: "favorites,night",
+        colors: "#112233",
+      }),
+    );
+  });
+
   it("addToSelectedImages and removeFromSelectedImages", async () => {
     const useImagesStore = await getStore();
     const img = sampleRendererImage(5);

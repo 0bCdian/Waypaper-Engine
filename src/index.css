@@ -490,6 +490,17 @@ code {
   --noise: 0;
 }
 
+/* Theme-specific tooltip contrast fix:
+   Gruvbox Material Light default tooltip colors can become low-contrast. */
+[data-theme="gruvbox-material-light"] .tooltip::before {
+  background-color: oklch(from var(--color-neutral) l c h) !important;
+  color: oklch(from var(--color-neutral-content) l c h) !important;
+}
+
+[data-theme="gruvbox-material-light"] .tooltip::after {
+  border-top-color: oklch(from var(--color-neutral) l c h) !important;
+}
+
 @plugin "daisyui/theme" {
   name: "kanagawa";
   default: false;

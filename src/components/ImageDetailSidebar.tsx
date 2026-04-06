@@ -159,7 +159,7 @@ function WebWallpaperConfigForm({
   const dirty = dirtyOverrides || dirtyCaps;
 
   useEffect(() => {
-    const next = { ...(image.wallpaper_config_overrides ?? {}) };
+    const next = { ...image.wallpaper_config_overrides };
     setOverrides((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
     setSaveError(false);
   }, [image.id, serverOverridesKey]);
