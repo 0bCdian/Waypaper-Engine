@@ -7,6 +7,7 @@ import type { PlaylistImage } from "../../electron/daemon-go-types";
 import Modal, { type ModalHandle } from "./Modal";
 import { useModalStore } from "../stores/modalStore";
 import { logger } from "../utils/logger";
+import { shouldSkipPlaylistStartAfterUpdate } from "../utils/skipStartAfterPlaylistSave";
 const { goDaemon } = window.API_RENDERER;
 
 interface Props {
@@ -91,10 +92,23 @@ const SavePlaylistModal = ({ currentPlaylistName, onPlaylistChanged }: Props) =>
         }
 
         if (monitorSelection.selectedMonitors.length > 0) {
-          try {
-            await goDaemon.startPlaylist(savedId, monitorTarget, monitorSelection.mode);
-          } catch (startErr) {
-            logger.error("Failed to start playlist:", startErr);
+          let skipStart = false;
+          if (playlist.id) {
+            const activePlaylists = await goDaemon.getActivePlaylists();
+            skipStart = shouldSkipPlaylistStartAfterUpdate({
+              savedId,
+              playlistType: playlist.configuration.type,
+              activePlaylists,
+              selectedMonitors: monitorSelection.selectedMonitors,
+              mode: monitorSelection.mode,
+            });
+          }
+          if (!skipStart) {
+            try {
+              await goDaemon.startPlaylist(savedId, monitorTarget, monitorSelection.mode);
+            } catch (startErr) {
+              logger.error("Failed to start playlist:", startErr);
+            }
           }
         }
 

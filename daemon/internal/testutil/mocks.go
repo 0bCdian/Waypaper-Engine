@@ -188,12 +188,13 @@ func (m *MockFolderStore) Count(ctx context.Context) (int, error) {
 // ---------------------------------------------------------------------------
 
 type MockPlaylistStore struct {
-	GetAllFn  func(ctx context.Context) ([]store.Playlist, error)
-	GetByIDFn func(ctx context.Context, id int) (*store.Playlist, error)
-	CreateFn  func(ctx context.Context, playlist store.Playlist) (*store.Playlist, error)
-	UpdateFn  func(ctx context.Context, id int, updates map[string]any) (*store.Playlist, error)
-	DeleteFn  func(ctx context.Context, id int) error
-	CountFn   func(ctx context.Context) (int, error)
+	GetAllFn            func(ctx context.Context) ([]store.Playlist, error)
+	GetByIDFn           func(ctx context.Context, id int) (*store.Playlist, error)
+	CreateFn            func(ctx context.Context, playlist store.Playlist) (*store.Playlist, error)
+	UpdateFn            func(ctx context.Context, id int, updates map[string]any) (*store.Playlist, error)
+	SavePlaybackStateFn func(ctx context.Context, id int, playback *store.PlaylistPlayback) error
+	DeleteFn            func(ctx context.Context, id int) error
+	CountFn             func(ctx context.Context) (int, error)
 }
 
 func (m *MockPlaylistStore) GetAll(ctx context.Context) ([]store.Playlist, error) {
@@ -222,6 +223,13 @@ func (m *MockPlaylistStore) Update(ctx context.Context, id int, updates map[stri
 		return m.UpdateFn(ctx, id, updates)
 	}
 	return nil, nil
+}
+
+func (m *MockPlaylistStore) SavePlaybackState(ctx context.Context, id int, playback *store.PlaylistPlayback) error {
+	if m.SavePlaybackStateFn != nil {
+		return m.SavePlaybackStateFn(ctx, id, playback)
+	}
+	return nil
 }
 
 func (m *MockPlaylistStore) Delete(ctx context.Context, id int) error {

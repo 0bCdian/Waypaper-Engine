@@ -202,6 +202,35 @@ func TestNewSchedulerTypes(t *testing.T) {
 	}
 }
 
+func TestTimerSchedulerRestoreTraversal(t *testing.T) {
+	restored := []int{2, 0, 1}
+	sched := NewScheduler(SchedulerConfig{
+		Type:         "timer",
+		Interval:     1,
+		Order:        "random",
+		TotalImages:  3,
+		StartIndex:   0,
+		TimerIndices: restored,
+		TimerCursor:  1,
+	})
+	idx, cur, ok := TimerTraversalSnapshot(sched)
+	require.True(t, ok)
+	assert.Equal(t, restored, idx)
+	assert.Equal(t, 1, cur)
+
+	ts := sched.(*timerScheduler)
+	ts.interval = 25 * time.Millisecond
+	tickCh := make(chan int, 2)
+	sched.Start(func(i int) { tickCh <- i })
+	select {
+	case v := <-tickCh:
+		assert.Equal(t, 1, v, "first tick should follow restored order after cursor")
+	case <-time.After(400 * time.Millisecond):
+		t.Fatal("timeout waiting for tick")
+	}
+	sched.Stop()
+}
+
 func TestTimerSchedulerStartAndTick(t *testing.T) {
 	tickCh := make(chan int, 100)
 
@@ -374,4 +403,40 @@ func TestTimerSchedulerOrderedIndices(t *testing.T) {
 	}
 
 	assert.Equal(t, []int{1, 2, 0}, indices, "ordered scheduler should cycle through indices sequentially")
+}
+
+func TestTimerReconcileSchedulerConfig_ordered(t *testing.T) {
+	start, idx, cur := timerReconcileSchedulerConfig("ordered", 5, 3)
+	assert.Equal(t, 3, start)
+	assert.Nil(t, idx)
+	assert.Equal(t, 0, cur)
+}
+
+func TestTimerReconcileSchedulerConfig_ordered_clampsRow(t *testing.T) {
+	start, idx, cur := timerReconcileSchedulerConfig("ordered", 3, 99)
+	assert.Equal(t, 2, start)
+	assert.Nil(t, idx)
+	assert.Equal(t, 0, cur)
+}
+
+func TestTimerReconcileSchedulerConfig_random_alignsRow(t *testing.T) {
+	n := 12
+	row := 7
+	for range 80 {
+		_, indices, cur := timerReconcileSchedulerConfig("random", n, row)
+		require.Len(t, indices, n)
+		seen := make(map[int]bool, n)
+		for _, v := range indices {
+			assert.False(t, seen[v], "permutation duplicate %d", v)
+			seen[v] = true
+		}
+		assert.Equal(t, row, indices[cur], "cursor must point at current playlist row")
+	}
+}
+
+func TestTimerReconcileSchedulerConfig_empty(t *testing.T) {
+	start, idx, cur := timerReconcileSchedulerConfig("ordered", 0, 0)
+	assert.Equal(t, 0, start)
+	assert.Nil(t, idx)
+	assert.Equal(t, 0, cur)
 }

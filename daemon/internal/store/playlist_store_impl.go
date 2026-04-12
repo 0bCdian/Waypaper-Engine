@@ -69,6 +69,22 @@ func (s *playlistStore) Update(_ context.Context, id int, updates map[string]any
 	return FindOne[Playlist](s.db, q, fmt.Sprintf("playlist store: playlist %d after update", id))
 }
 
+func (s *playlistStore) SavePlaybackState(_ context.Context, id int, playback *PlaylistPlayback) error {
+	q := query.NewQuery(CollectionPlaylists).Where(query.Field("id").Eq(id))
+	updates := map[string]any{
+		"updated_at": time.Now(),
+	}
+	if playback == nil {
+		updates["playback"] = nil
+	} else {
+		updates["playback"] = jsonValue(*playback)
+	}
+	if err := s.db.Update(q, updates); err != nil {
+		return fmt.Errorf("playlist store: save playback %d: %w", id, err)
+	}
+	return nil
+}
+
 func (s *playlistStore) Delete(_ context.Context, id int) error {
 	q := query.NewQuery(CollectionPlaylists).Where(query.Field("id").Eq(id))
 

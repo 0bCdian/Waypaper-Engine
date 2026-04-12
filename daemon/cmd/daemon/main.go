@@ -234,6 +234,10 @@ func startDaemon(configPath string, logLevel string) error {
 		cfg,
 	)
 
+	if err := playlistMgr.RestorePersistedRuns(ctx); err != nil {
+		slog.Warn("playlist restore from disk failed", "error", err)
+	}
+
 	// 13. Create shutdown function.
 	shutdownCh := make(chan struct{}, 1)
 	shutdownFn := func() {
@@ -296,8 +300,8 @@ func startDaemon(configPath string, logLevel string) error {
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 
-	// Stop playlists.
-	playlistMgr.StopAll()
+	// Stop playlists but leave was_running=true on disk so they resume after reboot.
+	playlistMgr.Shutdown(shutdownCtx)
 
 	// Shutdown server.
 	if err := srv.Shutdown(shutdownCtx); err != nil {

@@ -19,8 +19,12 @@ import (
 
 // playlistRun groups the scheduler and cancel func for a single Start() invocation.
 type playlistRun struct {
-	sched  Scheduler
-	cancel context.CancelFunc
+	sched      Scheduler
+	cancel     context.CancelFunc
+	playCtx    context.Context
+	playlistID int
+	monitors   []monitor.Monitor
+	target     monitor.MonitorTarget
 }
 
 // Manager handles playlist lifecycle: start, stop, pause, resume, next, previous.
@@ -71,6 +75,10 @@ func NewManager(
 
 // Start begins a playlist on the specified target monitor(s).
 func (m *Manager) Start(ctx context.Context, playlistID int, target monitor.MonitorTarget) error {
+	return m.startPlaylist(ctx, playlistID, target, startOpts{})
+}
+
+func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target monitor.MonitorTarget, opts startOpts) error {
 	pl, err := m.playlistStore.GetByID(ctx, playlistID)
 	if err != nil {
 		return fmt.Errorf("playlist manager: load playlist: %w", err)
@@ -80,80 +88,106 @@ func (m *Manager) Start(ctx context.Context, playlistID int, target monitor.Moni
 		return fmt.Errorf("playlist manager: playlist %d has no images", playlistID)
 	}
 
-	// Resolve monitors.
-	monitors, err := m.resolveMonitors(ctx, target)
+	targetEff := target
+	if opts.fromPersisted && pl.Playback != nil {
+		targetEff = playbackToTarget(pl.Playback)
+	}
+
+	monitors, err := m.resolveMonitors(ctx, targetEff)
 	if err != nil {
 		return err
 	}
 	if len(monitors) == 0 {
-		return fmt.Errorf("playlist manager: no monitors resolved for target %q", target.ID)
+		return fmt.Errorf("playlist manager: no monitors resolved for target %q", targetEff.ID)
 	}
 
-	// Stop any existing playlist that owns any of the target monitors.
 	targetNames := monitorNameSet(monitors)
 	for _, inst := range m.stateStore.GetActivePlaylists() {
 		if monitorsOverlap(inst.Monitors, targetNames) {
-			m.stopPlaylist(inst.PlaylistID)
+			id := inst.PlaylistID
+			instCopy := inst
+			m.persistPlaybackWithInst(ctx, id, &instCopy, false)
+			m.stopPlaylist(id)
 		}
 	}
 
-	timeSlots, startIdx := computeInitialState(pl)
+	timeSlots, startIdx, tIdx, tCur := m.playlistStartIndices(pl, opts)
+	applyRow := startIdx
+	if len(tIdx) > 0 && tCur >= 0 && tCur < len(tIdx) {
+		applyRow = tIdx[tCur]
+	}
 
 	sched := NewScheduler(SchedulerConfig{
-		Type:        pl.Configuration.Type,
-		Interval:    pl.Configuration.Interval,
-		Order:       pl.Configuration.Order,
-		TotalImages: len(pl.Images),
-		StartIndex:  startIdx,
-		TimeSlots:   timeSlots,
+		Type:         pl.Configuration.Type,
+		Interval:     pl.Configuration.Interval,
+		Order:        pl.Configuration.Order,
+		TotalImages:  len(pl.Images),
+		StartIndex:   startIdx,
+		TimeSlots:    timeSlots,
+		TimerIndices: tIdx,
+		TimerCursor:  tCur,
 	})
 
-	// Use a detached context for playlist lifecycle — the HTTP request context
-	// (ctx) is cancelled as soon as the response is written, but the playlist
-	// must keep running independently.
 	playCtx, playCancel := context.WithCancel(context.Background())
 
-	run := &playlistRun{sched: sched, cancel: playCancel}
+	run := &playlistRun{
+		sched:      sched,
+		cancel:     playCancel,
+		playCtx:    playCtx,
+		playlistID: pl.ID,
+		monitors:   monitors,
+		target:     targetEff,
+	}
 
 	m.mu.Lock()
 	m.runs[pl.ID] = run
 	m.mu.Unlock()
 
-	// Start missed event checker for time-based playlists (one per playlist).
 	if pl.Configuration.Type == "time_of_day" || pl.Configuration.Type == "day_of_week" {
-		go m.missedEventChecker(playCtx, pl, monitors, target)
+		go m.missedEventChecker(playCtx, pl.ID, monitors, targetEff)
 	}
 
-	// Apply first image (still use the original ctx since the HTTP request is alive).
-	result, err := m.applyImage(ctx, pl, startIdx, monitors, target.Mode)
+	result, err := m.applyImage(ctx, pl, applyRow, monitors, targetEff.Mode)
 	if err != nil {
 		slog.Warn("playlist: failed to apply first image", "error", err)
 	}
-	effectiveIdx := startIdx
+	effectiveIdx := applyRow
 	if result.AppliedIndex >= 0 {
 		effectiveIdx = result.AppliedIndex
 	}
 
-	// Start scheduler with detached context so ticks survive after HTTP response.
 	sched.Start(func(index int) {
-		m.onTick(playCtx, pl, index, monitors, target)
+		m.onTick(playCtx, pl.ID, index, monitors, targetEff)
 	})
 
 	monNames := monitorNames(monitors)
+	resumePaused := opts.fromPersisted && pl.Playback != nil && pl.Playback.Paused
+	nextAt := sched.NextChangeAt()
+	if resumePaused {
+		nextAt = nil
+	}
 	instance := store.ActivePlaylistInstance{
 		ActivePlaylistState: store.ActivePlaylistState{
 			PlaylistID:   pl.ID,
 			PlaylistName: pl.Name,
 			TotalImages:  len(pl.Images),
-			Paused:       false,
+			Paused:       resumePaused,
 			StartedAt:    time.Now(),
-			NextChangeAt: sched.NextChangeAt(),
+			NextChangeAt: nextAt,
 		},
-		Mode:     string(target.Mode),
+		Mode:     string(targetEff.Mode),
 		Monitors: monNames,
 	}
 	updateInstanceIndex(&instance, pl, effectiveIdx)
 	m.stateStore.SetActivePlaylist(instance)
+
+	if resumePaused {
+		run.sched.Pause()
+	}
+
+	if inst := m.stateStore.GetActivePlaylistByID(pl.ID); inst != nil {
+		m.persistPlaybackWithInst(ctx, pl.ID, inst, true)
+	}
 
 	m.bus.Publish(events.Event{
 		Type: events.PlaylistStarted,
@@ -161,7 +195,7 @@ func (m *Manager) Start(ctx context.Context, playlistID int, target monitor.Moni
 			"playlist_id":   pl.ID,
 			"playlist_name": pl.Name,
 			"monitors":      monNames,
-			"mode":          target.Mode,
+			"mode":          targetEff.Mode,
 		},
 	})
 
@@ -176,6 +210,8 @@ func (m *Manager) Stop(ctx context.Context, playlistID int) error {
 		return fmt.Errorf("playlist manager: playlist %d is not running", playlistID)
 	}
 
+	instCopy := *inst
+	m.persistPlaybackWithInst(ctx, playlistID, &instCopy, false)
 	m.stopPlaylist(playlistID)
 
 	m.bus.Publish(events.Event{
@@ -205,6 +241,10 @@ func (m *Manager) Pause(ctx context.Context, playlistID int) error {
 		inst.NextChangeAt = nil
 	})
 
+	if inst := m.stateStore.GetActivePlaylistByID(playlistID); inst != nil {
+		m.persistPlaybackWithInst(ctx, playlistID, inst, true)
+	}
+
 	m.bus.Publish(events.Event{
 		Type: events.PlaylistPaused,
 		Data: map[string]any{"playlist_id": playlistID},
@@ -229,6 +269,10 @@ func (m *Manager) Resume(ctx context.Context, playlistID int) error {
 		inst.NextChangeAt = nextChange
 	})
 
+	if inst := m.stateStore.GetActivePlaylistByID(playlistID); inst != nil {
+		m.persistPlaybackWithInst(ctx, playlistID, inst, true)
+	}
+
 	m.bus.Publish(events.Event{
 		Type: events.PlaylistResumed,
 		Data: map[string]any{"playlist_id": playlistID},
@@ -247,10 +291,23 @@ func (m *Manager) Previous(ctx context.Context, playlistID int) error {
 }
 
 // StopAll stops all running playlists and returns the count of stopped instances.
+// Playback on disk is marked was_running=false so a later daemon start does not auto-resume.
 func (m *Manager) StopAll() int {
+	return m.stopAllPersistingWasRunning(context.Background(), false)
+}
+
+// Shutdown stops every running playlist during daemon teardown. Playback is saved with
+// was_running=true so RestorePersistedRuns can restart them after reboot or process restart.
+func (m *Manager) Shutdown(ctx context.Context) int {
+	return m.stopAllPersistingWasRunning(ctx, true)
+}
+
+func (m *Manager) stopAllPersistingWasRunning(ctx context.Context, resumeAfterRestart bool) int {
 	active := m.stateStore.GetActivePlaylists()
 	count := 0
-	for playlistID := range active {
+	for playlistID, inst := range active {
+		instCopy := inst
+		m.persistPlaybackWithInst(ctx, playlistID, &instCopy, resumeAfterRestart)
 		m.stopPlaylist(playlistID)
 		count++
 	}
@@ -281,6 +338,9 @@ func (m *Manager) PauseAll(ctx context.Context) int {
 			inst.Paused = true
 			inst.NextChangeAt = nil
 		})
+		if inst := m.stateStore.GetActivePlaylistByID(playlistID); inst != nil {
+			m.persistPlaybackWithInst(ctx, playlistID, inst, true)
+		}
 		count++
 	}
 	if count > 0 {
@@ -314,6 +374,9 @@ func (m *Manager) ResumeAll(ctx context.Context) int {
 			inst.Paused = false
 			inst.NextChangeAt = nextChange
 		})
+		if inst := m.stateStore.GetActivePlaylistByID(playlistID); inst != nil {
+			m.persistPlaybackWithInst(ctx, playlistID, inst, true)
+		}
 		count++
 	}
 	if count > 0 {
@@ -414,6 +477,8 @@ func (m *Manager) advancePlaylist(ctx context.Context, playlistID int, delta int
 		inst.NextChangeAt = nextChange
 	})
 
+	m.persistPlayback(ctx, playlistID, true)
+
 	m.bus.Publish(events.Event{
 		Type: events.PlaylistImageChanged,
 		Data: map[string]any{
@@ -439,11 +504,124 @@ func (m *Manager) stopPlaylist(playlistID int) {
 	m.stateStore.RemoveActivePlaylist(playlistID)
 }
 
+// ReconcileAfterPlaylistUpdate rebuilds an in-memory timer run after PATCH so saves do not
+// require a full Start. No-op if the playlist is not running; stops the run if the updated
+// document is empty, not a timer, or active state is missing.
+func (m *Manager) ReconcileAfterPlaylistUpdate(ctx context.Context, playlistID int) error {
+	m.mu.RLock()
+	run := m.runs[playlistID]
+	m.mu.RUnlock()
+	if run == nil {
+		return nil
+	}
+
+	pl, err := m.playlistStore.GetByID(ctx, playlistID)
+	if err != nil {
+		return fmt.Errorf("playlist reconcile: load playlist: %w", err)
+	}
+
+	if len(pl.Images) == 0 {
+		m.stopPlaylist(playlistID)
+		return nil
+	}
+
+	if pl.Configuration.Type != "timer" {
+		m.stopPlaylist(playlistID)
+		return nil
+	}
+
+	inst := m.stateStore.GetActivePlaylistByID(playlistID)
+	if inst == nil {
+		m.stopPlaylist(playlistID)
+		return nil
+	}
+
+	row := clampPlaylistIndex(inst.CurrentIndex, len(pl.Images))
+	startIdx, tIdx, tCur := timerReconcileSchedulerConfig(pl.Configuration.Order, len(pl.Images), row)
+
+	newSched := NewScheduler(SchedulerConfig{
+		Type:         "timer",
+		Interval:     pl.Configuration.Interval,
+		Order:        pl.Configuration.Order,
+		TotalImages:  len(pl.Images),
+		StartIndex:   startIdx,
+		TimeSlots:    nil,
+		TimerIndices: tIdx,
+		TimerCursor:  tCur,
+	})
+
+	m.mu.Lock()
+	run = m.runs[playlistID]
+	if run == nil {
+		m.mu.Unlock()
+		return nil
+	}
+	oldSched := run.sched
+	monitors := run.monitors
+	target := run.target
+	playCtx := run.playCtx
+	m.mu.Unlock()
+
+	oldSched.Stop()
+
+	if pl.Images[row].ImageID != inst.CurrentImageID {
+		res, applyErr := m.applyImage(ctx, pl, row, monitors, target.Mode)
+		if applyErr != nil {
+			slog.Warn("playlist reconcile: apply image", "playlist_id", playlistID, "error", applyErr)
+		} else if res.AppliedIndex >= 0 {
+			row = res.AppliedIndex
+		}
+	}
+
+	m.mu.Lock()
+	run = m.runs[playlistID]
+	if run == nil {
+		m.mu.Unlock()
+		return nil
+	}
+	run.sched = newSched
+	m.mu.Unlock()
+
+	pid := playlistID
+	newSched.Start(func(index int) {
+		m.onTick(playCtx, pid, index, monitors, target)
+	})
+
+	paused := inst.Paused
+	if paused {
+		newSched.Pause()
+	}
+
+	nextAt := newSched.NextChangeAt()
+	if paused {
+		nextAt = nil
+	}
+
+	m.stateStore.UpdateActivePlaylist(playlistID, func(upd *store.ActivePlaylistInstance) {
+		upd.PlaylistName = pl.Name
+		upd.TotalImages = len(pl.Images)
+		updateInstanceIndex(upd, pl, row)
+		upd.NextChangeAt = nextAt
+	})
+
+	m.persistPlayback(ctx, playlistID, true)
+	return nil
+}
+
 // onTick is called by the scheduler when it's time to change the wallpaper.
-func (m *Manager) onTick(ctx context.Context, pl *store.Playlist, index int, monitors []monitor.Monitor, target monitor.MonitorTarget) {
+func (m *Manager) onTick(ctx context.Context, playlistID int, index int, monitors []monitor.Monitor, target monitor.MonitorTarget) {
+	pl, err := m.playlistStore.GetByID(ctx, playlistID)
+	if err != nil {
+		slog.Warn("playlist tick: load playlist", "playlist_id", playlistID, "error", err)
+		return
+	}
+	if len(pl.Images) == 0 {
+		return
+	}
+
 	result, err := m.applyImage(ctx, pl, index, monitors, target.Mode)
 	if err != nil {
-		slog.Warn("playlist tick: failed to apply image", "playlist_id", pl.ID, "index", index, "error", err)
+		slog.Warn("playlist tick: failed to apply image", "playlist_id", playlistID, "index", index, "error", err)
 		return
 	}
 	if result.AppliedIndex < 0 {
@@ -463,6 +641,8 @@ func (m *Manager) onTick(ctx context.Context, pl *store.Playlist, index int, mon
 		updateInstanceIndex(inst, pl, effectiveIdx)
 		inst.NextChangeAt = nextChange
 	})
+
+	m.persistPlayback(ctx, pl.ID, true)
 
 	m.bus.Publish(events.Event{
 		Type: events.PlaylistImageChanged,
@@ -658,7 +838,7 @@ func (m *Manager) resolveMonitors(ctx context.Context, target monitor.MonitorTar
 // (e.g. after system sleep/wake). If the expected next change time has passed
 // by more than 30 seconds, it re-triggers the scheduler by computing the
 // correct current image and applying it.
-func (m *Manager) missedEventChecker(ctx context.Context, pl *store.Playlist, monitors []monitor.Monitor, target monitor.MonitorTarget) {
+func (m *Manager) missedEventChecker(ctx context.Context, playlistID int, monitors []monitor.Monitor, target monitor.MonitorTarget) {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
@@ -667,7 +847,7 @@ func (m *Manager) missedEventChecker(ctx context.Context, pl *store.Playlist, mo
 		case <-ctx.Done():
 			return
 		case <-ticker.C:
-			inst := m.stateStore.GetActivePlaylistByID(pl.ID)
+			inst := m.stateStore.GetActivePlaylistByID(playlistID)
 			if inst == nil {
 				return
 			}
@@ -678,13 +858,22 @@ func (m *Manager) missedEventChecker(ctx context.Context, pl *store.Playlist, mo
 				continue
 			}
 
+			pl, loadErr := m.playlistStore.GetByID(ctx, playlistID)
+			if loadErr != nil {
+				slog.Warn("missed event: load playlist", "playlist_id", playlistID, "error", loadErr)
+				continue
+			}
+			if len(pl.Images) == 0 {
+				return
+			}
+
 			now := time.Now()
 			if now.After(inst.NextChangeAt.Add(30 * time.Second)) {
 				slog.Warn("missed event detected, re-triggering scheduler",
 					"monitors", inst.Monitors,
 					"expected_time", inst.NextChangeAt,
 					"current_time", now,
-					"playlist_id", pl.ID,
+					"playlist_id", playlistID,
 					"playlist_type", pl.Configuration.Type,
 				)
 
@@ -710,20 +899,22 @@ func (m *Manager) missedEventChecker(ctx context.Context, pl *store.Playlist, mo
 
 				m.mu.RLock()
 				var nextChange *time.Time
-				if run, ok := m.runs[pl.ID]; ok {
+				if run, ok := m.runs[playlistID]; ok {
 					nextChange = run.sched.NextChangeAt()
 				}
 				m.mu.RUnlock()
 
-				m.stateStore.UpdateActivePlaylist(pl.ID, func(inst *store.ActivePlaylistInstance) {
-					updateInstanceIndex(inst, pl, effectiveIdx)
-					inst.NextChangeAt = nextChange
+				m.stateStore.UpdateActivePlaylist(playlistID, func(upd *store.ActivePlaylistInstance) {
+					updateInstanceIndex(upd, pl, effectiveIdx)
+					upd.NextChangeAt = nextChange
 				})
+
+				m.persistPlayback(ctx, playlistID, true)
 
 				m.bus.Publish(events.Event{
 					Type: events.PlaylistImageChanged,
 					Data: map[string]any{
-						"playlist_id": pl.ID,
+						"playlist_id": playlistID,
 						"image_index": effectiveIdx,
 						"image_id":    pl.Images[effectiveIdx].ImageID,
 						"monitors":    inst.Monitors,

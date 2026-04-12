@@ -2,6 +2,7 @@ package handler
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -99,10 +100,19 @@ func (h *PlaylistHandler) Update(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Playback is written only by the playlist manager (daemon-internal).
+	delete(updates, "playback")
+
 	pl, err := h.store.Update(r.Context(), id, updates)
 	if err != nil {
 		WriteError(w, http.StatusNotFound, err.Error())
 		return
+	}
+
+	if h.manager != nil {
+		if err := h.manager.ReconcileAfterPlaylistUpdate(r.Context(), id); err != nil {
+			slog.Warn("playlist reconcile after update", "playlist_id", id, "error", err)
+		}
 	}
 
 	h.bus.Publish(events.Event{

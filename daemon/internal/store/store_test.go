@@ -552,6 +552,43 @@ func TestPlaylistStore_Update(t *testing.T) {
 	assert.Equal(t, "Updated", updated.Name)
 }
 
+func TestPlaylistStore_SavePlaybackState(t *testing.T) {
+	db := testutil.OpenTestDB(t)
+	ps := db.PlaylistStore()
+	ctx := context.Background()
+
+	created, err := ps.Create(ctx, testutil.SamplePlaylist(0, "WithPlayback"))
+	require.NoError(t, err)
+
+	pb := &store.PlaylistPlayback{
+		WasRunning:   true,
+		CurrentIndex: 2,
+		Paused:       true,
+		Mode:         "individual",
+		Monitors:     []string{"DP-1"},
+		TimerIndices: []int{1, 0},
+		TimerCursor:  0,
+	}
+	err = ps.SavePlaybackState(ctx, created.ID, pb)
+	require.NoError(t, err)
+
+	got, err := ps.GetByID(ctx, created.ID)
+	require.NoError(t, err)
+	require.NotNil(t, got.Playback)
+	assert.True(t, got.Playback.WasRunning)
+	assert.Equal(t, 2, got.Playback.CurrentIndex)
+	assert.True(t, got.Playback.Paused)
+	assert.Equal(t, []string{"DP-1"}, got.Playback.Monitors)
+	assert.Equal(t, []int{1, 0}, got.Playback.TimerIndices)
+	assert.Equal(t, 0, got.Playback.TimerCursor)
+
+	err = ps.SavePlaybackState(ctx, created.ID, nil)
+	require.NoError(t, err)
+	got, err = ps.GetByID(ctx, created.ID)
+	require.NoError(t, err)
+	assert.Nil(t, got.Playback)
+}
+
 func TestPlaylistStore_Delete(t *testing.T) {
 	db := testutil.OpenTestDB(t)
 	ps := db.PlaylistStore()

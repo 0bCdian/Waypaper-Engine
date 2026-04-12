@@ -160,6 +160,10 @@ type PlaylistStore interface {
 	// Returns the full updated playlist, or an error if not found.
 	Update(ctx context.Context, id int, updates map[string]any) (*Playlist, error)
 
+	// SavePlaybackState writes only the playback subdocument (and updated_at).
+	// Pass nil to clear persisted playback state.
+	SavePlaybackState(ctx context.Context, id int, playback *PlaylistPlayback) error
+
 	// Delete removes a playlist by ID.
 	// Returns an error if not found.
 	Delete(ctx context.Context, id int) error

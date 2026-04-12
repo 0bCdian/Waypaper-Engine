@@ -10,8 +10,10 @@
 //   - "history"   — global wallpaper history log
 //   - "monitor_state" — per-monitor wallpaper state for restore on restart
 //
-// Runtime state (active playlists, current wallpapers) is kept in-memory only
-// and is NOT persisted — it is reconstructed on daemon startup.
+// Active playlist instances and current wallpaper pointers are in-memory only.
+// Playlist row position and "was running" flags are persisted on each Playlist
+// document as playback (see PlaylistPlayback). MonitorState persists per-monitor
+// wallpaper for re-apply after restart.
 //
 // IMPORTANT — CloverDB struct field name mismatch:
 //
@@ -243,6 +245,25 @@ type Playlist struct {
 
 	// Images is the ordered list of images in this playlist.
 	Images []PlaylistImage `json:"images"`
+
+	// Playback holds persisted runtime position for daemon restarts. Omitted when
+	// never started or cleared.
+	Playback *PlaylistPlayback `json:"playback,omitempty"`
+}
+
+// PlaylistPlayback is stored in the playlist document so the daemon can restore
+// running playlists after a crash (WasRunning) and resume from the last row index.
+// Timer + random also stores the shuffle traversal (indices + cursor).
+type PlaylistPlayback struct {
+	WasRunning   bool     `json:"was_running"`
+	CurrentIndex int      `json:"current_index"`
+	Paused       bool     `json:"paused"`
+	Mode         string   `json:"mode"`
+	Monitors     []string `json:"monitors"`
+	// TimerIndices is the shuffled row order for timer+random; length must match
+	// images when present.
+	TimerIndices []int `json:"timer_indices,omitempty"`
+	TimerCursor  int   `json:"timer_cursor,omitempty"`
 }
 
 // PlaylistConfiguration defines how a playlist rotates through its images.

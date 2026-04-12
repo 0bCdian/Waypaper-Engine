@@ -213,6 +213,16 @@ export interface PlaylistImage {
   time?: number;
 }
 
+export interface PlaylistPlayback {
+  was_running: boolean;
+  current_index: number;
+  paused: boolean;
+  mode: string;
+  monitors: string[];
+  timer_indices?: number[];
+  timer_cursor?: number;
+}
+
 export interface Playlist {
   id: number;
   name: string;
@@ -220,6 +230,7 @@ export interface Playlist {
   updated_at: string;
   configuration: PlaylistConfiguration;
   images: PlaylistImage[];
+  playback?: PlaylistPlayback;
 }
 
 // ActivePlaylistInstance represents a running playlist and the monitors it owns.

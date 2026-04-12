@@ -40,6 +40,9 @@ type SchedulerConfig struct {
 	StartIndex  int
 	// TimeSlots maps image indices to minutes-since-midnight (for time_of_day).
 	TimeSlots []TimeSlot
+	// TimerIndices + TimerCursor restore timer+random traversal (length must match TotalImages).
+	TimerIndices []int
+	TimerCursor  int
 }
 
 // TimeSlot maps a minute-since-midnight to an image index.
@@ -63,6 +66,32 @@ func NewScheduler(cfg SchedulerConfig) Scheduler {
 }
 
 // --- Timer Scheduler ---
+
+// timerReconcileSchedulerConfig builds StartIndex / TimerIndices / TimerCursor so a timer
+// continues from playlist row row after a playlist document update. Random order uses a
+// fresh shuffle with the cursor aligned to row.
+func timerReconcileSchedulerConfig(order string, n, row int) (startIdx int, timerIndices []int, timerCur int) {
+	row = clampPlaylistIndex(row, n)
+	if n <= 0 {
+		return 0, nil, 0
+	}
+	if order == "random" {
+		indices := make([]int, n)
+		for i := range indices {
+			indices[i] = i
+		}
+		rand.Shuffle(len(indices), func(i, j int) {
+			indices[i], indices[j] = indices[j], indices[i]
+		})
+		for j, v := range indices {
+			if v == row {
+				return 0, indices, j
+			}
+		}
+		return 0, indices, 0
+	}
+	return row, nil, 0
+}
 
 type timerSyncReq struct {
 	playlistIdx int
@@ -88,16 +117,43 @@ type timerScheduler struct {
 
 func newTimerScheduler(cfg SchedulerConfig) *timerScheduler {
 	s := &timerScheduler{
-		interval:     time.Duration(cfg.Interval) * time.Second,
-		order:        cfg.Order,
-		totalImages:  cfg.TotalImages,
-		currentIndex: cfg.StartIndex,
-		stopCh:       make(chan struct{}),
-		syncReqCh:    make(chan timerSyncReq),
-		resumeCh:     make(chan struct{}, 1),
+		interval:    time.Duration(cfg.Interval) * time.Second,
+		order:       cfg.Order,
+		totalImages: cfg.TotalImages,
+		stopCh:      make(chan struct{}),
+		syncReqCh:   make(chan timerSyncReq),
+		resumeCh:    make(chan struct{}, 1),
 	}
-	s.indices = s.buildIndices()
+	if len(cfg.TimerIndices) == cfg.TotalImages && cfg.TotalImages > 0 {
+		s.indices = append([]int(nil), cfg.TimerIndices...)
+		ci := cfg.TimerCursor
+		if ci < 0 || ci >= len(s.indices) {
+			ci = 0
+		}
+		s.currentIndex = ci
+	} else {
+		s.currentIndex = cfg.StartIndex
+		s.indices = s.buildIndices()
+	}
 	return s
+}
+
+// TimerTraversalSnapshot returns the timer scheduler's shuffle order and cursor.
+func TimerTraversalSnapshot(s Scheduler) ([]int, int, bool) {
+	ts, ok := s.(*timerScheduler)
+	if !ok {
+		return nil, 0, false
+	}
+	idx, cur := ts.snapshotTraversal()
+	return idx, cur, true
+}
+
+func (s *timerScheduler) snapshotTraversal() ([]int, int) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	out := make([]int, len(s.indices))
+	copy(out, s.indices)
+	return out, s.currentIndex
 }
 
 func (s *timerScheduler) buildIndices() []int {
