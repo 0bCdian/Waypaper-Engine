@@ -173,6 +173,26 @@ func (m *ViperManager) SetActiveBackendType(name string) error {
 	return m.mergeAndSet("backend", map[string]any{"type": name})
 }
 
+func (m *ViperManager) GetSelectionMode() string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	mode := m.v.GetString("backend.selection_mode")
+	if mode != "auto" {
+		return "fixed"
+	}
+	return "auto"
+}
+
+func (m *ViperManager) GetAutoPriorities() AutoPriorities {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return AutoPriorities{
+		Image: m.v.GetStringSlice("backend.auto_priorities.image"),
+		Video: m.v.GetStringSlice("backend.auto_priorities.video"),
+		Web:   m.v.GetStringSlice("backend.auto_priorities.web"),
+	}
+}
+
 // ---------- Change notification ----------
 
 func (m *ViperManager) OnConfigChange(callback func(section string)) {
@@ -249,6 +269,10 @@ func setDefaults(v *viper.Viper) {
 
 	// Backend defaults
 	v.SetDefault("backend.type", "awww")
+	v.SetDefault("backend.selection_mode", "fixed")
+	v.SetDefault("backend.auto_priorities.image", []string{"awww", "hyprpaper", "feh", "wayland-utauri"})
+	v.SetDefault("backend.auto_priorities.video", []string{"mpvpaper", "wayland-utauri"})
+	v.SetDefault("backend.auto_priorities.web", []string{"wayland-utauri"})
 
 	// Wallhaven defaults
 	v.SetDefault("wallhaven.scroll_mode", "paginated")

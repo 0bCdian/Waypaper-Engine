@@ -502,6 +502,8 @@ type MockConfigManager struct {
 	SetBackendConfigFn     func(backendName string, raw json.RawMessage) error
 	GetActiveBackendTypeFn func() string
 	SetActiveBackendTypeFn func(name string) error
+	GetSelectionModeFn     func() string
+	GetAutoPrioritiesFn    func() config.AutoPriorities
 	OnConfigChangeFn       func(callback func(section string))
 	GetSocketPathFn        func() string
 	GetImagesDirFn         func() string
@@ -557,6 +559,20 @@ func (m *MockConfigManager) SetActiveBackendType(name string) error {
 		return m.SetActiveBackendTypeFn(name)
 	}
 	return nil
+}
+
+func (m *MockConfigManager) GetSelectionMode() string {
+	if m.GetSelectionModeFn != nil {
+		return m.GetSelectionModeFn()
+	}
+	return "fixed"
+}
+
+func (m *MockConfigManager) GetAutoPriorities() config.AutoPriorities {
+	if m.GetAutoPrioritiesFn != nil {
+		return m.GetAutoPrioritiesFn()
+	}
+	return config.AutoPriorities{}
 }
 
 func (m *MockConfigManager) OnConfigChange(callback func(section string)) {

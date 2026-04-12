@@ -56,6 +56,12 @@ type ConfigManager interface {
 	// SetActiveBackendType updates the active backend in the config and persists.
 	SetActiveBackendType(name string) error
 
+	// GetSelectionMode returns the backend selection mode: "fixed" or "auto".
+	GetSelectionMode() string
+
+	// GetAutoPriorities returns the per-media backend priority lists.
+	GetAutoPriorities() AutoPriorities
+
 	// --- Change notification ---
 
 	// OnConfigChange registers a callback that fires when the config file changes.

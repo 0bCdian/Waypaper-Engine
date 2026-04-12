@@ -89,6 +89,22 @@ type BackendSection struct {
 	// When > 0, wayland-utauri and awww map it to duration_ms / CLI seconds respectively.
 	// When 0 or unset, each backend falls back to its legacy fields (duration_ms, transition_duration).
 	TransitionDurationSeconds float64 `mapstructure:"transition_duration_seconds" json:"transition_duration_seconds,omitempty"`
+
+	// SelectionMode controls whether the daemon uses a single fixed backend or
+	// automatically picks the best available backend per media type.
+	// "fixed" (default) keeps the legacy behavior; "auto" enables per-media priority lists.
+	SelectionMode string `mapstructure:"selection_mode" json:"selection_mode"`
+
+	// AutoPriorities holds per-media-type backend priority lists, used when SelectionMode == "auto".
+	AutoPriorities AutoPriorities `mapstructure:"auto_priorities" json:"auto_priorities"`
+}
+
+// AutoPriorities maps each media category to an ordered list of backend names.
+// The first available + compatible backend in each list is used.
+type AutoPriorities struct {
+	Image []string `mapstructure:"image" json:"image"`
+	Video []string `mapstructure:"video" json:"video"`
+	Web   []string `mapstructure:"web"   json:"web"`
 }
 
 // MonitorsConfig holds monitor selection and display mode preferences.
