@@ -226,6 +226,55 @@ const hyprpaperAdvancedFields: Field[] = [
   },
 ];
 
+const mpvpaperFields: Field[] = [
+  {
+    key: "mpvpaper.mpv_options",
+    label: "mpv options",
+    description:
+      'Forwarded to mpvpaper -o (e.g. "loop"). When a video has audio disabled, "no-audio" is prepended automatically.',
+    type: "text",
+    placeholder: "loop",
+  },
+  {
+    key: "mpvpaper.verbose",
+    label: "Verbosity",
+    description: "0 = off, 1 = mpvpaper -v, 2 = -vv",
+    type: "number",
+    min: 0,
+    max: 2,
+    step: 1,
+  },
+  {
+    key: "mpvpaper.auto_pause",
+    label: "Auto-pause when hidden (-p)",
+    description: "Ask mpvpaper to pause mpv when the wallpaper surface is hidden (best-effort)",
+    type: "checkbox",
+  },
+  {
+    key: "mpvpaper.auto_stop",
+    label: "Auto-stop when hidden (-s)",
+    description:
+      "Ask mpvpaper to stop mpv when hidden; saves more resources than pause (best-effort)",
+    type: "checkbox",
+  },
+  {
+    key: "mpvpaper.layer",
+    label: "Layer (-l)",
+    description: "Optional wlroots layer-shell layer name (leave empty for mpvpaper default)",
+    type: "text",
+    placeholder: "",
+  },
+  {
+    key: "mpvpaper.slideshow_secs",
+    label: "Slideshow interval (seconds)",
+    description: "If greater than 0, passes mpvpaper -n (slideshow mode). 0 disables.",
+    type: "number",
+    min: 0,
+    max: 86400,
+    step: 1,
+  },
+];
+
 const waylandUtauriTransitionFields: Field[] = [
   {
     key: "waylandutauri.transition",
@@ -695,6 +744,9 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
     } else if (key.startsWith("hyprpaper.")) {
       const hpKey = key.replace("hyprpaper.", "");
       await saveConfigSection(section, { [hpKey]: value });
+    } else if (key.startsWith("mpvpaper.")) {
+      const mpKey = key.replace("mpvpaper.", "");
+      await saveConfigSection(section, { [mpKey]: value });
     } else if (key.startsWith("waylandutauri.")) {
       const wutKey = key.replace("waylandutauri.", "");
       await saveConfigSection(section, { [wutKey]: value });
@@ -724,6 +776,11 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
       raw =
         config?.backend?.hyprpaper?.[
           field.key.replace("hyprpaper.", "") as keyof NonNullable<typeof config.backend.hyprpaper>
+        ];
+    } else if (field.key.startsWith("mpvpaper.")) {
+      raw =
+        config?.backend?.mpvpaper?.[
+          field.key.replace("mpvpaper.", "") as keyof NonNullable<typeof config.backend.mpvpaper>
         ];
     } else if (field.key.startsWith("waylandutauri.")) {
       const waylandCfg =
@@ -917,6 +974,13 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
               {hyprpaperAdvancedFields.map(renderField)}
             </>
           )}
+        </>
+      )}
+
+      {backendType === "mpvpaper" && (
+        <>
+          <SettingSectionHeader title="Video (Wayland)" />
+          {mpvpaperFields.map(renderField)}
         </>
       )}
 

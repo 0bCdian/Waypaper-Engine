@@ -17,6 +17,7 @@ import (
 	"waypaper-engine/daemon/internal/backend/awww"
 	"waypaper-engine/daemon/internal/backend/feh"
 	"waypaper-engine/daemon/internal/backend/hyprpaper"
+	"waypaper-engine/daemon/internal/backend/mpvpaper"
 	"waypaper-engine/daemon/internal/backend/waylandutauri"
 	"waypaper-engine/daemon/internal/config"
 	"waypaper-engine/daemon/internal/events"
@@ -135,6 +136,7 @@ func startDaemon(configPath string, logLevel string) error {
 		awww.New(),
 		feh.New(),
 		hyprpaper.New(),
+		mpvpaper.New(),
 		waylandutauri.New(),
 	}
 	for _, b := range backends {

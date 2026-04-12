@@ -274,6 +274,7 @@ export interface BackendSection {
   awww?: AwwwConfig;
   feh?: FehConfig;
   hyprpaper?: HyprpaperConfig;
+  mpvpaper?: MpvpaperConfig;
   waylandutauri?: WaylandUtauriConfig;
 }
 
@@ -300,6 +301,17 @@ export interface FehConfig {
 export interface HyprpaperConfig {
   fit_mode: string;
   config_path: string;
+}
+
+/** mpvpaper Wayland video wallpaper backend ([backend.mpvpaper] in TOML). */
+export interface MpvpaperConfig {
+  mpv_options: string;
+  /** 0 = none, 1 = -v, 2 = -vv */
+  verbose: number;
+  auto_pause: boolean;
+  auto_stop: boolean;
+  layer: string;
+  slideshow_secs: number;
 }
 
 export interface WaylandUtauriConfig {

@@ -980,6 +980,17 @@ List all registered backends and their availability.
       "per_monitor": true,
       "daemon_process": false
     }
+  },
+  {
+    "name": "mpvpaper",
+    "available": true,
+    "capabilities": {
+      "compositors": ["wayland"],
+      "media_types": ["video"],
+      "transitions": false,
+      "per_monitor": true,
+      "daemon_process": false
+    }
   }
 ]
 ```
@@ -1344,6 +1355,21 @@ Returned by `GET /config/backend` when the active backend is `awww`. Updated by 
 ```
 
 TOML config supports both hyphens and underscores (e.g. `transition-type` and `transition_type` are equivalent).
+
+#### mpvpaper Backend Config
+
+Returned by `GET /config/backend` when the active backend is `mpvpaper`. Updated by `PATCH /config/backend`.
+
+```json
+{
+  "mpv_options": "loop",
+  "verbose": 0,
+  "auto_pause": false,
+  "auto_stop": false,
+  "layer": "",
+  "slideshow_secs": 0
+}
+```
 
 #### MonitorsConfig
 
