@@ -81,6 +81,20 @@ func TestRegisterDefaultsAndLoadConfig(t *testing.T) {
 	assert.Equal(t, 500, cfg.ConnectTimeoutMS)
 	assert.Equal(t, 1500, cfg.RequestTimeoutMS)
 	assert.Equal(t, "0.54,0,0.34,0.99", cfg.TransitionBezier)
+	assert.Equal(t, "cover", cfg.ImageFitMode)
+	assert.Equal(t, "auto", cfg.ImageRendering)
+}
+
+func TestValidateConfig_RejectsInvalidImageDisplayModes(t *testing.T) {
+	b := &WaylandUtauri{}
+
+	err := b.ValidateConfig(json.RawMessage(`{"image_fit_mode":"outside"}`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "image_fit_mode")
+
+	err = b.ValidateConfig(json.RawMessage(`{"image_rendering":"sharp"}`))
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "image_rendering")
 }
 
 func TestIsAvailable_ChecksBinaryInPath(t *testing.T) {

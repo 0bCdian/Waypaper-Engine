@@ -84,15 +84,14 @@ func (p *Processor) ImportWebWallpaper(ctx context.Context, sourcePath string, f
 	}
 
 	previewRel := strings.TrimSpace(manifest.Preview)
-	if previewRel == "" {
-		return nil, fmt.Errorf("web manifest preview is required")
-	}
-	previewSrc, err := pathsecure.MustResolveUnder(resolvedPath, previewRel)
-	if err != nil {
-		return nil, fmt.Errorf("web preview: %w", err)
-	}
-	if _, err := os.Stat(previewSrc); err != nil {
-		return nil, fmt.Errorf("web preview file not found: %w", err)
+	if previewRel != "" {
+		previewSrc, err := pathsecure.MustResolveUnder(resolvedPath, previewRel)
+		if err != nil {
+			return nil, fmt.Errorf("web preview: %w", err)
+		}
+		if _, err := os.Stat(previewSrc); err != nil {
+			return nil, fmt.Errorf("web preview file not found: %w", err)
+		}
 	}
 
 	if err := os.MkdirAll(p.imagesDir, 0o755); err != nil {
@@ -108,9 +107,12 @@ func (p *Processor) ImportWebWallpaper(ctx context.Context, sourcePath string, f
 	if err != nil {
 		return nil, fmt.Errorf("web entry (imported copy): %w", err)
 	}
-	previewPath, err := pathsecure.MustResolveUnder(targetDir, previewRel)
-	if err != nil {
-		return nil, fmt.Errorf("web preview (imported copy): %w", err)
+	var previewPath string
+	if previewRel != "" {
+		previewPath, err = pathsecure.MustResolveUnder(targetDir, previewRel)
+		if err != nil {
+			return nil, fmt.Errorf("web preview (imported copy): %w", err)
+		}
 	}
 
 	checksumBytes := sha256.Sum256(manifestRaw)

@@ -307,6 +307,35 @@ const waylandUtauriTransitionFields: Field[] = [
   },
 ];
 
+const waylandUtauriImageFields: Field[] = [
+  {
+    key: "waylandutauri.image_fit_mode",
+    label: "Image fit mode",
+    description: "CSS object-fit mode for image wallpapers.",
+    type: "select",
+    options: [
+      { value: "fill", label: "Fill (stretch)" },
+      { value: "contain", label: "Contain (letterbox)" },
+      { value: "cover", label: "Cover (crop to fill)" },
+      { value: "none", label: "None (no scaling)" },
+      { value: "scale-down", label: "Scale-down (none or contain)" },
+    ],
+  },
+  {
+    key: "waylandutauri.image_rendering",
+    label: "Image rendering",
+    description: "CSS image-rendering hint for image wallpapers.",
+    type: "select",
+    options: [
+      { value: "auto", label: "Auto" },
+      { value: "smooth", label: "Smooth" },
+      { value: "high-quality", label: "High quality" },
+      { value: "crisp-edges", label: "Crisp edges" },
+      { value: "pixelated", label: "Pixelated" },
+    ],
+  },
+];
+
 const waylandUtauriParallaxFields: Field[] = [
   {
     key: "waylandutauri.parallax_enabled",
@@ -893,6 +922,8 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 
       {backendType === "wayland-utauri" && (
         <>
+          <SettingSectionHeader title="Image Display" />
+          {waylandUtauriImageFields.map(renderField)}
           <SettingSectionHeader title="Transitions" />
           {renderField(transitionDurationSharedField)}
           {waylandUtauriTransitionFields.map(renderField)}

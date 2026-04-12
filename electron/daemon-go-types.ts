@@ -159,14 +159,24 @@ export interface ImageHistorySource {
 // MONITOR TYPES
 // ============================================================================
 
-export interface MonitorState {
+/** One monitor row in GET /wallpaper/current (active backend only). */
+export interface WallpaperCurrentSlot {
   monitor_name: string;
   image_id: number;
   image_name: string;
   image_path: string;
-  mode: string;
-  backend: string;
   set_at: string;
+}
+
+/** GET /wallpaper/current — single summary for the active wallpaper backend. */
+export interface WallpaperCurrent {
+  backend: string;
+  image_id: number;
+  image_name: string;
+  image_path: string;
+  mode: string;
+  monitors: WallpaperCurrentSlot[];
+  set_at?: string;
 }
 
 export type MonitorMode = "individual" | "clone" | "extend";
@@ -193,7 +203,6 @@ export interface PlaylistConfiguration {
   type: PlaylistType;
   interval?: number;
   order?: PlaylistOrder;
-  show_animations: boolean;
   always_start_on_first_image: boolean;
 }
 
@@ -320,6 +329,10 @@ export interface WaylandUtauriConfig {
   parallax_compositor_driver?: string;
   /** Workspace parallax axis when waypaper.json does not set parallax_direction: horizontal | vertical */
   parallax_direction?: string;
+  /** CSS object-fit for image wallpapers: fill | contain | cover | none | scale-down */
+  image_fit_mode?: string;
+  /** CSS image-rendering for image wallpapers: auto | smooth | high-quality | crisp-edges | pixelated */
+  image_rendering?: string;
   video_audio_default?: boolean;
   /** When true, HTML wallpapers may use fetch/XHR to the network (synced to wayland-utauri at runtime). */
   allow_network_wallpapers?: boolean;

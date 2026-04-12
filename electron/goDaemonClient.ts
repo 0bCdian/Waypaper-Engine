@@ -25,7 +25,7 @@ import type {
   SetWallpaperRequest,
   SetWallpaperResponse,
   MonitorMode,
-  MonitorState,
+  WallpaperCurrent,
   EventType,
   Folder,
   CreateFolderRequest,
@@ -341,8 +341,8 @@ export class GoDaemonClient extends EventEmitter {
     return this.request<{ status: string }>("DELETE", "/images/history");
   }
 
-  async getCurrentWallpapers(): Promise<MonitorState[]> {
-    return this.request<MonitorState[]>("GET", "/wallpaper/current");
+  async getCurrentWallpapers(): Promise<WallpaperCurrent> {
+    return this.request<WallpaperCurrent>("GET", "/wallpaper/current");
   }
 
   async setWallpaper(

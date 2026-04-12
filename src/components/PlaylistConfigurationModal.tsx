@@ -38,7 +38,6 @@ const PlaylistConfigurationModal = () => {
       order: (playlist.configuration.order ?? null) as PLAYLIST_ORDER_TYPES | null,
       hours: initialHours as string | null,
       minutes: initialMinutes as string | null,
-      showTransition: playlist.configuration.show_animations,
       alwaysStartOnFirstImage: playlist.configuration.always_start_on_first_image,
     },
     onSubmit: ({ value }) => {
@@ -51,7 +50,6 @@ const PlaylistConfigurationModal = () => {
             setConfiguration({
               type: value.type,
               order: value.order ?? undefined,
-              show_animations: value.showTransition,
               always_start_on_first_image: value.alwaysStartOnFirstImage,
               interval,
             });
@@ -61,7 +59,6 @@ const PlaylistConfigurationModal = () => {
           setConfiguration({
             type: value.type,
             order: undefined,
-            show_animations: value.showTransition,
             interval: undefined,
             always_start_on_first_image: false,
           });
@@ -75,7 +72,6 @@ const PlaylistConfigurationModal = () => {
           setConfiguration({
             type: value.type,
             order: undefined,
-            show_animations: value.showTransition,
             interval: undefined,
             always_start_on_first_image: false,
           });
@@ -84,7 +80,6 @@ const PlaylistConfigurationModal = () => {
           setConfiguration({
             type: value.type,
             order: value.order ?? undefined,
-            show_animations: value.showTransition,
             interval: undefined,
             always_start_on_first_image: value.alwaysStartOnFirstImage,
           });
@@ -122,7 +117,6 @@ const PlaylistConfigurationModal = () => {
     }
     form.setFieldValue("type", playlist.configuration.type);
     form.setFieldValue("order", playlist.configuration.order ?? null);
-    form.setFieldValue("showTransition", playlist.configuration.show_animations);
     form.setFieldValue(
       "alwaysStartOnFirstImage",
       playlist.configuration.always_start_on_first_image,
@@ -277,27 +271,9 @@ const PlaylistConfigurationModal = () => {
           </fieldset>
         )}
 
-        <fieldset className="fieldset bg-base-200 border border-base-300 rounded-box p-4 xl:p-5 2xl:p-6">
-          <legend className="fieldset-legend text-base 2xl:text-lg">Options</legend>
-
-          <form.Field name="showTransition">
-            {(field) => (
-              <label htmlFor="showTransition" className="label cursor-pointer justify-between">
-                <span className="text-sm xl:text-base 2xl:text-lg font-medium">
-                  Show transition
-                </span>
-                <input
-                  type="checkbox"
-                  className="toggle toggle-primary"
-                  id="showTransition"
-                  checked={field.state.value}
-                  onChange={(e) => field.handleChange(e.target.checked)}
-                />
-              </label>
-            )}
-          </form.Field>
-
-          {showOrderField && (
+        {showOrderField && (
+          <fieldset className="fieldset bg-base-200 border border-base-300 rounded-box p-4 xl:p-5 2xl:p-6">
+            <legend className="fieldset-legend text-base 2xl:text-lg">Options</legend>
             <form.Field name="alwaysStartOnFirstImage">
               {(field) => (
                 <label
@@ -317,8 +293,8 @@ const PlaylistConfigurationModal = () => {
                 </label>
               )}
             </form.Field>
-          )}
-        </fieldset>
+          </fieldset>
+        )}
 
         <button type="submit" className="btn btn-primary btn-block xl:btn-lg mt-2">
           Save

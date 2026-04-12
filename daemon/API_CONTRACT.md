@@ -355,14 +355,42 @@ Publishes `history_cleared` SSE event.
 
 ### `GET /wallpaper/current`
 
-Get persisted per-monitor wallpaper state.
+Current wallpaper summary for the **active** backend only. Persisted rows from other
+backends are omitted so scripts do not see stale monitor keys after switching backends.
+
+Within that backend, `monitors` includes only rows whose `monitor_name` matches a
+**currently connected** display (same list as `GET /monitors`). Orphaned persisted
+keys from older naming schemes (e.g. `Monitor 0` vs `DP-1`) are omitted. If monitor
+detection fails or returns no outputs, the filter is skipped and all rows for the
+active backend are returned (best-effort).
 
 **Response** `200`:
 ```json
-[MonitorState]
+{
+  "backend": "awww",
+  "image_id": 2,
+  "image_name": "sunset_wallpaper",
+  "image_path": "/home/user/.local/share/waypaper-engine/images/sunset_wallpaper.png",
+  "mode": "clone",
+  "monitors": [
+    {
+      "monitor_name": "DP-1",
+      "image_id": 2,
+      "image_name": "sunset_wallpaper",
+      "image_path": "/home/user/.local/share/waypaper-engine/images/sunset_wallpaper.png",
+      "set_at": "2026-02-15T14:30:00Z"
+    }
+  ],
+  "set_at": "2026-02-15T14:30:00Z"
+}
 ```
 
-See [MonitorState model](#monitorstate).
+Top-level `image_*`, `mode`, and `set_at` come from the monitor row with the newest
+`set_at` among the included rows (tie-break: lexicographic `monitor_name`). `monitors`
+is sorted by `monitor_name`. When nothing is set for the active backend (after
+filters), `monitors` is `[]` and `set_at` is omitted.
+
+See [MonitorState](#monitorstate) for the persisted per-monitor document shape (internal).
 
 ---
 
@@ -498,7 +526,6 @@ Create a new playlist.
     "type": "timer",
     "interval": 300,
     "order": "ordered",
-    "show_animations": true,
     "always_start_on_first_image": false
   },
   "images": [
@@ -1140,7 +1167,6 @@ The `source` object varies by type:
     "type": "timer",
     "interval": 300,
     "order": "ordered",
-    "show_animations": true,
     "always_start_on_first_image": false
   },
   "images": [
@@ -1215,7 +1241,8 @@ Alias of [`ActivePlaylistInstance`](#activeplaylistinstance), used for historica
 
 ### MonitorState
 
-Persisted per-monitor wallpaper state, returned by `GET /wallpaper/current`:
+Persisted per-monitor wallpaper document in CloverDB (not the `GET /wallpaper/current`
+JSON shape; that endpoint aggregates active-backend rows into a single summary object):
 
 ```json
 {

@@ -147,6 +147,20 @@ func (c *controlClient) setRendererPause(ctx context.Context, paused bool) error
 	return nil
 }
 
+func (c *controlClient) setImagePresentation(ctx context.Context, fit, rendering string) error {
+	_, status, body, err := c.doJSON(ctx, http.MethodPost, "/settings/image-presentation", map[string]string{
+		"image_fit_mode":  fit,
+		"image_rendering": rendering,
+	})
+	if err != nil {
+		return err
+	}
+	if status < 200 || status >= 300 {
+		return classifyHTTPError(status, body)
+	}
+	return nil
+}
+
 func (c *controlClient) pushWallpaperConfig(ctx context.Context, sourceTarget string, valuesJSON json.RawMessage) error {
 	var values any = map[string]any{}
 	if len(valuesJSON) > 0 {

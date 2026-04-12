@@ -23,10 +23,16 @@ async function waitForImportedImages(
 }
 
 test.describe("Wallpaper", () => {
-	test("get current wallpapers returns array", async ({ api }) => {
+	test("get current wallpaper returns summary with monitors array", async ({ api }) => {
 		const res = await api.get("/wallpaper/current");
 		expect(res.status).toBe(200);
-		expect(Array.isArray(res.data)).toBe(true);
+		const data = res.data as {
+			backend: string;
+			monitors: unknown[];
+		};
+		expect(data).toHaveProperty("backend");
+		expect(data).toHaveProperty("monitors");
+		expect(Array.isArray(data.monitors)).toBe(true);
 	});
 
 	test("set wallpaper by image ID", async ({ api, daemon }) => {

@@ -24,8 +24,8 @@ export function MonitorComponent({ monitor, scale, selectType, monitorsList, ref
     setIsLoading(true);
     goDaemon
       .getCurrentWallpapers()
-      .then((states) => {
-        const state = states.find((s) => s.monitor_name === monitor.name);
+      .then((current) => {
+        const state = current.monitors.find((s) => s.monitor_name === monitor.name);
         if (state) {
           return goDaemon.getImage(state.image_id);
         }

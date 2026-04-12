@@ -1,6 +1,12 @@
 package waylandutauri
 
-import "testing"
+import (
+	"testing"
+
+	"waypaper-engine/daemon/internal/backend"
+	"waypaper-engine/daemon/internal/media"
+	"waypaper-engine/daemon/internal/monitor"
+)
 
 func TestTopologyMonitorMatch(t *testing.T) {
 	t.Parallel()
@@ -104,5 +110,51 @@ func TestResolveParallaxMonitor_noGeometryMatch(t *testing.T) {
 	_, ok := ResolveParallaxMonitor(topo, 9999, 9999, 0, 0)
 	if ok {
 		t.Fatal("expected no geometry match")
+	}
+}
+
+func TestBuildLoadRequest_UsesImageDisplayModesForImages(t *testing.T) {
+	t.Parallel()
+	cfg := defaultConfig()
+	cfg.ImageFitMode = "scale-down"
+	cfg.ImageRendering = "pixelated"
+	req := backend.WallpaperRequest{
+		MediaType: media.MediaTypeImage,
+		ImagePath: "/tmp/wall.png",
+		Mode:      monitor.ModeClone,
+	}
+
+	loadReq, err := buildLoadRequest(req, cfg, nil)
+	if err != nil {
+		t.Fatalf("buildLoadRequest image: %v", err)
+	}
+	if loadReq.ImageFitMode != "scale-down" {
+		t.Fatalf("image fit mode mismatch: got %q", loadReq.ImageFitMode)
+	}
+	if loadReq.ImageRendering != "pixelated" {
+		t.Fatalf("image rendering mismatch: got %q", loadReq.ImageRendering)
+	}
+}
+
+func TestBuildLoadRequest_DoesNotSetImageDisplayModesForVideo(t *testing.T) {
+	t.Parallel()
+	cfg := defaultConfig()
+	cfg.ImageFitMode = "contain"
+	cfg.ImageRendering = "high-quality"
+	req := backend.WallpaperRequest{
+		MediaType: media.MediaTypeVideo,
+		ImagePath: "/tmp/wall.mp4",
+		Mode:      monitor.ModeClone,
+	}
+
+	loadReq, err := buildLoadRequest(req, cfg, nil)
+	if err != nil {
+		t.Fatalf("buildLoadRequest video: %v", err)
+	}
+	if loadReq.ImageFitMode != "" {
+		t.Fatalf("video should not set image fit mode, got %q", loadReq.ImageFitMode)
+	}
+	if loadReq.ImageRendering != "" {
+		t.Fatalf("video should not set image rendering, got %q", loadReq.ImageRendering)
 	}
 }

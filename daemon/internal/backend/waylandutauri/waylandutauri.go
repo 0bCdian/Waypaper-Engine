@@ -36,6 +36,22 @@ const viperBackendKeyLegacy = "backend.waylandutauri"
 const transitionOriginPctMin = -200
 const transitionOriginPctMax = 200
 
+var validImageFitModes = map[string]struct{}{
+	"fill":       {},
+	"contain":    {},
+	"cover":      {},
+	"none":       {},
+	"scale-down": {},
+}
+
+var validImageRenderingModes = map[string]struct{}{
+	"auto":         {},
+	"smooth":       {},
+	"high-quality": {},
+	"crisp-edges":  {},
+	"pixelated":    {},
+}
+
 func intFromViperPrefixes(v *viper.Viper, wantKey string, fallback int) int {
 	if v == nil {
 		return fallback
@@ -328,7 +344,7 @@ func (w *WaylandUtauri) SetWallpaper(ctx context.Context, req backend.WallpaperR
 	const statusRounds = 2
 	var status *statusResponse
 	var err error
-	for round := 0; round < statusRounds; round++ {
+	for round := range statusRounds {
 		if err = w.ensureRunning(ctx, cfg); err != nil {
 			return err
 		}
@@ -367,10 +383,7 @@ func (w *WaylandUtauri) SetWallpaper(ctx context.Context, req backend.WallpaperR
 			case <-ctx.Done():
 				return ctx.Err()
 			}
-			next := delay * 2
-			if next > maxDelay {
-				next = maxDelay
-			}
+			next := min(delay*2, maxDelay)
 			delay = next
 		}
 
@@ -533,6 +546,8 @@ func (w *WaylandUtauri) RegisterDefaults(v *viper.Viper) {
 	v.SetDefault(viperBackendKey+".parallax_easing", def.ParallaxEasing)
 	v.SetDefault(viperBackendKey+".parallax_compositor_driver", def.ParallaxCompositorDriver)
 	v.SetDefault(viperBackendKey+".parallax_direction", def.ParallaxDirection)
+	v.SetDefault(viperBackendKey+".image_fit_mode", def.ImageFitMode)
+	v.SetDefault(viperBackendKey+".image_rendering", def.ImageRendering)
 	v.SetDefault(viperBackendKey+".video_audio_default", def.VideoAudioDefault)
 	v.SetDefault(viperBackendKey+".allow_network_wallpapers", def.AllowNetworkWallpapers)
 	v.SetDefault(viperBackendKey+".renderer_pause", def.RendererPause)
@@ -556,6 +571,16 @@ func (w *WaylandUtauri) ValidateConfig(raw json.RawMessage) error {
 	if s := strings.ToLower(strings.TrimSpace(cfg.ParallaxDirection)); s != "" {
 		if s != "horizontal" && s != "vertical" {
 			return fmt.Errorf("wayland-utauri: parallax_direction must be horizontal or vertical")
+		}
+	}
+	if s := strings.ToLower(strings.TrimSpace(cfg.ImageFitMode)); s != "" {
+		if _, ok := validImageFitModes[s]; !ok {
+			return fmt.Errorf("wayland-utauri: image_fit_mode must be one of fill, contain, cover, none, scale-down")
+		}
+	}
+	if s := strings.ToLower(strings.TrimSpace(cfg.ImageRendering)); s != "" {
+		if _, ok := validImageRenderingModes[s]; !ok {
+			return fmt.Errorf("wayland-utauri: image_rendering must be one of auto, smooth, high-quality, crisp-edges, pixelated")
 		}
 	}
 	return nil
@@ -662,6 +687,12 @@ func (w *WaylandUtauri) loadConfigFromViper() *Config {
 	if val := getString("parallax_direction"); val != "" {
 		cfg.ParallaxDirection = val
 	}
+	if val := getString("image_fit_mode"); val != "" {
+		cfg.ImageFitMode = val
+	}
+	if val := getString("image_rendering"); val != "" {
+		cfg.ImageRendering = val
+	}
 	cfg.VideoAudioDefault = getBool("video_audio_default")
 	cfg.AllowNetworkWallpapers = getBool("allow_network_wallpapers")
 	cfg.RendererPause = getBool("renderer_pause")
@@ -743,6 +774,17 @@ func (w *WaylandUtauri) SyncRuntimeFromConfig(ctx context.Context) error {
 	}
 	if err := client.setRendererPause(ctx, cfg.RendererPause); err != nil {
 		return fmt.Errorf("wayland-utauri: runtime sync renderer pause: %w", err)
+	}
+	fit := strings.TrimSpace(cfg.ImageFitMode)
+	if fit == "" {
+		fit = "cover"
+	}
+	rend := strings.TrimSpace(cfg.ImageRendering)
+	if rend == "" {
+		rend = "auto"
+	}
+	if err := client.setImagePresentation(ctx, fit, rend); err != nil {
+		return fmt.Errorf("wayland-utauri: runtime sync image presentation: %w", err)
 	}
 	return nil
 }

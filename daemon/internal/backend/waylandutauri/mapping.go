@@ -31,6 +31,8 @@ type loadRequest struct {
 	Transition            string                `json:"transition,omitempty"`
 	TransitionParams      *transitionParamsBody `json:"transition_params,omitempty"`
 	DurationMS            int                   `json:"duration_ms,omitempty"`
+	ImageFitMode          string                `json:"image_fit_mode,omitempty"`
+	ImageRendering        string                `json:"image_rendering,omitempty"`
 	WaitForCompletion     bool                  `json:"wait_for_completion"`
 	Parallax              map[string]any        `json:"parallax,omitempty"`
 	WallpaperConfigValues json.RawMessage       `json:"wallpaper_config_values,omitempty"`
@@ -69,6 +71,10 @@ func buildLoadRequest(req backend.WallpaperRequest, cfg *Config, monitorMap map[
 		WaitForCompletion: false,
 	}
 	out.Parallax = buildParallaxRequestBody(cfg)
+	if kind == "image" {
+		out.ImageFitMode = cfg.ImageFitMode
+		out.ImageRendering = cfg.ImageRendering
+	}
 	if kind == "web" && len(req.WallpaperConfigValues) > 0 {
 		out.WallpaperConfigValues = req.WallpaperConfigValues
 	}

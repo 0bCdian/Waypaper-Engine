@@ -45,7 +45,13 @@ function Gallery() {
     folders.length === 0
   ) {
     return (
-      <div className="h-full flex flex-col items-center justify-center p-4">
+      <div className="h-full flex flex-col items-center justify-center gap-6 p-4">
+        <div className="max-w-lg space-y-2 text-center">
+          <p className="text-lg font-semibold text-base-content">No images yet</p>
+          <p className="text-sm text-base-content/80">
+            Use the actions below, or drag files or an image URL onto the window to import.
+          </p>
+        </div>
         <AddImagesCard />
       </div>
     );

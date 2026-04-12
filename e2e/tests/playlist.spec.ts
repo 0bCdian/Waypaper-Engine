@@ -12,7 +12,6 @@ test.describe("Playlist", () => {
 				type: "timer",
 				interval: 60,
 				order: "ordered",
-				show_animations: false,
 				always_start_on_first_image: true,
 			},
 			images: [],
@@ -43,7 +42,6 @@ test.describe("Playlist", () => {
 				type: "timer",
 				interval: 60,
 				order: "ordered",
-				show_animations: false,
 				always_start_on_first_image: true,
 			},
 			images: imageEntries,
@@ -56,7 +54,7 @@ test.describe("Playlist", () => {
 	test("list playlists", async ({ api }) => {
 		await api.post("/playlists", {
 			name: "List Test",
-			configuration: { type: "timer", interval: 60, order: "ordered", show_animations: false, always_start_on_first_image: true },
+			configuration: { type: "timer", interval: 60, order: "ordered", always_start_on_first_image: true },
 			images: [],
 		});
 
@@ -69,7 +67,7 @@ test.describe("Playlist", () => {
 	test("get single playlist", async ({ api }) => {
 		const createRes = await api.post("/playlists", {
 			name: "Get Test",
-			configuration: { type: "timer", interval: 120, order: "random", show_animations: true, always_start_on_first_image: false },
+			configuration: { type: "timer", interval: 120, order: "random", always_start_on_first_image: false },
 			images: [],
 		});
 		const created = createRes.data as { id: number };
@@ -84,7 +82,7 @@ test.describe("Playlist", () => {
 	test("update playlist", async ({ api }) => {
 		const createRes = await api.post("/playlists", {
 			name: "Update Me",
-			configuration: { type: "timer", interval: 60, order: "ordered", show_animations: false, always_start_on_first_image: true },
+			configuration: { type: "timer", interval: 60, order: "ordered", always_start_on_first_image: true },
 			images: [],
 		});
 		const created = createRes.data as { id: number };
@@ -100,7 +98,7 @@ test.describe("Playlist", () => {
 	test("delete playlist", async ({ api }) => {
 		const createRes = await api.post("/playlists", {
 			name: "Delete Me",
-			configuration: { type: "timer", interval: 60, order: "ordered", show_animations: false, always_start_on_first_image: true },
+			configuration: { type: "timer", interval: 60, order: "ordered", always_start_on_first_image: true },
 			images: [],
 		});
 		const created = createRes.data as { id: number };

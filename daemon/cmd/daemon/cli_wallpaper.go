@@ -27,7 +27,7 @@ func buildWallpaperCmd() *cobra.Command {
 func buildWallpaperCurrentCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "current",
-		Short: "Show the current wallpaper for each monitor",
+		Short: "Show current wallpaper state for the active backend (JSON)",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return doSimpleRequest("GET", "/wallpaper/current")
 		},

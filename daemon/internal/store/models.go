@@ -256,9 +256,6 @@ type PlaylistConfiguration struct {
 	// Order is the playback order: "ordered" or "random" (only used for "timer" type).
 	Order string `json:"order"`
 
-	// ShowAnimations controls whether backend transitions are used during rotation.
-	ShowAnimations bool `json:"show_animations"`
-
 	// AlwaysStartOnFirstImage forces the playlist to start from index 0 every time.
 	AlwaysStartOnFirstImage bool `json:"always_start_on_first_image"`
 }

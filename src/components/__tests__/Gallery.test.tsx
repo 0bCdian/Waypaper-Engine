@@ -94,6 +94,7 @@ describe("Gallery", () => {
     render(<Gallery />);
 
     expect(screen.getByTestId("add-images-card")).toBeInTheDocument();
+    expect(screen.getByText(/drag files or an image URL onto the window/i)).toBeInTheDocument();
     expect(screen.queryByTestId("paginated-gallery")).not.toBeInTheDocument();
   });
 

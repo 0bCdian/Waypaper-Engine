@@ -1,9 +1,51 @@
+import type { KeyboardEvent, ReactNode } from "react";
 import SvgComponent from "./AddImagesIcon";
 import SvgComponentFolder from "./AddFoldersIcon";
+import AddVideosIcon from "./AddVideosIcon";
+import AddWebWallpaperIcon from "./AddWebWallpaperIcon";
 import openImagesStore from "../hooks/useOpenImages";
-import { useShallow } from "zustand/react/shallow";
-import { useEffect, useState } from "react";
 import type { openFileAction } from "../../shared/types";
+import { useShallow } from "zustand/react/shallow";
+
+const cardClass =
+  "flex w-[300px] shrink-0 flex-col rounded-lg border-0 bg-transparent p-3 cursor-pointer transition-all ease-in-out hover:bg-base-300 active:scale-95";
+const iconSlotClass = "flex min-h-[200px] flex-1 items-center justify-center rounded-lg";
+const labelClass =
+  "shrink-0 px-1 pt-3 text-center text-sm font-bold leading-snug text-base-content";
+
+function AddActionCard(props: {
+  action: openFileAction;
+  label: string;
+  ariaLabel: string;
+  isActive: boolean;
+  onOpen: (action: openFileAction) => void;
+  children: ReactNode;
+}) {
+  const { action, label, ariaLabel, isActive, onOpen, children } = props;
+
+  const onKeyDown = (e: KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      if (!isActive) {
+        onOpen(action);
+      }
+    }
+  };
+
+  return (
+    <button
+      type="button"
+      className={cardClass}
+      onClick={isActive ? undefined : () => onOpen(action)}
+      onKeyDown={onKeyDown}
+      disabled={isActive}
+      aria-label={ariaLabel}
+    >
+      <div className={iconSlotClass}>{children}</div>
+      <p className={labelClass}>{label}</p>
+    </button>
+  );
+}
 
 function AddImagesCard() {
   const { openImages, isActive } = openImagesStore(
@@ -12,116 +54,49 @@ function AddImagesCard() {
       isActive: s.isActive,
     })),
   );
-  const [capabilities, setCapabilities] = useState<string[] | null>(null);
-  useEffect(() => {
-    void window.API_RENDERER.goDaemon
-      .getBackendCapabilities()
-      .then((caps) => setCapabilities(caps?.media_types ?? null))
-      .catch(() => setCapabilities(null));
-  }, []);
-  const canImportVideo = capabilities ? capabilities.includes("video") : true;
-  const canImportWeb = capabilities ? capabilities.includes("web") : true;
-  const handleClickAddImages = (action: openFileAction) => {
-    void openImages({
-      action,
-    });
-  };
 
-  const handleKeyDown = (action: openFileAction) => (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      if (!isActive) {
-        handleClickAddImages(action);
-      }
-    }
+  const onOpen = (action: openFileAction) => {
+    void openImages({ action });
   };
 
   return (
-    <div className="flex gap-20">
-      <button
-        type="button"
-        className="relative max-w-fit cursor-pointer rounded-lg transition-all ease-in-out hover:bg-base-300 active:scale-95 border-0 bg-transparent p-0"
-        onClick={
-          isActive
-            ? undefined
-            : () => {
-                handleClickAddImages("file");
-              }
-        }
-        onKeyDown={handleKeyDown("file")}
-        disabled={isActive}
-        aria-label="Add individual images"
+    <div className="flex flex-wrap content-start items-stretch justify-center gap-8 lg:gap-12">
+      <AddActionCard
+        action="file"
+        label="Add individual images"
+        ariaLabel="Add individual images"
+        isActive={isActive}
+        onOpen={onOpen}
       >
-        <div className="flex min-h-[200px] min-w-[300px] justify-center rounded-lg">
-          <SvgComponent />
-        </div>
-        <p className="absolute left-16 top-[75%] font-bold text-base-content">
-          Add individual images
-        </p>
-      </button>
-      <button
-        type="button"
-        className="relative max-w-fit cursor-pointer rounded-lg transition-all ease-in-out hover:bg-base-300 active:scale-95 border-0 bg-transparent p-0"
-        onClick={
-          isActive
-            ? undefined
-            : () => {
-                handleClickAddImages("folder");
-              }
-        }
-        onKeyDown={handleKeyDown("folder")}
-        disabled={isActive}
-        aria-label="Add images from directory"
+        <SvgComponent />
+      </AddActionCard>
+      <AddActionCard
+        action="folder"
+        label="Add images from directory"
+        ariaLabel="Add images from directory"
+        isActive={isActive}
+        onOpen={onOpen}
       >
-        <div className="flex min-w-[300px] justify-center rounded-lg">
-          <SvgComponentFolder />
-        </div>
-        <p className="absolute left-12 top-[75%] font-bold text-base-content">
-          Add images from directory
-        </p>
-      </button>
-      <button
-        type="button"
-        className="relative max-w-fit cursor-pointer rounded-lg transition-all ease-in-out hover:bg-base-300 active:scale-95 border-0 bg-transparent p-0"
-        onClick={
-          isActive || !canImportVideo
-            ? undefined
-            : () => {
-                handleClickAddImages("video");
-              }
-        }
-        onKeyDown={handleKeyDown("video")}
-        disabled={isActive || !canImportVideo}
-        aria-label="Add videos"
+        <SvgComponentFolder />
+      </AddActionCard>
+      <AddActionCard
+        action="video"
+        label="Add videos"
+        ariaLabel="Add videos"
+        isActive={isActive}
+        onOpen={onOpen}
       >
-        <div className="flex min-h-[200px] min-w-[260px] items-center justify-center rounded-lg">
-          <span className="text-4xl font-bold">VIDEO</span>
-        </div>
-        <p className="absolute left-20 top-[75%] font-bold text-base-content">
-          {canImportVideo ? "Add videos" : "Video unsupported"}
-        </p>
-      </button>
-      <button
-        type="button"
-        className="relative max-w-fit cursor-pointer rounded-lg transition-all ease-in-out hover:bg-base-300 active:scale-95 border-0 bg-transparent p-0"
-        onClick={
-          isActive || !canImportWeb
-            ? undefined
-            : () => {
-                handleClickAddImages("web");
-              }
-        }
-        onKeyDown={handleKeyDown("web")}
-        disabled={isActive || !canImportWeb}
-        aria-label="Import web wallpaper"
+        <AddVideosIcon />
+      </AddActionCard>
+      <AddActionCard
+        action="web"
+        label="Import web wallpaper"
+        ariaLabel="Import web wallpaper"
+        isActive={isActive}
+        onOpen={onOpen}
       >
-        <div className="flex min-h-[200px] min-w-[260px] items-center justify-center rounded-lg">
-          <span className="text-4xl font-bold">WEB</span>
-        </div>
-        <p className="absolute left-14 top-[75%] font-bold text-base-content">
-          {canImportWeb ? "Import web wallpaper" : "Web unsupported"}
-        </p>
-      </button>
+        <AddWebWallpaperIcon />
+      </AddActionCard>
     </div>
   );
 }

@@ -22,18 +22,23 @@ var tinyPNG = []byte{
 	0x42, 0x60, 0x82,
 }
 
-func TestImportWebWallpaper_RequiresPreview(t *testing.T) {
+func TestImportWebWallpaper_OptionalPreview(t *testing.T) {
 	ctx := context.Background()
 	tmpSrc := t.TempDir()
 	require.NoError(t, os.WriteFile(filepath.Join(tmpSrc, "index.html"), []byte("<html></html>"), 0o644))
-	require.NoError(t, os.WriteFile(filepath.Join(tmpSrc, "waypaper.json"), []byte(`{"entry":"index.html","title":"t"}`), 0o644))
+	require.NoError(t, os.WriteFile(filepath.Join(tmpSrc, "waypaper.json"), []byte(`{"entry":"index.html","title":"NoPreviewPkg"}`), 0o644))
 
 	db := testutil.OpenTestDB(t)
-	p := image.NewProcessor(db.ImageStore(), nil, t.TempDir(), t.TempDir(), nil)
+	imagesDir := t.TempDir()
+	thumbsDir := t.TempDir()
+	p := image.NewProcessor(db.ImageStore(), nil, imagesDir, thumbsDir, nil)
 
-	_, err := p.ImportWebWallpaper(ctx, tmpSrc, nil)
-	require.Error(t, err)
-	assert.Contains(t, err.Error(), "preview")
+	img, err := p.ImportWebWallpaper(ctx, tmpSrc, nil)
+	require.NoError(t, err)
+	require.NotNil(t, img)
+	assert.Equal(t, "web", img.MediaType)
+	assert.Empty(t, img.PreviewPath)
+	assert.NotEmpty(t, img.Thumbnails["default"], "thumbnailer should use placeholder when preview is omitted")
 }
 
 func TestImportWebWallpaper_RejectsAbsoluteEntryFixture(t *testing.T) {

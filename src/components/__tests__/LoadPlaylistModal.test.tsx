@@ -76,7 +76,6 @@ function makePlaylist(id: number, name: string): Playlist {
       type: "timer",
       interval: 300,
       order: "ordered",
-      show_animations: false,
       always_start_on_first_image: false,
     },
     images: [],

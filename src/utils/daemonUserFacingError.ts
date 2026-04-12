@@ -14,11 +14,7 @@ function fileBasename(filePath: string): string {
 /** Extra guidance for strict waypaper.json / project.json import rules (daemon Web import). */
 function webImportHint(coreMessage: string): string {
   const m = coreMessage.toLowerCase();
-  if (
-    m.includes("preview is required") ||
-    m.includes("web preview file not found") ||
-    m.includes("web manifest preview")
-  ) {
+  if (m.includes("web preview file not found")) {
     return ' In waypaper.json, set "preview" to a file that exists in the package (e.g. preview.gif or preview.png).';
   }
   if (

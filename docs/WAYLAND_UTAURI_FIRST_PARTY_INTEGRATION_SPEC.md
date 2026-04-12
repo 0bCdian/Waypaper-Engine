@@ -79,6 +79,8 @@ The future engine backend adapter must satisfy `backend.Backend` by translating 
 | `Mode=individual` + single monitor | `targets=[{monitor, target}]` | monitor id resolved from monitor-name mapping table |
 | `Mode=clone` | `target` + no per-monitor target list | runtime applies same wallpaper to all monitors |
 | `Mode=extend` | Per-monitor `targets` after engine split (static images) or single `target` + clone (gif/video/web) | Engine splits static rasters; runtime receives per-monitor loads like other Wayland backends |
+| `backend.wayland-utauri.image_fit_mode` | `image_fit_mode` | sent for image loads (`fill`/`contain`/`cover`/`none`/`scale-down`) |
+| `backend.wayland-utauri.image_rendering` | `image_rendering` | sent for image loads (`auto`/`smooth`/`high-quality`/`crisp-edges`/`pixelated`) |
 | backend config (`req.Config`) | transition/other fields | adapter maps typed config to control API fields |
 
 The engine adapter sends `wait_for_completion=false` on **`POST /wallpaper/load`** (HTTP **202 Accepted**) so the Go client’s `request_timeout_ms` is not tied to transition duration. The wayland-utauri control API also defaults omitted `wait_for_completion` to **false** (async). Clients that need synchronous load errors on the HTTP response must send `wait_for_completion=true` with a long enough HTTP timeout.

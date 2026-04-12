@@ -166,10 +166,12 @@ func (h *WallpaperHandler) Random(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetCurrent handles GET /wallpaper/current.
-// Returns the persisted per-monitor wallpaper state from monitorStateStore,
-// which is independent of the history collection and survives history clearing.
-// Entries whose image_id no longer exists (e.g. image deleted) are removed from
-// the store and omitted from the response so clients do not call get_image on stale IDs.
+// Returns a single summary for the active backend: top-level image/mode/set_at are
+// taken from the monitor row with the newest SetAt (tie-break: lexicographic monitor
+// name), and monitors lists persisted rows for that backend whose monitor_name
+// matches a currently connected monitor (when detection succeeds). Rows whose
+// image_id no longer exists are removed from the store and omitted. Stale rows from
+// previously used backends are not included in the response.
 func (h *WallpaperHandler) GetCurrent(w http.ResponseWriter, r *http.Request) {
 	states, err := h.monitorStateStore.GetAll(r.Context())
 	if err != nil {
@@ -195,7 +197,18 @@ func (h *WallpaperHandler) GetCurrent(w http.ResponseWriter, r *http.Request) {
 		}
 		out = append(out, st)
 	}
-	WriteJSON(w, http.StatusOK, out)
+	var connected map[string]struct{}
+	if mons, err := h.monitorManager.GetMonitors(ctx); err != nil {
+		slog.Debug("wallpaper/current: not filtering by connected monitors", "error", err)
+	} else if len(mons) > 0 {
+		connected = make(map[string]struct{}, len(mons))
+		for _, m := range mons {
+			connected[m.Name] = struct{}{}
+		}
+	}
+	active := h.registry.Active().Name()
+	resp := buildWallpaperCurrentResponse(active, out, connected)
+	WriteJSON(w, http.StatusOK, resp)
 }
 
 // ClearHistory handles DELETE /images/history.

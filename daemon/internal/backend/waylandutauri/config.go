@@ -39,6 +39,8 @@ type Config struct {
 	ParallaxCompositorDriver string `mapstructure:"parallax_compositor_driver" json:"parallax_compositor_driver"`
 	// ParallaxDirection: horizontal | vertical — workspace parallax axis when waypaper.json does not override.
 	ParallaxDirection          string `mapstructure:"parallax_direction" json:"parallax_direction"`
+	ImageFitMode               string `mapstructure:"image_fit_mode" json:"image_fit_mode"`
+	ImageRendering             string `mapstructure:"image_rendering" json:"image_rendering"`
 	VideoAudioDefault          bool   `mapstructure:"video_audio_default" json:"video_audio_default"`
 	AllowNetworkWallpapers     bool   `mapstructure:"allow_network_wallpapers" json:"allow_network_wallpapers"`
 	RendererPause              bool   `mapstructure:"renderer_pause" json:"renderer_pause"`
@@ -80,6 +82,8 @@ func defaultConfig() *Config {
 		ParallaxEasing:                 "0.215,0.610,0.355,1.000",
 		ParallaxCompositorDriver:       "auto",
 		ParallaxDirection:              "horizontal",
+		ImageFitMode:                   "cover",
+		ImageRendering:                 "auto",
 		VideoAudioDefault:              false,
 		AllowNetworkWallpapers:         false,
 		RendererPause:                  false,

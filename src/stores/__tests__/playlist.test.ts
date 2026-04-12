@@ -61,7 +61,6 @@ describe("usePlaylistStore", () => {
       type: "time_of_day",
       interval: 600,
       order: "random",
-      show_animations: false,
       always_start_on_first_image: true,
     };
 
@@ -135,7 +134,6 @@ describe("usePlaylistStore", () => {
           type: "timer",
           interval: 300,
           order: "ordered",
-          show_animations: true,
           always_start_on_first_image: false,
         },
       });
@@ -159,7 +157,6 @@ describe("usePlaylistStore", () => {
         type: "day_of_week",
         interval: 300,
         order: "ordered",
-        show_animations: true,
         always_start_on_first_image: false,
       });
     });

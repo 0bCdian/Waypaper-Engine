@@ -22,7 +22,7 @@ import type {
   BackendCapabilities,
   DaemonInfo,
   MonitorMode,
-  MonitorState,
+  WallpaperCurrent,
   EventType,
   Folder,
 } from "./daemon-go-types";
@@ -102,7 +102,7 @@ const electronAPI = {
       ipcRenderer.invoke("go-daemon-command", "clear_image_history"),
 
     // WALLPAPER
-    getCurrentWallpapers: (): Promise<MonitorState[]> =>
+    getCurrentWallpapers: (): Promise<WallpaperCurrent> =>
       ipcRenderer.invoke("go-daemon-command", "get_current_wallpapers"),
 
     setWallpaper: (

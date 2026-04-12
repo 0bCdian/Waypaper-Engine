@@ -124,6 +124,20 @@ const searchSuggestions: SearchSuggestion[] = [
   },
   {
     section: "backend",
+    key: "waylandutauri.image_fit_mode",
+    label: "Wayland-utauri image fit mode",
+    description: "CSS object-fit mode for image wallpapers",
+    category: "Image Display",
+  },
+  {
+    section: "backend",
+    key: "waylandutauri.image_rendering",
+    label: "Wayland-utauri image rendering",
+    description: "CSS image-rendering hint for image wallpapers",
+    category: "Image Display",
+  },
+  {
+    section: "backend",
     key: "waylandutauri.transition_angle_deg",
     label: "Wipe / wave angle",
     description: "Angle in degrees for wipe and wave (directional presets lock angle)",

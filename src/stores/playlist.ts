@@ -8,7 +8,6 @@ const configurationInitial: PlaylistConfiguration = {
   type: "timer",
   interval: 300,
   order: "ordered",
-  show_animations: true,
   always_start_on_first_image: false,
 };
 

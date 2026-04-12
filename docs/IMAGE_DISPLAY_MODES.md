@@ -8,8 +8,9 @@ How wallpaper images are scaled and positioned to fit your monitor(s). Each back
 |---------|------|-----|-----------|----------------|----------------------|
 | **Cover** -- Scale to fill the screen, crop excess | `crop` | `fill` | Always (default) | `cover` | Yes |
 | **Contain** -- Scale to fit inside the screen, letterbox the rest | `fit` | `scale` | -- | `contain` | Yes |
-| **Stretch** -- Stretch to exactly fill, distorting if needed | `stretch` | -- | -- | `stretch` | No |
-| **Center** -- Display at native resolution, no scaling | `no` | `center` | -- | `center` | N/A (no scaling) |
+| **Fill** -- Stretch to exactly fill, distorting if needed | `stretch` | -- | -- | `fill` | No |
+| **None / No Resize** -- Display at native resolution, no scaling | `no` | `center` | -- | `none` | N/A (no scaling) |
+| **Scale Down** -- Use `none` unless too large, then `contain` | -- | -- | -- | `scale-down` | Yes |
 | **Tile** -- Repeat the image to fill the screen | -- | `tile` | -- | -- | N/A (no scaling) |
 | **Max** -- Scale to fit, then fill remaining space | -- | `max` | -- | -- | Yes |
 
@@ -96,12 +97,21 @@ hyprpaper is a Wayland wallpaper daemon designed for Hyprland. It does not expos
 
 ## wayland-utauri (Wayland, first-party)
 
-wayland-utauri is the first-party Wayland backend used for image, video, and web wallpapers. For image scaling it follows CSS-style fit semantics:
+wayland-utauri is the first-party Wayland backend used for image, video, and web wallpapers. For image scaling it follows CSS-style `object-fit` semantics:
 
 - `cover` behaves like awww `crop` / feh `fill`
 - `contain` behaves like awww `fit` / feh `scale`
-- `stretch` fills exactly and may distort
-- `center` keeps native size and centers content
+- `fill` stretches to monitor bounds and may distort
+- `none` keeps native size and centers content
+- `scale-down` behaves like `none` when the image already fits, otherwise like `contain`
+
+The backend also exposes CSS `image-rendering` values for image wallpapers:
+
+- `auto`
+- `smooth`
+- `high-quality`
+- `crisp-edges`
+- `pixelated`
 
 ## Aspect Ratio Behavior Summary
 
@@ -109,8 +119,9 @@ wayland-utauri is the first-party Wayland backend used for image, video, and web
 |------|-------------|-------------|----------|
 | Cover (crop/fill) | Preserved | None | Yes, edges cropped |
 | Contain (fit/scale) | Preserved | Yes, letterboxed | None |
-| Stretch | **Distorted** | None | None |
-| Center (no/center) | Preserved | Depends on image size | If image > monitor |
+| Fill | **Distorted** | None | None |
+| None (no resize) | Preserved | Depends on image size | If image > monitor |
+| Scale-down | Preserved | Possible | If image > monitor (none→contain switch) |
 | Tile | Preserved | None | If image > monitor |
 | Max | Preserved | Possible | None |
 

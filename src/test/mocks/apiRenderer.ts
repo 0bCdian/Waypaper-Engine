@@ -38,7 +38,14 @@ export function createMockAPI(): Window["API_RENDERER"] {
       getImageHistory: vi.fn().mockResolvedValue([]),
       clearImageHistory: vi.fn().mockResolvedValue({ status: "cleared" }),
 
-      getCurrentWallpapers: vi.fn().mockResolvedValue([]),
+      getCurrentWallpapers: vi.fn().mockResolvedValue({
+        backend: "",
+        image_id: 0,
+        image_name: "",
+        image_path: "",
+        mode: "",
+        monitors: [],
+      }),
       setWallpaper: vi.fn().mockResolvedValue({
         status: "set",
         image_id: 0,

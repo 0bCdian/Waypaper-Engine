@@ -14,7 +14,7 @@ import type {
   BackendCapabilities,
   DaemonInfo,
   MonitorMode,
-  MonitorState,
+  WallpaperCurrent,
   EventType,
   Folder,
 } from "../../electron/daemon-go-types";
@@ -58,7 +58,7 @@ declare global {
         clearImageHistory: () => Promise<{ status: string }>;
 
         // WALLPAPER
-        getCurrentWallpapers: () => Promise<MonitorState[]>;
+        getCurrentWallpapers: () => Promise<WallpaperCurrent>;
         setWallpaper: (
           imageId: number,
           monitor?: string,
