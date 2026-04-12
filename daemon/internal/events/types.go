@@ -53,5 +53,17 @@ const (
 	FoldersUpdated   EventType = "folders_updated"
 )
 
-// BackendUnavailable — long-lived renderer (e.g. wayland-utauri) could not be reached after retries.
-const BackendUnavailable EventType = "backend_unavailable"
+// Backend lifecycle events.
+const (
+	// BackendUnavailable — long-lived renderer (e.g. wayland-utauri) could not be reached after retries.
+	BackendUnavailable EventType = "backend_unavailable"
+
+	// WallpaperRestoreFailed — one or more monitors could not restore their persisted wallpaper on startup.
+	WallpaperRestoreFailed EventType = "wallpaper_restore_failed"
+
+	// PlaylistSkippedIncompatible — playlist skipped items incompatible with the active backend.
+	PlaylistSkippedIncompatible EventType = "playlist_skipped_incompatible"
+
+	// PlaylistNoCompatibleItem — entire playlist exhausted with no item compatible with the active backend.
+	PlaylistNoCompatibleItem EventType = "playlist_no_compatible_item"
+)
