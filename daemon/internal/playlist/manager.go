@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"waypaper-engine/daemon/internal/backend"
+	"waypaper-engine/daemon/internal/config"
 	"waypaper-engine/daemon/internal/events"
 	"waypaper-engine/daemon/internal/image"
 	"waypaper-engine/daemon/internal/monitor"
@@ -34,6 +35,7 @@ type Manager struct {
 	bus               events.Bus
 	splitter          *image.Splitter
 	imageStore        store.ImageStore
+	cfg               config.ConfigManager
 
 	// runs tracks active playlist runs keyed by playlist ID.
 	runs map[int]*playlistRun
@@ -50,6 +52,7 @@ func NewManager(
 	monitorManager monitor.MonitorManager,
 	bus events.Bus,
 	splitter *image.Splitter,
+	cfg config.ConfigManager,
 ) *Manager {
 	return &Manager{
 		playlistStore:     playlistStore,
@@ -61,6 +64,7 @@ func NewManager(
 		monitorManager:    monitorManager,
 		bus:               bus,
 		splitter:          splitter,
+		cfg:               cfg,
 		runs:              make(map[int]*playlistRun),
 	}
 }
@@ -468,11 +472,23 @@ type applyResult struct {
 // and returns which index was actually applied. If no compatible item exists in
 // the entire playlist, it publishes PlaylistNoCompatibleItem and returns
 // AppliedIndex == -1 with a nil error (not a hard failure).
+//
+// In auto mode, the backend is resolved per item via PickBackend and switched
+// transparently (no restore, no config persist).
 func (m *Manager) applyImage(ctx context.Context, pl *store.Playlist, index int, monitors []monitor.Monitor, mode monitor.MonitorMode) (applyResult, error) {
 	if index >= len(pl.Images) {
 		return applyResult{AppliedIndex: -1}, fmt.Errorf("image index %d out of range (total: %d)", index, len(pl.Images))
 	}
 
+	selMode := m.cfg.GetSelectionMode()
+
+	if selMode == "auto" {
+		return m.applyImageAuto(ctx, pl, index, monitors, mode)
+	}
+	return m.applyImageFixed(ctx, pl, index, monitors, mode)
+}
+
+func (m *Manager) applyImageFixed(ctx context.Context, pl *store.Playlist, index int, monitors []monitor.Monitor, mode monitor.MonitorMode) (applyResult, error) {
 	activeBackend := m.registry.Active()
 	caps := activeBackend.Capabilities()
 
@@ -513,7 +529,51 @@ func (m *Manager) applyImage(ctx context.Context, pl *store.Playlist, index int,
 		})
 	}
 
-	imgRef := pl.Images[resolvedIdx]
+	return m.doApply(ctx, pl, resolvedIdx, monitors, mode, skipped)
+}
+
+func (m *Manager) applyImageAuto(ctx context.Context, pl *store.Playlist, index int, monitors []monitor.Monitor, mode monitor.MonitorMode) (applyResult, error) {
+	imgRef := pl.Images[index]
+	mt := imgRef.MediaType
+	if mt == "" {
+		if img, err := m.imageStore.GetByID(ctx, imgRef.ImageID); err == nil && img != nil {
+			mt = strings.ToLower(strings.TrimSpace(img.MediaType))
+		}
+	}
+
+	prio := m.cfg.GetAutoPriorities()
+	priorities := map[string][]string{
+		"image": prio.Image,
+		"video": prio.Video,
+		"web":   prio.Web,
+	}
+
+	targetName, err := backend.PickBackend(m.registry, "auto", mt, priorities)
+	if err != nil {
+		slog.Warn("playlist auto: no backend for media", "media_type", mt, "error", err)
+		m.bus.Publish(events.Event{
+			Type: events.PlaylistNoCompatibleItem,
+			Data: map[string]any{
+				"playlist_id":   pl.ID,
+				"playlist_name": pl.Name,
+				"media_type":    mt,
+				"total_images":  len(pl.Images),
+			},
+		})
+		return applyResult{AppliedIndex: -1}, nil
+	}
+
+	if err := backend.SwitchActiveBackend(ctx, m.registry, targetName, m.cfg, backend.SwitchOpts{
+		PersistConfig: false,
+	}); err != nil {
+		return applyResult{AppliedIndex: -1}, fmt.Errorf("auto switch to %s: %w", targetName, err)
+	}
+
+	return m.doApply(ctx, pl, index, monitors, mode, 0)
+}
+
+func (m *Manager) doApply(ctx context.Context, pl *store.Playlist, index int, monitors []monitor.Monitor, mode monitor.MonitorMode, skipped int) (applyResult, error) {
+	imgRef := pl.Images[index]
 	img, err := m.imageStore.GetByID(ctx, imgRef.ImageID)
 	if err != nil {
 		return applyResult{AppliedIndex: -1, Skipped: skipped}, fmt.Errorf("load image %d: %w", imgRef.ImageID, err)
@@ -528,7 +588,7 @@ func (m *Manager) applyImage(ctx context.Context, pl *store.Playlist, index int,
 			PlaylistID:   &pl.ID,
 			PlaylistName: pl.Name,
 		},
-		Backend:  activeBackend,
+		Backend:  m.registry.Active(),
 		Splitter: m.splitter,
 		History:  m.historyStore,
 		MonState: m.monitorStateStore,
@@ -537,7 +597,7 @@ func (m *Manager) applyImage(ctx context.Context, pl *store.Playlist, index int,
 		return applyResult{AppliedIndex: -1, Skipped: skipped}, err
 	}
 
-	return applyResult{AppliedIndex: resolvedIdx, Skipped: skipped}, nil
+	return applyResult{AppliedIndex: index, Skipped: skipped}, nil
 }
 
 // findCompatibleIndex walks the playlist forward from start looking for an item

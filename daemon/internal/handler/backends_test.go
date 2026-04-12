@@ -60,7 +60,7 @@ func TestBackendHandler_Activate_NotRegistered(t *testing.T) {
 	r = testutil.WithChiURLParams(r, map[string]string{"name": "unknown"})
 	h.Activate(w, r)
 
-	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
 
 	var apiErr APIError
 	require.NoError(t, json.NewDecoder(w.Body).Decode(&apiErr))
@@ -113,5 +113,5 @@ func TestBackendHandler_Activate_InitializeFailureRollsBack(t *testing.T) {
 
 	var apiErr APIError
 	require.NoError(t, json.NewDecoder(w.Body).Decode(&apiErr))
-	assert.Contains(t, apiErr.Error, "initialize backend feh")
+	assert.Contains(t, apiErr.Error, "activate backend feh")
 }

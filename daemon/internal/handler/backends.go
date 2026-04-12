@@ -1,8 +1,6 @@
 package handler
 
 import (
-	"errors"
-	"fmt"
 	"net/http"
 
 	"github.com/go-chi/chi/v5"
@@ -58,9 +56,7 @@ func (h *BackendHandler) List(w http.ResponseWriter, r *http.Request) {
 // Activate handles POST /backends/{name}/activate.
 func (h *BackendHandler) Activate(w http.ResponseWriter, r *http.Request) {
 	name := chi.URLParam(r, "name")
-	currentBackend := h.registry.Active()
-	currentName := currentBackend.Name()
-	if currentName == name {
+	if h.registry.Active() != nil && h.registry.Active().Name() == name {
 		WriteJSON(w, http.StatusOK, map[string]any{
 			"status":  "activated",
 			"backend": name,
@@ -68,52 +64,13 @@ func (h *BackendHandler) Activate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Shutdown current backend.
-	if err := currentBackend.Shutdown(r.Context()); err != nil {
-		WriteErrorf(w, http.StatusInternalServerError, "shutdown current backend: %s", err.Error())
+	if err := backend.SwitchActiveBackend(r.Context(), h.registry, name, h.cfg, backend.SwitchOpts{
+		PersistConfig: true,
+	}); err != nil {
+		WriteErrorf(w, http.StatusInternalServerError, "activate backend %s: %s", name, err.Error())
 		return
 	}
 
-	// Switch to new backend.
-	if err := h.registry.SetActive(name); err != nil {
-		WriteError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	// Initialize new backend.
-	newBackend := h.registry.Active()
-	if err := newBackend.Initialize(r.Context()); err != nil {
-		var rollbackErrs []error
-		if setErr := h.registry.SetActive(currentName); setErr != nil {
-			rollbackErrs = append(rollbackErrs, fmt.Errorf("rollback set active %q: %w", currentName, setErr))
-		} else {
-			rollbackBackend := h.registry.Active()
-			if initErr := rollbackBackend.Initialize(r.Context()); initErr != nil {
-				rollbackErrs = append(rollbackErrs, fmt.Errorf("rollback initialize %q: %w", currentName, initErr))
-			}
-		}
-		if len(rollbackErrs) > 0 {
-			WriteErrorf(
-				w,
-				http.StatusInternalServerError,
-				"initialize backend %s: %s (rollback failed: %s)",
-				name,
-				err.Error(),
-				errors.Join(rollbackErrs...).Error(),
-			)
-			return
-		}
-		WriteErrorf(w, http.StatusInternalServerError, "initialize backend %s: %s", name, err.Error())
-		return
-	}
-
-	// Update config to persist the change.
-	if err := h.cfg.SetActiveBackendType(name); err != nil {
-		WriteErrorf(w, http.StatusInternalServerError, "persist backend type: %s", err.Error())
-		return
-	}
-
-	// Re-apply wallpapers with the newly activated backend.
 	RestoreWallpapers(r.Context(), h.monitorStateStore, h.stateStore, h.registry, h.monitorManager, h.imageStore, h.splitter, h.bus)
 
 	h.bus.Publish(events.Event{

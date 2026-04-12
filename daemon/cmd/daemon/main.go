@@ -231,6 +231,7 @@ func startDaemon(configPath string, logLevel string) error {
 		monManager,
 		bus,
 		splitter,
+		cfg,
 	)
 
 	// 13. Create shutdown function.
@@ -252,7 +253,7 @@ func startDaemon(configPath string, logLevel string) error {
 		Backends:  handler.NewBackendHandler(reg, cfg, bus, db.MonitorStateStore(), db.StateStore(), db.ImageStore(), monManager, splitter),
 		Wallpaper: handler.NewWallpaperHandler(
 			db.ImageStore(), db.HistoryStore(), db.StateStore(), db.MonitorStateStore(),
-			reg, monManager, splitter, bus,
+			reg, monManager, splitter, bus, cfg,
 		),
 		Folders: handler.NewFolderHandler(db.FolderStore(), db.ImageStore(), bus),
 	}

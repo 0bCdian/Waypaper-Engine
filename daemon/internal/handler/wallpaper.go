@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"waypaper-engine/daemon/internal/backend"
+	"waypaper-engine/daemon/internal/config"
 	"waypaper-engine/daemon/internal/events"
 	"waypaper-engine/daemon/internal/image"
 	"waypaper-engine/daemon/internal/monitor"
@@ -27,6 +28,7 @@ type WallpaperHandler struct {
 	monitorManager    monitor.MonitorManager
 	splitter          *image.Splitter
 	bus               events.Bus
+	cfg               config.ConfigManager
 }
 
 // NewWallpaperHandler creates a WallpaperHandler.
@@ -39,6 +41,7 @@ func NewWallpaperHandler(
 	monitorManager monitor.MonitorManager,
 	splitter *image.Splitter,
 	bus events.Bus,
+	cfg config.ConfigManager,
 ) *WallpaperHandler {
 	return &WallpaperHandler{
 		imageStore:        imageStore,
@@ -49,6 +52,7 @@ func NewWallpaperHandler(
 		monitorManager:    monitorManager,
 		splitter:          splitter,
 		bus:               bus,
+		cfg:               cfg,
 	}
 }
 
@@ -89,12 +93,11 @@ func (h *WallpaperHandler) Set(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	activeBackend := h.registry.Active()
-	if !backend.SupportsMedia(activeBackend.Capabilities(), img.MediaType) {
+	if err := h.ensureBackendForMedia(r.Context(), img.MediaType); err != nil {
 		WriteStructuredError(w, http.StatusBadRequest, "incompatible_backend",
-			fmt.Sprintf("Backend %q does not support %s media", activeBackend.Name(), img.MediaType),
+			err.Error(),
 			map[string]any{
-				"backend":    activeBackend.Name(),
+				"backend":    h.registry.Active().Name(),
 				"media_type": img.MediaType,
 				"image_id":   img.ID,
 				"image_name": img.Name,
@@ -293,6 +296,33 @@ func (h *WallpaperHandler) resolveMonitors(ctx context.Context, names []string, 
 		return nil, err
 	}
 	return []monitor.Monitor{mon}, nil
+}
+
+// ensureBackendForMedia resolves the correct backend for the given media type.
+// In auto mode it picks the best backend via priority lists and switches if needed.
+// In fixed mode it returns an error if the active backend doesn't support the media.
+func (h *WallpaperHandler) ensureBackendForMedia(ctx context.Context, mediaType string) error {
+	mode := h.cfg.GetSelectionMode()
+	prio := h.cfg.GetAutoPriorities()
+	priorities := map[string][]string{
+		"image": prio.Image,
+		"video": prio.Video,
+		"web":   prio.Web,
+	}
+
+	targetName, err := backend.PickBackend(h.registry, mode, mediaType, priorities)
+	if err != nil {
+		return err
+	}
+
+	active := h.registry.Active()
+	if active != nil && active.Name() == targetName {
+		return nil
+	}
+
+	return backend.SwitchActiveBackend(ctx, h.registry, targetName, h.cfg, backend.SwitchOpts{
+		PersistConfig: false,
+	})
 }
 
 // applyWallpaper delegates to the shared wallpaper.Apply function.
