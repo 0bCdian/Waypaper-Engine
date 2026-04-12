@@ -451,6 +451,9 @@ export type EventType =
   | "playlists_updated"
   | "folders_updated"
   | "backend_unavailable"
+  | "wallpaper_restore_failed"
+  | "playlist_skipped_incompatible"
+  | "playlist_no_compatible_item"
   // Connection Events (Electron-only, not from daemon SSE)
   | "sse_disconnected"
   | "sse_reconnected";

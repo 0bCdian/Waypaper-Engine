@@ -217,7 +217,7 @@ func startDaemon(configPath string, logLevel string) error {
 			bus,
 		)
 	} else {
-		handler.RestoreWallpapers(ctx, db.MonitorStateStore(), db.StateStore(), reg, monManager, db.ImageStore(), splitter)
+		handler.RestoreWallpapers(ctx, db.MonitorStateStore(), db.StateStore(), reg, monManager, db.ImageStore(), splitter, bus)
 	}
 
 	// 12. Create playlist manager.

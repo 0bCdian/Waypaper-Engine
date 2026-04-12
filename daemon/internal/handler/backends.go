@@ -114,7 +114,7 @@ func (h *BackendHandler) Activate(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Re-apply wallpapers with the newly activated backend.
-	RestoreWallpapers(r.Context(), h.monitorStateStore, h.stateStore, h.registry, h.monitorManager, h.imageStore, h.splitter)
+	RestoreWallpapers(r.Context(), h.monitorStateStore, h.stateStore, h.registry, h.monitorManager, h.imageStore, h.splitter, h.bus)
 
 	h.bus.Publish(events.Event{
 		Type: events.ConfigChanged,

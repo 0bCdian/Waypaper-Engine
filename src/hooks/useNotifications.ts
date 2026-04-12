@@ -113,6 +113,53 @@ export default function useNotifications(): void {
     );
 
     disposers.push(
+      goDaemon.on("wallpaper_restore_failed", (data: unknown) => {
+        const payload = data as {
+          backend?: string;
+          failures?: Array<{ monitor?: string; reason?: string }>;
+        };
+        const failures = payload?.failures ?? [];
+        const monitors = failures.map((f) => f.monitor ?? "unknown");
+        const unique = [...new Set(monitors)];
+        const reasons = [...new Set(failures.map((f) => f.reason ?? "unknown error"))];
+        addToast(
+          `Could not restore wallpaper on ${unique.join(", ")}: ${reasons.join("; ")} (backend: ${payload?.backend ?? "unknown"})`,
+          "error",
+          12_000,
+        );
+      }),
+    );
+
+    disposers.push(
+      goDaemon.on("playlist_skipped_incompatible", (data: unknown) => {
+        const payload = data as {
+          playlist_name?: string;
+          backend?: string;
+          skipped?: number;
+        };
+        addToast(
+          `Skipped ${payload?.skipped ?? "some"} playlist items: ${payload?.backend ?? "current backend"} does not support their media type`,
+          "warning",
+          8_000,
+        );
+      }),
+    );
+
+    disposers.push(
+      goDaemon.on("playlist_no_compatible_item", (data: unknown) => {
+        const payload = data as {
+          playlist_name?: string;
+          backend?: string;
+        };
+        addToast(
+          `No items in "${payload?.playlist_name ?? "playlist"}" are compatible with ${payload?.backend ?? "current backend"}`,
+          "error",
+          10_000,
+        );
+      }),
+    );
+
+    disposers.push(
       goDaemon.on("sse_disconnected", () => {
         addToast("Lost connection to daemon — reconnecting...", "warning", 0);
       }),

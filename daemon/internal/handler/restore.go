@@ -76,7 +76,7 @@ func StartDeferredDaemonRestore(
 				"backend", active.Name(),
 				"attempt", attempt,
 			)
-			RestoreWallpapers(context.Background(), monitorStateStore, stateStore, reg, monManager, images, splitter)
+			RestoreWallpapers(context.Background(), monitorStateStore, stateStore, reg, monManager, images, splitter, bus)
 			return
 		}
 
@@ -96,10 +96,20 @@ func StartDeferredDaemonRestore(
 	}()
 }
 
+// restoreFailure captures a single per-monitor restore failure for aggregated SSE.
+type restoreFailure struct {
+	Monitor   string `json:"monitor"`
+	ImageID   int    `json:"image_id"`
+	MediaType string `json:"media_type"`
+	Reason    string `json:"reason"`
+}
+
 // RestoreWallpapers re-applies the last known wallpaper for each connected
 // monitor using the persisted monitor state from the database. This is called
 // during startup and after backend activation so monitors show the correct
 // wallpaper. Best-effort: errors are logged but do not block the caller.
+// If bus is non-nil, a single WallpaperRestoreFailed event is published when
+// any monitors fail to restore.
 func RestoreWallpapers(
 	ctx context.Context,
 	monitorStateStore store.MonitorStateStore,
@@ -108,6 +118,7 @@ func RestoreWallpapers(
 	monManager monitor.MonitorManager,
 	images store.ImageStore,
 	splitter *image.Splitter,
+	bus events.Bus,
 ) {
 	states, err := monitorStateStore.GetAll(ctx)
 	if err != nil {
@@ -142,6 +153,7 @@ func RestoreWallpapers(
 	activeBackend := reg.Active()
 	restored := 0
 	skipped := 0
+	var failures []restoreFailure
 
 	extendGroups := make(map[int]*extendGroup)
 	var nonExtendStates []store.MonitorState
@@ -169,16 +181,32 @@ func RestoreWallpapers(
 	}
 
 	for _, grp := range extendGroups {
-		restored += restoreExtendGroup(ctx, grp, activeBackend, splitter, stateStore, images)
+		n, grpFailures := restoreExtendGroup(ctx, grp, activeBackend, splitter, stateStore, images)
+		restored += n
+		failures = append(failures, grpFailures...)
 	}
 
 	for _, state := range nonExtendStates {
-		if restoreIndividual(ctx, state, connected[state.MonitorName], activeBackend, stateStore, images) {
+		ok, fail := restoreIndividual(ctx, state, connected[state.MonitorName], activeBackend, stateStore, images)
+		if ok {
 			restored++
+		}
+		if fail != nil {
+			failures = append(failures, *fail)
 		}
 	}
 
-	slog.Info("wallpaper restore complete", "restored", restored, "skipped", skipped)
+	slog.Info("wallpaper restore complete", "restored", restored, "skipped", skipped, "failed", len(failures))
+
+	if len(failures) > 0 && bus != nil {
+		bus.Publish(events.Event{
+			Type: events.WallpaperRestoreFailed,
+			Data: map[string]any{
+				"backend":  activeBackend.Name(),
+				"failures": failures,
+			},
+		})
+	}
 }
 
 func normalizeRestoreMediaType(value string) media.MediaType {
@@ -201,8 +229,9 @@ func restoreExtendGroup(
 	splitter *image.Splitter,
 	stateStore store.StateStore,
 	images store.ImageStore,
-) int {
+) (int, []restoreFailure) {
 	restored := 0
+	var failures []restoreFailure
 
 	img, err := images.GetByID(ctx, grp.state.ImageID)
 	resolved := err == nil && img != nil
@@ -228,7 +257,13 @@ func restoreExtendGroup(
 				"image_path", grp.state.ImagePath,
 				"error", err,
 			)
-			return 0
+			for _, mon := range grp.monitors {
+				failures = append(failures, restoreFailure{
+					Monitor: mon.Name, ImageID: grp.state.ImageID,
+					MediaType: string(mt), Reason: "image split failed",
+				})
+			}
+			return 0, failures
 		}
 
 		for _, mon := range grp.monitors {
@@ -247,6 +282,10 @@ func restoreExtendGroup(
 			}
 			if err := activeBackend.SetWallpaper(ctx, req); err != nil {
 				slog.Warn("restore: failed to set split wallpaper", "monitor", mon.Name, "error", err)
+				failures = append(failures, restoreFailure{
+					Monitor: mon.Name, ImageID: grp.state.ImageID,
+					MediaType: string(mt), Reason: classifyRestoreError(err, activeBackend, string(mt)),
+				})
 				continue
 			}
 			stateStore.SetCurrentWallpaper(mon.Name, restoreEntry(grp.state, []string{mon.Name}))
@@ -264,7 +303,13 @@ func restoreExtendGroup(
 		}
 		if err := activeBackend.SetWallpaper(ctx, req); err != nil {
 			slog.Warn("restore: failed to set extend wallpaper", "image_id", grp.state.ImageID, "error", err)
-			return 0
+			for _, mon := range grp.monitors {
+				failures = append(failures, restoreFailure{
+					Monitor: mon.Name, ImageID: grp.state.ImageID,
+					MediaType: string(mt), Reason: classifyRestoreError(err, activeBackend, string(mt)),
+				})
+			}
+			return 0, failures
 		}
 		monNames := make([]string, len(grp.monitors))
 		for i, mon := range grp.monitors {
@@ -276,7 +321,7 @@ func restoreExtendGroup(
 		restored += len(grp.monitors)
 	}
 
-	return restored
+	return restored, failures
 }
 
 func restoreIndividual(
@@ -286,7 +331,7 @@ func restoreIndividual(
 	activeBackend backend.Backend,
 	stateStore store.StateStore,
 	images store.ImageStore,
-) bool {
+) (bool, *restoreFailure) {
 	mt := media.MediaTypeImage
 	audio := false
 	var imgPtr *store.Image
@@ -308,11 +353,23 @@ func restoreIndividual(
 	if err := activeBackend.SetWallpaper(ctx, req); err != nil {
 		slog.Warn("restore: failed to set wallpaper",
 			"monitor", state.MonitorName, "image_id", state.ImageID, "error", err)
-		return false
+		return false, &restoreFailure{
+			Monitor:   state.MonitorName,
+			ImageID:   state.ImageID,
+			MediaType: string(mt),
+			Reason:    classifyRestoreError(err, activeBackend, string(mt)),
+		}
 	}
 
 	stateStore.SetCurrentWallpaper(state.MonitorName, restoreEntry(state, []string{state.MonitorName}))
-	return true
+	return true, nil
+}
+
+func classifyRestoreError(err error, b backend.Backend, mediaType string) string {
+	if !backend.SupportsMedia(b.Capabilities(), mediaType) {
+		return "media type incompatible with current backend"
+	}
+	return err.Error()
 }
 
 func restoreEntry(state store.MonitorState, monitors []string) store.ImageHistoryEntry {

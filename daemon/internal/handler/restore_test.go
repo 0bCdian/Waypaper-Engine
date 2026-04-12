@@ -45,7 +45,7 @@ func TestRestoreWallpapers_ExtendGroup_VideoUsesClone(t *testing.T) {
 		},
 	}
 
-	RestoreWallpapers(context.Background(), mss, &testutil.MockStateStore{}, reg, mm, imgStore, nil)
+	RestoreWallpapers(context.Background(), mss, &testutil.MockStateStore{}, reg, mm, imgStore, nil, nil)
 
 	require.NotNil(t, saw)
 	assert.Equal(t, monitor.ModeClone, saw.Mode)
