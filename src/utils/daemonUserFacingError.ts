@@ -51,8 +51,24 @@ export function notifyWebWallpaperImportFailed(sourcePath: string, err: unknown)
     .addToast(formatWebWallpaperImportFailure(sourcePath, err), "error", 10_000);
 }
 
+interface DaemonError extends Error {
+  errorCode?: string;
+  meta?: Record<string, unknown>;
+}
+
+function formatIncompatibleBackend(err: DaemonError): string {
+  const backend = (err.meta?.backend as string) ?? "current backend";
+  const mediaType = (err.meta?.media_type as string) ?? "this media";
+  const imageName = err.meta?.image_name as string | undefined;
+  const target = imageName ? `"${imageName}"` : "this wallpaper";
+  return `Cannot set ${target}: ${backend} does not support ${mediaType} wallpapers.`;
+}
+
 export function notifyWallpaperApplyFailed(err: unknown): void {
-  useToastStore
-    .getState()
-    .addToast(`Could not apply wallpaper: ${daemonUserFacingMessage(err)}`, "error", 8000);
+  const de = err as DaemonError | undefined;
+  const message =
+    de?.errorCode === "incompatible_backend"
+      ? formatIncompatibleBackend(de)
+      : `Could not apply wallpaper: ${daemonUserFacingMessage(err)}`;
+  useToastStore.getState().addToast(message, "error", 8000);
 }

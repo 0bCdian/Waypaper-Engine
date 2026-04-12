@@ -72,7 +72,13 @@ export class GoDaemonClient extends EventEmitter {
               }
             } else {
               const errorData = data ? JSON.parse(data) : { error: `HTTP ${res.statusCode}` };
-              reject(new Error(errorData.error || `HTTP ${res.statusCode}`));
+              const err = new Error(errorData.error || `HTTP ${res.statusCode}`) as Error & {
+                errorCode?: string;
+                meta?: Record<string, unknown>;
+              };
+              if (errorData.error_code) err.errorCode = errorData.error_code;
+              if (errorData.meta) err.meta = errorData.meta;
+              reject(err);
             }
           } catch (parseError) {
             reject(new Error(`Failed to parse response: ${parseError}`));

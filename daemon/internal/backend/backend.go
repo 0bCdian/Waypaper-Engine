@@ -11,6 +11,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
@@ -101,6 +102,21 @@ type Capabilities struct {
 	// DaemonProcess indicates whether the backend requires a long-running
 	// background process (e.g. awww-daemon, hyprpaper).
 	DaemonProcess bool `json:"daemon_process"`
+}
+
+// SupportsMedia reports whether caps includes the given media type string.
+// An empty mediaType is treated as "image" (the default).
+func SupportsMedia(caps Capabilities, mediaType string) bool {
+	target := strings.ToLower(strings.TrimSpace(mediaType))
+	if target == "" {
+		target = string(media.MediaTypeImage)
+	}
+	for _, mt := range caps.MediaTypes {
+		if strings.ToLower(string(mt)) == target {
+			return true
+		}
+	}
+	return false
 }
 
 // UnmarshalValidateConfig is a generic helper for backends whose ValidateConfig

@@ -11,7 +11,6 @@ import (
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/events"
 	"waypaper-engine/daemon/internal/image"
-	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/store"
 	"waypaper-engine/daemon/internal/wallpaper"
@@ -556,24 +555,11 @@ func findCompatibleIndex(ctx context.Context, pl *store.Playlist, start int, cap
 				mt = strings.ToLower(strings.TrimSpace(img.MediaType))
 			}
 		}
-		if backendSupportsMedia(caps, mt) {
+		if backend.SupportsMedia(caps, mt) {
 			return candidate, i
 		}
 	}
 	return -1, n
-}
-
-func backendSupportsMedia(caps backend.Capabilities, mediaType string) bool {
-	target := strings.ToLower(strings.TrimSpace(mediaType))
-	if target == "" {
-		target = string(media.MediaTypeImage)
-	}
-	for _, mt := range caps.MediaTypes {
-		if strings.ToLower(string(mt)) == target {
-			return true
-		}
-	}
-	return false
 }
 
 // resolveMonitors resolves the target specification to concrete monitors.

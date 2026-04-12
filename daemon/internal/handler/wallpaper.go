@@ -89,6 +89,20 @@ func (h *WallpaperHandler) Set(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	activeBackend := h.registry.Active()
+	if !backend.SupportsMedia(activeBackend.Capabilities(), img.MediaType) {
+		WriteStructuredError(w, http.StatusBadRequest, "incompatible_backend",
+			fmt.Sprintf("Backend %q does not support %s media", activeBackend.Name(), img.MediaType),
+			map[string]any{
+				"backend":    activeBackend.Name(),
+				"media_type": img.MediaType,
+				"image_id":   img.ID,
+				"image_name": img.Name,
+			},
+		)
+		return
+	}
+
 	if err := h.applyWallpaper(r.Context(), img, monitors, req.Mode, "manual"); err != nil {
 		if strings.Contains(err.Error(), "extend mode is only supported") {
 			WriteError(w, http.StatusBadRequest, err.Error())

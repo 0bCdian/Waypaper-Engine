@@ -135,10 +135,10 @@ func TestFindCompatibleIndex_FallbackToImageStore(t *testing.T) {
 
 func TestBackendSupportsMedia(t *testing.T) {
 	caps := imageOnlyCaps()
-	require.True(t, backendSupportsMedia(caps, "image"))
-	require.True(t, backendSupportsMedia(caps, "gif"))
-	require.True(t, backendSupportsMedia(caps, "IMAGE"))
-	require.True(t, backendSupportsMedia(caps, ""))
-	require.False(t, backendSupportsMedia(caps, "video"))
-	require.False(t, backendSupportsMedia(caps, "web"))
+	require.True(t, backend.SupportsMedia(caps, "image"))
+	require.True(t, backend.SupportsMedia(caps, "gif"))
+	require.True(t, backend.SupportsMedia(caps, "IMAGE"))
+	require.True(t, backend.SupportsMedia(caps, ""))
+	require.False(t, backend.SupportsMedia(caps, "video"))
+	require.False(t, backend.SupportsMedia(caps, "web"))
 }

@@ -22,9 +22,11 @@ func WriteJSON(w http.ResponseWriter, status int, data any) {
 
 // APIError is the standard error response format.
 type APIError struct {
-	Error   string `json:"error"`
-	Code    int    `json:"code"`
-	Details string `json:"details,omitempty"`
+	Error     string         `json:"error"`
+	Code      int            `json:"code"`
+	Details   string         `json:"details,omitempty"`
+	ErrorCode string         `json:"error_code,omitempty"`
+	Meta      map[string]any `json:"meta,omitempty"`
 }
 
 // WriteError writes a JSON error response.
@@ -38,6 +40,16 @@ func WriteError(w http.ResponseWriter, status int, message string) {
 // WriteErrorf writes a formatted JSON error response.
 func WriteErrorf(w http.ResponseWriter, status int, format string, args ...any) {
 	WriteError(w, status, fmt.Sprintf(format, args...))
+}
+
+// WriteStructuredError writes a JSON error with a machine-readable error_code and optional metadata.
+func WriteStructuredError(w http.ResponseWriter, status int, errorCode string, message string, meta map[string]any) {
+	WriteJSON(w, status, APIError{
+		Error:     message,
+		Code:      status,
+		ErrorCode: errorCode,
+		Meta:      meta,
+	})
 }
 
 // ParseBody decodes a JSON request body into the target.
