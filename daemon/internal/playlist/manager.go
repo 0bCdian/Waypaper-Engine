@@ -391,12 +391,27 @@ func (m *Manager) advancePlaylist(ctx context.Context, playlistID int, delta int
 	}
 
 	effectiveIdx := result.AppliedIndex
+
+	m.mu.RLock()
+	run, runOK := m.runs[playlistID]
+	m.mu.RUnlock()
+	if runOK && pl.Configuration.Type == "timer" {
+		run.sched.AfterManualNavigation(effectiveIdx)
+	}
+	var nextChange *time.Time
+	m.mu.RLock()
+	if r2, ok := m.runs[playlistID]; ok {
+		nextChange = r2.sched.NextChangeAt()
+	}
+	m.mu.RUnlock()
+
 	m.stateStore.UpdateActivePlaylist(playlistID, func(inst *store.ActivePlaylistInstance) {
 		updateInstanceIndex(inst, pl, effectiveIdx)
 		if effectiveIdx > 0 && len(pl.Images) > 1 {
 			pid := pl.Images[effectiveIdx-1].ImageID
 			inst.PreviousImageID = &pid
 		}
+		inst.NextChangeAt = nextChange
 	})
 
 	m.bus.Publish(events.Event{
@@ -606,7 +621,7 @@ func (m *Manager) doApply(ctx context.Context, pl *store.Playlist, index int, mo
 // or (-1, skipped) if nothing is compatible.
 func findCompatibleIndex(ctx context.Context, pl *store.Playlist, start int, caps backend.Capabilities, images store.ImageStore) (idx int, skipped int) {
 	n := len(pl.Images)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		candidate := (start + i) % n
 		imgRef := pl.Images[candidate]
 		mt := imgRef.MediaType

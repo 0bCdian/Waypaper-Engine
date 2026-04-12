@@ -37,7 +37,11 @@ func buildWallpaperCurrentResponse(
 	states []store.MonitorState,
 	connectedNames map[string]struct{},
 ) WallpaperCurrentResponse {
-	resp := WallpaperCurrentResponse{Backend: activeBackend}
+	// Non-nil slice so JSON is always [] — nil encodes as null and breaks TS clients (.find).
+	resp := WallpaperCurrentResponse{
+		Backend:  activeBackend,
+		Monitors: []WallpaperCurrentSlot{},
+	}
 	if len(states) == 0 {
 		return resp
 	}

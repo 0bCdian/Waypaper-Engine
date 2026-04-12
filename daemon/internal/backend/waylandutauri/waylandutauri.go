@@ -104,6 +104,9 @@ type WaylandUtauri struct {
 	// spawnGeneration increments on each child spawn; the wait goroutine only clears
 	// process when it still matches, so a replaced child is not wiped by an old Wait.
 	spawnGeneration int64
+	// initMu serializes Initialize / initializeImpl so concurrent respawn and ensureRunning
+	// cannot double-spawn; long poll runs under this lock (callers queue briefly).
+	initMu sync.Mutex
 
 	parallaxDriverMu     sync.Mutex
 	parallaxDriverCancel context.CancelFunc
@@ -139,6 +142,16 @@ func (w *WaylandUtauri) Capabilities() backend.Capabilities {
 }
 
 func (w *WaylandUtauri) Initialize(ctx context.Context) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	w.initMu.Lock()
+	defer w.initMu.Unlock()
+	// Long poll must not inherit a short-lived caller context (e.g. HTTP).
+	return w.initializeImpl(context.Background())
+}
+
+func (w *WaylandUtauri) initializeImpl(ctx context.Context) error {
 	if !w.IsAvailable() {
 		return fmt.Errorf("wayland-utauri: %s not found in PATH", binaryName)
 	}
@@ -185,7 +198,11 @@ func (w *WaylandUtauri) Initialize(ctx context.Context) error {
 	w.processMu.Unlock()
 
 	go func(g int64, c *exec.Cmd) {
-		_ = c.Wait()
+		waitErr := c.Wait()
+		pid := int(0)
+		if c.Process != nil {
+			pid = c.Process.Pid
+		}
 		w.processMu.Lock()
 		defer w.processMu.Unlock()
 		if atomic.LoadInt64(&w.spawnGeneration) != g {
@@ -194,7 +211,8 @@ func (w *WaylandUtauri) Initialize(ctx context.Context) error {
 		if w.process != nil && c.Process != nil && w.process.Pid == c.Process.Pid {
 			w.process = nil
 		}
-		slog.Info("wayland-utauri child process exited", "pid", c.Process.Pid)
+		slog.Warn("wayland-utauri child process exited", "pid", pid, "wait_err", waitErr)
+		go w.respawnAfterChildExit(g)
 	}(gen, cmd)
 
 	if err := w.pollHealthUntilReady(ctx, client, cfg); err != nil {
@@ -203,6 +221,27 @@ func (w *WaylandUtauri) Initialize(ctx context.Context) error {
 	slog.Info("wayland-utauri ready after spawn")
 	w.syncParallaxDriver(w.loadConfigFromViper())
 	return nil
+}
+
+// respawnAfterChildExit runs after our managed child exits; it restarts wayland-utauri
+// so the daemon does not sit idle until the next explicit wallpaper operation.
+func (w *WaylandUtauri) respawnAfterChildExit(exitGen int64) {
+	const debounce = 400 * time.Millisecond
+	time.Sleep(debounce)
+	if atomic.LoadInt64(&w.spawnGeneration) != exitGen {
+		return
+	}
+	w.processMu.Lock()
+	need := w.process == nil
+	w.processMu.Unlock()
+	if !need {
+		return
+	}
+	if err := w.Initialize(context.Background()); err != nil {
+		slog.Error("wayland-utauri: respawn after child exit failed", "error", err)
+		return
+	}
+	slog.Info("wayland-utauri: respawn after child exit succeeded")
 }
 
 // pollHealthUntilReady polls checkHealth with exponential backoff until success or overall deadline (~50s).

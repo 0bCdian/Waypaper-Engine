@@ -1,22 +1,30 @@
 package handler
 
 import (
+	"encoding/json"
 	"testing"
 	"time"
 
 	"waypaper-engine/daemon/internal/store"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestBuildWallpaperCurrentResponse_empty(t *testing.T) {
 	got := buildWallpaperCurrentResponse("awww", nil, nil)
 	assert.Equal(t, "awww", got.Backend)
 	assert.Empty(t, got.Monitors)
+	assert.NotNil(t, got.Monitors, "empty slice, not nil — JSON must be [] not null")
 	assert.True(t, got.SetAt.IsZero())
 
 	got2 := buildWallpaperCurrentResponse("awww", []store.MonitorState{}, nil)
 	assert.Empty(t, got2.Monitors)
+	assert.NotNil(t, got2.Monitors)
+
+	raw, err := json.Marshal(buildWallpaperCurrentResponse("wayland-utauri", nil, nil))
+	require.NoError(t, err)
+	assert.Contains(t, string(raw), `"monitors":[]`)
 }
 
 func TestBuildWallpaperCurrentResponse_filtersOtherBackend(t *testing.T) {

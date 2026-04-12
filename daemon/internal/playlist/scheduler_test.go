@@ -295,6 +295,55 @@ func TestManualSchedulerNoOps(t *testing.T) {
 	sched.Stop()
 }
 
+func TestTimerSchedulerTickCallbackMayCallNextChangeAt(t *testing.T) {
+	sched := NewScheduler(SchedulerConfig{
+		Type:        "timer",
+		Interval:    1,
+		Order:       "ordered",
+		TotalImages: 2,
+		StartIndex:  0,
+	})
+	ts := sched.(*timerScheduler)
+	ts.interval = 25 * time.Millisecond
+
+	finished := make(chan struct{})
+	sched.Start(func(_ int) {
+		_ = sched.NextChangeAt()
+		close(finished)
+	})
+	defer sched.Stop()
+
+	select {
+	case <-finished:
+	case <-time.After(400 * time.Millisecond):
+		t.Fatal("deadlock: tick callback must not hold scheduler mutex (onTick calls NextChangeAt)")
+	}
+}
+
+func TestTimerSchedulerAfterManualNavigationResetsDeadline(t *testing.T) {
+	sched := NewScheduler(SchedulerConfig{
+		Type:        "timer",
+		Interval:    60,
+		Order:       "ordered",
+		TotalImages: 3,
+		StartIndex:  0,
+	})
+	ts := sched.(*timerScheduler)
+	ts.interval = 400 * time.Millisecond
+
+	sched.Start(func(int) {})
+	defer sched.Stop()
+
+	n1 := sched.NextChangeAt()
+	require.NotNil(t, n1)
+	before := time.Now()
+	sched.AfterManualNavigation(2)
+	n2 := sched.NextChangeAt()
+	require.NotNil(t, n2)
+	assert.GreaterOrEqual(t, n2.Sub(before), 300*time.Millisecond,
+		"manual navigation should restart the full interval from now")
+}
+
 func TestTimerSchedulerOrderedIndices(t *testing.T) {
 	indices := make([]int, 0, 5)
 	done := make(chan struct{})

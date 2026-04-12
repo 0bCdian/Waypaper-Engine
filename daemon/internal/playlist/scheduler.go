@@ -1,6 +1,7 @@
 package playlist
 
 import (
+	"context"
 	"math/rand"
 	"sync"
 	"time"
@@ -23,6 +24,11 @@ type Scheduler interface {
 
 	// NextChangeAt returns when the next transition will occur, or nil if unknown.
 	NextChangeAt() *time.Time
+
+	// AfterManualNavigation informs the scheduler that the user moved to the given
+	// playlist image index. Timer schedulers align shuffle position and restart the
+	// interval from now; other schedulers no-op.
+	AfterManualNavigation(playlistImageIndex int)
 }
 
 // SchedulerConfig contains all information needed to create a scheduler.
@@ -58,6 +64,11 @@ func NewScheduler(cfg SchedulerConfig) Scheduler {
 
 // --- Timer Scheduler ---
 
+type timerSyncReq struct {
+	playlistIdx int
+	done        chan struct{}
+}
+
 type timerScheduler struct {
 	mu           sync.Mutex
 	interval     time.Duration
@@ -66,11 +77,13 @@ type timerScheduler struct {
 	currentIndex int
 	indices      []int
 	callback     func(int)
-	ticker       *time.Ticker
+	activeCancel context.CancelFunc
 	stopCh       chan struct{}
 	stopOnce     sync.Once
 	paused       bool
 	nextChange   *time.Time
+	syncReqCh    chan timerSyncReq
+	resumeCh     chan struct{}
 }
 
 func newTimerScheduler(cfg SchedulerConfig) *timerScheduler {
@@ -80,6 +93,8 @@ func newTimerScheduler(cfg SchedulerConfig) *timerScheduler {
 		totalImages:  cfg.TotalImages,
 		currentIndex: cfg.StartIndex,
 		stopCh:       make(chan struct{}),
+		syncReqCh:    make(chan timerSyncReq),
+		resumeCh:     make(chan struct{}, 1),
 	}
 	s.indices = s.buildIndices()
 	return s
@@ -101,69 +116,164 @@ func (s *timerScheduler) buildIndices() []int {
 func (s *timerScheduler) Start(callback func(int)) {
 	s.mu.Lock()
 	s.callback = callback
-	s.ticker = time.NewTicker(s.interval)
-	next := time.Now().Add(s.interval)
-	s.nextChange = &next
+	n := time.Now().Add(s.interval)
+	s.nextChange = &n
 	s.mu.Unlock()
+	go s.runLoop()
+}
 
-	go func() {
-		for {
+func (s *timerScheduler) runLoop() {
+	for {
+		s.mu.Lock()
+		if s.paused {
+			s.nextChange = nil
+			s.mu.Unlock()
 			select {
 			case <-s.stopCh:
 				return
-			case <-s.ticker.C:
-				s.mu.Lock()
-				if s.paused {
-					s.mu.Unlock()
-					continue
-				}
-				s.currentIndex = (s.currentIndex + 1) % len(s.indices)
-				imgIdx := s.indices[s.currentIndex]
-				cb := s.callback
-				next := time.Now().Add(s.interval)
-				s.nextChange = &next
-				s.mu.Unlock()
+			case req := <-s.syncReqCh:
+				s.syncToPlaylistIndexAndRelease(req)
+			case <-s.resumeCh:
+			}
+			continue
+		}
 
-				if cb != nil {
-					cb(imgIdx)
+		wait := s.interval
+		deadline := time.Now().Add(wait)
+		s.nextChange = &deadline
+		ctx, cancel := context.WithCancel(context.Background())
+		s.activeCancel = cancel
+		s.mu.Unlock()
+
+		waitDone := make(chan struct{})
+		timerDidFire := make(chan struct{}, 1)
+		go func(d time.Duration) {
+			defer close(waitDone)
+			t := time.NewTimer(d)
+			defer t.Stop()
+			select {
+			case <-t.C:
+				select {
+				case timerDidFire <- struct{}{}:
+				default:
 				}
+			case <-ctx.Done():
+			}
+		}(wait)
+
+		var fired bool
+		select {
+		case <-s.stopCh:
+			cancel()
+			s.mu.Lock()
+			s.activeCancel = nil
+			s.mu.Unlock()
+			<-waitDone
+			return
+		case req := <-s.syncReqCh:
+			cancel()
+			s.mu.Lock()
+			s.activeCancel = nil
+			s.mu.Unlock()
+			<-waitDone
+			s.syncToPlaylistIndexAndRelease(req)
+			continue
+		case <-waitDone:
+			cancel()
+			s.mu.Lock()
+			s.activeCancel = nil
+			select {
+			case <-timerDidFire:
+				fired = true
+			default:
+			}
+			if !fired || s.paused {
+				s.mu.Unlock()
+				continue
+			}
+			s.currentIndex = (s.currentIndex + 1) % len(s.indices)
+			imgIdx := s.indices[s.currentIndex]
+			cb := s.callback
+			next := time.Now().Add(s.interval)
+			s.nextChange = &next
+			s.mu.Unlock()
+
+			// Callback must run without s.mu: Manager.onTick calls sched.NextChangeAt(),
+			// and HTTP handlers call AfterManualNavigation which needs the runLoop select.
+			if cb != nil {
+				cb(imgIdx)
 			}
 		}
-	}()
+	}
+}
+
+// syncToPlaylistIndexAndRelease updates shuffle position to match the playlist
+// row index now showing, refreshes NextChangeAt when unpaused, and unblocks the
+// caller. The next runLoop iteration starts a fresh wait.
+func (s *timerScheduler) syncToPlaylistIndexAndRelease(req timerSyncReq) {
+	s.mu.Lock()
+	if s.activeCancel != nil {
+		s.activeCancel()
+		s.activeCancel = nil
+	}
+	for j, v := range s.indices {
+		if v == req.playlistIdx {
+			s.currentIndex = j
+			break
+		}
+	}
+	if !s.paused {
+		n := time.Now().Add(s.interval)
+		s.nextChange = &n
+	} else {
+		s.nextChange = nil
+	}
+	s.mu.Unlock()
+	close(req.done)
+}
+
+func (s *timerScheduler) AfterManualNavigation(playlistImageIndex int) {
+	done := make(chan struct{})
+	req := timerSyncReq{playlistIdx: playlistImageIndex, done: done}
+	select {
+	case s.syncReqCh <- req:
+		<-done
+	case <-s.stopCh:
+	}
 }
 
 func (s *timerScheduler) Stop() {
 	s.stopOnce.Do(func() {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-
-		if s.ticker != nil {
-			s.ticker.Stop()
-		}
 		close(s.stopCh)
+		s.mu.Lock()
+		if s.activeCancel != nil {
+			s.activeCancel()
+			s.activeCancel = nil
+		}
 		s.nextChange = nil
+		s.mu.Unlock()
 	})
 }
 
 func (s *timerScheduler) Pause() {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	s.paused = true
-	if s.ticker != nil {
-		s.ticker.Stop()
+	if s.activeCancel != nil {
+		s.activeCancel()
+		s.activeCancel = nil
 	}
 	s.nextChange = nil
+	s.mu.Unlock()
 }
 
 func (s *timerScheduler) Resume() {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	s.paused = false
-	s.ticker = time.NewTicker(s.interval)
-	next := time.Now().Add(s.interval)
-	s.nextChange = &next
+	s.mu.Unlock()
+	select {
+	case s.resumeCh <- struct{}{}:
+	default:
+	}
 }
 
 func (s *timerScheduler) NextChangeAt() *time.Time {
@@ -304,6 +414,8 @@ func (s *timeOfDayScheduler) NextChangeAt() *time.Time {
 	return &t
 }
 
+func (s *timeOfDayScheduler) AfterManualNavigation(_ int) {}
+
 // --- Day-of-Week Scheduler ---
 
 type dayOfWeekScheduler struct {
@@ -415,6 +527,8 @@ func (s *dayOfWeekScheduler) NextChangeAt() *time.Time {
 	return &t
 }
 
+func (s *dayOfWeekScheduler) AfterManualNavigation(_ int) {}
+
 // --- Manual Scheduler ---
 
 type manualScheduler struct {
@@ -443,3 +557,5 @@ func (s *manualScheduler) Resume() {}
 
 // NextChangeAt always returns nil for manual scheduler.
 func (s *manualScheduler) NextChangeAt() *time.Time { return nil }
+
+func (s *manualScheduler) AfterManualNavigation(_ int) {}

@@ -175,7 +175,8 @@ export interface WallpaperCurrent {
   image_name: string;
   image_path: string;
   mode: string;
-  monitors: WallpaperCurrentSlot[];
+  /** Omitted or null only from older daemons; prefer []. */
+  monitors?: WallpaperCurrentSlot[] | null;
   set_at?: string;
 }
 

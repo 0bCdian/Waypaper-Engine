@@ -840,11 +840,12 @@ func (m *MockMonitorProvider) Detect(ctx context.Context) ([]monitor.Monitor, er
 // ---------------------------------------------------------------------------
 
 type MockScheduler struct {
-	StartFn        func(callback func(index int))
-	StopFn         func()
-	PauseFn        func()
-	ResumeFn       func()
-	NextChangeAtFn func() *time.Time
+	StartFn                 func(callback func(index int))
+	StopFn                  func()
+	PauseFn                 func()
+	ResumeFn                func()
+	NextChangeAtFn          func() *time.Time
+	AfterManualNavigationFn func(playlistImageIndex int)
 }
 
 func (m *MockScheduler) Start(callback func(index int)) {
@@ -876,4 +877,10 @@ func (m *MockScheduler) NextChangeAt() *time.Time {
 		return m.NextChangeAtFn()
 	}
 	return nil
+}
+
+func (m *MockScheduler) AfterManualNavigation(playlistImageIndex int) {
+	if m.AfterManualNavigationFn != nil {
+		m.AfterManualNavigationFn(playlistImageIndex)
+	}
 }
