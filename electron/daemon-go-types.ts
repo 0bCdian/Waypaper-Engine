@@ -267,10 +267,20 @@ export interface DaemonConfig {
   compositor: "auto" | "wayland" | "x11";
 }
 
+export interface AutoPriorities {
+  image: string[];
+  video: string[];
+  web: string[];
+}
+
 export interface BackendSection {
   type: string;
   /** Canonical transition length in seconds (float). When set, awww and wayland-utauri use this value. */
   transition_duration_seconds?: number;
+  /** "fixed" (default) or "auto" — controls whether the daemon uses a single backend or picks per media type. */
+  selection_mode?: "fixed" | "auto";
+  /** Per-media backend priority lists, used when selection_mode == "auto". */
+  auto_priorities?: AutoPriorities;
   awww?: AwwwConfig;
   feh?: FehConfig;
   hyprpaper?: HyprpaperConfig;

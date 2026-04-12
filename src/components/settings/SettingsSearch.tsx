@@ -103,6 +103,20 @@ const searchSuggestions: SearchSuggestion[] = [
   },
   {
     section: "backend",
+    key: "selection_mode",
+    label: "Selection Mode",
+    description: "Fixed (one backend) or Auto (pick per media type)",
+    category: "Backend",
+  },
+  {
+    section: "backend",
+    key: "auto_priorities",
+    label: "Auto Backend Priorities",
+    description: "Per-media backend priority lists for auto mode",
+    category: "Backend",
+  },
+  {
+    section: "backend",
     key: "awww.transition_type",
     label: "Transition Type",
     description: "Type of wallpaper transition",

@@ -708,6 +708,106 @@ interface AvailableBackend {
   available: boolean;
 }
 
+const MEDIA_CATEGORIES = ["image", "video", "web"] as const;
+type MediaCategory = (typeof MEDIA_CATEGORIES)[number];
+
+const CATEGORY_LABELS: Record<MediaCategory, string> = {
+  image: "Image / GIF",
+  video: "Video",
+  web: "Web",
+};
+
+const BACKEND_MEDIA_SUPPORT: Record<string, MediaCategory[]> = {
+  awww: ["image"],
+  hyprpaper: ["image"],
+  feh: ["image"],
+  "wayland-utauri": ["image", "video", "web"],
+  mpvpaper: ["video"],
+};
+
+function backendsForCategory(
+  category: MediaCategory,
+  available: AvailableBackend[],
+): AvailableBackend[] {
+  return available.filter((b) => BACKEND_MEDIA_SUPPORT[b.name]?.includes(category));
+}
+
+function PriorityList({
+  category,
+  items,
+  available,
+  onChange,
+}: {
+  category: MediaCategory;
+  items: string[];
+  available: AvailableBackend[];
+  onChange: (newOrder: string[]) => void;
+}) {
+  const eligible = backendsForCategory(category, available);
+  const eligibleNames = new Set(eligible.map((b) => b.name));
+
+  const normalized = [
+    ...items.filter((name) => eligibleNames.has(name)),
+    ...eligible.map((b) => b.name).filter((name) => !items.includes(name)),
+  ];
+
+  const move = (idx: number, dir: -1 | 1) => {
+    const next = [...normalized];
+    const target = idx + dir;
+    if (target < 0 || target >= next.length) return;
+    [next[idx], next[target]] = [next[target], next[idx]];
+    onChange(next);
+  };
+
+  return (
+    <div className="space-y-1">
+      <div className="text-xs font-medium text-base-content/60">{CATEGORY_LABELS[category]}</div>
+      <div className="flex flex-col gap-0.5">
+        {normalized.map((name, i) => {
+          const isAvailable = eligible.find((b) => b.name === name)?.available ?? false;
+          return (
+            <div
+              key={name}
+              className="flex items-center gap-1.5 rounded px-2 py-1 bg-base-200/60 text-sm"
+            >
+              <span className="tabular-nums text-xs text-base-content/40 w-4 text-right">
+                {i + 1}
+              </span>
+              <span
+                className={cn(
+                  "flex-1 truncate",
+                  !isAvailable && "text-base-content/40 line-through",
+                )}
+              >
+                {name}
+                {!isAvailable && " (unavailable)"}
+              </span>
+              <button
+                type="button"
+                className="btn btn-ghost btn-xs px-1"
+                disabled={i === 0}
+                onClick={() => move(i, -1)}
+                aria-label={`Move ${name} up`}
+              >
+                ▲
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-xs px-1"
+                disabled={i === normalized.length - 1}
+                onClick={() => move(i, 1)}
+                aria-label={`Move ${name} down`}
+              >
+                ▼
+              </button>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
   className = "",
 }) => {
@@ -896,6 +996,19 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
   };
 
   const backendType = config?.backend?.type;
+  const selectionMode = config?.backend?.selection_mode ?? "fixed";
+  const autoPriorities = config?.backend?.auto_priorities ?? {
+    image: ["awww", "hyprpaper", "feh", "wayland-utauri"],
+    video: ["mpvpaper", "wayland-utauri"],
+    web: ["wayland-utauri"],
+  };
+
+  const handlePriorityChange = (category: MediaCategory, newOrder: string[]) => {
+    void handleChange("auto_priorities", {
+      ...autoPriorities,
+      [category]: newOrder,
+    });
+  };
 
   return (
     <div className={cn("space-y-0", className)}>
@@ -919,8 +1032,40 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
       <SettingSectionHeader title="General" />
 
       <SettingRow
-        label="Backend Type"
-        description="Wallpaper backend to use for setting wallpapers"
+        label="Selection Mode"
+        description="Fixed uses one backend for everything. Auto picks the best backend per media type using priority lists below."
+      >
+        <div className="flex gap-2">
+          <button
+            type="button"
+            className={cn(
+              "btn btn-sm",
+              selectionMode === "fixed" ? "btn-primary" : "btn-ghost",
+            )}
+            onClick={() => handleChange("selection_mode", "fixed")}
+          >
+            Fixed
+          </button>
+          <button
+            type="button"
+            className={cn(
+              "btn btn-sm",
+              selectionMode === "auto" ? "btn-primary" : "btn-ghost",
+            )}
+            onClick={() => handleChange("selection_mode", "auto")}
+          >
+            Auto
+          </button>
+        </div>
+      </SettingRow>
+
+      <SettingRow
+        label={selectionMode === "auto" ? "Startup Backend" : "Backend Type"}
+        description={
+          selectionMode === "auto"
+            ? "Backend activated on startup. Auto mode will switch away as needed per media type."
+            : "Wallpaper backend to use for setting wallpapers"
+        }
         error={fieldError("type")}
       >
         <select
@@ -943,6 +1088,32 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
           )}
         </select>
       </SettingRow>
+
+      {selectionMode === "auto" && (
+        <>
+          <SettingSectionHeader
+            title="Auto Backend Priorities"
+            description="For each media type, backends are tried in order. The first available and compatible backend is used. Switching backends mid-session has a small overhead."
+          />
+          <SettingRow
+            label="Priority Lists"
+            description="Reorder backends per media type. Higher priority backends are tried first."
+            stacked
+          >
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
+              {MEDIA_CATEGORIES.map((cat) => (
+                <PriorityList
+                  key={cat}
+                  category={cat}
+                  items={autoPriorities[cat] ?? []}
+                  available={availableBackends}
+                  onChange={(newOrder) => handlePriorityChange(cat, newOrder)}
+                />
+              ))}
+            </div>
+          </SettingRow>
+        </>
+      )}
 
       {/* ── awww settings ───────────────────────────────── */}
       {backendType === "awww" && (

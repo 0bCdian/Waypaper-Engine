@@ -201,8 +201,13 @@ export const useSettingsStore = create<SettingsStore>()(
             const backendType = newConfig.backend.type ?? "awww";
             const top: Record<string, unknown> = {};
             const sub: Record<string, unknown> = {};
+            const topLevelBackendKeys = new Set([
+              "transition_duration_seconds",
+              "selection_mode",
+              "auto_priorities",
+            ]);
             for (const [k, v] of Object.entries(data)) {
-              if (k === "transition_duration_seconds") {
+              if (topLevelBackendKeys.has(k)) {
                 top[k] = v;
               } else {
                 sub[k] = v;
@@ -247,8 +252,13 @@ export const useSettingsStore = create<SettingsStore>()(
             } else {
               const top: Record<string, unknown> = {};
               const sub: Record<string, unknown> = {};
+              const topLevelBackendKeys = new Set([
+                "transition_duration_seconds",
+                "selection_mode",
+                "auto_priorities",
+              ]);
               for (const [k, v] of Object.entries(data)) {
-                if (k === "transition_duration_seconds") {
+                if (topLevelBackendKeys.has(k)) {
                   top[k] = v;
                 } else {
                   sub[k] = v;
