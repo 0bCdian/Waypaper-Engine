@@ -50,6 +50,8 @@ const DAISYUI_THEMES = [
  * Custom CSS theme names
  */
 const CUSTOM_THEMES = [
+  "kolision-raw",
+  "kolision-raw-dark",
   "doublezombie",
   "gruvbox",
   "catppuccin",
@@ -256,6 +258,16 @@ const customThemeMetadata: Record<
     category: "light" | "dark" | "mixed";
   }
 > = {
+  "kolision-raw": {
+    displayName: "Kolision Raw",
+    description: "Warm cream editorial palette with high-contrast accents",
+    category: "light",
+  },
+  "kolision-raw-dark": {
+    displayName: "Kolision Raw (Dark)",
+    description: "Dark companion to Kolision Raw with the same accent hues",
+    category: "dark",
+  },
   doublezombie: {
     displayName: "Double Zombie",
     description: "Dark theme with warm yellow and cool accents",
@@ -366,9 +378,9 @@ function createDaisyUITheme(name: string): ThemeConfig {
       error: "",
     }, // DaisyUI handles colors internally
     fonts: {
-      primary: "Inter, system-ui, sans-serif",
-      secondary: "Inter, system-ui, sans-serif",
-      mono: "JetBrains Mono, monospace",
+      primary: '"Inter Variable", Inter, system-ui, sans-serif',
+      secondary: '"Space Grotesk Variable", "Space Grotesk", system-ui, sans-serif',
+      mono: '"JetBrains Mono", ui-monospace, monospace',
     },
     available: true,
     isDaisyUI: true, // Flag to indicate this is a DaisyUI theme
@@ -398,9 +410,9 @@ function createCustomTheme(name: string): ThemeConfig {
       error: "",
     }, // Custom CSS handles colors
     fonts: {
-      primary: "Inter, system-ui, sans-serif",
-      secondary: "Inter, system-ui, sans-serif",
-      mono: "JetBrains Mono, monospace",
+      primary: '"Inter Variable", Inter, system-ui, sans-serif',
+      secondary: '"Space Grotesk Variable", "Space Grotesk", system-ui, sans-serif',
+      mono: '"JetBrains Mono", ui-monospace, monospace',
     },
     available: true,
   };

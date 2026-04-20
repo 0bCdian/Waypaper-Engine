@@ -21,7 +21,7 @@ func TestConfigHandler_GetConfig(t *testing.T) {
 		GetConfigFn: func() (*config.Config, error) {
 			return &config.Config{
 				App: config.AppConfig{
-					Theme: "dark",
+					Theme: "kolision-raw",
 				},
 			}, nil
 		},
@@ -36,14 +36,14 @@ func TestConfigHandler_GetConfig(t *testing.T) {
 
 	var body config.Config
 	require.NoError(t, json.NewDecoder(w.Body).Decode(&body))
-	assert.Equal(t, "dark", body.App.Theme)
+	assert.Equal(t, "kolision-raw", body.App.Theme)
 }
 
 func TestConfigHandler_GetSection(t *testing.T) {
 	cfg := &testutil.MockConfigManager{
 		GetSectionFn: func(section string) (map[string]any, error) {
 			if section == "app" {
-				return map[string]any{"theme": "dark", "notifications": true}, nil
+				return map[string]any{"theme": "kolision-raw", "notifications": true}, nil
 			}
 			return nil, errors.New("unknown section")
 		},
@@ -59,7 +59,7 @@ func TestConfigHandler_GetSection(t *testing.T) {
 
 	var body map[string]any
 	require.NoError(t, json.NewDecoder(w.Body).Decode(&body))
-	assert.Equal(t, "dark", body["theme"])
+	assert.Equal(t, "kolision-raw", body["theme"])
 }
 
 func TestConfigHandler_GetSection_Backend(t *testing.T) {

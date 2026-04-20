@@ -5,7 +5,7 @@ import { themes } from "../themes/themes";
 import { logger } from "../utils/logger";
 
 // Default theme name
-const DEFAULT_THEME_NAME = "dark";
+const DEFAULT_THEME_NAME = "kolision-raw";
 
 const getTheme = (name: string) => themes[name];
 

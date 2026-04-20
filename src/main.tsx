@@ -4,7 +4,7 @@ import App from "./App";
 import ErrorBoundary from "./components/ErrorBoundary";
 import "./index.css";
 
-const defaultTheme = localStorage.getItem("waypaper-theme") || "gruvbox";
+const defaultTheme = localStorage.getItem("waypaper-theme") || "kolision-raw";
 document.documentElement.setAttribute("data-theme", defaultTheme);
 
 const root = document.getElementById("root");

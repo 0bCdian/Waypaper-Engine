@@ -25,7 +25,7 @@ const App = () => {
   useRealTimeImageProcessing();
   useNotifications();
   return (
-    <ThemeProvider defaultTheme="business" persist={true} syncWithSystem={true}>
+    <ThemeProvider defaultTheme="kolision-raw" persist={true} syncWithSystem={true}>
       <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
         <ImageProcessingProgress />
         <ToastContainer />

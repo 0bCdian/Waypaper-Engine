@@ -1,9 +1,11 @@
 /* Import Tailwind CSS v4 */
 @import "tailwindcss";
 
-/* Default typeface (Google Sans Flex / Google Sans) */
-@import "@fontsource/google-sans-flex";
-@import "@fontsource/google-sans";
+/* Kolision / editorial stack (self-hosted, CSP-safe) */
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/space-grotesk";
+@import "@fontsource/jetbrains-mono/400.css";
+@import "@fontsource/jetbrains-mono/700.css";
 
 /* Import neobrutalist design system overlay */
 @import "./styles/neobrutalist.css";
@@ -23,11 +25,21 @@ textarea,
 pre,
 code {
   user-select: text;
+  font-family: var(--font-mono);
 }
 
-/* Default typography — Google Sans Flex with Google Sans fallback */
 :root {
-  font-family: "Google Sans Flex", "Google Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-body: "Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-display: "Space Grotesk Variable", "Space Grotesk", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+  font-family: var(--font-body);
+}
+
+h1,
+h2,
+h3,
+h4 {
+  font-family: var(--font-display);
 }
 
 /* Import DaisyUI v5 plugin */
@@ -633,6 +645,76 @@ code {
   --color-error-content: oklch(95.1% 0.008 260.8);
   --radius-selector: 0.5rem;
   --radius-field: 2rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 2px;
+  --depth: 1;
+  --noise: 0;
+}
+
+@plugin "daisyui/theme" {
+  name: "kolision-raw";
+  default: false;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: oklch(99% 0.012 95);
+  --color-base-200: oklch(96% 0.014 95);
+  --color-base-300: oklch(91% 0.018 95);
+  --color-base-content: oklch(32% 0.03 95);
+  --color-primary: oklch(48% 0.11 82);
+  --color-primary-content: oklch(99% 0.01 95);
+  --color-secondary: oklch(42% 0.11 195);
+  --color-secondary-content: oklch(98% 0.02 195);
+  --color-accent: oklch(50% 0.24 330);
+  --color-accent-content: oklch(98% 0.02 330);
+  --color-neutral: oklch(55% 0.02 95);
+  --color-neutral-content: oklch(98% 0.008 95);
+  --color-info: oklch(62% 0.14 195);
+  --color-info-content: oklch(98% 0.02 195);
+  --color-success: oklch(58% 0.16 145);
+  --color-success-content: oklch(98% 0.01 145);
+  --color-warning: oklch(84% 0.16 95);
+  --color-warning-content: oklch(28% 0.06 95);
+  --color-error: oklch(52% 0.19 35);
+  --color-error-content: oklch(98% 0.02 35);
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 2px;
+  --depth: 1;
+  --noise: 0;
+}
+
+@plugin "daisyui/theme" {
+  name: "kolision-raw-dark";
+  default: false;
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: oklch(18% 0.02 95);
+  --color-base-200: oklch(22% 0.025 95);
+  --color-base-300: oklch(28% 0.03 95);
+  --color-base-content: oklch(93% 0.02 95);
+  --color-primary: oklch(78% 0.14 95);
+  --color-primary-content: oklch(22% 0.05 95);
+  --color-secondary: oklch(72% 0.12 195);
+  --color-secondary-content: oklch(18% 0.04 195);
+  --color-accent: oklch(72% 0.2 330);
+  --color-accent-content: oklch(15% 0.05 330);
+  --color-neutral: oklch(35% 0.02 95);
+  --color-neutral-content: oklch(93% 0.02 95);
+  --color-info: oklch(65% 0.12 195);
+  --color-info-content: oklch(15% 0.04 195);
+  --color-success: oklch(62% 0.14 145);
+  --color-success-content: oklch(15% 0.03 145);
+  --color-warning: oklch(78% 0.14 85);
+  --color-warning-content: oklch(22% 0.06 85);
+  --color-error: oklch(62% 0.18 35);
+  --color-error-content: oklch(98% 0.02 35);
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
   --radius-box: 0.5rem;
   --size-selector: 0.25rem;
   --size-field: 0.25rem;

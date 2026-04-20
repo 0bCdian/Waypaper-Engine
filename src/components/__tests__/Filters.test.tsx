@@ -9,8 +9,8 @@ const mockModalOpen = vi.fn();
 const mockImagesState = {
   setFilters: mockSetFilters,
   filters: {
-    order: "desc" as const,
-    type: "id" as const,
+    order: "desc" as "asc" | "desc",
+    type: "id" as "name" | "id",
     mediaType: "all" as const,
     filterTokens: [] as string[],
     advancedFilters: {
@@ -52,9 +52,6 @@ beforeEach(() => {
   mockImagesState.filters.order = "desc";
   mockImagesState.filters.type = "id";
   mockImagesState.filters.mediaType = "all";
-  (window.API_RENDERER.goDaemon.getImageTags as ReturnType<typeof vi.fn>).mockResolvedValue({
-    tags: [],
-  });
 });
 
 describe("Filters", () => {
@@ -142,7 +139,7 @@ describe("Filters", () => {
   });
 
   it("keydown / does not steal focus from a textarea", async () => {
-    const { container } = render(
+    render(
       <>
         <textarea data-testid="other-field" />
         <Filters />

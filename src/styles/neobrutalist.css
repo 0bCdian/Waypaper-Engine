@@ -6,15 +6,13 @@
  * by CSS custom properties that the designSystemStore sets on :root.
  */
 
-/* ── Neobrutalist typeface (Sora — Neo-Grotesque Sans Serif) ──── */
-@import "@fontsource-variable/sora";
-
-/* ── Configurable design tokens (defaults) ─────────────────────── */
+/* ── Configurable design tokens (defaults: 4px border, 8px hard black shadow) ─ */
 [data-design="neobrutalist"] {
-  --neo-shadow-x: 4px;
-  --neo-shadow-y: 4px;
-  --neo-border-width: 3px;
+  --neo-shadow-x: 8px;
+  --neo-shadow-y: 8px;
+  --neo-border-width: 4px;
   --neo-radius: 0rem;
+  --neo-shadow-color: #000000;
 
   /* Override DaisyUI tokens for the neobrutalist feel */
   --radius-selector: var(--neo-radius);
@@ -23,16 +21,14 @@
   --border: var(--neo-border-width);
   --depth: 0;
 
-  /* Neobrutalist typography — Sora variable font */
-  font-family: "Sora Variable", "Sora", ui-sans-serif, system-ui, sans-serif;
+  font-family: var(--font-display, "Space Grotesk Variable", system-ui, sans-serif);
 }
 
 /* ── Buttons ───────────────────────────────────────────────────── */
 [data-design="neobrutalist"] .btn {
   border-radius: var(--neo-radius);
   border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.9);
-  box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0
-    oklch(from var(--color-base-content) l c h / 0.85);
+  box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0 var(--neo-shadow-color);
   font-weight: 800;
   text-transform: uppercase;
   letter-spacing: 0.02em;
@@ -40,13 +36,12 @@
 }
 
 [data-design="neobrutalist"] .btn:hover {
-  box-shadow: calc(var(--neo-shadow-x) + 2px) calc(var(--neo-shadow-y) + 2px) 0 0
-    oklch(from var(--color-base-content) l c h / 0.85);
+  box-shadow: calc(var(--neo-shadow-x) + 2px) calc(var(--neo-shadow-y) + 2px) 0 0 var(--neo-shadow-color);
 }
 
 [data-design="neobrutalist"] .btn:active {
-  transform: translate(2px, 2px);
-  box-shadow: 0 0 0 0 oklch(from var(--color-base-content) l c h / 0.85);
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 0 var(--neo-shadow-color);
 }
 
 /* Ghost / link buttons: lighter border so they don't look heavy */
@@ -95,8 +90,7 @@
   border-radius: var(--neo-radius);
   border: calc(var(--neo-border-width) + 1px) solid
     oklch(from var(--color-base-content) l c h / 0.95);
-  box-shadow: calc(var(--neo-shadow-x) * 2) calc(var(--neo-shadow-y) * 2) 0 0
-    oklch(from var(--color-base-content) l c h / 0.7);
+  box-shadow: calc(var(--neo-shadow-x) * 2) calc(var(--neo-shadow-y) * 2) 0 0 var(--neo-shadow-color);
   overflow: visible;
 }
 
@@ -131,8 +125,7 @@
   background: oklch(from var(--color-error) l c h);
   color: white;
   border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.95);
-  box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0
-    oklch(from var(--color-base-content) l c h / 0.7);
+  box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0 var(--neo-shadow-color);
   cursor: pointer;
   z-index: 60;
   transition: box-shadow 0.1s ease;
@@ -141,13 +134,12 @@
 }
 
 [data-design="neobrutalist"] .neo-close-btn:hover {
-  box-shadow: calc(var(--neo-shadow-x) - 2px) calc(var(--neo-shadow-y) - 2px) 0 0
-    oklch(from var(--color-base-content) l c h / 0.7);
+  box-shadow: calc(var(--neo-shadow-x) - 2px) calc(var(--neo-shadow-y) - 2px) 0 0 var(--neo-shadow-color);
 }
 
 [data-design="neobrutalist"] .neo-close-btn:active {
-  transform: translate(2px, 2px);
-  box-shadow: 0 0 0 0 oklch(from var(--color-base-content) l c h / 0.7);
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 0 var(--neo-shadow-color);
 }
 
 [data-design="neobrutalist"] .neo-close-btn svg {

@@ -94,7 +94,7 @@ export function createMockAPI(): Window["API_RENDERER"] {
           minimize_instead_of_close: false,
           show_monitor_modal_on_start: true,
           images_per_page: 50,
-          theme: "dark" as const,
+          theme: "kolision-raw" as const,
           image_history_limit: 1000,
           sort_by: "imported_at" as const,
           sort_order: "desc" as const,

@@ -38,9 +38,9 @@
 	"dependencies": {
 		"@dnd-kit/helpers": "0.3.2",
 		"@dnd-kit/react": "0.3.2",
-		"@fontsource-variable/sora": "5.2.8",
-		"@fontsource/google-sans": "5.2.1",
-		"@fontsource/google-sans-flex": "5.2.2",
+		"@fontsource-variable/inter": "^5.2.8",
+		"@fontsource-variable/space-grotesk": "^5.2.10",
+		"@fontsource/jetbrains-mono": "^5.2.8",
 		"@tanstack/react-form": "^1.28.3",
 		"framer-motion": "12.34.0",
 		"pino": "9.13.1",

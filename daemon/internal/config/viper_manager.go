@@ -251,7 +251,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("app.minimize_instead_of_close", false)
 	v.SetDefault("app.show_monitor_modal_on_start", false)
 	v.SetDefault("app.images_per_page", 50)
-	v.SetDefault("app.theme", "dark")
+	v.SetDefault("app.theme", "kolision-raw")
 	v.SetDefault("app.image_history_limit", 100)
 	v.SetDefault("app.sort_by", "imported_at")
 	v.SetDefault("app.sort_order", "desc")

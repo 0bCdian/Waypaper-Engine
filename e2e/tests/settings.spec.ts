@@ -16,7 +16,7 @@ test.describe("Settings", () => {
 		expect(res.status).toBe(200);
 		const app = res.data as Record<string, unknown>;
 		expect(app.images_per_page).toBe(50);
-		expect(app.theme).toBe("dark");
+		expect(app.theme).toBe("kolision-raw");
 	});
 
 	test("patch app config section", async ({ api }) => {

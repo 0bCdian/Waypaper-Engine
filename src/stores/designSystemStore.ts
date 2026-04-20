@@ -44,9 +44,9 @@ type DesignSystemStore = DesignSystemState & DesignSystemActions;
 /* ── Defaults ──────────────────────────────────────────────────── */
 
 const DEFAULT_NEO_CONFIG: NeoConfig = {
-  shadowOffsetX: 4,
-  shadowOffsetY: 4,
-  borderWidth: 3,
+  shadowOffsetX: 8,
+  shadowOffsetY: 8,
+  borderWidth: 4,
   cornerRadius: 0,
   polaroidCards: true,
 };

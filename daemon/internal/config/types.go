@@ -31,7 +31,7 @@ type AppConfig struct {
 	// ImagesPerPage is the number of images shown per page in the gallery.
 	ImagesPerPage int `mapstructure:"images_per_page" json:"images_per_page"`
 
-	// Theme is the UI theme: "light", "dark", or "system".
+	// Theme is the DaisyUI theme name (e.g. kolision-raw) or "system" for OS sync.
 	Theme string `mapstructure:"theme" json:"theme"`
 
 	// ImageHistoryLimit is the maximum number of entries in the global wallpaper
