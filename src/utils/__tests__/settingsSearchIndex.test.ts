@@ -29,4 +29,8 @@ describe("settingsSearchIndex", () => {
   it("includes wallhaven for wallhaven query", () => {
     expect(sectionsMatchingSettingsSearchQuery("wallhaven")).toContain("wallhaven");
   });
+
+  it("includes app for typography search", () => {
+    expect(sectionsMatchingSettingsSearchQuery("typography")).toContain("app");
+  });
 });

@@ -34,6 +34,18 @@ type AppConfig struct {
 	// Theme is the DaisyUI theme name (e.g. kolision-raw) or "system" for OS sync.
 	Theme string `mapstructure:"theme" json:"theme"`
 
+	// FontPreset selects bundled Kolision fonts, bundled Google Sans, OS UI stacks, or custom CSS stacks.
+	FontPreset string `mapstructure:"font_preset" json:"font_preset"`
+
+	// FontFamilyBody is a CSS font-family fragment when FontPreset is "custom" (empty = use bundled body).
+	FontFamilyBody string `mapstructure:"font_family_body" json:"font_family_body"`
+
+	// FontFamilyDisplay is used when FontPreset is "custom" (empty = use bundled display).
+	FontFamilyDisplay string `mapstructure:"font_family_display" json:"font_family_display"`
+
+	// FontFamilyMono is used when FontPreset is "custom" (empty = use bundled mono).
+	FontFamilyMono string `mapstructure:"font_family_mono" json:"font_family_mono"`
+
 	// ImageHistoryLimit is the maximum number of entries in the global wallpaper
 	// history log. Oldest entries are trimmed when this limit is exceeded.
 	ImageHistoryLimit int `mapstructure:"image_history_limit" json:"image_history_limit"`

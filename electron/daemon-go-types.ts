@@ -265,6 +265,12 @@ export interface AppConfig {
   images_per_page: number;
   /** DaisyUI theme name (e.g. kolision-raw) or system for OS sync */
   theme: string;
+  /** bundled | google_sans | system | custom */
+  font_preset: string;
+  /** CSS font-family fragment when font_preset is custom */
+  font_family_body: string;
+  font_family_display: string;
+  font_family_mono: string;
   image_history_limit: number;
   sort_by: "name" | "imported_at" | "file_size";
   sort_order: "asc" | "desc";

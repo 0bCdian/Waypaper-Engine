@@ -1,12 +1,13 @@
 import type React from "react";
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/utils/cn";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useDesignSystemStore } from "@/stores/designSystemStore";
 import { useShallow } from "zustand/react/shallow";
 import InlineThemeSelector from "../InlineThemeSelector";
 import { SettingRow, SettingSectionHeader } from "../SettingRow";
-import type { ConfigSection } from "@/shared/types/unifiedConfig";
+import type { ConfigSection, UnifiedConfig } from "@/shared/types/unifiedConfig";
+import { normalizeFontPreset, type FontPreset } from "@/utils/appTypography";
 
 interface AppSettingsSectionProps {
   className?: string;
@@ -57,6 +58,7 @@ export const AppSettingsSection: React.FC<AppSettingsSectionProps> = ({ classNam
   const section: ConfigSection = "app";
 
   const [themeOpen, setThemeOpen] = useState(false);
+  const [typographyOpen, setTypographyOpen] = useState(false);
 
   const handleChange = async (key: string, value: unknown) => {
     await saveConfigSection(section, { [key]: value });
@@ -109,6 +111,36 @@ export const AppSettingsSection: React.FC<AppSettingsSectionProps> = ({ classNam
         </div>
       )}
 
+      <button
+        type="button"
+        className="w-full flex items-center justify-between py-4 border-b border-base-content/5 group"
+        onClick={() => setTypographyOpen((v) => !v)}
+      >
+        <div className="text-left">
+          <div className="text-sm font-medium text-base-content">Typography</div>
+          <div className="text-xs text-base-content/50 mt-0.5">
+            Bundled fonts, Google Sans, system UI stacks, or custom CSS family names
+          </div>
+        </div>
+        <svg
+          className={cn(
+            "w-4 h-4 text-base-content/40 transition-transform",
+            typographyOpen && "rotate-180",
+          )}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {typographyOpen && (
+        <div className="py-4 border-b border-base-content/5 space-y-4">
+          <TypographySection config={config} saveConfigSection={saveConfigSection} />
+        </div>
+      )}
+
       {/* ── Design System ───────────────────────────────── */}
       <DesignSystemSection />
 
@@ -134,6 +166,169 @@ export const AppSettingsSection: React.FC<AppSettingsSectionProps> = ({ classNam
       {/* ── Import ─────────────────────────────────────── */}
       <SettingSectionHeader title="Import" />
       <UrlImportWarningSetting />
+    </div>
+  );
+};
+
+const FONT_PRESET_CHOICES: {
+  value: FontPreset;
+  title: string;
+  description: string;
+}[] = [
+  {
+    value: "bundled",
+    title: "Shipped (Kolision)",
+    description:
+      "Inter, Space Grotesk, and JetBrains Mono from the app bundle (self-hosted, CSP-safe).",
+  },
+  {
+    value: "google_sans",
+    title: "Google Sans",
+    description: "Bundled Google Sans Flex for UI text; JetBrains Mono for monospace.",
+  },
+  {
+    value: "system",
+    title: "Follow system",
+    description: "Use the operating system UI font stacks (no bundled UI faces).",
+  },
+  {
+    value: "custom",
+    title: "Custom",
+    description:
+      "CSS font-family stacks per role. Use installed font family names, e.g. \"Fira Sans\", sans-serif. Leave a field empty to keep the shipped default for that role.",
+  },
+];
+
+const TypographySection: React.FC<{
+  config: UnifiedConfig | null;
+  saveConfigSection: (section: ConfigSection, data: Record<string, unknown>) => Promise<void>;
+}> = ({ config, saveConfigSection }) => {
+  const section: ConfigSection = "app";
+  const preset = normalizeFontPreset(config?.app?.font_preset);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const [customBody, setCustomBody] = useState(() => config?.app?.font_family_body ?? "");
+  const [customDisplay, setCustomDisplay] = useState(() => config?.app?.font_family_display ?? "");
+  const [customMono, setCustomMono] = useState(() => config?.app?.font_family_mono ?? "");
+
+  useEffect(() => {
+    setCustomBody(config?.app?.font_family_body ?? "");
+    setCustomDisplay(config?.app?.font_family_display ?? "");
+    setCustomMono(config?.app?.font_family_mono ?? "");
+  }, [config?.app?.font_family_body, config?.app?.font_family_display, config?.app?.font_family_mono]);
+
+  const latestCustom = useRef({ body: "", display: "", mono: "" });
+  latestCustom.current = { body: customBody, display: customDisplay, mono: customMono };
+
+  const scheduleCustomSave = useCallback(() => {
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => {
+      debounceRef.current = null;
+      const { body, display, mono } = latestCustom.current;
+      void saveConfigSection(section, {
+        font_preset: "custom",
+        font_family_body: body,
+        font_family_display: display,
+        font_family_mono: mono,
+      });
+    }, 300);
+  }, [saveConfigSection]);
+
+  useEffect(
+    () => () => {
+      if (debounceRef.current) clearTimeout(debounceRef.current);
+    },
+    [],
+  );
+
+  const setPreset = (value: FontPreset) => {
+    void saveConfigSection(section, { font_preset: value });
+  };
+
+  return (
+    <div className="space-y-4">
+      <fieldset className="space-y-2">
+        <legend className="sr-only">Font preset</legend>
+        {FONT_PRESET_CHOICES.map((opt) => (
+          <label
+            key={opt.value}
+            className={cn(
+              "flex cursor-pointer gap-3 rounded-lg border p-3 text-left transition-colors",
+              preset === opt.value
+                ? "border-primary bg-primary/5"
+                : "border-base-content/10 hover:border-base-content/20",
+            )}
+          >
+            <input
+              type="radio"
+              name="app-font-preset"
+              className="radio radio-primary mt-0.5 shrink-0"
+              checked={preset === opt.value}
+              onChange={() => setPreset(opt.value)}
+            />
+            <span>
+              <span className="block text-sm font-medium text-base-content">{opt.title}</span>
+              <span className="mt-0.5 block text-xs text-base-content/50">{opt.description}</span>
+            </span>
+          </label>
+        ))}
+      </fieldset>
+
+      {preset === "custom" && (
+        <div className="space-y-3">
+          <div>
+            <label className="mb-1 block text-xs font-medium text-base-content/70" htmlFor="font-custom-body">
+              Body
+            </label>
+            <input
+              id="font-custom-body"
+              type="text"
+              className="input input-bordered input-sm w-full font-mono text-xs"
+              value={customBody}
+              onChange={(e) => {
+                setCustomBody(e.target.value);
+                scheduleCustomSave();
+              }}
+              placeholder='"Fira Sans", sans-serif'
+            />
+          </div>
+          <div>
+            <label
+              className="mb-1 block text-xs font-medium text-base-content/70"
+              htmlFor="font-custom-display"
+            >
+              Display / headings
+            </label>
+            <input
+              id="font-custom-display"
+              type="text"
+              className="input input-bordered input-sm w-full font-mono text-xs"
+              value={customDisplay}
+              onChange={(e) => {
+                setCustomDisplay(e.target.value);
+                scheduleCustomSave();
+              }}
+              placeholder='"Fraunces", serif'
+            />
+          </div>
+          <div>
+            <label className="mb-1 block text-xs font-medium text-base-content/70" htmlFor="font-custom-mono">
+              Monospace
+            </label>
+            <input
+              id="font-custom-mono"
+              type="text"
+              className="input input-bordered input-sm w-full font-mono text-xs"
+              value={customMono}
+              onChange={(e) => {
+                setCustomMono(e.target.value);
+                scheduleCustomSave();
+              }}
+              placeholder='"IBM Plex Mono", monospace'
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 };

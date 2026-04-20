@@ -211,6 +211,52 @@ function Filters() {
 
   const isNeo = useIsNeo();
 
+  const filterSelectClassNames = useMemo(
+    () =>
+      isNeo
+        ? {
+            control: ({ isFocused }: { isFocused: boolean }) =>
+              [
+                "neo-rs-control flex min-h-12 flex-wrap items-center gap-1 px-2 py-1 text-center text-base",
+                isFocused ? "neo-rs-control--focused" : "",
+              ].join(" "),
+            valueContainer: () => "flex flex-1 flex-wrap gap-1 py-0.5",
+            multiValue: () => "badge badge-primary gap-1 max-w-full",
+            multiValueLabel: () => "text-xs font-extrabold uppercase tracking-tight truncate",
+            multiValueRemove: () =>
+              "hover:bg-primary-focus rounded-none px-0.5 text-lg font-black leading-none opacity-80 hover:opacity-100",
+            input: () => "min-w-[8ch] flex-1 bg-transparent text-base font-bold outline-none",
+            placeholder: () =>
+              "truncate text-xs font-extrabold uppercase tracking-widest text-base-content/55",
+            menu: () => "neo-rs-menu mt-1 w-full p-0 shadow-none",
+            menuList: () => "neo-rs-menuList max-h-[min(70vh,24rem)] overflow-y-auto py-1",
+            option: ({ isFocused }: { isFocused: boolean }) =>
+              [
+                "neo-rs-option cursor-pointer px-3 py-2 text-xs font-extrabold uppercase tracking-tight",
+                isFocused ? "neo-rs-option--focused" : "",
+              ].join(" "),
+          }
+        : {
+            control: ({ isFocused }: { isFocused: boolean }) =>
+              [
+                "flex min-h-12 flex-wrap items-center gap-1 rounded-xl border-0 bg-base-300 px-2 py-1 text-center text-base font-medium",
+                isFocused ? "ring-2 ring-primary ring-offset-2 ring-offset-base-100" : "",
+              ].join(" "),
+            valueContainer: () => "flex flex-1 flex-wrap gap-1 py-0.5",
+            multiValue: () => "badge badge-primary gap-1 max-w-full",
+            multiValueLabel: () => "text-xs font-medium truncate",
+            multiValueRemove: () =>
+              "hover:bg-primary-focus rounded px-0.5 text-lg leading-none opacity-70 hover:opacity-100",
+            input: () => "min-w-[8ch] flex-1 bg-transparent text-base outline-none",
+            placeholder: () => "text-base-content/50 truncate",
+            menu: () => "mt-1 w-full rounded-lg border border-base-300 bg-base-100 shadow-xl",
+            menuList: () => "max-h-[min(70vh,24rem)] overflow-y-auto py-1",
+            option: ({ isFocused }: { isFocused: boolean }) =>
+              `cursor-pointer px-3 py-2 text-sm ${isFocused ? "bg-base-200" : ""}`,
+          },
+    [isNeo],
+  );
+
   return (
     <section
       className={`group mt-4 lg:mt-10 mb-3 lg:mb-5 flex flex-wrap justify-center gap-2 px-2${isNeo ? " neo-filters-strip" : ""}`}
@@ -306,25 +352,7 @@ function Filters() {
             styles={{
               menuPortal: (base) => ({ ...base, zIndex: 10000 }),
             }}
-            classNames={{
-              control: ({ isFocused }) =>
-                [
-                  "flex min-h-12 flex-wrap items-center gap-1 rounded-xl border-0 bg-base-300 px-2 py-1 text-center text-base font-medium",
-                  isFocused ? "ring-2 ring-primary ring-offset-2 ring-offset-base-100" : "",
-                ].join(" "),
-              valueContainer: () => "flex flex-1 flex-wrap gap-1 py-0.5",
-              multiValue: () => "badge badge-primary gap-1 max-w-full",
-              multiValueLabel: () => "text-xs font-medium truncate",
-              multiValueRemove: () =>
-                "hover:bg-primary-focus rounded px-0.5 text-lg leading-none opacity-70 hover:opacity-100",
-              input: () => "min-w-[8ch] flex-1 bg-transparent text-base outline-none",
-              placeholder: () => "text-base-content/50 truncate",
-              menu: () =>
-                "mt-1 w-full rounded-lg border border-base-300 bg-base-100 shadow-xl",
-              menuList: () => "max-h-[min(70vh,24rem)] overflow-y-auto py-1",
-              option: ({ isFocused }) =>
-                `cursor-pointer px-3 py-2 text-sm ${isFocused ? "bg-base-200" : ""}`,
-            }}
+            classNames={filterSelectClassNames}
             formatCreateLabel={(inputValue) => `Add "${inputValue}"`}
             isValidNewOption={(inputValue) => inputValue.trim().length > 0}
             placeholder={TOKEN_PLACEHOLDER}

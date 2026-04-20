@@ -40,6 +40,8 @@
 		"@dnd-kit/react": "0.3.2",
 		"@fontsource-variable/inter": "^5.2.8",
 		"@fontsource-variable/space-grotesk": "^5.2.10",
+		"@fontsource/google-sans": "^5.2.1",
+		"@fontsource/google-sans-flex": "^5.2.4",
 		"@fontsource/jetbrains-mono": "^5.2.8",
 		"@tanstack/react-form": "^1.28.3",
 		"framer-motion": "12.34.0",

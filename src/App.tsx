@@ -3,6 +3,7 @@ import { Routes, Route, HashRouter } from "react-router-dom";
 import Modals from "./components/Modals";
 import { ThemeProvider } from "./contexts/ThemeContext";
 import { useLoadAppConfig } from "./hooks/useLoadAppConfig";
+import { useSyncAppTypography } from "./hooks/useSyncAppTypography";
 import { useLoadMonitors } from "./hooks/useLoadMonitors";
 import { useRealTimeImageProcessing } from "./hooks/useRealTimeImageProcessing";
 import useNotifications from "./hooks/useNotifications";
@@ -21,6 +22,7 @@ const LoopStudio = lazy(() => import("./routes/LoopStudio"));
 
 const App = () => {
   useLoadAppConfig()();
+  useSyncAppTypography();
   useLoadMonitors();
   useRealTimeImageProcessing();
   useNotifications();

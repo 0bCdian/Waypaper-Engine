@@ -6,6 +6,8 @@
 @import "@fontsource-variable/space-grotesk";
 @import "@fontsource/jetbrains-mono/400.css";
 @import "@fontsource/jetbrains-mono/700.css";
+@import "@fontsource/google-sans-flex";
+@import "@fontsource/google-sans";
 
 /* Import neobrutalist design system overlay */
 @import "./styles/neobrutalist.css";
