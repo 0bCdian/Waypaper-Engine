@@ -3,6 +3,7 @@ package waylandutauri
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/media"
@@ -10,8 +11,11 @@ import (
 )
 
 type loadTarget struct {
-	Monitor uint32 `json:"monitor"`
-	Target  string `json:"target"`
+	Name   string `json:"name"`
+	Target string `json:"target"`
+	// Kind mirrors the top-level load kind so wal-utauri can resolve each monitor even if the
+	// root `kind` field is omitted or mishandled by a proxy.
+	Kind string `json:"kind,omitempty"`
 }
 
 type transitionParamsBody struct {
@@ -38,7 +42,7 @@ type loadRequest struct {
 	WallpaperConfigValues json.RawMessage       `json:"wallpaper_config_values,omitempty"`
 }
 
-func buildLoadRequest(req backend.WallpaperRequest, cfg *Config, monitorMap map[string]uint32) (loadRequest, error) {
+func buildLoadRequest(req backend.WallpaperRequest, cfg *Config) (loadRequest, error) {
 	kind := "image"
 	switch req.MediaType {
 	case media.MediaTypeVideo:
@@ -65,9 +69,6 @@ func buildLoadRequest(req backend.WallpaperRequest, cfg *Config, monitorMap map[
 			WaveAmplitudePercent: cfg.TransitionWaveAmplitudePercent,
 			WaveFrequency:        cfg.TransitionWaveFrequency,
 		},
-		// Non-blocking: server returns 202 immediately while transitions run. Using true ties the
-		// HTTP client deadline (request_timeout_ms, often ~1.5s) to transition duration and can
-		// serialize the control server so /wallpaper/status also times out (see tiny_http / command queue).
 		WaitForCompletion: false,
 	}
 	out.Parallax = buildParallaxRequestBody(cfg)
@@ -88,13 +89,14 @@ func buildLoadRequest(req backend.WallpaperRequest, cfg *Config, monitorMap map[
 			return loadRequest{}, fmt.Errorf("wayland-utauri: individual mode requires at least one monitor")
 		}
 		for _, m := range req.Monitors {
-			id, ok := monitorMap[m.Name]
-			if !ok {
-				return loadRequest{}, fmt.Errorf("wayland-utauri: unknown monitor %q", m.Name)
+			name := strings.TrimSpace(m.Name)
+			if name == "" {
+				return loadRequest{}, fmt.Errorf("wayland-utauri: monitor has empty name")
 			}
 			out.Targets = append(out.Targets, loadTarget{
-				Monitor: id,
-				Target:  req.ImagePath,
+				Name:   name,
+				Target: req.ImagePath,
+				Kind:   kind,
 			})
 		}
 		return out, nil
@@ -115,7 +117,7 @@ type parallaxStateSnapshot struct {
 }
 
 type monitorStatusSnapshot struct {
-	Monitor        uint32                `json:"monitor"`
+	Name           string                `json:"name"`
 	Visible        bool                  `json:"visible"`
 	CurrentTarget  *string               `json:"current_target,omitempty"`
 	PendingTarget  *string               `json:"pending_target,omitempty"`
@@ -156,37 +158,34 @@ type statusResponse struct {
 }
 
 type topologyEntry struct {
-	Monitor  uint32  `json:"monitor"`
-	StableID string  `json:"stable_id"`
-	Width    int     `json:"width"`
-	Height   int     `json:"height"`
-	X        int     `json:"x"`
-	Y        int     `json:"y"`
-	Model    *string `json:"model,omitempty"`
+	Name   string  `json:"name"`
+	Width  int     `json:"width"`
+	Height int     `json:"height"`
+	X      int     `json:"x"`
+	Y      int     `json:"y"`
+	Model  *string `json:"model,omitempty"`
 }
 
 const topologyGeometryEpsilonPx = 2.0
 
-// TopologyMonitorMatch returns the waypaper-tauri monitor index whose GDK geometry
-// matches compositor-reported bounds in global layout space.
-func TopologyMonitorMatch(topo []topologyEntry, x, y, width, height float64) (uint32, bool) {
+// TopologyMonitorMatch returns the compositor output name whose geometry matches bounds.
+func TopologyMonitorMatch(topo []topologyEntry, x, y, width, height float64) (string, bool) {
 	for _, e := range topo {
 		if approxEqTopology(float64(e.X), x) &&
 			approxEqTopology(float64(e.Y), y) &&
 			approxEqTopology(float64(e.Width), width) &&
 			approxEqTopology(float64(e.Height), height) {
-			return e.Monitor, true
+			return e.Name, true
 		}
 	}
-	return 0, false
+	return "", false
 }
 
 // TopologyMonitorContainingCenter returns the topology entry whose rectangle contains
 // the center of bounds, preferring the smallest area when rects overlap (unlikely).
-// Used when Hyprland/GDK width/height differ but position still matches.
-func TopologyMonitorContainingCenter(topo []topologyEntry, x, y, width, height float64) (uint32, bool) {
+func TopologyMonitorContainingCenter(topo []topologyEntry, x, y, width, height float64) (string, bool) {
 	if width <= 0 || height <= 0 {
-		return 0, false
+		return "", false
 	}
 	cx := x + width*0.5
 	cy := y + height*0.5
@@ -206,37 +205,33 @@ func TopologyMonitorContainingCenter(topo []topologyEntry, x, y, width, height f
 		}
 	}
 	if best != nil {
-		return best.Monitor, true
+		return best.Name, true
 	}
-	return 0, false
+	return "", false
 }
 
-// TopologyMonitorMatchByPosition returns the topology entry whose X, Y position
-// matches the compositor-reported bounds origin. Width/height are ignored so
-// scaling differences between Hyprland and GDK don't cause mismatches.
-func TopologyMonitorMatchByPosition(topo []topologyEntry, x, y float64) (uint32, bool) {
+// TopologyMonitorMatchByPosition returns the topology entry whose X, Y matches bounds origin.
+func TopologyMonitorMatchByPosition(topo []topologyEntry, x, y float64) (string, bool) {
 	for _, e := range topo {
 		if approxEqTopology(float64(e.X), x) && approxEqTopology(float64(e.Y), y) {
-			return e.Monitor, true
+			return e.Name, true
 		}
 	}
-	return 0, false
+	return "", false
 }
 
-// ResolveParallaxMonitor picks a waypaper monitor using only geometry-derived
-// topology matching so compositor-specific monitor indices never leak into
-// resolution.
-func ResolveParallaxMonitor(topo []topologyEntry, boundsX, boundsY, boundsW, boundsH float64) (uint32, bool) {
-	if id, ok := TopologyMonitorMatch(topo, boundsX, boundsY, boundsW, boundsH); ok {
-		return id, true
+// ResolveParallaxMonitor picks a compositor output name using geometry-derived topology matching.
+func ResolveParallaxMonitor(topo []topologyEntry, boundsX, boundsY, boundsW, boundsH float64) (string, bool) {
+	if n, ok := TopologyMonitorMatch(topo, boundsX, boundsY, boundsW, boundsH); ok {
+		return n, true
 	}
-	if id, ok := TopologyMonitorMatchByPosition(topo, boundsX, boundsY); ok {
-		return id, true
+	if n, ok := TopologyMonitorMatchByPosition(topo, boundsX, boundsY); ok {
+		return n, true
 	}
-	if id, ok := TopologyMonitorContainingCenter(topo, boundsX, boundsY, boundsW, boundsH); ok {
-		return id, true
+	if n, ok := TopologyMonitorContainingCenter(topo, boundsX, boundsY, boundsW, boundsH); ok {
+		return n, true
 	}
-	return 0, false
+	return "", false
 }
 
 func approxEqTopology(a, b float64) bool {
@@ -245,27 +240,4 @@ func approxEqTopology(a, b float64) bool {
 		d = -d
 	}
 	return d <= topologyGeometryEpsilonPx
-}
-
-func buildMonitorMap(topology []topologyEntry, engineMonitors []monitor.Monitor) map[string]uint32 {
-	m := make(map[string]uint32, len(topology))
-
-	// Primary strategy: match engine monitors to topology entries by geometry.
-	for _, eng := range engineMonitors {
-		for _, topo := range topology {
-			if eng.X == topo.X && eng.Y == topo.Y && eng.Width == topo.Width && eng.Height == topo.Height {
-				m[eng.Name] = topo.Monitor
-				break
-			}
-		}
-	}
-
-	// Fallback: if geometry matching yielded nothing, use the same labels as topologyToEngineMonitors.
-	if len(m) == 0 {
-		for _, entry := range topology {
-			m[fmt.Sprintf("Monitor %d", entry.Monitor)] = entry.Monitor
-		}
-	}
-
-	return m
 }

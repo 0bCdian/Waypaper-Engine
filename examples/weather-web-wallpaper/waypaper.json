@@ -1,0 +1,10 @@
+{
+  "waypaper": "1",
+  "title": "Weather (network test)",
+  "version": "1.0.0",
+  "entry": "index.html",
+  "description": "Fetches current weather from Open-Meteo. Enable backend allow_network_wallpapers to test.",
+  "capabilities": {
+    "network": true
+  }
+}

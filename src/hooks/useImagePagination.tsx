@@ -1,12 +1,15 @@
 import type { ReactNode } from "react";
-import { useEffect, lazy, Suspense } from "react";
+import { useEffect, lazy, Suspense, useRef } from "react";
 import { useFilteredImages } from "./useFilteredImages";
 import { useImagesStore } from "../stores/images";
 import { useShallow } from "zustand/react/shallow";
 import { useHotkeys } from "react-hotkeys-hook";
 import type { rendererImage } from "../types/rendererTypes";
 import { useSettingsStore } from "../stores/settingsStore";
-import type { ImageQueryParams } from "../../electron/daemon-go-types";
+import {
+  parseGalleryFilterTokens,
+  hasClientSideGalleryFilters,
+} from "../utils/galleryFilterTokens";
 
 const ImageCard = lazy(async () => await import("../components/ImageCard"));
 
@@ -25,6 +28,8 @@ export function useImagePagination() {
     );
   const { filteredImages } = useFilteredImages();
 
+  const prevTokensSerialized = useRef<string | null>(null);
+
   // Sync perPage from config on first load
   useEffect(() => {
     const configPerPage = config?.app?.images_per_page ?? 50;
@@ -33,9 +38,12 @@ export function useImagePagination() {
     }
   }, [config?.app?.images_per_page, perPage]);
 
-  const hasClientSideFilter =
-    filters.advancedFilters.resolution.constraint !== "all" ||
-    filters.advancedFilters.formats.length < 10;
+  const parsed = parseGalleryFilterTokens(filters.filterTokens);
+  const hasClientSideFilter = hasClientSideGalleryFilters(
+    parsed,
+    filters.mediaType,
+    filters.advancedFilters.resolution,
+  );
 
   const totalPages = hasClientSideFilter
     ? Math.max(1, Math.ceil(filteredImages.length / perPage))
@@ -60,13 +68,7 @@ export function useImagePagination() {
   const imagesToShow = imageCardJsxArray;
 
   const handlePageChange = (page: number) => {
-    const { filters: currentFilters } = useImagesStore.getState();
-    const queryParams: Partial<ImageQueryParams> = {
-      sort_by: currentFilters.type === "name" ? "name" : "imported_at",
-      sort_order: currentFilters.order,
-      search: currentFilters.searchString || undefined,
-    };
-    useImagesStore.getState().fetchPage(page, queryParams);
+    useImagesStore.getState().fetchPage(page);
   };
 
   const selectImagesInCurrentPage = () => {
@@ -91,16 +93,17 @@ export function useImagePagination() {
     [imagesInCurrentPage, selectedImages],
   );
 
-  // Reset to page 1 when search is cleared
   useEffect(() => {
-    if (filters.searchString === "") {
-      const { filters: currentFilters } = useImagesStore.getState();
-      useImagesStore.getState().fetchPage(1, {
-        sort_by: currentFilters.type === "name" ? "name" : "imported_at",
-        sort_order: currentFilters.order,
-      });
+    const serialized = JSON.stringify(filters.filterTokens);
+    if (
+      prevTokensSerialized.current !== null &&
+      serialized === "[]" &&
+      prevTokensSerialized.current !== "[]"
+    ) {
+      useImagesStore.getState().fetchPage(1);
     }
-  }, [filters.searchString]);
+    prevTokensSerialized.current = serialized;
+  }, [filters.filterTokens]);
 
   return {
     currentPage,

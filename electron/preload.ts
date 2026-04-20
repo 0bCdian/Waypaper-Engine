@@ -25,6 +25,8 @@ import type {
   WallpaperCurrent,
   EventType,
   Folder,
+  VideoLoopExportRequest,
+  VideoLoopExportResult,
 } from "./daemon-go-types";
 import { unwrapIPCResponse } from "./ipcEnvelope";
 
@@ -51,6 +53,12 @@ const electronAPI = {
       ipcRenderer.invoke("go-daemon-command", "get_image", { id }),
     ensureBrowserPreview: (id: number, force?: boolean): Promise<Image> =>
       ipcRenderer.invoke("go-daemon-command", "ensure_browser_preview", { id, force }),
+
+    videoLoopExport: (
+      id: number,
+      body: VideoLoopExportRequest,
+    ): Promise<VideoLoopExportResult> =>
+      ipcRenderer.invoke("go-daemon-command", "video_loop_export", { id, body }),
 
     getImageCount: (): Promise<{ count: number }> =>
       ipcRenderer.invoke("go-daemon-command", "get_image_count"),
@@ -255,11 +263,11 @@ const electronAPI = {
         data,
       }),
 
-    getBackendConfig: (): Promise<Record<string, unknown>> =>
-      ipcRenderer.invoke("go-daemon-command", "get_backend_config"),
+    getBackendConfig: (name: string): Promise<Record<string, unknown>> =>
+      ipcRenderer.invoke("go-daemon-command", "get_backend_config", { name }),
 
-    updateBackendConfig: (config: Record<string, unknown>): Promise<void> =>
-      ipcRenderer.invoke("go-daemon-command", "update_backend_config", config),
+    updateBackendConfig: (name: string, patch: Record<string, unknown>): Promise<void> =>
+      ipcRenderer.invoke("go-daemon-command", "update_backend_config", { name, patch }),
 
     // BACKENDS
     getBackends: (): Promise<BackendInfo[]> =>

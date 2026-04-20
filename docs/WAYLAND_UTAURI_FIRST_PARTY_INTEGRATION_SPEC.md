@@ -107,16 +107,15 @@ The first implemented adapter can conservatively report fewer media types if nee
 
 ### 5.1 Monitor Identity Translation
 
-Engine monitor model is name-based (`Monitor.Name`, e.g. `DP-1`), while current tauri runtime status/topology includes numeric monitor ids and stable identifiers.
+Engine monitor model is name-based (`Monitor.Name`, e.g. `DP-1`). The wayland-utauri control API exposes the same compositor output **`name`** on each topology entry (see host `docs/API_CONTRACT.md`; `api_version` stays **`0`** per [ZeroVer](https://0ver.org/)).
 
-Adapter translation contract:
+Adapter contract:
 
-1. Build monitor map from `GET /wallpaper/status.topology`.
-2. Derive engine-facing `Monitor.Name` from `stable_id` when present.
-3. If a stable id is unavailable, use deterministic fallback: `WAYLAND-OUTPUT-{monitor_id}`.
-4. Cache map per request cycle; refresh on monitor events or status refresh.
+1. Read `GET /wallpaper/status.topology` and set `Monitor.Name` from each entry’s `name`.
+2. Individual `POST /wallpaper/load` targets use `{ "name": "<output>", "target": "..." }`.
+3. Refresh the monitor list on hotplug / status refresh like any other provider.
 
-This guarantees deterministic per-monitor targeting in engine APIs.
+No geometry-based remapping or synthetic `Monitor N` labels are required for this backend.
 
 ### 5.2 Status/Telemetry Translation
 
@@ -151,7 +150,7 @@ Engine should not depend on renderer-internal telemetry fields for core correctn
 
 Version source of truth: `X-API-Version` header from wayland-utauri responses (string match against `backend.wayland-utauri.expected_api_version`, default **`0`**).
 
-Control-plane epoch string is **`0`** ([ZeroVer](https://0ver.org/) in spirit), independent of Waypaper Engine app semver or the wayland-utauri crate version.
+Control-plane follows [ZeroVer](https://0ver.org/): the API string remains **`0`**. Load targets, parallax scope, and status topology use compositor **`name`** strings (wl_output / xdg-output), not numeric monitor indices — as defined in the host’s `docs/API_CONTRACT.md`, not by bumping `api_version`.
 
 Compatibility policy:
 
@@ -180,12 +179,12 @@ Degraded behavior rules:
 ### Phase A (informational parity)
 
 - Engine Wayland monitor chain: **Wayland-Utani** (control API topology) preferred, then **`wlr-randr`**; **X11**: `xrandr`. Tiling-WM CLIs (`hyprctl`, `swaymsg`) are not used.
-- Wayland-Utani topology is both the preferred monitor list (when the socket is up) and the source for adapter-local monitor id translation.
+- Wayland-Utani topology is both the preferred monitor list (when the socket is up) and carries compositor **`name`** fields end-to-end (daemon monitor list and per-monitor wallpaper targets).
 
 Readiness:
 
 - adapter can set wallpaper on selected monitors reliably
-- topology translation test coverage complete
+- compositor-name load/parallax contract tests in the Go backend
 
 Rollback:
 
@@ -193,8 +192,7 @@ Rollback:
 
 Observability:
 
-- adapter monitor-map build success/failure counters
-- mismatch counters (`unknown_monitor_name`, `missing_stable_id`)
+- load/status success and `unknown monitor name` class errors from the host
 
 ### Phase B (optional monitor source)
 

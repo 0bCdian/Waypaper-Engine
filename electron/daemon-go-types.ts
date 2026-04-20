@@ -39,6 +39,8 @@ export interface ImageQueryParams {
   search?: string;
   tags?: string;
   colors?: string;
+  /** Comma-separated `#hex~maxDeltaE` (CIE76 vs stored palette). */
+  colors_near?: string;
   folder_id?: number | "root";
 }
 
@@ -370,18 +372,6 @@ export interface WaylandUtauriConfig {
   video_audio_default?: boolean;
   /** When true, HTML wallpapers may use fetch/XHR to the network (synced to wayland-utauri at runtime). */
   allow_network_wallpapers?: boolean;
-  /** When true, pauses wallpaper web renderers (lower CPU/GPU use). Synced to wayland-utauri. */
-  renderer_pause?: boolean;
-  /** Host policy: manifest may request keyboard interactivity (layer-shell). Default false. */
-  allow_web_keyboard?: boolean;
-  /** Host policy: manifest may request desktop audio capture for reactive wallpapers. Default false. */
-  allow_web_audio_reactive?: boolean;
-  /** Host policy: manifest may request pointer hit-testing (vs passthrough). Default true. */
-  allow_web_pointer_interactive?: boolean;
-  /** Host policy: manifest may declare parallax_aware. Default true. */
-  allow_web_parallax_aware?: boolean;
-  /** Host policy: manifest `capabilities.network` is honored (still requires allow_network_wallpapers for CSP). Default false. */
-  allow_web_manifest_network?: boolean;
 }
 
 export interface MonitorsConfig {
@@ -602,6 +592,20 @@ export interface ImportImagesRequest {
 export interface ImportWebWallpaperRequest {
   path: string;
   folder_id?: number | null;
+}
+
+export interface VideoLoopExportRequest {
+  in_seconds: number;
+  out_seconds: number;
+  preset: "webm_vp9" | "mp4_h264" | string;
+  action: "replace" | "import_new" | string;
+  folder_id?: number | null;
+}
+
+export interface VideoLoopExportResult {
+  action: string;
+  image_id: number;
+  path: string;
 }
 
 export interface DeleteImagesRequest {

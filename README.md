@@ -9,7 +9,7 @@
 
 ### _A wallpaper setter gui, developed with ricing in mind!_ 🍚
 
-**[<kbd> <br> Why <br>  </kbd>](#why)**
+**[<kbd> <br> Overview <br>  </kbd>](#overview)**
 **[<kbd> <br> How to install <br> </kbd>](#install)**
 **[<kbd> <br> Usage <br> </kbd>](#usage)**
 **[<kbd> <br> TODO <br> </kbd>](#todo)**
@@ -21,9 +21,15 @@
 > [!IMPORTANT]
 > **Project Status:** Waypaper Engine is under active development and in a major rewrite cycle. Release-ready work currently happens on `main` and `refactor/wayaper-daemon` until the rewrite fully lands in `main`. Expect rapid iteration and occasional breaking changes before stable tags.
 
+**Operations docs:** [Install](docs/INSTALL.md) · [Production readiness](docs/PRODUCTION_READINESS.md) · [Critical user journeys](docs/CRITICAL_USER_JOURNEYS.md) · [Architecture](docs/ARCHITECTURE.md)
+
+# Overview
+
+**Waypaper Engine** is a Linux wallpaper manager (**Wayland and X11**) with a gallery, playlists, imports (including [Wallhaven](https://wallhaven.cc/)), and per-monitor history. A **Go daemon** stores your library and drives pluggable backends; the **Electron** UI is the control center. Use classic tools like [awww](https://github.com/LGFae/awww), [hyprpaper](https://github.com/hyprwm/hyprpaper), or [feh](https://feh.finalrewind.org/), or pair with **[wayland-utauri](https://github.com/0bCdian/wayland-utauri)** for local HTML and video wallpapers on Wayland.
+
 # What's New (v2 Rewrite)
 
-The rewrite replaces the old Node.js backend with a Go daemon and overhauls the frontend. Here's what's been implemented so far:
+The v2 line replaces the old Node.js backend with a Go daemon and a rebuilt frontend. Highlights:
 
 ### Architecture
 -   **Go daemon backend** — A standalone Go service that handles all wallpaper, playlist, image, and monitor operations over a Unix socket HTTP API. Replaces the old Node.js/SQLite backend entirely.
@@ -32,7 +38,7 @@ The rewrite replaces the old Node.js backend with a Go daemon and overhauls the 
 -   **Server-Sent Events (SSE)** — Real-time event streaming from daemon to frontend for image processing progress, wallpaper changes, playlist updates, and config changes.
 -   **Cobra CLI** — Full CLI (`start`, `stop`, `status`, `set`, `random`, `next`, `previous`, image/playlist/monitor/backend/config management) that talks to the running daemon over the socket.
 
-**wayland-utauri / HTML wallpapers**: by default, HTML wallpapers cannot use `fetch`/XHR to the network (WebKit `connect-src 'none'`). Enable **`backend.wayland-utauri.allow_network_wallpapers`** and, to honor manifest flags, **`allow_web_manifest_network`** in config (Settings → Backend); the daemon syncs policy to a running `wayland-utauri`. Effective network access is `global allow ∧ manifest network ∧ policy`. Other manifest capabilities (keyboard, audio reactive, pointer, parallax) are capped by **`allow_web_*`** keys (see `WEB_WALLPAPER_SPEC.md` in the waypaper-tauri tree). See also [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#14-security-daemon-socket--html-wallpapers).
+**HTML wallpapers (wayland-utauri):** Outbound network starts **denied** until **`allow_network_wallpapers`** is on **and** the wallpaper manifest sets **`capabilities.network`**; other manifest capabilities are honored as stored. The daemon syncs the global network flag to **wayland-utauri**. See [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md#14-security-daemon-socket--html-wallpapers) and the [Web wallpaper spec](https://github.com/0bCdian/wayland-utauri/blob/main/docs/WEB_WALLPAPER_SPEC.md).
 
 ### Features
 -   **Image renaming** — Rename images from the gallery (inline or detail sidebar), with automatic deduplication and physical file rename on disk. Playlists are unaffected since they reference images by stable IDs.
@@ -66,181 +72,48 @@ https://github.com/0bCdian/Waypaper-Engine/assets/101421807/4d49225a-cbdc-42a0-a
 
 ---
 
-# Why
-
-I started this project for two main reasons, one as a learning oportunity, and two because the available options for a tool like this didn't suit my needs fully. I really like [awww](https://github.com/LGFae/awww) but it lacks a lot of the features that I missed from wallpaper engine in windows, so this is my attempt to bridge that gap a little.
-
 # Install
 
-## Arch Linux (AUR)
+Full guide (AppImage, `make install`, Arch/AUR, distro packaging): **[docs/INSTALL.md](docs/INSTALL.md)**.
+
+**Quick start — user-local from source**
+
+```bash
+git clone https://github.com/0bCdian/Waypaper-Engine.git
+cd Waypaper-Engine
+make deps && make electron && make install
+```
+
+**Quick start — Arch**
 
 ```bash
 yay -S waypaper-engine
+# or: yay -S waypaper-engine-git
 ```
 
-or the git version:
+**Quick start — portable AppImage** — download `*.AppImage` from [Releases](https://github.com/0bCdian/Waypaper-Engine/releases), `chmod +x`, run. The daemon is bundled inside the AppImage.
 
-```bash
-yay -S waypaper-engine-git
-```
+Packagers: use `make electron` and `make install-system DESTDIR=…` (see [packaging/README.md](packaging/README.md)).
 
-Both the normal and -git version conflict with each other, so make sure to delete the other with `yay -Rns package_name package_name-debug` before installing either.
+## Releases and contributing
 
-## Manual Install (any distro)
+-   Active branches: **`main`**, **`refactor/wayaper-daemon`**.
+-   **Git tags** `v*` drive GitHub Releases; **`package.json`** `version` must match the tag.
+-   Published assets: **`*.AppImage`** (bundled daemon), **`waypaper-daemon`**, **`checksums.txt`**.
 
-Prerequisites: `git`, `go` (1.26+), `node` (22+), `npm`
+Maintainer checklist (PR bump, tag push, artifacts): **[docs/INSTALL.md](docs/INSTALL.md#github-releases-and-tags)**.
 
-```bash
-git clone https://github.com/0bCdian/Waypaper-Engine.git
-cd Waypaper-Engine
-make deps
-make daemon
-make electron
-make install
-```
-
-Build and install are intentionally separate:
-- Build artifacts with `make daemon` and `make electron` (or `make build`)
-- Install prebuilt artifacts with `make install` (user-local, no sudo)
-
-For a system-wide install, use:
-
-```bash
-sudo make install-system
-```
-
-This installs:
-- Go daemon binary: `~/.local/bin/waypaper-daemon`
-- Electron app (unpacked): `~/.local/opt/waypaper-engine`
-- Launcher: `~/.local/bin/waypaper-engine`
-- Desktop entry/icon: `~/.local/share/...`
-
-The `waypaper-engine` launcher is **generated during `make install-ui`** from [`waypaper-engine.sh.in`](waypaper-engine.sh.in): it embeds the path to `waypaper-engine-bin` under **`ELECTRON_APP_ROOT`** (default `$(PREFIX)/opt/waypaper-engine`, or `/opt/waypaper-engine` for `make install-system`). That path is the runtime location on the target system — it does **not** include `DESTDIR`, so distro staging (`make install-system DESTDIR="$pkgdir"`) still produces a launcher that points at `/opt/...` on the end user’s machine.
-
-The launcher is a single entrypoint:
-- `waypaper-engine` (or `waypaper-engine run`) launches the GUI
-- `waypaper-engine daemon <args>` forwards to daemon CLI
-- `waypaper-engine <args>` also forwards to daemon CLI commands directly
-
-Run `make help` to see all available targets.
-
-To uninstall:
-
-```bash
-make uninstall
-```
-
-For system-wide uninstall:
-
-```bash
-sudo make uninstall-system
-```
-
-Use `PREFIX`, `DESTDIR`, and optionally **`ELECTRON_APP_ROOT`** / **`APPIMAGE_APP_ROOT`** to customize install locations (see the top of the `Makefile`). `DESTDIR` only prefixes the filesystem layout under a staging root; launchers embed the corresponding `*_APP_ROOT` without `DESTDIR`.
-
-```bash
-make install PREFIX="$HOME/.local"
-make install-system DESTDIR="$PWD/pkgroot"   # staged system layout; launcher still uses /opt/…
-```
-
-## AppImage (build + user-local install)
-
-```bash
-git clone https://github.com/0bCdian/Waypaper-Engine.git
-cd Waypaper-Engine
-make deps
-make appimage
-```
-
-The resulting AppImage is created in `release/`.
-
-Release-downloaded `.AppImage` artifacts are intended for GUI use (double-click / run directly). The daemon is bundled and started internally by the app, so no separate daemon CLI setup is required for this mode. Packaged builds intentionally do not fall back to a system `waypaper-daemon`.
-
-Install that AppImage to your user profile with:
-
-```bash
-make appimage
-make install-appimage
-```
-
-`install-appimage` installs an existing artifact from `release/` and does not build one.
-
-This installs:
-- AppImage binary: `~/.local/opt/waypaper-engine-appimage/waypaper-engine.AppImage`
-- Launcher: `~/.local/bin/waypaper-engine-appimage`
-- Desktop entry: `~/.local/share/applications/waypaper-engine-appimage.desktop`
-
-For system-wide AppImage install instead:
-
-```bash
-sudo make install-appimage-system
-```
-
-To remove the user-local AppImage install:
-
-```bash
-make uninstall-appimage
-```
-
-## Other Formats
-
-See [packaging/README.md](packaging/README.md) for RPM (Fedora), Snap, and instructions on adding new packaging formats.
-
-## CI/CD and Releases
-
-This repo uses a lightweight flow:
-- `main` and `refactor/wayaper-daemon` are active development branches.
-- Releases are created only from Git tags matching `v*` (for example `v3.0.1`).
-- `package.json` is the canonical release version and must match each release tag.
-
-### Release flow (tag-driven)
-
-1. Open a PR that bumps `package.json` to your target release version `X.Y.Z`.
-2. Merge that PR into an active release branch (`main` or `refactor/wayaper-daemon`) after CI is green.
-3. Create and push the matching tag `vX.Y.Z`.
-
-```bash
-git tag vX.Y.Z
-git push origin vX.Y.Z
-```
-
-Pushing a `v*` tag triggers tag/version validation first. If `package.json` does not equal the tag version, the workflow fails before publishing.
-
-When validation passes, the release workflow builds and publishes:
-- `waypaper-daemon` binary
-- `*.AppImage`
-- `checksums.txt` (sha256 for both artifacts)
-
-### Recommended branch protection (GitHub settings)
-
-For `main`, keep it minimal:
-- Require a pull request before merging.
-- Require status checks to pass: `CI / validate`.
-- Require approvals: `0` or `1` (your preference for speed vs safety).
-- Keep “require branch up to date” disabled for a low-friction hobby flow.
-
-## Contributor Setup
-
-To run the same checks locally as CI:
+**Local CI (contributors):**
 
 ```bash
 npm run ci:check
 ```
 
-Optional local hook setup:
-
-```bash
-pipx install pre-commit
-pre-commit install
-pre-commit run --all-files
-```
-
-CI enforces the same `npm run ci:check` command on pull requests (formatting, linting, Go formatting, typecheck, frontend tests, daemon unit tests, and frontend production build).
-Formatting uses Oxfmt and linting uses Oxlint.
+Optional: `pipx install pre-commit && pre-commit install` — hooks match formatting, lint, and `gofmt` (see [.pre-commit-config.yaml](.pre-commit-config.yaml)).
 
 # Usage
 
-Simply start the app and add wallpapers to the gallery, from there you can double click to set the wallpapers or right click for more options, to create playlists simply click on the checkboxes that appear when hover over the images, and configure it, and then save it to auto start it.
+Open the app, add wallpapers to the gallery, and **double-click** to set them (or **right-click** for more actions). Use the checkboxes that appear on hover to build **playlists**, configure them in the sidebar, and save—playlists can follow time-of-day, daily, interval, or static rules.
 
 # Examples
 

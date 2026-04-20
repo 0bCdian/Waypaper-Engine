@@ -3,13 +3,11 @@ package waylandutauri
 import (
 	"os"
 	"path/filepath"
-
-	"waypaper-engine/daemon/internal/store"
 )
 
 const (
 	defaultExpectedService = "wayland-utauri"
-	defaultAPIVersion      = "0" // ZeroVer control-plane epoch; matches wayland-utauri X-API-Version
+	defaultAPIVersion      = "0" // matches wal-utauri ZeroVer control-plane `api_version` / X-API-Version
 )
 
 // Config holds wayland-utauri specific backend settings.
@@ -38,17 +36,11 @@ type Config struct {
 	// ParallaxCompositorDriver: auto | off | hyprland | sway — workspace → POST /wallpaper/parallax-move (Hyprland/Sway only).
 	ParallaxCompositorDriver string `mapstructure:"parallax_compositor_driver" json:"parallax_compositor_driver"`
 	// ParallaxDirection: horizontal | vertical — workspace parallax axis when waypaper.json does not override.
-	ParallaxDirection          string `mapstructure:"parallax_direction" json:"parallax_direction"`
-	ImageFitMode               string `mapstructure:"image_fit_mode" json:"image_fit_mode"`
-	ImageRendering             string `mapstructure:"image_rendering" json:"image_rendering"`
-	VideoAudioDefault          bool   `mapstructure:"video_audio_default" json:"video_audio_default"`
-	AllowNetworkWallpapers     bool   `mapstructure:"allow_network_wallpapers" json:"allow_network_wallpapers"`
-	RendererPause              bool   `mapstructure:"renderer_pause" json:"renderer_pause"`
-	AllowWebKeyboard           bool   `mapstructure:"allow_web_keyboard" json:"allow_web_keyboard"`
-	AllowWebAudioReactive      bool   `mapstructure:"allow_web_audio_reactive" json:"allow_web_audio_reactive"`
-	AllowWebPointerInteractive bool   `mapstructure:"allow_web_pointer_interactive" json:"allow_web_pointer_interactive"`
-	AllowWebParallaxAware      bool   `mapstructure:"allow_web_parallax_aware" json:"allow_web_parallax_aware"`
-	AllowWebManifestNetwork    bool   `mapstructure:"allow_web_manifest_network" json:"allow_web_manifest_network"`
+	ParallaxDirection      string `mapstructure:"parallax_direction" json:"parallax_direction"`
+	ImageFitMode           string `mapstructure:"image_fit_mode" json:"image_fit_mode"`
+	ImageRendering         string `mapstructure:"image_rendering" json:"image_rendering"`
+	VideoAudioDefault      bool   `mapstructure:"video_audio_default" json:"video_audio_default"`
+	AllowNetworkWallpapers bool   `mapstructure:"allow_network_wallpapers" json:"allow_network_wallpapers"`
 }
 
 func defaultSocketPath() string {
@@ -86,22 +78,5 @@ func defaultConfig() *Config {
 		ImageRendering:                 "auto",
 		VideoAudioDefault:              false,
 		AllowNetworkWallpapers:         false,
-		RendererPause:                  false,
-		AllowWebKeyboard:               false,
-		AllowWebAudioReactive:          false,
-		AllowWebPointerInteractive:     true,
-		AllowWebParallaxAware:          true,
-		AllowWebManifestNetwork:        false,
-	}
-}
-
-// ApplyWebCapabilityPolicy returns caps ∧ host policy ceiling (gallery / manifest requests).
-func (c *Config) ApplyWebCapabilityPolicy(caps store.WebCapabilities) store.WebCapabilities {
-	return store.WebCapabilities{
-		Network:            caps.Network && c.AllowWebManifestNetwork,
-		Keyboard:           caps.Keyboard && c.AllowWebKeyboard,
-		AudioReactive:      caps.AudioReactive && c.AllowWebAudioReactive,
-		ParallaxAware:      caps.ParallaxAware && c.AllowWebParallaxAware,
-		PointerInteractive: caps.PointerInteractive && c.AllowWebPointerInteractive,
 	}
 }

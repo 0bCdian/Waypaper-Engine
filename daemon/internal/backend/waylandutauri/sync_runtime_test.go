@@ -12,16 +12,17 @@ import (
 )
 
 func TestWaylandUtauri_SyncRuntimeFromConfig_Success(t *testing.T) {
-	var sawParallax, sawNetwork, sawWebCapPolicy, sawImagePresentation bool
+	var sawParallax, sawNetwork, sawImagePresentation bool
+	var requestOrder []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodPost {
+			requestOrder = append(requestOrder, r.URL.Path)
+		}
 		if r.URL.Path == "/wallpaper/parallax" && r.Method == http.MethodPost {
 			sawParallax = true
 		}
 		if r.URL.Path == "/settings/network" && r.Method == http.MethodPost {
 			sawNetwork = true
-		}
-		if r.URL.Path == "/settings/web-capability-policy" && r.Method == http.MethodPost {
-			sawWebCapPolicy = true
 		}
 		if r.URL.Path == "/settings/image-presentation" && r.Method == http.MethodPost {
 			sawImagePresentation = true
@@ -43,8 +44,21 @@ func TestWaylandUtauri_SyncRuntimeFromConfig_Success(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, sawParallax, "expected POST /wallpaper/parallax")
 	assert.True(t, sawNetwork, "expected POST /settings/network")
-	assert.True(t, sawWebCapPolicy, "expected POST /settings/web-capability-policy")
 	assert.True(t, sawImagePresentation, "expected POST /settings/image-presentation")
+
+	idxNetwork := -1
+	idxImagePresentation := -1
+	for i, p := range requestOrder {
+		if p == "/settings/network" && idxNetwork < 0 {
+			idxNetwork = i
+		}
+		if p == "/settings/image-presentation" && idxImagePresentation < 0 {
+			idxImagePresentation = i
+		}
+	}
+	require.GreaterOrEqual(t, idxNetwork, 0)
+	require.GreaterOrEqual(t, idxImagePresentation, 0)
+	assert.Less(t, idxNetwork, idxImagePresentation, "network policy must be pushed before image presentation")
 }
 
 func TestWaylandUtauri_SyncRuntimeFromConfig_ClientError(t *testing.T) {

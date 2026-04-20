@@ -93,7 +93,7 @@ const ToastContainer = () => {
   if (toasts.length === 0) return null;
 
   return (
-    <div className="toast toast-end toast-top z-50">
+    <div className="toast toast-end toast-top z-[10000] pointer-events-none [&>*]:pointer-events-auto">
       {toasts.map((toast) => (
         <div
           key={toast.id}

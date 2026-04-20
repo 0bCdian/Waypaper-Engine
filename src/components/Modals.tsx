@@ -5,6 +5,7 @@ import AddToPlaylistModal from "./AddToPlaylistModal";
 import PlaylistConfigurationModal from "./PlaylistConfigurationModal";
 import { usePlaylistStore } from "../stores/playlist";
 import AdvancedFiltersModal from "./AdvancedFiltersModal";
+import GalleryFilterCheatsheetModal from "./GalleryFilterCheatsheetModal";
 import FolderImportModal from "./FolderImportModal";
 import FolderPickerModal from "./FolderPickerModal";
 import { useShallow } from "zustand/react/shallow";
@@ -71,6 +72,7 @@ function Modals() {
       <AddToPlaylistModal playlistsInDB={playlistsInDB} onPlaylistChanged={reloadPlaylists} />
       <PlaylistConfigurationModal />
       <AdvancedFiltersModal />
+      <GalleryFilterCheatsheetModal />
       <FolderImportModal />
       <FolderPickerModal />
       <Monitors />

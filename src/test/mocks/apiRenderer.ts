@@ -26,6 +26,7 @@ export function createMockAPI(): Window["API_RENDERER"] {
       }),
       getImage: vi.fn().mockResolvedValue(null),
       ensureBrowserPreview: vi.fn().mockResolvedValue(null),
+      videoLoopExport: vi.fn().mockResolvedValue({ action: "import_new", image_id: 1, path: "atom://tmp/x.webm" }),
       getImageCount: vi.fn().mockResolvedValue({ count: 0 }),
       importImages: vi.fn().mockResolvedValue({ status: "processing", total: 0 }),
       importWebWallpaper: vi.fn().mockResolvedValue(null),
@@ -123,10 +124,22 @@ export function createMockAPI(): Window["API_RENDERER"] {
       updateConfig: vi.fn().mockResolvedValue(null),
       getConfigSection: vi.fn().mockResolvedValue({}),
       updateConfigSection: vi.fn().mockResolvedValue({}),
-      getBackendConfig: vi.fn().mockResolvedValue({}),
+      getBackendConfig: vi.fn().mockImplementation((_name: string) => Promise.resolve({})),
       updateBackendConfig: vi.fn().mockResolvedValue(undefined),
 
-      getBackends: vi.fn().mockResolvedValue([]),
+      getBackends: vi.fn().mockResolvedValue([
+        {
+          name: "awww",
+          available: true,
+          capabilities: {
+            compositors: ["wayland"],
+            media_types: ["image"],
+            transitions: true,
+            per_monitor: true,
+            daemon_process: false,
+          },
+        },
+      ]),
       getBackendCapabilities: vi.fn().mockResolvedValue(null),
       activateBackend: vi.fn().mockResolvedValue({ status: "activated", backend: "" }),
 

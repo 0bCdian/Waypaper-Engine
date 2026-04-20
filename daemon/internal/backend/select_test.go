@@ -21,24 +21,24 @@ type stubBackend struct {
 	caps      backend.Capabilities
 }
 
-func (s *stubBackend) Name() string                                        { return s.name }
-func (s *stubBackend) IsAvailable() bool                                   { return s.available }
-func (s *stubBackend) Capabilities() backend.Capabilities                  { return s.caps }
-func (s *stubBackend) Initialize(_ context.Context) error                  { return nil }
-func (s *stubBackend) Shutdown(_ context.Context) error                    { return nil }
+func (s *stubBackend) Name() string                                                     { return s.name }
+func (s *stubBackend) IsAvailable() bool                                                { return s.available }
+func (s *stubBackend) Capabilities() backend.Capabilities                               { return s.caps }
+func (s *stubBackend) Initialize(_ context.Context) error                               { return nil }
+func (s *stubBackend) Shutdown(_ context.Context) error                                 { return nil }
 func (s *stubBackend) SetWallpaper(_ context.Context, _ backend.WallpaperRequest) error { return nil }
-func (s *stubBackend) RegisterDefaults(_ *viper.Viper)                     {}
-func (s *stubBackend) ValidateConfig(_ json.RawMessage) error              { return nil }
-func (s *stubBackend) ParseConfig(_ json.RawMessage) (any, error)          { return nil, nil }
+func (s *stubBackend) RegisterDefaults(_ *viper.Viper)                                  {}
+func (s *stubBackend) ValidateConfig(_ json.RawMessage) error                           { return nil }
+func (s *stubBackend) ParseConfig(_ json.RawMessage) (any, error)                       { return nil, nil }
 
 type stubRegistry struct {
 	backends map[string]*stubBackend
 	active   *stubBackend
 }
 
-func (r *stubRegistry) Register(_ backend.Backend) error             { return nil }
-func (r *stubRegistry) SetActive(_ string) error                     { return nil }
-func (r *stubRegistry) Available() []backend.BackendInfo              { return nil }
+func (r *stubRegistry) Register(_ backend.Backend) error                          { return nil }
+func (r *stubRegistry) SetActive(_ string) error                                  { return nil }
+func (r *stubRegistry) Available() []backend.BackendInfo                          { return nil }
 func (r *stubRegistry) Compatible(_ monitor.CompositorType) []backend.BackendInfo { return nil }
 
 func (r *stubRegistry) Active() backend.Backend {

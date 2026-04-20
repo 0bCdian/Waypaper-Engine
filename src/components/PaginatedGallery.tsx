@@ -8,6 +8,7 @@ import PlaylistController from "./PlaylistController";
 import FolderCard from "./FolderCard";
 import AppDragDropProvider from "./AppDragDropProvider";
 import { useImagePagination } from "../hooks/useImagePagination";
+import { galleryHasActiveFilters } from "../utils/galleryFilterTokens";
 import { LazyMotion, m, AnimatePresence, domAnimation } from "framer-motion";
 import { useImagesStore } from "../stores/images";
 import { useFoldersStore } from "../stores/foldersStore";
@@ -50,12 +51,7 @@ function PaginatedGallery() {
     openContextMenu(e, items);
   };
 
-  const hasActiveFilters =
-    filters.searchString !== "" ||
-    filters.tags.length > 0 ||
-    filters.advancedFilters.resolution.constraint !== "all" ||
-    filters.advancedFilters.formats.length < 10 ||
-    (filters.advancedFilters.colors?.length ?? 0) > 0;
+  const hasActiveFilters = galleryHasActiveFilters(filters);
 
   const showFolders = !hasActiveFilters && currentPage === 1 && folders.length > 0;
 

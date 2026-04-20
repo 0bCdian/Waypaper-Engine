@@ -9,6 +9,7 @@ describe("useImagesStore", () => {
 
   beforeEach(() => {
     vi.resetModules();
+    localStorage.clear();
     mockAPI = createMockAPI();
     Object.defineProperty(window, "API_RENDERER", {
       value: mockAPI,
@@ -61,7 +62,7 @@ describe("useImagesStore", () => {
     const newFilters = {
       ...useImagesStore.getState().filters,
       order: "asc" as const,
-      searchString: "test",
+      filterTokens: ["q:test"],
     };
 
     act(() => {
@@ -69,7 +70,7 @@ describe("useImagesStore", () => {
     });
 
     expect(useImagesStore.getState().filters.order).toBe("asc");
-    expect(useImagesStore.getState().filters.searchString).toBe("test");
+    expect(useImagesStore.getState().filters.filterTokens).toContain("q:test");
   });
 
   it("reQueryImages calls getImages and updates state", async () => {
@@ -126,12 +127,7 @@ describe("useImagesStore", () => {
         order: "asc",
         type: "name",
         mediaType: "web",
-        searchString: "neon city #night",
-        tags: ["favorites"],
-        advancedFilters: {
-          ...useImagesStore.getState().filters.advancedFilters,
-          colors: ["#112233"],
-        },
+        filterTokens: ["q:neon city", "tag:night", "tag:favorites", "color:#112233"],
       });
     });
 
@@ -148,7 +144,7 @@ describe("useImagesStore", () => {
         sort_order: "asc",
         media_type: "web",
         search: "neon city",
-        tags: "favorites,night",
+        tags: expect.stringMatching(/^(favorites,night|night,favorites)$/),
         colors: "#112233",
       }),
     );

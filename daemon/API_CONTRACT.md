@@ -103,7 +103,8 @@ Paginated, sortable, filterable image gallery.
 | `media_type` | string | —             | Filter: `image`, `video`, `gif`              |
 | `search`    | string | —             | Case-insensitive fuzzy search on name/tags   |
 | `tags`      | string | —             | Comma-separated tag filter                   |
-| `colors`    | string | —             | Comma-separated dominant color filter (hex)  |
+| `colors`    | string | —             | Comma-separated dominant color filter (hex; each must appear as a swatch, AND) |
+| `colors_near` | string | —           | Comma-separated `#hex~maxDeltaE` perceptual match (CIE76 vs stored palette; AND); forces in-memory filter path |
 | `folder_id` | string | —             | Folder filter (`root`/`0` for root, or ID)   |
 
 **Response** `200`:
@@ -473,6 +474,8 @@ Set semantics remain unchanged:
 - Backend resolves image by ID and dispatches appropriate renderer path based on
   media type (`image` vs `web`).
 
+When the active backend is **wayland-utauri**, `SyncRuntimeFromConfig` pushes `POST /settings/network` on the host control socket so global HTML allow matches config. That call can cause the host to **reload** active HTML wallpaper webviews when **effective** outbound `network` permission changes (brief flicker).
+
 ---
 
 ### `POST /wallpaper/random`
@@ -827,6 +830,8 @@ Get the full folder path from root to the folder.
 
 List all connected monitors.
 
+Each entry’s `name` is the compositor output identifier (for example `HDMI-A-1`, `eDP-1`). When the active backend is **`wayland-utauri`**, names come directly from the host’s control API topology (not synthetic `Monitor N` labels).
+
 **Response** `200`:
 ```json
 [Monitor]
@@ -894,7 +899,7 @@ Publishes `config_changed` SSE event.
 
 Get a specific config section. Valid sections for update are: `app`, `daemon`, `backend`, `monitors`, `wallhaven`.
 
-For `backend`: returns the active backend's specific config (e.g. awww transition settings), NOT the `BackendSection` struct.
+For `backend`: returns the **active** backend's specific config (e.g. awww transition settings), NOT the `BackendSection` struct. Prefer [`GET /config/backends/{backend}`](#get-configbackendsbackend) to read any named backend.
 
 **Response** `200`: Section object or raw JSON for backend.
 
@@ -918,7 +923,7 @@ Update a single config section.
 
 **Response** `200`: Updated section object.
 
-**For `backend` section** — request body is the raw backend config JSON. It is validated by the active backend's `ValidateConfig()` before being saved:
+**For `backend` section** — request body is the raw config JSON for the **active** backend only. It is validated by that backend's `ValidateConfig()` before being saved. Prefer [`PATCH /config/backends/{backend}`](#patch-configbackendsbackend) to update a named backend while another is active.
 ```json
 {
   "transition_type": "grow",
@@ -936,6 +941,32 @@ Update a single config section.
 ```
 
 Publishes `config_changed` SSE event.
+
+---
+
+### `GET /config/backends/{backend}`
+
+Returns the persisted configuration JSON for a **named** registered backend (e.g. `awww`, `mpvpaper`, `wayland-utauri`). This is the preferred way to read per-renderer settings for any backend, not only the active one.
+
+**Path**: `{backend}` is the registry name (URL-encoded if needed, e.g. `wayland-utauri`).
+
+**Response** `200`: Same JSON shape as the legacy active-only backend body (flat map of that backend’s options).
+
+**Response** `404`: Unknown backend name (not in the registry).
+
+---
+
+### `PATCH /config/backends/{backend}`
+
+Updates a named backend’s subsection. Body is a JSON object merged into that backend’s config; it is validated with that backend’s `ValidateConfig()` before save.
+
+**Runtime sync**: `RuntimeConfigSync` runs **only** when `{backend}` equals the **currently active** backend (same rule as legacy `PATCH /config/backend`).
+
+**Response** `200`: `{"status":"updated"}` (or equivalent success body used elsewhere for config patches).
+
+Publishes `config_changed` SSE event.
+
+**Preferred** for UI that edits inactive backends. Legacy `GET|PATCH /config/backend` remains **active-backend only** for the same JSON shape.
 
 ---
 
@@ -1331,11 +1362,11 @@ JSON shape; that endpoint aggregates active-backend rows into a single summary o
 }
 ```
 
-Note: `GET /config/backend` returns the **active backend's specific config** (see below), not this object.
+Note: `GET /config/backend` returns the **active backend's specific config** (see below), not this object. The same JSON for a given renderer is returned by `GET /config/backends/{backend}` for that name regardless of which backend is active.
 
 #### awww Backend Config
 
-Returned by `GET /config/backend` when the active backend is `awww`. Updated by `PATCH /config/backend`.
+Returned by `GET /config/backend` when the active backend is `awww`, or by `GET /config/backends/awww` anytime. Updated by `PATCH /config/backend` (active only) or `PATCH /config/backends/awww`.
 
 ```json
 {
@@ -1358,7 +1389,7 @@ TOML config supports both hyphens and underscores (e.g. `transition-type` and `t
 
 #### mpvpaper Backend Config
 
-Returned by `GET /config/backend` when the active backend is `mpvpaper`. Updated by `PATCH /config/backend`.
+Returned by `GET /config/backend` when the active backend is `mpvpaper`, or by `GET /config/backends/mpvpaper` anytime. Updated by `PATCH /config/backend` (active only) or `PATCH /config/backends/mpvpaper`.
 
 ```json
 {

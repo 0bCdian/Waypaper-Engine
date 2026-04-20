@@ -13,6 +13,7 @@ import type {
   ConfigChangeEvent,
 } from "../../shared/types/unifiedConfig";
 import { logger } from "../utils/logger";
+import { sectionsMatchingSettingsSearchQuery } from "../utils/settingsSearchIndex";
 
 interface SettingsStoreState {
   config: UnifiedConfig | null;
@@ -23,20 +24,24 @@ interface SettingsStoreState {
   searchTerm: string;
   filteredSections: ConfigSection[];
   expandedSections: Set<string>;
-  showAdvancedSettings: boolean;
+  /** When set, BackendSettingsSection switches to this inner tab once then clears. */
+  pendingBackendSettingsTab: string | null;
 }
 
 interface SettingsStoreActions {
   loadConfig: () => Promise<void>;
   /** Save a config section to the daemon. Used by settings page components. */
   saveConfigSection: (section: ConfigSection, data: Record<string, unknown>) => Promise<void>;
+  /** PATCH /config/backends/{name} with a flat backend config fragment. */
+  saveBackendPatch: (backendName: string, patch: Record<string, unknown>) => Promise<void>;
   /** Alias for saveConfigSection (backward compat with old unifiedConfigStore). */
   setConfigValue: (section: ConfigSection, data: Record<string, unknown>) => Promise<void>;
   resetToDefaults: () => Promise<void>;
   setSearchTerm: (term: string) => void;
   clearSearch: () => void;
+  setPendingBackendSettingsTab: (tab: string | null) => void;
+  clearPendingBackendSettingsTab: () => void;
   toggleSection: (sectionId: string) => void;
-  setShowAdvancedSettings: (show: boolean) => void;
   handleConfigChange: (event: ConfigChangeEvent) => void;
   clearErrors: () => void;
 }
@@ -83,6 +88,49 @@ const defaultConfig: UnifiedConfig = {
 
 let _lastApiSaveAt = 0;
 
+const SETTINGS_SECTION_ORDER: ConfigSection[] = [
+  "app",
+  "daemon",
+  "backend",
+  "monitors",
+  "wallhaven",
+];
+
+const TOP_LEVEL_BACKEND_KEYS = new Set(["type", "selection_mode", "auto_priorities"]);
+
+function mergeLoadedConfig(
+  existing: UnifiedConfig,
+  incoming: UnifiedConfig,
+  registeredBackendNames: string[],
+): UnifiedConfig {
+  const exB = existing.backend as unknown as Record<string, unknown>;
+  const inB = incoming.backend as unknown as Record<string, unknown>;
+  const nextBackend: Record<string, unknown> = { ...exB, ...inB };
+  for (const name of registeredBackendNames) {
+    const exSub = exB[name];
+    const inSub = inB[name];
+    if (
+      inSub !== undefined &&
+      inSub !== null &&
+      typeof inSub === "object" &&
+      !Array.isArray(inSub)
+    ) {
+      const exRec =
+        exSub !== undefined && exSub !== null && typeof exSub === "object" && !Array.isArray(exSub)
+          ? (exSub as Record<string, unknown>)
+          : {};
+      nextBackend[name] = { ...exRec, ...(inSub as Record<string, unknown>) };
+    }
+  }
+  return {
+    app: { ...existing.app, ...incoming.app },
+    daemon: { ...existing.daemon, ...incoming.daemon },
+    backend: nextBackend as unknown as UnifiedConfig["backend"],
+    monitors: { ...existing.monitors, ...incoming.monitors },
+    wallhaven: { ...existing.wallhaven, ...incoming.wallhaven },
+  };
+}
+
 export const useSettingsStore = create<SettingsStore>()(
   devtools(
     (set, get) => ({
@@ -94,7 +142,7 @@ export const useSettingsStore = create<SettingsStore>()(
       searchTerm: "",
       filteredSections: ["app", "daemon", "backend", "monitors", "wallhaven"],
       expandedSections: new Set<string>(["app"]),
-      showAdvancedSettings: false,
+      pendingBackendSettingsTab: null,
 
       loadConfig: async () => {
         const existing = get().config;
@@ -107,46 +155,37 @@ export const useSettingsStore = create<SettingsStore>()(
           if (window.API_RENDERER?.goDaemon?.getConfig) {
             const incoming = await window.API_RENDERER.goDaemon.getConfig();
 
-            // The main GET /config doesn't include backend sub-configs (awww, feh, etc.)
-            // because the Go struct only has "type". Fetch the active backend config
-            // separately and merge it in.
+            let registeredBackendNames: string[] = [];
             try {
-              if (window.API_RENDERER.goDaemon.getBackendConfig) {
-                const backendConfig = await window.API_RENDERER.goDaemon.getBackendConfig();
-                if (backendConfig) {
-                  const backendType = incoming.backend?.type ?? "awww";
-                  const cleaned = { ...backendConfig } as unknown as Record<string, unknown>;
-                  delete cleaned.type;
-                  (incoming.backend as unknown as Record<string, unknown>)[backendType] = cleaned;
+              const gd = window.API_RENDERER.goDaemon;
+              if (gd.getBackends && gd.getBackendConfig) {
+                const backendsList = await gd.getBackends();
+                registeredBackendNames = backendsList.map((b) => b.name);
+                const fetched = await Promise.all(
+                  registeredBackendNames.map(async (name) => {
+                    try {
+                      const cfg = await gd.getBackendConfig(name);
+                      return { name, cfg: cfg as Record<string, unknown> | null | undefined };
+                    } catch {
+                      return { name, cfg: undefined };
+                    }
+                  }),
+                );
+                const inB = incoming.backend as unknown as Record<string, unknown>;
+                for (const { name, cfg } of fetched) {
+                  if (cfg && typeof cfg === "object") {
+                    const cleaned = { ...cfg };
+                    delete cleaned.type;
+                    inB[name] = cleaned;
+                  }
                 }
               }
             } catch {
-              // Non-critical: backend settings will just show defaults
+              // Non-critical: backend subsections may be incomplete until next load
             }
 
             const merged = existing
-              ? (() => {
-                  const activeBackend = incoming.backend?.type ?? existing.backend?.type ?? "awww";
-                  const existingBackendSub = (
-                    existing.backend as unknown as Record<string, unknown>
-                  )?.[activeBackend] as Record<string, unknown> | undefined;
-                  const incomingBackendSub = (
-                    incoming.backend as unknown as Record<string, unknown>
-                  )?.[activeBackend] as Record<string, unknown> | undefined;
-                  return {
-                    app: { ...existing.app, ...incoming.app },
-                    daemon: { ...existing.daemon, ...incoming.daemon },
-                    backend: {
-                      ...existing.backend,
-                      ...incoming.backend,
-                      [activeBackend]: incomingBackendSub
-                        ? { ...existingBackendSub, ...incomingBackendSub }
-                        : existingBackendSub,
-                    },
-                    monitors: { ...existing.monitors, ...incoming.monitors },
-                    wallhaven: { ...existing.wallhaven, ...incoming.wallhaven },
-                  };
-                })()
+              ? mergeLoadedConfig(existing, incoming, registeredBackendNames)
               : incoming;
             set({
               config: merged as UnifiedConfig,
@@ -198,34 +237,24 @@ export const useSettingsStore = create<SettingsStore>()(
               type: data.type as string,
             } as typeof newConfig.backend;
           } else {
-            const backendType = newConfig.backend.type ?? "awww";
             const top: Record<string, unknown> = {};
-            const sub: Record<string, unknown> = {};
-            const topLevelBackendKeys = new Set([
-              "transition_duration_seconds",
-              "selection_mode",
-              "auto_priorities",
-            ]);
+            const ignored: string[] = [];
             for (const [k, v] of Object.entries(data)) {
-              if (topLevelBackendKeys.has(k)) {
+              if (TOP_LEVEL_BACKEND_KEYS.has(k)) {
                 top[k] = v;
               } else {
-                sub[k] = v;
+                ignored.push(k);
               }
+            }
+            if (ignored.length > 0) {
+              logger.warn(
+                "SettingsStore: saveConfigSection(backend) ignores per-renderer keys; use saveBackendPatch:",
+                ignored.join(", "),
+              );
             }
             newConfig.backend = {
               ...newConfig.backend,
               ...top,
-              ...(Object.keys(sub).length > 0
-                ? {
-                    [backendType]: {
-                      ...((newConfig.backend as unknown as Record<string, unknown>)[backendType] as
-                        | Record<string, unknown>
-                        | undefined),
-                      ...sub,
-                    },
-                  }
-                : {}),
             } as typeof newConfig.backend;
           }
         } else if (section === "monitors") {
@@ -251,17 +280,9 @@ export const useSettingsStore = create<SettingsStore>()(
               }
             } else {
               const top: Record<string, unknown> = {};
-              const sub: Record<string, unknown> = {};
-              const topLevelBackendKeys = new Set([
-                "transition_duration_seconds",
-                "selection_mode",
-                "auto_priorities",
-              ]);
               for (const [k, v] of Object.entries(data)) {
-                if (topLevelBackendKeys.has(k)) {
+                if (TOP_LEVEL_BACKEND_KEYS.has(k)) {
                   top[k] = v;
-                } else {
-                  sub[k] = v;
                 }
               }
               if (Object.keys(top).length > 0 && window.API_RENDERER?.goDaemon?.updateConfig) {
@@ -270,12 +291,12 @@ export const useSettingsStore = create<SettingsStore>()(
                 } as unknown as Partial<UnifiedConfig>);
               }
               if (
-                Object.keys(sub).length > 0 &&
-                window.API_RENDERER?.goDaemon?.updateBackendConfig
+                data.selection_mode === "fixed" &&
+                typeof newConfig.backend.type === "string" &&
+                newConfig.backend.type.length > 0 &&
+                window.API_RENDERER?.goDaemon?.activateBackend
               ) {
-                await window.API_RENDERER.goDaemon.updateBackendConfig(
-                  sub as Record<string, unknown>,
-                );
+                await window.API_RENDERER.goDaemon.activateBackend(newConfig.backend.type);
               }
               if (Object.keys(top).length > 0) {
                 await get().loadConfig();
@@ -297,6 +318,46 @@ export const useSettingsStore = create<SettingsStore>()(
                 section,
                 key: "save",
                 message: `Failed to save ${section} config`,
+              },
+            ],
+          });
+        }
+      },
+
+      saveBackendPatch: async (backendName: string, patch: Record<string, unknown>) => {
+        const currentConfig = get().config;
+        if (!currentConfig) return;
+
+        const newConfig = { ...currentConfig };
+        const prev = (newConfig.backend as unknown as Record<string, unknown>)[backendName] as
+          | Record<string, unknown>
+          | undefined;
+        (newConfig.backend as unknown as Record<string, unknown>)[backendName] = {
+          ...prev,
+          ...patch,
+        };
+        const patchKeys = Object.keys(patch);
+        const errorKey =
+          patchKeys.length === 1 ? `${backendName}:${patchKeys[0]}` : `${backendName}:save`;
+
+        set({ config: newConfig as UnifiedConfig, errors: [] });
+        _lastApiSaveAt = Date.now();
+
+        try {
+          if (window.API_RENDERER?.goDaemon?.updateBackendConfig) {
+            await window.API_RENDERER.goDaemon.updateBackendConfig(backendName, patch);
+          }
+          _lastApiSaveAt = Date.now();
+          set({ lastSaved: Date.now() });
+        } catch (error) {
+          logger.error("SettingsStore: Failed to update backend config:", error);
+          set({
+            config: currentConfig,
+            errors: [
+              {
+                section: "backend",
+                key: errorKey,
+                message: `Failed to save ${backendName} settings`,
               },
             ],
           });
@@ -327,28 +388,36 @@ export const useSettingsStore = create<SettingsStore>()(
           return;
         }
 
+        const tokens = term
+          .trim()
+          .toLowerCase()
+          .split(/\s+/)
+          .filter(Boolean);
+
+        const indexMatched = new Set(sectionsMatchingSettingsSearchQuery(term));
+
         const config = get().config;
-        if (!config) return;
+        const fromConfig = new Set<ConfigSection>();
 
-        const filteredSections: ConfigSection[] = [];
-        const searchLower = term.toLowerCase();
+        if (config && tokens.length > 0) {
+          Object.entries(config).forEach(([sectionKey, sectionData]) => {
+            const section = sectionKey as ConfigSection;
+            if (typeof sectionData !== "object" || sectionData === null) return;
+            const matches = tokens.every((token) =>
+              Object.entries(sectionData).some(
+                ([key, value]) =>
+                  key.toLowerCase().includes(token) ||
+                  String(value).toLowerCase().includes(token),
+              ),
+            );
+            if (matches) fromConfig.add(section);
+          });
+        }
 
-        Object.entries(config).forEach(([sectionKey, sectionData]) => {
-          const section = sectionKey as ConfigSection;
-          if (typeof sectionData === "object" && sectionData !== null) {
-            const matches = Object.entries(sectionData).some(([key, value]) => {
-              return (
-                key.toLowerCase().includes(searchLower) ||
-                String(value).toLowerCase().includes(searchLower)
-              );
-            });
-            if (matches) {
-              filteredSections.push(section);
-            }
-          }
-        });
-
-        set({ filteredSections });
+        const merged = SETTINGS_SECTION_ORDER.filter(
+          (s) => fromConfig.has(s) || indexMatched.has(s),
+        );
+        set({ filteredSections: merged });
       },
 
       clearSearch: () => {
@@ -356,6 +425,14 @@ export const useSettingsStore = create<SettingsStore>()(
           searchTerm: "",
           filteredSections: ["app", "daemon", "backend", "monitors", "wallhaven"],
         });
+      },
+
+      setPendingBackendSettingsTab: (tab: string | null) => {
+        set({ pendingBackendSettingsTab: tab });
+      },
+
+      clearPendingBackendSettingsTab: () => {
+        set({ pendingBackendSettingsTab: null });
       },
 
       toggleSection: (sectionId: string) => {
@@ -366,10 +443,6 @@ export const useSettingsStore = create<SettingsStore>()(
           expandedSections.add(sectionId);
         }
         set({ expandedSections });
-      },
-
-      setShowAdvancedSettings: (show: boolean) => {
-        set({ showAdvancedSettings: show });
       },
 
       handleConfigChange: (event: ConfigChangeEvent) => {

@@ -62,21 +62,21 @@ func TestTick_multiMonitor(t *testing.T) {
 	type moveCall struct {
 		dir    string
 		amount float64
-		mon    uint32
+		out    string
 	}
 	var moves []moveCall
 
-	move := func(_ context.Context, dir string, amount float64, mon uint32) error {
+	move := func(_ context.Context, dir string, amount float64, out string) error {
 		mu.Lock()
-		moves = append(moves, moveCall{dir, amount, mon})
+		moves = append(moves, moveCall{dir, amount, out})
 		mu.Unlock()
 		return nil
 	}
-	resolve := func(_ context.Context, e MonitorWorkspaceEntry) (uint32, bool) {
+	resolve := func(_ context.Context, e MonitorWorkspaceEntry) (string, bool) {
 		if e.Bounds.X >= 1920 {
-			return 1, true
+			return "DP-2", true
 		}
-		return 0, true
+		return "DP-1", true
 	}
 
 	st := &workspaceParallaxAbsoluteState{}
@@ -98,11 +98,11 @@ func TestTick_multiMonitor(t *testing.T) {
 	if len(got) != 2 {
 		t.Fatalf("expected 2 move calls, got %d: %+v", len(got), got)
 	}
-	if got[0].dir != "left" || math.Abs(got[0].amount-40) > 0.1 || got[0].mon != 0 {
-		t.Errorf("move[0] = %+v, want {left, 40, 0}", got[0])
+	if got[0].dir != "left" || math.Abs(got[0].amount-40) > 0.1 || got[0].out != "DP-1" {
+		t.Errorf("move[0] = %+v, want {left, 40, DP-1}", got[0])
 	}
-	if got[1].dir != "left" || math.Abs(got[1].amount-20) > 0.1 || got[1].mon != 1 {
-		t.Errorf("move[1] = %+v, want {left, 20, 1}", got[1])
+	if got[1].dir != "left" || math.Abs(got[1].amount-20) > 0.1 || got[1].out != "DP-2" {
+		t.Errorf("move[1] = %+v, want {left, 20, DP-2}", got[1])
 	}
 
 	// Second tick with same entries: no moves (dedup by lastActiveWSPerMon)
@@ -120,12 +120,12 @@ func TestTick_skipsSpecialWorkspaces(t *testing.T) {
 	t.Parallel()
 
 	var called bool
-	move := func(_ context.Context, _ string, _ float64, _ uint32) error {
+	move := func(_ context.Context, _ string, _ float64, _ string) error {
 		called = true
 		return nil
 	}
-	resolve := func(_ context.Context, _ MonitorWorkspaceEntry) (uint32, bool) {
-		return 0, true
+	resolve := func(_ context.Context, _ MonitorWorkspaceEntry) (string, bool) {
+		return "DP-1", true
 	}
 
 	st := &workspaceParallaxAbsoluteState{}

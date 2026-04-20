@@ -75,6 +75,33 @@ func TestImageStore_GetAll_Pagination(t *testing.T) {
 	assert.Len(t, page4.Data, 1)
 }
 
+func TestImageStore_GetAll_ColorsNear(t *testing.T) {
+	db := testutil.OpenTestDB(t)
+	is := db.ImageStore()
+	ctx := context.Background()
+
+	imgNear := testutil.SampleImage(0)
+	imgNear.Name = "near_red.png"
+	imgNear.Checksum = "sha256:near_red"
+	imgNear.Colors = []string{"#ff0200", "#111111"}
+
+	imgFar := testutil.SampleImage(0)
+	imgFar.Name = "far_green.png"
+	imgFar.Checksum = "sha256:far_green"
+	imgFar.Colors = []string{"#00ff00", "#00aa00"}
+
+	_, err := is.Create(ctx, []store.Image{imgNear, imgFar})
+	require.NoError(t, err)
+
+	res, err := is.GetAll(ctx, store.ImageQueryOpts{
+		Page: 1, PerPage: 50,
+		ColorsNear: []store.ColorNearConstraint{{Hex: "#ff0000", MaxDeltaE: 8}},
+	})
+	require.NoError(t, err)
+	require.Len(t, res.Data, 1)
+	assert.Equal(t, "near_red.png", res.Data[0].Name)
+}
+
 func TestImageStore_GetAll_SearchByName(t *testing.T) {
 	db := testutil.OpenTestDB(t)
 	is := db.ImageStore()

@@ -26,6 +26,13 @@ type Pagination struct {
 	TotalPages int `json:"total_pages"`
 }
 
+// ColorNearConstraint limits images to those with at least one palette color
+// within MaxDeltaE (CIE76, Euclidean in Lab) of Hex.
+type ColorNearConstraint struct {
+	Hex       string
+	MaxDeltaE float64
+}
+
 // ImageQueryOpts controls filtering, sorting, and pagination for image queries.
 type ImageQueryOpts struct {
 	// Page number (1-indexed). Default: 1.
@@ -42,8 +49,11 @@ type ImageQueryOpts struct {
 	Search string
 	// Filter by tags (all must match). Empty = no filter.
 	Tags []string
-	// Filter by colors (any must match). Empty = no filter.
+	// Filter by colors (each hex must appear as a stored palette swatch; AND). Empty = no filter.
 	Colors []string
+	// ColorsNear filters by CIE76 ΔE in Lab vs stored swatches (AND across constraints).
+	// When non-empty, GetAll uses an in-memory filter path (same as text search).
+	ColorsNear []ColorNearConstraint
 	// FolderID filters images by folder. nil = no filter (all images).
 	// A pointer to 0 means root level (images with no folder).
 	// A pointer to a positive int means images in that specific folder.

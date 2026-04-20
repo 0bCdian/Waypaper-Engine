@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import { render, screen, waitFor, fireEvent } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
 const mockSetFilters = vi.fn();
@@ -11,12 +11,10 @@ const mockImagesState = {
   filters: {
     order: "desc" as const,
     type: "id" as const,
-    searchString: "",
-    tags: [],
+    mediaType: "all" as const,
+    filterTokens: [] as string[],
     advancedFilters: {
-      formats: [],
       resolution: { constraint: "all" as const, width: 0, height: 0 },
-      colors: [],
     },
   },
 };
@@ -28,7 +26,7 @@ vi.mock("zustand/react/shallow", () => ({
 vi.mock("../../stores/images", () => ({
   useImagesStore: Object.assign(
     (selector: (s: typeof mockImagesState) => unknown) => selector(mockImagesState),
-    { getState: () => ({ fetchPage: mockFetchPage }) },
+    { getState: () => ({ fetchPage: mockFetchPage, filters: mockImagesState.filters }) },
   ),
 }));
 
@@ -44,58 +42,33 @@ vi.mock("../../hooks/useDebounce", () => ({
   default: (callback: () => void) => callback(),
 }));
 
+import { GALLERY_FILTER_INPUT_HISTORY_KEY } from "../../utils/galleryFilterInputHistory";
 import Filters from "../Filters";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.removeItem(GALLERY_FILTER_INPUT_HISTORY_KEY);
+  mockImagesState.filters.filterTokens = [];
+  mockImagesState.filters.order = "desc";
+  mockImagesState.filters.type = "id";
+  mockImagesState.filters.mediaType = "all";
   (window.API_RENDERER.goDaemon.getImageTags as ReturnType<typeof vi.fn>).mockResolvedValue({
     tags: [],
   });
 });
 
 describe("Filters", () => {
-  it("renders search input, sort toggles, and tags button", () => {
+  it("renders token filter, sort toggles, media buttons, and Filters control", async () => {
     render(<Filters />);
 
-    expect(screen.getByPlaceholderText("Search or #tag")).toBeInTheDocument();
+    expect(await screen.findByRole("combobox")).toBeInTheDocument();
+    expect(screen.getByText("search")).toBeInTheDocument();
     expect(screen.getByText("Name")).toBeInTheDocument();
     expect(screen.getByText("ID")).toBeInTheDocument();
     expect(screen.getByText("Asc")).toBeInTheDocument();
     expect(screen.getByText("Desc")).toBeInTheDocument();
-    expect(screen.getByText("Tags")).toBeInTheDocument();
+    expect(screen.getByText("GIF")).toBeInTheDocument();
     expect(screen.getByText("Filters")).toBeInTheDocument();
-  });
-
-  it("typing in search input updates its value", async () => {
-    const user = userEvent.setup();
-    render(<Filters />);
-
-    const input = screen.getByPlaceholderText("Search or #tag");
-    await user.type(input, "sunset");
-
-    expect(input).toHaveValue("sunset");
-  });
-
-  it("toggling Name/ID swap renders both labels", () => {
-    render(<Filters />);
-
-    const swapOn = screen.getByText("Name");
-    const swapOff = screen.getByText("ID");
-    expect(swapOn).toBeInTheDocument();
-    expect(swapOff).toBeInTheDocument();
-    expect(swapOn.className).toContain("swap-on");
-    expect(swapOff.className).toContain("swap-off");
-  });
-
-  it("toggling Asc/Desc swap renders both labels", () => {
-    render(<Filters />);
-
-    const swapOn = screen.getByText("Asc");
-    const swapOff = screen.getByText("Desc");
-    expect(swapOn).toBeInTheDocument();
-    expect(swapOff).toBeInTheDocument();
-    expect(swapOn.className).toContain("swap-on");
-    expect(swapOff.className).toContain("swap-off");
   });
 
   it("clicking Filters button calls modalStore open with AdvancedFiltersModal", async () => {
@@ -106,35 +79,131 @@ describe("Filters", () => {
     expect(mockModalOpen).toHaveBeenCalledWith("AdvancedFiltersModal");
   });
 
-  it("opening tags dropdown fetches tags from daemon", async () => {
+  it("syntax help opens GalleryFilterCheatsheetModal", async () => {
     const user = userEvent.setup();
     render(<Filters />);
 
-    await user.click(screen.getByText("Tags"));
+    await user.click(screen.getByRole("button", { name: "Filter syntax help" }));
+    expect(mockModalOpen).toHaveBeenCalledWith("GalleryFilterCheatsheetModal");
+  });
+
+  it("clear search tokens button clears filterTokens and persists", async () => {
+    const user = userEvent.setup();
+    mockImagesState.filters.filterTokens = ["q:mountains", "tag:nature"];
+
+    render(<Filters />);
+
+    await user.click(screen.getByRole("button", { name: "Clear search tokens" }));
+
+    expect(mockSetFilters).toHaveBeenCalledWith(
+      expect.objectContaining({
+        filterTokens: [],
+        advancedFilters: mockImagesState.filters.advancedFilters,
+      }),
+    );
+    expect(mockFetchPage).toHaveBeenCalled();
+  });
+
+  it("clear recent searches removes gallery filter input history", async () => {
+    const user = userEvent.setup();
+    localStorage.setItem(GALLERY_FILTER_INPUT_HISTORY_KEY, JSON.stringify(["q:old", "tag:keep"]));
+
+    render(<Filters />);
+
+    await user.click(screen.getByRole("button", { name: "Clear recent searches" }));
+
+    expect(localStorage.getItem(GALLERY_FILTER_INPUT_HISTORY_KEY)).toBeNull();
+  });
+
+  it("sort swap checkboxes reflect persisted store order and type", () => {
+    mockImagesState.filters.order = "asc";
+    mockImagesState.filters.type = "name";
+
+    render(<Filters />);
+
+    expect(screen.getByRole("checkbox", { name: "Sort by name or ID" })).toBeChecked();
+    expect(screen.getByRole("checkbox", { name: "Ascending or descending sort" })).toBeChecked();
+  });
+
+  it("keydown / focuses the gallery filter combobox", async () => {
+    const { container } = render(<Filters />);
+    const combobox = await screen.findByRole("combobox");
+    const sink = document.createElement("div");
+    sink.tabIndex = 0;
+    container.appendChild(sink);
+    sink.focus();
+    expect(sink).toHaveFocus();
+
+    fireEvent.keyDown(sink, { key: "/", bubbles: true });
 
     await waitFor(() => {
-      expect(window.API_RENDERER.goDaemon.getImageTags).toHaveBeenCalled();
+      expect(combobox).toHaveFocus();
     });
   });
 
-  it("selecting a tag shows it as a badge", async () => {
-    (window.API_RENDERER.goDaemon.getImageTags as ReturnType<typeof vi.fn>).mockResolvedValue({
-      tags: ["nature", "city", "abstract"],
-    });
+  it("keydown / does not steal focus from a textarea", async () => {
+    const { container } = render(
+      <>
+        <textarea data-testid="other-field" />
+        <Filters />
+      </>,
+    );
+    const combobox = await screen.findByRole("combobox");
+    const ta = screen.getByTestId("other-field");
+    ta.focus();
+    expect(ta).toHaveFocus();
 
+    fireEvent.keyDown(ta, { key: "/", bubbles: true });
+
+    expect(ta).toHaveFocus();
+    expect(combobox).not.toHaveFocus();
+  });
+
+  it("after selecting a saved search chip, other history rows still appear in the menu", async () => {
+    const user = userEvent.setup();
+    localStorage.setItem(
+      GALLERY_FILTER_INPUT_HISTORY_KEY,
+      JSON.stringify(["q:alpha", "q:beta", "q:gamma"]),
+    );
+    render(<Filters />);
+    const combobox = await screen.findByRole("combobox");
+    await user.click(combobox);
+    await user.click(await screen.findByRole("option", { name: "q:beta" }));
+    await waitFor(() => {
+      expect(screen.getByText("q:beta")).toBeInTheDocument();
+    });
+    await user.click(combobox);
+    expect(await screen.findByRole("option", { name: "q:alpha" })).toBeInTheDocument();
+    expect(await screen.findByRole("option", { name: "q:gamma" })).toBeInTheDocument();
+  });
+
+  it("does not show a menu or No options when history is empty", async () => {
     const user = userEvent.setup();
     render(<Filters />);
+    const combobox = await screen.findByRole("combobox");
+    await user.click(combobox);
+    expect(screen.queryByText(/no options/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole("listbox")).not.toBeInTheDocument();
+  });
 
-    await user.click(screen.getByText("Tags"));
+  it("keydown / is ignored while a dialog is open", async () => {
+    const { container } = render(<Filters />);
+    const combobox = await screen.findByRole("combobox");
+    const sink = document.createElement("div");
+    sink.tabIndex = 0;
+    container.appendChild(sink);
+    sink.focus();
 
-    await waitFor(() => {
-      expect(screen.getByText("nature")).toBeInTheDocument();
-    });
+    const dlg = document.createElement("dialog");
+    dlg.setAttribute("open", "");
+    document.body.appendChild(dlg);
 
-    await user.click(screen.getByText("nature"));
-
-    expect(screen.getByText(/nature/)).toBeInTheDocument();
-    const badge = screen.getByText(/nature/).closest(".badge");
-    expect(badge).not.toBeNull();
+    try {
+      fireEvent.keyDown(sink, { key: "/", bubbles: true });
+      expect(sink).toHaveFocus();
+      expect(combobox).not.toHaveFocus();
+    } finally {
+      dlg.remove();
+    }
   });
 });

@@ -361,6 +361,13 @@
   border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.85);
   box-shadow: 3px 3px 0 0 oklch(from var(--color-base-content) l c h / 0.5);
   font-weight: 700;
+  /* Explicit surface colors so tooltip text stays readable on Gruvbox etc. */
+  background-color: var(--color-neutral);
+  color: var(--color-neutral-content);
+}
+
+[data-design="neobrutalist"] .tooltip::after {
+  border-top-color: var(--color-neutral);
 }
 
 /* ── Dropdown ──────────────────────────────────────────────────── */

@@ -10,12 +10,9 @@ let mockImagesState = {
     order: "desc",
     type: "id",
     mediaType: "all" as "all" | "image" | "video" | "web" | "gif",
-    searchString: "",
-    tags: [],
+    filterTokens: [] as string[],
     advancedFilters: {
-      formats: ["jpeg", "jpg", "webp", "gif", "png", "bmp", "tiff", "tga", "pnm", "farbfeld"],
-      resolution: { constraint: "all", width: 0, height: 0 },
-      colors: [] as string[],
+      resolution: { constraint: "all" as const, width: 0, height: 0 },
     },
   },
 };
@@ -71,12 +68,9 @@ beforeEach(() => {
       order: "desc",
       type: "id",
       mediaType: "all",
-      searchString: "",
-      tags: [],
+      filterTokens: [],
       advancedFilters: {
-        formats: ["jpeg", "jpg", "webp", "gif", "png", "bmp", "tiff", "tga", "pnm", "farbfeld"],
         resolution: { constraint: "all", width: 0, height: 0 },
-        colors: [],
       },
     },
   };
@@ -116,7 +110,7 @@ describe("Gallery", () => {
       isQueried: true,
       filters: {
         ...mockImagesState.filters,
-        searchString: "landscape",
+        filterTokens: ["q:landscape"],
       },
     };
 

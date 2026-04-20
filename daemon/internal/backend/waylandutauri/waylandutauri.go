@@ -19,7 +19,6 @@ import (
 	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/parallaxdriver"
-	"waypaper-engine/daemon/internal/store"
 
 	"github.com/spf13/viper"
 )
@@ -115,6 +114,11 @@ type WaylandUtauri struct {
 	parallaxManifestDirMu     sync.Mutex
 	parallaxManifestDirection string // "horizontal" | "vertical" | ""
 	workspaceParallaxVertical atomic.Bool
+
+	// allowManagedChildRespawn is true only after we spawned a child and expect
+	// respawnAfterChildExit to restart it on crash. Cleared in Shutdown so an
+	// intentional backend switch does not resurrect wayland-utauri in the background.
+	allowManagedChildRespawn atomic.Bool
 }
 
 var _ backend.Backend = (*WaylandUtauri)(nil)
@@ -182,11 +186,7 @@ func (w *WaylandUtauri) initializeImpl(ctx context.Context) error {
 	// Service unreachable -- start it. Use a background-context command so the
 	// process outlives the HTTP request that triggered activation.
 	slog.Info("starting wayland-utauri", "binary", binaryName)
-	args := []string(nil)
-	if cfg.AllowNetworkWallpapers {
-		args = append(args, "--allow-network-wallpapers")
-	}
-	cmd := exec.Command(binaryName, args...)
+	cmd := exec.Command(binaryName)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGTERM}
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("wayland-utauri: start %s: %w", binaryName, err)
@@ -219,6 +219,7 @@ func (w *WaylandUtauri) initializeImpl(ctx context.Context) error {
 		return err
 	}
 	slog.Info("wayland-utauri ready after spawn")
+	w.allowManagedChildRespawn.Store(true)
 	w.syncParallaxDriver(w.loadConfigFromViper())
 	return nil
 }
@@ -226,6 +227,9 @@ func (w *WaylandUtauri) initializeImpl(ctx context.Context) error {
 // respawnAfterChildExit runs after our managed child exits; it restarts wayland-utauri
 // so the daemon does not sit idle until the next explicit wallpaper operation.
 func (w *WaylandUtauri) respawnAfterChildExit(exitGen int64) {
+	if !w.allowManagedChildRespawn.Load() {
+		return
+	}
 	const debounce = 400 * time.Millisecond
 	time.Sleep(debounce)
 	if atomic.LoadInt64(&w.spawnGeneration) != exitGen {
@@ -314,6 +318,8 @@ func (w *WaylandUtauri) getStatusWithRetry(ctx context.Context, client *controlC
 }
 
 func (w *WaylandUtauri) Shutdown(_ context.Context) error {
+	w.allowManagedChildRespawn.Store(false)
+
 	w.parallaxDriverMu.Lock()
 	if w.parallaxDriverCancel != nil {
 		w.parallaxDriverCancel()
@@ -405,8 +411,7 @@ func (w *WaylandUtauri) SetWallpaper(ctx context.Context, req backend.WallpaperR
 		return fmt.Errorf("wayland-utauri: get status: %w", err)
 	}
 
-	monitorMap := buildMonitorMap(status.Status.Topology, req.Monitors)
-	loadReq, err := buildLoadRequest(req, cfg, monitorMap)
+	loadReq, err := buildLoadRequest(req, cfg)
 	if err != nil {
 		return err
 	}
@@ -533,16 +538,16 @@ func (w *WaylandUtauri) syncParallaxDriver(cfg *Config) {
 	w.parallaxDriverCancel = cancel
 	w.parallaxDriverMu.Unlock()
 
-	resolve := func(c context.Context, e parallaxdriver.MonitorWorkspaceEntry) (uint32, bool) {
+	resolve := func(c context.Context, e parallaxdriver.MonitorWorkspaceEntry) (string, bool) {
 		st, err := client.status(c)
 		if err != nil {
 			slog.Debug("parallax compositor driver: status for monitor resolve", "error", err)
-			return 0, false
+			return "", false
 		}
 		return ResolveParallaxMonitor(st.Status.Topology, e.Bounds.X, e.Bounds.Y, e.Bounds.Width, e.Bounds.Height)
 	}
-	move := func(c context.Context, dir string, amountPercent float64, monitor uint32) error {
-		return client.parallaxMoveScoped(c, dir, amountPercent, monitor)
+	move := func(c context.Context, dir string, amountPercent float64, outputName string) error {
+		return client.parallaxMoveScoped(c, dir, amountPercent, outputName)
 	}
 
 	wRef := w
@@ -589,12 +594,6 @@ func (w *WaylandUtauri) RegisterDefaults(v *viper.Viper) {
 	v.SetDefault(viperBackendKey+".image_rendering", def.ImageRendering)
 	v.SetDefault(viperBackendKey+".video_audio_default", def.VideoAudioDefault)
 	v.SetDefault(viperBackendKey+".allow_network_wallpapers", def.AllowNetworkWallpapers)
-	v.SetDefault(viperBackendKey+".renderer_pause", def.RendererPause)
-	v.SetDefault(viperBackendKey+".allow_web_keyboard", def.AllowWebKeyboard)
-	v.SetDefault(viperBackendKey+".allow_web_audio_reactive", def.AllowWebAudioReactive)
-	v.SetDefault(viperBackendKey+".allow_web_pointer_interactive", def.AllowWebPointerInteractive)
-	v.SetDefault(viperBackendKey+".allow_web_parallax_aware", def.AllowWebParallaxAware)
-	v.SetDefault(viperBackendKey+".allow_web_manifest_network", def.AllowWebManifestNetwork)
 }
 
 func (w *WaylandUtauri) ValidateConfig(raw json.RawMessage) error {
@@ -734,12 +733,6 @@ func (w *WaylandUtauri) loadConfigFromViper() *Config {
 	}
 	cfg.VideoAudioDefault = getBool("video_audio_default")
 	cfg.AllowNetworkWallpapers = getBool("allow_network_wallpapers")
-	cfg.RendererPause = getBool("renderer_pause")
-	cfg.AllowWebKeyboard = getBool("allow_web_keyboard")
-	cfg.AllowWebAudioReactive = getBool("allow_web_audio_reactive")
-	cfg.AllowWebPointerInteractive = getBool("allow_web_pointer_interactive")
-	cfg.AllowWebParallaxAware = getBool("allow_web_parallax_aware")
-	cfg.AllowWebManifestNetwork = getBool("allow_web_manifest_network")
 
 	if w.v != nil {
 		cfg.TransitionAngleDeg = normalizeAngleDeg(intFromViperPrefixes(w.v, "transition_angle_deg", cfg.TransitionAngleDeg))
@@ -769,6 +762,10 @@ func (w *WaylandUtauri) makeControlClient(cfg *Config) (*controlClient, error) {
 // apply without waiting for the next wallpaper load. Failures are non-fatal
 // (child may be down); callers should log returned errors and still treat
 // config save as successful.
+//
+// Ordering note: POST /settings/network updates global HTML outbound allow; the host combines it
+// with manifest `capabilities.network` for effective permission and may reload webviews when
+// that effective bit changes.
 // PushWallpaperConfig pushes merged user config to wayland-utauri for monitors showing this entry path.
 func (w *WaylandUtauri) PushWallpaperConfig(ctx context.Context, sourceTarget string, values json.RawMessage) error {
 	cfg := w.loadConfigFromViper()
@@ -808,12 +805,6 @@ func (w *WaylandUtauri) SyncRuntimeFromConfig(ctx context.Context) error {
 	if err := client.setAllowNetworkWallpapers(ctx, cfg.AllowNetworkWallpapers); err != nil {
 		return fmt.Errorf("wayland-utauri: runtime sync network policy: %w", err)
 	}
-	if err := client.setWebCapabilityPolicy(ctx, cfg); err != nil {
-		return fmt.Errorf("wayland-utauri: runtime sync web capability policy: %w", err)
-	}
-	if err := client.setRendererPause(ctx, cfg.RendererPause); err != nil {
-		return fmt.Errorf("wayland-utauri: runtime sync renderer pause: %w", err)
-	}
 	fit := strings.TrimSpace(cfg.ImageFitMode)
 	if fit == "" {
 		fit = "cover"
@@ -835,9 +826,4 @@ func LoadConfigFromViper(v *viper.Viper) *Config {
 	}
 	w := &WaylandUtauri{v: v}
 	return w.loadConfigFromViper()
-}
-
-// ClampWebCapabilitiesFromConfig applies the current viper-backed policy ceiling to caps.
-func (w *WaylandUtauri) ClampWebCapabilitiesFromConfig(caps store.WebCapabilities) store.WebCapabilities {
-	return w.loadConfigFromViper().ApplyWebCapabilityPolicy(caps)
 }

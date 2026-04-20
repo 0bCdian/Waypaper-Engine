@@ -2,6 +2,7 @@ import { useEffect } from "react";
 import { useLoadImages } from "../hooks/useLoadImages";
 import { useImagesStore } from "../stores/images";
 import { useFoldersStore } from "../stores/foldersStore";
+import { galleryHasActiveFilters } from "../utils/galleryFilterTokens";
 import AddImagesCard from "./AddImagesCard";
 import PaginatedGallery from "./PaginatedGallery";
 import Filters from "./Filters";
@@ -29,13 +30,7 @@ function Gallery() {
 
   const folders = useFoldersStore((s) => s.folders);
 
-  const hasActiveFilters =
-    filters.searchString !== "" ||
-    filters.mediaType !== "all" ||
-    filters.tags.length > 0 ||
-    filters.advancedFilters.formats.length < 10 ||
-    filters.advancedFilters.resolution.constraint !== "all" ||
-    (filters.advancedFilters.colors?.length ?? 0) > 0;
+  const hasActiveFilters = galleryHasActiveFilters(filters);
 
   if (
     isEmpty &&

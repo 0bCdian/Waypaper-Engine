@@ -8,13 +8,13 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestTopologyToEngineMonitors_usesMonitorIndexLabels(t *testing.T) {
+func TestTopologyToEngineMonitors_usesCompositorNames(t *testing.T) {
 	got := topologyToEngineMonitors([]topologyEntry{
-		{Monitor: 1, StableID: "HDMI-A-1", Width: 1920, Height: 1080, X: 0, Y: 0},
-		{Monitor: 2, StableID: "", Width: 1920, Height: 1080, X: 1920, Y: 0},
+		{Name: "HDMI-A-1", Width: 1920, Height: 1080, X: 0, Y: 0},
+		{Name: "DP-2", Width: 1920, Height: 1080, X: 1920, Y: 0},
 	})
 	assert.Equal(t, []monitor.Monitor{
-		{Name: "Monitor 1", Width: 1920, Height: 1080, X: 0, Y: 0, Scale: 1},
-		{Name: "Monitor 2", Width: 1920, Height: 1080, X: 1920, Y: 0, Scale: 1},
+		{Name: "HDMI-A-1", Width: 1920, Height: 1080, X: 0, Y: 0, Scale: 1},
+		{Name: "DP-2", Width: 1920, Height: 1080, X: 1920, Y: 0, Scale: 1},
 	}, got)
 }

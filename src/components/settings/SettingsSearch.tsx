@@ -2,211 +2,22 @@ import type React from "react";
 import { useState, useEffect, useRef } from "react";
 import { cn } from "@/utils/cn";
 import type { ConfigSection } from "@/shared/types/unifiedConfig";
+import {
+  filterSettingsSearchEntries,
+  type SettingsSearchEntry,
+} from "@/utils/settingsSearchIndex";
 
 interface SettingsSearchProps {
   searchTerm: string;
   onSearchChange: (term: string) => void;
   onSearchClear: () => void;
-  onNavigateToSection?: (section: ConfigSection) => void;
+  onNavigateToSection?: (section: ConfigSection, searchEntry?: SettingsSearchEntry) => void;
   className?: string;
   placeholder?: string;
   showSuggestions?: boolean;
   /** Compact variant for sidebar usage */
   compact?: boolean;
 }
-
-interface SearchSuggestion {
-  section: ConfigSection;
-  key: string;
-  label: string;
-  description: string;
-  category: string;
-}
-
-const searchSuggestions: SearchSuggestion[] = [
-  {
-    section: "app",
-    key: "theme",
-    label: "Theme",
-    description: "Application theme",
-    category: "Appearance",
-  },
-  {
-    section: "app",
-    key: "notifications",
-    label: "Notifications",
-    description: "Enable desktop notifications",
-    category: "Appearance",
-  },
-  {
-    section: "app",
-    key: "start_minimized",
-    label: "Start Minimized",
-    description: "Start application minimized",
-    category: "Behavior",
-  },
-  {
-    section: "app",
-    key: "minimize_instead_of_close",
-    label: "Minimize Instead of Close",
-    description: "Minimize to tray instead of closing",
-    category: "Behavior",
-  },
-  {
-    section: "app",
-    key: "images_per_page",
-    label: "Images Per Page",
-    description: "Number of images per page",
-    category: "Gallery",
-  },
-  {
-    section: "app",
-    key: "sort_by",
-    label: "Sort By",
-    description: "Default sort order for images",
-    category: "Gallery",
-  },
-  {
-    section: "daemon",
-    key: "log_level",
-    label: "Log Level",
-    description: "Daemon logging level",
-    category: "Logging",
-  },
-  {
-    section: "daemon",
-    key: "log_file",
-    label: "Log File",
-    description: "Path to log file",
-    category: "Logging",
-  },
-  {
-    section: "daemon",
-    key: "images_dir",
-    label: "Images Directory",
-    description: "Directory for cached images",
-    category: "Storage",
-  },
-  {
-    section: "daemon",
-    key: "thumbnails_dir",
-    label: "Thumbnails Directory",
-    description: "Directory for thumbnails",
-    category: "Storage",
-  },
-  {
-    section: "backend",
-    key: "type",
-    label: "Backend Type",
-    description: "Wallpaper backend (awww, feh, etc.)",
-    category: "Backend",
-  },
-  {
-    section: "backend",
-    key: "selection_mode",
-    label: "Selection Mode",
-    description: "Fixed (one backend) or Auto (pick per media type)",
-    category: "Backend",
-  },
-  {
-    section: "backend",
-    key: "auto_priorities",
-    label: "Auto Backend Priorities",
-    description: "Per-media backend priority lists for auto mode",
-    category: "Backend",
-  },
-  {
-    section: "backend",
-    key: "awww.transition_type",
-    label: "Transition Type",
-    description: "Type of wallpaper transition",
-    category: "Transitions",
-  },
-  {
-    section: "backend",
-    key: "transition_duration_seconds",
-    label: "Transition duration",
-    description: "Wallpaper transition length in seconds (awww and wayland-utauri)",
-    category: "Transitions",
-  },
-  {
-    section: "backend",
-    key: "waylandutauri.transition",
-    label: "Wayland-utauri transition",
-    description: "Transition preset for wayland-utauri / waypaper-tauri",
-    category: "Transitions",
-  },
-  {
-    section: "backend",
-    key: "waylandutauri.image_fit_mode",
-    label: "Wayland-utauri image fit mode",
-    description: "CSS object-fit mode for image wallpapers",
-    category: "Image Display",
-  },
-  {
-    section: "backend",
-    key: "waylandutauri.image_rendering",
-    label: "Wayland-utauri image rendering",
-    description: "CSS image-rendering hint for image wallpapers",
-    category: "Image Display",
-  },
-  {
-    section: "backend",
-    key: "waylandutauri.transition_angle_deg",
-    label: "Wipe / wave angle",
-    description: "Angle in degrees for wipe and wave (directional presets lock angle)",
-    category: "Transitions",
-  },
-  {
-    section: "backend",
-    key: "waylandutauri.transition_origin_x_percent",
-    label: "Grow/outer origin X",
-    description: "Horizontal origin percent for grow and outer transitions",
-    category: "Transitions",
-  },
-  {
-    section: "backend",
-    key: "waylandutauri.transition_origin_y_percent",
-    label: "Grow/outer origin Y",
-    description: "Vertical origin percent for grow and outer transitions",
-    category: "Transitions",
-  },
-  {
-    section: "backend",
-    key: "waylandutauri.parallax_compositor_driver",
-    label: "Compositor parallax driver",
-    description: "Hyprland/Sway workspace → parallax bridge",
-    category: "Backend",
-  },
-  {
-    section: "backend",
-    key: "waylandutauri.parallax_workspace_chunk_size",
-    label: "Parallax workspace chunk size",
-    description: "Workspace ids per chunk for compositor parallax absolute targets",
-    category: "Backend",
-  },
-  {
-    section: "backend",
-    key: "awww.transition_step",
-    label: "Transition Step",
-    description: "Step size for transitions",
-    category: "Transitions",
-  },
-  {
-    section: "monitors",
-    key: "image_set_type",
-    label: "Image Set Type",
-    description: "How images are set across monitors",
-    category: "Monitors",
-  },
-  {
-    section: "monitors",
-    key: "selected_monitors",
-    label: "Selected Monitors",
-    description: "Monitors to use for wallpapers",
-    category: "Monitors",
-  },
-];
 
 export const SettingsSearch: React.FC<SettingsSearchProps> = ({
   searchTerm,
@@ -222,22 +33,19 @@ export const SettingsSearch: React.FC<SettingsSearchProps> = ({
   const [selectedIdx, setSelectedIdx] = useState(-1);
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
-  const [prevTerm, setPrevTerm] = useState(searchTerm);
 
-  const filtered = searchTerm.trim()
-    ? searchSuggestions.filter(
-        (s) =>
-          s.label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          s.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          s.key.toLowerCase().includes(searchTerm.toLowerCase()) ||
-          s.category.toLowerCase().includes(searchTerm.toLowerCase()),
-      )
-    : [];
+  const filtered = filterSettingsSearchEntries(searchTerm);
 
-  if (prevTerm !== searchTerm) {
-    setPrevTerm(searchTerm);
+  useEffect(() => {
     setSelectedIdx(-1);
-  }
+  }, [searchTerm]);
+
+  const commitNavigate = (section: ConfigSection, searchEntry?: SettingsSearchEntry) => {
+    if (!onNavigateToSection) return;
+    onNavigateToSection(section, searchEntry);
+    onSearchClear();
+    inputRef.current?.blur();
+  };
 
   const handleKeyDown = (event: React.KeyboardEvent) => {
     if (!showSuggestions || filtered.length === 0) {
@@ -245,15 +53,18 @@ export const SettingsSearch: React.FC<SettingsSearchProps> = ({
         event.preventDefault();
         const lc = searchTerm.toLowerCase();
         let target: ConfigSection | null = null;
-        if (lc.includes("app") || lc.includes("theme") || lc.includes("notification"))
+        if (lc.includes("wallhaven")) target = "wallhaven";
+        else if (lc.includes("monitor")) target = "monitors";
+        else if (lc.includes("app") || lc.includes("theme") || lc.includes("notification"))
           target = "app";
         else if (lc.includes("daemon") || lc.includes("log") || lc.includes("database"))
           target = "daemon";
         else if (lc.includes("backend") || lc.includes("awww") || lc.includes("transition"))
           target = "backend";
         if (target) {
-          onNavigateToSection(target);
-          inputRef.current?.blur();
+          const entryForSection =
+            target === "backend" ? filtered.find((e) => e.section === "backend") : undefined;
+          commitNavigate(target, entryForSection);
         }
       }
       return;
@@ -270,12 +81,12 @@ export const SettingsSearch: React.FC<SettingsSearchProps> = ({
         break;
       case "Enter":
         event.preventDefault();
-        if (selectedIdx >= 0) {
-          onSearchChange(filtered[selectedIdx].key);
-          inputRef.current?.blur();
+        if (selectedIdx >= 0 && onNavigateToSection) {
+          const e = filtered[selectedIdx];
+          commitNavigate(e.section, e);
         } else if (onNavigateToSection && filtered[0]) {
-          onNavigateToSection(filtered[0].section);
-          inputRef.current?.blur();
+          const e = filtered[0];
+          commitNavigate(e.section, e);
         }
         break;
       case "Escape":
@@ -355,13 +166,14 @@ export const SettingsSearch: React.FC<SettingsSearchProps> = ({
           {filtered.map((s, i) => (
             <button
               key={`${s.section}-${s.key}`}
+              type="button"
               className={cn(
                 "w-full px-3 py-2 text-left hover:bg-base-200 transition-colors border-b border-base-200 last:border-b-0",
                 i === selectedIdx && "bg-primary/10",
               )}
+              onMouseDown={(e) => e.preventDefault()}
               onClick={() => {
-                onSearchChange(s.key);
-                inputRef.current?.blur();
+                if (onNavigateToSection) commitNavigate(s.section, s);
               }}
             >
               <div className="flex items-center gap-2">

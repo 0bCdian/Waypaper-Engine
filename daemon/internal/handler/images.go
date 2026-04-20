@@ -11,11 +11,11 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/go-chi/chi/v5"
 
 	"waypaper-engine/daemon/internal/backend"
-	"waypaper-engine/daemon/internal/backend/waylandutauri"
 	"waypaper-engine/daemon/internal/events"
 	img "waypaper-engine/daemon/internal/image"
 	"waypaper-engine/daemon/internal/store"
@@ -46,15 +46,6 @@ func NewImageHandler(
 	}
 }
 
-func (h *ImageHandler) clampWebCaps(caps store.WebCapabilities) store.WebCapabilities {
-	if h.registry != nil {
-		if w, ok := h.registry.Active().(*waylandutauri.WaylandUtauri); ok {
-			return w.ClampWebCapabilitiesFromConfig(caps)
-		}
-	}
-	return waylandutauri.LoadConfigFromViper(nil).ApplyWebCapabilityPolicy(caps)
-}
-
 // List handles GET /images.
 func (h *ImageHandler) List(w http.ResponseWriter, r *http.Request) {
 	p := ParsePagination(r)
@@ -75,6 +66,10 @@ func (h *ImageHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	if colors := q.Get("colors"); colors != "" {
 		opts.Colors = strings.Split(colors, ",")
+	}
+
+	if cn := strings.TrimSpace(q.Get("colors_near")); cn != "" {
+		opts.ColorsNear = parseColorsNearQuery(cn)
 	}
 
 	if folderID := q.Get("folder_id"); folderID != "" {
@@ -255,7 +250,7 @@ func (h *ImageHandler) Update(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		merged := wallpaper.MergeWebCapabilitiesJSON(cur.WebMeta.Capabilities, patch)
-		cur.WebMeta.Capabilities = h.clampWebCaps(merged)
+		cur.WebMeta.Capabilities = merged
 		wmJSON, mErr := json.Marshal(cur.WebMeta)
 		if mErr != nil {
 			WriteError(w, http.StatusInternalServerError, mErr.Error())
@@ -601,6 +596,53 @@ func (h *ImageHandler) RawThumbnail(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, thumbPath)
 }
 
+type videoLoopExportRequest struct {
+	InSeconds  float64 `json:"in_seconds"`
+	OutSeconds float64 `json:"out_seconds"`
+	Preset     string  `json:"preset"`
+	Action     string  `json:"action"`
+	FolderID   *int    `json:"folder_id,omitempty"`
+}
+
+// VideoLoopExport handles POST /images/{id}/video-loop-export — FFmpeg trim/re-encode for seamless native loop playback.
+func (h *ImageHandler) VideoLoopExport(w http.ResponseWriter, r *http.Request) {
+	id, err := ParseIntParam(chi.URLParam(r, "id"))
+	if err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	var req videoLoopExportRequest
+	if err := ParseBody(r, &req); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
+	defer cancel()
+	out, err := h.processor.VideoLoopExport(ctx, id, req.InSeconds, req.OutSeconds, req.Preset, req.Action, req.FolderID)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			WriteError(w, http.StatusNotFound, err.Error())
+			return
+		}
+		msg := err.Error()
+		switch {
+		case strings.Contains(msg, "not a video"),
+			strings.Contains(msg, "invalid trim"),
+			strings.Contains(msg, "invalid trim range"),
+			strings.Contains(msg, "invalid action"),
+			strings.Contains(msg, "unsupported preset"):
+			WriteError(w, http.StatusBadRequest, msg)
+		case strings.Contains(msg, "ffmpeg not"),
+			strings.Contains(msg, "ffprobe not"):
+			WriteError(w, http.StatusServiceUnavailable, msg)
+		default:
+			WriteError(w, http.StatusInternalServerError, msg)
+		}
+		return
+	}
+	WriteJSON(w, http.StatusOK, out)
+}
+
 // RawImage handles GET /images/{id}/raw — serves the actual image file.
 func (h *ImageHandler) RawImage(w http.ResponseWriter, r *http.Request) {
 	id, err := ParseIntParam(chi.URLParam(r, "id"))
@@ -656,4 +698,35 @@ func (h *ImageHandler) EnsureBrowserPreview(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	WriteJSON(w, http.StatusOK, img)
+}
+
+// parseColorsNearQuery parses comma-separated "#hex~maxDeltaE" items (CIE76).
+func parseColorsNearQuery(raw string) []store.ColorNearConstraint {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	var out []store.ColorNearConstraint
+	for _, part := range parts {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		idx := strings.LastIndex(part, "~")
+		if idx <= 0 || idx >= len(part)-1 {
+			continue
+		}
+		hex := strings.TrimSpace(part[:idx])
+		num := strings.TrimSpace(part[idx+1:])
+		maxDE, err := strconv.ParseFloat(num, 64)
+		if err != nil || maxDE < 0 {
+			continue
+		}
+		if hex == "" {
+			continue
+		}
+		out = append(out, store.ColorNearConstraint{Hex: hex, MaxDeltaE: maxDE})
+	}
+	return out
 }

@@ -17,6 +17,8 @@ import type {
   WallpaperCurrent,
   EventType,
   Folder,
+  VideoLoopExportRequest,
+  VideoLoopExportResult,
 } from "../../electron/daemon-go-types";
 declare global {
   const __DEBUG__: boolean;
@@ -42,6 +44,10 @@ declare global {
         getImages: (params?: ImageQueryParams) => Promise<PaginatedResponse<Image>>;
         getImage: (id: number) => Promise<Image>;
         ensureBrowserPreview: (id: number, force?: boolean) => Promise<Image>;
+        videoLoopExport: (
+          id: number,
+          body: VideoLoopExportRequest,
+        ) => Promise<VideoLoopExportResult>;
         getImageCount: () => Promise<{ count: number }>;
         importImages: (
           paths: string[],
@@ -123,8 +129,8 @@ declare global {
         updateConfig: (config: Partial<UnifiedConfig>) => Promise<UnifiedConfig>;
         getConfigSection: (section: string) => Promise<unknown>;
         updateConfigSection: (section: string, data: Record<string, unknown>) => Promise<unknown>;
-        getBackendConfig: () => Promise<Record<string, unknown>>;
-        updateBackendConfig: (config: Record<string, unknown>) => Promise<void>;
+        getBackendConfig: (name: string) => Promise<Record<string, unknown>>;
+        updateBackendConfig: (name: string, patch: Record<string, unknown>) => Promise<void>;
 
         // BACKENDS
         getBackends: () => Promise<BackendInfo[]>;

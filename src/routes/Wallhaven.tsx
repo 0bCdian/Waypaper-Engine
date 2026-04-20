@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { Link } from "react-router-dom";
 import { useShallow } from "zustand/react/shallow";
 import {
   useWallhavenStore,
@@ -196,7 +197,17 @@ function WallhavenPage() {
           />
         </svg>
         <p className="text-lg font-medium">Wallhaven is disabled</p>
-        <p className="text-sm">Enable it in Settings &rarr; Wallhaven to browse wallpapers.</p>
+        <p className="text-sm text-center max-w-sm text-base-content/70">
+          Enable it in{" "}
+          <Link
+            to="/settings"
+            state={{ settingsNavSection: "wallhaven" }}
+            className="link link-primary font-medium"
+          >
+            Settings → Wallhaven
+          </Link>{" "}
+          to browse wallpapers.
+        </p>
       </div>
     );
   }

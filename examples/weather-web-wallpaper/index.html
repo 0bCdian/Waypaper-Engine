@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Weather wallpaper</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --fg: #e8eef5;
+        --muted: #9aa7b8;
+        --err: #ff8a8a;
+        --panel: rgba(12, 18, 28, 0.72);
+      }
+      * {
+        box-sizing: border-box;
+      }
+      html,
+      body {
+        margin: 0;
+        height: 100%;
+        font-family: system-ui, sans-serif;
+        background: radial-gradient(120% 100% at 10% 0%, #1a2740 0%, #0c1018 55%, #06080c 100%);
+        color: var(--fg);
+      }
+      .wrap {
+        min-height: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 4vmin;
+      }
+      .card {
+        max-width: 36rem;
+        width: 100%;
+        padding: 1.5rem 1.75rem;
+        border-radius: 14px;
+        background: var(--panel);
+        backdrop-filter: blur(10px);
+        border: 1px solid rgba(255, 255, 255, 0.08);
+        box-shadow: 0 12px 40px rgba(0, 0, 0, 0.35);
+      }
+      h1 {
+        margin: 0 0 0.35rem;
+        font-size: clamp(1.1rem, 2.8vmin, 1.35rem);
+        font-weight: 600;
+        letter-spacing: 0.02em;
+      }
+      .sub {
+        margin: 0 0 1rem;
+        font-size: 0.85rem;
+        color: var(--muted);
+      }
+      .temp {
+        font-size: clamp(2.5rem, 10vmin, 3.5rem);
+        font-weight: 700;
+        line-height: 1.1;
+        letter-spacing: -0.03em;
+      }
+      .desc {
+        margin-top: 0.35rem;
+        font-size: 1.05rem;
+        color: var(--muted);
+      }
+      .error {
+        margin: 0;
+        color: var(--err);
+        font-size: 0.95rem;
+        line-height: 1.45;
+        white-space: pre-wrap;
+        word-break: break-word;
+      }
+      .hint {
+        margin-top: 0.75rem;
+        font-size: 0.8rem;
+        color: var(--muted);
+        opacity: 0.9;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <div class="card">
+        <h1>Weather</h1>
+        <p class="sub" id="loc">Berlin (default)</p>
+        <div id="ok" hidden>
+          <div class="temp" id="temp">—</div>
+          <div class="desc" id="desc"></div>
+        </div>
+        <p class="error" id="err" hidden></p>
+        <p class="hint" id="hint" hidden>
+          If you see a fetch error, check waypaper-engine: allow_network_wallpapers and this manifest’s
+          network capability.
+        </p>
+      </div>
+    </div>
+    <script>
+      (function () {
+        var DEFAULT_LAT = 52.52;
+        var DEFAULT_LON = 13.405;
+        var WMO = {
+          0: "Clear",
+          1: "Mainly clear",
+          2: "Partly cloudy",
+          3: "Overcast",
+          45: "Fog",
+          48: "Fog",
+          51: "Light drizzle",
+          53: "Drizzle",
+          55: "Heavy drizzle",
+          61: "Light rain",
+          63: "Rain",
+          65: "Heavy rain",
+          71: "Snow",
+          73: "Snow",
+          75: "Heavy snow",
+          77: "Snow grains",
+          80: "Rain showers",
+          81: "Rain showers",
+          82: "Violent rain",
+          85: "Snow showers",
+          86: "Heavy snow showers",
+          95: "Thunderstorm",
+          96: "Thunderstorm w/ hail",
+          99: "Thunderstorm w/ heavy hail"
+        };
+
+        var ok = document.getElementById("ok");
+        var errEl = document.getElementById("err");
+        var hint = document.getElementById("hint");
+        var tempEl = document.getElementById("temp");
+        var descEl = document.getElementById("desc");
+
+        function showError(msg) {
+          ok.hidden = true;
+          errEl.hidden = false;
+          errEl.textContent = msg;
+          hint.hidden = false;
+        }
+
+        function showOk(t, code) {
+          errEl.hidden = true;
+          hint.hidden = true;
+          ok.hidden = false;
+          tempEl.textContent = t != null ? Math.round(t) + "°C" : "—";
+          var label = WMO[code] != null ? WMO[code] : "Code " + code;
+          descEl.textContent = label;
+        }
+
+        var url =
+          "https://api.open-meteo.com/v1/forecast?latitude=" +
+          DEFAULT_LAT +
+          "&longitude=" +
+          DEFAULT_LON +
+          "&current=temperature_2m,weather_code";
+
+        fetch(url, { method: "GET" })
+          .then(function (r) {
+            if (!r.ok) throw new Error("HTTP " + r.status + " " + r.statusText);
+            return r.json();
+          })
+          .then(function (data) {
+            var cur = data && data.current;
+            if (!cur || typeof cur.temperature_2m !== "number") {
+              throw new Error("Unexpected API response (no current.temperature_2m).");
+            }
+            showOk(cur.temperature_2m, cur.weather_code);
+          })
+          .catch(function (e) {
+            var name = e && e.name ? e.name : "Error";
+            var msg = e && e.message ? e.message : String(e);
+            showError(name + ": " + msg);
+          });
+      })();
+    </script>
+  </body>
+</html>

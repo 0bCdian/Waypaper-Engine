@@ -1,6 +1,9 @@
 /**
- * Legacy wayland-utauri topology stable_id format from waypaper-tauri
- * (`monitor:{id}:{x}:{y}:{w}:{h}`). Daemon/UI now use `Monitor {id}` labels.
+ * Legacy persisted stable_id strings from older wayland-utauri builds
+ * (`monitor:{id}:{x}:{y}:{w}:{h}`). Current daemons use compositor output names
+ * (`HDMI-A-1`, …); this maps old rows to the synthetic `Monitor {id}` label so
+ * UI code can still dedupe. Re-select monitors in settings if names no longer
+ * match the live list.
  */
 const LEGACY_UTAURI_STABLE_RE = /^monitor:(\d+):/;
 

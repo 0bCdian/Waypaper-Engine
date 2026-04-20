@@ -76,7 +76,7 @@ func (c *controlClient) checkHealth(ctx context.Context) error {
 		respAPI = payload.APIVersion
 	}
 	if c.expectedAPI != "" && respAPI != c.expectedAPI {
-		return fmt.Errorf("%w: api version %q does not match expected %q", errContract, respAPI, c.expectedAPI)
+		return fmt.Errorf("%w: api version %q does not match expected %q (align backend.wayland-utauri.expected_api_version with GET /health)", errContract, respAPI, c.expectedAPI)
 	}
 	return nil
 }
@@ -107,36 +107,6 @@ func (c *controlClient) load(ctx context.Context, req loadRequest) (int, string,
 func (c *controlClient) setAllowNetworkWallpapers(ctx context.Context, allow bool) error {
 	_, status, body, err := c.doJSON(ctx, http.MethodPost, "/settings/network", map[string]any{
 		"allow_network_wallpapers": allow,
-	})
-	if err != nil {
-		return err
-	}
-	if status < 200 || status >= 300 {
-		return classifyHTTPError(status, body)
-	}
-	return nil
-}
-
-func (c *controlClient) setWebCapabilityPolicy(ctx context.Context, cfg *Config) error {
-	_, status, body, err := c.doJSON(ctx, http.MethodPost, "/settings/web-capability-policy", map[string]any{
-		"allow_web_keyboard":            cfg.AllowWebKeyboard,
-		"allow_web_audio_reactive":      cfg.AllowWebAudioReactive,
-		"allow_web_pointer_interactive": cfg.AllowWebPointerInteractive,
-		"allow_web_parallax_aware":      cfg.AllowWebParallaxAware,
-		"allow_web_manifest_network":    cfg.AllowWebManifestNetwork,
-	})
-	if err != nil {
-		return err
-	}
-	if status < 200 || status >= 300 {
-		return classifyHTTPError(status, body)
-	}
-	return nil
-}
-
-func (c *controlClient) setRendererPause(ctx context.Context, paused bool) error {
-	_, status, body, err := c.doJSON(ctx, http.MethodPost, "/wallpaper/renderer-pause", map[string]any{
-		"paused": paused,
 	})
 	if err != nil {
 		return err
@@ -213,7 +183,7 @@ func (c *controlClient) setParallax(ctx context.Context, body map[string]any) er
 }
 
 // parallaxMove posts to POST /wallpaper/parallax-move. direction must be left, right, up, or down.
-func (c *controlClient) parallaxMove(ctx context.Context, direction string, amountPercent *float64, monitor *uint32) error {
+func (c *controlClient) parallaxMove(ctx context.Context, direction string, amountPercent *float64, outputName *string) error {
 	switch direction {
 	case "left", "right", "up", "down":
 	default:
@@ -223,8 +193,8 @@ func (c *controlClient) parallaxMove(ctx context.Context, direction string, amou
 	if amountPercent != nil {
 		body["amount_percent"] = *amountPercent
 	}
-	if monitor != nil {
-		body["monitor"] = *monitor
+	if outputName != nil {
+		body["name"] = *outputName
 	}
 	_, status, respBody, err := c.doJSON(ctx, http.MethodPost, "/wallpaper/parallax-move", body)
 	if err != nil {
@@ -238,8 +208,8 @@ func (c *controlClient) parallaxMove(ctx context.Context, direction string, amou
 
 // parallaxMoveScoped is used by the workspace compositor driver and always scopes
 // movement to one resolved monitor.
-func (c *controlClient) parallaxMoveScoped(ctx context.Context, direction string, amountPercent float64, monitor uint32) error {
-	return c.parallaxMove(ctx, direction, &amountPercent, &monitor)
+func (c *controlClient) parallaxMoveScoped(ctx context.Context, direction string, amountPercent float64, outputName string) error {
+	return c.parallaxMove(ctx, direction, &amountPercent, &outputName)
 }
 
 func (c *controlClient) doJSON(ctx context.Context, method, path string, payload any) (http.Header, int, string, error) {

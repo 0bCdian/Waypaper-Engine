@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+	"net/url"
 
 	"github.com/go-chi/chi/v5"
 
@@ -99,46 +100,99 @@ func (h *ConfigHandler) GetSection(w http.ResponseWriter, r *http.Request) {
 func (h *ConfigHandler) PatchSection(w http.ResponseWriter, r *http.Request) {
 	section := chi.URLParam(r, "section")
 
-	// Special handling for backend-specific config.
+	// Legacy: PATCH /config/backend updates the active backend only.
 	if section == "backend" {
-		var raw json.RawMessage
-		if err := ParseBody(r, &raw); err != nil {
-			WriteError(w, http.StatusBadRequest, err.Error())
-			return
-		}
-
-		backendType := h.cfg.GetActiveBackendType()
-		b, ok := h.registry.Get(backendType)
-		if !ok {
-			WriteErrorf(w, http.StatusBadRequest, "unknown backend: %s", backendType)
-			return
-		}
-
-		if err := b.ValidateConfig(raw); err != nil {
-			WriteErrorf(w, http.StatusBadRequest, "invalid backend config: %s", err.Error())
-			return
-		}
-
-		if err := h.cfg.SetBackendConfig(backendType, raw); err != nil {
-			WriteError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-
-		if syncer, ok := b.(backend.RuntimeConfigSync); ok {
-			if err := syncer.SyncRuntimeFromConfig(r.Context()); err != nil {
-				slog.Warn("backend runtime sync after config save failed", "backend", backendType, "error", err)
-			}
-		}
-
-		h.bus.Publish(events.Event{
-			Type: events.ConfigChanged,
-			Data: map[string]any{"sections": []string{"backend." + backendType}},
-		})
-
-		WriteJSON(w, http.StatusOK, map[string]string{"status": "updated"})
+		h.patchNamedBackend(w, r, h.cfg.GetActiveBackendType())
 		return
 	}
 
+	h.patchSectionNonBackend(w, r, section)
+}
+
+// GetNamedBackendConfig handles GET /config/backends/{backend}.
+func (h *ConfigHandler) GetNamedBackendConfig(w http.ResponseWriter, r *http.Request) {
+	name := namedBackendFromRequest(r)
+	if name == "" {
+		WriteError(w, http.StatusBadRequest, "backend name is required")
+		return
+	}
+	if _, ok := h.registry.Get(name); !ok {
+		WriteErrorf(w, http.StatusNotFound, "unknown backend: %s", name)
+		return
+	}
+	raw, err := h.cfg.GetBackendConfig(name)
+	if err != nil {
+		WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(raw)
+}
+
+// PatchNamedBackendConfig handles PATCH /config/backends/{backend}.
+func (h *ConfigHandler) PatchNamedBackendConfig(w http.ResponseWriter, r *http.Request) {
+	name := namedBackendFromRequest(r)
+	if name == "" {
+		WriteError(w, http.StatusBadRequest, "backend name is required")
+		return
+	}
+	h.patchNamedBackend(w, r, name)
+}
+
+func namedBackendFromRequest(r *http.Request) string {
+	raw := chi.URLParam(r, "backend")
+	if raw == "" {
+		return ""
+	}
+	name, err := url.PathUnescape(raw)
+	if err != nil {
+		return raw
+	}
+	return name
+}
+
+func (h *ConfigHandler) patchNamedBackend(w http.ResponseWriter, r *http.Request, backendName string) {
+	var raw json.RawMessage
+	if err := ParseBody(r, &raw); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	b, ok := h.registry.Get(backendName)
+	if !ok {
+		WriteErrorf(w, http.StatusNotFound, "unknown backend: %s", backendName)
+		return
+	}
+
+	if err := b.ValidateConfig(raw); err != nil {
+		WriteErrorf(w, http.StatusBadRequest, "invalid backend config: %s", err.Error())
+		return
+	}
+
+	if err := h.cfg.SetBackendConfig(backendName, raw); err != nil {
+		WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+
+	active := h.cfg.GetActiveBackendType()
+	if backendName == active {
+		if syncer, ok := b.(backend.RuntimeConfigSync); ok {
+			if err := syncer.SyncRuntimeFromConfig(r.Context()); err != nil {
+				slog.Warn("backend runtime sync after config save failed", "backend", backendName, "error", err)
+			}
+		}
+	}
+
+	h.bus.Publish(events.Event{
+		Type: events.ConfigChanged,
+		Data: map[string]any{"sections": []string{"backend." + backendName}},
+	})
+
+	WriteJSON(w, http.StatusOK, map[string]string{"status": "updated"})
+}
+
+func (h *ConfigHandler) patchSectionNonBackend(w http.ResponseWriter, r *http.Request, section string) {
 	var values map[string]any
 	if err := ParseBody(r, &values); err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())

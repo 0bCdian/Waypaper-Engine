@@ -1,118 +1,191 @@
-import { type ChangeEvent, useEffect, useState, useRef, useMemo, useId } from "react";
+import { useEffect, useState, useRef, useMemo, useId, useCallback } from "react";
+import CreatableSelect from "react-select/creatable";
+import type { MultiValue, SelectInstance } from "react-select";
+import { components as builtinSelectComponents } from "react-select";
+import type { InputProps } from "react-select";
 import useDebounce from "../hooks/useDebounce";
 import type { Filters as FiltersType } from "../types/rendererTypes";
 import { useImagesStore } from "../stores/images";
 import { useShallow } from "zustand/react/shallow";
-import type { ImageQueryParams } from "../../electron/daemon-go-types";
 import { useIsNeo } from "../hooks/useIsNeo";
 import { useModalStore } from "../stores/modalStore";
-
-const { goDaemon } = window.API_RENDERER;
+import { mapFiltersToImageQueryParams } from "../utils/galleryFilterTokens";
+import {
+  clearGalleryFilterInputHistory,
+  loadGalleryFilterInputHistory,
+  recordGalleryFilterInputHistoryEntry,
+} from "../utils/galleryFilterInputHistory";
 
 interface PartialFilters {
   order: "asc" | "desc";
   type: "name" | "id";
   mediaType: "all" | "image" | "video" | "web" | "gif";
-  searchString: string;
-  tags: string[];
-}
-const initialFilters: PartialFilters = {
-  order: "desc",
-  type: "id",
-  mediaType: "all",
-  searchString: "",
-  tags: [],
-};
-
-function parseSearchInput(text: string): { search: string; hashTags: string[] } {
-  const hashTags: string[] = [];
-  const search = text
-    .replace(/#(\S+)/g, (_, tag) => {
-      hashTags.push(tag);
-      return "";
-    })
-    .trim();
-  return { search, hashTags };
+  filterTokens: string[];
 }
 
-function mapFiltersToQueryParams(f: PartialFilters, colors?: string[]): Partial<ImageQueryParams> {
-  const { search, hashTags } = parseSearchInput(f.searchString);
-  const combinedTags = [...new Set([...f.tags, ...hashTags])];
+function partialFromStore(f: FiltersType): PartialFilters {
   return {
-    sort_by: f.type === "name" ? "name" : "imported_at",
-    sort_order: f.order,
-    media_type: f.mediaType === "all" ? undefined : f.mediaType,
-    search: search || undefined,
-    tags: combinedTags.length > 0 ? combinedTags.join(",") : undefined,
-    colors: colors && colors.length > 0 ? colors.join(",") : undefined,
+    order: f.order,
+    type: f.type,
+    mediaType: f.mediaType,
+    filterTokens: [...f.filterTokens],
   };
 }
 
+type TokenOption = { label: string; value: string };
+
+const TOKEN_PLACEHOLDER = "search";
+
+function isKeyboardTargetInsideEditableField(target: EventTarget | null): boolean {
+  if (!(target instanceof Element)) return false;
+  if (
+    target instanceof HTMLInputElement ||
+    target instanceof HTMLTextAreaElement ||
+    target instanceof HTMLSelectElement
+  ) {
+    return true;
+  }
+  if (target instanceof HTMLElement && target.isContentEditable) return true;
+  return target.closest("[contenteditable='true']") != null;
+}
+
+function galleryFilterInputHasFocus(reactSelectInputId: string): boolean {
+  const a = document.activeElement;
+  return a instanceof HTMLInputElement && a.id === reactSelectInputId;
+}
+
 function Filters() {
-  const searchInputId = useId();
+  const reactSelectId = useId();
+  const filterInputName = useMemo(
+    () =>
+      `gallery-filter-${typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2)}`,
+    [],
+  );
   const { setFilters, filters } = useImagesStore(
     useShallow((s) => ({
       setFilters: s.setFilters,
       filters: s.filters,
     })),
   );
-  const [partialFilters, setPartialFilters] = useState(initialFilters);
+  const [partialFilters, setPartialFilters] = useState<PartialFilters>(() =>
+    partialFromStore(useImagesStore.getState().filters),
+  );
   const partialFiltersRef = useRef(partialFilters);
+  const prevTokensRef = useRef<string[]>(
+    partialFromStore(useImagesStore.getState().filters).filterTokens,
+  );
+  const [inputHistoryTick, setInputHistoryTick] = useState(0);
+  const [filterInput, setFilterInput] = useState("");
+  const selectRef = useRef<SelectInstance<TokenOption, true>>(null);
 
   useEffect(() => {
     partialFiltersRef.current = partialFilters;
   });
-  const [allTags, setAllTags] = useState<string[]>([]);
-  const [tagDropdownOpen, setTagDropdownOpen] = useState(false);
-  const [tagSearch, setTagSearch] = useState("");
-  const tagRef = useRef<HTMLDivElement>(null);
 
+  const inputHistoryCount = useMemo(() => {
+    void inputHistoryTick;
+    return loadGalleryFilterInputHistory().length;
+  }, [inputHistoryTick]);
+
+  const BoundGalleryFilterInput = useMemo(() => {
+    function Inner(props: InputProps<TokenOption, true>) {
+      return (
+        <builtinSelectComponents.Input
+          {...props}
+          name={filterInputName}
+          autoComplete="off"
+          autoCorrect="off"
+          spellCheck={false}
+          data-lpignore="true"
+          data-1p-ignore="true"
+          data-form-type="other"
+        />
+      );
+    }
+    return Inner;
+  }, [filterInputName]);
+
+  /** Keep sort / media type aligned with persisted store (e.g. after reload or external setFilters). */
   useEffect(() => {
-    if (tagDropdownOpen) {
-      void goDaemon
-        .getImageTags()
-        .then((resp) => {
-          setAllTags(resp.tags ?? []);
-        })
-        .catch(() => {});
-    }
-  }, [tagDropdownOpen]);
-
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (tagRef.current && !tagRef.current.contains(e.target as Node)) {
-        setTagDropdownOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  const filteredTags = useMemo(() => {
-    const term = tagSearch.toLowerCase();
-    const selected = new Set(partialFilters.tags);
-    return allTags.filter((t) => !selected.has(t) && t.toLowerCase().includes(term));
-  }, [allTags, partialFilters.tags, tagSearch]);
-
-  const onTextChange = (event: ChangeEvent<HTMLInputElement>) => {
-    const target = event.target;
-    if (target !== null) {
-      const text = target.value;
-      setPartialFilters((previous: PartialFilters) => {
-        return { ...previous, searchString: text };
-      });
-    }
-  };
-
-  const toggleTag = (tag: string) => {
     setPartialFilters((prev) => {
-      const has = prev.tags.includes(tag);
+      if (
+        prev.order === filters.order &&
+        prev.type === filters.type &&
+        prev.mediaType === filters.mediaType
+      ) {
+        return prev;
+      }
       return {
         ...prev,
-        tags: has ? prev.tags.filter((t) => t !== tag) : [...prev.tags, tag],
+        order: filters.order,
+        type: filters.type,
+        mediaType: filters.mediaType,
       };
     });
+  }, [filters.order, filters.type, filters.mediaType]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== "/" || e.ctrlKey || e.metaKey || e.altKey) return;
+      if (e.isComposing) return;
+      if (document.querySelector("dialog[open]")) return;
+      if (isKeyboardTargetInsideEditableField(e.target)) return;
+      if (galleryFilterInputHasFocus(reactSelectId)) return;
+      e.preventDefault();
+      selectRef.current?.focus();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [reactSelectId]);
+
+  const selectOptions = useMemo(() => {
+    void inputHistoryTick;
+    const selected = new Set(partialFilters.filterTokens);
+    const seen = new Set<string>();
+    const out: TokenOption[] = [];
+    const q = filterInput.trim().toLowerCase();
+    for (const raw of loadGalleryFilterInputHistory()) {
+      const v = raw.trim();
+      if (!v || selected.has(v) || seen.has(v)) continue;
+      if (q && !v.toLowerCase().includes(q)) continue;
+      seen.add(v);
+      out.push({ label: v, value: v });
+    }
+
+    return out;
+  }, [partialFilters.filterTokens, inputHistoryTick, filterInput]);
+
+  const tokenValue: MultiValue<TokenOption> = useMemo(
+    () => partialFilters.filterTokens.map((t) => ({ label: t, value: t })),
+    [partialFilters.filterTokens],
+  );
+
+  const onTokensChange = (opts: MultiValue<TokenOption>) => {
+    const next = (opts ?? []).map((o) => o.value);
+    const prev = prevTokensRef.current;
+    for (const t of next) {
+      if (!prev.includes(t)) recordGalleryFilterInputHistoryEntry(t);
+    }
+    prevTokensRef.current = next;
+    setPartialFilters((p) => ({ ...p, filterTokens: next }));
   };
+
+  const clearSearchTokens = useCallback(() => {
+    setFilterInput("");
+    selectRef.current?.blur();
+    setPartialFilters((prev) => {
+      const next: PartialFilters = { ...prev, filterTokens: [] };
+      prevTokensRef.current = next.filterTokens;
+      return next;
+    });
+  }, []);
+
+  const clearInputHistory = useCallback(() => {
+    clearGalleryFilterInputHistory();
+    setInputHistoryTick((n) => n + 1);
+    setFilterInput("");
+    selectRef.current?.blur();
+  }, []);
 
   useDebounce(
     () => {
@@ -121,27 +194,23 @@ function Filters() {
         advancedFilters: filters.advancedFilters,
       };
       setFilters(newFilters);
-      useImagesStore
-        .getState()
-        .fetchPage(1, mapFiltersToQueryParams(partialFilters, filters.advancedFilters.colors));
+      useImagesStore.getState().fetchPage(1, mapFiltersToImageQueryParams(partialFilters));
     },
     200,
     [partialFilters],
   );
+
   useEffect(() => {
     const resetFilters: FiltersType = {
       ...partialFiltersRef.current,
       advancedFilters: filters.advancedFilters,
     };
     setFilters(resetFilters);
-    useImagesStore
-      .getState()
-      .fetchPage(
-        1,
-        mapFiltersToQueryParams(partialFiltersRef.current, filters.advancedFilters.colors),
-      );
+    useImagesStore.getState().fetchPage(1, mapFiltersToImageQueryParams(partialFiltersRef.current));
   }, [filters.advancedFilters, setFilters]);
+
   const isNeo = useIsNeo();
+
   return (
     <section
       className={`group mt-4 lg:mt-10 mb-3 lg:mb-5 flex flex-wrap justify-center gap-2 px-2${isNeo ? " neo-filters-strip" : ""}`}
@@ -161,6 +230,8 @@ function Filters() {
         <label className="btn swap btn-active swap-rotate rounded-xl text-xs uppercase">
           <input
             type="checkbox"
+            aria-label="Sort by name or ID"
+            checked={partialFilters.type === "name"}
             onChange={() => {
               setPartialFilters((previous) => {
                 const newType = previous.type === "name" ? "id" : "name";
@@ -176,6 +247,8 @@ function Filters() {
         <label className="btn swap btn-active swap-rotate rounded-xl uppercase">
           <input
             type="checkbox"
+            aria-label="Ascending or descending sort"
+            checked={partialFilters.order === "asc"}
             onChange={() => {
               setPartialFilters((previous) => {
                 const newOrder = previous.order === "asc" ? "desc" : "asc";
@@ -187,12 +260,22 @@ function Filters() {
           <div className="swap-off">Desc</div>
         </label>
       </div>
+      <div className="tooltip shrink-0 self-center" data-tip="Filter syntax (tokens, color, near)">
+          <button
+            type="button"
+            className="btn btn-active rounded-xl uppercase min-h-10 min-w-16 text-lg font-semibold"
+            aria-label="Filter syntax help"
+            onClick={() => useModalStore.getState().open("GalleryFilterCheatsheetModal")}
+          >
+            ?
+          </button>
+        </div>
       <div className="join">
-        {(["all", "image", "video", "web"] as const).map((type) => (
+        {(["all", "image", "video", "web", "gif"] as const).map((type) => (
           <button
             key={type}
             type="button"
-            className={`join-item btn btn-sm ${partialFilters.mediaType === type ? "btn-primary" : "btn-active"}`}
+            className={`join-item btn btn-md ${partialFilters.mediaType === type ? "btn-primary" : "btn-active"}`}
             onClick={() => {
               setPartialFilters((previous) => ({ ...previous, mediaType: type }));
             }}
@@ -201,76 +284,123 @@ function Filters() {
               ? "All"
               : type === "web"
                 ? "Web"
-                : `${type[0].toUpperCase()}${type.slice(1)}s`}
+                : type === "gif"
+                  ? "GIF"
+                  : `${type[0].toUpperCase()}${type.slice(1)}s`}
           </button>
         ))}
       </div>
-      <input
-        onChange={onTextChange}
-        type="text"
-        id={searchInputId}
-        className="input input-primary w-full sm:w-1/3 lg:w-1/4 rounded-xl border-0 bg-base-300 text-center text-xl font-medium"
-        placeholder="Search or #tag"
-      />
 
-      {/* Tag filter */}
-      <div className="relative" ref={tagRef}>
-        <button
-          type="button"
-          className={`btn btn-active rounded-xl uppercase ${partialFilters.tags.length > 0 ? "btn-primary" : ""}`}
-          onClick={() => setTagDropdownOpen((v) => !v)}
-        >
-          Tags{partialFilters.tags.length > 0 ? ` (${partialFilters.tags.length})` : ""}
-        </button>
-
-        {tagDropdownOpen && (
-          <div className="absolute left-0 top-full z-50 mt-1 w-56 rounded-lg border border-base-300 bg-base-100 p-2 shadow-xl">
-            <input
-              type="text"
-              className="input input-bordered input-xs w-full mb-2"
-              placeholder="Search tags..."
-              value={tagSearch}
-              onChange={(e) => setTagSearch(e.target.value)}
-              ref={(el) => el?.focus()}
-            />
-
-            {/* Selected tags */}
-            {partialFilters.tags.length > 0 && (
-              <div className="mb-2 flex flex-wrap gap-1">
-                {partialFilters.tags.map((tag) => (
-                  <button
-                    type="button"
-                    key={tag}
-                    className="badge badge-primary badge-sm cursor-pointer gap-1"
-                    onClick={() => toggleTag(tag)}
+      <div className="relative z-10 flex w-full min-w-[min(100%,18rem)] max-w-3xl flex-1 items-stretch gap-1">
+        <div className="min-w-0 flex-1">
+          <CreatableSelect<TokenOption, true>
+            key={`gf-select-${inputHistoryTick}`}
+            ref={selectRef}
+            inputId={reactSelectId}
+            instanceId={reactSelectId}
+            isMulti
+            unstyled
+            components={{ Input: BoundGalleryFilterInput }}
+            menuPortalTarget={typeof document !== "undefined" ? document.body : undefined}
+            menuPosition="fixed"
+            styles={{
+              menuPortal: (base) => ({ ...base, zIndex: 10000 }),
+            }}
+            classNames={{
+              control: ({ isFocused }) =>
+                [
+                  "flex min-h-12 flex-wrap items-center gap-1 rounded-xl border-0 bg-base-300 px-2 py-1 text-center text-base font-medium",
+                  isFocused ? "ring-2 ring-primary ring-offset-2 ring-offset-base-100" : "",
+                ].join(" "),
+              valueContainer: () => "flex flex-1 flex-wrap gap-1 py-0.5",
+              multiValue: () => "badge badge-primary gap-1 max-w-full",
+              multiValueLabel: () => "text-xs font-medium truncate",
+              multiValueRemove: () =>
+                "hover:bg-primary-focus rounded px-0.5 text-lg leading-none opacity-70 hover:opacity-100",
+              input: () => "min-w-[8ch] flex-1 bg-transparent text-base outline-none",
+              placeholder: () => "text-base-content/50 truncate",
+              menu: () =>
+                "mt-1 w-full rounded-lg border border-base-300 bg-base-100 shadow-xl",
+              menuList: () => "max-h-[min(70vh,24rem)] overflow-y-auto py-1",
+              option: ({ isFocused }) =>
+                `cursor-pointer px-3 py-2 text-sm ${isFocused ? "bg-base-200" : ""}`,
+            }}
+            formatCreateLabel={(inputValue) => `Add "${inputValue}"`}
+            isValidNewOption={(inputValue) => inputValue.trim().length > 0}
+            placeholder={TOKEN_PLACEHOLDER}
+            options={selectOptions}
+            value={tokenValue}
+            onInputChange={(v) => {
+              // Sync on every rs notification (`input-change`, `set-value` after chip, `menu-close`, `input-blur`).
+              // Only updating on `input-change` left `filterInput` stale so history options disappeared after select.
+              setFilterInput(v);
+            }}
+            onChange={(opts) => {
+              onTokensChange(opts as MultiValue<TokenOption>);
+            }}
+            closeMenuOnSelect={false}
+            /** Options are fully derived in `selectOptions` (history + creatable). Default rs filter would hide most rows (e.g. only one past `q:…` matching the whole input). */
+            filterOption={null}
+            noOptionsMessage={() => null}
+          />
+        </div>
+        {(partialFilters.filterTokens.length > 0 || inputHistoryCount > 0) && (
+          <div className="flex shrink-0 flex-col items-end justify-center gap-0.5 self-stretch sm:flex-row sm:items-center sm:gap-1">
+            {inputHistoryCount > 0 && (
+              <div className="tooltip tooltip-left" data-tip="Clear recent search history (saved suggestions)">
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm h-10 min-h-10 px-2 text-base-content/70 hover:text-base-content"
+                  aria-label="Clear recent searches"
+                  onClick={clearInputHistory}
+                >
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden
                   >
-                    {tag} &times;
-                  </button>
-                ))}
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+                    />
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M4 4l16 16"
+                    />
+                  </svg>
+                </button>
               </div>
             )}
-
-            {allTags.length === 0 && partialFilters.tags.length === 0 ? (
-              <p className="px-2 py-3 text-xs text-base-content/50 text-center">
-                No tags yet — tag images from the detail sidebar
-              </p>
-            ) : (
-              <ul className="max-h-40 overflow-y-auto">
-                {filteredTags.map((tag) => (
-                  <li key={tag}>
-                    <button
-                      type="button"
-                      className="w-full rounded px-2 py-1 text-left text-xs hover:bg-base-200"
-                      onClick={() => toggleTag(tag)}
-                    >
-                      {tag}
-                    </button>
-                  </li>
-                ))}
-                {filteredTags.length === 0 && allTags.length > 0 && (
-                  <li className="px-2 py-1 text-xs text-base-content/50">No matching tags</li>
-                )}
-              </ul>
+            {partialFilters.filterTokens.length > 0 && (
+              <div className="tooltip tooltip-left" data-tip="Remove all active filter chips">
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-sm h-10 min-h-10 px-2 text-base-content/70 hover:text-base-content"
+                  aria-label="Clear search tokens"
+                  onClick={clearSearchTokens}
+                >
+                  <svg
+                    className="h-5 w-5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2}
+                      d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"
+                    />
+                  </svg>
+                </button>
+              </div>
             )}
           </div>
         )}

@@ -32,7 +32,7 @@ func TestSetWallpaper_RetriesOnInternalError(t *testing.T) {
 				"ok": true,
 				"status": map[string]any{
 					"topology": []map[string]any{
-						{"monitor": 1, "stable_id": "monitor:1:0:0:1920:1080", "width": 1920, "height": 1080, "x": 0, "y": 0},
+						{"name": "DP-1", "width": 1920, "height": 1080, "x": 0, "y": 0},
 					},
 				},
 			})
@@ -110,7 +110,7 @@ func TestInitialize_FailsOnHealthMismatch(t *testing.T) {
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"ok":          true,
 			"service":     "other-service",
-			"api_version": "1",
+			"api_version": "0",
 		})
 	}))
 	t.Cleanup(srv.Close)

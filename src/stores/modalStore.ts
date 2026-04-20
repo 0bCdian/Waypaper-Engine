@@ -6,6 +6,7 @@ type ModalId =
   | "savePlaylistModal"
   | "playlistConfigurationModal"
   | "AdvancedFiltersModal"
+  | "GalleryFilterCheatsheetModal"
   | "monitors";
 
 interface ModalStoreState {

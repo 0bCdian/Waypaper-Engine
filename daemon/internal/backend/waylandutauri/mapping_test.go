@@ -11,16 +11,16 @@ import (
 func TestTopologyMonitorMatch(t *testing.T) {
 	t.Parallel()
 	topo := []topologyEntry{
-		{Monitor: 0, X: 0, Y: 0, Width: 1920, Height: 1080},
-		{Monitor: 1, X: 1920, Y: 0, Width: 1920, Height: 1080},
+		{Name: "DP-1", X: 0, Y: 0, Width: 1920, Height: 1080},
+		{Name: "DP-2", X: 1920, Y: 0, Width: 1920, Height: 1080},
 	}
-	id, ok := TopologyMonitorMatch(topo, 1920, 0, 1920, 1080)
-	if !ok || id != 1 {
-		t.Fatalf("match right monitor: ok=%v id=%d", ok, id)
+	name, ok := TopologyMonitorMatch(topo, 1920, 0, 1920, 1080)
+	if !ok || name != "DP-2" {
+		t.Fatalf("match right monitor: ok=%v name=%q", ok, name)
 	}
-	id, ok = TopologyMonitorMatch(topo, 1920.5, 0.5, 1920, 1080)
-	if !ok || id != 1 {
-		t.Fatalf("match with epsilon: ok=%v id=%d", ok, id)
+	name, ok = TopologyMonitorMatch(topo, 1920.5, 0.5, 1920, 1080)
+	if !ok || name != "DP-2" {
+		t.Fatalf("match with epsilon: ok=%v name=%q", ok, name)
 	}
 	_, ok = TopologyMonitorMatch(topo, 9999, 0, 1920, 1080)
 	if ok {
@@ -31,28 +31,28 @@ func TestTopologyMonitorMatch(t *testing.T) {
 func TestTopologyMonitorContainingCenter(t *testing.T) {
 	t.Parallel()
 	topo := []topologyEntry{
-		{Monitor: 0, X: 0, Y: 0, Width: 1920, Height: 1080},
-		{Monitor: 1, X: 1920, Y: 0, Width: 1920, Height: 1080},
+		{Name: "DP-1", X: 0, Y: 0, Width: 1920, Height: 1080},
+		{Name: "DP-2", X: 1920, Y: 0, Width: 1920, Height: 1080},
 	}
-	id, ok := TopologyMonitorContainingCenter(topo, 1920, 0, 2500, 1200)
-	if !ok || id != 1 {
-		t.Fatalf("center fallback: ok=%v id=%d", ok, id)
+	name, ok := TopologyMonitorContainingCenter(topo, 1920, 0, 2500, 1200)
+	if !ok || name != "DP-2" {
+		t.Fatalf("center fallback: ok=%v name=%q", ok, name)
 	}
 }
 
 func TestTopologyMonitorMatchByPosition(t *testing.T) {
 	t.Parallel()
 	topo := []topologyEntry{
-		{Monitor: 0, X: 0, Y: 0, Width: 1920, Height: 1080},
-		{Monitor: 1, X: 1920, Y: 0, Width: 2560, Height: 1440},
+		{Name: "DP-1", X: 0, Y: 0, Width: 1920, Height: 1080},
+		{Name: "DP-2", X: 1920, Y: 0, Width: 2560, Height: 1440},
 	}
-	id, ok := TopologyMonitorMatchByPosition(topo, 1920, 0)
-	if !ok || id != 1 {
-		t.Fatalf("position match: ok=%v id=%d", ok, id)
+	name, ok := TopologyMonitorMatchByPosition(topo, 1920, 0)
+	if !ok || name != "DP-2" {
+		t.Fatalf("position match: ok=%v name=%q", ok, name)
 	}
-	id, ok = TopologyMonitorMatchByPosition(topo, 0.5, 0.5)
-	if !ok || id != 0 {
-		t.Fatalf("position match with epsilon: ok=%v id=%d", ok, id)
+	name, ok = TopologyMonitorMatchByPosition(topo, 0.5, 0.5)
+	if !ok || name != "DP-1" {
+		t.Fatalf("position match with epsilon: ok=%v name=%q", ok, name)
 	}
 	_, ok = TopologyMonitorMatchByPosition(topo, 5000, 0)
 	if ok {
@@ -63,13 +63,13 @@ func TestTopologyMonitorMatchByPosition(t *testing.T) {
 func TestResolveParallaxMonitor_geometryMatch(t *testing.T) {
 	t.Parallel()
 	topo := []topologyEntry{
-		{Monitor: 0, X: 0, Y: 0, Width: 1920, Height: 1080},
-		{Monitor: 1, X: 1920, Y: 0, Width: 2560, Height: 1440},
+		{Name: "DP-1", X: 0, Y: 0, Width: 1920, Height: 1080},
+		{Name: "DP-2", X: 1920, Y: 0, Width: 2560, Height: 1440},
 	}
 
-	id, ok := ResolveParallaxMonitor(topo, 1920, 0, 2560, 1440)
-	if !ok || id != 1 {
-		t.Fatalf("geometry match: ok=%v id=%d, want 1", ok, id)
+	name, ok := ResolveParallaxMonitor(topo, 1920, 0, 2560, 1440)
+	if !ok || name != "DP-2" {
+		t.Fatalf("geometry match: ok=%v name=%q, want DP-2", ok, name)
 	}
 }
 
@@ -77,35 +77,35 @@ func TestResolveParallaxMonitor_positionFallbackOnScalingMismatch(t *testing.T) 
 	t.Parallel()
 	// GDK reports scaled dimensions, Hyprland reports physical.
 	topo := []topologyEntry{
-		{Monitor: 0, X: 0, Y: 0, Width: 1707, Height: 960},
-		{Monitor: 1, X: 1707, Y: 0, Width: 1920, Height: 1080},
+		{Name: "DP-1", X: 0, Y: 0, Width: 1707, Height: 960},
+		{Name: "DP-2", X: 1707, Y: 0, Width: 1920, Height: 1080},
 	}
 
 	// Hyprland reports physical 2560x1440 at position (0,0) -- exact match fails
-	// due to width/height mismatch, but position (0, 0) matches monitor 0.
-	id, ok := ResolveParallaxMonitor(topo, 0, 0, 2560, 1440)
-	if !ok || id != 0 {
-		t.Fatalf("position fallback on scaling mismatch: ok=%v id=%d, want 0", ok, id)
+	// due to width/height mismatch, but position (0, 0) matches first output.
+	name, ok := ResolveParallaxMonitor(topo, 0, 0, 2560, 1440)
+	if !ok || name != "DP-1" {
+		t.Fatalf("position fallback on scaling mismatch: ok=%v name=%q, want DP-1", ok, name)
 	}
 }
 
 func TestResolveParallaxMonitor_positionWithZeroSizeBounds(t *testing.T) {
 	t.Parallel()
 	topo := []topologyEntry{
-		{Monitor: 0, X: 0, Y: 0, Width: 1920, Height: 1080},
-		{Monitor: 1, X: 1920, Y: 0, Width: 1920, Height: 1080},
+		{Name: "DP-1", X: 0, Y: 0, Width: 1920, Height: 1080},
+		{Name: "DP-2", X: 1920, Y: 0, Width: 1920, Height: 1080},
 	}
-	id, ok := ResolveParallaxMonitor(topo, 0, 0, 0, 0)
-	if !ok || id != 0 {
-		t.Fatalf("zero-size bounds with position: ok=%v id=%d, want 0", ok, id)
+	name, ok := ResolveParallaxMonitor(topo, 0, 0, 0, 0)
+	if !ok || name != "DP-1" {
+		t.Fatalf("zero-size bounds with position: ok=%v name=%q, want DP-1", ok, name)
 	}
 }
 
 func TestResolveParallaxMonitor_noGeometryMatch(t *testing.T) {
 	t.Parallel()
 	topo := []topologyEntry{
-		{Monitor: 0, X: 0, Y: 0, Width: 1920, Height: 1080},
-		{Monitor: 1, X: 1920, Y: 0, Width: 1920, Height: 1080},
+		{Name: "DP-1", X: 0, Y: 0, Width: 1920, Height: 1080},
+		{Name: "DP-2", X: 1920, Y: 0, Width: 1920, Height: 1080},
 	}
 	_, ok := ResolveParallaxMonitor(topo, 9999, 9999, 0, 0)
 	if ok {
@@ -124,7 +124,7 @@ func TestBuildLoadRequest_UsesImageDisplayModesForImages(t *testing.T) {
 		Mode:      monitor.ModeClone,
 	}
 
-	loadReq, err := buildLoadRequest(req, cfg, nil)
+	loadReq, err := buildLoadRequest(req, cfg)
 	if err != nil {
 		t.Fatalf("buildLoadRequest image: %v", err)
 	}
@@ -147,7 +147,7 @@ func TestBuildLoadRequest_DoesNotSetImageDisplayModesForVideo(t *testing.T) {
 		Mode:      monitor.ModeClone,
 	}
 
-	loadReq, err := buildLoadRequest(req, cfg, nil)
+	loadReq, err := buildLoadRequest(req, cfg)
 	if err != nil {
 		t.Fatalf("buildLoadRequest video: %v", err)
 	}
@@ -156,5 +156,58 @@ func TestBuildLoadRequest_DoesNotSetImageDisplayModesForVideo(t *testing.T) {
 	}
 	if loadReq.ImageRendering != "" {
 		t.Fatalf("video should not set image rendering, got %q", loadReq.ImageRendering)
+	}
+}
+
+func TestBuildLoadRequest_individualUsesCompositorNames(t *testing.T) {
+	t.Parallel()
+	cfg := defaultConfig()
+	req := backend.WallpaperRequest{
+		MediaType: media.MediaTypeImage,
+		ImagePath: "/tmp/wall.png",
+		Mode:      monitor.ModeIndividual,
+		Monitors: []monitor.Monitor{
+			{Name: "HDMI-A-1", Width: 1920, Height: 1080},
+			{Name: "  eDP-1  ", Width: 1920, Height: 1080},
+		},
+	}
+	loadReq, err := buildLoadRequest(req, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(loadReq.Targets) != 2 {
+		t.Fatalf("targets: got %d", len(loadReq.Targets))
+	}
+	if loadReq.Targets[0].Name != "HDMI-A-1" || loadReq.Targets[0].Target != "/tmp/wall.png" {
+		t.Fatalf("target[0]: %+v", loadReq.Targets[0])
+	}
+	if loadReq.Targets[1].Name != "eDP-1" || loadReq.Targets[1].Target != "/tmp/wall.png" {
+		t.Fatalf("target[1]: %+v", loadReq.Targets[1])
+	}
+	if loadReq.Targets[0].Kind != "image" || loadReq.Targets[1].Kind != "image" {
+		t.Fatalf("expected per-target kind image for image wallpaper, got %#v, %#v", loadReq.Targets[0].Kind, loadReq.Targets[1].Kind)
+	}
+}
+
+func TestBuildLoadRequest_individualVideoSetsKindPerTarget(t *testing.T) {
+	t.Parallel()
+	cfg := defaultConfig()
+	req := backend.WallpaperRequest{
+		MediaType: media.MediaTypeVideo,
+		ImagePath: "/tmp/wall.mp4",
+		Mode:      monitor.ModeIndividual,
+		Monitors: []monitor.Monitor{
+			{Name: "HDMI-A-1", Width: 1920, Height: 1080},
+		},
+	}
+	loadReq, err := buildLoadRequest(req, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(loadReq.Targets) != 1 {
+		t.Fatalf("targets: got %d", len(loadReq.Targets))
+	}
+	if loadReq.Targets[0].Kind != "video" {
+		t.Fatalf("expected per-target kind video, got %q", loadReq.Targets[0].Kind)
 	}
 }

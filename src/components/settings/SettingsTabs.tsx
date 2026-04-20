@@ -1,6 +1,12 @@
 import type React from "react";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
 import { cn } from "@/utils/cn";
+import {
+  readPersistedSettingsSection,
+  writePersistedSettingsSection,
+  SETTINGS_NAV_SECTION_IDS,
+} from "@/utils/settingsNavStorage";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useIsNeo } from "@/hooks/useIsNeo";
 import { useShallow } from "zustand/react/shallow";
@@ -10,6 +16,8 @@ import DaemonSettingsSection from "./sections/DaemonSettingsSection";
 import BackendSettingsSection from "./sections/BackendSettingsSection";
 import WallhavenSettingsSection from "./sections/WallhavenSettingsSection";
 import type { ConfigSection } from "@/shared/types/unifiedConfig";
+import type { SettingsSearchEntry } from "@/utils/settingsSearchIndex";
+import { inferBackendSettingsSubTabFromSearchKey } from "@/utils/backendFieldPrefixes";
 
 export interface SettingsTabsProps {
   className?: string;
@@ -28,21 +36,64 @@ const navItems: NavItem[] = [
   { id: "wallhaven", label: "Wallhaven", component: WallhavenSettingsSection },
 ];
 
+function isSettingsNavSection(value: unknown): value is ConfigSection {
+  return typeof value === "string" && (SETTINGS_NAV_SECTION_IDS as readonly string[]).includes(value);
+}
+
 export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className }) => {
-  const { errors, searchTerm, filteredSections, setSearchTerm, clearSearch, clearErrors } =
-    useSettingsStore(
-      useShallow((s) => ({
-        errors: s.errors,
-        searchTerm: s.searchTerm,
-        filteredSections: s.filteredSections,
-        setSearchTerm: s.setSearchTerm,
-        clearSearch: s.clearSearch,
-        clearErrors: s.clearErrors,
-      })),
-    );
+  const location = useLocation();
+  const navigate = useNavigate();
+  const {
+    errors,
+    searchTerm,
+    filteredSections,
+    setSearchTerm,
+    clearSearch,
+    clearErrors,
+    setPendingBackendSettingsTab,
+  } = useSettingsStore(
+    useShallow((s) => ({
+      errors: s.errors,
+      searchTerm: s.searchTerm,
+      filteredSections: s.filteredSections,
+      setSearchTerm: s.setSearchTerm,
+      clearSearch: s.clearSearch,
+      clearErrors: s.clearErrors,
+      setPendingBackendSettingsTab: s.setPendingBackendSettingsTab,
+    })),
+  );
 
   const isNeo = useIsNeo();
-  const [activeSection, setActiveSection] = useState<ConfigSection>("app");
+  const [activeSection, setActiveSection] = useState<ConfigSection>(
+    () => readPersistedSettingsSection() ?? "app",
+  );
+
+  const selectSection = useCallback(
+    (section: ConfigSection, searchEntry?: SettingsSearchEntry) => {
+      if (section === "backend" && searchEntry?.section === "backend") {
+        setPendingBackendSettingsTab(inferBackendSettingsSubTabFromSearchKey(searchEntry.key));
+      } else {
+        setPendingBackendSettingsTab(null);
+      }
+      setActiveSection(section);
+      writePersistedSettingsSection(section);
+    },
+    [setPendingBackendSettingsTab],
+  );
+
+  useEffect(() => {
+    const raw = (location.state as { settingsNavSection?: unknown } | null)?.settingsNavSection;
+    if (!isSettingsNavSection(raw)) return;
+    selectSection(raw);
+    navigate(".", { replace: true, state: null });
+  }, [location.state, navigate, selectSection]);
+
+  useEffect(() => {
+    if (filteredSections.includes(activeSection)) return;
+    const next = (filteredSections[0] ?? "app") as ConfigSection;
+    setActiveSection(next);
+    writePersistedSettingsSection(next);
+  }, [activeSection, filteredSections]);
 
   useEffect(() => () => clearErrors(), [clearErrors]);
 
@@ -66,7 +117,7 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className }) => {
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
             onSearchClear={clearSearch}
-            onNavigateToSection={setActiveSection}
+            onNavigateToSection={selectSection}
             compact
           />
         </div>
@@ -77,7 +128,7 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className }) => {
             <button
               key={item.id}
               type="button"
-              onClick={() => setActiveSection(item.id)}
+              onClick={() => selectSection(item.id)}
               className={cn(
                 "whitespace-nowrap rounded-lg px-3 py-2 xl:px-4 xl:py-2.5 text-sm xl:text-base transition-colors",
                 "lg:w-full lg:text-left",

@@ -115,10 +115,10 @@ const AppSettings: React.FC = () => {
 };
 
 const AwwwSettings: React.FC = () => {
-  const { config, saveConfigSection } = useSettingsStore(
+  const { config, saveBackendPatch } = useSettingsStore(
     useShallow((s) => ({
       config: s.config,
-      saveConfigSection: s.saveConfigSection,
+      saveBackendPatch: s.saveBackendPatch,
     })),
   );
 
@@ -132,7 +132,7 @@ const AwwwSettings: React.FC = () => {
           id="awww-transition-type"
           className="select select-primary select-sm w-full"
           value={config?.backend?.awww?.transition_type || "simple"}
-          onChange={(e) => saveConfigSection("backend", { transition_type: e.target.value })}
+          onChange={(e) => void saveBackendPatch("awww", { transition_type: e.target.value })}
         >
           <option value="none">None</option>
           <option value="simple">Simple</option>
@@ -158,7 +158,7 @@ const AwwwSettings: React.FC = () => {
           className="range range-primary range-sm"
           value={config?.backend?.awww?.transition_step || 0}
           onChange={(e) =>
-            saveConfigSection("backend", {
+            void saveBackendPatch("awww", {
               transition_step: parseInt(e.target.value, 10),
             })
           }
@@ -178,7 +178,7 @@ const AwwwSettings: React.FC = () => {
           id="awww-resize-type"
           className="select select-primary select-sm w-full"
           value={config?.backend?.awww?.resize || "crop"}
-          onChange={(e) => saveConfigSection("backend", { resize: e.target.value })}
+          onChange={(e) => void saveBackendPatch("awww", { resize: e.target.value })}
         >
           <option value="crop">Crop</option>
           <option value="fit">Fit</option>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { useNavigate } from "react-router-dom";
 import { useImageDetailStore } from "../stores/imageDetailStore";
 import { useImagesStore } from "../stores/images";
 import { useShallow } from "zustand/react/shallow";
@@ -17,14 +18,6 @@ import { useSettingsStore } from "@/stores/settingsStore";
 
 const { goDaemon } = window.API_RENDERER;
 
-const WEB_CAP_POLICY_DEFAULTS = {
-  allow_web_keyboard: false,
-  allow_web_audio_reactive: false,
-  allow_web_pointer_interactive: true,
-  allow_web_parallax_aware: true,
-  allow_web_manifest_network: false,
-} as const;
-
 function waylandUtauriFromUnified(config: UnifiedConfig | null): WaylandUtauriConfig | null {
   if (!config?.backend || config.backend.type !== "wayland-utauri") return null;
   const b = config.backend as unknown as Record<string, unknown>;
@@ -33,25 +26,14 @@ function waylandUtauriFromUnified(config: UnifiedConfig | null): WaylandUtauriCo
   return w as WaylandUtauriConfig;
 }
 
-function webCapabilityAllowedByPolicy(
+/** Outbound HTML network needs global allow plus manifest `network`; other caps follow manifest only. */
+function webCapabilityToggleAllowed(
   key: keyof WebCapabilities,
   wut: WaylandUtauriConfig | null,
 ): boolean {
-  const p = { ...WEB_CAP_POLICY_DEFAULTS, ...wut };
-  switch (key) {
-    case "network":
-      return p.allow_web_manifest_network === true;
-    case "keyboard":
-      return p.allow_web_keyboard === true;
-    case "audio_reactive":
-      return p.allow_web_audio_reactive === true;
-    case "pointer_interactive":
-      return p.allow_web_pointer_interactive !== false;
-    case "parallax_aware":
-      return p.allow_web_parallax_aware !== false;
-    default:
-      return false;
-  }
+  if (key !== "network") return true;
+  if (wut == null) return true;
+  return wut.allow_network_wallpapers === true;
 }
 
 async function saveImageTags(imageId: number, tags: string[]) {
@@ -242,23 +224,16 @@ function WebWallpaperConfigForm({
         <h5 className="text-[11px] font-semibold uppercase tracking-wide text-base-content/50">
           Capabilities
         </h5>
-        {wutCfg === null && (
+        {wutCfg && wutCfg.allow_network_wallpapers !== true && (
           <p className="text-[11px] text-base-content/50">
-            Load settings to see backend policy hints, or open Backend → wayland-utauri for web
-            capability limits.
+            Turn on &quot;Allow network for HTML wallpapers&quot; in Backend → wayland-utauri to
+            enable outbound fetch/XHR/WebSocket (manifest <code className="text-[10px]">network</code>{" "}
+            must still be on).
           </p>
         )}
-        {wutCfg &&
-          wutCfg.allow_web_manifest_network &&
-          wutCfg.allow_network_wallpapers !== true && (
-            <p className="text-[11px] text-base-content/50">
-              Manifest network also needs &quot;Allow network for HTML wallpapers&quot; in Backend
-              settings for outbound fetch/XHR.
-            </p>
-          )}
         <div className="flex flex-col gap-2">
           {WEB_CAP_KEYS.map((key) => {
-            const policyAllows = webCapabilityAllowedByPolicy(key, wutCfg);
+            const policyAllows = webCapabilityToggleAllowed(key, wutCfg);
             const on = Boolean(caps[key]);
             const disabled = !policyAllows && !on;
             return (
@@ -273,9 +248,10 @@ function WebWallpaperConfigForm({
                   />
                   <span>{WEB_CAP_LABELS[key]}</span>
                 </span>
-                {!policyAllows && (
+                {!policyAllows && key === "network" && (
                   <span className="pl-8 text-[10px] text-base-content/45">
-                    Blocked by backend policy (Settings → Backend → wayland-utauri).
+                    Enable global HTML network in Settings → Backend → wayland-utauri to turn this
+                    on.
                   </span>
                 )}
               </label>
@@ -434,10 +410,23 @@ function DetailHoverVideo({ src, poster }: { src: string; poster?: string }) {
 }
 
 function ImageDetailSidebar() {
+  const navigate = useNavigate();
   const { selectedImage, isOpen, close } = useImageDetailStore(
     useShallow((s) => ({ selectedImage: s.selectedImage, isOpen: s.isOpen, close: s.close })),
   );
   const addToast = useToastStore((s) => s.addToast);
+  const copyPaletteColor = useCallback(
+    async (hex: string) => {
+      try {
+        await navigator.clipboard.writeText(hex);
+        const display = hex.length > 28 ? `${hex.slice(0, 28)}…` : hex;
+        addToast(`Copied to clipboard: ${display}`, "success", 2500);
+      } catch {
+        addToast("Could not copy color to clipboard", "error", 4000);
+      }
+    },
+    [addToast],
+  );
   const openDetailFromConfigForm = useCallback((img: DaemonImage) => {
     useImageDetailStore.getState().open(img);
   }, []);
@@ -633,6 +622,19 @@ function ImageDetailSidebar() {
               return null;
             })()}
 
+            {selectedImage.media_type === "video" && (
+              <button
+                type="button"
+                className="btn btn-outline btn-sm w-full"
+                onClick={() => {
+                  close();
+                  navigate("/loop-studio", { state: { imageId: selectedImage.id } });
+                }}
+              >
+                Open in Loop Studio
+              </button>
+            )}
+
             {/* Editable name */}
             <div className="space-y-1">
               <label
@@ -690,7 +692,7 @@ function ImageDetailSidebar() {
                       data-tip={c}
                       title={c}
                       aria-label={`Copy color ${c}`}
-                      onClick={() => void navigator.clipboard.writeText(c)}
+                      onClick={() => void copyPaletteColor(c)}
                     />
                   ))}
                 </div>

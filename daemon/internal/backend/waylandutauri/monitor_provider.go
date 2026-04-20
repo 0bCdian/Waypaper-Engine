@@ -72,9 +72,8 @@ func (p *utauriMonitorProvider) Detect(ctx context.Context) ([]monitor.Monitor, 
 func topologyToEngineMonitors(topology []topologyEntry) []monitor.Monitor {
 	out := make([]monitor.Monitor, 0, len(topology))
 	for _, e := range topology {
-		name := fmt.Sprintf("Monitor %d", e.Monitor)
 		out = append(out, monitor.Monitor{
-			Name:        name,
+			Name:        e.Name,
 			Width:       e.Width,
 			Height:      e.Height,
 			X:           e.X,

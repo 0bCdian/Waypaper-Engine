@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"waypaper-engine/daemon/internal/backend/waylandutauri"
 	"waypaper-engine/daemon/internal/pathsecure"
 	"waypaper-engine/daemon/internal/store"
 	"waypaper-engine/daemon/internal/system"
@@ -121,15 +120,13 @@ func (p *Processor) ImportWebWallpaper(ctx context.Context, sourcePath string, f
 		imageName = filepath.Base(targetDir)
 	}
 
-	cfg := waylandutauri.LoadConfigFromViper(p.configViper)
-	rawCaps := store.WebCapabilities{
+	caps := store.WebCapabilities{
 		Network:            manifest.Capabilities.Network,
 		Keyboard:           manifest.Capabilities.Keyboard,
 		AudioReactive:      manifest.Capabilities.AudioReactive,
 		ParallaxAware:      manifest.Capabilities.ParallaxAware,
 		PointerInteractive: manifest.Capabilities.PointerInteractive,
 	}
-	clampedCaps := cfg.ApplyWebCapabilityPolicy(rawCaps)
 
 	created, err := p.imageStore.Create(ctx, []store.Image{{
 		Name:                     imageName,
@@ -156,7 +153,7 @@ func (p *Processor) ImportWebWallpaper(ctx context.Context, sourcePath string, f
 			Title:           manifest.Title,
 			Description:     manifest.Description,
 			Author:          manifest.Author,
-			Capabilities:    clampedCaps,
+			Capabilities:    caps,
 			WallpaperConfig: wallpaperCfg,
 		},
 	}})

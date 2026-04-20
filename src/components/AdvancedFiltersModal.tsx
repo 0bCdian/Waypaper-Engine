@@ -4,24 +4,8 @@ import { useEffect, useRef } from "react";
 import { useForm } from "@tanstack/react-form";
 import { parseResolution } from "../utils/utilities";
 import type { advancedFilters, resolutionConstraints } from "../types/rendererTypes";
-import type { Formats } from "../../shared/types/image";
 import Modal, { type ModalHandle } from "./Modal";
 import { useModalStore } from "../stores/modalStore";
-
-const FORMAT_KEYS = [
-  "jpeg",
-  "jpg",
-  "png",
-  "webp",
-  "gif",
-  "bmp",
-  "tiff",
-  "tga",
-  "pnm",
-  "farbfeld",
-] as const;
-
-type FormatKey = (typeof FORMAT_KEYS)[number];
 
 const AdvancedFiltersModal = () => {
   const containerRef = useRef<ModalHandle>(null);
@@ -42,47 +26,36 @@ const AdvancedFiltersModal = () => {
 
   const form = useForm({
     defaultValues: {
-      resolutionConstraint: "all" as resolutionConstraints,
-      width: "0",
-      height: "0",
-      jpeg: true,
-      jpg: true,
-      webp: true,
-      gif: true,
-      png: true,
-      bmp: true,
-      tiff: true,
-      tga: true,
-      pnm: true,
-      farbfeld: true,
+      resolutionConstraint: filters.advancedFilters.resolution.constraint,
+      width: String(filters.advancedFilters.resolution.width),
+      height: String(filters.advancedFilters.resolution.height),
     },
     onSubmit: ({ value }) => {
-      const { width, height, resolutionConstraint, ...formats } = value;
-      const formatsArray: Formats[] = [];
+      const { width, height, resolutionConstraint } = value;
       const { width: parsedWidth, height: parsedHeight } = parseResolution(`${width}x${height}`);
-      for (const key in formats) {
-        if (formats[key as FormatKey]) {
-          formatsArray.push(key as Formats);
-        }
-      }
-      const advancedFilters: advancedFilters = {
-        formats: formatsArray,
+      const nextAdvanced: advancedFilters = {
         resolution: {
           width: parsedWidth,
           height: parsedHeight,
           constraint: resolutionConstraint,
         },
-        colors: filters.advancedFilters.colors ?? [],
       };
-      setFilters({ ...filters, advancedFilters });
+      setFilters({ ...filters, advancedFilters: nextAdvanced });
     },
   });
 
-  const setFormatsValues = (value: boolean) => {
-    for (const key of FORMAT_KEYS) {
-      form.setFieldValue(key, value);
-    }
-  };
+  useEffect(() => {
+    form.reset({
+      resolutionConstraint: filters.advancedFilters.resolution.constraint,
+      width: String(filters.advancedFilters.resolution.width),
+      height: String(filters.advancedFilters.resolution.height),
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- sync modal fields when store resolution changes
+  }, [
+    filters.advancedFilters.resolution.constraint,
+    filters.advancedFilters.resolution.width,
+    filters.advancedFilters.resolution.height,
+  ]);
 
   return (
     <Modal
@@ -120,7 +93,7 @@ const AdvancedFiltersModal = () => {
                       type="radio"
                       value={val}
                       checked={field.state.value === val}
-                      onChange={() => field.handleChange(val)}
+                      onChange={() => field.handleChange(val as resolutionConstraints)}
                       className="radio radio-primary"
                     />
                   </label>
@@ -175,53 +148,14 @@ const AdvancedFiltersModal = () => {
           </div>
         </fieldset>
 
-        <fieldset className="fieldset bg-base-200 border border-base-300 rounded-box p-4 xl:p-5 2xl:p-6">
-          <legend className="fieldset-legend text-base 2xl:text-lg">Image Formats</legend>
-
-          <label className="label cursor-pointer justify-between">
-            <span className="font-medium text-sm xl:text-base 2xl:text-lg">
-              Select / Deselect All
-            </span>
-            <input
-              onChange={(e) => {
-                setFormatsValues(e.target.checked);
-              }}
-              type="checkbox"
-              className="toggle toggle-primary"
-            />
-          </label>
-
-          <div className="mt-2 grid grid-cols-2 gap-x-6 gap-y-1">
-            {(
-              [
-                ["jpeg", "JPEG"],
-                ["jpg", "JPG"],
-                ["png", "PNG"],
-                ["webp", "WEBP"],
-                ["gif", "GIF"],
-                ["bmp", "BMP"],
-                ["tiff", "TIFF"],
-                ["tga", "TGA"],
-                ["pnm", "PNM"],
-                ["farbfeld", "FARBFELD"],
-              ] as const
-            ).map(([name, label]) => (
-              <form.Field key={name} name={name}>
-                {(field) => (
-                  <label className="label cursor-pointer justify-start gap-3">
-                    <input
-                      type="checkbox"
-                      className="checkbox checkbox-sm xl:checkbox-md checkbox-primary"
-                      checked={field.state.value}
-                      onChange={(e) => field.handleChange(e.target.checked)}
-                    />
-                    <span className="text-sm xl:text-base">{label}</span>
-                  </label>
-                )}
-              </form.Field>
-            ))}
-          </div>
-        </fieldset>
+        <p className="text-sm text-base-content/70">
+          Use the gallery token bar for tags, media type, file extension, exact color, near color
+          (CIE76), and text search (
+          <code className="text-xs">tag:</code>, <code className="text-xs">type:</code>,{" "}
+          <code className="text-xs">ext:</code>, <code className="text-xs">color:</code>,{" "}
+          <code className="text-xs">near:</code>, <code className="text-xs">q:</code>
+          ). Open the <strong>?</strong> button next to the bar for a full cheatsheet.
+        </p>
 
         <button type="submit" className="btn btn-primary btn-block xl:btn-lg mt-2">
           Save Filters

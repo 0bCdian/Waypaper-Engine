@@ -13,15 +13,15 @@ type MonitorWorkspaceEntry struct {
 	Bounds      Rect
 }
 
-// ResolveMonitorFunc maps compositor monitor data to the waypaper-tauri monitor id
-// from GET /wallpaper/status topology.
-type ResolveMonitorFunc func(ctx context.Context, e MonitorWorkspaceEntry) (monitorID uint32, ok bool)
+// ResolveMonitorFunc maps compositor monitor data to the compositor output name
+// from GET /wallpaper/status topology (wal-utauri `name` field).
+type ResolveMonitorFunc func(ctx context.Context, e MonitorWorkspaceEntry) (outputName string, ok bool)
 
 // MoveFunc posts one parallax move (POST /wallpaper/parallax-move). amountPercent
 // overrides the renderer default step when non-zero; the compositor driver always
-// passes the absolute delta toward the chunk target. monitor is the waypaper index
-// so only that output's wallpaper pans.
-type MoveFunc func(ctx context.Context, direction string, amountPercent float64, monitor uint32) error
+// passes the absolute delta toward the chunk target. outputName scopes the move
+// to that output's wallpaper.
+type MoveFunc func(ctx context.Context, direction string, amountPercent float64, outputName string) error
 
 // RunOpts configures workspace -> parallax-move bridging.
 type RunOpts struct {

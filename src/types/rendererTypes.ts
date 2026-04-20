@@ -5,7 +5,6 @@ import type {
   MonitorMode,
   Pagination,
 } from "../../electron/daemon-go-types";
-import type { Formats } from "../../shared/types/image";
 
 // Renderer image extends the daemon Image with playlist-specific time
 export interface rendererImage extends Image {
@@ -25,19 +24,17 @@ export interface Filters {
   order: "asc" | "desc";
   type: "name" | "id";
   mediaType: "all" | "image" | "video" | "web" | "gif";
-  searchString: string;
-  tags: string[];
+  /** Token query: tag:, type:, ext:, color:, near:#hex~ΔE, q:, or plain text */
+  filterTokens: string[];
   advancedFilters: advancedFilters;
 }
 
 export interface advancedFilters {
-  formats: Formats[];
   resolution: {
     constraint: resolutionConstraints;
     width: number;
     height: number;
   };
-  colors: string[];
 }
 
 export type resolutionConstraints = "all" | "exact" | "moreThan" | "lessThan";

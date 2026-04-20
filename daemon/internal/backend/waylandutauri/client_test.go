@@ -36,11 +36,11 @@ func TestControlClientCheckHealth_Success(t *testing.T) {
 
 func TestControlClientCheckHealth_ServiceMismatch(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("X-API-Version", "1")
+		w.Header().Set("X-API-Version", "0")
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"ok":          true,
 			"service":     "other-service",
-			"api_version": "1",
+			"api_version": "0",
 		})
 	}))
 	t.Cleanup(srv.Close)
@@ -64,7 +64,7 @@ func TestControlClientStatus_DecodesTopology(t *testing.T) {
 			"ok": true,
 			"status": map[string]any{
 				"topology": []map[string]any{
-					{"monitor": 1, "stable_id": "DP-1"},
+					{"name": "DP-1", "width": 1920, "height": 1080, "x": 0, "y": 0},
 				},
 			},
 		})
@@ -75,8 +75,7 @@ func TestControlClientStatus_DecodesTopology(t *testing.T) {
 	resp, err := c.status(context.Background())
 	require.NoError(t, err)
 	require.Len(t, resp.Status.Topology, 1)
-	assert.Equal(t, uint32(1), resp.Status.Topology[0].Monitor)
-	assert.Equal(t, "DP-1", resp.Status.Topology[0].StableID)
+	assert.Equal(t, "DP-1", resp.Status.Topology[0].Name)
 }
 
 func TestControlClientSetParallax_Success(t *testing.T) {
@@ -115,7 +114,7 @@ func TestControlClientParallaxMove_Success(t *testing.T) {
 	require.NoError(t, c.parallaxMove(context.Background(), "right", nil, nil))
 }
 
-func TestControlClientParallaxMoveScoped_IncludesMonitorAndAmount(t *testing.T) {
+func TestControlClientParallaxMoveScoped_IncludesNameAndAmount(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		require.Equal(t, http.MethodPost, r.Method)
 		require.Equal(t, "/wallpaper/parallax-move", r.URL.Path)
@@ -125,13 +124,13 @@ func TestControlClientParallaxMoveScoped_IncludesMonitorAndAmount(t *testing.T) 
 		require.NoError(t, json.Unmarshal(raw, &payload))
 		assert.Equal(t, "left", payload["direction"])
 		assert.Equal(t, float64(12.5), payload["amount_percent"])
-		assert.Equal(t, float64(2), payload["monitor"])
+		assert.Equal(t, "HDMI-A-1", payload["name"])
 		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 	}))
 	t.Cleanup(srv.Close)
 
 	c := &controlClient{httpClient: srv.Client(), baseURL: srv.URL}
-	require.NoError(t, c.parallaxMoveScoped(context.Background(), "left", 12.5, 2))
+	require.NoError(t, c.parallaxMoveScoped(context.Background(), "left", 12.5, "HDMI-A-1"))
 }
 
 func TestControlClientParallaxMove_InvalidDirection(t *testing.T) {

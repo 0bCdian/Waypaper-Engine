@@ -51,6 +51,7 @@
 		"react-hotkeys-hook": "4.5.0",
 		"react-responsive-pagination": "2.13.0",
 		"react-router-dom": "6.30.3",
+		"react-select": "^5.10.2",
 		"smol-toml": "1.6.0",
 		"toml": "3.0.0",
 		"zustand": "5.0.11"

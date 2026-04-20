@@ -9,6 +9,8 @@ import (
 	clover "github.com/ostafen/clover/v2"
 	d "github.com/ostafen/clover/v2/document"
 	"github.com/ostafen/clover/v2/query"
+
+	"waypaper-engine/daemon/internal/cielab"
 )
 
 // imageStore is the CloverDB-backed implementation of ImageStore.
@@ -66,9 +68,9 @@ func (s *imageStore) GetAll(_ context.Context, opts ImageQueryOpts) (*PaginatedR
 		sortDir = 1
 	}
 
-	// When search or root-folder filtering is active, load all DB-filtered
-	// docs, apply in-memory filters, then paginate in Go.
-	if opts.Search != "" || filterRootFolder {
+	// When search, root-folder filtering, or perceptual color constraints are active,
+	// load all DB-filtered docs, apply in-memory filters, then paginate in Go.
+	if opts.Search != "" || filterRootFolder || len(opts.ColorsNear) > 0 {
 		q := query.NewQuery(CollectionImages)
 		if criteria != nil {
 			q = q.Where(criteria)
@@ -88,6 +90,9 @@ func (s *imageStore) GetAll(_ context.Context, opts ImageQueryOpts) (*PaginatedR
 
 		if opts.Search != "" {
 			allImages = filterImagesBySearch(allImages, opts.Search)
+		}
+		if len(opts.ColorsNear) > 0 {
+			allImages = filterImagesByColorsNear(allImages, opts.ColorsNear)
 		}
 
 		return Paginate(allImages, opts.Page, opts.PerPage), nil
@@ -279,6 +284,23 @@ func filterImagesBySearch(images []Image, search string) []Image {
 				break
 			}
 		}
+	}
+	return filtered
+}
+
+func filterImagesByColorsNear(images []Image, near []ColorNearConstraint) []Image {
+	if len(near) == 0 {
+		return images
+	}
+	var filtered []Image
+outer:
+	for _, im := range images {
+		for _, c := range near {
+			if !cielab.WithinDeltaE(c.Hex, c.MaxDeltaE, im.Colors) {
+				continue outer
+			}
+		}
+		filtered = append(filtered, im)
 	}
 	return filtered
 }

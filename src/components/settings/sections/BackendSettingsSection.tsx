@@ -1,10 +1,11 @@
 import type React from "react";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, Fragment, useMemo } from "react";
 import { cn } from "@/utils/cn";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useShallow } from "zustand/react/shallow";
 import { SettingRow, SettingSectionHeader } from "../SettingRow";
 import type { ConfigSection, UnifiedConfig } from "@/shared/types/unifiedConfig";
+import { FIELD_PREFIX_BY_BACKEND } from "@/utils/backendFieldPrefixes";
 
 interface BackendSettingsSectionProps {
   className?: string;
@@ -21,44 +22,6 @@ interface Field {
   step?: number;
   placeholder?: string;
 }
-
-/** Display value when `transition_duration_seconds` is unset (derive from legacy backend fields). */
-function effectiveTransitionDurationSeconds(config: UnifiedConfig | null): number {
-  if (!config?.backend) {
-    return 3;
-  }
-  const c = config.backend.transition_duration_seconds;
-  if (c != null && c > 0) {
-    return c;
-  }
-  const t = config.backend.type;
-  if (t === "wayland-utauri") {
-    const w =
-      (config.backend as unknown as Record<string, unknown>)["wayland-utauri"] ??
-      (config.backend as unknown as Record<string, unknown>).waylandutauri;
-    const ms = (w as { duration_ms?: number } | undefined)?.duration_ms ?? 300;
-    return ms / 1000;
-  }
-  if (t === "awww" && config.backend.awww) {
-    const d = config.backend.awww.transition_duration;
-    if (Number.isInteger(d) && d >= 500 && d <= 5000) {
-      return Math.max(1, Math.round((d + 500) / 1000));
-    }
-    return d;
-  }
-  return 3;
-}
-
-const transitionDurationSharedField: Field = {
-  key: "transition_duration_seconds",
-  label: "Transition duration (seconds)",
-  description:
-    "How long image transitions run. One value for all backends: awww uses it as CLI seconds; wayland-utauri converts to milliseconds.",
-  type: "number",
-  min: 0.05,
-  max: 120,
-  step: 0.1,
-};
 
 const awwwDisplayFields: Field[] = [
   {
@@ -117,6 +80,16 @@ const awwwTransitionFields: Field[] = [
       { value: "outer", label: "Outer" },
       { value: "random", label: "Random" },
     ],
+  },
+  {
+    key: "awww.transition_duration",
+    label: "Transition duration (seconds)",
+    description:
+      "Length of awww transition animations (seconds). Passed to awww as --transition-duration.",
+    type: "number",
+    min: 0,
+    max: 120,
+    step: 0.1,
   },
   {
     key: "awww.transition_step",
@@ -299,6 +272,16 @@ const waylandUtauriTransitionFields: Field[] = [
     ],
   },
   {
+    key: "waylandutauri.duration_ms",
+    label: "Transition duration (seconds)",
+    description:
+      "How long image transitions run in wayland-utauri. Saved as milliseconds in the daemon config.",
+    type: "number",
+    min: 0,
+    max: 120,
+    step: 0.1,
+  },
+  {
     key: "waylandutauri.transition_bezier",
     label: "Transition easing (Bézier)",
     description:
@@ -473,49 +456,7 @@ const waylandUtauriVideoFields: Field[] = [
     key: "waylandutauri.allow_network_wallpapers",
     label: "Allow network for HTML wallpapers",
     description:
-      "Lets local HTML wallpapers use fetch/XHR/WebSocket (WebKit connect-src). Applied immediately via wayland-utauri; restart is only needed for the spawn flag on first start.",
-    type: "checkbox",
-  },
-  {
-    key: "waylandutauri.allow_web_manifest_network",
-    label: "Allow manifest to request network capability",
-    description:
-      "When off, wallpaper `capabilities.network` in waypaper.json is ignored for CSP even if global HTML network is enabled. Defense-in-depth: both this and “Allow network for HTML wallpapers” must be on for outbound fetch.",
-    type: "checkbox",
-  },
-  {
-    key: "waylandutauri.allow_web_keyboard",
-    label: "Allow web wallpapers: keyboard",
-    description:
-      "When off, gallery and manifests cannot enable layer-shell keyboard delivery to HTML wallpapers.",
-    type: "checkbox",
-  },
-  {
-    key: "waylandutauri.allow_web_audio_reactive",
-    label: "Allow web wallpapers: audio reactive",
-    description:
-      "When off, desktop audio capture is not started for wallpapers that request audio_reactive.",
-    type: "checkbox",
-  },
-  {
-    key: "waylandutauri.allow_web_pointer_interactive",
-    label: "Allow web wallpapers: pointer interactive",
-    description:
-      "When off, GTK keeps input-shape passthrough (wallpapers cannot opt into hit-testing).",
-    type: "checkbox",
-  },
-  {
-    key: "waylandutauri.allow_web_parallax_aware",
-    label: "Allow web wallpapers: parallax_aware flag",
-    description:
-      "When off, manifest parallax_aware is stripped before apply (mostly declarative; host may still emit parallax).",
-    type: "checkbox",
-  },
-  {
-    key: "waylandutauri.renderer_pause",
-    label: "Pause HTML wallpaper rendering",
-    description:
-      "Reduces CPU/GPU by pausing web wallpaper scripts/animations. Synced immediately to wayland-utauri.",
+      "Global gate for outbound fetch/XHR/WebSocket on HTML wallpapers (WebKit relaxes policy when allowed). Per-wallpaper `capabilities.network` in waypaper.json must also be enabled. Applied immediately via wayland-utauri (webview reload).",
     type: "checkbox",
   },
 ];
@@ -703,6 +644,61 @@ function DebouncedTextInput({
   );
 }
 
+function getBackendSubconfig(
+  config: UnifiedConfig | null,
+  backendId: string,
+): Record<string, unknown> | undefined {
+  if (!config?.backend) return undefined;
+  const b = config.backend as unknown as Record<string, unknown>;
+  if (backendId === "wayland-utauri") {
+    const w = b["wayland-utauri"] ?? b.waylandutauri;
+    return w && typeof w === "object" ? (w as Record<string, unknown>) : undefined;
+  }
+  const sub = b[backendId];
+  return sub && typeof sub === "object" && !Array.isArray(sub)
+    ? (sub as Record<string, unknown>)
+    : undefined;
+}
+
+function patchKeyForField(field: Field, backendId: string): string {
+  const prefix = FIELD_PREFIX_BY_BACKEND[backendId];
+  if (prefix && field.key.startsWith(prefix)) {
+    return field.key.slice(prefix.length);
+  }
+  return field.key;
+}
+
+type BackendFieldGroup = { title: string; fields: Field[] };
+
+function fieldGroupsForBackend(backendId: string): BackendFieldGroup[] {
+  switch (backendId) {
+    case "awww":
+      return [
+        { title: "Image Display", fields: awwwDisplayFields },
+        { title: "Transitions", fields: awwwTransitionFields },
+      ];
+    case "feh":
+      return [{ title: "Image Display", fields: fehDisplayFields }];
+    case "hyprpaper":
+      return [
+        { title: "Image Display", fields: hyprpaperDisplayFields },
+        { title: "Advanced", fields: hyprpaperAdvancedFields },
+      ];
+    case "mpvpaper":
+      return [{ title: "Video (Wayland)", fields: mpvpaperFields }];
+    case "wayland-utauri":
+      return [
+        { title: "Image Display", fields: waylandUtauriImageFields },
+        { title: "Transitions", fields: waylandUtauriTransitionFields },
+        { title: "Parallax", fields: waylandUtauriParallaxFields },
+        { title: "Video", fields: waylandUtauriVideoFields },
+        { title: "Advanced", fields: waylandUtauriAdvancedFields },
+      ];
+    default:
+      return [];
+  }
+}
+
 interface AvailableBackend {
   name: string;
   available: boolean;
@@ -811,101 +807,73 @@ function PriorityList({
 export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
   className = "",
 }) => {
-  const { config, saveConfigSection, errors, showAdvancedSettings, setShowAdvancedSettings } =
+  const { config, saveConfigSection, saveBackendPatch, errors, pendingBackendSettingsTab, clearPendingBackendSettingsTab } =
     useSettingsStore(
       useShallow((s) => ({
         config: s.config,
         saveConfigSection: s.saveConfigSection,
+        saveBackendPatch: s.saveBackendPatch,
         errors: s.errors,
-        showAdvancedSettings: s.showAdvancedSettings,
-        setShowAdvancedSettings: s.setShowAdvancedSettings,
+        pendingBackendSettingsTab: s.pendingBackendSettingsTab,
+        clearPendingBackendSettingsTab: s.clearPendingBackendSettingsTab,
       })),
     );
   const section: ConfigSection = "backend";
 
   const [availableBackends, setAvailableBackends] = useState<AvailableBackend[]>([]);
+  const [activeSettingsTab, setActiveSettingsTab] = useState<"general" | string>("general");
 
   useEffect(() => {
     window.API_RENDERER?.goDaemon
       ?.getBackends?.()
       .then((backends) => {
-        setAvailableBackends(backends.map((b) => ({ name: b.name, available: b.available })));
+        const mapped = backends.map((b) => ({ name: b.name, available: b.available }));
+        setAvailableBackends(mapped);
+        setActiveSettingsTab((tab) => {
+          if (tab === "general") return tab;
+          return mapped.some((b) => b.name === tab) ? tab : "general";
+        });
       })
       .catch(() => {});
   }, []);
 
-  const handleChange = async (key: string, value: unknown) => {
-    if (key.startsWith("awww.")) {
-      const awwwKey = key.replace("awww.", "");
-      await saveConfigSection(section, { [awwwKey]: value });
-    } else if (key.startsWith("feh.")) {
-      const fehKey = key.replace("feh.", "");
-      await saveConfigSection(section, { [fehKey]: value });
-    } else if (key.startsWith("hyprpaper.")) {
-      const hpKey = key.replace("hyprpaper.", "");
-      await saveConfigSection(section, { [hpKey]: value });
-    } else if (key.startsWith("mpvpaper.")) {
-      const mpKey = key.replace("mpvpaper.", "");
-      await saveConfigSection(section, { [mpKey]: value });
-    } else if (key.startsWith("waylandutauri.")) {
-      const wutKey = key.replace("waylandutauri.", "");
-      await saveConfigSection(section, { [wutKey]: value });
-    } else {
-      await saveConfigSection(section, { [key]: value });
-    }
-  };
+  useEffect(() => {
+    if (pendingBackendSettingsTab === null) return;
+    setActiveSettingsTab(pendingBackendSettingsTab);
+    clearPendingBackendSettingsTab();
+  }, [pendingBackendSettingsTab, clearPendingBackendSettingsTab]);
+
+  const sortedBackends = useMemo(
+    () => [...availableBackends].sort((a, b) => a.name.localeCompare(b.name)),
+    [availableBackends],
+  );
 
   const fieldError = (key: string) =>
     errors.find((e) => e.section === section && e.key === key)?.message;
 
-  const renderField = (field: Field) => {
-    let raw: unknown;
-    if (field.key === "transition_duration_seconds") {
-      raw = effectiveTransitionDurationSeconds(config);
-    } else if (field.key.startsWith("awww.")) {
-      raw =
-        config?.backend?.awww?.[
-          field.key.replace("awww.", "") as keyof NonNullable<typeof config.backend.awww>
-        ];
-    } else if (field.key.startsWith("feh.")) {
-      raw =
-        config?.backend?.feh?.[
-          field.key.replace("feh.", "") as keyof NonNullable<typeof config.backend.feh>
-        ];
-    } else if (field.key.startsWith("hyprpaper.")) {
-      raw =
-        config?.backend?.hyprpaper?.[
-          field.key.replace("hyprpaper.", "") as keyof NonNullable<typeof config.backend.hyprpaper>
-        ];
-    } else if (field.key.startsWith("mpvpaper.")) {
-      raw =
-        config?.backend?.mpvpaper?.[
-          field.key.replace("mpvpaper.", "") as keyof NonNullable<typeof config.backend.mpvpaper>
-        ];
-    } else if (field.key.startsWith("waylandutauri.")) {
-      const waylandCfg =
-        (config?.backend as unknown as Record<string, unknown>)?.["wayland-utauri"] ??
-        (config?.backend as unknown as Record<string, unknown>)?.waylandutauri;
-      raw = (waylandCfg as Record<string, unknown> | undefined)?.[
-        field.key.replace("waylandutauri.", "")
-      ];
-    } else {
-      raw = config?.backend?.[field.key as keyof typeof config.backend];
-    }
+  const backendFieldError = (backendId: string, field: Field) => {
+    const pk = patchKeyForField(field, backendId);
+    return errors.find((e) => e.section === section && e.key === `${backendId}:${pk}`)?.message;
+  };
 
+  const handleTopLevelChange = async (key: string, value: unknown) => {
+    await saveConfigSection(section, { [key]: value });
+  };
+
+  const renderAnyField = (
+    field: Field,
+    raw: unknown,
+    err: string | undefined,
+    commit: (value: unknown) => void,
+  ) => {
     if (field.type === "checkbox") {
       return (
-        <SettingRow
-          key={field.key}
-          label={field.label}
-          description={field.description}
-          error={fieldError(field.key)}
-        >
+        <SettingRow key={field.key} label={field.label} description={field.description} error={err}>
           <input
             type="checkbox"
             className="toggle toggle-primary"
             checked={!!raw}
-            onChange={(e) => handleChange(field.key, e.target.checked)}
+            onChange={(e) => void commit(e.target.checked)}
           />
         </SettingRow>
       );
@@ -913,19 +881,11 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 
     if (field.type === "select") {
       return (
-        <SettingRow
-          key={field.key}
-          label={field.label}
-          description={field.description}
-          error={fieldError(field.key)}
-        >
+        <SettingRow key={field.key} label={field.label} description={field.description} error={err}>
           <select
-            className={cn(
-              "select select-bordered select-sm w-full lg:w-44",
-              fieldError(field.key) && "select-error",
-            )}
+            className={cn("select select-bordered select-sm w-full lg:w-44", err && "select-error")}
             value={(raw as string) ?? ""}
-            onChange={(e) => handleChange(field.key, e.target.value)}
+            onChange={(e) => void commit(e.target.value)}
           >
             {field.options?.map((o) => (
               <option key={o.value} value={o.value}>
@@ -939,7 +899,8 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 
     if (field.type === "number") {
       const useFloatInput =
-        field.key === "transition_duration_seconds" ||
+        field.key === "awww.transition_duration" ||
+        field.key === "waylandutauri.duration_ms" ||
         field.key === "waylandutauri.transition_wave_amplitude_percent" ||
         field.key === "waylandutauri.transition_wave_frequency";
       const Input = useFloatInput ? DebouncedFloatInput : DebouncedNumberInput;
@@ -954,19 +915,11 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
               : 3
             : ((raw as number) ?? 0);
       return (
-        <SettingRow
-          key={field.key}
-          label={field.label}
-          description={field.description}
-          error={fieldError(field.key)}
-        >
+        <SettingRow key={field.key} label={field.label} description={field.description} error={err}>
           <Input
-            className={cn(
-              "input input-bordered input-sm w-full lg:w-28",
-              fieldError(field.key) && "input-error",
-            )}
+            className={cn("input input-bordered input-sm w-full lg:w-28", err && "input-error")}
             value={numValue}
-            onCommit={(v) => handleChange(field.key, v)}
+            onCommit={(v) => void commit(v)}
             min={field.min}
             max={field.max}
             step={field.step}
@@ -976,23 +929,36 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
     }
 
     return (
-      <SettingRow
-        key={field.key}
-        label={field.label}
-        description={field.description}
-        error={fieldError(field.key)}
-      >
+      <SettingRow key={field.key} label={field.label} description={field.description} error={err}>
         <DebouncedTextInput
-          className={cn(
-            "input input-bordered input-sm w-full lg:w-48",
-            fieldError(field.key) && "input-error",
-          )}
+          className={cn("input input-bordered input-sm w-full lg:w-48", err && "input-error")}
           value={(raw as string) ?? ""}
-          onCommit={(v) => handleChange(field.key, v)}
+          onCommit={(v) => void commit(v)}
           placeholder={field.placeholder}
         />
       </SettingRow>
     );
+  };
+
+  const renderBackendField = (field: Field, backendId: string) => {
+    const pk = patchKeyForField(field, backendId);
+    const sub = getBackendSubconfig(config, backendId);
+
+    if (backendId === "wayland-utauri" && pk === "duration_ms") {
+      const ms = sub?.duration_ms;
+      const seconds = typeof ms === "number" && Number.isFinite(ms) && ms >= 0 ? ms / 1000 : 0.3;
+      return renderAnyField(field, seconds, backendFieldError(backendId, field), (value) => {
+        const n = Number(value);
+        if (!Number.isFinite(n)) return;
+        const clamped = Math.min(120, Math.max(0, n));
+        void saveBackendPatch(backendId, { duration_ms: Math.round(clamped * 1000) });
+      });
+    }
+
+    const raw = sub?.[pk];
+    return renderAnyField(field, raw, backendFieldError(backendId, field), (value) => {
+      void saveBackendPatch(backendId, { [pk]: value });
+    });
   };
 
   const backendType = config?.backend?.type;
@@ -1004,173 +970,177 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
   };
 
   const handlePriorityChange = (category: MediaCategory, newOrder: string[]) => {
-    void handleChange("auto_priorities", {
+    void handleTopLevelChange("auto_priorities", {
       ...autoPriorities,
       [category]: newOrder,
     });
   };
 
+  const activeBackendMeta = sortedBackends.find((b) => b.name === activeSettingsTab);
+  const backendGroups =
+    activeSettingsTab !== "general" ? fieldGroupsForBackend(activeSettingsTab) : [];
+
   return (
     <div className={cn("space-y-0", className)}>
-      <div className="flex items-center justify-between mb-4">
-        <div>
-          <h2 className="text-lg font-semibold text-base-content mb-1">Backend</h2>
-          <p className="text-sm text-base-content/50">Wallpaper backend and transition settings.</p>
-        </div>
-        <label className="flex items-center gap-2 cursor-pointer">
-          <span className="text-xs text-base-content/50">Advanced</span>
-          <input
-            type="checkbox"
-            className="toggle toggle-sm"
-            checked={showAdvancedSettings}
-            onChange={(e) => setShowAdvancedSettings(e.target.checked)}
-          />
-        </label>
+      <div className="mb-4">
+        <h2 className="text-lg font-semibold text-base-content mb-1">Backend</h2>
+        <p className="text-sm text-base-content/50">Wallpaper backend and transition settings.</p>
       </div>
 
-      {/* ── General ────────────────────────────────────── */}
-      <SettingSectionHeader title="General" />
-
-      <SettingRow
-        label="Selection Mode"
-        description="Fixed uses one backend for everything. Auto picks the best backend per media type using priority lists below."
-      >
-        <div className="flex gap-2">
-          <button
-            type="button"
-            className={cn(
-              "btn btn-sm",
-              selectionMode === "fixed" ? "btn-primary" : "btn-ghost",
-            )}
-            onClick={() => handleChange("selection_mode", "fixed")}
+      <div className="mb-4 flex flex-col gap-2">
+        <label className="form-control w-full max-w-xs lg:hidden">
+          <span className="label-text text-xs text-base-content/60">Panel</span>
+          <select
+            className="select select-bordered select-sm w-full"
+            value={activeSettingsTab}
+            onChange={(e) => setActiveSettingsTab(e.target.value)}
           >
-            Fixed
-          </button>
-          <button
-            type="button"
-            className={cn(
-              "btn btn-sm",
-              selectionMode === "auto" ? "btn-primary" : "btn-ghost",
-            )}
-            onClick={() => handleChange("selection_mode", "auto")}
-          >
-            Auto
-          </button>
-        </div>
-      </SettingRow>
-
-      <SettingRow
-        label={selectionMode === "auto" ? "Startup Backend" : "Backend Type"}
-        description={
-          selectionMode === "auto"
-            ? "Backend activated on startup. Auto mode will switch away as needed per media type."
-            : "Wallpaper backend to use for setting wallpapers"
-        }
-        error={fieldError("type")}
-      >
-        <select
-          className={cn(
-            "select select-bordered select-sm w-44",
-            fieldError("type") && "select-error",
-          )}
-          value={(backendType as string) ?? "awww"}
-          onChange={(e) => handleChange("type", e.target.value)}
-        >
-          {availableBackends.length > 0 ? (
-            availableBackends.map((b) => (
-              <option key={b.name} value={b.name} disabled={!b.available}>
+            <option value="general">General</option>
+            {sortedBackends.map((b) => (
+              <option key={b.name} value={b.name}>
                 {b.name}
                 {!b.available ? " (not installed)" : ""}
               </option>
-            ))
-          ) : (
-            <option value={backendType ?? "awww"}>{backendType ?? "awww"}</option>
-          )}
-        </select>
-      </SettingRow>
-
-      {selectionMode === "auto" && (
-        <>
-          <SettingSectionHeader
-            title="Auto Backend Priorities"
-            description="For each media type, backends are tried in order. The first available and compatible backend is used. Switching backends mid-session has a small overhead."
-          />
-          <SettingRow
-            label="Priority Lists"
-            description="Reorder backends per media type. Higher priority backends are tried first."
-            stacked
+            ))}
+          </select>
+        </label>
+        <div
+          role="tablist"
+          className="tabs tabs-boxed w-full overflow-x-auto hidden lg:flex flex-nowrap"
+        >
+          <button
+            type="button"
+            role="tab"
+            aria-selected={activeSettingsTab === "general"}
+            className={cn("tab", activeSettingsTab === "general" && "tab-active")}
+            onClick={() => setActiveSettingsTab("general")}
           >
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
-              {MEDIA_CATEGORIES.map((cat) => (
-                <PriorityList
-                  key={cat}
-                  category={cat}
-                  items={autoPriorities[cat] ?? []}
-                  available={availableBackends}
-                  onChange={(newOrder) => handlePriorityChange(cat, newOrder)}
-                />
-              ))}
+            General
+          </button>
+          {sortedBackends.map((b) => (
+            <button
+              type="button"
+              key={b.name}
+              role="tab"
+              aria-selected={activeSettingsTab === b.name}
+              className={cn("tab whitespace-nowrap", activeSettingsTab === b.name && "tab-active")}
+              onClick={() => setActiveSettingsTab(b.name)}
+            >
+              {b.name}
+              {!b.available && (
+                <span className="badge badge-warning badge-xs ml-1 align-middle">off</span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {activeSettingsTab === "general" && (
+        <>
+          <SettingSectionHeader title="General" />
+
+          <SettingRow
+            label="Selection Mode"
+            description="Fixed uses one backend for everything. Auto picks the best backend per media type using priority lists below."
+          >
+            <div className="flex gap-2">
+              <button
+                type="button"
+                className={cn(
+                  "btn btn-sm",
+                  selectionMode === "fixed" ? "btn-primary" : "btn-ghost",
+                )}
+                onClick={() => void handleTopLevelChange("selection_mode", "fixed")}
+              >
+                Fixed
+              </button>
+              <button
+                type="button"
+                className={cn("btn btn-sm", selectionMode === "auto" ? "btn-primary" : "btn-ghost")}
+                onClick={() => void handleTopLevelChange("selection_mode", "auto")}
+              >
+                Auto
+              </button>
             </div>
           </SettingRow>
-        </>
-      )}
 
-      {/* ── awww settings ───────────────────────────────── */}
-      {backendType === "awww" && (
-        <>
-          <SettingSectionHeader title="Image Display" />
-          {awwwDisplayFields.map(renderField)}
-          <SettingSectionHeader title="Transitions" />
-          {renderField(transitionDurationSharedField)}
-          {awwwTransitionFields.map(renderField)}
-        </>
-      )}
+          <SettingRow
+            label={selectionMode === "auto" ? "Startup Backend" : "Backend Type"}
+            description={
+              selectionMode === "auto"
+                ? "Backend activated on startup. Auto mode will switch away as needed per media type."
+                : "Wallpaper backend to use for setting wallpapers"
+            }
+            error={fieldError("type")}
+          >
+            <select
+              className={cn(
+                "select select-bordered select-sm w-44",
+                fieldError("type") && "select-error",
+              )}
+              value={(backendType as string) ?? "awww"}
+              onChange={(e) => void handleTopLevelChange("type", e.target.value)}
+            >
+              {availableBackends.length > 0 ? (
+                availableBackends.map((b) => (
+                  <option key={b.name} value={b.name} disabled={!b.available}>
+                    {b.name}
+                    {!b.available ? " (not installed)" : ""}
+                  </option>
+                ))
+              ) : (
+                <option value={backendType ?? "awww"}>{backendType ?? "awww"}</option>
+              )}
+            </select>
+          </SettingRow>
 
-      {/* ── feh settings ──────────────────────────────────── */}
-      {backendType === "feh" && (
-        <>
-          <SettingSectionHeader title="Image Display" />
-          {fehDisplayFields.map(renderField)}
-        </>
-      )}
-
-      {/* ── hyprpaper settings ─────────────────────────────── */}
-      {backendType === "hyprpaper" && (
-        <>
-          <SettingSectionHeader title="Image Display" />
-          {hyprpaperDisplayFields.map(renderField)}
-          {showAdvancedSettings && (
+          {selectionMode === "auto" && (
             <>
-              <SettingSectionHeader title="Advanced" />
-              {hyprpaperAdvancedFields.map(renderField)}
+              <SettingSectionHeader
+                title="Auto Backend Priorities"
+                description="For each media type, backends are tried in order. The first available and compatible backend is used. Switching backends mid-session has a small overhead."
+              />
+              <SettingRow
+                label="Priority Lists"
+                description="Reorder backends per media type. Higher priority backends are tried first."
+                stacked
+              >
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mt-2">
+                  {MEDIA_CATEGORIES.map((cat) => (
+                    <PriorityList
+                      key={cat}
+                      category={cat}
+                      items={autoPriorities[cat] ?? []}
+                      available={availableBackends}
+                      onChange={(newOrder) => handlePriorityChange(cat, newOrder)}
+                    />
+                  ))}
+                </div>
+              </SettingRow>
             </>
           )}
         </>
       )}
 
-      {backendType === "mpvpaper" && (
+      {activeSettingsTab !== "general" && (
         <>
-          <SettingSectionHeader title="Video (Wayland)" />
-          {mpvpaperFields.map(renderField)}
-        </>
-      )}
-
-      {backendType === "wayland-utauri" && (
-        <>
-          <SettingSectionHeader title="Image Display" />
-          {waylandUtauriImageFields.map(renderField)}
-          <SettingSectionHeader title="Transitions" />
-          {renderField(transitionDurationSharedField)}
-          {waylandUtauriTransitionFields.map(renderField)}
-          <SettingSectionHeader title="Parallax" />
-          {waylandUtauriParallaxFields.map(renderField)}
-          <SettingSectionHeader title="Video" />
-          {waylandUtauriVideoFields.map(renderField)}
-          {showAdvancedSettings && (
-            <>
-              <SettingSectionHeader title="Advanced" />
-              {waylandUtauriAdvancedFields.map(renderField)}
-            </>
+          {activeBackendMeta && !activeBackendMeta.available && (
+            <div className="alert alert-warning text-sm mb-4">
+              This backend is not installed or unavailable on this system. You can still edit saved
+              options.
+            </div>
+          )}
+          {backendGroups.length === 0 ? (
+            <p className="text-sm text-base-content/60">
+              No settings are defined for “{activeSettingsTab}” in the UI yet.
+            </p>
+          ) : (
+            backendGroups.map((g) => (
+              <Fragment key={g.title}>
+                <SettingSectionHeader title={g.title} />
+                {g.fields.map((f) => renderBackendField(f, activeSettingsTab))}
+              </Fragment>
+            ))
           )}
         </>
       )}

@@ -22,6 +22,7 @@ import type {
   CreatePlaylistRequest,
   UpdatePlaylistRequest,
   UnifiedConfig,
+  VideoLoopExportRequest,
 } from "../daemon-go-types";
 import { scanDirectoryForImports } from "../scanDirectoryForImports";
 import { ensureDaemonActionSuccess } from "../ipcEnvelope";
@@ -403,6 +404,16 @@ export class IPCManager {
           );
           return this.convertPathsToAtomProtocol([image])[0];
         }
+        case "video_loop_export": {
+          const r = await goDaemonClient.videoLoopExport(
+            p?.id as number,
+            p?.body as VideoLoopExportRequest,
+          );
+          return {
+            ...r,
+            path: r.path?.startsWith("/") ? `atom://${r.path.substring(1)}` : r.path,
+          };
+        }
         case "get_image_count":
           return await goDaemonClient.getImageCount();
         case "import_images":
@@ -550,10 +561,23 @@ export class IPCManager {
             p?.section as string,
             p?.data as Record<string, unknown>,
           );
-        case "get_backend_config":
-          return await goDaemonClient.getBackendConfig();
-        case "update_backend_config":
-          return await goDaemonClient.updateBackendConfig((p ?? {}) as Record<string, unknown>);
+        case "get_backend_config": {
+          const bn = (p as { name?: string } | undefined)?.name;
+          if (!bn || typeof bn !== "string") {
+            throw new Error("get_backend_config requires { name: string }");
+          }
+          return await goDaemonClient.getBackendConfig(bn);
+        }
+        case "update_backend_config": {
+          const payload = p as { name?: string; patch?: Record<string, unknown> } | undefined;
+          if (!payload?.name || typeof payload.name !== "string") {
+            throw new Error("update_backend_config requires { name, patch }");
+          }
+          return await goDaemonClient.updateBackendConfig(
+            payload.name,
+            (payload.patch ?? {}) as Record<string, unknown>,
+          );
+        }
 
         // BACKENDS
         case "get_backends":

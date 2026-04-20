@@ -10,6 +10,8 @@ import type {
   UpdateImageRequest,
   ImportImagesRequest,
   ImportWebWallpaperRequest,
+  VideoLoopExportRequest,
+  VideoLoopExportResult,
   DeleteImagesRequest,
   SelectAllImagesRequest,
   Playlist,
@@ -46,7 +48,12 @@ export class GoDaemonClient extends EventEmitter {
     this.socketPath = socketPath || configReader.getSocketPath();
   }
 
-  private request<T = unknown>(method: string, path: string, body?: unknown): Promise<T> {
+  private request<T = unknown>(
+    method: string,
+    path: string,
+    body?: unknown,
+    timeoutMs: number = 30000,
+  ): Promise<T> {
     return new Promise((resolve, reject) => {
       const options = {
         socketPath: this.socketPath,
@@ -90,7 +97,7 @@ export class GoDaemonClient extends EventEmitter {
         reject(error);
       });
 
-      req.setTimeout(30000, () => {
+      req.setTimeout(timeoutMs, () => {
         req.destroy();
         reject(new Error(`Request timeout: ${method} ${path}`));
       });
@@ -268,6 +275,7 @@ export class GoDaemonClient extends EventEmitter {
     if (params?.search) query.set("search", params.search);
     if (params?.tags) query.set("tags", params.tags);
     if (params?.colors) query.set("colors", params.colors);
+    if (params?.colors_near) query.set("colors_near", params.colors_near);
     if (params?.folder_id !== undefined) query.set("folder_id", String(params.folder_id));
     const qs = query.toString();
     const path = qs ? `/images?${qs}` : "/images";
@@ -281,6 +289,15 @@ export class GoDaemonClient extends EventEmitter {
   async ensureBrowserPreview(id: number, force?: boolean): Promise<Image> {
     const q = force ? "?force=1" : "";
     return this.request<Image>("POST", `/images/${id}/ensure-browser-preview${q}`);
+  }
+
+  async videoLoopExport(imageId: number, body: VideoLoopExportRequest): Promise<VideoLoopExportResult> {
+    return this.request<VideoLoopExportResult>(
+      "POST",
+      `/images/${imageId}/video-loop-export`,
+      body,
+      900_000,
+    );
   }
 
   async getImageCount(): Promise<{ count: number }> {
@@ -541,12 +558,15 @@ export class GoDaemonClient extends EventEmitter {
     return this.request("PATCH", `/config/${section}`, data);
   }
 
-  async getBackendConfig(): Promise<Record<string, unknown>> {
-    return this.request<Record<string, unknown>>("GET", "/config/backend");
+  async getBackendConfig(name: string): Promise<Record<string, unknown>> {
+    return this.request<Record<string, unknown>>(
+      "GET",
+      `/config/backends/${encodeURIComponent(name)}`,
+    );
   }
 
-  async updateBackendConfig(config: Record<string, unknown>): Promise<void> {
-    await this.request("PATCH", "/config/backend", config);
+  async updateBackendConfig(name: string, patch: Record<string, unknown>): Promise<void> {
+    await this.request("PATCH", `/config/backends/${encodeURIComponent(name)}`, patch);
   }
 
   async getBackends(): Promise<BackendInfo[]> {
