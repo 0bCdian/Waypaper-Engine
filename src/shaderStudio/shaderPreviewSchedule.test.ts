@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_PREVIEW_DT,
+  DEFAULT_PREVIEW_FRAME_COUNT,
   deterministicPreviewTimes,
   NEUTRAL_SHADERTOY_MOUSE,
 } from "./shaderPreviewSchedule";
@@ -17,7 +18,7 @@ describe("deterministicPreviewTimes", () => {
   });
 
   it("matches default dt slice length", () => {
-    const n = 24;
+    const n = DEFAULT_PREVIEW_FRAME_COUNT;
     const t = deterministicPreviewTimes(n, DEFAULT_PREVIEW_DT);
     expect(t).toHaveLength(n);
     expect(t[n - 1]).toBeCloseTo((n - 1) * DEFAULT_PREVIEW_DT, 10);

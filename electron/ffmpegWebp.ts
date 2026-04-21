@@ -52,7 +52,7 @@ export function ffmpegPngSequenceToAnimatedWebp(
       "-lossless",
       "0",
       "-q:v",
-      "78",
+      "85",
       "-compression_level",
       "6",
       "-preset",

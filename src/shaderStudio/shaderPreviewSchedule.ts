@@ -4,11 +4,11 @@ export function deterministicPreviewTimes(frameCount: number, dt: number): numbe
   return Array.from({ length: frameCount }, (_, i) => i * dt);
 }
 
-export const DEFAULT_PREVIEW_WIDTH = 480;
-export const DEFAULT_PREVIEW_HEIGHT = 270;
-export const DEFAULT_PREVIEW_FRAME_COUNT = 24;
+export const DEFAULT_PREVIEW_WIDTH = 640;
+export const DEFAULT_PREVIEW_HEIGHT = 360;
+export const DEFAULT_PREVIEW_FRAME_COUNT = 90;
 /** Fixed simulation timestep (seconds) for every preview frame, including frame 0. */
-export const DEFAULT_PREVIEW_DT = 1 / 24;
+export const DEFAULT_PREVIEW_DT = 1 / 60;
 
 /** Shadertoy-style “released” mouse: xy 0, zw negative. */
 export const NEUTRAL_SHADERTOY_MOUSE: [number, number, number, number] = [0, 0, -1, -1];
