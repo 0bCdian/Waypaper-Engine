@@ -607,6 +607,8 @@ export interface VideoLoopExportRequest {
   preset: "webm_vp9" | "mp4_h264" | string;
   action: "replace" | "import_new" | string;
   folder_id?: number | null;
+  /** Midpoint split + FFmpeg xfade (output slightly shorter than span); falls back to plain trim if unsupported. */
+  blend_halves?: boolean;
 }
 
 export interface VideoLoopExportResult {

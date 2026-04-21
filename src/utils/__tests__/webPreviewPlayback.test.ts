@@ -12,9 +12,14 @@ describe("webPreviewPlaybackKind", () => {
     expect(webPreviewPlaybackKind("/p/x.webm")).toBe("video");
   });
 
-  it("returns null for static raster previews", () => {
+  it("returns animatedImage for webp (animated previews; static webp still works as img src)", () => {
+    expect(webPreviewPlaybackKind("/pkg/preview.webp")).toBe("animatedImage");
+    expect(webPreviewPlaybackKind("C:\\pkg\\Preview.WEBP")).toBe("animatedImage");
+  });
+
+  it("returns null for static png/jpg previews", () => {
     expect(webPreviewPlaybackKind("/p/thumb.png")).toBeNull();
-    expect(webPreviewPlaybackKind("/p/x.webp")).toBeNull();
+    expect(webPreviewPlaybackKind("/p/x.jpg")).toBeNull();
     expect(webPreviewPlaybackKind("")).toBeNull();
     expect(webPreviewPlaybackKind(undefined)).toBeNull();
   });

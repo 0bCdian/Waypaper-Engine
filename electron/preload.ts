@@ -366,11 +366,25 @@ const electronAPI = {
       action,
     ),
 
-  writeShaderWebWallpaperPackage: (payload: {
-    shader: string;
-    title: string;
-    mode: "temp" | "export";
-  }): Promise<{ canceled: boolean; packageDir: string }> =>
+  writeShaderWebWallpaperPackage: (
+    payload:
+      | {
+          kind?: "single";
+          shader: string;
+          title: string;
+          mode: "temp" | "export";
+          previewPngBuffers?: Uint8Array[];
+          previewFps?: number;
+        }
+      | {
+          kind: "multipass";
+          multipass: unknown;
+          title: string;
+          mode: "temp" | "export";
+          previewPngBuffers?: Uint8Array[];
+          previewFps?: number;
+        },
+  ): Promise<{ canceled: boolean; packageDir: string }> =>
     invokeWrapped("write-shader-web-wallpaper-package", payload),
 
   scanDirectory: (

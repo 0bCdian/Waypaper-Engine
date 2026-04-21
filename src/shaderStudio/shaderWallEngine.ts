@@ -10,6 +10,8 @@ export type ShaderWallLogKind = "ok" | "err" | "info";
 export type ShaderWallEngineOptions = {
   /** When true, mouse uses window dimensions (wallpaper-style). */
   wallpaperMouse?: boolean;
+  /** When true, allows reading the canvas after draw (e.g. deterministic PNG capture). */
+  preserveDrawingBuffer?: boolean;
 };
 
 export class ShaderWallEngine {
@@ -34,6 +36,8 @@ export class ShaderWallEngine {
   private resizeNeeded = true;
   private resizeObserver: ResizeObserver | null = null;
   private mouse = { x: 0, y: 0, cx: 0, cy: 0, down: false, click: false };
+  /** When set, backing store size ignores client rect (deterministic capture). */
+  private fixedBackingSize: { w: number; h: number } | null = null;
   private boundFrame: (now: number) => void;
   private onDocMouseMove: (e: MouseEvent) => void;
   private onDocMouseDown: (e: MouseEvent) => void;
@@ -66,7 +70,7 @@ export class ShaderWallEngine {
       antialias: false,
       alpha: false,
       premultipliedAlpha: false,
-      preserveDrawingBuffer: false,
+      preserveDrawingBuffer: this.opts.preserveDrawingBuffer ?? false,
     };
     const ctx2 = this.canvas.getContext("webgl2", opts) as WebGL2RenderingContext | null;
     if (ctx2) {
@@ -281,6 +285,38 @@ export class ShaderWallEngine {
     this.lastNow = 0;
   }
 
+  /**
+   * Pin framebuffer dimensions (e.g. offscreen preview). Pass null to restore client-size sync.
+   */
+  setFixedBackingSize(width: number | null, height: number | null): void {
+    if (width == null || height == null) {
+      this.fixedBackingSize = null;
+      this.resizeNeeded = true;
+      return;
+    }
+    this.fixedBackingSize = { w: Math.max(2, Math.floor(width)), h: Math.max(2, Math.floor(height)) };
+    this.resizeNeeded = true;
+  }
+
+  /**
+   * One render pass with explicit uniforms (no rAF). Advances `iFrame` like the normal loop.
+   */
+  stepDeterministicFrame(opts: {
+    time: number;
+    dt: number;
+    mouse?: [number, number, number, number];
+    dateVec?: [number, number, number, number];
+  }): void {
+    if (this.resizeNeeded) this.syncCanvasSize();
+    const gl = this.gl;
+    if (!gl || !this.program) return;
+
+    const mouse4 = opts.mouse ?? [0, 0, -1, -1];
+    const date4 = opts.dateVec ?? [1970, 1, 1, 0];
+    this.drawShadertoyFrame(opts.time, opts.dt, this.frameIdx, mouse4, date4);
+    this.frameIdx++;
+  }
+
   private getTimeSecs(): number {
     if (!this.isPlaying) return this.pauseStart;
     return (performance.now() - this.startMs) / 1000 - this.pausedSecs;
@@ -289,9 +325,16 @@ export class ShaderWallEngine {
   private syncCanvasSize(): void {
     const gl = this.gl;
     if (!gl) return;
-    const pr = window.devicePixelRatio || 1;
-    const dw = Math.floor(this.canvas.clientWidth * pr);
-    const dh = Math.floor(this.canvas.clientHeight * pr);
+    let dw: number;
+    let dh: number;
+    if (this.fixedBackingSize) {
+      dw = this.fixedBackingSize.w;
+      dh = this.fixedBackingSize.h;
+    } else {
+      const pr = window.devicePixelRatio || 1;
+      dw = Math.floor(this.canvas.clientWidth * pr);
+      dh = Math.floor(this.canvas.clientHeight * pr);
+    }
     if (this.canvas.width !== dw || this.canvas.height !== dh) {
       this.canvas.width = dw;
       this.canvas.height = dh;
@@ -300,21 +343,15 @@ export class ShaderWallEngine {
     this.resizeNeeded = false;
   }
 
-  private frame(now: number): void {
-    this.rafId = requestAnimationFrame(this.boundFrame);
-    if (this.resizeNeeded) this.syncCanvasSize();
-
+  private drawShadertoyFrame(
+    time: number,
+    dt: number,
+    frameIndex: number,
+    mouse4f: [number, number, number, number],
+    date4f: [number, number, number, number],
+  ): void {
     const gl = this.gl;
     if (!gl || !this.program) return;
-    if (!this.isPlaying) {
-      this.lastNow = now;
-      return;
-    }
-
-    this.deltaT = this.lastNow > 0 ? (now - this.lastNow) / 1000 : 0;
-    this.lastNow = now;
-
-    const t = this.getTimeSecs();
     gl.useProgram(this.program);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, this.quadBuf);
@@ -332,34 +369,30 @@ export class ShaderWallEngine {
     const uMouse = this.uni("iMouse");
     const uDate = this.uni("iDate");
     if (uRes) gl.uniform3f(uRes, W, H, W / H);
-    if (uTime) gl.uniform1f(uTime, t);
-    if (uDelta) gl.uniform1f(uDelta, this.deltaT);
-    if (uFrame) gl.uniform1i(uFrame, this.frameIdx);
+    if (uTime) gl.uniform1f(uTime, time);
+    if (uDelta) gl.uniform1f(uDelta, dt);
+    if (uFrame) gl.uniform1i(uFrame, frameIndex);
     if (uSample) gl.uniform1f(uSample, 44100);
 
-    const mx = this.mouse.x * W;
-    const my = H - this.mouse.y * H;
-    const mcx = this.mouse.cx * W;
-    const mcy = H - this.mouse.cy * H;
-    if (uMouse) {
-      gl.uniform4f(
-        uMouse,
-        this.mouse.down ? mx : 0.0,
-        this.mouse.down ? my : 0.0,
-        this.mouse.down ? Math.abs(mcx) : -Math.abs(mcx),
-        this.mouse.click ? Math.abs(mcy) : -Math.abs(mcy),
-      );
+    const uFrameRate = this.uni("iFrameRate");
+    if (uFrameRate) {
+      const fr = dt > 1e-8 ? 1.0 / dt : 0.0;
+      gl.uniform1f(uFrameRate, fr);
     }
 
-    const d = new Date();
+    for (let i = 0; i < 4; i++) {
+      const loc3 = this.uni(`iChannelResolution[${i}]`);
+      if (loc3) gl.uniform3f(loc3, 1, 1, 1);
+      const loc1 = this.uni(`iChannelTime[${i}]`);
+      if (loc1) gl.uniform1f(loc1, 0);
+    }
+
+    if (uMouse) {
+      gl.uniform4f(uMouse, mouse4f[0], mouse4f[1], mouse4f[2], mouse4f[3]);
+    }
+
     if (uDate) {
-      gl.uniform4f(
-        uDate,
-        d.getFullYear(),
-        d.getMonth(),
-        d.getDate(),
-        d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds() + d.getMilliseconds() / 1000,
-      );
+      gl.uniform4f(uDate, date4f[0], date4f[1], date4f[2], date4f[3]);
     }
 
     for (let i = 0; i < 4; i++) {
@@ -374,6 +407,43 @@ export class ShaderWallEngine {
     }
 
     gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+  }
+
+  private frame(now: number): void {
+    this.rafId = requestAnimationFrame(this.boundFrame);
+    if (this.resizeNeeded) this.syncCanvasSize();
+
+    const gl = this.gl;
+    if (!gl || !this.program) return;
+    if (!this.isPlaying) {
+      this.lastNow = now;
+      return;
+    }
+
+    this.deltaT = this.lastNow > 0 ? (now - this.lastNow) / 1000 : 0;
+    this.lastNow = now;
+
+    const t = this.getTimeSecs();
+    const W = this.canvas.width;
+    const H = this.canvas.height;
+    const mx = this.mouse.x * W;
+    const my = H - this.mouse.y * H;
+    const mcx = this.mouse.cx * W;
+    const mcy = H - this.mouse.cy * H;
+    const mouse4f: [number, number, number, number] = [
+      this.mouse.down ? mx : 0.0,
+      this.mouse.down ? my : 0.0,
+      this.mouse.down ? Math.abs(mcx) : -Math.abs(mcx),
+      this.mouse.click ? Math.abs(mcy) : -Math.abs(mcy),
+    ];
+    const d = new Date();
+    const date4f: [number, number, number, number] = [
+      d.getFullYear(),
+      d.getMonth() + 1,
+      d.getDate(),
+      d.getHours() * 3600 + d.getMinutes() * 60 + d.getSeconds() + d.getMilliseconds() / 1000,
+    ];
+    this.drawShadertoyFrame(t, this.deltaT, this.frameIdx, mouse4f, date4f);
     this.mouse.click = false;
     this.frameIdx++;
   }

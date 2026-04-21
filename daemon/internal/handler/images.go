@@ -597,11 +597,12 @@ func (h *ImageHandler) RawThumbnail(w http.ResponseWriter, r *http.Request) {
 }
 
 type videoLoopExportRequest struct {
-	InSeconds  float64 `json:"in_seconds"`
-	OutSeconds float64 `json:"out_seconds"`
-	Preset     string  `json:"preset"`
-	Action     string  `json:"action"`
-	FolderID   *int    `json:"folder_id,omitempty"`
+	InSeconds   float64 `json:"in_seconds"`
+	OutSeconds  float64 `json:"out_seconds"`
+	Preset      string  `json:"preset"`
+	Action      string  `json:"action"`
+	FolderID    *int    `json:"folder_id,omitempty"`
+	BlendHalves bool    `json:"blend_halves"`
 }
 
 // VideoLoopExport handles POST /images/{id}/video-loop-export — FFmpeg trim/re-encode for seamless native loop playback.
@@ -618,7 +619,7 @@ func (h *ImageHandler) VideoLoopExport(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 	defer cancel()
-	out, err := h.processor.VideoLoopExport(ctx, id, req.InSeconds, req.OutSeconds, req.Preset, req.Action, req.FolderID)
+	out, err := h.processor.VideoLoopExport(ctx, id, req.InSeconds, req.OutSeconds, req.Preset, req.Action, req.FolderID, req.BlendHalves)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
 			WriteError(w, http.StatusNotFound, err.Error())

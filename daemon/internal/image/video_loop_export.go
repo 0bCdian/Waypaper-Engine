@@ -3,6 +3,7 @@ package image
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -76,6 +77,65 @@ func BuildVideoLoopFFmpegArgs(srcPath, dstPath string, inSec, outSec float64, pr
 	return args, nil
 }
 
+// xfadeHalvesFilterGraph builds a filter_complex that splits [inSec,outSec] at the midpoint,
+// then crossfades the join (same idea as trimming two halves and xfading). Output duration is
+// (outSec-inSec) minus the fade duration.
+func xfadeHalvesFilterGraph(inSec, outSec float64) (graph string, fadeDur float64, err error) {
+	L := outSec - inSec
+	if L <= 0 {
+		return "", 0, fmt.Errorf("invalid span for xfade")
+	}
+	// Fade length: ~10% of span, clamped so both halves stay longer than the fade.
+	fd := math.Min(0.45, math.Max(0.05, L*0.10))
+	if fd*2 >= L-1e-3 {
+		return "", 0, fmt.Errorf("span too short for midpoint crossfade")
+	}
+	mid := inSec + L/2
+	offset := L/2 - fd
+	graph = fmt.Sprintf(
+		"[0:v]trim=start=%.6f:end=%.6f,setpts=PTS-STARTPTS,format=yuv420p[v0];"+
+			"[0:v]trim=start=%.6f:end=%.6f,setpts=PTS-STARTPTS,format=yuv420p[v1];"+
+			"[v0][v1]xfade=transition=fade:duration=%.6f:offset=%.6f:format=yuv420p[outv]",
+		inSec, mid, mid, outSec, fd, offset,
+	)
+	return graph, fd, nil
+}
+
+// BuildVideoLoopFFmpegXfadeHalvesArgs returns argv for a single-input midpoint xfade export.
+func BuildVideoLoopFFmpegXfadeHalvesArgs(srcPath, dstPath string, inSec, outSec float64, preset string) ([]string, error) {
+	if _, _, err := presetOutputExt(preset); err != nil {
+		return nil, err
+	}
+	g, _, err := xfadeHalvesFilterGraph(inSec, outSec)
+	if err != nil {
+		return nil, err
+	}
+	args := []string{
+		"-hide_banner", "-loglevel", "error", "-y",
+		"-i", srcPath,
+		"-filter_complex", g,
+		"-map", "[outv]",
+	}
+	switch strings.TrimSpace(strings.ToLower(preset)) {
+	case VideoLoopPresetWebMVP9, "webm":
+		args = append(args,
+			"-an",
+			"-c:v", "libvpx-vp9", "-crf", "32", "-b:v", "0", "-row-mt", "1",
+			dstPath,
+		)
+	case VideoLoopPresetMP4H264, "mp4":
+		args = append(args,
+			"-an",
+			"-c:v", "libx264", "-preset", "fast", "-crf", "20", "-pix_fmt", "yuv420p",
+			"-movflags", "+faststart",
+			dstPath,
+		)
+	default:
+		return nil, fmt.Errorf("unsupported preset %q", preset)
+	}
+	return args, nil
+}
+
 func runFFmpeg(ctx context.Context, argv []string) error {
 	bin := resolveFFmpeg()
 	if bin == "" {
@@ -100,6 +160,7 @@ func (p *Processor) VideoLoopExport(
 	inSec, outSec float64,
 	preset, action string,
 	folderID *int,
+	blendHalves bool,
 ) (map[string]any, error) {
 	action = strings.TrimSpace(strings.ToLower(action))
 	if action != VideoLoopActionReplace && action != VideoLoopActionImportNew {
@@ -140,12 +201,33 @@ func (p *Processor) VideoLoopExport(
 	staging := filepath.Join(tmpDir, fmt.Sprintf("waypaper-loop-%d-%d%s", imageID, time.Now().UnixNano(), outExt))
 	defer func() { _ = os.Remove(staging) }()
 
-	argv, err := BuildVideoLoopFFmpegArgs(img.Path, staging, inSec, outSec, preset)
-	if err != nil {
-		return nil, err
+	var argv []string
+	var argvErr error
+	if blendHalves {
+		argv, argvErr = BuildVideoLoopFFmpegXfadeHalvesArgs(img.Path, staging, inSec, outSec, preset)
+		if argvErr != nil {
+			slog.Info("loop export: midpoint xfade unavailable, using plain trim", "error", argvErr)
+			argv, argvErr = BuildVideoLoopFFmpegArgs(img.Path, staging, inSec, outSec, preset)
+		}
+	} else {
+		argv, argvErr = BuildVideoLoopFFmpegArgs(img.Path, staging, inSec, outSec, preset)
 	}
-	if err := runFFmpeg(ctx, argv); err != nil {
-		return nil, err
+	if argvErr != nil {
+		return nil, argvErr
+	}
+	if runErr := runFFmpeg(ctx, argv); runErr != nil {
+		if blendHalves {
+			slog.Warn("loop export: xfade ffmpeg failed, retrying plain trim", "error", runErr)
+			trimArgs, trimErr := BuildVideoLoopFFmpegArgs(img.Path, staging, inSec, outSec, preset)
+			if trimErr != nil {
+				return nil, trimErr
+			}
+			if err := runFFmpeg(ctx, trimArgs); err != nil {
+				return nil, err
+			}
+		} else {
+			return nil, runErr
+		}
 	}
 
 	// Move encoded bytes into gallery with a same-filesystem atomic rename when possible.

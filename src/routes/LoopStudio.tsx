@@ -44,11 +44,16 @@ export default function LoopStudio() {
   const [preset, setPreset] = useState<VideoLoopExportRequest["preset"]>("webm_vp9");
   const [exportAction, setExportAction] = useState<"replace" | "import_new">("import_new");
   const [reloadToken, setReloadToken] = useState(0);
+  const [compareWipe, setCompareWipe] = useState(0.5);
+  const [blendHalvesExport, setBlendHalvesExport] = useState(true);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const seekRef = useRef<HTMLVideoElement>(null);
   const canvasPlayRef = useRef<HTMLCanvasElement>(null);
   const canvasCmpRef = useRef<HTMLCanvasElement>(null);
+  const previewShellRef = useRef<HTMLDivElement>(null);
+  const compareWipeRef = useRef(0.5);
+  compareWipeRef.current = compareWipe;
   const rafRef = useRef<number | null>(null);
   const captureTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const outBitmapRef = useRef<ImageBitmap | null>(null);
@@ -126,9 +131,7 @@ export default function LoopStudio() {
     const vs = seekRef.current;
     if (!vs) return Promise.resolve(null);
     return new Promise((resolve) => {
-      vs.currentTime = t;
-      const onSeeked = async () => {
-        vs.removeEventListener("seeked", onSeeked);
+      const grab = async () => {
         try {
           const bmp = await createImageBitmap(vs);
           resolve(bmp);
@@ -136,36 +139,59 @@ export default function LoopStudio() {
           resolve(null);
         }
       };
-      vs.addEventListener("seeked", onSeeked);
+      const afterSeek = () => {
+        const rvfc = (vs as HTMLVideoElement & { requestVideoFrameCallback?: (cb: () => void) => void })
+          .requestVideoFrameCallback;
+        if (typeof rvfc === "function") {
+          rvfc.call(vs, () => void grab());
+        } else {
+          window.setTimeout(() => void grab(), 60);
+        }
+      };
+      const onSeeked = () => {
+        afterSeek();
+      };
+      if (
+        Math.abs(vs.currentTime - t) < 1e-3 &&
+        vs.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
+      ) {
+        window.setTimeout(() => void grab(), 60);
+        return;
+      }
+      vs.addEventListener("seeked", onSeeked, { once: true });
+      vs.currentTime = t;
     });
   }, []);
 
-  const renderCompare = useCallback(() => {
+  const drawCompareWipe = useCallback(() => {
     const outB = outBitmapRef.current;
     const inB = inBitmapRef.current;
     const c = canvasCmpRef.current;
     if (!outB || !inB || !c) return;
+    const mix = Math.min(1, Math.max(0, compareWipeRef.current));
     const ctx = c.getContext("2d");
     if (!ctx) return;
     const w = c.width;
     const h = c.height;
+    const split = mix * w;
     ctx.clearRect(0, 0, w, h);
     ctx.save();
     ctx.beginPath();
-    ctx.rect(0, 0, w / 2, h);
+    ctx.rect(0, 0, split, h);
     ctx.clip();
     ctx.drawImage(outB, 0, 0, w, h);
     ctx.restore();
     ctx.save();
     ctx.beginPath();
-    ctx.rect(w / 2, 0, w / 2, h);
+    ctx.rect(split, 0, Math.max(0, w - split), h);
     ctx.clip();
     ctx.drawImage(inB, 0, 0, w, h);
     ctx.restore();
-    ctx.strokeStyle = "rgba(255,255,255,0.3)";
+    ctx.strokeStyle = "rgba(255,255,255,0.65)";
+    ctx.lineWidth = 2;
     ctx.beginPath();
-    ctx.moveTo(w / 2, 0);
-    ctx.lineTo(w / 2, h);
+    ctx.moveTo(split, 0);
+    ctx.lineTo(split, h);
     ctx.stroke();
   }, []);
 
@@ -182,11 +208,37 @@ export default function LoopStudio() {
     if (o && i) {
       const score = computeLoopMatchScore(o, i);
       setMatchPct(Math.round(score * 100));
-      if (modeRef.current === "compare") renderCompare();
+      if (modeRef.current === "compare") drawCompareWipe();
     } else {
       setMatchPct(null);
     }
-  }, [duration, outPoint, inPoint, captureAt, renderCompare]);
+  }, [duration, outPoint, inPoint, captureAt, drawCompareWipe]);
+
+  const layoutPreviewCanvases = useCallback(() => {
+    const shell = previewShellRef.current;
+    const v = videoRef.current;
+    const cPlay = canvasPlayRef.current;
+    const cCmp = canvasCmpRef.current;
+    if (!shell || !v || !cPlay || !cCmp) return;
+    const rect = shell.getBoundingClientRect();
+    const vw = v.videoWidth || 1280;
+    const vh = v.videoHeight || 720;
+    const rw = Math.max(1, Math.floor(rect.width));
+    const rh = Math.max(1, Math.floor(rect.height));
+    const ar = vw / vh;
+    let dw = rw;
+    let dh = rh;
+    if (dw / dh > ar) dw = Math.floor(dh * ar);
+    else dh = Math.floor(dw / ar);
+    dw = Math.max(1, dw);
+    dh = Math.max(1, dh);
+    if (cPlay.width === dw && cPlay.height === dh) return;
+    cPlay.width = dw;
+    cPlay.height = dh;
+    cCmp.width = dw;
+    cCmp.height = dh;
+    scheduleCaptures();
+  }, [scheduleCaptures]);
 
   useEffect(() => {
     scheduleCaptures();
@@ -196,8 +248,8 @@ export default function LoopStudio() {
   }, [inPoint, outPoint, duration, scheduleCaptures]);
 
   useEffect(() => {
-    if (mode === "compare") renderCompare();
-  }, [mode, renderCompare]);
+    if (mode === "compare") drawCompareWipe();
+  }, [mode, compareWipe, drawCompareWipe]);
 
   useEffect(() => {
     return () => {
@@ -216,19 +268,12 @@ export default function LoopStudio() {
     setOutPoint(d);
     setPlayhead(0);
     setLoaded(true);
-    const cw = v.videoWidth || 1280;
-    const ch = v.videoHeight || 720;
-    if (canvasPlayRef.current) {
-      canvasPlayRef.current.width = cw;
-      canvasPlayRef.current.height = ch;
-    }
-    if (canvasCmpRef.current) {
-      canvasCmpRef.current.width = cw;
-      canvasCmpRef.current.height = ch;
-    }
     void v.play().catch(() => {});
-    scheduleCaptures();
-  }, [scheduleCaptures]);
+    requestAnimationFrame(() => {
+      layoutPreviewCanvases();
+      scheduleCaptures();
+    });
+  }, [scheduleCaptures, layoutPreviewCanvases]);
 
   useEffect(() => {
     const vs = seekRef.current;
@@ -236,6 +281,18 @@ export default function LoopStudio() {
     vs.src = mediaSrc;
     vs.load();
   }, [mediaSrc, reloadToken]);
+
+  useEffect(() => {
+    if (!loaded || !mediaSrc) return;
+    const shell = previewShellRef.current;
+    if (!shell) return;
+    const ro = new ResizeObserver(() => {
+      layoutPreviewCanvases();
+    });
+    ro.observe(shell);
+    layoutPreviewCanvases();
+    return () => ro.disconnect();
+  }, [loaded, mediaSrc, layoutPreviewCanvases]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -321,6 +378,7 @@ export default function LoopStudio() {
         preset,
         action: exportAction,
         folder_id: useFoldersStore.getState().currentFolderId ?? undefined,
+        blend_halves: blendHalvesExport,
       };
       const res = await goDaemon.videoLoopExport(imageId, body);
       addToast(
@@ -348,7 +406,7 @@ export default function LoopStudio() {
     } finally {
       setExporting(false);
     }
-  }, [imageId, inPoint, outPoint, preset, exportAction, addToast, reQueryImages]);
+  }, [imageId, inPoint, outPoint, preset, exportAction, blendHalvesExport, addToast, reQueryImages]);
 
   const pct = (t: number) => (duration ? (t / duration) * 100 : 0);
   const tAt = (p: number) => Math.max(0, Math.min(duration, p * duration));
@@ -423,7 +481,8 @@ export default function LoopStudio() {
       <div className="alert alert-info shrink-0 py-1.5 text-xs sm:text-sm">
         <span>
           <strong>Tip:</strong> Space play/pause, <kbd className="kbd kbd-sm">I</kbd> / <kbd className="kbd kbd-sm">O</kbd>{" "}
-          set in/out, <kbd className="kbd kbd-sm">C</kbd> compare, arrows step frames. Export requires a gallery video.
+          set in/out, <kbd className="kbd kbd-sm">C</kbd> compare (use the wipe slider), arrows step frames. Export
+          requires a gallery video.
         </span>
       </div>
 
@@ -458,7 +517,10 @@ export default function LoopStudio() {
             <p className="shrink-0 text-sm text-base-content/50">Select a gallery video or open a file for preview.</p>
           ) : (
             <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
-              <div className="relative flex min-h-[11rem] w-full flex-1 items-center justify-center overflow-hidden rounded-lg bg-black sm:min-h-[14rem]">
+              <div
+                ref={previewShellRef}
+                className="relative flex min-h-[11rem] w-full flex-1 items-center justify-center overflow-hidden rounded-lg bg-black sm:min-h-[14rem]"
+              >
                 <canvas
                   ref={canvasPlayRef}
                   className={mode === "play" ? "block max-h-full max-w-full object-contain" : "hidden"}
@@ -481,13 +543,28 @@ export default function LoopStudio() {
                   onTimeUpdate={onTimeUpdate}
                 />
                 <video ref={seekRef} className="hidden" preload="auto" muted playsInline />
-                {mode === "compare" && (
-                  <div className="pointer-events-none absolute bottom-2 left-0 right-0 flex justify-between px-4 text-xs">
-                    <span className="badge badge-warning/80">out frame</span>
-                    <span className="badge badge-success/80">in frame</span>
-                  </div>
-                )}
               </div>
+
+              {mode === "compare" && (
+                <div className="flex shrink-0 flex-col gap-1.5 px-0.5">
+                  <label className="label cursor-pointer gap-2 py-0" htmlFor="loop-compare-wipe">
+                    <span className="label-text text-xs text-base-content/80">
+                      Compare wipe — <span className="text-warning">out (end)</span> left,{" "}
+                      <span className="text-success">in (start)</span> right
+                    </span>
+                  </label>
+                  <input
+                    id="loop-compare-wipe"
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={Math.round(compareWipe * 100)}
+                    onChange={(e) => setCompareWipe(Number(e.target.value) / 100)}
+                    className="range range-primary range-xs w-full"
+                    aria-valuetext={`${Math.round(compareWipe * 100)}% out vs in`}
+                  />
+                </div>
+              )}
 
               <div className="flex shrink-0 flex-wrap items-center gap-2">
                 <div className="join">
@@ -632,8 +709,19 @@ export default function LoopStudio() {
         <div className="modal-box">
           <h3 className="font-bold text-lg">Export loop</h3>
           <p className="text-sm text-base-content/60 py-2">
-            Re-encodes the trim for WebKit <code>video loop</code>. Audio is stripped.
+            Re-encodes the trim for WebKit <code>video loop</code>. Audio is stripped. Plain trim is a hard cut; with
+            midpoint crossfade, FFmpeg splits the span in two and xfades the join (output is slightly shorter than the
+            span). Falls back to trim if xfade fails.
           </p>
+          <label className="label cursor-pointer justify-start gap-2 py-1">
+            <input
+              type="checkbox"
+              className="checkbox checkbox-sm"
+              checked={blendHalvesExport}
+              onChange={(e) => setBlendHalvesExport(e.target.checked)}
+            />
+            <span className="label-text text-sm">Midpoint crossfade (smoother join; recommended)</span>
+          </label>
           <div className="form-control">
             <span className="label-text">Preset</span>
             <select

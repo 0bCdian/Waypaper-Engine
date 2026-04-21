@@ -191,11 +191,25 @@ declare global {
         folderName?: string;
       }>;
 
-      writeShaderWebWallpaperPackage: (payload: {
-        shader: string;
-        title: string;
-        mode: "temp" | "export";
-      }) => Promise<{ canceled: boolean; packageDir: string }>;
+      writeShaderWebWallpaperPackage: (
+        payload:
+          | {
+              kind?: "single";
+              shader: string;
+              title: string;
+              mode: "temp" | "export";
+              previewPngBuffers?: Uint8Array[];
+              previewFps?: number;
+            }
+          | {
+              kind: "multipass";
+              multipass: import("@/shaderStudio/buildWallpaperPackage").MultipassPayload;
+              title: string;
+              mode: "temp" | "export";
+              previewPngBuffers?: Uint8Array[];
+              previewFps?: number;
+            },
+      ) => Promise<{ canceled: boolean; packageDir: string }>;
       scanDirectory: (dirPath: string) => Promise<{
         files: string[];
         webRoots: string[];

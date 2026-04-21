@@ -10,24 +10,26 @@ afterEach(() => {
 const mockAPI = createMockAPI();
 vi.stubGlobal("API_RENDERER", mockAPI);
 
-Object.defineProperty(window, "API_RENDERER", {
-  value: mockAPI,
-  writable: true,
-  configurable: true,
-});
+if (typeof window !== "undefined") {
+  Object.defineProperty(window, "API_RENDERER", {
+    value: mockAPI,
+    writable: true,
+    configurable: true,
+  });
 
-Object.defineProperty(window, "matchMedia", {
-  writable: true,
-  value: vi.fn().mockImplementation((query: string) => ({
-    matches: false,
-    media: query,
-    onchange: null,
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    dispatchEvent: vi.fn(),
-  })),
-});
+  Object.defineProperty(window, "matchMedia", {
+    writable: true,
+    value: vi.fn().mockImplementation((query: string) => ({
+      matches: false,
+      media: query,
+      onchange: null,
+      addListener: vi.fn(),
+      removeListener: vi.fn(),
+      addEventListener: vi.fn(),
+      removeEventListener: vi.fn(),
+      dispatchEvent: vi.fn(),
+    })),
+  });
+}
 
 vi.stubGlobal("__DEBUG__", false);

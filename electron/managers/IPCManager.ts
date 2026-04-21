@@ -25,8 +25,15 @@ import type {
   VideoLoopExportRequest,
 } from "../daemon-go-types";
 import { scanDirectoryForImports } from "../scanDirectoryForImports";
-import { buildShaderWebWallpaperFiles } from "../../src/shaderStudio/buildWallpaperPackage";
+import {
+  buildShaderMultipassWebWallpaperFiles,
+  buildShaderWebWallpaperFiles,
+  type MultipassPayload,
+  type ShaderWebWallpaperFiles,
+} from "../../src/shaderStudio/buildWallpaperPackage";
 import { ensureDaemonActionSuccess } from "../ipcEnvelope";
+import { writeAnimatedWebpPreviewFromPngs } from "../shaderWallpaperPreviewWriter";
+import { MAX_PREVIEW_FRAMES } from "../../src/shaderStudio/captureShaderPreviewPngs";
 
 export interface IPCHandler {
   channel: string;
@@ -307,17 +314,67 @@ export class IPCManager {
     this.registerHandler({
       channel: "write-shader-web-wallpaper-package",
       handler: async (event, ...args: unknown[]) => {
-        const payload = args[0] as {
-          shader: string;
-          title: string;
-          mode: "temp" | "export";
+        type ShaderPkgPayload =
+          | {
+              kind?: "single";
+              shader: string;
+              title: string;
+              mode: "temp" | "export";
+              previewPngBuffers?: unknown[];
+              previewFps?: number;
+            }
+          | {
+              kind: "multipass";
+              multipass: MultipassPayload;
+              title: string;
+              mode: "temp" | "export";
+              previewPngBuffers?: unknown[];
+              previewFps?: number;
+            };
+
+        const payload = args[0] as ShaderPkgPayload;
+
+        const title = payload.title;
+        const mode = payload.mode;
+
+        const files: ShaderWebWallpaperFiles =
+          "kind" in payload && payload.kind === "multipass"
+            ? buildShaderMultipassWebWallpaperFiles({ payload: payload.multipass, title })
+            : buildShaderWebWallpaperFiles({
+                shader: (payload as { shader: string }).shader,
+                title,
+              });
+
+        const normalizePreviewBuffers = (raw: unknown): Uint8Array[] => {
+          if (!Array.isArray(raw)) return [];
+          const out: Uint8Array[] = [];
+          for (const b of raw) {
+            if (out.length >= MAX_PREVIEW_FRAMES) break;
+            if (b instanceof Uint8Array) {
+              out.push(b);
+            } else if (Buffer.isBuffer(b)) {
+              out.push(new Uint8Array(b.buffer, b.byteOffset, b.byteLength));
+            }
+          }
+          return out;
         };
-        const { shader, title, mode } = payload;
-        const files = buildShaderWebWallpaperFiles({ shader, title });
-        if (mode === "temp") {
-          const dir = await mkdtemp(join(tmpdir(), "waypaper-shader-"));
+        const previewBuffers = normalizePreviewBuffers(payload.previewPngBuffers);
+        const previewFps =
+          typeof payload.previewFps === "number" && Number.isFinite(payload.previewFps)
+            ? Math.min(120, Math.max(1, Math.round(payload.previewFps)))
+            : 24;
+
+        const writeCoreFiles = async (dir: string): Promise<void> => {
           await writeFile(join(dir, "waypaper.json"), files["waypaper.json"], "utf8");
           await writeFile(join(dir, "index.html"), files["index.html"], "utf8");
+          if (previewBuffers.length > 0) {
+            await writeAnimatedWebpPreviewFromPngs(dir, previewBuffers, previewFps);
+          }
+        };
+
+        if (mode === "temp") {
+          const dir = await mkdtemp(join(tmpdir(), "waypaper-shader-"));
+          await writeCoreFiles(dir);
           return { canceled: false as const, packageDir: dir };
         }
         const mainWindow = BrowserWindow.fromWebContents(event.sender);
@@ -332,8 +389,7 @@ export class IPCManager {
           return { canceled: true as const, packageDir: "" };
         }
         const dir = result.filePaths[0];
-        await writeFile(join(dir, "waypaper.json"), files["waypaper.json"], "utf8");
-        await writeFile(join(dir, "index.html"), files["index.html"], "utf8");
+        await writeCoreFiles(dir);
         return { canceled: false as const, packageDir: dir };
       },
     });

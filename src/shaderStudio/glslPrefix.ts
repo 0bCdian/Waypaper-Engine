@@ -1,11 +1,16 @@
 /**
- * Shadertoy-style fragment prefix + main() wrapper (ported from ShaderWall).
+ * Shadertoy-style fragment prefix + main() wrapper.
+ *
+ * Shadertoy's `fragCoord` has origin at the bottom-left (Y-up), which matches WebGL's
+ * `gl_FragCoord`. We therefore pass `gl_FragCoord.xy` unchanged into `mainImage`.
+ * Any Y flip would misalign `ivec2(fragCoord)` with `texelFetch(iChannelN, ivec2(P))`
+ * used by the Shadertoy `store`/`load` macro for multipass state (camera quaternion, etc.).
  */
 
 export type GlVersion = "webgl2" | "webgl1";
 
 const VS_GL2 = `#version 300 es
-in vec2 _pos;
+layout(location = 0) in vec2 _pos;
 void main(){gl_Position=vec4(_pos,0.,1.);}`;
 
 const VS_GL1 = `attribute vec2 _pos;
@@ -33,7 +38,6 @@ export function detectCubeChannels(code: string): boolean[] {
       if (c === "(") depth++;
       else if (c === ")") {
         depth--;
-        // Closing paren of texture(...) — stop before pos++ so slice excludes ')'.
         if (depth === 0) break;
       } else if (c === "," && depth === 1) break;
       pos++;
@@ -72,9 +76,12 @@ uniform vec3      iResolution;
 uniform float     iTime;
 uniform float     iTimeDelta;
 uniform int       iFrame;
+uniform float     iFrameRate;
 uniform vec4      iMouse;
 uniform vec4      iDate;
 uniform float     iSampleRate;
+uniform vec3      iChannelResolution[4];
+uniform float     iChannelTime[4];
 ${chanDecls}
 #define texture2D   texture
 #define textureCube texture
@@ -87,9 +94,12 @@ uniform vec3      iResolution;
 uniform float     iTime;
 uniform float     iTimeDelta;
 uniform int       iFrame;
+uniform float     iFrameRate;
 uniform vec4      iMouse;
 uniform vec4      iDate;
 uniform float     iSampleRate;
+uniform vec3      iChannelResolution[4];
+uniform float     iChannelTime[4];
 ${chanDecls}
 float  round(float  x){return floor(x+.5);}
 vec2   round(vec2   x){return floor(x+.5);}
@@ -108,8 +118,8 @@ export function buildFragmentShader(userCode: string, isGL2: boolean): {
   const cubeChannels = detectCubeChannels(userCode);
   const { src: prefix, lineCount } = buildPrefix(cubeChannels, isGL2);
   const tail = isGL2
-    ? "\nvoid main(){vec4 c=vec4(0.);mainImage(c,gl_FragCoord.xy);_fragColor=c;}"
-    : "\nvoid main(){vec4 c=vec4(0.);mainImage(c,gl_FragCoord.xy);gl_FragColor=c;}";
+    ? "\nvoid main(){vec2 fc=gl_FragCoord.xy;vec4 c=vec4(0.);mainImage(c,fc);_fragColor=c;}"
+    : "\nvoid main(){vec2 fc=gl_FragCoord.xy;vec4 c=vec4(0.);mainImage(c,fc);gl_FragColor=c;}";
 
   return {
     source: `${prefix}\n${userCode}${tail}`,

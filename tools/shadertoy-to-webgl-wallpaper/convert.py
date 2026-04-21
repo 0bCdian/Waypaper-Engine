@@ -12,6 +12,7 @@ Limitations (v1):
   - Texture inputs with /media/... paths are not loaded; a black 1×1 texture is used.
   - Multipass uses Shadertoy-style previous-frame reads for buffer→buffer and
     self-feedback; Image samples buffers after they are written for the current frame.
+  - Buffer ping-pong targets use RGBA32F (needs EXT_color_buffer_float), matching Shadertoy.
 """
 
 from __future__ import annotations
@@ -24,8 +25,27 @@ from pathlib import Path
 from typing import Any
 
 
+_FLOAT_F_SUFFIX_RE = re.compile(r"\b(\d+\.\d+)f\b", re.IGNORECASE)
+_INT_F_SUFFIX_RE = re.compile(r"\b(\d+)f\b", re.IGNORECASE)
+_PREPROC_SPACING_RE = re.compile(
+    r"(^|\n)(\s*)#\s+(define|undef|if|ifdef|ifndef|else|elif|endif|error|pragma|line)\b",
+    re.MULTILINE,
+)
+
+
+def strip_invalid_float_suffix(code: str) -> str:
+    """GLSL ES rejects C-style `1.0f` / `36f` literals; drop the `f`."""
+    code = _FLOAT_F_SUFFIX_RE.sub(r"\1", code)
+    code = _INT_F_SUFFIX_RE.sub(lambda m: f"{m.group(1)}.0", code)
+    return code
+
+
+def normalize_preprocessor_spacing(code: str) -> str:
+    return _PREPROC_SPACING_RE.sub(lambda m: f"{m.group(1)}{m.group(2)}#{m.group(3)}", code)
+
+
 def sanitize_user_glsl(code: str) -> str:
-    """Drop directives that conflict with our #version 300 es wrapper."""
+    """Drop directives that conflict with our #version 300 es wrapper and patch common non-GLSL-ES literals."""
     out_lines: list[str] = []
     for line in code.splitlines():
         s = line.strip()
@@ -36,11 +56,14 @@ def sanitize_user_glsl(code: str) -> str:
         if re.match(r"#\s*extension\s+GL_EXT_samplerless_texture_functions\b", s):
             continue
         out_lines.append(line)
-    return "\n".join(out_lines).strip() + "\n"
+    cleaned = "\n".join(out_lines).strip() + "\n"
+    cleaned = normalize_preprocessor_spacing(cleaned)
+    cleaned = strip_invalid_float_suffix(cleaned)
+    return cleaned
 
 
 def collect_common_code(renderpasses: list[dict[str, Any]]) -> str:
-    parts = [p["code"] for p in renderpasses if p.get("type") == "common"]
+    parts = [p["code"] for p in renderpasses if str(p.get("type", "")).lower() == "common"]
     return "\n\n".join(parts).strip()
 
 
@@ -51,16 +74,8 @@ RUNTIME_JS = r"""
   const ST = JSON.parse(document.getElementById("st-json").textContent);
 
   const VERT = `#version 300 es
-precision highp float;
-uniform vec3 iResolution;
 layout(location = 0) in vec2 a_position;
-out vec2 v_FragCoord;
-void main() {
-  vec2 uv = a_position * 0.5 + 0.5;
-  uv.y = 1.0 - uv.y;
-  v_FragCoord = uv * iResolution.xy;
-  gl_Position = vec4(a_position, 0.0, 1.0);
-}`;
+void main(){gl_Position=vec4(a_position,0.0,1.0);}`;
 
   const FRAG_PREFIX = `
 precision highp float;
@@ -77,13 +92,15 @@ uniform sampler2D iChannel0;
 uniform sampler2D iChannel1;
 uniform sampler2D iChannel2;
 uniform sampler2D iChannel3;
-in vec2 v_FragCoord;
 out vec4 waypaper_outColor;
 `;
 
   const FRAG_SUFFIX = `
 void main() {
-  vec2 fc = v_FragCoord;
+  // Shadertoy fragCoord is Y-up (origin bottom-left), same as gl_FragCoord.
+  // Passing it unchanged keeps ivec2(fragCoord) consistent with texelFetch-based
+  // store()/load() macros used for multipass state (camera quaternions, etc.).
+  vec2 fc = gl_FragCoord.xy;
   vec4 col;
   mainImage(col, fc);
   waypaper_outColor = col;
@@ -123,16 +140,24 @@ void main() {
     return p;
   }
 
-  function makeTex(gl, w, h) {
+  function makeBufferTexRGBA32F(gl, w, h) {
     const t = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, t);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, w, h, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA32F, w, h, 0, gl.RGBA, gl.FLOAT, null);
     gl.bindTexture(gl.TEXTURE_2D, null);
     return t;
+  }
+
+  function clearFboBlack(gl, fbo, w, h) {
+    gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
+    gl.viewport(0, 0, w, h);
+    gl.clearColor(0, 0, 0, 0);
+    gl.clear(gl.COLOR_BUFFER_BIT);
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
   }
 
   function makeFbo(gl, tex) {
@@ -240,6 +265,11 @@ void main() {
     return link(gl, vs, fs);
   }
 
+  function inputKind(inp) {
+    const raw = inp.ctype != null ? inp.ctype : inp.type;
+    return (raw || "").toString().toLowerCase();
+  }
+
   function resolveInputs(pass, idToState, phase, kb, black, dummyRes) {
     const channels = [black, black, black, black];
     const res = [
@@ -251,10 +281,11 @@ void main() {
     for (const inp of pass.inputs || []) {
       const ch = inp.channel | 0;
       if (ch < 0 || ch > 3) continue;
-      if (inp.type === "keyboard") {
+      const kind = inputKind(inp);
+      if (kind === "keyboard") {
         channels[ch] = kb.tex;
         res[ch] = [kb.w, kb.h, 1];
-      } else if (inp.type === "buffer") {
+      } else if (kind === "buffer") {
         const st = idToState[inp.id];
         if (!st) continue;
         const t = phase === "buffer" ? st.readTex : st.writeTex;
@@ -282,8 +313,8 @@ void main() {
 
   const rp = ST.renderpass || [];
   const commonBlock = (ST.__sanitized_common || "").trim();
-  const buffersRaw = rp.filter((p) => p.type === "buffer");
-  const imagePass = rp.find((p) => p.type === "image");
+  const buffersRaw = rp.filter((p) => String(p.type || "").toLowerCase() === "buffer");
+  const imagePass = rp.find((p) => String(p.type || "").toLowerCase() === "image");
 
   /* Buffer execution order = order in the export (Shadertoy tab order). Do not
      topological-sort on buffer links: multipass reads are previous-frame, and
@@ -299,6 +330,12 @@ void main() {
 
   const bufStates = [];
   const idToState = {};
+
+  if (buffers.length > 0 && !gl.getExtension("EXT_color_buffer_float")) {
+    document.body.innerHTML =
+      "<pre>Multipass buffers need WebGL2 EXT_color_buffer_float (RGBA32F render targets).\nThis browser or GPU does not expose it.</pre>";
+    return;
+  }
 
   const programs = {
     buffers: [],
@@ -338,10 +375,12 @@ void main() {
       }
       st.w = w;
       st.h = h;
-      st.readTex = makeTex(gl, w, h);
-      st.writeTex = makeTex(gl, w, h);
+      st.readTex = makeBufferTexRGBA32F(gl, w, h);
+      st.writeTex = makeBufferTexRGBA32F(gl, w, h);
       st.readFbo = makeFbo(gl, st.readTex);
       st.writeFbo = makeFbo(gl, st.writeTex);
+      clearFboBlack(gl, st.readFbo, w, h);
+      clearFboBlack(gl, st.writeFbo, w, h);
     }
   }
 
@@ -524,7 +563,7 @@ def main() -> int:
 
     pass_bodies: dict[str, str] = {}
     for p in renderpasses:
-        t = p.get("type")
+        t = str(p.get("type", "")).lower()
         if t in ("buffer", "image"):
             name = p.get("name") or t
             pass_bodies[name] = sanitize_user_glsl(p.get("code") or "")

@@ -40,6 +40,33 @@ func TestBuildVideoLoopFFmpegArgs_invalidRange(t *testing.T) {
 	}
 }
 
+func TestBuildVideoLoopFFmpegXfadeHalvesArgs_webm(t *testing.T) {
+	args, err := BuildVideoLoopFFmpegXfadeHalvesArgs("/in/a.mp4", "/tmp/out.webm", 1.0, 11.0, VideoLoopPresetWebMVP9)
+	if err != nil {
+		t.Fatal(err)
+	}
+	s := strings.Join(args, " ")
+	if !strings.Contains(s, "xfade") || !strings.Contains(s, "[outv]") {
+		t.Fatalf("expected xfade graph: %s", s)
+	}
+	if !strings.Contains(s, "trim=start=1.000000:end=6.000000") {
+		t.Fatalf("first half trim: %s", s)
+	}
+	if !strings.Contains(s, "trim=start=6.000000:end=11.000000") {
+		t.Fatalf("second half trim: %s", s)
+	}
+	if !strings.Contains(s, "libvpx-vp9") {
+		t.Fatalf("encoder: %s", s)
+	}
+}
+
+func TestXfadeHalvesFilterGraph_rejectsZeroSpan(t *testing.T) {
+	_, _, err := xfadeHalvesFilterGraph(3, 3)
+	if err == nil {
+		t.Fatal("expected error")
+	}
+}
+
 func TestPresetOutputExt(t *testing.T) {
 	ext, fmt, err := presetOutputExt("WEBM_VP9")
 	if err != nil || ext != ".webm" || fmt != "webm" {
