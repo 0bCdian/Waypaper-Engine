@@ -366,6 +366,13 @@ const electronAPI = {
       action,
     ),
 
+  writeShaderWebWallpaperPackage: (payload: {
+    shader: string;
+    title: string;
+    mode: "temp" | "export";
+  }): Promise<{ canceled: boolean; packageDir: string }> =>
+    invokeWrapped("write-shader-web-wallpaper-package", payload),
+
   scanDirectory: (
     dirPath: string,
   ): Promise<{ files: string[]; webRoots: string[]; folderName: string }> =>

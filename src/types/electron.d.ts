@@ -190,6 +190,12 @@ declare global {
         webRoots?: string[];
         folderName?: string;
       }>;
+
+      writeShaderWebWallpaperPackage: (payload: {
+        shader: string;
+        title: string;
+        mode: "temp" | "export";
+      }) => Promise<{ canceled: boolean; packageDir: string }>;
       scanDirectory: (dirPath: string) => Promise<{
         files: string[];
         webRoots: string[];

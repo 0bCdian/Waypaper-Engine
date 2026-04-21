@@ -411,25 +411,25 @@ export default function LoopStudio() {
     matchPct == null ? "badge-ghost" : matchPct > 92 ? "badge-success" : matchPct > 80 ? "badge-warning" : "badge-error";
 
   return (
-    <div className="flex flex-col gap-4 p-4 max-w-5xl mx-auto w-full min-h-0 overflow-y-auto">
-      <div>
-        <h1 className="text-2xl font-bold text-base-content">Loop Studio</h1>
-        <p className="text-sm text-base-content/60 mt-1">
+    <div className="flex h-full min-h-0 w-full flex-col gap-2 overflow-hidden px-2 py-2 sm:gap-3 sm:px-4 sm:py-3">
+      <header className="shrink-0 space-y-1">
+        <h1 className="text-xl font-bold text-base-content sm:text-2xl">Loop Studio</h1>
+        <p className="line-clamp-2 text-xs text-base-content/60 sm:line-clamp-none sm:text-sm">
           Find in/out points and match the last frame to the first. Sub-loop preview uses coarse <code>timeupdate</code>{" "}
           jumps; export bakes a seamless file for native <code>video loop</code> playback.
         </p>
-      </div>
+      </header>
 
-      <div className="alert alert-info text-sm">
+      <div className="alert alert-info shrink-0 py-1.5 text-xs sm:text-sm">
         <span>
           <strong>Tip:</strong> Space play/pause, <kbd className="kbd kbd-sm">I</kbd> / <kbd className="kbd kbd-sm">O</kbd>{" "}
           set in/out, <kbd className="kbd kbd-sm">C</kbd> compare, arrows step frames. Export requires a gallery video.
         </span>
       </div>
 
-      <div className="card bg-base-200 border border-base-300">
-        <div className="card-body gap-4">
-          <div className="flex flex-wrap gap-3 items-end">
+      <div className="card flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden border border-base-300 bg-base-200">
+        <div className="card-body flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto p-3 sm:gap-4 sm:p-4">
+          <div className="flex shrink-0 flex-wrap items-end gap-3">
             <div className="form-control min-w-[200px]">
               <label className="label py-0" htmlFor="loop-video-select">
                 <span className="label-text">Gallery video</span>
@@ -455,18 +455,18 @@ export default function LoopStudio() {
           </div>
 
           {!mediaSrc ? (
-            <p className="text-base-content/50 text-sm">Select a gallery video or open a file for preview.</p>
+            <p className="shrink-0 text-sm text-base-content/50">Select a gallery video or open a file for preview.</p>
           ) : (
-            <>
-              <div className="relative bg-black rounded-lg overflow-hidden flex items-center justify-center min-h-[200px]">
+            <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
+              <div className="relative flex min-h-[11rem] w-full flex-1 items-center justify-center overflow-hidden rounded-lg bg-black sm:min-h-[14rem]">
                 <canvas
                   ref={canvasPlayRef}
-                  className={mode === "play" ? "max-w-full max-h-[460px] block" : "hidden"}
+                  className={mode === "play" ? "block max-h-full max-w-full object-contain" : "hidden"}
                   aria-hidden={mode !== "play"}
                 />
                 <canvas
                   ref={canvasCmpRef}
-                  className={mode === "compare" ? "max-w-full max-h-[460px] block" : "hidden"}
+                  className={mode === "compare" ? "block max-h-full max-w-full object-contain" : "hidden"}
                   aria-hidden={mode !== "compare"}
                 />
                 <video
@@ -489,7 +489,7 @@ export default function LoopStudio() {
                 )}
               </div>
 
-              <div className="flex flex-wrap gap-2 items-center">
+              <div className="flex shrink-0 flex-wrap items-center gap-2">
                 <div className="join">
                   <button
                     type="button"
@@ -519,7 +519,7 @@ export default function LoopStudio() {
 
               <div
                 ref={timelineRef}
-                className="rounded-lg border border-base-300 bg-base-300/40 p-3 cursor-crosshair select-none"
+                className="shrink-0 cursor-crosshair select-none rounded-lg border border-base-300 bg-base-300/40 p-2 sm:p-3"
                 onMouseDown={onTimelineMouseDown}
                 role="presentation"
               >
@@ -557,7 +557,7 @@ export default function LoopStudio() {
                 </div>
               </div>
 
-              <div className="flex flex-wrap gap-3 items-center">
+              <div className="flex shrink-0 flex-wrap items-center gap-3">
                 <button
                   type="button"
                   className="btn btn-circle btn-sm"
@@ -588,7 +588,7 @@ export default function LoopStudio() {
                 </span>
               </div>
 
-              <div className="flex flex-wrap gap-3">
+              <div className="flex shrink-0 flex-wrap gap-3">
                 <label className="form-control">
                   <span className="label-text text-xs text-success">In</span>
                   <input
@@ -613,7 +613,7 @@ export default function LoopStudio() {
                 </label>
               </div>
 
-              <div className="flex flex-wrap gap-2">
+              <div className="flex shrink-0 flex-wrap gap-2">
                 <button
                   type="button"
                   className="btn btn-primary btn-sm"
@@ -623,7 +623,7 @@ export default function LoopStudio() {
                   Export with FFmpeg…
                 </button>
               </div>
-            </>
+            </div>
           )}
         </div>
       </div>

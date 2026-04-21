@@ -7,7 +7,7 @@
 
 import { ipcMain, BrowserWindow, dialog, app } from "electron";
 import { resolve } from "node:path";
-import { stat, writeFile } from "node:fs/promises";
+import { mkdtemp, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
@@ -25,6 +25,7 @@ import type {
   VideoLoopExportRequest,
 } from "../daemon-go-types";
 import { scanDirectoryForImports } from "../scanDirectoryForImports";
+import { buildShaderWebWallpaperFiles } from "../../src/shaderStudio/buildWallpaperPackage";
 import { ensureDaemonActionSuccess } from "../ipcEnvelope";
 
 export interface IPCHandler {
@@ -300,6 +301,40 @@ export class IPCManager {
         const { mediaFiles, webPackageRoots } = await scanDirectoryForImports(dirPath);
         const folderName = dirPath.split("/").pop() || dirPath.split("\\").pop() || dirPath;
         return { files: mediaFiles, webRoots: webPackageRoots, folderName };
+      },
+    });
+
+    this.registerHandler({
+      channel: "write-shader-web-wallpaper-package",
+      handler: async (event, ...args: unknown[]) => {
+        const payload = args[0] as {
+          shader: string;
+          title: string;
+          mode: "temp" | "export";
+        };
+        const { shader, title, mode } = payload;
+        const files = buildShaderWebWallpaperFiles({ shader, title });
+        if (mode === "temp") {
+          const dir = await mkdtemp(join(tmpdir(), "waypaper-shader-"));
+          await writeFile(join(dir, "waypaper.json"), files["waypaper.json"], "utf8");
+          await writeFile(join(dir, "index.html"), files["index.html"], "utf8");
+          return { canceled: false as const, packageDir: dir };
+        }
+        const mainWindow = BrowserWindow.fromWebContents(event.sender);
+        if (!mainWindow) {
+          throw new Error("No window available");
+        }
+        const result = await dialog.showOpenDialog(mainWindow, {
+          title: "Export shader web wallpaper — choose folder",
+          properties: ["openDirectory", "createDirectory"],
+        });
+        if (result.canceled || !result.filePaths[0]) {
+          return { canceled: true as const, packageDir: "" };
+        }
+        const dir = result.filePaths[0];
+        await writeFile(join(dir, "waypaper.json"), files["waypaper.json"], "utf8");
+        await writeFile(join(dir, "index.html"), files["index.html"], "utf8");
+        return { canceled: false as const, packageDir: dir };
       },
     });
 

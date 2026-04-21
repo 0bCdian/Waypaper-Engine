@@ -190,6 +190,7 @@ export function createMockAPI(): Window["API_RENDERER"] {
     getPathForFile: vi.fn().mockReturnValue(""),
     downloadUrl: vi.fn().mockResolvedValue(""),
     openFiles: vi.fn().mockResolvedValue({ files: [], webRoots: [] }),
+    writeShaderWebWallpaperPackage: vi.fn().mockResolvedValue({ canceled: false, packageDir: "/tmp/waypaper-shader-test" }),
     scanDirectory: vi.fn().mockResolvedValue({ files: [], webRoots: [], folderName: "" }),
     handleOpenImages: vi.fn().mockResolvedValue({ message: "ok" }),
     revealInFileManager: vi.fn().mockResolvedValue(true),

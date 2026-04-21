@@ -19,6 +19,7 @@ const Settings = lazy(() => import("./routes/Settings"));
 const Wallhaven = lazy(() => import("./routes/Wallhaven"));
 const History = lazy(() => import("./routes/History"));
 const LoopStudio = lazy(() => import("./routes/LoopStudio"));
+const ShaderStudio = lazy(() => import("./routes/ShaderStudio"));
 
 const App = () => {
   useLoadAppConfig()();
@@ -41,6 +42,7 @@ const App = () => {
               <Route path="/wallhaven" element={<Wallhaven />} />
               <Route path="/history" element={<History />} />
               <Route path="/loop-studio" element={<LoopStudio />} />
+              <Route path="/shader-studio" element={<ShaderStudio />} />
             </Routes>
           </Suspense>
         </ModernAppLayout>
