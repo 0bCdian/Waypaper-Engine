@@ -538,22 +538,12 @@ func (w *WaylandUtauri) syncParallaxDriver(cfg *Config) {
 	w.parallaxDriverCancel = cancel
 	w.parallaxDriverMu.Unlock()
 
-	resolve := func(c context.Context, e parallaxdriver.MonitorWorkspaceEntry) (string, bool) {
-		st, err := client.status(c)
-		if err != nil {
-			slog.Debug("parallax compositor driver: status for monitor resolve", "error", err)
-			return "", false
-		}
-		return ResolveParallaxMonitor(st.Status.Topology, e.Bounds.X, e.Bounds.Y, e.Bounds.Width, e.Bounds.Height)
-	}
-	move := func(c context.Context, dir string, amountPercent float64, outputName string) error {
-		return client.parallaxMoveScoped(c, dir, amountPercent, outputName)
-	}
-
 	wRef := w
 	opts := parallaxdriver.RunOpts{
-		Move:           move,
-		ResolveMonitor: resolve,
+		Move: func(c context.Context, outputName, direction string) error {
+			return client.parallaxMove(c, outputName, direction)
+		},
+		ResolveMonitor: nil,
 		ChunkSize:      cfg.ParallaxWorkspaceChunkSize,
 		Vertical:       func() bool { return wRef.workspaceParallaxVertical.Load() },
 	}
@@ -587,6 +577,7 @@ func (w *WaylandUtauri) RegisterDefaults(v *viper.Viper) {
 	v.SetDefault(viperBackendKey+".parallax_step_percent", def.ParallaxStepPct)
 	v.SetDefault(viperBackendKey+".parallax_workspace_chunk_size", def.ParallaxWorkspaceChunkSize)
 	v.SetDefault(viperBackendKey+".parallax_animation_ms", def.ParallaxAnimMS)
+	v.SetDefault(viperBackendKey+".parallax_reset_ms", def.ParallaxResetMS)
 	v.SetDefault(viperBackendKey+".parallax_easing", def.ParallaxEasing)
 	v.SetDefault(viperBackendKey+".parallax_compositor_driver", def.ParallaxCompositorDriver)
 	v.SetDefault(viperBackendKey+".parallax_direction", def.ParallaxDirection)
@@ -716,6 +707,9 @@ func (w *WaylandUtauri) loadConfigFromViper() *Config {
 	if val := getInt("parallax_animation_ms"); val > 0 {
 		cfg.ParallaxAnimMS = val
 	}
+	if val := getInt("parallax_reset_ms"); val > 0 {
+		cfg.ParallaxResetMS = val
+	}
 	if val := getString("parallax_easing"); val != "" {
 		cfg.ParallaxEasing = val
 	}
@@ -758,7 +752,7 @@ func (w *WaylandUtauri) makeControlClient(cfg *Config) (*controlClient, error) {
 	return newControlClient(cfg)
 }
 
-// SyncRuntimeFromConfig pushes parallax settings to waypaper-tauri so UI toggles
+// SyncRuntimeFromConfig pushes parallax settings to wayland-utauri so UI toggles
 // apply without waiting for the next wallpaper load. Failures are non-fatal
 // (child may be down); callers should log returned errors and still treat
 // config save as successful.
@@ -779,7 +773,7 @@ func (w *WaylandUtauri) PushWallpaperConfig(ctx context.Context, sourceTarget st
 	return nil
 }
 
-// PushWebCapabilities updates the running waypaper-tauri session for monitors showing this entry.
+// PushWebCapabilities updates the running wayland-utauri session for monitors showing this entry.
 func (w *WaylandUtauri) PushWebCapabilities(ctx context.Context, sourceTarget string, caps json.RawMessage) error {
 	cfg := w.loadConfigFromViper()
 	client, err := w.makeControlClient(cfg)

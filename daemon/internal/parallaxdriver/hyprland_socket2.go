@@ -23,16 +23,30 @@ func hyprlandSocket2Path() string {
 }
 
 func isHyprlandWorkspaceEvent(line string) bool {
-	return strings.HasPrefix(line, "workspace>>") ||
-		strings.HasPrefix(line, "workspacev2>>") ||
-		strings.HasPrefix(line, "focusedmon>>") ||
-		strings.HasPrefix(line, "moveworkspacev2>>")
+	// See https://wiki.hyprland.org/IPC/ — include v2 events and monitor moves so we
+	// re-query `hyprctl -j monitors` after mouse-driven workspace / focus changes.
+	switch {
+	case strings.HasPrefix(line, "workspace>>"),
+		strings.HasPrefix(line, "workspacev2>>"),
+		strings.HasPrefix(line, "focusedmon>>"),
+		strings.HasPrefix(line, "focusedmonv2>>"),
+		strings.HasPrefix(line, "moveworkspace>>"),
+		strings.HasPrefix(line, "moveworkspacev2>>"),
+		strings.HasPrefix(line, "createworkspace>>"),
+		strings.HasPrefix(line, "createworkspacev2>>"),
+		strings.HasPrefix(line, "destroyworkspace>>"),
+		strings.HasPrefix(line, "destroyworkspacev2>>"),
+		strings.HasPrefix(line, "configreloaded>>"):
+		return true
+	default:
+		return false
+	}
 }
 
 func doHyprlandTick(ctx context.Context, st *workspaceParallaxAbsoluteState, opts RunOpts, log *slog.Logger) {
 	tickCtx, cancel := context.WithTimeout(ctx, 600*time.Millisecond)
 	defer cancel()
-	entries, ok := hyprlandAllMonitorWorkspaces(tickCtx)
+	entries, ok := hyprlandAllMonitorWorkspaces(tickCtx, log)
 	if !ok {
 		return
 	}

@@ -43,7 +43,7 @@ func TestBuildParallaxRequestBody(t *testing.T) {
 	require.InDelta(t, float32(1.2), body["zoom"], 1e-5)
 	require.InDelta(t, float32(10), body["step_percent"], 1e-5)
 	require.Equal(t, uint64(500), body["animation_ms"])
-	require.Equal(t, uint64(400), body["reset_ms"])
+	require.Equal(t, uint64(400), body["reset_ms"]) // default when ParallaxResetMS unset in cfg test
 	e, ok := body["easing"].([]float32)
 	require.True(t, ok)
 	assert.Equal(t, []float32{0, 0, 1, 1}, e)
@@ -59,4 +59,17 @@ func TestBuildParallaxRequestBody_StepAndAnimFallbacks(t *testing.T) {
 	body := buildParallaxRequestBody(cfg)
 	assert.Equal(t, float32(5), body["step_percent"])
 	assert.Equal(t, uint64(600), body["animation_ms"])
+}
+
+func TestBuildParallaxRequestBody_customResetMS(t *testing.T) {
+	cfg := &Config{
+		ParallaxEnabled: true,
+		ParallaxZoom:    100,
+		ParallaxStepPct: 5,
+		ParallaxAnimMS:  300,
+		ParallaxResetMS: 800,
+		ParallaxEasing:  "",
+	}
+	body := buildParallaxRequestBody(cfg)
+	require.Equal(t, uint64(800), body["reset_ms"])
 }

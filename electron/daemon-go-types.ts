@@ -363,12 +363,14 @@ export interface WaylandUtauriConfig {
   transition_wave_frequency?: number;
   parallax_enabled?: boolean;
   parallax_zoom?: number;
+  /** Per parallax-move / sync: normalized step size in % (POST /wallpaper/parallax). */
   parallax_step_percent?: number;
-  /** Workspace ids per chunk for Hyprland/Sway compositor parallax (match bar span). */
+  /** Hyprland/Sway: workspace ID ring size for choosing move direction (shortest path on the ring). */
   parallax_workspace_chunk_size?: number;
   parallax_animation_ms?: number;
+  parallax_reset_ms?: number;
   parallax_easing?: [number, number, number, number];
-  /** Hyprland/Sway workspace → parallax-move when parallax_enabled: auto | off | hyprland | sway */
+  /** Hyprland/Sway workspace follow → POST /wallpaper/parallax-move: auto | off | hyprland | sway */
   parallax_compositor_driver?: string;
   /** Workspace parallax axis when waypaper.json does not set parallax_direction: horizontal | vertical */
   parallax_direction?: string;

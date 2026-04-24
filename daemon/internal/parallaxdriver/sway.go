@@ -152,6 +152,7 @@ func swayAllOutputWorkspaces(ctx context.Context) ([]MonitorWorkspaceEntry, bool
 				X: o.Rect.X, Y: o.Rect.Y,
 				Width: o.Rect.Width, Height: o.Rect.Height,
 			},
+			OutputName: o.Name,
 		})
 	}
 	return entries, len(entries) > 0

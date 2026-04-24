@@ -182,19 +182,13 @@ func (c *controlClient) setParallax(ctx context.Context, body map[string]any) er
 	return nil
 }
 
-// parallaxMove posts to POST /wallpaper/parallax-move. direction must be left, right, up, or down.
-func (c *controlClient) parallaxMove(ctx context.Context, direction string, amountPercent *float64, outputName *string) error {
-	switch direction {
-	case "left", "right", "up", "down":
-	default:
-		return fmt.Errorf("parallaxMove: invalid direction %q", direction)
+// parallaxMove posts a relative direction move to POST /wallpaper/parallax-move.
+func (c *controlClient) parallaxMove(ctx context.Context, outputName, direction string) error {
+	body := map[string]any{
+		"direction": direction,
 	}
-	body := map[string]any{"direction": direction}
-	if amountPercent != nil {
-		body["amount_percent"] = *amountPercent
-	}
-	if outputName != nil {
-		body["name"] = *outputName
+	if outputName != "" {
+		body["name"] = outputName
 	}
 	_, status, respBody, err := c.doJSON(ctx, http.MethodPost, "/wallpaper/parallax-move", body)
 	if err != nil {
@@ -204,12 +198,6 @@ func (c *controlClient) parallaxMove(ctx context.Context, direction string, amou
 		return classifyHTTPError(status, respBody)
 	}
 	return nil
-}
-
-// parallaxMoveScoped is used by the workspace compositor driver and always scopes
-// movement to one resolved monitor.
-func (c *controlClient) parallaxMoveScoped(ctx context.Context, direction string, amountPercent float64, outputName string) error {
-	return c.parallaxMove(ctx, direction, &amountPercent, &outputName)
 }
 
 func (c *controlClient) doJSON(ctx context.Context, method, path string, payload any) (http.Header, int, string, error) {

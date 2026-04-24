@@ -11,30 +11,33 @@ import (
 type MonitorWorkspaceEntry struct {
 	WorkspaceID int
 	Bounds      Rect
+	// OutputName is the compositor output name (e.g. Hyprland monitor "name"), matching
+	// wal-utauri topology[].name. When set, the driver uses it directly instead of
+	// geometry-based resolution (avoids GDK vs compositor coordinate mismatches).
+	OutputName string
 }
 
 // ResolveMonitorFunc maps compositor monitor data to the compositor output name
 // from GET /wallpaper/status topology (wal-utauri `name` field).
 type ResolveMonitorFunc func(ctx context.Context, e MonitorWorkspaceEntry) (outputName string, ok bool)
 
-// MoveFunc posts one parallax move (POST /wallpaper/parallax-move). amountPercent
-// overrides the renderer default step when non-zero; the compositor driver always
-// passes the absolute delta toward the chunk target. outputName scopes the move
-// to that output's wallpaper.
-type MoveFunc func(ctx context.Context, direction string, amountPercent float64, outputName string) error
+// MoveFunc posts a relative parallax direction move (POST /wallpaper/parallax-move).
+// direction is one of "left", "right", "up", "down"; outputName scopes the update.
+type MoveFunc func(ctx context.Context, outputName, direction string) error
 
-// RunOpts configures workspace -> parallax-move bridging.
+// RunOpts configures workspace → parallax direction bridging.
 type RunOpts struct {
-	Move           MoveFunc
+	Move MoveFunc
+	// ResolveMonitor is optional when every MonitorWorkspaceEntry carries OutputName
+	// (Hyprland/Sway paths); otherwise required for geometry-based fallback.
 	ResolveMonitor ResolveMonitorFunc
-	// ChunkSize is the number of workspace ids per chunk (>= 1). Targets are
-	// normalized within each chunk like Quickshell.
+	// ChunkSize is the number of workspace ids per chunk (>= 1).
 	ChunkSize int
 	// Vertical returns true when workspace parallax should use the Y axis.
 	Vertical func() bool
 }
 
-// Run blocks until ctx is cancelled, forwarding workspace events as parallax-move nudges.
+// Run blocks until ctx is cancelled, forwarding workspace events as parallax-move calls.
 func Run(ctx context.Context, kind Kind, opts RunOpts, log *slog.Logger) error {
 	if kind == None {
 		return nil
@@ -44,9 +47,6 @@ func Run(ctx context.Context, kind Kind, opts RunOpts, log *slog.Logger) error {
 	}
 	if opts.ChunkSize < 1 {
 		return fmt.Errorf("parallaxdriver: ChunkSize must be >= 1, got %d", opts.ChunkSize)
-	}
-	if opts.ResolveMonitor == nil {
-		return fmt.Errorf("parallaxdriver: ResolveMonitor is required when Move is set")
 	}
 	optsCopy := opts
 	if optsCopy.Vertical == nil {

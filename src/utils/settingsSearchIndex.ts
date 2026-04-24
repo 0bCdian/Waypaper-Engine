@@ -293,14 +293,31 @@ export const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     section: "backend",
     key: "waylandutauri.parallax_compositor_driver",
     label: "Compositor parallax driver",
-    description: "Hyprland/Sway workspace → parallax bridge",
+    description:
+      "Hyprland/Sway: workspace changes send POST /wallpaper/parallax-move (step from parallax step %)",
     category: "Backend",
   },
   {
     section: "backend",
     key: "waylandutauri.parallax_workspace_chunk_size",
     label: "Parallax workspace chunk size",
-    description: "Workspace ids per chunk for compositor parallax absolute targets",
+    description:
+      "Ring period for workspace IDs when mapping switches to parallax left/right (Hyprland/Sway driver)",
+    category: "Backend",
+  },
+  {
+    section: "backend",
+    key: "waylandutauri.parallax_step_percent",
+    label: "Parallax step",
+    description:
+      "Per-move offset in % (POST /wallpaper/parallax step_percent; each workspace switch is one parallax-move)",
+    category: "Backend",
+  },
+  {
+    section: "backend",
+    key: "waylandutauri.parallax_reset_ms",
+    label: "Parallax reset duration",
+    description: "Milliseconds when parallax disables or snaps back (reset_ms to wayland-utauri)",
     category: "Backend",
   },
   {

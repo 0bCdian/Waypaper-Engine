@@ -105,36 +105,12 @@ func TestControlClientParallaxMove_Success(t *testing.T) {
 		require.NoError(t, err)
 		var payload map[string]any
 		require.NoError(t, json.Unmarshal(raw, &payload))
+		assert.Equal(t, "DP-1", payload["name"])
 		assert.Equal(t, "right", payload["direction"])
 		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
 	}))
 	t.Cleanup(srv.Close)
 
 	c := &controlClient{httpClient: srv.Client(), baseURL: srv.URL}
-	require.NoError(t, c.parallaxMove(context.Background(), "right", nil, nil))
-}
-
-func TestControlClientParallaxMoveScoped_IncludesNameAndAmount(t *testing.T) {
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		require.Equal(t, http.MethodPost, r.Method)
-		require.Equal(t, "/wallpaper/parallax-move", r.URL.Path)
-		raw, err := io.ReadAll(r.Body)
-		require.NoError(t, err)
-		var payload map[string]any
-		require.NoError(t, json.Unmarshal(raw, &payload))
-		assert.Equal(t, "left", payload["direction"])
-		assert.Equal(t, float64(12.5), payload["amount_percent"])
-		assert.Equal(t, "HDMI-A-1", payload["name"])
-		_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
-	}))
-	t.Cleanup(srv.Close)
-
-	c := &controlClient{httpClient: srv.Client(), baseURL: srv.URL}
-	require.NoError(t, c.parallaxMoveScoped(context.Background(), "left", 12.5, "HDMI-A-1"))
-}
-
-func TestControlClientParallaxMove_InvalidDirection(t *testing.T) {
-	c := &controlClient{}
-	err := c.parallaxMove(context.Background(), "sideways", nil, nil)
-	require.Error(t, err)
+	require.NoError(t, c.parallaxMove(context.Background(), "DP-1", "right"))
 }

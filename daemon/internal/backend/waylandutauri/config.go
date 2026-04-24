@@ -28,10 +28,13 @@ type Config struct {
 	TransitionWaveFrequency        float32 `mapstructure:"transition_wave_frequency" json:"transition_wave_frequency"`
 	ParallaxEnabled                bool    `mapstructure:"parallax_enabled" json:"parallax_enabled"`
 	ParallaxZoom                   int     `mapstructure:"parallax_zoom" json:"parallax_zoom"`
-	ParallaxStepPct                int     `mapstructure:"parallax_step_percent" json:"parallax_step_percent"`
-	// ParallaxWorkspaceChunkSize: workspace ids per chunk for compositor parallax (Hyprland/Sway); matches Quickshell-style bar span.
+	// ParallaxStepPct is sent to wayland-utauri as ParallaxConfig.step_percent (host API requires > 0).
+	// Parallax-move uses this amount; Hyprland/Sway driver posts direction-only HTTP moves.
+	ParallaxStepPct int `mapstructure:"parallax_step_percent" json:"parallax_step_percent"`
+	// ParallaxWorkspaceChunkSize: ring period for resolveDirection (Hyprland/Sway) — shortest path on the workspace ID circle.
 	ParallaxWorkspaceChunkSize int    `mapstructure:"parallax_workspace_chunk_size" json:"parallax_workspace_chunk_size"`
 	ParallaxAnimMS             int    `mapstructure:"parallax_animation_ms" json:"parallax_animation_ms"`
+	ParallaxResetMS            int    `mapstructure:"parallax_reset_ms" json:"parallax_reset_ms"`
 	ParallaxEasing             string `mapstructure:"parallax_easing" json:"parallax_easing"`
 	// ParallaxCompositorDriver: auto | off | hyprland | sway — workspace → POST /wallpaper/parallax-move (Hyprland/Sway only).
 	ParallaxCompositorDriver string `mapstructure:"parallax_compositor_driver" json:"parallax_compositor_driver"`
@@ -71,6 +74,7 @@ func defaultConfig() *Config {
 		ParallaxStepPct:                5,
 		ParallaxWorkspaceChunkSize:     10,
 		ParallaxAnimMS:                 600,
+		ParallaxResetMS:                400,
 		ParallaxEasing:                 "0.215,0.610,0.355,1.000",
 		ParallaxCompositorDriver:       "auto",
 		ParallaxDirection:              "horizontal",

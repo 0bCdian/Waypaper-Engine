@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-// defaultParallaxEasing matches waypaper-tauri ParallaxConfig::default().easing.
+// defaultParallaxEasing matches wal-utauri ParallaxConfig::default().easing.
 var defaultParallaxEasing = [4]float32{0.215, 0.610, 0.355, 1.000}
 
 // parallaxZoomFromPercent converts UI percent (100–200) to Rust scale (>= 1.0).
@@ -51,7 +51,7 @@ func isFiniteFloat32(f float32) bool {
 	return !math.IsNaN(x) && !math.IsInf(x, 0)
 }
 
-// buildParallaxRequestBody builds JSON for POST /wallpaper/parallax (waypaper-tauri ParallaxBody).
+// buildParallaxRequestBody builds JSON for POST /wallpaper/parallax (wal-utauri ParallaxBody).
 func buildParallaxRequestBody(cfg *Config) map[string]any {
 	if cfg == nil {
 		cfg = defaultConfig()
@@ -64,6 +64,10 @@ func buildParallaxRequestBody(cfg *Config) map[string]any {
 	if anim == 0 {
 		anim = 600
 	}
+	reset := uint64(cfg.ParallaxResetMS)
+	if reset == 0 {
+		reset = 400
+	}
 	e := parseParallaxEasingOrDefault(cfg.ParallaxEasing)
 	return map[string]any{
 		"enabled":      cfg.ParallaxEnabled,
@@ -71,6 +75,6 @@ func buildParallaxRequestBody(cfg *Config) map[string]any {
 		"step_percent": step,
 		"animation_ms": anim,
 		"easing":       []float32{e[0], e[1], e[2], e[3]},
-		"reset_ms":     uint64(400),
+		"reset_ms":     reset,
 	}
 }

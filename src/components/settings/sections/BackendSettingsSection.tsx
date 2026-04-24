@@ -371,70 +371,16 @@ const waylandUtauriImageFields: Field[] = [
 const waylandUtauriParallaxFields: Field[] = [
   {
     key: "waylandutauri.parallax_enabled",
-    label: "Enable Parallax",
-    description: "Enable wayland-utauri parallax motion",
+    label: "Enable parallax",
+    description:
+      "Syncs parallax to wayland-utauri (POST /wallpaper/parallax: zoom, step, animation, easing, reset). The compositor driver sends one parallax-move per workspace change; offsets accumulate and wal-utauri elastic-wraps past ±0.5.",
     type: "checkbox",
-  },
-  {
-    key: "waylandutauri.parallax_zoom",
-    label: "Parallax Zoom (%)",
-    description: "Zoom used for parallax movement bounds",
-    type: "number",
-    min: 100,
-    max: 200,
-    step: 1,
-  },
-  {
-    key: "waylandutauri.parallax_step_percent",
-    label: "Parallax Step (%)",
-    description: "Default step for manual/script parallax-move calls without amount_percent",
-    type: "number",
-    min: 1,
-    max: 100,
-    step: 1,
-  },
-  {
-    key: "waylandutauri.parallax_workspace_chunk_size",
-    label: "Parallax workspace chunk size",
-    description:
-      "Hyprland/Sway: number of workspace ids per chunk for absolute pan targets (match your bar workspace count).",
-    type: "number",
-    min: 1,
-    max: 64,
-    step: 1,
-  },
-  {
-    key: "waylandutauri.parallax_animation_ms",
-    label: "Parallax Animation (ms)",
-    description: "Animation duration for parallax updates",
-    type: "number",
-    min: 16,
-    max: 5000,
-    step: 1,
-  },
-  {
-    key: "waylandutauri.parallax_easing",
-    label: "Parallax Easing",
-    description: "Cubic bezier string (x1,y1,x2,y2)",
-    type: "text",
-    placeholder: "0.215,0.610,0.355,1.000",
-  },
-  {
-    key: "waylandutauri.parallax_direction",
-    label: "Parallax direction (workspace)",
-    description:
-      "Whether Hyprland/Sway workspace parallax pans horizontally or vertically. Web wallpapers can override with waypaper.json parallax_direction.",
-    type: "select",
-    options: [
-      { value: "horizontal", label: "Horizontal" },
-      { value: "vertical", label: "Vertical" },
-    ],
   },
   {
     key: "waylandutauri.parallax_compositor_driver",
     label: "Compositor parallax driver",
     description:
-      "Hyprland/Sway: listens for workspace changes and drives parallax. “off” disables; “auto” picks Hyprland or Sway from the session.",
+      "Hyprland/Sway: follow workspace focus and POST /wallpaper/parallax-move (direction only; amount uses Parallax step below). “Off” disables; “Auto” picks Hyprland or Sway from the session.",
     type: "select",
     options: [
       { value: "auto", label: "Auto" },
@@ -442,6 +388,72 @@ const waylandUtauriParallaxFields: Field[] = [
       { value: "hyprland", label: "Hyprland" },
       { value: "sway", label: "Sway" },
     ],
+  },
+  {
+    key: "waylandutauri.parallax_workspace_chunk_size",
+    label: "Workspace ID ring (chunk size)",
+    description:
+      "Hyprland/Sway only: when deciding left vs right (or up vs down), workspace IDs are treated as wrapping on a ring of this many steps—shortest path wins (e.g. set close to your number of workspaces if IDs wrap).",
+    type: "number",
+    min: 1,
+    max: 64,
+    step: 1,
+  },
+  {
+    key: "waylandutauri.parallax_step_percent",
+    label: "Parallax step (%)",
+    description:
+      "Per parallax-move: how much normalized offset to add in wal-utauri (sent in /wallpaper/parallax as step_percent; each compositor workspace switch triggers one move).",
+    type: "number",
+    min: 1,
+    max: 50,
+    step: 1,
+  },
+  {
+    key: "waylandutauri.parallax_direction",
+    label: "Workspace parallax axis",
+    description:
+      "Hyprland/Sway: map workspace transitions to horizontal pan (left/right) or vertical (up/down). Per-wallpaper waypaper.json can override with parallax_direction.",
+    type: "select",
+    options: [
+      { value: "horizontal", label: "Horizontal" },
+      { value: "vertical", label: "Vertical" },
+    ],
+  },
+  {
+    key: "waylandutauri.parallax_zoom",
+    label: "Parallax zoom (%)",
+    description:
+      "Scale factor in /wallpaper/parallax (100% = 1.0; higher values zoom in so small offset steps show as visible pan).",
+    type: "number",
+    min: 100,
+    max: 200,
+    step: 1,
+  },
+  {
+    key: "waylandutauri.parallax_animation_ms",
+    label: "Parallax animation (ms)",
+    description: "animation_ms in /wallpaper/parallax: transition duration when offsets update (wallpaper:parallax in the webview).",
+    type: "number",
+    min: 16,
+    max: 5000,
+    step: 1,
+  },
+  {
+    key: "waylandutauri.parallax_reset_ms",
+    label: "Parallax reset (ms)",
+    description: "reset_ms in /wallpaper/parallax: duration when parallax is disabled or wal-utauri elastic-snaps offset to center.",
+    type: "number",
+    min: 16,
+    max: 10000,
+    step: 1,
+  },
+  {
+    key: "waylandutauri.parallax_easing",
+    label: "Parallax easing",
+    description: "Cubic-bezier control points as x1,y1,x2,y2 for parallax transitions.",
+    type: "text",
+    placeholder: "0.215,0.610,0.355,1.000",
   },
 ];
 

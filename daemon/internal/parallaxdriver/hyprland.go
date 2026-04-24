@@ -2,9 +2,10 @@ package parallaxdriver
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
 	"log/slog"
 	"os/exec"
+	"strings"
 	"time"
 )
 
@@ -29,7 +30,7 @@ func runHyprlandPoll(ctx context.Context, opts RunOpts, log *slog.Logger, every 
 			return ctx.Err()
 		case <-ticker.C:
 			tickCtx, cancel := context.WithTimeout(ctx, 600*time.Millisecond)
-			entries, ok := hyprlandAllMonitorWorkspaces(tickCtx)
+			entries, ok := hyprlandAllMonitorWorkspaces(tickCtx, log)
 			if ok {
 				vert := opts.Vertical != nil && opts.Vertical()
 				st.tick(tickCtx, entries, opts.Move, opts.ResolveMonitor, vert, opts.ChunkSize, log)
@@ -41,44 +42,30 @@ func runHyprlandPoll(ctx context.Context, opts RunOpts, log *slog.Logger, every 
 
 // hyprlandAllMonitorWorkspaces returns an entry for every connected Hyprland monitor
 // with its active workspace id, geometry, and compositor monitor index.
-func hyprlandAllMonitorWorkspaces(ctx context.Context) ([]MonitorWorkspaceEntry, bool) {
+func hyprlandAllMonitorWorkspaces(ctx context.Context, log *slog.Logger) ([]MonitorWorkspaceEntry, bool) {
+	if log == nil {
+		log = slog.Default()
+	}
 	raw, err := hyprctlJSON(ctx, "monitors")
 	if err != nil {
+		log.Warn("parallaxdriver hyprland: hyprctl monitors failed", "error", err)
 		return nil, false
 	}
-	var mons []struct {
-		ID              int     `json:"id"`
-		Name            string  `json:"name"`
-		X               float64 `json:"x"`
-		Y               float64 `json:"y"`
-		Width           float64 `json:"width"`
-		Height          float64 `json:"height"`
-		ActiveWorkspace struct {
-			ID int `json:"id"`
-		} `json:"activeWorkspace"`
-	}
-	if err := json.Unmarshal(raw, &mons); err != nil {
+	entries, err := parseHyprlandMonitorsJSON(raw)
+	if err != nil {
+		log.Warn("parallaxdriver hyprland: parse monitors json failed", "error", err)
 		return nil, false
 	}
-	if len(mons) == 0 {
-		return nil, false
-	}
-	entries := make([]MonitorWorkspaceEntry, 0, len(mons))
-	for _, m := range mons {
-		if m.Width <= 0 || m.Height <= 0 {
-			continue
-		}
-		entries = append(entries, MonitorWorkspaceEntry{
-			WorkspaceID: m.ActiveWorkspace.ID,
-			Bounds:      Rect{X: m.X, Y: m.Y, Width: m.Width, Height: m.Height},
-		})
-	}
-	return entries, len(entries) > 0
+	return entries, true
 }
 
 func hyprctlJSON(ctx context.Context, args ...string) ([]byte, error) {
 	cctx, cancel := context.WithTimeout(ctx, 3*time.Second)
 	defer cancel()
-	cmd := exec.CommandContext(cctx, "hyprctl", append([]string{"-j"}, args...)...)
-	return cmd.Output()
+	cmd := exec.CommandContext(cctx, hyprctlBinary(), append([]string{"-j"}, args...)...)
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		return nil, fmt.Errorf("hyprctl -j %v: %w: %s", args, err, strings.TrimSpace(string(out)))
+	}
+	return out, nil
 }

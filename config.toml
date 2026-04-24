@@ -59,10 +59,11 @@ request_timeout_ms = 1500
 transition = "none"
 duration_ms = 300
 allow_network_wallpapers = false
-# Workspace → parallax for Hyprland/Sway when parallax_enabled = true (auto | off | hyprland | sway)
+# Hyprland/Sway: workspace follow → POST /wallpaper/parallax-move (auto | off | hyprland | sway; requires parallax_enabled in app)
 parallax_compositor_driver = "auto"
-# parallax_workspace_chunk_size = 10      # ids per chunk for absolute pan (match bar span)
+# parallax_workspace_chunk_size = 10      # ring size for mapping workspace id deltas to parallax left/right
 # parallax_direction = "horizontal"        # horizontal | vertical — default workspace parallax axis (waypaper.json can override)
+# parallax_reset_ms = 400                  # disable / snap-back transition duration (sent with POST /wallpaper/parallax)
 
 [monitors]
 # Monitor configuration

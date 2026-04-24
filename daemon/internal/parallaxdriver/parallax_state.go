@@ -3,31 +3,52 @@ package parallaxdriver
 import (
 	"context"
 	"log/slog"
-	"math"
+	"strings"
 	"time"
 )
 
-// workspaceTargetPercent maps a 1-based compositor workspace id into a normalized
-// pan target within its chunk (Quickshell-style). chunkSize must be >= 1; ids <= 0
-// (Hyprland scratchpad/special workspaces) return 0.
-func workspaceTargetPercent(id, chunkSize int) float64 {
-	if chunkSize < 1 || id <= 0 {
-		return 0
+// resolveDirection maps a workspace-id transition to a parallax move direction.
+// It treats workspace IDs as positions on a chunked ring (matching the bash script).
+// Returns "" when there is no movement or when lastID is 0 (first-tick sentinel).
+func resolveDirection(lastID, nextID, chunkSize int, vertical bool) string {
+	if lastID == 0 || lastID == nextID {
+		return ""
 	}
-	lower := ((id - 1) / chunkSize) * chunkSize
-	pos := float64(id-lower) / float64(chunkSize)
-	return (pos - 0.5) * 100.0
+	delta := nextID - lastID
+	absDelta := delta
+	if absDelta < 0 {
+		absDelta = -absDelta
+	}
+	halfChunk := chunkSize / 2
+
+	var forward bool
+	if absDelta > halfChunk {
+		// wrap — large delta means we crossed a chunk boundary in the opposite sense
+		forward = delta < 0
+	} else {
+		forward = delta > 0
+	}
+
+	if vertical {
+		if forward {
+			return "down"
+		}
+		return "up"
+	}
+	if forward {
+		return "right"
+	}
+	return "left"
 }
 
-// workspaceParallaxAbsoluteState tracks the last applied target and active workspace
-// per compositor output name so each output's parallax stays independent.
+// workspaceParallaxAbsoluteState tracks the last active workspace per compositor output
+// name so each output's parallax stays independent.
 type workspaceParallaxAbsoluteState struct {
 	byOutput map[string]monitorParallaxState
 }
 
 type monitorParallaxState struct {
-	lastSentTargetPercent float64
-	lastActiveWSID        int
+	lastActiveWSID int
 }
 
 func (s *workspaceParallaxAbsoluteState) forOutput(name string) monitorParallaxState {
@@ -44,7 +65,8 @@ func (s *workspaceParallaxAbsoluteState) updateOutput(name string, st monitorPar
 	s.byOutput[name] = st
 }
 
-// tick processes all monitor entries and sends parallax-move for any that changed.
+// tick processes all monitor entries and POSTs a direction move when the active
+// workspace changes for that output.
 func (s *workspaceParallaxAbsoluteState) tick(
 	ctx context.Context,
 	entries []MonitorWorkspaceEntry,
@@ -61,53 +83,35 @@ func (s *workspaceParallaxAbsoluteState) tick(
 		if e.WorkspaceID <= 0 {
 			continue
 		}
-		outName, ok := resolve(ctx, e)
+		outName, ok := outputNameForEntry(ctx, e, resolve)
 		if !ok || outName == "" {
 			continue
 		}
 		outState := s.forOutput(outName)
-		if outState.lastActiveWSID == e.WorkspaceID {
-			continue
-		}
-		target := workspaceTargetPercent(e.WorkspaceID, chunkSize)
-		delta := target - outState.lastSentTargetPercent
-		if math.Abs(delta) < 0.25 {
+		direction := resolveDirection(outState.lastActiveWSID, e.WorkspaceID, chunkSize, vertical)
+		// Always update lastActiveWSID, even on first tick (direction == "").
+		if outState.lastActiveWSID != e.WorkspaceID {
 			outState.lastActiveWSID = e.WorkspaceID
 			s.updateOutput(outName, outState)
-			continue
 		}
-		dir := directionForDelta(delta, vertical)
-		if dir == "" {
+		if direction == "" {
 			continue
 		}
 		mctx, cancel := context.WithTimeout(ctx, 2*time.Second)
-		err := move(mctx, dir, math.Abs(delta), outName)
+		err := move(mctx, outName, direction)
 		cancel()
 		if err != nil {
-			log.Debug("parallaxdriver: parallax-move failed", "output", outName, "error", err)
-			continue
+			log.Warn("parallaxdriver: parallax-move failed", "output", outName, "direction", direction, "error", err)
 		}
-		outState.lastSentTargetPercent = target
-		outState.lastActiveWSID = e.WorkspaceID
-		s.updateOutput(outName, outState)
 	}
 }
 
-func directionForDelta(delta float64, vertical bool) string {
-	if vertical {
-		if delta > 0 {
-			return "down"
-		}
-		if delta < 0 {
-			return "up"
-		}
-		return ""
+func outputNameForEntry(ctx context.Context, e MonitorWorkspaceEntry, resolve ResolveMonitorFunc) (string, bool) {
+	if n := strings.TrimSpace(e.OutputName); n != "" {
+		return n, true
 	}
-	if delta > 0 {
-		return "right"
+	if resolve == nil {
+		return "", false
 	}
-	if delta < 0 {
-		return "left"
-	}
-	return ""
+	return resolve(ctx, e)
 }

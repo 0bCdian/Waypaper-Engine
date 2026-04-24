@@ -77,7 +77,7 @@ func isHyprlandSession() bool {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
-	if err := exec.CommandContext(ctx, "hyprctl", "version").Run(); err != nil {
+	if err := exec.CommandContext(ctx, hyprctlBinary(), "version").Run(); err != nil {
 		return false
 	}
 	return true
