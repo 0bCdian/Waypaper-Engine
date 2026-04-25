@@ -42,6 +42,7 @@ tessl.json
 
 # Playwright / Vitest artifacts
 playwright-report/
+playwright-ui-report/
 blob-report/
 allure*/
 .playwright-cli
