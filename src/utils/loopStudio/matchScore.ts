@@ -7,7 +7,7 @@ export function computeLoopMatchScore(outFrame: ImageBitmap, inFrame: ImageBitma
   const canvas = document.createElement("canvas");
   canvas.width = w;
   canvas.height = h;
-  const tx = canvas.getContext("2d");
+  const tx = canvas.getContext("2d", { willReadFrequently: true });
   if (!tx) return 0;
 
   tx.drawImage(outFrame, 0, 0, w, h);

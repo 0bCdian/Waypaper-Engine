@@ -3,7 +3,7 @@
  * (separate from the playing element so we can sample in/out without stalling preview).
  */
 
-const HAVE_CURRENT_DATA = 4;
+const HAVE_CURRENT_DATA = 2; // HTMLMediaElement.HAVE_CURRENT_DATA
 
 /**
  * Resolves when the element has intrinsic dimensions and at least one decoded frame,

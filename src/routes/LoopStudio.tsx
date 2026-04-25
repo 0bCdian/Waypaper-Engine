@@ -5,6 +5,7 @@ import { useFoldersStore } from "@/stores/foldersStore";
 import { useImagesStore } from "@/stores/images";
 import { useToastStore } from "@/stores/toastStore";
 import { loopStudioMediaSrc } from "@/utils/loopStudio/mediaUrl";
+import { clientXToWipeMix } from "@/utils/loopStudio/compareWipePointer";
 import { computeLoopMatchScore } from "@/utils/loopStudio/matchScore";
 import { formatLoopTime, formatLoopTimeShort, parseLoopTime } from "@/utils/loopStudio/timeFormat";
 import { isVideoFilePath } from "@/utils/videoFileExtensions";
@@ -285,12 +286,12 @@ export default function LoopStudio() {
   const onWipeMouseDown = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {
       if (modeRef.current !== "compare") return;
+      e.preventDefault();
       const canvas = e.currentTarget;
       const sync = (clientX: number) => {
         const rect = canvas.getBoundingClientRect();
-        if (rect.width <= 0) return;
-        const p = (clientX - rect.left) / rect.width;
-        const next = Math.min(1, Math.max(0, p));
+        const next = clientXToWipeMix(clientX, rect, canvas.width, canvas.height);
+        if (next == null) return;
         compareWipeRef.current = next;
         setCompareWipe(next);
         drawCompareWipe();
@@ -312,10 +313,8 @@ export default function LoopStudio() {
   const captureFrames = useCallback(async () => {
     if (!duration) return;
     const gen = ++captureGenRef.current;
-    outBitmapRef.current?.close?.();
-    inBitmapRef.current?.close?.();
-    outBitmapRef.current = null;
-    inBitmapRef.current = null;
+    const prevO = outBitmapRef.current;
+    const prevI = inBitmapRef.current;
     const o = await captureAt(outPoint);
     const i = await captureAt(inPoint);
     if (gen !== captureGenRef.current) {
@@ -323,19 +322,19 @@ export default function LoopStudio() {
       i?.close();
       return;
     }
-    outBitmapRef.current = o;
-    inBitmapRef.current = i;
     if (o && i) {
+      prevO?.close?.();
+      prevI?.close?.();
+      outBitmapRef.current = o;
+      inBitmapRef.current = i;
       const score = computeLoopMatchScore(o, i);
       setMatchPct(Math.round(score * 100));
       if (modeRef.current === "compare") drawCompareWipe();
     } else {
+      o?.close();
+      i?.close();
       setMatchPct(null);
-      if (modeRef.current === "compare") {
-        const c = canvasCmpRef.current;
-        const ctx = c?.getContext("2d");
-        if (c && ctx) ctx.clearRect(0, 0, c.width, c.height);
-      }
+      if (modeRef.current === "compare") drawCompareWipe();
     }
   }, [duration, outPoint, inPoint, captureAt, drawCompareWipe]);
 
@@ -368,7 +367,10 @@ export default function LoopStudio() {
     cCmp.width = dw;
     cCmp.height = dh;
     scheduleCaptures();
-  }, [scheduleCaptures]);
+    if (modeRef.current === "compare" && outBitmapRef.current && inBitmapRef.current) {
+      drawCompareWipe();
+    }
+  }, [scheduleCaptures, drawCompareWipe]);
 
   useEffect(() => {
     scheduleCaptures();
@@ -803,7 +805,7 @@ export default function LoopStudio() {
                   ref={canvasCmpRef}
                   className={
                     mode === "compare"
-                      ? "block max-h-full max-w-full cursor-col-resize object-contain"
+                      ? "block max-h-full max-w-full cursor-col-resize select-none touch-none object-contain"
                       : "hidden"
                   }
                   aria-hidden={mode !== "compare"}
@@ -832,14 +834,6 @@ export default function LoopStudio() {
                   aria-hidden
                 />
               </div>
-
-              {mode === "compare" && (
-                <p className="shrink-0 px-0.5 text-xs text-base-content/70">
-                  Drag on the preview to move the wipe —{" "}
-                  <span className="text-warning">OUT</span> (loop end) left,{" "}
-                  <span className="text-success">IN</span> (loop start) right.
-                </p>
-              )}
 
               <div className="flex shrink-0 flex-wrap items-center gap-2">
                 <div className="join">
