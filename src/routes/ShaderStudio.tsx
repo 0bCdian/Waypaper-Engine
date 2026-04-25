@@ -1,11 +1,20 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useLocation } from "react-router-dom";
+import { useDropZone } from "@/hooks/useDropZone";
 import { useHotkeys } from "react-hotkeys-hook";
 import { captureShaderPreviewPngs } from "@/shaderStudio/captureShaderPreviewPngs";
 import { serializeMultipass } from "@/shaderStudio/buildWallpaperPackage";
-import { DEFAULT_PREVIEW_DT, DEFAULT_PREVIEW_FRAME_COUNT } from "@/shaderStudio/shaderPreviewSchedule";
+import {
+  DEFAULT_PREVIEW_DT,
+  DEFAULT_PREVIEW_FRAME_COUNT,
+} from "@/shaderStudio/shaderPreviewSchedule";
 import { SHADER_STUDIO_EXAMPLE } from "@/shaderStudio/exampleShader";
 import { ShaderWallEngine } from "@/shaderStudio/shaderWallEngine";
-import { parseShadertoyJson, prepareMultipassFromJson, type PreparedMultipass } from "@/shaderStudio/shadertoyImport";
+import {
+  parseShadertoyJson,
+  prepareMultipassFromJson,
+  type PreparedMultipass,
+} from "@/shaderStudio/shadertoyImport";
 import { ShadertoyMultipassEngine } from "@/shaderStudio/shadertoyMultipassEngine";
 import { useFoldersStore } from "@/stores/foldersStore";
 import { useImagesStore } from "@/stores/images";
@@ -73,6 +82,7 @@ function multipassEditorPlaceholder(title: string, passes: string[]): string {
 }
 
 export default function ShaderStudio() {
+  const location = useLocation();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const singleEngineRef = useRef<ShaderWallEngine | null>(null);
   const multiEngineRef = useRef<ShadertoyMultipassEngine | null>(null);
@@ -109,6 +119,8 @@ export default function ShaderStudio() {
       /* ignore */
     }
   }, [title]);
+
+  const routeStateLoadedRef = useRef(false);
 
   const mountSingleEngine = useCallback((): string | null => {
     const canvas = canvasRef.current;
@@ -288,6 +300,17 @@ export default function ShaderStudio() {
     [addToast, mountSingleEngine],
   );
 
+  // Load shadertoy JSON passed via route state (navigated from Gallery drop prompt).
+  useEffect(() => {
+    if (routeStateLoadedRef.current) return;
+    routeStateLoadedRef.current = true;
+    const state = location.state as { shadertoyJsonText?: string } | null;
+    if (state?.shadertoyJsonText) {
+      loadShadertoyJsonText(state.shadertoyJsonText);
+      window.history.replaceState({}, "");
+    }
+  }, [location.state, loadShadertoyJsonText]);
+
   const onPickShadertoyJson = (ev: ChangeEvent<HTMLInputElement>): void => {
     const file = ev.target.files?.[0];
     ev.target.value = "";
@@ -295,15 +318,12 @@ export default function ShaderStudio() {
     void file.text().then((t) => loadShadertoyJsonText(t));
   };
 
-  const onShaderStudioDrop = useCallback(
-    (e: DragEvent) => {
-      e.preventDefault();
-      e.stopPropagation();
+  const handleShaderDrop = useCallback(
+    (e: React.DragEvent) => {
       const { files } = e.dataTransfer;
       const f = files[0];
       if (!f) return;
-      const name = f.name?.toLowerCase() ?? "";
-      if (!name.endsWith(".json")) {
+      if (!f.name.toLowerCase().endsWith(".json")) {
         addToast("Drop a Shadertoy export .json file", "warning", 3000);
         return;
       }
@@ -311,6 +331,9 @@ export default function ShaderStudio() {
     },
     [addToast, loadShadertoyJsonText],
   );
+
+  const { isDragging: isShaderDragging, handlers: shaderDropHandlers } =
+    useDropZone(handleShaderDrop);
 
   const togglePause = useCallback(() => {
     if (importMode === "multipass") {
@@ -334,7 +357,12 @@ export default function ShaderStudio() {
       if (importMode === "multipass") {
         const prepared = multipassPreparedRef.current;
         if (!prepared) return null;
-        return { kind: "multipass" as const, multipass: serializeMultipass(prepared), title: t, mode };
+        return {
+          kind: "multipass" as const,
+          multipass: serializeMultipass(prepared),
+          title: t,
+          mode,
+        };
       }
       return { kind: "single" as const, shader: source, title: t, mode };
     },
@@ -378,7 +406,14 @@ export default function ShaderStudio() {
       addToast(saveResult.error, "error");
     }
     setSaving(false);
-  }, [addToast, buildPackagePayload, capturePreviewPngsForPackage, compileOk, currentFolderId, reQueryImages]);
+  }, [
+    addToast,
+    buildPackagePayload,
+    capturePreviewPngsForPackage,
+    compileOk,
+    currentFolderId,
+    reQueryImages,
+  ]);
 
   const exportPackage = useCallback(async () => {
     if (!compileOk) {
@@ -410,28 +445,47 @@ export default function ShaderStudio() {
 
   return (
     <div
-      className="flex h-full min-h-0 w-full flex-col gap-2 overflow-hidden px-2 py-2 sm:gap-3 sm:px-4 sm:py-3"
-      onDragOver={(e) => {
-        e.preventDefault();
-        e.stopPropagation();
-      }}
-      onDrop={onShaderStudioDrop}
+      className="relative flex h-full min-h-0 w-full flex-col gap-2 overflow-hidden px-2 py-2 sm:gap-3 sm:px-4 sm:py-3"
+      {...shaderDropHandlers}
     >
+      {isShaderDragging && (
+        <div className="absolute inset-0 z-[200] flex items-center justify-center bg-base-300/80 backdrop-blur-sm pointer-events-none">
+          <div className="flex flex-col items-center gap-4 p-8 rounded-xl border-2 border-dashed border-secondary">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="h-16 w-16 text-secondary"
+              fill="none"
+              viewBox="0 0 24 24"
+              stroke="currentColor"
+              strokeWidth={1.5}
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z"
+              />
+            </svg>
+            <span className="text-2xl font-bold text-secondary">Drop Shadertoy .json</span>
+            <span className="text-sm text-base-content/60">Single-pass or multipass export</span>
+          </div>
+        </div>
+      )}
       <header className="shrink-0 space-y-1">
         <h1 className="text-xl font-bold text-base-content sm:text-2xl">Shader Studio</h1>
         <p className="line-clamp-2 text-xs text-base-content/60 sm:line-clamp-none sm:text-sm">
-          Shadertoy-style <code className="text-xs">mainImage</code> fragment shaders. Run compiles the preview; save
-          writes a web wallpaper package and imports it into the gallery, or export copies the package to a folder you
-          choose. Multipass shaders need a full Shadertoy JSON export (official Export or a compatible browser
-          extension)—not the Image tab alone.
+          Shadertoy-style <code className="text-xs">mainImage</code> fragment shaders. Run compiles
+          the preview; save writes a web wallpaper package and imports it into the gallery, or
+          export copies the package to a folder you choose. Multipass shaders need a full Shadertoy
+          JSON export (official Export or a compatible browser extension)—not the Image tab alone.
         </p>
       </header>
 
       <div className="alert alert-info shrink-0 py-1.5 text-xs sm:text-sm">
         <span>
-          <kbd className="kbd kbd-sm">Ctrl</kbd>+<kbd className="kbd kbd-sm">Enter</kbd> compiles. Mouse over the
-          preview drives <code className="text-xs">iMouse</code>. <code className="text-xs">fragCoord</code> matches
-          Shadertoy (top-left origin). Import JSON for Common + Buffer + Image pipelines (WebGL2), or drop a{" "}
+          <kbd className="kbd kbd-sm">Ctrl</kbd>+<kbd className="kbd kbd-sm">Enter</kbd> compiles.
+          Mouse over the preview drives <code className="text-xs">iMouse</code>.{" "}
+          <code className="text-xs">fragCoord</code> matches Shadertoy (top-left origin). Import
+          JSON for Common + Buffer + Image pipelines (WebGL2), or drop a{" "}
           <code className="text-xs">.json</code> export onto this page.
         </span>
       </div>
@@ -458,7 +512,11 @@ export default function ShaderStudio() {
           <button type="button" className="btn btn-primary btn-sm" onClick={() => runCompile()}>
             Run
           </button>
-          <button type="button" className="btn btn-outline btn-sm" onClick={() => fileInputRef.current?.click()}>
+          <button
+            type="button"
+            className="btn btn-outline btn-sm"
+            onClick={() => fileInputRef.current?.click()}
+          >
             Import JSON…
           </button>
           {importMode === "multipass" ? (

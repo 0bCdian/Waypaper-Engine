@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen } from "@testing-library/react";
+import { MemoryRouter } from "react-router-dom";
 
 const mockFetchFolders = vi.fn();
 
@@ -85,7 +86,11 @@ describe("Gallery", () => {
   it("renders empty state when isEmpty, isQueried, and no folders", () => {
     mockImagesState = { ...mockImagesState, isEmpty: true, isQueried: true };
 
-    render(<Gallery />);
+    render(
+      <MemoryRouter>
+        <Gallery />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByTestId("add-images-card")).toBeInTheDocument();
     expect(screen.getByText(/drag files or an image URL onto the window/i)).toBeInTheDocument();
@@ -95,7 +100,11 @@ describe("Gallery", () => {
   it("renders Breadcrumbs, Filters, and PaginatedGallery when images exist", () => {
     mockImagesState = { ...mockImagesState, isEmpty: false, isQueried: true };
 
-    render(<Gallery />);
+    render(
+      <MemoryRouter>
+        <Gallery />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByTestId("breadcrumbs")).toBeInTheDocument();
     expect(screen.getByTestId("filters")).toBeInTheDocument();
@@ -114,7 +123,11 @@ describe("Gallery", () => {
       },
     };
 
-    render(<Gallery />);
+    render(
+      <MemoryRouter>
+        <Gallery />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByTestId("paginated-gallery")).toBeInTheDocument();
     expect(screen.queryByTestId("add-images-card")).not.toBeInTheDocument();
@@ -131,7 +144,11 @@ describe("Gallery", () => {
       },
     };
 
-    render(<Gallery />);
+    render(
+      <MemoryRouter>
+        <Gallery />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByTestId("filters")).toBeInTheDocument();
     expect(screen.getByTestId("paginated-gallery")).toBeInTheDocument();
@@ -139,7 +156,11 @@ describe("Gallery", () => {
   });
 
   it("calls fetchFolders on mount", () => {
-    render(<Gallery />);
+    render(
+      <MemoryRouter>
+        <Gallery />
+      </MemoryRouter>,
+    );
 
     expect(mockFetchFolders).toHaveBeenCalledWith(null);
   });
@@ -147,7 +168,11 @@ describe("Gallery", () => {
   it("subscribes to folders_updated daemon event", () => {
     const { goDaemon } = window.API_RENDERER;
 
-    render(<Gallery />);
+    render(
+      <MemoryRouter>
+        <Gallery />
+      </MemoryRouter>,
+    );
 
     expect(goDaemon.on).toHaveBeenCalledWith("folders_updated", expect.any(Function));
   });
