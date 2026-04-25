@@ -178,6 +178,7 @@ function FolderCard({ folder }: FolderCardProps) {
     return (
       <div
         ref={mergedRef}
+        data-folder-card=""
         onContextMenu={handleContextMenu}
         data-drop-target={isDropTarget || undefined}
         className={`neo-folder-card group relative w-full animate-fade-in${dragFade}`}
@@ -215,6 +216,7 @@ function FolderCard({ folder }: FolderCardProps) {
   return (
     <div
       ref={mergedRef}
+      data-folder-card=""
       onContextMenu={handleContextMenu}
       className={`group relative w-full overflow-hidden rounded-lg duration-200 animate-fade-in cursor-pointer transition-all${dropHighlight}${dragFade}`}
       onClick={handleClick}

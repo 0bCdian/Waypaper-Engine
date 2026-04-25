@@ -81,19 +81,23 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className }) => {
     [setPendingBackendSettingsTab],
   );
 
-  useEffect(() => {
-    const raw = (location.state as { settingsNavSection?: unknown } | null)?.settingsNavSection;
-    if (!isSettingsNavSection(raw)) return;
-    selectSection(raw);
-    navigate(".", { replace: true, state: null });
-  }, [location.state, navigate, selectSection]);
+  const pendingNavSection = (location.state as { settingsNavSection?: unknown } | null)
+    ?.settingsNavSection;
+  if (isSettingsNavSection(pendingNavSection) && activeSection !== pendingNavSection) {
+    selectSection(pendingNavSection);
+  }
 
   useEffect(() => {
-    if (filteredSections.includes(activeSection)) return;
+    if (isSettingsNavSection(pendingNavSection)) {
+      navigate(".", { replace: true, state: null });
+    }
+  }, [pendingNavSection, navigate]);
+
+  if (!filteredSections.includes(activeSection)) {
     const next = (filteredSections[0] ?? "app") as ConfigSection;
     setActiveSection(next);
     writePersistedSettingsSection(next);
-  }, [activeSection, filteredSections]);
+  }
 
   useEffect(() => () => clearErrors(), [clearErrors]);
 

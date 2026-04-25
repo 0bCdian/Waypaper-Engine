@@ -1,3 +1,4 @@
+import type React from "react";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useContextMenuStore, type MenuItem } from "../stores/contextMenuStore";
@@ -130,37 +131,35 @@ function MenuItems({
   isNeo: boolean;
   depth: number;
 }) {
-  let actionIndex = -1;
+  const rendered: React.ReactNode[] = [];
+  let actionCount = 0;
+  for (let i = 0; i < items.length; i++) {
+    const item = items[i];
+    if (item.type === "separator") {
+      rendered.push(<div key={`sep-${item.type}-${i}`} className="context-menu-separator" />);
+      continue;
+    }
+    const isFocused = depth === 0 && actionCount === focusIndex;
+    actionCount++;
+    if (item.type === "submenu") {
+      rendered.push(
+        <SubmenuItem
+          key={`sub-${item.label}`}
+          item={item}
+          close={close}
+          isFocused={isFocused}
+          isNeo={isNeo}
+          depth={depth}
+        />,
+      );
+    } else {
+      rendered.push(
+        <ActionItem key={`act-${item.label}`} item={item} close={close} isFocused={isFocused} />,
+      );
+    }
+  }
 
-  return (
-    <div className="context-menu-list">
-      {items.map((item, i) => {
-        if (item.type === "separator") {
-          return <div key={`sep-${item.type}-${i}`} className="context-menu-separator" />;
-        }
-
-        actionIndex++;
-        const isFocused = depth === 0 && actionIndex === focusIndex;
-
-        if (item.type === "submenu") {
-          return (
-            <SubmenuItem
-              key={`sub-${item.label}`}
-              item={item}
-              close={close}
-              isFocused={isFocused}
-              isNeo={isNeo}
-              depth={depth}
-            />
-          );
-        }
-
-        return (
-          <ActionItem key={`act-${item.label}`} item={item} close={close} isFocused={isFocused} />
-        );
-      })}
-    </div>
-  );
+  return <div className="context-menu-list">{rendered}</div>;
 }
 
 function ActionItem({

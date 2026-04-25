@@ -12,8 +12,37 @@ import openImagesStore from "../hooks/useOpenImages";
 import type { Image } from "../../electron/daemon-go-types";
 import { notifyWallpaperApplyFailed } from "./daemonUserFacingError";
 import { buildWallpaperSubmenu, buildClearHistoryItem } from "./sharedContextMenuHelpers";
+import { useToastStore } from "../stores/toastStore";
 
 const { goDaemon } = window.API_RENDERER;
+
+async function exportWallpapersFromRenderer(images: rendererImage[]) {
+  if (images.length === 0) return;
+  const addToast = useToastStore.getState().addToast;
+  try {
+    const res = await window.API_RENDERER.exportWallpapersToFolder(
+      images.map((img) => ({
+        id: img.id,
+        name: img.name,
+        path: img.path,
+        media_type: img.media_type,
+        package_root: img.web_meta?.package_root ?? null,
+      })),
+    );
+    if (res.canceled) return;
+    if (res.exported === 0 && res.failed > 0) {
+      addToast("Export failed for all items", "error", 4000);
+      return;
+    }
+    const msg =
+      res.failed > 0
+        ? `Exported ${res.exported} of ${images.length} (${res.failed} failed)`
+        : `Exported ${res.exported} wallpaper(s) to ${res.destination}`;
+    addToast(msg, res.failed > 0 ? "warning" : "success", 5000);
+  } catch (e) {
+    addToast(e instanceof Error ? e.message : "Export failed", "error");
+  }
+}
 
 function getParentFolderId(): number | null | undefined {
   const { currentFolderId, breadcrumbPath } = useFoldersStore.getState();
@@ -38,6 +67,14 @@ function selectionItems(selectedCount: number): MenuItem[] {
         const { selectedImages } = useImagesStore.getState();
         if (selectedImages.size === 0) return;
         useFolderPickerStore.getState().open(Array.from(selectedImages));
+      },
+    },
+    {
+      type: "action",
+      label: "Export selected to folder…",
+      onClick: () => {
+        const selected = useImagesStore.getState().getSelectedImages();
+        void exportWallpapersFromRenderer(selected);
       },
     },
     ...(useFoldersStore.getState().currentFolderId !== null
@@ -196,6 +233,13 @@ export function buildImageMenuItems(
       label: "Open in file manager",
       onClick: () => {
         void window.API_RENDERER.revealInFileManager(image.path);
+      },
+    },
+    {
+      type: "action",
+      label: "Export to folder…",
+      onClick: () => {
+        void exportWallpapersFromRenderer([image]);
       },
     },
     {

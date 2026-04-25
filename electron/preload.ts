@@ -397,6 +397,24 @@ const electronAPI = {
 
   revealInFileManager: (path: string) => invokeWrapped<boolean>("reveal-in-file-manager", path),
 
+  exportWallpapersToFolder: (
+    items: Array<{
+      id: number;
+      name: string;
+      path: string;
+      media_type: string;
+      package_root?: string | null;
+    }>,
+  ): Promise<{
+    canceled: boolean;
+    destination: string;
+    exported: number;
+    failed: number;
+  }> => invokeWrapped("export-wallpapers-to-folder", items),
+
+  downloadYoutubeVideo: (url: string): Promise<{ filePath: string }> =>
+    invokeWrapped("download-youtube-video", { url }),
+
   // LOGGING
   logToMain: (
     level: "debug" | "info" | "warn" | "error",

@@ -211,14 +211,25 @@ const TypographySection: React.FC<{
   const [customDisplay, setCustomDisplay] = useState(() => config?.app?.font_family_display ?? "");
   const [customMono, setCustomMono] = useState(() => config?.app?.font_family_mono ?? "");
 
-  useEffect(() => {
-    setCustomBody(config?.app?.font_family_body ?? "");
-    setCustomDisplay(config?.app?.font_family_display ?? "");
-    setCustomMono(config?.app?.font_family_mono ?? "");
-  }, [config?.app?.font_family_body, config?.app?.font_family_display, config?.app?.font_family_mono]);
+  const [prevFontCfg, setPrevFontCfg] = useState({
+    body: config?.app?.font_family_body ?? "",
+    display: config?.app?.font_family_display ?? "",
+    mono: config?.app?.font_family_mono ?? "",
+  });
+  const cfgBody = config?.app?.font_family_body ?? "";
+  const cfgDisplay = config?.app?.font_family_display ?? "";
+  const cfgMono = config?.app?.font_family_mono ?? "";
+  if (prevFontCfg.body !== cfgBody || prevFontCfg.display !== cfgDisplay || prevFontCfg.mono !== cfgMono) {
+    setPrevFontCfg({ body: cfgBody, display: cfgDisplay, mono: cfgMono });
+    setCustomBody(cfgBody);
+    setCustomDisplay(cfgDisplay);
+    setCustomMono(cfgMono);
+  }
 
-  const latestCustom = useRef({ body: "", display: "", mono: "" });
-  latestCustom.current = { body: customBody, display: customDisplay, mono: customMono };
+  const latestCustom = useRef({ body: customBody, display: customDisplay, mono: customMono });
+  useEffect(() => {
+    latestCustom.current = { body: customBody, display: customDisplay, mono: customMono };
+  });
 
   const scheduleCustomSave = useCallback(() => {
     if (debounceRef.current) clearTimeout(debounceRef.current);

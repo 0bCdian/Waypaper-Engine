@@ -12,7 +12,7 @@ function parseSearchInput(text: string): { search: string; hashTags: string[] } 
   return { search, hashTags };
 }
 
-export const GALLERY_FILTERS_STORAGE_KEY = "waypaper-gallery-filters";
+const GALLERY_FILTERS_STORAGE_KEY = "waypaper-gallery-filters";
 
 const ALL_FORMATS: Formats[] = [
   "jpeg",

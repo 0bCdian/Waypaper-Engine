@@ -14,7 +14,7 @@ import { useIsNeo } from "../../hooks/useIsNeo";
 import { confirmDialog } from "../ConfirmDialog";
 
 /** Programmatically close the drawer by unchecking the toggle */
-export function closeDrawer() {
+function closeDrawer() {
   const checkbox = document.getElementById(DRAWER_CHECKBOX_ID) as HTMLInputElement | null;
   if (checkbox) {
     checkbox.checked = false;

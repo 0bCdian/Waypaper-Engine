@@ -277,7 +277,7 @@ function PlaylistTrack() {
             <span className="text-sm font-medium text-primary">Drop to add to playlist</span>
           </div>
         )}
-        {...playlistArray}
+        {playlistArray}
       </div>
     </div>
   );

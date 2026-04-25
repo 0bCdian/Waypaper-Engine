@@ -9,6 +9,24 @@ const DEFAULT_THEME_NAME = "kolision-raw";
 
 const getTheme = (name: string) => themes[name];
 
+function hasThemeFn(name: string): boolean {
+  return name in themes && (themes[name].available ?? true);
+}
+
+function readStoredTheme(): string | null {
+  try {
+    return localStorage.getItem("waypaper-theme");
+  } catch {
+    return null;
+  }
+}
+
+function resolveInitialTheme(defaultTheme: string, persist: boolean): string {
+  if (!persist) return defaultTheme;
+  const stored = readStoredTheme();
+  return stored && hasThemeFn(stored) ? stored : defaultTheme;
+}
+
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
 interface ThemeProviderProps {
@@ -24,10 +42,12 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   persist = true,
   syncWithSystem: initialSyncWithSystem = true,
 }) => {
-  const [currentTheme, setCurrentThemeState] = useState<string>(defaultTheme);
+  const [currentTheme, setCurrentThemeState] = useState<string>(() =>
+    resolveInitialTheme(defaultTheme, persist),
+  );
   const [systemTheme, setSystemTheme] = useState<"light" | "dark" | "auto">("auto");
   const [syncWithSystem, setSyncWithSystem] = useState<boolean>(initialSyncWithSystem);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading] = useState(false);
   const [lastChanged, setLastChanged] = useState<number | undefined>();
 
   const currentThemeConfig = getTheme(currentTheme);
@@ -133,35 +153,8 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   };
 
   useEffect(() => {
-    const initializeTheme = () => {
-      try {
-        // Get saved theme or use default
-        let savedTheme = defaultTheme;
-        if (persist) {
-          let stored: string | null = null;
-          try {
-            stored = localStorage.getItem("waypaper-theme");
-          } catch (error) {
-            logger.warn("Failed to load saved theme:", error);
-          }
-          if (stored && hasTheme(stored)) {
-            savedTheme = stored;
-          }
-        }
-
-        setCurrentThemeState(savedTheme);
-        applyTheme(savedTheme);
-
-        setIsLoading(false);
-      } catch (error) {
-        logger.error("Failed to initialize theme:", error);
-        applyTheme(defaultTheme);
-        setIsLoading(false);
-      }
-    };
-
-    initializeTheme();
-  }, [defaultTheme, persist]);
+    applyTheme(currentTheme);
+  }, [currentTheme]);
 
   useEffect(() => {
     if (!syncWithSystem || systemTheme !== "auto") return;

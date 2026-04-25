@@ -161,9 +161,10 @@ function Monitors() {
           </fieldset>
 
           <div style={styles} className="relative m-auto">
-            {monitorsList.map((monitor) => {
+            {monitorsList.map((monitor, index) => {
               const left = isSingleMonitor ? 0 : monitor.x * scale;
               const top = isSingleMonitor ? 0 : monitor.y * scale;
+              const key = `m-${index}-${monitor.x}-${monitor.y}-${monitor.width}x${monitor.height}-${monitor.refresh_rate}-${monitor.transform}`;
 
               return (
                 <div
@@ -173,7 +174,7 @@ function Monitors() {
                     left,
                     top,
                   }}
-                  key={monitor.name}
+                  key={key}
                 >
                   <MonitorComponent
                     monitorsList={monitorsList}

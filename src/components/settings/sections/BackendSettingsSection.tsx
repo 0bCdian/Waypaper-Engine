@@ -516,11 +516,13 @@ function DebouncedFloatInput({
   step?: number;
 }) {
   const [local, setLocal] = useState(String(externalValue));
+  const [prevExternal, setPrevExternal] = useState(externalValue);
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  useEffect(() => {
+  if (externalValue !== prevExternal) {
+    setPrevExternal(externalValue);
     setLocal(String(externalValue));
-  }, [externalValue]);
+  }
 
   const commit = useCallback(
     (raw: string) => {
@@ -573,11 +575,13 @@ function DebouncedNumberInput({
   step?: number;
 }) {
   const [local, setLocal] = useState(String(externalValue));
+  const [prevExternal, setPrevExternal] = useState(externalValue);
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  useEffect(() => {
+  if (externalValue !== prevExternal) {
+    setPrevExternal(externalValue);
     setLocal(String(externalValue));
-  }, [externalValue]);
+  }
 
   const commit = useCallback(
     (raw: string) => {
@@ -849,11 +853,10 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
       .catch(() => {});
   }, []);
 
-  useEffect(() => {
-    if (pendingBackendSettingsTab === null) return;
+  if (pendingBackendSettingsTab !== null && activeSettingsTab !== pendingBackendSettingsTab) {
     setActiveSettingsTab(pendingBackendSettingsTab);
     clearPendingBackendSettingsTab();
-  }, [pendingBackendSettingsTab, clearPendingBackendSettingsTab]);
+  }
 
   const sortedBackends = useMemo(
     () => [...availableBackends].sort((a, b) => a.name.localeCompare(b.name)),

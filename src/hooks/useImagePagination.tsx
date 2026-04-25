@@ -71,26 +71,33 @@ export function useImagePagination() {
     useImagesStore.getState().fetchPage(page);
   };
 
-  const selectImagesInCurrentPage = () => {
-    const newSet = new Set(selectedImages);
-    imagesInCurrentPage.forEach((image) => {
-      if (newSet.has(image.id)) {
-        newSet.delete(image.id);
-      } else {
-        newSet.add(image.id);
+  const selectAllVisibleOrToggleOff = () => {
+    if (imagesInCurrentPage.length === 0) {
+      setSelectedImages(new Set<number>());
+      return;
+    }
+    const visibleIds = new Set(imagesInCurrentPage.map((img) => img.id));
+    const allVisibleSelected =
+      imagesInCurrentPage.length > 0 && imagesInCurrentPage.every((img) => selectedImages.has(img.id));
+    if (allVisibleSelected) {
+      const next = new Set(selectedImages);
+      for (const id of visibleIds) {
+        next.delete(id);
       }
-    });
-    setSelectedImages(newSet);
+      setSelectedImages(next);
+    } else {
+      setSelectedImages(visibleIds);
+    }
   };
 
   useHotkeys(
-    "ctrl+a",
+    "mod+a",
     (e) => {
       e.preventDefault();
-      selectImagesInCurrentPage();
+      selectAllVisibleOrToggleOff();
     },
     { preventDefault: true },
-    [imagesInCurrentPage, selectedImages],
+    [imagesInCurrentPage, selectedImages, setSelectedImages],
   );
 
   useEffect(() => {
@@ -113,5 +120,6 @@ export function useImagePagination() {
     filteredImages,
     imagesInCurrentPage,
     selectedImages,
+    setSelectedImages,
   };
 }

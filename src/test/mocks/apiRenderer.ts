@@ -194,6 +194,13 @@ export function createMockAPI(): Window["API_RENDERER"] {
     scanDirectory: vi.fn().mockResolvedValue({ files: [], webRoots: [], folderName: "" }),
     handleOpenImages: vi.fn().mockResolvedValue({ message: "ok" }),
     revealInFileManager: vi.fn().mockResolvedValue(true),
+    exportWallpapersToFolder: vi.fn().mockResolvedValue({
+      canceled: false,
+      destination: "/tmp/export-test",
+      exported: 1,
+      failed: 0,
+    }),
+    downloadYoutubeVideo: vi.fn().mockResolvedValue({ filePath: "/tmp/ytdl-test/video.mp4" }),
 
     logToMain: vi.fn(),
   };

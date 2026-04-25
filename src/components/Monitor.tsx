@@ -20,8 +20,8 @@ export function MonitorComponent({ monitor, scale, selectType, monitorsList, ref
   const [wallpaperSrc, setWallpaperSrc] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const fetchWallpaperPreview = () => {
-    setIsLoading(true);
+  const fetchWallpaperPreview = (onStart: () => void) => {
+    onStart();
     goDaemon
       .getCurrentWallpapers()
       .then((current) => {
@@ -54,12 +54,14 @@ export function MonitorComponent({ monitor, scale, selectType, monitorsList, ref
   };
 
   useEffect(() => {
-    fetchWallpaperPreview();
+    fetchWallpaperPreview(() => setIsLoading(true));
   }, [refreshKey]);
 
   // Re-fetch when a wallpaper changes on any monitor
   useEffect(() => {
-    const dispose = goDaemon.on("wallpaper_changed", fetchWallpaperPreview);
+    const dispose = goDaemon.on("wallpaper_changed", () =>
+      fetchWallpaperPreview(() => setIsLoading(true)),
+    );
     return dispose;
   }, []);
 

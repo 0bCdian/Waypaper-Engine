@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo, useId, useCallback } from "react";
+import { createContext, useContext, useEffect, useState, useRef, useMemo, useId, useCallback } from "react";
 import CreatableSelect from "react-select/creatable";
 import type { MultiValue, SelectInstance } from "react-select";
 import { components as builtinSelectComponents } from "react-select";
@@ -54,13 +54,27 @@ function galleryFilterInputHasFocus(reactSelectInputId: string): boolean {
   return a instanceof HTMLInputElement && a.id === reactSelectInputId;
 }
 
+const FilterInputNameContext = createContext("");
+
+function GalleryFilterInput(props: InputProps<TokenOption, true>) {
+  const filterInputName = useContext(FilterInputNameContext);
+  return (
+    <builtinSelectComponents.Input
+      {...props}
+      name={filterInputName}
+      autoComplete="off"
+      autoCorrect="off"
+      spellCheck={false}
+      data-lpignore="true"
+      data-1p-ignore="true"
+      data-form-type="other"
+    />
+  );
+}
+
 function Filters() {
   const reactSelectId = useId();
-  const filterInputName = useMemo(
-    () =>
-      `gallery-filter-${typeof crypto !== "undefined" && "randomUUID" in crypto ? crypto.randomUUID() : Math.random().toString(36).slice(2)}`,
-    [],
-  );
+  const filterInputName = `gallery-filter-${reactSelectId}`;
   const { setFilters, filters } = useImagesStore(
     useShallow((s) => ({
       setFilters: s.setFilters,
@@ -71,9 +85,7 @@ function Filters() {
     partialFromStore(useImagesStore.getState().filters),
   );
   const partialFiltersRef = useRef(partialFilters);
-  const prevTokensRef = useRef<string[]>(
-    partialFromStore(useImagesStore.getState().filters).filterTokens,
-  );
+  const prevTokensRef = useRef<string[]>(partialFilters.filterTokens);
   const [inputHistoryTick, setInputHistoryTick] = useState(0);
   const [filterInput, setFilterInput] = useState("");
   const selectRef = useRef<SelectInstance<TokenOption, true>>(null);
@@ -87,42 +99,27 @@ function Filters() {
     return loadGalleryFilterInputHistory().length;
   }, [inputHistoryTick]);
 
-  const BoundGalleryFilterInput = useMemo(() => {
-    function Inner(props: InputProps<TokenOption, true>) {
-      return (
-        <builtinSelectComponents.Input
-          {...props}
-          name={filterInputName}
-          autoComplete="off"
-          autoCorrect="off"
-          spellCheck={false}
-          data-lpignore="true"
-          data-1p-ignore="true"
-          data-form-type="other"
-        />
-      );
-    }
-    return Inner;
-  }, [filterInputName]);
 
   /** Keep sort / media type aligned with persisted store (e.g. after reload or external setFilters). */
-  useEffect(() => {
-    setPartialFilters((prev) => {
-      if (
-        prev.order === filters.order &&
-        prev.type === filters.type &&
-        prev.mediaType === filters.mediaType
-      ) {
-        return prev;
-      }
-      return {
-        ...prev,
-        order: filters.order,
-        type: filters.type,
-        mediaType: filters.mediaType,
-      };
-    });
-  }, [filters.order, filters.type, filters.mediaType]);
+  const [prevStoreOrder, setPrevStoreOrder] = useState(filters.order);
+  const [prevStoreType, setPrevStoreType] = useState(filters.type);
+  const [prevStoreMediaType, setPrevStoreMediaType] = useState(filters.mediaType);
+
+  if (
+    filters.order !== prevStoreOrder ||
+    filters.type !== prevStoreType ||
+    filters.mediaType !== prevStoreMediaType
+  ) {
+    setPrevStoreOrder(filters.order);
+    setPrevStoreType(filters.type);
+    setPrevStoreMediaType(filters.mediaType);
+    setPartialFilters((prev) => ({
+      ...prev,
+      order: filters.order,
+      type: filters.type,
+      mediaType: filters.mediaType,
+    }));
+  }
 
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => {
@@ -339,6 +336,7 @@ function Filters() {
 
       <div className="relative z-10 flex w-full min-w-[min(100%,18rem)] max-w-3xl flex-1 items-stretch gap-1">
         <div className="min-w-0 flex-1">
+          <FilterInputNameContext.Provider value={filterInputName}>
           <CreatableSelect<TokenOption, true>
             key={`gf-select-${inputHistoryTick}`}
             ref={selectRef}
@@ -346,7 +344,7 @@ function Filters() {
             instanceId={reactSelectId}
             isMulti
             unstyled
-            components={{ Input: BoundGalleryFilterInput }}
+            components={{ Input: GalleryFilterInput }}
             menuPortalTarget={typeof document !== "undefined" ? document.body : undefined}
             menuPosition="fixed"
             styles={{
@@ -371,6 +369,7 @@ function Filters() {
             filterOption={null}
             noOptionsMessage={() => null}
           />
+          </FilterInputNameContext.Provider>
         </div>
         {(partialFilters.filterTokens.length > 0 || inputHistoryCount > 0) && (
           <div className="flex shrink-0 flex-col items-end justify-center gap-0.5 self-stretch sm:flex-row sm:items-center sm:gap-1">

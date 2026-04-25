@@ -10,6 +10,15 @@ import { FolderIcon } from "./FolderCard";
 
 const { goDaemon } = window.API_RENDERER;
 
+async function fetchRootFolders(): Promise<Folder[]> {
+  try {
+    const result = await goDaemon.getFolders(undefined);
+    return result.data || [];
+  } catch {
+    return [];
+  }
+}
+
 interface FolderTreeItemProps {
   folder: Folder;
   level: number;
@@ -110,25 +119,23 @@ function FolderPickerModal() {
   const [newFolderName, setNewFolderName] = useState("");
   const newFolderInputRef = useRef<HTMLInputElement>(null);
 
-  const loadRootFolders = async () => {
-    try {
-      const result = await goDaemon.getFolders(undefined);
-      setRootFolders(result.data || []);
-    } catch {
-      setRootFolders([]);
-    }
-  };
-
   useEffect(() => {
     if (isOpen) {
-      setSelectedFolderId(null);
-      setIsCreating(false);
-      void loadRootFolders();
+      fetchRootFolders().then(setRootFolders);
       dialogRef.current?.showModal();
     } else {
       dialogRef.current?.close();
     }
   }, [isOpen]);
+
+  const [lastOpenState, setLastOpenState] = useState(isOpen);
+  if (isOpen !== lastOpenState) {
+    setLastOpenState(isOpen);
+    if (isOpen) {
+      setSelectedFolderId(null);
+      setIsCreating(false);
+    }
+  }
 
   const handleMove = useCallback(async () => {
     if (imageIds.length === 0) return;

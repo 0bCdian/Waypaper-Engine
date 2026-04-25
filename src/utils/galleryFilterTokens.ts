@@ -124,7 +124,7 @@ export function parseGalleryFilterTokens(tokens: string[]): ParsedGalleryTokens 
   };
 }
 
-export function parsedTokensToSearchString(parsed: ParsedGalleryTokens): string | undefined {
+function parsedTokensToSearchString(parsed: ParsedGalleryTokens): string | undefined {
   const s = parsed.searchParts.join(" ").trim();
   return s || undefined;
 }

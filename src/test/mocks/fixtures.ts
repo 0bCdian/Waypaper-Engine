@@ -1,10 +1,4 @@
-import type {
-  Image,
-  Playlist,
-  Folder,
-  Monitor,
-  ImageHistoryEntry,
-} from "../../../electron/daemon-go-types";
+import type { Image, Folder, Monitor, ImageHistoryEntry } from "../../../electron/daemon-go-types";
 import type { rendererImage } from "../../types/rendererTypes";
 
 export function sampleImage(id: number, overrides?: Partial<Image>): Image {
@@ -43,23 +37,6 @@ export function sampleRendererImage(id: number, overrides?: Partial<rendererImag
   return {
     ...sampleImage(id),
     time: null,
-    ...overrides,
-  };
-}
-
-export function samplePlaylist(id: number, name?: string, overrides?: Partial<Playlist>): Playlist {
-  return {
-    id,
-    name: name ?? `Playlist ${id}`,
-    created_at: new Date().toISOString(),
-    updated_at: new Date().toISOString(),
-    configuration: {
-      type: "timer",
-      interval: 300,
-      order: "ordered",
-      always_start_on_first_image: false,
-    },
-    images: [],
     ...overrides,
   };
 }

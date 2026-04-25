@@ -1,0 +1,828 @@
+openapi: 3.0.3
+info:
+  title: Waypaper Engine Daemon API
+  description: |
+    JSON-over-HTTP control plane and gallery API. The real transport is **HTTP over a Unix
+    domain socket** (default `XDG_RUNTIME_DIR/waypaper-engine.sock`). The `servers` entry
+    below is a placeholder for tooling; clients open the socket path from config.
+
+    - Authoritative **route list**: `internal/server/routes.go`
+    - Human **prose and examples**: `API_CONTRACT.md` (may trail code until synced)
+  version: 3.0.0
+  x-transport: unix-socket
+  x-socket-default-env: XDG_RUNTIME_DIR/waypaper-engine.sock
+
+servers:
+  - url: http://localhost
+    description: Conceptual; connect via your HTTP-over-UDS client.
+
+tags:
+  - name: health
+  - name: events
+  - name: images
+  - name: playlists
+  - name: folders
+  - name: monitors
+  - name: config
+  - name: backends
+  - name: wallpaper
+
+paths:
+  /healthz:
+    get:
+      tags: [health]
+      operationId: getHealthz
+      summary: Liveness
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatusOk'
+  /info:
+    get:
+      tags: [health]
+      operationId: getInfo
+      summary: Daemon metadata
+      responses:
+        '200':
+          description: Version, pid, host, runtime
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+  /shutdown:
+    post:
+      tags: [health]
+      operationId: postShutdown
+      summary: Graceful shutdown
+      responses:
+        '200':
+          description: Accepting shutdown
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties: true
+  /events:
+    get:
+      tags: [events]
+      operationId: getEvents
+      summary: Server-Sent Events stream
+      responses:
+        '200':
+          description: text/event-stream
+          content:
+            text/event-stream:
+              schema:
+                type: string
+
+  /images:
+    get:
+      tags: [images]
+      operationId: listImages
+      summary: List images (paginated, filterable)
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/PerPage'
+        - name: sort_by
+          in: query
+          schema: { type: string }
+        - name: sort_order
+          in: query
+          schema: { type: string, enum: [asc, desc] }
+        - name: media_type
+          in: query
+          schema: { type: string }
+        - name: search
+          in: query
+          schema: { type: string }
+        - name: tags
+          in: query
+          schema: { type: string }
+        - name: colors
+          in: query
+          schema: { type: string }
+        - name: colors_near
+          in: query
+          schema: { type: string }
+        - name: folder_id
+          in: query
+          schema: { type: string }
+      responses:
+        '200':
+          description: Paged list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+    post:
+      tags: [images]
+      operationId: importImages
+      summary: Import images from paths
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericJSON'
+      responses:
+        '202':
+          description: Processing
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+    delete:
+      tags: [images]
+      operationId: deleteImages
+      summary: Delete images by id
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericJSON'
+      responses:
+        '200':
+          description: Count deleted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+  /images/import-web:
+    post:
+      tags: [images]
+      operationId: importWebImages
+      summary: Start web/URL import (async; progress via SSE)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericJSON'
+      responses:
+        '200':
+          description: Accepted or batch id
+        '202':
+          description: Accepted
+  /images/count:
+    get:
+      tags: [images]
+      operationId: getImageCount
+      summary: Total image count
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+  /images/tags:
+    get:
+      tags: [images]
+      operationId: getImageTags
+      summary: Distinct tag list
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+  /images/history:
+    get:
+      tags: [images, wallpaper]
+      operationId: getHistory
+      summary: Apply history
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+    delete:
+      tags: [images, wallpaper]
+      operationId: clearHistory
+      summary: Clear apply history
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+  /images/cancel-import:
+    post:
+      tags: [images]
+      operationId: cancelImport
+      summary: Cancel in-flight import
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericJSON'
+      responses:
+        '200': { description: OK }
+  /images/select-all:
+    post:
+      tags: [images]
+      operationId: selectAllImages
+      summary: Select all ids matching current gallery query
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericJSON'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+  /images/{id}:
+    get:
+      tags: [images]
+      operationId: getImage
+      parameters: [$ref: '#/components/parameters/ImageId']
+      summary: Get one image
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+        '404': { $ref: '#/components/responses/NotFound' }
+    patch:
+      tags: [images]
+      operationId: patchImage
+      parameters: [$ref: '#/components/parameters/ImageId']
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericJSON'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+  /images/{id}/ensure-browser-preview:
+    post:
+      tags: [images]
+      operationId: ensureBrowserPreview
+      parameters: [$ref: '#/components/parameters/ImageId']
+      summary: Generate browser-playable video preview if missing
+      responses:
+        '200': { description: OK }
+        '202': { description: In progress }
+  /images/{id}/video-loop-export:
+    post:
+      tags: [images]
+      operationId: videoLoopExport
+      parameters: [$ref: '#/components/parameters/ImageId']
+      summary: Export seamless loop (async)
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericJSON'
+      responses:
+        '200': { description: OK }
+        '202': { description: Queued }
+  /images/{id}/rename:
+    post:
+      tags: [images]
+      operationId: renameImage
+      parameters: [$ref: '#/components/parameters/ImageId']
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericJSON'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+  /images/{id}/thumbnail:
+    get:
+      tags: [images]
+      operationId: getThumbnail
+      parameters: [$ref: '#/components/parameters/ImageId']
+      summary: Thumbnail (processed)
+      responses:
+        '200':
+          description: image bytes
+        '404': { $ref: '#/components/responses/NotFound' }
+  /images/{id}/thumbnail/raw:
+    get:
+      tags: [images]
+      operationId: getRawThumbnail
+      parameters: [$ref: '#/components/parameters/ImageId']
+      summary: Raw thumbnail
+      responses:
+        '200': { description: image bytes }
+  /images/{id}/raw:
+    get:
+      tags: [images]
+      operationId: getRawImage
+      parameters: [$ref: '#/components/parameters/ImageId']
+      summary: Full raw file
+      responses:
+        '200': { description: binary }
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /playlists:
+    get:
+      tags: [playlists]
+      operationId: listPlaylists
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+    post:
+      tags: [playlists]
+      operationId: createPlaylist
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericJSON'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+  /playlists/active:
+    get:
+      tags: [playlists]
+      operationId: listActivePlaylists
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+  /playlists/active/{monitor}:
+    get:
+      tags: [playlists]
+      operationId: getActiveByMonitor
+      parameters:
+        - name: monitor
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+  /playlists/active/stop:
+    post:
+      tags: [playlists]
+      operationId: stopAllPlaylists
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+  /playlists/active/pause:
+    post:
+      tags: [playlists]
+      operationId: pauseAllPlaylists
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+  /playlists/active/resume:
+    post:
+      tags: [playlists]
+      operationId: resumeAllPlaylists
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+  /playlists/active/next:
+    post:
+      tags: [playlists]
+      operationId: nextAllPlaylists
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+  /playlists/active/previous:
+    post:
+      tags: [playlists]
+      operationId: previousAllPlaylists
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+  /playlists/{id}:
+    get:
+      tags: [playlists]
+      operationId: getPlaylist
+      parameters: [$ref: '#/components/parameters/PlaylistIdPath']
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+    patch:
+      tags: [playlists]
+      operationId: patchPlaylist
+      parameters: [$ref: '#/components/parameters/PlaylistIdPath']
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericJSON'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+    delete:
+      tags: [playlists]
+      operationId: deletePlaylist
+      parameters: [$ref: '#/components/parameters/PlaylistIdPath']
+      responses:
+        '200': { description: OK }
+  /playlists/{id}/start:
+    post:
+      tags: [playlists]
+      operationId: startPlaylist
+      parameters: [$ref: '#/components/parameters/PlaylistIdPath']
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericJSON'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+  /playlists/{id}/stop:
+    post:
+      tags: [playlists]
+      operationId: stopPlaylist
+      parameters: [$ref: '#/components/parameters/PlaylistIdPath']
+      responses:
+        '200': { description: OK }
+  /playlists/{id}/pause:
+    post:
+      tags: [playlists]
+      operationId: pausePlaylist
+      parameters: [$ref: '#/components/parameters/PlaylistIdPath']
+      responses:
+        '200': { description: OK }
+  /playlists/{id}/resume:
+    post:
+      tags: [playlists]
+      operationId: resumePlaylist
+      parameters: [$ref: '#/components/parameters/PlaylistIdPath']
+      responses:
+        '200': { description: OK }
+  /playlists/{id}/next:
+    post:
+      tags: [playlists]
+      operationId: nextPlaylist
+      parameters: [$ref: '#/components/parameters/PlaylistIdPath']
+      responses:
+        '200': { description: OK }
+  /playlists/{id}/previous:
+    post:
+      tags: [playlists]
+      operationId: previousPlaylist
+      parameters: [$ref: '#/components/parameters/PlaylistIdPath']
+      responses:
+        '200': { description: OK }
+
+  /folders:
+    get:
+      tags: [folders]
+      operationId: listFolders
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+    post:
+      tags: [folders]
+      operationId: createFolder
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericJSON'
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+  /folders/move-images:
+    post:
+      tags: [folders]
+      operationId: moveImages
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericJSON'
+      responses:
+        '200': { description: OK }
+  /folders/{id}:
+    get:
+      tags: [folders]
+      operationId: getFolder
+      parameters: [$ref: '#/components/parameters/FolderIdPath']
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+    patch:
+      tags: [folders]
+      operationId: patchFolder
+      parameters: [$ref: '#/components/parameters/FolderIdPath']
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericJSON'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+    delete:
+      tags: [folders]
+      operationId: deleteFolder
+      parameters: [$ref: '#/components/parameters/FolderIdPath']
+      responses:
+        '200': { description: OK }
+  /folders/{id}/path:
+    get:
+      tags: [folders]
+      operationId: getFolderPath
+      parameters: [$ref: '#/components/parameters/FolderIdPath']
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+
+  /monitors:
+    get:
+      tags: [monitors]
+      operationId: listMonitors
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+  /monitors/{name}:
+    get:
+      tags: [monitors]
+      operationId: getMonitor
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+        '404': { $ref: '#/components/responses/NotFound' }
+
+  /config:
+    get:
+      tags: [config]
+      operationId: getConfig
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+    patch:
+      tags: [config]
+      operationId: patchConfig
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericJSON'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+  /config/{section}:
+    get:
+      tags: [config]
+      operationId: getConfigSection
+      parameters: [$ref: '#/components/parameters/ConfigSectionPath']
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+    patch:
+      tags: [config]
+      operationId: patchConfigSection
+      parameters: [$ref: '#/components/parameters/ConfigSectionPath']
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericJSON'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+  /config/backends/{backend}:
+    get:
+      tags: [config]
+      operationId: getNamedBackendConfig
+      parameters: [$ref: '#/components/parameters/ConfigBackendNamePath']
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+    patch:
+      tags: [config]
+      operationId: patchNamedBackendConfig
+      parameters: [$ref: '#/components/parameters/ConfigBackendNamePath']
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericJSON'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+
+  /backends:
+    get:
+      tags: [backends]
+      operationId: listBackends
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+  /backends/{name}/activate:
+    post:
+      tags: [backends]
+      operationId: activateBackend
+      parameters:
+        - name: name
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: OK }
+
+  /wallpaper/current:
+    get:
+      tags: [wallpaper]
+      operationId: getWallpaperCurrent
+      summary: Per-monitor (or global) current wallpaper state
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+  /wallpaper/set:
+    post:
+      tags: [wallpaper]
+      operationId: setWallpaper
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericJSON'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+  /wallpaper/random:
+    post:
+      tags: [wallpaper]
+      operationId: randomWallpaper
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenericJSON'
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenericJSON'
+
+components:
+  parameters:
+    Page:
+      name: page
+      in: query
+      schema: { type: integer, default: 1, minimum: 1 }
+    PerPage:
+      name: per_page
+      in: query
+      schema: { type: integer, default: 50, maximum: 200 }
+    ImageId:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer }
+    PlaylistIdPath:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer }
+    FolderIdPath:
+      name: id
+      in: path
+      required: true
+      schema: { type: integer }
+    ConfigSectionPath:
+      name: section
+      in: path
+      required: true
+      schema: { type: string }
+    ConfigBackendNamePath:
+      name: backend
+      in: path
+      required: true
+      schema: { type: string }
+  responses:
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/APIError'
+  schemas:
+    GenericJSON:
+      type: object
+      description: |
+        Bodies and responses are shared structs in `internal/handler` and `internal/store`.
+        Replace with concrete `$ref` components per type when codegen or doc sync is added.
+      additionalProperties: true
+    StatusOk:
+      type: object
+      properties:
+        status:
+          type: string
+          example: ok
+    APIError:
+      type: object
+      description: See API_CONTRACT.md "Error format"
+      properties:
+        error:
+          type: string
+        code:
+          type: integer
+        details:
+          type: string

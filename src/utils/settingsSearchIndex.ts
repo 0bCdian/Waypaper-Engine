@@ -71,7 +71,7 @@ export function filterSettingsSearchEntries(rawQuery: string): SettingsSearchEnt
   return SETTINGS_SEARCH_ENTRIES.filter((e) => entryMatchesSettingsSearchQuery(e, rawQuery));
 }
 
-export const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
+const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
   {
     section: "app",
     key: "_nav",

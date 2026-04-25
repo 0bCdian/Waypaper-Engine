@@ -32,21 +32,45 @@ async function executeDaemonAction(
   }
 }
 
+function formatLastChecked(timestamp: number | string): string {
+  const now = Date.now();
+  const timestampNum = typeof timestamp === "string" ? parseInt(timestamp, 10) : timestamp;
+  if (Number.isNaN(timestampNum)) return "Unknown";
+  const diff = now - timestampNum;
+  const seconds = Math.floor(diff / 1000);
+  if (seconds < 5) return "Just now";
+  if (seconds < 60) return `${seconds}s ago`;
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ago`;
+}
+
+async function fetchDaemonStatus(): Promise<DaemonStatus | null> {
+  try {
+    if (window.API_RENDERER?.getDaemonStatus) {
+      return (await window.API_RENDERER.getDaemonStatus()) as DaemonStatus;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({ className }) => {
   const [status, setStatus] = useState<DaemonStatus | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const loadStatus = async () => {
-    try {
-      if (window.API_RENDERER?.getDaemonStatus) {
-        const response = (await window.API_RENDERER.getDaemonStatus()) as DaemonStatus;
-        setStatus(response);
+  const loadStatus = () => {
+    fetchDaemonStatus().then((result) => {
+      if (result) {
+        setStatus(result);
         setError(null);
       }
-    } catch (err) {
+    }).catch((err) => {
       setError(err instanceof Error ? err.message : "Failed to load daemon status");
-    }
+    });
   };
 
   // Load initial status
@@ -91,25 +115,6 @@ export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({ cl
     const errorMsg = await executeDaemonAction(fn, "Failed to stop daemon");
     if (errorMsg) setError(errorMsg);
     setIsLoading(false);
-  };
-
-  const formatLastChecked = (timestamp: number | string) => {
-    const now = Date.now();
-    const timestampNum = typeof timestamp === "string" ? parseInt(timestamp, 10) : timestamp;
-
-    if (Number.isNaN(timestampNum)) {
-      return "Unknown";
-    }
-
-    const diff = now - timestampNum;
-    const seconds = Math.floor(diff / 1000);
-
-    if (seconds < 5) return "Just now";
-    if (seconds < 60) return `${seconds}s ago`;
-    const minutes = Math.floor(seconds / 60);
-    if (minutes < 60) return `${minutes}m ago`;
-    const hours = Math.floor(minutes / 60);
-    return `${hours}h ago`;
   };
 
   if (!status) {

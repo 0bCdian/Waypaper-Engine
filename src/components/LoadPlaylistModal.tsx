@@ -3,7 +3,7 @@ import { usePlaylistStore } from "../stores/playlist";
 import { useImagesStore } from "../stores/images";
 import { useShallow } from "zustand/react/shallow";
 import { useForm, useStore } from "@tanstack/react-form";
-import type { rendererPlaylist } from "../types/rendererTypes";
+import type { MonitorMode } from "../../electron/daemon-go-types";
 import { useMonitorStore } from "../stores/monitors";
 import type { Playlist } from "../../electron/daemon-go-types";
 import Modal, { type ModalHandle } from "./Modal";
@@ -18,6 +18,33 @@ interface Props {
 }
 
 const { goDaemon } = window.API_RENDERER;
+
+type LoadPlaylistResult =
+  | { ok: true; playlist: import("../types/rendererTypes").rendererPlaylist }
+  | { ok: false; message: string };
+
+async function loadAndStartPlaylist(
+  playlistId: number,
+  monitor: string,
+  mode: MonitorMode | undefined,
+): Promise<LoadPlaylistResult> {
+  try {
+    const fullPlaylist = await goDaemon.getPlaylist(playlistId);
+    await goDaemon.startPlaylist(fullPlaylist.id, monitor, mode);
+    return {
+      ok: true,
+      playlist: {
+        id: fullPlaylist.id,
+        name: fullPlaylist.name,
+        configuration: fullPlaylist.configuration,
+        images: fullPlaylist.images,
+      },
+    };
+  } catch (err) {
+    logger.error("Failed to load playlist:", err);
+    return { ok: false, message: err instanceof Error ? err.message : "Unknown error" };
+  }
+}
 
 const LoadPlaylistModal = ({ playlistsInDB, onPlaylistChanged, currentPlaylistName }: Props) => {
   const { clearPlaylist, setPlaylist } = usePlaylistStore(
@@ -50,35 +77,24 @@ const LoadPlaylistModal = ({ playlistsInDB, onPlaylistChanged, currentPlaylistNa
         return;
       }
 
-      try {
-        const fullPlaylist = await goDaemon.getPlaylist(selectedPlaylist.id);
-
-        const currentPlaylist: rendererPlaylist = {
-          id: fullPlaylist.id,
-          name: fullPlaylist.name,
-          configuration: fullPlaylist.configuration,
-          images: fullPlaylist.images,
-        };
-
+      const monitor =
+        monitorSelection.selectedMonitors.length === 1
+          ? monitorSelection.selectedMonitors[0]
+          : "*";
+      const result = await loadAndStartPlaylist(
+        selectedPlaylist.id,
+        monitor,
+        monitorSelection.mode,
+      );
+      if (result.ok) {
         clearPlaylist();
-        setPlaylist(currentPlaylist);
-
+        setPlaylist(result.playlist);
         void useImagesStore
           .getState()
-          .fetchMissingImages(fullPlaylist.images.map((img) => img.image_id));
-
-        const monitor =
-          monitorSelection.selectedMonitors.length === 1
-            ? monitorSelection.selectedMonitors[0]
-            : "*";
-        await goDaemon.startPlaylist(fullPlaylist.id, monitor, monitorSelection.mode);
-
+          .fetchMissingImages(result.playlist.images.map((img) => img.image_id));
         closeModal();
-      } catch (err) {
-        logger.error("Failed to load playlist:", err);
-        setError(
-          `Failed to load playlist: ${err instanceof Error ? err.message : "Unknown error"}`,
-        );
+      } else {
+        setError(`Failed to load playlist: ${result.message}`);
         setTimeout(() => setError(""), 5000);
       }
     },

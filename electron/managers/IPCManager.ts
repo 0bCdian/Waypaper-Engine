@@ -34,6 +34,11 @@ import {
 import { ensureDaemonActionSuccess } from "../ipcEnvelope";
 import { writeAnimatedWebpPreviewFromPngs } from "../shaderWallpaperPreviewWriter";
 import { MAX_PREVIEW_FRAMES } from "../../src/shaderStudio/captureShaderPreviewPngs";
+import {
+  exportWallpapersToDirectory,
+  type ExportWallpaperPayload,
+} from "../exportWallpapersToFolder";
+import { downloadYoutubeVideo } from "../youtubeDownload";
 
 export interface IPCHandler {
   channel: string;
@@ -408,6 +413,43 @@ export class IPCManager {
         const { shell } = await import("electron");
         shell.showItemInFolder(filePath);
         return true;
+      },
+    });
+
+    this.registerHandler({
+      channel: "export-wallpapers-to-folder",
+      handler: async (event, ...args: unknown[]) => {
+        const items = args[0] as ExportWallpaperPayload[];
+        if (!Array.isArray(items) || items.length === 0) {
+          return { canceled: false, destination: "", exported: 0, failed: 0 };
+        }
+        const mainWindow = BrowserWindow.fromWebContents(event.sender);
+        if (!mainWindow) {
+          throw new Error("No window available");
+        }
+        const picked = await dialog.showOpenDialog(mainWindow, {
+          title: "Export wallpapers — choose folder",
+          properties: ["openDirectory", "createDirectory"],
+        });
+        if (picked.canceled || !picked.filePaths[0]) {
+          return { canceled: true, destination: "", exported: 0, failed: 0 };
+        }
+        const dest = picked.filePaths[0]!;
+        const { exported, failed } = await exportWallpapersToDirectory(dest, items);
+        return { canceled: false, destination: dest, exported, failed };
+      },
+    });
+
+    this.registerHandler({
+      channel: "download-youtube-video",
+      handler: async (_event, ...args: unknown[]) => {
+        const payload = args[0] as { url?: string };
+        const url = typeof payload?.url === "string" ? payload.url : "";
+        const r = await downloadYoutubeVideo(url);
+        if (!r.ok) {
+          throw new Error(r.message);
+        }
+        return { filePath: r.filePath };
       },
     });
   }

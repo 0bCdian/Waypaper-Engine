@@ -43,12 +43,57 @@ async function saveImageTags(imageId: number, tags: string[]) {
   useImagesStore.getState().reQueryImages();
 }
 
+async function trySaveImageTags(imageId: number, tags: string[]): Promise<boolean> {
+  try {
+    await saveImageTags(imageId, tags);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 async function performImageRename(imageId: number, newName: string) {
   const updated = await useImagesStore.getState().renameImage(imageId, newName);
   useImageDetailStore
     .getState()
     .open(updated as unknown as import("../../electron/daemon-go-types").Image);
   return updated;
+}
+
+async function tryPerformImageRename(
+  imageId: number,
+  newName: string,
+): Promise<{ name: string } | null> {
+  try {
+    return await performImageRename(imageId, newName);
+  } catch {
+    return null;
+  }
+}
+
+type WebManifestUpdate = {
+  wallpaper_config_overrides?: Record<string, unknown>;
+  web_capabilities?: Partial<import("../../electron/daemon-go-types").WebCapabilities>;
+};
+
+async function tryUpdateWebManifest(
+  imageId: number,
+  update: WebManifestUpdate,
+): Promise<import("../../electron/daemon-go-types").Image | null> {
+  try {
+    return await goDaemon.updateImage(imageId, update);
+  } catch {
+    return null;
+  }
+}
+
+async function tryCopyToClipboard(text: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
 }
 
 function formatFileSize(bytes: number): string {
@@ -110,17 +155,6 @@ function WebWallpaperConfigForm({
   const keys = schema ? Object.keys(schema) : [];
   const hasSchema = keys.length > 0;
 
-  const [overrides, setOverrides] = useState<Record<string, unknown>>(() => ({
-    ...image.wallpaper_config_overrides,
-  }));
-  const [caps, setCaps] = useState<WebCapabilities>(() => normalizeWebCaps(meta?.capabilities));
-  const [busy, setBusy] = useState(false);
-  const [saveError, setSaveError] = useState(false);
-  const overridesRef = useRef(overrides);
-  overridesRef.current = overrides;
-  const capsRef = useRef(caps);
-  capsRef.current = caps;
-
   const serverOverridesKey = useMemo(
     () => JSON.stringify(image.wallpaper_config_overrides ?? {}),
     [image.wallpaper_config_overrides],
@@ -131,6 +165,31 @@ function WebWallpaperConfigForm({
     [image.id, meta?.capabilities],
   );
 
+  const [overrides, setOverrides] = useState<Record<string, unknown>>(() => ({
+    ...image.wallpaper_config_overrides,
+  }));
+  const [caps, setCaps] = useState<WebCapabilities>(() => normalizeWebCaps(meta?.capabilities));
+  const [busy, setBusy] = useState(false);
+  const [saveError, setSaveError] = useState(false);
+  const overridesRef = useRef(overrides);
+  useEffect(() => { overridesRef.current = overrides; });
+  const capsRef = useRef(caps);
+  useEffect(() => { capsRef.current = caps; });
+
+  const [prevOverridesKey, setPrevOverridesKey] = useState(serverOverridesKey);
+  const [prevCapsKey, setPrevCapsKey] = useState(serverCapsKey);
+
+  if (serverOverridesKey !== prevOverridesKey) {
+    setPrevOverridesKey(serverOverridesKey);
+    setOverrides({ ...image.wallpaper_config_overrides });
+    setSaveError(false);
+  }
+  if (serverCapsKey !== prevCapsKey) {
+    setPrevCapsKey(serverCapsKey);
+    setCaps(normalizeWebCaps(image.web_meta?.capabilities));
+    setSaveError(false);
+  }
+
   const dirtyOverrides = useMemo(
     () => JSON.stringify(overrides) !== serverOverridesKey,
     [overrides, serverOverridesKey],
@@ -139,19 +198,6 @@ function WebWallpaperConfigForm({
   const dirtyCaps = useMemo(() => JSON.stringify(caps) !== serverCapsKey, [caps, serverCapsKey]);
 
   const dirty = dirtyOverrides || dirtyCaps;
-
-  useEffect(() => {
-    const next = { ...image.wallpaper_config_overrides };
-    setOverrides((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
-    setSaveError(false);
-  }, [image.id, serverOverridesKey]);
-
-  useEffect(() => {
-    const next = normalizeWebCaps(image.web_meta?.capabilities);
-    setCaps((prev) => (JSON.stringify(prev) === JSON.stringify(next) ? prev : next));
-    capsRef.current = next;
-    setSaveError(false);
-  }, [image.id, serverCapsKey]);
 
   const patchOverride = useCallback((key: string, value: unknown) => {
     setOverrides((o) => {
@@ -173,22 +219,18 @@ function WebWallpaperConfigForm({
     if (!dirtyOverrides && !dirtyCaps) return;
     setBusy(true);
     setSaveError(false);
-    try {
-      const update: {
-        wallpaper_config_overrides?: Record<string, unknown>;
-        web_capabilities?: Partial<WebCapabilities>;
-      } = {};
-      if (dirtyOverrides) update.wallpaper_config_overrides = overridesRef.current;
-      if (dirtyCaps) update.web_capabilities = capsRef.current;
-      const updated = await goDaemon.updateImage(image.id, update);
+    const update: WebManifestUpdate = {};
+    if (dirtyOverrides) update.wallpaper_config_overrides = overridesRef.current;
+    if (dirtyCaps) update.web_capabilities = capsRef.current;
+    const updated = await tryUpdateWebManifest(image.id, update);
+    if (updated) {
       onUpdated(updated);
       addToast("Web wallpaper saved", "success");
-    } catch (e) {
+    } else {
       setSaveError(true);
-      addToast(e instanceof Error ? e.message : String(e), "error");
-    } finally {
-      setBusy(false);
+      addToast("Failed to save web wallpaper", "error");
     }
+    setBusy(false);
   };
 
   const defaultOverrides = useMemo(() => {
@@ -417,11 +459,11 @@ function ImageDetailSidebar() {
   const addToast = useToastStore((s) => s.addToast);
   const copyPaletteColor = useCallback(
     async (hex: string) => {
-      try {
-        await navigator.clipboard.writeText(hex);
-        const display = hex.length > 28 ? `${hex.slice(0, 28)}…` : hex;
-        addToast(`Copied to clipboard: ${display}`, "success", 2500);
-      } catch {
+      const ok = await tryCopyToClipboard(hex);
+      if (ok) {
+        const label = hex.length > 28 ? `${hex.slice(0, 28)}…` : hex;
+        addToast(`Copied to clipboard: ${label}`, "success", 2500);
+      } else {
         addToast("Could not copy color to clipboard", "error", 4000);
       }
     },
@@ -441,12 +483,14 @@ function ImageDetailSidebar() {
   const [renaming, setRenaming] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
 
-  useEffect(() => {
+  const [prevSelectedImage, setPrevSelectedImage] = useState(selectedImage);
+  if (selectedImage !== prevSelectedImage) {
+    setPrevSelectedImage(selectedImage);
     if (selectedImage) {
       setTags([...(selectedImage.tags ?? [])]);
       setEditName(selectedImage.name);
     }
-  }, [selectedImage]);
+  }
 
   useEffect(() => {
     if (isOpen) {
@@ -501,14 +545,9 @@ function ImageDetailSidebar() {
   const handleSave = useCallback(async () => {
     if (!selectedImage) return;
     setSaving(true);
-    try {
-      await saveImageTags(selectedImage.id, tags);
-      addToast("Tags saved", "success", 2000);
-    } catch {
-      addToast("Failed to save tags", "error");
-    } finally {
-      setSaving(false);
-    }
+    const ok = await trySaveImageTags(selectedImage.id, tags);
+    addToast(ok ? "Tags saved" : "Failed to save tags", ok ? "success" : "error", ok ? 2000 : undefined);
+    setSaving(false);
   }, [selectedImage, tags, addToast]);
 
   const submitRename = useCallback(async () => {
@@ -519,19 +558,18 @@ function ImageDetailSidebar() {
       return;
     }
     setRenaming(true);
-    try {
-      const updated = await performImageRename(selectedImage.id, trimmed);
+    const updated = await tryPerformImageRename(selectedImage.id, trimmed);
+    if (updated) {
       if (updated.name !== trimmed) {
         addToast(`Renamed to "${updated.name}" (original name was taken)`, "info", 3000);
       } else {
         addToast("Image renamed", "success", 2000);
       }
-    } catch {
+    } else {
       addToast("Failed to rename image", "error");
       setEditName(selectedImage.name);
-    } finally {
-      setRenaming(false);
     }
+    setRenaming(false);
   }, [selectedImage, editName, addToast]);
 
   const hasChanges = useMemo(() => {

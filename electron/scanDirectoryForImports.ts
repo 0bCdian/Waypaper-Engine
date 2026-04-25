@@ -1,8 +1,8 @@
 import { readdir, stat } from "node:fs/promises";
 import { join } from "node:path";
 
-export const IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg"]);
-export const VIDEO_EXTENSIONS = new Set([".mp4", ".webm", ".mkv", ".avi", ".mov"]);
+const IMAGE_EXTENSIONS = new Set([".jpg", ".jpeg", ".png", ".gif", ".bmp", ".webp", ".svg"]);
+const VIDEO_EXTENSIONS = new Set([".mp4", ".webm", ".mkv", ".avi", ".mov"]);
 
 const WEB_MANIFEST_NAMES = new Set(["waypaper.json", "project.json"]);
 

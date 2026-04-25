@@ -52,7 +52,7 @@ export function buildWallhavenCardMenuItems(
   return items;
 }
 
-export function buildWallhavenSelectionItems(selectedCount: number): MenuItem[] {
+function buildWallhavenSelectionItems(selectedCount: number): MenuItem[] {
   if (selectedCount === 0) return [];
 
   return [

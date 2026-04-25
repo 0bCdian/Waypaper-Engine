@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
 import { useLocation } from "react-router-dom";
 import type { VideoLoopExportRequest } from "../../electron/daemon-go-types";
 import { useFoldersStore } from "@/stores/foldersStore";
@@ -7,8 +7,36 @@ import { useToastStore } from "@/stores/toastStore";
 import { loopStudioMediaSrc } from "@/utils/loopStudio/mediaUrl";
 import { computeLoopMatchScore } from "@/utils/loopStudio/matchScore";
 import { formatLoopTime, formatLoopTimeShort, parseLoopTime } from "@/utils/loopStudio/timeFormat";
+import { isVideoFilePath } from "@/utils/videoFileExtensions";
+import { isAllowedYoutubeUrl } from "@/shared/youtubeUrl";
+import { createImageBitmapFromVideo, waitUntilVideoCanSample } from "@/utils/loopStudio/seekVideoCapture";
 
 const goDaemon = window.API_RENDERER.goDaemon;
+const api = window.API_RENDERER;
+
+async function tryDownloadYoutube(url: string): Promise<{ filePath: string } | { error: string }> {
+  try {
+    const { filePath } = await api.downloadYoutubeVideo(url);
+    return { filePath };
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "YouTube download failed" };
+  }
+}
+
+async function tryVideoLoopExport(
+  imageId: number,
+  body: VideoLoopExportRequest,
+): Promise<
+  | { ok: true; res: Awaited<ReturnType<typeof goDaemon.videoLoopExport>> }
+  | { ok: false; error: string }
+> {
+  try {
+    const res = await goDaemon.videoLoopExport(imageId, body);
+    return { ok: true, res };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : "Export failed" };
+  }
+}
 
 const MIN_LOOP_SPAN = 0.033;
 const FULL_LOOP_EPS = 0.06;
@@ -46,6 +74,11 @@ export default function LoopStudio() {
   const [reloadToken, setReloadToken] = useState(0);
   const [compareWipe, setCompareWipe] = useState(0.5);
   const [blendHalvesExport, setBlendHalvesExport] = useState(true);
+  const [youtubeUrl, setYoutubeUrl] = useState("");
+  const [youtubeBusy, setYoutubeBusy] = useState(false);
+
+  const trimmedMedia = mediaSrc?.trim();
+  const playbackSrc = trimmedMedia ? trimmedMedia : null;
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const seekRef = useRef<HTMLVideoElement>(null);
@@ -53,22 +86,31 @@ export default function LoopStudio() {
   const canvasCmpRef = useRef<HTMLCanvasElement>(null);
   const previewShellRef = useRef<HTMLDivElement>(null);
   const compareWipeRef = useRef(0.5);
-  compareWipeRef.current = compareWipe;
   const rafRef = useRef<number | null>(null);
   const captureTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const outBitmapRef = useRef<ImageBitmap | null>(null);
   const inBitmapRef = useRef<ImageBitmap | null>(null);
   const dragRef = useRef<"in" | "out" | "seek" | null>(null);
+  const captureGenRef = useRef(0);
   const modeRef = useRef<StudioMode>(mode);
-  modeRef.current = mode;
 
   useEffect(() => {
+    compareWipeRef.current = compareWipe;
+  });
+
+  useEffect(() => {
+    modeRef.current = mode;
+  });
+
+  const [prevLocationState, setPrevLocationState] = useState(location.state);
+  if (location.state !== prevLocationState) {
+    setPrevLocationState(location.state);
     const st = location.state as { imageId?: number } | null;
     if (typeof st?.imageId === "number") {
       setImageId(st.imageId);
       setPreviewOnly(false);
     }
-  }, [location.state]);
+  }
 
   useEffect(() => {
     if (previewOnly || !imageId) return;
@@ -100,6 +142,8 @@ export default function LoopStudio() {
     }
   }, []);
 
+  const tickRef = useRef<() => void>(() => {});
+
   const tickPlayCanvas = useCallback(() => {
     const v = videoRef.current;
     const c = canvasPlayRef.current;
@@ -108,58 +152,73 @@ export default function LoopStudio() {
       const ctx = c.getContext("2d");
       if (ctx) ctx.drawImage(v, 0, 0, c.width, c.height);
     }
-    rafRef.current = requestAnimationFrame(tickPlayCanvas);
+    rafRef.current = requestAnimationFrame(() => tickRef.current());
   }, [mode]);
+
+  useEffect(() => {
+    tickRef.current = tickPlayCanvas;
+  }, [tickPlayCanvas]);
 
   useEffect(() => {
     if (!loaded || mode !== "play") {
       stopRaf();
       return;
     }
-    rafRef.current = requestAnimationFrame(tickPlayCanvas);
+    rafRef.current = requestAnimationFrame(() => tickRef.current());
     return stopRaf;
   }, [loaded, mode, tickPlayCanvas, stopRaf]);
+
+  const captureFramesRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
   const scheduleCaptures = useCallback(() => {
     if (captureTimerRef.current) clearTimeout(captureTimerRef.current);
     captureTimerRef.current = setTimeout(() => {
-      void captureFrames();
+      void captureFramesRef.current();
     }, 300);
   }, []);
 
-  const captureAt = useCallback((t: number): Promise<ImageBitmap | null> => {
+  const captureAt = useCallback(async (t: number): Promise<ImageBitmap | null> => {
     const vs = seekRef.current;
-    if (!vs) return Promise.resolve(null);
-    return new Promise((resolve) => {
-      const grab = async () => {
-        try {
-          const bmp = await createImageBitmap(vs);
-          resolve(bmp);
-        } catch {
-          resolve(null);
-        }
+    if (!vs) return null;
+    if (!(await waitUntilVideoCanSample(vs))) return null;
+
+    const grabAfterSeek = () => createImageBitmapFromVideo(vs);
+
+    if (Math.abs(vs.currentTime - t) < 1e-3 && vs.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      return grabAfterSeek();
+    }
+
+    return new Promise<ImageBitmap | null>((resolve) => {
+      let settled = false;
+      const finish = (bmp: ImageBitmap | null) => {
+        if (settled) return;
+        settled = true;
+        window.clearTimeout(tmr);
+        resolve(bmp);
       };
-      const afterSeek = () => {
+      const tmr = window.setTimeout(() => finish(null), 8000);
+      const onSeeked = () => {
         const rvfc = (vs as HTMLVideoElement & { requestVideoFrameCallback?: (cb: () => void) => void })
           .requestVideoFrameCallback;
         if (typeof rvfc === "function") {
-          rvfc.call(vs, () => void grab());
+          rvfc.call(vs, () => void grabAfterSeek().then(finish));
         } else {
-          window.setTimeout(() => void grab(), 60);
+          window.setTimeout(() => void grabAfterSeek().then(finish), 50);
         }
       };
-      const onSeeked = () => {
-        afterSeek();
-      };
-      if (
-        Math.abs(vs.currentTime - t) < 1e-3 &&
-        vs.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
-      ) {
-        window.setTimeout(() => void grab(), 60);
+
+      vs.addEventListener("seeked", onSeeked, { once: true });
+      try {
+        vs.currentTime = t;
+      } catch {
+        finish(null);
         return;
       }
-      vs.addEventListener("seeked", onSeeked, { once: true });
-      vs.currentTime = t;
+
+      if (Math.abs(vs.currentTime - t) < 1e-3 && vs.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        vs.removeEventListener("seeked", onSeeked);
+        void grabAfterSeek().then(finish);
+      }
     });
   }, []);
 
@@ -187,22 +246,83 @@ export default function LoopStudio() {
     ctx.clip();
     ctx.drawImage(inB, 0, 0, w, h);
     ctx.restore();
-    ctx.strokeStyle = "rgba(255,255,255,0.65)";
+
+    ctx.strokeStyle = "rgba(255,255,255,0.85)";
     ctx.lineWidth = 2;
     ctx.beginPath();
     ctx.moveTo(split, 0);
     ctx.lineTo(split, h);
     ctx.stroke();
+
+    const pillH = 32;
+    const pillW = 18;
+    const py = h / 2 - pillH / 2;
+    ctx.fillStyle = "rgba(255,255,255,0.92)";
+    ctx.beginPath();
+    if (typeof ctx.roundRect === "function") {
+      ctx.roundRect(split - pillW / 2, py, pillW, pillH, 6);
+    } else {
+      ctx.rect(split - pillW / 2, py, pillW, pillH);
+    }
+    ctx.fill();
+
+    ctx.fillStyle = "#222";
+    ctx.font = "bold 10px system-ui, sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("◀▶", split, h / 2);
+
+    ctx.font = "500 11px system-ui, sans-serif";
+    ctx.fillStyle = "rgba(247,167,79,0.95)";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "bottom";
+    ctx.fillText("OUT", 10, h - 10);
+    ctx.fillStyle = "rgba(79,207,122,0.95)";
+    ctx.textAlign = "right";
+    ctx.fillText("IN", w - 10, h - 10);
   }, []);
+
+  const onWipeMouseDown = useCallback(
+    (e: React.MouseEvent<HTMLCanvasElement>) => {
+      if (modeRef.current !== "compare") return;
+      const canvas = e.currentTarget;
+      const sync = (clientX: number) => {
+        const rect = canvas.getBoundingClientRect();
+        if (rect.width <= 0) return;
+        const p = (clientX - rect.left) / rect.width;
+        const next = Math.min(1, Math.max(0, p));
+        compareWipeRef.current = next;
+        setCompareWipe(next);
+        drawCompareWipe();
+      };
+      sync(e.clientX);
+      const onMove = (ev: MouseEvent) => {
+        sync(ev.clientX);
+      };
+      const onUp = () => {
+        window.removeEventListener("mousemove", onMove);
+        window.removeEventListener("mouseup", onUp);
+      };
+      window.addEventListener("mousemove", onMove);
+      window.addEventListener("mouseup", onUp);
+    },
+    [drawCompareWipe],
+  );
 
   const captureFrames = useCallback(async () => {
     if (!duration) return;
+    const gen = ++captureGenRef.current;
     outBitmapRef.current?.close?.();
     inBitmapRef.current?.close?.();
     outBitmapRef.current = null;
     inBitmapRef.current = null;
     const o = await captureAt(outPoint);
     const i = await captureAt(inPoint);
+    if (gen !== captureGenRef.current) {
+      o?.close();
+      i?.close();
+      return;
+    }
     outBitmapRef.current = o;
     inBitmapRef.current = i;
     if (o && i) {
@@ -211,8 +331,17 @@ export default function LoopStudio() {
       if (modeRef.current === "compare") drawCompareWipe();
     } else {
       setMatchPct(null);
+      if (modeRef.current === "compare") {
+        const c = canvasCmpRef.current;
+        const ctx = c?.getContext("2d");
+        if (c && ctx) ctx.clearRect(0, 0, c.width, c.height);
+      }
     }
   }, [duration, outPoint, inPoint, captureAt, drawCompareWipe]);
+
+  useEffect(() => {
+    captureFramesRef.current = captureFrames;
+  }, [captureFrames]);
 
   const layoutPreviewCanvases = useCallback(() => {
     const shell = previewShellRef.current;
@@ -225,6 +354,7 @@ export default function LoopStudio() {
     const vh = v.videoHeight || 720;
     const rw = Math.max(1, Math.floor(rect.width));
     const rh = Math.max(1, Math.floor(rect.height));
+    if (rw < 2 || rh < 2) return;
     const ar = vw / vh;
     let dw = rw;
     let dh = rh;
@@ -232,7 +362,7 @@ export default function LoopStudio() {
     else dh = Math.floor(dw / ar);
     dw = Math.max(1, dw);
     dh = Math.max(1, dh);
-    if (cPlay.width === dw && cPlay.height === dh) return;
+    if (cPlay.width === dw && cPlay.height === dh && cCmp.width === dw && cCmp.height === dh) return;
     cPlay.width = dw;
     cPlay.height = dh;
     cCmp.width = dw;
@@ -276,14 +406,7 @@ export default function LoopStudio() {
   }, [scheduleCaptures, layoutPreviewCanvases]);
 
   useEffect(() => {
-    const vs = seekRef.current;
-    if (!vs || !mediaSrc) return;
-    vs.src = mediaSrc;
-    vs.load();
-  }, [mediaSrc, reloadToken]);
-
-  useEffect(() => {
-    if (!loaded || !mediaSrc) return;
+    if (!loaded || !playbackSrc) return;
     const shell = previewShellRef.current;
     if (!shell) return;
     const ro = new ResizeObserver(() => {
@@ -292,7 +415,7 @@ export default function LoopStudio() {
     ro.observe(shell);
     layoutPreviewCanvases();
     return () => ro.disconnect();
-  }, [loaded, mediaSrc, layoutPreviewCanvases]);
+  }, [loaded, playbackSrc, layoutPreviewCanvases]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -315,7 +438,16 @@ export default function LoopStudio() {
       }
       if (e.code === "KeyC") {
         e.preventDefault();
-        setMode((m) => (m === "play" ? "compare" : "play"));
+        setMode((m) => {
+          const next = m === "play" ? "compare" : "play";
+          modeRef.current = next;
+          return next;
+        });
+        queueMicrotask(() => {
+          if (modeRef.current === "compare") {
+            void captureFrames();
+          }
+        });
       }
       if (e.code === "ArrowLeft") {
         e.preventDefault();
@@ -328,7 +460,7 @@ export default function LoopStudio() {
     };
     document.addEventListener("keydown", onKey);
     return () => document.removeEventListener("keydown", onKey);
-  }, [loaded, duration, inPoint, outPoint]);
+  }, [loaded, duration, inPoint, outPoint, captureFrames]);
 
   const onTimeUpdate = useCallback(() => {
     const v = videoRef.current;
@@ -365,22 +497,131 @@ export default function LoopStudio() {
     setMediaSrc(loopStudioMediaSrc(p));
   }, []);
 
+  const openVideoPathPreview = useCallback((absPath: string) => {
+    if (!isVideoFilePath(absPath)) {
+      addToast("Not a supported video file type", "error");
+      return;
+    }
+    setPreviewOnly(true);
+    setImageId(null);
+    setLoaded(false);
+    setMediaSrc(loopStudioMediaSrc(absPath));
+    setReloadToken((t) => t + 1);
+  }, [addToast]);
+
+  const importPathToGallery = useCallback(
+    async (absPath: string) => {
+      const folderId = useFoldersStore.getState().currentFolderId ?? undefined;
+      await goDaemon.importImages([absPath], folderId);
+      reQueryImages();
+    },
+    [reQueryImages],
+  );
+
+  const downloadAndAttachYoutube = useCallback(
+    async (url: string) => {
+      const trimmed = url.trim();
+      if (!trimmed) {
+        addToast("Paste a YouTube URL", "error");
+        return;
+      }
+      setYoutubeBusy(true);
+      const result = await tryDownloadYoutube(trimmed);
+      if ("filePath" in result) {
+        openVideoPathPreview(result.filePath);
+        await importPathToGallery(result.filePath);
+        addToast("YouTube video: preview ready; import queued for gallery.", "success", 5000);
+        setYoutubeUrl("");
+      } else {
+        addToast(result.error, "error");
+      }
+      setYoutubeBusy(false);
+    },
+    [addToast, openVideoPathPreview, importPathToGallery],
+  );
+
+  const beginCompare = useCallback(() => {
+    modeRef.current = "compare";
+    setMode("compare");
+    void captureFrames();
+  }, [captureFrames]);
+
+  const gatherPathsFromDrop = (e: DragEvent): string[] => {
+    const out: string[] = [];
+    const { files } = e.dataTransfer;
+    for (let i = 0; i < files.length; i++) {
+      try {
+        const p = window.API_RENDERER.getPathForFile(files[i]!);
+        if (p) out.push(p);
+      } catch {
+        /* not a file path */
+      }
+    }
+    if (out.length === 0) {
+      const raw = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain");
+      for (const line of raw.split(/\r?\n/)) {
+        const t = line.trim();
+        if (t.startsWith("file://")) {
+          out.push(decodeURIComponent(t.replace(/^file:\/\//, "")));
+        }
+      }
+    }
+    return out;
+  };
+
+  const gatherHttpUrlsFromDrop = (e: DragEvent): string[] => {
+    const raw = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain");
+    return raw
+      .split(/\r?\n/)
+      .map((s) => s.trim())
+      .filter((u) => /^https?:\/\//i.test(u));
+  };
+
+  const onLoopStudioDrop = useCallback(
+    (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const urls = gatherHttpUrlsFromDrop(e);
+      for (const u of urls) {
+        if (isAllowedYoutubeUrl(u)) {
+          void downloadAndAttachYoutube(u);
+          return;
+        }
+      }
+      if (urls.length > 0) {
+        addToast("URL drop: only YouTube links are supported here", "info", 3500);
+        return;
+      }
+      const paths = gatherPathsFromDrop(e);
+      const videoPath = paths.find((p) => isVideoFilePath(p));
+      if (videoPath) {
+        openVideoPathPreview(videoPath);
+        return;
+      }
+      if (paths.length > 0) {
+        addToast("Drop a video file (.mp4, .webm, …)", "warning", 3000);
+      }
+    },
+    [addToast, downloadAndAttachYoutube, openVideoPathPreview],
+  );
+
   const runExport = useCallback(async () => {
     if (!imageId) {
       addToast("Choose a gallery video to export", "error");
       return;
     }
     setExporting(true);
-    try {
-      const body: VideoLoopExportRequest = {
-        in_seconds: inPoint,
-        out_seconds: outPoint,
-        preset,
-        action: exportAction,
-        folder_id: useFoldersStore.getState().currentFolderId ?? undefined,
-        blend_halves: blendHalvesExport,
-      };
-      const res = await goDaemon.videoLoopExport(imageId, body);
+    const body: VideoLoopExportRequest = {
+      in_seconds: inPoint,
+      out_seconds: outPoint,
+      preset,
+      action: exportAction,
+      folder_id: useFoldersStore.getState().currentFolderId ?? undefined,
+      blend_halves: blendHalvesExport,
+    };
+    const exportResult = await tryVideoLoopExport(imageId, body);
+    if (exportResult.ok) {
+      const res = exportResult.res;
       addToast(
         exportAction === "replace" ? "Video replaced in gallery" : `Imported new video (id ${res.image_id})`,
         "success",
@@ -401,11 +642,10 @@ export default function LoopStudio() {
           setReloadToken((t) => t + 1);
         });
       }
-    } catch (e) {
-      addToast(e instanceof Error ? e.message : "Export failed", "error");
-    } finally {
-      setExporting(false);
+    } else {
+      addToast(exportResult.error, "error");
     }
+    setExporting(false);
   }, [imageId, inPoint, outPoint, preset, exportAction, blendHalvesExport, addToast, reQueryImages]);
 
   const pct = (t: number) => (duration ? (t / duration) * 100 : 0);
@@ -469,20 +709,28 @@ export default function LoopStudio() {
     matchPct == null ? "badge-ghost" : matchPct > 92 ? "badge-success" : matchPct > 80 ? "badge-warning" : "badge-error";
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col gap-2 overflow-hidden px-2 py-2 sm:gap-3 sm:px-4 sm:py-3">
+    <div
+      className="flex h-full min-h-0 w-full flex-col gap-2 overflow-hidden px-2 py-2 sm:gap-3 sm:px-4 sm:py-3"
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+      onDrop={onLoopStudioDrop}
+    >
       <header className="shrink-0 space-y-1">
         <h1 className="text-xl font-bold text-base-content sm:text-2xl">Loop Studio</h1>
         <p className="line-clamp-2 text-xs text-base-content/60 sm:line-clamp-none sm:text-sm">
           Find in/out points and match the last frame to the first. Sub-loop preview uses coarse <code>timeupdate</code>{" "}
-          jumps; export bakes a seamless file for native <code>video loop</code> playback.
+          jumps (not the two-decoder crossfade from a classic loop trimmer); export bakes a seamless file for native{" "}
+          <code>video loop</code> playback. Compare is two still captures of in/out with a wipe, not live blended playback.
         </p>
       </header>
 
       <div className="alert alert-info shrink-0 py-1.5 text-xs sm:text-sm">
         <span>
           <strong>Tip:</strong> Space play/pause, <kbd className="kbd kbd-sm">I</kbd> / <kbd className="kbd kbd-sm">O</kbd>{" "}
-          set in/out, <kbd className="kbd kbd-sm">C</kbd> compare (use the wipe slider), arrows step frames. Export
-          requires a gallery video.
+          set in/out, <kbd className="kbd kbd-sm">C</kbd> compare (drag the wipe on the preview), arrows step frames. Drag a video
+          file or YouTube URL onto this page. Export requires a gallery video.
         </span>
       </div>
 
@@ -510,10 +758,35 @@ export default function LoopStudio() {
             <button type="button" className="btn btn-outline btn-sm" onClick={() => void pickFromDisk()}>
               Open file (preview only)
             </button>
+            <div className="flex min-w-0 flex-1 flex-wrap items-end gap-2 basis-full sm:basis-auto">
+              <label className="form-control min-w-0 flex-1 sm:min-w-[12rem] sm:max-w-md" htmlFor="loop-youtube-url">
+                <span className="label py-0 text-xs">YouTube URL</span>
+                <input
+                  id="loop-youtube-url"
+                  type="url"
+                  className="input input-bordered input-sm w-full font-mono text-xs"
+                  placeholder="https://www.youtube.com/watch?v=…"
+                  value={youtubeUrl}
+                  onChange={(e) => setYoutubeUrl(e.target.value)}
+                  disabled={youtubeBusy}
+                />
+              </label>
+              <button
+                type="button"
+                className="btn btn-outline btn-sm shrink-0"
+                disabled={youtubeBusy || !youtubeUrl.trim()}
+                onClick={() => void downloadAndAttachYoutube(youtubeUrl)}
+              >
+                {youtubeBusy ? <span className="loading loading-spinner loading-xs" /> : "Download (yt-dlp)"}
+              </button>
+            </div>
             {previewOnly && <span className="badge badge-warning">Preview only — not in gallery</span>}
+            <p className="w-full text-[11px] text-base-content/50">
+              YouTube needs <code className="text-[10px]">yt-dlp</code> on PATH; import runs in the background.
+            </p>
           </div>
 
-          {!mediaSrc ? (
+          {!playbackSrc ? (
             <p className="shrink-0 text-sm text-base-content/50">Select a gallery video or open a file for preview.</p>
           ) : (
             <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
@@ -528,42 +801,44 @@ export default function LoopStudio() {
                 />
                 <canvas
                   ref={canvasCmpRef}
-                  className={mode === "compare" ? "block max-h-full max-w-full object-contain" : "hidden"}
+                  className={
+                    mode === "compare"
+                      ? "block max-h-full max-w-full cursor-col-resize object-contain"
+                      : "hidden"
+                  }
                   aria-hidden={mode !== "compare"}
+                  onMouseDown={onWipeMouseDown}
                 />
                 <video
-                  key={`${mediaSrc}-${reloadToken}`}
+                  key={`${playbackSrc}-${reloadToken}`}
                   ref={videoRef}
                   className="hidden"
-                  src={mediaSrc}
+                  src={playbackSrc}
                   loop={outPoint - inPoint >= duration - FULL_LOOP_EPS}
                   preload="auto"
                   playsInline
                   onLoadedMetadata={onLoadedMetadata}
                   onTimeUpdate={onTimeUpdate}
                 />
-                <video ref={seekRef} className="hidden" preload="auto" muted playsInline />
+                <video
+                  key={`seek-${playbackSrc}-${reloadToken}`}
+                  ref={seekRef}
+                  src={playbackSrc}
+                  className="pointer-events-none fixed left-[-9999px] top-0 opacity-0"
+                  style={{ width: 160, height: 90 }}
+                  preload="auto"
+                  muted
+                  playsInline
+                  aria-hidden
+                />
               </div>
 
               {mode === "compare" && (
-                <div className="flex shrink-0 flex-col gap-1.5 px-0.5">
-                  <label className="label cursor-pointer gap-2 py-0" htmlFor="loop-compare-wipe">
-                    <span className="label-text text-xs text-base-content/80">
-                      Compare wipe — <span className="text-warning">out (end)</span> left,{" "}
-                      <span className="text-success">in (start)</span> right
-                    </span>
-                  </label>
-                  <input
-                    id="loop-compare-wipe"
-                    type="range"
-                    min={0}
-                    max={100}
-                    value={Math.round(compareWipe * 100)}
-                    onChange={(e) => setCompareWipe(Number(e.target.value) / 100)}
-                    className="range range-primary range-xs w-full"
-                    aria-valuetext={`${Math.round(compareWipe * 100)}% out vs in`}
-                  />
-                </div>
+                <p className="shrink-0 px-0.5 text-xs text-base-content/70">
+                  Drag on the preview to move the wipe —{" "}
+                  <span className="text-warning">OUT</span> (loop end) left,{" "}
+                  <span className="text-success">IN</span> (loop start) right.
+                </p>
               )}
 
               <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -571,14 +846,17 @@ export default function LoopStudio() {
                   <button
                     type="button"
                     className={`btn btn-sm join-item ${mode === "play" ? "btn-active" : ""}`}
-                    onClick={() => setMode("play")}
+                    onClick={() => {
+                      modeRef.current = "play";
+                      setMode("play");
+                    }}
                   >
                     Preview
                   </button>
                   <button
                     type="button"
                     className={`btn btn-sm join-item ${mode === "compare" ? "btn-active" : ""}`}
-                    onClick={() => setMode("compare")}
+                    onClick={() => beginCompare()}
                   >
                     Compare frames
                   </button>

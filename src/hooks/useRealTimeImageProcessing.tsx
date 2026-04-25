@@ -11,13 +11,51 @@ import type {
   ProcessingCancelledPayload,
 } from "../../electron/daemon-go-types";
 
+function safeReQueryImages(): void {
+  try {
+    startTransition(() => {
+      useImagesStore.getState().reQueryImages();
+    });
+  } catch (error) {
+    logger.error("Error re-querying images:", error);
+  }
+}
+
+function safeProcessImageBatch(
+  data: ImageProcessedPayload,
+  lastReQueryRef: { current: number },
+  reQueryTimeoutRef: { current: ReturnType<typeof setTimeout> | null },
+): void {
+  try {
+    const imageName = data.image ? data.image.name : "";
+    const store = useImageProcessingStore.getState();
+    if (!store.batches.has(data.batch_id)) {
+      store.startBatch(data.batch_id, data.total);
+    }
+    store.updateBatch(data.batch_id, data.current, imageName, data.elapsed_ms);
+    const THROTTLE_MS = 2000;
+    const now = Date.now();
+    const elapsed = now - lastReQueryRef.current;
+    if (!reQueryTimeoutRef.current) {
+      const delay = elapsed >= THROTTLE_MS ? 0 : THROTTLE_MS - elapsed;
+      reQueryTimeoutRef.current = setTimeout(() => {
+        lastReQueryRef.current = Date.now();
+        reQueryTimeoutRef.current = null;
+        safeReQueryImages();
+      }, delay);
+    }
+  } catch (error) {
+    logger.error("Error handling image_processed:", error);
+  }
+}
+
 export function useRealTimeImageProcessing() {
   const cleanupRef = useRef<(() => void) | null>(null);
   const reQueryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastReQueryRef = useRef<number>(0);
 
   useEffect(() => {
-    const { startBatch, updateBatch, completeBatch } = useImageProcessingStore.getState();
+    const { startBatch, completeBatch } = useImageProcessingStore.getState();
     if (!window.API_RENDERER?.goDaemon?.on) {
       logger.error("goDaemon event methods not available");
       return;
@@ -34,37 +72,9 @@ export function useRealTimeImageProcessing() {
       }
     };
 
-    const handleImageProcessed = async (...args: unknown[]) => {
+    const handleImageProcessed = (...args: unknown[]) => {
       const data = args[0] as ImageProcessedPayload;
-      const imageName = data.image ? data.image.name : "";
-      try {
-        const store = useImageProcessingStore.getState();
-        if (!store.batches.has(data.batch_id)) {
-          startBatch(data.batch_id, data.total);
-        }
-        updateBatch(data.batch_id, data.current, imageName, data.elapsed_ms);
-
-        const THROTTLE_MS = 2000;
-        const now = Date.now();
-        const elapsed = now - lastReQueryRef.current;
-
-        if (!reQueryTimeoutRef.current) {
-          const delay = elapsed >= THROTTLE_MS ? 0 : THROTTLE_MS - elapsed;
-          reQueryTimeoutRef.current = setTimeout(() => {
-            lastReQueryRef.current = Date.now();
-            reQueryTimeoutRef.current = null;
-            try {
-              startTransition(() => {
-                useImagesStore.getState().reQueryImages();
-              });
-            } catch (error) {
-              logger.error("Error re-querying images:", error);
-            }
-          }, delay);
-        }
-      } catch (error) {
-        logger.error("Error handling image_processed:", error);
-      }
+      safeProcessImageBatch(data, lastReQueryRef, reQueryTimeoutRef);
     };
 
     const handleImageError = (...args: unknown[]) => {

@@ -152,7 +152,8 @@ function ImageCard({ Image }: ImageCardProps) {
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isHotkeyPressed("ctrl")) {
+    const multi = isHotkeyPressed("mod") || e.metaKey || e.ctrlKey;
+    if (multi) {
       if (isSelected) {
         removeFromSelectedImages(Image);
       } else {
@@ -419,6 +420,8 @@ function ImageCard({ Image }: ImageCardProps) {
     return (
       <div
         ref={dragRef}
+        data-gallery-image-root=""
+        data-image-id={String(Image.id)}
         onContextMenu={handleRightClick}
         onClick={handleClick}
         className={`neo-polaroid group relative w-full animate-fade-in${isDragging ? " opacity-50" : ""}`}
@@ -501,6 +504,8 @@ function ImageCard({ Image }: ImageCardProps) {
   return (
     <div
       ref={dragRef}
+      data-gallery-image-root=""
+      data-image-id={String(Image.id)}
       onContextMenu={handleRightClick}
       onClick={handleClick}
       className={`group relative w-full overflow-hidden rounded-lg duration-200 animate-fade-in${isDragging ? " opacity-50" : ""}`}

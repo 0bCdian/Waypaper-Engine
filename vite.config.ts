@@ -11,14 +11,15 @@ export default defineConfig({
 		sourcemap: process.env.DEV === "true" ? "inline" : false,
 	},
 	resolve: {
-		alias: {
-			"@": resolve(__dirname, "src"),
-			"@/components": resolve(__dirname, "src/components"),
-			"@/utils": resolve(__dirname, "src/utils"),
-			"@/stores": resolve(__dirname, "src/stores"),
-			"@/shared": resolve(__dirname, "shared"),
-			"@/types": resolve(__dirname, "src/types"),
-		},
+		// Longer `find` entries must win over `@` — otherwise `@/shared/x` resolves as `src/shared/x`.
+		alias: [
+			{ find: "@/components", replacement: resolve(__dirname, "src/components") },
+			{ find: "@/utils", replacement: resolve(__dirname, "src/utils") },
+			{ find: "@/stores", replacement: resolve(__dirname, "src/stores") },
+			{ find: "@/shared", replacement: resolve(__dirname, "shared") },
+			{ find: "@/types", replacement: resolve(__dirname, "src/types") },
+			{ find: "@", replacement: resolve(__dirname, "src") },
+		],
 	},
 	plugins: [
 		react({

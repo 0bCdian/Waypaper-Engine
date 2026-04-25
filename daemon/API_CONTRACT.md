@@ -1,5 +1,7 @@
 # Waypaper Engine Daemon — API Contract
 
+> **See also (generated / structural docs):** [daemon architecture](docs/ARCHITECTURE.md) · [OpenAPI map](docs/openapi.yaml) (machine-readable path index) · [improvement backlog](docs/architectural-improvements.md)
+
 > **Transport**: HTTP over Unix domain socket  
 > **Default socket**: `$XDG_RUNTIME_DIR/waypaper-engine.sock`  
 > **Content-Type**: `application/json` (unless noted otherwise)  

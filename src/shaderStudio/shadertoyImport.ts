@@ -45,7 +45,7 @@ export function normalizeInputKind(inp: ShadertoyInput): ShadertoyInputKind {
 }
 
 /** Strip directives that conflict with our #version 300 es wrapper. */
-export function sanitizeUserGlsl(code: string): string {
+function sanitizeUserGlsl(code: string): string {
   const outLines: string[] = [];
   for (const line of code.split("\n")) {
     const s = line.trim();
@@ -80,21 +80,9 @@ function passTypeLower(p: ShadertoyRenderPass): string {
   return (p.type ?? "").toString().toLowerCase();
 }
 
-export function collectCommonCode(renderpasses: ShadertoyRenderPass[]): string {
+function collectCommonCode(renderpasses: ShadertoyRenderPass[]): string {
   const parts = renderpasses.filter((p) => passTypeLower(p) === "common").map((p) => p.code ?? "");
   return parts.join("\n\n").trim();
-}
-
-export function passBodiesFromRenderpasses(renderpasses: ShadertoyRenderPass[]): Record<string, string> {
-  const bodies: Record<string, string> = {};
-  for (const p of renderpasses) {
-    const t = passTypeLower(p);
-    if (t === "buffer" || t === "image") {
-      const name = p.name ?? String(t);
-      bodies[name] = sanitizeUserGlsl(p.code ?? "");
-    }
-  }
-  return bodies;
 }
 
 export function buffersInExportOrder(renderpasses: ShadertoyRenderPass[]): ShadertoyRenderPass[] {

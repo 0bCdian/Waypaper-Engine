@@ -1,5 +1,5 @@
 import type React from "react";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { cn } from "@/utils/cn";
 import type { ConfigSection } from "@/shared/types/unifiedConfig";
 import {
@@ -30,15 +30,23 @@ export const SettingsSearch: React.FC<SettingsSearchProps> = ({
   compact = false,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
-  const [selectedIdx, setSelectedIdx] = useState(-1);
+  const [navState, setNavState] = useState<{ idx: number; term: string }>({ idx: -1, term: searchTerm });
+  const selectedIdx = navState.term === searchTerm ? navState.idx : -1;
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);
 
   const filtered = filterSettingsSearchEntries(searchTerm);
 
-  useEffect(() => {
-    setSelectedIdx(-1);
-  }, [searchTerm]);
+  const setSelectedIdx = useCallback(
+    (updater: number | ((prev: number) => number)) => {
+      setNavState((prev) => {
+        const prevIdx = prev.term === searchTerm ? prev.idx : -1;
+        const nextIdx = typeof updater === "function" ? updater(prevIdx) : updater;
+        return { idx: nextIdx, term: searchTerm };
+      });
+    },
+    [searchTerm],
+  );
 
   const commitNavigate = (section: ConfigSection, searchEntry?: SettingsSearchEntry) => {
     if (!onNavigateToSection) return;

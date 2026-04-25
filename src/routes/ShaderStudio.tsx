@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type ChangeEvent, type DragEvent } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { captureShaderPreviewPngs } from "@/shaderStudio/captureShaderPreviewPngs";
 import { serializeMultipass } from "@/shaderStudio/buildWallpaperPackage";
@@ -14,8 +14,56 @@ import { useToastStore } from "@/stores/toastStore";
 const LS_SHADER = "waypaper.shaderStudio.shader";
 const LS_TITLE = "waypaper.shaderStudio.title";
 
+function safeGetLS(key: string, fallback: string): string {
+  try {
+    return localStorage.getItem(key) ?? fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 const goDaemon = window.API_RENDERER.goDaemon;
 const api = window.API_RENDERER;
+
+function tryParseShadertoyJson(
+  text: string,
+): { ok: true; prepared: PreparedMultipass } | { ok: false; error: string } {
+  try {
+    const data = parseShadertoyJson(text);
+    const prepared = prepareMultipassFromJson(data);
+    return { ok: true, prepared };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Import failed" };
+  }
+}
+
+type ShaderPackagePayload = Parameters<typeof api.writeShaderWebWallpaperPackage>[0];
+
+async function trySaveShaderToGallery(
+  payload: ShaderPackagePayload,
+  currentFolderId: number | null | undefined,
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    const w = await api.writeShaderWebWallpaperPackage(payload);
+    if (w.canceled || !w.packageDir) return { ok: false, error: "Save was canceled" };
+    await goDaemon.importWebWallpaper(w.packageDir, currentFolderId ?? undefined);
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Import failed" };
+  }
+}
+
+async function tryExportShaderPackage(
+  payload: ShaderPackagePayload,
+): Promise<{ ok: true; packageDir: string } | { ok: false; canceled?: boolean; error: string }> {
+  try {
+    const w = await api.writeShaderWebWallpaperPackage(payload);
+    if (w.canceled) return { ok: false, canceled: true, error: "Export canceled" };
+    return { ok: true, packageDir: w.packageDir ?? "" };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : "Export failed" };
+  }
+}
 
 function multipassEditorPlaceholder(title: string, passes: string[]): string {
   return `// Multipass Shadertoy import: ${title}
@@ -38,21 +86,8 @@ export default function ShaderStudio() {
   const [importMode, setImportMode] = useState<"single" | "multipass">("single");
   const [passList, setPassList] = useState<string[]>([]);
 
-  const [source, setSource] = useState(() => {
-    try {
-      const s = localStorage.getItem(LS_SHADER);
-      return s ?? SHADER_STUDIO_EXAMPLE;
-    } catch {
-      return SHADER_STUDIO_EXAMPLE;
-    }
-  });
-  const [title, setTitle] = useState(() => {
-    try {
-      return localStorage.getItem(LS_TITLE) ?? "My shader wallpaper";
-    } catch {
-      return "My shader wallpaper";
-    }
-  });
+  const [source, setSource] = useState(() => safeGetLS(LS_SHADER, SHADER_STUDIO_EXAMPLE));
+  const [title, setTitle] = useState(() => safeGetLS(LS_TITLE, "My shader wallpaper"));
   const [logKind, setLogKind] = useState<"ok" | "err" | "info">("info");
   const [logMsg, setLogMsg] = useState("// Press Run or Ctrl+Enter to compile");
   const [compileOk, setCompileOk] = useState(false);
@@ -75,27 +110,34 @@ export default function ShaderStudio() {
     }
   }, [title]);
 
-  const mountSingleEngine = useCallback(() => {
+  const mountSingleEngine = useCallback((): string | null => {
     const canvas = canvasRef.current;
-    if (!canvas) return;
+    if (!canvas) return null;
     multiEngineRef.current?.dispose();
     multiEngineRef.current = null;
 
     const eng = new ShaderWallEngine(canvas, { wallpaperMouse: false });
     if (!eng.init()) {
-      setLogKind("err");
-      setLogMsg("WebGL could not be initialized in this window.");
-      setCompileOk(false);
       singleEngineRef.current = null;
-      return;
+      return "WebGL could not be initialized in this window.";
     }
     eng.startLoop();
     singleEngineRef.current = eng;
+    return null;
   }, []);
 
   useEffect(() => {
-    mountSingleEngine();
+    const err = mountSingleEngine();
+    let tid: ReturnType<typeof setTimeout> | undefined;
+    if (err) {
+      tid = setTimeout(() => {
+        setLogKind("err");
+        setLogMsg(err);
+        setCompileOk(false);
+      }, 0);
+    }
     return () => {
+      clearTimeout(tid);
       singleEngineRef.current?.dispose();
       singleEngineRef.current = null;
       multiEngineRef.current?.dispose();
@@ -162,10 +204,15 @@ export default function ShaderStudio() {
     multipassPreparedRef.current = null;
     setImportMode("single");
     setPassList([]);
-    mountSingleEngine();
+    const mountErr = mountSingleEngine();
     setSource(SHADER_STUDIO_EXAMPLE);
-    setLogKind("info");
-    setLogMsg("// loaded example — press Run");
+    if (mountErr) {
+      setLogKind("err");
+      setLogMsg(mountErr);
+    } else {
+      setLogKind("info");
+      setLogMsg("// loaded example — press Run");
+    }
     setCompileOk(false);
   }, [mountSingleEngine]);
 
@@ -177,65 +224,93 @@ export default function ShaderStudio() {
     setPassList([]);
     setSource(SHADER_STUDIO_EXAMPLE);
     setCompileOk(false);
-    setLogKind("info");
-    setLogMsg("// Cleared import — press Run after editing");
-    mountSingleEngine();
+    const mountErr = mountSingleEngine();
+    if (mountErr) {
+      setLogKind("err");
+      setLogMsg(mountErr);
+    } else {
+      setLogKind("info");
+      setLogMsg("// Cleared import — press Run after editing");
+    }
   }, [mountSingleEngine]);
+
+  const loadShadertoyJsonText = useCallback(
+    (text: string) => {
+      const parseResult = tryParseShadertoyJson(text);
+      if (!parseResult.ok) {
+        addToast(parseResult.error, "error");
+        setLogKind("err");
+        setLogMsg(parseResult.error);
+        mountSingleEngine();
+        return;
+      }
+      const { prepared } = parseResult;
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      singleEngineRef.current?.dispose();
+      singleEngineRef.current = null;
+
+      const eng = new ShadertoyMultipassEngine(canvas);
+      if (!eng.init()) {
+        addToast("WebGL2 is required for multipass Shadertoy import", "error");
+        mountSingleEngine();
+        return;
+      }
+      const cr = eng.compile(prepared);
+      if (!cr.ok) {
+        addToast(cr.message, "error");
+        setLogKind("err");
+        setLogMsg(cr.message);
+        setCompileOk(false);
+        eng.dispose();
+        mountSingleEngine();
+        return;
+      }
+      eng.startLoop();
+      multiEngineRef.current = eng;
+      multipassPreparedRef.current = prepared;
+
+      const order = [
+        ...prepared.buffers.map((b) => (b.name as string) ?? "buffer"),
+        prepared.image.name ?? "image",
+      ];
+      setPassList(order);
+      setImportMode("multipass");
+      setTitle(prepared.title);
+      setSource(multipassEditorPlaceholder(prepared.title, order));
+      setCompileOk(true);
+      setLogKind("ok");
+      setLogMsg(
+        `// Imported multipass (${order.length} executable passes). Unsupported: sound, VR, webcam, cubemap media, music stream.`,
+      );
+    },
+    [addToast, mountSingleEngine],
+  );
 
   const onPickShadertoyJson = (ev: ChangeEvent<HTMLInputElement>): void => {
     const file = ev.target.files?.[0];
     ev.target.value = "";
     if (!file) return;
-    void (async () => {
-      try {
-        const text = await file.text();
-        const data = parseShadertoyJson(text);
-        const prepared = prepareMultipassFromJson(data);
-        const canvas = canvasRef.current;
-        if (!canvas) return;
-
-        singleEngineRef.current?.dispose();
-        singleEngineRef.current = null;
-
-        const eng = new ShadertoyMultipassEngine(canvas);
-        if (!eng.init()) {
-          addToast("WebGL2 is required for multipass Shadertoy import", "error");
-          mountSingleEngine();
-          return;
-        }
-        const cr = eng.compile(prepared);
-        if (!cr.ok) {
-          addToast(cr.message, "error");
-          setLogKind("err");
-          setLogMsg(cr.message);
-          setCompileOk(false);
-          eng.dispose();
-          mountSingleEngine();
-          return;
-        }
-        eng.startLoop();
-        multiEngineRef.current = eng;
-        multipassPreparedRef.current = prepared;
-
-        const order = [
-          ...prepared.buffers.map((b) => (b.name as string) ?? "buffer"),
-          prepared.image.name ?? "image",
-        ];
-        setPassList(order);
-        setImportMode("multipass");
-        setTitle(prepared.title);
-        setSource(multipassEditorPlaceholder(prepared.title, order));
-        setCompileOk(true);
-        setLogKind("ok");
-        setLogMsg(`// Imported multipass (${order.length} executable passes). Unsupported: sound, VR, webcam, cubemap media, music stream.`);
-      } catch (err) {
-        addToast(err instanceof Error ? err.message : "Import failed", "error");
-        setLogKind("err");
-        setLogMsg(err instanceof Error ? err.message : "Import failed");
-        mountSingleEngine();
-      }
-    })();
+    void file.text().then((t) => loadShadertoyJsonText(t));
   };
+
+  const onShaderStudioDrop = useCallback(
+    (e: DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      const { files } = e.dataTransfer;
+      const f = files[0];
+      if (!f) return;
+      const name = f.name?.toLowerCase() ?? "";
+      if (!name.endsWith(".json")) {
+        addToast("Drop a Shadertoy export .json file", "warning", 3000);
+        return;
+      }
+      void f.text().then((t) => loadShadertoyJsonText(t));
+    },
+    [addToast, loadShadertoyJsonText],
+  );
 
   const togglePause = useCallback(() => {
     if (importMode === "multipass") {
@@ -291,25 +366,18 @@ export default function ShaderStudio() {
       return;
     }
     setSaving(true);
-    try {
-      const previewPngBuffers = await capturePreviewPngsForPackage();
-      const w = await api.writeShaderWebWallpaperPackage({
-        ...payload,
-        previewPngBuffers,
-        previewFps: Math.round(1 / DEFAULT_PREVIEW_DT),
-      });
-      if (w.canceled || !w.packageDir) {
-        addToast("Save was canceled", "error");
-        return;
-      }
-      await goDaemon.importWebWallpaper(w.packageDir, currentFolderId ?? undefined);
+    const previewPngBuffers = await capturePreviewPngsForPackage();
+    const saveResult = await trySaveShaderToGallery(
+      { ...payload, previewPngBuffers, previewFps: Math.round(1 / DEFAULT_PREVIEW_DT) },
+      currentFolderId,
+    );
+    if (saveResult.ok) {
       addToast("Shader web wallpaper imported into gallery", "success");
       void reQueryImages();
-    } catch (err) {
-      addToast(err instanceof Error ? err.message : "Import failed", "error");
-    } finally {
-      setSaving(false);
+    } else {
+      addToast(saveResult.error, "error");
     }
+    setSaving(false);
   }, [addToast, buildPackagePayload, capturePreviewPngsForPackage, compileOk, currentFolderId, reQueryImages]);
 
   const exportPackage = useCallback(async () => {
@@ -323,30 +391,32 @@ export default function ShaderStudio() {
       return;
     }
     setExporting(true);
-    try {
-      const previewPngBuffers = await capturePreviewPngsForPackage();
-      const w = await api.writeShaderWebWallpaperPackage({
-        ...payload,
-        previewPngBuffers,
-        previewFps: Math.round(1 / DEFAULT_PREVIEW_DT),
-      });
-      if (w.canceled) {
-        addToast("Export canceled", "info");
-        return;
-      }
-      addToast(`Exported to ${w.packageDir}`, "success");
-    } catch (err) {
-      addToast(err instanceof Error ? err.message : "Export failed", "error");
-    } finally {
-      setExporting(false);
+    const previewPngBuffers = await capturePreviewPngsForPackage();
+    const exportResult = await tryExportShaderPackage({
+      ...payload,
+      previewPngBuffers,
+      previewFps: Math.round(1 / DEFAULT_PREVIEW_DT),
+    });
+    if (exportResult.ok) {
+      addToast(`Exported to ${exportResult.packageDir}`, "success");
+    } else {
+      addToast(exportResult.error, exportResult.canceled ? "info" : "error");
     }
+    setExporting(false);
   }, [addToast, buildPackagePayload, capturePreviewPngsForPackage, compileOk]);
 
   const logClass =
     logKind === "ok" ? "text-success" : logKind === "err" ? "text-error" : "text-info";
 
   return (
-    <div className="flex h-full min-h-0 w-full flex-col gap-2 overflow-hidden px-2 py-2 sm:gap-3 sm:px-4 sm:py-3">
+    <div
+      className="flex h-full min-h-0 w-full flex-col gap-2 overflow-hidden px-2 py-2 sm:gap-3 sm:px-4 sm:py-3"
+      onDragOver={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+      onDrop={onShaderStudioDrop}
+    >
       <header className="shrink-0 space-y-1">
         <h1 className="text-xl font-bold text-base-content sm:text-2xl">Shader Studio</h1>
         <p className="line-clamp-2 text-xs text-base-content/60 sm:line-clamp-none sm:text-sm">
@@ -361,7 +431,8 @@ export default function ShaderStudio() {
         <span>
           <kbd className="kbd kbd-sm">Ctrl</kbd>+<kbd className="kbd kbd-sm">Enter</kbd> compiles. Mouse over the
           preview drives <code className="text-xs">iMouse</code>. <code className="text-xs">fragCoord</code> matches
-          Shadertoy (top-left origin). Import JSON for Common + Buffer + Image pipelines (WebGL2).
+          Shadertoy (top-left origin). Import JSON for Common + Buffer + Image pipelines (WebGL2), or drop a{" "}
+          <code className="text-xs">.json</code> export onto this page.
         </span>
       </div>
 

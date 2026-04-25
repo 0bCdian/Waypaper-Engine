@@ -206,6 +206,26 @@ describe("useImagesStore", () => {
     expect(useImagesStore.getState().selectedImages.size).toBe(0);
   });
 
+  it("clearSelectionOnCurrentPage removes only ids on imagesArray", async () => {
+    const useImagesStore = await getStore();
+    const onPage = [sampleRendererImage(1), sampleRendererImage(2)];
+
+    act(() => {
+      useImagesStore.getState().addImages(onPage);
+      useImagesStore.getState().setSelectedImages(new Set([1, 2, 99]));
+    });
+
+    act(() => {
+      useImagesStore.getState().clearSelectionOnCurrentPage();
+    });
+
+    const sel = useImagesStore.getState().selectedImages;
+    expect(sel.has(1)).toBe(false);
+    expect(sel.has(2)).toBe(false);
+    expect(sel.has(99)).toBe(true);
+    expect(sel.size).toBe(1);
+  });
+
   it("deleteSelectedImages calls API and removes images", async () => {
     mockAPI.goDaemon.deleteImages = vi.fn().mockResolvedValue({ deleted: 2 });
 

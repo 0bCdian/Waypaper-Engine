@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { create } from "zustand";
 import { useIsNeo } from "../hooks/useIsNeo";
 
@@ -42,14 +42,12 @@ export function confirmDialog(options: ConfirmOptions): Promise<boolean> {
 function ConfirmDialog() {
   const { isOpen, options, respond } = useConfirmStore();
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const lastOptionsRef = useRef(options);
+  const [display, setDisplay] = useState<ConfirmOptions | null>(options);
   const isNeo = useIsNeo();
 
-  if (options) {
-    lastOptionsRef.current = options;
+  if (options !== null && display !== options) {
+    setDisplay(options);
   }
-
-  const display = options ?? lastOptionsRef.current;
 
   useEffect(() => {
     if (isOpen) {

@@ -253,7 +253,14 @@ export const useImagesStore = create<State>()((set, get) => ({
     set(() => ({ selectedImages: new Set<number>() }));
   },
   clearSelectionOnCurrentPage() {
-    set(() => ({ selectedImages: new Set<number>() }));
+    set((state) => {
+      const pageIds = new Set(state.imagesArray.map((img) => img.id));
+      const next = new Set(state.selectedImages);
+      for (const id of pageIds) {
+        next.delete(id);
+      }
+      return { selectedImages: next };
+    });
   },
   selectAllImagesInCurrentPage() {
     const allImageIds = new Set(get().imagesArray.map((img) => img.id));

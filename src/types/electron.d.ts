@@ -222,6 +222,23 @@ declare global {
 
       revealInFileManager: (path: string) => Promise<boolean>;
 
+      exportWallpapersToFolder: (
+        items: Array<{
+          id: number;
+          name: string;
+          path: string;
+          media_type: string;
+          package_root?: string | null;
+        }>,
+      ) => Promise<{
+        canceled: boolean;
+        destination: string;
+        exported: number;
+        failed: number;
+      }>;
+
+      downloadYoutubeVideo: (url: string) => Promise<{ filePath: string }>;
+
       // LOGGING
       logToMain: (
         level: "debug" | "info" | "warn" | "error",

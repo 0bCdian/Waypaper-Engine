@@ -1,6 +1,6 @@
 import { useToastStore } from "../stores/toastStore";
 
-export function daemonUserFacingMessage(err: unknown): string {
+function daemonUserFacingMessage(err: unknown): string {
   if (err instanceof Error && err.message.trim()) return err.message.trim();
   if (typeof err === "string" && err.trim()) return err.trim();
   return "Something went wrong.";
@@ -36,7 +36,7 @@ function webImportHint(coreMessage: string): string {
   return "";
 }
 
-export function formatWebWallpaperImportFailure(sourcePath: string, err: unknown): string {
+function formatWebWallpaperImportFailure(sourcePath: string, err: unknown): string {
   const name = fileBasename(sourcePath);
   const core = daemonUserFacingMessage(err);
   const hint = webImportHint(core);
