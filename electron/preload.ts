@@ -43,6 +43,9 @@ const electronAPI = {
 
     getInfo: (): Promise<DaemonInfo> => ipcRenderer.invoke("go-daemon-command", "get_info"),
 
+    getCapabilities: (): Promise<{ ffmpeg_available: boolean }> =>
+      ipcRenderer.invoke("go-daemon-command", "get_capabilities"),
+
     shutdown: (): Promise<void> => ipcRenderer.invoke("go-daemon-command", "shutdown"),
 
     // IMAGES
@@ -54,10 +57,7 @@ const electronAPI = {
     ensureBrowserPreview: (id: number, force?: boolean): Promise<Image> =>
       ipcRenderer.invoke("go-daemon-command", "ensure_browser_preview", { id, force }),
 
-    videoLoopExport: (
-      id: number,
-      body: VideoLoopExportRequest,
-    ): Promise<VideoLoopExportResult> =>
+    videoLoopExport: (id: number, body: VideoLoopExportRequest): Promise<VideoLoopExportResult> =>
       ipcRenderer.invoke("go-daemon-command", "video_loop_export", { id, body }),
 
     getImageCount: (): Promise<{ count: number }> =>

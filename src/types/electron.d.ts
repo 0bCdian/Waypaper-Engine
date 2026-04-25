@@ -38,6 +38,7 @@ declare global {
         // HEALTH & SYSTEM
         ping: () => Promise<boolean>;
         getInfo: () => Promise<DaemonInfo>;
+        getCapabilities: () => Promise<{ ffmpeg_available: boolean }>;
         shutdown: () => Promise<void>;
 
         // IMAGES

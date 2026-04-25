@@ -783,11 +783,12 @@ func (m *Manager) doApply(ctx context.Context, pl *store.Playlist, index int, mo
 			PlaylistID:   &pl.ID,
 			PlaylistName: pl.Name,
 		},
-		Backend:  m.registry.Active(),
-		Splitter: m.splitter,
-		History:  m.historyStore,
-		MonState: m.monitorStateStore,
-		State:    m.stateStore,
+		Backend:           m.registry.Active(),
+		Splitter:          m.splitter,
+		History:           m.historyStore,
+		MonState:          m.monitorStateStore,
+		State:             m.stateStore,
+		VideoAudioDefault: wallpaper.VideoAudioDefaultFromCfg(m.cfg),
 	}); err != nil {
 		return applyResult{AppliedIndex: -1, Skipped: skipped}, err
 	}

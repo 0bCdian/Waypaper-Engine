@@ -19,16 +19,17 @@ import (
 
 // ApplyOpts holds all dependencies and parameters needed to set a wallpaper.
 type ApplyOpts struct {
-	Image    *store.Image
-	Monitors []monitor.Monitor
-	Mode     monitor.MonitorMode
-	Source   store.HistorySource
-	Backend  backend.Backend
-	Splitter *image.Splitter
-	History  store.HistoryStore
-	MonState store.MonitorStateStore
-	State    store.StateStore
-	Bus      events.Bus // nil = no event publish
+	Image             *store.Image
+	Monitors          []monitor.Monitor
+	Mode              monitor.MonitorMode
+	Source            store.HistorySource
+	Backend           backend.Backend
+	Splitter          *image.Splitter
+	History           store.HistoryStore
+	MonState          store.MonitorStateStore
+	State             store.StateStore
+	Bus               events.Bus // nil = no event publish
+	VideoAudioDefault bool       // user preference: play audio for video wallpapers
 }
 
 // Apply is the core wallpaper-setting flow used by both the wallpaper handler
@@ -43,7 +44,7 @@ func Apply(ctx context.Context, opts ApplyOpts) error {
 		req := backend.WallpaperRequest{
 			MediaType:             mediaType,
 			ImagePath:             opts.Image.Path,
-			AudioEnabled:          opts.Image.AudioEnabled,
+			AudioEnabled:          opts.Image.AudioEnabled && opts.VideoAudioDefault,
 			Monitors:              opts.Monitors,
 			Mode:                  monitor.ModeClone,
 			WallpaperConfigValues: cfgVals,
@@ -64,7 +65,7 @@ func Apply(ctx context.Context, opts ApplyOpts) error {
 				req := backend.WallpaperRequest{
 					MediaType:             mediaType,
 					ImagePath:             splitPath,
-					AudioEnabled:          opts.Image.AudioEnabled,
+					AudioEnabled:          opts.Image.AudioEnabled && opts.VideoAudioDefault,
 					Monitors:              []monitor.Monitor{mon},
 					Mode:                  monitor.ModeIndividual,
 					WallpaperConfigValues: cfgVals,
@@ -80,7 +81,7 @@ func Apply(ctx context.Context, opts ApplyOpts) error {
 		req := backend.WallpaperRequest{
 			MediaType:             mediaType,
 			ImagePath:             opts.Image.Path,
-			AudioEnabled:          opts.Image.AudioEnabled,
+			AudioEnabled:          opts.Image.AudioEnabled && opts.VideoAudioDefault,
 			Monitors:              opts.Monitors,
 			Mode:                  opts.Mode,
 			WallpaperConfigValues: cfgVals,

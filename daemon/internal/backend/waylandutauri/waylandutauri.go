@@ -185,9 +185,17 @@ func (w *WaylandUtauri) initializeImpl(ctx context.Context) error {
 
 	// Service unreachable -- start it. Use a background-context command so the
 	// process outlives the HTTP request that triggered activation.
-	slog.Info("starting wayland-utauri", "binary", binaryName)
+	slog.Info("starting wayland-utauri",
+		"binary", binaryName,
+		"WAYLAND_DISPLAY", os.Getenv("WAYLAND_DISPLAY"),
+		"XDG_RUNTIME_DIR", os.Getenv("XDG_RUNTIME_DIR"),
+		"DISPLAY", os.Getenv("DISPLAY"),
+	)
 	cmd := exec.Command(binaryName)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGTERM}
+	// Pipe stdout/stderr through the daemon logger so spawn failures are visible.
+	cmd.Stdout = &slogWriter{prefix: "wayland-utauri stdout"}
+	cmd.Stderr = &slogWriter{prefix: "wayland-utauri stderr"}
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("wayland-utauri: start %s: %w", binaryName, err)
 	}
@@ -811,6 +819,17 @@ func (w *WaylandUtauri) SyncRuntimeFromConfig(ctx context.Context) error {
 		return fmt.Errorf("wayland-utauri: runtime sync image presentation: %w", err)
 	}
 	return nil
+}
+
+// slogWriter is an io.Writer that logs each line via slog at Info level.
+type slogWriter struct{ prefix string }
+
+func (w *slogWriter) Write(p []byte) (int, error) {
+	msg := strings.TrimRight(string(p), "\n\r")
+	if msg != "" {
+		slog.Info(msg, "source", w.prefix)
+	}
+	return len(p), nil
 }
 
 // LoadConfigFromViper reads [backend.wayland-utauri] from v. Nil v returns built-in defaults.

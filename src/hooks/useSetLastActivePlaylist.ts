@@ -121,6 +121,9 @@ export function useSetLastActivePlaylist() {
       goDaemon.on("playlist_image_changed", () => {
         void refreshActivePlaylist();
       }),
+      goDaemon.on("playlists_updated", () => {
+        void refreshActivePlaylist();
+      }),
       goDaemon.on("config_changed", (data: unknown) => {
         const event = data as { sections?: string[] };
         if (!event.sections || event.sections.includes("monitors")) {

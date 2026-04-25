@@ -71,7 +71,7 @@ func (h *BackendHandler) Activate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	RestoreWallpapers(r.Context(), h.monitorStateStore, h.stateStore, h.registry, h.monitorManager, h.imageStore, h.splitter, h.bus)
+	RestoreWallpapers(r.Context(), h.monitorStateStore, h.stateStore, h.registry, h.cfg, h.monitorManager, h.imageStore, h.splitter, h.bus)
 
 	h.bus.Publish(events.Event{
 		Type: events.ConfigChanged,

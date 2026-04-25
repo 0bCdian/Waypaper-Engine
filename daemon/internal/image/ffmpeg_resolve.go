@@ -6,6 +6,9 @@ import (
 	"runtime"
 )
 
+// ResolveFfmpeg returns the path to ffmpeg, or "" if not found.
+func ResolveFfmpeg() string { return resolveFFmpeg() }
+
 // resolveFFmpeg returns ffmpeg: PATH first, then common install locations (daemon often has a minimal PATH).
 func resolveFFmpeg() string {
 	if p, err := exec.LookPath("ffmpeg"); err == nil && p != "" {

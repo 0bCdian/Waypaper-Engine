@@ -10,7 +10,10 @@ import { computeLoopMatchScore } from "@/utils/loopStudio/matchScore";
 import { formatLoopTime, formatLoopTimeShort, parseLoopTime } from "@/utils/loopStudio/timeFormat";
 import { isVideoFilePath } from "@/utils/videoFileExtensions";
 import { isAllowedYoutubeUrl } from "@/shared/youtubeUrl";
-import { createImageBitmapFromVideo, waitUntilVideoCanSample } from "@/utils/loopStudio/seekVideoCapture";
+import {
+  createImageBitmapFromVideo,
+  waitUntilVideoCanSample,
+} from "@/utils/loopStudio/seekVideoCapture";
 
 const goDaemon = window.API_RENDERER.goDaemon;
 const api = window.API_RENDERER;
@@ -60,6 +63,7 @@ export default function LoopStudio() {
     return typeof st?.imageId === "number" ? st.imageId : null;
   });
   const [previewOnly, setPreviewOnly] = useState(false);
+  const [ffmpegAvailable, setFfmpegAvailable] = useState<boolean | null>(null);
   const [mediaSrc, setMediaSrc] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [duration, setDuration] = useState(0);
@@ -77,6 +81,7 @@ export default function LoopStudio() {
   const [blendHalvesExport, setBlendHalvesExport] = useState(true);
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [youtubeBusy, setYoutubeBusy] = useState(false);
+  const [previewMuted, setPreviewMuted] = useState(false);
 
   const trimmedMedia = mediaSrc?.trim();
   const playbackSrc = trimmedMedia ? trimmedMedia : null;
@@ -112,6 +117,21 @@ export default function LoopStudio() {
       setPreviewOnly(false);
     }
   }
+
+  useEffect(() => {
+    let cancelled = false;
+    const check = () => {
+      void window.API_RENDERER.goDaemon.getCapabilities().then((caps) => {
+        if (!cancelled) setFfmpegAvailable(caps.ffmpeg_available);
+      });
+    };
+    check();
+    window.addEventListener("focus", check);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", check);
+    };
+  }, []);
 
   useEffect(() => {
     if (previewOnly || !imageId) return;
@@ -169,6 +189,10 @@ export default function LoopStudio() {
     return stopRaf;
   }, [loaded, mode, tickPlayCanvas, stopRaf]);
 
+  useEffect(() => {
+    if (videoRef.current) videoRef.current.muted = previewMuted;
+  }, [previewMuted]);
+
   const captureFramesRef = useRef<() => Promise<void>>(() => Promise.resolve());
 
   const scheduleCaptures = useCallback(() => {
@@ -185,7 +209,10 @@ export default function LoopStudio() {
 
     const grabAfterSeek = () => createImageBitmapFromVideo(vs);
 
-    if (Math.abs(vs.currentTime - t) < 1e-3 && vs.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+    if (
+      Math.abs(vs.currentTime - t) < 1e-3 &&
+      vs.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
+    ) {
       return grabAfterSeek();
     }
 
@@ -199,8 +226,9 @@ export default function LoopStudio() {
       };
       const tmr = window.setTimeout(() => finish(null), 8000);
       const onSeeked = () => {
-        const rvfc = (vs as HTMLVideoElement & { requestVideoFrameCallback?: (cb: () => void) => void })
-          .requestVideoFrameCallback;
+        const rvfc = (
+          vs as HTMLVideoElement & { requestVideoFrameCallback?: (cb: () => void) => void }
+        ).requestVideoFrameCallback;
         if (typeof rvfc === "function") {
           rvfc.call(vs, () => void grabAfterSeek().then(finish));
         } else {
@@ -216,7 +244,10 @@ export default function LoopStudio() {
         return;
       }
 
-      if (Math.abs(vs.currentTime - t) < 1e-3 && vs.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+      if (
+        Math.abs(vs.currentTime - t) < 1e-3 &&
+        vs.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
+      ) {
         vs.removeEventListener("seeked", onSeeked);
         void grabAfterSeek().then(finish);
       }
@@ -361,7 +392,8 @@ export default function LoopStudio() {
     else dh = Math.floor(dw / ar);
     dw = Math.max(1, dw);
     dh = Math.max(1, dh);
-    if (cPlay.width === dw && cPlay.height === dh && cCmp.width === dw && cCmp.height === dh) return;
+    if (cPlay.width === dw && cPlay.height === dh && cCmp.width === dw && cCmp.height === dh)
+      return;
     cPlay.width = dw;
     cPlay.height = dh;
     cCmp.width = dw;
@@ -499,17 +531,20 @@ export default function LoopStudio() {
     setMediaSrc(loopStudioMediaSrc(p));
   }, []);
 
-  const openVideoPathPreview = useCallback((absPath: string) => {
-    if (!isVideoFilePath(absPath)) {
-      addToast("Not a supported video file type", "error");
-      return;
-    }
-    setPreviewOnly(true);
-    setImageId(null);
-    setLoaded(false);
-    setMediaSrc(loopStudioMediaSrc(absPath));
-    setReloadToken((t) => t + 1);
-  }, [addToast]);
+  const openVideoPathPreview = useCallback(
+    (absPath: string) => {
+      if (!isVideoFilePath(absPath)) {
+        addToast("Not a supported video file type", "error");
+        return;
+      }
+      setPreviewOnly(true);
+      setImageId(null);
+      setLoaded(false);
+      setMediaSrc(loopStudioMediaSrc(absPath));
+      setReloadToken((t) => t + 1);
+    },
+    [addToast],
+  );
 
   const importPathToGallery = useCallback(
     async (absPath: string) => {
@@ -625,7 +660,9 @@ export default function LoopStudio() {
     if (exportResult.ok) {
       const res = exportResult.res;
       addToast(
-        exportAction === "replace" ? "Video replaced in gallery" : `Imported new video (id ${res.image_id})`,
+        exportAction === "replace"
+          ? "Video replaced in gallery"
+          : `Imported new video (id ${res.image_id})`,
         "success",
         4000,
       );
@@ -648,7 +685,16 @@ export default function LoopStudio() {
       addToast(exportResult.error, "error");
     }
     setExporting(false);
-  }, [imageId, inPoint, outPoint, preset, exportAction, blendHalvesExport, addToast, reQueryImages]);
+  }, [
+    imageId,
+    inPoint,
+    outPoint,
+    preset,
+    exportAction,
+    blendHalvesExport,
+    addToast,
+    reQueryImages,
+  ]);
 
   const pct = (t: number) => (duration ? (t / duration) * 100 : 0);
   const tAt = (p: number) => Math.max(0, Math.min(duration, p * duration));
@@ -708,7 +754,13 @@ export default function LoopStudio() {
   }, [duration, inPoint, outPoint, scheduleCaptures]);
 
   const scoreColor =
-    matchPct == null ? "badge-ghost" : matchPct > 92 ? "badge-success" : matchPct > 80 ? "badge-warning" : "badge-error";
+    matchPct == null
+      ? "badge-ghost"
+      : matchPct > 92
+        ? "badge-success"
+        : matchPct > 80
+          ? "badge-warning"
+          : "badge-error";
 
   return (
     <div
@@ -722,17 +774,19 @@ export default function LoopStudio() {
       <header className="shrink-0 space-y-1">
         <h1 className="text-xl font-bold text-base-content sm:text-2xl">Loop Studio</h1>
         <p className="line-clamp-2 text-xs text-base-content/60 sm:line-clamp-none sm:text-sm">
-          Find in/out points and match the last frame to the first. Sub-loop preview uses coarse <code>timeupdate</code>{" "}
-          jumps (not the two-decoder crossfade from a classic loop trimmer); export bakes a seamless file for native{" "}
-          <code>video loop</code> playback. Compare is two still captures of in/out with a wipe, not live blended playback.
+          Find in/out points and match the last frame to the first. Sub-loop preview uses coarse{" "}
+          <code>timeupdate</code> jumps (not the two-decoder crossfade from a classic loop trimmer);
+          export bakes a seamless file for native <code>video loop</code> playback. Compare is two
+          still captures of in/out with a wipe, not live blended playback.
         </p>
       </header>
 
       <div className="alert alert-info shrink-0 py-1.5 text-xs sm:text-sm">
         <span>
-          <strong>Tip:</strong> Space play/pause, <kbd className="kbd kbd-sm">I</kbd> / <kbd className="kbd kbd-sm">O</kbd>{" "}
-          set in/out, <kbd className="kbd kbd-sm">C</kbd> compare (drag the wipe on the preview), arrows step frames. Drag a video
-          file or YouTube URL onto this page. Export requires a gallery video.
+          <strong>Tip:</strong> Space play/pause, <kbd className="kbd kbd-sm">I</kbd> /{" "}
+          <kbd className="kbd kbd-sm">O</kbd> set in/out, <kbd className="kbd kbd-sm">C</kbd>{" "}
+          compare (drag the wipe on the preview), arrows step frames. Drag a video file or YouTube
+          URL onto this page. Export requires a gallery video.
         </span>
       </div>
 
@@ -757,11 +811,18 @@ export default function LoopStudio() {
                 ))}
               </select>
             </div>
-            <button type="button" className="btn btn-outline btn-sm" onClick={() => void pickFromDisk()}>
+            <button
+              type="button"
+              className="btn btn-outline btn-sm"
+              onClick={() => void pickFromDisk()}
+            >
               Open file (preview only)
             </button>
             <div className="flex min-w-0 flex-1 flex-wrap items-end gap-2 basis-full sm:basis-auto">
-              <label className="form-control min-w-0 flex-1 sm:min-w-[12rem] sm:max-w-md" htmlFor="loop-youtube-url">
+              <label
+                className="form-control min-w-0 flex-1 sm:min-w-[12rem] sm:max-w-md"
+                htmlFor="loop-youtube-url"
+              >
                 <span className="label py-0 text-xs">YouTube URL</span>
                 <input
                   id="loop-youtube-url"
@@ -779,17 +840,26 @@ export default function LoopStudio() {
                 disabled={youtubeBusy || !youtubeUrl.trim()}
                 onClick={() => void downloadAndAttachYoutube(youtubeUrl)}
               >
-                {youtubeBusy ? <span className="loading loading-spinner loading-xs" /> : "Download (yt-dlp)"}
+                {youtubeBusy ? (
+                  <span className="loading loading-spinner loading-xs" />
+                ) : (
+                  "Download (yt-dlp)"
+                )}
               </button>
             </div>
-            {previewOnly && <span className="badge badge-warning">Preview only — not in gallery</span>}
+            {previewOnly && (
+              <span className="badge badge-warning">Preview only — not in gallery</span>
+            )}
             <p className="w-full text-[11px] text-base-content/50">
-              YouTube needs <code className="text-[10px]">yt-dlp</code> on PATH; import runs in the background.
+              YouTube needs <code className="text-[10px]">yt-dlp</code> on PATH; import runs in the
+              background.
             </p>
           </div>
 
           {!playbackSrc ? (
-            <p className="shrink-0 text-sm text-base-content/50">Select a gallery video or open a file for preview.</p>
+            <p className="shrink-0 text-sm text-base-content/50">
+              Select a gallery video or open a file for preview.
+            </p>
           ) : (
             <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
               <div
@@ -798,7 +868,9 @@ export default function LoopStudio() {
               >
                 <canvas
                   ref={canvasPlayRef}
-                  className={mode === "play" ? "block max-h-full max-w-full object-contain" : "hidden"}
+                  className={
+                    mode === "play" ? "block max-h-full max-w-full object-contain" : "hidden"
+                  }
                   aria-hidden={mode !== "play"}
                 />
                 <canvas
@@ -819,6 +891,7 @@ export default function LoopStudio() {
                   loop={outPoint - inPoint >= duration - FULL_LOOP_EPS}
                   preload="auto"
                   playsInline
+                  muted={previewMuted}
                   onLoadedMetadata={onLoadedMetadata}
                   onTimeUpdate={onTimeUpdate}
                 />
@@ -855,14 +928,20 @@ export default function LoopStudio() {
                     Compare frames
                   </button>
                 </div>
+                <button
+                  type="button"
+                  className="btn btn-sm btn-ghost"
+                  title={previewMuted ? "Unmute preview" : "Mute preview"}
+                  onClick={() => setPreviewMuted((m) => !m)}
+                >
+                  {previewMuted ? "🔇" : "🔊"}
+                </button>
                 <div className="flex items-center gap-2 ml-auto">
                   <span className="text-xs text-base-content/60">match</span>
-                  <progress
-                    className="progress w-24 h-2"
-                    value={matchPct ?? 0}
-                    max={100}
-                  />
-                  <span className={`badge ${scoreColor} badge-sm`}>{matchPct != null ? `${matchPct}%` : "—"}</span>
+                  <progress className="progress w-24 h-2" value={matchPct ?? 0} max={100} />
+                  <span className={`badge ${scoreColor} badge-sm`}>
+                    {matchPct != null ? `${matchPct}%` : "—"}
+                  </span>
                 </div>
               </div>
 
@@ -916,7 +995,9 @@ export default function LoopStudio() {
                     if (v.paused) {
                       void v.play().catch((e: unknown) => {
                         const msg =
-                          e instanceof Error ? e.message : "Playback failed (no valid video source?)";
+                          e instanceof Error
+                            ? e.message
+                            : "Playback failed (no valid video source?)";
                         addToast(msg, "error");
                       });
                     } else {
@@ -945,7 +1026,8 @@ export default function LoopStudio() {
                     value={formatLoopTime(inPoint)}
                     onChange={(e) => {
                       const t = parseLoopTime(e.target.value);
-                      if (!Number.isNaN(t)) setInPoint(Math.max(0, Math.min(t, outPoint - MIN_LOOP_SPAN)));
+                      if (!Number.isNaN(t))
+                        setInPoint(Math.max(0, Math.min(t, outPoint - MIN_LOOP_SPAN)));
                     }}
                   />
                 </label>
@@ -956,7 +1038,8 @@ export default function LoopStudio() {
                     value={formatLoopTime(outPoint)}
                     onChange={(e) => {
                       const t = parseLoopTime(e.target.value);
-                      if (!Number.isNaN(t)) setOutPoint(Math.max(inPoint + MIN_LOOP_SPAN, Math.min(t, duration)));
+                      if (!Number.isNaN(t))
+                        setOutPoint(Math.max(inPoint + MIN_LOOP_SPAN, Math.min(t, duration)));
                     }}
                   />
                 </label>
@@ -966,11 +1049,19 @@ export default function LoopStudio() {
                 <button
                   type="button"
                   className="btn btn-primary btn-sm"
-                  disabled={!imageId || previewOnly}
+                  disabled={!imageId || previewOnly || ffmpegAvailable === false}
+                  title={
+                    ffmpegAvailable === false
+                      ? "ffmpeg not found — install it and reopen this page"
+                      : undefined
+                  }
                   onClick={() => setExportOpen(true)}
                 >
                   Export with FFmpeg…
                 </button>
+                {ffmpegAvailable === false && (
+                  <span className="text-xs text-warning self-center">ffmpeg not installed</span>
+                )}
               </div>
             </div>
           )}
@@ -981,9 +1072,9 @@ export default function LoopStudio() {
         <div className="modal-box">
           <h3 className="font-bold text-lg">Export loop</h3>
           <p className="text-sm text-base-content/60 py-2">
-            Re-encodes the trim for WebKit <code>video loop</code>. Audio is stripped. Plain trim is a hard cut; with
-            midpoint crossfade, FFmpeg splits the span in two and xfades the join (output is slightly shorter than the
-            span). Falls back to trim if xfade fails.
+            Re-encodes the trim for WebKit <code>video loop</code>. Audio is stripped. Plain trim is
+            a hard cut; with midpoint crossfade, FFmpeg splits the span in two and xfades the join
+            (output is slightly shorter than the span). Falls back to trim if xfade fails.
           </p>
           <label className="label cursor-pointer justify-start gap-2 py-1">
             <input
@@ -992,7 +1083,9 @@ export default function LoopStudio() {
               checked={blendHalvesExport}
               onChange={(e) => setBlendHalvesExport(e.target.checked)}
             />
-            <span className="label-text text-sm">Midpoint crossfade (smoother join; recommended)</span>
+            <span className="label-text text-sm">
+              Midpoint crossfade (smoother join; recommended)
+            </span>
           </label>
           <div className="form-control">
             <span className="label-text">Preset</span>
@@ -1029,10 +1122,20 @@ export default function LoopStudio() {
             </div>
           </div>
           <div className="modal-action">
-            <button type="button" className="btn" onClick={() => setExportOpen(false)} disabled={exporting}>
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setExportOpen(false)}
+              disabled={exporting}
+            >
               Cancel
             </button>
-            <button type="button" className="btn btn-primary" disabled={exporting} onClick={() => void runExport()}>
+            <button
+              type="button"
+              className="btn btn-primary"
+              disabled={exporting}
+              onClick={() => void runExport()}
+            >
               {exporting ? <span className="loading loading-spinner loading-sm" /> : "Export"}
             </button>
           </div>

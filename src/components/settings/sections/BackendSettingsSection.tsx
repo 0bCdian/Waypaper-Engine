@@ -433,7 +433,8 @@ const waylandUtauriParallaxFields: Field[] = [
   {
     key: "waylandutauri.parallax_animation_ms",
     label: "Parallax animation (ms)",
-    description: "animation_ms in /wallpaper/parallax: transition duration when offsets update (wallpaper:parallax in the webview).",
+    description:
+      "animation_ms in /wallpaper/parallax: transition duration when offsets update (wallpaper:parallax in the webview).",
     type: "number",
     min: 16,
     max: 5000,
@@ -442,7 +443,8 @@ const waylandUtauriParallaxFields: Field[] = [
   {
     key: "waylandutauri.parallax_reset_ms",
     label: "Parallax reset (ms)",
-    description: "reset_ms in /wallpaper/parallax: duration when parallax is disabled or wal-utauri elastic-snaps offset to center.",
+    description:
+      "reset_ms in /wallpaper/parallax: duration when parallax is disabled or wal-utauri elastic-snaps offset to center.",
     type: "number",
     min: 16,
     max: 10000,
@@ -823,17 +825,23 @@ function PriorityList({
 export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
   className = "",
 }) => {
-  const { config, saveConfigSection, saveBackendPatch, errors, pendingBackendSettingsTab, clearPendingBackendSettingsTab } =
-    useSettingsStore(
-      useShallow((s) => ({
-        config: s.config,
-        saveConfigSection: s.saveConfigSection,
-        saveBackendPatch: s.saveBackendPatch,
-        errors: s.errors,
-        pendingBackendSettingsTab: s.pendingBackendSettingsTab,
-        clearPendingBackendSettingsTab: s.clearPendingBackendSettingsTab,
-      })),
-    );
+  const {
+    config,
+    saveConfigSection,
+    saveBackendPatch,
+    errors,
+    pendingBackendSettingsTab,
+    clearPendingBackendSettingsTab,
+  } = useSettingsStore(
+    useShallow((s) => ({
+      config: s.config,
+      saveConfigSection: s.saveConfigSection,
+      saveBackendPatch: s.saveBackendPatch,
+      errors: s.errors,
+      pendingBackendSettingsTab: s.pendingBackendSettingsTab,
+      clearPendingBackendSettingsTab: s.clearPendingBackendSettingsTab,
+    })),
+  );
   const section: ConfigSection = "backend";
 
   const [availableBackends, setAvailableBackends] = useState<AvailableBackend[]>([]);
@@ -1088,25 +1096,29 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
             }
             error={fieldError("type")}
           >
-            <select
-              className={cn(
-                "select select-bordered select-sm w-44",
-                fieldError("type") && "select-error",
-              )}
-              value={(backendType as string) ?? "awww"}
-              onChange={(e) => void handleTopLevelChange("type", e.target.value)}
-            >
-              {availableBackends.length > 0 ? (
-                availableBackends.map((b) => (
-                  <option key={b.name} value={b.name} disabled={!b.available}>
-                    {b.name}
-                    {!b.available ? " (not installed)" : ""}
-                  </option>
-                ))
-              ) : (
-                <option value={backendType ?? "awww"}>{backendType ?? "awww"}</option>
-              )}
-            </select>
+            {backendType != null ? (
+              <select
+                className={cn(
+                  "select select-bordered select-sm w-44",
+                  fieldError("type") && "select-error",
+                )}
+                value={backendType as string}
+                onChange={(e) => void handleTopLevelChange("type", e.target.value)}
+              >
+                {availableBackends.length > 0 ? (
+                  availableBackends.map((b) => (
+                    <option key={b.name} value={b.name} disabled={!b.available}>
+                      {b.name}
+                      {!b.available ? " (not installed)" : ""}
+                    </option>
+                  ))
+                ) : (
+                  <option value={backendType as string}>{backendType as string}</option>
+                )}
+              </select>
+            ) : (
+              <span className="text-xs text-base-content/40">Loading…</span>
+            )}
           </SettingRow>
 
           {selectionMode === "auto" && (

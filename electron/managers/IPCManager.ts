@@ -515,6 +515,8 @@ export class IPCManager {
           return await goDaemonClient.ping();
         case "get_info":
           return await goDaemonClient.getInfo();
+        case "get_capabilities":
+          return await goDaemonClient.getCapabilities();
         case "shutdown":
         case "stop_daemon":
           await goDaemonClient.shutdown();

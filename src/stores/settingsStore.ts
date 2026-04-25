@@ -281,6 +281,9 @@ export const useSettingsStore = create<SettingsStore>()(
             if (isBackendTypeChange) {
               if (window.API_RENDERER?.goDaemon?.activateBackend) {
                 await window.API_RENDERER.goDaemon.activateBackend(data.type as string);
+                // Re-fetch config so the UI reflects what the daemon actually persisted
+                // (in case the activation rolled back due to a failed backend init).
+                await get().loadConfig();
               }
             } else {
               const top: Record<string, unknown> = {};
@@ -392,11 +395,7 @@ export const useSettingsStore = create<SettingsStore>()(
           return;
         }
 
-        const tokens = term
-          .trim()
-          .toLowerCase()
-          .split(/\s+/)
-          .filter(Boolean);
+        const tokens = term.trim().toLowerCase().split(/\s+/).filter(Boolean);
 
         const indexMatched = new Set(sectionsMatchingSettingsSearchQuery(term));
 
@@ -410,8 +409,7 @@ export const useSettingsStore = create<SettingsStore>()(
             const matches = tokens.every((token) =>
               Object.entries(sectionData).some(
                 ([key, value]) =>
-                  key.toLowerCase().includes(token) ||
-                  String(value).toLowerCase().includes(token),
+                  key.toLowerCase().includes(token) || String(value).toLowerCase().includes(token),
               ),
             );
             if (matches) fromConfig.add(section);

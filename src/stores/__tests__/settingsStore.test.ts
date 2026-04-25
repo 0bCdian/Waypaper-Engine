@@ -77,6 +77,12 @@ describe("useSettingsStore", () => {
       await useSettingsStore.getState().loadConfig();
     });
 
+    // Mock getConfig to return the updated backend type after activation.
+    mockAPI.goDaemon.getConfig = vi.fn().mockResolvedValue({
+      ...(await mockAPI.goDaemon.getConfig()),
+      backend: { type: "feh" },
+    });
+
     await act(async () => {
       await useSettingsStore.getState().saveConfigSection("backend", { type: "feh" });
     });

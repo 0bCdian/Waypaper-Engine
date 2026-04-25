@@ -31,6 +31,7 @@ func NewRouter(h Handlers, bus events.Bus) *chi.Mux {
 	// Health endpoints.
 	r.Get("/healthz", h.Health.Healthz)
 	r.Get("/info", h.Health.Info)
+	r.Get("/capabilities", h.Health.Capabilities)
 	r.Post("/shutdown", h.Health.Shutdown)
 
 	// SSE events endpoint.

@@ -261,6 +261,10 @@ export class GoDaemonClient extends EventEmitter {
     return this.request<DaemonInfo>("GET", "/info");
   }
 
+  async getCapabilities(): Promise<{ ffmpeg_available: boolean }> {
+    return this.request<{ ffmpeg_available: boolean }>("GET", "/capabilities");
+  }
+
   async shutdown(): Promise<void> {
     await this.request("POST", "/shutdown");
   }
@@ -291,7 +295,10 @@ export class GoDaemonClient extends EventEmitter {
     return this.request<Image>("POST", `/images/${id}/ensure-browser-preview${q}`);
   }
 
-  async videoLoopExport(imageId: number, body: VideoLoopExportRequest): Promise<VideoLoopExportResult> {
+  async videoLoopExport(
+    imageId: number,
+    body: VideoLoopExportRequest,
+  ): Promise<VideoLoopExportResult> {
     return this.request<VideoLoopExportResult>(
       "POST",
       `/images/${imageId}/video-loop-export`,

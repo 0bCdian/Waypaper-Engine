@@ -1,7 +1,9 @@
 import type { Image, Monitor } from "../../electron/daemon-go-types";
+import { webPreviewPlaybackKind } from "./webPreviewPlayback";
 
 export function getThumbnailSrc(
-  image: Pick<Image, "thumbnails" | "path"> & Partial<Pick<Image, "media_type" | "format">>,
+  image: Pick<Image, "thumbnails" | "path"> &
+    Partial<Pick<Image, "media_type" | "format" | "preview_path">>,
   preferredSize?: keyof Image["thumbnails"],
 ): string {
   if (image.media_type === "gif" || image.format === "gif") {
@@ -17,8 +19,9 @@ export function getThumbnailSrc(
     image.thumbnails?.["1080p"]?.trim() ||
     "";
   if (sized) return sized;
-  // Web entries use path → HTML; never use as <img src> (e.g. drag overlay, playlist strip).
   if (image.media_type === "web") {
+    const kind = webPreviewPlaybackKind(image.preview_path);
+    if (kind === "animatedImage" && image.preview_path) return image.preview_path.trim();
     return "";
   }
   return image.path;

@@ -180,6 +180,14 @@ func startDaemon(configPath string, logLevel string) error {
 				"error", initErr,
 				"hint", "ensure the backend binary is on PATH when the daemon starts and XDG_RUNTIME_DIR matches the backend",
 			)
+			bus.Publish(events.Event{
+				Type: events.BackendUnavailable,
+				Data: map[string]any{
+					"backend":  activeBackend.Name(),
+					"message":  initErr.Error(),
+					"retrying": true,
+				},
+			})
 		} else {
 			slog.Warn("failed to initialize backend", "name", activeBackend.Name(), "error", initErr)
 		}
@@ -209,6 +217,7 @@ func startDaemon(configPath string, logLevel string) error {
 		handler.StartDeferredDaemonRestore(
 			restoreRetryCtx,
 			reg,
+			cfg,
 			db.MonitorStateStore(),
 			db.StateStore(),
 			monManager,
@@ -217,7 +226,7 @@ func startDaemon(configPath string, logLevel string) error {
 			bus,
 		)
 	} else {
-		handler.RestoreWallpapers(ctx, db.MonitorStateStore(), db.StateStore(), reg, monManager, db.ImageStore(), splitter, bus)
+		handler.RestoreWallpapers(ctx, db.MonitorStateStore(), db.StateStore(), reg, cfg, monManager, db.ImageStore(), splitter, bus)
 	}
 
 	// 12. Create playlist manager.

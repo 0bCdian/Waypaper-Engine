@@ -107,6 +107,13 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({ children, clas
     e.dataTransfer.dropEffect = "copy";
   }, []);
 
+  // dragend fires on the drag source after any drop (even when a child calls stopPropagation
+  // on the drop event), so it's a reliable escape hatch to clear the overlay.
+  const handleDragEnd = useCallback(() => {
+    dragCounterRef.current = 0;
+    setIsDragging(false);
+  }, []);
+
   const importUrls = async (urls: string[]) => {
     const downloadedPaths: string[] = [];
     for (const url of urls) {
@@ -238,6 +245,7 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({ children, clas
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
+      onDragEnd={handleDragEnd}
     >
       {isDragging && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center bg-base-300/80 backdrop-blur-sm pointer-events-none">
@@ -277,7 +285,9 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({ children, clas
         {/* Main content area */}
         <div className="drawer-content flex flex-col h-full min-h-0 overflow-hidden">
           <NavBar />
-          <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-base-100">{children}</main>
+          <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-base-100">
+            {children}
+          </main>
         </div>
 
         {/* Sidebar */}

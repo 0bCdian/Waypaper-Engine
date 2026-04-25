@@ -13,11 +13,15 @@ function PlaylistController() {
   const [tickedCountdown, setTickedCountdown] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!activePlaylist?.next_change_at) return;
+    if (!activePlaylist?.next_change_at || activePlaylist.paused) {
+      setTickedCountdown(null);
+      return;
+    }
+
+    const nextChangeAt = activePlaylist.next_change_at;
 
     function tick() {
-      if (!activePlaylist?.next_change_at) return;
-      const diff = new Date(activePlaylist.next_change_at).getTime() - Date.now();
+      const diff = new Date(nextChangeAt).getTime() - Date.now();
       if (diff <= 0) {
         setTickedCountdown(null);
         return;
@@ -37,9 +41,9 @@ function PlaylistController() {
     tick();
     const interval = setInterval(tick, 1000);
     return () => clearInterval(interval);
-  }, [activePlaylist?.next_change_at]);
+  }, [activePlaylist?.next_change_at, activePlaylist?.paused]);
 
-  const countdown = activePlaylist?.next_change_at ? tickedCountdown : null;
+  const countdown = tickedCountdown;
 
   const handlePrevious = useCallback(() => {
     if (!activePlaylist) return;
@@ -93,7 +97,7 @@ function PlaylistController() {
         </span>
       </div>
 
-      {countdown && !activePlaylist.paused && (
+      {countdown && (
         <span className="whitespace-nowrap text-xs tabular-nums text-base-content/50">
           {countdown}
         </span>

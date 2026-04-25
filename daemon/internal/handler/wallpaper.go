@@ -328,15 +328,16 @@ func (h *WallpaperHandler) ensureBackendForMedia(ctx context.Context, mediaType 
 // applyWallpaper delegates to the shared wallpaper.Apply function.
 func (h *WallpaperHandler) applyWallpaper(ctx context.Context, img *store.Image, monitors []monitor.Monitor, mode monitor.MonitorMode, source string) error {
 	return wallpaper.Apply(ctx, wallpaper.ApplyOpts{
-		Image:    img,
-		Monitors: monitors,
-		Mode:     mode,
-		Source:   store.HistorySource{Type: source},
-		Backend:  h.registry.Active(),
-		Splitter: h.splitter,
-		History:  h.historyStore,
-		MonState: h.monitorStateStore,
-		State:    h.stateStore,
-		Bus:      h.bus,
+		Image:             img,
+		Monitors:          monitors,
+		Mode:              mode,
+		Source:            store.HistorySource{Type: source},
+		Backend:           h.registry.Active(),
+		Splitter:          h.splitter,
+		History:           h.historyStore,
+		MonState:          h.monitorStateStore,
+		State:             h.stateStore,
+		Bus:               h.bus,
+		VideoAudioDefault: wallpaper.VideoAudioDefaultFromCfg(h.cfg),
 	})
 }

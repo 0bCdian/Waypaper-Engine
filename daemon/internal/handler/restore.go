@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"waypaper-engine/daemon/internal/backend"
+	"waypaper-engine/daemon/internal/config"
 	"waypaper-engine/daemon/internal/events"
 	"waypaper-engine/daemon/internal/image"
 	"waypaper-engine/daemon/internal/media"
@@ -28,6 +29,7 @@ type extendGroup struct {
 func StartDeferredDaemonRestore(
 	stopCtx context.Context,
 	reg backend.Registry,
+	cfg config.ConfigManager,
 	monitorStateStore store.MonitorStateStore,
 	stateStore store.StateStore,
 	monManager monitor.MonitorManager,
@@ -76,7 +78,7 @@ func StartDeferredDaemonRestore(
 				"backend", active.Name(),
 				"attempt", attempt,
 			)
-			RestoreWallpapers(context.Background(), monitorStateStore, stateStore, reg, monManager, images, splitter, bus)
+			RestoreWallpapers(context.Background(), monitorStateStore, stateStore, reg, cfg, monManager, images, splitter, bus)
 			return
 		}
 
@@ -115,6 +117,7 @@ func RestoreWallpapers(
 	monitorStateStore store.MonitorStateStore,
 	stateStore store.StateStore,
 	reg backend.Registry,
+	cfg config.ConfigManager,
 	monManager monitor.MonitorManager,
 	images store.ImageStore,
 	splitter *image.Splitter,
@@ -151,6 +154,7 @@ func RestoreWallpapers(
 	slog.Info("restore: detected monitors", "monitors", connectedNames)
 
 	activeBackend := reg.Active()
+	videoAudioDefault := wallpaper.VideoAudioDefaultFromCfg(cfg)
 	restored := 0
 	skipped := 0
 	var failures []restoreFailure
@@ -181,13 +185,13 @@ func RestoreWallpapers(
 	}
 
 	for _, grp := range extendGroups {
-		n, grpFailures := restoreExtendGroup(ctx, grp, activeBackend, splitter, stateStore, images)
+		n, grpFailures := restoreExtendGroup(ctx, grp, activeBackend, splitter, stateStore, images, videoAudioDefault)
 		restored += n
 		failures = append(failures, grpFailures...)
 	}
 
 	for _, state := range nonExtendStates {
-		ok, fail := restoreIndividual(ctx, state, connected[state.MonitorName], activeBackend, stateStore, images)
+		ok, fail := restoreIndividual(ctx, state, connected[state.MonitorName], activeBackend, stateStore, images, videoAudioDefault)
 		if ok {
 			restored++
 		}
@@ -229,6 +233,7 @@ func restoreExtendGroup(
 	splitter *image.Splitter,
 	stateStore store.StateStore,
 	images store.ImageStore,
+	videoAudioDefault bool,
 ) (int, []restoreFailure) {
 	restored := 0
 	var failures []restoreFailure
@@ -243,7 +248,7 @@ func restoreExtendGroup(
 	audio := false
 	if resolved {
 		mt = normalizeRestoreMediaType(img.MediaType)
-		audio = img.AudioEnabled
+		audio = img.AudioEnabled && videoAudioDefault
 	}
 	cfgVals := wallpaper.MergedWallpaperConfigForImage(imgPtr)
 
@@ -331,6 +336,7 @@ func restoreIndividual(
 	activeBackend backend.Backend,
 	stateStore store.StateStore,
 	images store.ImageStore,
+	videoAudioDefault bool,
 ) (bool, *restoreFailure) {
 	mt := media.MediaTypeImage
 	audio := false
@@ -338,7 +344,7 @@ func restoreIndividual(
 	if img, err := images.GetByID(ctx, state.ImageID); err == nil && img != nil {
 		imgPtr = img
 		mt = normalizeRestoreMediaType(img.MediaType)
-		audio = img.AudioEnabled
+		audio = img.AudioEnabled && videoAudioDefault
 	}
 	req := backend.WallpaperRequest{
 		MediaType:             mt,

@@ -5,6 +5,8 @@ import (
 	"os"
 	"runtime"
 	"time"
+
+	"waypaper-engine/daemon/internal/image"
 )
 
 // HealthHandler handles health and info endpoints.
@@ -48,6 +50,13 @@ func (h *HealthHandler) Info(w http.ResponseWriter, r *http.Request) {
 		"go_version": runtime.Version(),
 		"os":         runtime.GOOS,
 		"arch":       runtime.GOARCH,
+	})
+}
+
+// Capabilities handles GET /capabilities.
+func (h *HealthHandler) Capabilities(w http.ResponseWriter, r *http.Request) {
+	WriteJSON(w, http.StatusOK, map[string]any{
+		"ffmpeg_available": image.ResolveFfmpeg() != "",
 	})
 }
 
