@@ -47,8 +47,7 @@ function sampleMultipassJson(): unknown {
       {
         type: "buffer",
         name: "Buffer B",
-        code:
-          "void mainImage(out vec4 c, in vec2 fc){ c = texelFetch(iChannel2, ivec2(fc), 0) + vec4(kShared); }",
+        code: "void mainImage(out vec4 c, in vec2 fc){ c = texelFetch(iChannel2, ivec2(fc), 0) + vec4(kShared); }",
         inputs: [
           { channel: 2, type: "buffer", id: "bufBself" },
           { channel: 3, type: "keyboard", id: "kb" },

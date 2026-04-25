@@ -1,9 +1,4 @@
-import {
-  buildFragmentShader,
-  remapShaderErrors,
-  vertexSource,
-  type GlVersion,
-} from "./glslPrefix";
+import { buildFragmentShader, remapShaderErrors, vertexSource, type GlVersion } from "./glslPrefix";
 
 export type ShaderWallLogKind = "ok" | "err" | "info";
 
@@ -93,7 +88,17 @@ export class ShaderWallEngine {
       gl.activeTexture(gl.TEXTURE0 + i);
       const t2 = gl.createTexture();
       gl.bindTexture(gl.TEXTURE_2D, t2);
-      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, 1, 1, 0, gl.RGBA, gl.UNSIGNED_BYTE, new Uint8Array([0, 0, 0, 255]));
+      gl.texImage2D(
+        gl.TEXTURE_2D,
+        0,
+        gl.RGBA,
+        1,
+        1,
+        0,
+        gl.RGBA,
+        gl.UNSIGNED_BYTE,
+        new Uint8Array([0, 0, 0, 255]),
+      );
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
       gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.REPEAT);
@@ -294,7 +299,10 @@ export class ShaderWallEngine {
       this.resizeNeeded = true;
       return;
     }
-    this.fixedBackingSize = { w: Math.max(2, Math.floor(width)), h: Math.max(2, Math.floor(height)) };
+    this.fixedBackingSize = {
+      w: Math.max(2, Math.floor(width)),
+      h: Math.max(2, Math.floor(height)),
+    };
     this.resizeNeeded = true;
   }
 

@@ -78,9 +78,7 @@ const LoadPlaylistModal = ({ playlistsInDB, onPlaylistChanged, currentPlaylistNa
       }
 
       const monitor =
-        monitorSelection.selectedMonitors.length === 1
-          ? monitorSelection.selectedMonitors[0]
-          : "*";
+        monitorSelection.selectedMonitors.length === 1 ? monitorSelection.selectedMonitors[0] : "*";
       const result = await loadAndStartPlaylist(
         selectedPlaylist.id,
         monitor,

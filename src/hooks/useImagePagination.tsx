@@ -78,7 +78,8 @@ export function useImagePagination() {
     }
     const visibleIds = new Set(imagesInCurrentPage.map((img) => img.id));
     const allVisibleSelected =
-      imagesInCurrentPage.length > 0 && imagesInCurrentPage.every((img) => selectedImages.has(img.id));
+      imagesInCurrentPage.length > 0 &&
+      imagesInCurrentPage.every((img) => selectedImages.has(img.id));
     if (allVisibleSelected) {
       const next = new Set(selectedImages);
       for (const id of visibleIds) {

@@ -10,12 +10,7 @@ export const FIELD_PREFIX_BY_BACKEND: Record<string, string> = {
   "wayland-utauri": "waylandutauri.",
 };
 
-const GENERAL_BACKEND_SEARCH_KEYS = new Set([
-  "_nav",
-  "type",
-  "selection_mode",
-  "auto_priorities",
-]);
+const GENERAL_BACKEND_SEARCH_KEYS = new Set(["_nav", "type", "selection_mode", "auto_priorities"]);
 
 /** Maps a settings search row key to the inner Backend settings tab id. */
 export function inferBackendSettingsSubTabFromSearchKey(key: string): "general" | string {

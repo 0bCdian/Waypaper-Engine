@@ -34,7 +34,8 @@ export const GALLERY_FILTER_CHEATSHEET_CARDS: GalleryFilterCheatsheetCard[] = [
   {
     prefix: "color:",
     title: "Hex palette",
-    description: "Exact match: stored dominant-color palette must include this hex (#rgb or #rrggbb).",
+    description:
+      "Exact match: stored dominant-color palette must include this hex (#rgb or #rrggbb).",
     example: "color:#aabbcc",
     badgeVariant: "accent",
   },

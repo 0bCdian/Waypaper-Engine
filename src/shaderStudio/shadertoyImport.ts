@@ -89,7 +89,9 @@ export function buffersInExportOrder(renderpasses: ShadertoyRenderPass[]): Shade
   return renderpasses.filter((p) => passTypeLower(p) === "buffer");
 }
 
-export function findImagePass(renderpasses: ShadertoyRenderPass[]): ShadertoyRenderPass | undefined {
+export function findImagePass(
+  renderpasses: ShadertoyRenderPass[],
+): ShadertoyRenderPass | undefined {
   return renderpasses.find((p) => passTypeLower(p) === "image");
 }
 
@@ -104,7 +106,10 @@ export type PreparedMultipass = {
 /**
  * Validate and prepare data for {@link ShadertoyMultipassEngine}. Applies import sanitizers to all pass bodies + common.
  */
-export function prepareMultipassFromJson(data: ShadertoyJson, opts?: { sanitizeFloatF?: boolean }): PreparedMultipass {
+export function prepareMultipassFromJson(
+  data: ShadertoyJson,
+  opts?: { sanitizeFloatF?: boolean },
+): PreparedMultipass {
   const rp = data.renderpass;
   if (!Array.isArray(rp) || rp.length === 0) {
     throw new Error("Shadertoy JSON has no renderpass array");
@@ -132,7 +137,8 @@ export function prepareMultipassFromJson(data: ShadertoyJson, opts?: { sanitizeF
       bodies[name] = sanitize(p.code ?? "");
     }
   }
-  const title = (data.info?.name ?? data.info?.id ?? "Shadertoy import").trim() || "Shadertoy import";
+  const title =
+    (data.info?.name ?? data.info?.id ?? "Shadertoy import").trim() || "Shadertoy import";
   return { commonSanitized, bodies, buffers, image, title };
 }
 

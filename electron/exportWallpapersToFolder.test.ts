@@ -1,10 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from "vitest";
-import {
-  atomPathToFs,
-  sanitizeExportBaseName,
-  uniqueExportName,
-} from "./exportWallpapersToFolder";
+import { atomPathToFs, sanitizeExportBaseName, uniqueExportName } from "./exportWallpapersToFolder";
 
 describe("atomPathToFs", () => {
   it("strips atom protocol for absolute unix path", () => {

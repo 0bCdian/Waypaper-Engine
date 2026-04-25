@@ -51,7 +51,9 @@ describe("buildFragmentShader", () => {
     const { source, cubeChannels } = buildFragmentShader(user, true);
     expect(cubeChannels.every((c) => !c)).toBe(true);
     expect(source).toContain("void mainImage");
-    expect(source).toContain("void main(){vec2 fc=gl_FragCoord.xy;vec4 c=vec4(0.);mainImage(c,fc);_fragColor=c;}");
+    expect(source).toContain(
+      "void main(){vec2 fc=gl_FragCoord.xy;vec4 c=vec4(0.);mainImage(c,fc);_fragColor=c;}",
+    );
     expect(source).not.toContain("iResolution.y-gl_FragCoord.y");
   });
 });

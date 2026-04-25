@@ -195,7 +195,7 @@ const FONT_PRESET_CHOICES: {
     value: "custom",
     title: "Custom",
     description:
-      "CSS font-family stacks per role. Use installed font family names, e.g. \"Fira Sans\", sans-serif. Leave a field empty to keep the shipped default for that role.",
+      'CSS font-family stacks per role. Use installed font family names, e.g. "Fira Sans", sans-serif. Leave a field empty to keep the shipped default for that role.',
   },
 ];
 
@@ -219,7 +219,11 @@ const TypographySection: React.FC<{
   const cfgBody = config?.app?.font_family_body ?? "";
   const cfgDisplay = config?.app?.font_family_display ?? "";
   const cfgMono = config?.app?.font_family_mono ?? "";
-  if (prevFontCfg.body !== cfgBody || prevFontCfg.display !== cfgDisplay || prevFontCfg.mono !== cfgMono) {
+  if (
+    prevFontCfg.body !== cfgBody ||
+    prevFontCfg.display !== cfgDisplay ||
+    prevFontCfg.mono !== cfgMono
+  ) {
     setPrevFontCfg({ body: cfgBody, display: cfgDisplay, mono: cfgMono });
     setCustomBody(cfgBody);
     setCustomDisplay(cfgDisplay);
@@ -288,7 +292,10 @@ const TypographySection: React.FC<{
       {preset === "custom" && (
         <div className="space-y-3">
           <div>
-            <label className="mb-1 block text-xs font-medium text-base-content/70" htmlFor="font-custom-body">
+            <label
+              className="mb-1 block text-xs font-medium text-base-content/70"
+              htmlFor="font-custom-body"
+            >
               Body
             </label>
             <input
@@ -323,7 +330,10 @@ const TypographySection: React.FC<{
             />
           </div>
           <div>
-            <label className="mb-1 block text-xs font-medium text-base-content/70" htmlFor="font-custom-mono">
+            <label
+              className="mb-1 block text-xs font-medium text-base-content/70"
+              htmlFor="font-custom-mono"
+            >
               Monospace
             </label>
             <input

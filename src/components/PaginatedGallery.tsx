@@ -1,7 +1,7 @@
 import ResponsivePagination from "react-responsive-pagination";
 import "react-responsive-pagination/themes/minimal.css";
 import "../custom.css";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, type RefObject } from "react";
 import { useDroppable } from "@dnd-kit/react";
 import PlaylistTrack from "./PlaylistTrack";
 import PlaylistController from "./PlaylistController";
@@ -17,7 +17,13 @@ import { useContextMenuStore } from "../stores/contextMenuStore";
 import { buildGalleryMenuItems } from "../utils/contextMenuItems";
 import type { DropTargetData } from "../stores/dragStore";
 
-function GalleryDropZone({ children }: { children: React.ReactNode }) {
+function GalleryDropZone({
+  children,
+  onPointerDown,
+}: {
+  children: React.ReactNode;
+  onPointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
+}) {
   const dropData = useMemo<DropTargetData>(() => ({ type: "gallery" }), []);
   const { ref } = useDroppable({
     id: "gallery-area",
@@ -28,6 +34,7 @@ function GalleryDropZone({ children }: { children: React.ReactNode }) {
   return (
     <div
       ref={ref}
+      onPointerDown={onPointerDown}
       className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-track-transparent scrollbar-thumb-base-300 scrollbar-thumb-rounded-sm p-4"
       style={{ scrollbarGutter: "stable" }}
     >
@@ -36,28 +43,22 @@ function GalleryDropZone({ children }: { children: React.ReactNode }) {
   );
 }
 
-function rectsIntersect(a: DOMRect, b: { left: number; top: number; right: number; bottom: number }) {
-  return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
-}
+type MarqueeBox = { x1: number; y1: number; x2: number; y2: number };
 
-function PaginatedGallery() {
-  const { imagesToShow, handlePageChange, currentPage, totalPages, setSelectedImages } =
-    useImagePagination();
+type PaginatedGalleryProps = {
+  onMarqueePointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
+  gridRef: RefObject<HTMLDivElement | null>;
+  marqueeBox: MarqueeBox | null;
+};
+
+function PaginatedGallery({ onMarqueePointerDown, gridRef, marqueeBox }: PaginatedGalleryProps) {
+  const { imagesToShow, handlePageChange, currentPage, totalPages } = useImagePagination();
   const selectedImages = useImagesStore((s) => s.selectedImages);
   const folders = useFoldersStore((s) => s.folders);
   const currentFolderId = useFoldersStore((s) => s.currentFolderId);
   const filters = useImagesStore((s) => s.filters);
   const isNeo = useIsNeo();
   const ref = useRef<HTMLDivElement>(null);
-  const gridRef = useRef<HTMLDivElement>(null);
-  const [marqueeBox, setMarqueeBox] = useState<{
-    x1: number;
-    y1: number;
-    x2: number;
-    y2: number;
-  } | null>(null);
-  const marqueeLiveRef = useRef<{ x1: number; y1: number; x2: number; y2: number } | null>(null);
-  const shiftDuringMarqueeRef = useRef(false);
   const openContextMenu = useContextMenuStore((s) => s.open);
 
   const handleContextMenu = (e: React.MouseEvent) => {
@@ -68,71 +69,6 @@ function PaginatedGallery() {
   const hasActiveFilters = galleryHasActiveFilters(filters);
 
   const showFolders = !hasActiveFilters && currentPage === 1 && folders.length > 0;
-
-  const onGridPointerDown = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      if (e.button !== 0) return;
-      const t = e.target as HTMLElement;
-      if (t.closest("[data-gallery-image-root]") || t.closest("[data-folder-card]")) return;
-
-      e.preventDefault();
-      shiftDuringMarqueeRef.current = e.shiftKey;
-      const { clientX, clientY } = e;
-      const start = { x1: clientX, y1: clientY, x2: clientX, y2: clientY };
-      marqueeLiveRef.current = start;
-      setMarqueeBox(start);
-      document.documentElement.style.userSelect = "none";
-
-      const onMove = (ev: PointerEvent) => {
-        const cur = marqueeLiveRef.current;
-        if (!cur) return;
-        const next = { ...cur, x2: ev.clientX, y2: ev.clientY };
-        marqueeLiveRef.current = next;
-        setMarqueeBox(next);
-      };
-
-      const onUp = () => {
-        window.removeEventListener("pointermove", onMove);
-        window.removeEventListener("pointerup", onUp);
-        document.documentElement.style.userSelect = "";
-
-        const prev = marqueeLiveRef.current;
-        marqueeLiveRef.current = null;
-        setMarqueeBox(null);
-
-        if (!prev || !gridRef.current) return;
-        const left = Math.min(prev.x1, prev.x2);
-        const top = Math.min(prev.y1, prev.y2);
-        const right = Math.max(prev.x1, prev.x2);
-        const bottom = Math.max(prev.y1, prev.y2);
-        const w = right - left;
-        const h = bottom - top;
-        if (w < 4 && h < 4) return;
-
-        const selRect = { left, top, right, bottom };
-        const roots = gridRef.current.querySelectorAll<HTMLElement>("[data-gallery-image-root]");
-        const hitIds = new Set<number>();
-        for (const root of roots) {
-          const r = root.getBoundingClientRect();
-          if (rectsIntersect(r, selRect)) {
-            const id = Number(root.dataset.imageId);
-            if (Number.isFinite(id)) hitIds.add(id);
-          }
-        }
-
-        const prevSel = useImagesStore.getState().selectedImages;
-        const nextSel =
-          shiftDuringMarqueeRef.current && prevSel.size > 0
-            ? new Set([...prevSel, ...hitIds])
-            : hitIds;
-        setSelectedImages(nextSel);
-      };
-
-      window.addEventListener("pointermove", onMove);
-      window.addEventListener("pointerup", onUp);
-    },
-    [setSelectedImages],
-  );
 
   return (
     <LazyMotion features={domAnimation}>
@@ -151,7 +87,7 @@ function PaginatedGallery() {
             className="flex-1 min-h-0 flex flex-col transition focus:outline-hidden"
             onContextMenu={handleContextMenu}
           >
-            <GalleryDropZone>
+            <GalleryDropZone onPointerDown={onMarqueePointerDown}>
               <AnimatePresence mode="wait">
                 <m.div
                   ref={gridRef}
@@ -160,7 +96,6 @@ function PaginatedGallery() {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.15 }}
-                  onPointerDown={onGridPointerDown}
                   className="m-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(16vw,1fr))] gap-3 md:gap-3 lg:gap-3 xl:gap-4 2xl:gap-5 [&>:only-child]:max-w-[25vw] [&>:only-child]:justify-self-center"
                 >
                   {showFolders &&

@@ -9,7 +9,10 @@ const HAVE_CURRENT_DATA = 2; // HTMLMediaElement.HAVE_CURRENT_DATA
  * Resolves when the element has intrinsic dimensions and at least one decoded frame,
  * or after `timeoutMs` (whichever comes first).
  */
-export function waitUntilVideoCanSample(vs: HTMLVideoElement, timeoutMs = 10_000): Promise<boolean> {
+export function waitUntilVideoCanSample(
+  vs: HTMLVideoElement,
+  timeoutMs = 10_000,
+): Promise<boolean> {
   if (vs.readyState >= HAVE_CURRENT_DATA && vs.videoWidth > 0 && vs.videoHeight > 0) {
     return Promise.resolve(true);
   }
@@ -41,7 +44,9 @@ export function waitUntilVideoCanSample(vs: HTMLVideoElement, timeoutMs = 10_000
  * Snapshot the current decoded frame. Prefer intrinsic crop so layout/CSS size of the
  * element does not shrink the bitmap (important for off-screen / minimal layout videos).
  */
-export async function createImageBitmapFromVideo(vs: HTMLVideoElement): Promise<ImageBitmap | null> {
+export async function createImageBitmapFromVideo(
+  vs: HTMLVideoElement,
+): Promise<ImageBitmap | null> {
   try {
     const w = vs.videoWidth;
     const h = vs.videoHeight;

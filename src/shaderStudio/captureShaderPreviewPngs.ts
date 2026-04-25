@@ -25,7 +25,9 @@ function blobToUint8(blob: Blob): Promise<Uint8Array> {
 }
 
 async function canvasToPngBytes(canvas: HTMLCanvasElement): Promise<Uint8Array> {
-  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob((b) => resolve(b), "image/png"));
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob((b) => resolve(b), "image/png"),
+  );
   if (!blob) throw new Error("canvas.toBlob returned null");
   return blobToUint8(blob);
 }
@@ -50,7 +52,10 @@ export async function captureShaderPreviewPngs(
   const out: Uint8Array[] = [];
 
   if (opts.mode === "single") {
-    const eng = new ShaderWallEngine(canvas, { wallpaperMouse: false, preserveDrawingBuffer: true });
+    const eng = new ShaderWallEngine(canvas, {
+      wallpaperMouse: false,
+      preserveDrawingBuffer: true,
+    });
     if (!eng.init()) {
       eng.dispose();
       return null;

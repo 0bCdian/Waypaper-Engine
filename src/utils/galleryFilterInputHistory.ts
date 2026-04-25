@@ -28,7 +28,10 @@ export function recordGalleryFilterInputHistoryEntry(raw: string): void {
   if (!entry) return;
   try {
     const prev = loadGalleryFilterInputHistory();
-    const next = [entry, ...prev.filter((x) => x !== entry)].slice(0, GALLERY_FILTER_INPUT_HISTORY_MAX);
+    const next = [entry, ...prev.filter((x) => x !== entry)].slice(
+      0,
+      GALLERY_FILTER_INPUT_HISTORY_MAX,
+    );
     localStorage.setItem(GALLERY_FILTER_INPUT_HISTORY_KEY, JSON.stringify(next));
   } catch {
     /* ignore quota / private mode */

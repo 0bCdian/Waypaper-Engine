@@ -95,7 +95,9 @@ export function applyAppTypography(app: AppFontSlice | null | undefined): void {
 /** For tests: expected resolved stacks when not using stylesheet fallbacks */
 export function resolvedStacksForPreset(
   preset: FontPreset,
-  custom?: Partial<Pick<AppConfig, "font_family_body" | "font_family_display" | "font_family_mono">>,
+  custom?: Partial<
+    Pick<AppConfig, "font_family_body" | "font_family_display" | "font_family_mono">
+  >,
 ): { body: string; display: string; mono: string } {
   if (preset === "bundled") {
     return {

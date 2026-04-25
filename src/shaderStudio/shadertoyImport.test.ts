@@ -35,7 +35,11 @@ describe("buffersInExportOrder", () => {
 
 describe("prepareMultipassFromJson", () => {
   it("throws without image pass", () => {
-    const data = { renderpass: [{ type: "buffer", name: "B", code: "void mainImage(out vec4 c,vec2 f){c=vec4(0);}" }] };
+    const data = {
+      renderpass: [
+        { type: "buffer", name: "B", code: "void mainImage(out vec4 c,vec2 f){c=vec4(0);}" },
+      ],
+    };
     expect(() => prepareMultipassFromJson(data)).toThrow(/no image pass/i);
   });
 
@@ -79,7 +83,11 @@ describe("prepareMultipassFromJson", () => {
           code: "void mainImage(out vec4 c, in vec2 f){ c=vec4(shared); }",
           outputs: [{ id: "bid" }],
         },
-        { type: "Image", name: "Image", code: "void mainImage(out vec4 c, in vec2 f){ c=vec4(1.0); }" },
+        {
+          type: "Image",
+          name: "Image",
+          code: "void mainImage(out vec4 c, in vec2 f){ c=vec4(1.0); }",
+        },
       ],
     };
     const p = prepareMultipassFromJson(data);

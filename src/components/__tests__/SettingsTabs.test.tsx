@@ -169,10 +169,7 @@ describe("SettingsTabs", () => {
     await waitFor(() => {
       expect(screen.getByTestId("app-settings")).toBeInTheDocument();
     });
-    expect(localStorage.setItem).toHaveBeenCalledWith(
-      SETTINGS_ACTIVE_SECTION_STORAGE_KEY,
-      "app",
-    );
+    expect(localStorage.setItem).toHaveBeenCalledWith(SETTINGS_ACTIVE_SECTION_STORAGE_KEY, "app");
   });
 
   it("opens Wallhaven tab when navigation state requests it", async () => {

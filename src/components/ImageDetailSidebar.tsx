@@ -172,9 +172,13 @@ function WebWallpaperConfigForm({
   const [busy, setBusy] = useState(false);
   const [saveError, setSaveError] = useState(false);
   const overridesRef = useRef(overrides);
-  useEffect(() => { overridesRef.current = overrides; });
+  useEffect(() => {
+    overridesRef.current = overrides;
+  });
   const capsRef = useRef(caps);
-  useEffect(() => { capsRef.current = caps; });
+  useEffect(() => {
+    capsRef.current = caps;
+  });
 
   const [prevOverridesKey, setPrevOverridesKey] = useState(serverOverridesKey);
   const [prevCapsKey, setPrevCapsKey] = useState(serverCapsKey);
@@ -269,8 +273,8 @@ function WebWallpaperConfigForm({
         {wutCfg && wutCfg.allow_network_wallpapers !== true && (
           <p className="text-[11px] text-base-content/50">
             Turn on &quot;Allow network for HTML wallpapers&quot; in Backend → wayland-utauri to
-            enable outbound fetch/XHR/WebSocket (manifest <code className="text-[10px]">network</code>{" "}
-            must still be on).
+            enable outbound fetch/XHR/WebSocket (manifest{" "}
+            <code className="text-[10px]">network</code> must still be on).
           </p>
         )}
         <div className="flex flex-col gap-2">
@@ -546,7 +550,11 @@ function ImageDetailSidebar() {
     if (!selectedImage) return;
     setSaving(true);
     const ok = await trySaveImageTags(selectedImage.id, tags);
-    addToast(ok ? "Tags saved" : "Failed to save tags", ok ? "success" : "error", ok ? 2000 : undefined);
+    addToast(
+      ok ? "Tags saved" : "Failed to save tags",
+      ok ? "success" : "error",
+      ok ? 2000 : undefined,
+    );
     setSaving(false);
   }, [selectedImage, tags, addToast]);
 

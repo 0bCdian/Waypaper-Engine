@@ -19,16 +19,12 @@ export function resolveYtDlp(): string {
   return "";
 }
 
-export type YoutubeDownloadResult =
-  | { ok: true; filePath: string }
-  | { ok: false; message: string };
+export type YoutubeDownloadResult = { ok: true; filePath: string } | { ok: false; message: string };
 
 /**
  * Downloads best merged mp4 (or closest) into a fresh temp directory; returns absolute path to the file.
  */
-export async function downloadYoutubeVideo(
-  url: string,
-): Promise<YoutubeDownloadResult> {
+export async function downloadYoutubeVideo(url: string): Promise<YoutubeDownloadResult> {
   const trimmed = url.trim();
   if (!trimmed) {
     return { ok: false, message: "URL is empty" };

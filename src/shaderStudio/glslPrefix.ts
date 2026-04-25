@@ -51,8 +51,7 @@ export function detectCubeChannels(code: string): boolean[] {
       /\brefract\s*\(/,
       /\bnormalize\s*\([^)]*\brd\b/,
     ];
-    const bareVec3 =
-      /^[a-zA-Z_]\w*$/.test(arg) && /^(rd|dir|ray|normal|n|rfd|rfcol)$/.test(arg);
+    const bareVec3 = /^[a-zA-Z_]\w*$/.test(arg) && /^(rd|dir|ray|normal|n|rfd|rfcol)$/.test(arg);
     const has2DSwizzle = /\.(xy|xz|yz|st|uv)\s*$/.test(arg);
 
     if (!has2DSwizzle && (bareVec3 || vec3Signals.some((p) => p.test(arg)))) {
@@ -62,7 +61,10 @@ export function detectCubeChannels(code: string): boolean[] {
   return cube;
 }
 
-export function buildPrefix(cubeChans: boolean[], isGL2: boolean): { src: string; lineCount: number } {
+export function buildPrefix(
+  cubeChans: boolean[],
+  isGL2: boolean,
+): { src: string; lineCount: number } {
   const chanDecls = [0, 1, 2, 3]
     .map((i) => `uniform ${cubeChans[i] ? "samplerCube" : "sampler2D  "} iChannel${i};`)
     .join("\n");
@@ -110,7 +112,10 @@ vec4   round(vec4   x){return floor(x+.5);}
   return { src, lineCount: src.split("\n").length };
 }
 
-export function buildFragmentShader(userCode: string, isGL2: boolean): {
+export function buildFragmentShader(
+  userCode: string,
+  isGL2: boolean,
+): {
   source: string;
   prefixLineCount: number;
   cubeChannels: boolean[];

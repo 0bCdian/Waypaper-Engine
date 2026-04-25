@@ -1,11 +1,5 @@
 /** Lowercase extensions including leading dot — for dropped / picked paths. */
-const VIDEO_FILE_EXTENSIONS = new Set([
-  ".mp4",
-  ".webm",
-  ".mkv",
-  ".avi",
-  ".mov",
-]);
+const VIDEO_FILE_EXTENSIONS = new Set([".mp4", ".webm", ".mkv", ".avi", ".mov"]);
 
 export function isVideoFilePath(filePath: string): boolean {
   const i = Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\"));

@@ -63,14 +63,16 @@ export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({ cl
   const [error, setError] = useState<string | null>(null);
 
   const loadStatus = () => {
-    fetchDaemonStatus().then((result) => {
-      if (result) {
-        setStatus(result);
-        setError(null);
-      }
-    }).catch((err) => {
-      setError(err instanceof Error ? err.message : "Failed to load daemon status");
-    });
+    fetchDaemonStatus()
+      .then((result) => {
+        if (result) {
+          setStatus(result);
+          setError(null);
+        }
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Failed to load daemon status");
+      });
   };
 
   // Load initial status

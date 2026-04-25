@@ -3,8 +3,7 @@
  * Kolision faces are loaded via Fontsource in index.css; Google Sans ditto.
  */
 
-export const BUNDLED_FONT_BODY =
-  '"Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif';
+export const BUNDLED_FONT_BODY = '"Inter Variable", "Inter", ui-sans-serif, system-ui, sans-serif';
 
 export const BUNDLED_FONT_DISPLAY =
   '"Space Grotesk Variable", "Space Grotesk", ui-sans-serif, system-ui, sans-serif';

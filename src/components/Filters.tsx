@@ -1,4 +1,13 @@
-import { createContext, useContext, useEffect, useState, useRef, useMemo, useId, useCallback } from "react";
+import {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useRef,
+  useMemo,
+  useId,
+  useCallback,
+} from "react";
 import CreatableSelect from "react-select/creatable";
 import type { MultiValue, SelectInstance } from "react-select";
 import { components as builtinSelectComponents } from "react-select";
@@ -98,7 +107,6 @@ function Filters() {
     void inputHistoryTick;
     return loadGalleryFilterInputHistory().length;
   }, [inputHistoryTick]);
-
 
   /** Keep sort / media type aligned with persisted store (e.g. after reload or external setFilters). */
   const [prevStoreOrder, setPrevStoreOrder] = useState(filters.order);
@@ -258,7 +266,7 @@ function Filters() {
     <section
       className={`group mt-4 lg:mt-10 mb-3 lg:mb-5 flex flex-wrap justify-center gap-2 px-2${isNeo ? " neo-filters-strip" : ""}`}
     >
-      <div className="tooltip" data-tip="more filters">
+      <div className="tooltip" data-prevent-gallery-marquee data-tip="more filters">
         <button
           type="button"
           className="btn btn-active rounded-xl uppercase"
@@ -269,7 +277,7 @@ function Filters() {
           Filters
         </button>
       </div>
-      <div className="tooltip" data-tip="Order by Name or ID">
+      <div className="tooltip" data-prevent-gallery-marquee data-tip="Order by Name or ID">
         <label className="btn swap btn-active swap-rotate rounded-xl text-xs uppercase">
           <input
             type="checkbox"
@@ -286,7 +294,7 @@ function Filters() {
           <div className="swap-off">ID</div>
         </label>
       </div>
-      <div className="tooltip" data-tip="Ascending or Descending">
+      <div className="tooltip" data-prevent-gallery-marquee data-tip="Ascending or Descending">
         <label className="btn swap btn-active swap-rotate rounded-xl uppercase">
           <input
             type="checkbox"
@@ -303,24 +311,31 @@ function Filters() {
           <div className="swap-off">Desc</div>
         </label>
       </div>
-      <div className="tooltip shrink-0 self-center" data-tip="Filter syntax (tokens, color, near)">
-          <button
-            type="button"
-            className="btn btn-active rounded-xl uppercase min-h-10 min-w-16 text-lg font-semibold"
-            aria-label="Filter syntax help"
-            onClick={() => useModalStore.getState().open("GalleryFilterCheatsheetModal")}
-          >
-            ?
-          </button>
-        </div>
-      <div className="join">
+      <div
+        className="tooltip shrink-0 self-center"
+        data-prevent-gallery-marquee
+        data-tip="Filter syntax (tokens, color, near)"
+      >
+        <button
+          type="button"
+          className="btn btn-active rounded-xl uppercase min-h-10 min-w-16 text-lg font-semibold"
+          aria-label="Filter syntax help"
+          onClick={() => useModalStore.getState().open("GalleryFilterCheatsheetModal")}
+        >
+          ?
+        </button>
+      </div>
+      <div className="join" data-prevent-gallery-marquee>
         {(["all", "image", "video", "web", "gif"] as const).map((type) => (
           <button
             key={type}
             type="button"
             className={`join-item btn btn-md ${partialFilters.mediaType === type ? "btn-primary" : "btn-active"}`}
             onClick={() => {
-              setPartialFilters((previous) => ({ ...previous, mediaType: type }));
+              setPartialFilters((previous) => ({
+                ...previous,
+                mediaType: type,
+              }));
             }}
           >
             {type === "all"
@@ -334,47 +349,53 @@ function Filters() {
         ))}
       </div>
 
-      <div className="relative z-10 flex w-full min-w-[min(100%,18rem)] max-w-3xl flex-1 items-stretch gap-1">
+      <div
+        className="relative z-10 flex w-full min-w-[min(100%,18rem)] max-w-3xl flex-1 items-stretch gap-1"
+        data-prevent-gallery-marquee
+      >
         <div className="min-w-0 flex-1">
           <FilterInputNameContext.Provider value={filterInputName}>
-          <CreatableSelect<TokenOption, true>
-            key={`gf-select-${inputHistoryTick}`}
-            ref={selectRef}
-            inputId={reactSelectId}
-            instanceId={reactSelectId}
-            isMulti
-            unstyled
-            components={{ Input: GalleryFilterInput }}
-            menuPortalTarget={typeof document !== "undefined" ? document.body : undefined}
-            menuPosition="fixed"
-            styles={{
-              menuPortal: (base) => ({ ...base, zIndex: 10000 }),
-            }}
-            classNames={filterSelectClassNames}
-            formatCreateLabel={(inputValue) => `Add "${inputValue}"`}
-            isValidNewOption={(inputValue) => inputValue.trim().length > 0}
-            placeholder={TOKEN_PLACEHOLDER}
-            options={selectOptions}
-            value={tokenValue}
-            onInputChange={(v) => {
-              // Sync on every rs notification (`input-change`, `set-value` after chip, `menu-close`, `input-blur`).
-              // Only updating on `input-change` left `filterInput` stale so history options disappeared after select.
-              setFilterInput(v);
-            }}
-            onChange={(opts) => {
-              onTokensChange(opts as MultiValue<TokenOption>);
-            }}
-            closeMenuOnSelect={false}
-            /** Options are fully derived in `selectOptions` (history + creatable). Default rs filter would hide most rows (e.g. only one past `q:…` matching the whole input). */
-            filterOption={null}
-            noOptionsMessage={() => null}
-          />
+            <CreatableSelect<TokenOption, true>
+              key={`gf-select-${inputHistoryTick}`}
+              ref={selectRef}
+              inputId={reactSelectId}
+              instanceId={reactSelectId}
+              isMulti
+              unstyled
+              components={{ Input: GalleryFilterInput }}
+              menuPortalTarget={typeof document !== "undefined" ? document.body : undefined}
+              menuPosition="fixed"
+              styles={{
+                menuPortal: (base) => ({ ...base, zIndex: 10000 }),
+              }}
+              classNames={filterSelectClassNames}
+              formatCreateLabel={(inputValue) => `Add "${inputValue}"`}
+              isValidNewOption={(inputValue) => inputValue.trim().length > 0}
+              placeholder={TOKEN_PLACEHOLDER}
+              options={selectOptions}
+              value={tokenValue}
+              onInputChange={(v) => {
+                // Sync on every rs notification (`input-change`, `set-value` after chip, `menu-close`, `input-blur`).
+                // Only updating on `input-change` left `filterInput` stale so history options disappeared after select.
+                setFilterInput(v);
+              }}
+              onChange={(opts) => {
+                onTokensChange(opts as MultiValue<TokenOption>);
+              }}
+              closeMenuOnSelect={false}
+              /** Options are fully derived in `selectOptions` (history + creatable). Default rs filter would hide most rows (e.g. only one past `q:…` matching the whole input). */
+              filterOption={null}
+              noOptionsMessage={() => null}
+            />
           </FilterInputNameContext.Provider>
         </div>
         {(partialFilters.filterTokens.length > 0 || inputHistoryCount > 0) && (
           <div className="flex shrink-0 flex-col items-end justify-center gap-0.5 self-stretch sm:flex-row sm:items-center sm:gap-1">
             {inputHistoryCount > 0 && (
-              <div className="tooltip tooltip-left" data-tip="Clear recent search history (saved suggestions)">
+              <div
+                className="tooltip tooltip-left"
+                data-tip="Clear recent search history (saved suggestions)"
+              >
                 <button
                   type="button"
                   className="btn btn-ghost btn-sm h-10 min-h-10 px-2 text-base-content/70 hover:text-base-content"

@@ -37,7 +37,9 @@ const navItems: NavItem[] = [
 ];
 
 function isSettingsNavSection(value: unknown): value is ConfigSection {
-  return typeof value === "string" && (SETTINGS_NAV_SECTION_IDS as readonly string[]).includes(value);
+  return (
+    typeof value === "string" && (SETTINGS_NAV_SECTION_IDS as readonly string[]).includes(value)
+  );
 }
 
 export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className }) => {

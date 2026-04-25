@@ -9,11 +9,7 @@ export interface SettingsSearchEntry {
 }
 
 function normalizeTokens(raw: string): string[] {
-  return raw
-    .trim()
-    .toLowerCase()
-    .split(/\s+/)
-    .filter(Boolean);
+  return raw.trim().toLowerCase().split(/\s+/).filter(Boolean);
 }
 
 function entryHaystack(e: SettingsSearchEntry): string {

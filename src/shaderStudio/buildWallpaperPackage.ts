@@ -94,12 +94,11 @@ export type MultipassPayload = {
 };
 
 /** Only buffer-kind inputs need an id (pointer to another pass's output); keyboard/texture/etc. have no id. */
-function toInputRef(inp: {
+function toInputRef(inp: { channel: number; id?: string; type?: string; ctype?: string }): {
   channel: number;
+  kind: string;
   id?: string;
-  type?: string;
-  ctype?: string;
-}): { channel: number; kind: string; id?: string } {
+} {
   const kind = normalizeInputKind(inp);
   if (kind === "buffer" && inp.id) return { channel: inp.channel | 0, kind, id: inp.id };
   return { channel: inp.channel | 0, kind };
@@ -140,9 +139,7 @@ export function buildShaderMultipassWebWallpaperFiles(
 ): ShaderWebWallpaperFiles {
   const title = opts.title.trim() || DEFAULT_TITLE;
   const payload: MultipassPayload =
-    "payload" in opts
-      ? { ...opts.payload }
-      : serializeMultipass(opts.prepared);
+    "payload" in opts ? { ...opts.payload } : serializeMultipass(opts.prepared);
   payload.title = title;
 
   const manifest = {

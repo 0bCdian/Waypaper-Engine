@@ -36,7 +36,8 @@
 }
 
 [data-design="neobrutalist"] .btn:hover {
-  box-shadow: calc(var(--neo-shadow-x) + 2px) calc(var(--neo-shadow-y) + 2px) 0 0 var(--neo-shadow-color);
+  box-shadow: calc(var(--neo-shadow-x) + 2px) calc(var(--neo-shadow-y) + 2px) 0 0
+    var(--neo-shadow-color);
 }
 
 [data-design="neobrutalist"] .btn:active {
@@ -90,7 +91,8 @@
   border-radius: var(--neo-radius);
   border: calc(var(--neo-border-width) + 1px) solid
     oklch(from var(--color-base-content) l c h / 0.95);
-  box-shadow: calc(var(--neo-shadow-x) * 2) calc(var(--neo-shadow-y) * 2) 0 0 var(--neo-shadow-color);
+  box-shadow: calc(var(--neo-shadow-x) * 2) calc(var(--neo-shadow-y) * 2) 0 0
+    var(--neo-shadow-color);
   overflow: visible;
 }
 
@@ -134,7 +136,8 @@
 }
 
 [data-design="neobrutalist"] .neo-close-btn:hover {
-  box-shadow: calc(var(--neo-shadow-x) - 2px) calc(var(--neo-shadow-y) - 2px) 0 0 var(--neo-shadow-color);
+  box-shadow: calc(var(--neo-shadow-x) - 2px) calc(var(--neo-shadow-y) - 2px) 0 0
+    var(--neo-shadow-color);
 }
 
 [data-design="neobrutalist"] .neo-close-btn:active {
@@ -761,7 +764,8 @@
 
 [data-design="neobrutalist"] .neo-rs-control.neo-rs-control--focused {
   transform: translate(-1px, -1px);
-  box-shadow: calc(var(--neo-shadow-x) + 2px) calc(var(--neo-shadow-y) + 2px) 0 0 var(--neo-shadow-color);
+  box-shadow: calc(var(--neo-shadow-x) + 2px) calc(var(--neo-shadow-y) + 2px) 0 0
+    var(--neo-shadow-color);
 }
 
 [data-design="neobrutalist"] .neo-rs-menu {

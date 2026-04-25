@@ -150,10 +150,10 @@ const AdvancedFiltersModal = () => {
 
         <p className="text-sm text-base-content/70">
           Use the gallery token bar for tags, media type, file extension, exact color, near color
-          (CIE76), and text search (
-          <code className="text-xs">tag:</code>, <code className="text-xs">type:</code>,{" "}
-          <code className="text-xs">ext:</code>, <code className="text-xs">color:</code>,{" "}
-          <code className="text-xs">near:</code>, <code className="text-xs">q:</code>
+          (CIE76), and text search (<code className="text-xs">tag:</code>,{" "}
+          <code className="text-xs">type:</code>, <code className="text-xs">ext:</code>,{" "}
+          <code className="text-xs">color:</code>, <code className="text-xs">near:</code>,{" "}
+          <code className="text-xs">q:</code>
           ). Open the <strong>?</strong> button next to the bar for a full cheatsheet.
         </p>
 

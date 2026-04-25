@@ -5,29 +5,45 @@ import { GALLERY_FILTER_CHEATSHEET_CARDS } from "../utils/galleryFilterCheatshee
 import { useIsNeo } from "../hooks/useIsNeo";
 import { cn } from "../utils/cn";
 
-const badgeClass: Record<
-  (typeof GALLERY_FILTER_CHEATSHEET_CARDS)[number]["badgeVariant"],
-  string
-> = {
-  primary: "badge badge-primary border-0 font-mono font-bold",
-  secondary: "badge badge-secondary border-0 font-mono font-bold text-secondary-content",
-  accent: "badge badge-accent border-0 font-mono font-bold",
-  info: "badge badge-info border-0 font-mono font-bold",
-  success: "badge badge-success border-0 font-mono font-bold",
-  warning: "badge badge-warning border-0 font-mono font-bold",
-};
+const badgeClass: Record<(typeof GALLERY_FILTER_CHEATSHEET_CARDS)[number]["badgeVariant"], string> =
+  {
+    primary: "badge badge-primary border-0 font-mono font-bold",
+    secondary: "badge badge-secondary border-0 font-mono font-bold text-secondary-content",
+    accent: "badge badge-accent border-0 font-mono font-bold",
+    info: "badge badge-info border-0 font-mono font-bold",
+    success: "badge badge-success border-0 font-mono font-bold",
+    warning: "badge badge-warning border-0 font-mono font-bold",
+  };
 
 function CloseIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6" fill="none" viewBox="0 0 24 24" aria-hidden>
-      <path stroke="currentColor" strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className="h-6 w-6"
+      fill="none"
+      viewBox="0 0 24 24"
+      aria-hidden
+    >
+      <path
+        stroke="currentColor"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2.5}
+        d="M6 18L18 6M6 6l12 12"
+      />
     </svg>
   );
 }
 
 function InfoIcon() {
   return (
-    <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 shrink-0 text-primary" fill="none" viewBox="0 0 24 24" aria-hidden>
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      className="h-8 w-8 shrink-0 text-primary"
+      fill="none"
+      viewBox="0 0 24 24"
+      aria-hidden
+    >
       <path
         stroke="currentColor"
         strokeLinecap="round"
@@ -87,9 +103,10 @@ const GalleryFilterCheatsheetModal = () => {
               isNeo ? "text-secondary-content/95" : "text-base-content/80",
             )}
           >
-            Our filter bar uses a <strong>token-based</strong> model: one chip per token. Multiple chips combine with{" "}
-            <strong>AND</strong> — an image must satisfy every active token. Resolution filters live under{" "}
-            <strong>Filters</strong> (advanced), not in this bar.
+            Our filter bar uses a <strong>token-based</strong> model: one chip per token. Multiple
+            chips combine with <strong>AND</strong> — an image must satisfy every active token.
+            Resolution filters live under <strong>Filters</strong> (advanced), not in the search
+            bar.
           </p>
         </div>
         <button
@@ -112,22 +129,26 @@ const GalleryFilterCheatsheetModal = () => {
           <h3
             className={cn(
               "font-[family-name:var(--font-display)] font-bold uppercase tracking-tight text-base-content",
-              isNeo ? "text-xl underline decoration-4 decoration-primary underline-offset-4" : "text-lg",
+              isNeo
+                ? "text-xl underline decoration-4 decoration-primary underline-offset-4"
+                : "text-lg",
             )}
           >
             Token reference
           </h3>
-          <p className={cn("text-base leading-relaxed", isNeo ? "text-base-content" : "text-base-content/90")}>
-            Type a prefix and value, then press Enter or pick a suggestion where available. Plain text without a prefix is
-            treated like <code className="font-mono text-sm">q:</code> after splitting.
+          <p
+            className={cn(
+              "text-base leading-relaxed",
+              isNeo ? "text-base-content" : "text-base-content/90",
+            )}
+          >
+            Type a prefix and value, then press Enter or pick a suggestion where available. Plain
+            text without a prefix is treated like <code className="font-mono text-sm">q:</code>{" "}
+            after splitting.
           </p>
         </section>
 
-        <section
-          className={cn(
-            "grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6 xl:grid-cols-3",
-          )}
-        >
+        <section className={cn("grid grid-cols-1 gap-5 md:grid-cols-2 md:gap-6 xl:grid-cols-3")}>
           {GALLERY_FILTER_CHEATSHEET_CARDS.map((card) => (
             <article
               key={card.prefix}
@@ -144,7 +165,14 @@ const GalleryFilterCheatsheetModal = () => {
                   {card.title}
                 </span>
               </div>
-              <p className={cn("text-sm leading-snug", isNeo ? "opacity-90" : "text-base-content/80")}>{card.description}</p>
+              <p
+                className={cn(
+                  "text-sm leading-snug",
+                  isNeo ? "opacity-90" : "text-base-content/80",
+                )}
+              >
+                {card.description}
+              </p>
               <div
                 className={cn(
                   "font-mono text-xs italic",
@@ -171,14 +199,21 @@ const GalleryFilterCheatsheetModal = () => {
             Combining tokens
           </h3>
           <div className="grid gap-4 text-sm leading-relaxed md:grid-cols-2">
-            <p className={cn("border-l-4 pl-4", isNeo ? "border-secondary" : "border-secondary/80")}>
-              <strong className="text-secondary">Multiple color tokens:</strong> each <code className="bg-white/10 px-1 font-mono">color:</code>{" "}
-              token is required — stored palette must include every requested swatch (AND).
+            <p
+              className={cn("border-l-4 pl-4", isNeo ? "border-secondary" : "border-secondary/80")}
+            >
+              <strong className="text-secondary">Multiple color tokens:</strong> each{" "}
+              <code className="bg-white/10 px-1 font-mono">color:</code> token is required — stored
+              palette must include every requested swatch (AND).
             </p>
-            <p className={cn("border-l-4 pl-4", isNeo ? "border-secondary" : "border-secondary/80")}>
-              <strong className="text-secondary">Near constraints:</strong> the <code className="bg-white/10 px-1 font-mono">~</code> suffix
-              on <code className="bg-white/10 px-1 font-mono">near:</code> sets the maximum CIE76 ΔE. Multiple{" "}
-              <code className="bg-white/10 px-1 font-mono">near:</code> tokens are also ANDed.
+            <p
+              className={cn("border-l-4 pl-4", isNeo ? "border-secondary" : "border-secondary/80")}
+            >
+              <strong className="text-secondary">Near constraints:</strong> the{" "}
+              <code className="bg-white/10 px-1 font-mono">~</code> suffix on{" "}
+              <code className="bg-white/10 px-1 font-mono">near:</code> sets the maximum CIE76 ΔE.
+              Multiple <code className="bg-white/10 px-1 font-mono">near:</code> tokens are also
+              ANDed.
             </p>
           </div>
         </footer>
@@ -191,8 +226,9 @@ const GalleryFilterCheatsheetModal = () => {
         >
           <div className="flex items-start gap-3">
             <InfoIcon />
-            <p className="font-mono text-[10px] uppercase leading-tight tracking-widest text-base-content/80">
-              Dominant colors per image come from k-means in CIELAB at import time, stored as hex swatches.
+            <p className="font-mono self-center text-[10px] uppercase leading-tight tracking-widest text-base-content/80">
+              Dominant colors per image come from k-means in CIELAB at import time, stored as hex
+              swatches.
             </p>
           </div>
         </aside>

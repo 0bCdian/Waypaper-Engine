@@ -2,10 +2,7 @@ import type React from "react";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { cn } from "@/utils/cn";
 import type { ConfigSection } from "@/shared/types/unifiedConfig";
-import {
-  filterSettingsSearchEntries,
-  type SettingsSearchEntry,
-} from "@/utils/settingsSearchIndex";
+import { filterSettingsSearchEntries, type SettingsSearchEntry } from "@/utils/settingsSearchIndex";
 
 interface SettingsSearchProps {
   searchTerm: string;
@@ -30,7 +27,10 @@ export const SettingsSearch: React.FC<SettingsSearchProps> = ({
   compact = false,
 }) => {
   const [isFocused, setIsFocused] = useState(false);
-  const [navState, setNavState] = useState<{ idx: number; term: string }>({ idx: -1, term: searchTerm });
+  const [navState, setNavState] = useState<{ idx: number; term: string }>({
+    idx: -1,
+    term: searchTerm,
+  });
   const selectedIdx = navState.term === searchTerm ? navState.idx : -1;
   const inputRef = useRef<HTMLInputElement>(null);
   const suggestionsRef = useRef<HTMLDivElement>(null);

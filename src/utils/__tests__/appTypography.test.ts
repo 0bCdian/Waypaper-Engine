@@ -33,7 +33,7 @@ describe("sanitizeFontStack", () => {
   it("returns null for empty and rejects injection-ish chars", () => {
     expect(sanitizeFontStack("")).toBe(null);
     expect(sanitizeFontStack("   ")).toBe(null);
-    expect(sanitizeFontStack('foo;bar')).toBe(null);
+    expect(sanitizeFontStack("foo;bar")).toBe(null);
     expect(sanitizeFontStack("a{b}")).toBe(null);
   });
 

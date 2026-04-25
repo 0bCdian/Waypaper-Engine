@@ -3,7 +3,11 @@
  */
 
 import type { PreparedMultipass } from "./shadertoyImport";
-import { normalizeInputKind, type ShadertoyInput, type ShadertoyRenderPass } from "./shadertoyImport";
+import {
+  normalizeInputKind,
+  type ShadertoyInput,
+  type ShadertoyRenderPass,
+} from "./shadertoyImport";
 
 /** Fullscreen quad only; Shadertoy fragCoord comes from gl_FragCoord in the fragment wrapper (Y flip). */
 const VERT = `#version 300 es
@@ -87,13 +91,22 @@ function getUniforms(gl: WebGL2RenderingContext, p: WebGLProgram): UniformSet {
     iChannel3: u("iChannel3"),
   };
   for (let i = 0; i < 4; i++) {
-    (out as Record<string, WebGLUniformLocation | null>)[`iChannelResolution[${i}]`] = u(`iChannelResolution[${i}]`);
-    (out as Record<string, WebGLUniformLocation | null>)[`iChannelTime[${i}]`] = u(`iChannelTime[${i}]`);
+    (out as Record<string, WebGLUniformLocation | null>)[`iChannelResolution[${i}]`] = u(
+      `iChannelResolution[${i}]`,
+    );
+    (out as Record<string, WebGLUniformLocation | null>)[`iChannelTime[${i}]`] = u(
+      `iChannelTime[${i}]`,
+    );
   }
   return out;
 }
 
-function clearFboToBlack(gl: WebGL2RenderingContext, fbo: WebGLFramebuffer, w: number, h: number): void {
+function clearFboToBlack(
+  gl: WebGL2RenderingContext,
+  fbo: WebGLFramebuffer,
+  w: number,
+  h: number,
+): void {
   gl.bindFramebuffer(gl.FRAMEBUFFER, fbo);
   gl.viewport(0, 0, w, h);
   gl.clearColor(0, 0, 0, 0);
@@ -214,7 +227,12 @@ function setChannelResolutions(
   }
 }
 
-function bindChannel(gl: WebGL2RenderingContext, loc: WebGLUniformLocation | null, unit: number, tex: WebGLTexture): void {
+function bindChannel(
+  gl: WebGL2RenderingContext,
+  loc: WebGLUniformLocation | null,
+  unit: number,
+  tex: WebGLTexture,
+): void {
   if (!loc) return;
   gl.activeTexture(gl.TEXTURE0 + unit);
   gl.bindTexture(gl.TEXTURE_2D, tex);
@@ -278,7 +296,10 @@ export class ShadertoyMultipassEngine {
   private opts: ShadertoyMultipassEngineOptions;
   private gl: WebGL2RenderingContext | null = null;
   private quadBuf: WebGLBuffer | null = null;
-  private programs: { buffers: WebGLProgram[]; image: WebGLProgram | null } = { buffers: [], image: null };
+  private programs: { buffers: WebGLProgram[]; image: WebGLProgram | null } = {
+    buffers: [],
+    image: null,
+  };
   private uniBuf: UniformSet[] = [];
   private uniImg: UniformSet | null = null;
   private bufStates: BufferState[] = [];
@@ -545,7 +566,10 @@ export class ShadertoyMultipassEngine {
       this.resizeNeeded = true;
       return;
     }
-    this.fixedBackingSize = { w: Math.max(2, Math.floor(width)), h: Math.max(2, Math.floor(height)) };
+    this.fixedBackingSize = {
+      w: Math.max(2, Math.floor(width)),
+      h: Math.max(2, Math.floor(height)),
+    };
     this.resizeNeeded = true;
   }
 
@@ -576,7 +600,18 @@ export class ShadertoyMultipassEngine {
     const H = this.canvas.height;
     if (W < 2 || H < 2) return;
 
-    this.runMultipassDraw(gl, prepared, imgProg, black, kb, opts.time, dt, this.frameIdx, mouseVec, dateVec);
+    this.runMultipassDraw(
+      gl,
+      prepared,
+      imgProg,
+      black,
+      kb,
+      opts.time,
+      dt,
+      this.frameIdx,
+      mouseVec,
+      dateVec,
+    );
     this.frameIdx++;
   }
 
@@ -654,7 +689,14 @@ export class ShadertoyMultipassEngine {
       gl.viewport(0, 0, W, H);
       gl.useProgram(prog);
       setGlobals(gl, u, W, H, time, dt, frameIndex, mouseVec, dateVec);
-      const { channels, res } = resolveInputs(pass, this.idToState, "buffer", kb, black, this.dummyRes);
+      const { channels, res } = resolveInputs(
+        pass,
+        this.idToState,
+        "buffer",
+        kb,
+        black,
+        this.dummyRes,
+      );
       setChannelResolutions(gl, prog, res);
       for (let ch = 0; ch < 4; ch++) {
         bindChannel(gl, channelSamplerLoc(u, ch), ch, channels[ch]!);
@@ -671,7 +713,14 @@ export class ShadertoyMultipassEngine {
     gl.useProgram(imgProg);
     const uImg = this.uniImg!;
     setGlobals(gl, uImg, W, H, time, dt, frameIndex, mouseVec, dateVec);
-    const { channels: chI, res: resI } = resolveInputs(prepared.image, this.idToState, "image", kb, black, this.dummyRes);
+    const { channels: chI, res: resI } = resolveInputs(
+      prepared.image,
+      this.idToState,
+      "image",
+      kb,
+      black,
+      this.dummyRes,
+    );
     setChannelResolutions(gl, imgProg, resI);
     for (let ch = 0; ch < 4; ch++) {
       bindChannel(gl, channelSamplerLoc(uImg, ch), ch, chI[ch]!);
@@ -738,7 +787,18 @@ export class ShadertoyMultipassEngine {
       this.mouse.click ? Math.abs(mcy) : -Math.abs(mcy),
     ];
 
-    this.runMultipassDraw(gl, prepared, imgProg, black, kb, time, dt, this.frameIdx, mouseVec, dateVec);
+    this.runMultipassDraw(
+      gl,
+      prepared,
+      imgProg,
+      black,
+      kb,
+      time,
+      dt,
+      this.frameIdx,
+      mouseVec,
+      dateVec,
+    );
 
     this.mouse.click = false;
     this.frameIdx++;
