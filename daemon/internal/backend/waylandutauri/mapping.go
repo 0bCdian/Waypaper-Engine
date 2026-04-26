@@ -134,13 +134,6 @@ type schedulerSnapshot struct {
 	QueuedRequests int    `json:"queued_requests"`
 }
 
-type playbackSnapshot struct {
-	Mode           string `json:"mode"`
-	DesktopFocused bool   `json:"desktop_focused"`
-	Paused         bool   `json:"paused"`
-	Reason         string `json:"reason"`
-}
-
 // wallpaperStatusPayload mirrors the `status` object from GET /wallpaper/status (wayland-utauri).
 type wallpaperStatusPayload struct {
 	TopologyPolicy string                  `json:"topology_policy"`
@@ -148,7 +141,6 @@ type wallpaperStatusPayload struct {
 	Topology       []topologyEntry         `json:"topology"`
 	Monitors       []monitorStatusSnapshot `json:"monitors"`
 	Scheduler      schedulerSnapshot       `json:"scheduler"`
-	Playback       playbackSnapshot        `json:"playback"`
 }
 
 type statusResponse struct {
