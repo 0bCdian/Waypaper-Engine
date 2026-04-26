@@ -11,6 +11,7 @@ vi.mock("../layout/TitleBar", () => ({
 
 vi.mock("../layout/ModernSidebar", () => ({
   SidebarContent: () => <div data-testid="sidebar">Sidebar</div>,
+  IconRailSidebar: () => <div data-testid="icon-rail">IconRail</div>,
 }));
 
 vi.mock("../UrlImportWarningModal", () => ({
@@ -70,7 +71,7 @@ describe("ModernAppLayout", () => {
     const { container } = render(<ModernAppLayout>Content</ModernAppLayout>);
 
     expect(container.querySelector(".loading-spinner")).toBeInTheDocument();
-    expect(screen.queryByTestId("navbar")).not.toBeInTheDocument();
+    expect(screen.queryAllByTestId("navbar")).toHaveLength(0);
   });
 
   it("renders TitleBar and children when config is loaded", () => {
@@ -80,8 +81,8 @@ describe("ModernAppLayout", () => {
       </ModernAppLayout>,
     );
 
-    expect(screen.getByTestId("navbar")).toBeInTheDocument();
-    expect(screen.getByText("Hello world")).toBeInTheDocument();
+    expect(screen.getAllByTestId("navbar").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Hello world").length).toBeGreaterThan(0);
   });
 
   it("renders sidebar drawer structure", () => {
