@@ -129,15 +129,22 @@ func Apply(ctx context.Context, opts ApplyOpts) error {
 	}
 
 	if opts.Bus != nil {
+		data := map[string]any{
+			"image_id":   opts.Image.ID,
+			"media_type": sseWallpaperMediaType(mediaType),
+			"path":       opts.Image.Path,
+			"tags":       append([]string(nil), opts.Image.Tags...),
+			"monitors":   monNames,
+			"mode":       opts.Mode,
+			"source":     opts.Source.Type,
+			"backend":    opts.Backend.Name(),
+		}
+		if len(opts.Image.Colors) > 0 {
+			data["colors"] = append([]string(nil), opts.Image.Colors...)
+		}
 		opts.Bus.Publish(events.Event{
 			Type: events.WallpaperChanged,
-			Data: map[string]any{
-				"image_id": opts.Image.ID,
-				"monitors": monNames,
-				"mode":     opts.Mode,
-				"source":   opts.Source.Type,
-				"backend":  opts.Backend.Name(),
-			},
+			Data: data,
 		})
 	}
 
@@ -167,5 +174,18 @@ func normalizeMediaType(value string) media.MediaType {
 		return media.MediaTypeWeb
 	default:
 		return media.MediaTypeImage
+	}
+}
+
+// sseWallpaperMediaType is the value sent on SSE for wallpaper_changed: image | web | video
+// (animated GIF is classified as image, matching wayland-utauri load kind).
+func sseWallpaperMediaType(mt media.MediaType) string {
+	switch mt {
+	case media.MediaTypeVideo:
+		return "video"
+	case media.MediaTypeWeb:
+		return "web"
+	default:
+		return "image"
 	}
 }

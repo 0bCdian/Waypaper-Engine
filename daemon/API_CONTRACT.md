@@ -1070,7 +1070,7 @@ Persistent streaming connection. Each event has:
 
 | Event               | Data                                                                           |
 |--------------------|--------------------------------------------------------------------------------|
-| `wallpaper_changed` | `{"image_id": 2, "monitors": ["DP-1","HDMI-A-1"], "mode": "individual", "source": "manual", "backend": "awww"}` |
+| `wallpaper_changed` | `{"image_id": 2, "media_type": "image", "path": "/var/.../gallery/file.jpg", "tags": ["anime","sky"], "colors": ["#abc123"]?, "monitors": ["DP-1","HDMI-A-1"], "mode": "individual", "source": "manual", "backend": "awww"}` — `media_type` is `image` (includes GIF), `web`, or `video`; `colors` is only present when the gallery row has a non-empty palette; `path` is the cached gallery file. |
 
 #### Playlist Events
 

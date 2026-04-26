@@ -414,13 +414,55 @@ func TestApply_PublishesEvent(t *testing.T) {
 		data, ok := e.Data.(map[string]any)
 		require.True(t, ok)
 		assert.Equal(t, 1, data["image_id"])
+		assert.Equal(t, "image", data["media_type"])
+		assert.Equal(t, "/tmp/test.jpg", data["path"])
+		tags, ok := data["tags"].([]string)
+		require.True(t, ok)
+		assert.Empty(t, tags)
 		assert.Equal(t, "test", data["backend"])
+		_, hasColors := data["colors"]
+		assert.False(t, hasColors)
 	}
 
 	mons := []monitor.Monitor{{Name: "HDMI-A-1", Width: 1920, Height: 1080}}
 	err := Apply(context.Background(), f.opts(mons, monitor.ModeIndividual))
 	require.NoError(t, err)
 	assert.True(t, published, "Bus.Publish should have been called")
+}
+
+func TestApply_PublishesEvent_ColorsAndWebMediaType(t *testing.T) {
+	f := newApplyFixture()
+	f.img.Colors = []string{"#aabbcc", "#112233"}
+	f.img.MediaType = "web"
+	var saw map[string]any
+	f.bus.publishFn = func(e events.Event) {
+		data, ok := e.Data.(map[string]any)
+		require.True(t, ok)
+		saw = data
+	}
+	mons := []monitor.Monitor{{Name: "HDMI-A-1", Width: 1920, Height: 1080}}
+	err := Apply(context.Background(), f.opts(mons, monitor.ModeIndividual))
+	require.NoError(t, err)
+	require.NotNil(t, saw)
+	assert.Equal(t, "web", saw["media_type"])
+	colors, ok := saw["colors"].([]string)
+	require.True(t, ok)
+	assert.Equal(t, []string{"#aabbcc", "#112233"}, colors)
+}
+
+func TestApply_PublishesEvent_Tags(t *testing.T) {
+	f := newApplyFixture()
+	f.img.Tags = []string{"nature", "blue"}
+	f.bus.publishFn = func(e events.Event) {
+		data, ok := e.Data.(map[string]any)
+		require.True(t, ok)
+		tags, ok := data["tags"].([]string)
+		require.True(t, ok)
+		assert.Equal(t, []string{"nature", "blue"}, tags)
+	}
+	mons := []monitor.Monitor{{Name: "HDMI-A-1", Width: 1920, Height: 1080}}
+	err := Apply(context.Background(), f.opts(mons, monitor.ModeIndividual))
+	require.NoError(t, err)
 }
 
 func TestApply_NilBus(t *testing.T) {

@@ -521,6 +521,14 @@ export interface ProcessingCancelledPayload {
 
 export interface WallpaperChangedPayload {
   image_id: number;
+  /** Gallery wallpaper kind: static/animated as `image`, or `web` / `video`. */
+  media_type: "image" | "web" | "video";
+  /** Absolute path to the gallery file for this image. */
+  path: string;
+  /** Dominant colors when present (e.g. extracted for still images). */
+  colors?: string[];
+  /** User tags on the gallery image (empty array if none). */
+  tags: string[];
   monitors: string[];
   mode: MonitorMode;
   source: ImageHistorySourceType;
