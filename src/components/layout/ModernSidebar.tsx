@@ -193,7 +193,7 @@ export const IconRailSidebar: React.FC = () => {
 
   return (
     <aside
-      className="relative bg-base-200 border-r flex flex-col shrink-0 overflow-hidden"
+      className="neo-sidebar relative bg-base-200 border-r flex flex-col shrink-0 overflow-hidden"
       style={{
         width: expanded ? 240 : 56,
         transition: `width var(--wp-dur-base) var(--wp-ease-out)`,

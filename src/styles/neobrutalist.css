@@ -164,6 +164,13 @@
   border-right: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.7);
 }
 
+/* Icon-rail sidebar in neobrutalist mode */
+[data-design="neobrutalist"] aside.neo-sidebar {
+  background: oklch(from var(--color-base-300) l c h);
+  border-right: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.7);
+  border-radius: 0;
+}
+
 /* ── Badge ─────────────────────────────────────────────────────── */
 [data-design="neobrutalist"] .badge {
   border-radius: var(--neo-radius);

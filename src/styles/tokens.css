@@ -48,9 +48,11 @@
 }
 
 /* Theme crossfade — 280ms color lerp on theme switch.
-   Scoped to .wp-theme-transition to avoid fighting framer-motion. */
+   Scoped to .wp-theme-transition to avoid fighting framer-motion.
+   Excludes img/video/canvas so Tailwind's transition-all on those elements
+   (e.g. image card hover scale) is not overridden. */
 .wp-theme-transition,
-.wp-theme-transition *:not([data-motion]) {
+.wp-theme-transition *:not([data-motion]):not(img):not(video):not(canvas) {
   transition:
     background-color 280ms var(--wp-ease-out),
     color 280ms var(--wp-ease-out),
