@@ -34,7 +34,7 @@ export const MonitorButton: React.FC = () => {
       aria-label="Select display monitor"
       title={label}
       className={cn(
-        "flex items-center gap-2 px-3 h-7 text-sm font-semibold rounded-lg transition-all duration-150 shrink-0",
+        "flex items-center gap-2 px-3 h-10 text-sm font-semibold rounded-lg transition-all duration-150 shrink-0",
         isNeo
           ? "neo-icon-box"
           : hasMonitors
@@ -45,7 +45,7 @@ export const MonitorButton: React.FC = () => {
       {/* Monitor icon */}
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        className="w-4 h-4 shrink-0"
+        className="w-5 h-5 shrink-0"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"

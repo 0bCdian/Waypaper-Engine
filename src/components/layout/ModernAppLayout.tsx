@@ -22,7 +22,10 @@ export interface ModernAppLayoutProps {
   className?: string;
 }
 
-export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({ children, className }) => {
+export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({
+  children,
+  className,
+}) => {
   const { currentTheme, isDarkMode } = useTheme();
   const config = useSettingsStore((s) => s.config);
   const syncToDOM = useDesignSystemStore((s) => s.syncToDOM);
@@ -45,7 +48,9 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({ children, clas
       data-theme={currentTheme}
     >
       <IconRailSidebar />
-      <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-base-100">{children}</main>
+      <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-base-100">
+        {children}
+      </main>
     </div>
   );
 };
