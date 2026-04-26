@@ -46,11 +46,11 @@ function Breadcrumbs() {
 
   return (
     <nav
-      className="flex items-center gap-1 px-3 py-1.5 text-sm border-b border-base-300 bg-base-100"
+      className="grid grid-cols-[1fr_auto_1fr] items-center px-3 py-1.5 text-sm border-b border-base-300 bg-base-100"
       aria-label="Breadcrumb"
     >
-      {/* Breadcrumb path — grows to fill space */}
-      <div className="flex items-center gap-1 flex-1 min-w-0">
+      {/* Left: breadcrumb path */}
+      <div className="flex items-center gap-1 min-w-0">
         <DroppableBreadcrumb folderId={null} droppableId="breadcrumb-root">
           {isAtRoot ? (
             <span className="btn btn-ghost btn-xs gap-1 font-semibold text-base-content cursor-default">
@@ -128,8 +128,11 @@ function Breadcrumbs() {
           })}
       </div>
 
-      {/* Monitor selector — right-aligned, only where it makes sense (gallery) */}
+      {/* Center: monitor selector */}
       <MonitorButton />
+
+      {/* Right: spacer keeps button centered */}
+      <div />
     </nav>
   );
 }
