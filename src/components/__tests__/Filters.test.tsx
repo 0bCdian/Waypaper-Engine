@@ -55,15 +55,12 @@ beforeEach(() => {
 });
 
 describe("Filters", () => {
-  it("renders token filter, sort toggles, media buttons, and Filters control", async () => {
+  it("renders token filter, sort button, media buttons, and Filters control", async () => {
     render(<Filters />);
 
     expect(await screen.findByRole("combobox")).toBeInTheDocument();
-    expect(screen.getByText("search")).toBeInTheDocument();
-    expect(screen.getByText("Name")).toBeInTheDocument();
-    expect(screen.getByText("ID")).toBeInTheDocument();
-    expect(screen.getByText("Asc")).toBeInTheDocument();
-    expect(screen.getByText("Desc")).toBeInTheDocument();
+    // Default state: type="id", order="desc" → "ID ↓"
+    expect(screen.getByText("ID ↓")).toBeInTheDocument();
     expect(screen.getByText("GIF")).toBeInTheDocument();
     expect(screen.getByText("Filters")).toBeInTheDocument();
   });
@@ -84,13 +81,13 @@ describe("Filters", () => {
     expect(mockModalOpen).toHaveBeenCalledWith("GalleryFilterCheatsheetModal");
   });
 
-  it("clear search tokens button clears filterTokens and persists", async () => {
+  it("clear search and history button clears filterTokens and input history", async () => {
     const user = userEvent.setup();
     mockImagesState.filters.filterTokens = ["q:mountains", "tag:nature"];
 
     render(<Filters />);
 
-    await user.click(screen.getByRole("button", { name: "Clear search tokens" }));
+    await user.click(screen.getByRole("button", { name: "Clear search and history" }));
 
     expect(mockSetFilters).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -99,27 +96,27 @@ describe("Filters", () => {
       }),
     );
     expect(mockFetchPage).toHaveBeenCalled();
+    expect(localStorage.getItem(GALLERY_FILTER_INPUT_HISTORY_KEY)).toBeNull();
   });
 
-  it("clear recent searches removes gallery filter input history", async () => {
+  it("clear search and history button appears when history is present and clears it", async () => {
     const user = userEvent.setup();
     localStorage.setItem(GALLERY_FILTER_INPUT_HISTORY_KEY, JSON.stringify(["q:old", "tag:keep"]));
 
     render(<Filters />);
 
-    await user.click(screen.getByRole("button", { name: "Clear recent searches" }));
+    await user.click(screen.getByRole("button", { name: "Clear search and history" }));
 
     expect(localStorage.getItem(GALLERY_FILTER_INPUT_HISTORY_KEY)).toBeNull();
   });
 
-  it("sort swap checkboxes reflect persisted store order and type", () => {
+  it("sort button reflects persisted store order and type", () => {
     mockImagesState.filters.order = "asc";
     mockImagesState.filters.type = "name";
 
     render(<Filters />);
 
-    expect(screen.getByRole("checkbox", { name: "Sort by name or ID" })).toBeChecked();
-    expect(screen.getByRole("checkbox", { name: "Ascending or descending sort" })).toBeChecked();
+    expect(screen.getByText("Name ↑")).toBeInTheDocument();
   });
 
   it("keydown / focuses the gallery filter combobox", async () => {

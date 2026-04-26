@@ -38,10 +38,10 @@ beforeEach(() => {
 });
 
 describe("ModernAppLayout", () => {
-  it("shows loading spinner when config is null", () => {
+  it("shows loading screen when config is null", () => {
     mockConfig = null;
-    const { container } = render(<ModernAppLayout>Content</ModernAppLayout>);
-    expect(container.querySelector(".loading-spinner")).toBeInTheDocument();
+    render(<ModernAppLayout>Content</ModernAppLayout>);
+    expect(screen.getByRole("status")).toBeInTheDocument();
     expect(screen.queryByTestId("icon-rail")).not.toBeInTheDocument();
   });
 

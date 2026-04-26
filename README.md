@@ -15,7 +15,7 @@
 
 </div>
 
-**Docs in-repo:** [Daemon HTTP API](daemon/API_CONTRACT.md) · [Daemon architecture](daemon/docs/ARCHITECTURE.md) · [Packaging / `DESTDIR`](packaging/README.md)
+**Docs in-repo:** [Daemon HTTP API](daemon/API_CONTRACT.md) · [Daemon architecture](daemon/docs/ARCHITECTURE.md) · [Packaging / `DESTDIR`](packaging/README.md) · **handbook (VitePress):** run `npm run docs:dev` locally, or after enabling **GitHub Pages → GitHub Actions**, the site is published from the **Docs** workflow (default base path `/Waypaper-Engine/` → `https://0bCdian.github.io/Waypaper-Engine/`)
 
 *This project is developed with help from **LLM-based coding tools**; I still review, test, and ship what I stand behind.*
 

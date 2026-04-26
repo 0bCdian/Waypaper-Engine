@@ -9,6 +9,10 @@
 		"url": "https://github.com/0bCdian"
 	},
 	"scripts": {
+		"docs:copy-spec": "cp daemon/docs/openapi.yaml docs/public/openapi.yaml",
+		"docs:dev": "npm run docs:copy-spec && vitepress dev docs",
+		"docs:build": "npm run docs:copy-spec && vitepress build docs",
+		"docs:preview": "vitepress preview docs",
 		"dev": "npm run build:daemon && DEV=true vite",
 		"build:daemon": "make daemon",
 		"build": "npm run build:daemon && vite build && electron-builder --publish never --config electron-builder.json",
@@ -44,6 +48,7 @@
 		"@fontsource/google-sans-flex": "^5.2.4",
 		"@fontsource/jetbrains-mono": "^5.2.8",
 		"@tanstack/react-form": "^1.28.3",
+		"ci": "^2.3.0",
 		"framer-motion": "12.34.0",
 		"pino": "9.13.1",
 		"pino-roll": "^4.0.0",
@@ -80,6 +85,7 @@
 		"vite": "^6.4.1",
 		"vite-plugin-electron": "0.28.8",
 		"vite-plugin-electron-renderer": "0.14.6",
+		"vitepress": "^1.6.3",
 		"vitest": "^4.1.3"
 	},
 	"main": "dist-electron/main.js",

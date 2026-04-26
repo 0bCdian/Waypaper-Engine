@@ -10,6 +10,7 @@ import { useEffect, type ReactNode } from "react";
 import { useTheme } from "../../contexts/ThemeContext";
 import { cn } from "../../utils/cn";
 import { IconRailSidebar } from "./ModernSidebar";
+import LoadingScreen from "../LoadingScreen";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useDesignSystemStore } from "../../stores/designSystemStore";
 
@@ -31,11 +32,7 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({ children, clas
   }, [syncToDOM]);
 
   if (!config) {
-    return (
-      <div className="min-h-screen bg-base-200 flex items-center justify-center">
-        <div className="loading loading-spinner loading-lg" />
-      </div>
-    );
+    return <LoadingScreen />;
   }
 
   return (
