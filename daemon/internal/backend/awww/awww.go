@@ -12,7 +12,6 @@ import (
 	"sync"
 	"syscall"
 	"time"
-
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
@@ -20,17 +19,17 @@ import (
 	"github.com/spf13/viper"
 )
 
-const cliBinary = "awww"
-const daemonBinary = "awww-daemon"
+const (
+	cliBinary    = "awww"
+	daemonBinary = "awww-daemon"
+)
 
-// Awww implements backend.Backend for the awww wallpaper daemon.
 type Awww struct {
 	once    sync.Once
-	v       *viper.Viper // viper instance for reading config at runtime
-	process *os.Process  // tracks the awww-daemon we started (nil if pre-existing)
+	v       *viper.Viper
+	process *os.Process
 }
 
-// New returns a new awww backend instance.
 func New() backend.Backend {
 	return &Awww{}
 }
@@ -59,15 +58,12 @@ func (a *Awww) Initialize(ctx context.Context) error {
 		return fmt.Errorf("awww: awww not found in PATH")
 	}
 
-	// Check if the daemon is already running via `<cli> query`.
 	if err := exec.CommandContext(ctx, cliBinary, "query").Run(); err == nil {
 		slog.Info("daemon already running", "binary", cliBinary)
 		return nil
 	}
 
 	slog.Info("starting daemon with --no-cache", "binary", daemonBinary)
-	// Use Background context: the daemon must outlive the HTTP request that
-	// triggered activation. Pdeathsig ensures cleanup when waypaper-daemon exits.
 	cmd := exec.Command(daemonBinary, "--no-cache")
 	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGTERM}
 	if err := cmd.Start(); err != nil {
