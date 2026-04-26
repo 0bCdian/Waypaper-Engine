@@ -10,7 +10,7 @@ import { useEffect, type ReactNode } from "react";
 import { useTheme } from "../../contexts/ThemeContext";
 import { cn } from "../../utils/cn";
 import { SidebarContent } from "./ModernSidebar";
-import NavBar from "./NavBar";
+import TitleBar from "./TitleBar";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useDesignSystemStore } from "../../stores/designSystemStore";
 
@@ -39,7 +39,7 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({ children, clas
   }
 
   const containerClasses = cn(
-    "h-screen theme-transition",
+    "h-screen wp-theme-transition",
     isDarkMode ? "theme-dark" : "theme-light",
     className,
   );
@@ -51,7 +51,7 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({ children, clas
 
         {/* Main content area */}
         <div className="drawer-content flex flex-col h-full min-h-0 overflow-hidden">
-          <NavBar />
+          <TitleBar />
           <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-base-100">
             {children}
           </main>

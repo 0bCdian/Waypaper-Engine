@@ -9,6 +9,9 @@
 @import "@fontsource/google-sans-flex";
 @import "@fontsource/google-sans";
 
+/* Waypaper token layer (spacing, surfaces, elevation, motion) */
+@import "./styles/tokens.css";
+
 /* Import neobrutalist design system overlay */
 @import "./styles/neobrutalist.css";
 

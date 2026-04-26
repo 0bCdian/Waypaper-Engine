@@ -22,6 +22,7 @@ import type {
 } from "../../electron/daemon-go-types";
 declare global {
   const __DEBUG__: boolean;
+  const __PLATFORM__: NodeJS.Platform;
   interface DaemonStatus {
     isRunning: boolean;
     lastChecked: number;

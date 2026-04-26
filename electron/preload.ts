@@ -432,4 +432,7 @@ contextBridge.exposeInMainWorld("API_RENDERER", electronAPI);
 const isDebug = process.argv.includes("--debug");
 contextBridge.exposeInMainWorld("__DEBUG__", isDebug);
 
+// Expose platform so the renderer can render platform-appropriate window chrome
+contextBridge.exposeInMainWorld("__PLATFORM__", process.platform);
+
 console.log("Preload script loaded - Go Daemon HTTP REST API ready");

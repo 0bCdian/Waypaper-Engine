@@ -5,8 +5,8 @@ vi.mock("../../contexts/ThemeContext", () => ({
   useTheme: () => ({ currentTheme: "dark", isDarkMode: true }),
 }));
 
-vi.mock("../layout/NavBar", () => ({
-  default: () => <div data-testid="navbar">NavBar</div>,
+vi.mock("../layout/TitleBar", () => ({
+  default: () => <div data-testid="navbar">TitleBar</div>,
 }));
 
 vi.mock("../layout/ModernSidebar", () => ({
@@ -73,7 +73,7 @@ describe("ModernAppLayout", () => {
     expect(screen.queryByTestId("navbar")).not.toBeInTheDocument();
   });
 
-  it("renders NavBar and children when config is loaded", () => {
+  it("renders TitleBar and children when config is loaded", () => {
     render(
       <ModernAppLayout>
         <p>Hello world</p>
