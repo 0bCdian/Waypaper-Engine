@@ -171,6 +171,36 @@
   border-radius: 0;
 }
 
+/* Nav links inside the icon rail — hard corners, uppercase, no smooth radii */
+[data-design="neobrutalist"] aside.neo-sidebar nav a {
+  border-radius: 0;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.7rem;
+}
+
+/* Active nav item: thick left border instead of the thin motion bar */
+[data-design="neobrutalist"] aside.neo-sidebar nav a[aria-current="page"] {
+  border-left: var(--neo-border-width) solid oklch(from var(--color-primary) l c h);
+  padding-left: calc(0.5rem - var(--neo-border-width));
+}
+
+/* Footer buttons inside neo sidebar */
+[data-design="neobrutalist"] aside.neo-sidebar > div:last-child button {
+  border-radius: 0;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 0.7rem;
+}
+
+/* Hairline dividers in neo sidebar become proper thick lines */
+[data-design="neobrutalist"] aside.neo-sidebar .h-px {
+  height: var(--neo-border-width);
+  background: oklch(from var(--color-base-content) l c h / 0.6) !important;
+}
+
 /* ── Badge ─────────────────────────────────────────────────────── */
 [data-design="neobrutalist"] .badge {
   border-radius: var(--neo-radius);
