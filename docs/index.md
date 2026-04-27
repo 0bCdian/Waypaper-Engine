@@ -39,6 +39,8 @@ features:
 ### Quick links
 
 - **Install** — [Install & run](/guide/install) (AUR, AppImage, from source, systemd)
+- **New here** — [First 10 minutes](/guide/first-run) · [Glossary](/guide/glossary)
+- **Stuck?** — [FAQ & troubleshooting](/guide/faq) (stale socket, backends, monitors, logs)
 - **Backends** — [Backends & dependencies](/guide/backends) (awww, hyprpaper, feh, mpvpaper, wayland-utauri)
 - **Config** — [Configuration reference](/guide/config) (every TOML key explained)
 - **Automate** — [Events & SSE](/api/sse) (`?types=wallpaper_changed`, or `waypaper-daemon events`)

@@ -1,6 +1,7 @@
 # Daemon & paths
 
-The **waypaper-daemon** (built from `daemon/`) is the single source of truth for the gallery, playlists, **active backend**, and wallpaper apply. It listens on **HTTP/1.1 over a Unix domain socket**
+The **waypaper-daemon** (built from `daemon/`) is the single source of truth for the gallery, playlists, **active backend**, and wallpaper apply. It listens on **HTTP/1.1 over a Unix domain socket** (see [Socket](#socket) for the default path and overrides).
+
 ---
 
 ## Socket

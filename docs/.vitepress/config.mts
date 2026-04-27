@@ -34,12 +34,15 @@ export default defineConfig({
 					items: [
 						{ text: "Introduction", link: "/guide/introduction" },
 						{ text: "Install & run", link: "/guide/install" },
+						{ text: "First 10 minutes", link: "/guide/first-run" },
 						{ text: "The app (UI)", link: "/guide/app" },
+						{ text: "FAQ & troubleshooting", link: "/guide/faq" },
 					],
 				},
 				{
 					text: "Reference",
 					items: [
+						{ text: "Glossary", link: "/guide/glossary" },
 						{ text: "Backends & dependencies", link: "/guide/backends" },
 						{ text: "Configuration (TOML)", link: "/guide/config" },
 						{ text: "Daemon & paths", link: "/guide/daemon" },

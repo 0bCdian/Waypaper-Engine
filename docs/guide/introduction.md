@@ -60,10 +60,13 @@ These are **runtime** requirements—build deps are separate (see [Install & run
 | If you want to… | Go to |
 |-----------------|-------|
 | Install and start the app | [Install & run](/guide/install) |
+| One happy path from zero to a wallpaper | [First 10 minutes](/guide/first-run) |
+| Disambiguate binaries and buzzwords | [Glossary](/guide/glossary) |
 | Understand each backend and its config | [Backends & dependencies](/guide/backends) |
 | Learn every TOML config key | [Configuration reference](/guide/config) |
 | Learn the UI screens (gallery, playlists, studios) | [The app (UI)](/guide/app) |
 | Wire scripts or other programs to the daemon | [API overview](/api/overview) + [Events & SSE](/api/sse) |
+| Fix startup, backends, or monitor detection | [FAQ & troubleshooting](/guide/faq) |
 | Hack on the codebase | [Development guide](/dev/development) |
 
 ---
