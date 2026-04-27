@@ -750,6 +750,8 @@ export class IPCManager {
       "playlist_paused",
       "playlist_resumed",
       "playlist_image_changed",
+      "playlist_skipped_incompatible",
+      "playlist_no_compatible_item",
       "monitor_connected",
       "monitor_disconnected",
       "config_changed",
@@ -758,6 +760,7 @@ export class IPCManager {
       "playlists_updated",
       "folders_updated",
       "backend_unavailable",
+      "wallpaper_restore_failed",
     ];
 
     for (const eventName of events) {

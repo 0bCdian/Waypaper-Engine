@@ -91,9 +91,9 @@ function PlaylistController() {
           {activePlaylist.playlist_name}
         </span>
         <span className="truncate text-xs text-base-content/60">
-          {currentImage?.name ?? "Unknown"} &middot; {activePlaylist.current_index + 1}/
-          {activePlaylist.total_images}
-          {monitors ? ` &middot; ${monitors}` : ""}
+          {currentImage?.name ?? "Unknown"} &middot;{" "}
+          {activePlaylist.current_index + 1}/{activePlaylist.total_images}
+          {monitors ? ` · ${monitors}` : ""}
         </span>
       </div>
 
