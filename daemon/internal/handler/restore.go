@@ -186,14 +186,6 @@ func RestoreWallpapers(
 		}
 	}
 
-	slog.Info("restore: applying persisted wallpapers",
-		"backend", activeBackend.Name(),
-		"persisted_row_count", len(states),
-		"extend_groups", len(extendGroups),
-		"individual_restores", len(nonExtendStates),
-		"skipped_disconnected", skipped,
-	)
-
 	for _, grp := range extendGroups {
 		n, grpFailures := restoreExtendGroup(ctx, grp, activeBackend, splitter, stateStore, images, videoAudioDefault)
 		restored += n
@@ -230,10 +222,6 @@ func restoreNonExtendIndividuals(
 	videoAudioDefault bool,
 ) (int, []restoreFailure) {
 	if req, states, mediaTypes, ok := tryWaylandUtauriIndividualRestoreBatch(ctx, nonExtendStates, connected, activeBackend, images); ok {
-		slog.Info("restore: SetWallpaper (wayland-utauri batched individual)",
-			"backend", activeBackend.Name(),
-			"monitors", len(states),
-		)
 		if err := activeBackend.SetWallpaper(ctx, *req); err != nil {
 			slog.Warn("restore: batched individual SetWallpaper failed", "error", err)
 			var failures []restoreFailure
@@ -255,7 +243,6 @@ func restoreNonExtendIndividuals(
 		for _, state := range states {
 			stateStore.SetCurrentWallpaper(state.MonitorName, restoreEntry(state, []string{state.MonitorName}))
 		}
-		slog.Info("restore: SetWallpaper ok (batched individual)", "backend", activeBackend.Name(), "monitors", len(states))
 		return len(states), nil
 	}
 
@@ -421,13 +408,6 @@ func restoreExtendGroup(
 				ParallaxDirection:     wallpaper.ParallaxDirectionOverrideFromImage(imgPtr),
 				WaitForCompletion:     true,
 			}
-			slog.Info("restore: SetWallpaper (extend split per monitor)",
-				"backend", activeBackend.Name(),
-				"monitor", mon.Name,
-				"image_id", grp.state.ImageID,
-				"media_type", string(mt),
-				"image_path", splitPath,
-			)
 			if err := activeBackend.SetWallpaper(ctx, req); err != nil {
 				slog.Warn("restore: failed to set split wallpaper", "monitor", mon.Name, "error", err)
 				failures = append(failures, restoreFailure{
@@ -454,13 +434,6 @@ func restoreExtendGroup(
 		for i, mon := range grp.monitors {
 			monNames[i] = mon.Name
 		}
-		slog.Info("restore: SetWallpaper (extend/clone group)",
-			"backend", activeBackend.Name(),
-			"monitors", monNames,
-			"image_id", grp.state.ImageID,
-			"media_type", string(mt),
-			"image_path", grp.state.ImagePath,
-		)
 		if err := activeBackend.SetWallpaper(ctx, req); err != nil {
 			slog.Warn("restore: failed to set extend wallpaper", "image_id", grp.state.ImageID, "error", err)
 			for _, mon := range grp.monitors {
@@ -508,14 +481,6 @@ func restoreIndividual(
 		WaitForCompletion:     true,
 	}
 
-	slog.Info("restore: SetWallpaper (individual monitor)",
-		"backend", activeBackend.Name(),
-		"monitor", state.MonitorName,
-		"image_id", state.ImageID,
-		"media_type", string(mt),
-		"image_path", state.ImagePath,
-		"mode", state.Mode,
-	)
 	if err := activeBackend.SetWallpaper(ctx, req); err != nil {
 		slog.Warn("restore: failed to set wallpaper",
 			"monitor", state.MonitorName, "image_id", state.ImageID, "error", err)
@@ -527,11 +492,6 @@ func restoreIndividual(
 		}
 	}
 
-	slog.Info("restore: SetWallpaper ok",
-		"backend", activeBackend.Name(),
-		"monitor", state.MonitorName,
-		"image_id", state.ImageID,
-	)
 	stateStore.SetCurrentWallpaper(state.MonitorName, restoreEntry(state, []string{state.MonitorName}))
 	return true, nil
 }
