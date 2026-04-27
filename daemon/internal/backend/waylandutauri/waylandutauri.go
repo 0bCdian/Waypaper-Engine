@@ -9,6 +9,7 @@ import (
 	"math"
 	"os"
 	"os/exec"
+	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -114,6 +115,11 @@ type WaylandUtauri struct {
 	parallaxManifestDirMu     sync.Mutex
 	parallaxManifestDirection string // "horizontal" | "vertical" | ""
 	workspaceParallaxVertical atomic.Bool
+
+	// extendParallaxGroup is sorted compositor output names that share one spanned
+	// (sliced) static image; used to broadcast workspace parallax to every output.
+	extendParallaxMu    sync.Mutex
+	extendParallaxGroup []string
 
 	// allowManagedChildRespawn is true only after we spawned a child and expect
 	// respawnAfterChildExit to restart it on crash. Cleared in Shutdown so an
@@ -335,6 +341,7 @@ func (w *WaylandUtauri) Shutdown(_ context.Context) error {
 	}
 	w.parallaxDriverMu.Unlock()
 	w.parallaxDriverWG.Wait()
+	w.SetExtendParallaxGroup(nil)
 
 	w.processMu.Lock()
 	p := w.process
@@ -480,6 +487,39 @@ func (w *WaylandUtauri) SetWallpaper(ctx context.Context, req backend.WallpaperR
 	return fmt.Errorf("wayland-utauri: load request failed without explicit error")
 }
 
+// SetExtendParallaxGroup records which compositor outputs share one spanned static
+// image (extend/split) so the compositor parallax driver applies the same move to
+// every output, preserving the seam. Pass nil or fewer than two names to clear.
+func (w *WaylandUtauri) SetExtendParallaxGroup(monitors []string) {
+	w.extendParallaxMu.Lock()
+	defer w.extendParallaxMu.Unlock()
+	if len(monitors) < 2 {
+		w.extendParallaxGroup = nil
+		return
+	}
+	cp := make([]string, len(monitors))
+	copy(cp, monitors)
+	slices.Sort(cp)
+	w.extendParallaxGroup = cp
+}
+
+func (w *WaylandUtauri) expandParallaxMoveTargets(outputName string) []string {
+	w.extendParallaxMu.Lock()
+	g := w.extendParallaxGroup
+	w.extendParallaxMu.Unlock()
+	if len(g) < 2 {
+		return nil
+	}
+	for _, n := range g {
+		if n == outputName {
+			out := make([]string, len(g))
+			copy(out, g)
+			return out
+		}
+	}
+	return nil
+}
+
 func (w *WaylandUtauri) recomputeWorkspaceParallaxVertical(cfg *Config) {
 	if cfg == nil {
 		cfg = defaultConfig()
@@ -554,6 +594,12 @@ func (w *WaylandUtauri) syncParallaxDriver(cfg *Config) {
 		ResolveMonitor: nil,
 		ChunkSize:      cfg.ParallaxWorkspaceChunkSize,
 		Vertical:       func() bool { return wRef.workspaceParallaxVertical.Load() },
+		ExpandMoveTargets: func(name string) []string {
+			if g := wRef.expandParallaxMoveTargets(name); g != nil {
+				return g
+			}
+			return []string{name}
+		},
 	}
 
 	w.parallaxDriverWG.Add(1)
@@ -820,6 +866,8 @@ func (w *WaylandUtauri) SyncRuntimeFromConfig(ctx context.Context) error {
 	}
 	return nil
 }
+
+var _ backend.ExtendParallaxGroupNotifier = (*WaylandUtauri)(nil)
 
 // slogWriter is an io.Writer that logs each line via slog at Info level.
 type slogWriter struct{ prefix string }

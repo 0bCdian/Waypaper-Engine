@@ -38,6 +38,11 @@ func Apply(ctx context.Context, opts ApplyOpts) error {
 	mediaType := normalizeMediaType(opts.Image.MediaType)
 	cfgVals := MergedWallpaperConfigForImage(opts.Image)
 
+	// Set after a full successful backend apply (one logical "extend" spanned
+	// static image = multiple per-monitor SetWallpaper calls; parallax can fan
+	// out to the same set of output names). Nil means no active span.
+	var spanParallaxOuts []string
+
 	switch {
 	case opts.Mode == monitor.ModeExtend && mediaType != media.MediaTypeImage:
 		// GIF / video / web: cannot engine-split; same wallpaper on each monitor (clone semantics).
@@ -76,6 +81,10 @@ func Apply(ctx context.Context, opts ApplyOpts) error {
 				}
 			}
 		}
+		spanParallaxOuts = make([]string, len(opts.Monitors))
+		for i, mon := range opts.Monitors {
+			spanParallaxOuts[i] = mon.Name
+		}
 
 	default:
 		req := backend.WallpaperRequest{
@@ -90,6 +99,10 @@ func Apply(ctx context.Context, opts ApplyOpts) error {
 		if err := opts.Backend.SetWallpaper(ctx, req); err != nil {
 			return fmt.Errorf("set wallpaper: %w", err)
 		}
+	}
+
+	if n, ok := opts.Backend.(backend.ExtendParallaxGroupNotifier); ok {
+		n.SetExtendParallaxGroup(spanParallaxOuts)
 	}
 
 	monNames := make([]string, len(opts.Monitors))

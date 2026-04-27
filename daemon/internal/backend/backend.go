@@ -81,6 +81,18 @@ type RuntimeConfigSync interface {
 	SyncRuntimeFromConfig(ctx context.Context) error
 }
 
+// ExtendParallaxGroupNotifier is optional. Backends that render one logical
+// static image spanned (sliced) across multiple compositor outputs implement it
+// so the Hyprland/Sway parallax driver can send the same parallax-move to every
+// output in the spanned set, keeping slice seams aligned.
+//
+// The daemon calls SetExtendParallaxGroup after a successful Apply:
+//   - non-nil: output names in the current span (len >= 2);
+//   - nil: not spanned, or the backend should clear any stored group.
+type ExtendParallaxGroupNotifier interface {
+	SetExtendParallaxGroup(monitors []string)
+}
+
 // Capabilities declares what a backend supports. Used by the daemon to adapt its
 // behavior and by the frontend to show/hide UI elements.
 type Capabilities struct {

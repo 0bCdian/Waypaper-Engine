@@ -35,6 +35,12 @@ type RunOpts struct {
 	ChunkSize int
 	// Vertical returns true when workspace parallax should use the Y axis.
 	Vertical func() bool
+	// ExpandMoveTargets maps the compositor output that triggered a workspace
+	// change to the set of outputs that should receive the same parallax-move
+	// (e.g. one image spanned across several outputs). If nil, only the
+	// triggering output is used. A non-nil function should return a non-empty
+	// slice (typically a copy including the trigger output).
+	ExpandMoveTargets func(outputName string) []string
 }
 
 // Run blocks until ctx is cancelled, forwarding workspace events as parallax-move calls.

@@ -2,6 +2,7 @@ package parallaxdriver
 
 import (
 	"context"
+	"slices"
 	"sync"
 	"testing"
 )
@@ -36,7 +37,7 @@ func TestTick_multiMonitor_directions(t *testing.T) {
 		{WorkspaceID: 1, Bounds: Rect{X: 0, Y: 0, Width: 1920, Height: 1080}},
 		{WorkspaceID: 3, Bounds: Rect{X: 1920, Y: 0, Width: 1920, Height: 1080}},
 	}
-	st.tick(ctx, entries, move, resolve, false, 10, nil)
+	st.tick(ctx, entries, move, resolve, nil, false, 10, nil)
 	mu.Lock()
 	got0 := append([]moveCall{}, moves...)
 	mu.Unlock()
@@ -49,7 +50,7 @@ func TestTick_multiMonitor_directions(t *testing.T) {
 		{WorkspaceID: 2, Bounds: Rect{X: 0, Y: 0, Width: 1920, Height: 1080}},
 		{WorkspaceID: 3, Bounds: Rect{X: 1920, Y: 0, Width: 1920, Height: 1080}},
 	}
-	st.tick(ctx, entries2, move, resolve, false, 10, nil)
+	st.tick(ctx, entries2, move, resolve, nil, false, 10, nil)
 	mu.Lock()
 	got1 := append([]moveCall{}, moves...)
 	mu.Unlock()
@@ -61,7 +62,7 @@ func TestTick_multiMonitor_directions(t *testing.T) {
 	mu.Lock()
 	moves = nil
 	mu.Unlock()
-	st.tick(ctx, entries2, move, resolve, false, 10, nil)
+	st.tick(ctx, entries2, move, resolve, nil, false, 10, nil)
 	mu.Lock()
 	got2 := append([]moveCall{}, moves...)
 	mu.Unlock()
@@ -95,7 +96,7 @@ func TestTick_prefersOutputNameOverGeometryResolve(t *testing.T) {
 	entries := []MonitorWorkspaceEntry{
 		{WorkspaceID: 2, OutputName: "HDMI-A-1", Bounds: Rect{X: 99999, Y: 99999, Width: 1, Height: 1}},
 	}
-	st.tick(ctx, entries, move, resolve, false, 10, nil)
+	st.tick(ctx, entries, move, resolve, nil, false, 10, nil)
 	mu.Lock()
 	got := append([]string{}, outs...)
 	mu.Unlock()
@@ -123,8 +124,47 @@ func TestTick_skipsSpecialWorkspaces(t *testing.T) {
 		{WorkspaceID: -99},
 		{WorkspaceID: 0},
 	}
-	st.tick(ctx, entries, move, resolve, false, 10, nil)
+	st.tick(ctx, entries, move, resolve, nil, false, 10, nil)
 	if called {
 		t.Error("move was called for special/zero workspace IDs")
+	}
+}
+
+func TestTick_expandMoveTargets_broadcastsDirection(t *testing.T) {
+	t.Parallel()
+
+	var mu sync.Mutex
+	var outs []string
+	move := func(_ context.Context, out, _ string) error {
+		mu.Lock()
+		outs = append(outs, out)
+		mu.Unlock()
+		return nil
+	}
+	resolve := func(_ context.Context, _ MonitorWorkspaceEntry) (string, bool) {
+		t.Fatal("resolve should not run when OutputName is set")
+		return "", false
+	}
+	expand := func(name string) []string {
+		if name == "A" {
+			return []string{"A", "B", "C"}
+		}
+		return []string{name}
+	}
+
+	st := &workspaceParallaxAbsoluteState{}
+	ctx := context.Background()
+	st.updateOutput("A", monitorParallaxState{lastActiveWSID: 1})
+
+	entries := []MonitorWorkspaceEntry{
+		{WorkspaceID: 2, OutputName: "A", Bounds: Rect{Width: 1, Height: 1}},
+	}
+	st.tick(ctx, entries, move, resolve, expand, false, 10, nil)
+	mu.Lock()
+	got := append([]string{}, outs...)
+	mu.Unlock()
+	slices.Sort(got)
+	if !slices.Equal(got, []string{"A", "B", "C"}) {
+		t.Fatalf("expected moves to A B C, got %v", got)
 	}
 }

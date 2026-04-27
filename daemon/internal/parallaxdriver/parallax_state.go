@@ -72,6 +72,7 @@ func (s *workspaceParallaxAbsoluteState) tick(
 	entries []MonitorWorkspaceEntry,
 	move MoveFunc,
 	resolve ResolveMonitorFunc,
+	expandMoveTargets func(string) []string,
 	vertical bool,
 	chunkSize int,
 	log *slog.Logger,
@@ -97,11 +98,19 @@ func (s *workspaceParallaxAbsoluteState) tick(
 		if direction == "" {
 			continue
 		}
-		mctx, cancel := context.WithTimeout(ctx, 2*time.Second)
-		err := move(mctx, outName, direction)
-		cancel()
-		if err != nil {
-			log.Warn("parallaxdriver: parallax-move failed", "output", outName, "direction", direction, "error", err)
+		targets := []string{outName}
+		if expandMoveTargets != nil {
+			if t := expandMoveTargets(outName); len(t) > 0 {
+				targets = t
+			}
+		}
+		for _, name := range targets {
+			mctx, cancel := context.WithTimeout(ctx, 2*time.Second)
+			err := move(mctx, name, direction)
+			cancel()
+			if err != nil {
+				log.Warn("parallaxdriver: parallax-move failed", "output", name, "direction", direction, "error", err)
+			}
 		}
 	}
 }

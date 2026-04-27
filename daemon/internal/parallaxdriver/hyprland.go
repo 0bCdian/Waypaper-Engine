@@ -33,7 +33,7 @@ func runHyprlandPoll(ctx context.Context, opts RunOpts, log *slog.Logger, every 
 			entries, ok := hyprlandAllMonitorWorkspaces(tickCtx, log)
 			if ok {
 				vert := opts.Vertical != nil && opts.Vertical()
-				st.tick(tickCtx, entries, opts.Move, opts.ResolveMonitor, vert, opts.ChunkSize, log)
+				st.tick(tickCtx, entries, opts.Move, opts.ResolveMonitor, opts.ExpandMoveTargets, vert, opts.ChunkSize, log)
 			}
 			cancel()
 		}

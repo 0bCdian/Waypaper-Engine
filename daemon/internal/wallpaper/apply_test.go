@@ -28,9 +28,10 @@ import (
 // ---------------------------------------------------------------------------
 
 type mockBackend struct {
-	nameFn         func() string
-	capabilitiesFn func() backend.Capabilities
-	setWallpaperFn func(context.Context, backend.WallpaperRequest) error
+	nameFn           func() string
+	capabilitiesFn   func() backend.Capabilities
+	setWallpaperFn   func(context.Context, backend.WallpaperRequest) error
+	setExtendGroupFn func([]string)
 }
 
 func (m *mockBackend) Name() string {
@@ -58,6 +59,12 @@ func (m *mockBackend) RegisterDefaults(*viper.Viper)        {}
 func (m *mockBackend) ValidateConfig(json.RawMessage) error { return nil }
 func (m *mockBackend) ParseConfig(json.RawMessage) (any, error) {
 	return nil, nil
+}
+
+func (m *mockBackend) SetExtendParallaxGroup(names []string) {
+	if m.setExtendGroupFn != nil {
+		m.setExtendGroupFn(names)
+	}
 }
 
 type mockHistoryStore struct {
@@ -282,6 +289,50 @@ func TestApply_ExtendMode_MultiImage_WithSplitter_UsesIndividualPerMonitor(t *te
 	require.NoError(t, err)
 	assert.Equal(t, 2, calls)
 	assert.Equal(t, []monitor.MonitorMode{monitor.ModeIndividual, monitor.ModeIndividual}, modes)
+}
+
+func TestApply_ExtendMode_MultiWithSplitter_SetsParallaxSpanGroup(t *testing.T) {
+	f := newApplyFixture()
+	dir := t.TempDir()
+	src := filepath.Join(dir, "src.png")
+	writeTestPNG(t, src, 400, 200)
+	f.img.Path = src
+	f.img.ID = 99
+	f.img.MediaType = "image"
+
+	splitter := imgpkg.NewSplitter(dir)
+	mons := []monitor.Monitor{
+		{Name: "m1", X: 0, Y: 0, Width: 200, Height: 100, Scale: 1},
+		{Name: "m2", X: 200, Y: 0, Width: 200, Height: 100, Scale: 1},
+	}
+	var gotParallax []string
+	f.backend.setExtendGroupFn = func(names []string) {
+		if names == nil {
+			gotParallax = nil
+			return
+		}
+		gotParallax = append([]string(nil), names...)
+	}
+	opts := f.opts(mons, monitor.ModeExtend)
+	opts.Splitter = splitter
+	err := Apply(context.Background(), opts)
+	require.NoError(t, err)
+	assert.ElementsMatch(t, []string{"m1", "m2"}, gotParallax)
+}
+
+func TestApply_NonSpanMode_ClearsParallaxSpanGroup(t *testing.T) {
+	f := newApplyFixture()
+	var gotParallax []string
+	f.backend.setExtendGroupFn = func(names []string) {
+		if names == nil {
+			gotParallax = nil
+			return
+		}
+		gotParallax = append([]string(nil), names...)
+	}
+	err := Apply(context.Background(), f.opts([]monitor.Monitor{{Name: "m1", Width: 100, Height: 100}}, monitor.ModeIndividual))
+	require.NoError(t, err)
+	assert.Nil(t, gotParallax)
 }
 
 func testExtendInteractiveUsesClone(t *testing.T, mediaType string, wantMT media.MediaType) {
