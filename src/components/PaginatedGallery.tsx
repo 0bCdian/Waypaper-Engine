@@ -1,10 +1,6 @@
-import ResponsivePagination from "react-responsive-pagination";
-import "react-responsive-pagination/themes/minimal.css";
-import "../custom.css";
 import { useMemo, useRef, type RefObject } from "react";
 import { useDroppable } from "@dnd-kit/react";
-import PlaylistTrack from "./PlaylistTrack";
-import PlaylistController from "./PlaylistController";
+import BottomDock from "./BottomDock";
 import FolderCard from "./FolderCard";
 import AppDragDropProvider from "./AppDragDropProvider";
 import { useImagePagination } from "../hooks/useImagePagination";
@@ -12,7 +8,6 @@ import { galleryHasActiveFilters } from "../utils/galleryFilterTokens";
 import { LazyMotion, m, AnimatePresence, domAnimation } from "framer-motion";
 import { useImagesStore } from "../stores/images";
 import { useFoldersStore } from "../stores/foldersStore";
-import { useIsNeo } from "../hooks/useIsNeo";
 import { useContextMenuStore } from "../stores/contextMenuStore";
 import { buildGalleryMenuItems } from "../utils/contextMenuItems";
 import type { DropTargetData } from "../stores/dragStore";
@@ -57,7 +52,6 @@ function PaginatedGallery({ onMarqueePointerDown, gridRef, marqueeBox }: Paginat
   const folders = useFoldersStore((s) => s.folders);
   const currentFolderId = useFoldersStore((s) => s.currentFolderId);
   const filters = useImagesStore((s) => s.filters);
-  const isNeo = useIsNeo();
   const ref = useRef<HTMLDivElement>(null);
   const openContextMenu = useContextMenuStore((s) => s.open);
 
@@ -122,30 +116,11 @@ function PaginatedGallery({ onMarqueePointerDown, gridRef, marqueeBox }: Paginat
             )}
 
             {/* Pinned bottom: pagination + playlist track */}
-            <div
-              className={`shrink-0 flex w-full min-w-0 flex-col justify-between gap-4 px-2 lg:px-4 pt-3 pb-2 overflow-x-clip overflow-y-visible${isNeo ? " neo-bottom-dock" : ""}`}
-            >
-              <div className="self-center flex flex-col items-center gap-2">
-                <div className="max-w-2xl min-w-1">
-                  <ResponsivePagination
-                    total={totalPages}
-                    previousClassName="rounded_button_previous"
-                    nextClassName="rounded_button_next"
-                    current={currentPage}
-                    onPageChange={(page: number) => {
-                      handlePageChange(page);
-                    }}
-                  />
-                </div>
-                {totalPages > 1 && (
-                  <span className="text-xs text-base-content/50">
-                    Page {currentPage} of {totalPages}
-                  </span>
-                )}
-              </div>
-              <PlaylistController />
-              <PlaylistTrack />
-            </div>
+            <BottomDock
+              currentPage={currentPage}
+              totalPages={totalPages}
+              handlePageChange={handlePageChange}
+            />
           </m.div>
         </AnimatePresence>
       </AppDragDropProvider>

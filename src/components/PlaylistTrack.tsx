@@ -101,12 +101,9 @@ function PlaylistTrack() {
         return;
       }
 
-      const oneShot =
-        usePlaylistStore.getState().stripScrollToImageIdOnce;
+      const oneShot = usePlaylistStore.getState().stripScrollToImageIdOnce;
       if (oneShot != null) {
-        const el = root.querySelector<HTMLElement>(
-          `[data-playlist-image-id="${String(oneShot)}"]`,
-        );
+        const el = root.querySelector<HTMLElement>(`[data-playlist-image-id="${String(oneShot)}"]`);
         if (el) {
           el.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
         }
@@ -118,7 +115,7 @@ function PlaylistTrack() {
       if (!isThisPlaylistActive || !activePlaylist) {
         return;
       }
-      const activeEl = root.querySelector<HTMLElement>("[data-active-playlist-item=\"true\"]");
+      const activeEl = root.querySelector<HTMLElement>('[data-active-playlist-item="true"]');
       if (!activeEl) {
         return;
       }
@@ -222,7 +219,9 @@ function PlaylistTrack() {
   );
   const showDropIndicator = isDropTarget && isDraggingAddable;
 
-  const btnClass = isNeo ? "btn btn-primary uppercase" : "btn btn-primary rounded-lg uppercase";
+  const btnClass = isNeo
+    ? "btn btn-sm btn-primary uppercase"
+    : "btn btn-sm btn-primary rounded-lg uppercase";
   /* Horizontal scroll only (Tailwind / DaisyUI pattern: overflow-x-auto on flex row).
    * Never combine overflow-y-hidden here: it clips translateY + shadows on the “raised” card. */
   const scrollClass =
@@ -233,10 +232,10 @@ function PlaylistTrack() {
       : "";
 
   return (
-    <div className="mb-2 flex w-full min-w-0 flex-col gap-5 overflow-x-clip overflow-y-visible">
-      <div className="flex flex-wrap items-center gap-2 lg:gap-3">
+    <div className="flex w-full min-w-0 flex-col gap-2 overflow-x-clip overflow-y-visible px-3 py-2 lg:px-4 lg:py-2.5">
+      <div className="flex flex-wrap items-center gap-2">
         <div className="flex w-full min-w-0 flex-col">
-          <span className="text-2xl lg:text-4xl font-bold truncate">
+          <span className="text-xl lg:text-2xl font-bold truncate">
             {playlistArray.length > 0 ? `Playlist (${playlistArray.length})` : "Playlist"}
             {isDirty && (
               <span
@@ -334,7 +333,11 @@ function PlaylistTrack() {
             </button>
             <button
               type="button"
-              className={isNeo ? "btn btn-error uppercase" : "btn btn-error rounded-lg uppercase"}
+              className={
+                isNeo
+                  ? "btn btn-sm btn-error uppercase"
+                  : "btn btn-sm btn-error rounded-lg uppercase"
+              }
               onClick={async () => {
                 if (playlist.id) {
                   await stopPlaylistSilent(playlist.id);
@@ -350,7 +353,9 @@ function PlaylistTrack() {
       </div>
       <div
         ref={playlistDropRef}
-        className={`relative w-full min-h-[5.5rem] min-w-0 overflow-visible transition-all duration-200${showDropIndicator ? " ring-2 ring-dashed ring-primary bg-primary/10" : ""}`}
+        className={`relative w-full min-w-0 overflow-visible transition-all duration-200${
+          playlistArray.length === 0 && showDropIndicator ? " min-h-[5.5rem]" : ""
+        }${showDropIndicator ? " ring-2 ring-dashed ring-primary bg-primary/10" : ""}`}
       >
         {showDropIndicator && playlistArray.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">

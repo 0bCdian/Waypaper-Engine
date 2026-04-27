@@ -296,45 +296,43 @@ function Filters() {
 
   return (
     <section
-      className={`flex flex-col gap-2 px-4 pt-3 pb-2${isNeo ? " neo-filters-strip" : ""}`}
+      className={`flex flex-wrap items-center gap-1 px-4 pt-3 pb-2${isNeo ? " neo-filters-strip" : ""}`}
       data-prevent-gallery-marquee
     >
-      {/* ── Row 1: media type segment ─────────────────────────── */}
-      <div className="flex items-center gap-1 flex-wrap">
-        {MEDIA_TYPES.map((type) => (
-          <button
-            key={type}
-            type="button"
-            className={`${pillBase} ${partialFilters.mediaType === type ? pillActive : pillIdle}`}
-            onClick={() => setPartialFilters((p) => ({ ...p, mediaType: type }))}
-          >
-            {MEDIA_LABELS[type]}
-          </button>
-        ))}
-
-        {/* Sort — single cycling button */}
+      {/* ── Media type pills ──────────────────────────────────── */}
+      {MEDIA_TYPES.map((type) => (
         <button
+          key={type}
           type="button"
-          className={`${pillBase} ${pillIdle} ml-auto`}
-          onClick={handleSortCycle}
-          title="Cycle sort: Name↑ → Name↓ → ID↑ → ID↓"
+          className={`${pillBase} ${partialFilters.mediaType === type ? pillActive : pillIdle}`}
+          onClick={() => setPartialFilters((p) => ({ ...p, mediaType: type }))}
         >
-          {sortLabel(currentSort)}
+          {MEDIA_LABELS[type]}
         </button>
+      ))}
 
-        {/* Advanced filters */}
-        <button
-          type="button"
-          className={`${pillBase} ${pillIdle}`}
-          onClick={() => useModalStore.getState().open("AdvancedFiltersModal")}
-        >
-          Filters
-        </button>
-      </div>
+      {/* Sort — single cycling button */}
+      <button
+        type="button"
+        className={`${pillBase} ${pillIdle}`}
+        onClick={handleSortCycle}
+        title="Cycle sort: Name↑ → Name↓ → ID↑ → ID↓"
+      >
+        {sortLabel(currentSort)}
+      </button>
 
-      {/* ── Row 2: unified search bar ─────────────────────────── */}
+      {/* Advanced filters */}
+      <button
+        type="button"
+        className={`${pillBase} ${pillIdle}`}
+        onClick={() => useModalStore.getState().open("AdvancedFiltersModal")}
+      >
+        Filters
+      </button>
+
+      {/* ── Search bar — sits right of pills at ≥md, wraps to its own line at <md ── */}
       <div
-        className={`relative flex items-center gap-0 ${
+        className={`relative flex items-center gap-0 w-full md:w-auto md:flex-1 md:max-w-lg ml-auto mt-1 md:mt-0 ${
           isNeo
             ? "neo-rs-control-wrapper"
             : "rounded-xl bg-base-200 border border-base-content/10 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-1 focus-within:ring-offset-base-100"

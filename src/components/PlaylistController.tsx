@@ -1,14 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 import { useActivePlaylistStore } from "../stores/activePlaylistStore";
 import { useImagesStore } from "../stores/images";
-import { useIsNeo } from "../hooks/useIsNeo";
 import { getThumbnailSrc } from "../utils/utilities";
 
 const { goDaemon } = window.API_RENDERER;
 
 function PlaylistController() {
   const activePlaylist = useActivePlaylistStore((s) => s.activePlaylist);
-  const isNeo = useIsNeo();
   const imagesMap = useImagesStore((s) => s.imagesMap);
   const [tickedCountdown, setTickedCountdown] = useState<string | null>(null);
 
@@ -75,14 +73,12 @@ function PlaylistController() {
   const monitors = activePlaylist.monitors.join(", ");
 
   return (
-    <div
-      className={`flex items-center gap-3 rounded-xl border border-base-300 bg-base-200 px-4 py-2 shadow-sm ${isNeo ? "neo-card" : ""}`}
-    >
+    <div className="flex items-center gap-3 px-3 py-2 lg:px-4 lg:py-2.5">
       {currentImage && (
         <img
           src={getThumbnailSrc(currentImage)}
           alt={currentImage.name}
-          className="h-10 w-10 rounded-lg object-cover"
+          className="h-8 w-8 rounded object-cover shrink-0"
         />
       )}
 
@@ -91,8 +87,8 @@ function PlaylistController() {
           {activePlaylist.playlist_name}
         </span>
         <span className="truncate text-xs text-base-content/60">
-          {currentImage?.name ?? "Unknown"} &middot;{" "}
-          {activePlaylist.current_index + 1}/{activePlaylist.total_images}
+          {currentImage?.name ?? "Unknown"} &middot; {activePlaylist.current_index + 1}/
+          {activePlaylist.total_images}
           {monitors ? ` · ${monitors}` : ""}
         </span>
       </div>
