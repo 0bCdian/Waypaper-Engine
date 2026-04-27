@@ -29,15 +29,16 @@ export function useFilteredImages() {
   );
 
   const selectAllImages = () => {
-    const newSelected = new Set<number>();
-    for (const image of filteredImages) {
-      if (newSelected.has(image.id)) {
-        newSelected.delete(image.id);
-      } else {
-        newSelected.add(image.id);
-      }
+    const current = useImagesStore.getState().selectedImages;
+    const allSelected =
+      filteredImages.length > 0 && filteredImages.every((img) => current.has(img.id));
+    if (allSelected) {
+      const next = new Set(current);
+      for (const img of filteredImages) next.delete(img.id);
+      setSelectedImages(next);
+    } else {
+      setSelectedImages(new Set(filteredImages.map((img) => img.id)));
     }
-    setSelectedImages(newSelected);
   };
 
   const clearSelection = () => {

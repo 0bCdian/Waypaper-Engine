@@ -2,7 +2,6 @@ import ResponsivePagination from "react-responsive-pagination";
 import "react-responsive-pagination/themes/minimal.css";
 import "../custom.css";
 import { useIsNeo } from "../hooks/useIsNeo";
-import PlaylistController from "./PlaylistController";
 import PlaylistTrack from "./PlaylistTrack";
 
 type Props = {
@@ -22,7 +21,7 @@ function BottomDock({ currentPage, totalPages, handlePageChange }: Props) {
       }`}
     >
       {/* Pagination row */}
-      <div className="flex items-center justify-center gap-3 px-3 py-2 lg:px-4 lg:py-2.5">
+      <div className="flex flex-col items-center gap-1 px-3 py-2 lg:px-4 lg:py-2.5">
         <div className="max-w-2xl min-w-1">
           <ResponsivePagination
             total={totalPages}
@@ -38,9 +37,6 @@ function BottomDock({ currentPage, totalPages, handlePageChange }: Props) {
           </span>
         )}
       </div>
-
-      {/* Now-playing row — renders null when no active playlist */}
-      <PlaylistController />
 
       {/* Playlist header + mini-card strip */}
       <PlaylistTrack />

@@ -236,7 +236,8 @@ function PlaylistTrack() {
       <div className="flex flex-wrap items-center gap-2">
         <div className="flex w-full min-w-0 flex-col">
           <span className="text-xl lg:text-2xl font-bold truncate">
-            {playlistArray.length > 0 ? `Playlist (${playlistArray.length})` : "Playlist"}
+            {playlistArray.length > 0 &&
+              `${playlist.name?.trim() || "Unnamed Playlist"} (${playlistArray.length})`}
             {isDirty && (
               <span
                 className="ml-2 inline-block h-2.5 w-2.5 rounded-full bg-warning align-middle"

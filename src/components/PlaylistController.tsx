@@ -67,39 +67,55 @@ function PlaylistController() {
     void goDaemon.stopPlaylist(activePlaylist.playlist_id);
   }, [activePlaylist]);
 
-  if (!activePlaylist) return null;
+  if (!activePlaylist) {
+    // Invisible placeholder — same structure as the active state so layout space is preserved.
+    return (
+      <div className="invisible pointer-events-none flex items-center gap-2 px-2 py-0" aria-hidden>
+        <div className="h-10 w-10 rounded shrink-0" />
+        <div className="flex min-w-0 flex-col">
+          <span className="text-sm">&nbsp;</span>
+          <span className="text-xs">&nbsp;</span>
+        </div>
+        <div className="flex items-center gap-1">
+          <button type="button" className="btn btn-ghost btn-xs btn-square" tabIndex={-1}><span className="h-4 w-4" /></button>
+          <button type="button" className="btn btn-ghost btn-sm btn-square" tabIndex={-1}><span className="h-5 w-5" /></button>
+          <button type="button" className="btn btn-ghost btn-xs btn-square" tabIndex={-1}><span className="h-4 w-4" /></button>
+          <button type="button" className="btn btn-ghost btn-xs btn-square" tabIndex={-1}><span className="h-4 w-4" /></button>
+        </div>
+      </div>
+    );
+  }
 
   const currentImage = imagesMap.get(activePlaylist.current_image_id);
   const monitors = activePlaylist.monitors.join(", ");
 
   return (
-    <div className="flex items-center gap-3 px-3 py-2 lg:px-4 lg:py-2.5">
+    <div className="flex items-center gap-2 px-2 py-0">
       {currentImage && (
         <img
           src={getThumbnailSrc(currentImage)}
           alt={currentImage.name}
-          className="h-8 w-8 rounded object-cover shrink-0"
+          className="h-10 w-10 rounded object-cover shrink-0"
         />
       )}
 
-      <div className="flex min-w-0 flex-1 flex-col">
+      <div className="flex min-w-0 flex-col">
         <span className="truncate text-sm font-semibold text-base-content">
           {activePlaylist.playlist_name}
         </span>
         <span className="truncate text-xs text-base-content/60">
-          {currentImage?.name ?? "Unknown"} &middot; {activePlaylist.current_index + 1}/
-          {activePlaylist.total_images}
+          {currentImage?.name ?? "Unknown"} &middot;{" "}
+          {activePlaylist.current_index + 1}/{activePlaylist.total_images}
           {monitors ? ` · ${monitors}` : ""}
         </span>
       </div>
 
-      {countdown && (
-        <span className="whitespace-nowrap text-xs tabular-nums text-base-content/50">
-          {countdown}
-        </span>
-      )}
-
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-1 mt-5">
+        {countdown && (
+          <span className="whitespace-nowrap text-xs min-w-2 tabular-nums text-base-content/50">
+            {countdown}
+          </span>
+        )}
         <button
           type="button"
           className="btn btn-ghost btn-xs btn-square"
