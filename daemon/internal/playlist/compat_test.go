@@ -113,6 +113,27 @@ func TestFindCompatibleIndex_VideoOnly(t *testing.T) {
 	assert.Equal(t, 1, skipped)
 }
 
+func TestFindCompatibleIndex_BackwardSkipsToPreviousCompatible(t *testing.T) {
+	// Regression: forward-only search from the raw "previous" slot could wrap
+	// back to the current index (e.g. [img, web, img] at last image).
+	pl := &store.Playlist{
+		ID:   9,
+		Name: "sandwich",
+		Images: []store.PlaylistImage{
+			{ImageID: 1, MediaType: "image"},
+			{ImageID: 2, MediaType: "web"},
+			{ImageID: 3, MediaType: "image"},
+		},
+	}
+	// Raw "previous" from index 2 is 1 (web); backward must reach index 0.
+	idx, skipped, items := findCompatibleIndexWithWalk(context.Background(), pl, 1, compatBackward, imageOnlyCaps(), defaultStubImages())
+	assert.Equal(t, 0, idx)
+	assert.Equal(t, 1, skipped)
+	require.Len(t, items, 1)
+	assert.Equal(t, 2, items[0].ImageID)
+	assert.Equal(t, "web", items[0].MediaType)
+}
+
 func TestFindCompatibleIndex_FallbackToImageStore(t *testing.T) {
 	pl := &store.Playlist{
 		ID:   3,

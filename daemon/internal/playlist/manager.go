@@ -149,7 +149,7 @@ func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target moni
 
 	effectiveIdx := applyRow
 	if !opts.fromPersisted {
-		result, err := m.applyImage(ctx, pl, applyRow, monitors, targetEff.Mode)
+		result, err := m.applyImage(ctx, pl, applyRow, monitors, targetEff.Mode, compatForward)
 		if err != nil {
 			slog.Warn("playlist: failed to apply first image", "error", err)
 		}
@@ -435,6 +435,9 @@ func (m *Manager) advancePlaylist(ctx context.Context, playlistID int, delta int
 	if err != nil {
 		return err
 	}
+	if len(pl.Images) == 0 {
+		return fmt.Errorf("playlist manager: playlist %d has no images", playlistID)
+	}
 
 	newIdx := (inst.CurrentIndex + delta + len(pl.Images)) % len(pl.Images)
 
@@ -451,7 +454,11 @@ func (m *Manager) advancePlaylist(ctx context.Context, playlistID int, delta int
 		}
 	}
 
-	result, applyErr := m.applyImage(ctx, pl, newIdx, targetMonitors, mode)
+	walk := compatForward
+	if delta < 0 {
+		walk = compatBackward
+	}
+	result, applyErr := m.applyImage(ctx, pl, newIdx, targetMonitors, mode, walk)
 	if applyErr != nil {
 		return applyErr
 	}
@@ -571,7 +578,7 @@ func (m *Manager) ReconcileAfterPlaylistUpdate(ctx context.Context, playlistID i
 	oldSched.Stop()
 
 	if pl.Images[row].ImageID != inst.CurrentImageID {
-		res, applyErr := m.applyImage(ctx, pl, row, monitors, target.Mode)
+		res, applyErr := m.applyImage(ctx, pl, row, monitors, target.Mode, compatForward)
 		if applyErr != nil {
 			slog.Warn("playlist reconcile: apply image", "playlist_id", playlistID, "error", applyErr)
 		} else if res.AppliedIndex >= 0 {
@@ -625,7 +632,7 @@ func (m *Manager) onTick(ctx context.Context, playlistID int, index int, monitor
 		return
 	}
 
-	result, err := m.applyImage(ctx, pl, index, monitors, target.Mode)
+	result, err := m.applyImage(ctx, pl, index, monitors, target.Mode, compatForward)
 	if err != nil {
 		slog.Warn("playlist tick: failed to apply image", "playlist_id", playlistID, "index", index, "error", err)
 		return
@@ -661,6 +668,18 @@ func (m *Manager) onTick(ctx context.Context, playlistID int, index int, monitor
 	})
 }
 
+// compatWalk selects how findCompatibleIndex searches the playlist when some
+// entries are not supported by the active backend. Forward matches timer/next
+// (walk increasing indices from start); Backward matches previous (walk
+// decreasing from start) so we land on the prior compatible item instead of
+// wrapping forward to the current one.
+type compatWalk int
+
+const (
+	compatForward compatWalk = iota
+	compatBackward
+)
+
 // applyResult holds the outcome of a playlist image application attempt.
 type applyResult struct {
 	// AppliedIndex is the playlist index that was actually set, or -1 if nothing was applied.
@@ -676,7 +695,7 @@ type applyResult struct {
 //
 // In auto mode, the backend is resolved per item via PickBackend and switched
 // transparently (no restore, no config persist).
-func (m *Manager) applyImage(ctx context.Context, pl *store.Playlist, index int, monitors []monitor.Monitor, mode monitor.MonitorMode) (applyResult, error) {
+func (m *Manager) applyImage(ctx context.Context, pl *store.Playlist, index int, monitors []monitor.Monitor, mode monitor.MonitorMode, walk compatWalk) (applyResult, error) {
 	if index >= len(pl.Images) {
 		return applyResult{AppliedIndex: -1}, fmt.Errorf("image index %d out of range (total: %d)", index, len(pl.Images))
 	}
@@ -686,14 +705,14 @@ func (m *Manager) applyImage(ctx context.Context, pl *store.Playlist, index int,
 	if selMode == "auto" {
 		return m.applyImageAuto(ctx, pl, index, monitors, mode)
 	}
-	return m.applyImageFixed(ctx, pl, index, monitors, mode)
+	return m.applyImageFixed(ctx, pl, index, monitors, mode, walk)
 }
 
-func (m *Manager) applyImageFixed(ctx context.Context, pl *store.Playlist, index int, monitors []monitor.Monitor, mode monitor.MonitorMode) (applyResult, error) {
+func (m *Manager) applyImageFixed(ctx context.Context, pl *store.Playlist, index int, monitors []monitor.Monitor, mode monitor.MonitorMode, walk compatWalk) (applyResult, error) {
 	activeBackend := m.registry.Active()
 	caps := activeBackend.Capabilities()
 
-	resolvedIdx, skipped := findCompatibleIndex(ctx, pl, index, caps, m.imageStore)
+	resolvedIdx, skipped, skipItems := findCompatibleIndexWithWalk(ctx, pl, index, walk, caps, m.imageStore)
 	if resolvedIdx < 0 {
 		slog.Warn("playlist: no compatible item for active backend",
 			"playlist_id", pl.ID,
@@ -718,6 +737,14 @@ func (m *Manager) applyImageFixed(ctx context.Context, pl *store.Playlist, index
 			"backend", activeBackend.Name(),
 			"applied_index", resolvedIdx,
 		)
+		skipPayload := make([]map[string]any, 0, len(skipItems))
+		for _, it := range skipItems {
+			skipPayload = append(skipPayload, map[string]any{
+				"image_id":    it.ImageID,
+				"media_type":  it.MediaType,
+				"slot_index":  it.SlotIndex,
+			})
+		}
 		m.bus.Publish(events.Event{
 			Type: events.PlaylistSkippedIncompatible,
 			Data: map[string]any{
@@ -726,6 +753,7 @@ func (m *Manager) applyImageFixed(ctx context.Context, pl *store.Playlist, index
 				"backend":       activeBackend.Name(),
 				"skipped":       skipped,
 				"applied_index": resolvedIdx,
+				"skipped_items": skipPayload,
 			},
 		})
 	}
@@ -802,26 +830,63 @@ func (m *Manager) doApply(ctx context.Context, pl *store.Playlist, index int, mo
 	return applyResult{AppliedIndex: index, Skipped: skipped}, nil
 }
 
-// findCompatibleIndex walks the playlist forward from start looking for an item
-// whose media type the backend supports. It wraps around and checks at most
-// len(images) entries. Returns the resolved index and number of items skipped,
-// or (-1, skipped) if nothing is compatible.
-func findCompatibleIndex(ctx context.Context, pl *store.Playlist, start int, caps backend.Capabilities, images store.ImageStore) (idx int, skipped int) {
-	n := len(pl.Images)
-	for i := range n {
-		candidate := (start + i) % n
-		imgRef := pl.Images[candidate]
-		mt := imgRef.MediaType
-		if mt == "" {
-			if img, err := images.GetByID(ctx, imgRef.ImageID); err == nil && img != nil {
-				mt = strings.ToLower(strings.TrimSpace(img.MediaType))
-			}
-		}
-		if backend.SupportsMedia(caps, mt) {
-			return candidate, i
+// skippedPlaylistItem describes one playlist entry that was not applied because
+// the active backend does not support its media type.
+type skippedPlaylistItem struct {
+	ImageID   int
+	MediaType string
+	SlotIndex int
+}
+
+func resolvePlaylistImageMediaType(ctx context.Context, imgRef store.PlaylistImage, images store.ImageStore) string {
+	mt := imgRef.MediaType
+	if mt == "" {
+		if img, err := images.GetByID(ctx, imgRef.ImageID); err == nil && img != nil {
+			mt = strings.ToLower(strings.TrimSpace(img.MediaType))
 		}
 	}
-	return -1, n
+	return mt
+}
+
+// findCompatibleIndex walks forward from start (used by tests and as a thin wrapper).
+func findCompatibleIndex(ctx context.Context, pl *store.Playlist, start int, caps backend.Capabilities, images store.ImageStore) (idx int, skipped int) {
+	idx, skipped, _ = findCompatibleIndexWithWalk(ctx, pl, start, compatForward, caps, images)
+	return idx, skipped
+}
+
+// findCompatibleIndexWithWalk walks the playlist from start in the given
+// direction, wrapping at most once. Returns the resolved index, skip count, and
+// per-slot skip metadata for UI toasts, or (-1, n, items) if nothing is compatible.
+func findCompatibleIndexWithWalk(ctx context.Context, pl *store.Playlist, start int, walk compatWalk, caps backend.Capabilities, images store.ImageStore) (idx int, skipped int, skippedItems []skippedPlaylistItem) {
+	n := len(pl.Images)
+	if n == 0 {
+		return -1, 0, nil
+	}
+	start = ((start % n) + n) % n
+	var order []int
+	order = make([]int, n)
+	if walk == compatForward {
+		for i := range n {
+			order[i] = (start + i) % n
+		}
+	} else {
+		for i := range n {
+			order[i] = (start - i + n) % n
+		}
+	}
+	for i, candidate := range order {
+		imgRef := pl.Images[candidate]
+		mt := resolvePlaylistImageMediaType(ctx, imgRef, images)
+		if backend.SupportsMedia(caps, mt) {
+			return candidate, i, skippedItems
+		}
+		skippedItems = append(skippedItems, skippedPlaylistItem{
+			ImageID:   imgRef.ImageID,
+			MediaType: mt,
+			SlotIndex: candidate,
+		})
+	}
+	return -1, n, skippedItems
 }
 
 // resolveMonitors resolves the target specification to concrete monitors.
@@ -893,7 +958,7 @@ func (m *Manager) missedEventChecker(ctx context.Context, playlistID int, monito
 					newIdx = min(weekday, len(pl.Images)-1)
 				}
 
-				result, applyErr := m.applyImage(ctx, pl, newIdx, monitors, target.Mode)
+				result, applyErr := m.applyImage(ctx, pl, newIdx, monitors, target.Mode, compatForward)
 				if applyErr != nil {
 					slog.Warn("missed event: failed to apply image", "error", applyErr)
 					continue
