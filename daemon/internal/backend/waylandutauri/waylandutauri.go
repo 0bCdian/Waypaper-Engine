@@ -134,7 +134,7 @@ func New() backend.Backend {
 	return &WaylandUtauri{makeClient: newControlClient}
 }
 
-func (w *WaylandUtauri) Name() string { return "wayland-utauri" }
+func (w *WaylandUtauri) Name() string { return backend.WaylandUtauriBackendName }
 
 func (w *WaylandUtauri) IsAvailable() bool {
 	_, err := exec.LookPath(binaryName)
@@ -696,7 +696,7 @@ func (w *WaylandUtauri) ValidateConfig(raw json.RawMessage) error {
 }
 
 func (w *WaylandUtauri) ParseConfig(raw json.RawMessage) (any, error) {
-	return backend.UnmarshalParseConfig[Config](raw, "wayland-utauri")
+	return backend.UnmarshalParseConfig[Config](raw, backend.WaylandUtauriBackendName)
 }
 
 func (w *WaylandUtauri) loadConfigFromViper() *Config {

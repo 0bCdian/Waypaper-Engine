@@ -1,7 +1,9 @@
 package handler
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"log/slog"
 	"strings"
 	"time"
@@ -198,15 +200,9 @@ func RestoreWallpapers(
 		failures = append(failures, grpFailures...)
 	}
 
-	for _, state := range nonExtendStates {
-		ok, fail := restoreIndividual(ctx, state, connected[state.MonitorName], activeBackend, stateStore, images, videoAudioDefault)
-		if ok {
-			restored++
-		}
-		if fail != nil {
-			failures = append(failures, *fail)
-		}
-	}
+	n, indivFailures := restoreNonExtendIndividuals(ctx, nonExtendStates, connected, activeBackend, stateStore, images, videoAudioDefault)
+	restored += n
+	failures = append(failures, indivFailures...)
 
 	slog.Info("wallpaper restore complete", "restored", restored, "skipped", skipped, "failed", len(failures))
 
@@ -219,6 +215,137 @@ func RestoreWallpapers(
 			},
 		})
 	}
+}
+
+// restoreNonExtendIndividuals applies persisted non-extend rows. For wayland-utauri, consecutive
+// compatible image/GIF rows are merged into one multi-target SetWallpaper; other backends keep
+// one SetWallpaper per monitor.
+func restoreNonExtendIndividuals(
+	ctx context.Context,
+	nonExtendStates []store.MonitorState,
+	connected map[string]monitor.Monitor,
+	activeBackend backend.Backend,
+	stateStore store.StateStore,
+	images store.ImageStore,
+	videoAudioDefault bool,
+) (int, []restoreFailure) {
+	if req, states, mediaTypes, ok := tryWaylandUtauriIndividualRestoreBatch(ctx, nonExtendStates, connected, activeBackend, images); ok {
+		slog.Info("restore: SetWallpaper (wayland-utauri batched individual)",
+			"backend", activeBackend.Name(),
+			"monitors", len(states),
+		)
+		if err := activeBackend.SetWallpaper(ctx, *req); err != nil {
+			slog.Warn("restore: batched individual SetWallpaper failed", "error", err)
+			var failures []restoreFailure
+			for i, state := range states {
+				mt := media.MediaTypeImage
+				if i < len(mediaTypes) {
+					mt = mediaTypes[i]
+				}
+				reason := classifyRestoreError(err, activeBackend, string(mt))
+				failures = append(failures, restoreFailure{
+					Monitor:   state.MonitorName,
+					ImageID:   state.ImageID,
+					MediaType: string(mt),
+					Reason:    reason,
+				})
+			}
+			return 0, failures
+		}
+		for _, state := range states {
+			stateStore.SetCurrentWallpaper(state.MonitorName, restoreEntry(state, []string{state.MonitorName}))
+		}
+		slog.Info("restore: SetWallpaper ok (batched individual)", "backend", activeBackend.Name(), "monitors", len(states))
+		return len(states), nil
+	}
+
+	restored := 0
+	var failures []restoreFailure
+	for _, state := range nonExtendStates {
+		ok, fail := restoreIndividual(ctx, state, connected[state.MonitorName], activeBackend, stateStore, images, videoAudioDefault)
+		if ok {
+			restored++
+		}
+		if fail != nil {
+			failures = append(failures, *fail)
+		}
+	}
+	return restored, failures
+}
+
+// tryWaylandUtauriIndividualRestoreBatch merges all non-extend individual rows into one request when
+// every row is image/GIF, mode individual, and shared parallax/config match. Order matches
+// monitorStateStore iteration (not sorted by output name).
+func tryWaylandUtauriIndividualRestoreBatch(
+	ctx context.Context,
+	nonExtendStates []store.MonitorState,
+	connected map[string]monitor.Monitor,
+	activeBackend backend.Backend,
+	images store.ImageStore,
+) (*backend.WallpaperRequest, []store.MonitorState, []media.MediaType, bool) {
+	if activeBackend.Name() != backend.WaylandUtauriBackendName || len(nonExtendStates) < 2 {
+		return nil, nil, nil, false
+	}
+
+	targets := make([]backend.IndividualLoadTarget, 0, len(nonExtendStates))
+	statesOut := make([]store.MonitorState, 0, len(nonExtendStates))
+	mediaTypesOut := make([]media.MediaType, 0, len(nonExtendStates))
+	var sharedCfg json.RawMessage
+	var sharedParallax string
+	firstRow := true
+
+	for _, state := range nonExtendStates {
+		if monitor.MonitorMode(state.Mode) != monitor.ModeIndividual {
+			return nil, nil, nil, false
+		}
+		mon, ok := connected[state.MonitorName]
+		if !ok {
+			return nil, nil, nil, false
+		}
+
+		mt := media.MediaTypeImage
+		var imgPtr *store.Image
+		if img, err := images.GetByID(ctx, state.ImageID); err == nil && img != nil {
+			imgPtr = img
+			mt = normalizeRestoreMediaType(img.MediaType)
+		}
+		if mt != media.MediaTypeImage && mt != media.MediaTypeGIF {
+			return nil, nil, nil, false
+		}
+
+		cfg := wallpaper.MergedWallpaperConfigForImage(imgPtr)
+		parallax := wallpaper.ParallaxDirectionOverrideFromImage(imgPtr)
+
+		if firstRow {
+			sharedCfg = cfg
+			sharedParallax = parallax
+			firstRow = false
+		} else {
+			if parallax != sharedParallax || !bytes.Equal(cfg, sharedCfg) {
+				return nil, nil, nil, false
+			}
+		}
+
+		targets = append(targets, backend.IndividualLoadTarget{
+			Monitor:   mon,
+			Path:      state.ImagePath,
+			MediaType: mt,
+		})
+		statesOut = append(statesOut, state)
+		mediaTypesOut = append(mediaTypesOut, mt)
+	}
+
+	topMT := targets[0].MediaType
+	req := &backend.WallpaperRequest{
+		MediaType:             topMT,
+		Mode:                  monitor.ModeIndividual,
+		IndividualTargets:     targets,
+		WallpaperConfigValues: sharedCfg,
+		ParallaxDirection:     sharedParallax,
+		WaitForCompletion:     true,
+		AudioEnabled:          false,
+	}
+	return req, statesOut, mediaTypesOut, true
 }
 
 func normalizeRestoreMediaType(value string) media.MediaType {

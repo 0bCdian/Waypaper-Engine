@@ -43,16 +43,9 @@ type loadRequest struct {
 }
 
 func buildLoadRequest(req backend.WallpaperRequest, cfg *Config) (loadRequest, error) {
-	kind := "image"
-	switch req.MediaType {
-	case media.MediaTypeVideo:
-		kind = "video"
-	case media.MediaTypeWeb:
-		kind = "web"
-	case media.MediaTypeImage, media.MediaTypeGIF, "":
-		kind = "image"
-	default:
-		return loadRequest{}, fmt.Errorf("wayland-utauri: unsupported media type %q", req.MediaType)
+	kind, err := loadKindString(req.MediaType)
+	if err != nil {
+		return loadRequest{}, err
 	}
 
 	bezier := parseTransitionBezierOrDefault(cfg.TransitionBezier)
@@ -85,6 +78,9 @@ func buildLoadRequest(req backend.WallpaperRequest, cfg *Config) (loadRequest, e
 		out.Target = req.ImagePath
 		return out, nil
 	case monitor.ModeIndividual:
+		if len(req.IndividualTargets) > 0 {
+			return buildIndividualTargetsLoadRequest(req, cfg, out)
+		}
 		if len(req.Monitors) == 0 {
 			return loadRequest{}, fmt.Errorf("wayland-utauri: individual mode requires at least one monitor")
 		}
@@ -103,6 +99,76 @@ func buildLoadRequest(req backend.WallpaperRequest, cfg *Config) (loadRequest, e
 	default:
 		return loadRequest{}, fmt.Errorf("wayland-utauri: unsupported monitor mode %q", req.Mode)
 	}
+}
+
+func loadKindString(mt media.MediaType) (string, error) {
+	switch mt {
+	case media.MediaTypeVideo:
+		return "video", nil
+	case media.MediaTypeWeb:
+		return "web", nil
+	case media.MediaTypeImage, media.MediaTypeGIF, "":
+		return "image", nil
+	default:
+		return "", fmt.Errorf("wayland-utauri: unsupported media type %q", mt)
+	}
+}
+
+func dominantIndividualTargetsRootKind(rows []backend.IndividualLoadTarget) (string, error) {
+	if len(rows) == 0 {
+		return "", fmt.Errorf("wayland-utauri: IndividualTargets cannot be empty")
+	}
+	first, err := loadKindString(rows[0].MediaType)
+	if err != nil {
+		return "", err
+	}
+	for i := 1; i < len(rows); i++ {
+		k, err := loadKindString(rows[i].MediaType)
+		if err != nil {
+			return "", err
+		}
+		if k != first {
+			return "", fmt.Errorf("wayland-utauri: mixed media kinds in IndividualTargets (%q vs %q)", first, k)
+		}
+	}
+	return first, nil
+}
+
+func buildIndividualTargetsLoadRequest(req backend.WallpaperRequest, cfg *Config, base loadRequest) (loadRequest, error) {
+	dom, err := dominantIndividualTargetsRootKind(req.IndividualTargets)
+	if err != nil {
+		return loadRequest{}, err
+	}
+	out := base
+	out.Kind = dom
+	out.Targets = make([]loadTarget, 0, len(req.IndividualTargets))
+	if dom == "image" {
+		out.ImageFitMode = cfg.ImageFitMode
+		out.ImageRendering = cfg.ImageRendering
+	} else {
+		out.ImageFitMode = ""
+		out.ImageRendering = ""
+	}
+	out.WallpaperConfigValues = nil
+	if dom == "web" && len(req.WallpaperConfigValues) > 0 {
+		out.WallpaperConfigValues = req.WallpaperConfigValues
+	}
+	for _, row := range req.IndividualTargets {
+		name := strings.TrimSpace(row.Monitor.Name)
+		if name == "" {
+			return loadRequest{}, fmt.Errorf("wayland-utauri: monitor has empty name")
+		}
+		path := strings.TrimSpace(row.Path)
+		if path == "" {
+			return loadRequest{}, fmt.Errorf("wayland-utauri: empty path for monitor %q", name)
+		}
+		out.Targets = append(out.Targets, loadTarget{
+			Name:   name,
+			Target: path,
+			Kind:   dom,
+		})
+	}
+	return out, nil
 }
 
 type parallaxStateSnapshot struct {

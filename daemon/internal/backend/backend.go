@@ -19,6 +19,9 @@ import (
 	"github.com/spf13/viper"
 )
 
+// WaylandUtauriBackendName is the stable Name() value for the wayland-utauri backend.
+const WaylandUtauriBackendName = "wayland-utauri"
+
 // Backend is the core interface that every wallpaper backend must implement.
 //
 // Lifecycle:
@@ -156,6 +159,9 @@ type WallpaperRequest struct {
 	// ImagePath is the absolute filesystem path to the image file.
 	ImagePath string `json:"image_path"`
 
+	// IndividualTargets: per-monitor paths for one wayland-utauri multi-target load (ignored by other backends).
+	IndividualTargets []IndividualLoadTarget `json:"-"`
+
 	// AudioEnabled indicates whether audio should be enabled for video media.
 	AudioEnabled bool `json:"audio_enabled"`
 
@@ -182,4 +188,11 @@ type WallpaperRequest struct {
 	// The daemon core does not inspect this value — it passes it through opaquely.
 	// Each backend type-asserts this to its own config struct internally.
 	Config any `json:"-"`
+}
+
+// IndividualLoadTarget is one compositor output plus its media path for a batched individual load.
+type IndividualLoadTarget struct {
+	Monitor   monitor.Monitor
+	Path      string
+	MediaType media.MediaType
 }

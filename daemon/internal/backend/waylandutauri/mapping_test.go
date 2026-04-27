@@ -232,3 +232,51 @@ func TestBuildLoadRequest_waitForCompletionPassesThrough(t *testing.T) {
 		t.Fatal("expected WaitForCompletion true on load request")
 	}
 }
+
+func TestBuildLoadRequest_individualTargetsDistinctPaths(t *testing.T) {
+	t.Parallel()
+	cfg := defaultConfig()
+	req := backend.WallpaperRequest{
+		MediaType:         media.MediaTypeImage,
+		Mode:              monitor.ModeIndividual,
+		WaitForCompletion: true,
+		IndividualTargets: []backend.IndividualLoadTarget{
+			{Monitor: monitor.Monitor{Name: "A"}, Path: "/a.png", MediaType: media.MediaTypeImage},
+			{Monitor: monitor.Monitor{Name: "B"}, Path: "/b.png", MediaType: media.MediaTypeImage},
+		},
+		Monitors: []monitor.Monitor{{Name: "A"}, {Name: "B"}},
+	}
+	loadReq, err := buildLoadRequest(req, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(loadReq.Targets) != 2 {
+		t.Fatalf("targets: %d", len(loadReq.Targets))
+	}
+	if loadReq.Targets[0].Name != "A" || loadReq.Targets[0].Target != "/a.png" {
+		t.Fatalf("target[0]: %+v", loadReq.Targets[0])
+	}
+	if loadReq.Targets[1].Name != "B" || loadReq.Targets[1].Target != "/b.png" {
+		t.Fatalf("target[1]: %+v", loadReq.Targets[1])
+	}
+	if loadReq.Targets[0].Kind != "image" || loadReq.Targets[1].Kind != "image" {
+		t.Fatalf("kinds: %#v, %#v", loadReq.Targets[0].Kind, loadReq.Targets[1].Kind)
+	}
+}
+
+func TestBuildLoadRequest_individualTargetsRejectsMixedKinds(t *testing.T) {
+	t.Parallel()
+	cfg := defaultConfig()
+	req := backend.WallpaperRequest{
+		MediaType: media.MediaTypeImage,
+		Mode:      monitor.ModeIndividual,
+		IndividualTargets: []backend.IndividualLoadTarget{
+			{Monitor: monitor.Monitor{Name: "A"}, Path: "/a.png", MediaType: media.MediaTypeImage},
+			{Monitor: monitor.Monitor{Name: "B"}, Path: "/b.mp4", MediaType: media.MediaTypeVideo},
+		},
+	}
+	_, err := buildLoadRequest(req, cfg)
+	if err == nil {
+		t.Fatal("expected error for mixed image/video IndividualTargets")
+	}
+}
