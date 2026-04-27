@@ -1,9 +1,10 @@
 import { useMonitorStore, type StoreMonitor } from "../stores/monitors";
 import type { monitorSelectType } from "../types/rendererTypes";
 import SvgComponent from "./AddImagesIcon";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { calculateMinResolution, getThumbnailSrc } from "../utils/utilities";
 import { logger } from "../utils/logger";
+import { resolveWallpaperImageId } from "../utils/resolveWallpaperImageId";
 
 const goDaemon = window.API_RENDERER.goDaemon;
 
@@ -19,50 +20,65 @@ export function MonitorComponent({ monitor, scale, selectType, monitorsList, ref
   const setMonitorsList = useMonitorStore((s) => s.setMonitorsList);
   const [wallpaperSrc, setWallpaperSrc] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const fetchGenerationRef = useRef(0);
+  const monitorNameRef = useRef(monitor.name);
 
   const fetchWallpaperPreview = (onStart: () => void) => {
+    const gen = ++fetchGenerationRef.current;
+    const monitorName = monitorNameRef.current;
+    const endLoadingIfCurrent = () => {
+      if (gen === fetchGenerationRef.current) setIsLoading(false);
+    };
     onStart();
-    goDaemon
+    void goDaemon
       .getCurrentWallpapers()
       .then((current) => {
-        const monitors = current.monitors ?? [];
-        const state = monitors.find((s) => s.monitor_name === monitor.name);
-        if (state) {
-          return goDaemon.getImage(state.image_id);
+        if (gen !== fetchGenerationRef.current) return undefined;
+        const imageId = resolveWallpaperImageId(current, monitorName);
+        if (imageId == null) {
+          setWallpaperSrc(null);
+          endLoadingIfCurrent();
+          return undefined;
         }
-        return null;
+        return goDaemon.getImage(imageId);
       })
       .then((image) => {
-        if (image) {
-          const src = getThumbnailSrc(image, "1080p");
-          setWallpaperSrc(src.trim() !== "" ? src : null);
-        } else {
-          setWallpaperSrc(null);
-        }
+        if (gen !== fetchGenerationRef.current) return;
+        if (image === undefined) return;
+        const src = getThumbnailSrc(image, "1080p");
+        setWallpaperSrc(src.trim() !== "" ? src : null);
+        endLoadingIfCurrent();
       })
-      .catch((err) => {
+      .catch((err: unknown) => {
+        if (gen !== fetchGenerationRef.current) return;
         const msg = String(err instanceof Error ? err.message : err);
         if (msg.includes("not found")) {
           setWallpaperSrc(null);
+          endLoadingIfCurrent();
           return;
         }
-        logger.warn(`Failed to load wallpaper for ${monitor.name}:`, err);
-      })
-      .finally(() => {
-        setIsLoading(false);
+        logger.warn(`Failed to load wallpaper for ${monitorName}:`, err);
+        endLoadingIfCurrent();
       });
   };
 
   useEffect(() => {
+    monitorNameRef.current = monitor.name;
     fetchWallpaperPreview(() => setIsLoading(true));
-  }, [refreshKey]);
+  }, [refreshKey, monitor.name]);
 
   // Re-fetch when a wallpaper changes on any monitor
   useEffect(() => {
-    const dispose = goDaemon.on("wallpaper_changed", () =>
+    const disposeChanged = goDaemon.on("wallpaper_changed", () =>
       fetchWallpaperPreview(() => setIsLoading(true)),
     );
-    return dispose;
+    const disposeReconnected = goDaemon.on("sse_reconnected", () =>
+      fetchWallpaperPreview(() => setIsLoading(true)),
+    );
+    return () => {
+      disposeChanged();
+      disposeReconnected();
+    };
   }, []);
 
   // For extend mode: compute the image style so each monitor shows its
