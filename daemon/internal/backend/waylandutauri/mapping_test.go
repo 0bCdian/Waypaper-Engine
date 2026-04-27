@@ -211,3 +211,24 @@ func TestBuildLoadRequest_individualVideoSetsKindPerTarget(t *testing.T) {
 		t.Fatalf("expected per-target kind video, got %q", loadReq.Targets[0].Kind)
 	}
 }
+
+func TestBuildLoadRequest_waitForCompletionPassesThrough(t *testing.T) {
+	t.Parallel()
+	cfg := defaultConfig()
+	req := backend.WallpaperRequest{
+		MediaType:         media.MediaTypeImage,
+		ImagePath:         "/tmp/wall.png",
+		Mode:              monitor.ModeIndividual,
+		WaitForCompletion: true,
+		Monitors: []monitor.Monitor{
+			{Name: "HDMI-A-1"},
+		},
+	}
+	loadReq, err := buildLoadRequest(req, cfg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !loadReq.WaitForCompletion {
+		t.Fatal("expected WaitForCompletion true on load request")
+	}
+}

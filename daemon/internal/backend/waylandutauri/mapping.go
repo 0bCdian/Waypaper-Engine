@@ -69,7 +69,7 @@ func buildLoadRequest(req backend.WallpaperRequest, cfg *Config) (loadRequest, e
 			WaveAmplitudePercent: cfg.TransitionWaveAmplitudePercent,
 			WaveFrequency:        cfg.TransitionWaveFrequency,
 		},
-		WaitForCompletion: false,
+		WaitForCompletion: req.WaitForCompletion,
 	}
 	out.Parallax = buildParallaxRequestBody(cfg)
 	if kind == "image" {

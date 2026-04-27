@@ -173,6 +173,11 @@ type WallpaperRequest struct {
 	// ParallaxDirection is optional waypaper.json override: "horizontal" or "vertical" (empty = backend default only).
 	ParallaxDirection string `json:"-"`
 
+	// WaitForCompletion, when true, asks backends that support it to block until the wallpaper
+	// operation finishes (e.g. wayland-utauri POST /wallpaper/load with wait_for_completion).
+	// Used for restore to avoid 202 + queued-load races on cold start. Other backends may ignore.
+	WaitForCompletion bool `json:"-"`
+
 	// Config is the backend's own typed configuration, as returned by ParseConfig().
 	// The daemon core does not inspect this value — it passes it through opaquely.
 	// Each backend type-asserts this to its own config struct internally.

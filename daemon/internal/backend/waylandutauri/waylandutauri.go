@@ -431,6 +431,20 @@ func (w *WaylandUtauri) SetWallpaper(ctx context.Context, req backend.WallpaperR
 		return err
 	}
 
+	if len(loadReq.Targets) > 0 {
+		slog.Info("wayland-utauri: HTTP load request",
+			"kind", loadReq.Kind,
+			"wait_for_completion", loadReq.WaitForCompletion,
+			"targets", loadReq.Targets,
+		)
+	} else {
+		slog.Info("wayland-utauri: HTTP load request",
+			"kind", loadReq.Kind,
+			"wait_for_completion", loadReq.WaitForCompletion,
+			"target", loadReq.Target,
+		)
+	}
+
 	const loadAttempts = 7
 	delay := 200 * time.Millisecond
 	const maxDelay = 5 * time.Second
@@ -460,6 +474,18 @@ func (w *WaylandUtauri) SetWallpaper(ctx context.Context, req backend.WallpaperR
 		}
 
 		if statusCode >= 200 && statusCode < 300 {
+			if statusCode == 202 {
+				slog.Info("wayland-utauri: load HTTP response",
+					"status", statusCode,
+					"attempt", attempt+1,
+					"note", "wal-utauri may still be applying wallpaper asynchronously after 202",
+				)
+			} else {
+				slog.Info("wayland-utauri: load HTTP response",
+					"status", statusCode,
+					"attempt", attempt+1,
+				)
+			}
 			w.noteWallpaperParallaxDirection(cfg, &req)
 			if loadReq.Parallax != nil {
 				return nil
