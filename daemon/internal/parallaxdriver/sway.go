@@ -123,18 +123,22 @@ func swayAllOutputWorkspaces(ctx context.Context) ([]MonitorWorkspaceEntry, bool
 	}
 	var workspaces []struct {
 		ID      int    `json:"id"`
+		Num     *int   `json:"num"`
 		Output  string `json:"output"`
-		Focused bool   `json:"focused"`
+		Visible bool   `json:"visible"`
 	}
 	if err := json.Unmarshal(rawWS, &workspaces); err != nil {
 		return nil, false
 	}
 
-	focusedPerOutput := make(map[string]int, len(outputs))
+	// One visible workspace per output (not `focused`: only one workspace is
+	// globally focused, so other outputs would be missing from the map).
+	activePerOutput := make(map[string]int, len(outputs))
 	for _, w := range workspaces {
-		if w.Focused && w.Output != "" {
-			focusedPerOutput[w.Output] = w.ID
+		if !w.Visible || w.Output == "" {
+			continue
 		}
+		activePerOutput[w.Output] = swayParallaxKey(w.ID, w.Num)
 	}
 
 	entries := make([]MonitorWorkspaceEntry, 0, len(outputs))
@@ -142,7 +146,7 @@ func swayAllOutputWorkspaces(ctx context.Context) ([]MonitorWorkspaceEntry, bool
 		if o.Rect.Width <= 0 || o.Rect.Height <= 0 {
 			continue
 		}
-		wsID, ok := focusedPerOutput[o.Name]
+		wsID, ok := activePerOutput[o.Name]
 		if !ok {
 			continue
 		}
@@ -156,6 +160,17 @@ func swayAllOutputWorkspaces(ctx context.Context) ([]MonitorWorkspaceEntry, bool
 		})
 	}
 	return entries, len(entries) > 0
+}
+
+// swayParallaxKey maps Sway get_workspaces fields to a value comparable across
+// switches. Internal container `id` is not ordered by workspace position;
+// `num` is the logical number (1, 2, …) when set, else -1 for name-only
+// workspaces — then we fall back to `id`.
+func swayParallaxKey(id int, num *int) int {
+	if num != nil && *num != -1 {
+		return *num
+	}
+	return id
 }
 
 func swaymsgJSON(ctx context.Context, msgType string) ([]byte, error) {
