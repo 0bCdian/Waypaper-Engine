@@ -325,6 +325,11 @@ func (s *timerScheduler) Pause() {
 func (s *timerScheduler) Resume() {
 	s.mu.Lock()
 	s.paused = false
+	// runLoop may not have processed resumeCh yet; HTTP handlers read NextChangeAt()
+	// synchronously in the same goroutine, so prime the next deadline now (same basis as
+	// the non-paused path: time.Now().Add(s.interval)).
+	deadline := time.Now().Add(s.interval)
+	s.nextChange = &deadline
 	s.mu.Unlock()
 	select {
 	case s.resumeCh <- struct{}{}:

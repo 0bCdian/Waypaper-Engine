@@ -289,6 +289,31 @@ func TestTimerSchedulerPauseStopsTicking(t *testing.T) {
 	assert.Equal(t, countBefore, countAfter, "no ticks should occur while paused")
 }
 
+func TestTimerSchedulerResumeNextChangeAtImmediate(t *testing.T) {
+	sched := NewScheduler(SchedulerConfig{
+		Type:        "timer",
+		Interval:    1,
+		Order:       "ordered",
+		TotalImages: 2,
+		StartIndex:  0,
+	})
+	ts := sched.(*timerScheduler)
+	ts.interval = 5 * time.Minute
+
+	sched.Start(func(int) {})
+	defer sched.Stop()
+
+	sched.Pause()
+	assert.Nil(t, sched.NextChangeAt())
+
+	sched.Resume()
+	n := sched.NextChangeAt()
+	require.NotNil(t, n, "NextChangeAt must be set synchronously so API clients can show the timer")
+	now := time.Now()
+	assert.True(t, n.After(now) || n.Equal(now), "deadline should be in the near future")
+	assert.Less(t, n.Sub(now), 6*time.Minute)
+}
+
 func TestTimerSchedulerStop(t *testing.T) {
 	sched := NewScheduler(SchedulerConfig{
 		Type:        "timer",
