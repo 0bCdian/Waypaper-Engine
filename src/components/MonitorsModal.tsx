@@ -42,8 +42,8 @@ function Monitors() {
     if (modalRef.current) {
       useModalStore.getState().register("monitors", {
         showModal: () => {
-          setRefreshKey((k) => k + 1);
           void refreshFromDaemon().then(() => {
+            setRefreshKey((k) => k + 1);
             modalRef.current?.showModal();
           });
         },
