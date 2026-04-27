@@ -44,6 +44,8 @@ interface State {
   playlistImagesSet: Set<number>;
   playlistImagesTimeSet: Set<number>;
   lastAddedImageID: number;
+  /** One-shot: scroll the strip to this image (set only from addImagesToPlaylist). */
+  stripScrollToImageIdOnce: number | null;
 }
 
 interface Actions {
@@ -59,6 +61,7 @@ interface Actions {
   updateImageTime: (imageId: number, oldTime: number | undefined, newTime: number) => void;
   swapImageTimes: (imageIdA: number, imageIdB: number) => void;
   markClean: () => void;
+  clearStripScrollIntent: () => void;
 }
 
 function buildSets(playlist: rendererPlaylist) {
@@ -80,6 +83,7 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
   playlistImagesSet: _initial.imagesSet,
   playlistImagesTimeSet: _initial.timesSet,
   lastAddedImageID: -1,
+  stripScrollToImageIdOnce: null,
 
   addImagesToPlaylist: (imageIds: number[]) => {
     const playlistImagesSet = new Set(get().playlistImagesSet);
@@ -119,9 +123,14 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
       });
     }
 
+    if (imagesToAdd.length === 0) {
+      return;
+    }
+
     set((state) => {
       const newImages = [...state.playlist.images, ...imagesToAdd];
       const newPlaylist = { ...state.playlist, images: newImages };
+      const tailId = newPlaylist.images.at(-1)?.image_id;
       persistPlaylist(newPlaylist);
       return {
         playlist: newPlaylist,
@@ -129,7 +138,8 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
         isDirty: true,
         playlistImagesSet,
         playlistImagesTimeSet,
-        lastAddedImageID: newPlaylist.images.at(-1)?.image_id || -1,
+        lastAddedImageID: tailId || -1,
+        stripScrollToImageIdOnce: tailId != null ? tailId : null,
       };
     });
   },
@@ -194,6 +204,7 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
       playlistImagesSet: new Set<number>(),
       playlistImagesTimeSet: new Set<number>(),
       lastAddedImageID: -1,
+      stripScrollToImageIdOnce: null,
     }));
   },
 
@@ -233,6 +244,7 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
       isDirty: false,
       playlistImagesSet: newPlaylistImagesSet,
       playlistImagesTimeSet: newPlaylistImagesTimeSet,
+      stripScrollToImageIdOnce: null,
     }));
   },
 
@@ -245,6 +257,7 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
       playlistImagesSet: new Set<number>(),
       playlistImagesTimeSet: new Set<number>(),
       lastAddedImageID: -1,
+      stripScrollToImageIdOnce: null,
     }));
   },
 
@@ -273,6 +286,8 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
   markClean: () => {
     set({ isDirty: false });
   },
+
+  clearStripScrollIntent: () => set({ stripScrollToImageIdOnce: null }),
 
   swapImageTimes: (imageIdA, imageIdB) => {
     set((state) => {

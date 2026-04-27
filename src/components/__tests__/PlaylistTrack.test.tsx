@@ -39,11 +39,13 @@ vi.mock("../../stores/playlist", () => ({
         playlist: mockPlaylist,
         lastAddedImageID: null,
         isDirty: mockIsDirty,
+        stripScrollToImageIdOnce: null,
+        clearStripScrollIntent: vi.fn(),
         movePlaylistArrayOrder: mockMovePlaylistArrayOrder,
         clearPlaylist: mockClearPlaylist,
         setPlaylist: mockSetPlaylist,
       }),
-    { getState: () => ({ playlist: mockPlaylist }) },
+    { getState: () => ({ playlist: mockPlaylist, stripScrollToImageIdOnce: null }) },
   ),
 }));
 

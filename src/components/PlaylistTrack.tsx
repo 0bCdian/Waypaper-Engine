@@ -1,5 +1,5 @@
 import { useDroppable } from "@dnd-kit/react";
-import { useEffect, useMemo, useRef, useCallback } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useCallback } from "react";
 import { usePlaylistStore } from "../stores/playlist";
 import { useImagesStore } from "../stores/images";
 import openImagesStore from "../hooks/useOpenImages";
@@ -31,6 +31,8 @@ function PlaylistTrack() {
     playlist,
     lastAddedImageID,
     isDirty,
+    stripScrollToImageIdOnce,
+    clearStripScrollIntent,
     movePlaylistArrayOrder,
     clearPlaylist,
     setPlaylist,
@@ -39,6 +41,8 @@ function PlaylistTrack() {
       playlist: s.playlist,
       lastAddedImageID: s.lastAddedImageID,
       isDirty: s.isDirty,
+      stripScrollToImageIdOnce: s.stripScrollToImageIdOnce,
+      clearStripScrollIntent: s.clearStripScrollIntent,
       movePlaylistArrayOrder: s.movePlaylistArrayOrder,
       clearPlaylist: s.clearPlaylist,
       setPlaylist: s.setPlaylist,
@@ -67,12 +71,85 @@ function PlaylistTrack() {
     movePlaylistArrayOrder(newArray);
   }, [movePlaylistArrayOrder]);
 
+  const activePlaylist = useActivePlaylistStore((s) => s.activePlaylist);
+  const isThisPlaylistActive =
+    activePlaylist != null && playlist.id != null && activePlaylist.playlist_id === playlist.id;
+
+  const playlistImageIdsKey = useMemo(
+    () => playlist.images.map((i) => i.image_id).join(),
+    [playlist.images],
+  );
+
+  const trackScrollRef = useRef<HTMLDivElement | null>(null);
+  const scrollRafRef = useRef<number | null>(null);
+  /** After a user append scroll, skip the follow-up effect pass that would scroll to the active slot. */
+  const skipNextActiveStripScrollRef = useRef(false);
+
+  useLayoutEffect(() => {
+    const root = trackScrollRef.current;
+    if (!root) {
+      return;
+    }
+    if (scrollRafRef.current != null) {
+      cancelAnimationFrame(scrollRafRef.current);
+    }
+    scrollRafRef.current = requestAnimationFrame(() => {
+      scrollRafRef.current = null;
+
+      if (skipNextActiveStripScrollRef.current) {
+        skipNextActiveStripScrollRef.current = false;
+        return;
+      }
+
+      const oneShot =
+        usePlaylistStore.getState().stripScrollToImageIdOnce;
+      if (oneShot != null) {
+        const el = root.querySelector<HTMLElement>(
+          `[data-playlist-image-id="${String(oneShot)}"]`,
+        );
+        if (el) {
+          el.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+        }
+        clearStripScrollIntent();
+        skipNextActiveStripScrollRef.current = true;
+        return;
+      }
+
+      if (!isThisPlaylistActive || !activePlaylist) {
+        return;
+      }
+      const activeEl = root.querySelector<HTMLElement>("[data-active-playlist-item=\"true\"]");
+      if (!activeEl) {
+        return;
+      }
+      activeEl.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+      activeEl.focus({ preventScroll: true });
+    });
+    return () => {
+      if (scrollRafRef.current != null) {
+        cancelAnimationFrame(scrollRafRef.current);
+        scrollRafRef.current = null;
+      }
+    };
+  }, [
+    stripScrollToImageIdOnce,
+    isThisPlaylistActive,
+    activePlaylist?.playlist_id,
+    activePlaylist?.current_image_id,
+    activePlaylist?.current_index,
+    activePlaylist?.paused,
+    playlistImageIdsKey,
+    clearStripScrollIntent,
+  ]);
+
   const lastIndex = playlist.images.length - 1;
   const playlistArray = playlist.images.map((img, index) => {
     const isLast =
       playlist.configuration.type === "time_of_day"
         ? lastAddedImageID === img.image_id
         : index === lastIndex;
+    const isCurrentTrack =
+      isThisPlaylistActive && activePlaylist?.current_image_id === img.image_id;
     return (
       <MiniPlaylistCard
         key={img.image_id}
@@ -81,6 +158,7 @@ function PlaylistTrack() {
         type={playlist.configuration.type}
         index={index}
         playlistImage={img}
+        isCurrentTrack={isCurrentTrack}
       />
     );
   });
@@ -145,15 +223,17 @@ function PlaylistTrack() {
   const showDropIndicator = isDropTarget && isDraggingAddable;
 
   const btnClass = isNeo ? "btn btn-primary uppercase" : "btn btn-primary rounded-lg uppercase";
+  /* Horizontal scroll only (Tailwind / DaisyUI pattern: overflow-x-auto on flex row).
+   * Never combine overflow-y-hidden here: it clips translateY + shadows on the “raised” card. */
   const scrollClass =
     playlistArray.length > 0
       ? isNeo
-        ? "neo-playlist-scroll overflow-y-hidden overflow-x-scroll scrollbar-thumb-base-300 scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm"
-        : "overflow-y-hidden overflow-x-scroll scrollbar-thumb-base-300 scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm rounded-lg"
+        ? "neo-playlist-scroll flex min-w-0 overflow-x-auto scrollbar-thumb-base-300 scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm"
+        : "flex min-w-0 overflow-x-auto rounded-lg pt-3 pb-1 scrollbar-thumb-base-300 scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm"
       : "";
 
   return (
-    <div className="mb-2 flex w-full min-w-0 flex-col gap-5 overflow-x-clip">
+    <div className="mb-2 flex w-full min-w-0 flex-col gap-5 overflow-x-clip overflow-y-visible">
       <div className="flex flex-wrap items-center gap-2 lg:gap-3">
         <div className="flex w-full min-w-0 flex-col">
           <span className="text-2xl lg:text-4xl font-bold truncate">
@@ -270,14 +350,16 @@ function PlaylistTrack() {
       </div>
       <div
         ref={playlistDropRef}
-        className={`relative flex w-full min-h-[4.5rem] ${scrollClass} transition-all duration-200${showDropIndicator ? " ring-2 ring-dashed ring-primary bg-primary/10" : ""}`}
+        className={`relative w-full min-h-[5.5rem] min-w-0 overflow-visible transition-all duration-200${showDropIndicator ? " ring-2 ring-dashed ring-primary bg-primary/10" : ""}`}
       >
         {showDropIndicator && playlistArray.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <span className="text-sm font-medium text-primary">Drop to add to playlist</span>
           </div>
         )}
-        {playlistArray}
+        <div ref={trackScrollRef} className={`w-full min-w-0 items-end ${scrollClass}`}>
+          {playlistArray}
+        </div>
       </div>
     </div>
   );
