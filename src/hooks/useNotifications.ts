@@ -136,12 +136,22 @@ export default function useNotifications(): void {
           playlist_name?: string;
           backend?: string;
           skipped?: number;
+          skipped_items?: Array<{
+            image_id?: number;
+            media_type?: string;
+            slot_index?: number;
+          }>;
         };
-        addToast(
-          `Skipped ${payload?.skipped ?? "some"} playlist items: ${payload?.backend ?? "current backend"} does not support their media type`,
-          "warning",
-          8_000,
-        );
+        const backend = payload?.backend ?? "current backend";
+        const first = payload?.skipped_items?.[0];
+        const rest = (payload?.skipped ?? 0) - 1;
+        const more =
+          rest > 0 ? ` (${rest} more skipped)` : "";
+        const msg =
+          first != null
+            ? `Backend ${String(backend)} does not support image ${String(first.image_id ?? "?")} (type ${String(first.media_type || "unknown")}) — skipping${more}`
+            : `Skipped ${String(payload?.skipped ?? "some")} playlist items: ${String(backend)} does not support their media type`;
+        addToast(msg, "warning", 8_000);
       }),
     );
 
