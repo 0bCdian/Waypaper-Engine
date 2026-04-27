@@ -147,14 +147,20 @@ func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target moni
 		go m.missedEventChecker(playCtx, pl.ID, monitors, targetEff)
 	}
 
-	result, err := m.applyImage(ctx, pl, applyRow, monitors, targetEff.Mode)
-	if err != nil {
-		slog.Warn("playlist: failed to apply first image", "error", err)
-	}
 	effectiveIdx := applyRow
-	if result.AppliedIndex >= 0 {
-		effectiveIdx = result.AppliedIndex
+	if !opts.fromPersisted {
+		result, err := m.applyImage(ctx, pl, applyRow, monitors, targetEff.Mode)
+		if err != nil {
+			slog.Warn("playlist: failed to apply first image", "error", err)
+		}
+		if result.AppliedIndex >= 0 {
+			effectiveIdx = result.AppliedIndex
+		}
 	}
+	// On fromPersisted, RestoreWallpapers already set the wallpaper for each
+	// monitor in monitor_state. Re-applying here races with that path and (in
+	// wayland-utauri) can cause the second monitor's load to be dropped during
+	// the retry-loop collision.
 
 	sched.Start(func(index int) {
 		m.onTick(playCtx, pl.ID, index, monitors, targetEff)
