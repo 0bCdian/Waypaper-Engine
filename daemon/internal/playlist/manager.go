@@ -740,9 +740,9 @@ func (m *Manager) applyImageFixed(ctx context.Context, pl *store.Playlist, index
 		skipPayload := make([]map[string]any, 0, len(skipItems))
 		for _, it := range skipItems {
 			skipPayload = append(skipPayload, map[string]any{
-				"image_id":    it.ImageID,
-				"media_type":  it.MediaType,
-				"slot_index":  it.SlotIndex,
+				"image_id":   it.ImageID,
+				"media_type": it.MediaType,
+				"slot_index": it.SlotIndex,
 			})
 		}
 		m.bus.Publish(events.Event{

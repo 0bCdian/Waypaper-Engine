@@ -2,7 +2,6 @@ import type { ReactElement } from "react";
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import { MemoryRouter } from "react-router-dom";
 import { SETTINGS_ACTIVE_SECTION_STORAGE_KEY } from "@/utils/settingsNavStorage";
 
 const mockSetSearchTerm = vi.fn();
@@ -57,11 +56,8 @@ vi.mock("@/utils/cn", () => ({
 
 import { SettingsTabs } from "../settings/SettingsTabs";
 
-function renderWithRouter(
-  ui: ReactElement,
-  initialEntries: { pathname: string; state?: unknown }[] = [{ pathname: "/settings" }],
-) {
-  return render(<MemoryRouter initialEntries={initialEntries}>{ui}</MemoryRouter>);
+function renderWithRouter(ui: ReactElement) {
+  return render(ui);
 }
 
 let lsStore: Record<string, string>;
@@ -170,14 +166,5 @@ describe("SettingsTabs", () => {
       expect(screen.getByTestId("app-settings")).toBeInTheDocument();
     });
     expect(localStorage.setItem).toHaveBeenCalledWith(SETTINGS_ACTIVE_SECTION_STORAGE_KEY, "app");
-  });
-
-  it("opens Wallhaven tab when navigation state requests it", async () => {
-    renderWithRouter(<SettingsTabs />, [
-      { pathname: "/settings", state: { settingsNavSection: "wallhaven" } },
-    ]);
-    await waitFor(() => {
-      expect(screen.getByTestId("wallhaven-settings")).toBeInTheDocument();
-    });
   });
 });

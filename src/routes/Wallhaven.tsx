@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { useSettingsModalStore } from "@/stores/settingsModalStore";
 import { useShallow } from "zustand/react/shallow";
 import {
   useWallhavenStore,
@@ -199,13 +199,13 @@ function WallhavenPage() {
         <p className="text-lg font-medium">Wallhaven is disabled</p>
         <p className="text-sm text-center max-w-sm text-base-content/70">
           Enable it in{" "}
-          <Link
-            to="/settings"
-            state={{ settingsNavSection: "wallhaven" }}
+          <button
+            type="button"
+            onClick={() => useSettingsModalStore.getState().openModal("wallhaven")}
             className="link link-primary font-medium"
           >
             Settings → Wallhaven
-          </Link>{" "}
+          </button>{" "}
           to browse wallpapers.
         </p>
       </div>

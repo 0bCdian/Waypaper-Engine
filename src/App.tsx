@@ -1,4 +1,4 @@
-import { lazy, Suspense } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Routes, Route, HashRouter } from "react-router-dom";
 import Modals from "./components/Modals";
 import { ThemeProvider } from "./contexts/ThemeContext";
@@ -13,13 +13,28 @@ import ImageDetailSidebar from "./components/ImageDetailSidebar";
 import ContextMenu from "./components/ContextMenu";
 import ConfirmDialog from "./components/ConfirmDialog";
 import ModernAppLayout from "./components/layout/ModernAppLayout";
+import { useSettingsModalStore } from "./stores/settingsModalStore";
 
 const Home = lazy(() => import("./routes/Home"));
-const Settings = lazy(() => import("./routes/Settings"));
 const Wallhaven = lazy(() => import("./routes/Wallhaven"));
 const History = lazy(() => import("./routes/History"));
 const LoopStudio = lazy(() => import("./routes/LoopStudio"));
 const ShaderStudio = lazy(() => import("./routes/ShaderStudio"));
+
+function SettingsShortcut() {
+  const openModal = useSettingsModalStore((s) => s.openModal);
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === ",") {
+        e.preventDefault();
+        openModal();
+      }
+    };
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [openModal]);
+  return null;
+}
 
 const App = () => {
   useLoadAppConfig()();
@@ -30,6 +45,7 @@ const App = () => {
   return (
     <ThemeProvider defaultTheme="kolision-raw" persist={true} syncWithSystem={true}>
       <HashRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <SettingsShortcut />
         <ImageProcessingProgress />
         <ToastContainer />
         <ContextMenu />
@@ -38,7 +54,6 @@ const App = () => {
           <Suspense fallback={<div className="skeleton w-full h-full" />}>
             <Routes>
               <Route path="/" element={<Home />} />
-              <Route path="/settings" element={<Settings />} />
               <Route path="/wallhaven" element={<Wallhaven />} />
               <Route path="/history" element={<History />} />
               <Route path="/loop-studio" element={<LoopStudio />} />

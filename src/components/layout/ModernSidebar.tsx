@@ -14,8 +14,10 @@ import { DRAWER_CHECKBOX_ID } from "./ModernAppLayout";
 import { useIsNeo } from "../../hooks/useIsNeo";
 import { confirmDialog } from "../ConfirmDialog";
 import { cn } from "../../utils/cn";
+import { useSettingsModalStore } from "../../stores/settingsModalStore";
 
 const PINNED_KEY = "waypaper-sidebar-pinned";
+const HOVER_REVEAL_KEY = "waypaper-sidebar-hover-reveal";
 
 /** Programmatically close the drawer (mobile fallback) */
 function closeDrawer() {
@@ -157,6 +159,7 @@ export const IconRailSidebar: React.FC = () => {
   const location = useLocation();
   const isConfigurationPage = location.pathname === "/configuration";
   const isNeo = useIsNeo();
+  const { open: settingsOpen, openModal: openSettings } = useSettingsModalStore();
 
   const [pinned, setPinned] = useState<boolean>(() => {
     try {
@@ -166,14 +169,31 @@ export const IconRailSidebar: React.FC = () => {
     }
   });
   const [hovered, setHovered] = useState(false);
+  const [hoverRevealEnabled, setHoverRevealEnabled] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem(HOVER_REVEAL_KEY) === "true";
+    } catch {
+      return false;
+    }
+  });
 
-  const expanded = pinned || hovered;
+  const expanded = pinned || (hoverRevealEnabled && hovered);
 
   const handlePinToggle = useCallback(() => {
     setPinned((p) => {
       const next = !p;
       try {
         localStorage.setItem(PINNED_KEY, String(next));
+      } catch {}
+      return next;
+    });
+  }, []);
+
+  const handleHoverRevealToggle = useCallback(() => {
+    setHoverRevealEnabled((v) => {
+      const next = !v;
+      try {
+        localStorage.setItem(HOVER_REVEAL_KEY, String(next));
       } catch {}
       return next;
     });
@@ -251,6 +271,52 @@ export const IconRailSidebar: React.FC = () => {
       {/* Navigation */}
       <nav className="flex-1 flex flex-col gap-0.5 py-2 px-1.5 overflow-y-auto overflow-x-hidden">
         {NAV_ITEMS.map((item) => {
+          if (item.to === "/settings") {
+            // Settings opens the modal instead of navigating
+            const active = settingsOpen;
+            return (
+              <button
+                key={item.to}
+                type="button"
+                onClick={() => openSettings()}
+                aria-pressed={settingsOpen}
+                className={cn(
+                  "relative flex items-center gap-3 px-2 h-9 transition-colors duration-100 overflow-hidden w-full",
+                  isNeo
+                    ? "neo-sidebar-nav-link"
+                    : cn(
+                        "rounded-lg",
+                        active
+                          ? "bg-primary/12 text-primary"
+                          : "text-base-content/70 hover:text-base-content hover:bg-base-content/8",
+                      ),
+                )}
+              >
+                {!isNeo && active && (
+                  <motion.div
+                    layoutId="sidebar-active"
+                    className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full bg-primary"
+                  />
+                )}
+                <span className="shrink-0 ml-0.5">{item.icon}</span>
+                <AnimatePresence>
+                  {expanded && (
+                    <motion.span
+                      key={`label-${item.to}`}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.1 }}
+                      className="text-sm font-medium whitespace-nowrap"
+                    >
+                      {item.label}
+                    </motion.span>
+                  )}
+                </AnimatePresence>
+              </button>
+            );
+          }
+
           const active = isActive(item.to);
           return (
             <Link
@@ -301,8 +367,67 @@ export const IconRailSidebar: React.FC = () => {
         style={isNeo ? undefined : { background: "var(--wp-hairline)" }}
       />
 
-      {/* Footer: pin toggle + quit */}
+      {/* Footer: hover-reveal toggle + pin toggle + quit */}
       <div className="flex flex-col gap-0.5 py-2 px-1.5 shrink-0">
+        {/* Hover-reveal toggle */}
+        <button
+          type="button"
+          onClick={handleHoverRevealToggle}
+          aria-label={
+            hoverRevealEnabled ? "Disable auto-reveal on hover" : "Enable auto-reveal on hover"
+          }
+          className={cn(
+            "flex items-center gap-3 px-2 h-9 transition-colors duration-100 overflow-hidden",
+            isNeo
+              ? "neo-sidebar-footer-btn"
+              : cn(
+                  "rounded-lg",
+                  hoverRevealEnabled
+                    ? "text-base-content/70 hover:text-base-content hover:bg-base-content/8"
+                    : "text-base-content/40 hover:text-base-content/70 hover:bg-base-content/5",
+                ),
+          )}
+        >
+          <svg
+            width="16"
+            height="16"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            aria-hidden
+          >
+            {hoverRevealEnabled ? (
+              <>
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                <circle cx="12" cy="12" r="3" />
+              </>
+            ) : (
+              <>
+                <path d="M17.94 17.94A10.07 10.07 0 0112 20c-7 0-11-8-11-8a18.45 18.45 0 015.06-5.94" />
+                <path d="M9.9 4.24A9.12 9.12 0 0112 4c7 0 11 8 11 8a18.5 18.5 0 01-2.16 3.19" />
+                <line x1="1" y1="1" x2="23" y2="23" />
+              </>
+            )}
+          </svg>
+          <AnimatePresence>
+            {expanded && (
+              <motion.span
+                key="hover-reveal-label"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.1 }}
+                className="text-sm whitespace-nowrap"
+              >
+                {hoverRevealEnabled ? "Auto-reveal: On" : "Auto-reveal: Off"}
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </button>
+
         {/* Pin toggle */}
         <button
           type="button"
@@ -405,6 +530,7 @@ export const SidebarContent: React.FC = () => {
   const location = useLocation();
   const isConfigurationPage = location.pathname === "/configuration";
   const isNeo = useIsNeo();
+  const openSettings = useSettingsModalStore((s) => s.openModal);
 
   const handleNavigationClick = () => closeDrawer();
 
@@ -439,14 +565,28 @@ export const SidebarContent: React.FC = () => {
             <ul className="menu text-base-content">
               {NAV_ITEMS.map((item) => (
                 <li key={item.to}>
-                  <Link
-                    to={item.to}
-                    onClick={handleNavigationClick}
-                    className="flex items-center gap-3 p-3 rounded-lg hover:bg-base-300 transition-colors"
-                  >
-                    {item.icon}
-                    <span>{item.label}</span>
-                  </Link>
+                  {item.to === "/settings" ? (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        openSettings();
+                        handleNavigationClick();
+                      }}
+                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-base-300 transition-colors w-full text-left"
+                    >
+                      {item.icon}
+                      <span>{item.label}</span>
+                    </button>
+                  ) : (
+                    <Link
+                      to={item.to}
+                      onClick={handleNavigationClick}
+                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-base-300 transition-colors"
+                    >
+                      {item.icon}
+                      <span>{item.label}</span>
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>

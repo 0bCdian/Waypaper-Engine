@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react";
+import SettingsModal from "./settings/SettingsModal";
 import LoadPlaylistModal from "./LoadPlaylistModal";
 import SavePlaylistModal from "./SavePlaylistModal";
 import AddToPlaylistModal from "./AddToPlaylistModal";
@@ -63,6 +64,7 @@ function Modals() {
 
   return (
     <>
+      <SettingsModal />
       <LoadPlaylistModal
         playlistsInDB={playlistsInDB}
         onPlaylistChanged={reloadPlaylists}
