@@ -231,11 +231,12 @@ export const IconRailSidebar: React.FC = () => {
       {/* App logo + name */}
       <div
         className={cn(
-          "flex items-center h-12 px-2 shrink-0 overflow-hidden",
+          "flex items-center h-13 px-2 shrink-0 overflow-hidden",
           isNeo && "neo-sidebar-masthead",
         )}
       >
-        <div
+        <Link
+          to={"/"}
           className={`w-8 h-8 shrink-0 flex items-center justify-center overflow-hidden ${isNeo ? "neo-icon-box" : "rounded-md"}`}
         >
           <img
@@ -243,7 +244,7 @@ export const IconRailSidebar: React.FC = () => {
             alt="Waypaper Engine"
             className="w-full h-full object-contain"
           />
-        </div>
+        </Link>
         <AnimatePresence>
           {expanded && (
             <motion.span

@@ -260,7 +260,7 @@ function Filters() {
               "hover:bg-primary-focus rounded-none px-0.5 text-lg font-black leading-none opacity-80 hover:opacity-100",
             input: () => "min-w-[8ch] flex-1 bg-transparent text-sm font-bold outline-none",
             placeholder: () =>
-              "truncate text-xs font-black uppercase tracking-tight text-base-content/55 leading-none",
+              "truncate  text-xs font-black uppercase tracking-tight text-base-content/55 leading-none",
             menu: () => "neo-rs-menu mt-1 w-full p-0 shadow-none",
             menuList: () => "neo-rs-menuList max-h-[min(70vh,24rem)] overflow-y-auto py-1",
             option: ({ isFocused }: { isFocused: boolean }) =>
@@ -380,7 +380,9 @@ function Filters() {
                   }}
                   menuPortalTarget={typeof document !== "undefined" ? document.body : undefined}
                   menuPosition="fixed"
-                  styles={{ menuPortal: (base) => ({ ...base, zIndex: 10000 }) }}
+                  styles={{
+                    menuPortal: (base) => ({ ...base, zIndex: 10000 }),
+                  }}
                   classNames={filterSelectClassNames}
                   formatCreateLabel={(inputValue) => `Add "${inputValue}"`}
                   isValidNewOption={(inputValue) => inputValue.trim().length > 0}

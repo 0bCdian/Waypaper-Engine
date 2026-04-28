@@ -107,7 +107,11 @@ function PlaylistTrack() {
       if (oneShot != null) {
         const el = root.querySelector<HTMLElement>(`[data-playlist-image-id="${String(oneShot)}"]`);
         if (el) {
-          el.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+          el.scrollIntoView({
+            inline: "center",
+            block: "nearest",
+            behavior: "smooth",
+          });
         }
         clearStripScrollIntent();
         skipNextActiveStripScrollRef.current = true;
@@ -121,7 +125,11 @@ function PlaylistTrack() {
       if (!activeEl) {
         return;
       }
-      activeEl.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+      activeEl.scrollIntoView({
+        inline: "center",
+        block: "nearest",
+        behavior: "smooth",
+      });
       activeEl.focus({ preventScroll: true });
     });
     return () => {
@@ -245,7 +253,7 @@ function PlaylistTrack() {
     : "btn btn-sm btn-error rounded-lg uppercase";
 
   return (
-    <div className="flex w-full min-w-0 flex-col gap-3 overflow-x-clip overflow-y-visible px-3 py-2 lg:px-4 lg:py-2.5">
+    <div className="flex w-full min-w-0 flex-col gap-3 overflow-x-clip overflow-y-visible px-3 py-3">
       {isThisPlaylistActive && <PlaylistController />}
 
       <div className={editCardClass}>
