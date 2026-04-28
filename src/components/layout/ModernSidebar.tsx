@@ -13,6 +13,7 @@ import SidebarConfiguration from "../SidebarConfiguration";
 import { DRAWER_CHECKBOX_ID } from "./ModernAppLayout";
 import { useIsNeo } from "../../hooks/useIsNeo";
 import { confirmDialog } from "../ConfirmDialog";
+import { cn } from "../../utils/cn";
 
 const PINNED_KEY = "waypaper-sidebar-pinned";
 
@@ -185,7 +186,12 @@ export const IconRailSidebar: React.FC = () => {
 
   if (isConfigurationPage) {
     return (
-      <aside className="bg-base-200 border-r border-base-300 w-64 flex flex-col overflow-y-auto shrink-0">
+      <aside
+        className={cn(
+          "bg-base-200 border-r border-base-300 w-64 flex flex-col overflow-y-auto shrink-0",
+          isNeo && "neo-sidebar neo-sidebar--config",
+        )}
+      >
         <SidebarConfiguration />
       </aside>
     );
@@ -197,13 +203,18 @@ export const IconRailSidebar: React.FC = () => {
       style={{
         width: expanded ? 240 : 56,
         transition: `width var(--wp-dur-base) var(--wp-ease-out)`,
-        borderColor: "var(--wp-hairline)",
+        ...(isNeo ? {} : { borderColor: "var(--wp-hairline)" }),
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       {/* App logo + name */}
-      <div className="flex items-center h-12 px-2 shrink-0 overflow-hidden">
+      <div
+        className={cn(
+          "flex items-center h-12 px-2 shrink-0 overflow-hidden",
+          isNeo && "neo-sidebar-masthead",
+        )}
+      >
         <div
           className={`w-8 h-8 shrink-0 flex items-center justify-center overflow-hidden ${isNeo ? "neo-icon-box" : "rounded-md"}`}
         >
@@ -221,7 +232,10 @@ export const IconRailSidebar: React.FC = () => {
               animate={{ opacity: 1, x: 0 }}
               exit={{ opacity: 0, x: -6 }}
               transition={{ duration: 0.15 }}
-              className="ml-3 font-semibold text-sm text-base-content whitespace-nowrap overflow-hidden"
+              className={cn(
+                "ml-3 font-semibold text-sm text-base-content whitespace-nowrap overflow-hidden",
+                isNeo && "neo-sidebar-brand",
+              )}
             >
               Waypaper Engine
             </motion.span>
@@ -229,7 +243,10 @@ export const IconRailSidebar: React.FC = () => {
         </AnimatePresence>
       </div>
 
-      <div className="h-px mx-2 shrink-0" style={{ background: "var(--wp-hairline)" }} />
+      <div
+        className={cn("mx-2 shrink-0", isNeo ? "neo-sidebar-rule" : "h-px")}
+        style={isNeo ? undefined : { background: "var(--wp-hairline)" }}
+      />
 
       {/* Navigation */}
       <nav className="flex-1 flex flex-col gap-0.5 py-2 px-1.5 overflow-y-auto overflow-x-hidden">
@@ -240,14 +257,20 @@ export const IconRailSidebar: React.FC = () => {
               key={item.to}
               to={item.to}
               aria-current={active ? "page" : undefined}
-              className={`relative flex items-center gap-3 px-2 h-9 rounded-lg transition-colors duration-100 overflow-hidden ${
-                active
-                  ? "bg-primary/12 text-primary"
-                  : "text-base-content/70 hover:text-base-content hover:bg-base-content/8"
-              }`}
+              className={cn(
+                "relative flex items-center gap-3 px-2 h-9 transition-colors duration-100 overflow-hidden",
+                isNeo
+                  ? "neo-sidebar-nav-link"
+                  : cn(
+                      "rounded-lg",
+                      active
+                        ? "bg-primary/12 text-primary"
+                        : "text-base-content/70 hover:text-base-content hover:bg-base-content/8",
+                    ),
+              )}
             >
-              {/* Active indicator bar */}
-              {active && (
+              {/* Active indicator — default theme only (neo uses structural rail in CSS) */}
+              {!isNeo && active && (
                 <motion.div
                   layoutId="sidebar-active"
                   className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full bg-primary"
@@ -273,7 +296,10 @@ export const IconRailSidebar: React.FC = () => {
         })}
       </nav>
 
-      <div className="h-px mx-2 shrink-0" style={{ background: "var(--wp-hairline)" }} />
+      <div
+        className={cn("mx-2 shrink-0", isNeo ? "neo-sidebar-rule" : "h-px")}
+        style={isNeo ? undefined : { background: "var(--wp-hairline)" }}
+      />
 
       {/* Footer: pin toggle + quit */}
       <div className="flex flex-col gap-0.5 py-2 px-1.5 shrink-0">
@@ -282,7 +308,12 @@ export const IconRailSidebar: React.FC = () => {
           type="button"
           onClick={handlePinToggle}
           aria-label={pinned ? "Unpin sidebar" : "Pin sidebar"}
-          className="flex items-center gap-3 px-2 h-9 rounded-lg text-base-content/50 hover:text-base-content hover:bg-base-content/8 transition-colors duration-100 overflow-hidden"
+          className={cn(
+            "flex items-center gap-3 px-2 h-9 transition-colors duration-100 overflow-hidden",
+            isNeo
+              ? "neo-sidebar-footer-btn neo-sidebar-footer-btn--pin"
+              : "rounded-lg text-base-content/50 hover:text-base-content hover:bg-base-content/8",
+          )}
         >
           <svg
             width="16"
@@ -326,7 +357,12 @@ export const IconRailSidebar: React.FC = () => {
             });
             if (quit) window.API_RENDERER.exitApp();
           }}
-          className="flex items-center gap-3 px-2 h-9 rounded-lg text-base-content/50 hover:text-error hover:bg-error/10 transition-colors duration-100 overflow-hidden"
+          className={cn(
+            "flex items-center gap-3 px-2 h-9 transition-colors duration-100 overflow-hidden",
+            isNeo
+              ? "neo-sidebar-footer-btn neo-sidebar-footer-btn--quit"
+              : "rounded-lg text-base-content/50 hover:text-error hover:bg-error/10",
+          )}
         >
           <svg
             width="16"
@@ -373,7 +409,12 @@ export const SidebarContent: React.FC = () => {
   const handleNavigationClick = () => closeDrawer();
 
   return (
-    <div className="bg-base-200 min-h-full w-64 flex flex-col p-4 border-r border-base-300">
+    <div
+      className={cn(
+        "bg-base-200 min-h-full w-64 flex flex-col p-4 border-r border-base-300",
+        isNeo && "neo-sidebar-drawer",
+      )}
+    >
       {isConfigurationPage ? (
         <SidebarConfiguration />
       ) : (
