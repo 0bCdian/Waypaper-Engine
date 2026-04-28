@@ -132,7 +132,7 @@
   z-index: 60;
   transition: box-shadow 0.1s ease;
   padding: 0;
-  border-radius: 0;
+  border-radius: var(--neo-radius);
 }
 
 [data-design="neobrutalist"] .neo-close-btn:hover {
@@ -176,24 +176,17 @@
     oklch(from var(--color-base-200) l c h / 0.92) 100%
   );
   border-right: var(--neo-border-width) solid var(--neo-shadow-color);
-  border-radius: 0;
-  box-shadow:
-    inset calc(var(--neo-border-width) * -1) 0 0 oklch(from var(--color-base-content) l c h / 0.06),
-    var(--neo-shadow-x) var(--neo-shadow-y) 0 0 oklch(from var(--color-base-content) l c h / 0.18);
+  border-radius: var(--neo-radius);
+  box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0 var(--neo-shadow-color);
 }
 
 [data-design="neobrutalist"] aside.neo-sidebar.neo-sidebar--config {
-  box-shadow:
-    inset calc(var(--neo-border-width) * -1) 0 0 oklch(from var(--color-base-content) l c h / 0.06),
-    var(--neo-shadow-x) var(--neo-shadow-y) 0 0 oklch(from var(--color-base-content) l c h / 0.18);
+  box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0 var(--neo-shadow-color);
 }
 
 /* Masthead — editorial axis, display face, masthead tracking */
 [data-design="neobrutalist"] aside.neo-sidebar .neo-sidebar-masthead {
   border-bottom: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.85);
-  padding-block: var(--wp-space-2);
-  padding-inline: var(--wp-space-2);
-  margin-inline: calc(var(--wp-space-2) * -0.5);
 }
 
 [data-design="neobrutalist"] aside.neo-sidebar .neo-sidebar-brand {
@@ -216,7 +209,7 @@
   display: flex;
   align-items: center;
   min-height: 2.25rem;
-  border-radius: 0;
+  border-radius: var(--neo-radius);
   border: var(--neo-border-width) solid transparent;
   font-family: var(--font-display, "Space Grotesk Variable", system-ui, sans-serif);
   font-weight: 800;
@@ -245,7 +238,6 @@
 [data-design="neobrutalist"] aside.neo-sidebar button.neo-sidebar-nav-link[aria-pressed="true"] {
   border-color: oklch(from var(--color-base-content) l c h / 0.85);
   border-left: var(--neo-border-width) solid oklch(from var(--color-primary) l c h);
-  padding-left: 0.375rem;
   color: oklch(from var(--color-base-content) l c h);
   background: linear-gradient(
     90deg,
@@ -260,7 +252,7 @@
   display: flex;
   align-items: center;
   min-height: 2.25rem;
-  border-radius: 0;
+  border-radius: var(--neo-radius);
   border: var(--neo-border-width) solid transparent;
   font-family: var(--font-display, "Space Grotesk Variable", system-ui, sans-serif);
   font-weight: 800;
@@ -337,7 +329,7 @@
 }
 
 [data-design="neobrutalist"] .neo-sidebar-drawer .menu li > a {
-  border-radius: 0;
+  border-radius: var(--neo-radius);
   border: var(--neo-border-width) solid transparent;
   font-weight: 800;
   font-size: 0.7rem;
@@ -877,7 +869,7 @@
   border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.9);
   box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0
     oklch(from var(--color-base-content) l c h / 0.7);
-  border-radius: 0;
+  border-radius: var(--neo-radius);
   overflow: visible;
   position: relative;
   transform: translate(0, 0);
@@ -934,7 +926,7 @@
   cursor: pointer;
   z-index: 30;
   padding: 0;
-  border-radius: 0;
+  border-radius: var(--neo-radius);
   transition: box-shadow 0.1s ease;
   opacity: 0;
 }
@@ -1039,7 +1031,7 @@
   width: 2rem;
   height: 2rem;
   flex-shrink: 0;
-  border-radius: 0;
+  border-radius: var(--neo-radius);
   border: 2px solid oklch(from var(--color-base-content) l c h / 0.85);
   background: oklch(from var(--color-base-200) l c h);
   color: oklch(from var(--color-base-content) l c h / 0.9);
@@ -1100,7 +1092,7 @@
   border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.4);
   /* Extra top space so “raised” current tile + shadow stay inside the strip (no overflow-y clip). */
   padding: 0.75rem 0.5rem 0.5rem 0.5rem;
-  border-radius: 0;
+  border-radius: var(--neo-radius);
 }
 
 /* Playlist strip title + action row (bottom dock) */
@@ -1130,7 +1122,7 @@
 
 /* Transport controls — framed chips inside neo player */
 [data-design="neobrutalist"] .neo-playlist-controller .neo-pc-icon-btn.btn-ghost {
-  border-radius: 0;
+  border-radius: var(--neo-radius);
   border-color: oklch(from var(--color-base-content) l c h / 0.55);
   background: oklch(from var(--color-base-200) l c h);
   box-shadow: 3px 3px 0 0 oklch(from var(--color-base-content) l c h / 0.25);
@@ -1153,7 +1145,7 @@
     oklch(from var(--color-base-200) l c h) 100%
   );
   box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0 var(--neo-shadow-color);
-  border-radius: 0;
+  border-radius: var(--neo-radius);
   position: relative;
 }
 
@@ -1176,7 +1168,7 @@
 [data-design="neobrutalist"] .neo-monitor-chip {
   border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.85);
   background: oklch(from var(--color-base-100) l c h);
-  border-radius: 0;
+  border-radius: var(--neo-radius);
   box-shadow: 4px 4px 0 0 var(--neo-shadow-color);
   color: oklch(from var(--color-base-content) l c h / 0.8);
 }
@@ -1195,7 +1187,7 @@
 }
 
 [data-design="neobrutalist"] .neo-pc-play-btn {
-  border-radius: 0;
+  border-radius: var(--neo-radius);
   border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.9);
   background: oklch(from var(--color-primary) l c h);
   color: oklch(from var(--color-primary-content) l c h);
@@ -1219,7 +1211,7 @@
 .neo-context-menu {
   background: oklch(from var(--color-base-100) l c h);
   border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.7);
-  border-radius: 0;
+  border-radius: var(--neo-radius);
   box-shadow: var(--neo-shadow-x, 4px) var(--neo-shadow-y, 4px) 0
     oklch(from var(--color-base-content) l c h / 0.25);
   padding: 0.25rem;
@@ -1234,7 +1226,7 @@
 }
 
 .neo-context-menu .context-menu-item {
-  border-radius: 0;
+  border-radius: var(--neo-radius);
   font-weight: 600;
   text-transform: uppercase;
   font-size: 0.75rem;
@@ -1262,7 +1254,7 @@
 
 /* Modal panel — Level-1 plate */
 [data-design="neobrutalist"] .neo-settings-panel {
-  border-radius: 0;
+  border-radius: var(--neo-radius);
   border: var(--neo-border-width) solid var(--neo-shadow-color);
   box-shadow: calc(var(--neo-shadow-x) * 2) calc(var(--neo-shadow-y) * 2) 0 0
     var(--neo-shadow-color);
@@ -1303,7 +1295,7 @@
   width: 2.25rem;
   height: 2.25rem;
   flex-shrink: 0;
-  border-radius: 0;
+  border-radius: var(--neo-radius);
   border: var(--neo-border-width) solid var(--neo-shadow-color);
   background: oklch(from var(--color-accent) l c h);
   color: oklch(from var(--color-accent-content) l c h);
@@ -1331,8 +1323,9 @@
 
 /* Left nav rail — Level-2 structural plate */
 [data-design="neobrutalist"] .neo-settings-rail {
-  border-radius: 0;
+  border-radius: var(--neo-radius);
   border-right: var(--neo-border-width) solid var(--neo-shadow-color);
+  box-shadow: var(--neo-shadow-x) 0 0 0 var(--neo-shadow-color);
   background: linear-gradient(
     180deg,
     oklch(from var(--color-base-200) l c h) 0%,
@@ -1350,7 +1343,7 @@
   display: flex;
   align-items: center;
   width: 100%;
-  border-radius: 0;
+  border-radius: var(--neo-radius);
   border: var(--neo-border-width) solid transparent;
   font-family: var(--font-display, "Space Grotesk Variable", system-ui, sans-serif);
   font-weight: 800;
@@ -1378,7 +1371,7 @@
   display: flex;
   align-items: center;
   width: 100%;
-  border-radius: 0;
+  border-radius: var(--neo-radius);
   border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.85);
   border-left: var(--neo-border-width) solid oklch(from var(--color-primary) l c h);
   font-family: var(--font-display, "Space Grotesk Variable", system-ui, sans-serif);

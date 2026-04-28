@@ -217,6 +217,26 @@ export const IconRailSidebar: React.FC = () => {
     );
   }
 
+  // Padding-left values that smoothly transition the icon from centered (collapsed)
+  // to left-aligned (expanded) via CSS transition, avoiding any layout jump flash.
+  // Sidebar collapsed = 56px total. Nav wrapper has no horizontal padding (removed px-1.5),
+  // so buttons span the full 56px. Formula: (56 - iconWidth) / 2 = collapsed center.
+  const navItemStyle = {
+    paddingLeft: expanded ? "0.5rem" : "1.125rem", // 18px centers 20px icon in 56px
+    paddingRight: "0.5rem",
+    transition: `padding-left var(--wp-dur-base) var(--wp-ease-out)`,
+  } as const;
+  const footerBtnStyle = {
+    paddingLeft: expanded ? "0.5rem" : "1.25rem", // 20px centers 16px icon in 56px
+    paddingRight: "0.5rem",
+    transition: `padding-left var(--wp-dur-base) var(--wp-ease-out)`,
+  } as const;
+  const mastheadStyle = {
+    paddingLeft: expanded ? "0.5rem" : "0.75rem", // 12px centers 32px logo in 56px
+    paddingRight: "0.5rem",
+    transition: `padding-left var(--wp-dur-base) var(--wp-ease-out)`,
+  } as const;
+
   return (
     <aside
       className="neo-sidebar relative bg-base-200 border-r flex flex-col shrink-0 overflow-hidden"
@@ -231,10 +251,10 @@ export const IconRailSidebar: React.FC = () => {
       {/* App logo + name */}
       <div
         className={cn(
-          "flex items-center h-13 shrink-0 overflow-hidden",
-          expanded ? "px-2" : "justify-center",
+          "flex items-center h-13 gap-3 shrink-0 overflow-hidden",
           isNeo && "neo-sidebar-masthead",
         )}
+        style={mastheadStyle}
       >
         <Link
           to={"/"}
@@ -250,12 +270,12 @@ export const IconRailSidebar: React.FC = () => {
           {expanded && (
             <motion.span
               key="name"
-              initial={{ opacity: 0, x: -6 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -6 }}
+              initial={{ opacity: 0, maxWidth: 0 }}
+              animate={{ opacity: 1, maxWidth: 160 }}
+              exit={{ opacity: 0, maxWidth: 0 }}
               transition={{ duration: 0.15 }}
               className={cn(
-                "ml-3 font-semibold text-sm text-base-content whitespace-nowrap overflow-hidden",
+                "font-semibold text-sm text-base-content whitespace-nowrap overflow-hidden",
                 isNeo && "neo-sidebar-brand",
               )}
             >
@@ -270,8 +290,8 @@ export const IconRailSidebar: React.FC = () => {
         style={isNeo ? undefined : { background: "var(--wp-hairline)" }}
       />
 
-      {/* Navigation */}
-      <nav className="flex-1 flex flex-col gap-0.5 py-2 px-1.5 overflow-y-auto overflow-x-hidden">
+      {/* Navigation — no px-1.5 wrapper; padding lives on each item for smooth centering */}
+      <nav className="flex-1 flex flex-col gap-0.5 py-2 overflow-y-auto overflow-x-hidden">
         {NAV_ITEMS.map((item) => {
           if (item.to === "/settings") {
             // Settings opens the modal instead of navigating
@@ -283,8 +303,7 @@ export const IconRailSidebar: React.FC = () => {
                 onClick={() => openSettings()}
                 aria-pressed={settingsOpen}
                 className={cn(
-                  "relative flex items-center h-9 transition-colors duration-100 overflow-hidden w-full",
-                  expanded ? "gap-3 px-2" : "justify-center",
+                  "relative flex items-center gap-3 h-9 transition-colors duration-100 overflow-hidden w-full",
                   isNeo
                     ? "neo-sidebar-nav-link"
                     : cn(
@@ -294,6 +313,7 @@ export const IconRailSidebar: React.FC = () => {
                           : "text-base-content/70 hover:text-base-content hover:bg-base-content/8",
                       ),
                 )}
+                style={navItemStyle}
               >
                 {!isNeo && active && (
                   <motion.div
@@ -306,11 +326,11 @@ export const IconRailSidebar: React.FC = () => {
                   {expanded && (
                     <motion.span
                       key={`label-${item.to}`}
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      transition={{ duration: 0.1 }}
-                      className="text-sm font-medium whitespace-nowrap"
+                      initial={{ opacity: 0, maxWidth: 0 }}
+                      animate={{ opacity: 1, maxWidth: 160 }}
+                      exit={{ opacity: 0, maxWidth: 0 }}
+                      transition={{ duration: 0.12 }}
+                      className="text-sm font-medium whitespace-nowrap overflow-hidden"
                     >
                       {item.label}
                     </motion.span>
@@ -327,8 +347,7 @@ export const IconRailSidebar: React.FC = () => {
               to={item.to}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "relative flex items-center h-9 transition-colors duration-100 overflow-hidden",
-                expanded ? "gap-3 px-2" : "justify-center",
+                "relative flex items-center gap-3 h-9 transition-colors duration-100 overflow-hidden",
                 isNeo
                   ? "neo-sidebar-nav-link"
                   : cn(
@@ -338,6 +357,7 @@ export const IconRailSidebar: React.FC = () => {
                         : "text-base-content/70 hover:text-base-content hover:bg-base-content/8",
                     ),
               )}
+              style={navItemStyle}
             >
               {/* Active indicator — default theme only (neo uses structural rail in CSS) */}
               {!isNeo && active && (
@@ -351,11 +371,11 @@ export const IconRailSidebar: React.FC = () => {
                 {expanded && (
                   <motion.span
                     key={`label-${item.to}`}
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.1 }}
-                    className="text-sm font-medium whitespace-nowrap"
+                    initial={{ opacity: 0, maxWidth: 0 }}
+                    animate={{ opacity: 1, maxWidth: 160 }}
+                    exit={{ opacity: 0, maxWidth: 0 }}
+                    transition={{ duration: 0.12 }}
+                    className="text-sm font-medium whitespace-nowrap overflow-hidden"
                   >
                     {item.label}
                   </motion.span>
@@ -372,7 +392,7 @@ export const IconRailSidebar: React.FC = () => {
       />
 
       {/* Footer: hover-reveal toggle + pin toggle + quit */}
-      <div className="flex flex-col gap-0.5 py-2 px-1.5 shrink-0 overflow-hidden">
+      <div className="flex flex-col gap-0.5 py-2 shrink-0 overflow-hidden">
         {/* Hover-reveal toggle */}
         <button
           type="button"
@@ -381,8 +401,7 @@ export const IconRailSidebar: React.FC = () => {
             hoverRevealEnabled ? "Disable auto-reveal on hover" : "Enable auto-reveal on hover"
           }
           className={cn(
-            "flex items-center h-9 transition-colors duration-100 overflow-hidden",
-            expanded ? "gap-3 px-2" : "justify-center",
+            "flex items-center gap-3 h-9 transition-colors duration-100 overflow-hidden",
             isNeo
               ? "neo-sidebar-footer-btn"
               : cn(
@@ -392,6 +411,7 @@ export const IconRailSidebar: React.FC = () => {
                     : "text-base-content/40 hover:text-base-content/70 hover:bg-base-content/5",
                 ),
           )}
+          style={footerBtnStyle}
         >
           <svg
             width="16"
@@ -421,11 +441,11 @@ export const IconRailSidebar: React.FC = () => {
             {expanded && (
               <motion.span
                 key="hover-reveal-label"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.1 }}
-                className="text-sm whitespace-nowrap"
+                initial={{ opacity: 0, maxWidth: 0 }}
+                animate={{ opacity: 1, maxWidth: 160 }}
+                exit={{ opacity: 0, maxWidth: 0 }}
+                transition={{ duration: 0.12 }}
+                className="text-sm whitespace-nowrap overflow-hidden"
               >
                 {hoverRevealEnabled ? "Auto-reveal: On" : "Auto-reveal: Off"}
               </motion.span>
@@ -439,12 +459,12 @@ export const IconRailSidebar: React.FC = () => {
           onClick={handlePinToggle}
           aria-label={pinned ? "Unpin sidebar" : "Pin sidebar"}
           className={cn(
-            "flex items-center h-9 transition-colors duration-100 overflow-hidden",
-            expanded ? "gap-3 px-2" : "justify-center",
+            "flex items-center gap-3 h-9 transition-colors duration-100 overflow-hidden",
             isNeo
               ? "neo-sidebar-footer-btn neo-sidebar-footer-btn--pin"
               : "rounded-lg text-base-content/50 hover:text-base-content hover:bg-base-content/8",
           )}
+          style={footerBtnStyle}
         >
           <svg
             width="16"
@@ -464,11 +484,11 @@ export const IconRailSidebar: React.FC = () => {
             {expanded && (
               <motion.span
                 key="pin-label"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.1 }}
-                className="text-sm whitespace-nowrap"
+                initial={{ opacity: 0, maxWidth: 0 }}
+                animate={{ opacity: 1, maxWidth: 160 }}
+                exit={{ opacity: 0, maxWidth: 0 }}
+                transition={{ duration: 0.12 }}
+                className="text-sm whitespace-nowrap overflow-hidden"
               >
                 {pinned ? "Unpin sidebar" : "Pin sidebar"}
               </motion.span>
@@ -489,12 +509,12 @@ export const IconRailSidebar: React.FC = () => {
             if (quit) window.API_RENDERER.exitApp();
           }}
           className={cn(
-            "flex items-center h-9 transition-colors duration-100 overflow-hidden",
-            expanded ? "gap-3 px-2" : "justify-center",
+            "flex items-center gap-3 h-9 transition-colors duration-100 overflow-hidden",
             isNeo
               ? "neo-sidebar-footer-btn neo-sidebar-footer-btn--quit"
               : "rounded-lg text-base-content/50 hover:text-error hover:bg-error/10",
           )}
+          style={footerBtnStyle}
         >
           <svg
             width="16"
@@ -516,11 +536,11 @@ export const IconRailSidebar: React.FC = () => {
             {expanded && (
               <motion.span
                 key="quit-label"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0 }}
-                transition={{ duration: 0.1 }}
-                className="text-sm whitespace-nowrap"
+                initial={{ opacity: 0, maxWidth: 0 }}
+                animate={{ opacity: 1, maxWidth: 160 }}
+                exit={{ opacity: 0, maxWidth: 0 }}
+                transition={{ duration: 0.12 }}
+                className="text-sm whitespace-nowrap overflow-hidden"
               >
                 Quit
               </motion.span>
