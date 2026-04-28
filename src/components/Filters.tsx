@@ -19,7 +19,6 @@ import { useImagesStore } from "../stores/images";
 import { useShallow } from "zustand/react/shallow";
 import { useIsNeo } from "../hooks/useIsNeo";
 import { useModalStore } from "../stores/modalStore";
-import PlaylistController from "./PlaylistController";
 import { mapFiltersToImageQueryParams } from "../utils/galleryFilterTokens";
 import {
   clearGalleryFilterInputHistory,
@@ -55,9 +54,7 @@ const SORT_CYCLE: SortState[] = [
   { type: "id", order: "desc" },
 ];
 function nextSort(current: SortState): SortState {
-  const idx = SORT_CYCLE.findIndex(
-    (s) => s.type === current.type && s.order === current.order,
-  );
+  const idx = SORT_CYCLE.findIndex((s) => s.type === current.type && s.order === current.order);
   return SORT_CYCLE[(idx + 1) % SORT_CYCLE.length];
 }
 function sortLabel(s: SortState) {
@@ -73,9 +70,7 @@ const MEDIA_LABELS: Record<(typeof MEDIA_TYPES)[number], string> = {
   gif: "GIF",
 };
 
-function isKeyboardTargetInsideEditableField(
-  target: EventTarget | null,
-): boolean {
+function isKeyboardTargetInsideEditableField(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
   if (
     target instanceof HTMLInputElement ||
@@ -139,9 +134,7 @@ function Filters() {
 
   const [prevStoreOrder, setPrevStoreOrder] = useState(filters.order);
   const [prevStoreType, setPrevStoreType] = useState(filters.type);
-  const [prevStoreMediaType, setPrevStoreMediaType] = useState(
-    filters.mediaType,
-  );
+  const [prevStoreMediaType, setPrevStoreMediaType] = useState(filters.mediaType);
 
   if (
     filters.order !== prevStoreOrder ||
@@ -223,9 +216,7 @@ function Filters() {
         advancedFilters: filters.advancedFilters,
       };
       setFilters(newFilters);
-      useImagesStore
-        .getState()
-        .fetchPage(1, mapFiltersToImageQueryParams(partialFilters));
+      useImagesStore.getState().fetchPage(1, mapFiltersToImageQueryParams(partialFilters));
     },
     200,
     [partialFilters],
@@ -237,14 +228,11 @@ function Filters() {
       advancedFilters: filters.advancedFilters,
     };
     setFilters(resetFilters);
-    useImagesStore
-      .getState()
-      .fetchPage(1, mapFiltersToImageQueryParams(partialFiltersRef.current));
+    useImagesStore.getState().fetchPage(1, mapFiltersToImageQueryParams(partialFiltersRef.current));
   }, [filters.advancedFilters, setFilters]);
 
   const isNeo = useIsNeo();
-  const hasActiveSearch =
-    partialFilters.filterTokens.length > 0 || inputHistoryCount > 0;
+  const hasActiveSearch = partialFilters.filterTokens.length > 0 || inputHistoryCount > 0;
   const currentSort: SortState = {
     type: partialFilters.type,
     order: partialFilters.order,
@@ -267,17 +255,14 @@ function Filters() {
               ].join(" "),
             valueContainer: () => "flex flex-1 flex-wrap gap-1 py-0.5",
             multiValue: () => "badge badge-primary gap-1 max-w-full",
-            multiValueLabel: () =>
-              "text-xs font-extrabold uppercase tracking-tight truncate",
+            multiValueLabel: () => "text-xs font-extrabold uppercase tracking-tight truncate",
             multiValueRemove: () =>
               "hover:bg-primary-focus rounded-none px-0.5 text-lg font-black leading-none opacity-80 hover:opacity-100",
-            input: () =>
-              "min-w-[8ch] flex-1 bg-transparent text-sm font-bold outline-none",
+            input: () => "min-w-[8ch] flex-1 bg-transparent text-sm font-bold outline-none",
             placeholder: () =>
               "truncate text-xs font-extrabold uppercase tracking-widest text-base-content/40",
             menu: () => "neo-rs-menu mt-1 w-full p-0 shadow-none",
-            menuList: () =>
-              "neo-rs-menuList max-h-[min(70vh,24rem)] overflow-y-auto py-1",
+            menuList: () => "neo-rs-menuList max-h-[min(70vh,24rem)] overflow-y-auto py-1",
             option: ({ isFocused }: { isFocused: boolean }) =>
               [
                 "neo-rs-option cursor-pointer px-3 py-2 text-xs font-extrabold uppercase tracking-tight",
@@ -295,11 +280,9 @@ function Filters() {
             multiValueLabel: () => "text-xs font-medium truncate",
             multiValueRemove: () =>
               "hover:bg-primary-focus rounded px-0.5 text-base leading-none opacity-70 hover:opacity-100",
-            input: () =>
-              "min-w-[8ch] flex-1 bg-transparent text-sm outline-none",
+            input: () => "min-w-[8ch] flex-1 bg-transparent text-sm outline-none",
             placeholder: () => "text-base-content/40 truncate text-sm",
-            menu: () =>
-              "mt-1 w-full rounded-lg border border-base-300 bg-base-100 shadow-xl",
+            menu: () => "mt-1 w-full rounded-lg border border-base-300 bg-base-100 shadow-xl",
             menuList: () => "max-h-[min(70vh,24rem)] overflow-y-auto py-1",
             option: ({ isFocused }: { isFocused: boolean }) =>
               `cursor-pointer px-3 py-2 text-sm ${isFocused ? "bg-base-200" : ""}`,
@@ -313,136 +296,144 @@ function Filters() {
     : "btn btn-sm rounded-lg text-xs font-medium";
 
   const pillActive = isNeo ? "btn-primary" : "btn-primary";
-  const pillIdle = isNeo
-    ? "btn-active"
-    : "btn-ghost text-base-content/70 hover:text-base-content";
+  const pillIdle = isNeo ? "btn-active" : "btn-ghost text-base-content/70 hover:text-base-content";
 
   return (
     <section
       data-prevent-gallery-marquee="true"
-      className={`flex flex-wrap items-center gap-x-2 gap-y-2 px-4 pt-3 pb-2${isNeo ? " neo-filters-strip" : ""}`}
+      className={`px-4 pt-3 pb-2${isNeo ? " neo-filters-strip" : ""}`}
     >
-      {/* ── Left: media type pills + sort + filters (row 1 on all sizes) ── */}
-      <div className="order-1 flex flex-wrap items-center gap-1 shrink-0">
-        {MEDIA_TYPES.map((type) => (
+      <div className="mx-auto flex w-full max-w-[90rem] flex-col items-center justify-center gap-3 md:flex-row md:flex-wrap md:gap-x-4">
+        {/* Media / sort / advanced — grouped and centered with search */}
+        <div className="flex w-full flex-wrap items-center justify-center gap-1 md:w-auto md:shrink-0">
+          {MEDIA_TYPES.map((type) => (
+            <button
+              key={type}
+              type="button"
+              className={`${pillBase} ${partialFilters.mediaType === type ? pillActive : pillIdle}`}
+              onClick={() => setPartialFilters((p) => ({ ...p, mediaType: type }))}
+            >
+              {MEDIA_LABELS[type]}
+            </button>
+          ))}
+
           <button
-            key={type}
             type="button"
-            className={`${pillBase} ${partialFilters.mediaType === type ? pillActive : pillIdle}`}
-            onClick={() =>
-              setPartialFilters((p) => ({ ...p, mediaType: type }))
-            }
+            className={`${pillBase} ${pillIdle}`}
+            onClick={handleSortCycle}
+            title="Cycle sort: Name↑ → Name↓ → ID↑ → ID↓"
           >
-            {MEDIA_LABELS[type]}
+            {sortLabel(currentSort)}
           </button>
-        ))}
 
-        {/* Sort — single cycling button */}
-        <button
-          type="button"
-          className={`${pillBase} ${pillIdle}`}
-          onClick={handleSortCycle}
-          title="Cycle sort: Name↑ → Name↓ → ID↑ → ID↓"
-        >
-          {sortLabel(currentSort)}
-        </button>
-
-        {/* Advanced filters */}
-        <button
-          type="button"
-          className={`${pillBase} ${pillIdle}`}
-          onClick={() => useModalStore.getState().open("AdvancedFiltersModal")}
-        >
-          Filters
-        </button>
-      </div>
-
-      {/*
-        ── Center: search bar ──
-        <sm: full-width second row (order-3)
-        ≥md: flex-1 centered in single row (order-2)
-      */}
-      <div className="order-3 w-full md:order-2 md:flex-1 md:w-auto md:flex md:justify-center md:min-w-0 md:px-2">
-        <div
-          className={`relative flex items-center gap-0 w-full md:max-w-4xl ${
-            isNeo
-              ? "neo-rs-control-wrapper"
-              : "rounded-xl bg-base-200 border border-base-content/10 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-1 focus-within:ring-offset-base-100"
-          }`}
-        >
-          {/* Search icon */}
-          <svg
-            className={cn(
-              "ml-3 h-4 w-4 shrink-0",
-              isNeo ? "neo-search-inline-icon" : "text-base-content/40",
-            )}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-            aria-hidden
+          <button
+            type="button"
+            className={`${pillBase} ${pillIdle}`}
+            onClick={() => useModalStore.getState().open("AdvancedFiltersModal")}
           >
-            <path
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              strokeWidth={2}
-              d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
-            />
-          </svg>
+            Filters
+          </button>
+        </div>
 
-          {/* react-select input */}
-          <div className="min-w-0 flex-1">
-            <FilterInputNameContext.Provider value={filterInputName}>
-              <CreatableSelect<TokenOption, true>
-                key={`gf-select-${inputHistoryTick}`}
-                ref={selectRef}
-                inputId={reactSelectId}
-                instanceId={reactSelectId}
-                isMulti
-                unstyled
-                components={{ Input: GalleryFilterInput }}
-                menuPortalTarget={
-                  typeof document !== "undefined" ? document.body : undefined
-                }
-                menuPosition="fixed"
-                styles={{ menuPortal: (base) => ({ ...base, zIndex: 10000 }) }}
-                classNames={filterSelectClassNames}
-                formatCreateLabel={(inputValue) => `Add "${inputValue}"`}
-                isValidNewOption={(inputValue) => inputValue.trim().length > 0}
-                placeholder={TOKEN_PLACEHOLDER}
-                options={selectOptions}
-                value={tokenValue}
-                onInputChange={(v) => setFilterInput(v)}
-                onChange={(opts) =>
-                  onTokensChange(opts as MultiValue<TokenOption>)
-                }
-                closeMenuOnSelect={false}
-                filterOption={null}
-                noOptionsMessage={() => null}
-              />
-            </FilterInputNameContext.Provider>
-          </div>
-
-          {/* Trailing actions: clear + help */}
+        <div className="w-full min-w-0 md:max-w-4xl md:flex-1">
           <div
-            className={cn(
-              "flex items-center shrink-0 gap-1 pr-1.5",
-              !isNeo && "gap-0.5",
-            )}
+            className={`relative flex w-full items-center gap-0 ${
+              isNeo
+                ? "neo-rs-control-wrapper"
+                : "rounded-xl bg-base-200 border border-base-content/10 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-1 focus-within:ring-offset-base-100"
+            }`}
           >
-            {hasActiveSearch && (
+            {/* Search icon */}
+            <svg
+              className={cn(
+                "ml-3 h-4 w-4 shrink-0",
+                isNeo ? "neo-search-inline-icon" : "text-base-content/40",
+              )}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={2}
+                d="M21 21l-4.35-4.35M17 11A6 6 0 1 1 5 11a6 6 0 0 1 12 0z"
+              />
+            </svg>
+
+            {/* react-select input */}
+            <div className="min-w-0 flex-1">
+              <FilterInputNameContext.Provider value={filterInputName}>
+                <CreatableSelect<TokenOption, true>
+                  key={`gf-select-${inputHistoryTick}`}
+                  ref={selectRef}
+                  inputId={reactSelectId}
+                  instanceId={reactSelectId}
+                  isMulti
+                  unstyled
+                  components={{ Input: GalleryFilterInput }}
+                  menuPortalTarget={typeof document !== "undefined" ? document.body : undefined}
+                  menuPosition="fixed"
+                  styles={{ menuPortal: (base) => ({ ...base, zIndex: 10000 }) }}
+                  classNames={filterSelectClassNames}
+                  formatCreateLabel={(inputValue) => `Add "${inputValue}"`}
+                  isValidNewOption={(inputValue) => inputValue.trim().length > 0}
+                  placeholder={TOKEN_PLACEHOLDER}
+                  options={selectOptions}
+                  value={tokenValue}
+                  onInputChange={(v) => setFilterInput(v)}
+                  onChange={(opts) => onTokensChange(opts as MultiValue<TokenOption>)}
+                  closeMenuOnSelect={false}
+                  filterOption={null}
+                  noOptionsMessage={() => null}
+                />
+              </FilterInputNameContext.Provider>
+            </div>
+
+            {/* Trailing actions: clear + help */}
+            <div className={cn("flex items-center shrink-0 gap-1 pr-1.5", !isNeo && "gap-0.5")}>
+              {hasActiveSearch && (
+                <button
+                  type="button"
+                  onClick={clearAll}
+                  aria-label="Clear search and history"
+                  className={cn(
+                    isNeo
+                      ? "neo-search-action"
+                      : "flex items-center justify-center w-7 h-7 rounded-md text-base-content/40 hover:text-base-content hover:bg-base-content/8 transition-colors duration-100",
+                  )}
+                  title="Clear search tokens and history"
+                >
+                  <svg
+                    className="h-3.5 w-3.5"
+                    fill="none"
+                    stroke="currentColor"
+                    viewBox="0 0 24 24"
+                    aria-hidden
+                  >
+                    <path
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      strokeWidth={2.5}
+                      d="M6 18 18 6M6 6l12 12"
+                    />
+                  </svg>
+                </button>
+              )}
               <button
                 type="button"
-                onClick={clearAll}
-                aria-label="Clear search and history"
+                onClick={() => useModalStore.getState().open("GalleryFilterCheatsheetModal")}
+                aria-label="Filter syntax help"
                 className={cn(
                   isNeo
                     ? "neo-search-action"
-                    : "flex items-center justify-center w-7 h-7 rounded-md text-base-content/40 hover:text-base-content hover:bg-base-content/8 transition-colors duration-100",
+                    : "flex items-center justify-center w-7 h-7 rounded-md text-base-content/30 hover:text-base-content/70 hover:bg-base-content/8 transition-colors duration-100",
                 )}
-                title="Clear search tokens and history"
+                title="Filter syntax help"
               >
                 <svg
-                  className="h-3.5 w-3.5"
+                  className="h-4 w-4"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"
@@ -451,51 +442,14 @@ function Filters() {
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
-                    strokeWidth={2.5}
-                    d="M6 18 18 6M6 6l12 12"
+                    strokeWidth={2}
+                    d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z"
                   />
                 </svg>
               </button>
-            )}
-            <button
-              type="button"
-              onClick={() =>
-                useModalStore.getState().open("GalleryFilterCheatsheetModal")
-              }
-              aria-label="Filter syntax help"
-              className={cn(
-                isNeo
-                  ? "neo-search-action"
-                  : "flex items-center justify-center w-7 h-7 rounded-md text-base-content/30 hover:text-base-content/70 hover:bg-base-content/8 transition-colors duration-100",
-              )}
-              title="Filter syntax help"
-            >
-              <svg
-                className="h-4 w-4"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-                aria-hidden
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9.879 7.519c1.171-1.025 3.071-1.025 4.242 0 1.172 1.025 1.172 2.687 0 3.712-.203.179-.43.326-.67.442-.745.361-1.45.999-1.45 1.827v.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Zm-9 5.25h.008v.008H12v-.008Z"
-                />
-              </svg>
-            </button>
+            </div>
           </div>
         </div>
-      </div>
-
-      {/*
-        ── Right: playlist controller ──
-        <sm: order-2 with ml-auto → shares pill row, pushed far right
-        ≥md: order-3, normal flow after search
-      */}
-      <div className="order-2 ml-auto shrink-0 md:order-3 md:ml-0">
-        <PlaylistController />
       </div>
     </section>
   );

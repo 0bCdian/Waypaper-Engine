@@ -145,9 +145,7 @@ const PlaylistConfigurationModal = () => {
 
   const neoFieldset = cn(
     "fieldset bg-base-200 p-4 xl:p-5 2xl:p-6",
-    isNeo
-      ? "rounded-none border-4 border-base-content/20"
-      : "rounded-box border border-base-300",
+    isNeo ? "rounded-none border-4 border-base-content/20" : "rounded-box border border-base-300",
   );
 
   return (
@@ -156,8 +154,7 @@ const PlaylistConfigurationModal = () => {
       ref={containerRef}
       stripedHeader={{
         title: "Playlist Settings",
-        subtitle:
-          "Control how wallpapers advance — timer, shuffle, and weekly layouts.",
+        subtitle: "Control how wallpapers advance — timer, shuffle, and weekly layouts.",
         titleDefaultExtra: "xl:text-4xl",
       }}
       className={cn(
@@ -208,124 +205,124 @@ const PlaylistConfigurationModal = () => {
           <fieldset className={neoFieldset}>
             <legend className="fieldset-legend text-base 2xl:text-lg">Change Wallpaper</legend>
 
-          <form.Field name="type">
-            {(field) => (
-              <select
-                id="type"
-                className="select select-bordered w-full text-base xl:text-lg"
-                value={field.state.value}
-                onChange={(e) => field.handleChange(e.target.value as PLAYLIST_TYPES_TYPE)}
-                onBlur={field.handleBlur}
-              >
-                <option value={PLAYLIST_TYPES.TIMER}>On a timer</option>
-                <option value={PLAYLIST_TYPES.TIME_OF_DAY}>Time of day</option>
-                <option
-                  disabled={playlist.images.length > 7}
-                  className={classNameDisabled}
-                  value={PLAYLIST_TYPES.DAY_OF_WEEK}
-                >
-                  Day of week
-                </option>
-                <option value={PLAYLIST_TYPES.MANUAL}>Manual</option>
-              </select>
-            )}
-          </form.Field>
-
-          {showTimerFields && (
-            <div className="mt-3 grid grid-cols-2 gap-3">
-              <div>
-                <label htmlFor="hours" className="label text-sm xl:text-base font-medium">
-                  Hours
-                </label>
-                <form.Field name="hours">
-                  {(field) => (
-                    <input
-                      id="hours"
-                      min="0"
-                      type="number"
-                      value={field.state.value ?? "1"}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      onBlur={field.handleBlur}
-                      className="input input-bordered xl:input-lg w-full"
-                    />
-                  )}
-                </form.Field>
-              </div>
-              <div>
-                <label htmlFor="minutes" className="label text-sm xl:text-base font-medium">
-                  Minutes
-                </label>
-                <form.Field name="minutes">
-                  {(field) => (
-                    <input
-                      id="minutes"
-                      min="0"
-                      max="60"
-                      type="number"
-                      step={1}
-                      value={field.state.value ?? "0"}
-                      onChange={(e) => field.handleChange(e.target.value)}
-                      onBlur={field.handleBlur}
-                      className="input input-bordered xl:input-lg w-full"
-                    />
-                  )}
-                </form.Field>
-              </div>
-            </div>
-          )}
-        </fieldset>
-
-        {showOrderField && (
-          <fieldset className={neoFieldset}>
-            <legend className="fieldset-legend text-base 2xl:text-lg">Order</legend>
-            <form.Field name="order">
+            <form.Field name="type">
               {(field) => (
                 <select
+                  id="type"
                   className="select select-bordered w-full text-base xl:text-lg"
-                  value={field.state.value ?? PLAYLIST_ORDER.ordered}
-                  onChange={(e) => field.handleChange(e.target.value as PLAYLIST_ORDER_TYPES)}
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value as PLAYLIST_TYPES_TYPE)}
                   onBlur={field.handleBlur}
-                  id="order"
                 >
-                  <option value={PLAYLIST_ORDER.random}>Random</option>
-                  <option value={PLAYLIST_ORDER.ordered}>Ordered</option>
+                  <option value={PLAYLIST_TYPES.TIMER}>On a timer</option>
+                  <option value={PLAYLIST_TYPES.TIME_OF_DAY}>Time of day</option>
+                  <option
+                    disabled={playlist.images.length > 7}
+                    className={classNameDisabled}
+                    value={PLAYLIST_TYPES.DAY_OF_WEEK}
+                  >
+                    Day of week
+                  </option>
+                  <option value={PLAYLIST_TYPES.MANUAL}>Manual</option>
                 </select>
               )}
             </form.Field>
-          </fieldset>
-        )}
 
-        {showOrderField && (
-          <fieldset className={neoFieldset}>
-            <legend className="fieldset-legend text-base 2xl:text-lg">Options</legend>
-            <form.Field name="alwaysStartOnFirstImage">
-              {(field) => (
-                <label
-                  htmlFor="alwaysStartOnFirstImage"
-                  className="label cursor-pointer justify-between"
-                >
-                  <span className="text-sm xl:text-base 2xl:text-lg font-medium">
-                    Always start on the first image
-                  </span>
-                  <input
-                    type="checkbox"
-                    className="toggle toggle-primary"
-                    id="alwaysStartOnFirstImage"
-                    checked={field.state.value}
-                    onChange={(e) => field.handleChange(e.target.checked)}
-                  />
-                </label>
-              )}
-            </form.Field>
+            {showTimerFields && (
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="hours" className="label text-sm xl:text-base font-medium">
+                    Hours
+                  </label>
+                  <form.Field name="hours">
+                    {(field) => (
+                      <input
+                        id="hours"
+                        min="0"
+                        type="number"
+                        value={field.state.value ?? "1"}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        onBlur={field.handleBlur}
+                        className="input input-bordered xl:input-lg w-full"
+                      />
+                    )}
+                  </form.Field>
+                </div>
+                <div>
+                  <label htmlFor="minutes" className="label text-sm xl:text-base font-medium">
+                    Minutes
+                  </label>
+                  <form.Field name="minutes">
+                    {(field) => (
+                      <input
+                        id="minutes"
+                        min="0"
+                        max="60"
+                        type="number"
+                        step={1}
+                        value={field.state.value ?? "0"}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        onBlur={field.handleBlur}
+                        className="input input-bordered xl:input-lg w-full"
+                      />
+                    )}
+                  </form.Field>
+                </div>
+              </div>
+            )}
           </fieldset>
-        )}
 
-        <button
-          type="submit"
-          className={cn("btn btn-primary btn-block xl:btn-lg", isNeo ? "mt-6" : "mt-2")}
-        >
-          Save
-        </button>
+          {showOrderField && (
+            <fieldset className={neoFieldset}>
+              <legend className="fieldset-legend text-base 2xl:text-lg">Order</legend>
+              <form.Field name="order">
+                {(field) => (
+                  <select
+                    className="select select-bordered w-full text-base xl:text-lg"
+                    value={field.state.value ?? PLAYLIST_ORDER.ordered}
+                    onChange={(e) => field.handleChange(e.target.value as PLAYLIST_ORDER_TYPES)}
+                    onBlur={field.handleBlur}
+                    id="order"
+                  >
+                    <option value={PLAYLIST_ORDER.random}>Random</option>
+                    <option value={PLAYLIST_ORDER.ordered}>Ordered</option>
+                  </select>
+                )}
+              </form.Field>
+            </fieldset>
+          )}
+
+          {showOrderField && (
+            <fieldset className={neoFieldset}>
+              <legend className="fieldset-legend text-base 2xl:text-lg">Options</legend>
+              <form.Field name="alwaysStartOnFirstImage">
+                {(field) => (
+                  <label
+                    htmlFor="alwaysStartOnFirstImage"
+                    className="label cursor-pointer justify-between"
+                  >
+                    <span className="text-sm xl:text-base 2xl:text-lg font-medium">
+                      Always start on the first image
+                    </span>
+                    <input
+                      type="checkbox"
+                      className="toggle toggle-primary"
+                      id="alwaysStartOnFirstImage"
+                      checked={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.checked)}
+                    />
+                  </label>
+                )}
+              </form.Field>
+            </fieldset>
+          )}
+
+          <button
+            type="submit"
+            className={cn("btn btn-primary btn-block xl:btn-lg", isNeo ? "mt-6" : "mt-2")}
+          >
+            Save
+          </button>
         </form>
       </div>
     </Modal>

@@ -145,8 +145,7 @@ export default function useNotifications(): void {
         const backend = payload?.backend ?? "current backend";
         const first = payload?.skipped_items?.[0];
         const rest = (payload?.skipped ?? 0) - 1;
-        const more =
-          rest > 0 ? ` (${rest} more skipped)` : "";
+        const more = rest > 0 ? ` (${rest} more skipped)` : "";
         const msg =
           first != null
             ? `Backend ${String(backend)} does not support image ${String(first.image_id ?? "?")} (type ${String(first.media_type || "unknown")}) — skipping${more}`

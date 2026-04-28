@@ -51,11 +51,7 @@ async function loadAndStartPlaylist(
   }
 }
 
-const LoadPlaylistModal = ({
-  playlistsInDB,
-  onPlaylistChanged,
-  currentPlaylistName,
-}: Props) => {
+const LoadPlaylistModal = ({ playlistsInDB, onPlaylistChanged, currentPlaylistName }: Props) => {
   const isNeo = useIsNeo();
   const { clearPlaylist, setPlaylist } = usePlaylistStore(
     useShallow((s) => ({
@@ -69,8 +65,7 @@ const LoadPlaylistModal = ({
 
   const form = useForm({
     defaultValues: {
-      selectPlaylist:
-        playlistsInDB.length > 0 ? String(playlistsInDB[0].id) : "",
+      selectPlaylist: playlistsInDB.length > 0 ? String(playlistsInDB[0].id) : "",
     },
     onSubmit: async ({ value }) => {
       const selectedId = Number(value.selectPlaylist);
@@ -89,9 +84,7 @@ const LoadPlaylistModal = ({
       }
 
       const monitor =
-        monitorSelection.selectedMonitors.length === 1
-          ? monitorSelection.selectedMonitors[0]
-          : "*";
+        monitorSelection.selectedMonitors.length === 1 ? monitorSelection.selectedMonitors[0] : "*";
       const result = await loadAndStartPlaylist(
         selectedPlaylist.id,
         monitor,
@@ -102,9 +95,7 @@ const LoadPlaylistModal = ({
         setPlaylist(result.playlist);
         void useImagesStore
           .getState()
-          .fetchMissingImages(
-            result.playlist.images.map((img) => img.image_id),
-          );
+          .fetchMissingImages(result.playlist.images.map((img) => img.image_id));
         closeModal();
       } else {
         setError(`Failed to load playlist: ${result.message}`);
@@ -176,8 +167,7 @@ const LoadPlaylistModal = ({
             )}
           >
             <p className="text-left font-[family-name:var(--font-body)] text-base font-medium leading-[1.6] text-base-content md:text-lg">
-              No playlists in the library yet. Save one from the strip or
-              refresh after syncing.
+              No playlists in the library yet. Save one from the strip or refresh after syncing.
             </p>
             <button
               type="button"
@@ -242,9 +232,7 @@ const LoadPlaylistModal = ({
                       return;
                     }
 
-                    const playlistToDelete = playlistsInDB.find(
-                      (p) => p.id === currentId,
-                    );
+                    const playlistToDelete = playlistsInDB.find((p) => p.id === currentId);
                     if (!playlistToDelete) return;
 
                     const shouldDelete = await confirmDialog({
@@ -256,9 +244,7 @@ const LoadPlaylistModal = ({
                     });
                     if (shouldDelete) {
                       try {
-                        await goDaemon
-                          .stopPlaylist(playlistToDelete.id)
-                          .catch(() => {});
+                        await goDaemon.stopPlaylist(playlistToDelete.id).catch(() => {});
                         await goDaemon.deletePlaylist(playlistToDelete.id);
                         onPlaylistChanged();
                         setError("");
@@ -281,11 +267,7 @@ const LoadPlaylistModal = ({
             </div>
 
             <div className="flex flex-wrap items-center justify-center gap-3 border-t-4 border-base-content/15 pt-6 sm:gap-4">
-              <button
-                type="button"
-                className="btn btn-ghost min-w-[6.5rem]"
-                onClick={closeModal}
-              >
+              <button type="button" className="btn btn-ghost min-w-[6.5rem]" onClick={closeModal}>
                 Cancel
               </button>
               <button type="submit" className="btn btn-primary min-w-[6.5rem]">

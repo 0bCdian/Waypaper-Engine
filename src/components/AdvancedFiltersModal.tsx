@@ -3,10 +3,7 @@ import { useShallow } from "zustand/react/shallow";
 import { useEffect, useRef } from "react";
 import { useForm } from "@tanstack/react-form";
 import { parseResolution } from "../utils/utilities";
-import type {
-  advancedFilters,
-  resolutionConstraints,
-} from "../types/rendererTypes";
+import type { advancedFilters, resolutionConstraints } from "../types/rendererTypes";
 import Modal, { type ModalHandle } from "./Modal";
 import { useModalStore } from "../stores/modalStore";
 import { useIsNeo } from "../hooks/useIsNeo";
@@ -38,9 +35,7 @@ const AdvancedFiltersModal = () => {
     },
     onSubmit: ({ value }) => {
       const { width, height, resolutionConstraint } = value;
-      const { width: parsedWidth, height: parsedHeight } = parseResolution(
-        `${width}x${height}`,
-      );
+      const { width: parsedWidth, height: parsedHeight } = parseResolution(`${width}x${height}`);
       const nextAdvanced: advancedFilters = {
         resolution: {
           width: parsedWidth,
@@ -67,9 +62,7 @@ const AdvancedFiltersModal = () => {
 
   const neoFieldset = cn(
     "fieldset bg-base-200 p-4 xl:p-5 2xl:p-6",
-    isNeo
-      ? "rounded-none border-4 border-base-content/20"
-      : "rounded-box border border-base-300",
+    isNeo ? "rounded-none border-4 border-base-content/20" : "rounded-box border border-base-300",
   );
 
   const innerForm = (
@@ -82,9 +75,7 @@ const AdvancedFiltersModal = () => {
       }}
     >
       <fieldset className={neoFieldset}>
-        <legend className="fieldset-legend text-base 2xl:text-lg">
-          Resolution
-        </legend>
+        <legend className="fieldset-legend text-base 2xl:text-lg">Resolution</legend>
 
         <form.Field name="resolutionConstraint">
           {(field) => (

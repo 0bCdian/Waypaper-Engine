@@ -139,22 +139,21 @@ export function createMockAPI(): Window["API_RENDERER"] {
       getConfig: vi.fn().mockImplementation(async () => cloneConfig(liveUnifiedConfig)),
       updateConfig: vi.fn().mockResolvedValue(null),
       getConfigSection: vi.fn().mockResolvedValue({}),
-      updateConfigSection: vi.fn().mockImplementation(
-        async (
-          section: keyof typeof baselineUnifiedConfig,
-          data: Record<string, unknown>,
-        ) => {
-          const prev = liveUnifiedConfig[section] as Record<string, unknown>;
-          liveUnifiedConfig = {
-            ...liveUnifiedConfig,
-            [section]:
-              typeof prev === "object" && prev !== null && !Array.isArray(prev)
-                ? { ...prev, ...data }
-                : ({ ...data } as typeof prev),
-          };
-          return liveUnifiedConfig[section];
-        },
-      ),
+      updateConfigSection: vi
+        .fn()
+        .mockImplementation(
+          async (section: keyof typeof baselineUnifiedConfig, data: Record<string, unknown>) => {
+            const prev = liveUnifiedConfig[section] as Record<string, unknown>;
+            liveUnifiedConfig = {
+              ...liveUnifiedConfig,
+              [section]:
+                typeof prev === "object" && prev !== null && !Array.isArray(prev)
+                  ? { ...prev, ...data }
+                  : ({ ...data } as typeof prev),
+            };
+            return liveUnifiedConfig[section];
+          },
+        ),
       getBackendConfig: vi.fn().mockImplementation((_name: string) => Promise.resolve({})),
       updateBackendConfig: vi.fn().mockResolvedValue(undefined),
 

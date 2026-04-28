@@ -21,18 +21,7 @@ interface ModalProps {
 }
 
 const Modal = forwardRef<ModalHandle, ModalProps>(
-  (
-    {
-      id,
-      children,
-      className,
-      onClose,
-      showCloseButton = true,
-      stripedHeader,
-      draggable,
-    },
-    ref,
-  ) => {
+  ({ id, children, className, onClose, showCloseButton = true, stripedHeader, draggable }, ref) => {
     const dialogRef = useRef<HTMLDialogElement>(null);
 
     useImperativeHandle(ref, () => ({

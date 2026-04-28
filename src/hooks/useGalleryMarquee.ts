@@ -72,9 +72,13 @@ export function useGalleryMarquee() {
         const rect = scrollEl.getBoundingClientRect();
         let dy = 0;
         if (ev.clientY > rect.bottom - SCROLL_ZONE_PX) {
-          dy = SCROLL_MAX_SPEED * Math.min(1, (ev.clientY - (rect.bottom - SCROLL_ZONE_PX)) / SCROLL_ZONE_PX);
+          dy =
+            SCROLL_MAX_SPEED *
+            Math.min(1, (ev.clientY - (rect.bottom - SCROLL_ZONE_PX)) / SCROLL_ZONE_PX);
         } else if (ev.clientY < rect.top + SCROLL_ZONE_PX) {
-          dy = -SCROLL_MAX_SPEED * Math.min(1, ((rect.top + SCROLL_ZONE_PX) - ev.clientY) / SCROLL_ZONE_PX);
+          dy =
+            -SCROLL_MAX_SPEED *
+            Math.min(1, (rect.top + SCROLL_ZONE_PX - ev.clientY) / SCROLL_ZONE_PX);
         }
         if (dy !== 0) {
           const step = () => {

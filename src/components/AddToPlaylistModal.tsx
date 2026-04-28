@@ -176,10 +176,7 @@ const AddToPlaylistModal = ({ playlistsInDB, onPlaylistChanged }: Props) => {
             {(field) => (
               <select
                 id="selectPlaylist"
-                className={cn(
-                  "select select-bordered w-full text-lg",
-                  !isNeo && "rounded-md",
-                )}
+                className={cn("select select-bordered w-full text-lg", !isNeo && "rounded-md")}
                 value={field.state.value}
                 onChange={(e) => field.handleChange(e.target.value)}
                 onBlur={field.handleBlur}

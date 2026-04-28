@@ -142,8 +142,7 @@ function Monitors() {
       draggable={false}
       stripedHeader={{
         title: "Choose Display",
-        subtitle:
-          "Pick which outputs get wallpapers and whether they mirror or stretch together.",
+        subtitle: "Pick which outputs get wallpapers and whether they mirror or stretch together.",
       }}
       className={cn(
         "modal-box flex min-w-max flex-col",
@@ -218,10 +217,7 @@ function Monitors() {
           <button
             type="button"
             onClick={onSubmit}
-            className={cn(
-              "btn btn-primary btn-wide text-xl xl:btn-lg",
-              isNeo ? "" : "rounded-md",
-            )}
+            className={cn("btn btn-primary btn-wide text-xl xl:btn-lg", isNeo ? "" : "rounded-md")}
           >
             Save
           </button>

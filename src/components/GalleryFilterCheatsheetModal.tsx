@@ -161,7 +161,8 @@ const GalleryFilterCheatsheetModal = () => {
               <strong>Near constraints:</strong> the{" "}
               <code className={cheatsheetNeutralCodeCls}>~</code> suffix on{" "}
               <code className={cheatsheetNeutralCodeCls}>near:</code> sets the maximum CIE76 ΔE.
-              Multiple <code className={cheatsheetNeutralCodeCls}>near:</code> tokens are also ANDed.
+              Multiple <code className={cheatsheetNeutralCodeCls}>near:</code> tokens are also
+              ANDed.
             </p>
           </div>
         </footer>

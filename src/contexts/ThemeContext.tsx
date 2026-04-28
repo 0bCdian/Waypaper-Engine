@@ -84,27 +84,30 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     });
   }, []);
 
-  const setTheme = useCallback((themeName: string) => {
-    const theme = getTheme(themeName);
-    if (!theme) {
-      return;
-    }
-
-    const timestamp = Date.now();
-
-    setCurrentThemeState(themeName);
-    setLastChanged(timestamp);
-
-    applyTheme(themeName);
-
-    if (persist) {
-      try {
-        localStorage.setItem("waypaper-theme", themeName);
-      } catch (error) {
-        logger.warn("Failed to persist theme selection:", error);
+  const setTheme = useCallback(
+    (themeName: string) => {
+      const theme = getTheme(themeName);
+      if (!theme) {
+        return;
       }
-    }
-  }, [applyTheme, persist]);
+
+      const timestamp = Date.now();
+
+      setCurrentThemeState(themeName);
+      setLastChanged(timestamp);
+
+      applyTheme(themeName);
+
+      if (persist) {
+        try {
+          localStorage.setItem("waypaper-theme", themeName);
+        } catch (error) {
+          logger.warn("Failed to persist theme selection:", error);
+        }
+      }
+    },
+    [applyTheme, persist],
+  );
 
   const toggleTheme = useCallback(() => {
     const current = getTheme(currentTheme);
@@ -120,26 +123,29 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     }
   }, [currentTheme, setTheme]);
 
-  const setSystemThemePreference = useCallback((mode: "light" | "dark" | "auto") => {
-    setSystemTheme(mode);
-    setSyncWithSystem(mode === "auto");
+  const setSystemThemePreference = useCallback(
+    (mode: "light" | "dark" | "auto") => {
+      setSystemTheme(mode);
+      setSyncWithSystem(mode === "auto");
 
-    if (persist) {
-      try {
-        localStorage.setItem("waypaper-system-theme", mode);
-      } catch (error) {
-        logger.warn("Failed to persist system theme preference:", error);
+      if (persist) {
+        try {
+          localStorage.setItem("waypaper-system-theme", mode);
+        } catch (error) {
+          logger.warn("Failed to persist system theme preference:", error);
+        }
       }
-    }
 
-    if (mode === "auto") {
-      const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-      const themeName = prefersDark ? "dark" : "light";
-      setTheme(themeName);
-    } else {
-      setTheme(mode);
-    }
-  }, [persist, setTheme]);
+      if (mode === "auto") {
+        const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+        const themeName = prefersDark ? "dark" : "light";
+        setTheme(themeName);
+      } else {
+        setTheme(mode);
+      }
+    },
+    [persist, setTheme],
+  );
   const resetTheme = useCallback(() => {
     setTheme(defaultTheme);
   }, [defaultTheme, setTheme]);
@@ -216,46 +222,49 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   }, [syncWithSystem, hasTheme, setTheme, setSystemThemePreference]);
 
   // Context value
-  const contextValue: ThemeContextType = useMemo(() => ({
-    // State
-    currentTheme,
-    systemTheme,
-    themes,
-    isLoading,
-    lastChanged,
-    syncWithSystem,
+  const contextValue: ThemeContextType = useMemo(
+    () => ({
+      // State
+      currentTheme,
+      systemTheme,
+      themes,
+      isLoading,
+      lastChanged,
+      syncWithSystem,
 
-    // Computed values
-    isDarkMode,
-    isLightMode,
-    currentThemeConfig,
+      // Computed values
+      isDarkMode,
+      isLightMode,
+      currentThemeConfig,
 
-    // Actions
-    setTheme,
-    toggleTheme,
-    setSystemThemePreference,
-    setSyncWithSystem,
-    resetTheme,
-    getTheme: getThemeByName,
-    hasTheme,
-    getAvailableThemes,
-  }), [
-    currentTheme,
-    systemTheme,
-    isLoading,
-    lastChanged,
-    syncWithSystem,
-    isDarkMode,
-    isLightMode,
-    currentThemeConfig,
-    setTheme,
-    toggleTheme,
-    setSystemThemePreference,
-    resetTheme,
-    getThemeByName,
-    hasTheme,
-    getAvailableThemes,
-  ]);
+      // Actions
+      setTheme,
+      toggleTheme,
+      setSystemThemePreference,
+      setSyncWithSystem,
+      resetTheme,
+      getTheme: getThemeByName,
+      hasTheme,
+      getAvailableThemes,
+    }),
+    [
+      currentTheme,
+      systemTheme,
+      isLoading,
+      lastChanged,
+      syncWithSystem,
+      isDarkMode,
+      isLightMode,
+      currentThemeConfig,
+      setTheme,
+      toggleTheme,
+      setSystemThemePreference,
+      resetTheme,
+      getThemeByName,
+      hasTheme,
+      getAvailableThemes,
+    ],
+  );
 
   return <ThemeContext.Provider value={contextValue}>{children}</ThemeContext.Provider>;
 };

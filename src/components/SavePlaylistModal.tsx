@@ -197,7 +197,9 @@ const SavePlaylistModal = ({ currentPlaylistName, onPlaylistChanged }: Props) =>
       )}
     >
       {isNeo ? (
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-8 pt-6">{formBody}</div>
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-8 pt-6">
+          {formBody}
+        </div>
       ) : (
         formBody
       )}

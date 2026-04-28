@@ -204,62 +204,62 @@ function MiniPlaylistCard({
             tabIndex={isCurrentTrack ? -1 : undefined}
             title={isCurrentTrack ? "Current wallpaper" : undefined}
           >
-          {/* Neo: button sits on the card (overflow:visible), image is clipped separately */}
-          {isNeo && removeButton}
-          <div className={isNeo ? "overflow-hidden" : "relative"}>
-            {/* Non-neo: button inside the relative wrapper */}
-            {!isNeo && removeButton}
-            {imageSrc ? (
-              <img
-                src={imageSrc}
-                alt={imageName}
-                className={imgClass}
-                ref={imageRef}
-                loading="lazy"
-              />
-            ) : (
-              <div
-                className={`${imgClass} bg-base-300 flex items-center justify-center text-[10px] font-semibold uppercase text-base-content/50`}
-                aria-hidden
-              >
-                {imageInfo?.media_type === "web"
-                  ? "web"
-                  : imageInfo?.media_type === "video"
-                    ? "video"
-                    : "—"}
-              </div>
-            )}
-          </div>
-
-          {/* Polaroid-style caption below the image */}
-          {type === "time_of_day" && (
-            <div className={captionClass}>
-              <input
-                type="time"
-                value={localTime}
-                className="input input-xs w-full text-center invalid:bg-error focus:outline-hidden"
-                onChange={(e) => setLocalTime(e.currentTarget.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.currentTarget.blur();
-                  }
-                }}
-                onBlur={commitTime}
-              />
-              {isInvalid && (
-                <span className="text-[0.6rem] font-semibold italic text-error leading-tight">
-                  Duplicate time
-                </span>
+            {/* Neo: button sits on the card (overflow:visible), image is clipped separately */}
+            {isNeo && removeButton}
+            <div className={isNeo ? "overflow-hidden" : "relative"}>
+              {/* Non-neo: button inside the relative wrapper */}
+              {!isNeo && removeButton}
+              {imageSrc ? (
+                <img
+                  src={imageSrc}
+                  alt={imageName}
+                  className={imgClass}
+                  ref={imageRef}
+                  loading="lazy"
+                />
+              ) : (
+                <div
+                  className={`${imgClass} bg-base-300 flex items-center justify-center text-[10px] font-semibold uppercase text-base-content/50`}
+                  aria-hidden
+                >
+                  {imageInfo?.media_type === "web"
+                    ? "web"
+                    : imageInfo?.media_type === "video"
+                      ? "video"
+                      : "—"}
+                </div>
               )}
             </div>
-          )}
-          {type === "day_of_week" && (
-            <div className={captionClass}>
-              <span className="w-full truncate text-center text-[0.65rem] font-bold uppercase tracking-wide text-base-content">
-                {text}
-              </span>
-            </div>
-          )}
+
+            {/* Polaroid-style caption below the image */}
+            {type === "time_of_day" && (
+              <div className={captionClass}>
+                <input
+                  type="time"
+                  value={localTime}
+                  className="input input-xs w-full text-center invalid:bg-error focus:outline-hidden"
+                  onChange={(e) => setLocalTime(e.currentTarget.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  onBlur={commitTime}
+                />
+                {isInvalid && (
+                  <span className="text-[0.6rem] font-semibold italic text-error leading-tight">
+                    Duplicate time
+                  </span>
+                )}
+              </div>
+            )}
+            {type === "day_of_week" && (
+              <div className={captionClass}>
+                <span className="w-full truncate text-center text-[0.65rem] font-bold uppercase tracking-wide text-base-content">
+                  {text}
+                </span>
+              </div>
+            )}
           </div>
         </m.div>
       </m.div>

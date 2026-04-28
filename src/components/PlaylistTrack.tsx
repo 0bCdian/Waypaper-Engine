@@ -18,6 +18,7 @@ import { useActivePlaylistStore } from "../stores/activePlaylistStore";
 
 const { goDaemon } = window.API_RENDERER;
 import MiniPlaylistCard from "./MiniPlaylistCard";
+import PlaylistController from "./PlaylistController";
 
 async function stopPlaylistSilent(playlistId: number) {
   try {
@@ -232,138 +233,160 @@ function PlaylistTrack() {
         : "flex min-w-0 overflow-x-auto rounded-lg pt-3 pb-1 scrollbar-thumb-base-300 scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm"
       : "";
 
+  const editCardClass = cn(
+    "flex flex-col gap-3",
+    isNeo && "neo-playlist-toolbar",
+    !isNeo &&
+      "rounded-xl border border-base-content/10 bg-base-100/60 p-3 shadow-sm backdrop-blur-[2px]",
+  );
+
+  const dangerBtnClass = isNeo
+    ? "btn btn-sm btn-error uppercase"
+    : "btn btn-sm btn-error rounded-lg uppercase";
+
   return (
-    <div className="flex w-full min-w-0 flex-col gap-2 overflow-x-clip overflow-y-visible px-3 py-2 lg:px-4 lg:py-2.5">
-      <div
-        className={cn(
-          "flex flex-wrap items-center gap-2",
-          isNeo && "neo-playlist-toolbar",
-        )}
-      >
-        <div className="flex w-full min-w-0 flex-col">
-          <span
-            className={cn(
-              "truncate text-xl font-bold lg:text-2xl",
-              isNeo &&
-                "font-[family-name:var(--font-display)] uppercase tracking-tight text-base-content",
-            )}
-          >
-            {playlistArray.length > 0 &&
-              `${playlist.name?.trim() || "Unnamed Playlist"} (${playlistArray.length})`}
+    <div className="flex w-full min-w-0 flex-col gap-3 overflow-x-clip overflow-y-visible px-3 py-2 lg:px-4 lg:py-2.5">
+      {isThisPlaylistActive && <PlaylistController />}
+
+      <div className={editCardClass}>
+        <div className="flex w-full min-w-0 items-center justify-between gap-3">
+          <div className="flex min-w-0 items-center gap-2">
+            <span
+              className={cn(
+                "shrink-0 text-[0.6rem] font-semibold uppercase tracking-[0.18em] text-base-content/50",
+                isNeo && "font-[family-name:var(--font-display)]",
+              )}
+            >
+              Edit Track
+            </span>
+            <span
+              className={cn(
+                "truncate text-lg font-bold lg:text-xl",
+                isNeo &&
+                  "font-[family-name:var(--font-display)] uppercase tracking-tight text-base-content",
+              )}
+            >
+              {playlistArray.length > 0
+                ? `${playlist.name?.trim() || "Unnamed Playlist"} (${playlistArray.length})`
+                : ""}
+            </span>
             {isDirty && (
               <span
-                className="ml-2 inline-block h-2.5 w-2.5 rounded-full bg-warning align-middle"
+                className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-warning"
                 title="Unsaved changes"
+                aria-label="Unsaved changes"
               />
             )}
-          </span>
+          </div>
         </div>
-        <div className="dropdown dropdown-top">
-          <button type="button" tabIndex={0} className={btnClass}>
-            Add images
-          </button>
-          <ul className="menu dropdown-content z-10 mb-1 w-52 bg-base-100 p-2 shadow-sm">
-            <li>
-              <button
-                type="button"
-                className="text-lg text-base-content"
-                onMouseDown={isActive ? undefined : () => handleClickAddImages("file")}
-              >
-                Individual images
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                className="text-lg text-base-content"
-                onMouseDown={isActive ? undefined : () => handleClickAddImages("folder")}
-              >
-                Media directory
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                className="text-lg text-base-content"
-                onMouseDown={isActive ? undefined : () => handleClickAddImages("video")}
-              >
-                Videos
-              </button>
-            </li>
-            <li>
-              <button
-                type="button"
-                className="text-lg text-base-content"
-                onMouseDown={isActive ? undefined : () => handleClickAddImages("web")}
-              >
-                Web wallpaper
-              </button>
-            </li>
-          </ul>
-        </div>
-        <button
-          type="button"
-          onClick={() => {
-            useModalStore.getState().open("LoadPlaylistModal");
-          }}
-          className={btnClass}
-        >
-          Load Playlist
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            const monitor =
-              monitorSelection.selectedMonitors.length === 1
-                ? monitorSelection.selectedMonitors[0]
-                : "*";
-            goDaemon.setRandomWallpaper(monitor, monitorSelection.mode);
-          }}
-          className={btnClass}
-        >
-          Random Image
-        </button>
 
-        {playlist.images.length > 1 && (
-          <>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex min-w-0 flex-wrap items-center gap-2">
+            <div className="dropdown dropdown-top">
+              <button type="button" tabIndex={0} className={btnClass}>
+                Add images
+              </button>
+              <ul className="menu dropdown-content z-10 mb-1 w-52 bg-base-100 p-2 shadow-sm">
+                <li>
+                  <button
+                    type="button"
+                    className="text-lg text-base-content"
+                    onMouseDown={isActive ? undefined : () => handleClickAddImages("file")}
+                  >
+                    Individual images
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    className="text-lg text-base-content"
+                    onMouseDown={isActive ? undefined : () => handleClickAddImages("folder")}
+                  >
+                    Media directory
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    className="text-lg text-base-content"
+                    onMouseDown={isActive ? undefined : () => handleClickAddImages("video")}
+                  >
+                    Videos
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    className="text-lg text-base-content"
+                    onMouseDown={isActive ? undefined : () => handleClickAddImages("web")}
+                  >
+                    Web wallpaper
+                  </button>
+                </li>
+              </ul>
+            </div>
             <button
               type="button"
               onClick={() => {
-                useModalStore.getState().open("savePlaylistModal");
-              }}
-              className={isDirty ? `${btnClass} btn-warning animate-pulse` : btnClass}
-            >
-              {isDirty ? "Save*" : "Save"}
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                useModalStore.getState().open("playlistConfigurationModal");
+                useModalStore.getState().open("LoadPlaylistModal");
               }}
               className={btnClass}
             >
-              Configure
+              Load Playlist
             </button>
             <button
               type="button"
-              className={
-                isNeo
-                  ? "btn btn-sm btn-error uppercase"
-                  : "btn btn-sm btn-error rounded-lg uppercase"
-              }
-              onClick={async () => {
-                if (playlist.id) {
-                  await stopPlaylistSilent(playlist.id);
-                }
-                clearPlaylist();
-                useActivePlaylistStore.getState().clear();
+              onClick={() => {
+                const monitor =
+                  monitorSelection.selectedMonitors.length === 1
+                    ? monitorSelection.selectedMonitors[0]
+                    : "*";
+                goDaemon.setRandomWallpaper(monitor, monitorSelection.mode);
               }}
+              className={btnClass}
             >
-              Clear
+              Random Image
             </button>
-          </>
-        )}
+          </div>
+
+          {playlist.images.length > 1 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  useModalStore.getState().open("savePlaylistModal");
+                }}
+                className={isDirty ? `${btnClass} btn-warning animate-pulse` : btnClass}
+              >
+                {isDirty ? "Save*" : "Save"}
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  useModalStore.getState().open("playlistConfigurationModal");
+                }}
+                className={btnClass}
+              >
+                Configure
+              </button>
+              <button
+                type="button"
+                className={dangerBtnClass}
+                onClick={async () => {
+                  if (playlist.id) {
+                    await stopPlaylistSilent(playlist.id);
+                  }
+                  clearPlaylist();
+                  useActivePlaylistStore.getState().clear();
+                }}
+              >
+                Clear
+              </button>
+            </div>
+          )}
+        </div>
       </div>
+
       <div
         ref={playlistDropRef}
         className={`relative w-full min-w-0 overflow-visible transition-all duration-200${

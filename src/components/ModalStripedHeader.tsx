@@ -85,9 +85,7 @@ export function ModalStripedHeader(props: ModalStripedHeaderProps & { onClose: (
         type="button"
         className={cn(
           "btn shrink-0",
-          isNeo
-            ? closeNeoMerged
-            : "btn-ghost btn-square btn-sm hover:bg-base-300",
+          isNeo ? closeNeoMerged : "btn-ghost btn-square btn-sm hover:bg-base-300",
         )}
         aria-label="Close"
         onClick={onClose}

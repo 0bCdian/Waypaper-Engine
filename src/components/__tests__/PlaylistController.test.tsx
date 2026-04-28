@@ -46,12 +46,10 @@ beforeEach(() => {
 });
 
 describe("PlaylistController", () => {
-  it("renders an invisible layout placeholder when no active playlist", () => {
+  it("renders nothing when no active playlist", () => {
     const { container } = render(<PlaylistController />);
 
-    const phantom = container.querySelector("[aria-hidden='true']");
-    expect(phantom).not.toBeNull();
-    expect(phantom).toHaveClass("invisible");
+    expect(container.firstChild).toBeNull();
   });
 
   it("renders playlist name, image name, and monitor badges", () => {
