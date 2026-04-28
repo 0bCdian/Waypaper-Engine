@@ -231,7 +231,8 @@ export const IconRailSidebar: React.FC = () => {
       {/* App logo + name */}
       <div
         className={cn(
-          "flex items-center h-13 px-2 shrink-0 overflow-hidden",
+          "flex items-center h-13 shrink-0 overflow-hidden",
+          expanded ? "px-2" : "justify-center",
           isNeo && "neo-sidebar-masthead",
         )}
       >
@@ -282,7 +283,8 @@ export const IconRailSidebar: React.FC = () => {
                 onClick={() => openSettings()}
                 aria-pressed={settingsOpen}
                 className={cn(
-                  "relative flex items-center gap-3 px-2 h-9 transition-colors duration-100 overflow-hidden w-full",
+                  "relative flex items-center h-9 transition-colors duration-100 overflow-hidden w-full",
+                  expanded ? "gap-3 px-2" : "justify-center",
                   isNeo
                     ? "neo-sidebar-nav-link"
                     : cn(
@@ -299,7 +301,7 @@ export const IconRailSidebar: React.FC = () => {
                     className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full bg-primary"
                   />
                 )}
-                <span className="shrink-0 ml-0.5">{item.icon}</span>
+                <span className="shrink-0">{item.icon}</span>
                 <AnimatePresence>
                   {expanded && (
                     <motion.span
@@ -325,7 +327,8 @@ export const IconRailSidebar: React.FC = () => {
               to={item.to}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "relative flex items-center gap-3 px-2 h-9 transition-colors duration-100 overflow-hidden",
+                "relative flex items-center h-9 transition-colors duration-100 overflow-hidden",
+                expanded ? "gap-3 px-2" : "justify-center",
                 isNeo
                   ? "neo-sidebar-nav-link"
                   : cn(
@@ -343,7 +346,7 @@ export const IconRailSidebar: React.FC = () => {
                   className="absolute left-0 top-1 bottom-1 w-0.5 rounded-full bg-primary"
                 />
               )}
-              <span className="shrink-0 ml-0.5">{item.icon}</span>
+              <span className="shrink-0">{item.icon}</span>
               <AnimatePresence>
                 {expanded && (
                   <motion.span
@@ -369,7 +372,7 @@ export const IconRailSidebar: React.FC = () => {
       />
 
       {/* Footer: hover-reveal toggle + pin toggle + quit */}
-      <div className="flex flex-col gap-0.5 py-2 px-1.5 shrink-0">
+      <div className="flex flex-col gap-0.5 py-2 px-1.5 shrink-0 overflow-hidden">
         {/* Hover-reveal toggle */}
         <button
           type="button"
@@ -378,7 +381,8 @@ export const IconRailSidebar: React.FC = () => {
             hoverRevealEnabled ? "Disable auto-reveal on hover" : "Enable auto-reveal on hover"
           }
           className={cn(
-            "flex items-center gap-3 px-2 h-9 transition-colors duration-100 overflow-hidden",
+            "flex items-center h-9 transition-colors duration-100 overflow-hidden",
+            expanded ? "gap-3 px-2" : "justify-center",
             isNeo
               ? "neo-sidebar-footer-btn"
               : cn(
@@ -435,7 +439,8 @@ export const IconRailSidebar: React.FC = () => {
           onClick={handlePinToggle}
           aria-label={pinned ? "Unpin sidebar" : "Pin sidebar"}
           className={cn(
-            "flex items-center gap-3 px-2 h-9 transition-colors duration-100 overflow-hidden",
+            "flex items-center h-9 transition-colors duration-100 overflow-hidden",
+            expanded ? "gap-3 px-2" : "justify-center",
             isNeo
               ? "neo-sidebar-footer-btn neo-sidebar-footer-btn--pin"
               : "rounded-lg text-base-content/50 hover:text-base-content hover:bg-base-content/8",
@@ -484,7 +489,8 @@ export const IconRailSidebar: React.FC = () => {
             if (quit) window.API_RENDERER.exitApp();
           }}
           className={cn(
-            "flex items-center gap-3 px-2 h-9 transition-colors duration-100 overflow-hidden",
+            "flex items-center h-9 transition-colors duration-100 overflow-hidden",
+            expanded ? "gap-3 px-2" : "justify-center",
             isNeo
               ? "neo-sidebar-footer-btn neo-sidebar-footer-btn--quit"
               : "rounded-lg text-base-content/50 hover:text-error hover:bg-error/10",
