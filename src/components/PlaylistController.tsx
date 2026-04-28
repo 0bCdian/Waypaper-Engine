@@ -1,11 +1,14 @@
 import { useCallback, useEffect, useState } from "react";
 import { useActivePlaylistStore } from "../stores/activePlaylistStore";
 import { useImagesStore } from "../stores/images";
+import { useIsNeo } from "../hooks/useIsNeo";
+import { cn } from "../utils/cn";
 import { getThumbnailSrc } from "../utils/utilities";
 
 const { goDaemon } = window.API_RENDERER;
 
 function PlaylistController() {
+  const isNeo = useIsNeo();
   const activePlaylist = useActivePlaylistStore((s) => s.activePlaylist);
   const imagesMap = useImagesStore((s) => s.imagesMap);
   const [tickedCountdown, setTickedCountdown] = useState<string | null>(null);
@@ -67,20 +70,38 @@ function PlaylistController() {
     void goDaemon.stopPlaylist(activePlaylist.playlist_id);
   }, [activePlaylist]);
 
+  const shellClass = (phantom?: boolean) =>
+    cn(
+      "flex items-center gap-2 px-2 py-0",
+      isNeo && "neo-playlist-controller",
+      phantom && isNeo && "neo-playlist-controller--phantom",
+    );
+
+  const iconBtn = (extra?: string) =>
+    cn("btn btn-ghost btn-xs btn-square", isNeo && "neo-pc-icon-btn", extra);
+
   if (!activePlaylist) {
     // Invisible placeholder — same structure as the active state so layout space is preserved.
     return (
-      <div className="invisible pointer-events-none flex items-center gap-2 px-2 py-0" aria-hidden>
-        <div className="h-10 w-10 rounded shrink-0" />
+      <div className={cn(shellClass(true), "invisible pointer-events-none")} aria-hidden>
+        <div className={cn("h-10 w-10 shrink-0", !isNeo && "rounded")} />
         <div className="flex min-w-0 flex-col">
           <span className="text-sm">&nbsp;</span>
           <span className="text-xs">&nbsp;</span>
         </div>
-        <div className="flex items-center gap-1">
-          <button type="button" className="btn btn-ghost btn-xs btn-square" tabIndex={-1}><span className="h-4 w-4" /></button>
-          <button type="button" className="btn btn-ghost btn-sm btn-square" tabIndex={-1}><span className="h-5 w-5" /></button>
-          <button type="button" className="btn btn-ghost btn-xs btn-square" tabIndex={-1}><span className="h-4 w-4" /></button>
-          <button type="button" className="btn btn-ghost btn-xs btn-square" tabIndex={-1}><span className="h-4 w-4" /></button>
+        <div className={cn("flex gap-1", isNeo ? "neo-pc-controls" : "items-center")}>
+          <button type="button" className={iconBtn()} tabIndex={-1}>
+            <span className="h-4 w-4" />
+          </button>
+          <button type="button" className="btn btn-ghost btn-sm btn-square" tabIndex={-1}>
+            <span className="h-5 w-5" />
+          </button>
+          <button type="button" className={iconBtn()} tabIndex={-1}>
+            <span className="h-4 w-4" />
+          </button>
+          <button type="button" className={iconBtn()} tabIndex={-1}>
+            <span className="h-4 w-4" />
+          </button>
         </div>
       </div>
     );
@@ -90,17 +111,26 @@ function PlaylistController() {
   const monitors = activePlaylist.monitors.join(", ");
 
   return (
-    <div className="flex items-center gap-2 px-2 py-0">
+    <div className={shellClass()}>
       {currentImage && (
         <img
           src={getThumbnailSrc(currentImage)}
           alt={currentImage.name}
-          className="h-10 w-10 rounded object-cover shrink-0"
+          className={cn(
+            "h-10 w-10 shrink-0 object-cover",
+            !isNeo && "rounded",
+          )}
         />
       )}
 
       <div className="flex min-w-0 flex-col">
-        <span className="truncate text-sm font-semibold text-base-content">
+        <span
+          className={cn(
+            "truncate text-sm font-semibold text-base-content",
+            isNeo &&
+              "font-[family-name:var(--font-display)] text-xs font-extrabold uppercase tracking-tight md:text-sm",
+          )}
+        >
           {activePlaylist.playlist_name}
         </span>
         <span className="truncate text-xs text-base-content/60">
@@ -110,15 +140,20 @@ function PlaylistController() {
         </span>
       </div>
 
-      <div className="flex items-center gap-1 mt-5">
+      <div
+        className={cn(
+          "flex items-center gap-1",
+          isNeo ? "neo-pc-controls" : "mt-5",
+        )}
+      >
         {countdown && (
-          <span className="whitespace-nowrap text-xs min-w-2 tabular-nums text-base-content/50">
+          <span className="min-w-2 whitespace-nowrap text-xs tabular-nums text-base-content/50">
             {countdown}
           </span>
         )}
         <button
           type="button"
-          className="btn btn-ghost btn-xs btn-square"
+          className={iconBtn()}
           onClick={handlePrevious}
           title="Previous"
         >
@@ -134,7 +169,7 @@ function PlaylistController() {
 
         <button
           type="button"
-          className="btn btn-ghost btn-sm btn-square"
+          className={cn("btn btn-ghost btn-sm btn-square", isNeo && "neo-pc-icon-btn")}
           onClick={handlePauseResume}
           title={activePlaylist.paused ? "Resume" : "Pause"}
         >
@@ -161,7 +196,7 @@ function PlaylistController() {
 
         <button
           type="button"
-          className="btn btn-ghost btn-xs btn-square"
+          className={iconBtn()}
           onClick={handleNext}
           title="Next"
         >
@@ -177,7 +212,7 @@ function PlaylistController() {
 
         <button
           type="button"
-          className="btn btn-ghost btn-xs btn-square text-error"
+          className={iconBtn("text-error")}
           onClick={handleStop}
           title="Stop"
         >

@@ -15,25 +15,9 @@ const badgeClass: Record<(typeof GALLERY_FILTER_CHEATSHEET_CARDS)[number]["badge
     warning: "badge badge-warning border-0 font-mono font-bold",
   };
 
-function CloseIcon() {
-  return (
-    <svg
-      xmlns="http://www.w3.org/2000/svg"
-      className="h-6 w-6"
-      fill="none"
-      viewBox="0 0 24 24"
-      aria-hidden
-    >
-      <path
-        stroke="currentColor"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-        strokeWidth={2.5}
-        d="M6 18L18 6M6 6l12 12"
-      />
-    </svg>
-  );
-}
+/** Inline code inside `footer` neutrals — uses neutral-content scales for WCAG on both light/dark neutrals */
+const cheatsheetNeutralCodeCls =
+  "rounded bg-neutral-content/15 px-1 font-mono text-neutral-content ring-1 ring-inset ring-neutral-content/25";
 
 function InfoIcon() {
   return (
@@ -66,64 +50,33 @@ const GalleryFilterCheatsheetModal = () => {
     return () => useModalStore.getState().unregister("GalleryFilterCheatsheetModal");
   }, []);
 
-  const close = () => containerRef.current?.close();
-
   return (
     <Modal
       id="GalleryFilterCheatsheetModal"
       ref={containerRef}
-      showCloseButton={false}
+      stripedHeader={{
+        title: "Gallery filter syntax",
+        subtitle: (
+          <>
+            Our filter bar uses a <strong className="font-bold">token-based</strong> model: one chip
+            per token. Multiple chips combine with <strong className="font-bold">AND</strong> — an
+            image must satisfy every active token. Resolution filters live under{" "}
+            <strong className="font-bold">Filters</strong> (advanced), not in the search bar.
+          </>
+        ),
+        bleedInsetDefault: false,
+        titleNeoExtra: "italic md:text-5xl tracking-tighter",
+        titleDefaultExtra: "tracking-tighter md:text-4xl",
+        subtitleNeoExtra: "max-w-2xl",
+        subtitleDefaultExtra: "max-w-2xl leading-relaxed text-base-content/80",
+        closeNeoClassName:
+          "min-h-12 min-w-12 rounded-none border-4 border-base-content bg-base-100 px-3 text-base-content shadow-[4px_4px_0_0_#000] hover:bg-error hover:text-error-content active:translate-x-1 active:translate-y-1 active:shadow-none",
+      }}
       className={cn(
         "modal-box flex max-h-[85vh] max-w-4xl flex-col overflow-hidden p-0",
         isNeo && "rounded-none border-4 border-base-content shadow-[8px_8px_0_0_#000]",
       )}
     >
-      <header
-        className={cn(
-          "flex shrink-0 items-start justify-between gap-4 px-6 pb-5 pt-6 md:px-10 md:pb-6 md:pt-8",
-          isNeo
-            ? "border-b-4 border-base-content bg-secondary text-secondary-content"
-            : "border-b border-base-300 bg-base-200",
-        )}
-      >
-        <div className="min-w-0 flex-1 space-y-2">
-          <h2
-            className={cn(
-              "font-bold uppercase leading-none tracking-tighter text-base-content",
-              isNeo
-                ? "font-[family-name:var(--font-display)] text-3xl italic md:text-5xl"
-                : "font-[family-name:var(--font-display)] text-2xl md:text-4xl",
-            )}
-          >
-            Gallery filter syntax
-          </h2>
-          <p
-            className={cn(
-              "max-w-2xl text-sm leading-relaxed md:text-base",
-              isNeo ? "text-secondary-content/95" : "text-base-content/80",
-            )}
-          >
-            Our filter bar uses a <strong>token-based</strong> model: one chip per token. Multiple
-            chips combine with <strong>AND</strong> — an image must satisfy every active token.
-            Resolution filters live under <strong>Filters</strong> (advanced), not in the search
-            bar.
-          </p>
-        </div>
-        <button
-          type="button"
-          className={cn(
-            "btn shrink-0",
-            isNeo
-              ? "rounded-none border-4 border-base-content bg-base-100 text-base-content shadow-[4px_4px_0_0_#000] hover:bg-error hover:text-error-content active:translate-x-1 active:translate-y-1 active:shadow-none"
-              : "btn-ghost btn-square btn-sm",
-          )}
-          aria-label="Close"
-          onClick={close}
-        >
-          <CloseIcon />
-        </button>
-      </header>
-
       <div className="min-h-0 flex-1 space-y-10 overflow-y-auto px-6 py-8 md:px-10 md:py-10">
         <section className="max-w-3xl space-y-3">
           <h3
@@ -195,25 +148,20 @@ const GalleryFilterCheatsheetModal = () => {
               : "rounded-box bg-neutral text-neutral-content",
           )}
         >
-          <h3 className="font-[family-name:var(--font-display)] text-lg font-bold uppercase italic text-secondary md:text-xl">
+          <h3 className="font-[family-name:var(--font-display)] text-lg font-bold uppercase italic text-neutral-content md:text-xl">
             Combining tokens
           </h3>
-          <div className="grid gap-4 text-sm leading-relaxed md:grid-cols-2">
-            <p
-              className={cn("border-l-4 pl-4", isNeo ? "border-secondary" : "border-secondary/80")}
-            >
-              <strong className="text-secondary">Multiple color tokens:</strong> each{" "}
-              <code className="bg-white/10 px-1 font-mono">color:</code> token is required — stored
+          <div className="grid gap-4 text-sm leading-relaxed text-neutral-content/95 md:grid-cols-2 [&_strong]:font-semibold [&_strong]:text-neutral-content">
+            <p className="border-l-4 border-neutral-content/35 pl-4">
+              <strong>Multiple color tokens:</strong> each{" "}
+              <code className={cheatsheetNeutralCodeCls}>color:</code> token is required — stored
               palette must include every requested swatch (AND).
             </p>
-            <p
-              className={cn("border-l-4 pl-4", isNeo ? "border-secondary" : "border-secondary/80")}
-            >
-              <strong className="text-secondary">Near constraints:</strong> the{" "}
-              <code className="bg-white/10 px-1 font-mono">~</code> suffix on{" "}
-              <code className="bg-white/10 px-1 font-mono">near:</code> sets the maximum CIE76 ΔE.
-              Multiple <code className="bg-white/10 px-1 font-mono">near:</code> tokens are also
-              ANDed.
+            <p className="border-l-4 border-neutral-content/35 pl-4">
+              <strong>Near constraints:</strong> the{" "}
+              <code className={cheatsheetNeutralCodeCls}>~</code> suffix on{" "}
+              <code className={cheatsheetNeutralCodeCls}>near:</code> sets the maximum CIE76 ΔE.
+              Multiple <code className={cheatsheetNeutralCodeCls}>near:</code> tokens are also ANDed.
             </p>
           </div>
         </footer>

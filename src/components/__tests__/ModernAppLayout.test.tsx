@@ -30,6 +30,23 @@ vi.mock("../../stores/designSystemStore", () => ({
   useDesignSystemStore: (selector: Function) => selector({ syncToDOM: mockSyncToDOM }),
 }));
 
+vi.mock("framer-motion", () => ({
+  useReducedMotion: () => false as boolean | null,
+}));
+
+vi.mock("../StartupIntro", async () => {
+  const React = await import("react");
+  const MockStartupIntro = ({ onFinish }: { onFinish: () => void }) => {
+    React.useEffect(() => {
+      queueMicrotask(() => {
+        onFinish();
+      });
+    }, [onFinish]);
+    return null;
+  };
+  return { default: MockStartupIntro };
+});
+
 import { ModernAppLayout } from "../layout/ModernAppLayout";
 
 beforeEach(() => {
@@ -38,11 +55,11 @@ beforeEach(() => {
 });
 
 describe("ModernAppLayout", () => {
-  it("shows loading screen when config is null", () => {
+  it("renders shell when config has not arrived yet", () => {
     mockConfig = null;
     render(<ModernAppLayout>Content</ModernAppLayout>);
-    expect(screen.getByRole("status")).toBeInTheDocument();
-    expect(screen.queryByTestId("icon-rail")).not.toBeInTheDocument();
+    expect(screen.getByTestId("icon-rail")).toBeInTheDocument();
+    expect(screen.getByText("Content")).toBeInTheDocument();
   });
 
   it("renders icon rail and children when config is loaded", () => {

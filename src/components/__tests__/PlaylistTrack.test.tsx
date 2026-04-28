@@ -103,10 +103,10 @@ beforeEach(() => {
 });
 
 describe("PlaylistTrack", () => {
-  it("renders title and basic buttons for an empty playlist", () => {
+  it("renders toolbar and omits playlist title strip when empty", () => {
     render(<PlaylistTrack />);
 
-    expect(screen.getByText("Playlist")).toBeInTheDocument();
+    expect(screen.queryByText(/\([0-9]+\)/)).not.toBeInTheDocument();
     expect(screen.getByText("Add images")).toBeInTheDocument();
     expect(screen.getByText("Load Playlist")).toBeInTheDocument();
     expect(screen.getByText("Random Image")).toBeInTheDocument();
@@ -122,7 +122,7 @@ describe("PlaylistTrack", () => {
 
     render(<PlaylistTrack />);
 
-    expect(screen.getByText("Playlist (3)")).toBeInTheDocument();
+    expect(screen.getByText("Unnamed Playlist (3)")).toBeInTheDocument();
     expect(screen.getByText("Save")).toBeInTheDocument();
     expect(screen.getByText("Configure")).toBeInTheDocument();
     expect(screen.getByText("Clear")).toBeInTheDocument();

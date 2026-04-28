@@ -8,6 +8,8 @@ import Modal, { type ModalHandle } from "./Modal";
 import { useModalStore } from "../stores/modalStore";
 import { logger } from "../utils/logger";
 import { shouldSkipPlaylistStartAfterUpdate } from "../utils/skipStartAfterPlaylistSave";
+import { useIsNeo } from "../hooks/useIsNeo";
+import { cn } from "../utils/cn";
 const { goDaemon } = window.API_RENDERER;
 
 interface Props {
@@ -16,6 +18,7 @@ interface Props {
 }
 
 const SavePlaylistModal = ({ currentPlaylistName, onPlaylistChanged }: Props) => {
+  const isNeo = useIsNeo();
   const { setName, readPlaylist, setPlaylist, markClean } = usePlaylistStore(
     useShallow((s) => ({
       setName: s.setName,
@@ -114,7 +117,7 @@ const SavePlaylistModal = ({ currentPlaylistName, onPlaylistChanged }: Props) =>
 
         markClean();
         onPlaylistChanged();
-        closeModal();
+        modalRef.current?.close();
       } catch (err) {
         logger.error("Failed to save playlist:", err);
         let errorDetail = "Unknown error";
@@ -134,59 +137,70 @@ const SavePlaylistModal = ({ currentPlaylistName, onPlaylistChanged }: Props) =>
     return () => useModalStore.getState().unregister("savePlaylistModal");
   }, []);
 
-  const closeModal = () => {
-    modalRef.current?.close();
-  };
-
   useEffect(() => {
     form.setFieldValue("playlistName", currentPlaylistName);
   }, [currentPlaylistName, form]);
+  const formBody = (
+    <form
+      onSubmit={(e) => {
+        e.preventDefault();
+        void form.handleSubmit();
+      }}
+      className="flex flex-col gap-5"
+    >
+      <label htmlFor="playlistName" className="label italic text-warning">
+        Playlists with the same name will be overwritten.
+      </label>
+
+      <form.Field name="playlistName">
+        {(field) => (
+          <input
+            type="text"
+            id="playlistName"
+            name={field.name}
+            value={field.state.value}
+            onChange={(e) => field.handleChange(e.target.value)}
+            onBlur={field.handleBlur}
+            required
+            draggable={false}
+            className={cn(
+              "input mb-3 w-full text-lg",
+              isNeo ? "rounded-none input-bordered" : "rounded-md",
+            )}
+            placeholder="Playlist Name"
+          />
+        )}
+      </form.Field>
+      <div className="divider"></div>
+      {error.state && (
+        <label htmlFor="playlistName" className="label italic text-lg text-error">
+          {error.message}
+        </label>
+      )}
+      <button type="submit" className={cn("btn btn-active uppercase", !isNeo && "rounded-lg")}>
+        Save
+      </button>
+    </form>
+  );
+
   return (
     <Modal
       id="savePlaylistModal"
       ref={modalRef}
-      onClose={closeModal}
-      className="modal-box max-w-lg xl:max-w-xl 2xl:max-w-2xl"
+      stripedHeader={{
+        title: "Save Playlist",
+        subtitle: "Write the playlist to disk and optionally start playback on selected displays.",
+      }}
+      className={cn(
+        "modal-box flex max-w-lg flex-col xl:max-w-xl 2xl:max-w-2xl",
+        isNeo ? "max-h-[90vh] overflow-hidden p-0" : "gap-4 p-6",
+      )}
     >
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          void form.handleSubmit();
-        }}
-        className="flex flex-col"
-      >
-        <h2 className="py-3 text-center text-4xl font-bold">Save Playlist</h2>
-        <div className="divider"></div>
-        <label htmlFor="playlistName" className="label mb-3 italic text-warning">
-          Playlists with the same name will be overwritten.
-        </label>
-
-        <form.Field name="playlistName">
-          {(field) => (
-            <input
-              type="text"
-              id="playlistName"
-              name={field.name}
-              value={field.state.value}
-              onChange={(e) => field.handleChange(e.target.value)}
-              onBlur={field.handleBlur}
-              required
-              draggable={false}
-              className="input w-full mb-3 rounded-md text-lg"
-              placeholder="Playlist Name"
-            />
-          )}
-        </form.Field>
-        <div className="divider"></div>
-        {error.state && (
-          <label htmlFor="playlistName" className="label text-lg italic text-error">
-            {error.message}
-          </label>
-        )}
-        <button type="submit" className="btn btn-active rounded-lg uppercase">
-          Save
-        </button>
-      </form>
+      {isNeo ? (
+        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-8 pt-6">{formBody}</div>
+      ) : (
+        formBody
+      )}
     </Modal>
   );
 };

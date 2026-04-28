@@ -29,4 +29,12 @@ describe("shouldBlockGalleryMarqueeStart", () => {
     const s = document.createElement("section");
     expect(shouldBlockGalleryMarqueeStart(s)).toBe(false);
   });
+
+  it("blocks hits on decorative controls outside role=combobox (e.g. search glyph next to react-select)", () => {
+    const strip = document.createElement("section");
+    strip.setAttribute("data-prevent-gallery-marquee", "true");
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    strip.appendChild(svg);
+    expect(shouldBlockGalleryMarqueeStart(svg)).toBe(true);
+  });
 });

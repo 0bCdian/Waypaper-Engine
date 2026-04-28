@@ -4,6 +4,10 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import Modal, { type ModalHandle } from "../Modal";
 
+vi.mock("../hooks/useIsNeo", () => ({
+  useIsNeo: () => false,
+}));
+
 vi.mock("../NeoCloseButton", () => ({
   default: ({ onClick }: { onClick: () => void }) => (
     <button data-testid="close-btn" onClick={onClick} type="button">
@@ -64,5 +68,29 @@ describe("Modal", () => {
 
     await user.click(screen.getByTestId("close-btn"));
     expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("fires onClose when striped header close is clicked", async () => {
+    const user = userEvent.setup();
+    const onClose = vi.fn();
+
+    render(
+      <Modal stripedHeader={{ title: "Title", subtitle: "Subtitle" }} onClose={onClose}>
+        <p>Content</p>
+      </Modal>,
+    );
+
+    await user.click(screen.getByLabelText("Close", { selector: "button" }));
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it("does not render floating NeoClose when stripedHeader is set", () => {
+    render(
+      <Modal stripedHeader={{ title: "T" }}>
+        <p>Content</p>
+      </Modal>,
+    );
+
+    expect(screen.queryByTestId("close-btn")).not.toBeInTheDocument();
   });
 });

@@ -4,6 +4,8 @@ import { useImagesStore } from "../stores/images";
 import type { Playlist } from "../../electron/daemon-go-types";
 import Modal, { type ModalHandle } from "./Modal";
 import { logger } from "../utils/logger";
+import { useIsNeo } from "../hooks/useIsNeo";
+import { cn } from "../utils/cn";
 
 interface Props {
   playlistsInDB: Playlist[];
@@ -13,12 +15,13 @@ interface Props {
 const { goDaemon } = window.API_RENDERER;
 
 const AddToPlaylistModal = ({ playlistsInDB, onPlaylistChanged }: Props) => {
+  const isNeo = useIsNeo();
   const selectedImages = useImagesStore((s) => s.selectedImages);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
   const modalRef = useRef<ModalHandle>(null);
 
-  const closeModal = () => {
+  const clearModalFeedback = () => {
     setError("");
     setSuccess("");
   };
@@ -77,9 +80,8 @@ const AddToPlaylistModal = ({ playlistsInDB, onPlaylistChanged }: Props) => {
         onPlaylistChanged();
 
         setTimeout(() => {
-          closeModal();
-          const modal = modalRef.current;
-          if (modal) modal.close();
+          clearModalFeedback();
+          modalRef.current?.close();
         }, 1500);
       } catch (err) {
         logger.error("Failed to add images to playlist:", err);
@@ -90,14 +92,8 @@ const AddToPlaylistModal = ({ playlistsInDB, onPlaylistChanged }: Props) => {
     },
   });
 
-  return (
-    <Modal
-      id="AddToPlaylistModal"
-      ref={modalRef}
-      onClose={closeModal}
-      className="modal-box flex flex-col max-w-lg xl:max-w-xl 2xl:max-w-2xl"
-    >
-      <h2 className="select-none py-3 text-center text-4xl font-bold">Add to Playlist</h2>
+  const content = (
+    <>
       {error.length > 0 && (
         <div role="alert" className="alert alert-error m-0">
           <svg
@@ -134,8 +130,6 @@ const AddToPlaylistModal = ({ playlistsInDB, onPlaylistChanged }: Props) => {
           <span>{success}</span>
         </div>
       )}
-
-      <div className="divider"></div>
 
       {selectedImages.size === 0 && (
         <section className="flex flex-col gap-3">
@@ -182,7 +176,10 @@ const AddToPlaylistModal = ({ playlistsInDB, onPlaylistChanged }: Props) => {
             {(field) => (
               <select
                 id="selectPlaylist"
-                className="select select-bordered w-full rounded-md text-lg"
+                className={cn(
+                  "select select-bordered w-full text-lg",
+                  !isNeo && "rounded-md",
+                )}
                 value={field.state.value}
                 onChange={(e) => field.handleChange(e.target.value)}
                 onBlur={field.handleBlur}
@@ -199,19 +196,47 @@ const AddToPlaylistModal = ({ playlistsInDB, onPlaylistChanged }: Props) => {
           <div className="mt-3 flex justify-center gap-3">
             <button
               type="button"
-              className="btn btn-md rounded-md uppercase"
+              className={cn("btn btn-md uppercase", !isNeo && "rounded-md")}
               onClick={() => {
-                closeModal();
+                clearModalFeedback();
                 modalRef.current?.close();
               }}
             >
               Cancel
             </button>
-            <button type="submit" className="btn btn-active btn-md rounded-md uppercase">
+            <button
+              type="submit"
+              className={cn("btn btn-active btn-md uppercase", !isNeo && "rounded-md")}
+            >
               Add to Playlist
             </button>
           </div>
         </form>
+      )}
+    </>
+  );
+
+  return (
+    <Modal
+      id="AddToPlaylistModal"
+      ref={modalRef}
+      onClose={clearModalFeedback}
+      stripedHeader={{
+        title: "Add to Playlist",
+        subtitle:
+          "Append the current gallery selection to a saved playlist. Duplicate image IDs are skipped.",
+      }}
+      className={cn(
+        "modal-box flex max-w-lg flex-col xl:max-w-xl 2xl:max-w-2xl",
+        isNeo ? "max-h-[90vh] overflow-hidden p-0" : "gap-4 p-6",
+      )}
+    >
+      {isNeo ? (
+        <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 pb-8 pt-6">
+          {content}
+        </div>
+      ) : (
+        content
       )}
     </Modal>
   );

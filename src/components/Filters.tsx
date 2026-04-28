@@ -13,6 +13,7 @@ import type { MultiValue, SelectInstance } from "react-select";
 import { components as builtinSelectComponents } from "react-select";
 import type { InputProps } from "react-select";
 import useDebounce from "../hooks/useDebounce";
+import { cn } from "../utils/cn";
 import type { Filters as FiltersType } from "../types/rendererTypes";
 import { useImagesStore } from "../stores/images";
 import { useShallow } from "zustand/react/shallow";
@@ -371,7 +372,10 @@ function Filters() {
         >
           {/* Search icon */}
           <svg
-            className="ml-3 h-4 w-4 shrink-0 text-base-content/40"
+            className={cn(
+              "ml-3 h-4 w-4 shrink-0",
+              isNeo ? "neo-search-inline-icon" : "text-base-content/40",
+            )}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -419,13 +423,22 @@ function Filters() {
           </div>
 
           {/* Trailing actions: clear + help */}
-          <div className="flex items-center gap-0.5 pr-1.5 shrink-0">
+          <div
+            className={cn(
+              "flex items-center shrink-0 gap-1 pr-1.5",
+              !isNeo && "gap-0.5",
+            )}
+          >
             {hasActiveSearch && (
               <button
                 type="button"
                 onClick={clearAll}
                 aria-label="Clear search and history"
-                className="flex items-center justify-center w-7 h-7 rounded-md text-base-content/40 hover:text-base-content hover:bg-base-content/8 transition-colors duration-100"
+                className={cn(
+                  isNeo
+                    ? "neo-search-action"
+                    : "flex items-center justify-center w-7 h-7 rounded-md text-base-content/40 hover:text-base-content hover:bg-base-content/8 transition-colors duration-100",
+                )}
                 title="Clear search tokens and history"
               >
                 <svg
@@ -450,7 +463,11 @@ function Filters() {
                 useModalStore.getState().open("GalleryFilterCheatsheetModal")
               }
               aria-label="Filter syntax help"
-              className="flex items-center justify-center w-7 h-7 rounded-md text-base-content/30 hover:text-base-content/70 hover:bg-base-content/8 transition-colors duration-100"
+              className={cn(
+                isNeo
+                  ? "neo-search-action"
+                  : "flex items-center justify-center w-7 h-7 rounded-md text-base-content/30 hover:text-base-content/70 hover:bg-base-content/8 transition-colors duration-100",
+              )}
               title="Filter syntax help"
             >
               <svg

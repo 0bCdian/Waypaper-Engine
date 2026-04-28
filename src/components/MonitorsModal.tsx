@@ -5,12 +5,15 @@ import { MonitorComponent } from "./Monitor";
 import { calculateMinResolution } from "../utils/utilities";
 import type { monitorSelectType } from "../types/rendererTypes";
 import { useModalStore } from "../stores/modalStore";
-import NeoCloseButton from "./NeoCloseButton";
+import Modal, { type ModalHandle } from "./Modal";
+import { useIsNeo } from "../hooks/useIsNeo";
+import { cn } from "../utils/cn";
 
 const goDaemon = window.API_RENDERER.goDaemon;
 
 function Monitors() {
-  // All hooks grouped at the top
+  const isNeo = useIsNeo();
+
   const { monitorSelection, monitorsList, setMonitorSelection, refreshFromDaemon } =
     useMonitorStore(
       useShallow((s) => ({
@@ -27,7 +30,7 @@ function Monitors() {
     state: false,
     message: "error",
   });
-  const modalRef = useRef<HTMLDialogElement>(null);
+  const modalRef = useRef<ModalHandle>(null);
   const [refreshKey, setRefreshKey] = useState(0);
 
   const resolution = calculateMinResolution(monitorsList);
@@ -74,11 +77,8 @@ function Monitors() {
     };
   }, []);
 
-  // All plain functions after hooks
   const closeModal = () => {
-    if (modalRef.current) {
-      modalRef.current.close();
-    }
+    modalRef.current?.close();
   };
 
   const onSubmit = async () => {
@@ -130,88 +130,104 @@ function Monitors() {
     height: isSingleMonitor ? monitorsList[0].height * scale : resolution.y * scale,
   };
 
+  const neoFieldset = cn(
+    "fieldset bg-base-200 p-4 xl:p-5 2xl:p-6",
+    isNeo ? "rounded-none border-4 border-base-content/20" : "rounded-box border border-base-300",
+  );
+
   return (
-    <dialog id="monitors" className="modal w-full select-none" ref={modalRef} draggable={false}>
-      <div className="modal-box min-w-max">
-        <NeoCloseButton onClick={closeModal} />
-        <div className="m-auto flex max-w-fit flex-col justify-center gap-4 xl:gap-5 2xl:gap-6">
-          <h2 className="select-none text-center text-4xl font-bold">Choose Display</h2>
+    <Modal
+      id="monitors"
+      ref={modalRef}
+      draggable={false}
+      stripedHeader={{
+        title: "Choose Display",
+        subtitle:
+          "Pick which outputs get wallpapers and whether they mirror or stretch together.",
+      }}
+      className={cn(
+        "modal-box flex min-w-max flex-col",
+        isNeo ? "max-h-[92vh] overflow-hidden p-0" : "gap-5 p-6",
+      )}
+    >
+      <div
+        className={cn(
+          "m-auto flex max-w-fit flex-col justify-center gap-4 xl:gap-5 2xl:gap-6",
+          isNeo && "max-h-none min-h-0 flex-1 overflow-y-auto px-6 pb-8 pt-6 md:px-8",
+        )}
+      >
+        <fieldset className={neoFieldset}>
+          <legend className="fieldset-legend text-base 2xl:text-lg">Display Mode</legend>
+          <select
+            value={selectType}
+            onChange={(e) => {
+              setSelectType(e.currentTarget.value as monitorSelectType);
+            }}
+            className="select select-bordered w-full text-center text-lg xl:text-xl"
+          >
+            <option value="individual">Wallpaper per display</option>
+            <option value="extend" disabled={monitorsList.length < 2}>
+              Stretch single wallpaper
+            </option>
+            <option value="clone" disabled={monitorsList.length < 2}>
+              Clone single wallpaper
+            </option>
+          </select>
+          <p className="mt-2 text-xs text-base-content/70">
+            Extend spans static images only; video, GIF, and web wallpapers use the same image on
+            each monitor (clone).
+          </p>
+        </fieldset>
 
-          <fieldset className="fieldset bg-base-200 border border-base-300 rounded-box p-4 xl:p-5 2xl:p-6">
-            <legend className="fieldset-legend text-base 2xl:text-lg">Display Mode</legend>
-            <select
-              value={selectType}
-              onChange={(e) => {
-                setSelectType(e.currentTarget.value as monitorSelectType);
-              }}
-              className="select select-bordered w-full text-center text-lg xl:text-xl"
-            >
-              <option value="individual">Wallpaper per display</option>
-              <option value="extend" disabled={monitorsList.length < 2}>
-                Stretch single wallpaper
-              </option>
-              <option value="clone" disabled={monitorsList.length < 2}>
-                Clone single wallpaper
-              </option>
-            </select>
-            <p className="mt-2 text-xs text-base-content/70">
-              Extend spans static images only; video, GIF, and web wallpapers use the same image on
-              each monitor (clone).
-            </p>
-          </fieldset>
+        <div style={styles} className="relative m-auto">
+          {monitorsList.map((monitor, index) => {
+            const left = isSingleMonitor ? 0 : monitor.x * scale;
+            const top = isSingleMonitor ? 0 : monitor.y * scale;
+            const key = `m-${index}-${monitor.x}-${monitor.y}-${monitor.width}x${monitor.height}-${monitor.refresh_rate}-${monitor.transform}`;
 
-          <div style={styles} className="relative m-auto">
-            {monitorsList.map((monitor, index) => {
-              const left = isSingleMonitor ? 0 : monitor.x * scale;
-              const top = isSingleMonitor ? 0 : monitor.y * scale;
-              const key = `m-${index}-${monitor.x}-${monitor.y}-${monitor.width}x${monitor.height}-${monitor.refresh_rate}-${monitor.transform}`;
+            return (
+              <div
+                draggable={false}
+                style={{
+                  position: "absolute",
+                  left,
+                  top,
+                }}
+                key={key}
+              >
+                <MonitorComponent
+                  monitorsList={monitorsList}
+                  monitor={monitor}
+                  selectType={selectType}
+                  scale={scale * 0.99}
+                  refreshKey={refreshKey}
+                />
+              </div>
+            );
+          })}
+        </div>
 
-              return (
-                <div
-                  draggable={false}
-                  style={{
-                    position: "absolute",
-                    left,
-                    top,
-                  }}
-                  key={key}
-                >
-                  <MonitorComponent
-                    monitorsList={monitorsList}
-                    monitor={monitor}
-                    selectType={selectType}
-                    scale={scale * 0.99}
-                    refreshKey={refreshKey}
-                  />
-                </div>
-              );
-            })}
-          </div>
+        <div className="flex flex-col items-center gap-3">
+          <span
+            data-error={error.state}
+            className="h-8 select-none text-center text-xl italic text-error opacity-0 transition-opacity duration-300 data-[error=true]:opacity-100 xl:text-2xl"
+          >
+            {error.message}
+          </span>
 
-          <div className="flex flex-col items-center gap-3">
-            <span
-              data-error={error.state}
-              className="h-8 select-none text-center text-xl italic text-error opacity-0 transition-opacity duration-300 data-[error=true]:opacity-100 xl:text-2xl"
-            >
-              {error.message}
-            </span>
-
-            <button
-              type="button"
-              onClick={onSubmit}
-              className="btn btn-primary btn-wide xl:btn-lg rounded-md text-xl"
-            >
-              Save
-            </button>
-          </div>
+          <button
+            type="button"
+            onClick={onSubmit}
+            className={cn(
+              "btn btn-primary btn-wide text-xl xl:btn-lg",
+              isNeo ? "" : "rounded-md",
+            )}
+          >
+            Save
+          </button>
         </div>
       </div>
-      <form method="dialog" className="modal-backdrop">
-        <button type="button" onClick={closeModal}>
-          close
-        </button>
-      </form>
-    </dialog>
+    </Modal>
   );
 }
 

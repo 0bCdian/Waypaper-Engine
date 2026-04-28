@@ -12,8 +12,11 @@ import { toSeconds, toHoursAndMinutes } from "../utils/utilities";
 import Modal, { type ModalHandle } from "./Modal";
 import { useModalStore } from "../stores/modalStore";
 import { logger } from "../utils/logger";
+import { useIsNeo } from "../hooks/useIsNeo";
+import { cn } from "../utils/cn";
 
 const PlaylistConfigurationModal = () => {
+  const isNeo = useIsNeo();
   const [showError, setShowError] = useState(false);
   const { setConfiguration, playlist } = usePlaylistStore(
     useShallow((s) => ({
@@ -140,49 +143,70 @@ const PlaylistConfigurationModal = () => {
   const showOrderField =
     playlistType !== PLAYLIST_TYPES.TIME_OF_DAY && playlistType !== PLAYLIST_TYPES.DAY_OF_WEEK;
 
+  const neoFieldset = cn(
+    "fieldset bg-base-200 p-4 xl:p-5 2xl:p-6",
+    isNeo
+      ? "rounded-none border-4 border-base-content/20"
+      : "rounded-box border border-base-300",
+  );
+
   return (
     <Modal
       id="playlistConfigurationModal"
       ref={containerRef}
-      onClose={closeModal}
-      className="modal-box max-w-lg xl:max-w-xl 2xl:max-w-2xl"
+      stripedHeader={{
+        title: "Playlist Settings",
+        subtitle:
+          "Control how wallpapers advance — timer, shuffle, and weekly layouts.",
+        titleDefaultExtra: "xl:text-4xl",
+      }}
+      className={cn(
+        "modal-box flex max-w-lg flex-col xl:max-w-xl 2xl:max-w-2xl",
+        isNeo ? "max-h-[90vh] overflow-hidden p-0" : "gap-4 p-6",
+      )}
     >
-      <h2 className="mb-4 text-2xl xl:text-3xl 2xl:text-4xl font-bold text-center select-none">
-        Playlist Settings
-      </h2>
-
       <div
-        data-visible={showError}
-        className="alert alert-error mb-4 opacity-0 transition-opacity duration-300 data-[visible=true]:opacity-100"
-        style={{ display: showError ? undefined : "none" }}
+        className={cn(
+          "flex min-h-0 flex-1 flex-col gap-6",
+          isNeo ? "overflow-y-auto px-6 pb-8 pt-8" : "",
+        )}
       >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          className="h-6 w-6 shrink-0 stroke-current"
-          fill="none"
-          viewBox="0 0 24 24"
+        <div
+          data-visible={showError}
+          className="alert alert-error m-0 shadow-none opacity-0 transition-opacity duration-300 data-[visible=true]:opacity-100"
+          style={{ display: showError ? undefined : "none" }}
         >
-          <path
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            strokeWidth="2"
-            d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-          />
-        </svg>
-        <span className="text-sm xl:text-base">
-          Weekly playlists cannot have more than 7 images.
-        </span>
-      </div>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="h-6 w-6 shrink-0 stroke-current"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <span className="text-left font-[family-name:var(--font-body)] text-sm font-semibold md:text-base">
+            Weekly playlists cannot have more than 7 images.
+          </span>
+        </div>
 
-      <form
-        className="flex flex-col gap-4 xl:gap-5 2xl:gap-6"
-        onSubmit={(e) => {
-          e.preventDefault();
-          void form.handleSubmit();
-        }}
-      >
-        <fieldset className="fieldset bg-base-200 border border-base-300 rounded-box p-4 xl:p-5 2xl:p-6">
-          <legend className="fieldset-legend text-base 2xl:text-lg">Change Wallpaper</legend>
+        <form
+          className={cn(
+            "flex flex-col xl:gap-5 2xl:gap-6",
+            !isNeo && "gap-4",
+            isNeo ? "gap-6" : "",
+          )}
+          onSubmit={(e) => {
+            e.preventDefault();
+            void form.handleSubmit();
+          }}
+        >
+          <fieldset className={neoFieldset}>
+            <legend className="fieldset-legend text-base 2xl:text-lg">Change Wallpaper</legend>
 
           <form.Field name="type">
             {(field) => (
@@ -252,7 +276,7 @@ const PlaylistConfigurationModal = () => {
         </fieldset>
 
         {showOrderField && (
-          <fieldset className="fieldset bg-base-200 border border-base-300 rounded-box p-4 xl:p-5 2xl:p-6">
+          <fieldset className={neoFieldset}>
             <legend className="fieldset-legend text-base 2xl:text-lg">Order</legend>
             <form.Field name="order">
               {(field) => (
@@ -272,7 +296,7 @@ const PlaylistConfigurationModal = () => {
         )}
 
         {showOrderField && (
-          <fieldset className="fieldset bg-base-200 border border-base-300 rounded-box p-4 xl:p-5 2xl:p-6">
+          <fieldset className={neoFieldset}>
             <legend className="fieldset-legend text-base 2xl:text-lg">Options</legend>
             <form.Field name="alwaysStartOnFirstImage">
               {(field) => (
@@ -296,10 +320,14 @@ const PlaylistConfigurationModal = () => {
           </fieldset>
         )}
 
-        <button type="submit" className="btn btn-primary btn-block xl:btn-lg mt-2">
+        <button
+          type="submit"
+          className={cn("btn btn-primary btn-block xl:btn-lg", isNeo ? "mt-6" : "mt-2")}
+        >
           Save
         </button>
-      </form>
+        </form>
+      </div>
     </Modal>
   );
 };

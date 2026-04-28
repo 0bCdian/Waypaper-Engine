@@ -1,10 +1,31 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import electron from "vite-plugin-electron";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { resolve } from "path";
 
-export default defineConfig({
+/** During `vite serve`, allow React standalone DevTools bridge + inject its script tag. Production builds keep strict CSP without localhost scripts. */
+function reactStandaloneDevtoolsPlugin(command: string): Plugin {
+	return {
+		name: "wp-react-devtools-csp-dev-only",
+		apply: "serve",
+		transformIndexHtml(html) {
+			if (command !== "serve") return html;
+			const localhostDevtools = "http://localhost:8097 http://127.0.0.1:8097";
+			let next = html.replace(
+				"; script-src-elem 'self'; script-src 'self';",
+				`; script-src-elem 'self' ${localhostDevtools}; script-src 'self' ${localhostDevtools};`,
+			);
+			next = next.replace(
+				'<div id="root"></div>',
+				'<div id="root"></div>\n    <!-- React standalone DevTools listener (must run standalone: `npx react-devtools`) -->\n    <script src="http://localhost:8097"></script>',
+			);
+			return next;
+		},
+	};
+}
+
+export default defineConfig(({ command }) => ({
 	base: "./",
 	build: {
 		minify: process.env.DEBUG_BUILD ? false : "esbuild",
@@ -22,6 +43,7 @@ export default defineConfig({
 		],
 	},
 	plugins: [
+		reactStandaloneDevtoolsPlugin(command),
 		react({
 			babel: {
 				plugins: ["babel-plugin-react-compiler"],
@@ -61,4 +83,4 @@ export default defineConfig({
 	define: {
 		global: "globalThis",
 	},
-});
+}));

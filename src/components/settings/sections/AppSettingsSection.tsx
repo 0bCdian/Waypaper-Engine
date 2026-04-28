@@ -45,6 +45,12 @@ const behaviorFields: BoolField[] = [
     label: "Show Monitor Modal on Start",
     description: "Show monitor selection modal when starting the application",
   },
+  {
+    key: "startup_intro",
+    label: "Startup Intro",
+    description:
+      "Play a short full-screen sequence when opening the window (after configuration loads)",
+  },
 ];
 
 export const AppSettingsSection: React.FC<AppSettingsSectionProps> = ({ className = "" }) => {
@@ -104,10 +110,7 @@ export const AppSettingsSection: React.FC<AppSettingsSectionProps> = ({ classNam
 
       {themeOpen && (
         <div className="py-4 border-b border-base-content/5">
-          <InlineThemeSelector
-            onThemeChange={(themeName) => handleChange("theme", themeName)}
-            showDescriptions={true}
-          />
+          <InlineThemeSelector onThemeChange={(themeName) => handleChange("theme", themeName)} />
         </div>
       )}
 

@@ -1,6 +1,53 @@
 import { vi } from "vitest";
 
+function cloneConfig<T>(cfg: T): T {
+  return JSON.parse(JSON.stringify(cfg)) as T;
+}
+
 export function createMockAPI(): Window["API_RENDERER"] {
+  const baselineUnifiedConfig = {
+    app: {
+      kill_daemon_on_exit: false,
+      notifications: true,
+      start_minimized: false,
+      minimize_instead_of_close: false,
+      show_monitor_modal_on_start: true,
+      startup_intro: true,
+      images_per_page: 50,
+      theme: "kolision-raw" as const,
+      font_preset: "bundled",
+      font_family_body: "",
+      font_family_display: "",
+      font_family_mono: "",
+      image_history_limit: 1000,
+      sort_by: "imported_at" as const,
+      sort_order: "desc" as const,
+    },
+    daemon: {
+      images_dir: "/tmp/images",
+      thumbnails_dir: "/tmp/thumbs",
+      database_dir: "/tmp/db",
+      socket_path: "/tmp/waypaper.sock",
+      log_level: "info" as const,
+      log_file: "/tmp/daemon.log",
+      log_max_size_mb: 10,
+      log_max_backups: 3,
+      compositor: "auto" as const,
+    },
+    backend: { type: "awww" },
+    monitors: {
+      selected_monitors: [] as string[],
+      image_set_type: "individual" as const,
+    },
+    wallhaven: {
+      api_key: "",
+      enabled: false,
+      scroll_mode: "paginated" as const,
+    },
+  };
+
+  let liveUnifiedConfig = cloneConfig(baselineUnifiedConfig);
+
   return {
     goDaemon: {
       ping: vi.fn().mockResolvedValue(true),
@@ -89,48 +136,25 @@ export function createMockAPI(): Window["API_RENDERER"] {
       getMonitors: vi.fn().mockResolvedValue([]),
       getMonitor: vi.fn().mockResolvedValue(null),
 
-      getConfig: vi.fn().mockResolvedValue({
-        app: {
-          kill_daemon_on_exit: false,
-          notifications: true,
-          start_minimized: false,
-          minimize_instead_of_close: false,
-          show_monitor_modal_on_start: true,
-          images_per_page: 50,
-          theme: "kolision-raw" as const,
-          font_preset: "bundled",
-          font_family_body: "",
-          font_family_display: "",
-          font_family_mono: "",
-          image_history_limit: 1000,
-          sort_by: "imported_at" as const,
-          sort_order: "desc" as const,
-        },
-        daemon: {
-          images_dir: "/tmp/images",
-          thumbnails_dir: "/tmp/thumbs",
-          database_dir: "/tmp/db",
-          socket_path: "/tmp/waypaper.sock",
-          log_level: "info" as const,
-          log_file: "/tmp/daemon.log",
-          log_max_size_mb: 10,
-          log_max_backups: 3,
-          compositor: "auto" as const,
-        },
-        backend: { type: "awww" },
-        monitors: {
-          selected_monitors: [],
-          image_set_type: "individual" as const,
-        },
-        wallhaven: {
-          api_key: "",
-          enabled: false,
-          scroll_mode: "paginated" as const,
-        },
-      }),
+      getConfig: vi.fn().mockImplementation(async () => cloneConfig(liveUnifiedConfig)),
       updateConfig: vi.fn().mockResolvedValue(null),
       getConfigSection: vi.fn().mockResolvedValue({}),
-      updateConfigSection: vi.fn().mockResolvedValue({}),
+      updateConfigSection: vi.fn().mockImplementation(
+        async (
+          section: keyof typeof baselineUnifiedConfig,
+          data: Record<string, unknown>,
+        ) => {
+          const prev = liveUnifiedConfig[section] as Record<string, unknown>;
+          liveUnifiedConfig = {
+            ...liveUnifiedConfig,
+            [section]:
+              typeof prev === "object" && prev !== null && !Array.isArray(prev)
+                ? { ...prev, ...data }
+                : ({ ...data } as typeof prev),
+          };
+          return liveUnifiedConfig[section];
+        },
+      ),
       getBackendConfig: vi.fn().mockImplementation((_name: string) => Promise.resolve({})),
       updateBackendConfig: vi.fn().mockResolvedValue(undefined),
 

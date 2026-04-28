@@ -1,5 +1,6 @@
 import { useDroppable } from "@dnd-kit/react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useCallback } from "react";
+import { cn } from "../utils/cn";
 import { usePlaylistStore } from "../stores/playlist";
 import { useImagesStore } from "../stores/images";
 import openImagesStore from "../hooks/useOpenImages";
@@ -233,9 +234,20 @@ function PlaylistTrack() {
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-2 overflow-x-clip overflow-y-visible px-3 py-2 lg:px-4 lg:py-2.5">
-      <div className="flex flex-wrap items-center gap-2">
+      <div
+        className={cn(
+          "flex flex-wrap items-center gap-2",
+          isNeo && "neo-playlist-toolbar",
+        )}
+      >
         <div className="flex w-full min-w-0 flex-col">
-          <span className="text-xl lg:text-2xl font-bold truncate">
+          <span
+            className={cn(
+              "truncate text-xl font-bold lg:text-2xl",
+              isNeo &&
+                "font-[family-name:var(--font-display)] uppercase tracking-tight text-base-content",
+            )}
+          >
             {playlistArray.length > 0 &&
               `${playlist.name?.trim() || "Unnamed Playlist"} (${playlistArray.length})`}
             {isDirty && (

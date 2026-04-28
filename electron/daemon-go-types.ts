@@ -262,6 +262,8 @@ export interface AppConfig {
   start_minimized: boolean;
   minimize_instead_of_close: boolean;
   show_monitor_modal_on_start: boolean;
+  /** Full-window startup boot sequence (~2s) after config loads. */
+  startup_intro: boolean;
   images_per_page: number;
   /** DaisyUI theme name (e.g. kolision-raw) or system for OS sync */
   theme: string;

@@ -54,7 +54,8 @@ const defaultConfig: UnifiedConfig = {
     notifications: true,
     start_minimized: false,
     minimize_instead_of_close: false,
-    show_monitor_modal_on_start: false,
+    show_monitor_modal_on_start: true,
+    startup_intro: true,
     images_per_page: 50,
     theme: "kolision-raw",
     font_preset: "bundled",
@@ -133,6 +134,33 @@ function mergeLoadedConfig(
     monitors: { ...existing.monitors, ...incoming.monitors },
     wallhaven: { ...existing.wallhaven, ...incoming.wallhaven },
   };
+}
+
+type NonBackendSectionKey = Exclude<ConfigSection, "backend">;
+
+/**
+ * Applies PATCH /config/{section} JSON (daemon GetSection snapshot) onto local unified config,
+ * avoiding a full loadConfig round-trip — important for latency-sensitive UX (e.g. theme swaps).
+ */
+function mergeUnifiedFromSectionPatchBody(
+  base: UnifiedConfig,
+  section: NonBackendSectionKey,
+  incoming: Record<string, unknown>,
+): UnifiedConfig {
+  switch (section) {
+    case "app":
+      return { ...base, app: { ...base.app, ...incoming } };
+    case "daemon":
+      return { ...base, daemon: { ...base.daemon, ...incoming } };
+    case "monitors":
+      return { ...base, monitors: { ...base.monitors, ...incoming } };
+    case "wallhaven":
+      return { ...base, wallhaven: { ...base.wallhaven, ...incoming } };
+    default: {
+      const _x: never = section;
+      return _x;
+    }
+  }
 }
 
 export const useSettingsStore = create<SettingsStore>()(
@@ -311,7 +339,28 @@ export const useSettingsStore = create<SettingsStore>()(
             }
           } else {
             if (window.API_RENDERER?.goDaemon?.updateConfigSection) {
-              await window.API_RENDERER.goDaemon.updateConfigSection(section, data);
+              const patchBody = await window.API_RENDERER.goDaemon.updateConfigSection(
+                section,
+                data,
+              );
+              const current = get().config!;
+              const nonBackend = section as NonBackendSectionKey;
+              const body =
+                patchBody !== null &&
+                patchBody !== undefined &&
+                typeof patchBody === "object" &&
+                !Array.isArray(patchBody)
+                  ? (patchBody as Record<string, unknown>)
+                  : null;
+
+              if (body !== null && Object.keys(body).length > 0) {
+                set({
+                  config: mergeUnifiedFromSectionPatchBody(current, nonBackend, body),
+                  lastSaved: Date.now(),
+                });
+              } else {
+                await get().loadConfig();
+              }
             }
           }
           _lastApiSaveAt = Date.now();

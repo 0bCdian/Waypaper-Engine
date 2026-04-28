@@ -46,12 +46,26 @@ vi.mock("../../stores/modalStore", () => ({
 
 vi.mock("../Modal", () => ({
   default: React.forwardRef(
-    ({ children }: { children: React.ReactNode }, ref: React.Ref<unknown>) => {
+    (
+      {
+        children,
+        stripedHeader,
+      }: React.PropsWithChildren<{ stripedHeader?: { title?: React.ReactNode } }>,
+      ref: React.Ref<unknown>,
+    ) => {
       React.useImperativeHandle(ref, () => ({
         showModal: vi.fn(),
         close: vi.fn(),
       }));
-      return <div>{children}</div>;
+      return (
+        <div>
+          {stripedHeader?.title != null ? (
+            // Title can be ReactNode in other modals; coerced for tests that assert text content
+            <h2>{stripedHeader.title}</h2>
+          ) : null}
+          {children}
+        </div>
+      );
     },
   ),
 }));
@@ -99,10 +113,10 @@ describe("LoadPlaylistModal", () => {
     expect(screen.getByText("Load Playlist")).toBeInTheDocument();
   });
 
-  it("shows 'No playlists found' when empty array passed", () => {
+  it("shows empty-library copy when no playlists passed", () => {
     render(<LoadPlaylistModal {...defaultProps} />);
 
-    expect(screen.getByText(/No playlists found/)).toBeInTheDocument();
+    expect(screen.getByText(/No playlists in the library/)).toBeInTheDocument();
   });
 
   it("shows 'Refresh playlists' button that calls onPlaylistChanged", async () => {

@@ -28,6 +28,9 @@ type AppConfig struct {
 	// ShowMonitorModalOnStart shows the monitor selection modal when the app starts.
 	ShowMonitorModalOnStart bool `mapstructure:"show_monitor_modal_on_start" json:"show_monitor_modal_on_start"`
 
+	// StartupIntro plays the full-window boot sequence once when the main window opens after config loads.
+	StartupIntro bool `mapstructure:"startup_intro" json:"startup_intro"`
+
 	// ImagesPerPage is the number of images shown per page in the gallery.
 	ImagesPerPage int `mapstructure:"images_per_page" json:"images_per_page"`
 
