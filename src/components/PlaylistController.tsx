@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useActivePlaylistStore } from "../stores/activePlaylistStore";
 import { useImagesStore } from "../stores/images";
 import { useIsNeo } from "../hooks/useIsNeo";
@@ -16,41 +16,90 @@ function formatClock(totalSeconds: number): string {
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
+// Module-level slot cache. Pairs the moment we first see (playlist, image)
+// with the daemon's `next_change_at`, so the leaf TrackProgress can read it
+// without forcing the parent to re-render every tick.
+let slotCache: { key: string; startedAt: number; endsAt: number } | null = null;
+function recordSlot(key: string, endsAt: number) {
+  if (!slotCache || slotCache.key !== key) {
+    slotCache = { key, startedAt: Date.now(), endsAt };
+  } else {
+    slotCache = { ...slotCache, endsAt };
+  }
+}
+
+/**
+ * Leaf component that owns the 500ms ticker. Only the elapsed/remaining
+ * timestamps and the progress fill re-render — the transport row, thumbnail,
+ * title, and meta stay stable, and the cascade into sibling fibers
+ * (ResponsivePagination, MiniPlaylistCards) is gone.
+ */
+function TrackProgress({ paused, isNeo }: { paused: boolean; isNeo: boolean }) {
+  const [, forceTick] = useState(0);
+  useEffect(() => {
+    if (paused) return;
+    const interval = setInterval(() => forceTick((n) => n + 1), 500);
+    return () => clearInterval(interval);
+  }, [paused]);
+
+  const slot = slotCache;
+  let elapsedSec = 0;
+  let totalSec = 0;
+  let pct = 0;
+  if (slot && slot.endsAt > slot.startedAt) {
+    totalSec = (slot.endsAt - slot.startedAt) / 1000;
+    elapsedSec = Math.min(totalSec, (Date.now() - slot.startedAt) / 1000);
+    pct = totalSec > 0 ? Math.min(100, (elapsedSec / totalSec) * 100) : 0;
+  }
+  const remainingSec = Math.max(0, totalSec - elapsedSec);
+
+  return (
+    <div className="flex items-center gap-2">
+      <span className="w-9 shrink-0 text-right text-[0.65rem] tabular-nums text-base-content/60">
+        {totalSec > 0 ? formatClock(elapsedSec) : "—"}
+      </span>
+      <div
+        className={cn(
+          "relative h-1.5 flex-1 overflow-hidden",
+          isNeo ? "neo-progress-track" : "rounded-full bg-base-content/10",
+        )}
+        role="progressbar"
+        aria-valuemin={0}
+        aria-valuemax={100}
+        aria-valuenow={Math.round(pct)}
+      >
+        <div
+          className={cn(
+            "absolute inset-y-0 left-0 transition-[width] duration-500 ease-linear",
+            isNeo ? "neo-progress-fill" : "rounded-full bg-primary",
+            paused && "opacity-60",
+          )}
+          style={{ width: `${pct}%` }}
+        />
+      </div>
+      <span className="w-9 shrink-0 text-[0.65rem] tabular-nums text-base-content/60">
+        {totalSec > 0 ? `-${formatClock(remainingSec)}` : "—"}
+      </span>
+    </div>
+  );
+}
+
 function PlaylistController() {
   const isNeo = useIsNeo();
   const activePlaylist = useActivePlaylistStore((s) => s.activePlaylist);
   const imagesMap = useImagesStore((s) => s.imagesMap);
 
-  // Slot-start timestamp captured when the current image changes, so we can render
-  // an elapsed/remaining progress bar. The daemon doesn't emit a "slot_started_at",
-  // but it sends `next_change_at` updates — pairing the moment we first see an
-  // image with the current `next_change_at` gives us the slot length.
   const slotKey = activePlaylist
     ? `${activePlaylist.playlist_id}:${activePlaylist.current_image_id}`
     : null;
-  const slotStartRef = useRef<{ key: string; startedAt: number; endsAt: number } | null>(null);
-  const [, forceTick] = useState(0);
 
   useEffect(() => {
     if (!slotKey || !activePlaylist?.next_change_at) {
-      slotStartRef.current = null;
+      slotCache = null;
       return;
     }
-    const endsAt = new Date(activePlaylist.next_change_at).getTime();
-    const prev = slotStartRef.current;
-    if (!prev || prev.key !== slotKey) {
-      slotStartRef.current = { key: slotKey, startedAt: Date.now(), endsAt };
-    } else {
-      // Same slot — keep startedAt, refresh endsAt in case daemon adjusted it.
-      slotStartRef.current = { ...prev, endsAt };
-    }
+    recordSlot(slotKey, new Date(activePlaylist.next_change_at).getTime());
   }, [slotKey, activePlaylist?.next_change_at]);
-
-  useEffect(() => {
-    if (!activePlaylist || activePlaylist.paused) return;
-    const interval = setInterval(() => forceTick((n) => n + 1), 500);
-    return () => clearInterval(interval);
-  }, [activePlaylist, activePlaylist?.paused]);
 
   const handlePrevious = useCallback(() => {
     if (!activePlaylist) return;
@@ -78,19 +127,6 @@ function PlaylistController() {
   const currentImage = imagesMap.get(activePlaylist.current_image_id);
   const monitors = activePlaylist.monitors.join(", ");
 
-  // Compute progress
-  const slot = slotStartRef.current;
-  const now = Date.now();
-  let elapsedSec = 0;
-  let totalSec = 0;
-  let pct = 0;
-  if (slot && slot.endsAt > slot.startedAt) {
-    totalSec = (slot.endsAt - slot.startedAt) / 1000;
-    elapsedSec = Math.min(totalSec, (now - slot.startedAt) / 1000);
-    pct = totalSec > 0 ? Math.min(100, (elapsedSec / totalSec) * 100) : 0;
-  }
-  const remainingSec = Math.max(0, totalSec - elapsedSec);
-
   const shellClass = cn(
     "flex w-full min-w-0 items-center gap-3 lg:gap-4",
     isNeo
@@ -100,16 +136,11 @@ function PlaylistController() {
 
   const titleClass = cn(
     "truncate text-base font-bold leading-tight lg:text-lg",
-    isNeo &&
-      "font-[family-name:var(--font-display)] uppercase tracking-tight",
+    isNeo && "font-[family-name:var(--font-display)] uppercase tracking-tight",
   );
 
   const transportBtn = (extra?: string) =>
-    cn(
-      "btn btn-ghost btn-square btn-sm",
-      isNeo && "neo-pc-icon-btn",
-      extra,
-    );
+    cn("btn btn-ghost btn-square btn-sm", isNeo && "neo-pc-icon-btn", extra);
 
   const playPauseBtn = cn(
     "btn btn-square btn-md",
@@ -124,10 +155,7 @@ function PlaylistController() {
           <img
             src={getThumbnailSrc(currentImage)}
             alt={currentImage.name}
-            className={cn(
-              "h-14 w-14 object-cover lg:h-16 lg:w-16",
-              !isNeo && "rounded-lg",
-            )}
+            className={cn("h-14 w-14 object-cover lg:h-16 lg:w-16", !isNeo && "rounded-lg")}
           />
           {!activePlaylist.paused && (
             <span
@@ -171,9 +199,7 @@ function PlaylistController() {
               <span
                 className={cn(
                   "shrink-0 truncate rounded-sm px-1.5 py-px text-[0.65rem] font-semibold uppercase tracking-wide",
-                  isNeo
-                    ? "neo-monitor-chip"
-                    : "bg-base-content/10 text-base-content/70",
+                  isNeo ? "neo-monitor-chip" : "bg-base-content/10 text-base-content/70",
                 )}
               >
                 {monitors}
@@ -182,34 +208,7 @@ function PlaylistController() {
           )}
         </div>
 
-        {/* Progress bar */}
-        <div className="flex items-center gap-2">
-          <span className="w-9 shrink-0 text-right text-[0.65rem] tabular-nums text-base-content/60">
-            {totalSec > 0 ? formatClock(elapsedSec) : "—"}
-          </span>
-          <div
-            className={cn(
-              "relative h-1.5 flex-1 overflow-hidden",
-              isNeo ? "neo-progress-track" : "rounded-full bg-base-content/10",
-            )}
-            role="progressbar"
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-valuenow={Math.round(pct)}
-          >
-            <div
-              className={cn(
-                "absolute inset-y-0 left-0 transition-[width] duration-500 ease-linear",
-                isNeo ? "neo-progress-fill" : "rounded-full bg-primary",
-                activePlaylist.paused && "opacity-60",
-              )}
-              style={{ width: `${pct}%` }}
-            />
-          </div>
-          <span className="w-9 shrink-0 text-[0.65rem] tabular-nums text-base-content/60">
-            {totalSec > 0 ? `-${formatClock(remainingSec)}` : "—"}
-          </span>
-        </div>
+        <TrackProgress paused={activePlaylist.paused} isNeo={isNeo} />
       </div>
 
       {/* RIGHT: transport */}

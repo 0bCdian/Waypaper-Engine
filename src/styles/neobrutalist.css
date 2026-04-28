@@ -985,9 +985,10 @@
 /* Outer shell: one frame for search icon + creatable select + trailing actions */
 [data-design="neobrutalist"] .neo-rs-control-wrapper {
   display: flex;
-  align-items: stretch;
+  align-items: center;
   gap: 0;
   min-height: 2.75rem;
+  padding-block: 0;
   border-radius: var(--neo-radius);
   border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.85);
   box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0 var(--neo-shadow-color);
@@ -1006,12 +1007,14 @@
 [data-design="neobrutalist"] .neo-rs-control-wrapper .neo-rs-control {
   flex: 1;
   min-width: 0;
-  min-height: 0;
-  align-self: center;
+  min-height: 2.25rem;
+  align-self: stretch;
+  align-items: center;
   border: none;
   box-shadow: none;
   background: transparent;
-  padding-inline: 0.25rem;
+  padding-inline: 0.5rem;
+  padding-block: 0;
 }
 
 [data-design="neobrutalist"] .neo-rs-control-wrapper .neo-rs-control.neo-rs-control--focused {
@@ -1030,18 +1033,18 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 1.875rem;
-  height: 1.875rem;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
   border-radius: 0;
-  border: calc(var(--neo-border-width) - 1px) solid
-    oklch(from var(--color-base-content) l c h / 0.5);
+  border: 2px solid oklch(from var(--color-base-content) l c h / 0.85);
   background: oklch(from var(--color-base-200) l c h);
-  color: oklch(from var(--color-base-content) l c h / 0.88);
-  box-shadow: 2px 2px 0 0 oklch(from var(--color-base-content) l c h / 0.28);
+  color: oklch(from var(--color-base-content) l c h / 0.9);
+  box-shadow: 2px 2px 0 0 oklch(from var(--color-base-content) l c h / 0.85);
   transition:
-    box-shadow 0.1s ease,
-    transform 0.1s ease,
-    background 0.1s ease;
+    box-shadow 0.08s ease,
+    transform 0.08s ease,
+    background 0.08s ease;
 }
 
 [data-design="neobrutalist"] .neo-search-action:hover {
