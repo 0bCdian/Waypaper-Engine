@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useActivePlaylistStore } from "../stores/activePlaylistStore";
 import { useImagesStore } from "../stores/images";
 import { useIsNeo } from "../hooks/useIsNeo";
@@ -16,25 +16,49 @@ function formatClock(totalSeconds: number): string {
   return `${m}:${String(sec).padStart(2, "0")}`;
 }
 
-// Module-level slot cache. Pairs the moment we first see (playlist, image)
-// with the daemon's `next_change_at`, so the leaf TrackProgress can read it
-// without forcing the parent to re-render every tick.
-let slotCache: { key: string; startedAt: number; endsAt: number } | null = null;
-function recordSlot(key: string, endsAt: number) {
-  if (!slotCache || slotCache.key !== key) {
-    slotCache = { key, startedAt: Date.now(), endsAt };
-  } else {
-    slotCache = { ...slotCache, endsAt };
-  }
-}
-
 /**
- * Leaf component that owns the 500ms ticker. Only the elapsed/remaining
- * timestamps and the progress fill re-render — the transport row, thumbnail,
- * title, and meta stay stable, and the cascade into sibling fibers
- * (ResponsivePagination, MiniPlaylistCards) is gone.
+ * Progress + clocks for the active slot. Slot bounds live in React state so the
+ * first paint after `next_change_at` arrives is correct (module-level cache +
+ * useEffect did not re-render this subtree). When playing, a 500ms tick
+ * updates elapsed; when paused, the bar stays frozen without a timer.
  */
-function TrackProgress({ paused, isNeo }: { paused: boolean; isNeo: boolean }) {
+function TrackProgress({
+  paused,
+  isNeo,
+  slotKey,
+  nextChangeAt,
+}: {
+  paused: boolean;
+  isNeo: boolean;
+  slotKey: string;
+  nextChangeAt: string | null;
+}) {
+  const prevSlotKeyRef = useRef<string | null>(null);
+  const [slot, setSlot] = useState<{ startedAt: number; endsAt: number } | null>(null);
+
+  useEffect(() => {
+    if (!slotKey || !nextChangeAt) {
+      prevSlotKeyRef.current = null;
+      setSlot(null);
+      return;
+    }
+    const endsAt = new Date(nextChangeAt).getTime();
+    if (!Number.isFinite(endsAt)) {
+      setSlot(null);
+      return;
+    }
+
+    const keyChanged = prevSlotKeyRef.current !== slotKey;
+    prevSlotKeyRef.current = slotKey;
+
+    setSlot((prev) => {
+      if (keyChanged || !prev) {
+        return { startedAt: Date.now(), endsAt };
+      }
+      return { ...prev, endsAt };
+    });
+  }, [slotKey, nextChangeAt]);
+
   const [, forceTick] = useState(0);
   useEffect(() => {
     if (paused) return;
@@ -42,7 +66,6 @@ function TrackProgress({ paused, isNeo }: { paused: boolean; isNeo: boolean }) {
     return () => clearInterval(interval);
   }, [paused]);
 
-  const slot = slotCache;
   let elapsedSec = 0;
   let totalSec = 0;
   let pct = 0;
@@ -91,15 +114,7 @@ function PlaylistController() {
 
   const slotKey = activePlaylist
     ? `${activePlaylist.playlist_id}:${activePlaylist.current_image_id}`
-    : null;
-
-  useEffect(() => {
-    if (!slotKey || !activePlaylist?.next_change_at) {
-      slotCache = null;
-      return;
-    }
-    recordSlot(slotKey, new Date(activePlaylist.next_change_at).getTime());
-  }, [slotKey, activePlaylist?.next_change_at]);
+    : "";
 
   const handlePrevious = useCallback(() => {
     if (!activePlaylist) return;
@@ -208,7 +223,12 @@ function PlaylistController() {
           )}
         </div>
 
-        <TrackProgress paused={activePlaylist.paused} isNeo={isNeo} />
+        <TrackProgress
+          paused={activePlaylist.paused}
+          isNeo={isNeo}
+          slotKey={slotKey}
+          nextChangeAt={activePlaylist.next_change_at}
+        />
       </div>
 
       {/* RIGHT: transport */}

@@ -6,6 +6,10 @@ import { useShallow } from "zustand/react/shallow";
 import { SettingRow, SettingSectionHeader } from "../SettingRow";
 import type { ConfigSection, UnifiedConfig } from "@/shared/types/unifiedConfig";
 import { FIELD_PREFIX_BY_BACKEND } from "@/utils/backendFieldPrefixes";
+import {
+  readPersistedBackendSettingsPanel,
+  writePersistedBackendSettingsPanel,
+} from "@/utils/settingsNavStorage";
 
 interface BackendSettingsSectionProps {
   className?: string;
@@ -845,7 +849,20 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
   const section: ConfigSection = "backend";
 
   const [availableBackends, setAvailableBackends] = useState<AvailableBackend[]>([]);
-  const [activeSettingsTab, setActiveSettingsTab] = useState<"general" | string>("general");
+  const [activeSettingsTab, setActiveSettingsTab] = useState<"general" | string>(
+    () => readPersistedBackendSettingsPanel() ?? "general",
+  );
+
+  const selectBackendPanel = useCallback((tab: string) => {
+    setActiveSettingsTab(tab);
+    writePersistedBackendSettingsPanel(tab);
+  }, []);
+
+  useEffect(() => {
+    if (pendingBackendSettingsTab === null) return;
+    selectBackendPanel(pendingBackendSettingsTab);
+    clearPendingBackendSettingsTab();
+  }, [pendingBackendSettingsTab, selectBackendPanel, clearPendingBackendSettingsTab]);
 
   useEffect(() => {
     window.API_RENDERER?.goDaemon
@@ -855,16 +872,13 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
         setAvailableBackends(mapped);
         setActiveSettingsTab((tab) => {
           if (tab === "general") return tab;
-          return mapped.some((b) => b.name === tab) ? tab : "general";
+          if (mapped.some((b) => b.name === tab)) return tab;
+          writePersistedBackendSettingsPanel("general");
+          return "general";
         });
       })
       .catch(() => {});
   }, []);
-
-  if (pendingBackendSettingsTab !== null && activeSettingsTab !== pendingBackendSettingsTab) {
-    setActiveSettingsTab(pendingBackendSettingsTab);
-    clearPendingBackendSettingsTab();
-  }
 
   const sortedBackends = useMemo(
     () => [...availableBackends].sort((a, b) => a.name.localeCompare(b.name)),
@@ -1016,7 +1030,7 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
           <select
             className="select select-bordered select-sm w-full"
             value={activeSettingsTab}
-            onChange={(e) => setActiveSettingsTab(e.target.value)}
+            onChange={(e) => selectBackendPanel(e.target.value)}
           >
             <option value="general">General</option>
             {sortedBackends.map((b) => (
@@ -1036,7 +1050,7 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
             role="tab"
             aria-selected={activeSettingsTab === "general"}
             className={cn("tab", activeSettingsTab === "general" && "tab-active")}
-            onClick={() => setActiveSettingsTab("general")}
+            onClick={() => selectBackendPanel("general")}
           >
             General
           </button>
@@ -1047,7 +1061,7 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
               role="tab"
               aria-selected={activeSettingsTab === b.name}
               className={cn("tab whitespace-nowrap", activeSettingsTab === b.name && "tab-active")}
-              onClick={() => setActiveSettingsTab(b.name)}
+              onClick={() => selectBackendPanel(b.name)}
             >
               {b.name}
               {!b.available && (

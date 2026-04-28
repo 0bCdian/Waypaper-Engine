@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 
@@ -45,11 +45,73 @@ beforeEach(() => {
   mockImagesMap.clear();
 });
 
+afterEach(() => {
+  vi.useRealTimers();
+});
+
 describe("PlaylistController", () => {
   it("renders nothing when no active playlist", () => {
     const { container } = render(<PlaylistController />);
 
     expect(container.firstChild).toBeNull();
+  });
+
+  it("shows progress bar and elapsed time when next_change_at is set", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-15T14:00:00.000Z"));
+
+    mockActivePlaylist = {
+      playlist_id: 1,
+      playlist_name: "Timed",
+      monitors: ["HDMI-1"],
+      current_image_id: 99,
+      current_index: 0,
+      total_images: 3,
+      paused: false,
+      next_change_at: "2026-06-15T14:01:00.000Z",
+    };
+    mockImagesMap.set(99, {
+      id: 99,
+      name: "wall.jpg",
+      thumbnails: { small: "/thumbs/wall_sm.jpg" },
+      path: "/images/wall.jpg",
+    });
+
+    render(<PlaylistController />);
+
+    const bar = screen.getByRole("progressbar");
+    expect(bar).toHaveAttribute("aria-valuenow", "0");
+    expect(screen.getByText("0:00")).toBeInTheDocument();
+    expect(screen.getByText("-1:00")).toBeInTheDocument();
+  });
+
+  it("shows clocks when paused and next_change_at is set (no timer tick)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-15T14:00:00.000Z"));
+
+    mockActivePlaylist = {
+      playlist_id: 2,
+      playlist_name: "Paused",
+      monitors: ["HDMI-1"],
+      current_image_id: 100,
+      current_index: 1,
+      total_images: 5,
+      paused: true,
+      next_change_at: "2026-06-15T14:02:00.000Z",
+    };
+    mockImagesMap.set(100, {
+      id: 100,
+      name: "x.png",
+      thumbnails: { small: "/thumbs/x_sm.jpg" },
+      path: "/images/x.png",
+    });
+
+    render(<PlaylistController />);
+
+    expect(screen.queryByText("—")).not.toBeInTheDocument();
+    expect(screen.getByRole("progressbar")).toHaveAttribute("aria-valuenow", "0");
+    expect(screen.getByText("0:00")).toBeInTheDocument();
+    expect(screen.getByText("-2:00")).toBeInTheDocument();
   });
 
   it("renders playlist name, image name, and monitor badges", () => {

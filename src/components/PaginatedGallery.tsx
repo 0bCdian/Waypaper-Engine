@@ -11,6 +11,7 @@ import { useFoldersStore } from "../stores/foldersStore";
 import { useContextMenuStore } from "../stores/contextMenuStore";
 import { buildGalleryMenuItems } from "../utils/contextMenuItems";
 import type { DropTargetData } from "../stores/dragStore";
+import { paperGridBackgroundStyle } from "../utils/paperGridBackground";
 
 function GalleryDropZone({
   children,
@@ -30,8 +31,8 @@ function GalleryDropZone({
     <div
       ref={ref}
       onPointerDown={onPointerDown}
-      className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-track-transparent scrollbar-thumb-base-300 scrollbar-thumb-rounded-sm p-4"
-      style={{ scrollbarGutter: "stable" }}
+      className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-track-transparent scrollbar-thumb-base-300 scrollbar-thumb-rounded-sm bg-base-100 p-4"
+      style={{ scrollbarGutter: "stable", ...paperGridBackgroundStyle() }}
     >
       {children}
     </div>

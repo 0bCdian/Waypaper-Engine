@@ -21,7 +21,9 @@ const HOVER_REVEAL_KEY = "waypaper-sidebar-hover-reveal";
 
 /** Programmatically close the drawer (mobile fallback) */
 function closeDrawer() {
-  const checkbox = document.getElementById(DRAWER_CHECKBOX_ID) as HTMLInputElement | null;
+  const checkbox = document.getElementById(
+    DRAWER_CHECKBOX_ID,
+  ) as HTMLInputElement | null;
   if (checkbox) checkbox.checked = false;
 }
 
@@ -159,7 +161,8 @@ export const IconRailSidebar: React.FC = () => {
   const location = useLocation();
   const isConfigurationPage = location.pathname === "/configuration";
   const isNeo = useIsNeo();
-  const { open: settingsOpen, openModal: openSettings } = useSettingsModalStore();
+  const { open: settingsOpen, openModal: openSettings } =
+    useSettingsModalStore();
 
   const [pinned, setPinned] = useState<boolean>(() => {
     try {
@@ -217,29 +220,24 @@ export const IconRailSidebar: React.FC = () => {
     );
   }
 
-  // Padding-left values that smoothly transition the icon from centered (collapsed)
-  // to left-aligned (expanded) via CSS transition, avoiding any layout jump flash.
-  // Sidebar collapsed = 56px total. Nav wrapper has no horizontal padding (removed px-1.5),
-  // so buttons span the full 56px. Formula: (56 - iconWidth) / 2 = collapsed center.
+  // Padding-left transitions icon from centered (collapsed) to expanded alignment.
+  // Nav uses px-2 (8px each side): inner width = 40px when rail is 56px.
+  // Center 20px icons: (40 - 20) / 2 = 10px. Center 16px footer icons: (40 - 16) / 2 = 12px.
+  // Expanded insets match settings modal rail (nav px-2 + control px-3 → 20px to icon).
   const navItemStyle = {
-    paddingLeft: expanded ? "0.5rem" : "1.125rem", // 18px centers 20px icon in 56px
-    paddingRight: "0.5rem",
+    paddingLeft: expanded ? "0.75rem" : "0.625rem",
+    paddingRight: "0.75rem",
     transition: `padding-left var(--wp-dur-base) var(--wp-ease-out)`,
   } as const;
   const footerBtnStyle = {
-    paddingLeft: expanded ? "0.5rem" : "1.25rem", // 20px centers 16px icon in 56px
-    paddingRight: "0.5rem",
-    transition: `padding-left var(--wp-dur-base) var(--wp-ease-out)`,
-  } as const;
-  const mastheadStyle = {
-    paddingLeft: expanded ? "0.5rem" : "0.75rem", // 12px centers 32px logo in 56px
-    paddingRight: "0.5rem",
+    paddingLeft: expanded ? "0.75rem" : "0.75rem",
+    paddingRight: "0.75rem",
     transition: `padding-left var(--wp-dur-base) var(--wp-ease-out)`,
   } as const;
 
   return (
     <aside
-      className="neo-sidebar relative bg-base-200 border-r flex flex-col shrink-0 overflow-hidden"
+      className="neo-sidebar relative bg-base-100 border-r flex flex-col shrink-0 overflow-hidden"
       style={{
         width: expanded ? 240 : 56,
         transition: `width var(--wp-dur-base) var(--wp-ease-out)`,
@@ -251,10 +249,10 @@ export const IconRailSidebar: React.FC = () => {
       {/* App logo + name */}
       <div
         className={cn(
-          "flex items-center h-13 gap-3 shrink-0 overflow-hidden",
+          "flex items-center shrink-0 overflow-hidden py-3 gap-3",
+          expanded ? "justify-start pl-5 pr-2" : "justify-center px-2",
           isNeo && "neo-sidebar-masthead",
         )}
-        style={mastheadStyle}
       >
         <Link
           to={"/"}
@@ -275,7 +273,7 @@ export const IconRailSidebar: React.FC = () => {
               exit={{ opacity: 0, maxWidth: 0 }}
               transition={{ duration: 0.15 }}
               className={cn(
-                "font-semibold text-sm text-base-content whitespace-nowrap overflow-hidden",
+                "font-semibold text-base text-base-content whitespace-nowrap overflow-hidden",
                 isNeo && "neo-sidebar-brand",
               )}
             >
@@ -290,8 +288,8 @@ export const IconRailSidebar: React.FC = () => {
         style={isNeo ? undefined : { background: "var(--wp-hairline)" }}
       />
 
-      {/* Navigation — no px-1.5 wrapper; padding lives on each item for smooth centering */}
-      <nav className="flex-1 flex flex-col gap-0.5 py-2 overflow-y-auto overflow-x-hidden">
+      {/* Navigation — px-2 / gap-1 / py-3 aligned with settings modal rail */}
+      <nav className="flex-1 flex flex-col gap-1 py-3 px-2 overflow-y-auto overflow-x-hidden">
         {NAV_ITEMS.map((item) => {
           if (item.to === "/settings") {
             // Settings opens the modal instead of navigating
@@ -303,7 +301,7 @@ export const IconRailSidebar: React.FC = () => {
                 onClick={() => openSettings()}
                 aria-pressed={settingsOpen}
                 className={cn(
-                  "relative flex items-center gap-3 h-9 transition-colors duration-100 overflow-hidden w-full",
+                  "relative flex items-center gap-3 min-h-10 py-2 transition-colors duration-100 overflow-hidden w-full",
                   isNeo
                     ? "neo-sidebar-nav-link"
                     : cn(
@@ -347,7 +345,7 @@ export const IconRailSidebar: React.FC = () => {
               to={item.to}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "relative flex items-center gap-3 h-9 transition-colors duration-100 overflow-hidden",
+                "relative flex items-center gap-3 min-h-10 py-2 transition-colors duration-100 overflow-hidden",
                 isNeo
                   ? "neo-sidebar-nav-link"
                   : cn(
@@ -392,16 +390,18 @@ export const IconRailSidebar: React.FC = () => {
       />
 
       {/* Footer: hover-reveal toggle + pin toggle + quit */}
-      <div className="flex flex-col gap-0.5 py-2 shrink-0 overflow-hidden">
+      <div className="flex flex-col gap-1 py-3 px-2 shrink-0 overflow-hidden">
         {/* Hover-reveal toggle */}
         <button
           type="button"
           onClick={handleHoverRevealToggle}
           aria-label={
-            hoverRevealEnabled ? "Disable auto-reveal on hover" : "Enable auto-reveal on hover"
+            hoverRevealEnabled
+              ? "Disable auto-reveal on hover"
+              : "Enable auto-reveal on hover"
           }
           className={cn(
-            "flex items-center gap-3 h-9 transition-colors duration-100 overflow-hidden",
+            "flex items-center gap-3 min-h-10 py-2 transition-colors duration-100 overflow-hidden",
             isNeo
               ? "neo-sidebar-footer-btn"
               : cn(
@@ -459,7 +459,7 @@ export const IconRailSidebar: React.FC = () => {
           onClick={handlePinToggle}
           aria-label={pinned ? "Unpin sidebar" : "Pin sidebar"}
           className={cn(
-            "flex items-center gap-3 h-9 transition-colors duration-100 overflow-hidden",
+            "flex items-center gap-3 min-h-10 py-2 transition-colors duration-100 overflow-hidden",
             isNeo
               ? "neo-sidebar-footer-btn neo-sidebar-footer-btn--pin"
               : "rounded-lg text-base-content/50 hover:text-base-content hover:bg-base-content/8",
@@ -509,7 +509,7 @@ export const IconRailSidebar: React.FC = () => {
             if (quit) window.API_RENDERER.exitApp();
           }}
           className={cn(
-            "flex items-center gap-3 h-9 transition-colors duration-100 overflow-hidden",
+            "flex items-center gap-3 min-h-10 py-2 transition-colors duration-100 overflow-hidden",
             isNeo
               ? "neo-sidebar-footer-btn neo-sidebar-footer-btn--quit"
               : "rounded-lg text-base-content/50 hover:text-error hover:bg-error/10",
@@ -583,7 +583,9 @@ export const SidebarContent: React.FC = () => {
               />
             </div>
             <div className="flex flex-col">
-              <h1 className="text-xl font-bold text-base-content">Waypaper Engine</h1>
+              <h1 className="text-xl font-bold text-base-content">
+                Waypaper Engine
+              </h1>
               <p className="text-sm text-base-content/70">Wallpaper Manager</p>
             </div>
           </div>

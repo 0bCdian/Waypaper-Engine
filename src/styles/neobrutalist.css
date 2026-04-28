@@ -194,21 +194,15 @@
   font-weight: 800;
   letter-spacing: -0.02em;
   text-transform: uppercase;
-  font-size: 0.65rem;
-  line-height: 1.2;
-}
-
-/* Nav — stacked plates, 8px rhythm, no hairlines */
-[data-design="neobrutalist"] aside.neo-sidebar nav {
-  gap: var(--wp-space-2);
-  padding-block: var(--wp-space-2);
+  font-size: 0.8125rem;
+  line-height: 1.25;
 }
 
 [data-design="neobrutalist"] aside.neo-sidebar a.neo-sidebar-nav-link,
 [data-design="neobrutalist"] aside.neo-sidebar button.neo-sidebar-nav-link {
   display: flex;
   align-items: center;
-  min-height: 2.25rem;
+  min-height: 2.5rem;
   border-radius: var(--neo-radius);
   border: var(--neo-border-width) solid transparent;
   font-family: var(--font-display, "Space Grotesk Variable", system-ui, sans-serif);
@@ -251,7 +245,7 @@
 [data-design="neobrutalist"] aside.neo-sidebar .neo-sidebar-footer-btn {
   display: flex;
   align-items: center;
-  min-height: 2.25rem;
+  min-height: 2.5rem;
   border-radius: var(--neo-radius);
   border: var(--neo-border-width) solid transparent;
   font-family: var(--font-display, "Space Grotesk Variable", system-ui, sans-serif);
