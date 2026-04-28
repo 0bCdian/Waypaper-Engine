@@ -181,12 +181,17 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className, isModal =
         {/* Left rail */}
         <aside
           className={cn(
-            "shrink-0 w-48 flex flex-col border-r border-base-content/8 bg-base-200/60",
-            isNeo && "neo-settings-rail",
+            "shrink-0 w-48 flex flex-col",
+            isNeo ? "neo-settings-rail" : "border-r border-base-content/8 bg-base-200/60",
           )}
         >
           {/* Search */}
-          <div className="p-3 border-b border-base-content/5">
+          <div
+            className={cn(
+              "p-3",
+              isNeo ? "neo-settings-search-wrap" : "border-b border-base-content/5",
+            )}
+          >
             <SettingsSearch
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
@@ -197,14 +202,20 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className, isModal =
           </div>
 
           {/* Nav */}
-          <nav className="flex flex-col py-2 px-2 gap-0.5 flex-1 overflow-y-auto">
+          <nav
+            className={cn(
+              "flex flex-col flex-1 overflow-y-auto",
+              isNeo ? "py-2 px-2 gap-1" : "py-2 px-2 gap-0.5",
+            )}
+          >
             {visibleNav.map((item) => (
               <button
                 key={item.id}
                 type="button"
                 onClick={() => selectSection(item.id)}
                 className={cn(
-                  "flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm transition-colors text-left w-full",
+                  "flex items-center gap-2.5 px-3 py-2 text-left w-full",
+                  !isNeo && "rounded-lg text-sm transition-colors",
                   activeSection === item.id
                     ? isNeo
                       ? "neo-settings-nav-active"
@@ -222,8 +233,15 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className, isModal =
 
           {/* Error badge */}
           {errors.length > 0 && (
-            <div className="p-3 border-t border-base-content/5">
-              <div className="flex items-center gap-2 text-error text-xs">
+            <div
+              className={cn(
+                "p-3",
+                isNeo
+                  ? "border-t-[length:var(--neo-border-width)] border-t-black"
+                  : "border-t border-base-content/5",
+              )}
+            >
+              <div className="flex items-center gap-2 text-error text-xs font-bold uppercase tracking-wide">
                 <svg className="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path
                     fillRule="evenodd"
