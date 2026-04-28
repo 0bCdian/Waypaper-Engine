@@ -46,7 +46,7 @@ function Breadcrumbs() {
 
   return (
     <nav
-      className="grid grid-cols-[1fr_auto_1fr] items-center px-3 py-1.5 text-sm border-b border-base-300 bg-base-100"
+      className="grid grid-cols-[1fr_auto_1fr] items-center px-3 py-1.5 text-sm bg-transparent"
       aria-label="Breadcrumb"
     >
       {/* Left: breadcrumb path */}

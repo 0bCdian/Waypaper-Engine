@@ -13,6 +13,7 @@ import PaginatedGallery from "./PaginatedGallery";
 import Filters from "./Filters";
 import Breadcrumbs from "./Breadcrumbs";
 import Modal, { type ModalHandle } from "./Modal";
+import { paperGridBackgroundStyle } from "../utils/paperGridBackground";
 
 function Gallery() {
   const isEmpty = useImagesStore((state) => state.isEmpty);
@@ -136,56 +137,63 @@ function Gallery() {
 
   return (
     <div className="h-full flex flex-col overflow-hidden relative" {...handlers}>
-      {isDragging && (
-        <div className="absolute inset-0 z-[200] flex items-center justify-center bg-base-300/80 backdrop-blur-sm pointer-events-none">
-          <div className="flex flex-col items-center gap-4 p-8 rounded-xl border-2 border-dashed border-primary">
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-16 w-16 text-primary"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={1.5}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 16v-8m0 0l-3 3m3-3l3 3M3 16.5V18a2.25 2.25 0 002.25 2.25h13.5A2.25 2.25 0 0021 18v-1.5m-18 0V7.875c0-.621.504-1.125 1.125-1.125h3.172c.53 0 1.04.21 1.414.586l1.578 1.578c.375.375.884.586 1.414.586h6.172c.621 0 1.125.504 1.125 1.125V16.5"
-              />
-            </svg>
-            <span className="text-2xl font-bold text-primary">
-              Drop images or folders to import
-            </span>
-            <span className="text-sm text-base-content/60">
-              JPG, PNG, GIF, WebP, BMP, SVG, or folders
-            </span>
-          </div>
-        </div>
-      )}
-
-      {content}
-
-      <UrlImportWarningModal
-        isOpen={pendingUrls.length > 0}
-        urls={pendingUrls}
-        onConfirm={handleUrlImportConfirm}
-        onCancel={() => setPendingUrls([])}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 z-0 bg-base-100"
+        style={paperGridBackgroundStyle()}
       />
+      <div className="relative z-[1] flex flex-1 min-h-0 flex-col overflow-hidden">
+        {isDragging && (
+          <div className="absolute inset-0 z-[200] flex items-center justify-center bg-base-300/80 backdrop-blur-sm pointer-events-none">
+            <div className="flex flex-col items-center gap-4 p-8 rounded-xl border-2 border-dashed border-primary">
+              <svg
+                xmlns="http://www.w3.org/2000/svg"
+                className="h-16 w-16 text-primary"
+                fill="none"
+                viewBox="0 0 24 24"
+                stroke="currentColor"
+                strokeWidth={1.5}
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  d="M12 16v-8m0 0l-3 3m3-3l3 3M3 16.5V18a2.25 2.25 0 002.25 2.25h13.5A2.25 2.25 0 0021 18v-1.5m-18 0V7.875c0-.621.504-1.125 1.125-1.125h3.172c.53 0 1.04.21 1.414.586l1.578 1.578c.375.375.884.586 1.414.586h6.172c.621 0 1.125.504 1.125 1.125V16.5"
+                />
+              </svg>
+              <span className="text-2xl font-bold text-primary">
+                Drop images or folders to import
+              </span>
+              <span className="text-sm text-base-content/60">
+                JPG, PNG, GIF, WebP, BMP, SVG, or folders
+              </span>
+            </div>
+          </div>
+        )}
 
-      <Modal ref={shadertoyModalRef} onClose={handleCancelShadertoy} showCloseButton={false}>
-        <h3 className="font-bold text-lg mb-2">Shadertoy JSON detected</h3>
-        <p className="text-sm text-base-content/70 mb-6">
-          This looks like a Shadertoy export. Open it in Shader Studio?
-        </p>
-        <div className="flex gap-3 justify-end">
-          <button className="btn btn-ghost btn-sm" onClick={handleCancelShadertoy}>
-            Cancel
-          </button>
-          <button className="btn btn-primary btn-sm" onClick={handleOpenInShaderStudio}>
-            Open in Shader Studio
-          </button>
-        </div>
-      </Modal>
+        {content}
+
+        <UrlImportWarningModal
+          isOpen={pendingUrls.length > 0}
+          urls={pendingUrls}
+          onConfirm={handleUrlImportConfirm}
+          onCancel={() => setPendingUrls([])}
+        />
+
+        <Modal ref={shadertoyModalRef} onClose={handleCancelShadertoy} showCloseButton={false}>
+          <h3 className="font-bold text-lg mb-2">Shadertoy JSON detected</h3>
+          <p className="text-sm text-base-content/70 mb-6">
+            This looks like a Shadertoy export. Open it in Shader Studio?
+          </p>
+          <div className="flex gap-3 justify-end">
+            <button className="btn btn-ghost btn-sm" onClick={handleCancelShadertoy}>
+              Cancel
+            </button>
+            <button className="btn btn-primary btn-sm" onClick={handleOpenInShaderStudio}>
+              Open in Shader Studio
+            </button>
+          </div>
+        </Modal>
+      </div>
     </div>
   );
 }

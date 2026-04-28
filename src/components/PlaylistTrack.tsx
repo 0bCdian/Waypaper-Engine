@@ -19,7 +19,6 @@ import { useActivePlaylistStore } from "../stores/activePlaylistStore";
 const { goDaemon } = window.API_RENDERER;
 import MiniPlaylistCard from "./MiniPlaylistCard";
 import PlaylistController from "./PlaylistController";
-import { paperGridBackgroundStyle } from "../utils/paperGridBackground";
 
 async function stopPlaylistSilent(playlistId: number) {
   try {
@@ -401,11 +400,6 @@ function PlaylistTrack() {
         className={`relative w-full min-w-0 overflow-visible transition-all duration-200 rounded-lg${
           playlistArray.length === 0 && showDropIndicator ? " min-h-[5.5rem]" : ""
         }${showDropIndicator ? " ring-2 ring-dashed ring-primary bg-primary/10" : ""}`}
-        style={
-          showDropIndicator
-            ? undefined
-            : paperGridBackgroundStyle({ vignette: false, lineAlpha: 0.055 })
-        }
       >
         {showDropIndicator && playlistArray.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
