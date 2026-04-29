@@ -311,15 +311,11 @@
   }
 }
 
-/* Default-theme bottom dock — no top rule (paper grid separates); sibling rows keep divider */
+/* Default-theme bottom dock */
 .wp-bottom-dock {
   background: transparent;
   overflow-x: clip;
   overflow-y: visible;
-}
-
-.wp-bottom-dock > * + * {
-  border-top: 1px solid oklch(from var(--color-base-content) l c h / 0.1);
 }
 
 /* Prevent native ::backdrop flash on dialog.showModal() — DaisyUI's .modal-backdrop handles the overlay */
