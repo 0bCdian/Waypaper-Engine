@@ -655,6 +655,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GenericJSON'
+        '404': { $ref: '#/components/responses/NotFound' }
     patch:
       tags: [config]
       operationId: patchConfigSection
@@ -670,6 +671,7 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GenericJSON'
+        '404': { $ref: '#/components/responses/NotFound' }
   /config/backends/{backend}:
     get:
       tags: [config]
@@ -790,6 +792,10 @@ components:
       name: section
       in: path
       required: true
+      description: >
+        TOML section (e.g. `app`, `daemon`, `monitors`, `wallhaven`). The path
+        value `backend` is reserved and returns 404; use `/config/backends/{backend}` for
+        per-renderer JSON instead.
       schema: { type: string }
     ConfigBackendNamePath:
       name: backend

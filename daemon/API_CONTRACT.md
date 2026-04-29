@@ -893,56 +893,31 @@ Update multiple config sections at once.
 
 **Response** `200`: Updated full config object.
 
-Publishes `config_changed` SSE event.
+Publishes one `config_changed` SSE event per updated section (each with that section name in `sections`).
 
 ---
 
 ### `GET /config/{section}`
 
-Get a specific config section. Valid sections for update are: `app`, `daemon`, `backend`, `monitors`, `wallhaven`.
+Get a specific TOML config section. Typical names: `app`, `daemon`, `monitors`, `wallhaven`. The top-level `backend` key in the full config is the small [`BackendSection`](#backendsection) object (only `type`), not per-renderer settings.
 
-For `backend`: returns the **active** backend's specific config (e.g. awww transition settings), NOT the `BackendSection` struct. Prefer [`GET /config/backends/{backend}`](#get-configbackendsbackend) to read any named backend.
+**Path `section=backend`**: `404` — the old active-backend alias for renderer JSON is removed. Use [`GET /config/backends/{backend}`](#get-configbackendsbackend).
 
-**Response** `200`: Section object or raw JSON for backend.
+**Response** `200`: Section object.
 
-Notes:
-- `backend` returns active backend-specific JSON (not `BackendSection`).
-- Current default config manager returns `{}` for unknown/missing sections instead of `404`.
+**Response** `404`: Unknown section (including path `backend`).
 
 ---
 
 ### `PATCH /config/{section}`
 
-Update a single config section.
+Update a single TOML config section. Request body is `map[string]any` for the section's fields.
 
-**For non-backend sections** — request body is `map[string]any`:
-```json
-{
-  "theme": "dark",
-  "images_per_page": 50
-}
-```
+**Path `section=backend`**: `404` — do not use this path for renderer JSON. Use [`PATCH /config/backends/{backend}`](#patch-configbackendsbackend).
 
 **Response** `200`: Updated section object.
 
-**For `backend` section** — request body is the raw config JSON for the **active** backend only. It is validated by that backend's `ValidateConfig()` before being saved. Prefer [`PATCH /config/backends/{backend}`](#patch-configbackendsbackend) to update a named backend while another is active.
-```json
-{
-  "transition_type": "grow",
-  "transition_duration": 2,
-  "transition_fps": 144,
-  "resize": "crop"
-}
-```
-
-**Response** `200`:
-```json
-{
-  "status": "updated"
-}
-```
-
-Publishes `config_changed` SSE event.
+Publishes one `config_changed` SSE event per successful call (with that section in `sections`).
 
 ---
 
@@ -962,13 +937,13 @@ Returns the persisted configuration JSON for a **named** registered backend (e.g
 
 Updates a named backend’s subsection. Body is a JSON object merged into that backend’s config; it is validated with that backend’s `ValidateConfig()` before save.
 
-**Runtime sync**: `RuntimeConfigSync` runs **only** when `{backend}` equals the **currently active** backend (same rule as legacy `PATCH /config/backend`).
+**Runtime sync**: `RuntimeConfigSync` runs **only** when `{backend}` equals the **currently active** backend.
 
 **Response** `200`: `{"status":"updated"}` (or equivalent success body used elsewhere for config patches).
 
 Publishes `config_changed` SSE event.
 
-**Preferred** for UI that edits inactive backends. Legacy `GET|PATCH /config/backend` remains **active-backend only** for the same JSON shape.
+**Preferred** for all per-renderer JSON reads and writes (active or inactive backend).
 
 ---
 
@@ -1364,11 +1339,11 @@ JSON shape; that endpoint aggregates active-backend rows into a single summary o
 }
 ```
 
-Note: `GET /config/backend` returns the **active backend's specific config** (see below), not this object. The same JSON for a given renderer is returned by `GET /config/backends/{backend}` for that name regardless of which backend is active.
+Note: Per-renderer option blobs (transitions, mpv flags, etc.) are **not** this struct — use [`GET /config/backends/{backend}`](#get-configbackendsbackend). The top-level `backend` section in TOML only holds `type`.
 
 #### awww Backend Config
 
-Returned by `GET /config/backend` when the active backend is `awww`, or by `GET /config/backends/awww` anytime. Updated by `PATCH /config/backend` (active only) or `PATCH /config/backends/awww`.
+Returned by `GET /config/backends/awww`. Updated by `PATCH /config/backends/awww`.
 
 ```json
 {
@@ -1391,7 +1366,7 @@ TOML config supports both hyphens and underscores (e.g. `transition-type` and `t
 
 #### mpvpaper Backend Config
 
-Returned by `GET /config/backend` when the active backend is `mpvpaper`, or by `GET /config/backends/mpvpaper` anytime. Updated by `PATCH /config/backend` (active only) or `PATCH /config/backends/mpvpaper`.
+Returned by `GET /config/backends/mpvpaper`. Updated by `PATCH /config/backends/mpvpaper`.
 
 ```json
 {

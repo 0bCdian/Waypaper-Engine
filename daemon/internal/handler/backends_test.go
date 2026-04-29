@@ -12,6 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"waypaper-engine/daemon/internal/backend"
+	"waypaper-engine/daemon/internal/control"
 	"waypaper-engine/daemon/internal/testutil"
 )
 
@@ -24,9 +25,8 @@ func TestBackendHandler_List(t *testing.T) {
 			}
 		},
 	}
-	h := NewBackendHandler(reg, &testutil.MockConfigManager{}, &testutil.MockBus{},
-		&testutil.MockMonitorStateStore{}, &testutil.MockStateStore{}, &testutil.MockImageStore{},
-		&testutil.MockMonitorManager{}, nil)
+	bus := &testutil.MockBus{}
+	h := NewBackendHandler(reg, control.NewController(&testutil.MockConfigManager{}, reg, bus, nil))
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/backends", nil)
@@ -51,9 +51,8 @@ func TestBackendHandler_Activate_NotRegistered(t *testing.T) {
 			return errors.New("backend not registered: " + name)
 		},
 	}
-	h := NewBackendHandler(reg, &testutil.MockConfigManager{}, &testutil.MockBus{},
-		&testutil.MockMonitorStateStore{}, &testutil.MockStateStore{}, &testutil.MockImageStore{},
-		&testutil.MockMonitorManager{}, nil)
+	bus := &testutil.MockBus{}
+	h := NewBackendHandler(reg, control.NewController(&testutil.MockConfigManager{}, reg, bus, nil))
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodPost, "/backends/unknown/activate", nil)
@@ -98,9 +97,8 @@ func TestBackendHandler_Activate_InitializeFailureRollsBack(t *testing.T) {
 		},
 	}
 
-	h := NewBackendHandler(reg, &testutil.MockConfigManager{}, &testutil.MockBus{},
-		&testutil.MockMonitorStateStore{}, &testutil.MockStateStore{}, &testutil.MockImageStore{},
-		&testutil.MockMonitorManager{}, nil)
+	bus := &testutil.MockBus{}
+	h := NewBackendHandler(reg, control.NewController(&testutil.MockConfigManager{}, reg, bus, nil))
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodPost, "/backends/feh/activate", nil)

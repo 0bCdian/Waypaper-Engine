@@ -2,36 +2,28 @@ package handler
 
 import (
 	"encoding/json"
-	"log/slog"
+	"errors"
 	"net/http"
 	"net/url"
 
 	"github.com/go-chi/chi/v5"
 
-	"waypaper-engine/daemon/internal/backend"
-	"waypaper-engine/daemon/internal/config"
-	"waypaper-engine/daemon/internal/events"
+	"waypaper-engine/daemon/internal/control"
 )
 
 // ConfigHandler handles /config endpoints.
 type ConfigHandler struct {
-	cfg      config.ConfigManager
-	registry backend.Registry
-	bus      events.Bus
+	control *control.Controller
 }
 
 // NewConfigHandler creates a ConfigHandler.
-func NewConfigHandler(cfg config.ConfigManager, registry backend.Registry, bus events.Bus) *ConfigHandler {
-	return &ConfigHandler{
-		cfg:      cfg,
-		registry: registry,
-		bus:      bus,
-	}
+func NewConfigHandler(ctrl *control.Controller) *ConfigHandler {
+	return &ConfigHandler{control: ctrl}
 }
 
 // GetConfig handles GET /config.
 func (h *ConfigHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
-	cfg, err := h.cfg.GetConfig()
+	cfg, err := h.control.GetConfig()
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -49,18 +41,13 @@ func (h *ConfigHandler) PatchConfig(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for section, values := range body {
-		if err := h.cfg.UpdateConfig(section, values); err != nil {
+		if err := h.control.UpdateConfig(section, values); err != nil {
 			WriteErrorf(w, http.StatusBadRequest, "update section %s: %s", section, err.Error())
 			return
 		}
 	}
 
-	h.bus.Publish(events.Event{
-		Type: events.ConfigChanged,
-		Data: map[string]any{"sections": sectionNames(body)},
-	})
-
-	cfg, err := h.cfg.GetConfig()
+	cfg, err := h.control.GetConfig()
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -72,22 +59,12 @@ func (h *ConfigHandler) PatchConfig(w http.ResponseWriter, r *http.Request) {
 // GetSection handles GET /config/{section}.
 func (h *ConfigHandler) GetSection(w http.ResponseWriter, r *http.Request) {
 	section := chi.URLParam(r, "section")
-
-	// Special handling for backend-specific config.
 	if section == "backend" {
-		backendType := h.cfg.GetActiveBackendType()
-		raw, err := h.cfg.GetBackendConfig(backendType)
-		if err != nil {
-			WriteError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-		w.Header().Set("Content-Type", "application/json")
-		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write(raw)
+		WriteErrorf(w, http.StatusNotFound, "unknown section: %s", section)
 		return
 	}
 
-	data, err := h.cfg.GetSection(section)
+	data, err := h.control.GetSection(section)
 	if err != nil {
 		WriteErrorf(w, http.StatusNotFound, "unknown section: %s", section)
 		return
@@ -99,14 +76,11 @@ func (h *ConfigHandler) GetSection(w http.ResponseWriter, r *http.Request) {
 // PatchSection handles PATCH /config/{section}.
 func (h *ConfigHandler) PatchSection(w http.ResponseWriter, r *http.Request) {
 	section := chi.URLParam(r, "section")
-
-	// Legacy: PATCH /config/backend updates the active backend only.
 	if section == "backend" {
-		h.patchNamedBackend(w, r, h.cfg.GetActiveBackendType())
+		WriteErrorf(w, http.StatusNotFound, "unknown section: %s", section)
 		return
 	}
-
-	h.patchSectionNonBackend(w, r, section)
+	h.patchSection(w, r, section)
 }
 
 // GetNamedBackendConfig handles GET /config/backends/{backend}.
@@ -116,11 +90,11 @@ func (h *ConfigHandler) GetNamedBackendConfig(w http.ResponseWriter, r *http.Req
 		WriteError(w, http.StatusBadRequest, "backend name is required")
 		return
 	}
-	if _, ok := h.registry.Get(name); !ok {
+	if !h.control.NamedBackendExists(name) {
 		WriteErrorf(w, http.StatusNotFound, "unknown backend: %s", name)
 		return
 	}
-	raw, err := h.cfg.GetBackendConfig(name)
+	raw, err := h.control.GetBackendConfig(name)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
@@ -137,7 +111,24 @@ func (h *ConfigHandler) PatchNamedBackendConfig(w http.ResponseWriter, r *http.R
 		WriteError(w, http.StatusBadRequest, "backend name is required")
 		return
 	}
-	h.patchNamedBackend(w, r, name)
+	var raw json.RawMessage
+	if err := ParseBody(r, &raw); err != nil {
+		WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := h.control.UpdateBackendConfig(r.Context(), name, raw); err != nil {
+		var inv *control.InvalidBackendConfigError
+		switch {
+		case errors.As(err, &inv):
+			WriteErrorf(w, http.StatusBadRequest, "%s", err.Error())
+		case errors.Is(err, control.ErrUnknownBackend):
+			WriteErrorf(w, http.StatusNotFound, "unknown backend: %s", name)
+		default:
+			WriteError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+	WriteJSON(w, http.StatusOK, map[string]string{"status": "updated"})
 }
 
 func namedBackendFromRequest(r *http.Request) string {
@@ -152,76 +143,23 @@ func namedBackendFromRequest(r *http.Request) string {
 	return name
 }
 
-func (h *ConfigHandler) patchNamedBackend(w http.ResponseWriter, r *http.Request, backendName string) {
-	var raw json.RawMessage
-	if err := ParseBody(r, &raw); err != nil {
-		WriteError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	b, ok := h.registry.Get(backendName)
-	if !ok {
-		WriteErrorf(w, http.StatusNotFound, "unknown backend: %s", backendName)
-		return
-	}
-
-	if err := b.ValidateConfig(raw); err != nil {
-		WriteErrorf(w, http.StatusBadRequest, "invalid backend config: %s", err.Error())
-		return
-	}
-
-	if err := h.cfg.SetBackendConfig(backendName, raw); err != nil {
-		WriteError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	active := h.cfg.GetActiveBackendType()
-	if backendName == active {
-		if syncer, ok := b.(backend.RuntimeConfigSync); ok {
-			if err := syncer.SyncRuntimeFromConfig(r.Context()); err != nil {
-				slog.Warn("backend runtime sync after config save failed", "backend", backendName, "error", err)
-			}
-		}
-	}
-
-	h.bus.Publish(events.Event{
-		Type: events.ConfigChanged,
-		Data: map[string]any{"sections": []string{"backend." + backendName}},
-	})
-
-	WriteJSON(w, http.StatusOK, map[string]string{"status": "updated"})
-}
-
-func (h *ConfigHandler) patchSectionNonBackend(w http.ResponseWriter, r *http.Request, section string) {
+func (h *ConfigHandler) patchSection(w http.ResponseWriter, r *http.Request, section string) {
 	var values map[string]any
 	if err := ParseBody(r, &values); err != nil {
 		WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	if err := h.cfg.UpdateConfig(section, values); err != nil {
+	if err := h.control.UpdateConfig(section, values); err != nil {
 		WriteErrorf(w, http.StatusBadRequest, "update section %s: %s", section, err.Error())
 		return
 	}
 
-	h.bus.Publish(events.Event{
-		Type: events.ConfigChanged,
-		Data: map[string]any{"sections": []string{section}},
-	})
-
-	data, err := h.cfg.GetSection(section)
+	data, err := h.control.GetSection(section)
 	if err != nil {
 		WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	WriteJSON(w, http.StatusOK, data)
-}
-
-func sectionNames(body map[string]map[string]any) []string {
-	names := make([]string, 0, len(body))
-	for k := range body {
-		names = append(names, k)
-	}
-	return names
 }

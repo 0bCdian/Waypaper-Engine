@@ -147,6 +147,8 @@ Waypaper-Engine/
 └── packaging/       # Distro / AppImage notes
 ```
 
+**Daemon control-plane refactor (in progress)** — Work follows [`daemon/docs/control-refactor-plan.md`](daemon/docs/control-refactor-plan.md): consolidate config and backend activation behind `internal/control`, drop ambiguous `/config/backend` aliases, and keep handlers thin. **Task 1** moved persisted wallpaper restore into [`daemon/internal/wallpaper`](daemon/internal/wallpaper) (`Restore`, `StartDeferredDaemonRestore`). **Task 2** added red TDD tests in [`daemon/internal/control/controller_test.go`](daemon/internal/control/controller_test.go); `internal/control.Controller` is not implemented yet—`go test ./internal/control` fails until that package lands (expected). Later tasks wire handlers and docs.
+
 ---
 
 ## Roadmap (informal)

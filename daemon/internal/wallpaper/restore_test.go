@@ -1,4 +1,4 @@
-package handler
+package wallpaper_test
 
 import (
 	"context"
@@ -12,9 +12,10 @@ import (
 	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/store"
 	"waypaper-engine/daemon/internal/testutil"
+	"waypaper-engine/daemon/internal/wallpaper"
 )
 
-func TestRestoreWallpapers_ExtendGroup_VideoUsesClone(t *testing.T) {
+func TestRestore_ExtendGroup_VideoUsesClone(t *testing.T) {
 	var saw *backend.WallpaperRequest
 	mockBe := &testutil.MockBackend{
 		SetWallpaperFn: func(_ context.Context, req backend.WallpaperRequest) error {
@@ -45,7 +46,7 @@ func TestRestoreWallpapers_ExtendGroup_VideoUsesClone(t *testing.T) {
 		},
 	}
 
-	RestoreWallpapers(context.Background(), mss, &testutil.MockStateStore{}, reg, &testutil.MockConfigManager{}, mm, imgStore, nil, nil)
+	wallpaper.Restore(context.Background(), mss, &testutil.MockStateStore{}, reg, &testutil.MockConfigManager{}, mm, imgStore, nil, nil)
 
 	require.NotNil(t, saw)
 	assert.Equal(t, monitor.ModeClone, saw.Mode)
@@ -53,7 +54,7 @@ func TestRestoreWallpapers_ExtendGroup_VideoUsesClone(t *testing.T) {
 	assert.Len(t, saw.Monitors, 2)
 }
 
-func TestRestoreWallpapers_WaylandUtauriBatchesIndividualImageRows(t *testing.T) {
+func TestRestore_WaylandUtauriBatchesIndividualImageRows(t *testing.T) {
 	var calls int
 	var last backend.WallpaperRequest
 	mockBe := &testutil.MockBackend{
@@ -84,7 +85,7 @@ func TestRestoreWallpapers_WaylandUtauriBatchesIndividualImageRows(t *testing.T)
 		},
 	}
 
-	RestoreWallpapers(context.Background(), mss, &testutil.MockStateStore{}, reg, &testutil.MockConfigManager{}, mm, imgStore, nil, nil)
+	wallpaper.Restore(context.Background(), mss, &testutil.MockStateStore{}, reg, &testutil.MockConfigManager{}, mm, imgStore, nil, nil)
 
 	assert.Equal(t, 1, calls, "wayland-utauri should receive one batched SetWallpaper")
 	require.Len(t, last.IndividualTargets, 2)
@@ -93,7 +94,7 @@ func TestRestoreWallpapers_WaylandUtauriBatchesIndividualImageRows(t *testing.T)
 	assert.True(t, last.WaitForCompletion)
 }
 
-func TestRestoreWallpapers_NonUtauriDoesNotBatchIndividualRows(t *testing.T) {
+func TestRestore_NonUtauriDoesNotBatchIndividualRows(t *testing.T) {
 	var calls int
 	mockBe := &testutil.MockBackend{
 		NameFn: func() string { return "awww" },
@@ -122,7 +123,7 @@ func TestRestoreWallpapers_NonUtauriDoesNotBatchIndividualRows(t *testing.T) {
 		},
 	}
 
-	RestoreWallpapers(context.Background(), mss, &testutil.MockStateStore{}, reg, &testutil.MockConfigManager{}, mm, imgStore, nil, nil)
+	wallpaper.Restore(context.Background(), mss, &testutil.MockStateStore{}, reg, &testutil.MockConfigManager{}, mm, imgStore, nil, nil)
 
 	assert.Equal(t, 2, calls)
 }

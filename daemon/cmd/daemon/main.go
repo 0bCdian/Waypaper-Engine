@@ -20,6 +20,7 @@ import (
 	"waypaper-engine/daemon/internal/backend/mpvpaper"
 	"waypaper-engine/daemon/internal/backend/waylandutauri"
 	"waypaper-engine/daemon/internal/config"
+	"waypaper-engine/daemon/internal/control"
 	"waypaper-engine/daemon/internal/events"
 	"waypaper-engine/daemon/internal/handler"
 	"waypaper-engine/daemon/internal/image"
@@ -28,6 +29,7 @@ import (
 	"waypaper-engine/daemon/internal/server"
 	"waypaper-engine/daemon/internal/store"
 	"waypaper-engine/daemon/internal/system"
+	"waypaper-engine/daemon/internal/wallpaper"
 )
 
 // version is set at build time via ldflags: -X main.version=...
@@ -214,7 +216,7 @@ func startDaemon(configPath string, logLevel string) error {
 
 	// 10b. Restore wallpapers from persisted monitor state.
 	if initErr != nil && caps.DaemonProcess {
-		handler.StartDeferredDaemonRestore(
+		wallpaper.StartDeferredDaemonRestore(
 			restoreRetryCtx,
 			reg,
 			cfg,
@@ -226,7 +228,7 @@ func startDaemon(configPath string, logLevel string) error {
 			bus,
 		)
 	} else {
-		handler.RestoreWallpapers(ctx, db.MonitorStateStore(), db.StateStore(), reg, cfg, monManager, db.ImageStore(), splitter, bus)
+		wallpaper.Restore(ctx, db.MonitorStateStore(), db.StateStore(), reg, cfg, monManager, db.ImageStore(), splitter, bus)
 	}
 
 	// 12. Create playlist manager.
@@ -257,13 +259,16 @@ func startDaemon(configPath string, logLevel string) error {
 	}
 
 	// 14. Create handlers.
+	ctrl := control.NewController(cfg, reg, bus, control.RestoreFunc(func(ctx context.Context) {
+		wallpaper.Restore(ctx, db.MonitorStateStore(), db.StateStore(), reg, cfg, monManager, db.ImageStore(), splitter, bus)
+	}))
 	handlers := server.Handlers{
 		Health:    handler.NewHealthHandler(version, shutdownFn),
 		Images:    handler.NewImageHandler(db.ImageStore(), processor, bus, reg),
 		Playlists: handler.NewPlaylistHandler(db.PlaylistStore(), db.StateStore(), playlistMgr, bus),
 		Monitors:  handler.NewMonitorHandler(monManager),
-		Config:    handler.NewConfigHandler(cfg, reg, bus),
-		Backends:  handler.NewBackendHandler(reg, cfg, bus, db.MonitorStateStore(), db.StateStore(), db.ImageStore(), monManager, splitter),
+		Config:    handler.NewConfigHandler(ctrl),
+		Backends:  handler.NewBackendHandler(reg, ctrl),
 		Wallpaper: handler.NewWallpaperHandler(
 			db.ImageStore(), db.HistoryStore(), db.StateStore(), db.MonitorStateStore(),
 			reg, monManager, splitter, bus, cfg,

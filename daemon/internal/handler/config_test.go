@@ -13,8 +13,13 @@ import (
 
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/config"
+	"waypaper-engine/daemon/internal/control"
 	"waypaper-engine/daemon/internal/testutil"
 )
+
+func testController(cfg *testutil.MockConfigManager, reg *testutil.MockRegistry, bus *testutil.MockBus) *control.Controller {
+	return control.NewController(cfg, reg, bus, nil)
+}
 
 func TestConfigHandler_GetConfig(t *testing.T) {
 	cfg := &testutil.MockConfigManager{
@@ -26,7 +31,7 @@ func TestConfigHandler_GetConfig(t *testing.T) {
 			}, nil
 		},
 	}
-	h := NewConfigHandler(cfg, &testutil.MockRegistry{}, &testutil.MockBus{})
+	h := NewConfigHandler(testController(cfg, &testutil.MockRegistry{}, &testutil.MockBus{}))
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/config", nil)
@@ -48,7 +53,7 @@ func TestConfigHandler_GetSection(t *testing.T) {
 			return nil, errors.New("unknown section")
 		},
 	}
-	h := NewConfigHandler(cfg, &testutil.MockRegistry{}, &testutil.MockBus{})
+	h := NewConfigHandler(testController(cfg, &testutil.MockRegistry{}, &testutil.MockBus{}))
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/config/app", nil)
@@ -62,23 +67,21 @@ func TestConfigHandler_GetSection(t *testing.T) {
 	assert.Equal(t, "kolision-raw", body["theme"])
 }
 
-func TestConfigHandler_GetSection_Backend(t *testing.T) {
+func TestConfigHandler_GetSection_Backend_AliasRemovedNotFound(t *testing.T) {
 	cfg := &testutil.MockConfigManager{
-		GetActiveBackendTypeFn: func() string { return "awww" },
-		GetBackendConfigFn: func(name string) (json.RawMessage, error) {
-			return json.RawMessage(`{"transition":"fade"}`), nil
+		GetSectionFn: func(section string) (map[string]any, error) {
+			t.Fatal("GetSection must not run for removed /config/backend alias")
+			return nil, nil
 		},
 	}
-	h := NewConfigHandler(cfg, &testutil.MockRegistry{}, &testutil.MockBus{})
+	h := NewConfigHandler(testController(cfg, &testutil.MockRegistry{}, &testutil.MockBus{}))
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/config/backend", nil)
 	r = testutil.WithChiURLParams(r, map[string]string{"section": "backend"})
 	h.GetSection(w, r)
 
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, "application/json", w.Header().Get("Content-Type"))
-	assert.JSONEq(t, `{"transition":"fade"}`, w.Body.String())
+	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
 func TestConfigHandler_PatchSection(t *testing.T) {
@@ -90,7 +93,7 @@ func TestConfigHandler_PatchSection(t *testing.T) {
 			return map[string]any{"theme": "light"}, nil
 		},
 	}
-	h := NewConfigHandler(cfg, &testutil.MockRegistry{}, &testutil.MockBus{})
+	h := NewConfigHandler(testController(cfg, &testutil.MockRegistry{}, &testutil.MockBus{}))
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodPatch, "/config/app",
@@ -111,7 +114,7 @@ func TestConfigHandler_PatchSection_Unknown(t *testing.T) {
 			return errors.New("unknown section: bogus")
 		},
 	}
-	h := NewConfigHandler(cfg, &testutil.MockRegistry{}, &testutil.MockBus{})
+	h := NewConfigHandler(testController(cfg, &testutil.MockRegistry{}, &testutil.MockBus{}))
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodPatch, "/config/bogus",
@@ -120,6 +123,24 @@ func TestConfigHandler_PatchSection_Unknown(t *testing.T) {
 	h.PatchSection(w, r)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
+}
+
+func TestConfigHandler_PatchSection_Backend_AliasRemovedNotFound(t *testing.T) {
+	cfg := &testutil.MockConfigManager{
+		UpdateConfigFn: func(string, map[string]any) error {
+			t.Fatal("UpdateConfig must not run for removed /config/backend alias")
+			return nil
+		},
+	}
+	h := NewConfigHandler(testController(cfg, &testutil.MockRegistry{}, &testutil.MockBus{}))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodPatch, "/config/backend",
+		testutil.JSONBody(t, map[string]any{"transition_type": "wipe"}))
+	r = testutil.WithChiURLParams(r, map[string]string{"section": "backend"})
+	h.PatchSection(w, r)
+
+	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
 // syncProbe implements backend.Backend and backend.RuntimeConfigSync for config handler tests.
@@ -132,36 +153,6 @@ type syncProbe struct {
 func (s *syncProbe) SyncRuntimeFromConfig(ctx context.Context) error {
 	s.syncCalls++
 	return s.syncErr
-}
-
-func TestConfigHandler_PatchSection_Backend_CallsRuntimeSync(t *testing.T) {
-	sb := &syncProbe{
-		MockBackend: testutil.MockBackend{
-			ValidateConfigFn: func(json.RawMessage) error { return nil },
-		},
-	}
-	reg := &testutil.MockRegistry{
-		GetFn: func(name string) (backend.Backend, bool) {
-			if name == "wayland-utauri" {
-				return sb, true
-			}
-			return nil, false
-		},
-	}
-	cfgMgr := &testutil.MockConfigManager{
-		GetActiveBackendTypeFn: func() string { return "wayland-utauri" },
-		SetBackendConfigFn:     func(string, json.RawMessage) error { return nil },
-	}
-	h := NewConfigHandler(cfgMgr, reg, &testutil.MockBus{})
-
-	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodPatch, "/config/backend",
-		testutil.JSONBody(t, map[string]any{"parallax_enabled": true}))
-	r = testutil.WithChiURLParams(r, map[string]string{"section": "backend"})
-	h.PatchSection(w, r)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, 1, sb.syncCalls)
 }
 
 func TestConfigHandler_GetNamedBackendConfig(t *testing.T) {
@@ -181,7 +172,7 @@ func TestConfigHandler_GetNamedBackendConfig(t *testing.T) {
 			return nil, false
 		},
 	}
-	h := NewConfigHandler(cfg, reg, &testutil.MockBus{})
+	h := NewConfigHandler(testController(cfg, reg, &testutil.MockBus{}))
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/config/backends/awww", nil)
@@ -193,7 +184,7 @@ func TestConfigHandler_GetNamedBackendConfig(t *testing.T) {
 }
 
 func TestConfigHandler_GetNamedBackendConfig_Unknown(t *testing.T) {
-	h := NewConfigHandler(&testutil.MockConfigManager{}, &testutil.MockRegistry{}, &testutil.MockBus{})
+	h := NewConfigHandler(testController(&testutil.MockConfigManager{}, &testutil.MockRegistry{}, &testutil.MockBus{}))
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/config/backends/nope", nil)
@@ -221,7 +212,7 @@ func TestConfigHandler_PatchNamedBackendConfig_SyncOnlyWhenActive(t *testing.T) 
 		GetActiveBackendTypeFn: func() string { return "awww" },
 		SetBackendConfigFn:     func(string, json.RawMessage) error { return nil },
 	}
-	h := NewConfigHandler(cfgMgr, reg, &testutil.MockBus{})
+	h := NewConfigHandler(testController(cfgMgr, reg, &testutil.MockBus{}))
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodPatch, "/config/backends/wayland-utauri",
@@ -251,7 +242,7 @@ func TestConfigHandler_PatchNamedBackendConfig_ActiveSyncs(t *testing.T) {
 		GetActiveBackendTypeFn: func() string { return "wayland-utauri" },
 		SetBackendConfigFn:     func(string, json.RawMessage) error { return nil },
 	}
-	h := NewConfigHandler(cfgMgr, reg, &testutil.MockBus{})
+	h := NewConfigHandler(testController(cfgMgr, reg, &testutil.MockBus{}))
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodPatch, "/config/backends/wayland-utauri",
@@ -263,7 +254,7 @@ func TestConfigHandler_PatchNamedBackendConfig_ActiveSyncs(t *testing.T) {
 	assert.Equal(t, 1, sb.syncCalls)
 }
 
-func TestConfigHandler_PatchSection_Backend_RuntimeSyncErrorStillOK(t *testing.T) {
+func TestConfigHandler_PatchNamedBackendConfig_RuntimeSyncErrorStillOK(t *testing.T) {
 	sb := &syncProbe{
 		MockBackend: testutil.MockBackend{
 			ValidateConfigFn: func(json.RawMessage) error { return nil },
@@ -282,13 +273,13 @@ func TestConfigHandler_PatchSection_Backend_RuntimeSyncErrorStillOK(t *testing.T
 		GetActiveBackendTypeFn: func() string { return "wayland-utauri" },
 		SetBackendConfigFn:     func(string, json.RawMessage) error { return nil },
 	}
-	h := NewConfigHandler(cfgMgr, reg, &testutil.MockBus{})
+	h := NewConfigHandler(testController(cfgMgr, reg, &testutil.MockBus{}))
 
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodPatch, "/config/backend",
+	r := httptest.NewRequest(http.MethodPatch, "/config/backends/wayland-utauri",
 		testutil.JSONBody(t, map[string]any{"parallax_enabled": false}))
-	r = testutil.WithChiURLParams(r, map[string]string{"section": "backend"})
-	h.PatchSection(w, r)
+	r = testutil.WithChiURLParams(r, map[string]string{"backend": "wayland-utauri"})
+	h.PatchNamedBackendConfig(w, r)
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, 1, sb.syncCalls)

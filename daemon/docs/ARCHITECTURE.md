@@ -55,8 +55,9 @@ Concurrency rule of thumb: **HTTP handlers** run on the default server pool; **b
 |------|------|--------|
 | **HTTP routes** | `internal/server` | Router, middleware, SSE broker, request ID / logging. |
 | **Handlers** | `internal/handler` | JSON mapping to store + services; thin where possible. |
+| **Control** | `internal/control` | Config/backend policy: named backend config, active backend activation, runtime config sync, restore after activation, `config_changed` events. |
 | **Backends** | `internal/backend` | Registry, switch, one package per setter (`awww`, `feh`, `hyprpaper`, `mpvpaper`, `waylandutauri`, …). |
-| **Wallpaper** | `internal/wallpaper` | `Apply`, web capabilities, waypaper.json merge, parallax direction glue. |
+| **Wallpaper** | `internal/wallpaper` | `Apply`, restore, web capabilities, waypaper.json merge, parallax direction glue. |
 | **Parallax** | `internal/parallaxdriver` | Compositor-specific input (Sway, Hyprland, …) feeding backend requests. |
 | **Images** | `internal/image` | Import, ffmpeg, palette, Web import, video loop export, splitter. |
 | **Playlists** | `internal/playlist` | Manager, scheduler, playback persist, per-backend compatibility. |

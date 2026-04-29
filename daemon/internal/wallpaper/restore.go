@@ -1,4 +1,4 @@
-package handler
+package wallpaper
 
 import (
 	"bytes"
@@ -15,7 +15,6 @@ import (
 	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/store"
-	"waypaper-engine/daemon/internal/wallpaper"
 )
 
 type extendGroup struct {
@@ -25,7 +24,7 @@ type extendGroup struct {
 
 // StartDeferredDaemonRestore runs in a background goroutine. It retries
 // reg.Active().Initialize until success (with exponential backoff), then calls
-// RestoreWallpapers. Use when a DaemonProcess backend failed Initialize at
+// Restore. Use when a DaemonProcess backend failed Initialize at
 // startup so wallpapers apply once the child process becomes available.
 // Stops when stopCtx is cancelled or after maxAttempts.
 func StartDeferredDaemonRestore(
@@ -80,7 +79,7 @@ func StartDeferredDaemonRestore(
 				"backend", active.Name(),
 				"attempt", attempt,
 			)
-			RestoreWallpapers(context.Background(), monitorStateStore, stateStore, reg, cfg, monManager, images, splitter, bus)
+			Restore(context.Background(), monitorStateStore, stateStore, reg, cfg, monManager, images, splitter, bus)
 			return
 		}
 
@@ -108,13 +107,13 @@ type restoreFailure struct {
 	Reason    string `json:"reason"`
 }
 
-// RestoreWallpapers re-applies the last known wallpaper for each connected
-// monitor using the persisted monitor state from the database. This is called
-// during startup and after backend activation so monitors show the correct
-// wallpaper. Best-effort: errors are logged but do not block the caller.
-// If bus is non-nil, a single WallpaperRestoreFailed event is published when
-// any monitors fail to restore.
-func RestoreWallpapers(
+// Restore re-applies the last known wallpaper for each connected monitor using
+// the persisted monitor state from the database. This is called during startup
+// and after backend activation so monitors show the correct wallpaper.
+// Best-effort: errors are logged but do not block the caller. If bus is
+// non-nil, a single WallpaperRestoreFailed event is published when any monitors
+// fail to restore.
+func Restore(
 	ctx context.Context,
 	monitorStateStore store.MonitorStateStore,
 	stateStore store.StateStore,
@@ -156,7 +155,7 @@ func RestoreWallpapers(
 	slog.Info("restore: detected monitors", "monitors", connectedNames)
 
 	activeBackend := reg.Active()
-	videoAudioDefault := wallpaper.VideoAudioDefaultFromCfg(cfg)
+	videoAudioDefault := VideoAudioDefaultFromCfg(cfg)
 	restored := 0
 	skipped := 0
 	var failures []restoreFailure
@@ -300,8 +299,8 @@ func tryWaylandUtauriIndividualRestoreBatch(
 			return nil, nil, nil, false
 		}
 
-		cfg := wallpaper.MergedWallpaperConfigForImage(imgPtr)
-		parallax := wallpaper.ParallaxDirectionOverrideFromImage(imgPtr)
+		cfg := MergedWallpaperConfigForImage(imgPtr)
+		parallax := ParallaxDirectionOverrideFromImage(imgPtr)
 
 		if firstRow {
 			sharedCfg = cfg
@@ -372,7 +371,7 @@ func restoreExtendGroup(
 		mt = normalizeRestoreMediaType(img.MediaType)
 		audio = img.AudioEnabled && videoAudioDefault
 	}
-	cfgVals := wallpaper.MergedWallpaperConfigForImage(imgPtr)
+	cfgVals := MergedWallpaperConfigForImage(imgPtr)
 
 	useSplit := resolved && mt == media.MediaTypeImage && splitter != nil && len(grp.monitors) > 1
 
@@ -405,7 +404,7 @@ func restoreExtendGroup(
 				Monitors:              []monitor.Monitor{mon},
 				Mode:                  monitor.ModeIndividual,
 				WallpaperConfigValues: cfgVals,
-				ParallaxDirection:     wallpaper.ParallaxDirectionOverrideFromImage(imgPtr),
+				ParallaxDirection:     ParallaxDirectionOverrideFromImage(imgPtr),
 				WaitForCompletion:     true,
 			}
 			if err := activeBackend.SetWallpaper(ctx, req); err != nil {
@@ -427,7 +426,7 @@ func restoreExtendGroup(
 			Monitors:              grp.monitors,
 			Mode:                  monitor.ModeClone,
 			WallpaperConfigValues: cfgVals,
-			ParallaxDirection:     wallpaper.ParallaxDirectionOverrideFromImage(imgPtr),
+			ParallaxDirection:     ParallaxDirectionOverrideFromImage(imgPtr),
 			WaitForCompletion:     true,
 		}
 		monNames := make([]string, len(grp.monitors))
@@ -476,8 +475,8 @@ func restoreIndividual(
 		AudioEnabled:          audio,
 		Monitors:              []monitor.Monitor{mon},
 		Mode:                  monitor.MonitorMode(state.Mode),
-		WallpaperConfigValues: wallpaper.MergedWallpaperConfigForImage(imgPtr),
-		ParallaxDirection:     wallpaper.ParallaxDirectionOverrideFromImage(imgPtr),
+		WallpaperConfigValues: MergedWallpaperConfigForImage(imgPtr),
+		ParallaxDirection:     ParallaxDirectionOverrideFromImage(imgPtr),
 		WaitForCompletion:     true,
 	}
 

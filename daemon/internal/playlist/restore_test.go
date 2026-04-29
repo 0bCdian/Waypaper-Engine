@@ -298,7 +298,7 @@ func (c *noopConfig) GetLogFile() string                                 { retur
 
 // TestRestorePersistedRuns_DoesNotReapplyWallpaper verifies that
 // RestorePersistedRuns does NOT call SetWallpaper on the backend.
-// RestoreWallpapers (a separate code path) is responsible for the initial
+// wallpaper.Restore (a separate code path) is responsible for the initial
 // wallpaper application on daemon restart; calling SetWallpaper a second time
 // from startPlaylist races the first call and can cause one monitor to stay
 // blank (see: wayland-utauri retry-loop collision).
@@ -381,7 +381,7 @@ func TestRestorePersistedRuns_DoesNotReapplyWallpaper(t *testing.T) {
 	callCount := len(rec.calls)
 	rec.mu.Unlock()
 	assert.Equal(t, 0, callCount,
-		"RestorePersistedRuns must not call SetWallpaper; RestoreWallpapers owns that path")
+		"RestorePersistedRuns must not call SetWallpaper; wallpaper.Restore owns that path")
 
 	// --- Assert 2: both playlists are active in the state store ---
 	inst1 := stateStore.GetActivePlaylistByID(1)
