@@ -169,7 +169,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	splitter := image.NewSplitter(opts.ImagesDir)
 
 	// Backfill missing video browser previews asynchronously.
-	go processor.BackfillMissingVideoBrowserPreviews(context.Background())
+	go processor.BackfillMissingVideoBrowserPreviews(ctx)
 
 	// Create monitor manager.
 	monManager, err := monitor.NewMonitorManager(opts.MonitorProviders, opts.Compositor)
