@@ -165,17 +165,6 @@ paths:
           description: Accepted or batch id
         '202':
           description: Accepted
-  /images/count:
-    get:
-      tags: [images]
-      operationId: getImageCount
-      summary: Total image count
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GenericJSON'
   /images/tags:
     get:
       tags: [images]
@@ -252,6 +241,7 @@ paths:
     patch:
       tags: [images]
       operationId: patchImage
+      summary: Update image metadata; patching `name` atomically renames the file on disk
       parameters: [$ref: '#/components/parameters/ImageId']
       requestBody:
         content:
@@ -287,22 +277,6 @@ paths:
       responses:
         '200': { description: OK }
         '202': { description: Queued }
-  /images/{id}/rename:
-    post:
-      tags: [images]
-      operationId: renameImage
-      parameters: [$ref: '#/components/parameters/ImageId']
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/GenericJSON'
-      responses:
-        '200':
-          content:
-            application/json:
-              schema:
-                $ref: '#/components/schemas/GenericJSON'
   /images/{id}/thumbnail:
     get:
       tags: [images]
@@ -313,14 +287,6 @@ paths:
         '200':
           description: image bytes
         '404': { $ref: '#/components/responses/NotFound' }
-  /images/{id}/thumbnail/raw:
-    get:
-      tags: [images]
-      operationId: getRawThumbnail
-      parameters: [$ref: '#/components/parameters/ImageId']
-      summary: Raw thumbnail
-      responses:
-        '200': { description: image bytes }
   /images/{id}/raw:
     get:
       tags: [images]
