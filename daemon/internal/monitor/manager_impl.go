@@ -26,10 +26,21 @@ type monitorManager struct {
 // descending priority. The first provider that reports IsAvailable() is selected.
 //
 // If compositor is empty, DetectCompositor() is called automatically.
-// Returns an error if no suitable provider is available.
+// If providers is nil or empty, a no-op provider is used that returns an empty
+// monitor list (useful in tests and headless environments).
+// Returns an error if no suitable provider is available among non-empty providers.
 func NewMonitorManager(providers []MonitorProvider, compositor CompositorType) (MonitorManager, error) {
 	if compositor == "" {
 		compositor = DetectCompositor()
+	}
+
+	// If no providers given, use a no-op provider so the daemon can start in
+	// test / headless environments without a real compositor.
+	if len(providers) == 0 {
+		return &monitorManager{
+			compositor: compositor,
+			provider:   &noopProvider{compositor: compositor},
+		}, nil
 	}
 
 	provider, err := selectProvider(providers, compositor)
@@ -42,6 +53,18 @@ func NewMonitorManager(providers []MonitorProvider, compositor CompositorType) (
 		provider:   provider,
 	}, nil
 }
+
+// noopProvider is a MonitorProvider that always returns an empty monitor list.
+// Used when no real providers are registered (e.g. in tests).
+type noopProvider struct {
+	compositor CompositorType
+}
+
+func (n *noopProvider) Name() string                              { return "noop" }
+func (n *noopProvider) IsAvailable() bool                        { return true }
+func (n *noopProvider) Compositor() CompositorType               { return n.compositor }
+func (n *noopProvider) Priority() int                            { return 0 }
+func (n *noopProvider) Detect(_ context.Context) ([]Monitor, error) { return nil, nil }
 
 // selectProvider filters providers by compositor, sorts by descending priority,
 // and returns the first available one.
