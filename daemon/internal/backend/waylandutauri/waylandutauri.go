@@ -131,7 +131,6 @@ type WaylandUtauri struct {
 }
 
 var _ backend.Backend = (*WaylandUtauri)(nil)
-var _ backend.RuntimeConfigSync = (*WaylandUtauri)(nil)
 
 func New() backend.Backend {
 	return &WaylandUtauri{makeClient: newControlClient}
@@ -344,7 +343,9 @@ func (w *WaylandUtauri) Shutdown(_ context.Context) error {
 	}
 	w.parallaxDriverMu.Unlock()
 	w.parallaxDriverWG.Wait()
-	w.SetExtendParallaxGroup(nil)
+	w.extendParallaxMu.Lock()
+	w.extendParallaxGroup = nil
+	w.extendParallaxMu.Unlock()
 
 	w.processMu.Lock()
 	p := w.process
@@ -487,24 +488,23 @@ func (w *WaylandUtauri) SetWallpaper(ctx context.Context, req backend.WallpaperR
 	if lastErr != nil {
 		return fmt.Errorf("wayland-utauri: load request failed after %d attempt(s): %w", loadAttempts, lastErr)
 	}
+
+	// Update parallax group from the request. ExtendGroup is non-nil only when
+	// apply.go split a static image across multiple monitors (extend mode).
+	w.extendParallaxMu.Lock()
+	if len(req.ExtendGroup) >= 2 {
+		cp := make([]string, len(req.ExtendGroup))
+		copy(cp, req.ExtendGroup)
+		slices.Sort(cp)
+		w.extendParallaxGroup = cp
+	} else {
+		w.extendParallaxGroup = nil
+	}
+	w.extendParallaxMu.Unlock()
+
 	return fmt.Errorf("wayland-utauri: load request failed without explicit error")
 }
 
-// SetExtendParallaxGroup records which compositor outputs share one spanned static
-// image (extend/split) so the compositor parallax driver applies the same move to
-// every output, preserving the seam. Pass nil or fewer than two names to clear.
-func (w *WaylandUtauri) SetExtendParallaxGroup(monitors []string) {
-	w.extendParallaxMu.Lock()
-	defer w.extendParallaxMu.Unlock()
-	if len(monitors) < 2 {
-		w.extendParallaxGroup = nil
-		return
-	}
-	cp := make([]string, len(monitors))
-	copy(cp, monitors)
-	slices.Sort(cp)
-	w.extendParallaxGroup = cp
-}
 
 func (w *WaylandUtauri) expandParallaxMoveTargets(outputName string) []string {
 	w.extendParallaxMu.Lock()
@@ -843,7 +843,7 @@ func (w *WaylandUtauri) PushWebCapabilities(ctx context.Context, sourceTarget st
 	return nil
 }
 
-func (w *WaylandUtauri) SyncRuntimeFromConfig(ctx context.Context) error {
+func (w *WaylandUtauri) OnConfigChanged(ctx context.Context, _ json.RawMessage) error {
 	cfg := w.loadConfigFromViper()
 	client, err := w.makeControlClient(cfg)
 	if err != nil {
@@ -870,7 +870,6 @@ func (w *WaylandUtauri) SyncRuntimeFromConfig(ctx context.Context) error {
 	return nil
 }
 
-var _ backend.ExtendParallaxGroupNotifier = (*WaylandUtauri)(nil)
 
 // slogWriter is an io.Writer that logs each line via slog at Info level.
 type slogWriter struct{ prefix string }

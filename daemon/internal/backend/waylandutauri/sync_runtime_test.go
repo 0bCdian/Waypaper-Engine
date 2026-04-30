@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestWaylandUtauri_SyncRuntimeFromConfig_Success(t *testing.T) {
+func TestWaylandUtauri_OnConfigChanged_Success(t *testing.T) {
 	var sawParallax, sawNetwork, sawImagePresentation bool
 	var requestOrder []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -40,7 +40,7 @@ func TestWaylandUtauri_SyncRuntimeFromConfig_Success(t *testing.T) {
 	}
 	wut.RegisterDefaults(v)
 
-	err := wut.SyncRuntimeFromConfig(context.Background())
+	err := wut.OnConfigChanged(context.Background(), nil)
 	require.NoError(t, err)
 	assert.True(t, sawParallax, "expected POST /wallpaper/parallax")
 	assert.True(t, sawNetwork, "expected POST /settings/network")
@@ -61,7 +61,7 @@ func TestWaylandUtauri_SyncRuntimeFromConfig_Success(t *testing.T) {
 	assert.Less(t, idxNetwork, idxImagePresentation, "network policy must be pushed before image presentation")
 }
 
-func TestWaylandUtauri_SyncRuntimeFromConfig_ClientError(t *testing.T) {
+func TestWaylandUtauri_OnConfigChanged_ClientError(t *testing.T) {
 	v := viper.New()
 	wut := &WaylandUtauri{
 		v: v,
@@ -71,7 +71,7 @@ func TestWaylandUtauri_SyncRuntimeFromConfig_ClientError(t *testing.T) {
 	}
 	wut.RegisterDefaults(v)
 
-	err := wut.SyncRuntimeFromConfig(context.Background())
+	err := wut.OnConfigChanged(context.Background(), nil)
 	require.Error(t, err)
 	assert.ErrorContains(t, err, "runtime sync")
 }
