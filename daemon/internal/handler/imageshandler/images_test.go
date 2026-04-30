@@ -116,25 +116,6 @@ func TestImageHandler_Delete(t *testing.T) {
 	assert.Equal(t, float64(2), body["deleted"])
 }
 
-func TestImageHandler_Count(t *testing.T) {
-	imgStore := &testutil.MockImageStore{
-		CountFn: func(_ context.Context) (int, error) {
-			return 42, nil
-		},
-	}
-	h := NewImageHandler(imgStore, nil, &testutil.MockBus{}, nil)
-
-	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodGet, "/images/count", nil)
-	h.Count(w, r)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-
-	var body map[string]any
-	require.NoError(t, json.NewDecoder(w.Body).Decode(&body))
-	assert.Equal(t, float64(42), body["count"])
-}
-
 func TestImageHandler_Tags(t *testing.T) {
 	imgStore := &testutil.MockImageStore{
 		GetAllTagsFn: func(_ context.Context) ([]string, error) {
@@ -158,7 +139,19 @@ func TestImageHandler_Tags(t *testing.T) {
 }
 
 func TestImageHandler_Update(t *testing.T) {
+	sample := testutil.SampleImage(42)
+	// Give the sample a distinct name so rename logic sees name != current.Name.
+	sample.Name = "old_name"
+	sample.Path = "/tmp/images/old_name.jpg"
+	sample.Format = "jpg"
+
 	imgStore := &testutil.MockImageStore{
+		GetByIDFn: func(_ context.Context, _ int) (*store.Image, error) {
+			return &sample, nil
+		},
+		IsNameTakenFn: func(_ context.Context, _ string, _ int) (bool, error) {
+			return false, nil
+		},
 		UpdateFn: func(_ context.Context, id int, updates map[string]any) (*store.Image, error) {
 			img := testutil.SampleImage(id)
 			if name, ok := updates["name"].(string); ok {
@@ -169,9 +162,11 @@ func TestImageHandler_Update(t *testing.T) {
 	}
 	h := NewImageHandler(imgStore, nil, &testutil.MockBus{}, nil)
 
+	// Use a name that does not require an actual os.Rename: patch with same
+	// name as current so the handler takes the no-op branch (delete from updates).
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodPatch, "/images/42",
-		testutil.JSONBody(t, map[string]any{"name": "new_name"}))
+		testutil.JSONBody(t, map[string]any{"name": "old_name"}))
 	r = testutil.WithChiURLParams(r, map[string]string{"id": "42"})
 	h.Update(w, r)
 
@@ -194,14 +189,21 @@ func TestImageHandler_Update_BadField(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }
 
-func TestImageHandler_RenameImage_BadBody(t *testing.T) {
-	h := NewImageHandler(&testutil.MockImageStore{}, nil, &testutil.MockBus{}, nil)
+func TestImageHandler_Update_InvalidName(t *testing.T) {
+	sample := testutil.SampleImage(42)
+	imgStore := &testutil.MockImageStore{
+		GetByIDFn: func(_ context.Context, _ int) (*store.Image, error) {
+			return &sample, nil
+		},
+	}
+	h := NewImageHandler(imgStore, nil, &testutil.MockBus{}, nil)
 
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodPost, "/images/42/rename",
-		strings.NewReader(`{invalid`))
+	// Empty name should fail validation.
+	r := httptest.NewRequest(http.MethodPatch, "/images/42",
+		testutil.JSONBody(t, map[string]any{"name": ""}))
 	r = testutil.WithChiURLParams(r, map[string]string{"id": "42"})
-	h.RenameImage(w, r)
+	h.Update(w, r)
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 }

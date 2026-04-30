@@ -50,7 +50,6 @@ func NewRouter(h Handlers, bus events.Bus) *chi.Mux {
 		r.Post("/", h.Images.Add)
 		r.Post("/import-web", h.Images.ImportWeb)
 		r.Delete("/", h.Images.Delete)
-		r.Get("/count", h.Images.Count)
 		r.Get("/tags", h.Images.Tags)
 		r.Get("/history", h.Wallpaper.GetHistory)
 		r.Delete("/history", h.Wallpaper.ClearHistory)
@@ -60,9 +59,7 @@ func NewRouter(h Handlers, bus events.Bus) *chi.Mux {
 		r.Post("/{id}/video-loop-export", h.Images.VideoLoopExport)
 		r.Get("/{id}", h.Images.Get)
 		r.Patch("/{id}", h.Images.Update)
-		r.Post("/{id}/rename", h.Images.RenameImage)
 		r.Get("/{id}/thumbnail", h.Images.Thumbnail)
-		r.Get("/{id}/thumbnail/raw", h.Images.RawThumbnail)
 		r.Get("/{id}/raw", h.Images.RawImage)
 	})
 

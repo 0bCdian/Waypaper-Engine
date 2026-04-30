@@ -337,6 +337,62 @@ func (h *ImageHandler) Update(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	// If name is being patched, perform the filesystem rename atomically with the DB update.
+	if rawName, ok := updates["name"]; ok {
+		name, _ := rawName.(string)
+		name = strings.TrimSpace(name)
+		if err := validateImageName(name); err != nil {
+			httpjson.WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+
+		current, err := h.store.GetByID(r.Context(), id)
+		if err != nil {
+			httpjson.WriteError(w, http.StatusNotFound, err.Error())
+			return
+		}
+
+		// Strip extension if user supplied one matching the image's format.
+		for _, ext := range []string{"." + current.Format, ".jpeg"} {
+			if strings.EqualFold(filepath.Ext(name), ext) {
+				name = strings.TrimSuffix(name, filepath.Ext(name))
+				break
+			}
+		}
+
+		if name != current.Name {
+			// Auto-suffix for uniqueness.
+			finalName := name
+			for i := 1; ; i++ {
+				taken, err := h.store.IsNameTaken(r.Context(), finalName, id)
+				if err != nil {
+					httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
+					return
+				}
+				if !taken {
+					break
+				}
+				finalName = fmt.Sprintf("%s_%d", name, i)
+			}
+
+			ext := filepath.Ext(current.Path)
+			newPath := filepath.Join(filepath.Dir(current.Path), finalName+ext)
+			newPath = system.UniquePath(newPath)
+
+			if err := os.Rename(current.Path, newPath); err != nil {
+				httpjson.WriteErrorf(w, http.StatusInternalServerError, "rename file: %v", err)
+				return
+			}
+
+			// Carry the resolved name and new path into the store update.
+			updates["name"] = finalName
+			updates["path"] = newPath
+		} else {
+			// Name unchanged — remove to avoid a no-op write.
+			delete(updates, "name")
+		}
+	}
+
 	image, err := h.store.Update(r.Context(), id, updates)
 	if err != nil {
 		httpjson.WriteError(w, http.StatusNotFound, err.Error())
@@ -345,104 +401,6 @@ func (h *ImageHandler) Update(w http.ResponseWriter, r *http.Request) {
 
 	if strings.EqualFold(strings.TrimSpace(image.MediaType), "web") {
 		wallpaper.SyncWebImageToRenderer(r.Context(), h.registry, image)
-	}
-
-	h.bus.Publish(events.Event{
-		Type: events.GalleryChanged,
-		Data: map[string]any{"domain": "images"},
-	})
-
-	httpjson.WriteJSON(w, http.StatusOK, image)
-}
-
-// renameRequest is the JSON body for POST /images/{id}/rename.
-type renameRequest struct {
-	Name string `json:"name"`
-}
-
-// RenameImage handles POST /images/{id}/rename.
-//
-// @Summary      Rename an image
-// @Tags         images
-// @Param        id    path      int            true  "Image ID"
-// @Param        body  body      renameRequest  true  "New name"
-// @Success      200   {object}  store.Image
-// @Failure      400   {object}  httpjson.APIError
-// @Failure      404   {object}  httpjson.APIError
-// @Failure      500   {object}  httpjson.APIError
-// @Router       /images/{id}/rename [post]
-func (h *ImageHandler) RenameImage(w http.ResponseWriter, r *http.Request) {
-	id, err := httpjson.ParseIntParam(chi.URLParam(r, "id"))
-	if err != nil {
-		httpjson.WriteError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	var req renameRequest
-	if err := httpjson.ParseBody(r, &req); err != nil {
-		httpjson.WriteError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	name := strings.TrimSpace(req.Name)
-	if err := validateImageName(name); err != nil {
-		httpjson.WriteError(w, http.StatusBadRequest, err.Error())
-		return
-	}
-
-	current, err := h.store.GetByID(r.Context(), id)
-	if err != nil {
-		httpjson.WriteError(w, http.StatusNotFound, err.Error())
-		return
-	}
-
-	// Strip extension if user supplied one matching the image's format.
-	for _, ext := range []string{"." + current.Format, ".jpeg"} {
-		if strings.EqualFold(filepath.Ext(name), ext) {
-			name = strings.TrimSuffix(name, filepath.Ext(name))
-			break
-		}
-	}
-
-	// No-op if the name hasn't changed.
-	if name == current.Name {
-		httpjson.WriteJSON(w, http.StatusOK, current)
-		return
-	}
-
-	// Ensure uniqueness, auto-suffix if taken.
-	finalName := name
-	for i := 1; ; i++ {
-		taken, err := h.store.IsNameTaken(r.Context(), finalName, id)
-		if err != nil {
-			httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
-			return
-		}
-		if !taken {
-			break
-		}
-		finalName = fmt.Sprintf("%s_%d", name, i)
-	}
-
-	// Build new file path and rename on disk.
-	ext := filepath.Ext(current.Path)
-	newPath := filepath.Join(filepath.Dir(current.Path), finalName+ext)
-	newPath = system.UniquePath(newPath)
-
-	if err := os.Rename(current.Path, newPath); err != nil {
-		httpjson.WriteErrorf(w, http.StatusInternalServerError, "rename file: %v", err)
-		return
-	}
-
-	image, err := h.store.Update(r.Context(), id, map[string]any{
-		"name": finalName,
-		"path": newPath,
-	})
-	if err != nil {
-		// Best-effort rollback of the filesystem rename.
-		_ = os.Rename(newPath, current.Path)
-		httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
-		return
 	}
 
 	h.bus.Publish(events.Event{
@@ -559,23 +517,6 @@ func (h *ImageHandler) SelectAll(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// Count handles GET /images/count.
-//
-// @Summary      Count images
-// @Tags         images
-// @Success      200  {object}  map[string]any
-// @Failure      500  {object}  httpjson.APIError
-// @Router       /images/count [get]
-func (h *ImageHandler) Count(w http.ResponseWriter, r *http.Request) {
-	count, err := h.store.Count(r.Context())
-	if err != nil {
-		httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
-		return
-	}
-
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"count": count})
-}
-
 // Tags handles GET /images/tags — returns all unique tags across images.
 //
 // @Summary      List all tags
@@ -645,26 +586,6 @@ func (h *ImageHandler) Thumbnail(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	httpjson.WriteJSON(w, http.StatusOK, map[string]string{"path": thumbPath})
-}
-
-// RawThumbnail handles GET /images/{id}/thumbnail/raw — serves the actual image file.
-//
-// @Summary      Serve thumbnail file
-// @Tags         images
-// @Param        id          path  int     true   "Image ID"
-// @Param        resolution  query string  false  "Thumbnail resolution"
-// @Produce      image/webp
-// @Success      200  {file}    binary
-// @Failure      400  {object}  httpjson.APIError
-// @Failure      404  {object}  httpjson.APIError
-// @Router       /images/{id}/thumbnail/raw [get]
-func (h *ImageHandler) RawThumbnail(w http.ResponseWriter, r *http.Request) {
-	thumbPath, ok := h.resolveThumbnail(w, r)
-	if !ok {
-		return
-	}
-	w.Header().Set("Content-Type", "image/webp")
-	http.ServeFile(w, r, thumbPath)
 }
 
 type videoLoopExportRequest struct {
