@@ -184,6 +184,12 @@ func (h *Hyprpaper) Shutdown(ctx context.Context) error {
 	return nil
 }
 
+// OnConfigChanged is a no-op for hyprpaper. Config is read from Viper at SetWallpaper time.
+// The daemon control layer re-applies the current wallpaper after this returns.
+func (h *Hyprpaper) OnConfigChanged(_ context.Context, _ json.RawMessage) error {
+	return nil
+}
+
 func (h *Hyprpaper) SetWallpaper(ctx context.Context, req backend.WallpaperRequest) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()

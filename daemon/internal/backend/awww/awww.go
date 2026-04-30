@@ -121,6 +121,12 @@ func (a *Awww) Shutdown(ctx context.Context) error {
 	return nil
 }
 
+// OnConfigChanged is a no-op for awww. Config is read from Viper at SetWallpaper time.
+// The daemon control layer re-applies the current wallpaper after this returns.
+func (a *Awww) OnConfigChanged(_ context.Context, _ json.RawMessage) error {
+	return nil
+}
+
 func (a *Awww) SetWallpaper(ctx context.Context, req backend.WallpaperRequest) error {
 	if !a.IsAvailable() {
 		return fmt.Errorf("awww: awww not found in PATH")

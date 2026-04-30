@@ -47,6 +47,12 @@ func (f *Feh) Initialize(_ context.Context) error { return nil }
 // Shutdown is a no-op for feh (no daemon process).
 func (f *Feh) Shutdown(_ context.Context) error { return nil }
 
+// OnConfigChanged is a no-op for feh. Config is read from Viper at SetWallpaper time.
+// The daemon control layer re-applies the current wallpaper after this returns.
+func (f *Feh) OnConfigChanged(_ context.Context, _ json.RawMessage) error {
+	return nil
+}
+
 func (f *Feh) SetWallpaper(ctx context.Context, req backend.WallpaperRequest) error {
 	cfg, _ := req.Config.(*Config)
 	if cfg == nil {

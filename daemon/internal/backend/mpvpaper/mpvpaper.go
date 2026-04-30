@@ -63,6 +63,12 @@ func (m *Mpvpaper) Shutdown(context.Context) error {
 	return nil
 }
 
+// OnConfigChanged is a no-op for mpvpaper. Config is read from Viper at SetWallpaper time.
+// The daemon control layer re-applies the current wallpaper after this returns.
+func (m *Mpvpaper) OnConfigChanged(_ context.Context, _ json.RawMessage) error {
+	return nil
+}
+
 func (m *Mpvpaper) SetWallpaper(_ context.Context, req backend.WallpaperRequest) error {
 	if req.MediaType != media.MediaTypeVideo {
 		return fmt.Errorf("mpvpaper: unsupported media type %q (only %q)", req.MediaType, media.MediaTypeVideo)
