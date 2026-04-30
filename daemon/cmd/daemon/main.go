@@ -1,3 +1,10 @@
+//go:generate swag init -g cmd/daemon/main.go -o docs --outputTypes yaml --parseInternal --parseDependency
+
+// @title        waypaper-engine daemon
+// @version      3.0.0
+// @description  HTTP API served over a Unix socket for the waypaper-engine wallpaper manager.
+// @BasePath     /
+
 package main
 
 import (
@@ -22,7 +29,14 @@ import (
 	"waypaper-engine/daemon/internal/config"
 	"waypaper-engine/daemon/internal/control"
 	"waypaper-engine/daemon/internal/events"
-	"waypaper-engine/daemon/internal/handler"
+	"waypaper-engine/daemon/internal/handler/backendshandler"
+	"waypaper-engine/daemon/internal/handler/confighandler"
+	"waypaper-engine/daemon/internal/handler/foldershandler"
+	"waypaper-engine/daemon/internal/handler/healthhandler"
+	"waypaper-engine/daemon/internal/handler/imageshandler"
+	"waypaper-engine/daemon/internal/handler/monitorshandler"
+	"waypaper-engine/daemon/internal/handler/playlistshandler"
+	"waypaper-engine/daemon/internal/handler/wallpaperhandler"
 	"waypaper-engine/daemon/internal/image"
 	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/playlist"
@@ -263,17 +277,17 @@ func startDaemon(configPath string, logLevel string) error {
 		wallpaper.Restore(ctx, db.MonitorStateStore(), db.StateStore(), reg, cfg, monManager, db.ImageStore(), splitter, bus)
 	}))
 	handlers := server.Handlers{
-		Health:    handler.NewHealthHandler(version, shutdownFn),
-		Images:    handler.NewImageHandler(db.ImageStore(), processor, bus, reg),
-		Playlists: handler.NewPlaylistHandler(db.PlaylistStore(), db.StateStore(), playlistMgr, bus),
-		Monitors:  handler.NewMonitorHandler(monManager),
-		Config:    handler.NewConfigHandler(ctrl),
-		Backends:  handler.NewBackendHandler(reg, ctrl),
-		Wallpaper: handler.NewWallpaperHandler(
+		Health:    healthhandler.NewHealthHandler(version, shutdownFn),
+		Images:    imageshandler.NewImageHandler(db.ImageStore(), processor, bus, reg),
+		Playlists: playlistshandler.NewPlaylistHandler(db.PlaylistStore(), db.StateStore(), playlistMgr, bus),
+		Monitors:  monitorshandler.NewMonitorHandler(monManager),
+		Config:    confighandler.NewConfigHandler(ctrl),
+		Backends:  backendshandler.NewBackendHandler(reg, ctrl),
+		Wallpaper: wallpaperhandler.NewWallpaperHandler(
 			db.ImageStore(), db.HistoryStore(), db.StateStore(), db.MonitorStateStore(),
 			reg, monManager, splitter, bus, cfg,
 		),
-		Folders: handler.NewFolderHandler(db.FolderStore(), db.ImageStore(), bus),
+		Folders: foldershandler.NewFolderHandler(db.FolderStore(), db.ImageStore(), bus),
 	}
 
 	// 15. Create router and server.

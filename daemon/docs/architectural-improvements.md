@@ -70,6 +70,60 @@ A concise review focused on **bloat control**, **spec alignment**, **tests**, an
 
 ---
 
+---
+
+## 8. Deepening opportunities (2026-04-29 pass)
+
+Four candidates surfaced during the post-control-plane architecture review. Candidate 5 (event payload normalization) is being worked now; the rest are queued.
+
+### 8.1 Split root `handler` package into sub-packages
+
+**Files:** `internal/handler/images.go`, `playlists.go`, `wallpaper.go`, `folders.go`, `monitors.go`, `health.go`
+
+**Problem:** `confighandler` and `backendshandler` are already isolated sub-packages with their own tests. The remaining five handlers share a flat `handler` namespace — every test file can see every handler's internals, and `main.go` wires a flat list of nine constructors with no grouping. Seams between handlers are invisible.
+
+**Solution:** Move each handler into its own sub-package (`imageshandler`, `wallpaperhandler`, `playlistshandler`, `foldershandler`, `monitorshandler`, `healthhandler`). Mechanical split; no behavior changes.
+
+**Benefits:** Each handler's constructor seam is explicitly bounded. Test isolation improves. `main.go` imports declare what each route group needs. Locality: a bug in folder recursion lives entirely in `foldershandler`.
+
+---
+
+### 8.2 Extract monitor resolution policy out of `WallpaperHandler`
+
+**Files:** `internal/handler/wallpaper.go:274–328`, `internal/handler/playlists.go`
+
+**Problem:** `WallpaperHandler.resolveMonitors()` and `ensureBackendForMedia()` contain real policy — `”*”` expansion, priority-based backend selection, fallback rules. The same logic likely needs to be applied by playlists. Each handler re-implements or silently ignores edge cases. Policy that should be in one place is scattered across callers.
+
+**Solution:** Lift monitor resolution and backend-for-media selection into `internal/wallpaper` (which already owns `Apply` and `Restore`). `WallpaperHandler` and `PlaylistHandler` become adapters over this policy.
+
+**Benefits:** One place to test monitor expansion. Adding a new fallback rule touches one function. The question “what monitor does this wallpaper apply to?” is answered in one package.
+
+---
+
+### 8.3 Extract web-capabilities sync from `ImageHandler.Update`
+
+**Files:** `internal/handler/images.go:207–350`
+
+**Problem:** `Update` is ~140 lines of mixed concerns: field-whitelist validation, web-meta merging, manifest writes, and renderer sync — all inline. The web-capabilities sync path (read manifest → merge → write → publish event) has no seam. Any future caller needing capability sync (e.g., post-import) must duplicate or import from a handler.
+
+**Solution:** Extract the web-capabilities sync path into a function or small module in `internal/image` alongside `Processor`. The `Update` handler becomes: validate fields → save image → (if web) sync capabilities → done.
+
+**Benefits:** Sync logic is independently testable. Manifest merging lives in one function. The handler is easier to read. Future callers reuse the same sync path.
+
+---
+
+### 8.4 Narrow OpenAPI `GenericJSON` and align `daemon-go-types.ts`
+
+**Files:** `electron/daemon-go-types.ts`, `daemon/docs/openapi.yaml`, `electron/daemonClient/imagesClient.ts`, `playlistsClient.ts`, `wallpaperClient.ts`
+
+**Problem:** Config/backend types are already concrete. Images, playlists, and wallpaper routes still use `GenericJSON` in OpenAPI and rely on manually-maintained TS types that can silently drift from Go structs. Type mismatches surface only at runtime.
+
+**Solution:** Replace `GenericJSON` with concrete schemas in OpenAPI for each remaining route group (images first, then playlists, then wallpaper). Align `daemon-go-types.ts` against those schemas. Documentation + type alignment pass, not a code change.
+
+**Benefits:** TS clients get compile-time guarantees when types drift. OpenAPI becomes a usable contract for tooling. The Go ↔ TypeScript seam is explicit.
+
+---
+
 ## 7. What not to do in a “cleanup” pass
 
 - Do **not** remove **vendored** or **platform-specific** backend code just because a developer’s machine has no feh/hyprpaper.  

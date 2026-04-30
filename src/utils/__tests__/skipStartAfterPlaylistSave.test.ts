@@ -19,7 +19,7 @@ const baseActive = (over: Partial<ActivePlaylistInstance>): ActivePlaylistInstan
 });
 
 describe("shouldSkipPlaylistStartAfterUpdate", () => {
-  it("returns false when type is not timer", () => {
+  it("returns true when active matches monitors (any playlist type) after daemon reconcile", () => {
     expect(
       shouldSkipPlaylistStartAfterUpdate({
         savedId: 1,
@@ -28,7 +28,19 @@ describe("shouldSkipPlaylistStartAfterUpdate", () => {
         selectedMonitors: ["DP-1"],
         mode: "individual",
       }),
-    ).toBe(false);
+    ).toBe(true);
+  });
+
+  it("returns true for time_of_day with same monitors", () => {
+    expect(
+      shouldSkipPlaylistStartAfterUpdate({
+        savedId: 1,
+        playlistType: "time_of_day",
+        activePlaylists: [baseActive({})],
+        selectedMonitors: ["DP-1"],
+        mode: "individual",
+      }),
+    ).toBe(true);
   });
 
   it("returns false when no active row for saved id", () => {

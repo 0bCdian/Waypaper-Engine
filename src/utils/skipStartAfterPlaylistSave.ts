@@ -9,7 +9,7 @@ function sortedMonitorSetsEqual(a: string[], b: string[]): boolean {
   return sa.every((v, i) => v === sb[i]);
 }
 
-/** After PATCH, daemon reconcile already refreshed the run — skip redundant startPlaylist. */
+/** After PATCH, daemon reconcile already refreshed or restarted the run — skip redundant startPlaylist. */
 export function shouldSkipPlaylistStartAfterUpdate(opts: {
   savedId: number;
   playlistType: string;
@@ -17,9 +17,6 @@ export function shouldSkipPlaylistStartAfterUpdate(opts: {
   selectedMonitors: string[];
   mode: string;
 }): boolean {
-  if (opts.playlistType !== "timer") {
-    return false;
-  }
   const active = opts.activePlaylists.find((ap) => ap.playlist_id === opts.savedId);
   if (!active) {
     return false;

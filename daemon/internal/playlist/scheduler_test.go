@@ -1,6 +1,7 @@
 package playlist
 
 import (
+	"sync"
 	"sync/atomic"
 	"testing"
 	"time"
@@ -99,6 +100,21 @@ func TestBuildTimeSlots(t *testing.T) {
 	require.Len(t, slots, 2)
 	assert.Equal(t, TimeSlot{Minutes: 60, ImageIndex: 0}, slots[0])
 	assert.Equal(t, TimeSlot{Minutes: 120, ImageIndex: 2}, slots[1])
+}
+
+func TestBuildTimeSlotsSortsByMinutes(t *testing.T) {
+	min900 := 900
+	min600 := 600
+	pl := &store.Playlist{
+		Images: []store.PlaylistImage{
+			{ImageID: 11, Time: &min900},
+			{ImageID: 22, Time: &min600},
+		},
+	}
+	slots := buildTimeSlots(pl)
+	require.Len(t, slots, 2)
+	assert.Equal(t, TimeSlot{Minutes: 600, ImageIndex: 1}, slots[0])
+	assert.Equal(t, TimeSlot{Minutes: 900, ImageIndex: 0}, slots[1])
 }
 
 func TestBuildTimeSlotsEmpty(t *testing.T) {
@@ -221,7 +237,7 @@ func TestTimerSchedulerRestoreTraversal(t *testing.T) {
 	ts := sched.(*timerScheduler)
 	ts.interval = 25 * time.Millisecond
 	tickCh := make(chan int, 2)
-	sched.Start(func(i int) { tickCh <- i })
+	sched.Start(func(i int) bool { tickCh <- i; return true })
 	select {
 	case v := <-tickCh:
 		assert.Equal(t, 1, v, "first tick should follow restored order after cursor")
@@ -245,8 +261,9 @@ func TestTimerSchedulerStartAndTick(t *testing.T) {
 	ts := sched.(*timerScheduler)
 	ts.interval = 20 * time.Millisecond
 
-	sched.Start(func(index int) {
+	sched.Start(func(index int) bool {
 		tickCh <- index
+		return true
 	})
 	defer sched.Stop()
 
@@ -274,8 +291,9 @@ func TestTimerSchedulerPauseStopsTicking(t *testing.T) {
 	ts := sched.(*timerScheduler)
 	ts.interval = 10 * time.Millisecond
 
-	sched.Start(func(index int) {
+	sched.Start(func(index int) bool {
 		count.Add(1)
+		return true
 	})
 	defer sched.Stop()
 
@@ -300,7 +318,7 @@ func TestTimerSchedulerResumeNextChangeAtImmediate(t *testing.T) {
 	ts := sched.(*timerScheduler)
 	ts.interval = 5 * time.Minute
 
-	sched.Start(func(int) {})
+	sched.Start(func(int) bool { return true })
 	defer sched.Stop()
 
 	sched.Pause()
@@ -326,7 +344,7 @@ func TestTimerSchedulerStop(t *testing.T) {
 	ts := sched.(*timerScheduler)
 	ts.interval = 20 * time.Millisecond
 
-	sched.Start(func(index int) {})
+	sched.Start(func(index int) bool { return true })
 	sched.Stop()
 	assert.Nil(t, sched.NextChangeAt(), "NextChangeAt should be nil after Stop")
 }
@@ -338,9 +356,7 @@ func TestManualSchedulerNoOps(t *testing.T) {
 		StartIndex:  1,
 	})
 
-	sched.Start(func(index int) {
-		t.Fatal("manual scheduler should never tick")
-	})
+	sched.Start(func(int) bool { return true })
 
 	assert.Nil(t, sched.NextChangeAt())
 
@@ -361,9 +377,10 @@ func TestTimerSchedulerTickCallbackMayCallNextChangeAt(t *testing.T) {
 	ts.interval = 25 * time.Millisecond
 
 	finished := make(chan struct{})
-	sched.Start(func(_ int) {
+	sched.Start(func(_ int) bool {
 		_ = sched.NextChangeAt()
 		close(finished)
+		return true
 	})
 	defer sched.Stop()
 
@@ -385,7 +402,7 @@ func TestTimerSchedulerAfterManualNavigationResetsDeadline(t *testing.T) {
 	ts := sched.(*timerScheduler)
 	ts.interval = 400 * time.Millisecond
 
-	sched.Start(func(int) {})
+	sched.Start(func(int) bool { return true })
 	defer sched.Stop()
 
 	n1 := sched.NextChangeAt()
@@ -413,11 +430,12 @@ func TestTimerSchedulerOrderedIndices(t *testing.T) {
 	ts := sched.(*timerScheduler)
 	ts.interval = 10 * time.Millisecond
 
-	sched.Start(func(index int) {
+	sched.Start(func(index int) bool {
 		indices = append(indices, index)
 		if len(indices) >= 3 {
 			close(done)
 		}
+		return true
 	})
 	defer sched.Stop()
 
@@ -428,6 +446,49 @@ func TestTimerSchedulerOrderedIndices(t *testing.T) {
 	}
 
 	assert.Equal(t, []int{1, 2, 0}, indices, "ordered scheduler should cycle through indices sequentially")
+}
+
+func TestTimerSchedulerDoesNotAdvanceWhenApplyFails(t *testing.T) {
+	var mu sync.Mutex
+	var seen []int
+	done := make(chan struct{})
+	var notifyOnce sync.Once
+
+	sched := NewScheduler(SchedulerConfig{
+		Type:        "timer",
+		Interval:    1,
+		Order:       "ordered",
+		TotalImages: 2,
+		StartIndex:  0,
+	})
+
+	ts := sched.(*timerScheduler)
+	ts.interval = 15 * time.Millisecond
+
+	sched.Start(func(idx int) bool {
+		mu.Lock()
+		seen = append(seen, idx)
+		failFirst := len(seen) == 1
+		mu.Unlock()
+		if failFirst {
+			return false
+		}
+		notifyOnce.Do(func() { close(done) })
+		return true
+	})
+	defer sched.Stop()
+
+	select {
+	case <-done:
+	case <-time.After(400 * time.Millisecond):
+		t.Fatal("timeout waiting for successful tick after failed apply")
+	}
+
+	mu.Lock()
+	defer mu.Unlock()
+	require.GreaterOrEqual(t, len(seen), 2)
+	assert.Equal(t, 1, seen[0])
+	assert.Equal(t, 1, seen[1], "failed timer tick must retry same playlist index")
 }
 
 func TestTimerReconcileSchedulerConfig_ordered(t *testing.T) {

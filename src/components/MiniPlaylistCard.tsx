@@ -1,3 +1,4 @@
+import { CollisionPriority } from "@dnd-kit/abstract";
 import { useSortable } from "@dnd-kit/react/sortable";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { PLAYLIST_TYPES_TYPE } from "../../shared/types/playlist";
@@ -69,7 +70,10 @@ function MiniPlaylistCard({
   const { ref: sortableRef, isDragging } = useSortable({
     id: playlistImage.image_id,
     index,
+    /** Shared sortable group so indices ↔ neighbours ; pairs with strip droppable Lowest priority. */
+    group: "playlist-edit-strip",
     data: sortableData,
+    collisionPriority: CollisionPriority.Normal,
   });
 
   let text: string;

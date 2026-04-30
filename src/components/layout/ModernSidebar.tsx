@@ -21,9 +21,7 @@ const HOVER_REVEAL_KEY = "waypaper-sidebar-hover-reveal";
 
 /** Programmatically close the drawer (mobile fallback) */
 function closeDrawer() {
-  const checkbox = document.getElementById(
-    DRAWER_CHECKBOX_ID,
-  ) as HTMLInputElement | null;
+  const checkbox = document.getElementById(DRAWER_CHECKBOX_ID) as HTMLInputElement | null;
   if (checkbox) checkbox.checked = false;
 }
 
@@ -161,8 +159,7 @@ export const IconRailSidebar: React.FC = () => {
   const location = useLocation();
   const isConfigurationPage = location.pathname === "/configuration";
   const isNeo = useIsNeo();
-  const { open: settingsOpen, openModal: openSettings } =
-    useSettingsModalStore();
+  const { open: settingsOpen, openModal: openSettings } = useSettingsModalStore();
 
   const [pinned, setPinned] = useState<boolean>(() => {
     try {
@@ -396,9 +393,7 @@ export const IconRailSidebar: React.FC = () => {
           type="button"
           onClick={handleHoverRevealToggle}
           aria-label={
-            hoverRevealEnabled
-              ? "Disable auto-reveal on hover"
-              : "Enable auto-reveal on hover"
+            hoverRevealEnabled ? "Disable auto-reveal on hover" : "Enable auto-reveal on hover"
           }
           className={cn(
             "flex items-center gap-3 min-h-10 py-2 transition-colors duration-100 overflow-hidden",
@@ -583,9 +578,7 @@ export const SidebarContent: React.FC = () => {
               />
             </div>
             <div className="flex flex-col">
-              <h1 className="text-xl font-bold text-base-content">
-                Waypaper Engine
-              </h1>
+              <h1 className="text-xl font-bold text-base-content">Waypaper Engine</h1>
               <p className="text-sm text-base-content/70">Wallpaper Manager</p>
             </div>
           </div>

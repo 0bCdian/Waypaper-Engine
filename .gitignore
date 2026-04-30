@@ -36,6 +36,7 @@ daemon/build/
 .cursor/
 .agents/
 .gemini/
+.worktrees/
 test-results/
 AGENTS.md
 tessl.json

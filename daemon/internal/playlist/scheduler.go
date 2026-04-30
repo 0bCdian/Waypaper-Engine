@@ -2,6 +2,7 @@ package playlist
 
 import (
 	"context"
+	"log/slog"
 	"math/rand"
 	"sync"
 	"time"
@@ -9,9 +10,9 @@ import (
 
 // Scheduler controls the timing of playlist image transitions.
 type Scheduler interface {
-	// Start begins the scheduler. The provided callback is called on each tick
-	// with the next image index.
-	Start(callback func(index int))
+	// Start begins the scheduler. The callback receives the next playlist row index;
+	// return false if the wallpaper did not apply so the timer can retry that step.
+	Start(callback func(index int) bool)
 
 	// Stop permanently stops the scheduler.
 	Stop()
@@ -105,7 +106,7 @@ type timerScheduler struct {
 	totalImages  int
 	currentIndex int
 	indices      []int
-	callback     func(int)
+	callback     func(int) bool
 	activeCancel context.CancelFunc
 	stopCh       chan struct{}
 	stopOnce     sync.Once
@@ -169,7 +170,7 @@ func (s *timerScheduler) buildIndices() []int {
 	return indices
 }
 
-func (s *timerScheduler) Start(callback func(int)) {
+func (s *timerScheduler) Start(callback func(int) bool) {
 	s.mu.Lock()
 	s.callback = callback
 	n := time.Now().Add(s.interval)
@@ -247,18 +248,29 @@ func (s *timerScheduler) runLoop() {
 				s.mu.Unlock()
 				continue
 			}
-			s.currentIndex = (s.currentIndex + 1) % len(s.indices)
-			imgIdx := s.indices[s.currentIndex]
+			nextPos := (s.currentIndex + 1) % len(s.indices)
+			imgIdx := s.indices[nextPos]
 			cb := s.callback
-			next := time.Now().Add(s.interval)
-			s.nextChange = &next
 			s.mu.Unlock()
 
 			// Callback must run without s.mu: Manager.onTick calls sched.NextChangeAt(),
 			// and HTTP handlers call AfterManualNavigation which needs the runLoop select.
+			ok := true
 			if cb != nil {
-				cb(imgIdx)
+				ok = cb(imgIdx)
+				if !ok {
+					slog.Debug("timer scheduler tick skipped (onTick returned false)",
+						"playlist_row_index", imgIdx)
+				}
 			}
+
+			s.mu.Lock()
+			if ok {
+				s.currentIndex = nextPos
+			}
+			deadline := time.Now().Add(s.interval)
+			s.nextChange = &deadline
+			s.mu.Unlock()
 		}
 	}
 }
@@ -352,7 +364,7 @@ func (s *timerScheduler) NextChangeAt() *time.Time {
 type timeOfDayScheduler struct {
 	mu         sync.Mutex
 	slots      []TimeSlot
-	callback   func(int)
+	callback   func(int) bool
 	timer      *time.Timer
 	stopCh     chan struct{}
 	stopOnce   sync.Once
@@ -367,7 +379,7 @@ func newTimeOfDayScheduler(cfg SchedulerConfig) *timeOfDayScheduler {
 	}
 }
 
-func (s *timeOfDayScheduler) Start(callback func(int)) {
+func (s *timeOfDayScheduler) Start(callback func(int) bool) {
 	s.mu.Lock()
 	s.callback = callback
 	s.mu.Unlock()
@@ -399,7 +411,7 @@ func (s *timeOfDayScheduler) loop() {
 			s.mu.Unlock()
 
 			if !paused && cb != nil {
-				cb(nextSlot.ImageIndex)
+				_ = cb(nextSlot.ImageIndex)
 			}
 		}
 	}
@@ -482,7 +494,7 @@ func (s *timeOfDayScheduler) AfterManualNavigation(_ int) {}
 type dayOfWeekScheduler struct {
 	mu          sync.Mutex
 	totalImages int
-	callback    func(int)
+	callback    func(int) bool
 	timer       *time.Timer
 	stopCh      chan struct{}
 	stopOnce    sync.Once
@@ -497,7 +509,7 @@ func newDayOfWeekScheduler(cfg SchedulerConfig) *dayOfWeekScheduler {
 	}
 }
 
-func (s *dayOfWeekScheduler) Start(callback func(int)) {
+func (s *dayOfWeekScheduler) Start(callback func(int) bool) {
 	s.mu.Lock()
 	s.callback = callback
 	s.mu.Unlock()
@@ -510,7 +522,7 @@ func (s *dayOfWeekScheduler) Start(callback func(int)) {
 		cb := s.callback
 		s.mu.Unlock()
 		if cb != nil {
-			cb(idx)
+			_ = cb(idx)
 		}
 		s.scheduleNext()
 	}()
@@ -540,7 +552,7 @@ func (s *dayOfWeekScheduler) scheduleNext() {
 			if !paused && cb != nil {
 				weekday := int(time.Now().Weekday())
 				idx := min(weekday, s.totalImages-1)
-				cb(idx)
+				_ = cb(idx)
 			}
 		}
 	}
@@ -605,7 +617,7 @@ func newManualScheduler(cfg SchedulerConfig) *manualScheduler {
 }
 
 // Start is a no-op for manual scheduler.
-func (s *manualScheduler) Start(_ func(int)) {}
+func (s *manualScheduler) Start(_ func(int) bool) {}
 
 // Stop is a no-op for manual scheduler.
 func (s *manualScheduler) Stop() {}

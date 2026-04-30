@@ -3,11 +3,12 @@ import { useForm } from "@tanstack/react-form";
 import { usePlaylistStore } from "../stores/playlist";
 import { useShallow } from "zustand/react/shallow";
 import { useMonitorStore } from "../stores/monitors";
-import type { PlaylistImage } from "../../electron/daemon-go-types";
+import type { ActivePlaylistInstance, PlaylistImage } from "../../electron/daemon-go-types";
 import Modal, { type ModalHandle } from "./Modal";
 import { useModalStore } from "../stores/modalStore";
 import { logger } from "../utils/logger";
 import { shouldSkipPlaylistStartAfterUpdate } from "../utils/skipStartAfterPlaylistSave";
+import { useActivePlaylistStore } from "../stores/activePlaylistStore";
 import { useIsNeo } from "../hooks/useIsNeo";
 import { cn } from "../utils/cn";
 const { goDaemon } = window.API_RENDERER;
@@ -73,6 +74,8 @@ const SavePlaylistModal = ({ currentPlaylistName, onPlaylistChanged }: Props) =>
         monitorSelection.selectedMonitors.length === 1 ? monitorSelection.selectedMonitors[0] : "*";
       try {
         let savedId: number;
+        let activeAfterSave: ActivePlaylistInstance[] | undefined;
+
         if (playlist.id) {
           await goDaemon.updatePlaylist(playlist.id, {
             name: value.playlistName,
@@ -80,6 +83,12 @@ const SavePlaylistModal = ({ currentPlaylistName, onPlaylistChanged }: Props) =>
             configuration: playlist.configuration,
           });
           savedId = playlist.id;
+          // PATCH reconcile updates current_index/current_image_id — refresh UI immediately.
+          activeAfterSave = await goDaemon.getActivePlaylists();
+          const refreshed = activeAfterSave.find((ap) => ap.playlist_id === savedId);
+          if (refreshed) {
+            useActivePlaylistStore.getState().setActivePlaylist(refreshed);
+          }
         } else {
           const created = await goDaemon.createPlaylist({
             name: value.playlistName,
@@ -97,11 +106,13 @@ const SavePlaylistModal = ({ currentPlaylistName, onPlaylistChanged }: Props) =>
         if (monitorSelection.selectedMonitors.length > 0) {
           let skipStart = false;
           if (playlist.id) {
-            const activePlaylists = await goDaemon.getActivePlaylists();
+            if (activeAfterSave === undefined) {
+              activeAfterSave = await goDaemon.getActivePlaylists();
+            }
             skipStart = shouldSkipPlaylistStartAfterUpdate({
               savedId,
               playlistType: playlist.configuration.type,
-              activePlaylists,
+              activePlaylists: activeAfterSave ?? [],
               selectedMonitors: monitorSelection.selectedMonitors,
               mode: monitorSelection.mode,
             });

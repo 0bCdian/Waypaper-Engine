@@ -25,6 +25,34 @@ func clampPlaylistIndex(idx, n int) int {
 	return idx
 }
 
+// resolvePlaylistRowForPlayback maps the in-memory cursor onto pl.Images after the playlist document
+// changed (new order / inserts). Prefer the slot where CurrentImageID appears in the new slice so the
+// same wallpaper stays current (PATCH reload); if that id was removed, fall back to clamp(CurrentIndex).
+func resolvePlaylistRowForPlayback(inst *store.ActivePlaylistInstance, pl *store.Playlist) int {
+	n := len(pl.Images)
+	if n == 0 || inst == nil {
+		return 0
+	}
+	want := inst.CurrentImageID
+	for i := range pl.Images {
+		if pl.Images[i].ImageID == want {
+			return i
+		}
+	}
+	return clampPlaylistIndex(inst.CurrentIndex, n)
+}
+
+// advancePlaylistRow is Next/Previous stepping on the current strip; uses the same row resolution as
+// PATCH reload so CurrentIndex and CurrentImageID stay aligned after reorder.
+func advancePlaylistRow(inst *store.ActivePlaylistInstance, pl *store.Playlist, delta int) int {
+	n := len(pl.Images)
+	if n == 0 {
+		return 0
+	}
+	cur := resolvePlaylistRowForPlayback(inst, pl)
+	return (cur + delta + n) % n
+}
+
 func playbackToTarget(pb *store.PlaylistPlayback) monitor.MonitorTarget {
 	mode := monitor.MonitorMode(pb.Mode)
 	if mode == "" {
@@ -53,10 +81,26 @@ func (m *Manager) playlistStartIndices(pl *store.Playlist, opts startOpts) (time
 		}
 		return nil, 0
 	}
-	if opts.fromPersisted && pb != nil && n > 0 {
-		if pl.Configuration.Type == "time_of_day" {
-			timeSlots = buildTimeSlots(pl)
+
+	// time_of_day: active row follows wall clock (legacy Node findClosestImageIndex).
+	// Persisted playback.current_index must not override that when unpaused — it goes stale as
+	// real time passes (e.g. index 3 at 18:48 while it is already 20:44 and slot 5 is current).
+	if pl.Configuration.Type == "time_of_day" && n > 0 {
+		timeSlots = buildTimeSlots(pl)
+		tIdx, tCur := timerFromPB()
+		if len(timeSlots) == 0 {
+			return timeSlots, 0, tIdx, tCur
 		}
+		if pl.Configuration.AlwaysStartOnFirstImage {
+			return timeSlots, 0, tIdx, tCur
+		}
+		if pb != nil && pb.Paused {
+			return timeSlots, clampPlaylistIndex(pb.CurrentIndex, n), tIdx, tCur
+		}
+		return timeSlots, findClosestTimeSlot(timeSlots), tIdx, tCur
+	}
+
+	if opts.fromPersisted && pb != nil && n > 0 {
 		tIdx, tCur := timerFromPB()
 		return timeSlots, clampPlaylistIndex(pb.CurrentIndex, n), tIdx, tCur
 	}
@@ -71,7 +115,7 @@ func (m *Manager) playlistStartIndices(pl *store.Playlist, opts startOpts) (time
 func (m *Manager) buildPlayback(inst *store.ActivePlaylistInstance, pl *store.Playlist, run *playlistRun, wasRunning bool) *store.PlaylistPlayback {
 	pb := &store.PlaylistPlayback{
 		WasRunning:   wasRunning,
-		CurrentIndex: clampPlaylistIndex(inst.CurrentIndex, len(pl.Images)),
+		CurrentIndex: resolvePlaylistRowForPlayback(inst, pl),
 		Paused:       inst.Paused,
 		Mode:         inst.Mode,
 		Monitors:     append([]string(nil), inst.Monitors...),

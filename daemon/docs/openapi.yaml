@@ -629,7 +629,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: '#/components/schemas/UnifiedConfig'
     patch:
       tags: [config]
       operationId: patchConfig
@@ -637,13 +637,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenericJSON'
+              $ref: '#/components/schemas/PatchConfigRequest'
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: '#/components/schemas/UnifiedConfig'
   /config/{section}:
     get:
       tags: [config]
@@ -654,7 +654,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: '#/components/schemas/ConfigSectionDocument'
         '404': { $ref: '#/components/responses/NotFound' }
     patch:
       tags: [config]
@@ -664,13 +664,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenericJSON'
+              $ref: '#/components/schemas/ConfigSectionPatchBody'
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: '#/components/schemas/ConfigSectionDocument'
         '404': { $ref: '#/components/responses/NotFound' }
   /config/backends/{backend}:
     get:
@@ -682,7 +682,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: '#/components/schemas/NamedBackendConfigBlob'
     patch:
       tags: [config]
       operationId: patchNamedBackendConfig
@@ -691,13 +691,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenericJSON'
+              $ref: '#/components/schemas/NamedBackendConfigBlob'
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: '#/components/schemas/NamedBackendPatchResponse'
 
   /backends:
     get:
@@ -708,7 +708,9 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                type: array
+                items:
+                  $ref: '#/components/schemas/BackendInfo'
   /backends/{name}/activate:
     post:
       tags: [backends]
@@ -719,7 +721,12 @@ paths:
           required: true
           schema: { type: string }
       responses:
-        '200': { description: OK }
+        '200':
+          description: Backend activated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ActivateBackendResponse'
 
   /wallpaper/current:
     get:
@@ -810,11 +817,109 @@ components:
           schema:
             $ref: '#/components/schemas/APIError'
   schemas:
+    AutoPriorities:
+      type: object
+      properties:
+        image:
+          type: array
+          items: { type: string }
+        video:
+          type: array
+          items: { type: string }
+        web:
+          type: array
+          items: { type: string }
+    BackendSection:
+      type: object
+      properties:
+        type: { type: string }
+        transition_duration_seconds: { type: number }
+        selection_mode: { type: string }
+        auto_priorities:
+          $ref: '#/components/schemas/AutoPriorities'
+    AppConfig:
+      type: object
+      additionalProperties: true
+      description: Application UI and gallery defaults (`internal/config.AppConfig`).
+    DaemonConfig:
+      type: object
+      additionalProperties: true
+      description: Paths, logging, compositor (`internal/config.DaemonConfig`).
+    MonitorsConfig:
+      type: object
+      additionalProperties: true
+    WallhavenConfig:
+      type: object
+      additionalProperties: true
+    UnifiedConfig:
+      type: object
+      required: [app, daemon, backend, monitors, wallhaven]
+      properties:
+        app: { $ref: '#/components/schemas/AppConfig' }
+        daemon: { $ref: '#/components/schemas/DaemonConfig' }
+        backend: { $ref: '#/components/schemas/BackendSection' }
+        monitors: { $ref: '#/components/schemas/MonitorsConfig' }
+        wallhaven: { $ref: '#/components/schemas/WallhavenConfig' }
+      description: Full config returned by GET /config; matches `config.Config` JSON tags.
+    PatchConfigRequest:
+      type: object
+      additionalProperties:
+        type: object
+        additionalProperties: true
+      description: >
+        PATCH /config body — keys are TOML section names (`app`, `daemon`, …),
+        values are partial objects merged per section.
+    ConfigSectionDocument:
+      type: object
+      additionalProperties: true
+      description: JSON for one TOML section (not the top-level `backend` alias path).
+    ConfigSectionPatchBody:
+      type: object
+      additionalProperties: true
+      description: Partial fields for PATCH /config/{section}.
+    NamedBackendConfigBlob:
+      type: object
+      additionalProperties: true
+      description: Per-renderer JSON for GET|PATCH /config/backends/{backend}; shape depends on backend.
+    NamedBackendPatchResponse:
+      type: object
+      required: [status]
+      properties:
+        status:
+          type: string
+          example: updated
+    BackendCapabilities:
+      type: object
+      properties:
+        compositors:
+          type: array
+          items: { type: string }
+        media_types:
+          type: array
+          items: { type: string }
+        transitions: { type: boolean }
+        per_monitor: { type: boolean }
+        daemon_process: { type: boolean }
+    BackendInfo:
+      type: object
+      required: [name, available]
+      properties:
+        name: { type: string }
+        available: { type: boolean }
+        capabilities:
+          $ref: '#/components/schemas/BackendCapabilities'
+    ActivateBackendResponse:
+      type: object
+      required: [status, backend]
+      properties:
+        status:
+          type: string
+          enum: [activated]
+        backend: { type: string }
     GenericJSON:
       type: object
       description: |
-        Bodies and responses are shared structs in `internal/handler` and `internal/store`.
-        Replace with concrete `$ref` components per type when codegen or doc sync is added.
+        Fallback for routes not yet split into dedicated components (gallery, playlists, …).
       additionalProperties: true
     StatusOk:
       type: object

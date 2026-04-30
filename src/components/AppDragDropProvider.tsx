@@ -1,13 +1,18 @@
 import type { ReactNode } from "react";
+import type { Draggable, DragOperation, Droppable } from "@dnd-kit/abstract";
 import { DragDropProvider, DragOverlay } from "@dnd-kit/react";
 import { PointerSensor, PointerActivationConstraints } from "@dnd-kit/dom";
-import { arrayMove } from "@dnd-kit/helpers";
+import { isSortable } from "@dnd-kit/dom/sortable";
 import { useDragStore, type DragSourceData, type DropTargetData } from "../stores/dragStore";
 import { useFoldersStore, getAllImageIdsInFolder } from "../stores/foldersStore";
 import { useImagesStore } from "../stores/images";
 import { usePlaylistStore } from "../stores/playlist";
 import DragPreview from "./DragPreview";
 import { logger } from "../utils/logger";
+import {
+  reorderPlaylistImagesBySortableMove,
+  sortTimeOfDayPlaylistImages,
+} from "../utils/playlistStripReorder";
 
 const { goDaemon } = window.API_RENDERER;
 
@@ -68,7 +73,7 @@ export default function AppDragDropProvider({ children }: { children: ReactNode 
           return;
         }
 
-        dispatchDrop(sourceData, targetData, operation)
+        dispatchDrop(sourceData, targetData, operation as DragOperation<Draggable, Droppable>)
           .catch((err) => {
             logger.error("Drop handler error:", err);
           })
@@ -84,9 +89,30 @@ export default function AppDragDropProvider({ children }: { children: ReactNode 
 async function dispatchDrop(
   sourceData: DragSourceData,
   targetData: DropTargetData,
-  operation: { target?: { data?: unknown } | null },
+  operation: DragOperation<Draggable, Droppable>,
 ) {
   const currentFolderId = useFoldersStore.getState().currentFolderId;
+
+  // Reorder within the playlist strip using sortable indices so Zustand matches dnd-kit even when
+  // collision resolves to the strip container (`playlist`), not another card.
+  if (sourceData.type === "playlist-item" && sourceData.imageId != null) {
+    const isStripTarget = targetData.type === "playlist" || targetData.type === "playlist-item";
+    const src = operation.source;
+    if (isStripTarget && src && isSortable(src)) {
+      const from = src.initialIndex;
+      const to = src.index;
+      const store = usePlaylistStore.getState();
+      const next = reorderPlaylistImagesBySortableMove(store.playlist.images, from, to);
+      if (next != null) {
+        const committed =
+          store.playlist.configuration.type === "time_of_day"
+            ? sortTimeOfDayPlaylistImages(next)
+            : next;
+        store.movePlaylistArrayOrder(committed);
+      }
+      return;
+    }
+  }
 
   if (targetData.type === "folder" && targetData.folderId != null) {
     if (sourceData.type === "image") {
@@ -139,33 +165,5 @@ async function dispatchDrop(
       usePlaylistStore.getState().removeImagesFromPlaylist(new Set([sourceData.imageId]));
     }
     return;
-  }
-
-  // Sortable reorder within playlist
-  if (sourceData.type === "playlist-item" && sourceData.imageId != null) {
-    const targetPlaylistData = operation.target?.data as DragSourceData | undefined;
-    if (targetPlaylistData?.type === "playlist-item" && targetPlaylistData.imageId != null) {
-      const store = usePlaylistStore.getState();
-      const images = store.playlist.images;
-      const sourceId = sourceData.imageId;
-      const targetId = targetPlaylistData.imageId;
-      if (sourceId === targetId) return;
-
-      const oldIndex = images.findIndex((img) => img.image_id === sourceId);
-      const newIndex = images.findIndex((img) => img.image_id === targetId);
-      if (oldIndex === -1 || newIndex === -1) return;
-
-      store.swapImageTimes(sourceId, targetId);
-
-      if (store.playlist.configuration.type === "time_of_day") {
-        const sorted = [...images].sort((a, b) => {
-          if (a.time == null || b.time == null) return 0;
-          return a.time - b.time;
-        });
-        store.movePlaylistArrayOrder(sorted);
-      } else {
-        store.movePlaylistArrayOrder(arrayMove(images, oldIndex, newIndex));
-      }
-    }
   }
 }

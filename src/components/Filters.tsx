@@ -54,9 +54,7 @@ const SORT_CYCLE: SortState[] = [
   { type: "id", order: "desc" },
 ];
 function nextSort(current: SortState): SortState {
-  const idx = SORT_CYCLE.findIndex(
-    (s) => s.type === current.type && s.order === current.order,
-  );
+  const idx = SORT_CYCLE.findIndex((s) => s.type === current.type && s.order === current.order);
   return SORT_CYCLE[(idx + 1) % SORT_CYCLE.length];
 }
 function sortLabel(s: SortState) {
@@ -72,9 +70,7 @@ const MEDIA_LABELS: Record<(typeof MEDIA_TYPES)[number], string> = {
   gif: "GIF",
 };
 
-function isKeyboardTargetInsideEditableField(
-  target: EventTarget | null,
-): boolean {
+function isKeyboardTargetInsideEditableField(target: EventTarget | null): boolean {
   if (!(target instanceof Element)) return false;
   if (
     target instanceof HTMLInputElement ||
@@ -138,9 +134,7 @@ function Filters() {
 
   const [prevStoreOrder, setPrevStoreOrder] = useState(filters.order);
   const [prevStoreType, setPrevStoreType] = useState(filters.type);
-  const [prevStoreMediaType, setPrevStoreMediaType] = useState(
-    filters.mediaType,
-  );
+  const [prevStoreMediaType, setPrevStoreMediaType] = useState(filters.mediaType);
 
   if (
     filters.order !== prevStoreOrder ||
@@ -222,9 +216,7 @@ function Filters() {
         advancedFilters: filters.advancedFilters,
       };
       setFilters(newFilters);
-      useImagesStore
-        .getState()
-        .fetchPage(1, mapFiltersToImageQueryParams(partialFilters));
+      useImagesStore.getState().fetchPage(1, mapFiltersToImageQueryParams(partialFilters));
     },
     200,
     [partialFilters],
@@ -236,14 +228,11 @@ function Filters() {
       advancedFilters: filters.advancedFilters,
     };
     setFilters(resetFilters);
-    useImagesStore
-      .getState()
-      .fetchPage(1, mapFiltersToImageQueryParams(partialFiltersRef.current));
+    useImagesStore.getState().fetchPage(1, mapFiltersToImageQueryParams(partialFiltersRef.current));
   }, [filters.advancedFilters, setFilters]);
 
   const isNeo = useIsNeo();
-  const hasActiveSearch =
-    partialFilters.filterTokens.length > 0 || inputHistoryCount > 0;
+  const hasActiveSearch = partialFilters.filterTokens.length > 0 || inputHistoryCount > 0;
   const currentSort: SortState = {
     type: partialFilters.type,
     order: partialFilters.order,
@@ -266,17 +255,14 @@ function Filters() {
               ].join(" "),
             valueContainer: () => "flex flex-1 flex-wrap gap-1 py-0.5",
             multiValue: () => "badge badge-primary gap-1 max-w-full",
-            multiValueLabel: () =>
-              "text-xs font-extrabold uppercase tracking-tight truncate",
+            multiValueLabel: () => "text-xs font-extrabold uppercase tracking-tight truncate",
             multiValueRemove: () =>
               "hover:bg-primary-focus rounded-none px-0.5 text-lg font-black leading-none opacity-80 hover:opacity-100",
-            input: () =>
-              "min-w-[8ch] flex-1 bg-transparent text-sm font-bold outline-none",
+            input: () => "min-w-[8ch] flex-1 bg-transparent text-sm font-bold outline-none",
             placeholder: () =>
               "truncate  text-xs font-black uppercase tracking-tight text-base-content/55 leading-none",
             menu: () => "neo-rs-menu mt-1 w-full p-0 shadow-none",
-            menuList: () =>
-              "neo-rs-menuList max-h-[min(70vh,24rem)] overflow-y-auto py-1",
+            menuList: () => "neo-rs-menuList max-h-[min(70vh,24rem)] overflow-y-auto py-1",
             option: ({ isFocused }: { isFocused: boolean }) =>
               [
                 "neo-rs-option cursor-pointer px-3 py-2 text-xs font-extrabold uppercase tracking-tight",
@@ -294,11 +280,9 @@ function Filters() {
             multiValueLabel: () => "text-xs font-medium truncate",
             multiValueRemove: () =>
               "hover:bg-primary-focus rounded px-0.5 text-base leading-none opacity-70 hover:opacity-100",
-            input: () =>
-              "min-w-[8ch] flex-1 bg-transparent text-sm outline-none",
+            input: () => "min-w-[8ch] flex-1 bg-transparent text-sm outline-none",
             placeholder: () => "text-base-content/40 truncate text-sm",
-            menu: () =>
-              "mt-1 w-full rounded-lg border border-base-300 bg-base-100 shadow-xl",
+            menu: () => "mt-1 w-full rounded-lg border border-base-300 bg-base-100 shadow-xl",
             menuList: () => "max-h-[min(70vh,24rem)] overflow-y-auto py-1",
             option: ({ isFocused }: { isFocused: boolean }) =>
               `cursor-pointer px-3 py-2 text-sm ${isFocused ? "bg-base-200" : ""}`,
@@ -312,9 +296,7 @@ function Filters() {
     : "btn btn-sm rounded-lg text-xs font-medium";
 
   const pillActive = isNeo ? "btn-primary" : "btn-primary";
-  const pillIdle = isNeo
-    ? "btn-active"
-    : "btn-ghost text-base-content/70 hover:text-base-content";
+  const pillIdle = isNeo ? "btn-active" : "btn-ghost text-base-content/70 hover:text-base-content";
 
   return (
     <section
@@ -329,9 +311,7 @@ function Filters() {
               key={type}
               type="button"
               className={`${pillBase} ${partialFilters.mediaType === type ? pillActive : pillIdle}`}
-              onClick={() =>
-                setPartialFilters((p) => ({ ...p, mediaType: type }))
-              }
+              onClick={() => setPartialFilters((p) => ({ ...p, mediaType: type }))}
             >
               {MEDIA_LABELS[type]}
             </button>
@@ -349,9 +329,7 @@ function Filters() {
           <button
             type="button"
             className={`${pillBase} ${pillIdle}`}
-            onClick={() =>
-              useModalStore.getState().open("AdvancedFiltersModal")
-            }
+            onClick={() => useModalStore.getState().open("AdvancedFiltersModal")}
           >
             Filters
           </button>
@@ -400,25 +378,19 @@ function Filters() {
                     IndicatorSeparator: () => null,
                     IndicatorsContainer: () => null,
                   }}
-                  menuPortalTarget={
-                    typeof document !== "undefined" ? document.body : undefined
-                  }
+                  menuPortalTarget={typeof document !== "undefined" ? document.body : undefined}
                   menuPosition="fixed"
                   styles={{
                     menuPortal: (base) => ({ ...base, zIndex: 10000 }),
                   }}
                   classNames={filterSelectClassNames}
                   formatCreateLabel={(inputValue) => `Add "${inputValue}"`}
-                  isValidNewOption={(inputValue) =>
-                    inputValue.trim().length > 0
-                  }
+                  isValidNewOption={(inputValue) => inputValue.trim().length > 0}
                   placeholder={TOKEN_PLACEHOLDER}
                   options={selectOptions}
                   value={tokenValue}
                   onInputChange={(v) => setFilterInput(v)}
-                  onChange={(opts) =>
-                    onTokensChange(opts as MultiValue<TokenOption>)
-                  }
+                  onChange={(opts) => onTokensChange(opts as MultiValue<TokenOption>)}
                   closeMenuOnSelect={false}
                   filterOption={null}
                   noOptionsMessage={() => null}
@@ -463,9 +435,7 @@ function Filters() {
               )}
               <button
                 type="button"
-                onClick={() =>
-                  useModalStore.getState().open("GalleryFilterCheatsheetModal")
-                }
+                onClick={() => useModalStore.getState().open("GalleryFilterCheatsheetModal")}
                 aria-label="Filter syntax help"
                 className={cn(
                   isNeo

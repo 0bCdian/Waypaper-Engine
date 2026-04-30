@@ -1,6 +1,7 @@
 import { create } from "zustand";
 import type { PlaylistImage, PlaylistConfiguration } from "../../electron/daemon-go-types";
 import type { rendererPlaylist } from "../types/rendererTypes";
+import { sortTimeOfDayPlaylistImages } from "../utils/playlistStripReorder";
 
 const STORAGE_KEY = "waypaper-playlist";
 
@@ -146,9 +147,44 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
 
   setConfiguration: (newConfiguration) => {
     set((state) => {
-      const newPlaylist = { ...state.playlist, configuration: newConfiguration };
+      let images = state.playlist.images;
+      let playlistImagesTimeSet = state.playlistImagesTimeSet;
+      let playlistImagesSet = state.playlistImagesSet;
+
+      if (newConfiguration.type === "time_of_day" && images.length > 0) {
+        const needsTimes = images.some((img) => img.time == null);
+        if (needsTimes) {
+          const timeSet = new Set(state.playlistImagesTimeSet);
+          const date = new Date();
+          let initialTimeStamp = Math.max(...timeSet, date.getHours() * 60 + date.getMinutes());
+          const newImages = images.map((img) => {
+            if (img.time != null) {
+              return img;
+            }
+            initialTimeStamp += 5;
+            if (initialTimeStamp >= 1440) {
+              initialTimeStamp -= 1439;
+            }
+            while (timeSet.has(initialTimeStamp)) {
+              initialTimeStamp++;
+            }
+            timeSet.add(initialTimeStamp);
+            return { ...img, time: initialTimeStamp };
+          });
+          images = sortTimeOfDayPlaylistImages(newImages);
+          playlistImagesTimeSet = timeSet;
+          playlistImagesSet = new Set(newImages.map((i) => i.image_id));
+        }
+      }
+
+      const newPlaylist = { ...state.playlist, configuration: newConfiguration, images };
       persistPlaylist(newPlaylist);
-      return { playlist: newPlaylist, isDirty: true };
+      return {
+        playlist: newPlaylist,
+        isDirty: true,
+        playlistImagesTimeSet,
+        playlistImagesSet,
+      };
     });
   },
 
@@ -236,7 +272,12 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
       return img;
     });
 
-    const playlist = { ...newPlaylist, images: fixedImages };
+    let imagesOut = fixedImages;
+    if (newPlaylist.configuration.type === "time_of_day") {
+      imagesOut = sortTimeOfDayPlaylistImages(fixedImages);
+    }
+
+    const playlist = { ...newPlaylist, images: imagesOut };
     persistPlaylist(playlist);
     set(() => ({
       playlist,
