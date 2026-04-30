@@ -209,10 +209,8 @@ func startDaemon(configPath string, logLevel string) error {
 		}
 	} else {
 		slog.Info("backend initialized", "name", activeBackend.Name())
-		if syncer, ok := activeBackend.(backend.RuntimeConfigSync); ok {
-			if err := syncer.SyncRuntimeFromConfig(ctx); err != nil {
-				slog.Warn("backend runtime sync after init failed", "error", err)
-			}
+		if err := activeBackend.OnConfigChanged(ctx, nil); err != nil {
+			slog.Warn("backend config sync after init failed", "error", err)
 		}
 	}
 

@@ -143,14 +143,14 @@ func TestConfigHandler_PatchSection_Backend_AliasRemovedNotFound(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
-// syncProbe implements backend.Backend and backend.RuntimeConfigSync for config handler tests.
+// syncProbe implements backend.Backend for config handler tests, counting OnConfigChanged calls.
 type syncProbe struct {
 	testutil.MockBackend
 	syncCalls int
 	syncErr   error
 }
 
-func (s *syncProbe) SyncRuntimeFromConfig(ctx context.Context) error {
+func (s *syncProbe) OnConfigChanged(_ context.Context, _ json.RawMessage) error {
 	s.syncCalls++
 	return s.syncErr
 }

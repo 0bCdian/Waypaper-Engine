@@ -192,10 +192,7 @@ type fakeBackend struct {
 	shutdownCount   int
 }
 
-var (
-	_ backend.Backend           = (*fakeBackend)(nil)
-	_ backend.RuntimeConfigSync = (*fakeBackend)(nil)
-)
+var _ backend.Backend = (*fakeBackend)(nil)
 
 type fakeBackendOption func(*fakeBackend)
 
@@ -249,7 +246,7 @@ func (f *fakeBackend) ParseConfig(raw json.RawMessage) (any, error) {
 	return nil, nil
 }
 
-func (f *fakeBackend) SyncRuntimeFromConfig(ctx context.Context) error {
+func (f *fakeBackend) OnConfigChanged(_ context.Context, _ json.RawMessage) error {
 	f.syncCount++
 	return nil
 }

@@ -106,10 +106,12 @@ func (c *Controller) UpdateBackendConfig(ctx context.Context, name string, raw j
 	}
 	active := c.cfg.GetActiveBackendType()
 	if name == active {
-		if syncer, ok := b.(backend.RuntimeConfigSync); ok {
-			if err := syncer.SyncRuntimeFromConfig(ctx); err != nil {
-				slog.Warn("backend runtime sync after config save failed", "backend", name, "error", err)
-			}
+		if err := b.OnConfigChanged(ctx, raw); err != nil {
+			slog.Warn("backend config change sync failed", "backend", name, "error", err)
+		}
+		// Re-apply current wallpaper so stateless backends reflect new config immediately.
+		if c.restore != nil {
+			c.restore.Restore(ctx)
 		}
 	}
 	c.bus.Publish(events.Event{

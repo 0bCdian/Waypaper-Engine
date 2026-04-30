@@ -40,6 +40,9 @@ func (b *recordingBackend) Shutdown(_ context.Context) error           { return 
 func (b *recordingBackend) RegisterDefaults(_ *viper.Viper)            {}
 func (b *recordingBackend) ValidateConfig(_ json.RawMessage) error     { return nil }
 func (b *recordingBackend) ParseConfig(_ json.RawMessage) (any, error) { return nil, nil }
+func (b *recordingBackend) OnConfigChanged(_ context.Context, _ json.RawMessage) error {
+	return nil
+}
 func (b *recordingBackend) SetWallpaper(_ context.Context, req backend.WallpaperRequest) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()

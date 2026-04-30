@@ -61,6 +61,8 @@ func (m *mockBackend) ParseConfig(json.RawMessage) (any, error) {
 	return nil, nil
 }
 
+func (m *mockBackend) OnConfigChanged(_ context.Context, _ json.RawMessage) error { return nil }
+
 func (m *mockBackend) SetExtendParallaxGroup(names []string) {
 	if m.setExtendGroupFn != nil {
 		m.setExtendGroupFn(names)
@@ -305,34 +307,31 @@ func TestApply_ExtendMode_MultiWithSplitter_SetsParallaxSpanGroup(t *testing.T) 
 		{Name: "m1", X: 0, Y: 0, Width: 200, Height: 100, Scale: 1},
 		{Name: "m2", X: 200, Y: 0, Width: 200, Height: 100, Scale: 1},
 	}
-	var gotParallax []string
-	f.backend.setExtendGroupFn = func(names []string) {
-		if names == nil {
-			gotParallax = nil
-			return
-		}
-		gotParallax = append([]string(nil), names...)
+	var reqs []backend.WallpaperRequest
+	f.backend.setWallpaperFn = func(_ context.Context, req backend.WallpaperRequest) error {
+		reqs = append(reqs, req)
+		return nil
 	}
 	opts := f.opts(mons, monitor.ModeExtend)
 	opts.Splitter = splitter
 	err := Apply(context.Background(), opts)
 	require.NoError(t, err)
-	assert.ElementsMatch(t, []string{"m1", "m2"}, gotParallax)
+	require.NotEmpty(t, reqs, "expected at least one SetWallpaper call")
+	// All requests in an extend multi-monitor split should carry the full group.
+	assert.ElementsMatch(t, []string{"m1", "m2"}, reqs[0].ExtendGroup)
 }
 
 func TestApply_NonSpanMode_ClearsParallaxSpanGroup(t *testing.T) {
 	f := newApplyFixture()
-	var gotParallax []string
-	f.backend.setExtendGroupFn = func(names []string) {
-		if names == nil {
-			gotParallax = nil
-			return
-		}
-		gotParallax = append([]string(nil), names...)
+	var reqs []backend.WallpaperRequest
+	f.backend.setWallpaperFn = func(_ context.Context, req backend.WallpaperRequest) error {
+		reqs = append(reqs, req)
+		return nil
 	}
 	err := Apply(context.Background(), f.opts([]monitor.Monitor{{Name: "m1", Width: 100, Height: 100}}, monitor.ModeIndividual))
 	require.NoError(t, err)
-	assert.Nil(t, gotParallax)
+	require.NotEmpty(t, reqs)
+	assert.Nil(t, reqs[0].ExtendGroup)
 }
 
 func testExtendInteractiveUsesClone(t *testing.T, mediaType string, wantMT media.MediaType) {

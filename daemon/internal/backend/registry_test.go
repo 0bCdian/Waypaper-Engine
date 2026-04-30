@@ -29,6 +29,7 @@ func (s *stubBackend) SetWallpaper(context.Context, WallpaperRequest) error { re
 func (s *stubBackend) RegisterDefaults(*viper.Viper)                        {}
 func (s *stubBackend) ValidateConfig(json.RawMessage) error                 { return nil }
 func (s *stubBackend) ParseConfig(json.RawMessage) (any, error)             { return nil, nil }
+func (s *stubBackend) OnConfigChanged(context.Context, json.RawMessage) error { return nil }
 
 func TestRegistry_RegisterAndGet(t *testing.T) {
 	reg := NewRegistry()

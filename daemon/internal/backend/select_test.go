@@ -30,6 +30,7 @@ func (s *stubBackend) SetWallpaper(_ context.Context, _ backend.WallpaperRequest
 func (s *stubBackend) RegisterDefaults(_ *viper.Viper)                                  {}
 func (s *stubBackend) ValidateConfig(_ json.RawMessage) error                           { return nil }
 func (s *stubBackend) ParseConfig(_ json.RawMessage) (any, error)                       { return nil, nil }
+func (s *stubBackend) OnConfigChanged(_ context.Context, _ json.RawMessage) error       { return nil }
 
 type stubRegistry struct {
 	backends map[string]*stubBackend

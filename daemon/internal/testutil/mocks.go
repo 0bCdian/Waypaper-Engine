@@ -716,6 +716,10 @@ func (m *MockBackend) TryBatchRestore(ctx context.Context, states []store.Monito
 	return nil, nil, nil, false
 }
 
+func (m *MockBackend) OnConfigChanged(_ context.Context, _ json.RawMessage) error {
+	return nil
+}
+
 // ---------------------------------------------------------------------------
 // 11. MockRegistry
 // ---------------------------------------------------------------------------
