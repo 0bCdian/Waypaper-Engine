@@ -755,10 +755,7 @@ export class IPCManager {
       "monitor_connected",
       "monitor_disconnected",
       "config_changed",
-      "history_cleared",
-      "images_updated",
-      "playlists_updated",
-      "folders_updated",
+      "gallery_changed",
       "backend_unavailable",
       "wallpaper_restore_failed",
     ];

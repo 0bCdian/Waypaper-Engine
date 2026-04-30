@@ -1,4 +1,4 @@
-package handler
+package playlistshandler
 
 import (
 	"context"

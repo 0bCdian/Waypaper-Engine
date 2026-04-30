@@ -9,6 +9,8 @@
 		"url": "https://github.com/0bCdian"
 	},
 	"scripts": {
+		"generate:openapi": "cd daemon && go generate ./cmd/daemon/",
+		"ci:openapi": "cd daemon && swag init -g cmd/daemon/main.go -o docs --outputTypes yaml --parseInternal --parseDependency && git diff --exit-code -- daemon/docs/swagger.yaml && git ls-files --error-unmatch daemon/docs/swagger.yaml",
 		"docs:copy-spec": "cp daemon/docs/openapi.yaml docs/public/openapi.yaml",
 		"docs:dev": "npm run docs:copy-spec && vitepress dev docs",
 		"docs:build": "npm run docs:copy-spec && vitepress build docs",

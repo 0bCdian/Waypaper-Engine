@@ -1,4 +1,4 @@
-package handler
+package httpjson
 
 import (
 	"encoding/json"
@@ -83,9 +83,8 @@ func WriteStoreError(w http.ResponseWriter, err error) {
 	}
 }
 
-// normalizeStringSlice converts a []interface{} (from JSON decoding) to []string.
-// Used to normalize tags and colors in update request maps.
-func normalizeStringSlice(raw any) []string {
+// NormalizeStringSlice converts a []interface{} (from JSON decoding) to []string.
+func NormalizeStringSlice(raw any) []string {
 	arr, ok := raw.([]interface{})
 	if !ok {
 		return nil

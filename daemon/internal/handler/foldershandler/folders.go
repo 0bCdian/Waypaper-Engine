@@ -1,4 +1,4 @@
-package handler
+package foldershandler
 
 import (
 	"context"
@@ -10,6 +10,7 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"waypaper-engine/daemon/internal/events"
+	"waypaper-engine/daemon/internal/handler/httpjson"
 	"waypaper-engine/daemon/internal/store"
 )
 
@@ -30,6 +31,15 @@ func NewFolderHandler(folderStore store.FolderStore, imageStore store.ImageStore
 }
 
 // List handles GET /folders.
+//
+// @Summary      List folders
+// @Tags         folders
+// @Param        parent_id  query     string  false  "Parent folder ID or 'root'"
+// @Param        search     query     string  false  "Search query"
+// @Success      200        {object}  map[string]any
+// @Failure      400        {object}  httpjson.APIError
+// @Failure      500        {object}  httpjson.APIError
+// @Router       /folders [get]
 func (h *FolderHandler) List(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
@@ -40,7 +50,7 @@ func (h *FolderHandler) List(w http.ResponseWriter, r *http.Request) {
 		} else {
 			pid, err := strconv.Atoi(pidStr)
 			if err != nil {
-				WriteError(w, http.StatusBadRequest, "invalid parent_id")
+				httpjson.WriteError(w, http.StatusBadRequest, "invalid parent_id")
 				return
 			}
 			parentID = &pid
@@ -50,60 +60,76 @@ func (h *FolderHandler) List(w http.ResponseWriter, r *http.Request) {
 	if searchQuery := q.Get("search"); searchQuery != "" {
 		folders, err := h.folderStore.Search(r.Context(), searchQuery)
 		if err != nil {
-			WriteError(w, http.StatusInternalServerError, err.Error())
+			httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		if folders == nil {
 			folders = []store.Folder{}
 		}
-		WriteJSON(w, http.StatusOK, map[string]any{"data": folders})
+		httpjson.WriteJSON(w, http.StatusOK, map[string]any{"data": folders})
 		return
 	}
 
 	folders, err := h.folderStore.GetAll(r.Context(), parentID)
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, err.Error())
+		httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	if folders == nil {
 		folders = []store.Folder{}
 	}
 
-	WriteJSON(w, http.StatusOK, map[string]any{"data": folders})
+	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"data": folders})
 }
 
 // Get handles GET /folders/{id}.
+//
+// @Summary      Get a folder
+// @Tags         folders
+// @Param        id   path      int  true  "Folder ID"
+// @Success      200  {object}  store.Folder
+// @Failure      400  {object}  httpjson.APIError
+// @Failure      404  {object}  httpjson.APIError
+// @Router       /folders/{id} [get]
 func (h *FolderHandler) Get(w http.ResponseWriter, r *http.Request) {
-	id, err := ParseIntParam(chi.URLParam(r, "id"))
+	id, err := httpjson.ParseIntParam(chi.URLParam(r, "id"))
 	if err != nil {
-		WriteError(w, http.StatusBadRequest, err.Error())
+		httpjson.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	folder, err := h.folderStore.GetByID(r.Context(), id)
 	if err != nil {
-		WriteError(w, http.StatusNotFound, err.Error())
+		httpjson.WriteError(w, http.StatusNotFound, err.Error())
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, folder)
+	httpjson.WriteJSON(w, http.StatusOK, folder)
 }
 
 // GetPath handles GET /folders/{id}/path.
+//
+// @Summary      Get folder ancestry path
+// @Tags         folders
+// @Param        id   path      int  true  "Folder ID"
+// @Success      200  {object}  map[string]any
+// @Failure      400  {object}  httpjson.APIError
+// @Failure      404  {object}  httpjson.APIError
+// @Router       /folders/{id}/path [get]
 func (h *FolderHandler) GetPath(w http.ResponseWriter, r *http.Request) {
-	id, err := ParseIntParam(chi.URLParam(r, "id"))
+	id, err := httpjson.ParseIntParam(chi.URLParam(r, "id"))
 	if err != nil {
-		WriteError(w, http.StatusBadRequest, err.Error())
+		httpjson.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	path, err := h.folderStore.GetPath(r.Context(), id)
 	if err != nil {
-		WriteError(w, http.StatusNotFound, err.Error())
+		httpjson.WriteError(w, http.StatusNotFound, err.Error())
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, map[string]any{"data": path})
+	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"data": path})
 }
 
 type createFolderRequest struct {
@@ -112,16 +138,24 @@ type createFolderRequest struct {
 }
 
 // Create handles POST /folders.
+//
+// @Summary      Create a folder
+// @Tags         folders
+// @Param        body  body      createFolderRequest  true  "Folder data"
+// @Success      201   {object}  store.Folder
+// @Failure      400   {object}  httpjson.APIError
+// @Failure      500   {object}  httpjson.APIError
+// @Router       /folders [post]
 func (h *FolderHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req createFolderRequest
-	if err := ParseBody(r, &req); err != nil {
-		WriteError(w, http.StatusBadRequest, err.Error())
+	if err := httpjson.ParseBody(r, &req); err != nil {
+		httpjson.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	name := strings.TrimSpace(req.Name)
 	if name == "" {
-		WriteError(w, http.StatusBadRequest, "name is required")
+		httpjson.WriteError(w, http.StatusBadRequest, "name is required")
 		return
 	}
 
@@ -130,67 +164,85 @@ func (h *FolderHandler) Create(w http.ResponseWriter, r *http.Request) {
 		ParentID: req.ParentID,
 	})
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, err.Error())
+		httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	h.bus.Publish(events.Event{
-		Type: events.FoldersUpdated,
-		Data: map[string]any{"action": "created", "folder_id": folder.ID},
+		Type: events.GalleryChanged,
+		Data: map[string]any{"domain": "folders"},
 	})
 
-	WriteJSON(w, http.StatusCreated, folder)
+	httpjson.WriteJSON(w, http.StatusCreated, folder)
 }
 
 // Update handles PATCH /folders/{id}.
+//
+// @Summary      Update a folder
+// @Tags         folders
+// @Param        id    path      int             true  "Folder ID"
+// @Param        body  body      map[string]any  true  "Fields to update (name, parent_id)"
+// @Success      200   {object}  store.Folder
+// @Failure      400   {object}  httpjson.APIError
+// @Failure      404   {object}  httpjson.APIError
+// @Failure      500   {object}  httpjson.APIError
+// @Router       /folders/{id} [patch]
 func (h *FolderHandler) Update(w http.ResponseWriter, r *http.Request) {
-	id, err := ParseIntParam(chi.URLParam(r, "id"))
+	id, err := httpjson.ParseIntParam(chi.URLParam(r, "id"))
 	if err != nil {
-		WriteError(w, http.StatusBadRequest, err.Error())
+		httpjson.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	var updates map[string]any
-	if err := ParseBody(r, &updates); err != nil {
-		WriteError(w, http.StatusBadRequest, err.Error())
+	if err := httpjson.ParseBody(r, &updates); err != nil {
+		httpjson.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	allowed := map[string]bool{"name": true, "parent_id": true}
 	for key := range updates {
 		if !allowed[key] {
-			WriteErrorf(w, http.StatusBadRequest, "field %q is not updatable", key)
+			httpjson.WriteErrorf(w, http.StatusBadRequest, "field %q is not updatable", key)
 			return
 		}
 	}
 
 	folder, err := h.folderStore.Update(r.Context(), id, updates)
 	if err != nil {
-		WriteError(w, http.StatusNotFound, err.Error())
+		httpjson.WriteError(w, http.StatusNotFound, err.Error())
 		return
 	}
 
 	h.bus.Publish(events.Event{
-		Type: events.FoldersUpdated,
-		Data: map[string]any{"action": "updated", "folder_id": id},
+		Type: events.GalleryChanged,
+		Data: map[string]any{"domain": "folders"},
 	})
 
-	WriteJSON(w, http.StatusOK, folder)
+	httpjson.WriteJSON(w, http.StatusOK, folder)
 }
 
 // Delete handles DELETE /folders/{id}.
-// Query param mode=keep_contents (default) re-parents images and subfolders.
-// mode=delete_all recursively deletes everything.
+//
+// @Summary      Delete a folder
+// @Tags         folders
+// @Param        id    path      int     true   "Folder ID"
+// @Param        mode  query     string  false  "keep_contents (default) or delete_all"
+// @Success      200   {object}  map[string]string
+// @Failure      400   {object}  httpjson.APIError
+// @Failure      404   {object}  httpjson.APIError
+// @Failure      500   {object}  httpjson.APIError
+// @Router       /folders/{id} [delete]
 func (h *FolderHandler) Delete(w http.ResponseWriter, r *http.Request) {
-	id, err := ParseIntParam(chi.URLParam(r, "id"))
+	id, err := httpjson.ParseIntParam(chi.URLParam(r, "id"))
 	if err != nil {
-		WriteError(w, http.StatusBadRequest, err.Error())
+		httpjson.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	folder, err := h.folderStore.GetByID(r.Context(), id)
 	if err != nil {
-		WriteError(w, http.StatusNotFound, err.Error())
+		httpjson.WriteError(w, http.StatusNotFound, err.Error())
 		return
 	}
 
@@ -204,35 +256,35 @@ func (h *FolderHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	switch mode {
 	case "keep_contents":
 		if err := h.reparentContents(ctx, id, folder.ParentID); err != nil {
-			WriteError(w, http.StatusInternalServerError, err.Error())
+			httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 	case "delete_all":
 		if err := h.deleteAllContents(ctx, id); err != nil {
-			WriteError(w, http.StatusInternalServerError, err.Error())
+			httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 	default:
-		WriteError(w, http.StatusBadRequest, "mode must be keep_contents or delete_all")
+		httpjson.WriteError(w, http.StatusBadRequest, "mode must be keep_contents or delete_all")
 		return
 	}
 
 	if err := h.folderStore.Delete(ctx, id); err != nil {
-		WriteError(w, http.StatusInternalServerError, err.Error())
+		httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	h.bus.Publish(events.Event{
-		Type: events.FoldersUpdated,
-		Data: map[string]any{"action": "deleted", "folder_id": id, "mode": mode},
+		Type: events.GalleryChanged,
+		Data: map[string]any{"domain": "folders"},
 	})
 
 	h.bus.Publish(events.Event{
-		Type: events.ImagesUpdated,
-		Data: map[string]any{"action": "folder_deleted", "folder_id": id},
+		Type: events.GalleryChanged,
+		Data: map[string]any{"domain": "images"},
 	})
 
-	WriteJSON(w, http.StatusOK, map[string]any{"deleted": true, "mode": mode})
+	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"deleted": true, "mode": mode})
 }
 
 // reparentContents recursively reparents all images from the folder tree to
@@ -353,15 +405,24 @@ type moveImagesRequest struct {
 	FolderID *int  `json:"folder_id"`
 }
 
+// MoveImages moves images to a folder.
+//
+// @Summary      Move images to a folder
+// @Tags         folders
+// @Param        body  body      moveImagesRequest  true  "Move request"
+// @Success      200   {object}  map[string]any
+// @Failure      400   {object}  httpjson.APIError
+// @Failure      500   {object}  httpjson.APIError
+// @Router       /folders/move-images [post]
 func (h *FolderHandler) MoveImages(w http.ResponseWriter, r *http.Request) {
 	var req moveImagesRequest
-	if err := ParseBody(r, &req); err != nil {
-		WriteError(w, http.StatusBadRequest, err.Error())
+	if err := httpjson.ParseBody(r, &req); err != nil {
+		httpjson.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	if len(req.ImageIDs) == 0 {
-		WriteError(w, http.StatusBadRequest, "image_ids is required")
+		httpjson.WriteError(w, http.StatusBadRequest, "image_ids is required")
 		return
 	}
 
@@ -379,9 +440,9 @@ func (h *FolderHandler) MoveImages(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.bus.Publish(events.Event{
-		Type: events.ImagesUpdated,
-		Data: map[string]any{"action": "moved", "count": len(req.ImageIDs)},
+		Type: events.GalleryChanged,
+		Data: map[string]any{"domain": "images"},
 	})
 
-	WriteJSON(w, http.StatusOK, map[string]any{"moved": len(req.ImageIDs)})
+	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"moved": len(req.ImageIDs)})
 }

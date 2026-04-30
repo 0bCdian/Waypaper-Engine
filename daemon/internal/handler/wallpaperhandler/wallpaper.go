@@ -1,4 +1,4 @@
-package handler
+package wallpaperhandler
 
 import (
 	"context"
@@ -12,6 +12,7 @@ import (
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/config"
 	"waypaper-engine/daemon/internal/events"
+	"waypaper-engine/daemon/internal/handler/httpjson"
 	"waypaper-engine/daemon/internal/image"
 	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/store"
@@ -65,21 +66,30 @@ type setWallpaperRequest struct {
 }
 
 // Set handles POST /wallpaper/set.
+//
+// @Summary      Set wallpaper
+// @Tags         wallpaper
+// @Param        body  body      setWallpaperRequest  true  "Set request"
+// @Success      200   {object}  map[string]any
+// @Failure      400   {object}  httpjson.APIError
+// @Failure      404   {object}  httpjson.APIError
+// @Failure      500   {object}  httpjson.APIError
+// @Router       /wallpaper/set [post]
 func (h *WallpaperHandler) Set(w http.ResponseWriter, r *http.Request) {
 	var req setWallpaperRequest
-	if err := ParseBody(r, &req); err != nil {
-		WriteError(w, http.StatusBadRequest, err.Error())
+	if err := httpjson.ParseBody(r, &req); err != nil {
+		httpjson.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	if req.ImageID == 0 {
-		WriteError(w, http.StatusBadRequest, "image_id is required")
+		httpjson.WriteError(w, http.StatusBadRequest, "image_id is required")
 		return
 	}
 
 	img, err := h.imageStore.GetByID(r.Context(), req.ImageID)
 	if err != nil {
-		WriteError(w, http.StatusNotFound, err.Error())
+		httpjson.WriteError(w, http.StatusNotFound, err.Error())
 		return
 	}
 
@@ -89,12 +99,12 @@ func (h *WallpaperHandler) Set(w http.ResponseWriter, r *http.Request) {
 
 	monitors, err := h.resolveMonitors(r.Context(), req.Monitors, req.Monitor)
 	if err != nil {
-		WriteError(w, http.StatusBadRequest, err.Error())
+		httpjson.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	if err := h.ensureBackendForMedia(r.Context(), img.MediaType); err != nil {
-		WriteStructuredError(w, http.StatusBadRequest, "incompatible_backend",
+	if err := backend.EnsureBackendForMedia(r.Context(), h.registry, h.cfg, img.MediaType); err != nil {
+		httpjson.WriteStructuredError(w, http.StatusBadRequest, "incompatible_backend",
 			err.Error(),
 			map[string]any{
 				"backend":    h.registry.Active().Name(),
@@ -108,14 +118,14 @@ func (h *WallpaperHandler) Set(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.applyWallpaper(r.Context(), img, monitors, req.Mode, "manual"); err != nil {
 		if strings.Contains(err.Error(), "extend mode is only supported") {
-			WriteError(w, http.StatusBadRequest, err.Error())
+			httpjson.WriteError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		WriteError(w, http.StatusInternalServerError, err.Error())
+		httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, map[string]any{
+	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
 		"status":   "set",
 		"image_id": img.ID,
 		"monitor":  req.Monitor,
@@ -124,12 +134,20 @@ func (h *WallpaperHandler) Set(w http.ResponseWriter, r *http.Request) {
 }
 
 // Random handles POST /wallpaper/random.
+//
+// @Summary      Set random wallpaper
+// @Tags         wallpaper
+// @Param        body  body      map[string]any  false  "Optional monitor/mode"
+// @Success      200   {object}  map[string]any
+// @Failure      404   {object}  httpjson.APIError
+// @Failure      500   {object}  httpjson.APIError
+// @Router       /wallpaper/random [post]
 func (h *WallpaperHandler) Random(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Monitor string              `json:"monitor"`
 		Mode    monitor.MonitorMode `json:"mode"`
 	}
-	if err := ParseBody(r, &req); err != nil {
+	if err := httpjson.ParseBody(r, &req); err != nil {
 		// Allow empty body — use defaults.
 		req.Monitor = "*"
 		req.Mode = monitor.ModeIndividual
@@ -143,7 +161,7 @@ func (h *WallpaperHandler) Random(w http.ResponseWriter, r *http.Request) {
 
 	count, err := h.imageStore.Count(r.Context())
 	if err != nil || count == 0 {
-		WriteError(w, http.StatusNotFound, "no images in gallery")
+		httpjson.WriteError(w, http.StatusNotFound, "no images in gallery")
 		return
 	}
 
@@ -153,7 +171,7 @@ func (h *WallpaperHandler) Random(w http.ResponseWriter, r *http.Request) {
 		PerPage: 1,
 	})
 	if err != nil || len(result.Data) == 0 {
-		WriteError(w, http.StatusInternalServerError, "failed to pick random image")
+		httpjson.WriteError(w, http.StatusInternalServerError, "failed to pick random image")
 		return
 	}
 
@@ -161,20 +179,20 @@ func (h *WallpaperHandler) Random(w http.ResponseWriter, r *http.Request) {
 
 	monitors, err := h.resolveMonitors(r.Context(), nil, req.Monitor)
 	if err != nil {
-		WriteError(w, http.StatusBadRequest, err.Error())
+		httpjson.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
 	if err := h.applyWallpaper(r.Context(), img, monitors, req.Mode, "random"); err != nil {
 		if strings.Contains(err.Error(), "extend mode is only supported") {
-			WriteError(w, http.StatusBadRequest, err.Error())
+			httpjson.WriteError(w, http.StatusBadRequest, err.Error())
 			return
 		}
-		WriteError(w, http.StatusInternalServerError, err.Error())
+		httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, map[string]any{
+	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
 		"status":   "set",
 		"image_id": img.ID,
 		"monitor":  req.Monitor,
@@ -183,6 +201,13 @@ func (h *WallpaperHandler) Random(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetCurrent handles GET /wallpaper/current.
+//
+// @Summary      Get current wallpaper state
+// @Tags         wallpaper
+// @Success      200  {object}  WallpaperCurrentResponse
+// @Failure      500  {object}  httpjson.APIError
+// @Router       /wallpaper/current [get]
+//
 // Returns a single summary for the active backend: top-level image/mode/set_at are
 // taken from the monitor row with the newest SetAt (tie-break: lexicographic monitor
 // name), and monitors lists persisted rows for that backend whose monitor_name
@@ -192,7 +217,7 @@ func (h *WallpaperHandler) Random(w http.ResponseWriter, r *http.Request) {
 func (h *WallpaperHandler) GetCurrent(w http.ResponseWriter, r *http.Request) {
 	states, err := h.monitorStateStore.GetAll(r.Context())
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, err.Error())
+		httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 	ctx := r.Context()
@@ -209,7 +234,7 @@ func (h *WallpaperHandler) GetCurrent(w http.ResponseWriter, r *http.Request) {
 				}
 				continue
 			}
-			WriteError(w, http.StatusInternalServerError, err.Error())
+			httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
 			return
 		}
 		out = append(out, st)
@@ -225,45 +250,59 @@ func (h *WallpaperHandler) GetCurrent(w http.ResponseWriter, r *http.Request) {
 	}
 	active := h.registry.Active().Name()
 	resp := buildWallpaperCurrentResponse(active, out, connected)
-	WriteJSON(w, http.StatusOK, resp)
+	httpjson.WriteJSON(w, http.StatusOK, resp)
 }
 
 // ClearHistory handles DELETE /images/history.
+//
+// @Summary      Clear wallpaper history
+// @Tags         images
+// @Success      200  {object}  map[string]string
+// @Failure      500  {object}  httpjson.APIError
+// @Router       /images/history [delete]
 func (h *WallpaperHandler) ClearHistory(w http.ResponseWriter, r *http.Request) {
 	if err := h.historyStore.Clear(r.Context()); err != nil {
-		WriteError(w, http.StatusInternalServerError, err.Error())
+		httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
 	h.bus.Publish(events.Event{
-		Type: events.HistoryCleared,
-		Data: map[string]any{},
+		Type: events.GalleryChanged,
+		Data: map[string]any{"domain": "history"},
 	})
 
-	WriteJSON(w, http.StatusOK, map[string]any{"status": "cleared"})
+	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"status": "cleared"})
 }
 
-// GetHistory handles GET /wallpaper/history.
+// GetHistory handles GET /images/history.
+//
+// @Summary      Get wallpaper history
+// @Tags         images
+// @Param        page      query     int  false  "Page number"
+// @Param        per_page  query     int  false  "Items per page"
+// @Success      200       {object}  map[string]any
+// @Failure      500       {object}  httpjson.APIError
+// @Router       /images/history [get]
 func (h *WallpaperHandler) GetHistory(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	opts := store.HistoryQueryOpts{
 		Monitor: q.Get("monitor"),
 	}
 
-	if limit, err := ParseIntParam(q.Get("limit")); err == nil {
+	if limit, err := httpjson.ParseIntParam(q.Get("limit")); err == nil {
 		opts.Limit = limit
 	}
-	if sinceID, err := ParseIntParam(q.Get("since_id")); err == nil {
+	if sinceID, err := httpjson.ParseIntParam(q.Get("since_id")); err == nil {
 		opts.SinceID = sinceID
 	}
 
 	entries, err := h.historyStore.GetRecent(r.Context(), opts)
 	if err != nil {
-		WriteError(w, http.StatusInternalServerError, err.Error())
+		httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	WriteJSON(w, http.StatusOK, entries)
+	httpjson.WriteJSON(w, http.StatusOK, entries)
 }
 
 // resolveMonitors turns the request's monitor fields into concrete Monitor structs.
@@ -296,33 +335,6 @@ func (h *WallpaperHandler) resolveMonitors(ctx context.Context, names []string, 
 		return nil, err
 	}
 	return []monitor.Monitor{mon}, nil
-}
-
-// ensureBackendForMedia resolves the correct backend for the given media type.
-// In auto mode it picks the best backend via priority lists and switches if needed.
-// In fixed mode it returns an error if the active backend doesn't support the media.
-func (h *WallpaperHandler) ensureBackendForMedia(ctx context.Context, mediaType string) error {
-	mode := h.cfg.GetSelectionMode()
-	prio := h.cfg.GetAutoPriorities()
-	priorities := map[string][]string{
-		"image": prio.Image,
-		"video": prio.Video,
-		"web":   prio.Web,
-	}
-
-	targetName, err := backend.PickBackend(h.registry, mode, mediaType, priorities)
-	if err != nil {
-		return err
-	}
-
-	active := h.registry.Active()
-	if active != nil && active.Name() == targetName {
-		return nil
-	}
-
-	return backend.SwitchActiveBackend(ctx, h.registry, targetName, h.cfg, backend.SwitchOpts{
-		PersistConfig: false,
-	})
 }
 
 // applyWallpaper delegates to the shared wallpaper.Apply function.

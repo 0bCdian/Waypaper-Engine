@@ -93,8 +93,8 @@ func (p *Processor) BackfillMissingVideoBrowserPreviews(ctx context.Context) {
 			return
 		}
 		p.bus.Publish(events.Event{
-			Type: events.ImagesUpdated,
-			Data: map[string]any{"action": "video_preview_backfill"},
+			Type: events.GalleryChanged,
+			Data: map[string]any{"domain": "images"},
 		})
 	}()
 
@@ -190,8 +190,8 @@ func (p *Processor) EnsureBrowserVideoPreview(ctx context.Context, id int, force
 		return nil, err
 	}
 	p.bus.Publish(events.Event{
-		Type: events.ImagesUpdated,
-		Data: map[string]any{"action": "ensure_browser_preview", "image_id": id},
+		Type: events.GalleryChanged,
+		Data: map[string]any{"domain": "images"},
 	})
 	return updated, nil
 }
@@ -514,11 +514,8 @@ func (p *Processor) emitTerminal(ctx context.Context, batchID string, total, suc
 
 	if succeeded > 0 {
 		p.bus.Publish(events.Event{
-			Type: events.ImagesUpdated,
-			Data: map[string]any{
-				"action": "added",
-				"count":  succeeded,
-			},
+			Type: events.GalleryChanged,
+			Data: map[string]any{"domain": "images"},
 		})
 	}
 

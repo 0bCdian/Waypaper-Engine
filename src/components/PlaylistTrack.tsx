@@ -1,3 +1,4 @@
+import { CollisionPriority } from "@dnd-kit/abstract";
 import { useDroppable } from "@dnd-kit/react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useCallback } from "react";
 import { cn } from "../utils/cn";
@@ -181,7 +182,9 @@ function PlaylistTrack() {
   }, [playlist.images, clearPlaylist]);
 
   useEffect(() => {
-    const dispose = goDaemon.on("playlists_updated", () => {
+    const dispose = goDaemon.on("gallery_changed", (data: unknown) => {
+      const payload = data as { domain?: string };
+      if (payload?.domain !== "playlists") return;
       if (playlist.id) {
         goDaemon.getPlaylist(playlist.id).then((fullPlaylist) => {
           if (fullPlaylist) {
@@ -222,6 +225,8 @@ function PlaylistTrack() {
   const { ref: playlistDropRef, isDropTarget } = useDroppable({
     id: "playlist-drop",
     data: dropData,
+    /** Let per-card sortable targets win so reorder resolves to `playlist-item`, not this strip. */
+    collisionPriority: CollisionPriority.Lowest,
   });
 
   const isDraggingAddable = useDragStore(

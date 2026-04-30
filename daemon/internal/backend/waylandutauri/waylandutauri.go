@@ -1,6 +1,7 @@
 package waylandutauri
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -20,6 +21,8 @@ import (
 	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/parallaxdriver"
+	"waypaper-engine/daemon/internal/store"
+	"waypaper-engine/daemon/internal/wallpaper/wallpaperconfig"
 
 	"github.com/spf13/viper"
 )
@@ -878,6 +881,136 @@ func (w *slogWriter) Write(p []byte) (int, error) {
 		slog.Info(msg, "source", w.prefix)
 	}
 	return len(p), nil
+}
+
+// TryBatchRestore implements the wallpaper.batchRestorer optional interface.
+// It merges all non-extend individual rows into one multi-target SetWallpaper request when
+// every row is image/GIF, mode individual, and shared parallax/config match.
+// Returns false if the batch cannot be formed (falls back to per-monitor calls).
+func (w *WaylandUtauri) TryBatchRestore(
+	ctx context.Context,
+	states []store.MonitorState,
+	connected map[string]monitor.Monitor,
+	images store.ImageStore,
+) (*backend.WallpaperRequest, []store.MonitorState, []media.MediaType, bool) {
+	if len(states) < 2 {
+		return nil, nil, nil, false
+	}
+
+	targets := make([]backend.IndividualLoadTarget, 0, len(states))
+	statesOut := make([]store.MonitorState, 0, len(states))
+	mediaTypesOut := make([]media.MediaType, 0, len(states))
+	var sharedCfg json.RawMessage
+	var sharedParallax string
+	firstRow := true
+
+	for _, state := range states {
+		if monitor.MonitorMode(state.Mode) != monitor.ModeIndividual {
+			return nil, nil, nil, false
+		}
+		mon, ok := connected[state.MonitorName]
+		if !ok {
+			return nil, nil, nil, false
+		}
+
+		mt := media.MediaTypeImage
+		var imgPtr *store.Image
+		if img, err := images.GetByID(ctx, state.ImageID); err == nil && img != nil {
+			imgPtr = img
+			mt = batchRestoreNormalizeMediaType(img.MediaType)
+		}
+		if mt != media.MediaTypeImage && mt != media.MediaTypeGIF {
+			return nil, nil, nil, false
+		}
+
+		cfg := batchRestoreMergedConfig(imgPtr)
+		parallax := batchRestoreParallaxDirection(imgPtr)
+
+		if firstRow {
+			sharedCfg = cfg
+			sharedParallax = parallax
+			firstRow = false
+		} else {
+			if parallax != sharedParallax || !bytes.Equal(cfg, sharedCfg) {
+				return nil, nil, nil, false
+			}
+		}
+
+		targets = append(targets, backend.IndividualLoadTarget{
+			Monitor:   mon,
+			Path:      state.ImagePath,
+			MediaType: mt,
+		})
+		statesOut = append(statesOut, state)
+		mediaTypesOut = append(mediaTypesOut, mt)
+	}
+
+	topMT := targets[0].MediaType
+	req := &backend.WallpaperRequest{
+		MediaType:             topMT,
+		Mode:                  monitor.ModeIndividual,
+		IndividualTargets:     targets,
+		WallpaperConfigValues: sharedCfg,
+		ParallaxDirection:     sharedParallax,
+		WaitForCompletion:     true,
+		AudioEnabled:          false,
+	}
+	return req, statesOut, mediaTypesOut, true
+}
+
+// batchRestoreNormalizeMediaType maps a raw media-type string to the canonical MediaType value.
+func batchRestoreNormalizeMediaType(value string) media.MediaType {
+	switch strings.ToLower(strings.TrimSpace(value)) {
+	case string(media.MediaTypeGIF):
+		return media.MediaTypeGIF
+	case string(media.MediaTypeVideo):
+		return media.MediaTypeVideo
+	case string(media.MediaTypeWeb):
+		return media.MediaTypeWeb
+	default:
+		return media.MediaTypeImage
+	}
+}
+
+// batchRestoreMergedConfig returns the merged wallpaper config JSON for img, or an empty object.
+func batchRestoreMergedConfig(img *store.Image) json.RawMessage {
+	if img == nil || img.WebMeta == nil {
+		return json.RawMessage("{}")
+	}
+	merged, err := wallpaperconfig.MergeValues(img.WebMeta.WallpaperConfig, img.WallpaperConfigOverrides)
+	if err != nil {
+		return json.RawMessage("{}")
+	}
+	return merged
+}
+
+// batchRestoreParallaxDirection reads the waypaper.json manifest for img and returns
+// "horizontal" or "vertical" when set; empty string means use the backend default.
+func batchRestoreParallaxDirection(img *store.Image) string {
+	if img == nil || img.WebMeta == nil {
+		return ""
+	}
+	p := strings.TrimSpace(img.WebMeta.ManifestPath)
+	if p == "" {
+		return ""
+	}
+	raw, err := os.ReadFile(p)
+	if err != nil {
+		return ""
+	}
+	var m struct {
+		ParallaxDirection string `json:"parallax_direction"`
+	}
+	if err := json.Unmarshal(raw, &m); err != nil {
+		return ""
+	}
+	s := strings.ToLower(strings.TrimSpace(m.ParallaxDirection))
+	switch s {
+	case "vertical", "horizontal":
+		return s
+	default:
+		return ""
+	}
 }
 
 // LoadConfigFromViper reads [backend.wayland-utauri] from v. Nil v returns built-in defaults.

@@ -1,4 +1,4 @@
-package handler
+package backendshandler
 
 import (
 	"context"
@@ -13,6 +13,7 @@ import (
 
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/control"
+	"waypaper-engine/daemon/internal/handler/httpjson"
 	"waypaper-engine/daemon/internal/testutil"
 )
 
@@ -61,7 +62,7 @@ func TestBackendHandler_Activate_NotRegistered(t *testing.T) {
 
 	assert.Equal(t, http.StatusInternalServerError, w.Code)
 
-	var apiErr APIError
+	var apiErr httpjson.APIError
 	require.NoError(t, json.NewDecoder(w.Body).Decode(&apiErr))
 	assert.Contains(t, apiErr.Error, "not registered")
 }
@@ -109,7 +110,7 @@ func TestBackendHandler_Activate_InitializeFailureRollsBack(t *testing.T) {
 	assert.Equal(t, "awww", activeName, "active backend should be rolled back")
 	assert.Equal(t, []string{"feh", "awww"}, setActiveCalls)
 
-	var apiErr APIError
+	var apiErr httpjson.APIError
 	require.NoError(t, json.NewDecoder(w.Body).Decode(&apiErr))
 	assert.Contains(t, apiErr.Error, "activate backend feh")
 }

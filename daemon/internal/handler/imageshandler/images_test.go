@@ -1,4 +1,4 @@
-package handler
+package imageshandler
 
 import (
 	"context"
@@ -11,6 +11,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"waypaper-engine/daemon/internal/handler/httpjson"
 	"waypaper-engine/daemon/internal/store"
 	"waypaper-engine/daemon/internal/testutil"
 )
@@ -215,7 +216,7 @@ func TestImageHandler_CancelImport_EmptyBatchID(t *testing.T) {
 
 	assert.Equal(t, http.StatusBadRequest, w.Code)
 
-	var body APIError
+	var body httpjson.APIError
 	require.NoError(t, json.NewDecoder(w.Body).Decode(&body))
 	assert.Contains(t, body.Error, "batch_id")
 }

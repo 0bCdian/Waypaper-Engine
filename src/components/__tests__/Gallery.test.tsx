@@ -165,7 +165,7 @@ describe("Gallery", () => {
     expect(mockFetchFolders).toHaveBeenCalledWith(null);
   });
 
-  it("subscribes to folders_updated daemon event", () => {
+  it("subscribes to gallery_changed daemon event for folders", () => {
     const { goDaemon } = window.API_RENDERER;
 
     render(
@@ -174,6 +174,6 @@ describe("Gallery", () => {
       </MemoryRouter>,
     );
 
-    expect(goDaemon.on).toHaveBeenCalledWith("folders_updated", expect.any(Function));
+    expect(goDaemon.on).toHaveBeenCalledWith("gallery_changed", expect.any(Function));
   });
 });

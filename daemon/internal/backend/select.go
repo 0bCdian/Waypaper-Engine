@@ -1,11 +1,40 @@
 package backend
 
 import (
+	"context"
 	"fmt"
 	"strings"
 
+	"waypaper-engine/daemon/internal/config"
 	"waypaper-engine/daemon/internal/media"
 )
+
+// EnsureBackendForMedia picks the best backend for mediaType and switches to it
+// if the currently active backend differs. In fixed mode it validates the active
+// backend supports the media type. A no-op if the correct backend is already active.
+func EnsureBackendForMedia(ctx context.Context, reg Registry, cfg config.ConfigManager, mediaType string) error {
+	mode := cfg.GetSelectionMode()
+	prio := cfg.GetAutoPriorities()
+	priorities := map[string][]string{
+		"image": prio.Image,
+		"video": prio.Video,
+		"web":   prio.Web,
+	}
+
+	targetName, err := PickBackend(reg, mode, mediaType, priorities)
+	if err != nil {
+		return err
+	}
+
+	active := reg.Active()
+	if active != nil && active.Name() == targetName {
+		return nil
+	}
+
+	return SwitchActiveBackend(ctx, reg, targetName, cfg, SwitchOpts{
+		PersistConfig: false,
+	})
+}
 
 // PickBackend resolves which backend to use for a given media type.
 //

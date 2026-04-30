@@ -8,6 +8,7 @@ import (
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/config"
 	"waypaper-engine/daemon/internal/events"
+	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/playlist"
 	"waypaper-engine/daemon/internal/store"
@@ -638,6 +639,9 @@ type MockBackend struct {
 	RegisterDefaultsFn func(v *viper.Viper)
 	ValidateConfigFn   func(raw json.RawMessage) error
 	ParseConfigFn      func(raw json.RawMessage) (any, error)
+	// TryBatchRestoreFn, when non-nil, makes MockBackend satisfy the wallpaper.batchRestorer
+	// optional interface so restore tests can exercise the batched code path.
+	TryBatchRestoreFn func(ctx context.Context, states []store.MonitorState, connected map[string]monitor.Monitor, images store.ImageStore) (*backend.WallpaperRequest, []store.MonitorState, []media.MediaType, bool)
 }
 
 func (m *MockBackend) Name() string {
@@ -700,6 +704,16 @@ func (m *MockBackend) ParseConfig(raw json.RawMessage) (any, error) {
 		return m.ParseConfigFn(raw)
 	}
 	return nil, nil
+}
+
+// TryBatchRestore satisfies the wallpaper.batchRestorer optional interface when
+// TryBatchRestoreFn is set. If nil the method is absent from the type and the
+// restore path falls back to per-monitor calls (same as non-utauri backends).
+func (m *MockBackend) TryBatchRestore(ctx context.Context, states []store.MonitorState, connected map[string]monitor.Monitor, images store.ImageStore) (*backend.WallpaperRequest, []store.MonitorState, []media.MediaType, bool) {
+	if m.TryBatchRestoreFn != nil {
+		return m.TryBatchRestoreFn(ctx, states, connected, images)
+	}
+	return nil, nil, nil, false
 }
 
 // ---------------------------------------------------------------------------
@@ -848,7 +862,7 @@ func (m *MockMonitorProvider) Detect(ctx context.Context) ([]monitor.Monitor, er
 // ---------------------------------------------------------------------------
 
 type MockScheduler struct {
-	StartFn                 func(callback func(index int))
+	StartFn                 func(callback func(index int) bool)
 	StopFn                  func()
 	PauseFn                 func()
 	ResumeFn                func()
@@ -856,7 +870,7 @@ type MockScheduler struct {
 	AfterManualNavigationFn func(playlistImageIndex int)
 }
 
-func (m *MockScheduler) Start(callback func(index int)) {
+func (m *MockScheduler) Start(callback func(index int) bool) {
 	if m.StartFn != nil {
 		m.StartFn(callback)
 	}

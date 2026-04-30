@@ -54,7 +54,9 @@ function Modals() {
   }, []);
 
   useEffect(() => {
-    const dispose = goDaemon.on("playlists_updated", () => {
+    const dispose = goDaemon.on("gallery_changed", (data: unknown) => {
+      const payload = data as { domain?: string };
+      if (payload?.domain !== "playlists") return;
       void goDaemon.getPlaylists().then((playlists) => {
         setPlaylistsInDB(playlists);
       });

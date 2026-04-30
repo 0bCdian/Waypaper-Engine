@@ -133,10 +133,7 @@ func (c *Controller) ActivateBackend(ctx context.Context, name string) (Activati
 	}
 	c.bus.Publish(events.Event{
 		Type: events.ConfigChanged,
-		Data: map[string]any{
-			"sections": []string{"backend"},
-			"backend":  name,
-		},
+		Data: map[string]any{"sections": []string{"backend"}},
 	})
 	return ActivationResult{Backend: name}, nil
 }

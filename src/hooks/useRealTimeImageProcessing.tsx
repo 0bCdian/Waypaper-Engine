@@ -125,7 +125,9 @@ export function useRealTimeImageProcessing() {
       }
     };
 
-    const handleImagesUpdated = () => {
+    const handleGalleryChanged = (data: unknown) => {
+      const payload = data as { domain?: string };
+      if (payload?.domain !== "images") return;
       try {
         setTimeout(() => {
           startTransition(() => {
@@ -133,7 +135,7 @@ export function useRealTimeImageProcessing() {
           });
         }, 300);
       } catch (error) {
-        logger.error("Error handling images_updated:", error);
+        logger.error("Error handling gallery_changed (images):", error);
       }
     };
 
@@ -142,10 +144,10 @@ export function useRealTimeImageProcessing() {
     const disposeError = goDaemon.on("image_error", handleImageError);
     const disposeComplete = goDaemon.on("processing_complete", handleProcessingComplete);
     const disposeCancelled = goDaemon.on("processing_cancelled", handleProcessingCancelled);
-    const disposeUpdated = goDaemon.on("images_updated", handleImagesUpdated);
+    const disposeUpdated = goDaemon.on("gallery_changed", handleGalleryChanged);
 
     // Video preview backfill (and similar async daemon work) may finish before this hook
-    // registers images_updated, so the SSE event is missed and the gallery stays stale.
+    // registers gallery_changed, so the SSE event is missed and the gallery stays stale.
     // One deferred refetch catches persisted preview_path without relying on event ordering.
     const backfillCatchupId = window.setTimeout(() => {
       startTransition(() => {

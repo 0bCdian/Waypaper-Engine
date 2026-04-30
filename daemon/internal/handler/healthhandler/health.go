@@ -1,4 +1,4 @@
-package handler
+package healthhandler
 
 import (
 	"net/http"
@@ -6,6 +6,7 @@ import (
 	"runtime"
 	"time"
 
+	"waypaper-engine/daemon/internal/handler/httpjson"
 	"waypaper-engine/daemon/internal/image"
 )
 
@@ -30,8 +31,13 @@ func NewHealthHandler(version string, shutdownFn func()) *HealthHandler {
 const MonitorStackVersion = 2
 
 // Healthz handles GET /healthz.
+//
+// @Summary      Health check
+// @Tags         health
+// @Success      200  {object}  map[string]any
+// @Router       /healthz [get]
 func (h *HealthHandler) Healthz(w http.ResponseWriter, r *http.Request) {
-	WriteJSON(w, http.StatusOK, map[string]any{
+	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
 		"status":                 "ok",
 		"monitor_stack_version":  MonitorStackVersion,
 		"monitor_provider_order": []string{"wayland-utauri", "wlr-randr", "xrandr"},
@@ -39,10 +45,15 @@ func (h *HealthHandler) Healthz(w http.ResponseWriter, r *http.Request) {
 }
 
 // Info handles GET /info.
+//
+// @Summary      Daemon info
+// @Tags         health
+// @Success      200  {object}  map[string]any
+// @Router       /info [get]
 func (h *HealthHandler) Info(w http.ResponseWriter, r *http.Request) {
 	hostname, _ := os.Hostname()
 
-	WriteJSON(w, http.StatusOK, map[string]any{
+	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
 		"version":    h.version,
 		"pid":        os.Getpid(),
 		"hostname":   hostname,
@@ -54,15 +65,25 @@ func (h *HealthHandler) Info(w http.ResponseWriter, r *http.Request) {
 }
 
 // Capabilities handles GET /capabilities.
+//
+// @Summary      System capabilities
+// @Tags         health
+// @Success      200  {object}  map[string]any
+// @Router       /capabilities [get]
 func (h *HealthHandler) Capabilities(w http.ResponseWriter, r *http.Request) {
-	WriteJSON(w, http.StatusOK, map[string]any{
+	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
 		"ffmpeg_available": image.ResolveFfmpeg() != "",
 	})
 }
 
 // Shutdown handles POST /shutdown.
+//
+// @Summary      Graceful shutdown
+// @Tags         health
+// @Success      200  {object}  map[string]string
+// @Router       /shutdown [post]
 func (h *HealthHandler) Shutdown(w http.ResponseWriter, r *http.Request) {
-	WriteJSON(w, http.StatusOK, map[string]string{"status": "shutting_down"})
+	httpjson.WriteJSON(w, http.StatusOK, map[string]string{"status": "shutting_down"})
 
 	// Trigger shutdown asynchronously to allow the response to be sent.
 	go func() {

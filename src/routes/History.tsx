@@ -151,8 +151,9 @@ const History = () => {
     fetchHistory();
 
     const disposers = [
-      goDaemon.on("history_cleared", () => {
-        useHistoryStore.getState().reset();
+      goDaemon.on("gallery_changed", (data: unknown) => {
+        const payload = data as { domain?: string };
+        if (payload?.domain === "history") useHistoryStore.getState().reset();
       }),
       goDaemon.on("wallpaper_changed", () => {
         useHistoryStore.getState().fetchHistory();

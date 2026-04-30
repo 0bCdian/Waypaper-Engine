@@ -260,8 +260,8 @@ func (p *Processor) VideoLoopExport(
 			return nil, err
 		}
 		p.bus.Publish(events.Event{
-			Type: events.ImagesUpdated,
-			Data: map[string]any{"action": "added", "count": 1},
+			Type: events.GalleryChanged,
+			Data: map[string]any{"domain": "images"},
 		})
 		return map[string]any{
 			"action":   VideoLoopActionImportNew,
@@ -291,8 +291,8 @@ func (p *Processor) VideoLoopExport(
 			return nil, gerr
 		}
 		p.bus.Publish(events.Event{
-			Type: events.ImagesUpdated,
-			Data: map[string]any{"action": "updated", "image_id": imageID},
+			Type: events.GalleryChanged,
+			Data: map[string]any{"domain": "images"},
 		})
 		return map[string]any{
 			"action":   VideoLoopActionReplace,

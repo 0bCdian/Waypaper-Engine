@@ -1,4 +1,4 @@
-package handler
+package imageshandler
 
 import (
 	"testing"

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sort"
 	"strings"
 	"sync"
 	"time"
@@ -162,8 +163,8 @@ func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target moni
 	// wayland-utauri) can cause the second monitor's load to be dropped during
 	// the retry-loop collision.
 
-	sched.Start(func(index int) {
-		m.onTick(playCtx, pl.ID, index, monitors, targetEff)
+	sched.Start(func(index int) bool {
+		return m.onTick(playCtx, pl.ID, index, monitors, targetEff)
 	})
 
 	monNames := monitorNames(monitors)
@@ -439,7 +440,16 @@ func (m *Manager) advancePlaylist(ctx context.Context, playlistID int, delta int
 		return fmt.Errorf("playlist manager: playlist %d has no images", playlistID)
 	}
 
-	newIdx := (inst.CurrentIndex + delta + len(pl.Images)) % len(pl.Images)
+	newIdx := advancePlaylistRow(inst, pl, delta)
+	playbackRow := resolvePlaylistRowForPlayback(inst, pl)
+	slog.Debug("playlist manual advance",
+		"playlist_id", playlistID,
+		"delta", delta,
+		"stored_index", inst.CurrentIndex,
+		"playback_row", playbackRow,
+		"next_index", newIdx,
+		"n_images", len(pl.Images),
+		"selection_mode", m.cfg.GetSelectionMode())
 
 	allMonitors, err := m.monitorManager.GetMonitors(ctx)
 	if err != nil {
@@ -517,14 +527,26 @@ func (m *Manager) stopPlaylist(playlistID int) {
 	m.stateStore.RemoveActivePlaylist(playlistID)
 }
 
-// ReconcileAfterPlaylistUpdate rebuilds an in-memory timer run after PATCH so saves do not
-// require a full Start. No-op if the playlist is not running; stops the run if the updated
-// document is empty, not a timer, or active state is missing.
+// ReconcileAfterPlaylistUpdate reloads the running timer playlist from the persisted document after PATCH.
+// Maps the same slide onto the new images[] order (resolvePlaylistRowForPlayback), then
+// timerReloadAfterPlaylistDocumentChange — same intent as legacy Node updatePlaylist() +
+// timedPlaylist(firstPlay). No-op if not running; stops if doc is empty, not timer, or no active instance.
 func (m *Manager) ReconcileAfterPlaylistUpdate(ctx context.Context, playlistID int) error {
 	m.mu.RLock()
 	run := m.runs[playlistID]
 	m.mu.RUnlock()
 	if run == nil {
+		if inst := m.stateStore.GetActivePlaylistByID(playlistID); inst != nil {
+			slog.Warn("playlist reconcile noop: active state but no scheduler run",
+				"playlist_id", playlistID,
+				"current_image_id", inst.CurrentImageID,
+				"current_index", inst.CurrentIndex,
+				"total_images", inst.TotalImages)
+		} else {
+			slog.Debug("playlist reconcile skipped",
+				"playlist_id", playlistID,
+				"reason", "playlist_not_running")
+		}
 		return nil
 	}
 
@@ -534,114 +556,69 @@ func (m *Manager) ReconcileAfterPlaylistUpdate(ctx context.Context, playlistID i
 	}
 
 	if len(pl.Images) == 0 {
+		slog.Warn("playlist reconcile stopping run (empty playlist doc)",
+			"playlist_id", playlistID)
 		m.stopPlaylist(playlistID)
 		return nil
 	}
 
 	if pl.Configuration.Type != "timer" {
+		target := run.target
+		slog.Info("playlist reconcile: restarting run after document update",
+			"playlist_id", playlistID,
+			"type", pl.Configuration.Type)
 		m.stopPlaylist(playlistID)
+		if err := m.startPlaylist(ctx, playlistID, target, startOpts{}); err != nil {
+			return fmt.Errorf("playlist reconcile: restart after PATCH: %w", err)
+		}
 		return nil
 	}
 
 	inst := m.stateStore.GetActivePlaylistByID(playlistID)
 	if inst == nil {
+		slog.Warn("playlist reconcile stopping run (no active instance)",
+			"playlist_id", playlistID)
 		m.stopPlaylist(playlistID)
 		return nil
 	}
 
-	row := clampPlaylistIndex(inst.CurrentIndex, len(pl.Images))
-	startIdx, tIdx, tCur := timerReconcileSchedulerConfig(pl.Configuration.Order, len(pl.Images), row)
-
-	newSched := NewScheduler(SchedulerConfig{
-		Type:         "timer",
-		Interval:     pl.Configuration.Interval,
-		Order:        pl.Configuration.Order,
-		TotalImages:  len(pl.Images),
-		StartIndex:   startIdx,
-		TimeSlots:    nil,
-		TimerIndices: tIdx,
-		TimerCursor:  tCur,
-	})
-
-	m.mu.Lock()
-	run = m.runs[playlistID]
-	if run == nil {
-		m.mu.Unlock()
-		return nil
-	}
-	oldSched := run.sched
-	monitors := run.monitors
-	target := run.target
-	playCtx := run.playCtx
-	m.mu.Unlock()
-
-	oldSched.Stop()
-
-	if pl.Images[row].ImageID != inst.CurrentImageID {
-		res, applyErr := m.applyImage(ctx, pl, row, monitors, target.Mode, compatForward)
-		if applyErr != nil {
-			slog.Warn("playlist reconcile: apply image", "playlist_id", playlistID, "error", applyErr)
-		} else if res.AppliedIndex >= 0 {
-			row = res.AppliedIndex
-		}
-	}
-
-	m.mu.Lock()
-	run = m.runs[playlistID]
-	if run == nil {
-		m.mu.Unlock()
-		return nil
-	}
-	run.sched = newSched
-	m.mu.Unlock()
-
-	pid := playlistID
-	newSched.Start(func(index int) {
-		m.onTick(playCtx, pid, index, monitors, target)
-	})
-
-	paused := inst.Paused
-	if paused {
-		newSched.Pause()
-	}
-
-	nextAt := newSched.NextChangeAt()
-	if paused {
-		nextAt = nil
-	}
-
-	m.stateStore.UpdateActivePlaylist(playlistID, func(upd *store.ActivePlaylistInstance) {
-		upd.PlaylistName = pl.Name
-		upd.TotalImages = len(pl.Images)
-		updateInstanceIndex(upd, pl, row)
-		upd.NextChangeAt = nextAt
-	})
-
-	m.persistPlayback(ctx, playlistID, true)
-	return nil
+	anchorRow := resolvePlaylistRowForPlayback(inst, pl)
+	return m.timerReloadAfterPlaylistDocumentChange(ctx, playlistID, pl, anchorRow, inst)
 }
 
 // onTick is called by the scheduler when it's time to change the wallpaper.
-func (m *Manager) onTick(ctx context.Context, playlistID int, index int, monitors []monitor.Monitor, target monitor.MonitorTarget) {
+// Returns whether the slide was applied; the timer scheduler only advances traversal when true.
+func (m *Manager) onTick(ctx context.Context, playlistID int, index int, monitors []monitor.Monitor, target monitor.MonitorTarget) bool {
 	pl, err := m.playlistStore.GetByID(ctx, playlistID)
 	if err != nil {
 		slog.Warn("playlist tick: load playlist", "playlist_id", playlistID, "error", err)
-		return
+		return false
 	}
 	if len(pl.Images) == 0 {
-		return
+		return false
 	}
 
 	result, err := m.applyImage(ctx, pl, index, monitors, target.Mode, compatForward)
 	if err != nil {
 		slog.Warn("playlist tick: failed to apply image", "playlist_id", playlistID, "index", index, "error", err)
-		return
+		return false
 	}
 	if result.AppliedIndex < 0 {
-		return
+		slog.Debug("playlist timer tick not applied",
+			"playlist_id", playlistID,
+			"requested_index", index,
+			"applied_index", result.AppliedIndex,
+			"skipped_compat", result.Skipped)
+		return false
 	}
 
 	effectiveIdx := result.AppliedIndex
+	slog.Debug("playlist timer tick ok",
+		"playlist_id", playlistID,
+		"requested_index", index,
+		"applied_index", effectiveIdx,
+		"applied_image_id", pl.Images[effectiveIdx].ImageID,
+		"selection_mode", m.cfg.GetSelectionMode())
 
 	m.mu.RLock()
 	var nextChange *time.Time
@@ -666,6 +643,7 @@ func (m *Manager) onTick(ctx context.Context, playlistID int, index int, monitor
 			"monitors":    monitorNames(monitors),
 		},
 	})
+	return true
 }
 
 // compatWalk selects how findCompatibleIndex searches the playlist when some
@@ -823,6 +801,7 @@ func (m *Manager) doApply(ctx context.Context, pl *store.Playlist, index int, mo
 		MonState:          m.monitorStateStore,
 		State:             m.stateStore,
 		VideoAudioDefault: wallpaper.VideoAudioDefaultFromCfg(m.cfg),
+		Bus:               m.bus,
 	}); err != nil {
 		return applyResult{AppliedIndex: -1, Skipped: skipped}, err
 	}
@@ -1024,7 +1003,9 @@ func computeInitialState(pl *store.Playlist) ([]TimeSlot, int) {
 	}
 }
 
-// buildTimeSlots extracts TimeSlot entries from the playlist's images.
+// buildTimeSlots extracts TimeSlot entries from the playlist's images and sorts them
+// by minutes ascending. findClosestTimeSlot and timeOfDayScheduler.nextTransition require
+// this ordering (same assumption as legacy Node binary search on a time-sorted strip).
 func buildTimeSlots(pl *store.Playlist) []TimeSlot {
 	var slots []TimeSlot
 	for i, pimg := range pl.Images {
@@ -1032,6 +1013,12 @@ func buildTimeSlots(pl *store.Playlist) []TimeSlot {
 			slots = append(slots, TimeSlot{Minutes: *pimg.Time, ImageIndex: i})
 		}
 	}
+	sort.Slice(slots, func(a, b int) bool {
+		if slots[a].Minutes != slots[b].Minutes {
+			return slots[a].Minutes < slots[b].Minutes
+		}
+		return slots[a].ImageIndex < slots[b].ImageIndex
+	})
 	return slots
 }
 

@@ -41,16 +41,12 @@ const (
 	ConfigChanged EventType = "config_changed"
 )
 
-// History events — emitted when the wallpaper history is modified.
+// GalleryChanged is emitted when any gallery collection (images, folders, playlists, history)
+// changes. The payload domain field identifies which collection changed.
+// This is a GUI refresh signal; clients should re-fetch the relevant collection.
+// Domain values: "images", "folders", "playlists", "history".
 const (
-	HistoryCleared EventType = "history_cleared"
-)
-
-// Gallery events — emitted when the image or playlist collections change.
-const (
-	ImagesUpdated    EventType = "images_updated"
-	PlaylistsUpdated EventType = "playlists_updated"
-	FoldersUpdated   EventType = "folders_updated"
+	GalleryChanged EventType = "gallery_changed"
 )
 
 // Backend lifecycle events.

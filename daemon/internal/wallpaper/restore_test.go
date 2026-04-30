@@ -64,6 +64,27 @@ func TestRestore_WaylandUtauriBatchesIndividualImageRows(t *testing.T) {
 			last = req
 			return nil
 		},
+		// TryBatchRestoreFn makes MockBackend satisfy the batchRestorer optional
+		// interface, exercising the batched code path in restoreNonExtendIndividuals.
+		TryBatchRestoreFn: func(_ context.Context, states []store.MonitorState, connected map[string]monitor.Monitor, _ store.ImageStore) (*backend.WallpaperRequest, []store.MonitorState, []media.MediaType, bool) {
+			if len(states) < 2 {
+				return nil, nil, nil, false
+			}
+			targets := make([]backend.IndividualLoadTarget, 0, len(states))
+			mts := make([]media.MediaType, 0, len(states))
+			for _, s := range states {
+				mon := connected[s.MonitorName]
+				targets = append(targets, backend.IndividualLoadTarget{Monitor: mon, Path: s.ImagePath, MediaType: media.MediaTypeImage})
+				mts = append(mts, media.MediaTypeImage)
+			}
+			req := &backend.WallpaperRequest{
+				MediaType:         media.MediaTypeImage,
+				Mode:              monitor.ModeIndividual,
+				IndividualTargets: targets,
+				WaitForCompletion: true,
+			}
+			return req, states, mts, true
+		},
 	}
 	reg := &testutil.MockRegistry{ActiveFn: func() backend.Backend { return mockBe }}
 	mss := &testutil.MockMonitorStateStore{

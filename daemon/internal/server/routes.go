@@ -4,19 +4,26 @@ import (
 	"github.com/go-chi/chi/v5"
 
 	"waypaper-engine/daemon/internal/events"
-	"waypaper-engine/daemon/internal/handler"
+	"waypaper-engine/daemon/internal/handler/backendshandler"
+	"waypaper-engine/daemon/internal/handler/confighandler"
+	"waypaper-engine/daemon/internal/handler/foldershandler"
+	"waypaper-engine/daemon/internal/handler/healthhandler"
+	"waypaper-engine/daemon/internal/handler/imageshandler"
+	"waypaper-engine/daemon/internal/handler/monitorshandler"
+	"waypaper-engine/daemon/internal/handler/playlistshandler"
+	"waypaper-engine/daemon/internal/handler/wallpaperhandler"
 )
 
 // Handlers bundles all handler instances for route registration.
 type Handlers struct {
-	Health    *handler.HealthHandler
-	Images    *handler.ImageHandler
-	Playlists *handler.PlaylistHandler
-	Monitors  *handler.MonitorHandler
-	Config    *handler.ConfigHandler
-	Backends  *handler.BackendHandler
-	Wallpaper *handler.WallpaperHandler
-	Folders   *handler.FolderHandler
+	Health    *healthhandler.HealthHandler
+	Images    *imageshandler.ImageHandler
+	Playlists *playlistshandler.PlaylistHandler
+	Monitors  *monitorshandler.MonitorHandler
+	Config    *confighandler.ConfigHandler
+	Backends  *backendshandler.BackendHandler
+	Wallpaper *wallpaperhandler.WallpaperHandler
+	Folders   *foldershandler.FolderHandler
 }
 
 // NewRouter creates a chi router with all routes and middleware registered.

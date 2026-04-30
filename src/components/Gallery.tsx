@@ -29,7 +29,9 @@ function Gallery() {
 
   useEffect(() => {
     const { goDaemon } = window.API_RENDERER;
-    const dispose = goDaemon.on("folders_updated", () => {
+    const dispose = goDaemon.on("gallery_changed", (data: unknown) => {
+      const payload = data as { domain?: string };
+      if (payload?.domain !== "folders") return;
       const fid = useFoldersStore.getState().currentFolderId;
       useFoldersStore.getState().fetchFolders(fid);
     });

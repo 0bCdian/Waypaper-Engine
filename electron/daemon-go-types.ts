@@ -467,12 +467,8 @@ export type EventType =
   | "monitor_disconnected"
   // Config Events
   | "config_changed"
-  // History Events
-  | "history_cleared"
-  // Gallery Events
-  | "images_updated"
-  | "playlists_updated"
-  | "folders_updated"
+  // Gallery Events — GUI refresh signals; re-fetch the collection named in domain.
+  | "gallery_changed"
   | "backend_unavailable"
   | "wallpaper_restore_failed"
   | "playlist_skipped_incompatible"
@@ -554,6 +550,12 @@ export interface MonitorEventPayload {
 
 export interface ConfigChangedPayload {
   sections: string[];
+}
+
+export type GalleryDomain = "images" | "folders" | "playlists" | "history";
+
+export interface GalleryChangedPayload {
+  domain: GalleryDomain;
 }
 
 // ============================================================================

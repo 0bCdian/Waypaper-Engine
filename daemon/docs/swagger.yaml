@@ -1,0 +1,1926 @@
+basePath: /
+definitions:
+  internal_handler_foldershandler.createFolderRequest:
+    properties:
+      name:
+        type: string
+      parent_id:
+        type: integer
+    type: object
+  internal_handler_foldershandler.moveImagesRequest:
+    properties:
+      folder_id:
+        type: integer
+      image_ids:
+        items:
+          type: integer
+        type: array
+    type: object
+  internal_handler_imageshandler.addRequest:
+    properties:
+      folder_id:
+        type: integer
+      paths:
+        items:
+          type: string
+        type: array
+    type: object
+  internal_handler_imageshandler.cancelImportRequest:
+    properties:
+      batch_id:
+        type: string
+    type: object
+  internal_handler_imageshandler.deleteRequest:
+    properties:
+      ids:
+        items:
+          type: integer
+        type: array
+    type: object
+  internal_handler_imageshandler.importWebRequest:
+    properties:
+      folder_id:
+        type: integer
+      path:
+        type: string
+    type: object
+  internal_handler_imageshandler.renameRequest:
+    properties:
+      name:
+        type: string
+    type: object
+  internal_handler_imageshandler.videoLoopExportRequest:
+    properties:
+      action:
+        type: string
+      blend_halves:
+        type: boolean
+      folder_id:
+        type: integer
+      in_seconds:
+        type: number
+      out_seconds:
+        type: number
+      preset:
+        type: string
+    type: object
+  internal_handler_playlistshandler.startRequest:
+    properties:
+      monitor:
+        properties:
+          id:
+            type: string
+          mode:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_monitor.MonitorMode'
+        type: object
+    type: object
+  internal_handler_wallpaperhandler.WallpaperCurrentResponse:
+    properties:
+      backend:
+        type: string
+      image_id:
+        type: integer
+      image_name:
+        type: string
+      image_path:
+        type: string
+      mode:
+        type: string
+      monitors:
+        items:
+          $ref: '#/definitions/internal_handler_wallpaperhandler.WallpaperCurrentSlot'
+        type: array
+      set_at:
+        type: string
+    type: object
+  internal_handler_wallpaperhandler.WallpaperCurrentSlot:
+    properties:
+      image_id:
+        type: integer
+      image_name:
+        type: string
+      image_path:
+        type: string
+      monitor_name:
+        type: string
+      set_at:
+        type: string
+    type: object
+  internal_handler_wallpaperhandler.setWallpaperRequest:
+    properties:
+      image_id:
+        type: integer
+      mode:
+        $ref: '#/definitions/waypaper-engine_daemon_internal_monitor.MonitorMode'
+      monitor:
+        type: string
+      monitors:
+        items:
+          type: string
+        type: array
+    type: object
+  waypaper-engine_daemon_internal_backend.BackendInfo:
+    properties:
+      active:
+        description: Active indicates whether this is the currently selected backend.
+        type: boolean
+      available:
+        description: Available indicates whether the backend's dependencies are installed
+          on this system.
+        type: boolean
+      capabilities:
+        allOf:
+        - $ref: '#/definitions/waypaper-engine_daemon_internal_backend.Capabilities'
+        description: Capabilities describes what the backend supports.
+      name:
+        description: Name is the unique identifier (e.g. "awww", "feh").
+        type: string
+    type: object
+  waypaper-engine_daemon_internal_backend.Capabilities:
+    properties:
+      compositors:
+        description: Compositors lists which display server protocols this backend
+          works with.
+        items:
+          $ref: '#/definitions/waypaper-engine_daemon_internal_monitor.CompositorType'
+        type: array
+      daemon_process:
+        description: |-
+          DaemonProcess indicates whether the backend requires a long-running
+          background process (e.g. awww-daemon, hyprpaper).
+        type: boolean
+      media_types:
+        description: MediaTypes lists what kinds of media this backend can display.
+        items:
+          $ref: '#/definitions/waypaper-engine_daemon_internal_media.MediaType'
+        type: array
+      per_monitor:
+        description: |-
+          PerMonitor indicates whether the backend can target a single monitor.
+          If false, the backend can only set the wallpaper for all monitors at once
+          (e.g. feh on X11 sets the root window).
+        type: boolean
+      transitions:
+        description: |-
+          Transitions indicates whether the backend supports animated transitions
+          between wallpapers (e.g. fade, wipe, grow).
+        type: boolean
+    type: object
+  waypaper-engine_daemon_internal_handler_httpjson.APIError:
+    properties:
+      code:
+        type: integer
+      details:
+        type: string
+      error:
+        type: string
+      error_code:
+        type: string
+      meta:
+        additionalProperties: {}
+        type: object
+    type: object
+  waypaper-engine_daemon_internal_media.MediaType:
+    enum:
+    - image
+    - video
+    - gif
+    - web
+    type: string
+    x-enum-varnames:
+    - MediaTypeImage
+    - MediaTypeVideo
+    - MediaTypeGIF
+    - MediaTypeWeb
+  waypaper-engine_daemon_internal_monitor.CompositorType:
+    enum:
+    - wayland
+    - x11
+    type: string
+    x-enum-varnames:
+    - CompositorWayland
+    - CompositorX11
+  waypaper-engine_daemon_internal_monitor.Monitor:
+    properties:
+      height:
+        description: Height is the vertical resolution in pixels.
+        type: integer
+      name:
+        description: Name is the output identifier as reported by the compositor (e.g.
+          "HDMI-A-1", "eDP-1").
+        type: string
+      refresh_rate:
+        description: RefreshRate is the monitor's refresh rate in Hz (e.g. 60.0, 144.0).
+        type: number
+      scale:
+        description: Scale is the output scale factor (e.g. 1.0, 1.5, 2.0).
+        type: number
+      transform:
+        description: |-
+          Transform is the rotation/reflection applied to the output.
+          0=normal, 1=90°, 2=180°, 3=270°, 4=flipped, 5=flipped-90°, 6=flipped-180°, 7=flipped-270°.
+        type: integer
+      width:
+        description: Width is the horizontal resolution in pixels.
+        type: integer
+      x:
+        description: |-
+          X is the horizontal position in the compositor's coordinate space.
+          Used for extend mode to compute which slice of the image maps to this monitor.
+        type: integer
+      "y":
+        description: Y is the vertical position in the compositor's coordinate space.
+        type: integer
+    type: object
+  waypaper-engine_daemon_internal_monitor.MonitorMode:
+    enum:
+    - individual
+    - clone
+    - extend
+    type: string
+    x-enum-varnames:
+    - ModeIndividual
+    - ModeClone
+    - ModeExtend
+  waypaper-engine_daemon_internal_store.ActivePlaylistInstance:
+    properties:
+      current_image_id:
+        type: integer
+      current_index:
+        type: integer
+      mode:
+        type: string
+      monitors:
+        items:
+          type: string
+        type: array
+      next_change_at:
+        type: string
+      next_image_id:
+        type: integer
+      paused:
+        type: boolean
+      playlist_id:
+        type: integer
+      playlist_name:
+        type: string
+      previous_image_id:
+        type: integer
+      started_at:
+        type: string
+      total_images:
+        type: integer
+    type: object
+  waypaper-engine_daemon_internal_store.Folder:
+    properties:
+      created_at:
+        description: CreatedAt is when the folder was created.
+        type: string
+      id:
+        description: ID is the sequential integer identifier, generated daemon-side.
+        type: integer
+      name:
+        description: Name is the display name of the folder.
+        type: string
+      parent_id:
+        description: ParentID is the ID of the parent folder. nil means root level.
+        type: integer
+      updated_at:
+        description: UpdatedAt is when the folder was last modified.
+        type: string
+    type: object
+  waypaper-engine_daemon_internal_store.Image:
+    properties:
+      audio_enabled:
+        description: AudioEnabled indicates whether the media has an audio track (videos
+          only).
+        type: boolean
+      checksum:
+        description: Checksum is a content hash for deduplication (e.g. "sha256:abc123...").
+        type: string
+      colors:
+        description: |-
+          Colors is a list of hex color strings representing the image's dominant color palette.
+          Populated from Wallhaven metadata on download, or extracted locally via k-means.
+        items:
+          type: string
+        type: array
+      duration:
+        description: Duration is the media duration in seconds (videos only, 0 for
+          others).
+        type: number
+      file_size:
+        description: FileSize is the size of the file in bytes.
+        type: integer
+      folder_id:
+        description: |-
+          FolderID is the optional folder this image belongs to.
+          nil means the image is at the root level of the gallery.
+        type: integer
+      format:
+        description: Format is the file format (e.g. "png", "jpg", "webp").
+        type: string
+      height:
+        description: Height is the vertical resolution in pixels.
+        type: integer
+      id:
+        description: |-
+          ID is the sequential integer identifier, generated daemon-side.
+          This is the API-facing primary key (NOT CloverDB's internal _id).
+        type: integer
+      imported_at:
+        description: ImportedAt is when the image was added to the gallery.
+        type: string
+      is_selected:
+        description: |-
+          IsSelected tracks whether the user has selected this image in the UI
+          (for batch operations).
+        type: boolean
+      media_type:
+        description: 'MediaType classifies the file: "image", "video", "gif".'
+        type: string
+      name:
+        description: Name is the display name, derived from the original filename.
+        type: string
+      path:
+        description: Path is the absolute path to the cached copy of the image inside
+          ImagesDir.
+        type: string
+      preview_path:
+        description: |-
+          PreviewPath is an optional preview asset: web wallpaper clips, or an H.264 MP4
+          proxy generated for native videos whose codec the UI cannot decode (e.g. HEVC).
+        type: string
+      source_path:
+        description: SourcePath is the original filesystem path the image was imported
+          from.
+        type: string
+      tags:
+        description: Tags is a user-defined list of labels for organization and filtering.
+        items:
+          type: string
+        type: array
+      thumbnails:
+        additionalProperties:
+          type: string
+        description: |-
+          Thumbnails maps resolution labels to their absolute file paths.
+          Keys: "default", "720p", "1080p", "1440p", "4k".
+        type: object
+      wallpaper_config_overrides:
+        description: WallpaperConfigOverrides stores user-edited values for keys declared
+          in web_meta.wallpaper_config.
+        items:
+          type: integer
+        type: array
+      web_meta:
+        allOf:
+        - $ref: '#/definitions/waypaper-engine_daemon_internal_store.WebMeta'
+        description: WebMeta holds web-wallpaper manifest metadata. Nil for non-web
+          media.
+      width:
+        description: Width is the horizontal resolution in pixels.
+        type: integer
+    type: object
+  waypaper-engine_daemon_internal_store.PaginatedResult-waypaper-engine_daemon_internal_store_Image:
+    properties:
+      data:
+        items:
+          $ref: '#/definitions/waypaper-engine_daemon_internal_store.Image'
+        type: array
+      pagination:
+        $ref: '#/definitions/waypaper-engine_daemon_internal_store.Pagination'
+    type: object
+  waypaper-engine_daemon_internal_store.Pagination:
+    properties:
+      page:
+        type: integer
+      per_page:
+        type: integer
+      total_items:
+        type: integer
+      total_pages:
+        type: integer
+    type: object
+  waypaper-engine_daemon_internal_store.Playlist:
+    properties:
+      configuration:
+        allOf:
+        - $ref: '#/definitions/waypaper-engine_daemon_internal_store.PlaylistConfiguration'
+        description: Configuration holds the playback behavior settings.
+      created_at:
+        description: CreatedAt is when the playlist was first created.
+        type: string
+      id:
+        description: ID is the sequential integer identifier, generated daemon-side.
+        type: integer
+      images:
+        description: Images is the ordered list of images in this playlist.
+        items:
+          $ref: '#/definitions/waypaper-engine_daemon_internal_store.PlaylistImage'
+        type: array
+      name:
+        description: Name is the user-facing display name (e.g. "Evening rotation").
+        type: string
+      playback:
+        allOf:
+        - $ref: '#/definitions/waypaper-engine_daemon_internal_store.PlaylistPlayback'
+        description: |-
+          Playback holds persisted runtime position for daemon restarts. Omitted when
+          never started or cleared.
+      updated_at:
+        description: UpdatedAt is when the playlist was last modified.
+        type: string
+    type: object
+  waypaper-engine_daemon_internal_store.PlaylistConfiguration:
+    properties:
+      always_start_on_first_image:
+        description: AlwaysStartOnFirstImage forces the playlist to start from index
+          0 every time.
+        type: boolean
+      interval:
+        description: Interval is the rotation period in seconds (only used for "timer"
+          type).
+        type: integer
+      order:
+        description: 'Order is the playback order: "ordered" or "random" (only used
+          for "timer" type).'
+        type: string
+      type:
+        description: 'Type is the rotation strategy: "timer", "manual", "time_of_day",
+          "day_of_week".'
+        type: string
+    type: object
+  waypaper-engine_daemon_internal_store.PlaylistImage:
+    properties:
+      image_id:
+        description: ImageID references the Image in the gallery.
+        type: integer
+      media_type:
+        description: MediaType is denormalized for quick playlist filtering.
+        type: string
+      time:
+        description: |-
+          Time is minutes since midnight (0–1439), used by "time_of_day" playlists.
+          Nil for other playlist types.
+        type: integer
+    type: object
+  waypaper-engine_daemon_internal_store.PlaylistPlayback:
+    properties:
+      current_index:
+        type: integer
+      mode:
+        type: string
+      monitors:
+        items:
+          type: string
+        type: array
+      paused:
+        type: boolean
+      timer_cursor:
+        type: integer
+      timer_indices:
+        description: |-
+          TimerIndices is the shuffled row order for timer+random; length must match
+          images when present.
+        items:
+          type: integer
+        type: array
+      was_running:
+        type: boolean
+    type: object
+  waypaper-engine_daemon_internal_store.WebCapabilities:
+    properties:
+      audio_reactive:
+        type: boolean
+      keyboard:
+        type: boolean
+      network:
+        type: boolean
+      parallax_aware:
+        type: boolean
+      pointer_interactive:
+        type: boolean
+    type: object
+  waypaper-engine_daemon_internal_store.WebMeta:
+    properties:
+      author:
+        type: string
+      capabilities:
+        $ref: '#/definitions/waypaper-engine_daemon_internal_store.WebCapabilities'
+      description:
+        type: string
+      entry_path:
+        type: string
+      manifest_path:
+        type: string
+      package_root:
+        type: string
+      title:
+        type: string
+      wallpaper_config:
+        items:
+          type: integer
+        type: array
+    type: object
+info:
+  contact: {}
+  description: HTTP API served over a Unix socket for the waypaper-engine wallpaper
+    manager.
+  title: waypaper-engine daemon
+  version: 3.0.0
+paths:
+  /backends:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/waypaper-engine_daemon_internal_backend.BackendInfo'
+            type: array
+      summary: List available backends
+      tags:
+      - backends
+  /backends/{name}/activate:
+    post:
+      parameters:
+      - description: Backend name
+        in: path
+        name: name
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Activate a backend
+      tags:
+      - backends
+  /capabilities:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: System capabilities
+      tags:
+      - health
+  /config:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Get full config
+      tags:
+      - config
+    patch:
+      parameters:
+      - description: Section patches
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties:
+            additionalProperties: true
+            type: object
+          type: object
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Patch config sections
+      tags:
+      - config
+  /config/{section}:
+    get:
+      parameters:
+      - description: Section name
+        in: path
+        name: section
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Get a config section
+      tags:
+      - config
+    patch:
+      parameters:
+      - description: Section name
+        in: path
+        name: section
+        required: true
+        type: string
+      - description: Section values
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Patch a config section
+      tags:
+      - config
+  /config/backends/{backend}:
+    get:
+      parameters:
+      - description: Backend name
+        in: path
+        name: backend
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Get backend config
+      tags:
+      - config
+    patch:
+      parameters:
+      - description: Backend name
+        in: path
+        name: backend
+        required: true
+        type: string
+      - description: Backend config patch
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Patch backend config
+      tags:
+      - config
+  /folders:
+    get:
+      parameters:
+      - description: Parent folder ID or 'root'
+        in: query
+        name: parent_id
+        type: string
+      - description: Search query
+        in: query
+        name: search
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: List folders
+      tags:
+      - folders
+    post:
+      parameters:
+      - description: Folder data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler_foldershandler.createFolderRequest'
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_store.Folder'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Create a folder
+      tags:
+      - folders
+  /folders/{id}:
+    delete:
+      parameters:
+      - description: Folder ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: keep_contents (default) or delete_all
+        in: query
+        name: mode
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Delete a folder
+      tags:
+      - folders
+    get:
+      parameters:
+      - description: Folder ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_store.Folder'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Get a folder
+      tags:
+      - folders
+    patch:
+      parameters:
+      - description: Folder ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Fields to update (name, parent_id)
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_store.Folder'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Update a folder
+      tags:
+      - folders
+  /folders/{id}/path:
+    get:
+      parameters:
+      - description: Folder ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Get folder ancestry path
+      tags:
+      - folders
+  /folders/move-images:
+    post:
+      parameters:
+      - description: Move request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler_foldershandler.moveImagesRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Move images to a folder
+      tags:
+      - folders
+  /healthz:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Health check
+      tags:
+      - health
+  /images:
+    delete:
+      parameters:
+      - description: Image IDs to delete
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler_imageshandler.deleteRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Delete images
+      tags:
+      - images
+    get:
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page
+        in: query
+        name: per_page
+        type: integer
+      - description: Sort field
+        in: query
+        name: sort_by
+        type: string
+      - description: asc or desc
+        in: query
+        name: sort_order
+        type: string
+      - description: Filter by media type
+        in: query
+        name: media_type
+        type: string
+      - description: Search query
+        in: query
+        name: search
+        type: string
+      - description: Comma-separated tags
+        in: query
+        name: tags
+        type: string
+      - description: Folder ID or 'root'
+        in: query
+        name: folder_id
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_store.PaginatedResult-waypaper-engine_daemon_internal_store_Image'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: List images
+      tags:
+      - images
+    post:
+      parameters:
+      - description: Paths to import
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler_imageshandler.addRequest'
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Import images from filesystem paths
+      tags:
+      - images
+  /images/{id}:
+    get:
+      parameters:
+      - description: Image ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_store.Image'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Get an image
+      tags:
+      - images
+    patch:
+      parameters:
+      - description: Image ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 'Fields: name, tags, colors, is_selected, folder_id, wallpaper_config_overrides,
+          web_capabilities'
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_store.Image'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Update image metadata
+      tags:
+      - images
+  /images/{id}/ensure-browser-preview:
+    post:
+      parameters:
+      - description: Image ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Set to 1 to force regeneration
+        in: query
+        name: force
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_store.Image'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Ensure browser-compatible video preview exists
+      tags:
+      - images
+  /images/{id}/raw:
+    get:
+      parameters:
+      - description: Image ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Serve raw image file
+      tags:
+      - images
+  /images/{id}/rename:
+    post:
+      parameters:
+      - description: Image ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: New name
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler_imageshandler.renameRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_store.Image'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Rename an image
+      tags:
+      - images
+  /images/{id}/thumbnail:
+    get:
+      parameters:
+      - description: Image ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: 'Thumbnail resolution (default: default)'
+        in: query
+        name: resolution
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Get thumbnail path for an image
+      tags:
+      - images
+  /images/{id}/thumbnail/raw:
+    get:
+      parameters:
+      - description: Image ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Thumbnail resolution
+        in: query
+        name: resolution
+        type: string
+      produces:
+      - image/webp
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Serve thumbnail file
+      tags:
+      - images
+  /images/{id}/video-loop-export:
+    post:
+      parameters:
+      - description: Image ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Export parameters
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler_imageshandler.videoLoopExportRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "503":
+          description: Service Unavailable
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Export a video loop segment
+      tags:
+      - images
+  /images/cancel-import:
+    post:
+      parameters:
+      - description: Batch ID
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler_imageshandler.cancelImportRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Cancel an in-progress import batch
+      tags:
+      - images
+  /images/count:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Count images
+      tags:
+      - images
+  /images/history:
+    delete:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Clear wallpaper history
+      tags:
+      - images
+    get:
+      parameters:
+      - description: Page number
+        in: query
+        name: page
+        type: integer
+      - description: Items per page
+        in: query
+        name: per_page
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Get wallpaper history
+      tags:
+      - images
+  /images/import-web:
+    post:
+      parameters:
+      - description: Web wallpaper path
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler_imageshandler.importWebRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_store.Image'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Import a web wallpaper
+      tags:
+      - images
+  /images/select-all:
+    post:
+      parameters:
+      - description: 'selected: true/false'
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties:
+            type: boolean
+          type: object
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Select or deselect all images
+      tags:
+      - images
+  /images/tags:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: List all tags
+      tags:
+      - images
+  /info:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Daemon info
+      tags:
+      - health
+  /monitors:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/waypaper-engine_daemon_internal_monitor.Monitor'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: List connected monitors
+      tags:
+      - monitors
+  /monitors/{name}:
+    get:
+      parameters:
+      - description: Monitor name
+        in: path
+        name: name
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_monitor.Monitor'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Get a monitor by name
+      tags:
+      - monitors
+  /playlists:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/waypaper-engine_daemon_internal_store.Playlist'
+            type: array
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: List playlists
+      tags:
+      - playlists
+    post:
+      parameters:
+      - description: Playlist data
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/waypaper-engine_daemon_internal_store.Playlist'
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_store.Playlist'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Create a playlist
+      tags:
+      - playlists
+  /playlists/{id}:
+    delete:
+      parameters:
+      - description: Playlist ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Delete a playlist
+      tags:
+      - playlists
+    get:
+      parameters:
+      - description: Playlist ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_store.Playlist'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Get a playlist
+      tags:
+      - playlists
+    patch:
+      parameters:
+      - description: Playlist ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Fields to update
+        in: body
+        name: body
+        required: true
+        schema:
+          additionalProperties: true
+          type: object
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_store.Playlist'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Update a playlist
+      tags:
+      - playlists
+  /playlists/{id}/next:
+    post:
+      parameters:
+      - description: Playlist ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Advance to next image in playlist
+      tags:
+      - playlists
+  /playlists/{id}/pause:
+    post:
+      parameters:
+      - description: Playlist ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Pause a playlist
+      tags:
+      - playlists
+  /playlists/{id}/previous:
+    post:
+      parameters:
+      - description: Playlist ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Go to previous image in playlist
+      tags:
+      - playlists
+  /playlists/{id}/resume:
+    post:
+      parameters:
+      - description: Playlist ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Resume a playlist
+      tags:
+      - playlists
+  /playlists/{id}/start:
+    post:
+      parameters:
+      - description: Playlist ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Monitor target
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler_playlistshandler.startRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Start a playlist
+      tags:
+      - playlists
+  /playlists/{id}/stop:
+    post:
+      parameters:
+      - description: Playlist ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Stop a playlist
+      tags:
+      - playlists
+  /playlists/active:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/waypaper-engine_daemon_internal_store.ActivePlaylistInstance'
+            type: array
+      summary: List active playlist instances
+      tags:
+      - playlists
+  /playlists/active/{monitor}:
+    get:
+      parameters:
+      - description: Monitor name
+        in: path
+        name: monitor
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_store.ActivePlaylistInstance'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Get active playlist for a monitor
+      tags:
+      - playlists
+  /playlists/active/next:
+    post:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Advance all active playlists
+      tags:
+      - playlists
+  /playlists/active/pause:
+    post:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Pause all active playlists
+      tags:
+      - playlists
+  /playlists/active/previous:
+    post:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Rewind all active playlists
+      tags:
+      - playlists
+  /playlists/active/resume:
+    post:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Resume all paused playlists
+      tags:
+      - playlists
+  /playlists/active/stop:
+    post:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+      summary: Stop all active playlists
+      tags:
+      - playlists
+  /shutdown:
+    post:
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+      summary: Graceful shutdown
+      tags:
+      - health
+  /wallpaper/current:
+    get:
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/internal_handler_wallpaperhandler.WallpaperCurrentResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Get current wallpaper state
+      tags:
+      - wallpaper
+  /wallpaper/random:
+    post:
+      parameters:
+      - description: Optional monitor/mode
+        in: body
+        name: body
+        schema:
+          additionalProperties: true
+          type: object
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Set random wallpaper
+      tags:
+      - wallpaper
+  /wallpaper/set:
+    post:
+      parameters:
+      - description: Set request
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/internal_handler_wallpaperhandler.setWallpaperRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/waypaper-engine_daemon_internal_handler_httpjson.APIError'
+      summary: Set wallpaper
+      tags:
+      - wallpaper
+swagger: "2.0"
