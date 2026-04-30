@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/spf13/viper"
@@ -116,6 +117,24 @@ func (d *Daemon) Start(ctx context.Context) error {
 	bus := events.NewBus()
 	defer bus.Close()
 
+	// Publish SSE events when config.toml is edited externally.
+	opts.Cfg.OnConfigChange(func(section string) {
+		sections := []string{section}
+		if section == "" {
+			sections = []string{"app", "daemon", "backend", "monitors"}
+		}
+		slog.Info("config file changed externally", "sections", sections)
+		bus.Publish(events.Event{
+			Type: events.ConfigChanged,
+			Data: map[string]any{"sections": sections, "source": "file"},
+		})
+	})
+
+	// restoreRetryCtx is cancelled as soon as graceful shutdown begins so that
+	// deferred daemon-backend restore retries stop immediately.
+	restoreRetryCtx, cancelRestoreRetry := context.WithCancel(ctx)
+	defer cancelRestoreRetry()
+
 	// Initialize active backend.
 	activeBackend := opts.Registry.Active()
 	if activeBackend == nil {
@@ -159,10 +178,13 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 	slog.Info("compositor detected", "type", monManager.Compositor())
 
+	// Clean stale processed images if gallery is empty (e.g. after a DB wipe).
+	cleanStaleProcessedDir(ctx, opts.DB.ImageStore(), opts.ImagesDir)
+
 	// Restore wallpapers from persisted monitor state.
 	if initErr != nil && caps.DaemonProcess {
 		wallpaper.StartDeferredDaemonRestore(
-			ctx,
+			restoreRetryCtx,
 			opts.Registry,
 			opts.Cfg,
 			opts.DB.MonitorStateStore(),
@@ -248,6 +270,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	// Graceful shutdown.
 	slog.Info("shutting down...")
+
+	// Stop deferred restore retries immediately so shutdown isn't delayed.
+	cancelRestoreRetry()
+
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
 
@@ -261,8 +287,6 @@ func (d *Daemon) Start(ctx context.Context) error {
 		slog.Warn("backend shutdown error", "error", err)
 	}
 
-	bus.Close()
-
 	_ = os.Remove(opts.SocketPath)
 
 	slog.Info("daemon stopped")
@@ -270,6 +294,31 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return fmt.Errorf("server error: %w", serverErr)
 	}
 	return nil
+}
+
+// cleanStaleProcessedDir removes the processed/ split-image cache when the
+// image gallery is empty. This prevents stale cached fragments from being
+// served after a DB wipe + re-import where image IDs get reassigned.
+func cleanStaleProcessedDir(ctx context.Context, imageStore store.ImageStore, imagesDir string) {
+	count, err := imageStore.Count(ctx)
+	if err != nil {
+		slog.Warn("clean processed: failed to count images", "error", err)
+		return
+	}
+	if count > 0 {
+		return
+	}
+
+	processedDir := filepath.Join(imagesDir, "processed")
+	if _, err := os.Stat(processedDir); os.IsNotExist(err) {
+		return
+	}
+
+	if err := os.RemoveAll(processedDir); err != nil {
+		slog.Warn("clean processed: failed to remove stale cache", "error", err)
+		return
+	}
+	slog.Info("clean processed: removed stale split-image cache (gallery is empty)")
 }
 
 // WaitForSocket polls until the Unix socket at path is accepting connections,

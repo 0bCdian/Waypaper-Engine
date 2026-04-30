@@ -13,9 +13,7 @@ import (
 	"log/slog"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
-	"time"
 
 	slogmulti "github.com/samber/slog-multi"
 	"gopkg.in/natefinch/lumberjack.v2"
@@ -27,23 +25,10 @@ import (
 	"waypaper-engine/daemon/internal/backend/mpvpaper"
 	"waypaper-engine/daemon/internal/backend/waylandutauri"
 	"waypaper-engine/daemon/internal/config"
-	"waypaper-engine/daemon/internal/control"
-	"waypaper-engine/daemon/internal/events"
-	"waypaper-engine/daemon/internal/handler/backendshandler"
-	"waypaper-engine/daemon/internal/handler/confighandler"
-	"waypaper-engine/daemon/internal/handler/foldershandler"
-	"waypaper-engine/daemon/internal/handler/healthhandler"
-	"waypaper-engine/daemon/internal/handler/imageshandler"
-	"waypaper-engine/daemon/internal/handler/monitorshandler"
-	"waypaper-engine/daemon/internal/handler/playlistshandler"
-	"waypaper-engine/daemon/internal/handler/wallpaperhandler"
-	"waypaper-engine/daemon/internal/image"
+	daemon "waypaper-engine/daemon/internal/daemon"
 	"waypaper-engine/daemon/internal/monitor"
-	"waypaper-engine/daemon/internal/playlist"
-	"waypaper-engine/daemon/internal/server"
 	"waypaper-engine/daemon/internal/store"
 	"waypaper-engine/daemon/internal/system"
-	"waypaper-engine/daemon/internal/wallpaper"
 )
 
 // version is set at build time via ldflags: -X main.version=...
@@ -88,18 +73,10 @@ func startDaemon(configPath string, logLevel string) error {
 	setupLogging(cfg, logLevel)
 	slog.Info("daemon starting", "version", version, "config", configPath)
 
-	// 4. Ensure directories exist.
-	for _, dir := range []string{
-		cfg.GetImagesDir(),
-		cfg.GetThumbnailsDir(),
-		cfg.GetDatabaseDir(),
-	} {
-		if err := system.EnsureDir(dir); err != nil {
-			return fmt.Errorf("ensure dir %s: %w", dir, err)
-		}
-	}
-	if err := system.EnsureParentDir(cfg.GetSocketPath()); err != nil {
-		return fmt.Errorf("ensure socket parent dir: %w", err)
+	// 4. Ensure database directory exists (images/thumbnails/socket are handled
+	//    by daemon.Start(); DB dir must exist before OpenDB).
+	if err := system.EnsureDir(cfg.GetDatabaseDir()); err != nil {
+		return fmt.Errorf("ensure dir %s: %w", cfg.GetDatabaseDir(), err)
 	}
 
 	// 5. Open database.
@@ -109,44 +86,7 @@ func startDaemon(configPath string, logLevel string) error {
 	}
 	defer db.Close()
 
-	// 6. Create event bus.
-	bus := events.NewBus()
-	defer bus.Close()
-
-	// 6b. Publish SSE events when config.toml is edited externally.
-	cfg.OnConfigChange(func(section string) {
-		sections := []string{section}
-		if section == "" {
-			sections = []string{"app", "daemon", "backend", "monitors"}
-		}
-		slog.Info("config file changed externally", "sections", sections)
-		bus.Publish(events.Event{
-			Type: events.ConfigChanged,
-			Data: map[string]any{"sections": sections, "source": "file"},
-		})
-	})
-
-	// 7. Create monitor manager.
-	providers := []monitor.MonitorProvider{
-		waylandutauri.NewMonitorProvider(cfg.Viper()),
-		monitor.NewWlrRandrProvider(),
-		monitor.NewXrandrProvider(),
-	}
-
-	compositorOverride := monitor.CompositorType("")
-	fullCfg, _ := cfg.GetConfig()
-	if fullCfg != nil && fullCfg.Daemon.Compositor != "auto" && fullCfg.Daemon.Compositor != "" {
-		compositorOverride = monitor.CompositorType(fullCfg.Daemon.Compositor)
-	}
-
-	monManager, err := monitor.NewMonitorManager(providers, compositorOverride)
-	if err != nil {
-		return fmt.Errorf("create monitor manager: %w", err)
-	}
-
-	slog.Info("compositor detected", "type", monManager.Compositor())
-
-	// 8. Create and register backends.
+	// 6. Create and register backends.
 	reg := backend.NewRegistry()
 	backends := []backend.Backend{
 		awww.New(),
@@ -162,7 +102,7 @@ func startDaemon(configPath string, logLevel string) error {
 		b.RegisterDefaults(cfg.Viper())
 	}
 
-	// 9. Activate the configured backend.
+	// 7. Activate the configured backend.
 	activeBackendName := cfg.GetActiveBackendType()
 	if err := reg.SetActive(activeBackendName); err != nil {
 		// Fall back to any available backend.
@@ -170,7 +110,6 @@ func startDaemon(configPath string, logLevel string) error {
 		for _, info := range reg.Available() {
 			if info.Available {
 				if err := reg.SetActive(info.Name); err == nil {
-					activeBackendName = info.Name
 					slog.Info("using fallback backend", "name", info.Name)
 					break
 				}
@@ -178,188 +117,49 @@ func startDaemon(configPath string, logLevel string) error {
 		}
 	}
 
-	// 10. Initialize active backend.
+	// 8. Determine compositor override from config.
+	var compositorOverride monitor.CompositorType
+	fullCfg, _ := cfg.GetConfig()
+	if fullCfg != nil && fullCfg.Daemon.Compositor != "auto" && fullCfg.Daemon.Compositor != "" {
+		compositorOverride = monitor.CompositorType(fullCfg.Daemon.Compositor)
+	}
+
+	// 9. Set up signal-aware context.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-
-	// Cancel deferred wallpaper restore retries as soon as graceful shutdown begins.
-	restoreRetryCtx, cancelRestoreRetry := context.WithCancel(context.Background())
-	defer cancelRestoreRetry()
-
-	activeBackend := reg.Active()
-	caps := activeBackend.Capabilities()
-	initErr := activeBackend.Initialize(ctx)
-	if initErr != nil {
-		if caps.DaemonProcess {
-			slog.Error("failed to initialize daemon backend; wallpaper restore deferred until it becomes available",
-				"name", activeBackend.Name(),
-				"error", initErr,
-				"hint", "ensure the backend binary is on PATH when the daemon starts and XDG_RUNTIME_DIR matches the backend",
-			)
-			bus.Publish(events.Event{
-				Type: events.BackendUnavailable,
-				Data: map[string]any{
-					"backend":  activeBackend.Name(),
-					"message":  initErr.Error(),
-					"retrying": true,
-				},
-			})
-		} else {
-			slog.Warn("failed to initialize backend", "name", activeBackend.Name(), "error", initErr)
-		}
-	} else {
-		slog.Info("backend initialized", "name", activeBackend.Name())
-		if err := activeBackend.OnConfigChanged(ctx, nil); err != nil {
-			slog.Warn("backend config sync after init failed", "error", err)
-		}
-	}
-
-	// 11. Create image processor and splitter.
-	processor := image.NewProcessor(db.ImageStore(), bus, cfg.GetImagesDir(), cfg.GetThumbnailsDir(), cfg.Viper())
-	splitter := image.NewSplitter(cfg.GetImagesDir())
-
-	// 11a. Legacy videos: generate H.264 preview_path for codecs Chromium cannot play (async).
-	go processor.BackfillMissingVideoBrowserPreviews(context.Background())
-
-	// 11b. Clean stale processed images if the gallery is empty (e.g. after a
-	// DB wipe). Prevents cached split fragments from being served for
-	// newly-assigned image IDs that map to different source images.
-	cleanStaleProcessedDir(ctx, db.ImageStore(), cfg.GetImagesDir())
-
-	// 10b. Restore wallpapers from persisted monitor state.
-	if initErr != nil && caps.DaemonProcess {
-		wallpaper.StartDeferredDaemonRestore(
-			restoreRetryCtx,
-			reg,
-			cfg,
-			db.MonitorStateStore(),
-			db.StateStore(),
-			monManager,
-			db.ImageStore(),
-			splitter,
-			bus,
-		)
-	} else {
-		wallpaper.Restore(ctx, db.MonitorStateStore(), db.StateStore(), reg, cfg, monManager, db.ImageStore(), splitter, bus)
-	}
-
-	// 12. Create playlist manager.
-	playlistMgr := playlist.NewManager(
-		db.PlaylistStore(),
-		db.StateStore(),
-		db.HistoryStore(),
-		db.ImageStore(),
-		db.MonitorStateStore(),
-		reg,
-		monManager,
-		bus,
-		splitter,
-		cfg,
-	)
-
-	if err := playlistMgr.RestorePersistedRuns(ctx); err != nil {
-		slog.Warn("playlist restore from disk failed", "error", err)
-	}
-
-	// 13. Create shutdown function.
-	shutdownCh := make(chan struct{}, 1)
-	shutdownFn := func() {
-		select {
-		case shutdownCh <- struct{}{}:
-		default:
-		}
-	}
-
-	// 14. Create handlers.
-	ctrl := control.NewController(cfg, reg, bus, control.RestoreFunc(func(ctx context.Context) {
-		wallpaper.Restore(ctx, db.MonitorStateStore(), db.StateStore(), reg, cfg, monManager, db.ImageStore(), splitter, bus)
-	}))
-	handlers := server.Handlers{
-		Health:    healthhandler.NewHealthHandler(version, shutdownFn),
-		Images:    imageshandler.NewImageHandler(db.ImageStore(), processor, bus, reg),
-		Playlists: playlistshandler.NewPlaylistHandler(db.PlaylistStore(), db.StateStore(), playlistMgr, bus),
-		Monitors:  monitorshandler.NewMonitorHandler(monManager),
-		Config:    confighandler.NewConfigHandler(ctrl),
-		Backends:  backendshandler.NewBackendHandler(reg, ctrl),
-		Wallpaper: wallpaperhandler.NewWallpaperHandler(
-			db.ImageStore(), db.HistoryStore(), db.StateStore(), db.MonitorStateStore(),
-			reg, monManager, splitter, bus, cfg,
-		),
-		Folders: foldershandler.NewFolderHandler(db.FolderStore(), db.ImageStore(), bus),
-	}
-
-	// 15. Create router and server.
-	router := server.NewRouter(handlers, bus)
-	srv := server.NewServer(cfg.GetSocketPath(), router)
-
-	// 16. Handle OS signals.
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
-
-	// Start server in goroutine.
-	errCh := make(chan error, 1)
 	go func() {
-		errCh <- srv.Serve()
+		select {
+		case sig := <-sigCh:
+			slog.Info("received signal", "signal", sig)
+			cancel()
+		case <-ctx.Done():
+		}
 	}()
 
-	slog.Info("daemon ready", "socket", cfg.GetSocketPath(), "pid", os.Getpid())
-
-	// 17. Wait for shutdown signal.
-	var serverErr error
-	select {
-	case sig := <-sigCh:
-		slog.Info("received signal", "signal", sig)
-	case <-shutdownCh:
-		slog.Info("shutdown requested via API")
-	case err := <-errCh:
-		if err != nil {
-			serverErr = err
-			slog.Error("server error, initiating shutdown", "error", err)
-		}
+	// 10. Build daemon options and start.
+	opts := daemon.Options{
+		SocketPath:    cfg.GetSocketPath(),
+		DB:            db,
+		Registry:      reg,
+		Cfg:           cfg,
+		Viper:         cfg.Viper(),
+		ImagesDir:     cfg.GetImagesDir(),
+		ThumbnailsDir: cfg.GetThumbnailsDir(),
+		Version:       version,
+		Compositor:    compositorOverride,
+		MonitorProviders: []monitor.MonitorProvider{
+			waylandutauri.NewMonitorProvider(cfg.Viper()),
+			monitor.NewWlrRandrProvider(),
+			monitor.NewXrandrProvider(),
+		},
 	}
-
-	// 18. Graceful shutdown.
-	slog.Info("shutting down...")
-
-	cancelRestoreRetry()
-
-	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer shutdownCancel()
-
-	// Stop playlists but leave was_running=true on disk so they resume after reboot.
-	playlistMgr.Shutdown(shutdownCtx)
-
-	// Shutdown server.
-	if err := srv.Shutdown(shutdownCtx); err != nil {
-		slog.Error("server shutdown error", "error", err)
+	d, err := daemon.New(opts)
+	if err != nil {
+		return fmt.Errorf("create daemon: %w", err)
 	}
-
-	// Shutdown the currently active backend (use registry to get the
-	// current one, not the startup-time snapshot which may be stale if
-	// the backend was switched at runtime via the API).
-	if err := reg.Active().Shutdown(shutdownCtx); err != nil {
-		slog.Warn("backend shutdown error", "error", err)
-	}
-
-	// Close event bus (closes SSE connections).
-	bus.Close()
-
-	// Close database.
-	if err := db.Close(); err != nil {
-		slog.Error("database close error", "error", err)
-	}
-
-	// Remove socket file.
-	_ = os.Remove(cfg.GetSocketPath())
-
-	// Release lock.
-	_ = lock.Release()
-
-	slog.Info("daemon stopped")
-	if serverErr != nil {
-		return fmt.Errorf("server error: %w", serverErr)
-	}
-	return nil
+	return d.Start(ctx)
 }
 
 // logLevel is a package-level LevelVar so the level can be changed at runtime.
@@ -424,27 +224,3 @@ func setupLogging(cfg *config.ViperManager, levelOverride string) {
 	slog.SetDefault(slog.New(slogmulti.Fanout(handlers...)))
 }
 
-// cleanStaleProcessedDir removes the processed/ split-image cache when the
-// image gallery is empty. This prevents stale cached fragments from being
-// served after a DB wipe + re-import where image IDs get reassigned.
-func cleanStaleProcessedDir(ctx context.Context, imageStore store.ImageStore, imagesDir string) {
-	count, err := imageStore.Count(ctx)
-	if err != nil {
-		slog.Warn("clean processed: failed to count images", "error", err)
-		return
-	}
-	if count > 0 {
-		return
-	}
-
-	processedDir := filepath.Join(imagesDir, "processed")
-	if _, err := os.Stat(processedDir); os.IsNotExist(err) {
-		return
-	}
-
-	if err := os.RemoveAll(processedDir); err != nil {
-		slog.Warn("clean processed: failed to remove stale cache", "error", err)
-		return
-	}
-	slog.Info("clean processed: removed stale split-image cache (gallery is empty)")
-}
