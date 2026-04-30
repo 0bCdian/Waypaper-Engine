@@ -25,7 +25,7 @@ import (
 	"waypaper-engine/daemon/internal/backend/mpvpaper"
 	"waypaper-engine/daemon/internal/backend/waylandutauri"
 	"waypaper-engine/daemon/internal/config"
-	daemon "waypaper-engine/daemon/internal/daemon"
+	"waypaper-engine/daemon/internal/daemon"
 	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/store"
 	"waypaper-engine/daemon/internal/system"
@@ -224,4 +224,3 @@ func setupLogging(cfg *config.ViperManager, levelOverride string) {
 
 	slog.SetDefault(slog.New(slogmulti.Fanout(handlers...)))
 }
-

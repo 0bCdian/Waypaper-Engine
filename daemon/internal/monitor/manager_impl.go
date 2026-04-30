@@ -60,10 +60,10 @@ type noopProvider struct {
 	compositor CompositorType
 }
 
-func (n *noopProvider) Name() string                              { return "noop" }
-func (n *noopProvider) IsAvailable() bool                        { return true }
-func (n *noopProvider) Compositor() CompositorType               { return n.compositor }
-func (n *noopProvider) Priority() int                            { return 0 }
+func (n *noopProvider) Name() string                                { return "noop" }
+func (n *noopProvider) IsAvailable() bool                           { return true }
+func (n *noopProvider) Compositor() CompositorType                  { return n.compositor }
+func (n *noopProvider) Priority() int                               { return 0 }
 func (n *noopProvider) Detect(_ context.Context) ([]Monitor, error) { return nil, nil }
 
 // selectProvider filters providers by compositor, sorts by descending priority,

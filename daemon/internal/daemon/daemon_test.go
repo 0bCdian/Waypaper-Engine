@@ -29,7 +29,7 @@ type mockBackend struct {
 	name string
 }
 
-func (m *mockBackend) Name() string { return m.name }
+func (m *mockBackend) Name() string      { return m.name }
 func (m *mockBackend) IsAvailable() bool { return true }
 func (m *mockBackend) Capabilities() backend.Capabilities {
 	return backend.Capabilities{
@@ -43,9 +43,9 @@ func (m *mockBackend) Shutdown(_ context.Context) error   { return nil }
 func (m *mockBackend) SetWallpaper(_ context.Context, _ backend.WallpaperRequest) error {
 	return nil
 }
-func (m *mockBackend) RegisterDefaults(_ *viper.Viper)                      {}
-func (m *mockBackend) ValidateConfig(_ json.RawMessage) error               { return nil }
-func (m *mockBackend) ParseConfig(_ json.RawMessage) (any, error)           { return nil, nil }
+func (m *mockBackend) RegisterDefaults(_ *viper.Viper)                            {}
+func (m *mockBackend) ValidateConfig(_ json.RawMessage) error                     { return nil }
+func (m *mockBackend) ParseConfig(_ json.RawMessage) (any, error)                 { return nil, nil }
 func (m *mockBackend) OnConfigChanged(_ context.Context, _ json.RawMessage) error { return nil }
 
 // ---------------------------------------------------------------------------
@@ -59,21 +59,21 @@ type mockCfg struct {
 	dbDir         string
 }
 
-func (m *mockCfg) GetConfig() (*config.Config, error)                          { return &config.Config{}, nil }
-func (m *mockCfg) UpdateConfig(_ string, _ map[string]any) error               { return nil }
-func (m *mockCfg) GetSection(_ string) (map[string]any, error)                 { return nil, nil }
-func (m *mockCfg) GetBackendConfig(_ string) (json.RawMessage, error)          { return nil, nil }
-func (m *mockCfg) SetBackendConfig(_ string, _ json.RawMessage) error          { return nil }
-func (m *mockCfg) GetActiveBackendType() string                                { return "mock" }
-func (m *mockCfg) SetActiveBackendType(_ string) error                         { return nil }
-func (m *mockCfg) GetSelectionMode() string                                    { return "fixed" }
-func (m *mockCfg) GetAutoPriorities() config.AutoPriorities                    { return config.AutoPriorities{} }
-func (m *mockCfg) OnConfigChange(_ func(string))                               {}
-func (m *mockCfg) GetSocketPath() string                                       { return m.socketPath }
-func (m *mockCfg) GetImagesDir() string                                        { return m.imagesDir }
-func (m *mockCfg) GetThumbnailsDir() string                                    { return m.thumbnailsDir }
-func (m *mockCfg) GetDatabaseDir() string                                      { return m.dbDir }
-func (m *mockCfg) GetLogFile() string                                          { return "" }
+func (m *mockCfg) GetConfig() (*config.Config, error)                 { return &config.Config{}, nil }
+func (m *mockCfg) UpdateConfig(_ string, _ map[string]any) error      { return nil }
+func (m *mockCfg) GetSection(_ string) (map[string]any, error)        { return nil, nil }
+func (m *mockCfg) GetBackendConfig(_ string) (json.RawMessage, error) { return nil, nil }
+func (m *mockCfg) SetBackendConfig(_ string, _ json.RawMessage) error { return nil }
+func (m *mockCfg) GetActiveBackendType() string                       { return "mock" }
+func (m *mockCfg) SetActiveBackendType(_ string) error                { return nil }
+func (m *mockCfg) GetSelectionMode() string                           { return "fixed" }
+func (m *mockCfg) GetAutoPriorities() config.AutoPriorities           { return config.AutoPriorities{} }
+func (m *mockCfg) OnConfigChange(_ func(string))                      {}
+func (m *mockCfg) GetSocketPath() string                              { return m.socketPath }
+func (m *mockCfg) GetImagesDir() string                               { return m.imagesDir }
+func (m *mockCfg) GetThumbnailsDir() string                           { return m.thumbnailsDir }
+func (m *mockCfg) GetDatabaseDir() string                             { return m.dbDir }
+func (m *mockCfg) GetLogFile() string                                 { return "" }
 
 // ---------------------------------------------------------------------------
 // Test helpers
