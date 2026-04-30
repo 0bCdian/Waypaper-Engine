@@ -75,25 +75,18 @@ type Backend interface {
 	// The returned value is opaque to the daemon core — it's passed back into
 	// SetWallpaper via WallpaperRequest.Config.
 	ParseConfig(raw json.RawMessage) (any, error)
-}
 
-// RuntimeConfigSync is optional. Backends that control a long-lived renderer
-// (e.g. wayland-utauri) implement it to push global settings to the child
-// immediately after PATCH /config/backend, without waiting for SetWallpaper.
-type RuntimeConfigSync interface {
-	SyncRuntimeFromConfig(ctx context.Context) error
-}
-
-// ExtendParallaxGroupNotifier is optional. Backends that render one logical
-// static image spanned (sliced) across multiple compositor outputs implement it
-// so the Hyprland/Sway parallax driver can send the same parallax-move to every
-// output in the spanned set, keeping slice seams aligned.
-//
-// The daemon calls SetExtendParallaxGroup after a successful Apply:
-//   - non-nil: output names in the current span (len >= 2);
-//   - nil: not spanned, or the backend should clear any stored group.
-type ExtendParallaxGroupNotifier interface {
-	SetExtendParallaxGroup(monitors []string)
+	// OnConfigChanged is called when the backend's configuration section is
+	// updated via PATCH /config/backends/{name}. Implementations must apply
+	// the new config immediately:
+	//   - Daemon-process backends (e.g. wayland-utauri) push the change to
+	//     the live renderer without restarting.
+	//   - Stateless backends (feh, hyprpaper, mpvpaper, awww) re-apply the
+	//     current wallpaper so the new config takes effect immediately.
+	//
+	// Called only when this backend is the active backend. newConfig is the
+	// full backend config section as raw JSON.
+	OnConfigChanged(ctx context.Context, newConfig json.RawMessage) error
 }
 
 // Capabilities declares what a backend supports. Used by the daemon to adapt its
@@ -183,6 +176,14 @@ type WallpaperRequest struct {
 	// operation finishes (e.g. wayland-utauri POST /wallpaper/load with wait_for_completion).
 	// Used for restore to avoid 202 + queued-load races on cold start. Other backends may ignore.
 	WaitForCompletion bool `json:"-"`
+
+	// ExtendGroup is populated only when Mode == ModeExtend with a static image
+	// split across multiple monitors. It lists all compositor output names that
+	// share the same logical source image (including the current monitor).
+	// Backends that run a persistent renderer (e.g. wayland-utauri) use this to
+	// coordinate per-output effects (e.g. parallax) so seams stay aligned.
+	// Other backends ignore this field.
+	ExtendGroup []string `json:"-"`
 
 	// Config is the backend's own typed configuration, as returned by ParseConfig().
 	// The daemon core does not inspect this value — it passes it through opaquely.
