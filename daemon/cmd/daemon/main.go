@@ -152,7 +152,6 @@ func startDaemon(configPath string, logLevel string) error {
 		Compositor:    compositorOverride,
 		MonitorProviders: []monitor.MonitorProvider{
 			waylandutauri.NewMonitorProvider(cfg.Viper()),
-			monitor.NewWlrRandrProvider(),
 			monitor.NewXrandrProvider(),
 		},
 	}
