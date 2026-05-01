@@ -14,16 +14,8 @@ import { randomUUID } from "node:crypto";
 import { goDaemonClient } from "../goDaemonClient";
 import { daemonMonitor } from "./DaemonMonitor";
 import { logger } from "../logger";
-import type {
-  Image,
-  ImageQueryParams,
-  UpdateImageRequest,
-  MonitorMode,
-  CreatePlaylistRequest,
-  UpdatePlaylistRequest,
-  UnifiedConfig,
-  VideoLoopExportRequest,
-} from "../daemon-go-types";
+import type { Image } from "../daemon-go-types";
+import type { DaemonRequest } from "../ipc-types";
 import { scanDirectoryForImports } from "../scanDirectoryForImports";
 import {
   buildShaderMultipassWebWallpaperFiles,
@@ -85,7 +77,7 @@ export class IPCManager {
 
     this.handlers.set(handler.channel, handler);
 
-    const unwrappedChannels = ["go-daemon-command"];
+    const unwrappedChannels = ["daemon"];
 
     ipcMain.handle(handler.channel, async (event, ...args) => {
       try {
@@ -197,11 +189,10 @@ export class IPCManager {
 
   private setupGoDaemonHandlers(): void {
     this.registerHandler({
-      channel: "go-daemon-command",
+      channel: "daemon",
       handler: async (_event, ...args: unknown[]) => {
-        const action = args[0] as string;
-        const payload = args[1] as unknown | undefined;
-        return await this.handleGoDaemonCommand(action, payload);
+        const req = args[0] as DaemonRequest;
+        return await this.handleDaemonRequest(req);
       },
     });
 
@@ -505,11 +496,9 @@ export class IPCManager {
     });
   }
 
-  private async handleGoDaemonCommand(action: string, payload?: unknown): Promise<unknown> {
+  private async handleDaemonRequest(req: DaemonRequest): Promise<unknown> {
     try {
-      const p = payload as Record<string, unknown> | undefined;
-
-      switch (action) {
+      switch (req.type) {
         // HEALTH & SYSTEM
         case "ping":
           return await goDaemonClient.ping();
@@ -518,75 +507,53 @@ export class IPCManager {
         case "get_capabilities":
           return await goDaemonClient.getCapabilities();
         case "shutdown":
-        case "stop_daemon":
           await goDaemonClient.shutdown();
           return { status: "shutting_down" };
 
         // IMAGES
         case "get_images": {
-          const result = await goDaemonClient.getImages(p as ImageQueryParams | undefined);
+          const result = await goDaemonClient.getImages(req.params);
           result.data = this.convertPathsToAtomProtocol(result.data);
           return result;
         }
         case "get_image": {
-          const image = await goDaemonClient.getImage(p?.id as number);
+          const image = await goDaemonClient.getImage(req.id);
           return this.convertPathsToAtomProtocol([image])[0];
         }
         case "ensure_browser_preview": {
-          const image = await goDaemonClient.ensureBrowserPreview(
-            p?.id as number,
-            p?.force as boolean | undefined,
-          );
+          const image = await goDaemonClient.ensureBrowserPreview(req.id, req.force);
           return this.convertPathsToAtomProtocol([image])[0];
         }
         case "video_loop_export": {
-          const r = await goDaemonClient.videoLoopExport(
-            p?.id as number,
-            p?.body as VideoLoopExportRequest,
-          );
+          const r = await goDaemonClient.videoLoopExport(req.id, req.body);
           return {
             ...r,
             path: r.path?.startsWith("/") ? `atom://${r.path.substring(1)}` : r.path,
           };
         }
-        case "get_image_count":
-          return await goDaemonClient.getImageCount();
         case "import_images":
-          return await goDaemonClient.importImages(
-            p?.paths as string[],
-            p?.folder_id as number | undefined,
-          );
+          return await goDaemonClient.importImages(req.paths, req.folder_id ?? undefined);
         case "import_web_wallpaper": {
           const imported = await goDaemonClient.importWebWallpaper(
-            p?.path as string,
-            p?.folder_id as number | undefined,
+            req.path,
+            req.folder_id ?? undefined,
           );
           return this.convertPathsToAtomProtocol([imported])[0];
         }
         case "cancel_import":
-          return await goDaemonClient.cancelImport(p?.batch_id as string);
+          return await goDaemonClient.cancelImport(req.batch_id);
         case "delete_images":
-          return await goDaemonClient.deleteImages(p?.ids as number[]);
+          return await goDaemonClient.deleteImages(req.ids);
         case "update_image": {
-          const updated = await goDaemonClient.updateImage(
-            p?.id as number,
-            p?.update as UpdateImageRequest,
-          );
+          const updated = await goDaemonClient.updateImage(req.id, req.update);
           return this.convertPathsToAtomProtocol([updated])[0];
         }
-        case "rename_image": {
-          const renamed = await goDaemonClient.renameImage(p?.id as number, p?.name as string);
-          return this.convertPathsToAtomProtocol([renamed])[0];
-        }
         case "select_all_images":
-          return await goDaemonClient.selectAllImages(p?.selected as boolean);
+          return await goDaemonClient.selectAllImages(req.selected);
         case "get_image_tags":
           return await goDaemonClient.getImageTags();
         case "get_image_history":
-          return await goDaemonClient.getImageHistory(
-            p?.limit as number | undefined,
-            p?.monitor as string | undefined,
-          );
+          return await goDaemonClient.getImageHistory(req.limit, req.monitor);
         case "clear_image_history":
           return await goDaemonClient.clearImageHistory();
 
@@ -595,124 +562,89 @@ export class IPCManager {
           return await goDaemonClient.getCurrentWallpapers();
         case "set_wallpaper":
           return await goDaemonClient.setWallpaper(
-            p?.image_id as number,
-            (p?.monitor as string) || "*",
-            (p?.mode as MonitorMode) || "individual",
-            p?.monitors as string[] | undefined,
+            req.image_id,
+            req.monitor || "*",
+            req.mode || "individual",
+            req.monitors,
           );
         case "random_wallpaper":
           return await goDaemonClient.setRandomWallpaper(
-            (p?.monitor as string) || "*",
-            (p?.mode as MonitorMode) || "individual",
+            req.monitor || "*",
+            req.mode || "individual",
           );
 
         // PLAYLISTS
         case "get_playlists":
           return await goDaemonClient.getPlaylists();
         case "get_playlist":
-          return await goDaemonClient.getPlaylist(p?.id as number);
+          return await goDaemonClient.getPlaylist(req.id);
         case "create_playlist":
-          return await goDaemonClient.createPlaylist(p as unknown as CreatePlaylistRequest);
+          return await goDaemonClient.createPlaylist(req.playlist);
         case "update_playlist":
-          return await goDaemonClient.updatePlaylist(
-            p?.id as number,
-            p?.update as UpdatePlaylistRequest,
-          );
+          return await goDaemonClient.updatePlaylist(req.id, req.update);
         case "delete_playlist":
-          return await goDaemonClient.deletePlaylist(p?.id as number);
+          return await goDaemonClient.deletePlaylist(req.id);
         case "start_playlist":
           return await goDaemonClient.startPlaylist(
-            p?.id as number,
-            (p?.monitor as string) || "*",
-            (p?.mode as MonitorMode) || "individual",
+            req.id,
+            req.monitor || "*",
+            req.mode || "individual",
           );
         case "stop_playlist":
-          return await goDaemonClient.stopPlaylist(p?.id as number);
+          return await goDaemonClient.stopPlaylist(req.id);
         case "pause_playlist":
-          return await goDaemonClient.pausePlaylist(p?.id as number);
+          return await goDaemonClient.pausePlaylist(req.id);
         case "resume_playlist":
-          return await goDaemonClient.resumePlaylist(p?.id as number);
+          return await goDaemonClient.resumePlaylist(req.id);
         case "next_playlist_image":
-          return await goDaemonClient.nextPlaylistImage(p?.id as number);
+          return await goDaemonClient.nextPlaylistImage(req.id);
         case "previous_playlist_image":
-          return await goDaemonClient.previousPlaylistImage(p?.id as number);
+          return await goDaemonClient.previousPlaylistImage(req.id);
         case "get_active_playlists":
           return await goDaemonClient.getActivePlaylists();
         case "get_active_playlist_for_monitor":
-          return await goDaemonClient.getActivePlaylistForMonitor(p?.monitor as string);
+          return await goDaemonClient.getActivePlaylistForMonitor(req.monitor);
         case "stop_all_playlists":
           return await goDaemonClient.stopAllPlaylists();
-        case "pause_all_playlists":
-          return await goDaemonClient.pauseAllPlaylists();
-        case "resume_all_playlists":
-          return await goDaemonClient.resumeAllPlaylists();
 
         // FOLDERS
         case "get_folders":
           return await goDaemonClient.getFolders(
-            p?.parent_id as number | undefined,
-            p?.search as string | undefined,
+            req.parent_id ?? undefined,
+            req.search,
           );
         case "get_folder":
-          return await goDaemonClient.getFolder(p?.id as number);
+          return await goDaemonClient.getFolder(req.id);
         case "get_folder_path":
-          return await goDaemonClient.getFolderPath(p?.id as number);
+          return await goDaemonClient.getFolderPath(req.id);
         case "create_folder":
-          return await goDaemonClient.createFolder(
-            p?.name as string,
-            p?.parent_id as number | undefined,
-          );
+          return await goDaemonClient.createFolder(req.name, req.parent_id ?? undefined);
         case "update_folder":
-          return await goDaemonClient.updateFolder(
-            p?.id as number,
-            p?.update as { name?: string; parent_id?: number | null },
-          );
+          return await goDaemonClient.updateFolder(req.id, req.update);
         case "delete_folder":
-          return await goDaemonClient.deleteFolder(
-            p?.id as number,
-            (p?.mode as "keep_contents" | "delete_all") || "keep_contents",
-          );
+          return await goDaemonClient.deleteFolder(req.id, req.mode || "keep_contents");
         case "move_images_to_folder":
-          return await goDaemonClient.moveImagesToFolder(
-            p?.image_ids as number[],
-            p?.folder_id as number | null,
-          );
+          return await goDaemonClient.moveImagesToFolder(req.image_ids, req.folder_id);
 
         // MONITORS
         case "get_monitors":
           return await goDaemonClient.getMonitors();
         case "get_monitor":
-          return await goDaemonClient.getMonitor(p?.name as string);
+          return await goDaemonClient.getMonitor(req.name);
 
         // CONFIG
         case "get_config":
           return await goDaemonClient.getConfig();
         case "update_config":
-          return await goDaemonClient.updateConfig(p as unknown as Partial<UnifiedConfig>);
+          return await goDaemonClient.updateConfig(req.config);
         case "get_config_section":
-          return await goDaemonClient.getConfigSection(p?.section as string);
+          return await goDaemonClient.getConfigSection(req.section);
         case "update_config_section":
-          return await goDaemonClient.updateConfigSection(
-            p?.section as string,
-            p?.data as Record<string, unknown>,
-          );
-        case "get_backend_config": {
-          const bn = (p as { name?: string } | undefined)?.name;
-          if (!bn || typeof bn !== "string") {
-            throw new Error("get_backend_config requires { name: string }");
-          }
-          return await goDaemonClient.getBackendConfig(bn);
-        }
-        case "update_backend_config": {
-          const payload = p as { name?: string; patch?: Record<string, unknown> } | undefined;
-          if (!payload?.name || typeof payload.name !== "string") {
-            throw new Error("update_backend_config requires { name, patch }");
-          }
-          return await goDaemonClient.updateBackendConfig(
-            payload.name,
-            (payload.patch ?? {}) as Record<string, unknown>,
-          );
-        }
+          return await goDaemonClient.updateConfigSection(req.section, req.data);
+        case "get_backend_config":
+          return await goDaemonClient.getBackendConfig(req.name);
+        case "update_backend_config":
+          return await goDaemonClient.updateBackendConfig(req.name, req.patch);
 
         // BACKENDS
         case "get_backends":
@@ -726,13 +658,17 @@ export class IPCManager {
           return active?.capabilities ?? null;
         }
         case "activate_backend":
-          return await goDaemonClient.activateBackend(p?.name as string);
+          return await goDaemonClient.activateBackend(req.name);
 
-        default:
-          throw new Error(`Unknown Go daemon action: ${action}`);
+        default: {
+          const _exhaustive: never = req;
+          throw new Error(
+            `unknown daemon request type: ${(_exhaustive as DaemonRequest).type}`,
+          );
+        }
       }
     } catch (error) {
-      logger.error({ err: error, action }, "Go daemon command failed");
+      logger.error({ err: error, type: req.type }, "Daemon request failed");
       throw error;
     }
   }
