@@ -728,6 +728,7 @@ type MockRegistry struct {
 	RegisterFn   func(b backend.Backend) error
 	GetFn        func(name string) (backend.Backend, bool)
 	ActiveFn     func() backend.Backend
+	HasActiveFn  func() bool
 	SetActiveFn  func(name string) error
 	AvailableFn  func() []backend.BackendInfo
 	CompatibleFn func(compositor monitor.CompositorType) []backend.BackendInfo
@@ -752,6 +753,13 @@ func (m *MockRegistry) Active() backend.Backend {
 		return m.ActiveFn()
 	}
 	return nil
+}
+
+func (m *MockRegistry) HasActive() bool {
+	if m.HasActiveFn != nil {
+		return m.HasActiveFn()
+	}
+	return m.ActiveFn != nil
 }
 
 func (m *MockRegistry) SetActive(name string) error {

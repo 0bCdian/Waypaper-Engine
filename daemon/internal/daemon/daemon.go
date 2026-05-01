@@ -135,33 +135,41 @@ func (d *Daemon) Start(ctx context.Context) error {
 	restoreRetryCtx, cancelRestoreRetry := context.WithCancel(ctx)
 	defer cancelRestoreRetry()
 
-	// Initialize active backend.
-	activeBackend := opts.Registry.Active()
-	if activeBackend == nil {
-		return fmt.Errorf("daemon: no active backend set in registry")
-	}
-	caps := activeBackend.Capabilities()
-	initErr := activeBackend.Initialize(ctx)
-	if initErr != nil {
-		if caps.DaemonProcess {
-			slog.Error("failed to initialize daemon backend; wallpaper restore deferred",
-				"name", activeBackend.Name(), "error", initErr)
-			bus.Publish(events.Event{
-				Type: events.BackendUnavailable,
-				Data: map[string]any{
-					"backend":  activeBackend.Name(),
-					"message":  initErr.Error(),
-					"retrying": true,
-				},
-			})
+	// Initialize active backend (if any).
+	// If no backend is installed, the daemon starts in a degraded state and
+	// fires BackendUnavailable over SSE once the server is accepting connections.
+	noBackendInstalled := !opts.Registry.HasActive()
+	var (
+		caps    backend.Capabilities
+		initErr error
+	)
+	if !noBackendInstalled {
+		activeBackend := opts.Registry.Active()
+		caps = activeBackend.Capabilities()
+		initErr = activeBackend.Initialize(ctx)
+		if initErr != nil {
+			if caps.DaemonProcess {
+				slog.Error("failed to initialize daemon backend; wallpaper restore deferred",
+					"name", activeBackend.Name(), "error", initErr)
+				bus.Publish(events.Event{
+					Type: events.BackendUnavailable,
+					Data: map[string]any{
+						"backend":  activeBackend.Name(),
+						"message":  initErr.Error(),
+						"retrying": true,
+					},
+				})
+			} else {
+				slog.Warn("failed to initialize backend", "name", activeBackend.Name(), "error", initErr)
+			}
 		} else {
-			slog.Warn("failed to initialize backend", "name", activeBackend.Name(), "error", initErr)
+			slog.Info("backend initialized", "name", activeBackend.Name())
+			if err := activeBackend.OnConfigChanged(ctx, nil); err != nil {
+				slog.Warn("backend config sync after init failed", "error", err)
+			}
 		}
 	} else {
-		slog.Info("backend initialized", "name", activeBackend.Name())
-		if err := activeBackend.OnConfigChanged(ctx, nil); err != nil {
-			slog.Warn("backend config sync after init failed", "error", err)
-		}
+		slog.Warn("no wallpaper backend is installed; daemon running in degraded mode")
 	}
 
 	// Create image processor and splitter.
@@ -181,21 +189,23 @@ func (d *Daemon) Start(ctx context.Context) error {
 	// Clean stale processed images if gallery is empty (e.g. after a DB wipe).
 	cleanStaleProcessedDir(ctx, opts.DB.ImageStore(), opts.ImagesDir)
 
-	// Restore wallpapers from persisted monitor state.
-	if initErr != nil && caps.DaemonProcess {
-		wallpaper.StartDeferredDaemonRestore(
-			restoreRetryCtx,
-			opts.Registry,
-			opts.Cfg,
-			opts.DB.MonitorStateStore(),
-			opts.DB.StateStore(),
-			monManager,
-			opts.DB.ImageStore(),
-			splitter,
-			bus,
-		)
-	} else {
-		wallpaper.Restore(ctx, opts.DB.MonitorStateStore(), opts.DB.StateStore(), opts.Registry, opts.Cfg, monManager, opts.DB.ImageStore(), splitter, bus)
+	// Restore wallpapers from persisted monitor state (skip if no backend installed).
+	if !noBackendInstalled {
+		if initErr != nil && caps.DaemonProcess {
+			wallpaper.StartDeferredDaemonRestore(
+				restoreRetryCtx,
+				opts.Registry,
+				opts.Cfg,
+				opts.DB.MonitorStateStore(),
+				opts.DB.StateStore(),
+				monManager,
+				opts.DB.ImageStore(),
+				splitter,
+				bus,
+			)
+		} else {
+			wallpaper.Restore(ctx, opts.DB.MonitorStateStore(), opts.DB.StateStore(), opts.Registry, opts.Cfg, monManager, opts.DB.ImageStore(), splitter, bus)
+		}
 	}
 
 	// Create playlist manager.
@@ -254,6 +264,22 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	slog.Info("daemon ready", "socket", opts.SocketPath)
 
+	// If no backend is installed, notify the GUI once the server is up and
+	// SSE clients can connect. List the backends that were checked.
+	if noBackendInstalled {
+		checked := make([]string, 0)
+		for _, info := range opts.Registry.Available() {
+			checked = append(checked, info.Name)
+		}
+		go bus.Publish(events.Event{
+			Type: events.BackendUnavailable,
+			Data: map[string]any{
+				"message": "No wallpaper backend is installed. Install at least one backend to set wallpapers.",
+				"checked": checked,
+			},
+		})
+	}
+
 	// Wait for shutdown.
 	var serverErr error
 	select {
@@ -283,8 +309,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 		slog.Error("server shutdown error", "error", err)
 	}
 
-	if err := opts.Registry.Active().Shutdown(shutdownCtx); err != nil {
-		slog.Warn("backend shutdown error", "error", err)
+	if opts.Registry.HasActive() {
+		if err := opts.Registry.Active().Shutdown(shutdownCtx); err != nil {
+			slog.Warn("backend shutdown error", "error", err)
+		}
 	}
 
 	_ = os.Remove(opts.SocketPath)

@@ -38,6 +38,9 @@ type Registry interface {
 	// Panics if no backend has been activated (programming error).
 	Active() Backend
 
+	// HasActive returns true if any backend has been activated.
+	HasActive() bool
+
 	// SetActive switches the active backend to the one with the given name.
 	// Returns an error if the name is not registered or the backend is not available.
 	// Does NOT call Initialize/Shutdown — the caller is responsible for lifecycle.
