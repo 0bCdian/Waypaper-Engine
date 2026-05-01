@@ -2,8 +2,10 @@ import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { LazyMotion, AnimatePresence, domAnimation, m, useReducedMotion } from "framer-motion";
 
-/** ~2.6s staged content ~+ 0.4s exit overlay ≈ 3s wall clock total */
-const CONTENT_HOLD_MS = 2580;
+/** Time until boot lines begin fading out and the wordmark phase takes over */
+const LINES_TO_LOGO_MS = 1680;
+/** Total time from mount until the full-screen overlay begins its exit animation */
+const OVERLAY_HOLD_MS = 3400;
 const EXIT_S = 0.42;
 
 /** Boot lines — decorative; not literal daemon logs */
@@ -25,6 +27,7 @@ export const StartupIntro: React.FC<StartupIntroProps> = ({ onFinish }) => {
   const prefersReduced = useReducedMotion();
   const finishedRef = useRef(false);
   const [visible, setVisible] = useState(true);
+  const [contentPhase, setContentPhase] = useState<"lines" | "logo">("lines");
 
   const finishOnce = useCallback(() => {
     if (finishedRef.current) return;
@@ -44,7 +47,13 @@ export const StartupIntro: React.FC<StartupIntroProps> = ({ onFinish }) => {
 
   useEffect(() => {
     if (prefersReduced === true) return undefined;
-    const t = window.setTimeout(() => setVisible(false), CONTENT_HOLD_MS);
+    const t = window.setTimeout(() => setContentPhase("logo"), LINES_TO_LOGO_MS);
+    return () => window.clearTimeout(t);
+  }, [prefersReduced]);
+
+  useEffect(() => {
+    if (prefersReduced === true) return undefined;
+    const t = window.setTimeout(() => setVisible(false), OVERLAY_HOLD_MS);
     return () => window.clearTimeout(t);
   }, [prefersReduced]);
 
@@ -126,66 +135,85 @@ export const StartupIntro: React.FC<StartupIntroProps> = ({ onFinish }) => {
               transition={{ duration: 1.2, ease: [0.4, 0, 0.2, 1] as const }}
             />
 
-            {/* Log block */}
-            <m.div
-              className="relative z-[1] w-[min(90vw,440px)] font-mono text-[11px] leading-relaxed md:text-xs"
-              style={{ fontFamily: "var(--font-mono)" }}
-              variants={lineContainer}
-              initial="hidden"
-              animate="visible"
-            >
-              {PHASE_LINES.map((line) => (
-                <m.div
-                  key={line.k}
-                  className="mb-2 flex gap-4 sm:justify-between"
-                  variants={lineItem}
-                >
-                  <span className="shrink-0 text-primary">{"//"}</span>
-                  <span className="min-w-0 flex-1 text-base-content/70">{line.msg}</span>
-                  <span className="shrink-0 text-success">{line.tag}</span>
-                </m.div>
-              ))}
-            </m.div>
-
-            {/* Wordmark stack */}
-            <m.div
-              className="relative z-[1] mt-12 flex flex-col items-center gap-6"
-              initial={{ opacity: 0, y: 10, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              transition={{
-                delay: 0.55,
-                duration: 0.55,
-                ease: [0.22, 1, 0.36, 1] as const,
-              }}
-            >
-              <div className="relative">
-                <m.div
-                  className="absolute inset-[-12px] rounded-2xl"
-                  style={{
-                    background:
-                      "radial-gradient(ellipse at center, oklch(from var(--color-primary) l c h / 0.25) 0%, transparent 70%)",
-                  }}
-                  animate={{ opacity: [0.5, 0.95, 0.55], scale: [0.94, 1, 1] }}
-                  transition={{ duration: 1.6, ease: "easeInOut" }}
-                  aria-hidden
-                />
-                <img
-                  src={`${import.meta.env.BASE_URL}app.png`}
-                  alt=""
-                  draggable={false}
-                  className="relative h-14 w-14 object-contain md:h-16 md:w-16"
-                />
-              </div>
-              <m.p
-                className="text-center text-[0.72rem] font-semibold tracking-[0.35em] text-base-content/40 md:text-sm"
-                style={{ fontFamily: "var(--font-display)" }}
-                initial={{ opacity: 0, letterSpacing: "0.42em" }}
-                animate={{ opacity: 1, letterSpacing: "0.32em" }}
-                transition={{ delay: 0.78, duration: 0.6 }}
-              >
-                WAYPAPER
-              </m.p>
-            </m.div>
+            {/* One centered block: either boot log lines or wordmark — never stacked */}
+            <div className="relative z-[1] flex min-h-[min(40vh,200px)] w-full items-center justify-center px-4">
+              <AnimatePresence mode="wait">
+                {contentPhase === "lines" ? (
+                  <m.div
+                    key="boot-lines"
+                    className="w-[min(90vw,440px)] font-mono text-[11px] leading-relaxed md:text-xs"
+                    style={{ fontFamily: "var(--font-mono)" }}
+                    variants={lineContainer}
+                    initial="hidden"
+                    animate="visible"
+                    exit={{
+                      opacity: 0,
+                      y: -8,
+                      transition: { duration: 0.32, ease: [0.4, 0, 1, 1] as const },
+                    }}
+                  >
+                    {PHASE_LINES.map((line) => (
+                      <m.div
+                        key={line.k}
+                        className="mb-2 flex gap-4 sm:justify-between"
+                        variants={lineItem}
+                      >
+                        <span className="shrink-0 text-primary">{"//"}</span>
+                        <span className="min-w-0 flex-1 text-base-content/70">{line.msg}</span>
+                        <span className="shrink-0 text-success">{line.tag}</span>
+                      </m.div>
+                    ))}
+                  </m.div>
+                ) : (
+                  <m.div
+                    key="wordmark"
+                    className="flex flex-col items-center gap-6"
+                    initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                    animate={{
+                      opacity: 1,
+                      y: 0,
+                      scale: 1,
+                      transition: { duration: 0.5, ease: [0.22, 1, 0.36, 1] as const },
+                    }}
+                    exit={{
+                      opacity: 0,
+                      transition: { duration: 0.22 },
+                    }}
+                  >
+                    <div className="relative">
+                      <m.div
+                        className="absolute inset-[-12px] rounded-2xl"
+                        style={{
+                          background:
+                            "radial-gradient(ellipse at center, oklch(from var(--color-primary) l c h / 0.25) 0%, transparent 70%)",
+                        }}
+                        animate={{ opacity: [0.5, 0.95, 0.55], scale: [0.94, 1, 1] }}
+                        transition={{ duration: 1.6, ease: "easeInOut" }}
+                        aria-hidden
+                      />
+                      <img
+                        src={`${import.meta.env.BASE_URL}app.png`}
+                        alt=""
+                        draggable={false}
+                        className="relative h-14 w-14 object-contain md:h-16 md:w-16"
+                      />
+                    </div>
+                    <m.p
+                      className="text-center text-[0.72rem] font-semibold tracking-[0.35em] text-base-content/40 md:text-sm"
+                      style={{ fontFamily: "var(--font-display)" }}
+                      initial={{ opacity: 0, letterSpacing: "0.42em" }}
+                      animate={{
+                        opacity: 1,
+                        letterSpacing: "0.32em",
+                        transition: { delay: 0.12, duration: 0.55 },
+                      }}
+                    >
+                      WAYPAPER
+                    </m.p>
+                  </m.div>
+                )}
+              </AnimatePresence>
+            </div>
           </m.div>
         )}
       </AnimatePresence>
