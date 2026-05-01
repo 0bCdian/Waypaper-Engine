@@ -334,6 +334,7 @@ type MonitorState struct {
 type ActivePlaylistState struct {
 	PlaylistID      int        `json:"playlist_id"`
 	PlaylistName    string     `json:"playlist_name"`
+	PlaylistType    string     `json:"playlist_type"`
 	CurrentIndex    int        `json:"current_index"`
 	CurrentImageID  int        `json:"current_image_id"`
 	PreviousImageID *int       `json:"previous_image_id"`

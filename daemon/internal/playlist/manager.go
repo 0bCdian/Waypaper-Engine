@@ -2,6 +2,7 @@ package playlist
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"sort"
@@ -16,6 +17,11 @@ import (
 	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/store"
 	"waypaper-engine/daemon/internal/wallpaper"
+)
+
+// ErrManualAdvanceNotAllowed is returned for Next/Previous on playlists driven only by wall clock / weekday.
+var ErrManualAdvanceNotAllowed = errors.New(
+	"invalid action: next/previous is not supported for time_of_day or day_of_week playlists",
 )
 
 // playlistRun groups the scheduler and cancel func for a single Start() invocation.
@@ -177,6 +183,7 @@ func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target moni
 		ActivePlaylistState: store.ActivePlaylistState{
 			PlaylistID:   pl.ID,
 			PlaylistName: pl.Name,
+			PlaylistType: pl.Configuration.Type,
 			TotalImages:  len(pl.Images),
 			Paused:       resumePaused,
 			StartedAt:    time.Now(),
@@ -396,31 +403,57 @@ func (m *Manager) ResumeAll(ctx context.Context) int {
 }
 
 // NextAll advances all running playlists and returns the count of advanced instances.
-func (m *Manager) NextAll(ctx context.Context) int {
+func (m *Manager) NextAll(ctx context.Context) (int, error) {
 	active := m.stateStore.GetActivePlaylists()
+	if len(active) == 0 {
+		return 0, nil
+	}
 	count := 0
+	notAllowed := 0
 	for playlistID := range active {
 		if err := m.Next(ctx, playlistID); err != nil {
+			if errors.Is(err, ErrManualAdvanceNotAllowed) {
+				notAllowed++
+			}
 			slog.Warn("next_all: failed to advance playlist", "playlist_id", playlistID, "error", err)
 			continue
 		}
 		count++
 	}
-	return count
+	if count == 0 {
+		if notAllowed == len(active) {
+			return 0, ErrManualAdvanceNotAllowed
+		}
+		return 0, fmt.Errorf("next_all: could not advance any playlist")
+	}
+	return count, nil
 }
 
 // PreviousAll reverses all running playlists and returns the count of reversed instances.
-func (m *Manager) PreviousAll(ctx context.Context) int {
+func (m *Manager) PreviousAll(ctx context.Context) (int, error) {
 	active := m.stateStore.GetActivePlaylists()
+	if len(active) == 0 {
+		return 0, nil
+	}
 	count := 0
+	notAllowed := 0
 	for playlistID := range active {
 		if err := m.Previous(ctx, playlistID); err != nil {
+			if errors.Is(err, ErrManualAdvanceNotAllowed) {
+				notAllowed++
+			}
 			slog.Warn("previous_all: failed to reverse playlist", "playlist_id", playlistID, "error", err)
 			continue
 		}
 		count++
 	}
-	return count
+	if count == 0 {
+		if notAllowed == len(active) {
+			return 0, ErrManualAdvanceNotAllowed
+		}
+		return 0, fmt.Errorf("previous_all: could not reverse any playlist")
+	}
+	return count, nil
 }
 
 // advancePlaylist moves the playlist index by delta (+1 or -1).
@@ -438,6 +471,10 @@ func (m *Manager) advancePlaylist(ctx context.Context, playlistID int, delta int
 	}
 	if len(pl.Images) == 0 {
 		return fmt.Errorf("playlist manager: playlist %d has no images", playlistID)
+	}
+
+	if pl.Configuration.Type == "time_of_day" || pl.Configuration.Type == "day_of_week" {
+		return ErrManualAdvanceNotAllowed
 	}
 
 	newIdx := advancePlaylistRow(inst, pl, delta)

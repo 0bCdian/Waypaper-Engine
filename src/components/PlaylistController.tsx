@@ -1,5 +1,6 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useActivePlaylistStore } from "../stores/activePlaylistStore";
+import { usePlaylistStore } from "../stores/playlist";
 import { useImagesStore } from "../stores/images";
 import { useIsNeo } from "../hooks/useIsNeo";
 import { cn } from "../utils/cn";
@@ -109,10 +110,24 @@ function TrackProgress({
   );
 }
 
+function scheduleLockedPlaylistType(t: string | undefined): boolean {
+  return t === "time_of_day" || t === "day_of_week";
+}
+
 function PlaylistController() {
   const isNeo = useIsNeo();
   const activePlaylist = useActivePlaylistStore((s) => s.activePlaylist);
+  const editorPlaylist = usePlaylistStore((s) => s.playlist);
   const imagesMap = useImagesStore((s) => s.imagesMap);
+
+  const noManualStep = useMemo(() => {
+    if (!activePlaylist) return false;
+    if (scheduleLockedPlaylistType(activePlaylist.playlist_type)) return true;
+    return (
+      editorPlaylist.id === activePlaylist.playlist_id &&
+      scheduleLockedPlaylistType(editorPlaylist.configuration.type)
+    );
+  }, [activePlaylist, editorPlaylist.id, editorPlaylist.configuration.type]);
 
   const slotKey = activePlaylist
     ? `${activePlaylist.playlist_id}:${activePlaylist.current_image_id}`
@@ -235,11 +250,13 @@ function PlaylistController() {
 
       {/* RIGHT: transport */}
       <div className={cn("flex shrink-0 items-center gap-1", isNeo && "neo-pc-controls")}>
-        <button type="button" className={transportBtn()} onClick={handlePrevious} title="Previous">
-          <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-            <path d="M7.712 4.819A1.5 1.5 0 0110 6.095v2.973l5.712-4.248A1.5 1.5 0 0118 6.095v7.81a1.5 1.5 0 01-2.288 1.276L10 10.933v2.973a1.5 1.5 0 01-2.288 1.276l-5.712-4.249a1.5 1.5 0 010-2.553l5.712-4.561z" />
-          </svg>
-        </button>
+        {!noManualStep && (
+          <button type="button" className={transportBtn()} onClick={handlePrevious} title="Previous">
+            <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+              <path d="M7.712 4.819A1.5 1.5 0 0110 6.095v2.973l5.712-4.248A1.5 1.5 0 0118 6.095v7.81a1.5 1.5 0 01-2.288 1.276L10 10.933v2.973a1.5 1.5 0 01-2.288 1.276l-5.712-4.249a1.5 1.5 0 010-2.553l5.712-4.561z" />
+            </svg>
+          </button>
+        )}
 
         <button
           type="button"
@@ -258,11 +275,13 @@ function PlaylistController() {
           )}
         </button>
 
-        <button type="button" className={transportBtn()} onClick={handleNext} title="Next">
-          <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
-            <path d="M12.288 4.819A1.5 1.5 0 0010 6.095v2.973L4.288 4.82A1.5 1.5 0 002 6.095v7.81a1.5 1.5 0 002.288 1.276L10 10.933v2.973a1.5 1.5 0 002.288 1.276l5.712-4.249a1.5 1.5 0 000-2.553l-5.712-4.561z" />
-          </svg>
-        </button>
+        {!noManualStep && (
+          <button type="button" className={transportBtn()} onClick={handleNext} title="Next">
+            <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+              <path d="M12.288 4.819A1.5 1.5 0 0010 6.095v2.973L4.288 4.82A1.5 1.5 0 002 6.095v7.81a1.5 1.5 0 002.288 1.276L10 10.933v2.973a1.5 1.5 0 002.288 1.276l5.712-4.249a1.5 1.5 0 000-2.553l-5.712-4.561z" />
+            </svg>
+          </button>
+        )}
 
         <button
           type="button"

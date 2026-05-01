@@ -240,6 +240,8 @@ export interface Playlist {
 export interface ActivePlaylistInstance {
   playlist_id: number;
   playlist_name: string;
+  /** Present when connected to a current daemon; rotation strategy for the running playlist. */
+  playlist_type?: PlaylistType;
   current_index: number;
   current_image_id: number;
   previous_image_id: number | null;

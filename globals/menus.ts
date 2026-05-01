@@ -3,6 +3,11 @@ import { IPC_MAIN_EVENTS } from "../shared/constants";
 import { goDaemonClient } from "../electron/goDaemonClient";
 import type { ActivePlaylistInstance, ImageHistoryEntry } from "../electron/daemon-go-types";
 
+function scheduleLockedActivePlaylist(ap: ActivePlaylistInstance): boolean {
+  const t = ap.playlist_type;
+  return t === "time_of_day" || t === "day_of_week";
+}
+
 async function safeCall(fn: () => Promise<unknown>, label: string) {
   try {
     await fn();
@@ -64,26 +69,30 @@ export const trayMenu = async (app: App, trayInstance: Tray, createTray?: () => 
             submenu: activePlaylists.map((playlist) => ({
               label: `${playlist.playlist_name} on: ${playlist.monitors.join(", ")}`,
               submenu: [
-                {
-                  label: "Next image",
-                  click: () => {
-                    void safeCall(
-                      () => goDaemonClient.nextPlaylistImage(playlist.playlist_id),
-                      "get next image",
-                    );
-                    if (createTray) void createTray();
-                  },
-                },
-                {
-                  label: "Previous image",
-                  click: () => {
-                    void safeCall(
-                      () => goDaemonClient.previousPlaylistImage(playlist.playlist_id),
-                      "get previous image",
-                    );
-                    if (createTray) void createTray();
-                  },
-                },
+                ...(scheduleLockedActivePlaylist(playlist)
+                  ? []
+                  : ([
+                      {
+                        label: "Next image",
+                        click: () => {
+                          void safeCall(
+                            () => goDaemonClient.nextPlaylistImage(playlist.playlist_id),
+                            "get next image",
+                          );
+                          if (createTray) void createTray();
+                        },
+                      },
+                      {
+                        label: "Previous image",
+                        click: () => {
+                          void safeCall(
+                            () => goDaemonClient.previousPlaylistImage(playlist.playlist_id),
+                            "get previous image",
+                          );
+                          if (createTray) void createTray();
+                        },
+                      },
+                    ] as Electron.MenuItemConstructorOptions[])),
                 {
                   label: playlist.paused ? "Resume" : "Pause",
                   click: () => {

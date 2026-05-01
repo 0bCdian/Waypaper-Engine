@@ -1,10 +1,12 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import type { PlaylistType } from "../../../electron/daemon-go-types";
 
 let mockActivePlaylist: {
   playlist_id: number;
   playlist_name: string;
+  playlist_type?: "timer" | "manual" | "time_of_day" | "day_of_week";
   monitors: string[];
   current_image_id: number;
   current_index: number;
@@ -22,6 +24,20 @@ vi.mock("../../stores/activePlaylistStore", () => ({
   useActivePlaylistStore: (
     selector: (s: { activePlaylist: typeof mockActivePlaylist }) => unknown,
   ) => selector({ activePlaylist: mockActivePlaylist }),
+}));
+
+const mockEditorPlaylist: {
+  id: number | undefined;
+  configuration: { type: PlaylistType };
+} = {
+  id: undefined,
+  configuration: { type: "timer" },
+};
+
+vi.mock("../../stores/playlist", () => ({
+  usePlaylistStore: (
+    selector: (s: { playlist: typeof mockEditorPlaylist }) => unknown,
+  ) => selector({ playlist: mockEditorPlaylist }),
 }));
 
 vi.mock("../../stores/images", () => ({
@@ -43,6 +59,8 @@ beforeEach(() => {
   vi.clearAllMocks();
   mockActivePlaylist = null;
   mockImagesMap.clear();
+  mockEditorPlaylist.id = undefined;
+  mockEditorPlaylist.configuration = { type: "timer" };
 });
 
 afterEach(() => {
@@ -137,11 +155,50 @@ describe("PlaylistController", () => {
     expect(screen.getByAltText("sunset.jpg")).toBeInTheDocument();
   });
 
+  it("hides Previous/Next for time_of_day (from active playlist_type)", () => {
+    mockActivePlaylist = {
+      playlist_id: 3,
+      playlist_name: "Day parts",
+      playlist_type: "time_of_day",
+      monitors: ["HDMI-1"],
+      current_image_id: 1,
+      current_index: 0,
+      total_images: 3,
+      paused: false,
+    };
+
+    render(<PlaylistController />);
+
+    expect(screen.queryByTitle("Previous")).not.toBeInTheDocument();
+    expect(screen.queryByTitle("Next")).not.toBeInTheDocument();
+    expect(screen.getByTitle("Pause")).toBeInTheDocument();
+  });
+
+  it("hides Previous/Next when editor strip matches active id and is day_of_week", () => {
+    mockActivePlaylist = {
+      playlist_id: 9,
+      playlist_name: "Week",
+      monitors: ["HDMI-1"],
+      current_image_id: 1,
+      current_index: 0,
+      total_images: 7,
+      paused: false,
+    };
+    mockEditorPlaylist.id = 9;
+    mockEditorPlaylist.configuration = { type: "day_of_week" };
+
+    render(<PlaylistController />);
+
+    expect(screen.queryByTitle("Previous")).not.toBeInTheDocument();
+    expect(screen.queryByTitle("Next")).not.toBeInTheDocument();
+  });
+
   it("Previous button calls goDaemon.previousPlaylistImage", async () => {
     const user = userEvent.setup();
     mockActivePlaylist = {
       playlist_id: 5,
       playlist_name: "Test",
+      playlist_type: "timer",
       monitors: ["HDMI-1"],
       current_image_id: 1,
       current_index: 0,
@@ -160,6 +217,7 @@ describe("PlaylistController", () => {
     mockActivePlaylist = {
       playlist_id: 5,
       playlist_name: "Test",
+      playlist_type: "timer",
       monitors: ["HDMI-1"],
       current_image_id: 1,
       current_index: 0,

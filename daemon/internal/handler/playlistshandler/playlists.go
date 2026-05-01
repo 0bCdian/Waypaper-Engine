@@ -2,6 +2,7 @@ package playlistshandler
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"net/http"
 
@@ -309,7 +310,7 @@ func (h *PlaylistHandler) Resume(w http.ResponseWriter, r *http.Request) {
 // @Failure      404  {object}  httpjson.APIError
 // @Router       /playlists/{id}/next [post]
 func (h *PlaylistHandler) Next(w http.ResponseWriter, r *http.Request) {
-	h.playlistAction(w, r, h.manager.Next, "advanced")
+	h.playlistAdvanceAction(w, r, h.manager.Next, "advanced")
 }
 
 // Previous handles POST /playlists/{id}/previous.
@@ -322,7 +323,26 @@ func (h *PlaylistHandler) Next(w http.ResponseWriter, r *http.Request) {
 // @Failure      404  {object}  httpjson.APIError
 // @Router       /playlists/{id}/previous [post]
 func (h *PlaylistHandler) Previous(w http.ResponseWriter, r *http.Request) {
-	h.playlistAction(w, r, h.manager.Previous, "rewound")
+	h.playlistAdvanceAction(w, r, h.manager.Previous, "rewound")
+}
+
+// playlistAdvanceAction handles next/previous with 400 for disallowed playlist types.
+func (h *PlaylistHandler) playlistAdvanceAction(w http.ResponseWriter, r *http.Request,
+	action func(ctx context.Context, id int) error, statusWord string) {
+	id, err := httpjson.ParseIntParam(chi.URLParam(r, "id"))
+	if err != nil {
+		httpjson.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := action(r.Context(), id); err != nil {
+		if errors.Is(err, playlist.ErrManualAdvanceNotAllowed) {
+			httpjson.WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		httpjson.WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	httpjson.WriteJSON(w, http.StatusOK, map[string]string{"status": statusWord})
 }
 
 // --- Bulk active-playlist lifecycle actions ---
@@ -376,7 +396,15 @@ func (h *PlaylistHandler) ResumeAll(w http.ResponseWriter, r *http.Request) {
 // @Success      200  {object}  map[string]any
 // @Router       /playlists/active/next [post]
 func (h *PlaylistHandler) NextAll(w http.ResponseWriter, r *http.Request) {
-	count := h.manager.NextAll(r.Context())
+	count, err := h.manager.NextAll(r.Context())
+	if err != nil {
+		if errors.Is(err, playlist.ErrManualAdvanceNotAllowed) {
+			httpjson.WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
 		"message":  "all playlists advanced",
 		"advanced": count,
@@ -390,7 +418,15 @@ func (h *PlaylistHandler) NextAll(w http.ResponseWriter, r *http.Request) {
 // @Success      200  {object}  map[string]any
 // @Router       /playlists/active/previous [post]
 func (h *PlaylistHandler) PreviousAll(w http.ResponseWriter, r *http.Request) {
-	count := h.manager.PreviousAll(r.Context())
+	count, err := h.manager.PreviousAll(r.Context())
+	if err != nil {
+		if errors.Is(err, playlist.ErrManualAdvanceNotAllowed) {
+			httpjson.WriteError(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
 	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
 		"message":  "all playlists reversed",
 		"reversed": count,
