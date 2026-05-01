@@ -27,7 +27,7 @@ jobs:
           node-version: 22
       - name: Validate tag commit is on an allowed release branch
         env:
-          RELEASE_BASE_BRANCHES: "main refactor/wayaper-daemon"
+          RELEASE_BASE_BRANCHES: "main"
         run: |
           git fetch --no-tags origin $RELEASE_BASE_BRANCHES
           for branch in $RELEASE_BASE_BRANCHES; do
@@ -102,12 +102,9 @@ jobs:
       - name: Build AppImage artifact
         run: make appimage
 
-      - name: Build daemon artifact
-        run: make daemon
-
       - name: Generate SHA256 checksums
         run: |
-          sha256sum release/*.AppImage daemon/build/waypaper-daemon > release/checksums.txt
+          sha256sum release/*.AppImage > release/checksums.txt
 
       - name: Upload workflow artifacts
         uses: actions/upload-artifact@v4
@@ -115,7 +112,6 @@ jobs:
           name: waypaper-engine-release
           path: |
             release/*.AppImage
-            daemon/build/waypaper-daemon
             release/checksums.txt
           if-no-files-found: error
 
@@ -124,5 +120,4 @@ jobs:
         with:
           files: |
             release/*.AppImage
-            daemon/build/waypaper-daemon
             release/checksums.txt
