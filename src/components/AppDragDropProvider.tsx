@@ -9,12 +9,11 @@ import { useImagesStore } from "../stores/images";
 import { usePlaylistStore } from "../stores/playlist";
 import DragPreview from "./DragPreview";
 import { logger } from "../utils/logger";
-import {
 import { daemonClient } from "@/client";
+import {
   reorderPlaylistImagesBySortableMove,
   sortTimeOfDayPlaylistImages,
 } from "../utils/playlistStripReorder";
-
 
 const POINTER_SENSOR = PointerSensor.configure({
   activationConstraints: [new PointerActivationConstraints.Distance({ value: 8 })],
@@ -97,10 +96,13 @@ async function dispatchDrop(
   // collision resolves to the strip container (`playlist`), not another card.
   if (sourceData.type === "playlist-item" && sourceData.imageId != null) {
     const isStripTarget = targetData.type === "playlist" || targetData.type === "playlist-item";
-    const src = operation.source;
-    if (isStripTarget && src && isSortable(src)) {
-      const from = src.initialIndex;
-      const to = src.index;
+    // Cast: DragOperation.source has a DragDropManager generic that isSortable's overload doesn't
+    // accept, but the runtime check and SortableDraggable narrowing are correct.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const src = operation.source as any;
+    if (isStripTarget && src && isSortable(src) && "initialIndex" in src) {
+      const from = (src as { initialIndex: number }).initialIndex;
+      const to = (src as { index: number }).index;
       const store = usePlaylistStore.getState();
       const next = reorderPlaylistImagesBySortableMove(store.playlist.images, from, to);
       if (next != null) {
