@@ -14,6 +14,7 @@ import type {
 } from "../../shared/types/unifiedConfig";
 import { logger } from "../utils/logger";
 import { sectionsMatchingSettingsSearchQuery } from "../utils/settingsSearchIndex";
+import { daemonClient } from "@/client";
 
 interface SettingsStoreState {
   config: UnifiedConfig | null;
@@ -184,12 +185,11 @@ export const useSettingsStore = create<SettingsStore>()(
         set({ isLoading: !existing, errors: [] });
 
         try {
-          if (window.API_RENDERER?.goDaemon?.getConfig) {
-            const incoming = await window.API_RENDERER.goDaemon.getConfig();
+          const incoming = await daemonClient.getConfig();
 
             let registeredBackendNames: string[] = [];
             try {
-              const gd = window.API_RENDERER.goDaemon;
+              const gd = daemonClient;
               if (gd.getBackends && gd.getBackendConfig) {
                 const backendsList = await gd.getBackends();
                 registeredBackendNames = backendsList.map((b) => b.name);
@@ -225,12 +225,6 @@ export const useSettingsStore = create<SettingsStore>()(
               isDirty: false,
               lastSaved: Date.now(),
             });
-          } else {
-            set({
-              config: existing ?? defaultConfig,
-              isLoading: false,
-            });
-          }
         } catch (error) {
           logger.error("SettingsStore: Failed to load config:", error);
           set({
@@ -307,8 +301,8 @@ export const useSettingsStore = create<SettingsStore>()(
         try {
           if (section === "backend") {
             if (isBackendTypeChange) {
-              if (window.API_RENDERER?.goDaemon?.activateBackend) {
-                await window.API_RENDERER.goDaemon.activateBackend(data.type as string);
+              {
+                await daemonClient.activateBackend(data.type as string);
                 // Re-fetch config so the UI reflects what the daemon actually persisted
                 // (in case the activation rolled back due to a failed backend init).
                 await get().loadConfig();
@@ -320,26 +314,25 @@ export const useSettingsStore = create<SettingsStore>()(
                   top[k] = v;
                 }
               }
-              if (Object.keys(top).length > 0 && window.API_RENDERER?.goDaemon?.updateConfig) {
-                await window.API_RENDERER.goDaemon.updateConfig({
+              if (Object.keys(top).length > 0) {
+                await daemonClient.updateConfig({
                   backend: top,
                 } as unknown as Partial<UnifiedConfig>);
               }
               if (
                 data.selection_mode === "fixed" &&
                 typeof newConfig.backend.type === "string" &&
-                newConfig.backend.type.length > 0 &&
-                window.API_RENDERER?.goDaemon?.activateBackend
+                newConfig.backend.type.length > 0
               ) {
-                await window.API_RENDERER.goDaemon.activateBackend(newConfig.backend.type);
+                await daemonClient.activateBackend(newConfig.backend.type);
               }
               if (Object.keys(top).length > 0) {
                 await get().loadConfig();
               }
             }
           } else {
-            if (window.API_RENDERER?.goDaemon?.updateConfigSection) {
-              const patchBody = await window.API_RENDERER.goDaemon.updateConfigSection(
+            {
+              const patchBody = await daemonClient.updateConfigSection(
                 section,
                 data,
               );
@@ -400,9 +393,7 @@ export const useSettingsStore = create<SettingsStore>()(
         _lastApiSaveAt = Date.now();
 
         try {
-          if (window.API_RENDERER?.goDaemon?.updateBackendConfig) {
-            await window.API_RENDERER.goDaemon.updateBackendConfig(backendName, patch);
-          }
+          await daemonClient.updateBackendConfig(backendName, patch);
           _lastApiSaveAt = Date.now();
           set({ lastSaved: Date.now() });
         } catch (error) {
@@ -426,9 +417,7 @@ export const useSettingsStore = create<SettingsStore>()(
       resetToDefaults: async () => {
         set({ isLoading: true });
         try {
-          if (window.API_RENDERER?.goDaemon?.updateConfig) {
-            await window.API_RENDERER.goDaemon.updateConfig(defaultConfig);
-          }
+          await daemonClient.updateConfig(defaultConfig);
           set({ config: defaultConfig, isLoading: false, isDirty: false });
         } catch (error) {
           logger.error("SettingsStore: Failed to reset config:", error);
@@ -516,8 +505,8 @@ let _disposeConfigChanged: (() => void) | undefined;
 
 function initConfigListener() {
   _disposeConfigChanged?.();
-  if (typeof window !== "undefined" && window.API_RENDERER?.goDaemon) {
-    _disposeConfigChanged = window.API_RENDERER.goDaemon.on("config_changed", (data: unknown) => {
+  if (typeof window !== "undefined") {
+    _disposeConfigChanged = daemonClient.on("config_changed", (data: unknown) => {
       const store = useSettingsStore.getState();
       store.handleConfigChange(data as ConfigChangeEvent);
     });

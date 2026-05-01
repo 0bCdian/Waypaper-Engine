@@ -13,8 +13,8 @@ import type { Image } from "../../electron/daemon-go-types";
 import { notifyWallpaperApplyFailed } from "./daemonUserFacingError";
 import { buildWallpaperSubmenu, buildClearHistoryItem } from "./sharedContextMenuHelpers";
 import { useToastStore } from "../stores/toastStore";
+import { daemonClient } from "@/client";
 
-const { goDaemon } = window.API_RENDERER;
 
 async function exportWallpapersFromRenderer(images: rendererImage[]) {
   if (images.length === 0) return;
@@ -137,7 +137,7 @@ function selectionItems(selectedCount: number): MenuItem[] {
         if (!confirmed) return;
         const { selectedImages, clearSelection } = useImagesStore.getState();
         const ids = Array.from(selectedImages);
-        void goDaemon.deleteImages(ids).then(() => clearSelection());
+        void daemonClient.deleteImages(ids).then(() => clearSelection());
       },
     },
     { type: "separator" },
@@ -175,7 +175,7 @@ function globalItems(selectedCount: number): MenuItem[] {
         type: "action" as const,
         label: String(count),
         onClick: () => {
-          void goDaemon.updateConfigSection("app", { images_per_page: count }).then(() => {
+          void daemonClient.updateConfigSection("app", { images_per_page: count }).then(() => {
             useImagesStore.setState({ perPage: count });
             useImagesStore.getState().fetchPage(1);
           });
@@ -208,7 +208,7 @@ export function buildImageMenuItems(
       children: buildWallpaperSubmenu(
         monitors,
         (monitor, mode) => {
-          void goDaemon.setWallpaper(image.id, monitor, mode).catch(notifyWallpaperApplyFailed);
+          void daemonClient.setWallpaper(image.id, monitor, mode).catch(notifyWallpaperApplyFailed);
         },
         undefined,
         { allowExtend },
@@ -283,7 +283,7 @@ export function buildImageMenuItems(
           danger: true,
         });
         if (confirmed) {
-          void goDaemon.deleteImages([image.id]);
+          void daemonClient.deleteImages([image.id]);
         }
       },
     },
@@ -305,7 +305,7 @@ export function buildPlaylistCardMenuItems(
       type: "submenu",
       label: `Set "${imageName}"`,
       children: buildWallpaperSubmenu(monitors, (monitor, mode) => {
-        void goDaemon.setWallpaper(imageId, monitor, mode).catch(notifyWallpaperApplyFailed);
+        void daemonClient.setWallpaper(imageId, monitor, mode).catch(notifyWallpaperApplyFailed);
       }),
     },
     {

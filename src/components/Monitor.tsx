@@ -5,8 +5,8 @@ import { useState, useEffect, useMemo, useRef } from "react";
 import { calculateMinResolution, getThumbnailSrc } from "../utils/utilities";
 import { logger } from "../utils/logger";
 import { resolveWallpaperImageId } from "../utils/resolveWallpaperImageId";
+import { daemonClient } from "@/client";
 
-const goDaemon = window.API_RENDERER.goDaemon;
 
 interface props {
   monitor: StoreMonitor;
@@ -30,7 +30,7 @@ export function MonitorComponent({ monitor, scale, selectType, monitorsList, ref
       if (gen === fetchGenerationRef.current) setIsLoading(false);
     };
     onStart();
-    void goDaemon
+    void daemonClient
       .getCurrentWallpapers()
       .then((current) => {
         if (gen !== fetchGenerationRef.current) return undefined;
@@ -40,7 +40,7 @@ export function MonitorComponent({ monitor, scale, selectType, monitorsList, ref
           endLoadingIfCurrent();
           return undefined;
         }
-        return goDaemon.getImage(imageId);
+        return daemonClient.getImage(imageId);
       })
       .then((image) => {
         if (gen !== fetchGenerationRef.current) return;
@@ -69,10 +69,10 @@ export function MonitorComponent({ monitor, scale, selectType, monitorsList, ref
 
   // Re-fetch when a wallpaper changes on any monitor
   useEffect(() => {
-    const disposeChanged = goDaemon.on("wallpaper_changed", () =>
+    const disposeChanged = daemonClient.on("wallpaper_changed", () =>
       fetchWallpaperPreview(() => setIsLoading(true)),
     );
-    const disposeReconnected = goDaemon.on("sse_reconnected", () =>
+    const disposeReconnected = daemonClient.on("sse_reconnected", () =>
       fetchWallpaperPreview(() => setIsLoading(true)),
     );
     return () => {

@@ -8,8 +8,8 @@ import { useModalStore } from "../stores/modalStore";
 import Modal, { type ModalHandle } from "./Modal";
 import { useIsNeo } from "../hooks/useIsNeo";
 import { cn } from "../utils/cn";
+import { daemonClient } from "@/client";
 
-const goDaemon = window.API_RENDERER.goDaemon;
 
 function Monitors() {
   const isNeo = useIsNeo();
@@ -57,7 +57,7 @@ function Monitors() {
   }, []);
 
   useEffect(() => {
-    const disposeConnected = goDaemon.on("monitor_connected", () => {
+    const disposeConnected = daemonClient.on("monitor_connected", () => {
       setTimeout(() => {
         void refreshFromDaemon().then(() => {
           useModalStore.getState().open("monitors");
@@ -65,7 +65,7 @@ function Monitors() {
       }, 300);
     });
 
-    const disposeDisconnected = goDaemon.on("monitor_disconnected", () => {
+    const disposeDisconnected = daemonClient.on("monitor_disconnected", () => {
       setTimeout(() => {
         void refreshFromDaemon();
       }, 300);

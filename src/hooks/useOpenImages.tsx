@@ -3,8 +3,9 @@ import type { openFileAction } from "../../shared/types";
 import { useFoldersStore } from "../stores/foldersStore";
 import { notifyWebWallpaperImportFailed } from "../utils/daemonUserFacingError";
 import { logger } from "../utils/logger";
+import { daemonClient } from "@/client";
 
-const { openFiles, handleOpenImages, scanDirectory, goDaemon } = window.API_RENDERER;
+const { openFiles, handleOpenImages, scanDirectory } = window.API_RENDERER;
 
 interface PendingFolderImport {
   files: string[];
@@ -31,7 +32,7 @@ interface Actions {
 async function importWebPackageRoots(roots: string[], folderID: number | undefined) {
   for (const root of roots) {
     try {
-      await goDaemon.importWebWallpaper(root, folderID);
+      await daemonClient.importWebWallpaper(root, folderID);
     } catch (error) {
       logger.error("useOpenImages: import web wallpaper failed:", root, error);
       notifyWebWallpaperImportFailed(root, error);
@@ -59,7 +60,7 @@ const openImagesStore = create<State & Actions>((set, get) => ({
       if (!targetPath) return;
       const currentFolderId = useFoldersStore.getState().currentFolderId;
       try {
-        await goDaemon.importWebWallpaper(targetPath, currentFolderId ?? undefined);
+        await daemonClient.importWebWallpaper(targetPath, currentFolderId ?? undefined);
       } catch (error) {
         logger.error("useOpenImages: Error importing web wallpaper:", error);
         notifyWebWallpaperImportFailed(targetPath, error);
@@ -104,7 +105,7 @@ const openImagesStore = create<State & Actions>((set, get) => ({
     const webRoots = result.webRoots ?? [];
     if (result.files.length === 0 && webRoots.length === 0) {
       try {
-        await goDaemon.importWebWallpaper(
+        await daemonClient.importWebWallpaper(
           dirPath,
           useFoldersStore.getState().currentFolderId ?? undefined,
         );

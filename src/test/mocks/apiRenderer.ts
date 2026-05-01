@@ -77,13 +77,11 @@ export function createMockAPI(): Window["API_RENDERER"] {
       videoLoopExport: vi
         .fn()
         .mockResolvedValue({ action: "import_new", image_id: 1, path: "atom://tmp/x.webm" }),
-      getImageCount: vi.fn().mockResolvedValue({ count: 0 }),
       importImages: vi.fn().mockResolvedValue({ status: "processing", total: 0 }),
       importWebWallpaper: vi.fn().mockResolvedValue(null),
       cancelImport: vi.fn().mockResolvedValue({ status: "cancelled", batch_id: "" }),
       deleteImages: vi.fn().mockResolvedValue({ deleted: 0 }),
       updateImage: vi.fn().mockResolvedValue(null),
-      renameImage: vi.fn().mockResolvedValue(null),
       selectAllImages: vi.fn().mockResolvedValue({ updated: 0, selected: false }),
       getImageTags: vi.fn().mockResolvedValue({ tags: [] }),
       getImageHistory: vi.fn().mockResolvedValue([]),

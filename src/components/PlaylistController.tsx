@@ -4,8 +4,8 @@ import { useImagesStore } from "../stores/images";
 import { useIsNeo } from "../hooks/useIsNeo";
 import { cn } from "../utils/cn";
 import { getThumbnailSrc } from "../utils/utilities";
+import { daemonClient } from "@/client";
 
-const { goDaemon } = window.API_RENDERER;
 
 function formatClock(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));
@@ -118,23 +118,23 @@ function PlaylistController() {
 
   const handlePrevious = useCallback(() => {
     if (!activePlaylist) return;
-    void goDaemon.previousPlaylistImage(activePlaylist.playlist_id);
+    void daemonClient.previousPlaylistImage(activePlaylist.playlist_id);
   }, [activePlaylist]);
 
   const handleNext = useCallback(() => {
     if (!activePlaylist) return;
-    void goDaemon.nextPlaylistImage(activePlaylist.playlist_id);
+    void daemonClient.nextPlaylistImage(activePlaylist.playlist_id);
   }, [activePlaylist]);
 
   const handlePauseResume = useCallback(() => {
     if (!activePlaylist) return;
-    if (activePlaylist.paused) void goDaemon.resumePlaylist(activePlaylist.playlist_id);
-    else void goDaemon.pausePlaylist(activePlaylist.playlist_id);
+    if (activePlaylist.paused) void daemonClient.resumePlaylist(activePlaylist.playlist_id);
+    else void daemonClient.pausePlaylist(activePlaylist.playlist_id);
   }, [activePlaylist]);
 
   const handleStop = useCallback(() => {
     if (!activePlaylist) return;
-    void goDaemon.stopPlaylist(activePlaylist.playlist_id);
+    void daemonClient.stopPlaylist(activePlaylist.playlist_id);
   }, [activePlaylist]);
 
   if (!activePlaylist) return null;

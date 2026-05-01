@@ -3,6 +3,7 @@ import { useImagesStore } from "../stores/images";
 import { useImageProcessingStore } from "../stores/imageProcessingStore";
 import { useToastStore } from "../stores/toastStore";
 import { logger } from "../utils/logger";
+import { daemonClient } from "@/client";
 import type {
   ProcessingStartedPayload,
   ImageProcessedPayload,
@@ -56,13 +57,6 @@ export function useRealTimeImageProcessing() {
 
   useEffect(() => {
     const { startBatch, completeBatch } = useImageProcessingStore.getState();
-    if (!window.API_RENDERER?.goDaemon?.on) {
-      logger.error("goDaemon event methods not available");
-      return;
-    }
-
-    const { goDaemon } = window.API_RENDERER;
-
     const handleProcessingStarted = (...args: unknown[]) => {
       const data = args[0] as ProcessingStartedPayload;
       try {
@@ -139,12 +133,12 @@ export function useRealTimeImageProcessing() {
       }
     };
 
-    const disposeStarted = goDaemon.on("processing_started", handleProcessingStarted);
-    const disposeProcessed = goDaemon.on("image_processed", handleImageProcessed);
-    const disposeError = goDaemon.on("image_error", handleImageError);
-    const disposeComplete = goDaemon.on("processing_complete", handleProcessingComplete);
-    const disposeCancelled = goDaemon.on("processing_cancelled", handleProcessingCancelled);
-    const disposeUpdated = goDaemon.on("gallery_changed", handleGalleryChanged);
+    const disposeStarted = daemonClient.on("processing_started", handleProcessingStarted);
+    const disposeProcessed = daemonClient.on("image_processed", handleImageProcessed);
+    const disposeError = daemonClient.on("image_error", handleImageError);
+    const disposeComplete = daemonClient.on("processing_complete", handleProcessingComplete);
+    const disposeCancelled = daemonClient.on("processing_cancelled", handleProcessingCancelled);
+    const disposeUpdated = daemonClient.on("gallery_changed", handleGalleryChanged);
 
     // Video preview backfill (and similar async daemon work) may finish before this hook
     // registers gallery_changed, so the SSE event is missed and the gallery stays stale.

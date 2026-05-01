@@ -1,8 +1,7 @@
 import { create } from "zustand";
 import type { ImageHistoryEntry, Image } from "../../electron/daemon-go-types";
 import { logger } from "../utils/logger";
-
-const { goDaemon } = window.API_RENDERER;
+import { daemonClient } from "@/client";
 
 const DEFAULT_LIMIT = 50;
 
@@ -29,7 +28,7 @@ async function resolveImages(
   }
   if (missing.size === 0) return cache;
 
-  const results = await Promise.allSettled(Array.from(missing).map((id) => goDaemon.getImage(id)));
+  const results = await Promise.allSettled(Array.from(missing).map((id) => daemonClient.getImage(id)));
   for (const r of results) {
     if (r.status === "fulfilled" && r.value) {
       cache.set(r.value.id, r.value);
@@ -47,7 +46,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
   fetchHistory: async (limit = DEFAULT_LIMIT) => {
     set({ isLoading: true });
     try {
-      const entries = await goDaemon.getImageHistory(limit);
+      const entries = await daemonClient.getImageHistory(limit);
       const imageCache = await resolveImages(entries, new Map());
       set({
         entries,
@@ -68,7 +67,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
     const oldest = entries[entries.length - 1];
     set({ isLoading: true });
     try {
-      const all = await goDaemon.getImageHistory(DEFAULT_LIMIT + entries.length);
+      const all = await daemonClient.getImageHistory(DEFAULT_LIMIT + entries.length);
       const newer = all.filter((e) => e.id < oldest.id).slice(0, DEFAULT_LIMIT);
       const merged = [...entries, ...newer];
       const updatedCache = await resolveImages(newer, imageCache);
@@ -86,7 +85,7 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
 
   clearHistory: async () => {
     try {
-      await goDaemon.clearImageHistory();
+      await daemonClient.clearImageHistory();
       set({ entries: [], imageCache: new Map(), hasMore: false });
     } catch (err) {
       logger.error("Failed to clear history:", err);

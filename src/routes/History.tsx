@@ -8,8 +8,8 @@ import { confirmDialog } from "../components/ConfirmDialog";
 import type { ImageHistoryEntry, Image } from "../../electron/daemon-go-types";
 import { notifyWallpaperApplyFailed } from "../utils/daemonUserFacingError";
 import { getThumbnailSrc } from "../utils/utilities";
+import { daemonClient } from "@/client";
 
-const { goDaemon } = window.API_RENDERER;
 
 function formatRelativeTime(dateStr: string): string {
   const date = new Date(dateStr);
@@ -99,7 +99,7 @@ function HistoryEntry({
   onContextMenu: (e: React.MouseEvent, entry: ImageHistoryEntry) => void;
 }) {
   const handleClick = () => {
-    void goDaemon
+    void daemonClient
       .setWallpaper(entry.image_id, undefined, entry.mode, entry.monitors)
       .catch(notifyWallpaperApplyFailed);
   };
@@ -151,11 +151,11 @@ const History = () => {
     fetchHistory();
 
     const disposers = [
-      goDaemon.on("gallery_changed", (data: unknown) => {
+      daemonClient.on("gallery_changed", (data: unknown) => {
         const payload = data as { domain?: string };
         if (payload?.domain === "history") useHistoryStore.getState().reset();
       }),
-      goDaemon.on("wallpaper_changed", () => {
+      daemonClient.on("wallpaper_changed", () => {
         useHistoryStore.getState().fetchHistory();
       }),
     ];

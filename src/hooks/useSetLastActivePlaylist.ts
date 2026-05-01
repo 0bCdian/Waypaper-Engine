@@ -6,8 +6,8 @@ import { useShallow } from "zustand/react/shallow";
 import type { rendererPlaylist } from "../types/rendererTypes";
 import { useEffect, useRef } from "react";
 import type { ActivePlaylistInstance, MonitorMode } from "../../electron/daemon-go-types";
+import { daemonClient } from "@/client";
 
-const { goDaemon } = window.API_RENDERER;
 
 function monitorSetsMatch(
   selected: string[],
@@ -42,7 +42,7 @@ export function useSetLastActivePlaylist() {
 
     let cancelled = false;
 
-    void goDaemon
+    void daemonClient
       .getActivePlaylists()
       .then(async (activePlaylists: ActivePlaylistInstance[]) => {
         if (cancelled) return;
@@ -76,7 +76,7 @@ export function useSetLastActivePlaylist() {
           return;
         }
 
-        const fullPlaylist = await goDaemon.getPlaylist(match.playlist_id);
+        const fullPlaylist = await daemonClient.getPlaylist(match.playlist_id);
         if (cancelled) return;
 
         if (!fullPlaylist || !fullPlaylist.images || fullPlaylist.images.length < 1) {
@@ -106,26 +106,26 @@ export function useSetLastActivePlaylist() {
 
   useEffect(() => {
     const disposers = [
-      goDaemon.on("playlist_started", () => {
+      daemonClient.on("playlist_started", () => {
         void refreshActivePlaylist();
       }),
-      goDaemon.on("playlist_stopped", () => {
+      daemonClient.on("playlist_stopped", () => {
         void refreshActivePlaylist();
       }),
-      goDaemon.on("playlist_paused", () => {
+      daemonClient.on("playlist_paused", () => {
         void refreshActivePlaylist();
       }),
-      goDaemon.on("playlist_resumed", () => {
+      daemonClient.on("playlist_resumed", () => {
         void refreshActivePlaylist();
       }),
-      goDaemon.on("playlist_image_changed", () => {
+      daemonClient.on("playlist_image_changed", () => {
         void refreshActivePlaylist();
       }),
-      goDaemon.on("gallery_changed", (data: unknown) => {
+      daemonClient.on("gallery_changed", (data: unknown) => {
         const payload = data as { domain?: string };
         if (payload?.domain === "playlists") void refreshActivePlaylist();
       }),
-      goDaemon.on("config_changed", (data: unknown) => {
+      daemonClient.on("config_changed", (data: unknown) => {
         const event = data as { sections?: string[] };
         if (!event.sections || event.sections.includes("monitors")) {
           void refreshActivePlaylist();
@@ -148,7 +148,7 @@ export function useSetLastActivePlaylist() {
 
       let activePlaylists: ActivePlaylistInstance[] | undefined;
       try {
-        activePlaylists = await goDaemon.getActivePlaylists();
+        activePlaylists = await daemonClient.getActivePlaylists();
       } catch {
         return;
       }
@@ -176,7 +176,7 @@ export function useSetLastActivePlaylist() {
       if (lastSyncedIdRef.current === match.playlist_id) return;
 
       try {
-        const fullPlaylist = await goDaemon.getPlaylist(match.playlist_id);
+        const fullPlaylist = await daemonClient.getPlaylist(match.playlist_id);
         if (!fullPlaylist || !fullPlaylist.images || fullPlaylist.images.length < 1) {
           return;
         }

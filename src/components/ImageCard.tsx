@@ -18,12 +18,12 @@ import { useInlineRename } from "../hooks/useInlineRename";
 import { notifyWallpaperApplyFailed } from "../utils/daemonUserFacingError";
 import { logger } from "../utils/logger";
 import type { DragSourceData } from "../stores/dragStore";
+import { daemonClient } from "@/client";
 
 interface ImageCardProps {
   Image: rendererImage;
 }
 
-const { goDaemon } = window.API_RENDERER;
 
 const TRANSPARENT_PIXEL =
   "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
@@ -132,7 +132,7 @@ function ImageCard({ Image }: ImageCardProps) {
         3200,
       );
     }
-    void goDaemon.setWallpaper(Image.id, monitor, mode).catch(notifyWallpaperApplyFailed);
+    void daemonClient.setWallpaper(Image.id, monitor, mode).catch(notifyWallpaperApplyFailed);
   };
 
   const handleCheckboxChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -211,7 +211,7 @@ function ImageCard({ Image }: ImageCardProps) {
       ensurePreviewOnceRef.current = true;
       void (async () => {
         try {
-          const updated = (await goDaemon.ensureBrowserPreview(Image.id, true)) as rendererImage;
+          const updated = (await daemonClient.ensureBrowserPreview(Image.id, true)) as rendererImage;
           if (updated.time === undefined) updated.time = null;
           useImagesStore.setState((s) => {
             const m = new Map(s.imagesMap);

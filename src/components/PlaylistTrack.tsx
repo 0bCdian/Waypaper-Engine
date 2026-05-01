@@ -17,13 +17,13 @@ import type { DropTargetData } from "../stores/dragStore";
 import { useModalStore } from "../stores/modalStore";
 import { useActivePlaylistStore } from "../stores/activePlaylistStore";
 
-const { goDaemon } = window.API_RENDERER;
 import MiniPlaylistCard from "./MiniPlaylistCard";
 import PlaylistController from "./PlaylistController";
+import { daemonClient } from "@/client";
 
 async function stopPlaylistSilent(playlistId: number) {
   try {
-    await goDaemon.stopPlaylist(playlistId);
+    await daemonClient.stopPlaylist(playlistId);
   } catch (error) {
     console.error(error);
   }
@@ -182,11 +182,11 @@ function PlaylistTrack() {
   }, [playlist.images, clearPlaylist]);
 
   useEffect(() => {
-    const dispose = goDaemon.on("gallery_changed", (data: unknown) => {
+    const dispose = daemonClient.on("gallery_changed", (data: unknown) => {
       const payload = data as { domain?: string };
       if (payload?.domain !== "playlists") return;
       if (playlist.id) {
-        goDaemon.getPlaylist(playlist.id).then((fullPlaylist) => {
+        daemonClient.getPlaylist(playlist.id).then((fullPlaylist) => {
           if (fullPlaylist) {
             setPlaylist({
               id: fullPlaylist.id,
@@ -354,7 +354,7 @@ function PlaylistTrack() {
                   monitorSelection.selectedMonitors.length === 1
                     ? monitorSelection.selectedMonitors[0]
                     : "*";
-                goDaemon.setRandomWallpaper(monitor, monitorSelection.mode);
+                daemonClient.setRandomWallpaper(monitor, monitorSelection.mode);
               }}
               className={btnClass}
             >

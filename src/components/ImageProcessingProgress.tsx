@@ -1,6 +1,7 @@
 import { useImageProcessingStore, type BatchProgress } from "../stores/imageProcessingStore";
 import { confirmDialog } from "./ConfirmDialog";
 import { logger } from "../utils/logger";
+import { daemonClient } from "@/client";
 
 function BatchCard({ batchId, batch }: { batchId: string; batch: BatchProgress }) {
   const { totalImages, processedImages, currentImage, elapsedMs } = batch;
@@ -17,7 +18,7 @@ function BatchCard({ batchId, batch }: { batchId: string; batch: BatchProgress }
     });
     if (confirmed) {
       try {
-        await window.API_RENDERER.goDaemon.cancelImport(batchId);
+        await daemonClient.cancelImport(batchId);
       } catch (err) {
         logger.error("Failed to cancel import:", err);
       }

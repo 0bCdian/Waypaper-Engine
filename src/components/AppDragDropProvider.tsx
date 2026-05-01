@@ -10,11 +10,11 @@ import { usePlaylistStore } from "../stores/playlist";
 import DragPreview from "./DragPreview";
 import { logger } from "../utils/logger";
 import {
+import { daemonClient } from "@/client";
   reorderPlaylistImagesBySortableMove,
   sortTimeOfDayPlaylistImages,
 } from "../utils/playlistStripReorder";
 
-const { goDaemon } = window.API_RENDERER;
 
 const POINTER_SENSOR = PointerSensor.configure({
   activationConstraints: [new PointerActivationConstraints.Distance({ value: 8 })],
@@ -123,7 +123,7 @@ async function dispatchDrop(
       useFoldersStore.getState().invalidateFolderPreview(targetData.folderId);
     } else if (sourceData.type === "folder" && sourceData.folderId != null) {
       if (sourceData.folderId !== targetData.folderId) {
-        await goDaemon.updateFolder(sourceData.folderId, {
+        await daemonClient.updateFolder(sourceData.folderId, {
           parent_id: targetData.folderId,
         });
         useFoldersStore.getState().fetchFolders(currentFolderId);
@@ -152,7 +152,7 @@ async function dispatchDrop(
       useImagesStore.getState().reQueryImages();
       useFoldersStore.getState().fetchFolders(currentFolderId);
     } else if (sourceData.type === "folder" && sourceData.folderId != null) {
-      await goDaemon.updateFolder(sourceData.folderId, {
+      await daemonClient.updateFolder(sourceData.folderId, {
         parent_id: destFolderId,
       });
       useFoldersStore.getState().fetchFolders(currentFolderId);

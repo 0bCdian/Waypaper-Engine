@@ -19,6 +19,7 @@ import { ShadertoyMultipassEngine } from "@/shaderStudio/shadertoyMultipassEngin
 import { useFoldersStore } from "@/stores/foldersStore";
 import { useImagesStore } from "@/stores/images";
 import { useToastStore } from "@/stores/toastStore";
+import { daemonClient } from "@/client";
 
 const LS_SHADER = "waypaper.shaderStudio.shader";
 const LS_TITLE = "waypaper.shaderStudio.title";
@@ -31,7 +32,6 @@ function safeGetLS(key: string, fallback: string): string {
   }
 }
 
-const goDaemon = window.API_RENDERER.goDaemon;
 const api = window.API_RENDERER;
 
 function tryParseShadertoyJson(
@@ -55,7 +55,7 @@ async function trySaveShaderToGallery(
   try {
     const w = await api.writeShaderWebWallpaperPackage(payload);
     if (w.canceled || !w.packageDir) return { ok: false, error: "Save was canceled" };
-    await goDaemon.importWebWallpaper(w.packageDir, currentFolderId ?? undefined);
+    await daemonClient.importWebWallpaper(w.packageDir, currentFolderId ?? undefined);
     return { ok: true };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Import failed" };

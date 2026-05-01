@@ -9,8 +9,7 @@ import {
   persistGalleryFilters,
 } from "../utils/galleryFilterStorage";
 import { mapFiltersToImageQueryParams } from "../utils/galleryFilterTokens";
-
-const { goDaemon } = window.API_RENDERER;
+import { daemonClient } from "@/client";
 
 interface State {
   imagesArray: rendererImage[];
@@ -154,7 +153,7 @@ export const useImagesStore = create<State>()((set, get) => ({
     if (mergedParams.folder_id === undefined && !mergedParams.search) {
       mergedParams.folder_id = currentFolderId === null ? "root" : currentFolderId;
     }
-    void goDaemon
+    void daemonClient
       .getImages(mergedParams)
       .then((response) => {
         if (!response || !response.data || !Array.isArray(response.data)) {
@@ -229,7 +228,7 @@ export const useImagesStore = create<State>()((set, get) => ({
 
     const idsSet = new Set(idsToDelete);
 
-    void goDaemon.deleteImages(idsToDelete).then(() => {
+    void daemonClient.deleteImages(idsToDelete).then(() => {
       set((state) => {
         const freshMap = new Map(state.imagesMap);
         const freshSelected = new Set(state.selectedImages);
@@ -271,7 +270,7 @@ export const useImagesStore = create<State>()((set, get) => ({
     set(() => ({ selectedImages: allImageIds }));
   },
   async renameImage(id: number, newName: string): Promise<rendererImage> {
-    const updated = (await goDaemon.renameImage(id, newName)) as rendererImage;
+    const updated = (await daemonClient.updateImage(id, { name: newName })) as rendererImage;
     if (updated.time === undefined) {
       updated.time = null;
     }
@@ -289,7 +288,7 @@ export const useImagesStore = create<State>()((set, get) => ({
     const missingIds = imageIds.filter((id) => !currentMap.has(id));
     if (missingIds.length === 0) return;
 
-    const results = await Promise.allSettled(missingIds.map((id) => goDaemon.getImage(id)));
+    const results = await Promise.allSettled(missingIds.map((id) => daemonClient.getImage(id)));
 
     const fetched: rendererImage[] = [];
     for (const result of results) {

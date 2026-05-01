@@ -7,12 +7,12 @@ import { useIsNeo } from "../hooks/useIsNeo";
 import { useShallow } from "zustand/react/shallow";
 import { useToastStore } from "../stores/toastStore";
 import { FolderIcon } from "./FolderCard";
+import { daemonClient } from "@/client";
 
-const { goDaemon } = window.API_RENDERER;
 
 async function fetchRootFolders(): Promise<Folder[]> {
   try {
-    const result = await goDaemon.getFolders(undefined);
+    const result = await daemonClient.getFolders(undefined);
     return result.data || [];
   } catch {
     return [];
@@ -34,7 +34,7 @@ function FolderTreeItem({ folder, level, selectedId, onSelect }: FolderTreeItemP
   const handleToggle = async () => {
     if (!loaded) {
       try {
-        const result = await goDaemon.getFolders(folder.id);
+        const result = await daemonClient.getFolders(folder.id);
         const data = result.data;
         if (data) {
           setChildren(data);

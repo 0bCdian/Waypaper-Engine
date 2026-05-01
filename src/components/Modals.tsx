@@ -15,7 +15,7 @@ import { useModalStore } from "../stores/modalStore";
 import Monitors from "./MonitorsModal";
 import { useMonitorStore } from "../stores/monitors";
 import type { Playlist } from "../../electron/daemon-go-types";
-const goDaemon = window.API_RENDERER.goDaemon;
+import { daemonClient } from "@/client";
 
 function Modals() {
   const alreadyShown = useRef(false);
@@ -31,7 +31,7 @@ function Modals() {
   const config = useSettingsStore((s) => s.config);
 
   const reloadPlaylists = () => {
-    void goDaemon.getPlaylists().then((playlists) => {
+    void daemonClient.getPlaylists().then((playlists) => {
       setPlaylistsInDB(playlists);
     });
   };
@@ -54,10 +54,10 @@ function Modals() {
   }, []);
 
   useEffect(() => {
-    const dispose = goDaemon.on("gallery_changed", (data: unknown) => {
+    const dispose = daemonClient.on("gallery_changed", (data: unknown) => {
       const payload = data as { domain?: string };
       if (payload?.domain !== "playlists") return;
-      void goDaemon.getPlaylists().then((playlists) => {
+      void daemonClient.getPlaylists().then((playlists) => {
         setPlaylistsInDB(playlists);
       });
     });

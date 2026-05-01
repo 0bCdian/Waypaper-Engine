@@ -3,8 +3,7 @@ import type { ImageHistoryEntry, Monitor } from "../../electron/daemon-go-types"
 import { useHistoryStore } from "../stores/historyStore";
 import { notifyWallpaperApplyFailed } from "./daemonUserFacingError";
 import { buildWallpaperSubmenu, buildClearHistoryItem } from "./sharedContextMenuHelpers";
-
-const { goDaemon } = window.API_RENDERER;
+import { daemonClient } from "@/client";
 
 export function buildHistoryEntryMenuItems(
   entry: ImageHistoryEntry,
@@ -21,7 +20,7 @@ export function buildHistoryEntryMenuItems(
       children: buildWallpaperSubmenu(
         monitors,
         (monitor, mode) => {
-          void goDaemon
+          void daemonClient
             .setWallpaper(entry.image_id, monitor, mode)
             .catch(notifyWallpaperApplyFailed);
         },
@@ -30,7 +29,7 @@ export function buildHistoryEntryMenuItems(
             type: "action",
             label: `Restore original (${modeLabel} on ${monitorsLabel})`,
             onClick: () => {
-              void goDaemon
+              void daemonClient
                 .setWallpaper(entry.image_id, undefined, entry.mode, entry.monitors)
                 .catch(notifyWallpaperApplyFailed);
             },

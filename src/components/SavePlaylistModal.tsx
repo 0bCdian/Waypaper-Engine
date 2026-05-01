@@ -11,7 +11,7 @@ import { shouldSkipPlaylistStartAfterUpdate } from "../utils/skipStartAfterPlayl
 import { useActivePlaylistStore } from "../stores/activePlaylistStore";
 import { useIsNeo } from "../hooks/useIsNeo";
 import { cn } from "../utils/cn";
-const { goDaemon } = window.API_RENDERER;
+import { daemonClient } from "@/client";
 
 interface Props {
   currentPlaylistName: string;
@@ -77,20 +77,20 @@ const SavePlaylistModal = ({ currentPlaylistName, onPlaylistChanged }: Props) =>
         let activeAfterSave: ActivePlaylistInstance[] | undefined;
 
         if (playlist.id) {
-          await goDaemon.updatePlaylist(playlist.id, {
+          await daemonClient.updatePlaylist(playlist.id, {
             name: value.playlistName,
             images: playlist.images,
             configuration: playlist.configuration,
           });
           savedId = playlist.id;
           // PATCH reconcile updates current_index/current_image_id — refresh UI immediately.
-          activeAfterSave = await goDaemon.getActivePlaylists();
+          activeAfterSave = await daemonClient.getActivePlaylists();
           const refreshed = activeAfterSave.find((ap) => ap.playlist_id === savedId);
           if (refreshed) {
             useActivePlaylistStore.getState().setActivePlaylist(refreshed);
           }
         } else {
-          const created = await goDaemon.createPlaylist({
+          const created = await daemonClient.createPlaylist({
             name: value.playlistName,
             images: playlist.images,
             configuration: playlist.configuration,
@@ -107,7 +107,7 @@ const SavePlaylistModal = ({ currentPlaylistName, onPlaylistChanged }: Props) =>
           let skipStart = false;
           if (playlist.id) {
             if (activeAfterSave === undefined) {
-              activeAfterSave = await goDaemon.getActivePlaylists();
+              activeAfterSave = await daemonClient.getActivePlaylists();
             }
             skipStart = shouldSkipPlaylistStartAfterUpdate({
               savedId,
@@ -119,7 +119,7 @@ const SavePlaylistModal = ({ currentPlaylistName, onPlaylistChanged }: Props) =>
           }
           if (!skipStart) {
             try {
-              await goDaemon.startPlaylist(savedId, monitorTarget, monitorSelection.mode);
+              await daemonClient.startPlaylist(savedId, monitorTarget, monitorSelection.mode);
             } catch (startErr) {
               logger.error("Failed to start playlist:", startErr);
             }

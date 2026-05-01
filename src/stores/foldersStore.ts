@@ -2,8 +2,7 @@ import { create } from "zustand";
 import type { Folder } from "../../electron/daemon-go-types";
 import { getThumbnailSrc } from "../utils/utilities";
 import { logger } from "../utils/logger";
-
-const { goDaemon } = window.API_RENDERER;
+import { daemonClient } from "@/client";
 
 interface FoldersState {
   folders: Folder[];
@@ -30,7 +29,7 @@ export async function getAllImageIdsInFolder(folderId: number): Promise<number[]
   const ids: number[] = [];
   let page = 1;
   for (;;) {
-    const res = await goDaemon.getImages({ folder_id: folderId, per_page: 200, page });
+    const res = await daemonClient.getImages({ folder_id: folderId, per_page: 200, page });
     for (const img of res.data) ids.push(img.id);
     if (page >= res.pagination.total_pages) break;
     page++;
@@ -49,7 +48,7 @@ export const useFoldersStore = create<FoldersState>()((set, get) => ({
   fetchFolders: async (parentId?: number | null) => {
     set({ isLoading: true });
     try {
-      const result = await goDaemon.getFolders(parentId);
+      const result = await daemonClient.getFolders(parentId);
       const folders = result.data || [];
       set({ folders, isLoading: false });
       void get().fetchFolderPreviews(folders.map((f) => f.id));
@@ -66,7 +65,7 @@ export const useFoldersStore = create<FoldersState>()((set, get) => ({
     const results = await Promise.all(
       toFetch.map(async (id) => {
         try {
-          const res = await goDaemon.getImages({ folder_id: id, per_page: 4, page: 1 });
+          const res = await daemonClient.getImages({ folder_id: id, per_page: 4, page: 1 });
           const thumbs = res.data.map((img) => getThumbnailSrc(img));
           return [id, thumbs] as const;
         } catch {
@@ -95,7 +94,7 @@ export const useFoldersStore = create<FoldersState>()((set, get) => ({
       return;
     }
     try {
-      const result = await goDaemon.getFolderPath(folderId);
+      const result = await daemonClient.getFolderPath(folderId);
       set({ breadcrumbPath: result.data || [] });
     } catch (error) {
       logger.error("FoldersStore: Error fetching path:", error);
@@ -110,7 +109,7 @@ export const useFoldersStore = create<FoldersState>()((set, get) => ({
   },
 
   createFolder: async (name: string, parentId?: number | null) => {
-    const folder = await goDaemon.createFolder(name, parentId);
+    const folder = await daemonClient.createFolder(name, parentId);
     const { currentFolderId } = get();
     const targetParent = parentId !== undefined ? parentId : null;
     if (targetParent === currentFolderId) {
@@ -120,7 +119,7 @@ export const useFoldersStore = create<FoldersState>()((set, get) => ({
   },
 
   renameFolder: async (id: number, newName: string) => {
-    const folder = await goDaemon.updateFolder(id, { name: newName });
+    const folder = await daemonClient.updateFolder(id, { name: newName });
     set((state) => ({
       folders: state.folders.map((f) => (f.id === id ? folder : f)),
       breadcrumbPath: state.breadcrumbPath.map((f) => (f.id === id ? folder : f)),
@@ -129,14 +128,14 @@ export const useFoldersStore = create<FoldersState>()((set, get) => ({
   },
 
   deleteFolder: async (id: number, mode: "keep_contents" | "delete_all") => {
-    await goDaemon.deleteFolder(id, mode);
+    await daemonClient.deleteFolder(id, mode);
     set((state) => ({
       folders: state.folders.filter((f) => f.id !== id),
     }));
   },
 
   moveImagesToFolder: async (imageIds: number[], folderId: number | null) => {
-    await goDaemon.moveImagesToFolder(imageIds, folderId);
+    await daemonClient.moveImagesToFolder(imageIds, folderId);
   },
 
   searchFolders: async (query: string) => {
@@ -145,7 +144,7 @@ export const useFoldersStore = create<FoldersState>()((set, get) => ({
       return;
     }
     try {
-      const result = await goDaemon.getFolders(undefined, query);
+      const result = await daemonClient.getFolders(undefined, query);
       set({ searchResults: result.data || [] });
     } catch {
       set({ searchResults: [] });

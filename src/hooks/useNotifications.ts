@@ -9,8 +9,8 @@ import type {
   PlaylistImageChangedPayload,
   MonitorEventPayload,
 } from "../../electron/daemon-go-types";
+import { daemonClient } from "@/client";
 
-const goDaemon = window.API_RENDERER.goDaemon;
 
 export default function useNotifications(): void {
   const notificationsEnabled = useSettingsStore((s) => s.config?.app?.notifications);
@@ -18,12 +18,12 @@ export default function useNotifications(): void {
 
   useEffect(() => {
     if (!notificationsEnabled) return;
-    if (!goDaemon?.on) return;
+    if (!daemonClient?.on) return;
 
     const disposers: (() => void)[] = [];
 
     disposers.push(
-      goDaemon.on("wallpaper_changed", (data: unknown) => {
+      daemonClient.on("wallpaper_changed", (data: unknown) => {
         const payload = data as WallpaperChangedPayload;
         const monitors = payload?.monitors?.join(", ") ?? "unknown";
         addToast(`Wallpaper set on ${monitors}`, "success");
@@ -31,14 +31,14 @@ export default function useNotifications(): void {
     );
 
     disposers.push(
-      goDaemon.on("processing_started", (data: unknown) => {
+      daemonClient.on("processing_started", (data: unknown) => {
         const payload = data as ProcessingStartedPayload;
         addToast(`Importing ${payload?.total ?? 0} images...`, "info");
       }),
     );
 
     disposers.push(
-      goDaemon.on("processing_complete", (data: unknown) => {
+      daemonClient.on("processing_complete", (data: unknown) => {
         const payload = data as ProcessingCompletePayload;
         const msg =
           payload?.failed > 0
@@ -49,7 +49,7 @@ export default function useNotifications(): void {
     );
 
     disposers.push(
-      goDaemon.on("playlist_started", (data: unknown) => {
+      daemonClient.on("playlist_started", (data: unknown) => {
         const payload = data as PlaylistEventPayload;
         const name = payload?.monitor ?? "";
         addToast(`Playlist started${name ? ` on ${name}` : ""}`, "info");
@@ -57,7 +57,7 @@ export default function useNotifications(): void {
     );
 
     disposers.push(
-      goDaemon.on("playlist_stopped", (data: unknown) => {
+      daemonClient.on("playlist_stopped", (data: unknown) => {
         const payload = data as PlaylistEventPayload;
         const name = payload?.monitor ?? "";
         addToast(`Playlist stopped${name ? ` on ${name}` : ""}`, "info");
@@ -65,7 +65,7 @@ export default function useNotifications(): void {
     );
 
     disposers.push(
-      goDaemon.on("playlist_paused", (data: unknown) => {
+      daemonClient.on("playlist_paused", (data: unknown) => {
         const payload = data as PlaylistEventPayload;
         const name = payload?.monitor ?? "";
         addToast(`Playlist paused${name ? ` on ${name}` : ""}`, "info");
@@ -73,7 +73,7 @@ export default function useNotifications(): void {
     );
 
     disposers.push(
-      goDaemon.on("playlist_resumed", (data: unknown) => {
+      daemonClient.on("playlist_resumed", (data: unknown) => {
         const payload = data as PlaylistEventPayload;
         const name = payload?.monitor ?? "";
         addToast(`Playlist resumed${name ? ` on ${name}` : ""}`, "info");
@@ -81,7 +81,7 @@ export default function useNotifications(): void {
     );
 
     disposers.push(
-      goDaemon.on("playlist_image_changed", (data: unknown) => {
+      daemonClient.on("playlist_image_changed", (data: unknown) => {
         const payload = data as PlaylistImageChangedPayload;
         const monitor = payload?.monitor ?? "";
         addToast(`Playlist advanced${monitor ? ` on ${monitor}` : ""}`, "info", 3000);
@@ -89,21 +89,21 @@ export default function useNotifications(): void {
     );
 
     disposers.push(
-      goDaemon.on("monitor_connected", (data: unknown) => {
+      daemonClient.on("monitor_connected", (data: unknown) => {
         const payload = data as MonitorEventPayload;
         addToast(`Monitor connected: ${payload?.name ?? "unknown"}`, "info");
       }),
     );
 
     disposers.push(
-      goDaemon.on("monitor_disconnected", (data: unknown) => {
+      daemonClient.on("monitor_disconnected", (data: unknown) => {
         const payload = data as MonitorEventPayload;
         addToast(`Monitor disconnected: ${payload?.name ?? "unknown"}`, "warning");
       }),
     );
 
     disposers.push(
-      goDaemon.on("backend_unavailable", (data: unknown) => {
+      daemonClient.on("backend_unavailable", (data: unknown) => {
         const payload = data as { message?: string; backend?: string };
         const msg =
           payload?.message ??
@@ -113,7 +113,7 @@ export default function useNotifications(): void {
     );
 
     disposers.push(
-      goDaemon.on("wallpaper_restore_failed", (data: unknown) => {
+      daemonClient.on("wallpaper_restore_failed", (data: unknown) => {
         const payload = data as {
           backend?: string;
           failures?: Array<{ monitor?: string; reason?: string }>;
@@ -131,7 +131,7 @@ export default function useNotifications(): void {
     );
 
     disposers.push(
-      goDaemon.on("playlist_skipped_incompatible", (data: unknown) => {
+      daemonClient.on("playlist_skipped_incompatible", (data: unknown) => {
         const payload = data as {
           playlist_name?: string;
           backend?: string;
@@ -155,7 +155,7 @@ export default function useNotifications(): void {
     );
 
     disposers.push(
-      goDaemon.on("playlist_no_compatible_item", (data: unknown) => {
+      daemonClient.on("playlist_no_compatible_item", (data: unknown) => {
         const payload = data as {
           playlist_name?: string;
           backend?: string;
@@ -169,13 +169,13 @@ export default function useNotifications(): void {
     );
 
     disposers.push(
-      goDaemon.on("sse_disconnected", () => {
+      daemonClient.on("sse_disconnected", () => {
         addToast("Lost connection to daemon — reconnecting...", "warning", 0);
       }),
     );
 
     disposers.push(
-      goDaemon.on("sse_reconnected", () => {
+      daemonClient.on("sse_reconnected", () => {
         addToast("Reconnected to daemon", "success");
       }),
     );

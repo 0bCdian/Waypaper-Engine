@@ -12,6 +12,7 @@ import type { ThemeContextType } from "./types";
 import type { ThemeConfig } from "../themes/types";
 import { themes } from "../themes/themes";
 import { logger } from "../utils/logger";
+import { daemonClient } from "@/client";
 
 // Default theme name
 const DEFAULT_THEME_NAME = "kolision-raw";
@@ -199,14 +200,13 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   }, [syncWithSystem, systemTheme]);
 
   useEffect(() => {
-    if (!window.API_RENDERER?.goDaemon) return;
-    const dispose = window.API_RENDERER.goDaemon.on("config_changed", (data: unknown) => {
+    const dispose = daemonClient.on("config_changed", (data: unknown) => {
       const event = data as { sections?: string[]; source?: string };
       const secs = event.sections;
       if (Array.isArray(secs) && secs.length > 0 && !secs.includes("app")) {
         return;
       }
-      void window.API_RENDERER.goDaemon.getConfig().then((config) => {
+      void daemonClient.getConfig().then((config) => {
         const newTheme = config?.app?.theme;
         if (!newTheme) return;
         if (newTheme === "system") {

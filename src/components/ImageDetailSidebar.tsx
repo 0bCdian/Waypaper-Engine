@@ -15,8 +15,8 @@ import type {
 } from "../../electron/daemon-go-types";
 import type { UnifiedConfig } from "@/shared/types/unifiedConfig";
 import { useSettingsStore } from "@/stores/settingsStore";
+import { daemonClient } from "@/client";
 
-const { goDaemon } = window.API_RENDERER;
 
 function waylandUtauriFromUnified(config: UnifiedConfig | null): WaylandUtauriConfig | null {
   if (!config?.backend || config.backend.type !== "wayland-utauri") return null;
@@ -37,8 +37,8 @@ function webCapabilityToggleAllowed(
 }
 
 async function saveImageTags(imageId: number, tags: string[]) {
-  await goDaemon.updateImage(imageId, { tags });
-  const freshImage = await goDaemon.getImage(imageId);
+  await daemonClient.updateImage(imageId, { tags });
+  const freshImage = await daemonClient.getImage(imageId);
   useImageDetailStore.getState().open(freshImage);
   useImagesStore.getState().reQueryImages();
 }
@@ -81,7 +81,7 @@ async function tryUpdateWebManifest(
   update: WebManifestUpdate,
 ): Promise<import("../../electron/daemon-go-types").Image | null> {
   try {
-    return await goDaemon.updateImage(imageId, update);
+    return await daemonClient.updateImage(imageId, update);
   } catch {
     return null;
   }
@@ -498,7 +498,7 @@ function ImageDetailSidebar() {
 
   useEffect(() => {
     if (isOpen) {
-      void goDaemon
+      void daemonClient
         .getImageTags()
         .then((resp) => {
           setAllTags(resp.tags ?? []);

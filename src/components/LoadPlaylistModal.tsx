@@ -12,6 +12,7 @@ import { confirmDialog } from "./ConfirmDialog";
 import { logger } from "../utils/logger";
 import { useIsNeo } from "../hooks/useIsNeo";
 import { cn } from "../utils/cn";
+import { daemonClient } from "@/client";
 
 interface Props {
   playlistsInDB: Playlist[];
@@ -19,7 +20,6 @@ interface Props {
   onPlaylistChanged: () => void;
 }
 
-const { goDaemon } = window.API_RENDERER;
 
 type LoadPlaylistResult =
   | { ok: true; playlist: import("../types/rendererTypes").rendererPlaylist }
@@ -31,8 +31,8 @@ async function loadAndStartPlaylist(
   mode: MonitorMode | undefined,
 ): Promise<LoadPlaylistResult> {
   try {
-    const fullPlaylist = await goDaemon.getPlaylist(playlistId);
-    await goDaemon.startPlaylist(fullPlaylist.id, monitor, mode);
+    const fullPlaylist = await daemonClient.getPlaylist(playlistId);
+    await daemonClient.startPlaylist(fullPlaylist.id, monitor, mode);
     return {
       ok: true,
       playlist: {
@@ -244,8 +244,8 @@ const LoadPlaylistModal = ({ playlistsInDB, onPlaylistChanged, currentPlaylistNa
                     });
                     if (shouldDelete) {
                       try {
-                        await goDaemon.stopPlaylist(playlistToDelete.id).catch(() => {});
-                        await goDaemon.deletePlaylist(playlistToDelete.id);
+                        await daemonClient.stopPlaylist(playlistToDelete.id).catch(() => {});
+                        await daemonClient.deletePlaylist(playlistToDelete.id);
                         onPlaylistChanged();
                         setError("");
 

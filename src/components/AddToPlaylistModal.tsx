@@ -6,13 +6,13 @@ import Modal, { type ModalHandle } from "./Modal";
 import { logger } from "../utils/logger";
 import { useIsNeo } from "../hooks/useIsNeo";
 import { cn } from "../utils/cn";
+import { daemonClient } from "@/client";
 
 interface Props {
   playlistsInDB: Playlist[];
   onPlaylistChanged: () => void;
 }
 
-const { goDaemon } = window.API_RENDERER;
 
 const AddToPlaylistModal = ({ playlistsInDB, onPlaylistChanged }: Props) => {
   const isNeo = useIsNeo();
@@ -50,7 +50,7 @@ const AddToPlaylistModal = ({ playlistsInDB, onPlaylistChanged }: Props) => {
           return;
         }
 
-        const fullPlaylist = await goDaemon.getPlaylist(selectedPlaylist.id);
+        const fullPlaylist = await daemonClient.getPlaylist(selectedPlaylist.id);
         const existingImageIds = new Set(fullPlaylist.images.map((img) => img.image_id));
 
         const newImageIds = imageIdsToAdd.filter((id) => !existingImageIds.has(id));
@@ -66,7 +66,7 @@ const AddToPlaylistModal = ({ playlistsInDB, onPlaylistChanged }: Props) => {
           ...newImageIds.map((id) => ({ image_id: id })),
         ];
 
-        await goDaemon.updatePlaylist(selectedPlaylist.id, {
+        await daemonClient.updatePlaylist(selectedPlaylist.id, {
           images: updatedImages,
         });
 

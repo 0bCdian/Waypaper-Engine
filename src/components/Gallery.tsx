@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { daemonClient } from "@/client";
 import { useNavigate } from "react-router-dom";
 import { useGalleryMarquee } from "../hooks/useGalleryMarquee";
 import { useLoadImages } from "../hooks/useLoadImages";
@@ -28,8 +29,7 @@ function Gallery() {
   }, [currentFolderId]);
 
   useEffect(() => {
-    const { goDaemon } = window.API_RENDERER;
-    const dispose = goDaemon.on("gallery_changed", (data: unknown) => {
+    const dispose = daemonClient.on("gallery_changed", (data: unknown) => {
       const payload = data as { domain?: string };
       if (payload?.domain !== "folders") return;
       const fid = useFoldersStore.getState().currentFolderId;

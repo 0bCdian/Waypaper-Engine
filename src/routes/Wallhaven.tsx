@@ -18,6 +18,7 @@ import {
   buildWallhavenPageMenuItems,
 } from "../utils/wallhavenContextMenuItems";
 import { cn } from "../utils/cn";
+import { daemonClient } from "@/client";
 
 const SORTING_OPTIONS: { value: WallhavenSorting; label: string }[] = [
   { value: "date_added", label: "Date Added" },
@@ -255,7 +256,7 @@ function WallhavenPage() {
   const handleScrollModeToggle = () => {
     const newMode: WallhavenScrollMode = scrollMode === "paginated" ? "infinite" : "paginated";
     setScrollMode(newMode);
-    void window.API_RENDERER.goDaemon.updateConfigSection("wallhaven", {
+    void daemonClient.updateConfigSection("wallhaven", {
       scroll_mode: newMode,
     });
     if (newMode === "paginated") {

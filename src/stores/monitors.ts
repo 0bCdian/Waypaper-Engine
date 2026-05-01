@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { Monitor, MonitorMode } from "../../electron/daemon-go-types";
 import { logger } from "../utils/logger";
 import { normalizeSelectedMonitors, selectedMonitorsOrderChanged } from "../utils/monitorNames";
+import { daemonClient } from "@/client";
 
 export interface StoreMonitor extends Monitor {
   isSelected: boolean;
@@ -54,14 +55,12 @@ function persistSelection(sel: MonitorSelection) {
 
 async function pushMonitorSelectionToDaemon(sel: MonitorSelection): Promise<void> {
   try {
-    if (window.API_RENDERER?.goDaemon?.updateConfig) {
-      await window.API_RENDERER.goDaemon.updateConfig({
-        monitors: {
-          selected_monitors: sel.selectedMonitors,
-          image_set_type: sel.mode,
-        },
-      });
-    }
+    await daemonClient.updateConfig({
+      monitors: {
+        selected_monitors: sel.selectedMonitors,
+        image_set_type: sel.mode,
+      },
+    });
   } catch (error) {
     logger.error("MonitorStore: Failed to sync normalized monitor names to daemon:", error);
   }
@@ -82,14 +81,12 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
     persistSelection(value);
 
     try {
-      if (window.API_RENDERER?.goDaemon?.updateConfig) {
-        await window.API_RENDERER.goDaemon.updateConfig({
-          monitors: {
-            selected_monitors: value.selectedMonitors,
-            image_set_type: value.mode,
-          },
-        });
-      }
+      await daemonClient.updateConfig({
+        monitors: {
+          selected_monitors: value.selectedMonitors,
+          image_set_type: value.mode,
+        },
+      });
     } catch (error) {
       logger.error("MonitorStore: Failed to save monitor config:", error);
     }
@@ -101,12 +98,7 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
 
   async reQueryMonitors() {
     try {
-      if (!window.API_RENDERER?.goDaemon?.getMonitors) {
-        logger.error("MonitorStore: getMonitors not available");
-        return;
-      }
-
-      const monitors = await window.API_RENDERER.goDaemon.getMonitors();
+      const monitors = await daemonClient.getMonitors();
 
       if (!Array.isArray(monitors) || monitors.length === 0) {
         logger.warn("MonitorStore: No monitors found");
@@ -140,11 +132,9 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
 
   async refreshFromDaemon() {
     try {
-      if (!window.API_RENDERER?.goDaemon?.getConfig) return;
-
       const [monitors, config] = await Promise.all([
-        window.API_RENDERER.goDaemon.getMonitors(),
-        window.API_RENDERER.goDaemon.getConfig(),
+        daemonClient.getMonitors(),
+        daemonClient.getConfig(),
       ]);
 
       if (!config?.monitors) return;
@@ -178,12 +168,7 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
     try {
       set({ _isLoadingConfig: true });
 
-      if (!window.API_RENDERER?.goDaemon) {
-        logger.error("MonitorStore: goDaemon not available");
-        return;
-      }
-
-      const monitors = await window.API_RENDERER.goDaemon.getMonitors();
+      const monitors = await daemonClient.getMonitors();
       if (!Array.isArray(monitors) || monitors.length === 0) {
         set({ _isLoadingConfig: false });
         return;
@@ -193,8 +178,8 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
       let imageSetType: MonitorMode = "individual";
 
       let rawSelectedFromDaemon: string[] = [];
-      if (window.API_RENDERER.goDaemon.getConfig) {
-        const config = await window.API_RENDERER.goDaemon.getConfig();
+      if (daemonClient.getConfig) {
+        const config = await daemonClient.getConfig();
         if (config?.monitors) {
           rawSelectedFromDaemon = config.monitors.selected_monitors || [];
           selectedMonitors = normalizeSelectedMonitors(rawSelectedFromDaemon);
@@ -239,8 +224,8 @@ let _disposeConfigChanged: (() => void) | undefined;
 
 function initMonitorConfigListener() {
   _disposeConfigChanged?.();
-  if (typeof window !== "undefined" && window.API_RENDERER?.goDaemon) {
-    _disposeConfigChanged = window.API_RENDERER.goDaemon.on("config_changed", (data: unknown) => {
+  if (typeof window !== "undefined") {
+    _disposeConfigChanged = daemonClient.on("config_changed", (data: unknown) => {
       const event = data as ConfigChangeEvent;
       const sections = event?.sections;
       if (!sections || sections.includes("monitors")) {

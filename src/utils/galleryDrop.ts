@@ -2,6 +2,7 @@ import openImagesStore from "../hooks/useOpenImages";
 import { useFoldersStore } from "../stores/foldersStore";
 import { notifyWebWallpaperImportFailed } from "./daemonUserFacingError";
 import { logger } from "./logger";
+import { daemonClient } from "@/client";
 
 const IMAGE_EXTENSIONS = new Set([
   ".jpg",
@@ -106,14 +107,14 @@ export async function importMediaDrop(
   const folderId = useFoldersStore.getState().currentFolderId ?? undefined;
   if (manifestPaths.length > 0) {
     for (const p of manifestPaths) {
-      void window.API_RENDERER.goDaemon.importWebWallpaper(p, folderId).catch((err) => {
+      void daemonClient.importWebWallpaper(p, folderId).catch((err) => {
         logger.error("Web wallpaper import failed:", p, err);
         notifyWebWallpaperImportFailed(p, err);
       });
     }
   }
   if (mediaPaths.length > 0) {
-    await window.API_RENDERER.goDaemon.importImages(mediaPaths);
+    await daemonClient.importImages(mediaPaths);
   }
   if (otherPaths.length > 0) {
     for (const p of otherPaths) {
@@ -133,6 +134,6 @@ export async function downloadAndImportUrls(urls: string[]): Promise<void> {
     }
   }
   if (downloadedPaths.length > 0) {
-    await window.API_RENDERER.goDaemon.importImages(downloadedPaths);
+    await daemonClient.importImages(downloadedPaths);
   }
 }

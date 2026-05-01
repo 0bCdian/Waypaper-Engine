@@ -14,8 +14,8 @@ import {
   createImageBitmapFromVideo,
   waitUntilVideoCanSample,
 } from "@/utils/loopStudio/seekVideoCapture";
+import { daemonClient } from "@/client";
 
-const goDaemon = window.API_RENDERER.goDaemon;
 const api = window.API_RENDERER;
 
 async function tryDownloadYoutube(url: string): Promise<{ filePath: string } | { error: string }> {
@@ -31,11 +31,11 @@ async function tryVideoLoopExport(
   imageId: number,
   body: VideoLoopExportRequest,
 ): Promise<
-  | { ok: true; res: Awaited<ReturnType<typeof goDaemon.videoLoopExport>> }
+  | { ok: true; res: Awaited<ReturnType<typeof daemonClient.videoLoopExport>> }
   | { ok: false; error: string }
 > {
   try {
-    const res = await goDaemon.videoLoopExport(imageId, body);
+    const res = await daemonClient.videoLoopExport(imageId, body);
     return { ok: true, res };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : "Export failed" };
@@ -121,7 +121,7 @@ export default function LoopStudio() {
   useEffect(() => {
     let cancelled = false;
     const check = () => {
-      void window.API_RENDERER.goDaemon.getCapabilities().then((caps) => {
+      void daemonClient.getCapabilities().then((caps) => {
         if (!cancelled) setFfmpegAvailable(caps.ffmpeg_available);
       });
     };
@@ -136,7 +136,7 @@ export default function LoopStudio() {
   useEffect(() => {
     if (previewOnly || !imageId) return;
     let cancelled = false;
-    void goDaemon
+    void daemonClient
       .getImage(imageId)
       .then((img) => {
         if (cancelled) return;
@@ -549,7 +549,7 @@ export default function LoopStudio() {
   const importPathToGallery = useCallback(
     async (absPath: string) => {
       const folderId = useFoldersStore.getState().currentFolderId ?? undefined;
-      await goDaemon.importImages([absPath], folderId);
+      await daemonClient.importImages([absPath], folderId);
       reQueryImages();
     },
     [reQueryImages],
@@ -675,7 +675,7 @@ export default function LoopStudio() {
         setLoaded(false);
         setReloadToken((t) => t + 1);
       } else {
-        void goDaemon.getImage(imageId).then((img) => {
+        void daemonClient.getImage(imageId).then((img) => {
           setMediaSrc(loopStudioMediaSrc(img.path));
           setLoaded(false);
           setReloadToken((t) => t + 1);

@@ -10,6 +10,7 @@ import {
   readPersistedBackendSettingsPanel,
   writePersistedBackendSettingsPanel,
 } from "@/utils/settingsNavStorage";
+import { daemonClient } from "@/client";
 
 interface BackendSettingsSectionProps {
   className?: string;
@@ -865,9 +866,7 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
   }, [pendingBackendSettingsTab, selectBackendPanel, clearPendingBackendSettingsTab]);
 
   useEffect(() => {
-    window.API_RENDERER?.goDaemon
-      ?.getBackends?.()
-      .then((backends) => {
+    daemonClient.getBackends().then((backends) => {
         const mapped = backends.map((b) => ({ name: b.name, available: b.available }));
         setAvailableBackends(mapped);
         setActiveSettingsTab((tab) => {

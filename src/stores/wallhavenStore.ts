@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { MonitorMode } from "../../electron/daemon-go-types";
 import { notifyWallpaperApplyFailed } from "../utils/daemonUserFacingError";
 import { logger } from "../utils/logger";
+import { daemonClient } from "@/client";
 
 export interface WallhavenThumb {
   large: string;
@@ -169,7 +170,7 @@ async function patchImageMetadata(
     if (tags.length > 0) update.tags = tags;
     if (colors.length > 0) update.colors = colors;
     if (Object.keys(update).length > 0) {
-      await window.API_RENDERER.goDaemon.updateImage(imageId, update);
+      await daemonClient.updateImage(imageId, update);
     }
   } catch (err) {
     logger.error("Failed to patch image metadata:", err);
@@ -183,7 +184,7 @@ async function downloadAndImportWallpaper(wp: WallhavenWallpaper): Promise<numbe
 
   const tmpPath = await window.API_RENDERER.wallhaven.download(wp.path);
 
-  const importResult = await window.API_RENDERER.goDaemon.importImages([tmpPath]);
+  const importResult = await daemonClient.importImages([tmpPath]);
   const batchId =
     importResult && typeof importResult === "object" && "batch_id" in importResult
       ? (importResult as { batch_id: string }).batch_id
@@ -198,7 +199,7 @@ async function downloadAndImportWallpaper(wp: WallhavenWallpaper): Promise<numbe
     }, 30000);
 
     let dispose: (() => void) | null = null;
-    dispose = window.API_RENDERER.goDaemon.on("image_processed", (data: unknown) => {
+    dispose = daemonClient.on("image_processed", (data: unknown) => {
       const payload = data as {
         batch_id: string;
         image?: { id: number };
@@ -388,7 +389,7 @@ export const useWallhavenStore = create<WallhavenState & WallhavenActions>()((se
 
       const tmpPath = await window.API_RENDERER.wallhaven.download(wp.path);
 
-      const importResult = await window.API_RENDERER.goDaemon.importImages([tmpPath]);
+      const importResult = await daemonClient.importImages([tmpPath]);
       const batchId =
         importResult && typeof importResult === "object" && "batch_id" in importResult
           ? (importResult as { batch_id: string }).batch_id
@@ -396,7 +397,7 @@ export const useWallhavenStore = create<WallhavenState & WallhavenActions>()((se
 
       if (batchId && (tags.length > 0 || colors.length > 0)) {
         let dispose: (() => void) | null = null;
-        dispose = window.API_RENDERER.goDaemon.on("image_processed", (data: unknown) => {
+        dispose = daemonClient.on("image_processed", (data: unknown) => {
           const payload = data as {
             batch_id: string;
             image?: { id: number };
@@ -427,7 +428,7 @@ export const useWallhavenStore = create<WallhavenState & WallhavenActions>()((se
 
     try {
       const imageId = await downloadAndImportWallpaper(wp);
-      await window.API_RENDERER.goDaemon.setWallpaper(imageId, monitor, mode);
+      await daemonClient.setWallpaper(imageId, monitor, mode);
     } catch (err) {
       logger.error("Wallhaven download+set failed:", err);
       notifyWallpaperApplyFailed(err);

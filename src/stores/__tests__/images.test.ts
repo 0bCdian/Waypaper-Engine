@@ -255,7 +255,7 @@ describe("useImagesStore", () => {
       ...sampleRendererImage(1),
       name: "new_name.jpg",
     };
-    mockAPI.goDaemon.renameImage = vi.fn().mockResolvedValue(renamed);
+    mockAPI.goDaemon.updateImage = vi.fn().mockResolvedValue(renamed);
 
     const useImagesStore = await getStore();
 
@@ -267,7 +267,7 @@ describe("useImagesStore", () => {
       await useImagesStore.getState().renameImage(1, "new_name.jpg");
     });
 
-    expect(mockAPI.goDaemon.renameImage).toHaveBeenCalledWith(1, "new_name.jpg");
+    expect(mockAPI.goDaemon.updateImage).toHaveBeenCalledWith(1, { name: "new_name.jpg" });
     const updated = useImagesStore.getState().imagesMap.get(1);
     expect(updated?.name).toBe("new_name.jpg");
   });
