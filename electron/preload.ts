@@ -28,7 +28,12 @@ import type {
   VideoLoopExportRequest,
   VideoLoopExportResult,
 } from "./daemon-go-types";
+import type { DaemonRequest, DaemonResponse } from "./ipc-types";
 import { unwrapIPCResponse } from "./ipcEnvelope";
+
+function invoke<T extends DaemonRequest>(req: T): Promise<DaemonResponse<T>> {
+  return ipcRenderer.invoke("daemon", req) as Promise<DaemonResponse<T>>;
+}
 
 function invokeWrapped<T>(channel: string, ...args: unknown[]): Promise<T> {
   return ipcRenderer.invoke(channel, ...args).then((response: unknown) => {
@@ -39,79 +44,58 @@ function invokeWrapped<T>(channel: string, ...args: unknown[]): Promise<T> {
 const electronAPI = {
   goDaemon: {
     // HEALTH & SYSTEM
-    ping: (): Promise<boolean> => ipcRenderer.invoke("go-daemon-command", "ping"),
+    ping: (): Promise<boolean> => invoke({ type: "ping" }),
 
-    getInfo: (): Promise<DaemonInfo> => ipcRenderer.invoke("go-daemon-command", "get_info"),
+    getInfo: (): Promise<DaemonInfo> => invoke({ type: "get_info" }),
 
     getCapabilities: (): Promise<{ ffmpeg_available: boolean }> =>
-      ipcRenderer.invoke("go-daemon-command", "get_capabilities"),
+      invoke({ type: "get_capabilities" }),
 
-    shutdown: (): Promise<void> => ipcRenderer.invoke("go-daemon-command", "shutdown"),
+    shutdown: (): Promise<void> => invoke({ type: "shutdown" }),
 
     // IMAGES
     getImages: (params?: ImageQueryParams): Promise<PaginatedResponse<Image>> =>
-      ipcRenderer.invoke("go-daemon-command", "get_images", params),
+      invoke({ type: "get_images", params }),
 
-    getImage: (id: number): Promise<Image> =>
-      ipcRenderer.invoke("go-daemon-command", "get_image", { id }),
+    getImage: (id: number): Promise<Image> => invoke({ type: "get_image", id }),
+
     ensureBrowserPreview: (id: number, force?: boolean): Promise<Image> =>
-      ipcRenderer.invoke("go-daemon-command", "ensure_browser_preview", { id, force }),
+      invoke({ type: "ensure_browser_preview", id, force }),
 
     videoLoopExport: (id: number, body: VideoLoopExportRequest): Promise<VideoLoopExportResult> =>
-      ipcRenderer.invoke("go-daemon-command", "video_loop_export", { id, body }),
-
-    getImageCount: (): Promise<{ count: number }> =>
-      ipcRenderer.invoke("go-daemon-command", "get_image_count"),
+      invoke({ type: "video_loop_export", id, body }),
 
     importImages: (
       paths: string[],
       folderID?: number | null,
     ): Promise<{ status: string; total: number }> =>
-      ipcRenderer.invoke("go-daemon-command", "import_images", {
-        paths,
-        folder_id: folderID,
-      }),
+      invoke({ type: "import_images", paths, folder_id: folderID }),
 
     importWebWallpaper: (path: string, folderID?: number | null): Promise<Image> =>
-      ipcRenderer.invoke("go-daemon-command", "import_web_wallpaper", {
-        path,
-        folder_id: folderID,
-      }),
+      invoke({ type: "import_web_wallpaper", path, folder_id: folderID }),
 
     cancelImport: (batchID: string): Promise<{ status: string; batch_id: string }> =>
-      ipcRenderer.invoke("go-daemon-command", "cancel_import", {
-        batch_id: batchID,
-      }),
+      invoke({ type: "cancel_import", batch_id: batchID }),
 
     deleteImages: (ids: number[]): Promise<{ deleted: number }> =>
-      ipcRenderer.invoke("go-daemon-command", "delete_images", { ids }),
+      invoke({ type: "delete_images", ids }),
 
     updateImage: (id: number, update: UpdateImageRequest): Promise<Image> =>
-      ipcRenderer.invoke("go-daemon-command", "update_image", { id, update }),
-
-    renameImage: (id: number, name: string): Promise<Image> =>
-      ipcRenderer.invoke("go-daemon-command", "rename_image", { id, name }),
+      invoke({ type: "update_image", id, update }),
 
     selectAllImages: (selected: boolean): Promise<{ updated: number; selected: boolean }> =>
-      ipcRenderer.invoke("go-daemon-command", "select_all_images", {
-        selected,
-      }),
+      invoke({ type: "select_all_images", selected }),
 
-    getImageTags: (): Promise<{ tags: string[] }> =>
-      ipcRenderer.invoke("go-daemon-command", "get_image_tags"),
+    getImageTags: (): Promise<{ tags: string[] }> => invoke({ type: "get_image_tags" }),
 
     getImageHistory: (limit?: number, monitor?: string): Promise<ImageHistoryEntry[]> =>
-      ipcRenderer.invoke("go-daemon-command", "get_image_history", {
-        limit,
-        monitor,
-      }),
+      invoke({ type: "get_image_history", limit, monitor }),
 
-    clearImageHistory: (): Promise<{ status: string }> =>
-      ipcRenderer.invoke("go-daemon-command", "clear_image_history"),
+    clearImageHistory: (): Promise<{ status: string }> => invoke({ type: "clear_image_history" }),
 
     // WALLPAPER
     getCurrentWallpapers: (): Promise<WallpaperCurrent> =>
-      ipcRenderer.invoke("go-daemon-command", "get_current_wallpapers"),
+      invoke({ type: "get_current_wallpapers" }),
 
     setWallpaper: (
       imageId: number,
@@ -124,7 +108,8 @@ const electronAPI = {
       monitor: string;
       mode: string;
     }> =>
-      ipcRenderer.invoke("go-daemon-command", "set_wallpaper", {
+      invoke({
+        type: "set_wallpaper",
         image_id: imageId,
         monitor: monitor || "*",
         mode: mode || "individual",
@@ -140,144 +125,109 @@ const electronAPI = {
       monitor: string;
       mode: string;
     }> =>
-      ipcRenderer.invoke("go-daemon-command", "random_wallpaper", {
+      invoke({
+        type: "random_wallpaper",
         monitor: monitor || "*",
         mode: mode || "individual",
       }),
 
     // PLAYLISTS
-    getPlaylists: (): Promise<Playlist[]> =>
-      ipcRenderer.invoke("go-daemon-command", "get_playlists"),
+    getPlaylists: (): Promise<Playlist[]> => invoke({ type: "get_playlists" }),
 
-    getPlaylist: (id: number): Promise<Playlist> =>
-      ipcRenderer.invoke("go-daemon-command", "get_playlist", { id }),
+    getPlaylist: (id: number): Promise<Playlist> => invoke({ type: "get_playlist", id }),
 
     createPlaylist: (playlist: CreatePlaylistRequest): Promise<Playlist> =>
-      ipcRenderer.invoke("go-daemon-command", "create_playlist", playlist),
+      invoke({ type: "create_playlist", playlist }),
 
     updatePlaylist: (id: number, update: UpdatePlaylistRequest): Promise<Playlist> =>
-      ipcRenderer.invoke("go-daemon-command", "update_playlist", {
-        id,
-        update,
-      }),
+      invoke({ type: "update_playlist", id, update }),
 
-    deletePlaylist: (id: number): Promise<void> =>
-      ipcRenderer.invoke("go-daemon-command", "delete_playlist", { id }),
+    deletePlaylist: (id: number): Promise<void> => invoke({ type: "delete_playlist", id }),
 
     startPlaylist: (id: number, monitor?: string, mode?: MonitorMode): Promise<void> =>
-      ipcRenderer.invoke("go-daemon-command", "start_playlist", {
+      invoke({
+        type: "start_playlist",
         id,
         monitor: monitor || "*",
         mode: mode || "individual",
       }),
 
-    stopPlaylist: (id: number): Promise<void> =>
-      ipcRenderer.invoke("go-daemon-command", "stop_playlist", { id }),
+    stopPlaylist: (id: number): Promise<void> => invoke({ type: "stop_playlist", id }),
 
-    pausePlaylist: (id: number): Promise<void> =>
-      ipcRenderer.invoke("go-daemon-command", "pause_playlist", { id }),
+    pausePlaylist: (id: number): Promise<void> => invoke({ type: "pause_playlist", id }),
 
-    resumePlaylist: (id: number): Promise<void> =>
-      ipcRenderer.invoke("go-daemon-command", "resume_playlist", { id }),
+    resumePlaylist: (id: number): Promise<void> => invoke({ type: "resume_playlist", id }),
 
-    nextPlaylistImage: (id: number): Promise<void> =>
-      ipcRenderer.invoke("go-daemon-command", "next_playlist_image", { id }),
+    nextPlaylistImage: (id: number): Promise<void> => invoke({ type: "next_playlist_image", id }),
 
     previousPlaylistImage: (id: number): Promise<void> =>
-      ipcRenderer.invoke("go-daemon-command", "previous_playlist_image", {
-        id,
-      }),
+      invoke({ type: "previous_playlist_image", id }),
 
     getActivePlaylists: (): Promise<ActivePlaylistInstance[]> =>
-      ipcRenderer.invoke("go-daemon-command", "get_active_playlists"),
+      invoke({ type: "get_active_playlists" }),
 
     getActivePlaylistForMonitor: (monitor: string): Promise<ActivePlaylistInstance> =>
-      ipcRenderer.invoke("go-daemon-command", "get_active_playlist_for_monitor", { monitor }),
+      invoke({ type: "get_active_playlist_for_monitor", monitor }),
 
-    stopAllPlaylists: (): Promise<void> =>
-      ipcRenderer.invoke("go-daemon-command", "stop_all_playlists"),
+    stopAllPlaylists: (): Promise<void> => invoke({ type: "stop_all_playlists" }),
 
     // FOLDERS
     getFolders: (parentId?: number | null, search?: string): Promise<{ data: Folder[] }> =>
-      ipcRenderer.invoke("go-daemon-command", "get_folders", {
-        parent_id: parentId,
-        search,
-      }),
+      invoke({ type: "get_folders", parent_id: parentId, search }),
 
-    getFolder: (id: number): Promise<Folder> =>
-      ipcRenderer.invoke("go-daemon-command", "get_folder", { id }),
+    getFolder: (id: number): Promise<Folder> => invoke({ type: "get_folder", id }),
 
     getFolderPath: (id: number): Promise<{ data: Folder[] }> =>
-      ipcRenderer.invoke("go-daemon-command", "get_folder_path", { id }),
+      invoke({ type: "get_folder_path", id }),
 
     createFolder: (name: string, parentId?: number | null): Promise<Folder> =>
-      ipcRenderer.invoke("go-daemon-command", "create_folder", {
-        name,
-        parent_id: parentId,
-      }),
+      invoke({ type: "create_folder", name, parent_id: parentId }),
 
     updateFolder: (
       id: number,
       update: { name?: string; parent_id?: number | null },
-    ): Promise<Folder> =>
-      ipcRenderer.invoke("go-daemon-command", "update_folder", {
-        id,
-        update,
-      }),
+    ): Promise<Folder> => invoke({ type: "update_folder", id, update }),
 
     deleteFolder: (
       id: number,
       mode?: "keep_contents" | "delete_all",
     ): Promise<{ deleted: boolean; mode: string }> =>
-      ipcRenderer.invoke("go-daemon-command", "delete_folder", {
-        id,
-        mode: mode || "keep_contents",
-      }),
+      invoke({ type: "delete_folder", id, mode: mode || "keep_contents" }),
 
     moveImagesToFolder: (imageIds: number[], folderId: number | null): Promise<{ moved: number }> =>
-      ipcRenderer.invoke("go-daemon-command", "move_images_to_folder", {
-        image_ids: imageIds,
-        folder_id: folderId,
-      }),
+      invoke({ type: "move_images_to_folder", image_ids: imageIds, folder_id: folderId }),
 
     // MONITORS
-    getMonitors: (): Promise<Monitor[]> => ipcRenderer.invoke("go-daemon-command", "get_monitors"),
+    getMonitors: (): Promise<Monitor[]> => invoke({ type: "get_monitors" }),
 
-    getMonitor: (name: string): Promise<Monitor> =>
-      ipcRenderer.invoke("go-daemon-command", "get_monitor", { name }),
+    getMonitor: (name: string): Promise<Monitor> => invoke({ type: "get_monitor", name }),
 
     // CONFIG
-    getConfig: (): Promise<UnifiedConfig> => ipcRenderer.invoke("go-daemon-command", "get_config"),
+    getConfig: (): Promise<UnifiedConfig> => invoke({ type: "get_config" }),
 
     updateConfig: (config: Partial<UnifiedConfig>): Promise<UnifiedConfig> =>
-      ipcRenderer.invoke("go-daemon-command", "update_config", config),
+      invoke({ type: "update_config", config }),
 
     getConfigSection: (section: string): Promise<unknown> =>
-      ipcRenderer.invoke("go-daemon-command", "get_config_section", {
-        section,
-      }),
+      invoke({ type: "get_config_section", section }),
 
     updateConfigSection: (section: string, data: Record<string, unknown>): Promise<unknown> =>
-      ipcRenderer.invoke("go-daemon-command", "update_config_section", {
-        section,
-        data,
-      }),
+      invoke({ type: "update_config_section", section, data }),
 
     getBackendConfig: (name: string): Promise<Record<string, unknown>> =>
-      ipcRenderer.invoke("go-daemon-command", "get_backend_config", { name }),
+      invoke({ type: "get_backend_config", name }),
 
     updateBackendConfig: (name: string, patch: Record<string, unknown>): Promise<void> =>
-      ipcRenderer.invoke("go-daemon-command", "update_backend_config", { name, patch }),
+      invoke({ type: "update_backend_config", name, patch }),
 
     // BACKENDS
-    getBackends: (): Promise<BackendInfo[]> =>
-      ipcRenderer.invoke("go-daemon-command", "get_backends"),
+    getBackends: (): Promise<BackendInfo[]> => invoke({ type: "get_backends" }),
 
     getBackendCapabilities: (): Promise<BackendCapabilities | null> =>
-      ipcRenderer.invoke("go-daemon-command", "get_backend_capabilities"),
+      invoke({ type: "get_backend_capabilities" }),
 
     activateBackend: (name: string): Promise<{ status: string; backend: string }> =>
-      ipcRenderer.invoke("go-daemon-command", "activate_backend", { name }),
+      invoke({ type: "activate_backend", name }),
 
     // EVENT LISTENERS (SSE events forwarded via IPC)
     // Returns a disposer function that removes the listener when called.

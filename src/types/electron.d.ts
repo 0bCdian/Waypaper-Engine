@@ -50,7 +50,6 @@ declare global {
           id: number,
           body: VideoLoopExportRequest,
         ) => Promise<VideoLoopExportResult>;
-        getImageCount: () => Promise<{ count: number }>;
         importImages: (
           paths: string[],
           folderID?: number | null,
@@ -59,7 +58,6 @@ declare global {
         cancelImport: (batchID: string) => Promise<{ status: string; batch_id: string }>;
         deleteImages: (ids: number[]) => Promise<{ deleted: number }>;
         updateImage: (id: number, update: UpdateImageRequest) => Promise<Image>;
-        renameImage: (id: number, name: string) => Promise<Image>;
         selectAllImages: (selected: boolean) => Promise<{ updated: number; selected: boolean }>;
         getImageTags: () => Promise<{ tags: string[] }>;
         getImageHistory: (limit?: number, monitor?: string) => Promise<ImageHistoryEntry[]>;
