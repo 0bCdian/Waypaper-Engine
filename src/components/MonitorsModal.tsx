@@ -10,7 +10,6 @@ import { useIsNeo } from "../hooks/useIsNeo";
 import { cn } from "../utils/cn";
 import { daemonClient } from "@/client";
 
-
 function Monitors() {
   const isNeo = useIsNeo();
 

@@ -5,8 +5,14 @@ describe("waitUntilVideoCanSample", () => {
   it("resolves true when already HAVE_CURRENT_DATA with dimensions", async () => {
     const vs = document.createElement("video");
     Object.defineProperty(vs, "readyState", { value: 4, configurable: true });
-    Object.defineProperty(vs, "videoWidth", { value: 1280, configurable: true });
-    Object.defineProperty(vs, "videoHeight", { value: 720, configurable: true });
+    Object.defineProperty(vs, "videoWidth", {
+      value: 1280,
+      configurable: true,
+    });
+    Object.defineProperty(vs, "videoHeight", {
+      value: 720,
+      configurable: true,
+    });
     await expect(waitUntilVideoCanSample(vs, 50)).resolves.toBe(true);
   });
 

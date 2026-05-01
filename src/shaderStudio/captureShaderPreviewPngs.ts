@@ -80,7 +80,9 @@ export async function captureShaderPreviewPngs(
     return out;
   }
 
-  const eng = new ShadertoyMultipassEngine(canvas, { preserveDrawingBuffer: true });
+  const eng = new ShadertoyMultipassEngine(canvas, {
+    preserveDrawingBuffer: true,
+  });
   if (!eng.init()) {
     eng.dispose();
     return null;

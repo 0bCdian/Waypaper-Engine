@@ -26,7 +26,12 @@ vi.mock("zustand/react/shallow", () => ({
 vi.mock("../../stores/images", () => ({
   useImagesStore: Object.assign(
     (selector: (s: typeof mockImagesState) => unknown) => selector(mockImagesState),
-    { getState: () => ({ fetchPage: mockFetchPage, filters: mockImagesState.filters }) },
+    {
+      getState: () => ({
+        fetchPage: mockFetchPage,
+        filters: mockImagesState.filters,
+      }),
+    },
   ),
 }));
 

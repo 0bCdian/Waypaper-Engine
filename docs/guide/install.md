@@ -19,6 +19,7 @@ yay -S waypaper-engine-git
 ```
 
 > **Be advised** — `waypaper-engine` and `waypaper-engine-git` conflict. If you have one and want the other, **remove the current one first**:
+>
 > ```bash
 > yay -R waypaper-engine
 > yay -S waypaper-engine-git

@@ -8,13 +8,13 @@ The daemon delegates the actual wallpaper-setting call to a **backend** binary. 
 
 ## Choosing a backend
 
-| Backend | Compositor | Media types | Transitions | Best for |
-|---------|------------|-------------|-------------|----------|
-| **awww** | Wayland | Images, GIFs | ✓ Rich | Default Wayland choice |
-| **hyprpaper** | Wayland (Hyprland) | Images | — | Hyprland users wanting tight integration |
-| **feh** | X11 | Images | — | X11 setups |
-| **mpvpaper** | Wayland | Videos | — | Video wallpapers on Wayland |
-| **wayland-utauri** | Wayland | Images, video, HTML/CSS/JS | ✓ | HTML, animated, and interactive wallpapers |
+| Backend            | Compositor         | Media types                | Transitions | Best for                                   |
+| ------------------ | ------------------ | -------------------------- | ----------- | ------------------------------------------ |
+| **awww**           | Wayland            | Images, GIFs               | ✓ Rich      | Default Wayland choice                     |
+| **hyprpaper**      | Wayland (Hyprland) | Images                     | —           | Hyprland users wanting tight integration   |
+| **feh**            | X11                | Images                     | —           | X11 setups                                 |
+| **mpvpaper**       | Wayland            | Videos                     | —           | Video wallpapers on Wayland                |
+| **wayland-utauri** | Wayland            | Images, video, HTML/CSS/JS | ✓           | HTML, animated, and interactive wallpapers |
 
 ---
 
@@ -149,11 +149,11 @@ npm install && make build && make install
 
 ### Runtime dependencies
 
-| Dependency | Purpose |
-|------------|---------|
-| `gtk4` | GTK4 window/widget system |
-| `gtk4-layer-shell` | Places the webview on the Wayland background layer |
-| `webkit2gtk-4.1` | WebKit engine (renders HTML wallpapers) |
+| Dependency            | Purpose                                                                  |
+| --------------------- | ------------------------------------------------------------------------ |
+| `gtk4`                | GTK4 window/widget system                                                |
+| `gtk4-layer-shell`    | Places the webview on the Wayland background layer                       |
+| `webkit2gtk-4.1`      | WebKit engine (renders HTML wallpapers)                                  |
 | `gstreamer` + plugins | GStreamer for media playback (video wallpapers, the `asset://` protocol) |
 
 On Arch, these are pulled in as dependencies by the AUR package.

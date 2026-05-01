@@ -29,7 +29,11 @@ export async function getAllImageIdsInFolder(folderId: number): Promise<number[]
   const ids: number[] = [];
   let page = 1;
   for (;;) {
-    const res = await daemonClient.getImages({ folder_id: folderId, per_page: 200, page });
+    const res = await daemonClient.getImages({
+      folder_id: folderId,
+      per_page: 200,
+      page,
+    });
     for (const img of res.data) ids.push(img.id);
     if (page >= res.pagination.total_pages) break;
     page++;
@@ -65,7 +69,11 @@ export const useFoldersStore = create<FoldersState>()((set, get) => ({
     const results = await Promise.all(
       toFetch.map(async (id) => {
         try {
-          const res = await daemonClient.getImages({ folder_id: id, per_page: 4, page: 1 });
+          const res = await daemonClient.getImages({
+            folder_id: id,
+            per_page: 4,
+            page: 1,
+          });
           const thumbs = res.data.map((img) => getThumbnailSrc(img));
           return [id, thumbs] as const;
         } catch {

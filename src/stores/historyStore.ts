@@ -28,7 +28,9 @@ async function resolveImages(
   }
   if (missing.size === 0) return cache;
 
-  const results = await Promise.allSettled(Array.from(missing).map((id) => daemonClient.getImage(id)));
+  const results = await Promise.allSettled(
+    Array.from(missing).map((id) => daemonClient.getImage(id)),
+  );
   for (const r of results) {
     if (r.status === "fulfilled" && r.value) {
       cache.set(r.value.id, r.value);
@@ -93,6 +95,11 @@ export const useHistoryStore = create<HistoryState>((set, get) => ({
   },
 
   reset: () => {
-    set({ entries: [], imageCache: new Map(), isLoading: false, hasMore: true });
+    set({
+      entries: [],
+      imageCache: new Map(),
+      isLoading: false,
+      hasMore: true,
+    });
   },
 }));

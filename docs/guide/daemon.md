@@ -23,15 +23,15 @@ curl --unix-socket "${XDG_RUNTIME_DIR}/waypaper-engine.sock" http://localhost/he
 
 These match the in-repo [API contract defaults](https://github.com/0bCdian/Waypaper-Engine/blob/main/daemon/API_CONTRACT.md#default-file-paths-xdg):
 
-| Purpose | Typical path |
-|---------|----------------|
+| Purpose            | Typical path                                   |
+| ------------------ | ---------------------------------------------- |
 | User config (TOML) | `$XDG_CONFIG_HOME/waypaper-engine/config.toml` |
-| Unix socket | `$XDG_RUNTIME_DIR/waypaper-engine.sock` |
-| Images (library) | `$XDG_DATA_HOME/waypaper-engine/images` |
-| Thumbnails | `$XDG_CACHE_HOME/waypaper-engine/thumbnails` |
-| CloverDB | `$XDG_DATA_HOME/waypaper-engine/db` |
-| Log file | `$XDG_DATA_HOME/waypaper-engine/daemon.log` |
-| PID lock | `$XDG_RUNTIME_DIR/waypaper-engine.pid` |
+| Unix socket        | `$XDG_RUNTIME_DIR/waypaper-engine.sock`        |
+| Images (library)   | `$XDG_DATA_HOME/waypaper-engine/images`        |
+| Thumbnails         | `$XDG_CACHE_HOME/waypaper-engine/thumbnails`   |
+| CloverDB           | `$XDG_DATA_HOME/waypaper-engine/db`            |
+| Log file           | `$XDG_DATA_HOME/waypaper-engine/daemon.log`    |
+| PID lock           | `$XDG_RUNTIME_DIR/waypaper-engine.pid`         |
 
 On a typical Linux setup, config is under **`~/.config`**, data under **`~/.local/share`**, cache under **`~/.cache`**, runtime under **`/run/user/<uid>`**.
 

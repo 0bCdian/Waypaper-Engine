@@ -9,7 +9,6 @@ import { useToastStore } from "../stores/toastStore";
 import { FolderIcon } from "./FolderCard";
 import { daemonClient } from "@/client";
 
-
 async function fetchRootFolders(): Promise<Folder[]> {
   try {
     const result = await daemonClient.getFolders(undefined);
@@ -108,7 +107,11 @@ function FolderTreeItem({ folder, level, selectedId, onSelect }: FolderTreeItemP
 
 function FolderPickerModal() {
   const { isOpen, imageIds, close } = useFolderPickerStore(
-    useShallow((s) => ({ isOpen: s.isOpen, imageIds: s.imageIds, close: s.close })),
+    useShallow((s) => ({
+      isOpen: s.isOpen,
+      imageIds: s.imageIds,
+      close: s.close,
+    })),
   );
   const isNeo = useIsNeo();
   const addToast = useToastStore((s) => s.addToast);

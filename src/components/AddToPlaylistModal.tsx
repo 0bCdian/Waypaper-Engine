@@ -13,7 +13,6 @@ interface Props {
   onPlaylistChanged: () => void;
 }
 
-
 const AddToPlaylistModal = ({ playlistsInDB, onPlaylistChanged }: Props) => {
   const isNeo = useIsNeo();
   const selectedImages = useImagesStore((s) => s.selectedImages);

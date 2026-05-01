@@ -233,9 +233,17 @@ const TypographySection: React.FC<{
     setCustomMono(cfgMono);
   }
 
-  const latestCustom = useRef({ body: customBody, display: customDisplay, mono: customMono });
+  const latestCustom = useRef({
+    body: customBody,
+    display: customDisplay,
+    mono: customMono,
+  });
   useEffect(() => {
-    latestCustom.current = { body: customBody, display: customDisplay, mono: customMono };
+    latestCustom.current = {
+      body: customBody,
+      display: customDisplay,
+      mono: customMono,
+    };
   });
 
   const scheduleCustomSave = useCallback(() => {

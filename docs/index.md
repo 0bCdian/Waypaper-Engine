@@ -48,4 +48,4 @@ features:
 
 ---
 
-*Something wrong or confusing in these docs? Open an issue—I want them to match what the code actually does.*
+_Something wrong or confusing in these docs? Open an issue—I want them to match what the code actually does._

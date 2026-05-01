@@ -439,7 +439,10 @@ export class ShadertoyMultipassEngine {
       const oid = outs[0]?.id;
       if (!oid) {
         this.disposeGpuPrograms();
-        return { ok: false, message: `Buffer pass "${p.name ?? i}" has no output id` };
+        return {
+          ok: false,
+          message: `Buffer pass "${p.name ?? i}" has no output id`,
+        };
       }
       const st: BufferState = {
         pass: p,

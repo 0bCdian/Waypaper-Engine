@@ -505,7 +505,6 @@ func (w *WaylandUtauri) SetWallpaper(ctx context.Context, req backend.WallpaperR
 	return fmt.Errorf("wayland-utauri: load request failed without explicit error")
 }
 
-
 func (w *WaylandUtauri) expandParallaxMoveTargets(outputName string) []string {
 	w.extendParallaxMu.Lock()
 	g := w.extendParallaxGroup
@@ -869,7 +868,6 @@ func (w *WaylandUtauri) OnConfigChanged(ctx context.Context, _ json.RawMessage) 
 	}
 	return nil
 }
-
 
 // slogWriter is an io.Writer that logs each line via slog at Info level.
 type slogWriter struct{ prefix string }

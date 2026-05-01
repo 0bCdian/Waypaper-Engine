@@ -67,7 +67,10 @@ export function ffmpegPngSequenceToAnimatedWebp(
     return { ok: false, message: String(r.error.message) };
   }
   if (r.status !== 0) {
-    return { ok: false, message: (r.stderr as string) || `ffmpeg exited ${r.status}` };
+    return {
+      ok: false,
+      message: (r.stderr as string) || `ffmpeg exited ${r.status}`,
+    };
   }
   return { ok: true };
 }

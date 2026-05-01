@@ -866,8 +866,13 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
   }, [pendingBackendSettingsTab, selectBackendPanel, clearPendingBackendSettingsTab]);
 
   useEffect(() => {
-    daemonClient.getBackends().then((backends) => {
-        const mapped = backends.map((b) => ({ name: b.name, available: b.available }));
+    daemonClient
+      .getBackends()
+      .then((backends) => {
+        const mapped = backends.map((b) => ({
+          name: b.name,
+          available: b.available,
+        }));
         setAvailableBackends(mapped);
         setActiveSettingsTab((tab) => {
           if (tab === "general") return tab;
@@ -987,7 +992,9 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
         const n = Number(value);
         if (!Number.isFinite(n)) return;
         const clamped = Math.min(120, Math.max(0, n));
-        void saveBackendPatch(backendId, { duration_ms: Math.round(clamped * 1000) });
+        void saveBackendPatch(backendId, {
+          duration_ms: Math.round(clamped * 1000),
+        });
       });
     }
 

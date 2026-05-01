@@ -25,12 +25,18 @@ export const mockDaemonClient: DaemonClient = {
 
   // WALLPAPER
   getCurrentWallpapers: vi.fn().mockResolvedValue({}),
-  setWallpaper: vi
-    .fn()
-    .mockResolvedValue({ status: "ok", image_id: 0, monitor: "*", mode: "individual" }),
-  setRandomWallpaper: vi
-    .fn()
-    .mockResolvedValue({ status: "ok", image_id: 0, monitor: "*", mode: "individual" }),
+  setWallpaper: vi.fn().mockResolvedValue({
+    status: "ok",
+    image_id: 0,
+    monitor: "*",
+    mode: "individual",
+  }),
+  setRandomWallpaper: vi.fn().mockResolvedValue({
+    status: "ok",
+    image_id: 0,
+    monitor: "*",
+    mode: "individual",
+  }),
 
   // PLAYLISTS
   getPlaylists: vi.fn().mockResolvedValue([]),

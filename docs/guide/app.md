@@ -12,6 +12,7 @@ The main screen. Everything you do with wallpapers starts here.
 <!-- Description: Wide screenshot of the gallery with ~20 wallpapers visible, sidebar on left showing folders tree, toolbar at top with search/filter controls -->
 
 **Importing:**
+
 - Drag-and-drop **images**, **videos**, **folders**, or a **web wallpaper manifest** (`project.json`) directly onto the window.
 - Click the **import button** in the toolbar to browse files.
 - Paste an `https://` URL to import from the web (where the active backend supports it).
@@ -19,6 +20,7 @@ The main screen. Everything you do with wallpapers starts here.
 - Import progress is shown inline and reported live via SSE `processing_*` events.
 
 **Browsing:**
+
 - Filter by **media type** (image, video, GIF, web), **tags**, **dominant colors**, or **folder**.
 - **Color filter:** click swatches to filter by palette, or use perceptual matching (`colors_near`).
 - **Search:** fuzzy name/tag search in the toolbar.
@@ -27,20 +29,24 @@ The main screen. Everything you do with wallpapers starts here.
 <!-- SCREENSHOT PLACEHOLDER: Gallery with filter panel open, showing tag filters and color swatches selected -->
 
 **Setting a wallpaper:**
+
 - **Double-click** any image to set it on the current monitor configuration.
 - **Right-click** for the context menu: set on specific monitor, set random, move to folder, rename, add tags, delete.
 
 **Selecting for playlists:**
+
 - Hover an image to reveal a **checkbox** in the corner. Check multiple images, then open the playlist panel to add them to a new or existing playlist.
 
 <!-- SCREENSHOT PLACEHOLDER: Gallery with 3 images checked, playlist creation panel open on the right -->
 
 **Image detail:**
+
 - Click the image name or use the context menu to open the detail panel.
 - Edit **tags**, view **metadata** (dimensions, size, format, import date, colors).
 - **Rename on disk:** the rename operation renames the file on disk and updates the database in one step.
 
 **History navigation:**
+
 - The history button (or the **History** route) shows a per-monitor log of every wallpaper change with source (manual, random, playlist). Navigate back and forward.
 
 ---
@@ -72,15 +78,15 @@ Pick which backend sets your wallpaper:
 
 ### App behavior
 
-| Setting | What it does |
-|---------|--------------|
-| Kill daemon on exit | Stop the daemon when the Electron window closes. Default off (daemon keeps running). |
-| Notifications | Enable/disable desktop notifications. |
-| Start minimized | Hide the window on launch (useful for autostart). |
-| Minimize instead of close | Send to tray on window close button. |
-| Show monitor modal on start | Pop the monitor selector every time the app opens. |
-| Images per page | Gallery pagination size (1–200). |
-| Image history limit | Max wallpaper history entries before oldest are trimmed. |
+| Setting                     | What it does                                                                         |
+| --------------------------- | ------------------------------------------------------------------------------------ |
+| Kill daemon on exit         | Stop the daemon when the Electron window closes. Default off (daemon keeps running). |
+| Notifications               | Enable/disable desktop notifications.                                                |
+| Start minimized             | Hide the window on launch (useful for autostart).                                    |
+| Minimize instead of close   | Send to tray on window close button.                                                 |
+| Show monitor modal on start | Pop the monitor selector every time the app opens.                                   |
+| Images per page             | Gallery pagination size (1–200).                                                     |
+| Image history limit         | Max wallpaper history entries before oldest are trimmed.                             |
 
 ### Theme & fonts
 
@@ -135,6 +141,7 @@ This is a beta feature—expect rough edges. The exported file can be imported b
 **Import Shadertoy JSON exports** (multipass shaders included) and preview them with a live **WebGL2** renderer. When you are happy with the result, save it as a **web wallpaper** package into the gallery—it shows up as a `web` media type image and can be set via the wayland-utauri backend.
 
 Steps:
+
 1. Export your shader from shadertoy.com as JSON.
 2. Drag the JSON file into Shader Studio (or use the import button).
 3. Tweak uniforms or code in the editor—preview updates live.
@@ -152,12 +159,12 @@ Where the desktop environment supports a system tray, Waypaper Engine places a t
 
 <!-- SCREENSHOT PLACEHOLDER OR TABLE: Keyboard shortcuts reference overlay (press ? in app) -->
 
-| Action | Shortcut |
-|--------|----------|
-| Open gallery | `G` |
-| Open settings | `S` |
-| Set random wallpaper | `R` |
-| Next playlist image | `→` |
-| Previous playlist image | `←` |
+| Action                  | Shortcut |
+| ----------------------- | -------- |
+| Open gallery            | `G`      |
+| Open settings           | `S`      |
+| Set random wallpaper    | `R`      |
+| Next playlist image     | `→`      |
+| Previous playlist image | `←`      |
 
 > **NOTE** — Shortcuts are subject to change. Check the in-app help for the current list.

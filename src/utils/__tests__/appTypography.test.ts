@@ -130,7 +130,9 @@ describe("resolvedStacksForPreset", () => {
   });
 
   it("custom merges with bundled fallbacks", () => {
-    const c = resolvedStacksForPreset("custom", { font_family_body: '"X", serif' });
+    const c = resolvedStacksForPreset("custom", {
+      font_family_body: '"X", serif',
+    });
     expect(c.body).toBe('"X", serif');
     expect(c.display).toBe(BUNDLED_FONT_DISPLAY);
     expect(c.mono).toBe(BUNDLED_FONT_MONO);

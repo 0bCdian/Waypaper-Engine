@@ -223,7 +223,10 @@ export class ShaderWallEngine {
     if (!gl.getProgramParameter(p, gl.LINK_STATUS)) {
       const log = gl.getProgramInfoLog(p) ?? "";
       gl.deleteProgram(p);
-      return { ok: false, message: remapShaderErrors("Link: " + log, prefixLineCount) };
+      return {
+        ok: false,
+        message: remapShaderErrors("Link: " + log, prefixLineCount),
+      };
     }
     this.program = p;
     this.uniCache = {};

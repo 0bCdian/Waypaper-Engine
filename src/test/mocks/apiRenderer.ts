@@ -74,9 +74,11 @@ export function createMockAPI(): Window["API_RENDERER"] {
       }),
       getImage: vi.fn().mockResolvedValue(null),
       ensureBrowserPreview: vi.fn().mockResolvedValue(null),
-      videoLoopExport: vi
-        .fn()
-        .mockResolvedValue({ action: "import_new", image_id: 1, path: "atom://tmp/x.webm" }),
+      videoLoopExport: vi.fn().mockResolvedValue({
+        action: "import_new",
+        image_id: 1,
+        path: "atom://tmp/x.webm",
+      }),
       importImages: vi.fn().mockResolvedValue({ status: "processing", total: 0 }),
       importWebWallpaper: vi.fn().mockResolvedValue(null),
       cancelImport: vi.fn().mockResolvedValue({ status: "cancelled", batch_id: "" }),
@@ -214,9 +216,10 @@ export function createMockAPI(): Window["API_RENDERER"] {
     getPathForFile: vi.fn().mockReturnValue(""),
     downloadUrl: vi.fn().mockResolvedValue(""),
     openFiles: vi.fn().mockResolvedValue({ files: [], webRoots: [] }),
-    writeShaderWebWallpaperPackage: vi
-      .fn()
-      .mockResolvedValue({ canceled: false, packageDir: "/tmp/waypaper-shader-test" }),
+    writeShaderWebWallpaperPackage: vi.fn().mockResolvedValue({
+      canceled: false,
+      packageDir: "/tmp/waypaper-shader-test",
+    }),
     scanDirectory: vi.fn().mockResolvedValue({ files: [], webRoots: [], folderName: "" }),
     handleOpenImages: vi.fn().mockResolvedValue({ message: "ok" }),
     revealInFileManager: vi.fn().mockResolvedValue(true),

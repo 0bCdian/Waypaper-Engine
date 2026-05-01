@@ -177,7 +177,11 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
         }
       }
 
-      const newPlaylist = { ...state.playlist, configuration: newConfiguration, images };
+      const newPlaylist = {
+        ...state.playlist,
+        configuration: newConfiguration,
+        images,
+      };
       persistPlaylist(newPlaylist);
       return {
         playlist: newPlaylist,

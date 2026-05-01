@@ -23,7 +23,9 @@ async function tryDownloadYoutube(url: string): Promise<{ filePath: string } | {
     const { filePath } = await api.downloadYoutubeVideo(url);
     return { filePath };
   } catch (e) {
-    return { error: e instanceof Error ? e.message : "YouTube download failed" };
+    return {
+      error: e instanceof Error ? e.message : "YouTube download failed",
+    };
   }
 }
 
@@ -38,7 +40,10 @@ async function tryVideoLoopExport(
     const res = await daemonClient.videoLoopExport(imageId, body);
     return { ok: true, res };
   } catch (e) {
-    return { ok: false, error: e instanceof Error ? e.message : "Export failed" };
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Export failed",
+    };
   }
 }
 
@@ -227,7 +232,9 @@ export default function LoopStudio() {
       const tmr = window.setTimeout(() => finish(null), 8000);
       const onSeeked = () => {
         const rvfc = (
-          vs as HTMLVideoElement & { requestVideoFrameCallback?: (cb: () => void) => void }
+          vs as HTMLVideoElement & {
+            requestVideoFrameCallback?: (cb: () => void) => void;
+          }
         ).requestVideoFrameCallback;
         if (typeof rvfc === "function") {
           rvfc.call(vs, () => void grabAfterSeek().then(finish));
@@ -962,7 +969,10 @@ export default function LoopStudio() {
                   <div className="absolute top-1/2 left-0 right-0 h-1.5 -translate-y-1/2 bg-base-300 rounded" />
                   <div
                     className="absolute top-1/2 h-1.5 -translate-y-1/2 bg-primary/30 rounded"
-                    style={{ left: `${pct(inPoint)}%`, width: `${pct(outPoint) - pct(inPoint)}%` }}
+                    style={{
+                      left: `${pct(inPoint)}%`,
+                      width: `${pct(outPoint) - pct(inPoint)}%`,
+                    }}
                   />
                   <div
                     className="absolute top-0 bottom-0 w-3.5 -ml-1.5 flex items-center justify-center cursor-ew-resize z-10"

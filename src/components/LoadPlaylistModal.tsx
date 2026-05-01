@@ -20,7 +20,6 @@ interface Props {
   onPlaylistChanged: () => void;
 }
 
-
 type LoadPlaylistResult =
   | { ok: true; playlist: import("../types/rendererTypes").rendererPlaylist }
   | { ok: false; message: string };

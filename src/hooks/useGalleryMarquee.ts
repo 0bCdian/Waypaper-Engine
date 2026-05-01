@@ -36,7 +36,12 @@ export function useGalleryMarquee() {
       e.preventDefault();
       shiftDuringMarqueeRef.current = e.shiftKey;
       const { clientX, clientY } = e;
-      const start: MarqueeBox = { x1: clientX, y1: clientY, x2: clientX, y2: clientY };
+      const start: MarqueeBox = {
+        x1: clientX,
+        y1: clientY,
+        x2: clientX,
+        y2: clientY,
+      };
       marqueeLiveRef.current = start;
       setMarqueeBox(start);
       document.documentElement.style.userSelect = "none";

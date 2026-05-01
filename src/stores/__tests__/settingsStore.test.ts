@@ -131,7 +131,9 @@ describe("useSettingsStore", () => {
     expect((state.config!.backend as unknown as Record<string, unknown>).awww).toMatchObject({
       resize: "fit",
     });
-    expect(mockAPI.goDaemon.updateBackendConfig).toHaveBeenCalledWith("awww", { resize: "fit" });
+    expect(mockAPI.goDaemon.updateBackendConfig).toHaveBeenCalledWith("awww", {
+      resize: "fit",
+    });
   });
 
   it("resetToDefaults calls updateConfig with defaults", async () => {

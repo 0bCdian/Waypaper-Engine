@@ -129,7 +129,11 @@ export function serializeMultipass(prepared: PreparedMultipass): MultipassPayloa
     body: prepared.bodies[imgName] ?? "",
     inputs: (prepared.image.inputs ?? []).map(toInputRef),
   });
-  return { title: prepared.title, common: prepared.commonSanitized.trim(), passes };
+  return {
+    title: prepared.title,
+    common: prepared.commonSanitized.trim(),
+    passes,
+  };
 }
 
 export function buildShaderMultipassWebWallpaperFiles(

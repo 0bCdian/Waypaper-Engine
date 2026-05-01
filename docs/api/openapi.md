@@ -24,16 +24,19 @@ SOCK="${XDG_RUNTIME_DIR}/waypaper-engine.sock"
 ```
 
 **Health check:**
+
 ```bash
 curl -s --unix-socket "$SOCK" http://localhost/healthz
 ```
 
 **List images (paginated):**
+
 ```bash
 curl -s --unix-socket "$SOCK" "http://localhost/images?page=1&per_page=20" | jq
 ```
 
 **Set a wallpaper:**
+
 ```bash
 curl -s -X POST --unix-socket "$SOCK" http://localhost/wallpaper/set \
   -H 'Content-Type: application/json' \
@@ -41,27 +44,32 @@ curl -s -X POST --unix-socket "$SOCK" http://localhost/wallpaper/set \
 ```
 
 **Set a random wallpaper:**
+
 ```bash
 curl -s -X POST --unix-socket "$SOCK" http://localhost/wallpaper/random \
   -H 'Content-Type: application/json' -d '{}'
 ```
 
 **List backends and availability:**
+
 ```bash
 curl -s --unix-socket "$SOCK" http://localhost/backends | jq
 ```
 
 **Switch active backend:**
+
 ```bash
 curl -s -X POST --unix-socket "$SOCK" http://localhost/backends/awww/activate
 ```
 
 **Get full config:**
+
 ```bash
 curl -s --unix-socket "$SOCK" http://localhost/config | jq
 ```
 
 **Update app config:**
+
 ```bash
 curl -s -X PATCH --unix-socket "$SOCK" http://localhost/config/app \
   -H 'Content-Type: application/json' \
@@ -69,6 +77,7 @@ curl -s -X PATCH --unix-socket "$SOCK" http://localhost/config/app \
 ```
 
 **Stream SSE events:**
+
 ```bash
 curl -N --unix-socket "$SOCK" \
   "http://localhost/events?types=wallpaper_changed,playlist_started"

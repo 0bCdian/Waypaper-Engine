@@ -107,7 +107,11 @@ export function resolvedStacksForPreset(
     };
   }
   if (preset === "google_sans") {
-    return { body: GOOGLE_SANS_FONT_UI, display: GOOGLE_SANS_FONT_UI, mono: GOOGLE_SANS_FONT_MONO };
+    return {
+      body: GOOGLE_SANS_FONT_UI,
+      display: GOOGLE_SANS_FONT_UI,
+      mono: GOOGLE_SANS_FONT_MONO,
+    };
   }
   if (preset === "system") {
     return {

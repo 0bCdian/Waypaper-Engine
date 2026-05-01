@@ -58,7 +58,10 @@ describe("getThumbnailSrc", () => {
   });
 
   it("handles undefined thumbnails", () => {
-    const img = { thumbnails: undefined as unknown as Image["thumbnails"], path: "/img.jpg" };
+    const img = {
+      thumbnails: undefined as unknown as Image["thumbnails"],
+      path: "/img.jpg",
+    };
     expect(getThumbnailSrc(img)).toBe("/img.jpg");
   });
 

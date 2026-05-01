@@ -10,7 +10,6 @@ import { notifyWallpaperApplyFailed } from "../utils/daemonUserFacingError";
 import { getThumbnailSrc } from "../utils/utilities";
 import { daemonClient } from "@/client";
 
-
 function formatRelativeTime(dateStr: string): string {
   const date = new Date(dateStr);
   const now = Date.now();

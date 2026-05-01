@@ -1,7 +1,10 @@
 import type { Filters, advancedFilters } from "../types/rendererTypes";
 import type { Formats } from "../../shared/types/image";
 
-function parseSearchInput(text: string): { search: string; hashTags: string[] } {
+function parseSearchInput(text: string): {
+  search: string;
+  hashTags: string[];
+} {
   const hashTags: string[] = [];
   const search = text
     .replace(/#(\S+)/g, (_, tag: string) => {

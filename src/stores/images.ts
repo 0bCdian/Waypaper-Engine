@@ -270,7 +270,9 @@ export const useImagesStore = create<State>()((set, get) => ({
     set(() => ({ selectedImages: allImageIds }));
   },
   async renameImage(id: number, newName: string): Promise<rendererImage> {
-    const updated = (await daemonClient.updateImage(id, { name: newName })) as rendererImage;
+    const updated = (await daemonClient.updateImage(id, {
+      name: newName,
+    })) as rendererImage;
     if (updated.time === undefined) {
       updated.time = null;
     }

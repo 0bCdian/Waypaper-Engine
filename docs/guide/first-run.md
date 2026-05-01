@@ -45,7 +45,7 @@ Import runs through the daemon; progress shows in the UI and is also reflected i
 
 On the same gallery view:
 
-- **Double-click** the image to apply it (see [The app (UI) — Gallery](/guide/app#gallery-home), *Setting a wallpaper*).
+- **Double-click** the image to apply it (see [The app (UI) — Gallery](/guide/app#gallery-home), _Setting a wallpaper_).
 
 **Success check:** your desktop background updates for the active monitor configuration. If nothing happens, see [FAQ & troubleshooting](./faq) (stale socket, backend unavailable, or missing `wlr-randr` on Wayland).
 
@@ -65,15 +65,15 @@ You should get JSON with `"status": "ok"`. The default socket path and overrides
 
 ## Day two
 
-| Want to… | Read |
-|----------|------|
-| Playlists, timers, scheduling | [The app (UI)](/guide/app) (gallery: selection checkboxes, playlist flow); types are `timer`, `manual`, `time_of_day`, `day_of_week` in the API/types |
-| Pull from Wallhaven | [The app (UI) — Wallhaven](/guide/app#wallhaven-wallhaven) |
-| Automate or script | [API overview](/api/overview) · [Events & SSE](/api/sse) · `waypaper-daemon` subcommands in [Install & run — Daemon only](/guide/install#daemon-only-headless-autostart) |
-| Tune TOML or data paths | [Configuration](/guide/config) · [Daemon & paths](./daemon) |
+| Want to…                      | Read                                                                                                                                                                     |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Playlists, timers, scheduling | [The app (UI)](/guide/app) (gallery: selection checkboxes, playlist flow); types are `timer`, `manual`, `time_of_day`, `day_of_week` in the API/types                    |
+| Pull from Wallhaven           | [The app (UI) — Wallhaven](/guide/app#wallhaven-wallhaven)                                                                                                               |
+| Automate or script            | [API overview](/api/overview) · [Events & SSE](/api/sse) · `waypaper-daemon` subcommands in [Install & run — Daemon only](/guide/install#daemon-only-headless-autostart) |
+| Tune TOML or data paths       | [Configuration](/guide/config) · [Daemon & paths](./daemon)                                                                                                              |
 
 If anything in this page disagrees with the code, the code wins—open an issue and we will fix the doc.
 
 ---
 
-*Questions or rough edges? I want this path to match what you actually see on your machine—especially on non-Arch distros.*
+_Questions or rough edges? I want this path to match what you actually see on your machine—especially on non-Arch distros._

@@ -20,15 +20,15 @@ type stubBackend struct {
 	caps  Capabilities
 }
 
-func (s *stubBackend) Name() string                                         { return s.name }
-func (s *stubBackend) IsAvailable() bool                                    { return s.avail }
-func (s *stubBackend) Capabilities() Capabilities                           { return s.caps }
-func (s *stubBackend) Initialize(context.Context) error                     { return nil }
-func (s *stubBackend) Shutdown(context.Context) error                       { return nil }
-func (s *stubBackend) SetWallpaper(context.Context, WallpaperRequest) error { return nil }
-func (s *stubBackend) RegisterDefaults(*viper.Viper)                        {}
-func (s *stubBackend) ValidateConfig(json.RawMessage) error                 { return nil }
-func (s *stubBackend) ParseConfig(json.RawMessage) (any, error)             { return nil, nil }
+func (s *stubBackend) Name() string                                           { return s.name }
+func (s *stubBackend) IsAvailable() bool                                      { return s.avail }
+func (s *stubBackend) Capabilities() Capabilities                             { return s.caps }
+func (s *stubBackend) Initialize(context.Context) error                       { return nil }
+func (s *stubBackend) Shutdown(context.Context) error                         { return nil }
+func (s *stubBackend) SetWallpaper(context.Context, WallpaperRequest) error   { return nil }
+func (s *stubBackend) RegisterDefaults(*viper.Viper)                          {}
+func (s *stubBackend) ValidateConfig(json.RawMessage) error                   { return nil }
+func (s *stubBackend) ParseConfig(json.RawMessage) (any, error)               { return nil, nil }
 func (s *stubBackend) OnConfigChanged(context.Context, json.RawMessage) error { return nil }
 
 func TestRegistry_RegisterAndGet(t *testing.T) {

@@ -24,7 +24,6 @@ interface ImageCardProps {
   Image: rendererImage;
 }
 
-
 const TRANSPARENT_PIXEL =
   "data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7";
 
@@ -97,7 +96,10 @@ function ImageCard({ Image }: ImageCardProps) {
     startRename,
     submitRename,
     cancelRename,
-  } = useInlineRename({ currentName: Image.name, onSubmit: handleRenameSubmit });
+  } = useInlineRename({
+    currentName: Image.name,
+    onSubmit: handleRenameSubmit,
+  });
 
   const isChecked = !isEmpty && imagesInPlaylist.has(Image.id);
   const isSelected = selectedImages.has(Image.id);
@@ -211,7 +213,10 @@ function ImageCard({ Image }: ImageCardProps) {
       ensurePreviewOnceRef.current = true;
       void (async () => {
         try {
-          const updated = (await daemonClient.ensureBrowserPreview(Image.id, true)) as rendererImage;
+          const updated = (await daemonClient.ensureBrowserPreview(
+            Image.id,
+            true,
+          )) as rendererImage;
           if (updated.time === undefined) updated.time = null;
           useImagesStore.setState((s) => {
             const m = new Map(s.imagesMap);

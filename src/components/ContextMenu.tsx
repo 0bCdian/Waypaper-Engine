@@ -11,7 +11,12 @@ const VIEWPORT_PADDING = 8;
 
 function ContextMenu() {
   const { isOpen, position, items, close } = useContextMenuStore(
-    useShallow((s) => ({ isOpen: s.isOpen, position: s.position, items: s.items, close: s.close })),
+    useShallow((s) => ({
+      isOpen: s.isOpen,
+      position: s.position,
+      items: s.items,
+      close: s.close,
+    })),
   );
   const isNeo = useIsNeo();
   const menuRef = useRef<HTMLDivElement>(null);

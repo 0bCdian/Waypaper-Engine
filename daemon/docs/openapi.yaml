@@ -34,19 +34,19 @@ paths:
       operationId: getHealthz
       summary: Liveness
       responses:
-        '200':
+        "200":
           description: OK
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/StatusOk'
+                $ref: "#/components/schemas/StatusOk"
   /info:
     get:
       tags: [health]
       operationId: getInfo
       summary: Daemon metadata
       responses:
-        '200':
+        "200":
           description: Version, pid, host, runtime
           content:
             application/json:
@@ -59,7 +59,7 @@ paths:
       operationId: postShutdown
       summary: Graceful shutdown
       responses:
-        '200':
+        "200":
           description: Accepting shutdown
           content:
             application/json:
@@ -72,7 +72,7 @@ paths:
       operationId: getEvents
       summary: Server-Sent Events stream
       responses:
-        '200':
+        "200":
           description: text/event-stream
           content:
             text/event-stream:
@@ -85,8 +85,8 @@ paths:
       operationId: listImages
       summary: List images (paginated, filterable)
       parameters:
-        - $ref: '#/components/parameters/Page'
-        - $ref: '#/components/parameters/PerPage'
+        - $ref: "#/components/parameters/Page"
+        - $ref: "#/components/parameters/PerPage"
         - name: sort_by
           in: query
           schema: { type: string }
@@ -112,12 +112,12 @@ paths:
           in: query
           schema: { type: string }
       responses:
-        '200':
+        "200":
           description: Paged list
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
     post:
       tags: [images]
       operationId: importImages
@@ -126,14 +126,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenericJSON'
+              $ref: "#/components/schemas/GenericJSON"
       responses:
-        '202':
+        "202":
           description: Processing
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
     delete:
       tags: [images]
       operationId: deleteImages
@@ -142,14 +142,14 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenericJSON'
+              $ref: "#/components/schemas/GenericJSON"
       responses:
-        '200':
+        "200":
           description: Count deleted
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
   /images/import-web:
     post:
       tags: [images]
@@ -159,11 +159,11 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenericJSON'
+              $ref: "#/components/schemas/GenericJSON"
       responses:
-        '200':
+        "200":
           description: Accepted or batch id
-        '202':
+        "202":
           description: Accepted
   /images/tags:
     get:
@@ -171,32 +171,32 @@ paths:
       operationId: getImageTags
       summary: Distinct tag list
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
   /images/history:
     get:
       tags: [images, wallpaper]
       operationId: getHistory
       summary: Apply history
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
     delete:
       tags: [images, wallpaper]
       operationId: clearHistory
       summary: Clear apply history
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
   /images/cancel-import:
     post:
       tags: [images]
@@ -206,9 +206,9 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenericJSON'
+              $ref: "#/components/schemas/GenericJSON"
       responses:
-        '200': { description: OK }
+        "200": { description: OK }
   /images/select-all:
     post:
       tags: [images]
@@ -218,95 +218,95 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenericJSON'
+              $ref: "#/components/schemas/GenericJSON"
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
   /images/{id}:
     get:
       tags: [images]
       operationId: getImage
-      parameters: [$ref: '#/components/parameters/ImageId']
+      parameters: [$ref: "#/components/parameters/ImageId"]
       summary: Get one image
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
-        '404': { $ref: '#/components/responses/NotFound' }
+                $ref: "#/components/schemas/GenericJSON"
+        "404": { $ref: "#/components/responses/NotFound" }
     patch:
       tags: [images]
       operationId: patchImage
       summary: Update image metadata; patching `name` atomically renames the file on disk
-      parameters: [$ref: '#/components/parameters/ImageId']
+      parameters: [$ref: "#/components/parameters/ImageId"]
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenericJSON'
+              $ref: "#/components/schemas/GenericJSON"
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
   /images/{id}/ensure-browser-preview:
     post:
       tags: [images]
       operationId: ensureBrowserPreview
-      parameters: [$ref: '#/components/parameters/ImageId']
+      parameters: [$ref: "#/components/parameters/ImageId"]
       summary: Generate browser-playable video preview if missing
       responses:
-        '200': { description: OK }
-        '202': { description: In progress }
+        "200": { description: OK }
+        "202": { description: In progress }
   /images/{id}/video-loop-export:
     post:
       tags: [images]
       operationId: videoLoopExport
-      parameters: [$ref: '#/components/parameters/ImageId']
+      parameters: [$ref: "#/components/parameters/ImageId"]
       summary: Export seamless loop (async)
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenericJSON'
+              $ref: "#/components/schemas/GenericJSON"
       responses:
-        '200': { description: OK }
-        '202': { description: Queued }
+        "200": { description: OK }
+        "202": { description: Queued }
   /images/{id}/thumbnail:
     get:
       tags: [images]
       operationId: getThumbnail
-      parameters: [$ref: '#/components/parameters/ImageId']
+      parameters: [$ref: "#/components/parameters/ImageId"]
       summary: Thumbnail (processed)
       responses:
-        '200':
+        "200":
           description: image bytes
-        '404': { $ref: '#/components/responses/NotFound' }
+        "404": { $ref: "#/components/responses/NotFound" }
   /images/{id}/raw:
     get:
       tags: [images]
       operationId: getRawImage
-      parameters: [$ref: '#/components/parameters/ImageId']
+      parameters: [$ref: "#/components/parameters/ImageId"]
       summary: Full raw file
       responses:
-        '200': { description: binary }
-        '404': { $ref: '#/components/responses/NotFound' }
+        "200": { description: binary }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /playlists:
     get:
       tags: [playlists]
       operationId: listPlaylists
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
     post:
       tags: [playlists]
       operationId: createPlaylist
@@ -314,23 +314,23 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenericJSON'
+              $ref: "#/components/schemas/GenericJSON"
       responses:
-        '201':
+        "201":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
   /playlists/active:
     get:
       tags: [playlists]
       operationId: listActivePlaylists
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
   /playlists/active/{monitor}:
     get:
       tags: [playlists]
@@ -341,155 +341,155 @@ paths:
           required: true
           schema: { type: string }
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
   /playlists/active/stop:
     post:
       tags: [playlists]
       operationId: stopAllPlaylists
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
   /playlists/active/pause:
     post:
       tags: [playlists]
       operationId: pauseAllPlaylists
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
   /playlists/active/resume:
     post:
       tags: [playlists]
       operationId: resumeAllPlaylists
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
   /playlists/active/next:
     post:
       tags: [playlists]
       operationId: nextAllPlaylists
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
   /playlists/active/previous:
     post:
       tags: [playlists]
       operationId: previousAllPlaylists
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
   /playlists/{id}:
     get:
       tags: [playlists]
       operationId: getPlaylist
-      parameters: [$ref: '#/components/parameters/PlaylistIdPath']
+      parameters: [$ref: "#/components/parameters/PlaylistIdPath"]
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
     patch:
       tags: [playlists]
       operationId: patchPlaylist
-      parameters: [$ref: '#/components/parameters/PlaylistIdPath']
+      parameters: [$ref: "#/components/parameters/PlaylistIdPath"]
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenericJSON'
+              $ref: "#/components/schemas/GenericJSON"
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
     delete:
       tags: [playlists]
       operationId: deletePlaylist
-      parameters: [$ref: '#/components/parameters/PlaylistIdPath']
+      parameters: [$ref: "#/components/parameters/PlaylistIdPath"]
       responses:
-        '200': { description: OK }
+        "200": { description: OK }
   /playlists/{id}/start:
     post:
       tags: [playlists]
       operationId: startPlaylist
-      parameters: [$ref: '#/components/parameters/PlaylistIdPath']
+      parameters: [$ref: "#/components/parameters/PlaylistIdPath"]
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenericJSON'
+              $ref: "#/components/schemas/GenericJSON"
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
   /playlists/{id}/stop:
     post:
       tags: [playlists]
       operationId: stopPlaylist
-      parameters: [$ref: '#/components/parameters/PlaylistIdPath']
+      parameters: [$ref: "#/components/parameters/PlaylistIdPath"]
       responses:
-        '200': { description: OK }
+        "200": { description: OK }
   /playlists/{id}/pause:
     post:
       tags: [playlists]
       operationId: pausePlaylist
-      parameters: [$ref: '#/components/parameters/PlaylistIdPath']
+      parameters: [$ref: "#/components/parameters/PlaylistIdPath"]
       responses:
-        '200': { description: OK }
+        "200": { description: OK }
   /playlists/{id}/resume:
     post:
       tags: [playlists]
       operationId: resumePlaylist
-      parameters: [$ref: '#/components/parameters/PlaylistIdPath']
+      parameters: [$ref: "#/components/parameters/PlaylistIdPath"]
       responses:
-        '200': { description: OK }
+        "200": { description: OK }
   /playlists/{id}/next:
     post:
       tags: [playlists]
       operationId: nextPlaylist
-      parameters: [$ref: '#/components/parameters/PlaylistIdPath']
+      parameters: [$ref: "#/components/parameters/PlaylistIdPath"]
       responses:
-        '200': { description: OK }
+        "200": { description: OK }
   /playlists/{id}/previous:
     post:
       tags: [playlists]
       operationId: previousPlaylist
-      parameters: [$ref: '#/components/parameters/PlaylistIdPath']
+      parameters: [$ref: "#/components/parameters/PlaylistIdPath"]
       responses:
-        '200': { description: OK }
+        "200": { description: OK }
 
   /folders:
     get:
       tags: [folders]
       operationId: listFolders
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
     post:
       tags: [folders]
       operationId: createFolder
@@ -497,13 +497,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenericJSON'
+              $ref: "#/components/schemas/GenericJSON"
       responses:
-        '201':
+        "201":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
   /folders/move-images:
     post:
       tags: [folders]
@@ -512,63 +512,63 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenericJSON'
+              $ref: "#/components/schemas/GenericJSON"
       responses:
-        '200': { description: OK }
+        "200": { description: OK }
   /folders/{id}:
     get:
       tags: [folders]
       operationId: getFolder
-      parameters: [$ref: '#/components/parameters/FolderIdPath']
+      parameters: [$ref: "#/components/parameters/FolderIdPath"]
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
     patch:
       tags: [folders]
       operationId: patchFolder
-      parameters: [$ref: '#/components/parameters/FolderIdPath']
+      parameters: [$ref: "#/components/parameters/FolderIdPath"]
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenericJSON'
+              $ref: "#/components/schemas/GenericJSON"
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
     delete:
       tags: [folders]
       operationId: deleteFolder
-      parameters: [$ref: '#/components/parameters/FolderIdPath']
+      parameters: [$ref: "#/components/parameters/FolderIdPath"]
       responses:
-        '200': { description: OK }
+        "200": { description: OK }
   /folders/{id}/path:
     get:
       tags: [folders]
       operationId: getFolderPath
-      parameters: [$ref: '#/components/parameters/FolderIdPath']
+      parameters: [$ref: "#/components/parameters/FolderIdPath"]
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
 
   /monitors:
     get:
       tags: [monitors]
       operationId: listMonitors
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
   /monitors/{name}:
     get:
       tags: [monitors]
@@ -579,23 +579,23 @@ paths:
           required: true
           schema: { type: string }
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
-        '404': { $ref: '#/components/responses/NotFound' }
+                $ref: "#/components/schemas/GenericJSON"
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /config:
     get:
       tags: [config]
       operationId: getConfig
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UnifiedConfig'
+                $ref: "#/components/schemas/UnifiedConfig"
     patch:
       tags: [config]
       operationId: patchConfig
@@ -603,80 +603,80 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/PatchConfigRequest'
+              $ref: "#/components/schemas/PatchConfigRequest"
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/UnifiedConfig'
+                $ref: "#/components/schemas/UnifiedConfig"
   /config/{section}:
     get:
       tags: [config]
       operationId: getConfigSection
-      parameters: [$ref: '#/components/parameters/ConfigSectionPath']
+      parameters: [$ref: "#/components/parameters/ConfigSectionPath"]
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ConfigSectionDocument'
-        '404': { $ref: '#/components/responses/NotFound' }
+                $ref: "#/components/schemas/ConfigSectionDocument"
+        "404": { $ref: "#/components/responses/NotFound" }
     patch:
       tags: [config]
       operationId: patchConfigSection
-      parameters: [$ref: '#/components/parameters/ConfigSectionPath']
+      parameters: [$ref: "#/components/parameters/ConfigSectionPath"]
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/ConfigSectionPatchBody'
+              $ref: "#/components/schemas/ConfigSectionPatchBody"
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ConfigSectionDocument'
-        '404': { $ref: '#/components/responses/NotFound' }
+                $ref: "#/components/schemas/ConfigSectionDocument"
+        "404": { $ref: "#/components/responses/NotFound" }
   /config/backends/{backend}:
     get:
       tags: [config]
       operationId: getNamedBackendConfig
-      parameters: [$ref: '#/components/parameters/ConfigBackendNamePath']
+      parameters: [$ref: "#/components/parameters/ConfigBackendNamePath"]
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/NamedBackendConfigBlob'
+                $ref: "#/components/schemas/NamedBackendConfigBlob"
     patch:
       tags: [config]
       operationId: patchNamedBackendConfig
-      parameters: [$ref: '#/components/parameters/ConfigBackendNamePath']
+      parameters: [$ref: "#/components/parameters/ConfigBackendNamePath"]
       requestBody:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/NamedBackendConfigBlob'
+              $ref: "#/components/schemas/NamedBackendConfigBlob"
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/NamedBackendPatchResponse'
+                $ref: "#/components/schemas/NamedBackendPatchResponse"
 
   /backends:
     get:
       tags: [backends]
       operationId: listBackends
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
                 type: array
                 items:
-                  $ref: '#/components/schemas/BackendInfo'
+                  $ref: "#/components/schemas/BackendInfo"
   /backends/{name}/activate:
     post:
       tags: [backends]
@@ -687,12 +687,12 @@ paths:
           required: true
           schema: { type: string }
       responses:
-        '200':
+        "200":
           description: Backend activated
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ActivateBackendResponse'
+                $ref: "#/components/schemas/ActivateBackendResponse"
 
   /wallpaper/current:
     get:
@@ -700,11 +700,11 @@ paths:
       operationId: getWallpaperCurrent
       summary: Per-monitor (or global) current wallpaper state
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
   /wallpaper/set:
     post:
       tags: [wallpaper]
@@ -713,13 +713,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenericJSON'
+              $ref: "#/components/schemas/GenericJSON"
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
   /wallpaper/random:
     post:
       tags: [wallpaper]
@@ -728,13 +728,13 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/GenericJSON'
+              $ref: "#/components/schemas/GenericJSON"
       responses:
-        '200':
+        "200":
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/GenericJSON'
+                $ref: "#/components/schemas/GenericJSON"
 
 components:
   parameters:
@@ -781,7 +781,7 @@ components:
       content:
         application/json:
           schema:
-            $ref: '#/components/schemas/APIError'
+            $ref: "#/components/schemas/APIError"
   schemas:
     AutoPriorities:
       type: object
@@ -802,7 +802,7 @@ components:
         transition_duration_seconds: { type: number }
         selection_mode: { type: string }
         auto_priorities:
-          $ref: '#/components/schemas/AutoPriorities'
+          $ref: "#/components/schemas/AutoPriorities"
     AppConfig:
       type: object
       additionalProperties: true
@@ -821,11 +821,11 @@ components:
       type: object
       required: [app, daemon, backend, monitors, wallhaven]
       properties:
-        app: { $ref: '#/components/schemas/AppConfig' }
-        daemon: { $ref: '#/components/schemas/DaemonConfig' }
-        backend: { $ref: '#/components/schemas/BackendSection' }
-        monitors: { $ref: '#/components/schemas/MonitorsConfig' }
-        wallhaven: { $ref: '#/components/schemas/WallhavenConfig' }
+        app: { $ref: "#/components/schemas/AppConfig" }
+        daemon: { $ref: "#/components/schemas/DaemonConfig" }
+        backend: { $ref: "#/components/schemas/BackendSection" }
+        monitors: { $ref: "#/components/schemas/MonitorsConfig" }
+        wallhaven: { $ref: "#/components/schemas/WallhavenConfig" }
       description: Full config returned by GET /config; matches `config.Config` JSON tags.
     PatchConfigRequest:
       type: object
@@ -873,7 +873,7 @@ components:
         name: { type: string }
         available: { type: boolean }
         capabilities:
-          $ref: '#/components/schemas/BackendCapabilities'
+          $ref: "#/components/schemas/BackendCapabilities"
     ActivateBackendResponse:
       type: object
       required: [status, backend]

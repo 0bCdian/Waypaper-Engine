@@ -8,11 +8,11 @@
 import { test as base } from "@playwright/test";
 import { spawn, execSync, type ChildProcess } from "node:child_process";
 import {
-	mkdtempSync,
-	writeFileSync,
-	mkdirSync,
-	existsSync,
-	rmSync,
+  mkdtempSync,
+  writeFileSync,
+  mkdirSync,
+  existsSync,
+  rmSync,
 } from "node:fs";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
@@ -21,111 +21,111 @@ import { request as httpRequest } from "node:http";
 const ROOT = join(__dirname, "..");
 
 export interface DaemonContext {
-	process: ChildProcess;
-	socketPath: string;
-	dataDir: string;
-	imagesDir: string;
+  process: ChildProcess;
+  socketPath: string;
+  dataDir: string;
+  imagesDir: string;
 }
 
 function httpRequestJSON(
-	socketPath: string,
-	method: string,
-	path: string,
-	body?: unknown,
+  socketPath: string,
+  method: string,
+  path: string,
+  body?: unknown,
 ): Promise<{ status: number; data: unknown }> {
-	return new Promise((resolve, reject) => {
-		const bodyStr = body ? JSON.stringify(body) : undefined;
-		const req = httpRequest(
-			{
-				socketPath,
-				path,
-				method,
-				headers: {
-					Accept: "application/json",
-					...(bodyStr
-						? {
-								"Content-Type": "application/json",
-								"Content-Length": Buffer.byteLength(bodyStr),
-							}
-						: {}),
-				},
-			},
-			(res) => {
-				let data = "";
-				res.on("data", (chunk: Buffer) => {
-					data += chunk.toString();
-				});
-				res.on("end", () => {
-					try {
-						const parsed = data ? JSON.parse(data) : null;
-						resolve({ status: res.statusCode ?? 0, data: parsed });
-					} catch {
-						resolve({ status: res.statusCode ?? 0, data });
-					}
-				});
-			},
-		);
-		req.on("error", reject);
-		req.setTimeout(10_000, () => {
-			req.destroy();
-			reject(new Error(`HTTP timeout: ${method} ${path}`));
-		});
-		if (bodyStr) req.write(bodyStr);
-		req.end();
-	});
+  return new Promise((resolve, reject) => {
+    const bodyStr = body ? JSON.stringify(body) : undefined;
+    const req = httpRequest(
+      {
+        socketPath,
+        path,
+        method,
+        headers: {
+          Accept: "application/json",
+          ...(bodyStr
+            ? {
+                "Content-Type": "application/json",
+                "Content-Length": Buffer.byteLength(bodyStr),
+              }
+            : {}),
+        },
+      },
+      (res) => {
+        let data = "";
+        res.on("data", (chunk: Buffer) => {
+          data += chunk.toString();
+        });
+        res.on("end", () => {
+          try {
+            const parsed = data ? JSON.parse(data) : null;
+            resolve({ status: res.statusCode ?? 0, data: parsed });
+          } catch {
+            resolve({ status: res.statusCode ?? 0, data });
+          }
+        });
+      },
+    );
+    req.on("error", reject);
+    req.setTimeout(10_000, () => {
+      req.destroy();
+      reject(new Error(`HTTP timeout: ${method} ${path}`));
+    });
+    if (bodyStr) req.write(bodyStr);
+    req.end();
+  });
 }
 
 async function waitForDaemon(
-	socketPath: string,
-	timeoutMs = 15_000,
+  socketPath: string,
+  timeoutMs = 15_000,
 ): Promise<void> {
-	const start = Date.now();
-	while (Date.now() - start < timeoutMs) {
-		try {
-			const res = await httpRequestJSON(socketPath, "GET", "/healthz");
-			if (
-				res.status === 200 &&
-				(res.data as { status: string })?.status === "ok"
-			) {
-				return;
-			}
-		} catch {
-			// not ready yet
-		}
-		await new Promise((r) => setTimeout(r, 300));
-	}
-	throw new Error(`Daemon did not become ready within ${timeoutMs}ms`);
+  const start = Date.now();
+  while (Date.now() - start < timeoutMs) {
+    try {
+      const res = await httpRequestJSON(socketPath, "GET", "/healthz");
+      if (
+        res.status === 200 &&
+        (res.data as { status: string })?.status === "ok"
+      ) {
+        return;
+      }
+    } catch {
+      // not ready yet
+    }
+    await new Promise((r) => setTimeout(r, 300));
+  }
+  throw new Error(`Daemon did not become ready within ${timeoutMs}ms`);
 }
 
 function buildDaemon(): string {
-	const binaryPath = join(ROOT, "daemon", "build", "waypaper-daemon");
-	if (!existsSync(binaryPath)) {
-		execSync(
-			"mkdir -p daemon/build && cd daemon && go build -ldflags \"-s -w\" -o build/waypaper-daemon ./cmd/daemon",
-			{ cwd: ROOT, stdio: "pipe" },
-		);
-	}
-	return binaryPath;
+  const binaryPath = join(ROOT, "daemon", "build", "waypaper-daemon");
+  if (!existsSync(binaryPath)) {
+    execSync(
+      'mkdir -p daemon/build && cd daemon && go build -ldflags "-s -w" -o build/waypaper-daemon ./cmd/daemon',
+      { cwd: ROOT, stdio: "pipe" },
+    );
+  }
+  return binaryPath;
 }
 
 function startDaemon(binaryPath: string): DaemonContext {
-	const dataDir = mkdtempSync(join(tmpdir(), "waypaper-e2e-"));
-	const socketPath = join(dataDir, "waypaper-engine.sock");
-	const lockPath = join(dataDir, "daemon.pid");
-	const configDir = join(dataDir, "config");
-	const imagesDir = join(dataDir, "images");
-	const thumbsDir = join(dataDir, "thumbnails");
-	const dbDir = join(dataDir, "db");
+  const dataDir = mkdtempSync(join(tmpdir(), "waypaper-e2e-"));
+  const socketPath = join(dataDir, "waypaper-engine.sock");
+  const lockPath = join(dataDir, "daemon.pid");
+  const configDir = join(dataDir, "config");
+  const imagesDir = join(dataDir, "images");
+  const thumbsDir = join(dataDir, "thumbnails");
+  const dbDir = join(dataDir, "db");
 
-	mkdirSync(configDir, { recursive: true });
-	mkdirSync(imagesDir, { recursive: true });
-	mkdirSync(thumbsDir, { recursive: true });
-	mkdirSync(dbDir, { recursive: true });
+  mkdirSync(configDir, { recursive: true });
+  mkdirSync(imagesDir, { recursive: true });
+  mkdirSync(thumbsDir, { recursive: true });
+  mkdirSync(dbDir, { recursive: true });
 
-	const configPath = join(configDir, "config.toml");
-	writeFileSync(
-		configPath,
-		`[app]
+  const configPath = join(configDir, "config.toml");
+  writeFileSync(
+    configPath,
+    `[app]
 kill_daemon_on_exit = false
 notifications = false
 start_minimized = false
@@ -159,62 +159,65 @@ type = "awww"
 selected_monitors = []
 image_set_type = "individual"
 `,
-	);
+  );
 
-	const proc = spawn(
-		binaryPath,
-		["start", "--config", configPath, "--lock-path", lockPath],
-		{ stdio: "pipe", env: { ...process.env } },
-	);
+  const proc = spawn(
+    binaryPath,
+    ["start", "--config", configPath, "--lock-path", lockPath],
+    { stdio: "pipe", env: { ...process.env } },
+  );
 
-	return { process: proc, socketPath, dataDir, imagesDir };
+  return { process: proc, socketPath, dataDir, imagesDir };
 }
 
 function stopDaemon(ctx: DaemonContext) {
-	if (ctx.process && !ctx.process.killed) {
-		ctx.process.kill("SIGTERM");
-	}
-	try {
-		rmSync(ctx.dataDir, { recursive: true, force: true });
-	} catch {
-		// best effort cleanup
-	}
+  if (ctx.process && !ctx.process.killed) {
+    ctx.process.kill("SIGTERM");
+  }
+  try {
+    rmSync(ctx.dataDir, { recursive: true, force: true });
+  } catch {
+    // best effort cleanup
+  }
 }
 
 export type TestFixtures = {
-	daemon: DaemonContext;
-	api: {
-		get: (path: string) => Promise<{ status: number; data: unknown }>;
-		post: (
-			path: string,
-			body?: unknown,
-		) => Promise<{ status: number; data: unknown }>;
-		patch: (
-			path: string,
-			body?: unknown,
-		) => Promise<{ status: number; data: unknown }>;
-		del: (path: string, body?: unknown) => Promise<{ status: number; data: unknown }>;
-	};
+  daemon: DaemonContext;
+  api: {
+    get: (path: string) => Promise<{ status: number; data: unknown }>;
+    post: (
+      path: string,
+      body?: unknown,
+    ) => Promise<{ status: number; data: unknown }>;
+    patch: (
+      path: string,
+      body?: unknown,
+    ) => Promise<{ status: number; data: unknown }>;
+    del: (
+      path: string,
+      body?: unknown,
+    ) => Promise<{ status: number; data: unknown }>;
+  };
 };
 
 export const test = base.extend<TestFixtures>({
-	daemon: async ({}, use) => {
-		const binaryPath = buildDaemon();
-		const ctx = startDaemon(binaryPath);
-		await waitForDaemon(ctx.socketPath);
-		await use(ctx);
-		stopDaemon(ctx);
-	},
+  daemon: async ({}, use) => {
+    const binaryPath = buildDaemon();
+    const ctx = startDaemon(binaryPath);
+    await waitForDaemon(ctx.socketPath);
+    await use(ctx);
+    stopDaemon(ctx);
+  },
 
-	api: async ({ daemon }, use) => {
-		const sock = daemon.socketPath;
-		await use({
-			get: (path) => httpRequestJSON(sock, "GET", path),
-			post: (path, body) => httpRequestJSON(sock, "POST", path, body),
-			patch: (path, body) => httpRequestJSON(sock, "PATCH", path, body),
-			del: (path, body?) => httpRequestJSON(sock, "DELETE", path, body),
-		});
-	},
+  api: async ({ daemon }, use) => {
+    const sock = daemon.socketPath;
+    await use({
+      get: (path) => httpRequestJSON(sock, "GET", path),
+      post: (path, body) => httpRequestJSON(sock, "POST", path, body),
+      patch: (path, body) => httpRequestJSON(sock, "PATCH", path, body),
+      del: (path, body?) => httpRequestJSON(sock, "DELETE", path, body),
+    });
+  },
 });
 
 export { expect } from "@playwright/test";

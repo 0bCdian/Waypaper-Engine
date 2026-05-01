@@ -26,13 +26,13 @@ The **Go daemon** starts first (either launched by the Electron app or via syste
 
 ## Backends at a glance
 
-| Backend | Compositor | Media | Transitions | Notes |
-|---------|------------|-------|-------------|-------|
-| **awww** | Wayland | Images, GIFs | ✓ (many types) | Recommended for Wayland image wallpapers |
-| **hyprpaper** | Wayland (Hyprland) | Images | — | Tight Hyprland integration |
-| **feh** | X11 | Images | — | Classic X11 setter |
-| **mpvpaper** | Wayland | Videos | — | Plays videos as wallpapers |
-| **wayland-utauri** | Wayland | Images, video, HTML | ✓ | Renders full HTML/CSS/JS wallpapers via WebKit; separate binary |
+| Backend            | Compositor         | Media               | Transitions    | Notes                                                           |
+| ------------------ | ------------------ | ------------------- | -------------- | --------------------------------------------------------------- |
+| **awww**           | Wayland            | Images, GIFs        | ✓ (many types) | Recommended for Wayland image wallpapers                        |
+| **hyprpaper**      | Wayland (Hyprland) | Images              | —              | Tight Hyprland integration                                      |
+| **feh**            | X11                | Images              | —              | Classic X11 setter                                              |
+| **mpvpaper**       | Wayland            | Videos              | —              | Plays videos as wallpapers                                      |
+| **wayland-utauri** | Wayland            | Images, video, HTML | ✓              | Renders full HTML/CSS/JS wallpapers via WebKit; separate binary |
 
 See [Backends & dependencies](/guide/backends) for setup, config, and dependencies per backend.
 
@@ -43,13 +43,16 @@ See [Backends & dependencies](/guide/backends) for setup, config, and dependenci
 These are **runtime** requirements—build deps are separate (see [Install & run](/guide/install)).
 
 **Always required:**
+
 - A Wayland or X11 compositor
 - At least one **wallpaper backend** binary on `PATH` (see above)
 
 **Required for Wayland monitor detection:**
+
 - [`wlr-randr`](https://sr.ht/~emersion/wlr-randr/) — used by the daemon to enumerate Wayland outputs (monitor names, resolutions). Install it or monitor-specific features degrade to best-effort.
 
 **Optional:**
+
 - [`ffmpeg`](https://ffmpeg.org/) — needed for Looper Studio export and some video preview paths
 - [`wayland-utauri`](https://github.com/0bCdian/wayland-utauri) — required only if you want HTML/web wallpapers (`wayland-utauri` backend)
 
@@ -57,17 +60,17 @@ These are **runtime** requirements—build deps are separate (see [Install & run
 
 ## What to read next
 
-| If you want to… | Go to |
-|-----------------|-------|
-| Install and start the app | [Install & run](/guide/install) |
-| One happy path from zero to a wallpaper | [First 10 minutes](/guide/first-run) |
-| Disambiguate binaries and buzzwords | [Glossary](/guide/glossary) |
-| Understand each backend and its config | [Backends & dependencies](/guide/backends) |
-| Learn every TOML config key | [Configuration reference](/guide/config) |
-| Learn the UI screens (gallery, playlists, studios) | [The app (UI)](/guide/app) |
-| Wire scripts or other programs to the daemon | [API overview](/api/overview) + [Events & SSE](/api/sse) |
-| Fix startup, backends, or monitor detection | [FAQ & troubleshooting](/guide/faq) |
-| Hack on the codebase | [Development guide](/dev/development) |
+| If you want to…                                    | Go to                                                    |
+| -------------------------------------------------- | -------------------------------------------------------- |
+| Install and start the app                          | [Install & run](/guide/install)                          |
+| One happy path from zero to a wallpaper            | [First 10 minutes](/guide/first-run)                     |
+| Disambiguate binaries and buzzwords                | [Glossary](/guide/glossary)                              |
+| Understand each backend and its config             | [Backends & dependencies](/guide/backends)               |
+| Learn every TOML config key                        | [Configuration reference](/guide/config)                 |
+| Learn the UI screens (gallery, playlists, studios) | [The app (UI)](/guide/app)                               |
+| Wire scripts or other programs to the daemon       | [API overview](/api/overview) + [Events & SSE](/api/sse) |
+| Fix startup, backends, or monitor detection        | [FAQ & troubleshooting](/guide/faq)                      |
+| Hack on the codebase                               | [Development guide](/dev/development)                    |
 
 ---
 

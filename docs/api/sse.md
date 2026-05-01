@@ -24,57 +24,57 @@ The string constants live in `daemon/internal/events/types.go`. Grouped for read
 
 ### Image import
 
-| `event` | When |
-|---------|------|
-| `processing_started` | A batch import began (`batch_id`, `total`, …) |
-| `image_processed` | One file finished (includes image payload, **current** / **total** progress) |
-| `image_error` | One path failed (error string + progress) |
-| `processing_complete` | Import batch finished (success/fail counts) |
-| `processing_cancelled` | `POST /images/cancel-import` won the race |
+| `event`                | When                                                                         |
+| ---------------------- | ---------------------------------------------------------------------------- |
+| `processing_started`   | A batch import began (`batch_id`, `total`, …)                                |
+| `image_processed`      | One file finished (includes image payload, **current** / **total** progress) |
+| `image_error`          | One path failed (error string + progress)                                    |
+| `processing_complete`  | Import batch finished (success/fail counts)                                  |
+| `processing_cancelled` | `POST /images/cancel-import` won the race                                    |
 
 ### Wallpaper
 
-| `event` | When |
-|---------|------|
+| `event`             | When                                                                                   |
+| ------------------- | -------------------------------------------------------------------------------------- |
 | `wallpaper_changed` | A wallpaper was applied (image id, **monitors**, **mode**, **source**, **backend**, …) |
 
 ### Playlists
 
-| `event` | When |
-|---------|------|
-| `playlist_started` | A playlist run started (playlist id, monitor) |
-| `playlist_stopped` | Stopped |
-| `playlist_paused` / `playlist_resumed` | Pause state |
-| `playlist_image_changed` | The active image in a run changed |
+| `event`                                | When                                          |
+| -------------------------------------- | --------------------------------------------- |
+| `playlist_started`                     | A playlist run started (playlist id, monitor) |
+| `playlist_stopped`                     | Stopped                                       |
+| `playlist_paused` / `playlist_resumed` | Pause state                                   |
+| `playlist_image_changed`               | The active image in a run changed             |
 
-| `event` | When |
-|---------|------|
-| `playlist_skipped_incompatible` | Items skipped for the **active backend** |
-| `playlist_no_compatible_item` | Nothing left that matches the active backend’s media rules |
+| `event`                         | When                                                       |
+| ------------------------------- | ---------------------------------------------------------- |
+| `playlist_skipped_incompatible` | Items skipped for the **active backend**                   |
+| `playlist_no_compatible_item`   | Nothing left that matches the active backend’s media rules |
 
 ### Monitors
 
-| `event` | When |
-|---------|------|
-| `monitor_connected` | A new output name appeared |
-| `monitor_disconnected` | An output went away |
+| `event`                | When                       |
+| ---------------------- | -------------------------- |
+| `monitor_connected`    | A new output name appeared |
+| `monitor_disconnected` | An output went away        |
 
 ### Config and gallery
 
-| `event` | When |
-|---------|------|
-| `config_changed` | Config changed (sections array in payload) |
-| `images_updated` | Gallery set changed (e.g. add/remove) |
-| `playlists_updated` | A playlist document changed |
-| `folders_updated` | Folder tree changed |
-| `history_cleared` | `DELETE /images/history` ran |
+| `event`             | When                                       |
+| ------------------- | ------------------------------------------ |
+| `config_changed`    | Config changed (sections array in payload) |
+| `images_updated`    | Gallery set changed (e.g. add/remove)      |
+| `playlists_updated` | A playlist document changed                |
+| `folders_updated`   | Folder tree changed                        |
+| `history_cleared`   | `DELETE /images/history` ran               |
 
 ### Backend / lifecycle
 
-| `event` | When |
-|---------|------|
-| `backend_unavailable` | A long-lived backend (e.g. wayland-utauri) was not reachable after retries |
-| `wallpaper_restore_failed` | Startup could not restore a persisted wallpaper for one or more monitors |
+| `event`                    | When                                                                       |
+| -------------------------- | -------------------------------------------------------------------------- |
+| `backend_unavailable`      | A long-lived backend (e.g. wayland-utauri) was not reachable after retries |
+| `wallpaper_restore_failed` | Startup could not restore a persisted wallpaper for one or more monitors   |
 
 Payload shapes for the “happy path” events are also summarized in the [API contract (SSE section) on GitHub](https://github.com/0bCdian/Waypaper-Engine/blob/main/daemon/API_CONTRACT.md#server-sent-events-sse). If the two ever disagree, **trust the running daemon** and `events/types.go`, then file a doc bug.
 

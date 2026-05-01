@@ -48,7 +48,10 @@ export function SettingsModal() {
             initial={isNeo ? { opacity: 0, y: -12 } : { opacity: 0, scale: 0.97, y: 8 }}
             animate={isNeo ? { opacity: 1, y: 0 } : { opacity: 1, scale: 1, y: 0 }}
             exit={isNeo ? { opacity: 0, y: -8 } : { opacity: 0, scale: 0.97, y: 8 }}
-            transition={{ duration: isNeo ? 0.12 : 0.18, ease: isNeo ? "easeOut" : "easeOut" }}
+            transition={{
+              duration: isNeo ? 0.12 : 0.18,
+              ease: isNeo ? "easeOut" : "easeOut",
+            }}
             className={cn(
               "relative flex flex-col overflow-hidden",
               isNeo

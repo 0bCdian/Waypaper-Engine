@@ -92,7 +92,10 @@ describe("parseGalleryFilterTokens", () => {
 
 describe("parseNearColorSpec", () => {
   it("parses hex and max delta", () => {
-    expect(parseNearColorSpec("  #ff00ff ~ 12 ")).toEqual({ hex: "#ff00ff", maxDeltaE: 12 });
+    expect(parseNearColorSpec("  #ff00ff ~ 12 ")).toEqual({
+      hex: "#ff00ff",
+      maxDeltaE: 12,
+    });
   });
   it("returns null when invalid", () => {
     expect(parseNearColorSpec("nope")).toBeNull();
@@ -159,7 +162,11 @@ describe("clientImageMatchesFilters", () => {
   it("filters by extension", () => {
     const parsed = parseGalleryFilterTokens(["ext:png"]);
     expect(
-      clientImageMatchesFilters(img(), parsed, "all", { constraint: "all", width: 0, height: 0 }),
+      clientImageMatchesFilters(img(), parsed, "all", {
+        constraint: "all",
+        width: 0,
+        height: 0,
+      }),
     ).toBe(true);
     expect(
       clientImageMatchesFilters(img({ format: "jpg" }), parsed, "all", {
@@ -230,7 +237,9 @@ describe("galleryHasActiveFilters", () => {
     expect(
       galleryHasActiveFilters({
         ...base,
-        advancedFilters: { resolution: { constraint: "exact", width: 0, height: 0 } },
+        advancedFilters: {
+          resolution: { constraint: "exact", width: 0, height: 0 },
+        },
       }),
     ).toBe(true);
     expect(galleryHasActiveFilters(base)).toBe(false);

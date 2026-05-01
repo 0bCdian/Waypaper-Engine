@@ -51,7 +51,13 @@ import { ModernAppLayout } from "../layout/ModernAppLayout";
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockConfig = { app: {}, daemon: {}, backend: {}, monitors: {}, wallhaven: {} };
+  mockConfig = {
+    app: {},
+    daemon: {},
+    backend: {},
+    monitors: {},
+    wallhaven: {},
+  };
 });
 
 describe("ModernAppLayout", () => {

@@ -7,7 +7,6 @@ import { logger } from "../utils/logger";
 import { resolveWallpaperImageId } from "../utils/resolveWallpaperImageId";
 import { daemonClient } from "@/client";
 
-
 interface props {
   monitor: StoreMonitor;
   scale: number;

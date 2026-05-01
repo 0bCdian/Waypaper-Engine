@@ -13,7 +13,7 @@ Symptoms first—then what the daemon and filesystem are doing. Deeper backgroun
    rm -f "${XDG_RUNTIME_DIR}/waypaper-engine.sock"
    rm -f "${XDG_RUNTIME_DIR}/waypaper-engine.pid"
    ```
-2. If you are on an unusual environment where `XDG_RUNTIME_DIR` is **not** set, the Go daemon still picks a directory under the system temp dir and places `waypaper-engine.sock` *inside* it (implementation: `waypaper-engine/daemon/internal/system/paths.go` — `RuntimeDir` + `DefaultSocketPath`). On a normal desktop session, you should not need this.
+2. If you are on an unusual environment where `XDG_RUNTIME_DIR` is **not** set, the Go daemon still picks a directory under the system temp dir and places `waypaper-engine.sock` _inside_ it (implementation: `waypaper-engine/daemon/internal/system/paths.go` — `RuntimeDir` + `DefaultSocketPath`). On a normal desktop session, you should not need this.
 
 Full walkthrough: [Install & run — Troubleshooting startup](./install#troubleshooting-startup).
 
@@ -56,7 +56,7 @@ For wlroots-based compositors, installing [`wlr-randr`](https://sr.ht/~emersion/
 
 ### HTML / web wallpaper cannot load remote assets
 
-Outbound network is **off** until you allow it: enable the **global** allow in **Settings** *and* satisfy the **wallpaper manifest** (wayland-utauri side). The spec lives in the [wayland-utauri `WEB_WALLPAPER_SPEC`](https://github.com/0bCdian/wayland-utauri/blob/main/docs/WEB_WALLPAPER_SPEC.md). Short note: [Introduction](./introduction) (bottom).
+Outbound network is **off** until you allow it: enable the **global** allow in **Settings** _and_ satisfy the **wallpaper manifest** (wayland-utauri side). The spec lives in the [wayland-utauri `WEB_WALLPAPER_SPEC`](https://github.com/0bCdian/wayland-utauri/blob/main/docs/WEB_WALLPAPER_SPEC.md). Short note: [Introduction](./introduction) (bottom).
 
 ---
 
@@ -89,4 +89,4 @@ This wraps `GET /events` (SSE) and prints JSON lines. Details: [Events & SSE](..
 
 ---
 
-*Still stuck? Open an issue on GitHub with your compositor, backend choice, and (if you can) a snippet of `GET /healthz` and the last lines of `daemon.log`.*
+_Still stuck? Open an issue on GitHub with your compositor, backend choice, and (if you can) a snippet of `GET /healthz` and the last lines of `daemon.log`._

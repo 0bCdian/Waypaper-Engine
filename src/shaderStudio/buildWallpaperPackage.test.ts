@@ -21,7 +21,10 @@ describe("buildShaderWebWallpaperFiles", () => {
 
   it("embeds fragment scripts and cube flags in index.html", () => {
     const code = `void mainImage(out vec4 c, in vec2 fc){ c=texture(iChannel0, rd); }`;
-    const { "index.html": html } = buildShaderWebWallpaperFiles({ shader: code, title: "T" });
+    const { "index.html": html } = buildShaderWebWallpaperFiles({
+      shader: code,
+      title: "T",
+    });
     expect(html).toContain("__WP_FRAG_GL2=");
     expect(html).toContain("__WP_FRAG_GL1=");
     expect(html).toContain("__WP_CUBE__=");
@@ -30,7 +33,10 @@ describe("buildShaderWebWallpaperFiles", () => {
   });
 
   it("uses fallback shader when empty", () => {
-    const { "index.html": html } = buildShaderWebWallpaperFiles({ shader: "  ", title: "" });
+    const { "index.html": html } = buildShaderWebWallpaperFiles({
+      shader: "  ",
+      title: "",
+    });
     expect(html).toContain("mainImage");
     const wj = JSON.parse(
       buildShaderWebWallpaperFiles({ shader: "", title: "" })["waypaper.json"],

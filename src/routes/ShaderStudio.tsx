@@ -42,7 +42,10 @@ function tryParseShadertoyJson(
     const prepared = prepareMultipassFromJson(data);
     return { ok: true, prepared };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Import failed" };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Import failed",
+    };
   }
 }
 
@@ -58,7 +61,10 @@ async function trySaveShaderToGallery(
     await daemonClient.importWebWallpaper(w.packageDir, currentFolderId ?? undefined);
     return { ok: true };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Import failed" };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Import failed",
+    };
   }
 }
 
@@ -70,7 +76,10 @@ async function tryExportShaderPackage(
     if (w.canceled) return { ok: false, canceled: true, error: "Export canceled" };
     return { ok: true, packageDir: w.packageDir ?? "" };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Export failed" };
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Export failed",
+    };
   }
 }
 
@@ -396,7 +405,11 @@ export default function ShaderStudio() {
     setSaving(true);
     const previewPngBuffers = await capturePreviewPngsForPackage();
     const saveResult = await trySaveShaderToGallery(
-      { ...payload, previewPngBuffers, previewFps: Math.round(1 / DEFAULT_PREVIEW_DT) },
+      {
+        ...payload,
+        previewPngBuffers,
+        previewFps: Math.round(1 / DEFAULT_PREVIEW_DT),
+      },
       currentFolderId,
     );
     if (saveResult.ok) {

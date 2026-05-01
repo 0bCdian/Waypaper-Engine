@@ -335,7 +335,10 @@ export class IPCManager {
 
         const files: ShaderWebWallpaperFiles =
           "kind" in payload && payload.kind === "multipass"
-            ? buildShaderMultipassWebWallpaperFiles({ payload: payload.multipass, title })
+            ? buildShaderMultipassWebWallpaperFiles({
+                payload: payload.multipass,
+                title,
+              })
             : buildShaderWebWallpaperFiles({
                 shader: (payload as { shader: string }).shader,
                 title,
@@ -609,10 +612,7 @@ export class IPCManager {
 
         // FOLDERS
         case "get_folders":
-          return await goDaemonClient.getFolders(
-            req.parent_id ?? undefined,
-            req.search,
-          );
+          return await goDaemonClient.getFolders(req.parent_id ?? undefined, req.search);
         case "get_folder":
           return await goDaemonClient.getFolder(req.id);
         case "get_folder_path":
@@ -662,9 +662,7 @@ export class IPCManager {
 
         default: {
           const _exhaustive: never = req;
-          throw new Error(
-            `unknown daemon request type: ${(_exhaustive as DaemonRequest).type}`,
-          );
+          throw new Error(`unknown daemon request type: ${(_exhaustive as DaemonRequest).type}`);
         }
       }
     } catch (error) {
@@ -902,7 +900,14 @@ export class IPCManager {
     const rendererLogger = logger.child({ module: "renderer" });
     ipcMain.on(
       "log-to-main",
-      (_event, payload: { level: string; message: string; data?: Record<string, unknown> }) => {
+      (
+        _event,
+        payload: {
+          level: string;
+          message: string;
+          data?: Record<string, unknown>;
+        },
+      ) => {
         const { level, message, data } = payload;
         const ctx = data ?? {};
         switch (level) {

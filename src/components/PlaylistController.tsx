@@ -6,7 +6,6 @@ import { cn } from "../utils/cn";
 import { getThumbnailSrc } from "../utils/utilities";
 import { daemonClient } from "@/client";
 
-
 function formatClock(totalSeconds: number): string {
   const s = Math.max(0, Math.floor(totalSeconds));
   const h = Math.floor(s / 3600);
@@ -34,7 +33,10 @@ function TrackProgress({
   nextChangeAt: string | null;
 }) {
   const prevSlotKeyRef = useRef<string | null>(null);
-  const [slot, setSlot] = useState<{ startedAt: number; endsAt: number } | null>(null);
+  const [slot, setSlot] = useState<{
+    startedAt: number;
+    endsAt: number;
+  } | null>(null);
 
   useEffect(() => {
     if (!slotKey || !nextChangeAt) {

@@ -167,11 +167,11 @@ image_set_type    = "individual"            # individual|clone|extend
 
 ### `image_set_type`
 
-| Value | Behavior |
-|-------|----------|
+| Value        | Behavior                                          |
+| ------------ | ------------------------------------------------- |
 | `individual` | Each monitor gets its own wallpaper independently |
-| `clone` | Same image cloned to every selected monitor |
-| `extend` | One image sliced and extended across all monitors |
+| `clone`      | Same image cloned to every selected monitor       |
+| `extend`     | One image sliced and extended across all monitors |
 
 `selected_monitors` is a list of output names as returned by `GET /monitors` (e.g. `DP-1`, `eDP-1`, `HDMI-A-1`). The monitor selection UI in Settings populates this from the live monitor list.
 
@@ -196,15 +196,15 @@ Leave `api_key` blank for anonymous browsing (SFW content only). With an API key
 
 All paths respect XDG base directories. Typical values on Linux:
 
-| Purpose | Default path |
-|---------|-------------|
-| Config file | `~/.config/waypaper-engine/config.toml` |
-| Unix socket | `/run/user/<uid>/waypaper-engine.sock` |
-| Images (library) | `~/.local/share/waypaper-engine/images` |
-| Thumbnails | `~/.cache/waypaper-engine/thumbnails` |
-| Database (CloverDB) | `~/.local/share/waypaper-engine/db` |
-| Log file | `~/.local/share/waypaper-engine/daemon.log` |
-| PID lock | `/run/user/<uid>/waypaper-engine.pid` |
+| Purpose             | Default path                                |
+| ------------------- | ------------------------------------------- |
+| Config file         | `~/.config/waypaper-engine/config.toml`     |
+| Unix socket         | `/run/user/<uid>/waypaper-engine.sock`      |
+| Images (library)    | `~/.local/share/waypaper-engine/images`     |
+| Thumbnails          | `~/.cache/waypaper-engine/thumbnails`       |
+| Database (CloverDB) | `~/.local/share/waypaper-engine/db`         |
+| Log file            | `~/.local/share/waypaper-engine/daemon.log` |
+| PID lock            | `/run/user/<uid>/waypaper-engine.pid`       |
 
 Override any of these in `[daemon]`. Changes take effect on next daemon start.
 

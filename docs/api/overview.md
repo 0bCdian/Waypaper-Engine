@@ -2,12 +2,12 @@
 
 The daemon speaks **JSON** over **HTTP/1.1** on a **Unix domain socket** (not plain TCP in the default build). The router is [chi](https://github.com/go-chi/chi); the **canonical list of routes** is `internal/server/routes.go` in the repo on GitHub.
 
-| Topic | Where |
-|------|--------|
-| Human-oriented prose, examples, and models | [API contract (GitHub)](https://github.com/0bCdian/Waypaper-Engine/blob/main/daemon/API_CONTRACT.md) |
-| Machine-readable path map and `operationId` values | [OpenAPI spec](/api/openapi) (also `daemon/docs/openapi.yaml` in the repo) |
-| **SSE** event types and filters | [Events & SSE](/api/sse) |
-| **Architecture** (packages, data, backends) | [ARCHITECTURE.md (GitHub)](https://github.com/0bCdian/Waypaper-Engine/blob/main/daemon/docs/ARCHITECTURE.md) |
+| Topic                                              | Where                                                                                                        |
+| -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
+| Human-oriented prose, examples, and models         | [API contract (GitHub)](https://github.com/0bCdian/Waypaper-Engine/blob/main/daemon/API_CONTRACT.md)         |
+| Machine-readable path map and `operationId` values | [OpenAPI spec](/api/openapi) (also `daemon/docs/openapi.yaml` in the repo)                                   |
+| **SSE** event types and filters                    | [Events & SSE](/api/sse)                                                                                     |
+| **Architecture** (packages, data, backends)        | [ARCHITECTURE.md (GitHub)](https://github.com/0bCdian/Waypaper-Engine/blob/main/daemon/docs/ARCHITECTURE.md) |
 
 **Content type:** `application/json` for most bodies. Thumbnail and “raw” image routes return **binary** with appropriate `Content-Type`.
 
@@ -39,8 +39,8 @@ curl -sS --unix-socket -X POST "$SOCK" "http://localhost/wallpaper/random" \
 - **Backends:** `GET /backends`, `POST /backends/{name}/activate`
 - **Wallpaper:** `GET /wallpaper/current`, `POST /wallpaper/set`, `POST /wallpaper/random`
 
-**NOTE** — *Web / local spec:* the contract on GitHub includes a **”Local Spec v0”** section for `media_type: web` and wayland-utauri—read that if you build HTML walls.
+**NOTE** — _Web / local spec:_ the contract on GitHub includes a **”Local Spec v0”** section for `media_type: web` and wayland-utauri—read that if you build HTML walls.
 
-**NOTE** — *Electron UI:* the renderer uses the **preload bridge**, not ad hoc `fetch` to the socket; see the **bridge** section in the [same contract on GitHub](https://github.com/0bCdian/Waypaper-Engine/blob/main/daemon/API_CONTRACT.md#electron-renderer-bridge-notes).
+**NOTE** — _Electron UI:_ the renderer uses the **preload bridge**, not ad hoc `fetch` to the socket; see the **bridge** section in the [same contract on GitHub](https://github.com/0bCdian/Waypaper-Engine/blob/main/daemon/API_CONTRACT.md#electron-renderer-bridge-notes).
 
-**NOTE** — *No browser try-it:* the daemon binds a Unix domain socket, not TCP. Browser-based “try it” tools cannot reach it. Use `curl --unix-socket` — see [OpenAPI spec & curl examples](/api/openapi) for copy-pasteable commands.
+**NOTE** — _No browser try-it:_ the daemon binds a Unix domain socket, not TCP. Browser-based “try it” tools cannot reach it. Use `curl --unix-socket` — see [OpenAPI spec & curl examples](/api/openapi) for copy-pasteable commands.

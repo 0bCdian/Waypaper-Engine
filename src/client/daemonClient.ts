@@ -43,10 +43,8 @@ export const daemonClient = {
   // PLAYLISTS
   getPlaylists: () => gd().getPlaylists(),
   getPlaylist: (id: number) => gd().getPlaylist(id),
-  createPlaylist: (...args: Parameters<GoDaemon["createPlaylist"]>) =>
-    gd().createPlaylist(...args),
-  updatePlaylist: (...args: Parameters<GoDaemon["updatePlaylist"]>) =>
-    gd().updatePlaylist(...args),
+  createPlaylist: (...args: Parameters<GoDaemon["createPlaylist"]>) => gd().createPlaylist(...args),
+  updatePlaylist: (...args: Parameters<GoDaemon["updatePlaylist"]>) => gd().updatePlaylist(...args),
   deletePlaylist: (id: number) => gd().deletePlaylist(id),
   startPlaylist: (...args: Parameters<GoDaemon["startPlaylist"]>) => gd().startPlaylist(...args),
   stopPlaylist: (id: number) => gd().stopPlaylist(id),

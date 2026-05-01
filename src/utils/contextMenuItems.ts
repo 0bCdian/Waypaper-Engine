@@ -15,7 +15,6 @@ import { buildWallpaperSubmenu, buildClearHistoryItem } from "./sharedContextMen
 import { useToastStore } from "../stores/toastStore";
 import { daemonClient } from "@/client";
 
-
 async function exportWallpapersFromRenderer(images: rendererImage[]) {
   if (images.length === 0) return;
   const addToast = useToastStore.getState().addToast;

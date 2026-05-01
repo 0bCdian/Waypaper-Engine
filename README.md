@@ -17,7 +17,7 @@
 
 **Docs in-repo:** [Daemon HTTP API](daemon/API_CONTRACT.md) · [Daemon architecture](daemon/docs/ARCHITECTURE.md) · [Packaging / `DESTDIR`](packaging/README.md) · **handbook (VitePress):** run `npm run docs:dev` locally, or after enabling **GitHub Pages → GitHub Actions**, the site is published from the **Docs** workflow (default base path `/Waypaper-Engine/` → `https://0bCdian.github.io/Waypaper-Engine/`)
 
-*This project is developed with help from **LLM-based coding tools**; I still review, test, and ship what I stand behind.*
+_This project is developed with help from **LLM-based coding tools**; I still review, test, and ship what I stand behind._
 
 ---
 
@@ -61,12 +61,12 @@ The big shift is replacing the old **Node.js** backend with a **Go daemon**: one
 
 ## Tech stack
 
-| Area | What |
-|------|------|
-| App shell | Electron 40, React 19, Vite 6, Tailwind 4, DaisyUI 5 |
-| Daemon | Go 1.26, [chi](https://github.com/go-chi/chi), [CloverDB](https://github.com/ostafen/clover), Cobra + Viper |
-| IPC | Unix socket HTTP, Server-Sent Events |
-| Dev toolchain | Node 22, **mise** (see [.mise.toml](.mise.toml)), oxfmt / oxlint, Vitest, Playwright (e2e) |
+| Area          | What                                                                                                        |
+| ------------- | ----------------------------------------------------------------------------------------------------------- |
+| App shell     | Electron 40, React 19, Vite 6, Tailwind 4, DaisyUI 5                                                        |
+| Daemon        | Go 1.26, [chi](https://github.com/go-chi/chi), [CloverDB](https://github.com/ostafen/clover), Cobra + Viper |
+| IPC           | Unix socket HTTP, Server-Sent Events                                                                        |
+| Dev toolchain | Node 22, **mise** (see [.mise.toml](.mise.toml)), oxfmt / oxlint, Vitest, Playwright (e2e)                  |
 
 ---
 
@@ -127,13 +127,13 @@ npm run dev
 npm run ci:check
 ```
 
-| Script | What |
-|--------|------|
-| `npm run dev` | Daemon + UI in dev: daemon build first, then Vite and Electron |
-| `npm run build` | Production build: daemon, Vite bundle, electron-builder |
-| `npm test` | Vitest for the renderer |
-| `npm run test:daemon` | Go tests under `daemon/` |
-| `npm run test:e2e` | Playwright e2e; uses a built daemon and browser |
+| Script                | What                                                           |
+| --------------------- | -------------------------------------------------------------- |
+| `npm run dev`         | Daemon + UI in dev: daemon build first, then Vite and Electron |
+| `npm run build`       | Production build: daemon, Vite bundle, electron-builder        |
+| `npm test`            | Vitest for the renderer                                        |
+| `npm run test:daemon` | Go tests under `daemon/`                                       |
+| `npm run test:e2e`    | Playwright e2e; uses a built daemon and browser                |
 
 **Layout (high level):**
 
@@ -160,20 +160,20 @@ Waypaper-Engine/
 - [x] App icon (huge love to the designer in [Thanks](#special-thanks))
 - [x] Per-monitor playlists (where the backend allows)
 
-*If something breaks or you have an idea, open an issue—I read them.*
+_If something breaks or you have an idea, open an issue—I read them._
 
 ---
 
 ## Screenshots
 
-*v3.0 UI — images live in [`readme_files/3.0/`](readme_files/3.0/)*
+_v3.0 UI — images live in [`readme_files/3.0/`](readme_files/3.0/)_
 
-| Gallery | Image details |
-|---------|----------------|
+| Gallery                                    | Image details                                    |
+| ------------------------------------------ | ------------------------------------------------ |
 | ![Gallery](./readme_files/3.0/gallery.png) | ![Details](./readme_files/3.0/details_modal.png) |
 
-| Settings | Monitors |
-|----------|----------|
+| Settings                                          | Monitors                                          |
+| ------------------------------------------------- | ------------------------------------------------- |
 | ![Settings](./readme_files/3.0/settings_page.png) | ![Monitors](./readme_files/3.0/monitor_modal.png) |
 
 ---
@@ -182,7 +182,7 @@ Waypaper-Engine/
 
 [![Star History Chart](https://api.star-history.com/svg?repos=0bCdian/Waypaper-Engine&type=Date)](https://www.star-history.com/#0bCdian/Waypaper-Engine&Date)
 
-*If the app saves you a headache, a star on the repo means a lot.*
+_If the app saves you a headache, a star on the repo means a lot._
 
 ---
 

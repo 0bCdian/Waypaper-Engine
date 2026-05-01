@@ -81,6 +81,7 @@ waypaper-engine/
 ```
 
 **Key invariants:**
+
 - The daemon owns all persistent state. The Electron main process and renderer are thin clients.
 - The renderer never speaks to the socket directly—it goes through the preload bridge (`window.API_RENDERER`). Path fields (`path`, `thumbnails.*`) are rewritten to `atom://` URLs before reaching the renderer.
 - Everything that changes publishes to the internal event bus, which fans out to all SSE subscribers.
@@ -127,6 +128,7 @@ type Backend interface {
 ```
 
 To add a new backend:
+
 1. Create `internal/backend/<name>/backend.go` implementing the interface.
 2. Register it in the backend registry (see existing backends for the pattern).
 3. Add its config struct and defaults to `internal/config/`.
@@ -141,6 +143,7 @@ Per-backend config lives under `[backend.<name>]` in the TOML and is accessed as
 ### Storage (`internal/store/`)
 
 CloverDB is a simple document store. Collections:
+
 - `images` — Image records (metadata, tags, colors, thumbnails, folder)
 - `playlists` — Playlist documents
 - `folders` — Folder tree
@@ -156,6 +159,7 @@ No schema migrations—CloverDB uses documents. If you add a field, existing doc
 ### DaemonManager (`electron/managers/DaemonManager.ts`)
 
 Responsible for:
+
 - Starting the daemon binary if it is not already running.
 - Checking daemon health via `GET /healthz`.
 - Killing the daemon on app exit (if `kill_daemon_on_exit` is set).
@@ -195,14 +199,14 @@ Types that mirror daemon JSON shapes live in `src/types/`. When you add a new da
 
 ## Testing
 
-| Command | What |
-|---------|------|
-| `npm run test:daemon:unit` | Fast Go tests (`-short`). Run these often. |
-| `npm run test:daemon:integration` | Full daemon integration tests (start/stop/import flows). |
-| `npm run test:daemon:race` | Race detector. Run before PRs. |
-| `npm run test` | Vitest (React/TypeScript). |
-| `npm run test:e2e` | Playwright end-to-end (needs a built daemon). |
-| `npm run ci:check` | Full CI gate: build + format + lint + typecheck + short Go tests. |
+| Command                           | What                                                              |
+| --------------------------------- | ----------------------------------------------------------------- |
+| `npm run test:daemon:unit`        | Fast Go tests (`-short`). Run these often.                        |
+| `npm run test:daemon:integration` | Full daemon integration tests (start/stop/import flows).          |
+| `npm run test:daemon:race`        | Race detector. Run before PRs.                                    |
+| `npm run test`                    | Vitest (React/TypeScript).                                        |
+| `npm run test:e2e`                | Playwright end-to-end (needs a built daemon).                     |
+| `npm run ci:check`                | Full CI gate: build + format + lint + typecheck + short Go tests. |
 
 Run `npm run ci:check` before opening a PR. It catches formatter drift (oxfmt, oxlint, gofmt) and TS errors that tests might not.
 

@@ -8,7 +8,6 @@ import { useEffect, useRef } from "react";
 import type { ActivePlaylistInstance, MonitorMode } from "../../electron/daemon-go-types";
 import { daemonClient } from "@/client";
 
-
 function monitorSetsMatch(
   selected: string[],
   selectedMode: MonitorMode,

@@ -8,12 +8,12 @@ packaging scripts should delegate to it rather than reimplementing install logic
 
 Every packaging format should use these targets:
 
-| Step | Command | What it does |
-|------|---------|-------------|
-| Dependencies | `make deps` | Runs `npm ci` to install Node.js dependencies |
-| Build | `make electron` | Builds daemon, frontend, and packages the Electron app |
-| Install | `make install-system DESTDIR=<staging> INSTALL_PREFIX_SYSTEM=/usr` | Stages FHS layout (use `/usr` on Arch/Fedora-style prefixes; default without override is `/usr/local`) |
-| Clean | `make clean` | Removes all build artifacts |
+| Step         | Command                                                            | What it does                                                                                           |
+| ------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
+| Dependencies | `make deps`                                                        | Runs `npm ci` to install Node.js dependencies                                                          |
+| Build        | `make electron`                                                    | Builds daemon, frontend, and packages the Electron app                                                 |
+| Install      | `make install-system DESTDIR=<staging> INSTALL_PREFIX_SYSTEM=/usr` | Stages FHS layout (use `/usr` on Arch/Fedora-style prefixes; default without override is `/usr/local`) |
+| Clean        | `make clean`                                                       | Removes all build artifacts                                                                            |
 
 The `DESTDIR` variable stages files under a temporary root (standard for packaging).
 The default `make install` target is user-local (`~/.local`). Packaging should use
@@ -67,9 +67,9 @@ make install-system DESTDIR="$pkgdir" INSTALL_PREFIX_SYSTEM=/usr \
 
 ## Existing Formats
 
-| Format | Directory | Status |
-|--------|-----------|--------|
+| Format                                  | Directory                                                                 | Status                                                        |
+| --------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------- |
 | Arch Linux — `waypaper-engine` / `-git` | [waypaper_packages_aur](https://github.com/0bCdian/waypaper_packages_aur) | Active (`make install-system` + `INSTALL_PREFIX_SYSTEM=/usr`) |
-| Arch Linux — `wayland-utauri` / `-git` | Same AUR meta-repo | Active (first-party Wayland host for HTML wallpapers) |
-| Snap | `packaging/snap/` | Template |
-| RPM (Fedora/openSUSE) | `packaging/rpm/` | Template |
+| Arch Linux — `wayland-utauri` / `-git`  | Same AUR meta-repo                                                        | Active (first-party Wayland host for HTML wallpapers)         |
+| Snap                                    | `packaging/snap/`                                                         | Template                                                      |
+| RPM (Fedora/openSUSE)                   | `packaging/rpm/`                                                          | Template                                                      |

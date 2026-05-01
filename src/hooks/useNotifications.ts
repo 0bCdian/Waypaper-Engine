@@ -11,7 +11,6 @@ import type {
 } from "../../electron/daemon-go-types";
 import { daemonClient } from "@/client";
 
-
 export default function useNotifications(): void {
   const notificationsEnabled = useSettingsStore((s) => s.config?.app?.notifications);
   const addToast = useToastStore((s) => s.addToast);

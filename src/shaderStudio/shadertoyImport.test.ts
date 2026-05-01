@@ -37,7 +37,11 @@ describe("prepareMultipassFromJson", () => {
   it("throws without image pass", () => {
     const data = {
       renderpass: [
-        { type: "buffer", name: "B", code: "void mainImage(out vec4 c,vec2 f){c=vec4(0);}" },
+        {
+          type: "buffer",
+          name: "B",
+          code: "void mainImage(out vec4 c,vec2 f){c=vec4(0);}",
+        },
       ],
     };
     expect(() => prepareMultipassFromJson(data)).toThrow(/no image pass/i);

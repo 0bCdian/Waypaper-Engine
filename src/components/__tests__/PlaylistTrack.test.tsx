@@ -45,7 +45,12 @@ vi.mock("../../stores/playlist", () => ({
         clearPlaylist: mockClearPlaylist,
         setPlaylist: mockSetPlaylist,
       }),
-    { getState: () => ({ playlist: mockPlaylist, stripScrollToImageIdOnce: null }) },
+    {
+      getState: () => ({
+        playlist: mockPlaylist,
+        stripScrollToImageIdOnce: null,
+      }),
+    },
   ),
 }));
 

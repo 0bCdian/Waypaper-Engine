@@ -195,7 +195,11 @@ const electronAPI = {
       invoke({ type: "delete_folder", id, mode: mode || "keep_contents" }),
 
     moveImagesToFolder: (imageIds: number[], folderId: number | null): Promise<{ moved: number }> =>
-      invoke({ type: "move_images_to_folder", image_ids: imageIds, folder_id: folderId }),
+      invoke({
+        type: "move_images_to_folder",
+        image_ids: imageIds,
+        folder_id: folderId,
+      }),
 
     // MONITORS
     getMonitors: (): Promise<Monitor[]> => invoke({ type: "get_monitors" }),
@@ -311,10 +315,11 @@ const electronAPI = {
   downloadUrl: (url: string): Promise<string> => invokeWrapped("download-url", url),
 
   openFiles: (action: "file" | "folder" | "video" | "web") =>
-    invokeWrapped<{ files: string[]; webRoots?: string[]; folderName?: string }>(
-      "openFiles",
-      action,
-    ),
+    invokeWrapped<{
+      files: string[];
+      webRoots?: string[];
+      folderName?: string;
+    }>("openFiles", action),
 
   writeShaderWebWallpaperPackage: (
     payload:

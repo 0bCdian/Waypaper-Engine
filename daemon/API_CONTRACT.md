@@ -48,6 +48,7 @@ All error responses use:
 Liveness probe.
 
 **Response** `200`:
+
 ```json
 {
   "status": "ok"
@@ -61,6 +62,7 @@ Liveness probe.
 Daemon metadata.
 
 **Response** `200`:
+
 ```json
 {
   "version": "v2.0.4",
@@ -80,6 +82,7 @@ Daemon metadata.
 Gracefully stops the daemon.
 
 **Response** `200`:
+
 ```json
 {
   "status": "shutting_down"
@@ -96,20 +99,21 @@ Paginated, sortable, filterable image gallery.
 
 **Query Parameters**:
 
-| Parameter    | Type   | Default       | Description                                  |
-|-------------|--------|---------------|----------------------------------------------|
-| `page`      | int    | `1`           | Page number (1-indexed)                      |
-| `per_page`  | int    | `50`          | Items per page (max 200)                     |
-| `sort_by`   | string | `imported_at` | Sort field: `name`, `imported_at`, `file_size` |
-| `sort_order` | string | `desc`        | Sort direction: `asc`, `desc`                |
-| `media_type` | string | —             | Filter: `image`, `video`, `gif`              |
-| `search`    | string | —             | Case-insensitive fuzzy search on name/tags   |
-| `tags`      | string | —             | Comma-separated tag filter                   |
-| `colors`    | string | —             | Comma-separated dominant color filter (hex; each must appear as a swatch, AND) |
-| `colors_near` | string | —           | Comma-separated `#hex~maxDeltaE` perceptual match (CIE76 vs stored palette; AND); forces in-memory filter path |
-| `folder_id` | string | —             | Folder filter (`root`/`0` for root, or ID)   |
+| Parameter     | Type   | Default       | Description                                                                                                    |
+| ------------- | ------ | ------------- | -------------------------------------------------------------------------------------------------------------- |
+| `page`        | int    | `1`           | Page number (1-indexed)                                                                                        |
+| `per_page`    | int    | `50`          | Items per page (max 200)                                                                                       |
+| `sort_by`     | string | `imported_at` | Sort field: `name`, `imported_at`, `file_size`                                                                 |
+| `sort_order`  | string | `desc`        | Sort direction: `asc`, `desc`                                                                                  |
+| `media_type`  | string | —             | Filter: `image`, `video`, `gif`                                                                                |
+| `search`      | string | —             | Case-insensitive fuzzy search on name/tags                                                                     |
+| `tags`        | string | —             | Comma-separated tag filter                                                                                     |
+| `colors`      | string | —             | Comma-separated dominant color filter (hex; each must appear as a swatch, AND)                                 |
+| `colors_near` | string | —             | Comma-separated `#hex~maxDeltaE` perceptual match (CIE76 vs stored palette; AND); forces in-memory filter path |
+| `folder_id`   | string | —             | Folder filter (`root`/`0` for root, or ID)                                                                     |
 
 **Response** `200`:
+
 ```json
 {
   "data": [Image],
@@ -131,6 +135,7 @@ See [Image model](#image).
 Import images into the gallery. Processing happens asynchronously. Progress is reported via SSE events (`processing_started`, `image_processed`, `image_error`, `processing_complete`).
 
 **Request Body**:
+
 ```json
 {
   "paths": ["/home/user/wallpapers/photo.png", "/home/user/wallpapers/art.jpg"],
@@ -139,6 +144,7 @@ Import images into the gallery. Processing happens asynchronously. Progress is r
 ```
 
 **Response** `202`:
+
 ```json
 {
   "status": "processing",
@@ -154,6 +160,7 @@ Import images into the gallery. Processing happens asynchronously. Progress is r
 Delete images by ID. Removes files from disk and database.
 
 **Request Body**:
+
 ```json
 {
   "ids": [1, 5, 12]
@@ -161,6 +168,7 @@ Delete images by ID. Removes files from disk and database.
 ```
 
 **Response** `200`:
+
 ```json
 {
   "deleted": 3
@@ -174,6 +182,7 @@ Delete images by ID. Removes files from disk and database.
 Total image count.
 
 **Response** `200`:
+
 ```json
 {
   "count": 120
@@ -197,6 +206,7 @@ Get a single image by ID.
 Update mutable image fields.
 
 **Request Body** (partial — only include fields to update):
+
 ```json
 {
   "name": "new display name",
@@ -216,6 +226,7 @@ Update mutable image fields.
 Batch select/deselect all images.
 
 **Request Body**:
+
 ```json
 {
   "selected": true
@@ -223,6 +234,7 @@ Batch select/deselect all images.
 ```
 
 **Response** `200`:
+
 ```json
 {
   "updated": 120,
@@ -237,6 +249,7 @@ Batch select/deselect all images.
 Returns all distinct tags across stored images.
 
 **Response** `200`:
+
 ```json
 {
   "tags": ["landscape", "anime", "dark"]
@@ -250,6 +263,7 @@ Returns all distinct tags across stored images.
 Cancel an in-flight image import batch.
 
 **Request Body**:
+
 ```json
 {
   "batch_id": "db7f4388-4a6d-4a66-b27a-39c8a3f67e49"
@@ -257,6 +271,7 @@ Cancel an in-flight image import batch.
 ```
 
 **Response** `200`:
+
 ```json
 {
   "status": "cancelled",
@@ -272,11 +287,12 @@ Get the path to a thumbnail file.
 
 **Query Parameters**:
 
-| Parameter    | Type   | Default   | Values                                     |
-|-------------|--------|-----------|--------------------------------------------|
+| Parameter    | Type   | Default   | Values                                    |
+| ------------ | ------ | --------- | ----------------------------------------- |
 | `resolution` | string | `default` | `default`, `720p`, `1080p`, `1440p`, `4k` |
 
 **Response** `200`:
+
 ```json
 {
   "path": "/home/user/.cache/waypaper-engine/thumbnails/1_1080p.webp"
@@ -308,6 +324,7 @@ Serves the original image file directly.
 Rename the image display name and underlying file name (safe + unique).
 
 **Request Body**:
+
 ```json
 {
   "name": "new_wallpaper_name"
@@ -324,13 +341,14 @@ Global wallpaper change history (most recent first).
 
 **Query Parameters**:
 
-| Parameter  | Type   | Default | Description                              |
-|-----------|--------|---------|------------------------------------------|
-| `limit`   | int    | `50`    | Max entries to return                    |
-| `monitor` | string | —       | Filter by monitor name                   |
-| `since_id` | int   | —       | Only entries with ID greater than this   |
+| Parameter  | Type   | Default | Description                            |
+| ---------- | ------ | ------- | -------------------------------------- |
+| `limit`    | int    | `50`    | Max entries to return                  |
+| `monitor`  | string | —       | Filter by monitor name                 |
+| `since_id` | int    | —       | Only entries with ID greater than this |
 
 **Response** `200`:
+
 ```json
 [ImageHistoryEntry]
 ```
@@ -344,6 +362,7 @@ See [ImageHistoryEntry model](#imagehistoryentry).
 Clear global wallpaper history.
 
 **Response** `200`:
+
 ```json
 {
   "status": "cleared"
@@ -368,6 +387,7 @@ detection fails or returns no outputs, the filter is skipped and all rows for th
 active backend are returned (best-effort).
 
 **Response** `200`:
+
 ```json
 {
   "backend": "awww",
@@ -402,6 +422,7 @@ See [MonitorState](#monitorstate) for the persisted per-monitor document shape (
 Set a specific image as wallpaper.
 
 **Request Body**:
+
 ```json
 {
   "image_id": 2,
@@ -410,13 +431,14 @@ Set a specific image as wallpaper.
 }
 ```
 
-| Field      | Type   | Default        | Description                                   |
-|-----------|--------|----------------|-----------------------------------------------|
-| `image_id` | int    | **required**   | ID of the image to set                        |
+| Field      | Type   | Default        | Description                                    |
+| ---------- | ------ | -------------- | ---------------------------------------------- |
+| `image_id` | int    | **required**   | ID of the image to set                         |
 | `monitor`  | string | `"*"` (all)    | Target monitor name, or `"*"` for all monitors |
 | `mode`     | string | `"individual"` | Monitor mode: `individual`, `clone`, `extend`  |
 
 **Response** `200`:
+
 ```json
 {
   "status": "set",
@@ -485,6 +507,7 @@ When the active backend is **wayland-utauri**, `SyncRuntimeFromConfig` pushes `P
 Set a random image from the gallery.
 
 **Request Body** (optional):
+
 ```json
 {
   "monitor": "*",
@@ -493,6 +516,7 @@ Set a random image from the gallery.
 ```
 
 **Response** `200`:
+
 ```json
 {
   "status": "set",
@@ -511,6 +535,7 @@ Set a random image from the gallery.
 List all playlists.
 
 **Response** `200`:
+
 ```json
 [Playlist]
 ```
@@ -524,6 +549,7 @@ See [Playlist model](#playlist).
 Create a new playlist.
 
 **Request Body**:
+
 ```json
 {
   "name": "Evening rotation",
@@ -533,17 +559,14 @@ Create a new playlist.
     "order": "ordered",
     "always_start_on_first_image": false
   },
-  "images": [
-    { "image_id": 1 },
-    { "image_id": 5 },
-    { "image_id": 12 }
-  ]
+  "images": [{ "image_id": 1 }, { "image_id": 5 }, { "image_id": 12 }]
 }
 ```
 
 Fields `id`, `created_at`, `updated_at` are auto-generated.
 
 For `time_of_day` playlists, each image entry includes a `time` field (minutes since midnight, 0–1439):
+
 ```json
 {
   "images": [
@@ -571,6 +594,7 @@ Get a single playlist.
 Update playlist fields. Only provided fields are updated.
 
 **Request Body** (partial):
+
 ```json
 {
   "name": "New name",
@@ -588,6 +612,7 @@ Update playlist fields. Only provided fields are updated.
 Delete a playlist.
 
 **Response** `200`:
+
 ```json
 {
   "status": "deleted"
@@ -601,6 +626,7 @@ Delete a playlist.
 Start playing a playlist.
 
 **Request Body**:
+
 ```json
 {
   "monitor": {
@@ -610,12 +636,13 @@ Start playing a playlist.
 }
 ```
 
-| Field        | Type   | Default        | Description                           |
-|-------------|--------|----------------|---------------------------------------|
-| `monitor.id` | string | `"*"` (all)   | Target monitor or `"*"` for all       |
-| `monitor.mode` | string | `"individual"` | `individual`, `clone`, `extend`      |
+| Field          | Type   | Default        | Description                     |
+| -------------- | ------ | -------------- | ------------------------------- |
+| `monitor.id`   | string | `"*"` (all)    | Target monitor or `"*"` for all |
+| `monitor.mode` | string | `"individual"` | `individual`, `clone`, `extend` |
 
 **Response** `200`:
+
 ```json
 {
   "status": "started"
@@ -655,6 +682,7 @@ Go back to previous image in the playlist.
 Get all currently running playlists as active instances.
 
 **Response** `200`:
+
 ```json
 [
   {
@@ -692,15 +720,16 @@ Get the active playlist for a specific monitor.
 
 These operate on ALL active playlists across all monitors:
 
-| Endpoint                      | Response field | Description         |
-|-------------------------------|---------------|---------------------|
-| `POST /playlists/active/stop`    | `stopped`     | Stop all playlists  |
-| `POST /playlists/active/pause`   | `paused`      | Pause all           |
-| `POST /playlists/active/resume`  | `resumed`     | Resume all          |
-| `POST /playlists/active/next`    | `advanced`    | Advance all         |
-| `POST /playlists/active/previous`| `reversed`    | Rewind all          |
+| Endpoint                          | Response field | Description        |
+| --------------------------------- | -------------- | ------------------ |
+| `POST /playlists/active/stop`     | `stopped`      | Stop all playlists |
+| `POST /playlists/active/pause`    | `paused`       | Pause all          |
+| `POST /playlists/active/resume`   | `resumed`      | Resume all         |
+| `POST /playlists/active/next`     | `advanced`     | Advance all        |
+| `POST /playlists/active/previous` | `reversed`     | Rewind all         |
 
 **Response** `200` example:
+
 ```json
 {
   "message": "all playlists stopped",
@@ -718,12 +747,13 @@ List folders. Supports hierarchy filtering and search.
 
 **Query Parameters**:
 
-| Parameter   | Type   | Default | Description                                          |
-|------------|--------|---------|------------------------------------------------------|
+| Parameter   | Type   | Default | Description                                         |
+| ----------- | ------ | ------- | --------------------------------------------------- |
 | `parent_id` | string | —       | Parent folder id, or `root` / `null` for root level |
-| `search`    | string | —       | Name search (returns matching folders only)          |
+| `search`    | string | —       | Name search (returns matching folders only)         |
 
 **Response** `200`:
+
 ```json
 {
   "data": [Folder]
@@ -737,6 +767,7 @@ List folders. Supports hierarchy filtering and search.
 Create a folder.
 
 **Request Body**:
+
 ```json
 {
   "name": "Landscapes",
@@ -753,6 +784,7 @@ Create a folder.
 Move images to a folder (or root when `folder_id` is `null`).
 
 **Request Body**:
+
 ```json
 {
   "image_ids": [1, 2, 3],
@@ -761,6 +793,7 @@ Move images to a folder (or root when `folder_id` is `null`).
 ```
 
 **Response** `200`:
+
 ```json
 {
   "moved": 3
@@ -782,6 +815,7 @@ Get a folder by ID.
 Update folder fields (`name`, `parent_id`).
 
 **Request Body** (partial):
+
 ```json
 {
   "name": "Favorites",
@@ -799,11 +833,12 @@ Delete a folder.
 
 **Query Parameters**:
 
-| Parameter | Type   | Default         | Description                                                        |
-|----------|--------|-----------------|--------------------------------------------------------------------|
-| `mode`   | string | `keep_contents` | `keep_contents` re-parents content, `delete_all` recursively deletes |
+| Parameter | Type   | Default         | Description                                                          |
+| --------- | ------ | --------------- | -------------------------------------------------------------------- |
+| `mode`    | string | `keep_contents` | `keep_contents` re-parents content, `delete_all` recursively deletes |
 
 **Response** `200`:
+
 ```json
 {
   "deleted": true,
@@ -818,6 +853,7 @@ Delete a folder.
 Get the full folder path from root to the folder.
 
 **Response** `200`:
+
 ```json
 {
   "data": [Folder]
@@ -835,6 +871,7 @@ List all connected monitors.
 Each entry’s `name` is the compositor output identifier (for example `HDMI-A-1`, `eDP-1`). When the active backend is **`wayland-utauri`**, names come directly from the host’s control API topology (not synthetic `Monitor N` labels).
 
 **Response** `200`:
+
 ```json
 [Monitor]
 ```
@@ -860,6 +897,7 @@ Get a specific monitor by output name (e.g. `DP-1`).
 Get the full daemon configuration.
 
 **Response** `200`:
+
 ```json
 {
   "app": AppConfig,
@@ -879,6 +917,7 @@ See [Config models](#config-models).
 Update multiple config sections at once.
 
 **Request Body**:
+
 ```json
 {
   "app": {
@@ -954,6 +993,7 @@ Publishes `config_changed` SSE event.
 List all registered backends and their availability.
 
 **Response** `200`:
+
 ```json
 [
   {
@@ -1010,6 +1050,7 @@ List all registered backends and their availability.
 Switch the active wallpaper backend.
 
 **Response** `200`:
+
 ```json
 {
   "status": "activated",
@@ -1024,6 +1065,7 @@ Switch the active wallpaper backend.
 ### `GET /events`
 
 Persistent streaming connection. Each event has:
+
 - `event:` — the event type string
 - `data:` — JSON payload
 
@@ -1033,51 +1075,51 @@ Persistent streaming connection. Each event has:
 
 #### Image Processing Events
 
-| Event                  | Data                                                                 |
-|-----------------------|----------------------------------------------------------------------|
-| `processing_started`  | `{"batch_id":"...","total":5,"timestamp":"..."}`                    |
-| `image_processed`     | `{"batch_id":"...","image":{...},"current":1,"total":5,"elapsed_ms":91,"timestamp":"..."}` |
-| `image_error`         | `{"batch_id":"...","path":"/path/to/file.png","error":"...","current":1,"total":5,"elapsed_ms":12,"timestamp":"..."}` |
-| `processing_complete` | `{"batch_id":"...","total":5,"succeeded":4,"failed":1,"elapsed_ms":901,"timestamp":"..."}` |
-| `processing_cancelled`| `{"batch_id":"...","total":5,"succeeded":2,"failed":1,"elapsed_ms":420,"timestamp":"..."}` |
+| Event                  | Data                                                                                                                  |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------------- |
+| `processing_started`   | `{"batch_id":"...","total":5,"timestamp":"..."}`                                                                      |
+| `image_processed`      | `{"batch_id":"...","image":{...},"current":1,"total":5,"elapsed_ms":91,"timestamp":"..."}`                            |
+| `image_error`          | `{"batch_id":"...","path":"/path/to/file.png","error":"...","current":1,"total":5,"elapsed_ms":12,"timestamp":"..."}` |
+| `processing_complete`  | `{"batch_id":"...","total":5,"succeeded":4,"failed":1,"elapsed_ms":901,"timestamp":"..."}`                            |
+| `processing_cancelled` | `{"batch_id":"...","total":5,"succeeded":2,"failed":1,"elapsed_ms":420,"timestamp":"..."}`                            |
 
 #### Wallpaper Events
 
-| Event               | Data                                                                           |
-|--------------------|--------------------------------------------------------------------------------|
+| Event               | Data                                                                                                                                                                                                                                                                                                                                                                                                |
+| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `wallpaper_changed` | `{"image_id": 2, "media_type": "image", "path": "/var/.../gallery/file.jpg", "tags": ["anime","sky"], "colors": ["#abc123"]?, "monitors": ["DP-1","HDMI-A-1"], "mode": "individual", "source": "manual", "backend": "awww"}` — `media_type` is `image` (includes GIF), `web`, or `video`; `colors` is only present when the gallery row has a non-empty palette; `path` is the cached gallery file. |
 
 #### Playlist Events
 
-| Event                    | Data                                                        |
-|-------------------------|-------------------------------------------------------------|
-| `playlist_started`       | `{"playlist_id": 1, "monitor": "DP-1"}`                    |
-| `playlist_stopped`       | `{"playlist_id": 1, "monitor": "DP-1"}`                    |
-| `playlist_paused`        | `{"playlist_id": 1, "monitor": "DP-1"}`                    |
-| `playlist_resumed`       | `{"playlist_id": 1, "monitor": "DP-1"}`                    |
-| `playlist_image_changed` | `{"playlist_id": 1, "image_id": 5, "monitor": "DP-1"}`    |
+| Event                    | Data                                                   |
+| ------------------------ | ------------------------------------------------------ |
+| `playlist_started`       | `{"playlist_id": 1, "monitor": "DP-1"}`                |
+| `playlist_stopped`       | `{"playlist_id": 1, "monitor": "DP-1"}`                |
+| `playlist_paused`        | `{"playlist_id": 1, "monitor": "DP-1"}`                |
+| `playlist_resumed`       | `{"playlist_id": 1, "monitor": "DP-1"}`                |
+| `playlist_image_changed` | `{"playlist_id": 1, "image_id": 5, "monitor": "DP-1"}` |
 
 #### Monitor Events
 
-| Event                  | Data                              |
-|-----------------------|-----------------------------------|
-| `monitor_connected`    | `{"name": "HDMI-A-1"}`          |
-| `monitor_disconnected` | `{"name": "HDMI-A-1"}`          |
+| Event                  | Data                   |
+| ---------------------- | ---------------------- |
+| `monitor_connected`    | `{"name": "HDMI-A-1"}` |
+| `monitor_disconnected` | `{"name": "HDMI-A-1"}` |
 
 #### Config Events
 
-| Event            | Data                                    |
-|-----------------|-----------------------------------------|
-| `config_changed` | `{"sections": ["app", "monitors"]}`    |
+| Event            | Data                                |
+| ---------------- | ----------------------------------- |
+| `config_changed` | `{"sections": ["app", "monitors"]}` |
 
 #### Gallery Events
 
-| Event               | Data                                  |
-|--------------------|---------------------------------------|
-| `images_updated`    | `{"action":"added","count":5,"timestamp":"..."}` |
+| Event               | Data                                                     |
+| ------------------- | -------------------------------------------------------- |
+| `images_updated`    | `{"action":"added","count":5,"timestamp":"..."}`         |
 | `playlists_updated` | `{"action":"updated","playlist_id":3,"timestamp":"..."}` |
-| `folders_updated`   | `{"action":"created","folder_id":12,"timestamp":"..."}` |
-| `history_cleared`   | `{"timestamp":"..."}`                 |
+| `folders_updated`   | `{"action":"created","folder_id":12,"timestamp":"..."}`  |
+| `history_cleared`   | `{"timestamp":"..."}`                                    |
 
 ---
 
@@ -1164,13 +1206,13 @@ Important bridge behavior:
 
 The `source` object varies by type:
 
-| `source.type` | Extra fields                                        |
-|---------------|-----------------------------------------------------|
-| `manual`      | —                                                   |
-| `random`      | —                                                   |
-| `playlist`    | `playlist_id` (int), `playlist_name` (string)       |
-| `history`     | `history_id` (int)                                  |
-| `restore`     | — (set during daemon startup wallpaper restore)     |
+| `source.type` | Extra fields                                    |
+| ------------- | ----------------------------------------------- |
+| `manual`      | —                                               |
+| `random`      | —                                               |
+| `playlist`    | `playlist_id` (int), `playlist_name` (string)   |
+| `history`     | `history_id` (int)                              |
+| `restore`     | — (set during daemon startup wallpaper restore) |
 
 ---
 
@@ -1188,24 +1230,21 @@ The `source` object varies by type:
     "order": "ordered",
     "always_start_on_first_image": false
   },
-  "images": [
-    { "image_id": 1 },
-    { "image_id": 5 },
-    { "image_id": 12 }
-  ]
+  "images": [{ "image_id": 1 }, { "image_id": 5 }, { "image_id": 12 }]
 }
 ```
 
 **Playlist configuration types**:
 
-| `type`         | Behavior                                                     |
-|---------------|--------------------------------------------------------------|
-| `timer`       | Rotates every `interval` seconds. `order`: `ordered`/`random`|
-| `manual`      | Only changes on explicit next/previous calls                 |
-| `time_of_day` | Each image has a `time` (minutes since midnight, 0–1439)     |
-| `day_of_week` | Each image maps to a day (0=Sunday through 6=Saturday)       |
+| `type`        | Behavior                                                      |
+| ------------- | ------------------------------------------------------------- |
+| `timer`       | Rotates every `interval` seconds. `order`: `ordered`/`random` |
+| `manual`      | Only changes on explicit next/previous calls                  |
+| `time_of_day` | Each image has a `time` (minutes since midnight, 0–1439)      |
+| `day_of_week` | Each image maps to a day (0=Sunday through 6=Saturday)        |
 
 For `time_of_day`, images include the `time` field:
+
 ```json
 { "image_id": 1, "time": 480 }
 ```
@@ -1404,27 +1443,27 @@ Returned by `GET /config/backends/mpvpaper`. Updated by `PATCH /config/backends/
 
 ### Monitor Modes
 
-| Value        | Description                                          |
-|-------------|------------------------------------------------------|
-| `individual` | Set wallpaper on a single specific monitor           |
-| `clone`      | Same image on every monitor                          |
-| `extend`     | Span one image across all monitors (auto-sliced)     |
+| Value        | Description                                      |
+| ------------ | ------------------------------------------------ |
+| `individual` | Set wallpaper on a single specific monitor       |
+| `clone`      | Same image on every monitor                      |
+| `extend`     | Span one image across all monitors (auto-sliced) |
 
 ### Playlist Types
 
-| Value          | Description                              |
-|---------------|------------------------------------------|
-| `timer`        | Rotates on interval (seconds)            |
-| `manual`       | Next/previous only                       |
-| `time_of_day`  | Image per time slot (minutes since midnight) |
-| `day_of_week`  | Image per weekday                        |
+| Value         | Description                                  |
+| ------------- | -------------------------------------------- |
+| `timer`       | Rotates on interval (seconds)                |
+| `manual`      | Next/previous only                           |
+| `time_of_day` | Image per time slot (minutes since midnight) |
+| `day_of_week` | Image per weekday                            |
 
 ### Playlist Order
 
-| Value     | Description              |
-|----------|--------------------------|
-| `ordered` | Sequential playback      |
-| `random`  | Random shuffle           |
+| Value     | Description         |
+| --------- | ------------------- |
+| `ordered` | Sequential playback |
+| `random`  | Random shuffle      |
 
 ### awww Transition Types
 
@@ -1454,14 +1493,14 @@ Returned by `GET /config/backends/mpvpaper`. Updated by `PATCH /config/backends/
 
 ## Default File Paths (XDG)
 
-| Purpose        | Default path                                          |
-|---------------|-------------------------------------------------------|
-| Config file    | `$XDG_CONFIG_HOME/waypaper-engine/config.toml`       |
-| Unix socket    | `$XDG_RUNTIME_DIR/waypaper-engine.sock`              |
-| Images cache   | `$XDG_DATA_HOME/waypaper-engine/images`              |
-| Thumbnails     | `$XDG_CACHE_HOME/waypaper-engine/thumbnails`         |
-| Database       | `$XDG_DATA_HOME/waypaper-engine/db`                  |
-| Log file       | `$XDG_DATA_HOME/waypaper-engine/daemon.log`          |
-| PID lock       | `$XDG_RUNTIME_DIR/waypaper-engine.pid`               |
+| Purpose      | Default path                                   |
+| ------------ | ---------------------------------------------- |
+| Config file  | `$XDG_CONFIG_HOME/waypaper-engine/config.toml` |
+| Unix socket  | `$XDG_RUNTIME_DIR/waypaper-engine.sock`        |
+| Images cache | `$XDG_DATA_HOME/waypaper-engine/images`        |
+| Thumbnails   | `$XDG_CACHE_HOME/waypaper-engine/thumbnails`   |
+| Database     | `$XDG_DATA_HOME/waypaper-engine/db`            |
+| Log file     | `$XDG_DATA_HOME/waypaper-engine/daemon.log`    |
+| PID lock     | `$XDG_RUNTIME_DIR/waypaper-engine.pid`         |
 
 Typical Linux defaults: `$XDG_CONFIG_HOME` = `~/.config`, `$XDG_DATA_HOME` = `~/.local/share`, `$XDG_CACHE_HOME` = `~/.cache`, `$XDG_RUNTIME_DIR` = `/run/user/<uid>`.

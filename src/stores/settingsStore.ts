@@ -187,44 +187,47 @@ export const useSettingsStore = create<SettingsStore>()(
         try {
           const incoming = await daemonClient.getConfig();
 
-            let registeredBackendNames: string[] = [];
-            try {
-              const gd = daemonClient;
-              if (gd.getBackends && gd.getBackendConfig) {
-                const backendsList = await gd.getBackends();
-                registeredBackendNames = backendsList.map((b) => b.name);
-                const fetched = await Promise.all(
-                  registeredBackendNames.map(async (name) => {
-                    try {
-                      const cfg = await gd.getBackendConfig(name);
-                      return { name, cfg: cfg as Record<string, unknown> | null | undefined };
-                    } catch {
-                      return { name, cfg: undefined };
-                    }
-                  }),
-                );
-                const inB = incoming.backend as unknown as Record<string, unknown>;
-                for (const { name, cfg } of fetched) {
-                  if (cfg && typeof cfg === "object") {
-                    const cleaned = { ...cfg };
-                    delete cleaned.type;
-                    inB[name] = cleaned;
+          let registeredBackendNames: string[] = [];
+          try {
+            const gd = daemonClient;
+            if (gd.getBackends && gd.getBackendConfig) {
+              const backendsList = await gd.getBackends();
+              registeredBackendNames = backendsList.map((b) => b.name);
+              const fetched = await Promise.all(
+                registeredBackendNames.map(async (name) => {
+                  try {
+                    const cfg = await gd.getBackendConfig(name);
+                    return {
+                      name,
+                      cfg: cfg as Record<string, unknown> | null | undefined,
+                    };
+                  } catch {
+                    return { name, cfg: undefined };
                   }
+                }),
+              );
+              const inB = incoming.backend as unknown as Record<string, unknown>;
+              for (const { name, cfg } of fetched) {
+                if (cfg && typeof cfg === "object") {
+                  const cleaned = { ...cfg };
+                  delete cleaned.type;
+                  inB[name] = cleaned;
                 }
               }
-            } catch {
-              // Non-critical: backend subsections may be incomplete until next load
             }
+          } catch {
+            // Non-critical: backend subsections may be incomplete until next load
+          }
 
-            const merged = existing
-              ? mergeLoadedConfig(existing, incoming, registeredBackendNames)
-              : incoming;
-            set({
-              config: merged as UnifiedConfig,
-              isLoading: false,
-              isDirty: false,
-              lastSaved: Date.now(),
-            });
+          const merged = existing
+            ? mergeLoadedConfig(existing, incoming, registeredBackendNames)
+            : incoming;
+          set({
+            config: merged as UnifiedConfig,
+            isLoading: false,
+            isDirty: false,
+            lastSaved: Date.now(),
+          });
         } catch (error) {
           logger.error("SettingsStore: Failed to load config:", error);
           set({
@@ -332,10 +335,7 @@ export const useSettingsStore = create<SettingsStore>()(
             }
           } else {
             {
-              const patchBody = await daemonClient.updateConfigSection(
-                section,
-                data,
-              );
+              const patchBody = await daemonClient.updateConfigSection(section, data);
               const current = get().config!;
               const nonBackend = section as NonBackendSectionKey;
               const body =
@@ -429,7 +429,9 @@ export const useSettingsStore = create<SettingsStore>()(
         set({ searchTerm: term });
 
         if (term.trim() === "") {
-          set({ filteredSections: ["app", "daemon", "backend", "monitors", "wallhaven"] });
+          set({
+            filteredSections: ["app", "daemon", "backend", "monitors", "wallhaven"],
+          });
           return;
         }
 

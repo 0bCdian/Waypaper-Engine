@@ -82,7 +82,10 @@ function FolderCard({ folder }: FolderCardProps) {
     startRename,
     submitRename,
     cancelRename,
-  } = useInlineRename({ currentName: folder.name, onSubmit: handleRenameSubmit });
+  } = useInlineRename({
+    currentName: folder.name,
+    onSubmit: handleRenameSubmit,
+  });
 
   const handleClick = () => {
     if (isRenaming) return;

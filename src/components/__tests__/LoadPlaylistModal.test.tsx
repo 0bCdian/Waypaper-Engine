@@ -50,7 +50,9 @@ vi.mock("../Modal", () => ({
       {
         children,
         stripedHeader,
-      }: React.PropsWithChildren<{ stripedHeader?: { title?: React.ReactNode } }>,
+      }: React.PropsWithChildren<{
+        stripedHeader?: { title?: React.ReactNode };
+      }>,
       ref: React.Ref<unknown>,
     ) => {
       React.useImperativeHandle(ref, () => ({

@@ -17,7 +17,6 @@ import type { UnifiedConfig } from "@/shared/types/unifiedConfig";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { daemonClient } from "@/client";
 
-
 function waylandUtauriFromUnified(config: UnifiedConfig | null): WaylandUtauriConfig | null {
   if (!config?.backend || config.backend.type !== "wayland-utauri") return null;
   const b = config.backend as unknown as Record<string, unknown>;
@@ -458,7 +457,11 @@ function DetailHoverVideo({ src, poster }: { src: string; poster?: string }) {
 function ImageDetailSidebar() {
   const navigate = useNavigate();
   const { selectedImage, isOpen, close } = useImageDetailStore(
-    useShallow((s) => ({ selectedImage: s.selectedImage, isOpen: s.isOpen, close: s.close })),
+    useShallow((s) => ({
+      selectedImage: s.selectedImage,
+      isOpen: s.isOpen,
+      close: s.close,
+    })),
   );
   const addToast = useToastStore((s) => s.addToast);
   const copyPaletteColor = useCallback(
@@ -674,7 +677,9 @@ function ImageDetailSidebar() {
                 className="btn btn-outline btn-sm w-full"
                 onClick={() => {
                   close();
-                  navigate("/loop-studio", { state: { imageId: selectedImage.id } });
+                  navigate("/loop-studio", {
+                    state: { imageId: selectedImage.id },
+                  });
                 }}
               >
                 Open in Loop Studio
