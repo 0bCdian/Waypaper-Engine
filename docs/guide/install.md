@@ -2,7 +2,7 @@
 
 Pick the method that fits your setup. The **AUR** is the easiest on Arch. The **AppImage** works on any distro. **From source** gives you the latest commit.
 
-**Be advised** — whatever backend you want (e.g. `awww`, `hyprpaper`, `feh`, `mpvpaper`, `wayland-utauri`) must be installed separately and on `PATH`. The daemon will tell you if the active backend is unavailable. See [Backends & dependencies](/guide/backends).
+**Be advised** — no backend is required to launch the app. If none is installed, the daemon starts in degraded mode and the UI shows a persistent banner with an install link — it clears automatically once a backend is detected on `PATH`. When you do have one, it must be on `PATH` or the daemon can't call it. See [Backends & dependencies](/guide/backends).
 
 ---
 
@@ -136,9 +136,10 @@ You can still drive everything from the HTTP API or the CLI—see [API overview]
 Simply launch **Waypaper Engine** from your app launcher, or run `waypaper-engine` from a terminal.
 
 1. On first launch the daemon starts automatically if it is not already running.
-2. Open **Settings** and pick a backend (e.g. `awww`).
-3. Import wallpapers: drag-drop files or folders, or click the import button.
-4. **Double-click** an image to set it. **Right-click** for the full context menu. Hover to reveal the select checkbox for playlist building.
+2. If no backend is installed yet, a banner appears at the top — follow the link to install one, then come back. The banner clears on its own once the daemon detects a backend on `PATH`.
+3. Open **Settings** and pick a backend (e.g. `awww`).
+4. Import wallpapers: drag-drop files or folders, or click the import button.
+5. **Double-click** an image to set it. **Right-click** for the full context menu. Hover to reveal the select checkbox for playlist building.
 
 And you're done.
 

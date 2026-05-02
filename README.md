@@ -72,7 +72,9 @@ The big shift is replacing the old **Node.js** backend with a **Go daemon**: one
 
 ## Install
 
-The Makefile is the source of truth. **Packaging and `DESTDIR`:** read [packaging/README.md](packaging/README.md). Be advised, backend binaries (e.g. `awww`, `hyprpaper`, `feh`, `mpvpaper`, or `wayland-utauri`) need to be **on your `PATH`** when the daemon runs, or the active backend will not start.
+The Makefile is the source of truth. **Packaging and `DESTDIR`:** read [packaging/README.md](packaging/README.md).
+
+**Be advised** — no backend is required to start the app. If none is installed, Waypaper Engine starts in degraded mode and shows a banner pointing you to the [install guide](https://0bCdian.github.io/Waypaper-Engine/guide/install.html). Once you install a backend and it lands on `PATH`, the banner clears on its own.
 
 **Simply clone and install locally:**
 
@@ -190,7 +192,7 @@ _If the app saves you a headache, a star on the repo means a lot._
 
 **[LGFae](https://github.com/LGFae)** — _awww is tiny and does exactly what I need—thank you_ ❤️
 
-**[Simon Ser](https://git.sr.ht/~emersion/)** — _wlr-randr saved me from going insane across Wayland WMs_ 🥲
+**[Rajveer Malviya](https://github.com/rajveermalviya)** — _go-wayland made native Wayland monitor detection possible without shelling out_ 🥲
 
 **[Cristian Avendaño](https://github.com/c-avendano)** — _the logo and icon that make the app feel like a real product_ 💪
 
