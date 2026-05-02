@@ -279,6 +279,7 @@ func (f *fakeRegistry) Get(name string) (backend.Backend, bool) {
 	return b, ok
 }
 
+func (f *fakeRegistry) HasActive() bool { return f.active != "" }
 func (f *fakeRegistry) Active() backend.Backend {
 	return f.backends[f.active]
 }

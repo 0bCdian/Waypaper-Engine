@@ -42,6 +42,7 @@ func (r *stubRegistry) SetActive(_ string) error                                
 func (r *stubRegistry) Available() []backend.BackendInfo                          { return nil }
 func (r *stubRegistry) Compatible(_ monitor.CompositorType) []backend.BackendInfo { return nil }
 
+func (r *stubRegistry) HasActive() bool        { return r.active != nil }
 func (r *stubRegistry) Active() backend.Backend {
 	if r.active == nil {
 		return nil

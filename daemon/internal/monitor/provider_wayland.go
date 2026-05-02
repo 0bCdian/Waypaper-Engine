@@ -3,6 +3,7 @@ package monitor
 import (
 	"context"
 	"fmt"
+	"log/slog"
 	"os"
 	"strings"
 
@@ -11,8 +12,11 @@ import (
 )
 
 // waylandProvider detects monitors natively via the Wayland protocol.
-// It uses wl_output (geometry/mode/scale) and zxdg_output_manager_v1 (name/logical position/size).
-// No external binaries required.
+//
+// Primary data (roundtrip 1): wl_output v4 — geometry, mode, scale, name.
+// Enrichment (roundtrip 2, best-effort): zxdg_output_manager_v1 — logical
+// position and size. If the enrichment roundtrip fails, the provider returns
+// the wl_output data as-is rather than propagating the error.
 type waylandProvider struct{}
 
 // NewWaylandProvider returns a MonitorProvider that queries the Wayland compositor directly.
@@ -20,12 +24,11 @@ func NewWaylandProvider() MonitorProvider {
 	return &waylandProvider{}
 }
 
-func (p *waylandProvider) Name() string      { return "wayland-native" }
+func (p *waylandProvider) Name() string            { return "wayland-native" }
 func (p *waylandProvider) Compositor() CompositorType { return CompositorWayland }
-func (p *waylandProvider) Priority() int     { return 20 }
+func (p *waylandProvider) Priority() int           { return 20 }
 
 func (p *waylandProvider) IsAvailable() bool {
-	// Available when WAYLAND_DISPLAY or XDG_RUNTIME_DIR+wayland-0 is reachable.
 	if os.Getenv("WAYLAND_DISPLAY") != "" {
 		return true
 	}
@@ -33,23 +36,21 @@ func (p *waylandProvider) IsAvailable() bool {
 	if rtDir == "" {
 		return false
 	}
-	sock := rtDir + "/wayland-0"
-	_, err := os.Stat(sock)
+	_, err := os.Stat(rtDir + "/wayland-0")
 	return err == nil
 }
 
 // outputState accumulates per-output data from Wayland events.
 type outputState struct {
-	name        string
-	width       int
-	height      int
-	refreshHz   float64
-	scale       float64
-	transform   int
-	logicalX    int
-	logicalY    int
-	hasMode     bool
-	hasLogical  bool
+	name      string
+	width     int
+	height    int
+	refreshHz float64
+	scale     float64
+	transform int
+	logicalX  int
+	logicalY  int
+	hasMode   bool
 }
 
 func (p *waylandProvider) Detect(ctx context.Context) ([]Monitor, error) {
@@ -82,6 +83,12 @@ func (p *waylandProvider) Detect(ctx context.Context) ([]Monitor, error) {
 
 			output.SetGeometryHandler(func(ev waylandclient.OutputGeometryEvent) {
 				st.transform = int(ev.Transform)
+				// geometry x/y are compositor-space coords; used as fallback when
+				// xdg_output logical position is unavailable.
+				if st.logicalX == 0 && st.logicalY == 0 {
+					st.logicalX = int(ev.X)
+					st.logicalY = int(ev.Y)
+				}
 			})
 			output.SetModeHandler(func(ev waylandclient.OutputModeEvent) {
 				if ev.Flags&uint32(waylandclient.OutputModeCurrent) != 0 {
@@ -96,6 +103,12 @@ func (p *waylandProvider) Detect(ctx context.Context) ([]Monitor, error) {
 			output.SetScaleHandler(func(ev waylandclient.OutputScaleEvent) {
 				st.scale = float64(ev.Factor)
 			})
+			// wl_output v4: name event gives the connector name (e.g. "DP-1").
+			output.SetNameHandler(func(ev waylandclient.OutputNameEvent) {
+				if st.name == "" {
+					st.name = strings.TrimSpace(ev.Name)
+				}
+			})
 			outputs = append(outputs, output)
 
 		case "zxdg_output_manager_v1":
@@ -107,41 +120,45 @@ func (p *waylandProvider) Detect(ctx context.Context) ([]Monitor, error) {
 		}
 	})
 
-	// Roundtrip 1: enumerate globals; wl_output geometry/mode/scale events fire here.
+	// Roundtrip 1: enumerate globals; wl_output events (geometry/mode/scale/name) fire here.
+	// After this roundtrip we have enough data to build a monitor list.
 	if err = roundtrip(display); err != nil {
 		return nil, fmt.Errorf("wayland-native: roundtrip 1: %w", err)
 	}
 
-	if xdgManager == nil {
-		return nil, fmt.Errorf("wayland-native: compositor does not support zxdg_output_manager_v1")
-	}
-
-	// Create xdg_output for each wl_output to get the output name and logical geometry.
-	for _, output := range outputs {
-		st := states[output]
-		xo, err2 := xdgManager.GetXdgOutput(output)
-		if err2 != nil {
-			continue
+	// Roundtrip 2 (best-effort): enrich with xdg_output logical position/name.
+	// If xdg_output_manager is not available or the roundtrip fails, we fall
+	// back to the wl_output data already collected in roundtrip 1.
+	if xdgManager != nil {
+		xdgOutputs := make([]*xdgoutput.Output, 0, len(outputs))
+		allOK := true
+		for _, output := range outputs {
+			st := states[output]
+			xo, err2 := xdgManager.GetXdgOutput(output)
+			if err2 != nil {
+				slog.Debug("wayland-native: GetXdgOutput failed", "err", err2)
+				allOK = false
+				break
+			}
+			xo.SetNameHandler(func(ev xdgoutput.OutputNameEvent) {
+				st.name = strings.TrimSpace(ev.Name)
+			})
+			xo.SetLogicalPositionHandler(func(ev xdgoutput.OutputLogicalPositionEvent) {
+				st.logicalX = int(ev.X)
+				st.logicalY = int(ev.Y)
+			})
+			xdgOutputs = append(xdgOutputs, xo)
 		}
-		xo.SetNameHandler(func(ev xdgoutput.OutputNameEvent) {
-			st.name = strings.TrimSpace(ev.Name)
-		})
-		xo.SetLogicalPositionHandler(func(ev xdgoutput.OutputLogicalPositionEvent) {
-			st.logicalX = int(ev.X)
-			st.logicalY = int(ev.Y)
-		})
-		xo.SetLogicalSizeHandler(func(ev xdgoutput.OutputLogicalSizeEvent) {
-			st.hasLogical = true
-		})
-	}
 
-	// Roundtrip 2: collect xdg_output name/position/size events.
-	if err = roundtrip(display); err != nil {
-		return nil, fmt.Errorf("wayland-native: roundtrip 2: %w", err)
-	}
-	// Roundtrip 3: catch trailing done events.
-	if err = roundtrip(display); err != nil {
-		return nil, fmt.Errorf("wayland-native: roundtrip 3: %w", err)
+		if allOK {
+			if err2 := roundtrip(display); err2 != nil {
+				// Not fatal: log and continue with roundtrip-1 data.
+				slog.Debug("wayland-native: xdg_output roundtrip failed, using wl_output data", "err", err2)
+			}
+		}
+
+		// Unused but keeps xdgOutputs alive until here (handlers reference states).
+		_ = xdgOutputs
 	}
 
 	monitors := make([]Monitor, 0, len(outputs))
@@ -164,7 +181,7 @@ func (p *waylandProvider) Detect(ctx context.Context) ([]Monitor, error) {
 	return monitors, nil
 }
 
-// roundtrip performs a synchronous Wayland roundtrip by issuing a wl_display.sync
+// roundtrip performs a synchronous Wayland roundtrip by issuing wl_display.sync
 // and dispatching events until the done callback fires.
 func roundtrip(display *waylandclient.Display) error {
 	done := false

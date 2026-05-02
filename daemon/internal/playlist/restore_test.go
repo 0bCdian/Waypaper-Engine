@@ -59,6 +59,7 @@ func (r *simpleRegistry) Register(_ backend.Backend) error { return nil }
 func (r *simpleRegistry) Get(_ string) (backend.Backend, bool) {
 	return r.active, r.active != nil
 }
+func (r *simpleRegistry) HasActive() bool                                           { return r.active != nil }
 func (r *simpleRegistry) Active() backend.Backend                                   { return r.active }
 func (r *simpleRegistry) SetActive(_ string) error                                  { return nil }
 func (r *simpleRegistry) Available() []backend.BackendInfo                          { return nil }
