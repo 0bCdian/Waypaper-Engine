@@ -52,6 +52,12 @@ func (r *registry) Active() Backend {
 	return r.backends[r.activeName]
 }
 
+func (r *registry) HasActive() bool {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+	return r.activeName != ""
+}
+
 func (r *registry) SetActive(name string) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()

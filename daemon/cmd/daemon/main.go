@@ -102,18 +102,23 @@ func startDaemon(configPath string, logLevel string) error {
 		b.RegisterDefaults(cfg.Viper())
 	}
 
-	// 7. Activate the configured backend.
+	// 7. Activate the configured backend (fall back to any available backend).
+	// If nothing is available the daemon starts in degraded mode and notifies the GUI via SSE.
 	activeBackendName := cfg.GetActiveBackendType()
 	if err := reg.SetActive(activeBackendName); err != nil {
-		// Fall back to any available backend.
 		slog.Warn("configured backend not available, trying alternatives", "backend", activeBackendName, "error", err)
+		activated := false
 		for _, info := range reg.Available() {
 			if info.Available {
 				if err := reg.SetActive(info.Name); err == nil {
 					slog.Info("using fallback backend", "name", info.Name)
+					activated = true
 					break
 				}
 			}
+		}
+		if !activated {
+			slog.Warn("no wallpaper backend found; daemon will start in degraded mode — install a backend to set wallpapers")
 		}
 	}
 
@@ -152,7 +157,7 @@ func startDaemon(configPath string, logLevel string) error {
 		Compositor:    compositorOverride,
 		MonitorProviders: []monitor.MonitorProvider{
 			waylandutauri.NewMonitorProvider(cfg.Viper()),
-			monitor.NewWlrRandrProvider(),
+			monitor.NewWaylandProvider(),
 			monitor.NewXrandrProvider(),
 		},
 	}

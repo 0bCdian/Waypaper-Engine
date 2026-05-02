@@ -12,6 +12,7 @@ import { useTheme } from "../../contexts/ThemeContext";
 import { cn } from "../../utils/cn";
 import { IconRailSidebar } from "./ModernSidebar";
 import StartupIntro from "../StartupIntro";
+import NoBackendBanner from "../NoBackendBanner";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useDesignSystemStore } from "../../stores/designSystemStore";
 
@@ -76,7 +77,10 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({ children, clas
         )}
       >
         <IconRailSidebar />
-        <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-base-100">{children}</main>
+        <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-base-100">
+          <NoBackendBanner />
+          {children}
+        </main>
       </div>
 
       {!introFinished && startupIntroOn && reduceMotionFs !== true && (

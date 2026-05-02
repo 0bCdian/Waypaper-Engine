@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import { useSettingsStore } from "../stores/settingsStore";
 import { useToastStore } from "../stores/toastStore";
+import { useNoBackendStore } from "../stores/noBackendStore";
 import type {
   WallpaperChangedPayload,
   ProcessingCompletePayload,
@@ -14,6 +15,7 @@ import { daemonClient } from "@/client";
 export default function useNotifications(): void {
   const notificationsEnabled = useSettingsStore((s) => s.config?.app?.notifications);
   const addToast = useToastStore((s) => s.addToast);
+  const showNoBackendBanner = useNoBackendStore((s) => s.show);
 
   useEffect(() => {
     if (!notificationsEnabled) return;
@@ -103,7 +105,12 @@ export default function useNotifications(): void {
 
     disposers.push(
       daemonClient.on("backend_unavailable", (data: unknown) => {
-        const payload = data as { message?: string; backend?: string };
+        const payload = data as { message?: string; backend?: string; checked?: string[] };
+        // "checked" field means no backends are installed at all → persistent banner.
+        if (Array.isArray(payload?.checked)) {
+          showNoBackendBanner();
+          return;
+        }
         const msg =
           payload?.message ??
           `Wallpaper backend (${payload?.backend ?? "unknown"}) is not available.`;
@@ -182,5 +189,5 @@ export default function useNotifications(): void {
     return () => {
       for (const dispose of disposers) dispose();
     };
-  }, [notificationsEnabled, addToast]);
+  }, [notificationsEnabled, addToast, showNoBackendBanner]);
 }

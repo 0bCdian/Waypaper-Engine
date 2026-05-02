@@ -38,6 +38,7 @@ require (
 	github.com/pelletier/go-toml/v2 v2.2.4 // indirect
 	github.com/pkg/errors v0.9.1 // indirect
 	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/rajveermalviya/go-wayland/wayland v0.0.0-20230130181619-0ad78d1310b2 // indirect
 	github.com/sagikazarmark/locafero v0.11.0 // indirect
 	github.com/samber/lo v1.52.0 // indirect
 	github.com/samber/slog-common v0.20.0 // indirect
