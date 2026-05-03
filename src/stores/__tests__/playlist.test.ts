@@ -168,6 +168,59 @@ describe("usePlaylistStore", () => {
     expect(usePlaylistStore.getState().playlist.images).toHaveLength(7);
   });
 
+  it("addImagesToPlaylist inserts before index when insertAt is passed", () => {
+    act(() => {
+      usePlaylistStore.getState().addImagesToPlaylist([1, 2]);
+    });
+    act(() => {
+      usePlaylistStore.getState().addImagesToPlaylist([99], 1);
+    });
+
+    const ids = usePlaylistStore.getState().playlist.images.map((i) => i.image_id);
+    expect(ids).toEqual([1, 99, 2]);
+  });
+
+  it("addImagesToPlaylist clamps insertAt to array bounds", () => {
+    act(() => {
+      usePlaylistStore.getState().addImagesToPlaylist([1]);
+    });
+    act(() => {
+      usePlaylistStore.getState().addImagesToPlaylist([88], -5);
+    });
+    act(() => {
+      usePlaylistStore.getState().addImagesToPlaylist([99], 999);
+    });
+
+    const ids = usePlaylistStore.getState().playlist.images.map((i) => i.image_id);
+    expect(ids).toEqual([88, 1, 99]);
+  });
+
+  it("addImagesToPlaylist with insertAt sorts time_of_day playlists by time", () => {
+    act(() => {
+      usePlaylistStore.getState().setPlaylist({
+        name: "T",
+        images: [
+          { image_id: 1, time: 100 },
+          { image_id: 2, time: 500 },
+        ],
+        configuration: {
+          type: "time_of_day",
+          interval: 300,
+          order: "ordered",
+          always_start_on_first_image: false,
+        },
+      });
+    });
+
+    act(() => {
+      usePlaylistStore.getState().addImagesToPlaylist([3], 1);
+    });
+
+    const times = usePlaylistStore.getState().playlist.images.map((i) => i.time);
+    expect(times).toEqual([...times].sort((a, b) => (a ?? 0) - (b ?? 0)));
+    expect(usePlaylistStore.getState().playlist.images).toHaveLength(3);
+  });
+
   it("markClean resets isDirty to false", () => {
     act(() => {
       usePlaylistStore.getState().addImagesToPlaylist([1]);

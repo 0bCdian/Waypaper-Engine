@@ -14,6 +14,7 @@ import {
   reorderPlaylistImagesBySortableMove,
   sortTimeOfDayPlaylistImages,
 } from "../utils/playlistStripReorder";
+import { playlistGalleryDragAddsImages } from "../utils/playlistGalleryDrag";
 
 const POINTER_SENSOR = PointerSensor.configure({
   activationConstraints: [new PointerActivationConstraints.Distance({ value: 8 })],
@@ -38,16 +39,36 @@ export default function AppDragDropProvider({ children }: { children: ReactNode 
         useDragStore.getState().setDragStart(data.type, getIds(data));
       }}
       onDragOver={(event) => {
+        const sourceData = event.operation.source?.data as DragSourceData | undefined;
         const target = event.operation?.target;
+        const galleryOrFolder =
+          sourceData?.type === "image" || sourceData?.type === "folder";
+
         if (!target) {
           useDragStore.getState().setOverTarget(null);
           return;
         }
         const targetData = target.data as DropTargetData | undefined;
+
+        let playlistInsertPreviewAt: number | null = null;
+        const dragSnap = useDragStore.getState();
+        const addsToPlaylist = playlistGalleryDragAddsImages(dragSnap.dragType, dragSnap.dragIds);
+        if (galleryOrFolder && addsToPlaylist && targetData) {
+          const len = usePlaylistStore.getState().playlist.images.length;
+          if (len > 0) {
+            if (targetData.type === "playlist-item" && typeof targetData.insertIndex === "number") {
+              playlistInsertPreviewAt = targetData.insertIndex;
+            } else if (targetData.type === "playlist") {
+              playlistInsertPreviewAt = len;
+            }
+          }
+        }
+
         if (targetData) {
           useDragStore.getState().setOverTarget({
             type: targetData.type,
             id: targetData.folderId ?? undefined,
+            playlistInsertPreviewAt,
           });
         }
       }}
@@ -135,13 +156,18 @@ async function dispatchDrop(
   }
 
   if (targetData.type === "playlist" || targetData.type === "playlist-item") {
+    const insertAt =
+      targetData.type === "playlist-item" && typeof targetData.insertIndex === "number"
+        ? targetData.insertIndex
+        : undefined;
+
     if (sourceData.type === "image") {
-      usePlaylistStore.getState().addImagesToPlaylist(getIds(sourceData));
+      usePlaylistStore.getState().addImagesToPlaylist(getIds(sourceData), insertAt);
       return;
     }
     if (sourceData.type === "folder" && sourceData.folderId != null) {
       const ids = await getAllImageIdsInFolder(sourceData.folderId);
-      if (ids.length > 0) usePlaylistStore.getState().addImagesToPlaylist(ids);
+      if (ids.length > 0) usePlaylistStore.getState().addImagesToPlaylist(ids, insertAt);
       return;
     }
     if (targetData.type === "playlist") return;

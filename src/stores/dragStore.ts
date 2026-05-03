@@ -7,22 +7,33 @@ export interface DragSourceData {
   imageId?: number;
   selectedIds?: number[];
   folderId?: number;
+  /** Playlist strip card index: gallery drops insert before this slot */
+  insertIndex?: number;
 }
 
 export interface DropTargetData {
   type: "folder" | "playlist" | "playlist-item" | "breadcrumb" | "gallery";
   folderId?: number | null;
   imageId?: number;
+  /** When dropping onto a strip card, insert new images before this index */
+  insertIndex?: number;
+}
+
+export interface DragOverTargetSnapshot {
+  type: string;
+  id?: number | null;
+  /** Insert-before index while dragging gallery/folder over the playlist strip (append-at-end = playlist length). */
+  playlistInsertPreviewAt?: number | null;
 }
 
 interface DragState {
   isDragging: boolean;
   dragType: DragType | null;
   dragIds: number[];
-  overDropTarget: { type: string; id?: number | null } | null;
+  overDropTarget: DragOverTargetSnapshot | null;
 
   setDragStart: (type: DragType, ids: number[]) => void;
-  setOverTarget: (target: { type: string; id?: number | null } | null) => void;
+  setOverTarget: (target: DragOverTargetSnapshot | null) => void;
   reset: () => void;
 }
 

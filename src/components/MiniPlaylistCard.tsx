@@ -14,6 +14,7 @@ import { useIsNeo } from "../hooks/useIsNeo";
 import { useContextMenuStore } from "../stores/contextMenuStore";
 import { buildPlaylistCardMenuItems } from "../utils/contextMenuItems";
 import { getThumbnailSrc } from "../utils/utilities";
+import { miniPlaylistStripTileWidths } from "../utils/playlistMiniCardLayout";
 
 const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
 
@@ -67,10 +68,14 @@ function MiniPlaylistCard({
   const imageSrc = rawThumb.trim() ? rawThumb : undefined;
 
   const sortableData = useMemo<DragSourceData>(
-    () => ({ type: "playlist-item", imageId: playlistImage.image_id }),
-    [playlistImage.image_id],
+    () => ({
+      type: "playlist-item",
+      imageId: playlistImage.image_id,
+      insertIndex: index,
+    }),
+    [playlistImage.image_id, index],
   );
-  const { ref: sortableRef, isDragging } = useSortable({
+  const { ref: sortableRef, targetRef, isDragging } = useSortable({
     id: playlistImage.image_id,
     index,
     /** Shared sortable group so indices ↔ neighbours ; pairs with strip droppable Lowest priority. */
@@ -140,15 +145,12 @@ function MiniPlaylistCard({
 
   const hasCaption = type === "time_of_day" || type === "day_of_week";
 
+  const stripWidths = miniPlaylistStripTileWidths(viewportCompact);
   const cardClass = isNeo
-    ? `mx-1 mb-2 shrink-0 neo-mini-card${isCurrentTrack ? " neo-mini-card--current" : ""}${
-        viewportCompact
-          ? " w-24 sm:w-28 md:w-32 lg:w-36 xl:w-40"
-          : " w-28 sm:w-32 md:w-40 lg:w-44 xl:w-48"
-      }`
+    ? `mx-1 mb-2 shrink-0 neo-mini-card${isCurrentTrack ? " neo-mini-card--current" : ""} ${stripWidths}`
     : `mx-1 mb-2 shrink-0 rounded-lg shadow-xl transition-shadow duration-300 ease-out motion-reduce:transition-none${
         isCurrentTrack ? " z-[2] shadow-[0_14px_28px_-6px_rgba(0,0,0,0.28)]" : ""
-      }${viewportCompact ? " w-24 sm:w-28 md:w-32 lg:w-36 xl:w-40" : " w-28 sm:w-32 md:w-40 lg:w-44 xl:w-48"}`;
+      } ${stripWidths}`;
 
   const imgClass = isNeo
     ? `w-full aspect-[3/2] object-cover cursor-default transition-all active:scale-105 active:opacity-45${hasCaption ? "" : " rounded-none"}`
@@ -195,7 +197,9 @@ function MiniPlaylistCard({
       <m.div
         layout="position"
         key={playlistImage.image_id}
-        transition={{ layout: { duration: 0.15, ease: "easeOut" } }}
+        transition={{
+          layout: { duration: 0.25, ease: [0.25, 1, 0.5, 1] },
+        }}
         ref={sortableRef}
         className="shrink-0"
       >
@@ -210,6 +214,7 @@ function MiniPlaylistCard({
           }}
         >
           <div
+            ref={targetRef}
             className={`${cardClass}${isDragging ? " opacity-50" : ""}`}
             onContextMenu={handleContextMenu}
             aria-current={isCurrentTrack ? "true" : undefined}

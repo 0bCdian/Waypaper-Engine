@@ -1,5 +1,7 @@
 import { CollisionPriority } from "@dnd-kit/abstract";
 import { useDroppable } from "@dnd-kit/react";
+import { LayoutGroup, motion } from "framer-motion";
+import type { ReactNode } from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useCallback } from "react";
 import { cn } from "../utils/cn";
 import { usePlaylistStore } from "../stores/playlist";
@@ -9,6 +11,7 @@ import { useShallow } from "zustand/react/shallow";
 
 import { useMonitorStore } from "../stores/monitors";
 import type { openFileAction } from "../../shared/types";
+import type { PLAYLIST_TYPES_TYPE } from "../../shared/types/playlist";
 import { useSetLastActivePlaylist } from "../hooks/useSetLastActivePlaylist";
 import { useViewportCompactHeight } from "../hooks/useViewportCompactHeight";
 import type { PlaylistImage } from "../../electron/daemon-go-types";
@@ -17,6 +20,8 @@ import { useDragStore } from "../stores/dragStore";
 import type { DropTargetData } from "../stores/dragStore";
 import { useModalStore } from "../stores/modalStore";
 import { useActivePlaylistStore } from "../stores/activePlaylistStore";
+import { miniPlaylistStripTileWidths } from "../utils/playlistMiniCardLayout";
+import { playlistGalleryDragAddsImages } from "../utils/playlistGalleryDrag";
 
 import MiniPlaylistCard from "./MiniPlaylistCard";
 import PlaylistController from "./PlaylistController";
@@ -28,6 +33,73 @@ async function stopPlaylistSilent(playlistId: number) {
   } catch (error) {
     console.error(error);
   }
+}
+
+/** Opening gap in the strip while dragging gallery/folder — mirrors sortable shift timing (see MiniPlaylistCard layout). */
+function PlaylistGalleryInsertionGhost({
+  viewportCompact,
+  isNeo,
+  playlistType,
+}: {
+  viewportCompact: boolean;
+  isNeo: boolean;
+  playlistType: PLAYLIST_TYPES_TYPE;
+}) {
+  const widths = miniPlaylistStripTileWidths(viewportCompact);
+  const needsCaptionSpace = playlistType === "time_of_day" || playlistType === "day_of_week";
+
+  return (
+    <motion.div
+      layout
+      transition={{
+        layout: {
+          duration: 0.25,
+          ease: [0.25, 1, 0.5, 1],
+        },
+      }}
+      className="shrink-0 self-end"
+    >
+      <div className={cn("mx-1 mb-2 flex flex-col justify-end", widths)}>
+        <div
+          className={cn(
+            "aspect-[3/2] w-full border-2 border-dashed border-primary/60 bg-primary/10 shadow-inner",
+            isNeo ? "rounded-none border-primary/70" : "rounded-lg",
+          )}
+          aria-hidden
+        />
+        {needsCaptionSpace ? <div className="h-9 min-h-[2.25rem] shrink-0" aria-hidden /> : null}
+      </div>
+    </motion.div>
+  );
+}
+
+function PlaylistAppendTailDropZone({ insertIndex }: { insertIndex: number }) {
+  const appendTailDisabled = useDragStore((s) => {
+    if (!s.isDragging) return true;
+    if (s.dragType === "playlist-item") return true;
+    if (s.dragType === "image" || s.dragType === "folder") {
+      return !playlistGalleryDragAddsImages(s.dragType, s.dragIds);
+    }
+    return true;
+  });
+  const dropData = useMemo<DropTargetData>(
+    () => ({ type: "playlist-item", insertIndex }),
+    [insertIndex],
+  );
+  const { ref } = useDroppable({
+    id: "playlist-append-tail",
+    data: dropData,
+    /** Prefer this zone over strip tiles when dropping gallery/folder (cards stay Normal). */
+    collisionPriority: CollisionPriority.High,
+    disabled: appendTailDisabled,
+  });
+  return (
+    <div
+      ref={ref}
+      className="min-h-[5rem] min-w-[72px] grow shrink-0 basis-[72px] self-end"
+      aria-hidden
+    />
+  );
 }
 
 function PlaylistTrack() {
@@ -152,28 +224,6 @@ function PlaylistTrack() {
     clearStripScrollIntent,
   ]);
 
-  const lastIndex = playlist.images.length - 1;
-  const playlistArray = playlist.images.map((img, index) => {
-    const isLast =
-      playlist.configuration.type === "time_of_day"
-        ? lastAddedImageID === img.image_id
-        : index === lastIndex;
-    const isCurrentTrack =
-      isThisPlaylistActive && activePlaylist?.current_image_id === img.image_id;
-    return (
-      <MiniPlaylistCard
-        key={img.image_id}
-        isLast={isLast}
-        reorderSortingCriteria={reorderSortingCriteria}
-        type={playlist.configuration.type}
-        index={index}
-        playlistImage={img}
-        isCurrentTrack={isCurrentTrack}
-        viewportCompact={viewportCompact}
-      />
-    );
-  });
-
   useEffect(() => {
     if (isFirstRender.current) {
       isFirstRender.current = false;
@@ -224,6 +274,69 @@ function PlaylistTrack() {
 
   const isNeo = useIsNeo();
 
+  const playlistGalleryInsertPreviewAt = useDragStore((s) =>
+    s.isDragging && (s.dragType === "image" || s.dragType === "folder")
+      ? (s.overDropTarget?.playlistInsertPreviewAt ?? null)
+      : null,
+  );
+
+  const playlistStripChildren = useMemo(() => {
+    const len = playlist.images.length;
+    const lastIdx = len - 1;
+    const rows: ReactNode[] = [];
+    playlist.images.forEach((img, index) => {
+      if (playlistGalleryInsertPreviewAt === index) {
+        rows.push(
+          <PlaylistGalleryInsertionGhost
+            key={`gallery-drop-insert-at-${index}`}
+            viewportCompact={viewportCompact}
+            isNeo={isNeo}
+            playlistType={playlist.configuration.type}
+          />,
+        );
+      }
+      const isLast =
+        playlist.configuration.type === "time_of_day"
+          ? lastAddedImageID === img.image_id
+          : index === lastIdx;
+      const isCurrentTrack =
+        isThisPlaylistActive && activePlaylist?.current_image_id === img.image_id;
+      rows.push(
+        <MiniPlaylistCard
+          key={img.image_id}
+          isLast={isLast}
+          reorderSortingCriteria={reorderSortingCriteria}
+          type={playlist.configuration.type}
+          index={index}
+          playlistImage={img}
+          isCurrentTrack={isCurrentTrack}
+          viewportCompact={viewportCompact}
+        />,
+      );
+    });
+    if (playlistGalleryInsertPreviewAt === len && len > 0) {
+      rows.push(
+        <PlaylistGalleryInsertionGhost
+          key="gallery-drop-insert-end"
+          viewportCompact={viewportCompact}
+          isNeo={isNeo}
+          playlistType={playlist.configuration.type}
+        />,
+      );
+    }
+    return rows;
+  }, [
+    playlist.images,
+    playlist.configuration.type,
+    playlistGalleryInsertPreviewAt,
+    viewportCompact,
+    isNeo,
+    reorderSortingCriteria,
+    isThisPlaylistActive,
+    activePlaylist?.current_image_id,
+    lastAddedImageID,
+  ]);
+
   const dropData = useMemo<DropTargetData>(() => ({ type: "playlist" }), []);
   const { ref: playlistDropRef, isDropTarget } = useDroppable({
     id: "playlist-drop",
@@ -232,10 +345,13 @@ function PlaylistTrack() {
     collisionPriority: CollisionPriority.Lowest,
   });
 
-  const isDraggingAddable = useDragStore(
-    (s) => s.isDragging && (s.dragType === "image" || s.dragType === "folder"),
+  const showGalleryPlaylistDropChrome = useDragStore(
+    (s) =>
+      s.isDragging &&
+      (s.dragType === "image" || s.dragType === "folder") &&
+      playlistGalleryDragAddsImages(s.dragType, s.dragIds),
   );
-  const showDropIndicator = isDropTarget && isDraggingAddable;
+  const showDropIndicator = isDropTarget && showGalleryPlaylistDropChrome;
 
   const btnClass = viewportCompact
     ? isNeo
@@ -250,7 +366,7 @@ function PlaylistTrack() {
    * overflow-x-scroll keeps the scrollbar lane allocated on classic scrollbars (stable footprint).
    * Never combine overflow-y-hidden here: it clips translateY + shadows on the “raised” card. */
   const trackScrollOuterClass =
-    playlistArray.length > 0
+    playlist.images.length > 0
       ? isNeo
         ? cn(
             "neo-playlist-scroll min-w-0 w-full overflow-x-scroll overflow-y-visible [scrollbar-gutter:stable]",
@@ -262,8 +378,6 @@ function PlaylistTrack() {
             "pt-3 pb-1 [@media(max-height:1080px)]:pt-2 [@media(max-height:1080px)]:pb-0.5",
           )
       : "";
-
-  const trackScrollInnerClass = playlistArray.length > 0 ? "flex min-w-min items-end" : "";
 
   const editCardClass = cn(
     "flex flex-col gap-3 [@media(max-height:1080px)]:gap-2",
@@ -307,8 +421,8 @@ function PlaylistTrack() {
                   "font-[family-name:var(--font-display)] uppercase tracking-tight text-base-content",
               )}
             >
-              {playlistArray.length > 0
-                ? `${playlist.name?.trim() || "Unnamed Playlist"} (${playlistArray.length})`
+              {playlist.images.length > 0
+                ? `${playlist.name?.trim() || "Unnamed Playlist"} (${playlist.images.length})`
                 : ""}
             </span>
             {isDirty && (
@@ -431,21 +545,28 @@ function PlaylistTrack() {
       <div
         ref={playlistDropRef}
         className={`relative w-full min-w-0 overflow-visible transition-all duration-200 rounded-lg${
-          playlistArray.length === 0 && showDropIndicator ? " min-h-[5.5rem]" : ""
+          playlist.images.length === 0 && showDropIndicator ? " min-h-[5.5rem]" : ""
         }${showDropIndicator ? " ring-2 ring-dashed ring-primary bg-primary/10" : ""}`}
       >
-        {showDropIndicator && playlistArray.length === 0 && (
+        {showDropIndicator && playlist.images.length === 0 && (
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
             <span className="text-sm font-medium text-primary">Drop to add to playlist</span>
           </div>
         )}
         <div
           ref={trackScrollRef}
-          style={playlistArray.length > 0 ? { scrollbarGutter: "stable" } : undefined}
+          style={playlist.images.length > 0 ? { scrollbarGutter: "stable" } : undefined}
           className={cn("w-full min-w-0", trackScrollOuterClass)}
         >
-          {playlistArray.length > 0 ? (
-            <div className={trackScrollInnerClass}>{playlistArray}</div>
+          {playlist.images.length > 0 ? (
+            <div className="flex min-w-full items-end">
+              <LayoutGroup
+                id={playlist.id != null ? `playlist-strip-${playlist.id}` : "playlist-strip-local"}
+              >
+                <div className="flex min-w-min items-end">{playlistStripChildren}</div>
+              </LayoutGroup>
+              <PlaylistAppendTailDropZone insertIndex={playlist.images.length} />
+            </div>
           ) : null}
         </div>
       </div>

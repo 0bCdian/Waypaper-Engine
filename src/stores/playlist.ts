@@ -50,7 +50,7 @@ interface State {
 }
 
 interface Actions {
-  addImagesToPlaylist: (imageIds: number[]) => void;
+  addImagesToPlaylist: (imageIds: number[], insertAt?: number) => void;
   setConfiguration: (newConfiguration: PlaylistConfiguration) => void;
   setName: (newName: string) => void;
   movePlaylistArrayOrder: (newlyOrderedArray: PlaylistImage[]) => void;
@@ -86,13 +86,17 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
   lastAddedImageID: -1,
   stripScrollToImageIdOnce: null,
 
-  addImagesToPlaylist: (imageIds: number[]) => {
+  addImagesToPlaylist: (imageIds: number[], insertAt?: number) => {
     const playlistImagesSet = new Set(get().playlistImagesSet);
     const playlistImagesTimeSet = new Set(get().playlistImagesTimeSet);
     const currentPlaylist = get().playlist;
+    const currentLen = currentPlaylist.images.length;
+
+    const at =
+      insertAt === undefined ? currentLen : Math.max(0, Math.min(insertAt, currentLen));
 
     if (currentPlaylist.configuration.type === "day_of_week") {
-      const availableSpace = 7 - currentPlaylist.images.length;
+      const availableSpace = 7 - currentLen;
       if (availableSpace <= 0) return;
       imageIds = imageIds.slice(0, availableSpace);
     }
@@ -129,9 +133,14 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
     }
 
     set((state) => {
-      const newImages = [...state.playlist.images, ...imagesToAdd];
-      const newPlaylist = { ...state.playlist, images: newImages };
-      const tailId = newPlaylist.images.at(-1)?.image_id;
+      const mergedBase = [...state.playlist.images];
+      mergedBase.splice(at, 0, ...imagesToAdd);
+      const merged =
+        state.playlist.configuration.type === "time_of_day"
+          ? sortTimeOfDayPlaylistImages(mergedBase)
+          : mergedBase;
+      const newPlaylist = { ...state.playlist, images: merged };
+      const tailId = imagesToAdd.at(-1)?.image_id;
       persistPlaylist(newPlaylist);
       return {
         playlist: newPlaylist,
