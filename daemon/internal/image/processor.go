@@ -571,7 +571,14 @@ func (p *Processor) preProcessOne(sourcePath, destPath, name, ext, format string
 		r.height = meta.Height
 		r.duration = meta.Duration
 		r.audio = meta.HasAudio
-		r.colors = []string{}
+		colors, perr := extractVideoPaletteColors(context.Background(), destPath, meta.Duration, meta.Width, meta.Height)
+		if perr != nil {
+			slog.Warn("video palette extraction failed, continuing without colors",
+				"path", destPath, "error", perr)
+			r.colors = []string{}
+		} else {
+			r.colors = colors
+		}
 		return r
 	}
 

@@ -15,3 +15,13 @@ export function loopStudioMediaSrc(path: string): string {
   if (/^[A-Za-z]:[\\/]/.test(p)) return `atom://${p.replace(/\\/g, "/")}`;
   return p;
 }
+
+/** Prefer browser-playable proxy (H.264) when the daemon generated one for the gallery row. */
+export function loopStudioGalleryVideoSrc(img: {
+  path: string;
+  preview_path?: string | null;
+}): string {
+  const proxy = img.preview_path?.trim();
+  if (proxy) return loopStudioMediaSrc(proxy);
+  return loopStudioMediaSrc(img.path);
+}

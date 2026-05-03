@@ -1,5 +1,6 @@
 import type {
   DeleteImagesRequest,
+  ExtractVideoPaletteRequest,
   Image,
   ImageHistoryEntry,
   ImageQueryParams,
@@ -51,6 +52,18 @@ export class ImagesClient {
       `/images/${imageId}/video-loop-export`,
       body,
       900_000,
+    );
+  }
+
+  async extractVideoPalette(
+    imageId: number,
+    body: ExtractVideoPaletteRequest,
+  ): Promise<{ colors: string[]; image_id: number }> {
+    return this.t.request<{ colors: string[]; image_id: number }>(
+      "POST",
+      `/images/${imageId}/extract-video-palette`,
+      body,
+      120_000,
     );
   }
 

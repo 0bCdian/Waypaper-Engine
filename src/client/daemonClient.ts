@@ -22,6 +22,8 @@ export const daemonClient = {
     gd().ensureBrowserPreview(...args),
   videoLoopExport: (...args: Parameters<GoDaemon["videoLoopExport"]>) =>
     gd().videoLoopExport(...args),
+  extractVideoPalette: (...args: Parameters<GoDaemon["extractVideoPalette"]>) =>
+    gd().extractVideoPalette(...args),
   importImages: (...args: Parameters<GoDaemon["importImages"]>) => gd().importImages(...args),
   importWebWallpaper: (...args: Parameters<GoDaemon["importWebWallpaper"]>) =>
     gd().importWebWallpaper(...args),

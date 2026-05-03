@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Follow Waypaper Engine's SSE stream on the daemon Unix socket. On each
-# `wallpaper_changed` event, resolve the file path and run **pywal** or **matugen**
-# from that image.
+# `wallpaper_changed` event, read **path** and **media_type** from the JSON
+# payload (see daemon/API_CONTRACT.md) and run **pywal** or **matugen** on
+# that file. Falls back to GET /images/{id} only if path is missing.
 #
 # Dependencies: curl, jq. Optional: ffmpeg (if WAYPAPER_COLOR_ALLOW_VIDEO=1).
 #
-# Be advised: **web** / HTML wallpapers use a different pipeline; this script
-# **skips** `media_type=web` by default. Video is skipped unless
-# WAYPAPER_COLOR_ALLOW_VIDEO=1 (one frame via ffmpeg).
+# Be advised: **web** wallpapers are skipped unless WAYPAPER_COLOR_ALLOW_WEB=1.
+# Video is skipped unless WAYPAPER_COLOR_ALLOW_VIDEO=1 (one frame via ffmpeg).
 #
 # Examples:
 #   WAYPAPER_COLOR_TOOL=pywal ./waypaper-color-hook.sh
@@ -17,18 +17,18 @@
 
 set -euo pipefail
 
+SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+# shellcheck source=waypaper-color-helpers.sh
+source "$SCRIPT_DIR/waypaper-color-helpers.sh"
+
 : "${XDG_RUNTIME_DIR:=/tmp}"
 : "${WAYPAPER_SOCKET:=$XDG_RUNTIME_DIR/waypaper-engine.sock}"
 # pywal | matugen
 : "${WAYPAPER_COLOR_TOOL:=pywal}"
-# Extra args (word-split; use a wrapper if you need complex quoting)
 : "${WAYPAPER_PYWAL_ARGS:=-n -q}"
 : "${WAYPAPER_MATUGEN_ARGS:=}"
-# Non-empty: also run for media_type=video (ffmpeg samples one frame)
 : "${WAYPAPER_COLOR_ALLOW_VIDEO:=}"
-# Non-empty: do not skip media_type=web (still needs a real file at .path)
 : "${WAYPAPER_COLOR_ALLOW_WEB:=}"
-# If set and > 0, sleep that many seconds before each color run (coalesce bursts)
 : "${WAYPAPER_COLOR_DEBOUNCE_SEC:=0}"
 
 if ! command -v curl >/dev/null; then
@@ -67,23 +67,20 @@ http_get() {
 	curl -sS --fail --unix-socket "$WAYPAPER_SOCKET" "http://localhost$1"
 }
 
-apply_colors() {
-	local path=$1
-	case $WAYPAPER_COLOR_TOOL in
-		pywal)
-			# shellcheck disable=SC2086
-			wal -i "$path" $WAYPAPER_PYWAL_ARGS
-			;;
-		matugen)
-			# shellcheck disable=SC2086
-			matugen image "$path" $WAYPAPER_MATUGEN_ARGS
-			;;
+# Gallery GET /images/{id} uses media_type image|video|gif|web — align with SSE.
+normalize_gallery_media_type() {
+	case $1 in
+		gif | image) echo image ;;
+		video) echo video ;;
+		web) echo web ;;
+		*) echo "$1" ;;
 	esac
 }
 
 process_image_id() {
 	local id=$1
-	local path media_type need_frame work json
+	local json path media_type
+
 	[[ -z $id || $id == null ]] && return 0
 
 	if ! json=$(http_get "/images/$id"); then
@@ -93,62 +90,39 @@ process_image_id() {
 
 	path=$(printf '%s' "$json" | jq -r '.path // empty' 2>/dev/null) || true
 	media_type=$(printf '%s' "$json" | jq -r '.media_type // empty' 2>/dev/null) || true
+	media_type=$(normalize_gallery_media_type "${media_type:-image}")
 
 	if [[ -z $path || ! -f $path ]]; then
 		echo "waypaper-color-hook: no local file for image_id=$id (type=$media_type), skipping" >&2
 		return 0
 	fi
 
-	need_frame=
-	case $media_type in
-		web)
-			if [[ -z ${WAYPAPER_COLOR_ALLOW_WEB:-} ]]; then
-				echo "waypaper-color-hook: skipping web wallpaper (id=$id)" >&2
-				return 0
-			fi
-			;;
-		video)
-			if [[ -z ${WAYPAPER_COLOR_ALLOW_VIDEO:-} ]]; then
-				echo "waypaper-color-hook: skipping video (set WAYPAPER_COLOR_ALLOW_VIDEO=1; needs ffmpeg), id=$id" >&2
-				return 0
-			fi
-			if ! command -v ffmpeg >/dev/null; then
-				echo "waypaper-color-hook: ffmpeg not found" >&2
-				return 0
-			fi
-			need_frame=1
-			;;
-	esac
+	waypaper_color_process_path "$path" "$media_type" "image_id=$id"
+}
 
-	work=$path
-	if [[ -n $need_frame ]]; then
-		work=$(mktemp "/tmp/waypaper-color-hook.XXXXXX.png")
-		if ! ffmpeg -nostdin -y -i "$path" -vframes 1 -q:v 2 "$work" 2>/dev/null; then
-			echo "waypaper-color-hook: ffmpeg failed for $path" >&2
-			rm -f "$work"
-			return 0
-		fi
-		cleanup_frame() { rm -f "$work"; }
-		trap cleanup_frame RETURN
+process_wallpaper_sse_payload() {
+	local json=$1
+	local path media_type id
+
+	path=$(printf '%s' "$json" | jq -r '.path // empty' 2>/dev/null) || true
+	media_type=$(printf '%s' "$json" | jq -r '.media_type // empty' 2>/dev/null) || true
+	id=$(printf '%s' "$json" | jq -r '.image_id // empty' 2>/dev/null) || true
+
+	[[ -z $media_type ]] && media_type=image
+
+	if [[ -n $path && -f $path ]]; then
+		waypaper_color_process_path "$path" "$media_type" "image_id=$id"
+		return 0
 	fi
 
-	# Optional delay to coalesce rapid duplicate events (e.g. 0.3)
-	if [[ -n $WAYPAPER_COLOR_DEBOUNCE_SEC && $WAYPAPER_COLOR_DEBOUNCE_SEC != 0 ]]; then
-		sleep "$WAYPAPER_COLOR_DEBOUNCE_SEC"
-	fi
-
-	echo "waypaper-color-hook: image_id=$id type=$media_type -> $WAYPAPER_COLOR_TOOL $work" >&2
-	apply_colors "$work" || echo "waypaper-color-hook: $WAYPAPER_COLOR_TOOL exited $? (continuing stream)" >&2
-
-	if [[ -n $need_frame ]]; then
-		trap - RETURN
-		rm -f "$work"
+	if [[ -n $id && $id != null ]]; then
+		echo "waypaper-color-hook: event missing usable path, fetching image_id=$id" >&2
+		process_image_id "$id"
 	fi
 }
 
 current_event=""
 
-# Keep reconnecting if the daemon restarts
 while true; do
 	while IFS= read -r line || true; do
 		[[ -z $line ]] && continue
@@ -165,10 +139,7 @@ while true; do
 			local_data=${local_data## }
 			local_data=${local_data%%$'\r'}
 			if [[ $current_event == wallpaper_changed && -n $local_data ]]; then
-				id=$(
-					printf '%s' "$local_data" | jq -e -r '.image_id // empty' 2>/dev/null || true
-				)
-				[[ -n $id ]] && process_image_id "$id" || true
+				process_wallpaper_sse_payload "$local_data" || true
 			fi
 			current_event=""
 		fi

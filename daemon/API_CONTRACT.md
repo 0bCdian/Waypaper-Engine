@@ -177,20 +177,6 @@ Delete images by ID. Removes files from disk and database.
 
 ---
 
-### `GET /images/count`
-
-Total image count.
-
-**Response** `200`:
-
-```json
-{
-  "count": 120
-}
-```
-
----
-
 ### `GET /images/{id}`
 
 Get a single image by ID.
@@ -203,7 +189,7 @@ Get a single image by ID.
 
 ### `PATCH /images/{id}`
 
-Update mutable image fields.
+Update mutable image fields. Renaming (display name + underlying file) is handled here — there is no separate rename endpoint.
 
 **Request Body** (partial — only include fields to update):
 
@@ -301,37 +287,11 @@ Get the path to a thumbnail file.
 
 ---
 
-### `GET /images/{id}/thumbnail/raw`
-
-Serves the thumbnail file directly as `image/webp`.
-
-**Query Parameters**: Same as above (`resolution`).
-
-**Response** `200`: Binary image data (`Content-Type: image/webp`).
-
----
-
 ### `GET /images/{id}/raw`
 
 Serves the original image file directly.
 
 **Response** `200`: Binary image data (`Content-Type: image/{format}`).
-
----
-
-### `POST /images/{id}/rename`
-
-Rename the image display name and underlying file name (safe + unique).
-
-**Request Body**:
-
-```json
-{
-  "name": "new_wallpaper_name"
-}
-```
-
-**Response** `200`: Updated [`Image`](#image) object.
 
 ---
 
@@ -976,7 +936,7 @@ Returns the persisted configuration JSON for a **named** registered backend (e.g
 
 Updates a named backend’s subsection. Body is a JSON object merged into that backend’s config; it is validated with that backend’s `ValidateConfig()` before save.
 
-**Runtime sync**: `RuntimeConfigSync` runs **only** when `{backend}` equals the **currently active** backend.
+**Runtime sync**: `backend.OnConfigChanged` is called **only** when `{backend}` equals the **currently active** backend.
 
 **Response** `200`: `{"status":"updated"}` (or equivalent success body used elsewhere for config patches).
 
@@ -1129,13 +1089,13 @@ This document defines daemon HTTP behavior. The Electron renderer interacts thro
 
 Important bridge behavior:
 
-- Most Electron IPC channels are wrapped by main-process `IPCManager` as:
-  - success: `{ "success": true, "data": <value> }`
-  - error: `{ "success": false, "error": "..." }`
-- `go-daemon-command` is the exception: it is **unwrapped** and returns raw data/errors.
+- **IPC channel**: `"daemon"` — the main-process `IPCManager` handles `ipcMain.handle("daemon", ...)`.
+- **Request shape**: `DaemonRequest` — a TypeScript discriminated union (`electron/ipc-types.ts`); each variant's `type` field corresponds to a daemon action.
+- **Response shape**: raw daemon JSON — **not** wrapped in `{ success, data }`. Errors propagate as rejections.
+- **Client singleton**: React code imports `daemonClient` from `src/client/` instead of calling `window.API_RENDERER.goDaemon` directly.
 - Some daemon image payload paths are rewritten for renderer use:
   - `path` and `thumbnails.*` may be converted from filesystem paths to `atom://...` URLs.
-  - This affects renderer-visible payloads for actions like image listing/get/rename.
+  - This affects renderer-visible payloads for actions like image listing and get.
 - Renderer convenience method signatures (for example `shutdown(): Promise<void>`) may abstract raw daemon return payloads (daemon still returns `{ "status": "shutting_down" }`).
 
 ---

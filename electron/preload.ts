@@ -25,6 +25,8 @@ import type {
   WallpaperCurrent,
   EventType,
   Folder,
+  ExtractVideoPaletteRequest,
+  ExtractVideoPaletteResult,
   VideoLoopExportRequest,
   VideoLoopExportResult,
 } from "./daemon-go-types";
@@ -64,6 +66,12 @@ const electronAPI = {
 
     videoLoopExport: (id: number, body: VideoLoopExportRequest): Promise<VideoLoopExportResult> =>
       invoke({ type: "video_loop_export", id, body }),
+
+    extractVideoPalette: (
+      id: number,
+      body: ExtractVideoPaletteRequest,
+    ): Promise<ExtractVideoPaletteResult> =>
+      invoke({ type: "extract_video_palette", id, body }),
 
     importImages: (
       paths: string[],

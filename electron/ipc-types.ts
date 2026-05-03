@@ -18,6 +18,8 @@ export type {
   ImageQueryParams,
   PaginatedResponse,
   ImageHistoryEntry,
+  ExtractVideoPaletteRequest,
+  ExtractVideoPaletteResult,
   UpdateImageRequest,
   Playlist,
   CreatePlaylistRequest,
@@ -40,6 +42,8 @@ import type {
   ImageQueryParams,
   PaginatedResponse,
   ImageHistoryEntry,
+  ExtractVideoPaletteRequest,
+  ExtractVideoPaletteResult,
   UpdateImageRequest,
   Playlist,
   CreatePlaylistRequest,
@@ -73,6 +77,7 @@ export type DaemonRequest =
   | { type: "get_image"; id: number }
   | { type: "ensure_browser_preview"; id: number; force?: boolean }
   | { type: "video_loop_export"; id: number; body: VideoLoopExportRequest }
+  | { type: "extract_video_palette"; id: number; body: ExtractVideoPaletteRequest }
   | { type: "import_images"; paths: string[]; folder_id?: number | null }
   | { type: "import_web_wallpaper"; path: string; folder_id?: number | null }
   | { type: "cancel_import"; batch_id: string }
@@ -175,7 +180,9 @@ export type DaemonResponse<T extends DaemonRequest> =
                 ? Image
                 : T extends { type: "video_loop_export" }
                   ? VideoLoopExportResult
-                  : T extends { type: "import_images" }
+                  : T extends { type: "extract_video_palette" }
+                    ? ExtractVideoPaletteResult
+                    : T extends { type: "import_images" }
                     ? { status: string; total: number }
                     : T extends { type: "import_web_wallpaper" }
                       ? Image

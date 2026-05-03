@@ -16,6 +16,7 @@ export default defineConfig({
   head: [["meta", { name: "theme-color", content: "#1c1917" }]],
   ignoreDeadLinks: true,
   themeConfig: {
+    logo: "/logo.png",
     nav: [
       { text: "Home", link: "/" },
       { text: "Guide", link: "/guide/introduction" },

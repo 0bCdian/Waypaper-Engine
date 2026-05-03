@@ -1,4 +1,5 @@
 import { vi } from "vitest";
+import type { Image } from "../../../electron/daemon-go-types";
 import type { DaemonClient } from "@/client";
 
 export const mockDaemonClient: DaemonClient = {
@@ -13,6 +14,11 @@ export const mockDaemonClient: DaemonClient = {
   getImage: vi.fn().mockResolvedValue(null),
   ensureBrowserPreview: vi.fn().mockResolvedValue(null),
   videoLoopExport: vi.fn().mockResolvedValue({ status: "ok" }),
+  extractVideoPalette: vi.fn().mockResolvedValue({
+    colors: [],
+    image_id: 0,
+    image: { id: 0, name: "", path: "", media_type: "video", colors: [] } as unknown as Image,
+  }),
   importImages: vi.fn().mockResolvedValue({ status: "ok", total: 0 }),
   importWebWallpaper: vi.fn().mockResolvedValue(null),
   cancelImport: vi.fn().mockResolvedValue({ status: "ok", batch_id: "" }),

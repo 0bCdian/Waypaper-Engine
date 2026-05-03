@@ -42,6 +42,14 @@ func ExtractPalette(imagePath string, numColors int) ([]string, error) {
 
 	sampled := downsample(src, sampleSize)
 	pixels := extractPixels(sampled)
+	return paletteHexFromPixels(pixels, numColors)
+}
+
+// paletteHexFromPixels runs k-means in LAB on RGB samples (shared by still images and pooled video frames).
+func paletteHexFromPixels(pixels []rgbPixel, numColors int) ([]string, error) {
+	if numColors <= 0 {
+		numColors = defaultNumColors
+	}
 	if len(pixels) == 0 {
 		return nil, fmt.Errorf("palette: no pixels extracted")
 	}
@@ -84,6 +92,35 @@ func ExtractPalette(imagePath string, numColors int) ([]string, error) {
 	}
 
 	return hexColors, nil
+}
+
+// decodeVideoFramePixelsForPalette decodes a frame PNG/JPEG and scales so the longest edge is at most maxEdge
+// (same convention as downsample). Keeps native resolution when already smaller than maxEdge.
+func decodeVideoFramePixelsForPalette(imagePath string, maxEdge int) ([]rgbPixel, error) {
+	if maxEdge > 0 && maxEdge < sampleSize {
+		maxEdge = sampleSize
+	}
+	f, err := os.Open(imagePath)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+	src, _, err := image.Decode(f)
+	if err != nil {
+		return nil, err
+	}
+	var sampled image.Image
+	if maxEdge <= 0 {
+		sampled = src
+	} else {
+		sampled = downsample(src, maxEdge)
+	}
+	return extractPixels(sampled), nil
+}
+
+// decodeDownsamplePixels reads an image file at the small grid used for static ExtractPalette helpers/tests.
+func decodeDownsamplePixels(imagePath string) ([]rgbPixel, error) {
+	return decodeVideoFramePixelsForPalette(imagePath, sampleSize)
 }
 
 func downsample(src image.Image, size int) image.Image {

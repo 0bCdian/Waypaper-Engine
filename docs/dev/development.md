@@ -119,19 +119,25 @@ Each backend implements the `Backend` interface (defined in `internal/backend/ba
 ```go
 type Backend interface {
     Name() string
-    Available() bool
+    IsAvailable() bool
     Capabilities() Capabilities
-    Set(ctx context.Context, req SetRequest) error
-    Stop() error
+    Initialize(ctx context.Context) error
+    Shutdown(ctx context.Context) error
+    SetWallpaper(ctx context.Context, req WallpaperRequest) error
+    RegisterDefaults(v *viper.Viper)
     ValidateConfig(raw json.RawMessage) error
+    ParseConfig(raw json.RawMessage) error
+    OnConfigChanged(ctx context.Context, raw json.RawMessage) error
 }
 ```
+
+`WallpaperRequest` carries image path, mode, monitor list, and an optional `ExtendGroup []string` for extend-mode targets. Config sync (previously `RuntimeConfigSync`) now lives in `OnConfigChanged` — called automatically when the active backend's config section changes.
 
 To add a new backend:
 
 1. Create `internal/backend/<name>/backend.go` implementing the interface.
-2. Register it in the backend registry (see existing backends for the pattern).
-3. Add its config struct and defaults to `internal/config/`.
+2. Register it in `cmd/daemon/main.go` (see existing backends for the pattern).
+3. Call `b.RegisterDefaults(cfg.Viper())` after registration.
 4. Wire its config section in `daemon/API_CONTRACT.md` and `openapi.yaml`.
 
 ### Config (`internal/config/`)
@@ -166,13 +172,15 @@ Responsible for:
 
 ### IPCManager (`electron/managers/IPCManager.ts`)
 
-Registers IPC handlers that proxy to the daemon HTTP API. The renderer calls `window.API_RENDERER.someMethod()` → IPC → main process → HTTP to socket → back.
-
-Most channels wrap responses as `{ success: true, data: ... }` or `{ success: false, error: "..." }`. The exception is `go-daemon-command`, which passes raw data through.
+Registers IPC handlers that proxy to the daemon HTTP API. The main channel is `"daemon"`, which receives a `DaemonRequest` (a TypeScript discriminated union in `electron/ipc-types.ts`) and returns raw daemon JSON. Most other channels wrap responses as `{ success: true, data: ... }` or `{ success: false, error: "..." }`.
 
 ### Preload bridge (`electron/preload.ts`)
 
-Exposes `window.API_RENDERER` to the renderer. **Never** call daemon HTTP directly from the renderer—always go through the bridge.
+Exposes `window.API_RENDERER` to the renderer. **Never** call daemon HTTP directly from the renderer—always go through the bridge via `daemonClient` (imported from `src/client/`).
+
+### daemonClient (`src/client/daemonClient.ts`)
+
+A singleton that wraps every `window.API_RENDERER.goDaemon` method. React stores and components import from `@/client` instead of accessing `window.API_RENDERER` directly. This keeps IPC details out of UI code and makes mocking easy in tests (`src/test/mocks/daemonClient.ts`).
 
 ---
 

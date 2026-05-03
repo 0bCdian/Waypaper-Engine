@@ -27,14 +27,15 @@ export class HttpTransport {
         });
         res.on("end", () => {
           try {
+            const trimmed = data.trim().replace(/^\uFEFF/, "");
             if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
-              if (data.trim() === "") {
+              if (trimmed === "") {
                 resolve(undefined as T);
               } else {
-                resolve(JSON.parse(data) as T);
+                resolve(JSON.parse(trimmed) as T);
               }
             } else {
-              const errorData = data ? JSON.parse(data) : { error: `HTTP ${res.statusCode}` };
+              const errorData = trimmed ? JSON.parse(trimmed) : { error: `HTTP ${res.statusCode}` };
               const err = new Error(errorData.error || `HTTP ${res.statusCode}`) as Error & {
                 errorCode?: string;
                 meta?: Record<string, unknown>;

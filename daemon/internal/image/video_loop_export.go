@@ -286,6 +286,9 @@ func (p *Processor) VideoLoopExport(
 		if err := p.refreshVideoAfterReplace(ctx, imageID, finalPath, format); err != nil {
 			return nil, err
 		}
+		if palErr := p.PersistPaletteFromVideoSample(ctx, imageID, finalPath); palErr != nil {
+			slog.Warn("loop export replace: palette extract failed", "image_id", imageID, "error", palErr)
+		}
 		updated, gerr := p.imageStore.GetByID(ctx, imageID)
 		if gerr != nil {
 			return nil, gerr
@@ -345,6 +348,9 @@ func (p *Processor) ingestSingleExportedVideo(
 	created := &imgs[0]
 	if err := p.generateVideoThumbnailsAndPreview(ctx, created); err != nil {
 		slog.Warn("loop export import: thumbnail/preview failed", "image_id", created.ID, "error", err)
+	}
+	if palErr := p.PersistPaletteFromVideoSample(ctx, created.ID, destPath); palErr != nil {
+		slog.Warn("loop export import: palette extract failed", "image_id", created.ID, "error", palErr)
 	}
 	return created, nil
 }

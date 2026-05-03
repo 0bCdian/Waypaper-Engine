@@ -229,6 +229,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/images/{id}/extract-video-palette": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    get?: never;
+    put?: never;
+    /** Extract dominant colors from one frame (same algorithm as still images); persists colors on the gallery row */
+    post: operations["extractVideoPalette"];
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/images/{id}/thumbnail": {
     parameters: {
       query?: never;
@@ -1242,6 +1259,38 @@ export interface operations {
           [name: string]: unknown;
         };
         content?: never;
+      };
+    };
+  };
+  extractVideoPalette: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path: {
+        id: components["parameters"]["ImageId"];
+      };
+      cookie?: never;
+    };
+    requestBody: {
+      content: {
+        "application/json": {
+          /** @description Timeline position in seconds (clamped to stream duration) */
+          time_seconds?: number;
+        };
+      };
+    };
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": {
+            colors: string[];
+            image_id: number;
+          };
+        };
       };
     };
   };

@@ -79,6 +79,11 @@ export function createMockAPI(): Window["API_RENDERER"] {
         image_id: 1,
         path: "atom://tmp/x.webm",
       }),
+      extractVideoPalette: vi.fn().mockResolvedValue({
+        colors: ["#112233", "#445566"],
+        image_id: 1,
+        image: { id: 1, name: "mock", path: "/tmp/x.mp4", colors: ["#112233", "#445566"] },
+      }),
       importImages: vi.fn().mockResolvedValue({ status: "processing", total: 0 }),
       importWebWallpaper: vi.fn().mockResolvedValue(null),
       cancelImport: vi.fn().mockResolvedValue({ status: "cancelled", batch_id: "" }),

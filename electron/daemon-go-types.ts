@@ -633,6 +633,16 @@ export interface VideoLoopExportResult {
   path: string;
 }
 
+export interface ExtractVideoPaletteRequest {
+  time_seconds: number;
+}
+
+export interface ExtractVideoPaletteResult {
+  colors: string[];
+  image_id: number;
+  image: Image;
+}
+
 export interface DeleteImagesRequest {
   ids: number[];
 }

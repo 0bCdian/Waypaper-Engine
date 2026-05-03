@@ -4,7 +4,8 @@ import type { VideoLoopExportRequest } from "../../electron/daemon-go-types";
 import { useFoldersStore } from "@/stores/foldersStore";
 import { useImagesStore } from "@/stores/images";
 import { useToastStore } from "@/stores/toastStore";
-import { loopStudioMediaSrc } from "@/utils/loopStudio/mediaUrl";
+import { loopStudioGalleryVideoSrc, loopStudioMediaSrc } from "@/utils/loopStudio/mediaUrl";
+import { waitForGalleryVideoBySourcePath } from "@/utils/loopStudio/waitGalleryImport";
 import { clientXToWipeMix } from "@/utils/loopStudio/compareWipePointer";
 import { computeLoopMatchScore } from "@/utils/loopStudio/matchScore";
 import { formatLoopTime, formatLoopTimeShort, parseLoopTime } from "@/utils/loopStudio/timeFormat";
@@ -43,6 +44,24 @@ async function tryVideoLoopExport(
     return {
       ok: false,
       error: e instanceof Error ? e.message : "Export failed",
+    };
+  }
+}
+
+async function tryExtractVideoPalette(
+  imageId: number,
+  timeSeconds: number,
+): Promise<
+  | { ok: true; res: Awaited<ReturnType<typeof daemonClient.extractVideoPalette>> }
+  | { ok: false; error: string }
+> {
+  try {
+    const res = await daemonClient.extractVideoPalette(imageId, { time_seconds: timeSeconds });
+    return { ok: true, res };
+  } catch (e) {
+    return {
+      ok: false,
+      error: e instanceof Error ? e.message : "Palette extract failed",
     };
   }
 }
@@ -87,6 +106,7 @@ export default function LoopStudio() {
   const [youtubeUrl, setYoutubeUrl] = useState("");
   const [youtubeBusy, setYoutubeBusy] = useState(false);
   const [previewMuted, setPreviewMuted] = useState(false);
+  const [paletteBusy, setPaletteBusy] = useState(false);
 
   const trimmedMedia = mediaSrc?.trim();
   const playbackSrc = trimmedMedia ? trimmedMedia : null;
@@ -151,7 +171,7 @@ export default function LoopStudio() {
           setMediaSrc(null);
           return;
         }
-        setMediaSrc(loopStudioMediaSrc(img.path));
+        setMediaSrc(loopStudioGalleryVideoSrc(img));
       })
       .catch(() => {
         addToast("Failed to load video from gallery", "error");
@@ -554,10 +574,11 @@ export default function LoopStudio() {
   );
 
   const importPathToGallery = useCallback(
-    async (absPath: string) => {
+    async (absPath: string): Promise<number | null> => {
       const folderId = useFoldersStore.getState().currentFolderId ?? undefined;
       await daemonClient.importImages([absPath], folderId);
-      reQueryImages();
+      void reQueryImages();
+      return waitForGalleryVideoBySourcePath(absPath);
     },
     [reQueryImages],
   );
@@ -573,8 +594,19 @@ export default function LoopStudio() {
       const result = await tryDownloadYoutube(trimmed);
       if ("filePath" in result) {
         openVideoPathPreview(result.filePath);
-        await importPathToGallery(result.filePath);
-        addToast("YouTube video: preview ready; import queued for gallery.", "success", 5000);
+        addToast("YouTube video: preview ready; importing to gallery…", "success", 4500);
+        const galleryId = await importPathToGallery(result.filePath);
+        if (galleryId !== null) {
+          setPreviewOnly(false);
+          setImageId(galleryId);
+          addToast("Linked to gallery row — palette and export are enabled.", "success", 4000);
+        } else {
+          addToast(
+            "Still importing — select the video from the list in a moment to enable FFmpeg tools.",
+            "warning",
+            7000,
+          );
+        }
         setYoutubeUrl("");
       } else {
         addToast(result.error, "error");
@@ -678,12 +710,14 @@ export default function LoopStudio() {
       if (exportAction === "import_new") {
         setImageId(res.image_id);
         setPreviewOnly(false);
-        setMediaSrc(loopStudioMediaSrc(res.path));
-        setLoaded(false);
-        setReloadToken((t) => t + 1);
+        void daemonClient.getImage(res.image_id).then((img) => {
+          setMediaSrc(loopStudioGalleryVideoSrc(img));
+          setLoaded(false);
+          setReloadToken((t) => t + 1);
+        });
       } else {
         void daemonClient.getImage(imageId).then((img) => {
-          setMediaSrc(loopStudioMediaSrc(img.path));
+          setMediaSrc(loopStudioGalleryVideoSrc(img));
           setLoaded(false);
           setReloadToken((t) => t + 1);
         });
@@ -702,6 +736,26 @@ export default function LoopStudio() {
     addToast,
     reQueryImages,
   ]);
+
+  const runExtractPaletteFromPlayhead = useCallback(async () => {
+    if (!imageId) {
+      addToast("Choose a gallery video first", "error");
+      return;
+    }
+    if (ffmpegAvailable === false) {
+      addToast("ffmpeg not available", "error");
+      return;
+    }
+    setPaletteBusy(true);
+    const result = await tryExtractVideoPalette(imageId, playhead);
+    if (result.ok) {
+      addToast(`Saved ${result.res.colors.length} palette colors to the gallery`, "success", 3500);
+      void reQueryImages();
+    } else {
+      addToast(result.error, "error");
+    }
+    setPaletteBusy(false);
+  }, [imageId, ffmpegAvailable, playhead, addToast, reQueryImages]);
 
   const pct = (t: number) => (duration ? (t / duration) * 100 : 0);
   const tAt = (p: number) => Math.max(0, Math.min(duration, p * duration));
@@ -1056,6 +1110,25 @@ export default function LoopStudio() {
               </div>
 
               <div className="flex shrink-0 flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="btn btn-outline btn-sm"
+                  disabled={
+                    !imageId || previewOnly || ffmpegAvailable === false || paletteBusy || duration <= 0
+                  }
+                  title={
+                    ffmpegAvailable === false
+                      ? "ffmpeg not found — install it and reopen this page"
+                      : "Dominant colors from the frame at the playhead (same algorithm as image import)"
+                  }
+                  onClick={() => void runExtractPaletteFromPlayhead()}
+                >
+                  {paletteBusy ? (
+                    <span className="loading loading-spinner loading-xs" />
+                  ) : (
+                    "Palette from playhead"
+                  )}
+                </button>
                 <button
                   type="button"
                   className="btn btn-primary btn-sm"

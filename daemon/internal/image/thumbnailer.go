@@ -1,6 +1,7 @@
 package image
 
 import (
+	"context"
 	"fmt"
 	"image"
 	"image/color"
@@ -162,6 +163,39 @@ func ffmpegExtractFrame(videoPath string) (string, func(), error) {
 		"-y",
 		"-ss", seek,
 		"-i", videoPath,
+		"-frames:v", "1",
+		tmpPath,
+	)
+	if err := cmd.Run(); err != nil {
+		_ = os.Remove(tmpPath)
+		return "", nil, fmt.Errorf("thumbnailer: ffmpeg frame extract failed: %w", err)
+	}
+	return tmpPath, func() { _ = os.Remove(tmpPath) }, nil
+}
+
+// FFmpegExtractFrameAt writes one PNG frame at seekSeconds on the timeline. Uses -ss after -i
+// so the timestamp matches loop authoring / UI scrub positions.
+func FFmpegExtractFrameAt(ctx context.Context, videoPath string, seekSeconds float64) (string, func(), error) {
+	if ctx == nil {
+		ctx = context.Background()
+	}
+	tmp, err := os.CreateTemp("", "waypaper-video-palette-*.png")
+	if err != nil {
+		return "", nil, fmt.Errorf("thumbnailer: create temp file: %w", err)
+	}
+	tmpPath := tmp.Name()
+	_ = tmp.Close()
+	ffmpeg := resolveFFmpeg()
+	if ffmpeg == "" {
+		_ = os.Remove(tmpPath)
+		return "", nil, fmt.Errorf("thumbnailer: ffmpeg not found in PATH or standard locations")
+	}
+	cmd := exec.CommandContext(ctx, ffmpeg,
+		"-hide_banner",
+		"-loglevel", "error",
+		"-y",
+		"-i", videoPath,
+		"-ss", fmt.Sprintf("%.6f", seekSeconds),
 		"-frames:v", "1",
 		tmpPath,
 	)

@@ -534,6 +534,11 @@ export class IPCManager {
             path: r.path?.startsWith("/") ? `atom://${r.path.substring(1)}` : r.path,
           };
         }
+        case "extract_video_palette": {
+          const r = await goDaemonClient.extractVideoPalette(req.id, req.body);
+          const img = this.convertPathsToAtomProtocol([r.image])[0];
+          return { colors: r.colors, image: img };
+        }
         case "import_images":
           return await goDaemonClient.importImages(req.paths, req.folder_id ?? undefined);
         case "import_web_wallpaper": {

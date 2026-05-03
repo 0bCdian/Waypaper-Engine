@@ -19,6 +19,8 @@ import type {
   Folder,
   VideoLoopExportRequest,
   VideoLoopExportResult,
+  ExtractVideoPaletteRequest,
+  ExtractVideoPaletteResult,
 } from "../../electron/daemon-go-types";
 declare global {
   const __DEBUG__: boolean;
@@ -50,6 +52,10 @@ declare global {
           id: number,
           body: VideoLoopExportRequest,
         ) => Promise<VideoLoopExportResult>;
+        extractVideoPalette: (
+          id: number,
+          body: ExtractVideoPaletteRequest,
+        ) => Promise<ExtractVideoPaletteResult>;
         importImages: (
           paths: string[],
           folderID?: number | null,

@@ -31,7 +31,7 @@ curl -sS --unix-socket -X POST "$SOCK" "http://localhost/wallpaper/random" \
 
 - **Health / meta:** `GET /healthz`, `GET /info`, `GET /capabilities` (e.g. whether **ffmpeg** is available), `POST /shutdown`
 - **SSE:** `GET /events` — see [Events & SSE](/api/sse)
-- **Images:** `GET/POST/DELETE /images`, tags, import cancel, **web import** (`POST /images/import-web`), **browser video preview** (`POST /images/{id}/ensure-browser-preview`), **loop export** (`POST /images/{id}/video-loop-export`), thumbnails, raw files, **history** under `/images/history`, …
+- **Images:** `GET/POST/DELETE /images`, tags, import cancel, **browser video preview** (`POST /images/{id}/ensure-browser-preview`), **loop export** (`POST /images/{id}/video-loop-export`), thumbnails, raw files, **history** under `/images/history`, …
 - **Playlists:** CRUD, start/stop/pause/resume, next/prev, bulk active operations, `GET /playlists/active` and `GET /playlists/active/{monitor}`
 - **Folders:** tree operations and `POST /folders/move-images`
 - **Monitors:** `GET /monitors`, `GET /monitors/{name}`
@@ -41,6 +41,6 @@ curl -sS --unix-socket -X POST "$SOCK" "http://localhost/wallpaper/random" \
 
 **NOTE** — _Web / local spec:_ the contract on GitHub includes a **”Local Spec v0”** section for `media_type: web` and wayland-utauri—read that if you build HTML walls.
 
-**NOTE** — _Electron UI:_ the renderer uses the **preload bridge**, not ad hoc `fetch` to the socket; see the **bridge** section in the [same contract on GitHub](https://github.com/0bCdian/Waypaper-Engine/blob/main/daemon/API_CONTRACT.md#electron-renderer-bridge-notes).
+**NOTE** — _Electron UI:_ the renderer uses `daemonClient` (from `src/client/`) → preload bridge → `"daemon"` IPC channel → main process → socket. It never calls the socket directly. See the **bridge** section in the [API contract](https://github.com/0bCdian/Waypaper-Engine/blob/main/daemon/API_CONTRACT.md#electron-renderer-bridge-notes).
 
 **NOTE** — _No browser try-it:_ the daemon binds a Unix domain socket, not TCP. Browser-based “try it” tools cannot reach it. Use `curl --unix-socket` — see [OpenAPI spec & curl examples](/api/openapi) for copy-pasteable commands.

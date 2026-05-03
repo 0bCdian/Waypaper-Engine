@@ -5,6 +5,9 @@ hero:
   name: Waypaper Engine
   text: A wallpaper setter GUI, built for ricing
   tagline: Gallery, playlists, pluggable backends—and a Go daemon you can script. HTTP over Unix socket, live updates over SSE.
+  image:
+    src: /logo.png
+    alt: Waypaper Engine
   actions:
     - theme: brand
       text: Install & run

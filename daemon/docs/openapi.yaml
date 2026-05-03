@@ -277,6 +277,36 @@ paths:
       responses:
         "200": { description: OK }
         "202": { description: Queued }
+  /images/{id}/extract-video-palette:
+    post:
+      tags: [images]
+      operationId: extractVideoPalette
+      parameters: [$ref: "#/components/parameters/ImageId"]
+      summary: Extract dominant colors from one frame (same algorithm as still images); persists colors on the gallery row
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                time_seconds:
+                  type: number
+                  description: Timeline position in seconds (clamped to stream duration)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [colors, image_id]
+                properties:
+                  colors:
+                    type: array
+                    items: { type: string }
+                  image_id:
+                    type: integer
   /images/{id}/thumbnail:
     get:
       tags: [images]

@@ -1,5 +1,15 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
+import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
+import { HexColorPicker } from "react-colorful";
 import { useImageDetailStore } from "../stores/imageDetailStore";
 import { useImagesStore } from "../stores/images";
 import { useShallow } from "zustand/react/shallow";
@@ -119,6 +129,38 @@ function colorPickerValue(hex: string): string {
   return "#000000";
 }
 
+const PALETTE_POPOVER_PANEL_WIDTH = 300;
+const PALETTE_POPOVER_EST_HEIGHT = 468;
+const PALETTE_POPOVER_VIEW_MARGIN = 12;
+
+function clampPalettePopoverPosition(anchor: DOMRect): { left: number; top: number } {
+  const gap = 10;
+  let left = anchor.left + anchor.width / 2 - PALETTE_POPOVER_PANEL_WIDTH / 2;
+  let top = anchor.top - PALETTE_POPOVER_EST_HEIGHT - gap;
+
+  left = Math.max(
+    PALETTE_POPOVER_VIEW_MARGIN,
+    Math.min(left, window.innerWidth - PALETTE_POPOVER_PANEL_WIDTH - PALETTE_POPOVER_VIEW_MARGIN),
+  );
+
+  if (top < PALETTE_POPOVER_VIEW_MARGIN) {
+    top = anchor.bottom + gap;
+  }
+  top = Math.max(
+    PALETTE_POPOVER_VIEW_MARGIN,
+    Math.min(
+      top,
+      window.innerHeight - PALETTE_POPOVER_EST_HEIGHT - PALETTE_POPOVER_VIEW_MARGIN,
+    ),
+  );
+
+  return { left, top };
+}
+
+type PalettePopoverState =
+  | { mode: "add"; draftHex: string }
+  | { mode: "replace"; index: number; draftHex: string };
+
 /** Lowercase `#rgb` or `#rrggbb`, or null if invalid */
 function canonicalHex(s: string): string | null {
   const t = String(s).trim();
@@ -130,6 +172,80 @@ function canonicalHex(s: string): string | null {
     return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
   }
   return null;
+}
+
+function hexToRgbTuple(hex: string): [number, number, number] | null {
+  const c = canonicalHex(hex);
+  if (!c) return null;
+  return [
+    Number.parseInt(c.slice(1, 3), 16),
+    Number.parseInt(c.slice(3, 5), 16),
+    Number.parseInt(c.slice(5, 7), 16),
+  ];
+}
+
+function rgbTupleToHex(r: number, g: number, b: number): string {
+  const clampCh = (n: number) => Math.max(0, Math.min(255, Math.round(n)));
+  const x = (n: number) => clampCh(n).toString(16).padStart(2, "0");
+  return `#${x(r)}${x(g)}${x(b)}`;
+}
+
+function rgb255ToHsl(
+  r255: number,
+  g255: number,
+  b255: number,
+): { h: number; s: number; l: number } {
+  const r = r255 / 255;
+  const g = g255 / 255;
+  const b = b255 / 255;
+  const max = Math.max(r, g, b);
+  const min = Math.min(r, g, b);
+  let h = 0;
+  let s = 0;
+  const l = (max + min) / 2;
+  const d = max - min;
+  if (d >= 1e-10) {
+    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+    switch (max) {
+      case r:
+        h = ((g - b) / d + (g < b ? 6 : 0)) / 6;
+        break;
+      case g:
+        h = ((b - r) / d + 2) / 6;
+        break;
+      default:
+        h = ((r - g) / d + 4) / 6;
+        break;
+    }
+  }
+  return {
+    h: Math.round(h * 360),
+    s: Math.round(s * 100),
+    l: Math.round(l * 100),
+  };
+}
+
+function hslToRgb255(h: number, s: number, light: number): [number, number, number] {
+  const hh = ((h % 360) + 360) % 360;
+  const ss = Math.max(0, Math.min(100, s)) / 100;
+  const ll = Math.max(0, Math.min(100, light)) / 100;
+  const c = (1 - Math.abs(2 * ll - 1)) * ss;
+  const x = c * (1 - Math.abs(((hh / 60) % 2) - 1));
+  const m = ll - c / 2;
+  let rp = 0;
+  let gp = 0;
+  let bp = 0;
+  if (hh < 60) [rp, gp, bp] = [c, x, 0];
+  else if (hh < 120) [rp, gp, bp] = [x, c, 0];
+  else if (hh < 180) [rp, gp, bp] = [0, c, x];
+  else if (hh < 240) [rp, gp, bp] = [0, x, c];
+  else if (hh < 300) [rp, gp, bp] = [x, 0, c];
+  else [rp, gp, bp] = [c, 0, x];
+  return [
+    Math.round((rp + m) * 255),
+    Math.round((gp + m) * 255),
+    Math.round((bp + m) * 255),
+  ];
 }
 
 /** Stable ordered dedupe; skips blanks and invalid tokens */
@@ -150,6 +266,11 @@ function palettesEqual(a: string[], b: string[]): boolean {
   const nb = normalizedPalette(b);
   if (na.length !== nb.length) return false;
   return na.every((c, i) => c === nb[i]);
+}
+
+/** CSS-safe fill for invalid legacy palette tokens */
+function swatchCssFill(hexRaw: string): string {
+  return canonicalHex(hexRaw.trim()) ?? "#737373";
 }
 
 function normalizeWebCaps(c?: WebCapabilities | null): WebCapabilities {
@@ -493,6 +614,308 @@ function DetailHoverVideo({ src, poster }: { src: string; poster?: string }) {
   );
 }
 
+function PalettePopoverColorFields({
+  draftHex,
+  onPickHex,
+  isNeo,
+}: {
+  draftHex: string;
+  onPickHex: (hex: string) => void;
+  isNeo: boolean;
+}) {
+  const canonicalDraft = useMemo(() => canonicalHex(draftHex) ?? "#000000", [draftHex]);
+
+  const hexFocusedRef = useRef(false);
+  const rgbWrapFocusedRef = useRef(false);
+  const hslWrapFocusedRef = useRef(false);
+
+  const [hexField, setHexField] = useState(() => canonicalHex(draftHex) ?? "#000000");
+  const [rField, setRField] = useState("0");
+  const [gField, setGField] = useState("0");
+  const [bField, setBField] = useState("0");
+  const [hField, setHField] = useState("0");
+  const [sField, setSField] = useState("0");
+  const [lField, setLField] = useState("0");
+
+  const syncAllFromHex = useCallback((hex: string) => {
+    const c =
+      canonicalHex(hex.trim()) ??
+      canonicalHex(colorPickerValue(hex.trim())) ??
+      "#000000";
+    const t = hexToRgbTuple(c);
+    setHexField(c);
+    if (t) {
+      const [r, g, b] = t;
+      setRField(String(r));
+      setGField(String(g));
+      setBField(String(b));
+      const hsl = rgb255ToHsl(r, g, b);
+      setHField(String(hsl.h));
+      setSField(String(hsl.s));
+      setLField(String(hsl.l));
+    }
+  }, []);
+
+  useLayoutEffect(() => {
+    if (hexFocusedRef.current || rgbWrapFocusedRef.current || hslWrapFocusedRef.current) {
+      return;
+    }
+    syncAllFromHex(draftHex);
+  }, [draftHex, syncAllFromHex]);
+
+  const pushValidHex = useCallback(
+    (hex: string) => {
+      const c = canonicalHex(hex);
+      if (c) onPickHex(c);
+    },
+    [onPickHex],
+  );
+
+  const commitRgb = useCallback(() => {
+    const r = Number.parseInt(rField, 10);
+    const g = Number.parseInt(gField, 10);
+    const b = Number.parseInt(bField, 10);
+    if (
+      Number.isFinite(r) &&
+      Number.isFinite(g) &&
+      Number.isFinite(b) &&
+      r >= 0 &&
+      r <= 255 &&
+      g >= 0 &&
+      g <= 255 &&
+      b >= 0 &&
+      b <= 255
+    ) {
+      const hex = rgbTupleToHex(r, g, b);
+      pushValidHex(hex);
+      syncAllFromHex(hex);
+    } else {
+      syncAllFromHex(canonicalDraft);
+    }
+  }, [rField, gField, bField, pushValidHex, syncAllFromHex, canonicalDraft]);
+
+  const commitHsl = useCallback(() => {
+    const h = Number.parseFloat(hField);
+    const s = Number.parseFloat(sField);
+    const l = Number.parseFloat(lField);
+    if (
+      Number.isFinite(h) &&
+      Number.isFinite(s) &&
+      Number.isFinite(l) &&
+      s >= 0 &&
+      s <= 100 &&
+      l >= 0 &&
+      l <= 100
+    ) {
+      const [r, g, b] = hslToRgb255(h, Math.round(s), Math.round(l));
+      const hex = rgbTupleToHex(r, g, b);
+      pushValidHex(hex);
+      syncAllFromHex(hex);
+    } else {
+      syncAllFromHex(canonicalDraft);
+    }
+  }, [hField, sField, lField, pushValidHex, syncAllFromHex, canonicalDraft]);
+
+  const inputCls = `input input-bordered input-xs min-w-0 w-full font-mono tabular-nums ${isNeo ? "rounded-none" : ""}`;
+  const labelCls =
+    "mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-base-content/55";
+
+  return (
+    <div className="mt-2 space-y-2 border-t border-base-content/10 pt-2">
+      <div>
+        <label className={labelCls} htmlFor="palette-popover-hex">
+          Hex
+        </label>
+        <input
+          id="palette-popover-hex"
+          type="text"
+          className={inputCls}
+          value={hexField}
+          spellCheck={false}
+          autoComplete="off"
+          onFocus={() => {
+            hexFocusedRef.current = true;
+          }}
+          onBlur={() => {
+            hexFocusedRef.current = false;
+            const c = canonicalHex(hexField.trim());
+            if (c) {
+              pushValidHex(c);
+              syncAllFromHex(c);
+            } else {
+              syncAllFromHex(canonicalDraft);
+            }
+          }}
+          onChange={(e) => setHexField(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") (e.target as HTMLInputElement).blur();
+          }}
+        />
+      </div>
+
+      <div
+        onFocusCapture={() => {
+          rgbWrapFocusedRef.current = true;
+        }}
+        onBlurCapture={(e) => {
+          if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+          rgbWrapFocusedRef.current = false;
+          commitRgb();
+        }}
+      >
+        <span className={labelCls}>RGB (0–255)</span>
+        <div className="mt-1 grid grid-cols-3 gap-1">
+          <input
+            aria-label="Red 0–255"
+            type="text"
+            inputMode="numeric"
+            className={inputCls}
+            value={rField}
+            onChange={(e) => setRField(e.target.value)}
+          />
+          <input
+            aria-label="Green 0–255"
+            type="text"
+            inputMode="numeric"
+            className={inputCls}
+            value={gField}
+            onChange={(e) => setGField(e.target.value)}
+          />
+          <input
+            aria-label="Blue 0–255"
+            type="text"
+            inputMode="numeric"
+            className={inputCls}
+            value={bField}
+            onChange={(e) => setBField(e.target.value)}
+          />
+        </div>
+      </div>
+
+      <div
+        onFocusCapture={() => {
+          hslWrapFocusedRef.current = true;
+        }}
+        onBlurCapture={(e) => {
+          if (e.currentTarget.contains(e.relatedTarget as Node | null)) return;
+          hslWrapFocusedRef.current = false;
+          commitHsl();
+        }}
+      >
+        <span className={labelCls}>HSL (h° / s% / l%)</span>
+        <div className="mt-1 grid grid-cols-3 gap-1">
+          <input
+            aria-label="Hue degrees"
+            type="text"
+            inputMode="decimal"
+            className={inputCls}
+            value={hField}
+            onChange={(e) => setHField(e.target.value)}
+          />
+          <input
+            aria-label="Saturation percent"
+            type="text"
+            inputMode="decimal"
+            className={inputCls}
+            value={sField}
+            onChange={(e) => setSField(e.target.value)}
+          />
+          <input
+            aria-label="Lightness percent"
+            type="text"
+            inputMode="decimal"
+            className={inputCls}
+            value={lField}
+            onChange={(e) => setLField(e.target.value)}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function PaletteSwatchChip({
+  fill,
+  isNeo,
+  title,
+  ariaLabelCopy,
+  ariaLabelRemove,
+  onCopy,
+  onOpenColorPopover,
+  onRemove,
+}: {
+  fill: string;
+  isNeo: boolean;
+  title: string;
+  ariaLabelCopy: string;
+  ariaLabelRemove: string;
+  onCopy: () => void;
+  onOpenColorPopover: () => void;
+  onRemove: () => void;
+}) {
+  const copyDelayRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useEffect(
+    () => () => {
+      if (copyDelayRef.current) clearTimeout(copyDelayRef.current);
+    },
+    [],
+  );
+
+  const armCopy = useCallback(() => {
+    if (copyDelayRef.current) clearTimeout(copyDelayRef.current);
+    copyDelayRef.current = setTimeout(() => {
+      copyDelayRef.current = null;
+      onCopy();
+    }, 230);
+  }, [onCopy]);
+
+  const cancelCopyArm = useCallback(() => {
+    if (copyDelayRef.current) {
+      clearTimeout(copyDelayRef.current);
+      copyDelayRef.current = null;
+    }
+  }, []);
+
+  return (
+    <div className="group relative h-8 w-8 shrink-0 focus-within:z-[1]">
+      <button
+        type="button"
+        className={`relative z-10 h-full w-full shrink-0 border shadow-sm transition-[transform,box-shadow,ring-color] hover:-translate-y-px hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-base-200 ${
+          isNeo
+            ? "rounded-none border-2 border-base-content/35 shadow-[3px_3px_0_0_color-mix(in_oklab,var(--fallback-bc,oklch(var(--bc))),18%),transparent)]"
+            : "rounded-lg border-base-content/25"
+        }`}
+        style={{ backgroundColor: fill }}
+        title={title}
+        aria-label={ariaLabelCopy}
+        onClick={armCopy}
+        onDoubleClick={(e) => {
+          e.preventDefault();
+          cancelCopyArm();
+          onOpenColorPopover();
+        }}
+      />
+      <button
+        type="button"
+        className={`btn btn-ghost btn-square absolute -right-1.5 -top-1.5 min-h-0 h-5 w-5 border bg-base-100 p-0 text-xs leading-none opacity-0 shadow-sm transition-opacity hover:bg-error/15 hover:text-error group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
+          isNeo ? "rounded-none border-base-content/40" : "rounded-full border-base-300"
+        }`}
+        aria-label={ariaLabelRemove}
+        title="Remove"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          cancelCopyArm();
+          onRemove();
+        }}
+      >
+        ×
+      </button>
+    </div>
+  );
+}
+
 function ImageDetailSidebar() {
   const navigate = useNavigate();
   const { selectedImage, isOpen, close } = useImageDetailStore(
@@ -529,6 +952,61 @@ function ImageDetailSidebar() {
   const [editName, setEditName] = useState("");
   const [renaming, setRenaming] = useState(false);
   const nameInputRef = useRef<HTMLInputElement>(null);
+  /** First change appends one swatch; later changes update that index until the next add popover open. */
+  const addPickerSessionRef = useRef<{ provisionalIndex: number | null }>({
+    provisionalIndex: null,
+  });
+
+  const palettePopoverRef = useRef<PalettePopoverState | null>(null);
+  const [palettePopover, setPalettePopover] = useState<PalettePopoverState | null>(null);
+  const [palettePopoverPosition, setPalettePopoverPosition] = useState<{
+    left: number;
+    top: number;
+  } | null>(null);
+
+  const paletteRowAnchorRef = useRef<HTMLDivElement>(null);
+  const imageDetailBodyScrollRef = useRef<HTMLDivElement>(null);
+
+  palettePopoverRef.current = palettePopover;
+
+  const resetAddPalettePickerSession = useCallback(() => {
+    addPickerSessionRef.current = { provisionalIndex: null };
+  }, []);
+
+  const closePalettePopover = useCallback(() => {
+    setPalettePopover(null);
+    setPalettePopoverPosition(null);
+  }, []);
+
+  const measurePalettePopoverPosition = useCallback(() => {
+    const el = paletteRowAnchorRef.current;
+    if (!el) {
+      return {
+        left: PALETTE_POPOVER_VIEW_MARGIN,
+        top: PALETTE_POPOVER_VIEW_MARGIN,
+      };
+    }
+    return clampPalettePopoverPosition(el.getBoundingClientRect());
+  }, []);
+
+  const openPalettePopoverAdd = useCallback(() => {
+    if (editColors.length >= MAX_PALETTE_COLORS) return;
+    resetAddPalettePickerSession();
+    setPalettePopoverPosition(measurePalettePopoverPosition());
+    setPalettePopover({ mode: "add", draftHex: "#808080" });
+  }, [editColors.length, resetAddPalettePickerSession, measurePalettePopoverPosition]);
+
+  const openPalettePopoverReplace = useCallback(
+    (index: number, rawHex: string) => {
+      setPalettePopoverPosition(measurePalettePopoverPosition());
+      setPalettePopover({
+        mode: "replace",
+        index,
+        draftHex: colorPickerValue(rawHex),
+      });
+    },
+    [measurePalettePopoverPosition],
+  );
 
   const [prevSelectedImage, setPrevSelectedImage] = useState(selectedImage);
   if (selectedImage !== prevSelectedImage) {
@@ -550,6 +1028,11 @@ function ImageDetailSidebar() {
         .catch(() => {});
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    addPickerSessionRef.current = { provisionalIndex: null };
+    closePalettePopover();
+  }, [selectedImage?.id, closePalettePopover]);
 
   const suggestions = useMemo(() => {
     if (!tagInput.trim()) return [];
@@ -593,6 +1076,101 @@ function ImageDetailSidebar() {
   const removePaletteColor = useCallback((index: number) => {
     setEditColors((prev) => prev.filter((_, i) => i !== index));
   }, []);
+
+  const applyAddPaletteColorHex = useCallback((hex: string) => {
+    const canon = canonicalHex(hex);
+    if (!canon) return;
+    const session = addPickerSessionRef.current;
+
+    setEditColors((prev) => {
+      if (prev.length >= MAX_PALETTE_COLORS) return prev;
+
+      if (session.provisionalIndex !== null) {
+        const i = session.provisionalIndex;
+        if (i >= 0 && i < prev.length) {
+          const next = [...prev];
+          next[i] = canon;
+          return next;
+        }
+        session.provisionalIndex = null;
+      }
+
+      if (prev.some((p) => canonicalHex(p.trim()) === canon)) return prev;
+      const next = [...prev, canon];
+      session.provisionalIndex = next.length - 1;
+      return next;
+    });
+  }, []);
+
+  const replacePaletteColorAt = useCallback((index: number, hex: string) => {
+    const canon = canonicalHex(hex);
+    if (!canon) return;
+    setEditColors((prev) => {
+      if (index < 0 || index >= prev.length) return prev;
+      const next = [...prev];
+      next[index] = canon;
+      return next;
+    });
+  }, []);
+
+  const handlePopoverColorChange = useCallback(
+    (hex: string) => {
+      const canon = canonicalHex(hex);
+      if (!canon) return;
+      setPalettePopover((p) => (p ? { ...p, draftHex: canon } : p));
+      const ctx = palettePopoverRef.current;
+      if (!ctx) return;
+      if (ctx.mode === "add") {
+        applyAddPaletteColorHex(canon);
+      } else {
+        replacePaletteColorAt(ctx.index, canon);
+      }
+    },
+    [applyAddPaletteColorHex, replacePaletteColorAt],
+  );
+
+  const palettePopoverLayoutKey =
+    palettePopover === null
+      ? null
+      : palettePopover.mode === "add"
+        ? "add"
+        : `replace:${palettePopover.index}`;
+
+  useLayoutEffect(() => {
+    if (palettePopoverLayoutKey === null) {
+      setPalettePopoverPosition(null);
+      return;
+    }
+    const updatePosition = () => {
+      const el = paletteRowAnchorRef.current;
+      if (!el) return;
+      setPalettePopoverPosition(clampPalettePopoverPosition(el.getBoundingClientRect()));
+    };
+    updatePosition();
+    window.addEventListener("resize", updatePosition);
+    const scrollEl = imageDetailBodyScrollRef.current;
+    scrollEl?.addEventListener("scroll", updatePosition, { passive: true });
+    return () => {
+      window.removeEventListener("resize", updatePosition);
+      scrollEl?.removeEventListener("scroll", updatePosition);
+    };
+  }, [palettePopoverLayoutKey]);
+
+  useEffect(() => {
+    if (palettePopoverLayoutKey === null) return;
+    const onKeyDown = (e: globalThis.KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        closePalettePopover();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [palettePopoverLayoutKey, closePalettePopover]);
+
+  useEffect(() => {
+    if (!isOpen) closePalettePopover();
+  }, [isOpen, closePalettePopover]);
 
   const handleSave = useCallback(async () => {
     if (!selectedImage) return;
@@ -667,7 +1245,7 @@ function ImageDetailSidebar() {
         aria-label="close sidebar"
       />
       <div
-        className={`fixed inset-y-0 right-0 z-50 flex w-full lg:w-80 flex-col border-l border-base-300 bg-base-200 shadow-xl transition-transform duration-300 ease-in-out ${
+        className={`fixed inset-y-0 right-0 z-50 flex w-full lg:w-[min(32rem,calc(100vw-2rem))] flex-col border-l border-base-300 bg-base-200 shadow-xl transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
         } ${isNeo ? "neo-card" : ""}`}
       >
@@ -689,7 +1267,10 @@ function ImageDetailSidebar() {
         </div>
 
         {selectedImage && (
-          <div className="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
+          <div
+            ref={imageDetailBodyScrollRef}
+            className="flex flex-1 flex-col gap-4 overflow-y-auto p-4"
+          >
             {/* Preview */}
             {(() => {
               const thumb = selectedImage.thumbnails?.default?.trim();
@@ -796,69 +1377,43 @@ function ImageDetailSidebar() {
               <p className="text-[10px] leading-snug text-base-content/50">
                 Hex swatches stored on the gallery row and included in{" "}
                 <code className="text-[10px]">wallpaper_changed</code> when non-empty — useful for
-                hooks / ricing.
+                hooks / ricing. Click a swatch to copy; double-click to edit color; hover for remove.
               </p>
-              {editColors.map((c, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input
-                    type="color"
-                    className="h-8 w-10 shrink-0 cursor-pointer rounded border border-base-content/20 bg-base-100 p-0"
-                    value={colorPickerValue(c)}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setEditColors((prev) => {
-                        const next = [...prev];
-                        next[i] = v;
-                        return next;
-                      });
-                    }}
-                    aria-label={`Pick color ${i + 1}`}
+              <div ref={paletteRowAnchorRef} className="flex flex-wrap items-center gap-2">
+                {editColors.map((c, i) => (
+                  <PaletteSwatchChip
+                    key={i}
+                    fill={swatchCssFill(c)}
+                    isNeo={isNeo}
+                    title="Copy hex · double-click to edit"
+                    ariaLabelCopy={`Palette color ${i + 1}, click to copy`}
+                    ariaLabelRemove={`Remove color ${i + 1}`}
+                    onCopy={() =>
+                      void copyPaletteColor(canonicalHex(c.trim()) ?? c.trim())
+                    }
+                    onOpenColorPopover={() => openPalettePopoverReplace(i, c)}
+                    onRemove={() => removePaletteColor(i)}
                   />
-                  <input
-                    type="text"
-                    className="input input-bordered input-xs min-w-0 flex-1 font-mono"
-                    value={c}
-                    onChange={(e) => {
-                      const v = e.target.value;
-                      setEditColors((prev) => {
-                        const next = [...prev];
-                        next[i] = v;
-                        return next;
-                      });
-                    }}
-                    placeholder="#aabbcc"
-                    spellCheck={false}
-                  />
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-xs shrink-0"
-                    title="Copy"
-                    onClick={() => void copyPaletteColor(canonicalHex(c.trim()) ?? c)}
-                  >
-                    Copy
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-ghost btn-xs btn-square shrink-0"
-                    aria-label={`Remove color ${i + 1}`}
-                    onClick={() => removePaletteColor(i)}
-                  >
-                    ×
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                className="btn btn-outline btn-xs"
-                disabled={editColors.length >= MAX_PALETTE_COLORS}
-                onClick={() =>
-                  setEditColors((prev) =>
-                    prev.length >= MAX_PALETTE_COLORS ? prev : [...prev, "#808080"],
-                  )
-                }
-              >
-                Add color
-              </button>
+                ))}
+                <button
+                  type="button"
+                  disabled={editColors.length >= MAX_PALETTE_COLORS}
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center border border-dashed border-base-content/30 text-lg font-light leading-none text-base-content/45 transition-colors hover:border-primary/45 hover:bg-primary/8 hover:text-primary disabled:pointer-events-none disabled:opacity-35 ${
+                    isNeo
+                      ? "rounded-none shadow-[2px_2px_0_0_color-mix(in_oklab,var(--fallback-bc,oklch(var(--bc))),12%),transparent)]"
+                      : "rounded-lg"
+                  }`}
+                  aria-label="Add palette color"
+                  title={
+                    editColors.length >= MAX_PALETTE_COLORS
+                      ? `At most ${MAX_PALETTE_COLORS} colors`
+                      : "Pick a color to add"
+                  }
+                  onClick={() => openPalettePopoverAdd()}
+                >
+                  +
+                </button>
+              </div>
             </div>
 
             {selectedImage.media_type === "web" && (
@@ -949,6 +1504,58 @@ function ImageDetailSidebar() {
           </div>
         )}
       </div>
+      {palettePopover &&
+        palettePopoverPosition &&
+        typeof document !== "undefined" &&
+        createPortal(
+          <>
+            <button
+              type="button"
+              className="fixed inset-0 z-[190] cursor-default bg-black/15"
+              aria-label="Dismiss color picker"
+              onClick={closePalettePopover}
+            />
+            <div
+              role="dialog"
+              aria-modal="true"
+              tabIndex={-1}
+              aria-label={
+                palettePopover.mode === "add" ? "Add palette color" : "Edit palette color"
+              }
+              className={`fixed z-[200] border border-base-300 bg-base-100 p-3 shadow-2xl outline-none ${
+                isNeo
+                  ? "rounded-none shadow-[4px_4px_0_0_color-mix(in_oklab,var(--fallback-bc,oklch(var(--bc))),14%),transparent)]"
+                  : "rounded-xl"
+              }`}
+              style={{
+                left: palettePopoverPosition.left,
+                top: palettePopoverPosition.top,
+                width: PALETTE_POPOVER_PANEL_WIDTH,
+              }}
+              onMouseDown={(e) => e.stopPropagation()}
+            >
+              <div className="flex w-full justify-center [&_.react-colorful]:w-full">
+                <HexColorPicker
+                  color={palettePopover.draftHex}
+                  onChange={handlePopoverColorChange}
+                />
+              </div>
+              <PalettePopoverColorFields
+                draftHex={palettePopover.draftHex}
+                onPickHex={handlePopoverColorChange}
+                isNeo={isNeo}
+              />
+              <button
+                type="button"
+                className={`btn btn-primary btn-sm mt-3 w-full ${isNeo ? "rounded-none" : ""}`}
+                onClick={closePalettePopover}
+              >
+                Done
+              </button>
+            </div>
+          </>,
+          document.body,
+        )}
     </>
   );
 }

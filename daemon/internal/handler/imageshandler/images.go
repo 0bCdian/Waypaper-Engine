@@ -647,6 +647,63 @@ func (h *ImageHandler) VideoLoopExport(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteJSON(w, http.StatusOK, out)
 }
 
+type extractVideoPaletteRequest struct {
+	TimeSeconds float64 `json:"time_seconds"`
+}
+
+// ExtractVideoPalette handles POST /images/{id}/extract-video-palette — one-frame dominant palette (same path as still images).
+//
+// @Summary      Extract color palette from a video frame
+// @Tags         images
+// @Param        id    path      int                          true  "Image ID"
+// @Param        body  body      extractVideoPaletteRequest   true  "time_seconds: seek position on the video timeline"
+// @Success      200   {object}  map[string]any
+// @Failure      400   {object}  httpjson.APIError
+// @Failure      404   {object}  httpjson.APIError
+// @Failure      503   {object}  httpjson.APIError
+// @Failure      500   {object}  httpjson.APIError
+// @Router       /images/{id}/extract-video-palette [post]
+func (h *ImageHandler) ExtractVideoPalette(w http.ResponseWriter, r *http.Request) {
+	id, err := httpjson.ParseIntParam(chi.URLParam(r, "id"))
+	if err != nil {
+		httpjson.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	var req extractVideoPaletteRequest
+	if err := httpjson.ParseBody(r, &req); err != nil {
+		httpjson.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	ctx, cancel := context.WithTimeout(r.Context(), 2*time.Minute)
+	defer cancel()
+	colors, err := h.processor.ExtractVideoPalette(ctx, id, req.TimeSeconds)
+	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			httpjson.WriteError(w, http.StatusNotFound, err.Error())
+			return
+		}
+		msg := err.Error()
+		switch {
+		case strings.Contains(msg, "not a video"):
+			httpjson.WriteError(w, http.StatusBadRequest, msg)
+		case strings.Contains(msg, "ffmpeg not"),
+			strings.Contains(msg, "ffprobe not"):
+			httpjson.WriteError(w, http.StatusServiceUnavailable, msg)
+		default:
+			httpjson.WriteError(w, http.StatusInternalServerError, msg)
+		}
+		return
+	}
+	h.bus.Publish(events.Event{
+		Type: events.GalleryChanged,
+		Data: map[string]any{"domain": "images"},
+	})
+	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
+		"colors":   colors,
+		"image_id": id,
+	})
+}
+
 // RawImage handles GET /images/{id}/raw — serves the actual image file.
 //
 // @Summary      Serve raw image file

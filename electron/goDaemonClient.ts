@@ -7,6 +7,8 @@ import type {
   ImageQueryParams,
   PaginatedResponse,
   ImageHistoryEntry,
+  ExtractVideoPaletteRequest,
+  ExtractVideoPaletteResult,
   UpdateImageRequest,
   VideoLoopExportRequest,
   VideoLoopExportResult,
@@ -240,6 +242,15 @@ export class GoDaemonClient extends EventEmitter {
     body: VideoLoopExportRequest,
   ): Promise<VideoLoopExportResult> {
     return this.images.videoLoopExport(imageId, body);
+  }
+
+  async extractVideoPalette(
+    imageId: number,
+    body: ExtractVideoPaletteRequest,
+  ): Promise<ExtractVideoPaletteResult> {
+    await this.images.extractVideoPalette(imageId, body);
+    const image = await this.images.getImage(imageId);
+    return { colors: image.colors ?? [], image_id: imageId, image };
   }
 
   async getImageCount(): Promise<{ count: number }> {
