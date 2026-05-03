@@ -35,16 +35,22 @@ function webCapabilityToggleAllowed(
   return wut.allow_network_wallpapers === true;
 }
 
-async function saveImageTags(imageId: number, tags: string[]) {
-  await daemonClient.updateImage(imageId, { tags });
+const MAX_PALETTE_COLORS = 12;
+
+async function saveImageDetails(imageId: number, tags: string[], colors: string[]) {
+  await daemonClient.updateImage(imageId, { tags, colors });
   const freshImage = await daemonClient.getImage(imageId);
   useImageDetailStore.getState().open(freshImage);
   useImagesStore.getState().reQueryImages();
 }
 
-async function trySaveImageTags(imageId: number, tags: string[]): Promise<boolean> {
+async function trySaveImageDetails(
+  imageId: number,
+  tags: string[],
+  colors: string[],
+): Promise<boolean> {
   try {
-    await saveImageTags(imageId, tags);
+    await saveImageDetails(imageId, tags, colors);
     return true;
   } catch {
     return false;
@@ -111,6 +117,39 @@ function colorPickerValue(hex: string): string {
     return `#${r}${r}${g}${g}${b}${b}`;
   }
   return "#000000";
+}
+
+/** Lowercase `#rgb` or `#rrggbb`, or null if invalid */
+function canonicalHex(s: string): string | null {
+  const t = String(s).trim();
+  if (/^#[0-9a-fA-F]{6}$/i.test(t)) return t.toLowerCase();
+  if (/^#[0-9a-fA-F]{3}$/i.test(t)) {
+    const r = t[1]!;
+    const g = t[2]!;
+    const b = t[3]!;
+    return `#${r}${r}${g}${g}${b}${b}`.toLowerCase();
+  }
+  return null;
+}
+
+/** Stable ordered dedupe; skips blanks and invalid tokens */
+function normalizedPalette(colors: string[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of colors) {
+    const c = canonicalHex(raw.trim());
+    if (!c || seen.has(c)) continue;
+    seen.add(c);
+    out.push(c);
+  }
+  return out;
+}
+
+function palettesEqual(a: string[], b: string[]): boolean {
+  const na = normalizedPalette(a);
+  const nb = normalizedPalette(b);
+  if (na.length !== nb.length) return false;
+  return na.every((c, i) => c === nb[i]);
 }
 
 function normalizeWebCaps(c?: WebCapabilities | null): WebCapabilities {
@@ -481,6 +520,7 @@ function ImageDetailSidebar() {
   }, []);
   const isNeo = useIsNeo();
   const [tags, setTags] = useState<string[]>([]);
+  const [editColors, setEditColors] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
   const [allTags, setAllTags] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
@@ -496,6 +536,7 @@ function ImageDetailSidebar() {
     if (selectedImage) {
       setTags([...(selectedImage.tags ?? [])]);
       setEditName(selectedImage.name);
+      setEditColors([...(selectedImage.colors ?? [])]);
     }
   }
 
@@ -549,17 +590,34 @@ function ImageDetailSidebar() {
     [tagInput, tags, addTag],
   );
 
+  const removePaletteColor = useCallback((index: number) => {
+    setEditColors((prev) => prev.filter((_, i) => i !== index));
+  }, []);
+
   const handleSave = useCallback(async () => {
     if (!selectedImage) return;
+    for (const raw of editColors) {
+      const t = raw.trim();
+      if (!t) continue;
+      if (!canonicalHex(t)) {
+        addToast(`Invalid hex color: ${t}`, "error", 3500);
+        return;
+      }
+    }
+    const colorsToSave = normalizedPalette(editColors);
+    if (colorsToSave.length > MAX_PALETTE_COLORS) {
+      addToast(`At most ${MAX_PALETTE_COLORS} palette colors`, "error", 3000);
+      return;
+    }
     setSaving(true);
-    const ok = await trySaveImageTags(selectedImage.id, tags);
+    const ok = await trySaveImageDetails(selectedImage.id, tags, colorsToSave);
     addToast(
-      ok ? "Tags saved" : "Failed to save tags",
+      ok ? "Details saved" : "Failed to save",
       ok ? "success" : "error",
       ok ? 2000 : undefined,
     );
     setSaving(false);
-  }, [selectedImage, tags, addToast]);
+  }, [selectedImage, tags, editColors, addToast]);
 
   const submitRename = useCallback(async () => {
     if (!selectedImage) return;
@@ -584,11 +642,14 @@ function ImageDetailSidebar() {
   }, [selectedImage, editName, addToast]);
 
   const hasChanges = useMemo(() => {
-    const original = selectedImage?.tags ?? [];
-    if (original.length !== tags.length) return true;
-    const s = new Set(original);
-    return tags.some((t) => !s.has(t));
-  }, [selectedImage?.tags, tags]);
+    const originalTags = selectedImage?.tags ?? [];
+    if (originalTags.length !== tags.length) return true;
+    const tagSet = new Set(originalTags);
+    if (tags.some((t) => !tagSet.has(t))) return true;
+
+    const originalColors = selectedImage?.colors ?? [];
+    return !palettesEqual(editColors, originalColors);
+  }, [selectedImage?.tags, selectedImage?.colors, tags, editColors]);
 
   return (
     <>
@@ -727,28 +788,78 @@ function ImageDetailSidebar() {
               </p>
             </div>
 
-            {/* Color Palette */}
-            {selectedImage.colors && selectedImage.colors.length > 0 && (
-              <div className="space-y-1">
-                <label className="text-xs font-semibold uppercase tracking-wide text-base-content/60">
-                  Colors
-                </label>
-                <div className="flex flex-wrap gap-1.5">
-                  {selectedImage.colors.map((c, i) => (
-                    <button
-                      type="button"
-                      key={`${c}-${i}`}
-                      className="w-6 h-6 rounded border border-base-content/20 cursor-pointer tooltip p-0"
-                      style={{ backgroundColor: c }}
-                      data-tip={c}
-                      title={c}
-                      aria-label={`Copy color ${c}`}
-                      onClick={() => void copyPaletteColor(c)}
-                    />
-                  ))}
+            {/* Palette — editable for all media types (videos/web ship empty until set) */}
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase tracking-wide text-base-content/60">
+                Palette
+              </label>
+              <p className="text-[10px] leading-snug text-base-content/50">
+                Hex swatches stored on the gallery row and included in{" "}
+                <code className="text-[10px]">wallpaper_changed</code> when non-empty — useful for
+                hooks / ricing.
+              </p>
+              {editColors.map((c, i) => (
+                <div key={i} className="flex items-center gap-2">
+                  <input
+                    type="color"
+                    className="h-8 w-10 shrink-0 cursor-pointer rounded border border-base-content/20 bg-base-100 p-0"
+                    value={colorPickerValue(c)}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setEditColors((prev) => {
+                        const next = [...prev];
+                        next[i] = v;
+                        return next;
+                      });
+                    }}
+                    aria-label={`Pick color ${i + 1}`}
+                  />
+                  <input
+                    type="text"
+                    className="input input-bordered input-xs min-w-0 flex-1 font-mono"
+                    value={c}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      setEditColors((prev) => {
+                        const next = [...prev];
+                        next[i] = v;
+                        return next;
+                      });
+                    }}
+                    placeholder="#aabbcc"
+                    spellCheck={false}
+                  />
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-xs shrink-0"
+                    title="Copy"
+                    onClick={() => void copyPaletteColor(canonicalHex(c.trim()) ?? c)}
+                  >
+                    Copy
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-xs btn-square shrink-0"
+                    aria-label={`Remove color ${i + 1}`}
+                    onClick={() => removePaletteColor(i)}
+                  >
+                    ×
+                  </button>
                 </div>
-              </div>
-            )}
+              ))}
+              <button
+                type="button"
+                className="btn btn-outline btn-xs"
+                disabled={editColors.length >= MAX_PALETTE_COLORS}
+                onClick={() =>
+                  setEditColors((prev) =>
+                    prev.length >= MAX_PALETTE_COLORS ? prev : [...prev, "#808080"],
+                  )
+                }
+              >
+                Add color
+              </button>
+            </div>
 
             {selectedImage.media_type === "web" && (
               <WebWallpaperConfigForm
@@ -833,7 +944,7 @@ function ImageDetailSidebar() {
               onClick={handleSave}
               disabled={!hasChanges || saving}
             >
-              {saving ? "Saving..." : "Save Tags"}
+              {saving ? "Saving..." : "Save details"}
             </button>
           </div>
         )}
