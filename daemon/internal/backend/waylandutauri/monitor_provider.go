@@ -11,7 +11,9 @@ import (
 	"github.com/spf13/viper"
 )
 
-const utauriMonitorProviderPriority = 30
+// Below the native zwlr_output_management provider; used when that protocol is
+// unavailable or declines, but the utauri control plane answers.
+const utauriMonitorProviderPriority = 25
 
 // utauriMonitorProvider lists monitors from GET /wallpaper/status topology on the control socket.
 type utauriMonitorProvider struct {

@@ -346,6 +346,10 @@ import (
 // NewWaylandLegacyProvider.
 type waylandWlrProvider struct{}
 
+// waylandWlrProviderPriority ranks above the wayland-utauri HTTP monitor probe so
+// zwlr_output_management is tried first on compositors that implement it.
+const waylandWlrProviderPriority = 40
+
 // NewWaylandProvider returns the preferred Wayland MonitorProvider, backed by
 // the wlr-output-management-unstable-v1 protocol.
 func NewWaylandProvider() MonitorProvider {
@@ -354,7 +358,7 @@ func NewWaylandProvider() MonitorProvider {
 
 func (p *waylandWlrProvider) Name() string               { return "wayland-wlr-output" }
 func (p *waylandWlrProvider) Compositor() CompositorType { return CompositorWayland }
-func (p *waylandWlrProvider) Priority() int              { return 20 }
+func (p *waylandWlrProvider) Priority() int              { return waylandWlrProviderPriority }
 
 func (p *waylandWlrProvider) Detect(ctx context.Context) ([]Monitor, error) {
 	if os.Getenv("WAYLAND_DISPLAY") == "" {
