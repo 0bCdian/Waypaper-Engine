@@ -318,6 +318,18 @@
   overflow-y: visible;
 }
 
+@media (max-height: 1080px) {
+  .wp-bottom-dock .pagination {
+    gap: 0.125rem;
+  }
+
+  .wp-bottom-dock .page-item .page-link {
+    height: 2.25rem;
+    width: 2.25rem;
+    font-size: 0.6875rem;
+  }
+}
+
 /* Prevent native ::backdrop flash on dialog.showModal() — DaisyUI's .modal-backdrop handles the overlay */
 dialog.modal::backdrop {
   background: transparent;

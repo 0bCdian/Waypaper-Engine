@@ -32,6 +32,7 @@ function MiniPlaylistCard({
   isLast,
   reorderSortingCriteria,
   isCurrentTrack,
+  viewportCompact = false,
 }: {
   playlistImage: PlaylistImage;
   type: PLAYLIST_TYPES_TYPE;
@@ -39,6 +40,8 @@ function MiniPlaylistCard({
   isLast: boolean;
   reorderSortingCriteria: () => void;
   isCurrentTrack: boolean;
+  /** Shorter viewports (e.g. 1080p): narrower strip tiles + less vertical lift */
+  viewportCompact?: boolean;
 }) {
   const { removeImagesFromPlaylist, playlistImagesTimeSet, updateImageTime } = usePlaylistStore(
     useShallow((s) => ({
@@ -138,8 +141,14 @@ function MiniPlaylistCard({
   const hasCaption = type === "time_of_day" || type === "day_of_week";
 
   const cardClass = isNeo
-    ? `mx-1 mb-2 w-28 sm:w-32 md:w-40 lg:w-44 xl:w-48 shrink-0 neo-mini-card${isCurrentTrack ? " neo-mini-card--current" : ""}`
-    : `mx-1 mb-2 w-28 sm:w-32 md:w-40 lg:w-44 xl:w-48 shrink-0 rounded-lg shadow-xl transition-shadow duration-300 ease-out motion-reduce:transition-none${isCurrentTrack ? " z-[2] shadow-[0_14px_28px_-6px_rgba(0,0,0,0.28)]" : ""}`;
+    ? `mx-1 mb-2 shrink-0 neo-mini-card${isCurrentTrack ? " neo-mini-card--current" : ""}${
+        viewportCompact
+          ? " w-24 sm:w-28 md:w-32 lg:w-36 xl:w-40"
+          : " w-28 sm:w-32 md:w-40 lg:w-44 xl:w-48"
+      }`
+    : `mx-1 mb-2 shrink-0 rounded-lg shadow-xl transition-shadow duration-300 ease-out motion-reduce:transition-none${
+        isCurrentTrack ? " z-[2] shadow-[0_14px_28px_-6px_rgba(0,0,0,0.28)]" : ""
+      }${viewportCompact ? " w-24 sm:w-28 md:w-32 lg:w-36 xl:w-40" : " w-28 sm:w-32 md:w-40 lg:w-44 xl:w-48"}`;
 
   const imgClass = isNeo
     ? `w-full aspect-[3/2] object-cover cursor-default transition-all active:scale-105 active:opacity-45${hasCaption ? "" : " rounded-none"}`
@@ -174,11 +183,12 @@ function MiniPlaylistCard({
     </button>
   );
 
+  const captionPad = viewportCompact ? "px-1 py-1" : "px-1.5 py-1.5";
   const captionClass = isNeo
-    ? "px-1.5 py-1.5 flex flex-col items-center gap-0.5"
-    : "px-1.5 py-1.5 flex flex-col items-center gap-0.5 bg-base-200/60 rounded-b-lg";
+    ? `${captionPad} flex flex-col items-center gap-0.5`
+    : `${captionPad} flex flex-col items-center gap-0.5 bg-base-200/60 rounded-b-lg`;
 
-  const liftPx = 12;
+  const liftPx = viewportCompact ? 8 : 12;
 
   return (
     <LazyMotion features={domAnimation}>

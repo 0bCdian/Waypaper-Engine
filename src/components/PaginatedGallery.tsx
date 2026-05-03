@@ -30,7 +30,7 @@ function GalleryDropZone({
     <div
       ref={ref}
       onPointerDown={onPointerDown}
-      className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-track-transparent scrollbar-thumb-base-300 scrollbar-thumb-rounded-sm p-4"
+      className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden scrollbar-thin scrollbar-track-transparent scrollbar-thumb-base-300 scrollbar-thumb-rounded-sm p-[length:var(--wp-gallery-scroll-padding)]"
       style={{ scrollbarGutter: "stable" }}
     >
       {children}
@@ -90,7 +90,7 @@ function PaginatedGallery({ onMarqueePointerDown, gridRef, marqueeBox }: Paginat
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.15 }}
-                  className="m-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(16vw,1fr))] gap-3 md:gap-3 lg:gap-3 xl:gap-4 2xl:gap-5 [&>:only-child]:max-w-[25vw] [&>:only-child]:justify-self-center"
+                  className="m-auto w-full grid grid-cols-1 md:grid-cols-2 lg:grid-cols-[repeat(auto-fit,minmax(min(var(--wp-gallery-min-col),100%),1fr))] gap-3 md:gap-3 lg:gap-3 xl:gap-4 2xl:gap-5 [@media(max-height:1080px)]:gap-2 [@media(max-height:1080px)]:md:gap-2 [@media(max-height:1080px)]:lg:gap-2 [@media(max-height:1080px)]:xl:gap-3 [@media(max-height:1080px)]:2xl:gap-4 [&>:only-child]:max-w-[25vw] [&>:only-child]:justify-self-center [@media(max-height:1080px)]:[&>:only-child]:max-w-[min(25vw,320px)]"
                 >
                   {showFolders &&
                     folders.map((folder) => (

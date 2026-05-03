@@ -35,9 +35,8 @@ const mockEditorPlaylist: {
 };
 
 vi.mock("../../stores/playlist", () => ({
-  usePlaylistStore: (
-    selector: (s: { playlist: typeof mockEditorPlaylist }) => unknown,
-  ) => selector({ playlist: mockEditorPlaylist }),
+  usePlaylistStore: (selector: (s: { playlist: typeof mockEditorPlaylist }) => unknown) =>
+    selector({ playlist: mockEditorPlaylist }),
 }));
 
 vi.mock("../../stores/images", () => ({

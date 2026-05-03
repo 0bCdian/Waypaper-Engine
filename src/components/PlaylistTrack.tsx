@@ -10,6 +10,7 @@ import { useShallow } from "zustand/react/shallow";
 import { useMonitorStore } from "../stores/monitors";
 import type { openFileAction } from "../../shared/types";
 import { useSetLastActivePlaylist } from "../hooks/useSetLastActivePlaylist";
+import { useViewportCompactHeight } from "../hooks/useViewportCompactHeight";
 import type { PlaylistImage } from "../../electron/daemon-go-types";
 import { useIsNeo } from "../hooks/useIsNeo";
 import { useDragStore } from "../stores/dragStore";
@@ -59,6 +60,7 @@ function PlaylistTrack() {
     })),
   );
   useSetLastActivePlaylist();
+  const viewportCompact = useViewportCompactHeight();
   const isFirstRender = useRef(true);
 
   const handleClickAddImages = (action: openFileAction) => {
@@ -167,6 +169,7 @@ function PlaylistTrack() {
         index={index}
         playlistImage={img}
         isCurrentTrack={isCurrentTrack}
+        viewportCompact={viewportCompact}
       />
     );
   });
@@ -234,9 +237,13 @@ function PlaylistTrack() {
   );
   const showDropIndicator = isDropTarget && isDraggingAddable;
 
-  const btnClass = isNeo
-    ? "btn btn-sm btn-primary uppercase"
-    : "btn btn-sm btn-primary rounded-lg uppercase";
+  const btnClass = viewportCompact
+    ? isNeo
+      ? "btn btn-xs btn-primary uppercase"
+      : "btn btn-xs btn-primary rounded-lg uppercase"
+    : isNeo
+      ? "btn btn-sm btn-primary uppercase"
+      : "btn btn-sm btn-primary rounded-lg uppercase";
   /* Horizontal scroll lives on a block wrapper — do NOT use flex + items-end on that same node:
    * when a horizontal scrollbar appears it shrinks the scrollport height and flex-end shifts every
    * card upward (vertical jump). Inner row handles alignment; outer only scrolls on X.
@@ -251,29 +258,39 @@ function PlaylistTrack() {
           )
         : cn(
             "min-w-0 w-full overflow-x-scroll overflow-y-visible [scrollbar-gutter:stable]",
-            "rounded-lg pt-3 pb-1 scrollbar-thumb-base-300 scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm",
+            "rounded-lg scrollbar-thumb-base-300 scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm",
+            "pt-3 pb-1 [@media(max-height:1080px)]:pt-2 [@media(max-height:1080px)]:pb-0.5",
           )
       : "";
 
   const trackScrollInnerClass = playlistArray.length > 0 ? "flex min-w-min items-end" : "";
 
   const editCardClass = cn(
-    "flex flex-col gap-3",
+    "flex flex-col gap-3 [@media(max-height:1080px)]:gap-2",
     isNeo && "neo-playlist-toolbar",
     !isNeo &&
-      "rounded-xl border border-base-content/10 bg-base-100/60 p-3 shadow-sm backdrop-blur-[2px]",
+      "rounded-xl border border-base-content/10 bg-base-100/60 p-3 shadow-sm backdrop-blur-[2px] [@media(max-height:1080px)]:p-2 [@media(max-height:1080px)]:rounded-lg",
   );
 
-  const dangerBtnClass = isNeo
-    ? "btn btn-sm btn-error uppercase"
-    : "btn btn-sm btn-error rounded-lg uppercase";
+  const dangerBtnClass = viewportCompact
+    ? isNeo
+      ? "btn btn-xs btn-error uppercase"
+      : "btn btn-xs btn-error rounded-lg uppercase"
+    : isNeo
+      ? "btn btn-sm btn-error uppercase"
+      : "btn btn-sm btn-error rounded-lg uppercase";
 
   return (
-    <div className="flex w-full min-w-0 flex-col gap-3 overflow-x-clip overflow-y-visible px-3 py-3">
+    <div
+      className={cn(
+        "flex w-full min-w-0 flex-col overflow-x-clip overflow-y-visible",
+        "gap-3 px-3 py-3 [@media(max-height:1080px)]:gap-2 [@media(max-height:1080px)]:px-2 [@media(max-height:1080px)]:py-2",
+      )}
+    >
       {isThisPlaylistActive && <PlaylistController />}
 
       <div className={editCardClass}>
-        <div className="flex w-full min-w-0 items-center justify-between gap-3">
+        <div className="flex w-full min-w-0 items-center justify-between gap-3 [@media(max-height:1080px)]:gap-2">
           <div className="flex min-w-0 items-center gap-2">
             <span
               className={cn(
@@ -285,7 +302,7 @@ function PlaylistTrack() {
             </span>
             <span
               className={cn(
-                "truncate text-lg font-bold lg:text-xl",
+                "truncate text-lg font-bold lg:text-xl [@media(max-height:1080px)]:text-base [@media(max-height:1080px)]:lg:text-lg",
                 isNeo &&
                   "font-[family-name:var(--font-display)] uppercase tracking-tight text-base-content",
               )}
@@ -304,7 +321,7 @@ function PlaylistTrack() {
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 [@media(max-height:1080px)]:gap-2">
           <div className="flex min-w-0 flex-wrap items-center gap-2">
             <div className="dropdown dropdown-top">
               <button type="button" tabIndex={0} className={btnClass}>

@@ -3,6 +3,7 @@ import { useActivePlaylistStore } from "../stores/activePlaylistStore";
 import { usePlaylistStore } from "../stores/playlist";
 import { useImagesStore } from "../stores/images";
 import { useIsNeo } from "../hooks/useIsNeo";
+import { useViewportCompactHeight } from "../hooks/useViewportCompactHeight";
 import { cn } from "../utils/cn";
 import { getThumbnailSrc } from "../utils/utilities";
 import { daemonClient } from "@/client";
@@ -27,11 +28,13 @@ function TrackProgress({
   isNeo,
   slotKey,
   nextChangeAt,
+  compact,
 }: {
   paused: boolean;
   isNeo: boolean;
   slotKey: string;
   nextChangeAt: string | null;
+  compact?: boolean;
 }) {
   const prevSlotKeyRef = useRef<string | null>(null);
   const [slot, setSlot] = useState<{
@@ -80,14 +83,22 @@ function TrackProgress({
   const remainingSec = Math.max(0, totalSec - elapsedSec);
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="w-9 shrink-0 text-right text-[0.65rem] tabular-nums text-base-content/60">
+    <div className={cn("flex items-center", compact ? "gap-1.5" : "gap-2")}>
+      <span
+        className={cn(
+          "shrink-0 text-right tabular-nums text-base-content/60",
+          compact ? "w-8 text-[0.6rem]" : "w-9 text-[0.65rem]",
+        )}
+      >
         {totalSec > 0 ? formatClock(elapsedSec) : "—"}
       </span>
       <div
         className={cn(
-          "relative h-1.5 flex-1 overflow-hidden",
-          isNeo ? "neo-progress-track" : "rounded-full bg-base-content/10",
+          "relative flex-1 overflow-hidden",
+          compact ? "h-1" : "h-1.5",
+          isNeo
+            ? cn("neo-progress-track", compact && "neo-progress-track--compact")
+            : "rounded-full bg-base-content/10",
         )}
         role="progressbar"
         aria-valuemin={0}
@@ -103,7 +114,12 @@ function TrackProgress({
           style={{ width: `${pct}%` }}
         />
       </div>
-      <span className="w-9 shrink-0 text-[0.65rem] tabular-nums text-base-content/60">
+      <span
+        className={cn(
+          "shrink-0 tabular-nums text-base-content/60",
+          compact ? "w-8 text-[0.6rem]" : "w-9 text-[0.65rem]",
+        )}
+      >
         {totalSec > 0 ? `-${formatClock(remainingSec)}` : "—"}
       </span>
     </div>
@@ -116,6 +132,7 @@ function scheduleLockedPlaylistType(t: string | undefined): boolean {
 
 function PlaylistController() {
   const isNeo = useIsNeo();
+  const viewportCompact = useViewportCompactHeight();
   const activePlaylist = useActivePlaylistStore((s) => s.activePlaylist);
   const editorPlaylist = usePlaylistStore((s) => s.playlist);
   const imagesMap = useImagesStore((s) => s.imagesMap);
@@ -160,22 +177,28 @@ function PlaylistController() {
   const monitors = activePlaylist.monitors.join(", ");
 
   const shellClass = cn(
-    "flex w-full min-w-0 items-center gap-3 lg:gap-4",
+    "flex w-full min-w-0 items-center",
+    viewportCompact ? "gap-2 px-2 py-2 lg:gap-3" : "gap-3 px-3 py-2.5 lg:gap-4",
     isNeo
-      ? "neo-now-playing px-3 py-2.5"
-      : "rounded-xl border border-base-content/10 bg-gradient-to-r from-base-200/80 to-base-100/80 px-3 py-2.5 shadow-sm backdrop-blur-[2px]",
+      ? "neo-now-playing"
+      : "rounded-xl border border-base-content/10 bg-gradient-to-r from-base-200/80 to-base-100/80 shadow-sm backdrop-blur-[2px]",
   );
 
   const titleClass = cn(
-    "truncate text-base font-bold leading-tight lg:text-lg",
+    "truncate font-bold leading-tight",
+    viewportCompact ? "text-sm lg:text-base" : "text-base lg:text-lg",
     isNeo && "font-[family-name:var(--font-display)] uppercase tracking-tight",
   );
 
   const transportBtn = (extra?: string) =>
-    cn("btn btn-ghost btn-square btn-sm", isNeo && "neo-pc-icon-btn", extra);
+    cn(
+      viewportCompact ? "btn btn-ghost btn-square btn-xs" : "btn btn-ghost btn-square btn-sm",
+      isNeo && "neo-pc-icon-btn",
+      extra,
+    );
 
   const playPauseBtn = cn(
-    "btn btn-square btn-md",
+    viewportCompact ? "btn btn-square btn-sm" : "btn btn-square btn-md",
     isNeo ? "neo-pc-play-btn" : "btn-primary rounded-full shadow",
   );
 
@@ -187,7 +210,12 @@ function PlaylistController() {
           <img
             src={getThumbnailSrc(currentImage)}
             alt={currentImage.name}
-            className={cn("h-14 w-14 object-cover lg:h-16 lg:w-16", !isNeo && "rounded-lg")}
+            className={cn(
+              viewportCompact
+                ? "h-11 w-11 object-cover lg:h-12 lg:w-12"
+                : "h-14 w-14 object-cover lg:h-16 lg:w-16",
+              !isNeo && "rounded-lg",
+            )}
           />
           {!activePlaylist.paused && (
             <span
@@ -202,7 +230,7 @@ function PlaylistController() {
       )}
 
       {/* CENTER: track meta + progress */}
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
+      <div className={cn("flex min-w-0 flex-1 flex-col", viewportCompact ? "gap-0.5" : "gap-1")}>
         <div className="flex min-w-0 items-baseline gap-2">
           <span className={titleClass} title={activePlaylist.playlist_name}>
             {activePlaylist.playlist_name}
@@ -245,13 +273,19 @@ function PlaylistController() {
           isNeo={isNeo}
           slotKey={slotKey}
           nextChangeAt={activePlaylist.next_change_at}
+          compact={viewportCompact}
         />
       </div>
 
       {/* RIGHT: transport */}
       <div className={cn("flex shrink-0 items-center gap-1", isNeo && "neo-pc-controls")}>
         {!noManualStep && (
-          <button type="button" className={transportBtn()} onClick={handlePrevious} title="Previous">
+          <button
+            type="button"
+            className={transportBtn()}
+            onClick={handlePrevious}
+            title="Previous"
+          >
             <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
               <path d="M7.712 4.819A1.5 1.5 0 0110 6.095v2.973l5.712-4.248A1.5 1.5 0 0118 6.095v7.81a1.5 1.5 0 01-2.288 1.276L10 10.933v2.973a1.5 1.5 0 01-2.288 1.276l-5.712-4.249a1.5 1.5 0 010-2.553l5.712-4.561z" />
             </svg>
