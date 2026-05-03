@@ -620,6 +620,7 @@ func (w *WaylandUtauri) RegisterDefaults(v *viper.Viper) {
 	v.SetDefault(viperBackendKey+".expected_api_version", def.ExpectedAPIVersion)
 	v.SetDefault(viperBackendKey+".connect_timeout_ms", def.ConnectTimeoutMS)
 	v.SetDefault(viperBackendKey+".request_timeout_ms", def.RequestTimeoutMS)
+	v.SetDefault(viperBackendKey+".load_timeout_ms", def.LoadTimeoutMS)
 	v.SetDefault(viperBackendKey+".transition", def.Transition)
 	v.SetDefault(viperBackendKey+".duration_ms", def.DurationMS)
 	v.SetDefault(viperBackendKey+".transition_bezier", def.TransitionBezier)
@@ -726,6 +727,9 @@ func (w *WaylandUtauri) loadConfigFromViper() *Config {
 	}
 	if val := getInt("request_timeout_ms"); val > 0 {
 		cfg.RequestTimeoutMS = val
+	}
+	if val := getInt("load_timeout_ms"); val > 0 {
+		cfg.LoadTimeoutMS = val
 	}
 	if val := getString("transition"); val != "" {
 		cfg.Transition = val

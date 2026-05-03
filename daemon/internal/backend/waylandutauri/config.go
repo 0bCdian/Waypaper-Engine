@@ -17,6 +17,10 @@ type Config struct {
 	ExpectedAPIVersion string `mapstructure:"expected_api_version" json:"expected_api_version"`
 	ConnectTimeoutMS   int    `mapstructure:"connect_timeout_ms" json:"connect_timeout_ms"`
 	RequestTimeoutMS   int    `mapstructure:"request_timeout_ms" json:"request_timeout_ms"`
+	// LoadTimeoutMS bounds the POST /wallpaper/load call. Web wallpaper navigation
+	// can run several seconds end-to-end, so this is much larger than the generic
+	// per-request timeout that fits health/status/parallax calls.
+	LoadTimeoutMS int `mapstructure:"load_timeout_ms" json:"load_timeout_ms"`
 	Transition         string `mapstructure:"transition" json:"transition"`
 	DurationMS         int    `mapstructure:"duration_ms" json:"duration_ms"`
 	TransitionBezier   string `mapstructure:"transition_bezier" json:"transition_bezier"`
@@ -61,6 +65,7 @@ func defaultConfig() *Config {
 		ExpectedAPIVersion:             defaultAPIVersion,
 		ConnectTimeoutMS:               500,
 		RequestTimeoutMS:               1500,
+		LoadTimeoutMS:                  15000,
 		Transition:                     "none",
 		DurationMS:                     300,
 		TransitionBezier:               "0.54,0,0.34,0.99",

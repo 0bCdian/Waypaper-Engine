@@ -15,7 +15,14 @@ import (
 const localHTTPBaseURL = "http://wayland-utauri.local"
 
 type controlClient struct {
-	httpClient      *http.Client
+	// httpClient applies a short Client.Timeout fitted to fast endpoints
+	// (health, status, parallax, settings).
+	httpClient *http.Client
+	// loadClient has no Client.Timeout because /wallpaper/load can take many
+	// seconds (e.g. web wallpaper navigation completion). Callers control the
+	// deadline via ctx.
+	loadClient      *http.Client
+	loadTimeout     time.Duration
 	baseURL         string
 	expectedService string
 	expectedAPI     string
@@ -38,11 +45,20 @@ func newControlClient(cfg *Config) (*controlClient, error) {
 		timeout = 1500 * time.Millisecond
 	}
 
+	loadTimeout := time.Duration(cfg.LoadTimeoutMS) * time.Millisecond
+	if loadTimeout <= 0 {
+		loadTimeout = 15000 * time.Millisecond
+	}
+
 	return &controlClient{
 		httpClient: &http.Client{
 			Transport: transport,
 			Timeout:   timeout,
 		},
+		loadClient: &http.Client{
+			Transport: transport,
+		},
+		loadTimeout:     loadTimeout,
 		baseURL:         localHTTPBaseURL,
 		expectedService: cfg.ExpectedService,
 		expectedAPI:     cfg.ExpectedAPIVersion,
@@ -100,7 +116,9 @@ func (c *controlClient) status(ctx context.Context) (*statusResponse, error) {
 }
 
 func (c *controlClient) load(ctx context.Context, req loadRequest) (int, string, error) {
-	_, status, body, err := c.doJSON(ctx, http.MethodPost, "/wallpaper/load", req)
+	loadCtx, cancel := context.WithTimeout(ctx, c.loadTimeout)
+	defer cancel()
+	_, status, body, err := c.doJSONWith(loadCtx, c.loadClient, http.MethodPost, "/wallpaper/load", req)
 	return status, body, err
 }
 
@@ -201,6 +219,10 @@ func (c *controlClient) parallaxMove(ctx context.Context, outputName, direction 
 }
 
 func (c *controlClient) doJSON(ctx context.Context, method, path string, payload any) (http.Header, int, string, error) {
+	return c.doJSONWith(ctx, c.httpClient, method, path, payload)
+}
+
+func (c *controlClient) doJSONWith(ctx context.Context, hc *http.Client, method, path string, payload any) (http.Header, int, string, error) {
 	var bodyReader io.Reader
 	if payload != nil {
 		raw, err := json.Marshal(payload)
@@ -216,7 +238,7 @@ func (c *controlClient) doJSON(ctx context.Context, method, path string, payload
 	}
 	req.Header.Set("Content-Type", "application/json")
 
-	resp, err := c.httpClient.Do(req)
+	resp, err := hc.Do(req)
 	if err != nil {
 		return nil, 0, "", err
 	}

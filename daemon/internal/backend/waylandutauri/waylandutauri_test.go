@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -56,7 +57,12 @@ func TestSetWallpaper_RetriesOnInternalError(t *testing.T) {
 
 	b := &WaylandUtauri{
 		makeClient: func(_ *Config) (*controlClient, error) {
-			return &controlClient{httpClient: srv.Client(), baseURL: srv.URL}, nil
+			return &controlClient{
+				httpClient:  srv.Client(),
+				loadClient:  srv.Client(),
+				loadTimeout: 5 * time.Second,
+				baseURL:     srv.URL,
+			}, nil
 		},
 	}
 
@@ -80,6 +86,7 @@ func TestRegisterDefaultsAndLoadConfig(t *testing.T) {
 	assert.Equal(t, defaultAPIVersion, cfg.ExpectedAPIVersion)
 	assert.Equal(t, 500, cfg.ConnectTimeoutMS)
 	assert.Equal(t, 1500, cfg.RequestTimeoutMS)
+	assert.Equal(t, 15000, cfg.LoadTimeoutMS)
 	assert.Equal(t, "0.54,0,0.34,0.99", cfg.TransitionBezier)
 	assert.Equal(t, "cover", cfg.ImageFitMode)
 	assert.Equal(t, "auto", cfg.ImageRendering)

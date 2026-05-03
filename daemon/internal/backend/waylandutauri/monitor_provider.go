@@ -128,5 +128,8 @@ func (p *utauriMonitorProvider) controlConfig() *Config {
 	if val := getInt("request_timeout_ms"); val > 0 {
 		cfg.RequestTimeoutMS = val
 	}
+	if val := getInt("load_timeout_ms"); val > 0 {
+		cfg.LoadTimeoutMS = val
+	}
 	return cfg
 }
