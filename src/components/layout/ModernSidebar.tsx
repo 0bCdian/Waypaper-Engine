@@ -217,19 +217,27 @@ export const IconRailSidebar: React.FC = () => {
     );
   }
 
-  // Padding-left transitions icon from centered (collapsed) to expanded alignment.
+  const railEaseTransition = `var(--wp-dur-base) var(--wp-ease-out)`;
+
+  // Padding-left transitions icons with the rail width (same duration/easing as aside width).
   // Nav uses px-2 (8px each side): inner width = 40px when rail is 56px.
   // Center 20px icons: (40 - 20) / 2 = 10px. Center 16px footer icons: (40 - 16) / 2 = 12px.
   // Expanded insets match settings modal rail (nav px-2 + control px-3 → 20px to icon).
   const navItemStyle = {
     paddingLeft: expanded ? "0.75rem" : "0.625rem",
     paddingRight: "0.75rem",
-    transition: `padding-left var(--wp-dur-base) var(--wp-ease-out)`,
+    transition: `padding-left ${railEaseTransition}`,
   } as const;
   const footerBtnStyle = {
-    paddingLeft: expanded ? "0.75rem" : "0.75rem",
+    paddingLeft: "0.75rem",
     paddingRight: "0.75rem",
-    transition: `padding-left var(--wp-dur-base) var(--wp-ease-out)`,
+  } as const;
+  // Masthead: keep justify-start always; animate padding-left between collapsed “centered logo”
+  // (12px = same optical center as former justify-center + px-2) and expanded pl-5 (20px).
+  const mastheadStyle = {
+    paddingLeft: expanded ? "1.25rem" : "0.75rem",
+    paddingRight: "0.5rem",
+    transition: `padding-left ${railEaseTransition}`,
   } as const;
 
   return (
@@ -237,7 +245,7 @@ export const IconRailSidebar: React.FC = () => {
       className="neo-sidebar relative bg-base-100 border-r flex flex-col shrink-0 overflow-hidden"
       style={{
         width: expanded ? 240 : 56,
-        transition: `width var(--wp-dur-base) var(--wp-ease-out)`,
+        transition: `width ${railEaseTransition}`,
         ...(isNeo ? {} : { borderColor: "var(--wp-hairline)" }),
       }}
       onMouseEnter={() => setHovered(true)}
@@ -246,10 +254,10 @@ export const IconRailSidebar: React.FC = () => {
       {/* App logo + name */}
       <div
         className={cn(
-          "flex items-center shrink-0 overflow-hidden py-3 gap-3",
-          expanded ? "justify-start pl-5 pr-2" : "justify-center px-2",
+          "flex items-center shrink-0 overflow-hidden py-3 gap-3 justify-start",
           isNeo && "neo-sidebar-masthead",
         )}
+        style={mastheadStyle}
       >
         <Link
           to={"/"}
@@ -270,7 +278,7 @@ export const IconRailSidebar: React.FC = () => {
               exit={{ opacity: 0, maxWidth: 0 }}
               transition={{ duration: 0.15 }}
               className={cn(
-                "font-semibold text-base text-base-content whitespace-nowrap overflow-hidden",
+                "font-semibold text-base text-base-content whitespace-nowrap overflow-hidden min-w-0",
                 isNeo && "neo-sidebar-brand",
               )}
             >
@@ -325,7 +333,7 @@ export const IconRailSidebar: React.FC = () => {
                       animate={{ opacity: 1, maxWidth: 160 }}
                       exit={{ opacity: 0, maxWidth: 0 }}
                       transition={{ duration: 0.12 }}
-                      className="text-sm font-medium whitespace-nowrap overflow-hidden"
+                      className="text-sm font-medium whitespace-nowrap overflow-hidden min-w-0"
                     >
                       {item.label}
                     </motion.span>
@@ -370,7 +378,7 @@ export const IconRailSidebar: React.FC = () => {
                     animate={{ opacity: 1, maxWidth: 160 }}
                     exit={{ opacity: 0, maxWidth: 0 }}
                     transition={{ duration: 0.12 }}
-                    className="text-sm font-medium whitespace-nowrap overflow-hidden"
+                    className="text-sm font-medium whitespace-nowrap overflow-hidden min-w-0"
                   >
                     {item.label}
                   </motion.span>
@@ -418,6 +426,7 @@ export const IconRailSidebar: React.FC = () => {
             strokeLinecap="round"
             strokeLinejoin="round"
             aria-hidden
+            className="shrink-0"
           >
             {hoverRevealEnabled ? (
               <>
@@ -440,7 +449,7 @@ export const IconRailSidebar: React.FC = () => {
                 animate={{ opacity: 1, maxWidth: 160 }}
                 exit={{ opacity: 0, maxWidth: 0 }}
                 transition={{ duration: 0.12 }}
-                className="text-sm whitespace-nowrap overflow-hidden"
+                className="text-sm whitespace-nowrap overflow-hidden min-w-0"
               >
                 {hoverRevealEnabled ? "Auto-reveal: On" : "Auto-reveal: Off"}
               </motion.span>
@@ -471,6 +480,7 @@ export const IconRailSidebar: React.FC = () => {
             strokeLinecap="round"
             strokeLinejoin="round"
             aria-hidden
+            className="shrink-0"
           >
             <line x1="12" y1="17" x2="12" y2="22" />
             <path d="M5 17h14v-1.76a2 2 0 00-1.11-1.79l-1.78-.9A2 2 0 0115 10.76V6h1a2 2 0 000-4H8a2 2 0 000 4h1v4.76a2 2 0 01-1.11 1.79l-1.78.9A2 2 0 005 15.24z" />
@@ -483,7 +493,7 @@ export const IconRailSidebar: React.FC = () => {
                 animate={{ opacity: 1, maxWidth: 160 }}
                 exit={{ opacity: 0, maxWidth: 0 }}
                 transition={{ duration: 0.12 }}
-                className="text-sm whitespace-nowrap overflow-hidden"
+                className="text-sm whitespace-nowrap overflow-hidden min-w-0"
               >
                 {pinned ? "Unpin sidebar" : "Pin sidebar"}
               </motion.span>
@@ -521,6 +531,7 @@ export const IconRailSidebar: React.FC = () => {
             strokeLinecap="round"
             strokeLinejoin="round"
             aria-hidden
+            className="shrink-0"
           >
             <title>Quit</title>
             <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
@@ -535,7 +546,7 @@ export const IconRailSidebar: React.FC = () => {
                 animate={{ opacity: 1, maxWidth: 160 }}
                 exit={{ opacity: 0, maxWidth: 0 }}
                 transition={{ duration: 0.12 }}
-                className="text-sm whitespace-nowrap overflow-hidden"
+                className="text-sm whitespace-nowrap overflow-hidden min-w-0"
               >
                 Quit
               </motion.span>
