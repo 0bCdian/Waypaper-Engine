@@ -237,14 +237,25 @@ function PlaylistTrack() {
   const btnClass = isNeo
     ? "btn btn-sm btn-primary uppercase"
     : "btn btn-sm btn-primary rounded-lg uppercase";
-  /* Horizontal scroll only (Tailwind / DaisyUI pattern: overflow-x-auto on flex row).
+  /* Horizontal scroll lives on a block wrapper — do NOT use flex + items-end on that same node:
+   * when a horizontal scrollbar appears it shrinks the scrollport height and flex-end shifts every
+   * card upward (vertical jump). Inner row handles alignment; outer only scrolls on X.
+   * overflow-x-scroll keeps the scrollbar lane allocated on classic scrollbars (stable footprint).
    * Never combine overflow-y-hidden here: it clips translateY + shadows on the “raised” card. */
-  const scrollClass =
+  const trackScrollOuterClass =
     playlistArray.length > 0
       ? isNeo
-        ? "neo-playlist-scroll flex min-w-0 overflow-x-auto scrollbar-thumb-base-300 scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm"
-        : "flex min-w-0 overflow-x-auto rounded-lg pt-3 pb-1 scrollbar-thumb-base-300 scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm"
+        ? cn(
+            "neo-playlist-scroll min-w-0 w-full overflow-x-scroll overflow-y-visible [scrollbar-gutter:stable]",
+            "scrollbar-thumb-base-300 scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm",
+          )
+        : cn(
+            "min-w-0 w-full overflow-x-scroll overflow-y-visible [scrollbar-gutter:stable]",
+            "rounded-lg pt-3 pb-1 scrollbar-thumb-base-300 scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm",
+          )
       : "";
+
+  const trackScrollInnerClass = playlistArray.length > 0 ? "flex min-w-min items-end" : "";
 
   const editCardClass = cn(
     "flex flex-col gap-3",
@@ -411,8 +422,14 @@ function PlaylistTrack() {
             <span className="text-sm font-medium text-primary">Drop to add to playlist</span>
           </div>
         )}
-        <div ref={trackScrollRef} className={`w-full min-w-0 items-end ${scrollClass}`}>
-          {playlistArray}
+        <div
+          ref={trackScrollRef}
+          style={playlistArray.length > 0 ? { scrollbarGutter: "stable" } : undefined}
+          className={cn("w-full min-w-0", trackScrollOuterClass)}
+        >
+          {playlistArray.length > 0 ? (
+            <div className={trackScrollInnerClass}>{playlistArray}</div>
+          ) : null}
         </div>
       </div>
     </div>

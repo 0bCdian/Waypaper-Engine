@@ -40,6 +40,13 @@ code {
   font-family: var(--font-body);
 }
 
+/* Inherited by scroll containers — anchor jumps & navigational scroll; omit when motion is reduced */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
 h1,
 h2,
 h3,
