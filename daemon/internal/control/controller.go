@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"math"
 
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/config"
@@ -66,6 +67,73 @@ type ActivationResult struct {
 
 func (c *Controller) GetConfig() (*config.Config, error) {
 	return c.cfg.GetConfig()
+}
+
+// MergedConfigJSON returns the full config as a JSON object for GET /config (and PATCH /config responses).
+// Each registered backend's effective [backend.<name>] map is merged under backend.<name> so renderers
+// see the same defaults and file values as Viper + RegisterDefaults. Typed config.Config intentionally
+// omits those subtrees.
+//
+// When backend.transition_duration_seconds is set, it overlays awww.transition_duration and
+// wayland-utauri.duration_ms to match wallpaper runtime behavior.
+func (c *Controller) MergedConfigJSON() (map[string]any, error) {
+	cfg, err := c.cfg.GetConfig()
+	if err != nil {
+		return nil, err
+	}
+	raw, err := json.Marshal(cfg)
+	if err != nil {
+		return nil, fmt.Errorf("control: marshal config: %w", err)
+	}
+	var root map[string]any
+	if err := json.Unmarshal(raw, &root); err != nil {
+		return nil, fmt.Errorf("control: unmarshal config map: %w", err)
+	}
+
+	bAny, ok := root["backend"].(map[string]any)
+	if !ok {
+		bAny = map[string]any{}
+		root["backend"] = bAny
+	}
+
+	for _, info := range c.registry.Available() {
+		name := info.Name
+		subRaw, err := c.cfg.GetBackendConfig(name)
+		if err != nil {
+			return nil, fmt.Errorf("control: backend %s config: %w", name, err)
+		}
+		var sub map[string]any
+		if err := json.Unmarshal(subRaw, &sub); err != nil {
+			return nil, fmt.Errorf("control: backend %s json: %w", name, err)
+		}
+		if sub == nil {
+			sub = map[string]any{}
+		}
+		bAny[name] = sub
+	}
+
+	canon := cfg.Backend.TransitionDurationSeconds
+	if canon > 0 {
+		if canon > 120 {
+			canon = 120
+		}
+		if awww, ok := bAny["awww"].(map[string]any); ok {
+			awww["transition_duration"] = canon
+		}
+		if wut, ok := bAny["wayland-utauri"].(map[string]any); ok {
+			ms := int(math.Round(canon * 1000))
+			if ms < 1 {
+				ms = 1
+			}
+			const maxMS = 120_000
+			if ms > maxMS {
+				ms = maxMS
+			}
+			wut["duration_ms"] = ms
+		}
+	}
+
+	return root, nil
 }
 
 func (c *Controller) UpdateConfig(section string, values map[string]any) error {

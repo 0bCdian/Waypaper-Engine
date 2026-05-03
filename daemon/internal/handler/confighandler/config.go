@@ -30,13 +30,13 @@ func NewConfigHandler(ctrl *control.Controller) *ConfigHandler {
 // @Failure      500  {object}  httpjson.APIError
 // @Router       /config [get]
 func (h *ConfigHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
-	cfg, err := h.control.GetConfig()
+	merged, err := h.control.MergedConfigJSON()
 	if err != nil {
 		httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	httpjson.WriteJSON(w, http.StatusOK, cfg)
+	httpjson.WriteJSON(w, http.StatusOK, merged)
 }
 
 // PatchConfig handles PATCH /config.
@@ -62,13 +62,13 @@ func (h *ConfigHandler) PatchConfig(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	cfg, err := h.control.GetConfig()
+	merged, err := h.control.MergedConfigJSON()
 	if err != nil {
 		httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
 
-	httpjson.WriteJSON(w, http.StatusOK, cfg)
+	httpjson.WriteJSON(w, http.StatusOK, merged)
 }
 
 // GetSection handles GET /config/{section}.

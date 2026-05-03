@@ -314,6 +314,8 @@ export interface BackendSection {
   feh?: FehConfig;
   hyprpaper?: HyprpaperConfig;
   mpvpaper?: MpvpaperConfig;
+  /** Merged from [backend.wayland-utauri] (hyphenated TOML table). */
+  "wayland-utauri"?: WaylandUtauriConfig;
   waylandutauri?: WaylandUtauriConfig;
 }
 

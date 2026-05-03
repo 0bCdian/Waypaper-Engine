@@ -39,9 +39,95 @@ func TestConfigHandler_GetConfig(t *testing.T) {
 
 	assert.Equal(t, http.StatusOK, w.Code)
 
-	var body config.Config
+	var body map[string]any
 	require.NoError(t, json.NewDecoder(w.Body).Decode(&body))
-	assert.Equal(t, "kolision-raw", body.App.Theme)
+	app, ok := body["app"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "kolision-raw", app["theme"])
+}
+
+func TestConfigHandler_GetConfig_MergesBackendSections(t *testing.T) {
+	cfg := &testutil.MockConfigManager{
+		GetConfigFn: func() (*config.Config, error) {
+			return &config.Config{
+				Backend: config.BackendSection{
+					Type: "awww",
+				},
+			}, nil
+		},
+		GetBackendConfigFn: func(name string) (json.RawMessage, error) {
+			if name == "awww" {
+				return json.RawMessage(`{"transition_fps":60,"transition_step":90}`), nil
+			}
+			return json.RawMessage(`{}`), nil
+		},
+	}
+	reg := &testutil.MockRegistry{
+		AvailableFn: func() []backend.BackendInfo {
+			return []backend.BackendInfo{{Name: "awww"}, {Name: "feh"}}
+		},
+	}
+	h := NewConfigHandler(testController(cfg, reg, &testutil.MockBus{}))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/config", nil)
+	h.GetConfig(w, r)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var body map[string]any
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&body))
+	b, ok := body["backend"].(map[string]any)
+	require.True(t, ok)
+	assert.Equal(t, "awww", b["type"])
+	awww, ok := b["awww"].(map[string]any)
+	require.True(t, ok)
+	assert.EqualValues(t, 60, awww["transition_fps"])
+	assert.EqualValues(t, 90, awww["transition_step"])
+	feh, ok := b["feh"].(map[string]any)
+	require.True(t, ok)
+	assert.Len(t, feh, 0)
+}
+
+func TestConfigHandler_GetConfig_TransitionDurationCanonOverlay(t *testing.T) {
+	cfg := &testutil.MockConfigManager{
+		GetConfigFn: func() (*config.Config, error) {
+			return &config.Config{
+				Backend: config.BackendSection{
+					Type:                      "awww",
+					TransitionDurationSeconds: 2.5,
+				},
+			}, nil
+		},
+		GetBackendConfigFn: func(name string) (json.RawMessage, error) {
+			switch name {
+			case "awww":
+				return json.RawMessage(`{"transition_duration":9}`), nil
+			case "wayland-utauri":
+				return json.RawMessage(`{"duration_ms":999}`), nil
+			default:
+				return json.RawMessage(`{}`), nil
+			}
+		},
+	}
+	reg := &testutil.MockRegistry{
+		AvailableFn: func() []backend.BackendInfo {
+			return []backend.BackendInfo{{Name: "awww"}, {Name: "wayland-utauri"}}
+		},
+	}
+	h := NewConfigHandler(testController(cfg, reg, &testutil.MockBus{}))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/config", nil)
+	h.GetConfig(w, r)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	var body map[string]any
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&body))
+	b := body["backend"].(map[string]any)
+	awww := b["awww"].(map[string]any)
+	assert.InDelta(t, 2.5, awww["transition_duration"], 1e-9)
+	wut := b["wayland-utauri"].(map[string]any)
+	assert.EqualValues(t, 2500, wut["duration_ms"])
 }
 
 func TestConfigHandler_GetSection(t *testing.T) {

@@ -41,30 +41,65 @@ log_max_backups = 3
 type = "awww"  # "awww" | "hyprpaper" | "feh" | "wayland-utauri"
 
 [backend.awww]
-# awww-specific configuration
-transition_type = "simple"  # "simple" | "wipe" | "grow" | "outer" | "wave"
+# Defaults match daemon RegisterDefaults (transition_duration is seconds; whole numbers 500–5000 are legacy ms)
+transition_type = "wipe"
 transition_step = 90
-transition_duration = 200
+transition_duration = 3
+transition_fps = 60
 transition_angle = 45
-transition_pos = "center"  # "center" | "top" | "bottom" | "left" | "right"
-transition_bezier = "0.4,0.0,0.2,1"
-transition_wave = "0,0,0,0"
+transition_pos = "center"
+transition_bezier = "0.25,0.1,0.25,1.0"
+transition_wave = "20,20"
+resize = "crop"
+fill_color = "000000"
+filter_type = "Lanczos3"
+invert_y = false
+
+[backend.feh]
+mode = "fill"
+
+[backend.hyprpaper]
+fit_mode = "cover"
+config_path = ""
+
+[backend.mpvpaper]
+mpv_options = "loop"
+verbose = 0
+auto_pause = false
+auto_stop = false
+layer = ""
+slideshow_secs = 0
 
 [backend.wayland-utauri]
-# wayland-utauri first-party backend configuration (must match backend.type name; legacy [backend.waylandutauri] is still read)
+# Defaults match daemon defaultConfig / RegisterDefaults (legacy [backend.waylandutauri] is still read)
 socket_path = ""
 expected_service = "wayland-utauri"
 expected_api_version = "0"
 connect_timeout_ms = 500
 request_timeout_ms = 1500
+load_timeout_ms = 15000
 transition = "none"
 duration_ms = 300
+transition_bezier = "0.54,0,0.34,0.99"
+transition_angle_deg = 0
+transition_origin_x_percent = 50
+transition_origin_y_percent = 50
+transition_wave_amplitude_percent = 5
+transition_wave_frequency = 3
+parallax_enabled = false
+parallax_zoom = 120
+parallax_step_percent = 5
+parallax_workspace_chunk_size = 10
+parallax_animation_ms = 600
+parallax_reset_ms = 400
+parallax_easing = "0.215,0.610,0.355,1.000"
 allow_network_wallpapers = false
-# Hyprland/Sway: workspace follow → POST /wallpaper/parallax-move (auto | off | hyprland | sway; requires parallax_enabled in app)
+video_audio_default = false
+image_fit_mode = "cover"
+image_rendering = "auto"
+# Hyprland/Sway: workspace follow → POST /wallpaper/parallax-move (auto | off | hyprland | sway)
 parallax_compositor_driver = "auto"
-# parallax_workspace_chunk_size = 10      # ring size for mapping workspace id deltas to parallax left/right
-# parallax_direction = "horizontal"        # horizontal | vertical — default workspace parallax axis (waypaper.json can override)
-# parallax_reset_ms = 400                  # disable / snap-back transition duration (sent with POST /wallpaper/parallax)
+parallax_direction = "horizontal"
 
 [monitors]
 # Monitor configuration
