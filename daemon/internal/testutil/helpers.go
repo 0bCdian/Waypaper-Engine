@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"net/http"
 	"strings"
 	"testing"
@@ -94,15 +93,4 @@ func JSONBody(t *testing.T, v any) *strings.Reader {
 		t.Fatalf("JSONBody: marshal: %v", err)
 	}
 	return strings.NewReader(string(data))
-}
-
-// DecodeJSON decodes JSON from body into T and returns the result.
-// Fails the test on decode error.
-func DecodeJSON[T any](t *testing.T, body io.Reader) T {
-	t.Helper()
-	var v T
-	if err := json.NewDecoder(body).Decode(&v); err != nil {
-		t.Fatalf("DecodeJSON: %v", err)
-	}
-	return v
 }

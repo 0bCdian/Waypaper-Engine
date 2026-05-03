@@ -209,13 +209,6 @@ func (p *Processor) CancelBatch(batchID string) bool {
 	return true
 }
 
-// ProcessBatch imports a batch of images asynchronously. It publishes SSE events
-// for progress tracking. Returns the batch ID that identifies this import in
-// all emitted events.
-func (p *Processor) ProcessBatch(ctx context.Context, paths []string) string {
-	return p.ProcessBatchWithFolder(ctx, paths, nil)
-}
-
 // ProcessBatchWithFolder imports a batch of images asynchronously, assigning them
 // to the given folder. Returns the batch ID.
 func (p *Processor) ProcessBatchWithFolder(ctx context.Context, paths []string, folderID *int) string {

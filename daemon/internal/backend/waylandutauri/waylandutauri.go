@@ -1013,12 +1013,3 @@ func batchRestoreParallaxDirection(img *store.Image) string {
 		return ""
 	}
 }
-
-// LoadConfigFromViper reads [backend.wayland-utauri] from v. Nil v returns built-in defaults.
-func LoadConfigFromViper(v *viper.Viper) *Config {
-	if v == nil {
-		return defaultConfig()
-	}
-	w := &WaylandUtauri{v: v}
-	return w.loadConfigFromViper()
-}

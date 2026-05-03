@@ -118,11 +118,6 @@ func decodeVideoFramePixelsForPalette(imagePath string, maxEdge int) ([]rgbPixel
 	return extractPixels(sampled), nil
 }
 
-// decodeDownsamplePixels reads an image file at the small grid used for static ExtractPalette helpers/tests.
-func decodeDownsamplePixels(imagePath string) ([]rgbPixel, error) {
-	return decodeVideoFramePixelsForPalette(imagePath, sampleSize)
-}
-
 func downsample(src image.Image, size int) image.Image {
 	bounds := src.Bounds()
 	w, h := bounds.Dx(), bounds.Dy()

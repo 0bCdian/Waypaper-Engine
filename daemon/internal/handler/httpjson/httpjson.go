@@ -2,13 +2,10 @@ package httpjson
 
 import (
 	"encoding/json"
-	"errors"
 	"fmt"
 	"log/slog"
 	"net/http"
 	"strconv"
-
-	"waypaper-engine/daemon/internal/store"
 )
 
 // WriteJSON writes a JSON response with the given status code.
@@ -71,16 +68,6 @@ func ParseIntParam(value string) (int, error) {
 		return 0, fmt.Errorf("invalid integer parameter %q: %w", value, err)
 	}
 	return n, nil
-}
-
-// WriteStoreError writes an appropriate HTTP error for a store operation failure.
-// Returns 404 for ErrNotFound, 500 for everything else.
-func WriteStoreError(w http.ResponseWriter, err error) {
-	if errors.Is(err, store.ErrNotFound) {
-		WriteError(w, http.StatusNotFound, err.Error())
-	} else {
-		WriteError(w, http.StatusInternalServerError, err.Error())
-	}
 }
 
 // NormalizeStringSlice converts a []interface{} (from JSON decoding) to []string.

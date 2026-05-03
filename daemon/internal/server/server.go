@@ -58,8 +58,3 @@ func (s *Server) Shutdown(ctx context.Context) error {
 	slog.Info("server shutting down")
 	return s.httpServer.Shutdown(ctx)
 }
-
-// SocketPath returns the path to the Unix socket.
-func (s *Server) SocketPath() string {
-	return s.socketPath
-}
