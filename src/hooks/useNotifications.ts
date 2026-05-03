@@ -7,7 +7,6 @@ import type {
   ProcessingCompletePayload,
   ProcessingStartedPayload,
   PlaylistEventPayload,
-  PlaylistImageChangedPayload,
   MonitorEventPayload,
 } from "../../electron/daemon-go-types";
 import { daemonClient } from "@/client";
@@ -81,13 +80,7 @@ export default function useNotifications(): void {
       }),
     );
 
-    disposers.push(
-      daemonClient.on("playlist_image_changed", (data: unknown) => {
-        const payload = data as PlaylistImageChangedPayload;
-        const monitor = payload?.monitor ?? "";
-        addToast(`Playlist advanced${monitor ? ` on ${monitor}` : ""}`, "info", 3000);
-      }),
-    );
+    /* playlist_image_changed: omit toast — wallpaper_changed already confirms each apply */
 
     disposers.push(
       daemonClient.on("monitor_connected", (data: unknown) => {

@@ -9,6 +9,19 @@ export interface Toast {
   duration?: number;
 }
 
+/** Oldest toasts are dropped when exceeded — keeps noisy SSE bursts readable */
+const MAX_VISIBLE_TOASTS = 2;
+
+const dismissTimers = new Map<string, ReturnType<typeof setTimeout>>();
+
+function clearDismissTimer(id: string) {
+  const t = dismissTimers.get(id);
+  if (t !== undefined) {
+    clearTimeout(t);
+    dismissTimers.delete(id);
+  }
+}
+
 interface State {
   toasts: Toast[];
 }
@@ -26,27 +39,37 @@ export const useToastStore = create<State & Actions>()((set) => ({
     const id = `${Date.now()}-${Math.random()}`;
     const toast: Toast = { id, message, type, duration };
 
-    set((state) => ({
-      toasts: [...state.toasts, toast],
-    }));
+    set((state) => {
+      const next = [...state.toasts, toast];
+      while (next.length > MAX_VISIBLE_TOASTS) {
+        const dropped = next.shift();
+        if (dropped) clearDismissTimer(dropped.id);
+      }
+      return { toasts: next };
+    });
 
-    // Auto-remove toast after duration
     if (duration > 0) {
-      setTimeout(() => {
+      const timer = setTimeout(() => {
+        dismissTimers.delete(id);
         set((state) => ({
           toasts: state.toasts.filter((t) => t.id !== id),
         }));
       }, duration);
+      dismissTimers.set(id, timer);
     }
   },
 
   removeToast: (id: string) => {
+    clearDismissTimer(id);
     set((state) => ({
       toasts: state.toasts.filter((t) => t.id !== id),
     }));
   },
 
   clearToasts: () => {
-    set({ toasts: [] });
+    set((state) => {
+      for (const t of state.toasts) clearDismissTimer(t.id);
+      return { toasts: [] };
+    });
   },
 }));
