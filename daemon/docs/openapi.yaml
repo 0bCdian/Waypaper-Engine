@@ -108,6 +108,14 @@ paths:
         - name: colors_near
           in: query
           schema: { type: string }
+        - name: palette_similar_to
+          in: query
+          schema: { type: integer }
+          description: Reference image id — keep rows whose palette is within ΔE of this image (CIE76, min pairwise swatch distance).
+        - name: palette_max_delta_e
+          in: query
+          schema: { type: number }
+          description: Inclusive max ΔE (default 18 on daemon).
         - name: folder_id
           in: query
           schema: { type: string }

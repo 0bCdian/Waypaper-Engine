@@ -220,6 +220,22 @@ export function buildImageMenuItems(
         useImageDetailStore.getState().open(image as unknown as Image);
       },
     },
+    ...(image.colors?.length
+      ? [
+          {
+            type: "action" as const,
+            label: "Show similar palette",
+            onClick: () => {
+              const f = useImagesStore.getState().getFilters();
+              useImagesStore.getState().setFilters({
+                ...f,
+                paletteSimilarToId: image.id,
+              });
+              useImagesStore.getState().fetchPage(1);
+            },
+          },
+        ]
+      : []),
     {
       type: "action",
       label: "Copy image path",

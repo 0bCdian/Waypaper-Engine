@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math"
 	"strings"
 
 	clover "github.com/ostafen/clover/v2"
@@ -25,7 +26,7 @@ func newImageStore(db *clover.DB) *imageStore {
 	return s
 }
 
-func (s *imageStore) GetAll(_ context.Context, opts ImageQueryOpts) (*PaginatedResult[Image], error) {
+func (s *imageStore) GetAll(ctx context.Context, opts ImageQueryOpts) (*PaginatedResult[Image], error) {
 	if opts.Page < 1 {
 		opts.Page = 1
 	}
@@ -34,6 +35,15 @@ func (s *imageStore) GetAll(_ context.Context, opts ImageQueryOpts) (*PaginatedR
 	}
 	if opts.PerPage > 200 {
 		opts.PerPage = 200
+	}
+
+	var refPalette []string
+	if opts.PaletteSimilarTo != nil {
+		refImg, err := s.GetByID(ctx, *opts.PaletteSimilarTo)
+		if err != nil {
+			return nil, err
+		}
+		refPalette = refImg.Colors
 	}
 
 	var criteria query.Criteria
@@ -68,9 +78,9 @@ func (s *imageStore) GetAll(_ context.Context, opts ImageQueryOpts) (*PaginatedR
 		sortDir = 1
 	}
 
-	// When search, root-folder filtering, or perceptual color constraints are active,
-	// load all DB-filtered docs, apply in-memory filters, then paginate in Go.
-	if opts.Search != "" || filterRootFolder || len(opts.ColorsNear) > 0 {
+	// When search, root-folder filtering, perceptual color constraints, or palette similarity
+	// are active, load all DB-filtered docs, apply in-memory filters, then paginate in Go.
+	if opts.Search != "" || filterRootFolder || len(opts.ColorsNear) > 0 || opts.PaletteSimilarTo != nil {
 		q := query.NewQuery(CollectionImages)
 		if criteria != nil {
 			q = q.Where(criteria)
@@ -93,6 +103,13 @@ func (s *imageStore) GetAll(_ context.Context, opts ImageQueryOpts) (*PaginatedR
 		}
 		if len(opts.ColorsNear) > 0 {
 			allImages = filterImagesByColorsNear(allImages, opts.ColorsNear)
+		}
+		if opts.PaletteSimilarTo != nil {
+			maxDE := opts.PaletteSimilarMaxDeltaE
+			if maxDE <= 0 || math.IsNaN(maxDE) {
+				maxDE = DefaultPaletteSimilarMaxDeltaE
+			}
+			allImages = filterImagesByPaletteSimilarity(allImages, refPalette, maxDE)
 		}
 
 		return Paginate(allImages, opts.Page, opts.PerPage), nil
@@ -301,6 +318,20 @@ outer:
 			}
 		}
 		filtered = append(filtered, im)
+	}
+	return filtered
+}
+
+func filterImagesByPaletteSimilarity(images []Image, ref []string, maxDE float64) []Image {
+	if len(ref) == 0 {
+		return nil
+	}
+	var filtered []Image
+	for _, im := range images {
+		d, ok := cielab.MinDeltaEBetweenPalettes(ref, im.Colors)
+		if ok && d <= maxDE+1e-9 {
+			filtered = append(filtered, im)
+		}
 	}
 	return filtered
 }

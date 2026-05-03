@@ -45,6 +45,10 @@ function partialFromStore(f: FiltersType): PartialFilters {
 type TokenOption = { label: string; value: string };
 const TOKEN_PLACEHOLDER = "Search…  (press / to focus)";
 
+/** Slider bounds for palette similarity (CIE76 ΔE); daemon still accepts any ≥ 0 on the wire. */
+const PALETTE_SIMILAR_DELTA_MIN = 4;
+const PALETTE_SIMILAR_DELTA_MAX = 50;
+
 /* Sort cycles through 4 states: name↑ name↓ id↑ id↓ */
 type SortState = { type: "name" | "id"; order: "asc" | "desc" };
 const SORT_CYCLE: SortState[] = [
@@ -107,6 +111,7 @@ function GalleryFilterInput(props: InputProps<TokenOption, true>) {
 
 function Filters() {
   const reactSelectId = useId();
+  const paletteDeltaSliderId = `${reactSelectId}-palette-delta`;
   const filterInputName = `gallery-filter-${reactSelectId}`;
   const { setFilters, filters } = useImagesStore(
     useShallow((s) => ({
@@ -205,34 +210,107 @@ function Filters() {
       prevTokensRef.current = next.filterTokens;
       return next;
     });
+    const base = useImagesStore.getState().filters;
+    useImagesStore.getState().setFilters({
+      ...base,
+      filterTokens: [],
+      paletteSimilarToId: null,
+    });
     clearGalleryFilterInputHistory();
     setInputHistoryTick((n) => n + 1);
+    useImagesStore.getState().fetchPage(1);
   }, []);
 
   useDebounce(
     () => {
+      const base = useImagesStore.getState().filters;
       const newFilters: FiltersType = {
-        ...partialFilters,
-        advancedFilters: filters.advancedFilters,
+        ...base,
+        order: partialFilters.order,
+        type: partialFilters.type,
+        mediaType: partialFilters.mediaType,
+        filterTokens: partialFilters.filterTokens,
       };
       setFilters(newFilters);
-      useImagesStore.getState().fetchPage(1, mapFiltersToImageQueryParams(partialFilters));
+      useImagesStore.getState().fetchPage(1, mapFiltersToImageQueryParams(newFilters));
     },
     200,
     [partialFilters],
   );
 
   useEffect(() => {
+    const base = useImagesStore.getState().filters;
     const resetFilters: FiltersType = {
-      ...partialFiltersRef.current,
+      ...base,
+      order: partialFiltersRef.current.order,
+      type: partialFiltersRef.current.type,
+      mediaType: partialFiltersRef.current.mediaType,
+      filterTokens: partialFiltersRef.current.filterTokens,
       advancedFilters: filters.advancedFilters,
     };
     setFilters(resetFilters);
-    useImagesStore.getState().fetchPage(1, mapFiltersToImageQueryParams(partialFiltersRef.current));
+    useImagesStore.getState().fetchPage(1, mapFiltersToImageQueryParams(resetFilters));
   }, [filters.advancedFilters, setFilters]);
 
   const isNeo = useIsNeo();
-  const hasActiveSearch = partialFilters.filterTokens.length > 0 || inputHistoryCount > 0;
+  const { paletteRefId, paletteRefLabel, paletteMaxDeltaE } = useImagesStore(
+    useShallow((s) => {
+      const id = s.filters.paletteSimilarToId;
+      const img = id != null ? s.imagesMap.get(id) : undefined;
+      return {
+        paletteRefId: id,
+        paletteRefLabel: img?.name ?? (id != null ? `#${id}` : ""),
+        paletteMaxDeltaE: s.filters.paletteSimilarMaxDeltaE,
+      };
+    }),
+  );
+
+  const clearPaletteSimilar = useCallback(() => {
+    const base = useImagesStore.getState().filters;
+    useImagesStore.getState().setFilters({
+      ...base,
+      paletteSimilarToId: null,
+    });
+    useImagesStore.getState().fetchPage(1);
+  }, []);
+
+  const [paletteDeltaDraft, setPaletteDeltaDraft] = useState(paletteMaxDeltaE);
+
+  useEffect(() => {
+    if (paletteRefId == null) return;
+    const clamped = Math.min(
+      PALETTE_SIMILAR_DELTA_MAX,
+      Math.max(PALETTE_SIMILAR_DELTA_MIN, Math.round(paletteMaxDeltaE)),
+    );
+    setPaletteDeltaDraft(clamped);
+    if (clamped !== paletteMaxDeltaE) {
+      const base = useImagesStore.getState().filters;
+      useImagesStore.getState().setFilters({
+        ...base,
+        paletteSimilarMaxDeltaE: clamped,
+      });
+      useImagesStore.getState().fetchPage(1);
+    }
+  }, [paletteRefId, paletteMaxDeltaE]);
+
+  const commitPaletteDeltaE = useCallback((raw: number) => {
+    const clamped = Math.min(
+      PALETTE_SIMILAR_DELTA_MAX,
+      Math.max(PALETTE_SIMILAR_DELTA_MIN, Math.round(raw)),
+    );
+    setPaletteDeltaDraft(clamped);
+    const base = useImagesStore.getState().filters;
+    if (base.paletteSimilarMaxDeltaE === clamped) return;
+    useImagesStore.getState().setFilters({
+      ...base,
+      paletteSimilarMaxDeltaE: clamped,
+    });
+    useImagesStore.getState().fetchPage(1);
+  }, []);
+
+  const hasPaletteSimilar = paletteRefId != null;
+  const hasActiveSearch =
+    partialFilters.filterTokens.length > 0 || inputHistoryCount > 0 || hasPaletteSimilar;
   const currentSort: SortState = {
     type: partialFilters.type,
     order: partialFilters.order,
@@ -337,7 +415,7 @@ function Filters() {
 
         <div className="w-full min-w-0 md:max-w-4xl md:flex-1">
           <div
-            className={`relative flex w-full items-center gap-0 ${
+            className={`relative flex w-full items-center gap-0 overflow-visible ${
               isNeo
                 ? "neo-rs-control-wrapper"
                 : "rounded-xl bg-base-200 border border-base-content/10 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-1 focus-within:ring-offset-base-100"
@@ -397,6 +475,84 @@ function Filters() {
                 />
               </FilterInputNameContext.Provider>
             </div>
+
+            {hasPaletteSimilar && (
+              <p id={`${paletteDeltaSliderId}-hint`} className="sr-only">
+                Adjust how strictly wallpapers must match the reference palette. Lower delta E is
+                tighter; higher is looser.
+              </p>
+            )}
+
+            {/* Desktop / tablet: single-row palette strip — same bar height, no layout shift */}
+            {hasPaletteSimilar && (
+              <div
+                className={cn(
+                  "animate-fade-in hidden min-h-0 shrink-0 items-center justify-center border-base-content/20 py-0 md:flex md:self-stretch",
+                  "border-l pl-2 pr-1",
+                  isNeo && "border-current/40 border-l-2 pl-2",
+                )}
+                title={`Similar palette: ${paletteRefLabel}. Lower ΔE is stricter; higher includes more images.`}
+              >
+                <div className="flex min-h-0 flex-1 items-center gap-1.5 lg:gap-2">
+                  <span
+                    className={cn(
+                      "max-w-[4.25rem] truncate leading-none lg:max-w-[6rem]",
+                      isNeo
+                        ? "text-[9px] font-black uppercase tracking-tight"
+                        : "text-[11px] font-medium text-base-content/90",
+                    )}
+                    title={paletteRefLabel}
+                  >
+                    {paletteRefLabel}
+                  </span>
+                  <input
+                    id={paletteDeltaSliderId}
+                    type="range"
+                    min={PALETTE_SIMILAR_DELTA_MIN}
+                    max={PALETTE_SIMILAR_DELTA_MAX}
+                    step={1}
+                    value={paletteDeltaDraft}
+                    aria-valuemin={PALETTE_SIMILAR_DELTA_MIN}
+                    aria-valuemax={PALETTE_SIMILAR_DELTA_MAX}
+                    aria-valuenow={paletteDeltaDraft}
+                    aria-describedby={`${paletteDeltaSliderId}-hint`}
+                    aria-label="Palette similarity closeness"
+                    className="range range-primary range-sm mx-0 h-4 min-w-[3.5rem] flex-1 lg:min-w-[5rem]"
+                    onChange={(e) => setPaletteDeltaDraft(Number(e.target.value))}
+                    onPointerUp={(e) =>
+                      commitPaletteDeltaE(Number((e.currentTarget as HTMLInputElement).value))
+                    }
+                    onKeyUp={(e) => {
+                      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+                      commitPaletteDeltaE(Number((e.currentTarget as HTMLInputElement).value));
+                    }}
+                  />
+                  <span
+                    className={cn(
+                      "w-6 shrink-0 text-center tabular-nums leading-none lg:w-7",
+                      isNeo ? "text-[10px] font-black" : "text-[10px] font-semibold opacity-90",
+                    )}
+                    title={`ΔE ≤ ${paletteDeltaDraft}`}
+                  >
+                    {paletteDeltaDraft}
+                  </span>
+                  <button
+                    type="button"
+                    className={cn(
+                      "btn btn-ghost btn-xs shrink-0 border-0 px-0 font-bold leading-none",
+                      "min-h-8 min-w-8",
+                      isNeo
+                        ? "rounded-none hover:bg-base-content/15"
+                        : "rounded-md hover:bg-base-content/10",
+                    )}
+                    aria-label="Clear similar palette filter"
+                    onClick={clearPaletteSimilar}
+                  >
+                    ×
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Trailing actions: clear + help */}
             <div
@@ -460,6 +616,89 @@ function Filters() {
                 </svg>
               </button>
             </div>
+
+            {/* Mobile: float below bar — no vertical shift of filters strip */}
+            {hasPaletteSimilar && (
+              <div
+                className={cn(
+                  "animate-fade-in md:hidden absolute left-0 right-0 top-[calc(100%+0.35rem)] z-[45]",
+                  "rounded-lg border border-base-content/15 bg-base-100/95 p-2.5 shadow-lg backdrop-blur-sm",
+                  isNeo &&
+                    "rounded-none border-2 border-current bg-base-100 shadow-[4px_4px_0_0_var(--neo-shadow-color,#000)]",
+                )}
+                role="region"
+                aria-label="Similar palette filter"
+                title="Lower ΔE is stricter; higher includes more wallpapers."
+              >
+                <div className="mb-2 flex items-center gap-2">
+                  <span
+                    className={cn(
+                      "min-w-0 flex-1 truncate font-medium leading-tight",
+                      isNeo ? "text-[11px] font-black uppercase tracking-tight" : "text-xs",
+                    )}
+                    title={paletteRefLabel}
+                  >
+                    Similar · {paletteRefLabel}
+                  </span>
+                  <button
+                    type="button"
+                    className={cn(
+                      "btn btn-ghost btn-xs shrink-0 border-0 px-0 font-bold leading-none",
+                      "min-h-8 min-w-8",
+                      isNeo
+                        ? "rounded-none hover:bg-base-content/15"
+                        : "rounded-md hover:bg-base-content/10",
+                    )}
+                    aria-label="Clear similar palette filter"
+                    onClick={clearPaletteSimilar}
+                  >
+                    ×
+                  </button>
+                </div>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center justify-between gap-2 opacity-80">
+                    <span
+                      className={cn(
+                        isNeo ? "text-[9px] font-black uppercase tracking-wider" : "text-[11px]",
+                      )}
+                    >
+                      Closeness · ΔE ≤ {paletteDeltaDraft}
+                    </span>
+                  </div>
+                  <input
+                    id={`${paletteDeltaSliderId}-touch`}
+                    type="range"
+                    min={PALETTE_SIMILAR_DELTA_MIN}
+                    max={PALETTE_SIMILAR_DELTA_MAX}
+                    step={1}
+                    value={paletteDeltaDraft}
+                    aria-valuemin={PALETTE_SIMILAR_DELTA_MIN}
+                    aria-valuemax={PALETTE_SIMILAR_DELTA_MAX}
+                    aria-valuenow={paletteDeltaDraft}
+                    aria-describedby={`${paletteDeltaSliderId}-hint`}
+                    aria-label="Palette similarity closeness"
+                    className="range range-primary range-sm w-full"
+                    onChange={(e) => setPaletteDeltaDraft(Number(e.target.value))}
+                    onPointerUp={(e) =>
+                      commitPaletteDeltaE(Number((e.currentTarget as HTMLInputElement).value))
+                    }
+                    onKeyUp={(e) => {
+                      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+                      commitPaletteDeltaE(Number((e.currentTarget as HTMLInputElement).value));
+                    }}
+                  />
+                  <div
+                    className={cn(
+                      "flex justify-between opacity-55",
+                      isNeo ? "text-[9px] font-black uppercase tracking-wider" : "text-[11px]",
+                    )}
+                  >
+                    <span>Tighter</span>
+                    <span>Looser</span>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

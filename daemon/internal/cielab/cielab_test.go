@@ -40,3 +40,20 @@ func TestMinDeltaE76ToSwatches_emptySwatches(t *testing.T) {
 func TestWithinDeltaE_nanMax(t *testing.T) {
 	assert.False(t, WithinDeltaE("#fff", math.NaN(), []string{"#ffffff"}))
 }
+
+func TestMinDeltaEBetweenPalettes_nearPair(t *testing.T) {
+	d, ok := MinDeltaEBetweenPalettes([]string{"#ff0000"}, []string{"#fe0101"})
+	require.True(t, ok)
+	assert.Less(t, d, 5.0)
+}
+
+func TestMinDeltaEBetweenPalettes_farPair(t *testing.T) {
+	d, ok := MinDeltaEBetweenPalettes([]string{"#ff0000"}, []string{"#00ff00"})
+	require.True(t, ok)
+	assert.Greater(t, d, 50.0)
+}
+
+func TestMinDeltaEBetweenPalettes_noValidPair(t *testing.T) {
+	_, ok := MinDeltaEBetweenPalettes([]string{"bogus"}, []string{"#fff"})
+	assert.False(t, ok)
+}

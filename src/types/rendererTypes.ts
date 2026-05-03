@@ -27,6 +27,10 @@ export interface Filters {
   /** Token query: tag:, type:, ext:, color:, near:#hex~ΔE, q:, or plain text */
   filterTokens: string[];
   advancedFilters: advancedFilters;
+  /** Seed image id for palette similarity filter (CIE76); null = off. */
+  paletteSimilarToId: number | null;
+  /** Inclusive max ΔE for palette similarity (sent as palette_max_delta_e). */
+  paletteSimilarMaxDeltaE: number;
 }
 
 export interface advancedFilters {

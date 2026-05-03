@@ -28,6 +28,12 @@ export class ImagesClient {
     if (params?.tags) query.set("tags", params.tags);
     if (params?.colors) query.set("colors", params.colors);
     if (params?.colors_near) query.set("colors_near", params.colors_near);
+    if (params?.palette_similar_to !== undefined) {
+      query.set("palette_similar_to", String(params.palette_similar_to));
+    }
+    if (params?.palette_max_delta_e !== undefined) {
+      query.set("palette_max_delta_e", String(params.palette_max_delta_e));
+    }
     if (params?.folder_id !== undefined) query.set("folder_id", String(params.folder_id));
     const qs = query.toString();
     const path = qs ? `/images?${qs}` : "/images";

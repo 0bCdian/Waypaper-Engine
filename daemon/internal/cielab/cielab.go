@@ -34,6 +34,34 @@ func DeltaE76(a, b Lab) float64 {
 	return math.Sqrt(dl*dl + da*da + db*db)
 }
 
+// MinDeltaEBetweenPalettes returns the smallest CIE76 ΔE between any parseable swatch in a
+// and any parseable swatch in b. ok is false when no valid pair exists.
+func MinDeltaEBetweenPalettes(a, b []string) (minDE float64, ok bool) {
+	best := math.MaxFloat64
+	found := false
+	for _, ha := range a {
+		la, okA := FromHex(ha)
+		if !okA {
+			continue
+		}
+		for _, hb := range b {
+			lb, okB := FromHex(hb)
+			if !okB {
+				continue
+			}
+			found = true
+			d := DeltaE76(la, lb)
+			if d < best {
+				best = d
+			}
+		}
+	}
+	if !found {
+		return 0, false
+	}
+	return best, true
+}
+
 // MinDeltaE76ToSwatches returns the smallest CIE76 ΔE between targetHex and any parseable swatch.
 func MinDeltaE76ToSwatches(targetHex string, swatches []string) (minDE float64, ok bool) {
 	target, tok := FromHex(targetHex)

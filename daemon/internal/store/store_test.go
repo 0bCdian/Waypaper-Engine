@@ -2,6 +2,7 @@ package store_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 	"time"
 
@@ -100,6 +101,56 @@ func TestImageStore_GetAll_ColorsNear(t *testing.T) {
 	require.NoError(t, err)
 	require.Len(t, res.Data, 1)
 	assert.Equal(t, "near_red.png", res.Data[0].Name)
+}
+
+func TestImageStore_GetAll_PaletteSimilarTo(t *testing.T) {
+	db := testutil.OpenTestDB(t)
+	is := db.ImageStore()
+	ctx := context.Background()
+
+	imgRef := testutil.SampleImage(0)
+	imgRef.Name = "ref.png"
+	imgRef.Checksum = "sha256:ref_palette_similar"
+	imgRef.Colors = []string{"#ff0000", "#222222"}
+
+	imgClose := testutil.SampleImage(0)
+	imgClose.Name = "close.png"
+	imgClose.Checksum = "sha256:close_palette_similar"
+	imgClose.Colors = []string{"#fe0101", "#333333"}
+
+	imgFar := testutil.SampleImage(0)
+	imgFar.Name = "far_green_similar.png"
+	imgFar.Checksum = "sha256:far_palette_similar"
+	imgFar.Colors = []string{"#00ff00", "#00aa00"}
+
+	created, err := is.Create(ctx, []store.Image{imgRef, imgClose, imgFar})
+	require.NoError(t, err)
+	refID := created[0].ID
+
+	res, err := is.GetAll(ctx, store.ImageQueryOpts{
+		Page:                    1,
+		PerPage:                 50,
+		PaletteSimilarTo:        &refID,
+		PaletteSimilarMaxDeltaE: 12,
+	})
+	require.NoError(t, err)
+	require.Len(t, res.Data, 2)
+	names := []string{res.Data[0].Name, res.Data[1].Name}
+	assert.Contains(t, names, "ref.png")
+	assert.Contains(t, names, "close.png")
+}
+
+func TestImageStore_GetAll_PaletteSimilarTo_NotFound(t *testing.T) {
+	db := testutil.OpenTestDB(t)
+	is := db.ImageStore()
+	bad := 999
+	_, err := is.GetAll(context.Background(), store.ImageQueryOpts{
+		Page:             1,
+		PerPage:          50,
+		PaletteSimilarTo: &bad,
+	})
+	require.Error(t, err)
+	assert.True(t, errors.Is(err, store.ErrNotFound))
 }
 
 func TestImageStore_GetAll_SearchByName(t *testing.T) {

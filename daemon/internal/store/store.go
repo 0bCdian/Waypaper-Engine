@@ -8,6 +8,10 @@ import (
 // ErrNotFound is returned when a requested entity does not exist.
 var ErrNotFound = errors.New("not found")
 
+// DefaultPaletteSimilarMaxDeltaE is used when GET /images requests palette_similar_to
+// without palette_max_delta_e or with a non-positive value (CIE76 ΔE, inclusive).
+const DefaultPaletteSimilarMaxDeltaE = 18.0
+
 // ---------------------------------------------------------------------------
 // Pagination & Query types
 // ---------------------------------------------------------------------------
@@ -54,6 +58,12 @@ type ImageQueryOpts struct {
 	// ColorsNear filters by CIE76 ΔE in Lab vs stored swatches (AND across constraints).
 	// When non-empty, GetAll uses an in-memory filter path (same as text search).
 	ColorsNear []ColorNearConstraint
+	// PaletteSimilarTo filters images whose palette is within PaletteSimilarMaxDeltaE of the
+	// reference image's palette (minimum CIE76 ΔE across all swatch pairs). Nil disables.
+	// Forces the in-memory filter path. Reference image must exist or GetAll returns ErrNotFound.
+	PaletteSimilarTo *int
+	// PaletteSimilarMaxDeltaE is inclusive; zero or negative uses DefaultPaletteSimilarMaxDeltaE.
+	PaletteSimilarMaxDeltaE float64
 	// FolderID filters images by folder. nil = no filter (all images).
 	// A pointer to 0 means root level (images with no folder).
 	// A pointer to a positive int means images in that specific folder.

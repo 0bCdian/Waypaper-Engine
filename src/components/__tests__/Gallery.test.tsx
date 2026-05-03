@@ -15,6 +15,8 @@ let mockImagesState = {
     advancedFilters: {
       resolution: { constraint: "all" as const, width: 0, height: 0 },
     },
+    paletteSimilarToId: null as number | null,
+    paletteSimilarMaxDeltaE: 18,
   },
 };
 

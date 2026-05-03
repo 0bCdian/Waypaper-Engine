@@ -16,7 +16,10 @@ const mockImagesState = {
     advancedFilters: {
       resolution: { constraint: "all" as const, width: 0, height: 0 },
     },
+    paletteSimilarToId: null as number | null,
+    paletteSimilarMaxDeltaE: 18,
   },
+  imagesMap: new Map<number, { id: number; name: string }>(),
 };
 
 vi.mock("zustand/react/shallow", () => ({
@@ -30,6 +33,8 @@ vi.mock("../../stores/images", () => ({
       getState: () => ({
         fetchPage: mockFetchPage,
         filters: mockImagesState.filters,
+        setFilters: mockSetFilters,
+        imagesMap: mockImagesState.imagesMap,
       }),
     },
   ),
@@ -57,6 +62,7 @@ beforeEach(() => {
   mockImagesState.filters.order = "desc";
   mockImagesState.filters.type = "id";
   mockImagesState.filters.mediaType = "all";
+  mockImagesState.filters.paletteSimilarToId = null;
 });
 
 describe("Filters", () => {
@@ -97,6 +103,7 @@ describe("Filters", () => {
     expect(mockSetFilters).toHaveBeenCalledWith(
       expect.objectContaining({
         filterTokens: [],
+        paletteSimilarToId: null,
         advancedFilters: mockImagesState.filters.advancedFilters,
       }),
     );

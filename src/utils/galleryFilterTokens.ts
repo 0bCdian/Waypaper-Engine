@@ -143,7 +143,15 @@ export function apiMediaTypeFromFilters(
 }
 
 export function mapFiltersToImageQueryParams(
-  filters: Pick<Filters, "order" | "type" | "mediaType" | "filterTokens">,
+  filters: Pick<
+    Filters,
+    | "order"
+    | "type"
+    | "mediaType"
+    | "filterTokens"
+    | "paletteSimilarToId"
+    | "paletteSimilarMaxDeltaE"
+  >,
 ): Partial<ImageQueryParams> {
   const parsed = parseGalleryFilterTokens(filters.filterTokens);
   const search = parsedTokensToSearchString(parsed);
@@ -153,7 +161,7 @@ export function mapFiltersToImageQueryParams(
       ? parsed.nearColors.map((c) => `${c.hex}~${c.maxDeltaE}`).join(",")
       : undefined;
 
-  return {
+  const out: Partial<ImageQueryParams> = {
     sort_by: filters.type === "name" ? "name" : "imported_at",
     sort_order: filters.order,
     media_type: mt,
@@ -162,6 +170,13 @@ export function mapFiltersToImageQueryParams(
     colors: parsed.colors.length > 0 ? parsed.colors.join(",") : undefined,
     colors_near: colorsNear,
   };
+
+  if (filters.paletteSimilarToId != null) {
+    out.palette_similar_to = filters.paletteSimilarToId;
+    out.palette_max_delta_e = filters.paletteSimilarMaxDeltaE;
+  }
+
+  return out;
 }
 
 function effectiveMediaTypes(
@@ -228,6 +243,7 @@ export function hasClientSideGalleryFilters(
 export function galleryHasActiveFilters(filters: Filters): boolean {
   if (filters.filterTokens.length > 0) return true;
   if (filters.mediaType !== "all") return true;
+  if (filters.paletteSimilarToId != null) return true;
   if (filters.advancedFilters.resolution.constraint !== "all") return true;
   const parsed = parseGalleryFilterTokens(filters.filterTokens);
   return hasClientSideGalleryFilters(parsed, filters.mediaType, filters.advancedFilters.resolution);

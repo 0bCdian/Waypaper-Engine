@@ -41,6 +41,10 @@ export interface ImageQueryParams {
   colors?: string;
   /** Comma-separated `#hex~maxDeltaE` (CIE76 vs stored palette). */
   colors_near?: string;
+  /** Gallery images whose palette is within ΔE of this image's palette (CIE76 min pairwise). */
+  palette_similar_to?: number;
+  /** Inclusive max ΔE vs reference palette; omit to use daemon default (18). */
+  palette_max_delta_e?: number;
   folder_id?: number | "root";
 }
 

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"math"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -57,7 +58,10 @@ func NewImageHandler(
 // @Param        media_type  query     string  false  "Filter by media type"
 // @Param        search      query     string  false  "Search query"
 // @Param        tags        query     string  false  "Comma-separated tags"
-// @Param        folder_id   query     string  false  "Folder ID or 'root'"
+// @Param        colors_near           query     string  false  "Comma-separated #hex~maxDeltaE (CIE76)"
+// @Param        palette_similar_to    query     int     false  "Show images with palette within ΔE of this image's palette"
+// @Param        palette_max_delta_e   query     number  false  "Max CIE76 ΔE (default 18)"
+// @Param        folder_id             query     string  false  "Folder ID or 'root'"
 // @Success      200         {object}  store.PaginatedResult[store.Image]
 // @Failure      500         {object}  httpjson.APIError
 // @Router       /images [get]
@@ -86,6 +90,23 @@ func (h *ImageHandler) List(w http.ResponseWriter, r *http.Request) {
 		opts.ColorsNear = parseColorsNearQuery(cn)
 	}
 
+	if pst := strings.TrimSpace(q.Get("palette_similar_to")); pst != "" {
+		id, err := strconv.Atoi(pst)
+		if err != nil || id <= 0 {
+			httpjson.WriteError(w, http.StatusBadRequest, "invalid palette_similar_to")
+			return
+		}
+		opts.PaletteSimilarTo = &id
+		if v := strings.TrimSpace(q.Get("palette_max_delta_e")); v != "" {
+			f, err := strconv.ParseFloat(v, 64)
+			if err != nil || f < 0 || math.IsNaN(f) || math.IsInf(f, 0) {
+				httpjson.WriteError(w, http.StatusBadRequest, "invalid palette_max_delta_e")
+				return
+			}
+			opts.PaletteSimilarMaxDeltaE = f
+		}
+	}
+
 	if folderID := q.Get("folder_id"); folderID != "" {
 		if folderID == "root" || folderID == "0" {
 			zero := 0
@@ -100,6 +121,10 @@ func (h *ImageHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.store.GetAll(r.Context(), opts)
 	if err != nil {
+		if errors.Is(err, store.ErrNotFound) {
+			httpjson.WriteError(w, http.StatusNotFound, "palette reference image not found")
+			return
+		}
 		httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}

@@ -104,12 +104,18 @@ describe("parseNearColorSpec", () => {
 });
 
 describe("mapFiltersToImageQueryParams", () => {
+  const baseFilterFields = {
+    paletteSimilarToId: null,
+    paletteSimilarMaxDeltaE: 18,
+  } as const;
+
   it("maps sort and combined API fields", () => {
     const q = mapFiltersToImageQueryParams({
       order: "asc",
       type: "name",
       mediaType: "all",
       filterTokens: ["q:findme", "tag:t1", "tag:t2", "color:#000000"],
+      ...baseFilterFields,
     });
     expect(q.sort_by).toBe("name");
     expect(q.sort_order).toBe("asc");
@@ -126,6 +132,7 @@ describe("mapFiltersToImageQueryParams", () => {
       type: "id",
       mediaType: "all",
       filterTokens: ["near:#ff0000~10", "near:#00ff00~3"],
+      ...baseFilterFields,
     });
     expect(q.colors_near).toBe("#ff0000~10,#00ff00~3");
   });
@@ -136,6 +143,7 @@ describe("mapFiltersToImageQueryParams", () => {
       type: "id",
       mediaType: "web",
       filterTokens: [],
+      ...baseFilterFields,
     });
     expect(q.media_type).toBe("web");
   });
@@ -146,8 +154,19 @@ describe("mapFiltersToImageQueryParams", () => {
       type: "id",
       mediaType: "all",
       filterTokens: ["type:image", "type:video"],
+      ...baseFilterFields,
     });
     expect(q.media_type).toBeUndefined();
+  });
+
+  it("maps palette similarity fields", () => {
+    const q = mapFiltersToImageQueryParams({
+      ...defaultGalleryFilters(),
+      paletteSimilarToId: 42,
+      paletteSimilarMaxDeltaE: 22,
+    });
+    expect(q.palette_similar_to).toBe(42);
+    expect(q.palette_max_delta_e).toBe(22);
   });
 });
 
@@ -242,6 +261,7 @@ describe("galleryHasActiveFilters", () => {
         },
       }),
     ).toBe(true);
+    expect(galleryHasActiveFilters({ ...base, paletteSimilarToId: 7 })).toBe(true);
     expect(galleryHasActiveFilters(base)).toBe(false);
   });
 });

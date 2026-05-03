@@ -47,6 +47,8 @@ export function defaultGalleryFilters(): Filters {
     mediaType: "all",
     filterTokens: [],
     advancedFilters: defaultAdvancedFilters(),
+    paletteSimilarToId: null,
+    paletteSimilarMaxDeltaE: 18,
   };
 }
 
@@ -105,6 +107,8 @@ function migrateFromLegacyV1(raw: LegacyFiltersV1): Filters {
     mediaType: raw.mediaType ?? "all",
     filterTokens: [...new Set(tokens)],
     advancedFilters: { resolution },
+    paletteSimilarToId: null,
+    paletteSimilarMaxDeltaE: 18,
   };
 }
 
@@ -119,6 +123,13 @@ function isLegacyV1(o: Record<string, unknown>): boolean {
 function normalizeV2(o: Record<string, unknown>): Filters {
   const base = defaultGalleryFilters();
   const f = o as Partial<Filters>;
+  const pid = f.paletteSimilarToId;
+  const paletteSimilarToId =
+    typeof pid === "number" && Number.isFinite(pid) && pid > 0 ? pid : null;
+  const paletteSimilarMaxDeltaE = (() => {
+    const m = Number(f.paletteSimilarMaxDeltaE);
+    return Number.isFinite(m) && m > 0 ? m : base.paletteSimilarMaxDeltaE;
+  })();
   return {
     order: f.order === "asc" || f.order === "desc" ? f.order : base.order,
     type: f.type === "name" || f.type === "id" ? f.type : base.type,
@@ -146,6 +157,8 @@ function normalizeV2(o: Record<string, unknown>): Filters {
         height: Number(f.advancedFilters?.resolution?.height) || 0,
       },
     },
+    paletteSimilarToId,
+    paletteSimilarMaxDeltaE,
   };
 }
 

@@ -959,6 +959,10 @@ export interface operations {
         tags?: string;
         colors?: string;
         colors_near?: string;
+        /** @description Reference image id — keep rows whose palette is within ΔE of this image (CIE76, min pairwise swatch distance). */
+        palette_similar_to?: number;
+        /** @description Inclusive max ΔE (default 18 on daemon). */
+        palette_max_delta_e?: number;
         folder_id?: string;
       };
       header?: never;
