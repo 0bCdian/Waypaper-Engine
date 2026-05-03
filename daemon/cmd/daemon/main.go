@@ -146,20 +146,16 @@ func startDaemon(configPath string, logLevel string) error {
 
 	// 10. Build daemon options and start.
 	opts := daemon.Options{
-		SocketPath:    cfg.GetSocketPath(),
-		DB:            db,
-		Registry:      reg,
-		Cfg:           cfg,
-		Viper:         cfg.Viper(),
-		ImagesDir:     cfg.GetImagesDir(),
-		ThumbnailsDir: cfg.GetThumbnailsDir(),
-		Version:       version,
-		Compositor:    compositorOverride,
-		MonitorProviders: []monitor.MonitorProvider{
-			waylandutauri.NewMonitorProvider(cfg.Viper()),
-			monitor.NewWaylandProvider(),
-			monitor.NewXrandrProvider(),
-		},
+		SocketPath:       cfg.GetSocketPath(),
+		DB:               db,
+		Registry:         reg,
+		Cfg:              cfg,
+		Viper:            cfg.Viper(),
+		ImagesDir:        cfg.GetImagesDir(),
+		ThumbnailsDir:    cfg.GetThumbnailsDir(),
+		Version:          version,
+		Compositor:       compositorOverride,
+		MonitorProviders: defaultMonitorProviders(cfg.Viper()),
 	}
 	d, err := daemon.New(opts)
 	if err != nil {

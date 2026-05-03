@@ -30,15 +30,32 @@ const (
 )
 
 // Monitor represents a single physical display with its geometry and metadata.
+//
+// Fields beyond name/width/height/x/y/scale/refresh_rate/transform are sourced
+// from the wlr-output-management protocol when available; providers that can't
+// fill them (legacy wl_output, xrandr) leave them at zero values and they are
+// omitted from JSON output via omitempty.
 type Monitor struct {
 	// Name is the output identifier as reported by the compositor (e.g. "HDMI-A-1", "eDP-1").
 	Name string `json:"name"`
 
-	// Width is the horizontal resolution in pixels.
+	// Description is a human-readable description (e.g. "GIGA-BYTE GS27QXA 24436B000275 (DP-1)").
+	Description string `json:"description,omitempty"`
+
+	// Make, Model, Serial come from EDID when the compositor exposes them.
+	Make   string `json:"make,omitempty"`
+	Model  string `json:"model,omitempty"`
+	Serial string `json:"serial,omitempty"`
+
+	// Width is the horizontal resolution of the current mode in pixels.
 	Width int `json:"width"`
 
-	// Height is the vertical resolution in pixels.
+	// Height is the vertical resolution of the current mode in pixels.
 	Height int `json:"height"`
+
+	// PhysicalWidth and PhysicalHeight are the panel size in millimetres (0 when unknown).
+	PhysicalWidth  int `json:"physical_width,omitempty"`
+	PhysicalHeight int `json:"physical_height,omitempty"`
 
 	// X is the horizontal position in the compositor's coordinate space.
 	// Used for extend mode to compute which slice of the image maps to this monitor.
@@ -56,6 +73,13 @@ type Monitor struct {
 	// Transform is the rotation/reflection applied to the output.
 	// 0=normal, 1=90°, 2=180°, 3=270°, 4=flipped, 5=flipped-90°, 6=flipped-180°, 7=flipped-270°.
 	Transform int `json:"transform"`
+
+	// Enabled is true when the output is currently powered on and composing.
+	// Defaults to true for providers that can't detect this (e.g. wl_output, xrandr).
+	Enabled bool `json:"enabled"`
+
+	// AdaptiveSync is true when variable refresh rate (FreeSync/G-Sync) is active.
+	AdaptiveSync bool `json:"adaptive_sync,omitempty"`
 }
 
 // parseTransform converts a compositor transform string (e.g. "normal", "90",

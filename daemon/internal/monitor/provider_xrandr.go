@@ -30,11 +30,6 @@ func (p *xrandrProvider) Name() string {
 	return "xrandr"
 }
 
-func (p *xrandrProvider) IsAvailable() bool {
-	_, err := exec.LookPath("xrandr")
-	return err == nil
-}
-
 func (p *xrandrProvider) Compositor() CompositorType {
 	return CompositorX11
 }
@@ -44,6 +39,10 @@ func (p *xrandrProvider) Priority() int {
 }
 
 func (p *xrandrProvider) Detect(ctx context.Context) ([]Monitor, error) {
+	if _, err := exec.LookPath("xrandr"); err != nil {
+		return nil, fmt.Errorf("%w: xrandr binary not on PATH", ErrProviderNotApplicable)
+	}
+
 	cmd := exec.CommandContext(ctx, "xrandr", "--query")
 	output, err := cmd.Output()
 	if err != nil {

@@ -827,11 +827,10 @@ func (m *MockMonitorManager) Compositor() monitor.CompositorType {
 // ---------------------------------------------------------------------------
 
 type MockMonitorProvider struct {
-	NameFn        func() string
-	IsAvailableFn func() bool
-	CompositorFn  func() monitor.CompositorType
-	PriorityFn    func() int
-	DetectFn      func(ctx context.Context) ([]monitor.Monitor, error)
+	NameFn       func() string
+	CompositorFn func() monitor.CompositorType
+	PriorityFn   func() int
+	DetectFn     func(ctx context.Context) ([]monitor.Monitor, error)
 }
 
 func (m *MockMonitorProvider) Name() string {
@@ -839,13 +838,6 @@ func (m *MockMonitorProvider) Name() string {
 		return m.NameFn()
 	}
 	return ""
-}
-
-func (m *MockMonitorProvider) IsAvailable() bool {
-	if m.IsAvailableFn != nil {
-		return m.IsAvailableFn()
-	}
-	return false
 }
 
 func (m *MockMonitorProvider) Compositor() monitor.CompositorType {
