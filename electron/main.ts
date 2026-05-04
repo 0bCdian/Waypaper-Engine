@@ -14,6 +14,7 @@ import {
 } from "electron";
 
 import { logger } from "./logger";
+import { spawnBundledDaemonAndExit } from "./daemonForward";
 import { initWaypaperDaemon } from "../globals/startDaemons";
 import { goDaemonClient } from "./goDaemonClient";
 import { trayMenu } from "../globals/menus";
@@ -500,6 +501,12 @@ function setupDevTools(): void {
  * Main application entry point
  */
 function main(): void {
+  // `--daemon`: spawn bundled waypaper-daemon detached, exit on spawn — do not
+  // touch `app` / windows or Electron will fork helpers and race `process.exit`.
+  if (spawnBundledDaemonAndExit(process.argv)) {
+    return;
+  }
+
   // Prevent multiple instances
   const gotTheLock = app.requestSingleInstanceLock();
   if (!gotTheLock) {

@@ -1,8 +1,20 @@
 # Install & run
 
-Pick the method that fits your setup. The **AUR** is the easiest on Arch. The **AppImage** works on any distro. **From source** gives you the latest commit.
+Pick the method that fits your setup. If you **build from the repo**, I reach for **`make electron` + `make daemon` + `make install`** — you get an unpacked tree under `~/.local/opt` with no AppImage FUSE quirks. On **Arch**, the **AUR** is the shortest path. The **release AppImage** is hard to beat when you want one portable file on any distro.
 
 **Be advised** — no backend is required to launch the app. If none is installed, the daemon starts in degraded mode and the UI shows a persistent banner with an install link — it clears automatically once a backend is detected on `PATH`. When you do have one, it must be on `PATH` or the daemon can't call it. See [Backends & dependencies](/guide/backends).
+
+---
+
+## Choosing an installation method
+
+| How you get it | Best when… | What you get |
+|----------------|------------|----------------|
+| **[GitHub Releases → AppImage](#appimage-any-distro)** | You want a single downloaded file and don't mind how AppImage mounts itself | Bundled GUI + daemon; portable across distros |
+| **[Arch Linux → AUR](#arch-linux-aur)** | You run Arch (or an Arch-based desktop) | Packages install daemon, Electron app, `.desktop`, and a systemd user unit — **simply** `yay -S waypaper-engine` |
+| **[Clone repo → Makefile](#from-source)** | You're hacking on the code or want the latest commit without waiting for a release | **`make electron`** (unpacked Linux dir), **`make daemon`**, then **`make install`** → `~/.local/bin/waypaper-engine` + `waypaper-daemon` — **recommended** when building from source |
+
+For Makefile and AUR installs, make sure **`~/.local/bin`** is on your **`PATH`** (or use the paths your distro assigns).
 
 ---
 
@@ -41,9 +53,50 @@ The AUR packages install the daemon binary, the Electron app, a `.desktop` file,
    ./waypaper-engine-*.AppImage
    ```
 
-The AppImage bundles the daemon and Electron—no system install needed. Move it somewhere on your `PATH` if you want to launch it as `waypaper-engine`.
+The AppImage bundles the daemon and Electron — no system install needed. Move it somewhere on your `PATH` if you want to launch it as `waypaper-engine`.
 
-> **NOTE** — You still need backend binaries (e.g. `awww`) on your system PATH. The AppImage does not bundle those.
+> **NOTE** — You still need backend binaries (e.g. `awww`) on your system `PATH`. The AppImage does not bundle those.
+
+### AppImage, FUSE, and headless daemon
+
+An AppImage is not “just” an executable — **SquashFS** inside gets mounted under something like `/tmp/.mount_<name>XXXXXX` via **FUSE**. A small runtime stub mounts that filesystem, runs the payload, then normally waits until everything exits so it can **unmount**.
+
+When you start **`waypaper-daemon`** from inside that mount (including `./Foo.AppImage --daemon`), the daemon keeps executing code from the mounted tree. While it's alive, the mount stays **busy**, so the AppImage runtime **cannot tear down** completely. You may still see a **low-memory process** whose command line looks like the AppImage — that's usually the wrapper keeping the filesystem alive so your daemon doesn't disappear mid-run. **That's normal AppImage behaviour**, not Electron “refusing” to quit.
+
+The GUI entry path **detaches** the daemon with **`stdio` disconnected** (`ignore`) so nothing keeps your terminal or the Electron parent tied open via inherited stdin/out/err — logs go through the daemon's normal logging config (see [Daemon & paths](/guide/daemon)), not the parent's console.
+
+If you want **no** long-lived AppImage wrapper at all while autostarting headless:
+
+- Prefer **`waypaper-daemon`** from an **AUR / Makefile / unpacked** install (daemon binary on disk, no FUSE).
+- Or **extract** the AppImage (`./Foo.AppImage --appimage-extract`) and run binaries from the extracted tree — no runtime mount (trade-offs: updates are manual, layout is yours).
+
+---
+
+### Daemon only (AppImage autostart)
+
+The packaged binary treats **`--daemon`** like this: it **starts the bundled `waypaper-daemon` in a detached process**, then **exits the Electron main process** right away so the GUI does not keep running next to the daemon. Arguments after `--daemon` are passed through:
+
+```bash
+./waypaper-engine-*.AppImage --daemon
+```
+
+```bash
+./waypaper-engine-*.AppImage --daemon start --log-level debug
+```
+
+If you installed via `make install-appimage`, the wrapper forwards flags:
+
+```bash
+waypaper-engine-appimage --daemon
+```
+
+Hyprland example:
+
+```conf
+exec-once = /path/to/waypaper-engine-x86_64.AppImage --daemon
+```
+
+> **NOTE** — Electron still **loads briefly** until `main` runs; steady-state cost drops because that process exits after spawning the daemon. The **AppImage FUSE stub** may remain until the daemon exits — see [AppImage, FUSE, and headless daemon](#appimage-fuse-and-headless-daemon) above.
 
 ---
 
@@ -89,8 +142,8 @@ This installs to `/usr/local/bin`, `/usr/local/opt`, `/usr/local/share/applicati
 ### AppImage from source
 
 ```bash
-make deps && make electron   # builds waypaper-engine-*.AppImage under dist/
-make install-appimage        # installs it to ~/.local/opt/waypaper-engine-appimage
+make deps && make appimage   # builds waypaper-engine-*.AppImage under release/
+make install-appimage      # installs it to ~/.local/opt/waypaper-engine-appimage
 ```
 
 ### Custom prefix
@@ -99,13 +152,15 @@ make install-appimage        # installs it to ~/.local/opt/waypaper-engine-appim
 make install PREFIX=/opt/my-prefix DESTDIR=/tmp/stage
 ```
 
-`DESTDIR` stages the tree without baking the path into launchers—correct for distro packaging. See [Packaging](./packaging) for the full `DESTDIR` + `ELECTRON_APP_ROOT` story.
+`DESTDIR` stages the tree without baking the path into launchers — correct for distro packaging. See [Packaging](./packaging) for the full `DESTDIR` + `ELECTRON_APP_ROOT` story.
 
 ---
 
 ## Daemon only (headless / autostart)
 
-If you only want the daemon (no GUI), build and install just that:
+If you only want the daemon (no GUI), either install the daemon binary (AUR, Makefile, or **`make install-daemon`**) or use [`--daemon` with the AppImage](#daemon-only-appimage-autostart) and read [AppImage, FUSE, and headless daemon](#appimage-fuse-and-headless-daemon) so you know what to expect.
+
+Build and install **only** the daemon:
 
 ```bash
 make daemon && make install-daemon
@@ -127,7 +182,7 @@ Or enable the systemd user service (installed with `make install` or the AUR pac
 systemctl --user enable --now waypaper-daemon.service
 ```
 
-You can still drive everything from the HTTP API or the CLI—see [API overview](/api/overview).
+You can still drive everything from the HTTP API or the CLI — see [API overview](/api/overview).
 
 ---
 
@@ -183,3 +238,7 @@ An `"available": false` backend means the binary is not on `PATH` or not install
 ```bash
 tail -f ~/.local/share/waypaper-engine/daemon.log
 ```
+
+**Small leftover process after AppImage `--daemon`:**
+
+If the command line still mentions the `.AppImage` file while `waypaper-daemon` runs, read [AppImage, FUSE, and headless daemon](#appimage-fuse-and-headless-daemon) — the mount stays busy until the daemon exits.
