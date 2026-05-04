@@ -53,7 +53,7 @@
 		"@types/react-dom": "18.0.11",
 		"@types/validator": "13.12.2",
 		"@vitejs/plugin-react": "4.3.1",
-		"autoprefixer": "10.4.14",
+		"autoprefixer": "10.5.0",
 		"daisyui": "4.7.2",
 		"drizzle-kit": "0.20.14",
 		"electron": "31.0.0",
