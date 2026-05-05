@@ -4,7 +4,12 @@ import App from "./App";
 import ErrorBoundary from "./components/ErrorBoundary";
 import "./index.css";
 
-const defaultTheme = localStorage.getItem("waypaper-theme") || "kolision-raw";
+const persisted = localStorage.getItem("waypaper-theme");
+const defaultTheme =
+  persisted ??
+  (window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "kolision-raw-dark"
+    : "kolision-raw");
 document.documentElement.setAttribute("data-theme", defaultTheme);
 
 const root = document.getElementById("root");
