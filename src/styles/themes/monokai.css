@@ -1,0 +1,54 @@
+/* @waypaper-theme
+ *   name: monokai
+ *   displayName: Monokai
+ *   category: dark
+ *   sourceUrl: https://monokai.pro
+ *
+ * Monokai Classic (by Wimer Hazenberg). Role mapping:
+ *   base-100  ← bg     #272822
+ *   base-200  ← bg+1   #3e3d32
+ *   base-300  ← bg+2   #49483e
+ *   base-content ← fg  #f8f8f2
+ *   primary   ← pink   #f92672
+ *   secondary ← purple #ae81ff
+ *   accent    ← green  #a6e22e
+ *   neutral   ← comment #75715e
+ *   info      ← cyan   #66d9ef
+ *   success   ← green  #a6e22e
+ *   warning   ← orange #fd971f
+ *   error     ← red    #f92672
+ */
+@plugin "daisyui/theme" {
+  name: "monokai";
+  default: false;
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: #272822;
+  --color-base-200: #3e3d32;
+  --color-base-300: #49483e;
+  --color-base-content: #f8f8f2;
+  --color-primary: #f92672;
+  --color-primary-content: #f8f8f2;
+  --color-secondary: #ae81ff;
+  --color-secondary-content: #272822;
+  --color-accent: #a6e22e;
+  --color-accent-content: #272822;
+  --color-neutral: #75715e;
+  --color-neutral-content: #f8f8f2;
+  --color-info: #66d9ef;
+  --color-info-content: #272822;
+  --color-success: #a6e22e;
+  --color-success-content: #272822;
+  --color-warning: #fd971f;
+  --color-warning-content: #272822;
+  --color-error: #f92672;
+  --color-error-content: #f8f8f2;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
