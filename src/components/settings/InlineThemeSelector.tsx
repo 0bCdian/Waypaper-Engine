@@ -6,6 +6,7 @@ import type React from "react";
 import { useCallback, useId, useMemo, useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { useIsNeo } from "@/hooks/useIsNeo";
+import { useUserThemesStore } from "@/stores/userThemesStore";
 import { cn } from "@/utils/cn";
 
 type ToneFilterId = "all" | "light" | "dark";
@@ -60,6 +61,38 @@ const TONE_OPTIONS: { id: ToneFilterId; label: string; hint: string }[] = [
   { id: "dark", label: "Dark", hint: "Dark & mixed-tone themes" },
 ];
 
+interface ThemePillProps {
+  theme: ThemePickerEntry;
+  selected: boolean;
+  isNeo: boolean;
+  onSelect: (name: string) => void;
+}
+
+function ThemePill({ theme, selected, isNeo, onSelect }: ThemePillProps) {
+  return (
+    <button
+      type="button"
+      aria-pressed={selected}
+      onClick={() => onSelect(theme.name)}
+      className={cn(
+        "btn btn-sm shrink-0 font-[family-name:var(--font-display)] capitalize",
+        selected
+          ? "btn-primary"
+          : "btn-outline border-base-content/25 text-base-content hover:border-base-content/40",
+        isNeo &&
+          cn(
+            "rounded-none border-2 font-bold",
+            selected
+              ? "border-primary"
+              : "border-base-content shadow-[3px_3px_0_0_var(--color-base-content)]",
+          ),
+      )}
+    >
+      {theme.displayName}
+    </button>
+  );
+}
+
 export const InlineThemeSelector: React.FC<InlineThemeSelectorProps> = ({
   className = "",
   onThemeChange,
@@ -69,15 +102,24 @@ export const InlineThemeSelector: React.FC<InlineThemeSelectorProps> = ({
   const toneGroupLabelId = `${idBase}-tone-label`;
 
   const { currentTheme, setTheme, getAvailableThemes } = useTheme();
-  const availableThemes = useMemo(() => getAvailableThemes(), [getAvailableThemes]);
+  const builtInThemes = useMemo(() => getAvailableThemes(), [getAvailableThemes]);
+  const userThemes = useUserThemesStore((s) => s.themes);
   const isNeo = useIsNeo();
 
   const [query, setQuery] = useState("");
   const [tone, setTone] = useState<ToneFilterId>("all");
 
+  const filteredBuiltIn = useMemo(
+    () => filterThemesForPicker(builtInThemes, tone, query),
+    [builtInThemes, tone, query],
+  );
+  const filteredUser = useMemo(
+    () => filterThemesForPicker(userThemes, tone, query),
+    [userThemes, tone, query],
+  );
   const filteredThemes = useMemo(
-    () => filterThemesForPicker(availableThemes, tone, query),
-    [availableThemes, tone, query],
+    () => [...filteredBuiltIn, ...filteredUser],
+    [filteredBuiltIn, filteredUser],
   );
 
   const handleThemeSelect = useCallback(
@@ -203,36 +245,48 @@ export const InlineThemeSelector: React.FC<InlineThemeSelectorProps> = ({
         <>
           <div
             className={cn(
-              "flex flex-wrap gap-2 border-t border-base-content/10 pt-3",
+              "flex flex-col gap-4 border-t border-base-content/10 pt-3",
               PILLS_SCROLL_CLASS,
             )}
           >
-            {filteredThemes.map((theme) => {
-              const selected = theme.name === currentTheme;
-              return (
-                <button
-                  key={theme.name}
-                  type="button"
-                  aria-pressed={selected}
-                  onClick={() => handleThemeSelect(theme.name)}
-                  className={cn(
-                    "btn btn-sm shrink-0 font-[family-name:var(--font-display)] capitalize",
-                    selected
-                      ? "btn-primary"
-                      : "btn-outline border-base-content/25 text-base-content hover:border-base-content/40",
-                    isNeo &&
-                      cn(
-                        "rounded-none border-2 font-bold",
-                        selected
-                          ? "border-primary"
-                          : "border-base-content shadow-[3px_3px_0_0_var(--color-base-content)]",
-                      ),
-                  )}
-                >
-                  {theme.displayName}
-                </button>
-              );
-            })}
+            {filteredBuiltIn.length > 0 && (
+              <div className="flex flex-col gap-2">
+                {userThemes.length > 0 && (
+                  <span className="text-[10px] font-semibold uppercase tracking-wider text-base-content/50">
+                    Built-in
+                  </span>
+                )}
+                <div className="flex flex-wrap gap-2">
+                  {filteredBuiltIn.map((theme) => (
+                    <ThemePill
+                      key={theme.name}
+                      theme={theme}
+                      selected={theme.name === currentTheme}
+                      isNeo={isNeo}
+                      onSelect={handleThemeSelect}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+            {filteredUser.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wider text-base-content/50">
+                  Yours
+                </span>
+                <div className="flex flex-wrap gap-2">
+                  {filteredUser.map((theme) => (
+                    <ThemePill
+                      key={theme.name}
+                      theme={theme}
+                      selected={theme.name === currentTheme}
+                      isNeo={isNeo}
+                      onSelect={handleThemeSelect}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
           <p className="border-t border-base-content/10 pt-2 text-[10px] leading-snug text-base-content/45">
             <span className="tabular-nums">{filteredThemes.length}</span> themes shown
