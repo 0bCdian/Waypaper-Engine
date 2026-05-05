@@ -1,0 +1,42 @@
+/* @waypaper-theme
+ *   name: kolision-raw-dark
+ *   displayName: Kolision Raw Dark
+ *   category: dark
+ *   sourceUrl: internal:house-built
+ *
+ * Dark companion to Kolision Raw. Same accent hues on a warm dark ground.
+ */
+@plugin "daisyui/theme" {
+  name: "kolision-raw-dark";
+  default: false;
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: oklch(18% 0.02 95);
+  --color-base-200: oklch(22% 0.025 95);
+  --color-base-300: oklch(28% 0.03 95);
+  --color-base-content: oklch(93% 0.02 95);
+  --color-primary: oklch(78% 0.14 95);
+  --color-primary-content: oklch(22% 0.05 95);
+  --color-secondary: oklch(72% 0.12 195);
+  --color-secondary-content: oklch(18% 0.04 195);
+  --color-accent: oklch(72% 0.2 330);
+  --color-accent-content: oklch(15% 0.05 330);
+  --color-neutral: oklch(35% 0.02 95);
+  --color-neutral-content: oklch(93% 0.02 95);
+  --color-info: oklch(65% 0.12 195);
+  --color-info-content: oklch(15% 0.04 195);
+  --color-success: oklch(62% 0.14 145);
+  --color-success-content: oklch(15% 0.03 145);
+  --color-warning: oklch(78% 0.14 85);
+  --color-warning-content: oklch(22% 0.06 85);
+  --color-error: oklch(62% 0.18 35);
+  --color-error-content: oklch(98% 0.02 35);
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
