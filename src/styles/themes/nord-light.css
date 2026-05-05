@@ -1,0 +1,44 @@
+/* @waypaper-theme
+ *   name: nord-light
+ *   displayName: Nord Light
+ *   category: light
+ *   sourceUrl: https://www.nordtheme.com/docs/colors-and-palettes
+ *
+ * Derived light companion (Nord ships only a dark canonical palette).
+ * Surfaces use Snow Storm; content uses Polar Night nord0; accents
+ * keep the same Frost/Aurora hues but darker for AA contrast on a light bg.
+ */
+@plugin "daisyui/theme" {
+  name: "nord-light";
+  default: false;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: #eceff4;
+  --color-base-200: #e5e9f0;
+  --color-base-300: #d8dee9;
+  --color-base-content: #2e3440;
+  --color-primary: #5e81ac;
+  --color-primary-content: #eceff4;
+  --color-secondary: #81a1c1;
+  --color-secondary-content: #2e3440;
+  --color-accent: #8fbcbb;
+  --color-accent-content: #2e3440;
+  --color-neutral: #4c566a;
+  --color-neutral-content: #eceff4;
+  --color-info: #5e81ac;
+  --color-info-content: #eceff4;
+  --color-success: #a3be8c;
+  --color-success-content: #2e3440;
+  --color-warning: #d08770;
+  --color-warning-content: #2e3440;
+  --color-error: #bf616a;
+  --color-error-content: #eceff4;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}

@@ -1,0 +1,53 @@
+/* @waypaper-theme
+ *   name: nord
+ *   displayName: Nord
+ *   category: dark
+ *   sourceUrl: https://www.nordtheme.com/docs/colors-and-palettes
+ *
+ * Source palette role mapping (Polar Night / Snow Storm / Frost / Aurora):
+ *   base-100/200/300       ← polar night nord0/nord1/nord2
+ *   base-content           ← snow storm nord6
+ *   primary                ← frost nord8
+ *   primary-content        ← polar night nord0
+ *   secondary              ← frost nord9
+ *   accent                 ← frost nord7
+ *   neutral                ← polar night nord3
+ *   info                   ← frost nord10
+ *   success                ← aurora nord14
+ *   warning                ← aurora nord13
+ *   error                  ← aurora nord11
+ */
+@plugin "daisyui/theme" {
+  name: "nord";
+  default: false;
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: #2e3440;
+  --color-base-200: #3b4252;
+  --color-base-300: #434c5e;
+  --color-base-content: #eceff4;
+  --color-primary: #88c0d0;
+  --color-primary-content: #2e3440;
+  --color-secondary: #81a1c1;
+  --color-secondary-content: #2e3440;
+  --color-accent: #8fbcbb;
+  --color-accent-content: #2e3440;
+  --color-neutral: #4c566a;
+  --color-neutral-content: #eceff4;
+  --color-info: #5e81ac;
+  --color-info-content: #eceff4;
+  --color-success: #a3be8c;
+  --color-success-content: #2e3440;
+  --color-warning: #ebcb8b;
+  --color-warning-content: #2e3440;
+  --color-error: #bf616a;
+  --color-error-content: #eceff4;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
