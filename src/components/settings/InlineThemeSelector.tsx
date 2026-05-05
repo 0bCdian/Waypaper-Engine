@@ -13,17 +13,14 @@ type ToneFilterId = "all" | "light" | "dark";
 export interface ThemePickerEntry {
   name: string;
   displayName: string;
-  description: string;
   category: string;
-  available: boolean;
-  previewImage?: string;
 }
 
 /**
  * Exported for tests — applies tone bucket + query against the flattened theme list.
  */
 export function filterThemesForPicker(
-  themes: ThemePickerEntry[],
+  themes: readonly ThemePickerEntry[],
   tone: ToneFilterId,
   query: string,
 ): ThemePickerEntry[] {
@@ -35,7 +32,7 @@ export function filterThemesForPicker(
 
     if (!normalized) return true;
 
-    const haystack = `${t.name} ${t.displayName} ${t.description}`.toLowerCase();
+    const haystack = `${t.name} ${t.displayName}`.toLowerCase();
     if (haystack.includes(normalized)) return true;
 
     return normalized.split(/\s+/).every((tok) => tok.length > 0 && haystack.includes(tok));
@@ -216,7 +213,6 @@ export const InlineThemeSelector: React.FC<InlineThemeSelectorProps> = ({
                 <button
                   key={theme.name}
                   type="button"
-                  disabled={!theme.available}
                   aria-pressed={selected}
                   onClick={() => handleThemeSelect(theme.name)}
                   className={cn(

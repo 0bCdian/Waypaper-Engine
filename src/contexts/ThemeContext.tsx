@@ -9,18 +9,15 @@ import React, {
   type ReactNode,
 } from "react";
 import type { ThemeContextType } from "./types";
-import type { ThemeConfig } from "../themes/types";
-import { themes } from "../themes/themes";
+import type { ThemeMeta } from "../themes/types";
+import { themes, findTheme } from "../themes/themes";
 import { logger } from "../utils/logger";
 import { daemonClient } from "@/client";
 
-// Default theme name
 const DEFAULT_THEME_NAME = "kolision-raw";
 
-const getTheme = (name: string) => themes[name];
-
 function hasThemeFn(name: string): boolean {
-  return name in themes && (themes[name].available ?? true);
+  return themes.some((t) => t.name === name);
 }
 
 function readStoredTheme(): string | null {
@@ -60,24 +57,18 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   const [isLoading] = useState(false);
   const [lastChanged, setLastChanged] = useState<number | undefined>();
 
-  /** Used by SSE config listener — must not restart that subscription on each theme flip. */
   const currentThemeRef = useRef(currentTheme);
   currentThemeRef.current = currentTheme;
 
-  const currentThemeConfig = getTheme(currentTheme);
+  const currentThemeMeta = findTheme(currentTheme);
 
-  const isDarkMode = currentThemeConfig?.category === "dark";
-  const isLightMode = currentThemeConfig?.category === "light";
+  const isDarkMode = currentThemeMeta?.category === "dark";
+  const isLightMode = currentThemeMeta?.category === "light";
 
   const applyTheme = useCallback((themeName: string) => {
-    // Disable all CSS transitions to prevent color flashing during theme switch
     document.documentElement.classList.add("disable-transitions");
-
     document.documentElement.setAttribute("data-theme", themeName);
-    // Remove any conflicting data-theme from body
     document.body.removeAttribute("data-theme");
-
-    // Re-enable transitions after the browser has painted with the new theme
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         document.documentElement.classList.remove("disable-transitions");
@@ -87,16 +78,14 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 
   const setTheme = useCallback(
     (themeName: string) => {
-      const theme = getTheme(themeName);
+      const theme = findTheme(themeName);
       if (!theme) {
         return;
       }
 
       const timestamp = Date.now();
-
       setCurrentThemeState(themeName);
       setLastChanged(timestamp);
-
       applyTheme(themeName);
 
       if (persist) {
@@ -111,13 +100,11 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   );
 
   const toggleTheme = useCallback(() => {
-    const current = getTheme(currentTheme);
+    const current = findTheme(currentTheme);
     if (!current) return;
 
     const oppositeCategory = current.category === "dark" ? "light" : "dark";
-    const oppositeTheme = Object.values(themes).find(
-      (theme) => theme.category === oppositeCategory && theme.available,
-    );
+    const oppositeTheme = themes.find((t) => t.category === oppositeCategory);
 
     if (oppositeTheme) {
       setTheme(oppositeTheme.name);
@@ -147,57 +134,42 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     },
     [persist, setTheme],
   );
+
   const resetTheme = useCallback(() => {
     setTheme(defaultTheme);
   }, [defaultTheme, setTheme]);
 
-  const getThemeByName = useCallback((name: string): ThemeConfig | undefined => {
-    return getTheme(name);
+  const getThemeByName = useCallback((name: string): ThemeMeta | undefined => {
+    return findTheme(name);
   }, []);
 
   const hasTheme = useCallback((name: string): boolean => {
-    return name in themes && (themes[name].available ?? true);
+    return hasThemeFn(name);
   }, []);
 
-  const availableThemesList = useMemo(
-    () =>
-      Object.values(themes)
-        .filter((theme) => theme.available ?? true)
-        .map((theme) => ({
-          name: theme.name,
-          displayName: theme.displayName,
-          description: theme.description,
-          category: theme.category,
-          previewImage: theme.previewImage,
-          available: theme.available ?? true,
-        })),
-    [],
-  );
+  const getAvailableThemes = useCallback((): readonly ThemeMeta[] => {
+    return themes;
+  }, []);
 
-  const getAvailableThemes = useCallback(() => availableThemesList, [availableThemesList]);
-
-  // Apply the resolved theme on mount only; setTheme handles subsequent changes synchronously.
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     applyTheme(currentTheme);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (!syncWithSystem || systemTheme !== "auto") return;
 
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-
     const handleSystemThemeChange = (e: MediaQueryListEvent) => {
       const themeName = e.matches ? "dark" : "light";
       setTheme(themeName);
     };
 
     mediaQuery.addEventListener("change", handleSystemThemeChange);
-
     return () => {
       mediaQuery.removeEventListener("change", handleSystemThemeChange);
     };
-  }, [syncWithSystem, systemTheme]);
+  }, [syncWithSystem, systemTheme, setTheme]);
 
   useEffect(() => {
     const dispose = daemonClient.on("config_changed", (data: unknown) => {
@@ -221,23 +193,17 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     return dispose;
   }, [syncWithSystem, hasTheme, setTheme, setSystemThemePreference]);
 
-  // Context value
   const contextValue: ThemeContextType = useMemo(
     () => ({
-      // State
       currentTheme,
       systemTheme,
       themes,
       isLoading,
       lastChanged,
       syncWithSystem,
-
-      // Computed values
       isDarkMode,
       isLightMode,
-      currentThemeConfig,
-
-      // Actions
+      currentThemeMeta,
       setTheme,
       toggleTheme,
       setSystemThemePreference,
@@ -255,7 +221,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
       syncWithSystem,
       isDarkMode,
       isLightMode,
-      currentThemeConfig,
+      currentThemeMeta,
       setTheme,
       toggleTheme,
       setSystemThemePreference,
@@ -271,11 +237,9 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 
 export const useTheme = (): ThemeContextType => {
   const context = useContext(ThemeContext);
-
   if (context === undefined) {
     throw new Error("useTheme must be used within a ThemeProvider");
   }
-
   return context;
 };
 

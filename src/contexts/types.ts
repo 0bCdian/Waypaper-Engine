@@ -1,15 +1,8 @@
-/**
- * Theme Context Types for Waypaper Engine
- */
+import type { ThemeMeta } from "../themes/types";
 
-import type { ThemeConfig } from "../themes/types";
-
-/**
- * Theme context type interface
- */
 export interface ThemeContextType {
   currentTheme: string;
-  themes: Record<string, ThemeConfig>;
+  themes: readonly ThemeMeta[];
   setTheme: (themeName: string) => void;
   toggleTheme: () => void;
   isDarkMode: boolean;
@@ -17,19 +10,12 @@ export interface ThemeContextType {
   syncWithSystem: boolean;
   setSyncWithSystem: (sync: boolean) => void;
   setSystemThemePreference: (mode: "light" | "dark" | "auto") => void;
-  getAvailableThemes: () => Array<{
-    name: string;
-    displayName: string;
-    description: string;
-    category: string;
-    previewImage?: string;
-    available: boolean;
-  }>;
-  currentThemeConfig: ThemeConfig;
+  getAvailableThemes: () => readonly ThemeMeta[];
+  currentThemeMeta: ThemeMeta | undefined;
   systemTheme: "light" | "dark" | "auto";
   isLoading: boolean;
   lastChanged?: number;
   resetTheme: () => void;
-  getTheme: (name: string) => ThemeConfig | undefined;
+  getTheme: (name: string) => ThemeMeta | undefined;
   hasTheme: (name: string) => boolean;
 }
