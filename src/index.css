@@ -13,6 +13,9 @@
 /* Waypaper token layer (spacing, surfaces, elevation, motion) */
 @import "./styles/tokens.css";
 
+/* Auto-registered palette files via vite-plugin-theme-registry */
+@import "./styles/themes/_index.css";
+
 /* Import neobrutalist design system overlay */
 @import "./styles/neobrutalist.css";
 
