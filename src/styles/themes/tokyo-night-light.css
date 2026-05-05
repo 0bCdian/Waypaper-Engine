@@ -1,0 +1,54 @@
+/* @waypaper-theme
+ *   name: tokyo-night-light
+ *   displayName: Tokyo Day
+ *   category: light
+ *   sourceUrl: https://github.com/folke/tokyonight.nvim
+ *
+ * Day palette (light variant of tokyonight). Role mapping:
+ *   base-100  ← bg       #e1e2e7
+ *   base-200  ← bg_dark  #d0d5e3
+ *   base-300  ← bg_highlight #a8aecb
+ *   base-content ← fg    #3760bf
+ *   primary   ← blue     #2e7de9
+ *   secondary ← magenta  #9854f1
+ *   accent    ← cyan     #007197
+ *   neutral   ← terminal_black #6172b0
+ *   info      ← blue1    #007197
+ *   success   ← green    #587539
+ *   warning   ← orange   #b15c00
+ *   error     ← red      #f52a65
+ */
+@plugin "daisyui/theme" {
+  name: "tokyo-night-light";
+  default: false;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: #e1e2e7;
+  --color-base-200: #d0d5e3;
+  --color-base-300: #a8aecb;
+  --color-base-content: #3760bf;
+  --color-primary: #2e7de9;
+  --color-primary-content: #e1e2e7;
+  --color-secondary: #9854f1;
+  --color-secondary-content: #e1e2e7;
+  --color-accent: #007197;
+  --color-accent-content: #e1e2e7;
+  --color-neutral: #6172b0;
+  --color-neutral-content: #e1e2e7;
+  --color-info: #007197;
+  --color-info-content: #e1e2e7;
+  --color-success: #587539;
+  --color-success-content: #e1e2e7;
+  --color-warning: #b15c00;
+  --color-warning-content: #e1e2e7;
+  --color-error: #f52a65;
+  --color-error-content: #e1e2e7;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
