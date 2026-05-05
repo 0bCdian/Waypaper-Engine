@@ -1,0 +1,55 @@
+/* @waypaper-theme
+ *   name: catppuccin-latte
+ *   displayName: Catppuccin Latte
+ *   category: light
+ *   sourceUrl: https://catppuccin.com/palette
+ *
+ * Latte flavor — canonical hex values from catppuccin.com/palette.
+ * Role mapping:
+ *   base-100  ← Base   #eff1f5
+ *   base-200  ← Mantle #e6e9ef
+ *   base-300  ← Surface0 #ccd0da
+ *   base-content ← Text  #4c4f69
+ *   primary   ← Blue   #1e66f5
+ *   secondary ← Mauve  #8839ef
+ *   accent    ← Teal   #179299
+ *   neutral   ← Overlay0 #9ca0b0
+ *   info      ← Sky   #04a5e5
+ *   success   ← Green  #40a02b
+ *   warning   ← Yellow #df8e1d
+ *   error     ← Red    #d20f39
+ */
+@plugin "daisyui/theme" {
+  name: "catppuccin-latte";
+  default: false;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: #eff1f5;
+  --color-base-200: #e6e9ef;
+  --color-base-300: #ccd0da;
+  --color-base-content: #4c4f69;
+  --color-primary: #1e66f5;
+  --color-primary-content: #eff1f5;
+  --color-secondary: #8839ef;
+  --color-secondary-content: #eff1f5;
+  --color-accent: #179299;
+  --color-accent-content: #eff1f5;
+  --color-neutral: #9ca0b0;
+  --color-neutral-content: #4c4f69;
+  --color-info: #04a5e5;
+  --color-info-content: #eff1f5;
+  --color-success: #40a02b;
+  --color-success-content: #eff1f5;
+  --color-warning: #df8e1d;
+  --color-warning-content: #eff1f5;
+  --color-error: #d20f39;
+  --color-error-content: #eff1f5;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
