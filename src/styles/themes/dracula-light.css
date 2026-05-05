@@ -1,0 +1,45 @@
+/* @waypaper-theme
+ *   name: dracula-light
+ *   displayName: Dracula Light
+ *   category: light
+ *   sourceUrl: https://draculatheme.com
+ *
+ * Derived light companion (Dracula is canonically dark). Surfaces use
+ * Dracula's foreground (#f8f8f2) as bg; content uses the dark bg (#282a36).
+ * Accents retain the same Dracula hues with tightened contrast.
+ * Plan §4.8: bg=#f8f8f2, fg=#282a36, keep purple/pink/cyan/green accents.
+ */
+@plugin "daisyui/theme" {
+  name: "dracula-light";
+  default: false;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: #f8f8f2;
+  --color-base-200: #e0e0d8;
+  --color-base-300: #c8c8be;
+  --color-base-content: #282a36;
+  --color-primary: #bd93f9;
+  --color-primary-content: #282a36;
+  --color-secondary: #ff79c6;
+  --color-secondary-content: #282a36;
+  --color-accent: #8be9fd;
+  --color-accent-content: #282a36;
+  --color-neutral: #6272a4;
+  --color-neutral-content: #f8f8f2;
+  --color-info: #6272a4;
+  --color-info-content: #f8f8f2;
+  --color-success: #50fa7b;
+  --color-success-content: #282a36;
+  --color-warning: #f1fa8c;
+  --color-warning-content: #282a36;
+  --color-error: #ff5555;
+  --color-error-content: #f8f8f2;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
