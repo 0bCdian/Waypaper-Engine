@@ -26,6 +26,7 @@ import (
 	"waypaper-engine/daemon/internal/handler/imageshandler"
 	"waypaper-engine/daemon/internal/handler/monitorshandler"
 	"waypaper-engine/daemon/internal/handler/playlistshandler"
+	"waypaper-engine/daemon/internal/handler/themeshandler"
 	"waypaper-engine/daemon/internal/handler/wallpaperhandler"
 	"waypaper-engine/daemon/internal/image"
 	"waypaper-engine/daemon/internal/monitor"
@@ -35,6 +36,8 @@ import (
 	"waypaper-engine/daemon/internal/system"
 	"waypaper-engine/daemon/internal/wallpaper"
 )
+
+const themesSubdir = "themes"
 
 // Options holds all injected dependencies for a Daemon instance.
 type Options struct {
@@ -241,6 +244,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	ctrl := control.NewController(opts.Cfg, opts.Registry, bus, control.RestoreFunc(func(rctx context.Context) {
 		wallpaper.Restore(rctx, opts.DB.MonitorStateStore(), opts.DB.StateStore(), opts.Registry, opts.Cfg, monManager, opts.DB.ImageStore(), splitter, bus)
 	}))
+	userThemesDir := filepath.Join(system.ConfigHome(), themesSubdir)
 	handlers := server.Handlers{
 		Health:    healthhandler.NewHealthHandler(opts.Version, shutdownFn),
 		Images:    imageshandler.NewImageHandler(opts.DB.ImageStore(), processor, bus, opts.Registry),
@@ -253,6 +257,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 			opts.Registry, monManager, splitter, bus, opts.Cfg,
 		),
 		Folders: foldershandler.NewFolderHandler(opts.DB.FolderStore(), opts.DB.ImageStore(), bus),
+		Themes:  themeshandler.NewThemesHandler(userThemesDir),
 	}
 
 	// Create router and server.

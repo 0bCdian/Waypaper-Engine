@@ -11,6 +11,7 @@ import (
 	"waypaper-engine/daemon/internal/handler/imageshandler"
 	"waypaper-engine/daemon/internal/handler/monitorshandler"
 	"waypaper-engine/daemon/internal/handler/playlistshandler"
+	"waypaper-engine/daemon/internal/handler/themeshandler"
 	"waypaper-engine/daemon/internal/handler/wallpaperhandler"
 )
 
@@ -24,6 +25,7 @@ type Handlers struct {
 	Backends  *backendshandler.BackendHandler
 	Wallpaper *wallpaperhandler.WallpaperHandler
 	Folders   *foldershandler.FolderHandler
+	Themes    *themeshandler.ThemesHandler
 }
 
 // NewRouter creates a chi router with all routes and middleware registered.
@@ -128,6 +130,14 @@ func NewRouter(h Handlers, bus events.Bus) *chi.Mux {
 		r.Post("/set", h.Wallpaper.Set)
 		r.Post("/random", h.Wallpaper.Random)
 	})
+
+	// User themes (drop-in CSS palettes from ~/.config/waypaper-engine/themes/).
+	if h.Themes != nil {
+		r.Route("/api/themes", func(r chi.Router) {
+			r.Get("/", h.Themes.List)
+			r.Get("/{name}.css", h.Themes.Get)
+		})
+	}
 
 	return r
 }
