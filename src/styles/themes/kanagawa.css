@@ -1,0 +1,54 @@
+/* @waypaper-theme
+ *   name: kanagawa
+ *   displayName: Kanagawa
+ *   category: dark
+ *   sourceUrl: https://github.com/rebelot/kanagawa.nvim
+ *
+ * Wave (dark) palette. Role mapping:
+ *   base-100  ← sumiInk3  #1f1f28
+ *   base-200  ← sumiInk1  #16161d
+ *   base-300  ← sumiInk4  #2a2a37
+ *   base-content ← fujiWhite #dcd7ba
+ *   primary   ← crystalBlue  #7e9cd8
+ *   secondary ← oniViolet    #957fb8
+ *   accent    ← springGreen  #7aa89f (renamed from springBlue)
+ *   neutral   ← sumiInk6    #363646
+ *   info      ← dragonBlue  #7fb4ca
+ *   success   ← autumnGreen #76946a
+ *   warning   ← autumnYellow #dca561
+ *   error     ← samuraiRed  #c34043
+ */
+@plugin "daisyui/theme" {
+  name: "kanagawa";
+  default: false;
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: #1f1f28;
+  --color-base-200: #16161d;
+  --color-base-300: #2a2a37;
+  --color-base-content: #dcd7ba;
+  --color-primary: #7e9cd8;
+  --color-primary-content: #1f1f28;
+  --color-secondary: #957fb8;
+  --color-secondary-content: #dcd7ba;
+  --color-accent: #7aa89f;
+  --color-accent-content: #1f1f28;
+  --color-neutral: #363646;
+  --color-neutral-content: #c8c093;
+  --color-info: #7fb4ca;
+  --color-info-content: #1f1f28;
+  --color-success: #76946a;
+  --color-success-content: #dcd7ba;
+  --color-warning: #dca561;
+  --color-warning-content: #1f1f28;
+  --color-error: #c34043;
+  --color-error-content: #dcd7ba;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}

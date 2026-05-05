@@ -1,0 +1,54 @@
+/* @waypaper-theme
+ *   name: kanagawa-light
+ *   displayName: Kanagawa Light
+ *   category: light
+ *   sourceUrl: https://github.com/rebelot/kanagawa.nvim
+ *
+ * Lotus (light) palette. Role mapping:
+ *   base-100  ← lotusPink2 / bg  #f2ecbc (cream)
+ *   base-200  ← slightly warmer   #ede6b5
+ *   base-300  ← lotusCreme warm   #e6dfad
+ *   base-content ← lotusInk1     #545464
+ *   primary   ← lotusBlue       #4d699b
+ *   secondary ← lotusMauve      #955f87
+ *   accent    ← lotusGreen      #597b75
+ *   neutral   ← lotusGrey       #8a8980
+ *   info      ← lotusBlue       #4d699b
+ *   success   ← lotusGreen2     #6f894e
+ *   warning   ← lotusOrange     #cc6d00
+ *   error     ← samuraiRed (lotus) #c84053
+ */
+@plugin "daisyui/theme" {
+  name: "kanagawa-light";
+  default: false;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: #f2ecbc;
+  --color-base-200: #ede6b5;
+  --color-base-300: #e6dfad;
+  --color-base-content: #545464;
+  --color-primary: #4d699b;
+  --color-primary-content: #f2ecbc;
+  --color-secondary: #955f87;
+  --color-secondary-content: #f2ecbc;
+  --color-accent: #597b75;
+  --color-accent-content: #f2ecbc;
+  --color-neutral: #8a8980;
+  --color-neutral-content: #f2ecbc;
+  --color-info: #4d699b;
+  --color-info-content: #f2ecbc;
+  --color-success: #6f894e;
+  --color-success-content: #f2ecbc;
+  --color-warning: #cc6d00;
+  --color-warning-content: #f2ecbc;
+  --color-error: #c84053;
+  --color-error-content: #f2ecbc;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
