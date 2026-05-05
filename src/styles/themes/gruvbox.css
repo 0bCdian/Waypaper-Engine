@@ -1,0 +1,54 @@
+/* @waypaper-theme
+ *   name: gruvbox
+ *   displayName: Gruvbox
+ *   category: dark
+ *   sourceUrl: https://github.com/morhetz/gruvbox
+ *
+ * Role mapping (Gruvbox dark palette, medium contrast):
+ *   base-100  ← bg   #282828   Polar Night bg
+ *   base-200  ← bg1  #3c3836
+ *   base-300  ← bg2  #504945
+ *   base-content ← fg  #ebdbb2  (fg/Snow Storm)
+ *   primary   ← bright-orange  #fe8019  (most-used accent for Gruvbox)
+ *   secondary ← bright-purple  #d3869b
+ *   accent    ← bright-aqua    #8ec07c
+ *   neutral   ← gray           #7c6f64
+ *   info      ← bright-blue    #83a598
+ *   success   ← bright-green   #b8bb26
+ *   warning   ← bright-yellow  #fabd2f
+ *   error     ← bright-red     #fb4934
+ */
+@plugin "daisyui/theme" {
+  name: "gruvbox";
+  default: false;
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: #282828;
+  --color-base-200: #3c3836;
+  --color-base-300: #504945;
+  --color-base-content: #ebdbb2;
+  --color-primary: #fe8019;
+  --color-primary-content: #282828;
+  --color-secondary: #d3869b;
+  --color-secondary-content: #282828;
+  --color-accent: #8ec07c;
+  --color-accent-content: #282828;
+  --color-neutral: #7c6f64;
+  --color-neutral-content: #ebdbb2;
+  --color-info: #83a598;
+  --color-info-content: #282828;
+  --color-success: #b8bb26;
+  --color-success-content: #282828;
+  --color-warning: #fabd2f;
+  --color-warning-content: #282828;
+  --color-error: #fb4934;
+  --color-error-content: #ebdbb2;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
