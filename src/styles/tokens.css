@@ -148,3 +148,103 @@
     var(--wp-paper-grid-size) var(--wp-paper-grid-size);
   background-repeat: repeat, repeat;
 }
+
+/* ── Component primitives ──────────────────────────────────────── */
+
+.wp-surface {
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  border-radius: var(--wp-radius-md);
+  border: var(--wp-border-w) solid var(--wp-border-color);
+}
+.wp-surface--elev-1 {
+  box-shadow: var(--wp-elev-1);
+}
+.wp-surface--elev-2 {
+  box-shadow: var(--wp-elev-2);
+}
+.wp-surface--elev-3 {
+  box-shadow: var(--wp-elev-3);
+}
+
+.wp-btn {
+  border-radius: var(--wp-radius-md);
+  font-family: var(--font-display);
+  font-weight: var(--wp-display-weight);
+  letter-spacing: var(--wp-display-tracking);
+  text-transform: var(--wp-display-case);
+}
+
+.wp-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--color-base-content);
+  border: var(--wp-border-w) solid transparent;
+  border-radius: var(--wp-radius-md);
+  cursor: pointer;
+  padding: 6px;
+  transition: background var(--wp-dur-fast) var(--wp-ease-out);
+}
+.wp-icon-btn:hover {
+  background: oklch(from var(--color-base-content) l c h / 0.08);
+}
+.wp-icon-btn--sm {
+  padding: 4px;
+}
+.wp-icon-btn--lg {
+  padding: 8px;
+}
+
+.wp-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  border: var(--wp-border-w) solid var(--wp-border-color);
+  border-radius: var(--wp-radius-md);
+  cursor: pointer;
+  padding: 6px;
+  width: 32px;
+  height: 32px;
+}
+
+.wp-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: oklch(0 0 0 / 0.4);
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  z-index: 50;
+}
+.wp-modal {
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  border-radius: var(--wp-radius-lg);
+  border: var(--wp-border-w) solid var(--wp-border-color);
+  box-shadow: var(--wp-elev-3);
+  padding: 1.5rem;
+  max-width: min(90vw, 32rem);
+  max-height: 90vh;
+  overflow: auto;
+}
+.wp-modal--sm {
+  max-width: min(90vw, 24rem);
+}
+.wp-modal--lg {
+  max-width: min(90vw, 48rem);
+}
+.wp-modal--xl {
+  max-width: min(90vw, 72rem);
+}
+
+.wp-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: -1.5rem -1.5rem 1rem;
+  padding: 1rem 1.5rem;
+}
