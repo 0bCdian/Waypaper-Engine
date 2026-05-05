@@ -14,7 +14,6 @@ import PaginatedGallery from "./PaginatedGallery";
 import Filters from "./Filters";
 import Breadcrumbs from "./Breadcrumbs";
 import Modal, { type ModalHandle } from "./Modal";
-import { paperGridBackgroundStyle } from "../utils/paperGridBackground";
 
 function Gallery() {
   const isEmpty = useImagesStore((state) => state.isEmpty);
@@ -141,8 +140,7 @@ function Gallery() {
     <div className="h-full flex flex-col overflow-hidden relative" {...handlers}>
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 z-0 bg-base-100"
-        style={paperGridBackgroundStyle()}
+        className="wp-paper-grid pointer-events-none absolute inset-0 z-0 bg-base-100"
       />
       <div className="relative z-[1] flex flex-1 min-h-0 flex-col overflow-hidden">
         {isDragging && (
