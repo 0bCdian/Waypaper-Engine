@@ -1,0 +1,54 @@
+/* @waypaper-theme
+ *   name: gruvbox-material
+ *   displayName: Gruvbox Material
+ *   category: dark
+ *   sourceUrl: https://github.com/sainnhe/gruvbox-material
+ *
+ * Medium contrast dark variant. Role mapping:
+ *   base-100  ← background  #32302f
+ *   base-200  ← hard bg     #282828
+ *   base-300  ← soft bg     #3c3836
+ *   base-content ← foreground #d4be98
+ *   primary   ← green   #a9b665
+ *   secondary ← blue    #7daea3
+ *   accent    ← yellow  #d8a657
+ *   neutral   ← grey2   #504945
+ *   info      ← aqua    #89b482
+ *   success   ← green   #a9b665
+ *   warning   ← orange  #e78a4e
+ *   error     ← red     #ea6962
+ */
+@plugin "daisyui/theme" {
+  name: "gruvbox-material";
+  default: false;
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: #32302f;
+  --color-base-200: #282828;
+  --color-base-300: #3c3836;
+  --color-base-content: #d4be98;
+  --color-primary: #a9b665;
+  --color-primary-content: #282828;
+  --color-secondary: #7daea3;
+  --color-secondary-content: #282828;
+  --color-accent: #d8a657;
+  --color-accent-content: #282828;
+  --color-neutral: #504945;
+  --color-neutral-content: #d4be98;
+  --color-info: #89b482;
+  --color-info-content: #282828;
+  --color-success: #a9b665;
+  --color-success-content: #282828;
+  --color-warning: #e78a4e;
+  --color-warning-content: #282828;
+  --color-error: #ea6962;
+  --color-error-content: #d4be98;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}
