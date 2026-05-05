@@ -2,6 +2,7 @@ import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { useUserThemesStore } from "./stores/userThemesStore";
 import "./index.css";
 
 const persisted = localStorage.getItem("waypaper-theme");
@@ -24,3 +25,6 @@ createRoot(root).render(
     </ErrorBoundary>
   </StrictMode>,
 );
+
+// Fire-and-forget: user themes are nice-to-have on cold boot.
+useUserThemesStore.getState().loadFromDaemon();
