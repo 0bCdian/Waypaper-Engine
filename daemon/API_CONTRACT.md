@@ -1462,5 +1462,42 @@ Returned by `GET /config/backends/mpvpaper`. Updated by `PATCH /config/backends/
 | Database     | `$XDG_DATA_HOME/waypaper-engine/db`            |
 | Log file     | `$XDG_DATA_HOME/waypaper-engine/daemon.log`    |
 | PID lock     | `$XDG_RUNTIME_DIR/waypaper-engine.pid`         |
+| User themes  | `$XDG_CONFIG_HOME/waypaper-engine/themes/`     |
 
 Typical Linux defaults: `$XDG_CONFIG_HOME` = `~/.config`, `$XDG_DATA_HOME` = `~/.local/share`, `$XDG_CACHE_HOME` = `~/.cache`, `$XDG_RUNTIME_DIR` = `/run/user/<uid>`.
+
+---
+
+## Themes
+
+User-provided palette CSS files dropped into `$XDG_CONFIG_HOME/waypaper-engine/themes/`.
+
+### `GET /api/themes`
+
+Returns metadata for all `*.css` files in the user themes directory.
+
+**Response:** `200 OK`, `application/json` — array of theme objects:
+
+```json
+[
+  {
+    "name": "my-palette",
+    "displayName": "my-palette",
+    "source": "user",
+    "url": "/api/themes/my-palette.css"
+  }
+]
+```
+
+Returns an empty array `[]` when no themes directory exists or it is empty.
+
+### `GET /api/themes/{name}.css`
+
+Streams the raw CSS for the named palette.
+
+**Response:** `200 OK`, `text/css; charset=utf-8` — the file contents.
+
+**Errors:**
+- `404 Not Found` — name not found or path traversal attempt.
+
+**Security:** Any name containing `/`, `\`, or empty string is rejected before disk access.
