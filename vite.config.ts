@@ -3,6 +3,7 @@ import electron from "vite-plugin-electron";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { resolve } from "path";
+import { themeRegistryPlugin } from "./scripts/vite-plugin-theme-registry";
 
 /** During `vite serve`, allow React standalone DevTools bridge + inject its script tag. Production builds keep strict CSP without localhost scripts. */
 function reactStandaloneDevtoolsPlugin(command: string): Plugin {
@@ -46,6 +47,10 @@ export default defineConfig(({ command }) => ({
     ],
   },
   plugins: [
+    themeRegistryPlugin({
+      themesDir: resolve(__dirname, "src/styles/themes"),
+      outFile: resolve(__dirname, "src/styles/themes/_index.ts"),
+    }),
     reactStandaloneDevtoolsPlugin(command),
     react({
       babel: {
