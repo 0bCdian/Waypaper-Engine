@@ -63,7 +63,29 @@ h4 {
 
 /* Import DaisyUI v5 plugin */
 @plugin "daisyui" {
-  themes: all;
+  themes:
+    light --default,
+    dark --prefersdark,
+    cupcake,
+    bumblebee,
+    emerald,
+    synthwave,
+    retro,
+    halloween,
+    forest,
+    lofi,
+    pastel,
+    wireframe,
+    black,
+    dracula,
+    cmyk,
+    autumn,
+    business,
+    acid,
+    lemonade,
+    night,
+    dim,
+    nord;
   exclude: rootscrollgutter;
 }
 
