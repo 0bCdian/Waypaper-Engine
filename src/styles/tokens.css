@@ -77,6 +77,7 @@
   --wp-elev-3: calc(var(--neo-shadow-x, 8px) * 2) calc(var(--neo-shadow-y, 8px) * 2) 0 0 #000;
 
   /* Display typography */
+  --font-display: "Aldrich", "Space Grotesk Variable", system-ui, sans-serif;
   --wp-display-case: uppercase;
   --wp-display-tracking: 0.02em;
   --wp-display-weight: 800;

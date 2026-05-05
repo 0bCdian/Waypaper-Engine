@@ -6,6 +6,7 @@
 @import "@fontsource-variable/space-grotesk";
 @import "@fontsource/jetbrains-mono/400.css";
 @import "@fontsource/jetbrains-mono/700.css";
+@import "@fontsource/aldrich/400.css";
 @import "@fontsource/google-sans-flex";
 @import "@fontsource/google-sans";
 
@@ -52,6 +53,9 @@ h2,
 h3,
 h4 {
   font-family: var(--font-display);
+  font-weight: var(--wp-display-weight, 700);
+  letter-spacing: var(--wp-display-tracking, -0.01em);
+  text-transform: var(--wp-display-case, none);
 }
 
 /* Import DaisyUI v5 plugin */
