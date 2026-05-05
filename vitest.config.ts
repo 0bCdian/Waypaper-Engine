@@ -25,6 +25,7 @@ export default defineConfig({
       "src/**/*.test.{ts,tsx}",
       "electron/**/*.test.ts",
       "shared/**/*.test.ts",
+      "scripts/**/*.test.ts",
     ],
     coverage: { provider: "v8", include: ["src/**"] },
   },
