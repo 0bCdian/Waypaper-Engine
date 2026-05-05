@@ -1,0 +1,56 @@
+/* @waypaper-theme
+ *   name: 80s-vibe
+ *   displayName: 80s Vibe
+ *   category: light
+ *   sourceUrl: internal:broadcast-midnight
+ *
+ * Manila stock + soot + warm-gray surfaces; bright-yellow → magenta
+ * accent rainbow. Designed to pair with neobrutalist mode but available
+ * to modern as well. Inspired by Mux's video.js v10 marketing aesthetic.
+ *
+ * Palette identity:
+ *   manila-light  #f3e7d2  base-100
+ *   manila-50     #dcd2bb  base-200
+ *   manila-dark   #bfb39e  base-300
+ *   faded-black   #1e1d1d  base-content
+ *   gold          #ffa81b  primary
+ *   magenta       #cc3566  secondary
+ *   orange        #ff6200  accent
+ *   warm-gray     #403c38  neutral
+ *   bright-yellow #ffca18  success
+ *   red           #eb3132  error
+ */
+@plugin "daisyui/theme" {
+  name: "80s-vibe";
+  default: false;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: #f3e7d2;
+  --color-base-200: #dcd2bb;
+  --color-base-300: #bfb39e;
+  --color-base-content: #1e1d1d;
+  --color-primary: #ffa81b;
+  --color-primary-content: #1e1d1d;
+  --color-secondary: #cc3566;
+  --color-secondary-content: #f3e7d2;
+  --color-accent: #ff6200;
+  --color-accent-content: #1e1d1d;
+  --color-neutral: #403c38;
+  --color-neutral-content: #f3e7d2;
+  --color-info: #ffa81b;
+  --color-info-content: #1e1d1d;
+  --color-success: #ffca18;
+  --color-success-content: #1e1d1d;
+  --color-warning: #ff6200;
+  --color-warning-content: #1e1d1d;
+  --color-error: #eb3132;
+  --color-error-content: #f3e7d2;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 2px;
+  --depth: 1;
+  --noise: 0;
+}
