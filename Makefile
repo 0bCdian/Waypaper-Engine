@@ -52,7 +52,7 @@ help:
 	@echo "Waypaper Engine build/install targets"
 	@echo ""
 	@echo "Build:"
-	@echo "  make deps                Install npm dependencies (npm ci)"
+	@echo "  make deps                Install pnpm dependencies (frozen lockfile)"
 	@echo "  make daemon              Build Go daemon"
 	@echo "  make frontend            Build Vite frontend (depends on daemon)"
 	@echo "  make electron            Build unpacked Electron release"
@@ -82,20 +82,20 @@ help:
 # ---------------------------------------------------------------------------
 
 deps:
-	npm ci
+	pnpm install --frozen-lockfile
 
 daemon:
 	@mkdir -p $(DAEMON_BUILD_DIR)
 	cd daemon && go build -ldflags "$(DAEMON_LDFLAGS)" -o build/waypaper-daemon $(DAEMON_CMD)
 
 frontend: daemon
-	npx vite build
+	pnpm exec vite build
 
 electron: frontend
-	npx electron-builder --publish never --config electron-builder.json
+	pnpm exec electron-builder --publish never --config electron-builder.json
 
 appimage: frontend
-	npx electron-builder --publish never --config electron-builder_AppImage.json
+	pnpm exec electron-builder --publish never --config electron-builder_AppImage.json
 
 package-electron-dir: electron
 package-appimage: appimage

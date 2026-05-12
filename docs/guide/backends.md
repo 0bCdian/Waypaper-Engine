@@ -144,7 +144,7 @@ Or build from source (requires Rust in your system for building locally):
 ```bash
 git clone https://github.com/0bCdian/wayland-utauri.git
 cd wayland-utauri
-npm install && make build && make install
+pnpm install && make build && make install
 ```
 
 ### Runtime dependencies

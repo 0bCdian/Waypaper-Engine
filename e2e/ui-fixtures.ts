@@ -175,7 +175,7 @@ function stopDaemon(ctx: DaemonContext) {
 function buildElectronApp() {
   const mainJs = join(ROOT, "dist-electron", "main.js");
   if (!existsSync(mainJs)) {
-    execSync("npx vite build", { cwd: ROOT, stdio: "pipe" });
+    execSync("pnpm exec vite build", { cwd: ROOT, stdio: "pipe" });
   }
   return mainJs;
 }

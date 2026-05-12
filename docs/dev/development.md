@@ -9,12 +9,12 @@ This is the guide I use when I'm hacking on waypaper-engine. It covers how the p
 ```bash
 git clone https://github.com/0bCdian/Waypaper-Engine.git
 cd Waypaper-Engine
-mise install          # pins Node 22, Go 1.26, Python 3.12
-npm install
-npm run dev           # builds daemon, starts Vite + Electron
+mise install          # pins Node 22, pnpm 9, Go 1.26, Python 3.12
+pnpm install
+pnpm run dev           # builds daemon, starts Vite + Electron
 ```
 
-`npm run dev` builds the Go daemon first. **A broken daemon build means no UI**—fix daemon errors before chasing frontend issues.
+`pnpm run dev` builds the Go daemon first. **A broken daemon build means no UI**—fix daemon errors before chasing frontend issues.
 
 ---
 
@@ -209,14 +209,14 @@ Types that mirror daemon JSON shapes live in `src/types/`. When you add a new da
 
 | Command                           | What                                                              |
 | --------------------------------- | ----------------------------------------------------------------- |
-| `npm run test:daemon:unit`        | Fast Go tests (`-short`). Run these often.                        |
-| `npm run test:daemon:integration` | Full daemon integration tests (start/stop/import flows).          |
-| `npm run test:daemon:race`        | Race detector. Run before PRs.                                    |
-| `npm run test`                    | Vitest (React/TypeScript).                                        |
-| `npm run test:e2e`                | Playwright end-to-end (needs a built daemon).                     |
-| `npm run ci:check`                | Full CI gate: build + format + lint + typecheck + short Go tests. |
+| `pnpm run test:daemon:unit`        | Fast Go tests (`-short`). Run these often.                        |
+| `pnpm run test:daemon:integration` | Full daemon integration tests (start/stop/import flows).          |
+| `pnpm run test:daemon:race`        | Race detector. Run before PRs.                                    |
+| `pnpm test`                    | Vitest (React/TypeScript).                                        |
+| `pnpm run test:e2e`                | Playwright end-to-end (needs a built daemon).                     |
+| `pnpm run ci:check`                | Full CI gate: build + format + lint + typecheck + short Go tests. |
 
-Run `npm run ci:check` before opening a PR. It catches formatter drift (oxfmt, oxlint, gofmt) and TS errors that tests might not.
+Run `pnpm run ci:check` before opening a PR. It catches formatter drift (oxfmt, oxlint, gofmt) and TS errors that tests might not.
 
 ---
 
@@ -234,8 +234,8 @@ Run `npm run ci:check` before opening a PR. It catches formatter drift (oxfmt, o
 From the repo root:
 
 ```bash
-npm run docs:dev    # VitePress dev server (copies openapi.yaml, then starts)
-npm run docs:build  # Production build (what GitHub Pages runs on release tags)
+pnpm run docs:dev    # VitePress dev server (copies openapi.yaml, then starts)
+pnpm run docs:build  # Production build (what GitHub Pages runs on release tags)
 ```
 
 If a doc page drifts from what the code does, that's a bug—fix the doc or the code, not both in opposite directions.
@@ -253,4 +253,4 @@ Settings → Pages → Build and deployment → set **Source** to **GitHub Actio
 4. If it touches config: config struct → Viper defaults → `config.toml` example in docs → config.md here.
 5. Write at least a unit test for the daemon-side logic.
 6. If it's user-facing: add a screenshot placeholder in `docs/guide/app.md`.
-7. Run `npm run ci:check` clean before opening a PR.
+7. Run `pnpm run ci:check` clean before opening a PR.

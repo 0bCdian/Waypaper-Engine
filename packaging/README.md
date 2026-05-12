@@ -10,7 +10,7 @@ Every packaging format should use these targets:
 
 | Step         | Command                                                            | What it does                                                                                           |
 | ------------ | ------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------ |
-| Dependencies | `make deps`                                                        | Runs `npm ci` to install Node.js dependencies                                                          |
+| Dependencies | `make deps`                                                        | Runs `pnpm install --frozen-lockfile` to install Node.js dependencies                                                          |
 | Build        | `make electron`                                                    | Builds daemon, frontend, and packages the Electron app                                                 |
 | Install      | `make install-system DESTDIR=<staging> INSTALL_PREFIX_SYSTEM=/usr` | Stages FHS layout (use `/usr` on Arch/Fedora-style prefixes; default without override is `/usr/local`) |
 | Clean        | `make clean`                                                       | Removes all build artifacts                                                                            |

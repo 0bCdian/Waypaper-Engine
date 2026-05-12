@@ -18,9 +18,11 @@ lerna-debug.log*
 *.sln
 *.sw?
 
+# Legacy npm lockfile (this repo uses pnpm; do not commit if npm is run by mistake)
+package-lock.json
+
 # project specific ignores
 *.js
-*.js.map
 node_modules
 dist
 dist-ssr

@@ -157,7 +157,7 @@ Key points:
 
 - **Unit / package tests**: colocated `*_test.go` under `internal/...` (`go test -short ./...` from `daemon/`).
 - **Integration**: `package.json` defines `test:daemon:integration` → `go test ./test/...`. Integration tests exist under `daemon/test/`.
-- **Frontend**: `npm test` runs Vitest against `src/` and `electron/`.
+- **Frontend**: `pnpm test` runs Vitest against `src/` and `electron/`.
 
 ---
 

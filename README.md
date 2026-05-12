@@ -15,7 +15,7 @@
 
 </div>
 
-**Docs in-repo:** [Daemon HTTP API](daemon/API_CONTRACT.md) · [Daemon architecture](daemon/docs/ARCHITECTURE.md) · [Packaging / `DESTDIR`](packaging/README.md) · **handbook (VitePress):** run `npm run docs:dev` locally, or after enabling **GitHub Pages → GitHub Actions**, the site is published from the **Docs** workflow (default base path `/Waypaper-Engine/` → `https://0bCdian.github.io/Waypaper-Engine/`)
+**Docs in-repo:** [Daemon HTTP API](daemon/API_CONTRACT.md) · [Daemon architecture](daemon/docs/ARCHITECTURE.md) · [Packaging / `DESTDIR`](packaging/README.md) · **handbook (VitePress):** run `pnpm run docs:dev` locally, or after enabling **GitHub Pages → GitHub Actions**, the site is published from the **Docs** workflow (default base path `/Waypaper-Engine/` → `https://0bCdian.github.io/Waypaper-Engine/`)
 
 _This project is developed with help from **LLM-based coding tools**; I still review, test, and ship what I stand behind._
 
@@ -66,7 +66,7 @@ The big shift is replacing the old **Node.js** backend with a **Go daemon**: one
 | App shell     | Electron 40, React 19, Vite 6, Tailwind 4, DaisyUI 5                                                        |
 | Daemon        | Go 1.26, [chi](https://github.com/go-chi/chi), [CloverDB](https://github.com/ostafen/clover), Cobra + Viper |
 | IPC           | Unix socket HTTP, Server-Sent Events                                                                        |
-| Dev toolchain | Node 22, **mise** (see [.mise.toml](.mise.toml)), oxfmt / oxlint, Vitest, Playwright (e2e)                  |
+| Dev toolchain | Node 22, **pnpm** 9, **mise** (see [.mise.toml](.mise.toml)), oxfmt / oxlint, Vitest, Playwright (e2e)                  |
 
 ---
 
@@ -119,23 +119,23 @@ Tool versions are pinned in [.mise.toml](.mise.toml). Install [mise](https://mis
 ```bash
 cd Waypaper-Engine
 mise install
-npm install
-npm run dev
+pnpm install
+pnpm run dev
 ```
 
 **Before opening a PR:**
 
 ```bash
-npm run ci:check
+pnpm run ci:check
 ```
 
 | Script                | What                                                           |
 | --------------------- | -------------------------------------------------------------- |
-| `npm run dev`         | Daemon + UI in dev: daemon build first, then Vite and Electron |
-| `npm run build`       | Production build: daemon, Vite bundle, electron-builder        |
-| `npm test`            | Vitest for the renderer                                        |
-| `npm run test:daemon` | Go tests under `daemon/`                                       |
-| `npm run test:e2e`    | Playwright e2e; uses a built daemon and browser                |
+| `pnpm run dev`         | Daemon + UI in dev: daemon build first, then Vite and Electron |
+| `pnpm run build`       | Production build: daemon, Vite bundle, electron-builder        |
+| `pnpm test`            | Vitest for the renderer                                        |
+| `pnpm run test:daemon` | Go tests under `daemon/`                                       |
+| `pnpm run test:e2e`    | Playwright e2e; uses a built daemon and browser                |
 
 **Layout (high level):**
 

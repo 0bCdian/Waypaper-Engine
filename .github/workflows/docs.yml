@@ -24,19 +24,24 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: npm
+          cache: pnpm
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Build VitePress site
         env:
           VITEPRESS_BASE: /Waypaper-Engine/
-        run: npm run docs:build
+        run: pnpm run docs:build
 
       - name: Setup Pages
         uses: actions/configure-pages@v4

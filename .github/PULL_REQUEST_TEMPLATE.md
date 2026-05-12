@@ -12,7 +12,7 @@
 
 ## Test Plan
 
-- [ ] Ran `npm run ci:check`
+- [ ] Ran `pnpm run ci:check`
 - [ ] Ran `pre-commit run --all-files`
 - [ ] Tested manually (describe below)
 
