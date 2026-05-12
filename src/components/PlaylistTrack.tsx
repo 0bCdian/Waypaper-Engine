@@ -512,7 +512,7 @@ function PlaylistTrack() {
       <div
         ref={playlistDropRef}
         className={`relative w-full min-w-0 overflow-visible transition-all duration-200 rounded-lg${
-          playlist.images.length === 0 && showDropIndicator ? " min-h-[5.5rem]" : ""
+          playlist.images.length === 0 && showGalleryPlaylistDropChrome ? " min-h-[5.5rem]" : ""
         }${showDropIndicator ? " ring-2 ring-dashed ring-primary bg-primary/10" : ""}`}
       >
         {showDropIndicator && playlist.images.length === 0 && (
