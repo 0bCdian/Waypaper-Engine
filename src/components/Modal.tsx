@@ -39,7 +39,7 @@ export function ModalHeader(props: ModalHeaderProps & { onClose: () => void }) {
   return (
     <header
       className={cn(
-        "wp-modal__header--striped flex shrink-0 items-start justify-between gap-4 text-left",
+        "wp-modal__header--bar flex shrink-0 items-start justify-between gap-4 text-left",
         "px-6 pb-5 pt-6",
         bleedInsetDefault && "-mx-6 -mt-6",
         !bleedInsetDefault && "md:px-10",

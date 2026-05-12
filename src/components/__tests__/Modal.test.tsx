@@ -58,7 +58,7 @@ describe("Modal", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it("fires onClose when striped header close is clicked", async () => {
+  it("fires onClose when header close is clicked", async () => {
     const user = userEvent.setup();
     const onClose = vi.fn();
 
@@ -72,7 +72,7 @@ describe("Modal", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it("does not render floating close button when stripedHeader is set", () => {
+  it("does not render floating close button when header prop is set", () => {
     const { container } = render(
       <Modal stripedHeader={{ title: "T" }}>
         <p>Content</p>
@@ -83,8 +83,8 @@ describe("Modal", () => {
     expect(container.querySelectorAll(".wp-close-btn")).toHaveLength(1);
   });
 
-  it("Modal.Header renders striped header chrome", () => {
+  it("Modal.Header renders title bar chrome", () => {
     const { container } = render(<ModalHeader title="Hi" onClose={() => {}} />);
-    expect(container.querySelector(".wp-modal__header--striped")).toBeTruthy();
+    expect(container.querySelector(".wp-modal__header--bar")).toBeTruthy();
   });
 });
