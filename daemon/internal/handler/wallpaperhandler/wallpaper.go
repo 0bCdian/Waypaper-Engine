@@ -139,6 +139,7 @@ func (h *WallpaperHandler) Set(w http.ResponseWriter, r *http.Request) {
 // @Tags         wallpaper
 // @Param        body  body      map[string]any  false  "Optional monitor/mode"
 // @Success      200   {object}  map[string]any
+// @Failure      400   {object}  httpjson.APIError
 // @Failure      404   {object}  httpjson.APIError
 // @Failure      500   {object}  httpjson.APIError
 // @Router       /wallpaper/random [post]
@@ -180,6 +181,19 @@ func (h *WallpaperHandler) Random(w http.ResponseWriter, r *http.Request) {
 	monitors, err := h.resolveMonitors(r.Context(), nil, req.Monitor)
 	if err != nil {
 		httpjson.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+
+	if err := backend.EnsureBackendForMedia(r.Context(), h.registry, h.cfg, img.MediaType); err != nil {
+		httpjson.WriteStructuredError(w, http.StatusBadRequest, "incompatible_backend",
+			err.Error(),
+			map[string]any{
+				"backend":    h.registry.Active().Name(),
+				"media_type": img.MediaType,
+				"image_id":   img.ID,
+				"image_name": img.Name,
+			},
+		)
 		return
 	}
 
