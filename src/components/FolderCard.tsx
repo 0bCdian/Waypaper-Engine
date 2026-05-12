@@ -6,10 +6,11 @@ import { useFoldersStore } from "../stores/foldersStore";
 import { useImagesStore } from "../stores/images";
 import { useContextMenuStore } from "../stores/contextMenuStore";
 import { useToastStore } from "../stores/toastStore";
-import { useIsNeo } from "../hooks/useIsNeo";
 import { useInlineRename } from "../hooks/useInlineRename";
 import { buildFolderMenuItems } from "../utils/contextMenuItems";
 import type { DragSourceData, DropTargetData } from "../stores/dragStore";
+import { cn } from "@/utils/cn";
+import { Card } from "./ui/Card";
 
 interface FolderCardProps {
   folder: Folder;
@@ -42,7 +43,6 @@ function FolderCard({ folder }: FolderCardProps) {
   const previews = useFoldersStore((s) => s.folderPreviews.get(folder.id));
   const openContextMenu = useContextMenuStore((s) => s.open);
   const addToast = useToastStore((s) => s.addToast);
-  const isNeo = useIsNeo();
 
   const dragData = useMemo<DragSourceData>(
     () => ({ type: "folder", folderId: folder.id }),
@@ -121,11 +121,7 @@ function FolderCard({ folder }: FolderCardProps) {
     <input
       ref={renameInputRef}
       type="text"
-      className={
-        isNeo
-          ? "input input-xs w-full font-bold"
-          : "input input-xs w-full bg-base-100 text-base-content font-medium"
-      }
+      className="input input-xs w-full bg-base-100 text-base-content font-medium"
       value={renameName}
       onChange={(e) => setRenameName(e.target.value)}
       onBlur={() => void submitRename()}
@@ -165,90 +161,53 @@ function FolderCard({ folder }: FolderCardProps) {
 
   const emptyIcon = (
     <div className="flex h-full w-full items-center justify-center">
-      <FolderIconLarge
-        className={
-          isNeo
-            ? "h-16 w-16 text-primary/60 transition-all duration-300 group-hover:text-primary"
-            : "h-16 w-16 text-primary/60 transition-all duration-300 group-hover:text-primary group-hover:scale-110"
-        }
-      />
+      <FolderIconLarge className="h-16 w-16 text-primary/60 transition-all duration-300 group-hover:text-primary group-hover:scale-110" />
     </div>
   );
 
   const dragFade = isDragging ? " opacity-50" : "";
-
-  if (isNeo) {
-    return (
-      <div
-        ref={mergedRef}
-        data-folder-card=""
-        onContextMenu={handleContextMenu}
-        data-drop-target={isDropTarget || undefined}
-        className={`neo-folder-card group relative w-full animate-fade-in${dragFade}`}
-        onClick={handleClick}
-        onKeyDown={handleKeyDown}
-        role="button"
-        tabIndex={0}
-      >
-        <div className="neo-folder-inner">
-          <div className="neo-folder-preview bg-base-300">{previewGrid ?? emptyIcon}</div>
-          <div className="neo-folder-caption">
-            {isRenaming ? (
-              renameInput
-            ) : (
-              <p
-                className="neo-folder-name"
-                onClick={(e) => e.stopPropagation()}
-                onDoubleClick={(e) => {
-                  e.stopPropagation();
-                  startRename();
-                }}
-              >
-                <FolderIcon className="h-4 w-4 shrink-0" />
-                {folder.name}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   const dropHighlight = isDropTarget ? " ring-2 ring-primary scale-105" : "";
 
   return (
-    <div
+    <Card
       ref={mergedRef}
+      elevation={0}
       data-folder-card=""
       onContextMenu={handleContextMenu}
-      className={`group relative w-full overflow-hidden rounded-lg duration-200 animate-fade-in cursor-pointer transition-all${dropHighlight}${dragFade}`}
+      data-drop-target={isDropTarget || undefined}
+      className={cn(
+        "neo-folder-card group relative w-full overflow-hidden cursor-pointer animate-fade-in transition-all duration-200 hover:border-primary/50 hover:shadow-lg",
+        dropHighlight,
+        dragFade,
+      )}
       onClick={handleClick}
       onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}
     >
-      <div className="relative w-full aspect-[3/2] bg-base-200 rounded-lg border-2 border-base-300 transition-all duration-300 group-hover:border-primary/50 group-hover:shadow-lg overflow-hidden">
-        {previewGrid ?? emptyIcon}
+      <div className="neo-folder-inner relative">
+        <div className="neo-folder-preview w-full aspect-[3/2] bg-base-200 overflow-hidden">
+          {previewGrid ?? emptyIcon}
+        </div>
+        <div className="neo-folder-caption absolute bottom-0 w-full bg-base-content/75 p-2 opacity-0 transition-all duration-300 group-hover:opacity-100 text-base-100">
+          {isRenaming ? (
+            renameInput
+          ) : (
+            <p
+              className="neo-folder-name w-full overflow-hidden truncate text-ellipsis text-lg font-medium flex items-center gap-2"
+              onClick={(e) => e.stopPropagation()}
+              onDoubleClick={(e) => {
+                e.stopPropagation();
+                startRename();
+              }}
+            >
+              <FolderIcon className="h-4 w-4 shrink-0" />
+              {folder.name}
+            </p>
+          )}
+        </div>
       </div>
-
-      <div className="absolute bottom-0 w-full bg-base-content/75 p-2 pl-2 opacity-0 transition-all duration-300 group-hover:opacity-100 text-base-100 rounded-b-lg">
-        {isRenaming ? (
-          renameInput
-        ) : (
-          <p
-            className="w-full overflow-hidden truncate text-ellipsis text-lg font-medium flex items-center gap-2"
-            onClick={(e) => e.stopPropagation()}
-            onDoubleClick={(e) => {
-              e.stopPropagation();
-              startRename();
-            }}
-          >
-            <FolderIcon className="h-4 w-4 shrink-0" />
-            {folder.name}
-          </p>
-        )}
-      </div>
-    </div>
+    </Card>
   );
 }
 

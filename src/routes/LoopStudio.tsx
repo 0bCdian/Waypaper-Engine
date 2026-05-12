@@ -1114,7 +1114,11 @@ export default function LoopStudio() {
                   type="button"
                   className="btn btn-outline btn-sm"
                   disabled={
-                    !imageId || previewOnly || ffmpegAvailable === false || paletteBusy || duration <= 0
+                    !imageId ||
+                    previewOnly ||
+                    ffmpegAvailable === false ||
+                    paletteBusy ||
+                    duration <= 0
                   }
                   title={
                     ffmpegAvailable === false

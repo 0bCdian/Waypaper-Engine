@@ -10,7 +10,6 @@ import {
   type WallhavenWallpaper,
 } from "../stores/wallhavenStore";
 import { useSettingsStore } from "../stores/settingsStore";
-import { useIsNeo } from "../hooks/useIsNeo";
 import { useContextMenuStore } from "../stores/contextMenuStore";
 import { useMonitorStore } from "../stores/monitors";
 import {
@@ -31,8 +30,6 @@ const SORTING_OPTIONS: { value: WallhavenSorting; label: string }[] = [
 
 function WallhavenPage() {
   const config = useSettingsStore((s) => s.config);
-  const isNeo = useIsNeo();
-
   const {
     filters,
     results,
@@ -404,7 +401,6 @@ function WallhavenPage() {
                 <WallhavenCard
                   key={wp.id}
                   wp={wp}
-                  isNeo={isNeo}
                   isDownloading={downloadingIds.has(wp.id)}
                   isSelected={selectedWallpapers.has(wp.id)}
                   selectedCount={selectedWallpapers.size}
@@ -460,7 +456,6 @@ function WallhavenPage() {
       {selectedWallpaper && (
         <WallhavenDetailModal
           wp={selectedWallpaper}
-          isNeo={isNeo}
           isDownloading={downloadingIds.has(selectedWallpaper.id)}
           onClose={() => selectWallpaper(null)}
           onDownload={() => void downloadToGallery(selectedWallpaper)}
@@ -472,7 +467,6 @@ function WallhavenPage() {
 
 function WallhavenCard({
   wp,
-  isNeo,
   isDownloading,
   isSelected,
   selectedCount,
@@ -483,7 +477,6 @@ function WallhavenCard({
   onDoubleClick,
 }: {
   wp: WallhavenWallpaper;
-  isNeo: boolean;
   isDownloading: boolean;
   isSelected: boolean;
   selectedCount: number;
@@ -511,10 +504,7 @@ function WallhavenCard({
   return (
     <div
       className={cn(
-        "group relative cursor-pointer bg-base-200 overflow-hidden",
-        isNeo
-          ? "border-2 border-base-content/80 shadow-[3px_3px_0_0_rgba(0,0,0,0.5)]"
-          : "rounded-lg",
+        "group relative cursor-pointer bg-base-200 overflow-hidden rounded-[var(--wp-radius-sm)] border-[var(--wp-border-w)] border-[var(--wp-border-color)] shadow-[var(--wp-elev-1,none)]",
         isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-base-100",
       )}
       onContextMenu={handleContextMenu}
@@ -582,13 +572,11 @@ function WallhavenCard({
 
 function WallhavenDetailModal({
   wp,
-  isNeo,
   isDownloading,
   onClose,
   onDownload,
 }: {
   wp: WallhavenWallpaper;
-  isNeo: boolean;
   isDownloading: boolean;
   onClose: () => void;
   onDownload: () => void;
@@ -608,12 +596,7 @@ function WallhavenDetailModal({
       aria-label="Close modal"
     >
       <div
-        className={cn(
-          "bg-base-100 max-w-4xl w-[90vw] max-h-[90vh] flex flex-col overflow-hidden",
-          isNeo
-            ? "border-3 border-base-content/80 shadow-[6px_6px_0_0_rgba(0,0,0,0.5)]"
-            : "rounded-xl shadow-2xl",
-        )}
+        className="bg-base-100 max-w-4xl w-[90vw] max-h-[90vh] flex flex-col overflow-hidden rounded-[var(--wp-radius-md)] border-[var(--wp-border-w)] border-[var(--wp-border-color)] shadow-[var(--wp-elev-2,none)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex-1 min-h-0 overflow-hidden bg-base-200 flex items-center justify-center">

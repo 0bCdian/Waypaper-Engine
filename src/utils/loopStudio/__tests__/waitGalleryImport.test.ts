@@ -7,17 +7,14 @@ vi.mock("@/client", () => ({
 }));
 
 import { daemonClient } from "@/client";
-import {
-  findGalleryVideoIdBySourcePath,
-  waitForGalleryVideoBySourcePath,
-} from "../waitGalleryImport";
+import { waitForGalleryVideoBySourcePath } from "../waitGalleryImport";
 
-describe("findGalleryVideoIdBySourcePath", () => {
+describe("waitForGalleryVideoBySourcePath (immediate match)", () => {
   beforeEach(() => {
     vi.mocked(daemonClient.getImages).mockReset();
   });
 
-  it("returns id when path matches source_path on first page", async () => {
+  it("returns id when path matches source_path on first poll", async () => {
     vi.mocked(daemonClient.getImages).mockResolvedValue({
       data: [
         {
@@ -29,13 +26,15 @@ describe("findGalleryVideoIdBySourcePath", () => {
       ],
       pagination: { page: 1, per_page: 80, total_items: 1, total_pages: 1 },
     });
-    await expect(findGalleryVideoIdBySourcePath("/tmp/clip.mp4")).resolves.toBe(7);
+    await expect(
+      waitForGalleryVideoBySourcePath("/tmp/clip.mp4", { maxAttempts: 1, intervalMs: 0 }),
+    ).resolves.toBe(7);
     expect(daemonClient.getImages).toHaveBeenCalledWith(
-      expect.objectContaining({ page: 1, media_type: "video" }),
+      expect.objectContaining({ media_type: "video" }),
     );
   });
 
-  it("returns null when no row matches", async () => {
+  it("returns null when no row matches after all attempts", async () => {
     vi.mocked(daemonClient.getImages).mockResolvedValue({
       data: [
         {
@@ -47,7 +46,9 @@ describe("findGalleryVideoIdBySourcePath", () => {
       ],
       pagination: { page: 1, per_page: 80, total_items: 1, total_pages: 1 },
     });
-    await expect(findGalleryVideoIdBySourcePath("/tmp/nope.mp4")).resolves.toBeNull();
+    await expect(
+      waitForGalleryVideoBySourcePath("/tmp/nope.mp4", { maxAttempts: 1, intervalMs: 0 }),
+    ).resolves.toBeNull();
   });
 });
 

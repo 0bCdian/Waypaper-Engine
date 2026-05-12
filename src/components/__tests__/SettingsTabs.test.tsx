@@ -15,8 +15,6 @@ vi.mock("zustand/react/shallow", () => ({
   useShallow: (fn: Function) => fn,
 }));
 
-vi.mock("@/hooks/useIsNeo", () => ({ useIsNeo: () => false }));
-
 vi.mock("@/stores/settingsStore", () => ({
   useSettingsStore: (selector: Function) =>
     selector({

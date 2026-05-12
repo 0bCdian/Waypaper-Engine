@@ -21,6 +21,10 @@ export const useUserThemesStore = create<UserThemesState & UserThemesActions>()(
         try {
           const res = await fetch("/api/themes");
           if (!res.ok) return;
+          const ct = res.headers.get("content-type") ?? "";
+          if (!ct.includes("application/json")) {
+            return;
+          }
           const list = (await res.json()) as UserThemeMeta[];
           for (const t of list) {
             ensureStylesheetInjected(t);

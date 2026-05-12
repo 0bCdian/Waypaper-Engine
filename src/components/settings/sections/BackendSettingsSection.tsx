@@ -11,6 +11,7 @@ import {
   writePersistedBackendSettingsPanel,
 } from "@/utils/settingsNavStorage";
 import { daemonClient } from "@/client";
+import { confirmDialog } from "@/components/ConfirmDialog";
 
 interface BackendSettingsSectionProps {
   className?: string;
@@ -837,6 +838,7 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
     errors,
     pendingBackendSettingsTab,
     clearPendingBackendSettingsTab,
+    resetBackendSettingsToDaemonDefaults,
   } = useSettingsStore(
     useShallow((s) => ({
       config: s.config,
@@ -845,6 +847,7 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
       errors: s.errors,
       pendingBackendSettingsTab: s.pendingBackendSettingsTab,
       clearPendingBackendSettingsTab: s.clearPendingBackendSettingsTab,
+      resetBackendSettingsToDaemonDefaults: s.resetBackendSettingsToDaemonDefaults,
     })),
   );
   const section: ConfigSection = "backend";
@@ -1189,6 +1192,30 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
               </Fragment>
             ))
           )}
+          <SettingSectionHeader title="Restore defaults" />
+          <SettingRow
+            label={`Reset “${activeSettingsTab}” only`}
+            description={`Restores the saved options for this setter back to built-in defaults. App, daemon, monitors, Wallhaven, backend selection, and other backends are not changed.`}
+            stacked
+          >
+            <button
+              type="button"
+              className="btn btn-sm btn-outline btn-warning"
+              onClick={async () => {
+                const tab = activeSettingsTab;
+                const confirmed = await confirmDialog({
+                  title: "Restore defaults",
+                  message: `Restore default settings for “${tab}” only? Everything else stays as-is.`,
+                  confirmLabel: `Restore ${tab}`,
+                  danger: true,
+                });
+                if (!confirmed) return;
+                void resetBackendSettingsToDaemonDefaults(tab);
+              }}
+            >
+              Restore {activeSettingsTab} defaults
+            </button>
+          </SettingRow>
         </>
       )}
     </div>

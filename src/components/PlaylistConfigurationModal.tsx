@@ -12,11 +12,9 @@ import { toSeconds, toHoursAndMinutes } from "../utils/utilities";
 import Modal, { type ModalHandle } from "./Modal";
 import { useModalStore } from "../stores/modalStore";
 import { logger } from "../utils/logger";
-import { useIsNeo } from "../hooks/useIsNeo";
 import { cn } from "../utils/cn";
 
 const PlaylistConfigurationModal = () => {
-  const isNeo = useIsNeo();
   const [showError, setShowError] = useState(false);
   const { setConfiguration, playlist } = usePlaylistStore(
     useShallow((s) => ({
@@ -145,7 +143,7 @@ const PlaylistConfigurationModal = () => {
 
   const neoFieldset = cn(
     "fieldset bg-base-200 p-4 xl:p-5 2xl:p-6",
-    isNeo ? "rounded-none border-4 border-base-content/20" : "rounded-box border border-base-300",
+    "rounded-[var(--wp-radius-md)] border-[length:var(--wp-border-w)] border-[var(--wp-border-color)]",
   );
 
   return (
@@ -156,18 +154,11 @@ const PlaylistConfigurationModal = () => {
         title: "Playlist Settings",
         subtitle: "Control how wallpapers advance — timer, shuffle, and weekly layouts.",
         titleDefaultExtra: "xl:text-4xl",
+        bleedInsetDefault: false,
       }}
-      className={cn(
-        "modal-box flex max-w-lg flex-col xl:max-w-xl 2xl:max-w-2xl",
-        isNeo ? "max-h-[90vh] overflow-hidden p-0" : "gap-4 p-6",
-      )}
+      className="modal-box flex max-w-lg flex-col xl:max-w-xl 2xl:max-w-2xl max-h-[90vh] overflow-hidden p-0"
     >
-      <div
-        className={cn(
-          "flex min-h-0 flex-1 flex-col gap-6",
-          isNeo ? "overflow-y-auto px-6 pb-8 pt-8" : "",
-        )}
-      >
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 pb-8 pt-6">
         <div
           data-visible={showError}
           className="alert alert-error m-0 shadow-none opacity-0 transition-opacity duration-300 data-[visible=true]:opacity-100"
@@ -192,11 +183,7 @@ const PlaylistConfigurationModal = () => {
         </div>
 
         <form
-          className={cn(
-            "flex flex-col xl:gap-5 2xl:gap-6",
-            !isNeo && "gap-4",
-            isNeo ? "gap-6" : "",
-          )}
+          className="flex flex-col gap-4 xl:gap-5 2xl:gap-6"
           onSubmit={(e) => {
             e.preventDefault();
             void form.handleSubmit();
@@ -317,10 +304,7 @@ const PlaylistConfigurationModal = () => {
             </fieldset>
           )}
 
-          <button
-            type="submit"
-            className={cn("btn btn-primary btn-block xl:btn-lg", isNeo ? "mt-6" : "mt-2")}
-          >
+          <button type="submit" className="btn btn-primary btn-block mt-2 xl:btn-lg">
             Save
           </button>
         </form>

@@ -10,7 +10,6 @@ import Modal, { type ModalHandle } from "./Modal";
 import { useModalStore } from "../stores/modalStore";
 import { confirmDialog } from "./ConfirmDialog";
 import { logger } from "../utils/logger";
-import { useIsNeo } from "../hooks/useIsNeo";
 import { cn } from "../utils/cn";
 import { daemonClient } from "@/client";
 
@@ -51,7 +50,6 @@ async function loadAndStartPlaylist(
 }
 
 const LoadPlaylistModal = ({ playlistsInDB, onPlaylistChanged, currentPlaylistName }: Props) => {
-  const isNeo = useIsNeo();
   const { clearPlaylist, setPlaylist } = usePlaylistStore(
     useShallow((s) => ({
       clearPlaylist: s.clearPlaylist,
@@ -124,18 +122,11 @@ const LoadPlaylistModal = ({ playlistsInDB, onPlaylistChanged, currentPlaylistNa
         title: "Load Playlist",
         subtitle:
           "Pick a saved playlist from the library. It will replace the current strip and start on your selected display(s).",
+        bleedInsetDefault: false,
       }}
-      className={cn(
-        "modal-box flex max-w-lg flex-col xl:max-w-xl 2xl:max-w-2xl",
-        isNeo ? "max-h-[90vh] overflow-hidden p-0" : "gap-4 p-6",
-      )}
+      className="modal-box flex max-w-lg flex-col xl:max-w-xl 2xl:max-w-2xl max-h-[90vh] overflow-hidden p-0"
     >
-      <div
-        className={cn(
-          "flex min-h-0 flex-1 flex-col gap-6",
-          isNeo ? "overflow-y-auto px-6 pb-8 pt-8" : "",
-        )}
-      >
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 pb-8 pt-8">
         {error.length > 0 && (
           <div role="alert" className="alert alert-error m-0 shadow-none">
             <svg
@@ -159,12 +150,7 @@ const LoadPlaylistModal = ({ playlistsInDB, onPlaylistChanged, currentPlaylistNa
         )}
 
         {playlistsInDB && playlistsInDB.length === 0 && (
-          <section
-            className={cn(
-              "flex flex-col gap-4",
-              isNeo ? "bg-base-200 p-6" : "rounded-lg bg-base-200 p-5",
-            )}
-          >
+          <section className="flex flex-col gap-4 rounded-[var(--wp-radius-md)] bg-base-200 p-6">
             <p className="text-left font-[family-name:var(--font-body)] text-base font-medium leading-[1.6] text-base-content md:text-lg">
               No playlists in the library yet. Save one from the strip or refresh after syncing.
             </p>
@@ -186,10 +172,7 @@ const LoadPlaylistModal = ({ playlistsInDB, onPlaylistChanged, currentPlaylistNa
               e.preventDefault();
               void form.handleSubmit();
             }}
-            className={cn(
-              "form-control flex flex-col gap-6",
-              isNeo ? "bg-base-200 p-6" : "rounded-lg bg-base-200 p-5",
-            )}
+            className="form-control flex flex-col gap-6 rounded-[var(--wp-radius-md)] bg-base-200 p-6"
           >
             <div className="flex flex-col gap-2">
               <label

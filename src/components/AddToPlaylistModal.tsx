@@ -4,8 +4,6 @@ import { useImagesStore } from "../stores/images";
 import type { Playlist } from "../../electron/daemon-go-types";
 import Modal, { type ModalHandle } from "./Modal";
 import { logger } from "../utils/logger";
-import { useIsNeo } from "../hooks/useIsNeo";
-import { cn } from "../utils/cn";
 import { daemonClient } from "@/client";
 
 interface Props {
@@ -14,7 +12,6 @@ interface Props {
 }
 
 const AddToPlaylistModal = ({ playlistsInDB, onPlaylistChanged }: Props) => {
-  const isNeo = useIsNeo();
   const selectedImages = useImagesStore((s) => s.selectedImages);
   const [error, setError] = useState("");
   const [success, setSuccess] = useState("");
@@ -175,7 +172,7 @@ const AddToPlaylistModal = ({ playlistsInDB, onPlaylistChanged }: Props) => {
             {(field) => (
               <select
                 id="selectPlaylist"
-                className={cn("select select-bordered w-full text-lg", !isNeo && "rounded-md")}
+                className="select select-bordered w-full text-lg rounded-[var(--wp-radius-md)]"
                 value={field.state.value}
                 onChange={(e) => field.handleChange(e.target.value)}
                 onBlur={field.handleBlur}
@@ -192,7 +189,7 @@ const AddToPlaylistModal = ({ playlistsInDB, onPlaylistChanged }: Props) => {
           <div className="mt-3 flex justify-center gap-3">
             <button
               type="button"
-              className={cn("btn btn-md uppercase", !isNeo && "rounded-md")}
+              className="btn btn-md uppercase rounded-[var(--wp-radius-md)]"
               onClick={() => {
                 clearModalFeedback();
                 modalRef.current?.close();
@@ -202,7 +199,7 @@ const AddToPlaylistModal = ({ playlistsInDB, onPlaylistChanged }: Props) => {
             </button>
             <button
               type="submit"
-              className={cn("btn btn-active btn-md uppercase", !isNeo && "rounded-md")}
+              className="btn btn-active btn-md uppercase rounded-[var(--wp-radius-md)]"
             >
               Add to Playlist
             </button>
@@ -221,19 +218,13 @@ const AddToPlaylistModal = ({ playlistsInDB, onPlaylistChanged }: Props) => {
         title: "Add to Playlist",
         subtitle:
           "Append the current gallery selection to a saved playlist. Duplicate image IDs are skipped.",
+        bleedInsetDefault: false,
       }}
-      className={cn(
-        "modal-box flex max-w-lg flex-col xl:max-w-xl 2xl:max-w-2xl",
-        isNeo ? "max-h-[90vh] overflow-hidden p-0" : "gap-4 p-6",
-      )}
+      className="modal-box flex max-w-lg flex-col xl:max-w-xl 2xl:max-w-2xl max-h-[90vh] overflow-hidden p-0"
     >
-      {isNeo ? (
-        <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 pb-8 pt-6">
-          {content}
-        </div>
-      ) : (
-        content
-      )}
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 pb-8 pt-6">
+        {content}
+      </div>
     </Modal>
   );
 };

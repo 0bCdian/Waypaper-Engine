@@ -69,13 +69,7 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({ children, clas
 
   return (
     <>
-      <div
-        className={cn(
-          "h-screen flex wp-theme-transition",
-          isDarkMode ? "theme-dark" : "theme-light",
-          className,
-        )}
-      >
+      <div className={cn("h-screen flex", isDarkMode ? "theme-dark" : "theme-light", className)}>
         <IconRailSidebar />
         <main className="flex min-h-0 flex-1 flex-col overflow-hidden bg-base-100">
           <NoBackendBanner />

@@ -37,6 +37,10 @@ interface SettingsStoreActions {
   saveBackendPatch: (backendName: string, patch: Record<string, unknown>) => Promise<void>;
   /** Alias for saveConfigSection (backward compat with old unifiedConfigStore). */
   setConfigValue: (section: ConfigSection, data: Record<string, unknown>) => Promise<void>;
+  /** Resets app, daemon, monitors, wallhaven, and every backend subsection to daemon built-ins. */
+  resetAllSettingsToDaemonDefaults: () => Promise<void>;
+  /** Restores `[backend.{name}]` only; keeps global sections and other backends untouched. */
+  resetBackendSettingsToDaemonDefaults: (backendName: string) => Promise<void>;
   resetToDefaults: () => Promise<void>;
   setSearchTerm: (term: string) => void;
   clearSearch: () => void;
@@ -414,15 +418,53 @@ export const useSettingsStore = create<SettingsStore>()(
       // Alias so callers that used the old unifiedConfigStore API still work.
       setConfigValue: (...args) => get().saveConfigSection(...args),
 
-      resetToDefaults: async () => {
-        set({ isLoading: true });
+      resetAllSettingsToDaemonDefaults: async () => {
+        set({ isLoading: true, errors: [] });
         try {
-          await daemonClient.updateConfig(defaultConfig);
-          set({ config: defaultConfig, isLoading: false, isDirty: false });
+          await daemonClient.resetAllConfig();
+          _lastApiSaveAt = Date.now();
+          await get().loadConfig();
+          _lastApiSaveAt = Date.now();
+          set({ isDirty: false, isLoading: false });
         } catch (error) {
-          logger.error("SettingsStore: Failed to reset config:", error);
-          set({ isLoading: false });
+          logger.error("SettingsStore: Failed to factory-reset config:", error);
+          set({
+            isLoading: false,
+            errors: [
+              {
+                section: "app",
+                key: "reset_all",
+                message: "Failed to restore default settings",
+              },
+            ],
+          });
         }
+      },
+
+      resetBackendSettingsToDaemonDefaults: async (backendName: string) => {
+        set({ errors: [] });
+        try {
+          await daemonClient.resetBackendConfig(backendName);
+          _lastApiSaveAt = Date.now();
+          await get().loadConfig();
+          _lastApiSaveAt = Date.now();
+          set({ lastSaved: Date.now() });
+        } catch (error) {
+          logger.error("SettingsStore: Failed to reset backend config:", error);
+          set({
+            errors: [
+              {
+                section: "backend",
+                key: `${backendName}:reset_defaults`,
+                message: `Failed to restore defaults for ${backendName}`,
+              },
+            ],
+          });
+        }
+      },
+
+      resetToDefaults: async () => {
+        await get().resetAllSettingsToDaemonDefaults();
       },
 
       setSearchTerm: (term: string) => {

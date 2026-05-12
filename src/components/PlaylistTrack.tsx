@@ -15,7 +15,6 @@ import type { PLAYLIST_TYPES_TYPE } from "../../shared/types/playlist";
 import { useSetLastActivePlaylist } from "../hooks/useSetLastActivePlaylist";
 import { useViewportCompactHeight } from "../hooks/useViewportCompactHeight";
 import type { PlaylistImage } from "../../electron/daemon-go-types";
-import { useIsNeo } from "../hooks/useIsNeo";
 import { useDragStore } from "../stores/dragStore";
 import type { DropTargetData } from "../stores/dragStore";
 import { useModalStore } from "../stores/modalStore";
@@ -38,11 +37,9 @@ async function stopPlaylistSilent(playlistId: number) {
 /** Opening gap in the strip while dragging gallery/folder — mirrors sortable shift timing (see MiniPlaylistCard layout). */
 function PlaylistGalleryInsertionGhost({
   viewportCompact,
-  isNeo,
   playlistType,
 }: {
   viewportCompact: boolean;
-  isNeo: boolean;
   playlistType: PLAYLIST_TYPES_TYPE;
 }) {
   const widths = miniPlaylistStripTileWidths(viewportCompact);
@@ -63,7 +60,7 @@ function PlaylistGalleryInsertionGhost({
         <div
           className={cn(
             "aspect-[3/2] w-full border-2 border-dashed border-primary/60 bg-primary/10 shadow-inner",
-            isNeo ? "rounded-none border-primary/70" : "rounded-lg",
+            "rounded-[var(--wp-radius-sm)] border-[var(--wp-border-color)]",
           )}
           aria-hidden
         />
@@ -272,8 +269,6 @@ function PlaylistTrack() {
     }
   }, [playlist.images, imagesMap]);
 
-  const isNeo = useIsNeo();
-
   const playlistGalleryInsertPreviewAt = useDragStore((s) =>
     s.isDragging && (s.dragType === "image" || s.dragType === "folder")
       ? (s.overDropTarget?.playlistInsertPreviewAt ?? null)
@@ -290,7 +285,6 @@ function PlaylistTrack() {
           <PlaylistGalleryInsertionGhost
             key={`gallery-drop-insert-at-${index}`}
             viewportCompact={viewportCompact}
-            isNeo={isNeo}
             playlistType={playlist.configuration.type}
           />,
         );
@@ -319,7 +313,6 @@ function PlaylistTrack() {
         <PlaylistGalleryInsertionGhost
           key="gallery-drop-insert-end"
           viewportCompact={viewportCompact}
-          isNeo={isNeo}
           playlistType={playlist.configuration.type}
         />,
       );
@@ -330,7 +323,6 @@ function PlaylistTrack() {
     playlist.configuration.type,
     playlistGalleryInsertPreviewAt,
     viewportCompact,
-    isNeo,
     reorderSortingCriteria,
     isThisPlaylistActive,
     activePlaylist?.current_image_id,
@@ -354,12 +346,8 @@ function PlaylistTrack() {
   const showDropIndicator = isDropTarget && showGalleryPlaylistDropChrome;
 
   const btnClass = viewportCompact
-    ? isNeo
-      ? "btn btn-xs btn-primary uppercase"
-      : "btn btn-xs btn-primary rounded-lg uppercase"
-    : isNeo
-      ? "btn btn-sm btn-primary uppercase"
-      : "btn btn-sm btn-primary rounded-lg uppercase";
+    ? "btn btn-xs btn-primary rounded-[var(--wp-radius-md)] uppercase"
+    : "btn btn-sm btn-primary rounded-[var(--wp-radius-md)] uppercase";
   /* Horizontal scroll lives on a block wrapper — do NOT use flex + items-end on that same node:
    * when a horizontal scrollbar appears it shrinks the scrollport height and flex-end shifts every
    * card upward (vertical jump). Inner row handles alignment; outer only scrolls on X.
@@ -367,32 +355,22 @@ function PlaylistTrack() {
    * Never combine overflow-y-hidden here: it clips translateY + shadows on the “raised” card. */
   const trackScrollOuterClass =
     playlist.images.length > 0
-      ? isNeo
-        ? cn(
-            "neo-playlist-scroll min-w-0 w-full overflow-x-scroll overflow-y-visible [scrollbar-gutter:stable]",
-            "scrollbar-thumb-base-300 scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm",
-          )
-        : cn(
-            "min-w-0 w-full overflow-x-scroll overflow-y-visible [scrollbar-gutter:stable]",
-            "rounded-lg scrollbar-thumb-base-300 scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm",
-            "pt-3 pb-1 [@media(max-height:1080px)]:pt-2 [@media(max-height:1080px)]:pb-0.5",
-          )
+      ? cn(
+          "neo-playlist-scroll min-w-0 w-full overflow-x-scroll overflow-y-visible [scrollbar-gutter:stable]",
+          "rounded-[var(--wp-radius-md)] scrollbar-thumb-base-300 scrollbar-track-rounded-sm scrollbar-thumb-rounded-sm",
+          "pt-3 pb-1 [@media(max-height:1080px)]:pt-2 [@media(max-height:1080px)]:pb-0.5",
+        )
       : "";
 
   const editCardClass = cn(
     "flex flex-col gap-3 [@media(max-height:1080px)]:gap-2",
-    isNeo && "neo-playlist-toolbar",
-    !isNeo &&
-      "rounded-xl border border-base-content/10 bg-base-100/60 p-3 shadow-sm backdrop-blur-[2px] [@media(max-height:1080px)]:p-2 [@media(max-height:1080px)]:rounded-lg",
+    "neo-playlist-toolbar",
+    "rounded-xl border border-base-content/10 bg-base-100/60 p-3 shadow-sm backdrop-blur-[2px] [@media(max-height:1080px)]:p-2 [@media(max-height:1080px)]:rounded-lg",
   );
 
   const dangerBtnClass = viewportCompact
-    ? isNeo
-      ? "btn btn-xs btn-error uppercase"
-      : "btn btn-xs btn-error rounded-lg uppercase"
-    : isNeo
-      ? "btn btn-sm btn-error uppercase"
-      : "btn btn-sm btn-error rounded-lg uppercase";
+    ? "btn btn-xs btn-error rounded-[var(--wp-radius-md)] uppercase"
+    : "btn btn-sm btn-error rounded-[var(--wp-radius-md)] uppercase";
 
   return (
     <div
@@ -406,21 +384,10 @@ function PlaylistTrack() {
       <div className={editCardClass}>
         <div className="flex w-full min-w-0 items-center justify-between gap-3 [@media(max-height:1080px)]:gap-2">
           <div className="flex min-w-0 items-center gap-2">
-            <span
-              className={cn(
-                "shrink-0 text-[0.6rem] font-semibold uppercase tracking-[0.18em] text-base-content/50",
-                isNeo && "font-[family-name:var(--font-display)]",
-              )}
-            >
+            <span className="shrink-0 text-[0.6rem] font-[family-name:var(--font-display)] font-semibold uppercase tracking-[0.18em] text-base-content/50">
               Edit Track
             </span>
-            <span
-              className={cn(
-                "truncate text-lg font-bold lg:text-xl [@media(max-height:1080px)]:text-base [@media(max-height:1080px)]:lg:text-lg",
-                isNeo &&
-                  "font-[family-name:var(--font-display)] uppercase tracking-tight text-base-content",
-              )}
-            >
+            <span className="truncate text-lg font-bold font-[family-name:var(--font-display)] uppercase tracking-tight text-base-content lg:text-xl [@media(max-height:1080px)]:text-base [@media(max-height:1080px)]:lg:text-lg">
               {playlist.images.length > 0
                 ? `${playlist.name?.trim() || "Unnamed Playlist"} (${playlist.images.length})`
                 : ""}

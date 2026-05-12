@@ -44,10 +44,6 @@ vi.mock("../../stores/modalStore", () => ({
   useModalStore: { getState: () => ({ open: mockModalOpen }) },
 }));
 
-vi.mock("../../hooks/useIsNeo", () => ({
-  useIsNeo: () => false,
-}));
-
 vi.mock("../../hooks/useDebounce", () => ({
   default: (callback: () => void) => callback(),
 }));

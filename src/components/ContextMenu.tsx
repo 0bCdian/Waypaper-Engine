@@ -2,7 +2,6 @@ import type React from "react";
 import { useEffect, useRef, useState, useCallback } from "react";
 import { createPortal } from "react-dom";
 import { useContextMenuStore, type MenuItem } from "../stores/contextMenuStore";
-import { useIsNeo } from "../hooks/useIsNeo";
 import { useShallow } from "zustand/react/shallow";
 
 const MENU_MIN_WIDTH = 200;
@@ -18,7 +17,6 @@ function ContextMenu() {
       close: s.close,
     })),
   );
-  const isNeo = useIsNeo();
   const menuRef = useRef<HTMLDivElement>(null);
   const [adjustedPos, setAdjustedPos] = useState(position);
   const [fadeIn, setFadeIn] = useState(false);
@@ -103,12 +101,10 @@ function ContextMenu() {
 
   if (!isOpen) return null;
 
-  const baseClass = isNeo ? "neo-context-menu" : "context-menu";
-
   return createPortal(
     <div
       ref={menuRef}
-      className={`${baseClass} ${visible ? "context-menu-visible" : ""}`}
+      className={`context-menu ${visible ? "context-menu-visible" : ""}`}
       style={{
         position: "fixed",
         left: adjustedPos.x,
@@ -117,7 +113,7 @@ function ContextMenu() {
         minWidth: MENU_MIN_WIDTH,
       }}
     >
-      <MenuItems items={items} close={close} focusIndex={focusIndex} isNeo={isNeo} depth={0} />
+      <MenuItems items={items} close={close} focusIndex={focusIndex} depth={0} />
     </div>,
     document.body,
   );
@@ -127,13 +123,11 @@ function MenuItems({
   items,
   close,
   focusIndex,
-  isNeo,
   depth,
 }: {
   items: MenuItem[];
   close: () => void;
   focusIndex: number;
-  isNeo: boolean;
   depth: number;
 }) {
   const rendered: React.ReactNode[] = [];
@@ -153,7 +147,6 @@ function MenuItems({
           item={item}
           close={close}
           isFocused={isFocused}
-          isNeo={isNeo}
           depth={depth}
         />,
       );
@@ -204,13 +197,11 @@ function SubmenuItem({
   item,
   close,
   isFocused,
-  isNeo,
   depth,
 }: {
   item: Extract<MenuItem, { type: "submenu" }>;
   close: () => void;
   isFocused: boolean;
-  isNeo: boolean;
   depth: number;
 }) {
   const [open, setOpen] = useState(false);
@@ -274,7 +265,7 @@ function SubmenuItem({
       {open && (
         <div
           ref={submenuRef}
-          className={`context-menu-submenu ${isNeo ? "neo-context-menu" : "context-menu"} context-menu-visible`}
+          className="context-menu-submenu context-menu context-menu-visible"
           style={{
             position: "absolute",
             top: 0,
@@ -284,13 +275,7 @@ function SubmenuItem({
           onMouseEnter={handleEnter}
           onMouseLeave={handleLeave}
         >
-          <MenuItems
-            items={item.children}
-            close={close}
-            focusIndex={-1}
-            isNeo={isNeo}
-            depth={depth + 1}
-          />
+          <MenuItems items={item.children} close={close} focusIndex={-1} depth={depth + 1} />
         </div>
       )}
     </div>

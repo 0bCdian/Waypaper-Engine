@@ -92,8 +92,7 @@ export const usePlaylistStore = create<State & Actions>()((set, get) => ({
     const currentPlaylist = get().playlist;
     const currentLen = currentPlaylist.images.length;
 
-    const at =
-      insertAt === undefined ? currentLen : Math.max(0, Math.min(insertAt, currentLen));
+    const at = insertAt === undefined ? currentLen : Math.max(0, Math.min(insertAt, currentLen));
 
     if (currentPlaylist.configuration.type === "day_of_week") {
       const availableSpace = 7 - currentLen;

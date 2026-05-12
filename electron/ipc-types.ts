@@ -151,6 +151,8 @@ export type DaemonRequest =
       name: string;
       patch: Record<string, unknown>;
     }
+  | { type: "reset_all_config" }
+  | { type: "reset_backend_config"; name: string }
 
   // BACKENDS
   | { type: "get_backends" }
@@ -183,184 +185,194 @@ export type DaemonResponse<T extends DaemonRequest> =
                   : T extends { type: "extract_video_palette" }
                     ? ExtractVideoPaletteResult
                     : T extends { type: "import_images" }
-                    ? { status: string; total: number }
-                    : T extends { type: "import_web_wallpaper" }
-                      ? Image
-                      : T extends { type: "cancel_import" }
-                        ? { status: string; batch_id: string }
-                        : T extends { type: "delete_images" }
-                          ? { deleted: number }
-                          : T extends { type: "update_image" }
-                            ? Image
-                            : T extends { type: "select_all_images" }
-                              ? { updated: number; selected: boolean }
-                              : T extends { type: "get_image_tags" }
-                                ? { tags: string[] }
-                                : T extends { type: "get_image_history" }
-                                  ? ImageHistoryEntry[]
-                                  : T extends { type: "clear_image_history" }
-                                    ? { status: string }
-                                    : // WALLPAPER
-                                      T extends {
-                                          type: "get_current_wallpapers";
-                                        }
-                                      ? WallpaperCurrent
-                                      : T extends { type: "set_wallpaper" }
-                                        ? {
-                                            status: string;
-                                            image_id: number;
-                                            monitor: string;
-                                            mode: string;
+                      ? { status: string; total: number }
+                      : T extends { type: "import_web_wallpaper" }
+                        ? Image
+                        : T extends { type: "cancel_import" }
+                          ? { status: string; batch_id: string }
+                          : T extends { type: "delete_images" }
+                            ? { deleted: number }
+                            : T extends { type: "update_image" }
+                              ? Image
+                              : T extends { type: "select_all_images" }
+                                ? { updated: number; selected: boolean }
+                                : T extends { type: "get_image_tags" }
+                                  ? { tags: string[] }
+                                  : T extends { type: "get_image_history" }
+                                    ? ImageHistoryEntry[]
+                                    : T extends { type: "clear_image_history" }
+                                      ? { status: string }
+                                      : // WALLPAPER
+                                        T extends {
+                                            type: "get_current_wallpapers";
                                           }
-                                        : T extends { type: "random_wallpaper" }
+                                        ? WallpaperCurrent
+                                        : T extends { type: "set_wallpaper" }
                                           ? {
                                               status: string;
                                               image_id: number;
                                               monitor: string;
                                               mode: string;
                                             }
-                                          : // PLAYLISTS
-                                            T extends { type: "get_playlists" }
-                                            ? Playlist[]
-                                            : T extends { type: "get_playlist" }
-                                              ? Playlist
-                                              : T extends {
-                                                    type: "create_playlist";
-                                                  }
+                                          : T extends { type: "random_wallpaper" }
+                                            ? {
+                                                status: string;
+                                                image_id: number;
+                                                monitor: string;
+                                                mode: string;
+                                              }
+                                            : // PLAYLISTS
+                                              T extends { type: "get_playlists" }
+                                              ? Playlist[]
+                                              : T extends { type: "get_playlist" }
                                                 ? Playlist
                                                 : T extends {
-                                                      type: "update_playlist";
+                                                      type: "create_playlist";
                                                     }
                                                   ? Playlist
                                                   : T extends {
-                                                        type: "delete_playlist";
+                                                        type: "update_playlist";
                                                       }
-                                                    ? void
+                                                    ? Playlist
                                                     : T extends {
-                                                          type: "start_playlist";
+                                                          type: "delete_playlist";
                                                         }
                                                       ? void
                                                       : T extends {
-                                                            type: "stop_playlist";
+                                                            type: "start_playlist";
                                                           }
                                                         ? void
                                                         : T extends {
-                                                              type: "pause_playlist";
+                                                              type: "stop_playlist";
                                                             }
                                                           ? void
                                                           : T extends {
-                                                                type: "resume_playlist";
+                                                                type: "pause_playlist";
                                                               }
                                                             ? void
                                                             : T extends {
-                                                                  type: "next_playlist_image";
+                                                                  type: "resume_playlist";
                                                                 }
                                                               ? void
                                                               : T extends {
-                                                                    type: "previous_playlist_image";
+                                                                    type: "next_playlist_image";
                                                                   }
                                                                 ? void
                                                                 : T extends {
-                                                                      type: "get_active_playlists";
+                                                                      type: "previous_playlist_image";
                                                                     }
-                                                                  ? ActivePlaylistInstance[]
+                                                                  ? void
                                                                   : T extends {
-                                                                        type: "get_active_playlist_for_monitor";
+                                                                        type: "get_active_playlists";
                                                                       }
-                                                                    ? ActivePlaylistInstance
+                                                                    ? ActivePlaylistInstance[]
                                                                     : T extends {
-                                                                          type: "stop_all_playlists";
+                                                                          type: "get_active_playlist_for_monitor";
                                                                         }
-                                                                      ? void
-                                                                      : // FOLDERS
-                                                                        T extends {
-                                                                            type: "get_folders";
+                                                                      ? ActivePlaylistInstance
+                                                                      : T extends {
+                                                                            type: "stop_all_playlists";
                                                                           }
-                                                                        ? {
-                                                                            data: Folder[];
-                                                                          }
-                                                                        : T extends {
-                                                                              type: "get_folder";
+                                                                        ? void
+                                                                        : // FOLDERS
+                                                                          T extends {
+                                                                              type: "get_folders";
                                                                             }
-                                                                          ? Folder
+                                                                          ? {
+                                                                              data: Folder[];
+                                                                            }
                                                                           : T extends {
-                                                                                type: "get_folder_path";
+                                                                                type: "get_folder";
                                                                               }
-                                                                            ? {
-                                                                                data: Folder[];
-                                                                              }
+                                                                            ? Folder
                                                                             : T extends {
-                                                                                  type: "create_folder";
+                                                                                  type: "get_folder_path";
                                                                                 }
-                                                                              ? Folder
+                                                                              ? {
+                                                                                  data: Folder[];
+                                                                                }
                                                                               : T extends {
-                                                                                    type: "update_folder";
+                                                                                    type: "create_folder";
                                                                                   }
                                                                                 ? Folder
                                                                                 : T extends {
-                                                                                      type: "delete_folder";
+                                                                                      type: "update_folder";
                                                                                     }
-                                                                                  ? {
-                                                                                      deleted: boolean;
-                                                                                      mode: string;
-                                                                                    }
+                                                                                  ? Folder
                                                                                   : T extends {
-                                                                                        type: "move_images_to_folder";
+                                                                                        type: "delete_folder";
                                                                                       }
                                                                                     ? {
-                                                                                        moved: number;
+                                                                                        deleted: boolean;
+                                                                                        mode: string;
                                                                                       }
-                                                                                    : // MONITORS
-                                                                                      T extends {
-                                                                                          type: "get_monitors";
+                                                                                    : T extends {
+                                                                                          type: "move_images_to_folder";
                                                                                         }
-                                                                                      ? Monitor[]
-                                                                                      : T extends {
-                                                                                            type: "get_monitor";
+                                                                                      ? {
+                                                                                          moved: number;
+                                                                                        }
+                                                                                      : // MONITORS
+                                                                                        T extends {
+                                                                                            type: "get_monitors";
                                                                                           }
-                                                                                        ? Monitor
-                                                                                        : // CONFIG
-                                                                                          T extends {
-                                                                                              type: "get_config";
+                                                                                        ? Monitor[]
+                                                                                        : T extends {
+                                                                                              type: "get_monitor";
                                                                                             }
-                                                                                          ? UnifiedConfig
-                                                                                          : T extends {
-                                                                                                type: "update_config";
+                                                                                          ? Monitor
+                                                                                          : // CONFIG
+                                                                                            T extends {
+                                                                                                type: "get_config";
                                                                                               }
                                                                                             ? UnifiedConfig
                                                                                             : T extends {
-                                                                                                  type: "get_config_section";
+                                                                                                  type: "update_config";
                                                                                                 }
-                                                                                              ? unknown
+                                                                                              ? UnifiedConfig
                                                                                               : T extends {
-                                                                                                    type: "update_config_section";
+                                                                                                    type: "get_config_section";
                                                                                                   }
                                                                                                 ? unknown
                                                                                                 : T extends {
-                                                                                                      type: "get_backend_config";
+                                                                                                      type: "update_config_section";
                                                                                                     }
-                                                                                                  ? Record<
-                                                                                                      string,
-                                                                                                      unknown
-                                                                                                    >
+                                                                                                  ? unknown
                                                                                                   : T extends {
-                                                                                                        type: "update_backend_config";
+                                                                                                        type: "get_backend_config";
                                                                                                       }
-                                                                                                    ? void
-                                                                                                    : // BACKENDS
-                                                                                                      T extends {
-                                                                                                          type: "get_backends";
+                                                                                                    ? Record<
+                                                                                                        string,
+                                                                                                        unknown
+                                                                                                      >
+                                                                                                    : T extends {
+                                                                                                          type: "update_backend_config";
                                                                                                         }
-                                                                                                      ? BackendInfo[]
-                                                                                                      : T extends {
-                                                                                                            type: "get_backend_capabilities";
+                                                                                                      ? void
+                                                                                                      : // BACKENDS
+                                                                                                        T extends {
+                                                                                                            type: "get_backends";
                                                                                                           }
-                                                                                                        ? BackendCapabilities | null
+                                                                                                        ? BackendInfo[]
                                                                                                         : T extends {
-                                                                                                              type: "activate_backend";
+                                                                                                              type: "get_backend_capabilities";
                                                                                                             }
-                                                                                                          ? {
-                                                                                                              status: string;
-                                                                                                              backend: string;
-                                                                                                            }
-                                                                                                          : never;
+                                                                                                          ? BackendCapabilities | null
+                                                                                                          : T extends {
+                                                                                                                type: "activate_backend";
+                                                                                                              }
+                                                                                                            ? {
+                                                                                                                status: string;
+                                                                                                                backend: string;
+                                                                                                              }
+                                                                                                            : T extends {
+                                                                                                                  type: "reset_all_config";
+                                                                                                                }
+                                                                                                              ? UnifiedConfig
+                                                                                                              : T extends {
+                                                                                                                    type: "reset_backend_config";
+                                                                                                                  }
+                                                                                                                ? {
+                                                                                                                    status: string;
+                                                                                                                  }
+                                                                                                                : never;

@@ -241,6 +241,58 @@ func (m *ViperManager) GetLogFile() string {
 	return system.ExpandPath(m.v.GetString("daemon.log_file"))
 }
 
+// ResetToFactoryDefaults replaces the persisted config file with built-in defaults (all sections
+// plus backend subsections from registerBackendDefaults when non-nil).
+//
+// registerBackendDefaults must be supplied by the caller (e.g. control passes
+// backenddefaults.RegisterInto); this package cannot import backenddefaults without an
+// import cycle (backend → config → backenddefaults → backend subpackages → backend).
+func (m *ViperManager) ResetToFactoryDefaults(registerBackendDefaults func(*viper.Viper)) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	cfgPath := m.v.ConfigFileUsed()
+	fresh := viper.New()
+	fresh.SetConfigFile(cfgPath)
+	fresh.SetConfigType("toml")
+	setDefaults(fresh)
+	if registerBackendDefaults != nil {
+		registerBackendDefaults(fresh)
+	}
+
+	if err := system.EnsureParentDir(cfgPath); err != nil {
+		return fmt.Errorf("config: reset ensure parent dir: %w", err)
+	}
+
+	_ = os.Remove(cfgPath)
+
+	if err := fresh.WriteConfigAs(cfgPath); err != nil {
+		return fmt.Errorf("config: write factory defaults: %w", err)
+	}
+
+	if err := m.v.ReadInConfig(); err != nil && !isFileNotFound(err) {
+		return fmt.Errorf("config: reload after factory reset: %w", err)
+	}
+
+	m.notifyCallbacks("")
+	return nil
+}
+
+// ReplaceBackendNamedConfig persists backend.<backendName> as exactly values, dropping any keys
+// that existed in that subsection before this call.
+func (m *ViperManager) ReplaceBackendNamedConfig(backendName string, values map[string]any) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	key := "backend." + backendName
+	copyVals := make(map[string]any, len(values))
+	for k, val := range values {
+		copyVals[k] = val
+	}
+
+	return m.persistKeyReplace(key, copyVals)
+}
+
 // ---------- Defaults ----------
 
 func setDefaults(v *viper.Viper) {
@@ -280,6 +332,8 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("backend.auto_priorities.web", []string{"wayland-utauri"})
 
 	// Wallhaven defaults
+	v.SetDefault("wallhaven.api_key", "")
+	v.SetDefault("wallhaven.enabled", false)
 	v.SetDefault("wallhaven.scroll_mode", "paginated")
 
 	// Monitors defaults
@@ -325,6 +379,37 @@ func (m *ViperManager) mergeAndSet(key string, values map[string]any) error {
 
 	if err := m.v.ReadInConfig(); err != nil && !isFileNotFound(err) {
 		return fmt.Errorf("config: reload after update (%s): %w", key, err)
+	}
+	return nil
+}
+
+// persistKeyReplace writes key using exactly vals (no merge). Must be called with m.mu held.
+func (m *ViperManager) persistKeyReplace(key string, vals map[string]any) error {
+	cfgPath := m.v.ConfigFileUsed()
+	writer := viper.New()
+	writer.SetConfigFile(cfgPath)
+	writer.SetConfigType("toml")
+	setDefaults(writer)
+	if err := writer.ReadInConfig(); err != nil && !isFileNotFound(err) {
+		return fmt.Errorf("config: read before replace (%s): %w", key, err)
+	}
+
+	if err := writer.MergeConfigMap(map[string]any{key: vals}); err != nil {
+		return fmt.Errorf("config: merge replace (%s): %w", key, err)
+	}
+
+	if _, err := os.Stat(cfgPath); errors.Is(err, fs.ErrNotExist) {
+		if err := writer.WriteConfigAs(cfgPath); err != nil {
+			return fmt.Errorf("config: write new file replace (%s): %w", key, err)
+		}
+	} else if err != nil {
+		return fmt.Errorf("config: stat replace (%s): %w", key, err)
+	} else if err := writer.WriteConfig(); err != nil {
+		return fmt.Errorf("config: write replace (%s): %w", key, err)
+	}
+
+	if err := m.v.ReadInConfig(); err != nil && !isFileNotFound(err) {
+		return fmt.Errorf("config: reload replace (%s): %w", key, err)
 	}
 	return nil
 }

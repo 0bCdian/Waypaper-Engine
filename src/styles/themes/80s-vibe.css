@@ -1,45 +1,51 @@
 /* @waypaper-theme
  *   name: 80s-vibe
  *   displayName: 80s Vibe
- *   category: light
+ *   category: dark
  *   sourceUrl: internal:broadcast-midnight
  *
- * Manila stock + soot + warm-gray surfaces; bright-yellow → magenta
- * accent rainbow. Designed to pair with neobrutalist mode but available
- * to modern as well. Inspired by Mux's video.js v10 marketing aesthetic.
+ * "Broadcast Midnight" — the canonical 80s palette.
+ * Soot-dominant body chrome with manila as the warm accent stock you'd
+ * see on a magazine cover or late-night TV title card. Bright-yellow,
+ * gold, orange, red, magenta form the broadcast accent rainbow used
+ * for primary/secondary/accent/error roles.
  *
- * Palette identity:
- *   manila-light  #f3e7d2  base-100
- *   manila-50     #dcd2bb  base-200
- *   manila-dark   #bfb39e  base-300
- *   faded-black   #1e1d1d  base-content
- *   gold          #ffa81b  primary
- *   magenta       #cc3566  secondary
- *   orange        #ff6200  accent
- *   warm-gray     #403c38  neutral
- *   bright-yellow #ffca18  success
+ * Pairs natively with neobrutalist mode (hard 8/8 black shadows look
+ * incredible against the soot base) but works in modern too.
+ *
+ * Surface stack:
+ *   faded-black   #1e1d1d  base-100   page chrome
+ *   soot          #32302f  base-200   lifted surface (cards, sidebars)
+ *   warm-gray     #403c38  base-300   borders, inactive chrome
+ *   manila-light  #f3e7d2  base-content   body text
+ *
+ * Accent rainbow:
+ *   bright-yellow #ffca18  primary    headline / CTA
+ *   gold          #ffa81b  info
+ *   orange        #ff6200  accent     loud CTA
  *   red           #eb3132  error
+ *   magenta       #cc3566  secondary
  */
 @plugin "daisyui/theme" {
   name: "80s-vibe";
   default: false;
-  prefersdark: false;
-  color-scheme: light;
-  --color-base-100: #f3e7d2;
-  --color-base-200: #dcd2bb;
-  --color-base-300: #bfb39e;
-  --color-base-content: #1e1d1d;
-  --color-primary: #ffa81b;
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: #1e1d1d;
+  --color-base-200: #32302f;
+  --color-base-300: #403c38;
+  --color-base-content: #f3e7d2;
+  --color-primary: #ffca18;
   --color-primary-content: #1e1d1d;
   --color-secondary: #cc3566;
   --color-secondary-content: #f3e7d2;
   --color-accent: #ff6200;
   --color-accent-content: #1e1d1d;
-  --color-neutral: #403c38;
-  --color-neutral-content: #f3e7d2;
+  --color-neutral: #bfb39e;
+  --color-neutral-content: #1e1d1d;
   --color-info: #ffa81b;
   --color-info-content: #1e1d1d;
-  --color-success: #ffca18;
+  --color-success: #a7c080;
   --color-success-content: #1e1d1d;
   --color-warning: #ff6200;
   --color-warning-content: #1e1d1d;

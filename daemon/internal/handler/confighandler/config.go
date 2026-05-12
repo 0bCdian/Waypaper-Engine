@@ -71,6 +71,20 @@ func (h *ConfigHandler) PatchConfig(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteJSON(w, http.StatusOK, merged)
 }
 
+// PostResetAll handles POST /config/reset — factory-reset every section and backend subtree.
+func (h *ConfigHandler) PostResetAll(w http.ResponseWriter, r *http.Request) {
+	if err := h.control.ResetAllConfigToDefaults(r.Context()); err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	merged, err := h.control.MergedConfigJSON()
+	if err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	httpjson.WriteJSON(w, http.StatusOK, merged)
+}
+
 // GetSection handles GET /config/{section}.
 //
 // @Summary      Get a config section
@@ -179,6 +193,32 @@ func (h *ConfigHandler) PatchNamedBackendConfig(w http.ResponseWriter, r *http.R
 		return
 	}
 	httpjson.WriteJSON(w, http.StatusOK, map[string]string{"status": "updated"})
+}
+
+// PostResetNamedBackendConfig handles POST /config/backends/{backend}/reset.
+func (h *ConfigHandler) PostResetNamedBackendConfig(w http.ResponseWriter, r *http.Request) {
+	name := namedBackendFromRequest(r)
+	if name == "" {
+		httpjson.WriteError(w, http.StatusBadRequest, "backend name is required")
+		return
+	}
+	if !h.control.NamedBackendExists(name) {
+		httpjson.WriteErrorf(w, http.StatusNotFound, "unknown backend: %s", name)
+		return
+	}
+	if err := h.control.ResetBackendConfigToDefaults(r.Context(), name); err != nil {
+		var inv *control.InvalidBackendConfigError
+		switch {
+		case errors.As(err, &inv):
+			httpjson.WriteErrorf(w, http.StatusBadRequest, "%s", err.Error())
+		case errors.Is(err, control.ErrUnknownBackend):
+			httpjson.WriteErrorf(w, http.StatusNotFound, "unknown backend: %s", name)
+		default:
+			httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
+		}
+		return
+	}
+	httpjson.WriteJSON(w, http.StatusOK, map[string]string{"status": "reset"})
 }
 
 func namedBackendFromRequest(r *http.Request) string {

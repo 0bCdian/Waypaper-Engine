@@ -21,9 +21,9 @@ describe("sliceArgvAfterDaemonMarker", () => {
   });
 
   it("returns args after marker", () => {
-    expect(
-      sliceArgvAfterDaemonMarker(["./Waypaper.AppImage", "--daemon", "start"]),
-    ).toEqual(["start"]);
+    expect(sliceArgvAfterDaemonMarker(["./Waypaper.AppImage", "--daemon", "start"])).toEqual([
+      "start",
+    ]);
   });
 
   it("returns empty array when marker is last", () => {
@@ -32,13 +32,7 @@ describe("sliceArgvAfterDaemonMarker", () => {
 
   it("forwards daemon flags", () => {
     expect(
-      sliceArgvAfterDaemonMarker([
-        "electron",
-        "--daemon",
-        "start",
-        "--log-level",
-        "debug",
-      ]),
+      sliceArgvAfterDaemonMarker(["electron", "--daemon", "start", "--log-level", "debug"]),
     ).toEqual(["start", "--log-level", "debug"]);
   });
 });

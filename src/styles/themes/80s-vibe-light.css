@@ -1,0 +1,52 @@
+/* @waypaper-theme
+ *   name: 80s-vibe-light
+ *   displayName: 80s Vibe Light
+ *   category: light
+ *   sourceUrl: internal:broadcast-midnight
+ *
+ * Manila stock — the paper-editorial sibling of 80s-vibe.
+ * Manila base with soot text and the same broadcast accent rainbow.
+ * Reads like a 1980s magazine spread: warm cream paper, bold display
+ * type, saturated accent inks. Pairs well with the gallery's paper
+ * grid and with the modern design mode for a softer broadcast feel.
+ *
+ * Surface stack:
+ *   manila-light  #f3e7d2  base-100   page chrome
+ *   manila-50     #dcd2bb  base-200   lifted surface
+ *   manila-dark   #bfb39e  base-300   borders
+ *   faded-black   #1e1d1d  base-content   body text
+ */
+@plugin "daisyui/theme" {
+  name: "80s-vibe-light";
+  default: false;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: #f3e7d2;
+  --color-base-200: #dcd2bb;
+  --color-base-300: #bfb39e;
+  --color-base-content: #1e1d1d;
+  --color-primary: #ff6200;
+  --color-primary-content: #f3e7d2;
+  --color-secondary: #cc3566;
+  --color-secondary-content: #f3e7d2;
+  --color-accent: #ffa81b;
+  --color-accent-content: #1e1d1d;
+  --color-neutral: #403c38;
+  --color-neutral-content: #f3e7d2;
+  --color-info: #ffa81b;
+  --color-info-content: #1e1d1d;
+  --color-success: #76946a;
+  --color-success-content: #f3e7d2;
+  --color-warning: #ff6200;
+  --color-warning-content: #1e1d1d;
+  --color-error: #eb3132;
+  --color-error-content: #f3e7d2;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 2px;
+  --depth: 1;
+  --noise: 0;
+}

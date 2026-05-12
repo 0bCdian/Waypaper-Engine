@@ -295,6 +295,10 @@ func (c *noopConfig) GetImagesDir() string                               { retur
 func (c *noopConfig) GetThumbnailsDir() string                           { return "" }
 func (c *noopConfig) GetDatabaseDir() string                             { return "" }
 func (c *noopConfig) GetLogFile() string                                 { return "" }
+func (c *noopConfig) ResetToFactoryDefaults(func(*viper.Viper)) error    { return nil }
+func (c *noopConfig) ReplaceBackendNamedConfig(_ string, _ map[string]any) error {
+	return nil
+}
 
 // ---------------------------------------------------------------------------
 // Test

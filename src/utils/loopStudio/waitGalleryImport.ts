@@ -1,7 +1,7 @@
 import { daemonClient } from "@/client";
 
 function normalizeFsPath(p: string): string {
-  return p.trim().replace(/\\/g, "/");
+  return p.trim().replace(/\\/g, "/").replace(/\/+/g, "/");
 }
 
 /** Wait until POST /images batch created a video row for this source path (async import). */

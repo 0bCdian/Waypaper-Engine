@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { create } from "zustand";
-import { useIsNeo } from "../hooks/useIsNeo";
+
+import Modal, { type ModalHandle } from "./Modal";
 
 interface ConfirmOptions {
   title: string;
@@ -41,9 +42,8 @@ export function confirmDialog(options: ConfirmOptions): Promise<boolean> {
 
 function ConfirmDialog() {
   const { isOpen, options, respond } = useConfirmStore();
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const modalRef = useRef<ModalHandle>(null);
   const [display, setDisplay] = useState<ConfirmOptions | null>(options);
-  const isNeo = useIsNeo();
 
   if (options !== null && display !== options) {
     setDisplay(options);
@@ -51,45 +51,32 @@ function ConfirmDialog() {
 
   useEffect(() => {
     if (isOpen) {
-      dialogRef.current?.showModal();
+      modalRef.current?.showModal();
     } else {
-      dialogRef.current?.close();
+      modalRef.current?.close();
     }
   }, [isOpen]);
 
-  const confirmClass = display?.danger
-    ? isNeo
-      ? "btn btn-error uppercase"
-      : "btn btn-error"
-    : isNeo
-      ? "btn btn-primary uppercase"
-      : "btn btn-primary";
-  const cancelClass = isNeo ? "btn uppercase" : "btn";
+  const confirmClass = display?.danger ? "btn btn-error" : "btn btn-primary";
+  const cancelClass = "btn";
 
   return (
-    <dialog ref={dialogRef} className="modal" onClose={() => respond(false)}>
+    <Modal ref={modalRef} onClose={() => respond(false)} className="modal-box">
       {display && (
         <>
-          <div className={`modal-box ${isNeo ? "neo-card" : ""}`}>
-            <h3 className="text-lg font-bold">{display.title}</h3>
-            <p className="py-4 text-base-content/80">{display.message}</p>
-            <div className="modal-action">
-              <button type="button" className={cancelClass} onClick={() => respond(false)}>
-                {display.cancelLabel ?? "Cancel"}
-              </button>
-              <button type="button" className={confirmClass} onClick={() => respond(true)}>
-                {display.confirmLabel ?? "Confirm"}
-              </button>
-            </div>
-          </div>
-          <form method="dialog" className="modal-backdrop">
-            <button type="submit" onClick={() => respond(false)}>
-              close
+          <h3 className="text-lg font-bold">{display.title}</h3>
+          <p className="py-4 text-base-content/80">{display.message}</p>
+          <div className="modal-action">
+            <button type="button" className={cancelClass} onClick={() => respond(false)}>
+              {display.cancelLabel ?? "Cancel"}
             </button>
-          </form>
+            <button type="button" className={confirmClass} onClick={() => respond(true)}>
+              {display.confirmLabel ?? "Confirm"}
+            </button>
+          </div>
         </>
       )}
-    </dialog>
+    </Modal>
   );
 }
 

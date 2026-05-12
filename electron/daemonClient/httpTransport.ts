@@ -1,5 +1,7 @@
 import { request as httpRequest } from "node:http";
 
+import { parseDaemonJsonBody } from "./parseDaemonJsonBody";
+
 /** Unix-socket JSON HTTP used by all daemon domain clients. */
 export class HttpTransport {
   constructor(private readonly socketPath: string) {}
@@ -15,8 +17,11 @@ export class HttpTransport {
         socketPath: this.socketPath,
         path,
         method,
+        // Disable pooling entirely so REST never mixes responses on unix sockets with SSE/long-lived connects.
+        agent: false as const,
         headers: {
           "Content-Type": "application/json",
+          Connection: "close",
         },
       };
 
@@ -26,26 +31,47 @@ export class HttpTransport {
           data += chunk.toString();
         });
         res.on("end", () => {
+          const trimmed = data.trim().replace(/^\uFEFF/, "");
           try {
-            const trimmed = data.trim().replace(/^\uFEFF/, "");
             if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
               if (trimmed === "") {
                 resolve(undefined as T);
               } else {
-                resolve(JSON.parse(trimmed) as T);
+                resolve(parseDaemonJsonBody(trimmed) as T);
               }
             } else {
-              const errorData = trimmed ? JSON.parse(trimmed) : { error: `HTTP ${res.statusCode}` };
-              const err = new Error(errorData.error || `HTTP ${res.statusCode}`) as Error & {
+              let errorMessage = `HTTP ${res.statusCode}`;
+              let errorCode: string | undefined;
+              let meta: Record<string, unknown> | undefined;
+              if (trimmed) {
+                try {
+                  const parsed = JSON.parse(trimmed) as Record<string, unknown>;
+                  const msg = parsed.error;
+                  if (typeof msg === "string" && msg.length > 0) errorMessage = msg;
+                  const code = parsed.error_code;
+                  if (typeof code === "string") errorCode = code;
+                  if (
+                    parsed.meta !== undefined &&
+                    typeof parsed.meta === "object" &&
+                    parsed.meta !== null
+                  ) {
+                    meta = parsed.meta as Record<string, unknown>;
+                  }
+                } catch {
+                  errorMessage = trimmed.length > 200 ? `${trimmed.slice(0, 200)}…` : trimmed;
+                }
+              }
+              const err = new Error(errorMessage) as Error & {
                 errorCode?: string;
                 meta?: Record<string, unknown>;
               };
-              if (errorData.error_code) err.errorCode = errorData.error_code;
-              if (errorData.meta) err.meta = errorData.meta;
+              if (errorCode !== undefined) err.errorCode = errorCode;
+              if (meta !== undefined) err.meta = meta;
               reject(err);
             }
           } catch (parseError) {
-            reject(new Error(`Failed to parse response: ${parseError}`));
+            const preview = trimmed.length > 96 ? `${trimmed.slice(0, 96)}…` : trimmed;
+            reject(new Error(`Failed to parse response: ${parseError} (${preview})`));
           }
         });
       });

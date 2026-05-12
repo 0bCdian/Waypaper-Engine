@@ -1,6 +1,10 @@
 package config
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/spf13/viper"
+)
 
 // ConfigManager is the interface for all configuration access in the daemon.
 //
@@ -86,4 +90,13 @@ type ConfigManager interface {
 
 	// GetLogFile returns the resolved (expanded) log file path.
 	GetLogFile() string
+
+	// ResetToFactoryDefaults deletes persisted config keys and replaces the file content
+	// with built-in defaults (all sections plus backend subsections). registerBackendDefaults
+	// is called on a fresh Viper (e.g. backenddefaults.RegisterInto) after setDefaults.
+	ResetToFactoryDefaults(registerBackendDefaults func(*viper.Viper)) error
+
+	// ReplaceBackendNamedConfig replaces backend.<name> in the persisted file entirely
+	// — keys not present in values are removed from that subsection — then reloads viper.
+	ReplaceBackendNamedConfig(backendName string, values map[string]any) error
 }

@@ -66,9 +66,24 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   const isLightMode = currentThemeMeta?.category === "light";
 
   const applyTheme = useCallback((themeName: string) => {
+    const swap = () => {
+      document.documentElement.setAttribute("data-theme", themeName);
+      document.body.removeAttribute("data-theme");
+    };
+
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const doc = document as Document & {
+      startViewTransition?: (callback: () => void) => { finished: Promise<void> };
+    };
+
+    // One root-level cross-fade (Electron/Chromium). Avoids animating every descendant.
+    if (!reduceMotion && typeof doc.startViewTransition === "function") {
+      doc.startViewTransition(swap);
+      return;
+    }
+
     document.documentElement.classList.add("disable-transitions");
-    document.documentElement.setAttribute("data-theme", themeName);
-    document.body.removeAttribute("data-theme");
+    swap();
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
         document.documentElement.classList.remove("disable-transitions");

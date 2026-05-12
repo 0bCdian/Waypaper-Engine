@@ -4,10 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
+	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
@@ -369,4 +372,85 @@ func TestConfigHandler_PatchNamedBackendConfig_RuntimeSyncErrorStillOK(t *testin
 
 	assert.Equal(t, http.StatusOK, w.Code)
 	assert.Equal(t, 1, sb.syncCalls)
+}
+
+func TestConfigHandler_PostResetNamedBackend_Unknown(t *testing.T) {
+	h := NewConfigHandler(testController(&testutil.MockConfigManager{}, &testutil.MockRegistry{}, &testutil.MockBus{}))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodPost, "/config/backends/nope/reset", nil)
+	r = testutil.WithChiURLParams(r, map[string]string{"backend": "nope"})
+	h.PostResetNamedBackendConfig(w, r)
+
+	require.Equal(t, http.StatusNotFound, w.Code)
+}
+
+func TestConfigHandler_PostResetNamedBackend_SuccessWritesSingleJSONValue(t *testing.T) {
+	fehBackend := &testutil.MockBackend{NameFn: func() string { return "feh" }}
+	reg := &testutil.MockRegistry{
+		GetFn: func(name string) (backend.Backend, bool) {
+			return fehBackend, name == "feh"
+		},
+	}
+	var replaced string
+	cfg := &testutil.MockConfigManager{
+		GetActiveBackendTypeFn: func() string { return "awww" },
+		ReplaceBackendNamedConfigFn: func(backendName string, values map[string]any) error {
+			replaced = backendName
+			assert.NotEmpty(t, values)
+			return nil
+		},
+	}
+	h := NewConfigHandler(testController(cfg, reg, &testutil.MockBus{}))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodPost, "/config/backends/feh/reset", nil)
+	r = testutil.WithChiURLParams(r, map[string]string{"backend": "feh"})
+	h.PostResetNamedBackendConfig(w, r)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, "feh", replaced)
+
+	raw := strings.TrimSpace(w.Body.String())
+	dec := json.NewDecoder(strings.NewReader(raw))
+	var body map[string]string
+	require.NoError(t, dec.Decode(&body))
+	require.Equal(t, "reset", body["status"])
+	var extra any
+	err := dec.Decode(&extra)
+	require.ErrorIs(t, err, io.EOF)
+}
+
+func TestConfigHandler_PostResetAll_InvokesFactoryReset(t *testing.T) {
+	var resetCalls int
+	cfg := &testutil.MockConfigManager{
+		ResetToFactoryDefaultsFn: func(func(*viper.Viper)) error {
+			resetCalls++
+			return nil
+		},
+		GetConfigFn: func() (*config.Config, error) {
+			return &config.Config{}, nil
+		},
+		GetBackendConfigFn: func(string) (json.RawMessage, error) {
+			return json.RawMessage(`{}`), nil
+		},
+		GetActiveBackendTypeFn: func() string { return "awww" },
+	}
+
+	mb := &testutil.MockBackend{NameFn: func() string { return "awww" }}
+	reg := &testutil.MockRegistry{
+		GetFn: func(name string) (backend.Backend, bool) {
+			return mb, name == "awww"
+		},
+		ActiveFn: func() backend.Backend { return mb },
+	}
+
+	h := NewConfigHandler(testController(cfg, reg, &testutil.MockBus{}))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodPost, "/config/reset", nil)
+	h.PostResetAll(w, r)
+
+	require.Equal(t, http.StatusOK, w.Code)
+	require.Equal(t, 1, resetCalls)
 }

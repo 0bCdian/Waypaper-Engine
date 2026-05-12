@@ -19,6 +19,7 @@ import { notifyWallpaperApplyFailed } from "../utils/daemonUserFacingError";
 import { logger } from "../utils/logger";
 import type { DragSourceData } from "../stores/dragStore";
 import { daemonClient } from "@/client";
+import { Card } from "./ui/Card";
 
 interface ImageCardProps {
   Image: rendererImage;
@@ -423,8 +424,10 @@ function ImageCard({ Image }: ImageCardProps) {
 
   if (isPolaroid) {
     return (
-      <div
+      <Card
         ref={dragRef}
+        polaroid={isPolaroid}
+        elevation={0}
         data-gallery-image-root=""
         data-image-id={String(Image.id)}
         onContextMenu={handleRightClick}
@@ -502,13 +505,14 @@ function ImageCard({ Image }: ImageCardProps) {
           className="neo-polaroid-overlay pointer-events-none"
           aria-hidden="true"
         />
-      </div>
+      </Card>
     );
   }
 
   return (
-    <div
+    <Card
       ref={dragRef}
+      elevation={0}
       data-gallery-image-root=""
       data-image-id={String(Image.id)}
       onContextMenu={handleRightClick}
@@ -585,7 +589,7 @@ function ImageCard({ Image }: ImageCardProps) {
           aria-hidden="true"
         />
       </div>
-    </div>
+    </Card>
   );
 }
 

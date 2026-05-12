@@ -137,6 +137,8 @@ declare global {
         updateConfigSection: (section: string, data: Record<string, unknown>) => Promise<unknown>;
         getBackendConfig: (name: string) => Promise<Record<string, unknown>>;
         updateBackendConfig: (name: string, patch: Record<string, unknown>) => Promise<void>;
+        resetAllConfig: () => Promise<UnifiedConfig>;
+        resetBackendConfig: (name: string) => Promise<{ status: string }>;
 
         // BACKENDS
         getBackends: () => Promise<BackendInfo[]>;

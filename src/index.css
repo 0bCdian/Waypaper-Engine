@@ -89,6 +89,291 @@ h4 {
   exclude: rootscrollgutter;
 }
 
+/* ── 80s Vibe palettes (inlined to guarantee DaisyUI picks them up;
+   _index.css aggregates the rest of the auditedl-Linux palettes) ── */
+
+@plugin "daisyui/theme" {
+  name: "80s-vibe";
+  default: false;
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: #1e1d1d;
+  --color-base-200: #32302f;
+  --color-base-300: #403c38;
+  --color-base-content: #f3e7d2;
+  --color-primary: #ffca18;
+  --color-primary-content: #1e1d1d;
+  --color-secondary: #cc3566;
+  --color-secondary-content: #f3e7d2;
+  --color-accent: #ff6200;
+  --color-accent-content: #1e1d1d;
+  --color-neutral: #bfb39e;
+  --color-neutral-content: #1e1d1d;
+  --color-info: #ffa81b;
+  --color-info-content: #1e1d1d;
+  --color-success: #a7c080;
+  --color-success-content: #1e1d1d;
+  --color-warning: #ff6200;
+  --color-warning-content: #1e1d1d;
+  --color-error: #eb3132;
+  --color-error-content: #f3e7d2;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 2px;
+  --depth: 1;
+  --noise: 0;
+}
+
+@plugin "daisyui/theme" {
+  name: "80s-vibe-light";
+  default: false;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: #f3e7d2;
+  --color-base-200: #dcd2bb;
+  --color-base-300: #bfb39e;
+  --color-base-content: #1e1d1d;
+  --color-primary: #ff6200;
+  --color-primary-content: #f3e7d2;
+  --color-secondary: #cc3566;
+  --color-secondary-content: #f3e7d2;
+  --color-accent: #ffa81b;
+  --color-accent-content: #1e1d1d;
+  --color-neutral: #403c38;
+  --color-neutral-content: #f3e7d2;
+  --color-info: #ffa81b;
+  --color-info-content: #1e1d1d;
+  --color-success: #76946a;
+  --color-success-content: #f3e7d2;
+  --color-warning: #ff6200;
+  --color-warning-content: #1e1d1d;
+  --color-error: #eb3132;
+  --color-error-content: #f3e7d2;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 2px;
+  --depth: 1;
+  --noise: 0;
+}
+
+/* ──────────────────────────────────────────────────────────────────
+ * 80s Vibe — high-specificity overrides
+ *
+ * DaisyUI v5 emits a low-specificity `:where(:root)` light-theme fallback
+ * in the same `@layer base` as our `@plugin "daisyui/theme"` blocks.
+ * In some Tailwind v4 + DaisyUI dev-server build orderings, the fallback
+ * resolves AFTER our 80s-vibe `[data-theme="80s-vibe"]` rule despite
+ * lower specificity, leaving `--color-*` set to the light defaults
+ * even when `<html data-theme="80s-vibe">`.
+ *
+ * `html[data-theme="..."]` raises specificity to 0,1,1 — strictly higher
+ * than `[data-theme=light]` (0,1,0) and `:where(:root)` (0,0,0), and
+ * sits at the very end of the entry CSS for source-order safety.
+ * Both palettes also live as @plugin blocks above so DaisyUI's theme-
+ * controller integration and SSR/print pipelines still recognize them.
+ * ────────────────────────────────────────────────────────────────── */
+html[data-theme="80s-vibe"] {
+  color-scheme: dark;
+  --color-base-100: #1e1d1d;
+  --color-base-200: #32302f;
+  --color-base-300: #403c38;
+  --color-base-content: #f3e7d2;
+  --color-primary: #ffca18;
+  --color-primary-content: #1e1d1d;
+  --color-secondary: #cc3566;
+  --color-secondary-content: #f3e7d2;
+  --color-accent: #ff6200;
+  --color-accent-content: #1e1d1d;
+  --color-neutral: #bfb39e;
+  --color-neutral-content: #1e1d1d;
+  --color-info: #ffa81b;
+  --color-info-content: #1e1d1d;
+  --color-success: #a7c080;
+  --color-success-content: #1e1d1d;
+  --color-warning: #ff6200;
+  --color-warning-content: #1e1d1d;
+  --color-error: #eb3132;
+  --color-error-content: #f3e7d2;
+}
+
+html[data-theme="80s-vibe-light"] {
+  color-scheme: light;
+  --color-base-100: #f3e7d2;
+  --color-base-200: #dcd2bb;
+  --color-base-300: #bfb39e;
+  --color-base-content: #1e1d1d;
+  --color-primary: #ff6200;
+  --color-primary-content: #f3e7d2;
+  --color-secondary: #cc3566;
+  --color-secondary-content: #f3e7d2;
+  --color-accent: #ffa81b;
+  --color-accent-content: #1e1d1d;
+  --color-neutral: #403c38;
+  --color-neutral-content: #f3e7d2;
+  --color-info: #ffa81b;
+  --color-info-content: #1e1d1d;
+  --color-success: #76946a;
+  --color-success-content: #f3e7d2;
+  --color-warning: #ff6200;
+  --color-warning-content: #1e1d1d;
+  --color-error: #eb3132;
+  --color-error-content: #f3e7d2;
+}
+
+/* Nord / Nord Light — same Tailwind v4 + DaisyUI cascade issue as 80s-vibe:
+ * dark `nord` was losing to the light :root fallback and looked identical to
+ * `nord-light`. Keep tokens in sync with src/styles/themes/nord*.css. */
+html[data-theme="nord"] {
+  color-scheme: dark;
+  --color-base-100: #2e3440;
+  --color-base-200: #3b4252;
+  --color-base-300: #4c566a;
+  --color-base-content: #d8dee9;
+  --color-primary: #88c0d0;
+  --color-primary-content: #2e3440;
+  --color-secondary: #b48ead;
+  --color-secondary-content: #2e3440;
+  --color-accent: #8fbcbb;
+  --color-accent-content: #2e3440;
+  --color-neutral: #4c566a;
+  --color-neutral-content: #eceff4;
+  --color-info: #81a1c1;
+  --color-info-content: #2e3440;
+  --color-success: #a3be8c;
+  --color-success-content: #2e3440;
+  --color-warning: #ebcb8b;
+  --color-warning-content: #2e3440;
+  --color-error: #bf616a;
+  --color-error-content: #eceff4;
+}
+
+html[data-theme="nord-light"] {
+  color-scheme: light;
+  --color-base-100: #ebeaf2;
+  --color-base-200: #dedede;
+  --color-base-300: #b3b3b3;
+  --color-base-content: #004f7c;
+  --color-primary: #439ecf;
+  --color-primary-content: #003b4e;
+  --color-secondary: #d961dc;
+  --color-secondary-content: #ebeaf2;
+  --color-accent: #00b1be;
+  --color-accent-content: #003b4e;
+  --color-neutral: #3e89a1;
+  --color-neutral-content: #ebeaf2;
+  --color-info: #6fbbe2;
+  --color-info-content: #003b4e;
+  --color-success: #069f5f;
+  --color-success-content: #003b4e;
+  --color-warning: #dab752;
+  --color-warning-content: #003b4e;
+  --color-error: #e64569;
+  --color-error-content: #ebeaf2;
+}
+
+/* Gruvbox family — keep in sync with src/styles/themes/gruvbox*.css (contrast-export hex). */
+html[data-theme="gruvbox-light"] {
+  color-scheme: light;
+  --color-base-100: #fbf1c7;
+  --color-base-200: #ebdbb2;
+  --color-base-300: #d5c4a1;
+  --color-base-content: #3c3836;
+  --color-primary: #b57614;
+  --color-primary-content: #fbf1c7;
+  --color-secondary: #8f3f71;
+  --color-secondary-content: #fbf1c7;
+  --color-accent: #427b58;
+  --color-accent-content: #fbf1c7;
+  --color-neutral: #7c6f64;
+  --color-neutral-content: #fbf1c7;
+  --color-info: #076678;
+  --color-info-content: #fbf1c7;
+  --color-success: #79740e;
+  --color-success-content: #fbf1c7;
+  --color-warning: #d79921;
+  --color-warning-content: #3c3836;
+  --color-error: #cc241d;
+  --color-error-content: #fbf1c7;
+}
+
+html[data-theme="gruvbox"] {
+  color-scheme: dark;
+  --color-base-100: #282828;
+  --color-base-200: #3c3836;
+  --color-base-300: #504945;
+  --color-base-content: #ebdbb2;
+  --color-primary: #fabd2f;
+  --color-primary-content: #282828;
+  --color-secondary: #d3869b;
+  --color-secondary-content: #282828;
+  --color-accent: #8ec07c;
+  --color-accent-content: #282828;
+  --color-neutral: #928374;
+  --color-neutral-content: #ebdbb2;
+  --color-info: #83a598;
+  --color-info-content: #282828;
+  --color-success: #b8bb26;
+  --color-success-content: #282828;
+  --color-warning: #d79921;
+  --color-warning-content: #282828;
+  --color-error: #fb4934;
+  --color-error-content: #ebdbb2;
+}
+
+html[data-theme="gruvbox-material"] {
+  color-scheme: dark;
+  --color-base-100: #282828;
+  --color-base-200: #3c3836;
+  --color-base-300: #504945;
+  --color-base-content: #d4be98;
+  --color-primary: #a9b665;
+  --color-primary-content: #282828;
+  --color-secondary: #7daea3;
+  --color-secondary-content: #282828;
+  --color-accent: #d8a657;
+  --color-accent-content: #282828;
+  --color-neutral: #504945;
+  --color-neutral-content: #d4be98;
+  --color-info: #89b482;
+  --color-info-content: #282828;
+  --color-success: #a9b665;
+  --color-success-content: #282828;
+  --color-warning: #d8a657;
+  --color-warning-content: #282828;
+  --color-error: #ea6962;
+  --color-error-content: #d4be98;
+}
+
+html[data-theme="gruvbox-material-light"] {
+  color-scheme: light;
+  --color-base-100: #fbf1c7;
+  --color-base-200: #f2e5bc;
+  --color-base-300: #ebdbb2;
+  --color-base-content: #654735;
+  --color-primary: #b47109;
+  --color-primary-content: #fbf1c7;
+  --color-secondary: #945e80;
+  --color-secondary-content: #fbf1c7;
+  --color-accent: #4c7a5d;
+  --color-accent-content: #fbf1c7;
+  --color-neutral: #654735;
+  --color-neutral-content: #fbf1c7;
+  --color-info: #45707a;
+  --color-info-content: #fbf1c7;
+  --color-success: #6c782e;
+  --color-success-content: #fbf1c7;
+  --color-warning: #b47109;
+  --color-warning-content: #fbf1c7;
+  --color-error: #c14a4a;
+  --color-error-content: #fbf1c7;
+}
+
 /* Disable all transitions during theme switch to prevent color flashing */
 .disable-transitions,
 .disable-transitions *,

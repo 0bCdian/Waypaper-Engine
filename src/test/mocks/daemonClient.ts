@@ -80,6 +80,8 @@ export const mockDaemonClient: DaemonClient = {
   updateConfigSection: vi.fn().mockResolvedValue({}),
   getBackendConfig: vi.fn().mockResolvedValue({}),
   updateBackendConfig: vi.fn().mockResolvedValue(undefined),
+  resetAllConfig: vi.fn().mockResolvedValue({}),
+  resetBackendConfig: vi.fn().mockResolvedValue({ status: "reset" }),
 
   // BACKENDS
   getBackends: vi.fn().mockResolvedValue([]),

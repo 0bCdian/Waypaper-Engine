@@ -32,6 +32,17 @@ export class ControlPlaneClient {
     await this.t.request("PATCH", `/config/backends/${encodeURIComponent(name)}`, patch);
   }
 
+  async resetAllConfig(): Promise<UnifiedConfig> {
+    return this.t.request<UnifiedConfig>("POST", "/config/reset");
+  }
+
+  async resetBackendConfig(name: string): Promise<{ status: string }> {
+    return this.t.request<{ status: string }>(
+      "POST",
+      `/config/backends/${encodeURIComponent(name)}/reset`,
+    );
+  }
+
   async getBackends(): Promise<BackendInfo[]> {
     return this.t.request<BackendInfo[]>("GET", "/backends");
   }

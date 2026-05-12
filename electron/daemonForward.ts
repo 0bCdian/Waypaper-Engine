@@ -6,9 +6,7 @@ import { configReader } from "../globals/configReader";
 const MARKER = "--daemon";
 
 /** Arguments after the first `--daemon`, or null if the marker is absent. */
-export function sliceArgvAfterDaemonMarker(
-  argv: readonly string[],
-): string[] | null {
+export function sliceArgvAfterDaemonMarker(argv: readonly string[]): string[] | null {
   const idx = argv.indexOf(MARKER);
   if (idx === -1) {
     return null;

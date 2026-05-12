@@ -54,13 +54,16 @@ const behaviorFields: BoolField[] = [
 ];
 
 export const AppSettingsSection: React.FC<AppSettingsSectionProps> = ({ className = "" }) => {
-  const { config, saveConfigSection, errors } = useSettingsStore(
-    useShallow((s) => ({
-      config: s.config,
-      saveConfigSection: s.saveConfigSection,
-      errors: s.errors,
-    })),
-  );
+  const { config, saveConfigSection, errors, resetAllSettingsToDaemonDefaults, isLoading } =
+    useSettingsStore(
+      useShallow((s) => ({
+        config: s.config,
+        saveConfigSection: s.saveConfigSection,
+        errors: s.errors,
+        resetAllSettingsToDaemonDefaults: s.resetAllSettingsToDaemonDefaults,
+        isLoading: s.isLoading,
+      })),
+    );
   const section: ConfigSection = "app";
 
   const [themeOpen, setThemeOpen] = useState(false);
@@ -169,6 +172,31 @@ export const AppSettingsSection: React.FC<AppSettingsSectionProps> = ({ classNam
       {/* ── Import ─────────────────────────────────────── */}
       <SettingSectionHeader title="Import" />
       <UrlImportWarningSetting />
+
+      <SettingSectionHeader title="Restore defaults" />
+      <SettingRow
+        label="Reset all daemon settings"
+        description="Includes app preferences, daemon paths/logging, monitors, Wallhaven integration, backend selection priorities, and every wallpaper backend’s options. Use this if something is badly misconfigured."
+        stacked
+      >
+        <button
+          type="button"
+          className="btn btn-sm btn-warning"
+          disabled={isLoading}
+          onClick={() => {
+            if (
+              !window.confirm(
+                "Restore every setting to factory defaults? This affects the whole config file and cannot be undone automatically.",
+              )
+            ) {
+              return;
+            }
+            void resetAllSettingsToDaemonDefaults();
+          }}
+        >
+          {isLoading ? "Restoring…" : "Restore all defaults"}
+        </button>
+      </SettingRow>
     </div>
   );
 };

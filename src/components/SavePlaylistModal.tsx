@@ -9,8 +9,6 @@ import { useModalStore } from "../stores/modalStore";
 import { logger } from "../utils/logger";
 import { shouldSkipPlaylistStartAfterUpdate } from "../utils/skipStartAfterPlaylistSave";
 import { useActivePlaylistStore } from "../stores/activePlaylistStore";
-import { useIsNeo } from "../hooks/useIsNeo";
-import { cn } from "../utils/cn";
 import { daemonClient } from "@/client";
 
 interface Props {
@@ -19,7 +17,6 @@ interface Props {
 }
 
 const SavePlaylistModal = ({ currentPlaylistName, onPlaylistChanged }: Props) => {
-  const isNeo = useIsNeo();
   const { setName, readPlaylist, setPlaylist, markClean } = usePlaylistStore(
     useShallow((s) => ({
       setName: s.setName,
@@ -174,10 +171,7 @@ const SavePlaylistModal = ({ currentPlaylistName, onPlaylistChanged }: Props) =>
             onBlur={field.handleBlur}
             required
             draggable={false}
-            className={cn(
-              "input mb-3 w-full text-lg",
-              isNeo ? "rounded-none input-bordered" : "rounded-md",
-            )}
+            className="input input-bordered mb-3 w-full text-lg rounded-[var(--wp-radius-md)]"
             placeholder="Playlist Name"
           />
         )}
@@ -188,7 +182,7 @@ const SavePlaylistModal = ({ currentPlaylistName, onPlaylistChanged }: Props) =>
           {error.message}
         </label>
       )}
-      <button type="submit" className={cn("btn btn-active uppercase", !isNeo && "rounded-lg")}>
+      <button type="submit" className="btn btn-active uppercase rounded-[var(--wp-radius-md)]">
         Save
       </button>
     </form>
@@ -201,19 +195,11 @@ const SavePlaylistModal = ({ currentPlaylistName, onPlaylistChanged }: Props) =>
       stripedHeader={{
         title: "Save Playlist",
         subtitle: "Write the playlist to disk and optionally start playback on selected displays.",
+        bleedInsetDefault: false,
       }}
-      className={cn(
-        "modal-box flex max-w-lg flex-col xl:max-w-xl 2xl:max-w-2xl",
-        isNeo ? "max-h-[90vh] overflow-hidden p-0" : "gap-4 p-6",
-      )}
+      className="modal-box flex max-w-lg flex-col xl:max-w-xl 2xl:max-w-2xl max-h-[90vh] overflow-hidden p-0"
     >
-      {isNeo ? (
-        <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-8 pt-6">
-          {formBody}
-        </div>
-      ) : (
-        formBody
-      )}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-8 pt-6">{formBody}</div>
     </Modal>
   );
 };

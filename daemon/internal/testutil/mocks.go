@@ -504,21 +504,23 @@ func (m *MockBus) Close() {
 // ---------------------------------------------------------------------------
 
 type MockConfigManager struct {
-	GetConfigFn            func() (*config.Config, error)
-	UpdateConfigFn         func(section string, values map[string]any) error
-	GetSectionFn           func(section string) (map[string]any, error)
-	GetBackendConfigFn     func(backendName string) (json.RawMessage, error)
-	SetBackendConfigFn     func(backendName string, raw json.RawMessage) error
-	GetActiveBackendTypeFn func() string
-	SetActiveBackendTypeFn func(name string) error
-	GetSelectionModeFn     func() string
-	GetAutoPrioritiesFn    func() config.AutoPriorities
-	OnConfigChangeFn       func(callback func(section string))
-	GetSocketPathFn        func() string
-	GetImagesDirFn         func() string
-	GetThumbnailsDirFn     func() string
-	GetDatabaseDirFn       func() string
-	GetLogFileFn           func() string
+	GetConfigFn                 func() (*config.Config, error)
+	UpdateConfigFn              func(section string, values map[string]any) error
+	GetSectionFn                func(section string) (map[string]any, error)
+	GetBackendConfigFn          func(backendName string) (json.RawMessage, error)
+	SetBackendConfigFn          func(backendName string, raw json.RawMessage) error
+	ReplaceBackendNamedConfigFn func(backendName string, values map[string]any) error
+	ResetToFactoryDefaultsFn    func(registerBackendDefaults func(*viper.Viper)) error
+	GetActiveBackendTypeFn      func() string
+	SetActiveBackendTypeFn      func(name string) error
+	GetSelectionModeFn          func() string
+	GetAutoPrioritiesFn         func() config.AutoPriorities
+	OnConfigChangeFn            func(callback func(section string))
+	GetSocketPathFn             func() string
+	GetImagesDirFn              func() string
+	GetThumbnailsDirFn          func() string
+	GetDatabaseDirFn            func() string
+	GetLogFileFn                func() string
 }
 
 func (m *MockConfigManager) GetConfig() (*config.Config, error) {
@@ -552,6 +554,20 @@ func (m *MockConfigManager) GetBackendConfig(backendName string) (json.RawMessag
 func (m *MockConfigManager) SetBackendConfig(backendName string, raw json.RawMessage) error {
 	if m.SetBackendConfigFn != nil {
 		return m.SetBackendConfigFn(backendName, raw)
+	}
+	return nil
+}
+
+func (m *MockConfigManager) ReplaceBackendNamedConfig(backendName string, values map[string]any) error {
+	if m.ReplaceBackendNamedConfigFn != nil {
+		return m.ReplaceBackendNamedConfigFn(backendName, values)
+	}
+	return nil
+}
+
+func (m *MockConfigManager) ResetToFactoryDefaults(registerBackendDefaults func(*viper.Viper)) error {
+	if m.ResetToFactoryDefaultsFn != nil {
+		return m.ResetToFactoryDefaultsFn(registerBackendDefaults)
 	}
 	return nil
 }

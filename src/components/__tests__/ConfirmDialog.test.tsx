@@ -3,8 +3,6 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import ConfirmDialog, { useConfirmStore, confirmDialog } from "../ConfirmDialog";
 
-vi.mock("../../hooks/useIsNeo", () => ({ useIsNeo: () => false }));
-
 beforeAll(() => {
   HTMLDialogElement.prototype.showModal = vi.fn();
   HTMLDialogElement.prototype.close = vi.fn();

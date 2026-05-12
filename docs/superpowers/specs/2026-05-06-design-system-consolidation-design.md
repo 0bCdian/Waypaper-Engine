@@ -23,7 +23,7 @@ Adding the planned **80s Vibe** palette (Broadcast Midnight) and consolidating b
 1. **Two design modes** (`modern`, `neobrutalist`), differing only by token values plus a small set of structural primitives — no per-component conditionals for the common case.
 2. **Orthogonal palettes**: any palette × any mode. Switching either dimension is one DOM attribute write, no React re-renders required.
 3. **Extensible theme registry**: built-in palettes ship as one CSS file each, auto-registered. End-users add palettes by dropping CSS files into `~/.config/waypaper-engine/themes/*.css`.
-4. **Curated initial built-in pool** of ~45 palettes (counting light/dark variants separately; down from 54), with each existing custom palette audited against its canonical source doc.
+4. **Curated initial built-in pool** of **~23+** audited palettes (light/dark pairs in `src/styles/themes/`; count grows as new files land). An earlier ~45 target was a planning upper bound, not a hard requirement.
 5. **Reduce `useIsNeo()` consumers from 31 → ~5** (only the genuinely-divergent primitives keep the hook).
 6. **Tighten visual cohesion across pages, components, and modals** via shared primitives.
 
@@ -128,15 +128,17 @@ Defined once in `src/styles/tokens.css`:
 
 The user-tunable neobrutalist knobs (`--neo-shadow-x/y`, `--neo-border-w`, `--neo-radius`) remain in the existing `designSystemStore` and feed into the same `--wp-*` tokens via aliases.
 
+Consumers compose the modal shell via [`src/components/Modal.tsx`](../../../src/components/Modal.tsx): native `<dialog>`, ref **`ModalHandle`** (`showModal` / `close`), optional **`stripedHeader`** or **`Modal.Header`** for striped chrome, Daisy **`modal-box`** styling. Several flows open modals imperatively through [`src/stores/modalStore.ts`](../../../src/stores/modalStore.ts). A purely controlled React modal (`open` / `onClose` without `<dialog>`) is **not** the app pattern. **Settings** still use a FramerMotion overlay in `SettingsModal` until a future unification.
+
 ### 4.3 Primitives
 
-Five primitives live in `src/components/ui/`. They are the **only** components allowed to read `useIsNeo()` (or, preferably, structural CSS classes that switch markup via `:where([data-design="neobrutalist"]) &`).
+`Surface`, `Card`, `Button`, `IconButton`, and `CloseButton` live in `src/components/ui/`. The **modal shell** is [`src/components/Modal.tsx`](../../../src/components/Modal.tsx) (not under `ui/`). Structural CSS should replace per-file `useIsNeo()` where possible.
 
 | Primitive | Purpose | What changes per mode |
 |---|---|---|
 | `<Surface>` | Generic panel/section. | Border, radius, elevation tokens. No markup change. *(Pure CSS class.)* |
 | `<Card>` | Image card / folder card / info card. | Polaroid frame in neo when `polaroidCards` flag is on (extra wrapper + paper-tint inset shadow). |
-| `<Modal>` | Modal shell. | Striped header in neo (replaces current `ModalStripedHeader`); heavier border + offset shadow; backdrop blur dialed differently. |
+| `<Modal>` | Modal shell (`src/components/Modal.tsx`). | Native `<dialog>` + Daisy `modal-box`; **`Modal.Header`** / `stripedHeader`; imperative open via **`modalStore`**. |
 | `<Button>` | Primary action. Wraps DaisyUI `.btn`. | Uppercase + tracking + weight via display tokens; hover/active translates handled by `:where([data-design="neobrutalist"])` rules. |
 | `<IconButton>` / `<CloseButton>` | Icon-only actions and modal close. | Replaces `NeoCloseButton`; in neo, adopts the offset-shadow chip styling; in modern, a clean ghost icon. |
 | `<Field>` | Wraps `.input/.select/.textarea`. | Border + focus translate behavior tokenized; no markup change. *Optional — could stay as raw DaisyUI if `<Field>` adds no value.* |
@@ -465,7 +467,7 @@ API contract update: add to `daemon/API_CONTRACT.md`. No new SSE events for them
 
 ## 11. Risks & open questions
 
-1. **DaisyUI v5 + multiple `@plugin "daisyui/theme"` blocks across files** — **RESOLVED (Task 3.6)**: Took the bundled CSS path. The Vite plugin generates both `_index.ts` (TS side-effect imports for tree-shaking) and `_index.css` (concatenated CSS for DaisyUI). `src/index.css` imports `_index.css` directly via `@import "./styles/themes/_index.css"`, ensuring all `@plugin "daisyui/theme"` blocks are visible to Tailwind v4's CSS pipeline at build time.
+1. **DaisyUI v5 + multiple `@plugin "daisyui/theme"` blocks across files** — **RESOLVED (Task 3.6)**: Took the bundled CSS path. The Vite plugin generates both `_index.ts` (TS side-effect imports for tree-shaking) and `_index.css` (concatenated CSS for DaisyUI). `src/index.css` imports `_index.css` directly via `@import "./styles/themes/_index.css"`, ensuring all `@plugin "daisyui/theme"` blocks are visible to Tailwind v4's CSS pipeline at build time.** Critical/custom palettes may also ship with **`html[data-theme="name"] { --color-*: … }`** near the end of `src/index.css` (and/or duplicated `@plugin "daisyui/theme"` there) so a low-specificity DaisyUI `:where(:root)` light fallback cannot win over the active `[data-theme]` in some Tailwind v4 + HMR orderings.
 2. **Aldrich variable axes** — Aldrich is a single-style font on Google Fonts, not variable. If we want a true variable display face, swap to **Oxanium Variable** (similar geometric vibe, more weights). Decide during implementation; this is a one-line palette font change.
 3. **`prefers-color-scheme` reliability in Electron** — verify in the renderer; otherwise the default falls back to `light`.
 4. **User-theme CSP** — Electron renderer's CSP must allow `<link>`/`<style>` injection from the daemon's HTTP origin. Confirm during implementation; current daemon is already trusted.
@@ -475,11 +477,11 @@ API contract update: add to `daemon/API_CONTRACT.md`. No new SSE events for them
 ## 12. Deliverables summary
 
 1. `src/styles/tokens.css` extended with all `--wp-*` mode tokens + `.wp-paper-grid`.
-2. `src/styles/themes/` directory with one CSS file per built-in palette (~45 files), each with a header citing its source.
+2. `src/styles/themes/` directory with one CSS file per built-in palette (**~23+** curated files today; more as added), each with a header citing its source.
 3. Auto-generated `src/styles/themes/_index.ts` registry; `src/themes/themes.ts` deleted.
 4. `src/styles/neobrutalist.css` shrunk to ~250 lines (token-driven + structural-only rules).
 5. `src/index.css` cleaned: per-palette blocks removed; unused transition utilities removed; redundant scrollbar styles removed.
-6. `src/components/ui/` primitives: `Surface`, `Card`, `Modal` (+ `ModalHeader`), `Button`, `IconButton`. `<Field>` optional.
+6. `src/components/ui/` primitives: `Surface`, `Card`, `Button`, `IconButton`, `CloseButton`. Modal shell: **`src/components/Modal.tsx`** (`<dialog>`, `Modal.Header`, `modalStore` integration), not a separate controlled-only `ui/Modal`. `<Field>` optional.
 7. 31 `useIsNeo` consumer files refactored to use primitives + tokens; `useIsNeo` retained only in primitives + `ContextMenu` (5 files).
 8. `paperGridBackground.ts` deleted; `Gallery.tsx` + `StartupIntro.tsx` switch to `.wp-paper-grid`.
 9. Daemon endpoints `GET /api/themes` and `GET /api/themes/{name}.css` + API contract update.

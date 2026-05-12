@@ -5,8 +5,6 @@ vi.mock("zustand/react/shallow", () => ({
   useShallow: (fn: Function) => fn,
 }));
 
-vi.mock("../../hooks/useIsNeo", () => ({ useIsNeo: () => false }));
-
 vi.mock("../../hooks/useSetLastActivePlaylist", () => ({
   useSetLastActivePlaylist: vi.fn(),
 }));

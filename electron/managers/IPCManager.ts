@@ -651,6 +651,12 @@ export class IPCManager {
         case "update_backend_config":
           return await goDaemonClient.updateBackendConfig(req.name, req.patch);
 
+        case "reset_all_config":
+          return await goDaemonClient.resetAllConfig();
+
+        case "reset_backend_config":
+          return await goDaemonClient.resetBackendConfig(req.name);
+
         // BACKENDS
         case "get_backends":
           return await goDaemonClient.getBackends();

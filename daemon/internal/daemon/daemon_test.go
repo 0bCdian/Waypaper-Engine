@@ -74,6 +74,10 @@ func (m *mockCfg) GetImagesDir() string                               { return m
 func (m *mockCfg) GetThumbnailsDir() string                           { return m.thumbnailsDir }
 func (m *mockCfg) GetDatabaseDir() string                             { return m.dbDir }
 func (m *mockCfg) GetLogFile() string                                 { return "" }
+func (m *mockCfg) ResetToFactoryDefaults(func(*viper.Viper)) error    { return nil }
+func (m *mockCfg) ReplaceBackendNamedConfig(string, map[string]any) error {
+	return nil
+}
 
 // ---------------------------------------------------------------------------
 // Test helpers
@@ -185,6 +189,27 @@ func TestDaemon_HealthzReturns200(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
 		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, body)
+	}
+}
+
+func TestDaemon_GetApiThemesReturns200EmptyArray(t *testing.T) {
+	client, _, stop := startTestDaemon(t)
+	defer stop()
+
+	resp := get(t, client, "http://daemon/api/themes")
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		t.Fatalf("expected 200, got %d: %s", resp.StatusCode, body)
+	}
+	body, _ := io.ReadAll(resp.Body)
+	var themes []any
+	if err := json.Unmarshal(body, &themes); err != nil {
+		t.Fatalf("expected JSON array: %v\nbody: %s", err, body)
+	}
+	if len(themes) != 0 {
+		t.Errorf("expected no themes in empty temp themes dir, got %d", len(themes))
 	}
 }
 

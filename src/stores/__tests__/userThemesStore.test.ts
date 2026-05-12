@@ -14,6 +14,9 @@ describe("userThemesStore", () => {
   it("loadFromDaemon populates the store", async () => {
     const fetchMock = vi.fn().mockResolvedValue({
       ok: true,
+      headers: {
+        get: (name: string) => (name.toLowerCase() === "content-type" ? "application/json" : null),
+      },
       json: async () => [
         { name: "neon", displayName: "Neon", source: "user", url: "/api/themes/neon.css" },
       ],
@@ -38,6 +41,21 @@ describe("userThemesStore", () => {
 
   it("loadFromDaemon is a no-op on non-ok response", async () => {
     const fetchMock = vi.fn().mockResolvedValue({ ok: false });
+    globalThis.fetch = fetchMock as unknown as typeof fetch;
+
+    const { useUserThemesStore } = await import("../userThemesStore");
+    await useUserThemesStore.getState().loadFromDaemon();
+    expect(useUserThemesStore.getState().themes).toEqual([]);
+  });
+
+  it("loadFromDaemon ignores non-JSON bodies (e.g. HTML fallback)", async () => {
+    const fetchMock = vi.fn().mockResolvedValue({
+      ok: true,
+      headers: { get: () => "text/html" },
+      json: async () => {
+        throw new Error("should not parse");
+      },
+    });
     globalThis.fetch = fetchMock as unknown as typeof fetch;
 
     const { useUserThemesStore } = await import("../userThemesStore");

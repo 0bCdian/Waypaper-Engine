@@ -161,6 +161,8 @@ export function createMockAPI(): Window["API_RENDERER"] {
         ),
       getBackendConfig: vi.fn().mockImplementation((_name: string) => Promise.resolve({})),
       updateBackendConfig: vi.fn().mockResolvedValue(undefined),
+      resetAllConfig: vi.fn().mockImplementation(async () => cloneConfig(liveUnifiedConfig)),
+      resetBackendConfig: vi.fn().mockResolvedValue({ status: "reset" }),
 
       getBackends: vi.fn().mockResolvedValue([
         {

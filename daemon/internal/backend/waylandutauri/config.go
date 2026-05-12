@@ -20,10 +20,10 @@ type Config struct {
 	// LoadTimeoutMS bounds the POST /wallpaper/load call. Web wallpaper navigation
 	// can run several seconds end-to-end, so this is much larger than the generic
 	// per-request timeout that fits health/status/parallax calls.
-	LoadTimeoutMS int `mapstructure:"load_timeout_ms" json:"load_timeout_ms"`
-	Transition         string `mapstructure:"transition" json:"transition"`
-	DurationMS         int    `mapstructure:"duration_ms" json:"duration_ms"`
-	TransitionBezier   string `mapstructure:"transition_bezier" json:"transition_bezier"`
+	LoadTimeoutMS    int    `mapstructure:"load_timeout_ms" json:"load_timeout_ms"`
+	Transition       string `mapstructure:"transition" json:"transition"`
+	DurationMS       int    `mapstructure:"duration_ms" json:"duration_ms"`
+	TransitionBezier string `mapstructure:"transition_bezier" json:"transition_bezier"`
 	// Wipe angle (degrees, 0–359) and grow/outer origin; directional presets ignore angle on the renderer.
 	TransitionAngleDeg             int     `mapstructure:"transition_angle_deg" json:"transition_angle_deg"`
 	TransitionOriginXPct           int     `mapstructure:"transition_origin_x_percent" json:"transition_origin_x_percent"`

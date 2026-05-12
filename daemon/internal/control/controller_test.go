@@ -105,6 +105,54 @@ func TestActivateBackendSwitchesRestoresAndPublishes(t *testing.T) {
 	}
 }
 
+func TestResetBackendConfigToDefaults_UnknownBackend(t *testing.T) {
+	cfg := newFakeConfig("awww")
+	reg := newFakeRegistry(newFakeBackend("awww"))
+	c := NewController(cfg, reg, newFakeBus(), nil)
+
+	err := c.ResetBackendConfigToDefaults(context.Background(), "nope")
+	if !errors.Is(err, ErrUnknownBackend) {
+		t.Fatalf("err = %v, want ErrUnknownBackend", err)
+	}
+}
+
+func TestResetBackendConfigToDefaults_SyncsWhenActive(t *testing.T) {
+	cfg := newFakeConfig("awww")
+	active := newFakeBackend("awww")
+	reg := newFakeRegistry(active)
+	restorer := &fakeRestorer{}
+	c := NewController(cfg, reg, newFakeBus(), restorer)
+
+	if err := c.ResetBackendConfigToDefaults(context.Background(), "awww"); err != nil {
+		t.Fatal(err)
+	}
+	if active.syncCount != 1 {
+		t.Fatalf("active syncCount = %d, want 1", active.syncCount)
+	}
+	if restorer.callCount != 1 {
+		t.Fatalf("restore callCount = %d, want 1", restorer.callCount)
+	}
+}
+
+func TestResetBackendConfigToDefaults_SkipsSyncWhenInactive(t *testing.T) {
+	cfg := newFakeConfig("awww")
+	active := newFakeBackend("awww")
+	inactive := newFakeBackend("feh")
+	reg := newFakeRegistry(active, inactive)
+	restorer := &fakeRestorer{}
+	c := NewController(cfg, reg, newFakeBus(), restorer)
+
+	if err := c.ResetBackendConfigToDefaults(context.Background(), "feh"); err != nil {
+		t.Fatal(err)
+	}
+	if inactive.syncCount != 0 {
+		t.Fatalf("inactive syncCount = %d, want 0", inactive.syncCount)
+	}
+	if restorer.callCount != 0 {
+		t.Fatalf("restore callCount = %d, want 0", restorer.callCount)
+	}
+}
+
 type fakeConfig struct {
 	activeBackend string
 	backendConfig map[string]json.RawMessage
@@ -177,6 +225,19 @@ func (f *fakeConfig) GetDatabaseDir() string {
 
 func (f *fakeConfig) GetLogFile() string {
 	return ""
+}
+
+func (f *fakeConfig) ResetToFactoryDefaults(func(*viper.Viper)) error {
+	return nil
+}
+
+func (f *fakeConfig) ReplaceBackendNamedConfig(name string, values map[string]any) error {
+	raw, err := json.Marshal(values)
+	if err != nil {
+		return err
+	}
+	f.backendConfig[name] = append(json.RawMessage(nil), raw...)
+	return nil
 }
 
 func (f *fakeConfig) wasBackendConfigPersisted(backendName string) bool {

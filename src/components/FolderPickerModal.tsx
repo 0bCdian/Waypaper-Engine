@@ -3,10 +3,10 @@ import type { Folder } from "../../electron/daemon-go-types";
 import { useFoldersStore } from "../stores/foldersStore";
 import { useImagesStore } from "../stores/images";
 import { useFolderPickerStore } from "../stores/folderPickerStore";
-import { useIsNeo } from "../hooks/useIsNeo";
 import { useShallow } from "zustand/react/shallow";
 import { useToastStore } from "../stores/toastStore";
 import { FolderIcon } from "./FolderCard";
+import Modal, { type ModalHandle } from "./Modal";
 import { daemonClient } from "@/client";
 
 async function fetchRootFolders(): Promise<Folder[]> {
@@ -113,9 +113,8 @@ function FolderPickerModal() {
       close: s.close,
     })),
   );
-  const isNeo = useIsNeo();
   const addToast = useToastStore((s) => s.addToast);
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const modalRef = useRef<ModalHandle>(null);
   const [rootFolders, setRootFolders] = useState<Folder[]>([]);
   const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
   const [isCreating, setIsCreating] = useState(false);
@@ -125,9 +124,9 @@ function FolderPickerModal() {
   useEffect(() => {
     if (isOpen) {
       fetchRootFolders().then(setRootFolders);
-      dialogRef.current?.showModal();
+      modalRef.current?.showModal();
     } else {
-      dialogRef.current?.close();
+      modalRef.current?.close();
     }
   }, [isOpen]);
 
@@ -172,125 +171,114 @@ function FolderPickerModal() {
   const isRootSelected = selectedFolderId === null;
 
   return (
-    <dialog ref={dialogRef} className="modal" onClose={close}>
-      <div className={`modal-box max-w-sm ${isNeo ? "neo-card" : ""}`}>
-        <h3 className="text-lg font-bold">Move to folder</h3>
-        <p className="text-sm text-base-content/60 mt-1">Moving {imageIds.length} image(s)</p>
+    <Modal ref={modalRef} onClose={close} className="modal-box max-w-sm">
+      <h3 className="text-lg font-bold">Move to folder</h3>
+      <p className="text-sm text-base-content/60 mt-1">Moving {imageIds.length} image(s)</p>
 
-        <div className="mt-3 max-h-64 overflow-y-auto border border-base-300 rounded-lg">
-          <div
-            className={`flex items-center gap-2 rounded-md px-3 py-2 cursor-pointer transition-colors ${
-              isRootSelected ? "bg-primary/15 text-primary" : "hover:bg-base-200"
-            }`}
-            onClick={() => setSelectedFolderId(null)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") setSelectedFolderId(null);
-            }}
-            role="button"
-            tabIndex={0}
+      <div className="mt-3 max-h-64 overflow-y-auto border border-base-300 rounded-lg">
+        <div
+          className={`flex items-center gap-2 rounded-md px-3 py-2 cursor-pointer transition-colors ${
+            isRootSelected ? "bg-primary/15 text-primary" : "hover:bg-base-200"
+          }`}
+          onClick={() => setSelectedFolderId(null)}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") setSelectedFolderId(null);
+          }}
+          role="button"
+          tabIndex={0}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            className="h-4 w-4"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              className="h-4 w-4"
-            >
-              <path
-                fillRule="evenodd"
-                d="M9.293 2.293a1 1 0 011.414 0l7 7A1 1 0 0117 11h-1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-3a1 1 0 00-1-1H9a1 1 0 00-1 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-6H3a1 1 0 01-.707-1.707l7-7z"
-                clipRule="evenodd"
-              />
-            </svg>
-            <span className="text-sm font-medium">Gallery root</span>
-          </div>
-          {rootFolders.map((folder) => (
-            <FolderTreeItem
-              key={folder.id}
-              folder={folder}
-              level={0}
-              selectedId={selectedFolderId}
-              onSelect={setSelectedFolderId}
+            <path
+              fillRule="evenodd"
+              d="M9.293 2.293a1 1 0 011.414 0l7 7A1 1 0 0117 11h-1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-3a1 1 0 00-1-1H9a1 1 0 00-1 1v3a1 1 0 01-1 1H5a1 1 0 01-1-1v-6H3a1 1 0 01-.707-1.707l7-7z"
+              clipRule="evenodd"
             />
-          ))}
+          </svg>
+          <span className="text-sm font-medium">Gallery root</span>
         </div>
+        {rootFolders.map((folder) => (
+          <FolderTreeItem
+            key={folder.id}
+            folder={folder}
+            level={0}
+            selectedId={selectedFolderId}
+            onSelect={setSelectedFolderId}
+          />
+        ))}
+      </div>
 
-        {isCreating ? (
-          <div className="flex items-center gap-2 mt-3">
-            <input
-              ref={newFolderInputRef}
-              type="text"
-              className="input input-sm input-bordered flex-1"
-              placeholder="Folder name"
-              value={newFolderName}
-              onChange={(e) => setNewFolderName(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") void handleCreateFolder();
-                if (e.key === "Escape") {
-                  setIsCreating(false);
-                  setNewFolderName("");
-                }
-              }}
-              autoFocus
-            />
-            <button
-              type="button"
-              className="btn btn-sm btn-primary"
-              onClick={() => void handleCreateFolder()}
-              disabled={!newFolderName.trim()}
-            >
-              Create
-            </button>
-            <button
-              type="button"
-              className="btn btn-sm btn-ghost"
-              onClick={() => {
+      {isCreating ? (
+        <div className="flex items-center gap-2 mt-3">
+          <input
+            ref={newFolderInputRef}
+            type="text"
+            className="input input-sm input-bordered flex-1"
+            placeholder="Folder name"
+            value={newFolderName}
+            onChange={(e) => setNewFolderName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void handleCreateFolder();
+              if (e.key === "Escape") {
                 setIsCreating(false);
                 setNewFolderName("");
-              }}
-            >
-              Cancel
-            </button>
-          </div>
-        ) : (
+              }
+            }}
+            autoFocus
+          />
           <button
             type="button"
-            className="btn btn-sm btn-ghost gap-1 mt-3"
+            className="btn btn-sm btn-primary"
+            onClick={() => void handleCreateFolder()}
+            disabled={!newFolderName.trim()}
+          >
+            Create
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm btn-ghost"
             onClick={() => {
-              setIsCreating(true);
-              requestAnimationFrame(() => newFolderInputRef.current?.focus());
+              setIsCreating(false);
+              setNewFolderName("");
             }}
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              viewBox="0 0 20 20"
-              fill="currentColor"
-              className="h-4 w-4"
-            >
-              <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
-            </svg>
-            New folder
-          </button>
-        )}
-
-        <div className="modal-action">
-          <button type="button" className={isNeo ? "btn uppercase" : "btn"} onClick={close}>
             Cancel
           </button>
-          <button
-            type="button"
-            className={isNeo ? "btn btn-primary uppercase" : "btn btn-primary"}
-            onClick={() => void handleMove()}
-          >
-            Move here
-          </button>
         </div>
-      </div>
-      <form method="dialog" className="modal-backdrop">
-        <button type="submit" onClick={close}>
-          close
+      ) : (
+        <button
+          type="button"
+          className="btn btn-sm btn-ghost gap-1 mt-3"
+          onClick={() => {
+            setIsCreating(true);
+            requestAnimationFrame(() => newFolderInputRef.current?.focus());
+          }}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+            className="h-4 w-4"
+          >
+            <path d="M10.75 4.75a.75.75 0 00-1.5 0v4.5h-4.5a.75.75 0 000 1.5h4.5v4.5a.75.75 0 001.5 0v-4.5h4.5a.75.75 0 000-1.5h-4.5v-4.5z" />
+          </svg>
+          New folder
         </button>
-      </form>
-    </dialog>
+      )}
+
+      <div className="modal-action">
+        <button type="button" className="btn" onClick={close}>
+          Cancel
+        </button>
+        <button type="button" className="btn btn-primary" onClick={() => void handleMove()}>
+          Move here
+        </button>
+      </div>
+    </Modal>
   );
 }
 

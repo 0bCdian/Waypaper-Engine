@@ -6,13 +6,10 @@ import { calculateMinResolution } from "../utils/utilities";
 import type { monitorSelectType } from "../types/rendererTypes";
 import { useModalStore } from "../stores/modalStore";
 import Modal, { type ModalHandle } from "./Modal";
-import { useIsNeo } from "../hooks/useIsNeo";
 import { cn } from "../utils/cn";
 import { daemonClient } from "@/client";
 
 function Monitors() {
-  const isNeo = useIsNeo();
-
   const { monitorSelection, monitorsList, setMonitorSelection, refreshFromDaemon } =
     useMonitorStore(
       useShallow((s) => ({
@@ -131,7 +128,7 @@ function Monitors() {
 
   const neoFieldset = cn(
     "fieldset bg-base-200 p-4 xl:p-5 2xl:p-6",
-    isNeo ? "rounded-none border-4 border-base-content/20" : "rounded-box border border-base-300",
+    "rounded-[var(--wp-radius-md)] border-[length:var(--wp-border-w)] border-[var(--wp-border-color)]",
   );
 
   return (
@@ -142,18 +139,11 @@ function Monitors() {
       stripedHeader={{
         title: "Choose Display",
         subtitle: "Pick which outputs get wallpapers and whether they mirror or stretch together.",
+        bleedInsetDefault: false,
       }}
-      className={cn(
-        "modal-box flex min-w-max flex-col",
-        isNeo ? "max-h-[92vh] overflow-hidden p-0" : "gap-5 p-6",
-      )}
+      className="modal-box flex min-w-max flex-col max-h-[92vh] overflow-hidden p-0"
     >
-      <div
-        className={cn(
-          "m-auto flex max-w-fit flex-col justify-center gap-4 xl:gap-5 2xl:gap-6",
-          isNeo && "max-h-none min-h-0 flex-1 overflow-y-auto px-6 pb-8 pt-6 md:px-8",
-        )}
-      >
+      <div className="m-auto flex max-w-fit flex-col justify-center gap-6 xl:gap-7 2xl:gap-8 max-h-none min-h-0 flex-1 overflow-y-auto px-6 pb-8 pt-8 md:px-8 md:pt-10">
         <fieldset className={neoFieldset}>
           <legend className="fieldset-legend text-base 2xl:text-lg">Display Mode</legend>
           <select
@@ -216,7 +206,7 @@ function Monitors() {
           <button
             type="button"
             onClick={onSubmit}
-            className={cn("btn btn-primary btn-wide text-xl xl:btn-lg", isNeo ? "" : "rounded-md")}
+            className="btn btn-primary btn-wide text-xl xl:btn-lg rounded-[var(--wp-radius-md)]"
           >
             Save
           </button>

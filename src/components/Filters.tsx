@@ -17,7 +17,6 @@ import { cn } from "../utils/cn";
 import type { Filters as FiltersType } from "../types/rendererTypes";
 import { useImagesStore } from "../stores/images";
 import { useShallow } from "zustand/react/shallow";
-import { useIsNeo } from "../hooks/useIsNeo";
 import { useModalStore } from "../stores/modalStore";
 import { mapFiltersToImageQueryParams } from "../utils/galleryFilterTokens";
 import {
@@ -252,7 +251,6 @@ function Filters() {
     useImagesStore.getState().fetchPage(1, mapFiltersToImageQueryParams(resetFilters));
   }, [filters.advancedFilters, setFilters]);
 
-  const isNeo = useIsNeo();
   const { paletteRefId, paletteRefLabel, paletteMaxDeltaE } = useImagesStore(
     useShallow((s) => {
       const id = s.filters.paletteSimilarToId;
@@ -321,66 +319,40 @@ function Filters() {
     setPartialFilters((p) => ({ ...p, type: next.type, order: next.order }));
   };
 
-  /* react-select classNames — same logic as before */
+  /* react-select classNames — neo-rs-* classes are scoped to [data-design="neobrutalist"], no-ops in modern */
   const filterSelectClassNames = useMemo(
-    () =>
-      isNeo
-        ? {
-            control: ({ isFocused }: { isFocused: boolean }) =>
-              [
-                "neo-rs-control flex min-h-10 flex-wrap items-center gap-1 px-2 py-1",
-                isFocused ? "neo-rs-control--focused" : "",
-              ].join(" "),
-            valueContainer: () => "flex flex-1 flex-wrap gap-1 py-0.5",
-            multiValue: () => "badge badge-primary gap-1 max-w-full",
-            multiValueLabel: () => "text-xs font-extrabold uppercase tracking-tight truncate",
-            multiValueRemove: () =>
-              "hover:bg-primary-focus rounded-none px-0.5 text-lg font-black leading-none opacity-80 hover:opacity-100",
-            input: () => "min-w-[8ch] flex-1 bg-transparent text-sm font-bold outline-none",
-            placeholder: () =>
-              "truncate  text-xs font-black uppercase tracking-tight text-base-content/55 leading-none",
-            menu: () => "neo-rs-menu mt-1 w-full p-0 shadow-none",
-            menuList: () => "neo-rs-menuList max-h-[min(70vh,24rem)] overflow-y-auto py-1",
-            option: ({ isFocused }: { isFocused: boolean }) =>
-              [
-                "neo-rs-option cursor-pointer px-3 py-2 text-xs font-extrabold uppercase tracking-tight",
-                isFocused ? "neo-rs-option--focused" : "",
-              ].join(" "),
-          }
-        : {
-            control: ({ isFocused }: { isFocused: boolean }) =>
-              [
-                "flex min-h-10 flex-wrap items-center gap-1 bg-transparent px-2 py-1",
-                isFocused ? "" : "",
-              ].join(" "),
-            valueContainer: () => "flex flex-1 flex-wrap gap-1 py-0.5",
-            multiValue: () => "badge badge-primary gap-1 max-w-full",
-            multiValueLabel: () => "text-xs font-medium truncate",
-            multiValueRemove: () =>
-              "hover:bg-primary-focus rounded px-0.5 text-base leading-none opacity-70 hover:opacity-100",
-            input: () => "min-w-[8ch] flex-1 bg-transparent text-sm outline-none",
-            placeholder: () => "text-base-content/40 truncate text-sm",
-            menu: () => "mt-1 w-full rounded-lg border border-base-300 bg-base-100 shadow-xl",
-            menuList: () => "max-h-[min(70vh,24rem)] overflow-y-auto py-1",
-            option: ({ isFocused }: { isFocused: boolean }) =>
-              `cursor-pointer px-3 py-2 text-sm ${isFocused ? "bg-base-200" : ""}`,
-          },
-    [isNeo],
+    () => ({
+      control: ({ isFocused }: { isFocused: boolean }) =>
+        [
+          "neo-rs-control flex min-h-10 flex-wrap items-center gap-1 bg-transparent px-2 py-1",
+          isFocused ? "neo-rs-control--focused" : "",
+        ].join(" "),
+      valueContainer: () => "flex flex-1 flex-wrap gap-1 py-0.5",
+      multiValue: () => "badge badge-primary gap-1 max-w-full",
+      multiValueLabel: () => "text-xs font-medium truncate",
+      multiValueRemove: () =>
+        "hover:bg-primary-focus rounded-[var(--wp-radius-sm)] px-0.5 text-base leading-none opacity-70 hover:opacity-100",
+      input: () => "min-w-[8ch] flex-1 bg-transparent text-sm outline-none",
+      placeholder: () => "text-base-content/40 truncate text-sm",
+      menu: () =>
+        "neo-rs-menu mt-1 w-full rounded-[var(--wp-radius-md)] border border-base-300 bg-base-100 shadow-xl p-0",
+      menuList: () => "neo-rs-menuList max-h-[min(70vh,24rem)] overflow-y-auto py-1",
+      option: ({ isFocused }: { isFocused: boolean }) =>
+        [
+          "neo-rs-option cursor-pointer px-3 py-2 text-sm",
+          isFocused ? "neo-rs-option--focused bg-base-200" : "",
+        ].join(" "),
+    }),
+    [],
   );
 
   /* ── Shared button base ─────────────────────────────────────── */
-  const pillBase = isNeo
-    ? "btn btn-sm rounded-none uppercase font-black tracking-tight text-xs"
-    : "btn btn-sm rounded-lg text-xs font-medium";
-
-  const pillActive = isNeo ? "btn-primary" : "btn-primary";
-  const pillIdle = isNeo ? "btn-active" : "btn-ghost text-base-content/70 hover:text-base-content";
+  const pillBase = "btn btn-sm text-xs rounded-[var(--wp-radius-md)]";
+  const pillActive = "btn-primary";
+  const pillIdle = "btn-ghost text-base-content/70 hover:text-base-content";
 
   return (
-    <section
-      data-prevent-gallery-marquee="true"
-      className={`px-4 pt-3 pb-2${isNeo ? " neo-filters-strip" : ""}`}
-    >
+    <section data-prevent-gallery-marquee="true" className="px-4 pt-3 pb-2 neo-filters-strip">
       <div className="mx-auto flex w-full max-w-[90rem] flex-col items-center justify-center gap-3 md:flex-row md:flex-wrap md:gap-x-4">
         {/* Media / sort / advanced — grouped and centered with search */}
         <div className="flex w-full flex-wrap items-center justify-center gap-1 md:w-auto md:shrink-0">
@@ -414,19 +386,11 @@ function Filters() {
         </div>
 
         <div className="w-full min-w-0 md:max-w-4xl md:flex-1">
-          <div
-            className={`relative flex w-full items-center gap-0 overflow-visible ${
-              isNeo
-                ? "neo-rs-control-wrapper"
-                : "rounded-xl bg-base-200 border border-base-content/10 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-1 focus-within:ring-offset-base-100"
-            }`}
-          >
+          {/* neo-rs-control-wrapper scoped to [data-design="neobrutalist"]; modern classes are the base */}
+          <div className="neo-rs-control-wrapper relative flex w-full items-center gap-0 overflow-visible rounded-[var(--wp-radius-lg)] bg-base-200 border border-base-content/10 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-1 focus-within:ring-offset-base-100">
             {/* Search icon */}
             <svg
-              className={cn(
-                "ml-3 h-4 w-4 shrink-0",
-                isNeo ? "neo-search-inline-icon" : "text-base-content/40",
-              )}
+              className="ml-3 h-4 w-4 shrink-0 neo-search-inline-icon text-base-content/40"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -488,19 +452,13 @@ function Filters() {
               <div
                 className={cn(
                   "animate-fade-in hidden min-h-0 shrink-0 items-center justify-center border-base-content/20 py-0 md:flex md:self-stretch",
-                  "border-l pl-2 pr-1",
-                  isNeo && "border-current/40 border-l-2 pl-2",
+                  "border-l-[length:var(--wp-border-w)] border-current/40 pl-2 pr-1",
                 )}
                 title={`Similar palette: ${paletteRefLabel}. Lower ΔE is stricter; higher includes more images.`}
               >
                 <div className="flex min-h-0 flex-1 items-center gap-1.5 lg:gap-2">
                   <span
-                    className={cn(
-                      "max-w-[4.25rem] truncate leading-none lg:max-w-[6rem]",
-                      isNeo
-                        ? "text-[9px] font-black uppercase tracking-tight"
-                        : "text-[11px] font-medium text-base-content/90",
-                    )}
+                    className="max-w-[4.25rem] truncate leading-none lg:max-w-[6rem] text-[11px] font-medium text-base-content/90"
                     title={paletteRefLabel}
                   >
                     {paletteRefLabel}
@@ -528,10 +486,7 @@ function Filters() {
                     }}
                   />
                   <span
-                    className={cn(
-                      "w-6 shrink-0 text-center tabular-nums leading-none lg:w-7",
-                      isNeo ? "text-[10px] font-black" : "text-[10px] font-semibold opacity-90",
-                    )}
+                    className="w-6 shrink-0 text-center tabular-nums leading-none lg:w-7 text-[10px] font-semibold opacity-90"
                     title={`ΔE ≤ ${paletteDeltaDraft}`}
                   >
                     {paletteDeltaDraft}
@@ -540,10 +495,7 @@ function Filters() {
                     type="button"
                     className={cn(
                       "btn btn-ghost btn-xs shrink-0 border-0 px-0 font-bold leading-none",
-                      "min-h-8 min-w-8",
-                      isNeo
-                        ? "rounded-none hover:bg-base-content/15"
-                        : "rounded-md hover:bg-base-content/10",
+                      "min-h-8 min-w-8 rounded-[var(--wp-radius-sm)] hover:bg-base-content/10",
                     )}
                     aria-label="Clear similar palette filter"
                     onClick={clearPaletteSimilar}
@@ -555,22 +507,13 @@ function Filters() {
             )}
 
             {/* Trailing actions: clear + help */}
-            <div
-              className={cn(
-                "flex items-center shrink-0",
-                isNeo ? "gap-2 pr-2 pl-1" : "gap-0.5 pr-1.5",
-              )}
-            >
+            <div className="flex items-center shrink-0 gap-1 pr-2 pl-1">
               {hasActiveSearch && (
                 <button
                   type="button"
                   onClick={clearAll}
                   aria-label="Clear search and history"
-                  className={cn(
-                    isNeo
-                      ? "neo-search-action"
-                      : "flex items-center justify-center w-7 h-7 rounded-md text-base-content/40 hover:text-base-content hover:bg-base-content/8 transition-colors duration-100",
-                  )}
+                  className="neo-search-action flex items-center justify-center w-7 h-7 rounded-[var(--wp-radius-sm)] text-base-content/40 hover:text-base-content hover:bg-base-content/8 transition-colors duration-100"
                   title="Clear search tokens and history"
                 >
                   <svg
@@ -593,11 +536,7 @@ function Filters() {
                 type="button"
                 onClick={() => useModalStore.getState().open("GalleryFilterCheatsheetModal")}
                 aria-label="Filter syntax help"
-                className={cn(
-                  isNeo
-                    ? "neo-search-action"
-                    : "flex items-center justify-center w-7 h-7 rounded-md text-base-content/30 hover:text-base-content/70 hover:bg-base-content/8 transition-colors duration-100",
-                )}
+                className="neo-search-action flex items-center justify-center w-7 h-7 rounded-[var(--wp-radius-sm)] text-base-content/30 hover:text-base-content/70 hover:bg-base-content/8 transition-colors duration-100"
                 title="Filter syntax help"
               >
                 <svg
@@ -622,9 +561,7 @@ function Filters() {
               <div
                 className={cn(
                   "animate-fade-in md:hidden absolute left-0 right-0 top-[calc(100%+0.35rem)] z-[45]",
-                  "rounded-lg border border-base-content/15 bg-base-100/95 p-2.5 shadow-lg backdrop-blur-sm",
-                  isNeo &&
-                    "rounded-none border-2 border-current bg-base-100 shadow-[4px_4px_0_0_var(--neo-shadow-color,#000)]",
+                  "rounded-[var(--wp-radius-md)] border border-base-content/15 bg-base-100/95 p-2.5 shadow-lg backdrop-blur-sm",
                 )}
                 role="region"
                 aria-label="Similar palette filter"
@@ -632,10 +569,7 @@ function Filters() {
               >
                 <div className="mb-2 flex items-center gap-2">
                   <span
-                    className={cn(
-                      "min-w-0 flex-1 truncate font-medium leading-tight",
-                      isNeo ? "text-[11px] font-black uppercase tracking-tight" : "text-xs",
-                    )}
+                    className="min-w-0 flex-1 truncate font-medium leading-tight text-xs"
                     title={paletteRefLabel}
                   >
                     Similar · {paletteRefLabel}
@@ -644,10 +578,7 @@ function Filters() {
                     type="button"
                     className={cn(
                       "btn btn-ghost btn-xs shrink-0 border-0 px-0 font-bold leading-none",
-                      "min-h-8 min-w-8",
-                      isNeo
-                        ? "rounded-none hover:bg-base-content/15"
-                        : "rounded-md hover:bg-base-content/10",
+                      "min-h-8 min-w-8 rounded-[var(--wp-radius-sm)] hover:bg-base-content/10",
                     )}
                     aria-label="Clear similar palette filter"
                     onClick={clearPaletteSimilar}
@@ -657,13 +588,7 @@ function Filters() {
                 </div>
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center justify-between gap-2 opacity-80">
-                    <span
-                      className={cn(
-                        isNeo ? "text-[9px] font-black uppercase tracking-wider" : "text-[11px]",
-                      )}
-                    >
-                      Closeness · ΔE ≤ {paletteDeltaDraft}
-                    </span>
+                    <span className="text-[11px]">Closeness · ΔE ≤ {paletteDeltaDraft}</span>
                   </div>
                   <input
                     id={`${paletteDeltaSliderId}-touch`}
@@ -687,12 +612,7 @@ function Filters() {
                       commitPaletteDeltaE(Number((e.currentTarget as HTMLInputElement).value));
                     }}
                   />
-                  <div
-                    className={cn(
-                      "flex justify-between opacity-55",
-                      isNeo ? "text-[9px] font-black uppercase tracking-wider" : "text-[11px]",
-                    )}
-                  >
+                  <div className="flex justify-between opacity-55 text-[11px]">
                     <span>Tighter</span>
                     <span>Looser</span>
                   </div>

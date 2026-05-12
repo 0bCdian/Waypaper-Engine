@@ -7,7 +7,6 @@ import {
   SETTINGS_NAV_SECTION_IDS,
 } from "@/utils/settingsNavStorage";
 import { useSettingsStore } from "@/stores/settingsStore";
-import { useIsNeo } from "@/hooks/useIsNeo";
 import { useShallow } from "zustand/react/shallow";
 import SettingsSearch from "./SettingsSearch";
 import AppSettingsSection from "./sections/AppSettingsSection";
@@ -146,7 +145,6 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className, isModal =
     })),
   );
 
-  const isNeo = useIsNeo();
   const [activeSection, setActiveSection] = useState<ConfigSection>(
     () => readPersistedSettingsSection() ?? "app",
   );
@@ -179,19 +177,9 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className, isModal =
     return (
       <div className={cn("h-full w-full flex flex-row", className)}>
         {/* Left rail */}
-        <aside
-          className={cn(
-            "shrink-0 w-48 flex flex-col",
-            isNeo ? "neo-settings-rail" : "border-r border-base-content/8 bg-base-200/60",
-          )}
-        >
+        <aside className="shrink-0 w-48 flex flex-col neo-settings-rail border-r border-base-content/8 bg-base-200/60">
           {/* Search */}
-          <div
-            className={cn(
-              "p-3",
-              isNeo ? "neo-settings-search-wrap" : "border-b border-base-content/5",
-            )}
-          >
+          <div className="p-3 neo-settings-search-wrap border-b border-base-content/5">
             <SettingsSearch
               searchTerm={searchTerm}
               onSearchChange={setSearchTerm}
@@ -202,12 +190,7 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className, isModal =
           </div>
 
           {/* Nav */}
-          <nav
-            className={cn(
-              "flex flex-col flex-1 overflow-y-auto",
-              isNeo ? "py-2 px-2 gap-1" : "py-2 px-2 gap-0.5",
-            )}
-          >
+          <nav className="flex flex-col flex-1 overflow-y-auto py-2 px-2 gap-1">
             {visibleNav.map((item) => (
               <button
                 key={item.id}
@@ -215,14 +198,10 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className, isModal =
                 onClick={() => selectSection(item.id)}
                 className={cn(
                   "flex items-center gap-2.5 px-3 py-2 text-left w-full",
-                  !isNeo && "rounded-lg text-sm transition-colors",
+                  "rounded-[var(--wp-radius-sm)] text-sm transition-colors",
                   activeSection === item.id
-                    ? isNeo
-                      ? "neo-settings-nav-active"
-                      : "bg-primary/12 text-primary font-medium"
-                    : isNeo
-                      ? "neo-settings-nav-link"
-                      : "text-base-content/60 hover:bg-base-content/5 hover:text-base-content",
+                    ? "neo-settings-nav-active bg-primary/12 text-primary font-medium"
+                    : "neo-settings-nav-link text-base-content/60 hover:bg-base-content/5 hover:text-base-content",
                 )}
               >
                 <span className="shrink-0 opacity-70">{item.icon}</span>
@@ -233,14 +212,7 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className, isModal =
 
           {/* Error badge */}
           {errors.length > 0 && (
-            <div
-              className={cn(
-                "p-3",
-                isNeo
-                  ? "border-t-[length:var(--neo-border-width)] border-t-black"
-                  : "border-t border-base-content/5",
-              )}
-            >
+            <div className="p-3 border-t border-[length:var(--wp-border-w)] border-base-content/10">
               <div className="flex items-center gap-2 text-error text-xs font-bold uppercase tracking-wide">
                 <svg className="w-3.5 h-3.5 shrink-0" fill="currentColor" viewBox="0 0 20 20">
                   <path
@@ -275,7 +247,6 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className, isModal =
           "shrink-0 flex border-base-content/10 bg-base-100",
           "flex-row lg:flex-col lg:w-56 xl:w-64 lg:border-r",
           "border-b lg:border-b-0",
-          isNeo && "lg:border-r-2 border-base-content/80",
         )}
       >
         <div className="hidden lg:block p-3 border-b border-base-content/5">

@@ -44,10 +44,6 @@ vi.mock("../../stores/images", () => ({
     selector({ imagesMap: mockImagesMap }),
 }));
 
-vi.mock("../../hooks/useIsNeo", () => ({
-  useIsNeo: () => false,
-}));
-
 vi.mock("../../utils/utilities", () => ({
   getThumbnailSrc: (image: { name: string }) => `/thumbs/${image.name}`,
 }));

@@ -6,11 +6,9 @@ import { parseResolution } from "../utils/utilities";
 import type { advancedFilters, resolutionConstraints } from "../types/rendererTypes";
 import Modal, { type ModalHandle } from "./Modal";
 import { useModalStore } from "../stores/modalStore";
-import { useIsNeo } from "../hooks/useIsNeo";
 import { cn } from "../utils/cn";
 
 const AdvancedFiltersModal = () => {
-  const isNeo = useIsNeo();
   const containerRef = useRef<ModalHandle>(null);
 
   useEffect(() => {
@@ -62,7 +60,7 @@ const AdvancedFiltersModal = () => {
 
   const neoFieldset = cn(
     "fieldset bg-base-200 p-4 xl:p-5 2xl:p-6",
-    isNeo ? "rounded-none border-4 border-base-content/20" : "rounded-box border border-base-300",
+    "rounded-[var(--wp-radius-md)] border-[length:var(--wp-border-w)] border-[var(--wp-border-color)]",
   );
 
   const innerForm = (
@@ -172,19 +170,13 @@ const AdvancedFiltersModal = () => {
         title: "Advanced Filters",
         subtitle:
           "Constrain resolutions here; combine with tokens in the gallery bar for tags, extensions, colours, and text search.",
+        bleedInsetDefault: false,
       }}
-      className={cn(
-        "modal-box flex max-w-lg flex-col xl:max-w-xl 2xl:max-w-2xl",
-        isNeo ? "max-h-[90vh] overflow-hidden p-0" : "gap-4 p-6",
-      )}
+      className="modal-box flex max-w-lg flex-col xl:max-w-xl 2xl:max-w-2xl max-h-[90vh] overflow-hidden p-0"
     >
-      {isNeo ? (
-        <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 pb-8 pt-8">
-          {innerForm}
-        </div>
-      ) : (
-        innerForm
-      )}
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 pb-8 pt-8">
+        {innerForm}
+      </div>
     </Modal>
   );
 };

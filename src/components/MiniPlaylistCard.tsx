@@ -10,8 +10,9 @@ import { LazyMotion, m, domAnimation, useReducedMotion } from "framer-motion";
 import useDebounceCallback from "../hooks/useDebounceCallback";
 import type { PlaylistImage } from "../../electron/daemon-go-types";
 import type { DragSourceData } from "../stores/dragStore";
-import { useIsNeo } from "../hooks/useIsNeo";
 import { useContextMenuStore } from "../stores/contextMenuStore";
+import { cn } from "../utils/cn";
+import { Card } from "./ui/Card";
 import { buildPlaylistCardMenuItems } from "../utils/contextMenuItems";
 import { getThumbnailSrc } from "../utils/utilities";
 import { miniPlaylistStripTileWidths } from "../utils/playlistMiniCardLayout";
@@ -52,7 +53,6 @@ function MiniPlaylistCard({
     })),
   );
   const imagesMap = useImagesStore((s) => s.imagesMap);
-  const isNeo = useIsNeo();
   const reduceMotion = useReducedMotion();
   const openContextMenu = useContextMenuStore((s) => s.open);
   const monitorsList = useMonitorStore((s) => s.monitorsList);
@@ -75,7 +75,11 @@ function MiniPlaylistCard({
     }),
     [playlistImage.image_id, index],
   );
-  const { ref: sortableRef, targetRef, isDragging } = useSortable({
+  const {
+    ref: sortableRef,
+    targetRef,
+    isDragging,
+  } = useSortable({
     id: playlistImage.image_id,
     index,
     /** Shared sortable group so indices ↔ neighbours ; pairs with strip droppable Lowest priority. */
@@ -146,28 +150,22 @@ function MiniPlaylistCard({
   const hasCaption = type === "time_of_day" || type === "day_of_week";
 
   const stripWidths = miniPlaylistStripTileWidths(viewportCompact);
-  const cardClass = isNeo
-    ? `mx-1 mb-2 shrink-0 neo-mini-card${isCurrentTrack ? " neo-mini-card--current" : ""} ${stripWidths}`
-    : `mx-1 mb-2 shrink-0 rounded-lg shadow-xl transition-shadow duration-300 ease-out motion-reduce:transition-none${
-        isCurrentTrack ? " z-[2] shadow-[0_14px_28px_-6px_rgba(0,0,0,0.28)]" : ""
-      } ${stripWidths}`;
+  const cardClass = cn(
+    "mx-1 mb-2 shrink-0 relative group neo-mini-card rounded-[var(--wp-radius-md)] shadow-xl transition-shadow duration-300 ease-out motion-reduce:transition-none",
+    stripWidths,
+    isCurrentTrack && "neo-mini-card--current z-[2] shadow-[0_14px_28px_-6px_rgba(0,0,0,0.28)]",
+  );
 
-  const imgClass = isNeo
-    ? `w-full aspect-[3/2] object-cover cursor-default transition-all active:scale-105 active:opacity-45${hasCaption ? "" : " rounded-none"}`
-    : `w-full aspect-[3/2] object-cover cursor-default transition-all active:scale-105 active:opacity-45${hasCaption ? " rounded-t-lg" : " rounded-lg shadow-2xl"}`;
+  const imgClass = cn(
+    "w-full aspect-[3/2] object-cover cursor-default transition-all active:scale-105 active:opacity-45",
+    hasCaption ? "rounded-t-[var(--wp-radius-md)]" : "rounded-[var(--wp-radius-md)]",
+  );
 
-  const removeButton = isNeo ? (
-    <button type="button" onClick={onRemove} className="neo-remove-btn">
-      <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-        <title>Remove</title>
-        <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
-      </svg>
-    </button>
-  ) : (
+  const removeButton = (
     <button
       type="button"
       onClick={onRemove}
-      className="absolute right-0 top-0 cursor-default rounded-md opacity-0 transition-all hover:bg-error hover:opacity-100"
+      className="neo-remove-btn absolute right-0 top-0 cursor-default rounded-[var(--wp-radius-sm)] opacity-0 transition-all hover:bg-error hover:opacity-100 group-hover:opacity-100"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -175,10 +173,11 @@ function MiniPlaylistCard({
         fill="none"
         viewBox="0 0 24 24"
       >
+        <title>Remove</title>
         <path
           strokeLinecap="round"
           strokeLinejoin="round"
-          strokeWidth="3"
+          strokeWidth="2"
           d="M6 18L18 6M6 6l12 12"
         />
       </svg>
@@ -186,9 +185,7 @@ function MiniPlaylistCard({
   );
 
   const captionPad = viewportCompact ? "px-1 py-1" : "px-1.5 py-1.5";
-  const captionClass = isNeo
-    ? `${captionPad} flex flex-col items-center gap-0.5`
-    : `${captionPad} flex flex-col items-center gap-0.5 bg-base-200/60 rounded-b-lg`;
+  const captionClass = `${captionPad} flex flex-col items-center gap-0.5 bg-base-200/60 rounded-b-[var(--wp-radius-md)]`;
 
   const liftPx = viewportCompact ? 8 : 12;
 
@@ -213,8 +210,9 @@ function MiniPlaylistCard({
             },
           }}
         >
-          <div
+          <Card
             ref={targetRef}
+            elevation={0}
             className={`${cardClass}${isDragging ? " opacity-50" : ""}`}
             onContextMenu={handleContextMenu}
             aria-current={isCurrentTrack ? "true" : undefined}
@@ -223,11 +221,8 @@ function MiniPlaylistCard({
             tabIndex={isCurrentTrack ? -1 : undefined}
             title={isCurrentTrack ? "Current wallpaper" : undefined}
           >
-            {/* Neo: button sits on the card (overflow:visible), image is clipped separately */}
-            {isNeo && removeButton}
-            <div className={isNeo ? "overflow-hidden" : "relative"}>
-              {/* Non-neo: button inside the relative wrapper */}
-              {!isNeo && removeButton}
+            {removeButton}
+            <div className="overflow-hidden">
               {imageSrc ? (
                 <img
                   src={imageSrc}
@@ -279,7 +274,7 @@ function MiniPlaylistCard({
                 </span>
               </div>
             )}
-          </div>
+          </Card>
         </m.div>
       </m.div>
     </LazyMotion>

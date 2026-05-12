@@ -2,19 +2,7 @@ import React from "react";
 import { describe, it, expect, vi, beforeAll } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
-import Modal, { type ModalHandle } from "../Modal";
-
-vi.mock("../hooks/useIsNeo", () => ({
-  useIsNeo: () => false,
-}));
-
-vi.mock("../NeoCloseButton", () => ({
-  default: ({ onClick }: { onClick: () => void }) => (
-    <button data-testid="close-btn" onClick={onClick} type="button">
-      X
-    </button>
-  ),
-}));
+import Modal, { ModalHeader, type ModalHandle } from "../Modal";
 
 beforeAll(() => {
   HTMLDialogElement.prototype.showModal = vi.fn();
@@ -66,7 +54,7 @@ describe("Modal", () => {
       </Modal>,
     );
 
-    await user.click(screen.getByTestId("close-btn"));
+    await user.click(screen.getByLabelText("Close", { selector: "button" }));
     expect(onClose).toHaveBeenCalledOnce();
   });
 
@@ -84,13 +72,19 @@ describe("Modal", () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
-  it("does not render floating NeoClose when stripedHeader is set", () => {
-    render(
+  it("does not render floating close button when stripedHeader is set", () => {
+    const { container } = render(
       <Modal stripedHeader={{ title: "T" }}>
         <p>Content</p>
       </Modal>,
     );
 
-    expect(screen.queryByTestId("close-btn")).not.toBeInTheDocument();
+    // Header provides its own CloseButton; the floating one must not also appear
+    expect(container.querySelectorAll(".wp-close-btn")).toHaveLength(1);
+  });
+
+  it("Modal.Header renders striped header chrome", () => {
+    const { container } = render(<ModalHeader title="Hi" onClose={() => {}} />);
+    expect(container.querySelector(".wp-modal__header--striped")).toBeTruthy();
   });
 });

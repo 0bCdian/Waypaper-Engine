@@ -14,7 +14,6 @@ import { useImageDetailStore } from "../stores/imageDetailStore";
 import { useImagesStore } from "../stores/images";
 import { useShallow } from "zustand/react/shallow";
 import { useToastStore } from "../stores/toastStore";
-import { useIsNeo } from "../hooks/useIsNeo";
 import { webPreviewPlaybackKind } from "../utils/webPreviewPlayback";
 import { playMutedVideoWhenReady } from "../utils/videoPreview";
 import type {
@@ -148,10 +147,7 @@ function clampPalettePopoverPosition(anchor: DOMRect): { left: number; top: numb
   }
   top = Math.max(
     PALETTE_POPOVER_VIEW_MARGIN,
-    Math.min(
-      top,
-      window.innerHeight - PALETTE_POPOVER_EST_HEIGHT - PALETTE_POPOVER_VIEW_MARGIN,
-    ),
+    Math.min(top, window.innerHeight - PALETTE_POPOVER_EST_HEIGHT - PALETTE_POPOVER_VIEW_MARGIN),
   );
 
   return { left, top };
@@ -241,11 +237,7 @@ function hslToRgb255(h: number, s: number, light: number): [number, number, numb
   else if (hh < 240) [rp, gp, bp] = [0, x, c];
   else if (hh < 300) [rp, gp, bp] = [x, 0, c];
   else [rp, gp, bp] = [c, 0, x];
-  return [
-    Math.round((rp + m) * 255),
-    Math.round((gp + m) * 255),
-    Math.round((bp + m) * 255),
-  ];
+  return [Math.round((rp + m) * 255), Math.round((gp + m) * 255), Math.round((bp + m) * 255)];
 }
 
 /** Stable ordered dedupe; skips blanks and invalid tokens */
@@ -617,11 +609,9 @@ function DetailHoverVideo({ src, poster }: { src: string; poster?: string }) {
 function PalettePopoverColorFields({
   draftHex,
   onPickHex,
-  isNeo,
 }: {
   draftHex: string;
   onPickHex: (hex: string) => void;
-  isNeo: boolean;
 }) {
   const canonicalDraft = useMemo(() => canonicalHex(draftHex) ?? "#000000", [draftHex]);
 
@@ -638,10 +628,7 @@ function PalettePopoverColorFields({
   const [lField, setLField] = useState("0");
 
   const syncAllFromHex = useCallback((hex: string) => {
-    const c =
-      canonicalHex(hex.trim()) ??
-      canonicalHex(colorPickerValue(hex.trim())) ??
-      "#000000";
+    const c = canonicalHex(hex.trim()) ?? canonicalHex(colorPickerValue(hex.trim())) ?? "#000000";
     const t = hexToRgbTuple(c);
     setHexField(c);
     if (t) {
@@ -716,7 +703,8 @@ function PalettePopoverColorFields({
     }
   }, [hField, sField, lField, pushValidHex, syncAllFromHex, canonicalDraft]);
 
-  const inputCls = `input input-bordered input-xs min-w-0 w-full font-mono tabular-nums ${isNeo ? "rounded-none" : ""}`;
+  const inputCls =
+    "input input-bordered input-xs min-w-0 w-full font-mono tabular-nums rounded-[var(--wp-radius-sm)]";
   const labelCls =
     "mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-base-content/55";
 
@@ -836,7 +824,6 @@ function PalettePopoverColorFields({
 
 function PaletteSwatchChip({
   fill,
-  isNeo,
   title,
   ariaLabelCopy,
   ariaLabelRemove,
@@ -845,7 +832,6 @@ function PaletteSwatchChip({
   onRemove,
 }: {
   fill: string;
-  isNeo: boolean;
   title: string;
   ariaLabelCopy: string;
   ariaLabelRemove: string;
@@ -881,11 +867,7 @@ function PaletteSwatchChip({
     <div className="group relative h-8 w-8 shrink-0 focus-within:z-[1]">
       <button
         type="button"
-        className={`relative z-10 h-full w-full shrink-0 border shadow-sm transition-[transform,box-shadow,ring-color] hover:-translate-y-px hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-base-200 ${
-          isNeo
-            ? "rounded-none border-2 border-base-content/35 shadow-[3px_3px_0_0_color-mix(in_oklab,var(--fallback-bc,oklch(var(--bc))),18%),transparent)]"
-            : "rounded-lg border-base-content/25"
-        }`}
+        className="relative z-10 h-full w-full shrink-0 border-[var(--wp-border-w)] border-[var(--wp-border-color)] rounded-[var(--wp-radius-md)] shadow-[var(--wp-elev-1)] transition-[transform,box-shadow,ring-color] hover:-translate-y-px hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-base-200"
         style={{ backgroundColor: fill }}
         title={title}
         aria-label={ariaLabelCopy}
@@ -898,9 +880,7 @@ function PaletteSwatchChip({
       />
       <button
         type="button"
-        className={`btn btn-ghost btn-square absolute -right-1.5 -top-1.5 min-h-0 h-5 w-5 border bg-base-100 p-0 text-xs leading-none opacity-0 shadow-sm transition-opacity hover:bg-error/15 hover:text-error group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary ${
-          isNeo ? "rounded-none border-base-content/40" : "rounded-full border-base-300"
-        }`}
+        className="btn btn-ghost btn-square absolute -right-1.5 -top-1.5 min-h-0 h-5 w-5 border-[var(--wp-border-w)] border-[var(--wp-border-color)] rounded-[var(--wp-radius-md)] bg-base-100 p-0 text-xs leading-none opacity-0 shadow-sm transition-opacity hover:bg-error/15 hover:text-error group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         aria-label={ariaLabelRemove}
         title="Remove"
         onClick={(e) => {
@@ -941,7 +921,6 @@ function ImageDetailSidebar() {
   const openDetailFromConfigForm = useCallback((img: DaemonImage) => {
     useImageDetailStore.getState().open(img);
   }, []);
-  const isNeo = useIsNeo();
   const [tags, setTags] = useState<string[]>([]);
   const [editColors, setEditColors] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
@@ -1245,9 +1224,9 @@ function ImageDetailSidebar() {
         aria-label="close sidebar"
       />
       <div
-        className={`fixed inset-y-0 right-0 z-50 flex w-full lg:w-[min(32rem,calc(100vw-2rem))] flex-col border-l border-base-300 bg-base-200 shadow-xl transition-transform duration-300 ease-in-out ${
+        className={`neo-card fixed inset-y-0 right-0 z-50 flex w-full lg:w-[min(32rem,calc(100vw-2rem))] flex-col border-l border-base-300 bg-base-200 shadow-xl transition-transform duration-300 ease-in-out ${
           isOpen ? "translate-x-0" : "translate-x-full"
-        } ${isNeo ? "neo-card" : ""}`}
+        }`}
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-base-300 px-4 py-3">
@@ -1377,20 +1356,18 @@ function ImageDetailSidebar() {
               <p className="text-[10px] leading-snug text-base-content/50">
                 Hex swatches stored on the gallery row and included in{" "}
                 <code className="text-[10px]">wallpaper_changed</code> when non-empty — useful for
-                hooks / ricing. Click a swatch to copy; double-click to edit color; hover for remove.
+                hooks / ricing. Click a swatch to copy; double-click to edit color; hover for
+                remove.
               </p>
               <div ref={paletteRowAnchorRef} className="flex flex-wrap items-center gap-2">
                 {editColors.map((c, i) => (
                   <PaletteSwatchChip
                     key={i}
                     fill={swatchCssFill(c)}
-                    isNeo={isNeo}
                     title="Copy hex · double-click to edit"
                     ariaLabelCopy={`Palette color ${i + 1}, click to copy`}
                     ariaLabelRemove={`Remove color ${i + 1}`}
-                    onCopy={() =>
-                      void copyPaletteColor(canonicalHex(c.trim()) ?? c.trim())
-                    }
+                    onCopy={() => void copyPaletteColor(canonicalHex(c.trim()) ?? c.trim())}
                     onOpenColorPopover={() => openPalettePopoverReplace(i, c)}
                     onRemove={() => removePaletteColor(i)}
                   />
@@ -1398,11 +1375,7 @@ function ImageDetailSidebar() {
                 <button
                   type="button"
                   disabled={editColors.length >= MAX_PALETTE_COLORS}
-                  className={`flex h-8 w-8 shrink-0 items-center justify-center border border-dashed border-base-content/30 text-lg font-light leading-none text-base-content/45 transition-colors hover:border-primary/45 hover:bg-primary/8 hover:text-primary disabled:pointer-events-none disabled:opacity-35 ${
-                    isNeo
-                      ? "rounded-none shadow-[2px_2px_0_0_color-mix(in_oklab,var(--fallback-bc,oklch(var(--bc))),12%),transparent)]"
-                      : "rounded-lg"
-                  }`}
+                  className="flex h-8 w-8 shrink-0 items-center justify-center border border-dashed border-base-content/30 rounded-[var(--wp-radius-md)] shadow-[var(--wp-elev-1)] text-lg font-light leading-none text-base-content/45 transition-colors hover:border-primary/45 hover:bg-primary/8 hover:text-primary disabled:pointer-events-none disabled:opacity-35"
                   aria-label="Add palette color"
                   title={
                     editColors.length >= MAX_PALETTE_COLORS
@@ -1522,11 +1495,7 @@ function ImageDetailSidebar() {
               aria-label={
                 palettePopover.mode === "add" ? "Add palette color" : "Edit palette color"
               }
-              className={`fixed z-[200] border border-base-300 bg-base-100 p-3 shadow-2xl outline-none ${
-                isNeo
-                  ? "rounded-none shadow-[4px_4px_0_0_color-mix(in_oklab,var(--fallback-bc,oklch(var(--bc))),14%),transparent)]"
-                  : "rounded-xl"
-              }`}
+              className="fixed z-[200] border border-base-300 bg-base-100 p-3 shadow-[var(--wp-elev-3)] outline-none rounded-[var(--wp-radius-lg)]"
               style={{
                 left: palettePopoverPosition.left,
                 top: palettePopoverPosition.top,
@@ -1543,11 +1512,10 @@ function ImageDetailSidebar() {
               <PalettePopoverColorFields
                 draftHex={palettePopover.draftHex}
                 onPickHex={handlePopoverColorChange}
-                isNeo={isNeo}
               />
               <button
                 type="button"
-                className={`btn btn-primary btn-sm mt-3 w-full ${isNeo ? "rounded-none" : ""}`}
+                className="btn btn-primary btn-sm mt-3 w-full"
                 onClick={closePalettePopover}
               >
                 Done

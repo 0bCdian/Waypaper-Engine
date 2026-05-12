@@ -75,6 +75,8 @@ beforeEach(() => {
       advancedFilters: {
         resolution: { constraint: "all", width: 0, height: 0 },
       },
+      paletteSimilarToId: null,
+      paletteSimilarMaxDeltaE: 10,
     },
   };
   mockFoldersState = {

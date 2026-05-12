@@ -112,7 +112,9 @@ func NewRouter(h Handlers, bus events.Bus) *chi.Mux {
 	r.Route("/config", func(r chi.Router) {
 		r.Get("/", h.Config.GetConfig)
 		r.Patch("/", h.Config.PatchConfig)
+		r.Post("/reset", h.Config.PostResetAll)
 		r.Get("/backends/{backend}", h.Config.GetNamedBackendConfig)
+		r.Post("/backends/{backend}/reset", h.Config.PostResetNamedBackendConfig)
 		r.Patch("/backends/{backend}", h.Config.PatchNamedBackendConfig)
 		r.Get("/{section}", h.Config.GetSection)
 		r.Patch("/{section}", h.Config.PatchSection)
@@ -132,11 +134,11 @@ func NewRouter(h Handlers, bus events.Bus) *chi.Mux {
 	})
 
 	// User themes (drop-in CSS palettes from ~/.config/waypaper-engine/themes/).
+	// Register on the root mux: under a nested Route, chi matches GET "/api/themes/" for
+	// r.Get("/") but not GET "/api/themes" (no trailing slash), which yields 404 for the renderer.
 	if h.Themes != nil {
-		r.Route("/api/themes", func(r chi.Router) {
-			r.Get("/", h.Themes.List)
-			r.Get("/{name}.css", h.Themes.Get)
-		})
+		r.Get("/api/themes", h.Themes.List)
+		r.Get("/api/themes/{name}.css", h.Themes.Get)
 	}
 
 	return r

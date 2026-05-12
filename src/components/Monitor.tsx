@@ -6,6 +6,7 @@ import { calculateMinResolution, getThumbnailSrc } from "../utils/utilities";
 import { logger } from "../utils/logger";
 import { resolveWallpaperImageId } from "../utils/resolveWallpaperImageId";
 import { daemonClient } from "@/client";
+import { cn } from "@/utils/cn";
 
 interface props {
   monitor: StoreMonitor;
@@ -201,7 +202,10 @@ export function MonitorComponent({ monitor, scale, selectType, monitorsList, ref
         )}
         <div
           draggable={false}
-          className="absolute left-0 top-0 bg-base-content/70 px-2 py-1 md:text-lg xl:text-3xl text-base-100"
+          className={cn(
+            "neo-monitor-chip absolute left-0 top-0 px-2 py-1 md:text-lg xl:text-3xl",
+            "bg-base-content/70 font-mono text-base-100",
+          )}
         >
           {monitor.name}
         </div>

@@ -58,10 +58,6 @@ vi.mock("../../utils/utilities", () => ({
   calculateMinResolution: () => ({ x: 1920, y: 1080 }),
 }));
 
-vi.mock("../NeoCloseButton", () => ({
-  default: ({ onClick }: { onClick: () => void }) => <button onClick={onClick}>Close</button>,
-}));
-
 HTMLDialogElement.prototype.showModal = HTMLDialogElement.prototype.showModal ?? vi.fn();
 HTMLDialogElement.prototype.close = HTMLDialogElement.prototype.close ?? vi.fn();
 

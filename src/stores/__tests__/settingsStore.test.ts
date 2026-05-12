@@ -136,7 +136,7 @@ describe("useSettingsStore", () => {
     });
   });
 
-  it("resetToDefaults calls updateConfig with defaults", async () => {
+  it("resetToDefaults calls resetAllConfig then reloads from daemon", async () => {
     const useSettingsStore = await getStore();
 
     await act(async () => {
@@ -147,7 +147,8 @@ describe("useSettingsStore", () => {
       await useSettingsStore.getState().resetToDefaults();
     });
 
-    expect(mockAPI.goDaemon.updateConfig).toHaveBeenCalled();
+    expect(mockAPI.goDaemon.resetAllConfig).toHaveBeenCalledTimes(1);
+    expect(mockAPI.goDaemon.getConfig).toHaveBeenCalled();
     const state = useSettingsStore.getState();
     expect(state.isLoading).toBe(false);
     expect(state.isDirty).toBe(false);

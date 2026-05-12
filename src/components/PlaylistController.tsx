@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useActivePlaylistStore } from "../stores/activePlaylistStore";
 import { usePlaylistStore } from "../stores/playlist";
 import { useImagesStore } from "../stores/images";
-import { useIsNeo } from "../hooks/useIsNeo";
 import { useViewportCompactHeight } from "../hooks/useViewportCompactHeight";
 import { cn } from "../utils/cn";
 import { getThumbnailSrc } from "../utils/utilities";
@@ -25,13 +24,11 @@ function formatClock(totalSeconds: number): string {
  */
 function TrackProgress({
   paused,
-  isNeo,
   slotKey,
   nextChangeAt,
   compact,
 }: {
   paused: boolean;
-  isNeo: boolean;
   slotKey: string;
   nextChangeAt: string | null;
   compact?: boolean;
@@ -94,11 +91,8 @@ function TrackProgress({
       </span>
       <div
         className={cn(
-          "relative flex-1 overflow-hidden",
-          compact ? "h-1" : "h-1.5",
-          isNeo
-            ? cn("neo-progress-track", compact && "neo-progress-track--compact")
-            : "rounded-full bg-base-content/10",
+          "relative flex-1 overflow-hidden neo-progress-track rounded-full bg-base-content/10",
+          compact ? "h-1 neo-progress-track--compact" : "h-1.5",
         )}
         role="progressbar"
         aria-valuemin={0}
@@ -108,7 +102,7 @@ function TrackProgress({
         <div
           className={cn(
             "absolute inset-y-0 left-0 transition-[width] duration-500 ease-linear",
-            isNeo ? "neo-progress-fill" : "rounded-full bg-primary",
+            "neo-progress-fill rounded-full bg-primary",
             paused && "opacity-60",
           )}
           style={{ width: `${pct}%` }}
@@ -131,7 +125,6 @@ function scheduleLockedPlaylistType(t: string | undefined): boolean {
 }
 
 function PlaylistController() {
-  const isNeo = useIsNeo();
   const viewportCompact = useViewportCompactHeight();
   const activePlaylist = useActivePlaylistStore((s) => s.activePlaylist);
   const editorPlaylist = usePlaylistStore((s) => s.playlist);
@@ -177,44 +170,40 @@ function PlaylistController() {
   const monitors = activePlaylist.monitors.join(", ");
 
   const shellClass = cn(
-    "flex w-full min-w-0 items-center",
+    "neo-now-playing flex w-full min-w-0 items-center rounded-xl border border-base-content/10 bg-gradient-to-r from-base-200/80 to-base-100/80 shadow-sm backdrop-blur-[2px]",
     viewportCompact ? "gap-2 px-2 py-2 lg:gap-3" : "gap-3 px-3 py-2.5 lg:gap-4",
-    isNeo
-      ? "neo-now-playing"
-      : "rounded-xl border border-base-content/10 bg-gradient-to-r from-base-200/80 to-base-100/80 shadow-sm backdrop-blur-[2px]",
   );
 
   const titleClass = cn(
     "truncate font-bold leading-tight",
     viewportCompact ? "text-sm lg:text-base" : "text-base lg:text-lg",
-    isNeo && "font-[family-name:var(--font-display)] uppercase tracking-tight",
   );
 
   const transportBtn = (extra?: string) =>
     cn(
       viewportCompact ? "btn btn-ghost btn-square btn-xs" : "btn btn-ghost btn-square btn-sm",
-      isNeo && "neo-pc-icon-btn",
+      "neo-pc-icon-btn",
       extra,
     );
 
   const playPauseBtn = cn(
     viewportCompact ? "btn btn-square btn-sm" : "btn btn-square btn-md",
-    isNeo ? "neo-pc-play-btn" : "btn-primary rounded-full shadow",
+    "neo-pc-play-btn btn-primary rounded-full shadow",
   );
 
   return (
     <div className={shellClass} role="region" aria-label="Active playlist controls">
       {/* LEFT: artwork */}
       {currentImage && (
-        <div className={cn("relative shrink-0", isNeo ? "neo-now-playing-art" : "")}>
+        <div className={cn("neo-now-playing-art relative shrink-0")}>
           <img
             src={getThumbnailSrc(currentImage)}
             alt={currentImage.name}
             className={cn(
+              "rounded-[var(--wp-radius-md)]",
               viewportCompact
                 ? "h-11 w-11 object-cover lg:h-12 lg:w-12"
                 : "h-14 w-14 object-cover lg:h-16 lg:w-16",
-              !isNeo && "rounded-lg",
             )}
           />
           {!activePlaylist.paused && (
@@ -235,12 +224,7 @@ function PlaylistController() {
           <span className={titleClass} title={activePlaylist.playlist_name}>
             {activePlaylist.playlist_name}
           </span>
-          <span
-            className={cn(
-              "shrink-0 text-[0.65rem] font-semibold uppercase tracking-widest text-base-content/50",
-              isNeo && "font-[family-name:var(--font-display)]",
-            )}
-          >
+          <span className="shrink-0 text-[0.65rem] font-semibold uppercase tracking-widest text-base-content/50">
             {activePlaylist.paused ? "paused" : "now playing"}
           </span>
         </div>
@@ -256,12 +240,7 @@ function PlaylistController() {
           {monitors && (
             <>
               <span className="shrink-0 opacity-50">·</span>
-              <span
-                className={cn(
-                  "shrink-0 truncate rounded-sm px-1.5 py-px text-[0.65rem] font-semibold uppercase tracking-wide",
-                  isNeo ? "neo-monitor-chip" : "bg-base-content/10 text-base-content/70",
-                )}
-              >
+              <span className="neo-monitor-chip shrink-0 truncate rounded-sm px-1.5 py-px text-[0.65rem] font-semibold uppercase tracking-wide bg-base-content/10 text-base-content/70">
                 {monitors}
               </span>
             </>
@@ -270,7 +249,6 @@ function PlaylistController() {
 
         <TrackProgress
           paused={activePlaylist.paused}
-          isNeo={isNeo}
           slotKey={slotKey}
           nextChangeAt={activePlaylist.next_change_at}
           compact={viewportCompact}
@@ -278,7 +256,7 @@ function PlaylistController() {
       </div>
 
       {/* RIGHT: transport */}
-      <div className={cn("flex shrink-0 items-center gap-1", isNeo && "neo-pc-controls")}>
+      <div className="flex shrink-0 items-center gap-1">
         {!noManualStep && (
           <button
             type="button"

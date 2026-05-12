@@ -70,8 +70,7 @@ const electronAPI = {
     extractVideoPalette: (
       id: number,
       body: ExtractVideoPaletteRequest,
-    ): Promise<ExtractVideoPaletteResult> =>
-      invoke({ type: "extract_video_palette", id, body }),
+    ): Promise<ExtractVideoPaletteResult> => invoke({ type: "extract_video_palette", id, body }),
 
     importImages: (
       paths: string[],
@@ -231,6 +230,11 @@ const electronAPI = {
 
     updateBackendConfig: (name: string, patch: Record<string, unknown>): Promise<void> =>
       invoke({ type: "update_backend_config", name, patch }),
+
+    resetAllConfig: (): Promise<UnifiedConfig> => invoke({ type: "reset_all_config" }),
+
+    resetBackendConfig: (name: string): Promise<{ status: string }> =>
+      invoke({ type: "reset_backend_config", name }),
 
     // BACKENDS
     getBackends: (): Promise<BackendInfo[]> => invoke({ type: "get_backends" }),

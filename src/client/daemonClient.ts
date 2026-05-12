@@ -81,6 +81,8 @@ export const daemonClient = {
   getBackendConfig: (name: string) => gd().getBackendConfig(name),
   updateBackendConfig: (...args: Parameters<GoDaemon["updateBackendConfig"]>) =>
     gd().updateBackendConfig(...args),
+  resetAllConfig: () => gd().resetAllConfig(),
+  resetBackendConfig: (name: string) => gd().resetBackendConfig(name),
 
   // BACKENDS
   getBackends: () => gd().getBackends(),

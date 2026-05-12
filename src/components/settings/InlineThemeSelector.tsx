@@ -5,7 +5,6 @@
 import type React from "react";
 import { useCallback, useId, useMemo, useState } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useIsNeo } from "@/hooks/useIsNeo";
 import { useUserThemesStore } from "@/stores/userThemesStore";
 import { cn } from "@/utils/cn";
 
@@ -64,28 +63,20 @@ const TONE_OPTIONS: { id: ToneFilterId; label: string; hint: string }[] = [
 interface ThemePillProps {
   theme: ThemePickerEntry;
   selected: boolean;
-  isNeo: boolean;
   onSelect: (name: string) => void;
 }
 
-function ThemePill({ theme, selected, isNeo, onSelect }: ThemePillProps) {
+function ThemePill({ theme, selected, onSelect }: ThemePillProps) {
   return (
     <button
       type="button"
       aria-pressed={selected}
       onClick={() => onSelect(theme.name)}
       className={cn(
-        "btn btn-sm shrink-0 font-[family-name:var(--font-display)] capitalize",
+        "btn btn-sm shrink-0 rounded-[var(--wp-radius-sm)] font-[family-name:var(--font-display)] capitalize",
         selected
           ? "btn-primary"
-          : "btn-outline border-base-content/25 text-base-content hover:border-base-content/40",
-        isNeo &&
-          cn(
-            "rounded-none border-2 font-bold",
-            selected
-              ? "border-primary"
-              : "border-base-content shadow-[3px_3px_0_0_var(--color-base-content)]",
-          ),
+          : "btn-outline border-base-content/25 text-base-content shadow-[var(--wp-elev-1,none)] hover:border-base-content/40",
       )}
     >
       {theme.displayName}
@@ -104,7 +95,6 @@ export const InlineThemeSelector: React.FC<InlineThemeSelectorProps> = ({
   const { currentTheme, setTheme, getAvailableThemes } = useTheme();
   const builtInThemes = useMemo(() => getAvailableThemes(), [getAvailableThemes]);
   const userThemes = useUserThemesStore((s) => s.themes);
-  const isNeo = useIsNeo();
 
   const [query, setQuery] = useState("");
   const [tone, setTone] = useState<ToneFilterId>("all");
@@ -135,11 +125,7 @@ export const InlineThemeSelector: React.FC<InlineThemeSelectorProps> = ({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-4">
         <label
           htmlFor={searchId}
-          className={cn(
-            "input input-sm input-bordered relative flex flex-1 min-w-0 items-center gap-2 sm:min-w-[min(100%,16rem)] sm:max-w-md",
-            isNeo &&
-              "rounded-none border-4 border-base-content bg-base-100 shadow-[3px_3px_0_0_var(--color-base-content)]",
-          )}
+          className="input input-sm input-bordered relative flex flex-1 min-w-0 items-center gap-2 rounded-[var(--wp-radius-sm)] border-[length:var(--wp-border-w)] border-[var(--wp-border-color)] shadow-[var(--wp-elev-1,none)] sm:min-w-[min(100%,16rem)] sm:max-w-md"
         >
           <svg
             className="h-4 w-4 shrink-0 text-base-content/45"
@@ -172,13 +158,7 @@ export const InlineThemeSelector: React.FC<InlineThemeSelectorProps> = ({
           <span id={toneGroupLabelId} className="sr-only">
             Filter themes by appearance
           </span>
-          <div
-            className={cn(
-              "grid w-full min-w-[12rem] grid-cols-3 gap-0 overflow-hidden rounded-lg bg-base-200/70 p-0.5 sm:w-auto sm:min-w-fit",
-              isNeo &&
-                "rounded-none border-2 border-base-content bg-base-300/80 shadow-[4px_4px_0_0_var(--color-base-content)]",
-            )}
-          >
+          <div className="grid w-full min-w-[12rem] grid-cols-3 gap-0 overflow-hidden rounded-[var(--wp-radius-md)] border-[length:var(--wp-border-w)] border-[var(--wp-border-color)] bg-base-200/70 p-0.5 shadow-[var(--wp-elev-1,none)] sm:w-auto sm:min-w-fit">
             {TONE_OPTIONS.map((opt) => {
               const active = tone === opt.id;
               return (
@@ -194,7 +174,6 @@ export const InlineThemeSelector: React.FC<InlineThemeSelectorProps> = ({
                     active
                       ? "bg-base-100 text-base-content shadow-sm"
                       : "text-base-content/55 hover:bg-base-300/70 hover:text-base-content",
-                    isNeo && active && "rounded-none shadow-inner",
                   )}
                   onClick={() => setTone(opt.id)}
                 >
@@ -206,32 +185,18 @@ export const InlineThemeSelector: React.FC<InlineThemeSelectorProps> = ({
         </fieldset>
       </div>
 
-      <div
-        className={cn(
-          "flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-lg border border-base-content/10 bg-base-200/40 px-3 py-2",
-          isNeo && "rounded-none border-2 border-base-content bg-base-100",
-        )}
-      >
+      <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1 rounded-[var(--wp-radius-md)] border-[length:var(--wp-border-w)] border-[var(--wp-border-color)] bg-base-200/40 px-3 py-2">
         <span className="text-[10px] font-semibold uppercase tracking-wider text-base-content/50">
           Active
         </span>
-        <span
-          className={cn(
-            "badge badge-primary badge-sm capitalize font-[family-name:var(--font-display)] font-semibold",
-            isNeo && "rounded-none border border-base-content",
-          )}
-        >
+        <span className="badge badge-primary badge-sm rounded-[var(--wp-radius-sm)] border-[length:var(--wp-border-w)] border-[var(--wp-border-color)] capitalize font-[family-name:var(--font-display)] font-semibold">
           {currentTheme}
         </span>
       </div>
 
       {filteredThemes.length === 0 ? (
         <div
-          className={cn(
-            "rounded-box border border-dashed border-base-content/15 bg-base-200/35 px-4 py-10 text-center",
-            isNeo &&
-              "rounded-none border-4 border-base-content bg-base-200/55 shadow-[4px_4px_0_0_var(--color-base-content)]",
-          )}
+          className="rounded-[var(--wp-radius-md)] border-[length:var(--wp-border-w)] border-dashed border-[var(--wp-border-color)] bg-base-200/35 px-4 py-10 text-center shadow-[var(--wp-elev-1,none)]"
           role="status"
         >
           <p className="font-[family-name:var(--font-display)] text-sm font-semibold text-base-content">
@@ -262,7 +227,6 @@ export const InlineThemeSelector: React.FC<InlineThemeSelectorProps> = ({
                       key={theme.name}
                       theme={theme}
                       selected={theme.name === currentTheme}
-                      isNeo={isNeo}
                       onSelect={handleThemeSelect}
                     />
                   ))}
@@ -280,7 +244,6 @@ export const InlineThemeSelector: React.FC<InlineThemeSelectorProps> = ({
                       key={theme.name}
                       theme={theme}
                       selected={theme.name === currentTheme}
-                      isNeo={isNeo}
                       onSelect={handleThemeSelect}
                     />
                   ))}

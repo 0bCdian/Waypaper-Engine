@@ -3,6 +3,7 @@ import electron from "vite-plugin-electron";
 import react from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { resolve } from "path";
+import { daemonUnixSocketProxyPlugin } from "./scripts/vite-plugin-daemon-proxy";
 import { themeRegistryPlugin } from "./scripts/vite-plugin-theme-registry";
 
 /** During `vite serve`, allow React standalone DevTools bridge + inject its script tag. Production builds keep strict CSP without localhost scripts. */
@@ -47,6 +48,7 @@ export default defineConfig(({ command }) => ({
     ],
   },
   plugins: [
+    daemonUnixSocketProxyPlugin(),
     themeRegistryPlugin({
       themesDir: resolve(__dirname, "src/styles/themes"),
       outFile: resolve(__dirname, "src/styles/themes/_index.ts"),

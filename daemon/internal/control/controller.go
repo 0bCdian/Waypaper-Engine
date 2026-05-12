@@ -9,6 +9,7 @@ import (
 	"math"
 
 	"waypaper-engine/daemon/internal/backend"
+	"waypaper-engine/daemon/internal/backenddefaults"
 	"waypaper-engine/daemon/internal/config"
 	"waypaper-engine/daemon/internal/events"
 )
@@ -206,4 +207,74 @@ func (c *Controller) ActivateBackend(ctx context.Context, name string) (Activati
 		Data: map[string]any{"sections": []string{"backend"}},
 	})
 	return ActivationResult{Backend: name}, nil
+}
+
+// ResetAllConfigToDefaults restores every config section plus all backend subtrees to built-in defaults.
+func (c *Controller) ResetAllConfigToDefaults(ctx context.Context) error {
+	if err := c.cfg.ResetToFactoryDefaults(backenddefaults.RegisterInto); err != nil {
+		return err
+	}
+
+	want := c.cfg.GetActiveBackendType()
+	if err := backend.SwitchActiveBackend(ctx, c.registry, want, c.cfg, backend.SwitchOpts{PersistConfig: false}); err != nil {
+		slog.Warn("factory reset: could not activate configured backend", "backend", want, "error", err)
+	}
+
+	if c.restore != nil {
+		c.restore.Restore(ctx)
+	}
+
+	c.bus.Publish(events.Event{
+		Type: events.ConfigChanged,
+		Data: map[string]any{
+			"sections": []string{"app", "daemon", "backend", "monitors", "wallhaven"},
+			"source":   "api_reset_all",
+		},
+	})
+	return nil
+}
+
+// ResetBackendConfigToDefaults replaces persisted [backend.<name>] with defaults for that setter only.
+func (c *Controller) ResetBackendConfigToDefaults(ctx context.Context, name string) error {
+	b, ok := c.registry.Get(name)
+	if !ok {
+		return fmt.Errorf("%w: %s", ErrUnknownBackend, name)
+	}
+
+	defaults, err := backenddefaults.Subtree(name)
+	if err != nil {
+		return err
+	}
+
+	raw, err := json.Marshal(defaults)
+	if err != nil {
+		return fmt.Errorf("control: marshal default backend config: %w", err)
+	}
+
+	if err := b.ValidateConfig(raw); err != nil {
+		return &InvalidBackendConfigError{Cause: err}
+	}
+
+	if err := c.cfg.ReplaceBackendNamedConfig(name, defaults); err != nil {
+		return err
+	}
+
+	active := c.cfg.GetActiveBackendType()
+	if name == active {
+		if err := b.OnConfigChanged(ctx, raw); err != nil {
+			slog.Warn("backend defaults reset sync failed", "backend", name, "error", err)
+		}
+		if c.restore != nil {
+			c.restore.Restore(ctx)
+		}
+	}
+
+	c.bus.Publish(events.Event{
+		Type: events.ConfigChanged,
+		Data: map[string]any{
+			"sections": []string{"backend." + name},
+			"source":   "api_reset_backend",
+		},
+	})
+	return nil
 }

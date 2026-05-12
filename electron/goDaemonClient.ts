@@ -82,6 +82,7 @@ export class GoDaemonClient extends EventEmitter {
       socketPath: this.http.socket,
       path: "/events",
       method: "GET",
+      agent: false as const,
       headers: {
         Accept: "text/event-stream",
         "Cache-Control": "no-cache",
@@ -466,6 +467,14 @@ export class GoDaemonClient extends EventEmitter {
 
   async updateBackendConfig(name: string, patch: Record<string, unknown>): Promise<void> {
     return this.control.updateBackendConfig(name, patch);
+  }
+
+  async resetAllConfig(): Promise<UnifiedConfig> {
+    return this.control.resetAllConfig();
+  }
+
+  async resetBackendConfig(name: string): Promise<{ status: string }> {
+    return this.control.resetBackendConfig(name);
   }
 
   async getBackends(): Promise<BackendInfo[]> {

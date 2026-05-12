@@ -25,6 +25,17 @@ function defaultSocketPath(): string {
   return join(tmpdir(), `waypaper-engine-${process.getuid?.() ?? 0}.sock`);
 }
 
+/**
+ * Candidate paths for the dev-built daemon when resolving {@link ConfigReader.getDaemonPath}.
+ * `cwd` is usually `waypaper-engine/`, but may be a monorepo root that contains `waypaper-engine/`.
+ */
+export function waypaperDaemonDevBuildCandidates(cwd: string): string[] {
+  return [
+    join(cwd, "daemon", "build", "waypaper-daemon"),
+    join(cwd, "waypaper-engine", "daemon", "build", "waypaper-daemon"),
+  ];
+}
+
 export interface ElectronConfig {
   log_level: "debug" | "info" | "warn" | "error";
   log_file: string;
@@ -184,7 +195,7 @@ export class ConfigReader extends EventEmitter {
           join(process.resourcesPath, "app", "waypaper-daemon"),
           join(__dirname, "..", "..", "waypaper-daemon"),
         ]
-      : [join(process.cwd(), "daemon", "build", "waypaper-daemon")];
+      : waypaperDaemonDevBuildCandidates(process.cwd());
 
     for (const candidate of bundledCandidates) {
       if (existsSync(candidate)) return candidate;

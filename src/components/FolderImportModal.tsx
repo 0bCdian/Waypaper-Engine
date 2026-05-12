@@ -1,13 +1,13 @@
 import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from "react";
 import openImagesStore from "../hooks/useOpenImages";
-import { useIsNeo } from "../hooks/useIsNeo";
+
+import Modal, { type ModalHandle } from "./Modal";
 
 const selectPending = () => openImagesStore.getState().pendingFolderImport;
 
 function FolderImportModal() {
   const pendingFolderImport = useSyncExternalStore(openImagesStore.subscribe, selectPending);
-  const isNeo = useIsNeo();
-  const dialogRef = useRef<HTMLDialogElement>(null);
+  const modalRef = useRef<ModalHandle>(null);
   const [createFolder, setCreateFolder] = useState(true);
   const [prevPending, setPrevPending] = useState(pendingFolderImport);
 
@@ -20,9 +20,9 @@ function FolderImportModal() {
 
   useEffect(() => {
     if (pendingFolderImport) {
-      dialogRef.current?.showModal();
+      modalRef.current?.showModal();
     } else {
-      dialogRef.current?.close();
+      modalRef.current?.close();
     }
   }, [pendingFolderImport]);
 
@@ -37,96 +37,80 @@ function FolderImportModal() {
   const pending = pendingFolderImport;
 
   return (
-    <dialog ref={dialogRef} className="modal" onClose={handleCancel}>
+    <Modal ref={modalRef} onClose={handleCancel} className="modal-box max-w-md neo-card">
       {pending && (
         <>
-          <div className={`modal-box max-w-md ${isNeo ? "neo-card" : ""}`}>
-            <h3 className="text-lg font-bold">Import Folder</h3>
-            <p className="py-2 text-base-content/70">
-              Found <span className="font-semibold text-base-content">{pending.files.length}</span>{" "}
-              image
-              {pending.files.length === 1 ? "" : "s"} and{" "}
-              <span className="font-semibold text-base-content">{pending.webRoots.length}</span> web
-              wallpaper package{pending.webRoots.length === 1 ? "" : "s"} in{" "}
-              <span className="font-semibold text-base-content">"{pending.folderName}"</span>
-            </p>
+          <h3 className="text-lg font-bold">Import Folder</h3>
+          <p className="py-2 text-base-content/70">
+            Found <span className="font-semibold text-base-content">{pending.files.length}</span>{" "}
+            image
+            {pending.files.length === 1 ? "" : "s"} and{" "}
+            <span className="font-semibold text-base-content">{pending.webRoots.length}</span> web
+            wallpaper package{pending.webRoots.length === 1 ? "" : "s"} in{" "}
+            <span className="font-semibold text-base-content">"{pending.folderName}"</span>
+          </p>
 
-            <div className="flex flex-col gap-3 py-3">
-              <label
-                htmlFor="folder-import-create"
-                className={`flex items-start gap-3 rounded-lg border-2 p-3 cursor-pointer transition-all ${
-                  createFolder
-                    ? "border-primary bg-primary/5"
-                    : "border-base-300 hover:border-base-content/20"
-                }`}
-              >
-                <input
-                  id="folder-import-create"
-                  type="radio"
-                  name="import-mode"
-                  className="radio radio-primary mt-0.5"
-                  checked={createFolder}
-                  onChange={() => setCreateFolder(true)}
-                />
-                <div>
-                  <p className="font-medium">Create as folder</p>
-                  <p className="text-sm text-base-content/60">
-                    Creates a "{pending.folderName}" folder in the gallery and imports images into
-                    it
-                  </p>
-                </div>
-              </label>
+          <div className="flex flex-col gap-3 py-3">
+            <label
+              htmlFor="folder-import-create"
+              className={`flex items-start gap-3 rounded-lg border-2 p-3 cursor-pointer transition-all ${
+                createFolder
+                  ? "border-primary bg-primary/5"
+                  : "border-base-300 hover:border-base-content/20"
+              }`}
+            >
+              <input
+                id="folder-import-create"
+                type="radio"
+                name="import-mode"
+                className="radio radio-primary mt-0.5"
+                checked={createFolder}
+                onChange={() => setCreateFolder(true)}
+              />
+              <div>
+                <p className="font-medium">Create as folder</p>
+                <p className="text-sm text-base-content/60">
+                  Creates a "{pending.folderName}" folder in the gallery and imports images into it
+                </p>
+              </div>
+            </label>
 
-              <label
-                htmlFor="folder-import-individual"
-                className={`flex items-start gap-3 rounded-lg border-2 p-3 cursor-pointer transition-all ${
-                  !createFolder
-                    ? "border-primary bg-primary/5"
-                    : "border-base-300 hover:border-base-content/20"
-                }`}
-              >
-                <input
-                  id="folder-import-individual"
-                  type="radio"
-                  name="import-mode"
-                  className="radio radio-primary mt-0.5"
-                  checked={!createFolder}
-                  onChange={() => setCreateFolder(false)}
-                />
-                <div>
-                  <p className="font-medium">Import individually</p>
-                  <p className="text-sm text-base-content/60">
-                    Imports all images to the current gallery level without creating a folder
-                  </p>
-                </div>
-              </label>
-            </div>
-
-            <div className="modal-action">
-              <button
-                type="button"
-                className={isNeo ? "btn uppercase" : "btn"}
-                onClick={handleCancel}
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                className={isNeo ? "btn btn-primary uppercase" : "btn btn-primary"}
-                onClick={handleConfirm}
-              >
-                Import
-              </button>
-            </div>
+            <label
+              htmlFor="folder-import-individual"
+              className={`flex items-start gap-3 rounded-lg border-2 p-3 cursor-pointer transition-all ${
+                !createFolder
+                  ? "border-primary bg-primary/5"
+                  : "border-base-300 hover:border-base-content/20"
+              }`}
+            >
+              <input
+                id="folder-import-individual"
+                type="radio"
+                name="import-mode"
+                className="radio radio-primary mt-0.5"
+                checked={!createFolder}
+                onChange={() => setCreateFolder(false)}
+              />
+              <div>
+                <p className="font-medium">Import individually</p>
+                <p className="text-sm text-base-content/60">
+                  Imports all images to the current gallery level without creating a folder
+                </p>
+              </div>
+            </label>
           </div>
-          <form method="dialog" className="modal-backdrop">
-            <button type="submit" onClick={handleCancel}>
-              close
+
+          <div className="modal-action">
+            <button type="button" className="btn uppercase" onClick={handleCancel}>
+              Cancel
             </button>
-          </form>
+            <button type="button" className="btn btn-primary uppercase" onClick={handleConfirm}>
+              Import
+            </button>
+          </div>
         </>
       )}
-    </dialog>
+    </Modal>
   );
 }
 

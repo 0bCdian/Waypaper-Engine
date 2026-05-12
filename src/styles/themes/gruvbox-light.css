@@ -4,19 +4,10 @@
  *   category: light
  *   sourceUrl: https://github.com/morhetz/gruvbox
  *
- * Role mapping (Gruvbox light palette):
- *   base-100  ← bg   #fbf1c7
- *   base-200  ← bg1  #ebdbb2
- *   base-300  ← bg2  #d5c4a1
- *   base-content ← fg  #3c3836
- *   primary   ← faded-yellow  #b57614
- *   secondary ← faded-purple  #8f3f71
- *   accent    ← faded-aqua    #427b58
- *   neutral   ← gray          #7c6f64
- *   info      ← faded-blue    #076678
- *   success   ← faded-green   #79740e
- *   warning   ← faded-orange  #af3a03
- *   error     ← faded-red     #9d0006
+ * Hex rows match the Waypaper contrast export for classic Gruvbox light:
+ *   bg #FBF1C7, fg #3C3836; accents color_02–color_16 as mapped below.
+ *   Surfaces bg1/bg2 use canonical Gruvbox light #EBDBB2 / #D5C4A1 (not repeated
+ *   as distinct rows in that export).
  */
 @plugin "daisyui/theme" {
   name: "gruvbox-light";
@@ -39,9 +30,9 @@
   --color-info-content: #fbf1c7;
   --color-success: #79740e;
   --color-success-content: #fbf1c7;
-  --color-warning: #af3a03;
-  --color-warning-content: #fbf1c7;
-  --color-error: #9d0006;
+  --color-warning: #d79921;
+  --color-warning-content: #3c3836;
+  --color-error: #cc241d;
   --color-error-content: #fbf1c7;
   --radius-selector: 0.5rem;
   --radius-field: 0.5rem;

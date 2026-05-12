@@ -41,8 +41,7 @@ export default function AppDragDropProvider({ children }: { children: ReactNode 
       onDragOver={(event) => {
         const sourceData = event.operation.source?.data as DragSourceData | undefined;
         const target = event.operation?.target;
-        const galleryOrFolder =
-          sourceData?.type === "image" || sourceData?.type === "folder";
+        const galleryOrFolder = sourceData?.type === "image" || sourceData?.type === "folder";
 
         if (!target) {
           useDragStore.getState().setOverTarget(null);

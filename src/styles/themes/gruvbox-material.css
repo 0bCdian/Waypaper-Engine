@@ -4,28 +4,18 @@
  *   category: dark
  *   sourceUrl: https://github.com/sainnhe/gruvbox-material
  *
- * Medium contrast dark variant. Role mapping:
- *   base-100  ← background  #32302f
- *   base-200  ← hard bg     #282828
- *   base-300  ← soft bg     #3c3836
- *   base-content ← foreground #d4be98
- *   primary   ← green   #a9b665
- *   secondary ← blue    #7daea3
- *   accent    ← yellow  #d8a657
- *   neutral   ← grey2   #504945
- *   info      ← aqua    #89b482
- *   success   ← green   #a9b665
- *   warning   ← orange  #e78a4e
- *   error     ← red     #ea6962
+ * Hex rows match the Waypaper contrast export for Gruvbox Material dark:
+ *   page bg #282828, fg #D4BE98; color_01 #3C3836; stack continues with #504945
+ *   for base-300 (standard Material medium-contrast surface between #282828 / #3C3836).
  */
 @plugin "daisyui/theme" {
   name: "gruvbox-material";
   default: false;
   prefersdark: true;
   color-scheme: dark;
-  --color-base-100: #32302f;
-  --color-base-200: #282828;
-  --color-base-300: #3c3836;
+  --color-base-100: #282828;
+  --color-base-200: #3c3836;
+  --color-base-300: #504945;
   --color-base-content: #d4be98;
   --color-primary: #a9b665;
   --color-primary-content: #282828;
@@ -39,7 +29,7 @@
   --color-info-content: #282828;
   --color-success: #a9b665;
   --color-success-content: #282828;
-  --color-warning: #e78a4e;
+  --color-warning: #d8a657;
   --color-warning-content: #282828;
   --color-error: #ea6962;
   --color-error-content: #d4be98;

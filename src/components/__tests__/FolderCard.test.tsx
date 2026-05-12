@@ -11,8 +11,6 @@ vi.mock("zustand/react/shallow", () => ({
   useShallow: (fn: Function) => fn,
 }));
 
-vi.mock("../../hooks/useIsNeo", () => ({ useIsNeo: () => false }));
-
 vi.mock("../../hooks/useInlineRename", () => ({
   useInlineRename: () => ({
     isRenaming: false,

@@ -4,18 +4,11 @@
  *   category: dark
  *   sourceUrl: https://www.nordtheme.com/docs/colors-and-palettes
  *
- * Source palette role mapping (Polar Night / Snow Storm / Frost / Aurora):
- *   base-100/200/300       ← polar night nord0/nord1/nord2
- *   base-content           ← snow storm nord6
- *   primary                ← frost nord8
- *   primary-content        ← polar night nord0
- *   secondary              ← frost nord9
- *   accent                 ← frost nord7
- *   neutral                ← polar night nord3
- *   info                   ← frost nord10
- *   success                ← aurora nord14
- *   warning                ← aurora nord13
- *   error                  ← aurora nord11
+ * Nord “Aurora” dark — matches Waypaper contrast table:
+ *   bg #2E3440, fg #D8DEE9; surfaces Color 1 / Color 9;
+ *   Frost #88C0D0 / #81A1C1 / #8FBCBB; Aurora #BF616A / #A3BE8C / #EBCB8B / #B48EAD
+ *   (secondary #B48EAD, accent #8FBCBB, info #81A1C1).
+ *   highlights #E5E9F0 / #ECEFF4 for on-neutral text.
  */
 @plugin "daisyui/theme" {
   name: "nord";
@@ -24,18 +17,18 @@
   color-scheme: dark;
   --color-base-100: #2e3440;
   --color-base-200: #3b4252;
-  --color-base-300: #434c5e;
-  --color-base-content: #eceff4;
+  --color-base-300: #4c566a;
+  --color-base-content: #d8dee9;
   --color-primary: #88c0d0;
   --color-primary-content: #2e3440;
-  --color-secondary: #81a1c1;
+  --color-secondary: #b48ead;
   --color-secondary-content: #2e3440;
   --color-accent: #8fbcbb;
   --color-accent-content: #2e3440;
   --color-neutral: #4c566a;
   --color-neutral-content: #eceff4;
-  --color-info: #5e81ac;
-  --color-info-content: #eceff4;
+  --color-info: #81a1c1;
+  --color-info-content: #2e3440;
   --color-success: #a3be8c;
   --color-success-content: #2e3440;
   --color-warning: #ebcb8b;
