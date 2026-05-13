@@ -304,7 +304,7 @@ export interface AutoPriorities {
 
 export interface BackendSection {
   type: string;
-  /** Canonical transition length in seconds (float). When set, awww and wayland-utauri use this value. */
+  /** Canonical transition length in seconds (float). When set, awww and wal-qt use this value. */
   transition_duration_seconds?: number;
   /** "fixed" (default) or "auto" — controls whether the daemon uses a single backend or picks per media type. */
   selection_mode?: "fixed" | "auto";
@@ -314,9 +314,8 @@ export interface BackendSection {
   feh?: FehConfig;
   hyprpaper?: HyprpaperConfig;
   mpvpaper?: MpvpaperConfig;
-  /** Merged from [backend.wayland-utauri] (hyphenated TOML table). */
-  "wayland-utauri"?: WaylandUtauriConfig;
-  waylandutauri?: WaylandUtauriConfig;
+  /** Merged from [backend.wal-qt] (hyphenated TOML table). */
+  "wal-qt"?: WalQtConfig;
 }
 
 export interface AwwwConfig {
@@ -355,7 +354,7 @@ export interface MpvpaperConfig {
   slideshow_secs: number;
 }
 
-export interface WaylandUtauriConfig {
+export interface WalQtConfig {
   socket_path: string;
   expected_service: string;
   expected_api_version: string;
@@ -389,7 +388,7 @@ export interface WaylandUtauriConfig {
   /** CSS image-rendering for image wallpapers: auto | smooth | high-quality | crisp-edges | pixelated */
   image_rendering?: string;
   video_audio_default?: boolean;
-  /** When true, HTML wallpapers may use fetch/XHR to the network (synced to wayland-utauri at runtime). */
+  /** When true, HTML wallpapers may use fetch/XHR to the network (synced to wal-qt at runtime). */
   allow_network_wallpapers?: boolean;
 }
 
