@@ -40,7 +40,7 @@ function FolderImportModal() {
     <Modal ref={modalRef} onClose={handleCancel} className="modal-box max-w-md neo-card">
       {pending && (
         <>
-          <h3 className="text-lg font-bold">Import Folder</h3>
+          <h3 className="text-lg font-semibold">Import Folder</h3>
           <p className="py-2 text-base-content/70">
             Found <span className="font-semibold text-base-content">{pending.files.length}</span>{" "}
             image

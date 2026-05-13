@@ -64,7 +64,7 @@ function ConfirmDialog() {
     <Modal ref={modalRef} onClose={() => respond(false)} className="modal-box">
       {display && (
         <>
-          <h3 className="text-lg font-bold">{display.title}</h3>
+          <h3 className="text-lg font-semibold">{display.title}</h3>
           <p className="py-4 text-base-content/80">{display.message}</p>
           <div className="modal-action">
             <button type="button" className={cancelClass} onClick={() => respond(false)}>

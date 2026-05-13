@@ -545,7 +545,7 @@ export const SidebarContent: React.FC = () => {
               />
             </div>
             <div className="flex flex-col">
-              <h1 className="text-xl font-bold text-base-content">Waypaper Engine</h1>
+              <h1 className="text-xl font-semibold text-base-content">Waypaper Engine</h1>
               <p className="text-sm text-base-content/70">Wallpaper Manager</p>
             </div>
           </div>

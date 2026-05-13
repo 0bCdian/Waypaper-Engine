@@ -69,7 +69,7 @@ const GalleryFilterCheatsheetModal = () => {
     >
       <div className="min-h-0 flex-1 space-y-10 overflow-y-auto px-6 py-8 md:px-10 md:py-10">
         <section className="max-w-3xl space-y-3">
-          <h3 className="font-[family-name:var(--font-display)] text-lg font-bold uppercase tracking-tight text-base-content">
+          <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold uppercase tracking-tight text-base-content">
             Token reference
           </h3>
           <p className="text-base leading-relaxed text-base-content/90">
@@ -100,7 +100,7 @@ const GalleryFilterCheatsheetModal = () => {
         </section>
 
         <footer className="space-y-4 p-6 md:p-8 rounded-[var(--wp-radius-md)] bg-neutral text-neutral-content">
-          <h3 className="font-[family-name:var(--font-display)] text-lg font-bold uppercase italic text-neutral-content md:text-xl">
+          <h3 className="font-[family-name:var(--font-display)] text-lg font-semibold uppercase italic text-neutral-content md:text-xl">
             Combining tokens
           </h3>
           <div className="grid gap-4 text-sm leading-relaxed text-neutral-content/95 md:grid-cols-2 [&_strong]:font-semibold [&_strong]:text-neutral-content">

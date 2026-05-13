@@ -172,7 +172,7 @@ function FolderPickerModal() {
 
   return (
     <Modal ref={modalRef} onClose={close} className="modal-box max-w-sm">
-      <h3 className="text-lg font-bold">Move to folder</h3>
+      <h3 className="text-lg font-semibold">Move to folder</h3>
       <p className="text-sm text-base-content/60 mt-1">Moving {imageIds.length} image(s)</p>
 
       <div className="mt-3 max-h-64 overflow-y-auto border border-base-300 rounded-lg">

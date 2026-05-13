@@ -184,7 +184,7 @@ const History = () => {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-base-content">Wallpaper History</h2>
+          <h2 className="text-xl font-semibold text-base-content">Wallpaper History</h2>
           <p className="text-sm text-base-content/60">
             {entries.length > 0 ? `${entries.length} entries` : "No history yet"}
           </p>

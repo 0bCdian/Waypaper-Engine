@@ -29,7 +29,7 @@ export const UrlImportWarningModal: React.FC<UrlImportWarningModalProps> = ({
 
   return (
     <Modal ref={modalRef} onClose={onCancel} className="modal-box max-w-md">
-      <h3 className="font-bold text-lg flex items-center gap-2 text-warning">
+      <h3 className="font-semibold text-lg flex items-center gap-2 text-warning">
         <svg
           xmlns="http://www.w3.org/2000/svg"
           className="size-6"

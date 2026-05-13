@@ -484,7 +484,7 @@ export default function ShaderStudio() {
         </div>
       )}
       <header className="shrink-0 space-y-1">
-        <h1 className="text-xl font-bold text-base-content sm:text-2xl">Shader Studio</h1>
+        <h1 className="text-xl font-semibold text-base-content sm:text-2xl">Shader Studio</h1>
         <p className="line-clamp-2 text-xs text-base-content/60 sm:line-clamp-none sm:text-sm">
           Shadertoy-style <code className="text-xs">mainImage</code> fragment shaders. Run compiles
           the preview; save writes a web wallpaper package and imports it into the gallery, or

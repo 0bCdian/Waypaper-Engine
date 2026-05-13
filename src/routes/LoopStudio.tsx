@@ -833,7 +833,7 @@ export default function LoopStudio() {
       onDrop={onLoopStudioDrop}
     >
       <header className="shrink-0 space-y-1">
-        <h1 className="text-xl font-bold text-base-content sm:text-2xl">Loop Studio</h1>
+        <h1 className="text-xl font-semibold text-base-content sm:text-2xl">Loop Studio</h1>
         <p className="line-clamp-2 text-xs text-base-content/60 sm:line-clamp-none sm:text-sm">
           Find in/out points and match the last frame to the first. Sub-loop preview uses coarse{" "}
           <code>timeupdate</code> jumps (not the two-decoder crossfade from a classic loop trimmer);
@@ -1157,7 +1157,7 @@ export default function LoopStudio() {
 
       <dialog className={`modal ${exportOpen ? "modal-open" : ""}`}>
         <div className="modal-box">
-          <h3 className="font-bold text-lg">Export loop</h3>
+          <h3 className="font-semibold text-lg">Export loop</h3>
           <p className="text-sm text-base-content/60 py-2">
             Re-encodes the trim for WebKit <code>video loop</code>. Audio is stripped. Plain trim is
             a hard cut; with midpoint crossfade, FFmpeg splits the span in two and xfades the join

@@ -180,7 +180,7 @@ function Gallery() {
         />
 
         <Modal ref={shadertoyModalRef} onClose={handleCancelShadertoy} showCloseButton={false}>
-          <h3 className="font-bold text-lg mb-2">Shadertoy JSON detected</h3>
+          <h3 className="font-semibold text-lg mb-2">Shadertoy JSON detected</h3>
           <p className="text-sm text-base-content/70 mb-6">
             This looks like a Shadertoy export. Open it in Shader Studio?
           </p>
