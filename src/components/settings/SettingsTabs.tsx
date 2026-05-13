@@ -190,7 +190,7 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className, isModal =
           </div>
 
           {/* Nav */}
-          <nav className="flex flex-col flex-1 overflow-y-auto py-2 px-2 gap-1">
+          <nav className="flex flex-col flex-1 overflow-y-auto p-2 gap-1">
             {visibleNav.map((item) => (
               <button
                 key={item.id}
