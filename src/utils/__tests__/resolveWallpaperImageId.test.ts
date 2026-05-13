@@ -28,18 +28,6 @@ describe("resolveWallpaperImageId", () => {
     expect(resolveWallpaperImageId(current, "HDMI-A-1")).toBe(3);
   });
 
-  it("matches legacy stable_id row to Monitor N label", () => {
-    const current: WallpaperCurrent = {
-      backend: "wayland-utauri",
-      image_id: 9,
-      image_name: "w",
-      image_path: "/w",
-      mode: "individual",
-      monitors: [slot("monitor:0:0:0:1920:1080", 9)],
-    };
-    expect(resolveWallpaperImageId(current, "Monitor 0")).toBe(9);
-  });
-
   it("uses top-level image_id for clone when there is no per-monitor row", () => {
     const current: WallpaperCurrent = {
       backend: "feh",

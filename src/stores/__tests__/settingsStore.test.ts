@@ -235,9 +235,9 @@ describe("useSettingsStore", () => {
     const useSettingsStore = await getStore();
 
     act(() => {
-      useSettingsStore.getState().setPendingBackendSettingsTab("wayland-utauri");
+      useSettingsStore.getState().setPendingBackendSettingsTab("wal-qt");
     });
-    expect(useSettingsStore.getState().pendingBackendSettingsTab).toBe("wayland-utauri");
+    expect(useSettingsStore.getState().pendingBackendSettingsTab).toBe("wal-qt");
 
     act(() => {
       useSettingsStore.getState().clearPendingBackendSettingsTab();

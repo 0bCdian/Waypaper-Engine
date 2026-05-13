@@ -21,8 +21,8 @@ describe("settingsNavStorage backend panel", () => {
   });
 
   it("round-trips backend ids with hyphen", () => {
-    writePersistedBackendSettingsPanel("wayland-utauri");
-    expect(readPersistedBackendSettingsPanel()).toBe("wayland-utauri");
+    writePersistedBackendSettingsPanel("wal-qt");
+    expect(readPersistedBackendSettingsPanel()).toBe("wal-qt");
   });
 
   it("rejects invalid persisted values", () => {
