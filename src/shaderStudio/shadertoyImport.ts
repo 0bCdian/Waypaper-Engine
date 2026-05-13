@@ -81,7 +81,7 @@ function passTypeLower(p: ShadertoyRenderPass): string {
 }
 
 function collectCommonCode(renderpasses: ShadertoyRenderPass[]): string {
-  const parts = renderpasses.filter((p) => passTypeLower(p) === "common").map((p) => p.code ?? "");
+  const parts = renderpasses.flatMap((p) => (passTypeLower(p) === "common" ? [p.code ?? ""] : []));
   return parts.join("\n\n").trim();
 }
 

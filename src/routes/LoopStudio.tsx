@@ -86,7 +86,7 @@ export default function LoopStudio() {
   const images = useImagesStore((s) => s.imagesArray);
 
   const videoOptions = useMemo(
-    () => images.filter((i) => i.media_type === "video").map((i) => ({ id: i.id, name: i.name })),
+    () => images.flatMap((i) => (i.media_type === "video" ? [{ id: i.id, name: i.name }] : [])),
     [images],
   );
 
@@ -655,10 +655,10 @@ export default function LoopStudio() {
 
   const gatherHttpUrlsFromDrop = (e: DragEvent): string[] => {
     const raw = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain");
-    return raw
-      .split(/\r?\n/)
-      .map((s) => s.trim())
-      .filter((u) => /^https?:\/\//i.test(u));
+    return raw.split(/\r?\n/).flatMap((s) => {
+      const t = s.trim();
+      return /^https?:\/\//i.test(t) ? [t] : [];
+    });
   };
 
   const onLoopStudioDrop = useCallback(

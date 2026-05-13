@@ -81,20 +81,20 @@ export function collectDroppedPaths(
     otherPaths.length === 0
   ) {
     const rawUri = uriList || textPlain || "";
-    const fileUris = rawUri
-      .split(/\r?\n/)
-      .map((u) => u.trim())
-      .filter((u) => u.startsWith("file://"));
+    const fileUris = rawUri.split(/\r?\n/).flatMap((u) => {
+      const t = u.trim();
+      return t.startsWith("file://") ? [t] : [];
+    });
     for (const uri of fileUris) {
       addPath(decodeURIComponent(uri.replace(/^file:\/\//, "")));
     }
   }
 
   const rawUrl = uriList || textPlain || "";
-  const urls = rawUrl
-    .split(/\r?\n/)
-    .map((u) => u.trim())
-    .filter((u) => u.startsWith("http://") || u.startsWith("https://"));
+  const urls = rawUrl.split(/\r?\n/).flatMap((u) => {
+    const t = u.trim();
+    return t.startsWith("http://") || t.startsWith("https://") ? [t] : [];
+  });
 
   return { mediaPaths, manifestPaths, shadertoyPaths, otherPaths, urls };
 }
