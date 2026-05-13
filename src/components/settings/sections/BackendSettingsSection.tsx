@@ -256,7 +256,7 @@ const mpvpaperFields: Field[] = [
 
 const walQtTransitionFields: Field[] = [
   {
-    key: "waylandutauri.transition",
+    key: "walqt.transition",
     label: "Transition Type",
     description: "Transition style used by wal-qt.",
     type: "select",
@@ -278,7 +278,7 @@ const walQtTransitionFields: Field[] = [
     ],
   },
   {
-    key: "waylandutauri.duration_ms",
+    key: "walqt.duration_ms",
     label: "Transition duration (seconds)",
     description:
       "How long image transitions run in wal-qt. Saved as milliseconds in the daemon config.",
@@ -288,7 +288,7 @@ const walQtTransitionFields: Field[] = [
     step: 0.1,
   },
   {
-    key: "waylandutauri.transition_bezier",
+    key: "walqt.transition_bezier",
     label: "Transition easing (Bézier)",
     description:
       "CSS cubic-bezier(x1,y1,x2,y2) control points for how transition progress runs over time (comma-separated). Applies on the next wallpaper change.",
@@ -296,7 +296,7 @@ const walQtTransitionFields: Field[] = [
     placeholder: "0.54,0,0.34,0.99",
   },
   {
-    key: "waylandutauri.transition_angle_deg",
+    key: "walqt.transition_angle_deg",
     label: "Wipe / wave angle (degrees)",
     description:
       "Angle for generic wipe and wave transitions (0–360). Left/right/top/bottom presets ignore this and use fixed angles.",
@@ -306,7 +306,7 @@ const walQtTransitionFields: Field[] = [
     step: 1,
   },
   {
-    key: "waylandutauri.transition_origin_x_percent",
+    key: "walqt.transition_origin_x_percent",
     label: "Grow / outer origin X (%)",
     description:
       "Horizontal origin (0 = left, 100 = right). Negative or >100 moves the anchor off-screen.",
@@ -316,7 +316,7 @@ const walQtTransitionFields: Field[] = [
     step: 1,
   },
   {
-    key: "waylandutauri.transition_origin_y_percent",
+    key: "walqt.transition_origin_y_percent",
     label: "Grow / outer origin Y (%)",
     description:
       "Vertical origin (0 = top, 100 = bottom). Negative or >100 moves the anchor off-screen.",
@@ -326,7 +326,7 @@ const walQtTransitionFields: Field[] = [
     step: 1,
   },
   {
-    key: "waylandutauri.transition_wave_amplitude_percent",
+    key: "walqt.transition_wave_amplitude_percent",
     label: "Wave amplitude (%)",
     description: "Wave edge displacement strength for the wave transition.",
     type: "number",
@@ -335,7 +335,7 @@ const walQtTransitionFields: Field[] = [
     step: 0.5,
   },
   {
-    key: "waylandutauri.transition_wave_frequency",
+    key: "walqt.transition_wave_frequency",
     label: "Wave frequency",
     description: "Number of wave cycles along the wipe axis.",
     type: "number",
@@ -347,7 +347,7 @@ const walQtTransitionFields: Field[] = [
 
 const walQtImageFields: Field[] = [
   {
-    key: "waylandutauri.image_fit_mode",
+    key: "walqt.image_fit_mode",
     label: "Image fit mode",
     description: "CSS object-fit mode for image wallpapers.",
     type: "select",
@@ -360,7 +360,7 @@ const walQtImageFields: Field[] = [
     ],
   },
   {
-    key: "waylandutauri.image_rendering",
+    key: "walqt.image_rendering",
     label: "Image rendering",
     description: "CSS image-rendering hint for image wallpapers.",
     type: "select",
@@ -376,14 +376,14 @@ const walQtImageFields: Field[] = [
 
 const walQtParallaxFields: Field[] = [
   {
-    key: "waylandutauri.parallax_enabled",
+    key: "walqt.parallax_enabled",
     label: "Enable parallax",
     description:
       "Syncs parallax to wal-qt (POST /wallpaper/parallax: zoom, step, animation, easing, reset). The compositor driver sends one parallax-move per workspace change; offsets accumulate and wal-qt elastic-wraps past ±0.5.",
     type: "checkbox",
   },
   {
-    key: "waylandutauri.parallax_compositor_driver",
+    key: "walqt.parallax_compositor_driver",
     label: "Compositor parallax driver",
     description:
       "Hyprland/Sway: follow workspace focus and POST /wallpaper/parallax-move (direction only; amount uses Parallax step below). “Off” disables; “Auto” picks Hyprland or Sway from the session.",
@@ -396,7 +396,7 @@ const walQtParallaxFields: Field[] = [
     ],
   },
   {
-    key: "waylandutauri.parallax_workspace_chunk_size",
+    key: "walqt.parallax_workspace_chunk_size",
     label: "Workspace ID ring (chunk size)",
     description:
       "Hyprland/Sway only: when deciding left vs right (or up vs down), workspace IDs are treated as wrapping on a ring of this many steps—shortest path wins (e.g. set close to your number of workspaces if IDs wrap).",
@@ -406,7 +406,7 @@ const walQtParallaxFields: Field[] = [
     step: 1,
   },
   {
-    key: "waylandutauri.parallax_step_percent",
+    key: "walqt.parallax_step_percent",
     label: "Parallax step (%)",
     description:
       "Per parallax-move: how much normalized offset to add in wal-qt (sent in /wallpaper/parallax as step_percent; each compositor workspace switch triggers one move).",
@@ -416,7 +416,7 @@ const walQtParallaxFields: Field[] = [
     step: 1,
   },
   {
-    key: "waylandutauri.parallax_direction",
+    key: "walqt.parallax_direction",
     label: "Workspace parallax axis",
     description:
       "Hyprland/Sway: map workspace transitions to horizontal pan (left/right) or vertical (up/down). Per-wallpaper waypaper.json can override with parallax_direction.",
@@ -427,7 +427,7 @@ const walQtParallaxFields: Field[] = [
     ],
   },
   {
-    key: "waylandutauri.parallax_zoom",
+    key: "walqt.parallax_zoom",
     label: "Parallax zoom (%)",
     description:
       "Scale factor in /wallpaper/parallax (100% = 1.0; higher values zoom in so small offset steps show as visible pan).",
@@ -437,7 +437,7 @@ const walQtParallaxFields: Field[] = [
     step: 1,
   },
   {
-    key: "waylandutauri.parallax_animation_ms",
+    key: "walqt.parallax_animation_ms",
     label: "Parallax animation (ms)",
     description:
       "animation_ms in /wallpaper/parallax: transition duration when offsets update (wallpaper:parallax in the webview).",
@@ -447,7 +447,7 @@ const walQtParallaxFields: Field[] = [
     step: 1,
   },
   {
-    key: "waylandutauri.parallax_reset_ms",
+    key: "walqt.parallax_reset_ms",
     label: "Parallax reset (ms)",
     description:
       "reset_ms in /wallpaper/parallax: duration when parallax is disabled or wal-qt elastic-snaps offset to center.",
@@ -457,7 +457,7 @@ const walQtParallaxFields: Field[] = [
     step: 1,
   },
   {
-    key: "waylandutauri.parallax_easing",
+    key: "walqt.parallax_easing",
     label: "Parallax easing",
     description: "Cubic-bezier control points as x1,y1,x2,y2 for parallax transitions.",
     type: "text",
@@ -467,13 +467,13 @@ const walQtParallaxFields: Field[] = [
 
 const walQtVideoFields: Field[] = [
   {
-    key: "waylandutauri.video_audio_default",
+    key: "walqt.video_audio_default",
     label: "Default Video Audio",
     description: "Enable audio by default for video wallpapers",
     type: "checkbox",
   },
   {
-    key: "waylandutauri.allow_network_wallpapers",
+    key: "walqt.allow_network_wallpapers",
     label: "Allow network for HTML wallpapers",
     description:
       "Global gate for outbound fetch/XHR/WebSocket on HTML wallpapers (WebKit relaxes policy when allowed). Per-wallpaper `capabilities.network` in waypaper.json must also be enabled. Applied immediately via wal-qt (webview reload).",
@@ -483,13 +483,13 @@ const walQtVideoFields: Field[] = [
 
 const walQtAdvancedFields: Field[] = [
   {
-    key: "waylandutauri.socket_path",
+    key: "walqt.socket_path",
     label: "Socket Path",
     description: "Unix socket path for wal-qt control API",
     type: "text",
   },
   {
-    key: "waylandutauri.connect_timeout_ms",
+    key: "walqt.connect_timeout_ms",
     label: "Connect Timeout (ms)",
     description: "Timeout for connection checks",
     type: "number",
@@ -498,7 +498,7 @@ const walQtAdvancedFields: Field[] = [
     step: 50,
   },
   {
-    key: "waylandutauri.request_timeout_ms",
+    key: "walqt.request_timeout_ms",
     label: "Request Timeout (ms)",
     description: "Timeout for API requests",
     type: "number",
@@ -944,16 +944,16 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
     if (field.type === "number") {
       const useFloatInput =
         field.key === "awww.transition_duration" ||
-        field.key === "waylandutauri.duration_ms" ||
-        field.key === "waylandutauri.transition_wave_amplitude_percent" ||
-        field.key === "waylandutauri.transition_wave_frequency";
+        field.key === "walqt.duration_ms" ||
+        field.key === "walqt.transition_wave_amplitude_percent" ||
+        field.key === "walqt.transition_wave_frequency";
       const Input = useFloatInput ? DebouncedFloatInput : DebouncedNumberInput;
       const numValue =
-        field.key === "waylandutauri.transition_wave_amplitude_percent"
+        field.key === "walqt.transition_wave_amplitude_percent"
           ? typeof raw === "number"
             ? raw
             : 5
-          : field.key === "waylandutauri.transition_wave_frequency"
+          : field.key === "walqt.transition_wave_frequency"
             ? typeof raw === "number"
               ? raw
               : 3
