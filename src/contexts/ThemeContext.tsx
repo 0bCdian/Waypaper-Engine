@@ -6,6 +6,7 @@ import React, {
   useEffectEvent,
   useMemo,
   useReducer,
+  useTransition,
   useRef,
   type ReactNode,
 } from "react";
@@ -84,7 +85,8 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     }),
   );
   const { currentTheme, systemTheme, syncWithSystem, lastChanged } = themeState;
-  const isLoading = false;
+  const [isPending, startTransition] = useTransition();
+  const isLoading = isPending;
 
   const currentThemeRef = useRef(currentTheme);
   currentThemeRef.current = currentTheme;
@@ -127,8 +129,10 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
         return;
       }
 
-      dispatchTheme({ type: "set-theme", theme: themeName, timestamp: Date.now() });
-      applyTheme(themeName);
+      startTransition(() => {
+        dispatchTheme({ type: "set-theme", theme: themeName, timestamp: Date.now() });
+        applyTheme(themeName);
+      });
 
       if (persist) {
         try {
