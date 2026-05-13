@@ -9,10 +9,10 @@ function FolderImportModal() {
   const pendingFolderImport = useSyncExternalStore(openImagesStore.subscribe, selectPending);
   const modalRef = useRef<ModalHandle>(null);
   const [createFolder, setCreateFolder] = useState(true);
-  const [prevPending, setPrevPending] = useState(pendingFolderImport);
+  const prevPendingRef = useRef(pendingFolderImport);
 
-  if (pendingFolderImport !== prevPending) {
-    setPrevPending(pendingFolderImport);
+  if (pendingFolderImport !== prevPendingRef.current) {
+    prevPendingRef.current = pendingFolderImport;
     if (pendingFolderImport) {
       setCreateFolder(true);
     }
