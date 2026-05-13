@@ -127,6 +127,7 @@ export const InlineThemeSelector: React.FC<InlineThemeSelectorProps> = ({
           htmlFor={searchId}
           className="input input-sm input-bordered relative flex flex-1 min-w-0 items-center gap-2 rounded-[var(--wp-radius-sm)] border-[length:var(--wp-border-w)] border-[var(--wp-border-color)] shadow-[var(--wp-elev-1,none)] sm:min-w-[min(100%,16rem)] sm:max-w-md"
         >
+          <span className="sr-only">Filter themes</span>
           <svg
             className="size-4 shrink-0 text-base-content/45"
             viewBox="0 0 24 24"

@@ -195,6 +195,7 @@ function FolderCard({ folder }: FolderCardProps) {
           ) : (
             <p
               className="neo-folder-name w-full overflow-hidden truncate text-ellipsis text-lg font-medium flex items-center gap-2"
+              // oxlint-disable-next-line jsx-a11y/click-events-have-key-events -- stopPropagation guard so click on the name doesn't activate the card
               onClick={(e) => e.stopPropagation()}
               onDoubleClick={(e) => {
                 e.stopPropagation();

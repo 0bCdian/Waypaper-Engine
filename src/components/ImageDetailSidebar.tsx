@@ -1350,9 +1350,9 @@ function ImageDetailSidebar() {
 
             {/* Palette — editable for all media types (videos/web ship empty until set) */}
             <div className="space-y-2">
-              <label className="text-xs font-semibold uppercase tracking-wide text-base-content/60">
+              <div className="text-xs font-semibold uppercase tracking-wide text-base-content/60">
                 Palette
-              </label>
+              </div>
               <p className="text-[10px] leading-snug text-base-content/50">
                 Hex swatches stored on the gallery row and included in{" "}
                 <code className="text-[10px]">wallpaper_changed</code> when non-empty (useful for

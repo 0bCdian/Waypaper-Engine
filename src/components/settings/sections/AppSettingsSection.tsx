@@ -316,6 +316,7 @@ const TypographySection: React.FC<{
             <input
               type="radio"
               name="app-font-preset"
+              aria-label={opt.title}
               className="radio radio-primary mt-0.5 shrink-0"
               checked={preset === opt.value}
               onChange={() => setPreset(opt.value)}

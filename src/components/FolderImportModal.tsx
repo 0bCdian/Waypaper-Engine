@@ -65,6 +65,7 @@ function FolderImportModal() {
                 id="folder-import-create"
                 type="radio"
                 name="import-mode"
+                aria-label="Create as folder"
                 className="radio radio-primary mt-0.5"
                 checked={createFolder}
                 onChange={() => setCreateFolder(true)}
@@ -89,6 +90,7 @@ function FolderImportModal() {
                 id="folder-import-individual"
                 type="radio"
                 name="import-mode"
+                aria-label="Import individually"
                 className="radio radio-primary mt-0.5"
                 checked={!createFolder}
                 onChange={() => setCreateFolder(false)}

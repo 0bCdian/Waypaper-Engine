@@ -250,6 +250,7 @@ function FolderPickerModal() {
               if (e.key === "Enter") void handleCreateFolder();
               if (e.key === "Escape") dispatchCreate({ type: "cancel" });
             }}
+            // oxlint-disable-next-line jsx-a11y/no-autofocus -- input is inside an opt-in "create new folder" panel; focus reflects user intent
             autoFocus
           />
           <button

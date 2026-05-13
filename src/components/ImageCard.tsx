@@ -482,6 +482,7 @@ function ImageCard({ Image }: ImageCardProps) {
             ) : (
               <p
                 className="neo-polaroid-name"
+                // oxlint-disable-next-line jsx-a11y/click-events-have-key-events -- stopPropagation guard so click on the name doesn't activate the card
                 onClick={(e) => e.stopPropagation()}
                 onDoubleClick={(e) => {
                   e.stopPropagation();
@@ -567,6 +568,7 @@ function ImageCard({ Image }: ImageCardProps) {
           ) : (
             <p
               className="w-full overflow-hidden truncate text-ellipsis text-justify text-lg font-medium"
+              // oxlint-disable-next-line jsx-a11y/click-events-have-key-events -- stopPropagation guard so click on the name doesn't activate the card
               onClick={(e) => e.stopPropagation()}
               onDoubleClick={(e) => {
                 e.stopPropagation();
