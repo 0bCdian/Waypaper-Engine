@@ -35,10 +35,7 @@ function walQtFromUnified(config: UnifiedConfig | null): WalQtConfig | null {
 }
 
 /** Outbound HTML network needs global allow plus manifest `network`; other caps follow manifest only. */
-function webCapabilityToggleAllowed(
-  key: keyof WebCapabilities,
-  wut: WalQtConfig | null,
-): boolean {
+function webCapabilityToggleAllowed(key: keyof WebCapabilities, wut: WalQtConfig | null): boolean {
   if (key !== "network") return true;
   if (wut == null) return true;
   return wut.allow_network_wallpapers === true;
@@ -423,9 +420,9 @@ function WebWallpaperConfigForm({
         </h5>
         {wutCfg && wutCfg.allow_network_wallpapers !== true && (
           <p className="text-[11px] text-base-content/50">
-            Turn on &quot;Allow network for HTML wallpapers&quot; in Backend → wal-qt to
-            enable outbound fetch/XHR/WebSocket (manifest{" "}
-            <code className="text-[10px]">network</code> must still be on).
+            Turn on &quot;Allow network for HTML wallpapers&quot; in Backend → wal-qt to enable
+            outbound fetch/XHR/WebSocket (manifest <code className="text-[10px]">network</code> must
+            still be on).
           </p>
         )}
         <div className="flex flex-col gap-2">
@@ -447,8 +444,7 @@ function WebWallpaperConfigForm({
                 </span>
                 {!policyAllows && key === "network" && (
                   <span className="pl-8 text-[10px] text-base-content/45">
-                    Enable global HTML network in Settings → Backend → wal-qt to turn this
-                    on.
+                    Enable global HTML network in Settings → Backend → wal-qt to turn this on.
                   </span>
                 )}
               </label>
