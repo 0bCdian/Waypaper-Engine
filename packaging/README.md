@@ -62,7 +62,7 @@ make install-system DESTDIR="$pkgdir" INSTALL_PREFIX_SYSTEM=/usr \
 2. Write the format's metadata file (spec, snapcraft.yaml, etc.)
 3. Use `make deps`, `make electron`, and `make install-system DESTDIR=...` in the build/install steps
 4. List runtime dependencies: `electron`, `hicolor-icon-theme`
-5. List optional runtime dependencies for backends: `awww`, `hyprpaper`, `mpvpaper`, `feh`, `wayland-utauri`; for X11 monitor detection: `xorg-xrandr`
+5. List optional runtime dependencies for backends: `awww`, `hyprpaper`, `mpvpaper`, `feh`, `wal-qt`; for X11 monitor detection: `xorg-xrandr`
 6. List build dependencies: `go`, `npm`, `nodejs`, `git`
 
 ## Existing Formats
@@ -70,4 +70,4 @@ make install-system DESTDIR="$pkgdir" INSTALL_PREFIX_SYSTEM=/usr \
 | Format                                  | Directory                                                                 | Status                                                        |
 | --------------------------------------- | ------------------------------------------------------------------------- | ------------------------------------------------------------- |
 | Arch Linux — `waypaper-engine` / `-git` | [waypaper_packages_aur](https://github.com/0bCdian/waypaper_packages_aur) | Active (`make install-system` + `INSTALL_PREFIX_SYSTEM=/usr`) |
-| Arch Linux — `wayland-utauri` / `-git`  | Same AUR meta-repo                                                        | Active (first-party Wayland host for HTML wallpapers)         |
+| Arch Linux — `wal-qt` / `-git`  | Same AUR meta-repo                                                        | Active (first-party Wayland host for HTML wallpapers)         |
