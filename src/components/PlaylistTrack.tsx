@@ -394,7 +394,7 @@ function PlaylistTrack() {
             </span>
             {isDirty && (
               <span
-                className="inline-block h-2.5 w-2.5 shrink-0 rounded-full bg-warning"
+                className="inline-block size-2.5 shrink-0 rounded-full bg-warning"
                 title="Unsaved changes"
                 aria-label="Unsaved changes"
               />

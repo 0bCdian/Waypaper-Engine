@@ -251,12 +251,12 @@ export const IconRailSidebar: React.FC = () => {
       >
         <Link
           to={"/"}
-          className="w-8 h-8 shrink-0 flex items-center justify-center overflow-hidden neo-icon-box rounded-[var(--wp-radius-sm)]"
+          className="size-8 shrink-0 flex items-center justify-center overflow-hidden neo-icon-box rounded-[var(--wp-radius-sm)]"
         >
           <img
             src={`${import.meta.env.BASE_URL}app.png`}
             alt="Waypaper Engine"
-            className="w-full h-full object-contain"
+            className="size-full object-contain"
           />
         </Link>
         <AnimatePresence>
@@ -537,11 +537,11 @@ export const SidebarContent: React.FC = () => {
       ) : (
         <>
           <div className="flex items-center gap-3 mb-6">
-            <div className="w-12 h-12 overflow-hidden flex items-center justify-center neo-icon-box rounded-[var(--wp-radius-md)]">
+            <div className="size-12 overflow-hidden flex items-center justify-center neo-icon-box rounded-[var(--wp-radius-md)]">
               <img
                 src={`${import.meta.env.BASE_URL}app.png`}
                 alt="Waypaper Engine"
-                className="w-full h-full object-contain"
+                className="size-full object-contain"
               />
             </div>
             <div className="flex flex-col">

@@ -137,7 +137,7 @@ export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({ cl
       <div className="card-body">
         <div className="flex items-center justify-between mb-4">
           <h3 className="card-title text-lg">
-            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="size-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
@@ -151,7 +151,7 @@ export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({ cl
           {/* Status indicator */}
           <div className="flex items-center gap-2">
             <div
-              className={cn("w-3 h-3 rounded-full", status.isRunning ? "bg-success" : "bg-error")}
+              className={cn("size-3 rounded-full", status.isRunning ? "bg-success" : "bg-error")}
             ></div>
             <span
               className={cn(
@@ -195,7 +195,7 @@ export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({ cl
               {isLoading ? (
                 <div className="loading loading-spinner loading-xs"></div>
               ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -217,7 +217,7 @@ export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({ cl
               {isLoading ? (
                 <div className="loading loading-spinner loading-xs"></div>
               ) : (
-                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path
                     strokeLinecap="round"
                     strokeLinejoin="round"
@@ -234,7 +234,7 @@ export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({ cl
             {isLoading ? (
               <div className="loading loading-spinner loading-xs"></div>
             ) : (
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="size-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path
                   strokeLinecap="round"
                   strokeLinejoin="round"

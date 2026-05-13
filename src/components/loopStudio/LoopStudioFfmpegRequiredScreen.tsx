@@ -26,7 +26,7 @@ export function LoopStudioFfmpegRequiredScreen({ onOpenExternal }: Props) {
       />
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        className="relative z-[1] h-16 w-16 shrink-0 text-base-content/35"
+        className="relative z-[1] size-16 shrink-0 text-base-content/35"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"

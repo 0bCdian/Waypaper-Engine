@@ -168,7 +168,7 @@ export function MonitorComponent({ monitor, scale, selectType, monitorsList, ref
       >
         {isLoading ? (
           <div
-            className="flex h-full w-full cursor-pointer items-center justify-center bg-base-200/50"
+            className="flex size-full cursor-pointer items-center justify-center bg-base-200/50"
             style={imageStyle}
           >
             <div className="text-center text-base-content/70">
@@ -180,17 +180,17 @@ export function MonitorComponent({ monitor, scale, selectType, monitorsList, ref
           <img
             src={wallpaperSrc}
             alt={`Wallpaper on ${monitor.name}`}
-            className="h-full w-full cursor-pointer object-cover"
+            className="size-full cursor-pointer object-cover"
             style={extendImageStyle ?? imageStyle}
             draggable={false}
           />
         ) : (
           <div
-            className="flex h-full w-full cursor-pointer items-center justify-center border-2 border-dashed border-base-300 bg-base-200/50"
+            className="flex size-full cursor-pointer items-center justify-center border-2 border-dashed border-base-300 bg-base-200/50"
             style={imageStyle}
           >
             <div className="text-center text-base-content/70">
-              <div className="mx-auto mb-2 h-12 w-12 opacity-50">
+              <div className="mx-auto mb-2 size-12 opacity-50">
                 <SvgComponent />
               </div>
               <p className="text-sm font-medium">{monitor.name}</p>

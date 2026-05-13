@@ -860,10 +860,10 @@ function PaletteSwatchChip({
   }, []);
 
   return (
-    <div className="group relative h-8 w-8 shrink-0 focus-within:z-[1]">
+    <div className="group relative size-8 shrink-0 focus-within:z-[1]">
       <button
         type="button"
-        className="relative z-10 h-full w-full shrink-0 border-[var(--wp-border-w)] border-[var(--wp-border-color)] rounded-[var(--wp-radius-md)] shadow-[var(--wp-elev-1)] transition-[transform,box-shadow,ring-color] hover:-translate-y-px hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-base-200"
+        className="relative z-10 size-full shrink-0 border-[var(--wp-border-w)] border-[var(--wp-border-color)] rounded-[var(--wp-radius-md)] shadow-[var(--wp-elev-1)] transition-[transform,box-shadow,ring-color] hover:-translate-y-px hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-base-200"
         style={{ backgroundColor: fill }}
         title={title}
         aria-label={ariaLabelCopy}
@@ -876,7 +876,7 @@ function PaletteSwatchChip({
       />
       <button
         type="button"
-        className="btn btn-ghost btn-square absolute -right-1.5 -top-1.5 min-h-0 h-5 w-5 border-[var(--wp-border-w)] border-[var(--wp-border-color)] rounded-[var(--wp-radius-md)] bg-base-100 p-0 text-xs leading-none opacity-0 shadow-sm transition-opacity hover:bg-error/15 hover:text-error group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
+        className="btn btn-ghost btn-square absolute -right-1.5 -top-1.5 min-h-0 size-5 border-[var(--wp-border-w)] border-[var(--wp-border-color)] rounded-[var(--wp-radius-md)] bg-base-100 p-0 text-xs leading-none opacity-0 shadow-sm transition-opacity hover:bg-error/15 hover:text-error group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
         aria-label={ariaLabelRemove}
         title="Remove"
         onClick={(e) => {
@@ -1234,7 +1234,7 @@ function ImageDetailSidebar() {
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 20 20"
               fill="currentColor"
-              className="h-5 w-5"
+              className="size-5"
             >
               <path d="M6.28 5.22a.75.75 0 00-1.06 1.06L8.94 10l-3.72 3.72a.75.75 0 101.06 1.06L10 11.06l3.72 3.72a.75.75 0 101.06-1.06L11.06 10l3.72-3.72a.75.75 0 00-1.06-1.06L10 8.94 6.28 5.22z" />
             </svg>
@@ -1371,7 +1371,7 @@ function ImageDetailSidebar() {
                 <button
                   type="button"
                   disabled={editColors.length >= MAX_PALETTE_COLORS}
-                  className="flex h-8 w-8 shrink-0 items-center justify-center border border-dashed border-base-content/30 rounded-[var(--wp-radius-md)] shadow-[var(--wp-elev-1)] text-lg font-light leading-none text-base-content/45 transition-colors hover:border-primary/45 hover:bg-primary/8 hover:text-primary disabled:pointer-events-none disabled:opacity-35"
+                  className="flex size-8 shrink-0 items-center justify-center border border-dashed border-base-content/30 rounded-[var(--wp-radius-md)] shadow-[var(--wp-elev-1)] text-lg font-light leading-none text-base-content/45 transition-colors hover:border-primary/45 hover:bg-primary/8 hover:text-primary disabled:pointer-events-none disabled:opacity-35"
                   aria-label="Add palette color"
                   title={
                     editColors.length >= MAX_PALETTE_COLORS

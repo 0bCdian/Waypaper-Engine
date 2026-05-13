@@ -39,7 +39,7 @@ export const MonitorButton: React.FC = () => {
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        className="h-5 w-5 shrink-0"
+        className="size-5 shrink-0"
         fill="none"
         viewBox="0 0 24 24"
         stroke="currentColor"
@@ -56,7 +56,7 @@ export const MonitorButton: React.FC = () => {
       {hasMonitors && (
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className="h-3.5 w-3.5 shrink-0 opacity-70"
+          className="size-3.5 shrink-0 opacity-70"
           viewBox="0 0 20 20"
           fill="currentColor"
           aria-hidden

@@ -264,7 +264,7 @@ function ImageCard({ Image }: ImageCardProps) {
     ? "w-full h-auto aspect-[3/2] object-cover block"
     : "transform-gpu rounded-lg transition-all duration-300 group-hover/card:scale-105 group-hover/card:object-center w-full h-auto aspect-[3/2] object-cover";
 
-  const pictureWrapClass = isPolaroid ? "neo-polaroid-image" : "block w-full h-full";
+  const pictureWrapClass = isPolaroid ? "neo-polaroid-image" : "block size-full";
 
   const videoPoster = Image.thumbnails?.default?.trim() || undefined;
   /**
@@ -451,7 +451,7 @@ function ImageCard({ Image }: ImageCardProps) {
             xmlns="http://www.w3.org/2000/svg"
             viewBox="0 0 20 20"
             fill="currentColor"
-            className="h-4 w-4"
+            className="size-4"
           >
             <path
               fillRule="evenodd"
@@ -536,7 +536,7 @@ function ImageCard({ Image }: ImageCardProps) {
           xmlns="http://www.w3.org/2000/svg"
           viewBox="0 0 20 20"
           fill="currentColor"
-          className="h-4 w-4"
+          className="size-4"
         >
           <path
             fillRule="evenodd"
@@ -551,7 +551,7 @@ function ImageCard({ Image }: ImageCardProps) {
         tabIndex={0}
         onDoubleClick={handleDoubleClick}
         onKeyDown={handleKeyDown}
-        className="group/card relative w-full h-full border-0 bg-transparent p-0 cursor-pointer"
+        className="group/card relative size-full border-0 bg-transparent p-0 cursor-pointer"
         aria-label={`Set ${Image.name} as wallpaper`}
         {...videoCardHoverHandlers}
       >
@@ -585,7 +585,7 @@ function ImageCard({ Image }: ImageCardProps) {
         <div
           data-selected={isSelected}
           id={overlayId}
-          className="absolute top-0 z-10 h-full w-full bg-primary opacity-0 transition-all data-[selected=true]:opacity-45 pointer-events-none"
+          className="absolute top-0 z-10 size-full bg-primary opacity-0 transition-all data-[selected=true]:opacity-45 pointer-events-none"
           aria-hidden="true"
         />
       </div>

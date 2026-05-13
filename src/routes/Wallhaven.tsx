@@ -182,7 +182,7 @@ function WallhavenPage() {
       <div className="flex flex-col items-center justify-center h-full gap-4 text-base-content/50">
         <svg
           xmlns="http://www.w3.org/2000/svg"
-          className="h-16 w-16"
+          className="size-16"
           fill="none"
           viewBox="0 0 24 24"
           stroke="currentColor"
@@ -524,12 +524,12 @@ function WallhavenCard({
     >
       {isSelected && (
         <div className="absolute top-2 left-2 z-10">
-          <div className="w-5 h-5 rounded bg-primary flex items-center justify-center">
+          <div className="size-5 rounded bg-primary flex items-center justify-center">
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 20 20"
               fill="white"
-              className="w-3.5 h-3.5"
+              className="size-3.5"
             >
               <path
                 fillRule="evenodd"
@@ -624,7 +624,7 @@ function WallhavenDetailModal({
                 {wp.colors.map((c) => (
                   <div
                     key={c}
-                    className="w-4 h-4 rounded-sm border border-base-content/20"
+                    className="size-4 rounded-sm border border-base-content/20"
                     style={{ backgroundColor: c }}
                     title={c}
                   />

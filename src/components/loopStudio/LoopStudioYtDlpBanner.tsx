@@ -11,7 +11,7 @@ export function LoopStudioYtDlpBanner({ onOpenExternal }: Props) {
       role="status"
     >
       <svg
-        className="mt-0.5 h-5 w-5 shrink-0 text-warning"
+        className="mt-0.5 size-5 shrink-0 text-warning"
         viewBox="0 0 24 24"
         fill="currentColor"
         aria-hidden

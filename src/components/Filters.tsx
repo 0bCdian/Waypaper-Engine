@@ -390,7 +390,7 @@ function Filters() {
           <div className="neo-rs-control-wrapper relative flex w-full items-center gap-0 overflow-visible rounded-[var(--wp-radius-lg)] bg-base-200 border border-base-content/10 focus-within:ring-2 focus-within:ring-primary focus-within:ring-offset-1 focus-within:ring-offset-base-100">
             {/* Search icon */}
             <svg
-              className="ml-3 h-4 w-4 shrink-0 neo-search-inline-icon text-base-content/40"
+              className="ml-3 size-4 shrink-0 neo-search-inline-icon text-base-content/40"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -513,11 +513,11 @@ function Filters() {
                   type="button"
                   onClick={clearAll}
                   aria-label="Clear search and history"
-                  className="neo-search-action flex items-center justify-center w-7 h-7 rounded-[var(--wp-radius-sm)] text-base-content/40 hover:text-base-content hover:bg-base-content/8 transition-colors duration-100"
+                  className="neo-search-action flex items-center justify-center size-7 rounded-[var(--wp-radius-sm)] text-base-content/40 hover:text-base-content hover:bg-base-content/8 transition-colors duration-100"
                   title="Clear search tokens and history"
                 >
                   <svg
-                    className="h-3.5 w-3.5"
+                    className="size-3.5"
                     fill="none"
                     stroke="currentColor"
                     viewBox="0 0 24 24"
@@ -536,11 +536,11 @@ function Filters() {
                 type="button"
                 onClick={() => useModalStore.getState().open("GalleryFilterCheatsheetModal")}
                 aria-label="Filter syntax help"
-                className="neo-search-action flex items-center justify-center w-7 h-7 rounded-[var(--wp-radius-sm)] text-base-content/30 hover:text-base-content/70 hover:bg-base-content/8 transition-colors duration-100"
+                className="neo-search-action flex items-center justify-center size-7 rounded-[var(--wp-radius-sm)] text-base-content/30 hover:text-base-content/70 hover:bg-base-content/8 transition-colors duration-100"
                 title="Filter syntax help"
               >
                 <svg
-                  className="h-4 w-4"
+                  className="size-4"
                   fill="none"
                   stroke="currentColor"
                   viewBox="0 0 24 24"

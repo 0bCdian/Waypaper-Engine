@@ -141,7 +141,7 @@ function FolderCard({ folder }: FolderCardProps) {
   const previewGrid =
     previews && previews.length > 0 ? (
       <div
-        className="grid h-full w-full"
+        className="grid size-full"
         style={{
           gridTemplateColumns: previews.length === 1 ? "1fr" : "1fr 1fr",
           gridTemplateRows: previews.length <= 2 ? "1fr" : "1fr 1fr",
@@ -152,7 +152,7 @@ function FolderCard({ folder }: FolderCardProps) {
             key={thumb}
             src={thumb}
             alt=""
-            className="h-full w-full object-cover transform-gpu transition-all duration-300 group-hover:scale-110"
+            className="size-full object-cover transform-gpu transition-all duration-300 group-hover:scale-110"
             loading="lazy"
           />
         ))}
@@ -160,8 +160,8 @@ function FolderCard({ folder }: FolderCardProps) {
     ) : null;
 
   const emptyIcon = (
-    <div className="flex h-full w-full items-center justify-center">
-      <FolderIconLarge className="h-16 w-16 text-primary/60 transition-all duration-300 group-hover:text-primary group-hover:scale-110" />
+    <div className="flex size-full items-center justify-center">
+      <FolderIconLarge className="size-16 text-primary/60 transition-all duration-300 group-hover:text-primary group-hover:scale-110" />
     </div>
   );
 
@@ -201,7 +201,7 @@ function FolderCard({ folder }: FolderCardProps) {
                 startRename();
               }}
             >
-              <FolderIcon className="h-4 w-4 shrink-0" />
+              <FolderIcon className="size-4 shrink-0" />
               {folder.name}
             </p>
           )}

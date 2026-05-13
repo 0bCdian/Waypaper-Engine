@@ -202,15 +202,15 @@ function PlaylistController() {
             className={cn(
               "rounded-[var(--wp-radius-md)]",
               viewportCompact
-                ? "h-11 w-11 object-cover lg:h-12 lg:w-12"
-                : "h-14 w-14 object-cover lg:h-16 lg:w-16",
+                ? "size-11 object-cover lg:size-12"
+                : "size-14 object-cover lg:size-16",
             )}
           />
           {!activePlaylist.paused && (
             <span
               aria-hidden
               className={cn(
-                "absolute -right-1 -top-1 h-2.5 w-2.5 rounded-full bg-success",
+                "absolute -right-1 -top-1 size-2.5 rounded-full bg-success",
                 "animate-pulse ring-2 ring-base-100",
               )}
             />
@@ -264,7 +264,7 @@ function PlaylistController() {
             onClick={handlePrevious}
             title="Previous"
           >
-            <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+            <svg viewBox="0 0 20 20" fill="currentColor" className="size-4">
               <path d="M7.712 4.819A1.5 1.5 0 0110 6.095v2.973l5.712-4.248A1.5 1.5 0 0118 6.095v7.81a1.5 1.5 0 01-2.288 1.276L10 10.933v2.973a1.5 1.5 0 01-2.288 1.276l-5.712-4.249a1.5 1.5 0 010-2.553l5.712-4.561z" />
             </svg>
           </button>
@@ -277,11 +277,11 @@ function PlaylistController() {
           title={activePlaylist.paused ? "Resume" : "Pause"}
         >
           {activePlaylist.paused ? (
-            <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+            <svg viewBox="0 0 20 20" fill="currentColor" className="size-5">
               <path d="M6.3 2.841A1.5 1.5 0 004 4.11v11.78a1.5 1.5 0 002.3 1.269l9.344-5.89a1.5 1.5 0 000-2.538L6.3 2.84z" />
             </svg>
           ) : (
-            <svg viewBox="0 0 20 20" fill="currentColor" className="h-5 w-5">
+            <svg viewBox="0 0 20 20" fill="currentColor" className="size-5">
               <path d="M5.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75A.75.75 0 007.25 3h-1.5zM12.75 3a.75.75 0 00-.75.75v12.5c0 .414.336.75.75.75h1.5a.75.75 0 00.75-.75V3.75a.75.75 0 00-.75-.75h-1.5z" />
             </svg>
           )}
@@ -289,7 +289,7 @@ function PlaylistController() {
 
         {!noManualStep && (
           <button type="button" className={transportBtn()} onClick={handleNext} title="Next">
-            <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+            <svg viewBox="0 0 20 20" fill="currentColor" className="size-4">
               <path d="M12.288 4.819A1.5 1.5 0 0010 6.095v2.973L4.288 4.82A1.5 1.5 0 002 6.095v7.81a1.5 1.5 0 002.288 1.276L10 10.933v2.973a1.5 1.5 0 002.288 1.276l5.712-4.249a1.5 1.5 0 000-2.553l-5.712-4.561z" />
             </svg>
           </button>
@@ -301,7 +301,7 @@ function PlaylistController() {
           onClick={handleStop}
           title="Stop"
         >
-          <svg viewBox="0 0 20 20" fill="currentColor" className="h-4 w-4">
+          <svg viewBox="0 0 20 20" fill="currentColor" className="size-4">
             <path
               fillRule="evenodd"
               d="M2 4.75A2.75 2.75 0 014.75 2h10.5A2.75 2.75 0 0118 4.75v10.5A2.75 2.75 0 0115.25 18H4.75A2.75 2.75 0 012 15.25V4.75z"

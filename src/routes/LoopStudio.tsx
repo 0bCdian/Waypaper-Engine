@@ -1044,7 +1044,7 @@ export default function LoopStudio() {
                     className="absolute top-0 bottom-0 w-0.5 bg-base-content z-20 pointer-events-none"
                     style={{ left: `${pct(playhead)}%` }}
                   >
-                    <div className="absolute -top-1 -left-1.5 w-3 h-3 rounded-full bg-base-content" />
+                    <div className="absolute -top-1 -left-1.5 size-3 rounded-full bg-base-content" />
                   </div>
                 </div>
               </div>

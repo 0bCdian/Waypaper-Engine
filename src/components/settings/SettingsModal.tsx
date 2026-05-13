@@ -80,7 +80,7 @@ export function SettingsModal() {
                 type="button"
                 onClick={closeModal}
                 aria-label="Close settings"
-                className="neo-settings-close flex items-center justify-center w-7 h-7 rounded-md transition-colors duration-100 text-base-content/50 hover:text-base-content hover:bg-base-content/10"
+                className="neo-settings-close flex items-center justify-center size-7 rounded-md transition-colors duration-100 text-base-content/50 hover:text-base-content hover:bg-base-content/10"
               >
                 <svg
                   width="14"

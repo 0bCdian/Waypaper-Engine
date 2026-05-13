@@ -117,7 +117,7 @@ export const SettingsSearch: React.FC<SettingsSearchProps> = ({
       <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
           <svg
-            className="h-3.5 w-3.5 text-base-content/40"
+            className="size-3.5 text-base-content/40"
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -154,7 +154,7 @@ export const SettingsSearch: React.FC<SettingsSearchProps> = ({
             }}
             type="button"
           >
-            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="size-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path
                 strokeLinecap="round"
                 strokeLinejoin="round"
