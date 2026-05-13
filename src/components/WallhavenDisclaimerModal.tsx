@@ -16,6 +16,8 @@ export const WallhavenDisclaimerModal: React.FC<WallhavenDisclaimerModalProps> =
 }) => {
   const modalRef = useRef<ModalHandle>(null);
 
+  // Bridges parent-controlled `isOpen` prop (toggled by multiple handlers in WallhavenSettingsSection) to <dialog>.
+  // oxlint-disable-next-line react-doctor/no-effect-event-handler
   useEffect(() => {
     if (isOpen) {
       modalRef.current?.showModal();
