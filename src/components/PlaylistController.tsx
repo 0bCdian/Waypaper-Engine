@@ -40,24 +40,19 @@ function TrackProgress({
   } | null>(null);
 
   useEffect(() => {
-    if (!slotKey || !nextChangeAt) {
-      prevSlotKeyRef.current = null;
-      setSlot(null);
-      return;
-    }
-    const endsAt = new Date(nextChangeAt).getTime();
-    if (!Number.isFinite(endsAt)) {
+    const endsAt = nextChangeAt ? new Date(nextChangeAt).getTime() : NaN;
+    const hasValidSlot = Boolean(slotKey) && Number.isFinite(endsAt);
+
+    if (!hasValidSlot) {
+      if (!slotKey || !nextChangeAt) prevSlotKeyRef.current = null;
       setSlot(null);
       return;
     }
 
     const keyChanged = prevSlotKeyRef.current !== slotKey;
     prevSlotKeyRef.current = slotKey;
-
     setSlot((prev) => {
-      if (keyChanged || !prev) {
-        return { startedAt: Date.now(), endsAt };
-      }
+      if (keyChanged || !prev) return { startedAt: Date.now(), endsAt };
       return { ...prev, endsAt };
     });
   }, [slotKey, nextChangeAt]);
