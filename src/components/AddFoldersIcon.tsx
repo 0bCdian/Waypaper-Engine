@@ -6,7 +6,7 @@ const SvgComponentFolder: FC = () => (
     <g id="SVGRepo_iconCarrier">
       {" "}
       <path
-        d="M12 19H5C3.89543 19 3 18.1046 3 17V7C3 5.89543 3.89543 5 5 5H9.58579C9.851 5 10.1054 5.10536 10.2929 5.29289L12 7H19C20.1046 7 21 7.89543 21 9V11"
+        d="M12 19H5C3.9 19 3 18.1 3 17V7C3 5.9 3.9 5 5 5H9.59C9.85 5 10.11 5.11 10.29 5.29L12 7H19C20.1 7 21 7.9 21 9V11"
         stroke="currentColor"
         strokeWidth="1"
         strokeLinecap="round"
