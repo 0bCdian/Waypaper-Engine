@@ -217,7 +217,7 @@ describe("usePlaylistStore", () => {
     });
 
     const times = usePlaylistStore.getState().playlist.images.map((i) => i.time);
-    expect(times).toEqual([...times].sort((a, b) => (a ?? 0) - (b ?? 0)));
+    expect(times).toEqual(times.toSorted((a, b) => (a ?? 0) - (b ?? 0)));
     expect(usePlaylistStore.getState().playlist.images).toHaveLength(3);
   });
 

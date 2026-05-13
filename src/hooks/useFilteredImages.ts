@@ -16,8 +16,8 @@ export function useFilteredImages() {
 
   const sortedImages =
     filters.type === "id"
-      ? [...deferredImages]
-      : [...deferredImages].sort((a, b) => b.name.localeCompare(a.name));
+      ? deferredImages
+      : deferredImages.toSorted((a, b) => b.name.localeCompare(a.name));
 
   const parsed = useMemo(
     () => parseGalleryFilterTokens(filters.filterTokens),

@@ -21,7 +21,7 @@ export function reorderPlaylistImagesBySortableMove(
  * Rows with null time sort last (should not happen for persisted time_of_day playlists).
  */
 export function sortTimeOfDayPlaylistImages(images: readonly PlaylistImage[]): PlaylistImage[] {
-  return [...images].sort((a, b) => {
+  return images.toSorted((a, b) => {
     if (a.time == null && b.time == null) return 0;
     if (a.time == null) return 1;
     if (b.time == null) return -1;

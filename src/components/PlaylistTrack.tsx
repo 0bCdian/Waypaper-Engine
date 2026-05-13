@@ -138,7 +138,7 @@ function PlaylistTrack() {
 
   const reorderSortingCriteria = useCallback(() => {
     const currentImages = usePlaylistStore.getState().playlist.images;
-    const newArray = [...currentImages].sort((a: PlaylistImage, b: PlaylistImage) => {
+    const newArray = currentImages.toSorted((a: PlaylistImage, b: PlaylistImage) => {
       if (a.time == null || b.time == null) return 0;
       return a.time - b.time;
     });

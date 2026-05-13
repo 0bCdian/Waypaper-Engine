@@ -766,9 +766,10 @@ function PriorityList({
   const eligible = backendsForCategory(category, available);
   const eligibleNames = new Set(eligible.map((b) => b.name));
 
+  const itemsSet = new Set(items);
   const normalized = [
     ...items.filter((name) => eligibleNames.has(name)),
-    ...eligible.map((b) => b.name).filter((name) => !items.includes(name)),
+    ...eligible.flatMap((b) => (itemsSet.has(b.name) ? [] : [b.name])),
   ];
 
   const move = (idx: number, dir: -1 | 1) => {
@@ -888,7 +889,7 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
   }, []);
 
   const sortedBackends = useMemo(
-    () => [...availableBackends].sort((a, b) => a.name.localeCompare(b.name)),
+    () => availableBackends.toSorted((a, b) => a.name.localeCompare(b.name)),
     [availableBackends],
   );
 
