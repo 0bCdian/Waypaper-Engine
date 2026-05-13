@@ -179,6 +179,7 @@ function Filters() {
     for (const raw of loadGalleryFilterInputHistory()) {
       const v = raw.trim();
       if (!v || selected.has(v) || seen.has(v)) continue;
+      // oxlint-disable-next-line react-doctor/js-set-map-lookups -- string.includes for substring match; not array membership
       if (q && !v.toLowerCase().includes(q)) continue;
       seen.add(v);
       out.push({ label: v, value: v });
@@ -193,9 +194,9 @@ function Filters() {
 
   const onTokensChange = (opts: MultiValue<TokenOption>) => {
     const next = (opts ?? []).map((o) => o.value);
-    const prev = prevTokensRef.current;
+    const prevSet = new Set(prevTokensRef.current);
     for (const t of next) {
-      if (!prev.includes(t)) recordGalleryFilterInputHistoryEntry(t);
+      if (!prevSet.has(t)) recordGalleryFilterInputHistoryEntry(t);
     }
     prevTokensRef.current = next;
     setPartialFilters((p) => ({ ...p, filterTokens: next }));

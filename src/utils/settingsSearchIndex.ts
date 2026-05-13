@@ -47,15 +47,8 @@ export function sectionsMatchingSettingsSearchQuery(rawQuery: string): ConfigSec
   for (const section of order) {
     const rows = bySection.get(section);
     if (!rows) continue;
-    const ok = tokens.every((t) =>
-      rows.some(
-        (e) =>
-          e.label.toLowerCase().includes(t) ||
-          e.description.toLowerCase().includes(t) ||
-          e.key.toLowerCase().includes(t) ||
-          e.category.toLowerCase().includes(t),
-      ),
-    );
+    const haystacks = rows.map(entryHaystack);
+    const ok = tokens.every((t) => haystacks.some((h) => h.includes(t)));
     if (ok) out.push(section);
   }
   return out;

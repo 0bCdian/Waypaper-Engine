@@ -14,12 +14,13 @@ const HEADER_RE = /\/\*\s*@waypaper-theme\s*\n([\s\S]*?)\*\//;
 function parseHeader(css: string): HeaderMeta | null {
   const m = css.match(HEADER_RE);
   if (!m) return null;
-  const lines = m[1]
-    .split("\n")
-    .map((l) => l.replace(/^\s*\*?\s?/, "").trim())
-    .filter(Boolean);
+  const lines = m[1].split("\n").flatMap((l) => {
+    const trimmed = l.replace(/^\s*\*?\s?/, "").trim();
+    return trimmed ? [trimmed] : [];
+  });
   const fields: Record<string, string> = {};
   for (const line of lines) {
+    // oxlint-disable-next-line react-doctor/js-set-map-lookups -- string.indexOf to find first ":" delimiter; not an array membership check
     const eq = line.indexOf(":");
     if (eq <= 0) continue;
     const key = line.slice(0, eq).trim();
