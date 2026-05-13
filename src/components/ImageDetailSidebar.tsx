@@ -329,16 +329,16 @@ function WebWallpaperConfigForm({
     capsRef.current = caps;
   });
 
-  const [prevOverridesKey, setPrevOverridesKey] = useState(serverOverridesKey);
-  const [prevCapsKey, setPrevCapsKey] = useState(serverCapsKey);
+  const prevOverridesKeyRef = useRef(serverOverridesKey);
+  const prevCapsKeyRef = useRef(serverCapsKey);
 
-  if (serverOverridesKey !== prevOverridesKey) {
-    setPrevOverridesKey(serverOverridesKey);
+  if (serverOverridesKey !== prevOverridesKeyRef.current) {
+    prevOverridesKeyRef.current = serverOverridesKey;
     setOverrides({ ...image.wallpaper_config_overrides });
     setSaveError(false);
   }
-  if (serverCapsKey !== prevCapsKey) {
-    setPrevCapsKey(serverCapsKey);
+  if (serverCapsKey !== prevCapsKeyRef.current) {
+    prevCapsKeyRef.current = serverCapsKey;
     setCaps(normalizeWebCaps(image.web_meta?.capabilities));
     setSaveError(false);
   }
@@ -984,9 +984,9 @@ function ImageDetailSidebar() {
     [measurePalettePopoverPosition],
   );
 
-  const [prevSelectedImage, setPrevSelectedImage] = useState(selectedImage);
-  if (selectedImage !== prevSelectedImage) {
-    setPrevSelectedImage(selectedImage);
+  const prevSelectedImageRef = useRef(selectedImage);
+  if (selectedImage !== prevSelectedImageRef.current) {
+    prevSelectedImageRef.current = selectedImage;
     if (selectedImage) {
       setTags([...(selectedImage.tags ?? [])]);
       setEditName(selectedImage.name);
