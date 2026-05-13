@@ -56,5 +56,14 @@
     "ecmaFeatures": {
       "jsx": true
     }
-  }
+  },
+
+  "overrides": [
+    {
+      "files": ["e2e/**/*.ts", "**/__tests__/**/*.{ts,tsx}"],
+      "rules": {
+        "react-hooks/rules-of-hooks": "off"
+      }
+    }
+  ]
 }
