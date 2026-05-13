@@ -925,7 +925,7 @@ export default function LoopStudio() {
             <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
               <div
                 ref={previewShellRef}
-                className="relative flex min-h-[11rem] w-full flex-1 items-center justify-center overflow-hidden rounded-lg bg-black sm:min-h-[14rem]"
+                className="relative flex min-h-[11rem] w-full flex-1 items-center justify-center overflow-hidden rounded-lg bg-neutral-950 sm:min-h-[14rem]"
               >
                 <canvas
                   ref={canvasPlayRef}

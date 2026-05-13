@@ -593,7 +593,7 @@ export default function ShaderStudio() {
             {logMsg}
           </pre>
         </section>
-        <section className="flex min-h-0 min-w-0 flex-1 basis-0 flex-col overflow-hidden rounded-lg border border-base-300 bg-black">
+        <section className="flex min-h-0 min-w-0 flex-1 basis-0 flex-col overflow-hidden rounded-lg border border-base-300 bg-neutral-950">
           <div className="shrink-0 border-b border-base-300 bg-base-200 px-2 py-1 text-[10px] uppercase tracking-wide text-base-content/50">
             Preview
           </div>
