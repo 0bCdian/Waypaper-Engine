@@ -93,8 +93,9 @@ const SavePlaylistModal = ({ currentPlaylistName, onPlaylistChanged }: Props) =>
             configuration: playlist.configuration,
           });
           savedId = created.id;
+          const latest = usePlaylistStore.getState().readPlaylist();
           setPlaylist({
-            ...playlist,
+            ...latest,
             id: created.id,
             name: value.playlistName,
           });
