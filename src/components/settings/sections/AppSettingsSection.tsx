@@ -242,7 +242,7 @@ const TypographySection: React.FC<{
   const [customDisplay, setCustomDisplay] = useState(() => config?.app?.font_family_display ?? "");
   const [customMono, setCustomMono] = useState(() => config?.app?.font_family_mono ?? "");
 
-  const [prevFontCfg, setPrevFontCfg] = useState({
+  const prevFontCfgRef = useRef({
     body: config?.app?.font_family_body ?? "",
     display: config?.app?.font_family_display ?? "",
     mono: config?.app?.font_family_mono ?? "",
@@ -251,11 +251,11 @@ const TypographySection: React.FC<{
   const cfgDisplay = config?.app?.font_family_display ?? "";
   const cfgMono = config?.app?.font_family_mono ?? "";
   if (
-    prevFontCfg.body !== cfgBody ||
-    prevFontCfg.display !== cfgDisplay ||
-    prevFontCfg.mono !== cfgMono
+    prevFontCfgRef.current.body !== cfgBody ||
+    prevFontCfgRef.current.display !== cfgDisplay ||
+    prevFontCfgRef.current.mono !== cfgMono
   ) {
-    setPrevFontCfg({ body: cfgBody, display: cfgDisplay, mono: cfgMono });
+    prevFontCfgRef.current = { body: cfgBody, display: cfgDisplay, mono: cfgMono };
     setCustomBody(cfgBody);
     setCustomDisplay(cfgDisplay);
     setCustomMono(cfgMono);
