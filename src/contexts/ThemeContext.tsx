@@ -3,6 +3,7 @@ import React, {
   use,
   useCallback,
   useEffect,
+  useEffectEvent,
   useMemo,
   useRef,
   useState,
@@ -171,20 +172,22 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const onSystemThemeChange = useEffectEvent((e: MediaQueryListEvent) => {
+    const themeName = e.matches ? "dark" : "light";
+    setTheme(themeName);
+  });
+
   useEffect(() => {
     if (!syncWithSystem || systemTheme !== "auto") return;
 
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    const handleSystemThemeChange = (e: MediaQueryListEvent) => {
-      const themeName = e.matches ? "dark" : "light";
-      setTheme(themeName);
-    };
+    const handleSystemThemeChange = (e: MediaQueryListEvent) => onSystemThemeChange(e);
 
     mediaQuery.addEventListener("change", handleSystemThemeChange);
     return () => {
       mediaQuery.removeEventListener("change", handleSystemThemeChange);
     };
-  }, [syncWithSystem, systemTheme, setTheme]);
+  }, [syncWithSystem, systemTheme]);
 
   useEffect(() => {
     const dispose = daemonClient.on("config_changed", (data: unknown) => {

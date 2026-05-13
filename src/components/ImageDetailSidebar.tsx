@@ -1,6 +1,7 @@
 import {
   useCallback,
   useEffect,
+  useEffectEvent,
   useLayoutEffect,
   useMemo,
   useRef,
@@ -1133,17 +1134,19 @@ function ImageDetailSidebar() {
     };
   }, [palettePopoverLayoutKey]);
 
+  const onPalettePopoverKeyDown = useEffectEvent((e: globalThis.KeyboardEvent) => {
+    if (e.key === "Escape") {
+      e.preventDefault();
+      closePalettePopover();
+    }
+  });
+
   useEffect(() => {
     if (palettePopoverLayoutKey === null) return;
-    const onKeyDown = (e: globalThis.KeyboardEvent) => {
-      if (e.key === "Escape") {
-        e.preventDefault();
-        closePalettePopover();
-      }
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [palettePopoverLayoutKey, closePalettePopover]);
+    const handler = (e: globalThis.KeyboardEvent) => onPalettePopoverKeyDown(e);
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [palettePopoverLayoutKey]);
 
   useEffect(() => {
     if (!isOpen) closePalettePopover();

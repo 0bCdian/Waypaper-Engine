@@ -1,4 +1,12 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type DragEvent } from "react";
+import {
+  useCallback,
+  useEffect,
+  useEffectEvent,
+  useMemo,
+  useRef,
+  useState,
+  type DragEvent,
+} from "react";
 import { useLocation } from "react-router-dom";
 import type { VideoLoopExportRequest } from "../../electron/daemon-go-types";
 import { useFoldersStore } from "@/stores/foldersStore";
@@ -478,50 +486,52 @@ export default function LoopStudio() {
     return () => ro.disconnect();
   }, [loaded, playbackSrc, layoutPreviewCanvases]);
 
+  const onLoopStudioKey = useEffectEvent((e: KeyboardEvent) => {
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+    const v = videoRef.current;
+    if (!v || !loaded) return;
+    const subLoop = outPoint - inPoint < duration - FULL_LOOP_EPS;
+    if (e.code === "Space") {
+      e.preventDefault();
+      if (v.paused) void v.play();
+      else v.pause();
+    }
+    if (e.code === "KeyI") {
+      e.preventDefault();
+      setInPoint(Math.max(0, Math.min(v.currentTime, outPoint - MIN_LOOP_SPAN)));
+    }
+    if (e.code === "KeyO") {
+      e.preventDefault();
+      setOutPoint(Math.max(inPoint + MIN_LOOP_SPAN, Math.min(v.currentTime, duration)));
+    }
+    if (e.code === "KeyC") {
+      e.preventDefault();
+      setMode((m) => {
+        const next = m === "play" ? "compare" : "play";
+        modeRef.current = next;
+        return next;
+      });
+      queueMicrotask(() => {
+        if (modeRef.current === "compare") {
+          void captureFrames();
+        }
+      });
+    }
+    if (e.code === "ArrowLeft") {
+      e.preventDefault();
+      v.currentTime = Math.max(subLoop ? inPoint : 0, v.currentTime - 1 / 30);
+    }
+    if (e.code === "ArrowRight") {
+      e.preventDefault();
+      v.currentTime = Math.min(subLoop ? outPoint : duration, v.currentTime + 1 / 30);
+    }
+  });
+
   useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
-      const v = videoRef.current;
-      if (!v || !loaded) return;
-      const subLoop = outPoint - inPoint < duration - FULL_LOOP_EPS;
-      if (e.code === "Space") {
-        e.preventDefault();
-        if (v.paused) void v.play();
-        else v.pause();
-      }
-      if (e.code === "KeyI") {
-        e.preventDefault();
-        setInPoint(Math.max(0, Math.min(v.currentTime, outPoint - MIN_LOOP_SPAN)));
-      }
-      if (e.code === "KeyO") {
-        e.preventDefault();
-        setOutPoint(Math.max(inPoint + MIN_LOOP_SPAN, Math.min(v.currentTime, duration)));
-      }
-      if (e.code === "KeyC") {
-        e.preventDefault();
-        setMode((m) => {
-          const next = m === "play" ? "compare" : "play";
-          modeRef.current = next;
-          return next;
-        });
-        queueMicrotask(() => {
-          if (modeRef.current === "compare") {
-            void captureFrames();
-          }
-        });
-      }
-      if (e.code === "ArrowLeft") {
-        e.preventDefault();
-        v.currentTime = Math.max(subLoop ? inPoint : 0, v.currentTime - 1 / 30);
-      }
-      if (e.code === "ArrowRight") {
-        e.preventDefault();
-        v.currentTime = Math.min(subLoop ? outPoint : duration, v.currentTime + 1 / 30);
-      }
-    };
-    document.addEventListener("keydown", onKey);
-    return () => document.removeEventListener("keydown", onKey);
-  }, [loaded, duration, inPoint, outPoint, captureFrames]);
+    const handler = (e: KeyboardEvent) => onLoopStudioKey(e);
+    document.addEventListener("keydown", handler);
+    return () => document.removeEventListener("keydown", handler);
+  }, []);
 
   const onTimeUpdate = useCallback(() => {
     const v = videoRef.current;
@@ -783,36 +793,40 @@ export default function LoopStudio() {
     }
   };
 
+  const onTimelineMove = useEffectEvent((e: MouseEvent) => {
+    if (!dragRef.current) return;
+    const el = timelineRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const p = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    const t = Math.max(0, Math.min(duration, p * duration));
+    if (dragRef.current === "seek") {
+      const v = videoRef.current;
+      if (v) v.currentTime = t;
+    } else if (dragRef.current === "in") {
+      setInPoint(Math.max(0, Math.min(t, outPoint - MIN_LOOP_SPAN)));
+    } else if (dragRef.current === "out") {
+      setOutPoint(Math.max(inPoint + MIN_LOOP_SPAN, Math.min(t, duration)));
+    }
+  });
+
+  const onTimelineUp = useEffectEvent(() => {
+    if (dragRef.current) {
+      scheduleCaptures();
+      dragRef.current = null;
+    }
+  });
+
   useEffect(() => {
-    const onMove = (e: MouseEvent) => {
-      if (!dragRef.current) return;
-      const el = timelineRef.current;
-      if (!el) return;
-      const rect = el.getBoundingClientRect();
-      const p = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-      const t = Math.max(0, Math.min(duration, p * duration));
-      if (dragRef.current === "seek") {
-        const v = videoRef.current;
-        if (v) v.currentTime = t;
-      } else if (dragRef.current === "in") {
-        setInPoint(Math.max(0, Math.min(t, outPoint - MIN_LOOP_SPAN)));
-      } else if (dragRef.current === "out") {
-        setOutPoint(Math.max(inPoint + MIN_LOOP_SPAN, Math.min(t, duration)));
-      }
-    };
-    const onUp = () => {
-      if (dragRef.current) {
-        scheduleCaptures();
-        dragRef.current = null;
-      }
-    };
+    const onMove = (e: MouseEvent) => onTimelineMove(e);
+    const onUp = () => onTimelineUp();
     document.addEventListener("mousemove", onMove);
     document.addEventListener("mouseup", onUp);
     return () => {
       document.removeEventListener("mousemove", onMove);
       document.removeEventListener("mouseup", onUp);
     };
-  }, [duration, inPoint, outPoint, scheduleCaptures]);
+  }, []);
 
   const scoreColor =
     matchPct == null
