@@ -38,6 +38,12 @@ export const FolderIconLarge = ({ className }: { className?: string }) => (
   </svg>
 );
 
+const EMPTY_ICON = (
+  <div className="flex size-full items-center justify-center">
+    <FolderIconLarge className="size-16 text-primary/60 transition-all duration-300 group-hover:text-primary group-hover:scale-110" />
+  </div>
+);
+
 function FolderCard({ folder }: FolderCardProps) {
   const navigateToFolder = useFoldersStore((s) => s.navigateToFolder);
   const previews = useFoldersStore((s) => s.folderPreviews.get(folder.id));
@@ -159,12 +165,6 @@ function FolderCard({ folder }: FolderCardProps) {
       </div>
     ) : null;
 
-  const emptyIcon = (
-    <div className="flex size-full items-center justify-center">
-      <FolderIconLarge className="size-16 text-primary/60 transition-all duration-300 group-hover:text-primary group-hover:scale-110" />
-    </div>
-  );
-
   const dragFade = isDragging ? " opacity-50" : "";
   const dropHighlight = isDropTarget ? " ring-2 ring-primary scale-105" : "";
 
@@ -187,7 +187,7 @@ function FolderCard({ folder }: FolderCardProps) {
     >
       <div className="neo-folder-inner relative">
         <div className="neo-folder-preview w-full aspect-[3/2] bg-base-200 overflow-hidden">
-          {previewGrid ?? emptyIcon}
+          {previewGrid ?? EMPTY_ICON}
         </div>
         <div className="neo-folder-caption absolute bottom-0 w-full bg-base-content/75 p-2 opacity-0 transition-all duration-300 group-hover:opacity-100 text-base-100">
           {isRenaming ? (
