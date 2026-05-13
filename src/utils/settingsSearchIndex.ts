@@ -238,56 +238,56 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
   },
   {
     section: "backend",
-    key: "waylandutauri.duration_ms",
+    key: "walqt.duration_ms",
     label: "Wayland-utauri transition duration",
     description: "wal-qt transition length in seconds",
     category: "Transitions",
   },
   {
     section: "backend",
-    key: "waylandutauri.transition",
+    key: "walqt.transition",
     label: "Wayland-utauri transition",
     description: "Transition preset for wal-qt",
     category: "Transitions",
   },
   {
     section: "backend",
-    key: "waylandutauri.image_fit_mode",
+    key: "walqt.image_fit_mode",
     label: "Wayland-utauri image fit mode",
     description: "CSS object-fit mode for image wallpapers",
     category: "Image Display",
   },
   {
     section: "backend",
-    key: "waylandutauri.image_rendering",
+    key: "walqt.image_rendering",
     label: "Wayland-utauri image rendering",
     description: "CSS image-rendering hint for image wallpapers",
     category: "Image Display",
   },
   {
     section: "backend",
-    key: "waylandutauri.transition_angle_deg",
+    key: "walqt.transition_angle_deg",
     label: "Wipe / wave angle",
     description: "Angle in degrees for wipe and wave (directional presets lock angle)",
     category: "Transitions",
   },
   {
     section: "backend",
-    key: "waylandutauri.transition_origin_x_percent",
+    key: "walqt.transition_origin_x_percent",
     label: "Grow/outer origin X",
     description: "Horizontal origin percent for grow and outer transitions",
     category: "Transitions",
   },
   {
     section: "backend",
-    key: "waylandutauri.transition_origin_y_percent",
+    key: "walqt.transition_origin_y_percent",
     label: "Grow/outer origin Y",
     description: "Vertical origin percent for grow and outer transitions",
     category: "Transitions",
   },
   {
     section: "backend",
-    key: "waylandutauri.parallax_compositor_driver",
+    key: "walqt.parallax_compositor_driver",
     label: "Compositor parallax driver",
     description:
       "Hyprland/Sway: workspace changes send POST /wallpaper/parallax-move (step from parallax step %)",
@@ -295,7 +295,7 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
   },
   {
     section: "backend",
-    key: "waylandutauri.parallax_workspace_chunk_size",
+    key: "walqt.parallax_workspace_chunk_size",
     label: "Parallax workspace chunk size",
     description:
       "Ring period for workspace IDs when mapping switches to parallax left/right (Hyprland/Sway driver)",
@@ -303,7 +303,7 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
   },
   {
     section: "backend",
-    key: "waylandutauri.parallax_step_percent",
+    key: "walqt.parallax_step_percent",
     label: "Parallax step",
     description:
       "Per-move offset in % (POST /wallpaper/parallax step_percent; each workspace switch is one parallax-move)",
@@ -311,7 +311,7 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
   },
   {
     section: "backend",
-    key: "waylandutauri.parallax_reset_ms",
+    key: "walqt.parallax_reset_ms",
     label: "Parallax reset duration",
     description: "Milliseconds when parallax disables or snaps back (reset_ms to wal-qt)",
     category: "Backend",
