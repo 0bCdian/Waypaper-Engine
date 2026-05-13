@@ -55,6 +55,7 @@ export function useRealTimeImageProcessing() {
   const reQueryTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastReQueryRef = useRef<number>(0);
 
+  // oxlint-disable-next-line react-doctor/no-cascading-set-state -- this effect registers six SSE event handlers; each handler calls zustand store actions (startBatch/completeBatch/addToast) for independent daemon events. There is no cascading React setState — the rule is matching imperative store mutations across distinct event handlers.
   useEffect(() => {
     const { startBatch, completeBatch } = useImageProcessingStore.getState();
     const handleProcessingStarted = (...args: unknown[]) => {
