@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Stale: wal-utauri exposes /wallpaper/parallax and /wallpaper/parallax-move only.
 # The daemon’s Hyprland/Sway bridge uses parallax-move (see daemon/internal/parallaxdriver).
-# Do not use this script against current wayland-utauri unless the control API gains a set-offset route.
+# Do not use this script against current wal-qt unless the control API gains a set-offset route.
 
 # send_request <output_name> <offset_x> <offset_y> [socket_path]
 # Example:
@@ -14,7 +14,7 @@ set -euo pipefail
 
 default_socket() {
   if [[ -n "${XDG_RUNTIME_DIR:-}" ]]; then
-    printf "%s/wayland-utauri.sock" "$XDG_RUNTIME_DIR"
+    printf "%s/wal-qt.sock" "$XDG_RUNTIME_DIR"
   else
     printf ""
   fi
@@ -43,7 +43,7 @@ enable_parallax_for_output() {
     -H "Content-Type: application/json" \
     -X POST \
     -d "$payload" \
-    "http://wayland-utauri.local/wallpaper/parallax" >/dev/null
+    "http://wal-qt.local/wallpaper/parallax" >/dev/null
 }
 
 send_request() {
@@ -84,7 +84,7 @@ send_request() {
     -H "Content-Type: application/json" \
     -X POST \
     -d "$payload" \
-    "http://wayland-utauri.local/wallpaper/parallax-set-offset"
+    "http://wal-qt.local/wallpaper/parallax-set-offset"
   echo
 }
 
