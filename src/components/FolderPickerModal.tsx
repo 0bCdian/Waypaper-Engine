@@ -156,9 +156,9 @@ function FolderPickerModal() {
     }
   }, [isOpen]);
 
-  const [lastOpenState, setLastOpenState] = useState(isOpen);
-  if (isOpen !== lastOpenState) {
-    setLastOpenState(isOpen);
+  const lastOpenStateRef = useRef(isOpen);
+  if (isOpen !== lastOpenStateRef.current) {
+    lastOpenStateRef.current = isOpen;
     if (isOpen) {
       setSelectedFolderId(null);
       dispatchCreate({ type: "reset" });
