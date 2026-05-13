@@ -1514,7 +1514,7 @@ function ImageDetailSidebar() {
                 className="btn btn-primary btn-sm mt-3 w-full"
                 onClick={closePalettePopover}
               >
-                Done
+                Close color picker
               </button>
             </div>
           </>,
