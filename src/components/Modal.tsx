@@ -1,4 +1,4 @@
-import { forwardRef, useRef, useImperativeHandle, useCallback, type ReactNode } from "react";
+import { useRef, useImperativeHandle, useCallback, type Ref, type ReactNode } from "react";
 import { CloseButton } from "./ui";
 import { cn } from "@/utils/cn";
 
@@ -84,55 +84,60 @@ interface ModalProps {
   draggable?: boolean;
 }
 
-const ModalInner = forwardRef<ModalHandle, ModalProps>(
-  ({ id, children, className, onClose, showCloseButton = true, stripedHeader, draggable }, ref) => {
-    const dialogRef = useRef<HTMLDialogElement>(null);
+function ModalInner({
+  id,
+  children,
+  className,
+  onClose,
+  showCloseButton = true,
+  stripedHeader,
+  draggable,
+  ref,
+}: ModalProps & { ref?: Ref<ModalHandle> }) {
+  const dialogRef = useRef<HTMLDialogElement>(null);
 
-    useImperativeHandle(ref, () => ({
-      showModal: () => {
-        const el = dialogRef.current;
-        if (el && typeof el.showModal === "function") {
-          el.showModal();
-        }
-      },
-      close: () => {
-        const el = dialogRef.current;
-        if (el && typeof el.close === "function") {
-          el.close();
-        }
-      },
-    }));
+  useImperativeHandle(ref, () => ({
+    showModal: () => {
+      const el = dialogRef.current;
+      if (el && typeof el.showModal === "function") {
+        el.showModal();
+      }
+    },
+    close: () => {
+      const el = dialogRef.current;
+      if (el && typeof el.close === "function") {
+        el.close();
+      }
+    },
+  }));
 
-    const handleClose = useCallback(() => {
-      dialogRef.current?.close();
-      onClose?.();
-    }, [onClose]);
+  const handleClose = useCallback(() => {
+    dialogRef.current?.close();
+    onClose?.();
+  }, [onClose]);
 
-    const floatingClose =
-      Boolean(showCloseButton) && stripedHeader === undefined ? (
-        <CloseButton onClick={handleClose} className="absolute right-3 top-3" />
-      ) : null;
+  const floatingClose =
+    Boolean(showCloseButton) && stripedHeader === undefined ? (
+      <CloseButton onClick={handleClose} className="absolute right-3 top-3" />
+    ) : null;
 
-    return (
-      <dialog draggable={draggable} id={id} className="modal" ref={dialogRef}>
-        <div className={className ?? "modal-box"}>
-          {stripedHeader !== undefined ? (
-            <ModalHeader {...stripedHeader} onClose={handleClose} />
-          ) : null}
-          {floatingClose}
-          {children}
-        </div>
-        <form method="dialog" className="modal-backdrop">
-          <button type="button" onClick={handleClose}>
-            close
-          </button>
-        </form>
-      </dialog>
-    );
-  },
-);
-
-ModalInner.displayName = "Modal";
+  return (
+    <dialog draggable={draggable} id={id} className="modal" ref={dialogRef}>
+      <div className={className ?? "modal-box"}>
+        {stripedHeader !== undefined ? (
+          <ModalHeader {...stripedHeader} onClose={handleClose} />
+        ) : null}
+        {floatingClose}
+        {children}
+      </div>
+      <form method="dialog" className="modal-backdrop">
+        <button type="button" onClick={handleClose}>
+          close
+        </button>
+      </form>
+    </dialog>
+  );
+}
 
 const Modal = Object.assign(ModalInner, { Header: ModalHeader });
 
