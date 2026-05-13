@@ -1,5 +1,4 @@
 import { useImagesStore } from "../stores/images";
-import { useShallow } from "zustand/react/shallow";
 import { useEffect, useRef } from "react";
 import { useForm } from "@tanstack/react-form";
 import { parseResolution } from "../utils/utilities";
@@ -18,12 +17,7 @@ const AdvancedFiltersModal = () => {
     return () => useModalStore.getState().unregister("AdvancedFiltersModal");
   }, []);
 
-  const { setFilters, filters } = useImagesStore(
-    useShallow((s) => ({
-      setFilters: s.setFilters,
-      filters: s.filters,
-    })),
-  );
+  const filters = useImagesStore((s) => s.filters);
 
   const form = useForm({
     defaultValues: {
@@ -41,7 +35,8 @@ const AdvancedFiltersModal = () => {
           constraint: resolutionConstraint,
         },
       };
-      setFilters({ ...filters, advancedFilters: nextAdvanced });
+      const { filters: prev, setFilters } = useImagesStore.getState();
+      setFilters({ ...prev, advancedFilters: nextAdvanced });
     },
   });
 
