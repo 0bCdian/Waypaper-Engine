@@ -180,6 +180,8 @@ function ActionItem({
 }) {
   const ref = useRef<HTMLButtonElement>(null);
 
+  // Scrolls into view as parent's keyboard navigation changes focused index across many code paths.
+  // oxlint-disable-next-line react-doctor/no-effect-event-handler
   useEffect(() => {
     if (isFocused) ref.current?.scrollIntoView({ block: "nearest" });
   }, [isFocused]);
