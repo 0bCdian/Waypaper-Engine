@@ -75,6 +75,7 @@ export function useSetLastActivePlaylist() {
           return;
         }
 
+        if (cancelled) return;
         const fullPlaylist = await daemonClient.getPlaylist(match.playlist_id);
         if (cancelled) return;
 
