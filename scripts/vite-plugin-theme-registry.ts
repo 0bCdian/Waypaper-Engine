@@ -64,15 +64,16 @@ export function themeRegistryPlugin(opts: {
 
     const importLines = metas.map((m) => `import "./${m.file}";`).join("\n");
     const arrayBody = metas
-      .map(
-        (m) =>
-          `  { name: ${JSON.stringify(m.name)}, ` +
-          `displayName: ${JSON.stringify(m.displayName)}, ` +
-          `category: ${JSON.stringify(m.category)}, ` +
-          `source: "builtin"` +
-          (m.sourceUrl ? `, sourceUrl: ${JSON.stringify(m.sourceUrl)}` : "") +
-          ` }`,
-      )
+      .map((m) => {
+        const lines = [
+          `    name: ${JSON.stringify(m.name)},`,
+          `    displayName: ${JSON.stringify(m.displayName)},`,
+          `    category: ${JSON.stringify(m.category)},`,
+          `    source: "builtin",`,
+        ];
+        if (m.sourceUrl) lines.push(`    sourceUrl: ${JSON.stringify(m.sourceUrl)},`);
+        return `  {\n${lines.join("\n")}\n  }`;
+      })
       .join(",\n");
 
     const tsOut =
