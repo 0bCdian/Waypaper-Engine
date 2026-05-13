@@ -312,13 +312,13 @@ export default function ShaderStudio() {
   // Load shadertoy JSON passed via route state (navigated from Gallery drop prompt).
   useEffect(() => {
     if (routeStateLoadedRef.current) return;
-    routeStateLoadedRef.current = true;
     const state = location.state as { shadertoyJsonText?: string } | null;
     if (state?.shadertoyJsonText) {
+      routeStateLoadedRef.current = true;
       loadShadertoyJsonText(state.shadertoyJsonText);
       window.history.replaceState({}, "");
     }
-  }, [location.state, loadShadertoyJsonText]);
+  }, [location, loadShadertoyJsonText]);
 
   const onPickShadertoyJson = (ev: ChangeEvent<HTMLInputElement>): void => {
     const file = ev.target.files?.[0];
