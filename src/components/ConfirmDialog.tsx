@@ -49,6 +49,8 @@ function ConfirmDialog() {
     setDisplay(options);
   }
 
+  // Bridges global zustand `isOpen` (flipped by `confirmDialog()` callers and `respond()`) to imperative <dialog>.
+  // oxlint-disable-next-line react-doctor/no-effect-event-handler
   useEffect(() => {
     if (isOpen) {
       modalRef.current?.showModal();
