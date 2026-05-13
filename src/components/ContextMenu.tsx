@@ -18,11 +18,14 @@ function ContextMenu() {
     })),
   );
   const menuRef = useRef<HTMLDivElement>(null);
-  const [adjustedPos, setAdjustedPos] = useState(position);
-  const [fadeIn, setFadeIn] = useState(false);
+  const [placement, setPlacement] = useState<{
+    pos: { x: number; y: number };
+    fadeIn: boolean;
+  }>(() => ({ pos: position, fadeIn: false }));
   const [focusIdx, setFocusIdx] = useState(-1);
 
-  const visible = isOpen && fadeIn;
+  const adjustedPos = placement.pos;
+  const visible = isOpen && placement.fadeIn;
   const focusIndex = isOpen ? focusIdx : -1;
 
   useEffect(() => {
@@ -30,8 +33,7 @@ function ContextMenu() {
 
     requestAnimationFrame(() => {
       if (!menuRef.current) {
-        setAdjustedPos(position);
-        setFadeIn(true);
+        setPlacement({ pos: position, fadeIn: true });
         return;
       }
       const rect = menuRef.current.getBoundingClientRect();
@@ -43,10 +45,9 @@ function ContextMenu() {
       if (y + rect.height + VIEWPORT_PADDING > vh) y = vh - rect.height - VIEWPORT_PADDING;
       if (x < VIEWPORT_PADDING) x = VIEWPORT_PADDING;
       if (y < VIEWPORT_PADDING) y = VIEWPORT_PADDING;
-      setAdjustedPos({ x, y });
-      setFadeIn(true);
+      setPlacement({ pos: { x, y }, fadeIn: true });
     });
-    return () => setFadeIn(false);
+    return () => setPlacement((prev) => ({ ...prev, fadeIn: false }));
   }, [isOpen, position]);
 
   useEffect(() => {
