@@ -25,10 +25,12 @@ export async function writeAnimatedWebpPreviewFromPngs(
   const fps = Number.isFinite(previewFps) && previewFps > 0 ? previewFps : 24;
   const wd = await mkdtemp(join(tmpdir(), "waypaper-preview-"));
   try {
-    for (let i = 0; i < n; i++) {
-      const name = `preview-${String(i + 1).padStart(4, "0")}.png`;
-      await writeFile(join(wd, name), previewPngBuffers[i]!);
-    }
+    await Promise.all(
+      Array.from({ length: n }, (_, i) => {
+        const name = `preview-${String(i + 1).padStart(4, "0")}.png`;
+        return writeFile(join(wd, name), previewPngBuffers[i]!);
+      }),
+    );
     const outAbs = join(packageDir, "preview.webp");
     const enc = ffmpegPngSequenceToAnimatedWebp(ffmpeg, wd, n, fps, outAbs);
     if (!enc.ok) {

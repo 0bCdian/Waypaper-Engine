@@ -30,14 +30,16 @@ interface Actions {
 }
 
 async function importWebPackageRoots(roots: string[], folderID: number | undefined) {
-  for (const root of roots) {
-    try {
-      await daemonClient.importWebWallpaper(root, folderID);
-    } catch (error) {
-      logger.error("useOpenImages: import web wallpaper failed:", root, error);
-      notifyWebWallpaperImportFailed(root, error);
-    }
-  }
+  await Promise.all(
+    roots.map(async (root) => {
+      try {
+        await daemonClient.importWebWallpaper(root, folderID);
+      } catch (error) {
+        logger.error("useOpenImages: import web wallpaper failed:", root, error);
+        notifyWebWallpaperImportFailed(root, error);
+      }
+    }),
+  );
 }
 
 const openImagesStore = create<State & Actions>((set, get) => ({

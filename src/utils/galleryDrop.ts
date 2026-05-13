@@ -124,15 +124,17 @@ export async function importMediaDrop(
 }
 
 export async function downloadAndImportUrls(urls: string[]): Promise<void> {
-  const downloadedPaths: string[] = [];
-  for (const url of urls) {
-    try {
-      const tmpPath = await window.API_RENDERER.downloadUrl(url);
-      downloadedPaths.push(tmpPath);
-    } catch (err) {
-      logger.error("Failed to download URL:", url, err);
-    }
-  }
+  const results = await Promise.all(
+    urls.map(async (url) => {
+      try {
+        return await window.API_RENDERER.downloadUrl(url);
+      } catch (err) {
+        logger.error("Failed to download URL:", url, err);
+        return null;
+      }
+    }),
+  );
+  const downloadedPaths = results.filter((p): p is string => p !== null);
   if (downloadedPaths.length > 0) {
     await daemonClient.importImages(downloadedPaths);
   }

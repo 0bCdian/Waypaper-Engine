@@ -260,11 +260,14 @@ export class IPCManager {
 
         let webRoots: string[] = [];
         if (action === "folder") {
-          for (const folderPath of result.filePaths) {
-            if (!folderName) {
-              folderName = folderPath.split("/").pop() || folderPath.split("\\").pop();
-            }
-            const scanned = await scanDirectoryForImports(folderPath);
+          if (!folderName && result.filePaths[0]) {
+            const first = result.filePaths[0];
+            folderName = first.split("/").pop() || first.split("\\").pop();
+          }
+          const scans = await Promise.all(
+            result.filePaths.map((folderPath) => scanDirectoryForImports(folderPath)),
+          );
+          for (const scanned of scans) {
             files.push(...scanned.mediaFiles);
             webRoots.push(...scanned.webPackageRoots);
           }

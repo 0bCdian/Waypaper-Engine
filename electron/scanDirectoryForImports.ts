@@ -42,23 +42,25 @@ export async function scanDirectoryForImports(
       return;
     }
 
-    for (const entry of entries) {
-      const fullPath = join(currentPath, entry);
-      let stats;
-      try {
-        stats = await stat(fullPath);
-      } catch {
-        continue;
-      }
-      if (stats.isDirectory()) {
-        await scan(fullPath);
-      } else if (stats.isFile()) {
-        const ext = fileExtLower(entry);
-        if (IMAGE_EXTENSIONS.has(ext) || VIDEO_EXTENSIONS.has(ext)) {
-          mediaFiles.push(fullPath);
+    await Promise.all(
+      entries.map(async (entry) => {
+        const fullPath = join(currentPath, entry);
+        let stats;
+        try {
+          stats = await stat(fullPath);
+        } catch {
+          return;
         }
-      }
-    }
+        if (stats.isDirectory()) {
+          await scan(fullPath);
+        } else if (stats.isFile()) {
+          const ext = fileExtLower(entry);
+          if (IMAGE_EXTENSIONS.has(ext) || VIDEO_EXTENSIONS.has(ext)) {
+            mediaFiles.push(fullPath);
+          }
+        }
+      }),
+    );
   }
 
   await scan(dirPath);

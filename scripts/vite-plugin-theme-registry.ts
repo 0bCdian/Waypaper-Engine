@@ -46,10 +46,15 @@ export function themeRegistryPlugin(opts: {
     const entries = (await fs.readdir(themesDir))
       .filter((f) => f.endsWith(".css") && !f.startsWith("_"))
       .sort();
+    const cssByFile = await Promise.all(
+      entries.map(async (file) => ({
+        file,
+        css: await fs.readFile(path.join(themesDir, file), "utf8"),
+      })),
+    );
     const metas: Array<HeaderMeta & { file: string }> = [];
     const cssChunks: string[] = [];
-    for (const file of entries) {
-      const css = await fs.readFile(path.join(themesDir, file), "utf8");
+    for (const { file, css } of cssByFile) {
       const meta = parseHeader(css);
       if (!meta) {
         // eslint-disable-next-line no-console
