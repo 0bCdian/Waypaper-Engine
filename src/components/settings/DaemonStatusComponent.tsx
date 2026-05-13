@@ -125,7 +125,7 @@ export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({ cl
         <div className="card-body">
           <div className="flex items-center justify-center">
             <div className="loading loading-spinner loading-sm"></div>
-            <span className="ml-2 text-sm text-base-content/60">Loading daemon status...</span>
+            <span className="ml-2 text-sm text-base-content/60">Loading daemon status…</span>
           </div>
         </div>
       </div>

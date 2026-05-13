@@ -173,7 +173,7 @@ export function MonitorComponent({ monitor, scale, selectType, monitorsList, ref
           >
             <div className="text-center text-base-content/70">
               <div className="loading loading-spinner loading-md"></div>
-              <p className="mt-2 text-sm font-medium">Loading...</p>
+              <p className="mt-2 text-sm font-medium">Loading…</p>
             </div>
           </div>
         ) : wallpaperSrc ? (
