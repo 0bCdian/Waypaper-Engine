@@ -524,11 +524,11 @@ function DebouncedFloatInput({
   step?: number;
 }) {
   const [local, setLocal] = useState(String(externalValue));
-  const [prevExternal, setPrevExternal] = useState(externalValue);
+  const prevExternalRef = useRef(externalValue);
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  if (externalValue !== prevExternal) {
-    setPrevExternal(externalValue);
+  if (externalValue !== prevExternalRef.current) {
+    prevExternalRef.current = externalValue;
     setLocal(String(externalValue));
   }
 
@@ -583,11 +583,11 @@ function DebouncedNumberInput({
   step?: number;
 }) {
   const [local, setLocal] = useState(String(externalValue));
-  const [prevExternal, setPrevExternal] = useState(externalValue);
+  const prevExternalRef = useRef(externalValue);
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  if (externalValue !== prevExternal) {
-    setPrevExternal(externalValue);
+  if (externalValue !== prevExternalRef.current) {
+    prevExternalRef.current = externalValue;
     setLocal(String(externalValue));
   }
 
@@ -635,9 +635,9 @@ function DebouncedTextInput({
   const [local, setLocal] = useState(externalValue);
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const [prevExternal, setPrevExternal] = useState(externalValue);
-  if (externalValue !== prevExternal) {
-    setPrevExternal(externalValue);
+  const prevExternalRef = useRef(externalValue);
+  if (externalValue !== prevExternalRef.current) {
+    prevExternalRef.current = externalValue;
     setLocal(externalValue);
   }
 
