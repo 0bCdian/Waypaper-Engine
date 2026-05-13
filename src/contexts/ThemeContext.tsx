@@ -48,13 +48,13 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   children,
   defaultTheme = DEFAULT_THEME_NAME,
   persist = true,
-  syncWithSystem: initialSyncWithSystem = true,
+  syncWithSystem: defaultSyncWithSystem = true,
 }) => {
   const [currentTheme, setCurrentThemeState] = useState<string>(() =>
     resolveInitialTheme(defaultTheme, persist),
   );
   const [systemTheme, setSystemTheme] = useState<"light" | "dark" | "auto">("auto");
-  const [syncWithSystem, setSyncWithSystem] = useState<boolean>(initialSyncWithSystem);
+  const [syncWithSystem, setSyncWithSystem] = useState<boolean>(defaultSyncWithSystem);
   const [isLoading] = useState(false);
   const [lastChanged, setLastChanged] = useState<number | undefined>();
 
