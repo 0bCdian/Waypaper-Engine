@@ -31,9 +31,9 @@ function Monitors() {
 
   const resolution = calculateMinResolution(monitorsList);
 
-  const [prevMode, setPrevMode] = useState(monitorSelection.mode);
-  if (monitorSelection.mode !== prevMode) {
-    setPrevMode(monitorSelection.mode);
+  const prevModeRef = useRef(monitorSelection.mode);
+  if (monitorSelection.mode !== prevModeRef.current) {
+    prevModeRef.current = monitorSelection.mode;
     setSelectType(monitorSelection.mode);
   }
 
