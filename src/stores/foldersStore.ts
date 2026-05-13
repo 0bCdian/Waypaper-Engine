@@ -29,6 +29,7 @@ export async function getAllImageIdsInFolder(folderId: number): Promise<number[]
   const ids: number[] = [];
   let page = 1;
   for (;;) {
+    // oxlint-disable-next-line react-doctor/async-await-in-loop -- ordered: pagination — total_pages is only known after the first response, so subsequent pages can't be requested in parallel without prior info
     const res = await daemonClient.getImages({
       folder_id: folderId,
       per_page: 200,

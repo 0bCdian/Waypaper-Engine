@@ -96,6 +96,7 @@ export class DaemonMonitor {
         logger.warn({ err: error }, "DaemonMonitor: Error stopping daemon");
       }
 
+      // oxlint-disable-next-line react-doctor/async-parallel -- ordered: intentional 1s settling delay before respawning the daemon — must complete before initWaypaperDaemon()
       await new Promise((resolve) => setTimeout(resolve, 1000));
 
       await initWaypaperDaemon();
@@ -115,8 +116,10 @@ export class DaemonMonitor {
 
   async startDaemon(): Promise<{ success: boolean; error?: string }> {
     try {
+      // oxlint-disable-next-line react-doctor/async-parallel -- ordered: daemon must spawn → settle 2s → connect → health-check sequentially; startup ordering is load-bearing
       await initWaypaperDaemon();
 
+      // oxlint-disable-next-line react-doctor/async-parallel -- ordered: intentional 2s settling delay between daemon spawn and client connect — startup ordering is load-bearing
       await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Connect the client

@@ -74,6 +74,7 @@ async function waitForDaemon(
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     try {
+      // oxlint-disable-next-line react-doctor/async-await-in-loop -- ordered: health-check polling — must wait for one response before retrying
       const res = await httpRequestJSON(socketPath, "GET", "/healthz");
       if (
         res.status === 200 &&
@@ -199,6 +200,7 @@ export const test = base.extend<UIFixtures>({
       "dist",
       "electron",
     );
+    // oxlint-disable-next-line react-doctor/async-parallel -- ordered: subsequent `await use(electronApp)` requires the launched app; `await electronApp.close()` must run after the test finishes
     const electronApp = await _electron.launch({
       executablePath: electronBin,
       args: [mainJs],
@@ -217,6 +219,7 @@ export const test = base.extend<UIFixtures>({
   },
 
   page: async ({ electronApp }, use) => {
+    // oxlint-disable-next-line react-doctor/async-parallel -- ordered: `page.waitForLoadState` requires the page object returned by `firstWindow()`
     const page = await electronApp.firstWindow();
     await page.waitForLoadState("domcontentloaded");
     await use(page);

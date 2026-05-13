@@ -82,6 +82,7 @@ async function waitForDaemon(
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     try {
+      // oxlint-disable-next-line react-doctor/async-await-in-loop -- ordered: health-check polling — must wait for one response before retrying
       const res = await httpRequestJSON(socketPath, "GET", "/healthz");
       if (
         res.status === 200 &&

@@ -92,6 +92,7 @@ export async function initWaypaperDaemon() {
           throw new Error("Daemon process was killed");
         }
 
+        // oxlint-disable-next-line react-doctor/async-await-in-loop -- ordered: daemon-readiness polling — must check socket then test connection then back off
         await access(WAYPAPER_ENGINE_SOCKET_PATH);
         logger.info("Socket file exists, testing connection...");
 
@@ -133,6 +134,7 @@ async function testConnection(): Promise<HealthzBody> {
   let attempt = 1;
   while (attempt <= MAX_ATTEMPTS) {
     try {
+      // oxlint-disable-next-line react-doctor/async-await-in-loop -- ordered: connection retry — must wait for one health check to resolve/reject before backing off and retrying
       const body = await healthCheck(WAYPAPER_ENGINE_SOCKET_PATH);
       logger.info("Connection to Go daemon established via HTTP.");
       return body;

@@ -60,6 +60,7 @@ export async function exportWallpapersToDirectory(
 
       if (isWeb) {
         const rootFs = atomPathToFs(item.package_root!.trim());
+        // oxlint-disable-next-line react-doctor/async-await-in-loop -- ordered: each iteration mutates shared `usedNames` Set for unique filename allocation; parallelizing would race on name collisions
         await stat(rootFs);
         const dirName = uniqueExportName(usedNames, item.name, "");
         await cp(rootFs, join(destDir, dirName), { recursive: true });

@@ -12,6 +12,7 @@ async function waitForImportedImages(
 ): Promise<{ id: number }[]> {
   const deadline = Date.now() + IMPORT_WAIT_MS;
   while (Date.now() < deadline) {
+    // oxlint-disable-next-line react-doctor/async-await-in-loop -- ordered: import polling — must check then sleep then re-check sequentially
     const listRes = await api.get(
       `/images?page=1&per_page=${Math.max(minCount, 1)}`,
     );

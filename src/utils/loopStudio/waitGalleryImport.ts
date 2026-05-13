@@ -15,6 +15,7 @@ export async function waitForGalleryVideoBySourcePath(
   if (!want) return null;
 
   for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    // oxlint-disable-next-line react-doctor/async-await-in-loop -- ordered: polling loop — must check then sleep then re-check sequentially
     const res = await daemonClient.getImages({
       media_type: "video",
       sort_by: "imported_at",

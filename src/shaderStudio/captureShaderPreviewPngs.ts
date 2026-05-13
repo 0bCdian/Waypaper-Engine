@@ -74,6 +74,7 @@ export async function captureShaderPreviewPngs(
         mouse: NEUTRAL_SHADERTOY_MOUSE,
         dateVec: FIXED_PREVIEW_IDATE,
       });
+      // oxlint-disable-next-line react-doctor/async-await-in-loop -- ordered: each frame mutates shared GL canvas; PNG must be read before next stepDeterministicFrame overwrites it
       out.push(await canvasToPngBytes(canvas));
     }
     eng.dispose();
@@ -101,6 +102,7 @@ export async function captureShaderPreviewPngs(
       mouse: NEUTRAL_SHADERTOY_MOUSE,
       dateVec: FIXED_PREVIEW_IDATE,
     });
+    // oxlint-disable-next-line react-doctor/async-await-in-loop -- ordered: each frame mutates shared GL canvas; PNG must be read before next stepDeterministicFrame overwrites it
     out.push(await canvasToPngBytes(canvas));
   }
   eng.dispose();

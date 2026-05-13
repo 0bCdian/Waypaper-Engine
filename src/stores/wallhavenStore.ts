@@ -488,6 +488,7 @@ export const useWallhavenStore = create<WallhavenState & WallhavenActions>()((se
       while (queue.length > 0) {
         const wp = queue.shift();
         if (!wp) break;
+        // oxlint-disable-next-line react-doctor/async-await-in-loop -- ordered: bounded concurrency — N workers share the queue; each pulls one item, completes it, then takes the next (rate limit)
         await get().downloadToGallery(wp);
         completed++;
         set({
