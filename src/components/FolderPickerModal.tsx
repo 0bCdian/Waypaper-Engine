@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useReducer } from "react";
 import type { Folder } from "../../electron/daemon-go-types";
 import { useFoldersStore } from "../stores/foldersStore";
 import { useImagesStore } from "../stores/images";
@@ -105,6 +105,30 @@ function FolderTreeItem({ folder, level, selectedId, onSelect }: FolderTreeItemP
   );
 }
 
+type CreateFolderState = { active: boolean; name: string };
+type CreateFolderAction =
+  | { type: "start" }
+  | { type: "cancel" }
+  | { type: "set-name"; name: string }
+  | { type: "reset" };
+
+function createFolderReducer(
+  state: CreateFolderState,
+  action: CreateFolderAction,
+): CreateFolderState {
+  switch (action.type) {
+    case "start":
+      return { active: true, name: "" };
+    case "cancel":
+    case "reset":
+      return { active: false, name: "" };
+    case "set-name":
+      return { ...state, name: action.name };
+  }
+}
+
+const CREATE_FOLDER_INITIAL: CreateFolderState = { active: false, name: "" };
+
 function FolderPickerModal() {
   const { isOpen, imageIds, close } = useFolderPickerStore(
     useShallow((s) => ({
@@ -117,8 +141,8 @@ function FolderPickerModal() {
   const modalRef = useRef<ModalHandle>(null);
   const [rootFolders, setRootFolders] = useState<Folder[]>([]);
   const [selectedFolderId, setSelectedFolderId] = useState<number | null>(null);
-  const [isCreating, setIsCreating] = useState(false);
-  const [newFolderName, setNewFolderName] = useState("");
+  const [createState, dispatchCreate] = useReducer(createFolderReducer, CREATE_FOLDER_INITIAL);
+  const { active: isCreating, name: newFolderName } = createState;
   const newFolderInputRef = useRef<HTMLInputElement>(null);
 
   // Bridges global zustand `isOpen` (flipped by external callers via useFolderPickerStore) to imperative <dialog>.
@@ -137,7 +161,7 @@ function FolderPickerModal() {
     setLastOpenState(isOpen);
     if (isOpen) {
       setSelectedFolderId(null);
-      setIsCreating(false);
+      dispatchCreate({ type: "reset" });
     }
   }
 
@@ -163,8 +187,7 @@ function FolderPickerModal() {
       const folder = await useFoldersStore.getState().createFolder(name);
       setRootFolders((prev) => [...prev, folder]);
       setSelectedFolderId(folder.id);
-      setIsCreating(false);
-      setNewFolderName("");
+      dispatchCreate({ type: "reset" });
     } catch {
       addToast("Failed to create folder", "error");
     }
@@ -222,13 +245,10 @@ function FolderPickerModal() {
             className="input input-sm input-bordered flex-1"
             placeholder="Folder name"
             value={newFolderName}
-            onChange={(e) => setNewFolderName(e.target.value)}
+            onChange={(e) => dispatchCreate({ type: "set-name", name: e.target.value })}
             onKeyDown={(e) => {
               if (e.key === "Enter") void handleCreateFolder();
-              if (e.key === "Escape") {
-                setIsCreating(false);
-                setNewFolderName("");
-              }
+              if (e.key === "Escape") dispatchCreate({ type: "cancel" });
             }}
             autoFocus
           />
@@ -243,10 +263,7 @@ function FolderPickerModal() {
           <button
             type="button"
             className="btn btn-sm btn-ghost"
-            onClick={() => {
-              setIsCreating(false);
-              setNewFolderName("");
-            }}
+            onClick={() => dispatchCreate({ type: "cancel" })}
           >
             Cancel
           </button>
@@ -256,7 +273,7 @@ function FolderPickerModal() {
           type="button"
           className="btn btn-sm btn-ghost gap-1 mt-3"
           onClick={() => {
-            setIsCreating(true);
+            dispatchCreate({ type: "start" });
             requestAnimationFrame(() => newFolderInputRef.current?.focus());
           }}
         >
