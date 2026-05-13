@@ -104,12 +104,12 @@ const GalleryFilterCheatsheetModal = () => {
             Combining tokens
           </h3>
           <div className="grid gap-4 text-sm leading-relaxed text-neutral-content/95 md:grid-cols-2 [&_strong]:font-semibold [&_strong]:text-neutral-content">
-            <p className="border-l-4 border-neutral-content/35 pl-4">
+            <p className="rounded bg-neutral-content/10 px-3 py-2">
               <strong>Multiple color tokens:</strong> each{" "}
               <code className={cheatsheetNeutralCodeCls}>color:</code> token is required; stored
               palette must include every requested swatch (AND).
             </p>
-            <p className="border-l-4 border-neutral-content/35 pl-4">
+            <p className="rounded bg-neutral-content/10 px-3 py-2">
               <strong>Near constraints:</strong> the{" "}
               <code className={cheatsheetNeutralCodeCls}>~</code> suffix on{" "}
               <code className={cheatsheetNeutralCodeCls}>near:</code> sets the maximum CIE76 ΔE.
