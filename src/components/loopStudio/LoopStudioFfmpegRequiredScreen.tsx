@@ -47,7 +47,7 @@ export function LoopStudioFfmpegRequiredScreen({ onOpenExternal }: Props) {
         <p className="text-sm leading-relaxed text-base-content/65">
           Export, palette extraction, and video tooling here need{" "}
           <code className="rounded bg-base-300 px-1 py-px font-mono text-[11px]">ffmpeg</code> on
-          your PATH. Install it, then focus this window — we re-check on focus.
+          your PATH. Install it, then focus this window; we re-check on focus.
         </p>
       </div>
       <button

@@ -489,7 +489,7 @@ export default function ShaderStudio() {
           Shadertoy-style <code className="text-xs">mainImage</code> fragment shaders. Run compiles
           the preview; save writes a web wallpaper package and imports it into the gallery, or
           export copies the package to a folder you choose. Multipass shaders need a full Shadertoy
-          JSON export (official Export or a compatible browser extension)—not the Image tab alone.
+          JSON export (official Export or a compatible browser extension), not the Image tab alone.
         </p>
       </header>
 

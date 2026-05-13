@@ -864,7 +864,7 @@ export default function LoopStudio() {
                 value={imageId ?? ""}
                 onChange={(e) => pickFromGallery(e.target.value)}
               >
-                <option value="">— Select —</option>
+                <option value="">(Select)</option>
                 {videoOptions.map((o) => (
                   <option key={o.id} value={o.id}>
                     {o.name} (#{o.id})
@@ -909,7 +909,7 @@ export default function LoopStudio() {
               </button>
             </div>
             {previewOnly && (
-              <span className="badge badge-warning">Preview only — not in gallery</span>
+              <span className="badge badge-warning">Preview only (not in gallery)</span>
             )}
             <p className="w-full text-[11px] text-base-content/50">
               YouTube needs <code className="text-[10px]">yt-dlp</code> on PATH; import runs in the

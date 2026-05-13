@@ -56,7 +56,7 @@ const GalleryFilterCheatsheetModal = () => {
         subtitle: (
           <>
             Our filter bar uses a <strong className="font-bold">token-based</strong> model: one chip
-            per token. Multiple chips combine with <strong className="font-bold">AND</strong> — an
+            per token. Multiple chips combine with <strong className="font-bold">AND</strong>: an
             image must satisfy every active token. Resolution filters live under{" "}
             <strong className="font-bold">Filters</strong> (advanced), not in the search bar.
           </>
@@ -106,7 +106,7 @@ const GalleryFilterCheatsheetModal = () => {
           <div className="grid gap-4 text-sm leading-relaxed text-neutral-content/95 md:grid-cols-2 [&_strong]:font-semibold [&_strong]:text-neutral-content">
             <p className="border-l-4 border-neutral-content/35 pl-4">
               <strong>Multiple color tokens:</strong> each{" "}
-              <code className={cheatsheetNeutralCodeCls}>color:</code> token is required — stored
+              <code className={cheatsheetNeutralCodeCls}>color:</code> token is required; stored
               palette must include every requested swatch (AND).
             </p>
             <p className="border-l-4 border-neutral-content/35 pl-4">

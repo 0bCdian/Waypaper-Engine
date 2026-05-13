@@ -537,7 +537,7 @@ function WebWallpaperConfigForm({
         </>
       ) : (
         <p className="text-xs text-base-content/40">
-          No <code className="text-[10px]">wallpaper_config</code> in this package — only
+          No <code className="text-[10px]">wallpaper_config</code> in this package; only
           capabilities can be edited here.
         </p>
       )}
@@ -556,7 +556,7 @@ function WebWallpaperConfigForm({
         >
           {busy ? "Saving…" : "Save"}
         </button>
-        {saveError && <span className="text-[10px] text-error">Save failed — check toast</span>}
+        {saveError && <span className="text-[10px] text-error">Save failed: check toast</span>}
       </div>
     </div>
   );
@@ -1351,8 +1351,8 @@ function ImageDetailSidebar() {
               </label>
               <p className="text-[10px] leading-snug text-base-content/50">
                 Hex swatches stored on the gallery row and included in{" "}
-                <code className="text-[10px]">wallpaper_changed</code> when non-empty — useful for
-                hooks / ricing. Click a swatch to copy; double-click to edit color; hover for
+                <code className="text-[10px]">wallpaper_changed</code> when non-empty (useful for
+                hooks / ricing). Click a swatch to copy; double-click to edit color; hover for
                 remove.
               </p>
               <div ref={paletteRowAnchorRef} className="flex flex-wrap items-center gap-2">
