@@ -107,9 +107,13 @@ export default function ShaderStudio() {
 
   const [source, setSource] = useState(() => safeGetLS(LS_SHADER, SHADER_STUDIO_EXAMPLE));
   const [title, setTitle] = useState(() => safeGetLS(LS_TITLE, "My shader wallpaper"));
-  const [logKind, setLogKind] = useState<"ok" | "err" | "info">("info");
-  const [logMsg, setLogMsg] = useState("// Press Run or Ctrl+Enter to compile");
-  const [compileOk, setCompileOk] = useState(false);
+  type CompileLog = { kind: "ok" | "err" | "info"; msg: string; ok: boolean };
+  const [compileLog, setCompileLog] = useState<CompileLog>({
+    kind: "info",
+    msg: "// Press Run or Ctrl+Enter to compile",
+    ok: false,
+  });
+  const { kind: logKind, msg: logMsg, ok: compileOk } = compileLog;
   const [saving, setSaving] = useState(false);
   const [exporting, setExporting] = useState(false);
 
@@ -151,11 +155,7 @@ export default function ShaderStudio() {
     const err = mountSingleEngine();
     let tid: ReturnType<typeof setTimeout> | undefined;
     if (err) {
-      tid = setTimeout(() => {
-        setLogKind("err");
-        setLogMsg(err);
-        setCompileOk(false);
-      }, 0);
+      tid = setTimeout(() => setCompileLog({ kind: "err", msg: err, ok: false }), 0);
     }
     return () => {
       clearTimeout(tid);
@@ -171,20 +171,14 @@ export default function ShaderStudio() {
       const eng = multiEngineRef.current;
       const prep = multipassPreparedRef.current;
       if (!eng || !prep) {
-        setLogKind("err");
-        setLogMsg("No multipass project loaded.");
-        setCompileOk(false);
+        setCompileLog({ kind: "err", msg: "No multipass project loaded.", ok: false });
         return;
       }
       const r = eng.compile(prep);
       if (r.ok) {
-        setCompileOk(true);
-        setLogKind("ok");
-        setLogMsg("// multipass compiled OK");
+        setCompileLog({ kind: "ok", msg: "// multipass compiled OK", ok: true });
       } else {
-        setCompileOk(false);
-        setLogKind("err");
-        setLogMsg(r.message);
+        setCompileLog({ kind: "err", msg: r.message, ok: false });
       }
       return;
     }
@@ -192,20 +186,14 @@ export default function ShaderStudio() {
     if (!eng) return;
     const trimmed = source.trim();
     if (!trimmed) {
-      setLogKind("err");
-      setLogMsg("Shader source is empty.");
-      setCompileOk(false);
+      setCompileLog({ kind: "err", msg: "Shader source is empty.", ok: false });
       return;
     }
     const r = eng.compile(trimmed);
     if (r.ok) {
-      setCompileOk(true);
-      setLogKind("ok");
-      setLogMsg("// compiled OK");
+      setCompileLog({ kind: "ok", msg: "// compiled OK", ok: true });
     } else {
-      setCompileOk(false);
-      setLogKind("err");
-      setLogMsg(r.message);
+      setCompileLog({ kind: "err", msg: r.message, ok: false });
     }
   }, [source, importMode]);
 
@@ -227,14 +215,11 @@ export default function ShaderStudio() {
     setPassList([]);
     const mountErr = mountSingleEngine();
     setSource(SHADER_STUDIO_EXAMPLE);
-    if (mountErr) {
-      setLogKind("err");
-      setLogMsg(mountErr);
-    } else {
-      setLogKind("info");
-      setLogMsg("// loaded example — press Run");
-    }
-    setCompileOk(false);
+    setCompileLog(
+      mountErr
+        ? { kind: "err", msg: mountErr, ok: false }
+        : { kind: "info", msg: "// loaded example — press Run", ok: false },
+    );
   }, [mountSingleEngine]);
 
   const clearImport = useCallback(() => {
@@ -244,15 +229,12 @@ export default function ShaderStudio() {
     setImportMode("single");
     setPassList([]);
     setSource(SHADER_STUDIO_EXAMPLE);
-    setCompileOk(false);
     const mountErr = mountSingleEngine();
-    if (mountErr) {
-      setLogKind("err");
-      setLogMsg(mountErr);
-    } else {
-      setLogKind("info");
-      setLogMsg("// Cleared import — press Run after editing");
-    }
+    setCompileLog(
+      mountErr
+        ? { kind: "err", msg: mountErr, ok: false }
+        : { kind: "info", msg: "// Cleared import — press Run after editing", ok: false },
+    );
   }, [mountSingleEngine]);
 
   const loadShadertoyJsonText = useCallback(
@@ -260,8 +242,7 @@ export default function ShaderStudio() {
       const parseResult = tryParseShadertoyJson(text);
       if (!parseResult.ok) {
         addToast(parseResult.error, "error");
-        setLogKind("err");
-        setLogMsg(parseResult.error);
+        setCompileLog((prev) => ({ kind: "err", msg: parseResult.error, ok: prev.ok }));
         mountSingleEngine();
         return;
       }
@@ -281,9 +262,7 @@ export default function ShaderStudio() {
       const cr = eng.compile(prepared);
       if (!cr.ok) {
         addToast(cr.message, "error");
-        setLogKind("err");
-        setLogMsg(cr.message);
-        setCompileOk(false);
+        setCompileLog({ kind: "err", msg: cr.message, ok: false });
         eng.dispose();
         mountSingleEngine();
         return;
@@ -300,11 +279,11 @@ export default function ShaderStudio() {
       setImportMode("multipass");
       setTitle(prepared.title);
       setSource(multipassEditorPlaceholder(prepared.title, order));
-      setCompileOk(true);
-      setLogKind("ok");
-      setLogMsg(
-        `// Imported multipass (${order.length} executable passes). Unsupported: sound, VR, webcam, cubemap media, music stream.`,
-      );
+      setCompileLog({
+        kind: "ok",
+        msg: `// Imported multipass (${order.length} executable passes). Unsupported: sound, VR, webcam, cubemap media, music stream.`,
+        ok: true,
+      });
     },
     [addToast, mountSingleEngine],
   );
