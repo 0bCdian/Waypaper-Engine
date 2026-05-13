@@ -71,7 +71,7 @@ layer = ""
 slideshow_secs = 0
 
 [backend.wal-qt]
-# Defaults match daemon defaultConfig / RegisterDefaults (legacy [backend.waylandutauri] is still read)
+# Defaults match daemon defaultConfig / RegisterDefaults.
 socket_path = ""
 expected_service = "wal-qt"
 expected_api_version = "0"

@@ -25,10 +25,10 @@ _This project is developed with help from **LLM-based coding tools**; I still re
 
 I wanted a Linux wallpaper app that **feels** like part of a rice: a real gallery, playlists that make sense, and a control plane that does not get in the way. **Waypaper Engine 3** pairs an **Electron** UI with a **Go daemon** on **Wayland and X11**. The UI and anything else you build talk to the daemon over a **Unix socket** (JSON HTTP); live updates (imports, playlists, wallpaper changes, config) stream over **Server-Sent Events** on `GET /events`—no more ad hoc shell hooks for automation.
 
-Pluggable **backends** do the real wallpaper work: [awww](https://github.com/LGFae/awww), [hyprpaper](https://github.com/hyprwm/hyprpaper), [feh](https://feh.finalrewind.org/), [mpvpaper](https://github.com/GhostNaN/mpvpaper), or **[wayland-utauri](https://github.com/0bCdian/wayland-utauri)** for HTML and video on Wayland. Library data and history live in **CloverDB** on the daemon side. You can still browse and pull from [Wallhaven](https://wallhaven.cc/) inside the app.
+Pluggable **backends** do the real wallpaper work: [awww](https://github.com/LGFae/awww), [hyprpaper](https://github.com/hyprwm/hyprpaper), [feh](https://feh.finalrewind.org/), [mpvpaper](https://github.com/GhostNaN/mpvpaper), or **wal-qt** for HTML and video on Wayland. Library data and history live in **CloverDB** on the daemon side. You can still browse and pull from [Wallhaven](https://wallhaven.cc/) inside the app.
 
 > [!NOTE]
-> **HTML / video (wayland-utauri):** outbound network stays **off** until you turn on the global allow flag **and** the wallpaper manifest sets **`capabilities.network`**. Read [wayland-utauri’s web wallpaper spec](https://github.com/0bCdian/wayland-utauri/blob/main/docs/WEB_WALLPAPER_SPEC.md) if you’re shipping HTML walls.
+> **HTML / video (wal-qt):** outbound network stays **off** until you turn on the global allow flag **and** the wallpaper manifest sets **`capabilities.network`**. See the wal-qt repo for its web wallpaper spec if you’re shipping HTML walls.
 
 ---
 
@@ -42,7 +42,7 @@ The big shift is replacing the old **Node.js** backend with a **Go daemon**: one
 
 ## Features
 
-- **Pluggable backends** — awww, hyprpaper, feh, mpvpaper, or wayland-utauri; auto mode can pick a working backend from a priority list.
+- **Pluggable backends** — awww, hyprpaper, feh, mpvpaper, or wal-qt; auto mode can pick a working backend from a priority list.
 - **Gallery-first workflow** — Multi-resolution thumbs, detail sidebar (tags, metadata, rename on disk; playlists keep stable image IDs).
 - **Playlists with rules** — Time-of-day, daily, interval, or static; per-monitor where it makes sense; daemon-side scheduler with clear SSE when things change.
 - **Wallhaven** — Search, favorites, and downloads into the library from inside the app.
