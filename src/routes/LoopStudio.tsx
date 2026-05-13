@@ -173,13 +173,12 @@ export default function LoopStudio() {
       .getImage(imageId)
       .then((img) => {
         if (cancelled) return;
+        const nextSrc = img.media_type === "video" ? loopStudioGalleryVideoSrc(img) : null;
         if (img.media_type !== "video") {
           addToast("Selected item is not a video", "error");
           setImageId(null);
-          setMediaSrc(null);
-          return;
         }
-        setMediaSrc(loopStudioGalleryVideoSrc(img));
+        setMediaSrc(nextSrc);
       })
       .catch(() => {
         addToast("Failed to load video from gallery", "error");
