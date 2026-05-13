@@ -121,6 +121,8 @@ function FolderPickerModal() {
   const [newFolderName, setNewFolderName] = useState("");
   const newFolderInputRef = useRef<HTMLInputElement>(null);
 
+  // Bridges global zustand `isOpen` (flipped by external callers via useFolderPickerStore) to imperative <dialog>.
+  // oxlint-disable-next-line react-doctor/no-effect-event-handler
   useEffect(() => {
     if (isOpen) {
       fetchRootFolders().then(setRootFolders);
