@@ -93,7 +93,7 @@ function FolderCard({ folder }: FolderCardProps) {
     onSubmit: handleRenameSubmit,
   });
 
-  const handleClick = () => {
+  const openFolder = () => {
     if (isRenaming) return;
     navigateToFolder(folder.id);
     useImagesStore.getState().fetchPage(1, {
@@ -111,7 +111,7 @@ function FolderCard({ folder }: FolderCardProps) {
       e.preventDefault();
       startRename();
     } else if (e.key === "Enter") {
-      handleClick();
+      openFolder();
     }
   };
 
@@ -180,7 +180,7 @@ function FolderCard({ folder }: FolderCardProps) {
         dropHighlight,
         dragFade,
       )}
-      onClick={handleClick}
+      onClick={openFolder}
       onKeyDown={handleKeyDown}
       role="button"
       tabIndex={0}

@@ -545,7 +545,7 @@ function DebouncedFloatInput({
     [onCommit, min, max],
   );
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const scheduleDebouncedCommit = (e: React.ChangeEvent<HTMLInputElement>) => {
     const val = e.target.value;
     setLocal(val);
     clearTimeout(timerRef.current);
@@ -558,7 +558,7 @@ function DebouncedFloatInput({
       inputMode="decimal"
       className={className}
       value={local}
-      onChange={handleChange}
+      onChange={scheduleDebouncedCommit}
       onBlur={() => commit(local)}
       min={min}
       max={max}
@@ -600,7 +600,7 @@ function DebouncedNumberInput({
     [onCommit],
   );
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const scheduleDebouncedCommit = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value;
     setLocal(v);
     clearTimeout(timerRef.current);
@@ -612,7 +612,7 @@ function DebouncedNumberInput({
       type="number"
       className={className}
       value={local}
-      onChange={handleChange}
+      onChange={scheduleDebouncedCommit}
       onBlur={() => commit(local)}
       min={min}
       max={max}
@@ -649,7 +649,7 @@ function DebouncedTextInput({
     [onCommit],
   );
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const scheduleDebouncedCommit = (e: React.ChangeEvent<HTMLInputElement>) => {
     const v = e.target.value;
     setLocal(v);
     clearTimeout(timerRef.current);
@@ -661,7 +661,7 @@ function DebouncedTextInput({
       type="text"
       className={className}
       value={local}
-      onChange={handleChange}
+      onChange={scheduleDebouncedCommit}
       onBlur={() => commit(local)}
       placeholder={placeholder}
     />

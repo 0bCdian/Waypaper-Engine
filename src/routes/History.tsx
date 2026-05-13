@@ -97,7 +97,7 @@ function HistoryEntry({
   image: Image | undefined;
   onContextMenu: (e: React.MouseEvent, entry: ImageHistoryEntry) => void;
 }) {
-  const handleClick = () => {
+  const restoreWallpaper = () => {
     void daemonClient
       .setWallpaper(entry.image_id, undefined, entry.mode, entry.monitors)
       .catch(notifyWallpaperApplyFailed);
@@ -106,7 +106,7 @@ function HistoryEntry({
   return (
     <button
       type="button"
-      onClick={handleClick}
+      onClick={restoreWallpaper}
       onContextMenu={(e) => onContextMenu(e, entry)}
       className="flex items-center gap-4 p-3 rounded-lg hover:bg-base-200 transition-colors cursor-pointer w-full text-left group"
     >

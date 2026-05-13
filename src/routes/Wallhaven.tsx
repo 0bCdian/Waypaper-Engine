@@ -488,7 +488,7 @@ function WallhavenCard({
 }) {
   const openMenu = useContextMenuStore((s) => s.open);
 
-  const handleClick = (e: React.MouseEvent) => {
+  const selectOnClick = (e: React.MouseEvent) => {
     if (e.ctrlKey || e.metaKey) {
       e.preventDefault();
       onCtrlClick();
@@ -508,7 +508,7 @@ function WallhavenCard({
         isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-base-100",
       )}
       onContextMenu={handleContextMenu}
-      onClick={handleClick}
+      onClick={selectOnClick}
       onDoubleClick={(e) => {
         e.stopPropagation();
         onDoubleClick();

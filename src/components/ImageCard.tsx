@@ -153,7 +153,7 @@ function ImageCard({ Image }: ImageCardProps) {
     }
   };
 
-  const handleClick = (e: React.MouseEvent) => {
+  const toggleImageSelection = (e: React.MouseEvent) => {
     e.stopPropagation();
     const multi = isHotkeyPressed("mod") || e.metaKey || e.ctrlKey;
     if (multi) {
@@ -431,7 +431,7 @@ function ImageCard({ Image }: ImageCardProps) {
         data-gallery-image-root=""
         data-image-id={String(Image.id)}
         onContextMenu={handleRightClick}
-        onClick={handleClick}
+        onClick={toggleImageSelection}
         className={`neo-polaroid group relative w-full animate-fade-in${isDragging ? " opacity-50" : ""}`}
       >
         <input
@@ -517,7 +517,7 @@ function ImageCard({ Image }: ImageCardProps) {
       data-gallery-image-root=""
       data-image-id={String(Image.id)}
       onContextMenu={handleRightClick}
-      onClick={handleClick}
+      onClick={toggleImageSelection}
       className={`group relative w-full overflow-hidden rounded-lg duration-200 animate-fade-in${isDragging ? " opacity-50" : ""}`}
     >
       <input
