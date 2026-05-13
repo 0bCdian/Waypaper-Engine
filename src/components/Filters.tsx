@@ -136,18 +136,18 @@ function Filters() {
     return loadGalleryFilterInputHistory().length;
   }, [inputHistoryTick]);
 
-  const [prevStoreOrder, setPrevStoreOrder] = useState(filters.order);
-  const [prevStoreType, setPrevStoreType] = useState(filters.type);
-  const [prevStoreMediaType, setPrevStoreMediaType] = useState(filters.mediaType);
+  const prevStoreOrderRef = useRef(filters.order);
+  const prevStoreTypeRef = useRef(filters.type);
+  const prevStoreMediaTypeRef = useRef(filters.mediaType);
 
   if (
-    filters.order !== prevStoreOrder ||
-    filters.type !== prevStoreType ||
-    filters.mediaType !== prevStoreMediaType
+    filters.order !== prevStoreOrderRef.current ||
+    filters.type !== prevStoreTypeRef.current ||
+    filters.mediaType !== prevStoreMediaTypeRef.current
   ) {
-    setPrevStoreOrder(filters.order);
-    setPrevStoreType(filters.type);
-    setPrevStoreMediaType(filters.mediaType);
+    prevStoreOrderRef.current = filters.order;
+    prevStoreTypeRef.current = filters.type;
+    prevStoreMediaTypeRef.current = filters.mediaType;
     setPartialFilters((prev) => ({
       ...prev,
       order: filters.order,
