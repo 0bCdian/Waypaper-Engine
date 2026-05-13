@@ -104,12 +104,11 @@ function ContextMenu() {
   return createPortal(
     <div
       ref={menuRef}
-      className={`context-menu ${visible ? "context-menu-visible" : ""}`}
+      className={`context-menu isolate z-50 ${visible ? "context-menu-visible" : ""}`}
       style={{
         position: "fixed",
         left: adjustedPos.x,
         top: adjustedPos.y,
-        zIndex: 9999,
         minWidth: MENU_MIN_WIDTH,
       }}
     >
