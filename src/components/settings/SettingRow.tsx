@@ -64,5 +64,3 @@ export const SettingSectionHeader: React.FC<SettingSectionHeaderProps> = ({
     </div>
   </div>
 );
-
-export default SettingRow;

@@ -1,0 +1,37 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": [
+    "electron/main.ts",
+    "electron/preload.ts",
+    "globals/setup.ts",
+    "src/main.tsx",
+    "scripts/**/*.ts",
+    "e2e/playwright.config.ts",
+    "e2e/playwright-ui.config.ts",
+    "e2e/**/*.spec.ts",
+    "docs/.vitepress/config.mts",
+    "docs/.vitepress/theme/index.ts",
+    "vite.config.ts",
+    "vitest.config.ts"
+  ],
+  "project": [
+    "src/**/*.{ts,tsx}",
+    "shared/**/*.ts",
+    "electron/**/*.ts",
+    "globals/**/*.ts",
+    "scripts/**/*.ts"
+  ],
+  "ignore": [
+    "electron/daemon-go-types.generated.ts",
+    "dist-electron/**",
+    "release/**"
+  ],
+  "ignoreDependencies": [
+    "ci",
+    "pino",
+    "pino-roll",
+    "electron",
+    "electron-reload"
+  ],
+  "ignoreBinaries": ["go", "swag", "make"]
+}
