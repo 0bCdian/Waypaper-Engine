@@ -1,4 +1,4 @@
-import { forwardRef, type HTMLAttributes, type ReactNode } from "react";
+import type { HTMLAttributes, ReactNode, Ref } from "react";
 import { cn } from "@/utils/cn";
 
 export interface CardProps extends HTMLAttributes<HTMLDivElement> {
@@ -11,12 +11,17 @@ export interface CardProps extends HTMLAttributes<HTMLDivElement> {
   /** Elevation level (0 = flat, 1-3 increasing). Defaults to 1. */
   elevation?: 0 | 1 | 2 | 3;
   children?: ReactNode;
+  ref?: Ref<HTMLDivElement>;
 }
 
-export const Card = forwardRef<HTMLDivElement, CardProps>(function Card(
-  { polaroid = false, elevation = 1, className, children, ...rest },
+export function Card({
+  polaroid = false,
+  elevation = 1,
+  className,
+  children,
   ref,
-) {
+  ...rest
+}: CardProps) {
   return (
     <div
       ref={ref}
@@ -31,4 +36,4 @@ export const Card = forwardRef<HTMLDivElement, CardProps>(function Card(
       {children}
     </div>
   );
-});
+}
