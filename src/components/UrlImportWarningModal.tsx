@@ -19,6 +19,8 @@ export const UrlImportWarningModal: React.FC<UrlImportWarningModalProps> = ({
   const modalRef = useRef<ModalHandle>(null);
   const [dontShowAgain, setDontShowAgain] = useState(false);
 
+  // Bridges parent-controlled `isOpen` prop (toggled from multiple handlers in Gallery) to imperative <dialog>.
+  // oxlint-disable-next-line react-doctor/no-effect-event-handler
   useEffect(() => {
     if (isOpen) {
       modalRef.current?.showModal();
