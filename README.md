@@ -21,6 +21,9 @@ _This project is developed with help from **LLM-based coding tools**; I still re
 
 ---
 
+> [!WARNING]
+> **Breaking change (2026-05) — `wayland-utauri` → `wal-qt`:** If you used `wayland-utauri` as a backend, update your `config.toml`: rename `type = "wayland-utauri"` → `type = "wal-qt"` and rename `[backend.wayland-utauri]` → `[backend.wal-qt]`. Delete any stale `$XDG_RUNTIME_DIR/wayland-utauri.sock` and `wayland-utauri.lock` files before restarting.
+
 ## Overview
 
 I wanted a Linux wallpaper app that **feels** like part of a rice: a real gallery, playlists that make sense, and a control plane that does not get in the way. **Waypaper Engine 3** pairs an **Electron** UI with a **Go daemon** on **Wayland and X11**. The UI and anything else you build talk to the daemon over a **Unix socket** (JSON HTTP); live updates (imports, playlists, wallpaper changes, config) stream over **Server-Sent Events** on `GET /events`—no more ad hoc shell hooks for automation.
