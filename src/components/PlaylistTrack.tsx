@@ -283,7 +283,7 @@ function PlaylistTrack() {
       if (playlistGalleryInsertPreviewAt === index) {
         rows.push(
           <PlaylistGalleryInsertionGhost
-            key={`gallery-drop-insert-at-${index}`}
+            key={`gallery-drop-insert-before-${img.image_id}`}
             viewportCompact={viewportCompact}
             playlistType={playlist.configuration.type}
           />,

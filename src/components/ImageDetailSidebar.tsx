@@ -1358,7 +1358,7 @@ function ImageDetailSidebar() {
               <div ref={paletteRowAnchorRef} className="flex flex-wrap items-center gap-2">
                 {editColors.map((c, i) => (
                   <PaletteSwatchChip
-                    key={i}
+                    key={`${c}-${i}`}
                     fill={swatchCssFill(c)}
                     title="Copy hex · double-click to edit"
                     ariaLabelCopy={`Palette color ${i + 1}, click to copy`}

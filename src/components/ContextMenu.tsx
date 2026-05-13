@@ -131,14 +131,24 @@ function MenuItems({
 }) {
   const rendered: React.ReactNode[] = [];
   let actionCount = 0;
+  let lastActionLabel: string | null = null;
   for (let i = 0; i < items.length; i++) {
     const item = items[i];
     if (item.type === "separator") {
-      rendered.push(<div key={`sep-${item.type}-${i}`} className="context-menu-separator" />);
+      // Stable key: derive from neighbouring action labels which don't reorder within a menu.
+      const next = items.slice(i + 1).find((it) => it.type !== "separator");
+      const nextLabel = next ? next.label : "end";
+      rendered.push(
+        <div
+          key={`sep-${lastActionLabel ?? "start"}-${nextLabel}`}
+          className="context-menu-separator"
+        />,
+      );
       continue;
     }
     const isFocused = depth === 0 && actionCount === focusIndex;
     actionCount++;
+    lastActionLabel = item.label;
     if (item.type === "submenu") {
       rendered.push(
         <SubmenuItem
