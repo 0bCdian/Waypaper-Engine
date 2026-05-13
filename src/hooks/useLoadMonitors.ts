@@ -16,6 +16,7 @@ export const useLoadMonitors = () => {
 
   useEffect(() => {
     let cancelled = false;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
 
     const loadMonitors = async () => {
       await reQueryMonitors();
@@ -28,7 +29,8 @@ export const useLoadMonitors = () => {
         retriesRef.current < MAX_RETRIES
       ) {
         retriesRef.current += 1;
-        setTimeout(() => {
+        timeoutId = setTimeout(() => {
+          timeoutId = null;
           if (!cancelled) void loadMonitors();
         }, RETRY_DELAY_MS * retriesRef.current);
       }
@@ -37,6 +39,7 @@ export const useLoadMonitors = () => {
 
     return () => {
       cancelled = true;
+      if (timeoutId !== null) clearTimeout(timeoutId);
     };
   }, [reQueryMonitors, setLastSavedMonitorConfig]);
 
