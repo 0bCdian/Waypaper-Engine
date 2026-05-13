@@ -62,6 +62,7 @@ const AdvancedFiltersModal = () => {
     <form
       method="dialog"
       className="flex flex-col gap-4 xl:gap-5 2xl:gap-6"
+      // oxlint-disable-next-line react-doctor/no-prevent-default -- Electron app; not a server-rendered form, no progressive-enhancement use case
       onSubmit={(e) => {
         e.preventDefault();
         void form.handleSubmit();

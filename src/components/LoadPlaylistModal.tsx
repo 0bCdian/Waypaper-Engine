@@ -168,6 +168,7 @@ const LoadPlaylistModal = ({ playlistsInDB, onPlaylistChanged, currentPlaylistNa
 
         {playlistsInDB && playlistsInDB.length > 0 && (
           <form
+            // oxlint-disable-next-line react-doctor/no-prevent-default -- Electron app; not a server-rendered form, no progressive-enhancement use case
             onSubmit={(e) => {
               e.preventDefault();
               void form.handleSubmit();

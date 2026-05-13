@@ -158,6 +158,7 @@ const AddToPlaylistModal = ({ playlistsInDB, onPlaylistChanged }: Props) => {
 
       {playlistsInDB && playlistsInDB.length > 0 && selectedImages.size > 0 && (
         <form
+          // oxlint-disable-next-line react-doctor/no-prevent-default -- Electron app; not a server-rendered form, no progressive-enhancement use case
           onSubmit={(e) => {
             e.preventDefault();
             void form.handleSubmit();

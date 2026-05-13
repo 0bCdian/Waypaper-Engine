@@ -151,6 +151,7 @@ const SavePlaylistModal = ({ currentPlaylistName, onPlaylistChanged }: Props) =>
   }, [currentPlaylistName, form]);
   const formBody = (
     <form
+      // oxlint-disable-next-line react-doctor/no-prevent-default -- Electron app; not a server-rendered form, no progressive-enhancement use case
       onSubmit={(e) => {
         e.preventDefault();
         void form.handleSubmit();
