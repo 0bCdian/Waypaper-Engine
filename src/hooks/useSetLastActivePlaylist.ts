@@ -104,38 +104,6 @@ export function useSetLastActivePlaylist() {
   }, [monitorSelection, setPlaylist, clearPlaylist, setActivePlaylist, clearActivePlaylist]);
 
   useEffect(() => {
-    const disposers = [
-      daemonClient.on("playlist_started", () => {
-        void refreshActivePlaylist();
-      }),
-      daemonClient.on("playlist_stopped", () => {
-        void refreshActivePlaylist();
-      }),
-      daemonClient.on("playlist_paused", () => {
-        void refreshActivePlaylist();
-      }),
-      daemonClient.on("playlist_resumed", () => {
-        void refreshActivePlaylist();
-      }),
-      daemonClient.on("playlist_image_changed", () => {
-        void refreshActivePlaylist();
-      }),
-      daemonClient.on("gallery_changed", (data: unknown) => {
-        const payload = data as { domain?: string };
-        if (payload?.domain === "playlists") void refreshActivePlaylist();
-      }),
-      daemonClient.on("config_changed", (data: unknown) => {
-        const event = data as { sections?: string[] };
-        if (!event.sections || event.sections.includes("monitors")) {
-          void refreshActivePlaylist();
-        }
-      }),
-    ];
-
-    return () => {
-      for (const d of disposers) d();
-    };
-
     async function refreshActivePlaylist() {
       const { selectedMonitors, mode } = useMonitorStore.getState().monitorSelection;
       if (selectedMonitors.length === 0) {
@@ -195,5 +163,37 @@ export function useSetLastActivePlaylist() {
         // Playlist fetch failed — keep current state
       }
     }
+
+    const disposers = [
+      daemonClient.on("playlist_started", () => {
+        void refreshActivePlaylist();
+      }),
+      daemonClient.on("playlist_stopped", () => {
+        void refreshActivePlaylist();
+      }),
+      daemonClient.on("playlist_paused", () => {
+        void refreshActivePlaylist();
+      }),
+      daemonClient.on("playlist_resumed", () => {
+        void refreshActivePlaylist();
+      }),
+      daemonClient.on("playlist_image_changed", () => {
+        void refreshActivePlaylist();
+      }),
+      daemonClient.on("gallery_changed", (data: unknown) => {
+        const payload = data as { domain?: string };
+        if (payload?.domain === "playlists") void refreshActivePlaylist();
+      }),
+      daemonClient.on("config_changed", (data: unknown) => {
+        const event = data as { sections?: string[] };
+        if (!event.sections || event.sections.includes("monitors")) {
+          void refreshActivePlaylist();
+        }
+      }),
+    ];
+
+    return () => {
+      for (const d of disposers) d();
+    };
   }, []);
 }
