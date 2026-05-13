@@ -5,8 +5,8 @@ import React, {
   useEffect,
   useEffectEvent,
   useMemo,
+  useReducer,
   useRef,
-  useState,
   type ReactNode,
 } from "react";
 import type { ThemeContextType } from "./types";
@@ -37,6 +37,29 @@ function resolveInitialTheme(defaultTheme: string, persist: boolean): string {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
+type ThemeState = {
+  currentTheme: string;
+  systemTheme: "light" | "dark" | "auto";
+  syncWithSystem: boolean;
+  lastChanged: number | undefined;
+};
+
+type ThemeAction =
+  | { type: "set-theme"; theme: string; timestamp: number }
+  | { type: "set-system-theme"; mode: "light" | "dark" | "auto" }
+  | { type: "set-sync-with-system"; value: boolean };
+
+function themeReducer(state: ThemeState, action: ThemeAction): ThemeState {
+  switch (action.type) {
+    case "set-theme":
+      return { ...state, currentTheme: action.theme, lastChanged: action.timestamp };
+    case "set-system-theme":
+      return { ...state, systemTheme: action.mode, syncWithSystem: action.mode === "auto" };
+    case "set-sync-with-system":
+      return { ...state, syncWithSystem: action.value };
+  }
+}
+
 interface ThemeProviderProps {
   children: ReactNode;
   defaultTheme?: string;
@@ -50,13 +73,18 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   persist = true,
   syncWithSystem: defaultSyncWithSystem = true,
 }) => {
-  const [currentTheme, setCurrentThemeState] = useState<string>(() =>
-    resolveInitialTheme(defaultTheme, persist),
+  const [themeState, dispatchTheme] = useReducer(
+    themeReducer,
+    { defaultTheme, persist, defaultSyncWithSystem },
+    ({ defaultTheme: dt, persist: p, defaultSyncWithSystem: sync }) => ({
+      currentTheme: resolveInitialTheme(dt, p),
+      systemTheme: "auto" as const,
+      syncWithSystem: sync,
+      lastChanged: undefined,
+    }),
   );
-  const [systemTheme, setSystemTheme] = useState<"light" | "dark" | "auto">("auto");
-  const [syncWithSystem, setSyncWithSystem] = useState<boolean>(defaultSyncWithSystem);
-  const [isLoading] = useState(false);
-  const [lastChanged, setLastChanged] = useState<number | undefined>();
+  const { currentTheme, systemTheme, syncWithSystem, lastChanged } = themeState;
+  const isLoading = false;
 
   const currentThemeRef = useRef(currentTheme);
   currentThemeRef.current = currentTheme;
@@ -99,9 +127,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
         return;
       }
 
-      const timestamp = Date.now();
-      setCurrentThemeState(themeName);
-      setLastChanged(timestamp);
+      dispatchTheme({ type: "set-theme", theme: themeName, timestamp: Date.now() });
       applyTheme(themeName);
 
       if (persist) {
@@ -129,8 +155,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
 
   const setSystemThemePreference = useCallback(
     (mode: "light" | "dark" | "auto") => {
-      setSystemTheme(mode);
-      setSyncWithSystem(mode === "auto");
+      dispatchTheme({ type: "set-system-theme", mode });
 
       if (persist) {
         try {
@@ -150,6 +175,10 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     },
     [persist, setTheme],
   );
+
+  const setSyncWithSystem = useCallback((value: boolean) => {
+    dispatchTheme({ type: "set-sync-with-system", value });
+  }, []);
 
   const resetTheme = useCallback(() => {
     setTheme(defaultTheme);
