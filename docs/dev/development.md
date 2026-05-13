@@ -76,7 +76,7 @@ waypaper-engine/
 │  chi router → handlers → store (CloverDB)            │
 │  event bus → SSE broker (GET /events)                │
 │  backend interface → awww/hyprpaper/feh/mpvpaper/    │
-│                      wayland-utauri                  │
+│                      wal-qt                  │
 └─────────────────────────────────────────────────────┘
 ```
 

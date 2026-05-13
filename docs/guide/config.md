@@ -97,13 +97,13 @@ transition_duration_seconds = 0.0          # Canonical transition duration (see 
 [backend.auto_priorities]
 # Used when selection_mode = "auto"
 image = ["awww", "hyprpaper", "feh"]
-video = ["mpvpaper", "wayland-utauri"]
-web   = ["wayland-utauri"]
+video = ["mpvpaper", "wal-qt"]
+web   = ["wal-qt"]
 ```
 
 ### `transition_duration_seconds`
 
-A canonical duration shared across backends. When set to `> 0`, wayland-utauri and awww use this value instead of their own legacy `duration_ms` / `transition_duration` fields. Set it to `0` (or omit) to let each backend use its own duration field independently.
+A canonical duration shared across backends. When set to `> 0`, wal-qt and awww use this value instead of their own legacy `duration_ms` / `transition_duration` fields. Set it to `0` (or omit) to let each backend use its own duration field independently.
 
 ### Per-backend subsections
 
@@ -151,9 +151,9 @@ No additional keys currently supported.
 
 No additional keys currently supported.
 
-#### `[backend.wayland-utauri]`
+#### `[backend.wal-qt]`
 
-wayland-utauri config is primarily managed through the daemon's network settings API and the Settings UI. The backend section is present in the config but most options are managed at runtime.
+wal-qt config is primarily managed through the daemon's network settings API and the Settings UI. The backend section is present in the config but most options are managed at runtime.
 
 ---
 

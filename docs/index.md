@@ -25,7 +25,7 @@ features:
     details: Timer, manual, time-of-day, and day-of-week schedules—all run in the daemon with clear events you can react to.
   - icon: 🧩
     title: Pluggable backends
-    details: awww (transitions, Wayland), hyprpaper, feh (X11), mpvpaper (video), or wayland-utauri for HTML/video wallpapers. Auto mode picks the right one per media type.
+    details: awww (transitions, Wayland), hyprpaper, feh (X11), mpvpaper (video), or wal-qt for HTML/video wallpapers. Auto mode picks the right one per media type.
   - icon: 🔌
     title: Integrate with anything
     details: The same JSON API the UI uses is open to scripts and tools. Subscribe to GET /events with Server-Sent Events—filter by type or tail from the CLI.
@@ -44,7 +44,7 @@ features:
 - **Install** — [Install & run](/guide/install) (AUR, AppImage, from source, systemd)
 - **New here** — [First 10 minutes](/guide/first-run) · [Glossary](/guide/glossary)
 - **Stuck?** — [FAQ & troubleshooting](/guide/faq) (stale socket, backends, monitors, logs)
-- **Backends** — [Backends & dependencies](/guide/backends) (awww, hyprpaper, feh, mpvpaper, wayland-utauri)
+- **Backends** — [Backends & dependencies](/guide/backends) (awww, hyprpaper, feh, mpvpaper, wal-qt)
 - **Config** — [Configuration reference](/guide/config) (every TOML key explained)
 - **Automate** — [Events & SSE](/api/sse) (`?types=wallpaper_changed`, or `waypaper-daemon events`)
 - **API spec** — [OpenAPI spec & curl examples](/api/openapi) · [Full prose contract](/api/contract)

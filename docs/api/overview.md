@@ -39,7 +39,7 @@ curl -sS --unix-socket -X POST "$SOCK" "http://localhost/wallpaper/random" \
 - **Backends:** `GET /backends`, `POST /backends/{name}/activate`
 - **Wallpaper:** `GET /wallpaper/current`, `POST /wallpaper/set`, `POST /wallpaper/random`
 
-**NOTE** — _Web / local spec:_ the contract on GitHub includes a **”Local Spec v0”** section for `media_type: web` and wayland-utauri—read that if you build HTML walls.
+**NOTE** — _Web / local spec:_ the contract on GitHub includes a **”Local Spec v0”** section for `media_type: web` and wal-qt—read that if you build HTML walls.
 
 **NOTE** — _Electron UI:_ the renderer uses `daemonClient` (from `src/client/`) → preload bridge → `"daemon"` IPC channel → main process → socket. It never calls the socket directly. See the **bridge** section in the [API contract](https://github.com/0bCdian/Waypaper-Engine/blob/main/daemon/API_CONTRACT.md#electron-renderer-bridge-notes).
 

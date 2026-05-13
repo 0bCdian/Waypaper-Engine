@@ -61,7 +61,7 @@ Settings are organized into several sections. Changes are saved immediately and 
 
 Pick which backend sets your wallpaper:
 
-- **Type:** choose from `awww`, `hyprpaper`, `feh`, `mpvpaper`, or `wayland-utauri`. Unavailable backends (binary not found) are greyed out.
+- **Type:** choose from `awww`, `hyprpaper`, `feh`, `mpvpaper`, or `wal-qt`. Unavailable backends (binary not found) are greyed out.
 - **Selection mode:**
   - `fixed` — always use the selected backend.
   - `auto` — pick the best available backend per media type, using priority lists you configure.
@@ -138,7 +138,7 @@ This is a beta feature—expect rough edges. The exported file can be imported b
 
 <!-- SCREENSHOT PLACEHOLDER: Shader Studio with GLSL code editor on left and live WebGL2 preview on right -->
 
-**Import Shadertoy JSON exports** (multipass shaders included) and preview them with a live **WebGL2** renderer. When you are happy with the result, save it as a **web wallpaper** package into the gallery—it shows up as a `web` media type image and can be set via the wayland-utauri backend.
+**Import Shadertoy JSON exports** (multipass shaders included) and preview them with a live **WebGL2** renderer. When you are happy with the result, save it as a **web wallpaper** package into the gallery—it shows up as a `web` media type image and can be set via the wal-qt backend.
 
 Steps:
 

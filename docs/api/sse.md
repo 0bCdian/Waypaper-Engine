@@ -73,7 +73,7 @@ The string constants live in `daemon/internal/events/types.go`. Grouped for read
 
 | `event`                    | When                                                                       |
 | -------------------------- | -------------------------------------------------------------------------- |
-| `backend_unavailable`      | A long-lived backend (e.g. wayland-utauri) was not reachable after retries |
+| `backend_unavailable`      | A long-lived backend (e.g. wal-qt) was not reachable after retries |
 | `wallpaper_restore_failed` | Startup could not restore a persisted wallpaper for one or more monitors   |
 
 Payload shapes for the “happy path” events are also summarized in the [API contract (SSE section) on GitHub](https://github.com/0bCdian/Waypaper-Engine/blob/main/daemon/API_CONTRACT.md#server-sent-events-sse). If the two ever disagree, **trust the running daemon** and `events/types.go`, then file a doc bug.

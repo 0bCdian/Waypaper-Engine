@@ -36,7 +36,7 @@ curl --unix-socket "${XDG_RUNTIME_DIR}/waypaper-engine.sock" http://localhost/he
 
 ### A backend shows as unavailable, or the wallpaper never changes
 
-The daemon only applies wallpapers through **backends** you install and put on **`PATH`**. It does not bundle `awww`, `hyprpaper`, `feh`, `mpvpaper`, or `wayland-utauri`.
+The daemon only applies wallpapers through **backends** you install and put on **`PATH`**. It does not bundle `awww`, `hyprpaper`, `feh`, `mpvpaper`, or `wal-qt`.
 
 ```bash
 curl --unix-socket "${XDG_RUNTIME_DIR}/waypaper-engine.sock" http://localhost/backends
@@ -48,7 +48,7 @@ An entry with `"available": false` means the executable was not found. Pick an i
 
 ### Monitors are missing, wrong names, or per-monitor mode acts weird (Wayland)
 
-On Wayland, the daemon builds a monitor list from several providers. `GET /healthz` includes **`monitor_provider_order`**: in current code that is `wayland-utauri`, `wlr-randr`, `xrandr` (see `daemon/internal/handler/health.go`).
+On Wayland, the daemon builds a monitor list from several providers. `GET /healthz` includes **`monitor_provider_order`**: in current code that is `wal-qt`, `wlr-randr`, `xrandr` (see `daemon/internal/handler/health.go`).
 
 For wlroots-based compositors, installing [`wlr-randr`](https://sr.ht/~emersion/wlr-randr/) is strongly recommended; without it, things degrade to best-effort. See [Backends & dependencies — wlr-randr](./backends#monitor-detection-dependency-wlr-randr).
 
@@ -56,7 +56,7 @@ For wlroots-based compositors, installing [`wlr-randr`](https://sr.ht/~emersion/
 
 ### HTML / web wallpaper cannot load remote assets
 
-Outbound network is **off** until you allow it: enable the **global** allow in **Settings** _and_ satisfy the **wallpaper manifest** (wayland-utauri side). The spec lives in the [wayland-utauri `WEB_WALLPAPER_SPEC`](https://github.com/0bCdian/wayland-utauri/blob/main/docs/WEB_WALLPAPER_SPEC.md). Short note: [Introduction](./introduction) (bottom).
+Outbound network is **off** until you allow it: enable the **global** allow in **Settings** _and_ satisfy the **wallpaper manifest** (wal-qt side). The spec lives in the [wal-qt `WEB_WALLPAPER_SPEC`](https://github.com/0bCdian/wal-qt/blob/main/docs/WEB_WALLPAPER_SPEC.md). Short note: [Introduction](./introduction) (bottom).
 
 ---
 

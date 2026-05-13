@@ -20,7 +20,7 @@ On first open, the **daemon** is started for you if it is not already running. T
 
 Open **Settings** (route `#/settings` — the app uses a [hash router](/guide/app#settings-settings)).
 
-1. In **Backend**, choose a **type** your system actually has installed (`awww`, `hyprpaper`, `feh`, `mpvpaper`, or `wayland-utauri`). Unavailable options are disabled when the binary is missing from `PATH`.
+1. In **Backend**, choose a **type** your system actually has installed (`awww`, `hyprpaper`, `feh`, `mpvpaper`, or `wal-qt`). Unavailable options are disabled when the binary is missing from `PATH`.
 2. If you are unsure, start with **fixed** mode and a single backend you know works. **Auto** mode picks per media type using priority lists (see [The app (UI) — Backend](/guide/app#backend)).
 3. Adjust **Monitors** if you have multiple outputs (individual, clone, or extend—described in the same page).
 

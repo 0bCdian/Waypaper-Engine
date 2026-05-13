@@ -14,7 +14,7 @@ The daemon delegates the actual wallpaper-setting call to a **backend** binary. 
 | **hyprpaper**      | Wayland (Hyprland) | Images                     | —           | Hyprland users wanting tight integration   |
 | **feh**            | X11                | Images                     | —           | X11 setups                                 |
 | **mpvpaper**       | Wayland            | Videos                     | —           | Video wallpapers on Wayland                |
-| **wayland-utauri** | Wayland            | Images, video, HTML/CSS/JS | ✓           | HTML, animated, and interactive wallpapers |
+| **wal-qt** | Wayland            | Images, video, HTML/CSS/JS | ✓           | HTML, animated, and interactive wallpapers |
 
 ---
 
@@ -117,9 +117,9 @@ slideshow_secs = 0        # 0 = no slideshow; > 0 = slideshow interval in second
 
 ---
 
-## wayland-utauri
+## wal-qt
 
-[wayland-utauri](https://github.com/0bCdian/wayland-utauri) is my Tauri-based Wayland wallpaper renderer. It places a WebKit webview on the **background** layer using `gtk-layer-shell`, enabling **HTML, CSS, JavaScript, and video** wallpapers.
+[wal-qt](https://github.com/0bCdian/wal-qt) is my Tauri-based Wayland wallpaper renderer. It places a WebKit webview on the **background** layer using `gtk-layer-shell`, enabling **HTML, CSS, JavaScript, and video** wallpapers.
 
 This is an **optional backend**—only install it if you want web or video wallpapers on Wayland.
 
@@ -128,22 +128,22 @@ This is an **optional backend**—only install it if you want web or video wallp
 - Set any image or video as a wallpaper (same as other backends, but via WebKit).
 - Set **HTML web wallpapers**: packages containing `index.html`, a manifest (`project.json`), and optional assets.
 - Import Shadertoy shaders via Shader Studio and set them as live wallpapers.
-- JavaScript access to audio, time, monitor info via a JS API provided by wayland-utauri.
+- JavaScript access to audio, time, monitor info via a JS API provided by wal-qt.
 
 ### Install
 
 ```bash
 # AUR
-yay -S wayland-utauri
+yay -S wal-qt
 # or git version
-yay -S wayland-utauri-git
+yay -S wal-qt-git
 ```
 
 Or build from source (requires Rust in your system for building locally):
 
 ```bash
-git clone https://github.com/0bCdian/wayland-utauri.git
-cd wayland-utauri
+git clone https://github.com/0bCdian/wal-qt.git
+cd wal-qt
 pnpm install && make build && make install
 ```
 
@@ -158,18 +158,18 @@ pnpm install && make build && make install
 
 On Arch, these are pulled in as dependencies by the AUR package.
 
-### Config keys (`[backend.wayland-utauri]`)
+### Config keys (`[backend.wal-qt]`)
 
-The wayland-utauri backend config is managed in the Settings UI under the backend section. Key options:
+The wal-qt backend config is managed in the Settings UI under the backend section. Key options:
 
 - **Network allow:** global toggle for whether HTML wallpapers can make outbound network requests. Off by default. Individual wallpaper manifests also control this per-wallpaper.
 - **Transition type:** crossfade between wallpapers (duration set by `transition_duration_seconds` in `[backend]`).
 
-> **Be advised** — when you change the global network permission in Settings, the daemon pushes the new setting to the wayland-utauri control socket, which may briefly reload active HTML wallpaper webviews (a short flicker is normal).
+> **Be advised** — when you change the global network permission in Settings, the daemon pushes the new setting to the wal-qt control socket, which may briefly reload active HTML wallpaper webviews (a short flicker is normal).
 
 ### Web wallpaper spec
 
-HTML wallpapers follow the [web wallpaper spec](https://github.com/0bCdian/wayland-utauri/blob/main/docs/WEB_WALLPAPER_SPEC.md) defined in the wayland-utauri repo. A minimal web wallpaper is a directory with:
+HTML wallpapers follow the [web wallpaper spec](https://github.com/0bCdian/wal-qt/blob/main/docs/WEB_WALLPAPER_SPEC.md) defined in the wal-qt repo. A minimal web wallpaper is a directory with:
 
 ```
 my-wallpaper/
@@ -177,7 +177,7 @@ my-wallpaper/
 └── index.html       # entry point
 ```
 
-Import the directory into the gallery—it appears as a `web` media-type item and can be set via the wayland-utauri backend.
+Import the directory into the gallery—it appears as a `web` media-type item and can be set via the wal-qt backend.
 
 ---
 
@@ -192,8 +192,8 @@ selection_mode = "auto"
 
 [backend.auto_priorities]
 image = ["awww", "hyprpaper", "feh"]
-video = ["mpvpaper", "wayland-utauri"]
-web   = ["wayland-utauri"]
+video = ["mpvpaper", "wal-qt"]
+web   = ["wal-qt"]
 ```
 
 The daemon picks the **first available** backend in each list. If none in the list are available it falls back to the fixed `type`.
@@ -211,4 +211,4 @@ yay -S wlr-randr
 
 `wlr-randr` works with wlroots-based compositors (sway, Hyprland, river, etc.).
 
-If `wlr-randr` is missing, there's a fallback to `wayland-utauri` on wayland systems, but it is recommended to have `wlr-randr` installed. On x11 systems `xrandr` is used.
+If `wlr-randr` is missing, there's a fallback to `wal-qt` on wayland systems, but it is recommended to have `wlr-randr` installed. On x11 systems `xrandr` is used.

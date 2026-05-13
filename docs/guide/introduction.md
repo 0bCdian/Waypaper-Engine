@@ -32,7 +32,7 @@ The **Go daemon** starts first (either launched by the Electron app or via syste
 | **hyprpaper**      | Wayland (Hyprland) | Images              | —              | Tight Hyprland integration                                      |
 | **feh**            | X11                | Images              | —              | Classic X11 setter                                              |
 | **mpvpaper**       | Wayland            | Videos              | —              | Plays videos as wallpapers                                      |
-| **wayland-utauri** | Wayland            | Images, video, HTML | ✓              | Renders full HTML/CSS/JS wallpapers via WebKit; separate binary |
+| **wal-qt** | Wayland            | Images, video, HTML | ✓              | Renders full HTML/CSS/JS wallpapers via WebKit; separate binary |
 
 See [Backends & dependencies](/guide/backends) for setup, config, and dependencies per backend.
 
@@ -54,7 +54,7 @@ These are **runtime** requirements—build deps are separate (see [Install & run
 **Optional:**
 
 - [`ffmpeg`](https://ffmpeg.org/) — needed for Looper Studio export and some video preview paths
-- [`wayland-utauri`](https://github.com/0bCdian/wayland-utauri) — required only if you want HTML/web wallpapers (`wayland-utauri` backend)
+- [`wal-qt`](https://github.com/0bCdian/wal-qt) — required only if you want HTML/web wallpapers (`wal-qt` backend)
 
 ---
 
@@ -74,4 +74,4 @@ These are **runtime** requirements—build deps are separate (see [Install & run
 
 ---
 
-> **NOTE** — HTML wallpapers (wayland-utauri): outbound network stays off until you enable the global allow in Settings **and** the wallpaper manifest allows it. The web wallpaper spec lives in the [wayland-utauri repo](https://github.com/0bCdian/wayland-utauri/blob/main/docs/WEB_WALLPAPER_SPEC.md).
+> **NOTE** — HTML wallpapers (wal-qt): outbound network stays off until you enable the global allow in Settings **and** the wallpaper manifest allows it. The web wallpaper spec lives in the [wal-qt repo](https://github.com/0bCdian/wal-qt/blob/main/docs/WEB_WALLPAPER_SPEC.md).
