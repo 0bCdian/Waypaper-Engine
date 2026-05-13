@@ -993,6 +993,8 @@ function ImageDetailSidebar() {
     }
   }
 
+  // Refetches tag suggestions when sidebar opens; `isOpen` is flipped by external zustand store callers.
+  // oxlint-disable-next-line react-doctor/no-effect-event-handler
   useEffect(() => {
     if (isOpen) {
       void daemonClient
