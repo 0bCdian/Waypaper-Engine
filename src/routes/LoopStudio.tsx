@@ -380,8 +380,7 @@ export default function LoopStudio() {
     const gen = ++captureGenRef.current;
     const prevO = outBitmapRef.current;
     const prevI = inBitmapRef.current;
-    const o = await captureAt(outPoint);
-    const i = await captureAt(inPoint);
+    const [o, i] = await Promise.all([captureAt(outPoint), captureAt(inPoint)]);
     if (gen !== captureGenRef.current) {
       o?.close();
       i?.close();
