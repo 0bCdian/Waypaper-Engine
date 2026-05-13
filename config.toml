@@ -38,7 +38,7 @@ log_max_backups = 3
 
 [backend]
 # Backend configuration
-type = "awww"  # "awww" | "hyprpaper" | "feh" | "wayland-utauri"
+type = "awww"  # "awww" | "hyprpaper" | "feh" | "wal-qt"
 
 [backend.awww]
 # Defaults match daemon RegisterDefaults (transition_duration is seconds; whole numbers 500–5000 are legacy ms)
@@ -70,10 +70,10 @@ auto_stop = false
 layer = ""
 slideshow_secs = 0
 
-[backend.wayland-utauri]
+[backend.wal-qt]
 # Defaults match daemon defaultConfig / RegisterDefaults (legacy [backend.waylandutauri] is still read)
 socket_path = ""
-expected_service = "wayland-utauri"
+expected_service = "wal-qt"
 expected_api_version = "0"
 connect_timeout_ms = 500
 request_timeout_ms = 1500
