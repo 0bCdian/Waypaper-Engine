@@ -12,35 +12,35 @@ import (
 )
 
 // Below the native zwlr_output_management provider; used when that protocol is
-// unavailable or declines, but the utauri control plane answers.
-const utauriMonitorProviderPriority = 25
+// unavailable or declines, but the wal-qt control plane answers.
+const walqtMonitorProviderPriority = 25
 
-// utauriMonitorProvider lists monitors from GET /wallpaper/status topology on the control socket.
-type utauriMonitorProvider struct {
+// walqtMonitorProvider lists monitors from GET /wallpaper/status topology on the control socket.
+type walqtMonitorProvider struct {
 	v *viper.Viper
 }
 
 // NewMonitorProvider returns a monitor.MonitorProvider backed by wal-qt's control API.
 // Pass the same *viper.Viper used for daemon config; socket_path and API expectations are read
-// from backend.wal-qt (and legacy backend.waylandutauri) when set, otherwise defaults
-// match RegisterDefaults / defaultConfig (including defaultSocketPath).
+// from backend.wal-qt when set, otherwise defaults match RegisterDefaults / defaultConfig
+// (including defaultSocketPath).
 func NewMonitorProvider(v *viper.Viper) monitor.MonitorProvider {
-	return &utauriMonitorProvider{v: v}
+	return &walqtMonitorProvider{v: v}
 }
 
-func (p *utauriMonitorProvider) Name() string {
+func (p *walqtMonitorProvider) Name() string {
 	return "wal-qt"
 }
 
-func (p *utauriMonitorProvider) Compositor() monitor.CompositorType {
+func (p *walqtMonitorProvider) Compositor() monitor.CompositorType {
 	return monitor.CompositorWayland
 }
 
-func (p *utauriMonitorProvider) Priority() int {
-	return utauriMonitorProviderPriority
+func (p *walqtMonitorProvider) Priority() int {
+	return walqtMonitorProviderPriority
 }
 
-func (p *utauriMonitorProvider) Detect(ctx context.Context) ([]monitor.Monitor, error) {
+func (p *walqtMonitorProvider) Detect(ctx context.Context) ([]monitor.Monitor, error) {
 	cfg := p.controlConfig()
 	if strings.TrimSpace(cfg.SocketPath) == "" {
 		return nil, fmt.Errorf("%w: wal-qt socket_path not configured", monitor.ErrProviderNotApplicable)
@@ -95,28 +95,19 @@ func topologyToEngineMonitors(topology []topologyEntry) []monitor.Monitor {
 }
 
 // controlConfig builds connection settings for the control client (subset of full backend config).
-func (p *utauriMonitorProvider) controlConfig() *Config {
+func (p *walqtMonitorProvider) controlConfig() *Config {
 	cfg := defaultConfig()
 	if p.v == nil {
 		return cfg
 	}
-	prefixes := []string{viperBackendKey + ".", viperBackendKeyLegacy + "."}
 	getString := func(k string) string {
-		for _, prefix := range prefixes {
-			if val := p.v.GetString(prefix + k); val != "" {
-				return val
-			}
+		if val := p.v.GetString(viperBackendKey + "." + k); val != "" {
+			return val
 		}
 		return ""
 	}
 	getInt := func(k string) int {
-		for _, prefix := range prefixes {
-			val := p.v.GetInt(prefix + k)
-			if val != 0 {
-				return val
-			}
-		}
-		return 0
+		return p.v.GetInt(viperBackendKey + "." + k)
 	}
 	if val := getString("socket_path"); val != "" {
 		cfg.SocketPath = val

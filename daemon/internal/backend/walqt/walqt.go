@@ -32,9 +32,6 @@ const binaryName = "wal-qt"
 // viperBackendKey matches backend.Name() — must align with SetBackendConfig("backend."+name).
 const viperBackendKey = "backend.wal-qt"
 
-// viperBackendKeyLegacy was used before hyphen matched Name(); still read for old config.toml.
-const viperBackendKeyLegacy = "backend.waylandutauri"
-
 // Grow/outer origin as % of view (v_uv); values outside 0–100 place the anchor off-screen.
 const transitionOriginPctMin = -200
 const transitionOriginPctMax = 200
@@ -59,11 +56,9 @@ func intFromViperPrefixes(v *viper.Viper, wantKey string, fallback int) int {
 	if v == nil {
 		return fallback
 	}
-	for _, p := range []string{viperBackendKey + ".", viperBackendKeyLegacy + "."} {
-		full := p + wantKey
-		if v.IsSet(full) {
-			return v.GetInt(full)
-		}
+	full := viperBackendKey + "." + wantKey
+	if v.IsSet(full) {
+		return v.GetInt(full)
 	}
 	return fallback
 }
@@ -72,11 +67,9 @@ func float32FromViperPrefixes(v *viper.Viper, wantKey string, fallback float32) 
 	if v == nil {
 		return fallback
 	}
-	for _, p := range []string{viperBackendKey + ".", viperBackendKeyLegacy + "."} {
-		full := p + wantKey
-		if v.IsSet(full) {
-			return float32(v.GetFloat64(full))
-		}
+	full := viperBackendKey + "." + wantKey
+	if v.IsSet(full) {
+		return float32(v.GetFloat64(full))
 	}
 	return fallback
 }
@@ -682,35 +675,22 @@ func (w *WalQt) loadConfigFromViper() *Config {
 	}
 	cfg := defaultConfig()
 
-	prefixes := []string{viperBackendKey + ".", viperBackendKeyLegacy + "."}
 	getString := func(k string) string {
-		for _, p := range prefixes {
-			if val := w.v.GetString(p + k); val != "" {
-				return val
-			}
+		if val := w.v.GetString(viperBackendKey + "." + k); val != "" {
+			return val
 		}
 		return ""
 	}
 	getInt := func(k string) int {
-		for _, p := range prefixes {
-			val := w.v.GetInt(p + k)
-			if val != 0 {
-				return val
-			}
-		}
-		return 0
+		return w.v.GetInt(viperBackendKey + "." + k)
 	}
 	getBool := func(k string) bool {
-		canonKey := viperBackendKey + "." + k
-		legacyKey := viperBackendKeyLegacy + "." + k
-		if w.v.IsSet(canonKey) {
-			return w.v.GetBool(canonKey)
+		key := viperBackendKey + "." + k
+		if w.v.IsSet(key) {
+			return w.v.GetBool(key)
 		}
-		if w.v.IsSet(legacyKey) {
-			return w.v.GetBool(legacyKey)
-		}
-		// Unset in file: use canonical key so RegisterDefaults / SetDefault applies.
-		return w.v.GetBool(canonKey)
+		// Unset in file: use key so RegisterDefaults / SetDefault applies.
+		return w.v.GetBool(key)
 	}
 
 	if val := getString("socket_path"); val != "" {
