@@ -8,8 +8,8 @@ describe("inferBackendSettingsSubTabFromSearchKey", () => {
   });
 
   it("maps prefixed keys to backend ids", () => {
-    expect(inferBackendSettingsSubTabFromSearchKey("waylandutauri.transition")).toBe(
-      "wayland-utauri",
+    expect(inferBackendSettingsSubTabFromSearchKey("walqt.transition")).toBe(
+      "wal-qt",
     );
     expect(inferBackendSettingsSubTabFromSearchKey("awww.transition_type")).toBe("awww");
   });

@@ -7,7 +7,7 @@ export const FIELD_PREFIX_BY_BACKEND: Record<string, string> = {
   feh: "feh.",
   hyprpaper: "hyprpaper.",
   mpvpaper: "mpvpaper.",
-  "wayland-utauri": "waylandutauri.",
+  "wal-qt": "walqt.",
 };
 
 const GENERAL_BACKEND_SEARCH_KEYS = new Set(["_nav", "type", "selection_mode", "auto_priorities"]);
