@@ -18,7 +18,7 @@ Go **control-plane + gallery + orchestration** for wallpaper backends. Serves th
 | **Electron / React**   | UI; calls daemon over the socket via the `"daemon"` IPC channel; subscribes to `/events`.                                                                                                              |
 | **Setters (backends)** | External processes or APIs (awww, feh, hyprpaper, mpvpaper, **wal-qt**, …) invoked or driven by the daemon.                                                                                    |
 
-The daemon is **not** the wallpaper webview: **wal-qt** (wal-utauri) is a separate process with its own HTTP API on `$XDG_RUNTIME_DIR/wal-qt.sock`. The daemon talks to it through `internal/backend/waylandutauri`.
+The daemon is **not** the wallpaper webview: **wal-qt** is a separate process with its own HTTP API on `$XDG_RUNTIME_DIR/wal-qt.sock`. The daemon talks to it through `internal/backend/walqt`.
 
 ---
 
@@ -74,7 +74,7 @@ Concurrency rule of thumb: **HTTP handlers** run on the default server pool; **b
 | **HTTP routes**  | `internal/server`         | Router, middleware, SSE broker, request ID / logging.                                                               |
 | **Handlers**     | `internal/handler`        | JSON mapping to store + services; thin where possible.                                                              |
 | **Control**      | `internal/control`        | Config/backend policy: named backend config, active backend activation, restore after activation, `config_changed`. |
-| **Backends**     | `internal/backend`        | Registry, switch, one package per setter (`awww`, `feh`, `hyprpaper`, `mpvpaper`, `waylandutauri`, …).             |
+| **Backends**     | `internal/backend`        | Registry, switch, one package per setter (`awww`, `feh`, `hyprpaper`, `mpvpaper`, `walqt`, …).             |
 | **Wallpaper**    | `internal/wallpaper`      | `Apply`, restore, web capabilities, waypaper.json merge, parallax direction glue.                                   |
 | **Parallax**     | `internal/parallaxdriver` | Compositor-specific input (Sway, Hyprland, …) feeding backend requests.                                            |
 | **Images**       | `internal/image`          | Import, ffmpeg, palette, Web import, video loop export, splitter.                                                   |
@@ -113,7 +113,7 @@ Each backend implements these 10 methods (`internal/backend/backend.go`):
 
 - **`backend.Registry`**: register built-ins, `SetActive` from config, **capabilities** (media types, `DaemonProcess` for wal-qt-style daemons).
 - **`wallpaper.Apply`**: shared path for handler + playlist: normalize media, merge config, call backend, emit events, update history/monitor state.
-- **wal-qt**: HTTP client + monitor mapping, transitions, parallax, respawn in `internal/backend/waylandutauri`.
+- **wal-qt**: HTTP client + monitor mapping, transitions, parallax, respawn in `internal/backend/walqt`.
 
 ---
 
