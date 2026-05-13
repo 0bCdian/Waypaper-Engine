@@ -32,28 +32,25 @@ vi.mock("../../stores/modalStore", () => ({
 }));
 
 vi.mock("../Modal", () => ({
-  default: React.forwardRef(
-    (
-      {
-        children,
-        stripedHeader,
-      }: React.PropsWithChildren<{
-        stripedHeader?: { title?: React.ReactNode };
-      }>,
-      ref: React.Ref<unknown>,
-    ) => {
-      React.useImperativeHandle(ref, () => ({
-        showModal: vi.fn(),
-        close: vi.fn(),
-      }));
-      return (
-        <div>
-          {stripedHeader?.title != null ? <h2>{stripedHeader.title}</h2> : null}
-          {children}
-        </div>
-      );
-    },
-  ),
+  default: ({
+    children,
+    stripedHeader,
+    ref,
+  }: React.PropsWithChildren<{
+    stripedHeader?: { title?: React.ReactNode };
+    ref?: React.Ref<unknown>;
+  }>) => {
+    React.useImperativeHandle(ref, () => ({
+      showModal: vi.fn(),
+      close: vi.fn(),
+    }));
+    return (
+      <div>
+        {stripedHeader?.title != null ? <h2>{stripedHeader.title}</h2> : null}
+        {children}
+      </div>
+    );
+  },
 }));
 
 vi.mock("../../utils/logger", () => ({
