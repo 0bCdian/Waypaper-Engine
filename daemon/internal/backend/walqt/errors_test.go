@@ -1,4 +1,4 @@
-package waylandutauri
+package walqt
 
 import (
 	"errors"
@@ -52,7 +52,7 @@ func TestIsRetryableUnixSocketDial(t *testing.T) {
 }
 
 func TestIsRetryableControlStatusErr(t *testing.T) {
-	timeoutAwait := errors.New(`Get "http://wayland-utauri.local/wallpaper/status": context deadline exceeded (Client.Timeout exceeded while awaiting headers)`)
+	timeoutAwait := errors.New(`Get "http://wal-qt.local/wallpaper/status": context deadline exceeded (Client.Timeout exceeded while awaiting headers)`)
 	assert.True(t, isRetryableControlStatusErr(timeoutAwait))
 
 	refused := &net.OpError{Op: "dial", Net: "unix", Err: syscall.ECONNREFUSED}

@@ -1,4 +1,4 @@
-package waylandutauri
+package walqt
 
 import (
 	"bytes"
@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-const localHTTPBaseURL = "http://wayland-utauri.local"
+const localHTTPBaseURL = "http://wal-qt.local"
 
 type controlClient struct {
 	// httpClient applies a short Client.Timeout fitted to fast endpoints
@@ -92,7 +92,7 @@ func (c *controlClient) checkHealth(ctx context.Context) error {
 		respAPI = payload.APIVersion
 	}
 	if c.expectedAPI != "" && respAPI != c.expectedAPI {
-		return fmt.Errorf("%w: api version %q does not match expected %q (align backend.wayland-utauri.expected_api_version with GET /health)", errContract, respAPI, c.expectedAPI)
+		return fmt.Errorf("%w: api version %q does not match expected %q (align backend.wal-qt.expected_api_version with GET /health)", errContract, respAPI, c.expectedAPI)
 	}
 	return nil
 }

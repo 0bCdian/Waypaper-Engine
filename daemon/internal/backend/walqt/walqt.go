@@ -1,4 +1,4 @@
-package waylandutauri
+package walqt
 
 import (
 	"bytes"
@@ -27,10 +27,10 @@ import (
 	"github.com/spf13/viper"
 )
 
-const binaryName = "wayland-utauri"
+const binaryName = "wal-qt"
 
 // viperBackendKey matches backend.Name() — must align with SetBackendConfig("backend."+name).
-const viperBackendKey = "backend.wayland-utauri"
+const viperBackendKey = "backend.wal-qt"
 
 // viperBackendKeyLegacy was used before hyphen matched Name(); still read for old config.toml.
 const viperBackendKeyLegacy = "backend.waylandutauri"
@@ -99,7 +99,7 @@ func normalizeAngleDeg(v int) int {
 	return v
 }
 
-type WaylandUtauri struct {
+type WalQt struct {
 	v          *viper.Viper
 	makeClient func(cfg *Config) (*controlClient, error)
 	processMu  sync.Mutex
@@ -126,24 +126,24 @@ type WaylandUtauri struct {
 
 	// allowManagedChildRespawn is true only after we spawned a child and expect
 	// respawnAfterChildExit to restart it on crash. Cleared in Shutdown so an
-	// intentional backend switch does not resurrect wayland-utauri in the background.
+	// intentional backend switch does not resurrect wal-qt in the background.
 	allowManagedChildRespawn atomic.Bool
 }
 
-var _ backend.Backend = (*WaylandUtauri)(nil)
+var _ backend.Backend = (*WalQt)(nil)
 
 func New() backend.Backend {
-	return &WaylandUtauri{makeClient: newControlClient}
+	return &WalQt{makeClient: newControlClient}
 }
 
-func (w *WaylandUtauri) Name() string { return backend.WaylandUtauriBackendName }
+func (w *WalQt) Name() string { return backend.WalQtBackendName }
 
-func (w *WaylandUtauri) IsAvailable() bool {
+func (w *WalQt) IsAvailable() bool {
 	_, err := exec.LookPath(binaryName)
 	return err == nil
 }
 
-func (w *WaylandUtauri) Capabilities() backend.Capabilities {
+func (w *WalQt) Capabilities() backend.Capabilities {
 	return backend.Capabilities{
 		Compositors:   []monitor.CompositorType{monitor.CompositorWayland},
 		MediaTypes:    []media.MediaType{media.MediaTypeImage, media.MediaTypeGIF, media.MediaTypeVideo, media.MediaTypeWeb},
@@ -153,7 +153,7 @@ func (w *WaylandUtauri) Capabilities() backend.Capabilities {
 	}
 }
 
-func (w *WaylandUtauri) Initialize(ctx context.Context) error {
+func (w *WalQt) Initialize(ctx context.Context) error {
 	if err := ctx.Err(); err != nil {
 		return err
 	}
@@ -163,9 +163,9 @@ func (w *WaylandUtauri) Initialize(ctx context.Context) error {
 	return w.initializeImpl(context.Background())
 }
 
-func (w *WaylandUtauri) initializeImpl(ctx context.Context) error {
+func (w *WalQt) initializeImpl(ctx context.Context) error {
 	if !w.IsAvailable() {
-		return fmt.Errorf("wayland-utauri: %s not found in PATH", binaryName)
+		return fmt.Errorf("wal-qt: %s not found in PATH", binaryName)
 	}
 
 	cfg := w.loadConfigFromViper()
@@ -180,7 +180,7 @@ func (w *WaylandUtauri) initializeImpl(ctx context.Context) error {
 	healthCancel()
 
 	if initialErr == nil {
-		slog.Info("wayland-utauri already running")
+		slog.Info("wal-qt already running")
 		w.syncParallaxDriver(w.loadConfigFromViper())
 		return nil
 	}
@@ -188,12 +188,12 @@ func (w *WaylandUtauri) initializeImpl(ctx context.Context) error {
 	// If the service is reachable but has a contract mismatch (wrong
 	// service name, API version), don't try to start another instance.
 	if errors.Is(initialErr, errContract) {
-		return fmt.Errorf("wayland-utauri: %w", initialErr)
+		return fmt.Errorf("wal-qt: %w", initialErr)
 	}
 
 	// Service unreachable -- start it. Use a background-context command so the
 	// process outlives the HTTP request that triggered activation.
-	slog.Info("starting wayland-utauri",
+	slog.Info("starting wal-qt",
 		"binary", binaryName,
 		"WAYLAND_DISPLAY", os.Getenv("WAYLAND_DISPLAY"),
 		"XDG_RUNTIME_DIR", os.Getenv("XDG_RUNTIME_DIR"),
@@ -202,10 +202,10 @@ func (w *WaylandUtauri) initializeImpl(ctx context.Context) error {
 	cmd := exec.Command(binaryName)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGTERM}
 	// Pipe stdout/stderr through the daemon logger so spawn failures are visible.
-	cmd.Stdout = &slogWriter{prefix: "wayland-utauri stdout"}
-	cmd.Stderr = &slogWriter{prefix: "wayland-utauri stderr"}
+	cmd.Stdout = &slogWriter{prefix: "wal-qt stdout"}
+	cmd.Stderr = &slogWriter{prefix: "wal-qt stderr"}
 	if err := cmd.Start(); err != nil {
-		return fmt.Errorf("wayland-utauri: start %s: %w", binaryName, err)
+		return fmt.Errorf("wal-qt: start %s: %w", binaryName, err)
 	}
 
 	gen := atomic.AddInt64(&w.spawnGeneration, 1)
@@ -227,22 +227,22 @@ func (w *WaylandUtauri) initializeImpl(ctx context.Context) error {
 		if w.process != nil && c.Process != nil && w.process.Pid == c.Process.Pid {
 			w.process = nil
 		}
-		slog.Warn("wayland-utauri child process exited", "pid", pid, "wait_err", waitErr)
+		slog.Warn("wal-qt child process exited", "pid", pid, "wait_err", waitErr)
 		go w.respawnAfterChildExit(g)
 	}(gen, cmd)
 
 	if err := w.pollHealthUntilReady(ctx, client, cfg); err != nil {
 		return err
 	}
-	slog.Info("wayland-utauri ready after spawn")
+	slog.Info("wal-qt ready after spawn")
 	w.allowManagedChildRespawn.Store(true)
 	w.syncParallaxDriver(w.loadConfigFromViper())
 	return nil
 }
 
-// respawnAfterChildExit runs after our managed child exits; it restarts wayland-utauri
+// respawnAfterChildExit runs after our managed child exits; it restarts wal-qt
 // so the daemon does not sit idle until the next explicit wallpaper operation.
-func (w *WaylandUtauri) respawnAfterChildExit(exitGen int64) {
+func (w *WalQt) respawnAfterChildExit(exitGen int64) {
 	if !w.allowManagedChildRespawn.Load() {
 		return
 	}
@@ -258,14 +258,14 @@ func (w *WaylandUtauri) respawnAfterChildExit(exitGen int64) {
 		return
 	}
 	if err := w.Initialize(context.Background()); err != nil {
-		slog.Error("wayland-utauri: respawn after child exit failed", "error", err)
+		slog.Error("wal-qt: respawn after child exit failed", "error", err)
 		return
 	}
-	slog.Info("wayland-utauri: respawn after child exit succeeded")
+	slog.Info("wal-qt: respawn after child exit succeeded")
 }
 
 // pollHealthUntilReady polls checkHealth with exponential backoff until success or overall deadline (~50s).
-func (w *WaylandUtauri) pollHealthUntilReady(ctx context.Context, client *controlClient, cfg *Config) error {
+func (w *WalQt) pollHealthUntilReady(ctx context.Context, client *controlClient, cfg *Config) error {
 	deadline := time.Now().Add(50 * time.Second)
 	delay := 150 * time.Millisecond
 	const maxDelay = 2 * time.Second
@@ -283,11 +283,11 @@ func (w *WaylandUtauri) pollHealthUntilReady(ctx context.Context, client *contro
 		pollCancel()
 		lastErr = err
 		if err == nil {
-			slog.Info("wayland-utauri health ok", "poll_attempts", attempts)
+			slog.Info("wal-qt health ok", "poll_attempts", attempts)
 			return nil
 		}
 		if errors.Is(err, errContract) {
-			return fmt.Errorf("wayland-utauri: %w", err)
+			return fmt.Errorf("wal-qt: %w", err)
 		}
 		select {
 		case <-ctx.Done():
@@ -301,7 +301,7 @@ func (w *WaylandUtauri) pollHealthUntilReady(ctx context.Context, client *contro
 		delay = next
 	}
 	return fmt.Errorf(
-		"wayland-utauri: unavailable after %d health poll attempts (~50s, last error: %w). "+
+		"wal-qt: unavailable after %d health poll attempts (~50s, last error: %w). "+
 			"Ensure the binary runs on Wayland and "+viperBackendKey+".socket_path matches the child",
 		attempts, lastErr,
 	)
@@ -311,7 +311,7 @@ const statusDialRetries = 12
 const statusDialBackoff = 250 * time.Millisecond
 
 // getStatusWithRetry tolerates a cold control socket right after spawn or during restore.
-func (w *WaylandUtauri) getStatusWithRetry(ctx context.Context, client *controlClient) (*statusResponse, error) {
+func (w *WalQt) getStatusWithRetry(ctx context.Context, client *controlClient) (*statusResponse, error) {
 	var lastErr error
 	for attempt := range statusDialRetries {
 		if attempt > 0 {
@@ -333,7 +333,7 @@ func (w *WaylandUtauri) getStatusWithRetry(ctx context.Context, client *controlC
 	return nil, lastErr
 }
 
-func (w *WaylandUtauri) Shutdown(_ context.Context) error {
+func (w *WalQt) Shutdown(_ context.Context) error {
 	w.allowManagedChildRespawn.Store(false)
 
 	w.parallaxDriverMu.Lock()
@@ -353,7 +353,7 @@ func (w *WaylandUtauri) Shutdown(_ context.Context) error {
 	if p == nil {
 		return nil
 	}
-	slog.Info("stopping wayland-utauri process we started")
+	slog.Info("stopping wal-qt process we started")
 	_ = p.Signal(syscall.SIGTERM)
 	// Spawn goroutine in Initialize owns cmd.Wait; poll until it clears w.process.
 	deadline := time.After(4 * time.Second)
@@ -362,7 +362,7 @@ func (w *WaylandUtauri) Shutdown(_ context.Context) error {
 	for {
 		select {
 		case <-deadline:
-			slog.Warn("wayland-utauri did not exit after SIGTERM, sending SIGKILL")
+			slog.Warn("wal-qt did not exit after SIGTERM, sending SIGKILL")
 			_ = p.Signal(syscall.SIGKILL)
 			return nil
 		case <-tick.C:
@@ -370,7 +370,7 @@ func (w *WaylandUtauri) Shutdown(_ context.Context) error {
 			empty := w.process == nil
 			w.processMu.Unlock()
 			if empty {
-				slog.Debug("wayland-utauri process exited")
+				slog.Debug("wal-qt process exited")
 				return nil
 			}
 		}
@@ -378,7 +378,7 @@ func (w *WaylandUtauri) Shutdown(_ context.Context) error {
 }
 
 // ensureRunning verifies the control plane answers health; if not (and not a contract error), runs Initialize.
-func (w *WaylandUtauri) ensureRunning(ctx context.Context, cfg *Config) error {
+func (w *WalQt) ensureRunning(ctx context.Context, cfg *Config) error {
 	client, err := w.makeControlClient(cfg)
 	if err != nil {
 		return err
@@ -390,16 +390,16 @@ func (w *WaylandUtauri) ensureRunning(ctx context.Context, cfg *Config) error {
 		return nil
 	}
 	if errors.Is(err, errContract) {
-		return fmt.Errorf("wayland-utauri: %w", err)
+		return fmt.Errorf("wal-qt: %w", err)
 	}
-	slog.Info("wayland-utauri: control plane unreachable, attempting initialize/restart", "error", err)
+	slog.Info("wal-qt: control plane unreachable, attempting initialize/restart", "error", err)
 	if initErr := w.Initialize(ctx); initErr != nil {
-		return fmt.Errorf("wayland-utauri: unavailable — could not reach or start backend: %w", initErr)
+		return fmt.Errorf("wal-qt: unavailable — could not reach or start backend: %w", initErr)
 	}
 	return nil
 }
 
-func (w *WaylandUtauri) SetWallpaper(ctx context.Context, req backend.WallpaperRequest) error {
+func (w *WalQt) SetWallpaper(ctx context.Context, req backend.WallpaperRequest) error {
 	cfg, _ := req.Config.(*Config)
 	if cfg == nil {
 		cfg = w.loadConfigFromViper()
@@ -422,12 +422,12 @@ func (w *WaylandUtauri) SetWallpaper(ctx context.Context, req backend.WallpaperR
 			break
 		}
 		if !isRetryableControlStatusErr(err) || round == statusRounds-1 {
-			return fmt.Errorf("wayland-utauri: get status after reconnect: %w", err)
+			return fmt.Errorf("wal-qt: get status after reconnect: %w", err)
 		}
-		slog.Info("wayland-utauri: status still failing after ensure, retrying round", "round", round+1, "error", err)
+		slog.Info("wal-qt: status still failing after ensure, retrying round", "round", round+1, "error", err)
 	}
 	if err != nil || status == nil {
-		return fmt.Errorf("wayland-utauri: get status: %w", err)
+		return fmt.Errorf("wal-qt: get status: %w", err)
 	}
 
 	loadReq, err := buildLoadRequest(req, cfg)
@@ -458,7 +458,7 @@ func (w *WaylandUtauri) SetWallpaper(ctx context.Context, req backend.WallpaperR
 		if callErr != nil {
 			lastErr = callErr
 			if !isRetryableError(callErr) || attempt == loadAttempts-1 {
-				return fmt.Errorf("wayland-utauri: load request failed after %d attempt(s): %w", attempt+1, callErr)
+				return fmt.Errorf("wal-qt: load request failed after %d attempt(s): %w", attempt+1, callErr)
 			}
 			continue
 		}
@@ -473,7 +473,7 @@ func (w *WaylandUtauri) SetWallpaper(ctx context.Context, req backend.WallpaperR
 			}
 			pErr := client.setParallax(ctx, buildParallaxRequestBody(cfg))
 			if pErr != nil {
-				return fmt.Errorf("wayland-utauri: parallax sync: %w", pErr)
+				return fmt.Errorf("wal-qt: parallax sync: %w", pErr)
 			}
 			return nil
 		}
@@ -481,12 +481,12 @@ func (w *WaylandUtauri) SetWallpaper(ctx context.Context, req backend.WallpaperR
 		httpErr := classifyHTTPError(statusCode, body)
 		lastErr = httpErr
 		if !isTransientHTTPStatus(statusCode) || attempt == loadAttempts-1 {
-			return fmt.Errorf("wayland-utauri: load request failed after %d attempt(s): %w", attempt+1, httpErr)
+			return fmt.Errorf("wal-qt: load request failed after %d attempt(s): %w", attempt+1, httpErr)
 		}
 	}
 
 	if lastErr != nil {
-		return fmt.Errorf("wayland-utauri: load request failed after %d attempt(s): %w", loadAttempts, lastErr)
+		return fmt.Errorf("wal-qt: load request failed after %d attempt(s): %w", loadAttempts, lastErr)
 	}
 
 	// Update parallax group from the request. ExtendGroup is non-nil only when
@@ -502,10 +502,10 @@ func (w *WaylandUtauri) SetWallpaper(ctx context.Context, req backend.WallpaperR
 	}
 	w.extendParallaxMu.Unlock()
 
-	return fmt.Errorf("wayland-utauri: load request failed without explicit error")
+	return fmt.Errorf("wal-qt: load request failed without explicit error")
 }
 
-func (w *WaylandUtauri) expandParallaxMoveTargets(outputName string) []string {
+func (w *WalQt) expandParallaxMoveTargets(outputName string) []string {
 	w.extendParallaxMu.Lock()
 	g := w.extendParallaxGroup
 	w.extendParallaxMu.Unlock()
@@ -522,7 +522,7 @@ func (w *WaylandUtauri) expandParallaxMoveTargets(outputName string) []string {
 	return nil
 }
 
-func (w *WaylandUtauri) recomputeWorkspaceParallaxVertical(cfg *Config) {
+func (w *WalQt) recomputeWorkspaceParallaxVertical(cfg *Config) {
 	if cfg == nil {
 		cfg = defaultConfig()
 	}
@@ -533,7 +533,7 @@ func (w *WaylandUtauri) recomputeWorkspaceParallaxVertical(cfg *Config) {
 	w.workspaceParallaxVertical.Store(v)
 }
 
-func (w *WaylandUtauri) noteWallpaperParallaxDirection(cfg *Config, req *backend.WallpaperRequest) {
+func (w *WalQt) noteWallpaperParallaxDirection(cfg *Config, req *backend.WallpaperRequest) {
 	if req == nil {
 		return
 	}
@@ -552,7 +552,7 @@ func (w *WaylandUtauri) noteWallpaperParallaxDirection(cfg *Config, req *backend
 }
 
 // syncParallaxDriver starts or stops the Hyprland/Sway workspace → parallax-move loop.
-func (w *WaylandUtauri) syncParallaxDriver(cfg *Config) {
+func (w *WalQt) syncParallaxDriver(cfg *Config) {
 	w.recomputeWorkspaceParallaxVertical(cfg)
 	w.parallaxDriverMu.Lock()
 	if w.parallaxDriverCancel != nil {
@@ -611,7 +611,7 @@ func (w *WaylandUtauri) syncParallaxDriver(cfg *Config) {
 	}()
 }
 
-func (w *WaylandUtauri) RegisterDefaults(v *viper.Viper) {
+func (w *WalQt) RegisterDefaults(v *viper.Viper) {
 	w.v = v
 	def := defaultConfig()
 
@@ -644,39 +644,39 @@ func (w *WaylandUtauri) RegisterDefaults(v *viper.Viper) {
 	v.SetDefault(viperBackendKey+".allow_network_wallpapers", def.AllowNetworkWallpapers)
 }
 
-func (w *WaylandUtauri) ValidateConfig(raw json.RawMessage) error {
+func (w *WalQt) ValidateConfig(raw json.RawMessage) error {
 	var cfg Config
 	if err := json.Unmarshal(raw, &cfg); err != nil {
-		return fmt.Errorf("wayland-utauri: parse config: %w", err)
+		return fmt.Errorf("wal-qt: parse config: %w", err)
 	}
 	if s := strings.TrimSpace(cfg.TransitionBezier); s != "" {
 		if _, err := parseTransitionBezierStrict(s); err != nil {
-			return fmt.Errorf("wayland-utauri: invalid transition_bezier: %w", err)
+			return fmt.Errorf("wal-qt: invalid transition_bezier: %w", err)
 		}
 	}
 	if s := strings.ToLower(strings.TrimSpace(cfg.ParallaxDirection)); s != "" {
 		if s != "horizontal" && s != "vertical" {
-			return fmt.Errorf("wayland-utauri: parallax_direction must be horizontal or vertical")
+			return fmt.Errorf("wal-qt: parallax_direction must be horizontal or vertical")
 		}
 	}
 	if s := strings.ToLower(strings.TrimSpace(cfg.ImageFitMode)); s != "" {
 		if _, ok := validImageFitModes[s]; !ok {
-			return fmt.Errorf("wayland-utauri: image_fit_mode must be one of fill, contain, cover, none, scale-down")
+			return fmt.Errorf("wal-qt: image_fit_mode must be one of fill, contain, cover, none, scale-down")
 		}
 	}
 	if s := strings.ToLower(strings.TrimSpace(cfg.ImageRendering)); s != "" {
 		if _, ok := validImageRenderingModes[s]; !ok {
-			return fmt.Errorf("wayland-utauri: image_rendering must be one of auto, smooth, high-quality, crisp-edges, pixelated")
+			return fmt.Errorf("wal-qt: image_rendering must be one of auto, smooth, high-quality, crisp-edges, pixelated")
 		}
 	}
 	return nil
 }
 
-func (w *WaylandUtauri) ParseConfig(raw json.RawMessage) (any, error) {
-	return backend.UnmarshalParseConfig[Config](raw, backend.WaylandUtauriBackendName)
+func (w *WalQt) ParseConfig(raw json.RawMessage) (any, error) {
+	return backend.UnmarshalParseConfig[Config](raw, backend.WalQtBackendName)
 }
 
-func (w *WaylandUtauri) loadConfigFromViper() *Config {
+func (w *WalQt) loadConfigFromViper() *Config {
 	if w.v == nil {
 		return defaultConfig()
 	}
@@ -805,14 +805,14 @@ func (w *WaylandUtauri) loadConfigFromViper() *Config {
 	return cfg
 }
 
-func (w *WaylandUtauri) makeControlClient(cfg *Config) (*controlClient, error) {
+func (w *WalQt) makeControlClient(cfg *Config) (*controlClient, error) {
 	if w.makeClient != nil {
 		return w.makeClient(cfg)
 	}
 	return newControlClient(cfg)
 }
 
-// SyncRuntimeFromConfig pushes parallax settings to wayland-utauri so UI toggles
+// SyncRuntimeFromConfig pushes parallax settings to wal-qt so UI toggles
 // apply without waiting for the next wallpaper load. Failures are non-fatal
 // (child may be down); callers should log returned errors and still treat
 // config save as successful.
@@ -820,44 +820,44 @@ func (w *WaylandUtauri) makeControlClient(cfg *Config) (*controlClient, error) {
 // Ordering note: POST /settings/network updates global HTML outbound allow; the host combines it
 // with manifest `capabilities.network` for effective permission and may reload webviews when
 // that effective bit changes.
-// PushWallpaperConfig pushes merged user config to wayland-utauri for monitors showing this entry path.
-func (w *WaylandUtauri) PushWallpaperConfig(ctx context.Context, sourceTarget string, values json.RawMessage) error {
+// PushWallpaperConfig pushes merged user config to wal-qt for monitors showing this entry path.
+func (w *WalQt) PushWallpaperConfig(ctx context.Context, sourceTarget string, values json.RawMessage) error {
 	cfg := w.loadConfigFromViper()
 	client, err := w.makeControlClient(cfg)
 	if err != nil {
-		return fmt.Errorf("wayland-utauri: push wallpaper config: %w", err)
+		return fmt.Errorf("wal-qt: push wallpaper config: %w", err)
 	}
 	if err := client.pushWallpaperConfig(ctx, sourceTarget, values); err != nil {
-		return fmt.Errorf("wayland-utauri: push wallpaper config: %w", err)
+		return fmt.Errorf("wal-qt: push wallpaper config: %w", err)
 	}
 	return nil
 }
 
-// PushWebCapabilities updates the running wayland-utauri session for monitors showing this entry.
-func (w *WaylandUtauri) PushWebCapabilities(ctx context.Context, sourceTarget string, caps json.RawMessage) error {
+// PushWebCapabilities updates the running wal-qt session for monitors showing this entry.
+func (w *WalQt) PushWebCapabilities(ctx context.Context, sourceTarget string, caps json.RawMessage) error {
 	cfg := w.loadConfigFromViper()
 	client, err := w.makeControlClient(cfg)
 	if err != nil {
-		return fmt.Errorf("wayland-utauri: push web capabilities: %w", err)
+		return fmt.Errorf("wal-qt: push web capabilities: %w", err)
 	}
 	if err := client.pushWebCapabilities(ctx, sourceTarget, caps); err != nil {
-		return fmt.Errorf("wayland-utauri: push web capabilities: %w", err)
+		return fmt.Errorf("wal-qt: push web capabilities: %w", err)
 	}
 	return nil
 }
 
-func (w *WaylandUtauri) OnConfigChanged(ctx context.Context, _ json.RawMessage) error {
+func (w *WalQt) OnConfigChanged(ctx context.Context, _ json.RawMessage) error {
 	cfg := w.loadConfigFromViper()
 	client, err := w.makeControlClient(cfg)
 	if err != nil {
-		return fmt.Errorf("wayland-utauri: runtime sync: %w", err)
+		return fmt.Errorf("wal-qt: runtime sync: %w", err)
 	}
 	if err := client.setParallax(ctx, buildParallaxRequestBody(cfg)); err != nil {
-		return fmt.Errorf("wayland-utauri: runtime sync parallax: %w", err)
+		return fmt.Errorf("wal-qt: runtime sync parallax: %w", err)
 	}
 	w.syncParallaxDriver(cfg)
 	if err := client.setAllowNetworkWallpapers(ctx, cfg.AllowNetworkWallpapers); err != nil {
-		return fmt.Errorf("wayland-utauri: runtime sync network policy: %w", err)
+		return fmt.Errorf("wal-qt: runtime sync network policy: %w", err)
 	}
 	fit := strings.TrimSpace(cfg.ImageFitMode)
 	if fit == "" {
@@ -868,7 +868,7 @@ func (w *WaylandUtauri) OnConfigChanged(ctx context.Context, _ json.RawMessage) 
 		rend = "auto"
 	}
 	if err := client.setImagePresentation(ctx, fit, rend); err != nil {
-		return fmt.Errorf("wayland-utauri: runtime sync image presentation: %w", err)
+		return fmt.Errorf("wal-qt: runtime sync image presentation: %w", err)
 	}
 	return nil
 }
@@ -888,7 +888,7 @@ func (w *slogWriter) Write(p []byte) (int, error) {
 // It merges all non-extend individual rows into one multi-target SetWallpaper request when
 // every row is image/GIF, mode individual, and shared parallax/config match.
 // Returns false if the batch cannot be formed (falls back to per-monitor calls).
-func (w *WaylandUtauri) TryBatchRestore(
+func (w *WalQt) TryBatchRestore(
 	ctx context.Context,
 	states []store.MonitorState,
 	connected map[string]monitor.Monitor,

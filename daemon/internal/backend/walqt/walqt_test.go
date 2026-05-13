@@ -1,4 +1,4 @@
-package waylandutauri
+package walqt
 
 import (
 	"context"
@@ -25,7 +25,7 @@ func TestSetWallpaper_RetriesOnInternalError(t *testing.T) {
 			w.Header().Set("X-API-Version", "0")
 			_ = json.NewEncoder(w).Encode(map[string]any{
 				"ok":          true,
-				"service":     "wayland-utauri",
+				"service":     "wal-qt",
 				"api_version": "0",
 			})
 		case "/wallpaper/status":
@@ -55,7 +55,7 @@ func TestSetWallpaper_RetriesOnInternalError(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	b := &WaylandUtauri{
+	b := &WalQt{
 		makeClient: func(_ *Config) (*controlClient, error) {
 			return &controlClient{
 				httpClient:  srv.Client(),
@@ -78,7 +78,7 @@ func TestSetWallpaper_RetriesOnInternalError(t *testing.T) {
 
 func TestRegisterDefaultsAndLoadConfig(t *testing.T) {
 	v := viper.New()
-	b := &WaylandUtauri{}
+	b := &WalQt{}
 	b.RegisterDefaults(v)
 	cfg := b.loadConfigFromViper()
 
@@ -93,7 +93,7 @@ func TestRegisterDefaultsAndLoadConfig(t *testing.T) {
 }
 
 func TestValidateConfig_RejectsInvalidImageDisplayModes(t *testing.T) {
-	b := &WaylandUtauri{}
+	b := &WalQt{}
 
 	err := b.ValidateConfig(json.RawMessage(`{"image_fit_mode":"outside"}`))
 	require.Error(t, err)
@@ -107,7 +107,7 @@ func TestValidateConfig_RejectsInvalidImageDisplayModes(t *testing.T) {
 func TestIsAvailable_ChecksBinaryInPath(t *testing.T) {
 	b := New()
 	result := b.IsAvailable()
-	// Result depends on whether wayland-utauri is installed on the
+	// Result depends on whether wal-qt is installed on the
 	// test machine. We just verify it doesn't panic and returns a bool.
 	assert.IsType(t, true, result)
 }
@@ -122,12 +122,12 @@ func TestInitialize_FailsOnHealthMismatch(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	b := &WaylandUtauri{
+	b := &WalQt{
 		makeClient: func(_ *Config) (*controlClient, error) {
 			return &controlClient{
 				httpClient:      srv.Client(),
 				baseURL:         srv.URL,
-				expectedService: "wayland-utauri",
+				expectedService: "wal-qt",
 				expectedAPI:     "0",
 			}, nil
 		},

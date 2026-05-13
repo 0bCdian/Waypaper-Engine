@@ -16,11 +16,11 @@ import (
 	"waypaper-engine/daemon/internal/backend/feh"
 	"waypaper-engine/daemon/internal/backend/hyprpaper"
 	"waypaper-engine/daemon/internal/backend/mpvpaper"
-	"waypaper-engine/daemon/internal/backend/waylandutauri"
+	"waypaper-engine/daemon/internal/backend/walqt"
 )
 
-// Must match backend.WaylandUtauriBackendName (backend cannot import this package).
-const waylandUtauriBackendName = "wayland-utauri"
+// Must match backend.WalQtBackendName (backend cannot import this package).
+const walQtBackendName = "wal-qt"
 
 // RegisterInto registers SetDefault entries for every compiled-in wallpaper backend.
 func RegisterInto(v *viper.Viper) {
@@ -28,7 +28,7 @@ func RegisterInto(v *viper.Viper) {
 	feh.New().RegisterDefaults(v)
 	hyprpaper.New().RegisterDefaults(v)
 	mpvpaper.New().RegisterDefaults(v)
-	waylandutauri.New().RegisterDefaults(v)
+	walqt.New().RegisterDefaults(v)
 }
 
 // Subtree returns the default map for one backend's [backend.<name>] section.
@@ -43,8 +43,8 @@ func Subtree(backendName string) (map[string]any, error) {
 		hyprpaper.New().RegisterDefaults(v)
 	case "mpvpaper":
 		mpvpaper.New().RegisterDefaults(v)
-	case waylandUtauriBackendName:
-		waylandutauri.New().RegisterDefaults(v)
+	case walQtBackendName:
+		walqt.New().RegisterDefaults(v)
 	default:
 		return nil, fmt.Errorf("backenddefaults: unknown backend %q", backendName)
 	}

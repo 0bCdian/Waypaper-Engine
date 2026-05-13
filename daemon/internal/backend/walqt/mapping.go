@@ -1,4 +1,4 @@
-package waylandutauri
+package walqt
 
 import (
 	"encoding/json"
@@ -82,12 +82,12 @@ func buildLoadRequest(req backend.WallpaperRequest, cfg *Config) (loadRequest, e
 			return buildIndividualTargetsLoadRequest(req, cfg, out)
 		}
 		if len(req.Monitors) == 0 {
-			return loadRequest{}, fmt.Errorf("wayland-utauri: individual mode requires at least one monitor")
+			return loadRequest{}, fmt.Errorf("wal-qt: individual mode requires at least one monitor")
 		}
 		for _, m := range req.Monitors {
 			name := strings.TrimSpace(m.Name)
 			if name == "" {
-				return loadRequest{}, fmt.Errorf("wayland-utauri: monitor has empty name")
+				return loadRequest{}, fmt.Errorf("wal-qt: monitor has empty name")
 			}
 			out.Targets = append(out.Targets, loadTarget{
 				Name:   name,
@@ -97,7 +97,7 @@ func buildLoadRequest(req backend.WallpaperRequest, cfg *Config) (loadRequest, e
 		}
 		return out, nil
 	default:
-		return loadRequest{}, fmt.Errorf("wayland-utauri: unsupported monitor mode %q", req.Mode)
+		return loadRequest{}, fmt.Errorf("wal-qt: unsupported monitor mode %q", req.Mode)
 	}
 }
 
@@ -110,13 +110,13 @@ func loadKindString(mt media.MediaType) (string, error) {
 	case media.MediaTypeImage, media.MediaTypeGIF, "":
 		return "image", nil
 	default:
-		return "", fmt.Errorf("wayland-utauri: unsupported media type %q", mt)
+		return "", fmt.Errorf("wal-qt: unsupported media type %q", mt)
 	}
 }
 
 func dominantIndividualTargetsRootKind(rows []backend.IndividualLoadTarget) (string, error) {
 	if len(rows) == 0 {
-		return "", fmt.Errorf("wayland-utauri: IndividualTargets cannot be empty")
+		return "", fmt.Errorf("wal-qt: IndividualTargets cannot be empty")
 	}
 	first, err := loadKindString(rows[0].MediaType)
 	if err != nil {
@@ -128,7 +128,7 @@ func dominantIndividualTargetsRootKind(rows []backend.IndividualLoadTarget) (str
 			return "", err
 		}
 		if k != first {
-			return "", fmt.Errorf("wayland-utauri: mixed media kinds in IndividualTargets (%q vs %q)", first, k)
+			return "", fmt.Errorf("wal-qt: mixed media kinds in IndividualTargets (%q vs %q)", first, k)
 		}
 	}
 	return first, nil
@@ -156,11 +156,11 @@ func buildIndividualTargetsLoadRequest(req backend.WallpaperRequest, cfg *Config
 	for _, row := range req.IndividualTargets {
 		name := strings.TrimSpace(row.Monitor.Name)
 		if name == "" {
-			return loadRequest{}, fmt.Errorf("wayland-utauri: monitor has empty name")
+			return loadRequest{}, fmt.Errorf("wal-qt: monitor has empty name")
 		}
 		path := strings.TrimSpace(row.Path)
 		if path == "" {
-			return loadRequest{}, fmt.Errorf("wayland-utauri: empty path for monitor %q", name)
+			return loadRequest{}, fmt.Errorf("wal-qt: empty path for monitor %q", name)
 		}
 		out.Targets = append(out.Targets, loadTarget{
 			Name:   name,
@@ -200,7 +200,7 @@ type schedulerSnapshot struct {
 	QueuedRequests int    `json:"queued_requests"`
 }
 
-// wallpaperStatusPayload mirrors the `status` object from GET /wallpaper/status (wayland-utauri).
+// wallpaperStatusPayload mirrors the `status` object from GET /wallpaper/status (wal-qt).
 type wallpaperStatusPayload struct {
 	TopologyPolicy string                  `json:"topology_policy"`
 	MonitorCount   int                     `json:"monitor_count"`

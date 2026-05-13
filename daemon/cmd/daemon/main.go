@@ -23,7 +23,7 @@ import (
 	"waypaper-engine/daemon/internal/backend/feh"
 	"waypaper-engine/daemon/internal/backend/hyprpaper"
 	"waypaper-engine/daemon/internal/backend/mpvpaper"
-	"waypaper-engine/daemon/internal/backend/waylandutauri"
+	"waypaper-engine/daemon/internal/backend/walqt"
 	"waypaper-engine/daemon/internal/config"
 	"waypaper-engine/daemon/internal/daemon"
 	"waypaper-engine/daemon/internal/monitor"
@@ -93,7 +93,7 @@ func startDaemon(configPath string, logLevel string) error {
 		feh.New(),
 		hyprpaper.New(),
 		mpvpaper.New(),
-		waylandutauri.New(),
+		walqt.New(),
 	}
 	for _, b := range backends {
 		if err := reg.Register(b); err != nil {

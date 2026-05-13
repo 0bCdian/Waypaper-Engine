@@ -1,4 +1,4 @@
-package waylandutauri
+package walqt
 
 import (
 	"testing"
@@ -6,7 +6,7 @@ import (
 )
 
 func TestRespawnAfterChildExit_SkipsWhenRespawnDisallowed(t *testing.T) {
-	w := &WaylandUtauri{}
+	w := &WalQt{}
 	w.allowManagedChildRespawn.Store(false)
 
 	done := make(chan struct{})

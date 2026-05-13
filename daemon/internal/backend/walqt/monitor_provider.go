@@ -1,4 +1,4 @@
-package waylandutauri
+package walqt
 
 import (
 	"context"
@@ -20,16 +20,16 @@ type utauriMonitorProvider struct {
 	v *viper.Viper
 }
 
-// NewMonitorProvider returns a monitor.MonitorProvider backed by wayland-utauri's control API.
+// NewMonitorProvider returns a monitor.MonitorProvider backed by wal-qt's control API.
 // Pass the same *viper.Viper used for daemon config; socket_path and API expectations are read
-// from backend.wayland-utauri (and legacy backend.waylandutauri) when set, otherwise defaults
+// from backend.wal-qt (and legacy backend.waylandutauri) when set, otherwise defaults
 // match RegisterDefaults / defaultConfig (including defaultSocketPath).
 func NewMonitorProvider(v *viper.Viper) monitor.MonitorProvider {
 	return &utauriMonitorProvider{v: v}
 }
 
 func (p *utauriMonitorProvider) Name() string {
-	return "wayland-utauri"
+	return "wal-qt"
 }
 
 func (p *utauriMonitorProvider) Compositor() monitor.CompositorType {
@@ -43,11 +43,11 @@ func (p *utauriMonitorProvider) Priority() int {
 func (p *utauriMonitorProvider) Detect(ctx context.Context) ([]monitor.Monitor, error) {
 	cfg := p.controlConfig()
 	if strings.TrimSpace(cfg.SocketPath) == "" {
-		return nil, fmt.Errorf("%w: wayland-utauri socket_path not configured", monitor.ErrProviderNotApplicable)
+		return nil, fmt.Errorf("%w: wal-qt socket_path not configured", monitor.ErrProviderNotApplicable)
 	}
 	client, err := newControlClient(cfg)
 	if err != nil {
-		return nil, fmt.Errorf("%w: wayland-utauri control client init: %v", monitor.ErrProviderNotApplicable, err)
+		return nil, fmt.Errorf("%w: wal-qt control client init: %v", monitor.ErrProviderNotApplicable, err)
 	}
 
 	// Health check determines applicability — the control sidecar isn't
@@ -56,13 +56,13 @@ func (p *utauriMonitorProvider) Detect(ctx context.Context) ([]monitor.Monitor, 
 	healthCtx, cancel := withHealthTimeout(ctx, cfg)
 	if err := client.checkHealth(healthCtx); err != nil {
 		cancel()
-		return nil, fmt.Errorf("%w: wayland-utauri health check failed: %v", monitor.ErrProviderNotApplicable, err)
+		return nil, fmt.Errorf("%w: wal-qt health check failed: %v", monitor.ErrProviderNotApplicable, err)
 	}
 	cancel()
 
 	st, err := client.status(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("wayland-utauri monitor provider: %w", err)
+		return nil, fmt.Errorf("wal-qt monitor provider: %w", err)
 	}
 	return topologyToEngineMonitors(st.Status.Topology), nil
 }

@@ -19,8 +19,8 @@ import (
 	"github.com/spf13/viper"
 )
 
-// WaylandUtauriBackendName is the stable Name() value for the wayland-utauri backend.
-const WaylandUtauriBackendName = "wayland-utauri"
+// WalQtBackendName is the stable Name() value for the wal-qt backend.
+const WalQtBackendName = "wal-qt"
 
 // Backend is the core interface that every wallpaper backend must implement.
 //

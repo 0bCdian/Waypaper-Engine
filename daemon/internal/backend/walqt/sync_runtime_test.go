@@ -1,4 +1,4 @@
-package waylandutauri
+package walqt
 
 import (
 	"context"
@@ -11,7 +11,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestWaylandUtauri_OnConfigChanged_Success(t *testing.T) {
+func TestWalQt_OnConfigChanged_Success(t *testing.T) {
 	var sawParallax, sawNetwork, sawImagePresentation bool
 	var requestOrder []string
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -32,7 +32,7 @@ func TestWaylandUtauri_OnConfigChanged_Success(t *testing.T) {
 	t.Cleanup(srv.Close)
 
 	v := viper.New()
-	wut := &WaylandUtauri{
+	wut := &WalQt{
 		v: v,
 		makeClient: func(_ *Config) (*controlClient, error) {
 			return &controlClient{httpClient: srv.Client(), baseURL: srv.URL}, nil
@@ -61,9 +61,9 @@ func TestWaylandUtauri_OnConfigChanged_Success(t *testing.T) {
 	assert.Less(t, idxNetwork, idxImagePresentation, "network policy must be pushed before image presentation")
 }
 
-func TestWaylandUtauri_OnConfigChanged_ClientError(t *testing.T) {
+func TestWalQt_OnConfigChanged_ClientError(t *testing.T) {
 	v := viper.New()
-	wut := &WaylandUtauri{
+	wut := &WalQt{
 		v: v,
 		makeClient: func(_ *Config) (*controlClient, error) {
 			return nil, errUnavailable

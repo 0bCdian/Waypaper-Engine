@@ -1,4 +1,4 @@
-package waylandutauri
+package walqt
 
 import (
 	"context"
@@ -11,12 +11,12 @@ import (
 )
 
 var (
-	errUnavailable = errors.New("wayland-utauri: backend unavailable")
-	errBadRequest  = errors.New("wayland-utauri: bad request")
-	errContract    = errors.New("wayland-utauri: contract mismatch")
-	errTimeout     = errors.New("wayland-utauri: request timeout")
-	errConflict    = errors.New("wayland-utauri: request conflict")
-	errInternal    = errors.New("wayland-utauri: backend internal error")
+	errUnavailable = errors.New("wal-qt: backend unavailable")
+	errBadRequest  = errors.New("wal-qt: bad request")
+	errContract    = errors.New("wal-qt: contract mismatch")
+	errTimeout     = errors.New("wal-qt: request timeout")
+	errConflict    = errors.New("wal-qt: request conflict")
+	errInternal    = errors.New("wal-qt: backend internal error")
 )
 
 func classifyHTTPError(status int, body string) error {

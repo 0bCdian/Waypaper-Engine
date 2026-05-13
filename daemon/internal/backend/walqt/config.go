@@ -1,4 +1,4 @@
-package waylandutauri
+package walqt
 
 import (
 	"os"
@@ -6,11 +6,11 @@ import (
 )
 
 const (
-	defaultExpectedService = "wayland-utauri"
+	defaultExpectedService = "wal-qt"
 	defaultAPIVersion      = "0" // matches wal-utauri ZeroVer control-plane `api_version` / X-API-Version
 )
 
-// Config holds wayland-utauri specific backend settings.
+// Config holds wal-qt specific backend settings.
 type Config struct {
 	SocketPath         string `mapstructure:"socket_path" json:"socket_path"`
 	ExpectedService    string `mapstructure:"expected_service" json:"expected_service"`
@@ -32,7 +32,7 @@ type Config struct {
 	TransitionWaveFrequency        float32 `mapstructure:"transition_wave_frequency" json:"transition_wave_frequency"`
 	ParallaxEnabled                bool    `mapstructure:"parallax_enabled" json:"parallax_enabled"`
 	ParallaxZoom                   int     `mapstructure:"parallax_zoom" json:"parallax_zoom"`
-	// ParallaxStepPct is sent to wayland-utauri as ParallaxConfig.step_percent (host API requires > 0).
+	// ParallaxStepPct is sent to wal-qt as ParallaxConfig.step_percent (host API requires > 0).
 	// Parallax-move uses this amount; Hyprland/Sway driver posts direction-only HTTP moves.
 	ParallaxStepPct int `mapstructure:"parallax_step_percent" json:"parallax_step_percent"`
 	// ParallaxWorkspaceChunkSize: ring period for resolveDirection (Hyprland/Sway) — shortest path on the workspace ID circle.
@@ -55,7 +55,7 @@ func defaultSocketPath() string {
 	if runtimeDir == "" {
 		return ""
 	}
-	return filepath.Join(runtimeDir, "wayland-utauri.sock")
+	return filepath.Join(runtimeDir, "wal-qt.sock")
 }
 
 func defaultConfig() *Config {

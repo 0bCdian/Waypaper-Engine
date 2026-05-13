@@ -1,4 +1,4 @@
-package waylandutauri
+package walqt
 
 import (
 	"encoding/json"
@@ -37,8 +37,8 @@ func TestParseTransitionBezierStrict(t *testing.T) {
 	require.Error(t, err)
 }
 
-func TestWaylandUtauri_ValidateConfig_TransitionBezier(t *testing.T) {
-	b := &WaylandUtauri{}
+func TestWalQt_ValidateConfig_TransitionBezier(t *testing.T) {
+	b := &WalQt{}
 
 	err := b.ValidateConfig(json.RawMessage(`{"transition_bezier":"0,0,1,1"}`))
 	require.NoError(t, err)

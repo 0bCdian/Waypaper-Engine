@@ -3,7 +3,7 @@ package main
 import (
 	"github.com/spf13/viper"
 
-	"waypaper-engine/daemon/internal/backend/waylandutauri"
+	"waypaper-engine/daemon/internal/backend/walqt"
 	"waypaper-engine/daemon/internal/monitor"
 )
 
@@ -17,7 +17,7 @@ import (
 func defaultMonitorProviders(v *viper.Viper) []monitor.MonitorProvider {
 	return []monitor.MonitorProvider{
 		monitor.NewWaylandProvider(),
-		waylandutauri.NewMonitorProvider(v),
+		walqt.NewMonitorProvider(v),
 		monitor.NewWaylandLegacyProvider(),
 		monitor.NewXrandrProvider(),
 	}

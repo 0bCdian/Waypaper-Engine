@@ -1,4 +1,4 @@
-package waylandutauri
+package walqt
 
 import (
 	"context"
@@ -18,7 +18,7 @@ func TestControlClientCheckHealth_Success(t *testing.T) {
 		w.Header().Set("X-API-Version", "0")
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"ok":          true,
-			"service":     "wayland-utauri",
+			"service":     "wal-qt",
 			"api_version": "0",
 		})
 	}))
@@ -27,7 +27,7 @@ func TestControlClientCheckHealth_Success(t *testing.T) {
 	c := &controlClient{
 		httpClient:      srv.Client(),
 		baseURL:         srv.URL,
-		expectedService: "wayland-utauri",
+		expectedService: "wal-qt",
 		expectedAPI:     "0",
 	}
 
@@ -48,7 +48,7 @@ func TestControlClientCheckHealth_ServiceMismatch(t *testing.T) {
 	c := &controlClient{
 		httpClient:      srv.Client(),
 		baseURL:         srv.URL,
-		expectedService: "wayland-utauri",
+		expectedService: "wal-qt",
 		expectedAPI:     "0",
 	}
 

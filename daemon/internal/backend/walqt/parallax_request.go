@@ -1,4 +1,4 @@
-package waylandutauri
+package walqt
 
 import (
 	"math"

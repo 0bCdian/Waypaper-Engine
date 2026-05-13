@@ -58,7 +58,7 @@ func TestRestore_WaylandUtauriBatchesIndividualImageRows(t *testing.T) {
 	var calls int
 	var last backend.WallpaperRequest
 	mockBe := &testutil.MockBackend{
-		NameFn: func() string { return backend.WaylandUtauriBackendName },
+		NameFn: func() string { return backend.WalQtBackendName },
 		SetWallpaperFn: func(_ context.Context, req backend.WallpaperRequest) error {
 			calls++
 			last = req
