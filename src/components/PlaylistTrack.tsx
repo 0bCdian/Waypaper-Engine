@@ -1,6 +1,6 @@
 import { CollisionPriority } from "@dnd-kit/abstract";
 import { useDroppable } from "@dnd-kit/react";
-import { LayoutGroup, motion } from "framer-motion";
+import { LayoutGroup, m } from "framer-motion";
 import type { ReactNode } from "react";
 import { useEffect, useLayoutEffect, useMemo, useRef, useCallback } from "react";
 import { cn } from "../utils/cn";
@@ -46,7 +46,7 @@ function PlaylistGalleryInsertionGhost({
   const needsCaptionSpace = playlistType === "time_of_day" || playlistType === "day_of_week";
 
   return (
-    <motion.div
+    <m.div
       layout
       transition={{
         layout: {
@@ -66,7 +66,7 @@ function PlaylistGalleryInsertionGhost({
         />
         {needsCaptionSpace ? <div className="h-9 min-h-[2.25rem] shrink-0" aria-hidden /> : null}
       </div>
-    </motion.div>
+    </m.div>
   );
 }
 
