@@ -193,7 +193,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	cleanStaleProcessedDir(ctx, opts.DB.ImageStore(), opts.ImagesDir)
 
 	// Restore wallpapers from persisted monitor state (skip if no backend installed).
-	// Restore is run in a goroutine so a slow backend (e.g. wayland-utauri navigating
+	// Restore is run in a goroutine so a slow backend (e.g. wal-qt navigating
 	// a web wallpaper for several seconds) does not delay the HTTP server becoming
 	// reachable — the GUI's readiness probe times out after ~10s.
 	if !noBackendInstalled {

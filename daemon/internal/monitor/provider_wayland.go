@@ -346,7 +346,7 @@ import (
 // NewWaylandLegacyProvider.
 type waylandWlrProvider struct{}
 
-// waylandWlrProviderPriority ranks above the wayland-utauri HTTP monitor probe so
+// waylandWlrProviderPriority ranks above the wal-qt HTTP monitor probe so
 // zwlr_output_management is tried first on compositors that implement it.
 const waylandWlrProviderPriority = 40
 

@@ -22,7 +22,7 @@ func TestBuildWallpaperCurrentResponse_empty(t *testing.T) {
 	assert.Empty(t, got2.Monitors)
 	assert.NotNil(t, got2.Monitors)
 
-	raw, err := json.Marshal(buildWallpaperCurrentResponse("wayland-utauri", nil, nil))
+	raw, err := json.Marshal(buildWallpaperCurrentResponse("wal-qt", nil, nil))
 	require.NoError(t, err)
 	assert.Contains(t, string(raw), `"monitors":[]`)
 }
@@ -32,7 +32,7 @@ func TestBuildWallpaperCurrentResponse_filtersOtherBackend(t *testing.T) {
 	t2 := time.Date(2026, 4, 1, 12, 0, 0, 0, time.UTC)
 	states := []store.MonitorState{
 		{MonitorName: "DP-1", ImageID: 1, ImageName: "a", ImagePath: "/a", Mode: "clone", Backend: "awww", SetAt: t1},
-		{MonitorName: "old", ImageID: 2, ImageName: "b", ImagePath: "/b", Mode: "extend", Backend: "wayland-utauri", SetAt: t2},
+		{MonitorName: "old", ImageID: 2, ImageName: "b", ImagePath: "/b", Mode: "extend", Backend: "wal-qt", SetAt: t2},
 	}
 	got := buildWallpaperCurrentResponse("awww", states, nil)
 	assert.Len(t, got.Monitors, 1)
@@ -69,11 +69,11 @@ func TestBuildWallpaperCurrentResponse_primaryNewestSetAt(t *testing.T) {
 func TestBuildWallpaperCurrentResponse_connectedNamesFilter(t *testing.T) {
 	ts := time.Date(2026, 4, 12, 12, 0, 0, 0, time.UTC)
 	states := []store.MonitorState{
-		{MonitorName: "DP-1", ImageID: 501, ImageName: "cur", ImagePath: "/c", Mode: "clone", Backend: "wayland-utauri", SetAt: ts},
-		{MonitorName: "Monitor 0", ImageID: 69, ImageName: "old", ImagePath: "/o", Mode: "clone", Backend: "wayland-utauri", SetAt: ts.Add(-time.Hour)},
+		{MonitorName: "DP-1", ImageID: 501, ImageName: "cur", ImagePath: "/c", Mode: "clone", Backend: "wal-qt", SetAt: ts},
+		{MonitorName: "Monitor 0", ImageID: 69, ImageName: "old", ImagePath: "/o", Mode: "clone", Backend: "wal-qt", SetAt: ts.Add(-time.Hour)},
 	}
 	connected := map[string]struct{}{"DP-1": {}, "HDMI-A-1": {}}
-	got := buildWallpaperCurrentResponse("wayland-utauri", states, connected)
+	got := buildWallpaperCurrentResponse("wal-qt", states, connected)
 	assert.Len(t, got.Monitors, 1)
 	assert.Equal(t, "DP-1", got.Monitors[0].MonitorName)
 	assert.Equal(t, 501, got.ImageID)

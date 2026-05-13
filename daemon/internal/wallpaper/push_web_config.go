@@ -12,7 +12,7 @@ type waylandWebConfigPusher interface {
 	PushWebCapabilities(ctx context.Context, sourceTarget string, caps json.RawMessage) error
 }
 
-// PushWallpaperConfigToRenderer forwards merged web wallpaper config to wayland-utauri when active.
+// PushWallpaperConfigToRenderer forwards merged web wallpaper config to wal-qt when active.
 func PushWallpaperConfigToRenderer(
 	ctx context.Context,
 	reg backend.Registry,
@@ -23,7 +23,7 @@ func PushWallpaperConfigToRenderer(
 		return nil
 	}
 	b := reg.Active()
-	if b.Name() != "wayland-utauri" {
+	if b.Name() != "wal-qt" {
 		return nil
 	}
 	p, ok := b.(waylandWebConfigPusher)
@@ -45,7 +45,7 @@ func PushWebCapabilitiesToRenderer(
 		return nil
 	}
 	b := reg.Active()
-	if b.Name() != "wayland-utauri" {
+	if b.Name() != "wal-qt" {
 		return nil
 	}
 	p, ok := b.(waylandWebConfigPusher)

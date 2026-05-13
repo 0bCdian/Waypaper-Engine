@@ -32,11 +32,11 @@ func TestUpdateBackendConfigValidatesBeforePersisting(t *testing.T) {
 func TestUpdateBackendConfigDoesNotSyncInactiveBackend(t *testing.T) {
 	cfg := newFakeConfig("awww")
 	active := newFakeBackend("awww")
-	inactive := newFakeBackend("wayland-utauri")
+	inactive := newFakeBackend("wal-qt")
 	reg := newFakeRegistry(active, inactive)
 	c := NewController(cfg, reg, newFakeBus(), &fakeRestorer{})
 
-	err := c.UpdateBackendConfig(context.Background(), "wayland-utauri", json.RawMessage(`{"x":true}`))
+	err := c.UpdateBackendConfig(context.Background(), "wal-qt", json.RawMessage(`{"x":true}`))
 
 	if err != nil {
 		t.Fatalf("UpdateBackendConfig returned error: %v", err)
@@ -68,25 +68,25 @@ func TestUpdateBackendConfigSyncsActiveBackend(t *testing.T) {
 func TestActivateBackendSwitchesRestoresAndPublishes(t *testing.T) {
 	cfg := newFakeConfig("awww")
 	oldActive := newFakeBackend("awww")
-	newActive := newFakeBackend("wayland-utauri")
+	newActive := newFakeBackend("wal-qt")
 	reg := newFakeRegistry(oldActive, newActive)
 	bus := newFakeBus()
 	restorer := &fakeRestorer{}
 	c := NewController(cfg, reg, bus, restorer)
 
-	result, err := c.ActivateBackend(context.Background(), "wayland-utauri")
+	result, err := c.ActivateBackend(context.Background(), "wal-qt")
 
 	if err != nil {
 		t.Fatalf("ActivateBackend returned error: %v", err)
 	}
-	if result.Backend != "wayland-utauri" {
-		t.Fatalf("result backend = %q, want %q", result.Backend, "wayland-utauri")
+	if result.Backend != "wal-qt" {
+		t.Fatalf("result backend = %q, want %q", result.Backend, "wal-qt")
 	}
 	if result.AlreadyActive {
 		t.Fatal("AlreadyActive = true, want false")
 	}
-	if got := reg.Active().Name(); got != "wayland-utauri" {
-		t.Fatalf("registry active backend = %q, want %q", got, "wayland-utauri")
+	if got := reg.Active().Name(); got != "wal-qt" {
+		t.Fatalf("registry active backend = %q, want %q", got, "wal-qt")
 	}
 	if oldActive.shutdownCount != 1 {
 		t.Fatalf("old active backend shutdown count = %d, want 1", oldActive.shutdownCount)
@@ -94,8 +94,8 @@ func TestActivateBackendSwitchesRestoresAndPublishes(t *testing.T) {
 	if newActive.initializeCount != 1 {
 		t.Fatalf("new active backend initialize count = %d, want 1", newActive.initializeCount)
 	}
-	if cfg.activeBackend != "wayland-utauri" {
-		t.Fatalf("active backend config = %q, want %q", cfg.activeBackend, "wayland-utauri")
+	if cfg.activeBackend != "wal-qt" {
+		t.Fatalf("active backend config = %q, want %q", cfg.activeBackend, "wal-qt")
 	}
 	if restorer.callCount != 1 {
 		t.Fatalf("restore call count = %d, want 1", restorer.callCount)

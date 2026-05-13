@@ -327,9 +327,9 @@ func setDefaults(v *viper.Viper) {
 	// Backend defaults
 	v.SetDefault("backend.type", "awww")
 	v.SetDefault("backend.selection_mode", "fixed")
-	v.SetDefault("backend.auto_priorities.image", []string{"awww", "hyprpaper", "feh", "wayland-utauri"})
-	v.SetDefault("backend.auto_priorities.video", []string{"mpvpaper", "wayland-utauri"})
-	v.SetDefault("backend.auto_priorities.web", []string{"wayland-utauri"})
+	v.SetDefault("backend.auto_priorities.image", []string{"awww", "hyprpaper", "feh", "wal-qt"})
+	v.SetDefault("backend.auto_priorities.video", []string{"mpvpaper", "wal-qt"})
+	v.SetDefault("backend.auto_priorities.web", []string{"wal-qt"})
 
 	// Wallhaven defaults
 	v.SetDefault("wallhaven.api_key", "")

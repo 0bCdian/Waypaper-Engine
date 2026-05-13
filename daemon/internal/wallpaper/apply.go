@@ -202,7 +202,7 @@ func normalizeMediaType(value string) media.MediaType {
 }
 
 // sseWallpaperMediaType is the value sent on SSE for wallpaper_changed: image | web | video
-// (animated GIF is classified as image, matching wayland-utauri load kind).
+// (animated GIF is classified as image, matching wal-qt load kind).
 func sseWallpaperMediaType(mt media.MediaType) string {
 	switch mt {
 	case media.MediaTypeVideo:

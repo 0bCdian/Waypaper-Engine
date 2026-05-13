@@ -6,10 +6,10 @@ import (
 	"waypaper-engine/daemon/internal/config"
 )
 
-// VideoAudioDefaultFromCfg reads the waylandutauri backend's video_audio_default
+// VideoAudioDefaultFromCfg reads the wal-qt backend's video_audio_default
 // setting from the config manager. Returns false on any error.
 func VideoAudioDefaultFromCfg(cfg config.ConfigManager) bool {
-	raw, err := cfg.GetBackendConfig("waylandutauri")
+	raw, err := cfg.GetBackendConfig("wal-qt")
 	if err != nil || len(raw) == 0 {
 		return false
 	}

@@ -76,7 +76,7 @@ func (c *Controller) GetConfig() (*config.Config, error) {
 // omits those subtrees.
 //
 // When backend.transition_duration_seconds is set, it overlays awww.transition_duration and
-// wayland-utauri.duration_ms to match wallpaper runtime behavior.
+// wal-qt.duration_ms to match wallpaper runtime behavior.
 func (c *Controller) MergedConfigJSON() (map[string]any, error) {
 	cfg, err := c.cfg.GetConfig()
 	if err != nil {
@@ -121,7 +121,7 @@ func (c *Controller) MergedConfigJSON() (map[string]any, error) {
 		if awww, ok := bAny["awww"].(map[string]any); ok {
 			awww["transition_duration"] = canon
 		}
-		if wut, ok := bAny["wayland-utauri"].(map[string]any); ok {
+		if wut, ok := bAny["wal-qt"].(map[string]any); ok {
 			ms := int(math.Round(canon * 1000))
 			if ms < 1 {
 				ms = 1

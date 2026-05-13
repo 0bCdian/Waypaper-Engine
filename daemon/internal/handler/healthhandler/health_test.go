@@ -27,7 +27,7 @@ func TestHealthHandler_Healthz(t *testing.T) {
 	order, ok := body["monitor_provider_order"].([]any)
 	require.True(t, ok)
 	require.GreaterOrEqual(t, len(order), 1)
-	assert.Equal(t, "wayland-utauri", order[0])
+	assert.Equal(t, "wal-qt", order[0])
 }
 
 func TestHealthHandler_Info(t *testing.T) {

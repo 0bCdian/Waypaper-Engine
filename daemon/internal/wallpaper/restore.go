@@ -97,7 +97,7 @@ func StartDeferredDaemonRestore(
 				Type: events.BackendUnavailable,
 				Data: map[string]any{
 					"backend": reg.Active().Name(),
-					"message": "Wallpaper backend did not become ready after repeated retries; check wayland-utauri and socket_path in config.",
+					"message": "Wallpaper backend did not become ready after repeated retries; check wal-qt and socket_path in config.",
 				},
 			})
 		}
@@ -213,7 +213,7 @@ func Restore(
 	}
 }
 
-// restoreNonExtendIndividuals applies persisted non-extend rows. For wayland-utauri, consecutive
+// restoreNonExtendIndividuals applies persisted non-extend rows. For wal-qt, consecutive
 // compatible image/GIF rows are merged into one multi-target SetWallpaper; other backends keep
 // one SetWallpaper per monitor.
 func restoreNonExtendIndividuals(

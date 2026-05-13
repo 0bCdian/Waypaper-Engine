@@ -40,7 +40,7 @@ func (h *HealthHandler) Healthz(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
 		"status":                 "ok",
 		"monitor_stack_version":  MonitorStackVersion,
-		"monitor_provider_order": []string{"wayland-utauri", "wlr-randr", "xrandr"},
+		"monitor_provider_order": []string{"wal-qt", "wlr-randr", "xrandr"},
 	})
 }
 

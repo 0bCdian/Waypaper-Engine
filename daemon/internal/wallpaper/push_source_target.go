@@ -8,7 +8,7 @@ import (
 )
 
 // WebConfigPushSourceTarget returns the filesystem path used to match a running
-// web wallpaper when pushing live config. It must align with wayland-utauri's
+// web wallpaper when pushing live config. It must align with wal-qt's
 // monitor `current_source` (canonical entry HTML path). Prefer WebMeta.EntryPath
 // and resolve symlinks so pushes succeed even when the DB path is not canonical.
 func WebConfigPushSourceTarget(img *store.Image) string {

@@ -79,7 +79,7 @@ type Backend interface {
 	// OnConfigChanged is called when the backend's configuration section is
 	// updated via PATCH /config/backends/{name}. Implementations must apply
 	// the new config immediately:
-	//   - Daemon-process backends (e.g. wayland-utauri) push the change to
+	//   - Daemon-process backends (e.g. wal-qt) push the change to
 	//     the live renderer without restarting.
 	//   - Stateless backends (feh, hyprpaper, mpvpaper, awww) re-apply the
 	//     current wallpaper so the new config takes effect immediately.
@@ -152,7 +152,7 @@ type WallpaperRequest struct {
 	// ImagePath is the absolute filesystem path to the image file.
 	ImagePath string `json:"image_path"`
 
-	// IndividualTargets: per-monitor paths for one wayland-utauri multi-target load (ignored by other backends).
+	// IndividualTargets: per-monitor paths for one wal-qt multi-target load (ignored by other backends).
 	IndividualTargets []IndividualLoadTarget `json:"-"`
 
 	// AudioEnabled indicates whether audio should be enabled for video media.
@@ -173,14 +173,14 @@ type WallpaperRequest struct {
 	ParallaxDirection string `json:"-"`
 
 	// WaitForCompletion, when true, asks backends that support it to block until the wallpaper
-	// operation finishes (e.g. wayland-utauri POST /wallpaper/load with wait_for_completion).
+	// operation finishes (e.g. wal-qt POST /wallpaper/load with wait_for_completion).
 	// Used for restore to avoid 202 + queued-load races on cold start. Other backends may ignore.
 	WaitForCompletion bool `json:"-"`
 
 	// ExtendGroup is populated only when Mode == ModeExtend with a static image
 	// split across multiple monitors. It lists all compositor output names that
 	// share the same logical source image (including the current monitor).
-	// Backends that run a persistent renderer (e.g. wayland-utauri) use this to
+	// Backends that run a persistent renderer (e.g. wal-qt) use this to
 	// coordinate per-output effects (e.g. parallax) so seams stay aligned.
 	// Other backends ignore this field.
 	ExtendGroup []string `json:"-"`

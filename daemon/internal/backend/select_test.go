@@ -74,7 +74,7 @@ var (
 		caps: backend.Capabilities{MediaTypes: []media.MediaType{media.MediaTypeImage, media.MediaTypeGIF}},
 	}
 	utauri = &stubBackend{
-		name: "wayland-utauri", available: true,
+		name: "wal-qt", available: true,
 		caps: backend.Capabilities{MediaTypes: []media.MediaType{media.MediaTypeImage, media.MediaTypeGIF, media.MediaTypeVideo, media.MediaTypeWeb}},
 	}
 	mpv = &stubBackend{
@@ -89,9 +89,9 @@ var (
 
 func defaultPriorities() map[string][]string {
 	return map[string][]string{
-		"image": {"awww", "wayland-utauri"},
-		"video": {"mpvpaper", "wayland-utauri"},
-		"web":   {"wayland-utauri"},
+		"image": {"awww", "wal-qt"},
+		"video": {"mpvpaper", "wal-qt"},
+		"web":   {"wal-qt"},
 	}
 }
 
@@ -120,7 +120,7 @@ func TestPickBackend_Auto_Web(t *testing.T) {
 	reg := newStubRegistry("awww", awww, utauri, mpv)
 	name, err := backend.PickBackend(reg, "auto", "web", defaultPriorities())
 	require.NoError(t, err)
-	assert.Equal(t, "wayland-utauri", name)
+	assert.Equal(t, "wal-qt", name)
 }
 
 func TestPickBackend_Auto_GIF_UsesImagePriority(t *testing.T) {
@@ -131,11 +131,11 @@ func TestPickBackend_Auto_GIF_UsesImagePriority(t *testing.T) {
 }
 
 func TestPickBackend_Auto_SkipsUnavailable(t *testing.T) {
-	reg := newStubRegistry("wayland-utauri", unavailFeh, utauri)
-	prio := map[string][]string{"image": {"feh", "wayland-utauri"}}
+	reg := newStubRegistry("wal-qt", unavailFeh, utauri)
+	prio := map[string][]string{"image": {"feh", "wal-qt"}}
 	name, err := backend.PickBackend(reg, "auto", "image", prio)
 	require.NoError(t, err)
-	assert.Equal(t, "wayland-utauri", name)
+	assert.Equal(t, "wal-qt", name)
 }
 
 func TestPickBackend_Auto_SkipsUnregistered(t *testing.T) {

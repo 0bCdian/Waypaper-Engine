@@ -105,7 +105,7 @@ func TestConfigHandler_GetConfig_TransitionDurationCanonOverlay(t *testing.T) {
 			switch name {
 			case "awww":
 				return json.RawMessage(`{"transition_duration":9}`), nil
-			case "wayland-utauri":
+			case "wal-qt":
 				return json.RawMessage(`{"duration_ms":999}`), nil
 			default:
 				return json.RawMessage(`{}`), nil
@@ -114,7 +114,7 @@ func TestConfigHandler_GetConfig_TransitionDurationCanonOverlay(t *testing.T) {
 	}
 	reg := &testutil.MockRegistry{
 		AvailableFn: func() []backend.BackendInfo {
-			return []backend.BackendInfo{{Name: "awww"}, {Name: "wayland-utauri"}}
+			return []backend.BackendInfo{{Name: "awww"}, {Name: "wal-qt"}}
 		},
 	}
 	h := NewConfigHandler(testController(cfg, reg, &testutil.MockBus{}))
@@ -129,7 +129,7 @@ func TestConfigHandler_GetConfig_TransitionDurationCanonOverlay(t *testing.T) {
 	b := body["backend"].(map[string]any)
 	awww := b["awww"].(map[string]any)
 	assert.InDelta(t, 2.5, awww["transition_duration"], 1e-9)
-	wut := b["wayland-utauri"].(map[string]any)
+	wut := b["wal-qt"].(map[string]any)
 	assert.EqualValues(t, 2500, wut["duration_ms"])
 }
 
@@ -291,7 +291,7 @@ func TestConfigHandler_PatchNamedBackendConfig_SyncOnlyWhenActive(t *testing.T) 
 	}
 	reg := &testutil.MockRegistry{
 		GetFn: func(name string) (backend.Backend, bool) {
-			if name == "wayland-utauri" {
+			if name == "wal-qt" {
 				return sb, true
 			}
 			return nil, false
@@ -304,9 +304,9 @@ func TestConfigHandler_PatchNamedBackendConfig_SyncOnlyWhenActive(t *testing.T) 
 	h := NewConfigHandler(testController(cfgMgr, reg, &testutil.MockBus{}))
 
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodPatch, "/config/backends/wayland-utauri",
+	r := httptest.NewRequest(http.MethodPatch, "/config/backends/wal-qt",
 		testutil.JSONBody(t, map[string]any{"parallax_enabled": true}))
-	r = testutil.WithChiURLParams(r, map[string]string{"backend": "wayland-utauri"})
+	r = testutil.WithChiURLParams(r, map[string]string{"backend": "wal-qt"})
 	h.PatchNamedBackendConfig(w, r)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -321,22 +321,22 @@ func TestConfigHandler_PatchNamedBackendConfig_ActiveSyncs(t *testing.T) {
 	}
 	reg := &testutil.MockRegistry{
 		GetFn: func(name string) (backend.Backend, bool) {
-			if name == "wayland-utauri" {
+			if name == "wal-qt" {
 				return sb, true
 			}
 			return nil, false
 		},
 	}
 	cfgMgr := &testutil.MockConfigManager{
-		GetActiveBackendTypeFn: func() string { return "wayland-utauri" },
+		GetActiveBackendTypeFn: func() string { return "wal-qt" },
 		SetBackendConfigFn:     func(string, json.RawMessage) error { return nil },
 	}
 	h := NewConfigHandler(testController(cfgMgr, reg, &testutil.MockBus{}))
 
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodPatch, "/config/backends/wayland-utauri",
+	r := httptest.NewRequest(http.MethodPatch, "/config/backends/wal-qt",
 		testutil.JSONBody(t, map[string]any{"parallax_enabled": false}))
-	r = testutil.WithChiURLParams(r, map[string]string{"backend": "wayland-utauri"})
+	r = testutil.WithChiURLParams(r, map[string]string{"backend": "wal-qt"})
 	h.PatchNamedBackendConfig(w, r)
 
 	assert.Equal(t, http.StatusOK, w.Code)
@@ -352,22 +352,22 @@ func TestConfigHandler_PatchNamedBackendConfig_RuntimeSyncErrorStillOK(t *testin
 	}
 	reg := &testutil.MockRegistry{
 		GetFn: func(name string) (backend.Backend, bool) {
-			if name == "wayland-utauri" {
+			if name == "wal-qt" {
 				return sb, true
 			}
 			return nil, false
 		},
 	}
 	cfgMgr := &testutil.MockConfigManager{
-		GetActiveBackendTypeFn: func() string { return "wayland-utauri" },
+		GetActiveBackendTypeFn: func() string { return "wal-qt" },
 		SetBackendConfigFn:     func(string, json.RawMessage) error { return nil },
 	}
 	h := NewConfigHandler(testController(cfgMgr, reg, &testutil.MockBus{}))
 
 	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodPatch, "/config/backends/wayland-utauri",
+	r := httptest.NewRequest(http.MethodPatch, "/config/backends/wal-qt",
 		testutil.JSONBody(t, map[string]any{"parallax_enabled": false}))
-	r = testutil.WithChiURLParams(r, map[string]string{"backend": "wayland-utauri"})
+	r = testutil.WithChiURLParams(r, map[string]string{"backend": "wal-qt"})
 	h.PatchNamedBackendConfig(w, r)
 
 	assert.Equal(t, http.StatusOK, w.Code)

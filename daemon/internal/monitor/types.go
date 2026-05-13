@@ -2,7 +2,7 @@
 //
 // Monitor detection is compositor-specific (Wayland vs X11). The MonitorProvider
 // interface abstracts this — multiple providers can exist for the same compositor
-// (e.g. wayland-utauri control API, wlr-randr on wlroots).
+// (e.g. wal-qt control API, wlr-randr on wlroots).
 // The MonitorManager auto-selects the best available provider at startup.
 package monitor
 

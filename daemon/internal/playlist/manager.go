@@ -166,7 +166,7 @@ func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target moni
 	}
 	// On fromPersisted, wallpaper.Restore already set the wallpaper for each
 	// monitor in monitor_state. Re-applying here races with that path and (in
-	// wayland-utauri) can cause the second monitor's load to be dropped during
+	// wal-qt) can cause the second monitor's load to be dropped during
 	// the retry-loop collision.
 
 	sched.Start(func(index int) bool {

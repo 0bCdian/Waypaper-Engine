@@ -51,7 +51,7 @@ const (
 
 // Backend lifecycle events.
 const (
-	// BackendUnavailable — long-lived renderer (e.g. wayland-utauri) could not be reached after retries.
+	// BackendUnavailable — long-lived renderer (e.g. wal-qt) could not be reached after retries.
 	BackendUnavailable EventType = "backend_unavailable"
 
 	// WallpaperRestoreFailed — one or more monitors could not restore their persisted wallpaper on startup.

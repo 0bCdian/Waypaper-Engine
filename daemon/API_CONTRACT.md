@@ -413,7 +413,7 @@ Set a specific image as wallpaper.
 ### Local Spec v0 Compatibility (Wayland-Utani Web Wallpapers)
 
 This section is additive and provisional. It documents how a first-party
-`wayland-utauri` backend can expose local web wallpapers while remaining
+`wal-qt` backend can expose local web wallpapers while remaining
 compatible with the existing gallery + wallpaper APIs.
 
 Compatibility goals:
@@ -458,7 +458,7 @@ Set semantics remain unchanged:
 - Backend resolves image by ID and dispatches appropriate renderer path based on
   media type (`image` vs `web`).
 
-When the active backend is **wayland-utauri**, `SyncRuntimeFromConfig` pushes `POST /settings/network` on the host control socket so global HTML allow matches config. That call can cause the host to **reload** active HTML wallpaper webviews when **effective** outbound `network` permission changes (brief flicker).
+When the active backend is **wal-qt**, `SyncRuntimeFromConfig` pushes `POST /settings/network` on the host control socket so global HTML allow matches config. That call can cause the host to **reload** active HTML wallpaper webviews when **effective** outbound `network` permission changes (brief flicker).
 
 ---
 
@@ -828,7 +828,7 @@ Get the full folder path from root to the folder.
 
 List all connected monitors.
 
-Each entry’s `name` is the compositor output identifier (for example `HDMI-A-1`, `eDP-1`). When the active backend is **`wayland-utauri`**, names come directly from the host’s control API topology (not synthetic `Monitor N` labels).
+Each entry’s `name` is the compositor output identifier (for example `HDMI-A-1`, `eDP-1`). When the active backend is **`wal-qt`**, names come directly from the host’s control API topology (not synthetic `Monitor N` labels).
 
 **Response** `200`:
 
@@ -922,9 +922,9 @@ Publishes one `config_changed` SSE event per successful call (with that section 
 
 ### `GET /config/backends/{backend}`
 
-Returns the persisted configuration JSON for a **named** registered backend (e.g. `awww`, `mpvpaper`, `wayland-utauri`). This is the preferred way to read per-renderer settings for any backend, not only the active one.
+Returns the persisted configuration JSON for a **named** registered backend (e.g. `awww`, `mpvpaper`, `wal-qt`). This is the preferred way to read per-renderer settings for any backend, not only the active one.
 
-**Path**: `{backend}` is the registry name (URL-encoded if needed, e.g. `wayland-utauri`).
+**Path**: `{backend}` is the registry name (URL-encoded if needed, e.g. `wal-qt`).
 
 **Response** `200`: Same JSON shape as the legacy active-only backend body (flat map of that backend’s options).
 
@@ -957,7 +957,7 @@ List all registered backends and their availability.
 ```json
 [
   {
-    "name": "wayland-utauri",
+    "name": "wal-qt",
     "available": true,
     "capabilities": {
       "compositors": ["wayland"],

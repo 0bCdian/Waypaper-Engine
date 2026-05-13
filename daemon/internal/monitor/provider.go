@@ -24,7 +24,7 @@ var ErrProviderNotApplicable = errors.New("monitor provider not applicable to th
 // MonitorProvider is the interface for a specific monitor detection mechanism.
 //
 // Multiple providers can exist for the same compositor. For example, on Wayland:
-//   - wayland-utauri (priority 30) — topology from control API when the sidecar runs
+//   - wal-qt (priority 30) — topology from control API when the sidecar runs
 //   - wlr-output-management (priority 20) — wlroots/KDE
 //   - wl_output legacy (priority 5) — fallback for compositors without wlr-output-management
 //
@@ -36,7 +36,7 @@ var ErrProviderNotApplicable = errors.New("monitor provider not applicable to th
 // else."
 type MonitorProvider interface {
 	// Name returns a human-readable identifier for this provider
-	// (e.g. "wayland-wlr-output", "wayland-utauri").
+	// (e.g. "wayland-wlr-output", "wal-qt").
 	Name() string
 
 	// Compositor returns which compositor type this provider serves.

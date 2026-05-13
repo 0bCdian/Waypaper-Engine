@@ -97,11 +97,11 @@ type DaemonConfig struct {
 // separately via ConfigManager.GetBackendConfig() — it is NOT part of this struct.
 // This keeps the daemon core decoupled from backend-specific config shapes.
 type BackendSection struct {
-	// Type is the name of the active backend (e.g. "awww", "feh", "hyprpaper", "wayland-utauri").
+	// Type is the name of the active backend (e.g. "awww", "feh", "hyprpaper", "wal-qt").
 	Type string `mapstructure:"type" json:"type"`
 
 	// TransitionDurationSeconds is the canonical wallpaper transition length in seconds (float).
-	// When > 0, wayland-utauri and awww map it to duration_ms / CLI seconds respectively.
+	// When > 0, wal-qt and awww map it to duration_ms / CLI seconds respectively.
 	// When 0 or unset, each backend falls back to its legacy fields (duration_ms, transition_duration).
 	TransitionDurationSeconds float64 `mapstructure:"transition_duration_seconds" json:"transition_duration_seconds,omitempty"`
 

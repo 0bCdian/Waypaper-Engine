@@ -14,11 +14,11 @@ Go **control-plane + gallery + orchestration** for wallpaper backends. Serves th
 
 | Piece                  | Responsibility                                                                                                                                                                                         |
 | ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| **Daemon**             | Config (Viper TOML), CloverDB, image import/processing, playlists, monitor metadata, **active backend** selection, **wallpaper apply** coordination, parallax/wayland-utauri client calls, HTTP + SSE. |
+| **Daemon**             | Config (Viper TOML), CloverDB, image import/processing, playlists, monitor metadata, **active backend** selection, **wallpaper apply** coordination, parallax/wal-qt client calls, HTTP + SSE. |
 | **Electron / React**   | UI; calls daemon over the socket via the `"daemon"` IPC channel; subscribes to `/events`.                                                                                                              |
-| **Setters (backends)** | External processes or APIs (awww, feh, hyprpaper, mpvpaper, **wayland-utauri**, …) invoked or driven by the daemon.                                                                                    |
+| **Setters (backends)** | External processes or APIs (awww, feh, hyprpaper, mpvpaper, **wal-qt**, …) invoked or driven by the daemon.                                                                                    |
 
-The daemon is **not** the wallpaper webview: **wayland-utauri** (wal-utauri) is a separate process with its own HTTP API on `$XDG_RUNTIME_DIR/wayland-utauri.sock`. The daemon talks to it through `internal/backend/waylandutauri`.
+The daemon is **not** the wallpaper webview: **wal-qt** (wal-utauri) is a separate process with its own HTTP API on `$XDG_RUNTIME_DIR/wal-qt.sock`. The daemon talks to it through `internal/backend/waylandutauri`.
 
 ---
 
@@ -79,7 +79,7 @@ Concurrency rule of thumb: **HTTP handlers** run on the default server pool; **b
 | **Parallax**     | `internal/parallaxdriver` | Compositor-specific input (Sway, Hyprland, …) feeding backend requests.                                            |
 | **Images**       | `internal/image`          | Import, ffmpeg, palette, Web import, video loop export, splitter.                                                   |
 | **Playlists**    | `internal/playlist`       | Manager, scheduler, playback persist, per-backend compatibility.                                                    |
-| **Monitors**     | `internal/monitor`        | Merged list from wlr-randr, XRandR, wayland-utauri provider.                                                       |
+| **Monitors**     | `internal/monitor`        | Merged list from wlr-randr, XRandR, wal-qt provider.                                                       |
 | **Config**       | `internal/config`         | Viper loader, `OnConfigChange` → SSE.                                                                               |
 | **Events**       | `internal/events`         | Bus types + SSE.                                                                                                    |
 | **Test helpers** | `internal/testutil`       | Temp DB, sample rows.                                                                                               |
@@ -94,7 +94,7 @@ Each backend implements these 10 methods (`internal/backend/backend.go`):
 
 | Method              | Description                                                                                      |
 | ------------------- | ------------------------------------------------------------------------------------------------ |
-| `Name() string`     | Registry key (e.g. `"awww"`, `"wayland-utauri"`).                                               |
+| `Name() string`     | Registry key (e.g. `"awww"`, `"wal-qt"`).                                               |
 | `IsAvailable() bool`| Runtime check — binary present, socket reachable, etc.                                           |
 | `Capabilities()`    | Declares compositor support, media types, `DaemonProcess` flag, etc.                             |
 | `Initialize(ctx)`   | Called once on `SetActive`; starts daemon process if needed.                                     |
@@ -111,9 +111,9 @@ Each backend implements these 10 methods (`internal/backend/backend.go`):
 
 ## Backends and wallpaper apply
 
-- **`backend.Registry`**: register built-ins, `SetActive` from config, **capabilities** (media types, `DaemonProcess` for wayland-utauri-style daemons).
+- **`backend.Registry`**: register built-ins, `SetActive` from config, **capabilities** (media types, `DaemonProcess` for wal-qt-style daemons).
 - **`wallpaper.Apply`**: shared path for handler + playlist: normalize media, merge config, call backend, emit events, update history/monitor state.
-- **wayland-utauri**: HTTP client + monitor mapping, transitions, parallax, respawn in `internal/backend/waylandutauri`.
+- **wal-qt**: HTTP client + monitor mapping, transitions, parallax, respawn in `internal/backend/waylandutauri`.
 
 ---
 
@@ -124,7 +124,7 @@ External edits to the TOML call `OnConfigChange` on the Viper manager. The daemo
 1. Publishes a `config_changed` SSE event.
 2. If the changed section belongs to the **active backend**, calls `backend.OnConfigChanged(ctx, configJSON)`.
 
-There is no `RuntimeConfigSync` interface. Backends that need to push config to an external process (e.g. wayland-utauri's `/settings/network`) do so inside their `OnConfigChanged` implementation.
+There is no `RuntimeConfigSync` interface. Backends that need to push config to an external process (e.g. wal-qt's `/settings/network`) do so inside their `OnConfigChanged` implementation.
 
 ---
 
@@ -164,7 +164,7 @@ Key points:
 ## Security notes (pointers)
 
 - **Path allowlisting** (e.g. user paths for imports): `internal/pathsecure` and handler validation — do not bypass.
-- **wayland-utauri** and **web** policies are enforced in both daemon (capabilities, waypaper.json) and the setter; see backend code, not this doc only.
+- **wal-qt** and **web** policies are enforced in both daemon (capabilities, waypaper.json) and the setter; see backend code, not this doc only.
 
 ---
 

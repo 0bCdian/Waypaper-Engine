@@ -309,7 +309,7 @@ func (c *noopConfig) ReplaceBackendNamedConfig(_ string, _ map[string]any) error
 // wallpaper.Restore (a separate code path) is responsible for the initial
 // wallpaper application on daemon restart; calling SetWallpaper a second time
 // from startPlaylist races the first call and can cause one monitor to stay
-// blank (see: wayland-utauri retry-loop collision).
+// blank (see: wal-qt retry-loop collision).
 func TestRestorePersistedRuns_DoesNotReapplyWallpaper(t *testing.T) {
 	ctx := context.Background()
 

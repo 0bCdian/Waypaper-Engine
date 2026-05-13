@@ -54,7 +54,7 @@ func TestRestore_ExtendGroup_VideoUsesClone(t *testing.T) {
 	assert.Len(t, saw.Monitors, 2)
 }
 
-func TestRestore_WaylandUtauriBatchesIndividualImageRows(t *testing.T) {
+func TestRestore_WalQtBatchesIndividualImageRows(t *testing.T) {
 	var calls int
 	var last backend.WallpaperRequest
 	mockBe := &testutil.MockBackend{
@@ -108,7 +108,7 @@ func TestRestore_WaylandUtauriBatchesIndividualImageRows(t *testing.T) {
 
 	wallpaper.Restore(context.Background(), mss, &testutil.MockStateStore{}, reg, &testutil.MockConfigManager{}, mm, imgStore, nil, nil)
 
-	assert.Equal(t, 1, calls, "wayland-utauri should receive one batched SetWallpaper")
+	assert.Equal(t, 1, calls, "wal-qt should receive one batched SetWallpaper")
 	require.Len(t, last.IndividualTargets, 2)
 	assert.Equal(t, "/a.png", last.IndividualTargets[0].Path)
 	assert.Equal(t, "/b.png", last.IndividualTargets[1].Path)
