@@ -18,7 +18,7 @@ import { webPreviewPlaybackKind } from "../utils/webPreviewPlayback";
 import { playMutedVideoWhenReady } from "../utils/videoPreview";
 import type {
   Image as DaemonImage,
-  WaylandUtauriConfig,
+  WalQtConfig,
   WebCapabilities,
   WebWallpaperConfigProp,
 } from "../../electron/daemon-go-types";
@@ -26,18 +26,18 @@ import type { UnifiedConfig } from "@/shared/types/unifiedConfig";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { daemonClient } from "@/client";
 
-function waylandUtauriFromUnified(config: UnifiedConfig | null): WaylandUtauriConfig | null {
-  if (!config?.backend || config.backend.type !== "wayland-utauri") return null;
+function walQtFromUnified(config: UnifiedConfig | null): WalQtConfig | null {
+  if (!config?.backend || config.backend.type !== "wal-qt") return null;
   const b = config.backend as unknown as Record<string, unknown>;
-  const w = b["wayland-utauri"] ?? b.waylandutauri;
+  const w = b["wal-qt"];
   if (!w || typeof w !== "object") return null;
-  return w as WaylandUtauriConfig;
+  return w as WalQtConfig;
 }
 
 /** Outbound HTML network needs global allow plus manifest `network`; other caps follow manifest only. */
 function webCapabilityToggleAllowed(
   key: keyof WebCapabilities,
-  wut: WaylandUtauriConfig | null,
+  wut: WalQtConfig | null,
 ): boolean {
   if (key !== "network") return true;
   if (wut == null) return true;
@@ -300,7 +300,7 @@ function WebWallpaperConfigForm({
 }) {
   const addToast = useToastStore((s) => s.addToast);
   const unifiedConfig = useSettingsStore((s) => s.config);
-  const wutCfg = useMemo(() => waylandUtauriFromUnified(unifiedConfig), [unifiedConfig]);
+  const wutCfg = useMemo(() => walQtFromUnified(unifiedConfig), [unifiedConfig]);
   const meta = image.web_meta;
   const schema = meta?.wallpaper_config;
   const keys = schema ? Object.keys(schema) : [];
@@ -423,7 +423,7 @@ function WebWallpaperConfigForm({
         </h5>
         {wutCfg && wutCfg.allow_network_wallpapers !== true && (
           <p className="text-[11px] text-base-content/50">
-            Turn on &quot;Allow network for HTML wallpapers&quot; in Backend → wayland-utauri to
+            Turn on &quot;Allow network for HTML wallpapers&quot; in Backend → wal-qt to
             enable outbound fetch/XHR/WebSocket (manifest{" "}
             <code className="text-[10px]">network</code> must still be on).
           </p>
@@ -447,7 +447,7 @@ function WebWallpaperConfigForm({
                 </span>
                 {!policyAllows && key === "network" && (
                   <span className="pl-8 text-[10px] text-base-content/45">
-                    Enable global HTML network in Settings → Backend → wayland-utauri to turn this
+                    Enable global HTML network in Settings → Backend → wal-qt to turn this
                     on.
                   </span>
                 )}

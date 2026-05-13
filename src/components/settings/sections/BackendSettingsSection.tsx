@@ -254,11 +254,11 @@ const mpvpaperFields: Field[] = [
   },
 ];
 
-const waylandUtauriTransitionFields: Field[] = [
+const walQtTransitionFields: Field[] = [
   {
     key: "waylandutauri.transition",
     label: "Transition Type",
-    description: "Transition style used by wayland-utauri (matches waypaper-tauri TransitionMode)",
+    description: "Transition style used by wal-qt.",
     type: "select",
     options: [
       { value: "none", label: "None" },
@@ -281,7 +281,7 @@ const waylandUtauriTransitionFields: Field[] = [
     key: "waylandutauri.duration_ms",
     label: "Transition duration (seconds)",
     description:
-      "How long image transitions run in wayland-utauri. Saved as milliseconds in the daemon config.",
+      "How long image transitions run in wal-qt. Saved as milliseconds in the daemon config.",
     type: "number",
     min: 0,
     max: 120,
@@ -345,7 +345,7 @@ const waylandUtauriTransitionFields: Field[] = [
   },
 ];
 
-const waylandUtauriImageFields: Field[] = [
+const walQtImageFields: Field[] = [
   {
     key: "waylandutauri.image_fit_mode",
     label: "Image fit mode",
@@ -374,12 +374,12 @@ const waylandUtauriImageFields: Field[] = [
   },
 ];
 
-const waylandUtauriParallaxFields: Field[] = [
+const walQtParallaxFields: Field[] = [
   {
     key: "waylandutauri.parallax_enabled",
     label: "Enable parallax",
     description:
-      "Syncs parallax to wayland-utauri (POST /wallpaper/parallax: zoom, step, animation, easing, reset). The compositor driver sends one parallax-move per workspace change; offsets accumulate and wal-utauri elastic-wraps past ±0.5.",
+      "Syncs parallax to wal-qt (POST /wallpaper/parallax: zoom, step, animation, easing, reset). The compositor driver sends one parallax-move per workspace change; offsets accumulate and wal-qt elastic-wraps past ±0.5.",
     type: "checkbox",
   },
   {
@@ -409,7 +409,7 @@ const waylandUtauriParallaxFields: Field[] = [
     key: "waylandutauri.parallax_step_percent",
     label: "Parallax step (%)",
     description:
-      "Per parallax-move: how much normalized offset to add in wal-utauri (sent in /wallpaper/parallax as step_percent; each compositor workspace switch triggers one move).",
+      "Per parallax-move: how much normalized offset to add in wal-qt (sent in /wallpaper/parallax as step_percent; each compositor workspace switch triggers one move).",
     type: "number",
     min: 1,
     max: 50,
@@ -450,7 +450,7 @@ const waylandUtauriParallaxFields: Field[] = [
     key: "waylandutauri.parallax_reset_ms",
     label: "Parallax reset (ms)",
     description:
-      "reset_ms in /wallpaper/parallax: duration when parallax is disabled or wal-utauri elastic-snaps offset to center.",
+      "reset_ms in /wallpaper/parallax: duration when parallax is disabled or wal-qt elastic-snaps offset to center.",
     type: "number",
     min: 16,
     max: 10000,
@@ -465,7 +465,7 @@ const waylandUtauriParallaxFields: Field[] = [
   },
 ];
 
-const waylandUtauriVideoFields: Field[] = [
+const walQtVideoFields: Field[] = [
   {
     key: "waylandutauri.video_audio_default",
     label: "Default Video Audio",
@@ -476,16 +476,16 @@ const waylandUtauriVideoFields: Field[] = [
     key: "waylandutauri.allow_network_wallpapers",
     label: "Allow network for HTML wallpapers",
     description:
-      "Global gate for outbound fetch/XHR/WebSocket on HTML wallpapers (WebKit relaxes policy when allowed). Per-wallpaper `capabilities.network` in waypaper.json must also be enabled. Applied immediately via wayland-utauri (webview reload).",
+      "Global gate for outbound fetch/XHR/WebSocket on HTML wallpapers (WebKit relaxes policy when allowed). Per-wallpaper `capabilities.network` in waypaper.json must also be enabled. Applied immediately via wal-qt (webview reload).",
     type: "checkbox",
   },
 ];
 
-const waylandUtauriAdvancedFields: Field[] = [
+const walQtAdvancedFields: Field[] = [
   {
     key: "waylandutauri.socket_path",
     label: "Socket Path",
-    description: "Unix socket path for wayland-utauri control API",
+    description: "Unix socket path for wal-qt control API",
     type: "text",
   },
   {
@@ -674,8 +674,8 @@ function getBackendSubconfig(
 ): Record<string, unknown> | undefined {
   if (!config?.backend) return undefined;
   const b = config.backend as unknown as Record<string, unknown>;
-  if (backendId === "wayland-utauri") {
-    const w = b["wayland-utauri"] ?? b.waylandutauri;
+  if (backendId === "wal-qt") {
+    const w = b["wal-qt"];
     return w && typeof w === "object" ? (w as Record<string, unknown>) : undefined;
   }
   const sub = b[backendId];
@@ -710,13 +710,13 @@ function fieldGroupsForBackend(backendId: string): BackendFieldGroup[] {
       ];
     case "mpvpaper":
       return [{ title: "Video (Wayland)", fields: mpvpaperFields }];
-    case "wayland-utauri":
+    case "wal-qt":
       return [
-        { title: "Image Display", fields: waylandUtauriImageFields },
-        { title: "Transitions", fields: waylandUtauriTransitionFields },
-        { title: "Parallax", fields: waylandUtauriParallaxFields },
-        { title: "Video", fields: waylandUtauriVideoFields },
-        { title: "Advanced", fields: waylandUtauriAdvancedFields },
+        { title: "Image Display", fields: walQtImageFields },
+        { title: "Transitions", fields: walQtTransitionFields },
+        { title: "Parallax", fields: walQtParallaxFields },
+        { title: "Video", fields: walQtVideoFields },
+        { title: "Advanced", fields: walQtAdvancedFields },
       ];
     default:
       return [];
@@ -741,7 +741,7 @@ const BACKEND_MEDIA_SUPPORT: Record<string, MediaCategory[]> = {
   awww: ["image"],
   hyprpaper: ["image"],
   feh: ["image"],
-  "wayland-utauri": ["image", "video", "web"],
+  "wal-qt": ["image", "video", "web"],
   mpvpaper: ["video"],
 };
 
@@ -988,7 +988,7 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
     const pk = patchKeyForField(field, backendId);
     const sub = getBackendSubconfig(config, backendId);
 
-    if (backendId === "wayland-utauri" && pk === "duration_ms") {
+    if (backendId === "wal-qt" && pk === "duration_ms") {
       const ms = sub?.duration_ms;
       const seconds = typeof ms === "number" && Number.isFinite(ms) && ms >= 0 ? ms / 1000 : 0.3;
       return renderAnyField(field, seconds, backendFieldError(backendId, field), (value) => {
@@ -1010,9 +1010,9 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
   const backendType = config?.backend?.type;
   const selectionMode = config?.backend?.selection_mode ?? "fixed";
   const autoPriorities = config?.backend?.auto_priorities ?? {
-    image: ["awww", "hyprpaper", "feh", "wayland-utauri"],
-    video: ["mpvpaper", "wayland-utauri"],
-    web: ["wayland-utauri"],
+    image: ["awww", "hyprpaper", "feh", "wal-qt"],
+    video: ["mpvpaper", "wal-qt"],
+    web: ["wal-qt"],
   };
 
   const handlePriorityChange = (category: MediaCategory, newOrder: string[]) => {

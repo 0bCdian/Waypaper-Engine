@@ -240,14 +240,14 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     section: "backend",
     key: "waylandutauri.duration_ms",
     label: "Wayland-utauri transition duration",
-    description: "wayland-utauri transition length in seconds",
+    description: "wal-qt transition length in seconds",
     category: "Transitions",
   },
   {
     section: "backend",
     key: "waylandutauri.transition",
     label: "Wayland-utauri transition",
-    description: "Transition preset for wayland-utauri / waypaper-tauri",
+    description: "Transition preset for wal-qt",
     category: "Transitions",
   },
   {
@@ -313,7 +313,7 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     section: "backend",
     key: "waylandutauri.parallax_reset_ms",
     label: "Parallax reset duration",
-    description: "Milliseconds when parallax disables or snaps back (reset_ms to wayland-utauri)",
+    description: "Milliseconds when parallax disables or snaps back (reset_ms to wal-qt)",
     category: "Backend",
   },
   {
