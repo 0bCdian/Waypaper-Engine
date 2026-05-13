@@ -46,10 +46,6 @@ function Gallery() {
   const [pendingShadertoyFile, setPendingShadertoyFile] = useState<File | null>(null);
   const shadertoyModalRef = useRef<ModalHandle>(null);
 
-  useEffect(() => {
-    if (pendingShadertoyFile) shadertoyModalRef.current?.showModal();
-  }, [pendingShadertoyFile]);
-
   const handleDrop = useCallback((e: React.DragEvent) => {
     const { mediaPaths, manifestPaths, shadertoyPaths, otherPaths, urls } = collectDroppedPaths(e);
 
@@ -64,6 +60,7 @@ function Gallery() {
       for (let i = 0; i < files.length; i++) {
         if (files[i].name.toLowerCase().endsWith(".json")) {
           setPendingShadertoyFile(files[i]);
+          shadertoyModalRef.current?.showModal();
           return;
         }
       }
