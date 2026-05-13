@@ -1,6 +1,6 @@
 import {
   createContext,
-  useContext,
+  use,
   useEffect,
   useState,
   useRef,
@@ -93,7 +93,7 @@ function galleryFilterInputHasFocus(reactSelectInputId: string): boolean {
 const FilterInputNameContext = createContext("");
 
 function GalleryFilterInput(props: InputProps<TokenOption, true>) {
-  const filterInputName = useContext(FilterInputNameContext);
+  const filterInputName = use(FilterInputNameContext);
   return (
     <builtinSelectComponents.Input
       {...props}
