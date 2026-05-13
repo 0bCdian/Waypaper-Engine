@@ -141,9 +141,9 @@ export default function LoopStudio() {
     modeRef.current = mode;
   });
 
-  const [prevLocationState, setPrevLocationState] = useState(location.state);
-  if (location.state !== prevLocationState) {
-    setPrevLocationState(location.state);
+  const prevLocationStateRef = useRef(location.state);
+  if (location.state !== prevLocationStateRef.current) {
+    prevLocationStateRef.current = location.state;
     const st = location.state as { imageId?: number } | null;
     if (typeof st?.imageId === "number") {
       setImageId(st.imageId);
