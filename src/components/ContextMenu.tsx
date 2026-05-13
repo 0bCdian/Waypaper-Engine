@@ -137,6 +137,7 @@ function MenuItems({
     const item = items[i];
     if (item.type === "separator") {
       // Stable key: derive from neighbouring action labels which don't reorder within a menu.
+      // oxlint-disable-next-line react-doctor/js-index-maps -- menu items are short (<20); building an index would cost more than the scan
       const next = items.slice(i + 1).find((it) => it.type !== "separator");
       const nextLabel = next ? next.label : "end";
       rendered.push(

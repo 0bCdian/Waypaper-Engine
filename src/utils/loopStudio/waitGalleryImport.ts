@@ -22,6 +22,7 @@ export async function waitForGalleryVideoBySourcePath(
       sort_order: "desc",
       per_page: 80,
     });
+    // oxlint-disable-next-line react-doctor/js-index-maps -- res.data is freshly fetched each poll iteration; can't pre-index outside the loop
     const hit = res.data.find((im) => {
       if (im.media_type !== "video") return false;
       const sp = normalizeFsPath(im.source_path ?? "");

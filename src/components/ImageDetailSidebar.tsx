@@ -254,8 +254,7 @@ function normalizedPalette(colors: string[]): string[] {
 function palettesEqual(a: string[], b: string[]): boolean {
   const na = normalizedPalette(a);
   const nb = normalizedPalette(b);
-  if (na.length !== nb.length) return false;
-  return na.every((c, i) => c === nb[i]);
+  return na.length === nb.length && na.every((c, i) => c === nb[i]);
 }
 
 /** CSS-safe fill for invalid legacy palette tokens */
