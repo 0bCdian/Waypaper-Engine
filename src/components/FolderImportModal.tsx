@@ -18,6 +18,8 @@ function FolderImportModal() {
     }
   }
 
+  // Bridges external store flag (set/cleared by openImagesStore from many call sites) to imperative <dialog>.
+  // oxlint-disable-next-line react-doctor/no-effect-event-handler
   useEffect(() => {
     if (pendingFolderImport) {
       modalRef.current?.showModal();
