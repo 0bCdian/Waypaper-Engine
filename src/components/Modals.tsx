@@ -40,13 +40,21 @@ function Modals() {
     if (alreadyShown.current || !config) return;
     alreadyShown.current = true;
     if (!config.app.show_monitor_modal_on_start) return;
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+    let cancelled = false;
     void setLastSavedMonitorConfig().then(() => {
-      setTimeout(() => {
+      if (cancelled) return;
+      timeoutId = setTimeout(() => {
+        timeoutId = null;
         void reQueryMonitors().then(() => {
-          useModalStore.getState().open("monitors");
+          if (!cancelled) useModalStore.getState().open("monitors");
         });
       }, 300);
     });
+    return () => {
+      cancelled = true;
+      if (timeoutId !== null) clearTimeout(timeoutId);
+    };
   }, [config, reQueryMonitors, setLastSavedMonitorConfig]);
 
   useEffect(() => {
