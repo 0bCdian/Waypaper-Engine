@@ -10,6 +10,7 @@ import (
 	"math"
 	"os"
 	"os/exec"
+	"regexp"
 	"slices"
 	"strings"
 	"sync"
@@ -43,6 +44,9 @@ var validImageFitModes = map[string]struct{}{
 	"none":       {},
 	"scale-down": {},
 }
+
+// fillColorPattern accepts RRGGBB or RRGGBBAA hex (no leading '#').
+var fillColorPattern = regexp.MustCompile(`^[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$`)
 
 var validImageRenderingModes = map[string]struct{}{
 	"auto":         {},
@@ -633,6 +637,7 @@ func (w *WalQt) RegisterDefaults(v *viper.Viper) {
 	v.SetDefault(viperBackendKey+".parallax_direction", def.ParallaxDirection)
 	v.SetDefault(viperBackendKey+".image_fit_mode", def.ImageFitMode)
 	v.SetDefault(viperBackendKey+".image_rendering", def.ImageRendering)
+	v.SetDefault(viperBackendKey+".fill_color", def.FillColor)
 	v.SetDefault(viperBackendKey+".video_audio_default", def.VideoAudioDefault)
 	v.SetDefault(viperBackendKey+".allow_network_wallpapers", def.AllowNetworkWallpapers)
 }
@@ -660,6 +665,11 @@ func (w *WalQt) ValidateConfig(raw json.RawMessage) error {
 	if s := strings.ToLower(strings.TrimSpace(cfg.ImageRendering)); s != "" {
 		if _, ok := validImageRenderingModes[s]; !ok {
 			return fmt.Errorf("wal-qt: image_rendering must be one of auto, smooth, high-quality, crisp-edges, pixelated")
+		}
+	}
+	if s := strings.TrimPrefix(strings.TrimSpace(cfg.FillColor), "#"); s != "" {
+		if !fillColorPattern.MatchString(s) {
+			return fmt.Errorf("wal-qt: fill_color must be 6- or 8-digit hex (RRGGBB or RRGGBBAA), got %q", cfg.FillColor)
 		}
 	}
 	return nil
@@ -765,6 +775,9 @@ func (w *WalQt) loadConfigFromViper() *Config {
 	if val := getString("image_rendering"); val != "" {
 		cfg.ImageRendering = val
 	}
+	if val := getString("fill_color"); val != "" {
+		cfg.FillColor = strings.TrimPrefix(strings.TrimSpace(val), "#")
+	}
 	cfg.VideoAudioDefault = getBool("video_audio_default")
 	cfg.AllowNetworkWallpapers = getBool("allow_network_wallpapers")
 
@@ -847,7 +860,11 @@ func (w *WalQt) OnConfigChanged(ctx context.Context, _ json.RawMessage) error {
 	if rend == "" {
 		rend = "auto"
 	}
-	if err := client.setImagePresentation(ctx, fit, rend); err != nil {
+	fill := strings.TrimPrefix(strings.TrimSpace(cfg.FillColor), "#")
+	if !fillColorPattern.MatchString(fill) {
+		fill = "000000ff"
+	}
+	if err := client.setImagePresentation(ctx, fit, rend, fill); err != nil {
 		return fmt.Errorf("wal-qt: runtime sync image presentation: %w", err)
 	}
 	return nil

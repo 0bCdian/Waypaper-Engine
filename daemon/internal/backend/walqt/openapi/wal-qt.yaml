@@ -914,3 +914,14 @@ components:
           enum: [auto, crisp-edges, pixelated]
           default: auto
           example: "auto"
+        fill_color:
+          type: string
+          description: |
+            Background color used as padding when the image does not fully cover
+            the monitor (e.g. `contain`, `none`, `scale-down` fit modes). Accepts
+            6-digit `RRGGBB` or 8-digit `RRGGBBAA` hex (no leading `#`). Defaults
+            to `000000ff` (opaque black) when absent. Mirrors awww's
+            `--fill-color` flag.
+          pattern: "^[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
+          default: "000000ff"
+          example: "1e1e2eff"

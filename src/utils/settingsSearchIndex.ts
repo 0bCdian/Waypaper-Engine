@@ -259,6 +259,13 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
   },
   {
     section: "backend",
+    key: "walqt.fill_color",
+    label: "wal-qt fill color",
+    description: "Padding color when the image does not fully cover the monitor (RRGGBB / RRGGBBAA hex)",
+    category: "Image Display",
+  },
+  {
+    section: "backend",
     key: "walqt.transition_angle_deg",
     label: "Wipe / wave angle",
     description: "Angle in degrees for wipe and wave (directional presets lock angle)",

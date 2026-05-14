@@ -372,6 +372,14 @@ const walQtImageFields: Field[] = [
       { value: "pixelated", label: "Pixelated" },
     ],
   },
+  {
+    key: "walqt.fill_color",
+    label: "Fill color",
+    description:
+      "Padding color when the image does not fully cover the monitor (e.g. Contain / None / Scale-down). RRGGBB or RRGGBBAA hex, no leading '#'. Mirrors awww's --fill-color.",
+    type: "text",
+    placeholder: "000000ff",
+  },
 ];
 
 const walQtParallaxFields: Field[] = [

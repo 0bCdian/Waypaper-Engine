@@ -124,6 +124,13 @@ type HealthResponse struct {
 
 // ImagePresentationRequest Sets image scaling and rendering quality globally across all monitors.
 type ImagePresentationRequest struct {
+	// FillColor Background color used as padding when the image does not fully cover
+	// the monitor (e.g. `contain`, `none`, `scale-down` fit modes). Accepts
+	// 6-digit `RRGGBB` or 8-digit `RRGGBBAA` hex (no leading `#`). Defaults
+	// to `000000ff` (opaque black) when absent. Mirrors awww's
+	// `--fill-color` flag.
+	FillColor *string `json:"fill_color,omitempty"`
+
 	// ImageFitMode CSS `object-fit` style value; defaults to `cover` when absent
 	ImageFitMode *ImagePresentationRequestImageFitMode `json:"image_fit_mode,omitempty"`
 

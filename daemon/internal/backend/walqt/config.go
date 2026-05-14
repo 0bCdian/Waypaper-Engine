@@ -46,6 +46,10 @@ type Config struct {
 	ParallaxDirection      string `mapstructure:"parallax_direction" json:"parallax_direction"`
 	ImageFitMode           string `mapstructure:"image_fit_mode" json:"image_fit_mode"`
 	ImageRendering         string `mapstructure:"image_rendering" json:"image_rendering"`
+	// FillColor is the padding color used by wal-qt when the image does not fully
+	// cover the monitor (e.g. contain / none / scale-down). Format: RRGGBB or
+	// RRGGBBAA hex without leading '#'. Mirrors awww's --fill-color.
+	FillColor string `mapstructure:"fill_color" json:"fill_color"`
 	VideoAudioDefault      bool   `mapstructure:"video_audio_default" json:"video_audio_default"`
 	AllowNetworkWallpapers bool   `mapstructure:"allow_network_wallpapers" json:"allow_network_wallpapers"`
 }
@@ -85,6 +89,7 @@ func defaultConfig() *Config {
 		ParallaxDirection:              "horizontal",
 		ImageFitMode:                   "cover",
 		ImageRendering:                 "auto",
+		FillColor:                      "000000ff",
 		VideoAudioDefault:              false,
 		AllowNetworkWallpapers:         false,
 	}

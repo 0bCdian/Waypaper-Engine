@@ -387,6 +387,8 @@ export interface WalQtConfig {
   image_fit_mode?: string;
   /** CSS image-rendering for image wallpapers: auto | smooth | high-quality | crisp-edges | pixelated */
   image_rendering?: string;
+  /** Padding/background color used when the image does not fully cover the monitor. RRGGBB or RRGGBBAA hex (no '#'). Mirrors awww's --fill-color. */
+  fill_color?: string;
   video_audio_default?: boolean;
   /** When true, HTML wallpapers may use fetch/XHR to the network (synced to wal-qt at runtime). */
   allow_network_wallpapers?: boolean;

@@ -163,12 +163,15 @@ func (c *controlClient) setAllowNetworkWallpapers(ctx context.Context, allow boo
 	return nil
 }
 
-func (c *controlClient) setImagePresentation(ctx context.Context, fit, rendering string) error {
+func (c *controlClient) setImagePresentation(ctx context.Context, fit, rendering, fillColor string) error {
 	fitMode := walqtclient.ImagePresentationRequestImageFitMode(fit)
 	rendMode := walqtclient.ImagePresentationRequestImageRendering(rendering)
 	req := walqtclient.ImagePresentationRequest{
 		ImageFitMode:   &fitMode,
 		ImageRendering: &rendMode,
+	}
+	if fillColor != "" {
+		req.FillColor = &fillColor
 	}
 	resp, err := c.gen.SetImagePresentation(ctx, req)
 	if err != nil {
