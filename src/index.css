@@ -525,6 +525,9 @@ html[data-theme="gruvbox-material-light"] {
   list-style: none;
   margin: 0;
   padding: 0;
+  max-height: calc(100vh - 16px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .context-menu-separator {

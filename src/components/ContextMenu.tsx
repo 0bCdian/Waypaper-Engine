@@ -20,11 +20,13 @@ function ContextMenu() {
   const menuRef = useRef<HTMLDivElement>(null);
   const [placement, setPlacement] = useState<{
     pos: { x: number; y: number };
+    flippedY: boolean;
     fadeIn: boolean;
-  }>(() => ({ pos: position, fadeIn: false }));
+  }>(() => ({ pos: position, flippedY: false, fadeIn: false }));
   const [focusIdx, setFocusIdx] = useState(-1);
 
   const adjustedPos = placement.pos;
+  const flippedY = placement.flippedY;
   const visible = isOpen && placement.fadeIn;
   const focusIndex = isOpen ? focusIdx : -1;
 
@@ -33,7 +35,7 @@ function ContextMenu() {
 
     requestAnimationFrame(() => {
       if (!menuRef.current) {
-        setPlacement({ pos: position, fadeIn: true });
+        setPlacement({ pos: position, flippedY: false, fadeIn: true });
         return;
       }
       const rect = menuRef.current.getBoundingClientRect();
@@ -41,13 +43,21 @@ function ContextMenu() {
       const vh = window.innerHeight;
       let x = position.x;
       let y = position.y;
+      let flippedY = false;
       if (x + rect.width + VIEWPORT_PADDING > vw) x = vw - rect.width - VIEWPORT_PADDING;
-      if (y + rect.height + VIEWPORT_PADDING > vh) y = vh - rect.height - VIEWPORT_PADDING;
       if (x < VIEWPORT_PADDING) x = VIEWPORT_PADDING;
-      if (y < VIEWPORT_PADDING) y = VIEWPORT_PADDING;
-      setPlacement({ pos: { x, y }, fadeIn: true });
+      if (y + rect.height + VIEWPORT_PADDING > vh) {
+        const yAbove = position.y - rect.height;
+        if (yAbove >= VIEWPORT_PADDING) {
+          y = yAbove;
+          flippedY = true;
+        } else {
+          y = VIEWPORT_PADDING;
+        }
+      }
+      setPlacement({ pos: { x, y }, flippedY, fadeIn: true });
     });
-    return () => setPlacement((prev) => ({ ...prev, fadeIn: false }));
+    return () => setPlacement((prev) => ({ ...prev, flippedY: false, fadeIn: false }));
   }, [isOpen, position]);
 
   useEffect(() => {
@@ -111,6 +121,7 @@ function ContextMenu() {
         left: adjustedPos.x,
         top: adjustedPos.y,
         minWidth: MENU_MIN_WIDTH,
+        transformOrigin: flippedY ? "bottom left" : "top left",
       }}
     >
       <MenuItems items={items} close={close} focusIndex={focusIndex} depth={0} />
@@ -221,7 +232,10 @@ function SubmenuItem({
   const timerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement>(null);
   const submenuRef = useRef<HTMLDivElement>(null);
-  const [submenuSide, setSubmenuSide] = useState<"right" | "left">("right");
+  const [submenuPlacement, setSubmenuPlacement] = useState<{
+    side: "right" | "left";
+    top: number;
+  }>({ side: "right", top: 0 });
 
   const handleEnter = useCallback(() => {
     clearTimeout(timerRef.current);
@@ -239,11 +253,15 @@ function SubmenuItem({
       if (submenuRef.current && containerRef.current) {
         const parentRect = containerRef.current.getBoundingClientRect();
         const subRect = submenuRef.current.getBoundingClientRect();
-        if (parentRect.right + subRect.width + VIEWPORT_PADDING > window.innerWidth) {
-          setSubmenuSide("left");
-        } else {
-          setSubmenuSide("right");
-        }
+        const vw = window.innerWidth;
+        const vh = window.innerHeight;
+        const side =
+          parentRect.right + subRect.width + VIEWPORT_PADDING > vw ? "left" : "right";
+        let top = 0;
+        const overflowBottom = parentRect.top + subRect.height + VIEWPORT_PADDING - vh;
+        if (overflowBottom > 0) top = -overflowBottom;
+        if (parentRect.top + top < VIEWPORT_PADDING) top = VIEWPORT_PADDING - parentRect.top;
+        setSubmenuPlacement({ side, top });
       }
     });
     return () => cancelAnimationFrame(raf);
@@ -281,8 +299,8 @@ function SubmenuItem({
           className="context-menu-submenu context-menu context-menu-visible"
           style={{
             position: "absolute",
-            top: 0,
-            [submenuSide === "right" ? "left" : "right"]: "100%",
+            top: submenuPlacement.top,
+            [submenuPlacement.side === "right" ? "left" : "right"]: "100%",
             minWidth: MENU_MIN_WIDTH,
           }}
           onMouseEnter={handleEnter}
