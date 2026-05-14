@@ -5,7 +5,7 @@
  */
 
 import type React from "react";
-import { useState, useEffect } from "react";
+import { useReducer, useEffect } from "react";
 import { cn } from "@/utils/cn";
 
 interface DaemonStatus {
@@ -17,6 +17,33 @@ interface DaemonStatus {
 interface DaemonStatusComponentProps {
   className?: string;
 }
+
+type State = {
+  status: DaemonStatus | null;
+  isLoading: boolean;
+  error: string | null;
+};
+
+type Action =
+  | { type: "status-loaded"; status: DaemonStatus }
+  | { type: "action-start" }
+  | { type: "action-end"; error: string | null }
+  | { type: "error"; error: string };
+
+function reducer(state: State, action: Action): State {
+  switch (action.type) {
+    case "status-loaded":
+      return { ...state, status: action.status, error: null };
+    case "action-start":
+      return { ...state, isLoading: true, error: null };
+    case "action-end":
+      return { ...state, isLoading: false, error: action.error };
+    case "error":
+      return { ...state, error: action.error };
+  }
+}
+
+const INITIAL_STATE: State = { status: null, isLoading: false, error: null };
 
 async function executeDaemonAction(
   action: (() => Promise<unknown>) | undefined,
@@ -58,20 +85,20 @@ async function fetchDaemonStatus(): Promise<DaemonStatus | null> {
 }
 
 export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({ className }) => {
-  const [status, setStatus] = useState<DaemonStatus | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [{ status, isLoading, error }, dispatch] = useReducer(reducer, INITIAL_STATE);
 
   const loadStatus = () => {
     fetchDaemonStatus()
       .then((result) => {
         if (result) {
-          setStatus(result);
-          setError(null);
+          dispatch({ type: "status-loaded", status: result });
         }
       })
       .catch((err) => {
-        setError(err instanceof Error ? err.message : "Failed to load daemon status");
+        dispatch({
+          type: "error",
+          error: err instanceof Error ? err.message : "Failed to load daemon status",
+        });
       });
   };
 
@@ -89,34 +116,34 @@ export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({ cl
     return () => clearInterval(interval);
   }, []);
 
-  const handleRestart = async () => {
-    setIsLoading(true);
-    setError(null);
-    const api = window.API_RENDERER;
-    const fn = api?.restartDaemon ? () => api.restartDaemon() : undefined;
-    const errorMsg = await executeDaemonAction(fn, "Failed to restart daemon");
-    if (errorMsg) setError(errorMsg);
-    setIsLoading(false);
+  const runDaemonAction = async (fn: (() => Promise<unknown>) | undefined, label: string) => {
+    dispatch({ type: "action-start" });
+    const errorMsg = await executeDaemonAction(fn, label);
+    dispatch({ type: "action-end", error: errorMsg });
   };
 
-  const handleStart = async () => {
-    setIsLoading(true);
-    setError(null);
+  const handleRestart = () => {
     const api = window.API_RENDERER;
-    const fn = api?.startDaemon ? () => api.startDaemon() : undefined;
-    const errorMsg = await executeDaemonAction(fn, "Failed to start daemon");
-    if (errorMsg) setError(errorMsg);
-    setIsLoading(false);
+    void runDaemonAction(
+      api?.restartDaemon ? () => api.restartDaemon() : undefined,
+      "Failed to restart daemon",
+    );
   };
 
-  const handleStop = async () => {
-    setIsLoading(true);
-    setError(null);
+  const handleStart = () => {
     const api = window.API_RENDERER;
-    const fn = api?.stopDaemon ? () => api.stopDaemon() : undefined;
-    const errorMsg = await executeDaemonAction(fn, "Failed to stop daemon");
-    if (errorMsg) setError(errorMsg);
-    setIsLoading(false);
+    void runDaemonAction(
+      api?.startDaemon ? () => api.startDaemon() : undefined,
+      "Failed to start daemon",
+    );
+  };
+
+  const handleStop = () => {
+    const api = window.API_RENDERER;
+    void runDaemonAction(
+      api?.stopDaemon ? () => api.stopDaemon() : undefined,
+      "Failed to stop daemon",
+    );
   };
 
   if (!status) {
