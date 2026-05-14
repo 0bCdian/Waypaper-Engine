@@ -1,9 +1,9 @@
-import type { BuiltinThemeMeta, ThemeMeta } from "../styles/themes/types";
+import type { ThemeMeta } from "../styles/themes/types";
 import { builtInThemes } from "../styles/themes/_index";
 import { daisyStockThemeMetas } from "./daisyStockThemes";
 
-export type { BuiltinThemeMeta, ThemeMeta };
-export { builtInThemes, daisyStockThemeMetas };
+export type { ThemeMeta };
+export { daisyStockThemeMetas };
 
 const auditedThemeNames = new Set(builtInThemes.map((t) => t.name));
 
