@@ -27,6 +27,7 @@ export const StartupIntro: React.FC<StartupIntroProps> = ({ onFinish }) => {
   const prefersReduced = useReducedMotion();
   const finishedRef = useRef(false);
   const [visible, setVisible] = useState(true);
+  const [exiting, setExiting] = useState(false);
   const [contentPhase, setContentPhase] = useState<"lines" | "logo">("lines");
 
   const finishOnce = useCallback(() => {
@@ -53,7 +54,7 @@ export const StartupIntro: React.FC<StartupIntroProps> = ({ onFinish }) => {
 
   useEffect(() => {
     if (prefersReduced === true) return undefined;
-    const t = window.setTimeout(() => setVisible(false), OVERLAY_HOLD_MS);
+    const t = window.setTimeout(() => setExiting(true), OVERLAY_HOLD_MS);
     return () => window.clearTimeout(t);
   }, [prefersReduced]);
 
@@ -81,22 +82,22 @@ export const StartupIntro: React.FC<StartupIntroProps> = ({ onFinish }) => {
     <LazyMotion features={domAnimation} strict>
       <AnimatePresence mode="sync" onExitComplete={handleExitComplete}>
         {visible && (
-          <m.div
+          <div
             key="startup-intro"
-            layout={false}
-            className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden bg-base-100"
+            className="z-[9999] flex flex-col items-center justify-center overflow-hidden bg-base-100"
             style={{
-              boxShadow: "inset 0 0 120px oklch(from var(--color-base-content) l c h / 0.12)",
+              position: "fixed",
+              inset: 0,
+              opacity: exiting ? 0 : 1,
+              transform: exiting ? "scale(1.015)" : "scale(1)",
+              transition: `opacity ${EXIT_S}s cubic-bezier(0.4, 0, 0.2, 1), transform ${EXIT_S}s cubic-bezier(0.4, 0, 0.2, 1)`,
+            }}
+            onTransitionEnd={(e) => {
+              if (e.propertyName === "opacity" && exiting) finishOnce();
             }}
             role="status"
             aria-live="polite"
             aria-label="Waypaper Engine startup"
-            initial={{ opacity: 1 }}
-            exit={{
-              opacity: 0,
-              scale: 1.015,
-              transition: { duration: EXIT_S, ease: [0.4, 0, 0.2, 1] as const },
-            }}
           >
             {/* subtle grid + vignette */}
             <div
@@ -141,7 +142,7 @@ export const StartupIntro: React.FC<StartupIntroProps> = ({ onFinish }) => {
                 {contentPhase === "lines" ? (
                   <m.div
                     key="boot-lines"
-                    className="w-[min(90vw,440px)] font-mono text-[11px] leading-relaxed md:text-xs"
+                    className="w-[min(90vw,720px)] font-mono text-base leading-relaxed md:text-lg lg:text-xl"
                     style={{ fontFamily: "var(--font-mono)" }}
                     variants={lineContainer}
                     initial="hidden"
@@ -155,7 +156,7 @@ export const StartupIntro: React.FC<StartupIntroProps> = ({ onFinish }) => {
                     {PHASE_LINES.map((line) => (
                       <m.div
                         key={line.k}
-                        className="mb-2 flex gap-4 sm:justify-between"
+                        className="mb-3 flex gap-6 sm:justify-between"
                         variants={lineItem}
                       >
                         <span className="shrink-0 text-primary">{"//"}</span>
@@ -167,7 +168,7 @@ export const StartupIntro: React.FC<StartupIntroProps> = ({ onFinish }) => {
                 ) : (
                   <m.div
                     key="wordmark"
-                    className="flex flex-col items-center gap-6"
+                    className="flex flex-col items-center gap-10"
                     initial={{ opacity: 0, y: 8, scale: 0.96 }}
                     animate={{
                       opacity: 1,
@@ -182,7 +183,7 @@ export const StartupIntro: React.FC<StartupIntroProps> = ({ onFinish }) => {
                   >
                     <div className="relative">
                       <m.div
-                        className="absolute inset-[-12px] rounded-2xl"
+                        className="absolute inset-[-20px] rounded-3xl"
                         style={{
                           background:
                             "radial-gradient(ellipse at center, oklch(from var(--color-primary) l c h / 0.25) 0%, transparent 70%)",
@@ -195,11 +196,11 @@ export const StartupIntro: React.FC<StartupIntroProps> = ({ onFinish }) => {
                         src={`${import.meta.env.BASE_URL}app.png`}
                         alt=""
                         draggable={false}
-                        className="relative h-14 w-14 object-contain md:h-16 md:w-16"
+                        className="relative h-24 w-24 object-contain md:h-28 md:w-28 lg:h-32 lg:w-32"
                       />
                     </div>
                     <m.p
-                      className="text-center text-[0.72rem] font-semibold tracking-[0.35em] text-base-content/40 md:text-sm"
+                      className="text-center text-base font-semibold tracking-[0.35em] text-base-content/40 md:text-lg lg:text-xl"
                       style={{ fontFamily: "var(--font-display)" }}
                       initial={{ opacity: 0, letterSpacing: "0.42em" }}
                       animate={{
@@ -214,7 +215,7 @@ export const StartupIntro: React.FC<StartupIntroProps> = ({ onFinish }) => {
                 )}
               </AnimatePresence>
             </div>
-          </m.div>
+          </div>
         )}
       </AnimatePresence>
     </LazyMotion>

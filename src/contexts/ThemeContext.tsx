@@ -201,6 +201,12 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   }, []);
 
   useEffect(() => {
+    // main.tsx already set data-theme synchronously before React mounted.
+    // Re-running applyTheme on mount triggers a redundant startViewTransition
+    // that races StartupIntro's mount and causes a visible snap on the overlay.
+    if (document.documentElement.getAttribute("data-theme") === currentTheme) {
+      return;
+    }
     applyTheme(currentTheme);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
