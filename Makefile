@@ -39,10 +39,14 @@ DAEMON_CMD = ./cmd/daemon
 DAEMON_VERSION = $(shell git -C daemon describe --tags --always --dirty 2>/dev/null || echo "dev")
 DAEMON_LDFLAGS = -s -w -X main.version=$(DAEMON_VERSION)
 
+# Source of truth for the wal-qt OpenAPI spec (override to a local checkout).
+WALQT_REPO ?= ../wal-qt
+
 .PHONY: all build build-appimage help deps daemon frontend electron appimage package-electron-dir package-appimage \
 	verify-daemon-binary verify-ui-artifacts verify-appimage-artifact \
 	install install-all install-ui install-daemon install-systemd install-appimage install-system install-appimage-system \
-	uninstall uninstall-ui uninstall-daemon uninstall-systemd uninstall-appimage uninstall-system uninstall-appimage-system clean
+	uninstall uninstall-ui uninstall-daemon uninstall-systemd uninstall-appimage uninstall-system uninstall-appimage-system clean \
+	sync-walqt-spec walqt-spec-check
 
 all: electron
 build: electron
@@ -208,6 +212,30 @@ uninstall-appimage-system:
 		ELECTRON_APP_ROOT=/opt/waypaper-engine \
 		APPIMAGE_APP_ROOT=/opt/waypaper-engine-appimage \
 		SYSTEMD_DIR="$(SYSTEMD_DIR_SYSTEM)"
+
+# ---------------------------------------------------------------------------
+# wal-qt OpenAPI spec sync and CI check
+# ---------------------------------------------------------------------------
+
+# sync-walqt-spec: copy the wal-qt OpenAPI spec from the upstream repo,
+# regenerate the daemon client, and report what changed.
+sync-walqt-spec:
+	@echo "==> Syncing wal-qt OpenAPI spec from $(WALQT_REPO)"
+	cp "$(WALQT_REPO)/openapi/wal-qt.yaml" daemon/internal/backend/walqt/openapi/wal-qt.yaml
+	@echo "==> Regenerating walqtclient from vendored spec"
+	cd daemon && go generate ./internal/backend/walqt/walqtclient/...
+	@echo "==> Changed files:"
+	git status --short daemon/internal/backend/walqt/
+
+# walqt-spec-check: verify the vendored spec and generated client are in sync
+# with what would be produced from the upstream repo. Used by CI.
+walqt-spec-check:
+	@echo "==> Checking wal-qt spec is in sync with $(WALQT_REPO)"
+	cp "$(WALQT_REPO)/openapi/wal-qt.yaml" daemon/internal/backend/walqt/openapi/wal-qt.yaml
+	cd daemon && go generate ./internal/backend/walqt/walqtclient/...
+	@echo "==> Verifying no uncommitted changes in vendored spec and generated client"
+	git diff --exit-code daemon/internal/backend/walqt/openapi/wal-qt.yaml daemon/internal/backend/walqt/walqtclient/client.gen.go
+	@echo "==> wal-qt spec check passed"
 
 # ---------------------------------------------------------------------------
 # Clean

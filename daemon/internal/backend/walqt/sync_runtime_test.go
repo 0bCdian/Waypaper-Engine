@@ -35,7 +35,7 @@ func TestWalQt_OnConfigChanged_Success(t *testing.T) {
 	wut := &WalQt{
 		v: v,
 		makeClient: func(_ *Config) (*controlClient, error) {
-			return &controlClient{httpClient: srv.Client(), baseURL: srv.URL}, nil
+			return newTestControlClient(srv, "", ""), nil
 		},
 	}
 	wut.RegisterDefaults(v)

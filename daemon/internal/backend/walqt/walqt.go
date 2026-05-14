@@ -27,7 +27,7 @@ import (
 	"github.com/spf13/viper"
 )
 
-const binaryName = "wal-qt"
+const binaryName = "wal-qt-host"
 
 // viperBackendKey matches backend.Name() — must align with SetBackendConfig("backend."+name).
 const viperBackendKey = "backend.wal-qt"

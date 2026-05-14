@@ -119,7 +119,7 @@ slideshow_secs = 0        # 0 = no slideshow; > 0 = slideshow interval in second
 
 ## wal-qt
 
-[wal-qt](https://github.com/0bCdian/wal-qt) is my Tauri-based Wayland wallpaper renderer. It places a WebKit webview on the **background** layer using `gtk-layer-shell`, enabling **HTML, CSS, JavaScript, and video** wallpapers.
+[wal-qt](https://github.com/0bCdian/wal-qt) is a Qt 6 + WebEngine Wayland wallpaper host. It places a WebEngine view on the **background** layer using `LayerShellQt`, enabling **HTML, CSS, JavaScript, and video** wallpapers. The daemon spawns the `wal-qt-host` binary; the user-facing package and CLI tool is `wal-qt`.
 
 This is an **optional backend**—only install it if you want web or video wallpapers on Wayland.
 
@@ -139,22 +139,23 @@ yay -S wal-qt
 yay -S wal-qt-git
 ```
 
-Or build from source (requires Rust in your system for building locally):
+Or build from source (requires Qt 6, Qt WebEngine, LayerShellQt, and CMake):
 
 ```bash
 git clone https://github.com/0bCdian/wal-qt.git
 cd wal-qt
-pnpm install && make build && make install
+make build && make install
 ```
 
 ### Runtime dependencies
 
-| Dependency            | Purpose                                                                  |
-| --------------------- | ------------------------------------------------------------------------ |
-| `gtk4`                | GTK4 window/widget system                                                |
-| `gtk4-layer-shell`    | Places the webview on the Wayland background layer                       |
-| `webkit2gtk-4.1`      | WebKit engine (renders HTML wallpapers)                                  |
-| `gstreamer` + plugins | GStreamer for media playback (video wallpapers, the `asset://` protocol) |
+| Dependency            | Purpose                                                                     |
+| --------------------- | --------------------------------------------------------------------------- |
+| `qt6-base`            | Qt 6 core libraries                                                         |
+| `qt6-webengine`       | Chromium-based WebEngine (renders HTML/JS/CSS wallpapers)                   |
+| `layer-shell-qt`      | Places the window on the Wayland background layer via `LayerShellQt`        |
+
+On Arch, these are pulled in as dependencies by the AUR package.
 
 On Arch, these are pulled in as dependencies by the AUR package.
 

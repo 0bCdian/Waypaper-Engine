@@ -7,10 +7,27 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"waypaper-engine/daemon/internal/backend/walqt/walqtclient"
 )
+
+// newTestControlClient builds a controlClient pointing at srv using plain HTTP
+// (not a Unix socket) so unit tests can use httptest.NewServer.
+func newTestControlClient(srv *httptest.Server, expectedService, expectedAPI string) *controlClient {
+	gen, _ := walqtclient.NewClient(srv.URL, walqtclient.WithHTTPClient(srv.Client()))
+	genLoad, _ := walqtclient.NewClient(srv.URL, walqtclient.WithHTTPClient(srv.Client()))
+	return &controlClient{
+		gen:             gen,
+		genLoad:         genLoad,
+		loadTimeout:     5 * time.Second,
+		expectedService: expectedService,
+		expectedAPI:     expectedAPI,
+	}
+}
 
 func TestControlClientCheckHealth_Success(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -24,13 +41,7 @@ func TestControlClientCheckHealth_Success(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	c := &controlClient{
-		httpClient:      srv.Client(),
-		baseURL:         srv.URL,
-		expectedService: "wal-qt",
-		expectedAPI:     "0",
-	}
-
+	c := newTestControlClient(srv, "wal-qt", "0")
 	require.NoError(t, c.checkHealth(context.Background()))
 }
 
@@ -45,13 +56,7 @@ func TestControlClientCheckHealth_ServiceMismatch(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	c := &controlClient{
-		httpClient:      srv.Client(),
-		baseURL:         srv.URL,
-		expectedService: "wal-qt",
-		expectedAPI:     "0",
-	}
-
+	c := newTestControlClient(srv, "wal-qt", "0")
 	err := c.checkHealth(context.Background())
 	require.Error(t, err)
 	assert.ErrorIs(t, err, errContract)
@@ -71,7 +76,7 @@ func TestControlClientStatus_DecodesTopology(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	c := &controlClient{httpClient: srv.Client(), baseURL: srv.URL}
+	c := newTestControlClient(srv, "", "")
 	resp, err := c.status(context.Background())
 	require.NoError(t, err)
 	require.Len(t, resp.Status.Topology, 1)
@@ -92,7 +97,7 @@ func TestControlClientSetParallax_Success(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	c := &controlClient{httpClient: srv.Client(), baseURL: srv.URL}
+	c := newTestControlClient(srv, "", "")
 	err := c.setParallax(context.Background(), buildParallaxRequestBody(defaultConfig()))
 	require.NoError(t, err)
 }
@@ -111,6 +116,6 @@ func TestControlClientParallaxMove_Success(t *testing.T) {
 	}))
 	t.Cleanup(srv.Close)
 
-	c := &controlClient{httpClient: srv.Client(), baseURL: srv.URL}
+	c := newTestControlClient(srv, "", "")
 	require.NoError(t, c.parallaxMove(context.Background(), "DP-1", "right"))
 }

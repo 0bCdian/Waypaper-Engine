@@ -43,6 +43,12 @@ jobs:
       - name: Run canonical CI checks
         run: pnpm run ci:check
 
+      - name: Check wal-qt generated client is up-to-date
+        # Regenerates client from the vendored spec and fails if the committed file differs.
+        run: |
+          cd daemon && go generate ./internal/backend/walqt/walqtclient/...
+          git diff --exit-code daemon/internal/backend/walqt/walqtclient/client.gen.go
+
       - name: Build documentation site
         run: pnpm run docs:build
         env:

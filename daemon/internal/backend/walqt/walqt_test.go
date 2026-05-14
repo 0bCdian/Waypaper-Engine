@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"sync/atomic"
 	"testing"
-	"time"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -57,12 +57,7 @@ func TestSetWallpaper_RetriesOnInternalError(t *testing.T) {
 
 	b := &WalQt{
 		makeClient: func(_ *Config) (*controlClient, error) {
-			return &controlClient{
-				httpClient:  srv.Client(),
-				loadClient:  srv.Client(),
-				loadTimeout: 5 * time.Second,
-				baseURL:     srv.URL,
-			}, nil
+			return newTestControlClient(srv, "wal-qt", "0"), nil
 		},
 	}
 
@@ -107,12 +102,18 @@ func TestValidateConfig_RejectsInvalidImageDisplayModes(t *testing.T) {
 func TestIsAvailable_ChecksBinaryInPath(t *testing.T) {
 	b := New()
 	result := b.IsAvailable()
-	// Result depends on whether wal-qt is installed on the
+	// Result depends on whether wal-qt-host is installed on the
 	// test machine. We just verify it doesn't panic and returns a bool.
 	assert.IsType(t, true, result)
 }
 
 func TestInitialize_FailsOnHealthMismatch(t *testing.T) {
+	// Create a dummy wal-qt-host binary in a temp dir so IsAvailable() passes.
+	tmpDir := t.TempDir()
+	dummyBin := tmpDir + "/wal-qt-host"
+	require.NoError(t, os.WriteFile(dummyBin, []byte("#!/bin/sh\nexit 1\n"), 0o755))
+	t.Setenv("PATH", tmpDir+":"+os.Getenv("PATH"))
+
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		_ = json.NewEncoder(w).Encode(map[string]any{
 			"ok":          true,
@@ -124,12 +125,7 @@ func TestInitialize_FailsOnHealthMismatch(t *testing.T) {
 
 	b := &WalQt{
 		makeClient: func(_ *Config) (*controlClient, error) {
-			return &controlClient{
-				httpClient:      srv.Client(),
-				baseURL:         srv.URL,
-				expectedService: "wal-qt",
-				expectedAPI:     "0",
-			}, nil
+			return newTestControlClient(srv, "wal-qt", "0"), nil
 		},
 	}
 	err := b.Initialize(context.Background())
