@@ -2,7 +2,7 @@ import type React from "react";
 import { cn } from "@/utils/cn";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useShallow } from "zustand/react/shallow";
-import DaemonStatusComponent from "../DaemonStatusComponent";
+import { DaemonStatusComponent } from "../DaemonStatusComponent";
 import { SettingRow, SettingSectionHeader } from "../SettingRow";
 import type { ConfigSection } from "@/shared/types/unifiedConfig";
 
@@ -218,5 +218,3 @@ export const DaemonSettingsSection: React.FC<DaemonSettingsSectionProps> = ({ cl
     </div>
   );
 };
-
-export default DaemonSettingsSection;

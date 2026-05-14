@@ -200,5 +200,3 @@ export const SettingsSearch: React.FC<SettingsSearchProps> = ({
     </div>
   );
 };
-
-export default SettingsSearch;

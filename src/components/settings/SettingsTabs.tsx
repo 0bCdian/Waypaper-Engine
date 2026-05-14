@@ -8,10 +8,10 @@ import {
 } from "@/utils/settingsNavStorage";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useShallow } from "zustand/react/shallow";
-import SettingsSearch from "./SettingsSearch";
-import AppSettingsSection from "./sections/AppSettingsSection";
-import DaemonSettingsSection from "./sections/DaemonSettingsSection";
-import BackendSettingsSection from "./sections/BackendSettingsSection";
+import { SettingsSearch } from "./SettingsSearch";
+import { AppSettingsSection } from "./sections/AppSettingsSection";
+import { DaemonSettingsSection } from "./sections/DaemonSettingsSection";
+import { BackendSettingsSection } from "./sections/BackendSettingsSection";
 import WallhavenSettingsSection from "./sections/WallhavenSettingsSection";
 import type { ConfigSection } from "@/shared/types/unifiedConfig";
 import type { SettingsSearchEntry } from "@/utils/settingsSearchIndex";
@@ -304,5 +304,3 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className, isModal =
     </div>
   );
 };
-
-export default SettingsTabs;

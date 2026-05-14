@@ -19,9 +19,9 @@ import { initWaypaperDaemon } from "../globals/startDaemons";
 import { goDaemonClient } from "./goDaemonClient";
 import { trayMenu } from "../globals/menus";
 import { daemonMonitor } from "./managers/DaemonMonitor";
-import IPCManager from "./managers/IPCManager";
-import ThemeManager from "./managers/ThemeManager";
-import WindowManager from "./managers/WindowManager";
+import { IPCManager } from "./managers/IPCManager";
+import { ThemeManager } from "./managers/ThemeManager";
+import { WindowManager } from "./managers/WindowManager";
 
 /** Force MIME for atom:// so <video>/<img> can sniff type (file:// often returns octet-stream). */
 const ATOM_MIME_BY_EXT: Record<string, string> = {

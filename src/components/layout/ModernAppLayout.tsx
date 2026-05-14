@@ -11,7 +11,7 @@ import { useReducedMotion } from "framer-motion";
 import { useTheme } from "../../contexts/ThemeContext";
 import { cn } from "../../utils/cn";
 import { IconRailSidebar } from "./ModernSidebar";
-import StartupIntro from "../StartupIntro";
+import { StartupIntro } from "../StartupIntro";
 import NoBackendBanner from "../NoBackendBanner";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useDesignSystemStore } from "../../stores/designSystemStore";
@@ -83,5 +83,3 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({ children, clas
     </>
   );
 };
-
-export default ModernAppLayout;

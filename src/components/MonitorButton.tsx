@@ -71,5 +71,3 @@ export const MonitorButton: React.FC = () => {
     </button>
   );
 };
-
-export default MonitorButton;

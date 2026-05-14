@@ -9,7 +9,7 @@ import type React from "react";
 import { useState, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { LazyMotion, m, AnimatePresence, domAnimation } from "framer-motion";
-import SidebarConfiguration from "../SidebarConfiguration";
+import { SidebarConfiguration } from "../SidebarConfiguration";
 import { DRAWER_CHECKBOX_ID } from "./ModernAppLayout";
 import { confirmDialog } from "../ConfirmDialog";
 import { cn } from "../../utils/cn";
@@ -621,5 +621,3 @@ export const SidebarContent: React.FC = () => {
     </div>
   );
 };
-
-export default IconRailSidebar;

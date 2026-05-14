@@ -12,7 +12,7 @@ import ToastContainer from "./components/ToastContainer";
 import ImageDetailSidebar from "./components/ImageDetailSidebar";
 import ContextMenu from "./components/ContextMenu";
 import ConfirmDialog from "./components/ConfirmDialog";
-import ModernAppLayout from "./components/layout/ModernAppLayout";
+import { ModernAppLayout } from "./components/layout/ModernAppLayout";
 import { useSettingsModalStore } from "./stores/settingsModalStore";
 
 const Home = lazy(() => import("./routes/Home"));

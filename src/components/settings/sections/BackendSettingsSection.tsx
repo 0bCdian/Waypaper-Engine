@@ -1222,5 +1222,3 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
     </div>
   );
 };
-
-export default BackendSettingsSection;

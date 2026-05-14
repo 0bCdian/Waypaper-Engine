@@ -80,5 +80,3 @@ export class ThemeManager {
     this.isInitialized = false;
   }
 }
-
-export default ThemeManager;

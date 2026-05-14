@@ -250,5 +250,3 @@ export const DaemonStatusComponent: React.FC<DaemonStatusComponentProps> = ({ cl
     </div>
   );
 };
-
-export default DaemonStatusComponent;

@@ -4,7 +4,7 @@ import { cn } from "@/utils/cn";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useDesignSystemStore } from "@/stores/designSystemStore";
 import { useShallow } from "zustand/react/shallow";
-import InlineThemeSelector from "../InlineThemeSelector";
+import { InlineThemeSelector } from "../InlineThemeSelector";
 import { SettingRow, SettingSectionHeader } from "../SettingRow";
 import type { ConfigSection, UnifiedConfig } from "@/shared/types/unifiedConfig";
 import { normalizeFontPreset, type FontPreset } from "@/utils/appTypography";
@@ -529,5 +529,3 @@ const UrlImportWarningSetting: React.FC = () => {
     </SettingRow>
   );
 };
-
-export default AppSettingsSection;

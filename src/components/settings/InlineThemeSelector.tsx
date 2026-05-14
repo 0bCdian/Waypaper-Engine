@@ -260,5 +260,3 @@ export const InlineThemeSelector: React.FC<InlineThemeSelectorProps> = ({
     </div>
   );
 };
-
-export default InlineThemeSelector;

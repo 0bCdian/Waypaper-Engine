@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
-import StartupIntro from "../StartupIntro";
+import { StartupIntro } from "../StartupIntro";
 
 vi.mock("framer-motion", async () => {
   const dom = await import("framer-motion");

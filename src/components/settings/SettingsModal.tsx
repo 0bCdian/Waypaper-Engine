@@ -1,7 +1,7 @@
 import { useEffect, useCallback } from "react";
 import { LazyMotion, m, AnimatePresence, domAnimation } from "framer-motion";
 import { useSettingsModalStore } from "@/stores/settingsModalStore";
-import SettingsTabs from "./SettingsTabs";
+import { SettingsTabs } from "./SettingsTabs";
 
 export function SettingsModal() {
   const { open, closeModal } = useSettingsModalStore();
@@ -111,5 +111,3 @@ export function SettingsModal() {
     </LazyMotion>
   );
 }
-
-export default SettingsModal;

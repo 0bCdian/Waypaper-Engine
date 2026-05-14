@@ -3,7 +3,7 @@ import { useDroppable } from "@dnd-kit/react";
 import { useFoldersStore } from "../stores/foldersStore";
 import { useImagesStore } from "../stores/images";
 import type { DropTargetData } from "../stores/dragStore";
-import MonitorButton from "./MonitorButton";
+import { MonitorButton } from "./MonitorButton";
 
 function DroppableBreadcrumb({
   folderId,

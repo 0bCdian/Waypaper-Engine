@@ -218,5 +218,3 @@ const DaemonSettings: React.FC = () => {
     </div>
   );
 };
-
-export default SidebarConfiguration;

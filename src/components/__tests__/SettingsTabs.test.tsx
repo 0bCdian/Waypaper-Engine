@@ -29,19 +29,19 @@ vi.mock("@/stores/settingsStore", () => ({
 }));
 
 vi.mock("../settings/SettingsSearch", () => ({
-  default: () => <div data-testid="settings-search">Search</div>,
+  SettingsSearch: () => <div data-testid="settings-search">Search</div>,
 }));
 
 vi.mock("../settings/sections/AppSettingsSection", () => ({
-  default: () => <div data-testid="app-settings">App Settings</div>,
+  AppSettingsSection: () => <div data-testid="app-settings">App Settings</div>,
 }));
 
 vi.mock("../settings/sections/DaemonSettingsSection", () => ({
-  default: () => <div data-testid="daemon-settings">Daemon Settings</div>,
+  DaemonSettingsSection: () => <div data-testid="daemon-settings">Daemon Settings</div>,
 }));
 
 vi.mock("../settings/sections/BackendSettingsSection", () => ({
-  default: () => <div data-testid="backend-settings">Backend Settings</div>,
+  BackendSettingsSection: () => <div data-testid="backend-settings">Backend Settings</div>,
 }));
 
 vi.mock("../settings/sections/WallhavenSettingsSection", () => ({

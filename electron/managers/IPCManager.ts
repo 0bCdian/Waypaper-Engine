@@ -997,5 +997,3 @@ export class IPCManager {
     this.isInitialized = false;
   }
 }
-
-export default IPCManager;

@@ -146,5 +146,3 @@ export class WindowManager {
     });
   }
 }
-
-export default WindowManager;

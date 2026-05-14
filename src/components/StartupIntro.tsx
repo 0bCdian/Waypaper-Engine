@@ -220,5 +220,3 @@ export const StartupIntro: React.FC<StartupIntroProps> = ({ onFinish }) => {
     </LazyMotion>
   );
 };
-
-export default StartupIntro;

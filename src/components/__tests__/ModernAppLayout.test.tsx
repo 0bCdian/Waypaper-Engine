@@ -44,7 +44,7 @@ vi.mock("../StartupIntro", async () => {
     }, [onFinish]);
     return null;
   };
-  return { default: MockStartupIntro };
+  return { StartupIntro: MockStartupIntro };
 });
 
 import { ModernAppLayout } from "../layout/ModernAppLayout";
