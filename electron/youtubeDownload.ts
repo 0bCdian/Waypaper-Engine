@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { isAllowedYoutubeUrl } from "../shared/youtubeUrl";
 import { logger } from "./logger";
 
-export function resolveYtDlp(): string {
+function resolveYtDlp(): string {
   try {
     const p = execFileSync("which", ["yt-dlp"], { encoding: "utf8" }).trim();
     if (p) return p;

@@ -16,40 +16,6 @@ async function safeCall(fn: () => Promise<unknown>, label: string) {
   }
 }
 
-export const devMenu = () => {
-  const devMenuTemplate: Array<Electron.MenuItemConstructorOptions | Electron.MenuItem> = [
-    {
-      label: "File",
-      submenu: [
-        {
-          label: "Quit",
-          role: "quit",
-        },
-      ],
-    },
-    {
-      label: "Toggle Developer Tools",
-      accelerator: process.platform === "darwin" ? "Alt+Command+I" : "Ctrl+Shift+I",
-      click: (_, win) => {
-        if (win && "webContents" in win) {
-          (win as BrowserWindow).webContents.toggleDevTools();
-        }
-      },
-    },
-    {
-      label: "Reload",
-      accelerator: process.platform === "darwin" ? "Command+R" : "Ctrl+R",
-      click: (_, win) => {
-        if (win && "reload" in win && (win as BrowserWindow).isFocused()) {
-          (win as BrowserWindow).reload();
-        }
-      },
-    },
-  ];
-
-  return Menu.buildFromTemplate(devMenuTemplate);
-};
-
 export const trayMenu = async (app: App, trayInstance: Tray, createTray?: () => Promise<void>) => {
   let activePlaylists: ActivePlaylistInstance[] = [];
   let imageHistory: ImageHistoryEntry[] = [];

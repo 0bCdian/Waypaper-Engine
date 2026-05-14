@@ -4,7 +4,7 @@ import type { BuiltinThemeMeta } from "../styles/themes/types";
  * Stock DaisyUI theme names from `src/index.css` → `@plugin "daisyui" { themes: ... }`.
  * Keep in sync with that block.
  */
-export const DAISY_STOCK_THEME_NAMES = [
+const DAISY_STOCK_THEME_NAMES = [
   "light",
   "dark",
   "cupcake",

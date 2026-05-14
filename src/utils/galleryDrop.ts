@@ -17,7 +17,7 @@ const IMAGE_EXTENSIONS = new Set([
 ]);
 const VIDEO_EXTENSIONS = new Set([".mp4", ".webm", ".mkv", ".avi", ".mov"]);
 
-export function fileBasename(filePath: string): string {
+function fileBasename(filePath: string): string {
   const i = Math.max(filePath.lastIndexOf("/"), filePath.lastIndexOf("\\"));
   return i >= 0 ? filePath.slice(i + 1) : filePath;
 }
@@ -29,7 +29,7 @@ export type DroppedFileClassification = {
   otherPaths: string[];
 };
 
-export function classifyDroppedPath(filePath: string): {
+function classifyDroppedPath(filePath: string): {
   kind: "media" | "manifest" | "shadertoy" | "other";
 } {
   const base = fileBasename(filePath).toLowerCase();

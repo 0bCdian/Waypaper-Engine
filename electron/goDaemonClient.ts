@@ -42,7 +42,7 @@ import { WallpaperClient } from "./daemonClient/wallpaperClient";
  * Domain logic lives in `./daemonClient/*Client`; this class keeps the stable
  * method surface for Electron and forwards to those modules.
  */
-export class GoDaemonClient extends EventEmitter {
+class GoDaemonClient extends EventEmitter {
   private readonly http: HttpTransport;
 
   /** Control-plane routes (config, backends, activation). */

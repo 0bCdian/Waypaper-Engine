@@ -10,7 +10,7 @@ import {
   SYSTEM_FONT_MONO,
 } from "./typographyStacks";
 
-export const FONT_PRESET_VALUES = ["bundled", "google_sans", "system", "custom"] as const;
+const FONT_PRESET_VALUES = ["bundled", "google_sans", "system", "custom"] as const;
 export type FontPreset = (typeof FONT_PRESET_VALUES)[number];
 
 const CSS_VAR_BODY = "--font-body";

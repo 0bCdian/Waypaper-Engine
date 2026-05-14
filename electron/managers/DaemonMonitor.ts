@@ -15,7 +15,7 @@ export interface DaemonStatus {
   lastError?: string;
 }
 
-export class DaemonMonitor {
+class DaemonMonitor {
   private healthCheckInterval: NodeJS.Timeout | null = null;
   private status: DaemonStatus = {
     isRunning: false,

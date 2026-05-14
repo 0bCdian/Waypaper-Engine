@@ -56,7 +56,7 @@ export interface WaypaperConfig {
   wallhaven?: WallhavenConfig;
 }
 
-export class ConfigReader extends EventEmitter {
+class ConfigReader extends EventEmitter {
   private config: WaypaperConfig | null = null;
   private configPath: string;
   private fileWatcher: FSWatcher | null = null;

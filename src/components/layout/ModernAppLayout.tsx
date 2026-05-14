@@ -16,9 +16,6 @@ import NoBackendBanner from "../NoBackendBanner";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useDesignSystemStore } from "../../stores/designSystemStore";
 
-// Keep DRAWER_CHECKBOX_ID exported so SidebarContent (mobile) still compiles cleanly
-export const DRAWER_CHECKBOX_ID = "sidebar-drawer";
-
 export interface ModernAppLayoutProps {
   children: ReactNode;
   className?: string;

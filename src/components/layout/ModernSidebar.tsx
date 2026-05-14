@@ -10,19 +10,12 @@ import { useState, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { LazyMotion, m, AnimatePresence, domAnimation } from "framer-motion";
 import { SidebarConfiguration } from "../SidebarConfiguration";
-import { DRAWER_CHECKBOX_ID } from "./ModernAppLayout";
 import { confirmDialog } from "../ConfirmDialog";
 import { cn } from "../../utils/cn";
 import { useSettingsModalStore } from "../../stores/settingsModalStore";
 
 const PINNED_KEY = "waypaper-sidebar-pinned";
 const HOVER_REVEAL_KEY = "waypaper-sidebar-hover-reveal";
-
-/** Programmatically close the drawer (mobile fallback) */
-function closeDrawer() {
-  const checkbox = document.getElementById(DRAWER_CHECKBOX_ID) as HTMLInputElement | null;
-  if (checkbox) checkbox.checked = false;
-}
 
 const NAV_ITEMS = [
   {
@@ -521,103 +514,5 @@ export const IconRailSidebar: React.FC = () => {
         </div>
       </aside>
     </LazyMotion>
-  );
-};
-
-/** Mobile drawer content — same nav items in expanded form */
-export const SidebarContent: React.FC = () => {
-  const location = useLocation();
-  const isConfigurationPage = location.pathname === "/configuration";
-  const openSettings = useSettingsModalStore((s) => s.openModal);
-
-  const handleNavigationClick = () => closeDrawer();
-
-  return (
-    <div className="bg-base-200 min-h-full w-64 flex flex-col p-4 border-r border-base-300 neo-sidebar-drawer">
-      {isConfigurationPage ? (
-        <SidebarConfiguration />
-      ) : (
-        <>
-          <div className="flex items-center gap-3 mb-6">
-            <div className="size-12 overflow-hidden flex items-center justify-center neo-icon-box rounded-[var(--wp-radius-md)]">
-              <img
-                src={`${import.meta.env.BASE_URL}app.png`}
-                alt="Waypaper Engine"
-                className="size-full object-contain"
-              />
-            </div>
-            <div className="flex flex-col">
-              <h1 className="text-xl font-semibold text-base-content">Waypaper Engine</h1>
-              <p className="text-sm text-base-content/70">Wallpaper Manager</p>
-            </div>
-          </div>
-
-          <nav className="flex-1">
-            <ul className="menu text-base-content">
-              {NAV_ITEMS.map((item) => (
-                <li key={item.to}>
-                  {item.to === "/settings" ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        openSettings();
-                        handleNavigationClick();
-                      }}
-                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-base-300 transition-colors w-full text-left"
-                    >
-                      {item.icon}
-                      <span>{item.label}</span>
-                    </button>
-                  ) : (
-                    <Link
-                      to={item.to}
-                      onClick={handleNavigationClick}
-                      className="flex items-center gap-3 p-3 rounded-lg hover:bg-base-300 transition-colors"
-                    >
-                      {item.icon}
-                      <span>{item.label}</span>
-                    </Link>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </nav>
-
-          <div className="mt-auto pt-4 border-t border-base-300">
-            <button
-              type="button"
-              onClick={async () => {
-                const quit = await confirmDialog({
-                  title: "Quit Application",
-                  message: "Are you sure you want to quit?",
-                  confirmLabel: "Quit",
-                  danger: true,
-                });
-                if (quit) window.API_RENDERER.exitApp();
-              }}
-              className="btn btn-error btn-sm w-full"
-            >
-              <svg
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                aria-hidden
-              >
-                <title>Quit</title>
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16,17 21,12 16,7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
-              </svg>
-              Quit
-            </button>
-          </div>
-        </>
-      )}
-    </div>
   );
 };
