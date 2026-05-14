@@ -4,15 +4,10 @@
     "electron/main.ts",
     "electron/preload.ts",
     "globals/setup.ts",
-    "src/main.tsx",
     "scripts/**/*.ts",
-    "e2e/playwright.config.ts",
-    "e2e/playwright-ui.config.ts",
     "e2e/**/*.spec.ts",
     "docs/.vitepress/config.mts",
-    "docs/.vitepress/theme/index.ts",
-    "vite.config.ts",
-    "vitest.config.ts"
+    "docs/.vitepress/theme/index.ts"
   ],
   "project": [
     "src/**/*.{ts,tsx}",
@@ -21,17 +16,7 @@
     "globals/**/*.ts",
     "scripts/**/*.ts"
   ],
-  "ignore": [
-    "electron/daemon-go-types.generated.ts",
-    "dist-electron/**",
-    "release/**"
-  ],
-  "ignoreDependencies": [
-    "ci",
-    "pino",
-    "pino-roll",
-    "electron",
-    "electron-reload"
-  ],
+  "ignore": ["electron/daemon-go-types.generated.ts"],
+  "ignoreDependencies": ["ci"],
   "ignoreBinaries": ["go", "swag", "make"]
 }
