@@ -4,13 +4,13 @@ import { notifyWallpaperApplyFailed } from "../utils/daemonUserFacingError";
 import { logger } from "../utils/logger";
 import { daemonClient } from "@/client";
 
-export interface WallhavenThumb {
+interface WallhavenThumb {
   large: string;
   original: string;
   small: string;
 }
 
-export interface WallhavenTag {
+interface WallhavenTag {
   id: number;
   name: string;
   purity: string;
@@ -39,14 +39,14 @@ export interface WallhavenWallpaper {
   tags?: WallhavenTag[];
 }
 
-export interface WallhavenSearchMeta {
+interface WallhavenSearchMeta {
   current_page: number;
   last_page: number;
   per_page: number;
   total: number;
 }
 
-export interface WallhavenSearchResponse {
+interface WallhavenSearchResponse {
   data: WallhavenWallpaper[];
   meta: WallhavenSearchMeta;
 }

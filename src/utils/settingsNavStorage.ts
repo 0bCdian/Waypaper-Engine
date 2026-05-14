@@ -8,7 +8,7 @@ export const SETTINGS_BACKEND_PANEL_STORAGE_KEY = "waypaper-settings-backend-pan
 /** Sections exposed in the settings sidebar / tabs (subset of ConfigSection). */
 export const SETTINGS_NAV_SECTION_IDS = ["app", "daemon", "backend", "wallhaven"] as const;
 
-export type SettingsNavSectionId = (typeof SETTINGS_NAV_SECTION_IDS)[number];
+type SettingsNavSectionId = (typeof SETTINGS_NAV_SECTION_IDS)[number];
 
 function isSettingsNavSectionId(value: string): value is SettingsNavSectionId {
   return (SETTINGS_NAV_SECTION_IDS as readonly string[]).includes(value);

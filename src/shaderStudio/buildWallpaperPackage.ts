@@ -79,7 +79,7 @@ function safeScriptJson(value: unknown): string {
   return JSON.stringify(value).replace(/<\/(script)/gi, "<\\/$1");
 }
 
-export type MultipassPassPayload = {
+type MultipassPassPayload = {
   name: string;
   kind: "buffer" | "image";
   body: string;

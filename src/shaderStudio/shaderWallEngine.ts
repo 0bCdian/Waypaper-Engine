@@ -1,7 +1,5 @@
 import { buildFragmentShader, remapShaderErrors, vertexSource, type GlVersion } from "./glslPrefix";
 
-export type ShaderWallLogKind = "ok" | "err" | "info";
-
 export type ShaderWallEngineOptions = {
   /** When true, mouse uses window dimensions (wallpaper-style). */
   wallpaperMouse?: boolean;

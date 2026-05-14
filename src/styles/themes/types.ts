@@ -1,5 +1,5 @@
-export type ThemeCategory = "light" | "dark" | "mixed";
-export type ThemeSource = "builtin" | "user";
+type ThemeCategory = "light" | "dark" | "mixed";
+type ThemeSource = "builtin" | "user";
 
 export interface ThemeMeta {
   /** DaisyUI theme name (matches the @plugin block's `name:` field). */

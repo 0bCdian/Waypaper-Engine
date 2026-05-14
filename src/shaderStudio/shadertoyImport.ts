@@ -2,7 +2,7 @@
  * Parse Shadertoy JSON exports (official API or browser extensions) and sanitize GLSL for our WebGL2 runner.
  */
 
-export type ShadertoyPassType = "common" | "buffer" | "image" | "sound" | string;
+type ShadertoyPassType = "common" | "buffer" | "image" | "sound" | string;
 
 export type ShadertoyInputKind =
   | "buffer"

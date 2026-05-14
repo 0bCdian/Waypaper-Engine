@@ -19,7 +19,7 @@ export interface DropTargetData {
   insertIndex?: number;
 }
 
-export interface DragOverTargetSnapshot {
+interface DragOverTargetSnapshot {
   type: string;
   id?: number | null;
   /** Insert-before index while dragging gallery/folder over the playlist strip (append-at-end = playlist length). */

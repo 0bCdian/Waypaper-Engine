@@ -3,7 +3,6 @@ import type {
   PlaylistConfiguration,
   PlaylistImage,
   MonitorMode,
-  Pagination,
 } from "../../electron/daemon-go-types";
 
 // Renderer image extends the daemon Image with playlist-specific time
@@ -42,9 +41,3 @@ export interface advancedFilters {
 }
 
 export type resolutionConstraints = "all" | "exact" | "moreThan" | "lessThan";
-
-export interface state {
-  imagesArray: rendererImage[];
-  filters: Filters;
-  pagination: Pagination | null;
-}

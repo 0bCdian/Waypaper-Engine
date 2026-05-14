@@ -22,9 +22,6 @@ export type ModalHeaderProps = {
   subtitleDefaultExtra?: string;
 };
 
-/** @deprecated Use `ModalHeaderProps` */
-export type ModalStripedHeaderProps = ModalHeaderProps;
-
 export function ModalHeader(props: ModalHeaderProps & { onClose: () => void }) {
   const {
     title,
