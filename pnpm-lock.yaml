@@ -8,6 +8,12 @@ importers:
 
   .:
     dependencies:
+      '@dnd-kit/abstract':
+        specifier: 0.3.2
+        version: 0.3.2
+      '@dnd-kit/dom':
+        specifier: 0.3.2
+        version: 0.3.2
       '@dnd-kit/helpers':
         specifier: 0.3.2
         version: 0.3.2
