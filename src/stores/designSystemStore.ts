@@ -12,7 +12,7 @@ import { logger } from "../utils/logger";
 
 /* ── Types ─────────────────────────────────────────────────────── */
 
-export interface NeoConfig {
+interface NeoConfig {
   /** Horizontal shadow offset in px (1-6). */
   shadowOffsetX: number;
   /** Vertical shadow offset in px (1-6). */
@@ -25,7 +25,7 @@ export interface NeoConfig {
   polaroidCards: boolean;
 }
 
-export type DesignMode = "default" | "neobrutalist";
+type DesignMode = "default" | "neobrutalist";
 
 interface DesignSystemState {
   designMode: DesignMode;

@@ -9,7 +9,7 @@ import { goDaemonClient } from "../goDaemonClient";
 import { initWaypaperDaemon } from "../../globals/startDaemons";
 import { logger } from "../logger";
 
-export interface DaemonStatus {
+interface DaemonStatus {
   isRunning: boolean;
   lastChecked: number;
   lastError?: string;

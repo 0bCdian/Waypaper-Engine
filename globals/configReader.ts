@@ -36,7 +36,7 @@ export function waypaperDaemonDevBuildCandidates(cwd: string): string[] {
   ];
 }
 
-export interface ElectronConfig {
+interface ElectronConfig {
   log_level: "debug" | "info" | "warn" | "error";
   log_file: string;
   log_max_size_mb: number;
@@ -47,7 +47,7 @@ export interface ElectronConfig {
  * Extends the daemon's UnifiedConfig with the optional electron section,
  * and makes wallhaven optional since the TOML may omit it at startup.
  */
-export interface WaypaperConfig {
+interface WaypaperConfig {
   app: AppConfig;
   daemon: DaemonConfig;
   electron?: ElectronConfig;

@@ -16,7 +16,12 @@
     "globals/**/*.ts",
     "scripts/**/*.ts"
   ],
-  "ignore": ["electron/daemon-go-types.generated.ts"],
+  "ignore": [
+    "electron/daemon-go-types.generated.ts",
+    "electron/daemon-go-types.ts",
+    "electron/ipc-types.ts",
+    "shared/types/unifiedConfig.ts"
+  ],
   "ignoreDependencies": [
     "ci",
     "@fontsource-variable/inter",

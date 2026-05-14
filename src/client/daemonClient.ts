@@ -92,5 +92,3 @@ export const daemonClient = {
   // EVENT LISTENERS
   on: (...args: Parameters<GoDaemon["on"]>) => gd().on(...args),
 } as const;
-
-export type DaemonClient = typeof daemonClient;
