@@ -4,8 +4,8 @@ info:
   title: wal-qt Control API
   version: "0"
   license:
-    name: MIT
-    identifier: MIT
+    name: GPL-3.0-or-later
+    identifier: GPL-3.0-or-later
   description: |
     **Source of truth** for every HTTP route exposed by the wal-qt host process.
     Code-generation targets (Go CLI in `wal-qt/cli/` and the engine daemon client
@@ -665,6 +665,102 @@ components:
             `window.__WAYPAPER_CONFIG` and dispatched as the `waypaper:config` event.
             Only meaningful for `kind: web`.
           additionalProperties: true
+        image_fit_mode:
+          type: string
+          description: "How the image fits the monitor (e.g. `cover`, `contain`, `fill`). Only meaningful for `kind: image`."
+          example: "cover"
+        image_rendering:
+          type: string
+          description: "CSS `image-rendering` hint (e.g. `auto`, `pixelated`, `crisp-edges`). Only meaningful for `kind: image`."
+          example: "auto"
+        transition:
+          type: string
+          description: |
+            Transition effect to use when switching wallpapers. Forwarded to the
+            renderer verbatim; unknown values fall back to `fade`.
+          enum:
+            - none
+            - fade
+            - left
+            - right
+            - top
+            - bottom
+            - wipe
+            - grow
+            - outer
+            - wave
+            - center
+            - blur_through
+            - any
+            - random
+          default: fade
+          example: "wipe"
+        transition_params:
+          $ref: "#/components/schemas/LoadTransitionParams"
+        parallax:
+          $ref: "#/components/schemas/LoadParallax"
+
+    LoadTransitionParams:
+      type: object
+      description: Per-effect transition tuning. All fields optional; the renderer applies defaults when omitted.
+      properties:
+        bezier:
+          type: array
+          minItems: 4
+          maxItems: 4
+          items:
+            type: number
+            format: float
+          description: Cubic-bezier control points [x1, y1, x2, y2]
+        angle_deg:
+          type: number
+          format: double
+        origin_x_percent:
+          type: number
+          format: float
+        origin_y_percent:
+          type: number
+          format: float
+        wave_amplitude_percent:
+          type: number
+          format: float
+        wave_frequency:
+          type: number
+          format: float
+        seed:
+          type: integer
+          description: Per-request randomness seed for `random`/`any` transitions
+
+    LoadParallax:
+      type: object
+      description: |
+        Initial parallax state applied at load time. Separate from the
+        `/wallpaper/parallax` route which updates state on a running wallpaper.
+      properties:
+        enabled:
+          type: boolean
+          default: false
+        zoom:
+          type: number
+          format: double
+          default: 1.2
+        step_percent:
+          type: number
+          format: float
+          default: 5
+        animation_ms:
+          type: integer
+          default: 600
+        reset_ms:
+          type: integer
+          default: 400
+        easing:
+          type: array
+          minItems: 4
+          maxItems: 4
+          items:
+            type: number
+            format: float
 
     ParallaxRequest:
       type: object

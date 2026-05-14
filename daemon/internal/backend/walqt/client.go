@@ -329,6 +329,39 @@ func loadRequestToGenerated(req loadRequest) walqtclient.LoadRequest {
 		}
 	}
 
+	if req.Transition != "" {
+		t := walqtclient.LoadRequestTransition(req.Transition)
+		out.Transition = &t
+	}
+	if req.TransitionParams != nil {
+		p := req.TransitionParams
+		bezier := []float32{p.Bezier[0], p.Bezier[1], p.Bezier[2], p.Bezier[3]}
+		angle, ox, oy := p.AngleDeg, p.OriginXPercent, p.OriginYPercent
+		wa, wf := p.WaveAmplitudePercent, p.WaveFrequency
+		out.TransitionParams = &walqtclient.LoadTransitionParams{
+			Bezier:               &bezier,
+			AngleDeg:             &angle,
+			OriginXPercent:       &ox,
+			OriginYPercent:       &oy,
+			WaveAmplitudePercent: &wa,
+			WaveFrequency:        &wf,
+		}
+	}
+	if req.ImageFitMode != "" {
+		out.ImageFitMode = &req.ImageFitMode
+	}
+	if req.ImageRendering != "" {
+		out.ImageRendering = &req.ImageRendering
+	}
+	if len(req.Parallax) > 0 {
+		if bytes, err := json.Marshal(req.Parallax); err == nil {
+			var p walqtclient.LoadParallax
+			if err := json.Unmarshal(bytes, &p); err == nil {
+				out.Parallax = &p
+			}
+		}
+	}
+
 	return out
 }
 

@@ -16,11 +16,11 @@ import (
 
 // Defines values for ImagePresentationRequestImageFitMode.
 const (
-	Contain   ImagePresentationRequestImageFitMode = "contain"
-	Cover     ImagePresentationRequestImageFitMode = "cover"
-	Fill      ImagePresentationRequestImageFitMode = "fill"
-	None      ImagePresentationRequestImageFitMode = "none"
-	ScaleDown ImagePresentationRequestImageFitMode = "scale-down"
+	ImagePresentationRequestImageFitModeContain   ImagePresentationRequestImageFitMode = "contain"
+	ImagePresentationRequestImageFitModeCover     ImagePresentationRequestImageFitMode = "cover"
+	ImagePresentationRequestImageFitModeFill      ImagePresentationRequestImageFitMode = "fill"
+	ImagePresentationRequestImageFitModeNone      ImagePresentationRequestImageFitMode = "none"
+	ImagePresentationRequestImageFitModeScaleDown ImagePresentationRequestImageFitMode = "scale-down"
 )
 
 // Defines values for ImagePresentationRequestImageRendering.
@@ -35,6 +35,24 @@ const (
 	LoadRequestKindImage LoadRequestKind = "image"
 	LoadRequestKindVideo LoadRequestKind = "video"
 	LoadRequestKindWeb   LoadRequestKind = "web"
+)
+
+// Defines values for LoadRequestTransition.
+const (
+	LoadRequestTransitionAny         LoadRequestTransition = "any"
+	LoadRequestTransitionBlurThrough LoadRequestTransition = "blur_through"
+	LoadRequestTransitionBottom      LoadRequestTransition = "bottom"
+	LoadRequestTransitionCenter      LoadRequestTransition = "center"
+	LoadRequestTransitionFade        LoadRequestTransition = "fade"
+	LoadRequestTransitionGrow        LoadRequestTransition = "grow"
+	LoadRequestTransitionLeft        LoadRequestTransition = "left"
+	LoadRequestTransitionNone        LoadRequestTransition = "none"
+	LoadRequestTransitionOuter       LoadRequestTransition = "outer"
+	LoadRequestTransitionRandom      LoadRequestTransition = "random"
+	LoadRequestTransitionRight       LoadRequestTransition = "right"
+	LoadRequestTransitionTop         LoadRequestTransition = "top"
+	LoadRequestTransitionWave        LoadRequestTransition = "wave"
+	LoadRequestTransitionWipe        LoadRequestTransition = "wipe"
 )
 
 // Defines values for MonitorStatusCurrentKind.
@@ -119,6 +137,17 @@ type ImagePresentationRequestImageFitMode string
 // ImagePresentationRequestImageRendering CSS `image-rendering` style value; defaults to `auto` when absent
 type ImagePresentationRequestImageRendering string
 
+// LoadParallax Initial parallax state applied at load time. Separate from the
+// `/wallpaper/parallax` route which updates state on a running wallpaper.
+type LoadParallax struct {
+	AnimationMs *int       `json:"animation_ms,omitempty"`
+	Easing      *[]float32 `json:"easing,omitempty"`
+	Enabled     *bool      `json:"enabled,omitempty"`
+	ResetMs     *int       `json:"reset_ms,omitempty"`
+	StepPercent *float32   `json:"step_percent,omitempty"`
+	Zoom        *float64   `json:"zoom,omitempty"`
+}
+
 // LoadRequest Loads a wallpaper. When `targets` is present, each entry names a monitor
 // and provides its own `target` path (and optional `kind`). When `targets`
 // is absent the top-level `target` and `kind` apply to all monitors.
@@ -129,14 +158,31 @@ type LoadRequest struct {
 	// DurationMs Transition duration in milliseconds (forwarded to the renderer)
 	DurationMs *int `json:"duration_ms,omitempty"`
 
+	// ImageFitMode How the image fits the monitor (e.g. `cover`, `contain`, `fill`). Only meaningful for `kind: image`.
+	ImageFitMode *string `json:"image_fit_mode,omitempty"`
+
+	// ImageRendering CSS `image-rendering` hint (e.g. `auto`, `pixelated`, `crisp-edges`). Only meaningful for `kind: image`.
+	ImageRendering *string `json:"image_rendering,omitempty"`
+
 	// Kind Wallpaper kind for the fallback `target`
 	Kind *LoadRequestKind `json:"kind,omitempty"`
+
+	// Parallax Initial parallax state applied at load time. Separate from the
+	// `/wallpaper/parallax` route which updates state on a running wallpaper.
+	Parallax *LoadParallax `json:"parallax,omitempty"`
 
 	// Target Fallback path used when `targets` is absent or for monitors not listed in `targets`
 	Target *string `json:"target,omitempty"`
 
 	// Targets Per-monitor wallpaper assignments. Omit to target all monitors using the top-level `target`/`kind`.
 	Targets *[]WallpaperTarget `json:"targets,omitempty"`
+
+	// Transition Transition effect to use when switching wallpapers. Forwarded to the
+	// renderer verbatim; unknown values fall back to `fade`.
+	Transition *LoadRequestTransition `json:"transition,omitempty"`
+
+	// TransitionParams Per-effect transition tuning. All fields optional; the renderer applies defaults when omitted.
+	TransitionParams *LoadTransitionParams `json:"transition_params,omitempty"`
 
 	// WaitForCompletion When `true`, the request blocks until the renderer acknowledges the transition (or 30 s elapses)
 	WaitForCompletion *bool `json:"wait_for_completion,omitempty"`
@@ -149,6 +195,25 @@ type LoadRequest struct {
 
 // LoadRequestKind Wallpaper kind for the fallback `target`
 type LoadRequestKind string
+
+// LoadRequestTransition Transition effect to use when switching wallpapers. Forwarded to the
+// renderer verbatim; unknown values fall back to `fade`.
+type LoadRequestTransition string
+
+// LoadTransitionParams Per-effect transition tuning. All fields optional; the renderer applies defaults when omitted.
+type LoadTransitionParams struct {
+	AngleDeg *float64 `json:"angle_deg,omitempty"`
+
+	// Bezier Cubic-bezier control points [x1, y1, x2, y2]
+	Bezier         *[]float32 `json:"bezier,omitempty"`
+	OriginXPercent *float32   `json:"origin_x_percent,omitempty"`
+	OriginYPercent *float32   `json:"origin_y_percent,omitempty"`
+
+	// Seed Per-request randomness seed for `random`/`any` transitions
+	Seed                 *int     `json:"seed,omitempty"`
+	WaveAmplitudePercent *float32 `json:"wave_amplitude_percent,omitempty"`
+	WaveFrequency        *float32 `json:"wave_frequency,omitempty"`
+}
 
 // MonitorGeometry defines model for MonitorGeometry.
 type MonitorGeometry struct {
