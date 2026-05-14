@@ -17,6 +17,16 @@
     "scripts/**/*.ts"
   ],
   "ignore": ["electron/daemon-go-types.generated.ts"],
-  "ignoreDependencies": ["ci"],
+  "ignoreDependencies": [
+    "ci",
+    "@fontsource-variable/inter",
+    "@fontsource-variable/space-grotesk",
+    "@fontsource/aldrich",
+    "@fontsource/google-sans",
+    "@fontsource/google-sans-flex",
+    "@fontsource/jetbrains-mono",
+    "daisyui",
+    "tailwindcss"
+  ],
   "ignoreBinaries": ["go", "swag", "make"]
 }
