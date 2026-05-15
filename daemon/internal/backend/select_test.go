@@ -25,6 +25,7 @@ func (s *stubBackend) IsAvailable() bool                                        
 func (s *stubBackend) Capabilities() backend.Capabilities                               { return s.caps }
 func (s *stubBackend) Initialize(_ context.Context) error                               { return nil }
 func (s *stubBackend) Shutdown(_ context.Context) error                                 { return nil }
+func (s *stubBackend) Apply(_ context.Context, _ backend.Snapshot) error                { return nil }
 func (s *stubBackend) SetWallpaper(_ context.Context, _ backend.WallpaperRequest) error { return nil }
 func (s *stubBackend) RegisterDefaults(_ *viper.Viper)                                  {}
 func (s *stubBackend) ValidateConfig(_ json.RawMessage) error                           { return nil }

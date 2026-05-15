@@ -61,6 +61,7 @@ func (m *mockBackend) ParseConfig(json.RawMessage) (any, error) {
 	return nil, nil
 }
 
+func (m *mockBackend) Apply(_ context.Context, _ backend.Snapshot) error          { return nil }
 func (m *mockBackend) OnConfigChanged(_ context.Context, _ json.RawMessage) error { return nil }
 
 func (m *mockBackend) SetExtendParallaxGroup(names []string) {

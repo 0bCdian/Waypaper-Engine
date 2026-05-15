@@ -293,6 +293,8 @@ func (f *fakeBackend) Shutdown(ctx context.Context) error {
 	return nil
 }
 
+func (f *fakeBackend) Apply(_ context.Context, _ backend.Snapshot) error { return nil }
+
 func (f *fakeBackend) SetWallpaper(ctx context.Context, req backend.WallpaperRequest) error {
 	return nil
 }

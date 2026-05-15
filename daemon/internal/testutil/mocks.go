@@ -659,6 +659,7 @@ type MockBackend struct {
 	CapabilitiesFn     func() backend.Capabilities
 	InitializeFn       func(ctx context.Context) error
 	ShutdownFn         func(ctx context.Context) error
+	ApplyFn            func(ctx context.Context, snap backend.Snapshot) error
 	SetWallpaperFn     func(ctx context.Context, req backend.WallpaperRequest) error
 	RegisterDefaultsFn func(v *viper.Viper)
 	ValidateConfigFn   func(raw json.RawMessage) error
@@ -699,6 +700,13 @@ func (m *MockBackend) Initialize(ctx context.Context) error {
 func (m *MockBackend) Shutdown(ctx context.Context) error {
 	if m.ShutdownFn != nil {
 		return m.ShutdownFn(ctx)
+	}
+	return nil
+}
+
+func (m *MockBackend) Apply(ctx context.Context, snap backend.Snapshot) error {
+	if m.ApplyFn != nil {
+		return m.ApplyFn(ctx, snap)
 	}
 	return nil
 }

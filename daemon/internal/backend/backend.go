@@ -52,6 +52,13 @@ type Backend interface {
 	// process. Called when the backend is deactivated or when the daemon exits.
 	Shutdown(ctx context.Context) error
 
+	// Apply applies a Snapshot to the backend. It is the new entry point for
+	// wallpaper application; the daemon will call Apply instead of SetWallpaper
+	// once all backends have native Snapshot support (T7–T12). Until then each
+	// backend provides a shim that translates Snapshot → WallpaperRequest and
+	// delegates to SetWallpaper.
+	Apply(ctx context.Context, snap Snapshot) error
+
 	// SetWallpaper applies a wallpaper to the specified monitor(s).
 	//
 	// The WallpaperRequest contains monitor geometry and mode information.

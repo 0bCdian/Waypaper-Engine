@@ -43,6 +43,7 @@ func (m *snapshotMockBackend) ValidateConfig(json.RawMessage) error { return nil
 func (m *snapshotMockBackend) ParseConfig(json.RawMessage) (any, error) {
 	return nil, nil
 }
+func (m *snapshotMockBackend) Apply(context.Context, backend.Snapshot) error          { return nil }
 func (m *snapshotMockBackend) OnConfigChanged(context.Context, json.RawMessage) error { return nil }
 
 // snapshotMockImageStore implements store.ImageStore for snapshot tests.
