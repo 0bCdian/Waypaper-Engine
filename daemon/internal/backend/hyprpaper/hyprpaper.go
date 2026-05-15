@@ -198,6 +198,33 @@ func (h *Hyprpaper) OnConfigChanged(_ context.Context, _ json.RawMessage) error 
 	return nil
 }
 
+func (h *Hyprpaper) Apply(ctx context.Context, snap backend.Snapshot) error {
+	h.mu.Lock()
+	defer h.mu.Unlock()
+
+	cfg := h.loadConfigFromViper()
+	fitMode := string(cfg.FitMode)
+	if fitMode == "" {
+		fitMode = string(FitCover)
+	}
+
+	entries := make([]wallpaperEntry, 0, len(snap.Outputs))
+	for _, o := range snap.Outputs {
+		entries = append(entries, wallpaperEntry{
+			Monitor: o.Monitor.Name,
+			Path:    o.Content.Path(),
+			FitMode: fitMode,
+		})
+	}
+
+	if err := writeConfig(cfg.ConfigPath, entries); err != nil {
+		return err
+	}
+
+	h.killProcess()
+	return h.startDaemon()
+}
+
 func (h *Hyprpaper) SetWallpaper(ctx context.Context, req backend.WallpaperRequest) error {
 	h.mu.Lock()
 	defer h.mu.Unlock()
