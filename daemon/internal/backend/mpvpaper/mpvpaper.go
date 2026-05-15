@@ -20,16 +20,72 @@ import (
 
 const binary = "mpvpaper"
 
+// procState tracks the path and audio flag for a running mpvpaper process.
+type procState struct {
+	cmd          *exec.Cmd
+	path         string
+	audioEnabled bool
+}
+
 // Mpvpaper runs one mpvpaper process per Wayland output.
 type Mpvpaper struct {
 	mu    sync.Mutex
-	procs map[string]*exec.Cmd
+	procs map[string]*procState
 	v     *viper.Viper
+	// execFn starts an mpvpaper process with the given args and returns the cmd.
+	// In tests, returns (nil, nil) to avoid spawning a real process.
+	execFn func(output string, args []string) (*exec.Cmd, error)
+	// killFn terminates a running process entry. In tests, a no-op.
+	killFn func(output string, ps *procState)
 }
 
 // New returns a new mpvpaper backend.
 func New() backend.Backend {
-	return &Mpvpaper{procs: make(map[string]*exec.Cmd)}
+	m := &Mpvpaper{procs: make(map[string]*procState)}
+	m.execFn = m.execReal
+	m.killFn = m.killReal
+	return m
+}
+
+// SetExecForTest replaces the exec seam and returns the previous fn for restore.
+func (m *Mpvpaper) SetExecForTest(fn func(output string, args []string) (*exec.Cmd, error)) (prev func(string, []string) (*exec.Cmd, error)) {
+	prev = m.execFn
+	m.execFn = fn
+	return prev
+}
+
+// SetKillForTest replaces the kill seam with a simpler fn(output string) signature,
+// hiding the unexported procState from test packages. Returns the previous kill fn.
+func (m *Mpvpaper) SetKillForTest(fn func(output string)) (prev func(string, *procState)) {
+	prev = m.killFn
+	m.killFn = func(output string, _ *procState) { fn(output) }
+	return prev
+}
+
+// ResetProcsForTest clears the internal process map so each shadow-test run
+// starts from a clean state. Only call from test helpers.
+func (m *Mpvpaper) ResetProcsForTest() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.procs = make(map[string]*procState)
+}
+
+// execReal starts mpvpaper and returns the cmd.
+func (m *Mpvpaper) execReal(output string, args []string) (*exec.Cmd, error) {
+	cmd := exec.Command(binary, args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGTERM}
+	if err := cmd.Start(); err != nil {
+		return nil, fmt.Errorf("mpvpaper: start output %s: %w", output, err)
+	}
+	go func(c *exec.Cmd) { _ = c.Wait() }(cmd)
+	return cmd, nil
+}
+
+// killReal sends SIGTERM to a running process.
+func (m *Mpvpaper) killReal(_ string, ps *procState) {
+	if ps != nil {
+		killMpvpaperCmd(ps.cmd)
+	}
 }
 
 var _ backend.Backend = (*Mpvpaper)(nil)
@@ -53,8 +109,8 @@ func (m *Mpvpaper) Initialize(context.Context) error { return nil }
 func (m *Mpvpaper) Shutdown(context.Context) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	for out, cmd := range m.procs {
-		killMpvpaperCmd(cmd)
+	for out, ps := range m.procs {
+		m.killFn(out, ps)
 		delete(m.procs, out)
 	}
 	return nil
@@ -97,20 +153,85 @@ func (m *Mpvpaper) SetWallpaper(_ context.Context, req backend.WallpaperRequest)
 		}
 		out := mon.Name
 		if old := m.procs[out]; old != nil {
-			killMpvpaperCmd(old)
+			m.killFn(out, old)
 			delete(m.procs, out)
 		}
 		args := buildMpvpaperArgs(out, req.ImagePath, cfg, req.AudioEnabled)
 		slog.Debug("mpvpaper command", "binary", binary, "args", args)
-		cmd := exec.Command(binary, args...)
-		cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGTERM}
-		if err := cmd.Start(); err != nil {
-			return fmt.Errorf("mpvpaper: start output %s: %w", out, err)
+		cmd, err := m.execFn(out, args)
+		if err != nil {
+			return err
 		}
-		m.procs[out] = cmd
-		go func(c *exec.Cmd) {
-			_ = c.Wait()
-		}(cmd)
+		m.procs[out] = &procState{cmd: cmd, path: req.ImagePath, audioEnabled: req.AudioEnabled}
+	}
+	return nil
+}
+
+// Apply implements backend.Backend by natively consuming a Snapshot.
+// It reconciles the desired state (snap.Outputs) against the currently-running
+// per-output processes:
+//   - Outputs not currently running → start a new process.
+//   - Outputs whose path or audio flag changed → kill old, start new.
+//   - Running outputs NOT in snap.Outputs → kill (they should stop).
+//
+// Equivalence for shadow testing: the set of (monitor → argv) started and the
+// set of monitors killed must match between Apply and SetWallpaper for the same
+// logical state. Byte-identical argv comparison is used for start actions;
+// set equality is used for kill actions.
+func (m *Mpvpaper) Apply(ctx context.Context, snap backend.Snapshot) error {
+	if len(snap.Outputs) == 0 {
+		return nil
+	}
+
+	cfg := m.loadConfigFromViper()
+	if err := validateConfig(cfg); err != nil {
+		return err
+	}
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Build desired-state map.
+	desired := make(map[string]backend.Output, len(snap.Outputs))
+	for _, o := range snap.Outputs {
+		desired[o.Monitor.Name] = o
+	}
+
+	// Kill outputs no longer in desired set.
+	for out, ps := range m.procs {
+		if _, ok := desired[out]; !ok {
+			m.killFn(out, ps)
+			delete(m.procs, out)
+		}
+	}
+
+	// Start or restart desired outputs.
+	for out, o := range desired {
+		vid, ok := o.Content.(backend.Video)
+		if !ok {
+			// mpvpaper only handles Video; skip other content kinds.
+			continue
+		}
+		path := vid.Path_
+		audio := vid.AudioEnabled
+
+		existing := m.procs[out]
+		if existing != nil && existing.path == path && existing.audioEnabled == audio {
+			// Already running with correct state; nothing to do.
+			continue
+		}
+		if existing != nil {
+			m.killFn(out, existing)
+			delete(m.procs, out)
+		}
+
+		args := buildMpvpaperArgs(out, path, cfg, audio)
+		slog.Debug("mpvpaper Apply command", "binary", binary, "output", out, "args", args)
+		cmd, err := m.execFn(out, args)
+		if err != nil {
+			return err
+		}
+		m.procs[out] = &procState{cmd: cmd, path: path, audioEnabled: audio}
 	}
 	return nil
 }
