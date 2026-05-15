@@ -27,10 +27,31 @@ type Awww struct {
 	once    sync.Once
 	v       *viper.Viper
 	process *os.Process
+	// execFn runs "awww img" with the given args. In tests, a no-op that records calls.
+	execFn func(ctx context.Context, args []string) error
 }
 
 func New() backend.Backend {
-	return &Awww{}
+	a := &Awww{}
+	a.execFn = a.execReal
+	return a
+}
+
+// execReal runs the awww CLI with the given args, capturing combined output.
+func (a *Awww) execReal(ctx context.Context, args []string) error {
+	cmd := exec.CommandContext(ctx, cliBinary, args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("%s %s: %w (output: %s)", cliBinary, args[0], err, string(output))
+	}
+	return nil
+}
+
+// SetExecForTest replaces the exec seam for testing. Returns the previous fn.
+func (a *Awww) SetExecForTest(fn func(ctx context.Context, args []string) error) (prev func(context.Context, []string) error) {
+	prev = a.execFn
+	a.execFn = fn
+	return prev
 }
 
 var _ backend.Backend = (*Awww)(nil)
@@ -181,12 +202,94 @@ func (a *Awww) SetWallpaper(ctx context.Context, req backend.WallpaperRequest) e
 	}
 
 	slog.Debug("awww command", "binary", cliBinary, "args", args)
-	cmd := exec.CommandContext(ctx, cliBinary, args...)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		return fmt.Errorf("%s img: %w (output: %s)", cliBinary, err, string(output))
+	return a.execFn(ctx, args)
+}
+
+// Apply implements backend.Backend by natively consuming a Snapshot.
+// Outputs sharing the same content path are grouped into a single "awww img"
+// invocation using --outputs MON1,MON2. Different paths require separate invocations.
+// Transition config is read from viper at Apply time.
+func (a *Awww) Apply(ctx context.Context, snap backend.Snapshot) error {
+	if len(snap.Outputs) == 0 {
+		return nil
+	}
+
+	cfg := a.loadConfigFromViper()
+
+	// Group outputs by content path.
+	type group struct {
+		path     string
+		monitors []string
+	}
+	var groups []group
+	seen := make(map[string]int) // path → index in groups
+	for _, o := range snap.Outputs {
+		path := o.Content.Path()
+		if idx, ok := seen[path]; ok {
+			groups[idx].monitors = append(groups[idx].monitors, o.Monitor.Name)
+		} else {
+			seen[path] = len(groups)
+			groups = append(groups, group{path: path, monitors: []string{o.Monitor.Name}})
+		}
+	}
+
+	for _, g := range groups {
+		args := a.buildArgs(g.path, g.monitors, cfg)
+		slog.Debug("awww command", "binary", cliBinary, "args", args)
+		if err := a.execFn(ctx, args); err != nil {
+			return err
+		}
 	}
 	return nil
+}
+
+// buildArgs constructs the argv for "awww img PATH [flags...] [--outputs MON1,MON2]".
+// --outputs is placed last, matching the order produced by SetWallpaper.
+func (a *Awww) buildArgs(path string, monitors []string, cfg *Config) []string {
+	args := []string{"img", path}
+
+	if cfg.TransitionType != "" {
+		args = append(args, "--transition-type", string(cfg.TransitionType))
+	}
+	if cfg.TransitionType != TransitionNone && cfg.TransitionStep > 0 {
+		args = append(args, "--transition-step", strconv.Itoa(cfg.TransitionStep))
+	}
+	if durStr := formatAwwwTransitionDurationCLI(cfg.TransitionDuration); durStr != "" {
+		args = append(args, "--transition-duration", durStr)
+	}
+	if cfg.TransitionFPS > 0 {
+		args = append(args, "--transition-fps", strconv.Itoa(cfg.TransitionFPS))
+	}
+	if cfg.TransitionAngle > 0 {
+		args = append(args, "--transition-angle", strconv.Itoa(cfg.TransitionAngle))
+	}
+	if cfg.TransitionPos != "" {
+		args = append(args, "--transition-pos", string(cfg.TransitionPos))
+	}
+	if cfg.TransitionBezier != "" {
+		args = append(args, "--transition-bezier", cfg.TransitionBezier)
+	}
+	if cfg.TransitionWave != "" {
+		args = append(args, "--transition-wave", cfg.TransitionWave)
+	}
+	if cfg.Resize != "" {
+		args = append(args, "--resize", string(cfg.Resize))
+	}
+	if cfg.FillColor != "" {
+		args = append(args, "--fill-color", strings.TrimPrefix(cfg.FillColor, "#"))
+	}
+	if cfg.FilterType != "" {
+		args = append(args, "--filter", string(cfg.FilterType))
+	}
+	if cfg.InvertY {
+		args = append(args, "--invert-y")
+	}
+
+	if len(monitors) > 0 {
+		args = append(args, "--outputs", strings.Join(monitors, ","))
+	}
+
+	return args
 }
 
 func (a *Awww) RegisterDefaults(v *viper.Viper) {
