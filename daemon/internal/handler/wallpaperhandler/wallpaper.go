@@ -240,12 +240,6 @@ func (h *WallpaperHandler) GetCurrent(w http.ResponseWriter, r *http.Request) {
 		_, err := h.imageStore.GetByID(ctx, st.ImageID)
 		if err != nil {
 			if errors.Is(err, store.ErrNotFound) {
-				slog.Info("wallpaper/current: removing monitor state for deleted image",
-					"monitor", st.MonitorName, "image_id", st.ImageID)
-				if rmErr := h.monitorStateStore.Remove(ctx, st.MonitorName); rmErr != nil {
-					slog.Warn("wallpaper/current: failed to remove stale monitor state",
-						"monitor", st.MonitorName, "error", rmErr)
-				}
 				continue
 			}
 			httpjson.WriteError(w, http.StatusInternalServerError, err.Error())

@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log/slog"
 	"math"
 	"net/http"
 	"os"
@@ -26,24 +27,33 @@ import (
 
 // ImageHandler handles all /images endpoints.
 type ImageHandler struct {
-	store     store.ImageStore
-	processor *img.Processor
-	bus       events.Bus
-	registry  backend.Registry
+	store             store.ImageStore
+	monitorStateStore store.MonitorStateStore
+	historyStore      store.HistoryStore
+	playlistStore     store.PlaylistStore
+	processor         *img.Processor
+	bus               events.Bus
+	registry          backend.Registry
 }
 
 // NewImageHandler creates an ImageHandler.
 func NewImageHandler(
 	store store.ImageStore,
+	monitorStateStore store.MonitorStateStore,
+	historyStore store.HistoryStore,
+	playlistStore store.PlaylistStore,
 	processor *img.Processor,
 	bus events.Bus,
 	registry backend.Registry,
 ) *ImageHandler {
 	return &ImageHandler{
-		store:     store,
-		processor: processor,
-		bus:       bus,
-		registry:  registry,
+		store:             store,
+		monitorStateStore: monitorStateStore,
+		historyStore:      historyStore,
+		playlistStore:     playlistStore,
+		processor:         processor,
+		bus:               bus,
+		registry:          registry,
 	}
 }
 
@@ -477,6 +487,7 @@ func (h *ImageHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Collect file paths before deletion so we can clean up disk afterward.
+	// Also purge all DB references to each image before removing the image row.
 	var paths []string
 	for _, id := range req.IDs {
 		img, err := h.store.GetByID(r.Context(), id)
@@ -491,6 +502,11 @@ func (h *ImageHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		}
 		if img.WebMeta != nil && img.WebMeta.PackageRoot != "" {
 			paths = append(paths, img.WebMeta.PackageRoot)
+		}
+
+		if _, purgeErr := store.PurgeImageReferences(r.Context(), id,
+			h.monitorStateStore, h.historyStore, h.playlistStore); purgeErr != nil {
+			slog.Warn("images: failed to purge references for image", "id", id, "error", purgeErr)
 		}
 	}
 

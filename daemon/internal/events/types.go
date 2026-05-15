@@ -62,4 +62,8 @@ const (
 
 	// PlaylistNoCompatibleItem — entire playlist exhausted with no item compatible with the active backend.
 	PlaylistNoCompatibleItem EventType = "playlist_no_compatible_item"
+
+	// ImageOrphanPurged — all DB references to a deleted image have been removed.
+	// Published by the caller of PurgeImageReferences (T3 snapshot builder).
+	ImageOrphanPurged EventType = "image_orphan_purged"
 )

@@ -43,13 +43,13 @@ type Config struct {
 	// ParallaxCompositorDriver: auto | off | hyprland | sway — workspace → POST /wallpaper/parallax-move (Hyprland/Sway only).
 	ParallaxCompositorDriver string `mapstructure:"parallax_compositor_driver" json:"parallax_compositor_driver"`
 	// ParallaxDirection: horizontal | vertical — workspace parallax axis when waypaper.json does not override.
-	ParallaxDirection      string `mapstructure:"parallax_direction" json:"parallax_direction"`
-	ImageFitMode           string `mapstructure:"image_fit_mode" json:"image_fit_mode"`
-	ImageRendering         string `mapstructure:"image_rendering" json:"image_rendering"`
+	ParallaxDirection string `mapstructure:"parallax_direction" json:"parallax_direction"`
+	ImageFitMode      string `mapstructure:"image_fit_mode" json:"image_fit_mode"`
+	ImageRendering    string `mapstructure:"image_rendering" json:"image_rendering"`
 	// FillColor is the padding color used by wal-qt when the image does not fully
 	// cover the monitor (e.g. contain / none / scale-down). Format: RRGGBB or
 	// RRGGBBAA hex without leading '#'. Mirrors awww's --fill-color.
-	FillColor string `mapstructure:"fill_color" json:"fill_color"`
+	FillColor              string `mapstructure:"fill_color" json:"fill_color"`
 	VideoAudioDefault      bool   `mapstructure:"video_audio_default" json:"video_audio_default"`
 	AllowNetworkWallpapers bool   `mapstructure:"allow_network_wallpapers" json:"allow_network_wallpapers"`
 }

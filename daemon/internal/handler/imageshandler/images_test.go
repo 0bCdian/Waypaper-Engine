@@ -32,7 +32,7 @@ func TestImageHandler_List(t *testing.T) {
 			}, nil
 		},
 	}
-	h := NewImageHandler(imgStore, nil, &testutil.MockBus{}, nil)
+	h := NewImageHandler(imgStore, nil, nil, nil, nil, &testutil.MockBus{}, nil)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/images?page=1&per_page=50", nil)
@@ -53,7 +53,7 @@ func TestImageHandler_Get_Found(t *testing.T) {
 			return &img, nil
 		},
 	}
-	h := NewImageHandler(imgStore, nil, &testutil.MockBus{}, nil)
+	h := NewImageHandler(imgStore, nil, nil, nil, nil, &testutil.MockBus{}, nil)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/images/42", nil)
@@ -73,7 +73,7 @@ func TestImageHandler_Get_NotFound(t *testing.T) {
 			return nil, store.ErrNotFound
 		},
 	}
-	h := NewImageHandler(imgStore, nil, &testutil.MockBus{}, nil)
+	h := NewImageHandler(imgStore, nil, nil, nil, nil, &testutil.MockBus{}, nil)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/images/999", nil)
@@ -84,7 +84,7 @@ func TestImageHandler_Get_NotFound(t *testing.T) {
 }
 
 func TestImageHandler_Get_BadID(t *testing.T) {
-	h := NewImageHandler(&testutil.MockImageStore{}, nil, &testutil.MockBus{}, nil)
+	h := NewImageHandler(&testutil.MockImageStore{}, nil, nil, nil, nil, &testutil.MockBus{}, nil)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/images/abc", nil)
@@ -103,7 +103,10 @@ func TestImageHandler_Delete(t *testing.T) {
 			return len(ids), nil
 		},
 	}
-	h := NewImageHandler(imgStore, nil, &testutil.MockBus{}, nil)
+	monStateStore := &testutil.MockMonitorStateStore{}
+	histStore := &testutil.MockHistoryStore{}
+	playlistStore := &testutil.MockPlaylistStore{}
+	h := NewImageHandler(imgStore, monStateStore, histStore, playlistStore, nil, &testutil.MockBus{}, nil)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodDelete, "/images", strings.NewReader(`{"ids":[1,2]}`))
@@ -122,7 +125,7 @@ func TestImageHandler_Tags(t *testing.T) {
 			return []string{"nature", "city"}, nil
 		},
 	}
-	h := NewImageHandler(imgStore, nil, &testutil.MockBus{}, nil)
+	h := NewImageHandler(imgStore, nil, nil, nil, nil, &testutil.MockBus{}, nil)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/images/tags", nil)
@@ -160,7 +163,7 @@ func TestImageHandler_Update(t *testing.T) {
 			return &img, nil
 		},
 	}
-	h := NewImageHandler(imgStore, nil, &testutil.MockBus{}, nil)
+	h := NewImageHandler(imgStore, nil, nil, nil, nil, &testutil.MockBus{}, nil)
 
 	// Use a name that does not require an actual os.Rename: patch with same
 	// name as current so the handler takes the no-op branch (delete from updates).
@@ -178,7 +181,7 @@ func TestImageHandler_Update(t *testing.T) {
 }
 
 func TestImageHandler_Update_BadField(t *testing.T) {
-	h := NewImageHandler(&testutil.MockImageStore{}, nil, &testutil.MockBus{}, nil)
+	h := NewImageHandler(&testutil.MockImageStore{}, nil, nil, nil, nil, &testutil.MockBus{}, nil)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodPatch, "/images/42",
@@ -196,7 +199,7 @@ func TestImageHandler_Update_InvalidName(t *testing.T) {
 			return &sample, nil
 		},
 	}
-	h := NewImageHandler(imgStore, nil, &testutil.MockBus{}, nil)
+	h := NewImageHandler(imgStore, nil, nil, nil, nil, &testutil.MockBus{}, nil)
 
 	w := httptest.NewRecorder()
 	// Empty name should fail validation.
@@ -209,7 +212,7 @@ func TestImageHandler_Update_InvalidName(t *testing.T) {
 }
 
 func TestImageHandler_CancelImport_EmptyBatchID(t *testing.T) {
-	h := NewImageHandler(&testutil.MockImageStore{}, nil, &testutil.MockBus{}, nil)
+	h := NewImageHandler(&testutil.MockImageStore{}, nil, nil, nil, nil, &testutil.MockBus{}, nil)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodPost, "/images/cancel-import",

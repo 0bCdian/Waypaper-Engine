@@ -238,8 +238,11 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}))
 	userThemesDir := filepath.Join(system.ConfigHome(), themesSubdir)
 	handlers := server.Handlers{
-		Health:    healthhandler.NewHealthHandler(opts.Version, shutdownFn),
-		Images:    imageshandler.NewImageHandler(opts.DB.ImageStore(), processor, bus, opts.Registry),
+		Health: healthhandler.NewHealthHandler(opts.Version, shutdownFn),
+		Images: imageshandler.NewImageHandler(
+			opts.DB.ImageStore(), opts.DB.MonitorStateStore(), opts.DB.HistoryStore(), opts.DB.PlaylistStore(),
+			processor, bus, opts.Registry,
+		),
 		Playlists: playlistshandler.NewPlaylistHandler(opts.DB.PlaylistStore(), opts.DB.StateStore(), playlistMgr, bus),
 		Monitors:  monitorshandler.NewMonitorHandler(monManager),
 		Config:    confighandler.NewConfigHandler(ctrl),
