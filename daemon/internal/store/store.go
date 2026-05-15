@@ -213,6 +213,10 @@ type HistoryStore interface {
 
 	// Clear removes all history entries and resets the ID sequence.
 	Clear(ctx context.Context) error
+
+	// DeleteByImageID removes every history entry referencing imageID.
+	// Returns the number of entries deleted (zero if none matched).
+	DeleteByImageID(ctx context.Context, imageID int) (int, error)
 }
 
 // ---------------------------------------------------------------------------

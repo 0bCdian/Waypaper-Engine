@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 	"time"
-
-	"github.com/ostafen/clover/v2/query"
 )
 
 // PurgeResult holds the counts of references removed by PurgeImageReferences.
@@ -44,22 +42,11 @@ func PurgeImageReferences(
 	}
 
 	// --- image_history ---
-	// historyStore doesn't expose a DeleteByImageID method; access CloverDB directly
-	// through the concrete implementation. We need to operate at the store package
-	// level so we can use the underlying concrete type.
-	if hs, ok := histStore.(*historyStore); ok {
-		q := query.NewQuery(CollectionHistory).Where(query.Field("image_id").Eq(imageID))
-		count, err := hs.db.Count(q)
-		if err != nil {
-			return result, fmt.Errorf("cascade: count history for image %d: %w", imageID, err)
-		}
-		if count > 0 {
-			if err := hs.db.Delete(q); err != nil {
-				return result, fmt.Errorf("cascade: delete history for image %d: %w", imageID, err)
-			}
-			result.HistoryEntriesPurged = count
-		}
+	histCount, err := histStore.DeleteByImageID(ctx, imageID)
+	if err != nil {
+		return result, fmt.Errorf("cascade: delete history for image %d: %w", imageID, err)
 	}
+	result.HistoryEntriesPurged = histCount
 
 	// --- playlists.images[] ---
 	playlists, err := playlistStore.GetAll(ctx)

@@ -82,8 +82,9 @@ func (m *mockHistoryStore) Append(ctx context.Context, e store.ImageHistoryEntry
 func (m *mockHistoryStore) GetRecent(context.Context, store.HistoryQueryOpts) ([]store.ImageHistoryEntry, error) {
 	return nil, nil
 }
-func (m *mockHistoryStore) Count(context.Context) (int, error) { return 0, nil }
-func (m *mockHistoryStore) Clear(context.Context) error        { return nil }
+func (m *mockHistoryStore) Count(context.Context) (int, error)                { return 0, nil }
+func (m *mockHistoryStore) Clear(context.Context) error                       { return nil }
+func (m *mockHistoryStore) DeleteByImageID(context.Context, int) (int, error) { return 0, nil }
 
 type mockMonitorStateStore struct {
 	setFn func(context.Context, store.MonitorState) error

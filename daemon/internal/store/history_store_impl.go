@@ -80,3 +80,18 @@ func (s *historyStore) Clear(_ context.Context) error {
 	s.IDAllocator.Reset()
 	return nil
 }
+
+func (s *historyStore) DeleteByImageID(_ context.Context, imageID int) (int, error) {
+	q := query.NewQuery(CollectionHistory).Where(query.Field("image_id").Eq(imageID))
+	count, err := s.db.Count(q)
+	if err != nil {
+		return 0, fmt.Errorf("history store: count by image %d: %w", imageID, err)
+	}
+	if count == 0 {
+		return 0, nil
+	}
+	if err := s.db.Delete(q); err != nil {
+		return 0, fmt.Errorf("history store: delete by image %d: %w", imageID, err)
+	}
+	return count, nil
+}

@@ -232,8 +232,9 @@ func (n *noopHistoryStore) Append(_ context.Context, _ store.ImageHistoryEntry) 
 func (n *noopHistoryStore) GetRecent(_ context.Context, _ store.HistoryQueryOpts) ([]store.ImageHistoryEntry, error) {
 	return nil, nil
 }
-func (n *noopHistoryStore) Count(_ context.Context) (int, error) { return 0, nil }
-func (n *noopHistoryStore) Clear(_ context.Context) error        { return nil }
+func (n *noopHistoryStore) Count(_ context.Context) (int, error)                  { return 0, nil }
+func (n *noopHistoryStore) Clear(_ context.Context) error                         { return nil }
+func (n *noopHistoryStore) DeleteByImageID(_ context.Context, _ int) (int, error) { return 0, nil }
 
 // noopMonitorStateStore discards monitor state writes.
 type noopMonitorStateStore struct{}

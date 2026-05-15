@@ -252,10 +252,11 @@ func (m *MockPlaylistStore) Count(ctx context.Context) (int, error) {
 // ---------------------------------------------------------------------------
 
 type MockHistoryStore struct {
-	AppendFn    func(ctx context.Context, entry store.ImageHistoryEntry) (*store.ImageHistoryEntry, error)
-	GetRecentFn func(ctx context.Context, opts store.HistoryQueryOpts) ([]store.ImageHistoryEntry, error)
-	CountFn     func(ctx context.Context) (int, error)
-	ClearFn     func(ctx context.Context) error
+	AppendFn          func(ctx context.Context, entry store.ImageHistoryEntry) (*store.ImageHistoryEntry, error)
+	GetRecentFn       func(ctx context.Context, opts store.HistoryQueryOpts) ([]store.ImageHistoryEntry, error)
+	CountFn           func(ctx context.Context) (int, error)
+	ClearFn           func(ctx context.Context) error
+	DeleteByImageIDFn func(ctx context.Context, imageID int) (int, error)
 }
 
 func (m *MockHistoryStore) Append(ctx context.Context, entry store.ImageHistoryEntry) (*store.ImageHistoryEntry, error) {
@@ -284,6 +285,13 @@ func (m *MockHistoryStore) Clear(ctx context.Context) error {
 		return m.ClearFn(ctx)
 	}
 	return nil
+}
+
+func (m *MockHistoryStore) DeleteByImageID(ctx context.Context, imageID int) (int, error) {
+	if m.DeleteByImageIDFn != nil {
+		return m.DeleteByImageIDFn(ctx, imageID)
+	}
+	return 0, nil
 }
 
 // ---------------------------------------------------------------------------
