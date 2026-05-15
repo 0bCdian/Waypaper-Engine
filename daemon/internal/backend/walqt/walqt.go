@@ -142,11 +142,8 @@ func (w *WalQt) IsAvailable() bool {
 
 func (w *WalQt) Capabilities() backend.Capabilities {
 	return backend.Capabilities{
-		Compositors:   []monitor.CompositorType{monitor.CompositorWayland},
-		MediaTypes:    []media.MediaType{media.MediaTypeImage, media.MediaTypeGIF, media.MediaTypeVideo, media.MediaTypeWeb},
-		Transitions:   true,
-		PerMonitor:    true,
-		DaemonProcess: true,
+		ContentKinds: []backend.ContentKind{backend.KindStaticImage, backend.KindGIF, backend.KindVideo, backend.KindWebWallpaper},
+		Compositors:  []monitor.CompositorType{monitor.CompositorWayland},
 	}
 }
 

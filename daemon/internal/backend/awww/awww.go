@@ -13,7 +13,6 @@ import (
 	"syscall"
 	"time"
 	"waypaper-engine/daemon/internal/backend"
-	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
 
 	"github.com/spf13/viper"
@@ -45,11 +44,8 @@ func (a *Awww) IsAvailable() bool {
 
 func (a *Awww) Capabilities() backend.Capabilities {
 	return backend.Capabilities{
-		Compositors:   []monitor.CompositorType{monitor.CompositorWayland},
-		MediaTypes:    []media.MediaType{media.MediaTypeImage},
-		Transitions:   true,
-		PerMonitor:    true,
-		DaemonProcess: true,
+		ContentKinds: []backend.ContentKind{backend.KindStaticImage, backend.KindGIF},
+		Compositors:  []monitor.CompositorType{monitor.CompositorWayland},
 	}
 }
 

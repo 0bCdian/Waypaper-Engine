@@ -13,7 +13,6 @@ import (
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/config"
 	"waypaper-engine/daemon/internal/events"
-	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/store"
 )
@@ -32,7 +31,7 @@ func (b *recordingBackend) Name() string      { return "recording" }
 func (b *recordingBackend) IsAvailable() bool { return true }
 func (b *recordingBackend) Capabilities() backend.Capabilities {
 	return backend.Capabilities{
-		MediaTypes: []media.MediaType{media.MediaTypeImage, media.MediaTypeGIF},
+		ContentKinds: []backend.ContentKind{backend.KindStaticImage, backend.KindGIF},
 	}
 }
 func (b *recordingBackend) Initialize(_ context.Context) error         { return nil }

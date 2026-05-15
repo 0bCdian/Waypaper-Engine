@@ -11,7 +11,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"waypaper-engine/daemon/internal/backend"
-	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
 )
 
@@ -71,19 +70,19 @@ func newStubRegistry(active string, bs ...*stubBackend) *stubRegistry {
 var (
 	awww = &stubBackend{
 		name: "awww", available: true,
-		caps: backend.Capabilities{MediaTypes: []media.MediaType{media.MediaTypeImage, media.MediaTypeGIF}},
+		caps: backend.Capabilities{ContentKinds: []backend.ContentKind{backend.KindStaticImage, backend.KindGIF}},
 	}
 	utauri = &stubBackend{
 		name: "wal-qt", available: true,
-		caps: backend.Capabilities{MediaTypes: []media.MediaType{media.MediaTypeImage, media.MediaTypeGIF, media.MediaTypeVideo, media.MediaTypeWeb}},
+		caps: backend.Capabilities{ContentKinds: []backend.ContentKind{backend.KindStaticImage, backend.KindGIF, backend.KindVideo, backend.KindWebWallpaper}},
 	}
 	mpv = &stubBackend{
 		name: "mpvpaper", available: true,
-		caps: backend.Capabilities{MediaTypes: []media.MediaType{media.MediaTypeVideo}},
+		caps: backend.Capabilities{ContentKinds: []backend.ContentKind{backend.KindVideo}},
 	}
 	unavailFeh = &stubBackend{
 		name: "feh", available: false,
-		caps: backend.Capabilities{MediaTypes: []media.MediaType{media.MediaTypeImage}},
+		caps: backend.Capabilities{ContentKinds: []backend.ContentKind{backend.KindStaticImage}},
 	}
 )
 

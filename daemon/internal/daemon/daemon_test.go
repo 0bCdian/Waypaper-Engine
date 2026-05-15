@@ -16,7 +16,6 @@ import (
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/config"
 	"waypaper-engine/daemon/internal/daemon"
-	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/store"
 )
@@ -33,9 +32,7 @@ func (m *mockBackend) Name() string      { return m.name }
 func (m *mockBackend) IsAvailable() bool { return true }
 func (m *mockBackend) Capabilities() backend.Capabilities {
 	return backend.Capabilities{
-		Transitions:   false,
-		DaemonProcess: false,
-		MediaTypes:    []media.MediaType{media.MediaTypeImage},
+		ContentKinds: []backend.ContentKind{backend.KindStaticImage},
 	}
 }
 func (m *mockBackend) Initialize(_ context.Context) error { return nil }

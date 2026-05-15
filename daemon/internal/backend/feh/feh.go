@@ -8,7 +8,6 @@ import (
 	"os/exec"
 
 	"waypaper-engine/daemon/internal/backend"
-	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
 
 	"github.com/spf13/viper"
@@ -33,11 +32,8 @@ func (f *Feh) IsAvailable() bool {
 
 func (f *Feh) Capabilities() backend.Capabilities {
 	return backend.Capabilities{
-		Compositors:   []monitor.CompositorType{monitor.CompositorX11},
-		MediaTypes:    []media.MediaType{media.MediaTypeImage},
-		Transitions:   false,
-		PerMonitor:    false,
-		DaemonProcess: false,
+		ContentKinds: []backend.ContentKind{backend.KindStaticImage},
+		Compositors:  []monitor.CompositorType{monitor.CompositorX11},
 	}
 }
 

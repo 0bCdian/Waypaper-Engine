@@ -142,29 +142,21 @@ func (d *Daemon) Start(ctx context.Context) error {
 	// If no backend is installed, the daemon starts in a degraded state and
 	// fires BackendUnavailable over SSE once the server is accepting connections.
 	noBackendInstalled := !opts.Registry.HasActive()
-	var (
-		caps    backend.Capabilities
-		initErr error
-	)
+	var initErr error
 	if !noBackendInstalled {
 		activeBackend := opts.Registry.Active()
-		caps = activeBackend.Capabilities()
 		initErr = activeBackend.Initialize(ctx)
 		if initErr != nil {
-			if caps.DaemonProcess {
-				slog.Error("failed to initialize daemon backend; wallpaper restore deferred",
-					"name", activeBackend.Name(), "error", initErr)
-				bus.Publish(events.Event{
-					Type: events.BackendUnavailable,
-					Data: map[string]any{
-						"backend":  activeBackend.Name(),
-						"message":  initErr.Error(),
-						"retrying": true,
-					},
-				})
-			} else {
-				slog.Warn("failed to initialize backend", "name", activeBackend.Name(), "error", initErr)
-			}
+			slog.Error("failed to initialize backend; wallpaper restore deferred",
+				"name", activeBackend.Name(), "error", initErr)
+			bus.Publish(events.Event{
+				Type: events.BackendUnavailable,
+				Data: map[string]any{
+					"backend":  activeBackend.Name(),
+					"message":  initErr.Error(),
+					"retrying": true,
+				},
+			})
 		} else {
 			slog.Info("backend initialized", "name", activeBackend.Name())
 			if err := activeBackend.OnConfigChanged(ctx, nil); err != nil {
@@ -197,7 +189,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	// a web wallpaper for several seconds) does not delay the HTTP server becoming
 	// reachable — the GUI's readiness probe times out after ~10s.
 	if !noBackendInstalled {
-		if initErr != nil && caps.DaemonProcess {
+		if initErr != nil {
 			wallpaper.StartDeferredDaemonRestore(
 				restoreRetryCtx,
 				opts.Registry,

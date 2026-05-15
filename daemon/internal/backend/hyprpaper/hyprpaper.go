@@ -14,7 +14,6 @@ import (
 	"time"
 
 	"waypaper-engine/daemon/internal/backend"
-	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
 
 	"github.com/spf13/viper"
@@ -43,11 +42,8 @@ func (h *Hyprpaper) IsAvailable() bool {
 
 func (h *Hyprpaper) Capabilities() backend.Capabilities {
 	return backend.Capabilities{
-		Compositors:   []monitor.CompositorType{monitor.CompositorWayland},
-		MediaTypes:    []media.MediaType{media.MediaTypeImage},
-		Transitions:   false,
-		PerMonitor:    true,
-		DaemonProcess: true,
+		ContentKinds: []backend.ContentKind{backend.KindStaticImage, backend.KindGIF},
+		Compositors:  []monitor.CompositorType{monitor.CompositorWayland},
 	}
 }
 
@@ -99,7 +95,7 @@ func (h *Hyprpaper) startDaemon() error {
 		}
 		time.Sleep(100 * time.Millisecond)
 	}
-	return nil
+	return fmt.Errorf("hyprpaper: process did not stay running after start (check hyprpaper.conf and logs)")
 }
 
 // ---------------------------------------------------------------------------
@@ -142,13 +138,25 @@ func writeConfig(pathOverride string, entries []wallpaperEntry) error {
 }
 
 func (h *Hyprpaper) setWallpaperConfig(ctx context.Context, req backend.WallpaperRequest, fitMode, confPath string) error {
-	entries := make([]wallpaperEntry, 0, len(req.Monitors))
-	for _, mon := range req.Monitors {
-		entries = append(entries, wallpaperEntry{
-			Monitor: mon.Name,
-			Path:    req.ImagePath,
-			FitMode: fitMode,
-		})
+	var entries []wallpaperEntry
+	if len(req.IndividualTargets) > 0 {
+		entries = make([]wallpaperEntry, 0, len(req.IndividualTargets))
+		for _, t := range req.IndividualTargets {
+			entries = append(entries, wallpaperEntry{
+				Monitor: t.Monitor.Name,
+				Path:    t.Path,
+				FitMode: fitMode,
+			})
+		}
+	} else {
+		entries = make([]wallpaperEntry, 0, len(req.Monitors))
+		for _, mon := range req.Monitors {
+			entries = append(entries, wallpaperEntry{
+				Monitor: mon.Name,
+				Path:    req.ImagePath,
+				FitMode: fitMode,
+			})
+		}
 	}
 
 	if err := writeConfig(confPath, entries); err != nil {

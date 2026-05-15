@@ -43,11 +43,8 @@ func (m *Mpvpaper) IsAvailable() bool {
 
 func (m *Mpvpaper) Capabilities() backend.Capabilities {
 	return backend.Capabilities{
-		Compositors:   []monitor.CompositorType{monitor.CompositorWayland},
-		MediaTypes:    []media.MediaType{media.MediaTypeVideo},
-		Transitions:   false,
-		PerMonitor:    true,
-		DaemonProcess: false,
+		ContentKinds: []backend.ContentKind{backend.KindVideo},
+		Compositors:  []monitor.CompositorType{monitor.CompositorWayland},
 	}
 }
 

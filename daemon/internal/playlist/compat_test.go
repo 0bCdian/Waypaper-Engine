@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"waypaper-engine/daemon/internal/backend"
-	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/store"
 )
 
@@ -26,19 +25,19 @@ func (s *stubImageStore) GetByID(_ context.Context, id int) (*store.Image, error
 
 func imageOnlyCaps() backend.Capabilities {
 	return backend.Capabilities{
-		MediaTypes: []media.MediaType{media.MediaTypeImage, media.MediaTypeGIF},
+		ContentKinds: []backend.ContentKind{backend.KindStaticImage, backend.KindGIF},
 	}
 }
 
 func allMediaCaps() backend.Capabilities {
 	return backend.Capabilities{
-		MediaTypes: []media.MediaType{media.MediaTypeImage, media.MediaTypeGIF, media.MediaTypeVideo, media.MediaTypeWeb},
+		ContentKinds: []backend.ContentKind{backend.KindStaticImage, backend.KindGIF, backend.KindVideo, backend.KindWebWallpaper},
 	}
 }
 
 func videoOnlyCaps() backend.Capabilities {
 	return backend.Capabilities{
-		MediaTypes: []media.MediaType{media.MediaTypeVideo},
+		ContentKinds: []backend.ContentKind{backend.KindVideo},
 	}
 }
 

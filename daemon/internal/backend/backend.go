@@ -89,42 +89,40 @@ type Backend interface {
 	OnConfigChanged(ctx context.Context, newConfig json.RawMessage) error
 }
 
-// Capabilities declares what a backend supports. Used by the daemon to adapt its
-// behavior and by the frontend to show/hide UI elements.
+// Capabilities declares what a backend supports.
 type Capabilities struct {
+	// ContentKinds lists the Content variants this backend can display.
+	ContentKinds []ContentKind `json:"content_kinds"`
+
 	// Compositors lists which display server protocols this backend works with.
 	Compositors []monitor.CompositorType `json:"compositors"`
-
-	// MediaTypes lists what kinds of media this backend can display.
-	MediaTypes []media.MediaType `json:"media_types"`
-
-	// Transitions indicates whether the backend supports animated transitions
-	// between wallpapers (e.g. fade, wipe, grow).
-	Transitions bool `json:"transitions"`
-
-	// PerMonitor indicates whether the backend can target a single monitor.
-	// If false, the backend can only set the wallpaper for all monitors at once
-	// (e.g. feh on X11 sets the root window).
-	PerMonitor bool `json:"per_monitor"`
-
-	// DaemonProcess indicates whether the backend requires a long-running
-	// background process (e.g. awww-daemon, hyprpaper).
-	DaemonProcess bool `json:"daemon_process"`
 }
 
-// SupportsMedia reports whether caps includes the given media type string.
+// SupportsMedia reports whether caps handles the given media type string.
 // An empty mediaType is treated as "image" (the default).
 func SupportsMedia(caps Capabilities, mediaType string) bool {
-	target := strings.ToLower(strings.TrimSpace(mediaType))
-	if target == "" {
-		target = string(media.MediaTypeImage)
-	}
-	for _, mt := range caps.MediaTypes {
-		if strings.ToLower(string(mt)) == target {
+	kind := mediaTypeToContentKind(strings.ToLower(strings.TrimSpace(mediaType)))
+	for _, k := range caps.ContentKinds {
+		if k == kind {
 			return true
 		}
 	}
 	return false
+}
+
+// mediaTypeToContentKind maps legacy media type strings to ContentKind values.
+// "gif" and "image" both resolve to their respective kinds; empty → KindStaticImage.
+func mediaTypeToContentKind(mt string) ContentKind {
+	switch mt {
+	case "gif":
+		return KindGIF
+	case "video":
+		return KindVideo
+	case "web":
+		return KindWebWallpaper
+	default:
+		return KindStaticImage
+	}
 }
 
 // UnmarshalValidateConfig is a generic helper for backends whose ValidateConfig
