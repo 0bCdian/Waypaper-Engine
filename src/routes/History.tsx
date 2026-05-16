@@ -113,7 +113,10 @@ function HistoryEntry({
       <EntryThumbnail image={image} />
       <div className="flex-1 min-w-0">
         <p className="font-medium truncate text-base-content">{entry.image_name}</p>
-        <div className="flex flex-wrap items-center gap-2 mt-1 text-xs text-base-content/60">
+        <div
+          className="flex flex-wrap items-center gap-2 mt-1 text-xs"
+          style={{ color: "var(--wp-text-muted)" }}
+        >
           <span className="badge badge-xs badge-ghost">{modeBadge(entry.mode)}</span>
           <span className="badge badge-xs badge-ghost">{sourceLabel(entry)}</span>
           {entry.monitors.map((m) => (
@@ -185,7 +188,7 @@ const History = () => {
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-xl font-semibold text-base-content">Wallpaper History</h2>
-          <p className="text-sm text-base-content/60">
+          <p className="text-sm" style={{ color: "var(--wp-text-muted)" }}>
             {entries.length > 0 ? `${entries.length} entries` : "No history yet"}
           </p>
         </div>

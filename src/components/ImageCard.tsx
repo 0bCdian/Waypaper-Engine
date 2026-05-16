@@ -491,7 +491,10 @@ function ImageCard({ Image }: ImageCardProps) {
               >
                 {Image.name}
                 {Image.format && (
-                  <span className="ml-1.5 inline-block rounded bg-base-300/80 px-1 py-0.5 align-middle text-[0.6rem] font-semibold uppercase leading-none text-base-content/70">
+                  <span
+                    className="ml-1.5 inline-block rounded bg-base-300/80 px-1 py-0.5 align-middle text-[0.6rem] font-semibold uppercase leading-none"
+                    style={{ color: "var(--wp-text-muted)" }}
+                  >
                     {Image.format}
                   </span>
                 )}

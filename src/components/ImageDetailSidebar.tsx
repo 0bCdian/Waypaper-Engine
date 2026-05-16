@@ -404,10 +404,13 @@ function WebWallpaperConfigForm({
 
   return (
     <div className="space-y-3 border-t border-base-300 pt-3">
-      <h4 className="text-xs font-semibold uppercase tracking-wide text-base-content/60">
+      <h4
+        className="text-xs font-semibold uppercase tracking-wide"
+        style={{ color: "var(--wp-text-muted)" }}
+      >
         Web wallpaper
       </h4>
-      <p className="text-xs text-base-content/50">
+      <p className="text-xs" style={{ color: "var(--wp-text-muted)" }}>
         Saves to <code className="text-[10px]">waypaper.json</code> on disk when you click Save.
         Merged values are pushed to the desktop as{" "}
         <code className="text-[10px]">waypaper:config</code> (capabilities update the host
@@ -415,11 +418,14 @@ function WebWallpaperConfigForm({
       </p>
 
       <div className="space-y-2">
-        <h5 className="text-[11px] font-semibold uppercase tracking-wide text-base-content/50">
+        <h5
+          className="text-[11px] font-semibold uppercase tracking-wide"
+          style={{ color: "var(--wp-text-muted)" }}
+        >
           Capabilities
         </h5>
         {wutCfg && wutCfg.allow_network_wallpapers !== true && (
-          <p className="text-[11px] text-base-content/50">
+          <p className="text-[11px]" style={{ color: "var(--wp-text-muted)" }}>
             Turn on &quot;Allow network for HTML wallpapers&quot; in Backend → wal-qt to enable
             outbound fetch/XHR/WebSocket (manifest <code className="text-[10px]">network</code> must
             still be on).
@@ -455,7 +461,10 @@ function WebWallpaperConfigForm({
 
       {hasSchema ? (
         <>
-          <h5 className="text-[11px] font-semibold uppercase tracking-wide text-base-content/50 pt-1">
+          <h5
+            className="text-[11px] font-semibold uppercase tracking-wide pt-1"
+            style={{ color: "var(--wp-text-muted)" }}
+          >
             Wallpaper settings
           </h5>
           <div className="flex flex-col gap-3">
@@ -482,7 +491,12 @@ function WebWallpaperConfigForm({
                 const n = typeof val === "number" ? val : Number(val);
                 return (
                   <div key={key} className="space-y-1">
-                    <label className="text-xs font-semibold text-base-content/60">{label}</label>
+                    <label
+                      className="text-xs font-semibold"
+                      style={{ color: "var(--wp-text-muted)" }}
+                    >
+                      {label}
+                    </label>
                     <input
                       type="number"
                       className="input input-bordered input-sm w-full"
@@ -502,7 +516,12 @@ function WebWallpaperConfigForm({
                 const sval = typeof val === "string" ? val : String(val ?? "");
                 return (
                   <div key={key} className="space-y-1">
-                    <label className="text-xs font-semibold text-base-content/60">{label}</label>
+                    <label
+                      className="text-xs font-semibold"
+                      style={{ color: "var(--wp-text-muted)" }}
+                    >
+                      {label}
+                    </label>
                     <div className="flex flex-wrap items-center gap-2">
                       <input
                         type="color"
@@ -523,7 +542,12 @@ function WebWallpaperConfigForm({
               }
               return (
                 <div key={key} className="space-y-1">
-                  <label className="text-xs font-semibold text-base-content/60">{label}</label>
+                  <label
+                    className="text-xs font-semibold"
+                    style={{ color: "var(--wp-text-muted)" }}
+                  >
+                    {label}
+                  </label>
                   <input
                     type="text"
                     className="input input-bordered input-sm w-full"
@@ -1311,7 +1335,8 @@ function ImageDetailSidebar() {
             <div className="space-y-1">
               <label
                 htmlFor="image-detail-name"
-                className="text-xs font-semibold uppercase tracking-wide text-base-content/60"
+                className="text-xs font-semibold uppercase tracking-wide"
+                style={{ color: "var(--wp-text-muted)" }}
               >
                 Name
               </label>
@@ -1337,7 +1362,7 @@ function ImageDetailSidebar() {
             </div>
 
             {/* Metadata */}
-            <div className="space-y-1 text-xs text-base-content/70">
+            <div className="space-y-1 text-xs" style={{ color: "var(--wp-text-muted)" }}>
               <p>ID: {selectedImage.id}</p>
               <p>
                 {selectedImage.width} &times; {selectedImage.height}
@@ -1350,10 +1375,13 @@ function ImageDetailSidebar() {
 
             {/* Palette — editable for all media types (videos/web ship empty until set) */}
             <div className="space-y-2">
-              <div className="text-xs font-semibold uppercase tracking-wide text-base-content/60">
+              <div
+                className="text-xs font-semibold uppercase tracking-wide"
+                style={{ color: "var(--wp-text-muted)" }}
+              >
                 Palette
               </div>
-              <p className="text-[10px] leading-snug text-base-content/50">
+              <p className="text-[10px] leading-snug" style={{ color: "var(--wp-text-faint)" }}>
                 Hex swatches stored on the gallery row and included in{" "}
                 <code className="text-[10px]">wallpaper_changed</code> when non-empty (useful for
                 hooks / ricing). Click a swatch to copy; double-click to edit color; hover for
@@ -1401,7 +1429,8 @@ function ImageDetailSidebar() {
             <div className="space-y-2">
               <label
                 htmlFor="image-detail-tags"
-                className="text-xs font-semibold uppercase tracking-wide text-base-content/60"
+                className="text-xs font-semibold uppercase tracking-wide"
+                style={{ color: "var(--wp-text-muted)" }}
               >
                 Tags
               </label>

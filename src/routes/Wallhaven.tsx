@@ -179,7 +179,10 @@ function WallhavenPage() {
 
   if (!isEnabled) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-4 text-base-content/50">
+      <div
+        className="flex flex-col items-center justify-center h-full gap-4"
+        style={{ color: "var(--wp-text-muted)" }}
+      >
         <svg
           xmlns="http://www.w3.org/2000/svg"
           className="size-16"
@@ -195,7 +198,7 @@ function WallhavenPage() {
           />
         </svg>
         <p className="text-lg font-medium">Wallhaven is disabled</p>
-        <p className="text-sm text-center max-w-sm text-base-content/70">
+        <p className="text-sm text-center max-w-sm" style={{ color: "var(--wp-text-muted)" }}>
           Enable it in{" "}
           <button
             type="button"
@@ -287,14 +290,18 @@ function WallhavenPage() {
 
         {/* Row 2 at narrow / same row at wide: category + purity + sort + toggle */}
         <div className="flex items-center gap-1 shrink-0">
-          <span className="text-xs text-base-content/50 hidden lg:inline">Category:</span>
+          <span className="text-xs hidden lg:inline" style={{ color: "var(--wp-text-faint)" }}>
+            Category:
+          </span>
           {categoryBtn("general", "General")}
           {categoryBtn("anime", "Anime")}
           {categoryBtn("people", "People")}
         </div>
 
         <div className="flex items-center gap-1 shrink-0">
-          <span className="text-xs text-base-content/50 hidden lg:inline">Purity:</span>
+          <span className="text-xs hidden lg:inline" style={{ color: "var(--wp-text-faint)" }}>
+            Purity:
+          </span>
           {purityBtn("sfw", "SFW")}
           {purityBtn("sketchy", "Sketchy")}
           {hasApiKey && purityBtn("nsfw", "NSFW")}
@@ -430,7 +437,7 @@ function WallhavenPage() {
       {/* Pinned pagination (only in paginated mode) */}
       {scrollMode === "paginated" && meta && meta.last_page > 1 && (
         <div className="shrink-0 flex flex-col items-center gap-1 py-2 border-t border-base-content/10">
-          <span className="text-xs text-base-content/50">
+          <span className="text-xs" style={{ color: "var(--wp-text-faint)" }}>
             Page {meta.current_page} of {meta.last_page} ({meta.total} wallpapers)
           </span>
           <div className="flex items-center gap-2">
