@@ -411,23 +411,22 @@ function WebWallpaperConfigForm({
         Web wallpaper
       </h4>
       <p className="text-xs" style={{ color: "var(--wp-text-muted)" }}>
-        Saves to <code className="text-[10px]">waypaper.json</code> on disk when you click Save.
-        Merged values are pushed to the desktop as{" "}
-        <code className="text-[10px]">waypaper:config</code> (capabilities update the host
-        immediately after save).
+        Saves to <code className="text-xs">waypaper.json</code> on disk when you click Save. Merged
+        values are pushed to the desktop as <code className="text-xs">waypaper:config</code>{" "}
+        (capabilities update the host immediately after save).
       </p>
 
       <div className="space-y-2">
         <h5
-          className="text-[11px] font-semibold uppercase tracking-wide"
+          className="text-xs font-semibold uppercase tracking-wide"
           style={{ color: "var(--wp-text-muted)" }}
         >
           Capabilities
         </h5>
         {wutCfg && wutCfg.allow_network_wallpapers !== true && (
-          <p className="text-[11px]" style={{ color: "var(--wp-text-muted)" }}>
+          <p className="text-xs" style={{ color: "var(--wp-text-muted)" }}>
             Turn on &quot;Allow network for HTML wallpapers&quot; in Backend → wal-qt to enable
-            outbound fetch/XHR/WebSocket (manifest <code className="text-[10px]">network</code> must
+            outbound fetch/XHR/WebSocket (manifest <code className="text-xs">network</code> must
             still be on).
           </p>
         )}
@@ -449,7 +448,7 @@ function WebWallpaperConfigForm({
                   <span>{WEB_CAP_LABELS[key]}</span>
                 </span>
                 {!policyAllows && key === "network" && (
-                  <span className="pl-8 text-[10px] text-base-content/45">
+                  <span className="pl-8 text-xs" style={{ color: "var(--wp-text-faint)" }}>
                     Enable global HTML network in Settings → Backend → wal-qt to turn this on.
                   </span>
                 )}
@@ -462,7 +461,7 @@ function WebWallpaperConfigForm({
       {hasSchema ? (
         <>
           <h5
-            className="text-[11px] font-semibold uppercase tracking-wide pt-1"
+            className="text-xs font-semibold uppercase tracking-wide pt-1"
             style={{ color: "var(--wp-text-muted)" }}
           >
             Wallpaper settings
@@ -560,9 +559,9 @@ function WebWallpaperConfigForm({
           </div>
         </>
       ) : (
-        <p className="text-xs text-base-content/40">
-          No <code className="text-[10px]">wallpaper_config</code> in this package; only
-          capabilities can be edited here.
+        <p className="text-xs" style={{ color: "var(--wp-text-faint)" }}>
+          No <code className="text-xs">wallpaper_config</code> in this package; only capabilities
+          can be edited here.
         </p>
       )}
 
@@ -580,7 +579,7 @@ function WebWallpaperConfigForm({
         >
           {busy ? "Saving…" : "Save"}
         </button>
-        {saveError && <span className="text-[10px] text-error">Save failed: check toast</span>}
+        {saveError && <span className="text-xs text-error">Save failed: check toast</span>}
       </div>
     </div>
   );
@@ -725,8 +724,7 @@ function PalettePopoverColorFields({
 
   const inputCls =
     "input input-bordered input-xs min-w-0 w-full font-mono tabular-nums rounded-[var(--wp-radius-sm)]";
-  const labelCls =
-    "mb-0.5 block text-[10px] font-semibold uppercase tracking-wide text-base-content/55";
+  const labelCls = "mb-0.5 block text-xs font-semibold uppercase tracking-wide";
 
   return (
     <div className="mt-2 space-y-2 border-t border-base-content/10 pt-2">
@@ -883,6 +881,17 @@ function PaletteSwatchChip({
     }
   }, []);
 
+  const handleKeyDown = useCallback(
+    (e: KeyboardEvent<HTMLButtonElement>) => {
+      if (e.key === "Delete" || e.key === "Backspace") {
+        e.preventDefault();
+        cancelCopyArm();
+        onRemove();
+      }
+    },
+    [cancelCopyArm, onRemove],
+  );
+
   return (
     <div className="group relative size-8 shrink-0 focus-within:z-[1]">
       <button
@@ -897,21 +906,33 @@ function PaletteSwatchChip({
           cancelCopyArm();
           onOpenColorPopover();
         }}
+        onKeyDown={handleKeyDown}
       />
-      <button
-        type="button"
-        className="btn btn-ghost btn-square absolute -right-1.5 -top-1.5 min-h-0 size-5 border-[var(--wp-border-w)] border-[var(--wp-border-color)] rounded-[var(--wp-radius-md)] bg-base-100 p-0 text-xs leading-none opacity-0 shadow-sm transition-opacity hover:bg-error/15 hover:text-error group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary"
-        aria-label={ariaLabelRemove}
-        title="Remove"
-        onClick={(e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          cancelCopyArm();
-          onRemove();
-        }}
-      >
-        ×
-      </button>
+      {/* Inset delete affordance — hidden by default, revealed on group-hover/focus-within */}
+      <div className="pointer-events-none absolute inset-0 z-20 flex items-end justify-end p-0.5">
+        <button
+          type="button"
+          className="pointer-events-auto flex size-3 items-center justify-center rounded-full opacity-0 transition-opacity duration-[120ms] group-hover:opacity-100 group-focus-within:opacity-100 focus:opacity-100 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary"
+          style={{
+            background: "oklch(0 0 0 / 0.35)",
+            backdropFilter: "blur(2px)",
+            color: "white",
+            fontSize: "9px",
+            lineHeight: 1,
+          }}
+          aria-label={ariaLabelRemove}
+          title="Remove"
+          tabIndex={-1}
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            cancelCopyArm();
+            onRemove();
+          }}
+        >
+          ×
+        </button>
+      </div>
     </div>
   );
 }
@@ -1254,9 +1275,7 @@ function ImageDetailSidebar() {
       >
         {/* Header */}
         <div className="flex items-center justify-between border-b border-base-300 px-4 py-3">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-base-content">
-            Image Details
-          </h3>
+          <h3 className="text-base font-semibold text-base-content">Image Details</h3>
           <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={close}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -1270,239 +1289,267 @@ function ImageDetailSidebar() {
         </div>
 
         {selectedImage && (
-          <div
-            ref={imageDetailBodyScrollRef}
-            className="flex flex-1 flex-col gap-4 overflow-y-auto p-4"
-          >
-            {/* Preview */}
-            {(() => {
-              const thumb = selectedImage.thumbnails?.default?.trim();
-              const webKind =
-                selectedImage.media_type === "web"
-                  ? webPreviewPlaybackKind(selectedImage.preview_path)
-                  : null;
-              const previewPath = selectedImage.preview_path?.trim();
+          <div className="flex flex-1 flex-col min-h-0">
+            <div
+              ref={imageDetailBodyScrollRef}
+              className="flex flex-1 flex-col gap-4 overflow-y-auto p-4"
+            >
+              {/* Preview */}
+              {(() => {
+                const thumb = selectedImage.thumbnails?.default?.trim();
+                const webKind =
+                  selectedImage.media_type === "web"
+                    ? webPreviewPlaybackKind(selectedImage.preview_path)
+                    : null;
+                const previewPath = selectedImage.preview_path?.trim();
 
-              if (selectedImage.media_type === "video") {
-                const videoSrc = selectedImage.preview_path?.trim() || selectedImage.path;
-                return thumb || videoSrc ? (
-                  <DetailHoverVideo src={videoSrc} poster={thumb || undefined} />
-                ) : null;
-              }
+                if (selectedImage.media_type === "video") {
+                  const videoSrc = selectedImage.preview_path?.trim() || selectedImage.path;
+                  return thumb || videoSrc ? (
+                    <DetailHoverVideo src={videoSrc} poster={thumb || undefined} />
+                  ) : null;
+                }
 
-              if (webKind === "video" && previewPath) {
-                return <DetailHoverVideo src={previewPath} poster={thumb || undefined} />;
-              }
+                if (webKind === "video" && previewPath) {
+                  return <DetailHoverVideo src={previewPath} poster={thumb || undefined} />;
+                }
 
-              if (webKind === "animatedImage" && previewPath) {
-                return (
-                  <img
-                    src={previewPath}
-                    alt={selectedImage.name}
-                    className="w-full rounded-lg object-cover"
-                  />
-                );
-              }
+                if (webKind === "animatedImage" && previewPath) {
+                  return (
+                    <img
+                      src={previewPath}
+                      alt={selectedImage.name}
+                      className="w-full rounded-lg object-cover"
+                    />
+                  );
+                }
 
-              if (thumb) {
-                return (
-                  <img
-                    src={thumb}
-                    alt={selectedImage.name}
-                    className="w-full rounded-lg object-cover"
-                  />
-                );
-              }
-              return null;
-            })()}
+                if (thumb) {
+                  return (
+                    <img
+                      src={thumb}
+                      alt={selectedImage.name}
+                      className="w-full rounded-lg object-cover"
+                    />
+                  );
+                }
+                return null;
+              })()}
 
-            {selectedImage.media_type === "video" && (
-              <button
-                type="button"
-                className="btn btn-outline btn-sm w-full"
-                onClick={() => {
-                  close();
-                  navigate("/loop-studio", {
-                    state: { imageId: selectedImage.id },
-                  });
-                }}
-              >
-                Open in Loop Studio
-              </button>
-            )}
-
-            {/* Editable name */}
-            <div className="space-y-1">
-              <label
-                htmlFor="image-detail-name"
-                className="text-xs font-semibold uppercase tracking-wide"
-                style={{ color: "var(--wp-text-muted)" }}
-              >
-                Name
-              </label>
-              <input
-                id="image-detail-name"
-                ref={nameInputRef}
-                type="text"
-                className="input input-bordered input-sm w-full font-medium"
-                value={editName}
-                disabled={renaming}
-                onChange={(e) => setEditName(e.target.value)}
-                onBlur={() => void submitRename()}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter") {
-                    e.preventDefault();
-                    nameInputRef.current?.blur();
-                  } else if (e.key === "Escape") {
-                    setEditName(selectedImage.name);
-                    nameInputRef.current?.blur();
-                  }
-                }}
-              />
-            </div>
-
-            {/* Metadata */}
-            <div className="space-y-1 text-xs" style={{ color: "var(--wp-text-muted)" }}>
-              <p>ID: {selectedImage.id}</p>
-              <p>
-                {selectedImage.width} &times; {selectedImage.height}
-              </p>
-              <p>
-                {selectedImage.format.toUpperCase()} &middot;{" "}
-                {formatFileSize(selectedImage.file_size)}
-              </p>
-            </div>
-
-            {/* Palette — editable for all media types (videos/web ship empty until set) */}
-            <div className="space-y-2">
-              <div
-                className="text-xs font-semibold uppercase tracking-wide"
-                style={{ color: "var(--wp-text-muted)" }}
-              >
-                Palette
-              </div>
-              <p className="text-[10px] leading-snug" style={{ color: "var(--wp-text-faint)" }}>
-                Hex swatches stored on the gallery row and included in{" "}
-                <code className="text-[10px]">wallpaper_changed</code> when non-empty (useful for
-                hooks / ricing). Click a swatch to copy; double-click to edit color; hover for
-                remove.
-              </p>
-              <div ref={paletteRowAnchorRef} className="flex flex-wrap items-center gap-2">
-                {editColors.map((c, i) => (
-                  <PaletteSwatchChip
-                    key={`${c}-${i}`}
-                    fill={swatchCssFill(c)}
-                    title="Copy hex · double-click to edit"
-                    ariaLabelCopy={`Palette color ${i + 1}, click to copy`}
-                    ariaLabelRemove={`Remove color ${i + 1}`}
-                    onCopy={() => void copyPaletteColor(canonicalHex(c.trim()) ?? c.trim())}
-                    onOpenColorPopover={() => openPalettePopoverReplace(i, c)}
-                    onRemove={() => removePaletteColor(i)}
-                  />
-                ))}
+              {selectedImage.media_type === "video" && (
                 <button
                   type="button"
-                  disabled={editColors.length >= MAX_PALETTE_COLORS}
-                  className="flex size-8 shrink-0 items-center justify-center border border-dashed border-base-content/30 rounded-[var(--wp-radius-md)] shadow-[var(--wp-elev-1)] text-lg font-light leading-none text-base-content/45 transition-colors hover:border-primary/45 hover:bg-primary/8 hover:text-primary disabled:pointer-events-none disabled:opacity-35"
-                  aria-label="Add palette color"
-                  title={
-                    editColors.length >= MAX_PALETTE_COLORS
-                      ? `At most ${MAX_PALETTE_COLORS} colors`
-                      : "Pick a color to add"
-                  }
-                  onClick={() => openPalettePopoverAdd()}
-                >
-                  +
-                </button>
-              </div>
-            </div>
-
-            {selectedImage.media_type === "web" && (
-              <WebWallpaperConfigForm
-                key={selectedImage.id}
-                image={selectedImage as DaemonImage}
-                onUpdated={openDetailFromConfigForm}
-              />
-            )}
-
-            {/* Tags */}
-            <div className="space-y-2">
-              <label
-                htmlFor="image-detail-tags"
-                className="text-xs font-semibold uppercase tracking-wide"
-                style={{ color: "var(--wp-text-muted)" }}
-              >
-                Tags
-              </label>
-
-              {/* Current tags */}
-              <div className="flex flex-wrap gap-1.5">
-                {tags.map((tag) => (
-                  <span key={tag} className="badge badge-primary gap-1 text-xs">
-                    {tag}
-                    <button
-                      type="button"
-                      className="ml-0.5 opacity-70 hover:opacity-100"
-                      onClick={() => removeTag(tag)}
-                    >
-                      &times;
-                    </button>
-                  </span>
-                ))}
-                {tags.length === 0 && (
-                  <span className="text-xs text-base-content/40">No tags yet</span>
-                )}
-              </div>
-
-              {/* Tag input */}
-              <div className="relative">
-                <input
-                  id="image-detail-tags"
-                  ref={inputRef}
-                  type="text"
-                  className="input input-bordered input-sm w-full"
-                  placeholder="Add a tag..."
-                  value={tagInput}
-                  onChange={(e) => {
-                    setTagInput(e.target.value);
-                    setShowSuggestions(true);
+                  className="btn btn-outline btn-sm w-full"
+                  onClick={() => {
+                    close();
+                    navigate("/loop-studio", {
+                      state: { imageId: selectedImage.id },
+                    });
                   }}
-                  onKeyDown={handleKeyDown}
-                  onFocus={() => setShowSuggestions(true)}
-                  onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
-                />
+                >
+                  Open in Loop Studio
+                </button>
+              )}
 
-                {/* Autocomplete dropdown */}
-                {showSuggestions && suggestions.length > 0 && (
-                  <ul className="absolute left-0 right-0 top-full z-10 mt-1 max-h-40 overflow-y-auto rounded-lg border border-base-300 bg-base-100 shadow-lg">
-                    {suggestions.map((s) => (
-                      <li key={s}>
-                        <button
-                          type="button"
-                          className="w-full px-3 py-1.5 text-left text-xs hover:bg-base-200"
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            addTag(s);
-                          }}
-                        >
-                          {s}
-                        </button>
-                      </li>
-                    ))}
-                  </ul>
-                )}
+              {/* Editable name */}
+              <div className="space-y-1">
+                <label
+                  htmlFor="image-detail-name"
+                  className="text-xs font-semibold uppercase tracking-wide"
+                  style={{ color: "var(--wp-text-muted)" }}
+                >
+                  Name
+                </label>
+                <input
+                  id="image-detail-name"
+                  ref={nameInputRef}
+                  type="text"
+                  className="input input-bordered input-sm w-full font-medium"
+                  value={editName}
+                  disabled={renaming}
+                  onChange={(e) => setEditName(e.target.value)}
+                  onBlur={() => void submitRename()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.preventDefault();
+                      nameInputRef.current?.blur();
+                    } else if (e.key === "Escape") {
+                      setEditName(selectedImage.name);
+                      nameInputRef.current?.blur();
+                    }
+                  }}
+                />
+              </div>
+
+              {/* Metadata */}
+              <dl className="grid grid-cols-[5rem_1fr] gap-x-3 gap-y-1 text-sm">
+                <dt
+                  className="text-xs uppercase tracking-wide"
+                  style={{ color: "var(--wp-text-faint)" }}
+                >
+                  ID
+                </dt>
+                <dd>{selectedImage.id}</dd>
+                <dt
+                  className="text-xs uppercase tracking-wide"
+                  style={{ color: "var(--wp-text-faint)" }}
+                >
+                  Dimensions
+                </dt>
+                <dd>
+                  {selectedImage.width} &times; {selectedImage.height}
+                </dd>
+                <dt
+                  className="text-xs uppercase tracking-wide"
+                  style={{ color: "var(--wp-text-faint)" }}
+                >
+                  Format
+                </dt>
+                <dd>{selectedImage.format.toUpperCase()}</dd>
+                <dt
+                  className="text-xs uppercase tracking-wide"
+                  style={{ color: "var(--wp-text-faint)" }}
+                >
+                  Size
+                </dt>
+                <dd>{formatFileSize(selectedImage.file_size)}</dd>
+              </dl>
+
+              {/* Palette — editable for all media types (videos/web ship empty until set) */}
+              <div className="space-y-2">
+                <div
+                  className="text-xs font-semibold uppercase tracking-wide"
+                  style={{ color: "var(--wp-text-muted)" }}
+                >
+                  Palette
+                </div>
+                <p className="text-xs leading-snug" style={{ color: "var(--wp-text-faint)" }}>
+                  Hex swatches stored on the gallery row and included in{" "}
+                  <code className="text-xs">wallpaper_changed</code> when non-empty (useful for
+                  hooks / ricing). Click a swatch to copy; double-click to edit color; hover for
+                  remove.
+                </p>
+                <div ref={paletteRowAnchorRef} className="flex flex-wrap items-center gap-2">
+                  {editColors.map((c, i) => (
+                    <PaletteSwatchChip
+                      key={`${c}-${i}`}
+                      fill={swatchCssFill(c)}
+                      title="Copy hex · double-click to edit"
+                      ariaLabelCopy={`Palette color ${i + 1}, click to copy`}
+                      ariaLabelRemove={`Remove color ${i + 1}`}
+                      onCopy={() => void copyPaletteColor(canonicalHex(c.trim()) ?? c.trim())}
+                      onOpenColorPopover={() => openPalettePopoverReplace(i, c)}
+                      onRemove={() => removePaletteColor(i)}
+                    />
+                  ))}
+                  <button
+                    type="button"
+                    disabled={editColors.length >= MAX_PALETTE_COLORS}
+                    className="flex size-8 shrink-0 items-center justify-center border border-dashed rounded-[var(--wp-radius-md)] shadow-[var(--wp-elev-1)] text-lg font-light leading-none transition-colors hover:border-primary/45 hover:bg-primary/8 hover:text-primary disabled:pointer-events-none disabled:opacity-35"
+                    style={{ borderColor: "var(--wp-hairline)", color: "var(--wp-text-faint)" }}
+                    aria-label="Add palette color"
+                    title={
+                      editColors.length >= MAX_PALETTE_COLORS
+                        ? `At most ${MAX_PALETTE_COLORS} colors`
+                        : "Pick a color to add"
+                    }
+                    onClick={() => openPalettePopoverAdd()}
+                  >
+                    +
+                  </button>
+                </div>
+              </div>
+
+              {selectedImage.media_type === "web" && (
+                <WebWallpaperConfigForm
+                  key={selectedImage.id}
+                  image={selectedImage as DaemonImage}
+                  onUpdated={openDetailFromConfigForm}
+                />
+              )}
+
+              {/* Tags */}
+              <div className="space-y-2">
+                <label
+                  htmlFor="image-detail-tags"
+                  className="text-xs font-semibold uppercase tracking-wide"
+                  style={{ color: "var(--wp-text-muted)" }}
+                >
+                  Tags
+                </label>
+
+                {/* Current tags */}
+                <div className="flex flex-wrap gap-1.5">
+                  {tags.map((tag) => (
+                    <span key={tag} className="badge badge-primary gap-1 text-xs">
+                      {tag}
+                      <button
+                        type="button"
+                        className="ml-0.5 opacity-70 hover:opacity-100"
+                        onClick={() => removeTag(tag)}
+                      >
+                        &times;
+                      </button>
+                    </span>
+                  ))}
+                  {tags.length === 0 && (
+                    <span className="text-xs" style={{ color: "var(--wp-text-faint)" }}>
+                      No tags yet
+                    </span>
+                  )}
+                </div>
+
+                {/* Tag input */}
+                <div className="relative">
+                  <input
+                    id="image-detail-tags"
+                    ref={inputRef}
+                    type="text"
+                    className="input input-bordered input-sm w-full"
+                    placeholder="Add a tag..."
+                    value={tagInput}
+                    onChange={(e) => {
+                      setTagInput(e.target.value);
+                      setShowSuggestions(true);
+                    }}
+                    onKeyDown={handleKeyDown}
+                    onFocus={() => setShowSuggestions(true)}
+                    onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+                  />
+
+                  {/* Autocomplete dropdown */}
+                  {showSuggestions && suggestions.length > 0 && (
+                    <ul className="absolute left-0 right-0 top-full z-10 mt-1 max-h-40 overflow-y-auto rounded-lg border border-base-300 bg-base-100 shadow-lg">
+                      {suggestions.map((s) => (
+                        <li key={s}>
+                          <button
+                            type="button"
+                            className="w-full px-3 py-1.5 text-left text-xs hover:bg-base-200"
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              addTag(s);
+                            }}
+                          >
+                            {s}
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
               </div>
             </div>
-
-            {/* Save button */}
-            <button
-              type="button"
-              className={`btn btn-primary btn-sm ${!hasChanges ? "btn-disabled" : ""}`}
-              onClick={handleSave}
-              disabled={!hasChanges || saving}
-            >
-              {saving ? "Saving..." : "Save details"}
-            </button>
+            {/* Sticky save footer */}
+            <div className="shrink-0 border-t border-base-300 px-4 py-3 bg-base-200">
+              <button
+                type="button"
+                className={`btn btn-primary btn-sm w-full ${!hasChanges ? "btn-disabled" : ""}`}
+                onClick={handleSave}
+                disabled={!hasChanges || saving}
+              >
+                {saving ? "Saving..." : "Save details"}
+              </button>
+            </div>
           </div>
         )}
       </div>
