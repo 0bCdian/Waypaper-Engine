@@ -938,83 +938,6 @@ function SetPopover({
   );
 }
 
-/** Hover preview popover — passive (pointer-events: none), portaled.
- * Privacy note: the large thumb is rendered unblurred even when NSFW blur is on.
- * We deliberately apply the same blur here; the user must hover the card to unblur
- * both the card image and the preview simultaneously.
- */
-function WallhavenPreviewPopover({
-  wp,
-  cardRef,
-  blurNsfw,
-}: {
-  wp: WallhavenWallpaper;
-  cardRef: React.RefObject<HTMLDivElement | null>;
-  blurNsfw: boolean;
-}) {
-  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
-  const popoverRef = useRef<HTMLDivElement>(null);
-
-  useLayoutEffect(() => {
-    const card = cardRef.current;
-    const popover = popoverRef.current;
-    if (!card || !popover) return;
-    const cardRect = card.getBoundingClientRect();
-    const pw = popover.offsetWidth;
-    const ph = popover.offsetHeight;
-    const margin = 12;
-    const vw = window.innerWidth;
-
-    // Horizontal: center on card, clamped to viewport
-    let left = cardRect.left + cardRect.width / 2 - pw / 2;
-    left = Math.max(margin, Math.min(left, vw - pw - margin));
-
-    // Vertical: above by default, flip below if not enough space
-    let top = cardRect.top - ph - 8;
-    if (top < margin) {
-      top = cardRect.bottom + 8;
-    }
-    top = Math.max(margin, top);
-
-    setPos({ left, top });
-  }, [cardRef]);
-
-  return createPortal(
-    <div
-      ref={popoverRef}
-      className="fixed z-[300] overflow-hidden"
-      style={{
-        pointerEvents: "none",
-        maxWidth: "min(720px, 60vw)",
-        maxHeight: "80vh",
-        border: "var(--wp-border-w) solid var(--wp-border-color)",
-        borderRadius: "var(--wp-radius-md)",
-        boxShadow: "var(--wp-elev-3, 0 8px 24px rgba(0,0,0,0.35))",
-        background: "var(--color-base-100, var(--b1, white))",
-        opacity: pos ? 1 : 0,
-        left: pos ? pos.left : -9999,
-        top: pos ? pos.top : -9999,
-        transition: "opacity 120ms ease-in",
-      }}
-    >
-      <img
-        src={wp.thumbs.large}
-        alt=""
-        aria-hidden="true"
-        style={{
-          display: "block",
-          maxWidth: "min(720px, 60vw)",
-          maxHeight: "80vh",
-          objectFit: "contain",
-          // Apply same blur as card when NSFW blur is active — group-hover reveals both simultaneously
-          filter: blurNsfw ? "blur(24px)" : "none",
-        }}
-      />
-    </div>,
-    document.body,
-  );
-}
-
 /** Color palette popover for the color filter (feature 5). */
 function ColorPalettePopover({
   activeColor,
@@ -1130,26 +1053,7 @@ function WallhavenCard({
 }) {
   const openMenu = useContextMenuStore((s) => s.open);
   const setButtonRef = useRef<HTMLButtonElement>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
   const [showSetPopover, setShowSetPopover] = useState(false);
-
-  // Hover preview popover — feature 1
-  const hoverDwellRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const [previewOpen, setPreviewOpen] = useState(false);
-  const prefersReducedMotion =
-    typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-  const handlePointerEnter = () => {
-    if (prefersReducedMotion) return;
-    hoverDwellRef.current = setTimeout(() => setPreviewOpen(true), 300);
-  };
-  const handlePointerLeave = () => {
-    if (hoverDwellRef.current) {
-      clearTimeout(hoverDwellRef.current);
-      hoverDwellRef.current = null;
-    }
-    setPreviewOpen(false);
-  };
 
   const selectOnClick = (e: React.MouseEvent) => {
     if (e.ctrlKey || e.metaKey) {
@@ -1184,7 +1088,6 @@ function WallhavenCard({
 
   return (
     <div
-      ref={cardRef}
       className={cn(
         "group relative cursor-pointer flex flex-col bg-base-200 overflow-hidden rounded-[var(--wp-radius-sm)] border-[var(--wp-border-w)] border-[var(--wp-border-color)] shadow-[var(--wp-elev-1,none)]",
         isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-base-100",
@@ -1202,8 +1105,6 @@ function WallhavenCard({
           onSelect();
         }
       }}
-      onPointerEnter={handlePointerEnter}
-      onPointerLeave={handlePointerLeave}
       role="button"
       tabIndex={0}
     >
@@ -1325,8 +1226,6 @@ function WallhavenCard({
           onClose={() => setShowSetPopover(false)}
         />
       )}
-      {/* Hover preview popover — feature 1 */}
-      {previewOpen && <WallhavenPreviewPopover wp={wp} cardRef={cardRef} blurNsfw={applyBlur} />}
     </div>
   );
 }
