@@ -115,7 +115,7 @@ interface WallhavenActions {
   search: () => Promise<void>;
   loadNextPage: () => Promise<void>;
   selectWallpaper: (wp: WallhavenWallpaper | null) => void;
-  downloadToGallery: (wp: WallhavenWallpaper) => Promise<void>;
+  downloadToGallery: (wp: WallhavenWallpaper) => Promise<number | null>;
   downloadImportAndSet: (
     wp: WallhavenWallpaper,
     monitor: string,
@@ -378,7 +378,7 @@ export const useWallhavenStore = create<WallhavenState & WallhavenActions>()((se
 
   downloadToGallery: async (wp) => {
     const { downloadingIds } = get();
-    if (downloadingIds.has(wp.id)) return;
+    if (downloadingIds.has(wp.id)) return null;
 
     set({ downloadingIds: new Set([...downloadingIds, wp.id]) });
 
@@ -395,7 +395,14 @@ export const useWallhavenStore = create<WallhavenState & WallhavenActions>()((se
           ? (importResult as { batch_id: string }).batch_id
           : null;
 
-      if (batchId && (tags.length > 0 || colors.length > 0)) {
+      if (!batchId) return null;
+
+      return await new Promise<number | null>((resolve) => {
+        const timeout = setTimeout(() => {
+          dispose?.();
+          resolve(null);
+        }, 30000);
+
         let dispose: (() => void) | null = null;
         dispose = daemonClient.on("image_processed", (data: unknown) => {
           const payload = data as {
@@ -403,14 +410,18 @@ export const useWallhavenStore = create<WallhavenState & WallhavenActions>()((se
             image?: { id: number };
           };
           if (payload.batch_id === batchId && payload.image?.id) {
-            void patchImageMetadata(payload.image.id, tags, colors);
+            clearTimeout(timeout);
+            if (tags.length > 0 || colors.length > 0) {
+              void patchImageMetadata(payload.image.id, tags, colors);
+            }
             dispose?.();
+            resolve(payload.image.id);
           }
         });
-        setTimeout(() => dispose?.(), 30000);
-      }
+      });
     } catch (err) {
       logger.error("Wallhaven download failed:", err);
+      return null;
     } finally {
       set((s) => {
         const next = new Set(s.downloadingIds);

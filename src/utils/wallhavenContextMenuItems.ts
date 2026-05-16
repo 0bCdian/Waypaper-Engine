@@ -1,6 +1,7 @@
 import type { MenuItem } from "../stores/contextMenuStore";
 import type { WallhavenWallpaper } from "../stores/wallhavenStore";
 import { useWallhavenStore } from "../stores/wallhavenStore";
+import { usePlaylistStore } from "../stores/playlist";
 import type { Monitor } from "../../electron/daemon-go-types";
 import { buildWallpaperSubmenu } from "./sharedContextMenuHelpers";
 
@@ -31,6 +32,21 @@ export function buildWallhavenCardMenuItems(
       label: "Download to Gallery",
       onClick: () => {
         void useWallhavenStore.getState().downloadToGallery(wp);
+      },
+    },
+    {
+      type: "action",
+      label: "Add to current playlist",
+      disabled: usePlaylistStore.getState().isEmpty,
+      onClick: () => {
+        void useWallhavenStore
+          .getState()
+          .downloadToGallery(wp)
+          .then((imageId) => {
+            if (imageId != null) {
+              usePlaylistStore.getState().addImagesToPlaylist([imageId]);
+            }
+          });
       },
     },
     {

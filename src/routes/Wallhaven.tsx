@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useSettingsModalStore } from "@/stores/settingsModalStore";
 import { useShallow } from "zustand/react/shallow";
 import {
@@ -540,8 +541,10 @@ function WallhavenPage() {
                   isSelected={selectedWallpapers.has(wp.id)}
                   selectedCount={selectedWallpapers.size}
                   monitors={monitorsList}
+                  monitorSelection={monitorSelection}
                   onSelect={() => selectWallpaper(wp)}
                   onDownload={() => void downloadToGallery(wp)}
+                  onSet={(monitor, mode) => void downloadImportAndSet(wp, monitor, mode)}
                   onCtrlClick={() => toggleSelection(wp.id)}
                   onDoubleClick={() => {
                     const monitor =
@@ -620,11 +623,140 @@ function WallhavenPage() {
         <WallhavenDetailModal
           wp={selectedWallpaper}
           isDownloading={downloadingIds.has(selectedWallpaper.id)}
+          monitors={monitorsList}
+          monitorSelection={monitorSelection}
           onClose={() => selectWallpaper(null)}
           onDownload={() => void downloadToGallery(selectedWallpaper)}
+          onSet={(monitor, mode) => void downloadImportAndSet(selectedWallpaper, monitor, mode)}
         />
       )}
     </div>
+  );
+}
+
+/** Clamp a popover to stay within the viewport with a safety margin. */
+function clampSetPopoverPosition(anchor: DOMRect, popoverW: number, popoverH: number) {
+  const margin = 8;
+  let left = anchor.right - popoverW;
+  let top = anchor.top - popoverH - 4;
+
+  left = Math.max(margin, Math.min(left, window.innerWidth - popoverW - margin));
+  if (top < margin) {
+    top = anchor.bottom + 4;
+  }
+  top = Math.max(margin, Math.min(top, window.innerHeight - popoverH - margin));
+
+  return { left, top };
+}
+
+/** Inline SVG download icon (lucide-style: tray with arrow down, 14 × 14). */
+function DownloadIcon() {
+  return (
+    <svg
+      xmlns="http://www.w3.org/2000/svg"
+      width="14"
+      height="14"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <path d="M12 15V3" />
+      <path d="m8 11 4 4 4-4" />
+      <path d="M3 19h18" />
+      <path d="M3 15v4h18v-4" />
+    </svg>
+  );
+}
+
+/** Popover listing Set options (Clone all / Extend all / per-monitor). */
+function SetPopover({
+  monitors,
+  anchorRef,
+  onSet,
+  onClose,
+}: {
+  monitors: import("../../electron/daemon-go-types").Monitor[];
+  anchorRef: React.RefObject<HTMLButtonElement | null>;
+  onSet: (monitor: string, mode: import("../../electron/daemon-go-types").MonitorMode) => void;
+  onClose: () => void;
+}) {
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const anchor = anchorRef.current;
+    const popover = popoverRef.current;
+    if (!anchor || !popover) return;
+    const anchorRect = anchor.getBoundingClientRect();
+    const { offsetWidth: w, offsetHeight: h } = popover;
+    setPos(clampSetPopoverPosition(anchorRect, w, h));
+  }, [anchorRef]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      ref={popoverRef}
+      className="fixed z-[200] min-w-[160px] rounded-[var(--wp-radius-sm)] border border-base-300 bg-base-100 shadow-[var(--wp-elev-2,none)] py-1 text-sm"
+      style={pos ? { left: pos.left, top: pos.top } : { opacity: 0, left: -9999, top: -9999 }}
+    >
+      <button
+        type="button"
+        className="w-full text-left px-3 py-1.5 hover:bg-base-200 transition-colors"
+        onClick={() => {
+          onSet("*", "clone");
+          onClose();
+        }}
+      >
+        Clone across all
+      </button>
+      <button
+        type="button"
+        className="w-full text-left px-3 py-1.5 hover:bg-base-200 transition-colors"
+        onClick={() => {
+          onSet("*", "extend");
+          onClose();
+        }}
+      >
+        Extend across all
+      </button>
+      {monitors.length > 0 && (
+        <div className="my-1 border-t" style={{ borderColor: "var(--wp-hairline)" }} />
+      )}
+      {monitors.map((m) => (
+        <button
+          key={m.name}
+          type="button"
+          className="w-full text-left px-3 py-1.5 hover:bg-base-200 transition-colors"
+          onClick={() => {
+            onSet(m.name, "individual");
+            onClose();
+          }}
+        >
+          On {m.name}
+        </button>
+      ))}
+    </div>,
+    document.body,
   );
 }
 
@@ -634,8 +766,10 @@ function WallhavenCard({
   isSelected,
   selectedCount,
   monitors,
+  monitorSelection,
   onSelect,
   onDownload,
+  onSet,
   onCtrlClick,
   onDoubleClick,
 }: {
@@ -644,12 +778,16 @@ function WallhavenCard({
   isSelected: boolean;
   selectedCount: number;
   monitors: import("../../electron/daemon-go-types").Monitor[];
+  monitorSelection: import("../stores/monitors").MonitorSelection;
   onSelect: () => void;
   onDownload: () => void;
+  onSet: (monitor: string, mode: import("../../electron/daemon-go-types").MonitorMode) => void;
   onCtrlClick: () => void;
   onDoubleClick: () => void;
 }) {
   const openMenu = useContextMenuStore((s) => s.open);
+  const setButtonRef = useRef<HTMLButtonElement>(null);
+  const [showSetPopover, setShowSetPopover] = useState(false);
 
   const selectOnClick = (e: React.MouseEvent) => {
     if (e.ctrlKey || e.metaKey) {
@@ -662,6 +800,17 @@ function WallhavenCard({
 
   const handleContextMenu = (e: React.MouseEvent) => {
     openMenu(e, buildWallhavenCardMenuItems(wp, selectedCount, monitors));
+  };
+
+  const handleSetClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    const selectedMonitors = monitorSelection.selectedMonitors;
+    if (monitors.length <= 1 || selectedMonitors.length === 1) {
+      const monitor = selectedMonitors.length === 1 ? selectedMonitors[0] : "*";
+      onSet(monitor ?? "*", monitorSelection.mode);
+    } else {
+      setShowSetPopover((v) => !v);
+    }
   };
 
   return (
@@ -711,19 +860,46 @@ function WallhavenCard({
           className="transform-gpu w-full h-full aspect-[3/2] object-cover transition-transform duration-300 group-hover:scale-105"
           loading="lazy"
         />
-        {/* Hover overlay: gradient + download button */}
+        {/* Hover overlay: gradient + two-button action row */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none" />
-        <div className="absolute bottom-0 left-0 right-0 p-2 flex items-end justify-end opacity-0 group-hover:opacity-100 transition-opacity duration-200">
-          <button
-            type="button"
-            className={cn("btn btn-xs btn-primary", isDownloading && "btn-disabled")}
-            onClick={(e) => {
-              e.stopPropagation();
-              onDownload();
-            }}
+        <div className="absolute bottom-0 left-0 right-0 p-2 flex items-end justify-between opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          {/* Bottom-left: meta (resolution + category) in overlay */}
+          <span
+            className="text-xs text-white/80 font-mono truncate mr-1"
+            style={{ textShadow: "0 1px 2px rgba(0,0,0,0.8)" }}
           >
-            {isDownloading ? <span className="loading loading-spinner loading-xs" /> : "↓"}
-          </button>
+            {wp.resolution}
+          </span>
+          {/* Bottom-right: Set + Download buttons */}
+          <div className="flex items-center gap-1 shrink-0">
+            <button
+              ref={setButtonRef}
+              type="button"
+              className={cn("btn btn-xs btn-primary", isDownloading && "btn-disabled")}
+              onClick={handleSetClick}
+              aria-label="Set wallpaper"
+            >
+              {isDownloading ? <span className="loading loading-spinner loading-xs" /> : "Set"}
+            </button>
+            <button
+              type="button"
+              className={cn(
+                "btn btn-xs btn-square btn-ghost text-white",
+                isDownloading && "btn-disabled",
+              )}
+              onClick={(e) => {
+                e.stopPropagation();
+                onDownload();
+              }}
+              aria-label="Download to gallery"
+            >
+              {isDownloading ? (
+                <span className="loading loading-spinner loading-xs" />
+              ) : (
+                <DownloadIcon />
+              )}
+            </button>
+          </div>
         </div>
       </div>
       {/* Resting-state footer strip — always visible */}
@@ -734,6 +910,14 @@ function WallhavenCard({
         <span className="font-mono truncate flex-1">{wp.resolution}</span>
         <span className="shrink-0 capitalize">{wp.category}</span>
       </div>
+      {showSetPopover && (
+        <SetPopover
+          monitors={monitors}
+          anchorRef={setButtonRef}
+          onSet={onSet}
+          onClose={() => setShowSetPopover(false)}
+        />
+      )}
     </div>
   );
 }
@@ -741,16 +925,34 @@ function WallhavenCard({
 function WallhavenDetailModal({
   wp,
   isDownloading,
+  monitors,
+  monitorSelection,
   onClose,
   onDownload,
+  onSet,
 }: {
   wp: WallhavenWallpaper;
   isDownloading: boolean;
+  monitors: import("../../electron/daemon-go-types").Monitor[];
+  monitorSelection: import("../stores/monitors").MonitorSelection;
   onClose: () => void;
   onDownload: () => void;
+  onSet: (monitor: string, mode: import("../../electron/daemon-go-types").MonitorMode) => void;
 }) {
   const [showAllTags, setShowAllTags] = useState(false);
+  const [showModalSetPopover, setShowModalSetPopover] = useState(false);
+  const modalSetButtonRef = useRef<HTMLButtonElement>(null);
   const visibleTags = wp.tags ? (showAllTags ? wp.tags : wp.tags.slice(0, 10)) : [];
+
+  const handleModalSetClick = () => {
+    const selectedMonitors = monitorSelection.selectedMonitors;
+    if (monitors.length <= 1 || selectedMonitors.length === 1) {
+      const monitor = selectedMonitors.length === 1 ? selectedMonitors[0] : "*";
+      onSet(monitor ?? "*", monitorSelection.mode);
+    } else {
+      setShowModalSetPopover((v) => !v);
+    }
+  };
 
   return (
     <div
@@ -890,8 +1092,20 @@ function WallhavenDetailModal({
           {/* Right 4 cols: action stack */}
           <div className="md:col-span-4 flex flex-col gap-2 md:items-stretch justify-start">
             <button
+              ref={modalSetButtonRef}
               type="button"
-              className={cn("btn btn-primary", isDownloading && "btn-disabled")}
+              className={cn(
+                "btn btn-primary",
+                (isDownloading || monitors.length === 0) && "btn-disabled",
+              )}
+              onClick={handleModalSetClick}
+              title={monitors.length === 0 ? "No monitors detected" : undefined}
+            >
+              {isDownloading ? <span className="loading loading-spinner loading-xs" /> : "Set on…"}
+            </button>
+            <button
+              type="button"
+              className={cn("btn btn-outline", isDownloading && "btn-disabled")}
               onClick={onDownload}
             >
               {isDownloading ? (
@@ -914,6 +1128,14 @@ function WallhavenDetailModal({
           </div>
         </div>
       </div>
+      {showModalSetPopover && (
+        <SetPopover
+          monitors={monitors}
+          anchorRef={modalSetButtonRef}
+          onSet={onSet}
+          onClose={() => setShowModalSetPopover(false)}
+        />
+      )}
     </div>
   );
 }
