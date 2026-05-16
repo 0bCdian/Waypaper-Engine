@@ -36,7 +36,6 @@ const (
 )
 
 // ContentToMediaType maps a Content variant to the legacy media.MediaType value.
-// Used by Apply shims that must populate WallpaperRequest.MediaType.
 func ContentToMediaType(c Content) media.MediaType {
 	switch c.(type) {
 	case GIF:
