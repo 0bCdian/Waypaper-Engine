@@ -113,7 +113,11 @@ function applyToDOM(state: DesignSystemState) {
     root.style.removeProperty("--neo-radius");
   }
 
-  root.style.setProperty("--wp-font-scale", String(UI_SCALE_VALUES[state.uiScale]));
+  const scale = UI_SCALE_VALUES[state.uiScale];
+  root.style.setProperty("--wp-font-scale", String(scale));
+  // Scale the root font-size so all rem-based Tailwind/DaisyUI sizing
+  // (text-*, padding, gap, etc.) follows the UI Scale setting.
+  root.style.fontSize = `${scale * 100}%`;
 }
 
 /* ── Store ─────────────────────────────────────────────────────── */
@@ -163,7 +167,4 @@ export const useDesignSystemStore = create<DesignSystemStore>()(
 );
 
 /* ── Apply on first load ───────────────────────────────────────── */
-applyToDOM({
-  designMode: useDesignSystemStore.getState().designMode,
-  neoConfig: useDesignSystemStore.getState().neoConfig,
-});
+applyToDOM(useDesignSystemStore.getState());
