@@ -1283,14 +1283,14 @@ function WallhavenDetailModal({
     >
       {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions,jsx-a11y/click-events-have-key-events -- stopPropagation guard for modal content so backdrop click doesn't trigger */}
       <div
-        className="bg-base-100 max-w-4xl w-[90vw] max-h-[90vh] flex flex-col overflow-hidden rounded-[var(--wp-radius-md)] border-[var(--wp-border-w)] border-[var(--wp-border-color)] shadow-[var(--wp-elev-2,none)]"
+        className="bg-base-100 max-w-7xl w-[96vw] max-h-[94vh] flex flex-col overflow-hidden rounded-[var(--wp-radius-md)] border-[var(--wp-border-w)] border-[var(--wp-border-color)] shadow-[var(--wp-elev-2,none)]"
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex-1 min-h-0 overflow-hidden bg-base-200 flex items-center justify-center">
           <img
             src={wp.thumbs.original || wp.thumbs.large}
             alt={`Wallhaven ${wp.id}`}
-            className="max-w-full max-h-[65vh] object-contain"
+            className="size-full object-contain"
           />
         </div>
 
