@@ -42,7 +42,8 @@
     "test:daemon:clean": "cd daemon && rm -rf build coverage.out coverage.html",
     "test:e2e": "pnpm run build:daemon && pnpm exec playwright test --config e2e/playwright.config.ts",
     "test:ui": "pnpm exec playwright test --config e2e/playwright-ui.config.ts",
-    "test:all": "pnpm run test && pnpm run test:daemon && pnpm run test:e2e"
+    "test:all": "pnpm run test && pnpm run test:daemon && pnpm run test:e2e",
+    "audit:contrast": "node scripts/audit-contrast.mjs"
   },
   "dependencies": {
     "@dnd-kit/abstract": "0.3.2",
@@ -82,6 +83,7 @@
     "@vitejs/plugin-react": "5.0.0",
     "@vitest/coverage-v8": "^4.0.18",
     "babel-plugin-react-compiler": "^1.0.0",
+    "culori": "^4.0.2",
     "daisyui": "5.2.3",
     "electron": "40.4.1",
     "electron-builder": "26.8.1",
