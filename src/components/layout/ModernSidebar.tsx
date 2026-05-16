@@ -23,8 +23,7 @@ const NAV_ITEMS = [
     label: "Gallery",
     icon: (
       <svg
-        width="20"
-        height="20"
+        className="size-5"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -46,8 +45,7 @@ const NAV_ITEMS = [
     label: "Wallhaven",
     icon: (
       <svg
-        width="20"
-        height="20"
+        className="size-5"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -66,8 +64,7 @@ const NAV_ITEMS = [
     label: "History",
     icon: (
       <svg
-        width="20"
-        height="20"
+        className="size-5"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -87,8 +84,7 @@ const NAV_ITEMS = [
     label: "Loop Studio",
     icon: (
       <svg
-        width="20"
-        height="20"
+        className="size-5"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -107,8 +103,7 @@ const NAV_ITEMS = [
     label: "Shader Studio",
     icon: (
       <svg
-        width="20"
-        height="20"
+        className="size-5"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -128,8 +123,7 @@ const NAV_ITEMS = [
     label: "Settings",
     icon: (
       <svg
-        width="20"
-        height="20"
+        className="size-5"
         viewBox="0 0 24 24"
         fill="none"
         stroke="currentColor"
@@ -231,7 +225,7 @@ export const IconRailSidebar: React.FC = () => {
       <aside
         className="neo-sidebar relative bg-base-100 border-r flex flex-col shrink-0 overflow-hidden"
         style={{
-          width: expanded ? 240 : 56,
+          width: expanded ? "15rem" : "3.5rem",
           transition: `width ${railEaseTransition}`,
           borderColor: "var(--wp-hairline)",
         }}
@@ -258,7 +252,7 @@ export const IconRailSidebar: React.FC = () => {
               <m.span
                 key="name"
                 initial={{ opacity: 0, maxWidth: 0 }}
-                animate={{ opacity: 1, maxWidth: 160 }}
+                animate={{ opacity: 1, maxWidth: "10rem" }}
                 exit={{ opacity: 0, maxWidth: 0 }}
                 transition={{ duration: 0.15 }}
                 className="font-semibold text-base text-base-content whitespace-nowrap overflow-hidden min-w-0 neo-sidebar-brand"
@@ -306,7 +300,7 @@ export const IconRailSidebar: React.FC = () => {
                       <m.span
                         key={`label-${item.to}`}
                         initial={{ opacity: 0, maxWidth: 0 }}
-                        animate={{ opacity: 1, maxWidth: 160 }}
+                        animate={{ opacity: 1, maxWidth: "10rem" }}
                         exit={{ opacity: 0, maxWidth: 0 }}
                         transition={{ duration: 0.12 }}
                         className="text-sm font-medium whitespace-nowrap overflow-hidden min-w-0"
@@ -346,7 +340,7 @@ export const IconRailSidebar: React.FC = () => {
                     <m.span
                       key={`label-${item.to}`}
                       initial={{ opacity: 0, maxWidth: 0 }}
-                      animate={{ opacity: 1, maxWidth: 160 }}
+                      animate={{ opacity: 1, maxWidth: "10rem" }}
                       exit={{ opacity: 0, maxWidth: 0 }}
                       transition={{ duration: 0.12 }}
                       className="text-sm font-medium whitespace-nowrap overflow-hidden min-w-0"
@@ -383,8 +377,7 @@ export const IconRailSidebar: React.FC = () => {
             style={footerBtnStyle}
           >
             <svg
-              width="16"
-              height="16"
+              className="size-4"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -412,7 +405,7 @@ export const IconRailSidebar: React.FC = () => {
                 <m.span
                   key="hover-reveal-label"
                   initial={{ opacity: 0, maxWidth: 0 }}
-                  animate={{ opacity: 1, maxWidth: 160 }}
+                  animate={{ opacity: 1, maxWidth: "10rem" }}
                   exit={{ opacity: 0, maxWidth: 0 }}
                   transition={{ duration: 0.12 }}
                   className="text-sm whitespace-nowrap overflow-hidden min-w-0"
@@ -434,8 +427,7 @@ export const IconRailSidebar: React.FC = () => {
             style={footerBtnStyle}
           >
             <svg
-              width="16"
-              height="16"
+              className="size-4"
               viewBox="0 0 24 24"
               fill={pinned ? "currentColor" : "none"}
               stroke="currentColor"
@@ -453,7 +445,7 @@ export const IconRailSidebar: React.FC = () => {
                 <m.span
                   key="pin-label"
                   initial={{ opacity: 0, maxWidth: 0 }}
-                  animate={{ opacity: 1, maxWidth: 160 }}
+                  animate={{ opacity: 1, maxWidth: "10rem" }}
                   exit={{ opacity: 0, maxWidth: 0 }}
                   transition={{ duration: 0.12 }}
                   className="text-sm whitespace-nowrap overflow-hidden min-w-0"
@@ -480,8 +472,7 @@ export const IconRailSidebar: React.FC = () => {
             style={footerBtnStyle}
           >
             <svg
-              width="16"
-              height="16"
+              className="size-4"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -501,7 +492,7 @@ export const IconRailSidebar: React.FC = () => {
                 <m.span
                   key="quit-label"
                   initial={{ opacity: 0, maxWidth: 0 }}
-                  animate={{ opacity: 1, maxWidth: 160 }}
+                  animate={{ opacity: 1, maxWidth: "10rem" }}
                   exit={{ opacity: 0, maxWidth: 0 }}
                   transition={{ duration: 0.12 }}
                   className="text-sm whitespace-nowrap overflow-hidden min-w-0"
