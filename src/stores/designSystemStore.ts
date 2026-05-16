@@ -27,14 +27,26 @@ interface NeoConfig {
 
 type DesignMode = "default" | "neobrutalist";
 
+/** UI Scale preset values for --wp-font-scale */
+export type UiScale = "compact" | "default" | "comfortable" | "large";
+
+export const UI_SCALE_VALUES: Record<UiScale, number> = {
+  compact: 0.9,
+  default: 1.0,
+  comfortable: 1.1,
+  large: 1.25,
+};
+
 interface DesignSystemState {
   designMode: DesignMode;
   neoConfig: NeoConfig;
+  uiScale: UiScale;
 }
 
 interface DesignSystemActions {
   setDesignMode: (mode: DesignMode) => void;
   updateNeoConfig: (partial: Partial<NeoConfig>) => void;
+  setUiScale: (scale: UiScale) => void;
   /** Re-apply the current state to the DOM (e.g. after hydration). */
   syncToDOM: () => void;
 }
@@ -72,6 +84,7 @@ function saveToStorage(state: DesignSystemState) {
       JSON.stringify({
         designMode: state.designMode,
         neoConfig: state.neoConfig,
+        uiScale: state.uiScale,
       }),
     );
   } catch {
@@ -99,6 +112,8 @@ function applyToDOM(state: DesignSystemState) {
     root.style.removeProperty("--neo-border-width");
     root.style.removeProperty("--neo-radius");
   }
+
+  root.style.setProperty("--wp-font-scale", String(UI_SCALE_VALUES[state.uiScale]));
 }
 
 /* ── Store ─────────────────────────────────────────────────────── */
@@ -110,6 +125,7 @@ export const useDesignSystemStore = create<DesignSystemStore>()(
     (set, get) => ({
       designMode: persisted.designMode ?? "default",
       neoConfig: { ...DEFAULT_NEO_CONFIG, ...persisted.neoConfig },
+      uiScale: (persisted as Partial<DesignSystemState>).uiScale ?? "default",
 
       setDesignMode(mode) {
         set({ designMode: mode }, false, "setDesignMode");
@@ -126,6 +142,13 @@ export const useDesignSystemStore = create<DesignSystemStore>()(
           false,
           "updateNeoConfig",
         );
+        const state = get();
+        saveToStorage(state);
+        applyToDOM(state);
+      },
+
+      setUiScale(scale) {
+        set({ uiScale: scale }, false, "setUiScale");
         const state = get();
         saveToStorage(state);
         applyToDOM(state);

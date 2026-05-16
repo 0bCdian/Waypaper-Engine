@@ -29,7 +29,9 @@ export const SettingRow: React.FC<SettingRowProps> = ({
     <div className="min-w-0 flex-1">
       <div className="text-sm xl:text-base font-medium text-base-content">{label}</div>
       {description && (
-        <div className="text-xs xl:text-sm text-base-content/50 mt-0.5">{description}</div>
+        <div className="text-xs xl:text-sm mt-0.5" style={{ color: "var(--wp-text-muted)" }}>
+          {description}
+        </div>
       )}
       {error && <div className="text-xs xl:text-sm text-error mt-1">{error}</div>}
     </div>
@@ -57,7 +59,9 @@ export const SettingSectionHeader: React.FC<SettingSectionHeaderProps> = ({
           {title}
         </h3>
         {description && (
-          <p className="text-xs xl:text-sm text-base-content/50 mt-0.5">{description}</p>
+          <p className="text-xs xl:text-sm mt-0.5" style={{ color: "var(--wp-text-muted)" }}>
+            {description}
+          </p>
         )}
       </div>
       {children}

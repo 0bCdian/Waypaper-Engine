@@ -2,7 +2,7 @@ import type React from "react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { cn } from "@/utils/cn";
 import { useSettingsStore } from "@/stores/settingsStore";
-import { useDesignSystemStore } from "@/stores/designSystemStore";
+import { useDesignSystemStore, type UiScale, UI_SCALE_VALUES } from "@/stores/designSystemStore";
 import { useShallow } from "zustand/react/shallow";
 import { InlineThemeSelector } from "../InlineThemeSelector";
 import { SettingRow, SettingSectionHeader } from "../SettingRow";
@@ -68,6 +68,7 @@ export const AppSettingsSection: React.FC<AppSettingsSectionProps> = ({ classNam
 
   const [themeOpen, setThemeOpen] = useState(false);
   const [typographyOpen, setTypographyOpen] = useState(false);
+  const [uiScaleOpen, setUiScaleOpen] = useState(false);
 
   const handleChange = async (key: string, value: unknown) => {
     await saveConfigSection(section, { [key]: value });
@@ -80,7 +81,7 @@ export const AppSettingsSection: React.FC<AppSettingsSectionProps> = ({ classNam
     <div className={cn("space-y-0", className)}>
       {/* ── Section title ──────────────────────────────── */}
       <h2 className="text-lg font-semibold text-base-content mb-1">General</h2>
-      <p className="text-sm text-base-content/50 mb-4">
+      <p className="text-sm mb-4" style={{ color: "var(--wp-text-muted)" }}>
         Application behavior, appearance, and UI preferences.
       </p>
 
@@ -94,7 +95,7 @@ export const AppSettingsSection: React.FC<AppSettingsSectionProps> = ({ classNam
       >
         <div className="text-left">
           <div className="text-sm font-medium text-base-content">Application Theme</div>
-          <div className="text-xs text-base-content/50 mt-0.5">
+          <div className="text-xs mt-0.5" style={{ color: "var(--wp-text-muted)" }}>
             Choose the visual theme for the application interface
           </div>
         </div>
@@ -124,7 +125,7 @@ export const AppSettingsSection: React.FC<AppSettingsSectionProps> = ({ classNam
       >
         <div className="text-left">
           <div className="text-sm font-medium text-base-content">Typography</div>
-          <div className="text-xs text-base-content/50 mt-0.5">
+          <div className="text-xs mt-0.5" style={{ color: "var(--wp-text-muted)" }}>
             Bundled fonts, Google Sans, system UI stacks, or custom CSS family names
           </div>
         </div>
@@ -144,6 +145,36 @@ export const AppSettingsSection: React.FC<AppSettingsSectionProps> = ({ classNam
       {typographyOpen && (
         <div className="py-4 border-b border-base-content/5 space-y-4">
           <TypographySection config={config} saveConfigSection={saveConfigSection} />
+        </div>
+      )}
+
+      <button
+        type="button"
+        className="w-full flex items-center justify-between py-4 border-b border-base-content/5 group"
+        onClick={() => setUiScaleOpen((v) => !v)}
+      >
+        <div className="text-left">
+          <div className="text-sm font-medium text-base-content">UI Scale</div>
+          <div className="text-xs mt-0.5" style={{ color: "var(--wp-text-muted)" }}>
+            Adjust the size of text and UI elements
+          </div>
+        </div>
+        <svg
+          className={cn(
+            "w-4 h-4 text-base-content/40 transition-transform",
+            uiScaleOpen && "rotate-180",
+          )}
+          fill="none"
+          stroke="currentColor"
+          viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      {uiScaleOpen && (
+        <div className="py-4 border-b border-base-content/5">
+          <UiScaleSection />
         </div>
       )}
 
@@ -323,7 +354,9 @@ const TypographySection: React.FC<{
             />
             <span>
               <span className="block text-sm font-medium text-base-content">{opt.title}</span>
-              <span className="mt-0.5 block text-xs text-base-content/50">{opt.description}</span>
+              <span className="mt-0.5 block text-xs" style={{ color: "var(--wp-text-muted)" }}>
+                {opt.description}
+              </span>
             </span>
           </label>
         ))}
@@ -333,7 +366,8 @@ const TypographySection: React.FC<{
         <div className="space-y-3">
           <div>
             <label
-              className="mb-1 block text-xs font-medium text-base-content/70"
+              className="mb-1 block text-xs font-medium"
+              style={{ color: "var(--wp-text-muted)" }}
               htmlFor="font-custom-body"
             >
               Body
@@ -352,7 +386,8 @@ const TypographySection: React.FC<{
           </div>
           <div>
             <label
-              className="mb-1 block text-xs font-medium text-base-content/70"
+              className="mb-1 block text-xs font-medium"
+              style={{ color: "var(--wp-text-muted)" }}
               htmlFor="font-custom-display"
             >
               Display / headings
@@ -371,7 +406,8 @@ const TypographySection: React.FC<{
           </div>
           <div>
             <label
-              className="mb-1 block text-xs font-medium text-base-content/70"
+              className="mb-1 block text-xs font-medium"
+              style={{ color: "var(--wp-text-muted)" }}
               htmlFor="font-custom-mono"
             >
               Monospace
@@ -390,6 +426,47 @@ const TypographySection: React.FC<{
           </div>
         </div>
       )}
+    </div>
+  );
+};
+
+/* ── UI Scale Settings ───────────────────────────────────────── */
+
+const UI_SCALE_OPTIONS: { value: UiScale; label: string; description: string }[] = [
+  { value: "compact", label: "Compact", description: `${UI_SCALE_VALUES.compact}×` },
+  { value: "default", label: "Default", description: `${UI_SCALE_VALUES.default}×` },
+  { value: "comfortable", label: "Comfortable", description: `${UI_SCALE_VALUES.comfortable}×` },
+  { value: "large", label: "Large", description: `${UI_SCALE_VALUES.large}×` },
+];
+
+const UiScaleSection: React.FC = () => {
+  const { uiScale, setUiScale } = useDesignSystemStore(
+    useShallow((s) => ({
+      uiScale: s.uiScale,
+      setUiScale: s.setUiScale,
+    })),
+  );
+
+  return (
+    <div className="flex gap-2 flex-wrap">
+      {UI_SCALE_OPTIONS.map((opt) => (
+        <button
+          key={opt.value}
+          type="button"
+          onClick={() => setUiScale(opt.value)}
+          className={cn(
+            "flex-1 min-w-[5rem] flex flex-col items-center gap-0.5 rounded-lg border py-2.5 px-3 text-center text-sm transition-colors",
+            uiScale === opt.value
+              ? "border-primary bg-primary/5 text-base-content"
+              : "border-base-content/10 hover:border-base-content/20 text-base-content",
+          )}
+        >
+          <span className="font-medium">{opt.label}</span>
+          <span className="text-[11px]" style={{ color: "var(--wp-text-faint)" }}>
+            {opt.description}
+          </span>
+        </button>
+      ))}
     </div>
   );
 };
@@ -452,7 +529,7 @@ const DesignSystemSection: React.FC = () => {
                   updateNeoConfig({ shadowOffsetX: v, shadowOffsetY: v });
                 }}
               />
-              <span className="text-xs text-base-content/50 w-8 text-right">
+              <span className="text-xs w-8 text-right" style={{ color: "var(--wp-text-faint)" }}>
                 {neoConfig.shadowOffsetX}px
               </span>
             </div>
@@ -469,7 +546,7 @@ const DesignSystemSection: React.FC = () => {
                 value={neoConfig.borderWidth}
                 onChange={(e) => updateNeoConfig({ borderWidth: Number(e.target.value) })}
               />
-              <span className="text-xs text-base-content/50 w-8 text-right">
+              <span className="text-xs w-8 text-right" style={{ color: "var(--wp-text-faint)" }}>
                 {neoConfig.borderWidth}px
               </span>
             </div>
@@ -490,7 +567,7 @@ const DesignSystemSection: React.FC = () => {
                   })
                 }
               />
-              <span className="text-xs text-base-content/50 w-12 text-right">
+              <span className="text-xs w-12 text-right" style={{ color: "var(--wp-text-faint)" }}>
                 {neoConfig.cornerRadius}rem
               </span>
             </div>
