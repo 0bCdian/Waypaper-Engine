@@ -1288,9 +1288,10 @@ function WallhavenDetailModal({
       >
         <div className="flex-1 min-h-0 overflow-hidden bg-base-200 flex items-center justify-center">
           <img
-            src={wp.thumbs.original || wp.thumbs.large}
+            src={wp.path}
             alt={`Wallhaven ${wp.id}`}
             className="size-full object-contain"
+            loading="eager"
           />
         </div>
 
