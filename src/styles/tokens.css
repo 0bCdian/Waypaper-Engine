@@ -76,11 +76,13 @@
 }
 
 [data-design="neobrutalist"] {
-  /* Existing radius overrides */
-  --wp-radius-sm: 0px;
-  --wp-radius-md: 0px;
-  --wp-radius-lg: 0px;
-  --wp-radius-xl: 0px;
+  /* Radius overrides — driven by the slider's --neo-radius (rem).
+     Default 0 keeps the signature sharp look; raising the slider
+     scales all four steps proportionally so visual hierarchy holds. */
+  --wp-radius-sm: calc(var(--neo-radius, 0rem) * 0.6);
+  --wp-radius-md: var(--neo-radius, 0rem);
+  --wp-radius-lg: calc(var(--neo-radius, 0rem) * 1.4);
+  --wp-radius-xl: calc(var(--neo-radius, 0rem) * 2);
 
   /* Borders */
   --wp-border-w: var(--neo-border-width, 4px);

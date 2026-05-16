@@ -262,7 +262,7 @@ function ImageCard({ Image }: ImageCardProps) {
 
   const rasterClass = isPolaroid
     ? "w-full h-auto aspect-[3/2] object-cover block"
-    : "transform-gpu rounded-lg transition-all duration-300 group-hover/card:scale-105 group-hover/card:object-center w-full h-auto aspect-[3/2] object-cover";
+    : "transform-gpu rounded-[var(--wp-radius-md)] transition-all duration-300 group-hover/card:scale-105 group-hover/card:object-center w-full h-auto aspect-[3/2] object-cover";
 
   const pictureWrapClass = isPolaroid ? "neo-polaroid-image" : "block size-full";
 
@@ -521,7 +521,7 @@ function ImageCard({ Image }: ImageCardProps) {
       data-image-id={String(Image.id)}
       onContextMenu={handleRightClick}
       onClick={toggleImageSelection}
-      className={`group relative w-full overflow-hidden rounded-lg duration-200 animate-fade-in${isDragging ? " opacity-50" : ""}`}
+      className={`group relative w-full overflow-hidden rounded-[var(--wp-radius-md)] duration-200 animate-fade-in${isDragging ? " opacity-50" : ""}`}
     >
       <input
         checked={isChecked}
