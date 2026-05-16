@@ -171,6 +171,97 @@ func buildIndividualTargetsLoadRequest(req backend.WallpaperRequest, cfg *Config
 	return out, nil
 }
 
+// contentKindString maps a Content variant to the wal-qt wire kind string.
+func contentKindString(c backend.Content) (string, error) {
+	switch c.(type) {
+	case backend.StaticImage, backend.GIF:
+		return "image", nil
+	case backend.Video:
+		return "video", nil
+	case backend.WebWallpaper:
+		return "web", nil
+	default:
+		return "", fmt.Errorf("wal-qt: unsupported content type %T", c)
+	}
+}
+
+// buildSnapshotLoadRequest builds a loadRequest from a Snapshot.
+// Each target row has exactly {name, kind, target} — no additional fields.
+// Root-level parallax_direction and wallpaper_config_values come from the first
+// WebWallpaper output; if outputs differ, only the first is used (wal-qt API limitation).
+func buildSnapshotLoadRequest(snap backend.Snapshot, cfg *Config) (loadRequest, error) {
+	if len(snap.Outputs) == 0 {
+		return loadRequest{}, fmt.Errorf("wal-qt: snapshot has no outputs")
+	}
+
+	// Determine root kind from the first output.
+	rootKind, err := contentKindString(snap.Outputs[0].Content)
+	if err != nil {
+		return loadRequest{}, err
+	}
+
+	targets := make([]loadTarget, 0, len(snap.Outputs))
+	for _, o := range snap.Outputs {
+		name := strings.TrimSpace(o.Monitor.Name)
+		if name == "" {
+			return loadRequest{}, fmt.Errorf("wal-qt: monitor has empty name")
+		}
+		path := strings.TrimSpace(o.Content.Path())
+		if path == "" {
+			return loadRequest{}, fmt.Errorf("wal-qt: empty path for monitor %q", name)
+		}
+		kind, err := contentKindString(o.Content)
+		if err != nil {
+			return loadRequest{}, err
+		}
+		targets = append(targets, loadTarget{
+			Name:   name,
+			Kind:   kind,
+			Target: path,
+		})
+	}
+
+	bezier := parseTransitionBezierOrDefault(cfg.TransitionBezier)
+	out := loadRequest{
+		Kind:       rootKind,
+		Targets:    targets,
+		Transition: cfg.Transition,
+		DurationMS: cfg.DurationMS,
+		TransitionParams: &transitionParamsBody{
+			Bezier:               bezier,
+			AngleDeg:             float64(cfg.TransitionAngleDeg),
+			OriginXPercent:       float32(cfg.TransitionOriginXPct),
+			OriginYPercent:       float32(cfg.TransitionOriginYPct),
+			WaveAmplitudePercent: cfg.TransitionWaveAmplitudePercent,
+			WaveFrequency:        cfg.TransitionWaveFrequency,
+		},
+		WaitForCompletion: true,
+	}
+	out.Parallax = buildParallaxRequestBody(cfg)
+
+	switch rootKind {
+	case "image":
+		out.ImageFitMode = cfg.ImageFitMode
+		out.ImageRendering = cfg.ImageRendering
+	case "video":
+		// AudioEnabled comes from the first Video content.
+		if vid, ok := snap.Outputs[0].Content.(backend.Video); ok {
+			out.AudioEnabled = vid.AudioEnabled
+		}
+	case "web":
+		// Parallax direction and config come from the first WebWallpaper content.
+		// If multiple outputs have different values, only the first is used
+		// (known limitation: wal-qt's LoadBody has no per-target parallax/config fields).
+		if web, ok := snap.Outputs[0].Content.(backend.WebWallpaper); ok {
+			if len(web.Config) > 0 {
+				out.WallpaperConfigValues = web.Config
+			}
+		}
+	}
+
+	return out, nil
+}
+
 type parallaxStateSnapshot struct {
 	Enabled     bool       `json:"enabled"`
 	Zoom        float32    `json:"zoom"`
