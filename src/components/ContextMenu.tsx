@@ -255,8 +255,7 @@ function SubmenuItem({
         const subRect = submenuRef.current.getBoundingClientRect();
         const vw = window.innerWidth;
         const vh = window.innerHeight;
-        const side =
-          parentRect.right + subRect.width + VIEWPORT_PADDING > vw ? "left" : "right";
+        const side = parentRect.right + subRect.width + VIEWPORT_PADDING > vw ? "left" : "right";
         let top = 0;
         const overflowBottom = parentRect.top + subRect.height + VIEWPORT_PADDING - vh;
         if (overflowBottom > 0) top = -overflowBottom;

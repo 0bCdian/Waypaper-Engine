@@ -168,12 +168,10 @@ export function createMockAPI(): Window["API_RENDERER"] {
         {
           name: "awww",
           available: true,
+          active: true,
           capabilities: {
+            content_kinds: ["static_image", "gif"],
             compositors: ["wayland"],
-            media_types: ["image"],
-            transitions: true,
-            per_monitor: true,
-            daemon_process: false,
           },
         },
       ]),

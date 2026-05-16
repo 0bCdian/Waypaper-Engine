@@ -261,7 +261,8 @@ const SETTINGS_SEARCH_ENTRIES: readonly SettingsSearchEntry[] = [
     section: "backend",
     key: "walqt.fill_color",
     label: "wal-qt fill color",
-    description: "Padding color when the image does not fully cover the monitor (RRGGBB / RRGGBBAA hex)",
+    description:
+      "Padding color when the image does not fully cover the monitor (RRGGBB / RRGGBBAA hex)",
     category: "Image Display",
   },
   {

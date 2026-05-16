@@ -424,17 +424,17 @@ export interface UnifiedConfig {
 // BACKEND TYPES
 // ============================================================================
 
+export type ContentKind = "static_image" | "gif" | "video" | "web_wallpaper";
+
 export interface BackendCapabilities {
+  content_kinds: ContentKind[];
   compositors: string[];
-  media_types: string[];
-  transitions: boolean;
-  per_monitor: boolean;
-  daemon_process: boolean;
 }
 
 export interface BackendInfo {
   name: string;
   available: boolean;
+  active: boolean;
   capabilities: BackendCapabilities;
 }
 
