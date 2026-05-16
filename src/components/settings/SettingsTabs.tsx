@@ -200,11 +200,12 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className, isModal =
                   "flex items-center gap-2.5 px-3 py-2 text-left w-full",
                   "rounded-[var(--wp-radius-sm)] text-sm transition-colors",
                   activeSection === item.id
-                    ? "neo-settings-nav-active bg-primary/12 text-primary font-medium"
-                    : "neo-settings-nav-link text-base-content/60 hover:bg-base-content/5 hover:text-base-content",
+                    ? "neo-settings-nav-active bg-primary/12 text-primary font-semibold"
+                    : "neo-settings-nav-link hover:bg-base-content/5 hover:text-base-content",
                 )}
+                style={activeSection !== item.id ? { color: "var(--wp-text-muted)" } : undefined}
               >
-                <span className="shrink-0 opacity-70">{item.icon}</span>
+                <span className="shrink-0">{item.icon}</span>
                 {item.label}
               </button>
             ))}
@@ -266,12 +267,13 @@ export const SettingsTabs: React.FC<SettingsTabsProps> = ({ className, isModal =
               type="button"
               onClick={() => selectSection(item.id)}
               className={cn(
-                "whitespace-nowrap rounded-lg px-3 py-2 xl:px-4 xl:py-2.5 text-sm xl:text-base transition-colors",
+                "whitespace-nowrap rounded-lg px-3 py-2 text-sm transition-colors",
                 "lg:w-full lg:text-left",
                 activeSection === item.id
                   ? "bg-base-content/10 font-medium text-base-content"
-                  : "text-base-content/60 hover:bg-base-content/5 hover:text-base-content",
+                  : "hover:bg-base-content/5 hover:text-base-content",
               )}
+              style={activeSection !== item.id ? { color: "var(--wp-text-muted)" } : undefined}
             >
               {item.label}
             </button>

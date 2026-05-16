@@ -21,19 +21,19 @@ export const SettingRow: React.FC<SettingRowProps> = ({
 }) => (
   <div
     className={cn(
-      "flex gap-3 lg:gap-4 xl:gap-5 py-4 xl:py-5 border-b border-base-content/5",
+      "flex gap-3 lg:gap-4 py-4 border-b border-base-content/5",
       stacked ? "flex-col" : "flex-col lg:flex-row lg:items-center lg:justify-between",
       className,
     )}
   >
     <div className="min-w-0 flex-1">
-      <div className="text-sm xl:text-base font-medium text-base-content">{label}</div>
+      <div className="text-sm font-medium text-base-content">{label}</div>
       {description && (
-        <div className="text-xs xl:text-sm mt-0.5" style={{ color: "var(--wp-text-muted)" }}>
+        <div className="text-sm mt-0.5" style={{ color: "var(--wp-text-muted)" }}>
           {description}
         </div>
       )}
-      {error && <div className="text-xs xl:text-sm text-error mt-1">{error}</div>}
+      {error && <div className="text-xs text-error mt-1">{error}</div>}
     </div>
     <div className={cn("flex-shrink-0", stacked ? "w-full" : "w-full lg:w-auto")}>{children}</div>
   </div>
@@ -52,14 +52,17 @@ export const SettingSectionHeader: React.FC<SettingSectionHeaderProps> = ({
   children,
   className,
 }) => (
-  <div className={cn("pt-6 xl:pt-8 pb-2 xl:pb-3 first:pt-0", className)}>
+  <div className={cn("pt-6 pb-2 first:pt-0", className)}>
     <div className="flex items-center justify-between">
       <div>
-        <h3 className="text-xs xl:text-sm font-semibold uppercase tracking-wider text-base-content/40">
+        <h3
+          className="text-xs font-semibold uppercase tracking-wider"
+          style={{ color: "var(--wp-text-muted)" }}
+        >
           {title}
         </h3>
         {description && (
-          <p className="text-xs xl:text-sm mt-0.5" style={{ color: "var(--wp-text-muted)" }}>
+          <p className="text-xs mt-0.5" style={{ color: "var(--wp-text-muted)" }}>
             {description}
           </p>
         )}

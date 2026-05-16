@@ -117,7 +117,8 @@ export const SettingsSearch: React.FC<SettingsSearchProps> = ({
       <div className="relative">
         <div className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none">
           <svg
-            className="size-3.5 text-base-content/40"
+            className="size-3.5"
+            style={{ color: "var(--wp-text-faint)" }}
             fill="none"
             stroke="currentColor"
             viewBox="0 0 24 24"
@@ -147,7 +148,7 @@ export const SettingsSearch: React.FC<SettingsSearchProps> = ({
         />
         {searchTerm && (
           <button
-            className="absolute inset-y-0 right-0 pr-2.5 flex items-center hover:text-base-content/60 transition-colors"
+            className="absolute inset-y-0 right-0 pr-2.5 flex items-center hover:text-base-content transition-colors"
             onClick={() => {
               onSearchClear();
               inputRef.current?.focus();
@@ -186,12 +187,20 @@ export const SettingsSearch: React.FC<SettingsSearchProps> = ({
             >
               <div className="flex items-center gap-2">
                 <span className="font-medium text-xs">{s.label}</span>
-                <span className="text-[10px] text-base-content/60 bg-base-200 px-1.5 py-0.5 rounded">
+                <span
+                  className="text-xs px-1.5 py-0.5 rounded"
+                  style={{
+                    color: "var(--wp-text-muted)",
+                    backgroundColor: "var(--wp-surface-2)",
+                  }}
+                >
                   {s.category}
                 </span>
               </div>
               {!compact && (
-                <p className="text-[10px] text-base-content/50 mt-0.5 truncate">{s.description}</p>
+                <p className="text-xs mt-0.5 truncate" style={{ color: "var(--wp-text-faint)" }}>
+                  {s.description}
+                </p>
               )}
             </button>
           ))}
