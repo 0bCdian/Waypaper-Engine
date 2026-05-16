@@ -379,7 +379,7 @@ function WallhavenPage() {
 
         {/* Row B: filter groups with hairline separators */}
         <div
-          className="px-3 py-1.5 flex items-center gap-0 border-t"
+          className="px-3 py-1.5 flex flex-wrap items-center gap-y-2 border-t"
           style={{ borderColor: "var(--wp-hairline)" }}
         >
           {/* Category group */}
