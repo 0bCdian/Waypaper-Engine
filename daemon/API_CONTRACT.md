@@ -936,7 +936,7 @@ Returns the persisted configuration JSON for a **named** registered backend (e.g
 
 Updates a named backend’s subsection. Body is a JSON object merged into that backend’s config; it is validated with that backend’s `ValidateConfig()` before save.
 
-**Runtime sync**: `backend.OnConfigChanged` is called **only** when `{backend}` equals the **currently active** backend.
+**Runtime sync**: when `{backend}` equals the **currently active** backend, the daemon rebuilds the current snapshot and calls `backend.Apply` so the new config takes effect immediately.
 
 **Response** `200`: `{"status":"updated"}` (or equivalent success body used elsewhere for config patches).
 
@@ -959,45 +959,37 @@ List all registered backends and their availability.
   {
     "name": "wal-qt",
     "available": true,
+    "active": true,
     "capabilities": {
-      "compositors": ["wayland"],
-      "media_types": ["image"],
-      "transitions": true,
-      "per_monitor": true,
-      "daemon_process": true
+      "content_kinds": ["static_image", "gif", "video", "web_wallpaper"],
+      "compositors": ["wayland"]
     }
   },
   {
     "name": "awww",
     "available": true,
+    "active": false,
     "capabilities": {
-      "compositors": ["wayland"],
-      "media_types": ["image"],
-      "transitions": true,
-      "per_monitor": true,
-      "daemon_process": true
+      "content_kinds": ["static_image", "gif"],
+      "compositors": ["wayland"]
     }
   },
   {
     "name": "feh",
     "available": false,
+    "active": false,
     "capabilities": {
-      "compositors": ["x11"],
-      "media_types": ["image"],
-      "transitions": false,
-      "per_monitor": true,
-      "daemon_process": false
+      "content_kinds": ["static_image"],
+      "compositors": ["x11"]
     }
   },
   {
     "name": "mpvpaper",
     "available": true,
+    "active": false,
     "capabilities": {
-      "compositors": ["wayland"],
-      "media_types": ["video"],
-      "transitions": false,
-      "per_monitor": true,
-      "daemon_process": false
+      "content_kinds": ["video"],
+      "compositors": ["wayland"]
     }
   }
 ]
