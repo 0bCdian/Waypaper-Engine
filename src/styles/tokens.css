@@ -306,6 +306,11 @@
   letter-spacing: 0.02em;
 }
 
+/* Wallhaven toolbar: drop vertical hairline separators in neobrutalist — heavy borders carry enough structure */
+[data-design="neobrutalist"] .wp-toolbar-hairline {
+  display: none;
+}
+
 /* Containment: when inside a tinted alert, derive colors from currentColor
    so the kbd is always readable regardless of the alert hue. */
 .alert .wp-kbd,
