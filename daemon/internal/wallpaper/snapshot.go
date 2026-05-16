@@ -144,8 +144,8 @@ func BuildSnapshot(
 			if !errors.Is(err, store.ErrNotFound) {
 				return backend.Snapshot{}, nil, err
 			}
-			// Row missing — orphan cascade.
-			if _, already := purgedIDs[asgn.imageID]; !already {
+			// Row missing — orphan cascade (only when all required stores are available).
+			if _, already := purgedIDs[asgn.imageID]; !already && monStateStore != nil && historyStore != nil && playlistStore != nil {
 				purgedIDs[asgn.imageID] = struct{}{}
 				result, purgeErr := store.PurgeImageReferences(ctx, asgn.imageID, monStateStore, historyStore, playlistStore)
 				if purgeErr == nil && bus != nil {
@@ -174,7 +174,7 @@ func BuildSnapshot(
 
 		// 2c. Stat the image file.
 		if _, statErr := os.Stat(img.Path); statErr != nil {
-			if _, already := purgedIDs[asgn.imageID]; !already {
+			if _, already := purgedIDs[asgn.imageID]; !already && monStateStore != nil && historyStore != nil && playlistStore != nil {
 				purgedIDs[asgn.imageID] = struct{}{}
 				result, purgeErr := store.PurgeImageReferences(ctx, asgn.imageID, monStateStore, historyStore, playlistStore)
 				if purgeErr == nil && bus != nil {

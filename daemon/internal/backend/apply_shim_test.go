@@ -1,10 +1,7 @@
-// Package backend_test contains smoke tests for the Apply shims added in T5.
-// Each backend's Apply shim translates a Snapshot → WallpaperRequest and delegates
-// to SetWallpaper. These tests verify that:
+// Package backend_test contains smoke tests for Apply across all backends. These tests verify:
 //   - Apply with an empty Snapshot returns nil without panicking.
-//   - Apply with a non-empty Snapshot delegates to the backend's normal path
-//     (which may fail with "binary not found" on systems without the binary —
-//     that is acceptable; the test only verifies the shim wiring, not the binary).
+//   - Apply with a non-empty Snapshot does not panic (may return an error on systems
+//     without the required binary installed — that is acceptable).
 //   - ContentToMediaType maps every Content variant correctly.
 package backend_test
 
@@ -55,9 +52,8 @@ func TestApplyEmptySnapshot(t *testing.T) {
 	}
 }
 
-// TestApplyDelegatesForNonEmpty verifies Apply with a real Snapshot delegates into
-// SetWallpaper's code path. On systems without the required binary the call returns
-// an error (not a panic) — which is the expected shim behaviour.
+// TestApplyDelegatesForNonEmpty verifies Apply with a real Snapshot does not panic.
+// On systems without the required binary the call returns an error — which is acceptable.
 func TestApplyDelegatesForNonEmpty(t *testing.T) {
 	snap := sampleSnapshot()
 	backends := []backend.Backend{

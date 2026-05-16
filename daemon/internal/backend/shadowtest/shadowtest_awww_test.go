@@ -9,14 +9,12 @@ import (
 
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/backend/shadowtest"
-	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
 )
 
-// TestAwww_ShadowEquivalence_SingleMonitor verifies that Apply and SetWallpaper
-// produce identical invocation sets for one monitor with one image.
-// The legacy request uses ModeIndividual so SetWallpaper emits --outputs, matching Apply.
-func TestAwww_ShadowEquivalence_SingleMonitor(t *testing.T) {
+// TestAwww_Apply_SingleMonitor verifies that Apply emits one "awww img" invocation
+// with --outputs for a single monitor.
+func TestAwww_Apply_SingleMonitor(t *testing.T) {
 	captor := shadowtest.NewAwwwCaptor(t)
 
 	mon := monitor.Monitor{Name: "DP-1"}
@@ -25,24 +23,18 @@ func TestAwww_ShadowEquivalence_SingleMonitor(t *testing.T) {
 			{Monitor: mon, Content: backend.StaticImage{Path_: "/tmp/wall.png"}},
 		},
 	}
-	legacy := backend.WallpaperRequest{
-		MediaType: media.MediaTypeImage,
-		ImagePath: "/tmp/wall.png",
-		Monitors:  []monitor.Monitor{mon},
-		Mode:      monitor.ModeIndividual,
-	}
 
-	shadowtest.CompareFixture(t, captor, shadowtest.Fixture{
-		Name:          "single_monitor_single_image",
-		Snapshot:      snap,
-		LegacyRequest: legacy,
-	})
+	_ = captor.CaptureApply(t, snap)
+	invs := captor.LastInvocations()
+
+	require.Len(t, invs, 1, "single monitor must produce one invocation")
+	require.Equal(t, "img", invs[0][0])
+	require.Equal(t, "/tmp/wall.png", invs[0][1])
+	require.Contains(t, invs[0], "--outputs")
 }
 
 // TestAwww_Apply_TwoMonitorsSameImage verifies that Apply produces ONE "awww img"
 // invocation with --outputs DP-1,DP-2 when both monitors share the same image.
-// Shadow comparison is skipped: SetWallpaper(ModeClone) omits --outputs entirely
-// (targets all monitors globally), which differs from Apply's explicit --outputs.
 func TestAwww_Apply_TwoMonitorsSameImage(t *testing.T) {
 	captor := shadowtest.NewAwwwCaptor(t)
 
@@ -78,7 +70,6 @@ func TestAwww_Apply_TwoMonitorsSameImage(t *testing.T) {
 
 // TestAwww_Apply_TwoMonitorsDifferentImages verifies that Apply produces TWO
 // "awww img" invocations when the two monitors have different image paths.
-// Apply-only: SetWallpaper cannot express per-monitor image assignment.
 func TestAwww_Apply_TwoMonitorsDifferentImages(t *testing.T) {
 	captor := shadowtest.NewAwwwCaptor(t)
 
@@ -108,12 +99,9 @@ func TestAwww_Apply_TwoMonitorsDifferentImages(t *testing.T) {
 }
 
 // TestAwww_Apply_TransitionViperConfig verifies that transition config set in viper
-// is propagated into the argv produced by Apply. Transitions are viper config
-// consumed by the backend at Apply time; they do not appear on the Snapshot.
+// is propagated into the argv produced by Apply.
 func TestAwww_Apply_TransitionViperConfig(t *testing.T) {
-	// Build captor manually so we can inject a non-default viper.
 	captor := shadowtest.NewAwwwCaptor(t)
-	// Re-register defaults with a custom viper that overrides transition_type.
 	v := viper.New()
 	v.Set("backend.awww.transition_type", "fade")
 	captor.Backend().RegisterDefaults(v)

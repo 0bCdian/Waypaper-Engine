@@ -9,13 +9,11 @@ import (
 
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/backend/shadowtest"
-	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
 )
 
-// TestMpvpaper_ShadowEquivalence_OneMonitor verifies that Apply and SetWallpaper
-// produce identical action sets for a single video on one monitor (fresh state).
-func TestMpvpaper_ShadowEquivalence_OneMonitor(t *testing.T) {
+// TestMpvpaper_Apply_OneMonitor verifies Apply starts one process for a single monitor.
+func TestMpvpaper_Apply_OneMonitor(t *testing.T) {
 	captor := shadowtest.NewMpvpaperCaptor(t)
 
 	mon := monitor.Monitor{Name: "DP-1"}
@@ -24,24 +22,17 @@ func TestMpvpaper_ShadowEquivalence_OneMonitor(t *testing.T) {
 			{Monitor: mon, Content: backend.Video{Path_: "/tmp/video.mp4", AudioEnabled: false}},
 		},
 	}
-	legacy := backend.WallpaperRequest{
-		MediaType:    media.MediaTypeVideo,
-		ImagePath:    "/tmp/video.mp4",
-		Monitors:     []monitor.Monitor{mon},
-		Mode:         monitor.ModeClone,
-		AudioEnabled: false,
-	}
 
-	shadowtest.CompareFixture(t, captor, shadowtest.Fixture{
-		Name:          "one_monitor_one_video",
-		Snapshot:      snap,
-		LegacyRequest: legacy,
-	})
+	_ = captor.CaptureApply(t, snap)
+	acts := captor.Actions()
+
+	require.Len(t, acts, 1)
+	require.Equal(t, "start", acts[0].Kind)
+	require.Equal(t, "DP-1", acts[0].Monitor)
 }
 
-// TestMpvpaper_ShadowEquivalence_TwoMonitors verifies that Apply and SetWallpaper
-// produce identical action sets for two monitors playing the same video (fresh state).
-func TestMpvpaper_ShadowEquivalence_TwoMonitors(t *testing.T) {
+// TestMpvpaper_Apply_TwoMonitors verifies Apply starts two processes for two monitors.
+func TestMpvpaper_Apply_TwoMonitors(t *testing.T) {
 	captor := shadowtest.NewMpvpaperCaptor(t)
 
 	mon1 := monitor.Monitor{Name: "DP-1"}
@@ -52,24 +43,21 @@ func TestMpvpaper_ShadowEquivalence_TwoMonitors(t *testing.T) {
 			{Monitor: mon2, Content: backend.Video{Path_: "/tmp/video.mp4", AudioEnabled: false}},
 		},
 	}
-	legacy := backend.WallpaperRequest{
-		MediaType:    media.MediaTypeVideo,
-		ImagePath:    "/tmp/video.mp4",
-		Monitors:     []monitor.Monitor{mon1, mon2},
-		Mode:         monitor.ModeClone,
-		AudioEnabled: false,
-	}
 
-	shadowtest.CompareFixture(t, captor, shadowtest.Fixture{
-		Name:          "two_monitors_same_video",
-		Snapshot:      snap,
-		LegacyRequest: legacy,
-	})
+	_ = captor.CaptureApply(t, snap)
+	acts := captor.Actions()
+
+	var starts []shadowtest.MpvAction
+	for _, a := range acts {
+		if a.Kind == "start" {
+			starts = append(starts, a)
+		}
+	}
+	require.Len(t, starts, 2)
 }
 
 // TestMpvpaper_Reconcile_ChangeVideo verifies that Apply correctly stops the old
 // process and starts a new one when the video path changes on a monitor.
-// State persists between Apply calls to test per-output reconciliation.
 func TestMpvpaper_Reconcile_ChangeVideo(t *testing.T) {
 	captor := shadowtest.NewMpvpaperCaptor(t)
 	ctx := context.Background()
@@ -91,7 +79,6 @@ func TestMpvpaper_Reconcile_ChangeVideo(t *testing.T) {
 	require.Equal(t, "DP-1", acts1[0].Monitor)
 
 	// Second Apply: different path → kill old, start new.
-	// Do NOT reset procs — we want state from the first Apply to persist.
 	captor.ResetActions()
 	snap2 := backend.Snapshot{
 		Outputs: []backend.Output{
@@ -121,7 +108,6 @@ func TestMpvpaper_Reconcile_ChangeVideo(t *testing.T) {
 
 // TestMpvpaper_Reconcile_RemoveMonitor verifies that a snapshot no longer listing
 // a monitor causes Apply to kill that monitor's process.
-// This is Apply-only: SetWallpaper cannot express "stop this monitor."
 func TestMpvpaper_Reconcile_RemoveMonitor(t *testing.T) {
 	captor := shadowtest.NewMpvpaperCaptor(t)
 	ctx := context.Background()
@@ -161,7 +147,6 @@ func TestMpvpaper_Reconcile_RemoveMonitor(t *testing.T) {
 }
 
 // TestMpvpaper_AudioFlag verifies that the audio flag is correctly reflected in argv.
-// audio=false → argv contains "no-audio" in -o value; audio=true → it does not.
 func TestMpvpaper_AudioFlag(t *testing.T) {
 	t.Run("no_audio", func(t *testing.T) {
 		captor := shadowtest.NewMpvpaperCaptor(t)

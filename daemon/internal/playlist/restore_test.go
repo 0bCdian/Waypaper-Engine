@@ -21,10 +21,10 @@ import (
 // Minimal fakes only for this test file
 // ---------------------------------------------------------------------------
 
-// recordingBackend captures every SetWallpaper call for assertions.
+// recordingBackend captures every Apply call for assertions.
 type recordingBackend struct {
 	mu    sync.Mutex
-	calls []backend.WallpaperRequest
+	calls []backend.Snapshot
 }
 
 func (b *recordingBackend) Name() string      { return "recording" }
@@ -34,19 +34,14 @@ func (b *recordingBackend) Capabilities() backend.Capabilities {
 		ContentKinds: []backend.ContentKind{backend.KindStaticImage, backend.KindGIF},
 	}
 }
-func (b *recordingBackend) Initialize(_ context.Context) error                { return nil }
-func (b *recordingBackend) Shutdown(_ context.Context) error                  { return nil }
-func (b *recordingBackend) RegisterDefaults(_ *viper.Viper)                   {}
-func (b *recordingBackend) ValidateConfig(_ json.RawMessage) error            { return nil }
-func (b *recordingBackend) ParseConfig(_ json.RawMessage) (any, error)        { return nil, nil }
-func (b *recordingBackend) Apply(_ context.Context, _ backend.Snapshot) error { return nil }
-func (b *recordingBackend) OnConfigChanged(_ context.Context, _ json.RawMessage) error {
-	return nil
-}
-func (b *recordingBackend) SetWallpaper(_ context.Context, req backend.WallpaperRequest) error {
+func (b *recordingBackend) Initialize(_ context.Context) error     { return nil }
+func (b *recordingBackend) Shutdown(_ context.Context) error       { return nil }
+func (b *recordingBackend) RegisterDefaults(_ *viper.Viper)        {}
+func (b *recordingBackend) ValidateConfig(_ json.RawMessage) error { return nil }
+func (b *recordingBackend) Apply(_ context.Context, snap backend.Snapshot) error {
 	b.mu.Lock()
 	defer b.mu.Unlock()
-	b.calls = append(b.calls, req)
+	b.calls = append(b.calls, snap)
 	return nil
 }
 
@@ -385,12 +380,12 @@ func TestRestorePersistedRuns_DoesNotReapplyWallpaper(t *testing.T) {
 	err := mgr.RestorePersistedRuns(ctx)
 	require.NoError(t, err)
 
-	// --- Assert 1: zero SetWallpaper calls ---
+	// --- Assert 1: zero Apply calls ---
 	rec.mu.Lock()
 	callCount := len(rec.calls)
 	rec.mu.Unlock()
 	assert.Equal(t, 0, callCount,
-		"RestorePersistedRuns must not call SetWallpaper; wallpaper.Restore owns that path")
+		"RestorePersistedRuns must not call Apply on the backend; wallpaper.Restore owns that path")
 
 	// --- Assert 2: both playlists are active in the state store ---
 	inst1 := stateStore.GetActivePlaylistByID(1)

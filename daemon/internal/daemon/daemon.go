@@ -159,9 +159,6 @@ func (d *Daemon) Start(ctx context.Context) error {
 			})
 		} else {
 			slog.Info("backend initialized", "name", activeBackend.Name())
-			if err := activeBackend.OnConfigChanged(ctx, nil); err != nil {
-				slog.Warn("backend config sync after init failed", "error", err)
-			}
 		}
 	} else {
 		slog.Warn("no wallpaper backend is installed; daemon running in degraded mode")

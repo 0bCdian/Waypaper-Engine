@@ -12,7 +12,6 @@ import (
 	"syscall"
 
 	"waypaper-engine/daemon/internal/backend"
-	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
 
 	"github.com/spf13/viper"
@@ -116,57 +115,6 @@ func (m *Mpvpaper) Shutdown(context.Context) error {
 	return nil
 }
 
-// OnConfigChanged is a no-op for mpvpaper. Config is read from Viper at SetWallpaper time.
-// The daemon control layer re-applies the current wallpaper after this returns.
-func (m *Mpvpaper) OnConfigChanged(_ context.Context, _ json.RawMessage) error {
-	return nil
-}
-
-func (m *Mpvpaper) SetWallpaper(_ context.Context, req backend.WallpaperRequest) error {
-	if req.MediaType != media.MediaTypeVideo {
-		return fmt.Errorf("mpvpaper: unsupported media type %q (only %q)", req.MediaType, media.MediaTypeVideo)
-	}
-	if !m.IsAvailable() {
-		return fmt.Errorf("mpvpaper: %s not found in PATH", binary)
-	}
-	if len(req.Monitors) == 0 {
-		return fmt.Errorf("mpvpaper: no monitors in request")
-	}
-	if strings.TrimSpace(req.ImagePath) == "" {
-		return fmt.Errorf("mpvpaper: empty image path")
-	}
-
-	cfg, _ := req.Config.(*Config)
-	if cfg == nil {
-		cfg = m.loadConfigFromViper()
-	}
-	if err := validateConfig(cfg); err != nil {
-		return err
-	}
-
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	for _, mon := range req.Monitors {
-		if strings.TrimSpace(mon.Name) == "" {
-			return fmt.Errorf("mpvpaper: empty monitor name")
-		}
-		out := mon.Name
-		if old := m.procs[out]; old != nil {
-			m.killFn(out, old)
-			delete(m.procs, out)
-		}
-		args := buildMpvpaperArgs(out, req.ImagePath, cfg, req.AudioEnabled)
-		slog.Debug("mpvpaper command", "binary", binary, "args", args)
-		cmd, err := m.execFn(out, args)
-		if err != nil {
-			return err
-		}
-		m.procs[out] = &procState{cmd: cmd, path: req.ImagePath, audioEnabled: req.AudioEnabled}
-	}
-	return nil
-}
-
 // Apply implements backend.Backend by natively consuming a Snapshot.
 // It reconciles the desired state (snap.Outputs) against the currently-running
 // per-output processes:
@@ -256,10 +204,6 @@ func (m *Mpvpaper) ValidateConfig(raw json.RawMessage) error {
 		return fmt.Errorf("mpvpaper: parse config: %w", err)
 	}
 	return validateConfig(&c)
-}
-
-func (m *Mpvpaper) ParseConfig(raw json.RawMessage) (any, error) {
-	return backend.UnmarshalParseConfig[Config](raw, "mpvpaper")
 }
 
 func validateConfig(cfg *Config) error {

@@ -72,7 +72,8 @@ func TestReconcileAfterPlaylistUpdate_InsertAndReorder(t *testing.T) {
 
 	rec.mu.Lock()
 	require.Len(t, rec.calls, 1)
-	assert.Equal(t, "/1.jpg", rec.calls[0].ImagePath, "startPlaylist should apply first image")
+	require.NotEmpty(t, rec.calls[0].Outputs)
+	assert.Equal(t, "/1.jpg", rec.calls[0].Outputs[0].Content.Path(), "startPlaylist should apply first image")
 	rec.mu.Unlock()
 
 	// Simulate state after scheduler advanced once: currently on img2 (CurrentIndex=1).
@@ -101,7 +102,8 @@ func TestReconcileAfterPlaylistUpdate_InsertAndReorder(t *testing.T) {
 
 	rec.mu.Lock()
 	require.Len(t, rec.calls, 1, "reconcile must re-apply the current image")
-	assert.Equal(t, "/2.jpg", rec.calls[0].ImagePath, "reconcile must re-apply img2 (no visual change)")
+	require.NotEmpty(t, rec.calls[0].Outputs)
+	assert.Equal(t, "/2.jpg", rec.calls[0].Outputs[0].Content.Path(), "reconcile must re-apply img2 (no visual change)")
 	rec.mu.Unlock()
 
 	// Verify scheduler currentIndex = 1 so the next natural tick goes to index 2 = img4.
@@ -196,7 +198,8 @@ func TestReconcileAfterPlaylistUpdate_CurrentImageMovedSlot(t *testing.T) {
 
 	rec.mu.Lock()
 	require.Len(t, rec.calls, 1)
-	assert.Equal(t, "/3.jpg", rec.calls[0].ImagePath, "reconcile must re-apply img3 (now at slot 0)")
+	require.NotEmpty(t, rec.calls[0].Outputs)
+	assert.Equal(t, "/3.jpg", rec.calls[0].Outputs[0].Content.Path(), "reconcile must re-apply img3 (now at slot 0)")
 	rec.mu.Unlock()
 
 	mgr.mu.RLock()
@@ -298,17 +301,21 @@ func TestReconcileAfterPlaylistUpdate_ShortInterval_TickShowsNextImage(t *testin
 	for time.Now().Before(deadline) {
 		time.Sleep(30 * time.Millisecond)
 		rec.mu.Lock()
-		calls := append([]backend.WallpaperRequest(nil), rec.calls...)
+		calls := append([]backend.Snapshot(nil), rec.calls...)
 		rec.mu.Unlock()
 		// calls[0] = startPlaylist img1, calls[1] = reconcile img2, calls[2+] = ticks
 		for i := 2; i < len(calls); i++ {
-			if calls[i].ImagePath == "/4.jpg" {
+			if len(calls[i].Outputs) == 0 {
+				continue
+			}
+			path := calls[i].Outputs[0].Content.Path()
+			if path == "/4.jpg" {
 				img4Seen = true
 				break
 			}
 			// Any call that is NOT img4 before img4 is a bug (img4+img5 skipped).
-			if calls[i].ImagePath != "/2.jpg" {
-				t.Errorf("unexpected image before img4: got %s, want /4.jpg", calls[i].ImagePath)
+			if path != "/2.jpg" {
+				t.Errorf("unexpected image before img4: got %s, want /4.jpg", path)
 				return
 			}
 		}

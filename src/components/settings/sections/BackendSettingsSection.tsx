@@ -254,6 +254,22 @@ const mpvpaperFields: Field[] = [
   },
 ];
 
+const swaybgDisplayFields: Field[] = [
+  {
+    key: "swaybg.fit_mode",
+    label: "Fit Mode",
+    description: "How swaybg scales the wallpaper image (mapped to swaybg --mode)",
+    type: "select",
+    options: [
+      { value: "stretch", label: "Stretch (fill, ignore aspect ratio)" },
+      { value: "fit", label: "Fit (contain, letterbox)" },
+      { value: "fill", label: "Fill (cover, crop)" },
+      { value: "center", label: "Center (no scaling)" },
+      { value: "tile", label: "Tile (repeat)" },
+    ],
+  },
+];
+
 const walQtTransitionFields: Field[] = [
   {
     key: "walqt.transition",
@@ -718,6 +734,8 @@ function fieldGroupsForBackend(backendId: string): BackendFieldGroup[] {
       ];
     case "mpvpaper":
       return [{ title: "Video (Wayland)", fields: mpvpaperFields }];
+    case "swaybg":
+      return [{ title: "Image Display", fields: swaybgDisplayFields }];
     case "wal-qt":
       return [
         { title: "Image Display", fields: walQtImageFields },
@@ -749,6 +767,7 @@ const BACKEND_MEDIA_SUPPORT: Record<string, MediaCategory[]> = {
   awww: ["image"],
   hyprpaper: ["image"],
   feh: ["image"],
+  swaybg: ["image"],
   "wal-qt": ["image", "video", "web"],
   mpvpaper: ["video"],
 };
@@ -1019,7 +1038,7 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
   const backendType = config?.backend?.type;
   const selectionMode = config?.backend?.selection_mode ?? "fixed";
   const autoPriorities = config?.backend?.auto_priorities ?? {
-    image: ["awww", "hyprpaper", "feh", "wal-qt"],
+    image: ["awww", "hyprpaper", "swaybg", "feh", "wal-qt"],
     video: ["mpvpaper", "wal-qt"],
     web: ["wal-qt"],
   };

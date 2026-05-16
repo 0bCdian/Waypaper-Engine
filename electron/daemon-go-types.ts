@@ -314,6 +314,7 @@ export interface BackendSection {
   feh?: FehConfig;
   hyprpaper?: HyprpaperConfig;
   mpvpaper?: MpvpaperConfig;
+  swaybg?: SwaybgConfig;
   /** Merged from [backend.wal-qt] (hyphenated TOML table). */
   "wal-qt"?: WalQtConfig;
 }
@@ -341,6 +342,12 @@ export interface FehConfig {
 export interface HyprpaperConfig {
   fit_mode: string;
   config_path: string;
+}
+
+/** swaybg Wayland image wallpaper setter ([backend.swaybg] in TOML). */
+export interface SwaybgConfig {
+  /** swaybg `-m` mode: stretch | fit | fill | center | tile. */
+  fit_mode: string;
 }
 
 /** mpvpaper Wayland video wallpaper backend ([backend.mpvpaper] in TOML). */

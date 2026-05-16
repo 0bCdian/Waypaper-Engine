@@ -10,7 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"regexp"
-	"slices"
 	"strings"
 	"sync"
 	"sync/atomic"
@@ -389,112 +388,6 @@ func (w *WalQt) ensureRunning(ctx context.Context, cfg *Config) error {
 	return nil
 }
 
-func (w *WalQt) SetWallpaper(ctx context.Context, req backend.WallpaperRequest) error {
-	cfg, _ := req.Config.(*Config)
-	if cfg == nil {
-		cfg = w.loadConfigFromViper()
-	}
-
-	const statusRounds = 2
-	var status *statusResponse
-	var err error
-	for round := range statusRounds {
-		if err = w.ensureRunning(ctx, cfg); err != nil {
-			return err
-		}
-		var client *controlClient
-		client, err = w.makeControlClient(cfg)
-		if err != nil {
-			return err
-		}
-		status, err = w.getStatusWithRetry(ctx, client)
-		if err == nil {
-			break
-		}
-		if !isRetryableControlStatusErr(err) || round == statusRounds-1 {
-			return fmt.Errorf("wal-qt: get status after reconnect: %w", err)
-		}
-		slog.Info("wal-qt: status still failing after ensure, retrying round", "round", round+1, "error", err)
-	}
-	if err != nil || status == nil {
-		return fmt.Errorf("wal-qt: get status: %w", err)
-	}
-
-	loadReq, err := buildLoadRequest(req, cfg)
-	if err != nil {
-		return err
-	}
-
-	const loadAttempts = 7
-	delay := 200 * time.Millisecond
-	const maxDelay = 5 * time.Second
-	var lastErr error
-	for attempt := range loadAttempts {
-		if attempt > 0 {
-			select {
-			case <-time.After(delay):
-			case <-ctx.Done():
-				return ctx.Err()
-			}
-			next := min(delay*2, maxDelay)
-			delay = next
-		}
-
-		client, cerr := w.makeControlClient(cfg)
-		if cerr != nil {
-			return cerr
-		}
-		statusCode, body, callErr := client.load(ctx, loadReq)
-		if callErr != nil {
-			lastErr = callErr
-			if !isRetryableError(callErr) || attempt == loadAttempts-1 {
-				return fmt.Errorf("wal-qt: load request failed after %d attempt(s): %w", attempt+1, callErr)
-			}
-			continue
-		}
-
-		if statusCode >= 200 && statusCode < 300 {
-			w.noteWallpaperParallaxDirection(cfg, &req)
-			if loadReq.Parallax != nil {
-				return nil
-			}
-			if strings.EqualFold(loadReq.Kind, "web") {
-				return nil
-			}
-			pErr := client.setParallax(ctx, buildParallaxRequestBody(cfg))
-			if pErr != nil {
-				return fmt.Errorf("wal-qt: parallax sync: %w", pErr)
-			}
-			return nil
-		}
-
-		httpErr := classifyHTTPError(statusCode, body)
-		lastErr = httpErr
-		if !isTransientHTTPStatus(statusCode) || attempt == loadAttempts-1 {
-			return fmt.Errorf("wal-qt: load request failed after %d attempt(s): %w", attempt+1, httpErr)
-		}
-	}
-
-	if lastErr != nil {
-		return fmt.Errorf("wal-qt: load request failed after %d attempt(s): %w", loadAttempts, lastErr)
-	}
-
-	// Update parallax group from the request. ExtendGroup is non-nil only when
-	// apply.go split a static image across multiple monitors (extend mode).
-	w.extendParallaxMu.Lock()
-	if len(req.ExtendGroup) >= 2 {
-		cp := make([]string, len(req.ExtendGroup))
-		copy(cp, req.ExtendGroup)
-		slices.Sort(cp)
-		w.extendParallaxGroup = cp
-	} else {
-		w.extendParallaxGroup = nil
-	}
-	w.extendParallaxMu.Unlock()
-
-	return fmt.Errorf("wal-qt: load request failed without explicit error")
-}
-
 func (w *WalQt) expandParallaxMoveTargets(outputName string) []string {
 	w.extendParallaxMu.Lock()
 	g := w.extendParallaxGroup
@@ -523,11 +416,8 @@ func (w *WalQt) recomputeWorkspaceParallaxVertical(cfg *Config) {
 	w.workspaceParallaxVertical.Store(v)
 }
 
-func (w *WalQt) noteWallpaperParallaxDirection(cfg *Config, req *backend.WallpaperRequest) {
-	if req == nil {
-		return
-	}
-	raw := strings.ToLower(strings.TrimSpace(req.ParallaxDirection))
+func (w *WalQt) noteWallpaperParallaxDirection(cfg *Config, parallaxDirection string) {
+	raw := strings.ToLower(strings.TrimSpace(parallaxDirection))
 	switch raw {
 	case "vertical", "horizontal":
 		w.parallaxManifestDirMu.Lock()
@@ -636,6 +526,7 @@ func (w *WalQt) RegisterDefaults(v *viper.Viper) {
 }
 
 func (w *WalQt) ValidateConfig(raw json.RawMessage) error {
+
 	var cfg Config
 	if err := json.Unmarshal(raw, &cfg); err != nil {
 		return fmt.Errorf("wal-qt: parse config: %w", err)
@@ -666,10 +557,6 @@ func (w *WalQt) ValidateConfig(raw json.RawMessage) error {
 		}
 	}
 	return nil
-}
-
-func (w *WalQt) ParseConfig(raw json.RawMessage) (any, error) {
-	return backend.UnmarshalParseConfig[Config](raw, backend.WalQtBackendName)
 }
 
 func (w *WalQt) loadConfigFromViper() *Config {
@@ -832,37 +719,6 @@ func (w *WalQt) PushWebCapabilities(ctx context.Context, sourceTarget string, ca
 	return nil
 }
 
-func (w *WalQt) OnConfigChanged(ctx context.Context, _ json.RawMessage) error {
-	cfg := w.loadConfigFromViper()
-	client, err := w.makeControlClient(cfg)
-	if err != nil {
-		return fmt.Errorf("wal-qt: runtime sync: %w", err)
-	}
-	if err := client.setParallax(ctx, buildParallaxRequestBody(cfg)); err != nil {
-		return fmt.Errorf("wal-qt: runtime sync parallax: %w", err)
-	}
-	w.syncParallaxDriver(cfg)
-	if err := client.setAllowNetworkWallpapers(ctx, cfg.AllowNetworkWallpapers); err != nil {
-		return fmt.Errorf("wal-qt: runtime sync network policy: %w", err)
-	}
-	fit := strings.TrimSpace(cfg.ImageFitMode)
-	if fit == "" {
-		fit = "cover"
-	}
-	rend := strings.TrimSpace(cfg.ImageRendering)
-	if rend == "" {
-		rend = "auto"
-	}
-	fill := strings.TrimPrefix(strings.TrimSpace(cfg.FillColor), "#")
-	if !fillColorPattern.MatchString(fill) {
-		fill = "000000ff"
-	}
-	if err := client.setImagePresentation(ctx, fit, rend, fill); err != nil {
-		return fmt.Errorf("wal-qt: runtime sync image presentation: %w", err)
-	}
-	return nil
-}
-
 // slogWriter is an io.Writer that logs each line via slog at Info level.
 type slogWriter struct{ prefix string }
 
@@ -928,10 +784,9 @@ func (w *WalQt) Apply(ctx context.Context, snap backend.Snapshot) error {
 		if statusCode >= 200 && statusCode < 300 {
 			// Track parallax direction from the first web output for workspace parallax.
 			if web, ok := snap.Outputs[0].Content.(backend.WebWallpaper); ok {
-				fakeReq := &backend.WallpaperRequest{ParallaxDirection: web.ParallaxDirection}
-				w.noteWallpaperParallaxDirection(cfg, fakeReq)
+				w.noteWallpaperParallaxDirection(cfg, web.ParallaxDirection)
 			} else {
-				w.noteWallpaperParallaxDirection(cfg, &backend.WallpaperRequest{})
+				w.noteWallpaperParallaxDirection(cfg, "")
 			}
 			if loadReq.Parallax != nil {
 				return nil

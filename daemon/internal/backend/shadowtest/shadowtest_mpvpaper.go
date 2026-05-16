@@ -139,17 +139,6 @@ func (c *MpvpaperCaptor) actionBytes() []byte {
 	return out
 }
 
-// CaptureSetWallpaper resets both the action log and the internal process map,
-// then runs SetWallpaper and returns the serialised action bytes.
-// The process-map reset ensures shadow comparison starts from a clean state.
-func (c *MpvpaperCaptor) CaptureSetWallpaper(t *testing.T, req backend.WallpaperRequest) []byte {
-	t.Helper()
-	c.ResetActions()
-	c.backend.ResetProcsForTest()
-	_ = c.backend.SetWallpaper(t.Context(), req)
-	return c.actionBytes()
-}
-
 // CaptureApply resets both the action log and the internal process map,
 // then runs Apply and returns the serialised action bytes.
 // For reconcile tests that need state to persist across Apply calls, use

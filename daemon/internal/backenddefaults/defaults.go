@@ -16,6 +16,7 @@ import (
 	"waypaper-engine/daemon/internal/backend/feh"
 	"waypaper-engine/daemon/internal/backend/hyprpaper"
 	"waypaper-engine/daemon/internal/backend/mpvpaper"
+	"waypaper-engine/daemon/internal/backend/swaybg"
 	"waypaper-engine/daemon/internal/backend/walqt"
 )
 
@@ -28,6 +29,7 @@ func RegisterInto(v *viper.Viper) {
 	feh.New().RegisterDefaults(v)
 	hyprpaper.New().RegisterDefaults(v)
 	mpvpaper.New().RegisterDefaults(v)
+	swaybg.New().RegisterDefaults(v)
 	walqt.New().RegisterDefaults(v)
 }
 
@@ -43,6 +45,8 @@ func Subtree(backendName string) (map[string]any, error) {
 		hyprpaper.New().RegisterDefaults(v)
 	case "mpvpaper":
 		mpvpaper.New().RegisterDefaults(v)
+	case "swaybg":
+		swaybg.New().RegisterDefaults(v)
 	case walQtBackendName:
 		walqt.New().RegisterDefaults(v)
 	default:

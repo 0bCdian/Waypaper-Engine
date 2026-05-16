@@ -105,15 +105,6 @@ func joinNul(args []string) string {
 	return string(buf)
 }
 
-// CaptureSetWallpaper resets captured invocations, runs SetWallpaper, and returns
-// the serialised invocation bytes.
-func (c *AwwwCaptor) CaptureSetWallpaper(t *testing.T, req backend.WallpaperRequest) []byte {
-	t.Helper()
-	c.reset()
-	_ = c.backend.SetWallpaper(t.Context(), req)
-	return c.invocationBytes()
-}
-
 // CaptureApply resets captured invocations, runs Apply, and returns the serialised
 // invocation bytes.
 func (c *AwwwCaptor) CaptureApply(t *testing.T, snap backend.Snapshot) []byte {

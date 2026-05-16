@@ -68,23 +68,6 @@ func (f *Feh) Initialize(_ context.Context) error { return nil }
 // Shutdown is a no-op for feh (no daemon process).
 func (f *Feh) Shutdown(_ context.Context) error { return nil }
 
-// OnConfigChanged is a no-op for feh. Config is read from Viper at SetWallpaper time.
-// The daemon control layer re-applies the current wallpaper after this returns.
-func (f *Feh) OnConfigChanged(_ context.Context, _ json.RawMessage) error {
-	return nil
-}
-
-func (f *Feh) SetWallpaper(_ context.Context, req backend.WallpaperRequest) error {
-	cfg, _ := req.Config.(*Config)
-	if cfg == nil {
-		cfg = &Config{Mode: ModeFill}
-	}
-
-	flag := modeToFlag(cfg.Mode)
-	slog.Debug("feh command", "flag", flag, "image", req.ImagePath)
-	return f.execFn([]string{flag, req.ImagePath})
-}
-
 // Apply implements backend.Backend. feh sets the X11 root window globally —
 // there is no per-monitor targeting in its CLI. When multiple outputs are
 // present, the first output's image is used (the snapshot must supply the
@@ -114,10 +97,6 @@ func (f *Feh) loadModeFromViper() FehMode {
 
 func (f *Feh) ValidateConfig(raw json.RawMessage) error {
 	return backend.UnmarshalValidateConfig[Config](raw)
-}
-
-func (f *Feh) ParseConfig(raw json.RawMessage) (any, error) {
-	return backend.UnmarshalParseConfig[Config](raw, "feh")
 }
 
 // modeToFlag converts a FehMode to the corresponding feh CLI flag.

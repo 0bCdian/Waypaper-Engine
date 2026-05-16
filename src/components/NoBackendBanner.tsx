@@ -59,7 +59,7 @@ export default function NoBackendBanner() {
         <strong className="text-warning [data-design=neobrutalist_&]:text-black font-bold">
           No wallpaper backends found.
         </strong>{" "}
-        Install at least one backend (awww, hyprpaper, mpvpaper…) to set wallpapers.
+        Install at least one backend (awww, hyprpaper, swaybg, mpvpaper…) to set wallpapers.
       </span>
       <a
         href={DOCS_URL}

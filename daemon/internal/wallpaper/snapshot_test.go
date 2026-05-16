@@ -30,21 +30,14 @@ type snapshotMockBackend struct {
 	caps backend.Capabilities
 }
 
-func (m *snapshotMockBackend) Name() string                       { return "mock" }
-func (m *snapshotMockBackend) IsAvailable() bool                  { return true }
-func (m *snapshotMockBackend) Capabilities() backend.Capabilities { return m.caps }
-func (m *snapshotMockBackend) Initialize(context.Context) error   { return nil }
-func (m *snapshotMockBackend) Shutdown(context.Context) error     { return nil }
-func (m *snapshotMockBackend) SetWallpaper(context.Context, backend.WallpaperRequest) error {
-	return nil
-}
-func (m *snapshotMockBackend) RegisterDefaults(*viper.Viper)        {}
-func (m *snapshotMockBackend) ValidateConfig(json.RawMessage) error { return nil }
-func (m *snapshotMockBackend) ParseConfig(json.RawMessage) (any, error) {
-	return nil, nil
-}
-func (m *snapshotMockBackend) Apply(context.Context, backend.Snapshot) error          { return nil }
-func (m *snapshotMockBackend) OnConfigChanged(context.Context, json.RawMessage) error { return nil }
+func (m *snapshotMockBackend) Name() string                                  { return "mock" }
+func (m *snapshotMockBackend) IsAvailable() bool                             { return true }
+func (m *snapshotMockBackend) Capabilities() backend.Capabilities            { return m.caps }
+func (m *snapshotMockBackend) Initialize(context.Context) error              { return nil }
+func (m *snapshotMockBackend) Shutdown(context.Context) error                { return nil }
+func (m *snapshotMockBackend) RegisterDefaults(*viper.Viper)                 {}
+func (m *snapshotMockBackend) ValidateConfig(json.RawMessage) error          { return nil }
+func (m *snapshotMockBackend) Apply(context.Context, backend.Snapshot) error { return nil }
 
 // snapshotMockImageStore implements store.ImageStore for snapshot tests.
 type snapshotMockImageStore struct {

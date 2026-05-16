@@ -46,12 +46,6 @@ func (c *SwaybgCaptor) LastArgv() []string {
 	return append([]string(nil), c.last...)
 }
 
-func (c *SwaybgCaptor) CaptureSetWallpaper(t *testing.T, req backend.WallpaperRequest) []byte {
-	t.Helper()
-	_ = c.backend.SetWallpaper(t.Context(), req)
-	return c.argvBytes()
-}
-
 func (c *SwaybgCaptor) CaptureApply(t *testing.T, snap backend.Snapshot) []byte {
 	t.Helper()
 	_ = c.backend.Apply(t.Context(), snap)

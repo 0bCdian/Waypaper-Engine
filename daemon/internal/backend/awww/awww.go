@@ -138,73 +138,6 @@ func (a *Awww) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-// OnConfigChanged is a no-op for awww. Config is read from Viper at SetWallpaper time.
-// The daemon control layer re-applies the current wallpaper after this returns.
-func (a *Awww) OnConfigChanged(_ context.Context, _ json.RawMessage) error {
-	return nil
-}
-
-func (a *Awww) SetWallpaper(ctx context.Context, req backend.WallpaperRequest) error {
-	if !a.IsAvailable() {
-		return fmt.Errorf("awww: awww not found in PATH")
-	}
-
-	cfg, _ := req.Config.(*Config)
-	if cfg == nil {
-		cfg = a.loadConfigFromViper()
-	}
-
-	args := []string{"img", req.ImagePath}
-
-	// Transition flags.
-	if cfg.TransitionType != "" {
-		args = append(args, "--transition-type", string(cfg.TransitionType))
-	}
-	// For "none", awww sets step=255 internally for an instant switch; passing --transition-step
-	// after --transition-type would override that and break the effect.
-	if cfg.TransitionType != TransitionNone && cfg.TransitionStep > 0 {
-		args = append(args, "--transition-step", strconv.Itoa(cfg.TransitionStep))
-	}
-	if durStr := formatAwwwTransitionDurationCLI(cfg.TransitionDuration); durStr != "" {
-		args = append(args, "--transition-duration", durStr)
-	}
-	if cfg.TransitionFPS > 0 {
-		args = append(args, "--transition-fps", strconv.Itoa(cfg.TransitionFPS))
-	}
-	if cfg.TransitionAngle > 0 {
-		args = append(args, "--transition-angle", strconv.Itoa(cfg.TransitionAngle))
-	}
-	if cfg.TransitionPos != "" {
-		args = append(args, "--transition-pos", string(cfg.TransitionPos))
-	}
-	if cfg.TransitionBezier != "" {
-		args = append(args, "--transition-bezier", cfg.TransitionBezier)
-	}
-	if cfg.TransitionWave != "" {
-		args = append(args, "--transition-wave", cfg.TransitionWave)
-	}
-	if cfg.Resize != "" {
-		args = append(args, "--resize", string(cfg.Resize))
-	}
-	if cfg.FillColor != "" {
-		args = append(args, "--fill-color", strings.TrimPrefix(cfg.FillColor, "#"))
-	}
-	if cfg.FilterType != "" {
-		args = append(args, "--filter", string(cfg.FilterType))
-	}
-	if cfg.InvertY {
-		args = append(args, "--invert-y")
-	}
-
-	// Per-monitor targeting: individual mode sets --outputs.
-	if req.Mode == monitor.ModeIndividual && len(req.Monitors) == 1 {
-		args = append(args, "--outputs", req.Monitors[0].Name)
-	}
-
-	slog.Debug("awww command", "binary", cliBinary, "args", args)
-	return a.execFn(ctx, args)
-}
-
 // Apply implements backend.Backend by natively consuming a Snapshot.
 // Outputs sharing the same content path are grouped into a single "awww img"
 // invocation using --outputs MON1,MON2. Different paths require separate invocations.
@@ -401,8 +334,4 @@ func (a *Awww) ValidateConfig(raw json.RawMessage) error {
 		return fmt.Errorf("awww: transition_duration must be between 0 and 120 seconds")
 	}
 	return nil
-}
-
-func (a *Awww) ParseConfig(raw json.RawMessage) (any, error) {
-	return backend.UnmarshalParseConfig[Config](raw, "awww")
 }

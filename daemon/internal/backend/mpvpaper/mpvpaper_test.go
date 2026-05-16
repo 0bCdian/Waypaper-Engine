@@ -1,14 +1,9 @@
 package mpvpaper
 
 import (
-	"context"
 	"encoding/json"
 	"strings"
 	"testing"
-
-	"waypaper-engine/daemon/internal/backend"
-	"waypaper-engine/daemon/internal/media"
-	"waypaper-engine/daemon/internal/monitor"
 
 	"github.com/stretchr/testify/require"
 )
@@ -54,56 +49,6 @@ func TestBuildMpvpaperArgs(t *testing.T) {
 
 	argsMinimal := buildMpvpaperArgs("A", "/x", nil, true)
 	require.Equal(t, []string{"-o", "loop", "A", "/x"}, argsMinimal)
-}
-
-func TestMpvpaper_SetWallpaper_unsupportedMedia(t *testing.T) {
-	t.Parallel()
-	m := New().(*Mpvpaper)
-	ctx := context.Background()
-	base := backend.WallpaperRequest{
-		ImagePath: "/x.mp4",
-		Monitors:  []monitor.Monitor{{Name: "DP-1"}},
-	}
-	for _, mt := range []media.MediaType{
-		media.MediaTypeImage,
-		media.MediaTypeGIF,
-		media.MediaTypeWeb,
-	} {
-		req := base
-		req.MediaType = mt
-		err := m.SetWallpaper(ctx, req)
-		require.Error(t, err)
-		require.Contains(t, err.Error(), "unsupported media type")
-	}
-}
-
-func TestMpvpaper_SetWallpaper_validation(t *testing.T) {
-	t.Parallel()
-	m := New().(*Mpvpaper)
-	ctx := context.Background()
-	err := m.SetWallpaper(ctx, backend.WallpaperRequest{
-		MediaType: media.MediaTypeVideo,
-		ImagePath: "/v.mp4",
-		Monitors:  nil,
-	})
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "no monitors")
-
-	err = m.SetWallpaper(ctx, backend.WallpaperRequest{
-		MediaType: media.MediaTypeVideo,
-		ImagePath: "  ",
-		Monitors:  []monitor.Monitor{{Name: "DP-1"}},
-	})
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "empty image path")
-
-	err = m.SetWallpaper(ctx, backend.WallpaperRequest{
-		MediaType: media.MediaTypeVideo,
-		ImagePath: "/v.mp4",
-		Monitors:  []monitor.Monitor{{Name: ""}},
-	})
-	require.Error(t, err)
-	require.Contains(t, err.Error(), "empty monitor name")
 }
 
 func TestMpvpaper_ValidateConfig_verbose(t *testing.T) {

@@ -137,36 +137,6 @@ func writeConfig(pathOverride string, entries []wallpaperEntry) error {
 	return os.WriteFile(p, []byte(b.String()), 0644)
 }
 
-func (h *Hyprpaper) setWallpaperConfig(ctx context.Context, req backend.WallpaperRequest, fitMode, confPath string) error {
-	var entries []wallpaperEntry
-	if len(req.IndividualTargets) > 0 {
-		entries = make([]wallpaperEntry, 0, len(req.IndividualTargets))
-		for _, t := range req.IndividualTargets {
-			entries = append(entries, wallpaperEntry{
-				Monitor: t.Monitor.Name,
-				Path:    t.Path,
-				FitMode: fitMode,
-			})
-		}
-	} else {
-		entries = make([]wallpaperEntry, 0, len(req.Monitors))
-		for _, mon := range req.Monitors {
-			entries = append(entries, wallpaperEntry{
-				Monitor: mon.Name,
-				Path:    req.ImagePath,
-				FitMode: fitMode,
-			})
-		}
-	}
-
-	if err := writeConfig(confPath, entries); err != nil {
-		return err
-	}
-
-	h.killProcess()
-	return h.startDaemon()
-}
-
 func (h *Hyprpaper) initializeConfig(ctx context.Context) error {
 	h.killProcess()
 
@@ -189,12 +159,6 @@ func (h *Hyprpaper) Initialize(ctx context.Context) error {
 func (h *Hyprpaper) Shutdown(ctx context.Context) error {
 	slog.Info("stopping hyprpaper")
 	h.killProcess()
-	return nil
-}
-
-// OnConfigChanged is a no-op for hyprpaper. Config is read from Viper at SetWallpaper time.
-// The daemon control layer re-applies the current wallpaper after this returns.
-func (h *Hyprpaper) OnConfigChanged(_ context.Context, _ json.RawMessage) error {
 	return nil
 }
 
@@ -225,23 +189,6 @@ func (h *Hyprpaper) Apply(ctx context.Context, snap backend.Snapshot) error {
 	return h.startDaemon()
 }
 
-func (h *Hyprpaper) SetWallpaper(ctx context.Context, req backend.WallpaperRequest) error {
-	h.mu.Lock()
-	defer h.mu.Unlock()
-
-	cfg, _ := req.Config.(*Config)
-	if cfg == nil {
-		cfg = h.loadConfigFromViper()
-	}
-
-	fitMode := string(cfg.FitMode)
-	if fitMode == "" {
-		fitMode = string(FitCover)
-	}
-
-	return h.setWallpaperConfig(ctx, req, fitMode, cfg.ConfigPath)
-}
-
 func (h *Hyprpaper) RegisterDefaults(v *viper.Viper) {
 	h.v = v
 	v.SetDefault("backend.hyprpaper.fit_mode", string(FitCover))
@@ -260,8 +207,4 @@ func (h *Hyprpaper) loadConfigFromViper() *Config {
 
 func (h *Hyprpaper) ValidateConfig(raw json.RawMessage) error {
 	return backend.UnmarshalValidateConfig[Config](raw)
-}
-
-func (h *Hyprpaper) ParseConfig(raw json.RawMessage) (any, error) {
-	return backend.UnmarshalParseConfig[Config](raw, "hyprpaper")
 }

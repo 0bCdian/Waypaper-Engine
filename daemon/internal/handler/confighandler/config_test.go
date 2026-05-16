@@ -1,7 +1,6 @@
 package confighandler
 
 import (
-	"context"
 	"encoding/json"
 	"errors"
 	"io"
@@ -232,18 +231,6 @@ func TestConfigHandler_PatchSection_Backend_AliasRemovedNotFound(t *testing.T) {
 	assert.Equal(t, http.StatusNotFound, w.Code)
 }
 
-// syncProbe implements backend.Backend for config handler tests, counting OnConfigChanged calls.
-type syncProbe struct {
-	testutil.MockBackend
-	syncCalls int
-	syncErr   error
-}
-
-func (s *syncProbe) OnConfigChanged(_ context.Context, _ json.RawMessage) error {
-	s.syncCalls++
-	return s.syncErr
-}
-
 func TestConfigHandler_GetNamedBackendConfig(t *testing.T) {
 	cfg := &testutil.MockConfigManager{
 		GetBackendConfigFn: func(name string) (json.RawMessage, error) {
@@ -281,97 +268,6 @@ func TestConfigHandler_GetNamedBackendConfig_Unknown(t *testing.T) {
 	h.GetNamedBackendConfig(w, r)
 
 	assert.Equal(t, http.StatusNotFound, w.Code)
-}
-
-func TestConfigHandler_PatchNamedBackendConfig_SyncOnlyWhenActive(t *testing.T) {
-	sb := &syncProbe{
-		MockBackend: testutil.MockBackend{
-			ValidateConfigFn: func(json.RawMessage) error { return nil },
-		},
-	}
-	reg := &testutil.MockRegistry{
-		GetFn: func(name string) (backend.Backend, bool) {
-			if name == "wal-qt" {
-				return sb, true
-			}
-			return nil, false
-		},
-	}
-	cfgMgr := &testutil.MockConfigManager{
-		GetActiveBackendTypeFn: func() string { return "awww" },
-		SetBackendConfigFn:     func(string, json.RawMessage) error { return nil },
-	}
-	h := NewConfigHandler(testController(cfgMgr, reg, &testutil.MockBus{}))
-
-	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodPatch, "/config/backends/wal-qt",
-		testutil.JSONBody(t, map[string]any{"parallax_enabled": true}))
-	r = testutil.WithChiURLParams(r, map[string]string{"backend": "wal-qt"})
-	h.PatchNamedBackendConfig(w, r)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, 0, sb.syncCalls, "inactive backend must not runtime-sync")
-}
-
-func TestConfigHandler_PatchNamedBackendConfig_ActiveSyncs(t *testing.T) {
-	sb := &syncProbe{
-		MockBackend: testutil.MockBackend{
-			ValidateConfigFn: func(json.RawMessage) error { return nil },
-		},
-	}
-	reg := &testutil.MockRegistry{
-		GetFn: func(name string) (backend.Backend, bool) {
-			if name == "wal-qt" {
-				return sb, true
-			}
-			return nil, false
-		},
-	}
-	cfgMgr := &testutil.MockConfigManager{
-		GetActiveBackendTypeFn: func() string { return "wal-qt" },
-		SetBackendConfigFn:     func(string, json.RawMessage) error { return nil },
-	}
-	h := NewConfigHandler(testController(cfgMgr, reg, &testutil.MockBus{}))
-
-	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodPatch, "/config/backends/wal-qt",
-		testutil.JSONBody(t, map[string]any{"parallax_enabled": false}))
-	r = testutil.WithChiURLParams(r, map[string]string{"backend": "wal-qt"})
-	h.PatchNamedBackendConfig(w, r)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, 1, sb.syncCalls)
-}
-
-func TestConfigHandler_PatchNamedBackendConfig_RuntimeSyncErrorStillOK(t *testing.T) {
-	sb := &syncProbe{
-		MockBackend: testutil.MockBackend{
-			ValidateConfigFn: func(json.RawMessage) error { return nil },
-		},
-		syncErr: errors.New("socket down"),
-	}
-	reg := &testutil.MockRegistry{
-		GetFn: func(name string) (backend.Backend, bool) {
-			if name == "wal-qt" {
-				return sb, true
-			}
-			return nil, false
-		},
-	}
-	cfgMgr := &testutil.MockConfigManager{
-		GetActiveBackendTypeFn: func() string { return "wal-qt" },
-		SetBackendConfigFn:     func(string, json.RawMessage) error { return nil },
-	}
-	h := NewConfigHandler(testController(cfgMgr, reg, &testutil.MockBus{}))
-
-	w := httptest.NewRecorder()
-	r := httptest.NewRequest(http.MethodPatch, "/config/backends/wal-qt",
-		testutil.JSONBody(t, map[string]any{"parallax_enabled": false}))
-	r = testutil.WithChiURLParams(r, map[string]string{"backend": "wal-qt"})
-	h.PatchNamedBackendConfig(w, r)
-
-	assert.Equal(t, http.StatusOK, w.Code)
-	assert.Equal(t, 1, sb.syncCalls)
 }
 
 func TestConfigHandler_PostResetNamedBackend_Unknown(t *testing.T) {

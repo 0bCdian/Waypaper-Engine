@@ -27,7 +27,8 @@ const (
 
 // Wallpaper events — emitted when a wallpaper changes on any monitor.
 const (
-	WallpaperChanged EventType = "wallpaper_changed"
+	WallpaperChanged     EventType = "wallpaper_changed"
+	WallpaperApplyFailed EventType = "wallpaper_apply_failed"
 )
 
 // Monitor events — emitted when monitor configuration changes.

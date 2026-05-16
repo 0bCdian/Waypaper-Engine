@@ -2,19 +2,15 @@ package wallpaper
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"log/slog"
-	"strings"
 	"time"
 
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/events"
 	"waypaper-engine/daemon/internal/image"
-	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/store"
-	"waypaper-engine/daemon/internal/wallpaper/wallpaperconfig"
 )
 
 // ApplyOpts holds all dependencies and parameters needed to set a wallpaper.
@@ -34,23 +30,35 @@ type ApplyOpts struct {
 
 // Apply is the core wallpaper-setting flow used by both the wallpaper handler
 // and the playlist manager.
+//
+// Flow: build prospective snapshot → backend.Apply → persist + history + SSE.
+// On error: DB unchanged, SSE wallpaper_apply_failed.
 func Apply(ctx context.Context, opts ApplyOpts) error {
-	mediaType := normalizeMediaType(opts.Image.MediaType)
-	cfgVals := MergedWallpaperConfigForImage(opts.Image)
-
-	var applyErr error
-	switch {
-	case opts.Mode == monitor.ModeExtend && mediaType != media.MediaTypeImage:
-		applyErr = applyExtendNonImage(ctx, opts, mediaType, cfgVals)
-	case opts.Mode == monitor.ModeExtend && mediaType == media.MediaTypeImage && opts.Splitter != nil && len(opts.Monitors) > 1:
-		applyErr = applyExtendImage(ctx, opts, mediaType, cfgVals)
-	default:
-		applyErr = applyDefault(ctx, opts, mediaType, cfgVals)
-	}
-	if applyErr != nil {
-		return applyErr
+	snap, err := buildApplySnapshot(ctx, opts)
+	if err != nil {
+		return err
 	}
 
+	if len(snap.Outputs) == 0 {
+		return fmt.Errorf("no compatible outputs for the requested image and backend %s", opts.Backend.Name())
+	}
+
+	if applyErr := opts.Backend.Apply(ctx, snap); applyErr != nil {
+		if opts.Bus != nil {
+			opts.Bus.Publish(events.Event{
+				Type: events.WallpaperApplyFailed,
+				Data: map[string]any{
+					"image_id": opts.Image.ID,
+					"error":    applyErr.Error(),
+					"backend":  opts.Backend.Name(),
+				},
+			})
+		}
+		return fmt.Errorf("backend apply: %w", applyErr)
+	}
+
+	// Success: persist monitor_state, append history, fire SSE.
+	now := time.Now()
 	monNames := make([]string, len(opts.Monitors))
 	for i, mon := range opts.Monitors {
 		monNames[i] = mon.Name
@@ -61,7 +69,7 @@ func Apply(ctx context.Context, opts ApplyOpts) error {
 		ImageName: opts.Image.Name,
 		Monitors:  monNames,
 		Mode:      string(opts.Mode),
-		SetAt:     time.Now(),
+		SetAt:     now,
 		Source:    opts.Source,
 		Backend:   opts.Backend.Name(),
 	}
@@ -73,7 +81,6 @@ func Apply(ctx context.Context, opts ApplyOpts) error {
 	for _, mon := range opts.Monitors {
 		opts.State.SetCurrentWallpaper(mon.Name, entry)
 
-		// Persist user-selected mode even when the backend call used clone (extend + non-static) or per-monitor crops.
 		if err := opts.MonState.Set(ctx, store.MonitorState{
 			MonitorName: mon.Name,
 			ImageID:     opts.Image.ID,
@@ -90,7 +97,7 @@ func Apply(ctx context.Context, opts ApplyOpts) error {
 	if opts.Bus != nil {
 		data := map[string]any{
 			"image_id":   opts.Image.ID,
-			"media_type": sseWallpaperMediaType(mediaType),
+			"media_type": sseWallpaperMediaType(opts.Image.MediaType),
 			"path":       opts.Image.Path,
 			"tags":       append([]string(nil), opts.Image.Tags...),
 			"monitors":   monNames,
@@ -110,104 +117,90 @@ func Apply(ctx context.Context, opts ApplyOpts) error {
 	return nil
 }
 
-func applyExtendNonImage(ctx context.Context, opts ApplyOpts, mediaType media.MediaType, cfgVals json.RawMessage) error {
-	req := backend.WallpaperRequest{
-		MediaType:             mediaType,
-		ImagePath:             opts.Image.Path,
-		AudioEnabled:          opts.Image.AudioEnabled && opts.VideoAudioDefault,
-		Monitors:              opts.Monitors,
-		Mode:                  monitor.ModeClone,
-		WallpaperConfigValues: cfgVals,
-		ParallaxDirection:     ParallaxDirectionOverrideFromImage(opts.Image),
-	}
-	if err := opts.Backend.SetWallpaper(ctx, req); err != nil {
-		return fmt.Errorf("set wallpaper: %w", err)
-	}
-	return nil
-}
+// buildApplySnapshot builds the Snapshot for the Apply flow.
+// The image is already resolved by the caller; no DB lookup or orphan detection needed.
+func buildApplySnapshot(ctx context.Context, opts ApplyOpts) (backend.Snapshot, error) {
+	img := opts.Image
+	kind := mediaTypeToKind(img.MediaType)
 
-func applyExtendImage(ctx context.Context, opts ApplyOpts, mediaType media.MediaType, cfgVals json.RawMessage) error {
-	splitPaths, err := opts.Splitter.Split(opts.Image.Path, opts.Image.ID, opts.Monitors)
-	if err != nil {
-		return fmt.Errorf("split image: %w", err)
+	// Check backend capability.
+	caps := opts.Backend.Capabilities()
+	if !supportsKind(caps, kind) {
+		return backend.Snapshot{}, fmt.Errorf("%w: kind=%s backend=%s",
+			ErrContentKindUnsupported, kind, opts.Backend.Name())
 	}
 
-	extendGroup := make([]string, len(opts.Monitors))
-	for i, mon := range opts.Monitors {
-		extendGroup[i] = mon.Name
+	// For extend mode with static images and multiple monitors, split the image.
+	var splitPaths map[string]string
+	isExtend := opts.Mode == monitor.ModeExtend
+	if isExtend && kind == backend.KindStaticImage && len(opts.Monitors) > 1 && opts.Splitter != nil {
+		var splitErr error
+		splitPaths, splitErr = opts.Splitter.Split(img.Path, img.ID, opts.Monitors)
+		if splitErr != nil {
+			return backend.Snapshot{}, fmt.Errorf("split image: %w", splitErr)
+		}
 	}
+	// Non-image extend degrades to clone (splitPaths remains nil).
 
+	var snap backend.Snapshot
 	for _, mon := range opts.Monitors {
-		splitPath, ok := splitPaths[mon.Name]
-		if !ok {
-			continue
+		content, err := buildApplyContent(img, kind, mon, splitPaths, opts.VideoAudioDefault)
+		if err != nil {
+			return backend.Snapshot{}, err
 		}
-		req := backend.WallpaperRequest{
-			MediaType:             mediaType,
-			ImagePath:             splitPath,
-			AudioEnabled:          opts.Image.AudioEnabled && opts.VideoAudioDefault,
-			Monitors:              []monitor.Monitor{mon},
-			Mode:                  monitor.ModeIndividual,
-			WallpaperConfigValues: cfgVals,
-			ParallaxDirection:     ParallaxDirectionOverrideFromImage(opts.Image),
-			ExtendGroup:           extendGroup,
-		}
-		if err := opts.Backend.SetWallpaper(ctx, req); err != nil {
-			return fmt.Errorf("set wallpaper for %s: %w", mon.Name, err)
-		}
+		snap.Outputs = append(snap.Outputs, backend.Output{
+			Monitor: mon,
+			Content: content,
+		})
 	}
-	return nil
+
+	_ = ctx // reserved for future use
+	return snap, nil
 }
 
-func applyDefault(ctx context.Context, opts ApplyOpts, mediaType media.MediaType, cfgVals json.RawMessage) error {
-	req := backend.WallpaperRequest{
-		MediaType:             mediaType,
-		ImagePath:             opts.Image.Path,
-		AudioEnabled:          opts.Image.AudioEnabled && opts.VideoAudioDefault,
-		Monitors:              opts.Monitors,
-		Mode:                  opts.Mode,
-		WallpaperConfigValues: cfgVals,
-		ParallaxDirection:     ParallaxDirectionOverrideFromImage(opts.Image),
-	}
-	if err := opts.Backend.SetWallpaper(ctx, req); err != nil {
-		return fmt.Errorf("set wallpaper: %w", err)
-	}
-	return nil
-}
+// buildApplyContent returns the Content for a single monitor in the Apply flow.
+func buildApplyContent(img *store.Image, kind backend.ContentKind, mon monitor.Monitor, splitPaths map[string]string, videoAudioDefault bool) (backend.Content, error) {
+	switch kind {
+	case backend.KindStaticImage:
+		path := img.Path
+		if splitPaths != nil {
+			if p, ok := splitPaths[mon.Name]; ok {
+				path = p
+			}
+		}
+		return backend.StaticImage{Path_: path}, nil
 
-// MergedWallpaperConfigForImage merges manifest wallpaper_config defaults with stored overrides.
-func MergedWallpaperConfigForImage(img *store.Image) json.RawMessage {
-	if img == nil || img.WebMeta == nil {
-		return []byte("{}")
-	}
-	raw, err := wallpaperconfig.MergeValues(img.WebMeta.WallpaperConfig, img.WallpaperConfigOverrides)
-	if err != nil {
-		slog.Warn("wallpaper config merge failed", "error", err)
-		return []byte("{}")
-	}
-	return raw
-}
+	case backend.KindGIF:
+		return backend.GIF{Path_: img.Path}, nil
 
-func normalizeMediaType(value string) media.MediaType {
-	switch strings.ToLower(strings.TrimSpace(value)) {
-	case string(media.MediaTypeGIF):
-		return media.MediaTypeGIF
-	case string(media.MediaTypeVideo):
-		return media.MediaTypeVideo
-	case string(media.MediaTypeWeb):
-		return media.MediaTypeWeb
+	case backend.KindVideo:
+		return backend.Video{
+			Path_:        img.Path,
+			AudioEnabled: img.AudioEnabled && videoAudioDefault,
+		}, nil
+
+	case backend.KindWebWallpaper:
+		if img.WebMeta == nil {
+			return nil, fmt.Errorf("web wallpaper image %d has no web_meta", img.ID)
+		}
+		return backend.WebWallpaper{
+			ManifestPath:      img.WebMeta.ManifestPath,
+			PackageRoot:       img.WebMeta.PackageRoot,
+			Config:            MergedWallpaperConfigForImage(img),
+			ParallaxDirection: ParallaxDirectionOverrideFromImage(img),
+		}, nil
+
 	default:
-		return media.MediaTypeImage
+		return nil, fmt.Errorf("unsupported content kind %s", kind)
 	}
 }
 
-// sseWallpaperMediaType is the value sent on SSE for wallpaper_changed: image | web | video
-// (animated GIF is classified as image, matching wal-qt load kind).
-func sseWallpaperMediaType(mt media.MediaType) string {
-	switch mt {
-	case media.MediaTypeVideo:
+// sseWallpaperMediaType returns the SSE media_type string for wallpaper_changed events.
+func sseWallpaperMediaType(mediaType string) string {
+	switch mediaType {
+	case "video":
 		return "video"
-	case media.MediaTypeWeb:
+	case "web":
 		return "web"
 	default:
 		return "image"

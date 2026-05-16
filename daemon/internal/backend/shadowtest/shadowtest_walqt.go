@@ -88,13 +88,6 @@ func (c *WalQtCaptor) LastLoadBody() []byte {
 	return c.lastReq
 }
 
-// CaptureSetWallpaper runs SetWallpaper and returns the captured /wallpaper/load body.
-func (c *WalQtCaptor) CaptureSetWallpaper(t *testing.T, req backend.WallpaperRequest) []byte {
-	t.Helper()
-	_ = c.backend.SetWallpaper(t.Context(), req)
-	return c.LastLoadBody()
-}
-
 // CaptureApply runs Apply and returns the captured /wallpaper/load body.
 func (c *WalQtCaptor) CaptureApply(t *testing.T, snap backend.Snapshot) []byte {
 	t.Helper()

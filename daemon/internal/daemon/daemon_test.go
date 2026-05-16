@@ -35,16 +35,11 @@ func (m *mockBackend) Capabilities() backend.Capabilities {
 		ContentKinds: []backend.ContentKind{backend.KindStaticImage},
 	}
 }
-func (m *mockBackend) Initialize(_ context.Context) error { return nil }
-func (m *mockBackend) Shutdown(_ context.Context) error   { return nil }
-func (m *mockBackend) SetWallpaper(_ context.Context, _ backend.WallpaperRequest) error {
-	return nil
-}
-func (m *mockBackend) RegisterDefaults(_ *viper.Viper)                            {}
-func (m *mockBackend) ValidateConfig(_ json.RawMessage) error                     { return nil }
-func (m *mockBackend) ParseConfig(_ json.RawMessage) (any, error)                 { return nil, nil }
-func (m *mockBackend) Apply(_ context.Context, _ backend.Snapshot) error          { return nil }
-func (m *mockBackend) OnConfigChanged(_ context.Context, _ json.RawMessage) error { return nil }
+func (m *mockBackend) Initialize(_ context.Context) error                { return nil }
+func (m *mockBackend) Shutdown(_ context.Context) error                  { return nil }
+func (m *mockBackend) RegisterDefaults(_ *viper.Viper)                   {}
+func (m *mockBackend) ValidateConfig(_ json.RawMessage) error            { return nil }
+func (m *mockBackend) Apply(_ context.Context, _ backend.Snapshot) error { return nil }
 
 // ---------------------------------------------------------------------------
 // Mock config manager

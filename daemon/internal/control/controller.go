@@ -175,10 +175,7 @@ func (c *Controller) UpdateBackendConfig(ctx context.Context, name string, raw j
 	}
 	active := c.cfg.GetActiveBackendType()
 	if name == active {
-		if err := b.OnConfigChanged(ctx, raw); err != nil {
-			slog.Warn("backend config change sync failed", "backend", name, "error", err)
-		}
-		// Re-apply current wallpaper so stateless backends reflect new config immediately.
+		// Re-apply current wallpaper so backends reflect new config immediately.
 		if c.restore != nil {
 			c.restore.Restore(ctx)
 		}
@@ -261,9 +258,6 @@ func (c *Controller) ResetBackendConfigToDefaults(ctx context.Context, name stri
 
 	active := c.cfg.GetActiveBackendType()
 	if name == active {
-		if err := b.OnConfigChanged(ctx, raw); err != nil {
-			slog.Warn("backend defaults reset sync failed", "backend", name, "error", err)
-		}
 		if c.restore != nil {
 			c.restore.Restore(ctx)
 		}

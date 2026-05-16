@@ -7,6 +7,7 @@ export const FIELD_PREFIX_BY_BACKEND: Record<string, string> = {
   feh: "feh.",
   hyprpaper: "hyprpaper.",
   mpvpaper: "mpvpaper.",
+  swaybg: "swaybg.",
   "wal-qt": "walqt.",
 };
 

@@ -43,12 +43,6 @@ func (c *HyprpaperCaptor) readConf(t *testing.T) []byte {
 	return data
 }
 
-func (c *HyprpaperCaptor) CaptureSetWallpaper(t *testing.T, req backend.WallpaperRequest) []byte {
-	t.Helper()
-	_ = c.backend.SetWallpaper(t.Context(), req)
-	return c.readConf(t)
-}
-
 func (c *HyprpaperCaptor) CaptureApply(t *testing.T, snap backend.Snapshot) []byte {
 	t.Helper()
 	_ = c.backend.Apply(t.Context(), snap)

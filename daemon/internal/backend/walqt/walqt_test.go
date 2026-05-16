@@ -6,70 +6,12 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
-	"sync/atomic"
 	"testing"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"waypaper-engine/daemon/internal/backend"
-	"waypaper-engine/daemon/internal/monitor"
 )
-
-func TestSetWallpaper_RetriesOnInternalError(t *testing.T) {
-	var loadCalls int32
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/health":
-			w.Header().Set("X-API-Version", "0")
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"ok":          true,
-				"service":     "wal-qt",
-				"api_version": "0",
-			})
-		case "/wallpaper/status":
-			_ = json.NewEncoder(w).Encode(map[string]any{
-				"ok": true,
-				"status": map[string]any{
-					"topology": []map[string]any{
-						{"name": "DP-1", "width": 1920, "height": 1080, "x": 0, "y": 0},
-					},
-				},
-			})
-		case "/wallpaper/load":
-			call := atomic.AddInt32(&loadCalls, 1)
-			if call == 1 {
-				w.WriteHeader(http.StatusInternalServerError)
-				_ = json.NewEncoder(w).Encode(map[string]any{"ok": false, "error": "boom"})
-				return
-			}
-			_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
-		case "/wallpaper/parallax":
-			_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
-		case "/settings/network":
-			_ = json.NewEncoder(w).Encode(map[string]any{"ok": true})
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
-	t.Cleanup(srv.Close)
-
-	b := &WalQt{
-		makeClient: func(_ *Config) (*controlClient, error) {
-			return newTestControlClient(srv, "wal-qt", "0"), nil
-		},
-	}
-
-	err := b.SetWallpaper(context.Background(), backend.WallpaperRequest{
-		ImagePath: "/tmp/wall.jpg",
-		Mode:      monitor.ModeIndividual,
-		Monitors:  []monitor.Monitor{{Name: "DP-1", Width: 1920, Height: 1080, X: 0, Y: 0}},
-		Config:    defaultConfig(),
-	})
-	require.NoError(t, err)
-	assert.Equal(t, int32(2), atomic.LoadInt32(&loadCalls))
-}
 
 func TestRegisterDefaultsAndLoadConfig(t *testing.T) {
 	v := viper.New()

@@ -8,7 +8,21 @@ import (
 
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/store"
+	"waypaper-engine/daemon/internal/wallpaper/wallpaperconfig"
 )
+
+// MergedWallpaperConfigForImage merges manifest wallpaper_config defaults with stored overrides.
+func MergedWallpaperConfigForImage(img *store.Image) json.RawMessage {
+	if img == nil || img.WebMeta == nil {
+		return []byte("{}")
+	}
+	raw, err := wallpaperconfig.MergeValues(img.WebMeta.WallpaperConfig, img.WallpaperConfigOverrides)
+	if err != nil {
+		slog.Warn("wallpaper config merge failed", "error", err)
+		return []byte("{}")
+	}
+	return raw
+}
 
 // SyncWebImageToRenderer writes img's current web_meta capabilities and
 // wallpaper_config_overrides to its manifest file and pushes both to the live

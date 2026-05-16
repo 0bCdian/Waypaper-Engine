@@ -29,39 +29,40 @@ func TestUpdateBackendConfigValidatesBeforePersisting(t *testing.T) {
 	}
 }
 
-func TestUpdateBackendConfigDoesNotSyncInactiveBackend(t *testing.T) {
+func TestUpdateBackendConfigDoesNotRestoreForInactiveBackend(t *testing.T) {
 	cfg := newFakeConfig("awww")
 	active := newFakeBackend("awww")
 	inactive := newFakeBackend("wal-qt")
 	reg := newFakeRegistry(active, inactive)
-	c := NewController(cfg, reg, newFakeBus(), &fakeRestorer{})
+	restorer := &fakeRestorer{}
+	c := NewController(cfg, reg, newFakeBus(), restorer)
 
 	err := c.UpdateBackendConfig(context.Background(), "wal-qt", json.RawMessage(`{"x":true}`))
 
 	if err != nil {
 		t.Fatalf("UpdateBackendConfig returned error: %v", err)
 	}
-	if inactive.syncCount != 0 {
-		t.Fatalf("inactive backend sync count = %d, want 0", inactive.syncCount)
-	}
-	if active.syncCount != 0 {
-		t.Fatalf("active backend sync count = %d, want 0", active.syncCount)
+	// Inactive backend update must not trigger a restore.
+	if restorer.callCount != 0 {
+		t.Fatalf("restorer callCount = %d, want 0 for inactive backend update", restorer.callCount)
 	}
 }
 
-func TestUpdateBackendConfigSyncsActiveBackend(t *testing.T) {
+func TestUpdateBackendConfigRestoresActiveBackend(t *testing.T) {
 	cfg := newFakeConfig("awww")
 	active := newFakeBackend("awww")
 	reg := newFakeRegistry(active)
-	c := NewController(cfg, reg, newFakeBus(), &fakeRestorer{})
+	restorer := &fakeRestorer{}
+	c := NewController(cfg, reg, newFakeBus(), restorer)
 
 	err := c.UpdateBackendConfig(context.Background(), "awww", json.RawMessage(`{"x":true}`))
 
 	if err != nil {
 		t.Fatalf("UpdateBackendConfig returned error: %v", err)
 	}
-	if active.syncCount != 1 {
-		t.Fatalf("active backend sync count = %d, want 1", active.syncCount)
+	// Active backend update must trigger a restore so new config takes effect.
+	if restorer.callCount != 1 {
+		t.Fatalf("restorer callCount = %d, want 1 for active backend update", restorer.callCount)
 	}
 }
 
@@ -126,9 +127,6 @@ func TestResetBackendConfigToDefaults_SyncsWhenActive(t *testing.T) {
 	if err := c.ResetBackendConfigToDefaults(context.Background(), "awww"); err != nil {
 		t.Fatal(err)
 	}
-	if active.syncCount != 1 {
-		t.Fatalf("active syncCount = %d, want 1", active.syncCount)
-	}
 	if restorer.callCount != 1 {
 		t.Fatalf("restore callCount = %d, want 1", restorer.callCount)
 	}
@@ -144,9 +142,6 @@ func TestResetBackendConfigToDefaults_SkipsSyncWhenInactive(t *testing.T) {
 
 	if err := c.ResetBackendConfigToDefaults(context.Background(), "feh"); err != nil {
 		t.Fatal(err)
-	}
-	if inactive.syncCount != 0 {
-		t.Fatalf("inactive syncCount = %d, want 0", inactive.syncCount)
 	}
 	if restorer.callCount != 0 {
 		t.Fatalf("restore callCount = %d, want 0", restorer.callCount)
@@ -248,7 +243,6 @@ func (f *fakeConfig) wasBackendConfigPersisted(backendName string) bool {
 type fakeBackend struct {
 	name            string
 	validateErr     error
-	syncCount       int
 	initializeCount int
 	shutdownCount   int
 }
@@ -295,23 +289,10 @@ func (f *fakeBackend) Shutdown(ctx context.Context) error {
 
 func (f *fakeBackend) Apply(_ context.Context, _ backend.Snapshot) error { return nil }
 
-func (f *fakeBackend) SetWallpaper(ctx context.Context, req backend.WallpaperRequest) error {
-	return nil
-}
-
 func (f *fakeBackend) RegisterDefaults(v *viper.Viper) {}
 
 func (f *fakeBackend) ValidateConfig(raw json.RawMessage) error {
 	return f.validateErr
-}
-
-func (f *fakeBackend) ParseConfig(raw json.RawMessage) (any, error) {
-	return nil, nil
-}
-
-func (f *fakeBackend) OnConfigChanged(_ context.Context, _ json.RawMessage) error {
-	f.syncCount++
-	return nil
 }
 
 type fakeRegistry struct {

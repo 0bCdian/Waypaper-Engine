@@ -327,7 +327,7 @@ func setDefaults(v *viper.Viper) {
 	// Backend defaults
 	v.SetDefault("backend.type", "awww")
 	v.SetDefault("backend.selection_mode", "fixed")
-	v.SetDefault("backend.auto_priorities.image", []string{"awww", "hyprpaper", "feh", "wal-qt"})
+	v.SetDefault("backend.auto_priorities.image", []string{"awww", "hyprpaper", "swaybg", "feh", "wal-qt"})
 	v.SetDefault("backend.auto_priorities.video", []string{"mpvpaper", "wal-qt"})
 	v.SetDefault("backend.auto_priorities.web", []string{"wal-qt"})
 

@@ -114,34 +114,6 @@ func (s *Swaybg) Shutdown(_ context.Context) error {
 	return nil
 }
 
-// OnConfigChanged is a no-op for swaybg. The daemon control layer re-applies
-// the current wallpaper after this returns, picking up the new fit mode.
-func (s *Swaybg) OnConfigChanged(_ context.Context, _ json.RawMessage) error {
-	return nil
-}
-
-func (s *Swaybg) SetWallpaper(_ context.Context, req backend.WallpaperRequest) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
-	cfg, _ := req.Config.(*Config)
-	if cfg == nil {
-		cfg = s.loadConfigFromViper()
-	}
-	fitMode := string(cfg.FitMode)
-	if fitMode == "" {
-		fitMode = string(FitFill)
-	}
-
-	args := make([]string, 0, len(req.Monitors)*6)
-	for _, mon := range req.Monitors {
-		args = append(args, "-o", mon.Name, "-i", req.ImagePath, "-m", fitMode)
-	}
-
-	s.killProcess()
-	return s.startProcessFn(args)
-}
-
 // Apply implements backend.Backend by consuming a Snapshot directly.
 // Each Output is mapped to a `-o NAME -i PATH -m MODE` argv segment, allowing
 // per-monitor image differentiation that SetWallpaper's WallpaperRequest cannot express.
@@ -175,19 +147,6 @@ func (s *Swaybg) RegisterDefaults(v *viper.Viper) {
 	v.SetDefault("backend.swaybg.fit_mode", string(FitFill))
 }
 
-func (s *Swaybg) loadConfigFromViper() *Config {
-	if s.v == nil {
-		return &Config{FitMode: FitFill}
-	}
-	return &Config{
-		FitMode: FitMode(s.v.GetString("backend.swaybg.fit_mode")),
-	}
-}
-
 func (s *Swaybg) ValidateConfig(raw json.RawMessage) error {
 	return backend.UnmarshalValidateConfig[Config](raw)
-}
-
-func (s *Swaybg) ParseConfig(raw json.RawMessage) (any, error) {
-	return backend.UnmarshalParseConfig[Config](raw, "swaybg")
 }

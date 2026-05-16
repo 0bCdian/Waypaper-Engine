@@ -8,7 +8,6 @@ import (
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/config"
 	"waypaper-engine/daemon/internal/events"
-	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/playlist"
 	"waypaper-engine/daemon/internal/store"
@@ -660,13 +659,8 @@ type MockBackend struct {
 	InitializeFn       func(ctx context.Context) error
 	ShutdownFn         func(ctx context.Context) error
 	ApplyFn            func(ctx context.Context, snap backend.Snapshot) error
-	SetWallpaperFn     func(ctx context.Context, req backend.WallpaperRequest) error
 	RegisterDefaultsFn func(v *viper.Viper)
 	ValidateConfigFn   func(raw json.RawMessage) error
-	ParseConfigFn      func(raw json.RawMessage) (any, error)
-	// TryBatchRestoreFn, when non-nil, makes MockBackend satisfy the wallpaper.batchRestorer
-	// optional interface so restore tests can exercise the batched code path.
-	TryBatchRestoreFn func(ctx context.Context, states []store.MonitorState, connected map[string]monitor.Monitor, images store.ImageStore) (*backend.WallpaperRequest, []store.MonitorState, []media.MediaType, bool)
 }
 
 func (m *MockBackend) Name() string {
@@ -711,13 +705,6 @@ func (m *MockBackend) Apply(ctx context.Context, snap backend.Snapshot) error {
 	return nil
 }
 
-func (m *MockBackend) SetWallpaper(ctx context.Context, req backend.WallpaperRequest) error {
-	if m.SetWallpaperFn != nil {
-		return m.SetWallpaperFn(ctx, req)
-	}
-	return nil
-}
-
 func (m *MockBackend) RegisterDefaults(v *viper.Viper) {
 	if m.RegisterDefaultsFn != nil {
 		m.RegisterDefaultsFn(v)
@@ -728,27 +715,6 @@ func (m *MockBackend) ValidateConfig(raw json.RawMessage) error {
 	if m.ValidateConfigFn != nil {
 		return m.ValidateConfigFn(raw)
 	}
-	return nil
-}
-
-func (m *MockBackend) ParseConfig(raw json.RawMessage) (any, error) {
-	if m.ParseConfigFn != nil {
-		return m.ParseConfigFn(raw)
-	}
-	return nil, nil
-}
-
-// TryBatchRestore satisfies the wallpaper.batchRestorer optional interface when
-// TryBatchRestoreFn is set. If nil the method is absent from the type and the
-// restore path falls back to per-monitor calls (same as non-utauri backends).
-func (m *MockBackend) TryBatchRestore(ctx context.Context, states []store.MonitorState, connected map[string]monitor.Monitor, images store.ImageStore) (*backend.WallpaperRequest, []store.MonitorState, []media.MediaType, bool) {
-	if m.TryBatchRestoreFn != nil {
-		return m.TryBatchRestoreFn(ctx, states, connected, images)
-	}
-	return nil, nil, nil, false
-}
-
-func (m *MockBackend) OnConfigChanged(_ context.Context, _ json.RawMessage) error {
 	return nil
 }
 
