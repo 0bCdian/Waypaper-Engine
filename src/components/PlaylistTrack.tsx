@@ -365,7 +365,7 @@ function PlaylistTrack() {
   const editCardClass = cn(
     "flex flex-col gap-3 [@media(max-height:1080px)]:gap-2",
     "neo-playlist-toolbar",
-    "rounded-xl border border-base-content/10 bg-base-100/60 p-3 shadow-sm backdrop-blur-[2px] [@media(max-height:1080px)]:p-2 [@media(max-height:1080px)]:rounded-lg",
+    "rounded-[var(--wp-radius-lg)] border border-base-content/10 bg-base-100/60 p-3 shadow-sm backdrop-blur-[2px] [@media(max-height:1080px)]:p-2",
   );
 
   const dangerBtnClass = viewportCompact
@@ -511,7 +511,7 @@ function PlaylistTrack() {
 
       <div
         ref={playlistDropRef}
-        className={`relative w-full min-w-0 overflow-visible transition-all duration-200 rounded-lg${
+        className={`relative w-full min-w-0 overflow-visible transition-all duration-200 rounded-[var(--wp-radius-md)]${
           playlist.images.length === 0 && showGalleryPlaylistDropChrome ? " min-h-[5.5rem]" : ""
         }${showDropIndicator ? " ring-2 ring-dashed ring-primary bg-primary/10" : ""}`}
       >

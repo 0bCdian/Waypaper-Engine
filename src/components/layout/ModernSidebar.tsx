@@ -377,7 +377,7 @@ export const IconRailSidebar: React.FC = () => {
             style={footerBtnStyle}
           >
             <svg
-              className="size-4"
+              className="size-4 shrink-0"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -385,7 +385,6 @@ export const IconRailSidebar: React.FC = () => {
               strokeLinecap="round"
               strokeLinejoin="round"
               aria-hidden
-              className="shrink-0"
             >
               {hoverRevealEnabled ? (
                 <>
@@ -427,7 +426,7 @@ export const IconRailSidebar: React.FC = () => {
             style={footerBtnStyle}
           >
             <svg
-              className="size-4"
+              className="size-4 shrink-0"
               viewBox="0 0 24 24"
               fill={pinned ? "currentColor" : "none"}
               stroke="currentColor"
@@ -435,7 +434,6 @@ export const IconRailSidebar: React.FC = () => {
               strokeLinecap="round"
               strokeLinejoin="round"
               aria-hidden
-              className="shrink-0"
             >
               <line x1="12" y1="17" x2="12" y2="22" />
               <path d="M5 17h14v-1.76a2 2 0 00-1.11-1.79l-1.78-.9A2 2 0 0115 10.76V6h1a2 2 0 000-4H8a2 2 0 000 4h1v4.76a2 2 0 01-1.11 1.79l-1.78.9A2 2 0 005 15.24z" />
@@ -472,7 +470,7 @@ export const IconRailSidebar: React.FC = () => {
             style={footerBtnStyle}
           >
             <svg
-              className="size-4"
+              className="size-4 shrink-0"
               viewBox="0 0 24 24"
               fill="none"
               stroke="currentColor"
@@ -480,7 +478,6 @@ export const IconRailSidebar: React.FC = () => {
               strokeLinecap="round"
               strokeLinejoin="round"
               aria-hidden
-              className="shrink-0"
             >
               <title>Quit</title>
               <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
