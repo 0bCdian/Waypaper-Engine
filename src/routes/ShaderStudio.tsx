@@ -20,6 +20,7 @@ import { useFoldersStore } from "@/stores/foldersStore";
 import { useImagesStore } from "@/stores/images";
 import { useToastStore } from "@/stores/toastStore";
 import { daemonClient } from "@/client";
+import { Kbd } from "@/components/ui";
 
 const LS_SHADER = "waypaper.shaderStudio.shader";
 const LS_TITLE = "waypaper.shaderStudio.title";
@@ -474,11 +475,10 @@ export default function ShaderStudio() {
 
       <div className="alert alert-info shrink-0 py-1.5 text-xs sm:text-sm">
         <span>
-          <kbd className="kbd kbd-sm">Ctrl</kbd>+<kbd className="kbd kbd-sm">Enter</kbd> compiles.
-          Mouse over the preview drives <code className="text-xs">iMouse</code>.{" "}
-          <code className="text-xs">fragCoord</code> matches Shadertoy (top-left origin). Import
-          JSON for Common + Buffer + Image pipelines (WebGL2), or drop a{" "}
-          <code className="text-xs">.json</code> export onto this page.
+          <Kbd size="sm">Ctrl</Kbd>+<Kbd size="sm">Enter</Kbd> compiles. Mouse over the preview
+          drives <code className="text-xs">iMouse</code>. <code className="text-xs">fragCoord</code>{" "}
+          matches Shadertoy (top-left origin). Import JSON for Common + Buffer + Image pipelines
+          (WebGL2), or drop a <code className="text-xs">.json</code> export onto this page.
         </span>
       </div>
 

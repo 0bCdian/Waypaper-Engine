@@ -24,6 +24,7 @@ import {
   waitUntilVideoCanSample,
 } from "@/utils/loopStudio/seekVideoCapture";
 import { daemonClient } from "@/client";
+import { Kbd } from "@/components/ui";
 
 const api = window.API_RENDERER;
 
@@ -846,7 +847,10 @@ export default function LoopStudio() {
     >
       <header className="shrink-0 space-y-1">
         <h1 className="text-xl font-semibold text-base-content sm:text-2xl">Loop Studio</h1>
-        <p className="line-clamp-2 text-xs text-base-content/60 sm:line-clamp-none sm:text-sm">
+        <p
+          className="line-clamp-2 text-xs sm:line-clamp-none sm:text-sm"
+          style={{ color: "var(--wp-text-muted)" }}
+        >
           Find in/out points and match the last frame to the first. Sub-loop preview uses coarse{" "}
           <code>timeupdate</code> jumps (not the two-decoder crossfade from a classic loop trimmer);
           export bakes a seamless file for native <code>video loop</code> playback. Compare is two
@@ -856,10 +860,9 @@ export default function LoopStudio() {
 
       <div className="alert alert-info shrink-0 py-1.5 text-xs sm:text-sm">
         <span>
-          <strong>Tip:</strong> Space play/pause, <kbd className="kbd kbd-sm">I</kbd> /{" "}
-          <kbd className="kbd kbd-sm">O</kbd> set in/out, <kbd className="kbd kbd-sm">C</kbd>{" "}
-          compare (drag the wipe on the preview), arrows step frames. Drag a video file or YouTube
-          URL onto this page. Export requires a gallery video.
+          <strong>Tip:</strong> Space play/pause, <Kbd size="sm">I</Kbd> / <Kbd size="sm">O</Kbd>{" "}
+          set in/out, <Kbd size="sm">C</Kbd> compare (drag the wipe on the preview), arrows step
+          frames. Drag a video file or YouTube URL onto this page. Export requires a gallery video.
         </span>
       </div>
 
@@ -923,14 +926,14 @@ export default function LoopStudio() {
             {previewOnly && (
               <span className="badge badge-warning">Preview only (not in gallery)</span>
             )}
-            <p className="w-full text-[11px] text-base-content/50">
+            <p className="w-full text-[11px]" style={{ color: "var(--wp-text-faint)" }}>
               YouTube needs <code className="text-[10px]">yt-dlp</code> on PATH; import runs in the
               background.
             </p>
           </div>
 
           {!playbackSrc ? (
-            <p className="shrink-0 text-sm text-base-content/50">
+            <p className="shrink-0 text-sm" style={{ color: "var(--wp-text-faint)" }}>
               Select a gallery video or open a file for preview.
             </p>
           ) : (
@@ -1010,7 +1013,9 @@ export default function LoopStudio() {
                   {previewMuted ? "🔇" : "🔊"}
                 </button>
                 <div className="flex items-center gap-2 ml-auto">
-                  <span className="text-xs text-base-content/60">match</span>
+                  <span className="text-xs" style={{ color: "var(--wp-text-muted)" }}>
+                    match
+                  </span>
                   <progress className="progress w-24 h-2" value={matchPct ?? 0} max={100} />
                   <span className={`badge ${scoreColor} badge-sm`}>
                     {matchPct != null ? `${matchPct}%` : "—"}
@@ -1024,7 +1029,10 @@ export default function LoopStudio() {
                 onMouseDown={onTimelineMouseDown}
                 role="presentation"
               >
-                <div className="flex justify-between text-[11px] text-base-content/50 tabular-nums mb-1">
+                <div
+                  className="flex justify-between text-[11px] tabular-nums mb-1"
+                  style={{ color: "var(--wp-text-faint)" }}
+                >
                   <span>{formatLoopTimeShort(0)}</span>
                   <span>{formatLoopTimeShort(duration * 0.25)}</span>
                   <span>{formatLoopTimeShort(duration * 0.5)}</span>
@@ -1083,10 +1091,10 @@ export default function LoopStudio() {
                 >
                   ▶
                 </button>
-                <span className="tabular-nums text-sm text-base-content/70">
+                <span className="tabular-nums text-sm" style={{ color: "var(--wp-text-muted)" }}>
                   {formatLoopTime(playhead)} / {formatLoopTime(duration)}
                 </span>
-                <span className="text-sm text-base-content/50 ml-auto">
+                <span className="text-sm ml-auto" style={{ color: "var(--wp-text-faint)" }}>
                   loop span:{" "}
                   <strong className="text-base-content">
                     {outPoint > inPoint ? formatLoopTime(outPoint - inPoint) : "—"}
@@ -1170,7 +1178,7 @@ export default function LoopStudio() {
       <dialog className={`modal ${exportOpen ? "modal-open" : ""}`}>
         <div className="modal-box">
           <h3 className="font-semibold text-lg">Export loop</h3>
-          <p className="text-sm text-base-content/60 py-2">
+          <p className="text-sm py-2" style={{ color: "var(--wp-text-muted)" }}>
             Re-encodes the trim for WebKit <code>video loop</code>. Audio is stripped. Plain trim is
             a hard cut; with midpoint crossfade, FFmpeg splits the span in two and xfades the join
             (output is slightly shorter than the span). Falls back to trim if xfade fails.
