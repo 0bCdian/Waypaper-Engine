@@ -335,6 +335,7 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("wallhaven.api_key", "")
 	v.SetDefault("wallhaven.enabled", false)
 	v.SetDefault("wallhaven.scroll_mode", "paginated")
+	v.SetDefault("wallhaven.blur_nsfw_thumbnails", true)
 
 	// Monitors defaults
 	v.SetDefault("monitors.selected_monitors", []string{})

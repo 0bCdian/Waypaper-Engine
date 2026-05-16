@@ -410,6 +410,8 @@ export interface WallhavenConfig {
   api_key: string;
   enabled: boolean;
   scroll_mode: "paginated" | "infinite";
+  /** When true (default), NSFW card thumbnails are blurred until hovered. */
+  blur_nsfw_thumbnails: boolean;
 }
 
 export interface UnifiedConfig {

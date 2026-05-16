@@ -81,7 +81,5 @@ export function largestMonitor<T extends Pick<Monitor, "width" | "height">>(
   monitors: T[],
 ): T | null {
   if (monitors.length === 0) return null;
-  return monitors.reduce((best, m) =>
-    m.width * m.height > best.width * best.height ? m : best,
-  );
+  return monitors.reduce((best, m) => (m.width * m.height > best.width * best.height ? m : best));
 }

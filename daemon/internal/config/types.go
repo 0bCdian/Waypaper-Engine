@@ -142,4 +142,8 @@ type WallhavenConfig struct {
 
 	// ScrollMode controls the browsing mode: "paginated" for page-by-page or "infinite" for auto-loading.
 	ScrollMode string `mapstructure:"scroll_mode" json:"scroll_mode"`
+
+	// BlurNsfwThumbnails controls whether NSFW card thumbnails are blurred until the user hovers.
+	// Defaults to true. Setting this to false shows NSFW thumbnails at full opacity.
+	BlurNsfwThumbnails bool `mapstructure:"blur_nsfw_thumbnails" json:"blur_nsfw_thumbnails"`
 }

@@ -9,6 +9,8 @@ import {
   type WallhavenSorting,
   type WallhavenScrollMode,
   type WallhavenWallpaper,
+  WALLHAVEN_RATIO_GROUPS,
+  WALLHAVEN_PALETTE,
 } from "../stores/wallhavenStore";
 import { useSettingsStore } from "../stores/settingsStore";
 import { useContextMenuStore } from "../stores/contextMenuStore";
@@ -19,6 +21,7 @@ import {
 } from "../utils/wallhavenContextMenuItems";
 import { cn } from "../utils/cn";
 import { daemonClient } from "@/client";
+import { computeResolutionMatch, largestMonitor } from "../utils/wallhavenResolutionMatch";
 
 const SORTING_OPTIONS: { value: WallhavenSorting; label: string }[] = [
   { value: "date_added", label: "Date Added" },
@@ -42,6 +45,8 @@ function WallhavenPage() {
     infiniteResults,
     selectedWallpapers,
     batchDownloadProgress,
+    downloadedIds,
+    hideDownloaded,
     setQuery,
     toggleCategory,
     togglePurity,
@@ -56,6 +61,9 @@ function WallhavenPage() {
     selectAllVisible,
     clearSelection,
     downloadSelected,
+    toggleRatio,
+    setColor,
+    setHideDownloaded,
   } = useWallhavenStore(
     useShallow((s) => ({
       filters: s.filters,
@@ -68,6 +76,8 @@ function WallhavenPage() {
       infiniteResults: s.infiniteResults,
       selectedWallpapers: s.selectedWallpapers,
       batchDownloadProgress: s.batchDownloadProgress,
+      downloadedIds: s.downloadedIds,
+      hideDownloaded: s.hideDownloaded,
       setQuery: s.setQuery,
       toggleCategory: s.toggleCategory,
       togglePurity: s.togglePurity,
@@ -82,6 +92,9 @@ function WallhavenPage() {
       selectAllVisible: s.selectAllVisible,
       clearSelection: s.clearSelection,
       downloadSelected: s.downloadSelected,
+      toggleRatio: s.toggleRatio,
+      setColor: s.setColor,
+      setHideDownloaded: s.setHideDownloaded,
     })),
   );
 
@@ -94,6 +107,7 @@ function WallhavenPage() {
   const apiKey = config?.wallhaven?.api_key ?? "";
   const hasApiKey = apiKey.length > 0;
   const isEnabled = config?.wallhaven?.enabled ?? false;
+  const blurNsfw = config?.wallhaven?.blur_nsfw_thumbnails ?? true;
 
   const configScrollMode = config?.wallhaven?.scroll_mode;
   useEffect(() => {
@@ -104,9 +118,14 @@ function WallhavenPage() {
 
   const [inputValue, setInputValue] = useState(filters.query);
   const [showBackToTop, setShowBackToTop] = useState(false);
+  const [showColorPopover, setShowColorPopover] = useState(false);
+  const colorBtnRef = useRef<HTMLButtonElement>(null);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const sentinelRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
+
+  // Largest monitor for resolution-match badges
+  const largestMon = largestMonitor(monitorsList);
 
   const doSearch = useCallback(
     (page?: number) => {
@@ -273,7 +292,10 @@ function WallhavenPage() {
     </button>
   );
 
-  const displayResults = scrollMode === "infinite" ? infiniteResults : results;
+  const rawDisplayResults = scrollMode === "infinite" ? infiniteResults : results;
+  const displayResults = hideDownloaded
+    ? rawDisplayResults.filter((wp) => !downloadedIds.has(wp.id))
+    : rawDisplayResults;
 
   const handleScrollModeToggle = () => {
     const newMode: WallhavenScrollMode = scrollMode === "paginated" ? "infinite" : "paginated";
@@ -337,6 +359,22 @@ function WallhavenPage() {
               Infinite
             </button>
           </div>
+          {/* Hide-downloaded toggle */}
+          <button
+            type="button"
+            className={cn(
+              "btn btn-xs shrink-0",
+              hideDownloaded ? "btn-primary" : "btn-ghost btn-outline",
+            )}
+            onClick={() => setHideDownloaded(!hideDownloaded)}
+            title={
+              hideDownloaded
+                ? "Show already-downloaded wallpapers"
+                : "Hide already-downloaded wallpapers"
+            }
+          >
+            {hideDownloaded ? "Show saved" : "Hide saved"}
+          </button>
         </div>
 
         {/* Row B: filter groups with hairline separators */}
@@ -405,7 +443,119 @@ function WallhavenPage() {
               ))}
             </select>
           </div>
+
+          {/* Vertical hairline */}
+          <div
+            className="wp-toolbar-hairline self-stretch w-px mx-1 shrink-0"
+            style={{ background: "var(--wp-hairline)" }}
+          />
+
+          {/* Ratio group */}
+          <div className="flex items-center gap-1.5 px-3 wp-toolbar-group">
+            <span
+              className="text-xs font-medium shrink-0"
+              style={{ color: "var(--wp-text-faint)" }}
+            >
+              Ratio
+            </span>
+            {WALLHAVEN_RATIO_GROUPS.map((group) => (
+              <button
+                key={group.label}
+                type="button"
+                className={cn(
+                  "btn btn-xs",
+                  filters.ratios.includes(group.label) ? "btn-primary" : "btn-ghost btn-outline",
+                )}
+                onClick={() => {
+                  toggleRatio(group.label);
+                  setTimeout(() => doSearch(1), 0);
+                }}
+              >
+                {group.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Vertical hairline */}
+          <div
+            className="wp-toolbar-hairline self-stretch w-px mx-1 shrink-0"
+            style={{ background: "var(--wp-hairline)" }}
+          />
+
+          {/* Color group */}
+          <div className="flex items-center gap-1.5 px-3 wp-toolbar-group relative">
+            <span
+              className="text-xs font-medium shrink-0"
+              style={{ color: "var(--wp-text-faint)" }}
+            >
+              Color
+            </span>
+            <button
+              ref={colorBtnRef}
+              type="button"
+              className="btn btn-xs btn-ghost btn-outline flex items-center gap-1.5"
+              onClick={() => setShowColorPopover((v) => !v)}
+              aria-label="Pick a color filter"
+            >
+              {filters.color ? (
+                <>
+                  <span
+                    className="size-3.5 rounded-sm border border-base-300 inline-block shrink-0"
+                    style={{ backgroundColor: `#${filters.color}` }}
+                  />
+                  <span
+                    className="ml-0.5 cursor-pointer text-error"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setColor(null);
+                      setTimeout(() => doSearch(1), 0);
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.stopPropagation();
+                        setColor(null);
+                        setTimeout(() => doSearch(1), 0);
+                      }
+                    }}
+                    aria-label="Clear color filter"
+                  >
+                    ×
+                  </span>
+                </>
+              ) : (
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  viewBox="0 0 20 20"
+                  fill="currentColor"
+                  className="size-3.5"
+                  aria-hidden="true"
+                >
+                  <path
+                    fillRule="evenodd"
+                    d="M3.75 3A1.75 1.75 0 002 4.75v10.5c0 .966.784 1.75 1.75 1.75h4.836a3 3 0 01-.836-2.083V14.25a3.75 3.75 0 017.5 0v.667A3 3 0 0114.25 17H16.25A1.75 1.75 0 0018 15.25V4.75A1.75 1.75 0 0016.25 3H3.75zm9 3.5a.75.75 0 01.75.75v1.5h1.5a.75.75 0 010 1.5h-1.5v1.5a.75.75 0 01-1.5 0v-1.5h-1.5a.75.75 0 010-1.5h1.5v-1.5a.75.75 0 01.75-.75zM6.5 9.25a.75.75 0 000 1.5h3a.75.75 0 000-1.5h-3z"
+                    clipRule="evenodd"
+                  />
+                </svg>
+              )}
+            </button>
+            {showColorPopover && (
+              <ColorPalettePopover
+                activeColor={filters.color}
+                anchorRef={colorBtnRef}
+                onSelect={(hex) => {
+                  setColor(hex);
+                  setShowColorPopover(false);
+                  setTimeout(() => doSearch(1), 0);
+                }}
+                onClose={() => setShowColorPopover(false)}
+              />
+            )}
+          </div>
         </div>
+
+        {/* Row A end: hide-downloaded toggle */}
       </div>
 
       {/* Selection bar — always reserved height, hint when empty */}
@@ -538,12 +688,20 @@ function WallhavenPage() {
                   key={wp.id}
                   wp={wp}
                   isDownloading={downloadingIds.has(wp.id)}
+                  isDownloaded={downloadedIds.has(wp.id)}
                   isSelected={selectedWallpapers.has(wp.id)}
                   selectedCount={selectedWallpapers.size}
                   monitors={monitorsList}
                   monitorSelection={monitorSelection}
+                  largestMonitor={largestMon}
+                  blurNsfw={blurNsfw}
                   onSelect={() => selectWallpaper(wp)}
-                  onDownload={() => void downloadToGallery(wp)}
+                  onDownload={async () => {
+                    const imageId = await downloadToGallery(wp);
+                    if (imageId !== null) {
+                      useWallhavenStore.getState().addDownloadedId(wp.id);
+                    }
+                  }}
                   onSet={(monitor, mode) => void downloadImportAndSet(wp, monitor, mode)}
                   onCtrlClick={() => toggleSelection(wp.id)}
                   onDoubleClick={() => {
@@ -625,9 +783,29 @@ function WallhavenPage() {
           isDownloading={downloadingIds.has(selectedWallpaper.id)}
           monitors={monitorsList}
           monitorSelection={monitorSelection}
+          largestMonitor={largestMon}
           onClose={() => selectWallpaper(null)}
-          onDownload={() => void downloadToGallery(selectedWallpaper)}
+          onDownload={async () => {
+            const imageId = await downloadToGallery(selectedWallpaper);
+            if (imageId !== null) {
+              useWallhavenStore.getState().addDownloadedId(selectedWallpaper.id);
+            }
+          }}
           onSet={(monitor, mode) => void downloadImportAndSet(selectedWallpaper, monitor, mode)}
+          onTagClick={(tagName) => {
+            const current = useWallhavenStore.getState().filters.query;
+            const token = `#${tagName}`;
+            const alreadyPresent = current
+              .split(/\s+/)
+              .some((t) => t.toLowerCase() === token.toLowerCase());
+            if (!alreadyPresent) {
+              const newQuery = current.trim() ? `${current.trim()} ${token}` : token;
+              setQuery(newQuery);
+              setInputValue(newQuery);
+            }
+            selectWallpaper(null);
+            setTimeout(() => doSearch(1), 0);
+          }}
         />
       )}
     </div>
@@ -760,13 +938,175 @@ function SetPopover({
   );
 }
 
+/** Hover preview popover — passive (pointer-events: none), portaled.
+ * Privacy note: the large thumb is rendered unblurred even when NSFW blur is on.
+ * We deliberately apply the same blur here; the user must hover the card to unblur
+ * both the card image and the preview simultaneously.
+ */
+function WallhavenPreviewPopover({
+  wp,
+  cardRef,
+  blurNsfw,
+}: {
+  wp: WallhavenWallpaper;
+  cardRef: React.RefObject<HTMLDivElement | null>;
+  blurNsfw: boolean;
+}) {
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const popoverRef = useRef<HTMLDivElement>(null);
+
+  useLayoutEffect(() => {
+    const card = cardRef.current;
+    const popover = popoverRef.current;
+    if (!card || !popover) return;
+    const cardRect = card.getBoundingClientRect();
+    const pw = popover.offsetWidth;
+    const ph = popover.offsetHeight;
+    const margin = 12;
+    const vw = window.innerWidth;
+
+    // Horizontal: center on card, clamped to viewport
+    let left = cardRect.left + cardRect.width / 2 - pw / 2;
+    left = Math.max(margin, Math.min(left, vw - pw - margin));
+
+    // Vertical: above by default, flip below if not enough space
+    let top = cardRect.top - ph - 8;
+    if (top < margin) {
+      top = cardRect.bottom + 8;
+    }
+    top = Math.max(margin, top);
+
+    setPos({ left, top });
+  }, [cardRef]);
+
+  return createPortal(
+    <div
+      ref={popoverRef}
+      className="fixed z-[300] overflow-hidden"
+      style={{
+        pointerEvents: "none",
+        maxWidth: "min(720px, 60vw)",
+        maxHeight: "80vh",
+        border: "var(--wp-border-w) solid var(--wp-border-color)",
+        borderRadius: "var(--wp-radius-md)",
+        boxShadow: "var(--wp-elev-3, 0 8px 24px rgba(0,0,0,0.35))",
+        background: "var(--color-base-100, var(--b1, white))",
+        opacity: pos ? 1 : 0,
+        left: pos ? pos.left : -9999,
+        top: pos ? pos.top : -9999,
+        transition: "opacity 120ms ease-in",
+      }}
+    >
+      <img
+        src={wp.thumbs.large}
+        alt=""
+        aria-hidden="true"
+        style={{
+          display: "block",
+          maxWidth: "min(720px, 60vw)",
+          maxHeight: "80vh",
+          objectFit: "contain",
+          // Apply same blur as card when NSFW blur is active — group-hover reveals both simultaneously
+          filter: blurNsfw ? "blur(24px)" : "none",
+        }}
+      />
+    </div>,
+    document.body,
+  );
+}
+
+/** Color palette popover for the color filter (feature 5). */
+function ColorPalettePopover({
+  activeColor,
+  anchorRef,
+  onSelect,
+  onClose,
+}: {
+  activeColor: string | null;
+  anchorRef: React.RefObject<HTMLButtonElement | null>;
+  onSelect: (hex: string) => void;
+  onClose: () => void;
+}) {
+  const popoverRef = useRef<HTMLDivElement>(null);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+
+  useLayoutEffect(() => {
+    const anchor = anchorRef.current;
+    const popover = popoverRef.current;
+    if (!anchor || !popover) return;
+    const anchorRect = anchor.getBoundingClientRect();
+    const pw = popover.offsetWidth;
+    const ph = popover.offsetHeight;
+    const margin = 8;
+    let left = anchorRect.left;
+    let top = anchorRect.bottom + 4;
+    left = Math.max(margin, Math.min(left, window.innerWidth - pw - margin));
+    if (top + ph > window.innerHeight - margin) {
+      top = anchorRect.top - ph - 4;
+    }
+    setPos({ left, top });
+  }, [anchorRef]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose();
+    };
+    const onPointerDown = (e: PointerEvent) => {
+      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("pointerdown", onPointerDown);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("pointerdown", onPointerDown);
+    };
+  }, [onClose]);
+
+  return createPortal(
+    <div
+      ref={popoverRef}
+      className="fixed z-[200] p-2 rounded-[var(--wp-radius-sm)] border border-base-300 bg-base-100 shadow-[var(--wp-elev-2,none)]"
+      style={pos ? { left: pos.left, top: pos.top } : { opacity: 0, left: -9999, top: -9999 }}
+    >
+      <div className="grid gap-1" style={{ gridTemplateColumns: "repeat(6, 1.5rem)" }}>
+        {WALLHAVEN_PALETTE.map((hex) => (
+          <button
+            key={hex}
+            type="button"
+            className="size-6 rounded-sm border transition-transform hover:scale-110 focus:outline-none focus:ring-2 focus:ring-primary"
+            style={{
+              backgroundColor: `#${hex}`,
+              borderColor:
+                activeColor === hex
+                  ? "var(--p, oklch(55.8% 0.288 302.31))"
+                  : "var(--wp-border-color)",
+              outline:
+                activeColor === hex ? "2px solid var(--p, oklch(55.8% 0.288 302.31))" : "none",
+              outlineOffset: "1px",
+            }}
+            onClick={() => onSelect(hex)}
+            title={`#${hex}`}
+            aria-label={`Select color #${hex}`}
+          />
+        ))}
+      </div>
+    </div>,
+    document.body,
+  );
+}
+
 function WallhavenCard({
   wp,
   isDownloading,
+  isDownloaded,
   isSelected,
   selectedCount,
   monitors,
   monitorSelection,
+  largestMonitor: largestMon,
+  blurNsfw,
   onSelect,
   onDownload,
   onSet,
@@ -775,10 +1115,13 @@ function WallhavenCard({
 }: {
   wp: WallhavenWallpaper;
   isDownloading: boolean;
+  isDownloaded: boolean;
   isSelected: boolean;
   selectedCount: number;
   monitors: import("../../electron/daemon-go-types").Monitor[];
   monitorSelection: import("../stores/monitors").MonitorSelection;
+  largestMonitor: import("../../electron/daemon-go-types").Monitor | null;
+  blurNsfw: boolean;
   onSelect: () => void;
   onDownload: () => void;
   onSet: (monitor: string, mode: import("../../electron/daemon-go-types").MonitorMode) => void;
@@ -787,7 +1130,26 @@ function WallhavenCard({
 }) {
   const openMenu = useContextMenuStore((s) => s.open);
   const setButtonRef = useRef<HTMLButtonElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
   const [showSetPopover, setShowSetPopover] = useState(false);
+
+  // Hover preview popover — feature 1
+  const hoverDwellRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const prefersReducedMotion =
+    typeof window !== "undefined" && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  const handlePointerEnter = () => {
+    if (prefersReducedMotion) return;
+    hoverDwellRef.current = setTimeout(() => setPreviewOpen(true), 300);
+  };
+  const handlePointerLeave = () => {
+    if (hoverDwellRef.current) {
+      clearTimeout(hoverDwellRef.current);
+      hoverDwellRef.current = null;
+    }
+    setPreviewOpen(false);
+  };
 
   const selectOnClick = (e: React.MouseEvent) => {
     if (e.ctrlKey || e.metaKey) {
@@ -813,11 +1175,20 @@ function WallhavenCard({
     }
   };
 
+  // Resolution match badge — feature 3
+  const resMatch = largestMon ? computeResolutionMatch(wp.resolution, largestMon) : null;
+
+  // NSFW blur — feature 7
+  const isNsfw = wp.purity === "nsfw";
+  const applyBlur = isNsfw && blurNsfw;
+
   return (
     <div
+      ref={cardRef}
       className={cn(
         "group relative cursor-pointer flex flex-col bg-base-200 overflow-hidden rounded-[var(--wp-radius-sm)] border-[var(--wp-border-w)] border-[var(--wp-border-color)] shadow-[var(--wp-elev-1,none)]",
         isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-base-100",
+        isDownloaded && !isSelected && "opacity-65",
       )}
       onContextMenu={handleContextMenu}
       onClick={selectOnClick}
@@ -831,6 +1202,8 @@ function WallhavenCard({
           onSelect();
         }
       }}
+      onPointerEnter={handlePointerEnter}
+      onPointerLeave={handlePointerLeave}
       role="button"
       tabIndex={0}
     >
@@ -852,13 +1225,41 @@ function WallhavenCard({
           </div>
         </div>
       )}
+
+      {/* Top-right status chips (NSFW + In Gallery) */}
+      <div className="absolute top-2 right-2 z-10 flex flex-col items-end gap-1">
+        {isNsfw && <span className="badge badge-xs badge-error">NSFW</span>}
+        {isDownloaded && (
+          <span className="badge badge-xs badge-success flex items-center gap-0.5">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              viewBox="0 0 16 16"
+              fill="currentColor"
+              className="size-2.5"
+              aria-hidden="true"
+            >
+              <path
+                fillRule="evenodd"
+                d="M12.416 3.376a.75.75 0 0 1 .208 1.04l-5 7.5a.75.75 0 0 1-1.154.114l-3-3a.75.75 0 0 1 1.06-1.06l2.353 2.353 4.493-6.74a.75.75 0 0 1 1.04-.207Z"
+                clipRule="evenodd"
+              />
+            </svg>
+            In gallery
+          </span>
+        )}
+      </div>
+
       {/* Image fills card (flex-1 so footer stays pinned) */}
       <div className="flex-1 min-h-0 overflow-hidden relative">
         <img
           src={wp.thumbs.small}
           alt={`Wallhaven ${wp.id}`}
-          className="transform-gpu w-full h-full aspect-[3/2] object-cover transition-transform duration-300 group-hover:scale-105"
+          className={cn(
+            "transform-gpu w-full h-full aspect-[3/2] object-cover transition-all duration-300 group-hover:scale-105",
+            applyBlur && "blur-lg group-hover:blur-none focus-within:blur-none",
+          )}
           loading="lazy"
+          style={applyBlur ? { transition: "transform 300ms, filter 200ms ease-out" } : undefined}
         />
         {/* Hover overlay: gradient + two-button action row */}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none" />
@@ -907,6 +1308,12 @@ function WallhavenCard({
         className="shrink-0 px-2 py-1 flex items-center gap-1.5 text-xs"
         style={{ background: "var(--wp-surface-2)", color: "var(--wp-text-muted)" }}
       >
+        {/* Resolution-match badge — feature 3 */}
+        {resMatch && (
+          <span className={cn("badge badge-xs shrink-0", resMatch.badgeClass)}>
+            {resMatch.label}
+          </span>
+        )}
         <span className="font-mono truncate flex-1">{wp.resolution}</span>
         <span className="shrink-0 capitalize">{wp.category}</span>
       </div>
@@ -918,6 +1325,8 @@ function WallhavenCard({
           onClose={() => setShowSetPopover(false)}
         />
       )}
+      {/* Hover preview popover — feature 1 */}
+      {previewOpen && <WallhavenPreviewPopover wp={wp} cardRef={cardRef} blurNsfw={applyBlur} />}
     </div>
   );
 }
@@ -927,22 +1336,27 @@ function WallhavenDetailModal({
   isDownloading,
   monitors,
   monitorSelection,
+  largestMonitor: largestMon,
   onClose,
   onDownload,
   onSet,
+  onTagClick,
 }: {
   wp: WallhavenWallpaper;
   isDownloading: boolean;
   monitors: import("../../electron/daemon-go-types").Monitor[];
   monitorSelection: import("../stores/monitors").MonitorSelection;
+  largestMonitor: import("../../electron/daemon-go-types").Monitor | null;
   onClose: () => void;
   onDownload: () => void;
   onSet: (monitor: string, mode: import("../../electron/daemon-go-types").MonitorMode) => void;
+  onTagClick: (tagName: string) => void;
 }) {
   const [showAllTags, setShowAllTags] = useState(false);
   const [showModalSetPopover, setShowModalSetPopover] = useState(false);
   const modalSetButtonRef = useRef<HTMLButtonElement>(null);
   const visibleTags = wp.tags ? (showAllTags ? wp.tags : wp.tags.slice(0, 10)) : [];
+  const resMatch = largestMon ? computeResolutionMatch(wp.resolution, largestMon) : null;
 
   const handleModalSetClick = () => {
     const selectedMonitors = monitorSelection.selectedMonitors;
@@ -998,7 +1412,14 @@ function WallhavenDetailModal({
               >
                 Resolution
               </dt>
-              <dd className="font-mono">{wp.resolution}</dd>
+              <dd className="font-mono flex items-center gap-1.5 flex-wrap">
+                {wp.resolution}
+                {resMatch && (
+                  <span className={cn("badge badge-xs", resMatch.badgeClass)}>
+                    {resMatch.label}
+                  </span>
+                )}
+              </dd>
 
               <dt
                 className="text-xs uppercase tracking-wide shrink-0"
@@ -1068,13 +1489,19 @@ function WallhavenDetailModal({
               </div>
             )}
 
-            {/* Tags */}
+            {/* Tags — clickable to append #tag to query (feature 2) */}
             {wp.tags && wp.tags.length > 0 && (
               <div className="flex flex-wrap gap-1 items-center">
                 {visibleTags.map((t) => (
-                  <span key={t.id} className="badge badge-xs badge-outline">
+                  <button
+                    key={t.id}
+                    type="button"
+                    className="badge badge-xs badge-outline cursor-pointer hover:bg-primary/10 hover:border-primary transition-colors"
+                    onClick={() => onTagClick(t.name)}
+                    title={`Search for #${t.name}`}
+                  >
                     {t.name}
-                  </span>
+                  </button>
                 ))}
                 {!showAllTags && wp.tags.length > 10 && (
                   <button

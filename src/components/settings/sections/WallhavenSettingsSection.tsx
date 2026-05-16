@@ -25,7 +25,12 @@ const WallhavenSettingsSection: React.FC<WallhavenSettingsSectionProps> = ({ cla
 
   if (!config) return null;
 
-  const wallhaven = config.wallhaven ?? { api_key: "", enabled: false };
+  const wallhaven = config.wallhaven ?? {
+    api_key: "",
+    enabled: false,
+    scroll_mode: "paginated" as const,
+    blur_nsfw_thumbnails: true,
+  };
 
   const handleTestConnection = async () => {
     const key = wallhaven.api_key;
@@ -161,6 +166,20 @@ const WallhavenSettingsSection: React.FC<WallhavenSettingsSectionProps> = ({ cla
             {testMessage}
           </div>
         )}
+      </SettingRow>
+
+      <SettingRow
+        label="Blur NSFW thumbnails"
+        description="Blur NSFW card thumbnails by default. Hovering or focusing a card reveals the image. Disable to always show thumbnails at full opacity."
+      >
+        <input
+          type="checkbox"
+          className="toggle toggle-primary"
+          checked={wallhaven.blur_nsfw_thumbnails ?? true}
+          onChange={(e) => {
+            void saveConfigSection("wallhaven", { blur_nsfw_thumbnails: e.target.checked });
+          }}
+        />
       </SettingRow>
 
       <WallhavenDisclaimerModal

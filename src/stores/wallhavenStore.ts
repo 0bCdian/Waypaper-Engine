@@ -63,12 +63,82 @@ export type WallhavenSorting =
 
 export type WallhavenScrollMode = "paginated" | "infinite";
 
+/**
+ * Aspect-ratio filter groups for the Wallhaven toolbar.
+ * Source: Wallhaven public search page ratio options.
+ */
+export const WALLHAVEN_RATIO_GROUPS: { label: string; ratios: string[] }[] = [
+  { label: "Wide", ratios: ["16x9", "16x10"] },
+  { label: "Ultrawide", ratios: ["21x9", "32x9", "48x9"] },
+  { label: "Portrait", ratios: ["9x16", "10x16"] },
+  { label: "Square", ratios: ["1x1", "3x2", "4x3", "5x4"] },
+];
+
+/**
+ * Wallhaven's fixed color palette (30 colors).
+ * Values copied from the Wallhaven public search page (https://wallhaven.cc/search).
+ */
+export const WALLHAVEN_PALETTE: string[] = [
+  "660000",
+  "990000",
+  "cc0000",
+  "cc3333",
+  "ea4c88",
+  "993399",
+  "663399",
+  "333399",
+  "0066cc",
+  "0099cc",
+  "66cccc",
+  "77cc33",
+  "669900",
+  "336600",
+  "666600",
+  "999900",
+  "cccc33",
+  "cccc99",
+  "996633",
+  "663300",
+  "996600",
+  "cc9966",
+  "ffcc99",
+  "ffffff",
+  "cccccc",
+  "999999",
+  "666666",
+  "333333",
+  "000000",
+];
+
+const DOWNLOADED_IDS_KEY = "wallhaven-downloaded-ids";
+
+function loadDownloadedIds(): Set<string> {
+  try {
+    const raw = localStorage.getItem(DOWNLOADED_IDS_KEY);
+    if (!raw) return new Set();
+    const parsed = JSON.parse(raw) as string[];
+    return new Set(Array.isArray(parsed) ? parsed : []);
+  } catch {
+    return new Set();
+  }
+}
+
+function persistDownloadedIds(ids: Set<string>): void {
+  try {
+    localStorage.setItem(DOWNLOADED_IDS_KEY, JSON.stringify([...ids]));
+  } catch {
+    // localStorage unavailable; in-memory fallback is fine
+  }
+}
+
 interface WallhavenFilters {
   query: string;
   categories: Record<WallhavenCategory, boolean>;
   purity: Record<WallhavenPurity, boolean>;
   sorting: WallhavenSorting;
   page: number;
+  ratios: string[];
+  color: string | null;
 }
 
 interface CacheEntry {
@@ -82,6 +152,8 @@ function buildCacheKey(filters: WallhavenFilters): string {
     c: filters.categories,
     p: filters.purity,
     s: filters.sorting,
+    r: filters.ratios,
+    col: filters.color,
   });
 }
 
@@ -104,6 +176,11 @@ interface WallhavenState {
   selectedWallpapers: Set<string>;
 
   batchDownloadProgress: { current: number; total: number } | null;
+
+  /** localStorage-backed Set of wallhaven IDs already downloaded to the gallery. */
+  downloadedIds: Set<string>;
+  /** When true, already-downloaded cards are filtered from displayResults. */
+  hideDownloaded: boolean;
 }
 
 interface WallhavenActions {
@@ -127,6 +204,15 @@ interface WallhavenActions {
   selectAllVisible: () => void;
   clearSelection: () => void;
   downloadSelected: () => Promise<void>;
+
+  /** Toggle a ratio group label in the filter (multi-select). */
+  toggleRatio: (label: string) => void;
+  /** Set the active color filter (hex without #), or null to clear. */
+  setColor: (color: string | null) => void;
+  /** Mark a wallhaven ID as downloaded and persist to localStorage. */
+  addDownloadedId: (id: string) => void;
+  /** Toggle the "hide already-downloaded" toolbar switch. */
+  setHideDownloaded: (v: boolean) => void;
 }
 
 function buildCategoryString(cats: Record<WallhavenCategory, boolean>): string {
@@ -147,6 +233,8 @@ const defaultFilters: WallhavenFilters = {
   purity: { sfw: true, sketchy: false, nsfw: false },
   sorting: "date_added",
   page: 1,
+  ratios: [],
+  color: null,
 };
 
 async function fetchWallhavenDetail(wpId: string): Promise<WallhavenWallpaper | null> {
@@ -235,6 +323,9 @@ export const useWallhavenStore = create<WallhavenState & WallhavenActions>()((se
   selectedWallpapers: new Set(),
 
   batchDownloadProgress: null,
+
+  downloadedIds: loadDownloadedIds(),
+  hideDownloaded: false,
 
   setQuery: (query) =>
     set((s) => {
@@ -325,6 +416,14 @@ export const useWallhavenStore = create<WallhavenState & WallhavenActions>()((se
       };
       const processedQuery = preprocessQuery(filters.query);
       if (processedQuery) params.q = processedQuery;
+      if (filters.ratios.length > 0) {
+        // Expand ratio group labels into API ratios
+        const apiRatios = filters.ratios.flatMap(
+          (label) => WALLHAVEN_RATIO_GROUPS.find((g) => g.label === label)?.ratios ?? [],
+        );
+        if (apiRatios.length > 0) params.ratios = apiRatios.join(",");
+      }
+      if (filters.color) params.colors = filters.color;
 
       const raw = (await window.API_RENDERER.wallhaven.search(params)) as WallhavenSearchResponse;
 
@@ -521,4 +620,42 @@ export const useWallhavenStore = create<WallhavenState & WallhavenActions>()((se
       selectedWallpapers: new Set(),
     });
   },
+
+  toggleRatio: (label) =>
+    set((s) => {
+      const current = s.filters.ratios;
+      const next = current.includes(label)
+        ? current.filter((r) => r !== label)
+        : [...current, label];
+      const newFilters = { ...s.filters, ratios: next, page: 1 };
+      return {
+        filters: newFilters,
+        cacheKey: buildCacheKey(newFilters),
+        infiniteResults: [],
+        infiniteHighestPage: 0,
+        selectedWallpapers: new Set(),
+      };
+    }),
+
+  setColor: (color) =>
+    set((s) => {
+      const newFilters = { ...s.filters, color, page: 1 };
+      return {
+        filters: newFilters,
+        cacheKey: buildCacheKey(newFilters),
+        infiniteResults: [],
+        infiniteHighestPage: 0,
+        selectedWallpapers: new Set(),
+      };
+    }),
+
+  addDownloadedId: (id) =>
+    set((s) => {
+      const next = new Set(s.downloadedIds);
+      next.add(id);
+      persistDownloadedIds(next);
+      return { downloadedIds: next };
+    }),
+
+  setHideDownloaded: (v) => set({ hideDownloaded: v }),
 }));
