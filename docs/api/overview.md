@@ -1,6 +1,6 @@
 # API overview
 
-The daemon speaks **JSON** over **HTTP/1.1** on a **Unix domain socket** (not plain TCP in the default build). The router is [chi](https://github.com/go-chi/chi); the **canonical list of routes** is `internal/server/routes.go` in the repo on GitHub.
+The daemon speaks **JSON** over **HTTP/1.1** on a **Unix domain socket** . The router is [chi](https://github.com/go-chi/chi); the **canonical list of routes** is `internal/server/routes.go` in the repo on GitHub.
 
 | Topic                                              | Where                                                                                                        |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
