@@ -1,0 +1,737 @@
+/* ──────────────────────────────────────────────────────────────
+   Waypaper Engine docs — Everforest field-notebook theme
+   Concept: an engineer's graph-paper notebook in soft daylight
+            or under a low desk lamp. Cream paper, blue grid ink,
+            forest-green typography, plum code annotations.
+   Palette: sainnhe/everforest.
+   Type:    Space Grotesk (display) / Inter (body) / JetBrains Mono.
+            Matches the app's "Kolision" bundled-font preset.
+   ────────────────────────────────────────────────────────────── */
+
+/* ── Palette tokens ──────────────────────────────────────────── */
+
+:root {
+  /* Everforest LIGHT — soft surface, warmer than canonical */
+  --ef-paper:   #fdf6e3;
+  --ef-paper-2: #f5efd5;
+  --ef-paper-3: #ece5c4;
+  --ef-paper-4: #e0d9b6;
+  --ef-ink-1:   #3d484d;   /* headings */
+  --ef-ink-2:   #475258;   /* body */
+  --ef-ink-3:   #5c6a72;   /* muted */
+  --ef-ink-4:   #829181;   /* faint */
+
+  --ef-red:    #c44a4a;
+  --ef-orange: #c87e2a;
+  --ef-yellow: #c39200;
+  --ef-green:  #6f8c00;    /* slightly darker than #8da101 for body-text contrast */
+  --ef-aqua:   #2a8a64;
+  --ef-blue:   #3a7ca5;
+  --ef-plum:   #b8568f;
+
+  /* Graph-paper grid: blue ink on cream, two densities */
+  --grid-cell: 28px;
+  --grid-major: 5;                       /* every Nth line is darker */
+  --grid-minor-alpha: 0.035;
+  --grid-major-alpha: 0.075;
+  --grid-ink: 58 124 165;                /* --ef-blue as r g b */
+
+  /* Paper grain noise — independent layer */
+  --grain-alpha: 0.035;
+
+  /* ── VitePress mapping ─────────────────────────────────── */
+  --vp-c-bg:      var(--ef-paper);
+  --vp-c-bg-alt:  var(--ef-paper-2);
+  --vp-c-bg-elv:  var(--ef-paper);
+  --vp-c-bg-soft: var(--ef-paper-2);
+
+  --vp-c-text-1: var(--ef-ink-2);
+  --vp-c-text-2: var(--ef-ink-3);
+  --vp-c-text-3: var(--ef-ink-4);
+
+  --vp-c-divider: var(--ef-paper-4);
+  --vp-c-gutter:  var(--ef-paper-4);
+  --vp-c-border:  var(--ef-paper-3);
+
+  --vp-c-brand-1: var(--ef-green);
+  --vp-c-brand-2: #5c7400;
+  --vp-c-brand-3: #4d6100;
+  --vp-c-brand-soft: rgba(111, 140, 0, 0.14);
+
+  --vp-c-default-1: var(--ef-ink-3);
+  --vp-c-default-2: var(--ef-ink-2);
+  --vp-c-default-3: var(--ef-ink-4);
+  --vp-c-default-soft: rgba(92, 106, 114, 0.12);
+
+  --vp-c-tip-1:    var(--ef-aqua);
+  --vp-c-tip-soft: rgba(42, 138, 100, 0.14);
+  --vp-c-note-1:   var(--ef-blue);
+  --vp-c-note-soft: rgba(58, 124, 165, 0.14);
+  --vp-c-warning-1: var(--ef-yellow);
+  --vp-c-warning-soft: rgba(195, 146, 0, 0.16);
+  --vp-c-danger-1: var(--ef-red);
+  --vp-c-danger-soft: rgba(196, 74, 74, 0.14);
+  --vp-c-important-1: var(--ef-plum);
+  --vp-c-important-soft: rgba(184, 86, 143, 0.14);
+
+  /* Home hero */
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: linear-gradient(135deg, var(--ef-green) 0%, var(--ef-aqua) 60%, var(--ef-blue) 100%);
+  --vp-home-hero-image-background-image: radial-gradient(closest-side, var(--ef-green), transparent 70%);
+  --vp-home-hero-image-filter: blur(40px);
+
+  /* Code */
+  --vp-code-color: var(--ef-plum);
+  --vp-code-bg:    rgba(184, 86, 143, 0.08);
+  --vp-code-block-bg: #f5f0d8;
+  --vp-code-line-highlight-color: rgba(111, 140, 0, 0.10);
+
+  /* Buttons */
+  --vp-button-brand-bg: var(--ef-green);
+  --vp-button-brand-hover-bg: #5c7400;
+  --vp-button-brand-active-bg: #4d6100;
+  --vp-button-brand-text: var(--ef-paper);
+  --vp-button-brand-hover-text: var(--ef-paper);
+  --vp-button-brand-active-text: var(--ef-paper);
+  --vp-button-brand-border: transparent;
+  --vp-button-brand-hover-border: transparent;
+  --vp-button-brand-active-border: transparent;
+
+  --vp-button-alt-bg: transparent;
+  --vp-button-alt-hover-bg: rgba(58, 124, 165, 0.08);
+  --vp-button-alt-active-bg: rgba(58, 124, 165, 0.14);
+  --vp-button-alt-text: var(--ef-ink-2);
+  --vp-button-alt-hover-text: var(--ef-ink-1);
+  --vp-button-alt-active-text: var(--ef-ink-1);
+  --vp-button-alt-border: var(--ef-paper-4);
+  --vp-button-alt-hover-border: var(--ef-blue);
+  --vp-button-alt-active-border: var(--ef-blue);
+}
+
+/* ── Everforest DARK — desk-lamp mode ────────────────────────── */
+.dark {
+  --ef-paper:   #2d353b;
+  --ef-paper-2: #343f44;
+  --ef-paper-3: #3d484d;
+  --ef-paper-4: #4f585e;
+  --ef-ink-1:   #d3c6aa;
+  --ef-ink-2:   #d3c6aa;
+  --ef-ink-3:   #a7b0a4;
+  --ef-ink-4:   #859289;
+
+  --ef-red:    #e67e80;
+  --ef-orange: #e69875;
+  --ef-yellow: #dbbc7f;
+  --ef-green:  #a7c080;
+  --ef-aqua:   #83c092;
+  --ef-blue:   #7fbbb3;
+  --ef-plum:   #d699b6;
+
+  --grid-minor-alpha: 0.03;
+  --grid-major-alpha: 0.07;
+  --grid-ink: 127 187 179;
+  --grain-alpha: 0.025;
+
+  --vp-c-bg:      var(--ef-paper);
+  --vp-c-bg-alt:  var(--ef-paper-2);
+  --vp-c-bg-elv:  var(--ef-paper-2);
+  --vp-c-bg-soft: var(--ef-paper-2);
+
+  --vp-c-text-1: var(--ef-ink-1);
+  --vp-c-text-2: var(--ef-ink-3);
+  --vp-c-text-3: var(--ef-ink-4);
+
+  --vp-c-divider: var(--ef-paper-4);
+  --vp-c-gutter:  var(--ef-paper-3);
+  --vp-c-border:  var(--ef-paper-4);
+
+  --vp-c-brand-1: var(--ef-green);
+  --vp-c-brand-2: #b8cf94;
+  --vp-c-brand-3: #c7daa8;
+  --vp-c-brand-soft: rgba(167, 192, 128, 0.18);
+
+  --vp-c-tip-1: var(--ef-aqua);
+  --vp-c-tip-soft: rgba(131, 192, 146, 0.18);
+  --vp-c-note-1: var(--ef-blue);
+  --vp-c-note-soft: rgba(127, 187, 179, 0.18);
+  --vp-c-warning-1: var(--ef-yellow);
+  --vp-c-warning-soft: rgba(219, 188, 127, 0.18);
+  --vp-c-danger-1: var(--ef-red);
+  --vp-c-danger-soft: rgba(230, 126, 128, 0.18);
+  --vp-c-important-1: var(--ef-plum);
+  --vp-c-important-soft: rgba(214, 153, 182, 0.18);
+
+  --vp-code-color: var(--ef-plum);
+  --vp-code-bg:    rgba(214, 153, 182, 0.12);
+  --vp-code-block-bg: #262d33;
+  --vp-code-line-highlight-color: rgba(167, 192, 128, 0.14);
+
+  --vp-button-brand-bg: var(--ef-green);
+  --vp-button-brand-hover-bg: #b8cf94;
+  --vp-button-brand-active-bg: #c7daa8;
+  --vp-button-brand-text: var(--ef-paper);
+  --vp-button-brand-hover-text: var(--ef-paper);
+  --vp-button-brand-active-text: var(--ef-paper);
+
+  --vp-button-alt-bg: transparent;
+  --vp-button-alt-hover-bg: rgba(127, 187, 179, 0.10);
+  --vp-button-alt-active-bg: rgba(127, 187, 179, 0.16);
+  --vp-button-alt-text: var(--ef-ink-1);
+  --vp-button-alt-hover-text: var(--ef-ink-1);
+  --vp-button-alt-active-text: var(--ef-ink-1);
+  --vp-button-alt-border: var(--ef-paper-4);
+  --vp-button-alt-hover-border: var(--ef-blue);
+  --vp-button-alt-active-border: var(--ef-blue);
+}
+
+/* ── Typography ──────────────────────────────────────────────── */
+
+:root {
+  --vp-font-family-base:
+    "Inter", -apple-system, "Segoe UI", system-ui, sans-serif;
+  --vp-font-family-display:
+    "Space Grotesk", "Inter", system-ui, sans-serif;
+  --vp-font-family-mono:
+    "JetBrains Mono", ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+html {
+  font-feature-settings: "cv11", "ss01";
+}
+
+body {
+  font-family: var(--vp-font-family-base);
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Display headings — Space Grotesk */
+.VPDoc h1,
+.VPDoc h2,
+.VPDoc h3,
+.VPHome .name,
+.VPHome .text,
+.VPNavBarTitle .title {
+  font-family: var(--vp-font-family-display);
+  font-weight: 600;
+  letter-spacing: -0.018em;
+  color: var(--ef-ink-1);
+}
+
+.dark .VPDoc h1,
+.dark .VPDoc h2,
+.dark .VPDoc h3,
+.dark .VPNavBarTitle .title {
+  color: var(--ef-ink-1);
+}
+
+.VPDoc h1 {
+  font-weight: 700;
+  letter-spacing: -0.028em;
+  line-height: 1.05;
+}
+
+/* Hanging green section mark before h2 */
+.VPDoc h2 {
+  position: relative;
+  border-top: none !important;
+  padding-top: 2.4rem;
+  margin-top: 2.8rem !important;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+/* Top rule above each h2 — a short green underscore */
+.VPDoc h2::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 2.2rem;
+  height: 2px;
+  background: var(--ef-green);
+  border-radius: 1px;
+}
+
+/* H3 anchor positioning context */
+.VPDoc h3 {
+  position: relative;
+}
+
+/* ── Heading anchor links — replace default "#" with our marks ─
+   VitePress injects an <a class="header-anchor"> on every heading
+   with content "#". We restyle that anchor instead of layering a
+   decorative pseudo-element next to it (which caused the icons to
+   stack). Click-to-copy still works. */
+
+.VPDoc :is(h1, h2, h3, h4, h5, h6) .header-anchor {
+  font-family: var(--vp-font-family-display);
+  font-weight: 500;
+  color: var(--ef-green);
+  opacity: 0;
+  transition: opacity 140ms ease;
+}
+
+.VPDoc :is(h1, h2, h3, h4, h5, h6):hover .header-anchor,
+.VPDoc :is(h1, h2, h3, h4, h5, h6) .header-anchor:focus {
+  opacity: 0.7;
+}
+
+.VPDoc :is(h1, h2, h3, h4, h5, h6) .header-anchor::before {
+  content: "#";              /* keep VitePress default for h4+ */
+}
+
+/* h2: section mark */
+.VPDoc h2 .header-anchor {
+  opacity: 0.55;              /* always faintly visible on h2 */
+}
+.VPDoc h2 .header-anchor::before {
+  content: "§";
+  font-style: italic;
+  font-size: 0.95em;
+}
+
+/* h3: subtle bullet */
+.VPDoc h3 .header-anchor {
+  opacity: 0.5;
+  color: var(--ef-aqua);
+}
+.VPDoc h3 .header-anchor::before {
+  content: "·";
+  font-size: 1.4em;
+  font-weight: 700;
+  line-height: 0.4;
+}
+
+/* Body prose — slightly larger line-height. Let VitePress own widths. */
+.VPDoc p, .VPDoc li {
+  line-height: 1.72;
+}
+
+/* Inline code — engineer's plum annotation on warm tape */
+.vp-doc code:not(pre code) {
+  font-family: var(--vp-font-family-mono);
+  font-size: 0.86em;
+  font-weight: 500;
+  padding: 0.12em 0.42em;
+  border-radius: 3px;
+  border: 1px solid rgba(184, 86, 143, 0.18);
+  background: rgba(184, 86, 143, 0.08);
+  color: var(--ef-plum);
+}
+.dark .vp-doc code:not(pre code) {
+  border-color: rgba(214, 153, 182, 0.22);
+  background: rgba(214, 153, 182, 0.12);
+  color: var(--ef-plum);
+}
+
+/* Links — green underline that thickens on hover */
+.VPDoc a {
+  color: var(--ef-green);
+  text-decoration: underline;
+  text-decoration-color: rgba(111, 140, 0, 0.35);
+  text-decoration-thickness: 1px;
+  text-underline-offset: 3px;
+  transition: text-decoration-color 120ms ease, text-decoration-thickness 120ms ease;
+}
+.VPDoc a:hover {
+  text-decoration-color: var(--ef-green);
+  text-decoration-thickness: 2px;
+}
+.dark .VPDoc a {
+  color: var(--ef-aqua);
+  text-decoration-color: rgba(131, 192, 146, 0.35);
+}
+.dark .VPDoc a:hover { text-decoration-color: var(--ef-aqua); }
+
+/* Tables — notebook-ledger feel */
+.vp-doc table {
+  border-collapse: separate;
+  border-spacing: 0;
+  border: 1px solid var(--vp-c-border);
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(255, 250, 230, 0.5);
+}
+.dark .vp-doc table {
+  background: rgba(45, 53, 59, 0.5);
+}
+.vp-doc th {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.78rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--ef-ink-3);
+  background: var(--ef-paper-2);
+  border-bottom: 1px solid var(--vp-c-border);
+}
+
+/* Blockquotes — green margin rule */
+.vp-doc blockquote {
+  border-left: 2px solid var(--ef-green);
+  padding-left: 1.2rem;
+  margin-left: 0;
+  color: var(--ef-ink-3);
+  font-style: italic;
+}
+
+/* ── Home page — drafting-paper background ──────────────────
+   Lives on `.Layout` (not `.VPHome`) so `inset: 0` covers the full flex
+   column: hero, features, Try it, *and* `layout-bottom` (HomeFooter). The
+   ::before / ::after layers lived on `.VPHome`; that wrapper ends right
+   after `home-features-after`, so the grid stopped above the footer strip. */
+
+.Layout:has(#VPContent.is-home) {
+  position: relative;
+  isolation: isolate;
+  --paper-ink: 60 110 150; /* desaturated paper-print blue */
+  --paper-minor: 0.045;
+  --paper-major: 0.085;
+  --paper-cell: 28px;
+  --paper-major-mult: 5;
+}
+
+.dark .Layout:has(#VPContent.is-home) {
+  --paper-ink: 127 187 179; /* aqua under desk lamp */
+  --paper-minor: 0.035;
+  --paper-major: 0.075;
+}
+
+/* Lamp-light vignette + two-tone grid */
+.Layout:has(#VPContent.is-home)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background-image:
+    radial-gradient(
+      ellipse 75% 55% at 42% 18%,
+      rgba(255, 235, 180, 0.22),
+      transparent 72%
+    ),
+    linear-gradient(
+      to right,
+      rgb(var(--paper-ink) / var(--paper-major)) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      rgb(var(--paper-ink) / var(--paper-major)) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to right,
+      rgb(var(--paper-ink) / var(--paper-minor)) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      rgb(var(--paper-ink) / var(--paper-minor)) 1px,
+      transparent 1px
+    );
+  background-size:
+    100% 100%,
+    calc(var(--paper-cell) * var(--paper-major-mult)) calc(var(--paper-cell) * var(--paper-major-mult)),
+    calc(var(--paper-cell) * var(--paper-major-mult)) calc(var(--paper-cell) * var(--paper-major-mult)),
+    var(--paper-cell) var(--paper-cell),
+    var(--paper-cell) var(--paper-cell);
+  background-repeat:
+    no-repeat,
+    repeat, repeat,
+    repeat, repeat;
+  background-position: 0 0;
+  mix-blend-mode: multiply;
+}
+
+.dark .Layout:has(#VPContent.is-home)::before {
+  background-image:
+    radial-gradient(
+      ellipse 75% 55% at 42% 18%,
+      rgba(167, 192, 128, 0.10),
+      transparent 72%
+    ),
+    linear-gradient(
+      to right,
+      rgb(var(--paper-ink) / var(--paper-major)) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      rgb(var(--paper-ink) / var(--paper-major)) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to right,
+      rgb(var(--paper-ink) / var(--paper-minor)) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      to bottom,
+      rgb(var(--paper-ink) / var(--paper-minor)) 1px,
+      transparent 1px
+    );
+  mix-blend-mode: screen;
+}
+
+/* Paper fiber — fractal noise above the grid for tactile grain */
+.Layout:has(#VPContent.is-home)::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  opacity: 0.07;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='2' stitchTiles='stitch' seed='3'/><feColorMatrix values='0 0 0 0 0.18  0 0 0 0 0.16  0 0 0 0 0.10  0 0 0 0.8 0'/></filter><rect width='100%' height='100%' filter='url(%23p)'/></svg>");
+  background-size: 220px 220px;
+}
+.dark .Layout:has(#VPContent.is-home)::after {
+  opacity: 0.05;
+  mix-blend-mode: screen;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='220' height='220'><filter id='p'><feTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='2' stitchTiles='stitch' seed='3'/><feColorMatrix values='0 0 0 0 0.85  0 0 0 0 0.82  0 0 0 0 0.72  0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23p)'/></svg>");
+}
+
+.VPHome {
+  position: relative;
+}
+
+/* Float hero/features above the paper layers */
+.VPHome > * {
+  position: relative;
+  z-index: 1;
+}
+
+.VPDocAside .outline-marker {
+  background-color: var(--ef-green) !important;
+}
+.VPDocAsideOutline .outline-link:hover,
+.VPDocAsideOutline .outline-link.active {
+  color: var(--ef-green) !important;
+}
+
+/* Mono labels in the outline + sidebar group headers */
+.VPDocAsideOutline .outline-title,
+.VPSidebarItem.level-0 > .item > .text {
+  font-family: "JetBrains Mono", monospace !important;
+  font-size: 0.74rem !important;
+  font-weight: 500 !important;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--ef-ink-3);
+}
+
+/* ── Chrome (nav + sidebar) — opaque, no fight with the grid ── */
+
+.VPNav,
+.VPNavBar,
+.VPLocalNav,
+.VPSidebar {
+  background-color: var(--vp-c-bg) !important;
+  backdrop-filter: none;
+}
+
+.VPNavBar {
+  border-bottom: 1px solid transparent;
+  background-image: linear-gradient(var(--vp-c-bg), var(--vp-c-bg)),
+    linear-gradient(
+      to right,
+      transparent,
+      var(--ef-paper-4) 20%,
+      var(--ef-paper-4) 80%,
+      transparent
+    );
+  background-origin: padding-box, border-box;
+  background-clip: padding-box, border-box;
+  border-bottom: 1px solid transparent;
+}
+.dark .VPNavBar {
+  background-image: linear-gradient(var(--vp-c-bg), var(--vp-c-bg)),
+    linear-gradient(
+      to right,
+      transparent,
+      var(--ef-paper-4) 20%,
+      var(--ef-paper-4) 80%,
+      transparent
+    );
+}
+
+.VPNavBarTitle .title {
+  font-weight: 600;
+  letter-spacing: -0.014em;
+  font-size: 1.05rem;
+}
+
+.VPNavBarMenuLink,
+.VPNavBarMenuGroup .text {
+  font-family: var(--vp-font-family-base);
+  font-weight: 500;
+  font-size: 0.875rem !important;
+  letter-spacing: 0.005em;
+}
+
+/* Sidebar — clean right edge */
+.VPSidebar {
+  border-right: 1px solid var(--ef-paper-4);
+}
+.dark .VPSidebar {
+  border-right: 1px solid var(--ef-paper-4);
+}
+
+.VPSidebarItem.is-active > .item > .link > .text {
+  color: var(--ef-green) !important;
+  font-weight: 600;
+}
+
+/* Active link gets a small left tick instead of a bar */
+.VPSidebarItem.is-active > .item {
+  position: relative;
+}
+.VPSidebarItem.is-active > .item::before {
+  content: "›";
+  position: absolute;
+  left: -0.6rem;
+  top: 0.05em;
+  color: var(--ef-green);
+  font-weight: 700;
+}
+
+/* ── Search box — paper-tape look ───────────────────────────── */
+.DocSearch-Button {
+  background: transparent !important;
+  border: 1px dashed var(--ef-paper-4) !important;
+  border-radius: 4px !important;
+}
+.DocSearch-Button:hover {
+  border-color: var(--ef-green) !important;
+  border-style: solid !important;
+}
+.DocSearch-Button-Placeholder {
+  font-family: var(--vp-font-family-base) !important;
+  color: var(--ef-ink-3) !important;
+}
+
+/* ── Home page — let the grid breathe; refined hero ─────────── */
+
+/* Home: strip VitePress default bottom margin (96px / 128px) before layout-bottom footer. */
+.VPHome {
+  padding-bottom: 0 !important;
+  margin-bottom: 0 !important;
+}
+
+/* Hide VitePress's default centered footer — HomeFooter (mono, two-col)
+   from theme/components/HomeFooter.vue covers all pages instead. */
+.VPFooter { display: none !important; }
+
+.VPHero .name {
+  font-family: var(--vp-font-family-display) !important;
+  font-weight: 700;
+  letter-spacing: -0.035em;
+  background-clip: text !important;
+  -webkit-background-clip: text !important;
+}
+
+.VPHero .text {
+  font-family: var(--vp-font-family-display) !important;
+  font-weight: 500;
+  color: var(--ef-ink-2);
+  letter-spacing: -0.02em;
+}
+
+.VPHero .tagline {
+  font-family: var(--vp-font-family-base);
+  color: var(--ef-ink-3);
+  max-width: 56ch;
+  line-height: 1.55;
+}
+
+/* Feature cards — opaque, with a tiny mono prefix */
+.VPFeature {
+  background-color: var(--vp-c-bg-soft) !important;
+  border: 1px solid var(--vp-c-border) !important;
+  border-radius: 4px !important;
+  transition: border-color 160ms ease, transform 160ms ease;
+}
+.VPFeature:hover {
+  border-color: var(--ef-green) !important;
+  transform: translateY(-1px);
+}
+.VPFeature .title {
+  font-family: var(--vp-font-family-display);
+  font-weight: 600;
+  letter-spacing: -0.012em;
+  color: var(--ef-ink-1);
+}
+.VPFeature .details {
+  color: var(--ef-ink-3);
+  line-height: 1.6;
+}
+
+/* ── Buttons ─────────────────────────────────────────────────── */
+.VPButton {
+  font-family: var(--vp-font-family-base) !important;
+  font-weight: 500 !important;
+  letter-spacing: 0.005em !important;
+  border-radius: 4px !important;
+}
+
+/* ── Code blocks — warm tape, mono Plex, line numbers calm ─── */
+.vp-doc div[class*="language-"] {
+  border-radius: 4px;
+  border: 1px solid var(--vp-c-border);
+  background-color: var(--vp-code-block-bg);
+}
+.vp-doc div[class*="language-"] pre {
+  font-family: var(--vp-font-family-mono);
+  font-feature-settings: "ss03";
+  font-size: 0.86rem;
+  line-height: 1.65;
+}
+.vp-doc div[class*="language-"] .lang {
+  font-family: "JetBrains Mono", monospace !important;
+  font-size: 0.7rem !important;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ef-ink-4) !important;
+  opacity: 1 !important;
+}
+
+/* ── Admonitions / custom blocks — paper-tape stickers ───── */
+.custom-block {
+  border-radius: 4px;
+  border: 1px solid;
+  padding: 0.9rem 1.1rem;
+}
+.custom-block.tip    { border-color: rgba(42, 138, 100, 0.4); background: rgba(42, 138, 100, 0.06); }
+.custom-block.info   { border-color: rgba(58, 124, 165, 0.4); background: rgba(58, 124, 165, 0.06); }
+.custom-block.warning{ border-color: rgba(195, 146, 0, 0.45); background: rgba(195, 146, 0, 0.07); }
+.custom-block.danger { border-color: rgba(196, 74, 74, 0.45); background: rgba(196, 74, 74, 0.06); }
+.custom-block-title {
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.74rem;
+  font-weight: 500;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+/* ── Theme toggle (sun/moon) — green hover ──────────────────── */
+.VPSwitch:hover {
+  border-color: var(--ef-green) !important;
+}
+
+/* ── Scroll target offset (anchor links) ────────────────────── */
+html { scroll-padding-top: 80px; }
+
+/* ── Doc media lightbox (theme DocMediaLightbox.vue) ───────── */
+html.doc-media-lightbox-open {
+  overflow: hidden;
+}
+
+@media (pointer: fine) {
+  .vp-doc img:not([data-no-lightbox]),
+  .vp-doc video:not([data-no-lightbox]) {
+    cursor: zoom-in;
+  }
+}

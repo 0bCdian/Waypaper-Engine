@@ -1,10 +1,13 @@
 <script setup lang="ts">
 import { computed, onBeforeUnmount, onMounted, ref } from "vue";
-import { withBase, useData } from "vitepress";
+import { useData } from "vitepress";
+// Single source of truth: the generated daemon spec.
+// Vite emits this as a hashed asset at build time.
+// eslint-disable-next-line import/no-unresolved
+import specUrl from "../../../../daemon/docs/openapi.yaml?url";
 
 const { isDark } = useData();
 const scriptLoaded = ref(false);
-const specUrl = computed(() => withBase("/openapi.yaml"));
 const theme = computed(() => (isDark.value ? "dark" : "light"));
 
 let script: HTMLScriptElement | null = null;
@@ -32,6 +35,7 @@ onBeforeUnmount(() => {
     <rapi-doc
       v-show="scriptLoaded"
       :spec-url="specUrl"
+      :key="specUrl"
       render-style="read"
       :theme="theme"
       :allow-spec-url-load="true"

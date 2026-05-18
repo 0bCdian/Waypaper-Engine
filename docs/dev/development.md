@@ -234,7 +234,7 @@ Run `pnpm run ci:check` before opening a PR. It catches formatter drift (oxfmt, 
 From the repo root:
 
 ```bash
-pnpm run docs:dev    # VitePress dev server (copies openapi.yaml, then starts)
+pnpm run docs:dev    # VitePress dev server (imports daemon/docs/openapi.yaml directly)
 pnpm run docs:build  # Production build (what GitHub Pages runs on release tags)
 ```
 

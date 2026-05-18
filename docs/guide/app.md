@@ -4,12 +4,11 @@ The app is an Electron shell around a React frontend. Navigation uses a hash rou
 
 ---
 
-## Gallery (Home `/`)
+## Gallery
 
 The main screen. Everything you do with wallpapers starts here.
 
-<!-- SCREENSHOT PLACEHOLDER: Full gallery view showing the image grid with thumbnails, sidebar, and toolbar -->
-<!-- Description: Wide screenshot of the gallery with ~20 wallpapers visible, sidebar on left showing folders tree, toolbar at top with search/filter controls -->
+![Gallery Screenshot](../images/gallery.png)
 
 **Importing:**
 
@@ -19,6 +18,8 @@ The main screen. Everything you do with wallpapers starts here.
 - Supported formats: JPG, PNG, GIF, WebP, BMP, SVG, TIFF (images); MP4, WebM, MKV, MOV (videos).
 - Import progress is shown inline and reported live via SSE `processing_*` events.
 
+<video src="../images/importing.webm" autoplay loop mute></video>
+
 **Browsing:**
 
 - Filter by **media type** (image, video, GIF, web), **tags**, **dominant colors**, or **folder**.
@@ -26,6 +27,7 @@ The main screen. Everything you do with wallpapers starts here.
 - **Search:** fuzzy name/tag search in the toolbar.
 - **Sort:** by name, import date, or file size—ascending or descending. Persisted in config.
 
+<video src="../images/browsing.webm" autoplay loop mute></video>
 <!-- SCREENSHOT PLACEHOLDER: Gallery with filter panel open, showing tag filters and color swatches selected -->
 
 **Setting a wallpaper:**
@@ -41,9 +43,11 @@ The main screen. Everything you do with wallpapers starts here.
 
 **Image detail:**
 
-- Click the image name or use the context menu to open the detail panel.
+- Click the image name or use the context menu to open the detail sidebar.
 - Edit **tags**, view **metadata** (dimensions, size, format, import date, colors).
-- **Rename on disk:** the rename operation renames the file on disk and updates the database in one step.
+- **Palette swatches** — click a swatch to seed a color filter; long-press / right-click deletes a swatch.
+- **Rename on disk** — renames the file on disk and updates the database in one step.
+- Footer is sticky: set / delete / save without scrolling.
 
 **History navigation:**
 
@@ -53,30 +57,22 @@ The main screen. Everything you do with wallpapers starts here.
 
 ## Settings (`/settings`)
 
-<!-- SCREENSHOT PLACEHOLDER: Settings page showing backend selection, monitor config, and app behavior sections -->
+<!-- SCREENSHOT PLACEHOLDER: Settings modal with the four tab strip (General / Daemon / Backend / Wallhaven) -->
 
-Settings are organized into several sections. Changes are saved immediately and synced to the daemon via `PATCH /config`.
+Settings open as a modal with four tabs: **General**, **Daemon**, **Backend**, **Wallhaven**. Changes save immediately and sync to the daemon via `PATCH /config`. See also [Configuration (TOML)](/guide/config) for the on-disk format and [Daemon & paths](/guide/daemon) for socket layout.
 
-### Backend
+### General
 
-Pick which backend sets your wallpaper:
+The renderer-side tab. Four sub-sections.
 
-- **Type:** choose from `awww`, `hyprpaper`, `feh`, `mpvpaper`, or `wal-qt`. Unavailable backends (binary not found) are greyed out.
-- **Selection mode:**
-  - `fixed` — always use the selected backend.
-  - `auto` — pick the best available backend per media type, using priority lists you configure.
-- **Auto priority lists:** when `auto` is active, set ordered preference lists for images, videos, and web wallpapers independently.
-- **Per-backend config:** each backend has its own settings panel (transitions for awww, mpv options for mpvpaper, etc.). See [Backends](/guide/backends).
+**Theme & Appearance**
 
-### Monitors
+- **Theme** — DaisyUI preset list, or `system` to follow the OS dark/light setting.
+- **Font preset** — bundled **Kolision**, bundled **Google Sans**, the OS UI stack, or `custom` (you supply CSS `font-family` strings).
+- **UI Scale** — `compact` / `default` / `comfortable` / `large`. Scales the renderer including the sidebar rail and icons. Useful on HiDPI monitors or for accessibility.
+- **Neobrutalist radius** — slider wired to the `--wp-radius-*` tokens; affects gallery cards, sidebar, and playlist track.
 
-- **Selected monitors:** choose which connected outputs are active.
-- **Image set type:**
-  - `individual` — set each monitor's wallpaper independently.
-  - `clone` — same image on every monitor.
-  - `extend` — span one image across all monitors (auto-sliced by the daemon).
-
-### App behavior
+**Behavior**
 
 | Setting                     | What it does                                                                         |
 | --------------------------- | ------------------------------------------------------------------------------------ |
@@ -85,32 +81,80 @@ Pick which backend sets your wallpaper:
 | Start minimized             | Hide the window on launch (useful for autostart).                                    |
 | Minimize instead of close   | Send to tray on window close button.                                                 |
 | Show monitor modal on start | Pop the monitor selector every time the app opens.                                   |
-| Images per page             | Gallery pagination size (1–200).                                                     |
-| Image history limit         | Max wallpaper history entries before oldest are trimmed.                             |
+| Startup intro               | Show the welcome animation on launch.                                                |
 
-### Theme & fonts
+**Import**
 
-- **Theme:** choose from the DaisyUI preset list or `system` to follow the OS dark/light setting.
-- **Font preset:** bundled Kolision fonts, bundled Google Sans, OS UI stacks, or `custom` where you supply CSS font-family strings.
-- **Sort defaults:** set the gallery's default sort field and direction.
+- **Skip URL import warning** — suppress the warning dialog when pasting `https://` URLs into the gallery.
+
+**Restore defaults**
+
+- One-shot reset of daemon-side settings.
+
+### Daemon
+
+Daemon-owned knobs that round-trip through `PATCH /config`.
+
+- **Monitors** — pick active outputs.
+- **Image set type** — `individual` (per-monitor), `clone` (same image everywhere), or `extend` (one image sliced across all monitors by the daemon).
+- **Images per page** — gallery pagination size (1–200).
+- **Image history limit** — max wallpaper history entries before oldest are trimmed.
+- **Sort defaults** — default field and direction for the gallery.
+
+### Backend
+
+Pick which backend sets your wallpaper. Backend list and capabilities come from [Backends & dependencies](/guide/backends); auto mode reads each backend's declared **`Capabilities`** (see [What changed in v3](/guide/whats-new#backend-surface-apply-capabilities)).
+
+- **Type** — `awww`, `hyprpaper`, `feh`, `mpvpaper`, or `wal-qt`. Backends whose binary is missing on `PATH` are greyed out.
+- **Selection mode**
+  - `fixed` — always use the selected backend.
+  - `auto` — pick the best available backend per media type, using priority lists.
+- **Auto priority lists** — when `auto` is active, set ordered preference lists for images, videos, and web wallpapers independently.
+- **Per-backend config** — each backend has its own panel (transitions for awww, mpv options for mpvpaper, etc.).
 
 ### Wallhaven
 
-- **API key:** paste your Wallhaven API key for NSFW content and user collections. Leave blank for anonymous browsing.
-- **Scroll mode:** `paginated` (page-by-page) or `infinite` (auto-loads next page as you scroll).
+- **API key** — paste your Wallhaven API key for NSFW content and user collections. Leave blank for anonymous browsing.
+- **Scroll mode** — `paginated` or `infinite` (auto-loads the next page).
+- **Blur NSFW thumbnails** — blurs NSFW results in the route; unblurs on hover. Default on.
 
 ---
 
 ## Wallhaven (`/wallhaven`)
 
-<!-- SCREENSHOT PLACEHOLDER: Wallhaven search page with results grid, search bar at top, and filter sidebar -->
+<!-- SCREENSHOT PLACEHOLDER: Wallhaven route with toolbar, filter row, and result grid showing resolution badges -->
 
-Browse and download wallpapers from [wallhaven.cc](https://wallhaven.cc) without leaving the app.
+Browse and download from [wallhaven.cc](https://wallhaven.cc) without leaving the app. The route mirrors the gallery's interaction model — set, download, or queue into a playlist directly from a card.
 
-- Search with wallhaven's full query syntax.
-- Log in with an API key (set in Settings) to access your user data and NSFW content.
-- Click **Save to gallery** on any result to import it into your local library.
-- Pagination or infinite scroll depending on your Settings choice.
+**Search & query**
+
+- Wallhaven's full query syntax in the search bar (`#tag`, `-#tag`, etc.).
+- **Sort:** date added, relevance, random, views, favorites, top list.
+- **Categories** (General / Anime / People) and **Purity** (SFW / Sketchy / NSFW). NSFW requires an API key.
+
+**Filters**
+
+- **Ratios** — preset chips (16:9, 21:9, etc.) plus custom.
+- **Colors** — pick from Wallhaven's swatch palette to filter by dominant color.
+- **Hide saved** — hides any result already in your local gallery.
+
+**Card features**
+
+- **Resolution-match badge** — exact / good / poor vs. your largest monitor.
+- **NSFW chip** + thumbnail **blur** (toggle in [Settings → Wallhaven](#wallhaven)) — unblurs on hover/focus.
+- **In Gallery** chip when the image is already imported.
+- Hover overlay exposes **Set wallpaper**, **Download to gallery**, and a **playlist** menu.
+
+**Detail modal**
+
+- Full-resolution image, modal scales to viewport.
+- **Clickable tags** — click any tag to seed a fresh search for `#tagname`.
+- Per-monitor **Set** popover, palette swatches with click-to-search.
+
+**Scroll modes**
+
+- `paginated` or `infinite` (configured in [Settings → Wallhaven](#wallhaven)).
+- **Back-to-top** button appears once you scroll past the fold.
 
 ---
 
@@ -136,6 +180,11 @@ This is a beta feature—expect rough edges. The exported file can be imported b
 
 ## Shader Studio (`/shader-studio`) — beta
 
+::: warning
+ This function is beta, not all imported wallpapers will work out of the box,
+you will have to do some tinkering on your own.
+:::
+
 <!-- SCREENSHOT PLACEHOLDER: Shader Studio with GLSL code editor on left and live WebGL2 preview on right -->
 
 **Import Shadertoy JSON exports** (multipass shaders included) and preview them with a live **WebGL2** renderer. When you are happy with the result, save it as a **web wallpaper** package into the gallery—it shows up as a `web` media type image and can be set via the wal-qt backend.
@@ -154,17 +203,3 @@ Steps:
 Where the desktop environment supports a system tray, Waypaper Engine places a tray icon. Right-click it for quick actions: show/hide window, set random wallpaper, pause/resume playlist, quit.
 
 ---
-
-## Keyboard shortcuts
-
-<!-- SCREENSHOT PLACEHOLDER OR TABLE: Keyboard shortcuts reference overlay (press ? in app) -->
-
-| Action                  | Shortcut |
-| ----------------------- | -------- |
-| Open gallery            | `G`      |
-| Open settings           | `S`      |
-| Set random wallpaper    | `R`      |
-| Next playlist image     | `→`      |
-| Previous playlist image | `←`      |
-
-> **NOTE** — Shortcuts are subject to change. Check the in-app help for the current list.

@@ -13,29 +13,35 @@ export default defineConfig({
   cleanUrls: true,
   srcDir: ".",
   lastUpdated: true,
-  head: [["meta", { name: "theme-color", content: "#1c1917" }]],
+  head: [
+    ["meta", { name: "theme-color", content: "#fdf6e3" }],
+    ["link", { rel: "preconnect", href: "https://fonts.googleapis.com" }],
+    [
+      "link",
+      { rel: "preconnect", href: "https://fonts.gstatic.com", crossorigin: "" },
+    ],
+    [
+      "link",
+      {
+        rel: "stylesheet",
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap",
+      },
+    ],
+  ],
   ignoreDeadLinks: true,
   themeConfig: {
     logo: "/logo.png",
     nav: [
       { text: "Home", link: "/" },
-      { text: "Guide", link: "/guide/introduction" },
-      { text: "API", link: "/api/overview" },
-      { text: "OpenAPI spec", link: "/api/openapi" },
-      { text: "Hacking", link: "/dev/development" },
+      { text: "Docs", link: "/guide/introduction" },
     ],
     sidebar: {
-      "/": [
-        { text: "Welcome", link: "/" },
-        { text: "Why v3", link: "/guide/whats-new" },
-      ],
+      "/": [],
       "/guide/": [
         {
           text: "Getting started",
           items: [
-            { text: "Introduction", link: "/guide/introduction" },
             { text: "Install & run", link: "/guide/install" },
-            { text: "First 10 minutes", link: "/guide/first-run" },
             { text: "The app (UI)", link: "/guide/app" },
             { text: "FAQ & troubleshooting", link: "/guide/faq" },
           ],
@@ -76,6 +82,10 @@ export default defineConfig({
     },
     socialLinks: [
       { icon: "github", link: "https://github.com/0bCdian/Waypaper-Engine" },
+      {
+        icon: "linkedin",
+        link: "https://www.linkedin.com/in/diegoparranava-backend-devops-engineer/",
+      },
     ],
     footer: {
       message:
