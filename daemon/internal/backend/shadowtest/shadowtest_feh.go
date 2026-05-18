@@ -34,7 +34,27 @@ func NewFehCaptor(t *testing.T) *FehCaptor {
 		c.last = append([]string(nil), args...)
 		return nil
 	})
+	// Default: no Xinerama reorder — emit outputs in snap order so tests that
+	// don't care about head ordering stay deterministic without shelling out
+	// to xrandr.
+	b.SetXineramaOrderForTest(func() (map[string]int, error) {
+		return map[string]int{}, nil
+	})
 	return c
+}
+
+// SetXineramaOrder overrides the Xinerama head-index map for this captor.
+// Pass nil to restore the default (empty map → no reordering).
+func (c *FehCaptor) SetXineramaOrder(order map[string]int) {
+	if order == nil {
+		c.backend.SetXineramaOrderForTest(func() (map[string]int, error) {
+			return map[string]int{}, nil
+		})
+		return
+	}
+	c.backend.SetXineramaOrderForTest(func() (map[string]int, error) {
+		return order, nil
+	})
 }
 
 // LastArgv returns a copy of the most recently captured argv under lock.

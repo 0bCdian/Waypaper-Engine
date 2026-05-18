@@ -4,32 +4,48 @@ This document records the **final shape** of the fix for incorrect wallpaper
 spanning on X11 with feh in extend mode, and for `enabled: false` on connected
 outputs from xrandr.
 
-An earlier iteration carried a backend-specific path (`X11SpanPath`) on
-`backend.Snapshot` and branched on `Backend.Name() == "feh"` in the
-orchestrator. That violated the rule in
-[`daemon/internal/backend/README.md`](../../daemon/internal/backend/README.md)
-("Do not add backend-name conditional branches outside the backend package")
-and made the Snapshot carry implementation guidance instead of desired state.
-It has been reverted in favour of the design below.
+## Two false starts (recorded for the next traveller)
+
+1. The first attempt added a backend-specific `X11SpanPath` field to
+   `backend.Snapshot` and a `Backend.Name() == "feh"` branch in the
+   orchestrator. That violated the rule in
+   [`daemon/internal/backend/README.md`](../../daemon/internal/backend/README.md)
+   and let backend-specific implementation guidance bleed into a type that
+   only describes desired state. Reverted.
+
+2. The second attempt kept `Snapshot` clean but had `feh.Apply` sort outputs
+   by `(Y, X)` ascending under the assumption that Xinerama heads are indexed
+   by geometry. **They are not** — the X server orders Xinerama heads
+   "primary monitor first, then RandR enumeration order." On a setup where
+   the primary monitor is geometrically the rightmost, head 0 ends up on the
+   right, and the geometry-sorted argv hands left-monitor crops to the right
+   physical monitor. Reverted.
 
 ---
 
-## Design
+## Final design
 
 `Snapshot` describes **desired state per output** — `monitor M shows pixels P`.
-*How* a backend realises that is the backend's concern.
+*How* a backend realises that is the backend's concern. The `Splitter` returns
+one shape — `map[monitor.Name]path` — for every backend.
 
-`feh` accepts one path per Xinerama screen positionally:
+`feh` takes one path per Xinerama screen positionally:
 
     feh --bg-fill img0 img1 ...
 
-— `img0` goes to screen 0, `img1` to screen 1, etc. The orchestrator hands
-`feh` exactly the same per-output snapshot it hands the Wayland backends.
-`feh.Apply` sorts outputs by `(Y, X)` to match Xinerama's geometry-derived
-screen indices and emits one path argument per output.
+— `img0` lands on Xinerama head 0, `img1` on head 1, etc. The Xinerama head
+ordering is *not* derivable from geometry; it has to be queried. `feh.Apply`
+shells out to `xrandr --listmonitors` (whose leading integer is the Xinerama
+head index by definition) to build a `name → head_index` map, then sorts
+`snap.Outputs` by that index before emitting paths. If the lookup fails
+(xrandr missing / parse error), the backend logs a warning and falls back to
+emitting outputs in snapshot order — a misaligned wallpaper is preferable to
+no wallpaper.
 
-No backend-name branching exists outside the `feh` package. The `Splitter`
-returns one shape — `map[monitor.Name]path` — for every backend.
+No backend-name branching exists outside the `feh` package. No X11- or
+Xinerama-specific fields exist on `Snapshot` or `Monitor`. The orchestrator
+hands `feh` the same per-output snapshot every Wayland backend already
+consumes.
 
 ---
 
@@ -37,45 +53,42 @@ returns one shape — `map[monitor.Name]path` — for every backend.
 
 ### `daemon/internal/backend/feh/feh.go`
 
-`Apply` sorts `snap.Outputs` by `(Y, X)` and emits `[flag, path0, path1, ...]`,
-one path per output. Works identically for clone (same path repeated N times)
-and extend (one cropped path per monitor).
+- `Feh` gains a `xineramaOrderFn func() (map[string]int, error)` seam; the
+  real implementation is `xineramaOrderFromXrandr` which shells out to
+  `xrandr --listmonitors` and parses the output via
+  `parseXrandrListMonitors`.
+- `Apply` reorders `snap.Outputs` by Xinerama head index, then emits
+  `[flag, path0, path1, ...]`. Unknown names sort to the end (stable).
+- `SetXineramaOrderForTest` exposes the seam for tests.
 
-### `daemon/internal/monitor/provider_xrandr.go`
+### `daemon/internal/backend/feh/feh_test.go` (new)
 
-`parseXrandrOutputLine` sets `Enabled: true` for connected outputs with an
-active mode (previously left at Go's zero value `false`).
+- `TestParseXrandrListMonitors_PrimaryFirst` — real-world fixture with the
+  primary monitor on the right.
+- `TestParseXrandrListMonitors_Single`, `_Empty`, `_Garbage` — edge cases.
+- `TestApply_XineramaLookupError_FallsBack` — failure mode emits in
+  snapshot order with no error.
+- `TestXineramaIndex_KnownAndUnknown` — unknown names sort after known.
 
-### `daemon/internal/monitor/types.go`
+### `daemon/internal/backend/shadowtest/shadowtest_feh.go`
 
-Comment on `Enabled` documents that xrandr now sets it for connected
-active-mode outputs.
+`NewFehCaptor` defaults the Xinerama seam to a no-op (empty map → no
+reorder). New `(*FehCaptor).SetXineramaOrder(map[string]int)` lets a test
+inject a deterministic head ordering.
 
-### Tests
+### `daemon/internal/backend/shadowtest/shadowtest_feh_test.go`
 
-- `daemon/internal/backend/shadowtest/shadowtest_feh_test.go` —
-  - `TestFeh_Apply_CloneTwoMonitors`: same path repeated for both heads.
-  - `TestFeh_Apply_ExtendMode_PassesPerMonitorPaths`: per-output paths in
-    Xinerama order.
-  - `TestFeh_Apply_ExtendMode_SortsByGeometry`: outputs supplied out of
-    order are reordered by `(Y, X)`.
-  - `TestFeh_Apply_VerticalStack`: top monitor (lower `Y`) precedes bottom.
-- `daemon/internal/monitor/provider_xrandr_test.go` —
-  `TestParseXrandr_ConnectedOutputsEnabled`.
-
----
-
-## Caveat
-
-The `(Y, X)` sort assumes Xinerama indexes heads by geometry. This holds for
-stock X servers and typical layouts. Mirrored heads with identical geometry,
-or layouts that have been reordered via deprecated Xinerama config, may map
-differently — revisit if a user reports it.
+- `TestFeh_Apply_SingleMonitor`, `_CloneTwoMonitors`.
+- `TestFeh_Apply_ReordersByXineramaIndex` — primary-on-right case, asserts
+  the right monitor's path is emitted first.
+- `TestFeh_Apply_LeftPrimaryStillCorrect` — head 0 is the geometrically-left
+  monitor; argv comes out in geometry order without contortion.
+- `TestFeh_Apply_FallsBackOnEmptyXineramaOrder` — graceful fallback.
 
 ---
 
 ## Not changed
 
 - Other backends (awww, swaybg, hyprpaper, mpvpaper, wal-qt): unchanged.
-- `Backend` interface, `Snapshot` shape, `Splitter` signature: unchanged from
-  the pre-`X11SpanPath` baseline.
+- `Backend` interface, `Snapshot` shape, `Monitor` shape, `Splitter`
+  signature: unchanged from the pre-`X11SpanPath` baseline.
