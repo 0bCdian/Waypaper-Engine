@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os/exec"
+	"sort"
 
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/monitor"
@@ -37,7 +38,7 @@ func (f *Feh) SetExecForTest(fn func(args []string) error) (prev func([]string) 
 
 // execReal runs feh with ctx support and the given args.
 func (f *Feh) execReal(args []string) error {
-	// args[0] is the flag (--bg-fill etc.), args[1] is the path.
+	// args[0] is the flag (--bg-fill etc.); args[1:] are per-Xinerama-screen paths.
 	cmd := exec.Command("feh", args...)
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -68,19 +69,34 @@ func (f *Feh) Initialize(_ context.Context) error { return nil }
 // Shutdown is a no-op for feh (no daemon process).
 func (f *Feh) Shutdown(_ context.Context) error { return nil }
 
-// Apply implements backend.Backend. feh sets the X11 root window globally —
-// there is no per-monitor targeting in its CLI. When multiple outputs are
-// present, the first output's image is used (the snapshot must supply the
-// same image for all outputs, as the orchestrator clones for X11).
+// Apply implements backend.Backend. feh accepts one path per Xinerama screen
+// positionally: `feh --bg-fill img0 img1 ...` puts img0 on screen 0, img1 on
+// screen 1. Xinerama indexes screens by geometry, so we sort outputs by (Y, X)
+// before emitting paths to match. For clone mode the snapshot repeats the same
+// path per output and feh sets each head to that image.
 func (f *Feh) Apply(_ context.Context, snap backend.Snapshot) error {
 	if len(snap.Outputs) == 0 {
 		return nil
 	}
 
 	flag := modeToFlag(f.loadModeFromViper())
-	path := snap.Outputs[0].Content.Path()
-	slog.Debug("feh command", "flag", flag, "image", path)
-	return f.execFn([]string{flag, path})
+
+	outs := append([]backend.Output(nil), snap.Outputs...)
+	sort.SliceStable(outs, func(i, j int) bool {
+		a, b := outs[i].Monitor, outs[j].Monitor
+		if a.Y != b.Y {
+			return a.Y < b.Y
+		}
+		return a.X < b.X
+	})
+
+	args := make([]string, 0, len(outs)+1)
+	args = append(args, flag)
+	for _, o := range outs {
+		args = append(args, o.Content.Path())
+	}
+	slog.Debug("feh command", "flag", flag, "paths", args[1:])
+	return f.execFn(args)
 }
 
 func (f *Feh) RegisterDefaults(v *viper.Viper) {

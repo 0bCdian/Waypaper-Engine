@@ -33,7 +33,7 @@ const (
 //
 // Fields beyond name/width/height/x/y/scale/refresh_rate/transform are sourced
 // from the wlr-output-management protocol when available; providers that can't
-// fill them (legacy wl_output, xrandr) leave them at zero values and they are
+// fill them (legacy wl_output) leave them at zero values and they are
 // omitted from JSON output via omitempty.
 type Monitor struct {
 	// Name is the output identifier as reported by the compositor (e.g. "HDMI-A-1", "eDP-1").
@@ -75,7 +75,8 @@ type Monitor struct {
 	Transform int `json:"transform"`
 
 	// Enabled is true when the output is currently powered on and composing.
-	// Defaults to true for providers that can't detect this (e.g. wl_output, xrandr).
+	// Wayland wlr-output-management sets this from the compositor; the xrandr
+	// provider sets true for connected outputs with an active mode.
 	Enabled bool `json:"enabled"`
 
 	// AdaptiveSync is true when variable refresh rate (FreeSync/G-Sync) is active.

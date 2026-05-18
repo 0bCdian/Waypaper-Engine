@@ -137,12 +137,13 @@ func parseXrandrOutputLine(line string) (Monitor, bool) {
 	}
 
 	return Monitor{
-		Name:   name,
-		Width:  w,
-		Height: h,
-		X:      x,
-		Y:      y,
-		Scale:  1.0, // xrandr doesn't expose scale in --query output
+		Name:    name,
+		Width:   w,
+		Height:  h,
+		X:       x,
+		Y:       y,
+		Scale:   1.0, // xrandr doesn't expose scale in --query output
+		Enabled: true,
 	}, true
 }
 

@@ -160,8 +160,8 @@ type splitCache struct {
 const cacheFileName = "cache.json"
 
 // loadCache reads the cache.json from imageDir and checks if the cached source
-// file and monitor geometry match the current request. Returns (nil, false) if
-// the cache is missing, unreadable, or stale.
+// file and monitor geometry match the current request. Returns ok=false if the
+// cache is missing, unreadable, or stale.
 func (s *Splitter) loadCache(imageDir string, sourcePath string, monitors []monitor.Monitor) (map[string]string, bool) {
 	data, err := os.ReadFile(filepath.Join(imageDir, cacheFileName))
 	if err != nil {
