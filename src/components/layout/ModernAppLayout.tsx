@@ -15,6 +15,7 @@ import { StartupIntro } from "../StartupIntro";
 import NoBackendBanner from "../NoBackendBanner";
 import { useSettingsStore } from "../../stores/settingsStore";
 import { useDesignSystemStore } from "../../stores/designSystemStore";
+import { useStartupIntroGateStore } from "../../stores/startupIntroGateStore";
 
 export interface ModernAppLayoutProps {
   children: ReactNode;
@@ -52,6 +53,13 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({ children, clas
       setIntroFinished(true);
     }
   }, [config?.app?.startup_intro]);
+
+  /** Sync for sibling components (e.g. Modals): allow chrome when intro completed, intro off in config, or reduced-motion (matches when StartupIntro is not shown). */
+  const introFinishedForGate = introFinished || !startupIntroOn || reduceMotionFs === true;
+
+  useLayoutEffect(() => {
+    useStartupIntroGateStore.getState().setIntroFinished(introFinishedForGate);
+  }, [introFinishedForGate]);
 
   useEffect(() => {
     if (reduceMotionFs === true) {

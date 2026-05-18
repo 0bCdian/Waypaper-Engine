@@ -16,6 +16,7 @@ import Monitors from "./MonitorsModal";
 import { useMonitorStore } from "../stores/monitors";
 import type { Playlist } from "../../electron/daemon-go-types";
 import { daemonClient } from "@/client";
+import { useStartupIntroGateStore } from "../stores/startupIntroGateStore";
 
 function Modals() {
   const alreadyShown = useRef(false);
@@ -29,6 +30,7 @@ function Modals() {
   const playlist = usePlaylistStore((s) => s.playlist);
 
   const config = useSettingsStore((s) => s.config);
+  const introFinished = useStartupIntroGateStore((s) => s.introFinished);
 
   const reloadPlaylists = () => {
     void daemonClient.getPlaylists().then((playlists) => {
@@ -38,8 +40,12 @@ function Modals() {
 
   useEffect(() => {
     if (alreadyShown.current || !config) return;
+    if (!config.app.show_monitor_modal_on_start) {
+      alreadyShown.current = true;
+      return;
+    }
+    if (!introFinished) return;
     alreadyShown.current = true;
-    if (!config.app.show_monitor_modal_on_start) return;
     let timeoutId: ReturnType<typeof setTimeout> | null = null;
     let cancelled = false;
     void setLastSavedMonitorConfig().then(() => {
@@ -55,7 +61,7 @@ function Modals() {
       cancelled = true;
       if (timeoutId !== null) clearTimeout(timeoutId);
     };
-  }, [config, reQueryMonitors, setLastSavedMonitorConfig]);
+  }, [config, introFinished, reQueryMonitors, setLastSavedMonitorConfig]);
 
   useEffect(() => {
     reloadPlaylists();
