@@ -55,10 +55,9 @@ tests/coverage-report/
 coverage/
 coverage-report/
 
-# VitePress (generated OpenAPI copy; source of truth is daemon/docs/openapi.yaml)
+# VitePress
 docs/.vitepress/cache
 docs/.vitepress/dist
-docs/public/openapi.yaml
 
 # Local dev audit output
 audit-contrast.json

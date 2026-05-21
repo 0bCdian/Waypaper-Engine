@@ -5,7 +5,7 @@ on:
   push:
     branches:
       - main
-      - refactor/wayaper-daemon
+      - refactor/waypaper-engine
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.ref }}

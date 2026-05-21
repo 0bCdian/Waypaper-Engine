@@ -63,7 +63,9 @@ function ContextMenu() {
   useEffect(() => {
     if (!isOpen) return;
 
-    const handleClickOutside = (e: MouseEvent) => {
+    // Primary-button only ("left click"); pointerdown catches environments where click/mouse sequence is flaky.
+    const handlePointerPrimaryDownOutside = (e: MouseEvent | PointerEvent) => {
+      if (e.button !== 0) return;
       if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
         close();
       }
@@ -98,12 +100,14 @@ function ContextMenu() {
       }
     };
 
-    document.addEventListener("mousedown", handleClickOutside, true);
+    document.addEventListener("mousedown", handlePointerPrimaryDownOutside, true);
+    document.addEventListener("pointerdown", handlePointerPrimaryDownOutside, true);
     document.addEventListener("scroll", handleScroll, true);
     window.addEventListener("blur", handleBlur);
     document.addEventListener("keydown", handleKeyDown);
     return () => {
-      document.removeEventListener("mousedown", handleClickOutside, true);
+      document.removeEventListener("mousedown", handlePointerPrimaryDownOutside, true);
+      document.removeEventListener("pointerdown", handlePointerPrimaryDownOutside, true);
       document.removeEventListener("scroll", handleScroll, true);
       window.removeEventListener("blur", handleBlur);
       document.removeEventListener("keydown", handleKeyDown);

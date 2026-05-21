@@ -25,6 +25,7 @@ import (
 	"waypaper-engine/daemon/internal/backend/mpvpaper"
 	"waypaper-engine/daemon/internal/backend/swaybg"
 	"waypaper-engine/daemon/internal/backend/walqt"
+	"waypaper-engine/daemon/internal/backenddefaults"
 	"waypaper-engine/daemon/internal/config"
 	"waypaper-engine/daemon/internal/daemon"
 	"waypaper-engine/daemon/internal/monitor"
@@ -102,6 +103,13 @@ func startDaemon(configPath string, logLevel string) error {
 			slog.Warn("failed to register backend", "name", b.Name(), "error", err)
 		}
 		b.RegisterDefaults(cfg.Viper())
+	}
+
+	// Persist a complete config file now that every backend has registered its
+	// defaults, so [backend.<name>] subtables are fully populated on disk and the
+	// UI reads faithful values. Also wires the registrar into later writes.
+	if err := cfg.EnsureDefaultsPersisted(backenddefaults.RegisterInto); err != nil {
+		slog.Warn("could not persist complete config defaults", "error", err)
 	}
 
 	// 7. Activate the configured backend (fall back to any available backend).

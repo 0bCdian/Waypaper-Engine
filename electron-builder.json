@@ -21,7 +21,7 @@
   "linux": {
     "artifactName": "${productName}.${ext}",
     "category": "Utility",
-    "target": ["dir"],
+    "target": ["dir", "appImage"],
     "executableName": "waypaper-engine-bin",
     "description": "A graphical frontend for setting wallpapers and playlists, using awww under the hood!",
     "desktop": {

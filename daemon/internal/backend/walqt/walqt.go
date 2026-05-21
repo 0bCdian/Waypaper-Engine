@@ -106,6 +106,15 @@ type WalQt struct {
 	parallaxDriverMu     sync.Mutex
 	parallaxDriverCancel context.CancelFunc
 	parallaxDriverWG     sync.WaitGroup
+	// parallaxSyncMu serializes syncParallaxDriver so concurrent Apply calls
+	// cannot race each other over the driver goroutine lifecycle.
+	parallaxSyncMu sync.Mutex
+	// parallaxDriverSig records the config the driver goroutine was last started
+	// for; parallaxDriverSynced is false until the first sync completes. Together
+	// they let an unchanged Apply skip a needless teardown/restart (which would
+	// drop per-output workspace tracking and swallow the next workspace change).
+	parallaxDriverSig    parallaxDriverSignature
+	parallaxDriverSynced bool
 
 	parallaxManifestDirMu     sync.Mutex
 	parallaxManifestDirection string // "horizontal" | "vertical" | ""
@@ -170,7 +179,7 @@ func (w *WalQt) initializeImpl(ctx context.Context) error {
 
 	if initialErr == nil {
 		slog.Info("wal-qt already running")
-		w.syncParallaxDriver(w.loadConfigFromViper())
+		w.syncParallaxDriver(w.loadConfigFromViper(), true)
 		return nil
 	}
 
@@ -225,7 +234,7 @@ func (w *WalQt) initializeImpl(ctx context.Context) error {
 	}
 	slog.Info("wal-qt ready after spawn")
 	w.allowManagedChildRespawn.Store(true)
-	w.syncParallaxDriver(w.loadConfigFromViper())
+	w.syncParallaxDriver(w.loadConfigFromViper(), true)
 	return nil
 }
 
@@ -431,18 +440,74 @@ func (w *WalQt) noteWallpaperParallaxDirection(cfg *Config, parallaxDirection st
 	w.recomputeWorkspaceParallaxVertical(cfg)
 }
 
-// syncParallaxDriver starts or stops the Hyprland/Sway workspace → parallax-move loop.
-func (w *WalQt) syncParallaxDriver(cfg *Config) {
-	w.recomputeWorkspaceParallaxVertical(cfg)
-	w.parallaxDriverMu.Lock()
-	if w.parallaxDriverCancel != nil {
-		w.parallaxDriverCancel()
-		w.parallaxDriverCancel = nil
-	}
-	w.parallaxDriverMu.Unlock()
-	w.parallaxDriverWG.Wait()
+// parallaxDriverSignature captures the config inputs that require the
+// workspace → parallax-move driver goroutine to be torn down and restarted.
+// Other parallax settings (zoom, easing, axis) are read live or arrive with the
+// next load request, so they do not need a restart.
+type parallaxDriverSignature struct {
+	enabled   bool
+	mode      string
+	chunkSize int
+}
 
-	if cfg == nil || !cfg.ParallaxEnabled {
+func parallaxDriverSignatureFromConfig(cfg *Config) parallaxDriverSignature {
+	if cfg == nil {
+		cfg = defaultConfig()
+	}
+	return parallaxDriverSignature{
+		enabled:   cfg.ParallaxEnabled,
+		mode:      string(parallaxdriver.ParseDriverMode(cfg.ParallaxCompositorDriver)),
+		chunkSize: cfg.ParallaxWorkspaceChunkSize,
+	}
+}
+
+// syncParallaxDriver starts, stops, or restarts the Hyprland/Sway workspace →
+// parallax-move loop and pushes parallax state to wal-qt so /wallpaper/parallax-move
+// is not gated off.
+//
+// It is called from every Apply (RECONFIGURE included) so a settings change takes
+// effect without a restart. When the driver-relevant config is unchanged the
+// goroutine is left running and its per-output workspace state preserved; pass
+// force=true (post-spawn) to re-push parallax state to a fresh wal-qt process even
+// when the config has not changed.
+func (w *WalQt) syncParallaxDriver(cfg *Config, force bool) {
+	if cfg == nil {
+		cfg = defaultConfig()
+	}
+	w.recomputeWorkspaceParallaxVertical(cfg)
+
+	w.parallaxSyncMu.Lock()
+	defer w.parallaxSyncMu.Unlock()
+
+	sig := parallaxDriverSignatureFromConfig(cfg)
+
+	w.parallaxDriverMu.Lock()
+	sigUnchanged := w.parallaxDriverSynced && w.parallaxDriverSig == sig
+	driverRunning := w.parallaxDriverCancel != nil
+	w.parallaxDriverMu.Unlock()
+
+	if sigUnchanged && !force {
+		return
+	}
+	restartDriver := !sigUnchanged || !driverRunning
+
+	if restartDriver {
+		w.parallaxDriverMu.Lock()
+		cancel := w.parallaxDriverCancel
+		w.parallaxDriverCancel = nil
+		w.parallaxDriverMu.Unlock()
+		if cancel != nil {
+			cancel()
+		}
+		w.parallaxDriverWG.Wait()
+	}
+
+	w.parallaxDriverMu.Lock()
+	w.parallaxDriverSig = sig
+	w.parallaxDriverSynced = true
+	w.parallaxDriverMu.Unlock()
+
+	if !cfg.ParallaxEnabled {
 		return
 	}
 	mode := parallaxdriver.ParseDriverMode(cfg.ParallaxCompositorDriver)
@@ -458,10 +523,19 @@ func (w *WalQt) syncParallaxDriver(cfg *Config) {
 		return
 	}
 
+	// Push parallax state to wal-qt. Done on every non-skipped sync because a
+	// respawned wal-qt starts with parallax disabled, which would otherwise make
+	// setParallaxMove drop every move.
 	resetCtx, resetCancel := context.WithTimeout(context.Background(), 2*time.Second)
 	_ = client.setParallax(resetCtx, map[string]any{"enabled": false})
 	_ = client.setParallax(resetCtx, buildParallaxRequestBody(cfg))
 	resetCancel()
+
+	if !restartDriver {
+		// Goroutine already running with this exact config; only the wal-qt-side
+		// parallax state needed re-pushing.
+		return
+	}
 
 	ctx, cancel := context.WithCancel(context.Background())
 	w.parallaxDriverMu.Lock()
@@ -788,6 +862,10 @@ func (w *WalQt) Apply(ctx context.Context, snap backend.Snapshot) error {
 			} else {
 				w.noteWallpaperParallaxDirection(cfg, "")
 			}
+			// Start/stop/restart the workspace parallax driver for the current
+			// config. Apply is the single funnel for RECONFIGURE, so this is what
+			// makes a parallax settings change take effect without a restart.
+			w.syncParallaxDriver(cfg, false)
 			if loadReq.Parallax != nil {
 				return nil
 			}

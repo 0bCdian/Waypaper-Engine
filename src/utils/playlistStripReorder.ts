@@ -28,3 +28,21 @@ export function sortTimeOfDayPlaylistImages(images: readonly PlaylistImage[]): P
     return a.time - b.time;
   });
 }
+
+/**
+ * Applies a sortable strip move to a time_of_day playlist. Times are slot-bound:
+ * the time column stays where it is on screen and images move between slots, so
+ * dragging a card past another swaps their times. Returns null on invalid indices.
+ */
+export function reorderTimeOfDayPlaylistImages(
+  images: readonly PlaylistImage[],
+  from: number,
+  to: number,
+): PlaylistImage[] | null {
+  const moved = reorderPlaylistImagesBySortableMove(images, from, to);
+  if (moved == null) {
+    return null;
+  }
+  // Reattach each slot's original time to whichever image now occupies that slot.
+  return moved.map((img, slot) => ({ ...img, time: images[slot].time }));
+}

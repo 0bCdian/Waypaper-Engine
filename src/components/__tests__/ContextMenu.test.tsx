@@ -51,6 +51,29 @@ describe("ContextMenu", () => {
     expect(useContextMenuStore.getState().isOpen).toBe(false);
   });
 
+  it("primary pointer down outside closes menu", () => {
+    const items: MenuItem[] = [{ type: "action", label: "Open", onClick: vi.fn() }];
+
+    openMenuWith(items);
+    render(<ContextMenu />);
+
+    expect(screen.getByText("Open")).toBeInTheDocument();
+
+    act(() => {
+      document.body.dispatchEvent(
+        new MouseEvent("mousedown", {
+          bubbles: true,
+          cancelable: true,
+          button: 0,
+          clientX: 0,
+          clientY: 0,
+        }),
+      );
+    });
+
+    expect(useContextMenuStore.getState().isOpen).toBe(false);
+  });
+
   it("Escape key closes menu", async () => {
     const items: MenuItem[] = [{ type: "action", label: "Open", onClick: vi.fn() }];
 

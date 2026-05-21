@@ -42,7 +42,7 @@ DAEMON_LDFLAGS = -s -w -X main.version=$(DAEMON_VERSION)
 # Source of truth for the wal-qt OpenAPI spec (override to a local checkout).
 WALQT_REPO ?= ../wal-qt
 
-.PHONY: all build build-appimage help deps daemon frontend electron appimage package-electron-dir package-appimage \
+.PHONY: all build build-appimage help deps daemon frontend linux-packages electron appimage package-electron-dir package-appimage \
 	verify-daemon-binary verify-ui-artifacts verify-appimage-artifact \
 	install install-all install-ui install-daemon install-systemd install-appimage install-system install-appimage-system \
 	uninstall uninstall-ui uninstall-daemon uninstall-systemd uninstall-appimage uninstall-system uninstall-appimage-system clean \
@@ -59,8 +59,8 @@ help:
 	@echo "  make deps                Install pnpm dependencies (frozen lockfile)"
 	@echo "  make daemon              Build Go daemon"
 	@echo "  make frontend            Build Vite frontend (depends on daemon)"
-	@echo "  make electron            Build unpacked Electron release"
-	@echo "  make appimage            Build AppImage artifact"
+	@echo "  make electron            Build unpacked Electron dir (release/linux-unpacked)"
+	@echo "  make appimage            Build AppImage artifact (release/*.AppImage)"
 	@echo "  make build               Alias for make electron"
 	@echo "  make build-appimage      Alias for make appimage"
 	@echo ""
@@ -95,11 +95,19 @@ daemon:
 frontend: daemon
 	pnpm exec vite build
 
-electron: frontend
-	pnpm exec electron-builder --publish never --config electron-builder.json
+# electron-builder Linux target: `dir` (unpacked) for `make electron`/installs,
+# `appImage` for `make appimage`/releases. Building only what each target needs
+# keeps the unpacked-install path (and AUR builds) from producing an unused
+# AppImage and pulling AppImage tooling over the network.
+ELECTRON_BUILDER_TARGET ?= dir
 
-appimage: frontend
-	pnpm exec electron-builder --publish never --config electron-builder_AppImage.json
+linux-packages: frontend
+	pnpm exec electron-builder --publish never --config electron-builder.json --linux $(ELECTRON_BUILDER_TARGET)
+
+electron: ELECTRON_BUILDER_TARGET := dir
+electron: linux-packages
+appimage: ELECTRON_BUILDER_TARGET := appImage
+appimage: linux-packages
 
 package-electron-dir: electron
 package-appimage: appimage

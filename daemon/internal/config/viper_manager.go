@@ -32,6 +32,13 @@ type ViperManager struct {
 	// callbacks registered via OnConfigChange, called in order.
 	cbMu      sync.RWMutex
 	callbacks []func(section string)
+
+	// backendDefaults, set once via EnsureDefaultsPersisted, registers every
+	// backend's SetDefault entries onto the throwaway writer Vipers used to
+	// persist changes. Without it a write only knows core defaults, so a
+	// [backend.<name>] subtable collapses to just the explicitly-set keys and
+	// the UI (which reads via Sub) sees the rest as missing. Guarded by mu.
+	backendDefaults func(*viper.Viper)
 }
 
 // Compile-time assertion that ViperManager satisfies ConfigManager.
@@ -278,6 +285,63 @@ func (m *ViperManager) ResetToFactoryDefaults(registerBackendDefaults func(*vipe
 	return nil
 }
 
+// EnsureDefaultsPersisted records the backend-defaults registrar (so later
+// persist operations keep [backend.<name>] subtables complete) and writes the
+// config file so it physically contains every default key. Call once at startup
+// after every backend has registered its defaults onto Viper().
+//
+// The write is skipped when the file already holds every in-memory key, so a
+// complete, user-edited file is not churned. registerBackendDefaults must be
+// supplied by the caller (e.g. backenddefaults.RegisterInto); this package
+// cannot import backenddefaults without an import cycle.
+func (m *ViperManager) EnsureDefaultsPersisted(registerBackendDefaults func(*viper.Viper)) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.backendDefaults = registerBackendDefaults
+
+	cfgPath := m.v.ConfigFileUsed()
+	if cfgPath == "" {
+		return nil
+	}
+	if err := system.EnsureParentDir(cfgPath); err != nil {
+		return fmt.Errorf("config: ensure dir before persisting defaults: %w", err)
+	}
+
+	// Skip the write when every in-memory key (defaults included) is already on
+	// disk — avoids rewriting a file that is already complete.
+	onDisk := viper.New()
+	onDisk.SetConfigFile(cfgPath)
+	onDisk.SetConfigType("toml")
+	if err := onDisk.ReadInConfig(); err != nil {
+		if !isFileNotFound(err) {
+			return fmt.Errorf("config: read before persisting defaults: %w", err)
+		}
+	} else {
+		diskKeys := make(map[string]struct{})
+		for _, k := range onDisk.AllKeys() {
+			diskKeys[k] = struct{}{}
+		}
+		complete := true
+		for _, k := range m.v.AllKeys() {
+			if _, ok := diskKeys[k]; !ok {
+				complete = false
+				break
+			}
+		}
+		if complete {
+			return nil
+		}
+	}
+
+	// m.v already carries the loaded file plus every registered default, so
+	// WriteConfigAs emits file values where present and defaults elsewhere.
+	if err := m.v.WriteConfigAs(cfgPath); err != nil {
+		return fmt.Errorf("config: persist complete defaults: %w", err)
+	}
+	return nil
+}
+
 // ReplaceBackendNamedConfig persists backend.<backendName> as exactly values, dropping any keys
 // that existed in that subsection before this call.
 func (m *ViperManager) ReplaceBackendNamedConfig(backendName string, values map[string]any) error {
@@ -344,6 +408,23 @@ func setDefaults(v *viper.Viper) {
 
 // ---------- internal helpers ----------
 
+// newConfigWriter builds a throwaway Viper for persisting changes. It carries
+// all defaults — core plus every backend's, once EnsureDefaultsPersisted has run
+// — so WriteConfig serializes complete [backend.<name>] subtables instead of
+// only the keys physically in the file. It is never used for daemon reads, so
+// MergeConfigMap on it cannot create overrides that shadow file values.
+// Must be called with m.mu held.
+func (m *ViperManager) newConfigWriter(cfgPath string) *viper.Viper {
+	writer := viper.New()
+	writer.SetConfigFile(cfgPath)
+	writer.SetConfigType("toml")
+	setDefaults(writer)
+	if m.backendDefaults != nil {
+		m.backendDefaults(writer)
+	}
+	return writer
+}
+
 // mergeAndSet reads the current value of key as a map, merges values into it,
 // writes to the config register (not the override register), and persists.
 // Using MergeConfigMap instead of Set avoids creating overrides that would
@@ -351,10 +432,7 @@ func setDefaults(v *viper.Viper) {
 // Must be called with m.mu held.
 func (m *ViperManager) mergeAndSet(key string, values map[string]any) error {
 	cfgPath := m.v.ConfigFileUsed()
-	writer := viper.New()
-	writer.SetConfigFile(cfgPath)
-	writer.SetConfigType("toml")
-	setDefaults(writer)
+	writer := m.newConfigWriter(cfgPath)
 	if err := writer.ReadInConfig(); err != nil && !isFileNotFound(err) {
 		return fmt.Errorf("config: read before update (%s): %w", key, err)
 	}
@@ -387,10 +465,7 @@ func (m *ViperManager) mergeAndSet(key string, values map[string]any) error {
 // persistKeyReplace writes key using exactly vals (no merge). Must be called with m.mu held.
 func (m *ViperManager) persistKeyReplace(key string, vals map[string]any) error {
 	cfgPath := m.v.ConfigFileUsed()
-	writer := viper.New()
-	writer.SetConfigFile(cfgPath)
-	writer.SetConfigType("toml")
-	setDefaults(writer)
+	writer := m.newConfigWriter(cfgPath)
 	if err := writer.ReadInConfig(); err != nil && !isFileNotFound(err) {
 		return fmt.Errorf("config: read before replace (%s): %w", key, err)
 	}

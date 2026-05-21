@@ -12,7 +12,7 @@ import { logger } from "../utils/logger";
 import { daemonClient } from "@/client";
 import {
   reorderPlaylistImagesBySortableMove,
-  sortTimeOfDayPlaylistImages,
+  reorderTimeOfDayPlaylistImages,
 } from "../utils/playlistStripReorder";
 import { playlistGalleryDragAddsImages } from "../utils/playlistGalleryDrag";
 
@@ -124,13 +124,14 @@ async function dispatchDrop(
       const from = (src as { initialIndex: number }).initialIndex;
       const to = (src as { index: number }).index;
       const store = usePlaylistStore.getState();
-      const next = reorderPlaylistImagesBySortableMove(store.playlist.images, from, to);
+      // time_of_day: times are slot-bound, so a reorder swaps the dragged cards'
+      // times rather than moving the array (which the chronological sort would undo).
+      const next =
+        store.playlist.configuration.type === "time_of_day"
+          ? reorderTimeOfDayPlaylistImages(store.playlist.images, from, to)
+          : reorderPlaylistImagesBySortableMove(store.playlist.images, from, to);
       if (next != null) {
-        const committed =
-          store.playlist.configuration.type === "time_of_day"
-            ? sortTimeOfDayPlaylistImages(next)
-            : next;
-        store.movePlaylistArrayOrder(committed);
+        store.movePlaylistArrayOrder(next);
       }
       return;
     }

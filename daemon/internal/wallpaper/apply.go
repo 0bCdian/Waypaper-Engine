@@ -43,7 +43,14 @@ func Apply(ctx context.Context, opts ApplyOpts) error {
 		return fmt.Errorf("no compatible outputs for the requested image and backend %s", opts.Backend.Name())
 	}
 
-	if applyErr := opts.Backend.Apply(ctx, snap); applyErr != nil {
+	gateKey := opts.Backend.Name()
+	applyCtx, ticket := defaultApplyGate.acquire(ctx, gateKey)
+	defer defaultApplyGate.release(gateKey, ticket)
+
+	if applyErr := opts.Backend.Apply(applyCtx, snap); applyErr != nil {
+		if ticket.preempted.Load() {
+			return ErrSuperseded
+		}
 		if opts.Bus != nil {
 			opts.Bus.Publish(events.Event{
 				Type: events.WallpaperApplyFailed,

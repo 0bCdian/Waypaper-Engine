@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { PlaylistImage } from "../../../electron/daemon-go-types";
 import {
   reorderPlaylistImagesBySortableMove,
+  reorderTimeOfDayPlaylistImages,
   sortTimeOfDayPlaylistImages,
 } from "../playlistStripReorder";
 
@@ -60,5 +61,52 @@ describe("sortTimeOfDayPlaylistImages", () => {
       { image_id: 3, time: 1200 },
     ]);
     expect(got.map((i) => i.image_id)).toEqual([2, 1, 3]);
+  });
+});
+
+describe("reorderTimeOfDayPlaylistImages", () => {
+  it("returns null on invalid indices", () => {
+    const images: PlaylistImage[] = [
+      { image_id: 1, time: 480 },
+      { image_id: 2, time: 1200 },
+    ];
+    expect(reorderTimeOfDayPlaylistImages(images, 1, 1)).toBeNull();
+    expect(reorderTimeOfDayPlaylistImages(images, 5, 0)).toBeNull();
+    expect(reorderTimeOfDayPlaylistImages(images, 0, -1)).toBeNull();
+  });
+
+  it("swaps the times of two cards when one is dragged past the other", () => {
+    const images: PlaylistImage[] = [
+      { image_id: 1, time: 480 }, // 08:00
+      { image_id: 2, time: 1200 }, // 20:00
+    ];
+    // Drag card 2 (index 1) to the front (index 0).
+    const got = reorderTimeOfDayPlaylistImages(images, 1, 0);
+    expect(got).toEqual([
+      { image_id: 2, time: 480 },
+      { image_id: 1, time: 1200 },
+    ]);
+  });
+
+  it("keeps the time column chronological as images move across slots", () => {
+    const images: PlaylistImage[] = [
+      { image_id: 1, time: 300 },
+      { image_id: 2, time: 600 },
+      { image_id: 3, time: 900 },
+    ];
+    // Drag the first card to the end.
+    const got = reorderTimeOfDayPlaylistImages(images, 0, 2);
+    expect(got?.map((r) => r.image_id)).toEqual([2, 3, 1]);
+    expect(got?.map((r) => r.time)).toEqual([300, 600, 900]);
+  });
+
+  it("does not mutate the input array", () => {
+    const images: PlaylistImage[] = [
+      { image_id: 1, time: 480 },
+      { image_id: 2, time: 1200 },
+    ];
+    reorderTimeOfDayPlaylistImages(images, 1, 0);
+    expect(images.map((r) => r.image_id)).toEqual([1, 2]);
+    expect(images[0].time).toBe(480);
   });
 });
