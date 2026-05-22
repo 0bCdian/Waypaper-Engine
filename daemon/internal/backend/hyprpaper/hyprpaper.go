@@ -163,6 +163,10 @@ func (h *Hyprpaper) Shutdown(ctx context.Context) error {
 }
 
 func (h *Hyprpaper) Apply(ctx context.Context, snap backend.Snapshot) error {
+	if len(snap.Outputs) == 0 {
+		return nil
+	}
+
 	h.mu.Lock()
 	defer h.mu.Unlock()
 

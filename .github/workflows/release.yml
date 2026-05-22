@@ -59,8 +59,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -73,6 +71,12 @@ jobs:
         with:
           go-version: "1.26"
           cache-dependency-path: daemon/go.sum
+
+      - name: Install system build dependencies
+        # The daemon's monitor package links libwayland-client via cgo.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwayland-dev
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
@@ -91,8 +95,6 @@ jobs:
 
       - name: Setup pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 9
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
@@ -105,6 +107,12 @@ jobs:
         with:
           go-version: "1.26"
           cache-dependency-path: daemon/go.sum
+
+      - name: Install system build dependencies
+        # The daemon's monitor package links libwayland-client via cgo.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwayland-dev
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

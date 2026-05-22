@@ -13,16 +13,9 @@ import { useFoldersStore } from "@/stores/foldersStore";
 import { useImagesStore } from "@/stores/images";
 import { useToastStore } from "@/stores/toastStore";
 import { useLoopDownloadStore } from "@/stores/loopStudioDownload";
-import {
-  loopStudioGalleryVideoSrc,
-  loopStudioMediaSrc,
-} from "@/utils/loopStudio/mediaUrl";
+import { loopStudioGalleryVideoSrc, loopStudioMediaSrc } from "@/utils/loopStudio/mediaUrl";
 import { waitForGalleryVideoBySourcePath } from "@/utils/loopStudio/waitGalleryImport";
-import {
-  formatLoopTime,
-  formatLoopTimeShort,
-  parseLoopTime,
-} from "@/utils/loopStudio/timeFormat";
+import { formatLoopTime, formatLoopTimeShort, parseLoopTime } from "@/utils/loopStudio/timeFormat";
 import { isVideoFilePath } from "@/utils/videoFileExtensions";
 import { isAllowedYoutubeUrl } from "@/shared/youtubeUrl";
 import { daemonClient } from "@/client";
@@ -87,10 +80,7 @@ export default function LoopStudio() {
   const resetDownload = useLoopDownloadStore((s) => s.reset);
 
   const videoOptions = useMemo(
-    () =>
-      images.flatMap((i) =>
-        i.media_type === "video" ? [{ id: i.id, name: i.name }] : [],
-      ),
+    () => images.flatMap((i) => (i.media_type === "video" ? [{ id: i.id, name: i.name }] : [])),
     [images],
   );
 
@@ -109,11 +99,8 @@ export default function LoopStudio() {
   const [playhead, setPlayhead] = useState(0);
   const [exportOpen, setExportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [preset, setPreset] =
-    useState<VideoLoopExportRequest["preset"]>("webm_vp9");
-  const [exportAction, setExportAction] = useState<"replace" | "import_new">(
-    "import_new",
-  );
+  const [preset, setPreset] = useState<VideoLoopExportRequest["preset"]>("webm_vp9");
+  const [exportAction, setExportAction] = useState<"replace" | "import_new">("import_new");
   const [reloadToken, setReloadToken] = useState(0);
   const [blendHalvesExport, setBlendHalvesExport] = useState(true);
   const [youtubeUrl, setYoutubeUrl] = useState("");
@@ -181,8 +168,7 @@ export default function LoopStudio() {
       .getImage(imageId)
       .then((img) => {
         if (cancelled) return;
-        const nextSrc =
-          img.media_type === "video" ? loopStudioGalleryVideoSrc(img) : null;
+        const nextSrc = img.media_type === "video" ? loopStudioGalleryVideoSrc(img) : null;
         if (img.media_type !== "video") {
           addToast("Selected item is not a video", "error");
           setImageId(null);
@@ -214,11 +200,7 @@ export default function LoopStudio() {
   }, []);
 
   const onLoopStudioKey = useEffectEvent((e: KeyboardEvent) => {
-    if (
-      e.target instanceof HTMLInputElement ||
-      e.target instanceof HTMLTextAreaElement
-    )
-      return;
+    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
     const v = videoRef.current;
     if (!v || !loaded) return;
     const subLoop = outPoint - inPoint < duration - FULL_LOOP_EPS;
@@ -229,15 +211,11 @@ export default function LoopStudio() {
     }
     if (e.code === "KeyI") {
       e.preventDefault();
-      setInPoint(
-        Math.max(0, Math.min(v.currentTime, outPoint - MIN_LOOP_SPAN)),
-      );
+      setInPoint(Math.max(0, Math.min(v.currentTime, outPoint - MIN_LOOP_SPAN)));
     }
     if (e.code === "KeyO") {
       e.preventDefault();
-      setOutPoint(
-        Math.max(inPoint + MIN_LOOP_SPAN, Math.min(v.currentTime, duration)),
-      );
+      setOutPoint(Math.max(inPoint + MIN_LOOP_SPAN, Math.min(v.currentTime, duration)));
     }
     if (e.code === "ArrowLeft") {
       e.preventDefault();
@@ -245,10 +223,7 @@ export default function LoopStudio() {
     }
     if (e.code === "ArrowRight") {
       e.preventDefault();
-      v.currentTime = Math.min(
-        subLoop ? outPoint : duration,
-        v.currentTime + 1 / 30,
-      );
+      v.currentTime = Math.min(subLoop ? outPoint : duration, v.currentTime + 1 / 30);
     }
   });
 
@@ -334,11 +309,7 @@ export default function LoopStudio() {
           if (galleryId !== null) {
             setPreviewOnly(false);
             setImageId(galleryId);
-            addToast(
-              "Linked to gallery — palette and export are enabled.",
-              "success",
-              4000,
-            );
+            addToast("Linked to gallery — palette and export are enabled.", "success", 4000);
           } else {
             addToast(
               "Still importing — pick the video from the list shortly to enable FFmpeg tools.",
@@ -392,9 +363,7 @@ export default function LoopStudio() {
       }
     }
     if (out.length === 0) {
-      const raw =
-        e.dataTransfer.getData("text/uri-list") ||
-        e.dataTransfer.getData("text/plain");
+      const raw = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain");
       for (const line of raw.split(/\r?\n/)) {
         const t = line.trim();
         if (t.startsWith("file://")) {
@@ -406,9 +375,7 @@ export default function LoopStudio() {
   };
 
   const gatherHttpUrlsFromDrop = (e: DragEvent): string[] => {
-    const raw =
-      e.dataTransfer.getData("text/uri-list") ||
-      e.dataTransfer.getData("text/plain");
+    const raw = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain");
     return raw.split(/\r?\n/).flatMap((s) => {
       const t = s.trim();
       return /^https?:\/\//i.test(t) ? [t] : [];
@@ -427,11 +394,7 @@ export default function LoopStudio() {
         }
       }
       if (urls.length > 0) {
-        addToast(
-          "URL drop: only YouTube links are supported here",
-          "info",
-          3500,
-        );
+        addToast("URL drop: only YouTube links are supported here", "info", 3500);
         return;
       }
       const paths = gatherPathsFromDrop(e);
@@ -542,11 +505,7 @@ export default function LoopStudio() {
     setPaletteBusy(true);
     const result = await tryExtractVideoPalette(imageId, playhead);
     if (result.ok) {
-      addToast(
-        `Saved ${result.res.colors.length} palette colors to the gallery`,
-        "success",
-        3500,
-      );
+      addToast(`Saved ${result.res.colors.length} palette colors to the gallery`, "success", 3500);
       void reQueryImages();
     } else {
       addToast(result.error, "error");
@@ -569,8 +528,7 @@ export default function LoopStudio() {
     const dop = Math.abs(p - op);
     const thr = 0.03;
     const t = tAt(p);
-    dragRef.current =
-      di < thr && di <= dop ? "in" : dop < thr && dop < di ? "out" : "seek";
+    dragRef.current = di < thr && di <= dop ? "in" : dop < thr && dop < di ? "out" : "seek";
     if (dragRef.current === "seek") {
       const v = videoRef.current;
       if (v) v.currentTime = t;
@@ -624,16 +582,14 @@ export default function LoopStudio() {
     >
       <header className="flex shrink-0 items-start justify-between gap-3">
         <div className="space-y-1">
-          <h1 className="text-xl font-semibold text-base-content sm:text-2xl">
-            Loop Studio
-          </h1>
+          <h1 className="text-xl font-semibold text-base-content sm:text-2xl">Loop Studio</h1>
           <p
             className="line-clamp-2 text-xs sm:line-clamp-none sm:text-sm"
             style={{ color: "var(--wp-text-muted)" }}
           >
             Find in/out points for a seamless loop. Sub-loop preview uses coarse{" "}
-            <code>timeupdate</code> jumps; export bakes a seamless file for
-            native <code>video loop</code> playback.
+            <code>timeupdate</code> jumps; export bakes a seamless file for native{" "}
+            <code>video loop</code> playback.
           </p>
         </div>
         <button
@@ -648,9 +604,9 @@ export default function LoopStudio() {
 
       <div className="alert alert-info shrink-0 py-1.5 text-xs sm:text-sm">
         <span>
-          <strong>Tip:</strong> Space play/pause, <Kbd size="sm">I</Kbd> /{" "}
-          <Kbd size="sm">O</Kbd> set in/out, arrows step frames. Drag a video
-          file or YouTube URL onto this page. Export requires a gallery video.
+          <strong>Tip:</strong> Space play/pause, <Kbd size="sm">I</Kbd> / <Kbd size="sm">O</Kbd>{" "}
+          set in/out, arrows step frames. Drag a video file or YouTube URL onto this page. Export
+          requires a gallery video.
         </span>
       </div>
 
@@ -701,32 +657,23 @@ export default function LoopStudio() {
               <button
                 type="button"
                 className="btn btn-outline btn-sm shrink-0"
-                disabled={
-                  ytDlpMissing || downloading || attaching || !youtubeUrl.trim()
-                }
+                disabled={ytDlpMissing || downloading || attaching || !youtubeUrl.trim()}
                 onClick={() => submitYoutubeDownload(youtubeUrl)}
               >
                 Download (yt-dlp)
               </button>
             </div>
             {previewOnly && (
-              <span className="badge badge-warning">
-                Preview only (not in gallery)
-              </span>
+              <span className="badge badge-warning">Preview only (not in gallery)</span>
             )}
             {ytDlpMissing ? (
               <p className="w-full text-[11px] text-warning">
-                <code className="text-[10px]">yt-dlp</code> is not installed —
-                the YouTube download is disabled. Local videos and the gallery
-                still work.
+                <code className="text-[10px]">yt-dlp</code> is not installed — the YouTube download
+                is disabled. Local videos and the gallery still work.
               </p>
             ) : (
-              <p
-                className="w-full text-[11px]"
-                style={{ color: "var(--wp-text-faint)" }}
-              >
-                YouTube needs <code className="text-[10px]">yt-dlp</code> on
-                PATH;
+              <p className="w-full text-[11px]" style={{ color: "var(--wp-text-faint)" }}>
+                YouTube needs <code className="text-[10px]">yt-dlp</code> on PATH;
               </p>
             )}
           </div>
@@ -735,10 +682,7 @@ export default function LoopStudio() {
             <div className="flex shrink-0 items-center gap-3 rounded-lg border border-base-300 bg-base-300/40 p-2 sm:p-3">
               {downloading ? (
                 <>
-                  <span
-                    className="shrink-0 text-xs"
-                    style={{ color: "var(--wp-text-muted)" }}
-                  >
+                  <span className="shrink-0 text-xs" style={{ color: "var(--wp-text-muted)" }}>
                     Downloading…
                   </span>
                   <progress
@@ -764,10 +708,7 @@ export default function LoopStudio() {
               ) : (
                 <>
                   <span className="loading loading-spinner loading-xs shrink-0" />
-                  <span
-                    className="text-xs"
-                    style={{ color: "var(--wp-text-muted)" }}
-                  >
+                  <span className="text-xs" style={{ color: "var(--wp-text-muted)" }}>
                     Importing to gallery…
                   </span>
                 </>
@@ -776,10 +717,7 @@ export default function LoopStudio() {
           )}
 
           {!playbackSrc ? (
-            <p
-              className="shrink-0 text-sm"
-              style={{ color: "var(--wp-text-faint)" }}
-            >
+            <p className="shrink-0 text-sm" style={{ color: "var(--wp-text-faint)" }}>
               Select a gallery video or open a file for preview.
             </p>
           ) : (
@@ -878,21 +816,13 @@ export default function LoopStudio() {
                 >
                   ▶
                 </button>
-                <span
-                  className="tabular-nums text-sm"
-                  style={{ color: "var(--wp-text-muted)" }}
-                >
+                <span className="tabular-nums text-sm" style={{ color: "var(--wp-text-muted)" }}>
                   {formatLoopTime(playhead)} / {formatLoopTime(duration)}
                 </span>
-                <span
-                  className="text-sm ml-auto"
-                  style={{ color: "var(--wp-text-faint)" }}
-                >
+                <span className="text-sm ml-auto" style={{ color: "var(--wp-text-faint)" }}>
                   loop span:{" "}
                   <strong className="text-base-content">
-                    {outPoint > inPoint
-                      ? formatLoopTime(outPoint - inPoint)
-                      : "—"}
+                    {outPoint > inPoint ? formatLoopTime(outPoint - inPoint) : "—"}
                   </strong>
                 </span>
               </div>
@@ -906,9 +836,7 @@ export default function LoopStudio() {
                     onChange={(e) => {
                       const t = parseLoopTime(e.target.value);
                       if (!Number.isNaN(t))
-                        setInPoint(
-                          Math.max(0, Math.min(t, outPoint - MIN_LOOP_SPAN)),
-                        );
+                        setInPoint(Math.max(0, Math.min(t, outPoint - MIN_LOOP_SPAN)));
                     }}
                   />
                 </label>
@@ -920,12 +848,7 @@ export default function LoopStudio() {
                     onChange={(e) => {
                       const t = parseLoopTime(e.target.value);
                       if (!Number.isNaN(t))
-                        setOutPoint(
-                          Math.max(
-                            inPoint + MIN_LOOP_SPAN,
-                            Math.min(t, duration),
-                          ),
-                        );
+                        setOutPoint(Math.max(inPoint + MIN_LOOP_SPAN, Math.min(t, duration)));
                     }}
                   />
                 </label>
@@ -958,9 +881,7 @@ export default function LoopStudio() {
                 <button
                   type="button"
                   className="btn btn-primary btn-sm"
-                  disabled={
-                    !imageId || previewOnly || ffmpegAvailable === false
-                  }
+                  disabled={!imageId || previewOnly || ffmpegAvailable === false}
                   title={
                     ffmpegAvailable === false
                       ? "ffmpeg not found — install it and reopen this page"
@@ -971,9 +892,7 @@ export default function LoopStudio() {
                   Export with FFmpeg…
                 </button>
                 {ffmpegAvailable === false && (
-                  <span className="text-xs text-warning self-center">
-                    ffmpeg not installed
-                  </span>
+                  <span className="text-xs text-warning self-center">ffmpeg not installed</span>
                 )}
               </div>
             </div>
@@ -985,10 +904,9 @@ export default function LoopStudio() {
         <div className="modal-box">
           <h3 className="font-semibold text-lg">Export loop</h3>
           <p className="text-sm py-2" style={{ color: "var(--wp-text-muted)" }}>
-            Re-encodes the trim for WebKit <code>video loop</code>. Audio is
-            stripped. Plain trim is a hard cut; with midpoint crossfade, FFmpeg
-            splits the span in two and xfades the join (output is slightly
-            shorter than the span). Falls back to trim if xfade fails.
+            Re-encodes the trim for WebKit <code>video loop</code>. Audio is stripped. Plain trim is
+            a hard cut; with midpoint crossfade, FFmpeg splits the span in two and xfades the join
+            (output is slightly shorter than the span). Falls back to trim if xfade fails.
           </p>
           <label className="label cursor-pointer justify-start gap-2 py-1">
             <input
@@ -1006,9 +924,7 @@ export default function LoopStudio() {
             <select
               className="select select-bordered select-sm"
               value={preset}
-              onChange={(e) =>
-                setPreset(e.target.value as VideoLoopExportRequest["preset"])
-              }
+              onChange={(e) => setPreset(e.target.value as VideoLoopExportRequest["preset"])}
             >
               <option value="webm_vp9">WebM VP9 (smaller)</option>
               <option value="mp4_h264">MP4 H.264 (compatible)</option>
@@ -1033,9 +949,7 @@ export default function LoopStudio() {
                   checked={exportAction === "replace"}
                   onChange={() => setExportAction("replace")}
                 />
-                <span className="label-text">
-                  Replace gallery file (same id)
-                </span>
+                <span className="label-text">Replace gallery file (same id)</span>
               </label>
             </div>
           </div>
@@ -1054,11 +968,7 @@ export default function LoopStudio() {
               disabled={exporting}
               onClick={() => void runExport()}
             >
-              {exporting ? (
-                <span className="loading loading-spinner loading-sm" />
-              ) : (
-                "Export"
-              )}
+              {exporting ? <span className="loading loading-spinner loading-sm" /> : "Export"}
             </button>
           </div>
         </div>
@@ -1074,22 +984,14 @@ export default function LoopStudio() {
         <div className="modal-box">
           <h3 className="font-semibold text-lg">Clear workspace?</h3>
           <p className="text-sm py-2" style={{ color: "var(--wp-text-muted)" }}>
-            A YouTube download is still in progress. Clearing the workspace
-            cancels it and discards everything currently in Loop Studio.
+            A YouTube download is still in progress. Clearing the workspace cancels it and discards
+            everything currently in Loop Studio.
           </p>
           <div className="modal-action">
-            <button
-              type="button"
-              className="btn"
-              onClick={() => setClearConfirmOpen(false)}
-            >
+            <button type="button" className="btn" onClick={() => setClearConfirmOpen(false)}>
               Keep downloading
             </button>
-            <button
-              type="button"
-              className="btn btn-error"
-              onClick={() => clearWorkspace()}
-            >
+            <button type="button" className="btn btn-error" onClick={() => clearWorkspace()}>
               Cancel download &amp; clear
             </button>
           </div>
