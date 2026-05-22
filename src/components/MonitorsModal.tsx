@@ -8,6 +8,7 @@ import { useModalStore } from "../stores/modalStore";
 import Modal, { type ModalHandle } from "./Modal";
 import { cn } from "../utils/cn";
 import { daemonClient } from "@/client";
+import { useLiveWallpapers } from "../hooks/useLiveWallpapers";
 
 function Monitors() {
   const { monitorSelection, monitorsList, setMonitorSelection, refreshFromDaemon } =
@@ -28,6 +29,8 @@ function Monitors() {
   });
   const modalRef = useRef<ModalHandle>(null);
   const [refreshKey, setRefreshKey] = useState(0);
+
+  const live = useLiveWallpapers(monitorsList, refreshKey);
 
   const resolution = calculateMinResolution(monitorsList);
 
@@ -188,7 +191,7 @@ function Monitors() {
                   monitor={monitor}
                   selectType={selectType}
                   scale={scale * 0.99}
-                  refreshKey={refreshKey}
+                  live={live}
                 />
               </div>
             );
