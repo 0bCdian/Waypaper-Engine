@@ -11,8 +11,6 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/disintegration/imaging"
-
 	"waypaper-engine/daemon/internal/monitor"
 )
 
@@ -78,7 +76,7 @@ func (s *Splitter) Split(sourcePath string, imageID int, monitors []monitor.Moni
 		return cached, nil
 	}
 
-	src, err := imaging.Open(sourcePath)
+	src, err := openImage(sourcePath)
 	if err != nil {
 		return nil, fmt.Errorf("splitter: open source: %w", err)
 	}
@@ -104,9 +102,9 @@ func (s *Splitter) Split(sourcePath string, imageID int, monitors []monitor.Moni
 	}
 
 	// Scale source image to cover the logical bounding box while preserving
-	// aspect ratio. imaging.Fill scales up to cover, then center-crops excess
+	// aspect ratio. fillImage scales up to cover, then center-crops excess
 	// (equivalent to Sharp's fit:"cover").
-	scaled := imaging.Fill(src, bbox.Width, bbox.Height, imaging.Center, imaging.Lanczos)
+	scaled := fillImage(src, bbox.Width, bbox.Height)
 
 	result := make(map[string]string, len(monitors))
 
@@ -114,7 +112,7 @@ func (s *Splitter) Split(sourcePath string, imageID int, monitors []monitor.Moni
 		cropX := lm.X - bbox.X
 		cropY := lm.Y - bbox.Y
 
-		cropped := imaging.Crop(scaled, image.Rect(cropX, cropY, cropX+lm.LogicalWidth, cropY+lm.LogicalHeight))
+		cropped := cropImage(scaled, image.Rect(cropX, cropY, cropX+lm.LogicalWidth, cropY+lm.LogicalHeight))
 
 		outPath := filepath.Join(imageDir, fmt.Sprintf("%s.png", lm.Name))
 

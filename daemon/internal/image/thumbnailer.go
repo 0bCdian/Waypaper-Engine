@@ -12,7 +12,6 @@ import (
 	"sync"
 
 	"github.com/chai2010/webp"
-	"github.com/disintegration/imaging"
 )
 
 // ThumbnailResolution defines a named thumbnail size.
@@ -57,7 +56,7 @@ func (t *Thumbnailer) Generate(sourcePath string, imageID int, mediaType string,
 		defer cleanup()
 	}
 
-	src, err := imaging.Open(srcPath)
+	src, err := openImage(srcPath)
 	if err != nil {
 		return nil, fmt.Errorf("thumbnailer: open source: %w", err)
 	}
@@ -254,7 +253,7 @@ func (t *Thumbnailer) prepareThumbnailSource(sourcePath, mediaType, previewPath 
 			}
 		}
 		// Placeholder for web wallpapers without preview assets.
-		placeholder := imaging.New(1280, 720, color.NRGBA{R: 32, G: 32, B: 32, A: 255})
+		placeholder := newRGBA(1280, 720, color.NRGBA{R: 32, G: 32, B: 32, A: 255})
 		tmp, err := os.CreateTemp("", "waypaper-web-thumb-*.webp")
 		if err != nil {
 			return "", nil, fmt.Errorf("thumbnailer: create temp file: %w", err)
@@ -281,13 +280,4 @@ func writeWebP(path string, img image.Image) (err error) {
 		}
 	}()
 	return webp.Encode(f, img, &webp.Options{Quality: 80})
-}
-
-// fitImage resizes the image to fit within maxWidth x maxHeight, preserving aspect ratio.
-// If maxHeight is 0, only maxWidth is used.
-func fitImage(src image.Image, maxWidth, maxHeight int) image.Image {
-	if maxHeight == 0 {
-		return imaging.Resize(src, maxWidth, 0, imaging.Lanczos)
-	}
-	return imaging.Fit(src, maxWidth, maxHeight, imaging.Lanczos)
 }
