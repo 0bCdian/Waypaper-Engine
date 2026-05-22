@@ -1,10 +1,20 @@
 import type React from "react";
-import { useState, useEffect, useRef, useCallback, Fragment, useMemo } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  Fragment,
+  useMemo,
+} from "react";
 import { cn } from "@/utils/cn";
 import { useSettingsStore } from "@/stores/settingsStore";
 import { useShallow } from "zustand/react/shallow";
 import { SettingRow, SettingSectionHeader } from "../SettingRow";
-import type { ConfigSection, UnifiedConfig } from "@/shared/types/unifiedConfig";
+import type {
+  ConfigSection,
+  UnifiedConfig,
+} from "@/shared/types/unifiedConfig";
 import { FIELD_PREFIX_BY_BACKEND } from "@/utils/backendFieldPrefixes";
 import {
   readPersistedBackendSettingsPanel,
@@ -243,7 +253,8 @@ const mpvpaperFields: Field[] = [
   {
     key: "mpvpaper.auto_pause",
     label: "Auto-pause when hidden (-p)",
-    description: "Ask mpvpaper to pause mpv when the wallpaper surface is hidden (best-effort)",
+    description:
+      "Ask mpvpaper to pause mpv when the wallpaper surface is hidden (best-effort)",
     type: "checkbox",
   },
   {
@@ -256,14 +267,16 @@ const mpvpaperFields: Field[] = [
   {
     key: "mpvpaper.layer",
     label: "Layer (-l)",
-    description: "Optional wlroots layer-shell layer name (leave empty for mpvpaper default)",
+    description:
+      "Optional wlroots layer-shell layer name (leave empty for mpvpaper default)",
     type: "text",
     placeholder: "",
   },
   {
     key: "mpvpaper.slideshow_secs",
     label: "Slideshow interval (seconds)",
-    description: "If greater than 0, passes mpvpaper -n (slideshow mode). 0 disables.",
+    description:
+      "If greater than 0, passes mpvpaper -n (slideshow mode). 0 disables.",
     type: "number",
     min: 0,
     max: 86400,
@@ -275,7 +288,8 @@ const swaybgDisplayFields: Field[] = [
   {
     key: "swaybg.fit_mode",
     label: "Fit Mode",
-    description: "How swaybg scales the wallpaper image (mapped to swaybg --mode)",
+    description:
+      "How swaybg scales the wallpaper image (mapped to swaybg --mode)",
     type: "select",
     options: [
       { value: "stretch", label: "Stretch (fill, ignore aspect ratio)" },
@@ -500,7 +514,8 @@ const walQtParallaxFields: Field[] = [
   {
     key: "walqt.parallax_easing",
     label: "Parallax easing",
-    description: "Cubic-bezier control points as x1,y1,x2,y2 for parallax transitions.",
+    description:
+      "Cubic-bezier control points as x1,y1,x2,y2 for parallax transitions.",
     type: "text",
     placeholder: "0.215,0.610,0.355,1.000",
   },
@@ -732,7 +747,9 @@ function parseEnvRows(raw: unknown): EnvRow[] {
     .filter((e): e is string => typeof e === "string")
     .map((e) => {
       const i = e.indexOf("=");
-      return i === -1 ? { key: e, value: "" } : { key: e.slice(0, i), value: e.slice(i + 1) };
+      return i === -1
+        ? { key: e, value: "" }
+        : { key: e.slice(0, i), value: e.slice(i + 1) };
     });
 }
 
@@ -759,11 +776,10 @@ function WalQtEnvEditor({
 }) {
   const [rows, setRows] = useState<EnvRow[]>(() => parseEnvRows(rawEnv));
 
-  // Resync from props only on a genuine external change: if the incoming list
-  // already matches what the editor emitted, keep local state so an in-progress
-  // blank row survives the save round-trip.
   const incomingKey = JSON.stringify(
-    Array.isArray(rawEnv) ? rawEnv.filter((e): e is string => typeof e === "string") : [],
+    Array.isArray(rawEnv)
+      ? rawEnv.filter((e): e is string => typeof e === "string")
+      : [],
   );
   const lastIncomingRef = useRef(incomingKey);
   if (incomingKey !== lastIncomingRef.current) {
@@ -787,7 +803,9 @@ function WalQtEnvEditor({
   return (
     <div className="space-y-2">
       {rows.map((row, i) => {
-        const protectedKey = PROTECTED_ENV_KEYS.has(row.key.trim().toUpperCase());
+        const protectedKey = PROTECTED_ENV_KEYS.has(
+          row.key.trim().toUpperCase(),
+        );
         return (
           // biome-ignore lint/suspicious/noArrayIndexKey: rows are positional and reorderable only by add/remove
           <div key={i} className="flex flex-col gap-1">
@@ -823,7 +841,8 @@ function WalQtEnvEditor({
             </div>
             {protectedKey && (
               <span className="text-xs text-error pl-1">
-                {row.key.trim()} is managed by waypaper and cannot be overridden.
+                {row.key.trim()} is managed by waypaper and cannot be
+                overridden.
               </span>
             )}
           </div>
@@ -838,8 +857,9 @@ function WalQtEnvEditor({
       </button>
       {error && <p className="text-xs text-error">{error}</p>}
       <p className="text-xs text-base-content/50">
-        Applies after the next wal-qt restart. Useful for GPU/rendering knobs on systems without a
-        usable GPU — e.g. <code>QTWEBENGINE_CHROMIUM_FLAGS</code>, <code>QSG_RHI_BACKEND</code>,{" "}
+        Applies after the next wal-qt restart. Useful for GPU/rendering knobs on
+        systems without a usable GPU — e.g.{" "}
+        <code>QTWEBENGINE_CHROMIUM_FLAGS</code>, <code>QSG_RHI_BACKEND</code>,{" "}
         <code>LIBGL_ALWAYS_SOFTWARE</code>.
       </p>
     </div>
@@ -854,7 +874,9 @@ function getBackendSubconfig(
   const b = config.backend as unknown as Record<string, unknown>;
   if (backendId === "wal-qt") {
     const w = b["wal-qt"];
-    return w && typeof w === "object" ? (w as Record<string, unknown>) : undefined;
+    return w && typeof w === "object"
+      ? (w as Record<string, unknown>)
+      : undefined;
   }
   const sub = b[backendId];
   return sub && typeof sub === "object" && !Array.isArray(sub)
@@ -931,7 +953,9 @@ function backendsForCategory(
   category: MediaCategory,
   available: AvailableBackend[],
 ): AvailableBackend[] {
-  return available.filter((b) => BACKEND_MEDIA_SUPPORT[b.name]?.includes(category));
+  return available.filter((b) =>
+    BACKEND_MEDIA_SUPPORT[b.name]?.includes(category),
+  );
 }
 
 function PriorityList({
@@ -964,10 +988,13 @@ function PriorityList({
 
   return (
     <div className="space-y-1">
-      <div className="text-xs font-medium text-base-content/60">{CATEGORY_LABELS[category]}</div>
+      <div className="text-xs font-medium text-base-content/60">
+        {CATEGORY_LABELS[category]}
+      </div>
       <div className="flex flex-col gap-0.5">
         {normalized.map((name, i) => {
-          const isAvailable = eligible.find((b) => b.name === name)?.available ?? false;
+          const isAvailable =
+            eligible.find((b) => b.name === name)?.available ?? false;
           return (
             <div
               key={name}
@@ -1030,15 +1057,18 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
       errors: s.errors,
       pendingBackendSettingsTab: s.pendingBackendSettingsTab,
       clearPendingBackendSettingsTab: s.clearPendingBackendSettingsTab,
-      resetBackendSettingsToDaemonDefaults: s.resetBackendSettingsToDaemonDefaults,
+      resetBackendSettingsToDaemonDefaults:
+        s.resetBackendSettingsToDaemonDefaults,
     })),
   );
   const section: ConfigSection = "backend";
 
-  const [availableBackends, setAvailableBackends] = useState<AvailableBackend[]>([]);
-  const [activeSettingsTab, setActiveSettingsTab] = useState<"general" | string>(
-    () => readPersistedBackendSettingsPanel() ?? "general",
-  );
+  const [availableBackends, setAvailableBackends] = useState<
+    AvailableBackend[]
+  >([]);
+  const [activeSettingsTab, setActiveSettingsTab] = useState<
+    "general" | string
+  >(() => readPersistedBackendSettingsPanel() ?? "general");
 
   const selectBackendPanel = useCallback((tab: string) => {
     setActiveSettingsTab(tab);
@@ -1049,7 +1079,11 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
     if (pendingBackendSettingsTab === null) return;
     selectBackendPanel(pendingBackendSettingsTab);
     clearPendingBackendSettingsTab();
-  }, [pendingBackendSettingsTab, selectBackendPanel, clearPendingBackendSettingsTab]);
+  }, [
+    pendingBackendSettingsTab,
+    selectBackendPanel,
+    clearPendingBackendSettingsTab,
+  ]);
 
   useEffect(() => {
     daemonClient
@@ -1080,7 +1114,9 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 
   const backendFieldError = (backendId: string, field: Field) => {
     const pk = patchKeyForField(field, backendId);
-    return errors.find((e) => e.section === section && e.key === `${backendId}:${pk}`)?.message;
+    return errors.find(
+      (e) => e.section === section && e.key === `${backendId}:${pk}`,
+    )?.message;
   };
 
   const handleTopLevelChange = async (key: string, value: unknown) => {
@@ -1095,7 +1131,12 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
   ) => {
     if (field.type === "checkbox") {
       return (
-        <SettingRow key={field.key} label={field.label} description={field.description} error={err}>
+        <SettingRow
+          key={field.key}
+          label={field.label}
+          description={field.description}
+          error={err}
+        >
           <input
             type="checkbox"
             className="toggle toggle-primary"
@@ -1108,9 +1149,17 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 
     if (field.type === "select") {
       return (
-        <SettingRow key={field.key} label={field.label} description={field.description} error={err}>
+        <SettingRow
+          key={field.key}
+          label={field.label}
+          description={field.description}
+          error={err}
+        >
           <select
-            className={cn("select select-bordered select-sm w-full lg:w-44", err && "select-error")}
+            className={cn(
+              "select select-bordered select-sm w-full lg:w-44",
+              err && "select-error",
+            )}
             value={(raw as string) ?? ""}
             onChange={(e) => void commit(e.target.value)}
           >
@@ -1142,9 +1191,17 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
               : 3
             : ((raw as number) ?? 0);
       return (
-        <SettingRow key={field.key} label={field.label} description={field.description} error={err}>
+        <SettingRow
+          key={field.key}
+          label={field.label}
+          description={field.description}
+          error={err}
+        >
           <Input
-            className={cn("input input-bordered input-sm w-full lg:w-28", err && "input-error")}
+            className={cn(
+              "input input-bordered input-sm w-full lg:w-28",
+              err && "input-error",
+            )}
             value={numValue}
             onCommit={(v) => void commit(v)}
             min={field.min}
@@ -1156,9 +1213,17 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
     }
 
     return (
-      <SettingRow key={field.key} label={field.label} description={field.description} error={err}>
+      <SettingRow
+        key={field.key}
+        label={field.label}
+        description={field.description}
+        error={err}
+      >
         <DebouncedTextInput
-          className={cn("input input-bordered input-sm w-full lg:w-48", err && "input-error")}
+          className={cn(
+            "input input-bordered input-sm w-full lg:w-48",
+            err && "input-error",
+          )}
           value={(raw as string) ?? ""}
           onCommit={(v) => void commit(v)}
           placeholder={field.placeholder}
@@ -1173,21 +1238,34 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
 
     if (backendId === "wal-qt" && pk === "duration_ms") {
       const ms = sub?.duration_ms;
-      const seconds = typeof ms === "number" && Number.isFinite(ms) && ms >= 0 ? ms / 1000 : 0.3;
-      return renderAnyField(field, seconds, backendFieldError(backendId, field), (value) => {
-        const n = Number(value);
-        if (!Number.isFinite(n)) return;
-        const clamped = Math.min(120, Math.max(0, n));
-        void saveBackendPatch(backendId, {
-          duration_ms: Math.round(clamped * 1000),
-        });
-      });
+      const seconds =
+        typeof ms === "number" && Number.isFinite(ms) && ms >= 0
+          ? ms / 1000
+          : 0.3;
+      return renderAnyField(
+        field,
+        seconds,
+        backendFieldError(backendId, field),
+        (value) => {
+          const n = Number(value);
+          if (!Number.isFinite(n)) return;
+          const clamped = Math.min(120, Math.max(0, n));
+          void saveBackendPatch(backendId, {
+            duration_ms: Math.round(clamped * 1000),
+          });
+        },
+      );
     }
 
     const raw = sub?.[pk];
-    return renderAnyField(field, raw, backendFieldError(backendId, field), (value) => {
-      void saveBackendPatch(backendId, { [pk]: value });
-    });
+    return renderAnyField(
+      field,
+      raw,
+      backendFieldError(backendId, field),
+      (value) => {
+        void saveBackendPatch(backendId, { [pk]: value });
+      },
+    );
   };
 
   const backendType = config?.backend?.type;
@@ -1198,22 +1276,33 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
     web: ["wal-qt"],
   };
 
-  const handlePriorityChange = (category: MediaCategory, newOrder: string[]) => {
+  const handlePriorityChange = (
+    category: MediaCategory,
+    newOrder: string[],
+  ) => {
     void handleTopLevelChange("auto_priorities", {
       ...autoPriorities,
       [category]: newOrder,
     });
   };
 
-  const activeBackendMeta = sortedBackends.find((b) => b.name === activeSettingsTab);
+  const activeBackendMeta = sortedBackends.find(
+    (b) => b.name === activeSettingsTab,
+  );
   const backendGroups =
-    activeSettingsTab !== "general" ? fieldGroupsForBackend(activeSettingsTab) : [];
+    activeSettingsTab !== "general"
+      ? fieldGroupsForBackend(activeSettingsTab)
+      : [];
 
   return (
     <div className={cn("space-y-0", className)}>
       <div className="mb-4">
-        <h2 className="text-lg font-semibold text-base-content mb-1">Backend</h2>
-        <p className="text-sm text-base-content/50">Wallpaper backend and transition settings.</p>
+        <h2 className="text-lg font-semibold text-base-content mb-1">
+          Backend
+        </h2>
+        <p className="text-sm text-base-content/50">
+          Wallpaper backend and transition settings.
+        </p>
       </div>
 
       <div className="mb-4 flex flex-col gap-2">
@@ -1241,7 +1330,10 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
             type="button"
             role="tab"
             aria-selected={activeSettingsTab === "general"}
-            className={cn("tab", activeSettingsTab === "general" && "tab-active")}
+            className={cn(
+              "tab",
+              activeSettingsTab === "general" && "tab-active",
+            )}
             onClick={() => selectBackendPanel("general")}
           >
             General
@@ -1252,12 +1344,17 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
               key={b.name}
               role="tab"
               aria-selected={activeSettingsTab === b.name}
-              className={cn("tab whitespace-nowrap", activeSettingsTab === b.name && "tab-active")}
+              className={cn(
+                "tab whitespace-nowrap",
+                activeSettingsTab === b.name && "tab-active",
+              )}
               onClick={() => selectBackendPanel(b.name)}
             >
               {b.name}
               {!b.available && (
-                <span className="badge badge-warning badge-xs ml-1 align-middle">off</span>
+                <span className="badge badge-warning badge-xs ml-1 align-middle">
+                  off
+                </span>
               )}
             </button>
           ))}
@@ -1279,14 +1376,21 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
                   "btn btn-sm",
                   selectionMode === "fixed" ? "btn-primary" : "btn-ghost",
                 )}
-                onClick={() => void handleTopLevelChange("selection_mode", "fixed")}
+                onClick={() =>
+                  void handleTopLevelChange("selection_mode", "fixed")
+                }
               >
                 Fixed
               </button>
               <button
                 type="button"
-                className={cn("btn btn-sm", selectionMode === "auto" ? "btn-primary" : "btn-ghost")}
-                onClick={() => void handleTopLevelChange("selection_mode", "auto")}
+                className={cn(
+                  "btn btn-sm",
+                  selectionMode === "auto" ? "btn-primary" : "btn-ghost",
+                )}
+                onClick={() =>
+                  void handleTopLevelChange("selection_mode", "auto")
+                }
               >
                 Auto
               </button>
@@ -1294,7 +1398,9 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
           </SettingRow>
 
           <SettingRow
-            label={selectionMode === "auto" ? "Startup Backend" : "Backend Type"}
+            label={
+              selectionMode === "auto" ? "Startup Backend" : "Backend Type"
+            }
             description={
               selectionMode === "auto"
                 ? "Backend activated on startup. Auto mode will switch away as needed per media type."
@@ -1309,7 +1415,9 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
                   fieldError("type") && "select-error",
                 )}
                 value={backendType as string}
-                onChange={(e) => void handleTopLevelChange("type", e.target.value)}
+                onChange={(e) =>
+                  void handleTopLevelChange("type", e.target.value)
+                }
               >
                 {availableBackends.length > 0 ? (
                   availableBackends.map((b) => (
@@ -1319,7 +1427,9 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
                     </option>
                   ))
                 ) : (
-                  <option value={backendType as string}>{backendType as string}</option>
+                  <option value={backendType as string}>
+                    {backendType as string}
+                  </option>
                 )}
               </select>
             ) : (
@@ -1345,7 +1455,9 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
                       category={cat}
                       items={autoPriorities[cat] ?? []}
                       available={availableBackends}
-                      onChange={(newOrder) => handlePriorityChange(cat, newOrder)}
+                      onChange={(newOrder) =>
+                        handlePriorityChange(cat, newOrder)
+                      }
                     />
                   ))}
                 </div>
@@ -1359,8 +1471,8 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
         <>
           {activeBackendMeta && !activeBackendMeta.available && (
             <div className="alert alert-warning text-sm mb-4">
-              This backend is not installed or unavailable on this system. You can still edit saved
-              options.
+              This backend is not installed or unavailable on this system. You
+              can still edit saved options.
             </div>
           )}
           {backendGroups.length === 0 ? (
@@ -1386,7 +1498,9 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
                 <WalQtEnvEditor
                   rawEnv={getBackendSubconfig(config, "wal-qt")?.env}
                   error={
-                    errors.find((e) => e.section === section && e.key === "wal-qt:env")?.message
+                    errors.find(
+                      (e) => e.section === section && e.key === "wal-qt:env",
+                    )?.message
                   }
                   onCommit={(env) => void saveBackendPatch("wal-qt", { env })}
                 />
