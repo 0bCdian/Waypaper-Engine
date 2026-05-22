@@ -333,6 +333,8 @@ export interface AwwwConfig {
   fill_color: string;
   filter_type: string;
   invert_y: boolean;
+  /** wl_shm format for `awww-daemon --format` (argb|abgr|rgb|bgr). Empty = awww default. Applies on next awww-daemon restart. */
+  daemon_format?: string;
 }
 
 export interface FehConfig {
@@ -399,6 +401,8 @@ export interface WalQtConfig {
   video_audio_default?: boolean;
   /** When true, HTML wallpapers may use fetch/XHR to the network (synced to wal-qt at runtime). */
   allow_network_wallpapers?: boolean;
+  /** Extra environment variables ("KEY=VALUE" each) merged into the wal-qt process at spawn — e.g. QTWEBENGINE_CHROMIUM_FLAGS. Applies on next wal-qt restart. */
+  env?: string[];
 }
 
 export interface MonitorsConfig {

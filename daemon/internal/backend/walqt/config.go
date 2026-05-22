@@ -52,6 +52,14 @@ type Config struct {
 	FillColor              string `mapstructure:"fill_color" json:"fill_color"`
 	VideoAudioDefault      bool   `mapstructure:"video_audio_default" json:"video_audio_default"`
 	AllowNetworkWallpapers bool   `mapstructure:"allow_network_wallpapers" json:"allow_network_wallpapers"`
+	// Env holds extra environment variables ("KEY=VALUE" each) merged into the
+	// wal-qt process environment at spawn — the escape hatch for Qt/Chromium
+	// rendering knobs (QTWEBENGINE_CHROMIUM_FLAGS, QSG_RHI_BACKEND, …) on hosts
+	// without a usable GPU. Protected keys (see protectedEnvKeys) are rejected
+	// by ValidateConfig. Stored as a list, not a map, because Viper lowercases
+	// map keys and env var names are case-sensitive. Takes effect on the next
+	// wal-qt (re)spawn.
+	Env []string `mapstructure:"env" json:"env"`
 }
 
 func defaultSocketPath() string {

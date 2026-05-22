@@ -23,6 +23,21 @@ const (
 	daemonBinary = "awww-daemon"
 )
 
+// validDaemonFormats are the wl_shm formats accepted by `awww-daemon --format`.
+var validDaemonFormats = map[string]bool{"argb": true, "abgr": true, "rgb": true, "bgr": true}
+
+// awwwDaemonArgs builds the argv for awww-daemon. --no-cache is always set:
+// waypaper drives wallpaper selection explicitly via `awww img`, so the daemon
+// must not restore its own cache on startup. format, when non-empty, adds
+// `--format <value>`.
+func awwwDaemonArgs(format string) []string {
+	args := []string{"--no-cache"}
+	if format != "" {
+		args = append(args, "--format", format)
+	}
+	return args
+}
+
 type Awww struct {
 	once    sync.Once
 	v       *viper.Viper
@@ -80,8 +95,13 @@ func (a *Awww) Initialize(ctx context.Context) error {
 		return nil
 	}
 
-	slog.Info("starting daemon with --no-cache", "binary", daemonBinary)
-	cmd := exec.Command(daemonBinary, "--no-cache")
+	format := ""
+	if a.v != nil {
+		format = strings.ToLower(strings.TrimSpace(a.v.GetString("backend.awww.daemon_format")))
+	}
+	args := awwwDaemonArgs(format)
+	slog.Info("starting daemon", "binary", daemonBinary, "args", args)
+	cmd := exec.Command(daemonBinary, args...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGTERM}
 	if err := cmd.Start(); err != nil {
 		return fmt.Errorf("awww: start %s: %w", daemonBinary, err)
@@ -239,6 +259,7 @@ func (a *Awww) RegisterDefaults(v *viper.Viper) {
 	v.SetDefault("backend.awww.fill_color", "000000")
 	v.SetDefault("backend.awww.filter_type", string(FilterLanczos3))
 	v.SetDefault("backend.awww.invert_y", false)
+	v.SetDefault("backend.awww.daemon_format", "")
 }
 
 // loadConfigFromViper reads the [backend.awww] section from the TOML config via Viper.
@@ -332,6 +353,9 @@ func (a *Awww) ValidateConfig(raw json.RawMessage) error {
 	}
 	if cfg.TransitionDuration < 0 || cfg.TransitionDuration > 120 {
 		return fmt.Errorf("awww: transition_duration must be between 0 and 120 seconds")
+	}
+	if f := strings.ToLower(strings.TrimSpace(cfg.DaemonFormat)); f != "" && !validDaemonFormats[f] {
+		return fmt.Errorf("awww: daemon_format must be one of argb, abgr, rgb, bgr")
 	}
 	return nil
 }

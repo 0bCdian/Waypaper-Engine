@@ -198,6 +198,7 @@ func (w *WalQt) initializeImpl(ctx context.Context) error {
 		"DISPLAY", os.Getenv("DISPLAY"),
 	)
 	cmd := exec.Command(binaryName)
+	cmd.Env = mergeProcessEnv(os.Environ(), cfg.Env)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGTERM}
 	// Pipe stdout/stderr through the daemon logger so spawn failures are visible.
 	cmd.Stdout = &slogWriter{prefix: "wal-qt stdout"}
@@ -597,6 +598,7 @@ func (w *WalQt) RegisterDefaults(v *viper.Viper) {
 	v.SetDefault(viperBackendKey+".fill_color", def.FillColor)
 	v.SetDefault(viperBackendKey+".video_audio_default", def.VideoAudioDefault)
 	v.SetDefault(viperBackendKey+".allow_network_wallpapers", def.AllowNetworkWallpapers)
+	v.SetDefault(viperBackendKey+".env", []string{})
 }
 
 func (w *WalQt) ValidateConfig(raw json.RawMessage) error {
@@ -629,6 +631,9 @@ func (w *WalQt) ValidateConfig(raw json.RawMessage) error {
 		if !fillColorPattern.MatchString(s) {
 			return fmt.Errorf("wal-qt: fill_color must be 6- or 8-digit hex (RRGGBB or RRGGBBAA), got %q", cfg.FillColor)
 		}
+	}
+	if err := validateEnvEntries(cfg.Env); err != nil {
+		return fmt.Errorf("wal-qt: %w", err)
 	}
 	return nil
 }
@@ -734,6 +739,7 @@ func (w *WalQt) loadConfigFromViper() *Config {
 	}
 	cfg.VideoAudioDefault = getBool("video_audio_default")
 	cfg.AllowNetworkWallpapers = getBool("allow_network_wallpapers")
+	cfg.Env = w.v.GetStringSlice(viperBackendKey + ".env")
 
 	if w.v != nil {
 		cfg.TransitionAngleDeg = normalizeAngleDeg(intFromViperPrefixes(w.v, "transition_angle_deg", cfg.TransitionAngleDeg))

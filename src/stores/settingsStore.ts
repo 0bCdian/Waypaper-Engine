@@ -93,6 +93,7 @@ const defaultConfig: UnifiedConfig = {
     api_key: "",
     enabled: false,
     scroll_mode: "paginated",
+    blur_nsfw_thumbnails: true,
   },
 };
 

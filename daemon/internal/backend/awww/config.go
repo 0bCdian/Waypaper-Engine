@@ -13,6 +13,12 @@ type Config struct {
 	FillColor          string             `mapstructure:"fill_color" json:"fill_color"`
 	FilterType         FilterType         `mapstructure:"filter_type" json:"filter_type"`
 	InvertY            bool               `mapstructure:"invert_y" json:"invert_y"`
+	// DaemonFormat, when non-empty, is passed to `awww-daemon --format`
+	// (argb|abgr|rgb|bgr) — a wl_shm format. Empty leaves awww-daemon on its
+	// own default (argb). Read only at Initialize, so it takes effect on the
+	// next awww-daemon restart, and only when waypaper spawned the daemon
+	// itself (a pre-existing awww-daemon is left untouched).
+	DaemonFormat string `mapstructure:"daemon_format" json:"daemon_format"`
 }
 
 type TransitionType string

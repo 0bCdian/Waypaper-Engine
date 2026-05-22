@@ -1349,11 +1349,14 @@ Returned by `GET /config/backends/awww`. Updated by `PATCH /config/backends/awww
   "resize": "crop",
   "fill_color": "000000",
   "filter_type": "Lanczos3",
-  "invert_y": false
+  "invert_y": false,
+  "daemon_format": ""
 }
 ```
 
 TOML config supports both hyphens and underscores (e.g. `transition-type` and `transition_type` are equivalent).
+
+`daemon_format` is passed to `awww-daemon --format` (`argb` | `abgr` | `rgb` | `bgr`; empty = awww default). It is read only when the daemon spawns `awww-daemon`, so it takes effect on the next awww-daemon restart, and only when waypaper started the daemon itself.
 
 #### mpvpaper Backend Config
 
@@ -1369,6 +1372,19 @@ Returned by `GET /config/backends/mpvpaper`. Updated by `PATCH /config/backends/
   "slideshow_secs": 0
 }
 ```
+
+#### wal-qt Backend Config
+
+Returned by `GET /config/backends/wal-qt`. Updated by `PATCH /config/backends/wal-qt`.
+Only the fields relevant to process environment are shown here:
+
+```json
+{
+  "env": ["QTWEBENGINE_CHROMIUM_FLAGS=--disable-gpu --ignore-gpu-blocklist", "QSG_RHI_BACKEND=software"]
+}
+```
+
+`env` is a list of `KEY=VALUE` entries merged into the `wal-qt` process environment at spawn — the escape hatch for Qt/Chromium rendering knobs. It is stored as a list (not a map) because Viper lowercases map keys and environment variable names are case-sensitive. `PATCH` rejects entries that are not in `KEY=VALUE` form and entries whose key is daemon-managed: `WAYLAND_DISPLAY`, `XDG_RUNTIME_DIR`, `DISPLAY`, `PATH`, `HOME`, `LD_PRELOAD`, `LD_LIBRARY_PATH`. Read only at spawn, so changes take effect on the next wal-qt restart.
 
 #### MonitorsConfig
 

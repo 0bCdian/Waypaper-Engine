@@ -163,6 +163,23 @@ const awwwTransitionFields: Field[] = [
   },
 ];
 
+const awwwDaemonFields: Field[] = [
+  {
+    key: "awww.daemon_format",
+    label: "Daemon pixel format",
+    description:
+      "wl_shm format passed to awww-daemon --format. 3-channel formats use ~3/4 the memory; bgr avoids a byte swap when decoding. Applies after the next awww-daemon restart — and only when waypaper started the daemon itself.",
+    type: "select",
+    options: [
+      { value: "", label: "Default (argb)" },
+      { value: "argb", label: "argb" },
+      { value: "abgr", label: "abgr" },
+      { value: "rgb", label: "rgb" },
+      { value: "bgr", label: "bgr" },
+    ],
+  },
+];
+
 const fehDisplayFields: Field[] = [
   {
     key: "feh.mode",
@@ -692,6 +709,143 @@ function DebouncedTextInput({
   );
 }
 
+// Environment variables the daemon owns — rejected by the wal-qt backend's
+// ValidateConfig. Mirrored here so the editor can warn before the save fails.
+const PROTECTED_ENV_KEYS = new Set([
+  "WAYLAND_DISPLAY",
+  "XDG_RUNTIME_DIR",
+  "DISPLAY",
+  "PATH",
+  "HOME",
+  "LD_PRELOAD",
+  "LD_LIBRARY_PATH",
+]);
+
+interface EnvRow {
+  key: string;
+  value: string;
+}
+
+function parseEnvRows(raw: unknown): EnvRow[] {
+  if (!Array.isArray(raw)) return [];
+  return raw
+    .filter((e): e is string => typeof e === "string")
+    .map((e) => {
+      const i = e.indexOf("=");
+      return i === -1 ? { key: e, value: "" } : { key: e.slice(0, i), value: e.slice(i + 1) };
+    });
+}
+
+function envRowsToList(rows: EnvRow[]): string[] {
+  return rows
+    .map((r) => ({ key: r.key.trim(), value: r.value }))
+    .filter((r) => r.key !== "")
+    .map((r) => `${r.key}=${r.value}`);
+}
+
+/**
+ * Key/value editor for wal-qt's process environment (backend.wal-qt.env).
+ * Commits the full list on blur / add / remove; the daemon stores it as a
+ * "KEY=VALUE" string list and merges it into the wal-qt process at spawn.
+ */
+function WalQtEnvEditor({
+  rawEnv,
+  error,
+  onCommit,
+}: {
+  rawEnv: unknown;
+  error: string | undefined;
+  onCommit: (env: string[]) => void;
+}) {
+  const [rows, setRows] = useState<EnvRow[]>(() => parseEnvRows(rawEnv));
+
+  // Resync from props only on a genuine external change: if the incoming list
+  // already matches what the editor emitted, keep local state so an in-progress
+  // blank row survives the save round-trip.
+  const incomingKey = JSON.stringify(
+    Array.isArray(rawEnv) ? rawEnv.filter((e): e is string => typeof e === "string") : [],
+  );
+  const lastIncomingRef = useRef(incomingKey);
+  if (incomingKey !== lastIncomingRef.current) {
+    lastIncomingRef.current = incomingKey;
+    if (incomingKey !== JSON.stringify(envRowsToList(rows))) {
+      setRows(parseEnvRows(rawEnv));
+    }
+  }
+
+  const commit = (next: EnvRow[]) => onCommit(envRowsToList(next));
+
+  const updateRow = (i: number, patch: Partial<EnvRow>) => {
+    setRows((rs) => rs.map((r, idx) => (idx === i ? { ...r, ...patch } : r)));
+  };
+  const removeRow = (i: number) => {
+    const next = rows.filter((_, idx) => idx !== i);
+    setRows(next);
+    commit(next);
+  };
+
+  return (
+    <div className="space-y-2">
+      {rows.map((row, i) => {
+        const protectedKey = PROTECTED_ENV_KEYS.has(row.key.trim().toUpperCase());
+        return (
+          // biome-ignore lint/suspicious/noArrayIndexKey: rows are positional and reorderable only by add/remove
+          <div key={i} className="flex flex-col gap-1">
+            <div className="flex items-center gap-1.5">
+              <input
+                type="text"
+                className={cn(
+                  "input input-bordered input-sm w-40 font-mono",
+                  protectedKey && "input-error",
+                )}
+                value={row.key}
+                placeholder="QTWEBENGINE_CHROMIUM_FLAGS"
+                onChange={(e) => updateRow(i, { key: e.target.value })}
+                onBlur={() => commit(rows)}
+              />
+              <span className="text-base-content/40">=</span>
+              <input
+                type="text"
+                className="input input-bordered input-sm flex-1 font-mono"
+                value={row.value}
+                placeholder="--disable-gpu"
+                onChange={(e) => updateRow(i, { value: e.target.value })}
+                onBlur={() => commit(rows)}
+              />
+              <button
+                type="button"
+                className="btn btn-ghost btn-sm btn-square text-error"
+                onClick={() => removeRow(i)}
+                aria-label={`Remove ${row.key || "variable"}`}
+              >
+                ✕
+              </button>
+            </div>
+            {protectedKey && (
+              <span className="text-xs text-error pl-1">
+                {row.key.trim()} is managed by waypaper and cannot be overridden.
+              </span>
+            )}
+          </div>
+        );
+      })}
+      <button
+        type="button"
+        className="btn btn-outline btn-sm"
+        onClick={() => setRows((rs) => [...rs, { key: "", value: "" }])}
+      >
+        + Add variable
+      </button>
+      {error && <p className="text-xs text-error">{error}</p>}
+      <p className="text-xs text-base-content/50">
+        Applies after the next wal-qt restart. Useful for GPU/rendering knobs on systems without a
+        usable GPU — e.g. <code>QTWEBENGINE_CHROMIUM_FLAGS</code>, <code>QSG_RHI_BACKEND</code>,{" "}
+        <code>LIBGL_ALWAYS_SOFTWARE</code>.
+      </p>
+    </div>
+  );
+}
+
 function getBackendSubconfig(
   config: UnifiedConfig | null,
   backendId: string,
@@ -724,6 +878,7 @@ function fieldGroupsForBackend(backendId: string): BackendFieldGroup[] {
       return [
         { title: "Image Display", fields: awwwDisplayFields },
         { title: "Transitions", fields: awwwTransitionFields },
+        { title: "Daemon", fields: awwwDaemonFields },
       ];
     case "feh":
       return [{ title: "Image Display", fields: fehDisplayFields }];
@@ -1219,6 +1374,24 @@ export const BackendSettingsSection: React.FC<BackendSettingsSectionProps> = ({
                 {g.fields.map((f) => renderBackendField(f, activeSettingsTab))}
               </Fragment>
             ))
+          )}
+          {activeSettingsTab === "wal-qt" && (
+            <>
+              <SettingSectionHeader title="Environment variables" />
+              <SettingRow
+                label="Process environment"
+                description="Extra variables exported to the wal-qt process at launch. The daemon rejects variables it manages itself (WAYLAND_DISPLAY, PATH, …)."
+                stacked
+              >
+                <WalQtEnvEditor
+                  rawEnv={getBackendSubconfig(config, "wal-qt")?.env}
+                  error={
+                    errors.find((e) => e.section === section && e.key === "wal-qt:env")?.message
+                  }
+                  onCommit={(env) => void saveBackendPatch("wal-qt", { env })}
+                />
+              </SettingRow>
+            </>
           )}
           <SettingSectionHeader title="Restore defaults" />
           <SettingRow
