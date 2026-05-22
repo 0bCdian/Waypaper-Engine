@@ -68,7 +68,7 @@
     "react-router-dom": "6.30.3",
     "react-select": "^5.10.2",
     "toml": "3.0.0",
-    "zustand": "5.0.11"
+    "zustand": "5.0.13"
   },
   "devDependencies": {
     "@playwright/test": "^1.60.0",
