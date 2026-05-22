@@ -34,7 +34,10 @@ waypaper.sqlite3
 # daemon build artifacts
 daemon/build/
 
+#Local dev artifacts
 .tessl/
+.codegraph/
+.claude/
 .cursor/
 .agents/
 .gemini/

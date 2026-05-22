@@ -1,5 +1,5 @@
 /**
- * WebGL2 multipass runner for Shadertoy JSON (Common + Buffer + Image), aligned with tools/shadertoy-to-webgl-wallpaper/convert.py.
+ * WebGL2 multipass runner for Shadertoy JSON (Common + Buffer + Image).
  */
 
 import type { PreparedMultipass } from "./shadertoyImport";
@@ -406,7 +406,7 @@ export class ShadertoyMultipassEngine {
       };
     }
 
-    // Common tab is prepended to every buffer + image fragment (same order as convert.py).
+    // Common tab is prepended to every buffer + image fragment.
     const commonBlock = prepared.commonSanitized.trim();
     const commonPrefix = commonBlock.length > 0 ? `${commonBlock}\n` : "";
 
