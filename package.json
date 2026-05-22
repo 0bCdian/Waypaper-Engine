@@ -89,7 +89,7 @@
     "electron-reload": "2.0.0-alpha.1",
     "jsdom": "^28.1.0",
     "openapi-typescript": "^7.13.0",
-    "oxfmt": "^0.35.0",
+    "oxfmt": "^0.51.0",
     "oxlint": "1.19.0",
     "tailwindcss": "4.1.14",
     "typescript": "5.5.4",
