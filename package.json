@@ -79,7 +79,7 @@
     "@types/node": "22.13.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "5.0.0",
+    "@vitejs/plugin-react": "5.2.0",
     "@vitest/coverage-v8": "^4.0.18",
     "babel-plugin-react-compiler": "^1.0.0",
     "culori": "^4.0.2",
