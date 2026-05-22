@@ -1,0 +1,44 @@
+/* @waypaper-theme
+ *   name: gruvbox-material
+ *   displayName: Gruvbox Material
+ *   category: dark
+ *   sourceUrl: https://github.com/sainnhe/gruvbox-material
+ *
+ * Hex rows match the Waypaper contrast export for Gruvbox Material dark:
+ *   page bg #282828, fg #D4BE98; color_01 #3C3836; stack continues with #504945
+ *   for base-300 (standard Material medium-contrast surface between #282828 / #3C3836).
+ */
+@plugin "daisyui/theme" {
+  name: "gruvbox-material";
+  default: false;
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: #282828;
+  --color-base-200: #3c3836;
+  --color-base-300: #504945;
+  --color-base-content: #d4be98;
+  --color-primary: #a9b665;
+  --color-primary-content: #282828;
+  --color-secondary: #7daea3;
+  --color-secondary-content: #282828;
+  --color-accent: #d8a657;
+  --color-accent-content: #282828;
+  --color-neutral: #504945;
+  --color-neutral-content: #d4be98;
+  --color-info: #89b482;
+  --color-info-content: #282828;
+  --color-success: #a9b665;
+  --color-success-content: #282828;
+  --color-warning: #d8a657;
+  --color-warning-content: #282828;
+  --color-error: #ea6962;
+  --color-error-content: #d4be98;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}

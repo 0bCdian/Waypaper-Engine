@@ -1,0 +1,42 @@
+/* @waypaper-theme
+ *   name: everforest-light
+ *   displayName: Everforest Light
+ *   category: light
+ *   sourceUrl: https://github.com/sainnhe/everforest
+ *
+ * Light medium contrast variant. Values verified against source light_medium palette.
+ */
+@plugin "daisyui/theme" {
+  name: "everforest-light";
+  default: false;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: oklch(93.8% 0.032 89.2);
+  --color-base-200: oklch(89.2% 0.037 90.1);
+  --color-base-300: oklch(83.8% 0.036 87.1);
+  --color-base-content: oklch(29.6% 0.013 239.1);
+  --color-primary: oklch(77.3% 0.091 125.8);
+  --color-primary-content: oklch(29.6% 0.013 239.1);
+  --color-secondary: oklch(75.4% 0.091 151.5);
+  --color-secondary-content: oklch(29.6% 0.013 239.1);
+  --color-accent: oklch(70.9% 0.128 19.6);
+  --color-accent-content: oklch(93.8% 0.032 89.2);
+  --color-neutral: oklch(51.5% 0.021 232.9);
+  --color-neutral-content: oklch(93.8% 0.032 89.2);
+  --color-info: oklch(75.4% 0.091 151.5);
+  --color-info-content: oklch(29.6% 0.013 239.1);
+  --color-success: oklch(77.3% 0.091 125.8);
+  --color-success-content: oklch(29.6% 0.013 239.1);
+  --color-warning: oklch(80.8% 0.086 83.7);
+  --color-warning-content: oklch(29.6% 0.013 239.1);
+  --color-error: oklch(70.9% 0.128 19.6);
+  --color-error-content: oklch(93.8% 0.032 89.2);
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}

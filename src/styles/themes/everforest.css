@@ -1,0 +1,54 @@
+/* @waypaper-theme
+ *   name: everforest
+ *   displayName: Everforest
+ *   category: dark
+ *   sourceUrl: https://github.com/sainnhe/everforest
+ *
+ * Hard contrast dark variant. Role mapping:
+ *   base-100  ← bg      #2d353b
+ *   base-200  ← bg_dim  #232a2e
+ *   base-300  ← bg1     #343f44
+ *   base-content ← fg   #d3c6aa
+ *   primary   ← green   #a7c080
+ *   secondary ← blue    #7fbbb3
+ *   accent    ← aqua    #83c092
+ *   neutral   ← grey0   #475258
+ *   info      ← blue    #7fbbb3
+ *   success   ← green   #a7c080
+ *   warning   ← yellow  #dbbc7f
+ *   error     ← red     #e67e80
+ */
+@plugin "daisyui/theme" {
+  name: "everforest";
+  default: false;
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: #2d353b;
+  --color-base-200: #232a2e;
+  --color-base-300: #343f44;
+  --color-base-content: #d3c6aa;
+  --color-primary: #a7c080;
+  --color-primary-content: #2d353b;
+  --color-secondary: #7fbbb3;
+  --color-secondary-content: #2d353b;
+  --color-accent: #83c092;
+  --color-accent-content: #2d353b;
+  --color-neutral: #475258;
+  --color-neutral-content: #d3c6aa;
+  --color-info: #7fbbb3;
+  --color-info-content: #2d353b;
+  --color-success: #a7c080;
+  --color-success-content: #2d353b;
+  --color-warning: #dbbc7f;
+  --color-warning-content: #2d353b;
+  --color-error: #e67e80;
+  --color-error-content: #d3c6aa;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}

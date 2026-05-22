@@ -1,222 +1,126 @@
-import {
-    useState,
-    useEffect,
-    useCallback,
-    useMemo,
-    lazy,
-    Suspense
-} from "react";
+import type { ReactNode } from "react";
+import { useEffect, lazy, Suspense, useRef } from "react";
 import { useFilteredImages } from "./useFilteredImages";
-import { imagesStore } from "../stores/images";
-import Skeleton from "../components/Skeleton";
+import { useImagesStore } from "../stores/images";
+import { useShallow } from "zustand/react/shallow";
 import { useHotkeys } from "react-hotkeys-hook";
-import { type rendererImage } from "../types/rendererTypes";
-import { MENU_EVENTS } from "../../shared/constants";
-import { useAppConfigStore } from "../stores/appConfig";
-import { playlistStore } from "../stores/playlist";
+import type { rendererImage } from "../types/rendererTypes";
+import { useSettingsStore } from "../stores/settingsStore";
+import {
+  parseGalleryFilterTokens,
+  hasClientSideGalleryFilters,
+} from "../utils/galleryFilterTokens";
+
 const ImageCard = lazy(async () => await import("../components/ImageCard"));
-const { registerListener } = window.API_RENDERER;
+
 export function useImagePagination() {
-    const { appConfig } = useAppConfigStore();
-    const { removeImagesFromPlaylist, addImagesToPlaylist } = playlistStore();
-    const [imagesPerPage, setImagesPerPage] = useState(appConfig.imagesPerPage);
-    const [currentPage, setCurrentPage] = useState<number>(1);
-    const {
-        skeletonsToShow,
-        filters,
-        selectedImages,
-        setSelectedImages,
-        deleteSelectedImages,
-        getSelectedImages,
-        removeImagesFromStore
-    } = imagesStore();
-    const { filteredImages, selectAllImages, clearSelection } =
-        useFilteredImages();
-    const lastImageIndex = useMemo(
-        () => currentPage * imagesPerPage,
-        [currentPage, imagesPerPage]
+  const config = useSettingsStore((s) => s.config);
+  const { filters, selectedImages, setSelectedImages, pagination, perPage, currentPage } =
+    useImagesStore(
+      useShallow((s) => ({
+        filters: s.filters,
+        selectedImages: s.selectedImages,
+        setSelectedImages: s.setSelectedImages,
+        pagination: s.pagination,
+        perPage: s.perPage,
+        currentPage: s.currentPage,
+      })),
     );
-    const firstImageIndex = useMemo(
-        () => lastImageIndex - imagesPerPage,
-        [lastImageIndex, imagesPerPage]
-    );
-    const totalImages = useMemo(() => {
-        return filteredImages.length - 1;
-    }, [filteredImages]);
-    const lastImageIndexReversed = useMemo(
-        () => totalImages - (currentPage - 1) * imagesPerPage,
-        [currentPage, imagesPerPage, totalImages]
-    );
-    const firstImageIndexReversed = useMemo(
-        () => lastImageIndexReversed - imagesPerPage,
-        [lastImageIndexReversed, imagesPerPage]
-    );
-    const totalPages = useMemo(() => {
-        const totalGalleryItems =
-            filteredImages.length + (skeletonsToShow?.fileNames.length ?? 0);
-        return Math.ceil(totalGalleryItems / imagesPerPage);
-    }, [filteredImages, skeletonsToShow, imagesPerPage]);
-    const SkeletonsArray = useMemo(() => {
-        if (skeletonsToShow !== undefined) {
-            return skeletonsToShow.fileNames.map((imageName, index) => {
-                const imagePath = skeletonsToShow.imagePaths[index];
-                return <Skeleton key={imagePath} imageName={imageName} />;
-            });
-        }
-        return [];
-    }, [skeletonsToShow]);
-    const [imagesToShow, imagesInCurrentPage] = useMemo(() => {
-        const imageCardJsxArray: JSX.Element[] = [];
-        const imagesInCurrentPage: rendererImage[] = [];
-        if (filters.order === "desc") {
-            for (let idx = firstImageIndex; idx < lastImageIndex; idx++) {
-                const currentImage = filteredImages[idx];
-                if (currentImage === undefined) break;
-                imagesInCurrentPage.push(currentImage);
-                const imageJsxElement = (
-                    <Suspense key={currentImage.id}>
-                        <ImageCard Image={currentImage} />
-                    </Suspense>
-                );
-                imageCardJsxArray.push(imageJsxElement);
-            }
-        } else {
-            for (
-                let idx = lastImageIndexReversed;
-                idx > firstImageIndexReversed;
-                idx--
-            ) {
-                const currentImage = filteredImages[idx];
-                if (currentImage === undefined) break;
-                imagesInCurrentPage.push(currentImage);
-                const imageJsxElement = (
-                    <Suspense key={currentImage.id}>
-                        <ImageCard Image={currentImage} />
-                    </Suspense>
-                );
-                imageCardJsxArray.push(imageJsxElement);
-            }
-        }
-        return [[...SkeletonsArray, ...imageCardJsxArray], imagesInCurrentPage];
-    }, [filteredImages, filters, currentPage, totalPages]);
-    const handlePageChange = useCallback((page: number) => {
-        setCurrentPage(page);
-    }, []);
-    const selectImagesInCurrentPage = () => {
-        const newSet = new Set(selectedImages);
-        imagesInCurrentPage.forEach(image => {
-            image.isSelected = !image.isSelected;
-            if (image.isSelected) {
-                newSet.add(image.id);
-            } else {
-                newSet.delete(image.id);
-            }
-        });
-        setSelectedImages(newSet);
-    };
-    const clearSelectedImagesInCurrentPage = () => {
-        const newSet = new Set(selectedImages);
-        imagesInCurrentPage.forEach(image => {
-            image.isSelected = false;
-            newSet.delete(image.id);
-        });
-        setSelectedImages(newSet);
-    };
-    useHotkeys(
-        "ctrl+a",
-        () => {
-            const newSet = new Set(selectedImages);
-            imagesInCurrentPage.forEach(image => {
-                image.isSelected = !image.isSelected;
-                if (image.isSelected) {
-                    newSet.add(image.id);
-                } else {
-                    newSet.delete(image.id);
-                }
-            });
-            setSelectedImages(newSet);
-        },
-        [imagesInCurrentPage, selectedImages]
-    );
-    type registerListenerArgs = Parameters<typeof registerListener>[0];
+  const { filteredImages } = useFilteredImages();
 
-    const eventsMap: registerListenerArgs[] = [
-        {
-            channel: MENU_EVENTS.clearSelection,
-            listener: _ => {
-                clearSelection();
-            }
-        },
-        {
-            channel: MENU_EVENTS.setImagesPerPage,
-            listener: (_, imagesPerPage: number) => {
-                setImagesPerPage(imagesPerPage);
-            }
-        },
-        {
-            channel: MENU_EVENTS.selectAllImagesInGallery,
-            listener: _ => {
-                selectAllImages();
-            }
-        },
-        {
-            channel: MENU_EVENTS.selectAllImagesInCurrentPage,
-            listener: _ => {
-                selectImagesInCurrentPage();
-            }
-        },
-        {
-            channel: MENU_EVENTS.clearSelectionOnCurrentPage,
-            listener: _ => {
-                clearSelectedImagesInCurrentPage();
-            }
-        },
-        {
-            channel: MENU_EVENTS.removeSelectedImagesFromPlaylist,
-            listener: _ => {
-                removeImagesFromPlaylist(selectedImages);
-            }
-        },
-        {
-            channel: MENU_EVENTS.deleteAllSelectedImages,
-            listener: _ => {
-                deleteSelectedImages();
-            }
-        },
-        {
-            channel: MENU_EVENTS.addSelectedImagesToPlaylist,
-            listener: _ => {
-                addImagesToPlaylist(getSelectedImages());
-            }
-        },
-        {
-            channel: MENU_EVENTS.deleteImageFromGallery,
-            listener: (_, image: rendererImage) => {
-                removeImagesFromStore([image]);
-            }
-        }
-    ];
-    useEffect(() => {
-        eventsMap.forEach(eventToRegister => {
-            registerListener(eventToRegister);
-        });
-    }, [eventsMap, selectedImages]);
+  const prevTokensSerialized = useRef<string | null>(null);
 
-    useEffect(() => {
-        if (imagesToShow.length === 0) {
-            setCurrentPage(totalPages);
-        }
-        if (filters.searchString === "") {
-            setCurrentPage(1);
-        }
-    }, [imagesPerPage, totalPages, filters]);
-    return {
-        currentPage,
-        totalPages,
-        imagesToShow,
-        handlePageChange,
-        filteredImages,
-        imagesInCurrentPage,
-        selectedImages
-    };
+  // Sync perPage from config on first load
+  useEffect(() => {
+    const configPerPage = config?.app?.images_per_page ?? 50;
+    if (configPerPage !== perPage) {
+      useImagesStore.setState({ perPage: configPerPage });
+    }
+  }, [config?.app?.images_per_page, perPage]);
+
+  const parsed = parseGalleryFilterTokens(filters.filterTokens);
+  const hasClientSideFilter = hasClientSideGalleryFilters(
+    parsed,
+    filters.mediaType,
+    filters.advancedFilters.resolution,
+  );
+
+  const totalPages = hasClientSideFilter
+    ? Math.max(1, Math.ceil(filteredImages.length / perPage))
+    : pagination?.total_pages
+      ? pagination.total_pages
+      : Math.max(1, Math.ceil(filteredImages.length / perPage));
+
+  const imageCardJsxArray: ReactNode[] = [];
+  const imagesInCurrentPage: rendererImage[] = [];
+
+  for (let idx = 0; idx < filteredImages.length; idx++) {
+    const currentImage = filteredImages[idx];
+    if (currentImage === undefined) break;
+    imagesInCurrentPage.push(currentImage);
+    imageCardJsxArray.push(
+      <Suspense key={currentImage.id || `image-${idx}`}>
+        <ImageCard Image={currentImage} />
+      </Suspense>,
+    );
+  }
+
+  const imagesToShow = imageCardJsxArray;
+
+  const handlePageChange = (page: number) => {
+    useImagesStore.getState().fetchPage(page);
+  };
+
+  const selectAllVisibleOrToggleOff = () => {
+    if (imagesInCurrentPage.length === 0) {
+      setSelectedImages(new Set<number>());
+      return;
+    }
+    const visibleIds = new Set(imagesInCurrentPage.map((img) => img.id));
+    const allVisibleSelected =
+      imagesInCurrentPage.length > 0 &&
+      imagesInCurrentPage.every((img) => selectedImages.has(img.id));
+    if (allVisibleSelected) {
+      const next = new Set(selectedImages);
+      for (const id of visibleIds) {
+        next.delete(id);
+      }
+      setSelectedImages(next);
+    } else {
+      setSelectedImages(visibleIds);
+    }
+  };
+
+  useHotkeys(
+    "mod+a",
+    (e) => {
+      e.preventDefault();
+      selectAllVisibleOrToggleOff();
+    },
+    { preventDefault: true },
+    [imagesInCurrentPage, selectedImages, setSelectedImages],
+  );
+
+  useEffect(() => {
+    const serialized = JSON.stringify(filters.filterTokens);
+    if (
+      prevTokensSerialized.current !== null &&
+      serialized === "[]" &&
+      prevTokensSerialized.current !== "[]"
+    ) {
+      useImagesStore.getState().fetchPage(1);
+    }
+    prevTokensSerialized.current = serialized;
+  }, [filters.filterTokens]);
+
+  return {
+    currentPage,
+    totalPages,
+    imagesToShow,
+    handlePageChange,
+    filteredImages,
+    imagesInCurrentPage,
+    selectedImages,
+    setSelectedImages,
+  };
 }

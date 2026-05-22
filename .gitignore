@@ -18,9 +18,11 @@ lerna-debug.log*
 *.sln
 *.sw?
 
+# Legacy npm lockfile (this repo uses pnpm; do not commit if npm is run by mistake)
+package-lock.json
+
 # project specific ignores
 *.js
-*.js.map
 node_modules
 dist
 dist-ssr
@@ -28,8 +30,37 @@ dist-electron
 release
 *.local
 waypaper.sqlite3
-# exclude from gitignore
 
-!postcss.config.js
-!tailwind.config.js
+# daemon build artifacts
+daemon/build/
 
+#Local dev artifacts
+.tessl/
+.codegraph/
+.claude/
+.cursor/
+.agents/
+.gemini/
+.worktrees/
+test-results/
+AGENTS.md
+tessl.json
+
+# Playwright / Vitest artifacts
+playwright-report/
+playwright-ui-report/
+blob-report/
+allure*/
+.playwright-cli
+.local-browsers/
+playwright.env
+tests/coverage-report/
+coverage/
+coverage-report/
+
+# VitePress
+docs/.vitepress/cache
+docs/.vitepress/dist
+
+# Local dev audit output
+audit-contrast.json

@@ -1,0 +1,324 @@
+/* Waypaper design token layer — sits on top of DaisyUI, below components */
+:root {
+  /* UI Scale — set by designSystemStore; components opt-in via --wp-text-* tokens */
+  --wp-font-scale: 1;
+
+  /* Text role tokens (scaled) */
+  --wp-text-xs: calc(0.75rem * var(--wp-font-scale));
+  --wp-text-sm: calc(0.875rem * var(--wp-font-scale));
+  --wp-text-base: calc(1rem * var(--wp-font-scale));
+  --wp-text-lg: calc(1.125rem * var(--wp-font-scale));
+  --wp-text-xl: calc(1.25rem * var(--wp-font-scale));
+  --wp-text-2xl: calc(1.5rem * var(--wp-font-scale));
+
+  /* Muted text — semantic replacements for ad-hoc opacity-60/50 usage */
+  --wp-text-muted: oklch(from var(--color-base-content) l c h / 0.72);
+  --wp-text-faint: oklch(from var(--color-base-content) l c h / 0.55);
+
+  /* Spacing scale */
+  --wp-space-1: 4px;
+  --wp-space-2: 8px;
+  --wp-space-3: 12px;
+  --wp-space-4: 16px;
+  --wp-space-5: 24px;
+  --wp-space-6: 32px;
+  --wp-space-7: 48px;
+
+  /* Radius */
+  --wp-radius-sm: 6px;
+  --wp-radius-md: 10px;
+  --wp-radius-lg: 14px;
+  --wp-radius-xl: 20px;
+
+  /* Surfaces — derived from DaisyUI base tokens */
+  --wp-surface-1: color-mix(in oklch, var(--color-base-100) 100%, transparent);
+  --wp-surface-2: color-mix(in oklch, var(--color-base-100) 92%, var(--color-base-content) 8%);
+  --wp-surface-3: color-mix(in oklch, var(--color-base-100) 84%, var(--color-base-content) 16%);
+  --wp-hairline: color-mix(in oklch, var(--color-base-content) 12%, transparent);
+
+  /* Elevation (layered, not flat) */
+  --wp-elev-1: 0 1px 0 var(--wp-hairline), 0 1px 2px rgb(0 0 0 / 0.04);
+  --wp-elev-2:
+    0 1px 0 var(--wp-hairline), 0 4px 12px rgb(0 0 0 / 0.06), 0 2px 4px rgb(0 0 0 / 0.04);
+  --wp-elev-3:
+    0 1px 0 var(--wp-hairline), 0 12px 32px rgb(0 0 0 / 0.12), 0 4px 8px rgb(0 0 0 / 0.06);
+
+  /* Motion */
+  --wp-dur-fast: 120ms;
+  --wp-dur-base: 200ms;
+  --wp-dur-slow: 320ms;
+  --wp-ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --wp-ease-spring: cubic-bezier(0.34, 1.3, 0.64, 1);
+
+  /* Mode tokens — modern (default) */
+  --wp-border-w: 1px;
+  --wp-border-color: oklch(from var(--color-base-content) l c h / 0.12);
+
+  /* Display typography (mode-driven) */
+  --wp-display-case: none;
+  --wp-display-tracking: -0.01em;
+  --wp-display-weight: 700;
+
+  /* Paper grid (gallery, startup) */
+  --wp-paper-grid-size: 24px;
+  --wp-paper-grid-alpha: 0.07;
+
+  /* Gallery (PaginatedGallery): column floor + scroll padding — tightened when vertical space is scarce */
+  --wp-gallery-min-col: 16vw;
+  --wp-gallery-scroll-padding: 1rem;
+}
+
+@media (max-height: 1080px) {
+  :root {
+    --wp-gallery-min-col: 12vw;
+    --wp-gallery-scroll-padding: 0.625rem;
+  }
+}
+
+[data-design="neobrutalist"] {
+  /* Radius overrides — driven by the slider's --neo-radius (rem).
+     Default 0 keeps the signature sharp look; raising the slider
+     scales all four steps proportionally so visual hierarchy holds. */
+  --wp-radius-sm: calc(var(--neo-radius, 0rem) * 0.6);
+  --wp-radius-md: var(--neo-radius, 0rem);
+  --wp-radius-lg: calc(var(--neo-radius, 0rem) * 1.4);
+  --wp-radius-xl: calc(var(--neo-radius, 0rem) * 2);
+
+  /* Borders */
+  --wp-border-w: var(--neo-border-width, 4px);
+  --wp-border-color: oklch(from var(--color-base-content) l c h / 0.9);
+
+  /* Hard offset shadows replace elevations */
+  --wp-elev-1: var(--neo-shadow-x, 8px) var(--neo-shadow-y, 8px) 0 0 #000;
+  --wp-elev-2: calc(var(--neo-shadow-x, 8px) * 1.5) calc(var(--neo-shadow-y, 8px) * 1.5) 0 0 #000;
+  --wp-elev-3: calc(var(--neo-shadow-x, 8px) * 2) calc(var(--neo-shadow-y, 8px) * 2) 0 0 #000;
+
+  /* Display typography */
+  --font-display: "Aldrich", "Space Grotesk Variable", system-ui, sans-serif;
+  --wp-display-case: uppercase;
+  --wp-display-tracking: 0.02em;
+  --wp-display-weight: 800;
+
+  /* Paper grid — slightly stronger */
+  --wp-paper-grid-alpha: 0.1;
+}
+
+/* Theme switch animation: `document.startViewTransition` in ThemeContext (root snapshot).
+   Avoid transition-on-* here — it animated thousands of nodes and felt laggy. */
+@media (prefers-reduced-motion: no-preference) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) {
+    animation-duration: var(--wp-dur-base);
+    animation-timing-function: var(--wp-ease-out);
+  }
+}
+
+/* Math-paper grid background — used by Gallery and StartupIntro.
+   Color comes from the active palette via --color-base-content;
+   density and intensity are mode-driven via --wp-paper-grid-*. */
+.wp-paper-grid {
+  background-image:
+    radial-gradient(
+      ellipse 80% 60% at 50% 40%,
+      transparent 40%,
+      oklch(from var(--color-base-content) l c h / calc(var(--wp-paper-grid-alpha) * 1.15)) 100%
+    ),
+    linear-gradient(
+      90deg,
+      oklch(from var(--color-base-content) l c h / var(--wp-paper-grid-alpha)) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      oklch(from var(--color-base-content) l c h / var(--wp-paper-grid-alpha)) 1px,
+      transparent 1px
+    );
+  background-size:
+    100% 100%,
+    var(--wp-paper-grid-size) var(--wp-paper-grid-size),
+    var(--wp-paper-grid-size) var(--wp-paper-grid-size);
+  background-repeat: no-repeat, repeat, repeat;
+}
+
+.wp-paper-grid--no-vignette {
+  background-image:
+    linear-gradient(
+      90deg,
+      oklch(from var(--color-base-content) l c h / var(--wp-paper-grid-alpha)) 1px,
+      transparent 1px
+    ),
+    linear-gradient(
+      oklch(from var(--color-base-content) l c h / var(--wp-paper-grid-alpha)) 1px,
+      transparent 1px
+    );
+  background-size:
+    var(--wp-paper-grid-size) var(--wp-paper-grid-size),
+    var(--wp-paper-grid-size) var(--wp-paper-grid-size);
+  background-repeat: repeat, repeat;
+}
+
+/* ── Component primitives ──────────────────────────────────────── */
+
+.wp-surface {
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  border-radius: var(--wp-radius-md);
+  border: var(--wp-border-w) solid var(--wp-border-color);
+}
+.wp-surface--elev-1 {
+  box-shadow: var(--wp-elev-1);
+}
+.wp-surface--elev-2 {
+  box-shadow: var(--wp-elev-2);
+}
+.wp-surface--elev-3 {
+  box-shadow: var(--wp-elev-3);
+}
+
+.wp-card {
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  border-radius: var(--wp-radius-md);
+  border: var(--wp-border-w) solid var(--wp-border-color);
+  overflow: hidden;
+}
+.wp-card--elev-1 {
+  box-shadow: var(--wp-elev-1);
+}
+.wp-card--elev-2 {
+  box-shadow: var(--wp-elev-2);
+}
+.wp-card--elev-3 {
+  box-shadow: var(--wp-elev-3);
+}
+
+.wp-btn {
+  border-radius: var(--wp-radius-md);
+  font-family: var(--font-display);
+  font-weight: var(--wp-display-weight);
+  letter-spacing: var(--wp-display-tracking);
+  text-transform: var(--wp-display-case);
+}
+
+.wp-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  color: var(--color-base-content);
+  border: var(--wp-border-w) solid transparent;
+  border-radius: var(--wp-radius-md);
+  cursor: pointer;
+  padding: 6px;
+  transition: background var(--wp-dur-fast) var(--wp-ease-out);
+}
+.wp-icon-btn:hover {
+  background: oklch(from var(--color-base-content) l c h / 0.08);
+}
+.wp-icon-btn--sm {
+  padding: 4px;
+}
+.wp-icon-btn--lg {
+  padding: 8px;
+}
+
+.wp-close-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  border: var(--wp-border-w) solid var(--wp-border-color);
+  border-radius: var(--wp-radius-md);
+  cursor: pointer;
+  padding: 6px;
+  width: 32px;
+  height: 32px;
+}
+
+.wp-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: oklch(0 0 0 / 0.4);
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  z-index: 50;
+}
+.wp-modal {
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  border-radius: var(--wp-radius-lg);
+  border: var(--wp-border-w) solid var(--wp-border-color);
+  box-shadow: var(--wp-elev-3);
+  padding: 1.5rem;
+  max-width: min(90vw, 32rem);
+  max-height: 90vh;
+  overflow: auto;
+}
+.wp-modal--sm {
+  max-width: min(90vw, 24rem);
+}
+.wp-modal--lg {
+  max-width: min(90vw, 48rem);
+}
+.wp-modal--xl {
+  max-width: min(90vw, 72rem);
+}
+
+.wp-modal__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin: -1.5rem -1.5rem 1rem;
+  padding: 1rem 1.5rem;
+}
+
+/* Modal title bar — solid surface; border separates header from body */
+.wp-modal__header--bar {
+  background: oklch(from var(--color-base-200) l c h);
+  border-bottom: var(--wp-border-w) solid var(--wp-border-color);
+}
+
+/* ── Kbd primitive ──────────────────────────────────────────────── */
+
+.wp-kbd {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.5em;
+  padding: 0 var(--wp-space-2);
+  font-family: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+  font-size: var(--wp-text-xs);
+  line-height: 1.6;
+  background: var(--wp-surface-3);
+  color: var(--color-base-content);
+  border: var(--wp-border-w) solid var(--wp-border-color);
+  border-radius: var(--wp-radius-sm);
+  box-shadow: inset 0 -1px 0 var(--wp-hairline);
+}
+
+.wp-kbd--sm {
+  font-size: calc(0.7rem * var(--wp-font-scale));
+  padding: 0 4px;
+}
+
+[data-design="neobrutalist"] .wp-kbd {
+  box-shadow: 2px 2px 0 0 #000;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+/* Wallhaven toolbar: drop vertical hairline separators in neobrutalist — heavy borders carry enough structure */
+[data-design="neobrutalist"] .wp-toolbar-hairline {
+  display: none;
+}
+
+/* Containment: when inside a tinted alert, derive colors from currentColor
+   so the kbd is always readable regardless of the alert hue. */
+.alert .wp-kbd,
+[class*="alert-"] .wp-kbd {
+  background: oklch(from currentColor l c h / 0.18);
+  color: currentColor;
+  border-color: oklch(from currentColor l c h / 0.4);
+  box-shadow: none;
+}

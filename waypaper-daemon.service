@@ -1,0 +1,14 @@
+[Unit]
+Description=Waypaper Engine Daemon
+Documentation=https://github.com/0bCdian/Waypaper-Engine
+After=graphical-session.target
+PartOf=graphical-session.target
+
+[Service]
+Type=simple
+ExecStart=/usr/bin/waypaper-daemon start
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

@@ -1,239 +1,267 @@
-import { useRef, useEffect, useState } from "react";
-import { playlistStore } from "../stores/playlist";
-import { useForm, type SubmitHandler } from "react-hook-form";
-import { imagesStore } from "../stores/images";
-import { type playlistSelectType } from "../../database/schema";
-import { PLAYLIST_TYPES } from "../../shared/types/playlist";
-import {
-    type rendererPlaylist,
-    type rendererImage
-} from "../types/rendererTypes";
+import { useRef, useState, useEffect } from "react";
+import { usePlaylistStore } from "../stores/playlist";
+import { useImagesStore } from "../stores/images";
+import { useShallow } from "zustand/react/shallow";
+import { useForm, useStore } from "@tanstack/react-form";
+import type { MonitorMode } from "../../electron/daemon-go-types";
 import { useMonitorStore } from "../stores/monitors";
-import { IPC_MAIN_EVENTS } from "../../shared/constants";
-import { type ActiveMonitor } from "../../shared/types/monitor";
-interface Input {
-    selectPlaylist: string;
-}
+import type { Playlist } from "../../electron/daemon-go-types";
+import Modal, { type ModalHandle } from "./Modal";
+import { useModalStore } from "../stores/modalStore";
+import { confirmDialog } from "./ConfirmDialog";
+import { logger } from "../utils/logger";
+import { cn } from "../utils/cn";
+import { daemonClient } from "@/client";
 
 interface Props {
-    playlistsInDB: playlistSelectType[];
-    currentPlaylistName: string;
-    setShouldReload: React.Dispatch<React.SetStateAction<boolean>>;
+  playlistsInDB: Playlist[];
+  currentPlaylistName: string;
+  onPlaylistChanged: () => void;
 }
 
-const {
-    getPlaylistImages,
-    startPlaylist,
-    deletePlaylist,
-    stopPlaylist,
-    registerListener,
-    updateTray
-} = window.API_RENDERER;
-let firstRender = true;
-const LoadPlaylistModal = ({
-    playlistsInDB,
-    setShouldReload,
-    currentPlaylistName
-}: Props) => {
-    const { clearPlaylist, setPlaylist } = playlistStore();
-    const { imagesMap } = imagesStore();
-    const [error, setError] = useState("");
-    const { register, handleSubmit, watch } = useForm<Input>();
-    const { activeMonitor } = useMonitorStore();
-    const modalRef = useRef<HTMLDialogElement>(null);
+type LoadPlaylistResult =
+  | { ok: true; playlist: import("../types/rendererTypes").rendererPlaylist }
+  | { ok: false; message: string };
 
-    const closeModal = () => {
-        modalRef.current?.close();
+async function loadAndStartPlaylist(
+  playlistId: number,
+  monitor: string,
+  mode: MonitorMode | undefined,
+): Promise<LoadPlaylistResult> {
+  try {
+    const fullPlaylist = await daemonClient.getPlaylist(playlistId);
+    await daemonClient.startPlaylist(fullPlaylist.id, monitor, mode);
+    return {
+      ok: true,
+      playlist: {
+        id: fullPlaylist.id,
+        name: fullPlaylist.name,
+        configuration: fullPlaylist.configuration,
+        images: fullPlaylist.images,
+      },
     };
-    const onSubmit: SubmitHandler<Input> = async data => {
+  } catch (err) {
+    logger.error("Failed to load playlist:", err);
+    return {
+      ok: false,
+      message: err instanceof Error ? err.message : "Unknown error",
+    };
+  }
+}
+
+const LoadPlaylistModal = ({ playlistsInDB, onPlaylistChanged, currentPlaylistName }: Props) => {
+  const { clearPlaylist, setPlaylist } = usePlaylistStore(
+    useShallow((s) => ({
+      clearPlaylist: s.clearPlaylist,
+      setPlaylist: s.setPlaylist,
+    })),
+  );
+  const [error, setError] = useState("");
+  const monitorSelection = useMonitorStore((s) => s.monitorSelection);
+  const modalRef = useRef<ModalHandle>(null);
+
+  const form = useForm({
+    defaultValues: {
+      selectPlaylist: playlistsInDB.length > 0 ? String(playlistsInDB[0].id) : "",
+    },
+    onSubmit: async ({ value }) => {
+      const selectedId = Number(value.selectPlaylist);
+      const selectedPlaylist = playlistsInDB.find((p) => p.id === selectedId);
+
+      if (selectedPlaylist === undefined) {
+        setError("Please select a valid playlist");
+        setTimeout(() => setError(""), 3000);
+        return;
+      }
+
+      if (monitorSelection.selectedMonitors.length < 1) {
+        setError("Select at least one display before loading a playlist");
+        setTimeout(() => setError(""), 3000);
+        return;
+      }
+
+      const monitor =
+        monitorSelection.selectedMonitors.length === 1 ? monitorSelection.selectedMonitors[0] : "*";
+      const result = await loadAndStartPlaylist(
+        selectedPlaylist.id,
+        monitor,
+        monitorSelection.mode,
+      );
+      if (result.ok) {
         clearPlaylist();
-        const selectedPlaylist = playlistsInDB.find(playlist => {
-            return playlist.name === data.selectPlaylist;
-        });
-        if (selectedPlaylist !== undefined) {
-            const imagesArrayFromPlaylist = await getPlaylistImages(
-                selectedPlaylist.id
-            );
-            const imagesToStorePlaylist: rendererImage[] = [];
-            imagesArrayFromPlaylist.forEach(image => {
-                const imageToStore = imagesMap.get(image.id);
-                if (imageToStore === undefined) return;
-                if (
-                    selectedPlaylist.type === PLAYLIST_TYPES.TIME_OF_DAY &&
-                    image.time !== null
-                ) {
-                    imageToStore.time = image.time;
-                }
-                imageToStore.isChecked = true;
-                imagesToStorePlaylist.push(imageToStore);
-            });
-            const currentPlaylist: rendererPlaylist = {
-                name: selectedPlaylist.name,
-                configuration: {
-                    type: selectedPlaylist.type,
-                    order: selectedPlaylist.order,
-                    interval: selectedPlaylist.interval,
-                    showAnimations: selectedPlaylist.showAnimations,
-                    alwaysStartOnFirstImage:
-                        selectedPlaylist.alwaysStartOnFirstImage
-                },
-                images: imagesToStorePlaylist,
-                activeMonitor
-            };
-            if (activeMonitor.monitors.length < 1) {
-                setError(
-                    "Select at least one display before setting a playlist"
-                );
-                setTimeout(() => {
-                    setError("");
-                }, 3000);
-                return;
-            }
-            setPlaylist(currentPlaylist);
-            startPlaylist({
-                name: currentPlaylist.name,
-                activeMonitor
-            });
-        }
+        setPlaylist(result.playlist);
+        void useImagesStore
+          .getState()
+          .fetchMissingImages(result.playlist.images.map((img) => img.image_id));
         closeModal();
-    };
-    useEffect(() => {
-        if (!firstRender) return;
-        firstRender = false;
-        registerListener({
-            channel: IPC_MAIN_EVENTS.clearPlaylist,
-            listener: (
-                _,
-                playlist: { name: string; activeMonitor: ActiveMonitor }
-            ) => {
-                clearPlaylist(playlist);
-                updateTray();
-            }
-        });
-    }, []);
-    return (
-        <dialog id="LoadPlaylistModal" className="modal" ref={modalRef}>
-            <div className="container modal-box flex flex-col">
-                <h2 className="select-none py-3 text-center text-4xl font-bold">
-                    Load Playlist
-                </h2>
-                {error.length > 0 && (
-                    <div role="alert" className="alert alert-error m-0">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-6 w-6 shrink-0 stroke-current"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="2"
-                                d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                        </svg>
-                        <span>{error}</span>
-                    </div>
-                )}
+      } else {
+        setError(`Failed to load playlist: ${result.message}`);
+        setTimeout(() => setError(""), 5000);
+      }
+    },
+  });
 
-                <div className="divider"></div>
-                {playlistsInDB.length === 0 && (
-                    <section className="flex flex-col gap-3">
-                        <span className="text-center text-xl font-medium italic">
-                            No playlists found, refresh or create a new one
-                        </span>
-                        <button
-                            type="button"
-                            className="btn btn-active btn-block uppercase"
-                            onClick={() => {
-                                setShouldReload(true);
-                            }}
-                        >
-                            Refresh playlists
-                        </button>
-                    </section>
+  const currentSelection = useStore(form.store, (s) => s.values.selectPlaylist);
+
+  useEffect(() => {
+    if (modalRef.current) {
+      useModalStore.getState().register("LoadPlaylistModal", modalRef.current);
+    }
+    return () => useModalStore.getState().unregister("LoadPlaylistModal");
+  }, []);
+
+  const closeModal = () => {
+    modalRef.current?.close();
+  };
+
+  return (
+    <Modal
+      id="LoadPlaylistModal"
+      ref={modalRef}
+      stripedHeader={{
+        title: "Load Playlist",
+        subtitle:
+          "Pick a saved playlist from the library. It will replace the current strip and start on your selected display(s).",
+        bleedInsetDefault: false,
+      }}
+      className="modal-box flex max-w-lg flex-col xl:max-w-xl 2xl:max-w-2xl max-h-[90vh] overflow-hidden p-0"
+    >
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 pb-8 pt-8">
+        {error.length > 0 && (
+          <div role="alert" className="alert alert-error m-0 shadow-none">
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              className="size-6 shrink-0 stroke-current"
+              fill="none"
+              viewBox="0 0 24 24"
+              aria-hidden
+            >
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth="2"
+                d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+              />
+            </svg>
+            <span className="text-left font-[family-name:var(--font-body)] text-sm font-semibold leading-relaxed md:text-base">
+              {error}
+            </span>
+          </div>
+        )}
+
+        {playlistsInDB && playlistsInDB.length === 0 && (
+          <section className="flex flex-col gap-4 rounded-[var(--wp-radius-md)] bg-base-200 p-6">
+            <p className="text-left font-[family-name:var(--font-body)] text-base font-medium leading-[1.6] text-base-content md:text-lg">
+              No playlists in the library yet. Save one from the strip or refresh after syncing.
+            </p>
+            <button
+              type="button"
+              className="btn btn-primary btn-block"
+              onClick={() => {
+                onPlaylistChanged();
+              }}
+            >
+              Refresh playlists
+            </button>
+          </section>
+        )}
+
+        {playlistsInDB && playlistsInDB.length > 0 && (
+          <form
+            // oxlint-disable-next-line react-doctor/no-prevent-default -- Electron app; not a server-rendered form, no progressive-enhancement use case
+            onSubmit={(e) => {
+              e.preventDefault();
+              void form.handleSubmit();
+            }}
+            className="form-control flex flex-col gap-6 rounded-[var(--wp-radius-md)] bg-base-200 p-6"
+          >
+            <div className="flex flex-col gap-2">
+              <label
+                htmlFor="selectPlaylist"
+                className={cn(
+                  "label cursor-pointer justify-start p-0 font-[family-name:var(--font-display)] text-sm font-extrabold uppercase tracking-wide text-base-content md:text-base",
                 )}
-                {playlistsInDB.length > 0 && (
-                    <form
-                        onSubmit={e => {
-                            void handleSubmit(onSubmit)(e);
-                        }}
-                        className="form-control flex flex-col gap-5"
+              >
+                Select playlist
+              </label>
+              <div className="flex flex-col gap-4 sm:flex-row sm:items-stretch">
+                <form.Field name="selectPlaylist">
+                  {(field) => (
+                    <select
+                      id="selectPlaylist"
+                      className="select select-bordered min-h-12 w-full flex-1 text-base md:text-lg"
+                      value={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.value)}
+                      onBlur={field.handleBlur}
                     >
-                        <label
-                            htmlFor="selectPlaylist"
-                            className="label text-lg"
-                        >
-                            Select Playlist
-                        </label>
+                      <option value="" disabled>
+                        Choose a playlist…
+                      </option>
+                      {playlistsInDB.map((playlist) => (
+                        <option key={playlist.id} value={String(playlist.id)}>
+                          {playlist.name}
+                        </option>
+                      ))}
+                    </select>
+                  )}
+                </form.Field>
+                <button
+                  type="button"
+                  className="btn btn-error shrink-0 sm:w-auto sm:min-w-[7.5rem]"
+                  onClick={async () => {
+                    const currentId = Number(currentSelection);
+                    if (!currentSelection || Number.isNaN(currentId)) {
+                      setError("Please select a playlist to delete");
+                      return;
+                    }
 
-                        <div className="flex gap-10 align-baseline">
-                            <select
-                                id="selectPlaylist"
-                                className="select select-bordered basis-[90%] rounded-md text-lg"
-                                defaultValue={playlistsInDB[0].name}
-                                {...register("selectPlaylist", {
-                                    required: true
-                                })}
-                            >
-                                {playlistsInDB.map(playlist => (
-                                    <option
-                                        key={playlist.id}
-                                        value={playlist.name}
-                                    >
-                                        {playlist.name}
-                                    </option>
-                                ))}
-                            </select>
-                            <button
-                                type="button"
-                                className="btn btn-error btn-md rounded-md uppercase"
-                                onClick={() => {
-                                    const current = watch("selectPlaylist");
-                                    const shouldDelete = window.confirm(
-                                        `Are you sure to delete ${current}?`
-                                    );
-                                    if (shouldDelete) {
-                                        deletePlaylist(current);
-                                        setShouldReload(true);
-                                        if (currentPlaylistName !== "") {
-                                            stopPlaylist({
-                                                name: currentPlaylistName,
-                                                activeMonitor
-                                            });
-                                        }
-                                        if (currentPlaylistName === current) {
-                                            clearPlaylist();
-                                        }
-                                    }
-                                }}
-                            >
-                                Delete
-                            </button>
-                        </div>
-                        <div className="mt-3 flex justify-center gap-3">
-                            <button
-                                type="button"
-                                className="btn btn-md rounded-md uppercase"
-                                onClick={closeModal}
-                            >
-                                Cancel
-                            </button>
-                            <button
-                                type="submit"
-                                className="btn btn-active btn-md rounded-md uppercase"
-                            >
-                                Load
-                            </button>
-                        </div>
-                    </form>
-                )}
+                    const playlistToDelete = playlistsInDB.find((p) => p.id === currentId);
+                    if (!playlistToDelete) return;
+
+                    const shouldDelete = await confirmDialog({
+                      title: "Delete Playlist",
+                      message: `Are you sure you want to delete "${playlistToDelete.name}"? This action cannot be undone.`,
+                      confirmLabel: "Delete",
+                      cancelLabel: "Cancel",
+                      danger: true,
+                    });
+                    if (shouldDelete) {
+                      try {
+                        await daemonClient.stopPlaylist(playlistToDelete.id).catch(() => {});
+                        await daemonClient.deletePlaylist(playlistToDelete.id);
+                        onPlaylistChanged();
+                        setError("");
+
+                        if (currentPlaylistName !== "") {
+                          clearPlaylist();
+                        }
+                      } catch (deleteErr) {
+                        logger.error("Failed to delete playlist:", deleteErr);
+                        setError(
+                          `Failed to delete playlist: ${deleteErr instanceof Error ? deleteErr.message : "Unknown error"}`,
+                        );
+                      }
+                    }
+                  }}
+                >
+                  Delete
+                </button>
+              </div>
             </div>
-            <form method="dialog" className="modal-backdrop">
-                <button>close</button>
-            </form>
-        </dialog>
-    );
+
+            <div className="flex flex-wrap items-center justify-center gap-3 border-t-4 border-base-content/15 pt-6 sm:gap-4">
+              <button type="button" className="btn btn-ghost min-w-[6.5rem]" onClick={closeModal}>
+                Cancel
+              </button>
+              <button type="submit" className="btn btn-primary min-w-[6.5rem]">
+                Load
+              </button>
+            </div>
+          </form>
+        )}
+      </div>
+    </Modal>
+  );
 };
 
 export default LoadPlaylistModal;

@@ -1,303 +1,317 @@
-import { useForm, type SubmitHandler } from "react-hook-form";
+import { useForm, useStore } from "@tanstack/react-form";
 import { useRef, useEffect, useState } from "react";
-import { playlistStore } from "../stores/playlist";
+import { usePlaylistStore } from "../stores/playlist";
+import { useShallow } from "zustand/react/shallow";
 import {
-    type PLAYLIST_TYPES_TYPE,
-    type PLAYLIST_ORDER_TYPES,
-    PLAYLIST_TYPES,
-    PLAYLIST_ORDER
+  type PLAYLIST_TYPES_TYPE,
+  type PLAYLIST_ORDER_TYPES,
+  PLAYLIST_TYPES,
+  PLAYLIST_ORDER,
 } from "../../shared/types/playlist";
-import { toMS, toHoursAndMinutes } from "../utils/utilities";
-interface Inputs {
-    type: PLAYLIST_TYPES_TYPE;
-    order: PLAYLIST_ORDER_TYPES | null;
-    hours: string | null;
-    minutes: string | null;
-    showTransition: boolean;
-    alwaysStartOnFirstImage: boolean;
-}
+import { toSeconds, toHoursAndMinutes } from "../utils/utilities";
+import Modal, { type ModalHandle } from "./Modal";
+import { useModalStore } from "../stores/modalStore";
+import { logger } from "../utils/logger";
+import { cn } from "../utils/cn";
 
 const PlaylistConfigurationModal = () => {
-    const [showError, setShowError] = useState(false);
-    const { setConfiguration, playlist } = playlistStore();
-    const { register, handleSubmit, watch, setValue } = useForm<Inputs>();
-    const containerRef = useRef<HTMLDialogElement>(null);
-    const closeModal = () => {
-        containerRef.current?.close();
-    };
-    const classNameDisabled =
-        playlist.images.length > 7 ? "bg-red-900 text-stone-100" : "";
-    const onSubmit: SubmitHandler<Inputs> = data => {
-        switch (data.type) {
-            case "timer":
-                if (data.hours === null || data.minutes === null) {
-                    logger.error("Hours and minutes are required");
-                } else {
-                    const interval = toMS(
-                        parseInt(data.hours),
-                        parseInt(data.minutes)
-                    );
-                    const configuration = {
-                        type: data.type,
-                        order: data.order,
-                        showAnimations: data.showTransition,
-                        alwaysStartOnFirstImage: data.alwaysStartOnFirstImage,
-                        interval
-                    };
-                    setConfiguration(configuration);
-                }
-                break;
-            case "timeofday":
-                setConfiguration({
-                    type: data.type,
-                    order: null,
-                    showAnimations: data.showTransition,
-                    interval: null,
-                    alwaysStartOnFirstImage: false
-                });
-                break;
-            case "dayofweek":
-                if (playlist.images.length > 7) {
-                    setShowError(prevState => !prevState);
-                    setTimeout(() => {
-                        setShowError(prevState => !prevState);
-                    }, 5000);
-                    return;
-                }
-                setConfiguration({
-                    type: data.type,
-                    order: null,
-                    showAnimations: data.showTransition,
-                    interval: null,
-                    alwaysStartOnFirstImage: false
-                });
-                break;
-            case "never":
-                setConfiguration({
-                    type: data.type,
-                    order: data.order,
-                    showAnimations: data.showTransition,
-                    interval: null,
-                    alwaysStartOnFirstImage: data.alwaysStartOnFirstImage
-                });
-                break;
-            default:
-                logger.error("Invalid playlist type");
-        }
-        closeModal();
-    };
-    const hours = watch("hours");
-    const minutes = watch("minutes");
-    useEffect(() => {
-        if (hours === null || minutes === null) return;
-        const parsedHours = parseInt(hours);
-        const parsedMinutes = parseInt(minutes);
-        if (parsedMinutes === 60) {
-            setValue("hours", (parsedHours + 1).toString());
-            setValue("minutes", "0");
-        }
-        if (parsedMinutes === 0 && parsedHours === 0) {
-            setValue("minutes", "1");
-        }
-    }, [hours, minutes]);
-    useEffect(() => {
-        const interval = playlist.configuration.interval;
-        if (interval !== null) {
-            const { hours, minutes } = toHoursAndMinutes(interval);
-            setValue("hours", hours.toString());
-            setValue("minutes", minutes.toString());
-        }
-        setValue("type", playlist.configuration.type);
-        setValue("order", playlist.configuration.order);
-        setValue("showTransition", playlist.configuration.showAnimations);
-        setValue(
-            "alwaysStartOnFirstImage",
-            playlist.configuration.alwaysStartOnFirstImage
-        );
-    }, [playlist]);
-    return (
-        <dialog
-            id="playlistConfigurationModal"
-            ref={containerRef}
-            className="modal select-none"
-            draggable={false}
-        >
-            <form
-                className="form-control modal-box rounded-xl"
-                onSubmit={e => {
-                    void handleSubmit(onSubmit)(e);
-                }}
-            >
-                <h2 className="select-none text-center text-4xl font-bold">
-                    Playlist Settings
-                </h2>
-                {showError && (
-                    <div className="alert alert-error mt-5">
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-6 w-6 shrink-0 stroke-current"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="2"
-                                d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
-                            />
-                        </svg>
-                        <span>
-                            Weekly playlists cannot have more than 7 images.
-                        </span>
-                    </div>
-                )}
-                <div className="divider"></div>
-                <div className="flex items-baseline justify-between">
-                    <label
-                        htmlFor="type"
-                        className="label shrink text-3xl font-semibold"
-                    >
-                        Change wallpaper
-                    </label>
-                    <select
-                        id="type"
-                        className="select select-bordered w-2/5 cursor-default rounded-lg text-lg"
-                        defaultValue={"timer"}
-                        {...register("type", { required: true })}
-                    >
-                        <option value={PLAYLIST_TYPES.TIMER}>On a timer</option>
-                        <option value={PLAYLIST_TYPES.TIME_OF_DAY}>
-                            Time of day
-                        </option>
-                        <option
-                            disabled={playlist.images.length > 7}
-                            className={classNameDisabled}
-                            value={PLAYLIST_TYPES.DAY_OF_WEEK}
-                        >
-                            Day of week
-                        </option>
-                        <option value={PLAYLIST_TYPES.NEVER}>Never</option>
-                    </select>
-                </div>
-                {watch("type") === PLAYLIST_TYPES.TIMER && (
-                    <div className="flex items-baseline justify-end gap-1">
-                        <div className="flex w-1/5 flex-col">
-                            <label
-                                htmlFor="hours"
-                                className="label text-lg font-medium"
-                            >
-                                Hours
-                            </label>
-                            <input
-                                id="hours"
-                                min="0"
-                                defaultValue={1}
-                                type="number"
-                                {...register("hours", {
-                                    required: true,
-                                    min: 0
-                                })}
-                                className="input input-sm input-bordered select-none rounded-lg text-lg font-medium focus:outline-none"
-                            />
-                        </div>
-                        <div className="flex w-1/5 flex-col">
-                            <label
-                                className="label rounded-lg text-lg font-medium"
-                                htmlFor="minutes"
-                            >
-                                Minutes
-                            </label>
-                            <input
-                                id="minutes"
-                                defaultValue={0}
-                                min="0"
-                                max="60"
-                                type="number"
-                                step={1}
-                                {...register("minutes", {
-                                    required: true
-                                })}
-                                className="input input-sm input-bordered select-none rounded-lg text-lg font-medium focus:outline-none"
-                            />
-                        </div>
-                    </div>
-                )}
-                {watch("type") !== PLAYLIST_TYPES.TIME_OF_DAY &&
-                    watch("type") !== PLAYLIST_TYPES.DAY_OF_WEEK && (
-                        <>
-                            <div className="divider"></div>
-                            <div className="flex items-baseline justify-between">
-                                <label
-                                    htmlFor="order"
-                                    className="label text-3xl font-semibold"
-                                >
-                                    Order
-                                </label>
-                                <select
-                                    className="select select-bordered w-2/5 cursor-default rounded-lg text-lg"
-                                    {...register("order", { required: true })}
-                                    defaultValue={PLAYLIST_ORDER.ordered}
-                                    id="order"
-                                >
-                                    <option value={PLAYLIST_ORDER.random}>
-                                        Random
-                                    </option>
-                                    <option value={PLAYLIST_ORDER.ordered}>
-                                        Ordered
-                                    </option>
-                                </select>
-                            </div>
-                        </>
-                    )}
-                <div className="divider"></div>
-                <div className="flex items-baseline justify-between">
-                    <label
-                        htmlFor="showTransition"
-                        className="label text-2xl font-semibold"
-                    >
-                        Show transition
-                    </label>
-                    <input
-                        type="checkbox"
-                        className="toggle toggle-md cursor-default rounded-full"
-                        id="showTransition"
-                        defaultChecked={true}
-                        {...register("showTransition")}
-                    />
-                </div>
-                {watch("type") !== PLAYLIST_TYPES.TIME_OF_DAY &&
-                    watch("type") !== PLAYLIST_TYPES.DAY_OF_WEEK && (
-                        <div className="flex items-baseline justify-between">
-                            <label
-                                htmlFor="alwaysStartOnFirstImage"
-                                className="label text-2xl font-semibold"
-                            >
-                                Always start on the first image
-                            </label>
-                            <input
-                                type="checkbox"
-                                className="toggle toggle-md cursor-default rounded-full"
-                                id="alwaysStartOnFirstImage"
-                                defaultChecked={false}
-                                {...register("alwaysStartOnFirstImage")}
-                            />
-                        </div>
-                    )}
-                <div className="divider mb-0"></div>
-                <div className="modal-action">
-                    <button
-                        type="submit"
-                        className="btn btn-active btn-block rounded-lg uppercase"
-                    >
-                        Save
-                    </button>
-                </div>
-            </form>
-            <form method="dialog" className="modal-backdrop">
-                <button>close</button>
-            </form>
-        </dialog>
+  const [showError, setShowError] = useState(false);
+  const { setConfiguration, playlist } = usePlaylistStore(
+    useShallow((s) => ({
+      setConfiguration: s.setConfiguration,
+      playlist: s.playlist,
+    })),
+  );
+  const containerRef = useRef<ModalHandle>(null);
+
+  const initialHours =
+    playlist.configuration.interval != null
+      ? toHoursAndMinutes(playlist.configuration.interval).hours.toString()
+      : "1";
+  const initialMinutes =
+    playlist.configuration.interval != null
+      ? toHoursAndMinutes(playlist.configuration.interval).minutes.toString()
+      : "0";
+
+  const form = useForm({
+    defaultValues: {
+      type: playlist.configuration.type as PLAYLIST_TYPES_TYPE,
+      order: (playlist.configuration.order ?? null) as PLAYLIST_ORDER_TYPES | null,
+      hours: initialHours as string | null,
+      minutes: initialMinutes as string | null,
+      alwaysStartOnFirstImage: playlist.configuration.always_start_on_first_image,
+    },
+    onSubmit: ({ value }) => {
+      switch (value.type) {
+        case "timer":
+          if (value.hours === null || value.minutes === null) {
+            logger.error("Hours and minutes are required");
+          } else {
+            const interval = toSeconds(parseInt(value.hours, 10), parseInt(value.minutes, 10));
+            setConfiguration({
+              type: value.type,
+              order: value.order ?? undefined,
+              always_start_on_first_image: value.alwaysStartOnFirstImage,
+              interval,
+            });
+          }
+          break;
+        case "time_of_day":
+          setConfiguration({
+            type: value.type,
+            order: undefined,
+            interval: undefined,
+            always_start_on_first_image: false,
+          });
+          break;
+        case "day_of_week":
+          if (playlist.images.length > 7) {
+            setShowError(true);
+            setTimeout(() => setShowError(false), 5000);
+            return;
+          }
+          setConfiguration({
+            type: value.type,
+            order: undefined,
+            interval: undefined,
+            always_start_on_first_image: false,
+          });
+          break;
+        case "manual":
+          setConfiguration({
+            type: value.type,
+            order: value.order ?? undefined,
+            interval: undefined,
+            always_start_on_first_image: value.alwaysStartOnFirstImage,
+          });
+          break;
+        default:
+          logger.error("Invalid playlist type");
+      }
+      closeModal();
+    },
+  });
+
+  const playlistType = useStore(form.store, (s) => s.values.type);
+  const hours = useStore(form.store, (s) => s.values.hours);
+  const minutes = useStore(form.store, (s) => s.values.minutes);
+
+  useEffect(() => {
+    if (hours === null || minutes === null) return;
+    const parsedHours = parseInt(hours, 10);
+    const parsedMinutes = parseInt(minutes, 10);
+    if (parsedMinutes === 60) {
+      form.setFieldValue("hours", (parsedHours + 1).toString());
+      form.setFieldValue("minutes", "0");
+    }
+    if (parsedMinutes === 0 && parsedHours === 0) {
+      form.setFieldValue("minutes", "1");
+    }
+  }, [hours, minutes, form]);
+
+  useEffect(() => {
+    const interval = playlist.configuration.interval;
+    if (interval != null) {
+      const { hours, minutes } = toHoursAndMinutes(interval);
+      form.setFieldValue("hours", hours.toString());
+      form.setFieldValue("minutes", minutes.toString());
+    }
+    form.setFieldValue("type", playlist.configuration.type);
+    form.setFieldValue("order", playlist.configuration.order ?? null);
+    form.setFieldValue(
+      "alwaysStartOnFirstImage",
+      playlist.configuration.always_start_on_first_image,
     );
+  }, [playlist, form]);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      useModalStore.getState().register("playlistConfigurationModal", containerRef.current);
+    }
+    return () => useModalStore.getState().unregister("playlistConfigurationModal");
+  }, []);
+
+  const closeModal = () => {
+    containerRef.current?.close();
+  };
+
+  const classNameDisabled = playlist.images.length > 7 ? "bg-error text-error-content" : "";
+
+  const showTimerFields = playlistType === PLAYLIST_TYPES.TIMER;
+  const showOrderField =
+    playlistType !== PLAYLIST_TYPES.TIME_OF_DAY && playlistType !== PLAYLIST_TYPES.DAY_OF_WEEK;
+
+  const neoFieldset = cn(
+    "fieldset bg-base-200 p-4 xl:p-5 2xl:p-6",
+    "rounded-[var(--wp-radius-md)] border-[length:var(--wp-border-w)] border-[var(--wp-border-color)]",
+  );
+
+  return (
+    <Modal
+      id="playlistConfigurationModal"
+      ref={containerRef}
+      stripedHeader={{
+        title: "Playlist Settings",
+        subtitle: "Control how wallpapers advance — timer, shuffle, and weekly layouts.",
+        titleDefaultExtra: "xl:text-4xl",
+        bleedInsetDefault: false,
+      }}
+      className="modal-box flex max-w-lg flex-col xl:max-w-xl 2xl:max-w-2xl max-h-[90vh] overflow-hidden p-0"
+    >
+      <div className="flex min-h-0 flex-1 flex-col gap-6 overflow-y-auto px-6 pb-8 pt-6">
+        <div
+          data-visible={showError}
+          className="alert alert-error m-0 shadow-none opacity-0 transition-opacity duration-300 data-[visible=true]:opacity-100"
+          style={{ display: showError ? undefined : "none" }}
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            className="size-6 shrink-0 stroke-current"
+            fill="none"
+            viewBox="0 0 24 24"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth="2"
+              d="M10 14l2-2m0 0l2-2m-2 2l-2-2m2 2l2 2m7-2a9 9 0 11-18 0 9 9 0 0118 0z"
+            />
+          </svg>
+          <span className="text-left font-[family-name:var(--font-body)] text-sm font-semibold md:text-base">
+            Weekly playlists cannot have more than 7 images.
+          </span>
+        </div>
+
+        <form
+          className="flex flex-col gap-4 xl:gap-5 2xl:gap-6"
+          // oxlint-disable-next-line react-doctor/no-prevent-default -- Electron app; not a server-rendered form, no progressive-enhancement use case
+          onSubmit={(e) => {
+            e.preventDefault();
+            void form.handleSubmit();
+          }}
+        >
+          <fieldset className={neoFieldset}>
+            <legend className="fieldset-legend text-base 2xl:text-lg">Change Wallpaper</legend>
+
+            <form.Field name="type">
+              {(field) => (
+                <select
+                  id="type"
+                  className="select select-bordered w-full text-base xl:text-lg"
+                  value={field.state.value}
+                  onChange={(e) => field.handleChange(e.target.value as PLAYLIST_TYPES_TYPE)}
+                  onBlur={field.handleBlur}
+                >
+                  <option value={PLAYLIST_TYPES.TIMER}>On a timer</option>
+                  <option value={PLAYLIST_TYPES.TIME_OF_DAY}>Time of day</option>
+                  <option
+                    disabled={playlist.images.length > 7}
+                    className={classNameDisabled}
+                    value={PLAYLIST_TYPES.DAY_OF_WEEK}
+                  >
+                    Day of week
+                  </option>
+                  <option value={PLAYLIST_TYPES.MANUAL}>Manual</option>
+                </select>
+              )}
+            </form.Field>
+
+            {showTimerFields && (
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <div>
+                  <label htmlFor="hours" className="label text-sm xl:text-base font-medium">
+                    Hours
+                  </label>
+                  <form.Field name="hours">
+                    {(field) => (
+                      <input
+                        id="hours"
+                        min="0"
+                        type="number"
+                        value={field.state.value ?? "1"}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        onBlur={field.handleBlur}
+                        className="input input-bordered xl:input-lg w-full"
+                      />
+                    )}
+                  </form.Field>
+                </div>
+                <div>
+                  <label htmlFor="minutes" className="label text-sm xl:text-base font-medium">
+                    Minutes
+                  </label>
+                  <form.Field name="minutes">
+                    {(field) => (
+                      <input
+                        id="minutes"
+                        min="0"
+                        max="60"
+                        type="number"
+                        step={1}
+                        value={field.state.value ?? "0"}
+                        onChange={(e) => field.handleChange(e.target.value)}
+                        onBlur={field.handleBlur}
+                        className="input input-bordered xl:input-lg w-full"
+                      />
+                    )}
+                  </form.Field>
+                </div>
+              </div>
+            )}
+          </fieldset>
+
+          {showOrderField && (
+            <fieldset className={neoFieldset}>
+              <legend className="fieldset-legend text-base 2xl:text-lg">Order</legend>
+              <form.Field name="order">
+                {(field) => (
+                  <select
+                    className="select select-bordered w-full text-base xl:text-lg"
+                    value={field.state.value ?? PLAYLIST_ORDER.ordered}
+                    onChange={(e) => field.handleChange(e.target.value as PLAYLIST_ORDER_TYPES)}
+                    onBlur={field.handleBlur}
+                    id="order"
+                  >
+                    <option value={PLAYLIST_ORDER.random}>Random</option>
+                    <option value={PLAYLIST_ORDER.ordered}>Ordered</option>
+                  </select>
+                )}
+              </form.Field>
+            </fieldset>
+          )}
+
+          {showOrderField && (
+            <fieldset className={neoFieldset}>
+              <legend className="fieldset-legend text-base 2xl:text-lg">Options</legend>
+              <form.Field name="alwaysStartOnFirstImage">
+                {(field) => (
+                  <label
+                    htmlFor="alwaysStartOnFirstImage"
+                    className="label cursor-pointer justify-between"
+                  >
+                    <span className="text-sm xl:text-base 2xl:text-lg font-medium">
+                      Always start on the first image
+                    </span>
+                    <input
+                      type="checkbox"
+                      className="toggle toggle-primary"
+                      id="alwaysStartOnFirstImage"
+                      checked={field.state.value}
+                      onChange={(e) => field.handleChange(e.target.checked)}
+                    />
+                  </label>
+                )}
+              </form.Field>
+            </fieldset>
+          )}
+
+          <button type="submit" className="btn btn-primary btn-block mt-2 xl:btn-lg">
+            Save
+          </button>
+        </form>
+      </div>
+    </Modal>
+  );
 };
 
 export default PlaylistConfigurationModal;

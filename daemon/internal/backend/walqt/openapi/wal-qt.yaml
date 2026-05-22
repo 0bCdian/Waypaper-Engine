@@ -1,0 +1,927 @@
+openapi: "3.1.0"
+
+info:
+  title: wal-qt Control API
+  version: "0"
+  license:
+    name: GPL-3.0-or-later
+    identifier: GPL-3.0-or-later
+  description: |
+    **Source of truth** for every HTTP route exposed by the wal-qt host process.
+    Code-generation targets (Go CLI in `wal-qt/cli/` and the engine daemon client
+    in `waypaper-engine/daemon/internal/backend/walqt/`) are produced from this file —
+    edit the spec first, then regenerate.
+
+    ## Transport
+
+    All traffic runs over a Unix domain socket at `$XDG_RUNTIME_DIR/wal-qt.sock`.
+    OpenAPI does not natively model Unix-domain transport; `servers: [{url: "/"}]`
+    describes the HTTP message shapes only. See `openapi/README.md` for the
+    regeneration command and transport details.
+
+    ## Versioning
+
+    The API version is `"0"` (pre-stable). Every response includes the header
+    `X-API-Version: 0`. Connections are closed after each request (no keep-alive).
+
+servers:
+  - url: /
+    description: Unix domain socket — $XDG_RUNTIME_DIR/wal-qt.sock
+
+tags:
+  - name: health
+    description: Liveness and readiness probes
+  - name: wallpaper
+    description: Wallpaper loading, parallax, config, capabilities, and playback
+  - name: settings
+    description: Global settings that apply across all monitors
+
+# The control socket is owner-only (mode 0600) on the local filesystem.
+# No HTTP-level authentication is used.
+security: []
+
+paths:
+  /health:
+    get:
+      operationId: getHealth
+      summary: Health check
+      description: "Returns ok=true plus service identity. Used by the engine daemon to confirm wal-qt is alive before issuing load requests."
+      tags: [health]
+      responses:
+        "200":
+          description: Service is healthy
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HealthResponse"
+        "400":
+          description: Malformed request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /wallpaper/status:
+    get:
+      operationId: getWallpaperStatus
+      summary: Full wallpaper status
+      description: Returns the current state of every monitor — topology, active wallpaper kind/target, parallax state, and scheduler info.
+      tags: [wallpaper]
+      responses:
+        "200":
+          description: Current wallpaper status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatusResponse"
+        "400":
+          description: Malformed request
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /wallpaper/load:
+    post:
+      operationId: loadWallpaper
+      summary: Load a wallpaper onto one or more monitors
+      description: |
+        Loads `kind` (`image`, `video`, or `web`) onto the monitors listed in
+        `targets`. If `targets` is omitted or empty, the wallpaper is applied to
+        all connected monitors.
+
+        When `wait_for_completion` is `false` (default) the server responds
+        `202 Accepted` immediately and loads asynchronously. When `true` the
+        server waits for the renderer transition acknowledgement (up to 30 s)
+        before responding.
+      tags: [wallpaper]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/LoadRequest"
+      responses:
+        "200":
+          description: Load completed (only when `wait_for_completion` is `true`)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "202":
+          description: Accepted — load dispatched asynchronously
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AcceptedResponse"
+        "404":
+          description: No monitors matched the requested targets
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "400":
+          description: Malformed JSON request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+        "504":
+          description: Wait-for-completion timed out (30 s exceeded)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /wallpaper/parallax:
+    post:
+      operationId: setParallax
+      summary: Configure parallax effect
+      description: |
+        Applies parallax settings to one monitor (identified by `name`) or all
+        monitors (if `name` and `targets` are both absent). Resets the current
+        offset to `(0, 0)` and dispatches the new state to the renderer.
+      tags: [wallpaper]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParallaxRequest"
+      responses:
+        "200":
+          description: Parallax applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          description: Malformed JSON request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /wallpaper/parallax-move:
+    post:
+      operationId: moveParallax
+      summary: Move the parallax offset one step
+      description: |
+        Nudges the parallax offset by `step_percent` in the given `direction`.
+        Has no effect when parallax is disabled on the target monitor. Wraps
+        around when the offset exceeds ±0.5.
+      tags: [wallpaper]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ParallaxMoveRequest"
+      responses:
+        "200":
+          description: Move applied (or silently ignored when parallax is disabled)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          description: Malformed JSON request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /wallpaper/config:
+    post:
+      operationId: pushWallpaperConfig
+      summary: Push wallpaper config values
+      description: |
+        Sends `values` (arbitrary key/value pairs) to the wallpaper currently
+        loaded from `source_target`. For web wallpapers the values are dispatched
+        as a `waypaper:config` CustomEvent; for image/video they are forwarded
+        via the Qt WebChannel bridge.
+
+        Also accepts the legacy path `/wallpaper/wallpaper-config` (same handler).
+      tags: [wallpaper]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WallpaperConfigRequest"
+      responses:
+        "200":
+          description: Config applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppliedResponse"
+        "400":
+          description: Malformed JSON request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /wallpaper/wallpaper-config:
+    post:
+      operationId: pushWallpaperConfigLegacy
+      summary: Push wallpaper config values (legacy path alias)
+      description: Alias for `/wallpaper/config`. Prefer `/wallpaper/config` for new clients.
+      tags: [wallpaper]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WallpaperConfigRequest"
+      responses:
+        "200":
+          description: Config applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppliedResponse"
+        "400":
+          description: Malformed JSON request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /wallpaper/capabilities:
+    post:
+      operationId: pushCapabilities
+      summary: Push runtime capability overrides
+      description: |
+        Overrides `pointer_interactive`, `keyboard`, and `audio_reactive`
+        capabilities for wallpapers currently loaded from `source_target`.
+        Also accepted at the legacy path `/wallpaper/web-capabilities`.
+      tags: [wallpaper]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CapabilitiesRequest"
+      responses:
+        "200":
+          description: Capabilities applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppliedResponse"
+        "400":
+          description: Malformed JSON request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /wallpaper/web-capabilities:
+    post:
+      operationId: pushCapabilitiesLegacy
+      summary: Push runtime capability overrides (legacy path alias)
+      description: Alias for `/wallpaper/capabilities`. Prefer `/wallpaper/capabilities` for new clients.
+      tags: [wallpaper]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CapabilitiesRequest"
+      responses:
+        "200":
+          description: Capabilities applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppliedResponse"
+        "400":
+          description: Malformed JSON request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /wallpaper/playback:
+    post:
+      operationId: setPlaybackPolicy
+      summary: Set playback policy for a wallpaper
+      description: |
+        Sends a playback policy update to the wallpaper currently loaded from
+        `source_target`. The full request body is forwarded verbatim to the
+        renderer via the WebChannel bridge.
+      tags: [wallpaper]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PlaybackRequest"
+      responses:
+        "200":
+          description: Playback policy applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AppliedResponse"
+        "400":
+          description: Malformed JSON request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /settings/network:
+    post:
+      operationId: setNetworkSettings
+      summary: Set global network permission for wallpapers
+      description: |
+        Enables or disables outbound network access for all wallpapers globally.
+        The effective network policy per-window is `global_enabled AND
+        manifest.capabilities.network`.
+
+        Accepts either `allow_network_wallpapers` (preferred) or the legacy key
+        `enabled`.
+      tags: [settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/NetworkSettingsRequest"
+      responses:
+        "200":
+          description: Network setting applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          description: Malformed JSON request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+  /settings/image-presentation:
+    post:
+      operationId: setImagePresentation
+      summary: Set image fit mode and rendering quality
+      description: |
+        Applies `image_fit_mode` and `image_rendering` globally to all monitors.
+        Defaults to `cover` and `auto` respectively when fields are absent or empty.
+      tags: [settings]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/ImagePresentationRequest"
+      responses:
+        "200":
+          description: Image presentation applied
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          description: Malformed JSON request body
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Error"
+
+components:
+  schemas:
+
+    # -----------------------------------------------------------------------
+    # Common response envelopes
+    # -----------------------------------------------------------------------
+
+    OkResponse:
+      type: object
+      required: [ok]
+      properties:
+        ok:
+          type: boolean
+          example: true
+
+    AcceptedResponse:
+      type: object
+      required: [ok, accepted]
+      properties:
+        ok:
+          type: boolean
+          example: true
+        accepted:
+          type: boolean
+          example: true
+
+    AppliedResponse:
+      type: object
+      required: [ok, applied]
+      properties:
+        ok:
+          type: boolean
+          example: true
+        applied:
+          type: integer
+          description: Number of monitor windows the operation was applied to
+          example: 2
+
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
+          description: Human-readable error message
+          example: "no matching monitors"
+
+    # -----------------------------------------------------------------------
+    # Health
+    # -----------------------------------------------------------------------
+
+    HealthResponse:
+      type: object
+      required: [ok, service, api_version]
+      properties:
+        ok:
+          type: boolean
+          example: true
+        service:
+          type: string
+          example: "wal-qt"
+        api_version:
+          type: string
+          example: "0"
+
+    # -----------------------------------------------------------------------
+    # Status
+    # -----------------------------------------------------------------------
+
+    StatusResponse:
+      type: object
+      required: [ok, api_version, status]
+      properties:
+        ok:
+          type: boolean
+          example: true
+        api_version:
+          type: string
+          example: "0"
+        status:
+          $ref: "#/components/schemas/WallpaperStatus"
+
+    WallpaperStatus:
+      type: object
+      required: [topology_policy, monitor_count, topology, monitors, scheduler]
+      properties:
+        topology_policy:
+          type: string
+          example: "dynamic_surface_reconcile_hotplug_enabled"
+        monitor_count:
+          type: integer
+          example: 2
+        topology:
+          type: array
+          items:
+            $ref: "#/components/schemas/MonitorGeometry"
+        monitors:
+          type: array
+          items:
+            $ref: "#/components/schemas/MonitorStatus"
+        scheduler:
+          $ref: "#/components/schemas/SchedulerStatus"
+
+    MonitorGeometry:
+      type: object
+      required: [name, x, y, width, height]
+      properties:
+        name:
+          type: string
+          description: Wayland output name (e.g. "DP-1")
+          example: "DP-1"
+        x:
+          type: integer
+          example: 0
+        y:
+          type: integer
+          example: 0
+        width:
+          type: integer
+          example: 1920
+        height:
+          type: integer
+          example: 1080
+
+    MonitorStatus:
+      type: object
+      required: [name, visible, last_transition, in_progress, parallax, current_kind]
+      properties:
+        name:
+          type: string
+          example: "DP-1"
+        visible:
+          type: boolean
+          example: true
+        last_transition:
+          type: string
+          example: "none"
+        in_progress:
+          type: boolean
+          example: false
+        parallax:
+          $ref: "#/components/schemas/ParallaxState"
+        current_kind:
+          type: string
+          enum: [image, video, web]
+          example: "image"
+        current_target:
+          type: string
+          description: Absolute path or URI of the active wallpaper (absent when no wallpaper has been loaded)
+          example: "/home/user/walls/lake.jpg"
+
+    ParallaxState:
+      type: object
+      required: [enabled, zoom, offset_x, offset_y, step_percent, animation_ms, easing, reset_ms]
+      properties:
+        enabled:
+          type: boolean
+          example: false
+        zoom:
+          type: number
+          format: double
+          example: 1.2
+        offset_x:
+          type: number
+          format: double
+          example: 0.0
+        offset_y:
+          type: number
+          format: double
+          example: 0.0
+        step_percent:
+          type: number
+          format: double
+          example: 5.0
+        animation_ms:
+          type: integer
+          example: 600
+        easing:
+          type: array
+          description: Cubic-bezier control points [x1, y1, x2, y2]
+          minItems: 4
+          maxItems: 4
+          items:
+            type: number
+            format: double
+          example: [0.215, 0.610, 0.355, 1.000]
+        reset_ms:
+          type: integer
+          example: 400
+
+    SchedulerStatus:
+      type: object
+      required: [mode, max_queue_size, queued_requests]
+      properties:
+        mode:
+          type: string
+          example: "latest_wins_bounded_queue"
+        max_queue_size:
+          type: integer
+          example: 8
+        queued_requests:
+          type: integer
+          example: 0
+
+    # -----------------------------------------------------------------------
+    # Shared selector types
+    # -----------------------------------------------------------------------
+
+    WallpaperTarget:
+      type: object
+      description: Identifies a single monitor by name and the wallpaper path to load on it
+      required: [name, target]
+      properties:
+        name:
+          type: string
+          description: Wayland output name (must match a connected screen)
+          example: "DP-1"
+        target:
+          type: string
+          description: Absolute path to the wallpaper file or web package directory
+          example: "/home/user/walls/lake.jpg"
+        kind:
+          type: string
+          enum: [image, video, web]
+          description: Wallpaper kind; inferred from extension when absent
+          example: "image"
+
+    # -----------------------------------------------------------------------
+    # Request bodies
+    # -----------------------------------------------------------------------
+
+    LoadRequest:
+      type: object
+      description: |
+        Loads a wallpaper. When `targets` is present, each entry names a monitor
+        and provides its own `target` path (and optional `kind`). When `targets`
+        is absent the top-level `target` and `kind` apply to all monitors.
+      properties:
+        targets:
+          type: array
+          description: Per-monitor wallpaper assignments. Omit to target all monitors using the top-level `target`/`kind`.
+          items:
+            $ref: "#/components/schemas/WallpaperTarget"
+        target:
+          type: string
+          description: Fallback path used when `targets` is absent or for monitors not listed in `targets`
+          example: "/home/user/walls/lake.jpg"
+        kind:
+          type: string
+          enum: [image, video, web]
+          description: Wallpaper kind for the fallback `target`
+          example: "image"
+        wait_for_completion:
+          type: boolean
+          default: false
+          description: When `true`, the request blocks until the renderer acknowledges the transition (or 30 s elapses)
+        duration_ms:
+          type: integer
+          default: 300
+          description: Transition duration in milliseconds (forwarded to the renderer)
+          example: 300
+        audio_enabled:
+          type: boolean
+          default: false
+          description: Whether audio reactivity is enabled for this wallpaper
+        wallpaper_config_values:
+          type: object
+          description: |
+            Arbitrary key/value config object injected into the web wallpaper as
+            `window.__WAYPAPER_CONFIG` and dispatched as the `waypaper:config` event.
+            Only meaningful for `kind: web`.
+          additionalProperties: true
+        image_fit_mode:
+          type: string
+          description: "How the image fits the monitor (e.g. `cover`, `contain`, `fill`). Only meaningful for `kind: image`."
+          example: "cover"
+        image_rendering:
+          type: string
+          description: "CSS `image-rendering` hint (e.g. `auto`, `pixelated`, `crisp-edges`). Only meaningful for `kind: image`."
+          example: "auto"
+        transition:
+          type: string
+          description: |
+            Transition effect to use when switching wallpapers. Forwarded to the
+            renderer verbatim; unknown values fall back to `fade`.
+          enum:
+            - none
+            - fade
+            - left
+            - right
+            - top
+            - bottom
+            - wipe
+            - grow
+            - outer
+            - wave
+            - center
+            - blur_through
+            - any
+            - random
+          default: fade
+          example: "wipe"
+        transition_params:
+          $ref: "#/components/schemas/LoadTransitionParams"
+        parallax:
+          $ref: "#/components/schemas/LoadParallax"
+
+    LoadTransitionParams:
+      type: object
+      description: Per-effect transition tuning. All fields optional; the renderer applies defaults when omitted.
+      properties:
+        bezier:
+          type: array
+          minItems: 4
+          maxItems: 4
+          items:
+            type: number
+            format: float
+          description: Cubic-bezier control points [x1, y1, x2, y2]
+        angle_deg:
+          type: number
+          format: double
+        origin_x_percent:
+          type: number
+          format: float
+        origin_y_percent:
+          type: number
+          format: float
+        wave_amplitude_percent:
+          type: number
+          format: float
+        wave_frequency:
+          type: number
+          format: float
+        seed:
+          type: integer
+          description: Per-request randomness seed for `random`/`any` transitions
+
+    LoadParallax:
+      type: object
+      description: |
+        Initial parallax state applied at load time. Separate from the
+        `/wallpaper/parallax` route which updates state on a running wallpaper.
+      properties:
+        enabled:
+          type: boolean
+          default: false
+        zoom:
+          type: number
+          format: double
+          default: 1.2
+        step_percent:
+          type: number
+          format: float
+          default: 5
+        animation_ms:
+          type: integer
+          default: 600
+        reset_ms:
+          type: integer
+          default: 400
+        easing:
+          type: array
+          minItems: 4
+          maxItems: 4
+          items:
+            type: number
+            format: float
+
+    ParallaxRequest:
+      type: object
+      description: |
+        Sets parallax parameters for one or all monitors. Use `name` (single
+        monitor) or `targets` (list of monitors) to narrow the target set.
+        Omit both to apply to all monitors.
+      properties:
+        name:
+          type: string
+          description: Target a single monitor by Wayland output name
+          example: "DP-1"
+        targets:
+          type: array
+          description: Alternative to `name` — list of monitor names to target
+          items:
+            $ref: "#/components/schemas/WallpaperTarget"
+        enabled:
+          type: boolean
+          default: false
+        zoom:
+          type: number
+          format: double
+          default: 1.2
+        step_percent:
+          type: number
+          format: double
+          default: 5.0
+        animation_ms:
+          type: integer
+          default: 600
+        reset_ms:
+          type: integer
+          default: 400
+        easing:
+          type: array
+          description: Cubic-bezier control points [x1, y1, x2, y2]
+          minItems: 4
+          maxItems: 4
+          items:
+            type: number
+            format: double
+          example: [0.215, 0.610, 0.355, 1.000]
+
+    ParallaxMoveRequest:
+      type: object
+      description: Nudges the parallax offset one step in the given direction.
+      required: [direction]
+      properties:
+        direction:
+          type: string
+          enum: [left, right, up, down]
+          example: "right"
+        name:
+          type: string
+          description: Target a single monitor by Wayland output name (omit for all)
+          example: "DP-1"
+        targets:
+          type: array
+          description: Alternative to `name`
+          items:
+            $ref: "#/components/schemas/WallpaperTarget"
+
+    WallpaperConfigRequest:
+      type: object
+      description: |
+        Sends configuration values to the wallpaper currently loaded from
+        `source_target`. The controller resolves the target monitor(s) by
+        matching their `current_target` path against `source_target`.
+      required: [source_target]
+      properties:
+        source_target:
+          type: string
+          description: Absolute path of the wallpaper whose config should be updated
+          example: "/home/user/walls/particles/waypaper.json"
+        values:
+          type: object
+          description: Arbitrary key/value pairs forwarded to the wallpaper renderer
+          additionalProperties: true
+
+    CapabilitiesRequest:
+      type: object
+      description: |
+        Overrides runtime capabilities for the wallpaper loaded from
+        `source_target`. All capability fields are optional; absent fields are
+        left unchanged.
+      required: [source_target]
+      properties:
+        source_target:
+          type: string
+          description: Absolute path of the wallpaper whose capabilities should be updated
+          example: "/home/user/walls/particles/waypaper.json"
+        capabilities:
+          type: object
+          properties:
+            pointer_interactive:
+              type: boolean
+              description: Allow mouse/pointer events to reach the wallpaper
+            keyboard:
+              type: boolean
+              description: Allow keyboard input to reach the wallpaper
+            audio_reactive:
+              type: boolean
+              description: Enable audio capture and dispatch to the wallpaper
+
+    PlaybackRequest:
+      type: object
+      description: |
+        Sets the playback policy for the wallpaper loaded from `source_target`.
+        The full request body is forwarded verbatim to the renderer via the
+        WebChannel bridge, so additional keys beyond `source_target` are
+        renderer-defined.
+      required: [source_target]
+      properties:
+        source_target:
+          type: string
+          description: Absolute path of the wallpaper whose playback policy should be updated
+          example: "/home/user/walls/rain.mp4"
+      additionalProperties: true
+
+    NetworkSettingsRequest:
+      type: object
+      description: |
+        Enables or disables global network access for all wallpapers.
+        Accepts `allow_network_wallpapers` (preferred) or the legacy alias
+        `enabled`. When both are present, `allow_network_wallpapers` takes
+        precedence.
+      properties:
+        allow_network_wallpapers:
+          type: boolean
+          description: Preferred field name
+          example: true
+        enabled:
+          type: boolean
+          description: Legacy alias for `allow_network_wallpapers`
+          example: true
+
+    ImagePresentationRequest:
+      type: object
+      description: Sets image scaling and rendering quality globally across all monitors.
+      properties:
+        image_fit_mode:
+          type: string
+          description: CSS `object-fit` style value; defaults to `cover` when absent
+          enum: [cover, contain, fill, none, scale-down]
+          default: cover
+          example: "cover"
+        image_rendering:
+          type: string
+          description: CSS `image-rendering` style value; defaults to `auto` when absent
+          enum: [auto, crisp-edges, pixelated]
+          default: auto
+          example: "auto"
+        fill_color:
+          type: string
+          description: |
+            Background color used as padding when the image does not fully cover
+            the monitor (e.g. `contain`, `none`, `scale-down` fit modes). Accepts
+            6-digit `RRGGBB` or 8-digit `RRGGBBAA` hex (no leading `#`). Defaults
+            to `000000ff` (opaque black) when absent. Mirrors awww's
+            `--fill-color` flag.
+          pattern: "^[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$"
+          default: "000000ff"
+          example: "1e1e2eff"

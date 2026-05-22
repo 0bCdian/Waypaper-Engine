@@ -1,13 +1,30 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import App from "./App";
+import ErrorBoundary from "./components/ErrorBoundary";
+import { useUserThemesStore } from "./stores/userThemesStore";
 import "./index.css";
+
+const persisted = localStorage.getItem("waypaper-theme");
+const defaultTheme =
+  persisted ??
+  (window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "kolision-raw-dark"
+    : "kolision-raw");
+document.documentElement.setAttribute("data-theme", defaultTheme);
+
 const root = document.getElementById("root");
 if (root === null) {
-    throw new Error("Could not find root div element");
+  throw new Error("Could not find root div element");
 }
+
 createRoot(root).render(
-    <StrictMode>
-        <App />
-    </StrictMode>
+  <StrictMode>
+    <ErrorBoundary>
+      <App />
+    </ErrorBoundary>
+  </StrictMode>,
 );
+
+// Fire-and-forget: user themes are nice-to-have on cold boot.
+useUserThemesStore.getState().loadFromDaemon();

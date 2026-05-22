@@ -1,0 +1,44 @@
+/* @waypaper-theme
+ *   name: gruvbox
+ *   displayName: Gruvbox
+ *   category: dark
+ *   sourceUrl: https://github.com/morhetz/gruvbox
+ *
+ * Hex rows match the Waypaper contrast export for Gruvbox dark:
+ *   bg #282828, fg #EBDBB2; bg1/bg2 #3C3836 / #504945; brights per color_02–16.
+ *   Primary uses bright yellow #FABD2F (export row 12); classic FE8019 is not in that table.
+ */
+@plugin "daisyui/theme" {
+  name: "gruvbox";
+  default: false;
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: #282828;
+  --color-base-200: #3c3836;
+  --color-base-300: #504945;
+  --color-base-content: #ebdbb2;
+  --color-primary: #fabd2f;
+  --color-primary-content: #282828;
+  --color-secondary: #d3869b;
+  --color-secondary-content: #282828;
+  --color-accent: #8ec07c;
+  --color-accent-content: #282828;
+  --color-neutral: #928374;
+  --color-neutral-content: #ebdbb2;
+  --color-info: #83a598;
+  --color-info-content: #282828;
+  --color-success: #b8bb26;
+  --color-success-content: #282828;
+  --color-warning: #d79921;
+  --color-warning-content: #282828;
+  --color-error: #fb4934;
+  --color-error-content: #ebdbb2;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}

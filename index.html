@@ -1,14 +1,19 @@
 <!doctype html>
-<html lang="en" data-theme="business" class="scrollbar-none">
-    <head>
-        <meta charset="UTF-8" />
-        <link rel="icon" type="image/png" href="/public/app.png" />
-        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Waypaper Engine</title>
-    </head>
-    <body>
-        <div id="root"></div>
-        <script type="module" src="./src/main.tsx"></script>
-        <script src="http://localhost:8097"></script>
-    </body>
+<html lang="en" class="scrollbar-none">
+  <head>
+    <meta charset="UTF-8" />
+    <!-- script-src/script-src-elem are separate directives (semicolon-separated). localhost devtools widening is applied only during `vite serve` via vite.config.ts -->
+    <meta
+      http-equiv="Content-Security-Policy"
+      content="default-src 'self'; script-src-elem 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' atom: blob: data: https://th.wallhaven.cc https://w.wallhaven.cc; connect-src 'self' http://localhost:* http://127.0.0.1:* ws://localhost:*; font-src 'self'; media-src 'self' atom: blob: data:; object-src 'none'; base-uri 'self'; form-action 'self';"
+    />
+    <link rel="icon" type="image/png" href="/app.png" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Waypaper Engine</title>
+  </head>
+
+  <body>
+    <div id="root"></div>
+    <script type="module" src="./src/main.tsx"></script>
+  </body>
 </html>

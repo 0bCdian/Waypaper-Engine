@@ -1,0 +1,1408 @@
+/**
+ * Neobrutalist Design System Overlay
+ *
+ * Scoped under [data-design="neobrutalist"] so it layers on top of
+ * any active DaisyUI theme without conflict. All values are driven
+ * by CSS custom properties that the designSystemStore sets on :root.
+ */
+
+/* ── Configurable design tokens (defaults: 4px border, 8px hard black shadow) ─ */
+[data-design="neobrutalist"] {
+  --neo-shadow-x: 8px;
+  --neo-shadow-y: 8px;
+  --neo-border-width: 4px;
+  --neo-radius: 0rem;
+  --neo-shadow-color: #000000;
+
+  /* Override DaisyUI tokens for the neobrutalist feel */
+  --radius-selector: var(--neo-radius);
+  --radius-field: var(--neo-radius);
+  --radius-box: var(--neo-radius);
+  --border: var(--neo-border-width);
+  --depth: 0;
+
+  font-family: var(--font-display, "Space Grotesk Variable", system-ui, sans-serif);
+}
+
+/* ── Buttons ───────────────────────────────────────────────────── */
+/* Border-radius and border-width come from DaisyUI's --radius-selector and
+   --border, which we override at the top of this file. We only need to set
+   the things DaisyUI doesn't tokenize: border *color*, hard-offset shadow,
+   and broadcast typography. */
+[data-design="neobrutalist"] .btn {
+  border-color: var(--wp-border-color);
+  box-shadow: var(--wp-elev-1);
+  font-family: var(--font-display);
+  font-weight: var(--wp-display-weight);
+  text-transform: var(--wp-display-case);
+  letter-spacing: var(--wp-display-tracking);
+  transition: box-shadow 0.1s ease;
+}
+
+[data-design="neobrutalist"] .btn:hover {
+  box-shadow: var(--wp-elev-2);
+}
+
+[data-design="neobrutalist"] .btn:active {
+  transform: translate(4px, 4px);
+  box-shadow: none;
+}
+
+/* Ghost / link buttons: lighter border so they don't look heavy */
+[data-design="neobrutalist"] .btn-ghost {
+  border-color: transparent;
+  box-shadow: none;
+}
+
+[data-design="neobrutalist"] .btn-ghost:hover {
+  border-color: oklch(from var(--color-base-content) l c h / 0.5);
+  box-shadow: calc(var(--neo-shadow-x) + 1px) calc(var(--neo-shadow-y) + 1px) 0 0
+    oklch(from var(--color-base-content) l c h / 0.3);
+}
+
+/* ── Cards ─────────────────────────────────────────────────────── */
+[data-design="neobrutalist"] .card {
+  border-color: var(--wp-border-color);
+  box-shadow: var(--wp-elev-1);
+  overflow: hidden;
+}
+
+/* ── Inputs & Selects ──────────────────────────────────────────── */
+[data-design="neobrutalist"] .input,
+[data-design="neobrutalist"] .select,
+[data-design="neobrutalist"] .textarea {
+  border-color: var(--wp-border-color);
+  box-shadow: var(--wp-elev-1);
+  font-weight: 700;
+  transition: box-shadow 0.1s ease;
+}
+
+[data-design="neobrutalist"] .input:focus,
+[data-design="neobrutalist"] .select:focus,
+[data-design="neobrutalist"] .textarea:focus {
+  transform: translate(-1px, -1px);
+  box-shadow: var(--wp-elev-2);
+}
+
+/* ── Modal ─────────────────────────────────────────────────────── */
+[data-design="neobrutalist"] .modal-box {
+  border: calc(var(--wp-border-w) + 1px) solid var(--wp-border-color);
+  box-shadow: var(--wp-elev-3);
+  overflow: visible;
+}
+
+/* ── Modal Backdrop Blur ───────────────────────────────────────── */
+[data-design="neobrutalist"] .modal-backdrop {
+  backdrop-filter: blur(0px);
+  -webkit-backdrop-filter: blur(0px);
+  background: rgba(0, 0, 0, 0);
+  transition:
+    backdrop-filter 0.3s ease-out,
+    -webkit-backdrop-filter 0.3s ease-out,
+    background 0.3s ease-out;
+}
+
+[data-design="neobrutalist"] .modal[open] .modal-backdrop,
+[data-design="neobrutalist"] .modal.modal-open .modal-backdrop {
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+  background: rgba(0, 0, 0, 0.4);
+}
+
+/* ── CloseButton primitive (wp-close-btn) ──────────────────────── */
+[data-design="neobrutalist"] .wp-close-btn {
+  width: 2.5rem;
+  height: 2.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: oklch(from var(--color-error) l c h);
+  color: white;
+  border: var(--wp-border-w) solid var(--wp-border-color);
+  box-shadow: var(--wp-elev-1);
+  cursor: pointer;
+  z-index: 60;
+  transition: box-shadow 0.1s ease;
+  padding: 0;
+}
+[data-design="neobrutalist"] .wp-close-btn:hover {
+  box-shadow: var(--wp-elev-2);
+}
+[data-design="neobrutalist"] .wp-close-btn:active {
+  transform: translate(4px, 4px);
+  box-shadow: none;
+}
+[data-design="neobrutalist"] .wp-close-btn svg {
+  width: 1.25rem;
+  height: 1.25rem;
+  stroke: white;
+  stroke-width: 3;
+}
+
+/* ── Modal header (title bar) ───────────────────────────────────── */
+[data-design="neobrutalist"] .wp-modal__header--bar {
+  background: oklch(from var(--color-base-200) l c h);
+  border-bottom: var(--wp-border-w) solid var(--wp-border-color);
+}
+
+/* ── Navbar ────────────────────────────────────────────────────── */
+[data-design="neobrutalist"] .navbar {
+  background: oklch(from var(--color-base-200) l c h);
+  border-bottom: var(--wp-border-w) solid oklch(from var(--color-base-content) l c h / 0.7);
+}
+
+/* ── Drawer / Sidebar — Structural Editorial (plate on void) ───── */
+[data-design="neobrutalist"] .drawer-side > *:not(.drawer-overlay) {
+  background: oklch(from var(--color-base-100) l c h);
+  border-right: var(--wp-border-w) solid var(--neo-shadow-color);
+  box-shadow: var(--neo-shadow-x) 0 0 0 oklch(from var(--color-base-content) l c h / 0.12);
+}
+
+/* Level-1 plate: warm surface + undeniable right edge + step into main canvas */
+[data-design="neobrutalist"] aside.neo-sidebar {
+  --neo-sidebar-plate: oklch(from var(--color-base-100) l c h);
+  --neo-sidebar-plate-low: oklch(from var(--color-base-200) l c h);
+
+  background: linear-gradient(
+    180deg,
+    oklch(from var(--color-base-100) l c h) 0%,
+    oklch(from var(--color-base-200) l c h / 0.92) 100%
+  );
+  border-right: var(--neo-border-width) solid var(--neo-shadow-color);
+  border-radius: var(--neo-radius);
+  box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0 var(--neo-shadow-color);
+}
+
+[data-design="neobrutalist"] aside.neo-sidebar.neo-sidebar--config {
+  box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0 var(--neo-shadow-color);
+}
+
+/* Masthead — editorial axis, display face, masthead tracking */
+[data-design="neobrutalist"] aside.neo-sidebar .neo-sidebar-masthead {
+  border-bottom: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.85);
+}
+
+[data-design="neobrutalist"] aside.neo-sidebar .neo-sidebar-brand {
+  font-family: var(--font-display, "Space Grotesk Variable", system-ui, sans-serif);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  font-size: 0.8125rem;
+  line-height: 1.25;
+}
+
+[data-design="neobrutalist"] aside.neo-sidebar a.neo-sidebar-nav-link,
+[data-design="neobrutalist"] aside.neo-sidebar button.neo-sidebar-nav-link {
+  display: flex;
+  align-items: center;
+  min-height: 2.5rem;
+  border-radius: var(--neo-radius);
+  border: var(--neo-border-width) solid transparent;
+  font-family: var(--font-display, "Space Grotesk Variable", system-ui, sans-serif);
+  font-weight: 800;
+  font-size: 0.65rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: oklch(from var(--color-base-content) l c h / 0.82);
+  background: transparent;
+  transition:
+    background 0.1s ease,
+    color 0.1s ease,
+    border-color 0.1s ease,
+    box-shadow 0.1s ease;
+}
+
+[data-design="neobrutalist"] aside.neo-sidebar a.neo-sidebar-nav-link:hover,
+[data-design="neobrutalist"] aside.neo-sidebar button.neo-sidebar-nav-link:hover {
+  background: var(--neo-sidebar-plate-low);
+  color: oklch(from var(--color-base-content) l c h);
+  border-color: oklch(from var(--color-base-content) l c h / 0.35);
+  box-shadow: 4px 4px 0 0 oklch(from var(--color-base-content) l c h / 0.25);
+}
+
+/* Active route — structural left rail + matte primary wash */
+[data-design="neobrutalist"] aside.neo-sidebar a.neo-sidebar-nav-link[aria-current="page"],
+[data-design="neobrutalist"] aside.neo-sidebar button.neo-sidebar-nav-link[aria-pressed="true"] {
+  border-color: oklch(from var(--color-base-content) l c h / 0.85);
+  border-left: var(--neo-border-width) solid oklch(from var(--color-primary) l c h);
+  color: oklch(from var(--color-base-content) l c h);
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklch, var(--color-primary) 18%, var(--color-base-100)) 0%,
+    var(--neo-sidebar-plate-low) 100%
+  );
+  box-shadow: 4px 4px 0 0 oklch(from var(--color-primary) l c h / 0.4);
+}
+
+/* Footer — “heavy press” ghost that reads as editorial tools, not SaaS links */
+[data-design="neobrutalist"] aside.neo-sidebar .neo-sidebar-footer-btn {
+  display: flex;
+  align-items: center;
+  min-height: 2.5rem;
+  border-radius: var(--neo-radius);
+  border: var(--neo-border-width) solid transparent;
+  font-family: var(--font-display, "Space Grotesk Variable", system-ui, sans-serif);
+  font-weight: 800;
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: oklch(from var(--color-base-content) l c h / 0.65);
+  background: transparent;
+  transition:
+    background 0.1s ease,
+    color 0.1s ease,
+    border-color 0.1s ease,
+    box-shadow 0.1s ease;
+}
+
+[data-design="neobrutalist"] aside.neo-sidebar .neo-sidebar-footer-btn:hover {
+  color: oklch(from var(--color-base-content) l c h);
+  border-color: oklch(from var(--color-base-content) l c h / 0.5);
+  box-shadow: 3px 3px 0 0 oklch(from var(--color-base-content) l c h / 0.22);
+}
+
+/* Pin — secondary (cyan) container accent on hover */
+[data-design="neobrutalist"] aside.neo-sidebar .neo-sidebar-footer-btn--pin:hover {
+  background: linear-gradient(
+    135deg,
+    oklch(from var(--color-accent) l c h / 0.35) 0%,
+    oklch(from var(--color-accent) l c h / 0.12) 100%
+  );
+  border-color: oklch(from var(--color-base-content) l c h / 0.75);
+}
+
+[data-design="neobrutalist"] aside.neo-sidebar .neo-sidebar-footer-btn--quit:hover {
+  background: linear-gradient(
+    135deg,
+    oklch(from var(--color-error) l c h / 0.22) 0%,
+    oklch(from var(--color-error) l c h / 0.06) 100%
+  );
+  border-color: oklch(from var(--color-error) l c h / 0.65);
+  color: oklch(from var(--color-error) l c h);
+}
+
+[data-design="neobrutalist"] aside.neo-sidebar .neo-sidebar-footer-btn:active {
+  transform: translate(3px, 3px);
+  box-shadow: 0 0 0 0 oklch(from var(--color-base-content) l c h / 0.2);
+}
+
+/* Structural dividers (was .h-px hairlines) */
+[data-design="neobrutalist"] aside.neo-sidebar .neo-sidebar-rule,
+[data-design="neobrutalist"] aside.neo-sidebar .h-px {
+  height: var(--neo-border-width) !important;
+  background: oklch(from var(--color-base-content) l c h / 0.88) !important;
+  border: none !important;
+  margin-inline: var(--wp-space-2);
+}
+
+/* Mobile drawer panel — same plate language */
+[data-design="neobrutalist"] .neo-sidebar-drawer {
+  background: linear-gradient(
+    180deg,
+    oklch(from var(--color-base-100) l c h) 0%,
+    oklch(from var(--color-base-200) l c h / 0.95) 100%
+  );
+  border-right: var(--neo-border-width) solid var(--neo-shadow-color);
+  box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0
+    oklch(from var(--color-base-content) l c h / 0.15);
+}
+
+[data-design="neobrutalist"] .neo-sidebar-drawer h1 {
+  font-family: var(--font-display, "Space Grotesk Variable", system-ui, sans-serif);
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+  font-size: 1.125rem;
+}
+
+[data-design="neobrutalist"] .neo-sidebar-drawer .menu li > a {
+  border-radius: var(--neo-radius);
+  border: var(--neo-border-width) solid transparent;
+  font-weight: 800;
+  font-size: 0.7rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: var(--wp-space-2);
+}
+
+[data-design="neobrutalist"] .neo-sidebar-drawer .menu li > a:hover {
+  border-color: oklch(from var(--color-base-content) l c h / 0.45);
+  background: oklch(from var(--color-base-200) l c h);
+  box-shadow: 3px 3px 0 0 oklch(from var(--color-base-content) l c h / 0.2);
+}
+
+[data-design="neobrutalist"] .neo-sidebar-drawer .border-t {
+  border-top-width: var(--neo-border-width) !important;
+  border-color: oklch(from var(--color-base-content) l c h / 0.75) !important;
+}
+
+/* ── Badge ─────────────────────────────────────────────────────── */
+[data-design="neobrutalist"] .badge {
+  border-color: var(--wp-border-color);
+  font-family: var(--font-display);
+  font-weight: var(--wp-display-weight);
+  text-transform: var(--wp-display-case);
+}
+
+/* ── Toggle ────────────────────────────────────────────────────── */
+[data-design="neobrutalist"] .toggle {
+  border-color: var(--wp-border-color);
+  box-shadow: var(--wp-elev-1);
+  transition:
+    box-shadow 0.1s ease,
+    border-color 0.1s ease;
+}
+
+[data-design="neobrutalist"] .toggle::before,
+[data-design="neobrutalist"] .toggle:after {
+  border-radius: 0 !important;
+}
+
+[data-design="neobrutalist"] .toggle:checked {
+  box-shadow: var(--wp-elev-1);
+}
+
+/* ── Checkbox ──────────────────────────────────────────────────── */
+[data-design="neobrutalist"] .checkbox {
+  border-color: var(--wp-border-color);
+  box-shadow: var(--wp-elev-1);
+  transition: box-shadow 0.1s ease;
+}
+
+[data-design="neobrutalist"] .checkbox:checked {
+  transform: translate(1px, 1px);
+  box-shadow: calc(var(--neo-shadow-x) - 2px) calc(var(--neo-shadow-y) - 2px) 0 0
+    var(--neo-shadow-color);
+}
+
+/* ── Radio ─────────────────────────────────────────────────────── */
+[data-design="neobrutalist"] .radio {
+  border-color: var(--wp-border-color);
+  box-shadow: var(--wp-elev-1);
+  transition: box-shadow 0.1s ease;
+}
+
+[data-design="neobrutalist"] .radio:checked {
+  transform: translate(1px, 1px);
+  box-shadow: calc(var(--neo-shadow-x) - 2px) calc(var(--neo-shadow-y) - 2px) 0 0
+    var(--neo-shadow-color);
+  border-color: oklch(from var(--color-primary) l c h);
+}
+
+/* ── Range Slider ──────────────────────────────────────────────── */
+[data-design="neobrutalist"] .range {
+  border-radius: 0;
+  height: 0.75rem;
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.7);
+  background: oklch(from var(--color-base-300) l c h);
+  -webkit-appearance: none;
+  appearance: none;
+}
+
+[data-design="neobrutalist"] .range::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 1.5rem;
+  width: 1.5rem;
+  border-radius: 0;
+  background: oklch(from var(--color-primary) l c h);
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.9);
+  box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0
+    oklch(from var(--color-base-content) l c h / 0.7);
+  cursor: pointer;
+  margin-top: -0.45rem;
+  transition: box-shadow 0.1s ease;
+}
+
+[data-design="neobrutalist"] .range::-webkit-slider-thumb:hover {
+  box-shadow: calc(var(--neo-shadow-x) + 1px) calc(var(--neo-shadow-y) + 1px) 0 0
+    oklch(from var(--color-base-content) l c h / 0.7);
+}
+
+[data-design="neobrutalist"] .range::-webkit-slider-thumb:active {
+  transform: translate(2px, 2px);
+  box-shadow: 0 0 0 0 oklch(from var(--color-base-content) l c h / 0.7);
+}
+
+[data-design="neobrutalist"] .range::-webkit-slider-runnable-track {
+  height: 0.75rem;
+  background: oklch(from var(--color-base-300) l c h);
+  border-radius: 0;
+}
+
+[data-design="neobrutalist"] .range::-moz-range-thumb {
+  height: 1.5rem;
+  width: 1.5rem;
+  border-radius: 0;
+  background: oklch(from var(--color-primary) l c h);
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.9);
+  box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0
+    oklch(from var(--color-base-content) l c h / 0.7);
+  cursor: pointer;
+}
+
+[data-design="neobrutalist"] .range::-moz-range-track {
+  height: 0.75rem;
+  background: oklch(from var(--color-base-300) l c h);
+  border-radius: 0;
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.7);
+}
+
+/* ── Tabs ──────────────────────────────────────────────────────── */
+[data-design="neobrutalist"] .tab {
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+[data-design="neobrutalist"] .tabs-box .tab {
+  border-radius: var(--neo-radius);
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.5);
+}
+
+[data-design="neobrutalist"] .tabs-box .tab.tab-active {
+  box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0
+    oklch(from var(--color-base-content) l c h / 0.5);
+}
+
+/* ── Alerts ────────────────────────────────────────────────────── */
+[data-design="neobrutalist"] .alert {
+  border-radius: var(--neo-radius);
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.7);
+  box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0
+    oklch(from var(--color-base-content) l c h / 0.4);
+  font-weight: 700;
+}
+
+/* ── Pagination ────────────────────────────────────────────────── */
+[data-design="neobrutalist"] .page-item .page-link {
+  border-radius: var(--neo-radius);
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.85);
+  box-shadow: 3px 3px 0 0 oklch(from var(--color-base-content) l c h / 0.65);
+  font-weight: 800;
+  transition: box-shadow 0.1s ease;
+}
+
+[data-design="neobrutalist"] .page-item a.page-link:hover {
+  box-shadow: 4px 4px 0 0 oklch(from var(--color-base-content) l c h / 0.65);
+}
+
+[data-design="neobrutalist"] .page-item.active .page-link {
+  box-shadow: none;
+  transform: translate(2px, 2px);
+}
+
+/* ── Typography boost ──────────────────────────────────────────── */
+[data-design="neobrutalist"] h1,
+[data-design="neobrutalist"] h2,
+[data-design="neobrutalist"] h3,
+[data-design="neobrutalist"] h4 {
+  font-weight: 900;
+  letter-spacing: -0.02em;
+  text-transform: uppercase;
+}
+
+/* ── Menu items ────────────────────────────────────────────────── */
+[data-design="neobrutalist"] .menu li > a {
+  border-radius: var(--neo-radius);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+}
+
+/* ── Tooltip ───────────────────────────────────────────────────── */
+[data-design="neobrutalist"] .tooltip::before,
+[data-design="neobrutalist"] .tooltip::after {
+  z-index: 100;
+}
+
+[data-design="neobrutalist"] .tooltip::before {
+  border-radius: var(--neo-radius);
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.85);
+  box-shadow: 3px 3px 0 0 oklch(from var(--color-base-content) l c h / 0.5);
+  font-weight: 700;
+  /* Explicit surface colors so tooltip text stays readable on Gruvbox etc. */
+  background-color: var(--color-neutral);
+  color: var(--color-neutral-content);
+}
+
+[data-design="neobrutalist"] .tooltip::after {
+  border-top-color: var(--color-neutral);
+}
+
+/* ── Dropdown ──────────────────────────────────────────────────── */
+[data-design="neobrutalist"] .dropdown-content {
+  border-radius: var(--neo-radius);
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.85);
+  box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0
+    oklch(from var(--color-base-content) l c h / 0.6);
+}
+
+/* ── Fieldset / Form ───────────────────────────────────────────── */
+[data-design="neobrutalist"] .fieldset {
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.8);
+  box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0
+    oklch(from var(--color-base-content) l c h / 0.3);
+  border-radius: var(--neo-radius);
+}
+
+[data-design="neobrutalist"] .fieldset-legend {
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+[data-design="neobrutalist"] .divider {
+  border-color: oklch(from var(--color-base-content) l c h / 0.6);
+}
+
+[data-design="neobrutalist"] .label {
+  font-weight: 700;
+}
+
+/* ── Collapse ──────────────────────────────────────────────────── */
+[data-design="neobrutalist"] .collapse {
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.7);
+  border-radius: var(--neo-radius);
+  box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0
+    oklch(from var(--color-base-content) l c h / 0.3);
+}
+
+[data-design="neobrutalist"] .collapse-title {
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+/* ── Select Arrow Enhancement ──────────────────────────────────── */
+[data-design="neobrutalist"] .select {
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='3' stroke-linecap='square' stroke-linejoin='miter'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-position: right 0.75rem center;
+  background-size: 1.25rem;
+  background-repeat: no-repeat;
+  padding-right: 3rem;
+}
+
+/* ── Custom Scrollbar (neobrutalist-scoped) ───────────────────
+   Idle: thin bar (inherits the global thin-to-expand base).
+   Hovered: expands to bold squarish neobrutalist style with
+   hard shadow, thick borders, and diagonal-striped track.
+   ─────────────────────────────────────────────────────────── */
+
+/* Wider gutter so the expanded state has room for borders + shadow */
+[data-design="neobrutalist"] ::-webkit-scrollbar {
+  width: 16px;
+  height: 16px;
+}
+
+/* Idle thumb — thin bar, square ends, inherits transparent-border trick */
+[data-design="neobrutalist"] ::-webkit-scrollbar-thumb {
+  border-radius: 0;
+}
+
+/* ── Expanded state (container hovered) ── */
+
+[data-design="neobrutalist"] :hover::-webkit-scrollbar-track {
+  background:
+    repeating-linear-gradient(
+      -45deg,
+      transparent,
+      transparent 4px,
+      oklch(from var(--color-base-content) l c h / 0.06) 4px,
+      oklch(from var(--color-base-content) l c h / 0.06) 5px
+    ),
+    oklch(from var(--color-base-200) l c h);
+  border-left: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.6);
+}
+
+[data-design="neobrutalist"] :hover::-webkit-scrollbar-thumb {
+  background: oklch(from var(--color-base-300) l c h);
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.8);
+  border-radius: 0;
+  background-clip: border-box;
+  box-shadow: 2px 2px 0 0 oklch(from var(--color-base-content) l c h / 0.5);
+}
+
+[data-design="neobrutalist"] :hover::-webkit-scrollbar-thumb:hover {
+  background: oklch(from var(--color-primary) l c h);
+  border-color: oklch(from var(--color-base-content) l c h / 0.9);
+  background-clip: border-box;
+  box-shadow: 3px 3px 0 0 oklch(from var(--color-base-content) l c h / 0.6);
+}
+
+[data-design="neobrutalist"] :hover::-webkit-scrollbar-thumb:active {
+  background: oklch(from var(--color-primary) l c h / 0.85);
+  background-clip: border-box;
+  box-shadow: 0 0 0 0 oklch(from var(--color-base-content) l c h / 0.5);
+}
+
+[data-design="neobrutalist"] :hover::-webkit-scrollbar-corner {
+  background: oklch(from var(--color-base-200) l c h);
+  border-left: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.6);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   ICONOGRAPHY
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Make all SVG icons bolder in neo mode */
+[data-design="neobrutalist"] svg:not(.wp-close-btn svg) {
+  stroke-width: 2.5;
+}
+
+/* Icon container: bordered square like Stitch sidebar buttons */
+[data-design="neobrutalist"] .neo-icon-box {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: var(--wp-border-w) solid oklch(from var(--color-base-content) l c h / 0.9);
+  box-shadow: var(--wp-elev-1);
+  padding: 0.375rem;
+  border-radius: 0;
+  transition: box-shadow 0.1s ease;
+}
+
+[data-design="neobrutalist"] .neo-icon-box:hover {
+  box-shadow: var(--wp-elev-2);
+}
+
+/* Polaroid frame when using <Card polaroid> without .neo-polaroid (e.g. future light-mode path) */
+[data-design="neobrutalist"] .wp-card--polaroid:not(.neo-polaroid) {
+  padding: 12px 12px 32px;
+  background:
+    linear-gradient(transparent, oklch(from var(--color-base-content) l c h / 0.04)),
+    var(--color-base-100);
+}
+
+[data-design="neobrutalist"] .wp-card--polaroid:not(.neo-polaroid) :where(img, video) {
+  border: 2px solid oklch(from var(--color-base-content) l c h / 0.1);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   POLAROID IMAGE CARDS
+   ══════════════════════════════════════════════════════════════════ */
+
+[data-design="neobrutalist"] .neo-monitor-chip {
+  background: oklch(from var(--color-primary) l c h / 0.92);
+  color: var(--color-primary-content);
+  border-right: var(--wp-border-w) solid oklch(from var(--color-base-content) l c h / 0.35);
+  border-bottom: var(--wp-border-w) solid oklch(from var(--color-base-content) l c h / 0.35);
+  box-shadow: 2px 2px 0 0 oklch(from var(--color-base-content) l c h / 0.25);
+}
+
+[data-design="neobrutalist"] .neo-polaroid {
+  background: oklch(from var(--color-base-200) l c h);
+  padding: 8px 8px 0 8px;
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.9);
+  box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0
+    oklch(from var(--color-primary) l c h / 0.85);
+  transition: box-shadow 0.15s ease;
+  overflow: visible;
+  border-radius: var(--neo-radius);
+}
+
+[data-design="neobrutalist"] .neo-polaroid:hover {
+  box-shadow: calc(var(--neo-shadow-x) + 2px) calc(var(--neo-shadow-y) + 2px) 0 0
+    oklch(from var(--color-primary) l c h / 0.85);
+  z-index: 5;
+}
+
+[data-design="neobrutalist"] .neo-polaroid-inner {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border: 0;
+  background: transparent;
+  padding: 0;
+  cursor: pointer;
+  text-align: left;
+  overflow: hidden;
+}
+
+[data-design="neobrutalist"] .neo-polaroid-image {
+  display: block;
+  width: 100%;
+  overflow: hidden;
+  line-height: 0;
+}
+
+[data-design="neobrutalist"] .neo-polaroid-image img,
+[data-design="neobrutalist"] .neo-polaroid-image video {
+  aspect-ratio: 3 / 2;
+  object-fit: cover;
+  width: 100%;
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+[data-design="neobrutalist"] .neo-polaroid:hover .neo-polaroid-image img,
+[data-design="neobrutalist"] .neo-polaroid:hover .neo-polaroid-image video {
+  transform: scale(1.05);
+}
+
+[data-design="neobrutalist"] .neo-polaroid-caption {
+  padding: 14px 6px 20px;
+}
+
+[data-design="neobrutalist"] .neo-polaroid-name {
+  font-weight: 800;
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: oklch(from var(--color-base-content) l c h);
+  line-height: 1.3;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* Checkbox positioning within polaroid */
+[data-design="neobrutalist"] .neo-polaroid .checkbox {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  z-index: 20;
+  opacity: 0;
+}
+
+[data-design="neobrutalist"] .neo-polaroid .checkbox:checked,
+[data-design="neobrutalist"] .neo-polaroid:hover .checkbox {
+  opacity: 1;
+}
+
+/* Selection overlay */
+[data-design="neobrutalist"] .neo-polaroid-overlay {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  right: 8px;
+  bottom: 0;
+  z-index: 10;
+  opacity: 0;
+  transition: opacity 0.15s;
+  pointer-events: none;
+  background: oklch(from var(--color-primary) l c h);
+}
+
+[data-design="neobrutalist"] .neo-polaroid-overlay[data-selected="true"] {
+  opacity: 0.35;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   FOLDER CARD (neobrutalist override)
+   ══════════════════════════════════════════════════════════════════ */
+
+[data-design="neobrutalist"] .neo-folder-card {
+  background: oklch(from var(--color-base-200) l c h);
+  padding: 8px 8px 0 8px;
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.9);
+  box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0
+    oklch(from var(--color-base-content) l c h / 0.7);
+  border-radius: var(--neo-radius);
+  cursor: pointer;
+  transition:
+    box-shadow 0.15s ease,
+    transform 0.15s ease;
+}
+
+[data-design="neobrutalist"] .neo-folder-card:hover {
+  box-shadow: calc(var(--neo-shadow-x) + 2px) calc(var(--neo-shadow-y) + 2px) 0 0
+    oklch(from var(--color-primary) l c h / 0.85);
+  z-index: 5;
+}
+
+[data-design="neobrutalist"] .neo-folder-card[data-drop-target="true"] {
+  border-color: oklch(from var(--color-primary) l c h);
+  box-shadow: calc(var(--neo-shadow-x) + 3px) calc(var(--neo-shadow-y) + 3px) 0 0
+    oklch(from var(--color-primary) l c h / 0.9);
+  transform: scale(1.03);
+}
+
+[data-design="neobrutalist"] .neo-folder-inner {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  border-radius: var(--neo-radius);
+  overflow: hidden;
+}
+
+[data-design="neobrutalist"] .neo-folder-preview {
+  aspect-ratio: 3 / 2;
+  width: 100%;
+  overflow: hidden;
+  line-height: 0;
+}
+
+[data-design="neobrutalist"] .neo-folder-preview img {
+  object-fit: cover;
+  width: 100%;
+  height: 100%;
+  display: block;
+  transition: transform 0.3s ease;
+}
+
+[data-design="neobrutalist"] .neo-folder-card:hover .neo-folder-preview img {
+  transform: scale(1.05);
+}
+
+[data-design="neobrutalist"] .neo-folder-caption {
+  position: static;
+  opacity: 1;
+  background: transparent;
+  color: inherit;
+  padding: 10px 6px 14px;
+}
+
+[data-design="neobrutalist"] .neo-folder-name {
+  font-weight: 800;
+  font-size: 0.8rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   MINI PLAYLIST CARD (neobrutalist override)
+   ══════════════════════════════════════════════════════════════════ */
+
+[data-design="neobrutalist"] .neo-mini-card {
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.9);
+  box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0
+    oklch(from var(--color-base-content) l c h / 0.7);
+  border-radius: var(--neo-radius);
+  overflow: visible;
+  position: relative;
+  transform: translate(0, 0);
+  transition:
+    transform 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    box-shadow 0.3s cubic-bezier(0.22, 1, 0.36, 1),
+    border-color 0.25s ease;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-design="neobrutalist"] .neo-mini-card {
+    transition: none;
+  }
+}
+
+[data-design="neobrutalist"] .neo-mini-card:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: calc(var(--neo-shadow-x) + 1px) calc(var(--neo-shadow-y) + 1px) 0 0
+    oklch(from var(--color-base-content) l c h / 0.7);
+}
+
+/* Current playlist tile: Y “lift” is animated via Framer on a wrapper; keep primary border + shadow here */
+[data-design="neobrutalist"] .neo-mini-card.neo-mini-card--current {
+  z-index: 2;
+  border-color: oklch(from var(--color-primary) l c h);
+  box-shadow: calc(var(--neo-shadow-x) + 2px) calc(var(--neo-shadow-y) + 8px) 0 0
+    oklch(from var(--color-primary) l c h / 0.82);
+}
+
+[data-design="neobrutalist"] .neo-mini-card.neo-mini-card--current:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: calc(var(--neo-shadow-x) + 3px) calc(var(--neo-shadow-y) + 9px) 0 0
+    oklch(from var(--color-primary) l c h / 0.82);
+}
+
+[data-design="neobrutalist"] .neo-mini-card img {
+  border-radius: 0;
+}
+
+/* Neo remove button for mini cards */
+[data-design="neobrutalist"] .neo-remove-btn {
+  position: absolute;
+  top: -0.5rem;
+  right: -0.5rem;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: oklch(from var(--color-error) l c h);
+  color: white;
+  border: 2px solid oklch(from var(--color-base-content) l c h / 0.9);
+  box-shadow: 2px 2px 0 0 oklch(from var(--color-base-content) l c h / 0.5);
+  cursor: pointer;
+  z-index: 30;
+  padding: 0;
+  border-radius: var(--neo-radius);
+  transition: box-shadow 0.1s ease;
+  opacity: 0;
+}
+
+[data-design="neobrutalist"] .neo-mini-card:hover .neo-remove-btn {
+  opacity: 1;
+}
+
+[data-design="neobrutalist"] .neo-remove-btn:hover {
+  box-shadow: 0 0 0 0 oklch(from var(--color-base-content) l c h / 0.5);
+}
+
+[data-design="neobrutalist"] .neo-remove-btn svg {
+  width: 0.75rem;
+  height: 0.75rem;
+  stroke: white;
+  stroke-width: 3;
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   ZONE BACKGROUNDS  –  distinct section color blocks
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Filters bar – no strip borders; graph paper separates zones */
+[data-design="neobrutalist"] .neo-filters-strip {
+  background: transparent;
+  border-top: none;
+  border-bottom: none;
+  padding-block: 0.75rem;
+  margin-top: 0;
+  margin-bottom: 0;
+}
+
+/* Gallery filter search (react-select unstyled control — classes from Filters.tsx) */
+[data-design="neobrutalist"] .neo-rs-control {
+  border-radius: var(--neo-radius);
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.85);
+  box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0 var(--neo-shadow-color);
+  background: oklch(from var(--color-base-100) l c h);
+  transition:
+    box-shadow 0.1s ease,
+    transform 0.1s ease;
+}
+
+[data-design="neobrutalist"] .neo-rs-control.neo-rs-control--focused {
+  transform: translate(-1px, -1px);
+  box-shadow: calc(var(--neo-shadow-x) + 2px) calc(var(--neo-shadow-y) + 2px) 0 0
+    var(--neo-shadow-color);
+}
+
+/* Outer shell: one frame for search icon + creatable select + trailing actions */
+[data-design="neobrutalist"] .neo-rs-control-wrapper {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  min-height: 2.75rem;
+  padding-block: 0;
+  border-radius: var(--neo-radius);
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.85);
+  box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0 var(--neo-shadow-color);
+  background: oklch(from var(--color-base-100) l c h);
+  transition:
+    box-shadow 0.1s ease,
+    transform 0.1s ease;
+}
+
+[data-design="neobrutalist"] .neo-rs-control-wrapper:focus-within {
+  transform: translate(-1px, -1px);
+  box-shadow: calc(var(--neo-shadow-x) + 2px) calc(var(--neo-shadow-y) + 2px) 0 0
+    var(--neo-shadow-color);
+}
+
+[data-design="neobrutalist"] .neo-rs-control-wrapper .neo-rs-control {
+  flex: 1;
+  min-width: 0;
+  min-height: 2.25rem;
+  align-self: stretch;
+  align-items: center;
+  border: none;
+  box-shadow: none;
+  background: transparent;
+  padding-inline: 0.5rem;
+  padding-block: 0;
+}
+
+[data-design="neobrutalist"] .neo-rs-control-wrapper .neo-rs-control.neo-rs-control--focused {
+  transform: none;
+  box-shadow: none;
+}
+
+[data-design="neobrutalist"] .neo-search-inline-icon {
+  flex-shrink: 0;
+  align-self: center;
+  margin-left: 0.75rem;
+  color: oklch(from var(--color-base-content) l c h / 0.78);
+}
+
+[data-design="neobrutalist"] .neo-search-action {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  flex-shrink: 0;
+  border-radius: var(--neo-radius);
+  border: 2px solid oklch(from var(--color-base-content) l c h / 0.85);
+  background: oklch(from var(--color-base-200) l c h);
+  color: oklch(from var(--color-base-content) l c h / 0.9);
+  box-shadow: 2px 2px 0 0 oklch(from var(--color-base-content) l c h / 0.85);
+  transition:
+    box-shadow 0.08s ease,
+    transform 0.08s ease,
+    background 0.08s ease;
+}
+
+[data-design="neobrutalist"] .neo-search-action:hover {
+  background: oklch(from var(--color-base-300) l c h);
+  color: oklch(from var(--color-base-content) l c h);
+}
+
+[data-design="neobrutalist"] .neo-search-action:active {
+  transform: translate(1px, 1px);
+  box-shadow: 0 0 0 0 transparent;
+}
+
+[data-design="neobrutalist"] .neo-rs-menu {
+  border-radius: var(--neo-radius);
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.9);
+  box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0 var(--neo-shadow-color);
+  background: oklch(from var(--color-base-100) l c h);
+}
+
+[data-design="neobrutalist"] .neo-rs-menuList {
+  border-radius: var(--neo-radius);
+}
+
+[data-design="neobrutalist"] .neo-rs-option.neo-rs-option--focused {
+  background: oklch(from var(--color-base-200) l c h);
+  outline: 2px solid oklch(from var(--color-base-content) l c h / 0.35);
+  outline-offset: -2px;
+}
+
+/* Bottom dock – pagination + playlist shelf (paper continues; no top hairline) */
+[data-design="neobrutalist"] .neo-bottom-dock {
+  background: transparent;
+  overflow-x: clip;
+  overflow-y: visible;
+}
+
+@media (max-height: 1080px) {
+  [data-design="neobrutalist"] .neo-bottom-dock .pagination {
+    gap: 0.125rem;
+  }
+
+  [data-design="neobrutalist"] .neo-bottom-dock .page-item .page-link {
+    height: 2.25rem;
+    width: 2.25rem;
+    font-size: 0.6875rem;
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   PLAYLIST TRACK AREA
+   ══════════════════════════════════════════════════════════════════ */
+
+[data-design="neobrutalist"] .neo-playlist-scroll {
+  background: oklch(from var(--color-base-200) l c h / 0.42);
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.4);
+  /* Extra top space so “raised” current tile + shadow stay inside the strip (no overflow-y clip). */
+  padding: 0.75rem 0.5rem 0.5rem 0.5rem;
+  border-radius: var(--neo-radius);
+}
+
+@media (max-height: 1080px) {
+  [data-design="neobrutalist"] .neo-playlist-scroll {
+    padding: 0.5rem 0.375rem 0.375rem 0.375rem;
+  }
+}
+
+/* Playlist strip title + action row (bottom dock) */
+[data-design="neobrutalist"] .neo-playlist-toolbar {
+  padding: 0.5rem 0.75rem;
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.45);
+  background: oklch(from var(--color-base-200) l c h);
+  box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0
+    oklch(from var(--color-base-content) l c h / 0.22);
+}
+
+@media (max-height: 1080px) {
+  [data-design="neobrutalist"] .neo-playlist-toolbar {
+    padding: 0.375rem 0.5rem;
+  }
+}
+
+/* Active playlist transport (integrated in playlist strip) */
+[data-design="neobrutalist"] .neo-playlist-controller {
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.35rem 0.5rem;
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.85);
+  box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0 var(--neo-shadow-color);
+  background: oklch(from var(--color-base-100) l c h);
+}
+
+[data-design="neobrutalist"] .neo-playlist-controller img {
+  border-radius: 0;
+  border: 2px solid oklch(from var(--color-base-content) l c h / 0.75);
+  box-shadow: 2px 2px 0 0 oklch(from var(--color-base-content) l c h / 0.2);
+}
+
+/* Transport controls — framed chips inside neo player */
+[data-design="neobrutalist"] .neo-playlist-controller .neo-pc-icon-btn.btn-ghost {
+  border-radius: var(--neo-radius);
+  border-color: oklch(from var(--color-base-content) l c h / 0.55);
+  background: oklch(from var(--color-base-200) l c h);
+  box-shadow: 3px 3px 0 0 oklch(from var(--color-base-content) l c h / 0.25);
+}
+
+[data-design="neobrutalist"] .neo-playlist-controller .neo-pc-icon-btn.btn-ghost:hover {
+  border-color: oklch(from var(--color-base-content) l c h / 0.8);
+}
+
+[data-design="neobrutalist"] .neo-playlist-controller .neo-pc-icon-btn.btn-error.btn-ghost {
+  background: oklch(from var(--color-error) l c h / 0.15);
+}
+
+/* ── NOW PLAYING deck (music-player style transport) ── */
+[data-design="neobrutalist"] .neo-now-playing {
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.85);
+  background: linear-gradient(
+    90deg,
+    oklch(from var(--color-base-100) l c h) 0%,
+    oklch(from var(--color-base-200) l c h) 100%
+  );
+  box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0 var(--neo-shadow-color);
+  border-radius: var(--neo-radius);
+  position: relative;
+}
+
+/* Orange "RECORDING"-style accent stripe so the deck reads as the active zone */
+[data-design="neobrutalist"] .neo-now-playing::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: 6px;
+  background: oklch(from var(--color-primary) l c h);
+  border-right: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.85);
+}
+
+[data-design="neobrutalist"] .neo-now-playing-art img {
+  border-radius: 0;
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.85);
+  box-shadow: 3px 3px 0 0 oklch(from var(--color-base-content) l c h / 0.25);
+}
+
+[data-design="neobrutalist"] .neo-monitor-chip {
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.85);
+  background: oklch(from var(--color-base-100) l c h);
+  border-radius: var(--neo-radius);
+  box-shadow: 4px 4px 0 0 var(--neo-shadow-color);
+  color: oklch(from var(--color-base-content) l c h / 0.8);
+}
+
+[data-design="neobrutalist"] .neo-progress-track {
+  border: 1.5px solid oklch(from var(--color-base-content) l c h / 0.55);
+  background: oklch(from var(--color-base-100) l c h);
+  border-radius: 0;
+  height: 0.55rem;
+}
+
+[data-design="neobrutalist"] .neo-progress-track.neo-progress-track--compact {
+  height: 0.25rem;
+}
+
+[data-design="neobrutalist"] .neo-progress-fill {
+  background: oklch(from var(--color-primary) l c h);
+  border-right: 1.5px solid oklch(from var(--color-base-content) l c h / 0.85);
+  border-radius: 0;
+}
+
+[data-design="neobrutalist"] .neo-pc-play-btn {
+  border-radius: var(--neo-radius);
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.9);
+  background: oklch(from var(--color-primary) l c h);
+  color: oklch(from var(--color-primary-content) l c h);
+  box-shadow: 4px 4px 0 0 oklch(from var(--color-base-content) l c h / 0.4);
+}
+
+[data-design="neobrutalist"] .neo-pc-play-btn:hover {
+  transform: translate(-1px, -1px);
+  box-shadow: 5px 5px 0 0 oklch(from var(--color-base-content) l c h / 0.45);
+}
+
+[data-design="neobrutalist"] .neo-pc-play-btn:active {
+  transform: translate(2px, 2px);
+  box-shadow: 2px 2px 0 0 oklch(from var(--color-base-content) l c h / 0.35);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   CONTEXT MENU (neobrutalist variant)
+   ══════════════════════════════════════════════════════════════════ */
+
+[data-design="neobrutalist"] .context-menu {
+  background: oklch(from var(--color-base-100) l c h);
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.7);
+  border-radius: var(--neo-radius);
+  box-shadow: var(--neo-shadow-x, 4px) var(--neo-shadow-y, 4px) 0
+    oklch(from var(--color-base-content) l c h / 0.25);
+}
+
+[data-design="neobrutalist"] .context-menu .context-menu-item {
+  border-radius: var(--neo-radius);
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.025em;
+}
+
+[data-design="neobrutalist"] .context-menu .context-menu-separator {
+  height: calc(var(--neo-border-width, 2px) - 1px);
+  min-height: 1px;
+  background: oklch(from var(--color-base-content) l c h / 0.3);
+}
+
+/* ══════════════════════════════════════════════════════════════════
+   SETTINGS MODAL (neobrutalist variant)
+   Raw Manifesto: 4px borders, hard offset shadow, 0px radius,
+   Space Grotesk uppercase, cyan close box, no soft effects.
+   ══════════════════════════════════════════════════════════════════ */
+
+/* Overlay — no blur, raw dark scrim */
+[data-design="neobrutalist"] .neo-settings-overlay {
+  background: oklch(from var(--color-base-content) l c h / 0.55);
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
+/* Modal panel — Level-1 plate */
+[data-design="neobrutalist"] .neo-settings-panel {
+  border-radius: var(--neo-radius);
+  border: var(--neo-border-width) solid var(--neo-shadow-color);
+  box-shadow: calc(var(--neo-shadow-x) * 2) calc(var(--neo-shadow-y) * 2) 0 0
+    var(--neo-shadow-color);
+  background: oklch(from var(--color-base-100) l c h);
+  overflow: hidden;
+}
+
+/* Header masthead — structural boundary */
+[data-design="neobrutalist"] .neo-settings-header {
+  border-bottom: var(--neo-border-width) solid var(--neo-shadow-color);
+  background: linear-gradient(
+    90deg,
+    oklch(from var(--color-base-200) l c h) 0%,
+    oklch(from var(--color-base-100) l c h) 100%
+  );
+  padding-inline: 1rem;
+  height: 3rem;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  flex-shrink: 0;
+}
+
+[data-design="neobrutalist"] .neo-settings-title {
+  font-family: var(--font-display, "Space Grotesk Variable", system-ui, sans-serif);
+  font-weight: 900;
+  font-size: 0.7rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: oklch(from var(--color-base-content) l c h);
+}
+
+/* Close button — oversized cyan "heavy press" per design system */
+[data-design="neobrutalist"] .neo-settings-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  flex-shrink: 0;
+  border-radius: var(--neo-radius);
+  border: var(--neo-border-width) solid var(--neo-shadow-color);
+  background: oklch(from var(--color-accent) l c h);
+  color: oklch(from var(--color-accent-content) l c h);
+  box-shadow: var(--neo-shadow-x) var(--neo-shadow-y) 0 0 var(--neo-shadow-color);
+  cursor: pointer;
+  transition:
+    box-shadow 0.1s ease,
+    transform 0.1s ease;
+}
+
+[data-design="neobrutalist"] .neo-settings-close:hover {
+  box-shadow: calc(var(--neo-shadow-x) + 2px) calc(var(--neo-shadow-y) + 2px) 0 0
+    var(--neo-shadow-color);
+  transform: translate(-1px, -1px);
+}
+
+[data-design="neobrutalist"] .neo-settings-close:active {
+  transform: translate(4px, 4px);
+  box-shadow: 0 0 0 0 var(--neo-shadow-color);
+}
+
+[data-design="neobrutalist"] .neo-settings-close svg {
+  stroke-width: 3;
+}
+
+/* Left nav rail — Level-2 structural plate */
+[data-design="neobrutalist"] .neo-settings-rail {
+  border-radius: var(--neo-radius);
+  border-right: var(--neo-border-width) solid var(--neo-shadow-color);
+  box-shadow: var(--neo-shadow-x) 0 0 0 var(--neo-shadow-color);
+  background: linear-gradient(
+    180deg,
+    oklch(from var(--color-base-200) l c h) 0%,
+    oklch(from var(--color-base-300) l c h / 0.6) 100%
+  );
+}
+
+[data-design="neobrutalist"] .neo-settings-rail .neo-settings-search-wrap {
+  border-bottom: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.6);
+  background: oklch(from var(--color-base-100) l c h);
+}
+
+/* Nav link — same structural DNA as sidebar nav */
+[data-design="neobrutalist"] .neo-settings-nav-link {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border-radius: var(--neo-radius);
+  border: var(--neo-border-width) solid transparent;
+  font-family: var(--font-display, "Space Grotesk Variable", system-ui, sans-serif);
+  font-weight: 800;
+  font-size: 0.63rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: oklch(from var(--color-base-content) l c h / 0.7);
+  background: transparent;
+  transition:
+    background 0.1s ease,
+    color 0.1s ease,
+    border-color 0.1s ease,
+    box-shadow 0.1s ease;
+}
+
+[data-design="neobrutalist"] .neo-settings-nav-link:hover {
+  background: oklch(from var(--color-base-100) l c h);
+  color: oklch(from var(--color-base-content) l c h);
+  border-color: oklch(from var(--color-base-content) l c h / 0.35);
+  box-shadow: 3px 3px 0 0 oklch(from var(--color-base-content) l c h / 0.2);
+}
+
+/* Active — left primary rail + gradient wash, mirrors sidebar active */
+[data-design="neobrutalist"] .neo-settings-nav-active {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  border-radius: var(--neo-radius);
+  border: var(--neo-border-width) solid oklch(from var(--color-base-content) l c h / 0.85);
+  border-left: var(--neo-border-width) solid oklch(from var(--color-primary) l c h);
+  font-family: var(--font-display, "Space Grotesk Variable", system-ui, sans-serif);
+  font-weight: 900;
+  font-size: 0.63rem;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+  color: oklch(from var(--color-base-content) l c h);
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklch, var(--color-primary) 18%, var(--color-base-200)) 0%,
+    oklch(from var(--color-base-200) l c h) 100%
+  );
+  box-shadow: 3px 3px 0 0 oklch(from var(--color-primary) l c h / 0.35);
+}
+
+/* Content pane — the void canvas */
+[data-design="neobrutalist"] .neo-settings-content {
+  background: oklch(from var(--color-base-100) l c h);
+}

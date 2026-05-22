@@ -1,0 +1,54 @@
+/* @waypaper-theme
+ *   name: solarized
+ *   displayName: Solarized
+ *   category: dark
+ *   sourceUrl: https://ethanschoonover.com/solarized
+ *
+ * Role mapping (Solarized dark):
+ *   base-100  ← base03  #002b36  (darkest bg)
+ *   base-200  ← base02  #073642
+ *   base-300  ← base01  #586e75  (content, bg overlay)
+ *   base-content ← base1 #93a1a1 (higher contrast fg)
+ *   primary   ← blue    #268bd2
+ *   secondary ← magenta #d33682
+ *   accent    ← cyan    #2aa198
+ *   neutral   ← base00  #657b83
+ *   info      ← blue    #268bd2
+ *   success   ← green   #859900
+ *   warning   ← yellow  #b58900
+ *   error     ← red     #dc322f
+ */
+@plugin "daisyui/theme" {
+  name: "solarized";
+  default: false;
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: #002b36;
+  --color-base-200: #073642;
+  --color-base-300: #586e75;
+  --color-base-content: #93a1a1;
+  --color-primary: #268bd2;
+  --color-primary-content: #002b36;
+  --color-secondary: #d33682;
+  --color-secondary-content: #002b36;
+  --color-accent: #2aa198;
+  --color-accent-content: #002b36;
+  --color-neutral: #657b83;
+  --color-neutral-content: #93a1a1;
+  --color-info: #268bd2;
+  --color-info-content: #002b36;
+  --color-success: #859900;
+  --color-success-content: #002b36;
+  --color-warning: #b58900;
+  --color-warning-content: #002b36;
+  --color-error: #dc322f;
+  --color-error-content: #93a1a1;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}

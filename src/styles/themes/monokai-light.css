@@ -1,0 +1,43 @@
+/* @waypaper-theme
+ *   name: monokai-light
+ *   displayName: Monokai Light
+ *   category: light
+ *   sourceUrl: https://monokai.pro
+ *
+ * Derived light companion (Monokai is canonically dark). High-contrast
+ * accents on cream background, same hue palette as the dark variant.
+ */
+@plugin "daisyui/theme" {
+  name: "monokai-light";
+  default: false;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: #fafafa;
+  --color-base-200: #f0f0f0;
+  --color-base-300: #e0e0e0;
+  --color-base-content: #272822;
+  --color-primary: #f92672;
+  --color-primary-content: #fafafa;
+  --color-secondary: #ae81ff;
+  --color-secondary-content: #fafafa;
+  --color-accent: #a6e22e;
+  --color-accent-content: #272822;
+  --color-neutral: #75715e;
+  --color-neutral-content: #fafafa;
+  --color-info: #66d9ef;
+  --color-info-content: #272822;
+  --color-success: #a6e22e;
+  --color-success-content: #272822;
+  --color-warning: #fd971f;
+  --color-warning-content: #272822;
+  --color-error: #f92672;
+  --color-error-content: #fafafa;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}

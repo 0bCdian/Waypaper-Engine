@@ -1,155 +1,63 @@
-import { type ActiveMonitor, type Monitor } from "../../shared/types/monitor";
+import type { Image, Monitor } from "../../electron/daemon-go-types";
+import { webPreviewPlaybackKind } from "./webPreviewPlayback";
 
-export function toMS(hours: number, minutes: number) {
-    return hours * 60 * 60 * 1000 + minutes * 60 * 1000;
+export function getThumbnailSrc(
+  image: Pick<Image, "thumbnails" | "path"> &
+    Partial<Pick<Image, "media_type" | "format" | "preview_path">>,
+  preferredSize?: keyof Image["thumbnails"],
+): string {
+  if (image.media_type === "gif" || image.format === "gif") {
+    return image.path;
+  }
+  if (preferredSize) {
+    const val = image.thumbnails?.[preferredSize]?.trim();
+    if (val) return val;
+  }
+  const sized =
+    image.thumbnails?.default?.trim() ||
+    image.thumbnails?.["720p"]?.trim() ||
+    image.thumbnails?.["1080p"]?.trim() ||
+    "";
+  if (sized) return sized;
+  if (image.media_type === "web") {
+    const kind = webPreviewPlaybackKind(image.preview_path);
+    if (kind === "animatedImage" && image.preview_path) return image.preview_path.trim();
+    return "";
+  }
+  return image.path;
 }
 
-export function toHoursAndMinutes(ms: number) {
-    const hours = Math.floor(ms / (60 * 60 * 1000));
-    const minutes = Math.floor((ms - hours * 60 * 60 * 1000) / (60 * 1000));
-    return { hours, minutes };
+export function toSeconds(hours: number, minutes: number) {
+  return hours * 3600 + minutes * 60;
 }
 
-export function debounce(callback: () => void, timer = 1000) {
-    let previous: ReturnType<typeof window.setTimeout> | undefined;
-    return () => {
-        if (previous !== undefined) {
-            clearTimeout(previous);
-        }
-        previous = setTimeout(() => {
-            callback();
-        }, timer);
-    };
+export function toHoursAndMinutes(seconds: number) {
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  return { hours, minutes };
 }
 
 export function parseResolution(resolution: string) {
-    const [width, height] = resolution.split("x");
-    return { width: parseInt(width), height: parseInt(height) };
+  const [width, height] = resolution.split("x");
+  return { width: parseInt(width, 10), height: parseInt(height, 10) };
 }
 
 export function calculateMinResolution(monitors: Monitor[]) {
-    let maxWidth = 0;
-    let maxHeight = 0;
+  let maxWidth = 0;
+  let maxHeight = 0;
 
-    for (const monitor of monitors) {
-        const effectiveWidth = monitor.width + monitor.position.x;
-        const effectiveHeight = monitor.height + monitor.position.y;
+  for (const monitor of monitors) {
+    const effectiveWidth = monitor.width + monitor.x;
+    const effectiveHeight = monitor.height + monitor.y;
 
-        if (effectiveWidth > maxWidth) {
-            maxWidth = effectiveWidth;
-        }
-
-        if (effectiveHeight > maxHeight) {
-            maxHeight = effectiveHeight;
-        }
+    if (effectiveWidth > maxWidth) {
+      maxWidth = effectiveWidth;
     }
 
-    return { x: maxWidth, y: maxHeight };
-}
-
-export const monitorsListTest = [
-    {
-        name: "eDP-1",
-        width: 3840,
-        height: 2160,
-        currentImage: "/home/obsy/.waypaper_engine/images/wall2.png",
-        position: {
-            x: 0,
-            y: 0
-        }
-    },
-    {
-        name: "HDMI-A-1",
-        width: 3840,
-        height: 2160,
-        currentImage: "/home/obsy/.waypaper_engine/images/wall2.png",
-        position: {
-            x: 3840,
-            y: 0
-        }
-    },
-    {
-        name: "HDMI-A-12",
-        width: 3840,
-        height: 2160,
-        currentImage: "/home/obsy/.waypaper_engine/images/wall2.png",
-        position: {
-            x: 3840,
-            y: 2160
-        }
-    },
-    {
-        name: "HDMI-b-12",
-        width: 2160,
-        height: 3840,
-        currentImage: "/home/obsy/.waypaper_engine/images/wall2.png",
-        position: {
-            x: 7680,
-            y: 0
-        }
+    if (effectiveHeight > maxHeight) {
+      maxHeight = effectiveHeight;
     }
-];
+  }
 
-export const monitors1080p = [
-    {
-        name: "eDP-1",
-        width: 1920,
-        height: 1080,
-        currentImage: "/home/obsy/.waypaper_engine/images/wall2.png",
-        position: {
-            x: 0,
-            y: 0
-        }
-    },
-    {
-        name: "HDMI-A-1",
-        width: 1920,
-        height: 1080,
-        currentImage: "/home/obsy/.waypaper_engine/images/wall2.png",
-        position: {
-            x: 1920,
-            y: 0
-        }
-    },
-    {
-        name: "HDMI-A-12",
-        width: 1920,
-        height: 1080,
-        currentImage: "/home/obsy/.waypaper_engine/images/wall2.png",
-        position: {
-            x: 1920,
-            y: 1080
-        }
-    },
-    {
-        name: "HDMI-b-12",
-        width: 1080,
-        height: 1920,
-        currentImage: "/home/obsy/.waypaper_engine/images/wall2.png",
-        position: {
-            x: 3840,
-            y: 0
-        }
-    }
-];
-
-export function verifyOldMonitorConfigValidity({
-    oldConfig,
-    monitorsList
-}: {
-    oldConfig: ActiveMonitor;
-    monitorsList: Monitor[];
-}): boolean {
-    let isValid = true;
-    for (let idx = 0; idx < oldConfig.monitors.length; idx++) {
-        const oldMonitorName = oldConfig.monitors[idx].name;
-        const foundMonitor = monitorsList.find(
-            ({ name }) => name === oldMonitorName
-        );
-        if (foundMonitor === undefined) {
-            isValid = false;
-            break;
-        }
-    }
-    return isValid;
+  return { x: maxWidth, y: maxHeight };
 }

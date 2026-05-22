@@ -1,0 +1,46 @@
+/* @waypaper-theme
+ *   name: nord
+ *   displayName: Nord
+ *   category: dark
+ *   sourceUrl: https://www.nordtheme.com/docs/colors-and-palettes
+ *
+ * Nord “Aurora” dark — matches Waypaper contrast table:
+ *   bg #2E3440, fg #D8DEE9; surfaces Color 1 / Color 9;
+ *   Frost #88C0D0 / #81A1C1 / #8FBCBB; Aurora #BF616A / #A3BE8C / #EBCB8B / #B48EAD
+ *   (secondary #B48EAD, accent #8FBCBB, info #81A1C1).
+ *   highlights #E5E9F0 / #ECEFF4 for on-neutral text.
+ */
+@plugin "daisyui/theme" {
+  name: "nord";
+  default: false;
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: #2e3440;
+  --color-base-200: #3b4252;
+  --color-base-300: #4c566a;
+  --color-base-content: #d8dee9;
+  --color-primary: #88c0d0;
+  --color-primary-content: #2e3440;
+  --color-secondary: #b48ead;
+  --color-secondary-content: #2e3440;
+  --color-accent: #8fbcbb;
+  --color-accent-content: #2e3440;
+  --color-neutral: #4c566a;
+  --color-neutral-content: #eceff4;
+  --color-info: #81a1c1;
+  --color-info-content: #2e3440;
+  --color-success: #a3be8c;
+  --color-success-content: #2e3440;
+  --color-warning: #ebcb8b;
+  --color-warning-content: #2e3440;
+  --color-error: #bf616a;
+  --color-error-content: #eceff4;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}

@@ -1,65 +1,43 @@
-import { type imagesObject } from "../../shared/types";
-import { type Formats } from "../../shared/types/image";
-import {
-    type PLAYLIST_TYPES_TYPE,
-    type PLAYLIST_ORDER_TYPES
-} from "../../shared/types/playlist";
-import { type imageSelectType } from "../../database/schema";
-import { type ActiveMonitor } from "../../shared/types/monitor";
+import type {
+  Image,
+  PlaylistConfiguration,
+  PlaylistImage,
+  MonitorMode,
+} from "../../electron/daemon-go-types";
 
-export enum STORE_ACTIONS {
-    SET_IMAGES_ARRAY = "SET_IMAGES_ARRAY",
-    SET_SKELETONS_TO_SHOW = "SET_SKELETONS_TO_SHOW",
-    SET_FILTERS = "SET_FILTERS",
-    RESET_IMAGES_ARRAY = "RESET_IMAGES_ARRAY"
+// Renderer image extends the daemon Image with playlist-specific time
+export interface rendererImage extends Image {
+  time: number | null; // Minutes since midnight (0-1439) for time_of_day playlists
 }
 
-export interface configuration {
-    type: PLAYLIST_TYPES_TYPE;
-    interval: number | null;
-    order: PLAYLIST_ORDER_TYPES | null;
-    showAnimations: boolean;
-    alwaysStartOnFirstImage: boolean;
-}
-
-export interface rendererImage extends imageSelectType {
-    time: number | null;
-}
 export interface rendererPlaylist {
-    images: rendererImage[];
-    configuration: configuration;
-    name: string;
-    activeMonitor: ActiveMonitor;
+  id?: number; // Undefined for new playlists, set for existing
+  name: string;
+  images: PlaylistImage[];
+  configuration: PlaylistConfiguration;
 }
-export type monitorSelectType = "individual" | "clone" | "extend";
+
+export type monitorSelectType = MonitorMode;
+
 export interface Filters {
-    order: "asc" | "desc";
-    type: "name" | "id";
-    searchString: string;
-    advancedFilters: advancedFilters;
+  order: "asc" | "desc";
+  type: "name" | "id";
+  mediaType: "all" | "image" | "video" | "web" | "gif";
+  /** Token query: tag:, type:, ext:, color:, near:#hex~ΔE, q:, or plain text */
+  filterTokens: string[];
+  advancedFilters: advancedFilters;
+  /** Seed image id for palette similarity filter (CIE76); null = off. */
+  paletteSimilarToId: number | null;
+  /** Inclusive max ΔE for palette similarity (sent as palette_max_delta_e). */
+  paletteSimilarMaxDeltaE: number;
 }
 
 export interface advancedFilters {
-    formats: Formats[];
-    resolution: {
-        constraint: resolutionConstraints;
-        width: number;
-        height: number;
-    };
+  resolution: {
+    constraint: resolutionConstraints;
+    width: number;
+    height: number;
+  };
 }
 
 export type resolutionConstraints = "all" | "exact" | "moreThan" | "lessThan";
-export interface state {
-    imagesArray: rendererImage[];
-    skeletonsToShow: imagesObject | undefined;
-    filters: Filters;
-}
-
-export type action =
-    | { type: STORE_ACTIONS.SET_IMAGES_ARRAY; payload: rendererImage[] }
-    | {
-          type: STORE_ACTIONS.SET_SKELETONS_TO_SHOW;
-          payload: imagesObject | undefined;
-      }
-    | { type: STORE_ACTIONS.SET_FILTERS; payload: Filters }
-    | { type: STORE_ACTIONS.RESET_IMAGES_ARRAY; payload: rendererImage[] };

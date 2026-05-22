@@ -1,175 +1,284 @@
-import { useSortable } from "@dnd-kit/sortable";
-import { useEffect, useMemo, useRef, useCallback, useState, memo } from "react";
-import { type PLAYLIST_TYPES_TYPE } from "../../shared/types/playlist";
-import { playlistStore } from "../stores/playlist";
-import { type rendererImage } from "../types/rendererTypes";
-import { motion } from "framer-motion";
+import { CollisionPriority } from "@dnd-kit/abstract";
+import { useSortable } from "@dnd-kit/react/sortable";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { PLAYLIST_TYPES_TYPE } from "../../shared/types/playlist";
+import { usePlaylistStore } from "../stores/playlist";
+import { useImagesStore } from "../stores/images";
+import { useMonitorStore } from "../stores/monitors";
+import { useShallow } from "zustand/react/shallow";
+import { LazyMotion, m, domAnimation, useReducedMotion } from "framer-motion";
 import useDebounceCallback from "../hooks/useDebounceCallback";
-const { getThumbnailSrc } = window.API_RENDERER;
-let firstRender = true;
-const daysOfWeek = [
-    "Sunday",
-    "Monday",
-    "Tuesday",
-    "Wednesday",
-    "Thursday",
-    "Friday",
-    "Saturday"
-];
-const MiniPlaylistCard = memo(function MiniPlaylistCard({
-    Image,
-    type,
-    index,
-    isLast,
-    reorderSortingCriteria
+import type { PlaylistImage } from "../../electron/daemon-go-types";
+import type { DragSourceData } from "../stores/dragStore";
+import { useContextMenuStore } from "../stores/contextMenuStore";
+import { cn } from "../utils/cn";
+import { Card } from "./ui/Card";
+import { buildPlaylistCardMenuItems } from "../utils/contextMenuItems";
+import { getThumbnailSrc } from "../utils/utilities";
+import { miniPlaylistStripTileWidths } from "../utils/playlistMiniCardLayout";
+
+const daysOfWeek = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+
+function formatTime(totalMinutes: number): string {
+  const minutes = totalMinutes % 60;
+  const hours = (totalMinutes - minutes) / 60;
+  const mm = minutes < 10 ? `0${minutes}` : `${minutes}`;
+  const hh = hours < 10 ? `0${hours}` : `${hours}`;
+  return `${hh}:${mm}`;
+}
+
+function MiniPlaylistCard({
+  playlistImage,
+  type,
+  index,
+  isLast,
+  reorderSortingCriteria,
+  isCurrentTrack,
+  viewportCompact = false,
 }: {
-    Image: rendererImage;
-    type: PLAYLIST_TYPES_TYPE;
-    index: number;
-    isLast: boolean;
-    reorderSortingCriteria: () => void;
+  playlistImage: PlaylistImage;
+  type: PLAYLIST_TYPES_TYPE;
+  index: number;
+  isLast: boolean;
+  reorderSortingCriteria: () => void;
+  isCurrentTrack: boolean;
+  /** Shorter viewports (e.g. 1080p): narrower strip tiles + less vertical lift */
+  viewportCompact?: boolean;
 }) {
-    const { removeImagesFromPlaylist, playlistImagesTimeSet } = playlistStore();
-    const [isInvalid, setIsInvalid] = useState(false);
-    const imageRef = useRef<HTMLImageElement>(null);
-    const timeRef = useRef<HTMLInputElement>(null);
-    const imageSrc = useMemo(() => {
-        return getThumbnailSrc(Image.name);
-    }, [Image]);
-    const { attributes, listeners, setNodeRef } = useSortable({
-        id: Image.id
-    });
-    let text: string;
-    if (isLast === undefined) {
-        if (index < 6) {
-            text = `${daysOfWeek[index]}-Sunday`;
-        } else {
-            text = daysOfWeek[index];
-        }
+  const { removeImagesFromPlaylist, playlistImagesTimeSet, updateImageTime } = usePlaylistStore(
+    useShallow((s) => ({
+      removeImagesFromPlaylist: s.removeImagesFromPlaylist,
+      playlistImagesTimeSet: s.playlistImagesTimeSet,
+      updateImageTime: s.updateImageTime,
+    })),
+  );
+  const imagesMap = useImagesStore((s) => s.imagesMap);
+  const reduceMotion = useReducedMotion();
+  const openContextMenu = useContextMenuStore((s) => s.open);
+  const monitorsList = useMonitorStore((s) => s.monitorsList);
+  const [isInvalid, setIsInvalid] = useState(false);
+  const [localTime, setLocalTime] = useState(() =>
+    playlistImage.time != null ? formatTime(playlistImage.time) : "00:00",
+  );
+  const imageRef = useRef<HTMLImageElement>(null);
+
+  const imageInfo = imagesMap.get(playlistImage.image_id);
+  const imageName = imageInfo?.name || `Image #${playlistImage.image_id}`;
+  const rawThumb = imageInfo ? getThumbnailSrc(imageInfo) : "";
+  const imageSrc = rawThumb.trim() ? rawThumb : undefined;
+
+  const sortableData = useMemo<DragSourceData>(
+    () => ({
+      type: "playlist-item",
+      imageId: playlistImage.image_id,
+      insertIndex: index,
+    }),
+    [playlistImage.image_id, index],
+  );
+  const {
+    ref: sortableRef,
+    targetRef,
+    isDragging,
+  } = useSortable({
+    id: playlistImage.image_id,
+    index,
+    /** Shared sortable group so indices ↔ neighbours ; pairs with strip droppable Lowest priority. */
+    group: "playlist-edit-strip",
+    data: sortableData,
+    collisionPriority: CollisionPriority.Normal,
+  });
+
+  let text: string;
+  if (isLast === undefined) {
+    if (index < 6) {
+      text = `${daysOfWeek[index]}-Sunday`;
     } else {
-        text = daysOfWeek[index];
+      text = daysOfWeek[index];
     }
-    const onRemove = useCallback(() => {
-        Image.isChecked = false;
-        removeImagesFromPlaylist(new Set<number>().add(Image.id));
-    }, []);
+  } else {
+    text = daysOfWeek[index];
+  }
 
-    const reOrderDebounced = useDebounceCallback(() => {
-        reorderSortingCriteria();
-    }, 200);
-    useEffect(() => {
-        if (
-            timeRef.current !== null &&
-            Image.time !== null &&
-            type === "timeofday"
-        ) {
-            let minutes: string | number = Image.time % 60;
-            let hours: string | number = (Image.time - minutes) / 60;
-            minutes = minutes < 10 ? "0" + minutes : minutes;
-            hours = hours < 10 ? "0" + hours : hours;
-            timeRef.current.value = `${hours}:${minutes}`;
-        }
-    }, [type, Image.time, playlistImagesTimeSet]);
+  const onRemove = () => {
+    removeImagesFromPlaylist(new Set<number>().add(playlistImage.image_id));
+  };
 
-    useEffect(() => {
-        if (firstRender) {
-            firstRender = false;
-            return;
-        }
-        if (isLast) {
-            setTimeout(() => {
-                imageRef.current?.scrollIntoView({
-                    behavior: "smooth"
-                });
-            }, 500);
-        }
-    }, [index]);
-    return (
-        <motion.div
-            layout
-            key={Image.id}
-            initial={{ scale: 0.5 }}
-            animate={{ scale: 1 }}
-            exit={{ scale: 0 }}
-            transition={{ duration: 0.2 }}
-            ref={setNodeRef}
-        >
-            <div className="mx-1 mb-2 w-32 shrink-0 rounded-lg shadow-xl">
-                {type === "timeofday" && (
-                    <div className="flex max-h-[fit] flex-col">
-                        <span
-                            className={
-                                isInvalid
-                                    ? "rounded-md font-semibold italic"
-                                    : "opacity-0"
-                            }
-                        >
-                            Invalid time
-                        </span>
-                        <input
-                            type="time"
-                            ref={timeRef}
-                            className="input input-sm input-bordered mb-2 ml-1 rounded-md invalid:bg-red-800 focus:outline-none"
-                            onChange={e => {
-                                const stringValue = e.currentTarget.value;
-                                const [hours, minutes] = stringValue.split(":");
-                                const newTimeSum =
-                                    Number(hours) * 60 + Number(minutes);
-                                if (playlistImagesTimeSet.has(newTimeSum)) {
-                                    e.currentTarget.setCustomValidity(
-                                        "invalid time, another image has the same time"
-                                    );
-                                    setIsInvalid(true);
-                                } else {
-                                    e.currentTarget.setCustomValidity("");
-                                    setIsInvalid(false);
-                                    playlistImagesTimeSet.delete(
-                                        Image.time ?? -1
-                                    );
-                                    Image.time = newTimeSum;
-                                    playlistImagesTimeSet.add(newTimeSum);
-                                    reOrderDebounced();
-                                }
-                            }}
-                        />
-                    </div>
-                )}
-                <span className="h-full text-clip whitespace-nowrap font-bold text-stone-100 shadow-xl">
-                    {type === "dayofweek" ? text : undefined}
-                </span>
-                <div className="relative">
-                    <button
-                        onClick={onRemove}
-                        className="absolute right-0 top-0 cursor-default rounded-md opacity-0 transition-all hover:bg-error hover:opacity-100"
-                    >
-                        <svg
-                            xmlns="http://www.w3.org/2000/svg"
-                            className="h-5 w-5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke="#F3D8D2"
-                        >
-                            <path
-                                strokeLinecap="round"
-                                strokeLinejoin="round"
-                                strokeWidth="3"
-                                d="M6 18L18 6M6 6l12 12"
-                            />
-                        </svg>
-                    </button>
-                </div>
-                <img
-                    {...attributes}
-                    {...listeners}
-                    src={imageSrc}
-                    alt={Image.name}
-                    className="cursor-default rounded-lg shadow-2xl transition-all active:scale-105 active:opacity-45"
-                    ref={imageRef}
-                    loading="lazy"
-                />
-            </div>
-        </motion.div>
+  const handleContextMenu = (e: React.MouseEvent) => {
+    const items = buildPlaylistCardMenuItems(
+      playlistImage,
+      imageName,
+      playlistImage.image_id,
+      monitorsList,
     );
-});
+    openContextMenu(e, items);
+  };
+
+  const reOrderDebounced = useDebounceCallback(() => {
+    reorderSortingCriteria();
+  }, 200);
+
+  // Sync local time from store when the store value changes (e.g. after reorder)
+  useEffect(() => {
+    if (playlistImage.time != null && type === "time_of_day") {
+      setLocalTime(formatTime(playlistImage.time));
+      setIsInvalid(false);
+    }
+  }, [type, playlistImage.time]);
+
+  const commitTime = useCallback(() => {
+    if (!localTime) return;
+    const [hours, minutes] = localTime.split(":");
+    const newTimeSum = Number(hours) * 60 + Number(minutes);
+    if (playlistImagesTimeSet.has(newTimeSum) && newTimeSum !== playlistImage.time) {
+      setIsInvalid(true);
+    } else {
+      setIsInvalid(false);
+      if (newTimeSum !== playlistImage.time) {
+        updateImageTime(playlistImage.image_id, playlistImage.time ?? undefined, newTimeSum);
+        reOrderDebounced();
+      }
+    }
+  }, [
+    localTime,
+    playlistImagesTimeSet,
+    playlistImage.time,
+    playlistImage.image_id,
+    updateImageTime,
+    reOrderDebounced,
+  ]);
+
+  const hasCaption = type === "time_of_day" || type === "day_of_week";
+
+  const stripWidths = miniPlaylistStripTileWidths(viewportCompact);
+  const cardClass = cn(
+    "mx-1 mb-2 shrink-0 relative group neo-mini-card rounded-[var(--wp-radius-md)] shadow-xl transition-shadow duration-300 ease-out motion-reduce:transition-none",
+    stripWidths,
+    isCurrentTrack && "neo-mini-card--current z-[2] shadow-[0_14px_28px_-6px_rgba(0,0,0,0.28)]",
+  );
+
+  const imgClass = cn(
+    "w-full aspect-[3/2] object-cover cursor-default transition-all active:scale-105 active:opacity-45",
+    hasCaption ? "rounded-t-[var(--wp-radius-md)]" : "rounded-[var(--wp-radius-md)]",
+  );
+
+  const removeButton = (
+    <button
+      type="button"
+      onClick={onRemove}
+      className="neo-remove-btn absolute right-0 top-0 cursor-default rounded-[var(--wp-radius-sm)] opacity-0 transition-all hover:bg-error hover:opacity-100 group-hover:opacity-100"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        className="h-5 w-5 stroke-error-content"
+        fill="none"
+        viewBox="0 0 24 24"
+      >
+        <title>Remove</title>
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth="2"
+          d="M6 18L18 6M6 6l12 12"
+        />
+      </svg>
+    </button>
+  );
+
+  const captionPad = viewportCompact ? "px-1 py-1" : "px-1.5 py-1.5";
+  const captionClass = `${captionPad} flex flex-col items-center gap-0.5 bg-base-200/60 rounded-b-[var(--wp-radius-md)]`;
+
+  const liftPx = viewportCompact ? 8 : 12;
+
+  return (
+    <LazyMotion features={domAnimation}>
+      <m.div
+        layout="position"
+        key={playlistImage.image_id}
+        transition={{
+          layout: { duration: 0.25, ease: [0.25, 1, 0.5, 1] },
+        }}
+        ref={sortableRef}
+        className="shrink-0"
+      >
+        {/* Y-lift here (not CSS translate): layout + dnd-kit also use transform on the outer node; Framer animates y reliably on a child. */}
+        <m.div
+          animate={{ y: isCurrentTrack ? -liftPx : 0 }}
+          transition={{
+            y: {
+              duration: reduceMotion ? 0 : 0.28,
+              ease: [0.22, 1, 0.36, 1],
+            },
+          }}
+        >
+          <Card
+            ref={targetRef}
+            elevation={0}
+            className={`${cardClass}${isDragging ? " opacity-50" : ""}`}
+            onContextMenu={handleContextMenu}
+            aria-current={isCurrentTrack ? "true" : undefined}
+            data-active-playlist-item={isCurrentTrack ? "true" : undefined}
+            data-playlist-image-id={playlistImage.image_id}
+            tabIndex={isCurrentTrack ? -1 : undefined}
+            title={isCurrentTrack ? "Current wallpaper" : undefined}
+          >
+            {removeButton}
+            <div className="overflow-hidden">
+              {imageSrc ? (
+                <img
+                  src={imageSrc}
+                  alt={imageName}
+                  className={imgClass}
+                  ref={imageRef}
+                  loading="lazy"
+                />
+              ) : (
+                <div
+                  className={`${imgClass} bg-base-300 flex items-center justify-center text-[10px] font-semibold uppercase text-base-content/50`}
+                  aria-hidden
+                >
+                  {imageInfo?.media_type === "web"
+                    ? "web"
+                    : imageInfo?.media_type === "video"
+                      ? "video"
+                      : "—"}
+                </div>
+              )}
+            </div>
+
+            {/* Polaroid-style caption below the image */}
+            {type === "time_of_day" && (
+              <div className={captionClass}>
+                <input
+                  type="time"
+                  value={localTime}
+                  className="input input-xs w-full text-center invalid:bg-error focus:outline-hidden"
+                  onChange={(e) => setLocalTime(e.currentTarget.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") {
+                      e.currentTarget.blur();
+                    }
+                  }}
+                  onBlur={commitTime}
+                />
+                {isInvalid && (
+                  <span className="text-[0.6rem] font-semibold italic text-error leading-tight">
+                    Duplicate time
+                  </span>
+                )}
+              </div>
+            )}
+            {type === "day_of_week" && (
+              <div className={captionClass}>
+                <span className="w-full truncate text-center text-[0.65rem] font-bold uppercase tracking-wide text-base-content">
+                  {text}
+                </span>
+              </div>
+            )}
+          </Card>
+        </m.div>
+      </m.div>
+    </LazyMotion>
+  );
+}
 
 export default MiniPlaylistCard;

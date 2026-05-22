@@ -1,0 +1,255 @@
+# Waypaper Engine - Top-level build orchestration
+#
+# Targets:
+#   make daemon           - Build the Go daemon/CLI binary
+#   make frontend         - Build the Vite/React frontend
+#   make electron         - Build unpacked Electron artifact
+#   make appimage         - Build AppImage artifact
+#   make install          - Install daemon + unpacked Electron (no build)
+#   make install-appimage - Install built AppImage (no build)
+#   make install-daemon - Install just the daemon/CLI binary
+#   make uninstall      - Remove files installed by make install
+#   make clean          - Remove all build artifacts
+#
+# Install paths:
+#   ELECTRON_APP_ROOT / APPIMAGE_APP_ROOT — runtime paths baked into launchers (no DESTDIR).
+#   ELECTRON_APP_INSTALL_DIR / APPIMAGE_INSTALL_DIR — $(DESTDIR)$(…_APP_ROOT) for cp/install -m.
+
+PREFIX ?= $(HOME)/.local
+DESTDIR ?=
+# Unpacked Electron: on disk under DESTDIR+root; launcher embeds this path only (no DESTDIR).
+ELECTRON_APP_ROOT ?= $(PREFIX)/opt/waypaper-engine
+ELECTRON_APP_INSTALL_DIR = $(DESTDIR)$(ELECTRON_APP_ROOT)
+# AppImage install directory (same pattern).
+APPIMAGE_APP_ROOT ?= $(PREFIX)/opt/waypaper-engine-appimage
+APPIMAGE_INSTALL_DIR = $(DESTDIR)$(APPIMAGE_APP_ROOT)
+
+BIN_DIR ?= $(DESTDIR)$(PREFIX)/bin
+DESKTOP_DIR ?= $(DESTDIR)$(PREFIX)/share/applications
+# pixmaps/ avoids icons/hicolor/... which is often root-owned on distros and breaks user-local install.
+ICON_DIR ?= $(DESTDIR)$(PREFIX)/share/pixmaps
+SYSTEMD_DIR ?= $(DESTDIR)$(HOME)/.config/systemd/user
+APPIMAGE_NAME = waypaper-engine.AppImage
+APPIMAGE_ICON_NAME = waypaper-engine-appimage.png
+INSTALL_PREFIX_SYSTEM := /usr/local
+SYSTEMD_DIR_SYSTEM := $(DESTDIR)$(INSTALL_PREFIX_SYSTEM)/lib/systemd/user
+DAEMON_BUILD_DIR = daemon/build
+DAEMON_BINARY = $(DAEMON_BUILD_DIR)/waypaper-daemon
+DAEMON_CMD = ./cmd/daemon
+DAEMON_VERSION = $(shell git -C daemon describe --tags --always --dirty 2>/dev/null || echo "dev")
+DAEMON_LDFLAGS = -s -w -X main.version=$(DAEMON_VERSION)
+
+# Source of truth for the wal-qt OpenAPI spec (override to a local checkout).
+WALQT_REPO ?= ../wal-qt
+
+.PHONY: all build build-appimage help deps daemon frontend linux-packages electron appimage package-electron-dir package-appimage \
+	verify-daemon-binary verify-ui-artifacts verify-appimage-artifact \
+	install install-all install-ui install-daemon install-systemd install-appimage install-system install-appimage-system \
+	uninstall uninstall-ui uninstall-daemon uninstall-systemd uninstall-appimage uninstall-system uninstall-appimage-system clean \
+	sync-walqt-spec walqt-spec-check
+
+all: electron
+build: electron
+build-appimage: appimage
+
+help:
+	@echo "Waypaper Engine build/install targets"
+	@echo ""
+	@echo "Build:"
+	@echo "  make deps                Install pnpm dependencies (frozen lockfile)"
+	@echo "  make daemon              Build Go daemon"
+	@echo "  make frontend            Build Vite frontend (depends on daemon)"
+	@echo "  make electron            Build unpacked Electron dir (release/linux-unpacked)"
+	@echo "  make appimage            Build AppImage artifact (release/*.AppImage)"
+	@echo "  make build               Alias for make electron"
+	@echo "  make build-appimage      Alias for make appimage"
+	@echo ""
+	@echo "Install:"
+	@echo "  make install             Install daemon + unpacked app to ~/.local (no sudo)"
+	@echo "  make install-appimage    Install built AppImage to ~/.local (no sudo)"
+	@echo "  make uninstall           Remove user-local unpacked install files"
+	@echo "  make uninstall-appimage  Remove user-local AppImage install files"
+	@echo "  make install-system      Install to /usr/local + /opt (sudo)"
+	@echo "  make uninstall-system    Remove system unpacked install files"
+	@echo "  make install-appimage-system    Install AppImage to /usr/local + /opt (sudo)"
+	@echo "  make uninstall-appimage-system  Remove system AppImage install files"
+	@echo ""
+	@echo "Variables:"
+	@echo "  PREFIX=$(PREFIX)"
+	@echo "  DESTDIR=$(DESTDIR)"
+	@echo "  ELECTRON_APP_ROOT (runtime path for GUI; default PREFIX/opt/waypaper-engine)"
+	@echo "  APPIMAGE_APP_ROOT (runtime path for AppImage file)"
+	@echo "  ICON_DIR (default PREFIX/share/pixmaps; override for hicolor theme paths)"
+
+# ---------------------------------------------------------------------------
+# Build targets
+# ---------------------------------------------------------------------------
+
+deps:
+	pnpm install --frozen-lockfile
+
+daemon:
+	@mkdir -p $(DAEMON_BUILD_DIR)
+	cd daemon && go build -ldflags "$(DAEMON_LDFLAGS)" -o build/waypaper-daemon $(DAEMON_CMD)
+
+frontend: daemon
+	pnpm exec vite build
+
+# electron-builder Linux target: `dir` (unpacked) for `make electron`/installs,
+# `appImage` for `make appimage`/releases. Building only what each target needs
+# keeps the unpacked-install path (and AUR builds) from producing an unused
+# AppImage and pulling AppImage tooling over the network.
+ELECTRON_BUILDER_TARGET ?= dir
+
+linux-packages: frontend
+	pnpm exec electron-builder --publish never --config electron-builder.json --linux $(ELECTRON_BUILDER_TARGET)
+
+electron: ELECTRON_BUILDER_TARGET := dir
+electron: linux-packages
+appimage: ELECTRON_BUILDER_TARGET := appImage
+appimage: linux-packages
+
+package-electron-dir: electron
+package-appimage: appimage
+
+# ---------------------------------------------------------------------------
+# Install targets
+# ---------------------------------------------------------------------------
+
+verify-daemon-binary:
+	@test -f $(DAEMON_BINARY) || (echo "Missing $(DAEMON_BINARY). Run: make daemon" && exit 1)
+
+verify-ui-artifacts:
+	@test -d release/linux-unpacked || (echo "Missing release/linux-unpacked. Run: make electron" && exit 1)
+
+verify-appimage-artifact:
+	@APPIMAGE_PATH="$$(ls -t release/*.AppImage 2>/dev/null | head -n 1)"; \
+	if [ -z "$$APPIMAGE_PATH" ]; then \
+		echo "Missing AppImage artifact in release/. Run: make appimage"; \
+		exit 1; \
+	fi
+
+install-daemon: verify-daemon-binary
+	install -Dm755 $(DAEMON_BINARY) $(BIN_DIR)/waypaper-daemon
+
+install-systemd:
+	install -Dm644 waypaper-daemon.service $(SYSTEMD_DIR)/waypaper-daemon.service
+
+# Launcher is generated so GUI_BIN matches ELECTRON_APP_ROOT (DESTDIR is never embedded).
+install-ui: verify-ui-artifacts
+	install -dm755 $(ELECTRON_APP_INSTALL_DIR)
+	cp -r release/linux-unpacked/* $(ELECTRON_APP_INSTALL_DIR)/
+	chmod 755 $(ELECTRON_APP_INSTALL_DIR)/waypaper-engine-bin
+	sed 's|@WAYPAPER_GUI_BIN@|$(ELECTRON_APP_ROOT)/waypaper-engine-bin|g' waypaper-engine.sh.in | install -Dm755 /dev/stdin $(BIN_DIR)/waypaper-engine
+	install -dm755 $(DESKTOP_DIR) $(ICON_DIR)
+	install -m644 waypaper-engine.desktop $(DESKTOP_DIR)/waypaper-engine.desktop
+	install -m644 build/icons/512x512.png $(ICON_DIR)/waypaper-engine.png
+
+install-all: install
+
+install: install-ui install-daemon install-systemd
+
+install-appimage: verify-appimage-artifact
+	install -dm755 $(APPIMAGE_INSTALL_DIR)
+	@APPIMAGE_PATH="$$(ls -t release/*.AppImage | head -n 1)"; \
+	install -Dm755 "$$APPIMAGE_PATH" $(APPIMAGE_INSTALL_DIR)/$(APPIMAGE_NAME)
+	printf '#!/bin/sh\nexec %s/%s "$$@"\n' "$(APPIMAGE_APP_ROOT)" "$(APPIMAGE_NAME)" | install -Dm755 /dev/stdin $(BIN_DIR)/waypaper-engine-appimage
+	printf '%s\n' \
+		'[Desktop Entry]' \
+		'Type=Application' \
+		'Name=Waypaper Engine (AppImage)' \
+		'GenericName=Wallpaper Management' \
+		'Comment=Portable AppImage install for Waypaper Engine' \
+		'Exec=waypaper-engine-appimage run' \
+		'Icon=waypaper-engine-appimage' \
+		'Categories=Utility;Graphics;' \
+		'Terminal=false' \
+		'StartupNotify=true' \
+		'Keywords=wallpaper;playlist;electron;' | install -Dm644 /dev/stdin $(DESKTOP_DIR)/waypaper-engine-appimage.desktop
+	install -dm755 $(ICON_DIR)
+	install -m644 build/icons/512x512.png $(ICON_DIR)/$(APPIMAGE_ICON_NAME)
+
+uninstall-ui:
+	rm -rf $(ELECTRON_APP_INSTALL_DIR)
+	rm -f $(BIN_DIR)/waypaper-engine
+	rm -f $(DESKTOP_DIR)/waypaper-engine.desktop
+	rm -f $(ICON_DIR)/waypaper-engine.png
+
+uninstall-daemon:
+	rm -f $(BIN_DIR)/waypaper-daemon
+
+uninstall-systemd:
+	rm -f $(SYSTEMD_DIR)/waypaper-daemon.service
+
+uninstall: uninstall-ui uninstall-daemon uninstall-systemd
+
+uninstall-appimage:
+	rm -rf $(APPIMAGE_INSTALL_DIR)
+	rm -f $(BIN_DIR)/waypaper-engine-appimage
+	rm -f $(DESKTOP_DIR)/waypaper-engine-appimage.desktop
+	rm -f $(ICON_DIR)/$(APPIMAGE_ICON_NAME)
+
+install-system:
+	$(MAKE) install \
+		DESTDIR="$(DESTDIR)" \
+		PREFIX="$(INSTALL_PREFIX_SYSTEM)" \
+		ELECTRON_APP_ROOT=/opt/waypaper-engine \
+		APPIMAGE_APP_ROOT=/opt/waypaper-engine-appimage \
+		SYSTEMD_DIR="$(SYSTEMD_DIR_SYSTEM)"
+
+uninstall-system:
+	$(MAKE) uninstall \
+		DESTDIR="$(DESTDIR)" \
+		PREFIX="$(INSTALL_PREFIX_SYSTEM)" \
+		ELECTRON_APP_ROOT=/opt/waypaper-engine \
+		APPIMAGE_APP_ROOT=/opt/waypaper-engine-appimage \
+		SYSTEMD_DIR="$(SYSTEMD_DIR_SYSTEM)"
+
+install-appimage-system:
+	$(MAKE) install-appimage \
+		DESTDIR="$(DESTDIR)" \
+		PREFIX="$(INSTALL_PREFIX_SYSTEM)" \
+		ELECTRON_APP_ROOT=/opt/waypaper-engine \
+		APPIMAGE_APP_ROOT=/opt/waypaper-engine-appimage \
+		SYSTEMD_DIR="$(SYSTEMD_DIR_SYSTEM)"
+
+uninstall-appimage-system:
+	$(MAKE) uninstall-appimage \
+		DESTDIR="$(DESTDIR)" \
+		PREFIX="$(INSTALL_PREFIX_SYSTEM)" \
+		ELECTRON_APP_ROOT=/opt/waypaper-engine \
+		APPIMAGE_APP_ROOT=/opt/waypaper-engine-appimage \
+		SYSTEMD_DIR="$(SYSTEMD_DIR_SYSTEM)"
+
+# ---------------------------------------------------------------------------
+# wal-qt OpenAPI spec sync and CI check
+# ---------------------------------------------------------------------------
+
+# sync-walqt-spec: copy the wal-qt OpenAPI spec from the upstream repo,
+# regenerate the daemon client, and report what changed.
+sync-walqt-spec:
+	@echo "==> Syncing wal-qt OpenAPI spec from $(WALQT_REPO)"
+	cp "$(WALQT_REPO)/openapi/wal-qt.yaml" daemon/internal/backend/walqt/openapi/wal-qt.yaml
+	@echo "==> Regenerating walqtclient from vendored spec"
+	cd daemon && go generate ./internal/backend/walqt/walqtclient/...
+	@echo "==> Changed files:"
+	git status --short daemon/internal/backend/walqt/
+
+# walqt-spec-check: verify the vendored spec and generated client are in sync
+# with what would be produced from the upstream repo. Used by CI.
+walqt-spec-check:
+	@echo "==> Checking wal-qt spec is in sync with $(WALQT_REPO)"
+	cp "$(WALQT_REPO)/openapi/wal-qt.yaml" daemon/internal/backend/walqt/openapi/wal-qt.yaml
+	cd daemon && go generate ./internal/backend/walqt/walqtclient/...
+	@echo "==> Verifying no uncommitted changes in vendored spec and generated client"
+	git diff --exit-code daemon/internal/backend/walqt/openapi/wal-qt.yaml daemon/internal/backend/walqt/walqtclient/client.gen.go
+	@echo "==> wal-qt spec check passed"
+
+# ---------------------------------------------------------------------------
+# Clean
+# ---------------------------------------------------------------------------
+
+clean:
+	rm -rf $(DAEMON_BUILD_DIR)
+	cd daemon && go clean
+	rm -rf dist dist-electron release

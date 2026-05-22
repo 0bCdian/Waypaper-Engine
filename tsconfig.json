@@ -1,31 +1,52 @@
 {
-    "compilerOptions": {
-        "target": "ES2020",
-        "useDefineForClassFields": true,
-        "lib": ["ESNext.Array", "ESNext", "ES2020", "DOM", "DOM.Iterable"],
-        "module": "CommonJS",
-        "skipLibCheck": true,
-        "esModuleInterop": true,
-        "allowSyntheticDefaultImports": true,
-        "inlineSourceMap": true,
-        "inlineSources": true,
-        /* Bundler mode */
-        "allowImportingTsExtensions": true,
-        "resolveJsonModule": true,
-        "isolatedModules": true,
-        "noEmit": true,
-        "jsx": "react-jsx",
-        /* Linting */
-        "strict": true,
-        "noUnusedLocals": true,
-        "noUnusedParameters": true,
-        "noFallthroughCasesInSwitch": true,
-        "allowUmdGlobalAccess": true,
-        "declarationMap": true,
-        "composite": true,
-        "outDir": "dist"
-    },
+  "compilerOptions": {
+    "target": "ES2020",
+    "useDefineForClassFields": true,
+    "lib": ["ESNext.Array", "ESNext", "ES2020", "DOM", "DOM.Iterable"],
+    "module": "ES2020",
+    "moduleResolution": "bundler",
     "skipLibCheck": true,
-    "include": ["**/*.ts", "**/*.tsx", "drizzle.config.ts"],
-    "references": [{ "path": "./tsconfig.node.json" }]
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "inlineSourceMap": true,
+    "inlineSources": true,
+    /* Bundler mode */
+    "allowImportingTsExtensions": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "jsx": "react-jsx",
+    /* Linting */
+    "strict": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "noFallthroughCasesInSwitch": true,
+    "allowUmdGlobalAccess": true,
+    "declarationMap": true,
+    "composite": true,
+    "outDir": "dist",
+    /* Path mapping */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": ["src/*"],
+      "@/components/*": ["src/components/*"],
+      "@/utils/*": ["src/utils/*"],
+      "@/stores/*": ["src/stores/*"],
+      "@/shared/*": ["shared/*"],
+      "@/types/*": ["src/types/*", "types/*"]
+    }
+  },
+  "skipLibCheck": true,
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "electron/**/*.ts",
+    "shared/**/*.ts",
+    "types/**/*.ts",
+    "utils/**/*.ts",
+    "database/**/*.ts",
+    "globals/**/*.ts",
+    "drizzle.config.ts"
+  ],
+  "references": [{ "path": "./tsconfig.node.json" }]
 }

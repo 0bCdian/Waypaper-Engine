@@ -1,0 +1,49 @@
+[tools]
+node = "22"
+pnpm = "9.15.9"
+go = "1.26"
+python = "3.12"
+
+[tasks.deps]
+description = "Install Node dependencies"
+run = "pnpm install --frozen-lockfile"
+
+[tasks.daemon]
+description = "Build Go daemon binary"
+run = "pnpm run build:daemon"
+
+[tasks.build]
+description = "Build app artifacts"
+run = "pnpm run build"
+
+[tasks."format-check"]
+description = "Check formatting with Oxfmt"
+run = "pnpm run format:check"
+
+[tasks."lint-check"]
+description = "Run frontend lint checks"
+run = "pnpm run lint:check"
+
+[tasks."gofmt-check"]
+description = "Check Go formatting"
+run = "pnpm run gofmt:check"
+
+[tasks.typecheck]
+description = "Run TypeScript typecheck"
+run = "pnpm exec tsc --noEmit"
+
+[tasks.test]
+description = "Run frontend unit tests"
+run = "pnpm run test"
+
+[tasks."test-daemon"]
+description = "Run daemon unit tests"
+run = "pnpm run test:daemon:unit"
+
+[tasks."precommit-all"]
+description = "Run all pre-commit hooks"
+run = "pre-commit run --all-files"
+
+[tasks.ci]
+description = "Run local CI-equivalent checks"
+run = "pnpm run ci:check"

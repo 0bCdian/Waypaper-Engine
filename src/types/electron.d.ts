@@ -1,0 +1,261 @@
+import type {
+  Image,
+  ImageQueryParams,
+  PaginatedResponse,
+  ImageHistoryEntry,
+  UpdateImageRequest,
+  Playlist,
+  CreatePlaylistRequest,
+  UpdatePlaylistRequest,
+  ActivePlaylistInstance,
+  Monitor,
+  UnifiedConfig,
+  BackendInfo,
+  BackendCapabilities,
+  DaemonInfo,
+  MonitorMode,
+  WallpaperCurrent,
+  EventType,
+  Folder,
+  VideoLoopExportRequest,
+  VideoLoopExportResult,
+  ExtractVideoPaletteRequest,
+  ExtractVideoPaletteResult,
+} from "../../electron/daemon-go-types";
+declare global {
+  const __DEBUG__: boolean;
+  const __PLATFORM__: NodeJS.Platform;
+  interface DaemonStatus {
+    isRunning: boolean;
+    lastChecked: number;
+    lastError?: string;
+  }
+  interface Window {
+    monitors?: {
+      showModal: () => void;
+      closeModal: () => void;
+      close: () => void;
+    };
+    API_RENDERER: {
+      goDaemon: {
+        // HEALTH & SYSTEM
+        ping: () => Promise<boolean>;
+        getInfo: () => Promise<DaemonInfo>;
+        getCapabilities: () => Promise<{ ffmpeg_available: boolean }>;
+        shutdown: () => Promise<void>;
+
+        // IMAGES
+        getImages: (params?: ImageQueryParams) => Promise<PaginatedResponse<Image>>;
+        getImage: (id: number) => Promise<Image>;
+        ensureBrowserPreview: (id: number, force?: boolean) => Promise<Image>;
+        videoLoopExport: (
+          id: number,
+          body: VideoLoopExportRequest,
+        ) => Promise<VideoLoopExportResult>;
+        extractVideoPalette: (
+          id: number,
+          body: ExtractVideoPaletteRequest,
+        ) => Promise<ExtractVideoPaletteResult>;
+        importImages: (
+          paths: string[],
+          folderID?: number | null,
+        ) => Promise<{ status: string; total: number }>;
+        importWebWallpaper: (path: string, folderID?: number | null) => Promise<Image>;
+        cancelImport: (batchID: string) => Promise<{ status: string; batch_id: string }>;
+        deleteImages: (ids: number[]) => Promise<{ deleted: number }>;
+        updateImage: (id: number, update: UpdateImageRequest) => Promise<Image>;
+        selectAllImages: (selected: boolean) => Promise<{ updated: number; selected: boolean }>;
+        getImageTags: () => Promise<{ tags: string[] }>;
+        getImageHistory: (limit?: number, monitor?: string) => Promise<ImageHistoryEntry[]>;
+        clearImageHistory: () => Promise<{ status: string }>;
+
+        // WALLPAPER
+        getCurrentWallpapers: () => Promise<WallpaperCurrent>;
+        setWallpaper: (
+          imageId: number,
+          monitor?: string,
+          mode?: MonitorMode,
+          monitors?: string[],
+        ) => Promise<{
+          status: string;
+          image_id: number;
+          monitor: string;
+          mode: string;
+        }>;
+        setRandomWallpaper: (
+          monitor?: string,
+          mode?: MonitorMode,
+        ) => Promise<{
+          status: string;
+          image_id: number;
+          monitor: string;
+          mode: string;
+        }>;
+
+        // PLAYLISTS
+        getPlaylists: () => Promise<Playlist[]>;
+        getPlaylist: (id: number) => Promise<Playlist>;
+        createPlaylist: (playlist: CreatePlaylistRequest) => Promise<Playlist>;
+        updatePlaylist: (id: number, update: UpdatePlaylistRequest) => Promise<Playlist>;
+        deletePlaylist: (id: number) => Promise<void>;
+        startPlaylist: (id: number, monitor?: string, mode?: MonitorMode) => Promise<void>;
+        stopPlaylist: (id: number) => Promise<void>;
+        pausePlaylist: (id: number) => Promise<void>;
+        resumePlaylist: (id: number) => Promise<void>;
+        nextPlaylistImage: (id: number) => Promise<void>;
+        previousPlaylistImage: (id: number) => Promise<void>;
+        getActivePlaylists: () => Promise<ActivePlaylistInstance[]>;
+        getActivePlaylistForMonitor: (monitor: string) => Promise<ActivePlaylistInstance>;
+        stopAllPlaylists: () => Promise<void>;
+
+        // FOLDERS
+        getFolders: (parentId?: number | null, search?: string) => Promise<{ data: Folder[] }>;
+        getFolder: (id: number) => Promise<Folder>;
+        getFolderPath: (id: number) => Promise<{ data: Folder[] }>;
+        createFolder: (name: string, parentId?: number | null) => Promise<Folder>;
+        updateFolder: (
+          id: number,
+          update: { name?: string; parent_id?: number | null },
+        ) => Promise<Folder>;
+        deleteFolder: (
+          id: number,
+          mode?: "keep_contents" | "delete_all",
+        ) => Promise<{ deleted: boolean; mode: string }>;
+        moveImagesToFolder: (
+          imageIds: number[],
+          folderId: number | null,
+        ) => Promise<{ moved: number }>;
+
+        // MONITORS
+        getMonitors: () => Promise<Monitor[]>;
+        getMonitor: (name: string) => Promise<Monitor>;
+
+        // CONFIG
+        getConfig: () => Promise<UnifiedConfig>;
+        updateConfig: (config: Partial<UnifiedConfig>) => Promise<UnifiedConfig>;
+        getConfigSection: (section: string) => Promise<unknown>;
+        updateConfigSection: (section: string, data: Record<string, unknown>) => Promise<unknown>;
+        getBackendConfig: (name: string) => Promise<Record<string, unknown>>;
+        updateBackendConfig: (name: string, patch: Record<string, unknown>) => Promise<void>;
+        resetAllConfig: () => Promise<UnifiedConfig>;
+        resetBackendConfig: (name: string) => Promise<{ status: string }>;
+
+        // BACKENDS
+        getBackends: () => Promise<BackendInfo[]>;
+        getBackendCapabilities: () => Promise<BackendCapabilities | null>;
+        activateBackend: (name: string) => Promise<{ status: string; backend: string }>;
+
+        // EVENT LISTENERS
+        on: (event: EventType, callback: (data: unknown) => void) => () => void;
+      };
+
+      // THEME MANAGEMENT
+      getNativeTheme: () => Promise<unknown>;
+      setThemeSource: (source: "system" | "light" | "dark") => Promise<void>;
+      onNativeThemeUpdated: (callback: (themeInfo: unknown) => void) => void;
+      onThemeChanged: (callback: (data: unknown) => void) => void;
+
+      // SYSTEM INFO
+      getAppInfo: () => Promise<unknown>;
+      ping: () => Promise<unknown>;
+
+      // WINDOW MANAGEMENT
+      getWindowBounds: () => Promise<Electron.Rectangle>;
+      setWindowBounds: (bounds: Electron.Rectangle) => Promise<void>;
+      minimizeWindow: () => Promise<void>;
+      maximizeWindow: () => Promise<void>;
+      closeWindow: () => Promise<void>;
+      hideWindow: () => Promise<void>;
+      showWindow: () => Promise<void>;
+
+      // APPLICATION CONTROL
+      exitApp: () => Promise<void>;
+
+      // DAEMON MANAGEMENT
+      getDaemonStatus: () => Promise<DaemonStatus>;
+      restartDaemon: () => Promise<{ success: true }>;
+      startDaemon: () => Promise<{ success: true }>;
+      stopDaemon: () => Promise<{ success: true }>;
+
+      // EVENT LISTENERS
+      onAppError: (callback: (error: unknown) => void) => () => void;
+      onDaemonStatusUpdate: (callback: (data: unknown) => void) => () => void;
+      removeAllListeners: (channel: string) => void;
+
+      // WALLHAVEN API
+      wallhaven: {
+        search: (params: Record<string, string>) => Promise<unknown>;
+        getWallpaper: (id: string) => Promise<unknown>;
+        testApiKey: (apiKey: string) => Promise<unknown>;
+        download: (imageUrl: string) => Promise<string>;
+      };
+
+      // FILE OPERATIONS
+      getPathForFile: (file: File) => string;
+      downloadUrl: (url: string) => Promise<string>;
+      openFiles: (action: "file" | "folder" | "video" | "web") => Promise<{
+        files: string[];
+        webRoots?: string[];
+        folderName?: string;
+      }>;
+
+      writeShaderWebWallpaperPackage: (
+        payload:
+          | {
+              kind?: "single";
+              shader: string;
+              title: string;
+              mode: "temp" | "export";
+              previewPngBuffers?: Uint8Array[];
+              previewFps?: number;
+            }
+          | {
+              kind: "multipass";
+              multipass: import("@/shaderStudio/buildWallpaperPackage").MultipassPayload;
+              title: string;
+              mode: "temp" | "export";
+              previewPngBuffers?: Uint8Array[];
+              previewFps?: number;
+            },
+      ) => Promise<{ canceled: boolean; packageDir: string }>;
+      scanDirectory: (dirPath: string) => Promise<{
+        files: string[];
+        webRoots: string[];
+        folderName: string;
+      }>;
+      handleOpenImages: (imagesObject: {
+        files: string[];
+        folder_id?: number;
+      }) => Promise<{ message: string }>;
+
+      revealInFileManager: (path: string) => Promise<boolean>;
+
+      exportWallpapersToFolder: (
+        items: Array<{
+          id: number;
+          name: string;
+          path: string;
+          media_type: string;
+          package_root?: string | null;
+        }>,
+      ) => Promise<{
+        canceled: boolean;
+        destination: string;
+        exported: number;
+        failed: number;
+      }>;
+
+      checkYtDlp: () => Promise<{ available: boolean }>;
+      startYoutubeDownload: (url: string) => Promise<{ jobId: string }>;
+      cancelYoutubeDownload: (jobId: string) => Promise<{ canceled: boolean }>;
+      onYoutubeDownloadEvent: (callback: (event: unknown) => void) => () => void;
+
+      // LOGGING
+      logToMain: (
+        level: "debug" | "info" | "warn" | "error",
+        message: string,
+        data?: Record<string, unknown>,
+      ) => void;
+    };
+  }
+}

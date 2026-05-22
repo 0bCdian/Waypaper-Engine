@@ -1,0 +1,190 @@
+package backend_test
+
+import (
+	"testing"
+
+	"context"
+	"encoding/json"
+
+	"github.com/spf13/viper"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
+	"waypaper-engine/daemon/internal/backend"
+	"waypaper-engine/daemon/internal/monitor"
+)
+
+type stubBackend struct {
+	name      string
+	available bool
+	caps      backend.Capabilities
+}
+
+func (s *stubBackend) Name() string                                      { return s.name }
+func (s *stubBackend) IsAvailable() bool                                 { return s.available }
+func (s *stubBackend) Capabilities() backend.Capabilities                { return s.caps }
+func (s *stubBackend) Initialize(_ context.Context) error                { return nil }
+func (s *stubBackend) Shutdown(_ context.Context) error                  { return nil }
+func (s *stubBackend) Apply(_ context.Context, _ backend.Snapshot) error { return nil }
+func (s *stubBackend) RegisterDefaults(_ *viper.Viper)                   {}
+func (s *stubBackend) ValidateConfig(_ json.RawMessage) error            { return nil }
+
+type stubRegistry struct {
+	backends map[string]*stubBackend
+	active   *stubBackend
+}
+
+func (r *stubRegistry) Register(_ backend.Backend) error                          { return nil }
+func (r *stubRegistry) SetActive(_ string) error                                  { return nil }
+func (r *stubRegistry) Available() []backend.BackendInfo                          { return nil }
+func (r *stubRegistry) Compatible(_ monitor.CompositorType) []backend.BackendInfo { return nil }
+
+func (r *stubRegistry) HasActive() bool { return r.active != nil }
+func (r *stubRegistry) Active() backend.Backend {
+	if r.active == nil {
+		return nil
+	}
+	return r.active
+}
+func (r *stubRegistry) Get(name string) (backend.Backend, bool) {
+	b, ok := r.backends[name]
+	if !ok {
+		return nil, false
+	}
+	return b, true
+}
+
+func newStubRegistry(active string, bs ...*stubBackend) *stubRegistry {
+	reg := &stubRegistry{backends: make(map[string]*stubBackend)}
+	for _, b := range bs {
+		reg.backends[b.name] = b
+		if b.name == active {
+			reg.active = b
+		}
+	}
+	return reg
+}
+
+var (
+	awww = &stubBackend{
+		name: "awww", available: true,
+		caps: backend.Capabilities{ContentKinds: []backend.ContentKind{backend.KindStaticImage, backend.KindGIF}},
+	}
+	utauri = &stubBackend{
+		name: "wal-qt", available: true,
+		caps: backend.Capabilities{ContentKinds: []backend.ContentKind{backend.KindStaticImage, backend.KindGIF, backend.KindVideo, backend.KindWebWallpaper}},
+	}
+	mpv = &stubBackend{
+		name: "mpvpaper", available: true,
+		caps: backend.Capabilities{ContentKinds: []backend.ContentKind{backend.KindVideo}},
+	}
+	unavailFeh = &stubBackend{
+		name: "feh", available: false,
+		caps: backend.Capabilities{ContentKinds: []backend.ContentKind{backend.KindStaticImage}},
+	}
+)
+
+func defaultPriorities() map[string][]string {
+	return map[string][]string{
+		"image": {"awww", "wal-qt"},
+		"video": {"mpvpaper", "wal-qt"},
+		"web":   {"wal-qt"},
+	}
+}
+
+func TestPickBackend_FixedMode(t *testing.T) {
+	reg := newStubRegistry("awww", awww, utauri)
+	name, err := backend.PickBackend(reg, "fixed", "video", defaultPriorities())
+	require.NoError(t, err)
+	assert.Equal(t, "awww", name)
+}
+
+func TestPickBackend_Auto_Image(t *testing.T) {
+	reg := newStubRegistry("awww", awww, utauri, mpv)
+	name, err := backend.PickBackend(reg, "auto", "image", defaultPriorities())
+	require.NoError(t, err)
+	assert.Equal(t, "awww", name)
+}
+
+func TestPickBackend_Auto_Video(t *testing.T) {
+	reg := newStubRegistry("awww", awww, utauri, mpv)
+	name, err := backend.PickBackend(reg, "auto", "video", defaultPriorities())
+	require.NoError(t, err)
+	assert.Equal(t, "mpvpaper", name)
+}
+
+func TestPickBackend_Auto_Web(t *testing.T) {
+	reg := newStubRegistry("awww", awww, utauri, mpv)
+	name, err := backend.PickBackend(reg, "auto", "web", defaultPriorities())
+	require.NoError(t, err)
+	assert.Equal(t, "wal-qt", name)
+}
+
+func TestPickBackend_Auto_GIF_UsesImagePriority(t *testing.T) {
+	reg := newStubRegistry("awww", awww, utauri, mpv)
+	name, err := backend.PickBackend(reg, "auto", "gif", defaultPriorities())
+	require.NoError(t, err)
+	assert.Equal(t, "awww", name)
+}
+
+func TestPickBackend_Auto_SkipsUnavailable(t *testing.T) {
+	reg := newStubRegistry("wal-qt", unavailFeh, utauri)
+	prio := map[string][]string{"image": {"feh", "wal-qt"}}
+	name, err := backend.PickBackend(reg, "auto", "image", prio)
+	require.NoError(t, err)
+	assert.Equal(t, "wal-qt", name)
+}
+
+func TestPickBackend_Auto_SkipsUnregistered(t *testing.T) {
+	reg := newStubRegistry("awww", awww)
+	prio := map[string][]string{"image": {"nonexistent", "awww"}}
+	name, err := backend.PickBackend(reg, "auto", "image", prio)
+	require.NoError(t, err)
+	assert.Equal(t, "awww", name)
+}
+
+func TestPickBackend_Auto_NoCompatible(t *testing.T) {
+	reg := newStubRegistry("awww", awww)
+	prio := map[string][]string{"video": {"awww"}}
+	_, err := backend.PickBackend(reg, "auto", "video", prio)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no available backend supports")
+}
+
+func TestPickBackend_Auto_EmptyPriorityList(t *testing.T) {
+	reg := newStubRegistry("awww", awww)
+	prio := map[string][]string{"web": {}}
+	_, err := backend.PickBackend(reg, "auto", "web", prio)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no priority list")
+}
+
+func TestPickBackend_Auto_MissingCategory(t *testing.T) {
+	reg := newStubRegistry("awww", awww)
+	prio := map[string][]string{"image": {"awww"}}
+	_, err := backend.PickBackend(reg, "auto", "web", prio)
+	require.Error(t, err)
+	assert.Contains(t, err.Error(), "no priority list configured for media category")
+}
+
+func TestValidateAutoPriorities_Valid(t *testing.T) {
+	reg := newStubRegistry("awww", awww, utauri, mpv)
+	errs := backend.ValidateAutoPriorities(reg, defaultPriorities())
+	assert.Empty(t, errs)
+}
+
+func TestValidateAutoPriorities_UnregisteredBackend(t *testing.T) {
+	reg := newStubRegistry("awww", awww)
+	prio := map[string][]string{"image": {"awww", "nonexistent"}}
+	errs := backend.ValidateAutoPriorities(reg, prio)
+	require.Contains(t, errs, "image")
+	assert.Contains(t, errs["image"][0], "not registered")
+}
+
+func TestValidateAutoPriorities_IncompatibleBackend(t *testing.T) {
+	reg := newStubRegistry("awww", awww, mpv)
+	prio := map[string][]string{"image": {"awww", "mpvpaper"}}
+	errs := backend.ValidateAutoPriorities(reg, prio)
+	require.Contains(t, errs, "image")
+	assert.Contains(t, errs["image"][0], "does not support image")
+}

@@ -1,0 +1,45 @@
+/* @waypaper-theme
+ *   name: gruvbox-light
+ *   displayName: Gruvbox Light
+ *   category: light
+ *   sourceUrl: https://github.com/morhetz/gruvbox
+ *
+ * Hex rows match the Waypaper contrast export for classic Gruvbox light:
+ *   bg #FBF1C7, fg #3C3836; accents color_02–color_16 as mapped below.
+ *   Surfaces bg1/bg2 use canonical Gruvbox light #EBDBB2 / #D5C4A1 (not repeated
+ *   as distinct rows in that export).
+ */
+@plugin "daisyui/theme" {
+  name: "gruvbox-light";
+  default: false;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: #fbf1c7;
+  --color-base-200: #ebdbb2;
+  --color-base-300: #d5c4a1;
+  --color-base-content: #3c3836;
+  --color-primary: #b57614;
+  --color-primary-content: #fbf1c7;
+  --color-secondary: #8f3f71;
+  --color-secondary-content: #fbf1c7;
+  --color-accent: #427b58;
+  --color-accent-content: #fbf1c7;
+  --color-neutral: #7c6f64;
+  --color-neutral-content: #fbf1c7;
+  --color-info: #076678;
+  --color-info-content: #fbf1c7;
+  --color-success: #79740e;
+  --color-success-content: #fbf1c7;
+  --color-warning: #d79921;
+  --color-warning-content: #3c3836;
+  --color-error: #cc241d;
+  --color-error-content: #fbf1c7;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}

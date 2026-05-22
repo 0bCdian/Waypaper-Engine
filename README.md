@@ -1,169 +1,216 @@
 <div align="center">
-  <img src="./readme_files/Waypaper_Engine.png" width="500px" alt="banner"/>
 
-![GitHub last commit (branch)](https://img.shields.io/github/last-commit/0bCdian/Waypaper-Engine/main?style=for-the-badge&logo=git&color=%2389B482)
-![AUR last modified](https://img.shields.io/aur/last-modified/waypaper-engine?style=for-the-badge&logo=arch-linux&color=%23438287)
-![GitHub Repo stars](https://img.shields.io/github/stars/0bCdian/Waypaper-Engine?style=for-the-badge&logo=github&color=%232AAEA3)
-![Badge Language](https://img.shields.io/github/languages/top/0bCdian/Waypaper-Engine?style=for-the-badge&logo=typescript)
-![Badge License](https://img.shields.io/github/license/0bCdian/Waypaper-Engine?style=for-the-badge&logo=gnu)
+<img src="./readme_files/Waypaper_Engine.png" width="420" alt="Waypaper Engine"/>
 
-### _A wallpaper setter gui, developed with ricing in mind!_ 🍚
+### _A wallpaper setter GUI, developed with ricing in mind!_ 🍚
 
-**[<kbd> <br> Why <br>  </kbd>](#why)**
-**[<kbd> <br> How to install <br> </kbd>](#install)**
-**[<kbd> <br> Usage <br> </kbd>](#usage)**
-**[<kbd> <br> TODO <br> </kbd>](#todo)**
-**[<kbd> <br> Gallery <br> </kbd>](#gallery)**
-**[<kbd> <br> Special Thanks <br> </kbd>](#special-thanks)**
+[![License](https://img.shields.io/github/license/0bCdian/Waypaper-Engine?style=for-the-badge&logo=gnu)](LICENSE)
+[![GitHub last commit (branch)](https://img.shields.io/github/last-commit/0bCdian/Waypaper-Engine/main?style=for-the-badge&logo=git&color=%2389B482)](https://github.com/0bCdian/Waypaper-Engine/commits)
+[![AUR last modified](https://img.shields.io/aur/last-modified/waypaper-engine?style=for-the-badge&logo=arch-linux&color=%23438287)](https://aur.archlinux.org/packages/waypaper-engine)
+[![GitHub Repo stars](https://img.shields.io/github/stars/0bCdian/Waypaper-Engine?style=for-the-badge&logo=github&color=%232AAEA3)](https://github.com/0bCdian/Waypaper-Engine/stargazers)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.5-3178C6?logo=typescript&logoColor=white&style=for-the-badge)]()
+[![Go](https://img.shields.io/badge/Go-1.26-00ADD8?logo=go&logoColor=white&style=for-the-badge)]()
+
+**[Overview](#overview) · [What's new in v3](#whats-new-in-v3) · [Features](#features) · [Install](#install) · [Usage](#usage) · [Gallery](#screenshots) · [Star history](#star-history) · [Thanks](#special-thanks)**
+
+_Disclaimer: This project is developed with help from **LLM-based coding tools**._
 
 </div>
 
-> [!IMPORTANT]
-> **Project Status:** This project was inactive for a while as I moved into a DevOps engineering role and didn't have the time to maintain it. I've recently come back to active development and the project is undergoing a major rewrite. **Waypaper Engine is not abandoned or archived** — it's being rebuilt from the ground up with a new Go daemon backend, pluggable wallpaper backend support, and a modernized UI. The current `main` branch reflects the older codebase; the rewrite is happening on the `refactor/wayaper-daemon` branch and will be merged once stable. Expect breaking changes, new features, and updated install instructions when the rewrite lands.
+[output.webm](https://github.com/user-attachments/assets/b09dd381-581d-464b-a777-22bcd61fdba3)
 
-# What's New (v3 Rewrite)
-
-The rewrite replaces the old Node.js backend with a Go daemon and overhauls the frontend. Here's what's been implemented so far:
-
-### Architecture
--   **Go daemon backend** — A standalone Go service that handles all wallpaper, playlist, image, and monitor operations over a Unix socket HTTP API. Replaces the old Node.js/SQLite backend entirely. No more node dependency issues breaking the app.
--   **Pluggable wallpaper backends** — Support for [swww](https://github.com/LGFae/swww), [hyprpaper](https://github.com/hyprwm/hyprpaper), [feh](https://feh.finalrewind.org/), and many more to come, with a registry that allows runtime switching. No longer locked to swww, and laying the ground work for my next project, a wallpaper setter that can render animations just like lively wallpaper or waypaper engine! :).
--   **CloverDB storage** — Lightweight embedded database replacing SQLite, managed entirely by the daemon.
--   **Server-Sent Events (SSE)** — Real-time event streaming from daemon to frontend for image processing progress, wallpaper changes, playlist updates, and config changes.
--   **Cobra CLI** — Full CLI (`start`, `stop`, `status`, `set`, `random`, `next`, `previous`, image/playlist/monitor/backend/config management) that talks to the running daemon over the socket.
-
-### Features
--   **Image renaming** — Rename images from the gallery (inline or detail sidebar), with automatic deduplication and physical file rename on disk. Playlists are unaffected since they reference images by stable IDs.
--   **Wallhaven integration** — Search, browse, and download wallpapers from [Wallhaven](https://wallhaven.cc/) directly into your gallery.
--   **URL/drag-and-drop import** — Drop image URLs or files onto the window to import them. HTTP(S) URLs are downloaded automatically.
--   **Image detail sidebar** — View metadata, edit tags with autocomplete, and rename images from a slide-over panel.
--   **Context menus** — Right-click context menus throughout the gallery with wallpaper setting, playlist management, selection, rename, delete, and file manager integration.
--   **Multi-resolution thumbnails** — Automatic thumbnail generation at multiple resolutions (720p, 1080p, 1440p, 4K) for fast gallery rendering.
--   **Monitor auto-detection** — Native detection via hyprctl, swaymsg, wlr-randr, or xrandr depending on the compositor, with manual override support.
--   **Wallpaper history** — Per-monitor history log with forward/back navigation.
-
-### UI
--   **Neobrutalist design mode** — Optional design mode with configurable shadow offsets, border widths, corner radius, and polaroid-style image cards. Toggleable alongside the standard DaisyUI look.
--   **Expanded theme library** — 30+ themes including Gruvbox, Catppuccin, Tokyo Night, Nord, Dracula, Rosé Pine, Everforest, and more, on top of all DaisyUI built-in themes.
--   **Modernized layout** — Drawer-based navigation with sidebar, image processing progress overlay, toast notifications, and confirm dialogs.
-
-### Current Status
-
-https://www.youtube.com/watch?v=tVfqcAUs8ME
-
-# Legacy Features
-
-These features carry over from the original version:
-
--   Multi monitor support.
--   Four different types of playlists (Time of day, daily, interval based or static).
--   Tray controls.
--   Filter images by format, resolution, name, etc.
 
 ---
 
-![image](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/40318ad6-aa5a-42c2-98c8-63d988069407)
+## Contents
 
-https://github.com/0bCdian/Waypaper-Engine/assets/101421807/4d49225a-cbdc-42a0-af67-aac823c47f98
+- [Overview](#overview)
+- [What's new in v3](#whats-new-in-v3)
+- [Features](#features)
+- [Tech stack](#tech-stack)
+- [Install](#install)
+- [Usage](#usage)
+  - [Run a script on every wallpaper change](#run-a-script-on-every-wallpaper-change)
+- [Development](#development)
+- [Roadmap (informal)](#roadmap-informal)
+- [Screenshots](#screenshots)
+- [Star history](#star-history)
+- [Special Thanks](#special-thanks)
+- [License](#license)
 
 ---
 
-# Why
+## Overview
 
-I started this project for two main reasons, one as a learning oportunity, and two because the available options for a tool like this didn't suit my needs fully. I really like [swww](https://github.com/Horus645/swww) but it lacks a lot of the features that I missed from wallpaper engine in windows, so this is my attempt to bridge that gap a little.
+This is a wallpaper manager at its core—its job is to create playlists and help you navigate / curate your gallery. It has features like advanced filters, support for different types of wallpapers (static images, gifs, videos, html web wallpapers), download from youtube, import shadertoy animations into web wallpapers, direct wallhaven integration, and so much more!
 
-# Install
+---
 
-Simply install from the aur like so:
+## What's new in v3
+
+The big shift is replacing the old **Node.js** backend with a **Go daemon**: one process owns gallery state, playlist scheduling, image processing, and backend orchestration. It exposes a **chi** HTTP router on the socket, a **Cobra** CLI for the same operations the GUI uses, a **pub/sub event bus** wired to **SSE** (`wallpaper_changed`, `playlist_*`, `images_updated`, `config_changed`, and more—see the contract), and pluggable **Go** `backend` packages instead of stringing together shell and legacy glue. Storage moved to **CloverDB**;
+
+**UI/UX** got a full pass: drawer layout, **font presets** and expanded **themes** (including neobrutalist / “neo” gallery styling), clearer settings (backend **auto** mode and priority lists), better gallery empty states, filters, and **studio** routes that use the full viewport. Two new tools—**Looper Studio** and **Shader Studio**—sit on top of that (both **beta**; expect rough edges).
+
+---
+
+## Features
+
+- **Multiple backends** — awww, hyprpaper, swaybg, feh, mpvpaper, or wal-qt; auto mode can pick a working backend from a priority list. More to come if requested!
+- **Beautiful Gallery** — Multi-resolution thumbs, detail sidebar (tags, metadata, rename on disk; playlists keep stable image IDs), folders, advanced filters, and so much more!
+- **Playlists** — Time-of-day, daily, interval, or static; per-monitor;
+- **Wallhaven** — Search, favorites, and downloads into the library from inside the app.
+- **Drag and drop (and pickers)** — Drop **images** (e.g. JPG, PNG, GIF, WebP, BMP, SVG, TIFF), **videos** (e.g. MP4, WebM, MKV, MOV), **folders**, a **`waypaper.json` / `project.json`** web wallpaper manifest, or an **`https://` URL**; Shadertoy **`.json`** exports can open in Shader Studio.
+- **Wallpaper history** — Per-monitor back/forward.
+- **Integrations** — Connect your own tool to the daemon and subscribe to **`GET /events`** (SSE) for structured updates (e.g. `wallpaper_changed`).
+- **CLI** — Cobra entrypoints for `start`, `stop`, `status`, set/random/next/prev, and config—same state as the GUI.
+
+- **Looper Studio (beta)** — `loop-studio` — Set **in/out** on videos from the library (or an allowed YouTube flow where supported), optional **ffmpeg** export to WebM/VP9 (or import the result as a new gallery item). Built for turning clips into clean loops without leaving Waypaper.
+
+- **Shader Studio (beta)** — `shader-studio` — Author or **import Shadertoy** `.json` (including multipass), run live **WebGL2** preview, and **save** a packaged web wallpaper into the gallery.
+
+- **DaisyUI**-based theming (including a long ricing-friendly list + neo styling) are still part of the vibe.
+
+---
+
+## Tech stack
+
+| Area          | What                                                                                                        |
+| ------------- | ----------------------------------------------------------------------------------------------------------- |
+| App shell     | Electron 40, React 19, Vite 6, Tailwind 4, DaisyUI 5                                                        |
+| Daemon        | Go 1.26, [chi](https://github.com/go-chi/chi), [CloverDB](https://github.com/ostafen/clover), Cobra + Viper |
+| IPC           | Unix socket HTTP, Server-Sent Events                                                                        |
+| Dev toolchain | Node 22, **pnpm** 9, **mise** (see [.mise.toml](.mise.toml)), oxfmt / oxlint, Vitest, Playwright (e2e)                  |
+
+---
+
+## Install
+
+The Makefile is the source of truth. **Packaging and `DESTDIR`:** read [packaging/README.md](packaging/README.md).
+
+**Be advised** — no backend is required to start the app. If none is installed, Waypaper Engine starts in degraded mode and shows a banner pointing you to the [install guide](https://0bCdian.github.io/Waypaper-Engine/guide/install.html). Once you install a backend and it lands on `PATH`, the banner clears on its own.
+
+**Simply clone and install locally:**
+
+```bash
+git clone https://github.com/0bCdian/Waypaper-Engine.git
+cd Waypaper-Engine
+make deps && make electron && make install
+```
+
+**Simply install on Arch (AUR):**
 
 ```bash
 yay -S waypaper-engine
+# or: yay -S waypaper-engine-git
 ```
 
-or
+**Portable AppImage:** grab `*.AppImage` from [Releases](https://github.com/0bCdian/Waypaper-Engine/releases), `chmod +x`, and run—the daemon is bundled there.
+
+---
+
+## Usage
+
+Start **Waypaper Engine** from your app menu, or run `waypaper-engine` if you installed the launcher on your `PATH`. Add images to the gallery, **double-click** to set one, **right-click** for the full menu, and use the hover checkmarks to build **playlists**. Set the playlist rules in the sidebar, save, and you're done.
+
+**Daemon only (e.g. Hyprland autostart):** the GUI isn't required—the `waypaper-daemon` CLI drives the exact same state.
 
 ```bash
-yay -S waypaper-engine-git
+exec-once=waypaper-daemon start
 ```
 
-Both the normal and -git version conflict with each other, so make sure to delete the other with `yay -Rns package_name package_name-debug` before installing either.
+Once it's running you have the whole CLI: `waypaper-daemon set`, `random`, `next`, `previous`, `status`, plus `playlist`, `monitors`, `backends`, and `config`. Run `waypaper-daemon --help` to see all of it.
 
-## Manual installation
+### Run a script on every wallpaper change
 
-Be advised you will need to run some of the commands with sudo privileges as you will be copying files to protected paths.
+`waypaper-daemon events` streams structured events straight from the daemon—no socket plumbing required. Filter to what you care about with `--types`. Here's a hook that re-themes your terminal with [pywal](https://github.com/dylanaraps/pywal) every time the wallpaper changes:
 
-1. Clone this repo `git clone git@github.com:0bCdian/Waypaper-Engine.git` or download and extract the zip file
-2. cd into Waypaper-Engine
-3. run `npm run build`
-4. cd into release `cd release`
-5. Optional: if you want to change the tray icon, change the 512x512.png image inside linux-unpacked/resources/icons
-6. Optional: copy the 512x512.png file to the icons system directory `cp linux-unpacked/resources/icons/512x512.png /usr/share/icons/hicolor/512x512/apps/waypaper-engine.png`
-7. copy the whole directory to it's final destination `sudo cp ./linux-unpacked -rt /opt/waypaper-engine`
-8. go back to root dir `cd ..`
-9. cd into cli `cd cli`
-10. copy waypaper-engine file to your $PATH or /usr/bin `sudo cp ./waypaper-engine /usr/bin` or `cp ./waypaper/engine $HOME/.local/bin` be advised, if you do not copy the cli file to /usr/bin, the path you're copying it into must be in your $PATH, read [this](https://askubuntu.com/questions/551990/what-does-path-mean) for more info
-11. go back to root `cd ..`
-12. copy the .desktop file to /usr/share/applications `sudo cp ./waypaper-engine.desktop /usr/share/applications/`
+![pywal hook example](./readme_files/3.0/pywall.png)
 
-and you're done!
+Grab the script as a file from [`readme_files/wal-hook-example.sh`](readme_files/wal-hook-example.sh).
 
-# Usage
+> [!NOTE]
+> The full event list and JSON payloads live in [daemon/API_CONTRACT.md](daemon/API_CONTRACT.md#server-sent-events-sse). If you'd rather skip the CLI, any HTTP client that connects to the Unix socket works too: `curl --unix-socket "$XDG_RUNTIME_DIR/waypaper-engine.sock" http://localhost/events`.
 
-Simply start the app and add wallpapers to the gallery, from there you can double click to set the wallpapers or right click for more options, to create playlists simply click on the checkboxes that appear when hover over the images, and configure it, and then save it to auto start it.
+---
 
-# Examples
+## Development
 
-### Autostart on hyprland just the daemon
-
-Add to your hyprland.conf the following lines:
+Tool versions are pinned in [.mise.toml](.mise.toml). Install [mise](https://mise.jdx.dev/), then from a clone of the repo:
 
 ```bash
-exec-once=waypaper-engine daemon
+cd Waypaper-Engine
+mise install
+pnpm install
+pnpm run dev
 ```
 
-### Add scripts to run on each image set
-
-> [!WARNING]
-> Make sure the script in question has execution permissions by using `chmod +x scriptname.sh`
-> Put you bash scripts in this path:
+**Before opening a PR:**
 
 ```bash
-$HOME/.waypaper_engine/scripts
+pnpm run ci:check
 ```
 
-The scripts are always passsed as an argument the path of the image being set, so you can do stuff like this:
+| Script                | What                                                           |
+| --------------------- | -------------------------------------------------------------- |
+| `pnpm run dev`         | Daemon + UI in dev: daemon build first, then Vite and Electron |
+| `pnpm run build`       | Production build: daemon, Vite bundle, electron-builder        |
+| `pnpm test`            | Vitest for the renderer                                        |
+| `pnpm run test:daemon` | Go tests under `daemon/`                                       |
+| `pnpm run test:e2e`    | Playwright e2e; uses a built daemon and browser                |
 
-![carbon](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/c594babf-198a-47a0-8dce-5fd8d64b862c)
+**Layout (high level):**
 
-https://github.com/0bCdian/Waypaper-Engine/assets/101421807/f454a904-7fa7-4ce9-86e9-f8fbc86e8c2b
+```
+Waypaper-Engine/
+├── daemon/          # Go service: HTTP API, backends, storage
+├── src/             # React UI
+├── electron/        # Electron main/preload
+├── shared/          # Shared TS types and helpers
+├── e2e/             # Playwright tests
+└── packaging/       # Distro / AppImage notes
+```
 
-# TODO
+**Daemon control-plane refactor** — Checklist and design: [`daemon/docs/control-refactor-plan.md`](daemon/docs/control-refactor-plan.md). Config and backend activation policy: [`daemon/internal/control`](daemon/internal/control) (`Controller`). Wallpaper restore: [`daemon/internal/wallpaper`](daemon/internal/wallpaper) (`Restore`, `StartDeferredDaemonRestore`). **GET/PATCH `/config/backend`** is removed; use **`/config/backends/{backend}`** (see [API contract](daemon/API_CONTRACT.md)).
 
--   [ ] Add testing.
--   [ ] Have a ci/cd pipeline.
--   [x] Implement a logger for errors.
--   [x] Publish in the aur.
--   [x] Find a good icon/logo for the app (Thank you [Cristian Avendaño](https://github.com/c-avendano)!).
--   [ ] Add flatpak support.
--   [x] Add scripts feature.
--   [x] Add playlists per monitor.
+_If something breaks or you have an idea, open an issue, I'll try to get them whenever I have the time._
 
-_If you encounter any problems or would like to make a suggestion, please feel free to open an issue_.
+---
 
-# Gallery
+## Screenshots
 
-![image](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/d78b9373-daf8-401a-8e85-cd1e286b31ce)
-![image](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/aceae307-7a2a-430e-a357-c710bb660eb7)
-![image](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/c78b7fc9-48a6-4ffa-b07f-a58f73ca91b6)
-![image](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/cb6afa04-b577-46a6-ba53-70fdf304c1b6)
-![image](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/51e2e981-8916-475e-92cd-b33e4a9bbaa5)
-![image](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/495d6702-7ce9-4d5b-9870-5cf0d2aa56bb)
-![image](https://github.com/0bCdian/Waypaper-Engine/assets/101421807/ba5993ff-ea36-4594-bc77-671c082f09c2)
+_v3.0 UI — all images live in [`readme_files/3.0/`](readme_files/3.0/)._
 
-# Special Thanks
+| Gallery                                    | Image details                                    |
+| ------------------------------------------ | ------------------------------------------------ |
+| ![Gallery](./readme_files/3.0/gallery.png) | ![Details](./readme_files/3.0/details_modal.png) |
 
-**[LGFae](https://github.com/LGFae)** - _for the amazing little tool that swww is !_ ❤️
+| Settings                                          | Monitors                                          |
+| ------------------------------------------------- | ------------------------------------------------- |
+| ![Settings](./readme_files/3.0/settings_page.png) | ![Monitors](./readme_files/3.0/monitor_modal.png) |
 
-**[Simon Ser](https://git.sr.ht/~emersion/)** - _for wlr-randr, without it making this work across different wayland wm's would've been a nightmare_ 🥲
+| Wallhaven                                        | Looper Studio                                       |
+| ------------------------------------------------ | --------------------------------------------------- |
+| ![Wallhaven](./readme_files/3.0/wallhaven.png)   | ![Looper Studio](./readme_files/3.0/loop_studio.png) |
 
-**[Cristian Avendaño](https://github.com/c-avendano)** - _for creating the amazing logo!_ 💪
+| Shader Studio                                          | Wallpaper history                              |
+| ------------------------------------------------------ | ---------------------------------------------- |
+| ![Shader Studio](./readme_files/3.0/shader_studio.png) | ![History](./readme_files/3.0/history.png)     |
+
+---
+
+## Star history
+
+[![Star History Chart](https://api.star-history.com/svg?repos=0bCdian/Waypaper-Engine&type=Date)](https://www.star-history.com/#0bCdian/Waypaper-Engine&Date)
+
+_If the app saves you a headache, a star on the repo means a lot._
+
+---
+
+## Special Thanks
+
+**[LGFae](https://github.com/LGFae)** — _awww is tiny and does exactly what I need—thank you_ ❤️
+
+**[Rajveer Malviya](https://github.com/rajveermalviya)** — _go-wayland made native Wayland monitor detection possible without shelling out_ 🥲
+
+**[Cristian Avendaño](https://github.com/c-avendano)** — _the logo and icon that make the app feel like a real product_ 💪

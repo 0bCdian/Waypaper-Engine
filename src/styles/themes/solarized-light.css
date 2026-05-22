@@ -1,0 +1,54 @@
+/* @waypaper-theme
+ *   name: solarized-light
+ *   displayName: Solarized Light
+ *   category: light
+ *   sourceUrl: https://ethanschoonover.com/solarized
+ *
+ * Role mapping (Solarized light):
+ *   base-100  ← base3   #fdf6e3  (lightest bg)
+ *   base-200  ← base2   #eee8d5
+ *   base-300  ← base1   #93a1a1  (borders/accents)
+ *   base-content ← base01 #586e75 (higher contrast)
+ *   primary   ← blue    #268bd2
+ *   secondary ← magenta #d33682
+ *   accent    ← cyan    #2aa198
+ *   neutral   ← base0   #839496
+ *   info      ← blue    #268bd2
+ *   success   ← green   #859900
+ *   warning   ← yellow  #b58900
+ *   error     ← red     #dc322f
+ */
+@plugin "daisyui/theme" {
+  name: "solarized-light";
+  default: false;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: #fdf6e3;
+  --color-base-200: #eee8d5;
+  --color-base-300: #93a1a1;
+  --color-base-content: #586e75;
+  --color-primary: #268bd2;
+  --color-primary-content: #fdf6e3;
+  --color-secondary: #d33682;
+  --color-secondary-content: #fdf6e3;
+  --color-accent: #2aa198;
+  --color-accent-content: #fdf6e3;
+  --color-neutral: #839496;
+  --color-neutral-content: #fdf6e3;
+  --color-info: #268bd2;
+  --color-info-content: #fdf6e3;
+  --color-success: #859900;
+  --color-success-content: #fdf6e3;
+  --color-warning: #b58900;
+  --color-warning-content: #fdf6e3;
+  --color-error: #dc322f;
+  --color-error-content: #fdf6e3;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}

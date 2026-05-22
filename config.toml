@@ -1,0 +1,107 @@
+# Waypaper Engine Configuration
+# This file is shared between the daemon and the Electron app
+
+[app]
+# Application-specific settings
+kill_daemon_on_exit = true
+notifications = true
+start_minimized = false
+minimize_instead_of_close = true
+random_image_monitor = "individual"  # "clone" | "extend" | "individual"
+show_monitor_modal_on_start = true
+startup_intro = true
+images_per_page = 20
+theme = "kolision-raw"
+font_preset = "bundled"
+font_family_body = ""
+font_family_display = ""
+font_family_mono = ""
+sidebar_collapsed = false
+sort_by = "name"  # "name" | "date" | "size"
+sort_order = "asc"  # "asc" | "desc"
+image_history_limit = 50  # Maximum number of images to keep in history
+
+[daemon]
+# Daemon-specific settings
+database_path = "~/.config/waypaper-engine/data"
+images_dir = "~/.waypaper-engine/images"
+thumbnails_dir = "~/.waypaper-engine/data/cache/thumbnails"
+monitors_state_file = "~/.cache/waypaper-engine/monitors.json"
+socket_path = "/tmp/waypaper-engine.sock"
+log_level = "info"  # "debug" | "info" | "warn" | "error"
+log_file = "~/.config/waypaper-engine/daemon.log"
+log_max_size = 10  # MB
+log_max_age = 7    # days
+log_max_backups = 3
+
+# Electron settings are handled by the app section
+
+[backend]
+# Backend configuration
+type = "awww"  # "awww" | "hyprpaper" | "feh" | "wal-qt"
+
+[backend.awww]
+# Defaults match daemon RegisterDefaults (transition_duration is seconds; whole numbers 500–5000 are legacy ms)
+transition_type = "wipe"
+transition_step = 90
+transition_duration = 3
+transition_fps = 60
+transition_angle = 45
+transition_pos = "center"
+transition_bezier = "0.25,0.1,0.25,1.0"
+transition_wave = "20,20"
+resize = "crop"
+fill_color = "000000"
+filter_type = "Lanczos3"
+invert_y = false
+
+[backend.feh]
+mode = "fill"
+
+[backend.hyprpaper]
+fit_mode = "cover"
+config_path = ""
+
+[backend.mpvpaper]
+mpv_options = "loop"
+verbose = 0
+auto_pause = false
+auto_stop = false
+layer = ""
+slideshow_secs = 0
+
+[backend.wal-qt]
+# Defaults match daemon defaultConfig / RegisterDefaults.
+socket_path = ""
+expected_service = "wal-qt"
+expected_api_version = "0"
+connect_timeout_ms = 500
+request_timeout_ms = 1500
+load_timeout_ms = 15000
+transition = "none"
+duration_ms = 300
+transition_bezier = "0.54,0,0.34,0.99"
+transition_angle_deg = 0
+transition_origin_x_percent = 50
+transition_origin_y_percent = 50
+transition_wave_amplitude_percent = 5
+transition_wave_frequency = 3
+parallax_enabled = false
+parallax_zoom = 120
+parallax_step_percent = 5
+parallax_workspace_chunk_size = 10
+parallax_animation_ms = 600
+parallax_reset_ms = 400
+parallax_easing = "0.215,0.610,0.355,1.000"
+allow_network_wallpapers = false
+video_audio_default = false
+image_fit_mode = "cover"
+image_rendering = "auto"
+# Hyprland/Sway: workspace follow → POST /wallpaper/parallax-move (auto | off | hyprland | sway)
+parallax_compositor_driver = "auto"
+parallax_direction = "horizontal"
+
+[monitors]
+# Monitor configuration
+selected_monitors = []
+image_set_type = "individual"  # "individual" | "extend" | "clone"

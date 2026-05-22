@@ -1,0 +1,44 @@
+/* @waypaper-theme
+ *   name: nord-light
+ *   displayName: Nord Light
+ *   category: light
+ *   sourceUrl: https://www.nordtheme.com/docs/colors-and-palettes
+ *
+ * Nord “Aurora” light — matches Waypaper contrast table:
+ *   bg #EBEAF2, fg #004F7C; surfaces Color 16 / Color 8;
+ *   accent row tuned for UI roles (many swatches are syntax/hue samples, not all AA on bg).
+ */
+@plugin "daisyui/theme" {
+  name: "nord-light";
+  default: false;
+  prefersdark: false;
+  color-scheme: light;
+  --color-base-100: #ebeaf2;
+  --color-base-200: #dedede;
+  --color-base-300: #b3b3b3;
+  --color-base-content: #004f7c;
+  --color-primary: #439ecf;
+  --color-primary-content: #003b4e;
+  --color-secondary: #d961dc;
+  --color-secondary-content: #ebeaf2;
+  --color-accent: #00b1be;
+  --color-accent-content: #003b4e;
+  --color-neutral: #3e89a1;
+  --color-neutral-content: #ebeaf2;
+  --color-info: #6fbbe2;
+  --color-info-content: #003b4e;
+  --color-success: #069f5f;
+  --color-success-content: #003b4e;
+  --color-warning: #dab752;
+  --color-warning-content: #003b4e;
+  --color-error: #e64569;
+  --color-error-content: #ebeaf2;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}

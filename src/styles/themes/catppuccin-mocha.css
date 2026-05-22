@@ -1,0 +1,55 @@
+/* @waypaper-theme
+ *   name: catppuccin-mocha
+ *   displayName: Catppuccin Mocha
+ *   category: dark
+ *   sourceUrl: https://catppuccin.com/palette
+ *
+ * Mocha flavor — canonical hex values from catppuccin.com/palette.
+ * Role mapping:
+ *   base-100  ← Base   #1e1e2e
+ *   base-200  ← Mantle #181825
+ *   base-300  ← Surface0 #313244
+ *   base-content ← Text  #cdd6f4
+ *   primary   ← Blue   #89b4fa
+ *   secondary ← Mauve  #cba6f7
+ *   accent    ← Teal   #94e2d5
+ *   neutral   ← Overlay0 #6c7086
+ *   info      ← Sky   #89dceb
+ *   success   ← Green  #a6e3a1
+ *   warning   ← Yellow #f9e2af
+ *   error     ← Red    #f38ba8
+ */
+@plugin "daisyui/theme" {
+  name: "catppuccin-mocha";
+  default: false;
+  prefersdark: true;
+  color-scheme: dark;
+  --color-base-100: #1e1e2e;
+  --color-base-200: #181825;
+  --color-base-300: #313244;
+  --color-base-content: #cdd6f4;
+  --color-primary: #89b4fa;
+  --color-primary-content: #1e1e2e;
+  --color-secondary: #cba6f7;
+  --color-secondary-content: #1e1e2e;
+  --color-accent: #94e2d5;
+  --color-accent-content: #1e1e2e;
+  --color-neutral: #6c7086;
+  --color-neutral-content: #cdd6f4;
+  --color-info: #89dceb;
+  --color-info-content: #1e1e2e;
+  --color-success: #a6e3a1;
+  --color-success-content: #1e1e2e;
+  --color-warning: #f9e2af;
+  --color-warning-content: #1e1e2e;
+  --color-error: #f38ba8;
+  --color-error-content: #1e1e2e;
+  --radius-selector: 0.5rem;
+  --radius-field: 0.5rem;
+  --radius-box: 0.5rem;
+  --size-selector: 0.25rem;
+  --size-field: 0.25rem;
+  --border: 1px;
+  --depth: 1;
+  --noise: 0;
+}

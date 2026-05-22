@@ -1,47 +1,96 @@
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import electron from "vite-plugin-electron";
-import renderer from "vite-plugin-electron-renderer";
 import react from "@vitejs/plugin-react";
-import { viteCommonjs, esbuildCommonjs } from "@originjs/vite-plugin-commonjs";
-// https://vitejs.dev/config/
-export default defineConfig({
-    build: {
-        minify: false,
-        sourcemap: "inline"
+import tailwindcss from "@tailwindcss/vite";
+import { resolve } from "path";
+import { daemonUnixSocketProxyPlugin } from "./scripts/vite-plugin-daemon-proxy";
+import { themeRegistryPlugin } from "./scripts/vite-plugin-theme-registry";
+
+/** During `vite serve`, allow React standalone DevTools bridge + inject its script tag. Production builds keep strict CSP without localhost scripts. */
+function reactStandaloneDevtoolsPlugin(command: string): Plugin {
+  return {
+    name: "wp-react-devtools-csp-dev-only",
+    apply: "serve",
+    transformIndexHtml(html) {
+      if (command !== "serve") return html;
+      const localhostDevtools = "http://localhost:8097 http://127.0.0.1:8097";
+      let next = html.replace(
+        "; script-src-elem 'self'; script-src 'self';",
+        `; script-src-elem 'self' ${localhostDevtools}; script-src 'self' ${localhostDevtools};`,
+      );
+      next = next.replace(
+        '<div id="root"></div>',
+        '<div id="root"></div>\n    <!-- React standalone DevTools listener (must run standalone: `npx react-devtools`) -->\n    <script src="http://localhost:8097"></script>',
+      );
+      return next;
     },
-    plugins: [
-        react(),
-        viteCommonjs(),
-        electron([
-            {
-                // Main-Process entry file of the Electron App.
-                entry: "electron/main.ts",
-                vite: {
-                    build: {
-                        minify: false,
-                        sourcemap: true
-                    }
-                }
-            },
-            {
-                entry: "electron/preload.ts",
-                onstart(options) {
-                    // Notify the Renderer-Process to reload the page when the Preload-Scripts build is complete,
-                    // instead of restarting the entire Electron App.
-                    options.reload();
-                }
-            }
-        ]),
-        renderer()
+  };
+}
+
+export default defineConfig(({ command }) => ({
+  base: "./",
+  build: {
+    minify: process.env.DEBUG_BUILD ? false : "esbuild",
+    sourcemap: process.env.DEV === "true" ? "inline" : false,
+  },
+  resolve: {
+    // Longer `find` entries must win over `@` — otherwise `@/shared/x` resolves as `src/shared/x`.
+    alias: [
+      {
+        find: "@/components",
+        replacement: resolve(__dirname, "src/components"),
+      },
+      { find: "@/utils", replacement: resolve(__dirname, "src/utils") },
+      { find: "@/stores", replacement: resolve(__dirname, "src/stores") },
+      { find: "@/shared", replacement: resolve(__dirname, "shared") },
+      { find: "@/types", replacement: resolve(__dirname, "src/types") },
+      { find: "@", replacement: resolve(__dirname, "src") },
     ],
-    optimizeDeps: {
-        esbuildOptions: {
-            plugins: [
-                // Solves:
-                // https://github.com/vitejs/vite/issues/5308
-                // add the name of your package
-                esbuildCommonjs(["sharp", "better-sqlite3", "pino"])
-            ]
-        }
-    }
-});
+  },
+  plugins: [
+    daemonUnixSocketProxyPlugin(),
+    themeRegistryPlugin({
+      themesDir: resolve(__dirname, "src/styles/themes"),
+      outFile: resolve(__dirname, "src/styles/themes/_index.ts"),
+    }),
+    reactStandaloneDevtoolsPlugin(command),
+    react({
+      babel: {
+        plugins: ["babel-plugin-react-compiler"],
+      },
+    }),
+    tailwindcss(),
+    electron([
+      {
+        entry: "electron/main.ts",
+        vite: {
+          build: {
+            minify: false,
+            sourcemap: true,
+            rollupOptions: {
+              external: [
+                "pino",
+                "pino-roll",
+                "pino-pretty",
+                "thread-stream",
+                "pino-abstract-transport",
+              ],
+            },
+          },
+          define: {
+            "process.env.DEV": JSON.stringify(process.env.DEV || "false"),
+          },
+        },
+      },
+      {
+        entry: "electron/preload.ts",
+        onstart(options) {
+          options.reload();
+        },
+      },
+    ]),
+  ],
+  define: {
+    global: "globalThis",
+  },
+}));
