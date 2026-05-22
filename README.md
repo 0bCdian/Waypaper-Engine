@@ -15,26 +15,19 @@
 
 </div>
 
-**Docs in-repo:** [Daemon HTTP API](daemon/API_CONTRACT.md) · [Daemon architecture](daemon/docs/ARCHITECTURE.md) · [Packaging / `DESTDIR`](packaging/README.md) · **handbook (VitePress):** run `pnpm run docs:dev` locally, or after enabling **GitHub Pages → GitHub Actions**, the site is published from the **Docs** workflow (default base path `/Waypaper-Engine/` → `https://0bCdian.github.io/Waypaper-Engine/`)
-
-_This project is developed with help from **LLM-based coding tools**; I still review, test, and ship what I stand behind._
+_Disclaimer: This project is developed with help from **LLM-based coding tools**._
 
 ---
 
 ## Overview
 
-I wanted a Linux wallpaper app that **feels** like part of a rice: a real gallery, playlists that make sense, and a control plane that does not get in the way. **Waypaper Engine 3** pairs an **Electron** UI with a **Go daemon** on **Wayland and X11**. The UI and anything else you build talk to the daemon over a **Unix socket** (JSON HTTP); live updates (imports, playlists, wallpaper changes, config) stream over **Server-Sent Events** on `GET /events`—no more ad hoc shell hooks for automation.
-
-Pluggable **backends** do the real wallpaper work: [awww](https://github.com/LGFae/awww), [hyprpaper](https://github.com/hyprwm/hyprpaper), [feh](https://feh.finalrewind.org/), [mpvpaper](https://github.com/GhostNaN/mpvpaper), or **wal-qt** for HTML and video on Wayland. Library data and history live in **CloverDB** on the daemon side. You can still browse and pull from [Wallhaven](https://wallhaven.cc/) inside the app.
-
-> [!NOTE]
-> **HTML / video (wal-qt):** outbound network stays **off** until you turn on the global allow flag **and** the wallpaper manifest sets **`capabilities.network`**. See the wal-qt repo for its web wallpaper spec if you’re shipping HTML walls.
+This is a wallpaper manager at its core—its job is to create playlists and help you navigate / curate your gallery. It has features like advanced filters, support for different types of wallpapers (static images, gifs, videos, html web wallpapers), download from youtube, import shadertoy animations into web wallpapers, direct wallhaven integration, and so much more!
 
 ---
 
 ## What's new in v3
 
-The big shift is replacing the old **Node.js** backend with a **Go daemon**: one process owns gallery state, playlist scheduling, image processing, and backend orchestration. It exposes a **chi** HTTP router on the socket, a **Cobra** CLI for the same operations the GUI uses, a **pub/sub event bus** wired to **SSE** (`wallpaper_changed`, `playlist_*`, `images_updated`, `config_changed`, and more—see the contract), and pluggable **Go** `backend` packages instead of stringing together shell and legacy glue. Storage moved to **CloverDB**; the stack is easier to test and reason about than the monolithic Node era.
+The big shift is replacing the old **Node.js** backend with a **Go daemon**: one process owns gallery state, playlist scheduling, image processing, and backend orchestration. It exposes a **chi** HTTP router on the socket, a **Cobra** CLI for the same operations the GUI uses, a **pub/sub event bus** wired to **SSE** (`wallpaper_changed`, `playlist_*`, `images_updated`, `config_changed`, and more—see the contract), and pluggable **Go** `backend` packages instead of stringing together shell and legacy glue. Storage moved to **CloverDB**;
 
 **UI/UX** got a full pass: drawer layout, **font presets** and expanded **themes** (including neobrutalist / “neo” gallery styling), clearer settings (backend **auto** mode and priority lists), better gallery empty states, filters, and **studio** routes that use the full viewport. Two new tools—**Looper Studio** and **Shader Studio**—sit on top of that (both **beta**; expect rough edges).
 
@@ -42,20 +35,20 @@ The big shift is replacing the old **Node.js** backend with a **Go daemon**: one
 
 ## Features
 
-- **Pluggable backends** — awww, hyprpaper, feh, mpvpaper, or wal-qt; auto mode can pick a working backend from a priority list.
-- **Gallery-first workflow** — Multi-resolution thumbs, detail sidebar (tags, metadata, rename on disk; playlists keep stable image IDs).
-- **Playlists with rules** — Time-of-day, daily, interval, or static; per-monitor where it makes sense; daemon-side scheduler with clear SSE when things change.
+- **Multiple backends** — awww, hyprpaper, swaybg, feh, mpvpaper, or wal-qt; auto mode can pick a working backend from a priority list. More to come if requested!
+- **Beautiful Gallery** — Multi-resolution thumbs, detail sidebar (tags, metadata, rename on disk; playlists keep stable image IDs), folders, advanced filters, and so much more!
+- **Playlists** — Time-of-day, daily, interval, or static; per-monitor;
 - **Wallhaven** — Search, favorites, and downloads into the library from inside the app.
-- **Drag and drop (and pickers)** — Drop **images** (e.g. JPG, PNG, GIF, WebP, BMP, SVG, TIFF), **videos** (e.g. MP4, WebM, MKV, MOV), **folders**, a **`waypaper.json` / `project.json`** web wallpaper manifest, or an **`https://` URL**; Shadertoy **`.json`** exports can open in Shader Studio. Imports report progress over SSE.
+- **Drag and drop (and pickers)** — Drop **images** (e.g. JPG, PNG, GIF, WebP, BMP, SVG, TIFF), **videos** (e.g. MP4, WebM, MKV, MOV), **folders**, a **`waypaper.json` / `project.json`** web wallpaper manifest, or an **`https://` URL**; Shadertoy **`.json`** exports can open in Shader Studio.
 - **Wallpaper history** — Per-monitor back/forward.
-- **Integrations** — Connect your own tool to the daemon and subscribe to **`GET /events`** (SSE) for structured updates (e.g. `wallpaper_changed`). Details and payloads: [API contract / SSE](daemon/API_CONTRACT.md#server-sent-events-sse).
+- **Integrations** — Connect your own tool to the daemon and subscribe to **`GET /events`** (SSE) for structured updates (e.g. `wallpaper_changed`).
 - **CLI** — Cobra entrypoints for `start`, `stop`, `status`, set/random/next/prev, and config—same state as the GUI.
 
-**Looper Studio (beta)** — `loop-studio` — Set **in/out** on videos from the library (or an allowed YouTube flow where supported), **compare** loop points, optional **ffmpeg** export to WebM/VP9 (or import the result as a new gallery item). Built for turning clips into clean loops without leaving Waypaper.
+- **Looper Studio (beta)** — `loop-studio` — Set **in/out** on videos from the library (or an allowed YouTube flow where supported), optional **ffmpeg** export to WebM/VP9 (or import the result as a new gallery item). Built for turning clips into clean loops without leaving Waypaper.
 
-**Shader Studio (beta)** — `shader-studio` — Author or **import Shadertoy** `.json` (including multipass), run live **WebGL2** preview, and **save** a packaged web wallpaper into the gallery.
+- **Shader Studio (beta)** — `shader-studio` — Author or **import Shadertoy** `.json` (including multipass), run live **WebGL2** preview, and **save** a packaged web wallpaper into the gallery.
 
-**Tray** and **DaisyUI**-based theming (including a long ricing-friendly list + neo styling) are still part of the vibe.
+- **DaisyUI**-based theming (including a long ricing-friendly list + neo styling) are still part of the vibe.
 
 ---
 
@@ -93,22 +86,30 @@ yay -S waypaper-engine
 
 **Portable AppImage:** grab `*.AppImage` from [Releases](https://github.com/0bCdian/Waypaper-Engine/releases), `chmod +x`, and run—the daemon is bundled there.
 
-> [!WARNING]
-> The daemon uses a Unix socket at `$XDG_RUNTIME_DIR/waypaper-engine.sock`. If the app won’t start after a crash, delete the stale socket and try again.
-
 ---
 
 ## Usage
 
-Start **Waypaper Engine** from your app menu or `waypaper-engine` on the path you installed to. Add images to the gallery, **double-click** to set, **right-click** for the full menu, and use hover checkmarks to build **playlists**. Configure playlist rules in the sidebar and save—done.
+Start **Waypaper Engine** from your app menu, or run `waypaper-engine` if you installed the launcher on your `PATH`. Add images to the gallery, **double-click** to set one, **right-click** for the full menu, and use the hover checkmarks to build **playlists**. Set the playlist rules in the sidebar, save, and you're done.
 
-**Daemon only (e.g. Hyprland autostart):**
+**Daemon only (e.g. Hyprland autostart):** the GUI isn't required—the `waypaper-daemon` CLI drives the exact same state.
 
 ```bash
-exec-once=waypaper-engine daemon
+exec-once=waypaper-daemon start
 ```
 
-If you want a script when a wallpaper changes, **subscribe to the daemon**: any HTTP client that can speak to the **Unix socket** (e.g. `curl --unix-socket "$XDG_RUNTIME_DIR/waypaper-engine.sock" http://localhost/events`) and read the **SSE** stream, or a small Go/Python helper. The event types and JSON payloads are in [daemon/API_CONTRACT.md](daemon/API_CONTRACT.md#server-sent-events-sse).
+Once it's running you have the whole CLI: `waypaper-daemon set`, `random`, `next`, `previous`, `status`, plus `playlist`, `monitors`, `backends`, and `config`. Run `waypaper-daemon --help` to see all of it.
+
+### Run a script on every wallpaper change
+
+`waypaper-daemon events` streams structured events straight from the daemon—no socket plumbing required. Filter to what you care about with `--types`. Here's a hook that re-themes your terminal with [pywal](https://github.com/dylanaraps/pywal) every time the wallpaper changes:
+
+![pywal hook example](./readme_files/3.0/pywall.png)
+
+Grab the script as a file from [`readme_files/wal-hook-example.sh`](readme_files/wal-hook-example.sh).
+
+> [!NOTE]
+> The full event list and JSON payloads live in [daemon/API_CONTRACT.md](daemon/API_CONTRACT.md#server-sent-events-sse). If you'd rather skip the CLI, any HTTP client that connects to the Unix socket works too: `curl --unix-socket "$XDG_RUNTIME_DIR/waypaper-engine.sock" http://localhost/events`.
 
 ---
 
@@ -151,24 +152,13 @@ Waypaper-Engine/
 
 **Daemon control-plane refactor** — Checklist and design: [`daemon/docs/control-refactor-plan.md`](daemon/docs/control-refactor-plan.md). Config and backend activation policy: [`daemon/internal/control`](daemon/internal/control) (`Controller`). Wallpaper restore: [`daemon/internal/wallpaper`](daemon/internal/wallpaper) (`Restore`, `StartDeferredDaemonRestore`). **GET/PATCH `/config/backend`** is removed; use **`/config/backends/{backend}`** (see [API contract](daemon/API_CONTRACT.md)).
 
----
-
-## Roadmap (informal)
-
-- [ ] Flatpak
-- [x] Tests and CI-style checks
-- [x] Logging that doesn’t hide failures
-- [x] AUR packages
-- [x] App icon (huge love to the designer in [Thanks](#special-thanks))
-- [x] Per-monitor playlists (where the backend allows)
-
-_If something breaks or you have an idea, open an issue—I read them._
+_If something breaks or you have an idea, open an issue, I'll try to get them whenever I have the time._
 
 ---
 
 ## Screenshots
 
-_v3.0 UI — images live in [`readme_files/3.0/`](readme_files/3.0/)_
+_v3.0 UI — all images live in [`readme_files/3.0/`](readme_files/3.0/)._
 
 | Gallery                                    | Image details                                    |
 | ------------------------------------------ | ------------------------------------------------ |
@@ -177,6 +167,14 @@ _v3.0 UI — images live in [`readme_files/3.0/`](readme_files/3.0/)_
 | Settings                                          | Monitors                                          |
 | ------------------------------------------------- | ------------------------------------------------- |
 | ![Settings](./readme_files/3.0/settings_page.png) | ![Monitors](./readme_files/3.0/monitor_modal.png) |
+
+| Wallhaven                                        | Looper Studio                                       |
+| ------------------------------------------------ | --------------------------------------------------- |
+| ![Wallhaven](./readme_files/3.0/wallhaven.png)   | ![Looper Studio](./readme_files/3.0/loop_studio.png) |
+
+| Shader Studio                                          | Wallpaper history                              |
+| ------------------------------------------------------ | ---------------------------------------------- |
+| ![Shader Studio](./readme_files/3.0/shader_studio.png) | ![History](./readme_files/3.0/history.png)     |
 
 ---
 
