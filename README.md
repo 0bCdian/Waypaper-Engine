@@ -13,9 +13,27 @@
 
 **[Overview](#overview) · [What's new in v3](#whats-new-in-v3) · [Features](#features) · [Install](#install) · [Usage](#usage) · [Gallery](#screenshots) · [Star history](#star-history) · [Thanks](#special-thanks)**
 
+_Disclaimer: This project is developed with help from **LLM-based coding tools**._
+
 </div>
 
-_Disclaimer: This project is developed with help from **LLM-based coding tools**._
+---
+
+## Contents
+
+- [Overview](#overview)
+- [What's new in v3](#whats-new-in-v3)
+- [Features](#features)
+- [Tech stack](#tech-stack)
+- [Install](#install)
+- [Usage](#usage)
+  - [Run a script on every wallpaper change](#run-a-script-on-every-wallpaper-change)
+- [Development](#development)
+- [Roadmap (informal)](#roadmap-informal)
+- [Screenshots](#screenshots)
+- [Star history](#star-history)
+- [Special Thanks](#special-thanks)
+- [License](#license)
 
 ---
 
@@ -193,9 +211,3 @@ _If the app saves you a headache, a star on the repo means a lot._
 **[Rajveer Malviya](https://github.com/rajveermalviya)** — _go-wayland made native Wayland monitor detection possible without shelling out_ 🥲
 
 **[Cristian Avendaño](https://github.com/c-avendano)** — _the logo and icon that make the app feel like a real product_ 💪
-
----
-
-## License
-
-See [LICENSE](LICENSE).
