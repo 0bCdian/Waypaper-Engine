@@ -234,7 +234,10 @@ export function createMockAPI(): Window["API_RENDERER"] {
       exported: 1,
       failed: 0,
     }),
-    downloadYoutubeVideo: vi.fn().mockResolvedValue({ filePath: "/tmp/ytdl-test/video.mp4" }),
+    checkYtDlp: vi.fn().mockResolvedValue({ available: true }),
+    startYoutubeDownload: vi.fn().mockResolvedValue({ jobId: "test-job" }),
+    cancelYoutubeDownload: vi.fn().mockResolvedValue({ canceled: true }),
+    onYoutubeDownloadEvent: vi.fn().mockReturnValue(() => {}),
 
     logToMain: vi.fn(),
   };

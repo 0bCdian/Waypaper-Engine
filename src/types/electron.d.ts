@@ -245,7 +245,10 @@ declare global {
         failed: number;
       }>;
 
-      downloadYoutubeVideo: (url: string) => Promise<{ filePath: string }>;
+      checkYtDlp: () => Promise<{ available: boolean }>;
+      startYoutubeDownload: (url: string) => Promise<{ jobId: string }>;
+      cancelYoutubeDownload: (jobId: string) => Promise<{ canceled: boolean }>;
+      onYoutubeDownloadEvent: (callback: (event: unknown) => void) => () => void;
 
       // LOGGING
       logToMain: (

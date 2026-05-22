@@ -379,8 +379,20 @@ const electronAPI = {
     failed: number;
   }> => invokeWrapped("export-wallpapers-to-folder", items),
 
-  downloadYoutubeVideo: (url: string): Promise<{ filePath: string }> =>
-    invokeWrapped("download-youtube-video", { url }),
+  // YOUTUBE DOWNLOAD (background job in main; survives renderer route changes)
+  checkYtDlp: (): Promise<{ available: boolean }> => invokeWrapped("check-yt-dlp"),
+
+  startYoutubeDownload: (url: string): Promise<{ jobId: string }> =>
+    invokeWrapped("youtube-download-start", { url }),
+
+  cancelYoutubeDownload: (jobId: string): Promise<{ canceled: boolean }> =>
+    invokeWrapped("youtube-download-cancel", { jobId }),
+
+  onYoutubeDownloadEvent: (callback: (event: unknown) => void): (() => void) => {
+    const wrapper = (_: Electron.IpcRendererEvent, data: unknown) => callback(data);
+    ipcRenderer.on("youtube-download-event", wrapper);
+    return () => ipcRenderer.removeListener("youtube-download-event", wrapper);
+  },
 
   // LOGGING
   logToMain: (

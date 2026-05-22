@@ -12,32 +12,21 @@ import type { VideoLoopExportRequest } from "../../electron/daemon-go-types";
 import { useFoldersStore } from "@/stores/foldersStore";
 import { useImagesStore } from "@/stores/images";
 import { useToastStore } from "@/stores/toastStore";
-import { loopStudioGalleryVideoSrc, loopStudioMediaSrc } from "@/utils/loopStudio/mediaUrl";
+import { useLoopDownloadStore } from "@/stores/loopStudioDownload";
+import {
+  loopStudioGalleryVideoSrc,
+  loopStudioMediaSrc,
+} from "@/utils/loopStudio/mediaUrl";
 import { waitForGalleryVideoBySourcePath } from "@/utils/loopStudio/waitGalleryImport";
-import { clientXToWipeMix } from "@/utils/loopStudio/compareWipePointer";
-import { computeLoopMatchScore } from "@/utils/loopStudio/matchScore";
-import { formatLoopTime, formatLoopTimeShort, parseLoopTime } from "@/utils/loopStudio/timeFormat";
+import {
+  formatLoopTime,
+  formatLoopTimeShort,
+  parseLoopTime,
+} from "@/utils/loopStudio/timeFormat";
 import { isVideoFilePath } from "@/utils/videoFileExtensions";
 import { isAllowedYoutubeUrl } from "@/shared/youtubeUrl";
-import {
-  createImageBitmapFromVideo,
-  waitUntilVideoCanSample,
-} from "@/utils/loopStudio/seekVideoCapture";
 import { daemonClient } from "@/client";
 import { Kbd } from "@/components/ui";
-
-const api = window.API_RENDERER;
-
-async function tryDownloadYoutube(url: string): Promise<{ filePath: string } | { error: string }> {
-  try {
-    const { filePath } = await api.downloadYoutubeVideo(url);
-    return { filePath };
-  } catch (e) {
-    return {
-      error: e instanceof Error ? e.message : "YouTube download failed",
-    };
-  }
-}
 
 async function tryVideoLoopExport(
   imageId: number,
@@ -61,11 +50,16 @@ async function tryExtractVideoPalette(
   imageId: number,
   timeSeconds: number,
 ): Promise<
-  | { ok: true; res: Awaited<ReturnType<typeof daemonClient.extractVideoPalette>> }
+  | {
+      ok: true;
+      res: Awaited<ReturnType<typeof daemonClient.extractVideoPalette>>;
+    }
   | { ok: false; error: string }
 > {
   try {
-    const res = await daemonClient.extractVideoPalette(imageId, { time_seconds: timeSeconds });
+    const res = await daemonClient.extractVideoPalette(imageId, {
+      time_seconds: timeSeconds,
+    });
     return { ok: true, res };
   } catch (e) {
     return {
@@ -78,16 +72,25 @@ async function tryExtractVideoPalette(
 const MIN_LOOP_SPAN = 0.033;
 const FULL_LOOP_EPS = 0.06;
 
-type StudioMode = "play" | "compare";
-
 export default function LoopStudio() {
   const location = useLocation();
   const addToast = useToastStore((s) => s.addToast);
   const reQueryImages = useImagesStore((s) => s.reQueryImages);
   const images = useImagesStore((s) => s.imagesArray);
 
+  const downloadStatus = useLoopDownloadStore((s) => s.status);
+  const downloadPercent = useLoopDownloadStore((s) => s.percent);
+  const downloadFilePath = useLoopDownloadStore((s) => s.filePath);
+  const downloadError = useLoopDownloadStore((s) => s.errorMessage);
+  const startDownload = useLoopDownloadStore((s) => s.start);
+  const cancelDownload = useLoopDownloadStore((s) => s.cancel);
+  const resetDownload = useLoopDownloadStore((s) => s.reset);
+
   const videoOptions = useMemo(
-    () => images.flatMap((i) => (i.media_type === "video" ? [{ id: i.id, name: i.name }] : [])),
+    () =>
+      images.flatMap((i) =>
+        i.media_type === "video" ? [{ id: i.id, name: i.name }] : [],
+      ),
     [images],
   );
 
@@ -97,50 +100,35 @@ export default function LoopStudio() {
   });
   const [previewOnly, setPreviewOnly] = useState(false);
   const [ffmpegAvailable, setFfmpegAvailable] = useState<boolean | null>(null);
+  const [ytDlpAvailable, setYtDlpAvailable] = useState<boolean | null>(null);
   const [mediaSrc, setMediaSrc] = useState<string | null>(null);
   const [loaded, setLoaded] = useState(false);
   const [duration, setDuration] = useState(0);
   const [inPoint, setInPoint] = useState(0);
   const [outPoint, setOutPoint] = useState(0);
   const [playhead, setPlayhead] = useState(0);
-  const [mode, setMode] = useState<StudioMode>("play");
-  const [matchPct, setMatchPct] = useState<number | null>(null);
   const [exportOpen, setExportOpen] = useState(false);
   const [exporting, setExporting] = useState(false);
-  const [preset, setPreset] = useState<VideoLoopExportRequest["preset"]>("webm_vp9");
-  const [exportAction, setExportAction] = useState<"replace" | "import_new">("import_new");
+  const [preset, setPreset] =
+    useState<VideoLoopExportRequest["preset"]>("webm_vp9");
+  const [exportAction, setExportAction] = useState<"replace" | "import_new">(
+    "import_new",
+  );
   const [reloadToken, setReloadToken] = useState(0);
-  const [compareWipe, setCompareWipe] = useState(0.5);
   const [blendHalvesExport, setBlendHalvesExport] = useState(true);
   const [youtubeUrl, setYoutubeUrl] = useState("");
-  const [youtubeBusy, setYoutubeBusy] = useState(false);
   const [previewMuted, setPreviewMuted] = useState(false);
   const [paletteBusy, setPaletteBusy] = useState(false);
+  const [attaching, setAttaching] = useState(false);
+  const [clearConfirmOpen, setClearConfirmOpen] = useState(false);
 
   const trimmedMedia = mediaSrc?.trim();
   const playbackSrc = trimmedMedia ? trimmedMedia : null;
+  const ytDlpMissing = ytDlpAvailable === false;
+  const downloading = downloadStatus === "downloading";
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const seekRef = useRef<HTMLVideoElement>(null);
-  const canvasPlayRef = useRef<HTMLCanvasElement>(null);
-  const canvasCmpRef = useRef<HTMLCanvasElement>(null);
-  const previewShellRef = useRef<HTMLDivElement>(null);
-  const compareWipeRef = useRef(0.5);
-  const rafRef = useRef<number | null>(null);
-  const captureTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const outBitmapRef = useRef<ImageBitmap | null>(null);
-  const inBitmapRef = useRef<ImageBitmap | null>(null);
   const dragRef = useRef<"in" | "out" | "seek" | null>(null);
-  const captureGenRef = useRef(0);
-  const modeRef = useRef<StudioMode>(mode);
-
-  useEffect(() => {
-    compareWipeRef.current = compareWipe;
-  });
-
-  useEffect(() => {
-    modeRef.current = mode;
-  });
 
   const prevLocationStateRef = useRef(location.state);
   if (location.state !== prevLocationStateRef.current) {
@@ -168,13 +156,33 @@ export default function LoopStudio() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
+    const check = () => {
+      void window.API_RENDERER.checkYtDlp()
+        .then((r) => {
+          if (!cancelled) setYtDlpAvailable(r.available);
+        })
+        .catch(() => {
+          if (!cancelled) setYtDlpAvailable(false);
+        });
+    };
+    check();
+    window.addEventListener("focus", check);
+    return () => {
+      cancelled = true;
+      window.removeEventListener("focus", check);
+    };
+  }, []);
+
+  useEffect(() => {
     if (previewOnly || !imageId) return;
     let cancelled = false;
     void daemonClient
       .getImage(imageId)
       .then((img) => {
         if (cancelled) return;
-        const nextSrc = img.media_type === "video" ? loopStudioGalleryVideoSrc(img) : null;
+        const nextSrc =
+          img.media_type === "video" ? loopStudioGalleryVideoSrc(img) : null;
         if (img.media_type !== "video") {
           addToast("Selected item is not a video", "error");
           setImageId(null);
@@ -189,273 +197,9 @@ export default function LoopStudio() {
     };
   }, [imageId, previewOnly, addToast]);
 
-  const stopRaf = useCallback(() => {
-    if (rafRef.current != null) {
-      cancelAnimationFrame(rafRef.current);
-      rafRef.current = null;
-    }
-  }, []);
-
-  const tickRef = useRef<() => void>(() => {});
-
-  const tickPlayCanvas = useCallback(() => {
-    const v = videoRef.current;
-    const c = canvasPlayRef.current;
-    if (!v || !c || mode !== "play") return;
-    if (v.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-      const ctx = c.getContext("2d");
-      if (ctx) ctx.drawImage(v, 0, 0, c.width, c.height);
-    }
-    rafRef.current = requestAnimationFrame(() => tickRef.current());
-  }, [mode]);
-
-  useEffect(() => {
-    tickRef.current = tickPlayCanvas;
-  }, [tickPlayCanvas]);
-
-  useEffect(() => {
-    if (!loaded || mode !== "play") {
-      stopRaf();
-      return;
-    }
-    rafRef.current = requestAnimationFrame(() => tickRef.current());
-    return stopRaf;
-  }, [loaded, mode, tickPlayCanvas, stopRaf]);
-
   useEffect(() => {
     if (videoRef.current) videoRef.current.muted = previewMuted;
   }, [previewMuted]);
-
-  const captureFramesRef = useRef<() => Promise<void>>(() => Promise.resolve());
-
-  const scheduleCaptures = useCallback(() => {
-    if (captureTimerRef.current) clearTimeout(captureTimerRef.current);
-    captureTimerRef.current = setTimeout(() => {
-      void captureFramesRef.current();
-    }, 300);
-  }, []);
-
-  const captureAt = useCallback(async (t: number): Promise<ImageBitmap | null> => {
-    const vs = seekRef.current;
-    if (!vs) return null;
-    if (!(await waitUntilVideoCanSample(vs))) return null;
-
-    const grabAfterSeek = () => createImageBitmapFromVideo(vs);
-
-    if (
-      Math.abs(vs.currentTime - t) < 1e-3 &&
-      vs.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
-    ) {
-      return grabAfterSeek();
-    }
-
-    return new Promise<ImageBitmap | null>((resolve) => {
-      let settled = false;
-      const finish = (bmp: ImageBitmap | null) => {
-        if (settled) return;
-        settled = true;
-        window.clearTimeout(tmr);
-        resolve(bmp);
-      };
-      const tmr = window.setTimeout(() => finish(null), 8000);
-      const onSeeked = () => {
-        const rvfc = (
-          vs as HTMLVideoElement & {
-            requestVideoFrameCallback?: (cb: () => void) => void;
-          }
-        ).requestVideoFrameCallback;
-        if (typeof rvfc === "function") {
-          rvfc.call(vs, () => void grabAfterSeek().then(finish));
-        } else {
-          window.setTimeout(() => void grabAfterSeek().then(finish), 50);
-        }
-      };
-
-      vs.addEventListener("seeked", onSeeked, { once: true });
-      try {
-        vs.currentTime = t;
-      } catch {
-        finish(null);
-        return;
-      }
-
-      if (
-        Math.abs(vs.currentTime - t) < 1e-3 &&
-        vs.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
-      ) {
-        vs.removeEventListener("seeked", onSeeked);
-        void grabAfterSeek().then(finish);
-      }
-    });
-  }, []);
-
-  const drawCompareWipe = useCallback(() => {
-    const outB = outBitmapRef.current;
-    const inB = inBitmapRef.current;
-    const c = canvasCmpRef.current;
-    if (!outB || !inB || !c) return;
-    const mix = Math.min(1, Math.max(0, compareWipeRef.current));
-    const ctx = c.getContext("2d");
-    if (!ctx) return;
-    const w = c.width;
-    const h = c.height;
-    const split = mix * w;
-    ctx.clearRect(0, 0, w, h);
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(0, 0, split, h);
-    ctx.clip();
-    ctx.drawImage(outB, 0, 0, w, h);
-    ctx.restore();
-    ctx.save();
-    ctx.beginPath();
-    ctx.rect(split, 0, Math.max(0, w - split), h);
-    ctx.clip();
-    ctx.drawImage(inB, 0, 0, w, h);
-    ctx.restore();
-
-    ctx.strokeStyle = "rgba(255,255,255,0.85)";
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(split, 0);
-    ctx.lineTo(split, h);
-    ctx.stroke();
-
-    const pillH = 32;
-    const pillW = 18;
-    const py = h / 2 - pillH / 2;
-    ctx.fillStyle = "rgba(255,255,255,0.92)";
-    ctx.beginPath();
-    if (typeof ctx.roundRect === "function") {
-      ctx.roundRect(split - pillW / 2, py, pillW, pillH, 6);
-    } else {
-      ctx.rect(split - pillW / 2, py, pillW, pillH);
-    }
-    ctx.fill();
-
-    ctx.fillStyle = "#222";
-    ctx.font = "bold 10px system-ui, sans-serif";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("◀▶", split, h / 2);
-
-    ctx.font = "500 11px system-ui, sans-serif";
-    ctx.fillStyle = "rgba(247,167,79,0.95)";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "bottom";
-    ctx.fillText("OUT", 10, h - 10);
-    ctx.fillStyle = "rgba(79,207,122,0.95)";
-    ctx.textAlign = "right";
-    ctx.fillText("IN", w - 10, h - 10);
-  }, []);
-
-  const onWipeMouseDown = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
-      if (modeRef.current !== "compare") return;
-      e.preventDefault();
-      const canvas = e.currentTarget;
-      const sync = (clientX: number) => {
-        const rect = canvas.getBoundingClientRect();
-        const next = clientXToWipeMix(clientX, rect, canvas.width, canvas.height);
-        if (next == null) return;
-        compareWipeRef.current = next;
-        setCompareWipe(next);
-        drawCompareWipe();
-      };
-      sync(e.clientX);
-      const onMove = (ev: MouseEvent) => {
-        sync(ev.clientX);
-      };
-      const onUp = () => {
-        window.removeEventListener("mousemove", onMove);
-        window.removeEventListener("mouseup", onUp);
-      };
-      window.addEventListener("mousemove", onMove);
-      window.addEventListener("mouseup", onUp);
-    },
-    [drawCompareWipe],
-  );
-
-  const captureFrames = useCallback(async () => {
-    if (!duration) return;
-    const gen = ++captureGenRef.current;
-    const prevO = outBitmapRef.current;
-    const prevI = inBitmapRef.current;
-    const [o, i] = await Promise.all([captureAt(outPoint), captureAt(inPoint)]);
-    if (gen !== captureGenRef.current) {
-      o?.close();
-      i?.close();
-      return;
-    }
-    if (o && i) {
-      prevO?.close?.();
-      prevI?.close?.();
-      outBitmapRef.current = o;
-      inBitmapRef.current = i;
-      const score = computeLoopMatchScore(o, i);
-      setMatchPct(Math.round(score * 100));
-      if (modeRef.current === "compare") drawCompareWipe();
-    } else {
-      o?.close();
-      i?.close();
-      setMatchPct(null);
-      if (modeRef.current === "compare") drawCompareWipe();
-    }
-  }, [duration, outPoint, inPoint, captureAt, drawCompareWipe]);
-
-  useEffect(() => {
-    captureFramesRef.current = captureFrames;
-  }, [captureFrames]);
-
-  const layoutPreviewCanvases = useCallback(() => {
-    const shell = previewShellRef.current;
-    const v = videoRef.current;
-    const cPlay = canvasPlayRef.current;
-    const cCmp = canvasCmpRef.current;
-    if (!shell || !v || !cPlay || !cCmp) return;
-    const rect = shell.getBoundingClientRect();
-    const vw = v.videoWidth || 1280;
-    const vh = v.videoHeight || 720;
-    const rw = Math.max(1, Math.floor(rect.width));
-    const rh = Math.max(1, Math.floor(rect.height));
-    if (rw < 2 || rh < 2) return;
-    const ar = vw / vh;
-    let dw = rw;
-    let dh = rh;
-    if (dw / dh > ar) dw = Math.floor(dh * ar);
-    else dh = Math.floor(dw / ar);
-    dw = Math.max(1, dw);
-    dh = Math.max(1, dh);
-    if (cPlay.width === dw && cPlay.height === dh && cCmp.width === dw && cCmp.height === dh)
-      return;
-    cPlay.width = dw;
-    cPlay.height = dh;
-    cCmp.width = dw;
-    cCmp.height = dh;
-    scheduleCaptures();
-    if (modeRef.current === "compare" && outBitmapRef.current && inBitmapRef.current) {
-      drawCompareWipe();
-    }
-  }, [scheduleCaptures, drawCompareWipe]);
-
-  useEffect(() => {
-    scheduleCaptures();
-    return () => {
-      if (captureTimerRef.current) clearTimeout(captureTimerRef.current);
-    };
-  }, [inPoint, outPoint, duration, scheduleCaptures]);
-
-  useEffect(() => {
-    if (mode === "compare") drawCompareWipe();
-  }, [mode, compareWipe, drawCompareWipe]);
-
-  useEffect(() => {
-    return () => {
-      stopRaf();
-      outBitmapRef.current?.close?.();
-      inBitmapRef.current?.close?.();
-    };
-  }, [stopRaf]);
 
   const onLoadedMetadata = useCallback(() => {
     const v = videoRef.current;
@@ -467,26 +211,14 @@ export default function LoopStudio() {
     setPlayhead(0);
     setLoaded(true);
     void v.play().catch(() => {});
-    requestAnimationFrame(() => {
-      layoutPreviewCanvases();
-      scheduleCaptures();
-    });
-  }, [scheduleCaptures, layoutPreviewCanvases]);
-
-  useEffect(() => {
-    if (!loaded || !playbackSrc) return;
-    const shell = previewShellRef.current;
-    if (!shell) return;
-    const ro = new ResizeObserver(() => {
-      layoutPreviewCanvases();
-    });
-    ro.observe(shell);
-    layoutPreviewCanvases();
-    return () => ro.disconnect();
-  }, [loaded, playbackSrc, layoutPreviewCanvases]);
+  }, []);
 
   const onLoopStudioKey = useEffectEvent((e: KeyboardEvent) => {
-    if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+    if (
+      e.target instanceof HTMLInputElement ||
+      e.target instanceof HTMLTextAreaElement
+    )
+      return;
     const v = videoRef.current;
     if (!v || !loaded) return;
     const subLoop = outPoint - inPoint < duration - FULL_LOOP_EPS;
@@ -497,24 +229,15 @@ export default function LoopStudio() {
     }
     if (e.code === "KeyI") {
       e.preventDefault();
-      setInPoint(Math.max(0, Math.min(v.currentTime, outPoint - MIN_LOOP_SPAN)));
+      setInPoint(
+        Math.max(0, Math.min(v.currentTime, outPoint - MIN_LOOP_SPAN)),
+      );
     }
     if (e.code === "KeyO") {
       e.preventDefault();
-      setOutPoint(Math.max(inPoint + MIN_LOOP_SPAN, Math.min(v.currentTime, duration)));
-    }
-    if (e.code === "KeyC") {
-      e.preventDefault();
-      setMode((m) => {
-        const next = m === "play" ? "compare" : "play";
-        modeRef.current = next;
-        return next;
-      });
-      queueMicrotask(() => {
-        if (modeRef.current === "compare") {
-          void captureFrames();
-        }
-      });
+      setOutPoint(
+        Math.max(inPoint + MIN_LOOP_SPAN, Math.min(v.currentTime, duration)),
+      );
     }
     if (e.code === "ArrowLeft") {
       e.preventDefault();
@@ -522,7 +245,10 @@ export default function LoopStudio() {
     }
     if (e.code === "ArrowRight") {
       e.preventDefault();
-      v.currentTime = Math.min(subLoop ? outPoint : duration, v.currentTime + 1 / 30);
+      v.currentTime = Math.min(
+        subLoop ? outPoint : duration,
+        v.currentTime + 1 / 30,
+      );
     }
   });
 
@@ -592,44 +318,67 @@ export default function LoopStudio() {
     [reQueryImages],
   );
 
-  const downloadAndAttachYoutube = useCallback(
-    async (url: string) => {
+  // Picks up a finished/failed background download. Runs whenever the studio
+  // mounts with a terminal job in the store, so a download that completed
+  // while the user was on another route is auto-loaded on return.
+  const handleDownloadOutcome = useEffectEvent(() => {
+    if (downloadStatus === "done") {
+      const filePath = downloadFilePath;
+      resetDownload();
+      if (!filePath) return;
+      openVideoPathPreview(filePath);
+      addToast("YouTube video ready — importing to gallery…", "success", 4000);
+      setAttaching(true);
+      importPathToGallery(filePath)
+        .then((galleryId) => {
+          if (galleryId !== null) {
+            setPreviewOnly(false);
+            setImageId(galleryId);
+            addToast(
+              "Linked to gallery — palette and export are enabled.",
+              "success",
+              4000,
+            );
+          } else {
+            addToast(
+              "Still importing — pick the video from the list shortly to enable FFmpeg tools.",
+              "warning",
+              7000,
+            );
+          }
+        })
+        .catch(() => addToast("Failed to import the downloaded video", "error"))
+        .finally(() => setAttaching(false));
+    } else if (downloadStatus === "error") {
+      addToast(downloadError ?? "YouTube download failed", "error");
+      resetDownload();
+    }
+  });
+
+  useEffect(() => {
+    handleDownloadOutcome();
+  }, [downloadStatus]);
+
+  const submitYoutubeDownload = useCallback(
+    (url: string) => {
       const trimmed = url.trim();
       if (!trimmed) {
         addToast("Paste a YouTube URL", "error");
         return;
       }
-      setYoutubeBusy(true);
-      const result = await tryDownloadYoutube(trimmed);
-      if ("filePath" in result) {
-        openVideoPathPreview(result.filePath);
-        addToast("YouTube video: preview ready; importing to gallery…", "success", 4500);
-        const galleryId = await importPathToGallery(result.filePath);
-        if (galleryId !== null) {
-          setPreviewOnly(false);
-          setImageId(galleryId);
-          addToast("Linked to gallery row — palette and export are enabled.", "success", 4000);
-        } else {
-          addToast(
-            "Still importing — select the video from the list in a moment to enable FFmpeg tools.",
-            "warning",
-            7000,
-          );
-        }
-        setYoutubeUrl("");
-      } else {
-        addToast(result.error, "error");
+      if (ytDlpMissing) {
+        addToast("yt-dlp is not installed", "error");
+        return;
       }
-      setYoutubeBusy(false);
+      if (downloading || attaching) {
+        addToast("A download is already running", "info", 3000);
+        return;
+      }
+      setYoutubeUrl("");
+      void startDownload(trimmed);
     },
-    [addToast, openVideoPathPreview, importPathToGallery],
+    [addToast, ytDlpMissing, downloading, attaching, startDownload],
   );
-
-  const beginCompare = useCallback(() => {
-    modeRef.current = "compare";
-    setMode("compare");
-    void captureFrames();
-  }, [captureFrames]);
 
   const gatherPathsFromDrop = (e: DragEvent): string[] => {
     const out: string[] = [];
@@ -643,7 +392,9 @@ export default function LoopStudio() {
       }
     }
     if (out.length === 0) {
-      const raw = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain");
+      const raw =
+        e.dataTransfer.getData("text/uri-list") ||
+        e.dataTransfer.getData("text/plain");
       for (const line of raw.split(/\r?\n/)) {
         const t = line.trim();
         if (t.startsWith("file://")) {
@@ -655,7 +406,9 @@ export default function LoopStudio() {
   };
 
   const gatherHttpUrlsFromDrop = (e: DragEvent): string[] => {
-    const raw = e.dataTransfer.getData("text/uri-list") || e.dataTransfer.getData("text/plain");
+    const raw =
+      e.dataTransfer.getData("text/uri-list") ||
+      e.dataTransfer.getData("text/plain");
     return raw.split(/\r?\n/).flatMap((s) => {
       const t = s.trim();
       return /^https?:\/\//i.test(t) ? [t] : [];
@@ -669,12 +422,16 @@ export default function LoopStudio() {
       const urls = gatherHttpUrlsFromDrop(e);
       for (const u of urls) {
         if (isAllowedYoutubeUrl(u)) {
-          void downloadAndAttachYoutube(u);
+          submitYoutubeDownload(u);
           return;
         }
       }
       if (urls.length > 0) {
-        addToast("URL drop: only YouTube links are supported here", "info", 3500);
+        addToast(
+          "URL drop: only YouTube links are supported here",
+          "info",
+          3500,
+        );
         return;
       }
       const paths = gatherPathsFromDrop(e);
@@ -687,8 +444,35 @@ export default function LoopStudio() {
         addToast("Drop a video file (.mp4, .webm, …)", "warning", 3000);
       }
     },
-    [addToast, downloadAndAttachYoutube, openVideoPathPreview],
+    [addToast, submitYoutubeDownload, openVideoPathPreview],
   );
+
+  const clearWorkspace = useCallback(() => {
+    cancelDownload();
+    const v = videoRef.current;
+    if (v) v.pause();
+    setImageId(null);
+    setPreviewOnly(false);
+    setMediaSrc(null);
+    setLoaded(false);
+    setDuration(0);
+    setInPoint(0);
+    setOutPoint(0);
+    setPlayhead(0);
+    setYoutubeUrl("");
+    setExportOpen(false);
+    setAttaching(false);
+    setReloadToken((t) => t + 1);
+    setClearConfirmOpen(false);
+  }, [cancelDownload]);
+
+  const onClearClick = useCallback(() => {
+    if (downloading) {
+      setClearConfirmOpen(true);
+      return;
+    }
+    clearWorkspace();
+  }, [downloading, clearWorkspace]);
 
   const runExport = useCallback(async () => {
     if (!imageId) {
@@ -758,7 +542,11 @@ export default function LoopStudio() {
     setPaletteBusy(true);
     const result = await tryExtractVideoPalette(imageId, playhead);
     if (result.ok) {
-      addToast(`Saved ${result.res.colors.length} palette colors to the gallery`, "success", 3500);
+      addToast(
+        `Saved ${result.res.colors.length} palette colors to the gallery`,
+        "success",
+        3500,
+      );
       void reQueryImages();
     } else {
       addToast(result.error, "error");
@@ -781,7 +569,8 @@ export default function LoopStudio() {
     const dop = Math.abs(p - op);
     const thr = 0.03;
     const t = tAt(p);
-    dragRef.current = di < thr && di <= dop ? "in" : dop < thr && dop < di ? "out" : "seek";
+    dragRef.current =
+      di < thr && di <= dop ? "in" : dop < thr && dop < di ? "out" : "seek";
     if (dragRef.current === "seek") {
       const v = videoRef.current;
       if (v) v.currentTime = t;
@@ -810,10 +599,7 @@ export default function LoopStudio() {
   });
 
   const onTimelineUp = useEffectEvent(() => {
-    if (dragRef.current) {
-      scheduleCaptures();
-      dragRef.current = null;
-    }
+    dragRef.current = null;
   });
 
   useEffect(() => {
@@ -827,15 +613,6 @@ export default function LoopStudio() {
     };
   }, []);
 
-  const scoreColor =
-    matchPct == null
-      ? "badge-ghost"
-      : matchPct > 92
-        ? "badge-success"
-        : matchPct > 80
-          ? "badge-warning"
-          : "badge-error";
-
   return (
     <div
       className="flex h-full min-h-0 w-full flex-col gap-2 overflow-hidden px-2 py-2 sm:gap-3 sm:px-4 sm:py-3"
@@ -845,24 +622,35 @@ export default function LoopStudio() {
       }}
       onDrop={onLoopStudioDrop}
     >
-      <header className="shrink-0 space-y-1">
-        <h1 className="text-xl font-semibold text-base-content sm:text-2xl">Loop Studio</h1>
-        <p
-          className="line-clamp-2 text-xs sm:line-clamp-none sm:text-sm"
-          style={{ color: "var(--wp-text-muted)" }}
+      <header className="flex shrink-0 items-start justify-between gap-3">
+        <div className="space-y-1">
+          <h1 className="text-xl font-semibold text-base-content sm:text-2xl">
+            Loop Studio
+          </h1>
+          <p
+            className="line-clamp-2 text-xs sm:line-clamp-none sm:text-sm"
+            style={{ color: "var(--wp-text-muted)" }}
+          >
+            Find in/out points for a seamless loop. Sub-loop preview uses coarse{" "}
+            <code>timeupdate</code> jumps; export bakes a seamless file for
+            native <code>video loop</code> playback.
+          </p>
+        </div>
+        <button
+          type="button"
+          className="btn btn-outline btn-sm shrink-0"
+          onClick={onClearClick}
+          title="Discard everything in Loop Studio and start from scratch"
         >
-          Find in/out points and match the last frame to the first. Sub-loop preview uses coarse{" "}
-          <code>timeupdate</code> jumps (not the two-decoder crossfade from a classic loop trimmer);
-          export bakes a seamless file for native <code>video loop</code> playback. Compare is two
-          still captures of in/out with a wipe, not live blended playback.
-        </p>
+          Clear workspace
+        </button>
       </header>
 
       <div className="alert alert-info shrink-0 py-1.5 text-xs sm:text-sm">
         <span>
-          <strong>Tip:</strong> Space play/pause, <Kbd size="sm">I</Kbd> / <Kbd size="sm">O</Kbd>{" "}
-          set in/out, <Kbd size="sm">C</Kbd> compare (drag the wipe on the preview), arrows step
-          frames. Drag a video file or YouTube URL onto this page. Export requires a gallery video.
+          <strong>Tip:</strong> Space play/pause, <Kbd size="sm">I</Kbd> /{" "}
+          <Kbd size="sm">O</Kbd> set in/out, arrows step frames. Drag a video
+          file or YouTube URL onto this page. Export requires a gallery video.
         </span>
       </div>
 
@@ -907,62 +695,100 @@ export default function LoopStudio() {
                   placeholder="https://www.youtube.com/watch?v=…"
                   value={youtubeUrl}
                   onChange={(e) => setYoutubeUrl(e.target.value)}
-                  disabled={youtubeBusy}
+                  disabled={ytDlpMissing || downloading || attaching}
                 />
               </label>
               <button
                 type="button"
                 className="btn btn-outline btn-sm shrink-0"
-                disabled={youtubeBusy || !youtubeUrl.trim()}
-                onClick={() => void downloadAndAttachYoutube(youtubeUrl)}
+                disabled={
+                  ytDlpMissing || downloading || attaching || !youtubeUrl.trim()
+                }
+                onClick={() => submitYoutubeDownload(youtubeUrl)}
               >
-                {youtubeBusy ? (
-                  <span className="loading loading-spinner loading-xs" />
-                ) : (
-                  "Download (yt-dlp)"
-                )}
+                Download (yt-dlp)
               </button>
             </div>
             {previewOnly && (
-              <span className="badge badge-warning">Preview only (not in gallery)</span>
+              <span className="badge badge-warning">
+                Preview only (not in gallery)
+              </span>
             )}
-            <p className="w-full text-[11px]" style={{ color: "var(--wp-text-faint)" }}>
-              YouTube needs <code className="text-[10px]">yt-dlp</code> on PATH; import runs in the
-              background.
-            </p>
+            {ytDlpMissing ? (
+              <p className="w-full text-[11px] text-warning">
+                <code className="text-[10px]">yt-dlp</code> is not installed —
+                the YouTube download is disabled. Local videos and the gallery
+                still work.
+              </p>
+            ) : (
+              <p
+                className="w-full text-[11px]"
+                style={{ color: "var(--wp-text-faint)" }}
+              >
+                YouTube needs <code className="text-[10px]">yt-dlp</code> on
+                PATH;
+              </p>
+            )}
           </div>
 
+          {(downloading || attaching) && (
+            <div className="flex shrink-0 items-center gap-3 rounded-lg border border-base-300 bg-base-300/40 p-2 sm:p-3">
+              {downloading ? (
+                <>
+                  <span
+                    className="shrink-0 text-xs"
+                    style={{ color: "var(--wp-text-muted)" }}
+                  >
+                    Downloading…
+                  </span>
+                  <progress
+                    className="progress progress-primary h-2 flex-1"
+                    value={downloadPercent}
+                    max={100}
+                  />
+                  <span
+                    className="w-10 shrink-0 text-right text-xs tabular-nums"
+                    style={{ color: "var(--wp-text-muted)" }}
+                  >
+                    {Math.round(downloadPercent)}%
+                  </span>
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-xs shrink-0"
+                    title="Cancel download"
+                    onClick={() => cancelDownload()}
+                  >
+                    ✕
+                  </button>
+                </>
+              ) : (
+                <>
+                  <span className="loading loading-spinner loading-xs shrink-0" />
+                  <span
+                    className="text-xs"
+                    style={{ color: "var(--wp-text-muted)" }}
+                  >
+                    Importing to gallery…
+                  </span>
+                </>
+              )}
+            </div>
+          )}
+
           {!playbackSrc ? (
-            <p className="shrink-0 text-sm" style={{ color: "var(--wp-text-faint)" }}>
+            <p
+              className="shrink-0 text-sm"
+              style={{ color: "var(--wp-text-faint)" }}
+            >
               Select a gallery video or open a file for preview.
             </p>
           ) : (
             <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
-              <div
-                ref={previewShellRef}
-                className="relative flex min-h-[11rem] w-full flex-1 items-center justify-center overflow-hidden rounded-lg bg-neutral-950 sm:min-h-[14rem]"
-              >
-                <canvas
-                  ref={canvasPlayRef}
-                  className={
-                    mode === "play" ? "block max-h-full max-w-full object-contain" : "hidden"
-                  }
-                  aria-hidden={mode !== "play"}
-                />
-                <canvas
-                  ref={canvasCmpRef}
-                  className={
-                    mode === "compare"
-                      ? "block max-h-full max-w-full cursor-col-resize select-none touch-none object-contain"
-                      : "hidden"
-                  }
-                  aria-hidden={mode !== "compare"}
-                  onMouseDown={onWipeMouseDown}
-                />
+              <div className="relative flex min-h-[11rem] w-full flex-1 items-center justify-center overflow-hidden rounded-lg bg-neutral-950 sm:min-h-[14rem]">
                 <video
                   key={`${playbackSrc}-${reloadToken}`}
                   ref={videoRef}
-                  className="hidden"
+                  className="block max-h-full max-w-full object-contain"
                   src={playbackSrc}
                   loop={outPoint - inPoint >= duration - FULL_LOOP_EPS}
                   preload="auto"
@@ -971,39 +797,9 @@ export default function LoopStudio() {
                   onLoadedMetadata={onLoadedMetadata}
                   onTimeUpdate={onTimeUpdate}
                 />
-                <video
-                  key={`seek-${playbackSrc}-${reloadToken}`}
-                  ref={seekRef}
-                  src={playbackSrc}
-                  className="pointer-events-none fixed left-[-9999px] top-0 opacity-0"
-                  style={{ width: 160, height: 90 }}
-                  preload="auto"
-                  muted
-                  playsInline
-                  aria-hidden
-                />
               </div>
 
               <div className="flex shrink-0 flex-wrap items-center gap-2">
-                <div className="join">
-                  <button
-                    type="button"
-                    className={`btn btn-sm join-item ${mode === "play" ? "btn-active" : ""}`}
-                    onClick={() => {
-                      modeRef.current = "play";
-                      setMode("play");
-                    }}
-                  >
-                    Preview
-                  </button>
-                  <button
-                    type="button"
-                    className={`btn btn-sm join-item ${mode === "compare" ? "btn-active" : ""}`}
-                    onClick={() => beginCompare()}
-                  >
-                    Compare frames
-                  </button>
-                </div>
                 <button
                   type="button"
                   className="btn btn-sm btn-ghost"
@@ -1012,15 +808,6 @@ export default function LoopStudio() {
                 >
                   {previewMuted ? "🔇" : "🔊"}
                 </button>
-                <div className="flex items-center gap-2 ml-auto">
-                  <span className="text-xs" style={{ color: "var(--wp-text-muted)" }}>
-                    match
-                  </span>
-                  <progress className="progress w-24 h-2" value={matchPct ?? 0} max={100} />
-                  <span className={`badge ${scoreColor} badge-sm`}>
-                    {matchPct != null ? `${matchPct}%` : "—"}
-                  </span>
-                </div>
               </div>
 
               <div
@@ -1091,13 +878,21 @@ export default function LoopStudio() {
                 >
                   ▶
                 </button>
-                <span className="tabular-nums text-sm" style={{ color: "var(--wp-text-muted)" }}>
+                <span
+                  className="tabular-nums text-sm"
+                  style={{ color: "var(--wp-text-muted)" }}
+                >
                   {formatLoopTime(playhead)} / {formatLoopTime(duration)}
                 </span>
-                <span className="text-sm ml-auto" style={{ color: "var(--wp-text-faint)" }}>
+                <span
+                  className="text-sm ml-auto"
+                  style={{ color: "var(--wp-text-faint)" }}
+                >
                   loop span:{" "}
                   <strong className="text-base-content">
-                    {outPoint > inPoint ? formatLoopTime(outPoint - inPoint) : "—"}
+                    {outPoint > inPoint
+                      ? formatLoopTime(outPoint - inPoint)
+                      : "—"}
                   </strong>
                 </span>
               </div>
@@ -1111,7 +906,9 @@ export default function LoopStudio() {
                     onChange={(e) => {
                       const t = parseLoopTime(e.target.value);
                       if (!Number.isNaN(t))
-                        setInPoint(Math.max(0, Math.min(t, outPoint - MIN_LOOP_SPAN)));
+                        setInPoint(
+                          Math.max(0, Math.min(t, outPoint - MIN_LOOP_SPAN)),
+                        );
                     }}
                   />
                 </label>
@@ -1123,7 +920,12 @@ export default function LoopStudio() {
                     onChange={(e) => {
                       const t = parseLoopTime(e.target.value);
                       if (!Number.isNaN(t))
-                        setOutPoint(Math.max(inPoint + MIN_LOOP_SPAN, Math.min(t, duration)));
+                        setOutPoint(
+                          Math.max(
+                            inPoint + MIN_LOOP_SPAN,
+                            Math.min(t, duration),
+                          ),
+                        );
                     }}
                   />
                 </label>
@@ -1156,7 +958,9 @@ export default function LoopStudio() {
                 <button
                   type="button"
                   className="btn btn-primary btn-sm"
-                  disabled={!imageId || previewOnly || ffmpegAvailable === false}
+                  disabled={
+                    !imageId || previewOnly || ffmpegAvailable === false
+                  }
                   title={
                     ffmpegAvailable === false
                       ? "ffmpeg not found — install it and reopen this page"
@@ -1167,7 +971,9 @@ export default function LoopStudio() {
                   Export with FFmpeg…
                 </button>
                 {ffmpegAvailable === false && (
-                  <span className="text-xs text-warning self-center">ffmpeg not installed</span>
+                  <span className="text-xs text-warning self-center">
+                    ffmpeg not installed
+                  </span>
                 )}
               </div>
             </div>
@@ -1179,9 +985,10 @@ export default function LoopStudio() {
         <div className="modal-box">
           <h3 className="font-semibold text-lg">Export loop</h3>
           <p className="text-sm py-2" style={{ color: "var(--wp-text-muted)" }}>
-            Re-encodes the trim for WebKit <code>video loop</code>. Audio is stripped. Plain trim is
-            a hard cut; with midpoint crossfade, FFmpeg splits the span in two and xfades the join
-            (output is slightly shorter than the span). Falls back to trim if xfade fails.
+            Re-encodes the trim for WebKit <code>video loop</code>. Audio is
+            stripped. Plain trim is a hard cut; with midpoint crossfade, FFmpeg
+            splits the span in two and xfades the join (output is slightly
+            shorter than the span). Falls back to trim if xfade fails.
           </p>
           <label className="label cursor-pointer justify-start gap-2 py-1">
             <input
@@ -1199,7 +1006,9 @@ export default function LoopStudio() {
             <select
               className="select select-bordered select-sm"
               value={preset}
-              onChange={(e) => setPreset(e.target.value as VideoLoopExportRequest["preset"])}
+              onChange={(e) =>
+                setPreset(e.target.value as VideoLoopExportRequest["preset"])
+              }
             >
               <option value="webm_vp9">WebM VP9 (smaller)</option>
               <option value="mp4_h264">MP4 H.264 (compatible)</option>
@@ -1224,7 +1033,9 @@ export default function LoopStudio() {
                   checked={exportAction === "replace"}
                   onChange={() => setExportAction("replace")}
                 />
-                <span className="label-text">Replace gallery file (same id)</span>
+                <span className="label-text">
+                  Replace gallery file (same id)
+                </span>
               </label>
             </div>
           </div>
@@ -1243,7 +1054,11 @@ export default function LoopStudio() {
               disabled={exporting}
               onClick={() => void runExport()}
             >
-              {exporting ? <span className="loading loading-spinner loading-sm" /> : "Export"}
+              {exporting ? (
+                <span className="loading loading-spinner loading-sm" />
+              ) : (
+                "Export"
+              )}
             </button>
           </div>
         </div>
@@ -1252,6 +1067,38 @@ export default function LoopStudio() {
           className="modal-backdrop bg-black/50"
           aria-label="close"
           onClick={() => setExportOpen(false)}
+        />
+      </dialog>
+
+      <dialog className={`modal ${clearConfirmOpen ? "modal-open" : ""}`}>
+        <div className="modal-box">
+          <h3 className="font-semibold text-lg">Clear workspace?</h3>
+          <p className="text-sm py-2" style={{ color: "var(--wp-text-muted)" }}>
+            A YouTube download is still in progress. Clearing the workspace
+            cancels it and discards everything currently in Loop Studio.
+          </p>
+          <div className="modal-action">
+            <button
+              type="button"
+              className="btn"
+              onClick={() => setClearConfirmOpen(false)}
+            >
+              Keep downloading
+            </button>
+            <button
+              type="button"
+              className="btn btn-error"
+              onClick={() => clearWorkspace()}
+            >
+              Cancel download &amp; clear
+            </button>
+          </div>
+        </div>
+        <button
+          type="button"
+          className="modal-backdrop bg-black/50"
+          aria-label="close"
+          onClick={() => setClearConfirmOpen(false)}
         />
       </dialog>
     </div>

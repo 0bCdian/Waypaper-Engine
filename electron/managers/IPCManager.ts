@@ -30,7 +30,7 @@ import {
   exportWallpapersToDirectory,
   type ExportWallpaperPayload,
 } from "../exportWallpapersToFolder";
-import { downloadYoutubeVideo } from "../youtubeDownload";
+import { cancelYoutubeDownload, isYtDlpAvailable, startYoutubeDownload } from "../youtubeDownload";
 
 export interface IPCHandler {
   channel: string;
@@ -438,15 +438,33 @@ export class IPCManager {
     });
 
     this.registerHandler({
-      channel: "download-youtube-video",
+      channel: "check-yt-dlp",
+      handler: async () => {
+        return { available: isYtDlpAvailable() };
+      },
+    });
+
+    this.registerHandler({
+      channel: "youtube-download-start",
       handler: async (_event, ...args: unknown[]) => {
         const payload = args[0] as { url?: string };
         const url = typeof payload?.url === "string" ? payload.url : "";
-        const r = await downloadYoutubeVideo(url);
+        const r = await startYoutubeDownload(url, (downloadEvent) => {
+          this.broadcastToAllWindows("youtube-download-event", downloadEvent);
+        });
         if (!r.ok) {
           throw new Error(r.message);
         }
-        return { filePath: r.filePath };
+        return { jobId: r.jobId };
+      },
+    });
+
+    this.registerHandler({
+      channel: "youtube-download-cancel",
+      handler: async (_event, ...args: unknown[]) => {
+        const payload = args[0] as { jobId?: string };
+        const jobId = typeof payload?.jobId === "string" ? payload.jobId : "";
+        return { canceled: cancelYoutubeDownload(jobId) };
       },
     });
   }
