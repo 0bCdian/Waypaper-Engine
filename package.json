@@ -47,7 +47,7 @@
   "dependencies": {
     "@dnd-kit/abstract": "0.3.2",
     "@dnd-kit/dom": "0.3.2",
-    "@dnd-kit/helpers": "0.3.2",
+    "@dnd-kit/helpers": "0.4.0",
     "@dnd-kit/react": "0.3.2",
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource-variable/space-grotesk": "^5.2.10",
