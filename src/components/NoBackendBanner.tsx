@@ -46,17 +46,17 @@ export default function NoBackendBanner() {
       className="
         flex items-center gap-3 px-4 py-2.5 text-sm
         bg-warning/10 border-b border-warning/30
-        [data-design=neobrutalist_&]:bg-warning
-        [data-design=neobrutalist_&]:border-b-2
-        [data-design=neobrutalist_&]:border-black
-        [data-design=neobrutalist_&]:text-black
+        [[data-design=neobrutalist]_&]:bg-warning
+        [[data-design=neobrutalist]_&]:border-b-2
+        [[data-design=neobrutalist]_&]:border-black
+        [[data-design=neobrutalist]_&]:text-black
       "
     >
-      <span className="shrink-0 text-warning [data-design=neobrutalist_&]:text-black" aria-hidden>
+      <span className="shrink-0 text-warning [[data-design=neobrutalist]_&]:text-black" aria-hidden>
         ⚠
       </span>
-      <span className="flex-1 font-medium text-base-content [data-design=neobrutalist_&]:text-black">
-        <strong className="text-warning [data-design=neobrutalist_&]:text-black font-bold">
+      <span className="flex-1 font-medium text-base-content [[data-design=neobrutalist]_&]:text-black">
+        <strong className="text-warning [[data-design=neobrutalist]_&]:text-black font-bold">
           No wallpaper backends found.
         </strong>{" "}
         Install at least one backend (awww, hyprpaper, swaybg, mpvpaper…) to set wallpapers.
@@ -67,12 +67,12 @@ export default function NoBackendBanner() {
         rel="noopener noreferrer"
         className="
           shrink-0 btn btn-xs btn-warning btn-outline font-bold
-          [data-design=neobrutalist_&]:rounded-none
-          [data-design=neobrutalist_&]:border-2
-          [data-design=neobrutalist_&]:border-black
-          [data-design=neobrutalist_&]:bg-white
-          [data-design=neobrutalist_&]:text-black
-          [data-design=neobrutalist_&]:shadow-[2px_2px_0_0_black]
+          [[data-design=neobrutalist]_&]:rounded-none
+          [[data-design=neobrutalist]_&]:border-2
+          [[data-design=neobrutalist]_&]:border-black
+          [[data-design=neobrutalist]_&]:bg-white
+          [[data-design=neobrutalist]_&]:text-black
+          [[data-design=neobrutalist]_&]:shadow-[2px_2px_0_0_black]
         "
       >
         Install guide ↗
@@ -83,8 +83,8 @@ export default function NoBackendBanner() {
         onClick={hide}
         className="
           shrink-0 btn btn-xs btn-ghost opacity-50 hover:opacity-100
-          [data-design=neobrutalist_&]:text-black
-          [data-design=neobrutalist_&]:opacity-60
+          [[data-design=neobrutalist]_&]:text-black
+          [[data-design=neobrutalist]_&]:opacity-60
         "
       >
         ✕
