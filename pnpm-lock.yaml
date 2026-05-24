@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@dnd-kit/abstract':
-        specifier: 0.3.2
-        version: 0.3.2
+        specifier: 0.4.0
+        version: 0.4.0
       '@dnd-kit/dom':
         specifier: 0.3.2
         version: 0.3.2
