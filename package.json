@@ -45,10 +45,10 @@
     "test:all": "pnpm run test && pnpm run test:daemon && pnpm run test:e2e"
   },
   "dependencies": {
-    "@dnd-kit/abstract": "0.3.2",
-    "@dnd-kit/dom": "0.3.2",
+    "@dnd-kit/abstract": "0.4.0",
+    "@dnd-kit/dom": "0.4.0",
     "@dnd-kit/helpers": "0.4.0",
-    "@dnd-kit/react": "0.3.2",
+    "@dnd-kit/react": "0.4.0",
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource-variable/space-grotesk": "^5.2.10",
     "@fontsource/aldrich": "5.2.7",
