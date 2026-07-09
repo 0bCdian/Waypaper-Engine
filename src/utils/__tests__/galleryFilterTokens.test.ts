@@ -107,6 +107,7 @@ describe("mapFiltersToImageQueryParams", () => {
   const baseFilterFields = {
     paletteSimilarToId: null,
     paletteSimilarMaxDeltaE: 18,
+    hueGroup: null,
   } as const;
 
   it("maps sort and combined API fields", () => {
@@ -263,5 +264,38 @@ describe("galleryHasActiveFilters", () => {
     ).toBe(true);
     expect(galleryHasActiveFilters({ ...base, paletteSimilarToId: 7 })).toBe(true);
     expect(galleryHasActiveFilters(base)).toBe(false);
+  });
+});
+
+describe("hue group filter mapping", () => {
+  const baseFilters = {
+    order: "desc" as const,
+    type: "id" as const,
+    mediaType: "all" as const,
+    filterTokens: [] as string[],
+    paletteSimilarToId: null,
+    paletteSimilarMaxDeltaE: 18,
+    hueGroup: null as number | null,
+  };
+
+  it("omits hue_group when null", () => {
+    const params = mapFiltersToImageQueryParams(baseFilters);
+    expect(params.hue_group).toBeUndefined();
+  });
+
+  it("emits hue_group when set", () => {
+    const params = mapFiltersToImageQueryParams({ ...baseFilters, hueGroup: 4 });
+    expect(params.hue_group).toBe(4);
+  });
+
+  it("emits neutral group 99", () => {
+    const params = mapFiltersToImageQueryParams({ ...baseFilters, hueGroup: 99 });
+    expect(params.hue_group).toBe(99);
+  });
+
+  it("maps type hue to sort_by hue", () => {
+    const params = mapFiltersToImageQueryParams({ ...baseFilters, type: "hue", order: "asc" });
+    expect(params.sort_by).toBe("hue");
+    expect(params.sort_order).toBe("asc");
   });
 });

@@ -27,7 +27,7 @@ import {
 
 interface PartialFilters {
   order: "asc" | "desc";
-  type: "name" | "id";
+  type: "name" | "id" | "hue";
   mediaType: "all" | "image" | "video" | "web" | "gif";
   filterTokens: string[];
 }
@@ -311,7 +311,7 @@ function Filters() {
   const hasActiveSearch =
     partialFilters.filterTokens.length > 0 || inputHistoryCount > 0 || hasPaletteSimilar;
   const currentSort: SortState = {
-    type: partialFilters.type,
+    type: partialFilters.type === "name" ? "name" : "id",
     order: partialFilters.order,
   };
 

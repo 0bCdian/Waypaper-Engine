@@ -151,6 +151,7 @@ export function mapFiltersToImageQueryParams(
     | "filterTokens"
     | "paletteSimilarToId"
     | "paletteSimilarMaxDeltaE"
+    | "hueGroup"
   >,
 ): Partial<ImageQueryParams> {
   const parsed = parseGalleryFilterTokens(filters.filterTokens);
@@ -162,7 +163,7 @@ export function mapFiltersToImageQueryParams(
       : undefined;
 
   const out: Partial<ImageQueryParams> = {
-    sort_by: filters.type === "name" ? "name" : "imported_at",
+    sort_by: filters.type === "name" ? "name" : filters.type === "hue" ? "hue" : "imported_at",
     sort_order: filters.order,
     media_type: mt,
     search,
@@ -174,6 +175,10 @@ export function mapFiltersToImageQueryParams(
   if (filters.paletteSimilarToId != null) {
     out.palette_similar_to = filters.paletteSimilarToId;
     out.palette_max_delta_e = filters.paletteSimilarMaxDeltaE;
+  }
+
+  if (filters.hueGroup != null) {
+    out.hue_group = filters.hueGroup;
   }
 
   return out;
@@ -244,6 +249,7 @@ export function galleryHasActiveFilters(filters: Filters): boolean {
   if (filters.filterTokens.length > 0) return true;
   if (filters.mediaType !== "all") return true;
   if (filters.paletteSimilarToId != null) return true;
+  if (filters.hueGroup != null) return true;
   if (filters.advancedFilters.resolution.constraint !== "all") return true;
   const parsed = parseGalleryFilterTokens(filters.filterTokens);
   return hasClientSideGalleryFilters(parsed, filters.mediaType, filters.advancedFilters.resolution);

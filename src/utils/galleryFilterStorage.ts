@@ -49,6 +49,7 @@ export function defaultGalleryFilters(): Filters {
     advancedFilters: defaultAdvancedFilters(),
     paletteSimilarToId: null,
     paletteSimilarMaxDeltaE: 18,
+    hueGroup: null,
   };
 }
 
@@ -109,6 +110,7 @@ function migrateFromLegacyV1(raw: LegacyFiltersV1): Filters {
     advancedFilters: { resolution },
     paletteSimilarToId: null,
     paletteSimilarMaxDeltaE: 18,
+    hueGroup: null,
   };
 }
 
@@ -130,9 +132,14 @@ function normalizeV2(o: Record<string, unknown>): Filters {
     const m = Number(f.paletteSimilarMaxDeltaE);
     return Number.isFinite(m) && m > 0 ? m : base.paletteSimilarMaxDeltaE;
   })();
+  const hg = f.hueGroup;
+  const hueGroup =
+    typeof hg === "number" && Number.isInteger(hg) && ((hg >= 0 && hg <= 11) || hg === 99)
+      ? hg
+      : null;
   return {
     order: f.order === "asc" || f.order === "desc" ? f.order : base.order,
-    type: f.type === "name" || f.type === "id" ? f.type : base.type,
+    type: f.type === "name" || f.type === "id" || f.type === "hue" ? f.type : base.type,
     mediaType:
       f.mediaType === "all" ||
       f.mediaType === "image" ||
@@ -159,6 +166,7 @@ function normalizeV2(o: Record<string, unknown>): Filters {
     },
     paletteSimilarToId,
     paletteSimilarMaxDeltaE,
+    hueGroup,
   };
 }
 
