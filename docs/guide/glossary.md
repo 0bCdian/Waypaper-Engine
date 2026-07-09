@@ -26,4 +26,4 @@ Short definitions of terms used across these docs. Authoritative behavior (flags
 - **waypaper-engine** vs **waypaper-daemon**: the **GUI** vs the **long-lived service + CLI**; both may run together on a normal desktop.
 - **Socket path** (where the HTTP API listens) is unrelated to the **socket your compositor** might use — only the Waypaper **daemon** `socket_path` matters for `curl` and `waypaper-daemon`.
 
-If a term is missing, search the [FAQ](./faq) or the [OpenAPI spec](/api/openapi) for the feature name.
+If a term is missing, search the [FAQ](./faq) or the [OpenAPI spec](https://github.com/0bCdian/Waypaper-Engine/blob/main/daemon/docs/openapi.yaml) for the feature name.

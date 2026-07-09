@@ -38,4 +38,4 @@ See [The app — Wallhaven](/guide/app#wallhaven-wallhaven).
 
 ## Migration assumptions
 
-If you are carrying notes from older versions, treat [the API contract on GitHub](https://github.com/0bCdian/Waypaper-Engine/blob/main/daemon/API_CONTRACT.md) and [OpenAPI](/api/openapi) as the current surface; the daemon’s [`routes.go` on GitHub](https://github.com/0bCdian/Waypaper-Engine/blob/main/daemon/internal/server/routes.go) is the final word on which paths exist.
+If you are carrying notes from older versions, treat [the API contract on GitHub](https://github.com/0bCdian/Waypaper-Engine/blob/main/daemon/API_CONTRACT.md) and [OpenAPI](https://github.com/0bCdian/Waypaper-Engine/blob/main/daemon/docs/openapi.yaml) as the current surface; the daemon’s [`routes.go` on GitHub](https://github.com/0bCdian/Waypaper-Engine/blob/main/daemon/internal/server/routes.go) is the final word on which paths exist.
