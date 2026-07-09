@@ -5,7 +5,7 @@ The daemon speaks **JSON** over **HTTP/1.1** on a **Unix domain socket** . The r
 | Topic                                              | Where                                                                                                        |
 | -------------------------------------------------- | ------------------------------------------------------------------------------------------------------------ |
 | Human-oriented prose, examples, and models         | [API contract (GitHub)](https://github.com/0bCdian/Waypaper-Engine/blob/main/daemon/API_CONTRACT.md)         |
-| Machine-readable path map and `operationId` values | [OpenAPI spec](/api/openapi) (also `daemon/docs/openapi.yaml` in the repo)                                   |
+| Machine-readable path map and `operationId` values | [OpenAPI spec (GitHub)](https://github.com/0bCdian/Waypaper-Engine/blob/main/daemon/docs/openapi.yaml) (`daemon/docs/openapi.yaml` in the repo) |
 | **SSE** event types and filters                    | [Events & SSE](/api/sse)                                                                                     |
 | **Architecture** (packages, data, backends)        | [ARCHITECTURE.md (GitHub)](https://github.com/0bCdian/Waypaper-Engine/blob/main/daemon/docs/ARCHITECTURE.md) |
 
@@ -43,4 +43,4 @@ curl -sS --unix-socket -X POST "$SOCK" "http://localhost/wallpaper/random" \
 
 **NOTE** — _Electron UI:_ the renderer uses `daemonClient` (from `src/client/`) → preload bridge → `"daemon"` IPC channel → main process → socket. It never calls the socket directly. See the **bridge** section in the [API contract](https://github.com/0bCdian/Waypaper-Engine/blob/main/daemon/API_CONTRACT.md#electron-renderer-bridge-notes).
 
-**NOTE** — _No browser try-it:_ the daemon binds a Unix domain socket, not TCP. Browser-based “try it” tools cannot reach it. Use `curl --unix-socket` — see [OpenAPI spec & curl examples](/api/openapi) for copy-pasteable commands.
+**NOTE** — _No browser try-it:_ the daemon binds a Unix domain socket, not TCP. Browser-based “try it” tools cannot reach it. Use `curl --unix-socket` — see the examples above and in [Events & SSE](/api/sse).
