@@ -14,6 +14,7 @@ import { components as builtinSelectComponents } from "react-select";
 import type { InputProps } from "react-select";
 import useDebounce from "../hooks/useDebounce";
 import { cn } from "../utils/cn";
+import HueFilterStrip from "./HueFilterStrip";
 import type { Filters as FiltersType } from "../types/rendererTypes";
 import { useImagesStore } from "../stores/images";
 import { useShallow } from "zustand/react/shallow";
@@ -48,19 +49,21 @@ const TOKEN_PLACEHOLDER = "Search…  (press / to focus)";
 const PALETTE_SIMILAR_DELTA_MIN = 4;
 const PALETTE_SIMILAR_DELTA_MAX = 50;
 
-/* Sort cycles through 4 states: name↑ name↓ id↑ id↓ */
-type SortState = { type: "name" | "id"; order: "asc" | "desc" };
+/* Sort cycles through 5 states: name↑ name↓ id↑ id↓ rainbow */
+type SortState = { type: "name" | "id" | "hue"; order: "asc" | "desc" };
 const SORT_CYCLE: SortState[] = [
   { type: "name", order: "asc" },
   { type: "name", order: "desc" },
   { type: "id", order: "asc" },
   { type: "id", order: "desc" },
+  { type: "hue", order: "asc" },
 ];
 function nextSort(current: SortState): SortState {
   const idx = SORT_CYCLE.findIndex((s) => s.type === current.type && s.order === current.order);
   return SORT_CYCLE[(idx + 1) % SORT_CYCLE.length];
 }
 function sortLabel(s: SortState) {
+  if (s.type === "hue") return "Rainbow";
   return `${s.type === "name" ? "Name" : "ID"} ${s.order === "asc" ? "↑" : "↓"}`;
 }
 
@@ -215,6 +218,7 @@ function Filters() {
       ...base,
       filterTokens: [],
       paletteSimilarToId: null,
+      hueGroup: null,
     });
     clearGalleryFilterInputHistory();
     setInputHistoryTick((n) => n + 1);
@@ -311,7 +315,7 @@ function Filters() {
   const hasActiveSearch =
     partialFilters.filterTokens.length > 0 || inputHistoryCount > 0 || hasPaletteSimilar;
   const currentSort: SortState = {
-    type: partialFilters.type === "name" ? "name" : "id",
+    type: partialFilters.type,
     order: partialFilters.order,
   };
 
@@ -372,7 +376,7 @@ function Filters() {
             type="button"
             className={`${pillBase} ${pillIdle}`}
             onClick={handleSortCycle}
-            title="Cycle sort: Name↑ → Name↓ → ID↑ → ID↓"
+            title="Cycle sort: Name↑ → Name↓ → ID↑ → ID↓ → Rainbow"
           >
             {sortLabel(currentSort)}
           </button>
@@ -384,6 +388,8 @@ function Filters() {
           >
             Filters
           </button>
+
+          <HueFilterStrip />
         </div>
 
         <div className="w-full min-w-0 md:max-w-4xl md:flex-1">
