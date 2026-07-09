@@ -28,7 +28,7 @@ export default defineConfig({
       },
     ],
   ],
-  ignoreDeadLinks: true,
+  ignoreDeadLinks: false,
   themeConfig: {
     logo: "/logo.png",
     nav: [
@@ -42,6 +42,7 @@ export default defineConfig({
           text: "Getting started",
           items: [
             { text: "Install & run", link: "/guide/install" },
+            { text: "First 10 minutes", link: "/guide/first-run" },
             { text: "The app (UI)", link: "/guide/app" },
             { text: "FAQ & troubleshooting", link: "/guide/faq" },
           ],
@@ -62,14 +63,20 @@ export default defineConfig({
           text: "Control plane",
           items: [
             { text: "Overview", link: "/api/overview" },
-            { text: "OpenAPI spec & curl examples", link: "/api/openapi" },
+            {
+              text: "OpenAPI spec (GitHub)",
+              link: "https://github.com/0bCdian/Waypaper-Engine/blob/main/daemon/docs/openapi.yaml",
+            },
           ],
         },
         {
           text: "Integration",
           items: [
             { text: "Events & SSE", link: "/api/sse" },
-            { text: "Authoritative reference", link: "/api/contract" },
+            {
+              text: "API contract (GitHub)",
+              link: "https://github.com/0bCdian/Waypaper-Engine/blob/main/daemon/API_CONTRACT.md",
+            },
           ],
         },
       ],
