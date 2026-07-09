@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"sort"
 	"strings"
 
 	clover "github.com/ostafen/clover/v2"
@@ -70,17 +71,22 @@ func (s *imageStore) GetAll(ctx context.Context, opts ImageQueryOpts) (*Paginate
 	}
 
 	sortField := "imported_at"
-	if opts.SortBy != "" {
+	if opts.SortBy != "" && opts.SortBy != "hue" {
 		sortField = opts.SortBy
 	}
 	sortDir := -1
 	if strings.ToLower(opts.SortOrder) == "asc" {
 		sortDir = 1
 	}
+	// Rainbow sort happens in memory; pin the DB pre-sort to newest-first so
+	// in-group ties resolve to imported_at desc via the stable sort below.
+	if opts.SortBy == "hue" {
+		sortDir = -1
+	}
 
 	// When search, root-folder filtering, perceptual color constraints, or palette similarity
 	// are active, load all DB-filtered docs, apply in-memory filters, then paginate in Go.
-	if opts.Search != "" || filterRootFolder || len(opts.ColorsNear) > 0 || opts.PaletteSimilarTo != nil {
+	if opts.Search != "" || filterRootFolder || len(opts.ColorsNear) > 0 || opts.PaletteSimilarTo != nil || opts.HueGroup != nil || opts.SortBy == "hue" {
 		q := query.NewQuery(CollectionImages)
 		if criteria != nil {
 			q = q.Where(criteria)
@@ -110,6 +116,12 @@ func (s *imageStore) GetAll(ctx context.Context, opts ImageQueryOpts) (*Paginate
 				maxDE = DefaultPaletteSimilarMaxDeltaE
 			}
 			allImages = filterImagesByPaletteSimilarity(allImages, refPalette, maxDE)
+		}
+		if opts.HueGroup != nil {
+			allImages = filterImagesByHueGroup(allImages, *opts.HueGroup)
+		}
+		if opts.SortBy == "hue" {
+			sortImagesByHue(allImages, strings.ToLower(opts.SortOrder) == "desc")
 		}
 
 		return Paginate(allImages, opts.Page, opts.PerPage), nil
@@ -334,4 +346,46 @@ func filterImagesByPaletteSimilarity(images []Image, ref []string, maxDE float64
 		}
 	}
 	return filtered
+}
+
+// filterImagesByHueGroup keeps images whose palette maps to the given hue group.
+func filterImagesByHueGroup(images []Image, group int) []Image {
+	filtered := make([]Image, 0, len(images))
+	for _, im := range images {
+		if cielab.HueGroupFromPalette(im.Colors) == group {
+			filtered = append(filtered, im)
+		}
+	}
+	return filtered
+}
+
+// sortImagesByHue orders images rainbow-style: hue group ascending (or
+// descending), neutral group always last, most-saturated first within a
+// group. Stable, so the caller's imported_at pre-sort breaks remaining ties.
+func sortImagesByHue(images []Image, desc bool) {
+	type hueKey struct {
+		group int
+		sat   float64
+	}
+	keys := make(map[int]hueKey, len(images))
+	for _, im := range images {
+		g, s := cielab.HueSortKey(im.Colors)
+		keys[im.ID] = hueKey{group: g, sat: s}
+	}
+	sort.SliceStable(images, func(i, j int) bool {
+		a, b := keys[images[i].ID], keys[images[j].ID]
+		if a.group != b.group {
+			if a.group == cielab.NeutralHueGroup {
+				return false
+			}
+			if b.group == cielab.NeutralHueGroup {
+				return true
+			}
+			if desc {
+				return a.group > b.group
+			}
+			return a.group < b.group
+		}
+		return a.sat > b.sat
+	})
 }

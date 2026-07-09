@@ -43,7 +43,8 @@ type ImageQueryOpts struct {
 	Page int
 	// Items per page. Default: 50, max: 200.
 	PerPage int
-	// Sort field: "name", "imported_at", "file_size". Default: "imported_at".
+	// Sort field: "name", "imported_at", "file_size", or "hue" (rainbow:
+	// hue group asc/desc, neutral last, saturation desc within a group).
 	SortBy string
 	// Sort direction: "asc" or "desc". Default: "desc".
 	SortOrder string
@@ -58,6 +59,10 @@ type ImageQueryOpts struct {
 	// ColorsNear filters by CIE76 ΔE in Lab vs stored swatches (AND across constraints).
 	// When non-empty, GetAll uses an in-memory filter path (same as text search).
 	ColorsNear []ColorNearConstraint
+	// HueGroup filters to images whose palette's dominant chromatic swatch
+	// falls in this 30° hue bucket (0-11) or cielab.NeutralHueGroup (99).
+	// Computed on the fly from Colors; forces the in-memory filter path.
+	HueGroup *int
 	// PaletteSimilarTo filters images whose palette is within PaletteSimilarMaxDeltaE of the
 	// reference image's palette (minimum CIE76 ΔE across all swatch pairs). Nil disables.
 	// Forces the in-memory filter path. Reference image must exist or GetAll returns ErrNotFound.

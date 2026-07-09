@@ -103,6 +103,89 @@ func TestImageStore_GetAll_ColorsNear(t *testing.T) {
 	assert.Equal(t, "near_red.png", res.Data[0].Name)
 }
 
+func TestImageStore_GetAll_HueGroupFilter(t *testing.T) {
+	db := testutil.OpenTestDB(t)
+	is := db.ImageStore()
+	ctx := context.Background()
+
+	imgRed := testutil.SampleImage(0)
+	imgRed.Name = "red"
+	imgRed.Checksum = "sha256:hue_red"
+	imgRed.Colors = []string{"#ff0000", "#808080"}
+
+	imgBlue := testutil.SampleImage(0)
+	imgBlue.Name = "blue"
+	imgBlue.Checksum = "sha256:hue_blue"
+	imgBlue.Colors = []string{"#0000ff"}
+
+	imgGray := testutil.SampleImage(0)
+	imgGray.Name = "gray"
+	imgGray.Checksum = "sha256:hue_gray"
+	imgGray.Colors = []string{"#808080"}
+
+	_, err := is.Create(ctx, []store.Image{imgRed, imgBlue, imgGray})
+	require.NoError(t, err)
+
+	red := 0
+	res, err := is.GetAll(ctx, store.ImageQueryOpts{HueGroup: &red, Page: 1, PerPage: 50})
+	require.NoError(t, err)
+	require.Len(t, res.Data, 1)
+	assert.Equal(t, "red", res.Data[0].Name)
+
+	neutral := 99
+	res, err = is.GetAll(ctx, store.ImageQueryOpts{HueGroup: &neutral, Page: 1, PerPage: 50})
+	require.NoError(t, err)
+	require.Len(t, res.Data, 1)
+	assert.Equal(t, "gray", res.Data[0].Name)
+}
+
+func TestImageStore_GetAll_SortByHue(t *testing.T) {
+	db := testutil.OpenTestDB(t)
+	is := db.ImageStore()
+	ctx := context.Background()
+
+	imgGray := testutil.SampleImage(0)
+	imgGray.Name = "gray"
+	imgGray.Checksum = "sha256:sorthue_gray"
+	imgGray.Colors = []string{"#808080"}
+
+	imgBlue := testutil.SampleImage(0)
+	imgBlue.Name = "blue"
+	imgBlue.Checksum = "sha256:sorthue_blue"
+	imgBlue.Colors = []string{"#0000ff"}
+
+	imgMutedRed := testutil.SampleImage(0)
+	imgMutedRed.Name = "mutedred"
+	imgMutedRed.Checksum = "sha256:sorthue_mutedred"
+	imgMutedRed.Colors = []string{"#b06060"}
+
+	imgVividRed := testutil.SampleImage(0)
+	imgVividRed.Name = "vividred"
+	imgVividRed.Checksum = "sha256:sorthue_vividred"
+	imgVividRed.Colors = []string{"#ff0000"}
+
+	_, err := is.Create(ctx, []store.Image{imgGray, imgBlue, imgMutedRed, imgVividRed})
+	require.NoError(t, err)
+
+	res, err := is.GetAll(ctx, store.ImageQueryOpts{SortBy: "hue", SortOrder: "asc", Page: 1, PerPage: 50})
+	require.NoError(t, err)
+	require.Len(t, res.Data, 4)
+	// Rainbow asc: group 0 (vivid before muted red), then group 8, neutral last.
+	assert.Equal(t, "vividred", res.Data[0].Name)
+	assert.Equal(t, "mutedred", res.Data[1].Name)
+	assert.Equal(t, "blue", res.Data[2].Name)
+	assert.Equal(t, "gray", res.Data[3].Name)
+
+	// desc reverses group order but neutral stays last.
+	res, err = is.GetAll(ctx, store.ImageQueryOpts{SortBy: "hue", SortOrder: "desc", Page: 1, PerPage: 50})
+	require.NoError(t, err)
+	require.Len(t, res.Data, 4)
+	assert.Equal(t, "blue", res.Data[0].Name)
+	assert.Equal(t, "vividred", res.Data[1].Name)
+	assert.Equal(t, "mutedred", res.Data[2].Name)
+	assert.Equal(t, "gray", res.Data[3].Name)
+}
+
 func TestImageStore_GetAll_PaletteSimilarTo(t *testing.T) {
 	db := testutil.OpenTestDB(t)
 	is := db.ImageStore()

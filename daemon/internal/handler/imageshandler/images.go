@@ -63,12 +63,13 @@ func NewImageHandler(
 // @Tags         images
 // @Param        page        query     int     false  "Page number"
 // @Param        per_page    query     int     false  "Items per page"
-// @Param        sort_by     query     string  false  "Sort field"
+// @Param        sort_by     query     string  false  "Sort field (name, imported_at, file_size, hue)"
 // @Param        sort_order  query     string  false  "asc or desc"
 // @Param        media_type  query     string  false  "Filter by media type"
 // @Param        search      query     string  false  "Search query"
 // @Param        tags        query     string  false  "Comma-separated tags"
 // @Param        colors_near           query     string  false  "Comma-separated #hex~maxDeltaE (CIE76)"
+// @Param        hue_group             query     int     false  "Hue group filter: 0-11 (30° buckets, red-centered) or 99 (neutral)"
 // @Param        palette_similar_to    query     int     false  "Show images with palette within ΔE of this image's palette"
 // @Param        palette_max_delta_e   query     number  false  "Max CIE76 ΔE (default 18)"
 // @Param        folder_id             query     string  false  "Folder ID or 'root'"
@@ -98,6 +99,15 @@ func (h *ImageHandler) List(w http.ResponseWriter, r *http.Request) {
 
 	if cn := strings.TrimSpace(q.Get("colors_near")); cn != "" {
 		opts.ColorsNear = parseColorsNearQuery(cn)
+	}
+
+	if hg := strings.TrimSpace(q.Get("hue_group")); hg != "" {
+		v, ok := parseHueGroupParam(hg)
+		if !ok {
+			httpjson.WriteError(w, http.StatusBadRequest, "invalid hue_group")
+			return
+		}
+		opts.HueGroup = &v
 	}
 
 	if pst := strings.TrimSpace(q.Get("palette_similar_to")); pst != "" {
@@ -850,4 +860,16 @@ func parseColorsNearQuery(raw string) []store.ColorNearConstraint {
 		out = append(out, store.ColorNearConstraint{Hex: hex, MaxDeltaE: maxDE})
 	}
 	return out
+}
+
+// parseHueGroupParam validates the hue_group query value: 0-11 or 99.
+func parseHueGroupParam(raw string) (int, bool) {
+	v, err := strconv.Atoi(strings.TrimSpace(raw))
+	if err != nil {
+		return 0, false
+	}
+	if (v >= 0 && v <= 11) || v == 99 {
+		return v, true
+	}
+	return 0, false
 }
