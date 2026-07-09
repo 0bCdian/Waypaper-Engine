@@ -42,22 +42,45 @@ export function parseResolution(resolution: string) {
   return { width: parseInt(width, 10), height: parseInt(height, 10) };
 }
 
-export function calculateMinResolution(monitors: Monitor[]) {
-  let maxWidth = 0;
-  let maxHeight = 0;
+export interface MonitorLayoutFit {
+  /** Multiplier from layout pixels to preview pixels. */
+  scale: number;
+  /** Scaled size of the whole layout's bounding box. */
+  width: number;
+  height: number;
+  /** Top-left of the bounding box in layout coordinates (can be negative). */
+  origin: { x: number; y: number };
+}
 
-  for (const monitor of monitors) {
-    const effectiveWidth = monitor.width + monitor.x;
-    const effectiveHeight = monitor.height + monitor.y;
-
-    if (effectiveWidth > maxWidth) {
-      maxWidth = effectiveWidth;
-    }
-
-    if (effectiveHeight > maxHeight) {
-      maxHeight = effectiveHeight;
-    }
+/**
+ * Scales a monitor arrangement so its bounding box fits inside `box`,
+ * preserving aspect ratio. Positions relative to the preview are
+ * `(monitor.x - origin.x) * scale` / `(monitor.y - origin.y) * scale`.
+ */
+export function fitMonitorLayout(
+  monitors: Monitor[],
+  box: { width: number; height: number },
+): MonitorLayoutFit {
+  if (monitors.length === 0) {
+    return { scale: 0, width: 0, height: 0, origin: { x: 0, y: 0 } };
   }
 
-  return { x: maxWidth, y: maxHeight };
+  let minX = Infinity;
+  let minY = Infinity;
+  let maxX = -Infinity;
+  let maxY = -Infinity;
+  for (const monitor of monitors) {
+    minX = Math.min(minX, monitor.x);
+    minY = Math.min(minY, monitor.y);
+    maxX = Math.max(maxX, monitor.x + monitor.width);
+    maxY = Math.max(maxY, monitor.y + monitor.height);
+  }
+
+  const scale = Math.min(box.width / (maxX - minX), box.height / (maxY - minY));
+  return {
+    scale,
+    width: (maxX - minX) * scale,
+    height: (maxY - minY) * scale,
+    origin: { x: minX, y: minY },
+  };
 }

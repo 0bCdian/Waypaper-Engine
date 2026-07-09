@@ -4,7 +4,7 @@ import {
   toSeconds,
   toHoursAndMinutes,
   parseResolution,
-  calculateMinResolution,
+  fitMonitorLayout,
 } from "../utilities";
 import type { Image, Monitor } from "../../../electron/daemon-go-types";
 
@@ -143,76 +143,67 @@ describe("parseResolution", () => {
   });
 });
 
-describe("calculateMinResolution", () => {
-  it("calculates bounding box for single monitor", () => {
-    const monitors: Monitor[] = [
-      {
-        name: "A",
-        width: 1920,
-        height: 1080,
-        x: 0,
-        y: 0,
-        scale: 1,
-        refresh_rate: 60,
-        transform: 0,
-      },
-    ];
-    expect(calculateMinResolution(monitors)).toEqual({ x: 1920, y: 1080 });
+describe("fitMonitorLayout", () => {
+  const box = { width: 600, height: 400 };
+
+  function monitor(name: string, width: number, height: number, x: number, y: number): Monitor {
+    return { name, width, height, x, y, scale: 1, refresh_rate: 60, transform: 0 };
+  }
+
+  it("fits stacked monitors by height so the layout never exceeds the box", () => {
+    // Issue #225: two 2560x1440 monitors stacked vertically (bbox 2560x2880).
+    const monitors = [monitor("DP-1", 2560, 1440, 0, 0), monitor("eDP-1", 2560, 1440, 0, 1440)];
+
+    const layout = fitMonitorLayout(monitors, box);
+
+    // Height is the binding constraint: 400 / 2880
+    expect(layout.scale).toBeCloseTo(400 / 2880);
+    expect(layout.width).toBeCloseTo(2560 * (400 / 2880));
+    expect(layout.height).toBeCloseTo(400);
+    expect(layout.width).toBeLessThanOrEqual(box.width);
+    expect(layout.height).toBeLessThanOrEqual(box.height);
   });
 
-  it("calculates bounding box for side-by-side monitors", () => {
-    const monitors: Monitor[] = [
-      {
-        name: "A",
-        width: 1920,
-        height: 1080,
-        x: 0,
-        y: 0,
-        scale: 1,
-        refresh_rate: 60,
-        transform: 0,
-      },
-      {
-        name: "B",
-        width: 2560,
-        height: 1440,
-        x: 1920,
-        y: 0,
-        scale: 1,
-        refresh_rate: 144,
-        transform: 0,
-      },
-    ];
-    expect(calculateMinResolution(monitors)).toEqual({ x: 4480, y: 1440 });
+  it("fits side-by-side monitors by width", () => {
+    const monitors = [monitor("A", 2560, 1440, 0, 0), monitor("B", 2560, 1440, 2560, 0)];
+
+    const layout = fitMonitorLayout(monitors, box);
+
+    // Width is the binding constraint: 600 / 5120
+    expect(layout.scale).toBeCloseTo(600 / 5120);
+    expect(layout.width).toBeCloseTo(600);
+    expect(layout.height).toBeCloseTo(1440 * (600 / 5120));
   });
 
-  it("calculates bounding box for stacked monitors", () => {
-    const monitors: Monitor[] = [
-      {
-        name: "A",
-        width: 1920,
-        height: 1080,
-        x: 0,
-        y: 0,
-        scale: 1,
-        refresh_rate: 60,
-        transform: 0,
-      },
-      {
-        name: "B",
-        width: 1920,
-        height: 1080,
-        x: 0,
-        y: 1080,
-        scale: 1,
-        refresh_rate: 60,
-        transform: 0,
-      },
-    ];
-    expect(calculateMinResolution(monitors)).toEqual({ x: 1920, y: 2160 });
+  it("normalizes negative origins so all positions stay inside the layout", () => {
+    const monitors = [monitor("A", 1920, 1080, -1920, 0), monitor("B", 1920, 1080, 0, 0)];
+
+    const layout = fitMonitorLayout(monitors, box);
+
+    expect(layout.origin).toEqual({ x: -1920, y: 0 });
+    // Bounding box is 3840x1080; width binds: 600 / 3840
+    expect(layout.scale).toBeCloseTo(600 / 3840);
+    expect(layout.width).toBeCloseTo(600);
+    // Position of monitor A relative to origin lands at 0, B at half the width
+    expect((monitors[0].x - layout.origin.x) * layout.scale).toBeCloseTo(0);
+    expect((monitors[1].x - layout.origin.x) * layout.scale).toBeCloseTo(300);
   });
 
-  it("returns zeros for empty array", () => {
-    expect(calculateMinResolution([])).toEqual({ x: 0, y: 0 });
+  it("fits a single monitor", () => {
+    const layout = fitMonitorLayout([monitor("A", 1920, 1080, 0, 0)], box);
+
+    // Width binds: 600 / 1920
+    expect(layout.scale).toBeCloseTo(600 / 1920);
+    expect(layout.width).toBeCloseTo(600);
+    expect(layout.height).toBeCloseTo(1080 * (600 / 1920));
+  });
+
+  it("returns an empty layout for no monitors", () => {
+    expect(fitMonitorLayout([], box)).toEqual({
+      scale: 0,
+      width: 0,
+      height: 0,
+      origin: { x: 0, y: 0 },
+    });
   });
 });

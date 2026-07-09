@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { useMonitorStore, type MonitorSelection } from "../stores/monitors";
 import { useShallow } from "zustand/react/shallow";
 import { MonitorComponent } from "./Monitor";
-import { calculateMinResolution } from "../utils/utilities";
+import { fitMonitorLayout } from "../utils/utilities";
 import type { monitorSelectType } from "../types/rendererTypes";
 import { useModalStore } from "../stores/modalStore";
 import Modal, { type ModalHandle } from "./Modal";
@@ -31,8 +31,6 @@ function Monitors() {
   const [refreshKey, setRefreshKey] = useState(0);
 
   const live = useLiveWallpapers(monitorsList, refreshKey);
-
-  const resolution = calculateMinResolution(monitorsList);
 
   const prevModeRef = useRef(monitorSelection.mode);
   if (monitorSelection.mode !== prevModeRef.current) {
@@ -122,11 +120,14 @@ function Monitors() {
     closeModal();
   };
 
-  const scale = 1 / ((monitorsList.length + 1) * (screen.availWidth / window.innerWidth));
-  const isSingleMonitor = monitorsList.length === 1;
+  const previewBox = {
+    width: Math.min(window.innerWidth * 0.6, 640),
+    height: Math.min(window.innerHeight * 0.5, 400),
+  };
+  const layout = fitMonitorLayout(monitorsList, previewBox);
   const styles: React.CSSProperties = {
-    width: isSingleMonitor ? monitorsList[0].width * scale : resolution.x * scale,
-    height: isSingleMonitor ? monitorsList[0].height * scale : resolution.y * scale,
+    width: layout.width,
+    height: layout.height,
   };
 
   const neoFieldset = cn(
@@ -170,10 +171,10 @@ function Monitors() {
           </p>
         </fieldset>
 
-        <div style={styles} className="relative m-auto">
+        <div style={styles} data-testid="monitor-layout" className="relative m-auto">
           {monitorsList.map((monitor, index) => {
-            const left = isSingleMonitor ? 0 : monitor.x * scale;
-            const top = isSingleMonitor ? 0 : monitor.y * scale;
+            const left = (monitor.x - layout.origin.x) * layout.scale;
+            const top = (monitor.y - layout.origin.y) * layout.scale;
             const key = `m-${index}-${monitor.x}-${monitor.y}-${monitor.width}x${monitor.height}-${monitor.refresh_rate}-${monitor.transform}`;
 
             return (
@@ -190,7 +191,7 @@ function Monitors() {
                   monitorsList={monitorsList}
                   monitor={monitor}
                   selectType={selectType}
-                  scale={scale * 0.99}
+                  scale={layout.scale * 0.99}
                   live={live}
                 />
               </div>

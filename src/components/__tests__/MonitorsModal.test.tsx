@@ -54,10 +54,6 @@ vi.mock("../Monitor", () => ({
   ),
 }));
 
-vi.mock("../../utils/utilities", () => ({
-  calculateMinResolution: () => ({ x: 1920, y: 1080 }),
-}));
-
 HTMLDialogElement.prototype.showModal = HTMLDialogElement.prototype.showModal ?? vi.fn();
 HTMLDialogElement.prototype.close = HTMLDialogElement.prototype.close ?? vi.fn();
 
@@ -137,6 +133,34 @@ describe("MonitorsModal", () => {
     await waitFor(() => {
       expect(screen.getByText("Select at least two displays")).toBeInTheDocument();
     });
+  });
+
+  it("scales stacked monitors to fit the preview box (issue #225)", () => {
+    // 1600x900 window → preview box of 640x400 (min(60vw, 640) x min(50vh, 400))
+    const originalWidth = window.innerWidth;
+    const originalHeight = window.innerHeight;
+    Object.defineProperty(window, "innerWidth", { value: 1600, configurable: true });
+    Object.defineProperty(window, "innerHeight", { value: 900, configurable: true });
+
+    try {
+      // Two 2560x1440 monitors stacked vertically: bbox 2560x2880, height binds.
+      const top = { ...makeMonitor("DP-1", false), width: 2560, height: 1440 };
+      const bottom = { ...makeMonitor("eDP-1", false, 0, 1440), width: 2560, height: 1440 };
+      mockMonitorsList = [top, bottom];
+
+      render(<Monitors />);
+
+      const scale = 400 / 2880;
+      const layout = screen.getByTestId("monitor-layout");
+      expect(parseFloat(layout.style.width)).toBeCloseTo(2560 * scale, 1);
+      expect(parseFloat(layout.style.height)).toBeCloseTo(400, 1);
+
+      const bottomWrapper = screen.getByTestId("monitor-eDP-1").parentElement as HTMLElement;
+      expect(parseFloat(bottomWrapper.style.top)).toBeCloseTo(1440 * scale, 1);
+    } finally {
+      Object.defineProperty(window, "innerWidth", { value: originalWidth, configurable: true });
+      Object.defineProperty(window, "innerHeight", { value: originalHeight, configurable: true });
+    }
   });
 
   it("calls setMonitorSelection on valid individual submit", async () => {
