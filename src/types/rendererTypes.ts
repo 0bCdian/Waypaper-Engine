@@ -21,7 +21,7 @@ export type monitorSelectType = MonitorMode;
 
 export interface Filters {
   order: "asc" | "desc";
-  type: "name" | "id";
+  type: "name" | "id" | "hue";
   mediaType: "all" | "image" | "video" | "web" | "gif";
   /** Token query: tag:, type:, ext:, color:, near:#hex~ΔE, q:, or plain text */
   filterTokens: string[];
@@ -30,6 +30,8 @@ export interface Filters {
   paletteSimilarToId: number | null;
   /** Inclusive max ΔE for palette similarity (sent as palette_max_delta_e). */
   paletteSimilarMaxDeltaE: number;
+  /** Hue group filter for the swatch strip: 0-11 or 99 (neutral); null = off. */
+  hueGroup: number | null;
 }
 
 export interface advancedFilters {

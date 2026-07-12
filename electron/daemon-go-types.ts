@@ -33,7 +33,7 @@ export interface PaginatedResponse<T> {
 export interface ImageQueryParams {
   page?: number;
   per_page?: number;
-  sort_by?: "name" | "imported_at" | "file_size";
+  sort_by?: "name" | "imported_at" | "file_size" | "hue";
   sort_order?: "asc" | "desc";
   media_type?: "image" | "video" | "gif" | "web";
   search?: string;
@@ -45,6 +45,8 @@ export interface ImageQueryParams {
   palette_similar_to?: number;
   /** Inclusive max ΔE vs reference palette; omit to use daemon default (18). */
   palette_max_delta_e?: number;
+  /** Hue group filter: 0-11 (30° buckets, red-centered) or 99 (neutral). */
+  hue_group?: number;
   folder_id?: number | "root";
 }
 

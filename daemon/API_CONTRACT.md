@@ -103,13 +103,14 @@ Paginated, sortable, filterable image gallery.
 | ------------- | ------ | ------------- | -------------------------------------------------------------------------------------------------------------- |
 | `page`        | int    | `1`           | Page number (1-indexed)                                                                                        |
 | `per_page`    | int    | `50`          | Items per page (max 200)                                                                                       |
-| `sort_by`     | string | `imported_at` | Sort field: `name`, `imported_at`, `file_size`                                                                 |
+| `sort_by`     | string | `imported_at` | Sort field: `name`, `imported_at`, `file_size`, `hue` (rainbow order: hue group asc/desc, neutral last, saturation desc within group; in-memory) |
 | `sort_order`  | string | `desc`        | Sort direction: `asc`, `desc`                                                                                  |
 | `media_type`  | string | —             | Filter: `image`, `video`, `gif`                                                                                |
 | `search`      | string | —             | Case-insensitive fuzzy search on name/tags                                                                     |
 | `tags`        | string | —             | Comma-separated tag filter                                                                                     |
 | `colors`      | string | —             | Comma-separated dominant color filter (hex; each must appear as a swatch, AND)                                 |
 | `colors_near` | string | —             | Comma-separated `#hex~maxDeltaE` perceptual match (CIE76 vs stored palette; AND); forces in-memory filter path |
+| `hue_group`   | int    | —             | Hue group filter: 0–11 (30° buckets, red-centered) or 99 (neutral); computed from the stored palette; forces in-memory filter path |
 | `folder_id`   | string | —             | Folder filter (`root`/`0` for root, or ID)                                                                     |
 
 **Response** `200`:

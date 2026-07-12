@@ -121,8 +121,8 @@ function Monitors() {
   };
 
   const previewBox = {
-    width: Math.min(window.innerWidth * 0.6, 640),
-    height: Math.min(window.innerHeight * 0.5, 400),
+    width: Math.min(window.innerWidth * 0.7, 920),
+    height: Math.min(window.innerHeight * 0.55, 480),
   };
   const layout = fitMonitorLayout(monitorsList, previewBox);
   const styles: React.CSSProperties = {

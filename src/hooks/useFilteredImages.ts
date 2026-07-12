@@ -15,7 +15,7 @@ export function useFilteredImages() {
   const deferredImages = useDeferredValue(imagesArray);
 
   const sortedImages =
-    filters.type === "id"
+    filters.type === "id" || filters.type === "hue"
       ? deferredImages
       : deferredImages.toSorted((a, b) => b.name.localeCompare(a.name));
 

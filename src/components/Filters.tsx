@@ -14,11 +14,13 @@ import { components as builtinSelectComponents } from "react-select";
 import type { InputProps } from "react-select";
 import useDebounce from "../hooks/useDebounce";
 import { cn } from "../utils/cn";
+import HueFilterStrip from "./HueFilterStrip";
+import ColorPickerButtons from "./ColorPickerButtons";
 import type { Filters as FiltersType } from "../types/rendererTypes";
 import { useImagesStore } from "../stores/images";
 import { useShallow } from "zustand/react/shallow";
 import { useModalStore } from "../stores/modalStore";
-import { mapFiltersToImageQueryParams } from "../utils/galleryFilterTokens";
+import { mapFiltersToImageQueryParams, upsertNearToken } from "../utils/galleryFilterTokens";
 import {
   clearGalleryFilterInputHistory,
   loadGalleryFilterInputHistory,
@@ -27,7 +29,7 @@ import {
 
 interface PartialFilters {
   order: "asc" | "desc";
-  type: "name" | "id";
+  type: "name" | "id" | "hue";
   mediaType: "all" | "image" | "video" | "web" | "gif";
   filterTokens: string[];
 }
@@ -48,19 +50,24 @@ const TOKEN_PLACEHOLDER = "Search…  (press / to focus)";
 const PALETTE_SIMILAR_DELTA_MIN = 4;
 const PALETTE_SIMILAR_DELTA_MAX = 50;
 
-/* Sort cycles through 4 states: name↑ name↓ id↑ id↓ */
-type SortState = { type: "name" | "id"; order: "asc" | "desc" };
+/** CIE76 ΔE tolerance for picker-injected near: tokens (~same color family); editable in the token. */
+const NEAR_PICK_DELTA_E = 25;
+
+/* Sort cycles through 5 states: name↑ name↓ id↑ id↓ rainbow */
+type SortState = { type: "name" | "id" | "hue"; order: "asc" | "desc" };
 const SORT_CYCLE: SortState[] = [
   { type: "name", order: "asc" },
   { type: "name", order: "desc" },
   { type: "id", order: "asc" },
   { type: "id", order: "desc" },
+  { type: "hue", order: "asc" },
 ];
 function nextSort(current: SortState): SortState {
   const idx = SORT_CYCLE.findIndex((s) => s.type === current.type && s.order === current.order);
   return SORT_CYCLE[(idx + 1) % SORT_CYCLE.length];
 }
 function sortLabel(s: SortState) {
+  if (s.type === "hue") return "Rainbow";
   return `${s.type === "name" ? "Name" : "ID"} ${s.order === "asc" ? "↑" : "↓"}`;
 }
 
@@ -215,6 +222,7 @@ function Filters() {
       ...base,
       filterTokens: [],
       paletteSimilarToId: null,
+      hueGroup: null,
     });
     clearGalleryFilterInputHistory();
     setInputHistoryTick((n) => n + 1);
@@ -315,6 +323,19 @@ function Filters() {
     order: partialFilters.order,
   };
 
+  const hasNearToken = partialFilters.filterTokens.some((t) =>
+    t.trim().toLowerCase().startsWith("near:"),
+  );
+
+  const handlePickColor = useCallback((hex: string) => {
+    setPartialFilters((p) => {
+      const filterTokens = upsertNearToken(p.filterTokens, hex, NEAR_PICK_DELTA_E);
+      if (filterTokens === p.filterTokens) return p;
+      prevTokensRef.current = filterTokens;
+      return { ...p, filterTokens };
+    });
+  }, []);
+
   const handleSortCycle = () => {
     const next = nextSort(currentSort);
     setPartialFilters((p) => ({ ...p, type: next.type, order: next.order }));
@@ -372,7 +393,7 @@ function Filters() {
             type="button"
             className={`${pillBase} ${pillIdle}`}
             onClick={handleSortCycle}
-            title="Cycle sort: Name↑ → Name↓ → ID↑ → ID↓"
+            title="Cycle sort: Name↑ → Name↓ → ID↑ → ID↓ → Rainbow"
           >
             {sortLabel(currentSort)}
           </button>
@@ -384,6 +405,10 @@ function Filters() {
           >
             Filters
           </button>
+
+          <HueFilterStrip />
+
+          <ColorPickerButtons activeNear={hasNearToken} onPickColor={handlePickColor} />
         </div>
 
         <div className="w-full min-w-0 md:max-w-4xl md:flex-1">

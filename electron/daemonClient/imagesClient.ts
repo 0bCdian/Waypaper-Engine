@@ -28,6 +28,7 @@ export class ImagesClient {
     if (params?.tags) query.set("tags", params.tags);
     if (params?.colors) query.set("colors", params.colors);
     if (params?.colors_near) query.set("colors_near", params.colors_near);
+    if (params?.hue_group !== undefined) query.set("hue_group", String(params.hue_group));
     if (params?.palette_similar_to !== undefined) {
       query.set("palette_similar_to", String(params.palette_similar_to));
     }

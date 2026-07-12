@@ -8,6 +8,7 @@ import {
   clientImageMatchesFilters,
   hasClientSideGalleryFilters,
   galleryHasActiveFilters,
+  upsertNearToken,
 } from "../galleryFilterTokens";
 import type { rendererImage } from "../../types/rendererTypes";
 import { defaultGalleryFilters } from "../galleryFilterStorage";
@@ -107,6 +108,7 @@ describe("mapFiltersToImageQueryParams", () => {
   const baseFilterFields = {
     paletteSimilarToId: null,
     paletteSimilarMaxDeltaE: 18,
+    hueGroup: null,
   } as const;
 
   it("maps sort and combined API fields", () => {
@@ -263,5 +265,62 @@ describe("galleryHasActiveFilters", () => {
     ).toBe(true);
     expect(galleryHasActiveFilters({ ...base, paletteSimilarToId: 7 })).toBe(true);
     expect(galleryHasActiveFilters(base)).toBe(false);
+  });
+});
+
+describe("hue group filter mapping", () => {
+  const baseFilters = {
+    order: "desc" as const,
+    type: "id" as const,
+    mediaType: "all" as const,
+    filterTokens: [] as string[],
+    paletteSimilarToId: null,
+    paletteSimilarMaxDeltaE: 18,
+    hueGroup: null as number | null,
+  };
+
+  it("omits hue_group when null", () => {
+    const params = mapFiltersToImageQueryParams(baseFilters);
+    expect(params.hue_group).toBeUndefined();
+  });
+
+  it("emits hue_group when set", () => {
+    const params = mapFiltersToImageQueryParams({ ...baseFilters, hueGroup: 4 });
+    expect(params.hue_group).toBe(4);
+  });
+
+  it("emits neutral group 99", () => {
+    const params = mapFiltersToImageQueryParams({ ...baseFilters, hueGroup: 99 });
+    expect(params.hue_group).toBe(99);
+  });
+
+  it("maps type hue to sort_by hue", () => {
+    const params = mapFiltersToImageQueryParams({ ...baseFilters, type: "hue", order: "asc" });
+    expect(params.sort_by).toBe("hue");
+    expect(params.sort_order).toBe("asc");
+  });
+});
+
+describe("upsertNearToken", () => {
+  it("appends a normalized near: token", () => {
+    expect(upsertNearToken(["tag:nature"], "#3AA7A0", 25)).toEqual([
+      "tag:nature",
+      "near:#3aa7a0~25",
+    ]);
+  });
+
+  it("expands #rgb shorthand", () => {
+    expect(upsertNearToken([], "#f80", 25)).toEqual(["near:#ff8800~25"]);
+  });
+
+  it("replaces existing near: tokens instead of accumulating", () => {
+    expect(
+      upsertNearToken(["near:#ff0000~10", "tag:sky", "near:#00ff00~5"], "#0000ff", 25),
+    ).toEqual(["tag:sky", "near:#0000ff~25"]);
+  });
+
+  it("returns tokens unchanged for an invalid hex", () => {
+    const tokens = ["tag:sky"];
+    expect(upsertNearToken(tokens, "notahex", 25)).toBe(tokens);
   });
 });
