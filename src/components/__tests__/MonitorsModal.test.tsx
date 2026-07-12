@@ -136,7 +136,7 @@ describe("MonitorsModal", () => {
   });
 
   it("scales stacked monitors to fit the preview box (issue #225)", () => {
-    // 1600x900 window → preview box of 640x400 (min(60vw, 640) x min(50vh, 400))
+    // 1600x900 window → preview box of 920x480 (min(70vw, 920) x min(55vh, 480))
     const originalWidth = window.innerWidth;
     const originalHeight = window.innerHeight;
     Object.defineProperty(window, "innerWidth", { value: 1600, configurable: true });
@@ -150,10 +150,10 @@ describe("MonitorsModal", () => {
 
       render(<Monitors />);
 
-      const scale = 400 / 2880;
+      const scale = 480 / 2880;
       const layout = screen.getByTestId("monitor-layout");
       expect(parseFloat(layout.style.width)).toBeCloseTo(2560 * scale, 1);
-      expect(parseFloat(layout.style.height)).toBeCloseTo(400, 1);
+      expect(parseFloat(layout.style.height)).toBeCloseTo(480, 1);
 
       const bottomWrapper = screen.getByTestId("monitor-eDP-1").parentElement as HTMLElement;
       expect(parseFloat(bottomWrapper.style.top)).toBeCloseTo(1440 * scale, 1);
