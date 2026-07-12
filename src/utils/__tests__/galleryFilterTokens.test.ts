@@ -8,6 +8,7 @@ import {
   clientImageMatchesFilters,
   hasClientSideGalleryFilters,
   galleryHasActiveFilters,
+  upsertNearToken,
 } from "../galleryFilterTokens";
 import type { rendererImage } from "../../types/rendererTypes";
 import { defaultGalleryFilters } from "../galleryFilterStorage";
@@ -297,5 +298,29 @@ describe("hue group filter mapping", () => {
     const params = mapFiltersToImageQueryParams({ ...baseFilters, type: "hue", order: "asc" });
     expect(params.sort_by).toBe("hue");
     expect(params.sort_order).toBe("asc");
+  });
+});
+
+describe("upsertNearToken", () => {
+  it("appends a normalized near: token", () => {
+    expect(upsertNearToken(["tag:nature"], "#3AA7A0", 25)).toEqual([
+      "tag:nature",
+      "near:#3aa7a0~25",
+    ]);
+  });
+
+  it("expands #rgb shorthand", () => {
+    expect(upsertNearToken([], "#f80", 25)).toEqual(["near:#ff8800~25"]);
+  });
+
+  it("replaces existing near: tokens instead of accumulating", () => {
+    expect(
+      upsertNearToken(["near:#ff0000~10", "tag:sky", "near:#00ff00~5"], "#0000ff", 25),
+    ).toEqual(["tag:sky", "near:#0000ff~25"]);
+  });
+
+  it("returns tokens unchanged for an invalid hex", () => {
+    const tokens = ["tag:sky"];
+    expect(upsertNearToken(tokens, "notahex", 25)).toBe(tokens);
   });
 });

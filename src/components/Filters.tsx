@@ -15,11 +15,12 @@ import type { InputProps } from "react-select";
 import useDebounce from "../hooks/useDebounce";
 import { cn } from "../utils/cn";
 import HueFilterStrip from "./HueFilterStrip";
+import ColorPickerButtons from "./ColorPickerButtons";
 import type { Filters as FiltersType } from "../types/rendererTypes";
 import { useImagesStore } from "../stores/images";
 import { useShallow } from "zustand/react/shallow";
 import { useModalStore } from "../stores/modalStore";
-import { mapFiltersToImageQueryParams } from "../utils/galleryFilterTokens";
+import { mapFiltersToImageQueryParams, upsertNearToken } from "../utils/galleryFilterTokens";
 import {
   clearGalleryFilterInputHistory,
   loadGalleryFilterInputHistory,
@@ -48,6 +49,9 @@ const TOKEN_PLACEHOLDER = "Search…  (press / to focus)";
 /** Slider bounds for palette similarity (CIE76 ΔE); daemon still accepts any ≥ 0 on the wire. */
 const PALETTE_SIMILAR_DELTA_MIN = 4;
 const PALETTE_SIMILAR_DELTA_MAX = 50;
+
+/** CIE76 ΔE tolerance for picker-injected near: tokens (~same color family); editable in the token. */
+const NEAR_PICK_DELTA_E = 25;
 
 /* Sort cycles through 5 states: name↑ name↓ id↑ id↓ rainbow */
 type SortState = { type: "name" | "id" | "hue"; order: "asc" | "desc" };
@@ -319,6 +323,19 @@ function Filters() {
     order: partialFilters.order,
   };
 
+  const hasNearToken = partialFilters.filterTokens.some((t) =>
+    t.trim().toLowerCase().startsWith("near:"),
+  );
+
+  const handlePickColor = useCallback((hex: string) => {
+    setPartialFilters((p) => {
+      const filterTokens = upsertNearToken(p.filterTokens, hex, NEAR_PICK_DELTA_E);
+      if (filterTokens === p.filterTokens) return p;
+      prevTokensRef.current = filterTokens;
+      return { ...p, filterTokens };
+    });
+  }, []);
+
   const handleSortCycle = () => {
     const next = nextSort(currentSort);
     setPartialFilters((p) => ({ ...p, type: next.type, order: next.order }));
@@ -390,6 +407,8 @@ function Filters() {
           </button>
 
           <HueFilterStrip />
+
+          <ColorPickerButtons activeNear={hasNearToken} onPickColor={handlePickColor} />
         </div>
 
         <div className="w-full min-w-0 md:max-w-4xl md:flex-1">

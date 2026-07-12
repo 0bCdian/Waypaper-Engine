@@ -54,6 +54,17 @@ export function parseNearColorSpec(rest: string): ColorNearSpec | null {
   return { hex, maxDeltaE: n };
 }
 
+/**
+ * Replaces any existing near: tokens with a single `near:#hex~maxDeltaE`.
+ * Returns tokens unchanged when hex is invalid.
+ */
+export function upsertNearToken(tokens: string[], hex: string, maxDeltaE: number): string[] {
+  const normalized = normalizeColorHex(hex);
+  if (normalized == null) return tokens;
+  const kept = tokens.filter((t) => splitPrefix(t.trim())?.key !== "near");
+  return [...kept, `near:${normalized}~${maxDeltaE}`];
+}
+
 export function parseGalleryFilterTokens(tokens: string[]): ParsedGalleryTokens {
   const searchParts: string[] = [];
   const tags: string[] = [];
