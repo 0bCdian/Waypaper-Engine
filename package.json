@@ -93,7 +93,7 @@
     "oxlint": "1.19.0",
     "tailwindcss": "4.3.2",
     "typescript": "5.5.4",
-    "vite": "^6.4.1",
+    "vite": "^8.1.4",
     "vite-plugin-electron": "0.29.1",
     "vite-plugin-electron-renderer": "0.14.6",
     "vitepress": "^1.6.3",
