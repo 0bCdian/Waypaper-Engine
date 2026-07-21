@@ -55,7 +55,7 @@
     "@fontsource/google-sans": "^5.2.1",
     "@fontsource/google-sans-flex": "^5.2.4",
     "@fontsource/jetbrains-mono": "^5.2.8",
-    "@tanstack/react-form": "^1.32.0",
+    "@tanstack/react-form": "^1.33.1",
     "ci": "^2.3.0",
     "framer-motion": "12.34.0",
     "pino": "10.3.1",
