@@ -185,6 +185,12 @@ func Restore(
 		return
 	}
 
+	persisted := make(map[string]store.MonitorState, len(states))
+	for _, st := range states {
+		persisted[st.MonitorName] = st
+	}
+	activeName := activeBackend.Name()
+
 	// Update in-memory current wallpaper state for each restored output.
 	for _, out := range snap.Outputs {
 		entry := store.ImageHistoryEntry{
@@ -192,9 +198,25 @@ func Restore(
 			Mode:     string(backend.ModeClone), // best-effort; mode not tracked per-output here
 			SetAt:    time.Now(),
 			Source:   store.HistorySource{Type: "restore"},
-			Backend:  activeBackend.Name(),
+			Backend:  activeName,
 		}
 		stateStore.SetCurrentWallpaper(out.Monitor.Name, entry)
+
+		// Re-stamp the persisted row with the backend that actually applied it.
+		// Auto-mode switches backends per playlist tick without persisting the
+		// choice, so rows routinely name a backend the daemon did not boot into.
+		// GET /wallpaper/current drops rows whose backend != the active one,
+		// which otherwise leaves the UI with no current wallpaper after a restore.
+		// SetAt is left alone — restoring is not a new wallpaper change.
+		st, ok := persisted[out.Monitor.Name]
+		if !ok || st.Backend == activeName {
+			continue
+		}
+		st.Backend = activeName
+		if err := monitorStateStore.Set(ctx, st); err != nil {
+			slog.Warn("restore: failed to refresh persisted backend",
+				"monitor", st.MonitorName, "backend", activeName, "error", err)
+		}
 	}
 
 	slog.Info("wallpaper restore complete", "restored", len(snap.Outputs), "skipped", len(skips))
