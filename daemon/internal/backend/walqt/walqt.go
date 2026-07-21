@@ -311,16 +311,6 @@ func (w *WalQt) pollHealthUntilReady(ctx context.Context, client *controlClient,
 // outputsReadyTimeout bounds the wait for wal-qt to register its outputs.
 const outputsReadyTimeout = 10 * time.Second
 
-// pollOutputsUntilReady blocks until wal-qt reports at least one output.
-//
-// GET /health goes green as soon as wal-qt's control server binds, which is
-// well before LayerShellQt has created the per-output surfaces. A wallpaper
-// applied in that window is accepted and recorded by wal-qt but never painted,
-// so the desktop stays black until something applies again — which is what made
-// the wallpaper vanish on every cold boot.
-//
-// Zero outputs is legitimate (every monitor disabled/off), so a timeout only
-// warns: blocking startup forever would be worse than a missing wallpaper.
 func (w *WalQt) pollOutputsUntilReady(ctx context.Context, client *controlClient, cfg *Config) {
 	deadline := time.Now().Add(outputsReadyTimeout)
 	delay := 100 * time.Millisecond
