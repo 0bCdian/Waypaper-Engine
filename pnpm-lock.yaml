@@ -41,9 +41,6 @@ importers:
       '@tanstack/react-form':
         specifier: ^1.32.0
         version: 1.32.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
-      ci:
-        specifier: ^2.3.0
-        version: 2.3.0
       framer-motion:
         specifier: 12.34.0
         version: 12.34.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -1890,10 +1887,6 @@ packages:
   ci-info@4.4.0:
     resolution: {integrity: sha512-77PSwercCZU2Fc4sX94eF8k8Pxte6JAwL4/ICZLFjJLqegs7kCuAsqqj/70NQF6TvDpgFjkubQB2FW2ZZddvQg==}
     engines: {node: '>=8'}
-
-  ci@2.3.0:
-    resolution: {integrity: sha512-0MGXkzJKkwV3enG7RUxjJKdiAkbaZ7visCjitfpCN2BQjv02KGRMxCHLv4RPokkjJ4xR33FLMAXweS+aQ0pFSQ==}
-    hasBin: true
 
   cli-truncate@2.1.0:
     resolution: {integrity: sha512-n8fOixwDD6b/ObinzTrp1ZKFzbgvKZvuz/TvejnLn1aQfC6r52XEx85FmuC+3HI+JM7coBRXUvNqEU2PHVrHpg==}
@@ -5437,8 +5430,6 @@ snapshots:
   ci-info@4.3.1: {}
 
   ci-info@4.4.0: {}
-
-  ci@2.3.0: {}
 
   cli-truncate@2.1.0:
     dependencies:
