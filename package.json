@@ -20,7 +20,7 @@
     "dev": "pnpm run build:daemon && DEV=true vite",
     "build:daemon": "make daemon && pnpm run generate:types",
     "build": "pnpm run build:daemon && vite build && electron-builder --publish never --config electron-builder.json --linux dir",
-    "ci:check": "pnpm run build:daemon && pnpm run format:check && pnpm run lint:check && pnpm run gofmt:check && pnpm exec tsc --noEmit && pnpm run test && pnpm run test:daemon:unit && pnpm exec vite build",
+    "ci:check": "pnpm run build:daemon && pnpm run ci:types && pnpm run format:check && pnpm run lint:check && pnpm run gofmt:check && pnpm exec tsc --noEmit && pnpm run test && pnpm run test:daemon:race && pnpm exec vite build",
     "postinstall": "electron-builder install-app-deps",
     "lint": "oxlint --react-plugin --tsconfig ./tsconfig.json src/ shared/ electron/ globals/ --fix",
     "lint:check": "oxlint --react-plugin --tsconfig ./tsconfig.json src/ shared/ electron/ globals/",
