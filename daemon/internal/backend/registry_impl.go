@@ -42,12 +42,14 @@ func (r *registry) Get(name string) (Backend, bool) {
 	return b, ok
 }
 
+// Active returns the active backend, or nil when none has been activated.
+// The daemon supports a degraded no-backend start, so callers must nil-check.
 func (r *registry) Active() Backend {
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
 	if r.activeName == "" {
-		panic("backend: Active() called but no backend has been activated")
+		return nil
 	}
 	return r.backends[r.activeName]
 }

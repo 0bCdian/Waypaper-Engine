@@ -56,8 +56,8 @@ func SwitchActiveBackend(ctx context.Context, reg Registry, name string, cfg Con
 		return nil, fmt.Errorf("set active %q: %w", name, err)
 	}
 
-	newBackend, ok := reg.Get(name)
-	if !ok {
+	newBackend := reg.Active()
+	if newBackend == nil {
 		return nil, fmt.Errorf("backend %q disappeared from registry after activation", name)
 	}
 	if err := newBackend.Initialize(ctx); err != nil {

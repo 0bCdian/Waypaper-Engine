@@ -57,6 +57,15 @@ func NewWallpaperHandler(
 	}
 }
 
+// activeBackendName returns the active backend's name, or "" when no backend
+// is active. registry.Active() returns nil in the degraded no-backend state.
+func activeBackendName(reg backend.Registry) string {
+	if b := reg.Active(); b != nil {
+		return b.Name()
+	}
+	return ""
+}
+
 // setWallpaperRequest is the JSON body for POST /wallpaper/set.
 type setWallpaperRequest struct {
 	ImageID  int                 `json:"image_id"`
@@ -107,7 +116,7 @@ func (h *WallpaperHandler) Set(w http.ResponseWriter, r *http.Request) {
 		httpjson.WriteStructuredError(w, http.StatusBadRequest, "incompatible_backend",
 			err.Error(),
 			map[string]any{
-				"backend":    h.registry.Active().Name(),
+				"backend":    activeBackendName(h.registry),
 				"media_type": img.MediaType,
 				"image_id":   img.ID,
 				"image_name": img.Name,
@@ -197,7 +206,7 @@ func (h *WallpaperHandler) Random(w http.ResponseWriter, r *http.Request) {
 		httpjson.WriteStructuredError(w, http.StatusBadRequest, "incompatible_backend",
 			err.Error(),
 			map[string]any{
-				"backend":    h.registry.Active().Name(),
+				"backend":    activeBackendName(h.registry),
 				"media_type": img.MediaType,
 				"image_id":   img.ID,
 				"image_name": img.Name,
@@ -247,6 +256,15 @@ func (h *WallpaperHandler) Random(w http.ResponseWriter, r *http.Request) {
 // image_id no longer exists are removed from the store and omitted. Stale rows from
 // previously used backends are not included in the response.
 func (h *WallpaperHandler) GetCurrent(w http.ResponseWriter, r *http.Request) {
+	activeBackend := h.registry.Active()
+	if activeBackend == nil {
+		httpjson.WriteStructuredError(w, http.StatusServiceUnavailable, "no_backend",
+			"No wallpaper backend is active. Install and select a backend to set wallpapers.",
+			nil,
+		)
+		return
+	}
+
 	states, err := h.monitorStateStore.GetAll(r.Context())
 	if err != nil {
 		httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
@@ -274,7 +292,7 @@ func (h *WallpaperHandler) GetCurrent(w http.ResponseWriter, r *http.Request) {
 			connected[m.Name] = struct{}{}
 		}
 	}
-	active := h.registry.Active().Name()
+	active := activeBackend.Name()
 	resp := buildWallpaperCurrentResponse(active, out, connected)
 	httpjson.WriteJSON(w, http.StatusOK, resp)
 }

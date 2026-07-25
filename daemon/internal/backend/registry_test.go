@@ -95,6 +95,18 @@ func TestRegistry_Available(t *testing.T) {
 	assert.True(t, infos[1].Available)
 }
 
+// Regression: Active() panicked with no backend activated, but the daemon
+// explicitly supports a degraded no-backend start and registers routes anyway,
+// so GET /wallpaper/current turned a supported state into an opaque 500.
+func TestRegistry_ActiveReturnsNilWhenNoBackendActivated(t *testing.T) {
+	reg := NewRegistry()
+
+	assert.False(t, reg.HasActive())
+	assert.NotPanics(t, func() {
+		assert.Nil(t, reg.Active())
+	})
+}
+
 func TestRegistry_Compatible(t *testing.T) {
 	reg := NewRegistry()
 	require.NoError(t, reg.Register(&stubBackend{
