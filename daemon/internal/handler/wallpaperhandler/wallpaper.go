@@ -75,15 +75,6 @@ type setWallpaperRequest struct {
 }
 
 // Set handles POST /wallpaper/set.
-//
-// @Summary      Set wallpaper
-// @Tags         wallpaper
-// @Param        body  body      setWallpaperRequest  true  "Set request"
-// @Success      200   {object}  map[string]any
-// @Failure      400   {object}  httpjson.APIError
-// @Failure      404   {object}  httpjson.APIError
-// @Failure      500   {object}  httpjson.APIError
-// @Router       /wallpaper/set [post]
 func (h *WallpaperHandler) Set(w http.ResponseWriter, r *http.Request) {
 	var req setWallpaperRequest
 	if err := httpjson.ParseBody(r, &req); err != nil {
@@ -152,15 +143,6 @@ func (h *WallpaperHandler) Set(w http.ResponseWriter, r *http.Request) {
 }
 
 // Random handles POST /wallpaper/random.
-//
-// @Summary      Set random wallpaper
-// @Tags         wallpaper
-// @Param        body  body      map[string]any  false  "Optional monitor/mode"
-// @Success      200   {object}  map[string]any
-// @Failure      400   {object}  httpjson.APIError
-// @Failure      404   {object}  httpjson.APIError
-// @Failure      500   {object}  httpjson.APIError
-// @Router       /wallpaper/random [post]
 func (h *WallpaperHandler) Random(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		Monitor string              `json:"monitor"`
@@ -243,12 +225,6 @@ func (h *WallpaperHandler) Random(w http.ResponseWriter, r *http.Request) {
 
 // GetCurrent handles GET /wallpaper/current.
 //
-// @Summary      Get current wallpaper state
-// @Tags         wallpaper
-// @Success      200  {object}  WallpaperCurrentResponse
-// @Failure      500  {object}  httpjson.APIError
-// @Router       /wallpaper/current [get]
-//
 // Returns a single summary for the active backend: top-level image/mode/set_at are
 // taken from the monitor row with the newest SetAt (tie-break: lexicographic monitor
 // name), and monitors lists persisted rows for that backend whose monitor_name
@@ -298,12 +274,6 @@ func (h *WallpaperHandler) GetCurrent(w http.ResponseWriter, r *http.Request) {
 }
 
 // ClearHistory handles DELETE /images/history.
-//
-// @Summary      Clear wallpaper history
-// @Tags         images
-// @Success      200  {object}  map[string]string
-// @Failure      500  {object}  httpjson.APIError
-// @Router       /images/history [delete]
 func (h *WallpaperHandler) ClearHistory(w http.ResponseWriter, r *http.Request) {
 	if err := h.historyStore.Clear(r.Context()); err != nil {
 		httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
@@ -319,14 +289,6 @@ func (h *WallpaperHandler) ClearHistory(w http.ResponseWriter, r *http.Request) 
 }
 
 // GetHistory handles GET /images/history.
-//
-// @Summary      Get wallpaper history
-// @Tags         images
-// @Param        page      query     int  false  "Page number"
-// @Param        per_page  query     int  false  "Items per page"
-// @Success      200       {object}  map[string]any
-// @Failure      500       {object}  httpjson.APIError
-// @Router       /images/history [get]
 func (h *WallpaperHandler) GetHistory(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 	opts := store.HistoryQueryOpts{

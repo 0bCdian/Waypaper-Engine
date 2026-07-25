@@ -39,12 +39,6 @@ func NewPlaylistHandler(
 }
 
 // List handles GET /playlists.
-//
-// @Summary      List playlists
-// @Tags         playlists
-// @Success      200  {array}   store.Playlist
-// @Failure      500  {object}  httpjson.APIError
-// @Router       /playlists [get]
 func (h *PlaylistHandler) List(w http.ResponseWriter, r *http.Request) {
 	playlists, err := h.store.GetAll(r.Context())
 	if err != nil {
@@ -56,14 +50,6 @@ func (h *PlaylistHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 // Get handles GET /playlists/{id}.
-//
-// @Summary      Get a playlist
-// @Tags         playlists
-// @Param        id   path      int  true  "Playlist ID"
-// @Success      200  {object}  store.Playlist
-// @Failure      400  {object}  httpjson.APIError
-// @Failure      404  {object}  httpjson.APIError
-// @Router       /playlists/{id} [get]
 func (h *PlaylistHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id, err := httpjson.ParseIntParam(chi.URLParam(r, "id"))
 	if err != nil {
@@ -81,14 +67,6 @@ func (h *PlaylistHandler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 // Create handles POST /playlists.
-//
-// @Summary      Create a playlist
-// @Tags         playlists
-// @Param        body  body      store.Playlist  true  "Playlist data"
-// @Success      201   {object}  store.Playlist
-// @Failure      400   {object}  httpjson.APIError
-// @Failure      500   {object}  httpjson.APIError
-// @Router       /playlists [post]
 func (h *PlaylistHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var pl store.Playlist
 	if err := httpjson.ParseBody(r, &pl); err != nil {
@@ -111,15 +89,6 @@ func (h *PlaylistHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 // Update handles PATCH /playlists/{id}.
-//
-// @Summary      Update a playlist
-// @Tags         playlists
-// @Param        id    path      int             true  "Playlist ID"
-// @Param        body  body      map[string]any  true  "Fields to update"
-// @Success      200   {object}  store.Playlist
-// @Failure      400   {object}  httpjson.APIError
-// @Failure      404   {object}  httpjson.APIError
-// @Router       /playlists/{id} [patch]
 func (h *PlaylistHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id, err := httpjson.ParseIntParam(chi.URLParam(r, "id"))
 	if err != nil {
@@ -164,14 +133,6 @@ func (h *PlaylistHandler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 // Delete handles DELETE /playlists/{id}.
-//
-// @Summary      Delete a playlist
-// @Tags         playlists
-// @Param        id   path      int  true  "Playlist ID"
-// @Success      200  {object}  map[string]string
-// @Failure      400  {object}  httpjson.APIError
-// @Failure      404  {object}  httpjson.APIError
-// @Router       /playlists/{id} [delete]
 func (h *PlaylistHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id, err := httpjson.ParseIntParam(chi.URLParam(r, "id"))
 	if err != nil {
@@ -204,15 +165,6 @@ type startRequest struct {
 }
 
 // Start handles POST /playlists/{id}/start.
-//
-// @Summary      Start a playlist
-// @Tags         playlists
-// @Param        id    path      int           true  "Playlist ID"
-// @Param        body  body      startRequest  true  "Monitor target"
-// @Success      200   {object}  map[string]string
-// @Failure      400   {object}  httpjson.APIError
-// @Failure      500   {object}  httpjson.APIError
-// @Router       /playlists/{id}/start [post]
 func (h *PlaylistHandler) Start(w http.ResponseWriter, r *http.Request) {
 	id, err := httpjson.ParseIntParam(chi.URLParam(r, "id"))
 	if err != nil {
@@ -262,66 +214,26 @@ func (h *PlaylistHandler) playlistAction(w http.ResponseWriter, r *http.Request,
 }
 
 // Stop handles POST /playlists/{id}/stop.
-//
-// @Summary      Stop a playlist
-// @Tags         playlists
-// @Param        id   path      int  true  "Playlist ID"
-// @Success      200  {object}  map[string]string
-// @Failure      400  {object}  httpjson.APIError
-// @Failure      404  {object}  httpjson.APIError
-// @Router       /playlists/{id}/stop [post]
 func (h *PlaylistHandler) Stop(w http.ResponseWriter, r *http.Request) {
 	h.playlistAction(w, r, h.manager.Stop, "stopped")
 }
 
 // Pause handles POST /playlists/{id}/pause.
-//
-// @Summary      Pause a playlist
-// @Tags         playlists
-// @Param        id   path      int  true  "Playlist ID"
-// @Success      200  {object}  map[string]string
-// @Failure      400  {object}  httpjson.APIError
-// @Failure      404  {object}  httpjson.APIError
-// @Router       /playlists/{id}/pause [post]
 func (h *PlaylistHandler) Pause(w http.ResponseWriter, r *http.Request) {
 	h.playlistAction(w, r, h.manager.Pause, "paused")
 }
 
 // Resume handles POST /playlists/{id}/resume.
-//
-// @Summary      Resume a playlist
-// @Tags         playlists
-// @Param        id   path      int  true  "Playlist ID"
-// @Success      200  {object}  map[string]string
-// @Failure      400  {object}  httpjson.APIError
-// @Failure      404  {object}  httpjson.APIError
-// @Router       /playlists/{id}/resume [post]
 func (h *PlaylistHandler) Resume(w http.ResponseWriter, r *http.Request) {
 	h.playlistAction(w, r, h.manager.Resume, "resumed")
 }
 
 // Next handles POST /playlists/{id}/next.
-//
-// @Summary      Advance to next image in playlist
-// @Tags         playlists
-// @Param        id   path      int  true  "Playlist ID"
-// @Success      200  {object}  map[string]string
-// @Failure      400  {object}  httpjson.APIError
-// @Failure      404  {object}  httpjson.APIError
-// @Router       /playlists/{id}/next [post]
 func (h *PlaylistHandler) Next(w http.ResponseWriter, r *http.Request) {
 	h.playlistAdvanceAction(w, r, h.manager.Next, "advanced")
 }
 
 // Previous handles POST /playlists/{id}/previous.
-//
-// @Summary      Go to previous image in playlist
-// @Tags         playlists
-// @Param        id   path      int  true  "Playlist ID"
-// @Success      200  {object}  map[string]string
-// @Failure      400  {object}  httpjson.APIError
-// @Failure      404  {object}  httpjson.APIError
-// @Router       /playlists/{id}/previous [post]
 func (h *PlaylistHandler) Previous(w http.ResponseWriter, r *http.Request) {
 	h.playlistAdvanceAction(w, r, h.manager.Previous, "rewound")
 }
@@ -348,11 +260,6 @@ func (h *PlaylistHandler) playlistAdvanceAction(w http.ResponseWriter, r *http.R
 // --- Bulk active-playlist lifecycle actions ---
 
 // StopAll handles POST /playlists/active/stop.
-//
-// @Summary      Stop all active playlists
-// @Tags         playlists
-// @Success      200  {object}  map[string]any
-// @Router       /playlists/active/stop [post]
 func (h *PlaylistHandler) StopAll(w http.ResponseWriter, r *http.Request) {
 	count := h.manager.StopAll()
 	httpjson.WriteJSON(w, http.StatusOK, StopAllResponse{
@@ -362,11 +269,6 @@ func (h *PlaylistHandler) StopAll(w http.ResponseWriter, r *http.Request) {
 }
 
 // PauseAll handles POST /playlists/active/pause.
-//
-// @Summary      Pause all active playlists
-// @Tags         playlists
-// @Success      200  {object}  map[string]any
-// @Router       /playlists/active/pause [post]
 func (h *PlaylistHandler) PauseAll(w http.ResponseWriter, r *http.Request) {
 	count := h.manager.PauseAll(r.Context())
 	httpjson.WriteJSON(w, http.StatusOK, PauseAllResponse{
@@ -376,11 +278,6 @@ func (h *PlaylistHandler) PauseAll(w http.ResponseWriter, r *http.Request) {
 }
 
 // ResumeAll handles POST /playlists/active/resume.
-//
-// @Summary      Resume all paused playlists
-// @Tags         playlists
-// @Success      200  {object}  map[string]any
-// @Router       /playlists/active/resume [post]
 func (h *PlaylistHandler) ResumeAll(w http.ResponseWriter, r *http.Request) {
 	count := h.manager.ResumeAll(r.Context())
 	httpjson.WriteJSON(w, http.StatusOK, ResumeAllResponse{
@@ -390,11 +287,6 @@ func (h *PlaylistHandler) ResumeAll(w http.ResponseWriter, r *http.Request) {
 }
 
 // NextAll handles POST /playlists/active/next.
-//
-// @Summary      Advance all active playlists
-// @Tags         playlists
-// @Success      200  {object}  map[string]any
-// @Router       /playlists/active/next [post]
 func (h *PlaylistHandler) NextAll(w http.ResponseWriter, r *http.Request) {
 	count, err := h.manager.NextAll(r.Context())
 	if err != nil {
@@ -412,11 +304,6 @@ func (h *PlaylistHandler) NextAll(w http.ResponseWriter, r *http.Request) {
 }
 
 // PreviousAll handles POST /playlists/active/previous.
-//
-// @Summary      Rewind all active playlists
-// @Tags         playlists
-// @Success      200  {object}  map[string]any
-// @Router       /playlists/active/previous [post]
 func (h *PlaylistHandler) PreviousAll(w http.ResponseWriter, r *http.Request) {
 	count, err := h.manager.PreviousAll(r.Context())
 	if err != nil {
@@ -436,11 +323,6 @@ func (h *PlaylistHandler) PreviousAll(w http.ResponseWriter, r *http.Request) {
 // --- Active playlist queries ---
 
 // ListActive handles GET /playlists/active.
-//
-// @Summary      List active playlist instances
-// @Tags         playlists
-// @Success      200  {array}   store.ActivePlaylistInstance
-// @Router       /playlists/active [get]
 func (h *PlaylistHandler) ListActive(w http.ResponseWriter, r *http.Request) {
 	active := h.stateStore.GetActivePlaylists()
 
@@ -453,13 +335,6 @@ func (h *PlaylistHandler) ListActive(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetActiveByMonitor handles GET /playlists/active/{monitor}.
-//
-// @Summary      Get active playlist for a monitor
-// @Tags         playlists
-// @Param        monitor  path      string  true  "Monitor name"
-// @Success      200      {object}  store.ActivePlaylistInstance
-// @Failure      404      {object}  httpjson.APIError
-// @Router       /playlists/active/{monitor} [get]
 func (h *PlaylistHandler) GetActiveByMonitor(w http.ResponseWriter, r *http.Request) {
 	monName := chi.URLParam(r, "monitor")
 

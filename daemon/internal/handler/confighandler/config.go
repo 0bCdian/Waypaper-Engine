@@ -23,12 +23,6 @@ func NewConfigHandler(ctrl *control.Controller) *ConfigHandler {
 }
 
 // GetConfig handles GET /config.
-//
-// @Summary      Get full config
-// @Tags         config
-// @Success      200  {object}  map[string]any
-// @Failure      500  {object}  httpjson.APIError
-// @Router       /config [get]
 func (h *ConfigHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
 	merged, err := h.control.MergedConfigJSON()
 	if err != nil {
@@ -40,14 +34,6 @@ func (h *ConfigHandler) GetConfig(w http.ResponseWriter, r *http.Request) {
 }
 
 // PatchConfig handles PATCH /config.
-//
-// @Summary      Patch config sections
-// @Tags         config
-// @Param        body  body      map[string]map[string]any  true  "Section patches"
-// @Success      200   {object}  map[string]any
-// @Failure      400   {object}  httpjson.APIError
-// @Failure      500   {object}  httpjson.APIError
-// @Router       /config [patch]
 func (h *ConfigHandler) PatchConfig(w http.ResponseWriter, r *http.Request) {
 	var body map[string]map[string]any
 	if err := httpjson.ParseBody(r, &body); err != nil {
@@ -86,13 +72,6 @@ func (h *ConfigHandler) PostResetAll(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetSection handles GET /config/{section}.
-//
-// @Summary      Get a config section
-// @Tags         config
-// @Param        section  path      string  true  "Section name"
-// @Success      200      {object}  map[string]any
-// @Failure      404      {object}  httpjson.APIError
-// @Router       /config/{section} [get]
 func (h *ConfigHandler) GetSection(w http.ResponseWriter, r *http.Request) {
 	section := chi.URLParam(r, "section")
 	if section == "backend" {
@@ -110,15 +89,6 @@ func (h *ConfigHandler) GetSection(w http.ResponseWriter, r *http.Request) {
 }
 
 // PatchSection handles PATCH /config/{section}.
-//
-// @Summary      Patch a config section
-// @Tags         config
-// @Param        section  path      string          true  "Section name"
-// @Param        body     body      map[string]any  true  "Section values"
-// @Success      200      {object}  map[string]any
-// @Failure      400      {object}  httpjson.APIError
-// @Failure      404      {object}  httpjson.APIError
-// @Router       /config/{section} [patch]
 func (h *ConfigHandler) PatchSection(w http.ResponseWriter, r *http.Request) {
 	section := chi.URLParam(r, "section")
 	if section == "backend" {
@@ -129,15 +99,6 @@ func (h *ConfigHandler) PatchSection(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetNamedBackendConfig handles GET /config/backends/{backend}.
-//
-// @Summary      Get backend config
-// @Tags         config
-// @Param        backend  path      string  true  "Backend name"
-// @Success      200      {object}  map[string]any
-// @Failure      400      {object}  httpjson.APIError
-// @Failure      404      {object}  httpjson.APIError
-// @Failure      500      {object}  httpjson.APIError
-// @Router       /config/backends/{backend} [get]
 func (h *ConfigHandler) GetNamedBackendConfig(w http.ResponseWriter, r *http.Request) {
 	name := namedBackendFromRequest(r)
 	if name == "" {
@@ -159,16 +120,6 @@ func (h *ConfigHandler) GetNamedBackendConfig(w http.ResponseWriter, r *http.Req
 }
 
 // PatchNamedBackendConfig handles PATCH /config/backends/{backend}.
-//
-// @Summary      Patch backend config
-// @Tags         config
-// @Param        backend  path      string          true  "Backend name"
-// @Param        body     body      map[string]any  true  "Backend config patch"
-// @Success      200      {object}  map[string]string
-// @Failure      400      {object}  httpjson.APIError
-// @Failure      404      {object}  httpjson.APIError
-// @Failure      500      {object}  httpjson.APIError
-// @Router       /config/backends/{backend} [patch]
 func (h *ConfigHandler) PatchNamedBackendConfig(w http.ResponseWriter, r *http.Request) {
 	name := namedBackendFromRequest(r)
 	if name == "" {

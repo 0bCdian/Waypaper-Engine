@@ -31,11 +31,6 @@ func NewHealthHandler(version string, shutdownFn func()) *HealthHandler {
 const MonitorStackVersion = 2
 
 // Healthz handles GET /healthz.
-//
-// @Summary      Health check
-// @Tags         health
-// @Success      200  {object}  map[string]any
-// @Router       /healthz [get]
 func (h *HealthHandler) Healthz(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteJSON(w, http.StatusOK, HealthzResponse{
 		Status:               "ok",
@@ -45,11 +40,6 @@ func (h *HealthHandler) Healthz(w http.ResponseWriter, r *http.Request) {
 }
 
 // Info handles GET /info.
-//
-// @Summary      Daemon info
-// @Tags         health
-// @Success      200  {object}  map[string]any
-// @Router       /info [get]
 func (h *HealthHandler) Info(w http.ResponseWriter, r *http.Request) {
 	hostname, _ := os.Hostname()
 
@@ -65,11 +55,6 @@ func (h *HealthHandler) Info(w http.ResponseWriter, r *http.Request) {
 }
 
 // Capabilities handles GET /capabilities.
-//
-// @Summary      System capabilities
-// @Tags         health
-// @Success      200  {object}  map[string]any
-// @Router       /capabilities [get]
 func (h *HealthHandler) Capabilities(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteJSON(w, http.StatusOK, CapabilitiesResponse{
 		FfmpegAvailable: image.ResolveFfmpeg() != "",
@@ -77,11 +62,6 @@ func (h *HealthHandler) Capabilities(w http.ResponseWriter, r *http.Request) {
 }
 
 // Shutdown handles POST /shutdown.
-//
-// @Summary      Graceful shutdown
-// @Tags         health
-// @Success      200  {object}  map[string]string
-// @Router       /shutdown [post]
 func (h *HealthHandler) Shutdown(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteJSON(w, http.StatusOK, map[string]string{"status": "shutting_down"})
 

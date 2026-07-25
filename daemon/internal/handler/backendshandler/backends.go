@@ -25,23 +25,11 @@ func NewBackendHandler(registry backend.Registry, control *control.Controller) *
 }
 
 // List handles GET /backends.
-//
-// @Summary      List available backends
-// @Tags         backends
-// @Success      200  {array}   backend.BackendInfo
-// @Router       /backends [get]
 func (h *BackendHandler) List(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteJSON(w, http.StatusOK, h.registry.Available())
 }
 
 // Activate handles POST /backends/{name}/activate.
-//
-// @Summary      Activate a backend
-// @Tags         backends
-// @Param        name  path      string  true  "Backend name"
-// @Success      200   {object}  map[string]any
-// @Failure      500   {object}  httpjson.APIError
-// @Router       /backends/{name}/activate [post]
 func (h *BackendHandler) Activate(w http.ResponseWriter, r *http.Request) {
 	name := chi.URLParam(r, "name")
 	result, err := h.control.ActivateBackend(r.Context(), name)

@@ -31,15 +31,6 @@ func NewFolderHandler(folderStore store.FolderStore, imageStore store.ImageStore
 }
 
 // List handles GET /folders.
-//
-// @Summary      List folders
-// @Tags         folders
-// @Param        parent_id  query     string  false  "Parent folder ID or 'root'"
-// @Param        search     query     string  false  "Search query"
-// @Success      200        {object}  map[string]any
-// @Failure      400        {object}  httpjson.APIError
-// @Failure      500        {object}  httpjson.APIError
-// @Router       /folders [get]
 func (h *FolderHandler) List(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
@@ -83,14 +74,6 @@ func (h *FolderHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 // Get handles GET /folders/{id}.
-//
-// @Summary      Get a folder
-// @Tags         folders
-// @Param        id   path      int  true  "Folder ID"
-// @Success      200  {object}  store.Folder
-// @Failure      400  {object}  httpjson.APIError
-// @Failure      404  {object}  httpjson.APIError
-// @Router       /folders/{id} [get]
 func (h *FolderHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id, err := httpjson.ParseIntParam(chi.URLParam(r, "id"))
 	if err != nil {
@@ -108,14 +91,6 @@ func (h *FolderHandler) Get(w http.ResponseWriter, r *http.Request) {
 }
 
 // GetPath handles GET /folders/{id}/path.
-//
-// @Summary      Get folder ancestry path
-// @Tags         folders
-// @Param        id   path      int  true  "Folder ID"
-// @Success      200  {object}  map[string]any
-// @Failure      400  {object}  httpjson.APIError
-// @Failure      404  {object}  httpjson.APIError
-// @Router       /folders/{id}/path [get]
 func (h *FolderHandler) GetPath(w http.ResponseWriter, r *http.Request) {
 	id, err := httpjson.ParseIntParam(chi.URLParam(r, "id"))
 	if err != nil {
@@ -138,14 +113,6 @@ type createFolderRequest struct {
 }
 
 // Create handles POST /folders.
-//
-// @Summary      Create a folder
-// @Tags         folders
-// @Param        body  body      createFolderRequest  true  "Folder data"
-// @Success      201   {object}  store.Folder
-// @Failure      400   {object}  httpjson.APIError
-// @Failure      500   {object}  httpjson.APIError
-// @Router       /folders [post]
 func (h *FolderHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req createFolderRequest
 	if err := httpjson.ParseBody(r, &req); err != nil {
@@ -177,16 +144,6 @@ func (h *FolderHandler) Create(w http.ResponseWriter, r *http.Request) {
 }
 
 // Update handles PATCH /folders/{id}.
-//
-// @Summary      Update a folder
-// @Tags         folders
-// @Param        id    path      int             true  "Folder ID"
-// @Param        body  body      map[string]any  true  "Fields to update (name, parent_id)"
-// @Success      200   {object}  store.Folder
-// @Failure      400   {object}  httpjson.APIError
-// @Failure      404   {object}  httpjson.APIError
-// @Failure      500   {object}  httpjson.APIError
-// @Router       /folders/{id} [patch]
 func (h *FolderHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id, err := httpjson.ParseIntParam(chi.URLParam(r, "id"))
 	if err != nil {
@@ -223,16 +180,6 @@ func (h *FolderHandler) Update(w http.ResponseWriter, r *http.Request) {
 }
 
 // Delete handles DELETE /folders/{id}.
-//
-// @Summary      Delete a folder
-// @Tags         folders
-// @Param        id    path      int     true   "Folder ID"
-// @Param        mode  query     string  false  "keep_contents (default) or delete_all"
-// @Success      200   {object}  map[string]string
-// @Failure      400   {object}  httpjson.APIError
-// @Failure      404   {object}  httpjson.APIError
-// @Failure      500   {object}  httpjson.APIError
-// @Router       /folders/{id} [delete]
 func (h *FolderHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	id, err := httpjson.ParseIntParam(chi.URLParam(r, "id"))
 	if err != nil {
@@ -406,14 +353,6 @@ type moveImagesRequest struct {
 }
 
 // MoveImages moves images to a folder.
-//
-// @Summary      Move images to a folder
-// @Tags         folders
-// @Param        body  body      moveImagesRequest  true  "Move request"
-// @Success      200   {object}  map[string]any
-// @Failure      400   {object}  httpjson.APIError
-// @Failure      500   {object}  httpjson.APIError
-// @Router       /folders/move-images [post]
 func (h *FolderHandler) MoveImages(w http.ResponseWriter, r *http.Request) {
 	var req moveImagesRequest
 	if err := httpjson.ParseBody(r, &req); err != nil {
