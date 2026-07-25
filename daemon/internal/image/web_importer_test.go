@@ -31,7 +31,7 @@ func TestImportWebWallpaper_OptionalPreview(t *testing.T) {
 	db := testutil.OpenTestDB(t)
 	imagesDir := t.TempDir()
 	thumbsDir := t.TempDir()
-	p := image.NewProcessor(db.ImageStore(), nil, imagesDir, thumbsDir, nil)
+	p := image.NewProcessor(db.ImageStore(), nil, imagesDir, thumbsDir)
 
 	img, err := p.ImportWebWallpaper(ctx, tmpSrc, nil)
 	require.NoError(t, err)
@@ -45,7 +45,7 @@ func TestImportWebWallpaper_RejectsAbsoluteEntryFixture(t *testing.T) {
 	ctx := context.Background()
 	fixture := filepath.Join("testdata", "malicious_path_traversal", "abs_entry")
 	db := testutil.OpenTestDB(t)
-	p := image.NewProcessor(db.ImageStore(), nil, t.TempDir(), t.TempDir(), nil)
+	p := image.NewProcessor(db.ImageStore(), nil, t.TempDir(), t.TempDir())
 
 	_, err := p.ImportWebWallpaper(ctx, fixture, nil)
 	require.Error(t, err)
@@ -57,7 +57,7 @@ func TestImportWebWallpaper_RejectsPreviewTraversalFixture(t *testing.T) {
 	ctx := context.Background()
 	fixture := filepath.Join("testdata", "malicious_path_traversal", "bad_preview")
 	db := testutil.OpenTestDB(t)
-	p := image.NewProcessor(db.ImageStore(), nil, t.TempDir(), t.TempDir(), nil)
+	p := image.NewProcessor(db.ImageStore(), nil, t.TempDir(), t.TempDir())
 
 	_, err := p.ImportWebWallpaper(ctx, fixture, nil)
 	require.Error(t, err)
@@ -76,7 +76,7 @@ func TestImportWebWallpaper_WithPreview(t *testing.T) {
 	db := testutil.OpenTestDB(t)
 	imagesDir := t.TempDir()
 	thumbsDir := t.TempDir()
-	p := image.NewProcessor(db.ImageStore(), nil, imagesDir, thumbsDir, nil)
+	p := image.NewProcessor(db.ImageStore(), nil, imagesDir, thumbsDir)
 
 	img, err := p.ImportWebWallpaper(ctx, tmpSrc, nil)
 	require.NoError(t, err)

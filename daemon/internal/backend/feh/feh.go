@@ -18,7 +18,7 @@ import (
 
 // Feh implements backend.Backend for the feh wallpaper setter.
 type Feh struct {
-	v *viper.Viper
+	v backend.ConfigReader
 	// execFn allows tests to capture argv without running feh.
 	// Defaults to execReal; replaced by SetExecForTest in tests.
 	execFn func(args []string) error
@@ -181,8 +181,13 @@ func parseXrandrListMonitors(s string) map[string]int {
 }
 
 func (f *Feh) RegisterDefaults(v *viper.Viper) {
-	f.v = v
 	v.SetDefault("backend.feh.mode", string(ModeFill))
+}
+
+// SetConfigReader wires the concurrency-safe config reader used by every
+// runtime read (loadModeFromViper). Called once at startup, after RegisterDefaults.
+func (f *Feh) SetConfigReader(r backend.ConfigReader) {
+	f.v = r
 }
 
 func (f *Feh) loadModeFromViper() FehMode {

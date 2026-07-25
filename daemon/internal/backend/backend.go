@@ -66,6 +66,37 @@ type Backend interface {
 	ValidateConfig(raw json.RawMessage) error
 }
 
+// ConfigReader is the minimal, concurrency-safe read view of backend config
+// that a backend may retain past startup (e.g. for use in Apply, which runs
+// on every playlist tick and every manual set — long after RegisterDefaults).
+//
+// It intentionally excludes the rest of *viper.Viper: retaining the raw
+// *viper.Viper itself is not safe, because config.ViperManager's file-watcher
+// goroutine calls ReadInConfig() (a map write) on that same instance,
+// unguarded by any lock a caller outside the config package can take. Use
+// config.ViperManager's implementation of this interface instead, which
+// locks internally.
+//
+// Only methods actually called by a backend belong here — see each method's
+// call sites in internal/backend/*/{*.go} before adding one.
+type ConfigReader interface {
+	GetString(key string) string
+	GetInt(key string) int
+	GetFloat64(key string) float64
+	GetBool(key string) bool
+	GetStringSlice(key string) []string
+	IsSet(key string) bool
+}
+
+// ConfigReaderReceiver is implemented by backends that need config reads
+// after startup (i.e. after RegisterDefaults returns) and therefore must
+// retain a ConfigReader instead of the raw *viper.Viper. The daemon calls
+// SetConfigReader once, right after RegisterDefaults, for every backend that
+// implements this optional interface.
+type ConfigReaderReceiver interface {
+	SetConfigReader(r ConfigReader)
+}
+
 // Capabilities declares what a backend supports.
 type Capabilities struct {
 	// ContentKinds lists the Content variants this backend can display.

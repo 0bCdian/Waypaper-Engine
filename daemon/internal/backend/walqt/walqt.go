@@ -51,7 +51,7 @@ var validImageRenderingModes = map[string]struct{}{
 	"pixelated":    {},
 }
 
-func intFromViperPrefixes(v *viper.Viper, wantKey string, fallback int) int {
+func intFromViperPrefixes(v backend.ConfigReader, wantKey string, fallback int) int {
 	if v == nil {
 		return fallback
 	}
@@ -62,7 +62,7 @@ func intFromViperPrefixes(v *viper.Viper, wantKey string, fallback int) int {
 	return fallback
 }
 
-func float32FromViperPrefixes(v *viper.Viper, wantKey string, fallback float32) float32 {
+func float32FromViperPrefixes(v backend.ConfigReader, wantKey string, fallback float32) float32 {
 	if v == nil {
 		return fallback
 	}
@@ -92,7 +92,7 @@ func normalizeAngleDeg(v int) int {
 }
 
 type WalQt struct {
-	v          *viper.Viper
+	v          backend.ConfigReader
 	makeClient func(cfg *Config) (*controlClient, error)
 	processMu  sync.Mutex
 	process    *os.Process
@@ -541,7 +541,6 @@ func (w *WalQt) syncParallaxDriver(cfg *Config, force bool) {
 }
 
 func (w *WalQt) RegisterDefaults(v *viper.Viper) {
-	w.v = v
 	def := defaultConfig()
 
 	v.SetDefault(viperBackendKey+".socket_path", def.SocketPath)
@@ -573,6 +572,13 @@ func (w *WalQt) RegisterDefaults(v *viper.Viper) {
 	v.SetDefault(viperBackendKey+".video_audio_default", def.VideoAudioDefault)
 	v.SetDefault(viperBackendKey+".allow_network_wallpapers", def.AllowNetworkWallpapers)
 	v.SetDefault(viperBackendKey+".env", []string{})
+}
+
+// SetConfigReader wires the concurrency-safe config reader used by every
+// runtime read (loadConfigFromViper etc). Called once at startup, after
+// RegisterDefaults.
+func (w *WalQt) SetConfigReader(r backend.ConfigReader) {
+	w.v = r
 }
 
 func (w *WalQt) ValidateConfig(raw json.RawMessage) error {

@@ -14,8 +14,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/spf13/viper"
-
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/config"
 	"waypaper-engine/daemon/internal/control"
@@ -52,8 +50,6 @@ type Options struct {
 	Registry backend.Registry
 	// Cfg is the config manager (provides typed accessors and update helpers).
 	Cfg config.ConfigManager
-	// Viper is the raw viper instance needed by image.NewProcessor.
-	Viper *viper.Viper
 	// ImagesDir is the directory where wallpaper images are stored.
 	ImagesDir string
 	// ThumbnailsDir is the directory where thumbnails are cached.
@@ -85,9 +81,6 @@ func New(opts Options) (*Daemon, error) {
 	}
 	if opts.Cfg == nil {
 		return nil, fmt.Errorf("daemon: Cfg is required")
-	}
-	if opts.Viper == nil {
-		return nil, fmt.Errorf("daemon: Viper is required")
 	}
 	return &Daemon{opts: opts}, nil
 }
@@ -166,7 +159,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 	}
 
 	// Create image processor and splitter.
-	processor := image.NewProcessor(opts.DB.ImageStore(), bus, opts.ImagesDir, opts.ThumbnailsDir, opts.Viper)
+	processor := image.NewProcessor(opts.DB.ImageStore(), bus, opts.ImagesDir, opts.ThumbnailsDir)
 	splitter := image.NewSplitter(opts.ImagesDir)
 
 	// Backfill missing video browser previews asynchronously.

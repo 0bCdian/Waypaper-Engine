@@ -40,7 +40,7 @@ func awwwDaemonArgs(format string) []string {
 
 type Awww struct {
 	once    sync.Once
-	v       *viper.Viper
+	v       backend.ConfigReader
 	process *os.Process
 	// execFn runs "awww img" with the given args. In tests, a no-op that records calls.
 	execFn func(ctx context.Context, args []string) error
@@ -246,7 +246,6 @@ func (a *Awww) buildArgs(path string, monitors []string, cfg *Config) []string {
 }
 
 func (a *Awww) RegisterDefaults(v *viper.Viper) {
-	a.v = v
 	v.SetDefault("backend.awww.transition_type", string(TransitionWipe))
 	v.SetDefault("backend.awww.transition_step", 90)
 	v.SetDefault("backend.awww.transition_duration", 3)
@@ -260,6 +259,13 @@ func (a *Awww) RegisterDefaults(v *viper.Viper) {
 	v.SetDefault("backend.awww.filter_type", string(FilterLanczos3))
 	v.SetDefault("backend.awww.invert_y", false)
 	v.SetDefault("backend.awww.daemon_format", "")
+}
+
+// SetConfigReader wires the concurrency-safe config reader used by every
+// runtime read (loadConfigFromViper etc). Called once at startup, after
+// RegisterDefaults.
+func (a *Awww) SetConfigReader(r backend.ConfigReader) {
+	a.v = r
 }
 
 // loadConfigFromViper reads the [backend.awww] section from the TOML config via Viper.

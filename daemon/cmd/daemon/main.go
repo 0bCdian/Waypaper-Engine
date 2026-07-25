@@ -103,6 +103,13 @@ func startDaemon(configPath string, logLevel string) error {
 			slog.Warn("failed to register backend", "name", b.Name(), "error", err)
 		}
 		b.RegisterDefaults(cfg.Viper())
+		// Backends that need config reads after startup (e.g. every Apply) must
+		// not retain the raw *viper.Viper — it races with the config file
+		// watcher's unguarded ReadInConfig. Hand them cfg instead, which guards
+		// every read with cfg's mutex.
+		if rc, ok := b.(backend.ConfigReaderReceiver); ok {
+			rc.SetConfigReader(cfg)
+		}
 	}
 
 	// Persist a complete config file now that every backend has registered its
@@ -160,12 +167,11 @@ func startDaemon(configPath string, logLevel string) error {
 		DB:               db,
 		Registry:         reg,
 		Cfg:              cfg,
-		Viper:            cfg.Viper(),
 		ImagesDir:        cfg.GetImagesDir(),
 		ThumbnailsDir:    cfg.GetThumbnailsDir(),
 		Version:          version,
 		Compositor:       compositorOverride,
-		MonitorProviders: defaultMonitorProviders(cfg.Viper()),
+		MonitorProviders: defaultMonitorProviders(cfg),
 	}
 	d, err := daemon.New(opts)
 	if err != nil {

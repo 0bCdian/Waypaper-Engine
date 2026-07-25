@@ -22,7 +22,7 @@ import (
 // Hyprpaper implements backend.Backend for the hyprpaper wallpaper daemon.
 // It writes hyprpaper.conf and restarts the daemon (compatible with all hyprpaper versions).
 type Hyprpaper struct {
-	v       *viper.Viper
+	v       backend.ConfigReader
 	process *os.Process
 	mu      sync.Mutex
 }
@@ -194,9 +194,14 @@ func (h *Hyprpaper) Apply(ctx context.Context, snap backend.Snapshot) error {
 }
 
 func (h *Hyprpaper) RegisterDefaults(v *viper.Viper) {
-	h.v = v
 	v.SetDefault("backend.hyprpaper.fit_mode", string(FitCover))
 	v.SetDefault("backend.hyprpaper.config_path", "")
+}
+
+// SetConfigReader wires the concurrency-safe config reader used by every
+// runtime read (Apply etc). Called once at startup, after RegisterDefaults.
+func (h *Hyprpaper) SetConfigReader(r backend.ConfigReader) {
+	h.v = r
 }
 
 func (h *Hyprpaper) loadConfigFromViper() *Config {

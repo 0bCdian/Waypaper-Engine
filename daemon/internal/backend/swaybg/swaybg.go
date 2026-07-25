@@ -23,7 +23,7 @@ import (
 )
 
 type Swaybg struct {
-	v       *viper.Viper
+	v       backend.ConfigReader
 	process *os.Process
 	mu      sync.Mutex
 	// startProcessFn allows tests to capture the argv without exec'ing swaybg.
@@ -143,8 +143,13 @@ func (s *Swaybg) Apply(_ context.Context, snap backend.Snapshot) error {
 }
 
 func (s *Swaybg) RegisterDefaults(v *viper.Viper) {
-	s.v = v
 	v.SetDefault("backend.swaybg.fit_mode", string(FitFill))
+}
+
+// SetConfigReader wires the concurrency-safe config reader used by every
+// runtime read (Apply etc). Called once at startup, after RegisterDefaults.
+func (s *Swaybg) SetConfigReader(r backend.ConfigReader) {
+	s.v = r
 }
 
 func (s *Swaybg) ValidateConfig(raw json.RawMessage) error {

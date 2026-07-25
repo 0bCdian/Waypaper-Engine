@@ -113,14 +113,11 @@ func startTestDaemon(t *testing.T) (*http.Client, string, context.CancelFunc) {
 		dbDir:         dbDir,
 	}
 
-	v := viper.New()
-
 	opts := daemon.Options{
 		SocketPath:       socketPath,
 		DB:               db,
 		Registry:         reg,
 		Cfg:              cfg,
-		Viper:            v,
 		ImagesDir:        imagesDir,
 		ThumbnailsDir:    thumbnailsDir,
 		Version:          "test",

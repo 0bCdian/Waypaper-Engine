@@ -1,8 +1,7 @@
 package main
 
 import (
-	"github.com/spf13/viper"
-
+	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/backend/walqt"
 	"waypaper-engine/daemon/internal/monitor"
 )
@@ -14,7 +13,7 @@ import (
 //
 // Evaluation order on Wayland (by priority): native zwlr_output_management first,
 // then wal-qt HTTP status (subset topology), then legacy randr-style probes.
-func defaultMonitorProviders(v *viper.Viper) []monitor.MonitorProvider {
+func defaultMonitorProviders(v backend.ConfigReader) []monitor.MonitorProvider {
 	return []monitor.MonitorProvider{
 		monitor.NewWaylandProvider(),
 		walqt.NewMonitorProvider(v),

@@ -321,6 +321,49 @@ func (m *ViperManager) GetAutoPriorities() AutoPriorities {
 	}
 }
 
+// ---------- Generic key access (backend.ConfigReader) ----------
+//
+// These implement backend.ConfigReader (structurally — this package does not
+// import internal/backend) so backends can retain *ViperManager instead of
+// the raw *viper.Viper for reads after startup. See the Viper() doc comment
+// for why retaining the raw *viper.Viper is unsafe.
+
+func (m *ViperManager) GetString(key string) string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.v.GetString(key)
+}
+
+func (m *ViperManager) GetInt(key string) int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.v.GetInt(key)
+}
+
+func (m *ViperManager) GetFloat64(key string) float64 {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.v.GetFloat64(key)
+}
+
+func (m *ViperManager) GetBool(key string) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.v.GetBool(key)
+}
+
+func (m *ViperManager) GetStringSlice(key string) []string {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.v.GetStringSlice(key)
+}
+
+func (m *ViperManager) IsSet(key string) bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.v.IsSet(key)
+}
+
 // ---------- Change notification ----------
 
 func (m *ViperManager) OnConfigChange(callback func(section string)) {

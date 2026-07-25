@@ -59,6 +59,7 @@ func TestApply_PushesAllowNetworkWallpapersForWebOutput(t *testing.T) {
 
 	v := viper.New()
 	b.RegisterDefaults(v)
+	b.SetConfigReader(v) // *viper.Viper satisfies backend.ConfigReader; mirrors main.go's wiring
 	v.Set(viperBackendKey+".allow_network_wallpapers", true)
 
 	snap := backend.Snapshot{

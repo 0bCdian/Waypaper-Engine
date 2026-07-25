@@ -6,9 +6,8 @@ import (
 	"strings"
 	"time"
 
+	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/monitor"
-
-	"github.com/spf13/viper"
 )
 
 // Below the native zwlr_output_management provider; used when that protocol is
@@ -17,14 +16,16 @@ const walqtMonitorProviderPriority = 25
 
 // walqtMonitorProvider lists monitors from GET /wallpaper/status topology on the control socket.
 type walqtMonitorProvider struct {
-	v *viper.Viper
+	v backend.ConfigReader
 }
 
 // NewMonitorProvider returns a monitor.MonitorProvider backed by wal-qt's control API.
-// Pass the same *viper.Viper used for daemon config; socket_path and API expectations are read
-// from backend.wal-qt when set, otherwise defaults match RegisterDefaults / defaultConfig
-// (including defaultSocketPath).
-func NewMonitorProvider(v *viper.Viper) monitor.MonitorProvider {
+// Pass a concurrency-safe backend.ConfigReader (e.g. *config.ViperManager) used for daemon
+// config; socket_path and API expectations are read from backend.wal-qt when set, otherwise
+// defaults match RegisterDefaults / defaultConfig (including defaultSocketPath). v may be nil
+// (e.g. the `monitors --direct` diagnostic without a loaded config), in which case defaults
+// are used unconditionally.
+func NewMonitorProvider(v backend.ConfigReader) monitor.MonitorProvider {
 	return &walqtMonitorProvider{v: v}
 }
 
