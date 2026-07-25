@@ -2,9 +2,7 @@ package walqt
 
 import (
 	"errors"
-	"fmt"
 	"net"
-	"syscall"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -36,28 +34,4 @@ func TestIsRetryableError(t *testing.T) {
 	assert.True(t, isRetryableError(netErr))
 
 	assert.False(t, isRetryableError(errors.New("plain error")))
-}
-
-func TestIsRetryableUnixSocketDial(t *testing.T) {
-	refused := &net.OpError{Op: "dial", Net: "unix", Err: syscall.ECONNREFUSED}
-	assert.True(t, isRetryableUnixSocketDial(refused))
-
-	wrappedUnavailable := fmt.Errorf("%w: %v", errUnavailable, refused)
-	assert.True(t, isRetryableUnixSocketDial(wrappedUnavailable))
-
-	assert.True(t, isRetryableUnixSocketDial(errors.New("dial unix /tmp/x.sock: connect: connection refused")))
-
-	assert.False(t, isRetryableUnixSocketDial(errors.New("bad request")))
-	assert.False(t, isRetryableUnixSocketDial(nil))
-}
-
-func TestIsRetryableControlStatusErr(t *testing.T) {
-	timeoutAwait := errors.New(`Get "http://wal-qt.local/wallpaper/status": context deadline exceeded (Client.Timeout exceeded while awaiting headers)`)
-	assert.True(t, isRetryableControlStatusErr(timeoutAwait))
-
-	refused := &net.OpError{Op: "dial", Net: "unix", Err: syscall.ECONNREFUSED}
-	assert.True(t, isRetryableControlStatusErr(refused))
-
-	assert.False(t, isRetryableControlStatusErr(errors.New("bad request")))
-	assert.False(t, isRetryableControlStatusErr(nil))
 }

@@ -20,14 +20,6 @@ function monitorSetsMatch(
   return playlistMonitors.every((m) => a.has(m));
 }
 
-// Tracks the playlist_id whose full data (images, configuration) was last synced
-// into usePlaylistStore, so repeated events for the same active playlist don't
-// re-fetch its full payload. Module-scoped rather than a ref because
-// useSetLastActivePlaylist is mounted once (PlaylistTrack -> BottomDock) and
-// refreshActivePlaylist is also called from useResyncOnReconnect, which needs
-// to share this tracking to behave the same way the in-hook listeners do.
-let lastSyncedPlaylistId: number | null = null;
-
 /**
  * Refetches the active playlist for the current monitor selection and syncs
  * usePlaylistStore / useActivePlaylistStore with the result. This is the same
@@ -40,7 +32,6 @@ export async function refreshActivePlaylist(): Promise<void> {
   if (selectedMonitors.length === 0) {
     usePlaylistStore.getState().clearPlaylist();
     useActivePlaylistStore.getState().clear();
-    lastSyncedPlaylistId = null;
     return;
   }
 
@@ -54,7 +45,6 @@ export async function refreshActivePlaylist(): Promise<void> {
   if (!activePlaylists || activePlaylists.length === 0) {
     usePlaylistStore.getState().clearPlaylist();
     useActivePlaylistStore.getState().clear();
-    lastSyncedPlaylistId = null;
     return;
   }
 
@@ -65,13 +55,12 @@ export async function refreshActivePlaylist(): Promise<void> {
   if (!match) {
     usePlaylistStore.getState().clearPlaylist();
     useActivePlaylistStore.getState().clear();
-    lastSyncedPlaylistId = null;
     return;
   }
 
   useActivePlaylistStore.getState().setActivePlaylist(match);
 
-  if (lastSyncedPlaylistId === match.playlist_id) return;
+  if (useActivePlaylistStore.getState().lastSyncedPlaylistId === match.playlist_id) return;
 
   try {
     const fullPlaylist = await daemonClient.getPlaylist(match.playlist_id);
@@ -79,7 +68,7 @@ export async function refreshActivePlaylist(): Promise<void> {
       return;
     }
 
-    lastSyncedPlaylistId = match.playlist_id;
+    useActivePlaylistStore.getState().setLastSyncedPlaylistId(match.playlist_id);
     const currentPlaylist: rendererPlaylist = {
       id: fullPlaylist.id,
       name: fullPlaylist.name,
@@ -123,7 +112,6 @@ export function useSetLastActivePlaylist() {
         if (!activePlaylists || activePlaylists.length === 0) {
           clearPlaylist();
           clearActivePlaylist();
-          lastSyncedPlaylistId = null;
           return;
         }
 
@@ -139,13 +127,12 @@ export function useSetLastActivePlaylist() {
         if (!match) {
           clearPlaylist();
           clearActivePlaylist();
-          lastSyncedPlaylistId = null;
           return;
         }
 
         setActivePlaylist(match);
 
-        if (lastSyncedPlaylistId === match.playlist_id) {
+        if (useActivePlaylistStore.getState().lastSyncedPlaylistId === match.playlist_id) {
           return;
         }
 
@@ -157,7 +144,7 @@ export function useSetLastActivePlaylist() {
           return;
         }
 
-        lastSyncedPlaylistId = match.playlist_id;
+        useActivePlaylistStore.getState().setLastSyncedPlaylistId(match.playlist_id);
         const currentPlaylist: rendererPlaylist = {
           id: fullPlaylist.id,
           name: fullPlaylist.name,

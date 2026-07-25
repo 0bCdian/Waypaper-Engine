@@ -29,10 +29,19 @@ interface ActivePlaylistState {
   activePlaylist: ActivePlaylistInstance | null;
   setActivePlaylist: (playlist: ActivePlaylistInstance | null) => void;
   clear: () => void;
+  // Tracks the playlist_id whose full data (images, configuration) was last synced
+  // into usePlaylistStore, so repeated events for the same active playlist don't
+  // re-fetch its full payload. Lives here (rather than a ref inside
+  // useSetLastActivePlaylist) because refreshActivePlaylist, called from
+  // useResyncOnReconnect, needs to share this tracking to behave the same way
+  // the in-hook listeners do.
+  lastSyncedPlaylistId: number | null;
+  setLastSyncedPlaylistId: (id: number | null) => void;
 }
 
 export const useActivePlaylistStore = create<ActivePlaylistState>()((set) => ({
   activePlaylist: loadPersisted(),
+  lastSyncedPlaylistId: null,
 
   setActivePlaylist: (playlist) => {
     persist(playlist);
@@ -41,6 +50,10 @@ export const useActivePlaylistStore = create<ActivePlaylistState>()((set) => ({
 
   clear: () => {
     persist(null);
-    set({ activePlaylist: null });
+    set({ activePlaylist: null, lastSyncedPlaylistId: null });
+  },
+
+  setLastSyncedPlaylistId: (id) => {
+    set({ lastSyncedPlaylistId: id });
   },
 }));
