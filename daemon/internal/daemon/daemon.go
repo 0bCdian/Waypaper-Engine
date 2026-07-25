@@ -6,6 +6,7 @@ package daemon
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
@@ -329,6 +330,16 @@ func (d *Daemon) Start(ctx context.Context) error {
 	if opts.Registry.HasActive() {
 		if err := opts.Registry.Active().Shutdown(shutdownCtx); err != nil {
 			slog.Warn("backend shutdown error", "error", err)
+		}
+	}
+
+	// opts.Cfg is typed as the ConfigManager interface, which not every
+	// implementation needs to satisfy (tests construct lightweight fakes/mocks
+	// with no watcher to release), so Close is not part of the interface.
+	// Type-assert for the optional io.Closer instead of widening ConfigManager.
+	if closer, ok := opts.Cfg.(io.Closer); ok {
+		if err := closer.Close(); err != nil {
+			slog.Warn("config manager close error", "error", err)
 		}
 	}
 

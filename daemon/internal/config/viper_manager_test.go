@@ -4,9 +4,11 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -159,4 +161,42 @@ func TestConcurrentReadsAndWrites_NoDataRace(t *testing.T) {
 	}()
 
 	wg.Wait()
+}
+
+// Close must stop the fsnotify watcher goroutine started by NewViperManager,
+// otherwise every ViperManager (including the one created per test in this
+// file) leaks an inotify instance for the life of the process.
+func TestClose_StopsWatcherGoroutine(t *testing.T) {
+	cfgPath := filepath.Join(t.TempDir(), "config.toml")
+
+	// Let any watcher goroutines from earlier tests settle before sampling
+	// the baseline, so this test isn't polluted by prior leaks.
+	runtime.GC()
+	time.Sleep(50 * time.Millisecond)
+	before := runtime.NumGoroutine()
+
+	m, err := NewViperManager(cfgPath)
+	require.NoError(t, err)
+
+	deadline := time.Now().Add(2 * time.Second)
+	for runtime.NumGoroutine() <= before && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	during := runtime.NumGoroutine()
+	assert.Greater(t, during, before, "expected NewViperManager to start a watcher goroutine")
+
+	require.NoError(t, m.Close())
+
+	deadline = time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if runtime.NumGoroutine() <= before {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	assert.LessOrEqual(t, runtime.NumGoroutine(), before,
+		"watcher goroutine leaked after Close")
+
+	// Idempotent: calling Close again must not panic or error.
+	require.NoError(t, m.Close())
 }

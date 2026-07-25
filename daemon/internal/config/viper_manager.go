@@ -30,6 +30,16 @@ type ViperManager struct {
 	v  *viper.Viper
 	mu sync.RWMutex
 
+	// watcher and watchDone back Close(): watcher is the fsnotify (inotify)
+	// instance owned by the goroutine started in startWatch, and watchDone is
+	// closed by that goroutine right before it returns. Both are set once in
+	// NewViperManager/startWatch, before the *ViperManager is handed to any
+	// caller, so reading them in Close() needs no lock. Nil when startWatch
+	// failed (watching is best-effort — see NewViperManager).
+	watcher   *fsnotify.Watcher
+	watchDone chan struct{}
+	closeOnce sync.Once
+
 	// callbacks registered via OnConfigChange, called in order.
 	cbMu      sync.RWMutex
 	callbacks []func(section string)
@@ -115,7 +125,11 @@ func (m *ViperManager) startWatch(configPath string) error {
 		return err
 	}
 
+	m.watcher = watcher
+	m.watchDone = make(chan struct{})
+
 	go func() {
+		defer close(m.watchDone)
 		defer watcher.Close()
 		for {
 			select {
@@ -151,10 +165,52 @@ func (m *ViperManager) startWatch(configPath string) error {
 	return nil
 }
 
-// Viper returns the underlying Viper instance.
-// This is exposed so that backends can call RegisterDefaults(v) at startup.
+// Close stops the config file watcher goroutine and releases its fsnotify
+// (inotify) instance, a limited per-user kernel resource. Idempotent and safe
+// to call from multiple goroutines or more than once. Blocks until the
+// watcher goroutine has actually exited.
+//
+// Closing is optional for correctness: a ViperManager that is never closed
+// keeps behaving exactly as it does today (it just leaks the watcher, same
+// as before this method existed). Callers that own a ViperManager for the
+// life of a process or long-running test — notably daemon shutdown — should
+// call Close to release the inotify instance.
+func (m *ViperManager) Close() error {
+	var err error
+	m.closeOnce.Do(func() {
+		if m.watcher == nil {
+			// startWatch failed or was never called; nothing to release.
+			return
+		}
+		err = m.watcher.Close()
+		<-m.watchDone
+	})
+	return err
+}
+
+// Viper returns the underlying Viper instance, bypassing m.mu entirely.
 // Callers MUST NOT use it for general config access — use the ConfigManager
-// interface methods instead.
+// interface methods instead, which all take m.mu.
+//
+// Two distinct usage patterns exist among current callers, and only the first
+// is safe:
+//
+//  1. Call once, at startup, before the watcher's writes matter (e.g.
+//     Backend.RegisterDefaults(cfg.Viper()), main.go's EnsureDefaultsPersisted
+//     sequence). Safe today only because it happens before the HTTP server and
+//     any concurrent config activity are live — ordering, not a guarantee this
+//     method provides.
+//  2. Retain the returned pointer and call read methods (GetString, GetInt,
+//     ...) on it later, from goroutines that outlive startup. This is NOT
+//     safe: those reads run concurrently with the watcher goroutine's
+//     m.mu-guarded ReadInConfig, unguarded by any lock, which is exactly the
+//     race this package's fsnotify rewrite (see startWatch) exists to
+//     eliminate for every other access path. walqt's monitor provider
+//     (internal/backend/walqt/monitor_provider.go, NewMonitorProvider) does
+//     this today via a retained *viper.Viper read in Detect().
+//
+// Do not add a new pattern-2 caller. If you need config access from a
+// long-lived component, go through the ConfigManager interface instead.
 func (m *ViperManager) Viper() *viper.Viper {
 	return m.v
 }
