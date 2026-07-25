@@ -119,9 +119,7 @@ describe("useActivePlaylistStore", () => {
         useActivePlaylistStore.getState().setActivePlaylist(sampleActive);
         useActivePlaylistStore.getState().setLastSyncedPlaylistId(sampleActive.playlist_id);
       });
-      expect(useActivePlaylistStore.getState().lastSyncedPlaylistId).toBe(
-        sampleActive.playlist_id,
-      );
+      expect(useActivePlaylistStore.getState().lastSyncedPlaylistId).toBe(sampleActive.playlist_id);
 
       act(() => {
         useActivePlaylistStore.getState().clear();
