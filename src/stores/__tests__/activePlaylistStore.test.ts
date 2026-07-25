@@ -27,6 +27,7 @@ describe("useActivePlaylistStore", () => {
     mode: "individual",
     started_at: new Date().toISOString(),
     next_change_at: null,
+    slot_started_at: null,
     monitors: ["HDMI-A-1"],
   };
 

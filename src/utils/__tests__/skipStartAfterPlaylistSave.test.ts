@@ -14,6 +14,7 @@ const baseActive = (over: Partial<ActivePlaylistInstance>): ActivePlaylistInstan
   mode: "individual",
   started_at: new Date().toISOString(),
   next_change_at: null,
+  slot_started_at: null,
   monitors: ["DP-1"],
   ...over,
 });

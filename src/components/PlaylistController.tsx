@@ -26,11 +26,13 @@ function TrackProgress({
   paused,
   slotKey,
   nextChangeAt,
+  slotStartedAt,
   compact,
 }: {
   paused: boolean;
   slotKey: string;
   nextChangeAt: string | null;
+  slotStartedAt: string | null;
   compact?: boolean;
 }) {
   const prevSlotKeyRef = useRef<string | null>(null);
@@ -51,11 +53,21 @@ function TrackProgress({
 
     const keyChanged = prevSlotKeyRef.current !== slotKey;
     prevSlotKeyRef.current = slotKey;
+
+    // Prefer the daemon-reported slot start (the real window) over the
+    // renderer's first-seen fallback, which is only correct if the UI
+    // happened to be connected exactly when the slot began.
+    const daemonStartedAt = slotStartedAt ? new Date(slotStartedAt).getTime() : NaN;
+    if (Number.isFinite(daemonStartedAt)) {
+      setSlot({ startedAt: daemonStartedAt, endsAt });
+      return;
+    }
+
     setSlot((prev) => {
       if (keyChanged || !prev) return { startedAt: Date.now(), endsAt };
       return { ...prev, endsAt };
     });
-  }, [slotKey, nextChangeAt]);
+  }, [slotKey, nextChangeAt, slotStartedAt]);
 
   const [, forceTick] = useState(0);
   useEffect(() => {
@@ -67,12 +79,22 @@ function TrackProgress({
   let elapsedSec = 0;
   let totalSec = 0;
   let pct = 0;
-  if (slot && slot.endsAt > slot.startedAt) {
-    totalSec = (slot.endsAt - slot.startedAt) / 1000;
-    elapsedSec = Math.min(totalSec, (Date.now() - slot.startedAt) / 1000);
-    pct = totalSec > 0 ? Math.min(100, (elapsedSec / totalSec) * 100) : 0;
+  let overdue = false;
+  if (slot) {
+    if (slot.endsAt > slot.startedAt) {
+      totalSec = (slot.endsAt - slot.startedAt) / 1000;
+      elapsedSec = Math.min(totalSec, (Date.now() - slot.startedAt) / 1000);
+      pct = totalSec > 0 ? Math.min(100, (elapsedSec / totalSec) * 100) : 0;
+    } else if (slot.endsAt <= Date.now()) {
+      // Degenerate window (e.g. we only saw this slot after its deadline
+      // already passed, so there's no real start to measure from) but the
+      // deadline itself is in the past: render as complete, not broken.
+      overdue = true;
+      pct = 100;
+    }
   }
   const remainingSec = Math.max(0, totalSec - elapsedSec);
+  const hasWindow = totalSec > 0 || overdue;
 
   return (
     <div className={cn("flex items-center", compact ? "gap-1.5" : "gap-2")}>
@@ -82,7 +104,7 @@ function TrackProgress({
           compact ? "w-8 text-[0.6rem]" : "w-9 text-[0.65rem]",
         )}
       >
-        {totalSec > 0 ? formatClock(elapsedSec) : "—"}
+        {hasWindow ? formatClock(elapsedSec) : "—"}
       </span>
       <div
         className={cn(
@@ -109,7 +131,7 @@ function TrackProgress({
           compact ? "w-8 text-[0.6rem]" : "w-9 text-[0.65rem]",
         )}
       >
-        {totalSec > 0 ? `-${formatClock(remainingSec)}` : "—"}
+        {hasWindow ? `-${formatClock(remainingSec)}` : "—"}
       </span>
     </div>
   );
@@ -246,6 +268,7 @@ function PlaylistController() {
           paused={activePlaylist.paused}
           slotKey={slotKey}
           nextChangeAt={activePlaylist.next_change_at}
+          slotStartedAt={activePlaylist.slot_started_at}
           compact={viewportCompact}
         />
       </div>

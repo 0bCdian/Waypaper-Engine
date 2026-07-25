@@ -257,6 +257,7 @@ export interface ActivePlaylistInstance {
   mode: MonitorMode;
   started_at: string;
   next_change_at: string | null;
+  slot_started_at: string | null;
   monitors: string[];
 }
 

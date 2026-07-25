@@ -103,7 +103,7 @@ func (m *Manager) timerReloadAfterPlaylistDocumentChange(
 		upd.PlaylistName = pl.Name
 		upd.TotalImages = len(pl.Images)
 		updateInstanceIndex(upd, pl, row)
-		upd.NextChangeAt = nextAt
+		setSlotDeadline(upd, nextAt)
 	})
 
 	m.persistPlayback(ctx, playlistID, true)

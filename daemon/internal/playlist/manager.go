@@ -85,6 +85,19 @@ func (m *Manager) Start(ctx context.Context, playlistID int, target monitor.Moni
 	return m.startPlaylist(ctx, playlistID, target, startOpts{})
 }
 
+// setSlotDeadline records when the current slide ends and stamps when it began,
+// so the UI renders elapsed/total from the real slot window instead of guessing
+// from whenever the renderer happened to connect. Wall clock only — see wallClock.
+func setSlotDeadline(inst *store.ActivePlaylistInstance, next *time.Time) {
+	inst.NextChangeAt = next
+	if next == nil {
+		inst.SlotStartedAt = nil
+		return
+	}
+	now := time.Now().Round(0)
+	inst.SlotStartedAt = &now
+}
+
 func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target monitor.MonitorTarget, opts startOpts) error {
 	pl, err := m.playlistStore.GetByID(ctx, playlistID)
 	if err != nil {
@@ -189,11 +202,11 @@ func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target moni
 			TotalImages:  len(pl.Images),
 			Paused:       resumePaused,
 			StartedAt:    time.Now(),
-			NextChangeAt: nextAt,
 		},
 		Mode:     string(targetEff.Mode),
 		Monitors: monNames,
 	}
+	setSlotDeadline(&instance, nextAt)
 	updateInstanceIndex(&instance, pl, effectiveIdx)
 	m.stateStore.SetActivePlaylist(instance)
 
@@ -250,7 +263,7 @@ func (m *Manager) Pause(ctx context.Context, playlistID int) error {
 
 	m.stateStore.UpdateActivePlaylist(playlistID, func(inst *store.ActivePlaylistInstance) {
 		inst.Paused = true
-		inst.NextChangeAt = nil
+		setSlotDeadline(inst, nil)
 	})
 
 	if inst := m.stateStore.GetActivePlaylistByID(playlistID); inst != nil {
@@ -278,7 +291,7 @@ func (m *Manager) Resume(ctx context.Context, playlistID int) error {
 
 	m.stateStore.UpdateActivePlaylist(playlistID, func(inst *store.ActivePlaylistInstance) {
 		inst.Paused = false
-		inst.NextChangeAt = nextChange
+		setSlotDeadline(inst, nextChange)
 	})
 
 	if inst := m.stateStore.GetActivePlaylistByID(playlistID); inst != nil {
@@ -348,7 +361,7 @@ func (m *Manager) PauseAll(ctx context.Context) int {
 
 		m.stateStore.UpdateActivePlaylist(playlistID, func(inst *store.ActivePlaylistInstance) {
 			inst.Paused = true
-			inst.NextChangeAt = nil
+			setSlotDeadline(inst, nil)
 		})
 		if inst := m.stateStore.GetActivePlaylistByID(playlistID); inst != nil {
 			m.persistPlaybackWithInst(ctx, playlistID, inst, true)
@@ -384,7 +397,7 @@ func (m *Manager) ResumeAll(ctx context.Context) int {
 
 		m.stateStore.UpdateActivePlaylist(playlistID, func(inst *store.ActivePlaylistInstance) {
 			inst.Paused = false
-			inst.NextChangeAt = nextChange
+			setSlotDeadline(inst, nextChange)
 		})
 		if inst := m.stateStore.GetActivePlaylistByID(playlistID); inst != nil {
 			m.persistPlaybackWithInst(ctx, playlistID, inst, true)
@@ -532,7 +545,7 @@ func (m *Manager) advancePlaylist(ctx context.Context, playlistID int, delta int
 			pid := pl.Images[effectiveIdx-1].ImageID
 			inst.PreviousImageID = &pid
 		}
-		inst.NextChangeAt = nextChange
+		setSlotDeadline(inst, nextChange)
 	})
 
 	m.persistPlayback(ctx, playlistID, true)
@@ -664,7 +677,7 @@ func (m *Manager) onTick(ctx context.Context, playlistID int, index int, monitor
 
 	m.stateStore.UpdateActivePlaylist(pl.ID, func(inst *store.ActivePlaylistInstance) {
 		updateInstanceIndex(inst, pl, effectiveIdx)
-		inst.NextChangeAt = nextChange
+		setSlotDeadline(inst, nextChange)
 	})
 
 	m.persistPlayback(ctx, pl.ID, true)
@@ -1001,7 +1014,7 @@ func (m *Manager) missedEventChecker(ctx context.Context, playlistID int, monito
 
 				m.stateStore.UpdateActivePlaylist(playlistID, func(upd *store.ActivePlaylistInstance) {
 					updateInstanceIndex(upd, pl, effectiveIdx)
-					upd.NextChangeAt = nextChange
+					setSlotDeadline(upd, nextChange)
 				})
 
 				m.persistPlayback(ctx, playlistID, true)
