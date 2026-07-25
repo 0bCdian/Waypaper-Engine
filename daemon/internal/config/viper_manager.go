@@ -188,29 +188,8 @@ func (m *ViperManager) Close() error {
 	return err
 }
 
-// Viper returns the underlying Viper instance, bypassing m.mu entirely.
-// Callers MUST NOT use it for general config access — use the ConfigManager
-// interface methods instead, which all take m.mu.
-//
-// Two distinct usage patterns exist among current callers, and only the first
-// is safe:
-//
-//  1. Call once, at startup, before the watcher's writes matter (e.g.
-//     Backend.RegisterDefaults(cfg.Viper()), main.go's EnsureDefaultsPersisted
-//     sequence). Safe today only because it happens before the HTTP server and
-//     any concurrent config activity are live — ordering, not a guarantee this
-//     method provides.
-//  2. Retain the returned pointer and call read methods (GetString, GetInt,
-//     ...) on it later, from goroutines that outlive startup. This is NOT
-//     safe: those reads run concurrently with the watcher goroutine's
-//     m.mu-guarded ReadInConfig, unguarded by any lock, which is exactly the
-//     race this package's fsnotify rewrite (see startWatch) exists to
-//     eliminate for every other access path. walqt's monitor provider
-//     (internal/backend/walqt/monitor_provider.go, NewMonitorProvider) does
-//     this today via a retained *viper.Viper read in Detect().
-//
-// Do not add a new pattern-2 caller. If you need config access from a
-// long-lived component, go through the ConfigManager interface instead.
+// Viper returns the raw instance for startup-only use (RegisterDefaults).
+// Reads through it bypass m.mu; retain a backend.ConfigReader instead.
 func (m *ViperManager) Viper() *viper.Viper {
 	return m.v
 }

@@ -689,14 +689,9 @@ func (s *manualScheduler) NextChangeAt() *time.Time { return nil }
 
 func (s *manualScheduler) AfterManualNavigation(_ int) {}
 
-// wallClock strips the monotonic reading from t.
-//
-// Deadlines published by a scheduler are compared against time.Now() by the
-// missed-event watchdog and are serialised to the UI as next_change_at. Go
-// carries out time comparisons using the monotonic clock alone when both values
-// hold a monotonic reading, and CLOCK_MONOTONIC is frozen while the machine is
-// suspended — so a deadline that kept its monotonic reading would make a
-// transition missed across a suspend permanently invisible.
+// wallClock strips t's monotonic reading. Go compares two monotonic times
+// without consulting the wall clock, and suspend freezes CLOCK_MONOTONIC —
+// keeping it would hide every deadline missed while suspended.
 func wallClock(t time.Time) time.Time {
 	return t.Round(0)
 }

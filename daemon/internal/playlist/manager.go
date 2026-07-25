@@ -1038,14 +1038,8 @@ func (m *Manager) missedEventChecker(ctx context.Context, playlistID int, monito
 // watchdog treats it as missed rather than merely late.
 const missedEventGrace = 30 * time.Second
 
-// missedEventDue reports whether a scheduled transition is overdue by more than
-// grace, judged on the wall clock.
-//
-// Round(0) strips the monotonic reading from both operands, and that is the whole
-// point: Go carries out t.After(u) using the monotonic clock alone whenever both
-// values hold a monotonic reading. CLOCK_MONOTONIC does not advance while the
-// machine is suspended, so a monotonic comparison cannot see the very event this
-// watchdog exists to catch — the deadline that elapsed while the laptop was shut.
+// missedEventDue reports whether a transition is overdue by more than grace.
+// Round(0) forces a wall-clock comparison; see wallClock.
 func missedEventDue(nextChangeAt *time.Time, now time.Time, grace time.Duration) bool {
 	if nextChangeAt == nil {
 		return false
