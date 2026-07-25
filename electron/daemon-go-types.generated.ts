@@ -806,7 +806,7 @@ export interface components {
     };
     BackendCapabilities: {
       compositors?: string[];
-      media_types?: string[];
+      content_kinds?: string[];
       transitions?: boolean;
       per_monitor?: boolean;
       daemon_process?: boolean;
