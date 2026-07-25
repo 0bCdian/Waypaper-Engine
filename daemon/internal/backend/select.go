@@ -31,9 +31,10 @@ func EnsureBackendForMedia(ctx context.Context, reg Registry, cfg config.ConfigM
 		return nil
 	}
 
-	return SwitchActiveBackend(ctx, reg, targetName, cfg, SwitchOpts{
+	_, err = SwitchActiveBackend(ctx, reg, targetName, cfg, SwitchOpts{
 		PersistConfig: false,
 	})
+	return err
 }
 
 // PickBackend resolves which backend to use for a given media type.

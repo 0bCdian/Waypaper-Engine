@@ -723,6 +723,9 @@ func (m *Manager) applyImage(ctx context.Context, pl *store.Playlist, index int,
 
 func (m *Manager) applyImageFixed(ctx context.Context, pl *store.Playlist, index int, monitors []monitor.Monitor, mode monitor.MonitorMode, walk compatWalk) (applyResult, error) {
 	activeBackend := m.registry.Active()
+	if activeBackend == nil {
+		return applyResult{AppliedIndex: -1}, fmt.Errorf("no active backend")
+	}
 	caps := activeBackend.Capabilities()
 
 	resolvedIdx, skipped, skipItems := findCompatibleIndexWithWalk(ctx, pl, index, walk, caps, m.imageStore)
@@ -771,7 +774,7 @@ func (m *Manager) applyImageFixed(ctx context.Context, pl *store.Playlist, index
 		})
 	}
 
-	return m.doApply(ctx, pl, resolvedIdx, monitors, mode, skipped)
+	return m.doApply(ctx, pl, resolvedIdx, monitors, mode, skipped, activeBackend)
 }
 
 func (m *Manager) applyImageAuto(ctx context.Context, pl *store.Playlist, index int, monitors []monitor.Monitor, mode monitor.MonitorMode) (applyResult, error) {
@@ -805,16 +808,17 @@ func (m *Manager) applyImageAuto(ctx context.Context, pl *store.Playlist, index 
 		return applyResult{AppliedIndex: -1}, nil
 	}
 
-	if err := backend.SwitchActiveBackend(ctx, m.registry, targetName, m.cfg, backend.SwitchOpts{
+	activated, err := backend.SwitchActiveBackend(ctx, m.registry, targetName, m.cfg, backend.SwitchOpts{
 		PersistConfig: false,
-	}); err != nil {
+	})
+	if err != nil {
 		return applyResult{AppliedIndex: -1}, fmt.Errorf("auto switch to %s: %w", targetName, err)
 	}
 
-	return m.doApply(ctx, pl, index, monitors, mode, 0)
+	return m.doApply(ctx, pl, index, monitors, mode, 0, activated)
 }
 
-func (m *Manager) doApply(ctx context.Context, pl *store.Playlist, index int, monitors []monitor.Monitor, mode monitor.MonitorMode, skipped int) (applyResult, error) {
+func (m *Manager) doApply(ctx context.Context, pl *store.Playlist, index int, monitors []monitor.Monitor, mode monitor.MonitorMode, skipped int, b backend.Backend) (applyResult, error) {
 	imgRef := pl.Images[index]
 	img, err := m.imageStore.GetByID(ctx, imgRef.ImageID)
 	if err != nil {
@@ -830,7 +834,7 @@ func (m *Manager) doApply(ctx context.Context, pl *store.Playlist, index int, mo
 			PlaylistID:   &pl.ID,
 			PlaylistName: pl.Name,
 		},
-		Backend:           m.registry.Active(),
+		Backend:           b,
 		Splitter:          m.splitter,
 		History:           m.historyStore,
 		MonState:          m.monitorStateStore,

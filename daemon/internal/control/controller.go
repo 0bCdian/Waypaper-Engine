@@ -191,7 +191,7 @@ func (c *Controller) ActivateBackend(ctx context.Context, name string) (Activati
 	if cur := c.registry.Active(); cur != nil && cur.Name() == name {
 		return ActivationResult{Backend: name, AlreadyActive: true}, nil
 	}
-	if err := backend.SwitchActiveBackend(ctx, c.registry, name, c.cfg, backend.SwitchOpts{
+	if _, err := backend.SwitchActiveBackend(ctx, c.registry, name, c.cfg, backend.SwitchOpts{
 		PersistConfig: true,
 	}); err != nil {
 		return ActivationResult{}, err
@@ -213,7 +213,7 @@ func (c *Controller) ResetAllConfigToDefaults(ctx context.Context) error {
 	}
 
 	want := c.cfg.GetActiveBackendType()
-	if err := backend.SwitchActiveBackend(ctx, c.registry, want, c.cfg, backend.SwitchOpts{PersistConfig: false}); err != nil {
+	if _, err := backend.SwitchActiveBackend(ctx, c.registry, want, c.cfg, backend.SwitchOpts{PersistConfig: false}); err != nil {
 		slog.Warn("factory reset: could not activate configured backend", "backend", want, "error", err)
 	}
 
