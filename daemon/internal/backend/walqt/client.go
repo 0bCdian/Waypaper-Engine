@@ -203,30 +203,6 @@ func (c *controlClient) setAllowNetworkWallpapers(ctx context.Context, allow boo
 	return nil
 }
 
-func (c *controlClient) setImagePresentation(ctx context.Context, fit, rendering, fillColor string) error {
-	fitMode := walqtclient.ImagePresentationRequestImageFitMode(fit)
-	rendMode := walqtclient.ImagePresentationRequestImageRendering(rendering)
-	req := walqtclient.ImagePresentationRequest{
-		ImageFitMode:   &fitMode,
-		ImageRendering: &rendMode,
-	}
-	if fillColor != "" {
-		req.FillColor = &fillColor
-	}
-	resp, err := c.gen.SetImagePresentation(ctx, req)
-	if err != nil {
-		return err
-	}
-	body, err := readBody(resp)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return classifyHTTPError(resp.StatusCode, body)
-	}
-	return nil
-}
-
 func (c *controlClient) pushWallpaperConfig(ctx context.Context, sourceTarget string, valuesJSON json.RawMessage) error {
 	var values map[string]interface{}
 	if len(valuesJSON) > 0 {
