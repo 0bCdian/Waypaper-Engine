@@ -677,3 +677,65 @@ func TestDayOfWeekFiresImmediatelyWhenNotPaused(t *testing.T) {
 		"day_of_week must apply today's slide on start")
 	assert.NotNil(t, s.NextChangeAt())
 }
+
+// Behavioural companion to TestMissedEventRecoveryCoversTimerPlaylists: assert the
+// recovery actually computes the right slide, not just that the watchdog is wired.
+// A timer has no wall-clock anchor, so it must step one slide from where the
+// instance sits rather than resetting to row 0.
+func TestMissedEventTargetIndex(t *testing.T) {
+	timerPl := &store.Playlist{
+		Images: []store.PlaylistImage{
+			{ImageID: 10}, {ImageID: 11}, {ImageID: 12},
+		},
+		Configuration: store.PlaylistConfiguration{Type: "timer", Interval: 60, Order: "ordered"},
+	}
+
+	t.Run("timer advances one slide from the current row", func(t *testing.T) {
+		inst := &store.ActivePlaylistInstance{
+			ActivePlaylistState: store.ActivePlaylistState{CurrentIndex: 1, CurrentImageID: 11},
+		}
+		idx, ok := missedEventTargetIndex(timerPl, inst, time.Now())
+		require.True(t, ok)
+		assert.Equal(t, 2, idx, "must step forward, not reset to 0")
+	})
+
+	t.Run("timer wraps at the end of the playlist", func(t *testing.T) {
+		inst := &store.ActivePlaylistInstance{
+			ActivePlaylistState: store.ActivePlaylistState{CurrentIndex: 2, CurrentImageID: 12},
+		}
+		idx, ok := missedEventTargetIndex(timerPl, inst, time.Now())
+		require.True(t, ok)
+		assert.Equal(t, 0, idx)
+	})
+
+	t.Run("day_of_week re-derives from the wall clock", func(t *testing.T) {
+		pl := &store.Playlist{
+			Images:        make([]store.PlaylistImage, 7),
+			Configuration: store.PlaylistConfiguration{Type: "day_of_week"},
+		}
+		inst := &store.ActivePlaylistInstance{
+			ActivePlaylistState: store.ActivePlaylistState{CurrentIndex: 0},
+		}
+		wednesday := time.Date(2026, 7, 22, 12, 0, 0, 0, time.Local)
+		idx, ok := missedEventTargetIndex(pl, inst, wednesday)
+		require.True(t, ok)
+		assert.Equal(t, 3, idx, "Wednesday is weekday 3")
+	})
+
+	t.Run("manual playlists have nothing to recover to", func(t *testing.T) {
+		pl := &store.Playlist{
+			Images:        []store.PlaylistImage{{ImageID: 1}},
+			Configuration: store.PlaylistConfiguration{Type: "manual"},
+		}
+		inst := &store.ActivePlaylistInstance{}
+		_, ok := missedEventTargetIndex(pl, inst, time.Now())
+		assert.False(t, ok)
+	})
+
+	t.Run("empty playlist is not recoverable", func(t *testing.T) {
+		_, ok := missedEventTargetIndex(&store.Playlist{
+			Configuration: store.PlaylistConfiguration{Type: "timer"},
+		}, &store.ActivePlaylistInstance{}, time.Now())
+		assert.False(t, ok)
+	})
+}

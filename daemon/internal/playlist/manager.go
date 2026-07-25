@@ -967,18 +967,8 @@ func (m *Manager) missedEventChecker(ctx context.Context, playlistID int, monito
 					"playlist_type", pl.Configuration.Type,
 				)
 
-				var newIdx int
-				switch pl.Configuration.Type {
-				case "time_of_day":
-					newIdx = findClosestTimeSlot(buildTimeSlots(pl))
-				case "day_of_week":
-					weekday := int(now.Weekday())
-					newIdx = min(weekday, len(pl.Images)-1)
-				case "timer":
-					// A timer has no wall-clock anchor to recompute from; advance one
-					// slide from wherever the instance currently sits, same as a tick.
-					newIdx = advancePlaylistRow(inst, pl, 1)
-				default:
+				newIdx, ok := missedEventTargetIndex(pl, inst, now)
+				if !ok {
 					continue
 				}
 
@@ -1028,6 +1018,30 @@ func (m *Manager) missedEventChecker(ctx context.Context, playlistID int, monito
 				})
 			}
 		}
+	}
+}
+
+// missedEventTargetIndex computes which playlist row should be showing now for a
+// run that missed its scheduled transition (typically because the machine was
+// suspended and CLOCK_MONOTONIC did not advance). Returns false when the type
+// does not self-advance and so has nothing to recover to.
+//
+// time_of_day and day_of_week re-derive their row from the wall clock. A timer
+// has no wall-clock anchor, so it advances one slide from wherever the instance
+// currently sits — the same step an on-time tick would have taken.
+func missedEventTargetIndex(pl *store.Playlist, inst *store.ActivePlaylistInstance, now time.Time) (int, bool) {
+	if pl == nil || inst == nil || len(pl.Images) == 0 {
+		return 0, false
+	}
+	switch pl.Configuration.Type {
+	case "time_of_day":
+		return findClosestTimeSlot(buildTimeSlots(pl)), true
+	case "day_of_week":
+		return min(int(now.Weekday()), len(pl.Images)-1), true
+	case "timer":
+		return advancePlaylistRow(inst, pl, 1), true
+	default:
+		return 0, false
 	}
 }
 
