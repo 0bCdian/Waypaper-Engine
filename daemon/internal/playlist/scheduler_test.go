@@ -1,6 +1,7 @@
 package playlist
 
 import (
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -578,4 +579,57 @@ func TestMissedEventRecoveryCoversTimerPlaylists(t *testing.T) {
 	assert.True(t, playlistTypeNeedsMissedEventChecker("day_of_week"))
 	assert.False(t, playlistTypeNeedsMissedEventChecker("manual"))
 	assert.False(t, playlistTypeNeedsMissedEventChecker(""))
+}
+
+// Regression: Resume() used to spawn a second loop goroutine while the original
+// stayed parked on a stopped timer, leaking one goroutine per pause/resume cycle
+// and racing on s.timer between the parked reader and the new writer.
+func TestPauseResumeDoesNotLeakSchedulerGoroutines(t *testing.T) {
+	tests := []struct {
+		name string
+		cfg  SchedulerConfig
+	}{
+		{
+			name: "time_of_day",
+			cfg: SchedulerConfig{Type: "time_of_day", TotalImages: 2, TimeSlots: []TimeSlot{
+				{Minutes: 0, ImageIndex: 0},
+				{Minutes: 720, ImageIndex: 1},
+			}},
+		},
+		{
+			name: "day_of_week",
+			cfg:  SchedulerConfig{Type: "day_of_week", TotalImages: 7},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			before := runtime.NumGoroutine()
+
+			s := NewScheduler(tt.cfg)
+			s.Start(func(int) bool { return true })
+
+			for range 20 {
+				s.Pause()
+				s.Resume()
+			}
+			time.Sleep(100 * time.Millisecond)
+
+			during := runtime.NumGoroutine()
+			assert.LessOrEqual(t, during-before, 4,
+				"20 pause/resume cycles leaked %d goroutines", during-before)
+
+			s.Stop()
+			// Stop must drain every goroutine the scheduler owns.
+			deadline := time.Now().Add(2 * time.Second)
+			for time.Now().Before(deadline) {
+				if runtime.NumGoroutine() <= before+1 {
+					return
+				}
+				time.Sleep(20 * time.Millisecond)
+			}
+			assert.LessOrEqual(t, runtime.NumGoroutine()-before, 1,
+				"scheduler goroutines still running after Stop()")
+		})
+	}
 }

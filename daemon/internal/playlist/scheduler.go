@@ -365,17 +365,18 @@ type timeOfDayScheduler struct {
 	mu         sync.Mutex
 	slots      []TimeSlot
 	callback   func(int) bool
-	timer      *time.Timer
 	stopCh     chan struct{}
 	stopOnce   sync.Once
 	paused     bool
 	nextChange *time.Time
+	resumeCh   chan struct{}
 }
 
 func newTimeOfDayScheduler(cfg SchedulerConfig) *timeOfDayScheduler {
 	return &timeOfDayScheduler{
-		slots:  cfg.TimeSlots,
-		stopCh: make(chan struct{}),
+		slots:    cfg.TimeSlots,
+		stopCh:   make(chan struct{}),
+		resumeCh: make(chan struct{}, 1),
 	}
 }
 
@@ -395,6 +396,19 @@ func (s *timeOfDayScheduler) Start(callback func(int) bool) {
 
 func (s *timeOfDayScheduler) loop() {
 	for {
+		s.mu.Lock()
+		paused := s.paused
+		s.mu.Unlock()
+
+		if paused {
+			select {
+			case <-s.stopCh:
+				return
+			case <-s.resumeCh:
+			}
+			continue
+		}
+
 		nextSlot, dur := s.nextTransition()
 		if nextSlot == nil {
 			return
@@ -403,20 +417,23 @@ func (s *timeOfDayScheduler) loop() {
 		s.mu.Lock()
 		next := time.Now().Add(dur)
 		s.nextChange = &next
-		s.timer = time.NewTimer(dur)
 		s.mu.Unlock()
 
+		timer := time.NewTimer(dur)
 		select {
 		case <-s.stopCh:
-			s.timer.Stop()
+			timer.Stop()
 			return
-		case <-s.timer.C:
+		case <-s.resumeCh:
+			// Spurious wake (Resume with no matching Pause); recompute the deadline.
+			timer.Stop()
+			continue
+		case <-timer.C:
 			s.mu.Lock()
-			paused := s.paused
+			stillRunning := !s.paused
 			cb := s.callback
 			s.mu.Unlock()
-
-			if !paused && cb != nil {
+			if stillRunning && cb != nil {
 				_ = cb(nextSlot.ImageIndex)
 			}
 		}
@@ -453,34 +470,33 @@ func todayAt(minutesSinceMidnight int) time.Time {
 
 func (s *timeOfDayScheduler) Stop() {
 	s.stopOnce.Do(func() {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-
 		close(s.stopCh)
-		if s.timer != nil {
-			s.timer.Stop()
-		}
+		s.mu.Lock()
 		s.nextChange = nil
+		s.mu.Unlock()
 	})
 }
 
 func (s *timeOfDayScheduler) Pause() {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	s.paused = true
-	if s.timer != nil {
-		s.timer.Stop()
-	}
 	s.nextChange = nil
+	s.mu.Unlock()
 }
 
 func (s *timeOfDayScheduler) Resume() {
 	s.mu.Lock()
 	s.paused = false
+	if _, dur := s.nextTransition(); dur > 0 {
+		next := time.Now().Add(dur)
+		s.nextChange = &next
+	}
 	s.mu.Unlock()
 
-	go s.loop()
+	select {
+	case s.resumeCh <- struct{}{}:
+	default:
+	}
 }
 
 func (s *timeOfDayScheduler) NextChangeAt() *time.Time {
@@ -501,17 +517,18 @@ type dayOfWeekScheduler struct {
 	mu          sync.Mutex
 	totalImages int
 	callback    func(int) bool
-	timer       *time.Timer
 	stopCh      chan struct{}
 	stopOnce    sync.Once
 	paused      bool
 	nextChange  *time.Time
+	resumeCh    chan struct{}
 }
 
 func newDayOfWeekScheduler(cfg SchedulerConfig) *dayOfWeekScheduler {
 	return &dayOfWeekScheduler{
 		totalImages: cfg.TotalImages,
 		stopCh:      make(chan struct{}),
+		resumeCh:    make(chan struct{}, 1),
 	}
 }
 
@@ -540,26 +557,41 @@ func (s *dayOfWeekScheduler) Start(callback func(int) bool) {
 
 func (s *dayOfWeekScheduler) scheduleNext() {
 	for {
+		s.mu.Lock()
+		paused := s.paused
+		s.mu.Unlock()
+
+		if paused {
+			select {
+			case <-s.stopCh:
+				return
+			case <-s.resumeCh:
+			}
+			continue
+		}
+
 		now := time.Now()
 		tomorrow := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
 		dur := time.Until(tomorrow)
 
 		s.mu.Lock()
 		s.nextChange = &tomorrow
-		s.timer = time.NewTimer(dur)
 		s.mu.Unlock()
 
+		timer := time.NewTimer(dur)
 		select {
 		case <-s.stopCh:
-			s.timer.Stop()
+			timer.Stop()
 			return
-		case <-s.timer.C:
+		case <-s.resumeCh:
+			timer.Stop()
+			continue
+		case <-timer.C:
 			s.mu.Lock()
-			paused := s.paused
+			stillRunning := !s.paused
 			cb := s.callback
 			s.mu.Unlock()
-
-			if !paused && cb != nil {
+			if stillRunning && cb != nil {
 				weekday := int(time.Now().Weekday())
 				idx := min(weekday, s.totalImages-1)
 				_ = cb(idx)
@@ -570,34 +602,32 @@ func (s *dayOfWeekScheduler) scheduleNext() {
 
 func (s *dayOfWeekScheduler) Stop() {
 	s.stopOnce.Do(func() {
-		s.mu.Lock()
-		defer s.mu.Unlock()
-
 		close(s.stopCh)
-		if s.timer != nil {
-			s.timer.Stop()
-		}
+		s.mu.Lock()
 		s.nextChange = nil
+		s.mu.Unlock()
 	})
 }
 
 func (s *dayOfWeekScheduler) Pause() {
 	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	s.paused = true
-	if s.timer != nil {
-		s.timer.Stop()
-	}
 	s.nextChange = nil
+	s.mu.Unlock()
 }
 
 func (s *dayOfWeekScheduler) Resume() {
 	s.mu.Lock()
 	s.paused = false
+	now := time.Now()
+	tomorrow := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
+	s.nextChange = &tomorrow
 	s.mu.Unlock()
 
-	go s.scheduleNext()
+	select {
+	case s.resumeCh <- struct{}{}:
+	default:
+	}
 }
 
 func (s *dayOfWeekScheduler) NextChangeAt() *time.Time {
