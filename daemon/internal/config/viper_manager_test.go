@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -110,4 +111,52 @@ func mustGetBackendConfig(t *testing.T, m *ViperManager, name string) json.RawMe
 	raw, err := m.GetBackendConfig(name)
 	require.NoError(t, err)
 	return raw
+}
+
+// Regression test for a data race between ViperManager's file watcher (started
+// in NewViperManager) and concurrent config reads/writes going through m.v.
+// Every write here (SetBackendConfig -> mergeAndSet) rewrites the on-disk file
+// that the watcher is watching, so each write is a real trigger for the
+// watcher goroutine to reload m.v concurrently with other goroutines' reads
+// and writes. Before the fix (guarding the watcher's reload with m.mu), this
+// failed under `go test -race` with a DATA RACE inside viper's ReadInConfig /
+// insensitiviseMap.
+func TestConcurrentReadsAndWrites_NoDataRace(t *testing.T) {
+	cfgPath := filepath.Join(t.TempDir(), "config.toml")
+	m, err := NewViperManager(cfgPath)
+	require.NoError(t, err)
+
+	m.OnConfigChange(func(_ string) {})
+
+	const iterations = 50
+	var wg sync.WaitGroup
+
+	wg.Add(4)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < iterations; i++ {
+			_ = m.SetBackendConfig("wal-qt", json.RawMessage(`{"parallax_zoom":100}`))
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for i := 0; i < iterations; i++ {
+			_ = m.UpdateConfig("app", map[string]any{"theme": "dark"})
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for i := 0; i < iterations; i++ {
+			_, _ = m.GetConfig()
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for i := 0; i < iterations; i++ {
+			_, _ = m.GetSection("app")
+			_, _ = m.GetBackendConfig("wal-qt")
+		}
+	}()
+
+	wg.Wait()
 }

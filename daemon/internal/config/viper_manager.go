@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"waypaper-engine/daemon/internal/system"
@@ -77,13 +78,77 @@ func NewViperManager(configPath string) (*ViperManager, error) {
 
 	m := &ViperManager{v: v}
 
-	// Start watching for external changes.
-	v.OnConfigChange(func(_ fsnotify.Event) {
-		m.notifyCallbacks("")
-	})
-	v.WatchConfig()
+	// Start watching for external changes. We deliberately do not use viper's
+	// own WatchConfig/OnConfigChange: viper's watcher goroutine calls
+	// v.ReadInConfig() directly on m.v, completely unguarded by any lock, which
+	// races with every other ViperManager method (including our own writes,
+	// which reload m.v via mergeAndSet/persistKeyReplace under m.mu). Every
+	// config-writing method here writes to the exact file being watched, so in
+	// production this is a real, reachable race, not a test artifact. Running
+	// our own loop lets us take m.mu around the reload.
+	if err := m.startWatch(configPath); err != nil {
+		// Non-critical: the daemon still works without picking up external
+		// edits to the config file.
+		_ = err
+	}
 
 	return m, nil
+}
+
+// startWatch begins watching configPath for external changes, mirroring
+// viper.Viper.WatchConfig's algorithm (watch the containing directory to catch
+// renames/atomic saves, and symlink swaps such as k8s ConfigMap updates) but
+// guarding every touch of m.v with m.mu so the watcher goroutine can never run
+// concurrently with a request-driven read or write.
+func (m *ViperManager) startWatch(configPath string) error {
+	watcher, err := fsnotify.NewWatcher()
+	if err != nil {
+		return err
+	}
+
+	configFile := filepath.Clean(configPath)
+	configDir := filepath.Dir(configFile)
+	realConfigFile, _ := filepath.EvalSymlinks(configPath)
+
+	if err := watcher.Add(configDir); err != nil {
+		_ = watcher.Close()
+		return err
+	}
+
+	go func() {
+		defer watcher.Close()
+		for {
+			select {
+			case event, ok := <-watcher.Events:
+				if !ok {
+					return
+				}
+				currentConfigFile, _ := filepath.EvalSymlinks(configPath)
+				if (filepath.Clean(event.Name) == configFile &&
+					(event.Has(fsnotify.Write) || event.Has(fsnotify.Create))) ||
+					(currentConfigFile != "" && currentConfigFile != realConfigFile) {
+					realConfigFile = currentConfigFile
+
+					m.mu.Lock()
+					readErr := m.v.ReadInConfig()
+					m.mu.Unlock()
+					if readErr != nil && !isFileNotFound(readErr) {
+						continue
+					}
+					m.notifyCallbacks("")
+				} else if filepath.Clean(event.Name) == configFile && event.Has(fsnotify.Remove) {
+					return
+				}
+			case _, ok := <-watcher.Errors:
+				if !ok {
+					return
+				}
+				return
+			}
+		}
+	}()
+
+	return nil
 }
 
 // Viper returns the underlying Viper instance.
