@@ -739,3 +739,78 @@ func TestMissedEventTargetIndex(t *testing.T) {
 		assert.False(t, ok)
 	})
 }
+
+// Regression: Go compares two time.Time values via their monotonic readings when
+// BOTH carry one, ignoring the wall clock entirely. CLOCK_MONOTONIC does not
+// advance while the machine is suspended, so missedEventChecker — whose entire
+// purpose is detecting a transition missed across a suspend — was structurally
+// blind to it. Deadlines leaving a scheduler must therefore be wall-clock only.
+//
+// A monotonic reading is observable in Time.String() as an "m=+..." suffix.
+func TestNextChangeAtCarriesNoMonotonicReading(t *testing.T) {
+	tests := []struct {
+		name string
+		cfg  SchedulerConfig
+	}{
+		{"timer", SchedulerConfig{Type: "timer", Interval: 1800, Order: "ordered", TotalImages: 3}},
+		{"time_of_day", SchedulerConfig{Type: "time_of_day", TotalImages: 2, TimeSlots: []TimeSlot{
+			{Minutes: 0, ImageIndex: 0}, {Minutes: 720, ImageIndex: 1},
+		}}},
+		{"day_of_week", SchedulerConfig{Type: "day_of_week", TotalImages: 7}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := NewScheduler(tt.cfg)
+			t.Cleanup(s.Stop)
+			s.Start(func(int) bool { return true })
+
+			next := s.NextChangeAt()
+			require.NotNil(t, next)
+			assert.NotContains(t, next.String(), "m=+",
+				"NextChangeAt must not carry a monotonic reading: it makes suspend undetectable")
+
+			// Resume must republish a wall-only deadline too.
+			s.Pause()
+			s.Resume()
+			if resumed := s.NextChangeAt(); resumed != nil {
+				assert.NotContains(t, resumed.String(), "m=+",
+					"NextChangeAt after Resume must not carry a monotonic reading")
+			}
+		})
+	}
+}
+
+// missedEventDue must answer on wall-clock time so a suspend is visible.
+func TestMissedEventDue(t *testing.T) {
+	const grace = 30 * time.Second
+
+	t.Run("nil deadline is never due", func(t *testing.T) {
+		assert.False(t, missedEventDue(nil, time.Now(), grace))
+	})
+
+	t.Run("deadline in the future is not due", func(t *testing.T) {
+		next := time.Now().Add(10 * time.Minute)
+		assert.False(t, missedEventDue(&next, time.Now(), grace))
+	})
+
+	t.Run("deadline just passed is within the grace window", func(t *testing.T) {
+		next := time.Now().Add(-5 * time.Second)
+		assert.False(t, missedEventDue(&next, time.Now(), grace))
+	})
+
+	t.Run("deadline long past is due", func(t *testing.T) {
+		next := time.Now().Add(-8 * time.Hour)
+		assert.True(t, missedEventDue(&next, time.Now(), grace))
+	})
+
+	t.Run("answer does not depend on monotonic readings", func(t *testing.T) {
+		next := time.Now().Add(-8 * time.Hour)
+		nowMono := time.Now()
+		nowWall := nowMono.Round(0)
+		assert.Equal(t,
+			missedEventDue(&next, nowWall, grace),
+			missedEventDue(&next, nowMono, grace),
+			"a suspend-detection check must not change answer based on monotonic readings")
+	})
+}

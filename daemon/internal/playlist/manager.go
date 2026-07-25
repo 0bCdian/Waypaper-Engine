@@ -958,7 +958,7 @@ func (m *Manager) missedEventChecker(ctx context.Context, playlistID int, monito
 			}
 
 			now := time.Now()
-			if now.After(inst.NextChangeAt.Add(30 * time.Second)) {
+			if missedEventDue(inst.NextChangeAt, now, missedEventGrace) {
 				slog.Warn("missed event detected, re-triggering scheduler",
 					"monitors", inst.Monitors,
 					"expected_time", inst.NextChangeAt,
@@ -1019,6 +1019,25 @@ func (m *Manager) missedEventChecker(ctx context.Context, playlistID int, monito
 			}
 		}
 	}
+}
+
+// missedEventGrace is how far past its deadline a transition must be before the
+// watchdog treats it as missed rather than merely late.
+const missedEventGrace = 30 * time.Second
+
+// missedEventDue reports whether a scheduled transition is overdue by more than
+// grace, judged on the wall clock.
+//
+// Round(0) strips the monotonic reading from both operands, and that is the whole
+// point: Go carries out t.After(u) using the monotonic clock alone whenever both
+// values hold a monotonic reading. CLOCK_MONOTONIC does not advance while the
+// machine is suspended, so a monotonic comparison cannot see the very event this
+// watchdog exists to catch — the deadline that elapsed while the laptop was shut.
+func missedEventDue(nextChangeAt *time.Time, now time.Time, grace time.Duration) bool {
+	if nextChangeAt == nil {
+		return false
+	}
+	return now.Round(0).After(nextChangeAt.Round(0).Add(grace))
 }
 
 // missedEventTargetIndex computes which playlist row should be showing now for a
