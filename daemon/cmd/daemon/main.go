@@ -1,10 +1,3 @@
-//go:generate swag init -g cmd/daemon/main.go -o docs --outputTypes yaml --parseInternal --parseDependency
-
-// @title        waypaper-engine daemon
-// @version      3.0.0
-// @description  HTTP API served over a Unix socket for the waypaper-engine wallpaper manager.
-// @BasePath     /
-
 package main
 
 import (

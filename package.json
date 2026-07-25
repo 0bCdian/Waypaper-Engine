@@ -1,17 +1,17 @@
 {
   "name": "waypaper-engine",
-  "private": true,
   "version": "3.1.0",
-  "packageManager": "pnpm@11.2.2",
+  "private": true,
   "description": "A wallpaper setter GUI with playlist functionality for Wayland and X11",
+  "homepage": "./",
   "author": {
     "name": "0bCdian",
     "email": "diegoparranava@protonmail.com",
     "url": "https://github.com/0bCdian"
   },
+  "main": "dist-electron/main.js",
   "scripts": {
     "audit:contrast": "node scripts/audit-contrast.mjs",
-    "generate:openapi": "cd daemon && go generate ./cmd/daemon/",
     "generate:types": "openapi-typescript daemon/docs/openapi.yaml -o electron/daemon-go-types.generated.ts && pnpm exec oxfmt electron/daemon-go-types.generated.ts",
     "ci:types": "pnpm run generate:types && git diff --exit-code -- electron/daemon-go-types.generated.ts",
     "docs:dev": "vitepress dev docs",
@@ -97,6 +97,5 @@
     "vitepress": "^1.6.3",
     "vitest": "^4.1.3"
   },
-  "main": "dist-electron/main.js",
-  "homepage": "./"
+  "packageManager": "pnpm@11.2.2"
 }
