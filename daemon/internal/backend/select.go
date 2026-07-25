@@ -75,27 +75,6 @@ func PickBackend(reg Registry, mode string, mediaType string, priorities map[str
 	return "", fmt.Errorf("no available backend supports %q media (tried: %s)", mediaType, strings.Join(prio, ", "))
 }
 
-// ValidateAutoPriorities checks that every entry in each priority list references
-// a registered backend that supports the corresponding media category. Returns
-// a map of category -> list of validation errors. An empty map means valid.
-func ValidateAutoPriorities(reg Registry, priorities map[string][]string) map[string][]string {
-	errs := make(map[string][]string)
-	for category, names := range priorities {
-		mt := categoryToMediaType(category)
-		for _, name := range names {
-			b, found := reg.Get(name)
-			if !found {
-				errs[category] = append(errs[category], fmt.Sprintf("backend %q is not registered", name))
-				continue
-			}
-			if !SupportsMedia(b.Capabilities(), string(mt)) {
-				errs[category] = append(errs[category], fmt.Sprintf("backend %q does not support %s", name, category))
-			}
-		}
-	}
-	return errs
-}
-
 func mediaCategoryKey(mediaType string) string {
 	mt := strings.ToLower(strings.TrimSpace(mediaType))
 	switch mt {
@@ -105,16 +84,5 @@ func mediaCategoryKey(mediaType string) string {
 		return "web"
 	default:
 		return "image"
-	}
-}
-
-func categoryToMediaType(category string) media.MediaType {
-	switch category {
-	case "video":
-		return media.MediaTypeVideo
-	case "web":
-		return media.MediaTypeWeb
-	default:
-		return media.MediaTypeImage
 	}
 }

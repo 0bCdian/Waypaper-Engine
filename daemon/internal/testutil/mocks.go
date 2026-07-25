@@ -3,13 +3,11 @@ package testutil
 import (
 	"context"
 	"encoding/json"
-	"time"
 
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/config"
 	"waypaper-engine/daemon/internal/events"
 	"waypaper-engine/daemon/internal/monitor"
-	"waypaper-engine/daemon/internal/playlist"
 	"waypaper-engine/daemon/internal/store"
 
 	"github.com/spf13/viper"
@@ -23,14 +21,11 @@ var (
 	_ store.HistoryStore      = (*MockHistoryStore)(nil)
 	_ store.MonitorStateStore = (*MockMonitorStateStore)(nil)
 	_ store.StateStore        = (*MockStateStore)(nil)
-	_ store.DB                = (*MockDB)(nil)
 	_ events.Bus              = (*MockBus)(nil)
 	_ config.ConfigManager    = (*MockConfigManager)(nil)
 	_ backend.Backend         = (*MockBackend)(nil)
 	_ backend.Registry        = (*MockRegistry)(nil)
 	_ monitor.MonitorManager  = (*MockMonitorManager)(nil)
-	_ monitor.MonitorProvider = (*MockMonitorProvider)(nil)
-	_ playlist.Scheduler      = (*MockScheduler)(nil)
 )
 
 // ---------------------------------------------------------------------------
@@ -408,69 +403,6 @@ func (m *MockStateStore) SetCurrentWallpaper(monitor string, entry store.ImageHi
 }
 
 // ---------------------------------------------------------------------------
-// 7. MockDB
-// ---------------------------------------------------------------------------
-
-type MockDB struct {
-	CloseFn             func() error
-	ImageStoreFn        func() store.ImageStore
-	PlaylistStoreFn     func() store.PlaylistStore
-	HistoryStoreFn      func() store.HistoryStore
-	StateStoreFn        func() store.StateStore
-	MonitorStateStoreFn func() store.MonitorStateStore
-	FolderStoreFn       func() store.FolderStore
-}
-
-func (m *MockDB) Close() error {
-	if m.CloseFn != nil {
-		return m.CloseFn()
-	}
-	return nil
-}
-
-func (m *MockDB) ImageStore() store.ImageStore {
-	if m.ImageStoreFn != nil {
-		return m.ImageStoreFn()
-	}
-	return nil
-}
-
-func (m *MockDB) PlaylistStore() store.PlaylistStore {
-	if m.PlaylistStoreFn != nil {
-		return m.PlaylistStoreFn()
-	}
-	return nil
-}
-
-func (m *MockDB) HistoryStore() store.HistoryStore {
-	if m.HistoryStoreFn != nil {
-		return m.HistoryStoreFn()
-	}
-	return nil
-}
-
-func (m *MockDB) StateStore() store.StateStore {
-	if m.StateStoreFn != nil {
-		return m.StateStoreFn()
-	}
-	return nil
-}
-
-func (m *MockDB) MonitorStateStore() store.MonitorStateStore {
-	if m.MonitorStateStoreFn != nil {
-		return m.MonitorStateStoreFn()
-	}
-	return nil
-}
-
-func (m *MockDB) FolderStore() store.FolderStore {
-	if m.FolderStoreFn != nil {
-		return m.FolderStoreFn()
-	}
-	return nil
-}
-
-// ---------------------------------------------------------------------------
 // 8. MockBus
 // ---------------------------------------------------------------------------
 
@@ -818,93 +750,4 @@ func (m *MockMonitorManager) Compositor() monitor.CompositorType {
 		return m.CompositorFn()
 	}
 	return ""
-}
-
-// ---------------------------------------------------------------------------
-// 13. MockMonitorProvider
-// ---------------------------------------------------------------------------
-
-type MockMonitorProvider struct {
-	NameFn       func() string
-	CompositorFn func() monitor.CompositorType
-	PriorityFn   func() int
-	DetectFn     func(ctx context.Context) ([]monitor.Monitor, error)
-}
-
-func (m *MockMonitorProvider) Name() string {
-	if m.NameFn != nil {
-		return m.NameFn()
-	}
-	return ""
-}
-
-func (m *MockMonitorProvider) Compositor() monitor.CompositorType {
-	if m.CompositorFn != nil {
-		return m.CompositorFn()
-	}
-	return ""
-}
-
-func (m *MockMonitorProvider) Priority() int {
-	if m.PriorityFn != nil {
-		return m.PriorityFn()
-	}
-	return 0
-}
-
-func (m *MockMonitorProvider) Detect(ctx context.Context) ([]monitor.Monitor, error) {
-	if m.DetectFn != nil {
-		return m.DetectFn(ctx)
-	}
-	return nil, nil
-}
-
-// ---------------------------------------------------------------------------
-// 14. MockScheduler
-// ---------------------------------------------------------------------------
-
-type MockScheduler struct {
-	StartFn                 func(callback func(index int) bool)
-	StopFn                  func()
-	PauseFn                 func()
-	ResumeFn                func()
-	NextChangeAtFn          func() *time.Time
-	AfterManualNavigationFn func(playlistImageIndex int)
-}
-
-func (m *MockScheduler) Start(callback func(index int) bool) {
-	if m.StartFn != nil {
-		m.StartFn(callback)
-	}
-}
-
-func (m *MockScheduler) Stop() {
-	if m.StopFn != nil {
-		m.StopFn()
-	}
-}
-
-func (m *MockScheduler) Pause() {
-	if m.PauseFn != nil {
-		m.PauseFn()
-	}
-}
-
-func (m *MockScheduler) Resume() {
-	if m.ResumeFn != nil {
-		m.ResumeFn()
-	}
-}
-
-func (m *MockScheduler) NextChangeAt() *time.Time {
-	if m.NextChangeAtFn != nil {
-		return m.NextChangeAtFn()
-	}
-	return nil
-}
-
-func (m *MockScheduler) AfterManualNavigation(playlistImageIndex int) {
-	if m.AfterManualNavigationFn != nil {
-		m.AfterManualNavigationFn(playlistImageIndex)
-	}
 }

@@ -66,10 +66,6 @@ type ActivationResult struct {
 	AlreadyActive bool
 }
 
-func (c *Controller) GetConfig() (*config.Config, error) {
-	return c.cfg.GetConfig()
-}
-
 // MergedConfigJSON returns the full config as a JSON object for GET /config (and PATCH /config responses).
 // Each registered backend's effective [backend.<name>] map is merged under backend.<name> so renderers
 // see the same defaults and file values as Viper + RegisterDefaults. Typed config.Config intentionally

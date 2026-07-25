@@ -1,7 +1,6 @@
 package backend
 
 import (
-	"waypaper-engine/daemon/internal/media"
 	"waypaper-engine/daemon/internal/monitor"
 )
 
@@ -34,17 +33,3 @@ const (
 	ModeClone  Mode = "clone"  // same image on N≥1 monitors
 	ModeExtend Mode = "extend" // image split across N≥2 monitors
 )
-
-// ContentToMediaType maps a Content variant to the legacy media.MediaType value.
-func ContentToMediaType(c Content) media.MediaType {
-	switch c.(type) {
-	case GIF:
-		return media.MediaTypeGIF
-	case Video:
-		return media.MediaTypeVideo
-	case WebWallpaper:
-		return media.MediaTypeWeb
-	default:
-		return media.MediaTypeImage
-	}
-}

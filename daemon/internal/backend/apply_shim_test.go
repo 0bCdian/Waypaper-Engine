@@ -2,7 +2,6 @@
 //   - Apply with an empty Snapshot returns nil without panicking.
 //   - Apply with a non-empty Snapshot does not panic (may return an error on systems
 //     without the required binary installed — that is acceptable).
-//   - ContentToMediaType maps every Content variant correctly.
 package backend_test
 
 import (
@@ -71,24 +70,5 @@ func TestApplyDelegatesForNonEmpty(t *testing.T) {
 			// We only assert the shim does not panic.
 			_ = b.Apply(context.Background(), snap)
 		})
-	}
-}
-
-// TestContentToMediaType verifies the mapping helper in snapshot.go.
-func TestContentToMediaType(t *testing.T) {
-	tests := []struct {
-		content backend.Content
-		want    string
-	}{
-		{backend.StaticImage{Path_: "/a"}, "image"},
-		{backend.GIF{Path_: "/a"}, "gif"},
-		{backend.Video{Path_: "/a"}, "video"},
-		{backend.WebWallpaper{ManifestPath: "/a"}, "web"},
-	}
-	for _, tt := range tests {
-		got := string(backend.ContentToMediaType(tt.content))
-		if got != tt.want {
-			t.Errorf("ContentToMediaType(%T) = %q, want %q", tt.content, got, tt.want)
-		}
 	}
 }
