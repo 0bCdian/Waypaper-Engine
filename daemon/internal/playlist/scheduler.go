@@ -382,6 +382,12 @@ func newTimeOfDayScheduler(cfg SchedulerConfig) *timeOfDayScheduler {
 func (s *timeOfDayScheduler) Start(callback func(int) bool) {
 	s.mu.Lock()
 	s.callback = callback
+	// Publish the first deadline before returning: Manager.startPlaylist reads
+	// NextChangeAt() synchronously to build ActivePlaylistInstance.
+	if _, dur := s.nextTransition(); dur > 0 {
+		next := time.Now().Add(dur)
+		s.nextChange = &next
+	}
 	s.mu.Unlock()
 
 	go s.loop()
@@ -512,6 +518,10 @@ func newDayOfWeekScheduler(cfg SchedulerConfig) *dayOfWeekScheduler {
 func (s *dayOfWeekScheduler) Start(callback func(int) bool) {
 	s.mu.Lock()
 	s.callback = callback
+	// Publish tomorrow's rollover before returning — see timeOfDayScheduler.Start.
+	now := time.Now()
+	tomorrow := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
+	s.nextChange = &tomorrow
 	s.mu.Unlock()
 
 	// Fire immediately for today's weekday.

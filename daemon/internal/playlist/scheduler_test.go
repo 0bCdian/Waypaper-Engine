@@ -526,3 +526,45 @@ func TestTimerReconcileSchedulerConfig_empty(t *testing.T) {
 	assert.Nil(t, idx)
 	assert.Equal(t, 0, cur)
 }
+
+// Regression: startPlaylist reads NextChangeAt() synchronously right after Start().
+// time_of_day and day_of_week used to populate it inside their goroutine, so the
+// active playlist instance was stored with next_change_at=nil — no progress bar in
+// the UI and missedEventChecker permanently short-circuited.
+func TestSchedulerPublishesNextChangeAtSynchronously(t *testing.T) {
+	tests := []struct {
+		name string
+		cfg  SchedulerConfig
+	}{
+		{
+			name: "timer",
+			cfg:  SchedulerConfig{Type: "timer", Interval: 300, Order: "ordered", TotalImages: 3},
+		},
+		{
+			name: "time_of_day",
+			cfg: SchedulerConfig{Type: "time_of_day", TotalImages: 3, TimeSlots: []TimeSlot{
+				{Minutes: 0, ImageIndex: 0},
+				{Minutes: 600, ImageIndex: 1},
+				{Minutes: 1200, ImageIndex: 2},
+			}},
+		},
+		{
+			name: "day_of_week",
+			cfg:  SchedulerConfig{Type: "day_of_week", TotalImages: 7},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := NewScheduler(tt.cfg)
+			t.Cleanup(s.Stop)
+
+			s.Start(func(int) bool { return true })
+
+			next := s.NextChangeAt()
+			require.NotNil(t, next, "NextChangeAt must be populated before Start() returns")
+			assert.True(t, next.After(time.Now().Add(-time.Second)),
+				"NextChangeAt should be at or after now, got %v", next)
+		})
+	}
+}
