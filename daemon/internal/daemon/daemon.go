@@ -185,8 +185,10 @@ func (d *Daemon) Start(ctx context.Context) error {
 	// Restore is run in a goroutine so a slow backend (e.g. wal-qt navigating
 	// a web wallpaper for several seconds) does not delay the HTTP server becoming
 	// reachable — the GUI's readiness probe times out after ~10s.
+	restoreDone := make(chan struct{})
 	if !noBackendInstalled {
 		if initErr != nil {
+			close(restoreDone) // deferred restore owns this path; do not block startup
 			wallpaper.StartDeferredDaemonRestore(
 				restoreRetryCtx,
 				opts.Registry,
@@ -199,8 +201,13 @@ func (d *Daemon) Start(ctx context.Context) error {
 				bus,
 			)
 		} else {
-			go wallpaper.Restore(restoreRetryCtx, opts.DB.MonitorStateStore(), opts.DB.StateStore(), opts.Registry, opts.Cfg, monManager, opts.DB.ImageStore(), splitter, bus)
+			go func() {
+				defer close(restoreDone)
+				wallpaper.Restore(restoreRetryCtx, opts.DB.MonitorStateStore(), opts.DB.StateStore(), opts.Registry, opts.Cfg, monManager, opts.DB.ImageStore(), splitter, bus)
+			}()
 		}
+	} else {
+		close(restoreDone)
 	}
 
 	// Create playlist manager.
@@ -216,6 +223,16 @@ func (d *Daemon) Start(ctx context.Context) error {
 		splitter,
 		opts.Cfg,
 	)
+	// startPlaylist skips its initial apply on the fromPersisted path because
+	// Restore is expected to have already set each monitor. Wait for that to be
+	// true rather than assuming it. Bounded so a slow backend cannot block startup.
+	select {
+	case <-restoreDone:
+	case <-time.After(20 * time.Second):
+		slog.Warn("startup restore did not finish in time; restoring playlists anyway")
+	case <-ctx.Done():
+	}
+
 	if err := playlistMgr.RestorePersistedRuns(ctx); err != nil {
 		slog.Warn("playlist restore from disk failed", "error", err)
 	}

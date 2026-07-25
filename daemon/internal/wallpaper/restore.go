@@ -2,6 +2,7 @@ package wallpaper
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 	"time"
 
@@ -171,14 +172,21 @@ func Restore(
 		return
 	}
 
-	if err := activeBackend.Apply(ctx, snap); err != nil {
-		slog.Warn("restore: backend apply failed", "backend", activeBackend.Name(), "error", err)
+	applyErr := withApplyGate(ctx, activeBackend.Name(), func(gateCtx context.Context) error {
+		return activeBackend.Apply(gateCtx, snap)
+	})
+	if applyErr != nil {
+		if errors.Is(applyErr, ErrSuperseded) {
+			slog.Info("restore: superseded by a newer apply", "backend", activeBackend.Name())
+			return
+		}
+		slog.Warn("restore: backend apply failed", "backend", activeBackend.Name(), "error", applyErr)
 		if bus != nil {
 			bus.Publish(events.Event{
 				Type: events.WallpaperRestoreFailed,
 				Data: map[string]any{
 					"backend": activeBackend.Name(),
-					"error":   err.Error(),
+					"error":   applyErr.Error(),
 				},
 			})
 		}

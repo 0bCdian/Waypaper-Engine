@@ -2,7 +2,10 @@ package wallpaper_test
 
 import (
 	"context"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -150,4 +153,67 @@ func TestRestore_SkipsDisconnectedMonitors(t *testing.T) {
 
 	require.Len(t, gotSnap.Outputs, 1)
 	assert.Equal(t, "A", gotSnap.Outputs[0].Monitor.Name)
+}
+
+// TestRestoreIsSerialisedWithApply verifies that concurrent Restore calls for the
+// same backend never invoke backend.Apply concurrently. Restore used to call
+// backend.Apply directly, bypassing the per-backend apply gate that Apply()
+// uses, so a config PATCH or backend activation concurrent with a playlist
+// tick could reach the compositor out of order relative to the DB writes.
+func TestRestoreIsSerialisedWithApply(t *testing.T) {
+	var concurrent atomic.Int32
+	var maxConcurrent atomic.Int32
+
+	mockBe := &testutil.MockBackend{
+		NameFn: func() string { return "gateprobe" },
+		CapabilitiesFn: func() backend.Capabilities {
+			return backend.Capabilities{
+				ContentKinds: []backend.ContentKind{backend.KindStaticImage},
+			}
+		},
+		ApplyFn: func(_ context.Context, _ backend.Snapshot) error {
+			n := concurrent.Add(1)
+			for {
+				m := maxConcurrent.Load()
+				if n <= m || maxConcurrent.CompareAndSwap(m, n) {
+					break
+				}
+			}
+			time.Sleep(20 * time.Millisecond)
+			concurrent.Add(-1)
+			return nil
+		},
+	}
+	reg := &testutil.MockRegistry{ActiveFn: func() backend.Backend { return mockBe }}
+	mss := &testutil.MockMonitorStateStore{
+		GetAllFn: func(context.Context) ([]store.MonitorState, error) {
+			return []store.MonitorState{
+				{MonitorName: "A", ImageID: 1, ImagePath: "/a.png", Mode: string(monitor.ModeIndividual)},
+			}, nil
+		},
+	}
+	mm := &testutil.MockMonitorManager{
+		GetMonitorsFn: func(context.Context) ([]monitor.Monitor, error) {
+			return []monitor.Monitor{{Name: "A"}}, nil
+		},
+	}
+	imgStore := &testutil.MockImageStore{
+		GetByIDFn: func(_ context.Context, id int) (*store.Image, error) {
+			return &store.Image{ID: id, MediaType: "image", Path: "/dev/null"}, nil
+		},
+	}
+
+	var wg sync.WaitGroup
+	for range 8 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			wallpaper.Restore(context.Background(), mss, &testutil.MockStateStore{}, reg, &testutil.MockConfigManager{}, mm, imgStore, nil, nil)
+		}()
+	}
+	wg.Wait()
+
+	assert.Equal(t, int32(1), maxConcurrent.Load(),
+		"Restore must hold the per-backend apply gate; saw %d concurrent Apply calls",
+		maxConcurrent.Load())
 }
