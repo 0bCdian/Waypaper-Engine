@@ -150,7 +150,7 @@ func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target moni
 	m.runs[pl.ID] = run
 	m.mu.Unlock()
 
-	if pl.Configuration.Type == "time_of_day" || pl.Configuration.Type == "day_of_week" {
+	if playlistTypeNeedsMissedEventChecker(pl.Configuration.Type) {
 		go m.missedEventChecker(playCtx, pl.ID, monitors, targetEff)
 	}
 
@@ -972,6 +972,12 @@ func (m *Manager) missedEventChecker(ctx context.Context, playlistID int, monito
 				case "day_of_week":
 					weekday := int(now.Weekday())
 					newIdx = min(weekday, len(pl.Images)-1)
+				case "timer":
+					// A timer has no wall-clock anchor to recompute from; advance one
+					// slide from wherever the instance currently sits, same as a tick.
+					newIdx = advancePlaylistRow(inst, pl, 1)
+				default:
+					continue
 				}
 
 				result, applyErr := m.applyImage(ctx, pl, newIdx, monitors, target.Mode, compatForward)
@@ -984,6 +990,15 @@ func (m *Manager) missedEventChecker(ctx context.Context, playlistID int, monito
 				}
 
 				effectiveIdx := result.AppliedIndex
+
+				if pl.Configuration.Type == "timer" {
+					m.mu.RLock()
+					run, runOK := m.runs[playlistID]
+					m.mu.RUnlock()
+					if runOK {
+						run.sched.AfterManualNavigation(effectiveIdx)
+					}
+				}
 
 				m.mu.RLock()
 				var nextChange *time.Time
@@ -1011,6 +1026,20 @@ func (m *Manager) missedEventChecker(ctx context.Context, playlistID int, monito
 				})
 			}
 		}
+	}
+}
+
+// playlistTypeNeedsMissedEventChecker reports whether a playlist type needs the
+// wall-clock watchdog. Every self-advancing type does: Go timers run on
+// CLOCK_MONOTONIC, which does not advance across system suspend, so all three
+// can silently miss their transition after a resume. Manual playlists never
+// self-advance and are excluded.
+func playlistTypeNeedsMissedEventChecker(playlistType string) bool {
+	switch playlistType {
+	case "timer", "time_of_day", "day_of_week":
+		return true
+	default:
+		return false
 	}
 }
 

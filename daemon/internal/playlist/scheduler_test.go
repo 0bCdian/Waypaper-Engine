@@ -568,3 +568,14 @@ func TestSchedulerPublishesNextChangeAtSynchronously(t *testing.T) {
 		})
 	}
 }
+
+// Regression: timer playlists had no missed-event recovery. After a system
+// suspend the monotonic timer has not elapsed but the persisted wall-clock
+// NextChangeAt is far in the past, leaving the rotation stalled.
+func TestMissedEventRecoveryCoversTimerPlaylists(t *testing.T) {
+	assert.True(t, playlistTypeNeedsMissedEventChecker("timer"))
+	assert.True(t, playlistTypeNeedsMissedEventChecker("time_of_day"))
+	assert.True(t, playlistTypeNeedsMissedEventChecker("day_of_week"))
+	assert.False(t, playlistTypeNeedsMissedEventChecker("manual"))
+	assert.False(t, playlistTypeNeedsMissedEventChecker(""))
+}
