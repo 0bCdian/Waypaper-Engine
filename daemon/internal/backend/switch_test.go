@@ -12,8 +12,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// trackingBackend records how many times it is concurrently "live" between
-// Initialize and Shutdown, so an interleaved switch shows up as >1.
 type trackingBackend struct {
 	name    string
 	live    atomic.Int32
@@ -25,6 +23,7 @@ func (b *trackingBackend) IsAvailable() bool { return true }
 func (b *trackingBackend) Capabilities() Capabilities {
 	return Capabilities{ContentKinds: []ContentKind{KindStaticImage}}
 }
+
 func (b *trackingBackend) Initialize(_ context.Context) error {
 	n := b.live.Add(1)
 	for {
@@ -44,9 +43,6 @@ type noopPersister struct{}
 
 func (noopPersister) SetActiveBackendType(string) error { return nil }
 
-// Regression: Shutdown -> SetActive -> Initialize was unguarded, so two callers
-// could interleave and one would initialize the other's backend while the
-// registry pointed at a third. Auto-mode ticks race manual sets through here.
 func TestSwitchActiveBackend_ConcurrentSwitchesStayConsistent(t *testing.T) {
 	reg := NewRegistry()
 	a := &trackingBackend{name: "alpha"}

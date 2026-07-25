@@ -7,13 +7,12 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"waypaper-engine/daemon/internal/backend"
+	"waypaper-engine/daemon/internal/monitor"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"waypaper-engine/daemon/internal/backend"
-	"waypaper-engine/daemon/internal/monitor"
 )
 
 func TestRegisterDefaultsAndLoadConfig(t *testing.T) {
@@ -47,13 +46,10 @@ func TestValidateConfig_RejectsInvalidImageDisplayModes(t *testing.T) {
 func TestIsAvailable_ChecksBinaryInPath(t *testing.T) {
 	b := New()
 	result := b.IsAvailable()
-	// Result depends on whether wal-qt-host is installed on the
-	// test machine. We just verify it doesn't panic and returns a bool.
 	assert.IsType(t, true, result)
 }
 
 func TestInitialize_FailsOnHealthMismatch(t *testing.T) {
-	// Create a dummy wal-qt-host binary in a temp dir so IsAvailable() passes.
 	tmpDir := t.TempDir()
 	dummyBin := tmpDir + "/wal-qt-host"
 	require.NoError(t, os.WriteFile(dummyBin, []byte("#!/bin/sh\nexit 1\n"), 0o755))
@@ -78,9 +74,6 @@ func TestInitialize_FailsOnHealthMismatch(t *testing.T) {
 	assert.ErrorIs(t, err, errContract)
 }
 
-// newLoadTestSnapshot builds a minimal one-monitor, one-image Snapshot — enough
-// to drive Apply's /wallpaper/load POST without depending on the shape of the
-// wallpaper content.
 func newLoadTestSnapshot() backend.Snapshot {
 	return backend.Snapshot{
 		Outputs: []backend.Output{
@@ -92,12 +85,6 @@ func newLoadTestSnapshot() backend.Snapshot {
 	}
 }
 
-// TestApply_TrustsPerTargetLoadOutcome covers Task 13 Step 2: Apply must only
-// report success when wal-qt's /wallpaper/load response says every target
-// actually landed (applied/superseded), must return an immediate,
-// non-retried error naming the monitor on a decoded failed/timeout outcome,
-// and must leave the existing transport/HTTP-status retry-and-classify
-// behaviour untouched for non-2xx responses.
 func TestApply_TrustsPerTargetLoadOutcome(t *testing.T) {
 	tests := []struct {
 		name           string

@@ -1,24 +1,19 @@
-// Package backend_test contains smoke tests for Apply across all backends. These tests verify:
-//   - Apply with an empty Snapshot returns nil without panicking.
-//   - Apply with a non-empty Snapshot does not panic (may return an error on systems
-//     without the required binary installed — that is acceptable).
 package backend_test
 
 import (
 	"context"
 	"testing"
-
 	"waypaper-engine/daemon/internal/backend"
+	"waypaper-engine/daemon/internal/monitor"
+
 	backendawww "waypaper-engine/daemon/internal/backend/awww"
 	backendfeh "waypaper-engine/daemon/internal/backend/feh"
 	backendhyprpaper "waypaper-engine/daemon/internal/backend/hyprpaper"
 	backendmpvpaper "waypaper-engine/daemon/internal/backend/mpvpaper"
 	backendswaybg "waypaper-engine/daemon/internal/backend/swaybg"
 	backendwalqt "waypaper-engine/daemon/internal/backend/walqt"
-	"waypaper-engine/daemon/internal/monitor"
 )
 
-// sampleOutput builds a single-output Snapshot with a static image.
 func sampleSnapshot() backend.Snapshot {
 	return backend.Snapshot{
 		Outputs: []backend.Output{
@@ -30,7 +25,6 @@ func sampleSnapshot() backend.Snapshot {
 	}
 }
 
-// TestApplyEmptySnapshot verifies every backend's Apply is a no-op on empty input.
 func TestApplyEmptySnapshot(t *testing.T) {
 	backends := []backend.Backend{
 		backendawww.New(),
@@ -51,8 +45,6 @@ func TestApplyEmptySnapshot(t *testing.T) {
 	}
 }
 
-// TestApplyDelegatesForNonEmpty verifies Apply with a real Snapshot does not panic.
-// On systems without the required binary the call returns an error — which is acceptable.
 func TestApplyDelegatesForNonEmpty(t *testing.T) {
 	snap := sampleSnapshot()
 	backends := []backend.Backend{
@@ -66,8 +58,6 @@ func TestApplyDelegatesForNonEmpty(t *testing.T) {
 	for _, b := range backends {
 		b := b
 		t.Run(b.Name(), func(t *testing.T) {
-			// We do not assert success — the binary may not be installed.
-			// We only assert the shim does not panic.
 			_ = b.Apply(context.Background(), snap)
 		})
 	}

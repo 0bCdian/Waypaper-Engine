@@ -8,15 +8,12 @@ import (
 	"net/http/httptest"
 	"testing"
 	"time"
+	"waypaper-engine/daemon/internal/backend/walqt/walqtclient"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"waypaper-engine/daemon/internal/backend/walqt/walqtclient"
 )
 
-// newTestControlClient builds a controlClient pointing at srv using plain HTTP
-// (not a Unix socket) so unit tests can use httptest.NewServer.
 func newTestControlClient(srv *httptest.Server, expectedService, expectedAPI string) *controlClient {
 	gen, _ := walqtclient.NewClient(srv.URL, walqtclient.WithHTTPClient(srv.Client()))
 	genLoad, _ := walqtclient.NewClient(srv.URL, walqtclient.WithHTTPClient(srv.Client()))

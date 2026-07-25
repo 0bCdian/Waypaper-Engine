@@ -7,33 +7,16 @@ import (
 	"sync"
 )
 
-// SwitchOpts controls the behavior of SwitchActiveBackend.
 type SwitchOpts struct {
-	// PersistConfig writes the new backend name to config when true.
-	// User-driven activation sets this to true; auto-mode switches set it to false
-	// to avoid rewriting config.toml every playlist tick.
 	PersistConfig bool
 }
 
-// ConfigPersister writes the active backend type to the persistent config.
 type ConfigPersister interface {
 	SetActiveBackendType(name string) error
 }
 
-// switchMu serialises the whole Shutdown -> SetActive -> Initialize transition.
-// The registry's own methods are individually locked, but the transition is not
-// atomic without this: two callers could otherwise interleave so that one
-// initializes the other's backend while the registry points at a third.
 var switchMu sync.Mutex
 
-// SwitchActiveBackend shuts down the current backend, activates the named one,
-// and initializes it. On init failure it rolls back to the previous backend.
-// It returns the backend that is active on success — callers must use this value
-// rather than re-reading Registry.Active(), which another switch may have moved.
-//
-// Callers are responsible for any post-switch work (restore wallpapers, apply
-// a specific wallpaper, fire SSE events, etc.) — this function only handles
-// the lifecycle transition.
 func SwitchActiveBackend(ctx context.Context, reg Registry, name string, cfg ConfigPersister, opts SwitchOpts) (Backend, error) {
 	switchMu.Lock()
 	defer switchMu.Unlock()

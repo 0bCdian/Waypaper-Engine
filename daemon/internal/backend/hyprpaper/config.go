@@ -1,6 +1,5 @@
 package hyprpaper
 
-// FitMode controls how hyprpaper scales the wallpaper image.
 type FitMode string
 
 const (
@@ -10,7 +9,6 @@ const (
 	FitFill    FitMode = "fill"
 )
 
-// Config holds all hyprpaper-specific configuration.
 type Config struct {
 	FitMode    FitMode `mapstructure:"fit_mode"      json:"fit_mode"`
 	ConfigPath string  `mapstructure:"config_path" json:"config_path"`

@@ -4,14 +4,10 @@ import (
 	"context"
 	"fmt"
 	"strings"
-
 	"waypaper-engine/daemon/internal/config"
 	"waypaper-engine/daemon/internal/media"
 )
 
-// EnsureBackendForMedia picks the best backend for mediaType and switches to it
-// if the currently active backend differs. In fixed mode it validates the active
-// backend supports the media type. A no-op if the correct backend is already active.
 func EnsureBackendForMedia(ctx context.Context, reg Registry, cfg config.ConfigManager, mediaType string) error {
 	mode := cfg.GetSelectionMode()
 	prio := cfg.GetAutoPriorities()
@@ -37,13 +33,6 @@ func EnsureBackendForMedia(ctx context.Context, reg Registry, cfg config.ConfigM
 	return err
 }
 
-// PickBackend resolves which backend to use for a given media type.
-//
-// In "fixed" mode it simply returns the currently active backend name.
-//
-// In "auto" mode it walks the priority list for the media category (image/video/web)
-// and returns the first registered, available backend whose Capabilities include the
-// requested media type. GIF is treated as "image" for priority resolution.
 func PickBackend(reg Registry, mode string, mediaType string, priorities map[string][]string) (string, error) {
 	if mode != "auto" {
 		active := reg.Active()

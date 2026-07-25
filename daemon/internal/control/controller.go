@@ -7,17 +7,14 @@ import (
 	"fmt"
 	"log/slog"
 	"math"
-
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/backenddefaults"
 	"waypaper-engine/daemon/internal/config"
 	"waypaper-engine/daemon/internal/events"
 )
 
-// ErrUnknownBackend is returned when UpdateBackendConfig names an unregistered backend.
 var ErrUnknownBackend = errors.New("unknown backend")
 
-// InvalidBackendConfigError wraps backend.ValidateConfig failures from UpdateBackendConfig.
 type InvalidBackendConfigError struct {
 	Cause error
 }
@@ -30,19 +27,16 @@ func (e *InvalidBackendConfigError) Unwrap() error {
 	return e.Cause
 }
 
-// Restorer runs best-effort wallpaper restore after backend activation.
 type Restorer interface {
 	Restore(ctx context.Context)
 }
 
-// RestoreFunc adapts a function to Restorer.
 type RestoreFunc func(ctx context.Context)
 
 func (f RestoreFunc) Restore(ctx context.Context) {
 	f(ctx)
 }
 
-// Controller owns control-plane policy for config and backend activation.
 type Controller struct {
 	cfg      config.ConfigManager
 	registry backend.Registry
@@ -50,7 +44,6 @@ type Controller struct {
 	restore  Restorer
 }
 
-// NewController wires the control plane. restorer may be nil (activation skips restore).
 func NewController(cfg config.ConfigManager, registry backend.Registry, bus events.Bus, restorer Restorer) *Controller {
 	return &Controller{
 		cfg:      cfg,
@@ -60,19 +53,11 @@ func NewController(cfg config.ConfigManager, registry backend.Registry, bus even
 	}
 }
 
-// ActivationResult summarizes a successful activation attempt.
 type ActivationResult struct {
 	Backend       string
 	AlreadyActive bool
 }
 
-// MergedConfigJSON returns the full config as a JSON object for GET /config (and PATCH /config responses).
-// Each registered backend's effective [backend.<name>] map is merged under backend.<name> so renderers
-// see the same defaults and file values as Viper + RegisterDefaults. Typed config.Config intentionally
-// omits those subtrees.
-//
-// When backend.transition_duration_seconds is set, it overlays awww.transition_duration and
-// wal-qt.duration_ms to match wallpaper runtime behavior.
 func (c *Controller) MergedConfigJSON() (map[string]any, error) {
 	cfg, err := c.cfg.GetConfig()
 	if err != nil {
@@ -171,7 +156,6 @@ func (c *Controller) UpdateBackendConfig(ctx context.Context, name string, raw j
 	}
 	active := c.cfg.GetActiveBackendType()
 	if name == active {
-		// Re-apply current wallpaper so backends reflect new config immediately.
 		if c.restore != nil {
 			c.restore.Restore(ctx)
 		}
@@ -202,7 +186,6 @@ func (c *Controller) ActivateBackend(ctx context.Context, name string) (Activati
 	return ActivationResult{Backend: name}, nil
 }
 
-// ResetAllConfigToDefaults restores every config section plus all backend subtrees to built-in defaults.
 func (c *Controller) ResetAllConfigToDefaults(ctx context.Context) error {
 	if err := c.cfg.ResetToFactoryDefaults(backenddefaults.RegisterInto); err != nil {
 		return err
@@ -227,7 +210,6 @@ func (c *Controller) ResetAllConfigToDefaults(ctx context.Context) error {
 	return nil
 }
 
-// ResetBackendConfigToDefaults replaces persisted [backend.<name>] with defaults for that setter only.
 func (c *Controller) ResetBackendConfigToDefaults(ctx context.Context, name string) error {
 	b, ok := c.registry.Get(name)
 	if !ok {

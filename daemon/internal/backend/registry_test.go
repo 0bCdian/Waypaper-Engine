@@ -4,16 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"testing"
+	"waypaper-engine/daemon/internal/monitor"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
-	"waypaper-engine/daemon/internal/monitor"
 )
 
-// stubBackend is a minimal Backend implementation for registry tests.
-// Defined locally to avoid a circular import with the testutil package.
 type stubBackend struct {
 	name  string
 	avail bool
@@ -95,9 +92,6 @@ func TestRegistry_Available(t *testing.T) {
 	assert.True(t, infos[1].Available)
 }
 
-// Regression: Active() panicked with no backend activated, but the daemon
-// explicitly supports a degraded no-backend start and registers routes anyway,
-// so GET /wallpaper/current turned a supported state into an opaque 500.
 func TestRegistry_ActiveReturnsNilWhenNoBackendActivated(t *testing.T) {
 	reg := NewRegistry()
 

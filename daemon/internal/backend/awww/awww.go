@@ -23,13 +23,8 @@ const (
 	daemonBinary = "awww-daemon"
 )
 
-// validDaemonFormats are the wl_shm formats accepted by `awww-daemon --format`.
 var validDaemonFormats = map[string]bool{"argb": true, "abgr": true, "rgb": true, "bgr": true}
 
-// awwwDaemonArgs builds the argv for awww-daemon. --no-cache is always set:
-// waypaper drives wallpaper selection explicitly via `awww img`, so the daemon
-// must not restore its own cache on startup. format, when non-empty, adds
-// `--format <value>`.
 func awwwDaemonArgs(format string) []string {
 	args := []string{"--no-cache"}
 	if format != "" {
@@ -42,8 +37,7 @@ type Awww struct {
 	once    sync.Once
 	v       backend.ConfigReader
 	process *os.Process
-	// execFn runs "awww img" with the given args. In tests, a no-op that records calls.
-	execFn func(ctx context.Context, args []string) error
+	execFn  func(ctx context.Context, args []string) error
 }
 
 func New() backend.Backend {
@@ -52,7 +46,6 @@ func New() backend.Backend {
 	return a
 }
 
-// execReal runs the awww CLI with the given args, capturing combined output.
 func (a *Awww) execReal(ctx context.Context, args []string) error {
 	cmd := exec.CommandContext(ctx, cliBinary, args...)
 	output, err := cmd.CombinedOutput()
@@ -62,7 +55,6 @@ func (a *Awww) execReal(ctx context.Context, args []string) error {
 	return nil
 }
 
-// SetExecForTest replaces the exec seam for testing. Returns the previous fn.
 func (a *Awww) SetExecForTest(fn func(ctx context.Context, args []string) error) (prev func(context.Context, []string) error) {
 	prev = a.execFn
 	a.execFn = fn
@@ -114,7 +106,6 @@ func (a *Awww) Initialize(ctx context.Context) error {
 	}()
 
 	// Wait for the daemon to become ready (accepts queries).
-	// awww-daemon needs a moment to start listening on its socket.
 	for i := range 20 {
 		if err := exec.CommandContext(ctx, cliBinary, "query").Run(); err == nil {
 			slog.Info("daemon ready", "binary", daemonBinary, "attempts", i+1)
@@ -134,7 +125,6 @@ func (a *Awww) Shutdown(ctx context.Context) error {
 
 	slog.Info("stopping daemon", "binary", cliBinary)
 	if err := exec.CommandContext(ctx, cliBinary, "kill").Run(); err != nil {
-		// Exit 1 means the daemon wasn't running — that's the desired state.
 		slog.Warn("awww kill command failed (daemon may already be stopped)", "error", err)
 	}
 
@@ -158,10 +148,6 @@ func (a *Awww) Shutdown(ctx context.Context) error {
 	return nil
 }
 
-// Apply implements backend.Backend by natively consuming a Snapshot.
-// Outputs sharing the same content path are grouped into a single "awww img"
-// invocation using --outputs MON1,MON2. Different paths require separate invocations.
-// Transition config is read from viper at Apply time.
 func (a *Awww) Apply(ctx context.Context, snap backend.Snapshot) error {
 	if len(snap.Outputs) == 0 {
 		return nil
@@ -169,13 +155,12 @@ func (a *Awww) Apply(ctx context.Context, snap backend.Snapshot) error {
 
 	cfg := a.loadConfigFromViper()
 
-	// Group outputs by content path.
 	type group struct {
 		path     string
 		monitors []string
 	}
 	var groups []group
-	seen := make(map[string]int) // path → index in groups
+	seen := make(map[string]int)
 	for _, o := range snap.Outputs {
 		path := o.Content.Path()
 		if idx, ok := seen[path]; ok {
@@ -196,8 +181,6 @@ func (a *Awww) Apply(ctx context.Context, snap backend.Snapshot) error {
 	return nil
 }
 
-// buildArgs constructs the argv for "awww img PATH [flags...] [--outputs MON1,MON2]".
-// --outputs is placed last, matching the order produced by SetWallpaper.
 func (a *Awww) buildArgs(path string, monitors []string, cfg *Config) []string {
 	args := []string{"img", path}
 
@@ -261,19 +244,10 @@ func (a *Awww) RegisterDefaults(v *viper.Viper) {
 	v.SetDefault("backend.awww.daemon_format", "")
 }
 
-// SetConfigReader wires the concurrency-safe config reader used by every
-// runtime read (loadConfigFromViper etc). Called once at startup, after
-// RegisterDefaults.
 func (a *Awww) SetConfigReader(r backend.ConfigReader) {
 	a.v = r
 }
 
-// loadConfigFromViper reads the [backend.awww] section from the TOML config via Viper.
-// This is used as the fallback when req.Config is nil (i.e., most call sites).
-//
-// TOML convention uses hyphens (transition-type) while Go/mapstructure uses underscores
-// (transition_type). Viper treats them as distinct keys, so we check both variants
-// and prefer the explicitly-set value (from the file) over the default.
 func (a *Awww) loadConfigFromViper() *Config {
 	if a.v == nil {
 		return &Config{}

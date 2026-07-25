@@ -8,14 +8,12 @@ import (
 	"os"
 	"path/filepath"
 	"sync"
-
 	"waypaper-engine/daemon/internal/system"
 
 	"github.com/fsnotify/fsnotify"
 	"github.com/spf13/viper"
 )
 
-// validSections lists the top-level config sections that UpdateConfig/GetSection accept.
 var validSections = map[string]bool{
 	"app":       true,
 	"daemon":    true,
@@ -24,41 +22,22 @@ var validSections = map[string]bool{
 	"wallhaven": true,
 }
 
-// ViperManager implements ConfigManager using Viper for TOML-based configuration.
-// All public methods are safe for concurrent use.
 type ViperManager struct {
 	v  *viper.Viper
 	mu sync.RWMutex
 
-	// watcher and watchDone back Close(): watcher is the fsnotify (inotify)
-	// instance owned by the goroutine started in startWatch, and watchDone is
-	// closed by that goroutine right before it returns. Both are set once in
-	// NewViperManager/startWatch, before the *ViperManager is handed to any
-	// caller, so reading them in Close() needs no lock. Nil when startWatch
-	// failed (watching is best-effort — see NewViperManager).
 	watcher   *fsnotify.Watcher
 	watchDone chan struct{}
 	closeOnce sync.Once
 
-	// callbacks registered via OnConfigChange, called in order.
 	cbMu      sync.RWMutex
 	callbacks []func(section string)
 
-	// backendDefaults, set once via EnsureDefaultsPersisted, registers every
-	// backend's SetDefault entries onto the throwaway writer Vipers used to
-	// persist changes. Without it a write only knows core defaults, so a
-	// [backend.<name>] subtable collapses to just the explicitly-set keys and
-	// the UI (which reads via Sub) sees the rest as missing. Guarded by mu.
 	backendDefaults func(*viper.Viper)
 }
 
-// Compile-time assertion that ViperManager satisfies ConfigManager.
 var _ ConfigManager = (*ViperManager)(nil)
 
-// NewViperManager creates a ConfigManager backed by Viper.
-// configPath is the absolute path to the TOML config file.
-// If the file does not exist, Viper will use defaults and the file
-// will be created on the first call to a write method.
 func NewViperManager(configPath string) (*ViperManager, error) {
 	v := viper.New()
 	v.SetConfigFile(configPath)
@@ -68,48 +47,27 @@ func NewViperManager(configPath string) (*ViperManager, error) {
 
 	if err := v.ReadInConfig(); err != nil {
 		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			// If the file simply doesn't exist, we proceed with defaults.
-			// For any other error (parse error, permission, etc.) we fail.
 			if !isFileNotFound(err) {
 				return nil, fmt.Errorf("config: read %s: %w", configPath, err)
 			}
 		}
-		// Ensure the parent directory exists so WriteConfig can succeed later.
 		if err := system.EnsureParentDir(configPath); err != nil {
 			return nil, fmt.Errorf("config: ensure config dir: %w", err)
 		}
-		// Persist defaults so the user has a concrete file to edit.
 		if err := v.WriteConfigAs(configPath); err != nil {
-			// Non-critical: daemon works fine with in-memory defaults.
-			// Log-level logging isn't set up yet, so just ignore.
 			_ = err
 		}
 	}
 
 	m := &ViperManager{v: v}
 
-	// Start watching for external changes. We deliberately do not use viper's
-	// own WatchConfig/OnConfigChange: viper's watcher goroutine calls
-	// v.ReadInConfig() directly on m.v, completely unguarded by any lock, which
-	// races with every other ViperManager method (including our own writes,
-	// which reload m.v via mergeAndSet/persistKeyReplace under m.mu). Every
-	// config-writing method here writes to the exact file being watched, so in
-	// production this is a real, reachable race, not a test artifact. Running
-	// our own loop lets us take m.mu around the reload.
 	if err := m.startWatch(configPath); err != nil {
-		// Non-critical: the daemon still works without picking up external
-		// edits to the config file.
 		_ = err
 	}
 
 	return m, nil
 }
 
-// startWatch begins watching configPath for external changes, mirroring
-// viper.Viper.WatchConfig's algorithm (watch the containing directory to catch
-// renames/atomic saves, and symlink swaps such as k8s ConfigMap updates) but
-// guarding every touch of m.v with m.mu so the watcher goroutine can never run
-// concurrently with a request-driven read or write.
 func (m *ViperManager) startWatch(configPath string) error {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
@@ -165,21 +123,10 @@ func (m *ViperManager) startWatch(configPath string) error {
 	return nil
 }
 
-// Close stops the config file watcher goroutine and releases its fsnotify
-// (inotify) instance, a limited per-user kernel resource. Idempotent and safe
-// to call from multiple goroutines or more than once. Blocks until the
-// watcher goroutine has actually exited.
-//
-// Closing is optional for correctness: a ViperManager that is never closed
-// keeps behaving exactly as it does today (it just leaks the watcher, same
-// as before this method existed). Callers that own a ViperManager for the
-// life of a process or long-running test — notably daemon shutdown — should
-// call Close to release the inotify instance.
 func (m *ViperManager) Close() error {
 	var err error
 	m.closeOnce.Do(func() {
 		if m.watcher == nil {
-			// startWatch failed or was never called; nothing to release.
 			return
 		}
 		err = m.watcher.Close()
@@ -188,13 +135,9 @@ func (m *ViperManager) Close() error {
 	return err
 }
 
-// Viper returns the raw instance for startup-only use (RegisterDefaults).
-// Reads through it bypass m.mu; retain a backend.ConfigReader instead.
 func (m *ViperManager) Viper() *viper.Viper {
 	return m.v
 }
-
-// ---------- Full config access ----------
 
 func (m *ViperManager) GetConfig() (*Config, error) {
 	m.mu.RLock()
@@ -218,22 +161,17 @@ func (m *ViperManager) UpdateConfig(section string, values map[string]any) error
 	return m.mergeAndSet(section, values)
 }
 
-// ---------- Section access ----------
-
 func (m *ViperManager) GetSection(section string) (map[string]any, error) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
 
 	sub := m.v.Sub(section)
 	if sub == nil {
-		// Sub returns nil if the key doesn't exist. Return empty map.
 		return map[string]any{}, nil
 	}
 
 	return sub.AllSettings(), nil
 }
-
-// ---------- Backend-specific config ----------
 
 func (m *ViperManager) GetBackendConfig(backendName string) (json.RawMessage, error) {
 	m.mu.RLock()
@@ -263,8 +201,6 @@ func (m *ViperManager) SetBackendConfig(backendName string, raw json.RawMessage)
 
 	return m.mergeAndSet("backend."+backendName, values)
 }
-
-// ---------- Active backend ----------
 
 func (m *ViperManager) GetActiveBackendType() string {
 	m.mu.RLock()
@@ -299,13 +235,6 @@ func (m *ViperManager) GetAutoPriorities() AutoPriorities {
 		Web:   m.v.GetStringSlice("backend.auto_priorities.web"),
 	}
 }
-
-// ---------- Generic key access (backend.ConfigReader) ----------
-//
-// These implement backend.ConfigReader (structurally — this package does not
-// import internal/backend) so backends can retain *ViperManager instead of
-// the raw *viper.Viper for reads after startup. See the Viper() doc comment
-// for why retaining the raw *viper.Viper is unsafe.
 
 func (m *ViperManager) GetString(key string) string {
 	m.mu.RLock()
@@ -343,8 +272,6 @@ func (m *ViperManager) IsSet(key string) bool {
 	return m.v.IsSet(key)
 }
 
-// ---------- Change notification ----------
-
 func (m *ViperManager) OnConfigChange(callback func(section string)) {
 	m.cbMu.Lock()
 	defer m.cbMu.Unlock()
@@ -358,8 +285,6 @@ func (m *ViperManager) notifyCallbacks(section string) {
 		cb(section)
 	}
 }
-
-// ---------- Path helpers ----------
 
 func (m *ViperManager) GetSocketPath() string {
 	m.mu.RLock()
@@ -391,12 +316,6 @@ func (m *ViperManager) GetLogFile() string {
 	return system.ExpandPath(m.v.GetString("daemon.log_file"))
 }
 
-// ResetToFactoryDefaults replaces the persisted config file with built-in defaults (all sections
-// plus backend subsections from registerBackendDefaults when non-nil).
-//
-// registerBackendDefaults must be supplied by the caller (e.g. control passes
-// backenddefaults.RegisterInto); this package cannot import backenddefaults without an
-// import cycle (backend → config → backenddefaults → backend subpackages → backend).
 func (m *ViperManager) ResetToFactoryDefaults(registerBackendDefaults func(*viper.Viper)) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -428,15 +347,6 @@ func (m *ViperManager) ResetToFactoryDefaults(registerBackendDefaults func(*vipe
 	return nil
 }
 
-// EnsureDefaultsPersisted records the backend-defaults registrar (so later
-// persist operations keep [backend.<name>] subtables complete) and writes the
-// config file so it physically contains every default key. Call once at startup
-// after every backend has registered its defaults onto Viper().
-//
-// The write is skipped when the file already holds every in-memory key, so a
-// complete, user-edited file is not churned. registerBackendDefaults must be
-// supplied by the caller (e.g. backenddefaults.RegisterInto); this package
-// cannot import backenddefaults without an import cycle.
 func (m *ViperManager) EnsureDefaultsPersisted(registerBackendDefaults func(*viper.Viper)) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -451,8 +361,6 @@ func (m *ViperManager) EnsureDefaultsPersisted(registerBackendDefaults func(*vip
 		return fmt.Errorf("config: ensure dir before persisting defaults: %w", err)
 	}
 
-	// Skip the write when every in-memory key (defaults included) is already on
-	// disk — avoids rewriting a file that is already complete.
 	onDisk := viper.New()
 	onDisk.SetConfigFile(cfgPath)
 	onDisk.SetConfigType("toml")
@@ -477,16 +385,12 @@ func (m *ViperManager) EnsureDefaultsPersisted(registerBackendDefaults func(*vip
 		}
 	}
 
-	// m.v already carries the loaded file plus every registered default, so
-	// WriteConfigAs emits file values where present and defaults elsewhere.
 	if err := m.v.WriteConfigAs(cfgPath); err != nil {
 		return fmt.Errorf("config: persist complete defaults: %w", err)
 	}
 	return nil
 }
 
-// ReplaceBackendNamedConfig persists backend.<backendName> as exactly values, dropping any keys
-// that existed in that subsection before this call.
 func (m *ViperManager) ReplaceBackendNamedConfig(backendName string, values map[string]any) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
@@ -549,14 +453,6 @@ func setDefaults(v *viper.Viper) {
 	v.SetDefault("monitors.image_set_type", "individual")
 }
 
-// ---------- internal helpers ----------
-
-// newConfigWriter builds a throwaway Viper for persisting changes. It carries
-// all defaults — core plus every backend's, once EnsureDefaultsPersisted has run
-// — so WriteConfig serializes complete [backend.<name>] subtables instead of
-// only the keys physically in the file. It is never used for daemon reads, so
-// MergeConfigMap on it cannot create overrides that shadow file values.
-// Must be called with m.mu held.
 func (m *ViperManager) newConfigWriter(cfgPath string) *viper.Viper {
 	writer := viper.New()
 	writer.SetConfigFile(cfgPath)
@@ -568,11 +464,6 @@ func (m *ViperManager) newConfigWriter(cfgPath string) *viper.Viper {
 	return writer
 }
 
-// mergeAndSet reads the current value of key as a map, merges values into it,
-// writes to the config register (not the override register), and persists.
-// Using MergeConfigMap instead of Set avoids creating overrides that would
-// permanently shadow file values on subsequent ReadInConfig calls.
-// Must be called with m.mu held.
 func (m *ViperManager) mergeAndSet(key string, values map[string]any) error {
 	cfgPath := m.v.ConfigFileUsed()
 	writer := m.newConfigWriter(cfgPath)
@@ -605,7 +496,6 @@ func (m *ViperManager) mergeAndSet(key string, values map[string]any) error {
 	return nil
 }
 
-// persistKeyReplace writes key using exactly vals (no merge). Must be called with m.mu held.
 func (m *ViperManager) persistKeyReplace(key string, vals map[string]any) error {
 	cfgPath := m.v.ConfigFileUsed()
 	writer := m.newConfigWriter(cfgPath)
@@ -633,10 +523,6 @@ func (m *ViperManager) persistKeyReplace(key string, vals map[string]any) error 
 	return nil
 }
 
-// ---------- file helpers ----------
-
-// isFileNotFound returns true for any error indicating the file does not exist,
-// covering both os.ErrNotExist and viper.ConfigFileNotFoundError.
 func isFileNotFound(err error) bool {
 	var viperNotFound viper.ConfigFileNotFoundError
 	if errors.As(err, &viperNotFound) {

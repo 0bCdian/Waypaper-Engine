@@ -8,22 +8,14 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
 	"waypaper-engine/daemon/internal/backend/walqt/transport"
 	"waypaper-engine/daemon/internal/backend/walqt/walqtclient"
 )
 
 const localHTTPBaseURL = "http://wal-qt.local"
 
-// controlClient wraps the generated walqtclient.Client, providing the same
-// method signatures that walqt.go relies on. All HTTP plumbing (Unix socket
-// transport, request building, response decoding) is delegated to the
-// generated client — this layer only translates between the engine's internal
-// types and the generated request/response types.
 type controlClient struct {
-	// gen is the generated client used for every call except /wallpaper/load.
-	gen *walqtclient.Client
-	// genLoad uses the same socket but no Client.Timeout so context governs.
+	gen             *walqtclient.Client
 	genLoad         *walqtclient.Client
 	loadTimeout     time.Duration
 	expectedService string
@@ -65,7 +57,6 @@ func newControlClient(cfg *Config) (*controlClient, error) {
 	}, nil
 }
 
-// readBody drains and closes resp.Body, returning the trimmed body string.
 func readBody(resp *http.Response) (string, error) {
 	defer resp.Body.Close()
 	raw, err := io.ReadAll(resp.Body)
@@ -129,8 +120,6 @@ func (c *controlClient) status(ctx context.Context) (*statusResponse, error) {
 	return &sr, nil
 }
 
-// loadResult is the decoded body of a successful (2xx) POST /wallpaper/load
-// response: the per-target outcomes the renderer actually confirmed.
 type loadResult struct {
 	OK        bool
 	RequestID int
@@ -139,8 +128,8 @@ type loadResult struct {
 
 type loadTargetResult struct {
 	Name    string
-	Outcome string // "applied", "superseded", "failed", or "timeout"
-	Error   string // present only when Outcome == "failed"
+	Outcome string
+	Error   string
 }
 
 func (c *controlClient) load(ctx context.Context, req loadRequest) (int, string, error) {

@@ -4,18 +4,15 @@ import (
 	"fmt"
 	"slices"
 	"sync"
-
 	"waypaper-engine/daemon/internal/monitor"
 )
 
-// registry is the concrete implementation of Registry.
 type registry struct {
 	mu         sync.RWMutex
 	backends   map[string]Backend
 	activeName string
 }
 
-// NewRegistry creates an empty Registry. Backends are added via Register().
 func NewRegistry() Registry {
 	return &registry{
 		backends: make(map[string]Backend),
@@ -42,8 +39,6 @@ func (r *registry) Get(name string) (Backend, bool) {
 	return b, ok
 }
 
-// Active returns the active backend, or nil when none has been activated.
-// The daemon supports a degraded no-backend start, so callers must nil-check.
 func (r *registry) Active() Backend {
 	r.mu.RLock()
 	defer r.mu.RUnlock()

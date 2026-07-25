@@ -15,9 +15,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// fakeBackendDefaults stands in for backenddefaults.RegisterInto — the config
-// package cannot import backenddefaults (import cycle), so the test supplies an
-// equivalent registrar. The keys mirror a real backend's SetDefault calls.
 func fakeBackendDefaults(v *viper.Viper) {
 	v.SetDefault("backend.wal-qt.socket_path", "/run/wal-qt.sock")
 	v.SetDefault("backend.wal-qt.parallax_enabled", false)
@@ -32,16 +29,11 @@ func decodeBackendConfig(t *testing.T, raw json.RawMessage) map[string]any {
 	return m
 }
 
-// Characterizes the bug: with no backend-defaults registrar wired in, persisting
-// a single backend key writes a partial [backend.<name>] table, and the UI path
-// (GetBackendConfig, which reads via viper.Sub) then loses every default.
 func TestBackendConfig_PartialTableDropsDefaults_WhenRegistrarMissing(t *testing.T) {
 	cfgPath := filepath.Join(t.TempDir(), "config.toml")
 	m, err := NewViperManager(cfgPath)
 	require.NoError(t, err)
 
-	// Simulate startup: backends register defaults on the live viper, but
-	// EnsureDefaultsPersisted is never called, so m.backendDefaults stays nil.
 	fakeBackendDefaults(m.Viper())
 
 	require.NoError(t, m.SetBackendConfig("wal-qt", json.RawMessage(`{"parallax_zoom":175}`)))
@@ -52,8 +44,6 @@ func TestBackendConfig_PartialTableDropsDefaults_WhenRegistrarMissing(t *testing
 		"bug: the other defaults are dropped from the UI-visible config")
 }
 
-// EnsureDefaultsPersisted writes a complete config file and keeps later writes
-// complete, so GetBackendConfig always reflects every default faithfully.
 func TestEnsureDefaultsPersisted_KeepsBackendTableComplete(t *testing.T) {
 	cfgPath := filepath.Join(t.TempDir(), "config.toml")
 	m, err := NewViperManager(cfgPath)
@@ -88,8 +78,6 @@ func TestEnsureDefaultsPersisted_KeepsBackendTableComplete(t *testing.T) {
 	})
 }
 
-// A second EnsureDefaultsPersisted call on an already-complete file is a no-op
-// rather than a churning rewrite.
 func TestEnsureDefaultsPersisted_SkipsRewriteWhenComplete(t *testing.T) {
 	cfgPath := filepath.Join(t.TempDir(), "config.toml")
 	m, err := NewViperManager(cfgPath)
@@ -115,14 +103,6 @@ func mustGetBackendConfig(t *testing.T, m *ViperManager, name string) json.RawMe
 	return raw
 }
 
-// Regression test for a data race between ViperManager's file watcher (started
-// in NewViperManager) and concurrent config reads/writes going through m.v.
-// Every write here (SetBackendConfig -> mergeAndSet) rewrites the on-disk file
-// that the watcher is watching, so each write is a real trigger for the
-// watcher goroutine to reload m.v concurrently with other goroutines' reads
-// and writes. Before the fix (guarding the watcher's reload with m.mu), this
-// failed under `go test -race` with a DATA RACE inside viper's ReadInConfig /
-// insensitiviseMap.
 func TestConcurrentReadsAndWrites_NoDataRace(t *testing.T) {
 	cfgPath := filepath.Join(t.TempDir(), "config.toml")
 	m, err := NewViperManager(cfgPath)
@@ -163,14 +143,9 @@ func TestConcurrentReadsAndWrites_NoDataRace(t *testing.T) {
 	wg.Wait()
 }
 
-// Close must stop the fsnotify watcher goroutine started by NewViperManager,
-// otherwise every ViperManager (including the one created per test in this
-// file) leaks an inotify instance for the life of the process.
 func TestClose_StopsWatcherGoroutine(t *testing.T) {
 	cfgPath := filepath.Join(t.TempDir(), "config.toml")
 
-	// Let any watcher goroutines from earlier tests settle before sampling
-	// the baseline, so this test isn't polluted by prior leaks.
 	runtime.GC()
 	time.Sleep(50 * time.Millisecond)
 	before := runtime.NumGoroutine()
@@ -197,6 +172,5 @@ func TestClose_StopsWatcherGoroutine(t *testing.T) {
 	assert.LessOrEqual(t, runtime.NumGoroutine(), before,
 		"watcher goroutine leaked after Close")
 
-	// Idempotent: calling Close again must not panic or error.
 	require.NoError(t, m.Close())
 }

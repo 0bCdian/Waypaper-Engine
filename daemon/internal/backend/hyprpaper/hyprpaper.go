@@ -12,15 +12,12 @@ import (
 	"sync"
 	"syscall"
 	"time"
-
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/monitor"
 
 	"github.com/spf13/viper"
 )
 
-// Hyprpaper implements backend.Backend for the hyprpaper wallpaper daemon.
-// It writes hyprpaper.conf and restarts the daemon (compatible with all hyprpaper versions).
 type Hyprpaper struct {
 	v       backend.ConfigReader
 	process *os.Process
@@ -46,10 +43,6 @@ func (h *Hyprpaper) Capabilities() backend.Capabilities {
 		Compositors:  []monitor.CompositorType{monitor.CompositorWayland},
 	}
 }
-
-// ---------------------------------------------------------------------------
-// Process helpers
-// ---------------------------------------------------------------------------
 
 func isProcessRunning() bool {
 	return exec.Command("pgrep", "-x", "hyprpaper").Run() == nil
@@ -98,10 +91,6 @@ func (h *Hyprpaper) startDaemon() error {
 	return fmt.Errorf("hyprpaper: process did not stay running after start (check hyprpaper.conf and logs)")
 }
 
-// ---------------------------------------------------------------------------
-// Config-file mode (write conf + restart)
-// ---------------------------------------------------------------------------
-
 func configPath(override string) string {
 	if override != "" {
 		return override
@@ -147,10 +136,6 @@ func (h *Hyprpaper) initializeConfig(ctx context.Context) error {
 	slog.Info("hyprpaper started")
 	return nil
 }
-
-// ---------------------------------------------------------------------------
-// Backend interface
-// ---------------------------------------------------------------------------
 
 func (h *Hyprpaper) Initialize(ctx context.Context) error {
 	return h.initializeConfig(ctx)
@@ -198,8 +183,6 @@ func (h *Hyprpaper) RegisterDefaults(v *viper.Viper) {
 	v.SetDefault("backend.hyprpaper.config_path", "")
 }
 
-// SetConfigReader wires the concurrency-safe config reader used by every
-// runtime read (Apply etc). Called once at startup, after RegisterDefaults.
 func (h *Hyprpaper) SetConfigReader(r backend.ConfigReader) {
 	h.v = r
 }

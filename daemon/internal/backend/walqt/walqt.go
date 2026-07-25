@@ -15,7 +15,6 @@ import (
 	"sync/atomic"
 	"syscall"
 	"time"
-
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/parallaxdriver"
@@ -25,12 +24,12 @@ import (
 
 const binaryName = "wal-qt-host"
 
-// viperBackendKey matches backend.Name() — must align with SetBackendConfig("backend."+name).
 const viperBackendKey = "backend.wal-qt"
 
-// Grow/outer origin as % of view (v_uv); values outside 0–100 place the anchor off-screen.
-const transitionOriginPctMin = -200
-const transitionOriginPctMax = 200
+const (
+	transitionOriginPctMin = -200
+	transitionOriginPctMax = 200
+)
 
 var validImageFitModes = map[string]struct{}{
 	"fill":       {},
@@ -40,7 +39,6 @@ var validImageFitModes = map[string]struct{}{
 	"scale-down": {},
 }
 
-// fillColorPattern accepts RRGGBB or RRGGBBAA hex (no leading '#').
 var fillColorPattern = regexp.MustCompile(`^[0-9a-fA-F]{6}([0-9a-fA-F]{2})?$`)
 
 var validImageRenderingModes = map[string]struct{}{
@@ -92,43 +90,24 @@ func normalizeAngleDeg(v int) int {
 }
 
 type WalQt struct {
-	v          backend.ConfigReader
-	makeClient func(cfg *Config) (*controlClient, error)
-	processMu  sync.Mutex
-	process    *os.Process
-	// spawnGeneration increments on each child spawn; the wait goroutine only clears
-	// process when it still matches, so a replaced child is not wiped by an old Wait.
-	spawnGeneration int64
-	// initMu serializes Initialize / initializeImpl so concurrent respawn and ensureRunning
-	// cannot double-spawn; long poll runs under this lock (callers queue briefly).
-	initMu sync.Mutex
-
-	parallaxDriverMu     sync.Mutex
-	parallaxDriverCancel context.CancelFunc
-	parallaxDriverWG     sync.WaitGroup
-	// parallaxSyncMu serializes syncParallaxDriver so concurrent Apply calls
-	// cannot race each other over the driver goroutine lifecycle.
-	parallaxSyncMu sync.Mutex
-	// parallaxDriverSig records the config the driver goroutine was last started
-	// for; parallaxDriverSynced is false until the first sync completes. Together
-	// they let an unchanged Apply skip a needless teardown/restart (which would
-	// drop per-output workspace tracking and swallow the next workspace change).
-	parallaxDriverSig    parallaxDriverSignature
-	parallaxDriverSynced bool
-
+	v                         backend.ConfigReader
+	makeClient                func(cfg *Config) (*controlClient, error)
+	processMu                 sync.Mutex
+	process                   *os.Process
+	spawnGeneration           int64
+	initMu                    sync.Mutex
+	parallaxDriverMu          sync.Mutex
+	parallaxDriverCancel      context.CancelFunc
+	parallaxDriverWG          sync.WaitGroup
+	parallaxSyncMu            sync.Mutex
+	parallaxDriverSig         parallaxDriverSignature
+	parallaxDriverSynced      bool
 	parallaxManifestDirMu     sync.Mutex
-	parallaxManifestDirection string // "horizontal" | "vertical" | ""
+	parallaxManifestDirection string
 	workspaceParallaxVertical atomic.Bool
-
-	// extendParallaxGroup is sorted compositor output names that share one spanned
-	// (sliced) static image; used to broadcast workspace parallax to every output.
-	extendParallaxMu    sync.Mutex
-	extendParallaxGroup []string
-
-	// allowManagedChildRespawn is true only after we spawned a child and expect
-	// respawnAfterChildExit to restart it on crash. Cleared in Shutdown so an
-	// intentional backend switch does not resurrect wal-qt in the background.
-	allowManagedChildRespawn atomic.Bool
+	extendParallaxMu          sync.Mutex
+	extendParallaxGroup       []string
+	allowManagedChildRespawn  atomic.Bool
 }
 
 var _ backend.Backend = (*WalQt)(nil)
@@ -157,7 +136,6 @@ func (w *WalQt) Initialize(ctx context.Context) error {
 	}
 	w.initMu.Lock()
 	defer w.initMu.Unlock()
-	// Long poll must not inherit a short-lived caller context (e.g. HTTP).
 	return w.initializeImpl(context.Background())
 }
 
@@ -172,7 +150,6 @@ func (w *WalQt) initializeImpl(ctx context.Context) error {
 		return err
 	}
 
-	// Check if the service is already running.
 	healthCtx, healthCancel := context.WithTimeout(ctx, time.Duration(cfg.ConnectTimeoutMS)*time.Millisecond)
 	initialErr := client.checkHealth(healthCtx)
 	healthCancel()
@@ -184,14 +161,10 @@ func (w *WalQt) initializeImpl(ctx context.Context) error {
 		return nil
 	}
 
-	// If the service is reachable but has a contract mismatch (wrong
-	// service name, API version), don't try to start another instance.
 	if errors.Is(initialErr, errContract) {
 		return fmt.Errorf("wal-qt: %w", initialErr)
 	}
 
-	// Service unreachable -- start it. Use a background-context command so the
-	// process outlives the HTTP request that triggered activation.
 	slog.Info("starting wal-qt",
 		"binary", binaryName,
 		"WAYLAND_DISPLAY", os.Getenv("WAYLAND_DISPLAY"),
@@ -201,7 +174,6 @@ func (w *WalQt) initializeImpl(ctx context.Context) error {
 	cmd := exec.Command(binaryName)
 	cmd.Env = mergeProcessEnv(os.Environ(), cfg.Env)
 	cmd.SysProcAttr = &syscall.SysProcAttr{Pdeathsig: syscall.SIGTERM}
-	// Pipe stdout/stderr through the daemon logger so spawn failures are visible.
 	cmd.Stdout = &slogWriter{prefix: "wal-qt stdout"}
 	cmd.Stderr = &slogWriter{prefix: "wal-qt stderr"}
 	if err := cmd.Start(); err != nil {
@@ -241,8 +213,6 @@ func (w *WalQt) initializeImpl(ctx context.Context) error {
 	return nil
 }
 
-// respawnAfterChildExit runs after our managed child exits; it restarts wal-qt
-// so the daemon does not sit idle until the next explicit wallpaper operation.
 func (w *WalQt) respawnAfterChildExit(exitGen int64) {
 	if !w.allowManagedChildRespawn.Load() {
 		return
@@ -265,7 +235,6 @@ func (w *WalQt) respawnAfterChildExit(exitGen int64) {
 	slog.Info("wal-qt: respawn after child exit succeeded")
 }
 
-// pollHealthUntilReady polls checkHealth with exponential backoff until success or overall deadline (~50s).
 func (w *WalQt) pollHealthUntilReady(ctx context.Context, client *controlClient, cfg *Config) error {
 	deadline := time.Now().Add(50 * time.Second)
 	delay := 150 * time.Millisecond
@@ -308,7 +277,6 @@ func (w *WalQt) pollHealthUntilReady(ctx context.Context, client *controlClient,
 	)
 }
 
-// outputsReadyTimeout bounds the wait for wal-qt to register its outputs.
 const outputsReadyTimeout = 10 * time.Second
 
 func (w *WalQt) pollOutputsUntilReady(ctx context.Context, client *controlClient, cfg *Config) {
@@ -362,7 +330,6 @@ func (w *WalQt) Shutdown(_ context.Context) error {
 	}
 	slog.Info("stopping wal-qt process we started")
 	_ = p.Signal(syscall.SIGTERM)
-	// Spawn goroutine in Initialize owns cmd.Wait; poll until it clears w.process.
 	deadline := time.After(4 * time.Second)
 	tick := time.NewTicker(80 * time.Millisecond)
 	defer tick.Stop()
@@ -384,7 +351,6 @@ func (w *WalQt) Shutdown(_ context.Context) error {
 	}
 }
 
-// ensureRunning verifies the control plane answers health; if not (and not a contract error), runs Initialize.
 func (w *WalQt) ensureRunning(ctx context.Context, cfg *Config) error {
 	client, err := w.makeControlClient(cfg)
 	if err != nil {
@@ -449,10 +415,6 @@ func (w *WalQt) noteWallpaperParallaxDirection(cfg *Config, parallaxDirection st
 	w.recomputeWorkspaceParallaxVertical(cfg)
 }
 
-// parallaxDriverSignature captures the config inputs that require the
-// workspace → parallax-move driver goroutine to be torn down and restarted.
-// Other parallax settings (zoom, easing, axis) are read live or arrive with the
-// next load request, so they do not need a restart.
 type parallaxDriverSignature struct {
 	enabled   bool
 	mode      string
@@ -470,15 +432,6 @@ func parallaxDriverSignatureFromConfig(cfg *Config) parallaxDriverSignature {
 	}
 }
 
-// syncParallaxDriver starts, stops, or restarts the Hyprland/Sway workspace →
-// parallax-move loop and pushes parallax state to wal-qt so /wallpaper/parallax-move
-// is not gated off.
-//
-// It is called from every Apply (RECONFIGURE included) so a settings change takes
-// effect without a restart. When the driver-relevant config is unchanged the
-// goroutine is left running and its per-output workspace state preserved; pass
-// force=true (post-spawn) to re-push parallax state to a fresh wal-qt process even
-// when the config has not changed.
 func (w *WalQt) syncParallaxDriver(cfg *Config, force bool) {
 	if cfg == nil {
 		cfg = defaultConfig()
@@ -532,17 +485,12 @@ func (w *WalQt) syncParallaxDriver(cfg *Config, force bool) {
 		return
 	}
 
-	// Push parallax state to wal-qt. Done on every non-skipped sync because a
-	// respawned wal-qt starts with parallax disabled, which would otherwise make
-	// setParallaxMove drop every move.
 	resetCtx, resetCancel := context.WithTimeout(context.Background(), 2*time.Second)
 	_ = client.setParallax(resetCtx, map[string]any{"enabled": false})
 	_ = client.setParallax(resetCtx, buildParallaxRequestBody(cfg))
 	resetCancel()
 
 	if !restartDriver {
-		// Goroutine already running with this exact config; only the wal-qt-side
-		// parallax state needed re-pushing.
 		return
 	}
 
@@ -608,15 +556,11 @@ func (w *WalQt) RegisterDefaults(v *viper.Viper) {
 	v.SetDefault(viperBackendKey+".env", []string{})
 }
 
-// SetConfigReader wires the concurrency-safe config reader used by every
-// runtime read (loadConfigFromViper etc). Called once at startup, after
-// RegisterDefaults.
 func (w *WalQt) SetConfigReader(r backend.ConfigReader) {
 	w.v = r
 }
 
 func (w *WalQt) ValidateConfig(raw json.RawMessage) error {
-
 	var cfg Config
 	if err := json.Unmarshal(raw, &cfg); err != nil {
 		return fmt.Errorf("wal-qt: parse config: %w", err)
@@ -672,7 +616,6 @@ func (w *WalQt) loadConfigFromViper() *Config {
 		if w.v.IsSet(key) {
 			return w.v.GetBool(key)
 		}
-		// Unset in file: use key so RegisterDefaults / SetDefault applies.
 		return w.v.GetBool(key)
 	}
 
@@ -779,15 +722,6 @@ func (w *WalQt) makeControlClient(cfg *Config) (*controlClient, error) {
 	return newControlClient(cfg)
 }
 
-// SyncRuntimeFromConfig pushes parallax settings to wal-qt so UI toggles
-// apply without waiting for the next wallpaper load. Failures are non-fatal
-// (child may be down); callers should log returned errors and still treat
-// config save as successful.
-//
-// Ordering note: POST /settings/network updates global HTML outbound allow; the host combines it
-// with manifest `capabilities.network` for effective permission and may reload webviews when
-// that effective bit changes.
-// PushWallpaperConfig pushes merged user config to wal-qt for monitors showing this entry path.
 func (w *WalQt) PushWallpaperConfig(ctx context.Context, sourceTarget string, values json.RawMessage) error {
 	cfg := w.loadConfigFromViper()
 	client, err := w.makeControlClient(cfg)
@@ -800,7 +734,6 @@ func (w *WalQt) PushWallpaperConfig(ctx context.Context, sourceTarget string, va
 	return nil
 }
 
-// PushWebCapabilities updates the running wal-qt session for monitors showing this entry.
 func (w *WalQt) PushWebCapabilities(ctx context.Context, sourceTarget string, caps json.RawMessage) error {
 	cfg := w.loadConfigFromViper()
 	client, err := w.makeControlClient(cfg)
@@ -813,7 +746,6 @@ func (w *WalQt) PushWebCapabilities(ctx context.Context, sourceTarget string, ca
 	return nil
 }
 
-// slogWriter is an io.Writer that logs each line via slog at Info level.
 type slogWriter struct{ prefix string }
 
 func (w *slogWriter) Write(p []byte) (int, error) {
@@ -824,14 +756,6 @@ func (w *slogWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-// Apply implements backend.Backend by POSTing a single multi-target /wallpaper/load
-// request built directly from the Snapshot.
-//
-// Wire constraint: each target row has exactly {name, kind, target} — no extra fields.
-// Root-level parallax_direction and wallpaper_config_values are taken from the first
-// WebWallpaper output. If multiple outputs carry different ParallaxDirection or Config
-// values, wal-qt's current API cannot express that per-target; only the first output's
-// values are used (known limitation of the wal-qt wire format).
 func (w *WalQt) Apply(ctx context.Context, snap backend.Snapshot) error {
 	if len(snap.Outputs) == 0 {
 		return nil
@@ -847,13 +771,6 @@ func (w *WalQt) Apply(ctx context.Context, snap backend.Snapshot) error {
 	if err != nil {
 		return err
 	}
-
-	// Push the network permission before loading web content — it only matters
-	// for web wallpapers, so this is skipped for image/video Apply calls to
-	// avoid an extra round-trip on every load. This is also what makes a
-	// runtime toggle of allow_network_wallpapers take effect: PATCH /config/backends/wal-qt
-	// re-applies the active snapshot (control.Controller.UpdateBackendConfig →
-	// Restore), which re-enters here.
 	if strings.EqualFold(loadReq.Kind, "web") {
 		netClient, cerr := w.makeControlClient(cfg)
 		if cerr != nil {
@@ -897,22 +814,14 @@ func (w *WalQt) Apply(ctx context.Context, snap backend.Snapshot) error {
 				return decodeErr
 			}
 			if failErr := loadResultError(result); failErr != nil {
-				// A decoded failed/timeout outcome means the renderer already
-				// tried and reported a real (or truthfully absent) result —
-				// retrying only delays surfacing it by up to ~35s. Return
-				// immediately rather than continuing the retry loop.
 				return failErr
 			}
 
-			// Track parallax direction from the first web output for workspace parallax.
 			if web, ok := snap.Outputs[0].Content.(backend.WebWallpaper); ok {
 				w.noteWallpaperParallaxDirection(cfg, web.ParallaxDirection)
 			} else {
 				w.noteWallpaperParallaxDirection(cfg, "")
 			}
-			// Start/stop/restart the workspace parallax driver for the current
-			// config. Apply is the single funnel for RECONFIGURE, so this is what
-			// makes a parallax settings change take effect without a restart.
 			w.syncParallaxDriver(cfg, false)
 			if loadReq.Parallax != nil {
 				return nil
@@ -940,13 +849,6 @@ func (w *WalQt) Apply(ctx context.Context, snap backend.Snapshot) error {
 	return fmt.Errorf("wal-qt: load request failed without explicit error")
 }
 
-// loadResultError inspects the per-target outcomes wal-qt reported for a
-// /wallpaper/load call and returns an error naming every monitor that did not
-// land, or nil if every target is "applied" or "superseded". A "failed" target
-// carries a renderer-reported error message; a "timeout" target means wal-qt's
-// own loadAckTimeoutMs_ (see config.go's LoadTimeoutMS comment) elapsed before
-// the renderer confirmed either way — in both cases the renderer already gave
-// its answer, so the caller must not retry (see the call site in Apply).
 func loadResultError(result loadResult) error {
 	var bad []string
 	for _, t := range result.Targets {

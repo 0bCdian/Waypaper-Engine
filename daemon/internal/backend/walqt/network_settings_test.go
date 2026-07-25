@@ -6,20 +6,13 @@ import (
 	"net/http/httptest"
 	"sync/atomic"
 	"testing"
+	"waypaper-engine/daemon/internal/backend"
+	"waypaper-engine/daemon/internal/monitor"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/require"
-
-	"waypaper-engine/daemon/internal/backend"
-	"waypaper-engine/daemon/internal/monitor"
 )
 
-// TestApply_PushesAllowNetworkWallpapersForWebOutput is a regression test for
-// cfg.AllowNetworkWallpapers being parsed and defaulted but never transmitted
-// to wal-qt: controlClient.setAllowNetworkWallpapers existed but nothing
-// called it, so the daemon-side network permission toggle was inert (wal-qt
-// always saw its own fail-closed default). Applying a web wallpaper must POST
-// the configured value to /settings/network.
 func TestApply_PushesAllowNetworkWallpapersForWebOutput(t *testing.T) {
 	var sawNetworkPOST atomic.Bool
 	var sawAllow atomic.Bool
@@ -59,7 +52,7 @@ func TestApply_PushesAllowNetworkWallpapersForWebOutput(t *testing.T) {
 
 	v := viper.New()
 	b.RegisterDefaults(v)
-	b.SetConfigReader(v) // *viper.Viper satisfies backend.ConfigReader; mirrors main.go's wiring
+	b.SetConfigReader(v)
 	v.Set(viperBackendKey+".allow_network_wallpapers", true)
 
 	snap := backend.Snapshot{

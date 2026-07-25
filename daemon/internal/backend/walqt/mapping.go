@@ -4,16 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-
 	"waypaper-engine/daemon/internal/backend"
 )
 
 type loadTarget struct {
 	Name   string `json:"name"`
 	Target string `json:"target"`
-	// Kind mirrors the top-level load kind so wal-utauri can resolve each monitor even if the
-	// root `kind` field is omitted or mishandled by a proxy.
-	Kind string `json:"kind,omitempty"`
+	Kind   string `json:"kind,omitempty"`
 }
 
 type transitionParamsBody struct {
@@ -39,7 +36,6 @@ type loadRequest struct {
 	WallpaperConfigValues json.RawMessage       `json:"wallpaper_config_values,omitempty"`
 }
 
-// contentKindString maps a Content variant to the wal-qt wire kind string.
 func contentKindString(c backend.Content) (string, error) {
 	switch c.(type) {
 	case backend.StaticImage, backend.GIF:
@@ -53,16 +49,11 @@ func contentKindString(c backend.Content) (string, error) {
 	}
 }
 
-// buildSnapshotLoadRequest builds a loadRequest from a Snapshot.
-// Each target row has exactly {name, kind, target} — no additional fields.
-// Root-level parallax_direction and wallpaper_config_values come from the first
-// WebWallpaper output; if outputs differ, only the first is used (wal-qt API limitation).
 func buildSnapshotLoadRequest(snap backend.Snapshot, cfg *Config) (loadRequest, error) {
 	if len(snap.Outputs) == 0 {
 		return loadRequest{}, fmt.Errorf("wal-qt: snapshot has no outputs")
 	}
 
-	// Determine root kind from the first output.
 	rootKind, err := contentKindString(snap.Outputs[0].Content)
 	if err != nil {
 		return loadRequest{}, err
@@ -111,14 +102,10 @@ func buildSnapshotLoadRequest(snap backend.Snapshot, cfg *Config) (loadRequest, 
 		out.ImageFitMode = cfg.ImageFitMode
 		out.ImageRendering = cfg.ImageRendering
 	case "video":
-		// AudioEnabled comes from the first Video content.
 		if vid, ok := snap.Outputs[0].Content.(backend.Video); ok {
 			out.AudioEnabled = vid.AudioEnabled
 		}
 	case "web":
-		// Parallax direction and config come from the first WebWallpaper content.
-		// If multiple outputs have different values, only the first is used
-		// (known limitation: wal-qt's LoadBody has no per-target parallax/config fields).
 		if web, ok := snap.Outputs[0].Content.(backend.WebWallpaper); ok {
 			if len(web.Config) > 0 {
 				out.WallpaperConfigValues = web.Config
@@ -158,7 +145,6 @@ type schedulerSnapshot struct {
 	QueuedRequests int    `json:"queued_requests"`
 }
 
-// wallpaperStatusPayload mirrors the `status` object from GET /wallpaper/status (wal-qt).
 type wallpaperStatusPayload struct {
 	TopologyPolicy string                  `json:"topology_policy"`
 	MonitorCount   int                     `json:"monitor_count"`
