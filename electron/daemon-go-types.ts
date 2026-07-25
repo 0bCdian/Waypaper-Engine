@@ -499,7 +499,8 @@ export type EventType =
   | "playlist_no_compatible_item"
   // Connection Events (Electron-only, not from daemon SSE)
   | "sse_disconnected"
-  | "sse_reconnected";
+  | "sse_reconnected"
+  | "system_resumed";
 
 // ============================================================================
 // EVENT PAYLOADS

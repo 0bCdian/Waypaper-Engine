@@ -9,6 +9,7 @@ import {
   globalShortcut,
   Menu,
   nativeImage,
+  powerMonitor,
   protocol,
   Notification,
 } from "electron";
@@ -279,6 +280,14 @@ async function initializeApp(): Promise<void> {
 
       // Native desktop notifications when window is hidden
       setupNativeNotifications();
+
+      // Resync daemon state when the system resumes from suspend — nothing else
+      // in the stack knows a suspend happened, and cached state (e.g. monitors)
+      // goes stale across it.
+      powerMonitor.on("resume", () => {
+        logger.info("system resumed from suspend; requesting state resync");
+        ipcManager.notifySystemResumed();
+      });
     } catch (error) {
       logger.error({ err: error }, "Failed to create tray icon");
     }

@@ -47,5 +47,14 @@ describe("useResyncOnReconnect", () => {
     const { unmount } = renderHook(() => useResyncOnReconnect());
     unmount();
     expect(handlers["sse_reconnected"]).toBeUndefined();
+    expect(handlers["system_resumed"]).toBeUndefined();
+  });
+
+  it("refetches daemon state on system_resumed", async () => {
+    renderHook(() => useResyncOnReconnect());
+
+    handlers["system_resumed"]?.({});
+    await vi.waitFor(() => expect(reQueryMonitors).toHaveBeenCalledTimes(1));
+    expect(refreshActivePlaylist).toHaveBeenCalledTimes(1);
   });
 });
