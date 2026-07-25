@@ -214,10 +214,10 @@ func (h *ImageHandler) Add(w http.ResponseWriter, r *http.Request) {
 	// abort the background goroutine immediately.
 	batchID := h.processor.ProcessBatchWithFolder(context.Background(), req.Paths, req.FolderID)
 
-	httpjson.WriteJSON(w, http.StatusAccepted, map[string]any{
-		"status":   "processing",
-		"total":    len(req.Paths),
-		"batch_id": batchID,
+	httpjson.WriteJSON(w, http.StatusAccepted, AddImagesResponse{
+		Status:  "processing",
+		Total:   len(req.Paths),
+		BatchID: batchID,
 	})
 }
 
@@ -282,9 +282,9 @@ func (h *ImageHandler) CancelImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
-		"status":   "cancelled",
-		"batch_id": req.BatchID,
+	httpjson.WriteJSON(w, http.StatusOK, CancelImportResponse{
+		Status:  "cancelled",
+		BatchID: req.BatchID,
 	})
 }
 
@@ -535,7 +535,7 @@ func (h *ImageHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		Data: map[string]any{"domain": "images"},
 	})
 
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"deleted": count})
+	httpjson.WriteJSON(w, http.StatusOK, DeleteImagesResponse{Deleted: count})
 }
 
 // SelectAll handles POST /images/select-all.
@@ -562,9 +562,9 @@ func (h *ImageHandler) SelectAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
-		"updated":  updated,
-		"selected": body.Selected,
+	httpjson.WriteJSON(w, http.StatusOK, SelectAllResponse{
+		Updated:  updated,
+		Selected: body.Selected,
 	})
 }
 
@@ -584,7 +584,7 @@ func (h *ImageHandler) Tags(w http.ResponseWriter, r *http.Request) {
 	if tags == nil {
 		tags = []string{}
 	}
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"tags": tags})
+	httpjson.WriteJSON(w, http.StatusOK, TagsResponse{Tags: tags})
 }
 
 // resolveThumbnail looks up an image and returns the thumbnail path for the
@@ -749,9 +749,9 @@ func (h *ImageHandler) ExtractVideoPalette(w http.ResponseWriter, r *http.Reques
 		Type: events.GalleryChanged,
 		Data: map[string]any{"domain": "images"},
 	})
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
-		"colors":   colors,
-		"image_id": id,
+	httpjson.WriteJSON(w, http.StatusOK, ExtractVideoPaletteResponse{
+		Colors:  colors,
+		ImageID: id,
 	})
 }
 

@@ -10,6 +10,8 @@ import (
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"waypaper-engine/daemon/internal/image"
 )
 
 func TestHealthHandler_Healthz(t *testing.T) {
@@ -44,6 +46,22 @@ func TestHealthHandler_Info(t *testing.T) {
 	assert.Equal(t, "1.0.0", body["version"])
 	assert.Contains(t, body, "pid")
 	assert.Contains(t, body, "go_version")
+}
+
+func TestHealthHandler_Capabilities(t *testing.T) {
+	h := NewHealthHandler("1.0.0", nil)
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/capabilities", nil)
+	h.Capabilities(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	want, err := json.Marshal(map[string]any{
+		"ffmpeg_available": image.ResolveFfmpeg() != "",
+	})
+	require.NoError(t, err)
+	assert.JSONEq(t, string(want), w.Body.String())
 }
 
 func TestHealthHandler_Shutdown(t *testing.T) {

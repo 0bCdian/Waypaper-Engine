@@ -41,6 +41,27 @@ func TestBackendHandler_List(t *testing.T) {
 	assert.Equal(t, "awww", infos[0].Name)
 }
 
+func TestBackendHandler_Activate_Success(t *testing.T) {
+	mockBackend := &testutil.MockBackend{
+		NameFn:     func() string { return "awww" },
+		ShutdownFn: func(_ context.Context) error { return nil },
+	}
+	reg := &testutil.MockRegistry{
+		ActiveFn:    func() backend.Backend { return mockBackend },
+		SetActiveFn: func(name string) error { return nil },
+	}
+	bus := &testutil.MockBus{}
+	h := NewBackendHandler(reg, control.NewController(&testutil.MockConfigManager{}, reg, bus, nil))
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodPost, "/backends/swaybg/activate", nil)
+	r = testutil.WithChiURLParams(r, map[string]string{"name": "swaybg"})
+	h.Activate(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+	assert.JSONEq(t, `{"status":"activated","backend":"swaybg"}`, w.Body.String())
+}
+
 func TestBackendHandler_Activate_NotRegistered(t *testing.T) {
 	mockBackend := &testutil.MockBackend{
 		NameFn:     func() string { return "awww" },

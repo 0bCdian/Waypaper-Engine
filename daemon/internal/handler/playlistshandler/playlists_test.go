@@ -186,6 +186,42 @@ func TestPlaylistHandler_StopAll(t *testing.T) {
 	t.Skip("StopAll requires a non-nil playlist.Manager; skipping unit test")
 }
 
+// StopAll/PauseAll/ResumeAll/NextAll/PreviousAll all require a non-nil
+// playlist.Manager, which is impractical to fake in this package's unit
+// tests (see TestPlaylistHandler_StopAll above). Per the task's wire-format
+// verification requirement, marshal each new response struct and compare
+// against the exact JSON the old inline map literal produced.
+
+func TestStopAllResponse_WireFormat(t *testing.T) {
+	got, err := json.Marshal(StopAllResponse{Message: "all playlists stopped", Stopped: 2})
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"message":"all playlists stopped","stopped":2}`, string(got))
+}
+
+func TestPauseAllResponse_WireFormat(t *testing.T) {
+	got, err := json.Marshal(PauseAllResponse{Message: "all playlists paused", Paused: 2})
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"message":"all playlists paused","paused":2}`, string(got))
+}
+
+func TestResumeAllResponse_WireFormat(t *testing.T) {
+	got, err := json.Marshal(ResumeAllResponse{Message: "all playlists resumed", Resumed: 2})
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"message":"all playlists resumed","resumed":2}`, string(got))
+}
+
+func TestNextAllResponse_WireFormat(t *testing.T) {
+	got, err := json.Marshal(NextAllResponse{Message: "all playlists advanced", Advanced: 2})
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"message":"all playlists advanced","advanced":2}`, string(got))
+}
+
+func TestPreviousAllResponse_WireFormat(t *testing.T) {
+	got, err := json.Marshal(PreviousAllResponse{Message: "all playlists reversed", Reversed: 2})
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"message":"all playlists reversed","reversed":2}`, string(got))
+}
+
 func TestPlaylistHandler_Get_BadID(t *testing.T) {
 	h := NewPlaylistHandler(&testutil.MockPlaylistStore{}, &testutil.MockStateStore{}, nil, &testutil.MockBus{})
 

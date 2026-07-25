@@ -66,7 +66,7 @@ func (h *FolderHandler) List(w http.ResponseWriter, r *http.Request) {
 		if folders == nil {
 			folders = []store.Folder{}
 		}
-		httpjson.WriteJSON(w, http.StatusOK, map[string]any{"data": folders})
+		httpjson.WriteJSON(w, http.StatusOK, FolderListResponse{Data: folders})
 		return
 	}
 
@@ -79,7 +79,7 @@ func (h *FolderHandler) List(w http.ResponseWriter, r *http.Request) {
 		folders = []store.Folder{}
 	}
 
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"data": folders})
+	httpjson.WriteJSON(w, http.StatusOK, FolderListResponse{Data: folders})
 }
 
 // Get handles GET /folders/{id}.
@@ -129,7 +129,7 @@ func (h *FolderHandler) GetPath(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"data": path})
+	httpjson.WriteJSON(w, http.StatusOK, FolderPathResponse{Data: path})
 }
 
 type createFolderRequest struct {
@@ -284,7 +284,7 @@ func (h *FolderHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		Data: map[string]any{"domain": "images"},
 	})
 
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"deleted": true, "mode": mode})
+	httpjson.WriteJSON(w, http.StatusOK, DeleteFolderResponse{Deleted: true, Mode: mode})
 }
 
 // reparentContents recursively reparents all images from the folder tree to
@@ -444,5 +444,5 @@ func (h *FolderHandler) MoveImages(w http.ResponseWriter, r *http.Request) {
 		Data: map[string]any{"domain": "images"},
 	})
 
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"moved": len(req.ImageIDs)})
+	httpjson.WriteJSON(w, http.StatusOK, MoveImagesResponse{Moved: len(req.ImageIDs)})
 }

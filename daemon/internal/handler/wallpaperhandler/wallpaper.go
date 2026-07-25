@@ -127,11 +127,11 @@ func (h *WallpaperHandler) Set(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.applyWallpaper(r.Context(), img, monitors, req.Mode, "manual"); err != nil {
 		if errors.Is(err, wallpaper.ErrSuperseded) {
-			httpjson.WriteJSON(w, http.StatusOK, map[string]any{
-				"status":   "superseded",
-				"image_id": img.ID,
-				"monitor":  req.Monitor,
-				"mode":     req.Mode,
+			httpjson.WriteJSON(w, http.StatusOK, SetWallpaperResponse{
+				Status:  "superseded",
+				ImageID: img.ID,
+				Monitor: req.Monitor,
+				Mode:    req.Mode,
 			})
 			return
 		}
@@ -143,11 +143,11 @@ func (h *WallpaperHandler) Set(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
-		"status":   "set",
-		"image_id": img.ID,
-		"monitor":  req.Monitor,
-		"mode":     req.Mode,
+	httpjson.WriteJSON(w, http.StatusOK, SetWallpaperResponse{
+		Status:  "set",
+		ImageID: img.ID,
+		Monitor: req.Monitor,
+		Mode:    req.Mode,
 	})
 }
 
@@ -217,11 +217,11 @@ func (h *WallpaperHandler) Random(w http.ResponseWriter, r *http.Request) {
 
 	if err := h.applyWallpaper(r.Context(), img, monitors, req.Mode, "random"); err != nil {
 		if errors.Is(err, wallpaper.ErrSuperseded) {
-			httpjson.WriteJSON(w, http.StatusOK, map[string]any{
-				"status":   "superseded",
-				"image_id": img.ID,
-				"monitor":  req.Monitor,
-				"mode":     req.Mode,
+			httpjson.WriteJSON(w, http.StatusOK, RandomWallpaperResponse{
+				Status:  "superseded",
+				ImageID: img.ID,
+				Monitor: req.Monitor,
+				Mode:    req.Mode,
 			})
 			return
 		}
@@ -233,11 +233,11 @@ func (h *WallpaperHandler) Random(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
-		"status":   "set",
-		"image_id": img.ID,
-		"monitor":  req.Monitor,
-		"mode":     req.Mode,
+	httpjson.WriteJSON(w, http.StatusOK, RandomWallpaperResponse{
+		Status:  "set",
+		ImageID: img.ID,
+		Monitor: req.Monitor,
+		Mode:    req.Mode,
 	})
 }
 
@@ -315,7 +315,7 @@ func (h *WallpaperHandler) ClearHistory(w http.ResponseWriter, r *http.Request) 
 		Data: map[string]any{"domain": "history"},
 	})
 
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"status": "cleared"})
+	httpjson.WriteJSON(w, http.StatusOK, ClearHistoryResponse{Status: "cleared"})
 }
 
 // GetHistory handles GET /images/history.

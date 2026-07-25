@@ -355,9 +355,9 @@ func (h *PlaylistHandler) playlistAdvanceAction(w http.ResponseWriter, r *http.R
 // @Router       /playlists/active/stop [post]
 func (h *PlaylistHandler) StopAll(w http.ResponseWriter, r *http.Request) {
 	count := h.manager.StopAll()
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
-		"message": "all playlists stopped",
-		"stopped": count,
+	httpjson.WriteJSON(w, http.StatusOK, StopAllResponse{
+		Message: "all playlists stopped",
+		Stopped: count,
 	})
 }
 
@@ -369,9 +369,9 @@ func (h *PlaylistHandler) StopAll(w http.ResponseWriter, r *http.Request) {
 // @Router       /playlists/active/pause [post]
 func (h *PlaylistHandler) PauseAll(w http.ResponseWriter, r *http.Request) {
 	count := h.manager.PauseAll(r.Context())
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
-		"message": "all playlists paused",
-		"paused":  count,
+	httpjson.WriteJSON(w, http.StatusOK, PauseAllResponse{
+		Message: "all playlists paused",
+		Paused:  count,
 	})
 }
 
@@ -383,9 +383,9 @@ func (h *PlaylistHandler) PauseAll(w http.ResponseWriter, r *http.Request) {
 // @Router       /playlists/active/resume [post]
 func (h *PlaylistHandler) ResumeAll(w http.ResponseWriter, r *http.Request) {
 	count := h.manager.ResumeAll(r.Context())
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
-		"message": "all playlists resumed",
-		"resumed": count,
+	httpjson.WriteJSON(w, http.StatusOK, ResumeAllResponse{
+		Message: "all playlists resumed",
+		Resumed: count,
 	})
 }
 
@@ -405,9 +405,9 @@ func (h *PlaylistHandler) NextAll(w http.ResponseWriter, r *http.Request) {
 		httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
-		"message":  "all playlists advanced",
-		"advanced": count,
+	httpjson.WriteJSON(w, http.StatusOK, NextAllResponse{
+		Message:  "all playlists advanced",
+		Advanced: count,
 	})
 }
 
@@ -427,9 +427,9 @@ func (h *PlaylistHandler) PreviousAll(w http.ResponseWriter, r *http.Request) {
 		httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
 		return
 	}
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
-		"message":  "all playlists reversed",
-		"reversed": count,
+	httpjson.WriteJSON(w, http.StatusOK, PreviousAllResponse{
+		Message:  "all playlists reversed",
+		Reversed: count,
 	})
 }
 

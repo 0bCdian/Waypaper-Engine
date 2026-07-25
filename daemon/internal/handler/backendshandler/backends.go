@@ -49,8 +49,8 @@ func (h *BackendHandler) Activate(w http.ResponseWriter, r *http.Request) {
 		httpjson.WriteErrorf(w, http.StatusInternalServerError, "activate backend %s: %s", name, err.Error())
 		return
 	}
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
-		"status":  "activated",
-		"backend": result.Backend,
+	httpjson.WriteJSON(w, http.StatusOK, ActivateBackendResponse{
+		Status:  "activated",
+		Backend: result.Backend,
 	})
 }
