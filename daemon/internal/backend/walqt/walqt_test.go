@@ -11,6 +11,9 @@ import (
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+
+	"waypaper-engine/daemon/internal/backend"
+	"waypaper-engine/daemon/internal/monitor"
 )
 
 func TestRegisterDefaultsAndLoadConfig(t *testing.T) {
@@ -73,4 +76,109 @@ func TestInitialize_FailsOnHealthMismatch(t *testing.T) {
 	err := b.Initialize(context.Background())
 	require.Error(t, err)
 	assert.ErrorIs(t, err, errContract)
+}
+
+// newLoadTestSnapshot builds a minimal one-monitor, one-image Snapshot — enough
+// to drive Apply's /wallpaper/load POST without depending on the shape of the
+// wallpaper content.
+func newLoadTestSnapshot() backend.Snapshot {
+	return backend.Snapshot{
+		Outputs: []backend.Output{
+			{
+				Monitor: monitor.Monitor{Name: "DP-1", Width: 1920, Height: 1080},
+				Content: backend.StaticImage{Path_: "/tmp/wall.jpg"},
+			},
+		},
+	}
+}
+
+// TestApply_TrustsPerTargetLoadOutcome covers Task 13 Step 2: Apply must only
+// report success when wal-qt's /wallpaper/load response says every target
+// actually landed (applied/superseded), must return an immediate,
+// non-retried error naming the monitor on a decoded failed/timeout outcome,
+// and must leave the existing transport/HTTP-status retry-and-classify
+// behaviour untouched for non-2xx responses.
+func TestApply_TrustsPerTargetLoadOutcome(t *testing.T) {
+	tests := []struct {
+		name           string
+		loadStatus     int
+		loadBody       string
+		wantErr        bool
+		wantErrIs      error
+		wantErrContain []string
+	}{
+		{
+			name:       "all applied",
+			loadStatus: http.StatusOK,
+			loadBody:   `{"ok":true,"request_id":1,"results":[{"name":"DP-1","outcome":"applied"}]}`,
+			wantErr:    false,
+		},
+		{
+			name:       "mix of applied and superseded",
+			loadStatus: http.StatusOK,
+			loadBody:   `{"ok":true,"request_id":2,"results":[{"name":"DP-1","outcome":"applied"},{"name":"HDMI-A-1","outcome":"superseded"}]}`,
+			wantErr:    false,
+		},
+		{
+			name:           "one failed",
+			loadStatus:     http.StatusOK,
+			loadBody:       `{"ok":false,"request_id":3,"results":[{"name":"DP-1","outcome":"failed","error":"unresolved target: /x/y"}]}`,
+			wantErr:        true,
+			wantErrContain: []string{"DP-1", "unresolved target: /x/y"},
+		},
+		{
+			name:           "one timeout",
+			loadStatus:     http.StatusOK,
+			loadBody:       `{"ok":false,"request_id":4,"results":[{"name":"DP-1","outcome":"timeout"}]}`,
+			wantErr:        true,
+			wantErrContain: []string{"DP-1"},
+		},
+		{
+			name:       "non-2xx uses existing retry/classify behaviour",
+			loadStatus: http.StatusBadRequest,
+			loadBody:   `bad request body`,
+			wantErr:    true,
+			wantErrIs:  errBadRequest,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/health":
+					w.Header().Set("X-API-Version", "0")
+					_ = json.NewEncoder(w).Encode(map[string]any{
+						"ok": true, "service": "wal-qt", "api_version": "0",
+					})
+				case "/wallpaper/load":
+					w.WriteHeader(tt.loadStatus)
+					_, _ = w.Write([]byte(tt.loadBody))
+				default:
+					w.WriteHeader(http.StatusNotFound)
+				}
+			}))
+			t.Cleanup(srv.Close)
+
+			b := &WalQt{
+				makeClient: func(_ *Config) (*controlClient, error) {
+					return newTestControlClient(srv, "wal-qt", "0"), nil
+				},
+			}
+
+			err := b.Apply(context.Background(), newLoadTestSnapshot())
+
+			if !tt.wantErr {
+				require.NoError(t, err)
+				return
+			}
+			require.Error(t, err)
+			if tt.wantErrIs != nil {
+				assert.ErrorIs(t, err, tt.wantErrIs)
+			}
+			for _, want := range tt.wantErrContain {
+				assert.Contains(t, err.Error(), want)
+			}
+		})
+	}
 }

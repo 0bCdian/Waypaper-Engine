@@ -20,6 +20,15 @@ type Config struct {
 	// LoadTimeoutMS bounds the POST /wallpaper/load call. Web wallpaper navigation
 	// can run several seconds end-to-end, so this is much larger than the generic
 	// per-request timeout that fits health/status/parallax calls.
+	//
+	// This must stay comfortably above wal-qt's own loadAckTimeoutMs_ (10000ms,
+	// see wal-qt/src/wallpaper/wallpaper_controller.h). wal-qt's HTTP handler now
+	// blocks until every target reaches a terminal state (applied/superseded/
+	// failed) or its internal 10s deadline elapses, at which point it responds
+	// 200 with per-target outcome "timeout" instead of leaving the request
+	// hanging. If LoadTimeoutMS were <= 10000, the daemon's own context deadline
+	// could fire first, turning a truthful per-target timeout into an ambiguous
+	// transport-level timeout error. Keep the two in sync if either changes.
 	LoadTimeoutMS    int    `mapstructure:"load_timeout_ms" json:"load_timeout_ms"`
 	Transition       string `mapstructure:"transition" json:"transition"`
 	DurationMS       int    `mapstructure:"duration_ms" json:"duration_ms"`

@@ -129,6 +129,20 @@ func (c *controlClient) status(ctx context.Context) (*statusResponse, error) {
 	return &sr, nil
 }
 
+// loadResult is the decoded body of a successful (2xx) POST /wallpaper/load
+// response: the per-target outcomes the renderer actually confirmed.
+type loadResult struct {
+	OK        bool
+	RequestID int
+	Targets   []loadTargetResult
+}
+
+type loadTargetResult struct {
+	Name    string
+	Outcome string // "applied", "superseded", "failed", or "timeout"
+	Error   string // present only when Outcome == "failed"
+}
+
 func (c *controlClient) load(ctx context.Context, req loadRequest) (int, string, error) {
 	loadCtx, cancel := context.WithTimeout(ctx, c.loadTimeout)
 	defer cancel()
@@ -143,6 +157,32 @@ func (c *controlClient) load(ctx context.Context, req loadRequest) (int, string,
 		return resp.StatusCode, "", err
 	}
 	return resp.StatusCode, body, nil
+}
+
+// decodeLoadResult parses a 2xx POST /wallpaper/load body into the per-target
+// outcomes wal-qt reports. Callers use this to distinguish a truthful
+// success/failure from the bare fact that the HTTP call returned 2xx.
+func decodeLoadResult(body string) (loadResult, error) {
+	var payload walqtclient.LoadResponse
+	if err := json.Unmarshal([]byte(body), &payload); err != nil {
+		return loadResult{}, fmt.Errorf("%w: decode load response: %v", errContract, err)
+	}
+	out := loadResult{
+		OK:        payload.Ok,
+		RequestID: payload.RequestId,
+		Targets:   make([]loadTargetResult, 0, len(payload.Results)),
+	}
+	for _, r := range payload.Results {
+		tr := loadTargetResult{
+			Name:    r.Name,
+			Outcome: string(r.Outcome),
+		}
+		if r.Error != nil {
+			tr.Error = *r.Error
+		}
+		out.Targets = append(out.Targets, tr)
+	}
+	return out, nil
 }
 
 func (c *controlClient) setAllowNetworkWallpapers(ctx context.Context, allow bool) error {
@@ -304,7 +344,6 @@ func loadRequestToGenerated(req loadRequest) walqtclient.LoadRequest {
 		out.Target = &req.Target
 	}
 	out.AudioEnabled = &req.AudioEnabled
-	out.WaitForCompletion = &req.WaitForCompletion
 	if req.DurationMS > 0 {
 		out.DurationMs = &req.DurationMS
 	}

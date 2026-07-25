@@ -306,32 +306,6 @@ func (w *WalQt) pollHealthUntilReady(ctx context.Context, client *controlClient,
 	)
 }
 
-const statusDialRetries = 12
-const statusDialBackoff = 250 * time.Millisecond
-
-// getStatusWithRetry tolerates a cold control socket right after spawn or during restore.
-func (w *WalQt) getStatusWithRetry(ctx context.Context, client *controlClient) (*statusResponse, error) {
-	var lastErr error
-	for attempt := range statusDialRetries {
-		if attempt > 0 {
-			select {
-			case <-time.After(statusDialBackoff):
-			case <-ctx.Done():
-				return nil, ctx.Err()
-			}
-		}
-		st, err := client.status(ctx)
-		if err == nil {
-			return st, nil
-		}
-		lastErr = err
-		if !isRetryableControlStatusErr(err) {
-			return nil, err
-		}
-	}
-	return nil, lastErr
-}
-
 func (w *WalQt) Shutdown(_ context.Context) error {
 	w.allowManagedChildRespawn.Store(false)
 
@@ -862,6 +836,18 @@ func (w *WalQt) Apply(ctx context.Context, snap backend.Snapshot) error {
 		}
 
 		if statusCode >= 200 && statusCode < 300 {
+			result, decodeErr := decodeLoadResult(body)
+			if decodeErr != nil {
+				return decodeErr
+			}
+			if failErr := loadResultError(result); failErr != nil {
+				// A decoded failed/timeout outcome means the renderer already
+				// tried and reported a real (or truthfully absent) result —
+				// retrying only delays surfacing it by up to ~35s. Return
+				// immediately rather than continuing the retry loop.
+				return failErr
+			}
+
 			// Track parallax direction from the first web output for workspace parallax.
 			if web, ok := snap.Outputs[0].Content.(backend.WebWallpaper); ok {
 				w.noteWallpaperParallaxDirection(cfg, web.ParallaxDirection)
@@ -896,4 +882,31 @@ func (w *WalQt) Apply(ctx context.Context, snap backend.Snapshot) error {
 		return fmt.Errorf("wal-qt: load request failed after %d attempt(s): %w", loadAttempts, lastErr)
 	}
 	return fmt.Errorf("wal-qt: load request failed without explicit error")
+}
+
+// loadResultError inspects the per-target outcomes wal-qt reported for a
+// /wallpaper/load call and returns an error naming every monitor that did not
+// land, or nil if every target is "applied" or "superseded". A "failed" target
+// carries a renderer-reported error message; a "timeout" target means wal-qt's
+// own loadAckTimeoutMs_ (see config.go's LoadTimeoutMS comment) elapsed before
+// the renderer confirmed either way — in both cases the renderer already gave
+// its answer, so the caller must not retry (see the call site in Apply).
+func loadResultError(result loadResult) error {
+	var bad []string
+	for _, t := range result.Targets {
+		switch t.Outcome {
+		case "applied", "superseded":
+			continue
+		case "failed":
+			bad = append(bad, fmt.Sprintf("%s: %s", t.Name, t.Error))
+		case "timeout":
+			bad = append(bad, fmt.Sprintf("%s: timed out waiting for renderer ack", t.Name))
+		default:
+			bad = append(bad, fmt.Sprintf("%s: unrecognized outcome %q", t.Name, t.Outcome))
+		}
+	}
+	if len(bad) == 0 {
+		return nil
+	}
+	return fmt.Errorf("wal-qt: load did not land on all monitors: %s", strings.Join(bad, "; "))
 }

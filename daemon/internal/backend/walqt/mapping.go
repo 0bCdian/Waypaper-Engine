@@ -35,7 +35,6 @@ type loadRequest struct {
 	DurationMS            int                   `json:"duration_ms,omitempty"`
 	ImageFitMode          string                `json:"image_fit_mode,omitempty"`
 	ImageRendering        string                `json:"image_rendering,omitempty"`
-	WaitForCompletion     bool                  `json:"wait_for_completion"`
 	Parallax              map[string]any        `json:"parallax,omitempty"`
 	WallpaperConfigValues json.RawMessage       `json:"wallpaper_config_values,omitempty"`
 }
@@ -104,7 +103,6 @@ func buildSnapshotLoadRequest(snap backend.Snapshot, cfg *Config) (loadRequest, 
 			WaveAmplitudePercent: cfg.TransitionWaveAmplitudePercent,
 			WaveFrequency:        cfg.TransitionWaveFrequency,
 		},
-		WaitForCompletion: true,
 	}
 	out.Parallax = buildParallaxRequestBody(cfg)
 
