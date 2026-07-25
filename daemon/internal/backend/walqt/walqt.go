@@ -808,6 +808,22 @@ func (w *WalQt) Apply(ctx context.Context, snap backend.Snapshot) error {
 		return err
 	}
 
+	// Push the network permission before loading web content — it only matters
+	// for web wallpapers, so this is skipped for image/video Apply calls to
+	// avoid an extra round-trip on every load. This is also what makes a
+	// runtime toggle of allow_network_wallpapers take effect: PATCH /config/backends/wal-qt
+	// re-applies the active snapshot (control.Controller.UpdateBackendConfig →
+	// Restore), which re-enters here.
+	if strings.EqualFold(loadReq.Kind, "web") {
+		netClient, cerr := w.makeControlClient(cfg)
+		if cerr != nil {
+			return cerr
+		}
+		if err := netClient.setAllowNetworkWallpapers(ctx, cfg.AllowNetworkWallpapers); err != nil {
+			return fmt.Errorf("wal-qt: push network settings: %w", err)
+		}
+	}
+
 	const loadAttempts = 7
 	delay := 200 * time.Millisecond
 	const maxDelay = 5 * time.Second
