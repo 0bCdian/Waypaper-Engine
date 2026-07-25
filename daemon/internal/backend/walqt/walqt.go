@@ -179,6 +179,7 @@ func (w *WalQt) initializeImpl(ctx context.Context) error {
 
 	if initialErr == nil {
 		slog.Info("wal-qt already running")
+		w.pollOutputsUntilReady(ctx, client, cfg)
 		w.syncParallaxDriver(w.loadConfigFromViper(), true)
 		return nil
 	}
@@ -233,6 +234,7 @@ func (w *WalQt) initializeImpl(ctx context.Context) error {
 	if err := w.pollHealthUntilReady(ctx, client, cfg); err != nil {
 		return err
 	}
+	w.pollOutputsUntilReady(ctx, client, cfg)
 	slog.Info("wal-qt ready after spawn")
 	w.allowManagedChildRespawn.Store(true)
 	w.syncParallaxDriver(w.loadConfigFromViper(), true)
@@ -303,6 +305,38 @@ func (w *WalQt) pollHealthUntilReady(ctx context.Context, client *controlClient,
 		"wal-qt: unavailable after %d health poll attempts (~50s, last error: %w). "+
 			"Ensure the binary runs on Wayland and "+viperBackendKey+".socket_path matches the child",
 		attempts, lastErr,
+	)
+}
+
+// outputsReadyTimeout bounds the wait for wal-qt to register its outputs.
+const outputsReadyTimeout = 10 * time.Second
+
+func (w *WalQt) pollOutputsUntilReady(ctx context.Context, client *controlClient, cfg *Config) {
+	deadline := time.Now().Add(outputsReadyTimeout)
+	delay := 100 * time.Millisecond
+	const maxDelay = time.Second
+	attempts := 0
+
+	for time.Now().Before(deadline) {
+		attempts++
+		statusCtx, cancel := context.WithTimeout(ctx, time.Duration(cfg.RequestTimeoutMS)*time.Millisecond)
+		st, err := client.status(statusCtx)
+		cancel()
+		if err == nil && st.Status.MonitorCount > 0 {
+			slog.Info("wal-qt outputs ready", "monitors", st.Status.MonitorCount, "poll_attempts", attempts)
+			return
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(delay):
+		}
+		delay = min(delay*2, maxDelay)
+	}
+
+	slog.Warn("wal-qt reported no outputs before timeout; applying anyway",
+		"timeout", outputsReadyTimeout,
+		"poll_attempts", attempts,
 	)
 }
 
