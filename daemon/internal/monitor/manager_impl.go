@@ -9,14 +9,8 @@ import (
 	"sync"
 )
 
-// monitorManager is the concrete MonitorManager implementation.
-//
-// At construction it filters providers by compositor type and sorts them by
-// descending priority. Provider selection happens lazily on the first
-// Detect: candidates are tried in order; a candidate that returns
-// ErrProviderNotApplicable is skipped, any other error is surfaced
-// immediately, and the first successful candidate is pinned for the
-// lifetime of the manager.
+// monitorManager tries candidates in priority order on first Detect, skipping
+// those returning ErrProviderNotApplicable, then pins the winner for its life.
 type monitorManager struct {
 	compositor CompositorType
 	candidates []MonitorProvider

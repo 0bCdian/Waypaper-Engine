@@ -7,26 +7,8 @@ import (
 	"github.com/ostafen/clover/v2/query"
 )
 
-// IDAllocator provides atomic auto-increment integer IDs for CloverDB
-// collections. CloverDB only generates random string _id values, so stores
-// that need sequential integer primary keys embed this allocator.
-//
-// Usage:
-//
-//	type myStore struct {
-//	    db *clover.DB
-//	    IDAllocator
-//	}
-//
-//	func newMyStore(db *clover.DB) *myStore {
-//	    s := &myStore{db: db}
-//	    s.IDAllocator.Init(db, "my_collection")
-//	    return s
-//	}
-//
-//	func (s *myStore) Create(item Item) {
-//	    item.ID = s.Next()
-//	}
+// IDAllocator hands out sequential integer IDs. CloverDB only generates random
+// string _id values, so stores needing integer primary keys embed this.
 type IDAllocator struct {
 	nextID atomic.Int64
 }
