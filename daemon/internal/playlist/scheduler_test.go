@@ -633,3 +633,47 @@ func TestPauseResumeDoesNotLeakSchedulerGoroutines(t *testing.T) {
 		})
 	}
 }
+
+// Regression: dayOfWeekScheduler.Start fired its callback from a goroutine before
+// startPlaylist could call Pause(), so a playlist restored in the paused state
+// applied a wallpaper anyway — racing the concurrent wallpaper.Restore.
+func TestStartPausedSuppressesInitialCallback(t *testing.T) {
+	var calls atomic.Int32
+
+	s := NewScheduler(SchedulerConfig{
+		Type:        "day_of_week",
+		TotalImages: 7,
+		StartPaused: true,
+	})
+	t.Cleanup(s.Stop)
+
+	s.Start(func(int) bool {
+		calls.Add(1)
+		return true
+	})
+
+	time.Sleep(150 * time.Millisecond)
+
+	assert.Equal(t, int32(0), calls.Load(),
+		"a scheduler started paused must not fire its initial callback")
+	assert.Nil(t, s.NextChangeAt(),
+		"a paused scheduler must not advertise a next change time")
+}
+
+// The unpaused path must keep firing immediately for today's weekday.
+func TestDayOfWeekFiresImmediatelyWhenNotPaused(t *testing.T) {
+	var calls atomic.Int32
+
+	s := NewScheduler(SchedulerConfig{Type: "day_of_week", TotalImages: 7})
+	t.Cleanup(s.Stop)
+
+	s.Start(func(int) bool {
+		calls.Add(1)
+		return true
+	})
+
+	require.Eventually(t, func() bool { return calls.Load() == 1 },
+		2*time.Second, 20*time.Millisecond,
+		"day_of_week must apply today's slide on start")
+	assert.NotNil(t, s.NextChangeAt())
+}

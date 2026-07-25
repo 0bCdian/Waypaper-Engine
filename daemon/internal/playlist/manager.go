@@ -124,6 +124,8 @@ func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target moni
 		applyRow = tIdx[tCur]
 	}
 
+	resumePaused := opts.fromPersisted && pl.Playback != nil && pl.Playback.Paused
+
 	sched := NewScheduler(SchedulerConfig{
 		Type:         pl.Configuration.Type,
 		Interval:     pl.Configuration.Interval,
@@ -133,6 +135,7 @@ func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target moni
 		TimeSlots:    timeSlots,
 		TimerIndices: tIdx,
 		TimerCursor:  tCur,
+		StartPaused:  resumePaused,
 	})
 
 	playCtx, playCancel := context.WithCancel(context.Background())
@@ -174,7 +177,6 @@ func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target moni
 	})
 
 	monNames := monitorNames(monitors)
-	resumePaused := opts.fromPersisted && pl.Playback != nil && pl.Playback.Paused
 	nextAt := sched.NextChangeAt()
 	if resumePaused {
 		nextAt = nil
@@ -194,10 +196,6 @@ func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target moni
 	}
 	updateInstanceIndex(&instance, pl, effectiveIdx)
 	m.stateStore.SetActivePlaylist(instance)
-
-	if resumePaused {
-		run.sched.Pause()
-	}
 
 	if inst := m.stateStore.GetActivePlaylistByID(pl.ID); inst != nil {
 		m.persistPlaybackWithInst(ctx, pl.ID, inst, true)

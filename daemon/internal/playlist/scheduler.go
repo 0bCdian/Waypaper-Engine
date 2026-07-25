@@ -44,6 +44,10 @@ type SchedulerConfig struct {
 	// TimerIndices + TimerCursor restore timer+random traversal (length must match TotalImages).
 	TimerIndices []int
 	TimerCursor  int
+	// StartPaused constructs the scheduler already paused. Set when restoring a
+	// playlist that was paused at shutdown, so Start() performs no initial
+	// callback — pausing after Start() races the day_of_week immediate fire.
+	StartPaused bool
 }
 
 // TimeSlot maps a minute-since-midnight to an image index.
@@ -136,6 +140,7 @@ func newTimerScheduler(cfg SchedulerConfig) *timerScheduler {
 		s.currentIndex = cfg.StartIndex
 		s.indices = s.buildIndices()
 	}
+	s.paused = cfg.StartPaused
 	return s
 }
 
@@ -173,8 +178,10 @@ func (s *timerScheduler) buildIndices() []int {
 func (s *timerScheduler) Start(callback func(int) bool) {
 	s.mu.Lock()
 	s.callback = callback
-	n := time.Now().Add(s.interval)
-	s.nextChange = &n
+	if !s.paused {
+		n := time.Now().Add(s.interval)
+		s.nextChange = &n
+	}
 	s.mu.Unlock()
 	go s.runLoop()
 }
@@ -377,6 +384,7 @@ func newTimeOfDayScheduler(cfg SchedulerConfig) *timeOfDayScheduler {
 		slots:    cfg.TimeSlots,
 		stopCh:   make(chan struct{}),
 		resumeCh: make(chan struct{}, 1),
+		paused:   cfg.StartPaused,
 	}
 }
 
@@ -385,9 +393,11 @@ func (s *timeOfDayScheduler) Start(callback func(int) bool) {
 	s.callback = callback
 	// Publish the first deadline before returning: Manager.startPlaylist reads
 	// NextChangeAt() synchronously to build ActivePlaylistInstance.
-	if _, dur := s.nextTransition(); dur > 0 {
-		next := time.Now().Add(dur)
-		s.nextChange = &next
+	if !s.paused {
+		if _, dur := s.nextTransition(); dur > 0 {
+			next := time.Now().Add(dur)
+			s.nextChange = &next
+		}
 	}
 	s.mu.Unlock()
 
@@ -529,27 +539,33 @@ func newDayOfWeekScheduler(cfg SchedulerConfig) *dayOfWeekScheduler {
 		totalImages: cfg.TotalImages,
 		stopCh:      make(chan struct{}),
 		resumeCh:    make(chan struct{}, 1),
+		paused:      cfg.StartPaused,
 	}
 }
 
 func (s *dayOfWeekScheduler) Start(callback func(int) bool) {
 	s.mu.Lock()
 	s.callback = callback
-	// Publish tomorrow's rollover before returning — see timeOfDayScheduler.Start.
-	now := time.Now()
-	tomorrow := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
-	s.nextChange = &tomorrow
+	paused := s.paused
+	if !paused {
+		// Publish tomorrow's rollover before returning — see timeOfDayScheduler.Start.
+		now := time.Now()
+		tomorrow := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
+		s.nextChange = &tomorrow
+	}
 	s.mu.Unlock()
 
 	// Fire immediately for today's weekday.
 	go func() {
-		weekday := int(time.Now().Weekday())
-		idx := min(weekday, s.totalImages-1)
-		s.mu.Lock()
-		cb := s.callback
-		s.mu.Unlock()
-		if cb != nil {
-			_ = cb(idx)
+		if !paused {
+			weekday := int(time.Now().Weekday())
+			idx := min(weekday, s.totalImages-1)
+			s.mu.Lock()
+			cb := s.callback
+			s.mu.Unlock()
+			if cb != nil {
+				_ = cb(idx)
+			}
 		}
 		s.scheduleNext()
 	}()
