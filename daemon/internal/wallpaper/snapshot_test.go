@@ -10,6 +10,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
@@ -668,6 +669,43 @@ func TestBuildSnapshot_InfraErrorPropagated(t *testing.T) {
 
 	require.Error(t, err)
 	assert.True(t, errors.Is(err, errInfra))
+}
+
+// Regression: BuildSnapshot grouped by (image_id, mode) and never deduped by
+// monitor name, so duplicate monitor_state rows produced two Outputs for one
+// monitor and the backend picked arbitrarily. Newest SetAt must win.
+func TestBuildSnapshot_DedupesDuplicateRowsPerMonitor(t *testing.T) {
+	dir := t.TempDir()
+	img1Path := writeTempPNG(t, dir, "img1.png")
+	img2Path := writeTempPNG(t, dir, "img2.png")
+
+	img1 := &store.Image{ID: 1, Path: img1Path, MediaType: "image"}
+	img2 := &store.Image{ID: 2, Path: img2Path, MediaType: "image"}
+	mon1 := monitor.Monitor{Name: "DP-1", Width: 1920, Height: 1080}
+
+	older := time.Now().Add(-time.Hour)
+	newer := time.Now()
+
+	states := []store.MonitorState{
+		{MonitorName: "DP-1", ImageID: 1, Mode: "individual", SetAt: older},
+		{MonitorName: "DP-1", ImageID: 2, Mode: "individual", SetAt: newer},
+	}
+
+	snap, _, err := callBuildSnapshot(
+		context.Background(), states, makeConnected(mon1),
+		newMockImageStore(img1, img2), nil,
+		&snapshotMockBackend{caps: staticOnlyCaps()},
+		&snapshotMockMonitorStateStore{}, &snapshotMockHistoryStore{}, &snapshotMockPlaylistStore{},
+		nil, false,
+	)
+	require.NoError(t, err)
+
+	require.Len(t, snap.Outputs, 1, "one monitor must yield exactly one output")
+	assert.Equal(t, "DP-1", snap.Outputs[0].Monitor.Name)
+
+	si, ok := snap.Outputs[0].Content.(backend.StaticImage)
+	require.True(t, ok)
+	assert.Equal(t, img2Path, si.Path_, "the newest row (image 2) must win")
 }
 
 // failingImageStore always returns the given error from GetByID.

@@ -3,6 +3,7 @@ package store_test
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -968,6 +969,44 @@ func TestMonitorStateStore_GetUnknown(t *testing.T) {
 	got, err := ms.Get(context.Background(), "nonexistent")
 	require.NoError(t, err)
 	assert.Nil(t, got)
+}
+
+// Regression: Set was a non-atomic delete-then-insert with no unique index, so
+// concurrent writers for the same monitor could leave two rows behind — which
+// made restore emit two Outputs for one monitor and pick arbitrarily.
+func TestMonitorStateStore_ConcurrentSetKeepsExactlyOneRow(t *testing.T) {
+	db := testutil.OpenTestDB(t)
+	ms := db.MonitorStateStore()
+	ctx := context.Background()
+
+	var wg sync.WaitGroup
+	for i := range 40 {
+		wg.Add(1)
+		go func(n int) {
+			defer wg.Done()
+			_ = ms.Set(ctx, store.MonitorState{
+				MonitorName: "DP-1",
+				ImageID:     n + 1,
+				ImageName:   "img",
+				ImagePath:   "/tmp/img.png",
+				Mode:        "individual",
+				Backend:     "test",
+				SetAt:       time.Now(),
+			})
+		}(i)
+	}
+	wg.Wait()
+
+	all, err := ms.GetAll(ctx)
+	require.NoError(t, err)
+
+	count := 0
+	for _, s := range all {
+		if s.MonitorName == "DP-1" {
+			count++
+		}
+	}
+	assert.Equal(t, 1, count, "expected exactly one row for DP-1, got %d", count)
 }
 
 // ---------------------------------------------------------------------------
