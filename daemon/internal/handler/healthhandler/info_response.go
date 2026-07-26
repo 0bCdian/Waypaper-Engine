@@ -1,6 +1,5 @@
 package healthhandler
 
-// InfoResponse is the JSON body for GET /info.
 type InfoResponse struct {
 	Version   string `json:"version"`
 	PID       int    `json:"pid"`

@@ -6,22 +6,19 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
-
-	"github.com/go-chi/chi/v5"
-
 	"waypaper-engine/daemon/internal/events"
 	"waypaper-engine/daemon/internal/handler/httpjson"
 	"waypaper-engine/daemon/internal/store"
+
+	"github.com/go-chi/chi/v5"
 )
 
-// FolderHandler handles all /folders endpoints.
 type FolderHandler struct {
 	folderStore store.FolderStore
 	imageStore  store.ImageStore
 	bus         events.Bus
 }
 
-// NewFolderHandler creates a FolderHandler.
 func NewFolderHandler(folderStore store.FolderStore, imageStore store.ImageStore, bus events.Bus) *FolderHandler {
 	return &FolderHandler{
 		folderStore: folderStore,
@@ -30,7 +27,6 @@ func NewFolderHandler(folderStore store.FolderStore, imageStore store.ImageStore
 	}
 }
 
-// List handles GET /folders.
 func (h *FolderHandler) List(w http.ResponseWriter, r *http.Request) {
 	q := r.URL.Query()
 
@@ -73,7 +69,6 @@ func (h *FolderHandler) List(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteJSON(w, http.StatusOK, FolderListResponse{Data: folders})
 }
 
-// Get handles GET /folders/{id}.
 func (h *FolderHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id, err := httpjson.ParseIntParam(chi.URLParam(r, "id"))
 	if err != nil {
@@ -90,7 +85,6 @@ func (h *FolderHandler) Get(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteJSON(w, http.StatusOK, folder)
 }
 
-// GetPath handles GET /folders/{id}/path.
 func (h *FolderHandler) GetPath(w http.ResponseWriter, r *http.Request) {
 	id, err := httpjson.ParseIntParam(chi.URLParam(r, "id"))
 	if err != nil {
@@ -112,7 +106,6 @@ type createFolderRequest struct {
 	ParentID *int   `json:"parent_id"`
 }
 
-// Create handles POST /folders.
 func (h *FolderHandler) Create(w http.ResponseWriter, r *http.Request) {
 	var req createFolderRequest
 	if err := httpjson.ParseBody(r, &req); err != nil {
@@ -143,7 +136,6 @@ func (h *FolderHandler) Create(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteJSON(w, http.StatusCreated, folder)
 }
 
-// Update handles PATCH /folders/{id}.
 func (h *FolderHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id, err := httpjson.ParseIntParam(chi.URLParam(r, "id"))
 	if err != nil {
@@ -234,8 +226,6 @@ func (h *FolderHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteJSON(w, http.StatusOK, DeleteFolderResponse{Deleted: true, Mode: mode})
 }
 
-// reparentContents recursively reparents all images from the folder tree to
-// newParentID, then deletes all subfolders (depth-first).
 func (h *FolderHandler) reparentContents(ctx context.Context, folderID int, newParentID *int) error {
 	var parentVal any
 	if newParentID != nil {
@@ -251,9 +241,7 @@ func (h *FolderHandler) reparentContents(ctx context.Context, folderID int, newP
 	return h.deleteSubfoldersRecursive(ctx, folderID)
 }
 
-// reparentImagesRecursive moves all images in folderID and its subfolders to targetParent.
 func (h *FolderHandler) reparentImagesRecursive(ctx context.Context, folderID int, targetParent any) error {
-	// Reparent images in this folder (paginated).
 	for {
 		page, err := h.imageStore.GetAll(ctx, store.ImageQueryOpts{
 			FolderID: &folderID,
@@ -273,7 +261,6 @@ func (h *FolderHandler) reparentImagesRecursive(ctx context.Context, folderID in
 		}
 	}
 
-	// Recurse into subfolders.
 	subfolders, err := h.folderStore.GetAll(ctx, &folderID)
 	if err != nil {
 		return err
@@ -287,7 +274,6 @@ func (h *FolderHandler) reparentImagesRecursive(ctx context.Context, folderID in
 	return nil
 }
 
-// deleteSubfoldersRecursive deletes all subfolders under folderID (depth-first).
 func (h *FolderHandler) deleteSubfoldersRecursive(ctx context.Context, folderID int) error {
 	subfolders, err := h.folderStore.GetAll(ctx, &folderID)
 	if err != nil {
@@ -304,9 +290,7 @@ func (h *FolderHandler) deleteSubfoldersRecursive(ctx context.Context, folderID 
 	return nil
 }
 
-// deleteAllContents recursively deletes all images and subfolders within a folder.
 func (h *FolderHandler) deleteAllContents(ctx context.Context, folderID int) error {
-	// Delete images in this folder.
 	for {
 		allImages, err := h.imageStore.GetAll(ctx, store.ImageQueryOpts{
 			FolderID: &folderID,
@@ -328,7 +312,6 @@ func (h *FolderHandler) deleteAllContents(ctx context.Context, folderID int) err
 		}
 	}
 
-	// Recursively delete subfolders.
 	subfolders, err := h.folderStore.GetAll(ctx, &folderID)
 	if err != nil {
 		return err
@@ -345,14 +328,11 @@ func (h *FolderHandler) deleteAllContents(ctx context.Context, folderID int) err
 	return nil
 }
 
-// MoveImages handles POST /folders/move-images.
-// Moves images to a target folder (or root if folder_id is null).
 type moveImagesRequest struct {
 	ImageIDs []int `json:"image_ids"`
 	FolderID *int  `json:"folder_id"`
 }
 
-// MoveImages moves images to a folder.
 func (h *FolderHandler) MoveImages(w http.ResponseWriter, r *http.Request) {
 	var req moveImagesRequest
 	if err := httpjson.ParseBody(r, &req); err != nil {
