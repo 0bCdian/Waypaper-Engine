@@ -90,7 +90,7 @@ async function atomProtocolResponse(request: Request, filePath: string): Promise
     const { start, end } = range;
     const chunkSize = end - start + 1;
     const nodeStream = createReadStream(filePath, { start, end });
-    const webStream = Readable.toWeb(nodeStream);
+    const webStream = Readable.toWeb(nodeStream as unknown as NodeJS.ReadableStream);
     return new Response(webStream as unknown as BodyInit, {
       status: 206,
       headers: {
@@ -103,7 +103,7 @@ async function atomProtocolResponse(request: Request, filePath: string): Promise
   }
 
   const nodeStream = createReadStream(filePath);
-  const webStream = Readable.toWeb(nodeStream);
+  const webStream = Readable.toWeb(nodeStream as unknown as NodeJS.ReadableStream);
   return new Response(webStream as unknown as BodyInit, {
     status: 200,
     headers: {
