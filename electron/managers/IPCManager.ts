@@ -61,6 +61,11 @@ export class IPCManager {
     this.windows.add(window);
   }
 
+  /** Broadcasts a system-resume signal to all renderer windows so they can resync daemon state. */
+  notifySystemResumed(): void {
+    this.broadcastToAllWindows("go-daemon-event-system_resumed", {});
+  }
+
   registerHandler(handler: IPCHandler): void {
     if (this.handlers.has(handler.channel)) {
       logger.warn({ channel: handler.channel }, "IPC handler already exists for channel");

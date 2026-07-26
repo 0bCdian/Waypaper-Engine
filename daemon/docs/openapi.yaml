@@ -39,7 +39,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/StatusOk"
+                $ref: "#/components/schemas/HealthzResponse"
   /info:
     get:
       tags: [health]
@@ -51,8 +51,19 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties: true
+                $ref: "#/components/schemas/InfoResponse"
+  /capabilities:
+    get:
+      tags: [health]
+      operationId: getCapabilities
+      summary: System-level capabilities (independent of active backend)
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CapabilitiesResponse"
   /shutdown:
     post:
       tags: [health]
@@ -141,7 +152,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GenericJSON"
+                $ref: "#/components/schemas/AddImagesResponse"
     delete:
       tags: [images]
       operationId: deleteImages
@@ -157,7 +168,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GenericJSON"
+                $ref: "#/components/schemas/DeleteImagesResponse"
   /images/import-web:
     post:
       tags: [images]
@@ -183,7 +194,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GenericJSON"
+                $ref: "#/components/schemas/TagsResponse"
   /images/history:
     get:
       tags: [images, wallpaper]
@@ -204,7 +215,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GenericJSON"
+                $ref: "#/components/schemas/ClearHistoryResponse"
   /images/cancel-import:
     post:
       tags: [images]
@@ -216,7 +227,12 @@ paths:
             schema:
               $ref: "#/components/schemas/GenericJSON"
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CancelImportResponse"
   /images/select-all:
     post:
       tags: [images]
@@ -232,7 +248,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GenericJSON"
+                $ref: "#/components/schemas/SelectAllResponse"
   /images/{id}:
     get:
       tags: [images]
@@ -307,14 +323,7 @@ paths:
           content:
             application/json:
               schema:
-                type: object
-                required: [colors, image_id]
-                properties:
-                  colors:
-                    type: array
-                    items: { type: string }
-                  image_id:
-                    type: integer
+                $ref: "#/components/schemas/ExtractVideoPaletteResponse"
   /images/{id}/thumbnail:
     get:
       tags: [images]
@@ -393,7 +402,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GenericJSON"
+                $ref: "#/components/schemas/StopAllResponse"
   /playlists/active/pause:
     post:
       tags: [playlists]
@@ -403,7 +412,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GenericJSON"
+                $ref: "#/components/schemas/PauseAllResponse"
   /playlists/active/resume:
     post:
       tags: [playlists]
@@ -413,7 +422,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GenericJSON"
+                $ref: "#/components/schemas/ResumeAllResponse"
   /playlists/active/next:
     post:
       tags: [playlists]
@@ -423,7 +432,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GenericJSON"
+                $ref: "#/components/schemas/NextAllResponse"
   /playlists/active/previous:
     post:
       tags: [playlists]
@@ -433,7 +442,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GenericJSON"
+                $ref: "#/components/schemas/PreviousAllResponse"
   /playlists/{id}:
     get:
       tags: [playlists]
@@ -527,7 +536,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GenericJSON"
+                $ref: "#/components/schemas/FolderListResponse"
     post:
       tags: [folders]
       operationId: createFolder
@@ -552,7 +561,12 @@ paths:
             schema:
               $ref: "#/components/schemas/GenericJSON"
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/MoveImagesResponse"
   /folders/{id}:
     get:
       tags: [folders]
@@ -584,7 +598,12 @@ paths:
       operationId: deleteFolder
       parameters: [$ref: "#/components/parameters/FolderIdPath"]
       responses:
-        "200": { description: OK }
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteFolderResponse"
   /folders/{id}/path:
     get:
       tags: [folders]
@@ -595,7 +614,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GenericJSON"
+                $ref: "#/components/schemas/FolderPathResponse"
 
   /monitors:
     get:
@@ -742,7 +761,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GenericJSON"
+                $ref: "#/components/schemas/WallpaperCurrentResponse"
   /wallpaper/set:
     post:
       tags: [wallpaper]
@@ -757,7 +776,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GenericJSON"
+                $ref: "#/components/schemas/SetWallpaperResponse"
   /wallpaper/random:
     post:
       tags: [wallpaper]
@@ -772,7 +791,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/GenericJSON"
+                $ref: "#/components/schemas/RandomWallpaperResponse"
 
 components:
   parameters:
@@ -895,21 +914,19 @@ components:
     BackendCapabilities:
       type: object
       properties:
+        content_kinds:
+          type: array
+          items: { type: string }
         compositors:
           type: array
           items: { type: string }
-        media_types:
-          type: array
-          items: { type: string }
-        transitions: { type: boolean }
-        per_monitor: { type: boolean }
-        daemon_process: { type: boolean }
     BackendInfo:
       type: object
       required: [name, available]
       properties:
         name: { type: string }
         available: { type: boolean }
+        active: { type: boolean }
         capabilities:
           $ref: "#/components/schemas/BackendCapabilities"
     ActivateBackendResponse:
@@ -941,3 +958,180 @@ components:
           type: integer
         details:
           type: string
+        error_code:
+          type: string
+        meta:
+          type: object
+          additionalProperties: true
+    HealthzResponse:
+      type: object
+      description: GET /healthz body (`healthhandler.HealthzResponse`).
+      properties:
+        status: { type: string, example: ok }
+        monitor_stack_version: { type: integer }
+        monitor_provider_order:
+          type: array
+          items: { type: string }
+    InfoResponse:
+      type: object
+      description: GET /info body (`healthhandler.InfoResponse`).
+      properties:
+        version: { type: string }
+        pid: { type: integer }
+        hostname: { type: string }
+        uptime: { type: string }
+        go_version: { type: string }
+        os: { type: string }
+        arch: { type: string }
+    CapabilitiesResponse:
+      type: object
+      description: GET /capabilities body (`healthhandler.CapabilitiesResponse`).
+      properties:
+        ffmpeg_available: { type: boolean }
+    AddImagesResponse:
+      type: object
+      description: POST /images body (`imageshandler.AddImagesResponse`).
+      properties:
+        status: { type: string }
+        total: { type: integer }
+        batch_id: { type: string }
+    DeleteImagesResponse:
+      type: object
+      description: DELETE /images body (`imageshandler.DeleteImagesResponse`).
+      properties:
+        deleted: { type: integer }
+    TagsResponse:
+      type: object
+      description: GET /images/tags body (`imageshandler.TagsResponse`).
+      properties:
+        tags:
+          type: array
+          items: { type: string }
+    CancelImportResponse:
+      type: object
+      description: POST /images/cancel-import body (`imageshandler.CancelImportResponse`).
+      properties:
+        status: { type: string }
+        batch_id: { type: string }
+    SelectAllResponse:
+      type: object
+      description: POST /images/select-all body (`imageshandler.SelectAllResponse`).
+      properties:
+        updated: { type: integer }
+        selected: { type: boolean }
+    ExtractVideoPaletteResponse:
+      type: object
+      description: POST /images/{id}/extract-video-palette body (`imageshandler.ExtractVideoPaletteResponse`).
+      required: [colors, image_id]
+      properties:
+        colors:
+          type: array
+          items: { type: string }
+        image_id: { type: integer }
+    ClearHistoryResponse:
+      type: object
+      description: DELETE /images/history body (`wallpaperhandler.ClearHistoryResponse`).
+      properties:
+        status: { type: string }
+    SetWallpaperResponse:
+      type: object
+      description: POST /wallpaper/set body (`wallpaperhandler.SetWallpaperResponse`).
+      properties:
+        status: { type: string }
+        image_id: { type: integer }
+        monitor: { type: string }
+        mode: { type: string }
+    RandomWallpaperResponse:
+      type: object
+      description: POST /wallpaper/random body (`wallpaperhandler.RandomWallpaperResponse`).
+      properties:
+        status: { type: string }
+        image_id: { type: integer }
+        monitor: { type: string }
+        mode: { type: string }
+    WallpaperCurrentSlot:
+      type: object
+      description: One monitor entry within WallpaperCurrentResponse.monitors (`wallpaperhandler.WallpaperCurrentSlot`).
+      properties:
+        monitor_name: { type: string }
+        image_id: { type: integer }
+        image_name: { type: string }
+        image_path: { type: string }
+        set_at: { type: string, format: date-time }
+    WallpaperCurrentResponse:
+      type: object
+      description: GET /wallpaper/current body (`wallpaperhandler.WallpaperCurrentResponse`).
+      properties:
+        backend: { type: string }
+        image_id: { type: integer }
+        image_name: { type: string }
+        image_path: { type: string }
+        mode: { type: string }
+        monitors:
+          type: array
+          items: { $ref: "#/components/schemas/WallpaperCurrentSlot" }
+        set_at: { type: string, format: date-time }
+    StopAllResponse:
+      type: object
+      description: POST /playlists/active/stop body (`playlistshandler.StopAllResponse`).
+      properties:
+        message: { type: string }
+        stopped: { type: integer }
+    PauseAllResponse:
+      type: object
+      description: POST /playlists/active/pause body (`playlistshandler.PauseAllResponse`).
+      properties:
+        message: { type: string }
+        paused: { type: integer }
+    ResumeAllResponse:
+      type: object
+      description: POST /playlists/active/resume body (`playlistshandler.ResumeAllResponse`).
+      properties:
+        message: { type: string }
+        resumed: { type: integer }
+    NextAllResponse:
+      type: object
+      description: POST /playlists/active/next body (`playlistshandler.NextAllResponse`).
+      properties:
+        message: { type: string }
+        advanced: { type: integer }
+    PreviousAllResponse:
+      type: object
+      description: POST /playlists/active/previous body (`playlistshandler.PreviousAllResponse`).
+      properties:
+        message: { type: string }
+        reversed: { type: integer }
+    MoveImagesResponse:
+      type: object
+      description: POST /folders/move-images body (`foldershandler.MoveImagesResponse`).
+      properties:
+        moved: { type: integer }
+    DeleteFolderResponse:
+      type: object
+      description: DELETE /folders/{id} body (`foldershandler.DeleteFolderResponse`).
+      properties:
+        deleted: { type: boolean }
+        mode: { type: string }
+    FolderRow:
+      type: object
+      description: One folder row (`store.Folder`); nested item shape is not verified by the apispec test.
+      properties:
+        id: { type: integer }
+        name: { type: string }
+        parent_id: { type: integer, nullable: true }
+        created_at: { type: string, format: date-time }
+        updated_at: { type: string, format: date-time }
+    FolderListResponse:
+      type: object
+      description: GET /folders body (`foldershandler.FolderListResponse`).
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/FolderRow" }
+    FolderPathResponse:
+      type: object
+      description: GET /folders/{id}/path body (`foldershandler.FolderPathResponse`).
+      properties:
+        data:
+          type: array
+          items: { $ref: "#/components/schemas/FolderRow" }

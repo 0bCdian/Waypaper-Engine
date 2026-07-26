@@ -6,10 +6,8 @@ import (
 	"strings"
 )
 
-// defaultParallaxEasing matches wal-utauri ParallaxConfig::default().easing.
 var defaultParallaxEasing = [4]float32{0.215, 0.610, 0.355, 1.000}
 
-// parallaxZoomFromPercent converts UI percent (100–200) to Rust scale (>= 1.0).
 func parallaxZoomFromPercent(pct int) float32 {
 	if pct <= 0 {
 		return 1.2 // match tauri default when unset
@@ -21,7 +19,6 @@ func parallaxZoomFromPercent(pct int) float32 {
 	return z
 }
 
-// parseParallaxEasingOrDefault parses "x1,y1,x2,y2" from config; on failure returns defaults.
 func parseParallaxEasingOrDefault(s string) [4]float32 {
 	s = strings.TrimSpace(s)
 	if s == "" {
@@ -51,7 +48,6 @@ func isFiniteFloat32(f float32) bool {
 	return !math.IsNaN(x) && !math.IsInf(x, 0)
 }
 
-// buildParallaxRequestBody builds JSON for POST /wallpaper/parallax (wal-utauri ParallaxBody).
 func buildParallaxRequestBody(cfg *Config) map[string]any {
 	if cfg == nil {
 		cfg = defaultConfig()

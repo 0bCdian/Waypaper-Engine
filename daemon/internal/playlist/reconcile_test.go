@@ -295,6 +295,12 @@ func TestReconcileAfterPlaylistUpdate_ShortInterval_TickShowsNextImage(t *testin
 	ts.interval = 20 * time.Millisecond
 	ts.mu.Unlock()
 
+	// runLoop is already parked on a timer built from the old 3600s interval;
+	// assigning ts.interval does not disturb it. AfterManualNavigation blocks
+	// until the loop restarts its wait, so the new interval is in effect on
+	// return. Without it this test races the reconcile's own sync and flakes.
+	ts.AfterManualNavigation(resolvePlaylistRowForPlayback(stateStore.GetActivePlaylistByID(3), playlistStore.playlists[3]))
+
 	// Wait for at least one tick beyond the reconcile re-apply.
 	deadline := time.Now().Add(500 * time.Millisecond)
 	var img4Seen bool

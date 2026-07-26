@@ -16,8 +16,7 @@ export function sliceArgvAfterDaemonMarker(argv: readonly string[]): string[] | 
 
 /**
  * When argv contains `--daemon`, spawn the bundled `waypaper-daemon` detached,
- * then exit this process as soon as the child has started — Electron does not
- * stay running alongside the daemon (no `app.quit` / shutdown plumbing).
+ * then exit this process as soon as the child has started
  *
  * @returns `true` if daemon forwarding was engaged — caller must **not** run
  * normal Electron startup (`requestSingleInstanceLock`, windows, etc.).

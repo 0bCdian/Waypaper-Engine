@@ -5,10 +5,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
-
+	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/monitor"
-
-	"github.com/spf13/viper"
 )
 
 // Below the native zwlr_output_management provider; used when that protocol is
@@ -17,14 +15,10 @@ const walqtMonitorProviderPriority = 25
 
 // walqtMonitorProvider lists monitors from GET /wallpaper/status topology on the control socket.
 type walqtMonitorProvider struct {
-	v *viper.Viper
+	v backend.ConfigReader
 }
 
-// NewMonitorProvider returns a monitor.MonitorProvider backed by wal-qt's control API.
-// Pass the same *viper.Viper used for daemon config; socket_path and API expectations are read
-// from backend.wal-qt when set, otherwise defaults match RegisterDefaults / defaultConfig
-// (including defaultSocketPath).
-func NewMonitorProvider(v *viper.Viper) monitor.MonitorProvider {
+func NewMonitorProvider(v backend.ConfigReader) monitor.MonitorProvider {
 	return &walqtMonitorProvider{v: v}
 }
 
@@ -50,9 +44,6 @@ func (p *walqtMonitorProvider) Detect(ctx context.Context) ([]monitor.Monitor, e
 		return nil, fmt.Errorf("%w: wal-qt control client init: %v", monitor.ErrProviderNotApplicable, err)
 	}
 
-	// Health check determines applicability — the control sidecar isn't
-	// always running. A successful health check pins us as the chosen provider;
-	// after that, status failures are real errors, not "try someone else."
 	healthCtx, cancel := withHealthTimeout(ctx, cfg)
 	if err := client.checkHealth(healthCtx); err != nil {
 		cancel()
@@ -67,8 +58,6 @@ func (p *walqtMonitorProvider) Detect(ctx context.Context) ([]monitor.Monitor, e
 	return topologyToEngineMonitors(st.Status.Topology), nil
 }
 
-// withHealthTimeout derives a short-lived context for the health-check probe
-// from the configured request timeout (defaulting to 1500ms).
 func withHealthTimeout(parent context.Context, cfg *Config) (context.Context, context.CancelFunc) {
 	timeout := time.Duration(cfg.RequestTimeoutMS) * time.Millisecond
 	if timeout <= 0 {
@@ -94,7 +83,6 @@ func topologyToEngineMonitors(topology []topologyEntry) []monitor.Monitor {
 	return out
 }
 
-// controlConfig builds connection settings for the control client (subset of full backend config).
 func (p *walqtMonitorProvider) controlConfig() *Config {
 	cfg := defaultConfig()
 	if p.v == nil {

@@ -4,31 +4,26 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"sync"
 )
 
-// SwitchOpts controls the behavior of SwitchActiveBackend.
 type SwitchOpts struct {
-	// PersistConfig writes the new backend name to config when true.
-	// User-driven activation sets this to true; auto-mode switches set it to false
-	// to avoid rewriting config.toml every playlist tick.
 	PersistConfig bool
 }
 
-// ConfigPersister writes the active backend type to the persistent config.
 type ConfigPersister interface {
 	SetActiveBackendType(name string) error
 }
 
-// SwitchActiveBackend shuts down the current backend, activates the named one,
-// and initializes it. On init failure it rolls back to the previous backend.
-//
-// Callers are responsible for any post-switch work (restore wallpapers, apply
-// a specific wallpaper, fire SSE events, etc.) — this function only handles
-// the lifecycle transition.
-func SwitchActiveBackend(ctx context.Context, reg Registry, name string, cfg ConfigPersister, opts SwitchOpts) error {
+var switchMu sync.Mutex
+
+func SwitchActiveBackend(ctx context.Context, reg Registry, name string, cfg ConfigPersister, opts SwitchOpts) (Backend, error) {
+	switchMu.Lock()
+	defer switchMu.Unlock()
+
 	current := reg.Active()
 	if current != nil && current.Name() == name {
-		return nil
+		return current, nil
 	}
 
 	if current != nil {
@@ -41,15 +36,18 @@ func SwitchActiveBackend(ctx context.Context, reg Registry, name string, cfg Con
 		if current != nil {
 			_ = rollback(ctx, reg, current.Name())
 		}
-		return fmt.Errorf("set active %q: %w", name, err)
+		return nil, fmt.Errorf("set active %q: %w", name, err)
 	}
 
 	newBackend := reg.Active()
+	if newBackend == nil {
+		return nil, fmt.Errorf("backend %q disappeared from registry after activation", name)
+	}
 	if err := newBackend.Initialize(ctx); err != nil {
 		if current != nil {
 			_ = rollback(ctx, reg, current.Name())
 		}
-		return fmt.Errorf("initialize %q: %w", name, err)
+		return nil, fmt.Errorf("initialize %q: %w", name, err)
 	}
 
 	if opts.PersistConfig && cfg != nil {
@@ -59,7 +57,7 @@ func SwitchActiveBackend(ctx context.Context, reg Registry, name string, cfg Con
 	}
 
 	slog.Info("backend switched", "from", backendName(current), "to", name, "persisted", opts.PersistConfig)
-	return nil
+	return newBackend, nil
 }
 
 func rollback(ctx context.Context, reg Registry, name string) error {

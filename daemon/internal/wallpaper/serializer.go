@@ -62,3 +62,19 @@ func (g *applyGate) release(key string, t *applyTicket) {
 }
 
 var defaultApplyGate = newApplyGate()
+
+// withApplyGate runs fn holding the per-backend apply gate. Returns ErrSuperseded
+// when a newer call preempted this one. Every path that drives a backend to a new
+// visual state must go through here, or the DB and the screen can disagree.
+func withApplyGate(ctx context.Context, key string, fn func(context.Context) error) error {
+	gateCtx, ticket := defaultApplyGate.acquire(ctx, key)
+	defer defaultApplyGate.release(key, ticket)
+
+	if err := fn(gateCtx); err != nil {
+		if ticket.preempted.Load() {
+			return ErrSuperseded
+		}
+		return err
+	}
+	return nil
+}

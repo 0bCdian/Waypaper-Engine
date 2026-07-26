@@ -4,7 +4,7 @@ import { useMonitorStore } from "../stores/monitors";
 import { useActivePlaylistStore } from "../stores/activePlaylistStore";
 import { useShallow } from "zustand/react/shallow";
 import type { rendererPlaylist } from "../types/rendererTypes";
-import { useEffect, useRef } from "react";
+import { useEffect } from "react";
 import type { ActivePlaylistInstance, MonitorMode } from "../../electron/daemon-go-types";
 import { daemonClient } from "@/client";
 
@@ -20,6 +20,70 @@ function monitorSetsMatch(
   return playlistMonitors.every((m) => a.has(m));
 }
 
+/**
+ * Refetches the active playlist for the current monitor selection and syncs
+ * usePlaylistStore / useActivePlaylistStore with the result. This is the same
+ * logic useSetLastActivePlaylist's daemon-event listeners use to stay current;
+ * useResyncOnReconnect calls it after an SSE reconnect or system resume, when
+ * events published during the gap were dropped and never reached those listeners.
+ */
+export async function refreshActivePlaylist(): Promise<void> {
+  const { selectedMonitors, mode } = useMonitorStore.getState().monitorSelection;
+  if (selectedMonitors.length === 0) {
+    usePlaylistStore.getState().clearPlaylist();
+    useActivePlaylistStore.getState().clear();
+    return;
+  }
+
+  let activePlaylists: ActivePlaylistInstance[] | undefined;
+  try {
+    activePlaylists = await daemonClient.getActivePlaylists();
+  } catch {
+    return;
+  }
+
+  if (!activePlaylists || activePlaylists.length === 0) {
+    usePlaylistStore.getState().clearPlaylist();
+    useActivePlaylistStore.getState().clear();
+    return;
+  }
+
+  const match = activePlaylists.find((ap) =>
+    monitorSetsMatch(selectedMonitors, mode, ap.monitors, ap.mode),
+  );
+
+  if (!match) {
+    usePlaylistStore.getState().clearPlaylist();
+    useActivePlaylistStore.getState().clear();
+    return;
+  }
+
+  useActivePlaylistStore.getState().setActivePlaylist(match);
+
+  if (useActivePlaylistStore.getState().lastSyncedPlaylistId === match.playlist_id) return;
+
+  try {
+    const fullPlaylist = await daemonClient.getPlaylist(match.playlist_id);
+    if (!fullPlaylist || !fullPlaylist.images || fullPlaylist.images.length < 1) {
+      return;
+    }
+
+    useActivePlaylistStore.getState().setLastSyncedPlaylistId(match.playlist_id);
+    const currentPlaylist: rendererPlaylist = {
+      id: fullPlaylist.id,
+      name: fullPlaylist.name,
+      configuration: fullPlaylist.configuration,
+      images: fullPlaylist.images,
+    };
+    usePlaylistStore.getState().setPlaylist(currentPlaylist);
+    await useImagesStore
+      .getState()
+      .fetchMissingImages(fullPlaylist.images.map((img) => img.image_id));
+  } catch {
+    // Playlist fetch failed — keep current state
+  }
+}
+
 export function useSetLastActivePlaylist() {
   const { setPlaylist, clearPlaylist } = usePlaylistStore(
     useShallow((s) => ({
@@ -30,7 +94,6 @@ export function useSetLastActivePlaylist() {
   const monitorSelection = useMonitorStore((s) => s.monitorSelection);
   const setActivePlaylist = useActivePlaylistStore((s) => s.setActivePlaylist);
   const clearActivePlaylist = useActivePlaylistStore((s) => s.clear);
-  const lastSyncedIdRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (monitorSelection.selectedMonitors.length === 0) {
@@ -49,7 +112,6 @@ export function useSetLastActivePlaylist() {
         if (!activePlaylists || activePlaylists.length === 0) {
           clearPlaylist();
           clearActivePlaylist();
-          lastSyncedIdRef.current = null;
           return;
         }
 
@@ -65,13 +127,12 @@ export function useSetLastActivePlaylist() {
         if (!match) {
           clearPlaylist();
           clearActivePlaylist();
-          lastSyncedIdRef.current = null;
           return;
         }
 
         setActivePlaylist(match);
 
-        if (lastSyncedIdRef.current === match.playlist_id) {
+        if (useActivePlaylistStore.getState().lastSyncedPlaylistId === match.playlist_id) {
           return;
         }
 
@@ -83,7 +144,7 @@ export function useSetLastActivePlaylist() {
           return;
         }
 
-        lastSyncedIdRef.current = match.playlist_id;
+        useActivePlaylistStore.getState().setLastSyncedPlaylistId(match.playlist_id);
         const currentPlaylist: rendererPlaylist = {
           id: fullPlaylist.id,
           name: fullPlaylist.name,
@@ -105,66 +166,6 @@ export function useSetLastActivePlaylist() {
   }, [monitorSelection, setPlaylist, clearPlaylist, setActivePlaylist, clearActivePlaylist]);
 
   useEffect(() => {
-    async function refreshActivePlaylist() {
-      const { selectedMonitors, mode } = useMonitorStore.getState().monitorSelection;
-      if (selectedMonitors.length === 0) {
-        usePlaylistStore.getState().clearPlaylist();
-        useActivePlaylistStore.getState().clear();
-        lastSyncedIdRef.current = null;
-        return;
-      }
-
-      let activePlaylists: ActivePlaylistInstance[] | undefined;
-      try {
-        activePlaylists = await daemonClient.getActivePlaylists();
-      } catch {
-        return;
-      }
-
-      if (!activePlaylists || activePlaylists.length === 0) {
-        usePlaylistStore.getState().clearPlaylist();
-        useActivePlaylistStore.getState().clear();
-        lastSyncedIdRef.current = null;
-        return;
-      }
-
-      const match = activePlaylists.find((ap) =>
-        monitorSetsMatch(selectedMonitors, mode, ap.monitors, ap.mode),
-      );
-
-      if (!match) {
-        usePlaylistStore.getState().clearPlaylist();
-        useActivePlaylistStore.getState().clear();
-        lastSyncedIdRef.current = null;
-        return;
-      }
-
-      useActivePlaylistStore.getState().setActivePlaylist(match);
-
-      if (lastSyncedIdRef.current === match.playlist_id) return;
-
-      try {
-        const fullPlaylist = await daemonClient.getPlaylist(match.playlist_id);
-        if (!fullPlaylist || !fullPlaylist.images || fullPlaylist.images.length < 1) {
-          return;
-        }
-
-        lastSyncedIdRef.current = match.playlist_id;
-        const currentPlaylist: rendererPlaylist = {
-          id: fullPlaylist.id,
-          name: fullPlaylist.name,
-          configuration: fullPlaylist.configuration,
-          images: fullPlaylist.images,
-        };
-        usePlaylistStore.getState().setPlaylist(currentPlaylist);
-        await useImagesStore
-          .getState()
-          .fetchMissingImages(fullPlaylist.images.map((img) => img.image_id));
-      } catch {
-        // Playlist fetch failed — keep current state
-      }
-    }
-
     const disposers = [
       daemonClient.on("playlist_started", () => {
         void refreshActivePlaylist();

@@ -20,12 +20,6 @@ func NewMonitorHandler(manager monitor.MonitorManager) *MonitorHandler {
 }
 
 // List handles GET /monitors.
-//
-// @Summary      List connected monitors
-// @Tags         monitors
-// @Success      200  {array}   monitor.Monitor
-// @Failure      500  {object}  httpjson.APIError
-// @Router       /monitors [get]
 func (h *MonitorHandler) List(w http.ResponseWriter, r *http.Request) {
 	// Force refresh to ensure fresh data.
 	if err := h.manager.Refresh(r.Context()); err != nil {
@@ -43,13 +37,6 @@ func (h *MonitorHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 // Get handles GET /monitors/{name}.
-//
-// @Summary      Get a monitor by name
-// @Tags         monitors
-// @Param        name  path      string  true  "Monitor name"
-// @Success      200   {object}  monitor.Monitor
-// @Failure      404   {object}  httpjson.APIError
-// @Router       /monitors/{name} [get]
 func (h *MonitorHandler) Get(w http.ResponseWriter, r *http.Request) {
 	name := chi.URLParam(r, "name")
 

@@ -8,7 +8,6 @@ import (
 	"strconv"
 )
 
-// WriteJSON writes a JSON response with the given status code.
 func WriteJSON(w http.ResponseWriter, status int, data any) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -17,7 +16,6 @@ func WriteJSON(w http.ResponseWriter, status int, data any) {
 	}
 }
 
-// APIError is the standard error response format.
 type APIError struct {
 	Error     string         `json:"error"`
 	Code      int            `json:"code"`
@@ -26,7 +24,6 @@ type APIError struct {
 	Meta      map[string]any `json:"meta,omitempty"`
 }
 
-// WriteError writes a JSON error response.
 func WriteError(w http.ResponseWriter, status int, message string) {
 	WriteJSON(w, status, APIError{
 		Error: message,
@@ -34,12 +31,10 @@ func WriteError(w http.ResponseWriter, status int, message string) {
 	})
 }
 
-// WriteErrorf writes a formatted JSON error response.
 func WriteErrorf(w http.ResponseWriter, status int, format string, args ...any) {
 	WriteError(w, status, fmt.Sprintf(format, args...))
 }
 
-// WriteStructuredError writes a JSON error with a machine-readable error_code and optional metadata.
 func WriteStructuredError(w http.ResponseWriter, status int, errorCode string, message string, meta map[string]any) {
 	WriteJSON(w, status, APIError{
 		Error:     message,
@@ -49,7 +44,6 @@ func WriteStructuredError(w http.ResponseWriter, status int, errorCode string, m
 	})
 }
 
-// ParseBody decodes a JSON request body into the target.
 func ParseBody(r *http.Request, target any) error {
 	if r.Body == nil {
 		return fmt.Errorf("request body is empty")

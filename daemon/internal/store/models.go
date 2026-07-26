@@ -343,6 +343,7 @@ type ActivePlaylistState struct {
 	Paused          bool       `json:"paused"`
 	StartedAt       time.Time  `json:"started_at"`
 	NextChangeAt    *time.Time `json:"next_change_at"`
+	SlotStartedAt   *time.Time `json:"slot_started_at"`
 }
 
 // ActivePlaylistInstance represents a running playlist and the monitors it owns.

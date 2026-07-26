@@ -4,16 +4,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"strings"
-
 	"waypaper-engine/daemon/internal/backend"
 )
 
 type loadTarget struct {
 	Name   string `json:"name"`
 	Target string `json:"target"`
-	// Kind mirrors the top-level load kind so wal-utauri can resolve each monitor even if the
-	// root `kind` field is omitted or mishandled by a proxy.
-	Kind string `json:"kind,omitempty"`
+	Kind   string `json:"kind,omitempty"`
 }
 
 type transitionParamsBody struct {
@@ -35,12 +32,10 @@ type loadRequest struct {
 	DurationMS            int                   `json:"duration_ms,omitempty"`
 	ImageFitMode          string                `json:"image_fit_mode,omitempty"`
 	ImageRendering        string                `json:"image_rendering,omitempty"`
-	WaitForCompletion     bool                  `json:"wait_for_completion"`
 	Parallax              map[string]any        `json:"parallax,omitempty"`
 	WallpaperConfigValues json.RawMessage       `json:"wallpaper_config_values,omitempty"`
 }
 
-// contentKindString maps a Content variant to the wal-qt wire kind string.
 func contentKindString(c backend.Content) (string, error) {
 	switch c.(type) {
 	case backend.StaticImage, backend.GIF:
@@ -54,16 +49,11 @@ func contentKindString(c backend.Content) (string, error) {
 	}
 }
 
-// buildSnapshotLoadRequest builds a loadRequest from a Snapshot.
-// Each target row has exactly {name, kind, target} — no additional fields.
-// Root-level parallax_direction and wallpaper_config_values come from the first
-// WebWallpaper output; if outputs differ, only the first is used (wal-qt API limitation).
 func buildSnapshotLoadRequest(snap backend.Snapshot, cfg *Config) (loadRequest, error) {
 	if len(snap.Outputs) == 0 {
 		return loadRequest{}, fmt.Errorf("wal-qt: snapshot has no outputs")
 	}
 
-	// Determine root kind from the first output.
 	rootKind, err := contentKindString(snap.Outputs[0].Content)
 	if err != nil {
 		return loadRequest{}, err
@@ -104,7 +94,6 @@ func buildSnapshotLoadRequest(snap backend.Snapshot, cfg *Config) (loadRequest, 
 			WaveAmplitudePercent: cfg.TransitionWaveAmplitudePercent,
 			WaveFrequency:        cfg.TransitionWaveFrequency,
 		},
-		WaitForCompletion: true,
 	}
 	out.Parallax = buildParallaxRequestBody(cfg)
 
@@ -113,14 +102,10 @@ func buildSnapshotLoadRequest(snap backend.Snapshot, cfg *Config) (loadRequest, 
 		out.ImageFitMode = cfg.ImageFitMode
 		out.ImageRendering = cfg.ImageRendering
 	case "video":
-		// AudioEnabled comes from the first Video content.
 		if vid, ok := snap.Outputs[0].Content.(backend.Video); ok {
 			out.AudioEnabled = vid.AudioEnabled
 		}
 	case "web":
-		// Parallax direction and config come from the first WebWallpaper content.
-		// If multiple outputs have different values, only the first is used
-		// (known limitation: wal-qt's LoadBody has no per-target parallax/config fields).
 		if web, ok := snap.Outputs[0].Content.(backend.WebWallpaper); ok {
 			if len(web.Config) > 0 {
 				out.WallpaperConfigValues = web.Config
@@ -160,7 +145,6 @@ type schedulerSnapshot struct {
 	QueuedRequests int    `json:"queued_requests"`
 }
 
-// wallpaperStatusPayload mirrors the `status` object from GET /wallpaper/status (wal-qt).
 type wallpaperStatusPayload struct {
 	TopologyPolicy string                  `json:"topology_policy"`
 	MonitorCount   int                     `json:"monitor_count"`
@@ -182,80 +166,4 @@ type topologyEntry struct {
 	X      int     `json:"x"`
 	Y      int     `json:"y"`
 	Model  *string `json:"model,omitempty"`
-}
-
-const topologyGeometryEpsilonPx = 2.0
-
-// TopologyMonitorMatch returns the compositor output name whose geometry matches bounds.
-func TopologyMonitorMatch(topo []topologyEntry, x, y, width, height float64) (string, bool) {
-	for _, e := range topo {
-		if approxEqTopology(float64(e.X), x) &&
-			approxEqTopology(float64(e.Y), y) &&
-			approxEqTopology(float64(e.Width), width) &&
-			approxEqTopology(float64(e.Height), height) {
-			return e.Name, true
-		}
-	}
-	return "", false
-}
-
-// TopologyMonitorContainingCenter returns the topology entry whose rectangle contains
-// the center of bounds, preferring the smallest area when rects overlap (unlikely).
-func TopologyMonitorContainingCenter(topo []topologyEntry, x, y, width, height float64) (string, bool) {
-	if width <= 0 || height <= 0 {
-		return "", false
-	}
-	cx := x + width*0.5
-	cy := y + height*0.5
-	var best *topologyEntry
-	var bestArea int64 = 1<<62 - 1
-	for i := range topo {
-		e := &topo[i]
-		ex, ey := float64(e.X), float64(e.Y)
-		ew, eh := float64(e.Width), float64(e.Height)
-		if cx < ex || cx > ex+ew || cy < ey || cy > ey+eh {
-			continue
-		}
-		area := int64(e.Width) * int64(e.Height)
-		if area < bestArea {
-			best = e
-			bestArea = area
-		}
-	}
-	if best != nil {
-		return best.Name, true
-	}
-	return "", false
-}
-
-// TopologyMonitorMatchByPosition returns the topology entry whose X, Y matches bounds origin.
-func TopologyMonitorMatchByPosition(topo []topologyEntry, x, y float64) (string, bool) {
-	for _, e := range topo {
-		if approxEqTopology(float64(e.X), x) && approxEqTopology(float64(e.Y), y) {
-			return e.Name, true
-		}
-	}
-	return "", false
-}
-
-// ResolveParallaxMonitor picks a compositor output name using geometry-derived topology matching.
-func ResolveParallaxMonitor(topo []topologyEntry, boundsX, boundsY, boundsW, boundsH float64) (string, bool) {
-	if n, ok := TopologyMonitorMatch(topo, boundsX, boundsY, boundsW, boundsH); ok {
-		return n, true
-	}
-	if n, ok := TopologyMonitorMatchByPosition(topo, boundsX, boundsY); ok {
-		return n, true
-	}
-	if n, ok := TopologyMonitorContainingCenter(topo, boundsX, boundsY, boundsW, boundsH); ok {
-		return n, true
-	}
-	return "", false
-}
-
-func approxEqTopology(a, b float64) bool {
-	d := a - b
-	if d < 0 {
-		d = -d
-	}
-	return d <= topologyGeometryEpsilonPx
 }

@@ -4,17 +4,17 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/spf13/viper"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
 
-// fakeBackendDefaults stands in for backenddefaults.RegisterInto — the config
-// package cannot import backenddefaults (import cycle), so the test supplies an
-// equivalent registrar. The keys mirror a real backend's SetDefault calls.
 func fakeBackendDefaults(v *viper.Viper) {
 	v.SetDefault("backend.wal-qt.socket_path", "/run/wal-qt.sock")
 	v.SetDefault("backend.wal-qt.parallax_enabled", false)
@@ -29,16 +29,11 @@ func decodeBackendConfig(t *testing.T, raw json.RawMessage) map[string]any {
 	return m
 }
 
-// Characterizes the bug: with no backend-defaults registrar wired in, persisting
-// a single backend key writes a partial [backend.<name>] table, and the UI path
-// (GetBackendConfig, which reads via viper.Sub) then loses every default.
 func TestBackendConfig_PartialTableDropsDefaults_WhenRegistrarMissing(t *testing.T) {
 	cfgPath := filepath.Join(t.TempDir(), "config.toml")
 	m, err := NewViperManager(cfgPath)
 	require.NoError(t, err)
 
-	// Simulate startup: backends register defaults on the live viper, but
-	// EnsureDefaultsPersisted is never called, so m.backendDefaults stays nil.
 	fakeBackendDefaults(m.Viper())
 
 	require.NoError(t, m.SetBackendConfig("wal-qt", json.RawMessage(`{"parallax_zoom":175}`)))
@@ -49,8 +44,6 @@ func TestBackendConfig_PartialTableDropsDefaults_WhenRegistrarMissing(t *testing
 		"bug: the other defaults are dropped from the UI-visible config")
 }
 
-// EnsureDefaultsPersisted writes a complete config file and keeps later writes
-// complete, so GetBackendConfig always reflects every default faithfully.
 func TestEnsureDefaultsPersisted_KeepsBackendTableComplete(t *testing.T) {
 	cfgPath := filepath.Join(t.TempDir(), "config.toml")
 	m, err := NewViperManager(cfgPath)
@@ -85,8 +78,6 @@ func TestEnsureDefaultsPersisted_KeepsBackendTableComplete(t *testing.T) {
 	})
 }
 
-// A second EnsureDefaultsPersisted call on an already-complete file is a no-op
-// rather than a churning rewrite.
 func TestEnsureDefaultsPersisted_SkipsRewriteWhenComplete(t *testing.T) {
 	cfgPath := filepath.Join(t.TempDir(), "config.toml")
 	m, err := NewViperManager(cfgPath)
@@ -110,4 +101,76 @@ func mustGetBackendConfig(t *testing.T, m *ViperManager, name string) json.RawMe
 	raw, err := m.GetBackendConfig(name)
 	require.NoError(t, err)
 	return raw
+}
+
+func TestConcurrentReadsAndWrites_NoDataRace(t *testing.T) {
+	cfgPath := filepath.Join(t.TempDir(), "config.toml")
+	m, err := NewViperManager(cfgPath)
+	require.NoError(t, err)
+
+	m.OnConfigChange(func(_ string) {})
+
+	const iterations = 50
+	var wg sync.WaitGroup
+
+	wg.Add(4)
+	go func() {
+		defer wg.Done()
+		for i := 0; i < iterations; i++ {
+			_ = m.SetBackendConfig("wal-qt", json.RawMessage(`{"parallax_zoom":100}`))
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for i := 0; i < iterations; i++ {
+			_ = m.UpdateConfig("app", map[string]any{"theme": "dark"})
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for i := 0; i < iterations; i++ {
+			_, _ = m.GetConfig()
+		}
+	}()
+	go func() {
+		defer wg.Done()
+		for i := 0; i < iterations; i++ {
+			_, _ = m.GetSection("app")
+			_, _ = m.GetBackendConfig("wal-qt")
+		}
+	}()
+
+	wg.Wait()
+}
+
+func TestClose_StopsWatcherGoroutine(t *testing.T) {
+	cfgPath := filepath.Join(t.TempDir(), "config.toml")
+
+	runtime.GC()
+	time.Sleep(50 * time.Millisecond)
+	before := runtime.NumGoroutine()
+
+	m, err := NewViperManager(cfgPath)
+	require.NoError(t, err)
+
+	deadline := time.Now().Add(2 * time.Second)
+	for runtime.NumGoroutine() <= before && time.Now().Before(deadline) {
+		time.Sleep(10 * time.Millisecond)
+	}
+	during := runtime.NumGoroutine()
+	assert.Greater(t, during, before, "expected NewViperManager to start a watcher goroutine")
+
+	require.NoError(t, m.Close())
+
+	deadline = time.Now().Add(2 * time.Second)
+	for time.Now().Before(deadline) {
+		if runtime.NumGoroutine() <= before {
+			break
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	assert.LessOrEqual(t, runtime.NumGoroutine(), before,
+		"watcher goroutine leaked after Close")
+
+	require.NoError(t, m.Close())
 }

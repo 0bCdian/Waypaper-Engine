@@ -1,10 +1,3 @@
-//go:generate swag init -g cmd/daemon/main.go -o docs --outputTypes yaml --parseInternal --parseDependency
-
-// @title        waypaper-engine daemon
-// @version      3.0.0
-// @description  HTTP API served over a Unix socket for the waypaper-engine wallpaper manager.
-// @BasePath     /
-
 package main
 
 import (
@@ -14,10 +7,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-
-	slogmulti "github.com/samber/slog-multi"
-	"gopkg.in/natefinch/lumberjack.v2"
-
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/backend/awww"
 	"waypaper-engine/daemon/internal/backend/feh"
@@ -31,9 +20,11 @@ import (
 	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/store"
 	"waypaper-engine/daemon/internal/system"
+
+	slogmulti "github.com/samber/slog-multi"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
-// version is set at build time via ldflags: -X main.version=...
 var version = "dev"
 
 func main() {
@@ -44,14 +35,11 @@ func main() {
 }
 
 func run() error {
-	// Parse CLI flags.
 	rootCmd := buildCLI()
 	return rootCmd.Execute()
 }
 
-// startDaemon is the main entry point called by the "start" command.
 func startDaemon(configPath string, logLevel string) error {
-	// 1. Acquire PID lock.
 	lp := lockPath
 	if lp == "" {
 		lp = system.DefaultLockPath()
@@ -62,7 +50,6 @@ func startDaemon(configPath string, logLevel string) error {
 	}
 	defer lock.Release()
 
-	// 2. Load config.
 	if configPath == "" {
 		configPath = system.DefaultConfigPath()
 	}
@@ -71,24 +58,19 @@ func startDaemon(configPath string, logLevel string) error {
 		return fmt.Errorf("load config: %w", err)
 	}
 
-	// 3. Setup logging.
 	setupLogging(cfg, logLevel)
 	slog.Info("daemon starting", "version", version, "config", configPath)
 
-	// 4. Ensure database directory exists (images/thumbnails/socket are handled
-	//    by daemon.Start(); DB dir must exist before OpenDB).
 	if err := system.EnsureDir(cfg.GetDatabaseDir()); err != nil {
 		return fmt.Errorf("ensure dir %s: %w", cfg.GetDatabaseDir(), err)
 	}
 
-	// 5. Open database.
 	db, err := store.OpenDB(cfg.GetDatabaseDir())
 	if err != nil {
 		return fmt.Errorf("open database: %w", err)
 	}
 	defer db.Close()
 
-	// 6. Create and register backends.
 	reg := backend.NewRegistry()
 	backends := []backend.Backend{
 		awww.New(),
@@ -103,17 +85,15 @@ func startDaemon(configPath string, logLevel string) error {
 			slog.Warn("failed to register backend", "name", b.Name(), "error", err)
 		}
 		b.RegisterDefaults(cfg.Viper())
+		if rc, ok := b.(backend.ConfigReaderReceiver); ok {
+			rc.SetConfigReader(cfg)
+		}
 	}
 
-	// Persist a complete config file now that every backend has registered its
-	// defaults, so [backend.<name>] subtables are fully populated on disk and the
-	// UI reads faithful values. Also wires the registrar into later writes.
 	if err := cfg.EnsureDefaultsPersisted(backenddefaults.RegisterInto); err != nil {
 		slog.Warn("could not persist complete config defaults", "error", err)
 	}
 
-	// 7. Activate the configured backend (fall back to any available backend).
-	// If nothing is available the daemon starts in degraded mode and notifies the GUI via SSE.
 	activeBackendName := cfg.GetActiveBackendType()
 	if err := reg.SetActive(activeBackendName); err != nil {
 		slog.Warn("configured backend not available, trying alternatives", "backend", activeBackendName, "error", err)
@@ -132,14 +112,12 @@ func startDaemon(configPath string, logLevel string) error {
 		}
 	}
 
-	// 8. Determine compositor override from config.
 	var compositorOverride monitor.CompositorType
 	fullCfg, _ := cfg.GetConfig()
 	if fullCfg != nil && fullCfg.Daemon.Compositor != "auto" && fullCfg.Daemon.Compositor != "" {
 		compositorOverride = monitor.CompositorType(fullCfg.Daemon.Compositor)
 	}
 
-	// 9. Set up signal-aware context.
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	sigCh := make(chan os.Signal, 1)
@@ -154,18 +132,16 @@ func startDaemon(configPath string, logLevel string) error {
 		}
 	}()
 
-	// 10. Build daemon options and start.
 	opts := daemon.Options{
 		SocketPath:       cfg.GetSocketPath(),
 		DB:               db,
 		Registry:         reg,
 		Cfg:              cfg,
-		Viper:            cfg.Viper(),
 		ImagesDir:        cfg.GetImagesDir(),
 		ThumbnailsDir:    cfg.GetThumbnailsDir(),
 		Version:          version,
 		Compositor:       compositorOverride,
-		MonitorProviders: defaultMonitorProviders(cfg.Viper()),
+		MonitorProviders: defaultMonitorProviders(cfg),
 	}
 	d, err := daemon.New(opts)
 	if err != nil {
@@ -174,12 +150,8 @@ func startDaemon(configPath string, logLevel string) error {
 	return d.Start(ctx)
 }
 
-// logLevel is a package-level LevelVar so the level can be changed at runtime.
 var programLevel = new(slog.LevelVar)
 
-// setupLogging configures slog with a human-readable text handler for stderr
-// and a JSON handler for the log file (via lumberjack rotation).
-// Level precedence: CLI flag > WAYPAPER_LOG_LEVEL env var > config file > info.
 func setupLogging(cfg *config.ViperManager, levelOverride string) {
 	logFile := cfg.GetLogFile()
 

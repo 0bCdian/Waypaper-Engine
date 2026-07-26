@@ -31,57 +31,37 @@ func NewHealthHandler(version string, shutdownFn func()) *HealthHandler {
 const MonitorStackVersion = 2
 
 // Healthz handles GET /healthz.
-//
-// @Summary      Health check
-// @Tags         health
-// @Success      200  {object}  map[string]any
-// @Router       /healthz [get]
 func (h *HealthHandler) Healthz(w http.ResponseWriter, r *http.Request) {
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
-		"status":                 "ok",
-		"monitor_stack_version":  MonitorStackVersion,
-		"monitor_provider_order": []string{"wal-qt", "wlr-randr", "xrandr"},
+	httpjson.WriteJSON(w, http.StatusOK, HealthzResponse{
+		Status:               "ok",
+		MonitorStackVersion:  MonitorStackVersion,
+		MonitorProviderOrder: []string{"wal-qt", "wlr-randr", "xrandr"},
 	})
 }
 
 // Info handles GET /info.
-//
-// @Summary      Daemon info
-// @Tags         health
-// @Success      200  {object}  map[string]any
-// @Router       /info [get]
 func (h *HealthHandler) Info(w http.ResponseWriter, r *http.Request) {
 	hostname, _ := os.Hostname()
 
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
-		"version":    h.version,
-		"pid":        os.Getpid(),
-		"hostname":   hostname,
-		"uptime":     time.Since(h.startTime).String(),
-		"go_version": runtime.Version(),
-		"os":         runtime.GOOS,
-		"arch":       runtime.GOARCH,
+	httpjson.WriteJSON(w, http.StatusOK, InfoResponse{
+		Version:   h.version,
+		PID:       os.Getpid(),
+		Hostname:  hostname,
+		Uptime:    time.Since(h.startTime).String(),
+		GoVersion: runtime.Version(),
+		OS:        runtime.GOOS,
+		Arch:      runtime.GOARCH,
 	})
 }
 
 // Capabilities handles GET /capabilities.
-//
-// @Summary      System capabilities
-// @Tags         health
-// @Success      200  {object}  map[string]any
-// @Router       /capabilities [get]
 func (h *HealthHandler) Capabilities(w http.ResponseWriter, r *http.Request) {
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
-		"ffmpeg_available": image.ResolveFfmpeg() != "",
+	httpjson.WriteJSON(w, http.StatusOK, CapabilitiesResponse{
+		FfmpegAvailable: image.ResolveFfmpeg() != "",
 	})
 }
 
 // Shutdown handles POST /shutdown.
-//
-// @Summary      Graceful shutdown
-// @Tags         health
-// @Success      200  {object}  map[string]string
-// @Router       /shutdown [post]
 func (h *HealthHandler) Shutdown(w http.ResponseWriter, r *http.Request) {
 	httpjson.WriteJSON(w, http.StatusOK, map[string]string{"status": "shutting_down"})
 

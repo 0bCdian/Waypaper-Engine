@@ -166,25 +166,3 @@ func TestPickBackend_Auto_MissingCategory(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "no priority list configured for media category")
 }
-
-func TestValidateAutoPriorities_Valid(t *testing.T) {
-	reg := newStubRegistry("awww", awww, utauri, mpv)
-	errs := backend.ValidateAutoPriorities(reg, defaultPriorities())
-	assert.Empty(t, errs)
-}
-
-func TestValidateAutoPriorities_UnregisteredBackend(t *testing.T) {
-	reg := newStubRegistry("awww", awww)
-	prio := map[string][]string{"image": {"awww", "nonexistent"}}
-	errs := backend.ValidateAutoPriorities(reg, prio)
-	require.Contains(t, errs, "image")
-	assert.Contains(t, errs["image"][0], "not registered")
-}
-
-func TestValidateAutoPriorities_IncompatibleBackend(t *testing.T) {
-	reg := newStubRegistry("awww", awww, mpv)
-	prio := map[string][]string{"image": {"awww", "mpvpaper"}}
-	errs := backend.ValidateAutoPriorities(reg, prio)
-	require.Contains(t, errs, "image")
-	assert.Contains(t, errs["image"][0], "does not support image")
-}

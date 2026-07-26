@@ -85,6 +85,19 @@ func (m *Manager) Start(ctx context.Context, playlistID int, target monitor.Moni
 	return m.startPlaylist(ctx, playlistID, target, startOpts{})
 }
 
+// setSlotDeadline records when the current slide ends and stamps when it began,
+// so the UI renders elapsed/total from the real slot window instead of guessing
+// from whenever the renderer happened to connect. Wall clock only — see wallClock.
+func setSlotDeadline(inst *store.ActivePlaylistInstance, next *time.Time) {
+	inst.NextChangeAt = next
+	if next == nil {
+		inst.SlotStartedAt = nil
+		return
+	}
+	now := time.Now().Round(0)
+	inst.SlotStartedAt = &now
+}
+
 func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target monitor.MonitorTarget, opts startOpts) error {
 	pl, err := m.playlistStore.GetByID(ctx, playlistID)
 	if err != nil {
@@ -124,6 +137,8 @@ func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target moni
 		applyRow = tIdx[tCur]
 	}
 
+	resumePaused := opts.fromPersisted && pl.Playback != nil && pl.Playback.Paused
+
 	sched := NewScheduler(SchedulerConfig{
 		Type:         pl.Configuration.Type,
 		Interval:     pl.Configuration.Interval,
@@ -133,6 +148,7 @@ func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target moni
 		TimeSlots:    timeSlots,
 		TimerIndices: tIdx,
 		TimerCursor:  tCur,
+		StartPaused:  resumePaused,
 	})
 
 	playCtx, playCancel := context.WithCancel(context.Background())
@@ -150,7 +166,7 @@ func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target moni
 	m.runs[pl.ID] = run
 	m.mu.Unlock()
 
-	if pl.Configuration.Type == "time_of_day" || pl.Configuration.Type == "day_of_week" {
+	if playlistTypeNeedsMissedEventChecker(pl.Configuration.Type) {
 		go m.missedEventChecker(playCtx, pl.ID, monitors, targetEff)
 	}
 
@@ -174,7 +190,6 @@ func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target moni
 	})
 
 	monNames := monitorNames(monitors)
-	resumePaused := opts.fromPersisted && pl.Playback != nil && pl.Playback.Paused
 	nextAt := sched.NextChangeAt()
 	if resumePaused {
 		nextAt = nil
@@ -187,17 +202,13 @@ func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target moni
 			TotalImages:  len(pl.Images),
 			Paused:       resumePaused,
 			StartedAt:    time.Now(),
-			NextChangeAt: nextAt,
 		},
 		Mode:     string(targetEff.Mode),
 		Monitors: monNames,
 	}
+	setSlotDeadline(&instance, nextAt)
 	updateInstanceIndex(&instance, pl, effectiveIdx)
 	m.stateStore.SetActivePlaylist(instance)
-
-	if resumePaused {
-		run.sched.Pause()
-	}
 
 	if inst := m.stateStore.GetActivePlaylistByID(pl.ID); inst != nil {
 		m.persistPlaybackWithInst(ctx, pl.ID, inst, true)
@@ -252,7 +263,7 @@ func (m *Manager) Pause(ctx context.Context, playlistID int) error {
 
 	m.stateStore.UpdateActivePlaylist(playlistID, func(inst *store.ActivePlaylistInstance) {
 		inst.Paused = true
-		inst.NextChangeAt = nil
+		setSlotDeadline(inst, nil)
 	})
 
 	if inst := m.stateStore.GetActivePlaylistByID(playlistID); inst != nil {
@@ -280,7 +291,7 @@ func (m *Manager) Resume(ctx context.Context, playlistID int) error {
 
 	m.stateStore.UpdateActivePlaylist(playlistID, func(inst *store.ActivePlaylistInstance) {
 		inst.Paused = false
-		inst.NextChangeAt = nextChange
+		setSlotDeadline(inst, nextChange)
 	})
 
 	if inst := m.stateStore.GetActivePlaylistByID(playlistID); inst != nil {
@@ -350,7 +361,7 @@ func (m *Manager) PauseAll(ctx context.Context) int {
 
 		m.stateStore.UpdateActivePlaylist(playlistID, func(inst *store.ActivePlaylistInstance) {
 			inst.Paused = true
-			inst.NextChangeAt = nil
+			setSlotDeadline(inst, nil)
 		})
 		if inst := m.stateStore.GetActivePlaylistByID(playlistID); inst != nil {
 			m.persistPlaybackWithInst(ctx, playlistID, inst, true)
@@ -386,7 +397,7 @@ func (m *Manager) ResumeAll(ctx context.Context) int {
 
 		m.stateStore.UpdateActivePlaylist(playlistID, func(inst *store.ActivePlaylistInstance) {
 			inst.Paused = false
-			inst.NextChangeAt = nextChange
+			setSlotDeadline(inst, nextChange)
 		})
 		if inst := m.stateStore.GetActivePlaylistByID(playlistID); inst != nil {
 			m.persistPlaybackWithInst(ctx, playlistID, inst, true)
@@ -534,7 +545,7 @@ func (m *Manager) advancePlaylist(ctx context.Context, playlistID int, delta int
 			pid := pl.Images[effectiveIdx-1].ImageID
 			inst.PreviousImageID = &pid
 		}
-		inst.NextChangeAt = nextChange
+		setSlotDeadline(inst, nextChange)
 	})
 
 	m.persistPlayback(ctx, playlistID, true)
@@ -666,7 +677,7 @@ func (m *Manager) onTick(ctx context.Context, playlistID int, index int, monitor
 
 	m.stateStore.UpdateActivePlaylist(pl.ID, func(inst *store.ActivePlaylistInstance) {
 		updateInstanceIndex(inst, pl, effectiveIdx)
-		inst.NextChangeAt = nextChange
+		setSlotDeadline(inst, nextChange)
 	})
 
 	m.persistPlayback(ctx, pl.ID, true)
@@ -725,6 +736,9 @@ func (m *Manager) applyImage(ctx context.Context, pl *store.Playlist, index int,
 
 func (m *Manager) applyImageFixed(ctx context.Context, pl *store.Playlist, index int, monitors []monitor.Monitor, mode monitor.MonitorMode, walk compatWalk) (applyResult, error) {
 	activeBackend := m.registry.Active()
+	if activeBackend == nil {
+		return applyResult{AppliedIndex: -1}, fmt.Errorf("no active backend")
+	}
 	caps := activeBackend.Capabilities()
 
 	resolvedIdx, skipped, skipItems := findCompatibleIndexWithWalk(ctx, pl, index, walk, caps, m.imageStore)
@@ -773,7 +787,7 @@ func (m *Manager) applyImageFixed(ctx context.Context, pl *store.Playlist, index
 		})
 	}
 
-	return m.doApply(ctx, pl, resolvedIdx, monitors, mode, skipped)
+	return m.doApply(ctx, pl, resolvedIdx, monitors, mode, skipped, activeBackend)
 }
 
 func (m *Manager) applyImageAuto(ctx context.Context, pl *store.Playlist, index int, monitors []monitor.Monitor, mode monitor.MonitorMode) (applyResult, error) {
@@ -807,16 +821,17 @@ func (m *Manager) applyImageAuto(ctx context.Context, pl *store.Playlist, index 
 		return applyResult{AppliedIndex: -1}, nil
 	}
 
-	if err := backend.SwitchActiveBackend(ctx, m.registry, targetName, m.cfg, backend.SwitchOpts{
+	activated, err := backend.SwitchActiveBackend(ctx, m.registry, targetName, m.cfg, backend.SwitchOpts{
 		PersistConfig: false,
-	}); err != nil {
+	})
+	if err != nil {
 		return applyResult{AppliedIndex: -1}, fmt.Errorf("auto switch to %s: %w", targetName, err)
 	}
 
-	return m.doApply(ctx, pl, index, monitors, mode, 0)
+	return m.doApply(ctx, pl, index, monitors, mode, 0, activated)
 }
 
-func (m *Manager) doApply(ctx context.Context, pl *store.Playlist, index int, monitors []monitor.Monitor, mode monitor.MonitorMode, skipped int) (applyResult, error) {
+func (m *Manager) doApply(ctx context.Context, pl *store.Playlist, index int, monitors []monitor.Monitor, mode monitor.MonitorMode, skipped int, b backend.Backend) (applyResult, error) {
 	imgRef := pl.Images[index]
 	img, err := m.imageStore.GetByID(ctx, imgRef.ImageID)
 	if err != nil {
@@ -832,7 +847,7 @@ func (m *Manager) doApply(ctx context.Context, pl *store.Playlist, index int, mo
 			PlaylistID:   &pl.ID,
 			PlaylistName: pl.Name,
 		},
-		Backend:           m.registry.Active(),
+		Backend:           b,
 		Splitter:          m.splitter,
 		History:           m.historyStore,
 		MonState:          m.monitorStateStore,
@@ -956,7 +971,7 @@ func (m *Manager) missedEventChecker(ctx context.Context, playlistID int, monito
 			}
 
 			now := time.Now()
-			if now.After(inst.NextChangeAt.Add(30 * time.Second)) {
+			if missedEventDue(inst.NextChangeAt, now, missedEventGrace) {
 				slog.Warn("missed event detected, re-triggering scheduler",
 					"monitors", inst.Monitors,
 					"expected_time", inst.NextChangeAt,
@@ -965,13 +980,9 @@ func (m *Manager) missedEventChecker(ctx context.Context, playlistID int, monito
 					"playlist_type", pl.Configuration.Type,
 				)
 
-				var newIdx int
-				switch pl.Configuration.Type {
-				case "time_of_day":
-					newIdx = findClosestTimeSlot(buildTimeSlots(pl))
-				case "day_of_week":
-					weekday := int(now.Weekday())
-					newIdx = min(weekday, len(pl.Images)-1)
+				newIdx, ok := missedEventTargetIndex(pl, inst, now)
+				if !ok {
+					continue
 				}
 
 				result, applyErr := m.applyImage(ctx, pl, newIdx, monitors, target.Mode, compatForward)
@@ -985,6 +996,15 @@ func (m *Manager) missedEventChecker(ctx context.Context, playlistID int, monito
 
 				effectiveIdx := result.AppliedIndex
 
+				if pl.Configuration.Type == "timer" {
+					m.mu.RLock()
+					run, runOK := m.runs[playlistID]
+					m.mu.RUnlock()
+					if runOK {
+						run.sched.AfterManualNavigation(effectiveIdx)
+					}
+				}
+
 				m.mu.RLock()
 				var nextChange *time.Time
 				if run, ok := m.runs[playlistID]; ok {
@@ -994,7 +1014,7 @@ func (m *Manager) missedEventChecker(ctx context.Context, playlistID int, monito
 
 				m.stateStore.UpdateActivePlaylist(playlistID, func(upd *store.ActivePlaylistInstance) {
 					updateInstanceIndex(upd, pl, effectiveIdx)
-					upd.NextChangeAt = nextChange
+					setSlotDeadline(upd, nextChange)
 				})
 
 				m.persistPlayback(ctx, playlistID, true)
@@ -1011,6 +1031,57 @@ func (m *Manager) missedEventChecker(ctx context.Context, playlistID int, monito
 				})
 			}
 		}
+	}
+}
+
+// missedEventGrace is how far past its deadline a transition must be before the
+// watchdog treats it as missed rather than merely late.
+const missedEventGrace = 30 * time.Second
+
+// missedEventDue reports whether a transition is overdue by more than grace.
+// Round(0) forces a wall-clock comparison; see wallClock.
+func missedEventDue(nextChangeAt *time.Time, now time.Time, grace time.Duration) bool {
+	if nextChangeAt == nil {
+		return false
+	}
+	return now.Round(0).After(nextChangeAt.Round(0).Add(grace))
+}
+
+// missedEventTargetIndex computes which playlist row should be showing now for a
+// run that missed its scheduled transition (typically because the machine was
+// suspended and CLOCK_MONOTONIC did not advance). Returns false when the type
+// does not self-advance and so has nothing to recover to.
+//
+// time_of_day and day_of_week re-derive their row from the wall clock. A timer
+// has no wall-clock anchor, so it advances one slide from wherever the instance
+// currently sits — the same step an on-time tick would have taken.
+func missedEventTargetIndex(pl *store.Playlist, inst *store.ActivePlaylistInstance, now time.Time) (int, bool) {
+	if pl == nil || inst == nil || len(pl.Images) == 0 {
+		return 0, false
+	}
+	switch pl.Configuration.Type {
+	case "time_of_day":
+		return findClosestTimeSlot(buildTimeSlots(pl)), true
+	case "day_of_week":
+		return min(int(now.Weekday()), len(pl.Images)-1), true
+	case "timer":
+		return advancePlaylistRow(inst, pl, 1), true
+	default:
+		return 0, false
+	}
+}
+
+// playlistTypeNeedsMissedEventChecker reports whether a playlist type needs the
+// wall-clock watchdog. Every self-advancing type does: Go timers run on
+// CLOCK_MONOTONIC, which does not advance across system suspend, so all three
+// can silently miss their transition after a resume. Manual playlists never
+// self-advance and are excluded.
+func playlistTypeNeedsMissedEventChecker(playlistType string) bool {
+	switch playlistType {
+	case "timer", "time_of_day", "day_of_week":
+		return true
+	default:
+		return false
 	}
 }
 

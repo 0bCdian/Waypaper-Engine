@@ -225,3 +225,47 @@ func TestImageHandler_CancelImport_EmptyBatchID(t *testing.T) {
 	require.NoError(t, json.NewDecoder(w.Body).Decode(&body))
 	assert.Contains(t, body.Error, "batch_id")
 }
+
+// The following endpoints have no handler-level test exercising their success
+// response body (Add/CancelImport success/SelectAll/ExtractVideoPalette all
+// require the concrete *img.Processor, which is impractical to fake here).
+// Per the task's wire-format verification requirement, we instead marshal each
+// new response struct and compare against the exact JSON the old inline map
+// literal produced.
+
+func TestAddImagesResponse_WireFormat(t *testing.T) {
+	got, err := json.Marshal(AddImagesResponse{
+		Status:  "processing",
+		Total:   3,
+		BatchID: "12345",
+	})
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"status":"processing","total":3,"batch_id":"12345"}`, string(got))
+}
+
+func TestCancelImportResponse_WireFormat(t *testing.T) {
+	got, err := json.Marshal(CancelImportResponse{
+		Status:  "cancelled",
+		BatchID: "12345",
+	})
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"status":"cancelled","batch_id":"12345"}`, string(got))
+}
+
+func TestSelectAllResponse_WireFormat(t *testing.T) {
+	got, err := json.Marshal(SelectAllResponse{
+		Updated:  4,
+		Selected: true,
+	})
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"updated":4,"selected":true}`, string(got))
+}
+
+func TestExtractVideoPaletteResponse_WireFormat(t *testing.T) {
+	got, err := json.Marshal(ExtractVideoPaletteResponse{
+		Colors:  []string{"#fff", "#000"},
+		ImageID: 7,
+	})
+	require.NoError(t, err)
+	assert.JSONEq(t, `{"colors":["#fff","#000"],"image_id":7}`, string(got))
+}

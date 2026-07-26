@@ -17,20 +17,8 @@ import (
 // to detect dead client connections.
 const heartbeatInterval = 30 * time.Second
 
-// SSEBroker is an http.Handler that streams daemon events to clients as
-// Server-Sent Events (SSE).
-//
-// Clients connect via GET /events and optionally filter by event type using
-// the `?types=` query parameter (comma-separated list, or "*" for all).
-//
-// The broker subscribes to the daemon's event bus on behalf of each connected
-// client and relays events as SSE frames:
-//
-//	event: <event_type>
-//	data: <json_payload>
-//
-// A heartbeat comment (`: keepalive`) is sent every 30 seconds to keep the
-// connection alive and detect disconnected clients.
+// SSEBroker streams daemon events to GET /events clients, filtered by the
+// `?types=` query parameter (comma-separated, or "*").
 type SSEBroker struct {
 	bus events.Bus
 }

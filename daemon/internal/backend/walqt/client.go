@@ -8,22 +8,14 @@ import (
 	"net/http"
 	"strings"
 	"time"
-
 	"waypaper-engine/daemon/internal/backend/walqt/transport"
 	"waypaper-engine/daemon/internal/backend/walqt/walqtclient"
 )
 
 const localHTTPBaseURL = "http://wal-qt.local"
 
-// controlClient wraps the generated walqtclient.Client, providing the same
-// method signatures that walqt.go relies on. All HTTP plumbing (Unix socket
-// transport, request building, response decoding) is delegated to the
-// generated client — this layer only translates between the engine's internal
-// types and the generated request/response types.
 type controlClient struct {
-	// gen is the generated client used for every call except /wallpaper/load.
-	gen *walqtclient.Client
-	// genLoad uses the same socket but no Client.Timeout so context governs.
+	gen             *walqtclient.Client
 	genLoad         *walqtclient.Client
 	loadTimeout     time.Duration
 	expectedService string
@@ -65,7 +57,6 @@ func newControlClient(cfg *Config) (*controlClient, error) {
 	}, nil
 }
 
-// readBody drains and closes resp.Body, returning the trimmed body string.
 func readBody(resp *http.Response) (string, error) {
 	defer resp.Body.Close()
 	raw, err := io.ReadAll(resp.Body)
@@ -129,6 +120,18 @@ func (c *controlClient) status(ctx context.Context) (*statusResponse, error) {
 	return &sr, nil
 }
 
+type loadResult struct {
+	OK        bool
+	RequestID int
+	Targets   []loadTargetResult
+}
+
+type loadTargetResult struct {
+	Name    string
+	Outcome string
+	Error   string
+}
+
 func (c *controlClient) load(ctx context.Context, req loadRequest) (int, string, error) {
 	loadCtx, cancel := context.WithTimeout(ctx, c.loadTimeout)
 	defer cancel()
@@ -145,35 +148,37 @@ func (c *controlClient) load(ctx context.Context, req loadRequest) (int, string,
 	return resp.StatusCode, body, nil
 }
 
+// decodeLoadResult parses a 2xx POST /wallpaper/load body into the per-target
+// outcomes wal-qt reports. Callers use this to distinguish a truthful
+// success/failure from the bare fact that the HTTP call returned 2xx.
+func decodeLoadResult(body string) (loadResult, error) {
+	var payload walqtclient.LoadResponse
+	if err := json.Unmarshal([]byte(body), &payload); err != nil {
+		return loadResult{}, fmt.Errorf("%w: decode load response: %v", errContract, err)
+	}
+	out := loadResult{
+		OK:        payload.Ok,
+		RequestID: payload.RequestId,
+		Targets:   make([]loadTargetResult, 0, len(payload.Results)),
+	}
+	for _, r := range payload.Results {
+		tr := loadTargetResult{
+			Name:    r.Name,
+			Outcome: string(r.Outcome),
+		}
+		if r.Error != nil {
+			tr.Error = *r.Error
+		}
+		out.Targets = append(out.Targets, tr)
+	}
+	return out, nil
+}
+
 func (c *controlClient) setAllowNetworkWallpapers(ctx context.Context, allow bool) error {
 	req := walqtclient.NetworkSettingsRequest{
 		AllowNetworkWallpapers: &allow,
 	}
 	resp, err := c.gen.SetNetworkSettings(ctx, req)
-	if err != nil {
-		return err
-	}
-	body, err := readBody(resp)
-	if err != nil {
-		return err
-	}
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return classifyHTTPError(resp.StatusCode, body)
-	}
-	return nil
-}
-
-func (c *controlClient) setImagePresentation(ctx context.Context, fit, rendering, fillColor string) error {
-	fitMode := walqtclient.ImagePresentationRequestImageFitMode(fit)
-	rendMode := walqtclient.ImagePresentationRequestImageRendering(rendering)
-	req := walqtclient.ImagePresentationRequest{
-		ImageFitMode:   &fitMode,
-		ImageRendering: &rendMode,
-	}
-	if fillColor != "" {
-		req.FillColor = &fillColor
-	}
-	resp, err := c.gen.SetImagePresentation(ctx, req)
 	if err != nil {
 		return err
 	}
@@ -304,7 +309,6 @@ func loadRequestToGenerated(req loadRequest) walqtclient.LoadRequest {
 		out.Target = &req.Target
 	}
 	out.AudioEnabled = &req.AudioEnabled
-	out.WaitForCompletion = &req.WaitForCompletion
 	if req.DurationMS > 0 {
 		out.DurationMs = &req.DurationMS
 	}

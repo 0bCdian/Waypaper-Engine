@@ -4,14 +4,10 @@ import (
 	"context"
 	"fmt"
 	"strings"
-
 	"waypaper-engine/daemon/internal/config"
 	"waypaper-engine/daemon/internal/media"
 )
 
-// EnsureBackendForMedia picks the best backend for mediaType and switches to it
-// if the currently active backend differs. In fixed mode it validates the active
-// backend supports the media type. A no-op if the correct backend is already active.
 func EnsureBackendForMedia(ctx context.Context, reg Registry, cfg config.ConfigManager, mediaType string) error {
 	mode := cfg.GetSelectionMode()
 	prio := cfg.GetAutoPriorities()
@@ -31,18 +27,12 @@ func EnsureBackendForMedia(ctx context.Context, reg Registry, cfg config.ConfigM
 		return nil
 	}
 
-	return SwitchActiveBackend(ctx, reg, targetName, cfg, SwitchOpts{
+	_, err = SwitchActiveBackend(ctx, reg, targetName, cfg, SwitchOpts{
 		PersistConfig: false,
 	})
+	return err
 }
 
-// PickBackend resolves which backend to use for a given media type.
-//
-// In "fixed" mode it simply returns the currently active backend name.
-//
-// In "auto" mode it walks the priority list for the media category (image/video/web)
-// and returns the first registered, available backend whose Capabilities include the
-// requested media type. GIF is treated as "image" for priority resolution.
 func PickBackend(reg Registry, mode string, mediaType string, priorities map[string][]string) (string, error) {
 	if mode != "auto" {
 		active := reg.Active()
@@ -74,27 +64,6 @@ func PickBackend(reg Registry, mode string, mediaType string, priorities map[str
 	return "", fmt.Errorf("no available backend supports %q media (tried: %s)", mediaType, strings.Join(prio, ", "))
 }
 
-// ValidateAutoPriorities checks that every entry in each priority list references
-// a registered backend that supports the corresponding media category. Returns
-// a map of category -> list of validation errors. An empty map means valid.
-func ValidateAutoPriorities(reg Registry, priorities map[string][]string) map[string][]string {
-	errs := make(map[string][]string)
-	for category, names := range priorities {
-		mt := categoryToMediaType(category)
-		for _, name := range names {
-			b, found := reg.Get(name)
-			if !found {
-				errs[category] = append(errs[category], fmt.Sprintf("backend %q is not registered", name))
-				continue
-			}
-			if !SupportsMedia(b.Capabilities(), string(mt)) {
-				errs[category] = append(errs[category], fmt.Sprintf("backend %q does not support %s", name, category))
-			}
-		}
-	}
-	return errs
-}
-
 func mediaCategoryKey(mediaType string) string {
 	mt := strings.ToLower(strings.TrimSpace(mediaType))
 	switch mt {
@@ -104,16 +73,5 @@ func mediaCategoryKey(mediaType string) string {
 		return "web"
 	default:
 		return "image"
-	}
-}
-
-func categoryToMediaType(category string) media.MediaType {
-	switch category {
-	case "video":
-		return media.MediaTypeVideo
-	case "web":
-		return media.MediaTypeWeb
-	default:
-		return media.MediaTypeImage
 	}
 }

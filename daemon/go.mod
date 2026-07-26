@@ -6,6 +6,7 @@ require (
 	github.com/chai2010/webp v1.4.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-chi/chi/v5 v5.2.5
+	github.com/godbus/dbus/v5 v5.2.2
 	github.com/oapi-codegen/oapi-codegen/v2 v2.4.1
 	github.com/ostafen/clover/v2 v2.0.0-alpha.3
 	github.com/samber/slog-multi v1.7.1
@@ -16,6 +17,7 @@ require (
 	golang.org/x/image v0.41.0
 	golang.org/x/sync v0.20.0
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1
+	gopkg.in/yaml.v3 v3.0.1
 )
 
 require (
@@ -70,5 +72,4 @@ require (
 	golang.org/x/tools v0.44.0 // indirect
 	google.golang.org/protobuf v1.36.11 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
-	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

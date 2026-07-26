@@ -30,7 +30,7 @@ type procState struct {
 type Mpvpaper struct {
 	mu    sync.Mutex
 	procs map[string]*procState
-	v     *viper.Viper
+	v     backend.ConfigReader
 	// execFn starts an mpvpaper process with the given args and returns the cmd.
 	// In tests, returns (nil, nil) to avoid spawning a real process.
 	execFn func(output string, args []string) (*exec.Cmd, error)
@@ -185,7 +185,6 @@ func (m *Mpvpaper) Apply(ctx context.Context, snap backend.Snapshot) error {
 }
 
 func (m *Mpvpaper) RegisterDefaults(v *viper.Viper) {
-	m.v = v
 	prefix := "backend.mpvpaper."
 	v.SetDefault(prefix+"mpv_options", "loop")
 	v.SetDefault(prefix+"verbose", 0)
@@ -193,6 +192,12 @@ func (m *Mpvpaper) RegisterDefaults(v *viper.Viper) {
 	v.SetDefault(prefix+"auto_stop", false)
 	v.SetDefault(prefix+"layer", "")
 	v.SetDefault(prefix+"slideshow_secs", 0)
+}
+
+// SetConfigReader wires the concurrency-safe config reader used by every
+// runtime read (Apply etc). Called once at startup, after RegisterDefaults.
+func (m *Mpvpaper) SetConfigReader(r backend.ConfigReader) {
+	m.v = r
 }
 
 func (m *Mpvpaper) ValidateConfig(raw json.RawMessage) error {

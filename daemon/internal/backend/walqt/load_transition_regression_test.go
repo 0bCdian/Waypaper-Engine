@@ -8,11 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// Regression: every transition rendered as fade because loadRequestToGenerated
-// did not copy Transition / TransitionParams / Parallax / ImageFitMode /
-// ImageRendering onto the generated LoadRequest, and the OpenAPI spec did not
-// have those fields either. Once both were fixed, the over-the-wire JSON must
-// contain the requested transition.
 func TestLoadRequestToGenerated_PreservesTransitionAndFriends(t *testing.T) {
 	in := loadRequest{
 		Kind:           "image",
@@ -61,8 +56,6 @@ func TestLoadRequestToGenerated_PreservesTransitionAndFriends(t *testing.T) {
 	require.NotNil(t, out.Parallax.AnimationMs)
 	assert.Equal(t, 700, *out.Parallax.AnimationMs)
 
-	// The strongest end-to-end assertion: the JSON that goes over the socket
-	// must carry the transition string the engine asked for.
 	b, err := json.Marshal(out)
 	require.NoError(t, err)
 	assert.Contains(t, string(b), `"transition":"wipe"`)

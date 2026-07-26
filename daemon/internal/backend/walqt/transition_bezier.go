@@ -6,12 +6,8 @@ import (
 	"strings"
 )
 
-// defaultTransitionBezier matches waypaper-tauri resolveTransitionIntent default
-// (src/renderer/transition/intent.ts).
 var defaultTransitionBezier = [4]float32{0.54, 0, 0.34, 0.99}
 
-// parseTransitionBezierOrDefault parses "x1,y1,x2,y2" for load requests; empty or
-// invalid input yields defaultTransitionBezier.
 func parseTransitionBezierOrDefault(s string) [4]float32 {
 	s = strings.TrimSpace(s)
 	if s == "" {
@@ -24,7 +20,6 @@ func parseTransitionBezierOrDefault(s string) [4]float32 {
 	return out
 }
 
-// parseTransitionBezierStrict requires exactly four comma-separated finite floats.
 func parseTransitionBezierStrict(s string) ([4]float32, error) {
 	var zero [4]float32
 	s = strings.TrimSpace(s)

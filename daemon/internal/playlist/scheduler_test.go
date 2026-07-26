@@ -1,6 +1,7 @@
 package playlist
 
 import (
+	"runtime"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -525,4 +526,291 @@ func TestTimerReconcileSchedulerConfig_empty(t *testing.T) {
 	assert.Equal(t, 0, start)
 	assert.Nil(t, idx)
 	assert.Equal(t, 0, cur)
+}
+
+// Regression: startPlaylist reads NextChangeAt() synchronously right after Start().
+// time_of_day and day_of_week used to populate it inside their goroutine, so the
+// active playlist instance was stored with next_change_at=nil — no progress bar in
+// the UI and missedEventChecker permanently short-circuited.
+func TestSchedulerPublishesNextChangeAtSynchronously(t *testing.T) {
+	tests := []struct {
+		name string
+		cfg  SchedulerConfig
+	}{
+		{
+			name: "timer",
+			cfg:  SchedulerConfig{Type: "timer", Interval: 300, Order: "ordered", TotalImages: 3},
+		},
+		{
+			name: "time_of_day",
+			cfg: SchedulerConfig{Type: "time_of_day", TotalImages: 3, TimeSlots: []TimeSlot{
+				{Minutes: 0, ImageIndex: 0},
+				{Minutes: 600, ImageIndex: 1},
+				{Minutes: 1200, ImageIndex: 2},
+			}},
+		},
+		{
+			name: "day_of_week",
+			cfg:  SchedulerConfig{Type: "day_of_week", TotalImages: 7},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := NewScheduler(tt.cfg)
+			t.Cleanup(s.Stop)
+
+			s.Start(func(int) bool { return true })
+
+			next := s.NextChangeAt()
+			require.NotNil(t, next, "NextChangeAt must be populated before Start() returns")
+			assert.True(t, next.After(time.Now().Add(-time.Second)),
+				"NextChangeAt should be at or after now, got %v", next)
+		})
+	}
+}
+
+// Regression: timer playlists had no missed-event recovery. After a system
+// suspend the monotonic timer has not elapsed but the persisted wall-clock
+// NextChangeAt is far in the past, leaving the rotation stalled.
+func TestMissedEventRecoveryCoversTimerPlaylists(t *testing.T) {
+	assert.True(t, playlistTypeNeedsMissedEventChecker("timer"))
+	assert.True(t, playlistTypeNeedsMissedEventChecker("time_of_day"))
+	assert.True(t, playlistTypeNeedsMissedEventChecker("day_of_week"))
+	assert.False(t, playlistTypeNeedsMissedEventChecker("manual"))
+	assert.False(t, playlistTypeNeedsMissedEventChecker(""))
+}
+
+// Regression: Resume() used to spawn a second loop goroutine while the original
+// stayed parked on a stopped timer, leaking one goroutine per pause/resume cycle
+// and racing on s.timer between the parked reader and the new writer.
+func TestPauseResumeDoesNotLeakSchedulerGoroutines(t *testing.T) {
+	tests := []struct {
+		name string
+		cfg  SchedulerConfig
+	}{
+		{
+			name: "time_of_day",
+			cfg: SchedulerConfig{Type: "time_of_day", TotalImages: 2, TimeSlots: []TimeSlot{
+				{Minutes: 0, ImageIndex: 0},
+				{Minutes: 720, ImageIndex: 1},
+			}},
+		},
+		{
+			name: "day_of_week",
+			cfg:  SchedulerConfig{Type: "day_of_week", TotalImages: 7},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			before := runtime.NumGoroutine()
+
+			s := NewScheduler(tt.cfg)
+			s.Start(func(int) bool { return true })
+
+			for range 20 {
+				s.Pause()
+				s.Resume()
+			}
+			time.Sleep(100 * time.Millisecond)
+
+			during := runtime.NumGoroutine()
+			assert.LessOrEqual(t, during-before, 4,
+				"20 pause/resume cycles leaked %d goroutines", during-before)
+
+			s.Stop()
+			// Stop must drain every goroutine the scheduler owns.
+			deadline := time.Now().Add(2 * time.Second)
+			for time.Now().Before(deadline) {
+				if runtime.NumGoroutine() <= before+1 {
+					return
+				}
+				time.Sleep(20 * time.Millisecond)
+			}
+			assert.LessOrEqual(t, runtime.NumGoroutine()-before, 1,
+				"scheduler goroutines still running after Stop()")
+		})
+	}
+}
+
+// Regression: dayOfWeekScheduler.Start fired its callback from a goroutine before
+// startPlaylist could call Pause(), so a playlist restored in the paused state
+// applied a wallpaper anyway — racing the concurrent wallpaper.Restore.
+func TestStartPausedSuppressesInitialCallback(t *testing.T) {
+	var calls atomic.Int32
+
+	s := NewScheduler(SchedulerConfig{
+		Type:        "day_of_week",
+		TotalImages: 7,
+		StartPaused: true,
+	})
+	t.Cleanup(s.Stop)
+
+	s.Start(func(int) bool {
+		calls.Add(1)
+		return true
+	})
+
+	time.Sleep(150 * time.Millisecond)
+
+	assert.Equal(t, int32(0), calls.Load(),
+		"a scheduler started paused must not fire its initial callback")
+	assert.Nil(t, s.NextChangeAt(),
+		"a paused scheduler must not advertise a next change time")
+}
+
+// The unpaused path must keep firing immediately for today's weekday.
+func TestDayOfWeekFiresImmediatelyWhenNotPaused(t *testing.T) {
+	var calls atomic.Int32
+
+	s := NewScheduler(SchedulerConfig{Type: "day_of_week", TotalImages: 7})
+	t.Cleanup(s.Stop)
+
+	s.Start(func(int) bool {
+		calls.Add(1)
+		return true
+	})
+
+	require.Eventually(t, func() bool { return calls.Load() == 1 },
+		2*time.Second, 20*time.Millisecond,
+		"day_of_week must apply today's slide on start")
+	assert.NotNil(t, s.NextChangeAt())
+}
+
+// Behavioural companion to TestMissedEventRecoveryCoversTimerPlaylists: assert the
+// recovery actually computes the right slide, not just that the watchdog is wired.
+// A timer has no wall-clock anchor, so it must step one slide from where the
+// instance sits rather than resetting to row 0.
+func TestMissedEventTargetIndex(t *testing.T) {
+	timerPl := &store.Playlist{
+		Images: []store.PlaylistImage{
+			{ImageID: 10}, {ImageID: 11}, {ImageID: 12},
+		},
+		Configuration: store.PlaylistConfiguration{Type: "timer", Interval: 60, Order: "ordered"},
+	}
+
+	t.Run("timer advances one slide from the current row", func(t *testing.T) {
+		inst := &store.ActivePlaylistInstance{
+			ActivePlaylistState: store.ActivePlaylistState{CurrentIndex: 1, CurrentImageID: 11},
+		}
+		idx, ok := missedEventTargetIndex(timerPl, inst, time.Now())
+		require.True(t, ok)
+		assert.Equal(t, 2, idx, "must step forward, not reset to 0")
+	})
+
+	t.Run("timer wraps at the end of the playlist", func(t *testing.T) {
+		inst := &store.ActivePlaylistInstance{
+			ActivePlaylistState: store.ActivePlaylistState{CurrentIndex: 2, CurrentImageID: 12},
+		}
+		idx, ok := missedEventTargetIndex(timerPl, inst, time.Now())
+		require.True(t, ok)
+		assert.Equal(t, 0, idx)
+	})
+
+	t.Run("day_of_week re-derives from the wall clock", func(t *testing.T) {
+		pl := &store.Playlist{
+			Images:        make([]store.PlaylistImage, 7),
+			Configuration: store.PlaylistConfiguration{Type: "day_of_week"},
+		}
+		inst := &store.ActivePlaylistInstance{
+			ActivePlaylistState: store.ActivePlaylistState{CurrentIndex: 0},
+		}
+		wednesday := time.Date(2026, 7, 22, 12, 0, 0, 0, time.Local)
+		idx, ok := missedEventTargetIndex(pl, inst, wednesday)
+		require.True(t, ok)
+		assert.Equal(t, 3, idx, "Wednesday is weekday 3")
+	})
+
+	t.Run("manual playlists have nothing to recover to", func(t *testing.T) {
+		pl := &store.Playlist{
+			Images:        []store.PlaylistImage{{ImageID: 1}},
+			Configuration: store.PlaylistConfiguration{Type: "manual"},
+		}
+		inst := &store.ActivePlaylistInstance{}
+		_, ok := missedEventTargetIndex(pl, inst, time.Now())
+		assert.False(t, ok)
+	})
+
+	t.Run("empty playlist is not recoverable", func(t *testing.T) {
+		_, ok := missedEventTargetIndex(&store.Playlist{
+			Configuration: store.PlaylistConfiguration{Type: "timer"},
+		}, &store.ActivePlaylistInstance{}, time.Now())
+		assert.False(t, ok)
+	})
+}
+
+// Regression: Go compares two time.Time values via their monotonic readings when
+// BOTH carry one, ignoring the wall clock entirely. CLOCK_MONOTONIC does not
+// advance while the machine is suspended, so missedEventChecker — whose entire
+// purpose is detecting a transition missed across a suspend — was structurally
+// blind to it. Deadlines leaving a scheduler must therefore be wall-clock only.
+//
+// A monotonic reading is observable in Time.String() as an "m=+..." suffix.
+func TestNextChangeAtCarriesNoMonotonicReading(t *testing.T) {
+	tests := []struct {
+		name string
+		cfg  SchedulerConfig
+	}{
+		{"timer", SchedulerConfig{Type: "timer", Interval: 1800, Order: "ordered", TotalImages: 3}},
+		{"time_of_day", SchedulerConfig{Type: "time_of_day", TotalImages: 2, TimeSlots: []TimeSlot{
+			{Minutes: 0, ImageIndex: 0}, {Minutes: 720, ImageIndex: 1},
+		}}},
+		{"day_of_week", SchedulerConfig{Type: "day_of_week", TotalImages: 7}},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			s := NewScheduler(tt.cfg)
+			t.Cleanup(s.Stop)
+			s.Start(func(int) bool { return true })
+
+			next := s.NextChangeAt()
+			require.NotNil(t, next)
+			assert.NotContains(t, next.String(), "m=+",
+				"NextChangeAt must not carry a monotonic reading: it makes suspend undetectable")
+
+			// Resume must republish a wall-only deadline too.
+			s.Pause()
+			s.Resume()
+			if resumed := s.NextChangeAt(); resumed != nil {
+				assert.NotContains(t, resumed.String(), "m=+",
+					"NextChangeAt after Resume must not carry a monotonic reading")
+			}
+		})
+	}
+}
+
+// missedEventDue must answer on wall-clock time so a suspend is visible.
+func TestMissedEventDue(t *testing.T) {
+	const grace = 30 * time.Second
+
+	t.Run("nil deadline is never due", func(t *testing.T) {
+		assert.False(t, missedEventDue(nil, time.Now(), grace))
+	})
+
+	t.Run("deadline in the future is not due", func(t *testing.T) {
+		next := time.Now().Add(10 * time.Minute)
+		assert.False(t, missedEventDue(&next, time.Now(), grace))
+	})
+
+	t.Run("deadline just passed is within the grace window", func(t *testing.T) {
+		next := time.Now().Add(-5 * time.Second)
+		assert.False(t, missedEventDue(&next, time.Now(), grace))
+	})
+
+	t.Run("deadline long past is due", func(t *testing.T) {
+		next := time.Now().Add(-8 * time.Hour)
+		assert.True(t, missedEventDue(&next, time.Now(), grace))
+	})
+
+	t.Run("answer does not depend on monotonic readings", func(t *testing.T) {
+		next := time.Now().Add(-8 * time.Hour)
+		nowMono := time.Now()
+		nowWall := nowMono.Round(0)
+		assert.Equal(t,
+			missedEventDue(&next, nowWall, grace),
+			missedEventDue(&next, nowMono, grace),
+			"a suspend-detection check must not change answer based on monotonic readings")
+	})
 }

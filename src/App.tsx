@@ -5,6 +5,7 @@ import { ThemeProvider } from "./contexts/ThemeContext";
 import { useLoadAppConfig } from "./hooks/useLoadAppConfig";
 import { useSyncAppTypography } from "./hooks/useSyncAppTypography";
 import { useLoadMonitors } from "./hooks/useLoadMonitors";
+import { useResyncOnReconnect } from "./hooks/useResyncOnReconnect";
 import { useRealTimeImageProcessing } from "./hooks/useRealTimeImageProcessing";
 import useNotifications from "./hooks/useNotifications";
 import { ImageProcessingProgress } from "./components/ImageProcessingProgress";
@@ -40,6 +41,7 @@ const App = () => {
   useLoadAppConfig()();
   useSyncAppTypography();
   useLoadMonitors();
+  useResyncOnReconnect();
   useRealTimeImageProcessing();
   useNotifications();
   return (

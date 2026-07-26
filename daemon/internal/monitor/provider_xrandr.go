@@ -10,15 +10,6 @@ import (
 )
 
 // xrandrProvider detects monitors via `xrandr --query` for X11 sessions.
-//
-// xrandr output format (relevant lines):
-//
-//	HDMI-1 connected primary 2560x1440+0+0 (normal left inverted right x axis y axis) 597mm x 336mm
-//	   2560x1440     59.95*+  143.91
-//	   1920x1080     60.00    50.00
-//	DP-1 connected 1920x1080+2560+0 (normal left inverted right x axis y axis) 530mm x 300mm
-//	   1920x1080     60.00*+
-//	VGA-1 disconnected (normal left inverted right x axis y axis)
 type xrandrProvider struct{}
 
 // NewXrandrProvider returns a MonitorProvider that queries xrandr.

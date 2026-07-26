@@ -58,24 +58,6 @@ func NewImageHandler(
 }
 
 // List handles GET /images.
-//
-// @Summary      List images
-// @Tags         images
-// @Param        page        query     int     false  "Page number"
-// @Param        per_page    query     int     false  "Items per page"
-// @Param        sort_by     query     string  false  "Sort field (name, imported_at, file_size, hue)"
-// @Param        sort_order  query     string  false  "asc or desc"
-// @Param        media_type  query     string  false  "Filter by media type"
-// @Param        search      query     string  false  "Search query"
-// @Param        tags        query     string  false  "Comma-separated tags"
-// @Param        colors_near           query     string  false  "Comma-separated #hex~maxDeltaE (CIE76)"
-// @Param        hue_group             query     int     false  "Hue group filter: 0-11 (30° buckets, red-centered) or 99 (neutral)"
-// @Param        palette_similar_to    query     int     false  "Show images with palette within ΔE of this image's palette"
-// @Param        palette_max_delta_e   query     number  false  "Max CIE76 ΔE (default 18)"
-// @Param        folder_id             query     string  false  "Folder ID or 'root'"
-// @Success      200         {object}  store.PaginatedResult[store.Image]
-// @Failure      500         {object}  httpjson.APIError
-// @Router       /images [get]
 func (h *ImageHandler) List(w http.ResponseWriter, r *http.Request) {
 	p := httpjson.ParsePagination(r)
 	q := r.URL.Query()
@@ -153,14 +135,6 @@ func (h *ImageHandler) List(w http.ResponseWriter, r *http.Request) {
 }
 
 // Get handles GET /images/{id}.
-//
-// @Summary      Get an image
-// @Tags         images
-// @Param        id   path      int  true  "Image ID"
-// @Success      200  {object}  store.Image
-// @Failure      400  {object}  httpjson.APIError
-// @Failure      404  {object}  httpjson.APIError
-// @Router       /images/{id} [get]
 func (h *ImageHandler) Get(w http.ResponseWriter, r *http.Request) {
 	id, err := httpjson.ParseIntParam(chi.URLParam(r, "id"))
 	if err != nil {
@@ -189,13 +163,6 @@ type importWebRequest struct {
 }
 
 // Add handles POST /images.
-//
-// @Summary      Import images from filesystem paths
-// @Tags         images
-// @Param        body  body      addRequest  true  "Paths to import"
-// @Success      202   {object}  map[string]any
-// @Failure      400   {object}  httpjson.APIError
-// @Router       /images [post]
 func (h *ImageHandler) Add(w http.ResponseWriter, r *http.Request) {
 	var req addRequest
 	if err := httpjson.ParseBody(r, &req); err != nil {
@@ -214,21 +181,14 @@ func (h *ImageHandler) Add(w http.ResponseWriter, r *http.Request) {
 	// abort the background goroutine immediately.
 	batchID := h.processor.ProcessBatchWithFolder(context.Background(), req.Paths, req.FolderID)
 
-	httpjson.WriteJSON(w, http.StatusAccepted, map[string]any{
-		"status":   "processing",
-		"total":    len(req.Paths),
-		"batch_id": batchID,
+	httpjson.WriteJSON(w, http.StatusAccepted, AddImagesResponse{
+		Status:  "processing",
+		Total:   len(req.Paths),
+		BatchID: batchID,
 	})
 }
 
 // ImportWeb handles POST /images/import-web.
-//
-// @Summary      Import a web wallpaper
-// @Tags         images
-// @Param        body  body      importWebRequest  true  "Web wallpaper path"
-// @Success      200   {object}  store.Image
-// @Failure      400   {object}  httpjson.APIError
-// @Router       /images/import-web [post]
 func (h *ImageHandler) ImportWeb(w http.ResponseWriter, r *http.Request) {
 	var req importWebRequest
 	if err := httpjson.ParseBody(r, &req); err != nil {
@@ -257,14 +217,6 @@ type cancelImportRequest struct {
 }
 
 // CancelImport handles POST /images/cancel-import.
-//
-// @Summary      Cancel an in-progress import batch
-// @Tags         images
-// @Param        body  body      cancelImportRequest  true  "Batch ID"
-// @Success      200   {object}  map[string]any
-// @Failure      400   {object}  httpjson.APIError
-// @Failure      404   {object}  httpjson.APIError
-// @Router       /images/cancel-import [post]
 func (h *ImageHandler) CancelImport(w http.ResponseWriter, r *http.Request) {
 	var req cancelImportRequest
 	if err := httpjson.ParseBody(r, &req); err != nil {
@@ -282,23 +234,13 @@ func (h *ImageHandler) CancelImport(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
-		"status":   "cancelled",
-		"batch_id": req.BatchID,
+	httpjson.WriteJSON(w, http.StatusOK, CancelImportResponse{
+		Status:  "cancelled",
+		BatchID: req.BatchID,
 	})
 }
 
 // Update handles PATCH /images/{id}.
-//
-// @Summary      Update image metadata
-// @Tags         images
-// @Param        id    path      int             true  "Image ID"
-// @Param        body  body      map[string]any  true  "Fields: name, tags, colors, is_selected, folder_id, wallpaper_config_overrides, web_capabilities"
-// @Success      200   {object}  store.Image
-// @Failure      400   {object}  httpjson.APIError
-// @Failure      404   {object}  httpjson.APIError
-// @Failure      500   {object}  httpjson.APIError
-// @Router       /images/{id} [patch]
 func (h *ImageHandler) Update(w http.ResponseWriter, r *http.Request) {
 	id, err := httpjson.ParseIntParam(chi.URLParam(r, "id"))
 	if err != nil {
@@ -476,14 +418,6 @@ type deleteRequest struct {
 }
 
 // Delete handles DELETE /images.
-//
-// @Summary      Delete images
-// @Tags         images
-// @Param        body  body      deleteRequest  true  "Image IDs to delete"
-// @Success      200   {object}  map[string]any
-// @Failure      400   {object}  httpjson.APIError
-// @Failure      500   {object}  httpjson.APIError
-// @Router       /images [delete]
 func (h *ImageHandler) Delete(w http.ResponseWriter, r *http.Request) {
 	var req deleteRequest
 	if err := httpjson.ParseBody(r, &req); err != nil {
@@ -535,18 +469,10 @@ func (h *ImageHandler) Delete(w http.ResponseWriter, r *http.Request) {
 		Data: map[string]any{"domain": "images"},
 	})
 
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"deleted": count})
+	httpjson.WriteJSON(w, http.StatusOK, DeleteImagesResponse{Deleted: count})
 }
 
 // SelectAll handles POST /images/select-all.
-//
-// @Summary      Select or deselect all images
-// @Tags         images
-// @Param        body  body      map[string]bool  true  "selected: true/false"
-// @Success      200   {object}  map[string]any
-// @Failure      400   {object}  httpjson.APIError
-// @Failure      500   {object}  httpjson.APIError
-// @Router       /images/select-all [post]
 func (h *ImageHandler) SelectAll(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Selected bool `json:"selected"`
@@ -562,19 +488,13 @@ func (h *ImageHandler) SelectAll(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
-		"updated":  updated,
-		"selected": body.Selected,
+	httpjson.WriteJSON(w, http.StatusOK, SelectAllResponse{
+		Updated:  updated,
+		Selected: body.Selected,
 	})
 }
 
 // Tags handles GET /images/tags — returns all unique tags across images.
-//
-// @Summary      List all tags
-// @Tags         images
-// @Success      200  {object}  map[string]any
-// @Failure      500  {object}  httpjson.APIError
-// @Router       /images/tags [get]
 func (h *ImageHandler) Tags(w http.ResponseWriter, r *http.Request) {
 	tags, err := h.store.GetAllTags(r.Context())
 	if err != nil {
@@ -584,7 +504,7 @@ func (h *ImageHandler) Tags(w http.ResponseWriter, r *http.Request) {
 	if tags == nil {
 		tags = []string{}
 	}
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{"tags": tags})
+	httpjson.WriteJSON(w, http.StatusOK, TagsResponse{Tags: tags})
 }
 
 // resolveThumbnail looks up an image and returns the thumbnail path for the
@@ -622,15 +542,6 @@ func (h *ImageHandler) resolveThumbnail(w http.ResponseWriter, r *http.Request) 
 }
 
 // Thumbnail handles GET /images/{id}/thumbnail.
-//
-// @Summary      Get thumbnail path for an image
-// @Tags         images
-// @Param        id          path      int     true   "Image ID"
-// @Param        resolution  query     string  false  "Thumbnail resolution (default: default)"
-// @Success      200         {object}  map[string]string
-// @Failure      400         {object}  httpjson.APIError
-// @Failure      404         {object}  httpjson.APIError
-// @Router       /images/{id}/thumbnail [get]
 func (h *ImageHandler) Thumbnail(w http.ResponseWriter, r *http.Request) {
 	thumbPath, ok := h.resolveThumbnail(w, r)
 	if !ok {
@@ -649,17 +560,6 @@ type videoLoopExportRequest struct {
 }
 
 // VideoLoopExport handles POST /images/{id}/video-loop-export — FFmpeg trim/re-encode for seamless native loop playback.
-//
-// @Summary      Export a video loop segment
-// @Tags         images
-// @Param        id    path      int                    true  "Image ID"
-// @Param        body  body      videoLoopExportRequest true  "Export parameters"
-// @Success      200   {object}  map[string]any
-// @Failure      400   {object}  httpjson.APIError
-// @Failure      404   {object}  httpjson.APIError
-// @Failure      503   {object}  httpjson.APIError
-// @Failure      500   {object}  httpjson.APIError
-// @Router       /images/{id}/video-loop-export [post]
 func (h *ImageHandler) VideoLoopExport(w http.ResponseWriter, r *http.Request) {
 	id, err := httpjson.ParseIntParam(chi.URLParam(r, "id"))
 	if err != nil {
@@ -703,17 +603,6 @@ type extractVideoPaletteRequest struct {
 }
 
 // ExtractVideoPalette handles POST /images/{id}/extract-video-palette — one-frame dominant palette (same path as still images).
-//
-// @Summary      Extract color palette from a video frame
-// @Tags         images
-// @Param        id    path      int                          true  "Image ID"
-// @Param        body  body      extractVideoPaletteRequest   true  "time_seconds: seek position on the video timeline"
-// @Success      200   {object}  map[string]any
-// @Failure      400   {object}  httpjson.APIError
-// @Failure      404   {object}  httpjson.APIError
-// @Failure      503   {object}  httpjson.APIError
-// @Failure      500   {object}  httpjson.APIError
-// @Router       /images/{id}/extract-video-palette [post]
 func (h *ImageHandler) ExtractVideoPalette(w http.ResponseWriter, r *http.Request) {
 	id, err := httpjson.ParseIntParam(chi.URLParam(r, "id"))
 	if err != nil {
@@ -749,22 +638,13 @@ func (h *ImageHandler) ExtractVideoPalette(w http.ResponseWriter, r *http.Reques
 		Type: events.GalleryChanged,
 		Data: map[string]any{"domain": "images"},
 	})
-	httpjson.WriteJSON(w, http.StatusOK, map[string]any{
-		"colors":   colors,
-		"image_id": id,
+	httpjson.WriteJSON(w, http.StatusOK, ExtractVideoPaletteResponse{
+		Colors:  colors,
+		ImageID: id,
 	})
 }
 
 // RawImage handles GET /images/{id}/raw — serves the actual image file.
-//
-// @Summary      Serve raw image file
-// @Tags         images
-// @Param        id  path  int  true  "Image ID"
-// @Produce      application/octet-stream
-// @Success      200  {file}    binary
-// @Failure      400  {object}  httpjson.APIError
-// @Failure      404  {object}  httpjson.APIError
-// @Router       /images/{id}/raw [get]
 func (h *ImageHandler) RawImage(w http.ResponseWriter, r *http.Request) {
 	id, err := httpjson.ParseIntParam(chi.URLParam(r, "id"))
 	if err != nil {
@@ -794,16 +674,6 @@ func (h *ImageHandler) RawImage(w http.ResponseWriter, r *http.Request) {
 
 // EnsureBrowserPreview handles POST /images/{id}/ensure-browser-preview — generates an H.264
 // proxy when preview_path is missing and the file needs it, or when force=1 after decode failure.
-//
-// @Summary      Ensure browser-compatible video preview exists
-// @Tags         images
-// @Param        id     path   int     true   "Image ID"
-// @Param        force  query  string  false  "Set to 1 to force regeneration"
-// @Success      200    {object}  store.Image
-// @Failure      400    {object}  httpjson.APIError
-// @Failure      404    {object}  httpjson.APIError
-// @Failure      500    {object}  httpjson.APIError
-// @Router       /images/{id}/ensure-browser-preview [post]
 func (h *ImageHandler) EnsureBrowserPreview(w http.ResponseWriter, r *http.Request) {
 	id, err := httpjson.ParseIntParam(chi.URLParam(r, "id"))
 	if err != nil {

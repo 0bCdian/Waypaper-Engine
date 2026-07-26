@@ -23,7 +23,7 @@ func PushWallpaperConfigToRenderer(
 		return nil
 	}
 	b := reg.Active()
-	if b.Name() != "wal-qt" {
+	if b == nil || b.Name() != "wal-qt" {
 		return nil
 	}
 	p, ok := b.(waylandWebConfigPusher)
@@ -45,7 +45,7 @@ func PushWebCapabilitiesToRenderer(
 		return nil
 	}
 	b := reg.Active()
-	if b.Name() != "wal-qt" {
+	if b == nil || b.Name() != "wal-qt" {
 		return nil
 	}
 	p, ok := b.(waylandWebConfigPusher)

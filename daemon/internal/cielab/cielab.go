@@ -1,5 +1,4 @@
 // Package cielab provides CIELAB conversions and CIE76 ΔE for sRGB hex strings.
-// It is dependency-free so store and image layers can share it without import cycles.
 package cielab
 
 import (

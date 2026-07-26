@@ -13,6 +13,7 @@ let mockActivePlaylist: {
   total_images: number;
   paused: boolean;
   next_change_at?: string;
+  slot_started_at?: string | null;
 } | null = null;
 
 const mockImagesMap = new Map<
@@ -82,6 +83,99 @@ describe("PlaylistController", () => {
       total_images: 3,
       paused: false,
       next_change_at: "2026-06-15T14:01:00.000Z",
+    };
+    mockImagesMap.set(99, {
+      id: 99,
+      name: "wall.jpg",
+      thumbnails: { small: "/thumbs/wall_sm.jpg" },
+      path: "/images/wall.jpg",
+    });
+
+    render(<PlaylistController />);
+
+    const bar = screen.getByRole("progressbar");
+    expect(bar).toHaveAttribute("aria-valuenow", "0");
+    expect(screen.getByText("0:00")).toBeInTheDocument();
+    expect(screen.getByText("-1:00")).toBeInTheDocument();
+  });
+
+  it("computes elapsed/total from slot_started_at, not render time", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-15T14:25:00.000Z"));
+
+    // 30 minute interval; slot started 25 minutes ago, so we're ~83% through
+    // even though the renderer only just connected.
+    mockActivePlaylist = {
+      playlist_id: 1,
+      playlist_name: "Timed",
+      monitors: ["HDMI-1"],
+      current_image_id: 99,
+      current_index: 0,
+      total_images: 3,
+      paused: false,
+      next_change_at: "2026-06-15T14:30:00.000Z",
+      slot_started_at: "2026-06-15T14:00:00.000Z",
+    };
+    mockImagesMap.set(99, {
+      id: 99,
+      name: "wall.jpg",
+      thumbnails: { small: "/thumbs/wall_sm.jpg" },
+      path: "/images/wall.jpg",
+    });
+
+    render(<PlaylistController />);
+
+    const bar = screen.getByRole("progressbar");
+    expect(bar).toHaveAttribute("aria-valuenow", "83");
+    expect(screen.getByText("25:00")).toBeInTheDocument();
+    expect(screen.getByText("-5:00")).toBeInTheDocument();
+  });
+
+  it("renders 100%/0 remaining for an overdue slot instead of dashes", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-15T14:31:00.000Z"));
+
+    mockActivePlaylist = {
+      playlist_id: 1,
+      playlist_name: "Timed",
+      monitors: ["HDMI-1"],
+      current_image_id: 99,
+      current_index: 0,
+      total_images: 3,
+      paused: false,
+      next_change_at: "2026-06-15T14:30:00.000Z",
+      slot_started_at: "2026-06-15T14:00:00.000Z",
+    };
+    mockImagesMap.set(99, {
+      id: 99,
+      name: "wall.jpg",
+      thumbnails: { small: "/thumbs/wall_sm.jpg" },
+      path: "/images/wall.jpg",
+    });
+
+    render(<PlaylistController />);
+
+    expect(screen.queryByText("—")).not.toBeInTheDocument();
+    const bar = screen.getByRole("progressbar");
+    expect(bar).toHaveAttribute("aria-valuenow", "100");
+    expect(screen.getByText("30:00")).toBeInTheDocument();
+    expect(screen.getByText("-0:00")).toBeInTheDocument();
+  });
+
+  it("falls back to first-seen timing when slot_started_at is null (older daemon)", () => {
+    vi.useFakeTimers();
+    vi.setSystemTime(new Date("2026-06-15T14:00:00.000Z"));
+
+    mockActivePlaylist = {
+      playlist_id: 1,
+      playlist_name: "Timed",
+      monitors: ["HDMI-1"],
+      current_image_id: 99,
+      current_index: 0,
+      total_images: 3,
+      paused: false,
+      next_change_at: "2026-06-15T14:01:00.000Z",
+      slot_started_at: null,
     };
     mockImagesMap.set(99, {
       id: 99,

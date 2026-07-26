@@ -90,10 +90,12 @@ paths:
         `targets`. If `targets` is omitted or empty, the wallpaper is applied to
         all connected monitors.
 
-        When `wait_for_completion` is `false` (default) the server responds
-        `202 Accepted` immediately and loads asynchronously. When `true` the
-        server waits for the renderer transition acknowledgement (up to 30 s)
-        before responding.
+        The server responds `200` only after every targeted monitor reaches a
+        terminal state (`applied`, `superseded`, or `failed`), or after
+        `loadAckTimeoutMs` (10 s) elapses, in which case any monitor that never
+        reported is recorded as `timeout`. This makes the acknowledgement
+        truthful: the caller can tell from `ok` and each target's `outcome`
+        whether the wallpaper actually landed on screen.
       tags: [wallpaper]
       requestBody:
         required: true
@@ -103,17 +105,11 @@ paths:
               $ref: "#/components/schemas/LoadRequest"
       responses:
         "200":
-          description: Load completed (only when `wait_for_completion` is `true`)
+          description: Every targeted monitor reached a terminal state (or the load timed out)
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/OkResponse"
-        "202":
-          description: Accepted — load dispatched asynchronously
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/AcceptedResponse"
+                $ref: "#/components/schemas/LoadResponse"
         "404":
           description: No monitors matched the requested targets
           content:
@@ -122,12 +118,6 @@ paths:
                 $ref: "#/components/schemas/Error"
         "400":
           description: Malformed JSON request body
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/Error"
-        "504":
-          description: Wait-for-completion timed out (30 s exceeded)
           content:
             application/json:
               schema:
@@ -408,16 +398,42 @@ components:
           type: boolean
           example: true
 
-    AcceptedResponse:
+    LoadResponse:
       type: object
-      required: [ok, accepted]
+      description: |
+        Per-target outcome of a `/wallpaper/load` call. `ok` is `true` only when
+        every result is `applied` or `superseded` — a single `failed` or
+        `timeout` target makes the whole response `ok: false`.
+      required: [ok, request_id, results]
       properties:
         ok:
           type: boolean
           example: true
-        accepted:
-          type: boolean
-          example: true
+        request_id:
+          type: integer
+          description: Host-assigned id for this load request, echoed back for correlation
+          example: 42
+        results:
+          type: array
+          items:
+            $ref: "#/components/schemas/LoadTargetResult"
+
+    LoadTargetResult:
+      type: object
+      required: [name, outcome]
+      properties:
+        name:
+          type: string
+          description: Wayland output name
+          example: "DP-1"
+        outcome:
+          type: string
+          enum: [applied, superseded, failed, timeout]
+          example: "applied"
+        error:
+          type: string
+          description: Present when `outcome` is `failed`
+          example: "unresolved target: /x/y"
 
     AppliedResponse:
       type: object
@@ -519,7 +535,7 @@ components:
 
     MonitorStatus:
       type: object
-      required: [name, visible, last_transition, in_progress, parallax, current_kind]
+      required: [name, visible, last_transition, in_progress, parallax, current_kind, load_state]
       properties:
         name:
           type: string
@@ -543,6 +559,15 @@ components:
           type: string
           description: Absolute path or URI of the active wallpaper (absent when no wallpaper has been loaded)
           example: "/home/user/walls/lake.jpg"
+        load_state:
+          type: string
+          enum: [never_loaded, loading, displayed, failed]
+          description: |
+            Real per-monitor load state, distinct from the optimistic
+            `current_kind`/`current_target` pair. A hot-plugged monitor that has
+            never received a load reports `never_loaded` even though
+            `current_kind` defaults to `image`.
+          example: "displayed"
 
     ParallaxState:
       type: object
@@ -645,10 +670,6 @@ components:
           enum: [image, video, web]
           description: Wallpaper kind for the fallback `target`
           example: "image"
-        wait_for_completion:
-          type: boolean
-          default: false
-          description: When `true`, the request blocks until the renderer acknowledges the transition (or 30 s elapses)
         duration_ms:
           type: integer
           default: 300

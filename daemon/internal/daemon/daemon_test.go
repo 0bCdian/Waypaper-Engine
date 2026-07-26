@@ -10,19 +10,14 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
-
-	"github.com/spf13/viper"
-
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/config"
 	"waypaper-engine/daemon/internal/daemon"
 	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/store"
-)
 
-// ---------------------------------------------------------------------------
-// Mock backend
-// ---------------------------------------------------------------------------
+	"github.com/spf13/viper"
+)
 
 type mockBackend struct {
 	name string
@@ -40,10 +35,6 @@ func (m *mockBackend) Shutdown(_ context.Context) error                  { retur
 func (m *mockBackend) RegisterDefaults(_ *viper.Viper)                   {}
 func (m *mockBackend) ValidateConfig(_ json.RawMessage) error            { return nil }
 func (m *mockBackend) Apply(_ context.Context, _ backend.Snapshot) error { return nil }
-
-// ---------------------------------------------------------------------------
-// Mock config manager
-// ---------------------------------------------------------------------------
 
 type mockCfg struct {
 	socketPath    string
@@ -72,13 +63,6 @@ func (m *mockCfg) ReplaceBackendNamedConfig(string, map[string]any) error {
 	return nil
 }
 
-// ---------------------------------------------------------------------------
-// Test helpers
-// ---------------------------------------------------------------------------
-
-// startTestDaemon opens a real CloverDB in t.TempDir(), constructs a Daemon
-// with a mock backend, starts it in a goroutine, and waits for the socket to
-// be ready. It returns the http.Client to use and a cancel func to stop the daemon.
 func startTestDaemon(t *testing.T) (*http.Client, string, context.CancelFunc) {
 	t.Helper()
 
@@ -113,19 +97,16 @@ func startTestDaemon(t *testing.T) (*http.Client, string, context.CancelFunc) {
 		dbDir:         dbDir,
 	}
 
-	v := viper.New()
-
 	opts := daemon.Options{
 		SocketPath:       socketPath,
 		DB:               db,
 		Registry:         reg,
 		Cfg:              cfg,
-		Viper:            v,
 		ImagesDir:        imagesDir,
 		ThumbnailsDir:    thumbnailsDir,
 		Version:          "test",
 		Compositor:       monitor.CompositorType(""),
-		MonitorProviders: nil, // no providers in tests
+		MonitorProviders: nil,
 	}
 
 	d, err := daemon.New(opts)
@@ -167,10 +148,6 @@ func get(t *testing.T, client *http.Client, url string) *http.Response {
 	}
 	return resp
 }
-
-// ---------------------------------------------------------------------------
-// Tests
-// ---------------------------------------------------------------------------
 
 func TestDaemon_HealthzReturns200(t *testing.T) {
 	client, _, stop := startTestDaemon(t)

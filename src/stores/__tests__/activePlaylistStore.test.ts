@@ -27,6 +27,7 @@ describe("useActivePlaylistStore", () => {
     mode: "individual",
     started_at: new Date().toISOString(),
     next_change_at: null,
+    slot_started_at: null,
     monitors: ["HDMI-A-1"],
   };
 
@@ -76,5 +77,56 @@ describe("useActivePlaylistStore", () => {
     const state = useActivePlaylistStore.getState();
 
     expect(state.activePlaylist).toBeNull();
+  });
+
+  describe("lastSyncedPlaylistId", () => {
+    // Pins the property that a `useRef` used to give for free: this tracking
+    // state must not leak across component mounts (or, here, across test
+    // cases). It now lives in the store rather than module scope, so each
+    // fresh import (see getStore()/vi.resetModules() in beforeEach) starts
+    // from a clean slate — this test asserts that starting point explicitly,
+    // and asserts the store's own reset paths (clear(), setLastSyncedPlaylistId)
+    // work as the dedupe logic relies on them.
+
+    it("defaults to null on a fresh store instance", async () => {
+      const useActivePlaylistStore = await getStore();
+      expect(useActivePlaylistStore.getState().lastSyncedPlaylistId).toBeNull();
+    });
+
+    it("setLastSyncedPlaylistId updates the tracked id", async () => {
+      const useActivePlaylistStore = await getStore();
+
+      act(() => {
+        useActivePlaylistStore.getState().setLastSyncedPlaylistId(7);
+      });
+
+      expect(useActivePlaylistStore.getState().lastSyncedPlaylistId).toBe(7);
+    });
+
+    it("does not leak a value set in a previous test case", async () => {
+      // If this test ran after "setLastSyncedPlaylistId updates the tracked
+      // id" without a fresh module/store, this would observe 7 instead of
+      // null — exactly the module-scoped-`let` failure mode being guarded
+      // against.
+      const useActivePlaylistStore = await getStore();
+      expect(useActivePlaylistStore.getState().lastSyncedPlaylistId).toBeNull();
+    });
+
+    it("clear() resets lastSyncedPlaylistId alongside activePlaylist", async () => {
+      const useActivePlaylistStore = await getStore();
+
+      act(() => {
+        useActivePlaylistStore.getState().setActivePlaylist(sampleActive);
+        useActivePlaylistStore.getState().setLastSyncedPlaylistId(sampleActive.playlist_id);
+      });
+      expect(useActivePlaylistStore.getState().lastSyncedPlaylistId).toBe(sampleActive.playlist_id);
+
+      act(() => {
+        useActivePlaylistStore.getState().clear();
+      });
+
+      expect(useActivePlaylistStore.getState().activePlaylist).toBeNull();
+      expect(useActivePlaylistStore.getState().lastSyncedPlaylistId).toBeNull();
+    });
   });
 });

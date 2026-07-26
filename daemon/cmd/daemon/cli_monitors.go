@@ -5,10 +5,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"waypaper-engine/daemon/internal/monitor"
 
 	"github.com/spf13/cobra"
-
-	"waypaper-engine/daemon/internal/monitor"
 )
 
 // monitorsDirect, when true, makes the `monitors` subcommands query monitor
@@ -51,10 +50,6 @@ func buildMonitorsGetCmd() *cobra.Command {
 	}
 }
 
-// runMonitorsDirect bypasses the daemon socket and queries the provider chain
-// directly. The provider list mirrors the running daemon's wiring, so output
-// is the same shape — just without requiring a daemon process. Config from
-// disk is not loaded, so wal-qt uses default control-socket settings.
 func runMonitorsDirect(name string) error {
 	mgr, err := monitor.NewMonitorManager(defaultMonitorProviders(nil), "")
 	if err != nil {

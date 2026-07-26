@@ -38,6 +38,23 @@ export interface paths {
     patch?: never;
     trace?: never;
   };
+  "/capabilities": {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    /** System-level capabilities (independent of active backend) */
+    get: operations["getCapabilities"];
+    put?: never;
+    post?: never;
+    delete?: never;
+    options?: never;
+    head?: never;
+    patch?: never;
+    trace?: never;
+  };
   "/shutdown": {
     parameters: {
       query?: never;
@@ -805,15 +822,13 @@ export interface components {
       status: string;
     };
     BackendCapabilities: {
+      content_kinds?: string[];
       compositors?: string[];
-      media_types?: string[];
-      transitions?: boolean;
-      per_monitor?: boolean;
-      daemon_process?: boolean;
     };
     BackendInfo: {
       name: string;
       available: boolean;
+      active?: boolean;
       capabilities?: components["schemas"]["BackendCapabilities"];
     };
     ActivateBackendResponse: {
@@ -834,6 +849,150 @@ export interface components {
       error?: string;
       code?: number;
       details?: string;
+      error_code?: string;
+      meta?: {
+        [key: string]: unknown;
+      };
+    };
+    /** @description GET /healthz body (`healthhandler.HealthzResponse`). */
+    HealthzResponse: {
+      /** @example ok */
+      status?: string;
+      monitor_stack_version?: number;
+      monitor_provider_order?: string[];
+    };
+    /** @description GET /info body (`healthhandler.InfoResponse`). */
+    InfoResponse: {
+      version?: string;
+      pid?: number;
+      hostname?: string;
+      uptime?: string;
+      go_version?: string;
+      os?: string;
+      arch?: string;
+    };
+    /** @description GET /capabilities body (`healthhandler.CapabilitiesResponse`). */
+    CapabilitiesResponse: {
+      ffmpeg_available?: boolean;
+    };
+    /** @description POST /images body (`imageshandler.AddImagesResponse`). */
+    AddImagesResponse: {
+      status?: string;
+      total?: number;
+      batch_id?: string;
+    };
+    /** @description DELETE /images body (`imageshandler.DeleteImagesResponse`). */
+    DeleteImagesResponse: {
+      deleted?: number;
+    };
+    /** @description GET /images/tags body (`imageshandler.TagsResponse`). */
+    TagsResponse: {
+      tags?: string[];
+    };
+    /** @description POST /images/cancel-import body (`imageshandler.CancelImportResponse`). */
+    CancelImportResponse: {
+      status?: string;
+      batch_id?: string;
+    };
+    /** @description POST /images/select-all body (`imageshandler.SelectAllResponse`). */
+    SelectAllResponse: {
+      updated?: number;
+      selected?: boolean;
+    };
+    /** @description POST /images/{id}/extract-video-palette body (`imageshandler.ExtractVideoPaletteResponse`). */
+    ExtractVideoPaletteResponse: {
+      colors: string[];
+      image_id: number;
+    };
+    /** @description DELETE /images/history body (`wallpaperhandler.ClearHistoryResponse`). */
+    ClearHistoryResponse: {
+      status?: string;
+    };
+    /** @description POST /wallpaper/set body (`wallpaperhandler.SetWallpaperResponse`). */
+    SetWallpaperResponse: {
+      status?: string;
+      image_id?: number;
+      monitor?: string;
+      mode?: string;
+    };
+    /** @description POST /wallpaper/random body (`wallpaperhandler.RandomWallpaperResponse`). */
+    RandomWallpaperResponse: {
+      status?: string;
+      image_id?: number;
+      monitor?: string;
+      mode?: string;
+    };
+    /** @description One monitor entry within WallpaperCurrentResponse.monitors (`wallpaperhandler.WallpaperCurrentSlot`). */
+    WallpaperCurrentSlot: {
+      monitor_name?: string;
+      image_id?: number;
+      image_name?: string;
+      image_path?: string;
+      /** Format: date-time */
+      set_at?: string;
+    };
+    /** @description GET /wallpaper/current body (`wallpaperhandler.WallpaperCurrentResponse`). */
+    WallpaperCurrentResponse: {
+      backend?: string;
+      image_id?: number;
+      image_name?: string;
+      image_path?: string;
+      mode?: string;
+      monitors?: components["schemas"]["WallpaperCurrentSlot"][];
+      /** Format: date-time */
+      set_at?: string;
+    };
+    /** @description POST /playlists/active/stop body (`playlistshandler.StopAllResponse`). */
+    StopAllResponse: {
+      message?: string;
+      stopped?: number;
+    };
+    /** @description POST /playlists/active/pause body (`playlistshandler.PauseAllResponse`). */
+    PauseAllResponse: {
+      message?: string;
+      paused?: number;
+    };
+    /** @description POST /playlists/active/resume body (`playlistshandler.ResumeAllResponse`). */
+    ResumeAllResponse: {
+      message?: string;
+      resumed?: number;
+    };
+    /** @description POST /playlists/active/next body (`playlistshandler.NextAllResponse`). */
+    NextAllResponse: {
+      message?: string;
+      advanced?: number;
+    };
+    /** @description POST /playlists/active/previous body (`playlistshandler.PreviousAllResponse`). */
+    PreviousAllResponse: {
+      message?: string;
+      reversed?: number;
+    };
+    /** @description POST /folders/move-images body (`foldershandler.MoveImagesResponse`). */
+    MoveImagesResponse: {
+      moved?: number;
+    };
+    /** @description DELETE /folders/{id} body (`foldershandler.DeleteFolderResponse`). */
+    DeleteFolderResponse: {
+      deleted?: boolean;
+      mode?: string;
+    };
+    /** @description One folder row (`store.Folder`); nested item shape is not verified by the apispec test. */
+    FolderRow: {
+      id?: number;
+      name?: string;
+      parent_id?: number | null;
+      /** Format: date-time */
+      created_at?: string;
+      /** Format: date-time */
+      updated_at?: string;
+    };
+    /** @description GET /folders body (`foldershandler.FolderListResponse`). */
+    FolderListResponse: {
+      data?: components["schemas"]["FolderRow"][];
+    };
+    /** @description GET /folders/{id}/path body (`foldershandler.FolderPathResponse`). */
+    FolderPathResponse: {
+      data?: components["schemas"]["FolderRow"][];
     };
   };
   responses: {
@@ -878,7 +1037,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["StatusOk"];
+          "application/json": components["schemas"]["HealthzResponse"];
         };
       };
     };
@@ -898,9 +1057,27 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            [key: string]: unknown;
-          };
+          "application/json": components["schemas"]["InfoResponse"];
+        };
+      };
+    };
+  };
+  getCapabilities: {
+    parameters: {
+      query?: never;
+      header?: never;
+      path?: never;
+      cookie?: never;
+    };
+    requestBody?: never;
+    responses: {
+      /** @description OK */
+      200: {
+        headers: {
+          [name: string]: unknown;
+        };
+        content: {
+          "application/json": components["schemas"]["CapabilitiesResponse"];
         };
       };
     };
@@ -1001,7 +1178,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["GenericJSON"];
+          "application/json": components["schemas"]["AddImagesResponse"];
         };
       };
     };
@@ -1025,7 +1202,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["GenericJSON"];
+          "application/json": components["schemas"]["DeleteImagesResponse"];
         };
       };
     };
@@ -1073,7 +1250,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["GenericJSON"];
+          "application/json": components["schemas"]["TagsResponse"];
         };
       };
     };
@@ -1111,7 +1288,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["GenericJSON"];
+          "application/json": components["schemas"]["ClearHistoryResponse"];
         };
       };
     };
@@ -1134,7 +1311,9 @@ export interface operations {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["CancelImportResponse"];
+        };
       };
     };
   };
@@ -1156,7 +1335,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["GenericJSON"];
+          "application/json": components["schemas"]["SelectAllResponse"];
         };
       };
     };
@@ -1290,10 +1469,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": {
-            colors: string[];
-            image_id: number;
-          };
+          "application/json": components["schemas"]["ExtractVideoPaletteResponse"];
         };
       };
     };
@@ -1436,7 +1612,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["GenericJSON"];
+          "application/json": components["schemas"]["StopAllResponse"];
         };
       };
     };
@@ -1455,7 +1631,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["GenericJSON"];
+          "application/json": components["schemas"]["PauseAllResponse"];
         };
       };
     };
@@ -1474,7 +1650,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["GenericJSON"];
+          "application/json": components["schemas"]["ResumeAllResponse"];
         };
       };
     };
@@ -1493,7 +1669,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["GenericJSON"];
+          "application/json": components["schemas"]["NextAllResponse"];
         };
       };
     };
@@ -1512,7 +1688,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["GenericJSON"];
+          "application/json": components["schemas"]["PreviousAllResponse"];
         };
       };
     };
@@ -1722,7 +1898,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["GenericJSON"];
+          "application/json": components["schemas"]["FolderListResponse"];
         };
       };
     };
@@ -1768,7 +1944,9 @@ export interface operations {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["MoveImagesResponse"];
+        };
       };
     };
   };
@@ -1809,7 +1987,9 @@ export interface operations {
         headers: {
           [name: string]: unknown;
         };
-        content?: never;
+        content: {
+          "application/json": components["schemas"]["DeleteFolderResponse"];
+        };
       };
     };
   };
@@ -1854,7 +2034,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["GenericJSON"];
+          "application/json": components["schemas"]["FolderPathResponse"];
         };
       };
     };
@@ -2093,7 +2273,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["GenericJSON"];
+          "application/json": components["schemas"]["WallpaperCurrentResponse"];
         };
       };
     };
@@ -2116,7 +2296,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["GenericJSON"];
+          "application/json": components["schemas"]["SetWallpaperResponse"];
         };
       };
     };
@@ -2139,7 +2319,7 @@ export interface operations {
           [name: string]: unknown;
         };
         content: {
-          "application/json": components["schemas"]["GenericJSON"];
+          "application/json": components["schemas"]["RandomWallpaperResponse"];
         };
       };
     };

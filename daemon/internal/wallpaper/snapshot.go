@@ -86,6 +86,11 @@ func BuildSnapshot(
 	bus events.Bus,
 	videoAudioDefault bool,
 ) (backend.Snapshot, []SkipReason, error) {
+	// Defensive: monitor_state should hold one row per monitor, but a historical
+	// non-atomic upsert could leave duplicates. Keep the newest row per monitor so
+	// a single monitor never receives two conflicting Outputs.
+	states = dedupeStatesByMonitor(states)
+
 	// --- Step 1: group rows by (image_id, mode) ---
 	type assignKey struct {
 		imageID int
@@ -304,4 +309,31 @@ func BuildSnapshot(
 	}
 
 	return snap, skips, nil
+}
+
+// dedupeStatesByMonitor keeps one row per monitor name — the one with the newest
+// SetAt, tie-broken by the later position in the input slice. Input order of the
+// surviving rows is preserved so Snapshot output ordering stays deterministic.
+func dedupeStatesByMonitor(states []store.MonitorState) []store.MonitorState {
+	if len(states) < 2 {
+		return states
+	}
+	bestIdx := make(map[string]int, len(states))
+	for i, s := range states {
+		prev, seen := bestIdx[s.MonitorName]
+		if !seen || !states[i].SetAt.Before(states[prev].SetAt) {
+			bestIdx[s.MonitorName] = i
+		}
+	}
+	keep := make(map[int]struct{}, len(bestIdx))
+	for _, i := range bestIdx {
+		keep[i] = struct{}{}
+	}
+	out := make([]store.MonitorState, 0, len(keep))
+	for i, s := range states {
+		if _, ok := keep[i]; ok {
+			out = append(out, s)
+		}
+	}
+	return out
 }

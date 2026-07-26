@@ -37,6 +37,25 @@ func TestFolderHandler_List(t *testing.T) {
 	assert.Len(t, body["data"], 2)
 }
 
+func TestFolderHandler_List_Search(t *testing.T) {
+	fs := &testutil.MockFolderStore{
+		SearchFn: func(_ context.Context, query string) ([]store.Folder, error) {
+			return []store.Folder{testutil.SampleFolder(1, "Landscapes")}, nil
+		},
+	}
+	h := NewFolderHandler(fs, &testutil.MockImageStore{}, &testutil.MockBus{})
+
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest(http.MethodGet, "/folders?search=land", nil)
+	h.List(w, r)
+
+	assert.Equal(t, http.StatusOK, w.Code)
+
+	var body map[string][]store.Folder
+	require.NoError(t, json.NewDecoder(w.Body).Decode(&body))
+	assert.Len(t, body["data"], 1)
+}
+
 func TestFolderHandler_Get_Found(t *testing.T) {
 	fs := &testutil.MockFolderStore{
 		GetByIDFn: func(_ context.Context, id int) (*store.Folder, error) {

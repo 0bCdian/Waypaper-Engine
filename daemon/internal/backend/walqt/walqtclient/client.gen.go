@@ -55,11 +55,27 @@ const (
 	LoadRequestTransitionWipe        LoadRequestTransition = "wipe"
 )
 
+// Defines values for LoadTargetResultOutcome.
+const (
+	LoadTargetResultOutcomeApplied    LoadTargetResultOutcome = "applied"
+	LoadTargetResultOutcomeFailed     LoadTargetResultOutcome = "failed"
+	LoadTargetResultOutcomeSuperseded LoadTargetResultOutcome = "superseded"
+	LoadTargetResultOutcomeTimeout    LoadTargetResultOutcome = "timeout"
+)
+
 // Defines values for MonitorStatusCurrentKind.
 const (
 	MonitorStatusCurrentKindImage MonitorStatusCurrentKind = "image"
 	MonitorStatusCurrentKindVideo MonitorStatusCurrentKind = "video"
 	MonitorStatusCurrentKindWeb   MonitorStatusCurrentKind = "web"
+)
+
+// Defines values for MonitorStatusLoadState.
+const (
+	MonitorStatusLoadStateDisplayed   MonitorStatusLoadState = "displayed"
+	MonitorStatusLoadStateFailed      MonitorStatusLoadState = "failed"
+	MonitorStatusLoadStateLoading     MonitorStatusLoadState = "loading"
+	MonitorStatusLoadStateNeverLoaded MonitorStatusLoadState = "never_loaded"
 )
 
 // Defines values for ParallaxMoveRequestDirection.
@@ -76,12 +92,6 @@ const (
 	Video WallpaperTargetKind = "video"
 	Web   WallpaperTargetKind = "web"
 )
-
-// AcceptedResponse defines model for AcceptedResponse.
-type AcceptedResponse struct {
-	Accepted bool `json:"accepted"`
-	Ok       bool `json:"ok"`
-}
 
 // AppliedResponse defines model for AppliedResponse.
 type AppliedResponse struct {
@@ -191,9 +201,6 @@ type LoadRequest struct {
 	// TransitionParams Per-effect transition tuning. All fields optional; the renderer applies defaults when omitted.
 	TransitionParams *LoadTransitionParams `json:"transition_params,omitempty"`
 
-	// WaitForCompletion When `true`, the request blocks until the renderer acknowledges the transition (or 30 s elapses)
-	WaitForCompletion *bool `json:"wait_for_completion,omitempty"`
-
 	// WallpaperConfigValues Arbitrary key/value config object injected into the web wallpaper as
 	// `window.__WAYPAPER_CONFIG` and dispatched as the `waypaper:config` event.
 	// Only meaningful for `kind: web`.
@@ -206,6 +213,30 @@ type LoadRequestKind string
 // LoadRequestTransition Transition effect to use when switching wallpapers. Forwarded to the
 // renderer verbatim; unknown values fall back to `fade`.
 type LoadRequestTransition string
+
+// LoadResponse Per-target outcome of a `/wallpaper/load` call. `ok` is `true` only when
+// every result is `applied` or `superseded` — a single `failed` or
+// `timeout` target makes the whole response `ok: false`.
+type LoadResponse struct {
+	Ok bool `json:"ok"`
+
+	// RequestId Host-assigned id for this load request, echoed back for correlation
+	RequestId int                `json:"request_id"`
+	Results   []LoadTargetResult `json:"results"`
+}
+
+// LoadTargetResult defines model for LoadTargetResult.
+type LoadTargetResult struct {
+	// Error Present when `outcome` is `failed`
+	Error *string `json:"error,omitempty"`
+
+	// Name Wayland output name
+	Name    string                  `json:"name"`
+	Outcome LoadTargetResultOutcome `json:"outcome"`
+}
+
+// LoadTargetResultOutcome defines model for LoadTargetResult.Outcome.
+type LoadTargetResultOutcome string
 
 // LoadTransitionParams Per-effect transition tuning. All fields optional; the renderer applies defaults when omitted.
 type LoadTransitionParams struct {
@@ -238,16 +269,28 @@ type MonitorStatus struct {
 	CurrentKind MonitorStatusCurrentKind `json:"current_kind"`
 
 	// CurrentTarget Absolute path or URI of the active wallpaper (absent when no wallpaper has been loaded)
-	CurrentTarget  *string       `json:"current_target,omitempty"`
-	InProgress     bool          `json:"in_progress"`
-	LastTransition string        `json:"last_transition"`
-	Name           string        `json:"name"`
-	Parallax       ParallaxState `json:"parallax"`
-	Visible        bool          `json:"visible"`
+	CurrentTarget  *string `json:"current_target,omitempty"`
+	InProgress     bool    `json:"in_progress"`
+	LastTransition string  `json:"last_transition"`
+
+	// LoadState Real per-monitor load state, distinct from the optimistic
+	// `current_kind`/`current_target` pair. A hot-plugged monitor that has
+	// never received a load reports `never_loaded` even though
+	// `current_kind` defaults to `image`.
+	LoadState MonitorStatusLoadState `json:"load_state"`
+	Name      string                 `json:"name"`
+	Parallax  ParallaxState          `json:"parallax"`
+	Visible   bool                   `json:"visible"`
 }
 
 // MonitorStatusCurrentKind defines model for MonitorStatus.CurrentKind.
 type MonitorStatusCurrentKind string
+
+// MonitorStatusLoadState Real per-monitor load state, distinct from the optimistic
+// `current_kind`/`current_target` pair. A hot-plugged monitor that has
+// never received a load reports `never_loaded` even though
+// `current_kind` defaults to `image`.
+type MonitorStatusLoadState string
 
 // NetworkSettingsRequest Enables or disables global network access for all wallpapers.
 // Accepts `allow_network_wallpapers` (preferred) or the legacy alias
@@ -1535,11 +1578,9 @@ func (r PushWallpaperConfigResponse) StatusCode() int {
 type LoadWallpaperResponse struct {
 	Body         []byte
 	HTTPResponse *http.Response
-	JSON200      *OkResponse
-	JSON202      *AcceptedResponse
+	JSON200      *LoadResponse
 	JSON400      *Error
 	JSON404      *Error
-	JSON504      *Error
 }
 
 // Status returns HTTPResponse.Status
@@ -2064,18 +2105,11 @@ func ParseLoadWallpaperResponse(rsp *http.Response) (*LoadWallpaperResponse, err
 
 	switch {
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 200:
-		var dest OkResponse
+		var dest LoadResponse
 		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
 			return nil, err
 		}
 		response.JSON200 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 202:
-		var dest AcceptedResponse
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON202 = &dest
 
 	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 400:
 		var dest Error
@@ -2090,13 +2124,6 @@ func ParseLoadWallpaperResponse(rsp *http.Response) (*LoadWallpaperResponse, err
 			return nil, err
 		}
 		response.JSON404 = &dest
-
-	case strings.Contains(rsp.Header.Get("Content-Type"), "json") && rsp.StatusCode == 504:
-		var dest Error
-		if err := json.Unmarshal(bodyBytes, &dest); err != nil {
-			return nil, err
-		}
-		response.JSON504 = &dest
 
 	}
 

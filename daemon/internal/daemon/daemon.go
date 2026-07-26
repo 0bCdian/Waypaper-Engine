@@ -1,20 +1,15 @@
-// Package daemon provides the Daemon struct that wires all subsystems and
-// serves the HTTP API over a Unix socket. It can be instantiated from main.go
-// or from integration tests with injected dependencies.
 package daemon
 
 import (
 	"context"
 	"fmt"
+	"io"
 	"log/slog"
 	"net"
 	"net/http"
 	"os"
 	"path/filepath"
 	"time"
-
-	"github.com/spf13/viper"
-
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/config"
 	"waypaper-engine/daemon/internal/control"
@@ -33,45 +28,29 @@ import (
 	"waypaper-engine/daemon/internal/playlist"
 	"waypaper-engine/daemon/internal/server"
 	"waypaper-engine/daemon/internal/store"
+	"waypaper-engine/daemon/internal/suspend"
 	"waypaper-engine/daemon/internal/system"
 	"waypaper-engine/daemon/internal/wallpaper"
 )
 
 const themesSubdir = "themes"
 
-// Options holds all injected dependencies for a Daemon instance.
 type Options struct {
-	// SocketPath is the Unix socket the HTTP server listens on.
-	SocketPath string
-	// DB is the open database; the Daemon does NOT close it on shutdown — the
-	// caller is responsible for closing it after Start returns.
-	DB store.DB
-	// Registry is the populated backend registry. The caller is responsible for
-	// registering backends and setting the active one before calling New.
-	Registry backend.Registry
-	// Cfg is the config manager (provides typed accessors and update helpers).
-	Cfg config.ConfigManager
-	// Viper is the raw viper instance needed by image.NewProcessor.
-	Viper *viper.Viper
-	// ImagesDir is the directory where wallpaper images are stored.
-	ImagesDir string
-	// ThumbnailsDir is the directory where thumbnails are cached.
-	ThumbnailsDir string
-	// Version is embedded in /healthz responses.
-	Version string
-	// Compositor overrides compositor auto-detection. Leave empty for auto.
-	Compositor monitor.CompositorType
-	// MonitorProviders is the list of monitor providers to use. Pass nil/empty
-	// to skip provider-based detection (useful in tests).
+	SocketPath       string
+	DB               store.DB
+	Registry         backend.Registry
+	Cfg              config.ConfigManager
+	ImagesDir        string
+	ThumbnailsDir    string
+	Version          string
+	Compositor       monitor.CompositorType
 	MonitorProviders []monitor.MonitorProvider
 }
 
-// Daemon wires all subsystems and serves the HTTP API over a Unix socket.
 type Daemon struct {
 	opts Options
 }
 
-// New validates options and creates a Daemon. It does not start the server.
 func New(opts Options) (*Daemon, error) {
 	if opts.SocketPath == "" {
 		return nil, fmt.Errorf("daemon: SocketPath is required")
@@ -85,26 +64,12 @@ func New(opts Options) (*Daemon, error) {
 	if opts.Cfg == nil {
 		return nil, fmt.Errorf("daemon: Cfg is required")
 	}
-	if opts.Viper == nil {
-		return nil, fmt.Errorf("daemon: Viper is required")
-	}
 	return &Daemon{opts: opts}, nil
 }
 
-// Start wires subsystems, starts the HTTP server, and blocks until ctx is
-// cancelled or the server fails.
-//
-// Shutdown sequence on ctx cancellation:
-//  1. Stop playlist manager
-//  2. Shutdown HTTP server
-//  3. Shutdown active backend
-//  4. Close event bus
-//
-// The caller is responsible for closing opts.DB after Start returns.
 func (d *Daemon) Start(ctx context.Context) error {
 	opts := d.opts
 
-	// Ensure directories exist.
 	for _, dir := range []string{opts.ImagesDir, opts.ThumbnailsDir} {
 		if dir != "" {
 			if err := system.EnsureDir(dir); err != nil {
@@ -116,11 +81,9 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return fmt.Errorf("daemon: ensure socket parent dir: %w", err)
 	}
 
-	// Create event bus.
 	bus := events.NewBus()
 	defer bus.Close()
 
-	// Publish SSE events when config.toml is edited externally.
 	opts.Cfg.OnConfigChange(func(section string) {
 		sections := []string{section}
 		if section == "" {
@@ -133,14 +96,9 @@ func (d *Daemon) Start(ctx context.Context) error {
 		})
 	})
 
-	// restoreRetryCtx is cancelled as soon as graceful shutdown begins so that
-	// deferred daemon-backend restore retries stop immediately.
 	restoreRetryCtx, cancelRestoreRetry := context.WithCancel(ctx)
 	defer cancelRestoreRetry()
 
-	// Initialize active backend (if any).
-	// If no backend is installed, the daemon starts in a degraded state and
-	// fires BackendUnavailable over SSE once the server is accepting connections.
 	noBackendInstalled := !opts.Registry.HasActive()
 	var initErr error
 	if !noBackendInstalled {
@@ -164,29 +122,23 @@ func (d *Daemon) Start(ctx context.Context) error {
 		slog.Warn("no wallpaper backend is installed; daemon running in degraded mode")
 	}
 
-	// Create image processor and splitter.
-	processor := image.NewProcessor(opts.DB.ImageStore(), bus, opts.ImagesDir, opts.ThumbnailsDir, opts.Viper)
+	processor := image.NewProcessor(opts.DB.ImageStore(), bus, opts.ImagesDir, opts.ThumbnailsDir)
 	splitter := image.NewSplitter(opts.ImagesDir)
 
-	// Backfill missing video browser previews asynchronously.
 	go processor.BackfillMissingVideoBrowserPreviews(ctx)
 
-	// Create monitor manager.
 	monManager, err := monitor.NewMonitorManager(opts.MonitorProviders, opts.Compositor)
 	if err != nil {
 		return fmt.Errorf("daemon: create monitor manager: %w", err)
 	}
 	slog.Info("compositor detected", "type", monManager.Compositor())
 
-	// Clean stale processed images if gallery is empty (e.g. after a DB wipe).
 	cleanStaleProcessedDir(ctx, opts.DB.ImageStore(), opts.ImagesDir)
 
-	// Restore wallpapers from persisted monitor state (skip if no backend installed).
-	// Restore is run in a goroutine so a slow backend (e.g. wal-qt navigating
-	// a web wallpaper for several seconds) does not delay the HTTP server becoming
-	// reachable — the GUI's readiness probe times out after ~10s.
+	restoreDone := make(chan struct{})
 	if !noBackendInstalled {
 		if initErr != nil {
+			close(restoreDone)
 			wallpaper.StartDeferredDaemonRestore(
 				restoreRetryCtx,
 				opts.Registry,
@@ -199,11 +151,15 @@ func (d *Daemon) Start(ctx context.Context) error {
 				bus,
 			)
 		} else {
-			go wallpaper.Restore(restoreRetryCtx, opts.DB.MonitorStateStore(), opts.DB.StateStore(), opts.Registry, opts.Cfg, monManager, opts.DB.ImageStore(), splitter, bus)
+			go func() {
+				defer close(restoreDone)
+				wallpaper.Restore(restoreRetryCtx, opts.DB.MonitorStateStore(), opts.DB.StateStore(), opts.Registry, opts.Cfg, monManager, opts.DB.ImageStore(), splitter, bus)
+			}()
 		}
+	} else {
+		close(restoreDone)
 	}
 
-	// Create playlist manager.
 	playlistMgr := playlist.NewManager(
 		opts.DB.PlaylistStore(),
 		opts.DB.StateStore(),
@@ -216,11 +172,17 @@ func (d *Daemon) Start(ctx context.Context) error {
 		splitter,
 		opts.Cfg,
 	)
+	select {
+	case <-restoreDone:
+	case <-time.After(20 * time.Second):
+		slog.Warn("startup restore did not finish in time; restoring playlists anyway")
+	case <-ctx.Done():
+	}
+
 	if err := playlistMgr.RestorePersistedRuns(ctx); err != nil {
 		slog.Warn("playlist restore from disk failed", "error", err)
 	}
 
-	// Shutdown channel (used by /healthz shutdown endpoint).
 	shutdownCh := make(chan struct{}, 1)
 	shutdownFn := func() {
 		select {
@@ -229,10 +191,21 @@ func (d *Daemon) Start(ctx context.Context) error {
 		}
 	}
 
-	// Create control plane and handlers.
-	ctrl := control.NewController(opts.Cfg, opts.Registry, bus, control.RestoreFunc(func(rctx context.Context) {
+	restoreFn := func(rctx context.Context) {
 		wallpaper.Restore(rctx, opts.DB.MonitorStateStore(), opts.DB.StateStore(), opts.Registry, opts.Cfg, monManager, opts.DB.ImageStore(), splitter, bus)
-	}))
+	}
+
+	ctrl := control.NewController(opts.Cfg, opts.Registry, bus, control.RestoreFunc(restoreFn))
+
+	// A suspend can leave the cached monitor snapshot stale (a monitor that
+	// dropped out mid-sleep never gets retried otherwise) — logind's resume
+	// signal forces a re-detect and re-applies wallpapers to catch that.
+	go suspend.WatchResume(ctx, func() {
+		if err := monManager.Refresh(ctx); err != nil {
+			slog.Warn("suspend: monitor refresh after resume failed", "error", err)
+		}
+		restoreFn(ctx)
+	})
 	userThemesDir := filepath.Join(system.ConfigHome(), themesSubdir)
 	handlers := server.Handlers{
 		Health: healthhandler.NewHealthHandler(opts.Version, shutdownFn),
@@ -252,11 +225,9 @@ func (d *Daemon) Start(ctx context.Context) error {
 		Themes:  themeshandler.NewThemesHandler(userThemesDir),
 	}
 
-	// Create router and server.
 	router := server.NewRouter(handlers, bus)
 	srv := server.NewServer(opts.SocketPath, router)
 
-	// Start HTTP server.
 	errCh := make(chan error, 1)
 	go func() {
 		errCh <- srv.Serve()
@@ -264,8 +235,6 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	slog.Info("daemon ready", "socket", opts.SocketPath)
 
-	// If no backend is installed, notify the GUI once the server is up and
-	// SSE clients can connect. List the backends that were checked.
 	if noBackendInstalled {
 		checked := make([]string, 0)
 		for _, info := range opts.Registry.Available() {
@@ -280,7 +249,6 @@ func (d *Daemon) Start(ctx context.Context) error {
 		})
 	}
 
-	// Wait for shutdown.
 	var serverErr error
 	select {
 	case <-ctx.Done():
@@ -294,10 +262,8 @@ func (d *Daemon) Start(ctx context.Context) error {
 		}
 	}
 
-	// Graceful shutdown.
 	slog.Info("shutting down...")
 
-	// Stop deferred restore retries immediately so shutdown isn't delayed.
 	cancelRestoreRetry()
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -314,6 +280,11 @@ func (d *Daemon) Start(ctx context.Context) error {
 			slog.Warn("backend shutdown error", "error", err)
 		}
 	}
+	if closer, ok := opts.Cfg.(io.Closer); ok {
+		if err := closer.Close(); err != nil {
+			slog.Warn("config manager close error", "error", err)
+		}
+	}
 
 	_ = os.Remove(opts.SocketPath)
 
@@ -324,9 +295,6 @@ func (d *Daemon) Start(ctx context.Context) error {
 	return nil
 }
 
-// cleanStaleProcessedDir removes the processed/ split-image cache when the
-// image gallery is empty. This prevents stale cached fragments from being
-// served after a DB wipe + re-import where image IDs get reassigned.
 func cleanStaleProcessedDir(ctx context.Context, imageStore store.ImageStore, imagesDir string) {
 	count, err := imageStore.Count(ctx)
 	if err != nil {
@@ -349,8 +317,6 @@ func cleanStaleProcessedDir(ctx context.Context, imageStore store.ImageStore, im
 	slog.Info("clean processed: removed stale split-image cache (gallery is empty)")
 }
 
-// WaitForSocket polls until the Unix socket at path is accepting connections,
-// or until timeout is exceeded. Useful in tests.
 func WaitForSocket(path string, timeout time.Duration) error {
 	deadline := time.Now().Add(timeout)
 	for time.Now().Before(deadline) {
@@ -364,8 +330,6 @@ func WaitForSocket(path string, timeout time.Duration) error {
 	return fmt.Errorf("socket %s did not become ready within %s", path, timeout)
 }
 
-// UnixClient returns an *http.Client that dials the given Unix socket path.
-// The baseURL (e.g. "http://daemon") is only used for path construction.
 func UnixClient(socketPath string) *http.Client {
 	return &http.Client{
 		Transport: &http.Transport{

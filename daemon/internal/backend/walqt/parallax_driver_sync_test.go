@@ -6,11 +6,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-// The workspace parallax driver goroutine must be restarted when (and only when)
-// a config field that the goroutine captures at start time changes. Restarting
-// it on an unrelated change drops per-output workspace tracking and swallows the
-// next workspace switch; never restarting it on a relevant change is the bug
-// that left the Hyprland driver dead after a settings toggle.
 func TestParallaxDriverSignature_RestartTriggers(t *testing.T) {
 	base := defaultConfig()
 	base.ParallaxEnabled = true

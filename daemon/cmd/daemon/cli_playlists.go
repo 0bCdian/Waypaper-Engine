@@ -10,8 +10,6 @@ import (
 	"github.com/spf13/cobra"
 )
 
-// resolvePlaylistID fetches all playlists and finds the one matching the given
-// name, returning its ID as a string. Returns an error if no match is found.
 func resolvePlaylistID(name string) (string, error) {
 	resp, err := doRequest("GET", "/playlists", nil)
 	if err != nil {
@@ -43,8 +41,6 @@ func resolvePlaylistID(name string) (string, error) {
 	return "", fmt.Errorf("no playlist found with name %q", name)
 }
 
-// resolvePlaylistArg returns the playlist ID from either the --name flag or
-// the first positional argument. Returns an error if neither is provided.
 func resolvePlaylistArg(cmd *cobra.Command, args []string) (string, error) {
 	name, _ := cmd.Flags().GetString("name")
 	if name != "" {
@@ -56,7 +52,6 @@ func resolvePlaylistArg(cmd *cobra.Command, args []string) (string, error) {
 	return args[0], nil
 }
 
-// addPlaylistNameFlag adds a --name flag as an alternative to the positional ID arg.
 func addPlaylistNameFlag(cmd *cobra.Command) {
 	cmd.Flags().StringP("name", "N", "", "playlist name (alternative to ID)")
 }
@@ -400,8 +395,6 @@ func buildPlaylistPrevAllCmd() *cobra.Command {
 	}
 }
 
-// parseIntList splits a comma-separated string into a slice of ints,
-// silently skipping empty segments.
 func parseIntList(s string) []int {
 	var result []int
 	for _, part := range strings.Split(s, ",") {

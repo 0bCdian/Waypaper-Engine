@@ -18,7 +18,7 @@ func TestPublishAndSubscribeWildcard(t *testing.T) {
 	bus := NewBus()
 	defer bus.Close()
 
-	ch := bus.Subscribe() // wildcard: receives all events
+	ch := bus.Subscribe()
 
 	bus.Publish(Event{Type: WallpaperChanged, Data: map[string]any{"image_id": 42}})
 
@@ -48,14 +48,10 @@ func TestSubscribeWithTypeFilter(t *testing.T) {
 
 	ch := bus.Subscribe(PlaylistStarted, PlaylistStopped)
 
-	// Publish a matching event.
 	bus.Publish(Event{Type: PlaylistStarted, Data: "started"})
-	// Publish a non-matching event.
 	bus.Publish(Event{Type: WallpaperChanged, Data: "changed"})
-	// Publish another matching event.
 	bus.Publish(Event{Type: PlaylistStopped, Data: "stopped"})
 
-	// Should receive PlaylistStarted.
 	select {
 	case evt := <-ch:
 		if evt.Type != PlaylistStarted {
@@ -65,7 +61,6 @@ func TestSubscribeWithTypeFilter(t *testing.T) {
 		t.Fatal("timed out waiting for PlaylistStarted")
 	}
 
-	// Should receive PlaylistStopped (WallpaperChanged was filtered out).
 	select {
 	case evt := <-ch:
 		if evt.Type != PlaylistStopped {
@@ -75,12 +70,10 @@ func TestSubscribeWithTypeFilter(t *testing.T) {
 		t.Fatal("timed out waiting for PlaylistStopped")
 	}
 
-	// Channel should be empty now.
 	select {
 	case evt := <-ch:
 		t.Errorf("unexpected event: %+v", evt)
 	default:
-		// good
 	}
 }
 
@@ -90,11 +83,10 @@ func TestMultipleSubscribers(t *testing.T) {
 
 	ch1 := bus.Subscribe(WallpaperChanged)
 	ch2 := bus.Subscribe(WallpaperChanged)
-	ch3 := bus.Subscribe(PlaylistStarted) // different filter
+	ch3 := bus.Subscribe(PlaylistStarted)
 
 	bus.Publish(Event{Type: WallpaperChanged, Data: "test"})
 
-	// ch1 and ch2 should both receive the event.
 	for _, ch := range []<-chan Event{ch1, ch2} {
 		select {
 		case evt := <-ch:
@@ -106,12 +98,10 @@ func TestMultipleSubscribers(t *testing.T) {
 		}
 	}
 
-	// ch3 should NOT receive it.
 	select {
 	case evt := <-ch3:
 		t.Errorf("ch3 should not have received event, got: %+v", evt)
 	default:
-		// good
 	}
 }
 
@@ -122,7 +112,6 @@ func TestUnsubscribe(t *testing.T) {
 	ch := bus.Subscribe()
 	bus.Unsubscribe(ch)
 
-	// Channel should be closed.
 	select {
 	case _, ok := <-ch:
 		if ok {
@@ -132,7 +121,6 @@ func TestUnsubscribe(t *testing.T) {
 		t.Error("expected closed channel to be readable (return zero value)")
 	}
 
-	// Publishing after unsubscribe should not panic.
 	bus.Publish(Event{Type: WallpaperChanged, Data: "test"})
 }
 
@@ -142,7 +130,6 @@ func TestUnsubscribeIdempotent(t *testing.T) {
 
 	ch := bus.Subscribe()
 
-	// Calling Unsubscribe twice should not panic.
 	bus.Unsubscribe(ch)
 	bus.Unsubscribe(ch)
 }
@@ -155,7 +142,6 @@ func TestClose(t *testing.T) {
 
 	bus.Close()
 
-	// All channels should be closed.
 	for i, ch := range []<-chan Event{ch1, ch2} {
 		select {
 		case _, ok := <-ch:
@@ -167,10 +153,8 @@ func TestClose(t *testing.T) {
 		}
 	}
 
-	// Publish after Close should not panic.
 	bus.Publish(Event{Type: WallpaperChanged, Data: "test"})
 
-	// Subscribe after Close should return a closed channel.
 	ch3 := bus.Subscribe()
 	select {
 	case _, ok := <-ch3:
@@ -185,7 +169,7 @@ func TestClose(t *testing.T) {
 func TestCloseIdempotent(t *testing.T) {
 	bus := NewBus()
 	bus.Close()
-	bus.Close() // should not panic
+	bus.Close()
 }
 
 func TestPublishSetsTimestamp(t *testing.T) {
@@ -225,12 +209,10 @@ func TestNonBlockingPublish(t *testing.T) {
 
 	ch := bus.Subscribe()
 
-	// Fill the subscriber buffer completely.
-	for i := 0; i < subscriberBufferSize; i++ {
+	for i := range subscriberBufferSize {
 		bus.Publish(Event{Type: WallpaperChanged, Data: i})
 	}
 
-	// The next publish should NOT block (event is dropped for this subscriber).
 	done := make(chan struct{})
 	go func() {
 		bus.Publish(Event{Type: WallpaperChanged, Data: "overflow"})
@@ -239,12 +221,10 @@ func TestNonBlockingPublish(t *testing.T) {
 
 	select {
 	case <-done:
-		// good — publish did not block
 	case <-time.After(time.Second):
 		t.Fatal("Publish blocked on full subscriber buffer")
 	}
 
-	// Drain the channel and verify we got the buffered events.
 	count := 0
 	for range subscriberBufferSize {
 		<-ch
@@ -254,7 +234,6 @@ func TestNonBlockingPublish(t *testing.T) {
 		t.Errorf("expected %d events, got %d", subscriberBufferSize, count)
 	}
 
-	// The overflow event was dropped, channel should be empty.
 	select {
 	case evt := <-ch:
 		t.Errorf("expected empty channel after drain, got: %+v", evt)
@@ -273,14 +252,12 @@ func TestConcurrentPublishSubscribe(t *testing.T) {
 
 	var wg sync.WaitGroup
 
-	// Start subscribers.
 	channels := make([]<-chan Event, numSubscribers)
 	counts := make([]int, numSubscribers)
 	for i := range numSubscribers {
 		channels[i] = bus.Subscribe()
 	}
 
-	// Drain subscribers in goroutines.
 	for i := range numSubscribers {
 		wg.Add(1)
 		go func(idx int) {
@@ -291,28 +268,22 @@ func TestConcurrentPublishSubscribe(t *testing.T) {
 		}(i)
 	}
 
-	// Publish concurrently.
 	var pubWg sync.WaitGroup
 	for range numPublishers {
-		pubWg.Add(1)
-		go func() {
-			defer pubWg.Done()
+		pubWg.Go(func() {
 			for range numEventsPerPublisher {
 				bus.Publish(Event{Type: WallpaperChanged, Data: "concurrent"})
 			}
-		}()
+		})
 	}
 
 	pubWg.Wait()
 
-	// Close the bus to signal subscribers to finish.
 	bus.Close()
 	wg.Wait()
 
 	totalExpected := numPublishers * numEventsPerPublisher
 	for i, c := range counts {
-		// Due to non-blocking publish, some events may be dropped if a subscriber
-		// is slow. But we should get a reasonable number.
 		if c == 0 {
 			t.Errorf("subscriber %d received 0 events (expected up to %d)", i, totalExpected)
 		}
