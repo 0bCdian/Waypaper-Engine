@@ -6,6 +6,7 @@ require (
 	github.com/chai2010/webp v1.4.0
 	github.com/fsnotify/fsnotify v1.9.0
 	github.com/go-chi/chi/v5 v5.2.5
+	github.com/godbus/dbus/v5 v5.2.2
 	github.com/oapi-codegen/oapi-codegen/v2 v2.4.1
 	github.com/ostafen/clover/v2 v2.0.0-alpha.3
 	github.com/samber/slog-multi v1.7.1

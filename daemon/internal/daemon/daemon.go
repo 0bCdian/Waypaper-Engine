@@ -28,6 +28,7 @@ import (
 	"waypaper-engine/daemon/internal/playlist"
 	"waypaper-engine/daemon/internal/server"
 	"waypaper-engine/daemon/internal/store"
+	"waypaper-engine/daemon/internal/suspend"
 	"waypaper-engine/daemon/internal/system"
 	"waypaper-engine/daemon/internal/wallpaper"
 )
@@ -190,9 +191,21 @@ func (d *Daemon) Start(ctx context.Context) error {
 		}
 	}
 
-	ctrl := control.NewController(opts.Cfg, opts.Registry, bus, control.RestoreFunc(func(rctx context.Context) {
+	restoreFn := func(rctx context.Context) {
 		wallpaper.Restore(rctx, opts.DB.MonitorStateStore(), opts.DB.StateStore(), opts.Registry, opts.Cfg, monManager, opts.DB.ImageStore(), splitter, bus)
-	}))
+	}
+
+	ctrl := control.NewController(opts.Cfg, opts.Registry, bus, control.RestoreFunc(restoreFn))
+
+	// A suspend can leave the cached monitor snapshot stale (a monitor that
+	// dropped out mid-sleep never gets retried otherwise) — logind's resume
+	// signal forces a re-detect and re-applies wallpapers to catch that.
+	go suspend.WatchResume(ctx, func() {
+		if err := monManager.Refresh(ctx); err != nil {
+			slog.Warn("suspend: monitor refresh after resume failed", "error", err)
+		}
+		restoreFn(ctx)
+	})
 	userThemesDir := filepath.Join(system.ConfigHome(), themesSubdir)
 	handlers := server.Handlers{
 		Health: healthhandler.NewHealthHandler(opts.Version, shutdownFn),
