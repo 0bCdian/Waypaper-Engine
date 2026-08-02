@@ -96,7 +96,7 @@
     "vite-plugin-electron": "1.1.0",
     "vite-plugin-electron-renderer": "0.14.6",
     "vitepress": "1.6.3",
-    "vitest": "4.1.3"
+    "vitest": "4.1.10"
   },
   "packageManager": "pnpm@11.2.2"
 }
