@@ -66,8 +66,8 @@ importers:
         specifier: 5.3.2
         version: 5.3.2(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react-responsive-pagination:
-        specifier: 2.13.0
-        version: 2.13.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
+        specifier: 2.14.0
+        version: 2.14.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
       react-router-dom:
         specifier: 7.15.1
         version: 7.15.1(react-dom@19.2.7(react@19.2.7))(react@19.2.7)
@@ -3042,8 +3042,8 @@ packages:
     resolution: {integrity: sha512-QgT5//D3jfjJb6Gsjxv0Slpj23ip+HtOpnNgnb2S5zU3CB26G/IDPGoy4RJB42wzFE46DRsstbW6tKHoKbhAxw==}
     engines: {node: '>=0.10.0'}
 
-  react-responsive-pagination@2.13.0:
-    resolution: {integrity: sha512-7pRQbhAyn3/RRQ+2DqhH4Z4ZkMECz6ieA1/C5arB5xbt4wDjcVKveiGw4Skx3Xs1gH0+A8x4IzkQc79avKEpTw==}
+  react-responsive-pagination@2.14.0:
+    resolution: {integrity: sha512-U2CLbzzGses8Ne6ID11AIIAHFh70EpEwmsHH3QFKENK82UUUN7SPqMJGftMa0l7IO7O3sjZz2IovbBPRbHlQmg==}
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^16.8.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
@@ -6705,7 +6705,7 @@ snapshots:
 
   react-refresh@0.18.0: {}
 
-  react-responsive-pagination@2.13.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
+  react-responsive-pagination@2.14.0(react-dom@19.2.7(react@19.2.7))(react@19.2.7):
     dependencies:
       prop-types: 15.8.1
       react: 19.2.7
