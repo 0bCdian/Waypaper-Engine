@@ -66,7 +66,7 @@
     "react-responsive-pagination": "2.14.0",
     "react-router-dom": "7.15.1",
     "react-select": "5.10.2",
-    "toml": "4.1.2",
+    "toml": "5.0.0",
     "zustand": "5.0.14"
   },
   "devDependencies": {
