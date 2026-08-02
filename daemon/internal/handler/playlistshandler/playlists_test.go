@@ -24,7 +24,7 @@ func TestPlaylistHandler_List(t *testing.T) {
 			}, nil
 		},
 	}
-	h := NewPlaylistHandler(ps, &testutil.MockStateStore{}, nil, &testutil.MockBus{})
+	h := NewPlaylistHandler(ps, &testutil.MockStateStore{}, nil, &testutil.MockBus{}, &testutil.MockMonitorManager{})
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/playlists", nil)
@@ -44,7 +44,7 @@ func TestPlaylistHandler_Get_Found(t *testing.T) {
 			return &pl, nil
 		},
 	}
-	h := NewPlaylistHandler(ps, &testutil.MockStateStore{}, nil, &testutil.MockBus{})
+	h := NewPlaylistHandler(ps, &testutil.MockStateStore{}, nil, &testutil.MockBus{}, &testutil.MockMonitorManager{})
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/playlists/1", nil)
@@ -65,7 +65,7 @@ func TestPlaylistHandler_Get_NotFound(t *testing.T) {
 			return nil, store.ErrNotFound
 		},
 	}
-	h := NewPlaylistHandler(ps, &testutil.MockStateStore{}, nil, &testutil.MockBus{})
+	h := NewPlaylistHandler(ps, &testutil.MockStateStore{}, nil, &testutil.MockBus{}, &testutil.MockMonitorManager{})
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/playlists/999", nil)
@@ -82,7 +82,7 @@ func TestPlaylistHandler_Create(t *testing.T) {
 			return &created, nil
 		},
 	}
-	h := NewPlaylistHandler(ps, &testutil.MockStateStore{}, nil, &testutil.MockBus{})
+	h := NewPlaylistHandler(ps, &testutil.MockStateStore{}, nil, &testutil.MockBus{}, &testutil.MockMonitorManager{})
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodPost, "/playlists",
@@ -104,7 +104,7 @@ func TestPlaylistHandler_Update(t *testing.T) {
 			return &pl, nil
 		},
 	}
-	h := NewPlaylistHandler(ps, &testutil.MockStateStore{}, nil, &testutil.MockBus{})
+	h := NewPlaylistHandler(ps, &testutil.MockStateStore{}, nil, &testutil.MockBus{}, &testutil.MockMonitorManager{})
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodPatch, "/playlists/5",
@@ -125,7 +125,7 @@ func TestPlaylistHandler_Delete(t *testing.T) {
 			return nil
 		},
 	}
-	h := NewPlaylistHandler(ps, &testutil.MockStateStore{}, nil, &testutil.MockBus{})
+	h := NewPlaylistHandler(ps, &testutil.MockStateStore{}, nil, &testutil.MockBus{}, &testutil.MockMonitorManager{})
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodDelete, "/playlists/3", nil)
@@ -142,7 +142,7 @@ func TestPlaylistHandler_Delete_NotFound(t *testing.T) {
 			return errors.New("playlist not found")
 		},
 	}
-	h := NewPlaylistHandler(ps, &testutil.MockStateStore{}, nil, &testutil.MockBus{})
+	h := NewPlaylistHandler(ps, &testutil.MockStateStore{}, nil, &testutil.MockBus{}, &testutil.MockMonitorManager{})
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodDelete, "/playlists/999", nil)
@@ -161,13 +161,13 @@ func TestPlaylistHandler_ListActive(t *testing.T) {
 						PlaylistID:   1,
 						PlaylistName: "Morning",
 					},
-					Mode:     "individual",
-					Monitors: []string{"HDMI-A-1"},
+					Monitors:  []string{"HDMI-A-1"},
+					AppliedTo: []string{"HDMI-A-1"},
 				},
 			}
 		},
 	}
-	h := NewPlaylistHandler(&testutil.MockPlaylistStore{}, ss, nil, &testutil.MockBus{})
+	h := NewPlaylistHandler(&testutil.MockPlaylistStore{}, ss, nil, &testutil.MockBus{}, &testutil.MockMonitorManager{})
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/playlists/active", nil)
@@ -223,7 +223,7 @@ func TestPreviousAllResponse_WireFormat(t *testing.T) {
 }
 
 func TestPlaylistHandler_Get_BadID(t *testing.T) {
-	h := NewPlaylistHandler(&testutil.MockPlaylistStore{}, &testutil.MockStateStore{}, nil, &testutil.MockBus{})
+	h := NewPlaylistHandler(&testutil.MockPlaylistStore{}, &testutil.MockStateStore{}, nil, &testutil.MockBus{}, &testutil.MockMonitorManager{})
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/playlists/abc", nil)

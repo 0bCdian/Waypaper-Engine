@@ -341,12 +341,8 @@ class GoDaemonClient extends EventEmitter {
     return this.playlists.deletePlaylist(id);
   }
 
-  async startPlaylist(
-    id: number,
-    monitor: string = "*",
-    mode: MonitorMode = "individual",
-  ): Promise<void> {
-    return this.playlists.startPlaylist(id, monitor, mode);
+  async startPlaylist(id: number, monitors: string[], extend: boolean): Promise<void> {
+    return this.playlists.startPlaylist(id, monitors, extend);
   }
 
   async stopPlaylist(id: number): Promise<void> {

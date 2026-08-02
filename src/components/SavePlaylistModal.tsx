@@ -67,8 +67,7 @@ const SavePlaylistModal = ({ currentPlaylistName, onPlaylistChanged }: Props) =>
           showError({ state: false, message: "" });
         }
       }
-      const monitorTarget =
-        monitorSelection.selectedMonitors.length === 1 ? monitorSelection.selectedMonitors[0] : "*";
+      const extend = monitorSelection.mode === "extend";
       try {
         let savedId: number;
         let activeAfterSave: ActivePlaylistInstance[] | undefined;
@@ -112,12 +111,12 @@ const SavePlaylistModal = ({ currentPlaylistName, onPlaylistChanged }: Props) =>
               playlistType: playlist.configuration.type,
               activePlaylists: activeAfterSave ?? [],
               selectedMonitors: monitorSelection.selectedMonitors,
-              mode: monitorSelection.mode,
+              extend,
             });
           }
           if (!skipStart) {
             try {
-              await daemonClient.startPlaylist(savedId, monitorTarget, monitorSelection.mode);
+              await daemonClient.startPlaylist(savedId, monitorSelection.selectedMonitors, extend);
             } catch (startErr) {
               logger.error("Failed to start playlist:", startErr);
             }

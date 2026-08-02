@@ -5,16 +5,10 @@ import { useActivePlaylistStore } from "../stores/activePlaylistStore";
 import { useShallow } from "zustand/react/shallow";
 import type { rendererPlaylist } from "../types/rendererTypes";
 import { useEffect } from "react";
-import type { ActivePlaylistInstance, MonitorMode } from "../../electron/daemon-go-types";
+import type { ActivePlaylistInstance } from "../../electron/daemon-go-types";
 import { daemonClient } from "@/client";
 
-function monitorSetsMatch(
-  selected: string[],
-  selectedMode: MonitorMode,
-  playlistMonitors: string[],
-  playlistMode: MonitorMode,
-): boolean {
-  if (selectedMode !== playlistMode) return false;
+export function monitorSetsMatch(selected: string[], playlistMonitors: string[]): boolean {
   if (selected.length !== playlistMonitors.length) return false;
   const a = new Set(selected);
   return playlistMonitors.every((m) => a.has(m));
@@ -28,7 +22,7 @@ function monitorSetsMatch(
  * events published during the gap were dropped and never reached those listeners.
  */
 export async function refreshActivePlaylist(): Promise<void> {
-  const { selectedMonitors, mode } = useMonitorStore.getState().monitorSelection;
+  const { selectedMonitors } = useMonitorStore.getState().monitorSelection;
   if (selectedMonitors.length === 0) {
     usePlaylistStore.getState().clearPlaylist();
     useActivePlaylistStore.getState().clear();
@@ -48,9 +42,7 @@ export async function refreshActivePlaylist(): Promise<void> {
     return;
   }
 
-  const match = activePlaylists.find((ap) =>
-    monitorSetsMatch(selectedMonitors, mode, ap.monitors, ap.mode),
-  );
+  const match = activePlaylists.find((ap) => monitorSetsMatch(selectedMonitors, ap.monitors));
 
   if (!match) {
     usePlaylistStore.getState().clearPlaylist();
@@ -116,12 +108,7 @@ export function useSetLastActivePlaylist() {
         }
 
         const match = activePlaylists.find((ap) =>
-          monitorSetsMatch(
-            monitorSelection.selectedMonitors,
-            monitorSelection.mode,
-            ap.monitors,
-            ap.mode,
-          ),
+          monitorSetsMatch(monitorSelection.selectedMonitors, ap.monitors),
         );
 
         if (!match) {

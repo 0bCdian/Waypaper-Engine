@@ -31,7 +31,7 @@ type playlistRun struct {
 	playCtx    context.Context
 	playlistID int
 	monitors   []monitor.Monitor
-	target     monitor.MonitorTarget
+	target     monitor.Target
 }
 
 // Manager handles playlist lifecycle: start, stop, pause, resume, next, previous.
@@ -81,7 +81,7 @@ func NewManager(
 }
 
 // Start begins a playlist on the specified target monitor(s).
-func (m *Manager) Start(ctx context.Context, playlistID int, target monitor.MonitorTarget) error {
+func (m *Manager) Start(ctx context.Context, playlistID int, target monitor.Target) error {
 	return m.startPlaylist(ctx, playlistID, target, startOpts{})
 }
 
@@ -98,7 +98,7 @@ func setSlotDeadline(inst *store.ActivePlaylistInstance, next *time.Time) {
 	inst.SlotStartedAt = &now
 }
 
-func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target monitor.MonitorTarget, opts startOpts) error {
+func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target monitor.Target, opts startOpts) error {
 	pl, err := m.playlistStore.GetByID(ctx, playlistID)
 	if err != nil {
 		return fmt.Errorf("playlist manager: load playlist: %w", err)
@@ -108,20 +108,12 @@ func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target moni
 		return fmt.Errorf("playlist manager: playlist %d has no images", playlistID)
 	}
 
-	targetEff := target
-	if opts.fromPersisted && pl.Playback != nil {
-		targetEff = playbackToTarget(pl.Playback)
-	}
-
-	monitors, err := m.resolveMonitors(ctx, targetEff)
+	monitors, err := m.connectedDeclaredMonitors(ctx, target.Monitors)
 	if err != nil {
 		return err
 	}
-	if len(monitors) == 0 {
-		return fmt.Errorf("playlist manager: no monitors resolved for target %q", targetEff.ID)
-	}
 
-	targetNames := monitorNameSet(monitors)
+	targetNames := monitorNameSet2(target.Monitors)
 	for _, inst := range m.stateStore.GetActivePlaylists() {
 		if monitorsOverlap(inst.Monitors, targetNames) {
 			id := inst.PlaylistID
@@ -159,7 +151,7 @@ func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target moni
 		playCtx:    playCtx,
 		playlistID: pl.ID,
 		monitors:   monitors,
-		target:     targetEff,
+		target:     target,
 	}
 
 	m.mu.Lock()
@@ -167,12 +159,12 @@ func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target moni
 	m.mu.Unlock()
 
 	if playlistTypeNeedsMissedEventChecker(pl.Configuration.Type) {
-		go m.missedEventChecker(playCtx, pl.ID, monitors, targetEff)
+		go m.missedEventChecker(playCtx, pl.ID, monitors, target)
 	}
 
 	effectiveIdx := applyRow
 	if !opts.fromPersisted {
-		result, err := m.applyImage(ctx, pl, applyRow, monitors, targetEff.Mode, compatForward)
+		result, err := m.applyImage(ctx, pl, applyRow, monitors, applyModeFor(target.Extend), compatForward)
 		if err != nil {
 			slog.Warn("playlist: failed to apply first image", "error", err)
 		}
@@ -186,10 +178,10 @@ func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target moni
 	// the retry-loop collision.
 
 	sched.Start(func(index int) bool {
-		return m.onTick(playCtx, pl.ID, index, monitors, targetEff)
+		return m.onTick(playCtx, pl.ID, index, monitors, target)
 	})
 
-	monNames := monitorNames(monitors)
+	appliedNames := monitorNames(monitors)
 	nextAt := sched.NextChangeAt()
 	if resumePaused {
 		nextAt = nil
@@ -203,8 +195,9 @@ func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target moni
 			Paused:       resumePaused,
 			StartedAt:    time.Now(),
 		},
-		Mode:     string(targetEff.Mode),
-		Monitors: monNames,
+		Monitors:  append([]string(nil), target.Monitors...),
+		AppliedTo: appliedNames,
+		Extend:    target.Extend,
 	}
 	setSlotDeadline(&instance, nextAt)
 	updateInstanceIndex(&instance, pl, effectiveIdx)
@@ -219,12 +212,13 @@ func (m *Manager) startPlaylist(ctx context.Context, playlistID int, target moni
 		Data: map[string]any{
 			"playlist_id":   pl.ID,
 			"playlist_name": pl.Name,
-			"monitors":      monNames,
-			"mode":          targetEff.Mode,
+			"monitors":      target.Monitors,
+			"applied_to":    appliedNames,
+			"extend":        target.Extend,
 		},
 	})
 
-	slog.Info("playlist started", "id", pl.ID, "name", pl.Name, "monitors", monNames)
+	slog.Info("playlist started", "id", pl.ID, "name", pl.Name, "monitors", target.Monitors, "applied_to", appliedNames)
 	return nil
 }
 
@@ -474,8 +468,6 @@ func (m *Manager) advancePlaylist(ctx context.Context, playlistID int, delta int
 		return fmt.Errorf("playlist manager: playlist %d is not running", playlistID)
 	}
 
-	mode := monitor.MonitorMode(inst.Mode)
-
 	pl, err := m.playlistStore.GetByID(ctx, playlistID)
 	if err != nil {
 		return err
@@ -516,7 +508,7 @@ func (m *Manager) advancePlaylist(ctx context.Context, playlistID int, delta int
 	if delta < 0 {
 		walk = compatBackward
 	}
-	result, applyErr := m.applyImage(ctx, pl, newIdx, targetMonitors, mode, walk)
+	result, applyErr := m.applyImage(ctx, pl, newIdx, targetMonitors, applyModeFor(inst.Extend), walk)
 	if applyErr != nil {
 		return applyErr
 	}
@@ -636,7 +628,7 @@ func (m *Manager) ReconcileAfterPlaylistUpdate(ctx context.Context, playlistID i
 
 // onTick is called by the scheduler when it's time to change the wallpaper.
 // Returns whether the slide was applied; the timer scheduler only advances traversal when true.
-func (m *Manager) onTick(ctx context.Context, playlistID int, index int, monitors []monitor.Monitor, target monitor.MonitorTarget) bool {
+func (m *Manager) onTick(ctx context.Context, playlistID int, index int, monitors []monitor.Monitor, target monitor.Target) bool {
 	pl, err := m.playlistStore.GetByID(ctx, playlistID)
 	if err != nil {
 		slog.Warn("playlist tick: load playlist", "playlist_id", playlistID, "error", err)
@@ -646,7 +638,7 @@ func (m *Manager) onTick(ctx context.Context, playlistID int, index int, monitor
 		return false
 	}
 
-	result, err := m.applyImage(ctx, pl, index, monitors, target.Mode, compatForward)
+	result, err := m.applyImage(ctx, pl, index, monitors, applyModeFor(target.Extend), compatForward)
 	if err != nil {
 		slog.Warn("playlist tick: failed to apply image", "playlist_id", playlistID, "index", index, "error", err)
 		return false
@@ -920,28 +912,36 @@ func findCompatibleIndexWithWalk(ctx context.Context, pl *store.Playlist, start 
 	return -1, n, skippedItems
 }
 
-// resolveMonitors resolves the target specification to concrete monitors.
-func (m *Manager) resolveMonitors(ctx context.Context, target monitor.MonitorTarget) ([]monitor.Monitor, error) {
-	if target.ID == "*" {
-		monitors, err := m.monitorManager.GetMonitors(ctx)
-		if err != nil {
-			return nil, fmt.Errorf("playlist manager: get monitors: %w", err)
-		}
-		return monitors, nil
-	}
-
-	mon, err := m.monitorManager.GetMonitorByName(ctx, target.ID)
+func (m *Manager) connectedDeclaredMonitors(ctx context.Context, declared []string) ([]monitor.Monitor, error) {
+	connected, err := m.monitorManager.GetMonitors(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("playlist manager: get monitor %s: %w", target.ID, err)
+		return nil, fmt.Errorf("playlist manager: get monitors: %w", err)
 	}
-	return []monitor.Monitor{mon}, nil
+	declaredSet := monitorNameSet2(declared)
+	var out []monitor.Monitor
+	for _, mon := range connected {
+		if _, ok := declaredSet[mon.Name]; ok {
+			out = append(out, mon)
+		}
+	}
+	if len(out) == 0 {
+		return nil, fmt.Errorf("playlist manager: none of the declared monitors %v is connected", declared)
+	}
+	return out, nil
+}
+
+func applyModeFor(extend bool) monitor.MonitorMode {
+	if extend {
+		return monitor.ModeExtend
+	}
+	return monitor.ModeClone
 }
 
 // missedEventChecker polls every 10 seconds to detect missed scheduler events
 // (e.g. after system sleep/wake). If the expected next change time has passed
 // by more than 30 seconds, it re-triggers the scheduler by computing the
 // correct current image and applying it.
-func (m *Manager) missedEventChecker(ctx context.Context, playlistID int, monitors []monitor.Monitor, target monitor.MonitorTarget) {
+func (m *Manager) missedEventChecker(ctx context.Context, playlistID int, monitors []monitor.Monitor, target monitor.Target) {
 	ticker := time.NewTicker(10 * time.Second)
 	defer ticker.Stop()
 
@@ -985,7 +985,7 @@ func (m *Manager) missedEventChecker(ctx context.Context, playlistID int, monito
 					continue
 				}
 
-				result, applyErr := m.applyImage(ctx, pl, newIdx, monitors, target.Mode, compatForward)
+				result, applyErr := m.applyImage(ctx, pl, newIdx, monitors, applyModeFor(target.Extend), compatForward)
 				if applyErr != nil {
 					slog.Warn("missed event: failed to apply image", "error", applyErr)
 					continue
@@ -1148,15 +1148,6 @@ func monitorNames(monitors []monitor.Monitor) []string {
 		names[i] = mon.Name
 	}
 	return names
-}
-
-// monitorNameSet builds a set from monitor objects for O(1) membership checks.
-func monitorNameSet(monitors []monitor.Monitor) map[string]struct{} {
-	s := make(map[string]struct{}, len(monitors))
-	for _, mon := range monitors {
-		s[mon.Name] = struct{}{}
-	}
-	return s
 }
 
 // monitorNameSet2 builds a set from a string slice.

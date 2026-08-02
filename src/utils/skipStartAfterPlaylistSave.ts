@@ -15,13 +15,13 @@ export function shouldSkipPlaylistStartAfterUpdate(opts: {
   playlistType: string;
   activePlaylists: ActivePlaylistInstance[];
   selectedMonitors: string[];
-  mode: string;
+  extend: boolean;
 }): boolean {
   const active = opts.activePlaylists.find((ap) => ap.playlist_id === opts.savedId);
   if (!active) {
     return false;
   }
-  if (active.mode !== opts.mode) {
+  if (active.extend !== opts.extend) {
     return false;
   }
   return sortedMonitorSetsEqual(active.monitors, opts.selectedMonitors);

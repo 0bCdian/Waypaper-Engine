@@ -98,7 +98,7 @@ declare global {
         createPlaylist: (playlist: CreatePlaylistRequest) => Promise<Playlist>;
         updatePlaylist: (id: number, update: UpdatePlaylistRequest) => Promise<Playlist>;
         deletePlaylist: (id: number) => Promise<void>;
-        startPlaylist: (id: number, monitor?: string, mode?: MonitorMode) => Promise<void>;
+        startPlaylist: (id: number, monitors: string[], extend: boolean) => Promise<void>;
         stopPlaylist: (id: number) => Promise<void>;
         pausePlaylist: (id: number) => Promise<void>;
         resumePlaylist: (id: number) => Promise<void>;

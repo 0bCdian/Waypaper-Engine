@@ -24,11 +24,12 @@ describe("useActivePlaylistStore", () => {
     next_image_id: 43,
     total_images: 5,
     paused: false,
-    mode: "individual",
     started_at: new Date().toISOString(),
     next_change_at: null,
     slot_started_at: null,
     monitors: ["HDMI-A-1"],
+    applied_to: ["HDMI-A-1"],
+    extend: false,
   };
 
   it("initial state loads from localStorage", async () => {

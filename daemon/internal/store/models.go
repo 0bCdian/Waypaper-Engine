@@ -258,8 +258,8 @@ type PlaylistPlayback struct {
 	WasRunning   bool     `json:"was_running"`
 	CurrentIndex int      `json:"current_index"`
 	Paused       bool     `json:"paused"`
-	Mode         string   `json:"mode"`
 	Monitors     []string `json:"monitors"`
+	Extend       bool     `json:"extend"`
 	// TimerIndices is the shuffled row order for timer+random; length must match
 	// images when present.
 	TimerIndices []int `json:"timer_indices,omitempty"`
@@ -351,6 +351,7 @@ type ActivePlaylistState struct {
 // Keyed by playlist ID in the state store.
 type ActivePlaylistInstance struct {
 	ActivePlaylistState
-	Mode     string   `json:"mode"`
-	Monitors []string `json:"monitors"`
+	Monitors  []string `json:"monitors"`
+	AppliedTo []string `json:"applied_to"`
+	Extend    bool     `json:"extend"`
 }

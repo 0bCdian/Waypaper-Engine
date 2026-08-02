@@ -5,6 +5,7 @@ import (
 
 	"github.com/stretchr/testify/assert"
 
+	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/store"
 )
 
@@ -65,4 +66,10 @@ func TestAdvancePlaylistRow_wrapAtEnds(t *testing.T) {
 	}}
 	assert.Equal(t, 0, advancePlaylistRow(inst, pl, 1))
 	assert.Equal(t, 1, advancePlaylistRow(inst, pl, -1))
+}
+
+func TestNormalizeMode(t *testing.T) {
+	assert.Equal(t, monitor.ModeIndividual, monitor.NormalizeMode(monitor.ModeClone, 1))
+	assert.Equal(t, monitor.ModeIndividual, monitor.NormalizeMode(monitor.ModeExtend, 0))
+	assert.Equal(t, monitor.ModeClone, monitor.NormalizeMode(monitor.ModeClone, 2))
 }

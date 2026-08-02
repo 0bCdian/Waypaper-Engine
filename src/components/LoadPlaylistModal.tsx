@@ -3,7 +3,6 @@ import { usePlaylistStore } from "../stores/playlist";
 import { useImagesStore } from "../stores/images";
 import { useShallow } from "zustand/react/shallow";
 import { useForm, useStore } from "@tanstack/react-form";
-import type { MonitorMode } from "../../electron/daemon-go-types";
 import { useMonitorStore } from "../stores/monitors";
 import type { Playlist } from "../../electron/daemon-go-types";
 import Modal, { type ModalHandle } from "./Modal";
@@ -25,12 +24,12 @@ type LoadPlaylistResult =
 
 async function loadAndStartPlaylist(
   playlistId: number,
-  monitor: string,
-  mode: MonitorMode | undefined,
+  monitors: string[],
+  extend: boolean,
 ): Promise<LoadPlaylistResult> {
   try {
     const fullPlaylist = await daemonClient.getPlaylist(playlistId);
-    await daemonClient.startPlaylist(fullPlaylist.id, monitor, mode);
+    await daemonClient.startPlaylist(fullPlaylist.id, monitors, extend);
     return {
       ok: true,
       playlist: {
@@ -80,12 +79,10 @@ const LoadPlaylistModal = ({ playlistsInDB, onPlaylistChanged, currentPlaylistNa
         return;
       }
 
-      const monitor =
-        monitorSelection.selectedMonitors.length === 1 ? monitorSelection.selectedMonitors[0] : "*";
       const result = await loadAndStartPlaylist(
         selectedPlaylist.id,
-        monitor,
-        monitorSelection.mode,
+        monitorSelection.selectedMonitors,
+        monitorSelection.mode === "extend",
       );
       if (result.ok) {
         clearPlaylist();

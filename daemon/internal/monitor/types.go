@@ -29,6 +29,13 @@ const (
 	ModeExtend MonitorMode = "extend"
 )
 
+func NormalizeMode(mode MonitorMode, monitors int) MonitorMode {
+	if monitors <= 1 {
+		return ModeIndividual
+	}
+	return mode
+}
+
 // Monitor represents a single physical display with its geometry and metadata.
 //
 // Fields beyond name/width/height/x/y/scale/refresh_rate/transform are sourced
@@ -109,11 +116,7 @@ func parseTransform(s string) int {
 	}
 }
 
-// MonitorTarget is used in API request bodies to specify which monitor(s) an action targets.
-type MonitorTarget struct {
-	// ID is the monitor name (e.g. "HDMI-A-1") or "*" for all monitors.
-	ID string `json:"id"`
-
-	// Mode is how the wallpaper should be applied.
-	Mode MonitorMode `json:"mode"`
+type Target struct {
+	Monitors []string `json:"monitors"`
+	Extend   bool     `json:"extend"`
 }

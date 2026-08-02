@@ -105,7 +105,7 @@ export type DaemonRequest =
   | { type: "create_playlist"; playlist: CreatePlaylistRequest }
   | { type: "update_playlist"; id: number; update: UpdatePlaylistRequest }
   | { type: "delete_playlist"; id: number }
-  | { type: "start_playlist"; id: number; monitor?: string; mode?: MonitorMode }
+  | { type: "start_playlist"; id: number; monitors: string[]; extend: boolean }
   | { type: "stop_playlist"; id: number }
   | { type: "pause_playlist"; id: number }
   | { type: "resume_playlist"; id: number }

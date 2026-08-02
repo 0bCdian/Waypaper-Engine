@@ -619,11 +619,7 @@ export class IPCManager {
         case "delete_playlist":
           return await goDaemonClient.deletePlaylist(req.id);
         case "start_playlist":
-          return await goDaemonClient.startPlaylist(
-            req.id,
-            req.monitor || "*",
-            req.mode || "individual",
-          );
+          return await goDaemonClient.startPlaylist(req.id, req.monitors, req.extend);
         case "stop_playlist":
           return await goDaemonClient.stopPlaylist(req.id);
         case "pause_playlist":

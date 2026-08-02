@@ -219,8 +219,8 @@ func buildPlaylistDeleteCmd() *cobra.Command {
 }
 
 func buildPlaylistStartCmd() *cobra.Command {
-	var monitorID string
-	var mode string
+	var monitors string
+	var extend bool
 
 	cmd := &cobra.Command{
 		Use:   "start [id]",
@@ -232,18 +232,16 @@ func buildPlaylistStartCmd() *cobra.Command {
 				return err
 			}
 			body := map[string]any{
-				"monitor": map[string]any{
-					"id":   monitorID,
-					"mode": mode,
-				},
+				"monitors": parseStringList(monitors),
+				"extend":   extend,
 			}
 			return doJSONRequest("POST", "/playlists/"+id+"/start", body)
 		},
 	}
 
 	addPlaylistNameFlag(cmd)
-	cmd.Flags().StringVarP(&monitorID, "monitor", "m", "*", "target monitor ID (* for all)")
-	cmd.Flags().StringVar(&mode, "mode", "individual", "monitor mode (individual, clone, extend)")
+	cmd.Flags().StringVarP(&monitors, "monitors", "m", "", "comma-separated monitor names (default: all connected)")
+	cmd.Flags().BoolVar(&extend, "extend", false, "span one image across the monitors instead of cloning it")
 
 	return cmd
 }
@@ -393,6 +391,18 @@ func buildPlaylistPrevAllCmd() *cobra.Command {
 			return doSimpleRequest("POST", "/playlists/active/previous")
 		},
 	}
+}
+
+func parseStringList(s string) []string {
+	result := []string{}
+	for _, part := range strings.Split(s, ",") {
+		part = strings.TrimSpace(part)
+		if part == "" {
+			continue
+		}
+		result = append(result, part)
+	}
+	return result
 }
 
 func parseIntList(s string) []int {

@@ -3,8 +3,10 @@ package playlistshandler
 import (
 	"context"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
+	"slices"
 
 	"github.com/go-chi/chi/v5"
 
@@ -17,10 +19,11 @@ import (
 
 // PlaylistHandler handles all /playlists endpoints.
 type PlaylistHandler struct {
-	store      store.PlaylistStore
-	stateStore store.StateStore
-	manager    *playlist.Manager
-	bus        events.Bus
+	store          store.PlaylistStore
+	stateStore     store.StateStore
+	manager        *playlist.Manager
+	bus            events.Bus
+	monitorManager monitor.MonitorManager
 }
 
 // NewPlaylistHandler creates a PlaylistHandler.
@@ -29,12 +32,14 @@ func NewPlaylistHandler(
 	stateStore store.StateStore,
 	manager *playlist.Manager,
 	bus events.Bus,
+	monitorManager monitor.MonitorManager,
 ) *PlaylistHandler {
 	return &PlaylistHandler{
-		store:      store,
-		stateStore: stateStore,
-		manager:    manager,
-		bus:        bus,
+		store:          store,
+		stateStore:     stateStore,
+		manager:        manager,
+		bus:            bus,
+		monitorManager: monitorManager,
 	}
 }
 
@@ -155,13 +160,27 @@ func (h *PlaylistHandler) Delete(w http.ResponseWriter, r *http.Request) {
 
 // --- Playlist lifecycle actions ---
 
-// startRequest is the JSON body for POST /playlists/{id}/start.
-// Spec shape: { "monitor": { "id": "...", "mode": "..." } }
-type startRequest struct {
-	Monitor struct {
-		ID   string              `json:"id"`
-		Mode monitor.MonitorMode `json:"mode"`
-	} `json:"monitor"`
+func resolveDeclaredMonitors(ctx context.Context, mm monitor.MonitorManager, declared []string) ([]string, error) {
+	connected, err := mm.GetMonitors(ctx)
+	if err != nil {
+		return nil, err
+	}
+	if len(declared) == 0 {
+		names := make([]string, 0, len(connected))
+		for _, mon := range connected {
+			names = append(names, mon.Name)
+		}
+		if len(names) == 0 {
+			return nil, errors.New("no monitors connected")
+		}
+		return names, nil
+	}
+	for _, mon := range connected {
+		if slices.Contains(declared, mon.Name) {
+			return declared, nil
+		}
+	}
+	return nil, fmt.Errorf("none of the monitors %v is connected", declared)
 }
 
 // Start handles POST /playlists/{id}/start.
@@ -172,22 +191,16 @@ func (h *PlaylistHandler) Start(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req startRequest
-	if err := httpjson.ParseBody(r, &req); err != nil {
+	var target monitor.Target
+	if err := httpjson.ParseBody(r, &target); err != nil {
 		httpjson.WriteError(w, http.StatusBadRequest, err.Error())
 		return
 	}
 
-	if req.Monitor.ID == "" {
-		req.Monitor.ID = "*"
-	}
-	if req.Monitor.Mode == "" {
-		req.Monitor.Mode = monitor.ModeIndividual
-	}
-
-	target := monitor.MonitorTarget{
-		ID:   req.Monitor.ID,
-		Mode: req.Monitor.Mode,
+	target.Monitors, err = resolveDeclaredMonitors(r.Context(), h.monitorManager, target.Monitors)
+	if err != nil {
+		httpjson.WriteError(w, http.StatusBadRequest, err.Error())
+		return
 	}
 
 	if err := h.manager.Start(r.Context(), id, target); err != nil {

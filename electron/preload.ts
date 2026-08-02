@@ -151,13 +151,8 @@ const electronAPI = {
 
     deletePlaylist: (id: number): Promise<void> => invoke({ type: "delete_playlist", id }),
 
-    startPlaylist: (id: number, monitor?: string, mode?: MonitorMode): Promise<void> =>
-      invoke({
-        type: "start_playlist",
-        id,
-        monitor: monitor || "*",
-        mode: mode || "individual",
-      }),
+    startPlaylist: (id: number, monitors: string[], extend: boolean): Promise<void> =>
+      invoke({ type: "start_playlist", id, monitors, extend }),
 
     stopPlaylist: (id: number): Promise<void> => invoke({ type: "stop_playlist", id }),
 
