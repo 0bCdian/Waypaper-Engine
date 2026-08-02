@@ -90,7 +90,7 @@
     "openapi-typescript": "7.13.0",
     "oxfmt": "0.58.0",
     "oxlint": "1.19.0",
-    "tailwindcss": "4.3.2",
+    "tailwindcss": "4.3.3",
     "typescript": "5.5.4",
     "vite": "8.1.4",
     "vite-plugin-electron": "1.1.0",
