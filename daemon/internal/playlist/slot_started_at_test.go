@@ -49,7 +49,7 @@ func TestStartPlaylist_SetsSlotStartedAt(t *testing.T) {
 	)
 
 	before := time.Now()
-	require.NoError(t, mgr.Start(ctx, 1, monitor.MonitorTarget{ID: "DP-1", Mode: monitor.ModeIndividual}))
+	require.NoError(t, mgr.Start(ctx, 1, monitor.Target{Monitors: []string{"DP-1"}}))
 	after := time.Now()
 
 	inst := stateStore.GetActivePlaylistByID(1)
@@ -104,7 +104,7 @@ func TestOnTick_UpdatesSlotStartedAt(t *testing.T) {
 		&simpleRegistry{active: rec}, monMgr, &noopBus{}, nil, &noopConfig{},
 	)
 
-	require.NoError(t, mgr.Start(ctx, 2, monitor.MonitorTarget{ID: "DP-1", Mode: monitor.ModeIndividual}))
+	require.NoError(t, mgr.Start(ctx, 2, monitor.Target{Monitors: []string{"DP-1"}}))
 
 	instAfterStart := stateStore.GetActivePlaylistByID(2)
 	require.NotNil(t, instAfterStart)
@@ -117,7 +117,7 @@ func TestOnTick_UpdatesSlotStartedAt(t *testing.T) {
 	// direct way to exercise that path.
 	monitors, err := monMgr.GetMonitors(ctx)
 	require.NoError(t, err)
-	applied := mgr.onTick(ctx, 2, 1, monitors, monitor.MonitorTarget{ID: "DP-1", Mode: monitor.ModeIndividual})
+	applied := mgr.onTick(ctx, 2, 1, monitors, monitor.Target{Monitors: []string{"DP-1"}})
 	require.True(t, applied, "onTick should have applied the next image")
 
 	instAfterTick := stateStore.GetActivePlaylistByID(2)
@@ -161,7 +161,7 @@ func TestPauseResume_SlotStartedAtTracksNextChangeAt(t *testing.T) {
 		&simpleRegistry{active: &recordingBackend{}}, monMgr, &noopBus{}, nil, &noopConfig{},
 	)
 
-	require.NoError(t, mgr.Start(ctx, 4, monitor.MonitorTarget{ID: "DP-1", Mode: monitor.ModeIndividual}))
+	require.NoError(t, mgr.Start(ctx, 4, monitor.Target{Monitors: []string{"DP-1"}}))
 	require.NoError(t, mgr.Pause(ctx, 4))
 
 	pausedInst := stateStore.GetActivePlaylistByID(4)

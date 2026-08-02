@@ -53,17 +53,6 @@ func advancePlaylistRow(inst *store.ActivePlaylistInstance, pl *store.Playlist, 
 	return (cur + delta + n) % n
 }
 
-func playbackToTarget(pb *store.PlaylistPlayback) monitor.MonitorTarget {
-	mode := monitor.MonitorMode(pb.Mode)
-	if mode == "" {
-		mode = monitor.ModeIndividual
-	}
-	if len(pb.Monitors) == 1 {
-		return monitor.MonitorTarget{ID: pb.Monitors[0], Mode: mode}
-	}
-	return monitor.MonitorTarget{ID: "*", Mode: mode}
-}
-
 func (m *Manager) playlistStartIndices(pl *store.Playlist, opts startOpts) (timeSlots []TimeSlot, startIdx int, timerIdx []int, timerCur int) {
 	pb := pl.Playback
 	n := len(pl.Images)
@@ -117,8 +106,8 @@ func (m *Manager) buildPlayback(inst *store.ActivePlaylistInstance, pl *store.Pl
 		WasRunning:   wasRunning,
 		CurrentIndex: resolvePlaylistRowForPlayback(inst, pl),
 		Paused:       inst.Paused,
-		Mode:         inst.Mode,
 		Monitors:     append([]string(nil), inst.Monitors...),
+		Extend:       inst.Extend,
 	}
 	if pl.Configuration.Type == "timer" && pl.Configuration.Order == "random" && run != nil {
 		idx, cur, ok := TimerTraversalSnapshot(run.sched)
@@ -166,7 +155,7 @@ func (m *Manager) RestorePersistedRuns(ctx context.Context) error {
 		if pl.Playback == nil || !pl.Playback.WasRunning || len(pl.Images) == 0 {
 			continue
 		}
-		target := playbackToTarget(pl.Playback)
+		target := monitor.Target{Monitors: pl.Playback.Monitors, Extend: pl.Playback.Extend}
 		if err := m.startPlaylist(ctx, pl.ID, target, startOpts{fromPersisted: true}); err != nil {
 			slog.Warn("playlist restore failed", "playlist_id", pl.ID, "error", err)
 		}

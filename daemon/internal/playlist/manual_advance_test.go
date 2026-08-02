@@ -61,7 +61,7 @@ func TestNext_RejectsTimeOfDayAndDayOfWeek(t *testing.T) {
 				&simpleRegistry{active: &recordingBackend{}}, monMgr, &noopBus{}, nil, &noopConfig{},
 			)
 
-			require.NoError(t, mgr.Start(ctx, tc.pl.ID, monitor.MonitorTarget{ID: "DP-1", Mode: monitor.ModeIndividual}))
+			require.NoError(t, mgr.Start(ctx, tc.pl.ID, monitor.Target{Monitors: []string{"DP-1"}}))
 
 			err := mgr.Next(ctx, tc.pl.ID)
 			require.Error(t, err)
@@ -115,8 +115,8 @@ func TestNextAll_MixedSkipsScheduleOnly(t *testing.T) {
 		&simpleRegistry{active: &recordingBackend{}}, monMgr, &noopBus{}, nil, &noopConfig{},
 	)
 
-	require.NoError(t, mgr.Start(ctx, 1, monitor.MonitorTarget{ID: "DP-1", Mode: monitor.ModeIndividual}))
-	require.NoError(t, mgr.Start(ctx, 2, monitor.MonitorTarget{ID: "HDMI-A-1", Mode: monitor.ModeIndividual}))
+	require.NoError(t, mgr.Start(ctx, 1, monitor.Target{Monitors: []string{"DP-1"}}))
+	require.NoError(t, mgr.Start(ctx, 2, monitor.Target{Monitors: []string{"HDMI-A-1"}}))
 
 	n, err := mgr.NextAll(ctx)
 	require.NoError(t, err)
@@ -164,8 +164,8 @@ func TestNextAll_AllSchedulePlaylistsReturnsErr(t *testing.T) {
 		&simpleRegistry{active: &recordingBackend{}}, monMgr, &noopBus{}, nil, &noopConfig{},
 	)
 
-	require.NoError(t, mgr.Start(ctx, 1, monitor.MonitorTarget{ID: "DP-1", Mode: monitor.ModeIndividual}))
-	require.NoError(t, mgr.Start(ctx, 2, monitor.MonitorTarget{ID: "HDMI-A-1", Mode: monitor.ModeIndividual}))
+	require.NoError(t, mgr.Start(ctx, 1, monitor.Target{Monitors: []string{"DP-1"}}))
+	require.NoError(t, mgr.Start(ctx, 2, monitor.Target{Monitors: []string{"HDMI-A-1"}}))
 
 	_, err := mgr.NextAll(ctx)
 	require.Error(t, err)

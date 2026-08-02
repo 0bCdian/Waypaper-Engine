@@ -213,7 +213,7 @@ func (d *Daemon) Start(ctx context.Context) error {
 			opts.DB.ImageStore(), opts.DB.MonitorStateStore(), opts.DB.HistoryStore(), opts.DB.PlaylistStore(),
 			processor, bus, opts.Registry,
 		),
-		Playlists: playlistshandler.NewPlaylistHandler(opts.DB.PlaylistStore(), opts.DB.StateStore(), playlistMgr, bus),
+		Playlists: playlistshandler.NewPlaylistHandler(opts.DB.PlaylistStore(), opts.DB.StateStore(), playlistMgr, bus, monManager),
 		Monitors:  monitorshandler.NewMonitorHandler(monManager),
 		Config:    confighandler.NewConfigHandler(ctrl),
 		Backends:  backendshandler.NewBackendHandler(opts.Registry, ctrl),

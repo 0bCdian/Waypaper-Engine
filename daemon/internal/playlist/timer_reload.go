@@ -50,7 +50,7 @@ func (m *Manager) timerReloadAfterPlaylistDocumentChange(
 
 	oldSched.Stop()
 
-	res, applyErr := m.applyImage(ctx, pl, anchorRow, monitors, target.Mode, compatForward)
+	res, applyErr := m.applyImage(ctx, pl, anchorRow, monitors, applyModeFor(target.Extend), compatForward)
 	row := anchorRow
 	if applyErr != nil {
 		slog.Warn("playlist reconcile: apply image", "playlist_id", playlistID, "error", applyErr)

@@ -67,7 +67,7 @@ func TestReconcileAfterPlaylistUpdate_InsertAndReorder(t *testing.T) {
 	)
 
 	// Start: applies img1 (index 0).
-	target := monitor.MonitorTarget{ID: "DP-1", Mode: monitor.ModeIndividual}
+	target := monitor.Target{Monitors: []string{"DP-1"}}
 	require.NoError(t, mgr.Start(ctx, 1, target))
 
 	rec.mu.Lock()
@@ -173,7 +173,7 @@ func TestReconcileAfterPlaylistUpdate_CurrentImageMovedSlot(t *testing.T) {
 		&simpleRegistry{active: rec}, monMgr, &noopBus{}, nil, &noopConfig{},
 	)
 
-	require.NoError(t, mgr.Start(ctx, 2, monitor.MonitorTarget{ID: "DP-1", Mode: monitor.ModeIndividual}))
+	require.NoError(t, mgr.Start(ctx, 2, monitor.Target{Monitors: []string{"DP-1"}}))
 
 	// Simulate: currently at img3 (index 2 in old list).
 	stateStore.UpdateActivePlaylist(2, func(inst *store.ActivePlaylistInstance) {
@@ -261,7 +261,7 @@ func TestReconcileAfterPlaylistUpdate_ShortInterval_TickShowsNextImage(t *testin
 		&simpleRegistry{active: rec}, monMgr, &noopBus{}, nil, &noopConfig{},
 	)
 
-	require.NoError(t, mgr.Start(ctx, 3, monitor.MonitorTarget{ID: "DP-1", Mode: monitor.ModeIndividual}))
+	require.NoError(t, mgr.Start(ctx, 3, monitor.Target{Monitors: []string{"DP-1"}}))
 
 	// Simulate currently at img2 (index 1).
 	stateStore.UpdateActivePlaylist(3, func(inst *store.ActivePlaylistInstance) {

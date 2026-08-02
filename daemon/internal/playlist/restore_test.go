@@ -324,7 +324,6 @@ func TestRestorePersistedRuns_DoesNotReapplyWallpaper(t *testing.T) {
 		Playback: &store.PlaylistPlayback{
 			WasRunning:   true,
 			CurrentIndex: 0,
-			Mode:         string(monitor.ModeIndividual),
 			Monitors:     []string{"DP-1"},
 		},
 	}
@@ -342,7 +341,6 @@ func TestRestorePersistedRuns_DoesNotReapplyWallpaper(t *testing.T) {
 		Playback: &store.PlaylistPlayback{
 			WasRunning:   true,
 			CurrentIndex: 0,
-			Mode:         string(monitor.ModeIndividual),
 			Monitors:     []string{"DP-2"},
 		},
 	}

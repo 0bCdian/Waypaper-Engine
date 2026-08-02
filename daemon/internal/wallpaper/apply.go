@@ -34,6 +34,8 @@ type ApplyOpts struct {
 // Flow: build prospective snapshot → backend.Apply → persist + history + SSE.
 // On error: DB unchanged, SSE wallpaper_apply_failed.
 func Apply(ctx context.Context, opts ApplyOpts) error {
+	opts.Mode = monitor.NormalizeMode(opts.Mode, len(opts.Monitors))
+
 	snap, err := buildApplySnapshot(ctx, opts)
 	if err != nil {
 		return err

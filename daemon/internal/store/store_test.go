@@ -726,8 +726,8 @@ func TestPlaylistStore_SavePlaybackState(t *testing.T) {
 		WasRunning:   true,
 		CurrentIndex: 2,
 		Paused:       true,
-		Mode:         "individual",
 		Monitors:     []string{"DP-1"},
+		Extend:       true,
 		TimerIndices: []int{1, 0},
 		TimerCursor:  0,
 	}
@@ -741,6 +741,7 @@ func TestPlaylistStore_SavePlaybackState(t *testing.T) {
 	assert.Equal(t, 2, got.Playback.CurrentIndex)
 	assert.True(t, got.Playback.Paused)
 	assert.Equal(t, []string{"DP-1"}, got.Playback.Monitors)
+	assert.True(t, got.Playback.Extend)
 	assert.Equal(t, []int{1, 0}, got.Playback.TimerIndices)
 	assert.Equal(t, 0, got.Playback.TimerCursor)
 
@@ -1024,7 +1025,6 @@ func TestStateStore_ActivePlaylist(t *testing.T) {
 			TotalImages:  5,
 			StartedAt:    time.Now(),
 		},
-		Mode:     "individual",
 		Monitors: []string{"HDMI-A-1"},
 	}
 	ss.SetActivePlaylist(instance)
@@ -1052,7 +1052,6 @@ func TestStateStore_GetActivePlaylists(t *testing.T) {
 			PlaylistName: "Playlist HDMI",
 			StartedAt:    time.Now(),
 		},
-		Mode:     "individual",
 		Monitors: []string{"HDMI-A-1"},
 	})
 	ss.SetActivePlaylist(store.ActivePlaylistInstance{
@@ -1061,7 +1060,6 @@ func TestStateStore_GetActivePlaylists(t *testing.T) {
 			PlaylistName: "Playlist DP",
 			StartedAt:    time.Now(),
 		},
-		Mode:     "individual",
 		Monitors: []string{"DP-1"},
 	})
 
@@ -1080,7 +1078,6 @@ func TestStateStore_RemoveActivePlaylist(t *testing.T) {
 			PlaylistID: 1,
 			StartedAt:  time.Now(),
 		},
-		Mode:     "individual",
 		Monitors: []string{"HDMI-A-1"},
 	})
 
@@ -1100,7 +1097,6 @@ func TestStateStore_RemoveAllActivePlaylists(t *testing.T) {
 			PlaylistID: 1,
 			StartedAt:  time.Now(),
 		},
-		Mode:     "individual",
 		Monitors: []string{"HDMI-A-1", "DP-1", "DP-2"},
 	})
 
@@ -1120,7 +1116,6 @@ func TestStateStore_UpdateActivePlaylist(t *testing.T) {
 			PlaylistName: "Test",
 			StartedAt:    time.Now(),
 		},
-		Mode:     "individual",
 		Monitors: []string{"HDMI-A-1"},
 	})
 

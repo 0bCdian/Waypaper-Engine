@@ -11,11 +11,12 @@ const baseActive = (over: Partial<ActivePlaylistInstance>): ActivePlaylistInstan
   next_image_id: null,
   total_images: 3,
   paused: false,
-  mode: "individual",
   started_at: new Date().toISOString(),
   next_change_at: null,
   slot_started_at: null,
   monitors: ["DP-1"],
+  applied_to: ["DP-1"],
+  extend: false,
   ...over,
 });
 
@@ -27,7 +28,7 @@ describe("shouldSkipPlaylistStartAfterUpdate", () => {
         playlistType: "manual",
         activePlaylists: [baseActive({})],
         selectedMonitors: ["DP-1"],
-        mode: "individual",
+        extend: false,
       }),
     ).toBe(true);
   });
@@ -39,7 +40,7 @@ describe("shouldSkipPlaylistStartAfterUpdate", () => {
         playlistType: "time_of_day",
         activePlaylists: [baseActive({})],
         selectedMonitors: ["DP-1"],
-        mode: "individual",
+        extend: false,
       }),
     ).toBe(true);
   });
@@ -51,19 +52,19 @@ describe("shouldSkipPlaylistStartAfterUpdate", () => {
         playlistType: "timer",
         activePlaylists: [baseActive({ playlist_id: 1 })],
         selectedMonitors: ["DP-1"],
-        mode: "individual",
+        extend: false,
       }),
     ).toBe(false);
   });
 
-  it("returns false when mode differs", () => {
+  it("returns false when extend differs", () => {
     expect(
       shouldSkipPlaylistStartAfterUpdate({
         savedId: 1,
         playlistType: "timer",
-        activePlaylists: [baseActive({ mode: "individual" })],
-        selectedMonitors: ["DP-1"],
-        mode: "span",
+        activePlaylists: [baseActive({ monitors: ["DP-1", "DP-2"], extend: false })],
+        selectedMonitors: ["DP-1", "DP-2"],
+        extend: true,
       }),
     ).toBe(false);
   });
@@ -75,19 +76,31 @@ describe("shouldSkipPlaylistStartAfterUpdate", () => {
         playlistType: "timer",
         activePlaylists: [baseActive({ monitors: ["DP-1", "HDMI-A-1"] })],
         selectedMonitors: ["DP-1"],
-        mode: "individual",
+        extend: false,
       }),
     ).toBe(false);
   });
 
-  it("returns true for timer with same monitors (order-insensitive) and mode", () => {
+  it("returns true for timer with same monitors (order-insensitive)", () => {
     expect(
       shouldSkipPlaylistStartAfterUpdate({
         savedId: 1,
         playlistType: "timer",
         activePlaylists: [baseActive({ monitors: ["HDMI-A-1", "DP-1"] })],
         selectedMonitors: ["DP-1", "HDMI-A-1"],
-        mode: "individual",
+        extend: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("compares the declared monitor set, not the applied subset", () => {
+    expect(
+      shouldSkipPlaylistStartAfterUpdate({
+        savedId: 1,
+        playlistType: "timer",
+        activePlaylists: [baseActive({ monitors: ["DP-1", "DP-2"], applied_to: ["DP-1"] })],
+        selectedMonitors: ["DP-1", "DP-2"],
+        extend: false,
       }),
     ).toBe(true);
   });

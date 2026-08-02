@@ -254,11 +254,12 @@ export interface ActivePlaylistInstance {
   next_image_id: number | null;
   total_images: number;
   paused: boolean;
-  mode: MonitorMode;
   started_at: string;
   next_change_at: string | null;
   slot_started_at: string | null;
   monitors: string[];
+  applied_to: string[];
+  extend: boolean;
 }
 
 // ============================================================================
@@ -603,10 +604,8 @@ export interface SetWallpaperResponse {
 }
 
 export interface StartPlaylistRequest {
-  monitor?: {
-    id?: string;
-    mode?: MonitorMode;
-  };
+  monitors?: string[];
+  extend?: boolean;
 }
 
 export interface CreatePlaylistRequest {

@@ -1,7 +1,6 @@
 import type {
   ActivePlaylistInstance,
   CreatePlaylistRequest,
-  MonitorMode,
   Playlist,
   StartPlaylistRequest,
   UpdatePlaylistRequest,
@@ -31,14 +30,8 @@ export class PlaylistsClient {
     await this.t.request("DELETE", `/playlists/${id}`);
   }
 
-  async startPlaylist(
-    id: number,
-    monitor: string = "*",
-    mode: MonitorMode = "individual",
-  ): Promise<void> {
-    const body: StartPlaylistRequest = {
-      monitor: { id: monitor, mode },
-    };
+  async startPlaylist(id: number, monitors: string[], extend: boolean): Promise<void> {
+    const body: StartPlaylistRequest = { monitors, extend };
     await this.t.request("POST", `/playlists/${id}/start`, body);
   }
 

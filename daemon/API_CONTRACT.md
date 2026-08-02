@@ -590,17 +590,20 @@ Start playing a playlist.
 
 ```json
 {
-  "monitor": {
-    "id": "*",
-    "mode": "individual"
-  }
+  "monitors": ["DP-1", "DP-2"],
+  "extend": false
 }
 ```
 
-| Field          | Type   | Default        | Description                     |
-| -------------- | ------ | -------------- | ------------------------------- |
-| `monitor.id`   | string | `"*"` (all)    | Target monitor or `"*"` for all |
-| `monitor.mode` | string | `"individual"` | `individual`, `clone`, `extend` |
+| Field      | Type     | Default              | Description                                                      |
+| ---------- | -------- | -------------------- | ---------------------------------------------------------------- |
+| `monitors` | string[] | all connected        | Declared monitor names; disconnected names are accepted and kept |
+| `extend`   | bool     | `false`              | `true` slices one image across the group, `false` clones it      |
+
+The declared set is stored verbatim and never rewritten from what is connected.
+Names that are not connected stay in the set and are applied when they return.
+
+**Response** `400`: none of the declared monitors is connected.
 
 **Response** `200`:
 
@@ -655,13 +658,17 @@ Get all currently running playlists as active instances.
     "next_image_id": 1,
     "total_images": 3,
     "paused": false,
-    "mode": "clone",
     "started_at": "2026-02-15T14:30:00Z",
     "next_change_at": "2026-02-15T14:35:00Z",
-    "monitors": ["DP-1", "HDMI-A-1"]
+    "monitors": ["DP-1", "HDMI-A-1"],
+    "applied_to": ["DP-1"],
+    "extend": false
   }
 ]
 ```
+
+`monitors` is the declared set, `applied_to` the subset currently connected and
+actually applied.
 
 See [ActivePlaylistResponse model](#activeplaylistresponse).
 
@@ -1046,7 +1053,7 @@ Persistent streaming connection. Each event has:
 
 | Event                    | Data                                                   |
 | ------------------------ | ------------------------------------------------------ |
-| `playlist_started`       | `{"playlist_id": 1, "monitor": "DP-1"}`                |
+| `playlist_started`       | `{"playlist_id": 1, "playlist_name": "Evening rotation", "monitors": ["DP-1", "DP-2"], "applied_to": ["DP-1"], "extend": false}` |
 | `playlist_stopped`       | `{"playlist_id": 1, "monitor": "DP-1"}`                |
 | `playlist_paused`        | `{"playlist_id": 1, "monitor": "DP-1"}`                |
 | `playlist_resumed`       | `{"playlist_id": 1, "monitor": "DP-1"}`                |
@@ -1218,13 +1225,16 @@ Returned by `GET /playlists/active/{monitor}` (single instance) and by `GET /pla
   "next_image_id": 1,
   "total_images": 3,
   "paused": false,
-  "mode": "individual",
   "started_at": "2026-02-15T14:30:00Z",
   "next_change_at": "2026-02-15T14:35:00Z",
-  "monitors": ["DP-1"]
+  "monitors": ["DP-1", "DP-2"],
+  "applied_to": ["DP-1"],
+  "extend": false
 }
 ```
 
+`monitors` is the set the user declared and is never narrowed by a disconnect;
+`applied_to` is the connected subset the wallpaper was applied to.
 `previous_image_id`, `next_image_id`, and `next_change_at` may be `null`.
 
 ### ActivePlaylistResponse
@@ -1241,10 +1251,11 @@ Alias of [`ActivePlaylistInstance`](#activeplaylistinstance), used for historica
   "next_image_id": 1,
   "total_images": 3,
   "paused": false,
-  "mode": "clone",
   "started_at": "2026-02-15T14:30:00Z",
   "next_change_at": "2026-02-15T14:35:00Z",
-  "monitors": ["DP-1", "HDMI-A-1"]
+  "monitors": ["DP-1", "HDMI-A-1"],
+  "applied_to": ["DP-1", "HDMI-A-1"],
+  "extend": false
 }
 ```
 
