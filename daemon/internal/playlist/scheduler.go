@@ -8,31 +8,15 @@ import (
 	"time"
 )
 
-// Scheduler controls the timing of playlist image transitions.
 type Scheduler interface {
-	// Start begins the scheduler. The callback receives the next playlist row index;
-	// return false if the wallpaper did not apply so the timer can retry that step.
 	Start(callback func(index int) bool)
-
-	// Stop permanently stops the scheduler.
 	Stop()
-
-	// Pause temporarily suspends ticking.
 	Pause()
-
-	// Resume resumes a paused scheduler.
 	Resume()
-
-	// NextChangeAt returns when the next transition will occur, or nil if unknown.
 	NextChangeAt() *time.Time
-
-	// AfterManualNavigation informs the scheduler that the user moved to the given
-	// playlist image index. Timer schedulers align shuffle position and restart the
-	// interval from now; other schedulers no-op.
 	AfterManualNavigation(playlistImageIndex int)
 }
 
-// SchedulerConfig contains all information needed to create a scheduler.
 type SchedulerConfig struct {
 	Type        string // "timer", "time_of_day", "day_of_week", "manual"
 	Interval    int    // seconds (for "timer")
@@ -56,7 +40,6 @@ type TimeSlot struct {
 	ImageIndex int
 }
 
-// NewScheduler creates the appropriate Scheduler based on config.
 func NewScheduler(cfg SchedulerConfig) Scheduler {
 	switch cfg.Type {
 	case "timer":
@@ -70,11 +53,6 @@ func NewScheduler(cfg SchedulerConfig) Scheduler {
 	}
 }
 
-// --- Timer Scheduler ---
-
-// timerReconcileSchedulerConfig builds StartIndex / TimerIndices / TimerCursor so a timer
-// continues from playlist row row after a playlist document update. Random order uses a
-// fresh shuffle with the cursor aligned to row.
 func timerReconcileSchedulerConfig(order string, n, row int) (startIdx int, timerIndices []int, timerCur int) {
 	row = clampPlaylistIndex(row, n)
 	if n <= 0 {
@@ -144,7 +122,6 @@ func newTimerScheduler(cfg SchedulerConfig) *timerScheduler {
 	return s
 }
 
-// TimerTraversalSnapshot returns the timer scheduler's shuffle order and cursor.
 func TimerTraversalSnapshot(s Scheduler) ([]int, int, bool) {
 	ts, ok := s.(*timerScheduler)
 	if !ok {
@@ -258,10 +235,10 @@ func (s *timerScheduler) runLoop() {
 			nextPos := (s.currentIndex + 1) % len(s.indices)
 			imgIdx := s.indices[nextPos]
 			cb := s.callback
+			deadline := time.Now().Add(s.interval)
+			s.nextChange = &deadline
 			s.mu.Unlock()
 
-			// Callback must run without s.mu: Manager.onTick calls sched.NextChangeAt(),
-			// and HTTP handlers call AfterManualNavigation which needs the runLoop select.
 			ok := true
 			if cb != nil {
 				ok = cb(imgIdx)
@@ -275,16 +252,11 @@ func (s *timerScheduler) runLoop() {
 			if ok {
 				s.currentIndex = nextPos
 			}
-			deadline := time.Now().Add(s.interval)
-			s.nextChange = &deadline
 			s.mu.Unlock()
 		}
 	}
 }
 
-// syncToPlaylistIndexAndRelease updates shuffle position to match the playlist
-// row index now showing, refreshes NextChangeAt when unpaused, and unblocks the
-// caller. The next runLoop iteration starts a fresh wait.
 func (s *timerScheduler) syncToPlaylistIndexAndRelease(req timerSyncReq) {
 	s.mu.Lock()
 	if s.activeCancel != nil {
@@ -344,9 +316,6 @@ func (s *timerScheduler) Pause() {
 func (s *timerScheduler) Resume() {
 	s.mu.Lock()
 	s.paused = false
-	// runLoop may not have processed resumeCh yet; HTTP handlers read NextChangeAt()
-	// synchronously in the same goroutine, so prime the next deadline now (same basis as
-	// the non-paused path: time.Now().Add(s.interval)).
 	deadline := time.Now().Add(s.interval)
 	s.nextChange = &deadline
 	s.mu.Unlock()
@@ -365,8 +334,6 @@ func (s *timerScheduler) NextChangeAt() *time.Time {
 	t := wallClock(*s.nextChange)
 	return &t
 }
-
-// --- Time-of-Day Scheduler ---
 
 type timeOfDayScheduler struct {
 	mu         sync.Mutex
@@ -391,8 +358,6 @@ func newTimeOfDayScheduler(cfg SchedulerConfig) *timeOfDayScheduler {
 func (s *timeOfDayScheduler) Start(callback func(int) bool) {
 	s.mu.Lock()
 	s.callback = callback
-	// Publish the first deadline before returning: Manager.startPlaylist reads
-	// NextChangeAt() synchronously to build ActivePlaylistInstance.
 	if !s.paused {
 		if _, dur := s.nextTransition(); dur > 0 {
 			next := time.Now().Add(dur)
@@ -435,7 +400,6 @@ func (s *timeOfDayScheduler) loop() {
 			timer.Stop()
 			return
 		case <-s.resumeCh:
-			// Spurious wake (Resume with no matching Pause); recompute the deadline.
 			timer.Stop()
 			continue
 		case <-timer.C:
@@ -450,7 +414,6 @@ func (s *timeOfDayScheduler) loop() {
 	}
 }
 
-// nextTransition returns the next time slot and duration until it fires.
 func (s *timeOfDayScheduler) nextTransition() (*TimeSlot, time.Duration) {
 	if len(s.slots) == 0 {
 		return nil, 0
@@ -459,7 +422,6 @@ func (s *timeOfDayScheduler) nextTransition() (*TimeSlot, time.Duration) {
 	now := time.Now()
 	nowMinutes := now.Hour()*60 + now.Minute()
 
-	// Find the next slot today.
 	for i := range s.slots {
 		if s.slots[i].Minutes > nowMinutes {
 			target := todayAt(s.slots[i].Minutes)
@@ -467,7 +429,6 @@ func (s *timeOfDayScheduler) nextTransition() (*TimeSlot, time.Duration) {
 		}
 	}
 
-	// Wrap to first slot tomorrow.
 	target := todayAt(s.slots[0].Minutes).Add(24 * time.Hour)
 	return &s.slots[0], time.Until(target)
 }
@@ -521,8 +482,6 @@ func (s *timeOfDayScheduler) NextChangeAt() *time.Time {
 
 func (s *timeOfDayScheduler) AfterManualNavigation(_ int) {}
 
-// --- Day-of-Week Scheduler ---
-
 type dayOfWeekScheduler struct {
 	mu          sync.Mutex
 	totalImages int
@@ -548,14 +507,12 @@ func (s *dayOfWeekScheduler) Start(callback func(int) bool) {
 	s.callback = callback
 	paused := s.paused
 	if !paused {
-		// Publish tomorrow's rollover before returning — see timeOfDayScheduler.Start.
 		now := time.Now()
 		tomorrow := time.Date(now.Year(), now.Month(), now.Day()+1, 0, 0, 0, 0, now.Location())
 		s.nextChange = &tomorrow
 	}
 	s.mu.Unlock()
 
-	// Fire immediately for today's weekday.
 	go func() {
 		if !paused {
 			weekday := int(time.Now().Weekday())
@@ -658,8 +615,6 @@ func (s *dayOfWeekScheduler) NextChangeAt() *time.Time {
 
 func (s *dayOfWeekScheduler) AfterManualNavigation(_ int) {}
 
-// --- Manual Scheduler ---
-
 type manualScheduler struct {
 	totalImages  int
 	currentIndex int
@@ -672,26 +627,18 @@ func newManualScheduler(cfg SchedulerConfig) *manualScheduler {
 	}
 }
 
-// Start is a no-op for manual scheduler.
 func (s *manualScheduler) Start(_ func(int) bool) {}
 
-// Stop is a no-op for manual scheduler.
 func (s *manualScheduler) Stop() {}
 
-// Pause is a no-op for manual scheduler.
 func (s *manualScheduler) Pause() {}
 
-// Resume is a no-op for manual scheduler.
 func (s *manualScheduler) Resume() {}
 
-// NextChangeAt always returns nil for manual scheduler.
 func (s *manualScheduler) NextChangeAt() *time.Time { return nil }
 
 func (s *manualScheduler) AfterManualNavigation(_ int) {}
 
-// wallClock strips t's monotonic reading. Go compares two monotonic times
-// without consulting the wall clock, and suspend freezes CLOCK_MONOTONIC —
-// keeping it would hide every deadline missed while suspended.
 func wallClock(t time.Time) time.Time {
 	return t.Round(0)
 }
