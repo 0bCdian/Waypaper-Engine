@@ -136,7 +136,7 @@ describe("useSettingsStore", () => {
     });
   });
 
-  it("resetToDefaults calls resetAllConfig then reloads from daemon", async () => {
+  it("resetAllSettingsToDaemonDefaults calls resetAllConfig then reloads from daemon", async () => {
     const useSettingsStore = await getStore();
 
     await act(async () => {
@@ -144,14 +144,13 @@ describe("useSettingsStore", () => {
     });
 
     await act(async () => {
-      await useSettingsStore.getState().resetToDefaults();
+      await useSettingsStore.getState().resetAllSettingsToDaemonDefaults();
     });
 
     expect(mockAPI.goDaemon.resetAllConfig).toHaveBeenCalledTimes(1);
     expect(mockAPI.goDaemon.getConfig).toHaveBeenCalled();
     const state = useSettingsStore.getState();
     expect(state.isLoading).toBe(false);
-    expect(state.isDirty).toBe(false);
   });
 
   it("setSearchTerm filters sections based on config keys", async () => {
@@ -243,21 +242,5 @@ describe("useSettingsStore", () => {
       useSettingsStore.getState().clearPendingBackendSettingsTab();
     });
     expect(useSettingsStore.getState().pendingBackendSettingsTab).toBeNull();
-  });
-
-  it("toggleSection toggles expanded sections", async () => {
-    const useSettingsStore = await getStore();
-
-    expect(useSettingsStore.getState().expandedSections.has("app")).toBe(true);
-
-    act(() => {
-      useSettingsStore.getState().toggleSection("app");
-    });
-    expect(useSettingsStore.getState().expandedSections.has("app")).toBe(false);
-
-    act(() => {
-      useSettingsStore.getState().toggleSection("app");
-    });
-    expect(useSettingsStore.getState().expandedSections.has("app")).toBe(true);
   });
 });

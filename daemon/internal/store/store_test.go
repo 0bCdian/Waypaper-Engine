@@ -832,6 +832,27 @@ func TestHistoryStore_GetRecent_Limit(t *testing.T) {
 	assert.Len(t, entries, 2)
 }
 
+func TestHistoryStore_DeleteUpTo_KeepsNewest(t *testing.T) {
+	db := testutil.OpenTestDB(t)
+	hs := db.HistoryStore()
+	ctx := context.Background()
+
+	var last *store.ImageHistoryEntry
+	for i := 1; i <= 5; i++ {
+		var err error
+		last, err = hs.Append(ctx, newHistoryEntry(i, []string{"HDMI-A-1"}))
+		require.NoError(t, err)
+	}
+
+	require.NoError(t, hs.DeleteUpTo(ctx, last.ID-2))
+
+	entries, err := hs.GetRecent(ctx, store.HistoryQueryOpts{Limit: 10})
+	require.NoError(t, err)
+	require.Len(t, entries, 2)
+	assert.Equal(t, last.ID, entries[0].ID)
+	assert.Equal(t, last.ID-1, entries[1].ID)
+}
+
 func TestHistoryStore_GetRecent_MonitorFilter(t *testing.T) {
 	db := testutil.OpenTestDB(t)
 	hs := db.HistoryStore()

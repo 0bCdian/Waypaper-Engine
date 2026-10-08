@@ -226,7 +226,7 @@ export function buildImageMenuItems(
             type: "action" as const,
             label: "Show similar palette",
             onClick: () => {
-              const f = useImagesStore.getState().getFilters();
+              const f = useImagesStore.getState().filters;
               useImagesStore.getState().setFilters({
                 ...f,
                 paletteSimilarToId: image.id,

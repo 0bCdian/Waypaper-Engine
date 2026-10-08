@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log/slog"
+	"maps"
 	"net/http"
 	"strings"
 	"time"
@@ -106,15 +107,6 @@ func (b *SSEBroker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// ssePayload is the JSON structure written to the SSE "data:" field.
-// It wraps the event's own data and always includes a timestamp.
-type ssePayload struct {
-	// Embed the event data at the top level.
-	Data any `json:"data,omitempty"`
-	// Timestamp is always present in every SSE event.
-	Timestamp time.Time `json:"timestamp"`
-}
-
 // writeSSEEvent writes a single SSE frame to the writer.
 //
 // Format:
@@ -123,9 +115,6 @@ type ssePayload struct {
 //	data: <json>
 //	\n
 func writeSSEEvent(w http.ResponseWriter, evt events.Event) error {
-	// Build the data payload: the event's Data with timestamp injected.
-	// If Data is already a map or struct, we marshal it and merge timestamp.
-	// For simplicity, we wrap in an envelope that always has timestamp.
 	dataBytes := marshalEventData(evt)
 
 	if _, err := fmt.Fprintf(w, "event: %s\n", evt.Type); err != nil {
@@ -137,69 +126,21 @@ func writeSSEEvent(w http.ResponseWriter, evt events.Event) error {
 	return nil
 }
 
-// marshalEventData produces the JSON for the SSE "data:" field.
-//
-// The spec requires that every event's data payload includes a "timestamp" field.
-// If the event Data is a map, we inject the timestamp into it. If it's a struct
-// or anything else, we marshal it and inject timestamp at the JSON level.
+// marshalEventData returns the event's Data as JSON with a "timestamp" field added,
+// which every SSE payload must carry. The shared map is cloned, never mutated.
 func marshalEventData(evt events.Event) []byte {
 	ts := evt.Timestamp
 	if ts.IsZero() {
 		ts = time.Now()
 	}
-
-	// Fast path: if Data is nil, just return {"timestamp":"..."}
-	if evt.Data == nil {
-		b, _ := json.Marshal(map[string]any{
-			"timestamp": ts,
-		})
-		return b
+	payload := make(map[string]any, len(evt.Data)+1)
+	maps.Copy(payload, evt.Data)
+	payload["timestamp"] = ts
+	b, err := json.Marshal(payload)
+	if err != nil {
+		slog.Warn("failed to marshal event data", "type", evt.Type, "error", err)
+		b, _ = json.Marshal(map[string]any{"timestamp": ts})
 	}
-
-	switch d := evt.Data.(type) {
-	case map[string]any:
-		// Clone to avoid mutating the shared event data.
-		m := make(map[string]any, len(d)+1)
-		for k, v := range d {
-			m[k] = v
-		}
-		m["timestamp"] = ts
-		d = m
-		b, err := json.Marshal(d)
-		if err != nil {
-			slog.Warn("failed to marshal event data map", "type", evt.Type, "error", err)
-			return fallbackPayload(ts)
-		}
-		return b
-	default:
-		// Marshal the Data, then re-parse as map to inject timestamp.
-		raw, err := json.Marshal(d)
-		if err != nil {
-			slog.Warn("failed to marshal event data", "type", evt.Type, "error", err)
-			return fallbackPayload(ts)
-		}
-		var m map[string]any
-		if err := json.Unmarshal(raw, &m); err != nil {
-			// Data marshaled to something that isn't an object (e.g. a string or array).
-			// Wrap it under a "data" key alongside timestamp.
-			b, _ := json.Marshal(map[string]any{
-				"data":      json.RawMessage(raw),
-				"timestamp": ts,
-			})
-			return b
-		}
-		m["timestamp"] = ts
-		b, err := json.Marshal(m)
-		if err != nil {
-			return fallbackPayload(ts)
-		}
-		return b
-	}
-}
-
-// fallbackPayload returns a minimal JSON object with just a timestamp.
-func fallbackPayload(ts time.Time) []byte {
-	b, _ := json.Marshal(map[string]any{"timestamp": ts})
 	return b
 }
 

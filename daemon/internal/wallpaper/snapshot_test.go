@@ -106,8 +106,9 @@ func (m *snapshotMockHistoryStore) Append(context.Context, store.ImageHistoryEnt
 func (m *snapshotMockHistoryStore) GetRecent(context.Context, store.HistoryQueryOpts) ([]store.ImageHistoryEntry, error) {
 	return nil, nil
 }
-func (m *snapshotMockHistoryStore) Count(context.Context) (int, error) { return 0, nil }
-func (m *snapshotMockHistoryStore) Clear(context.Context) error        { return nil }
+func (m *snapshotMockHistoryStore) Count(context.Context) (int, error)    { return 0, nil }
+func (m *snapshotMockHistoryStore) Clear(context.Context) error           { return nil }
+func (m *snapshotMockHistoryStore) DeleteUpTo(context.Context, int) error { return nil }
 func (m *snapshotMockHistoryStore) DeleteByImageID(_ context.Context, id int) (int, error) {
 	m.deletedByImageID = append(m.deletedByImageID, id)
 	return 0, nil
@@ -490,7 +491,7 @@ func TestBuildSnapshot_OrphanImageNotInStore(t *testing.T) {
 	// Bus event published.
 	require.Len(t, bus.events, 1)
 	assert.Equal(t, events.ImageOrphanPurged, bus.events[0].Type)
-	data := bus.events[0].Data.(map[string]any)
+	data := bus.events[0].Data
 	assert.Equal(t, 99, data["image_id"])
 	assert.Equal(t, "row_missing", data["reason"])
 }
@@ -554,7 +555,7 @@ func TestBuildSnapshot_FileMissing(t *testing.T) {
 	// Event published with file_missing reason.
 	require.Len(t, bus.events, 1)
 	assert.Equal(t, events.ImageOrphanPurged, bus.events[0].Type)
-	data := bus.events[0].Data.(map[string]any)
+	data := bus.events[0].Data
 	assert.Equal(t, "file_missing", data["reason"])
 }
 

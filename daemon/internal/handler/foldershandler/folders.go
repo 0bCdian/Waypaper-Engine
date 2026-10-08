@@ -348,14 +348,15 @@ func (h *FolderHandler) MoveImages(w http.ResponseWriter, r *http.Request) {
 	var folderVal any
 	if req.FolderID != nil {
 		folderVal = *req.FolderID
-	} else {
-		folderVal = nil
 	}
 
+	moved := 0
 	for _, imgID := range req.ImageIDs {
 		if _, err := h.imageStore.Update(r.Context(), imgID, map[string]any{"folder_id": folderVal}); err != nil {
 			slog.Warn("move image failed", "image_id", imgID, "error", err)
+			continue
 		}
+		moved++
 	}
 
 	h.bus.Publish(events.Event{
@@ -363,5 +364,5 @@ func (h *FolderHandler) MoveImages(w http.ResponseWriter, r *http.Request) {
 		Data: map[string]any{"domain": "images"},
 	})
 
-	httpjson.WriteJSON(w, http.StatusOK, MoveImagesResponse{Moved: len(req.ImageIDs)})
+	httpjson.WriteJSON(w, http.StatusOK, MoveImagesResponse{Moved: moved})
 }

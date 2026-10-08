@@ -27,8 +27,9 @@ export class HttpTransport {
 
       const req = httpRequest(options, (res) => {
         let data = "";
-        res.on("data", (chunk: Buffer) => {
-          data += chunk.toString();
+        res.setEncoding("utf8");
+        res.on("data", (chunk: string) => {
+          data += chunk;
         });
         res.on("end", () => {
           const trimmed = data.trim().replace(/^\uFEFF/, "");

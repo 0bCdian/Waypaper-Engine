@@ -81,6 +81,13 @@ func (s *historyStore) Clear(_ context.Context) error {
 	return nil
 }
 
+func (s *historyStore) DeleteUpTo(_ context.Context, maxID int) error {
+	if err := s.db.Delete(query.NewQuery(CollectionHistory).Where(query.Field("id").LtEq(maxID))); err != nil {
+		return fmt.Errorf("history store: delete up to %d: %w", maxID, err)
+	}
+	return nil
+}
+
 func (s *historyStore) DeleteByImageID(_ context.Context, imageID int) (int, error) {
 	q := query.NewQuery(CollectionHistory).Where(query.Field("image_id").Eq(imageID))
 	count, err := s.db.Count(q)

@@ -10,10 +10,7 @@ function gd(): GoDaemon {
 
 export const daemonClient = {
   // HEALTH & SYSTEM
-  ping: () => gd().ping(),
-  getInfo: () => gd().getInfo(),
   getCapabilities: () => gd().getCapabilities(),
-  shutdown: () => gd().shutdown(),
 
   // IMAGES
   getImages: (...args: Parameters<GoDaemon["getImages"]>) => gd().getImages(...args),
@@ -30,7 +27,6 @@ export const daemonClient = {
   cancelImport: (batchID: string) => gd().cancelImport(batchID),
   deleteImages: (ids: number[]) => gd().deleteImages(ids),
   updateImage: (...args: Parameters<GoDaemon["updateImage"]>) => gd().updateImage(...args),
-  selectAllImages: (selected: boolean) => gd().selectAllImages(selected),
   getImageTags: () => gd().getImageTags(),
   getImageHistory: (...args: Parameters<GoDaemon["getImageHistory"]>) =>
     gd().getImageHistory(...args),
@@ -55,12 +51,9 @@ export const daemonClient = {
   nextPlaylistImage: (id: number) => gd().nextPlaylistImage(id),
   previousPlaylistImage: (id: number) => gd().previousPlaylistImage(id),
   getActivePlaylists: () => gd().getActivePlaylists(),
-  getActivePlaylistForMonitor: (monitor: string) => gd().getActivePlaylistForMonitor(monitor),
-  stopAllPlaylists: () => gd().stopAllPlaylists(),
 
   // FOLDERS
   getFolders: (...args: Parameters<GoDaemon["getFolders"]>) => gd().getFolders(...args),
-  getFolder: (id: number) => gd().getFolder(id),
   getFolderPath: (id: number) => gd().getFolderPath(id),
   createFolder: (...args: Parameters<GoDaemon["createFolder"]>) => gd().createFolder(...args),
   updateFolder: (...args: Parameters<GoDaemon["updateFolder"]>) => gd().updateFolder(...args),
@@ -70,12 +63,10 @@ export const daemonClient = {
 
   // MONITORS
   getMonitors: () => gd().getMonitors(),
-  getMonitor: (name: string) => gd().getMonitor(name),
 
   // CONFIG
   getConfig: () => gd().getConfig(),
   updateConfig: (...args: Parameters<GoDaemon["updateConfig"]>) => gd().updateConfig(...args),
-  getConfigSection: (section: string) => gd().getConfigSection(section),
   updateConfigSection: (...args: Parameters<GoDaemon["updateConfigSection"]>) =>
     gd().updateConfigSection(...args),
   getBackendConfig: (name: string) => gd().getBackendConfig(name),
@@ -86,7 +77,6 @@ export const daemonClient = {
 
   // BACKENDS
   getBackends: () => gd().getBackends(),
-  getBackendCapabilities: () => gd().getBackendCapabilities(),
   activateBackend: (name: string) => gd().activateBackend(name),
 
   // EVENT LISTENERS

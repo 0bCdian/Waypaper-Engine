@@ -20,10 +20,6 @@ export class FoldersClient {
     return this.t.request<{ data: Folder[] }>("GET", path);
   }
 
-  async getFolder(id: number): Promise<Folder> {
-    return this.t.request<Folder>("GET", `/folders/${id}`);
-  }
-
   async getFolderPath(id: number): Promise<{ data: Folder[] }> {
     return this.t.request<{ data: Folder[] }>("GET", `/folders/${id}/path`);
   }

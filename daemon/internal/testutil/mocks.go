@@ -251,6 +251,14 @@ type MockHistoryStore struct {
 	CountFn           func(ctx context.Context) (int, error)
 	ClearFn           func(ctx context.Context) error
 	DeleteByImageIDFn func(ctx context.Context, imageID int) (int, error)
+	DeleteUpToFn      func(ctx context.Context, maxID int) error
+}
+
+func (m *MockHistoryStore) DeleteUpTo(ctx context.Context, maxID int) error {
+	if m.DeleteUpToFn != nil {
+		return m.DeleteUpToFn(ctx, maxID)
+	}
+	return nil
 }
 
 func (m *MockHistoryStore) Append(ctx context.Context, entry store.ImageHistoryEntry) (*store.ImageHistoryEntry, error) {

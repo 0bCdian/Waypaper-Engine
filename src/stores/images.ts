@@ -14,7 +14,6 @@ import { daemonClient } from "@/client";
 interface State {
   imagesArray: rendererImage[];
   imagesMap: Map<number, rendererImage>;
-  filteredImages: rendererImage[];
   isEmpty: boolean;
   isQueried: boolean;
   filters: Filters;
@@ -22,19 +21,12 @@ interface State {
   pagination: Pagination | null;
   currentPage: number;
   perPage: number;
-  addImages: (newImages: rendererImage[]) => void;
-  addImage: (newImage: rendererImage) => void;
   setFilters: (newFilters: Filters) => void;
-  getFilters: () => Filters;
-  setFilteredImages: (filteredImages: rendererImage[]) => void;
   setSelectedImages: (newSelectedImages: Set<number>) => void;
-  removeImagesFromStore: (images: rendererImage[]) => void;
   reQueryImages: (params?: ImageQueryParams) => void;
-  setCurrentPage: (page: number) => void;
   fetchPage: (page: number, extraParams?: Partial<ImageQueryParams>) => void;
   addToSelectedImages: (imageSelected: rendererImage) => void;
   removeFromSelectedImages: (imageSelected: rendererImage) => void;
-  deleteSelectedImages: () => void;
   getSelectedImages: () => rendererImage[];
   clearSelection: () => void;
   clearSelectionOnCurrentPage: () => void;
@@ -47,7 +39,6 @@ interface State {
 export const useImagesStore = create<State>()((set, get) => ({
   imagesArray: [] as rendererImage[],
   imagesMap: new Map<number, rendererImage>(),
-  filteredImages: [] as rendererImage[],
   isEmpty: true,
   isQueried: false,
   filters: loadGalleryFiltersFromStorage(),
@@ -59,9 +50,6 @@ export const useImagesStore = create<State>()((set, get) => ({
   setFilters: (newFilters) => {
     set(() => ({ filters: newFilters }));
     persistGalleryFilters(newFilters);
-  },
-  setFilteredImages: (filteredImages) => {
-    set(() => ({ filteredImages }));
   },
   setSelectedImages: (selectedImages) => {
     set(() => ({ selectedImages }));
@@ -77,64 +65,6 @@ export const useImagesStore = create<State>()((set, get) => ({
       }
     });
     return selectedImages;
-  },
-  addImages: (newImages) => {
-    const filters = get().filters;
-    let newImagesArray: rendererImage[];
-    if (filters.order === "desc") {
-      newImagesArray = [...newImages, ...get().imagesArray];
-    } else {
-      newImagesArray = [...get().imagesArray, ...newImages];
-    }
-    const newMap = new Map(get().imagesMap);
-    newImages.forEach((image) => {
-      newMap.set(image.id, image);
-    });
-    set(() => ({
-      imagesArray: newImagesArray,
-      imagesMap: newMap,
-    }));
-  },
-  addImage: (newImage) => {
-    const filters = get().filters;
-    const currentArray = get().imagesArray;
-
-    let newImagesArray: rendererImage[];
-    if (filters.order === "desc") {
-      newImagesArray = [newImage, ...currentArray];
-    } else {
-      newImagesArray = [...currentArray, newImage];
-    }
-
-    const newMap = new Map(get().imagesMap);
-    newMap.set(newImage.id, newImage);
-    set(() => ({
-      imagesArray: newImagesArray,
-      imagesMap: newMap,
-      isEmpty: false,
-    }));
-  },
-  removeImagesFromStore: (images) => {
-    set((state) => {
-      const newImagesMap = new Map(state.imagesMap);
-      const newSelectedImages = new Set(state.selectedImages);
-      const imagesSetToDelete = new Set<number>();
-      images.forEach((imageToDelete) => {
-        newImagesMap.delete(imageToDelete.id);
-        newSelectedImages.delete(imageToDelete.id);
-        imagesSetToDelete.add(imageToDelete.id);
-      });
-      usePlaylistStore.getState().removeImagesFromPlaylist(imagesSetToDelete);
-      return {
-        ...state,
-        imagesArray: Array.from(newImagesMap.values()),
-        imagesMap: newImagesMap,
-        selectedImages: newSelectedImages,
-      };
-    });
-  },
-  setCurrentPage: (page: number) => {
-    set({ currentPage: page });
   },
   fetchPage: (page: number, extraParams?: Partial<ImageQueryParams>) => {
     set({ currentPage: page, isQueried: false });
@@ -221,33 +151,6 @@ export const useImagesStore = create<State>()((set, get) => ({
       return { selectedImages: next };
     });
   },
-  deleteSelectedImages() {
-    const selectedIds = Array.from(get().selectedImages);
-    const idsToDelete = selectedIds.filter((id) => get().imagesMap.has(id));
-    if (idsToDelete.length === 0) return;
-
-    const idsSet = new Set(idsToDelete);
-
-    void daemonClient.deleteImages(idsToDelete).then(() => {
-      set((state) => {
-        const freshMap = new Map(state.imagesMap);
-        const freshSelected = new Set(state.selectedImages);
-        for (const id of idsToDelete) {
-          freshMap.delete(id);
-          freshSelected.delete(id);
-        }
-        return {
-          imagesMap: freshMap,
-          imagesArray: Array.from(freshMap.values()),
-          selectedImages: freshSelected,
-        };
-      });
-      usePlaylistStore.getState().removeImagesFromPlaylist(idsSet);
-    });
-  },
-  getFilters() {
-    return get().filters;
-  },
   clearSelection() {
     set(() => ({ selectedImages: new Set<number>() }));
   },
@@ -276,11 +179,9 @@ export const useImagesStore = create<State>()((set, get) => ({
     if (updated.time === undefined) {
       updated.time = null;
     }
-    const imagesMap = new Map(get().imagesMap);
-    imagesMap.set(id, updated);
-    set(() => ({
-      imagesMap,
-      imagesArray: Array.from(imagesMap.values()),
+    set((state) => ({
+      imagesMap: new Map(state.imagesMap).set(id, updated),
+      imagesArray: state.imagesArray.map((image) => (image.id === id ? updated : image)),
     }));
     return updated;
   },

@@ -23,39 +23,13 @@ describe("useImagesStore", () => {
     return mod.useImagesStore;
   }
 
-  it("addImage adds to array and map", async () => {
-    const useImagesStore = await getStore();
-    const img = sampleRendererImage(1);
-
-    act(() => {
-      useImagesStore.getState().addImage(img);
+  function seed(store: Awaited<ReturnType<typeof getStore>>, images: rendererImage[]) {
+    store.setState({
+      imagesArray: images,
+      imagesMap: new Map(images.map((image) => [image.id, image])),
+      isEmpty: images.length === 0,
     });
-
-    const state = useImagesStore.getState();
-    expect(state.imagesArray).toHaveLength(1);
-    expect(state.imagesArray[0].id).toBe(1);
-    expect(state.imagesMap.get(1)).toEqual(img);
-    expect(state.isEmpty).toBe(false);
-  });
-
-  it("addImages prepends in desc order", async () => {
-    const useImagesStore = await getStore();
-    const existing = sampleRendererImage(10);
-    const newImgs = [sampleRendererImage(20), sampleRendererImage(21)];
-
-    act(() => {
-      useImagesStore.getState().addImage(existing);
-    });
-    act(() => {
-      useImagesStore.getState().addImages(newImgs);
-    });
-
-    const state = useImagesStore.getState();
-    expect(state.imagesArray).toHaveLength(3);
-    expect(state.imagesArray[0].id).toBe(20);
-    expect(state.imagesArray[1].id).toBe(21);
-    expect(state.imagesArray[2].id).toBe(10);
-  });
+  }
 
   it("setFilters updates filters state", async () => {
     const useImagesStore = await getStore();
@@ -155,7 +129,7 @@ describe("useImagesStore", () => {
     const img = sampleRendererImage(5);
 
     act(() => {
-      useImagesStore.getState().addImage(img);
+      seed(useImagesStore, [img]);
     });
     act(() => {
       useImagesStore.getState().addToSelectedImages(img);
@@ -175,7 +149,7 @@ describe("useImagesStore", () => {
     const imgs = [sampleRendererImage(1), sampleRendererImage(2), sampleRendererImage(3)];
 
     act(() => {
-      useImagesStore.getState().addImages(imgs);
+      seed(useImagesStore, imgs);
     });
     act(() => {
       useImagesStore.getState().selectAllImagesInCurrentPage();
@@ -193,7 +167,7 @@ describe("useImagesStore", () => {
     const img = sampleRendererImage(1);
 
     act(() => {
-      useImagesStore.getState().addImage(img);
+      seed(useImagesStore, [img]);
       useImagesStore.getState().addToSelectedImages(img);
     });
 
@@ -211,7 +185,7 @@ describe("useImagesStore", () => {
     const onPage = [sampleRendererImage(1), sampleRendererImage(2)];
 
     act(() => {
-      useImagesStore.getState().addImages(onPage);
+      seed(useImagesStore, onPage);
       useImagesStore.getState().setSelectedImages(new Set([1, 2, 99]));
     });
 
@@ -226,30 +200,6 @@ describe("useImagesStore", () => {
     expect(sel.size).toBe(1);
   });
 
-  it("deleteSelectedImages calls API and removes images", async () => {
-    mockAPI.goDaemon.deleteImages = vi.fn().mockResolvedValue({ deleted: 2 });
-
-    const useImagesStore = await getStore();
-    const img1 = sampleRendererImage(1);
-    const img2 = sampleRendererImage(2);
-
-    act(() => {
-      useImagesStore.getState().addImages([img1, img2]);
-      useImagesStore.getState().addToSelectedImages(img1);
-      useImagesStore.getState().addToSelectedImages(img2);
-    });
-
-    await act(async () => {
-      useImagesStore.getState().deleteSelectedImages();
-      await vi.waitFor(() => {
-        expect(useImagesStore.getState().imagesArray).toHaveLength(0);
-      });
-    });
-
-    expect(mockAPI.goDaemon.deleteImages).toHaveBeenCalledWith([1, 2]);
-    expect(useImagesStore.getState().selectedImages.size).toBe(0);
-  });
-
   it("renameImage calls API and updates map", async () => {
     const renamed: rendererImage = {
       ...sampleRendererImage(1),
@@ -260,7 +210,7 @@ describe("useImagesStore", () => {
     const useImagesStore = await getStore();
 
     act(() => {
-      useImagesStore.getState().addImage(sampleRendererImage(1));
+      seed(useImagesStore, [sampleRendererImage(1)]);
     });
 
     await act(async () => {
@@ -274,24 +224,19 @@ describe("useImagesStore", () => {
     expect(updated?.name).toBe("new_name.jpg");
   });
 
-  it("removeImagesFromStore removes images from array, map, and selection", async () => {
+  it("renameImage keeps off-page cached images out of the grid", async () => {
+    mockAPI.goDaemon.updateImage = vi
+      .fn()
+      .mockResolvedValue({ ...sampleRendererImage(1), name: "renamed.jpg" });
     const useImagesStore = await getStore();
-    const imgs = [sampleRendererImage(1), sampleRendererImage(2), sampleRendererImage(3)];
+    const offPage = sampleRendererImage(99);
+    seed(useImagesStore, [sampleRendererImage(1)]);
+    useImagesStore.setState((s) => ({ imagesMap: new Map(s.imagesMap).set(99, offPage) }));
 
-    act(() => {
-      useImagesStore.getState().addImages(imgs);
-      useImagesStore.getState().addToSelectedImages(imgs[0]);
+    await act(async () => {
+      await useImagesStore.getState().renameImage(1, "renamed.jpg");
     });
 
-    act(() => {
-      useImagesStore.getState().removeImagesFromStore([imgs[0], imgs[1]]);
-    });
-
-    const state = useImagesStore.getState();
-    expect(state.imagesArray).toHaveLength(1);
-    expect(state.imagesArray[0].id).toBe(3);
-    expect(state.imagesMap.has(1)).toBe(false);
-    expect(state.imagesMap.has(2)).toBe(false);
-    expect(state.selectedImages.has(1)).toBe(false);
+    expect(useImagesStore.getState().imagesArray.map((image) => image.id)).toEqual([1]);
   });
 });

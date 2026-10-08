@@ -63,13 +63,17 @@ vi.mock("react-hotkeys-hook", () => ({
 }));
 
 vi.mock("../../stores/monitors", () => ({
-  useMonitorStore: (selector: (s: typeof mockMonitorState) => unknown) =>
-    selector(mockMonitorState),
+  useMonitorStore: Object.assign(
+    (selector: (s: typeof mockMonitorState) => unknown) => selector(mockMonitorState),
+    { getState: () => mockMonitorState },
+  ),
 }));
 
 vi.mock("../../stores/playlist", () => ({
-  usePlaylistStore: (selector: (s: typeof mockPlaylistState) => unknown) =>
-    selector(mockPlaylistState),
+  usePlaylistStore: Object.assign(
+    (selector: (s: typeof mockPlaylistState) => unknown) => selector(mockPlaylistState),
+    { getState: () => mockPlaylistState },
+  ),
 }));
 
 vi.mock("../../stores/images", () => ({

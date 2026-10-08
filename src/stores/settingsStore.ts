@@ -19,12 +19,9 @@ import { daemonClient } from "@/client";
 interface SettingsStoreState {
   config: UnifiedConfig | null;
   isLoading: boolean;
-  isDirty: boolean;
-  lastSaved: number | null;
   errors: Array<{ section: ConfigSection; key: string; message: string }>;
   searchTerm: string;
   filteredSections: ConfigSection[];
-  expandedSections: Set<string>;
   /** When set, BackendSettingsSection switches to this inner tab once then clears. */
   pendingBackendSettingsTab: string | null;
 }
@@ -35,18 +32,14 @@ interface SettingsStoreActions {
   saveConfigSection: (section: ConfigSection, data: Record<string, unknown>) => Promise<void>;
   /** PATCH /config/backends/{name} with a flat backend config fragment. */
   saveBackendPatch: (backendName: string, patch: Record<string, unknown>) => Promise<void>;
-  /** Alias for saveConfigSection (backward compat with old unifiedConfigStore). */
-  setConfigValue: (section: ConfigSection, data: Record<string, unknown>) => Promise<void>;
   /** Resets app, daemon, monitors, wallhaven, and every backend subsection to daemon built-ins. */
   resetAllSettingsToDaemonDefaults: () => Promise<void>;
   /** Restores `[backend.{name}]` only; keeps global sections and other backends untouched. */
   resetBackendSettingsToDaemonDefaults: (backendName: string) => Promise<void>;
-  resetToDefaults: () => Promise<void>;
   setSearchTerm: (term: string) => void;
   clearSearch: () => void;
   setPendingBackendSettingsTab: (tab: string | null) => void;
   clearPendingBackendSettingsTab: () => void;
-  toggleSection: (sectionId: string) => void;
   handleConfigChange: (event: ConfigChangeEvent) => void;
   clearErrors: () => void;
 }
@@ -174,12 +167,9 @@ export const useSettingsStore = create<SettingsStore>()(
     (set, get) => ({
       config: null,
       isLoading: false,
-      isDirty: false,
-      lastSaved: null,
       errors: [],
       searchTerm: "",
       filteredSections: ["app", "daemon", "backend", "monitors", "wallhaven"],
-      expandedSections: new Set<string>(["app"]),
       pendingBackendSettingsTab: null,
 
       loadConfig: async () => {
@@ -230,8 +220,6 @@ export const useSettingsStore = create<SettingsStore>()(
           set({
             config: merged as UnifiedConfig,
             isLoading: false,
-            isDirty: false,
-            lastSaved: Date.now(),
           });
         } catch (error) {
           logger.error("SettingsStore: Failed to load config:", error);
@@ -354,7 +342,6 @@ export const useSettingsStore = create<SettingsStore>()(
               if (body !== null && Object.keys(body).length > 0) {
                 set({
                   config: mergeUnifiedFromSectionPatchBody(current, nonBackend, body),
-                  lastSaved: Date.now(),
                 });
               } else {
                 await get().loadConfig();
@@ -362,7 +349,6 @@ export const useSettingsStore = create<SettingsStore>()(
             }
           }
           _lastApiSaveAt = Date.now();
-          set({ lastSaved: Date.now() });
         } catch (error) {
           logger.error("SettingsStore: Failed to update config:", error);
           set({
@@ -400,7 +386,6 @@ export const useSettingsStore = create<SettingsStore>()(
         try {
           await daemonClient.updateBackendConfig(backendName, patch);
           _lastApiSaveAt = Date.now();
-          set({ lastSaved: Date.now() });
         } catch (error) {
           logger.error("SettingsStore: Failed to update backend config:", error);
           set({
@@ -417,7 +402,6 @@ export const useSettingsStore = create<SettingsStore>()(
       },
 
       // Alias so callers that used the old unifiedConfigStore API still work.
-      setConfigValue: (...args) => get().saveConfigSection(...args),
 
       resetAllSettingsToDaemonDefaults: async () => {
         set({ isLoading: true, errors: [] });
@@ -426,7 +410,7 @@ export const useSettingsStore = create<SettingsStore>()(
           _lastApiSaveAt = Date.now();
           await get().loadConfig();
           _lastApiSaveAt = Date.now();
-          set({ isDirty: false, isLoading: false });
+          set({ isLoading: false });
         } catch (error) {
           logger.error("SettingsStore: Failed to factory-reset config:", error);
           set({
@@ -449,7 +433,6 @@ export const useSettingsStore = create<SettingsStore>()(
           _lastApiSaveAt = Date.now();
           await get().loadConfig();
           _lastApiSaveAt = Date.now();
-          set({ lastSaved: Date.now() });
         } catch (error) {
           logger.error("SettingsStore: Failed to reset backend config:", error);
           set({
@@ -462,10 +445,6 @@ export const useSettingsStore = create<SettingsStore>()(
             ],
           });
         }
-      },
-
-      resetToDefaults: async () => {
-        await get().resetAllSettingsToDaemonDefaults();
       },
 
       setSearchTerm: (term: string) => {
@@ -518,16 +497,6 @@ export const useSettingsStore = create<SettingsStore>()(
 
       clearPendingBackendSettingsTab: () => {
         set({ pendingBackendSettingsTab: null });
-      },
-
-      toggleSection: (sectionId: string) => {
-        const expandedSections = new Set(get().expandedSections);
-        if (expandedSections.has(sectionId)) {
-          expandedSections.delete(sectionId);
-        } else {
-          expandedSections.add(sectionId);
-        }
-        set({ expandedSections });
       },
 
       handleConfigChange: (event: ConfigChangeEvent) => {

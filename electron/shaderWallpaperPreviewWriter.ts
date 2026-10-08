@@ -3,7 +3,8 @@ import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { MAX_PREVIEW_FRAMES } from "../src/shaderStudio/captureShaderPreviewPngs";
 import { addPreviewToWaypaperJsonString } from "../src/shaderStudio/waypaperManifestPreview";
-import { ffmpegPngSequenceToAnimatedWebp, resolveFFmpeg } from "./ffmpegWebp";
+import { ffmpegPngSequenceToAnimatedWebp } from "./ffmpegWebp";
+import { findBinary } from "./findBinary";
 import { logger } from "./logger";
 
 /**
@@ -17,7 +18,7 @@ export async function writeAnimatedWebpPreviewFromPngs(
 ): Promise<void> {
   const n = Math.min(MAX_PREVIEW_FRAMES, previewPngBuffers.length);
   if (n < 1) return;
-  const ffmpeg = resolveFFmpeg();
+  const ffmpeg = await findBinary("ffmpeg");
   if (!ffmpeg) {
     logger.warn("shader preview: ffmpeg not found; skipping preview.webp");
     return;
@@ -32,7 +33,7 @@ export async function writeAnimatedWebpPreviewFromPngs(
       }),
     );
     const outAbs = join(packageDir, "preview.webp");
-    const enc = ffmpegPngSequenceToAnimatedWebp(ffmpeg, wd, n, fps, outAbs);
+    const enc = await ffmpegPngSequenceToAnimatedWebp(ffmpeg, wd, n, fps, outAbs);
     if (!enc.ok) {
       logger.warn({ err: enc.message }, "shader preview: ffmpeg webp encode failed");
       return;

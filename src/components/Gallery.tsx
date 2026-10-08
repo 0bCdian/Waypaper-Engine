@@ -39,7 +39,7 @@ function Gallery() {
 
   const folders = useFoldersStore((s) => s.folders);
   const hasActiveFilters = galleryHasActiveFilters(filters);
-  const { onMarqueePointerDown, gridRef, marqueeBox } = useGalleryMarquee();
+  const { onMarqueePointerDown, gridRef, marqueeRef } = useGalleryMarquee();
 
   const [pendingUrls, setPendingUrls] = useState<string[]>([]);
   // Holds a dropped File that looks like a Shadertoy JSON, pending user confirmation.
@@ -128,7 +128,7 @@ function Gallery() {
         <PaginatedGallery
           onMarqueePointerDown={onMarqueePointerDown}
           gridRef={gridRef}
-          marqueeBox={marqueeBox}
+          marqueeRef={marqueeRef}
         />
       </div>
     );

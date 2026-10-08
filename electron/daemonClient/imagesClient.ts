@@ -7,7 +7,6 @@ import type {
   ImportImagesRequest,
   ImportWebWallpaperRequest,
   PaginatedResponse,
-  SelectAllImagesRequest,
   UpdateImageRequest,
   VideoLoopExportRequest,
   VideoLoopExportResult,
@@ -74,10 +73,6 @@ export class ImagesClient {
     );
   }
 
-  async getImageCount(): Promise<{ count: number }> {
-    return this.t.request<{ count: number }>("GET", "/images/count");
-  }
-
   async importImages(
     paths: string[],
     folderID?: number | null,
@@ -110,19 +105,6 @@ export class ImagesClient {
 
   async updateImage(id: number, update: UpdateImageRequest): Promise<Image> {
     return this.t.request<Image>("PATCH", `/images/${id}`, update);
-  }
-
-  async renameImage(id: number, name: string): Promise<Image> {
-    return this.t.request<Image>("POST", `/images/${id}/rename`, { name });
-  }
-
-  async selectAllImages(selected: boolean): Promise<{ updated: number; selected: boolean }> {
-    const body: SelectAllImagesRequest = { selected };
-    return this.t.request<{ updated: number; selected: boolean }>(
-      "POST",
-      "/images/select-all",
-      body,
-    );
   }
 
   async getImageTags(): Promise<{ tags: string[] }> {

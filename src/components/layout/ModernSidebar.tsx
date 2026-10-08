@@ -9,7 +9,6 @@ import type React from "react";
 import { useState, useCallback } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { LazyMotion, m, AnimatePresence, domAnimation } from "framer-motion";
-import { SidebarConfiguration } from "../SidebarConfiguration";
 import { confirmDialog } from "../ConfirmDialog";
 import { cn } from "../../utils/cn";
 import { useSettingsModalStore } from "../../stores/settingsModalStore";
@@ -143,7 +142,6 @@ const NAV_ITEMS = [
 /** Desktop icon rail — always visible, collapses to icons, expands on hover or pin */
 export const IconRailSidebar: React.FC = () => {
   const location = useLocation();
-  const isConfigurationPage = location.pathname === "/configuration";
   const { open: settingsOpen, openModal: openSettings } = useSettingsModalStore();
 
   const [pinned, setPinned] = useState<boolean>(() => {
@@ -188,14 +186,6 @@ export const IconRailSidebar: React.FC = () => {
     if (to === "/") return location.pathname === "/";
     return location.pathname.startsWith(to);
   };
-
-  if (isConfigurationPage) {
-    return (
-      <aside className="bg-base-200 border-r border-base-300 w-64 flex flex-col overflow-y-auto shrink-0 neo-sidebar neo-sidebar--config">
-        <SidebarConfiguration />
-      </aside>
-    );
-  }
 
   const railEaseTransition = `var(--wp-dur-base) var(--wp-ease-out)`;
 

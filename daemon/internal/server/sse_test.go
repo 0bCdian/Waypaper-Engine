@@ -404,35 +404,6 @@ func TestMarshalEventData_MapInjectsTimestamp(t *testing.T) {
 	}
 }
 
-func TestMarshalEventData_StructInjectsTimestamp(t *testing.T) {
-	type payload struct {
-		PlaylistID int    `json:"playlist_id"`
-		Monitor    string `json:"monitor"`
-	}
-
-	evt := events.Event{
-		Type:      events.PlaylistStarted,
-		Data:      payload{PlaylistID: 3, Monitor: "HDMI-A-1"},
-		Timestamp: time.Date(2026, 2, 15, 21, 0, 0, 0, time.UTC),
-	}
-
-	result := marshalEventData(evt)
-
-	var m map[string]any
-	if err := json.Unmarshal(result, &m); err != nil {
-		t.Fatalf("failed to unmarshal: %v", err)
-	}
-	if m["playlist_id"] != float64(3) {
-		t.Errorf("expected playlist_id=3, got %v", m["playlist_id"])
-	}
-	if m["monitor"] != "HDMI-A-1" {
-		t.Errorf("expected monitor=HDMI-A-1, got %v", m["monitor"])
-	}
-	if _, ok := m["timestamp"]; !ok {
-		t.Error("expected timestamp in struct data")
-	}
-}
-
 func TestMarshalEventData_NilData(t *testing.T) {
 	evt := events.Event{
 		Type:      events.ProcessingStarted,

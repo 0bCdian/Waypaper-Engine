@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef } from "react";
 import { useImagesStore } from "../stores/images";
 import { shouldBlockGalleryMarqueeStart } from "../utils/galleryMarqueeStart";
 
@@ -11,22 +11,34 @@ function rectsIntersect(
   return !(a.right < b.left || a.left > b.right || a.bottom < b.top || a.top > b.bottom);
 }
 
-/**
- * Marquee (rubber-band) selection for the gallery: shared between the scroll area, filters strip gaps, and padding.
- */
 const SCROLL_ZONE_PX = 80;
 const SCROLL_MAX_SPEED = 16;
 
+/**
+ * Marquee (rubber-band) selection for the gallery: shared between the scroll area, filters strip gaps, and padding.
+ * The rectangle is drawn by writing to `marqueeRef`'s style so dragging never re-renders the gallery.
+ */
 export function useGalleryMarquee() {
   const setSelectedImages = useImagesStore((s) => s.setSelectedImages);
   const gridRef = useRef<HTMLDivElement | null>(null);
-  const [marqueeBox, setMarqueeBox] = useState<MarqueeBox | null>(null);
+  const marqueeRef = useRef<HTMLDivElement | null>(null);
   const marqueeLiveRef = useRef<MarqueeBox | null>(null);
   const shiftDuringMarqueeRef = useRef(false);
   const scrollRafRef = useRef<number | null>(null);
   const scrollContainerRef = useRef<Element | null>(null);
   // Drag origin in document coordinates (client + scrollTop at drag start)
   const dragDocOriginRef = useRef<{ x: number; y: number } | null>(null);
+
+  const drawMarquee = (box: MarqueeBox | null) => {
+    const el = marqueeRef.current;
+    if (!el) return;
+    el.hidden = box === null;
+    if (!box) return;
+    el.style.left = `${Math.min(box.x1, box.x2)}px`;
+    el.style.top = `${Math.min(box.y1, box.y2)}px`;
+    el.style.width = `${Math.abs(box.x2 - box.x1)}px`;
+    el.style.height = `${Math.abs(box.y2 - box.y1)}px`;
+  };
 
   const onMarqueePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -43,7 +55,7 @@ export function useGalleryMarquee() {
         y2: clientY,
       };
       marqueeLiveRef.current = start;
-      setMarqueeBox(start);
+      drawMarquee(start);
       document.documentElement.style.userSelect = "none";
 
       // Capture the gallery scroll container once at drag start
@@ -69,7 +81,7 @@ export function useGalleryMarquee() {
         // x2/y2 are client coords — used only for the visual overlay (position: fixed)
         const next: MarqueeBox = { ...cur, x2: ev.clientX, y2: ev.clientY };
         marqueeLiveRef.current = next;
-        setMarqueeBox(next);
+        drawMarquee(next);
 
         // Auto-scroll when dragging near scroll container edges
         stopScroll();
@@ -105,7 +117,7 @@ export function useGalleryMarquee() {
         marqueeLiveRef.current = null;
         dragDocOriginRef.current = null;
         scrollContainerRef.current = null;
-        setMarqueeBox(null);
+        drawMarquee(null);
 
         if (!prev || !origin || !gridRef.current) return;
 
@@ -156,5 +168,5 @@ export function useGalleryMarquee() {
     [setSelectedImages],
   );
 
-  return { onMarqueePointerDown, gridRef, marqueeBox };
+  return { onMarqueePointerDown, gridRef, marqueeRef };
 }

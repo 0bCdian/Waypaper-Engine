@@ -1089,7 +1089,8 @@ function WallhavenCard({
   return (
     <div
       className={cn(
-        "group relative cursor-pointer flex flex-col bg-base-200 overflow-hidden rounded-[var(--wp-radius-sm)] border-[var(--wp-border-w)] border-[var(--wp-border-color)] shadow-[var(--wp-elev-1,none)]",
+        // content-visibility lets the infinite list skip layout/paint for off-screen cards.
+        "group relative cursor-pointer flex flex-col bg-base-200 overflow-hidden rounded-[var(--wp-radius-sm)] border-[var(--wp-border-w)] border-[var(--wp-border-color)] shadow-[var(--wp-elev-1,none)] [content-visibility:auto] [contain-intrinsic-size:auto_240px]",
         isSelected && "ring-2 ring-primary ring-offset-2 ring-offset-base-100",
         isDownloaded && !isSelected && "opacity-65",
       )}

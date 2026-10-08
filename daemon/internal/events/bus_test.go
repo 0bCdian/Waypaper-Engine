@@ -30,10 +30,7 @@ func TestPublishAndSubscribeWildcard(t *testing.T) {
 		if evt.Timestamp.IsZero() {
 			t.Error("expected Timestamp to be set automatically")
 		}
-		data, ok := evt.Data.(map[string]any)
-		if !ok {
-			t.Fatal("expected Data to be map[string]any")
-		}
+		data := evt.Data
 		if data["image_id"] != 42 {
 			t.Errorf("expected image_id=42, got %v", data["image_id"])
 		}
@@ -48,9 +45,9 @@ func TestSubscribeWithTypeFilter(t *testing.T) {
 
 	ch := bus.Subscribe(PlaylistStarted, PlaylistStopped)
 
-	bus.Publish(Event{Type: PlaylistStarted, Data: "started"})
-	bus.Publish(Event{Type: WallpaperChanged, Data: "changed"})
-	bus.Publish(Event{Type: PlaylistStopped, Data: "stopped"})
+	bus.Publish(Event{Type: PlaylistStarted})
+	bus.Publish(Event{Type: WallpaperChanged})
+	bus.Publish(Event{Type: PlaylistStopped})
 
 	select {
 	case evt := <-ch:
@@ -85,7 +82,7 @@ func TestMultipleSubscribers(t *testing.T) {
 	ch2 := bus.Subscribe(WallpaperChanged)
 	ch3 := bus.Subscribe(PlaylistStarted)
 
-	bus.Publish(Event{Type: WallpaperChanged, Data: "test"})
+	bus.Publish(Event{Type: WallpaperChanged})
 
 	for _, ch := range []<-chan Event{ch1, ch2} {
 		select {
@@ -121,7 +118,7 @@ func TestUnsubscribe(t *testing.T) {
 		t.Error("expected closed channel to be readable (return zero value)")
 	}
 
-	bus.Publish(Event{Type: WallpaperChanged, Data: "test"})
+	bus.Publish(Event{Type: WallpaperChanged})
 }
 
 func TestUnsubscribeIdempotent(t *testing.T) {
@@ -153,7 +150,7 @@ func TestClose(t *testing.T) {
 		}
 	}
 
-	bus.Publish(Event{Type: WallpaperChanged, Data: "test"})
+	bus.Publish(Event{Type: WallpaperChanged})
 
 	ch3 := bus.Subscribe()
 	select {
@@ -210,12 +207,12 @@ func TestNonBlockingPublish(t *testing.T) {
 	ch := bus.Subscribe()
 
 	for i := range subscriberBufferSize {
-		bus.Publish(Event{Type: WallpaperChanged, Data: i})
+		bus.Publish(Event{Type: WallpaperChanged, Data: map[string]any{"i": i}})
 	}
 
 	done := make(chan struct{})
 	go func() {
-		bus.Publish(Event{Type: WallpaperChanged, Data: "overflow"})
+		bus.Publish(Event{Type: WallpaperChanged})
 		close(done)
 	}()
 
@@ -272,7 +269,7 @@ func TestConcurrentPublishSubscribe(t *testing.T) {
 	for range numPublishers {
 		pubWg.Go(func() {
 			for range numEventsPerPublisher {
-				bus.Publish(Event{Type: WallpaperChanged, Data: "concurrent"})
+				bus.Publish(Event{Type: WallpaperChanged})
 			}
 		})
 	}

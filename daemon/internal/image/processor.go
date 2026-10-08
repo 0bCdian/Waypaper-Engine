@@ -320,7 +320,6 @@ func (p *Processor) processBatchSync(ctx context.Context, paths []string, batchI
 	g.SetLimit(workers)
 
 	for i, v := range validPaths {
-		i, v := i, v
 		g.Go(func() error {
 			if gctx.Err() != nil {
 				return gctx.Err()
@@ -416,7 +415,6 @@ func (p *Processor) processBatchSync(ctx context.Context, paths []string, batchI
 	tg.SetLimit(workers)
 
 	for i := range created {
-		i := i
 		tg.Go(func() error {
 			if tgctx.Err() != nil {
 				return tgctx.Err()
