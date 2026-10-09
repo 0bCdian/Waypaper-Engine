@@ -6,7 +6,6 @@ import React, {
   useEffectEvent,
   useMemo,
   useReducer,
-  useTransition,
   useRef,
   type ReactNode,
 } from "react";
@@ -14,7 +13,13 @@ import type { ThemeContextType } from "./types";
 import type { ThemeMeta } from "../themes/types";
 import { themes, findTheme } from "../themes/themes";
 import { logger } from "../utils/logger";
-import { daemonClient } from "@/client";
+import { useSettingsStore } from "../stores/settingsStore";
+
+type ViewTransitionLike = {
+  ready: Promise<void>;
+  updateCallbackDone: Promise<void>;
+  finished: Promise<void>;
+};
 
 const DEFAULT_THEME_NAME = "kolision-raw";
 
@@ -85,11 +90,7 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     }),
   );
   const { currentTheme, systemTheme, syncWithSystem, lastChanged } = themeState;
-  const [isPending, startTransition] = useTransition();
-  const isLoading = isPending;
-
-  const currentThemeRef = useRef(currentTheme);
-  currentThemeRef.current = currentTheme;
+  const transitionInFlightRef = useRef(false);
 
   const currentThemeMeta = findTheme(currentTheme);
 
@@ -97,27 +98,43 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
   const isLightMode = currentThemeMeta?.category === "light";
 
   const applyTheme = useCallback((themeName: string) => {
+    const root = document.documentElement;
+    if (root.getAttribute("data-theme") === themeName) return;
+
     const swap = () => {
-      document.documentElement.setAttribute("data-theme", themeName);
+      root.setAttribute("data-theme", themeName);
       document.body.removeAttribute("data-theme");
     };
 
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     const doc = document as Document & {
-      startViewTransition?: (callback: () => void) => { finished: Promise<void> };
+      startViewTransition?: (callback: () => void) => ViewTransitionLike;
     };
 
-    // One root-level cross-fade (Electron/Chromium). Avoids animating every descendant.
-    if (!reduceMotion && typeof doc.startViewTransition === "function") {
-      doc.startViewTransition(swap);
+    // One root-level cross-fade (Chromium). Chromium aborts a transition started while the
+    // window is hidden or while another one runs, so those cases swap instantly instead.
+    if (
+      !reduceMotion &&
+      document.visibilityState === "visible" &&
+      !transitionInFlightRef.current &&
+      typeof doc.startViewTransition === "function"
+    ) {
+      transitionInFlightRef.current = true;
+      const transition = doc.startViewTransition(swap);
+      const ignoreSkipped = () => {};
+      transition.ready.catch(ignoreSkipped);
+      transition.updateCallbackDone.catch(ignoreSkipped);
+      void transition.finished.catch(ignoreSkipped).finally(() => {
+        transitionInFlightRef.current = false;
+      });
       return;
     }
 
-    document.documentElement.classList.add("disable-transitions");
+    root.classList.add("disable-transitions");
     swap();
     requestAnimationFrame(() => {
       requestAnimationFrame(() => {
-        document.documentElement.classList.remove("disable-transitions");
+        root.classList.remove("disable-transitions");
       });
     });
   }, []);
@@ -129,10 +146,8 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
         return;
       }
 
-      startTransition(() => {
-        dispatchTheme({ type: "set-theme", theme: themeName, timestamp: Date.now() });
-        applyTheme(themeName);
-      });
+      dispatchTheme({ type: "set-theme", theme: themeName, timestamp: Date.now() });
+      applyTheme(themeName);
 
       if (persist) {
         try {
@@ -228,34 +243,32 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     };
   }, [syncWithSystem, systemTheme]);
 
+  // Follow theme changes made elsewhere (settings in another view, the CLI, a config file edit).
+  // The first observed value is skipped: on startup the persisted theme is already applied, and a
+  // failed config load falls back to defaults that must not override it.
+  const configTheme = useSettingsStore((s) => s.config?.app?.theme);
+  const seenConfigThemeRef = useRef(false);
+  const onConfigTheme = useEffectEvent((theme: string) => {
+    if (theme === "system") {
+      if (!syncWithSystem) setSystemThemePreference("auto");
+    } else if (hasTheme(theme)) {
+      setTheme(theme);
+    }
+  });
   useEffect(() => {
-    const dispose = daemonClient.on("config_changed", (data: unknown) => {
-      const event = data as { sections?: string[]; source?: string };
-      const secs = event.sections;
-      if (Array.isArray(secs) && secs.length > 0 && !secs.includes("app")) {
-        return;
-      }
-      void daemonClient.getConfig().then((config) => {
-        const newTheme = config?.app?.theme;
-        if (!newTheme) return;
-        if (newTheme === "system") {
-          if (!syncWithSystem) {
-            setSystemThemePreference("auto");
-          }
-        } else if (newTheme !== currentThemeRef.current && hasTheme(newTheme)) {
-          setTheme(newTheme);
-        }
-      });
-    });
-    return dispose;
-  }, [syncWithSystem, hasTheme, setTheme, setSystemThemePreference]);
+    if (!configTheme) return;
+    if (!seenConfigThemeRef.current) {
+      seenConfigThemeRef.current = true;
+      return;
+    }
+    onConfigTheme(configTheme);
+  }, [configTheme]);
 
   const contextValue: ThemeContextType = useMemo(
     () => ({
       currentTheme,
       systemTheme,
       themes,
-      isLoading,
       lastChanged,
       syncWithSystem,
       isDarkMode,
@@ -273,7 +286,6 @@ export const ThemeProvider: React.FC<ThemeProviderProps> = ({
     [
       currentTheme,
       systemTheme,
-      isLoading,
       lastChanged,
       syncWithSystem,
       isDarkMode,

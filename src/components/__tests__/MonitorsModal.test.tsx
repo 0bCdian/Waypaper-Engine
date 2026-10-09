@@ -8,7 +8,7 @@ vi.mock("zustand/react/shallow", () => ({
 
 const mockSetMonitorsList = vi.fn();
 const mockSetMonitorSelection = vi.fn();
-const mockRefreshFromDaemon = vi.fn().mockResolvedValue(undefined);
+const mockReQueryMonitors = vi.fn().mockResolvedValue(undefined);
 
 let mockMonitorsList: {
   name: string;
@@ -34,7 +34,7 @@ vi.mock("../../stores/monitors", () => ({
       monitorsList: mockMonitorsList,
       setMonitorsList: mockSetMonitorsList,
       setMonitorSelection: mockSetMonitorSelection,
-      refreshFromDaemon: mockRefreshFromDaemon,
+      reQueryMonitors: mockReQueryMonitors,
     }),
 }));
 

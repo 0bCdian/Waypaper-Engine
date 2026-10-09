@@ -1,9 +1,12 @@
 package server
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -101,4 +104,60 @@ func TestStatusWriter_Flush(t *testing.T) {
 	assert.NotPanics(t, func() {
 		sw.Flush()
 	})
+}
+
+func gatedRequest(ready <-chan struct{}, req *http.Request) (*httptest.ResponseRecorder, <-chan struct{}, *atomic.Bool) {
+	var called atomic.Bool
+	handler := RequireReady(ready)(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		called.Store(true)
+		w.WriteHeader(http.StatusOK)
+	}))
+	w := httptest.NewRecorder()
+	done := make(chan struct{})
+	go func() {
+		handler.ServeHTTP(w, req)
+		close(done)
+	}()
+	return w, done, &called
+}
+
+func TestRequireReady_WaitsUntilReady(t *testing.T) {
+	ready := make(chan struct{})
+	w, done, called := gatedRequest(ready, httptest.NewRequest("POST", "/wallpaper/set", nil))
+
+	select {
+	case <-done:
+		t.Fatal("request completed before the backend was ready")
+	case <-time.After(50 * time.Millisecond):
+	}
+	assert.False(t, called.Load())
+
+	close(ready)
+	<-done
+	assert.True(t, called.Load())
+	assert.Equal(t, http.StatusOK, w.Code)
+}
+
+func TestRequireReady_AbandonsCancelledRequest(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	req := httptest.NewRequest("POST", "/wallpaper/set", nil).WithContext(ctx)
+	_, done, called := gatedRequest(make(chan struct{}), req)
+
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("cancelled request was not abandoned")
+	}
+	assert.False(t, called.Load())
+}
+
+func TestRequireReady_NilChannelMeansReady(t *testing.T) {
+	_, done, called := gatedRequest(nil, httptest.NewRequest("POST", "/wallpaper/set", nil))
+	select {
+	case <-done:
+	case <-time.After(time.Second):
+		t.Fatal("nil ready channel should not block")
+	}
+	assert.True(t, called.Load())
 }

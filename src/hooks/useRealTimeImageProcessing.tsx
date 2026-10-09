@@ -72,10 +72,6 @@ export function useRealTimeImageProcessing() {
       }),
     ];
 
-    // Video preview backfill may finish before gallery_changed is subscribed, so the event is
-    // missed and the gallery stays stale; one deferred refetch catches the persisted preview_path.
-    reQueryAfter(2800);
-
     return () => {
       clearTimeout(reQueryTimer);
       for (const dispose of disposers) dispose();

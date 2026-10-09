@@ -11,15 +11,14 @@ import { daemonClient } from "@/client";
 import { useLiveWallpapers } from "../hooks/useLiveWallpapers";
 
 function Monitors() {
-  const { monitorSelection, monitorsList, setMonitorSelection, refreshFromDaemon } =
-    useMonitorStore(
-      useShallow((s) => ({
-        monitorSelection: s.monitorSelection,
-        monitorsList: s.monitorsList,
-        setMonitorSelection: s.setMonitorSelection,
-        refreshFromDaemon: s.refreshFromDaemon,
-      })),
-    );
+  const { monitorSelection, monitorsList, setMonitorSelection, reQueryMonitors } = useMonitorStore(
+    useShallow((s) => ({
+      monitorSelection: s.monitorSelection,
+      monitorsList: s.monitorsList,
+      setMonitorSelection: s.setMonitorSelection,
+      reQueryMonitors: s.reQueryMonitors,
+    })),
+  );
   const [selectType, setSelectType] = useState<monitorSelectType>(
     monitorSelection.mode || "individual",
   );
@@ -41,11 +40,10 @@ function Monitors() {
   useEffect(() => {
     if (modalRef.current) {
       useModalStore.getState().register("monitors", {
+        // The list stays current through monitor_connected/disconnected, so opening needs no fetch.
         showModal: () => {
-          void refreshFromDaemon().then(() => {
-            setRefreshKey((k) => k + 1);
-            modalRef.current?.showModal();
-          });
+          setRefreshKey((k) => k + 1);
+          modalRef.current?.showModal();
         },
         close: () => modalRef.current?.close(),
       });
@@ -56,7 +54,7 @@ function Monitors() {
   useEffect(() => {
     const disposeConnected = daemonClient.on("monitor_connected", () => {
       setTimeout(() => {
-        void refreshFromDaemon().then(() => {
+        void reQueryMonitors().then(() => {
           useModalStore.getState().open("monitors");
         });
       }, 300);
@@ -64,7 +62,7 @@ function Monitors() {
 
     const disposeDisconnected = daemonClient.on("monitor_disconnected", () => {
       setTimeout(() => {
-        void refreshFromDaemon();
+        void reQueryMonitors();
       }, 300);
     });
 

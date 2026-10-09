@@ -99,29 +99,6 @@ func (d *Daemon) Start(ctx context.Context) error {
 	restoreRetryCtx, cancelRestoreRetry := context.WithCancel(ctx)
 	defer cancelRestoreRetry()
 
-	noBackendInstalled := !opts.Registry.HasActive()
-	var initErr error
-	if !noBackendInstalled {
-		activeBackend := opts.Registry.Active()
-		initErr = activeBackend.Initialize(ctx)
-		if initErr != nil {
-			slog.Error("failed to initialize backend; wallpaper restore deferred",
-				"name", activeBackend.Name(), "error", initErr)
-			bus.Publish(events.Event{
-				Type: events.BackendUnavailable,
-				Data: map[string]any{
-					"backend":  activeBackend.Name(),
-					"message":  initErr.Error(),
-					"retrying": true,
-				},
-			})
-		} else {
-			slog.Info("backend initialized", "name", activeBackend.Name())
-		}
-	} else {
-		slog.Warn("no wallpaper backend is installed; daemon running in degraded mode")
-	}
-
 	processor := image.NewProcessor(opts.DB.ImageStore(), bus, opts.ImagesDir, opts.ThumbnailsDir)
 	splitter := image.NewSplitter(opts.ImagesDir)
 
@@ -135,31 +112,6 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	cleanStaleProcessedDir(ctx, opts.DB.ImageStore(), opts.ImagesDir)
 
-	restoreDone := make(chan struct{})
-	if !noBackendInstalled {
-		if initErr != nil {
-			close(restoreDone)
-			wallpaper.StartDeferredDaemonRestore(
-				restoreRetryCtx,
-				opts.Registry,
-				opts.Cfg,
-				opts.DB.MonitorStateStore(),
-				opts.DB.StateStore(),
-				monManager,
-				opts.DB.ImageStore(),
-				splitter,
-				bus,
-			)
-		} else {
-			go func() {
-				defer close(restoreDone)
-				wallpaper.Restore(restoreRetryCtx, opts.DB.MonitorStateStore(), opts.DB.StateStore(), opts.Registry, opts.Cfg, monManager, opts.DB.ImageStore(), splitter, bus)
-			}()
-		}
-	} else {
-		close(restoreDone)
-	}
-
 	playlistMgr := playlist.NewManager(
 		opts.DB.PlaylistStore(),
 		opts.DB.StateStore(),
@@ -172,16 +124,6 @@ func (d *Daemon) Start(ctx context.Context) error {
 		splitter,
 		opts.Cfg,
 	)
-	select {
-	case <-restoreDone:
-	case <-time.After(20 * time.Second):
-		slog.Warn("startup restore did not finish in time; restoring playlists anyway")
-	case <-ctx.Done():
-	}
-
-	if err := playlistMgr.RestorePersistedRuns(ctx); err != nil {
-		slog.Warn("playlist restore from disk failed", "error", err)
-	}
 
 	shutdownCh := make(chan struct{}, 1)
 	shutdownFn := func() {
@@ -206,9 +148,11 @@ func (d *Daemon) Start(ctx context.Context) error {
 		}
 		restoreFn(ctx)
 	})
+
+	backendReady := make(chan struct{})
 	userThemesDir := filepath.Join(system.ConfigHome(), themesSubdir)
 	handlers := server.Handlers{
-		Health: healthhandler.NewHealthHandler(opts.Version, shutdownFn),
+		Health: healthhandler.NewHealthHandler(opts.Version, shutdownFn, backendReady),
 		Images: imageshandler.NewImageHandler(
 			opts.DB.ImageStore(), opts.DB.MonitorStateStore(), opts.DB.HistoryStore(), opts.DB.PlaylistStore(),
 			processor, bus, opts.Registry,
@@ -221,8 +165,9 @@ func (d *Daemon) Start(ctx context.Context) error {
 			opts.DB.ImageStore(), opts.DB.HistoryStore(), opts.DB.StateStore(), opts.DB.MonitorStateStore(),
 			opts.Registry, monManager, splitter, bus, opts.Cfg,
 		),
-		Folders: foldershandler.NewFolderHandler(opts.DB.FolderStore(), opts.DB.ImageStore(), bus),
-		Themes:  themeshandler.NewThemesHandler(userThemesDir),
+		Folders:      foldershandler.NewFolderHandler(opts.DB.FolderStore(), opts.DB.ImageStore(), bus),
+		Themes:       themeshandler.NewThemesHandler(userThemesDir),
+		BackendReady: backendReady,
 	}
 
 	router := server.NewRouter(handlers, bus)
@@ -235,19 +180,12 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	slog.Info("daemon ready", "socket", opts.SocketPath)
 
-	if noBackendInstalled {
-		checked := make([]string, 0)
-		for _, info := range opts.Registry.Available() {
-			checked = append(checked, info.Name)
-		}
-		go bus.Publish(events.Event{
-			Type: events.BackendUnavailable,
-			Data: map[string]any{
-				"message": "No wallpaper backend is installed. Install at least one backend to set wallpapers.",
-				"checked": checked,
-			},
-		})
-	}
+	// The socket is already serving, so a slow backend never delays the UI.
+	go func() {
+		defer close(backendReady)
+		initBackendAndRestore(restoreRetryCtx, opts, bus, monManager, splitter, playlistMgr)
+		slog.Info("backend ready")
+	}()
 
 	var serverErr error
 	select {
@@ -268,6 +206,12 @@ func (d *Daemon) Start(ctx context.Context) error {
 
 	shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer shutdownCancel()
+
+	// Let a still-running startup restore unwind before tearing down what it uses.
+	select {
+	case <-backendReady:
+	case <-shutdownCtx.Done():
+	}
 
 	playlistMgr.Shutdown(shutdownCtx)
 
@@ -293,6 +237,62 @@ func (d *Daemon) Start(ctx context.Context) error {
 		return fmt.Errorf("server error: %w", serverErr)
 	}
 	return nil
+}
+
+// initBackendAndRestore brings up the active backend, then restores the last session's
+// wallpapers and playlist runs.
+func initBackendAndRestore(ctx context.Context, opts Options, bus events.Bus, monManager monitor.MonitorManager, splitter *image.Splitter, playlistMgr *playlist.Manager) {
+	restoreDone := make(chan struct{})
+	switch {
+	case !opts.Registry.HasActive():
+		slog.Warn("no wallpaper backend is installed; daemon running in degraded mode")
+		checked := make([]string, 0)
+		for _, info := range opts.Registry.Available() {
+			checked = append(checked, info.Name)
+		}
+		bus.Publish(events.Event{
+			Type: events.BackendUnavailable,
+			Data: map[string]any{
+				"message": "No wallpaper backend is installed. Install at least one backend to set wallpapers.",
+				"checked": checked,
+			},
+		})
+		close(restoreDone)
+	default:
+		activeBackend := opts.Registry.Active()
+		if err := activeBackend.Initialize(ctx); err != nil {
+			slog.Error("failed to initialize backend; wallpaper restore deferred",
+				"name", activeBackend.Name(), "error", err)
+			bus.Publish(events.Event{
+				Type: events.BackendUnavailable,
+				Data: map[string]any{
+					"backend":  activeBackend.Name(),
+					"message":  err.Error(),
+					"retrying": true,
+				},
+			})
+			close(restoreDone)
+			wallpaper.StartDeferredDaemonRestore(ctx, opts.Registry, opts.Cfg, opts.DB.MonitorStateStore(),
+				opts.DB.StateStore(), monManager, opts.DB.ImageStore(), splitter, bus)
+			break
+		}
+		slog.Info("backend initialized", "name", activeBackend.Name())
+		go func() {
+			defer close(restoreDone)
+			wallpaper.Restore(ctx, opts.DB.MonitorStateStore(), opts.DB.StateStore(), opts.Registry, opts.Cfg, monManager, opts.DB.ImageStore(), splitter, bus)
+		}()
+	}
+
+	select {
+	case <-restoreDone:
+	case <-time.After(20 * time.Second):
+		slog.Warn("startup restore did not finish in time; restoring playlists anyway")
+	case <-ctx.Done():
+	}
+
+	if err := playlistMgr.RestorePersistedRuns(ctx); err != nil {
+		slog.Warn("playlist restore from disk failed", "error", err)
+	}
 }
 
 func cleanStaleProcessedDir(ctx context.Context, imageStore store.ImageStore, imagesDir string) {

@@ -26,11 +26,16 @@ type Handlers struct {
 	Wallpaper *wallpaperhandler.WallpaperHandler
 	Folders   *foldershandler.FolderHandler
 	Themes    *themeshandler.ThemesHandler
+
+	// BackendReady closes once the backend is initialized and the startup restore is done;
+	// routes that change what is on screen wait for it. Nil means always ready.
+	BackendReady <-chan struct{}
 }
 
 // NewRouter creates a chi router with all routes and middleware registered.
 func NewRouter(h Handlers, bus events.Bus) *chi.Mux {
 	r := chi.NewRouter()
+	gated := RequireReady(h.BackendReady)
 
 	// Global middleware.
 	r.Use(RequestID)
@@ -74,21 +79,21 @@ func NewRouter(h Handlers, bus events.Bus) *chi.Mux {
 		// Bulk active-playlist actions (must be before /{id} to avoid chi conflict).
 		r.Get("/active", h.Playlists.ListActive)
 		r.Get("/active/{monitor}", h.Playlists.GetActiveByMonitor)
-		r.Post("/active/stop", h.Playlists.StopAll)
-		r.Post("/active/pause", h.Playlists.PauseAll)
-		r.Post("/active/resume", h.Playlists.ResumeAll)
-		r.Post("/active/next", h.Playlists.NextAll)
-		r.Post("/active/previous", h.Playlists.PreviousAll)
+		r.With(gated).Post("/active/stop", h.Playlists.StopAll)
+		r.With(gated).Post("/active/pause", h.Playlists.PauseAll)
+		r.With(gated).Post("/active/resume", h.Playlists.ResumeAll)
+		r.With(gated).Post("/active/next", h.Playlists.NextAll)
+		r.With(gated).Post("/active/previous", h.Playlists.PreviousAll)
 
 		r.Get("/{id}", h.Playlists.Get)
 		r.Patch("/{id}", h.Playlists.Update)
 		r.Delete("/{id}", h.Playlists.Delete)
-		r.Post("/{id}/start", h.Playlists.Start)
-		r.Post("/{id}/stop", h.Playlists.Stop)
-		r.Post("/{id}/pause", h.Playlists.Pause)
-		r.Post("/{id}/resume", h.Playlists.Resume)
-		r.Post("/{id}/next", h.Playlists.Next)
-		r.Post("/{id}/previous", h.Playlists.Previous)
+		r.With(gated).Post("/{id}/start", h.Playlists.Start)
+		r.With(gated).Post("/{id}/stop", h.Playlists.Stop)
+		r.With(gated).Post("/{id}/pause", h.Playlists.Pause)
+		r.With(gated).Post("/{id}/resume", h.Playlists.Resume)
+		r.With(gated).Post("/{id}/next", h.Playlists.Next)
+		r.With(gated).Post("/{id}/previous", h.Playlists.Previous)
 	})
 
 	// Folders.
@@ -112,10 +117,10 @@ func NewRouter(h Handlers, bus events.Bus) *chi.Mux {
 	r.Route("/config", func(r chi.Router) {
 		r.Get("/", h.Config.GetConfig)
 		r.Patch("/", h.Config.PatchConfig)
-		r.Post("/reset", h.Config.PostResetAll)
+		r.With(gated).Post("/reset", h.Config.PostResetAll)
 		r.Get("/backends/{backend}", h.Config.GetNamedBackendConfig)
-		r.Post("/backends/{backend}/reset", h.Config.PostResetNamedBackendConfig)
-		r.Patch("/backends/{backend}", h.Config.PatchNamedBackendConfig)
+		r.With(gated).Post("/backends/{backend}/reset", h.Config.PostResetNamedBackendConfig)
+		r.With(gated).Patch("/backends/{backend}", h.Config.PatchNamedBackendConfig)
 		r.Get("/{section}", h.Config.GetSection)
 		r.Patch("/{section}", h.Config.PatchSection)
 	})
@@ -123,14 +128,14 @@ func NewRouter(h Handlers, bus events.Bus) *chi.Mux {
 	// Backends.
 	r.Route("/backends", func(r chi.Router) {
 		r.Get("/", h.Backends.List)
-		r.Post("/{name}/activate", h.Backends.Activate)
+		r.With(gated).Post("/{name}/activate", h.Backends.Activate)
 	})
 
 	// Wallpaper.
 	r.Route("/wallpaper", func(r chi.Router) {
 		r.Get("/current", h.Wallpaper.GetCurrent)
-		r.Post("/set", h.Wallpaper.Set)
-		r.Post("/random", h.Wallpaper.Random)
+		r.With(gated).Post("/set", h.Wallpaper.Set)
+		r.With(gated).Post("/random", h.Wallpaper.Random)
 	})
 
 	// User themes (drop-in CSS palettes from ~/.config/waypaper-engine/themes/).

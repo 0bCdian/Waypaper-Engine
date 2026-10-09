@@ -20,8 +20,12 @@ export const trayMenu = async (app: App, trayInstance: Tray, createTray?: () => 
   let imageHistory: ImageHistoryEntry[] = [];
 
   try {
-    activePlaylists = (await goDaemonClient.playlists.getActivePlaylists()) || [];
-    imageHistory = (await goDaemonClient.images.getImageHistory(10)) || [];
+    const [playlists, history] = await Promise.all([
+      goDaemonClient.playlists.getActivePlaylists(),
+      goDaemonClient.images.getImageHistory(10),
+    ]);
+    activePlaylists = playlists || [];
+    imageHistory = history || [];
   } catch (error) {
     console.error("Failed to fetch tray menu data:", error);
   }

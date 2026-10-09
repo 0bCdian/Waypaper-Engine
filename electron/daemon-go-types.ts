@@ -467,6 +467,8 @@ export interface HealthResponse {
   /** Present on daemons built with monitor stack v2+ (see handler/health.go). */
   monitor_stack_version?: number;
   monitor_provider_order?: string[];
+  /** False while the backend initializes; wallpaper/playlist/backend writes are held until true. */
+  backend_ready: boolean;
 }
 
 // ============================================================================

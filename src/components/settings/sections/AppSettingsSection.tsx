@@ -47,9 +47,8 @@ const behaviorFields: BoolField[] = [
   },
   {
     key: "startup_intro",
-    label: "Startup Intro",
-    description:
-      "Play a short full-screen sequence when opening the window (after configuration loads)",
+    label: "Play intro on first launch",
+    description: "Show the short full-screen intro the first time the app opens",
   },
 ];
 

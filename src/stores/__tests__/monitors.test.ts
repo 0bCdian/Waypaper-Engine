@@ -95,59 +95,48 @@ describe("useMonitorStore", () => {
     expect(state.monitorsList[1].isSelected).toBe(false);
   });
 
-  it("setLastSavedMonitorConfig loads from daemon config", async () => {
+  it("applies the monitors section from the settings store without fetching config", async () => {
     const monitors = [sampleMonitor("HDMI-A-1"), sampleMonitor("DP-1")];
     mockAPI.goDaemon.getMonitors = vi.fn().mockResolvedValue(monitors);
-    mockAPI.goDaemon.getConfig = vi.fn().mockResolvedValue({
-      app: {},
-      daemon: {},
-      backend: { type: "awww" },
-      monitors: {
-        selected_monitors: ["DP-1"],
-        image_set_type: "individual",
-      },
-      wallhaven: {},
-    });
-
     const useMonitorStore = await getStore();
+    const { useSettingsStore } = await import("../settingsStore");
 
     await act(async () => {
-      await useMonitorStore.getState().setLastSavedMonitorConfig();
+      await useMonitorStore.getState().reQueryMonitors();
+    });
+    vi.mocked(mockAPI.goDaemon.getConfig).mockClear();
+
+    act(() => {
+      useSettingsStore.setState({
+        config: {
+          ...(useSettingsStore.getState().config ?? ({} as never)),
+          monitors: { selected_monitors: ["DP-1"], image_set_type: "individual" },
+        } as never,
+      });
     });
 
     const state = useMonitorStore.getState();
     expect(state.monitorSelection.selectedMonitors).toEqual(["DP-1"]);
-    expect(state.monitorsList).toHaveLength(2);
-    expect(state.monitorsList[0].isSelected).toBe(false);
-    expect(state.monitorsList[1].isSelected).toBe(true);
-    expect(state._configLoaded).toBe(true);
+    expect(state.monitorsList.map((m) => m.isSelected)).toEqual([false, true]);
+    expect(mockAPI.goDaemon.getConfig).not.toHaveBeenCalled();
+    expect(mockAPI.goDaemon.getMonitors).toHaveBeenCalledTimes(1);
   });
 
-  it("setLastSavedMonitorConfig is idempotent after first load", async () => {
-    const monitors = [sampleMonitor("HDMI-A-1")];
-    mockAPI.goDaemon.getMonitors = vi.fn().mockResolvedValue(monitors);
-    mockAPI.goDaemon.getConfig = vi.fn().mockResolvedValue({
-      app: {},
-      daemon: {},
-      backend: { type: "awww" },
-      monitors: {
-        selected_monitors: ["HDMI-A-1"],
-        image_set_type: "individual",
-      },
-      wallhaven: {},
-    });
-
+  it("ignores settings updates that leave the monitors section unchanged", async () => {
     const useMonitorStore = await getStore();
-
-    await act(async () => {
-      await useMonitorStore.getState().setLastSavedMonitorConfig();
+    const { useSettingsStore } = await import("../settingsStore");
+    const monitorsSection = { selected_monitors: ["DP-1"], image_set_type: "individual" };
+    act(() => {
+      useSettingsStore.setState({ config: { app: {}, monitors: monitorsSection } as never });
     });
-    expect(mockAPI.goDaemon.getMonitors).toHaveBeenCalledTimes(1);
+    const selection = useMonitorStore.getState().monitorSelection;
 
-    await act(async () => {
-      await useMonitorStore.getState().setLastSavedMonitorConfig();
+    act(() => {
+      useSettingsStore.setState({
+        config: { app: { theme: "nord" }, monitors: monitorsSection } as never,
+      });
     });
-    // Should not call getMonitors again
-    expect(mockAPI.goDaemon.getMonitors).toHaveBeenCalledTimes(1);
+
+    expect(useMonitorStore.getState().monitorSelection).toBe(selection);
   });
 });

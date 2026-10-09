@@ -15,7 +15,7 @@ import (
 )
 
 func TestHealthHandler_Healthz(t *testing.T) {
-	h := NewHealthHandler("1.0.0", nil)
+	h := NewHealthHandler("1.0.0", nil, nil)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/healthz", nil)
@@ -32,8 +32,26 @@ func TestHealthHandler_Healthz(t *testing.T) {
 	assert.Equal(t, "wal-qt", order[0])
 }
 
+func TestHealthHandler_HealthzReportsBackendReady(t *testing.T) {
+	ready := make(chan struct{})
+	h := NewHealthHandler("1.0.0", nil, ready)
+
+	backendReady := func() any {
+		w := httptest.NewRecorder()
+		h.Healthz(w, httptest.NewRequest(http.MethodGet, "/healthz", nil))
+		var body map[string]any
+		require.NoError(t, json.Unmarshal(w.Body.Bytes(), &body))
+		assert.Equal(t, "ok", body["status"])
+		return body["backend_ready"]
+	}
+
+	assert.Equal(t, false, backendReady())
+	close(ready)
+	assert.Equal(t, true, backendReady())
+}
+
 func TestHealthHandler_Info(t *testing.T) {
-	h := NewHealthHandler("1.0.0", nil)
+	h := NewHealthHandler("1.0.0", nil, nil)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/info", nil)
@@ -49,7 +67,7 @@ func TestHealthHandler_Info(t *testing.T) {
 }
 
 func TestHealthHandler_Capabilities(t *testing.T) {
-	h := NewHealthHandler("1.0.0", nil)
+	h := NewHealthHandler("1.0.0", nil, nil)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodGet, "/capabilities", nil)
@@ -68,7 +86,7 @@ func TestHealthHandler_Shutdown(t *testing.T) {
 	var called atomic.Bool
 	shutdownFn := func() { called.Store(true) }
 
-	h := NewHealthHandler("1.0.0", shutdownFn)
+	h := NewHealthHandler("1.0.0", shutdownFn, nil)
 
 	w := httptest.NewRecorder()
 	r := httptest.NewRequest(http.MethodPost, "/shutdown", nil)

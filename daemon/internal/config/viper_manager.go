@@ -1,6 +1,8 @@
 package config
 
 import (
+	"bytes"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -34,6 +36,12 @@ type ViperManager struct {
 	callbacks []func(section string)
 
 	backendDefaults func(*viper.Viper)
+
+	// lastSeen is the hash of the config bytes this manager last wrote or read.
+	// The watcher ignores file events whose content matches it, which filters out
+	// both the daemon's own saves and duplicate notifications for a single write.
+	lastSeenMu sync.Mutex
+	lastSeen   [32]byte
 }
 
 var _ ConfigManager = (*ViperManager)(nil)
@@ -45,21 +53,21 @@ func NewViperManager(configPath string) (*ViperManager, error) {
 
 	setDefaults(v)
 
-	if err := v.ReadInConfig(); err != nil {
-		if _, ok := err.(viper.ConfigFileNotFoundError); !ok {
-			if !isFileNotFound(err) {
-				return nil, fmt.Errorf("config: read %s: %w", configPath, err)
-			}
+	m := &ViperManager{v: v}
+
+	if raw, err := os.ReadFile(configPath); err == nil {
+		if err := v.ReadConfig(bytes.NewReader(raw)); err != nil {
+			return nil, fmt.Errorf("config: read %s: %w", configPath, err)
 		}
+		m.markSeen(raw)
+	} else if !isFileNotFound(err) {
+		return nil, fmt.Errorf("config: read %s: %w", configPath, err)
+	} else {
 		if err := system.EnsureParentDir(configPath); err != nil {
 			return nil, fmt.Errorf("config: ensure config dir: %w", err)
 		}
-		if err := v.WriteConfigAs(configPath); err != nil {
-			_ = err
-		}
+		_ = m.writeAtomic(v, configPath)
 	}
-
-	m := &ViperManager{v: v}
 
 	if err := m.startWatch(configPath); err != nil {
 		_ = err
@@ -100,14 +108,9 @@ func (m *ViperManager) startWatch(configPath string) error {
 					(event.Has(fsnotify.Write) || event.Has(fsnotify.Create))) ||
 					(currentConfigFile != "" && currentConfigFile != realConfigFile) {
 					realConfigFile = currentConfigFile
-
-					m.mu.Lock()
-					readErr := m.v.ReadInConfig()
-					m.mu.Unlock()
-					if readErr != nil && !isFileNotFound(readErr) {
-						continue
+					if m.reloadIfChanged(configPath) {
+						m.notifyCallbacks("")
 					}
-					m.notifyCallbacks("")
 				} else if filepath.Clean(event.Name) == configFile && event.Has(fsnotify.Remove) {
 					return
 				}
@@ -120,6 +123,56 @@ func (m *ViperManager) startWatch(configPath string) error {
 		}
 	}()
 
+	return nil
+}
+
+// reloadIfChanged re-reads the config file when its content differs from what this
+// manager last wrote or read, and reports whether it did.
+func (m *ViperManager) reloadIfChanged(configPath string) bool {
+	raw, err := os.ReadFile(configPath)
+	// An empty read is a non-atomic external save caught mid-write; the next event carries the content.
+	if err != nil || len(raw) == 0 || !m.markSeen(raw) {
+		return false
+	}
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.v.ReadConfig(bytes.NewReader(raw)) == nil
+}
+
+// markSeen records raw as the latest known config content and reports whether it changed.
+func (m *ViperManager) markSeen(raw []byte) bool {
+	sum := sha256.Sum256(raw)
+	m.lastSeenMu.Lock()
+	defer m.lastSeenMu.Unlock()
+	if sum == m.lastSeen {
+		return false
+	}
+	m.lastSeen = sum
+	return true
+}
+
+// writeAtomic writes w's settings to a temp file beside the (symlink-resolved) config file
+// and renames it into place, so readers never observe a partial file.
+func (m *ViperManager) writeAtomic(w *viper.Viper, cfgPath string) error {
+	target, err := filepath.EvalSymlinks(cfgPath)
+	if err != nil {
+		target = cfgPath
+	}
+	// Keep the .toml extension: viper picks the encoder from it.
+	tmp := filepath.Join(filepath.Dir(target), ".tmp-"+filepath.Base(target))
+	if err := w.WriteConfigAs(tmp); err != nil {
+		return err
+	}
+	raw, err := os.ReadFile(tmp)
+	if err != nil {
+		_ = os.Remove(tmp)
+		return err
+	}
+	m.markSeen(raw)
+	if err := os.Rename(tmp, target); err != nil {
+		_ = os.Remove(tmp)
+		return err
+	}
 	return nil
 }
 
@@ -333,17 +386,13 @@ func (m *ViperManager) ResetToFactoryDefaults(registerBackendDefaults func(*vipe
 		return fmt.Errorf("config: reset ensure parent dir: %w", err)
 	}
 
-	_ = os.Remove(cfgPath)
-
-	if err := fresh.WriteConfigAs(cfgPath); err != nil {
+	if err := m.writeAtomic(fresh, cfgPath); err != nil {
 		return fmt.Errorf("config: write factory defaults: %w", err)
 	}
 
 	if err := m.v.ReadInConfig(); err != nil && !isFileNotFound(err) {
 		return fmt.Errorf("config: reload after factory reset: %w", err)
 	}
-
-	m.notifyCallbacks("")
 	return nil
 }
 
@@ -385,7 +434,7 @@ func (m *ViperManager) EnsureDefaultsPersisted(registerBackendDefaults func(*vip
 		}
 	}
 
-	if err := m.v.WriteConfigAs(cfgPath); err != nil {
+	if err := m.writeAtomic(m.v, cfgPath); err != nil {
 		return fmt.Errorf("config: persist complete defaults: %w", err)
 	}
 	return nil
@@ -480,13 +529,7 @@ func (m *ViperManager) mergeAndSet(key string, values map[string]any) error {
 		return fmt.Errorf("config: merge after update (%s): %w", key, err)
 	}
 
-	if _, err := os.Stat(cfgPath); errors.Is(err, fs.ErrNotExist) {
-		if err := writer.WriteConfigAs(cfgPath); err != nil {
-			return fmt.Errorf("config: write new file after update (%s): %w", key, err)
-		}
-	} else if err != nil {
-		return fmt.Errorf("config: stat before write (%s): %w", key, err)
-	} else if err := writer.WriteConfig(); err != nil {
+	if err := m.writeAtomic(writer, cfgPath); err != nil {
 		return fmt.Errorf("config: write after update (%s): %w", key, err)
 	}
 
@@ -507,13 +550,7 @@ func (m *ViperManager) persistKeyReplace(key string, vals map[string]any) error 
 		return fmt.Errorf("config: merge replace (%s): %w", key, err)
 	}
 
-	if _, err := os.Stat(cfgPath); errors.Is(err, fs.ErrNotExist) {
-		if err := writer.WriteConfigAs(cfgPath); err != nil {
-			return fmt.Errorf("config: write new file replace (%s): %w", key, err)
-		}
-	} else if err != nil {
-		return fmt.Errorf("config: stat replace (%s): %w", key, err)
-	} else if err := writer.WriteConfig(); err != nil {
+	if err := m.writeAtomic(writer, cfgPath); err != nil {
 		return fmt.Errorf("config: write replace (%s): %w", key, err)
 	}
 

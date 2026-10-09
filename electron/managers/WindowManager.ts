@@ -1,21 +1,22 @@
 import { BrowserWindow, app } from "electron";
 import { join } from "node:path";
+import { configReader } from "../../globals/configReader";
 import { goDaemonClient } from "../goDaemonClient";
-import type { UnifiedConfig } from "../daemon-go-types";
+import type { AppConfig } from "../daemon-go-types";
 import { logger } from "../logger";
 
 export class WindowManager {
-  cachedConfig: UnifiedConfig | null = null;
+  /** Seeded from config.toml so the window never waits on the daemon; kept fresh by config_changed. */
+  appConfig: Partial<AppConfig> = configReader.loadConfig().app ?? {};
   private isInitialWindow = true;
 
   constructor() {
     goDaemonClient.on("config_changed", () => void this.loadConfig());
   }
 
-  /** Must be awaited before createWindow so start_minimized is honoured. */
   async loadConfig(): Promise<void> {
     try {
-      this.cachedConfig = await goDaemonClient.control.getConfig();
+      this.appConfig = (await goDaemonClient.control.getConfig()).app;
     } catch (error) {
       logger.warn({ err: error }, "WindowManager: failed to load config");
     }
@@ -42,14 +43,14 @@ export class WindowManager {
 
     window.on("close", (event) => {
       if ((app as unknown as Record<string, boolean>).isQuitting) return;
-      if (this.cachedConfig?.app?.minimize_instead_of_close) {
+      if (this.appConfig.minimize_instead_of_close) {
         event.preventDefault();
         window.hide();
       }
     });
 
     window.once("ready-to-show", () => {
-      if (this.isInitialWindow && this.cachedConfig?.app?.start_minimized) {
+      if (this.isInitialWindow && this.appConfig.start_minimized) {
         window.hide();
       } else {
         window.show();

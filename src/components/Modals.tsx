@@ -9,7 +9,6 @@ import AdvancedFiltersModal from "./AdvancedFiltersModal";
 import GalleryFilterCheatsheetModal from "./GalleryFilterCheatsheetModal";
 import FolderImportModal from "./FolderImportModal";
 import FolderPickerModal from "./FolderPickerModal";
-import { useShallow } from "zustand/react/shallow";
 import { useSettingsStore } from "../stores/settingsStore";
 import { useModalStore } from "../stores/modalStore";
 import Monitors from "./MonitorsModal";
@@ -21,12 +20,7 @@ import { useStartupIntroGateStore } from "../stores/startupIntroGateStore";
 function Modals() {
   const alreadyShown = useRef(false);
   const [playlistsInDB, setPlaylistsInDB] = useState<Playlist[]>([]);
-  const { setLastSavedMonitorConfig, reQueryMonitors } = useMonitorStore(
-    useShallow((s) => ({
-      setLastSavedMonitorConfig: s.setLastSavedMonitorConfig,
-      reQueryMonitors: s.reQueryMonitors,
-    })),
-  );
+  const monitorsLoaded = useMonitorStore((s) => s.monitorsList.length > 0);
   const playlist = usePlaylistStore((s) => s.playlist);
 
   const config = useSettingsStore((s) => s.config);
@@ -44,24 +38,10 @@ function Modals() {
       alreadyShown.current = true;
       return;
     }
-    if (!introFinished) return;
+    if (!introFinished || !monitorsLoaded) return;
     alreadyShown.current = true;
-    let timeoutId: ReturnType<typeof setTimeout> | null = null;
-    let cancelled = false;
-    void setLastSavedMonitorConfig().then(() => {
-      if (cancelled) return;
-      timeoutId = setTimeout(() => {
-        timeoutId = null;
-        void reQueryMonitors().then(() => {
-          if (!cancelled) useModalStore.getState().open("monitors");
-        });
-      }, 300);
-    });
-    return () => {
-      cancelled = true;
-      if (timeoutId !== null) clearTimeout(timeoutId);
-    };
-  }, [config, introFinished, reQueryMonitors, setLastSavedMonitorConfig]);
+    useModalStore.getState().open("monitors");
+  }, [config, introFinished, monitorsLoaded]);
 
   useEffect(() => {
     reloadPlaylists();

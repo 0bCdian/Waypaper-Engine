@@ -117,9 +117,8 @@ let tray: Tray | null = null;
 let windowManager: WindowManager;
 let ipcManager: IPCManager;
 
-async function createMainWindow(): Promise<void> {
+function createMainWindow(): void {
   windowManager = new WindowManager();
-  await windowManager.loadConfig();
   mainWindow = windowManager.createWindow();
 
   if (process.env.NODE_ENV === "development") {
@@ -202,9 +201,15 @@ async function initializeApp(): Promise<void> {
 
     daemonMonitor.startMonitoring(5000);
 
+    logger.info("Initializing waypaper daemon...");
+    const daemonStartup = initWaypaperDaemon();
+    // The window loads while the daemon starts; every daemon request waits for the handshake.
+    goDaemonClient.holdUntil(daemonStartup);
+    createMainWindow();
+    logger.info("Main window created");
+
     try {
-      logger.info("Initializing waypaper daemon...");
-      await initWaypaperDaemon();
+      await daemonStartup;
       logger.info("Daemon initialized successfully");
 
       await goDaemonClient.connect();
@@ -220,26 +225,23 @@ async function initializeApp(): Promise<void> {
       return;
     }
 
-    try {
-      await createAppTray();
-      logger.info("Tray icon created");
+    createAppTray().then(
+      () => logger.info("Tray icon created"),
+      (error: unknown) => logger.error({ err: error }, "Failed to create tray icon"),
+    );
+    goDaemonClient.on("wallpaper_changed", () => {
+      void createAppTray();
+    });
 
-      goDaemonClient.on("wallpaper_changed", () => {
-        void createAppTray();
-      });
+    setupNativeNotifications();
 
-      setupNativeNotifications();
-
-      // Resync daemon state when the system resumes from suspend — nothing else
-      // in the stack knows a suspend happened, and cached state (e.g. monitors)
-      // goes stale across it.
-      powerMonitor.on("resume", () => {
-        logger.info("system resumed from suspend; requesting state resync");
-        ipcManager.notifySystemResumed();
-      });
-    } catch (error) {
-      logger.error({ err: error }, "Failed to create tray icon");
-    }
+    // Resync daemon state when the system resumes from suspend — nothing else
+    // in the stack knows a suspend happened, and cached state (e.g. monitors)
+    // goes stale across it.
+    powerMonitor.on("resume", () => {
+      logger.info("system resumed from suspend; requesting state resync");
+      ipcManager.notifySystemResumed();
+    });
   } catch (error) {
     logger.error({ err: error }, "Failed to initialize application");
     throw error;
@@ -252,7 +254,7 @@ async function initializeApp(): Promise<void> {
  */
 function notifyIfHidden(title: string, body: string): void {
   if (mainWindow?.isVisible() && !mainWindow?.isMinimized()) return;
-  if (!windowManager?.cachedConfig?.app?.notifications) return;
+  if (!windowManager?.appConfig.notifications) return;
   new Notification({ title, body }).show();
 }
 
@@ -350,7 +352,6 @@ function setupAppEvents(): void {
       }
 
       await initializeApp();
-      await createMainWindow();
     } catch (error) {
       logger.error({ err: error }, "Failed to start application");
       app.quit();
@@ -370,8 +371,7 @@ function setupAppEvents(): void {
     try {
       globalShortcut.unregisterAll();
 
-      const config = windowManager?.cachedConfig;
-      if (config?.app?.kill_daemon_on_exit) {
+      if (windowManager?.appConfig.kill_daemon_on_exit) {
         goDaemonClient.health.shutdown().catch((error) => {
           logger.error({ err: error }, "Failed to stop daemon");
         });

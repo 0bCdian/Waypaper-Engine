@@ -25,7 +25,7 @@ function normalizeMode(mode: string): MonitorMode {
 /**
  * Fetches the live per-monitor wallpaper state once, deduping image lookups,
  * and re-fetches on `wallpaper_changed` / `sse_reconnected` events and whenever
- * `refreshKey` changes. Replaces the per-`MonitorComponent` fetching so the
+ * `refreshKey` changes (`0` means the modal was never opened, so nothing is fetched). Replaces the per-`MonitorComponent` fetching so the
  * modal makes one `getCurrentWallpapers` call regardless of monitor count.
  */
 export function useLiveWallpapers(monitors: StoreMonitor[], refreshKey: number): LiveWallpapers {
@@ -41,6 +41,8 @@ export function useLiveWallpapers(monitors: StoreMonitor[], refreshKey: number):
   const monitorNames = monitors.map((m) => m.name).join("\0");
 
   useEffect(() => {
+    // The modal stays mounted while closed; fetch nothing until it has been opened (refreshKey > 0).
+    if (refreshKey === 0) return;
     let cancelled = false;
 
     const load = () => {

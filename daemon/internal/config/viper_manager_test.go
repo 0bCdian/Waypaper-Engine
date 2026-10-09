@@ -174,3 +174,134 @@ func TestClose_StopsWatcherGoroutine(t *testing.T) {
 
 	require.NoError(t, m.Close())
 }
+
+// countCallbacks registers a change callback and returns a func reporting how many times it fired.
+func countCallbacks(m *ViperManager) func() int {
+	var mu sync.Mutex
+	n := 0
+	m.OnConfigChange(func(string) {
+		mu.Lock()
+		n++
+		mu.Unlock()
+	})
+	return func() int {
+		mu.Lock()
+		defer mu.Unlock()
+		return n
+	}
+}
+
+// settle waits long enough for fsnotify to deliver any pending events.
+func settle() { time.Sleep(300 * time.Millisecond) }
+
+func newWatchedManager(t *testing.T) (*ViperManager, string) {
+	t.Helper()
+	cfgPath := filepath.Join(t.TempDir(), "config.toml")
+	m, err := NewViperManager(cfgPath)
+	require.NoError(t, err)
+	t.Cleanup(func() { _ = m.Close() })
+	settle()
+	return m, cfgPath
+}
+
+func TestWatcher_OwnWriteDoesNotNotify(t *testing.T) {
+	m, _ := newWatchedManager(t)
+	fired := countCallbacks(m)
+
+	require.NoError(t, m.UpdateConfig("app", map[string]any{"theme": "nord"}))
+	settle()
+
+	assert.Equal(t, 0, fired())
+}
+
+func TestWatcher_ExternalEditNotifiesOnce(t *testing.T) {
+	m, cfgPath := newWatchedManager(t)
+	fired := countCallbacks(m)
+
+	raw, err := os.ReadFile(cfgPath)
+	require.NoError(t, err)
+	edited := strings.Replace(string(raw), "kolision-raw", "nord", 1)
+	require.NotEqual(t, string(raw), edited)
+	require.NoError(t, os.WriteFile(cfgPath, []byte(edited), 0o644))
+	settle()
+
+	assert.Equal(t, 1, fired())
+	assert.Equal(t, "nord", m.GetString("app.theme"))
+}
+
+func TestWatcher_IdenticalRewriteDoesNotNotify(t *testing.T) {
+	m, cfgPath := newWatchedManager(t)
+	fired := countCallbacks(m)
+
+	raw, err := os.ReadFile(cfgPath)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(cfgPath, raw, 0o644))
+	settle()
+
+	assert.Equal(t, 0, fired())
+}
+
+func TestWatcher_RepeatedWritesOfSameContentNotifyOnce(t *testing.T) {
+	m, cfgPath := newWatchedManager(t)
+	fired := countCallbacks(m)
+
+	raw, err := os.ReadFile(cfgPath)
+	require.NoError(t, err)
+	edited := []byte(strings.Replace(string(raw), "kolision-raw", "nord", 1))
+	require.NoError(t, os.WriteFile(cfgPath, edited, 0o644))
+	require.NoError(t, os.WriteFile(cfgPath, edited, 0o644))
+	settle()
+
+	assert.Equal(t, 1, fired())
+}
+
+func TestSaves_ReaderNeverSeesPartialFile(t *testing.T) {
+	m, cfgPath := newWatchedManager(t)
+
+	stop := make(chan struct{})
+	bad := make(chan string, 1)
+	go func() {
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+			raw, err := os.ReadFile(cfgPath)
+			if err != nil || len(raw) == 0 || !strings.Contains(string(raw), "[app]") {
+				select {
+				case bad <- "empty, missing or partial config read":
+				default:
+				}
+				return
+			}
+		}
+	}()
+
+	for i := range 100 {
+		require.NoError(t, m.UpdateConfig("app", map[string]any{"images_per_page": 10 + i}))
+	}
+	close(stop)
+
+	select {
+	case msg := <-bad:
+		t.Fatal(msg)
+	default:
+	}
+}
+
+func TestResetToFactoryDefaults_KeepsWatcherAlive(t *testing.T) {
+	m, cfgPath := newWatchedManager(t)
+	fired := countCallbacks(m)
+
+	require.NoError(t, m.ResetToFactoryDefaults(fakeBackendDefaults))
+	settle()
+	require.Equal(t, 0, fired(), "reset is an API change; the controller publishes its event")
+
+	raw, err := os.ReadFile(cfgPath)
+	require.NoError(t, err)
+	require.NoError(t, os.WriteFile(cfgPath, []byte(strings.Replace(string(raw), "kolision-raw", "nord", 1)), 0o644))
+	settle()
+
+	assert.Equal(t, 1, fired(), "external edits must still be seen after a reset")
+}

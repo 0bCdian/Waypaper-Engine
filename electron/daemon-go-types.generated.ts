@@ -860,6 +860,8 @@ export interface components {
       status?: string;
       monitor_stack_version?: number;
       monitor_provider_order?: string[];
+      /** @description False until the active backend is initialized and the startup restore has finished; backend-driving routes wait for it. */
+      backend_ready?: boolean;
     };
     /** @description GET /info body (`healthhandler.InfoResponse`). */
     InfoResponse: {

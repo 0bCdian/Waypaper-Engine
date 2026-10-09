@@ -43,6 +43,11 @@ class GoDaemonClient extends EventEmitter {
     this.wallpaper = new WallpaperClient(this.http);
   }
 
+  /** Every daemon request waits for `ready` (the startup handshake) instead of failing. */
+  holdUntil(ready: Promise<void>): void {
+    this.http.holdUntil(ready);
+  }
+
   connectSSE(): void {
     if (this.sseConnection) {
       return;

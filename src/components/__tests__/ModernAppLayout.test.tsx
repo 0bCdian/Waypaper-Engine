@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 vi.mock("../../contexts/ThemeContext", () => ({
   useTheme: () => ({ currentTheme: "dark", isDarkMode: true }),
@@ -34,23 +34,19 @@ vi.mock("framer-motion", () => ({
   useReducedMotion: () => false as boolean | null,
 }));
 
-vi.mock("../StartupIntro", async () => {
-  const React = await import("react");
-  const MockStartupIntro = ({ onFinish }: { onFinish: () => void }) => {
-    React.useEffect(() => {
-      queueMicrotask(() => {
-        onFinish();
-      });
-    }, [onFinish]);
-    return null;
-  };
-  return { StartupIntro: MockStartupIntro };
-});
+vi.mock("../StartupIntro", () => ({
+  StartupIntro: ({ onFinish }: { onFinish: () => void }) => (
+    <button type="button" data-testid="intro" onClick={onFinish}>
+      intro
+    </button>
+  ),
+}));
 
 import { ModernAppLayout } from "../layout/ModernAppLayout";
 
 beforeEach(() => {
   vi.clearAllMocks();
+  localStorage.clear();
   mockConfig = {
     app: {},
     daemon: {},
@@ -76,5 +72,32 @@ describe("ModernAppLayout", () => {
     );
     expect(screen.getByTestId("icon-rail")).toBeInTheDocument();
     expect(screen.getByText("Hello world")).toBeInTheDocument();
+  });
+
+  describe("startup intro", () => {
+    it("plays on first launch", () => {
+      render(<ModernAppLayout>Content</ModernAppLayout>);
+      expect(screen.getByTestId("intro")).toBeInTheDocument();
+    });
+
+    it("remembers that it played", () => {
+      render(<ModernAppLayout>Content</ModernAppLayout>);
+      fireEvent.click(screen.getByTestId("intro"));
+
+      expect(screen.queryByTestId("intro")).not.toBeInTheDocument();
+      expect(localStorage.getItem("waypaper-intro-played")).toBe("1");
+    });
+
+    it("does not play again on later launches", () => {
+      localStorage.setItem("waypaper-intro-played", "1");
+      render(<ModernAppLayout>Content</ModernAppLayout>);
+      expect(screen.queryByTestId("intro")).not.toBeInTheDocument();
+    });
+
+    it("never plays when startup_intro is off", () => {
+      mockConfig = { ...mockConfig, app: { startup_intro: false } };
+      render(<ModernAppLayout>Content</ModernAppLayout>);
+      expect(screen.queryByTestId("intro")).not.toBeInTheDocument();
+    });
   });
 });

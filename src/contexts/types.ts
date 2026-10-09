@@ -13,7 +13,6 @@ export interface ThemeContextType {
   getAvailableThemes: () => readonly ThemeMeta[];
   currentThemeMeta: ThemeMeta | undefined;
   systemTheme: "light" | "dark" | "auto";
-  isLoading: boolean;
   lastChanged?: number;
   resetTheme: () => void;
   getTheme: (name: string) => ThemeMeta | undefined;
