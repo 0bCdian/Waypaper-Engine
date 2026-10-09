@@ -1,0 +1,384 @@
+/* Docs theme. Colours are DaisyUI tokens (--color-*) from virtual:wp-palettes.css; radius is 0 everywhere. */
+:root {
+  --font-display: "Geist", system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+  --hdr-h: 3.5rem;
+  --muted: color-mix(in srgb, var(--color-base-content) 75%, var(--color-base-100));
+
+  /* shiki css-variables theme -> palette */
+  --shiki-foreground: var(--color-base-content);
+  --shiki-background: var(--color-base-200);
+  --shiki-token-keyword: var(--color-primary);
+  --shiki-token-string: var(--color-success);
+  --shiki-token-string-expression: var(--color-success);
+  --shiki-token-function: var(--color-info);
+  --shiki-token-constant: var(--color-accent);
+  --shiki-token-parameter: var(--color-secondary);
+  --shiki-token-link: var(--color-secondary);
+  --shiki-token-punctuation: color-mix(
+    in srgb,
+    var(--color-base-content) 75%,
+    var(--color-base-200)
+  );
+  --shiki-token-comment: color-mix(in srgb, var(--color-base-content) 62%, var(--color-base-200));
+
+  /* VPLocalSearchBox */
+  --vp-c-brand-1: var(--color-primary);
+  --vp-c-divider: var(--color-base-300);
+  --vp-backdrop-bg-color: color-mix(in srgb, var(--color-base-100) 80%, transparent);
+  --vp-local-search-bg: var(--color-base-100);
+  --vp-local-search-result-bg: var(--color-base-200);
+  --vp-local-search-result-border: var(--color-base-300);
+  --vp-local-search-result-selected-bg: var(--color-base-200);
+  --vp-local-search-result-selected-border: var(--color-primary);
+  --vp-local-search-highlight-bg: var(--color-primary);
+  --vp-local-search-highlight-text: var(--color-primary-content);
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  border-radius: 0 !important;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  ::before,
+  ::after {
+    scroll-behavior: auto !important;
+    transition-duration: 0s !important;
+    animation-duration: 1ms !important;
+  }
+}
+html {
+  scroll-padding-top: calc(var(--hdr-h) + 1rem);
+  -webkit-text-size-adjust: 100%;
+}
+/* Full-height column so the footer (margin-top: auto) sits at the bottom on short pages. */
+#app {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+body {
+  margin: 0;
+  background: var(--color-base-100);
+  color: var(--color-base-content);
+  font-family: var(--font-mono);
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  overflow-x: hidden;
+}
+::selection {
+  background: var(--color-primary);
+  color: var(--color-primary-content);
+}
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+/* VitePress focuses headings (tabindex=-1) on anchor jumps for screen readers; Tab never lands there, so no ring. */
+[tabindex="-1"]:focus-visible {
+  outline: none;
+}
+a {
+  color: inherit;
+}
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+}
+
+/* search palette */
+.VPLocalSearchBox,
+.VPLocalSearchBox * {
+  font-family: var(--font-mono);
+}
+.VPLocalSearchBox {
+  color: var(--color-base-content);
+}
+.VPLocalSearchBox ul {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.VPLocalSearchBox button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+}
+.VPLocalSearchBox input {
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  outline: 0;
+}
+.VPLocalSearchBox .shell {
+  border: 1px solid var(--color-base-300);
+}
+.VPLocalSearchBox a {
+  text-decoration: none;
+}
+.VPLocalSearchBox kbd {
+  background: var(--color-base-200);
+  border-color: var(--color-base-300);
+}
+
+/* ---- prose ---- */
+.vp-doc h1,
+.vp-doc h2,
+.vp-doc h3,
+.vp-doc h4 {
+  position: relative;
+  font-family: var(--font-display);
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+.vp-doc h1 {
+  margin: 0 0 1.5rem;
+  font-size: clamp(1.9rem, 6vw, 2.5rem);
+  font-weight: 800;
+  letter-spacing: -0.035em;
+}
+.vp-doc h2 {
+  margin: 3rem 0 1rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--color-base-300);
+  font-size: 1.5rem;
+  font-weight: 700;
+}
+.vp-doc h3 {
+  margin: 2rem 0 0.75rem;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+.vp-doc h4 {
+  margin: 1.5rem 0 0.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+/* `#` hangs in the gutter left of the heading, sized in the heading's own font. */
+.vp-doc .header-anchor {
+  position: absolute;
+  left: -1.1em;
+  width: 1.1em;
+  color: transparent;
+  font-weight: 400;
+  text-decoration: none;
+  opacity: 0;
+}
+.vp-doc .header-anchor::before {
+  content: "#";
+  color: var(--color-primary);
+}
+.vp-doc h2:hover .header-anchor,
+.vp-doc h3:hover .header-anchor,
+.vp-doc .header-anchor:focus-visible {
+  opacity: 1;
+}
+.vp-doc p,
+.vp-doc ul,
+.vp-doc ol {
+  margin: 1rem 0;
+}
+.vp-doc ul,
+.vp-doc ol {
+  padding-left: 1.5rem;
+}
+.vp-doc li + li {
+  margin-top: 0.3rem;
+}
+.vp-doc a:not(.header-anchor),
+.links a {
+  color: inherit;
+  text-decoration: underline dashed var(--color-primary) 1px;
+  text-underline-offset: 6px;
+}
+.vp-doc a:not(.header-anchor):hover,
+.links a:hover {
+  text-decoration: underline solid var(--color-accent) 2px;
+}
+.vp-doc strong {
+  font-weight: 700;
+}
+.vp-doc hr {
+  margin: 2rem 0;
+  border: 0;
+  border-top: 1px solid var(--color-base-300);
+}
+/* h2 already draws its own rule; don't double it after a markdown `---`. */
+.vp-doc hr:has(+ h2) {
+  display: none;
+}
+.vp-doc blockquote {
+  margin: 1rem 0;
+  padding: 0.1rem 1rem;
+  border-left: 3px solid var(--color-base-300);
+  color: var(--muted);
+}
+.vp-doc img,
+.vp-doc video {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1.25rem 0;
+  border: 1px solid var(--color-base-300);
+  cursor: zoom-in;
+}
+.vp-doc kbd {
+  padding: 0.05rem 0.35rem;
+  border: 1px solid var(--color-base-300);
+  background: var(--color-base-200);
+  font-size: 0.8125rem;
+}
+
+/* inline code */
+.vp-doc :not(pre) > code {
+  padding: 0.1rem 0.35rem;
+  border: 1px solid var(--color-base-300);
+  background: var(--color-base-200);
+  font-size: 0.85em;
+  overflow-wrap: break-word;
+  /* a wrapped token keeps its box edges on both lines */
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* code blocks */
+.vp-doc div[class*="language-"] {
+  position: relative;
+  margin: 1.25rem 0;
+  border: 1px solid var(--color-base-300);
+  background: var(--color-base-200);
+}
+.vp-doc div[class*="language-"] pre {
+  margin: 0;
+  padding: 2.5rem 1rem 1rem;
+  overflow-x: auto;
+  background: transparent !important;
+  font-size: 0.8125rem;
+  line-height: 1.65;
+}
+.vp-doc div[class*="language-"] code {
+  display: block;
+  width: max-content;
+  min-width: 100%;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: inherit;
+}
+.vp-doc div[class*="language-"] .lang,
+.vp-doc div[class*="language-"] .copy {
+  position: absolute;
+  top: 0;
+  padding: 0.2rem 0.6rem;
+  border: 0;
+  border-bottom: 1px solid var(--color-base-300);
+  background: transparent;
+  font: inherit;
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.vp-doc div[class*="language-"] .lang {
+  left: 0;
+  border-right: 1px solid var(--color-base-300);
+}
+.vp-doc div[class*="language-"] .copy {
+  right: 0;
+  border-left: 1px solid var(--color-base-300);
+  cursor: pointer;
+}
+.vp-doc div[class*="language-"] .copy::after {
+  content: "copy";
+}
+.vp-doc div[class*="language-"] .copy.copied::after {
+  content: "copied";
+}
+.vp-doc div[class*="language-"] .copy:hover {
+  color: var(--color-primary);
+}
+.vp-doc div[class*="language-"] .copy.copied {
+  color: var(--color-success);
+}
+
+/* tables scroll inside their own box */
+.vp-doc table {
+  display: block;
+  width: max-content;
+  max-width: 100%;
+  margin: 1.25rem 0;
+  overflow-x: auto;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+.vp-doc th,
+.vp-doc td {
+  padding: 0.5rem 0.85rem;
+  border: 1px solid var(--color-base-300);
+  text-align: left;
+  vertical-align: top;
+}
+/* Keep flags/keys whole; the table scrolls instead of breaking `--config`. */
+.vp-doc td code {
+  white-space: nowrap;
+}
+.vp-doc th {
+  background: var(--color-base-200);
+  font-family: var(--font-display);
+  font-weight: 600;
+}
+
+/* callouts: ::: tip|info|warning|danger|details and > [!NOTE] */
+.vp-doc .custom-block {
+  --c: var(--color-info);
+  margin: 1.25rem 0;
+  padding: 0.75rem 1rem;
+  border: 1px solid var(--color-base-300);
+  border-left: 3px solid var(--c);
+  background: var(--color-base-200);
+}
+.vp-doc .custom-block.tip {
+  --c: var(--color-primary);
+}
+.vp-doc .custom-block.important {
+  --c: var(--color-secondary);
+}
+.vp-doc .custom-block.warning {
+  --c: var(--color-warning);
+}
+.vp-doc .custom-block.danger,
+.vp-doc .custom-block.caution {
+  --c: var(--color-error);
+}
+.vp-doc .custom-block p {
+  margin: 0.5rem 0;
+}
+.vp-doc .custom-block > :last-child {
+  margin-bottom: 0;
+}
+.vp-doc .custom-block-title,
+.vp-doc .custom-block summary {
+  margin: 0 0 0.25rem !important;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+.vp-doc .custom-block summary {
+  cursor: pointer;
+}
+.vp-doc .custom-block.details {
+  --c: var(--color-base-300);
+}

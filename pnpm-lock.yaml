@@ -141,6 +141,9 @@ importers:
       oxlint:
         specifier: 1.19.0
         version: 1.19.0
+      shiki:
+        specifier: 2.5.0
+        version: 2.5.0
       tailwindcss:
         specifier: 4.3.3
         version: 4.3.3

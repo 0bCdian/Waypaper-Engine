@@ -2,7 +2,7 @@ import { promises as fs } from "node:fs";
 import path from "node:path";
 import type { Plugin } from "vite";
 
-interface HeaderMeta {
+export interface HeaderMeta {
   name: string;
   displayName: string;
   category: "light" | "dark" | "mixed";
@@ -11,7 +11,7 @@ interface HeaderMeta {
 
 const HEADER_RE = /\/\*\s*@waypaper-theme\s*\n([\s\S]*?)\*\//;
 
-function parseHeader(css: string): HeaderMeta | null {
+export function parseHeader(css: string): HeaderMeta | null {
   const m = css.match(HEADER_RE);
   if (!m) return null;
   const lines = m[1].split("\n").flatMap((l) => {
