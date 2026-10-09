@@ -1263,6 +1263,7 @@ function ImageDetailSidebar() {
     return !palettesEqual(editColors, originalColors);
   }, [selectedImage?.tags, selectedImage?.colors, tags, tagInput, editColors]);
 
+  /** Closes the panel, asking first when there are unsaved edits; resolves false if the user keeps them. */
   const requestClose = useCallback(async () => {
     if (
       hasChanges &&
@@ -1273,8 +1274,9 @@ function ImageDetailSidebar() {
         danger: true,
       }))
     )
-      return;
+      return false;
     close();
+    return true;
   }, [hasChanges, close]);
 
   return (
@@ -1364,8 +1366,8 @@ function ImageDetailSidebar() {
                 <button
                   type="button"
                   className="btn btn-outline btn-sm w-full"
-                  onClick={() => {
-                    close();
+                  onClick={async () => {
+                    if (!(await requestClose())) return;
                     navigate("/loop-studio", {
                       state: { imageId: selectedImage.id },
                     });
