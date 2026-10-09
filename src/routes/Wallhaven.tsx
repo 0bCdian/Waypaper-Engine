@@ -20,6 +20,7 @@ import {
   buildWallhavenPageMenuItems,
 } from "../utils/wallhavenContextMenuItems";
 import { cn } from "../utils/cn";
+import { useToastStore } from "../stores/toastStore";
 import { daemonClient } from "@/client";
 import { computeResolutionMatch, largestMonitor } from "../utils/wallhavenResolutionMatch";
 
@@ -700,6 +701,7 @@ function WallhavenPage() {
                     const imageId = await downloadToGallery(wp);
                     if (imageId !== null) {
                       useWallhavenStore.getState().addDownloadedId(wp.id);
+                      useToastStore.getState().addToast("Added to gallery", "success", 3000);
                     }
                   }}
                   onSet={(monitor, mode) => void downloadImportAndSet(wp, monitor, mode)}
@@ -789,6 +791,7 @@ function WallhavenPage() {
             const imageId = await downloadToGallery(selectedWallpaper);
             if (imageId !== null) {
               useWallhavenStore.getState().addDownloadedId(selectedWallpaper.id);
+              useToastStore.getState().addToast("Added to gallery", "success", 3000);
             }
           }}
           onSet={(monitor, mode) => void downloadImportAndSet(selectedWallpaper, monitor, mode)}
@@ -1164,8 +1167,8 @@ function WallhavenCard({
           style={applyBlur ? { transition: "transform 300ms, filter 200ms ease-out" } : undefined}
         />
         {/* Hover overlay: gradient + two-button action row */}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-200 pointer-events-none" />
-        <div className="absolute bottom-0 left-0 right-0 p-2 flex items-end justify-between opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity duration-200 pointer-events-none" />
+        <div className="absolute bottom-0 left-0 right-0 p-2 flex items-end justify-between opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100 transition-opacity duration-200">
           {/* Bottom-left: meta (resolution + category) in overlay */}
           <span
             className="text-xs text-white/80 font-mono truncate mr-1"
@@ -1429,7 +1432,13 @@ function WallhavenDetailModal({
               onClick={handleModalSetClick}
               title={monitors.length === 0 ? "No monitors detected" : undefined}
             >
-              {isDownloading ? <span className="loading loading-spinner loading-xs" /> : "Set on…"}
+              {isDownloading ? (
+                <>
+                  <span className="loading loading-spinner loading-xs" /> Downloading…
+                </>
+              ) : (
+                "Set on…"
+              )}
             </button>
             <button
               type="button"
@@ -1437,7 +1446,9 @@ function WallhavenDetailModal({
               onClick={onDownload}
             >
               {isDownloading ? (
-                <span className="loading loading-spinner loading-xs" />
+                <>
+                  <span className="loading loading-spinner loading-xs" /> Downloading…
+                </>
               ) : (
                 "Download to Gallery"
               )}
