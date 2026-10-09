@@ -93,6 +93,7 @@ async function copy() {
 .install__tabs {
   display: flex;
   overflow-x: auto;
+  overflow-y: hidden;
 }
 .install__tab,
 .install__copy {
@@ -105,13 +106,10 @@ async function copy() {
   cursor: pointer;
   white-space: nowrap;
 }
-.install__tab {
-  border-bottom: 2px solid transparent;
-  margin-bottom: -1px;
-}
+/* Underline drawn inside the tab so nothing overflows the strip. */
 .install__tab[aria-selected="true"] {
   color: var(--color-base-content);
-  border-bottom-color: var(--color-primary);
+  box-shadow: inset 0 -2px 0 var(--color-primary);
 }
 .install__tab:hover,
 .install__copy:hover {
