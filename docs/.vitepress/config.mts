@@ -1,92 +1,85 @@
+import { fileURLToPath } from "node:url";
+import { createCssVariablesTheme } from "shiki";
 import { defineConfig } from "vitepress";
+import { palettesPlugin } from "./palettes";
 
 // GitHub project Pages: https://<user>.github.io/<repo>/
 // Change if you use a custom domain or different repo name.
 const base = process.env.VITEPRESS_BASE ?? "/Waypaper-Engine/";
 
+// Runs before first paint so the saved palette never flashes. Keep in sync with ThemePicker.vue.
+const themeScript = `(function(){var t;try{t=localStorage.getItem("wp-docs-theme")}catch(e){}if(!t)t=matchMedia("(prefers-color-scheme: light)").matches?"gruvbox-material-light":"gruvbox-material";document.documentElement.dataset.theme=t})()`;
+
 export default defineConfig({
   title: "Waypaper Engine",
   description:
-    "Wallpaper gallery, playlists, and pluggable setters for Wayland and X11 — Go daemon, Electron UI, HTTP over Unix socket.",
+    "A wallpaper engine for Linux ricing: gallery, playlists and your pick of setters on Wayland and X11.",
   lang: "en-US",
   base,
   cleanUrls: true,
   srcDir: ".",
   lastUpdated: true,
   head: [
-    ["meta", { name: "theme-color", content: "#fdf6e3" }],
+    ["meta", { name: "theme-color", content: "#282828" }],
     ["link", { rel: "preconnect", href: "https://fonts.googleapis.com" }],
-    [
-      "link",
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossorigin: "" },
-    ],
+    ["link", { rel: "preconnect", href: "https://fonts.gstatic.com", crossorigin: "" }],
     [
       "link",
       {
         rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@400;500;600;700&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;1,400&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700;800&family=JetBrains+Mono:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap",
       },
     ],
+    ["script", {}, themeScript],
   ],
   ignoreDeadLinks: false,
   themeConfig: {
     logo: "/logo.png",
     nav: [
-      { text: "Home", link: "/" },
-      { text: "Docs", link: "/guide/introduction" },
+      { text: "Manual", link: "/manual/install" },
+      { text: "Reference", link: "/reference/cli" },
+      { text: "Hacking", link: "/dev/development" },
     ],
-    sidebar: {
-      "/": [],
-      "/guide/": [
-        {
-          text: "Getting started",
-          items: [
-            { text: "Install & run", link: "/guide/install" },
-            { text: "First 10 minutes", link: "/guide/first-run" },
-            { text: "The app (UI)", link: "/guide/app" },
-            { text: "FAQ & troubleshooting", link: "/guide/faq" },
-          ],
-        },
-        {
-          text: "Reference",
-          items: [
-            { text: "Glossary", link: "/guide/glossary" },
-            { text: "Backends & dependencies", link: "/guide/backends" },
-            { text: "Configuration (TOML)", link: "/guide/config" },
-            { text: "Daemon & paths", link: "/guide/daemon" },
-            { text: "Packaging (DESTDIR, ...)", link: "/guide/packaging" },
-          ],
-        },
-      ],
-      "/api/": [
-        {
-          text: "Control plane",
-          items: [
-            { text: "Overview", link: "/api/overview" },
-            {
-              text: "OpenAPI spec (GitHub)",
-              link: "https://github.com/0bCdian/Waypaper-Engine/blob/main/daemon/docs/openapi.yaml",
-            },
-          ],
-        },
-        {
-          text: "Integration",
-          items: [
-            { text: "Events & SSE", link: "/api/sse" },
-            {
-              text: "API contract (GitHub)",
-              link: "https://github.com/0bCdian/Waypaper-Engine/blob/main/daemon/API_CONTRACT.md",
-            },
-          ],
-        },
-      ],
-      "/dev/": [
-        {
-          text: "Hacking on Waypaper",
-          items: [{ text: "Development guide", link: "/dev/development" }],
-        },
-      ],
-    },
+    // One ordered chapter list for every page (omarchy-manual style).
+    sidebar: [
+      {
+        text: "Manual",
+        items: [
+          { text: "01 Install", link: "/manual/install" },
+          { text: "02 First run", link: "/manual/first-run" },
+          { text: "03 Gallery", link: "/manual/gallery" },
+          { text: "04 Playlists", link: "/manual/playlists" },
+          { text: "05 Displays & monitors", link: "/manual/displays" },
+          { text: "06 Backends", link: "/manual/backends" },
+          { text: "07 HTML wallpapers", link: "/manual/html-wallpapers" },
+          { text: "08 Parallax", link: "/manual/parallax" },
+          { text: "09 Themes & fonts", link: "/manual/themes" },
+          { text: "10 Wallhaven", link: "/manual/wallhaven" },
+          { text: "11 Studios", link: "/manual/studios" },
+          { text: "12 Scripting & hooks", link: "/manual/scripting" },
+          { text: "13 Troubleshooting", link: "/manual/troubleshooting" },
+          { text: "Changelog", link: "/manual/changelog" },
+        ],
+      },
+      {
+        text: "Reference",
+        items: [
+          { text: "CLI", link: "/reference/cli" },
+          { text: "config.toml", link: "/reference/config" },
+          { text: "HTTP API", link: "/reference/api" },
+          { text: "Events (SSE)", link: "/reference/events" },
+          { text: "Paths & files", link: "/reference/paths" },
+          { text: "Glossary", link: "/reference/glossary" },
+        ],
+      },
+      {
+        text: "Hacking",
+        items: [
+          { text: "Development", link: "/dev/development" },
+          { text: "Adding a backend", link: "/dev/backends" },
+        ],
+      },
+    ],
     socialLinks: [
       { icon: "github", link: "https://github.com/0bCdian/Waypaper-Engine" },
       {
@@ -95,25 +88,19 @@ export default defineConfig({
       },
     ],
     footer: {
-      message:
-        "Released under the project license. Docs track tagged releases on GitHub Pages.",
-      copyright: "Copyright © 0bCdian & contributors",
+      message: "GPL-3.0 · © 0bCdian & contributors",
     },
     search: {
       provider: "local",
     },
     outline: "deep",
   },
+  appearance: false,
   markdown: {
-    lineNumbers: true,
+    // Token colours come from --shiki-* variables, mapped to the active palette in style.css.
+    theme: createCssVariablesTheme({ name: "css-variables", variablePrefix: "--shiki-" }),
   },
   vite: {
-    vue: {
-      template: {
-        compilerOptions: {
-          isCustomElement: (tag) => tag === "rapi-doc",
-        },
-      },
-    },
+    plugins: [palettesPlugin(fileURLToPath(new URL("../../src/styles/themes", import.meta.url)))],
   },
 });

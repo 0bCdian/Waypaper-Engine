@@ -15,7 +15,9 @@ function close() {
   document.documentElement.classList.remove("doc-media-lightbox-open");
 }
 
-function mediaFromEventTarget(target: EventTarget | null): HTMLImageElement | HTMLVideoElement | null {
+function mediaFromEventTarget(
+  target: EventTarget | null,
+): HTMLImageElement | HTMLVideoElement | null {
   const el =
     target instanceof Element ? target : target instanceof Text ? target.parentElement : null;
   const node = el?.closest("img, video");
@@ -25,7 +27,6 @@ function mediaFromEventTarget(target: EventTarget | null): HTMLImageElement | HT
 
 function openFromMedia(media: HTMLImageElement | HTMLVideoElement, ev: MouseEvent) {
   if (!media.closest(".vp-doc")) return;
-  if (media.closest(".hero-parallax")) return;
   if (media.hasAttribute("data-no-lightbox")) return;
 
   if (media instanceof HTMLImageElement) {
@@ -118,23 +119,11 @@ watch(
 .doc-media-lightbox {
   position: fixed;
   inset: 0;
-  z-index: calc(var(--vp-z-index-local-nav, 200) + 100);
+  z-index: 200;
   display: grid;
   place-items: center;
   padding: clamp(0.75rem, 4vw, 2rem);
-  background: rgb(61 72 77 / 0.78);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-  animation: doc-media-lightbox-in 0.18s ease-out;
-}
-
-@keyframes doc-media-lightbox-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
+  background: color-mix(in srgb, var(--color-base-100) 88%, transparent);
 }
 
 .doc-media-lightbox__close {
@@ -143,26 +132,16 @@ watch(
   right: clamp(0.5rem, 2vw, 1rem);
   width: 2.5rem;
   height: 2.5rem;
-  border-radius: 999px;
-  border: 1px solid var(--vp-c-divider, rgb(255 255 255 / 0.35));
-  background: var(--vp-c-bg-elv, #fdf6e3);
-  color: var(--vp-c-text-1, #3d484d);
-  font-size: 1.1rem;
-  line-height: 1;
+  border: 1px solid var(--color-base-300);
+  background: var(--color-base-200);
+  color: var(--color-base-content);
+  font: inherit;
   cursor: pointer;
-  display: grid;
-  place-items: center;
-  box-shadow: 0 4px 18px rgb(0 0 0 / 0.18);
 }
 
 .doc-media-lightbox__close:hover {
-  border-color: var(--vp-c-brand-1, #6f8c00);
-  color: var(--vp-c-brand-1, #6f8c00);
-}
-
-.doc-media-lightbox__close:focus-visible {
-  outline: 2px solid var(--vp-c-brand-1, #6f8c00);
-  outline-offset: 2px;
+  border-color: var(--color-primary);
+  color: var(--color-primary);
 }
 
 .doc-media-lightbox__media {
@@ -171,15 +150,11 @@ watch(
   width: auto;
   height: auto;
   object-fit: contain;
-  border-radius: 10px;
-  box-shadow:
-    0 24px 60px rgb(0 0 0 / 0.35),
-    0 0 0 1px rgb(255 255 255 / 0.08);
-  background: rgb(0 0 0 / 0.35);
+  border: 1px solid var(--color-base-300);
+  background: var(--color-base-200);
 }
 
 .doc-media-lightbox__media--video {
   width: min(96vw, 1200px);
-  max-height: min(88vh, 900px);
 }
 </style>
