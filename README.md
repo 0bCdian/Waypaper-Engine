@@ -88,7 +88,7 @@ The big shift is replacing the old **Node.js** backend with a **Go daemon**: one
 
 The Makefile is the source of truth. **Packaging and `DESTDIR`:** read [packaging/README.md](packaging/README.md).
 
-**Be advised** — no backend is required to start the app. If none is installed, Waypaper Engine starts in degraded mode and shows a banner pointing you to the [install guide](https://0bCdian.github.io/Waypaper-Engine/manual/install). Once you install a backend and it lands on `PATH`, the banner clears on its own.
+**Be advised** — no backend is required to start the app. If none is installed, Waypaper Engine starts in degraded mode and shows a banner pointing you to the [install guide](https://waypaper-engine.diegoparra.dev/manual/install). Once you install a backend and it lands on `PATH`, the banner clears on its own.
 
 **Simply clone and install locally:**
 

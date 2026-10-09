@@ -3,10 +3,6 @@ import { createCssVariablesTheme } from "shiki";
 import { defineConfig } from "vitepress";
 import { palettesPlugin } from "./palettes";
 
-// GitHub project Pages: https://<user>.github.io/<repo>/
-// Change if you use a custom domain or different repo name.
-const base = process.env.VITEPRESS_BASE ?? "/Waypaper-Engine/";
-
 // Runs before first paint so the saved palette never flashes. Keep in sync with ThemePicker.vue.
 const themeScript = `(function(){var t;try{t=localStorage.getItem("wp-docs-theme")}catch(e){}if(!t)t=matchMedia("(prefers-color-scheme: light)").matches?"gruvbox-material-light":"gruvbox-material";document.documentElement.dataset.theme=t})()`;
 
@@ -15,7 +11,6 @@ export default defineConfig({
   description:
     "A wallpaper engine for Linux ricing: gallery, playlists and your pick of setters on Wayland and X11.",
   lang: "en-US",
-  base,
   cleanUrls: true,
   srcDir: ".",
   lastUpdated: true,

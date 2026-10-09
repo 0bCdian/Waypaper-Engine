@@ -37,8 +37,6 @@ jobs:
         run: pnpm install --frozen-lockfile
 
       - name: Build VitePress site
-        env:
-          VITEPRESS_BASE: /Waypaper-Engine/
         run: pnpm run docs:build
 
       - name: Setup Pages

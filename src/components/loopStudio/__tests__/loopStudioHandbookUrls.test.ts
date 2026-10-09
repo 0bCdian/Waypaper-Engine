@@ -3,9 +3,9 @@ import { LOOP_STUDIO_UI_DOC, OPTIONAL_RUNTIME_DEPS_DOC } from "../loopStudioHand
 
 describe("loopStudioHandbookUrls", () => {
   it("points at published GitHub Pages handbook sections", () => {
-    expect(LOOP_STUDIO_UI_DOC).toMatch(/^https:\/\/0bCdian\.github\.io\/Waypaper-Engine\/manual\//);
+    expect(LOOP_STUDIO_UI_DOC).toMatch(/^https:\/\/waypaper-engine\.diegoparra\.dev\/manual\//);
     expect(OPTIONAL_RUNTIME_DEPS_DOC).toMatch(
-      /^https:\/\/0bCdian\.github\.io\/Waypaper-Engine\/manual\//,
+      /^https:\/\/waypaper-engine\.diegoparra\.dev\/manual\//,
     );
   });
 });
