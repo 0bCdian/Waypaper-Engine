@@ -13,6 +13,7 @@ import { useMonitorStore } from "../stores/monitors";
 import type { openFileAction } from "../../shared/types";
 import type { PLAYLIST_TYPES_TYPE } from "../../shared/types/playlist";
 import { useSetLastActivePlaylist } from "../hooks/useSetLastActivePlaylist";
+import { useInlineRename } from "../hooks/useInlineRename";
 import { useViewportCompactHeight } from "../hooks/useViewportCompactHeight";
 import type { PlaylistImage } from "../../electron/daemon-go-types";
 import { useDragStore } from "../stores/dragStore";
@@ -109,6 +110,7 @@ function PlaylistTrack() {
     movePlaylistArrayOrder,
     clearPlaylist,
     setPlaylist,
+    setName,
   } = usePlaylistStore(
     useShallow((s) => ({
       playlist: s.playlist,
@@ -119,8 +121,13 @@ function PlaylistTrack() {
       movePlaylistArrayOrder: s.movePlaylistArrayOrder,
       clearPlaylist: s.clearPlaylist,
       setPlaylist: s.setPlaylist,
+      setName: s.setName,
     })),
   );
+  const rename = useInlineRename({
+    currentName: playlist.name?.trim() ?? "",
+    onSubmit: async (name) => setName(name),
+  });
   const monitorSelection = useMonitorStore((s) => s.monitorSelection);
   const { openImages, isActive } = openImagesStore(
     useShallow((s) => ({
@@ -387,11 +394,31 @@ function PlaylistTrack() {
             <span className="shrink-0 text-[0.6rem] font-[family-name:var(--font-display)] font-semibold uppercase tracking-[0.18em] text-base-content/50">
               Edit Track
             </span>
-            <span className="truncate text-lg font-bold font-[family-name:var(--font-display)] uppercase tracking-tight text-base-content lg:text-xl [@media(max-height:1080px)]:text-base [@media(max-height:1080px)]:lg:text-lg">
-              {playlist.images.length > 0
-                ? `${playlist.name?.trim() || "Unnamed Playlist"} (${playlist.images.length})`
-                : ""}
-            </span>
+            {playlist.images.length > 0 &&
+              (rename.isRenaming ? (
+                <input
+                  ref={rename.renameInputRef}
+                  type="text"
+                  aria-label="Playlist name"
+                  className="input input-sm min-w-0 font-bold font-[family-name:var(--font-display)] uppercase tracking-tight"
+                  value={rename.renameName}
+                  onChange={(e) => rename.setRenameName(e.target.value)}
+                  onBlur={() => void rename.submitRename()}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") rename.renameInputRef.current?.blur();
+                    else if (e.key === "Escape") rename.cancelRename();
+                  }}
+                />
+              ) : (
+                <button
+                  type="button"
+                  onClick={rename.startRename}
+                  title="Click to rename"
+                  className="min-w-0 cursor-text truncate rounded-[var(--wp-radius-sm)] text-left text-lg font-bold font-[family-name:var(--font-display)] uppercase tracking-tight text-base-content hover:bg-base-content/10 lg:text-xl [@media(max-height:1080px)]:text-base [@media(max-height:1080px)]:lg:text-lg"
+                >
+                  {playlist.name?.trim() || "Unnamed Playlist"} ({playlist.images.length})
+                </button>
+              ))}
             {isDirty && (
               <span
                 className="inline-block size-2.5 shrink-0 rounded-full bg-warning"
