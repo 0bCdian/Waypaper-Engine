@@ -479,7 +479,7 @@
   transition: box-shadow 0.1s ease;
 }
 
-[data-design="neobrutalist"] .page-item a.page-link:hover {
+[data-design="neobrutalist"] .page-item :is(a, button).page-link:hover {
   box-shadow: 4px 4px 0 0 oklch(from var(--color-base-content) l c h / 0.65);
 }
 

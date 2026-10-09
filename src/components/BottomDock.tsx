@@ -1,8 +1,7 @@
-import ResponsivePagination from "react-responsive-pagination";
-import "react-responsive-pagination/themes/minimal.css";
 import "../custom.css";
 import PlaylistTrack from "./PlaylistTrack";
 import { cn } from "../utils/cn";
+import { pageSlots } from "../utils/pageSlots";
 
 type Props = {
   currentPage: number;
@@ -10,34 +9,32 @@ type Props = {
   handlePageChange: (page: number) => void;
 };
 
-/** Previous/Next live outside the page list so they stay put while the list changes width. */
-function PageStep({
+function PageButton({
   label,
   ariaLabel,
-  disabled,
+  active = false,
+  disabled = false,
   onClick,
-  className,
 }: {
   label: string;
   ariaLabel: string;
-  disabled: boolean;
-  onClick: () => void;
-  className: string;
+  active?: boolean;
+  disabled?: boolean;
+  onClick?: () => void;
 }) {
   return (
-    <ul className="pagination shrink-0">
-      <li className={cn("page-item", className, disabled && "disabled")}>
-        <button
-          type="button"
-          className="page-link"
-          aria-label={ariaLabel}
-          disabled={disabled}
-          onClick={onClick}
-        >
-          {label}
-        </button>
-      </li>
-    </ul>
+    <li className={cn("page-item", active && "active", disabled && "disabled")}>
+      <button
+        type="button"
+        className="page-link"
+        aria-label={ariaLabel}
+        aria-current={active ? "page" : undefined}
+        disabled={disabled}
+        onClick={onClick}
+      >
+        {label}
+      </button>
+    </li>
   );
 }
 
@@ -50,30 +47,33 @@ function BottomDock({ currentPage, totalPages, handlePageChange }: Props) {
       {/* Pagination row */}
       <div className="flex flex-col items-center gap-1 px-3 py-2 lg:px-4 lg:py-2.5 [@media(max-height:1080px)]:gap-0.5 [@media(max-height:1080px)]:px-2 [@media(max-height:1080px)]:py-1.5 [@media(max-height:1080px)]:lg:px-3 [@media(max-height:1080px)]:lg:py-2">
         {totalPages > 1 && (
-          <div className="flex w-full max-w-2xl min-w-1 items-center gap-1">
-            <PageStep
+          <ul className="pagination" aria-label="Gallery pages">
+            <PageButton
               label="«"
               ariaLabel="Previous page"
-              className="rounded_button_previous"
               disabled={currentPage <= 1}
               onClick={() => handlePageChange(currentPage - 1)}
             />
-            <div className="min-w-0 flex-1">
-              <ResponsivePagination
-                total={totalPages}
-                current={currentPage}
-                onPageChange={handlePageChange}
-                renderNav={false}
-              />
-            </div>
-            <PageStep
+            {pageSlots(currentPage, totalPages).map((slot) =>
+              typeof slot === "number" ? (
+                <PageButton
+                  key={slot}
+                  label={String(slot)}
+                  ariaLabel={`Page ${slot}`}
+                  active={slot === currentPage}
+                  onClick={() => handlePageChange(slot)}
+                />
+              ) : (
+                <PageButton key={slot} label="…" ariaLabel="More pages" disabled />
+              ),
+            )}
+            <PageButton
               label="»"
               ariaLabel="Next page"
-              className="rounded_button_next"
               disabled={currentPage >= totalPages}
               onClick={() => handlePageChange(currentPage + 1)}
             />
-          </div>
+          </ul>
         )}
         {totalPages > 1 && (
           <span className="text-xs text-base-content/50 whitespace-nowrap">

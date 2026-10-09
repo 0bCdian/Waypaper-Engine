@@ -69,14 +69,6 @@
   opacity: 0.6;
 }
 
-.rounded_button_next :first-child {
-  border-radius: 0 var(--radius-md) var(--radius-md) 0;
-}
-
-.rounded_button_previous :first-child {
-  border-radius: var(--radius-md) 0 0 var(--radius-md);
-}
-
 /* Enhanced Button Styles */
 .btn-enhanced {
   position: relative;
