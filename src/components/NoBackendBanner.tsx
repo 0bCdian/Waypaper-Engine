@@ -2,7 +2,7 @@ import { useEffect, useRef } from "react";
 import { daemonClient } from "@/client";
 import { useNoBackendStore } from "../stores/noBackendStore";
 
-const DOCS_URL = "https://0bCdian.github.io/Waypaper-Engine/manual/install";
+const DOCS_URL = "https://waypaper-engine.diegoparra.dev/manual/install";
 const POLL_INTERVAL_MS = 5_000;
 
 export default function NoBackendBanner() {
