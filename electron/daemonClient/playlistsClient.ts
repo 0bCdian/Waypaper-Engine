@@ -58,37 +58,4 @@ export class PlaylistsClient {
   async getActivePlaylists(): Promise<ActivePlaylistInstance[]> {
     return this.t.request<ActivePlaylistInstance[]>("GET", "/playlists/active");
   }
-
-  async getActivePlaylistForMonitor(monitor: string): Promise<ActivePlaylistInstance> {
-    return this.t.request<ActivePlaylistInstance>(
-      "GET",
-      `/playlists/active/${encodeURIComponent(monitor)}`,
-    );
-  }
-
-  async stopAllPlaylists(): Promise<{ message: string; stopped: number }> {
-    return this.t.request("POST", "/playlists/active/stop");
-  }
-
-  async pauseAllPlaylists(): Promise<{ message: string; paused: number }> {
-    return this.t.request("POST", "/playlists/active/pause");
-  }
-
-  async resumeAllPlaylists(): Promise<{
-    message: string;
-    resumed: number;
-  }> {
-    return this.t.request("POST", "/playlists/active/resume");
-  }
-
-  async nextAllPlaylists(): Promise<{ message: string; advanced: number }> {
-    return this.t.request("POST", "/playlists/active/next");
-  }
-
-  async previousAllPlaylists(): Promise<{
-    message: string;
-    reversed: number;
-  }> {
-    return this.t.request("POST", "/playlists/active/previous");
-  }
 }

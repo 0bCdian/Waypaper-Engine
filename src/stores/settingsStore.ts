@@ -19,34 +19,28 @@ import { daemonClient } from "@/client";
 interface SettingsStoreState {
   config: UnifiedConfig | null;
   isLoading: boolean;
-  isDirty: boolean;
-  lastSaved: number | null;
   errors: Array<{ section: ConfigSection; key: string; message: string }>;
   searchTerm: string;
   filteredSections: ConfigSection[];
-  expandedSections: Set<string>;
   /** When set, BackendSettingsSection switches to this inner tab once then clears. */
   pendingBackendSettingsTab: string | null;
 }
 
 interface SettingsStoreActions {
-  loadConfig: () => Promise<void>;
+  /** Fetches config; `withBackends: false` skips the per-backend subsections. */
+  loadConfig: (opts?: { withBackends?: boolean }) => Promise<void>;
   /** Save a config section to the daemon. Used by settings page components. */
   saveConfigSection: (section: ConfigSection, data: Record<string, unknown>) => Promise<void>;
   /** PATCH /config/backends/{name} with a flat backend config fragment. */
   saveBackendPatch: (backendName: string, patch: Record<string, unknown>) => Promise<void>;
-  /** Alias for saveConfigSection (backward compat with old unifiedConfigStore). */
-  setConfigValue: (section: ConfigSection, data: Record<string, unknown>) => Promise<void>;
   /** Resets app, daemon, monitors, wallhaven, and every backend subsection to daemon built-ins. */
   resetAllSettingsToDaemonDefaults: () => Promise<void>;
   /** Restores `[backend.{name}]` only; keeps global sections and other backends untouched. */
   resetBackendSettingsToDaemonDefaults: (backendName: string) => Promise<void>;
-  resetToDefaults: () => Promise<void>;
   setSearchTerm: (term: string) => void;
   clearSearch: () => void;
   setPendingBackendSettingsTab: (tab: string | null) => void;
   clearPendingBackendSettingsTab: () => void;
-  toggleSection: (sectionId: string) => void;
   handleConfigChange: (event: ConfigChangeEvent) => void;
   clearErrors: () => void;
 }
@@ -97,7 +91,57 @@ const defaultConfig: UnifiedConfig = {
   },
 };
 
-let _lastApiSaveAt = 0;
+/**
+ * Coordinates config reloads triggered by config_changed: one reload in flight, at most one
+ * queued, and none while a local save is pending (its optimistic state would flicker back).
+ */
+const reloads = {
+  pendingSaves: 0,
+  running: false,
+  queued: null as { withBackends: boolean } | null,
+};
+
+function requestReload(withBackends: boolean): void {
+  reloads.queued = { withBackends: withBackends || (reloads.queued?.withBackends ?? false) };
+  void drainReloads();
+}
+
+async function drainReloads(): Promise<void> {
+  if (reloads.running || reloads.pendingSaves > 0 || !reloads.queued) return;
+  const { withBackends } = reloads.queued;
+  reloads.queued = null;
+  reloads.running = true;
+  try {
+    await useSettingsStore.getState().loadConfig({ withBackends });
+  } finally {
+    reloads.running = false;
+    void drainReloads();
+  }
+}
+
+async function trackSave<T>(save: () => Promise<T>): Promise<T> {
+  reloads.pendingSaves++;
+  try {
+    return await save();
+  } finally {
+    reloads.pendingSaves--;
+    void drainReloads();
+  }
+}
+
+/** Reuses each section object whose content is unchanged, so section selectors only fire on real changes. */
+function keepUnchangedSections(prev: UnifiedConfig, next: UnifiedConfig): UnifiedConfig {
+  let changed = false;
+  const out = { ...next };
+  for (const key of Object.keys(next) as (keyof UnifiedConfig)[]) {
+    if (JSON.stringify(prev[key]) === JSON.stringify(next[key])) {
+      (out as Record<string, unknown>)[key] = prev[key];
+    } else {
+      changed = true;
+    }
+  }
+  return changed ? out : prev;
+}
 
 const SETTINGS_SECTION_ORDER: ConfigSection[] = [
   "app",
@@ -174,15 +218,12 @@ export const useSettingsStore = create<SettingsStore>()(
     (set, get) => ({
       config: null,
       isLoading: false,
-      isDirty: false,
-      lastSaved: null,
       errors: [],
       searchTerm: "",
       filteredSections: ["app", "daemon", "backend", "monitors", "wallhaven"],
-      expandedSections: new Set<string>(["app"]),
       pendingBackendSettingsTab: null,
 
-      loadConfig: async () => {
+      loadConfig: async ({ withBackends = true } = {}) => {
         const existing = get().config;
         // Only show the loading spinner on the very first load (config is null).
         // Subsequent reloads (e.g. from SSE file-change events) keep the
@@ -195,7 +236,7 @@ export const useSettingsStore = create<SettingsStore>()(
           let registeredBackendNames: string[] = [];
           try {
             const gd = daemonClient;
-            if (gd.getBackends && gd.getBackendConfig) {
+            if (withBackends) {
               const backendsList = await gd.getBackends();
               registeredBackendNames = backendsList.map((b) => b.name);
               const fetched = await Promise.all(
@@ -225,14 +266,12 @@ export const useSettingsStore = create<SettingsStore>()(
           }
 
           const merged = existing
-            ? mergeLoadedConfig(existing, incoming, registeredBackendNames)
+            ? keepUnchangedSections(
+                existing,
+                mergeLoadedConfig(existing, incoming, registeredBackendNames),
+              )
             : incoming;
-          set({
-            config: merged as UnifiedConfig,
-            isLoading: false,
-            isDirty: false,
-            lastSaved: Date.now(),
-          });
+          set({ config: merged, isLoading: false });
         } catch (error) {
           logger.error("SettingsStore: Failed to load config:", error);
           set({
@@ -249,224 +288,209 @@ export const useSettingsStore = create<SettingsStore>()(
         }
       },
 
-      saveConfigSection: async (section: ConfigSection, data: Record<string, unknown>) => {
-        const currentConfig = get().config;
-        if (!currentConfig) return;
+      saveConfigSection: (section: ConfigSection, data: Record<string, unknown>) =>
+        trackSave(async () => {
+          const currentConfig = get().config;
+          if (!currentConfig) return;
 
-        const isBackendTypeChange =
-          section === "backend" && "type" in data && Object.keys(data).length === 1;
+          const isBackendTypeChange =
+            section === "backend" && "type" in data && Object.keys(data).length === 1;
 
-        const newConfig = { ...currentConfig };
-        if (section === "app") {
-          newConfig.app = { ...newConfig.app, ...data } as typeof newConfig.app;
-        } else if (section === "daemon") {
-          newConfig.daemon = {
-            ...newConfig.daemon,
-            ...data,
-          } as typeof newConfig.daemon;
-        } else if (section === "backend") {
-          if (isBackendTypeChange) {
-            newConfig.backend = {
-              ...newConfig.backend,
-              type: data.type as string,
-            } as typeof newConfig.backend;
-          } else {
-            const top: Record<string, unknown> = {};
-            const ignored: string[] = [];
-            for (const [k, v] of Object.entries(data)) {
-              if (TOP_LEVEL_BACKEND_KEYS.has(k)) {
-                top[k] = v;
-              } else {
-                ignored.push(k);
-              }
-            }
-            if (ignored.length > 0) {
-              logger.warn(
-                "SettingsStore: saveConfigSection(backend) ignores per-renderer keys; use saveBackendPatch:",
-                ignored.join(", "),
-              );
-            }
-            newConfig.backend = {
-              ...newConfig.backend,
-              ...top,
-            } as typeof newConfig.backend;
-          }
-        } else if (section === "monitors") {
-          newConfig.monitors = {
-            ...newConfig.monitors,
-            ...data,
-          } as typeof newConfig.monitors;
-        } else if (section === "wallhaven") {
-          newConfig.wallhaven = {
-            ...newConfig.wallhaven,
-            ...data,
-          } as typeof newConfig.wallhaven;
-        }
-
-        set({ config: newConfig, errors: [] });
-        _lastApiSaveAt = Date.now();
-
-        try {
-          if (section === "backend") {
+          const newConfig = { ...currentConfig };
+          if (section === "app") {
+            newConfig.app = { ...newConfig.app, ...data } as typeof newConfig.app;
+          } else if (section === "daemon") {
+            newConfig.daemon = {
+              ...newConfig.daemon,
+              ...data,
+            } as typeof newConfig.daemon;
+          } else if (section === "backend") {
             if (isBackendTypeChange) {
-              {
-                await daemonClient.activateBackend(data.type as string);
-                // Re-fetch config so the UI reflects what the daemon actually persisted
-                // (in case the activation rolled back due to a failed backend init).
-                await get().loadConfig();
-              }
+              newConfig.backend = {
+                ...newConfig.backend,
+                type: data.type as string,
+              } as typeof newConfig.backend;
             } else {
               const top: Record<string, unknown> = {};
+              const ignored: string[] = [];
               for (const [k, v] of Object.entries(data)) {
                 if (TOP_LEVEL_BACKEND_KEYS.has(k)) {
                   top[k] = v;
+                } else {
+                  ignored.push(k);
                 }
               }
-              if (Object.keys(top).length > 0) {
-                await daemonClient.updateConfig({
-                  backend: top,
-                } as unknown as Partial<UnifiedConfig>);
+              if (ignored.length > 0) {
+                logger.warn(
+                  "SettingsStore: saveConfigSection(backend) ignores per-renderer keys; use saveBackendPatch:",
+                  ignored.join(", "),
+                );
               }
-              if (
-                data.selection_mode === "fixed" &&
-                typeof newConfig.backend.type === "string" &&
-                newConfig.backend.type.length > 0
-              ) {
-                await daemonClient.activateBackend(newConfig.backend.type);
-              }
-              if (Object.keys(top).length > 0) {
-                await get().loadConfig();
-              }
+              newConfig.backend = {
+                ...newConfig.backend,
+                ...top,
+              } as typeof newConfig.backend;
             }
-          } else {
-            {
-              const patchBody = await daemonClient.updateConfigSection(section, data);
-              const current = get().config!;
-              const nonBackend = section as NonBackendSectionKey;
-              const body =
-                patchBody !== null &&
-                patchBody !== undefined &&
-                typeof patchBody === "object" &&
-                !Array.isArray(patchBody)
-                  ? (patchBody as Record<string, unknown>)
-                  : null;
-
-              if (body !== null && Object.keys(body).length > 0) {
-                set({
-                  config: mergeUnifiedFromSectionPatchBody(current, nonBackend, body),
-                  lastSaved: Date.now(),
-                });
-              } else {
-                await get().loadConfig();
-              }
-            }
+          } else if (section === "monitors") {
+            newConfig.monitors = {
+              ...newConfig.monitors,
+              ...data,
+            } as typeof newConfig.monitors;
+          } else if (section === "wallhaven") {
+            newConfig.wallhaven = {
+              ...newConfig.wallhaven,
+              ...data,
+            } as typeof newConfig.wallhaven;
           }
-          _lastApiSaveAt = Date.now();
-          set({ lastSaved: Date.now() });
-        } catch (error) {
-          logger.error("SettingsStore: Failed to update config:", error);
-          set({
-            config: currentConfig,
-            errors: [
+
+          set({ config: newConfig, errors: [] });
+
+          try {
+            if (section === "backend") {
+              if (isBackendTypeChange) {
+                {
+                  await daemonClient.activateBackend(data.type as string);
+                  // Re-fetch config so the UI reflects what the daemon actually persisted
+                  // (in case the activation rolled back due to a failed backend init).
+                  await get().loadConfig();
+                }
+              } else {
+                const top: Record<string, unknown> = {};
+                for (const [k, v] of Object.entries(data)) {
+                  if (TOP_LEVEL_BACKEND_KEYS.has(k)) {
+                    top[k] = v;
+                  }
+                }
+                if (Object.keys(top).length > 0) {
+                  await daemonClient.updateConfig({
+                    backend: top,
+                  } as unknown as Partial<UnifiedConfig>);
+                }
+                if (
+                  data.selection_mode === "fixed" &&
+                  typeof newConfig.backend.type === "string" &&
+                  newConfig.backend.type.length > 0
+                ) {
+                  await daemonClient.activateBackend(newConfig.backend.type);
+                }
+                if (Object.keys(top).length > 0) {
+                  await get().loadConfig();
+                }
+              }
+            } else {
               {
-                section,
-                key: "save",
-                message: `Failed to save ${section} config`,
-              },
-            ],
-          });
-        }
-      },
+                const patchBody = await daemonClient.updateConfigSection(section, data);
+                const current = get().config!;
+                const nonBackend = section as NonBackendSectionKey;
+                const body =
+                  patchBody !== null &&
+                  patchBody !== undefined &&
+                  typeof patchBody === "object" &&
+                  !Array.isArray(patchBody)
+                    ? (patchBody as Record<string, unknown>)
+                    : null;
 
-      saveBackendPatch: async (backendName: string, patch: Record<string, unknown>) => {
-        const currentConfig = get().config;
-        if (!currentConfig) return;
+                if (body !== null && Object.keys(body).length > 0) {
+                  set({
+                    config: mergeUnifiedFromSectionPatchBody(current, nonBackend, body),
+                  });
+                } else {
+                  await get().loadConfig();
+                }
+              }
+            }
+          } catch (error) {
+            logger.error("SettingsStore: Failed to update config:", error);
+            set({
+              config: currentConfig,
+              errors: [
+                {
+                  section,
+                  key: "save",
+                  message: `Failed to save ${section} config`,
+                },
+              ],
+            });
+          }
+        }),
 
-        const newConfig = { ...currentConfig };
-        const prev = (newConfig.backend as unknown as Record<string, unknown>)[backendName] as
-          | Record<string, unknown>
-          | undefined;
-        (newConfig.backend as unknown as Record<string, unknown>)[backendName] = {
-          ...prev,
-          ...patch,
-        };
-        const patchKeys = Object.keys(patch);
-        const errorKey =
-          patchKeys.length === 1 ? `${backendName}:${patchKeys[0]}` : `${backendName}:save`;
+      saveBackendPatch: (backendName: string, patch: Record<string, unknown>) =>
+        trackSave(async () => {
+          const currentConfig = get().config;
+          if (!currentConfig) return;
 
-        set({ config: newConfig as UnifiedConfig, errors: [] });
-        _lastApiSaveAt = Date.now();
+          const newConfig = { ...currentConfig };
+          const prev = (newConfig.backend as unknown as Record<string, unknown>)[backendName] as
+            | Record<string, unknown>
+            | undefined;
+          (newConfig.backend as unknown as Record<string, unknown>)[backendName] = {
+            ...prev,
+            ...patch,
+          };
+          const patchKeys = Object.keys(patch);
+          const errorKey =
+            patchKeys.length === 1 ? `${backendName}:${patchKeys[0]}` : `${backendName}:save`;
 
-        try {
-          await daemonClient.updateBackendConfig(backendName, patch);
-          _lastApiSaveAt = Date.now();
-          set({ lastSaved: Date.now() });
-        } catch (error) {
-          logger.error("SettingsStore: Failed to update backend config:", error);
-          set({
-            config: currentConfig,
-            errors: [
-              {
-                section: "backend",
-                key: errorKey,
-                message: `Failed to save ${backendName} settings`,
-              },
-            ],
-          });
-        }
-      },
+          set({ config: newConfig as UnifiedConfig, errors: [] });
 
-      // Alias so callers that used the old unifiedConfigStore API still work.
-      setConfigValue: (...args) => get().saveConfigSection(...args),
+          try {
+            await daemonClient.updateBackendConfig(backendName, patch);
+          } catch (error) {
+            logger.error("SettingsStore: Failed to update backend config:", error);
+            set({
+              config: currentConfig,
+              errors: [
+                {
+                  section: "backend",
+                  key: errorKey,
+                  message: `Failed to save ${backendName} settings`,
+                },
+              ],
+            });
+          }
+        }),
 
-      resetAllSettingsToDaemonDefaults: async () => {
-        set({ isLoading: true, errors: [] });
-        try {
-          await daemonClient.resetAllConfig();
-          _lastApiSaveAt = Date.now();
-          await get().loadConfig();
-          _lastApiSaveAt = Date.now();
-          set({ isDirty: false, isLoading: false });
-        } catch (error) {
-          logger.error("SettingsStore: Failed to factory-reset config:", error);
-          set({
-            isLoading: false,
-            errors: [
-              {
-                section: "app",
-                key: "reset_all",
-                message: "Failed to restore default settings",
-              },
-            ],
-          });
-        }
-      },
+      resetAllSettingsToDaemonDefaults: () =>
+        trackSave(async () => {
+          set({ isLoading: true, errors: [] });
+          try {
+            await daemonClient.resetAllConfig();
+            await get().loadConfig();
+            set({ isLoading: false });
+          } catch (error) {
+            logger.error("SettingsStore: Failed to factory-reset config:", error);
+            set({
+              isLoading: false,
+              errors: [
+                {
+                  section: "app",
+                  key: "reset_all",
+                  message: "Failed to restore default settings",
+                },
+              ],
+            });
+          }
+        }),
 
-      resetBackendSettingsToDaemonDefaults: async (backendName: string) => {
-        set({ errors: [] });
-        try {
-          await daemonClient.resetBackendConfig(backendName);
-          _lastApiSaveAt = Date.now();
-          await get().loadConfig();
-          _lastApiSaveAt = Date.now();
-          set({ lastSaved: Date.now() });
-        } catch (error) {
-          logger.error("SettingsStore: Failed to reset backend config:", error);
-          set({
-            errors: [
-              {
-                section: "backend",
-                key: `${backendName}:reset_defaults`,
-                message: `Failed to restore defaults for ${backendName}`,
-              },
-            ],
-          });
-        }
-      },
-
-      resetToDefaults: async () => {
-        await get().resetAllSettingsToDaemonDefaults();
-      },
+      resetBackendSettingsToDaemonDefaults: (backendName: string) =>
+        trackSave(async () => {
+          set({ errors: [] });
+          try {
+            await daemonClient.resetBackendConfig(backendName);
+            await get().loadConfig();
+          } catch (error) {
+            logger.error("SettingsStore: Failed to reset backend config:", error);
+            set({
+              errors: [
+                {
+                  section: "backend",
+                  key: `${backendName}:reset_defaults`,
+                  message: `Failed to restore defaults for ${backendName}`,
+                },
+              ],
+            });
+          }
+        }),
 
       setSearchTerm: (term: string) => {
         set({ searchTerm: term });
@@ -520,22 +544,11 @@ export const useSettingsStore = create<SettingsStore>()(
         set({ pendingBackendSettingsTab: null });
       },
 
-      toggleSection: (sectionId: string) => {
-        const expandedSections = new Set(get().expandedSections);
-        if (expandedSections.has(sectionId)) {
-          expandedSections.delete(sectionId);
-        } else {
-          expandedSections.add(sectionId);
-        }
-        set({ expandedSections });
-      },
-
       handleConfigChange: (event: ConfigChangeEvent) => {
-        const source = (event as unknown as Record<string, unknown>)?.source;
-        const suppressedByApiSave = source === "file" && Date.now() - _lastApiSaveAt < 2000;
-        if (source === "file" && !suppressedByApiSave) {
-          get().loadConfig();
-        }
+        const sections = event?.sections;
+        requestReload(
+          !sections || sections.some((s) => s === "backend" || s.startsWith("backend.")),
+        );
       },
 
       clearErrors: () => {

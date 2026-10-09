@@ -77,6 +77,11 @@ export function parseGalleryFilterTokens(tokens: string[]): ParsedGalleryTokens 
     const token = raw.trim();
     if (!token) continue;
 
+    if (token.length > 1 && token.startsWith("#")) {
+      tags.push(token.slice(1));
+      continue;
+    }
+
     const sp = splitPrefix(token);
     if (!sp) {
       searchParts.push(token);

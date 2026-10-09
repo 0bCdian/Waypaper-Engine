@@ -84,6 +84,7 @@ func (m *mockHistoryStore) GetRecent(context.Context, store.HistoryQueryOpts) ([
 func (m *mockHistoryStore) Count(context.Context) (int, error)                { return 0, nil }
 func (m *mockHistoryStore) Clear(context.Context) error                       { return nil }
 func (m *mockHistoryStore) DeleteByImageID(context.Context, int) (int, error) { return 0, nil }
+func (m *mockHistoryStore) DeleteUpTo(context.Context, int) error             { return nil }
 
 type mockMonitorStateStore struct {
 	setFn func(context.Context, store.MonitorState) error
@@ -432,8 +433,7 @@ func TestApply_PublishesEvent(t *testing.T) {
 			return
 		}
 		published = true
-		data, ok := e.Data.(map[string]any)
-		require.True(t, ok)
+		data := e.Data
 		assert.Equal(t, 1, data["image_id"])
 		assert.Equal(t, "image", data["media_type"])
 		assert.Equal(t, "/tmp/test.jpg", data["path"])
@@ -461,8 +461,7 @@ func TestApply_PublishesEvent_ColorsAndWebMediaType(t *testing.T) {
 		if e.Type != events.WallpaperChanged {
 			return
 		}
-		data, ok := e.Data.(map[string]any)
-		require.True(t, ok)
+		data := e.Data
 		saw = data
 	}
 	mons := []monitor.Monitor{{Name: "HDMI-A-1", Width: 1920, Height: 1080}}
@@ -482,8 +481,7 @@ func TestApply_PublishesEvent_Tags(t *testing.T) {
 		if e.Type != events.WallpaperChanged {
 			return
 		}
-		data, ok := e.Data.(map[string]any)
-		require.True(t, ok)
+		data := e.Data
 		tags, ok := data["tags"].([]string)
 		require.True(t, ok)
 		assert.Equal(t, []string{"nature", "blue"}, tags)

@@ -1,17 +1,11 @@
 import { useEffect, useRef } from "react";
 import { useMonitorStore } from "../stores/monitors";
-import { useShallow } from "zustand/react/shallow";
 
 const MAX_RETRIES = 5;
 const RETRY_DELAY_MS = 800;
 
 export const useLoadMonitors = () => {
-  const { reQueryMonitors, setLastSavedMonitorConfig } = useMonitorStore(
-    useShallow((s) => ({
-      reQueryMonitors: s.reQueryMonitors,
-      setLastSavedMonitorConfig: s.setLastSavedMonitorConfig,
-    })),
-  );
+  const reQueryMonitors = useMonitorStore((s) => s.reQueryMonitors);
   const retriesRef = useRef(0);
 
   useEffect(() => {
@@ -20,12 +14,11 @@ export const useLoadMonitors = () => {
 
     const loadMonitors = async () => {
       await reQueryMonitors();
-      await setLastSavedMonitorConfig();
 
-      const { monitorsList, _configLoaded } = useMonitorStore.getState();
+      // The compositor may not report outputs yet right after login; retry only for that.
       if (
         !cancelled &&
-        (monitorsList.length === 0 || !_configLoaded) &&
+        useMonitorStore.getState().monitorsList.length === 0 &&
         retriesRef.current < MAX_RETRIES
       ) {
         retriesRef.current += 1;
@@ -41,7 +34,7 @@ export const useLoadMonitors = () => {
       cancelled = true;
       if (timeoutId !== null) clearTimeout(timeoutId);
     };
-  }, [reQueryMonitors, setLastSavedMonitorConfig]);
+  }, [reQueryMonitors]);
 
   return reQueryMonitors;
 };

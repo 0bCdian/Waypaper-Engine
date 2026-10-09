@@ -9,7 +9,6 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
-	"sync"
 	"syscall"
 	"time"
 	"waypaper-engine/daemon/internal/backend"
@@ -34,7 +33,6 @@ func awwwDaemonArgs(format string) []string {
 }
 
 type Awww struct {
-	once    sync.Once
 	v       backend.ConfigReader
 	process *os.Process
 	execFn  func(ctx context.Context, args []string) error

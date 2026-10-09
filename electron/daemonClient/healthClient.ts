@@ -1,4 +1,4 @@
-import type { DaemonInfo, HealthResponse } from "../daemon-go-types";
+import type { HealthResponse } from "../daemon-go-types";
 import type { HttpTransport } from "./httpTransport";
 
 export class HealthClient {
@@ -15,10 +15,6 @@ export class HealthClient {
     } catch {
       return false;
     }
-  }
-
-  async getInfo(): Promise<DaemonInfo> {
-    return this.t.request<DaemonInfo>("GET", "/info");
   }
 
   async getCapabilities(): Promise<{ ffmpeg_available: boolean }> {

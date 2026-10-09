@@ -3,6 +3,8 @@ import type { Monitor, MonitorMode } from "../../electron/daemon-go-types";
 import { logger } from "../utils/logger";
 import { normalizeSelectedMonitors, selectedMonitorsOrderChanged } from "../utils/monitorNames";
 import { daemonClient } from "@/client";
+import { useSettingsStore } from "./settingsStore";
+import type { UnifiedConfig } from "../../shared/types/unifiedConfig";
 
 export interface StoreMonitor extends Monitor {
   isSelected: boolean;
@@ -19,10 +21,6 @@ interface MonitorStore {
   setMonitorSelection: (value: MonitorSelection) => void;
   setMonitorsList: (monitorsList: StoreMonitor[]) => void;
   reQueryMonitors: () => Promise<void>;
-  refreshFromDaemon: () => Promise<void>;
-  setLastSavedMonitorConfig: () => Promise<void>;
-  _isLoadingConfig: boolean;
-  _configLoaded: boolean;
 }
 
 const STORAGE_KEY = "waypaper-monitor-selection";
@@ -71,12 +69,8 @@ const initialSelection: MonitorSelection = loadPersistedSelection();
 export const useMonitorStore = create<MonitorStore>()((set, get) => ({
   monitorSelection: initialSelection,
   monitorsList: [] as StoreMonitor[],
-  _isLoadingConfig: false,
-  _configLoaded: false,
 
   async setMonitorSelection(value) {
-    if (get()._isLoadingConfig) return;
-
     set({ monitorSelection: value });
     persistSelection(value);
 
@@ -129,116 +123,37 @@ export const useMonitorStore = create<MonitorStore>()((set, get) => ({
       logger.error("MonitorStore: Error loading monitors:", error);
     }
   },
-
-  async refreshFromDaemon() {
-    try {
-      const [monitors, config] = await Promise.all([
-        daemonClient.getMonitors(),
-        daemonClient.getConfig(),
-      ]);
-
-      if (!config?.monitors) return;
-
-      const rawSelected = config.monitors.selected_monitors || [];
-      const selectedMonitors = normalizeSelectedMonitors(rawSelected);
-      const mode: MonitorMode = config.monitors.image_set_type || "individual";
-      const selection: MonitorSelection = { selectedMonitors, mode };
-      const needsDaemonSync = selectedMonitorsOrderChanged(rawSelected, selectedMonitors);
-
-      const storeMonitors: StoreMonitor[] = (Array.isArray(monitors) ? monitors : []).map(
-        (monitor) => ({
-          ...monitor,
-          isSelected: selectedMonitors.includes(monitor.name),
-        }),
-      );
-
-      set({ monitorSelection: selection, monitorsList: storeMonitors });
-      persistSelection(selection);
-      if (needsDaemonSync) {
-        await pushMonitorSelectionToDaemon(selection);
-      }
-    } catch (error) {
-      logger.error("MonitorStore: Error refreshing from daemon:", error);
-    }
-  },
-
-  async setLastSavedMonitorConfig() {
-    if (get()._configLoaded) return;
-
-    try {
-      set({ _isLoadingConfig: true });
-
-      const monitors = await daemonClient.getMonitors();
-      if (!Array.isArray(monitors) || monitors.length === 0) {
-        set({ _isLoadingConfig: false });
-        return;
-      }
-
-      let selectedMonitors: string[] = [];
-      let imageSetType: MonitorMode = "individual";
-
-      let rawSelectedFromDaemon: string[] = [];
-      if (daemonClient.getConfig) {
-        const config = await daemonClient.getConfig();
-        if (config?.monitors) {
-          rawSelectedFromDaemon = config.monitors.selected_monitors || [];
-          selectedMonitors = normalizeSelectedMonitors(rawSelectedFromDaemon);
-          imageSetType = config.monitors.image_set_type || "individual";
-        }
-      }
-
-      const selection: MonitorSelection = {
-        selectedMonitors,
-        mode: imageSetType,
-      };
-      const needsDaemonSync = selectedMonitorsOrderChanged(rawSelectedFromDaemon, selectedMonitors);
-
-      const storeMonitors: StoreMonitor[] = monitors.map((monitor) => ({
-        ...monitor,
-        isSelected: selectedMonitors.includes(monitor.name),
-      }));
-
-      set({
-        monitorSelection: selection,
-        monitorsList: storeMonitors,
-        _configLoaded: true,
-      });
-      persistSelection(selection);
-      if (needsDaemonSync) {
-        await pushMonitorSelectionToDaemon(selection);
-      }
-    } catch (error) {
-      logger.error("MonitorStore: Error setting last saved config:", error);
-    } finally {
-      set({ _isLoadingConfig: false });
-    }
-  },
 }));
 
-interface ConfigChangeEvent {
-  sections?: string[];
-  source?: string;
-}
-
-let _disposeConfigChanged: (() => void) | undefined;
-
-function initMonitorConfigListener() {
-  _disposeConfigChanged?.();
-  if (typeof window !== "undefined") {
-    _disposeConfigChanged = daemonClient.on("config_changed", (data: unknown) => {
-      const event = data as ConfigChangeEvent;
-      const sections = event?.sections;
-      if (!sections || sections.includes("monitors")) {
-        void useMonitorStore.getState().refreshFromDaemon();
-      }
-    });
+/** The saved selection lives in the settings store's `monitors` section; mirror it here whenever it changes. */
+function applyMonitorsConfig(monitors: UnifiedConfig["monitors"]): void {
+  const rawSelected = monitors.selected_monitors || [];
+  const selectedMonitors = normalizeSelectedMonitors(rawSelected);
+  const selection: MonitorSelection = {
+    selectedMonitors,
+    mode: monitors.image_set_type || "individual",
+  };
+  useMonitorStore.setState((state) => ({
+    monitorSelection: selection,
+    monitorsList: state.monitorsList.map((monitor) => ({
+      ...monitor,
+      isSelected: selectedMonitors.includes(monitor.name),
+    })),
+  }));
+  persistSelection(selection);
+  if (selectedMonitorsOrderChanged(rawSelected, selectedMonitors)) {
+    void pushMonitorSelectionToDaemon(selection);
   }
 }
 
-initMonitorConfigListener();
+const initialMonitorsConfig = useSettingsStore.getState().config?.monitors;
+if (initialMonitorsConfig) applyMonitorsConfig(initialMonitorsConfig);
+
+const disposeSettingsSubscription = useSettingsStore.subscribe((state, prev) => {
+  const monitors = state.config?.monitors;
+  if (monitors && monitors !== prev.config?.monitors) applyMonitorsConfig(monitors);
+});
 
 if (import.meta.hot) {
-  import.meta.hot.dispose(() => {
-    _disposeConfigChanged?.();
-  });
+  import.meta.hot.dispose(disposeSettingsSubscription);
 }

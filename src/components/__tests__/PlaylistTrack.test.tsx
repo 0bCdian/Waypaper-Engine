@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 vi.mock("zustand/react/shallow", () => ({
   useShallow: (fn: Function) => fn,
@@ -15,6 +15,7 @@ vi.mock("@dnd-kit/react", () => ({
 
 const mockClearPlaylist = vi.fn();
 const mockSetPlaylist = vi.fn();
+const mockSetName = vi.fn();
 const mockMovePlaylistArrayOrder = vi.fn();
 
 let mockPlaylist = {
@@ -42,6 +43,7 @@ vi.mock("../../stores/playlist", () => ({
         movePlaylistArrayOrder: mockMovePlaylistArrayOrder,
         clearPlaylist: mockClearPlaylist,
         setPlaylist: mockSetPlaylist,
+        setName: mockSetName,
       }),
     {
       getState: () => ({
@@ -117,6 +119,21 @@ describe("PlaylistTrack", () => {
     expect(screen.queryByText("Save")).not.toBeInTheDocument();
     expect(screen.queryByText("Configure")).not.toBeInTheDocument();
     expect(screen.queryByText("Clear")).not.toBeInTheDocument();
+  });
+
+  it("renames the playlist when its name is clicked and edited", async () => {
+    mockPlaylist.images = [{ image_id: 1 }];
+    mockPlaylist.name = "Mornings";
+    render(<PlaylistTrack />);
+
+    fireEvent.click(screen.getByRole("button", { name: "Mornings (1)" }));
+    const input = screen.getByRole("textbox", { name: "Playlist name" });
+    expect(input).toHaveValue("Mornings");
+    fireEvent.change(input, { target: { value: "Evenings" } });
+    fireEvent.blur(input);
+
+    await vi.waitFor(() => expect(mockSetName).toHaveBeenCalledWith("Evenings"));
+    mockPlaylist.name = "";
   });
 
   it("renders playlist count and extra buttons when images exist", () => {

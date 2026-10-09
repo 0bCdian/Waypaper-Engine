@@ -19,6 +19,7 @@ const WallhavenSettingsSection: React.FC<WallhavenSettingsSectionProps> = ({ cla
   );
 
   const [showKey, setShowKey] = useState(false);
+  const [keyDraft, setKeyDraft] = useState<string | null>(null);
   const [showDisclaimer, setShowDisclaimer] = useState(false);
   const [testStatus, setTestStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [testMessage, setTestMessage] = useState("");
@@ -32,8 +33,15 @@ const WallhavenSettingsSection: React.FC<WallhavenSettingsSectionProps> = ({ cla
     blur_nsfw_thumbnails: true,
   };
 
+  const commitKey = () => {
+    if (keyDraft !== null && keyDraft !== wallhaven.api_key) {
+      void saveConfigSection("wallhaven", { api_key: keyDraft });
+    }
+    setKeyDraft(null);
+  };
+
   const handleTestConnection = async () => {
-    const key = wallhaven.api_key;
+    const key = keyDraft ?? wallhaven.api_key;
     if (!key) {
       setTestStatus("error");
       setTestMessage("Please enter an API key first.");
@@ -94,8 +102,12 @@ const WallhavenSettingsSection: React.FC<WallhavenSettingsSectionProps> = ({ cla
               type={showKey ? "text" : "password"}
               className="input input-bordered w-full pr-10 text-sm font-mono"
               placeholder="Enter your Wallhaven API key"
-              value={wallhaven.api_key}
-              onChange={(e) => void saveConfigSection("wallhaven", { api_key: e.target.value })}
+              value={keyDraft ?? wallhaven.api_key}
+              onChange={(e) => setKeyDraft(e.target.value)}
+              onBlur={commitKey}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") commitKey();
+              }}
             />
             <button
               type="button"

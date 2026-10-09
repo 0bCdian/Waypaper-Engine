@@ -1,5 +1,4 @@
-import { type App, Menu, type Tray, type BrowserWindow } from "electron";
-import { IPC_MAIN_EVENTS } from "../shared/constants";
+import { type App, Menu, type Tray } from "electron";
 import { goDaemonClient } from "../electron/goDaemonClient";
 import type { ActivePlaylistInstance, ImageHistoryEntry } from "../electron/daemon-go-types";
 
@@ -21,8 +20,12 @@ export const trayMenu = async (app: App, trayInstance: Tray, createTray?: () => 
   let imageHistory: ImageHistoryEntry[] = [];
 
   try {
-    activePlaylists = (await goDaemonClient.getActivePlaylists()) || [];
-    imageHistory = (await goDaemonClient.getImageHistory(10)) || [];
+    const [playlists, history] = await Promise.all([
+      goDaemonClient.playlists.getActivePlaylists(),
+      goDaemonClient.images.getImageHistory(10),
+    ]);
+    activePlaylists = playlists || [];
+    imageHistory = history || [];
   } catch (error) {
     console.error("Failed to fetch tray menu data:", error);
   }
@@ -42,7 +45,7 @@ export const trayMenu = async (app: App, trayInstance: Tray, createTray?: () => 
                         label: "Next image",
                         click: () => {
                           void safeCall(
-                            () => goDaemonClient.nextPlaylistImage(playlist.playlist_id),
+                            () => goDaemonClient.playlists.nextPlaylistImage(playlist.playlist_id),
                             "get next image",
                           );
                           if (createTray) void createTray();
@@ -52,7 +55,8 @@ export const trayMenu = async (app: App, trayInstance: Tray, createTray?: () => 
                         label: "Previous image",
                         click: () => {
                           void safeCall(
-                            () => goDaemonClient.previousPlaylistImage(playlist.playlist_id),
+                            () =>
+                              goDaemonClient.playlists.previousPlaylistImage(playlist.playlist_id),
                             "get previous image",
                           );
                           if (createTray) void createTray();
@@ -64,12 +68,12 @@ export const trayMenu = async (app: App, trayInstance: Tray, createTray?: () => 
                   click: () => {
                     if (playlist.paused) {
                       void safeCall(
-                        () => goDaemonClient.resumePlaylist(playlist.playlist_id),
+                        () => goDaemonClient.playlists.resumePlaylist(playlist.playlist_id),
                         "resume playlist",
                       );
                     } else {
                       void safeCall(
-                        () => goDaemonClient.pausePlaylist(playlist.playlist_id),
+                        () => goDaemonClient.playlists.pausePlaylist(playlist.playlist_id),
                         "pause playlist",
                       );
                     }
@@ -78,17 +82,12 @@ export const trayMenu = async (app: App, trayInstance: Tray, createTray?: () => 
                 },
                 {
                   label: "Stop",
-                  click: (_, win) => {
+                  click: () => {
                     void safeCall(
-                      () => goDaemonClient.stopPlaylist(playlist.playlist_id),
+                      () => goDaemonClient.playlists.stopPlaylist(playlist.playlist_id),
                       "stop playlist",
                     );
                     if (createTray) void createTray();
-                    if (win && "webContents" in win) {
-                      (win as BrowserWindow).webContents.send(IPC_MAIN_EVENTS.clearPlaylist, {
-                        playlist_id: playlist.playlist_id,
-                      });
-                    }
                   },
                 },
               ],
@@ -110,7 +109,7 @@ export const trayMenu = async (app: App, trayInstance: Tray, createTray?: () => 
                     entry.mode === "extend" || entry.mode === "clone"
                       ? "*"
                       : (entry.monitors[0] ?? "*");
-                  await goDaemonClient.setWallpaper(entry.image_id, monitor, entry.mode);
+                  await goDaemonClient.wallpaper.setWallpaper(entry.image_id, monitor, entry.mode);
                 } catch (error) {
                   console.error("Failed to set image from tray:", error);
                 }
@@ -131,7 +130,7 @@ export const trayMenu = async (app: App, trayInstance: Tray, createTray?: () => 
             label: "Clear history",
             click: async () => {
               try {
-                await goDaemonClient.clearImageHistory();
+                await goDaemonClient.images.clearImageHistory();
               } catch (error) {
                 console.error("Failed to clear history:", error);
               }
@@ -149,7 +148,7 @@ export const trayMenu = async (app: App, trayInstance: Tray, createTray?: () => 
     {
       label: "Random Wallpaper",
       click: () => {
-        void safeCall(() => goDaemonClient.setRandomWallpaper(), "set random wallpaper");
+        void safeCall(() => goDaemonClient.wallpaper.setRandomWallpaper(), "set random wallpaper");
         if (createTray) void createTray();
       },
     },

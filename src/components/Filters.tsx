@@ -129,6 +129,9 @@ function Filters() {
     partialFromStore(useImagesStore.getState().filters),
   );
   const partialFiltersRef = useRef(partialFilters);
+  // useLoadImages already queried with these on mount; only re-query once the user changes them.
+  const initialPartialFiltersRef = useRef(partialFilters);
+  const appliedAdvancedFiltersRef = useRef(filters.advancedFilters);
   const prevTokensRef = useRef<string[]>(partialFilters.filterTokens);
   const [inputHistoryTick, setInputHistoryTick] = useState(0);
   const [filterInput, setFilterInput] = useState("");
@@ -231,6 +234,7 @@ function Filters() {
 
   useDebounce(
     () => {
+      if (partialFilters === initialPartialFiltersRef.current) return;
       const base = useImagesStore.getState().filters;
       const newFilters: FiltersType = {
         ...base,
@@ -247,6 +251,8 @@ function Filters() {
   );
 
   useEffect(() => {
+    if (appliedAdvancedFiltersRef.current === filters.advancedFilters) return;
+    appliedAdvancedFiltersRef.current = filters.advancedFilters;
     const base = useImagesStore.getState().filters;
     const resetFilters: FiltersType = {
       ...base,

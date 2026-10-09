@@ -50,18 +50,7 @@ export function createMockAPI(): Window["API_RENDERER"] {
 
   return {
     goDaemon: {
-      ping: vi.fn().mockResolvedValue(true),
-      getInfo: vi.fn().mockResolvedValue({
-        version: "3.0.0",
-        pid: 1234,
-        hostname: "test",
-        uptime: "1h0m0s",
-        go_version: "go1.26",
-        os: "linux",
-        arch: "amd64",
-      }),
       getCapabilities: vi.fn().mockResolvedValue({ ffmpeg_available: true }),
-      shutdown: vi.fn().mockResolvedValue(undefined),
 
       getImages: vi.fn().mockResolvedValue({
         data: [],
@@ -89,7 +78,6 @@ export function createMockAPI(): Window["API_RENDERER"] {
       cancelImport: vi.fn().mockResolvedValue({ status: "cancelled", batch_id: "" }),
       deleteImages: vi.fn().mockResolvedValue({ deleted: 0 }),
       updateImage: vi.fn().mockResolvedValue(null),
-      selectAllImages: vi.fn().mockResolvedValue({ updated: 0, selected: false }),
       getImageTags: vi.fn().mockResolvedValue({ tags: [] }),
       getImageHistory: vi.fn().mockResolvedValue([]),
       clearImageHistory: vi.fn().mockResolvedValue({ status: "cleared" }),
@@ -127,11 +115,8 @@ export function createMockAPI(): Window["API_RENDERER"] {
       nextPlaylistImage: vi.fn().mockResolvedValue(undefined),
       previousPlaylistImage: vi.fn().mockResolvedValue(undefined),
       getActivePlaylists: vi.fn().mockResolvedValue([]),
-      getActivePlaylistForMonitor: vi.fn().mockResolvedValue(null),
-      stopAllPlaylists: vi.fn().mockResolvedValue(undefined),
 
       getFolders: vi.fn().mockResolvedValue({ data: [] }),
-      getFolder: vi.fn().mockResolvedValue(null),
       getFolderPath: vi.fn().mockResolvedValue({ data: [] }),
       createFolder: vi.fn().mockResolvedValue(null),
       updateFolder: vi.fn().mockResolvedValue(null),
@@ -139,11 +124,9 @@ export function createMockAPI(): Window["API_RENDERER"] {
       moveImagesToFolder: vi.fn().mockResolvedValue({ moved: 0 }),
 
       getMonitors: vi.fn().mockResolvedValue([]),
-      getMonitor: vi.fn().mockResolvedValue(null),
 
       getConfig: vi.fn().mockImplementation(async () => cloneConfig(liveUnifiedConfig)),
       updateConfig: vi.fn().mockResolvedValue(null),
-      getConfigSection: vi.fn().mockResolvedValue({}),
       updateConfigSection: vi
         .fn()
         .mockImplementation(
@@ -175,27 +158,10 @@ export function createMockAPI(): Window["API_RENDERER"] {
           },
         },
       ]),
-      getBackendCapabilities: vi.fn().mockResolvedValue(null),
       activateBackend: vi.fn().mockResolvedValue({ status: "activated", backend: "" }),
 
       on: vi.fn().mockReturnValue(() => {}),
     },
-
-    getNativeTheme: vi.fn().mockResolvedValue({ shouldUseDarkColors: true }),
-    setThemeSource: vi.fn().mockResolvedValue(undefined),
-    onNativeThemeUpdated: vi.fn(),
-    onThemeChanged: vi.fn(),
-
-    getAppInfo: vi.fn().mockResolvedValue({}),
-    ping: vi.fn().mockResolvedValue(true),
-
-    getWindowBounds: vi.fn().mockResolvedValue({ x: 0, y: 0, width: 1280, height: 720 }),
-    setWindowBounds: vi.fn().mockResolvedValue(undefined),
-    minimizeWindow: vi.fn().mockResolvedValue(undefined),
-    maximizeWindow: vi.fn().mockResolvedValue(undefined),
-    closeWindow: vi.fn().mockResolvedValue(undefined),
-    hideWindow: vi.fn().mockResolvedValue(undefined),
-    showWindow: vi.fn().mockResolvedValue(undefined),
 
     exitApp: vi.fn().mockResolvedValue(undefined),
 
@@ -206,10 +172,6 @@ export function createMockAPI(): Window["API_RENDERER"] {
     restartDaemon: vi.fn().mockResolvedValue({ success: true }),
     startDaemon: vi.fn().mockResolvedValue({ success: true }),
     stopDaemon: vi.fn().mockResolvedValue({ success: true }),
-
-    onAppError: vi.fn().mockReturnValue(() => {}),
-    onDaemonStatusUpdate: vi.fn().mockReturnValue(() => {}),
-    removeAllListeners: vi.fn(),
 
     wallhaven: {
       search: vi.fn().mockResolvedValue({}),

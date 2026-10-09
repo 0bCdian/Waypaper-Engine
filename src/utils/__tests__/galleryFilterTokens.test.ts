@@ -43,6 +43,12 @@ describe("normalizeColorHex", () => {
 });
 
 describe("parseGalleryFilterTokens", () => {
+  it("treats #word as a tag, like Wallhaven search", () => {
+    const p = parseGalleryFilterTokens(["#spain", "#what", "#"]);
+    expect(p.tags).toEqual(["spain", "what"]);
+    expect(p.searchParts).toEqual(["#"]);
+  });
+
   it("parses prefixed tokens and plain search", () => {
     const p = parseGalleryFilterTokens([
       "tag:nature",

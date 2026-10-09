@@ -2,6 +2,7 @@ package wallpaper
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"log/slog"
 	"time"
@@ -12,6 +13,9 @@ import (
 	"waypaper-engine/daemon/internal/monitor"
 	"waypaper-engine/daemon/internal/store"
 )
+
+// ErrContentKindUnsupported means the active backend cannot render the image's media type.
+var ErrContentKindUnsupported = errors.New("wallpaper: backend does not support content kind")
 
 // ApplyOpts holds all dependencies and parameters needed to set a wallpaper.
 type ApplyOpts struct {
@@ -26,6 +30,7 @@ type ApplyOpts struct {
 	State             store.StateStore
 	Bus               events.Bus // nil = no event publish
 	VideoAudioDefault bool       // user preference: play audio for video wallpapers
+	HistoryLimit      int        // app.image_history_limit; <= 0 keeps everything
 }
 
 // Apply is the core wallpaper-setting flow used by both the wallpaper handler
@@ -36,34 +41,41 @@ type ApplyOpts struct {
 func Apply(ctx context.Context, opts ApplyOpts) error {
 	opts.Mode = monitor.NormalizeMode(opts.Mode, len(opts.Monitors))
 
-	snap, err := buildApplySnapshot(ctx, opts)
-	if err != nil {
-		return err
+	// Reject invalid requests before the gate so they never preempt an in-flight apply.
+	kind := mediaTypeToKind(opts.Image.MediaType)
+	if !supportsKind(opts.Backend.Capabilities(), kind) {
+		return fmt.Errorf("%w: kind=%s backend=%s", ErrContentKindUnsupported, kind, opts.Backend.Name())
 	}
-
-	if len(snap.Outputs) == 0 {
+	if len(opts.Monitors) == 0 {
 		return fmt.Errorf("no compatible outputs for the requested image and backend %s", opts.Backend.Name())
 	}
 
-	gateKey := opts.Backend.Name()
-	applyCtx, ticket := defaultApplyGate.acquire(ctx, gateKey)
-	defer defaultApplyGate.release(gateKey, ticket)
-
-	if applyErr := opts.Backend.Apply(applyCtx, snap); applyErr != nil {
-		if ticket.preempted.Load() {
-			return ErrSuperseded
+	// The snapshot is built inside the gate: extend mode writes split crops to a per-image
+	// directory, so two concurrent applies of the same image must not split at once.
+	var backendErr error
+	err := withApplyGate(ctx, opts.Backend.Name(), func(gateCtx context.Context) error {
+		snap, err := buildApplySnapshot(opts, kind)
+		if err != nil {
+			return err
 		}
-		if opts.Bus != nil {
-			opts.Bus.Publish(events.Event{
-				Type: events.WallpaperApplyFailed,
-				Data: map[string]any{
-					"image_id": opts.Image.ID,
-					"error":    applyErr.Error(),
-					"backend":  opts.Backend.Name(),
-				},
-			})
+		backendErr = opts.Backend.Apply(gateCtx, snap)
+		return backendErr
+	})
+	if err != nil {
+		if backendErr != nil && !errors.Is(err, ErrSuperseded) {
+			if opts.Bus != nil {
+				opts.Bus.Publish(events.Event{
+					Type: events.WallpaperApplyFailed,
+					Data: map[string]any{
+						"image_id": opts.Image.ID,
+						"error":    backendErr.Error(),
+						"backend":  opts.Backend.Name(),
+					},
+				})
+			}
+			return fmt.Errorf("backend apply: %w", backendErr)
 		}
-		return fmt.Errorf("backend apply: %w", applyErr)
+		return err
 	}
 
 	// Success: persist monitor_state, append history, fire SSE.
@@ -83,8 +95,12 @@ func Apply(ctx context.Context, opts ApplyOpts) error {
 		Backend:   opts.Backend.Name(),
 	}
 
-	if _, err := opts.History.Append(ctx, entry); err != nil {
+	if appended, err := opts.History.Append(ctx, entry); err != nil {
 		slog.Warn("failed to record history", "error", err)
+	} else if appended != nil && opts.HistoryLimit > 0 {
+		if err := opts.History.DeleteUpTo(ctx, appended.ID-opts.HistoryLimit); err != nil {
+			slog.Warn("failed to trim history", "error", err)
+		}
 	}
 
 	for _, mon := range opts.Monitors {
@@ -128,16 +144,8 @@ func Apply(ctx context.Context, opts ApplyOpts) error {
 
 // buildApplySnapshot builds the Snapshot for the Apply flow.
 // The image is already resolved by the caller; no DB lookup or orphan detection needed.
-func buildApplySnapshot(ctx context.Context, opts ApplyOpts) (backend.Snapshot, error) {
+func buildApplySnapshot(opts ApplyOpts, kind backend.ContentKind) (backend.Snapshot, error) {
 	img := opts.Image
-	kind := mediaTypeToKind(img.MediaType)
-
-	// Check backend capability.
-	caps := opts.Backend.Capabilities()
-	if !supportsKind(caps, kind) {
-		return backend.Snapshot{}, fmt.Errorf("%w: kind=%s backend=%s",
-			ErrContentKindUnsupported, kind, opts.Backend.Name())
-	}
 
 	// For extend mode with static images and multiple monitors, split the image.
 	var splitPaths map[string]string
@@ -163,7 +171,6 @@ func buildApplySnapshot(ctx context.Context, opts ApplyOpts) (backend.Snapshot, 
 		})
 	}
 
-	_ = ctx // reserved for future use
 	return snap, nil
 }
 

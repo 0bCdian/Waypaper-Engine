@@ -2,6 +2,7 @@ import { create } from "zustand";
 import type { MonitorMode } from "../../electron/daemon-go-types";
 import { notifyWallpaperApplyFailed } from "../utils/daemonUserFacingError";
 import { logger } from "../utils/logger";
+import { useToastStore } from "./toastStore";
 import { daemonClient } from "@/client";
 
 interface WallhavenThumb {
@@ -192,7 +193,10 @@ interface WallhavenActions {
   search: () => Promise<void>;
   loadNextPage: () => Promise<void>;
   selectWallpaper: (wp: WallhavenWallpaper | null) => void;
-  downloadToGallery: (wp: WallhavenWallpaper) => Promise<number | null>;
+  downloadToGallery: (
+    wp: WallhavenWallpaper,
+    opts?: { silent?: boolean },
+  ) => Promise<number | null>;
   downloadImportAndSet: (
     wp: WallhavenWallpaper,
     monitor: string,
@@ -475,8 +479,15 @@ export const useWallhavenStore = create<WallhavenState & WallhavenActions>()((se
 
   selectWallpaper: (wp) => set({ selectedWallpaper: wp }),
 
-  downloadToGallery: async (wp) => {
+  downloadToGallery: async (wp, opts) => {
     const { downloadingIds } = get();
+    const fail = (reason: string) => {
+      if (!opts?.silent) {
+        useToastStore
+          .getState()
+          .addToast(`Failed to download wallpaper ${wp.id}: ${reason}`, "error");
+      }
+    };
     if (downloadingIds.has(wp.id)) return null;
 
     set({ downloadingIds: new Set([...downloadingIds, wp.id]) });
@@ -494,11 +505,15 @@ export const useWallhavenStore = create<WallhavenState & WallhavenActions>()((se
           ? (importResult as { batch_id: string }).batch_id
           : null;
 
-      if (!batchId) return null;
+      if (!batchId) {
+        fail("import did not start");
+        return null;
+      }
 
       return await new Promise<number | null>((resolve) => {
         const timeout = setTimeout(() => {
           dispose?.();
+          fail("import timed out");
           resolve(null);
         }, 30000);
 
@@ -520,6 +535,7 @@ export const useWallhavenStore = create<WallhavenState & WallhavenActions>()((se
       });
     } catch (err) {
       logger.error("Wallhaven download failed:", err);
+      fail(err instanceof Error ? err.message : "unknown error");
       return null;
     } finally {
       set((s) => {
@@ -592,6 +608,7 @@ export const useWallhavenStore = create<WallhavenState & WallhavenActions>()((se
     });
 
     let completed = 0;
+    let succeeded = 0;
     const queue = [...toDownload];
 
     const worker = async () => {
@@ -599,7 +616,8 @@ export const useWallhavenStore = create<WallhavenState & WallhavenActions>()((se
         const wp = queue.shift();
         if (!wp) break;
         // oxlint-disable-next-line react-doctor/async-await-in-loop -- ordered: bounded concurrency — N workers share the queue; each pulls one item, completes it, then takes the next (rate limit)
-        await get().downloadToGallery(wp);
+        const id = await get().downloadToGallery(wp, { silent: true });
+        if (id !== null) succeeded++;
         completed++;
         set({
           batchDownloadProgress: {
@@ -619,6 +637,16 @@ export const useWallhavenStore = create<WallhavenState & WallhavenActions>()((se
       batchDownloadProgress: null,
       selectedWallpapers: new Set(),
     });
+
+    const failed = toDownload.length - succeeded;
+    useToastStore
+      .getState()
+      .addToast(
+        failed > 0
+          ? `Downloaded ${succeeded} of ${toDownload.length} wallpapers; ${failed} failed`
+          : `Downloaded ${succeeded} wallpapers`,
+        failed > 0 ? "error" : "success",
+      );
   },
 
   toggleRatio: (label) =>

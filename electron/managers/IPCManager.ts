@@ -1,11 +1,4 @@
-/**
- * IPC Manager for Electron Main Process
- *
- * Centralized IPC handler management. Routes renderer requests to the
- * Go daemon HTTP client and forwards SSE events back to renderer windows.
- */
-
-import { ipcMain, BrowserWindow, dialog, app } from "electron";
+import { ipcMain, BrowserWindow, dialog, app, shell } from "electron";
 import { resolve } from "node:path";
 import { mkdtemp, stat, writeFile } from "node:fs/promises";
 import { join } from "node:path";
@@ -27,10 +20,27 @@ import { ensureDaemonActionSuccess } from "../ipcEnvelope";
 import { writeAnimatedWebpPreviewFromPngs } from "../shaderWallpaperPreviewWriter";
 import { MAX_PREVIEW_FRAMES } from "../../src/shaderStudio/captureShaderPreviewPngs";
 import {
+  atomPathToFs,
   exportWallpapersToDirectory,
   type ExportWallpaperPayload,
 } from "../exportWallpapersToFolder";
 import { cancelYoutubeDownload, isYtDlpAvailable, startYoutubeDownload } from "../youtubeDownload";
+
+function toAtomUrl(path: string): string {
+  return path.startsWith("atom:") ? path : `atom://${resolve(path).substring(1)}`;
+}
+
+function withAtomPaths(image: Image): Image {
+  const thumbnails = Object.fromEntries(
+    Object.entries(image.thumbnails ?? {}).map(([size, path]) => [size, path && toAtomUrl(path)]),
+  ) as Image["thumbnails"];
+  return {
+    ...image,
+    path: image.path && toAtomUrl(image.path),
+    preview_path: image.preview_path && toAtomUrl(image.preview_path),
+    thumbnails,
+  };
+}
 
 export interface IPCHandler {
   channel: string;
@@ -47,8 +57,6 @@ export class IPCManager {
 
     this.setupDefaultHandlers();
     this.setupGoDaemonHandlers();
-    this.setupThemeHandlers();
-    this.setupWindowHandlers();
     this.setupWallhavenHandlers();
     this.setupDownloadHandlers();
     this.setupErrorHandling();
@@ -109,47 +117,6 @@ export class IPCManager {
   }
 
   private setupDefaultHandlers(): void {
-    this.registerHandler({
-      channel: "ping",
-      handler: async () => {
-        return { message: "pong", timestamp: Date.now() };
-      },
-    });
-
-    this.registerHandler({
-      channel: "get-app-info",
-      handler: async () => {
-        return {
-          name: "Waypaper Engine",
-          version: "2.0.4",
-          platform: process.platform,
-          arch: process.arch,
-          nodeVersion: process.version,
-          electronVersion: process.versions.electron,
-        };
-      },
-    });
-
-    this.registerHandler({
-      channel: "get-window-bounds",
-      handler: async (event) => {
-        const window = BrowserWindow.fromWebContents(event.sender);
-        if (!window) return null;
-        return window.getBounds();
-      },
-    });
-
-    this.registerHandler({
-      channel: "set-window-bounds",
-      handler: async (event, ...args: unknown[]) => {
-        const bounds = args[0] as Partial<Electron.Rectangle>;
-        const window = BrowserWindow.fromWebContents(event.sender);
-        if (!window) return false;
-        window.setBounds(bounds);
-        return true;
-      },
-    });
-
     this.registerHandler({
       channel: "exit-app",
       handler: async () => {
@@ -295,7 +262,7 @@ export class IPCManager {
         const files: string[] = imagesObject.files;
         const folderId = imagesObject.folder_id;
 
-        await goDaemonClient.importImages(files, folderId);
+        await goDaemonClient.images.importImages(files, folderId);
 
         return { message: `Processing ${files.length} images...` };
       },
@@ -408,12 +375,7 @@ export class IPCManager {
     this.registerHandler({
       channel: "reveal-in-file-manager",
       handler: async (_event, ...args: unknown[]) => {
-        let filePath = args[0] as string;
-        if (filePath?.startsWith("atom://")) {
-          filePath = `/${filePath.slice("atom://".length)}`;
-        }
-        const { shell } = await import("electron");
-        shell.showItemInFolder(filePath);
+        shell.showItemInFolder(atomPathToFs(args[0] as string));
         return true;
       },
     });
@@ -445,7 +407,7 @@ export class IPCManager {
     this.registerHandler({
       channel: "check-yt-dlp",
       handler: async () => {
-        return { available: isYtDlpAvailable() };
+        return { available: await isYtDlpAvailable() };
       },
     });
 
@@ -474,224 +436,138 @@ export class IPCManager {
     });
   }
 
-  private convertPathsToAtomProtocol(images: Image[]): Image[] {
-    if (!Array.isArray(images)) return images;
-
-    return images.map((image) => {
-      if (!image || typeof image !== "object") return image;
-
-      const converted = { ...image };
-
-      // Convert main image path
-      if (converted.path && !converted.path.startsWith("atom:")) {
-        if (converted.path.startsWith("/")) {
-          converted.path = `atom://${converted.path.substring(1)}`;
-        } else {
-          const absolutePath = resolve(converted.path);
-          converted.path = `atom://${absolutePath.substring(1)}`;
-        }
-      }
-
-      // Convert thumbnail paths
-      if (converted.thumbnails && typeof converted.thumbnails === "object") {
-        const thumbs: Record<string, string> = {
-          ...converted.thumbnails,
-        };
-        for (const key of Object.keys(thumbs)) {
-          const thumbPath = thumbs[key];
-          if (thumbPath && !thumbPath.startsWith("atom:")) {
-            if (thumbPath.startsWith("/")) {
-              thumbs[key] = `atom://${thumbPath.substring(1)}`;
-            } else {
-              const absolutePath = resolve(thumbPath);
-              thumbs[key] = `atom://${absolutePath.substring(1)}`;
-            }
-          }
-        }
-        converted.thumbnails = thumbs as unknown as typeof converted.thumbnails;
-      }
-
-      if (converted.preview_path && !converted.preview_path.startsWith("atom:")) {
-        const pp = converted.preview_path;
-        if (pp.startsWith("/")) {
-          converted.preview_path = `atom://${pp.substring(1)}`;
-        } else {
-          const absolutePath = resolve(pp);
-          converted.preview_path = `atom://${absolutePath.substring(1)}`;
-        }
-      }
-
-      return converted;
-    });
-  }
-
   private async handleDaemonRequest(req: DaemonRequest): Promise<unknown> {
     try {
       switch (req.type) {
-        // HEALTH & SYSTEM
-        case "ping":
-          return await goDaemonClient.ping();
-        case "get_info":
-          return await goDaemonClient.getInfo();
         case "get_capabilities":
-          return await goDaemonClient.getCapabilities();
-        case "shutdown":
-          await goDaemonClient.shutdown();
-          return { status: "shutting_down" };
+          return await goDaemonClient.health.getCapabilities();
 
-        // IMAGES
         case "get_images": {
-          const result = await goDaemonClient.getImages(req.params);
-          result.data = this.convertPathsToAtomProtocol(result.data);
+          const result = await goDaemonClient.images.getImages(req.params);
+          result.data = result.data.map(withAtomPaths);
           return result;
         }
         case "get_image": {
-          const image = await goDaemonClient.getImage(req.id);
-          return this.convertPathsToAtomProtocol([image])[0];
+          const image = await goDaemonClient.images.getImage(req.id);
+          return withAtomPaths(image);
         }
         case "ensure_browser_preview": {
-          const image = await goDaemonClient.ensureBrowserPreview(req.id, req.force);
-          return this.convertPathsToAtomProtocol([image])[0];
+          const image = await goDaemonClient.images.ensureBrowserPreview(req.id, req.force);
+          return withAtomPaths(image);
         }
         case "video_loop_export": {
-          const r = await goDaemonClient.videoLoopExport(req.id, req.body);
+          const r = await goDaemonClient.images.videoLoopExport(req.id, req.body);
           return {
             ...r,
-            path: r.path?.startsWith("/") ? `atom://${r.path.substring(1)}` : r.path,
+            path: r.path && toAtomUrl(r.path),
           };
         }
         case "extract_video_palette": {
-          const r = await goDaemonClient.extractVideoPalette(req.id, req.body);
-          const img = this.convertPathsToAtomProtocol([r.image])[0];
-          return { colors: r.colors, image: img };
+          await goDaemonClient.images.extractVideoPalette(req.id, req.body);
+          const image = await goDaemonClient.images.getImage(req.id);
+          return { colors: image.colors ?? [], image_id: req.id, image: withAtomPaths(image) };
         }
         case "import_images":
-          return await goDaemonClient.importImages(req.paths, req.folder_id ?? undefined);
+          return await goDaemonClient.images.importImages(req.paths, req.folder_id ?? undefined);
         case "import_web_wallpaper": {
-          const imported = await goDaemonClient.importWebWallpaper(
+          const imported = await goDaemonClient.images.importWebWallpaper(
             req.path,
             req.folder_id ?? undefined,
           );
-          return this.convertPathsToAtomProtocol([imported])[0];
+          return withAtomPaths(imported);
         }
         case "cancel_import":
-          return await goDaemonClient.cancelImport(req.batch_id);
+          return await goDaemonClient.images.cancelImport(req.batch_id);
         case "delete_images":
-          return await goDaemonClient.deleteImages(req.ids);
+          return await goDaemonClient.images.deleteImages(req.ids);
         case "update_image": {
-          const updated = await goDaemonClient.updateImage(req.id, req.update);
-          return this.convertPathsToAtomProtocol([updated])[0];
+          const updated = await goDaemonClient.images.updateImage(req.id, req.update);
+          return withAtomPaths(updated);
         }
-        case "select_all_images":
-          return await goDaemonClient.selectAllImages(req.selected);
         case "get_image_tags":
-          return await goDaemonClient.getImageTags();
+          return await goDaemonClient.images.getImageTags();
         case "get_image_history":
-          return await goDaemonClient.getImageHistory(req.limit, req.monitor);
+          return await goDaemonClient.images.getImageHistory(req.limit, req.monitor);
         case "clear_image_history":
-          return await goDaemonClient.clearImageHistory();
+          return await goDaemonClient.images.clearImageHistory();
 
-        // WALLPAPER
         case "get_current_wallpapers":
-          return await goDaemonClient.getCurrentWallpapers();
+          return await goDaemonClient.wallpaper.getCurrentWallpapers();
         case "set_wallpaper":
-          return await goDaemonClient.setWallpaper(
+          return await goDaemonClient.wallpaper.setWallpaper(
             req.image_id,
             req.monitor || "*",
             req.mode || "individual",
             req.monitors,
           );
         case "random_wallpaper":
-          return await goDaemonClient.setRandomWallpaper(
+          return await goDaemonClient.wallpaper.setRandomWallpaper(
             req.monitor || "*",
             req.mode || "individual",
           );
 
-        // PLAYLISTS
         case "get_playlists":
-          return await goDaemonClient.getPlaylists();
+          return await goDaemonClient.playlists.getPlaylists();
         case "get_playlist":
-          return await goDaemonClient.getPlaylist(req.id);
+          return await goDaemonClient.playlists.getPlaylist(req.id);
         case "create_playlist":
-          return await goDaemonClient.createPlaylist(req.playlist);
+          return await goDaemonClient.playlists.createPlaylist(req.playlist);
         case "update_playlist":
-          return await goDaemonClient.updatePlaylist(req.id, req.update);
+          return await goDaemonClient.playlists.updatePlaylist(req.id, req.update);
         case "delete_playlist":
-          return await goDaemonClient.deletePlaylist(req.id);
+          return await goDaemonClient.playlists.deletePlaylist(req.id);
         case "start_playlist":
-          return await goDaemonClient.startPlaylist(req.id, req.monitors, req.extend);
+          return await goDaemonClient.playlists.startPlaylist(req.id, req.monitors, req.extend);
         case "stop_playlist":
-          return await goDaemonClient.stopPlaylist(req.id);
+          return await goDaemonClient.playlists.stopPlaylist(req.id);
         case "pause_playlist":
-          return await goDaemonClient.pausePlaylist(req.id);
+          return await goDaemonClient.playlists.pausePlaylist(req.id);
         case "resume_playlist":
-          return await goDaemonClient.resumePlaylist(req.id);
+          return await goDaemonClient.playlists.resumePlaylist(req.id);
         case "next_playlist_image":
-          return await goDaemonClient.nextPlaylistImage(req.id);
+          return await goDaemonClient.playlists.nextPlaylistImage(req.id);
         case "previous_playlist_image":
-          return await goDaemonClient.previousPlaylistImage(req.id);
+          return await goDaemonClient.playlists.previousPlaylistImage(req.id);
         case "get_active_playlists":
-          return await goDaemonClient.getActivePlaylists();
-        case "get_active_playlist_for_monitor":
-          return await goDaemonClient.getActivePlaylistForMonitor(req.monitor);
-        case "stop_all_playlists":
-          return await goDaemonClient.stopAllPlaylists();
+          return await goDaemonClient.playlists.getActivePlaylists();
 
-        // FOLDERS
         case "get_folders":
-          return await goDaemonClient.getFolders(req.parent_id ?? undefined, req.search);
-        case "get_folder":
-          return await goDaemonClient.getFolder(req.id);
+          return await goDaemonClient.folders.getFolders(req.parent_id ?? undefined, req.search);
         case "get_folder_path":
-          return await goDaemonClient.getFolderPath(req.id);
+          return await goDaemonClient.folders.getFolderPath(req.id);
         case "create_folder":
-          return await goDaemonClient.createFolder(req.name, req.parent_id ?? undefined);
+          return await goDaemonClient.folders.createFolder(req.name, req.parent_id ?? undefined);
         case "update_folder":
-          return await goDaemonClient.updateFolder(req.id, req.update);
+          return await goDaemonClient.folders.updateFolder(req.id, req.update);
         case "delete_folder":
-          return await goDaemonClient.deleteFolder(req.id, req.mode || "keep_contents");
+          return await goDaemonClient.folders.deleteFolder(req.id, req.mode || "keep_contents");
         case "move_images_to_folder":
-          return await goDaemonClient.moveImagesToFolder(req.image_ids, req.folder_id);
+          return await goDaemonClient.folders.moveImagesToFolder(req.image_ids, req.folder_id);
 
-        // MONITORS
         case "get_monitors":
-          return await goDaemonClient.getMonitors();
-        case "get_monitor":
-          return await goDaemonClient.getMonitor(req.name);
+          return await goDaemonClient.monitors.getMonitors();
 
-        // CONFIG
         case "get_config":
-          return await goDaemonClient.getConfig();
+          return await goDaemonClient.control.getConfig();
         case "update_config":
-          return await goDaemonClient.updateConfig(req.config);
-        case "get_config_section":
-          return await goDaemonClient.getConfigSection(req.section);
+          return await goDaemonClient.control.updateConfig(req.config);
         case "update_config_section":
-          return await goDaemonClient.updateConfigSection(req.section, req.data);
+          return await goDaemonClient.control.updateConfigSection(req.section, req.data);
         case "get_backend_config":
-          return await goDaemonClient.getBackendConfig(req.name);
+          return await goDaemonClient.control.getBackendConfig(req.name);
         case "update_backend_config":
-          return await goDaemonClient.updateBackendConfig(req.name, req.patch);
+          return await goDaemonClient.control.updateBackendConfig(req.name, req.patch);
 
         case "reset_all_config":
-          return await goDaemonClient.resetAllConfig();
+          return await goDaemonClient.control.resetAllConfig();
 
         case "reset_backend_config":
-          return await goDaemonClient.resetBackendConfig(req.name);
+          return await goDaemonClient.control.resetBackendConfig(req.name);
 
-        // BACKENDS
         case "get_backends":
-          return await goDaemonClient.getBackends();
-        case "get_backend_capabilities": {
-          const [cfg, backends] = await Promise.all([
-            goDaemonClient.getConfig(),
-            goDaemonClient.getBackends(),
-          ]);
-          const active = backends.find((b) => b.name === cfg.backend.type);
-          return active?.capabilities ?? null;
-        }
+          return await goDaemonClient.control.getBackends();
         case "activate_backend":
-          return await goDaemonClient.activateBackend(req.name);
+          return await goDaemonClient.control.activateBackend(req.name);
 
         default: {
           const _exhaustive: never = req;
@@ -741,96 +617,6 @@ export class IPCManager {
     });
   }
 
-  private setupThemeHandlers(): void {
-    this.registerHandler({
-      channel: "get-native-theme",
-      handler: async () => {
-        const { nativeTheme } = require("electron");
-        return {
-          shouldUseDarkColors: nativeTheme.shouldUseDarkColors,
-          shouldUseHighContrastColors: nativeTheme.shouldUseHighContrastColors,
-          shouldUseInvertedColorScheme: nativeTheme.shouldUseInvertedColorScheme,
-          themeSource: nativeTheme.themeSource,
-        };
-      },
-    });
-
-    this.registerHandler({
-      channel: "set-theme-source",
-      handler: async (_event, ...args: unknown[]) => {
-        const source = args[0] as "system" | "light" | "dark";
-        const { nativeTheme } = require("electron");
-        nativeTheme.themeSource = source;
-        return true;
-      },
-    });
-
-    this.registerHandler({
-      channel: "theme-changed",
-      handler: async (_event, ...args: unknown[]) => {
-        const themeName = args[0] as string;
-        this.broadcastToAllWindows("theme-changed", { themeName });
-        return true;
-      },
-    });
-  }
-
-  private setupWindowHandlers(): void {
-    this.registerHandler({
-      channel: "minimize-window",
-      handler: async (event) => {
-        const window = BrowserWindow.fromWebContents(event.sender);
-        if (!window) return false;
-        window.minimize();
-        return true;
-      },
-    });
-
-    this.registerHandler({
-      channel: "maximize-window",
-      handler: async (event) => {
-        const window = BrowserWindow.fromWebContents(event.sender);
-        if (!window) return false;
-        if (window.isMaximized()) {
-          window.unmaximize();
-        } else {
-          window.maximize();
-        }
-        return true;
-      },
-    });
-
-    this.registerHandler({
-      channel: "close-window",
-      handler: async (event) => {
-        const window = BrowserWindow.fromWebContents(event.sender);
-        if (!window) return false;
-        window.close();
-        return true;
-      },
-    });
-
-    this.registerHandler({
-      channel: "hide-window",
-      handler: async (event) => {
-        const window = BrowserWindow.fromWebContents(event.sender);
-        if (!window) return false;
-        window.hide();
-        return true;
-      },
-    });
-
-    this.registerHandler({
-      channel: "show-window",
-      handler: async (event) => {
-        const window = BrowserWindow.fromWebContents(event.sender);
-        if (!window) return false;
-        window.show();
-        return true;
-      },
-    });
-  }
-
   private setupWallhavenHandlers(): void {
     this.registerHandler({
       channel: "wallhaven-search",
@@ -841,7 +627,7 @@ export class IPCManager {
           if (v !== undefined && v !== "" && k !== "apikey") url.searchParams.set(k, v);
         }
         try {
-          const config = await goDaemonClient.getConfig();
+          const config = await goDaemonClient.control.getConfig();
           const apiKey = config?.wallhaven?.api_key;
           if (apiKey) url.searchParams.set("apikey", apiKey);
         } catch {
@@ -859,7 +645,7 @@ export class IPCManager {
         const id = args[0] as string;
         const url = new URL(`https://wallhaven.cc/api/v1/w/${id}`);
         try {
-          const config = await goDaemonClient.getConfig();
+          const config = await goDaemonClient.control.getConfig();
           const apiKey = config?.wallhaven?.api_key;
           if (apiKey) url.searchParams.set("apikey", apiKey);
         } catch {
@@ -914,18 +700,9 @@ export class IPCManager {
   private setupErrorHandling(): void {
     process.on("uncaughtException", (error) => {
       logger.error({ err: error }, "Uncaught Exception");
-      this.broadcastToAllWindows("app-error", {
-        error: error.message,
-        stack: error.stack,
-      });
     });
-
-    process.on("unhandledRejection", (reason, _promise) => {
+    process.on("unhandledRejection", (reason) => {
       logger.error({ err: reason }, "Unhandled Rejection");
-      this.broadcastToAllWindows("app-error", {
-        error: "Unhandled Promise Rejection",
-        reason: reason?.toString(),
-      });
     });
   }
 
@@ -942,23 +719,10 @@ export class IPCManager {
         },
       ) => {
         const { level, message, data } = payload;
-        const ctx = data ?? {};
-        switch (level) {
-          case "debug":
-            rendererLogger.debug(ctx, message);
-            break;
-          case "info":
-            rendererLogger.info(ctx, message);
-            break;
-          case "warn":
-            rendererLogger.warn(ctx, message);
-            break;
-          case "error":
-            rendererLogger.error(ctx, message);
-            break;
-          default:
-            rendererLogger.info(ctx, message);
-        }
+        const log = ["debug", "info", "warn", "error"].includes(level)
+          ? rendererLogger[level as "debug" | "info" | "warn" | "error"]
+          : rendererLogger.info;
+        log.call(rendererLogger, data ?? {}, message);
       },
     );
   }
@@ -985,11 +749,11 @@ export class IPCManager {
 
   private async handleExitApp(): Promise<boolean> {
     try {
-      const config = await goDaemonClient.getConfig();
+      const config = await goDaemonClient.control.getConfig();
       const shouldStopDaemon = config?.app?.kill_daemon_on_exit ?? false;
 
       if (shouldStopDaemon) {
-        await goDaemonClient.shutdown();
+        await goDaemonClient.health.shutdown();
       }
 
       this.windows.forEach((window) => {

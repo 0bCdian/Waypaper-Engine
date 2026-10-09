@@ -13,10 +13,6 @@ export class ControlPlaneClient {
     return this.t.request<UnifiedConfig>("PATCH", "/config", config);
   }
 
-  async getConfigSection(section: string): Promise<unknown> {
-    return this.t.request("GET", `/config/${section}`);
-  }
-
   async updateConfigSection(section: string, data: Record<string, unknown>): Promise<unknown> {
     return this.t.request("PATCH", `/config/${section}`, data);
   }

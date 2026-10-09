@@ -89,3 +89,21 @@ func Recoverer(next http.Handler) http.Handler {
 		next.ServeHTTP(w, r)
 	})
 }
+
+// RequireReady holds each request until ready is closed, so routes that drive the
+// wallpaper backend never run before it is initialized and the startup restore is done.
+// A request whose client goes away while waiting is dropped. A nil channel means ready.
+func RequireReady(ready <-chan struct{}) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		if ready == nil {
+			return next
+		}
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			select {
+			case <-ready:
+				next.ServeHTTP(w, r)
+			case <-r.Context().Done():
+			}
+		})
+	}
+}

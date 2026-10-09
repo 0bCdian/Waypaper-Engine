@@ -21,8 +21,9 @@ const POINTER_SENSOR = PointerSensor.configure({
 });
 
 function getIds(data: DragSourceData): number[] {
-  if (data.type === "image") {
-    return data.selectedIds ?? (data.imageId != null ? [data.imageId] : []);
+  if (data.type === "image" && data.imageId != null) {
+    const { selectedImages } = useImagesStore.getState();
+    return selectedImages.has(data.imageId) ? Array.from(selectedImages) : [data.imageId];
   }
   if (data.type === "folder" && data.folderId != null) return [data.folderId];
   if (data.type === "playlist-item" && data.imageId != null) return [data.imageId];

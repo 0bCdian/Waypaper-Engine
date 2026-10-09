@@ -12,8 +12,8 @@ export const GALLERY_FILTER_CHEATSHEET_CARDS: GalleryFilterCheatsheetCard[] = [
   {
     prefix: "tag:",
     title: "Image tags",
-    description: "Match images that have this tag.",
-    example: "tag:nature",
+    description: "Match images that have this tag (any letter case). #nature works too.",
+    example: "tag:nature  ·  #nature",
     badgeVariant: "secondary",
   },
   {

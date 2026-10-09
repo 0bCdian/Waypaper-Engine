@@ -7,8 +7,4 @@ export class MonitorsClient {
   async getMonitors(): Promise<Monitor[]> {
     return this.t.request<Monitor[]>("GET", "/monitors");
   }
-
-  async getMonitor(name: string): Promise<Monitor> {
-    return this.t.request<Monitor>("GET", `/monitors/${encodeURIComponent(name)}`);
-  }
 }

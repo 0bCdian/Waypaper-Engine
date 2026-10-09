@@ -972,6 +972,9 @@ components:
         monitor_provider_order:
           type: array
           items: { type: string }
+        backend_ready:
+          type: boolean
+          description: False until the active backend is initialized and the startup restore has finished; backend-driving routes wait for it.
     InfoResponse:
       type: object
       description: GET /info body (`healthhandler.InfoResponse`).

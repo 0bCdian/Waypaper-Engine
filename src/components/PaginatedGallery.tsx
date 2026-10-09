@@ -38,17 +38,14 @@ function GalleryDropZone({
   );
 }
 
-type MarqueeBox = { x1: number; y1: number; x2: number; y2: number };
-
 type PaginatedGalleryProps = {
   onMarqueePointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
   gridRef: RefObject<HTMLDivElement | null>;
-  marqueeBox: MarqueeBox | null;
+  marqueeRef: RefObject<HTMLDivElement | null>;
 };
 
-function PaginatedGallery({ onMarqueePointerDown, gridRef, marqueeBox }: PaginatedGalleryProps) {
+function PaginatedGallery({ onMarqueePointerDown, gridRef, marqueeRef }: PaginatedGalleryProps) {
   const { imagesToShow, handlePageChange, currentPage, totalPages } = useImagePagination();
-  const selectedImages = useImagesStore((s) => s.selectedImages);
   const folders = useFoldersStore((s) => s.folders);
   const currentFolderId = useFoldersStore((s) => s.currentFolderId);
   const filters = useImagesStore((s) => s.filters);
@@ -56,7 +53,7 @@ function PaginatedGallery({ onMarqueePointerDown, gridRef, marqueeBox }: Paginat
   const openContextMenu = useContextMenuStore((s) => s.open);
 
   const handleContextMenu = (e: React.MouseEvent) => {
-    const items = buildGalleryMenuItems(selectedImages.size);
+    const items = buildGalleryMenuItems(useImagesStore.getState().selectedImages.size);
     openContextMenu(e, items);
   };
 
@@ -101,21 +98,13 @@ function PaginatedGallery({ onMarqueePointerDown, gridRef, marqueeBox }: Paginat
               </AnimatePresence>
             </GalleryDropZone>
 
-            {marqueeBox !== null && (
-              <div className="pointer-events-none fixed inset-0 z-[200]" aria-hidden>
-                <div
-                  className="absolute border-2 border-primary/90 bg-primary/15"
-                  style={{
-                    left: Math.min(marqueeBox.x1, marqueeBox.x2),
-                    top: Math.min(marqueeBox.y1, marqueeBox.y2),
-                    width: Math.abs(marqueeBox.x2 - marqueeBox.x1),
-                    height: Math.abs(marqueeBox.y2 - marqueeBox.y1),
-                  }}
-                />
-              </div>
-            )}
+            <div
+              ref={marqueeRef}
+              hidden
+              aria-hidden
+              className="pointer-events-none fixed z-[200] border-2 border-primary/90 bg-primary/15"
+            />
 
-            {/* Pinned bottom: pagination + playlist track */}
             <BottomDock
               currentPage={currentPage}
               totalPages={totalPages}

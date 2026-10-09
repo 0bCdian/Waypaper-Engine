@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
+	"sync"
 	"testing"
 	"time"
 	"waypaper-engine/daemon/internal/backend"
@@ -20,7 +22,17 @@ import (
 )
 
 type mockBackend struct {
-	name string
+	name      string
+	initDelay time.Duration
+
+	mu      sync.Mutex
+	applied []string // first output's static image path, per Apply call
+}
+
+func (m *mockBackend) appliedPaths() []string {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return append([]string(nil), m.applied...)
 }
 
 func (m *mockBackend) Name() string      { return m.name }
@@ -30,11 +42,32 @@ func (m *mockBackend) Capabilities() backend.Capabilities {
 		ContentKinds: []backend.ContentKind{backend.KindStaticImage},
 	}
 }
-func (m *mockBackend) Initialize(_ context.Context) error                { return nil }
-func (m *mockBackend) Shutdown(_ context.Context) error                  { return nil }
-func (m *mockBackend) RegisterDefaults(_ *viper.Viper)                   {}
-func (m *mockBackend) ValidateConfig(_ json.RawMessage) error            { return nil }
-func (m *mockBackend) Apply(_ context.Context, _ backend.Snapshot) error { return nil }
+func (m *mockBackend) Initialize(_ context.Context) error {
+	time.Sleep(m.initDelay)
+	return nil
+}
+func (m *mockBackend) Shutdown(_ context.Context) error       { return nil }
+func (m *mockBackend) RegisterDefaults(_ *viper.Viper)        {}
+func (m *mockBackend) ValidateConfig(_ json.RawMessage) error { return nil }
+func (m *mockBackend) Apply(_ context.Context, snap backend.Snapshot) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if len(snap.Outputs) > 0 {
+		if img, ok := snap.Outputs[0].Content.(backend.StaticImage); ok {
+			m.applied = append(m.applied, img.Path_)
+		}
+	}
+	return nil
+}
+
+type fakeMonitorProvider struct{}
+
+func (fakeMonitorProvider) Name() string                       { return "fake" }
+func (fakeMonitorProvider) Compositor() monitor.CompositorType { return monitor.CompositorWayland }
+func (fakeMonitorProvider) Priority() int                      { return 1 }
+func (fakeMonitorProvider) Detect(context.Context) ([]monitor.Monitor, error) {
+	return []monitor.Monitor{{Name: "TEST-1", Width: 1920, Height: 1080}}, nil
+}
 
 type mockCfg struct {
 	socketPath    string
@@ -65,6 +98,17 @@ func (m *mockCfg) ReplaceBackendNamedConfig(string, map[string]any) error {
 
 func startTestDaemon(t *testing.T) (*http.Client, string, context.CancelFunc) {
 	t.Helper()
+	return startTestDaemonWith(t, testDaemonSetup{})
+}
+
+type testDaemonSetup struct {
+	backend   *mockBackend
+	providers []monitor.MonitorProvider
+	seed      func(store.DB)
+}
+
+func startTestDaemonWith(t *testing.T, setup testDaemonSetup) (*http.Client, string, context.CancelFunc) {
+	t.Helper()
 
 	tmp := t.TempDir()
 	dbDir := filepath.Join(tmp, "db")
@@ -80,8 +124,14 @@ func startTestDaemon(t *testing.T) (*http.Client, string, context.CancelFunc) {
 		t.Fatalf("open db: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
+	if setup.seed != nil {
+		setup.seed(db)
+	}
 
-	mb := &mockBackend{name: "mock"}
+	mb := setup.backend
+	if mb == nil {
+		mb = &mockBackend{name: "mock"}
+	}
 	reg := backend.NewRegistry()
 	if err := reg.Register(mb); err != nil {
 		t.Fatalf("register backend: %v", err)
@@ -105,8 +155,8 @@ func startTestDaemon(t *testing.T) (*http.Client, string, context.CancelFunc) {
 		ImagesDir:        imagesDir,
 		ThumbnailsDir:    thumbnailsDir,
 		Version:          "test",
-		Compositor:       monitor.CompositorType(""),
-		MonitorProviders: nil,
+		Compositor:       monitor.CompositorWayland,
+		MonitorProviders: setup.providers,
 	}
 
 	d, err := daemon.New(opts)
@@ -241,5 +291,109 @@ func TestDaemon_GetBackends(t *testing.T) {
 	}
 	if !found {
 		t.Errorf("mock backend not found in response: %s", fmt.Sprint(result))
+	}
+}
+
+// seedRestorableWallpaper stores images A and B and a persisted monitor state showing A on TEST-1.
+func seedRestorableWallpaper(t *testing.T, dir string) (func(store.DB), *[2]store.Image) {
+	t.Helper()
+	var imgs [2]store.Image
+	return func(db store.DB) {
+		ctx := context.Background()
+		var batch []store.Image
+		for _, name := range []string{"a.png", "b.png"} {
+			path := filepath.Join(dir, name)
+			if err := os.WriteFile(path, []byte("png"), 0o644); err != nil {
+				t.Fatalf("write %s: %v", name, err)
+			}
+			batch = append(batch, store.Image{Name: name, Path: path, MediaType: "image", Format: "png", Width: 1920, Height: 1080})
+		}
+		created, err := db.ImageStore().Create(ctx, batch)
+		if err != nil || len(created) != 2 {
+			t.Fatalf("create images: %v", err)
+		}
+		copy(imgs[:], created)
+		if err := db.MonitorStateStore().Set(ctx, store.MonitorState{
+			MonitorName: "TEST-1", ImageID: imgs[0].ID, ImageName: imgs[0].Name, ImagePath: imgs[0].Path,
+			Mode: "individual", Backend: "mock", SetAt: time.Now(),
+		}); err != nil {
+			t.Fatalf("seed monitor state: %v", err)
+		}
+	}, &imgs
+}
+
+func TestDaemon_ServesReadsWhileBackendInitializes(t *testing.T) {
+	mb := &mockBackend{name: "mock", initDelay: 2 * time.Second}
+	launched := time.Now()
+	client, _, stop := startTestDaemonWith(t, testDaemonSetup{backend: mb})
+	defer stop()
+
+	for _, path := range []string{"/healthz", "/images"} {
+		resp := get(t, client, "http://daemon"+path)
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("GET %s: status %d", path, resp.StatusCode)
+		}
+	}
+	if elapsed := time.Since(launched); elapsed > time.Second {
+		t.Errorf("reads answered %v after launch; want well before the 2s backend init finishes", elapsed)
+	}
+}
+
+func TestDaemon_HealthzReportsBackendReadiness(t *testing.T) {
+	mb := &mockBackend{name: "mock", initDelay: 500 * time.Millisecond}
+	client, _, stop := startTestDaemonWith(t, testDaemonSetup{backend: mb})
+	defer stop()
+
+	backendReady := func() bool {
+		resp := get(t, client, "http://daemon/healthz")
+		defer resp.Body.Close()
+		var body struct {
+			BackendReady bool `json:"backend_ready"`
+		}
+		if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+			t.Fatalf("decode healthz: %v", err)
+		}
+		return body.BackendReady
+	}
+
+	if backendReady() {
+		t.Fatal("expected backend_ready=false while the backend initializes")
+	}
+	deadline := time.Now().Add(3 * time.Second)
+	for !backendReady() {
+		if time.Now().After(deadline) {
+			t.Fatal("backend_ready never became true")
+		}
+		time.Sleep(20 * time.Millisecond)
+	}
+}
+
+func TestDaemon_SetWallpaperDuringStartupWinsOverRestore(t *testing.T) {
+	seed, imgs := seedRestorableWallpaper(t, t.TempDir())
+	mb := &mockBackend{name: "mock", initDelay: time.Second}
+	client, _, stop := startTestDaemonWith(t, testDaemonSetup{
+		backend:   mb,
+		providers: []monitor.MonitorProvider{fakeMonitorProvider{}},
+		seed:      seed,
+	})
+	defer stop()
+
+	body := fmt.Sprintf(`{"image_id":%d,"monitor":"TEST-1"}`, imgs[1].ID)
+	resp, err := client.Post("http://daemon/wallpaper/set", "application/json", strings.NewReader(body))
+	if err != nil {
+		t.Fatalf("POST /wallpaper/set: %v", err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("POST /wallpaper/set: status %d", resp.StatusCode)
+	}
+
+	applied := mb.appliedPaths()
+	if len(applied) == 0 || applied[len(applied)-1] != imgs[1].Path {
+		t.Fatalf("last applied = %v, want %s (user choice) after restore", applied, imgs[1].Path)
+	}
+	if applied[0] != imgs[0].Path {
+		t.Errorf("first applied = %s, want restored %s", applied[0], imgs[0].Path)
 	}
 }

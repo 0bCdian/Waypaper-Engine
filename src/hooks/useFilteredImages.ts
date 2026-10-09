@@ -4,6 +4,7 @@ import { useShallow } from "zustand/react/shallow";
 import { useHotkeys } from "react-hotkeys-hook";
 import { parseGalleryFilterTokens, clientImageMatchesFilters } from "../utils/galleryFilterTokens";
 
+/** The current page as sorted by the daemon, narrowed by the filters only the client can apply. */
 export function useFilteredImages() {
   const { imagesArray, filters, setSelectedImages } = useImagesStore(
     useShallow((s) => ({
@@ -14,19 +15,17 @@ export function useFilteredImages() {
   );
   const deferredImages = useDeferredValue(imagesArray);
 
-  const sortedImages =
-    filters.type === "id" || filters.type === "hue"
-      ? deferredImages
-      : deferredImages.toSorted((a, b) => b.name.localeCompare(a.name));
-
-  const parsed = useMemo(
-    () => parseGalleryFilterTokens(filters.filterTokens),
-    [filters.filterTokens],
-  );
-
-  const filteredImages = sortedImages.filter((image) =>
-    clientImageMatchesFilters(image, parsed, filters.mediaType, filters.advancedFilters.resolution),
-  );
+  const filteredImages = useMemo(() => {
+    const parsed = parseGalleryFilterTokens(filters.filterTokens);
+    return deferredImages.filter((image) =>
+      clientImageMatchesFilters(
+        image,
+        parsed,
+        filters.mediaType,
+        filters.advancedFilters.resolution,
+      ),
+    );
+  }, [deferredImages, filters.filterTokens, filters.mediaType, filters.advancedFilters.resolution]);
 
   const selectAllImages = () => {
     const current = useImagesStore.getState().selectedImages;
@@ -41,16 +40,8 @@ export function useFilteredImages() {
     }
   };
 
-  const clearSelection = () => {
-    setSelectedImages(new Set<number>());
-  };
+  useHotkeys(["mod+a", "ctrl+shift+a"], selectAllImages, { preventDefault: true });
+  useHotkeys("escape", () => setSelectedImages(new Set<number>()));
 
-  useHotkeys("ctrl+shift+a", selectAllImages);
-  useHotkeys("escape", clearSelection);
-
-  return {
-    filteredImages,
-    selectAllImages,
-    clearSelection,
-  };
+  return { filteredImages };
 }

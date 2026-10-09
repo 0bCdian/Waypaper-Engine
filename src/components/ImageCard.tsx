@@ -1,7 +1,6 @@
-import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { ChangeEvent, SyntheticEvent } from "react";
 import { isHotkeyPressed } from "react-hotkeys-hook";
-import { useShallow } from "zustand/react/shallow";
 import { useDraggable } from "@dnd-kit/react";
 import { useImagesStore } from "../stores/images";
 import type { rendererImage } from "../types/rendererTypes";
@@ -18,11 +17,29 @@ import { useInlineRename } from "../hooks/useInlineRename";
 import { notifyWallpaperApplyFailed } from "../utils/daemonUserFacingError";
 import { logger } from "../utils/logger";
 import type { DragSourceData } from "../stores/dragStore";
+import type { Image as DaemonImage } from "../../electron/daemon-go-types";
 import { daemonClient } from "@/client";
 import { Card } from "./ui/Card";
 
 interface ImageCardProps {
   Image: rendererImage;
+}
+
+// Card width per grid breakpoint in PaginatedGallery; lets the browser pick the smallest adequate thumbnail.
+const THUMB_SIZES =
+  "(min-width: 1024px) 25vw, (min-width: 768px) 33vw, (min-width: 640px) 50vw, 100vw";
+
+function thumbSrcSet(thumbs: rendererImage["thumbnails"]): string | undefined {
+  const candidates = [
+    [thumbs?.default, 300],
+    [thumbs?.["720p"], 1280],
+    [thumbs?.["1080p"], 1920],
+  ] as const;
+  const set = candidates
+    .filter(([url]) => url?.trim())
+    .map(([url, w]) => `${url} ${w}w`)
+    .join(", ");
+  return set || undefined;
 }
 
 const TRANSPARENT_PIXEL =
@@ -43,30 +60,8 @@ function ImageCard({ Image }: ImageCardProps) {
   const imgErrorCountRef = useRef(0);
   const ensurePreviewOnceRef = useRef(false);
   const [imgBroken, setImgBroken] = useState(false);
-  const overlayId = useId();
-  const monitorSelection = useMonitorStore((s) => s.monitorSelection);
-  const {
-    addImagesToPlaylist: addImageToPlaylist,
-    readPlaylist,
-    removeImagesFromPlaylist: removeImageFromPlaylist,
-    isEmpty,
-    playlistImagesSet: imagesInPlaylist,
-  } = usePlaylistStore(
-    useShallow((s) => ({
-      addImagesToPlaylist: s.addImagesToPlaylist,
-      readPlaylist: s.readPlaylist,
-      removeImagesFromPlaylist: s.removeImagesFromPlaylist,
-      isEmpty: s.isEmpty,
-      playlistImagesSet: s.playlistImagesSet,
-    })),
-  );
-  const { addToSelectedImages, removeFromSelectedImages, selectedImages } = useImagesStore(
-    useShallow((s) => ({
-      addToSelectedImages: s.addToSelectedImages,
-      removeFromSelectedImages: s.removeFromSelectedImages,
-      selectedImages: s.selectedImages,
-    })),
-  );
+  const isChecked = usePlaylistStore((s) => !s.isEmpty && s.playlistImagesSet.has(Image.id));
+  const isSelected = useImagesStore((s) => s.selectedImages.has(Image.id));
 
   const isPolaroid = useDesignSystemStore(
     (s) => s.designMode === "neobrutalist" && s.neoConfig.polaroidCards,
@@ -102,13 +97,10 @@ function ImageCard({ Image }: ImageCardProps) {
     onSubmit: handleRenameSubmit,
   });
 
-  const isChecked = !isEmpty && imagesInPlaylist.has(Image.id);
-  const isSelected = selectedImages.has(Image.id);
-
-  const dragData = useMemo<DragSourceData>(() => {
-    const ids = isSelected ? Array.from(selectedImages) : [Image.id];
-    return { type: "image", imageId: Image.id, selectedIds: ids };
-  }, [Image.id, isSelected, selectedImages]);
+  const dragData = useMemo<DragSourceData>(
+    () => ({ type: "image", imageId: Image.id }),
+    [Image.id],
+  );
 
   const { ref: dragRef, isDragging } = useDraggable({
     id: `image-${Image.id}`,
@@ -121,6 +113,7 @@ function ImageCard({ Image }: ImageCardProps) {
       return;
     }
 
+    const { monitorSelection } = useMonitorStore.getState();
     const monitor =
       monitorSelection.selectedMonitors.length === 1 ? monitorSelection.selectedMonitors[0] : "*";
 
@@ -142,14 +135,15 @@ function ImageCard({ Image }: ImageCardProps) {
     event.stopPropagation();
     const { checked } = event.currentTarget;
 
+    const playlistStore = usePlaylistStore.getState();
     if (checked) {
-      const playlist = readPlaylist();
+      const playlist = playlistStore.readPlaylist();
       if (playlist.configuration.type === "day_of_week" && playlist.images.length >= 7) {
         return;
       }
-      addImageToPlaylist([Image.id]);
+      playlistStore.addImagesToPlaylist([Image.id]);
     } else {
-      removeImageFromPlaylist(new Set([Image.id]));
+      playlistStore.removeImagesFromPlaylist(new Set([Image.id]));
     }
   };
 
@@ -157,20 +151,21 @@ function ImageCard({ Image }: ImageCardProps) {
     e.stopPropagation();
     const multi = isHotkeyPressed("mod") || e.metaKey || e.ctrlKey;
     if (multi) {
+      const images = useImagesStore.getState();
       if (isSelected) {
-        removeFromSelectedImages(Image);
+        images.removeFromSelectedImages(Image);
       } else {
-        addToSelectedImages(Image);
+        images.addToSelectedImages(Image);
       }
     }
   };
 
   const openContextMenu = useContextMenuStore((s) => s.open);
-  const monitorsList = useMonitorStore((s) => s.monitorsList);
 
   const handleRightClick = (e: React.MouseEvent) => {
-    const items = buildImageMenuItems(Image, monitorsList, selectedImages.size);
-    openContextMenu(e, items);
+    const { monitorsList } = useMonitorStore.getState();
+    const { selectedImages } = useImagesStore.getState();
+    openContextMenu(e, buildImageMenuItems(Image, monitorsList, selectedImages.size, startRename));
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -187,10 +182,9 @@ function ImageCard({ Image }: ImageCardProps) {
   useEffect(() => {
     ensurePreviewOnceRef.current = false;
   }, [Image.id]);
-  const daemonImage = Image as unknown as import("../../electron/daemon-go-types").Image;
   const handleOpenDetail = (e: React.MouseEvent) => {
     e.stopPropagation();
-    openDetail(daemonImage);
+    openDetail(Image as unknown as DaemonImage);
   };
   const isGifPreview = Image.media_type === "gif" || Image.format?.toLowerCase() === "gif";
   const isVideo = Image.media_type === "video";
@@ -258,42 +252,35 @@ function ImageCard({ Image }: ImageCardProps) {
     />
   );
 
-  const [isHovered, setIsHovered] = useState(false);
-
   const rasterClass = isPolaroid
     ? "w-full h-auto aspect-[3/2] object-cover block"
-    : "transform-gpu rounded-[var(--wp-radius-md)] transition-all duration-300 group-hover/card:scale-105 group-hover/card:object-center w-full h-auto aspect-[3/2] object-cover";
-
-  const pictureWrapClass = isPolaroid ? "neo-polaroid-image" : "block size-full";
+    : "block rounded-[var(--wp-radius-md)] transition-transform duration-300 group-hover/card:scale-105 w-full h-auto aspect-[3/2] object-cover";
 
   const videoPoster = Image.thumbnails?.default?.trim() || undefined;
   /**
-   * Use mouse enter/leave (not pointer) so preview playback isn’t disrupted by drag-and-drop
+   * Use mouse enter/leave (not pointer) so preview playback isn't disrupted by drag-and-drop
    * pointer capture. Invisible caption bars use pointer-events-none until the card is hovered.
    */
-  const videoCardHoverHandlers = {
-    onMouseEnter: () => {
-      setIsHovered(true);
-      if (isVideo || webVideoPreview) {
-        cancelVideoHoverPlayRef.current?.();
-        const v = videoRef.current;
-        if (!v) return;
-        cancelVideoHoverPlayRef.current = playMutedVideoWhenReady(v);
-      }
-    },
-    onMouseLeave: () => {
-      setIsHovered(false);
-      if (isVideo || webVideoPreview) {
-        cancelVideoHoverPlayRef.current?.();
-        cancelVideoHoverPlayRef.current = null;
-        const v = videoRef.current;
-        if (v) {
-          v.pause();
-          v.currentTime = 0;
+  const videoCardHoverHandlers =
+    isVideo || webVideoPreview
+      ? {
+          onMouseEnter: () => {
+            cancelVideoHoverPlayRef.current?.();
+            const v = videoRef.current;
+            if (!v) return;
+            cancelVideoHoverPlayRef.current = playMutedVideoWhenReady(v);
+          },
+          onMouseLeave: () => {
+            cancelVideoHoverPlayRef.current?.();
+            cancelVideoHoverPlayRef.current = null;
+            const v = videoRef.current;
+            if (v) {
+              v.pause();
+              v.currentTime = 0;
+            }
+          },
         }
-      }
-    },
-  };
+      : {};
 
   const rasterImgSrc = imgBroken
     ? TRANSPARENT_PIXEL
@@ -304,6 +291,7 @@ function ImageCard({ Image }: ImageCardProps) {
         : isWeb
           ? Image.thumbnails?.default?.trim() || TRANSPARENT_PIXEL
           : Image.thumbnails?.default?.trim() || Image.path;
+  const srcSet = useThumbSources && !imgBroken ? thumbSrcSet(Image.thumbnails) : undefined;
 
   const onRasterImgError = ({ currentTarget }: SyntheticEvent<HTMLImageElement>) => {
     if (webAnimatedPreview) {
@@ -321,106 +309,109 @@ function ImageCard({ Image }: ImageCardProps) {
     }
     imgErrorCountRef.current++;
     if (imgErrorCountRef.current === 1 && Image.thumbnails?.default?.trim()) {
+      currentTarget.removeAttribute("srcset");
       currentTarget.src = Image.path;
       return;
     }
     setImgBroken(true);
   };
 
-  const mediaPreview =
+  const media =
     isVideo || webVideoPreview ? (
-      isPolaroid ? (
-        <div className={pictureWrapClass}>
-          <video
-            ref={videoRef}
-            className={rasterClass}
-            style={{ transform: isHovered ? "scale(1.03)" : "scale(1)" }}
-            src={isVideo ? nativeVideoSrc : (Image.preview_path ?? "")}
-            poster={videoPoster}
-            muted
-            loop
-            playsInline
-            preload="auto"
-            aria-label={Image.name}
-            onError={handleVideoDebugError}
-          />
-        </div>
-      ) : (
-        <video
-          ref={videoRef}
-          className={rasterClass}
-          style={{ transform: isHovered ? "scale(1.05)" : "scale(1)" }}
-          src={isVideo ? nativeVideoSrc : (Image.preview_path ?? "")}
-          poster={videoPoster}
-          muted
-          loop
-          playsInline
-          preload="auto"
-          aria-label={Image.name}
-          onError={handleVideoDebugError}
-        />
-      )
-    ) : webAnimatedPreview ? (
-      // Skip <picture> (single raster src). Polaroid needs .neo-polaroid-image for neobrutalist.css hover.
-      // Default: same <img className={rasterClass}> as standalone GIF tiles — group-hover:scale on the img works there.
-      isPolaroid ? (
-        <div className={pictureWrapClass}>
-          <img
-            ref={imgRef}
-            className={rasterClass}
-            style={{ transform: isHovered ? "scale(1.03)" : "scale(1)" }}
-            src={rasterImgSrc}
-            alt={Image.name}
-            draggable={false}
-            loading="lazy"
-            onError={onRasterImgError}
-          />
-        </div>
-      ) : (
-        <picture className={pictureWrapClass}>
-          <img
-            ref={imgRef}
-            className={rasterClass}
-            style={{ transform: isHovered ? "scale(1.05)" : "scale(1)" }}
-            src={rasterImgSrc}
-            alt={Image.name}
-            draggable={false}
-            loading="lazy"
-            onError={onRasterImgError}
-          />
-        </picture>
-      )
+      <video
+        ref={videoRef}
+        className={rasterClass}
+        src={isVideo ? nativeVideoSrc : (Image.preview_path ?? "")}
+        poster={videoPoster}
+        muted
+        loop
+        playsInline
+        preload={videoPoster ? "none" : "metadata"}
+        aria-label={Image.name}
+        onError={handleVideoDebugError}
+      />
     ) : (
-      <picture className={pictureWrapClass}>
-        {useThumbSources && Image.thumbnails?.["4k"]?.trim() && (
-          <source media="(width >= 7680px)" srcSet={Image.thumbnails["4k"]} />
-        )}
-        {useThumbSources && Image.thumbnails?.["1440p"]?.trim() && (
-          <source media="(width >= 2560px)" srcSet={Image.thumbnails["1440p"]} />
-        )}
-        {useThumbSources && Image.thumbnails?.["1080p"]?.trim() && (
-          <source media="(width >= 720px)" srcSet={Image.thumbnails["1080p"]} />
-        )}
-        {useThumbSources && Image.thumbnails?.["720p"]?.trim() && (
-          <source media="(width >= 300px)" srcSet={Image.thumbnails["720p"]} />
-        )}
-        {useThumbSources && Image.thumbnails?.default?.trim() && (
-          <source media="(width < 720px)" srcSet={Image.thumbnails.default} />
-        )}
-        <img
-          ref={imgRef}
-          className={rasterClass}
-          style={{
-            transform: isHovered ? (isPolaroid ? "scale(1.03)" : "scale(1.05)") : "scale(1)",
-          }}
-          src={rasterImgSrc}
-          alt={Image.name}
-          draggable={false}
-          loading="lazy"
-          onError={onRasterImgError}
-        />
-      </picture>
+      <img
+        ref={imgRef}
+        className={rasterClass}
+        src={rasterImgSrc}
+        srcSet={srcSet}
+        sizes={srcSet ? THUMB_SIZES : undefined}
+        alt={Image.name}
+        draggable={false}
+        loading="lazy"
+        decoding="async"
+        onError={onRasterImgError}
+      />
     );
+  // Polaroid hover zoom and sizing come from `.neo-polaroid-image` in neobrutalist.css.
+  const mediaPreview = isPolaroid ? <div className="neo-polaroid-image">{media}</div> : media;
+
+  const playlistCheckbox = (
+    <input
+      checked={isChecked}
+      id={Image.name}
+      onChange={handleCheckboxChange}
+      type="checkbox"
+      className="checkbox-success checkbox checkbox-sm absolute right-2 top-2 z-20 rounded-xs opacity-0 checked:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
+    />
+  );
+
+  const detailButton = (
+    <button
+      type="button"
+      onClick={handleOpenDetail}
+      className="btn btn-ghost btn-xs btn-square absolute left-2 top-2 z-20 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
+      title="Edit details"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox="0 0 20 20"
+        fill="currentColor"
+        className="size-4"
+      >
+        <path
+          fillRule="evenodd"
+          d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z"
+          clipRule="evenodd"
+        />
+      </svg>
+    </button>
+  );
+
+  const durationBadge = isVideo && durationLabel && (
+    <div className="pointer-events-none absolute right-2 bottom-2 z-20 rounded bg-base-content/70 px-1.5 py-0.5 text-[10px] font-semibold text-base-100">
+      {durationLabel}
+    </div>
+  );
+
+  const caption = isRenaming ? (
+    renameInput
+  ) : (
+    <p
+      className={
+        isPolaroid
+          ? "neo-polaroid-name"
+          : "w-full overflow-hidden truncate text-ellipsis text-justify text-lg font-medium"
+      }
+      // oxlint-disable-next-line jsx-a11y/click-events-have-key-events -- stopPropagation guard so click on the name doesn't activate the card
+      onClick={(e) => e.stopPropagation()}
+      onDoubleClick={(e) => {
+        e.stopPropagation();
+        startRename();
+      }}
+    >
+      {Image.name}
+      {Image.format && (
+        <span
+          className={`ml-1.5 inline-block rounded px-1 py-0.5 align-middle text-[0.6rem] font-semibold uppercase leading-none ${isPolaroid ? "bg-base-300/80" : "bg-base-100/20"}`}
+          style={isPolaroid ? { color: "var(--wp-text-muted)" } : undefined}
+        >
+          {Image.format}
+        </span>
+      )}
+    </p>
+  );
 
   if (isPolaroid) {
     return (
@@ -434,33 +425,8 @@ function ImageCard({ Image }: ImageCardProps) {
         onClick={toggleImageSelection}
         className={`neo-polaroid group relative w-full animate-fade-in${isDragging ? " opacity-50" : ""}`}
       >
-        <input
-          checked={isChecked}
-          id={Image.name}
-          onChange={handleCheckboxChange}
-          type="checkbox"
-          className="checkbox-success checkbox checkbox-sm absolute right-2 top-2 z-20 rounded-xs opacity-0 checked:opacity-100 group-hover:opacity-100"
-        />
-        <button
-          type="button"
-          onClick={handleOpenDetail}
-          className="btn btn-ghost btn-xs btn-square absolute left-2 top-2 z-20 opacity-0 group-hover:opacity-100"
-          title="Edit details"
-        >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            viewBox="0 0 20 20"
-            fill="currentColor"
-            className="size-4"
-          >
-            <path
-              fillRule="evenodd"
-              d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z"
-              clipRule="evenodd"
-            />
-          </svg>
-        </button>
-
+        {playlistCheckbox}
+        {detailButton}
         <div
           role="button"
           tabIndex={0}
@@ -471,41 +437,13 @@ function ImageCard({ Image }: ImageCardProps) {
           {...videoCardHoverHandlers}
         >
           {mediaPreview}
-          {isVideo && durationLabel && (
-            <div className="pointer-events-none absolute right-2 bottom-2 z-20 rounded bg-base-content/70 px-1.5 py-0.5 text-[10px] font-semibold text-base-100">
-              {durationLabel}
-            </div>
-          )}
-          <div className="neo-polaroid-caption pointer-events-none group-hover:pointer-events-auto relative z-20">
-            {isRenaming ? (
-              renameInput
-            ) : (
-              <p
-                className="neo-polaroid-name"
-                // oxlint-disable-next-line jsx-a11y/click-events-have-key-events -- stopPropagation guard so click on the name doesn't activate the card
-                onClick={(e) => e.stopPropagation()}
-                onDoubleClick={(e) => {
-                  e.stopPropagation();
-                  startRename();
-                }}
-              >
-                {Image.name}
-                {Image.format && (
-                  <span
-                    className="ml-1.5 inline-block rounded bg-base-300/80 px-1 py-0.5 align-middle text-[0.6rem] font-semibold uppercase leading-none"
-                    style={{ color: "var(--wp-text-muted)" }}
-                  >
-                    {Image.format}
-                  </span>
-                )}
-              </p>
-            )}
+          {durationBadge}
+          <div className="neo-polaroid-caption pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto relative z-20">
+            {caption}
           </div>
         </div>
-
         <div
           data-selected={isSelected}
-          id={overlayId}
           className="neo-polaroid-overlay pointer-events-none"
           aria-hidden="true"
         />
@@ -523,33 +461,8 @@ function ImageCard({ Image }: ImageCardProps) {
       onClick={toggleImageSelection}
       className={`group relative w-full overflow-hidden rounded-[var(--wp-radius-md)] duration-200 animate-fade-in${isDragging ? " opacity-50" : ""}`}
     >
-      <input
-        checked={isChecked}
-        id={Image.name}
-        onChange={handleCheckboxChange}
-        type="checkbox"
-        className="checkbox-success checkbox checkbox-sm absolute right-2 top-2 z-20 rounded-xs opacity-0 checked:opacity-100 group-hover:opacity-100"
-      />
-      <button
-        type="button"
-        onClick={handleOpenDetail}
-        className="btn btn-ghost btn-xs btn-square absolute left-2 top-2 z-20 opacity-0 group-hover:opacity-100"
-        title="Edit details"
-      >
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          viewBox="0 0 20 20"
-          fill="currentColor"
-          className="size-4"
-        >
-          <path
-            fillRule="evenodd"
-            d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a.75.75 0 000 1.5h.253a.25.25 0 01.244.304l-.459 2.066A1.75 1.75 0 0010.747 15H11a.75.75 0 000-1.5h-.253a.25.25 0 01-.244-.304l.459-2.066A1.75 1.75 0 009.253 9H9z"
-            clipRule="evenodd"
-          />
-        </svg>
-      </button>
-
+      {playlistCheckbox}
+      {detailButton}
       <div
         role="button"
         tabIndex={0}
@@ -560,37 +473,13 @@ function ImageCard({ Image }: ImageCardProps) {
         {...videoCardHoverHandlers}
       >
         {mediaPreview}
-        {isVideo && durationLabel && (
-          <div className="pointer-events-none absolute right-2 bottom-2 z-20 rounded bg-base-content/70 px-1.5 py-0.5 text-[10px] font-semibold text-base-100">
-            {durationLabel}
-          </div>
-        )}
-        <div className="pointer-events-none group-hover:pointer-events-auto absolute bottom-0 z-20 w-full bg-base-content/75 p-2 pl-2 opacity-0 transition-all duration-300 group-hover:opacity-100 text-base-100">
-          {isRenaming ? (
-            renameInput
-          ) : (
-            <p
-              className="w-full overflow-hidden truncate text-ellipsis text-justify text-lg font-medium"
-              // oxlint-disable-next-line jsx-a11y/click-events-have-key-events -- stopPropagation guard so click on the name doesn't activate the card
-              onClick={(e) => e.stopPropagation()}
-              onDoubleClick={(e) => {
-                e.stopPropagation();
-                startRename();
-              }}
-            >
-              {Image.name}
-              {Image.format && (
-                <span className="ml-1.5 inline-block rounded bg-base-100/20 px-1 py-0.5 align-middle text-[0.6rem] font-semibold uppercase leading-none">
-                  {Image.format}
-                </span>
-              )}
-            </p>
-          )}
+        {durationBadge}
+        <div className="pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto absolute bottom-0 z-20 w-full bg-base-content/75 p-2 pl-2 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100 text-base-100">
+          {caption}
         </div>
         <div
           data-selected={isSelected}
-          id={overlayId}
-          className="absolute top-0 z-10 size-full bg-primary opacity-0 transition-all data-[selected=true]:opacity-45 pointer-events-none"
+          className="absolute top-0 z-10 size-full bg-primary opacity-0 transition-opacity data-[selected=true]:opacity-45 pointer-events-none"
           aria-hidden="true"
         />
       </div>
@@ -598,4 +487,4 @@ function ImageCard({ Image }: ImageCardProps) {
   );
 }
 
-export default ImageCard;
+export default memo(ImageCard);

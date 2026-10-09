@@ -67,8 +67,12 @@ func Paginate[T any](items []T, page, perPage int) *PaginatedResult[T] {
 		end = total
 	}
 
+	pageItems := items[skip:end]
+	if pageItems == nil {
+		pageItems = []T{} // encode as [] rather than null for "no matches"
+	}
 	return &PaginatedResult[T]{
-		Data: items[skip:end],
+		Data: pageItems,
 		Pagination: Pagination{
 			Page:       page,
 			PerPage:    perPage,

@@ -4,15 +4,26 @@ import { parseDaemonJsonBody } from "./parseDaemonJsonBody";
 
 /** Unix-socket JSON HTTP used by all daemon domain clients. */
 export class HttpTransport {
+  private ready: Promise<void> = Promise.resolve();
+
   constructor(private readonly socketPath: string) {}
 
-  request<T = unknown>(
+  /** Holds every request until `ready` settles; if it rejects, requests fail with "daemon did not start". */
+  holdUntil(ready: Promise<void>): void {
+    this.ready = ready.catch((error: unknown) => {
+      throw new Error("daemon did not start", { cause: error });
+    });
+    this.ready.catch(() => {});
+  }
+
+  async request<T = unknown>(
     method: string,
     path: string,
     body?: unknown,
     timeoutMs: number = 30000,
   ): Promise<T> {
-    return new Promise((resolve, reject) => {
+    await this.ready;
+    return await new Promise((resolve, reject) => {
       const options = {
         socketPath: this.socketPath,
         path,
@@ -27,8 +38,9 @@ export class HttpTransport {
 
       const req = httpRequest(options, (res) => {
         let data = "";
-        res.on("data", (chunk: Buffer) => {
-          data += chunk.toString();
+        res.setEncoding("utf8");
+        res.on("data", (chunk: string) => {
+          data += chunk;
         });
         res.on("end", () => {
           const trimmed = data.trim().replace(/^\uFEFF/, "");

@@ -3,7 +3,8 @@ import { mkdtemp, readFile, writeFile, rm } from "node:fs/promises";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
-import { ffmpegPngSequenceToAnimatedWebp, resolveFFmpeg } from "./ffmpegWebp";
+import { ffmpegPngSequenceToAnimatedWebp } from "./ffmpegWebp";
+import { findBinary } from "./findBinary";
 
 /** 1×1 RGBA PNG */
 const tinyPng = Buffer.from([
@@ -15,12 +16,8 @@ const tinyPng = Buffer.from([
 ]);
 
 describe("ffmpegWebp", () => {
-  it("resolveFFmpeg returns a string", () => {
-    expect(typeof resolveFFmpeg()).toBe("string");
-  });
-
   it("encodes two PNGs to animated WebP when ffmpeg is available", async () => {
-    const ffmpeg = resolveFFmpeg();
+    const ffmpeg = await findBinary("ffmpeg");
     if (!ffmpeg) return;
 
     const dir = await mkdtemp(join(tmpdir(), "waypaper-ffwebp-test-"));
@@ -28,7 +25,7 @@ describe("ffmpegWebp", () => {
       await writeFile(join(dir, "preview-0001.png"), tinyPng);
       await writeFile(join(dir, "preview-0002.png"), tinyPng);
       const out = join(dir, "out.webp");
-      const r = ffmpegPngSequenceToAnimatedWebp(ffmpeg, dir, 2, 12, out);
+      const r = await ffmpegPngSequenceToAnimatedWebp(ffmpeg, dir, 2, 12, out);
       expect(r.ok).toBe(true);
       const magic = (await readFile(out)).subarray(0, 4).toString("ascii");
       expect(magic).toBe("RIFF");

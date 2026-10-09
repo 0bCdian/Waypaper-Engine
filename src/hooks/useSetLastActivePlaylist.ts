@@ -173,12 +173,6 @@ export function useSetLastActivePlaylist() {
         const payload = data as { domain?: string };
         if (payload?.domain === "playlists") void refreshActivePlaylist();
       }),
-      daemonClient.on("config_changed", (data: unknown) => {
-        const event = data as { sections?: string[] };
-        if (!event.sections || event.sections.includes("monitors")) {
-          void refreshActivePlaylist();
-        }
-      }),
     ];
 
     return () => {

@@ -1,29 +1,15 @@
-import { existsSync } from "node:fs";
 import { mkdtemp, readdir, rm } from "node:fs/promises";
-import { execFileSync, spawn, type ChildProcess } from "node:child_process";
+import { spawn, type ChildProcess } from "node:child_process";
 import { join } from "node:path";
 import { tmpdir } from "node:os";
 import { randomUUID } from "node:crypto";
 import { isAllowedYoutubeUrl } from "../shared/youtubeUrl";
 import type { YoutubeDownloadEvent } from "../shared/youtubeDownload";
+import { findBinary } from "./findBinary";
 import { logger } from "./logger";
 
-function resolveYtDlp(): string {
-  try {
-    const p = execFileSync("which", ["yt-dlp"], { encoding: "utf8" }).trim();
-    if (p) return p;
-  } catch {
-    /* fall through to known locations */
-  }
-  for (const c of ["/usr/bin/yt-dlp", "/usr/local/bin/yt-dlp"]) {
-    if (existsSync(c)) return c;
-  }
-  return "";
-}
-
-/** True if yt-dlp can be found on PATH or at a known location. */
-export function isYtDlpAvailable(): boolean {
-  return resolveYtDlp() !== "";
+export async function isYtDlpAvailable(): Promise<boolean> {
+  return (await findBinary("yt-dlp")) !== "";
 }
 
 type ActiveJob = {
@@ -56,7 +42,7 @@ export async function startYoutubeDownload(url: string, emit: Emit): Promise<Sta
     return { ok: false, message: "A download is already running" };
   }
 
-  const ytDlp = resolveYtDlp();
+  const ytDlp = await findBinary("yt-dlp");
   if (!ytDlp) {
     return { ok: false, message: "yt-dlp not found (install and ensure it is on PATH)" };
   }

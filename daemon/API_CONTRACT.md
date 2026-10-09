@@ -45,15 +45,22 @@ All error responses use:
 
 ### `GET /healthz`
 
-Liveness probe.
+Liveness probe. The daemon answers as soon as its socket is up, before the wallpaper backend has finished initializing.
 
 **Response** `200`:
 
 ```json
 {
-  "status": "ok"
+  "status": "ok",
+  "monitor_stack_version": 2,
+  "monitor_provider_order": ["wal-qt", "wlr-randr", "xrandr"],
+  "backend_ready": true
 }
 ```
+
+`backend_ready` is `false` until the active backend is initialized and the startup wallpaper/playlist restore has finished.
+
+**Startup gating.** While `backend_ready` is `false`, requests that change what is on screen are held and run once it turns `true`. These are `POST /wallpaper/set`, `POST /wallpaper/random`, the playlist start/stop/pause/resume/next/previous routes (per-playlist and `/playlists/active/*`), `POST /backends/{name}/activate`, `PATCH /config/backends/{backend}`, `POST /config/reset` and `POST /config/backends/{backend}/reset`. A held request whose client disconnects is dropped. Every other route answers immediately.
 
 ---
 

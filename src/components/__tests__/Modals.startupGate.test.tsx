@@ -8,9 +8,6 @@ vi.mock("zustand/react/shallow", () => ({
 
 const openSpy = vi.fn();
 
-const mockSetLastSaved = vi.fn().mockResolvedValue(undefined);
-const mockReQuery = vi.fn().mockResolvedValue(undefined);
-
 vi.mock("../../stores/modalStore", () => ({
   useModalStore: {
     getState: () => ({
@@ -38,10 +35,7 @@ vi.mock("../../stores/playlist", () => ({
 
 vi.mock("../../stores/monitors", () => ({
   useMonitorStore: (selector: (s: unknown) => unknown) =>
-    selector({
-      setLastSavedMonitorConfig: mockSetLastSaved,
-      reQueryMonitors: mockReQuery,
-    }),
+    selector({ monitorsList: [{ name: "DP-1" }] }),
 }));
 
 vi.mock("@/client", () => ({
@@ -87,15 +81,6 @@ describe("Modals startup gate", () => {
       useStartupIntroGateStore.setState({ introFinished: true });
     });
 
-    await act(async () => {
-      await Promise.resolve();
-    });
-    await act(async () => {
-      await vi.advanceTimersByTimeAsync(300);
-    });
-
-    expect(mockSetLastSaved).toHaveBeenCalled();
-    expect(mockReQuery).toHaveBeenCalled();
     expect(openSpy).toHaveBeenCalledWith("monitors");
   });
 });

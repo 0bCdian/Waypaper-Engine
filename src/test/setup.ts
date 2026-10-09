@@ -31,5 +31,3 @@ if (typeof window !== "undefined") {
     })),
   });
 }
-
-vi.stubGlobal("__DEBUG__", false);

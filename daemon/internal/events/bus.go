@@ -7,9 +7,9 @@ import (
 )
 
 type Event struct {
-	Type      EventType `json:"type"`
-	Data      any       `json:"data"`
-	Timestamp time.Time `json:"timestamp"`
+	Type      EventType      `json:"type"`
+	Data      map[string]any `json:"data"`
+	Timestamp time.Time      `json:"timestamp"`
 }
 
 type Bus interface {

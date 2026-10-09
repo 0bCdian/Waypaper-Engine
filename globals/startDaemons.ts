@@ -3,15 +3,13 @@ import { request as httpRequest } from "node:http";
 import { access, unlink } from "node:fs/promises";
 import { daemonPath, logger, isDebugMode } from "./setup";
 import { configReader } from "./configReader";
+import { waitUntilHealthy } from "./waitUntilHealthy";
 
 // Must match daemon/internal/handler/health.go MonitorStackVersion.
 const MIN_MONITOR_STACK_VERSION = 2;
 
 // Get socket path from TOML configuration
 const WAYPAPER_ENGINE_SOCKET_PATH = configReader.getSocketPath();
-
-// Keep reference to daemon process
-let daemonProcess: import("child_process").ChildProcess | null = null;
 
 export async function initWaypaperDaemon() {
   try {
@@ -66,7 +64,6 @@ export async function initWaypaperDaemon() {
     output.unref();
 
     logger.info(`Daemon process spawned with PID: ${output.pid}`);
-    daemonProcess = output;
 
     output.on("error", (error) => {
       logger.error({ err: error }, "Go daemon spawn error");
@@ -76,42 +73,14 @@ export async function initWaypaperDaemon() {
       logger.error(`Go daemon exited with code ${code}, signal ${signal}`);
     });
 
-    // Wait for socket to be created and daemon to be responsive
-    let daemonReady = false;
-    let attempts = 0;
-    const maxAttempts = 20;
-    const retryInterval = 500;
-
-    while (!daemonReady && attempts < maxAttempts) {
-      attempts++;
-      logger.info(`Waiting for daemon to be ready... attempt ${attempts}/${maxAttempts}`);
-
-      try {
-        if (daemonProcess && daemonProcess.killed) {
-          logger.error("Daemon process has been killed");
-          throw new Error("Daemon process was killed");
-        }
-
-        // oxlint-disable-next-line react-doctor/async-await-in-loop -- ordered: daemon-readiness polling — must check socket then test connection then back off
-        await access(WAYPAPER_ENGINE_SOCKET_PATH);
-        logger.info("Socket file exists, testing connection...");
-
-        await testConnection();
-        daemonReady = true;
-        logger.info("Daemon is ready and responsive");
-      } catch (error) {
-        logger.debug({ err: error, attempt: attempts }, "Connection attempt failed");
-        if (attempts < maxAttempts) {
-          await new Promise((resolve) => setTimeout(resolve, retryInterval));
-        }
-      }
-    }
-
-    if (!daemonReady) {
-      if (output && !output.killed) {
-        output.kill("SIGTERM");
-      }
-      throw new Error("Daemon failed to become ready after maximum attempts");
+    try {
+      await waitUntilHealthy(() => healthCheck(WAYPAPER_ENGINE_SOCKET_PATH), {
+        intervalMs: 50,
+        deadlineMs: 10_000,
+      });
+    } catch (error) {
+      if (!output.killed) output.kill("SIGTERM");
+      throw new Error("Daemon failed to become ready within 10s", { cause: error });
     }
 
     logger.info("Waypaper daemon started successfully");
@@ -128,27 +97,12 @@ type HealthzBody = {
   monitor_stack_version?: number;
 };
 
-async function testConnection(): Promise<HealthzBody> {
-  const MAX_ATTEMPTS = 5;
-  const RETRY_INTERVAL = 200;
-  let attempt = 1;
-  while (attempt <= MAX_ATTEMPTS) {
-    try {
-      // oxlint-disable-next-line react-doctor/async-await-in-loop -- ordered: connection retry — must wait for one health check to resolve/reject before backing off and retrying
-      const body = await healthCheck(WAYPAPER_ENGINE_SOCKET_PATH);
-      logger.info("Connection to Go daemon established via HTTP.");
-      return body;
-    } catch (error) {
-      logger.debug({ err: error, attempt }, "Connection attempt failed");
-      if (attempt < MAX_ATTEMPTS) {
-        await new Promise((resolve) => setTimeout(resolve, RETRY_INTERVAL));
-        attempt++;
-      } else {
-        throw error;
-      }
-    }
-  }
-  throw new Error("unreachable");
+/** An existing socket may belong to a daemon that is still starting, so give it a moment. */
+function testConnection(): Promise<HealthzBody> {
+  return waitUntilHealthy(() => healthCheck(WAYPAPER_ENGINE_SOCKET_PATH), {
+    intervalMs: 50,
+    deadlineMs: 1000,
+  });
 }
 
 async function healthCheck(socketPath: string): Promise<HealthzBody> {
@@ -162,8 +116,9 @@ async function healthCheck(socketPath: string): Promise<HealthzBody> {
       },
       (res) => {
         let data = "";
-        res.on("data", (chunk: Buffer) => {
-          data += chunk.toString();
+        res.setEncoding("utf8");
+        res.on("data", (chunk: string) => {
+          data += chunk;
         });
         res.on("end", () => {
           if (res.statusCode === 200) {
@@ -183,7 +138,7 @@ async function healthCheck(socketPath: string): Promise<HealthzBody> {
     );
 
     req.on("error", (err) => reject(err));
-    req.setTimeout(2000, () => {
+    req.setTimeout(500, () => {
       req.destroy();
       reject(new Error("Health check timeout"));
     });

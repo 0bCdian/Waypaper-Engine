@@ -12,17 +12,20 @@ import (
 
 // HealthHandler handles health and info endpoints.
 type HealthHandler struct {
-	startTime  time.Time
-	version    string
-	shutdownFn func()
+	startTime    time.Time
+	version      string
+	shutdownFn   func()
+	backendReady <-chan struct{}
 }
 
-// NewHealthHandler creates a HealthHandler.
-func NewHealthHandler(version string, shutdownFn func()) *HealthHandler {
+// NewHealthHandler creates a HealthHandler. backendReady closes once the wallpaper
+// backend is initialized; nil means it is always reported ready.
+func NewHealthHandler(version string, shutdownFn func(), backendReady <-chan struct{}) *HealthHandler {
 	return &HealthHandler{
-		startTime:  time.Now(),
-		version:    version,
-		shutdownFn: shutdownFn,
+		startTime:    time.Now(),
+		version:      version,
+		shutdownFn:   shutdownFn,
+		backendReady: backendReady,
 	}
 }
 
@@ -36,7 +39,20 @@ func (h *HealthHandler) Healthz(w http.ResponseWriter, r *http.Request) {
 		Status:               "ok",
 		MonitorStackVersion:  MonitorStackVersion,
 		MonitorProviderOrder: []string{"wal-qt", "wlr-randr", "xrandr"},
+		BackendReady:         h.isBackendReady(),
 	})
+}
+
+func (h *HealthHandler) isBackendReady() bool {
+	if h.backendReady == nil {
+		return true
+	}
+	select {
+	case <-h.backendReady:
+		return true
+	default:
+		return false
+	}
 }
 
 // Info handles GET /info.

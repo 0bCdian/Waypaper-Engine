@@ -136,7 +136,7 @@ describe("useSettingsStore", () => {
     });
   });
 
-  it("resetToDefaults calls resetAllConfig then reloads from daemon", async () => {
+  it("resetAllSettingsToDaemonDefaults calls resetAllConfig then reloads from daemon", async () => {
     const useSettingsStore = await getStore();
 
     await act(async () => {
@@ -144,14 +144,13 @@ describe("useSettingsStore", () => {
     });
 
     await act(async () => {
-      await useSettingsStore.getState().resetToDefaults();
+      await useSettingsStore.getState().resetAllSettingsToDaemonDefaults();
     });
 
     expect(mockAPI.goDaemon.resetAllConfig).toHaveBeenCalledTimes(1);
     expect(mockAPI.goDaemon.getConfig).toHaveBeenCalled();
     const state = useSettingsStore.getState();
     expect(state.isLoading).toBe(false);
-    expect(state.isDirty).toBe(false);
   });
 
   it("setSearchTerm filters sections based on config keys", async () => {
@@ -244,20 +243,117 @@ describe("useSettingsStore", () => {
     });
     expect(useSettingsStore.getState().pendingBackendSettingsTab).toBeNull();
   });
+  describe("config_changed handling", () => {
+    async function loaded() {
+      const useSettingsStore = await getStore();
+      await act(async () => {
+        await useSettingsStore.getState().loadConfig();
+      });
+      vi.mocked(mockAPI.goDaemon.getConfig).mockClear();
+      vi.mocked(mockAPI.goDaemon.getBackends).mockClear();
+      return useSettingsStore;
+    }
 
-  it("toggleSection toggles expanded sections", async () => {
-    const useSettingsStore = await getStore();
+    function deferred<T>() {
+      let resolve!: (value: T) => void;
+      const promise = new Promise<T>((r) => (resolve = r));
+      return { promise, resolve };
+    }
 
-    expect(useSettingsStore.getState().expandedSections.has("app")).toBe(true);
+    it("one event triggers exactly one config fetch", async () => {
+      const useSettingsStore = await loaded();
 
-    act(() => {
-      useSettingsStore.getState().toggleSection("app");
+      useSettingsStore.getState().handleConfigChange({ sections: ["app"], source: "api" } as never);
+      await vi.waitFor(() => expect(mockAPI.goDaemon.getConfig).toHaveBeenCalledTimes(1));
+      await new Promise((r) => setTimeout(r, 20));
+
+      expect(mockAPI.goDaemon.getConfig).toHaveBeenCalledTimes(1);
     });
-    expect(useSettingsStore.getState().expandedSections.has("app")).toBe(false);
 
-    act(() => {
-      useSettingsStore.getState().toggleSection("app");
+    it("an app-only event skips the backend subsection requests", async () => {
+      const useSettingsStore = await loaded();
+
+      useSettingsStore
+        .getState()
+        .handleConfigChange({ sections: ["app"], source: "file" } as never);
+      await vi.waitFor(() => expect(mockAPI.goDaemon.getConfig).toHaveBeenCalledTimes(1));
+      await new Promise((r) => setTimeout(r, 20));
+
+      expect(mockAPI.goDaemon.getBackends).not.toHaveBeenCalled();
     });
-    expect(useSettingsStore.getState().expandedSections.has("app")).toBe(true);
+
+    it("a backend event refreshes backend subsections", async () => {
+      const useSettingsStore = await loaded();
+
+      useSettingsStore
+        .getState()
+        .handleConfigChange({ sections: ["backend"], source: "api" } as never);
+
+      await vi.waitFor(() => expect(mockAPI.goDaemon.getBackends).toHaveBeenCalledTimes(1));
+    });
+
+    it("events arriving during an in-flight reload coalesce into one more reload", async () => {
+      const useSettingsStore = await loaded();
+      const first = deferred<unknown>();
+      const original = vi.mocked(mockAPI.goDaemon.getConfig).getMockImplementation()!;
+      vi.mocked(mockAPI.goDaemon.getConfig).mockImplementationOnce(async () => {
+        await first.promise;
+        return original();
+      });
+
+      const { handleConfigChange } = useSettingsStore.getState();
+      handleConfigChange({ sections: ["app"] } as never);
+      await vi.waitFor(() => expect(mockAPI.goDaemon.getConfig).toHaveBeenCalledTimes(1));
+      handleConfigChange({ sections: ["app"] } as never);
+      handleConfigChange({ sections: ["app"] } as never);
+      handleConfigChange({ sections: ["app"] } as never);
+      first.resolve(undefined);
+
+      await vi.waitFor(() => expect(mockAPI.goDaemon.getConfig).toHaveBeenCalledTimes(2));
+      await new Promise((r) => setTimeout(r, 20));
+      expect(mockAPI.goDaemon.getConfig).toHaveBeenCalledTimes(2);
+    });
+
+    it("waits for a pending local save before reloading", async () => {
+      const useSettingsStore = await loaded();
+      const save = deferred<unknown>();
+      vi.mocked(mockAPI.goDaemon.updateConfigSection).mockImplementationOnce(
+        () => save.promise as never,
+      );
+
+      const saving = useSettingsStore.getState().saveConfigSection("app", { images_per_page: 30 });
+      useSettingsStore.getState().handleConfigChange({ sections: ["app"], source: "api" } as never);
+      await new Promise((r) => setTimeout(r, 20));
+      expect(mockAPI.goDaemon.getConfig).not.toHaveBeenCalled();
+
+      save.resolve({ images_per_page: 30 });
+      await saving;
+      await vi.waitFor(() => expect(mockAPI.goDaemon.getConfig).toHaveBeenCalledTimes(1));
+    });
+
+    it("keeps unchanged sections reference-equal across reloads", async () => {
+      const useSettingsStore = await loaded();
+      const before = useSettingsStore.getState().config!;
+
+      await act(async () => {
+        await useSettingsStore.getState().loadConfig();
+      });
+      expect(useSettingsStore.getState().config).toBe(before);
+
+      const original = vi.mocked(mockAPI.goDaemon.getConfig).getMockImplementation()!;
+      vi.mocked(mockAPI.goDaemon.getConfig).mockImplementationOnce(async () => {
+        const cfg = await original();
+        return { ...cfg, app: { ...cfg.app, theme: "nord" } };
+      });
+      await act(async () => {
+        await useSettingsStore.getState().loadConfig();
+      });
+
+      const after = useSettingsStore.getState().config!;
+      expect(after.app).not.toBe(before.app);
+      expect(after.app.theme).toBe("nord");
+      expect(after.monitors).toBe(before.monitors);
+      expect(after.backend).toBe(before.backend);
+    });
   });
 });

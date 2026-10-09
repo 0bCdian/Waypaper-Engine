@@ -197,6 +197,7 @@ export function buildImageMenuItems(
   image: rendererImage,
   monitors: Monitor[],
   selectedCount: number,
+  onRename?: () => void,
 ): MenuItem[] {
   const mediaType = (image.media_type || "image").toLowerCase();
   const allowExtend = mediaType === "image" || mediaType === "gif";
@@ -220,13 +221,16 @@ export function buildImageMenuItems(
         useImageDetailStore.getState().open(image as unknown as Image);
       },
     },
+    ...(onRename && selectedCount <= 1
+      ? [{ type: "action" as const, label: "Rename", onClick: onRename }]
+      : []),
     ...(image.colors?.length
       ? [
           {
             type: "action" as const,
             label: "Show similar palette",
             onClick: () => {
-              const f = useImagesStore.getState().getFilters();
+              const f = useImagesStore.getState().filters;
               useImagesStore.getState().setFilters({
                 ...f,
                 paletteSimilarToId: image.id,

@@ -57,7 +57,7 @@ class DaemonMonitor {
     let isRunning = false;
     let lastError: string | undefined;
     try {
-      isRunning = await goDaemonClient.ping();
+      isRunning = await goDaemonClient.health.ping();
       if (!isRunning) lastError = "Health check failed";
     } catch (error) {
       lastError = error instanceof Error ? error.message : String(error);
@@ -91,7 +91,7 @@ class DaemonMonitor {
   async restartDaemon(): Promise<{ success: boolean; error?: string }> {
     try {
       try {
-        await goDaemonClient.shutdown();
+        await goDaemonClient.health.shutdown();
       } catch (error) {
         logger.warn({ err: error }, "DaemonMonitor: Error stopping daemon");
       }
@@ -137,7 +137,7 @@ class DaemonMonitor {
 
   async stopDaemon(): Promise<{ success: boolean; error?: string }> {
     try {
-      await goDaemonClient.shutdown();
+      await goDaemonClient.health.shutdown();
 
       this.status = {
         isRunning: false,

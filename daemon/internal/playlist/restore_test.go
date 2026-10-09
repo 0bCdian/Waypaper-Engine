@@ -231,6 +231,7 @@ func (n *noopHistoryStore) GetRecent(_ context.Context, _ store.HistoryQueryOpts
 func (n *noopHistoryStore) Count(_ context.Context) (int, error)                  { return 0, nil }
 func (n *noopHistoryStore) Clear(_ context.Context) error                         { return nil }
 func (n *noopHistoryStore) DeleteByImageID(_ context.Context, _ int) (int, error) { return 0, nil }
+func (n *noopHistoryStore) DeleteUpTo(_ context.Context, _ int) error             { return nil }
 
 // noopMonitorStateStore discards monitor state writes.
 type noopMonitorStateStore struct{}

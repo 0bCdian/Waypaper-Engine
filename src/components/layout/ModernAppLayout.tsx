@@ -6,7 +6,7 @@
  */
 
 import type React from "react";
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useState, type ReactNode } from "react";
 import { useReducedMotion } from "framer-motion";
 import { useTheme } from "../../contexts/ThemeContext";
 import { cn } from "../../utils/cn";
@@ -22,51 +22,39 @@ export interface ModernAppLayoutProps {
   className?: string;
 }
 
-/** When unset by daemon/client merge, startup intro defaults to enabled. */
-function startupIntroDesired(configValue: boolean | undefined): boolean {
-  return configValue ?? true;
+const INTRO_PLAYED_KEY = "waypaper-intro-played";
+
+function introAlreadyPlayed(): boolean {
+  try {
+    return localStorage.getItem(INTRO_PLAYED_KEY) !== null;
+  } catch {
+    return false;
+  }
 }
 
 export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({ children, className }) => {
   const { isDarkMode } = useTheme();
-  const config = useSettingsStore((s) => s.config);
+  // `startup_intro` defaults to on; it only allows the one-time first-launch intro.
+  const introAllowed = useSettingsStore((s) => s.config?.app?.startup_intro) !== false;
   const syncToDOM = useDesignSystemStore((s) => s.syncToDOM);
+  const reduceMotion = useReducedMotion() === true;
 
-  const startupIntroOn = startupIntroDesired(config?.app?.startup_intro);
-  const reduceMotionFs = useReducedMotion();
-  const introFinishedRef = useRef(false);
-
-  /** Initial: play intro whenever it is assumed on (includes config=null until first load merges). */
-  const [introFinished, setIntroFinished] = useState(
-    () => !startupIntroDesired(config?.app?.startup_intro),
-  );
-
+  const [introFinished, setIntroFinished] = useState(introAlreadyPlayed);
   const markIntroFinished = useCallback(() => {
-    if (introFinishedRef.current) return;
-    introFinishedRef.current = true;
+    try {
+      localStorage.setItem(INTRO_PLAYED_KEY, "1");
+    } catch {
+      /* the intro just plays again next launch */
+    }
     setIntroFinished(true);
   }, []);
 
+  const showIntro = !introFinished && introAllowed && !reduceMotion;
+
+  /** Lets siblings (e.g. Modals) hold startup chrome until the intro is out of the way. */
   useLayoutEffect(() => {
-    if (!startupIntroDesired(config?.app?.startup_intro)) {
-      introFinishedRef.current = true;
-      setIntroFinished(true);
-    }
-  }, [config?.app?.startup_intro]);
-
-  /** Sync for sibling components (e.g. Modals): allow chrome when intro completed, intro off in config, or reduced-motion (matches when StartupIntro is not shown). */
-  const introFinishedForGate = introFinished || !startupIntroOn || reduceMotionFs === true;
-
-  useLayoutEffect(() => {
-    useStartupIntroGateStore.getState().setIntroFinished(introFinishedForGate);
-  }, [introFinishedForGate]);
-
-  useEffect(() => {
-    if (reduceMotionFs === true) {
-      introFinishedRef.current = true;
-      setIntroFinished(true);
-    }
-  }, [reduceMotionFs]);
+    useStartupIntroGateStore.getState().setIntroFinished(!showIntro);
+  }, [showIntro]);
 
   useEffect(() => {
     syncToDOM();
@@ -82,9 +70,7 @@ export const ModernAppLayout: React.FC<ModernAppLayoutProps> = ({ children, clas
         </main>
       </div>
 
-      {!introFinished && startupIntroOn && reduceMotionFs !== true && (
-        <StartupIntro onFinish={markIntroFinished} />
-      )}
+      {showIntro && <StartupIntro onFinish={markIntroFinished} />}
     </>
   );
 };

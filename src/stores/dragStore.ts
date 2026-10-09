@@ -5,7 +5,6 @@ export type DragType = "image" | "folder" | "playlist-item";
 export interface DragSourceData {
   type: DragType;
   imageId?: number;
-  selectedIds?: number[];
   folderId?: number;
   /** Playlist strip card index: gallery drops insert before this slot */
   insertIndex?: number;

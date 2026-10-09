@@ -222,6 +222,9 @@ type HistoryStore interface {
 	// DeleteByImageID removes every history entry referencing imageID.
 	// Returns the number of entries deleted (zero if none matched).
 	DeleteByImageID(ctx context.Context, imageID int) (int, error)
+
+	// DeleteUpTo removes every entry with ID <= maxID (entries older than the retention window).
+	DeleteUpTo(ctx context.Context, maxID int) error
 }
 
 // ---------------------------------------------------------------------------

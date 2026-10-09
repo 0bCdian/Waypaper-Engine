@@ -7,7 +7,6 @@ import (
 	"log/slog"
 	"math/rand"
 	"net/http"
-	"strings"
 
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/config"
@@ -126,7 +125,7 @@ func (h *WallpaperHandler) Set(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
-		if strings.Contains(err.Error(), "extend mode is only supported") {
+		if errors.Is(err, wallpaper.ErrContentKindUnsupported) {
 			httpjson.WriteError(w, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -207,7 +206,7 @@ func (h *WallpaperHandler) Random(w http.ResponseWriter, r *http.Request) {
 			})
 			return
 		}
-		if strings.Contains(err.Error(), "extend mode is only supported") {
+		if errors.Is(err, wallpaper.ErrContentKindUnsupported) {
 			httpjson.WriteError(w, http.StatusBadRequest, err.Error())
 			return
 		}
@@ -357,5 +356,6 @@ func (h *WallpaperHandler) applyWallpaper(ctx context.Context, img *store.Image,
 		State:             h.stateStore,
 		Bus:               h.bus,
 		VideoAudioDefault: wallpaper.VideoAudioDefaultFromCfg(h.cfg),
+		HistoryLimit:      wallpaper.HistoryLimitFromCfg(h.cfg),
 	})
 }

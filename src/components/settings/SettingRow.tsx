@@ -1,4 +1,5 @@
 import type React from "react";
+import { useId } from "react";
 import { cn } from "@/utils/cn";
 
 interface SettingRowProps {
@@ -18,26 +19,40 @@ export const SettingRow: React.FC<SettingRowProps> = ({
   error,
   className,
   stacked = false,
-}) => (
-  <div
-    className={cn(
-      "flex gap-3 lg:gap-4 py-4 border-b border-base-content/5",
-      stacked ? "flex-col" : "flex-col lg:flex-row lg:items-center lg:justify-between",
-      className,
-    )}
-  >
-    <div className="min-w-0 flex-1">
-      <div className="text-sm font-medium text-base-content">{label}</div>
-      {description && (
-        <div className="text-sm mt-0.5" style={{ color: "var(--wp-text-muted)" }}>
-          {description}
-        </div>
+}) => {
+  const id = useId();
+  const labelId = `${id}-label`;
+  const descId = `${id}-desc`;
+  return (
+    <div
+      className={cn(
+        "flex gap-3 lg:gap-4 py-4 border-b border-base-content/5",
+        stacked ? "flex-col" : "flex-col lg:flex-row lg:items-center lg:justify-between",
+        className,
       )}
-      {error && <div className="text-xs text-error mt-1">{error}</div>}
+    >
+      <div className="min-w-0 flex-1">
+        <div id={labelId} className="text-sm font-medium text-base-content">
+          {label}
+        </div>
+        {description && (
+          <div id={descId} className="text-sm mt-0.5" style={{ color: "var(--wp-text-muted)" }}>
+            {description}
+          </div>
+        )}
+        {error && <div className="text-xs text-error mt-1">{error}</div>}
+      </div>
+      <div
+        role="group"
+        aria-labelledby={labelId}
+        aria-describedby={description ? descId : undefined}
+        className={cn("flex-shrink-0", stacked ? "w-full" : "w-full lg:w-auto")}
+      >
+        {children}
+      </div>
     </div>
-    <div className={cn("flex-shrink-0", stacked ? "w-full" : "w-full lg:w-auto")}>{children}</div>
-  </div>
-);
+  );
+};
 
 interface SettingSectionHeaderProps {
   title: string;

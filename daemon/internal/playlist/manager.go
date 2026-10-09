@@ -845,6 +845,7 @@ func (m *Manager) doApply(ctx context.Context, pl *store.Playlist, index int, mo
 		MonState:          m.monitorStateStore,
 		State:             m.stateStore,
 		VideoAudioDefault: wallpaper.VideoAudioDefaultFromCfg(m.cfg),
+		HistoryLimit:      wallpaper.HistoryLimitFromCfg(m.cfg),
 		Bus:               m.bus,
 	}); err != nil {
 		return applyResult{AppliedIndex: -1, Skipped: skipped}, err
@@ -886,8 +887,7 @@ func findCompatibleIndexWithWalk(ctx context.Context, pl *store.Playlist, start 
 		return -1, 0, nil
 	}
 	start = ((start % n) + n) % n
-	var order []int
-	order = make([]int, n)
+	order := make([]int, n)
 	if walk == compatForward {
 		for i := range n {
 			order[i] = (start + i) % n
@@ -957,7 +957,8 @@ func (m *Manager) missedEventChecker(ctx context.Context, playlistID int, monito
 			if inst.Paused {
 				continue
 			}
-			if inst.NextChangeAt == nil {
+			now := time.Now()
+			if !missedEventDue(inst.NextChangeAt, now, missedEventGrace) {
 				continue
 			}
 
@@ -970,66 +971,63 @@ func (m *Manager) missedEventChecker(ctx context.Context, playlistID int, monito
 				return
 			}
 
-			now := time.Now()
-			if missedEventDue(inst.NextChangeAt, now, missedEventGrace) {
-				slog.Warn("missed event detected, re-triggering scheduler",
-					"monitors", inst.Monitors,
-					"expected_time", inst.NextChangeAt,
-					"current_time", now,
-					"playlist_id", playlistID,
-					"playlist_type", pl.Configuration.Type,
-				)
+			slog.Warn("missed event detected, re-triggering scheduler",
+				"monitors", inst.Monitors,
+				"expected_time", inst.NextChangeAt,
+				"current_time", now,
+				"playlist_id", playlistID,
+				"playlist_type", pl.Configuration.Type,
+			)
 
-				newIdx, ok := missedEventTargetIndex(pl, inst, now)
-				if !ok {
-					continue
-				}
-
-				result, applyErr := m.applyImage(ctx, pl, newIdx, monitors, applyModeFor(target.Extend), compatForward)
-				if applyErr != nil {
-					slog.Warn("missed event: failed to apply image", "error", applyErr)
-					continue
-				}
-				if result.AppliedIndex < 0 {
-					continue
-				}
-
-				effectiveIdx := result.AppliedIndex
-
-				if pl.Configuration.Type == "timer" {
-					m.mu.RLock()
-					run, runOK := m.runs[playlistID]
-					m.mu.RUnlock()
-					if runOK {
-						run.sched.AfterManualNavigation(effectiveIdx)
-					}
-				}
-
-				m.mu.RLock()
-				var nextChange *time.Time
-				if run, ok := m.runs[playlistID]; ok {
-					nextChange = run.sched.NextChangeAt()
-				}
-				m.mu.RUnlock()
-
-				m.stateStore.UpdateActivePlaylist(playlistID, func(upd *store.ActivePlaylistInstance) {
-					updateInstanceIndex(upd, pl, effectiveIdx)
-					setSlotDeadline(upd, nextChange)
-				})
-
-				m.persistPlayback(ctx, playlistID, true)
-
-				m.bus.Publish(events.Event{
-					Type: events.PlaylistImageChanged,
-					Data: map[string]any{
-						"playlist_id": playlistID,
-						"image_index": effectiveIdx,
-						"image_id":    pl.Images[effectiveIdx].ImageID,
-						"monitors":    inst.Monitors,
-						"source":      "missed_event_recovery",
-					},
-				})
+			newIdx, ok := missedEventTargetIndex(pl, inst, now)
+			if !ok {
+				continue
 			}
+
+			result, applyErr := m.applyImage(ctx, pl, newIdx, monitors, applyModeFor(target.Extend), compatForward)
+			if applyErr != nil {
+				slog.Warn("missed event: failed to apply image", "error", applyErr)
+				continue
+			}
+			if result.AppliedIndex < 0 {
+				continue
+			}
+
+			effectiveIdx := result.AppliedIndex
+
+			if pl.Configuration.Type == "timer" {
+				m.mu.RLock()
+				run, runOK := m.runs[playlistID]
+				m.mu.RUnlock()
+				if runOK {
+					run.sched.AfterManualNavigation(effectiveIdx)
+				}
+			}
+
+			m.mu.RLock()
+			var nextChange *time.Time
+			if run, ok := m.runs[playlistID]; ok {
+				nextChange = run.sched.NextChangeAt()
+			}
+			m.mu.RUnlock()
+
+			m.stateStore.UpdateActivePlaylist(playlistID, func(upd *store.ActivePlaylistInstance) {
+				updateInstanceIndex(upd, pl, effectiveIdx)
+				setSlotDeadline(upd, nextChange)
+			})
+
+			m.persistPlayback(ctx, playlistID, true)
+
+			m.bus.Publish(events.Event{
+				Type: events.PlaylistImageChanged,
+				Data: map[string]any{
+					"playlist_id": playlistID,
+					"image_index": effectiveIdx,
+					"image_id":    pl.Images[effectiveIdx].ImageID,
+					"monitors":    inst.Monitors,
+					"source":      "missed_event_recovery",
+				},
+			})
 		}
 	}
 }

@@ -1,35 +1,16 @@
-/**
- * Preload Script for Waypaper Engine
- *
- * Exposes safe APIs to the renderer process via contextBridge.
- * Updated for Go Daemon HTTP REST API
- */
-
 import { contextBridge, ipcRenderer, webUtils } from "electron";
 import type {
-  Image,
-  ImageQueryParams,
-  PaginatedResponse,
-  ImageHistoryEntry,
-  UpdateImageRequest,
-  Playlist,
   CreatePlaylistRequest,
-  UpdatePlaylistRequest,
-  ActivePlaylistInstance,
-  Monitor,
-  UnifiedConfig,
-  BackendInfo,
-  BackendCapabilities,
-  DaemonInfo,
-  MonitorMode,
-  WallpaperCurrent,
   EventType,
-  Folder,
   ExtractVideoPaletteRequest,
-  ExtractVideoPaletteResult,
+  ImageQueryParams,
+  MonitorMode,
+  UnifiedConfig,
+  UpdateImageRequest,
+  UpdatePlaylistRequest,
   VideoLoopExportRequest,
-  VideoLoopExportResult,
 } from "./daemon-go-types";
+import type { MultipassPayload } from "../src/shaderStudio/buildWallpaperPackage";
 import type { DaemonRequest, DaemonResponse } from "./ipc-types";
 import { unwrapIPCResponse } from "./ipcEnvelope";
 
@@ -45,76 +26,31 @@ function invokeWrapped<T>(channel: string, ...args: unknown[]): Promise<T> {
 
 const electronAPI = {
   goDaemon: {
-    // HEALTH & SYSTEM
-    ping: (): Promise<boolean> => invoke({ type: "ping" }),
+    getCapabilities: () => invoke({ type: "get_capabilities" }),
 
-    getInfo: (): Promise<DaemonInfo> => invoke({ type: "get_info" }),
-
-    getCapabilities: (): Promise<{ ffmpeg_available: boolean }> =>
-      invoke({ type: "get_capabilities" }),
-
-    shutdown: (): Promise<void> => invoke({ type: "shutdown" }),
-
-    // IMAGES
-    getImages: (params?: ImageQueryParams): Promise<PaginatedResponse<Image>> =>
-      invoke({ type: "get_images", params }),
-
-    getImage: (id: number): Promise<Image> => invoke({ type: "get_image", id }),
-
-    ensureBrowserPreview: (id: number, force?: boolean): Promise<Image> =>
+    getImages: (params?: ImageQueryParams) => invoke({ type: "get_images", params }),
+    getImage: (id: number) => invoke({ type: "get_image", id }),
+    ensureBrowserPreview: (id: number, force?: boolean) =>
       invoke({ type: "ensure_browser_preview", id, force }),
-
-    videoLoopExport: (id: number, body: VideoLoopExportRequest): Promise<VideoLoopExportResult> =>
+    videoLoopExport: (id: number, body: VideoLoopExportRequest) =>
       invoke({ type: "video_loop_export", id, body }),
-
-    extractVideoPalette: (
-      id: number,
-      body: ExtractVideoPaletteRequest,
-    ): Promise<ExtractVideoPaletteResult> => invoke({ type: "extract_video_palette", id, body }),
-
-    importImages: (
-      paths: string[],
-      folderID?: number | null,
-    ): Promise<{ status: string; total: number }> =>
+    extractVideoPalette: (id: number, body: ExtractVideoPaletteRequest) =>
+      invoke({ type: "extract_video_palette", id, body }),
+    importImages: (paths: string[], folderID?: number | null) =>
       invoke({ type: "import_images", paths, folder_id: folderID }),
-
-    importWebWallpaper: (path: string, folderID?: number | null): Promise<Image> =>
+    importWebWallpaper: (path: string, folderID?: number | null) =>
       invoke({ type: "import_web_wallpaper", path, folder_id: folderID }),
-
-    cancelImport: (batchID: string): Promise<{ status: string; batch_id: string }> =>
-      invoke({ type: "cancel_import", batch_id: batchID }),
-
-    deleteImages: (ids: number[]): Promise<{ deleted: number }> =>
-      invoke({ type: "delete_images", ids }),
-
-    updateImage: (id: number, update: UpdateImageRequest): Promise<Image> =>
+    cancelImport: (batchID: string) => invoke({ type: "cancel_import", batch_id: batchID }),
+    deleteImages: (ids: number[]) => invoke({ type: "delete_images", ids }),
+    updateImage: (id: number, update: UpdateImageRequest) =>
       invoke({ type: "update_image", id, update }),
-
-    selectAllImages: (selected: boolean): Promise<{ updated: number; selected: boolean }> =>
-      invoke({ type: "select_all_images", selected }),
-
-    getImageTags: (): Promise<{ tags: string[] }> => invoke({ type: "get_image_tags" }),
-
-    getImageHistory: (limit?: number, monitor?: string): Promise<ImageHistoryEntry[]> =>
+    getImageTags: () => invoke({ type: "get_image_tags" }),
+    getImageHistory: (limit?: number, monitor?: string) =>
       invoke({ type: "get_image_history", limit, monitor }),
+    clearImageHistory: () => invoke({ type: "clear_image_history" }),
 
-    clearImageHistory: (): Promise<{ status: string }> => invoke({ type: "clear_image_history" }),
-
-    // WALLPAPER
-    getCurrentWallpapers: (): Promise<WallpaperCurrent> =>
-      invoke({ type: "get_current_wallpapers" }),
-
-    setWallpaper: (
-      imageId: number,
-      monitor?: string,
-      mode?: MonitorMode,
-      monitors?: string[],
-    ): Promise<{
-      status: string;
-      image_id: number;
-      monitor: string;
-      mode: string;
-    }> =>
+    getCurrentWallpapers: () => invoke({ type: "get_current_wallpapers" }),
+    setWallpaper: (imageId: number, monitor?: string, mode?: MonitorMode, monitors?: string[]) =>
       invoke({
         type: "set_wallpaper",
         image_id: imageId,
@@ -122,123 +58,51 @@ const electronAPI = {
         mode: mode || "individual",
         monitors,
       }),
+    setRandomWallpaper: (monitor?: string, mode?: MonitorMode) =>
+      invoke({ type: "random_wallpaper", monitor: monitor || "*", mode: mode || "individual" }),
 
-    setRandomWallpaper: (
-      monitor?: string,
-      mode?: MonitorMode,
-    ): Promise<{
-      status: string;
-      image_id: number;
-      monitor: string;
-      mode: string;
-    }> =>
-      invoke({
-        type: "random_wallpaper",
-        monitor: monitor || "*",
-        mode: mode || "individual",
-      }),
-
-    // PLAYLISTS
-    getPlaylists: (): Promise<Playlist[]> => invoke({ type: "get_playlists" }),
-
-    getPlaylist: (id: number): Promise<Playlist> => invoke({ type: "get_playlist", id }),
-
-    createPlaylist: (playlist: CreatePlaylistRequest): Promise<Playlist> =>
+    getPlaylists: () => invoke({ type: "get_playlists" }),
+    getPlaylist: (id: number) => invoke({ type: "get_playlist", id }),
+    createPlaylist: (playlist: CreatePlaylistRequest) =>
       invoke({ type: "create_playlist", playlist }),
-
-    updatePlaylist: (id: number, update: UpdatePlaylistRequest): Promise<Playlist> =>
+    updatePlaylist: (id: number, update: UpdatePlaylistRequest) =>
       invoke({ type: "update_playlist", id, update }),
-
-    deletePlaylist: (id: number): Promise<void> => invoke({ type: "delete_playlist", id }),
-
-    startPlaylist: (id: number, monitors: string[], extend: boolean): Promise<void> =>
+    deletePlaylist: (id: number) => invoke({ type: "delete_playlist", id }),
+    startPlaylist: (id: number, monitors: string[], extend: boolean) =>
       invoke({ type: "start_playlist", id, monitors, extend }),
+    stopPlaylist: (id: number) => invoke({ type: "stop_playlist", id }),
+    pausePlaylist: (id: number) => invoke({ type: "pause_playlist", id }),
+    resumePlaylist: (id: number) => invoke({ type: "resume_playlist", id }),
+    nextPlaylistImage: (id: number) => invoke({ type: "next_playlist_image", id }),
+    previousPlaylistImage: (id: number) => invoke({ type: "previous_playlist_image", id }),
+    getActivePlaylists: () => invoke({ type: "get_active_playlists" }),
 
-    stopPlaylist: (id: number): Promise<void> => invoke({ type: "stop_playlist", id }),
-
-    pausePlaylist: (id: number): Promise<void> => invoke({ type: "pause_playlist", id }),
-
-    resumePlaylist: (id: number): Promise<void> => invoke({ type: "resume_playlist", id }),
-
-    nextPlaylistImage: (id: number): Promise<void> => invoke({ type: "next_playlist_image", id }),
-
-    previousPlaylistImage: (id: number): Promise<void> =>
-      invoke({ type: "previous_playlist_image", id }),
-
-    getActivePlaylists: (): Promise<ActivePlaylistInstance[]> =>
-      invoke({ type: "get_active_playlists" }),
-
-    getActivePlaylistForMonitor: (monitor: string): Promise<ActivePlaylistInstance> =>
-      invoke({ type: "get_active_playlist_for_monitor", monitor }),
-
-    stopAllPlaylists: (): Promise<void> => invoke({ type: "stop_all_playlists" }),
-
-    // FOLDERS
-    getFolders: (parentId?: number | null, search?: string): Promise<{ data: Folder[] }> =>
+    getFolders: (parentId?: number | null, search?: string) =>
       invoke({ type: "get_folders", parent_id: parentId, search }),
-
-    getFolder: (id: number): Promise<Folder> => invoke({ type: "get_folder", id }),
-
-    getFolderPath: (id: number): Promise<{ data: Folder[] }> =>
-      invoke({ type: "get_folder_path", id }),
-
-    createFolder: (name: string, parentId?: number | null): Promise<Folder> =>
+    getFolderPath: (id: number) => invoke({ type: "get_folder_path", id }),
+    createFolder: (name: string, parentId?: number | null) =>
       invoke({ type: "create_folder", name, parent_id: parentId }),
-
-    updateFolder: (
-      id: number,
-      update: { name?: string; parent_id?: number | null },
-    ): Promise<Folder> => invoke({ type: "update_folder", id, update }),
-
-    deleteFolder: (
-      id: number,
-      mode?: "keep_contents" | "delete_all",
-    ): Promise<{ deleted: boolean; mode: string }> =>
+    updateFolder: (id: number, update: { name?: string; parent_id?: number | null }) =>
+      invoke({ type: "update_folder", id, update }),
+    deleteFolder: (id: number, mode?: "keep_contents" | "delete_all") =>
       invoke({ type: "delete_folder", id, mode: mode || "keep_contents" }),
+    moveImagesToFolder: (imageIds: number[], folderId: number | null) =>
+      invoke({ type: "move_images_to_folder", image_ids: imageIds, folder_id: folderId }),
 
-    moveImagesToFolder: (imageIds: number[], folderId: number | null): Promise<{ moved: number }> =>
-      invoke({
-        type: "move_images_to_folder",
-        image_ids: imageIds,
-        folder_id: folderId,
-      }),
+    getMonitors: () => invoke({ type: "get_monitors" }),
 
-    // MONITORS
-    getMonitors: (): Promise<Monitor[]> => invoke({ type: "get_monitors" }),
-
-    getMonitor: (name: string): Promise<Monitor> => invoke({ type: "get_monitor", name }),
-
-    // CONFIG
-    getConfig: (): Promise<UnifiedConfig> => invoke({ type: "get_config" }),
-
-    updateConfig: (config: Partial<UnifiedConfig>): Promise<UnifiedConfig> =>
-      invoke({ type: "update_config", config }),
-
-    getConfigSection: (section: string): Promise<unknown> =>
-      invoke({ type: "get_config_section", section }),
-
-    updateConfigSection: (section: string, data: Record<string, unknown>): Promise<unknown> =>
+    getConfig: () => invoke({ type: "get_config" }),
+    updateConfig: (config: Partial<UnifiedConfig>) => invoke({ type: "update_config", config }),
+    updateConfigSection: (section: string, data: Record<string, unknown>) =>
       invoke({ type: "update_config_section", section, data }),
-
-    getBackendConfig: (name: string): Promise<Record<string, unknown>> =>
-      invoke({ type: "get_backend_config", name }),
-
-    updateBackendConfig: (name: string, patch: Record<string, unknown>): Promise<void> =>
+    getBackendConfig: (name: string) => invoke({ type: "get_backend_config", name }),
+    updateBackendConfig: (name: string, patch: Record<string, unknown>) =>
       invoke({ type: "update_backend_config", name, patch }),
+    resetAllConfig: () => invoke({ type: "reset_all_config" }),
+    resetBackendConfig: (name: string) => invoke({ type: "reset_backend_config", name }),
 
-    resetAllConfig: (): Promise<UnifiedConfig> => invoke({ type: "reset_all_config" }),
-
-    resetBackendConfig: (name: string): Promise<{ status: string }> =>
-      invoke({ type: "reset_backend_config", name }),
-
-    // BACKENDS
-    getBackends: (): Promise<BackendInfo[]> => invoke({ type: "get_backends" }),
-
-    getBackendCapabilities: (): Promise<BackendCapabilities | null> =>
-      invoke({ type: "get_backend_capabilities" }),
-
-    activateBackend: (name: string): Promise<{ status: string; backend: string }> =>
-      invoke({ type: "activate_backend", name }),
+    getBackends: () => invoke({ type: "get_backends" }),
+    activateBackend: (name: string) => invoke({ type: "activate_backend", name }),
 
     // EVENT LISTENERS (SSE events forwarded via IPC)
     // Returns a disposer function that removes the listener when called.
@@ -255,56 +119,15 @@ const electronAPI = {
     },
   },
 
-  getNativeTheme: () => invokeWrapped<unknown>("get-native-theme"),
-
-  setThemeSource: (source: "system" | "light" | "dark") =>
-    invokeWrapped<void>("set-theme-source", source),
-
-  onNativeThemeUpdated: (callback: (themeInfo: unknown) => void): (() => void) => {
-    const wrapper = (_: Electron.IpcRendererEvent, themeInfo: unknown) => callback(themeInfo);
-    ipcRenderer.on("native-theme-updated", wrapper);
-    return () => ipcRenderer.removeListener("native-theme-updated", wrapper);
-  },
-
-  onThemeChanged: (callback: (data: unknown) => void): (() => void) => {
-    const wrapper = (_: Electron.IpcRendererEvent, data: unknown) => callback(data);
-    ipcRenderer.on("theme-changed", wrapper);
-    return () => ipcRenderer.removeListener("theme-changed", wrapper);
-  },
-
-  getAppInfo: () => invokeWrapped<unknown>("get-app-info"),
-  ping: () => invokeWrapped<unknown>("ping"),
-
-  getWindowBounds: () => invokeWrapped<Electron.Rectangle>("get-window-bounds"),
-  setWindowBounds: (bounds: Electron.Rectangle) => invokeWrapped<void>("set-window-bounds", bounds),
-  minimizeWindow: () => invokeWrapped<void>("minimize-window"),
-  maximizeWindow: () => invokeWrapped<void>("maximize-window"),
-  closeWindow: () => invokeWrapped<void>("close-window"),
-  hideWindow: () => invokeWrapped<void>("hide-window"),
-  showWindow: () => invokeWrapped<void>("show-window"),
-
   exitApp: () => invokeWrapped<void>("exit-app"),
 
-  getDaemonStatus: () => invokeWrapped<unknown>("get-daemon-status"),
-  restartDaemon: () => invokeWrapped<unknown>("restart-daemon"),
-  startDaemon: () => invokeWrapped<unknown>("start-daemon"),
-  stopDaemon: () => invokeWrapped<unknown>("stop-daemon"),
-
-  onAppError: (callback: (error: unknown) => void): (() => void) => {
-    const wrapper = (_: Electron.IpcRendererEvent, error: unknown) => callback(error);
-    ipcRenderer.on("app-error", wrapper);
-    return () => ipcRenderer.removeListener("app-error", wrapper);
-  },
-
-  onDaemonStatusUpdate: (callback: (data: unknown) => void): (() => void) => {
-    const wrapper = (_: Electron.IpcRendererEvent, data: unknown) => callback(data);
-    ipcRenderer.on("daemon-status-update", wrapper);
-    return () => ipcRenderer.removeListener("daemon-status-update", wrapper);
-  },
-
-  removeAllListeners: (channel: string) => {
-    ipcRenderer.removeAllListeners(channel);
-  },
+  getDaemonStatus: () =>
+    invokeWrapped<{ isRunning: boolean; lastChecked: number; lastError?: string }>(
+      "get-daemon-status",
+    ),
+  restartDaemon: () => invokeWrapped<{ success: true }>("restart-daemon"),
+  startDaemon: () => invokeWrapped<{ success: true }>("start-daemon"),
+  stopDaemon: () => invokeWrapped<{ success: true }>("stop-daemon"),
 
   wallhaven: {
     search: (params: Record<string, string>): Promise<unknown> =>
@@ -340,7 +163,7 @@ const electronAPI = {
         }
       | {
           kind: "multipass";
-          multipass: unknown;
+          multipass: MultipassPayload;
           title: string;
           mode: "temp" | "export";
           previewPngBuffers?: Uint8Array[];
@@ -399,14 +222,6 @@ const electronAPI = {
   },
 };
 
-// Expose the API to the renderer process
+export type ElectronAPI = typeof electronAPI;
+
 contextBridge.exposeInMainWorld("API_RENDERER", electronAPI);
-
-// Expose debug mode flag
-const isDebug = process.argv.includes("--debug");
-contextBridge.exposeInMainWorld("__DEBUG__", isDebug);
-
-// Expose platform so the renderer can render platform-appropriate window chrome
-contextBridge.exposeInMainWorld("__PLATFORM__", process.platform);
-
-console.log("Preload script loaded - Go Daemon HTTP REST API ready");
