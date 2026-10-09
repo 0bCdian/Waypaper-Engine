@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"slices"
 	"sort"
 	"strings"
 
@@ -53,10 +54,6 @@ func (s *imageStore) GetAll(ctx context.Context, opts ImageQueryOpts) (*Paginate
 		criteria = ChainAnd(criteria, query.Field("media_type").Eq(opts.MediaType))
 	}
 
-	for _, tag := range opts.Tags {
-		criteria = ChainAnd(criteria, query.Field("tags").Contains(tag))
-	}
-
 	for _, color := range opts.Colors {
 		criteria = ChainAnd(criteria, query.Field("colors").Contains(color))
 	}
@@ -84,9 +81,10 @@ func (s *imageStore) GetAll(ctx context.Context, opts ImageQueryOpts) (*Paginate
 		sortDir = -1
 	}
 
-	// When search, root-folder filtering, perceptual color constraints, or palette similarity
-	// are active, load all DB-filtered docs, apply in-memory filters, then paginate in Go.
-	if opts.Search != "" || filterRootFolder || len(opts.ColorsNear) > 0 || opts.PaletteSimilarTo != nil || opts.HueGroup != nil || opts.SortBy == "hue" {
+	// When search, tags (matched case-insensitively), root-folder filtering, perceptual color
+	// constraints, or palette similarity are active, load all DB-filtered docs, apply in-memory
+	// filters, then paginate in Go.
+	if opts.Search != "" || len(opts.Tags) > 0 || filterRootFolder || len(opts.ColorsNear) > 0 || opts.PaletteSimilarTo != nil || opts.HueGroup != nil || opts.SortBy == "hue" {
 		q := query.NewQuery(CollectionImages)
 		if criteria != nil {
 			q = q.Where(criteria)
@@ -106,6 +104,9 @@ func (s *imageStore) GetAll(ctx context.Context, opts ImageQueryOpts) (*Paginate
 
 		if opts.Search != "" {
 			allImages = filterImagesBySearch(allImages, opts.Search)
+		}
+		if len(opts.Tags) > 0 {
+			allImages = filterImagesByTags(allImages, opts.Tags)
 		}
 		if len(opts.ColorsNear) > 0 {
 			allImages = filterImagesByColorsNear(allImages, opts.ColorsNear)
@@ -296,6 +297,21 @@ func (s *imageStore) IsNameTaken(_ context.Context, name string, excludeID int) 
 		return false, fmt.Errorf("image store: check name taken: %w", err)
 	}
 	return count > 0, nil
+}
+
+// filterImagesByTags keeps images carrying every wanted tag, ignoring case
+// (Wallhaven imports "Spain", the tag editor stores "spain").
+func filterImagesByTags(images []Image, wanted []string) []Image {
+	var filtered []Image
+	for _, img := range images {
+		if slices.ContainsFunc(wanted, func(w string) bool {
+			return !slices.ContainsFunc(img.Tags, func(t string) bool { return strings.EqualFold(t, w) })
+		}) {
+			continue
+		}
+		filtered = append(filtered, img)
+	}
+	return filtered
 }
 
 // filterImagesBySearch performs case-insensitive substring search on name and tags.
