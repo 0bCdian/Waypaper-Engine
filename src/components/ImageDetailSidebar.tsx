@@ -14,6 +14,7 @@ import { HexColorPicker } from "react-colorful";
 import { useImageDetailStore } from "../stores/imageDetailStore";
 import { useImagesStore } from "../stores/images";
 import { useShallow } from "zustand/react/shallow";
+import { confirmDialog } from "./ConfirmDialog";
 import { useToastStore } from "../stores/toastStore";
 import { webPreviewPlaybackKind } from "../utils/webPreviewPlayback";
 import { playMutedVideoWhenReady } from "../utils/videoPreview";
@@ -46,8 +47,12 @@ const MAX_PALETTE_COLORS = 12;
 
 async function saveImageDetails(imageId: number, tags: string[], colors: string[]) {
   await daemonClient.updateImage(imageId, { tags, colors });
-  const freshImage = await daemonClient.getImage(imageId);
-  useImageDetailStore.getState().open(freshImage);
+  try {
+    const freshImage = await daemonClient.getImage(imageId);
+    useImageDetailStore.getState().open(freshImage);
+  } catch {
+    // The write succeeded; a failed refresh must not report a failed save.
+  }
   useImagesStore.getState().reQueryImages();
 }
 
@@ -55,12 +60,12 @@ async function trySaveImageDetails(
   imageId: number,
   tags: string[],
   colors: string[],
-): Promise<boolean> {
+): Promise<{ ok: boolean; error?: string }> {
   try {
     await saveImageDetails(imageId, tags, colors);
-    return true;
-  } catch {
-    return false;
+    return { ok: true };
+  } catch (err) {
+    return { ok: false, error: err instanceof Error ? err.message : undefined };
   }
 }
 
@@ -1212,14 +1217,18 @@ function ImageDetailSidebar() {
       return;
     }
     setSaving(true);
-    const ok = await trySaveImageDetails(selectedImage.id, tags, colorsToSave);
+    const pending = tagInput.trim().toLowerCase();
+    const tagsToSave =
+      pending && !tags.some((t) => t.toLowerCase() === pending) ? [...tags, pending] : tags;
+    const { ok, error } = await trySaveImageDetails(selectedImage.id, tagsToSave, colorsToSave);
+    if (ok) setTagInput("");
     addToast(
-      ok ? "Details saved" : "Failed to save",
+      ok ? "Details saved" : error ? `Failed to save: ${error}` : "Failed to save",
       ok ? "success" : "error",
       ok ? 2000 : undefined,
     );
     setSaving(false);
-  }, [selectedImage, tags, editColors, addToast]);
+  }, [selectedImage, tags, tagInput, editColors, addToast]);
 
   const submitRename = useCallback(async () => {
     if (!selectedImage) return;
@@ -1245,13 +1254,28 @@ function ImageDetailSidebar() {
 
   const hasChanges = useMemo(() => {
     const originalTags = selectedImage?.tags ?? [];
+    if (tagInput.trim()) return true;
     if (originalTags.length !== tags.length) return true;
     const tagSet = new Set(originalTags);
     if (tags.some((t) => !tagSet.has(t))) return true;
 
     const originalColors = selectedImage?.colors ?? [];
     return !palettesEqual(editColors, originalColors);
-  }, [selectedImage?.tags, selectedImage?.colors, tags, editColors]);
+  }, [selectedImage?.tags, selectedImage?.colors, tags, tagInput, editColors]);
+
+  const requestClose = useCallback(async () => {
+    if (
+      hasChanges &&
+      !(await confirmDialog({
+        title: "Discard changes?",
+        message: "You have unsaved tag or palette edits.",
+        confirmLabel: "Discard",
+        danger: true,
+      }))
+    )
+      return;
+    close();
+  }, [hasChanges, close]);
 
   return (
     <>
@@ -1260,9 +1284,9 @@ function ImageDetailSidebar() {
         className={`fixed inset-0 z-40 bg-black/20 transition-opacity duration-300 ${
           isOpen ? "opacity-100" : "opacity-0 pointer-events-none"
         }`}
-        onClick={close}
+        onClick={requestClose}
         onKeyDown={(e) => {
-          if (e.key === "Escape") close();
+          if (e.key === "Escape") requestClose();
         }}
         role="button"
         tabIndex={isOpen ? 0 : -1}
@@ -1276,7 +1300,7 @@ function ImageDetailSidebar() {
         {/* Header */}
         <div className="flex items-center justify-between border-b border-base-300 px-4 py-3">
           <h3 className="text-base font-semibold text-base-content">Image Details</h3>
-          <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={close}>
+          <button type="button" className="btn btn-ghost btn-sm btn-square" onClick={requestClose}>
             <svg
               xmlns="http://www.w3.org/2000/svg"
               viewBox="0 0 20 20"
@@ -1486,6 +1510,8 @@ function ImageDetailSidebar() {
                       <button
                         type="button"
                         className="ml-0.5 opacity-70 hover:opacity-100"
+                        aria-label={`Remove tag ${tag}`}
+                        title={`Remove tag ${tag}`}
                         onClick={() => removeTag(tag)}
                       >
                         &times;
