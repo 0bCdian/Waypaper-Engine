@@ -41,7 +41,7 @@
   border-color: hsl(var(--color-neutral300));
 }
 
-.page-item a.page-link:hover {
+.page-item :is(a, button).page-link:hover {
   background-color: hsl(var(--color-primary500));
   color: hsl(var(--color-baseContent));
   border-color: hsl(var(--color-primary500));
