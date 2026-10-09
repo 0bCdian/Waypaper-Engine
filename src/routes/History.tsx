@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useHistoryStore } from "../stores/historyStore";
 import { useContextMenuStore } from "../stores/contextMenuStore";
 import { useShallow } from "zustand/react/shallow";
@@ -9,6 +9,7 @@ import type { ImageHistoryEntry, Image } from "../../electron/daemon-go-types";
 import { notifyWallpaperApplyFailed } from "../utils/daemonUserFacingError";
 import { getThumbnailSrc } from "../utils/utilities";
 import { daemonClient } from "@/client";
+import { useToastStore } from "../stores/toastStore";
 
 function formatRelativeTime(dateStr: string): string {
   const date = new Date(dateStr);
@@ -97,18 +98,25 @@ function HistoryEntry({
   image: Image | undefined;
   onContextMenu: (e: React.MouseEvent, entry: ImageHistoryEntry) => void;
 }) {
+  const [applying, setApplying] = useState(false);
   const restoreWallpaper = () => {
+    if (applying) return;
+    setApplying(true);
     void daemonClient
       .setWallpaper(entry.image_id, undefined, entry.mode, entry.monitors)
-      .catch(notifyWallpaperApplyFailed);
+      .then(() => useToastStore.getState().addToast("Wallpaper applied", "success", 2000))
+      .catch(notifyWallpaperApplyFailed)
+      .finally(() => setApplying(false));
   };
 
   return (
     <button
       type="button"
       onClick={restoreWallpaper}
+      disabled={applying}
+      aria-busy={applying}
       onContextMenu={(e) => onContextMenu(e, entry)}
-      className="flex items-center gap-4 p-3 rounded-lg hover:bg-base-200 transition-colors cursor-pointer w-full text-left group"
+      className="flex items-center gap-4 p-3 rounded-lg hover:bg-base-200 transition-colors cursor-pointer w-full text-left group disabled:opacity-60 disabled:cursor-wait"
     >
       <EntryThumbnail image={image} />
       <div className="flex-1 min-w-0">
