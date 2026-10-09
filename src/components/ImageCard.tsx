@@ -165,7 +165,7 @@ function ImageCard({ Image }: ImageCardProps) {
   const handleRightClick = (e: React.MouseEvent) => {
     const { monitorsList } = useMonitorStore.getState();
     const { selectedImages } = useImagesStore.getState();
-    openContextMenu(e, buildImageMenuItems(Image, monitorsList, selectedImages.size));
+    openContextMenu(e, buildImageMenuItems(Image, monitorsList, selectedImages.size, startRename));
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -353,7 +353,7 @@ function ImageCard({ Image }: ImageCardProps) {
       id={Image.name}
       onChange={handleCheckboxChange}
       type="checkbox"
-      className="checkbox-success checkbox checkbox-sm absolute right-2 top-2 z-20 rounded-xs opacity-0 checked:opacity-100 group-hover:opacity-100"
+      className="checkbox-success checkbox checkbox-sm absolute right-2 top-2 z-20 rounded-xs opacity-0 checked:opacity-100 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
     />
   );
 
@@ -361,7 +361,7 @@ function ImageCard({ Image }: ImageCardProps) {
     <button
       type="button"
       onClick={handleOpenDetail}
-      className="btn btn-ghost btn-xs btn-square absolute left-2 top-2 z-20 opacity-0 group-hover:opacity-100"
+      className="btn btn-ghost btn-xs btn-square absolute left-2 top-2 z-20 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100"
       title="Edit details"
     >
       <svg
@@ -438,7 +438,7 @@ function ImageCard({ Image }: ImageCardProps) {
         >
           {mediaPreview}
           {durationBadge}
-          <div className="neo-polaroid-caption pointer-events-none group-hover:pointer-events-auto relative z-20">
+          <div className="neo-polaroid-caption pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto relative z-20">
             {caption}
           </div>
         </div>
@@ -474,7 +474,7 @@ function ImageCard({ Image }: ImageCardProps) {
       >
         {mediaPreview}
         {durationBadge}
-        <div className="pointer-events-none group-hover:pointer-events-auto absolute bottom-0 z-20 w-full bg-base-content/75 p-2 pl-2 opacity-0 transition-opacity duration-300 group-hover:opacity-100 text-base-100">
+        <div className="pointer-events-none group-hover:pointer-events-auto group-focus-within:pointer-events-auto absolute bottom-0 z-20 w-full bg-base-content/75 p-2 pl-2 opacity-0 transition-opacity duration-300 group-hover:opacity-100 group-focus-within:opacity-100 text-base-100">
           {caption}
         </div>
         <div
