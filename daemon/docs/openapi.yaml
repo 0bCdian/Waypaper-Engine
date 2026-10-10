@@ -792,6 +792,26 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/RandomWallpaperResponse"
+  /wallpaper/history/previous:
+    post:
+      tags: [wallpaper]
+      operationId: previousWallpaper
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SetWallpaperResponse"
+  /wallpaper/history/next:
+    post:
+      tags: [wallpaper]
+      operationId: nextWallpaper
+      responses:
+        "200":
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SetWallpaperResponse"
 
 components:
   parameters:

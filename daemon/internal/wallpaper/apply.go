@@ -31,6 +31,7 @@ type ApplyOpts struct {
 	Bus               events.Bus // nil = no event publish
 	VideoAudioDefault bool       // user preference: play audio for video wallpapers
 	HistoryLimit      int        // app.image_history_limit; <= 0 keeps everything
+	SkipHistory       bool       // history navigation: don't log the replay
 }
 
 // Apply is the core wallpaper-setting flow used by both the wallpaper handler
@@ -95,11 +96,13 @@ func Apply(ctx context.Context, opts ApplyOpts) error {
 		Backend:   opts.Backend.Name(),
 	}
 
-	if appended, err := opts.History.Append(ctx, entry); err != nil {
-		slog.Warn("failed to record history", "error", err)
-	} else if appended != nil && opts.HistoryLimit > 0 {
-		if err := opts.History.DeleteUpTo(ctx, appended.ID-opts.HistoryLimit); err != nil {
-			slog.Warn("failed to trim history", "error", err)
+	if !opts.SkipHistory {
+		if appended, err := opts.History.Append(ctx, entry); err != nil {
+			slog.Warn("failed to record history", "error", err)
+		} else if appended != nil && opts.HistoryLimit > 0 {
+			if err := opts.History.DeleteUpTo(ctx, appended.ID-opts.HistoryLimit); err != nil {
+				slog.Warn("failed to trim history", "error", err)
+			}
 		}
 	}
 

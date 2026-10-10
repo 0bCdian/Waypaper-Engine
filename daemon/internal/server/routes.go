@@ -136,6 +136,8 @@ func NewRouter(h Handlers, bus events.Bus) *chi.Mux {
 		r.Get("/current", h.Wallpaper.GetCurrent)
 		r.With(gated).Post("/set", h.Wallpaper.Set)
 		r.With(gated).Post("/random", h.Wallpaper.Random)
+		r.With(gated).Post("/history/next", h.Wallpaper.HistoryNext)
+		r.With(gated).Post("/history/previous", h.Wallpaper.HistoryPrevious)
 	})
 
 	// User themes (drop-in CSS palettes from ~/.config/waypaper-engine/themes/).

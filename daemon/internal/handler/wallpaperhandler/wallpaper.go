@@ -7,6 +7,8 @@ import (
 	"log/slog"
 	"math/rand"
 	"net/http"
+	"strings"
+	"sync"
 
 	"waypaper-engine/daemon/internal/backend"
 	"waypaper-engine/daemon/internal/config"
@@ -29,6 +31,13 @@ type WallpaperHandler struct {
 	splitter          *image.Splitter
 	bus               events.Bus
 	cfg               config.ConfigManager
+
+	// History navigation cursor (browser-style back/forward). navTop is the
+	// newest history ID when the cursor was set; if it changes, something else
+	// applied a wallpaper and the cursor restarts from the newest entry.
+	navMu  sync.Mutex
+	navCur int
+	navTop int
 }
 
 // NewWallpaperHandler creates a WallpaperHandler.
@@ -357,5 +366,120 @@ func (h *WallpaperHandler) applyWallpaper(ctx context.Context, img *store.Image,
 		Bus:               h.bus,
 		VideoAudioDefault: wallpaper.VideoAudioDefaultFromCfg(h.cfg),
 		HistoryLimit:      wallpaper.HistoryLimitFromCfg(h.cfg),
+	})
+}
+
+// stepHistory returns the entry adjacent to cur in entries (newest first):
+// the next newer one when forward, else the next older one. nil = at the end.
+func stepHistory(entries []store.ImageHistoryEntry, cur int, forward bool) *store.ImageHistoryEntry {
+	var found *store.ImageHistoryEntry
+	for i := range entries {
+		e := &entries[i]
+		if forward && e.ID > cur { // keep the smallest ID above cur
+			found = e
+		} else if !forward && e.ID < cur {
+			return e // first one below cur is the closest
+		}
+	}
+	return found
+}
+
+// HistoryNext handles POST /wallpaper/history/next.
+func (h *WallpaperHandler) HistoryNext(w http.ResponseWriter, r *http.Request) {
+	h.navigateHistory(w, r, true)
+}
+
+// HistoryPrevious handles POST /wallpaper/history/previous.
+func (h *WallpaperHandler) HistoryPrevious(w http.ResponseWriter, r *http.Request) {
+	h.navigateHistory(w, r, false)
+}
+
+// navigateHistory re-applies the adjacent history entry without logging it, so
+// back/forward doesn't grow or reorder the log.
+func (h *WallpaperHandler) navigateHistory(w http.ResponseWriter, r *http.Request, forward bool) {
+	ctx := r.Context()
+	h.navMu.Lock()
+	defer h.navMu.Unlock()
+
+	// ponytail: scans up to 1000 entries (the default history cap) per step.
+	entries, err := h.historyStore.GetRecent(ctx, store.HistoryQueryOpts{Limit: 1000})
+	if err != nil {
+		httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	}
+	if len(entries) == 0 {
+		httpjson.WriteError(w, http.StatusNotFound, "history is empty")
+		return
+	}
+	if top := entries[0].ID; h.navCur == 0 || h.navTop != top {
+		h.navCur, h.navTop = top, top
+	}
+
+	target := stepHistory(entries, h.navCur, forward)
+	if target == nil {
+		end := "oldest"
+		if forward {
+			end = "newest"
+		}
+		httpjson.WriteError(w, http.StatusNotFound, "already at the "+end+" history entry")
+		return
+	}
+
+	img, err := h.imageStore.GetByID(ctx, target.ImageID)
+	if err != nil {
+		httpjson.WriteError(w, http.StatusNotFound, err.Error())
+		return
+	}
+	monitors, err := h.resolveMonitors(ctx, target.Monitors, "")
+	if err != nil {
+		httpjson.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	}
+	if err := backend.EnsureBackendForMedia(ctx, h.registry, h.cfg, img.MediaType); err != nil {
+		httpjson.WriteStructuredError(w, http.StatusBadRequest, "incompatible_backend", err.Error(),
+			map[string]any{
+				"backend":    activeBackendName(h.registry),
+				"media_type": img.MediaType,
+				"image_id":   img.ID,
+				"image_name": img.Name,
+			},
+		)
+		return
+	}
+
+	mode := monitor.MonitorMode(target.Mode)
+	err = wallpaper.Apply(ctx, wallpaper.ApplyOpts{
+		Image:             img,
+		Monitors:          monitors,
+		Mode:              mode,
+		Source:            store.HistorySource{Type: "history", HistoryID: &target.ID},
+		Backend:           h.registry.Active(),
+		Splitter:          h.splitter,
+		History:           h.historyStore,
+		MonState:          h.monitorStateStore,
+		State:             h.stateStore,
+		Bus:               h.bus,
+		VideoAudioDefault: wallpaper.VideoAudioDefaultFromCfg(h.cfg),
+		SkipHistory:       true,
+	})
+	status := "set"
+	switch {
+	case errors.Is(err, wallpaper.ErrSuperseded):
+		status = "superseded"
+	case errors.Is(err, wallpaper.ErrContentKindUnsupported):
+		httpjson.WriteError(w, http.StatusBadRequest, err.Error())
+		return
+	case err != nil:
+		httpjson.WriteError(w, http.StatusInternalServerError, err.Error())
+		return
+	default:
+		h.navCur = target.ID
+	}
+
+	httpjson.WriteJSON(w, http.StatusOK, SetWallpaperResponse{
+		Status:  status,
+		ImageID: img.ID,
+		Monitor: strings.Join(target.Monitors, ","),
+		Mode:    mode,
 	})
 }

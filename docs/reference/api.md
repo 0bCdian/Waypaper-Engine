@@ -63,6 +63,7 @@ Failures return a non-2xx status and:
 | GET | `/wallpaper/current` | Current wallpaper per monitor. |
 | POST | `/wallpaper/set` | Body: `image_id`, `monitor` or `monitors`, `mode` (`individual`, `clone`, `extend`). |
 | POST | `/wallpaper/random` | Optional body: `monitor` (default `*`), `mode` (default `individual`). |
+| POST | `/wallpaper/history/previous`, `/wallpaper/history/next` | Step back or forward through history without logging the replay. `404` at either end. |
 
 ### Playlists
 

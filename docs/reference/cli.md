@@ -185,14 +185,6 @@ waypaper-daemon images cancel-import [batch-id]
 
 Cancel a running image import batch
 
-## waypaper-daemon images count
-
-```sh
-waypaper-daemon images count
-```
-
-Show the total number of images in the gallery
-
 ## waypaper-daemon images delete
 
 ```sh
@@ -269,14 +261,6 @@ Aliases: `ls`
 | `--search` | `-s` |  | search filter |
 | `--sort-by` |  |  | sort field (name, created_at, updated_at) |
 | `--sort-order` |  |  | sort order (asc, desc) |
-
-## waypaper-daemon images rename
-
-```sh
-waypaper-daemon images rename [id] [new-name]
-```
-
-Rename an image
 
 ## waypaper-daemon images tags
 

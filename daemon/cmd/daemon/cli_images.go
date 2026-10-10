@@ -21,11 +21,9 @@ func buildImagesCmd() *cobra.Command {
 	cmd.AddCommand(buildImagesAddCmd())
 	cmd.AddCommand(buildImagesImportCmd())
 	cmd.AddCommand(buildImagesDeleteCmd())
-	cmd.AddCommand(buildImagesCountCmd())
 	cmd.AddCommand(buildImagesHistoryCmd())
 	cmd.AddCommand(buildImagesTagsCmd())
 	cmd.AddCommand(buildImagesUpdateCmd())
-	cmd.AddCommand(buildImagesRenameCmd())
 	cmd.AddCommand(buildImagesCancelImportCmd())
 
 	return cmd
@@ -171,16 +169,6 @@ func buildImagesDeleteCmd() *cobra.Command {
 	}
 }
 
-func buildImagesCountCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "count",
-		Short: "Show the total number of images in the gallery",
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return doSimpleRequest("GET", "/images/count")
-		},
-	}
-}
-
 func buildImagesHistoryCmd() *cobra.Command {
 	cmd := &cobra.Command{
 		Use:   "history",
@@ -278,20 +266,6 @@ func buildImagesUpdateCmd() *cobra.Command {
 	cmd.Flags().StringVar(&colors, "colors", "", "comma-separated colors")
 
 	return cmd
-}
-
-func buildImagesRenameCmd() *cobra.Command {
-	return &cobra.Command{
-		Use:   "rename [id] [new-name]",
-		Short: "Rename an image",
-		Args:  cobra.ExactArgs(2),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			body := map[string]any{
-				"name": args[1],
-			}
-			return doJSONRequest("POST", "/images/"+args[0]+"/rename", body)
-		},
-	}
 }
 
 func buildImagesCancelImportCmd() *cobra.Command {

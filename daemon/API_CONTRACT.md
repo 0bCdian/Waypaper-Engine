@@ -1,6 +1,6 @@
 # Waypaper Engine Daemon — API Contract
 
-> **See also (generated / structural docs):** [daemon architecture](docs/ARCHITECTURE.md) · [OpenAPI map](docs/openapi.yaml) (machine-readable path index) · [improvement backlog](docs/architectural-improvements.md)
+> **See also:** [OpenAPI map](docs/openapi.yaml) (machine-readable path index)
 
 > **Transport**: HTTP over Unix domain socket  
 > **Default socket**: `$XDG_RUNTIME_DIR/waypaper-engine.sock`  
@@ -60,7 +60,7 @@ Liveness probe. The daemon answers as soon as its socket is up, before the wallp
 
 `backend_ready` is `false` until the active backend is initialized and the startup wallpaper/playlist restore has finished.
 
-**Startup gating.** While `backend_ready` is `false`, requests that change what is on screen are held and run once it turns `true`. These are `POST /wallpaper/set`, `POST /wallpaper/random`, the playlist start/stop/pause/resume/next/previous routes (per-playlist and `/playlists/active/*`), `POST /backends/{name}/activate`, `PATCH /config/backends/{backend}`, `POST /config/reset` and `POST /config/backends/{backend}/reset`. A held request whose client disconnects is dropped. Every other route answers immediately.
+**Startup gating.** While `backend_ready` is `false`, requests that change what is on screen are held and run once it turns `true`. These are `POST /wallpaper/set`, `POST /wallpaper/random`, `POST /wallpaper/history/{previous,next}`, the playlist start/stop/pause/resume/next/previous routes (per-playlist and `/playlists/active/*`), `POST /backends/{name}/activate`, `PATCH /config/backends/{backend}`, `POST /config/reset` and `POST /config/backends/{backend}/reset`. A held request whose client disconnects is dropped. Every other route answers immediately.
 
 ---
 
@@ -493,6 +493,16 @@ Set a random image from the gallery.
   "mode": "individual"
 }
 ```
+
+---
+
+### `POST /wallpaper/history/previous` · `POST /wallpaper/history/next`
+
+Step back or forward through the wallpaper history, browser-style. The entry is re-applied to its original monitors and mode and is **not** appended to the history log. The cursor restarts from the newest entry whenever any other wallpaper change is logged. Gated like `/wallpaper/set`.
+
+**Response** `200`: same shape as `POST /wallpaper/set` (`monitor` is the entry's monitors, comma-joined).
+
+**Errors:** `404` when history is empty or already at the oldest/newest entry, or the entry's image was deleted.
 
 ---
 
