@@ -5,13 +5,14 @@ go 1.26.0
 require (
 	github.com/chai2010/webp v1.4.0
 	github.com/fsnotify/fsnotify v1.10.1
-	github.com/go-chi/chi/v5 v5.3.2
+	github.com/go-chi/chi/v5 v5.5.0
 	github.com/godbus/dbus/v5 v5.2.2
 	github.com/oapi-codegen/oapi-codegen/v2 v2.4.1
 	github.com/ostafen/clover/v2 v2.0.0-alpha.3
 	github.com/samber/slog-multi v1.8.0
 	github.com/satori/go.uuid v1.2.0
 	github.com/spf13/cobra v1.10.2
+	github.com/spf13/pflag v1.0.10
 	github.com/spf13/viper v1.21.0
 	github.com/stretchr/testify v1.12.1
 	golang.org/x/image v0.47.0
@@ -55,7 +56,6 @@ require (
 	github.com/speakeasy-api/openapi-overlay v0.9.0 // indirect
 	github.com/spf13/afero v1.15.0 // indirect
 	github.com/spf13/cast v1.10.0 // indirect
-	github.com/spf13/pflag v1.0.10 // indirect
 	github.com/subosito/gotenv v1.6.0 // indirect
 	github.com/vmihailenco/msgpack/v5 v5.3.5 // indirect
 	github.com/vmihailenco/tagparser/v2 v2.0.0 // indirect
