@@ -30,11 +30,11 @@ importers:
         specifier: 5.3.0
         version: 5.3.0
       '@fontsource/google-sans':
-        specifier: 5.3.1
-        version: 5.3.1
+        specifier: 5.3.2
+        version: 5.3.2
       '@fontsource/google-sans-flex':
-        specifier: 5.3.1
-        version: 5.3.1
+        specifier: 5.3.2
+        version: 5.3.2
       '@fontsource/jetbrains-mono':
         specifier: 5.3.0
         version: 5.3.0
@@ -704,11 +704,11 @@ packages:
   '@fontsource/aldrich@5.3.0':
     resolution: {integrity: sha512-C3Ho66fhyDGy9rSPc9Sjz7WErf5KtN7Ru1z0YV+PYZq1xLnxEkArF6HDZiXRRZYJQ+EZNU+1E/DNJTPJfsfIGA==}
 
-  '@fontsource/google-sans-flex@5.3.1':
-    resolution: {integrity: sha512-m8vKMunEkNSyqf5YEu19b8qPl5iHHTnh+roH0BwA0fUPnIDC44PyDcrLjNX3nGzegIvNaNeQATZX4bPyveVoYg==}
+  '@fontsource/google-sans-flex@5.3.2':
+    resolution: {integrity: sha512-CpxNZIJgYXkIANJ8QBgJZktMA/OWkJ06A54y21lvlamOrpdbruUdJuOIw8UzGRppbJBki4ZMC0a+HukdiL49Uw==}
 
-  '@fontsource/google-sans@5.3.1':
-    resolution: {integrity: sha512-vPaxyKtWMAecphz5CHerhBAIhnRNzQs0dn4KEr8d9Zx5MsoRBXZgFG43Lso2h7w46HVb7S+ku1sdVkGvONz1kQ==}
+  '@fontsource/google-sans@5.3.2':
+    resolution: {integrity: sha512-IwR9hZgU1LUi0RAkhlqb+mCflPi/dU3ZJRUfznUW9TwgGXS2mEOeCptvVKVy/jRqhCJgwHYWvKHM9DU3/N4xsQ==}
 
   '@fontsource/jetbrains-mono@5.3.0':
     resolution: {integrity: sha512-fqDfB5I9f1p1TV486aUgB9t8zP84P0O1FtQR5Ol9vjwPy+S+EIGlVYm1cvj2W5shcZMTg2nZFdVMoH5wFu8a1A==}
@@ -1650,10 +1650,12 @@ packages:
   '@xmldom/xmldom@0.8.13':
     resolution: {integrity: sha512-KRYzxepc14G/CEpEGc3Yn+JKaAeT63smlDr+vjB8jRfgTBBI9wRj/nkQEO+ucV8p8I9bfKLWp37uHgFrbntPvw==}
     engines: {node: '>=10.0.0'}
+    deprecated: this version has critical issues, please update to the latest version
 
   '@xmldom/xmldom@0.9.10':
     resolution: {integrity: sha512-A9gOqLdi6cV4ibazAjcQufGj0B1y/vDqYrcuP6d/6x8P27gRS8643Dj9o1dEKtB6O7fwxb2FgBmJS2mX7gpvdw==}
     engines: {node: '>=14.6'}
+    deprecated: this version has critical issues, please update to the latest version
 
   abbrev@4.0.0:
     resolution: {integrity: sha512-a1wflyaL0tHtJSmLSOVybYhy22vRih4eduhhrkcjgrWGnRfrZtovJ2FRjxuTtkkj47O/baf0R86QU5OuYpz8fA==}
@@ -4452,9 +4454,9 @@ snapshots:
 
   '@fontsource/aldrich@5.3.0': {}
 
-  '@fontsource/google-sans-flex@5.3.1': {}
+  '@fontsource/google-sans-flex@5.3.2': {}
 
-  '@fontsource/google-sans@5.3.1': {}
+  '@fontsource/google-sans@5.3.2': {}
 
   '@fontsource/jetbrains-mono@5.3.0': {}
 
