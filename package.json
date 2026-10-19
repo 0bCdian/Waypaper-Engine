@@ -98,5 +98,5 @@
     "vitepress": "1.6.4",
     "vitest": "4.1.10"
   },
-  "packageManager": "pnpm@11.2.2"
+  "packageManager": "pnpm@12.14.0"
 }
