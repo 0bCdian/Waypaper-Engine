@@ -1,6 +1,7 @@
 import { defineConfig, type Plugin } from "vite";
 import electron from "vite-plugin-electron";
-import react from "@vitejs/plugin-react";
+import babel from "@rolldown/plugin-babel";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { resolve } from "path";
 import { daemonUnixSocketProxyPlugin } from "./scripts/vite-plugin-daemon-proxy";
@@ -54,11 +55,8 @@ export default defineConfig(({ command }) => ({
       outFile: resolve(__dirname, "src/styles/themes/_index.ts"),
     }),
     reactStandaloneDevtoolsPlugin(command),
-    react({
-      babel: {
-        plugins: ["babel-plugin-react-compiler"],
-      },
-    }),
+    react(),
+    babel({ presets: [reactCompilerPreset()] }),
     tailwindcss(),
     electron([
       {
