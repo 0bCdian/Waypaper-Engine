@@ -65,7 +65,7 @@
     "react-hotkeys-hook": "5.3.3",
     "react-router-dom": "7.18.4",
     "react-select": "5.10.2",
-    "toml": "5.0.0",
+    "toml": "5.0.1",
     "zustand": "5.0.15"
   },
   "devDependencies": {
