@@ -81,7 +81,7 @@
     "@vitest/coverage-v8": "4.0.18",
     "babel-plugin-react-compiler": "1.0.0",
     "culori": "4.0.2",
-    "daisyui": "5.7.47",
+    "daisyui": "5.7.50",
     "electron": "42.2.0",
     "electron-builder": "26.15.7",
     "electron-reload": "2.0.0-alpha.1",
