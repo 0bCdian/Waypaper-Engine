@@ -92,7 +92,7 @@
     "shiki": "2.5.0",
     "tailwindcss": "4.3.3",
     "typescript": "5.5.4",
-    "vite": "8.2.1",
+    "vite": "8.3.4",
     "vite-plugin-electron": "1.1.2",
     "vite-plugin-electron-renderer": "0.14.6",
     "vitepress": "1.6.4",
