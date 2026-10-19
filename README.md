@@ -80,7 +80,7 @@ The big shift is replacing the old **Node.js** backend with a **Go daemon**: one
 | App shell     | Electron 40, React 19, Vite 6, Tailwind 4, DaisyUI 5                                                        |
 | Daemon        | Go 1.26, [chi](https://github.com/go-chi/chi), [CloverDB](https://github.com/ostafen/clover), Cobra + Viper |
 | IPC           | Unix socket HTTP, Server-Sent Events                                                                        |
-| Dev toolchain | Node 22, **pnpm** 9, **mise** (see [.mise.toml](.mise.toml)), oxfmt / oxlint, Vitest, Playwright (e2e)                  |
+| Dev toolchain | Node 24, **pnpm** 11, **mise** (see [.mise.toml](.mise.toml)), oxfmt / oxlint, Vitest, Playwright (e2e)                  |
 
 ---
 
